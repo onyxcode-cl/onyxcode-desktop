@@ -17,7 +17,10 @@ let tray: Tray | null = null
 let lastActions: TrayActions | null = null
 let lastAccelerator = ''
 
-/** Burbuja de chat redondeada con tres puntos, dibujada con antialiasing simple. */
+/**
+ * Símbolo "Faceta" (gema de 4 facetas + chispa), misma geometría de 32 unidades que
+ * renderer/components/Logo.tsx y build/icon.svg. Dibujado con antialiasing simple.
+ */
 export function createTrayIcon(): NativeImage {
   const S = 32
   const buf = Buffer.alloc(S * S * 4)
@@ -55,15 +58,31 @@ function roundRect(x: number, y: number, x0: number, y0: number, x1: number, y1:
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
 }
 
+function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax
+  const dy = by - ay
+  const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)))
+  return Math.hypot(x - (ax + t * dx), y - (ay + t * dy))
+}
+
 function inShape(x: number, y: number): boolean {
-  const outer = roundRect(x, y, 3, 4, 29, 23, 6)
-  const inner = roundRect(x, y, 5.5, 6.5, 26.5, 20.5, 4)
-  // Cola de la burbuja (triángulo abajo-izquierda).
-  const tail = y >= 22 && y <= 28.5 && x >= 8 && x <= 15 && x - 8 <= (28.5 - y) * 1.1
-  const ring = (outer && !inner) || tail
-  // Tres puntos.
-  const dot = [10.5, 16, 21.5].some((cx) => (x - cx) ** 2 + (y - 13.5) ** 2 <= 2.2 ** 2)
-  return ring || dot
+  // Gema: cuadrado redondeado 17×17 rotado 45° alrededor de (16,16).
+  const c = Math.SQRT1_2
+  const rx = (x - 16) * c + (y - 16) * c + 16
+  const ry = -(x - 16) * c + (y - 16) * c + 16
+  const gem = roundRect(rx, ry, 7.5, 7.5, 24.5, 24.5, 3.6)
+  // Cortes entre facetas: del centro óptico (16,14.6) a cada vértice.
+  const cut = [
+    [16, 3],
+    [29, 16],
+    [16, 29],
+    [3, 16]
+  ].some(([vx, vy]) => segDist(x, y, 16, 14.6, vx, vy) < 0.75)
+  // Chispa de 4 puntas centrada en (26,6).
+  const dx = Math.abs(x - 26)
+  const dy = Math.abs(y - 6)
+  const spark = Math.sqrt(dx) + Math.sqrt(dy) <= Math.sqrt(4.8)
+  return (gem && !cut) || spark
 }
 
 function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {

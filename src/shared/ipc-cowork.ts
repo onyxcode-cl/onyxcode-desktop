@@ -105,7 +105,6 @@ export type ComputerOverlayMessage =
   | { type: 'show'; label?: string }
   | { type: 'hide' }
   | { type: 'stopped' }
-  | { type: 'dim'; dim: boolean }
 
 /** Archivo de la carpeta creado/modificado durante una tarea. */
 export interface CoworkDeliverable {

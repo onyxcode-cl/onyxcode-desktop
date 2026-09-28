@@ -19,6 +19,8 @@ extraResources:
     filter:
       - cu-helper
 mac:
+  # Icono generado desde build/icon.svg (node build/render-icon.mjs vía electron)
+  icon: build/icon.icns
   category: public.app-category.developer-tools
   target:
     - target: dmg
