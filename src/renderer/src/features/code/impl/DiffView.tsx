@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
 import { createTwoFilesPatch } from 'diff'
+import hljs from 'highlight.js/lib/common'
 
 type LineKind = 'add' | 'del' | 'ctx' | 'hunk' | 'file' | 'meta'
 
@@ -63,9 +64,31 @@ export function diffStats(patch: string): { additions: number; deletions: number
   return { additions, deletions }
 }
 
+/** Lenguaje de highlight.js a partir de la extensión (o `null`). */
+export function languageFor(path: string | undefined): string | null {
+  if (!path) return null
+  const name = path.split(/[/\\]/).pop() ?? ''
+  const lower = name.toLowerCase()
+  if (lower === 'dockerfile') return 'dockerfile'
+  if (lower === 'makefile') return 'makefile'
+  const ext = lower.includes('.') ? lower.slice(lower.lastIndexOf('.') + 1) : ''
+  const alias: Record<string, string> = { mjs: 'javascript', cjs: 'javascript', mts: 'typescript', cts: 'typescript', vue: 'xml', svelte: 'xml', zsh: 'bash', toml: 'ini' }
+  const lang = alias[ext] ?? ext
+  return lang && hljs.getLanguage(lang) ? lang : null
+}
+
+function highlightLine(text: string, lang: string | null): string | null {
+  if (!lang || text.length > 2000) return null
+  try {
+    return hljs.highlight(text, { language: lang, ignoreIllegals: true }).value
+  } catch {
+    return null
+  }
+}
+
 const ROW: Record<LineKind, string> = {
-  add: 'bg-[color-mix(in_srgb,#22c55e_14%,transparent)]',
-  del: 'bg-[color-mix(in_srgb,#ef4444_14%,transparent)]',
+  add: 'bg-[color-mix(in_srgb,var(--success)_13%,transparent)]',
+  del: 'bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]',
   ctx: '',
   hunk: 'bg-accent-soft/60 text-muted',
   file: 'bg-hover font-semibold text-fg',
@@ -79,10 +102,20 @@ interface Props {
   className?: string
   /** Oculta la cabecera por archivo (útil cuando ya se muestra el nombre fuera). */
   hideFileHeaders?: boolean
+  /** Ruta del archivo (para el resaltado de sintaxis si el diff no trae cabecera). */
+  path?: string
 }
 
-export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders }: Props): React.JSX.Element {
-  const lines = useMemo(() => parseUnifiedDiff(patch), [patch])
+export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders, path }: Props): React.JSX.Element {
+  const lines = useMemo(() => {
+    const parsed = parseUnifiedDiff(patch)
+    let lang = languageFor(path)
+    return parsed.map((l) => {
+      if (l.kind === 'file') lang = languageFor(l.text) ?? languageFor(path)
+      const html = l.kind === 'add' || l.kind === 'del' || l.kind === 'ctx' ? highlightLine(l.text, lang) : null
+      return { ...l, html }
+    })
+  }, [patch, path])
   if (lines.length === 0) {
     return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>Sin diferencias.</div>
   }
@@ -112,14 +145,18 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
             }
             return (
               <tr key={i} className={ROW[l.kind]}>
-                <td className="w-10 pr-2 text-right align-top text-subtle select-none">{l.oldNo ?? ''}</td>
-                <td className="w-10 pr-2 text-right align-top text-subtle select-none">{l.newNo ?? ''}</td>
+                <td className="w-10 pr-2 text-right align-top text-subtle/70 select-none">{l.oldNo ?? ''}</td>
+                <td className="w-10 pr-2 text-right align-top text-subtle/70 select-none">{l.newNo ?? ''}</td>
                 <td
-                  className={`w-4 align-top select-none ${l.kind === 'add' ? 'text-[#16a34a]' : l.kind === 'del' ? 'text-danger' : 'text-subtle'}`}
+                  className={`w-4 align-top select-none ${l.kind === 'add' ? 'text-success' : l.kind === 'del' ? 'text-danger' : 'text-subtle'}`}
                 >
                   {SIGN[l.kind]}
                 </td>
-                <td className="pr-3 whitespace-pre-wrap break-all">{l.text}</td>
+                {l.html !== null ? (
+                  <td className="pr-3 whitespace-pre-wrap break-all" dangerouslySetInnerHTML={{ __html: l.html }} />
+                ) : (
+                  <td className="pr-3 whitespace-pre-wrap break-all">{l.text}</td>
+                )}
               </tr>
             )
           })}

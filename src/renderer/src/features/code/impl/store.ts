@@ -85,9 +85,14 @@ export interface CodeState {
   newSession: () => Promise<string | null>
   selectSession: (sessionID: string | null) => Promise<void>
   deleteSession: (sessionID: string) => Promise<void>
-  send: (text: string) => Promise<void>
+  /** Envía un prompt. `files` = rutas relativas al proyecto mencionadas con @. */
+  send: (text: string, files?: string[]) => Promise<void>
+  /** Ejecuta un comando del servidor (`/nombre args`). */
+  runCommand: (name: string, args: string) => Promise<void>
   abort: () => Promise<void>
   revertLast: () => Promise<void>
+  /** Revierte la sesión hasta (e incluyendo) el mensaje de usuario indicado. */
+  revertTo: (messageID: string) => Promise<void>
   unrevert: () => Promise<void>
   replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject') => Promise<void>
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
@@ -353,7 +358,7 @@ export const useCode = create<CodeState>((set, get) => {
       })
     },
 
-    send: async (text) => {
+    send: async (text, files = []) => {
       const trimmed = text.trim()
       if (!trimmed) return
       let sid = get().activeSessionID
@@ -363,6 +368,22 @@ export const useCode = create<CodeState>((set, get) => {
       const { agent, model } = get()
       setError(sid, null)
       set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
+      const base = dir.replace(/[/\\]+$/, '')
+      const fileParts = [...new Set(files)].flatMap((rel) => {
+        const token = `@${rel}`
+        const start = trimmed.indexOf(token)
+        if (start < 0) return []
+        const abs = `${base}/${rel}`
+        return [
+          {
+            type: 'file' as const,
+            mime: 'text/plain',
+            filename: rel.split('/').pop() ?? rel,
+            url: `file://${abs}`,
+            source: { type: 'file' as const, path: abs, text: { value: token, start, end: start + token.length } }
+          }
+        ]
+      })
       try {
         sdkData(
           await client.session.promptAsync({
@@ -370,7 +391,32 @@ export const useCode = create<CodeState>((set, get) => {
             directory: dir,
             agent,
             model: model ? { providerID: model.providerID, modelID: model.modelID } : undefined,
-            parts: [{ type: 'text', text: trimmed }]
+            parts: [{ type: 'text', text: trimmed }, ...fileParts]
+          })
+        )
+      } catch (err) {
+        setError(sid, errorMessage(err))
+        set((s) => ({ runState: { ...s.runState, [sid]: 'idle' } }))
+      }
+    },
+
+    runCommand: async (name, args) => {
+      let sid = get().activeSessionID
+      if (!sid) sid = await get().newSession()
+      if (!sid) return
+      const { client, dir } = activeDir()
+      const { agent, model } = get()
+      setError(sid, null)
+      set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
+      try {
+        sdkData(
+          await client.session.command({
+            sessionID: sid,
+            directory: dir,
+            command: name,
+            arguments: args,
+            agent,
+            model: model ? `${model.providerID}/${model.modelID}` : undefined
           })
         )
       } catch (err) {
@@ -399,6 +445,16 @@ export const useCode = create<CodeState>((set, get) => {
         const target = users[users.length - 1]
         if (!target) throw new Error('No hay cambios que revertir')
         const updated = sdkData(await client.session.revert({ sessionID: sid, directory: dir, messageID: target.info.id }))
+        set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated }, fsVersion: s.fsVersion + 1 }))
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+      }
+    },
+
+    revertTo: async (messageID) => {
+      try {
+        const { client, dir, sid } = activeDir()
+        const updated = sdkData(await client.session.revert({ sessionID: sid, directory: dir, messageID }))
         set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated }, fsVersion: s.fsVersion + 1 }))
       } catch (err) {
         set({ globalError: errorMessage(err) })

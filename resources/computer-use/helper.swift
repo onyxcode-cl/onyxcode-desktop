@@ -1,7 +1,11 @@
 // cu-helper: helper nativo de "computer use" para OpenDesk (macOS).
 //
-// Uso: cu-helper <comando> [args…]
-//   move x y                      mueve el cursor
+// Uso: cu-helper [--instant] [--char-delay ms] <comando> [args…]
+//   --instant                     sin animación (teletransporta el cursor, texto por trozos)
+//   --char-delay ms               retardo base por carácter al escribir (por defecto 14 ms)
+//   (las banderas van ANTES del comando; también CU_INSTANT=1 / CU_CHAR_DELAY_MS en el entorno)
+//
+//   move x y                      mueve el cursor (trayectoria suave y visible)
 //   click x y [left|right] [n]    clic (n = 1 simple, 2 doble, 3 triple)
 //   drag x1 y1 x2 y2              arrastra con el botón izquierdo
 //   scroll x y dx dy              rueda (líneas; dy>0 = hacia abajo, dx>0 = hacia la derecha)
@@ -16,6 +20,12 @@
 //
 // Coordenadas: puntos de pantalla, origen arriba-izquierda de la pantalla principal
 // (el mismo sistema que usa CGEvent). Salida: JSON en stdout; errores en stderr + exit 1.
+//
+// Movimiento "humano": move/click/drag/scroll llevan el cursor desde su posición actual hasta el
+// destino por una curva de Bézier ligeramente arqueada, con perfil de velocidad de mínimo jerk,
+// 250–600 ms según la distancia, a ~120 Hz, publicando mouseMoved/leftMouseDragged para que las
+// apps vean el hover. El clic ocurre tras llegar y una pausa corta. Si existe COMPUTER_STOP_FILE,
+// la animación/escritura se aborta (exit 3) soltando el botón si estaba pulsado.
 
 import AppKit
 import ApplicationServices
@@ -62,51 +72,132 @@ func requireAccessibility() {
     }
 }
 
+// MARK: - Opciones
+
+var instant = ProcessInfo.processInfo.environment["CU_INSTANT"] == "1"
+var charDelayMs: Double = Double(ProcessInfo.processInfo.environment["CU_CHAR_DELAY_MS"] ?? "") ?? 14
+let stopFile = ProcessInfo.processInfo.environment["COMPUTER_STOP_FILE"] ?? ""
+var buttonHeld = false
+
+/// Kill-switch: aborta a mitad de animación/escritura si el usuario pulsó Detener.
+func checkStop() {
+    if !stopFile.isEmpty && FileManager.default.fileExists(atPath: stopFile) {
+        if buttonHeld {
+            post(CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: currentCursor(), mouseButton: .left))
+        }
+        fail("Control detenido por el usuario", code: 3)
+    }
+}
+
 // MARK: - Ratón
 
 func moveTo(_ p: CGPoint) {
     post(CGEvent(mouseEventSource: source, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left))
 }
 
+/// Duración de la animación según la distancia (misma fórmula que el overlay en service/overlay.ts).
+func motionDuration(_ dist: Double) -> Double {
+    return 0.25 + 0.35 * min(1.0, dist / 1400.0)
+}
+
+/// Perfil de velocidad de mínimo jerk (arranque y frenada suaves, como una mano).
+func minJerk(_ t: Double) -> Double {
+    return t * t * t * (10 - 15 * t + 6 * t * t)
+}
+
+/// Lleva el cursor de su posición actual a `b` por una curva suave. `dragging` publica
+/// leftMouseDragged (botón izquierdo pulsado) en lugar de mouseMoved.
+func glide(to b: CGPoint, dragging: Bool = false) {
+    let a = currentCursor()
+    let dx = b.x - a.x, dy = b.y - a.y
+    let dist = (dx * dx + dy * dy).squareRoot()
+    let type: CGEventType = dragging ? .leftMouseDragged : .mouseMoved
+    if instant || dist < 3 {
+        post(CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: b, mouseButton: .left))
+        return
+    }
+    // Punto de control desplazado en perpendicular: arco leve (4–12 % de la distancia).
+    let side: Double = Bool.random() ? 1 : -1
+    let bend = min(90.0, dist * Double.random(in: 0.04...0.12)) * side
+    let mx = (a.x + b.x) / 2 - dy / dist * bend
+    let my = (a.y + b.y) / 2 + dx / dist * bend
+    let duration = motionDuration(dist)
+    let hz = 120.0
+    let frames = max(8, Int(duration * hz))
+    let start = DispatchTime.now().uptimeNanoseconds
+    for i in 1...frames {
+        checkStop()
+        let t = minJerk(Double(i) / Double(frames))
+        let u = 1 - t
+        let p = CGPoint(x: u * u * a.x + 2 * u * t * mx + t * t * b.x,
+                        y: u * u * a.y + 2 * u * t * my + t * t * b.y)
+        post(CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: i == frames ? b : p, mouseButton: .left))
+        // Reloj absoluto: sin deriva acumulada aunque post() tarde.
+        let due = start + UInt64(Double(i) * 1e9 / hz)
+        let now = DispatchTime.now().uptimeNanoseconds
+        if due > now { usleep(UInt32((due - now) / 1000)) }
+    }
+}
+
 func click(_ p: CGPoint, right: Bool, count: Int) {
     let down: CGEventType = right ? .rightMouseDown : .leftMouseDown
     let up: CGEventType = right ? .rightMouseUp : .leftMouseUp
     let button: CGMouseButton = right ? .right : .left
-    moveTo(p)
-    pause(30)
+    glide(to: p)
+    pause(instant ? 30 : UInt32.random(in: 60...110))
+    checkStop()
     for i in 1...max(1, count) {
         let d = CGEvent(mouseEventSource: source, mouseType: down, mouseCursorPosition: p, mouseButton: button)
         d?.setIntegerValueField(.mouseEventClickState, value: Int64(i))
         post(d)
-        pause(15)
+        pause(instant ? 15 : UInt32.random(in: 35...70))
         let u = CGEvent(mouseEventSource: source, mouseType: up, mouseCursorPosition: p, mouseButton: button)
         u?.setIntegerValueField(.mouseEventClickState, value: Int64(i))
         post(u)
-        if i < count { pause(60) }
+        if i < count { pause(instant ? 60 : 80) }
     }
 }
 
 func drag(from a: CGPoint, to b: CGPoint) {
-    moveTo(a)
-    pause(40)
+    glide(to: a)
+    pause(instant ? 40 : 90)
+    checkStop()
     post(CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: a, mouseButton: .left))
-    pause(60)
-    let steps = 20
-    for i in 1...steps {
-        let t = Double(i) / Double(steps)
-        let p = CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
-        post(CGEvent(mouseEventSource: source, mouseType: .leftMouseDragged, mouseCursorPosition: p, mouseButton: .left))
-        pause(12)
+    buttonHeld = true
+    pause(instant ? 60 : 120)
+    if instant {
+        let steps = 20
+        for i in 1...steps {
+            let t = Double(i) / Double(steps)
+            let p = CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
+            post(CGEvent(mouseEventSource: source, mouseType: .leftMouseDragged, mouseCursorPosition: p, mouseButton: .left))
+            pause(12)
+        }
+    } else {
+        glide(to: b, dragging: true)
     }
-    pause(40)
+    pause(instant ? 40 : 110)
     post(CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: b, mouseButton: .left))
+    buttonHeld = false
 }
 
 func scroll(at p: CGPoint, dx: Int32, dy: Int32) {
-    moveTo(p)
-    pause(30)
+    glide(to: p)
+    pause(instant ? 30 : 70)
     // En CGEvent, wheel1 > 0 desplaza hacia arriba; aquí dy > 0 = hacia abajo.
-    post(CGEvent(scrollWheelEvent2Source: source, units: .line, wheelCount: 2, wheel1: -dy, wheel2: -dx, wheel3: 0))
+    if instant {
+        post(CGEvent(scrollWheelEvent2Source: source, units: .line, wheelCount: 2, wheel1: -dy, wheel2: -dx, wheel3: 0))
+        return
+    }
+    // Línea a línea para que el desplazamiento se vea progresivo.
+    let n = max(abs(dx), abs(dy))
+    for i in 0..<n {
+        checkStop()
+        let sy: Int32 = i < abs(dy) ? (dy > 0 ? -1 : 1) : 0
+        let sx: Int32 = i < abs(dx) ? (dx > 0 ? -1 : 1) : 0
+        post(CGEvent(scrollWheelEvent2Source: source, units: .line, wheelCount: 2, wheel1: sy, wheel2: sx, wheel3: 0))
+        pause(22)
+    }
 }
 
 // MARK: - Teclado
@@ -161,28 +252,50 @@ func pressKey(_ combo: String) {
     post(u)
 }
 
+func typeChunk(_ units: [UInt16]) {
+    var chunk = units
+    let d = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
+    d?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
+    post(d)
+    let u = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+    u?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
+    post(u)
+}
+
 func typeText(_ text: String) {
-    // Trozos pequeños: algunas apps ignoran cadenas unicode largas en un único evento.
-    let utf16 = Array(text.utf16)
-    var i = 0
-    while i < utf16.count {
-        // "\n" y "\t" como teclas reales para que funcionen en formularios/terminales.
-        let c = utf16[i]
-        if c == 10 || c == 13 { pressKey("return"); i += 1; pause(8); continue }
-        if c == 9 { pressKey("tab"); i += 1; pause(8); continue }
-        var end = min(i + 16, utf16.count)
-        if let nl = utf16[i..<end].firstIndex(where: { $0 == 10 || $0 == 13 || $0 == 9 }) { end = nl }
-        // No cortar un par sustituto.
-        if end < utf16.count, end > i + 1, UTF16.isLeadSurrogate(utf16[end - 1]) { end -= 1 }
-        var chunk = Array(utf16[i..<end])
-        let d = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
-        d?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
-        post(d)
-        let u = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
-        u?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
-        post(u)
-        pause(8)
-        i = end
+    if instant {
+        // Trozos pequeños: algunas apps ignoran cadenas unicode largas en un único evento.
+        let utf16 = Array(text.utf16)
+        var i = 0
+        while i < utf16.count {
+            // "\n" y "\t" como teclas reales para que funcionen en formularios/terminales.
+            let c = utf16[i]
+            if c == 10 || c == 13 { pressKey("return"); i += 1; pause(8); continue }
+            if c == 9 { pressKey("tab"); i += 1; pause(8); continue }
+            var end = min(i + 16, utf16.count)
+            if let nl = utf16[i..<end].firstIndex(where: { $0 == 10 || $0 == 13 || $0 == 9 }) { end = nl }
+            // No cortar un par sustituto.
+            if end < utf16.count, end > i + 1, UTF16.isLeadSurrogate(utf16[end - 1]) { end -= 1 }
+            typeChunk(Array(utf16[i..<end]))
+            pause(8)
+            i = end
+        }
+        return
+    }
+    // Carácter a carácter (grafemas completos: emojis, acentos combinados) con un ritmo ligeramente
+    // irregular. Textos largos aceleran para no pasar de ~4 s en total.
+    let chars = Array(text)
+    let base = max(0, min(charDelayMs, 4000.0 / Double(max(1, chars.count))))
+    for ch in chars {
+        checkStop()
+        if ch == "\n" || ch == "\r\n" || ch == "\r" { pressKey("return") }
+        else if ch == "\t" { pressKey("tab") }
+        else { typeChunk(Array(String(ch).utf16)) }
+        if base > 0 {
+            var ms = base * Double.random(in: 0.6...1.4)
+            if ch == " " || ch == "," || ch == "." { ms += base * 0.8 }
+            usleep(UInt32(ms * 1000))
+        }
     }
 }
 
@@ -209,6 +322,14 @@ func permissions() -> [String: Any] {
 
 var args = CommandLine.arguments
 args.removeFirst()
+// Banderas globales ANTES del comando (así un texto de `type` nunca se interpreta como bandera).
+while let f = args.first, f.hasPrefix("--") {
+    args.removeFirst()
+    if f == "--instant" { instant = true }
+    else if f == "--char-delay" { charDelayMs = max(0, num(args, 0, "--char-delay")); args.removeFirst() }
+    else if f.hasPrefix("--char-delay=") { charDelayMs = max(0, Double(f.dropFirst(13)) ?? charDelayMs) }
+    else { fail("Bandera desconocida: \(f)") }
+}
 guard let cmd = args.first else {
     fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app …")
 }
@@ -216,7 +337,7 @@ guard let cmd = args.first else {
 switch cmd {
 case "move":
     requireAccessibility()
-    moveTo(CGPoint(x: num(args, 1, "x"), y: num(args, 2, "y")))
+    glide(to: CGPoint(x: num(args, 1, "x"), y: num(args, 2, "y")))
     out(["ok": true])
 case "click":
     requireAccessibility()

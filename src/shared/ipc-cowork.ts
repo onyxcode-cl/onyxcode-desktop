@@ -75,7 +75,37 @@ export interface ComputerActionEvent {
   y?: number
   text?: string
   at: number
+  /**
+   * `start` = se emite ANTES de mover el ratón (el overlay marca el destino mientras el cursor
+   * viaja); `end` = la acción terminó (onda del clic, destello de la captura). Sin fase = legado.
+   */
+  phase?: 'start' | 'end'
+  /** Solo en `end`: false si la acción falló. */
+  ok?: boolean
+  /** Origen de un arrastre (puntos de pantalla). */
+  fromX?: number
+  fromY?: number
+  /** Captura automática tras una acción (el overlay solo destella, sin etiqueta). */
+  auto?: boolean
 }
+
+/** Mensajes del proceso principal al overlay de control (`src/renderer/overlay`). */
+export type ComputerOverlayMessage =
+  | {
+      type: 'action'
+      /** Coordenadas ya en píxeles CSS del overlay (pantalla principal). */
+      action: ComputerActionEvent
+      /** Posición del cursor (px CSS del overlay) al empezar la acción. */
+      cursor?: { x: number; y: number }
+      /** Duración estimada del movimiento del cursor hasta el destino (ms; 0 = instantáneo). */
+      moveMs?: number
+      /** true si x/y son la posición del cursor (acciones sin coordenadas: teclear, teclas…). */
+      atCursor?: boolean
+    }
+  | { type: 'show'; label?: string }
+  | { type: 'hide' }
+  | { type: 'stopped' }
+  | { type: 'dim'; dim: boolean }
 
 /** Archivo de la carpeta creado/modificado durante una tarea. */
 export interface CoworkDeliverable {
@@ -218,6 +248,12 @@ export interface CoworkInvokeContract {
   'computer:stop': { req: void; res: void }
   /** Quita el archivo de parada. */
   'computer:resume': { req: void; res: void }
+  /**
+   * Sesión de control activa (p.ej. al empezar una tarea de acceso completo): muestra el overlay
+   * y la píldora "La IA está controlando tu Mac" y no los oculta por inactividad hasta `active: false`.
+   * `label` = texto opcional para la píldora.
+   */
+  'computer:session': { req: { active: boolean; label?: string }; res: void }
 }
 
 export interface CoworkEventContract {
@@ -227,6 +263,8 @@ export interface CoworkEventContract {
   'computer:action': ComputerActionEvent
   /** Se detuvo el control (atajo global Cmd+Shift+Escape o computer:stop). */
   'computer:stopped': { at: number }
+  /** Solo para las ventanas del overlay de control (no se difunde al resto). */
+  'computer:overlay': ComputerOverlayMessage
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -257,7 +295,8 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:status',
   'computer:requestPermissions',
   'computer:stop',
-  'computer:resume'
+  'computer:resume',
+  'computer:session'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
 export const COWORK_EVENT_CHANNELS = [
@@ -265,7 +304,8 @@ export const COWORK_EVENT_CHANNELS = [
   'routines:changed',
   'routines:run',
   'computer:action',
-  'computer:stopped'
+  'computer:stopped',
+  'computer:overlay'
 ] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>

@@ -4,6 +4,7 @@ import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { cw } from './bridge'
 import {
+  clearUnseen,
   connectFolder,
   disconnect,
   fullAccessFor,
@@ -137,6 +138,7 @@ export function newTask(): void {
 
 export async function openTask(sessionID: string): Promise<void> {
   useCowork.setState({ activeTaskId: sessionID })
+  clearUnseen(sessionID)
   await loadTask(sessionID)
 }
 
