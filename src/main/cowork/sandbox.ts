@@ -3,19 +3,29 @@
  *
  * Cada carpeta de Cowork tiene su PROPIO `opencode serve` lanzado dentro de
  * `sandbox-exec -f <perfil>`; todos los procesos hijos (bash, python, textutil…) heredan
- * el perfil. El perfil permite todo excepto:
- *   - escribir fuera de la carpeta de la tarea, dirs temporales y dirs internos de opencode;
- *   - leer secretos típicos del usuario (~/.ssh, ~/.aws, ~/.gnupg…).
+ * el perfil (ver `sandbox-profile.ts`: qué se puede escribir/leer/ejecutar).
+ *
+ * Aislamiento de OpenCode (AUDIT.md S1): el servidor sandboxeado usa sus propios
+ * XDG_CONFIG/DATA/CACHE/STATE_HOME en `userData/cowork-sandbox/<hash>/` (DB, logs, binarios de
+ * LSP, cachés de npm/bun/pip), así que no puede tocar la config/plugins globales de OpenCode que
+ * carga el sidecar principal SIN sandbox. Las credenciales de proveedores se le pasan por
+ * `OPENCODE_AUTH_CONTENT` (OpenCode lo prefiere a `auth.json`, verificado en 1.18.32): el
+ * `auth.json` del usuario queda ilegible dentro del sandbox, no se copia a disco y nunca se
+ * registra en logs; el plugin `opendesk-env` lo oculta del entorno de bash.
  *
  * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
  */
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { findOpencodeBinary, getFreePort } from '../opencode/server'
+import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
+import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxDirs } from './sandbox-profile'
+
+export { buildSandboxProfile, defaultDeniedReadPaths, defaultWritablePaths, sandboxKey } from './sandbox-profile'
 
 export const SANDBOX_EXEC = '/usr/bin/sandbox-exec'
 const HOST = '127.0.0.1'
@@ -26,86 +36,44 @@ export function isSandboxAvailable(): boolean {
   return process.platform === 'darwin' && existsSync(SANDBOX_EXEC)
 }
 
-function real(p: string): string {
+/**
+ * Credenciales de proveedores del usuario (contenido de `auth.json` de OpenCode) para pasarlas
+ * al servidor sandboxeado por entorno. NO se registra ni se escribe en ningún sitio.
+ */
+function readProviderAuth(): string | null {
+  const dataHome = process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share')
   try {
-    return realpathSync(p)
+    const raw = readFileSync(join(dataHome, 'opencode', 'auth.json'), 'utf8')
+    JSON.parse(raw) // solo validar
+    return raw
   } catch {
-    return p
+    return null
   }
 }
 
-/** Escapa una ruta para un literal de string SBPL. */
-function sbString(p: string): string {
-  return `"${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-}
-
-export interface SandboxProfileOptions {
-  /** Carpeta de la tarea (única carpeta del usuario con escritura). */
-  folder: string
-  /** Rutas extra con escritura permitida. */
-  extraWritable?: string[]
-  home?: string
-}
-
-/** Rutas con escritura permitida además de la carpeta (opencode, cachés, temporales). */
-export function defaultWritablePaths(home = homedir()): string[] {
-  return [
-    '/private/tmp',
-    '/private/var/folders', // $TMPDIR y DARWIN_USER_CACHE_DIR
-    real(tmpdir()),
-    join(home, '.local', 'share', 'opencode'),
-    join(home, '.local', 'state', 'opencode'),
-    join(home, '.cache', 'opencode'),
-    join(home, '.config', 'opencode'),
-    join(home, '.npm'),
-    join(home, '.bun', 'install', 'cache'),
-    join(home, 'Library', 'Caches')
-  ]
-}
-
-/** Rutas con lectura denegada (secretos). */
-export function defaultDeniedReadPaths(home = homedir()): string[] {
-  return [
-    join(home, '.ssh'),
-    join(home, '.aws'),
-    join(home, '.gnupg'),
-    join(home, '.kube'),
-    join(home, '.docker'),
-    join(home, 'Library', 'Keychains')
-  ]
-}
-
-/** Genera el texto del perfil Seatbelt (SBPL). */
-export function buildSandboxProfile(opts: SandboxProfileOptions): string {
-  const home = opts.home ?? homedir()
-  const folder = real(opts.folder)
-  const writable = [folder, ...defaultWritablePaths(home), ...(opts.extraWritable ?? []).map(real)]
-  const unique = [...new Set(writable)]
-  return [
-    '(version 1)',
-    '(allow default)',
-    '',
-    ';; Escritura: solo la carpeta de la tarea + temporales + dirs internos de opencode.',
-    '(deny file-write*)',
-    '(allow file-write*',
-    ...unique.map((p) => `  (subpath ${sbString(p)})`),
-    '  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")',
-    '  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")',
-    '  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))',
-    '',
-    ';; Secretos del usuario: sin lectura ni escritura.',
-    '(deny file-read* file-write*',
-    ...defaultDeniedReadPaths(home).map((p) => `  (subpath ${sbString(p)})`),
-    ')',
-    ''
-  ].join('\n')
+export interface SandboxIsolation {
+  /** Directorio privado del servidor (userData/cowork-sandbox/<hash>). */
+  privateDir: string
+  /** userData de la app (lectura denegada dentro del sandbox salvo privateDir/readOnly). */
+  userData: string
 }
 
 /** Escribe el perfil en un archivo temporal y devuelve su ruta. */
-export function writeSandboxProfile(folder: string, dir = join(tmpdir(), 'opendesk-cowork')): string {
+export function writeSandboxProfile(
+  folder: string,
+  iso: SandboxIsolation,
+  configDir: string,
+  dir = join(tmpdir(), 'opendesk-cowork')
+): string {
   mkdirSync(dir, { recursive: true })
   const file = join(dir, `profile-${randomBytes(6).toString('hex')}.sb`)
-  writeFileSync(file, buildSandboxProfile({ folder }), 'utf8')
+  const profile = buildSandboxProfile({
+    folder,
+    privateDir: iso.privateDir,
+    userData: iso.userData,
+    readOnly: [configDir]
+  })
+  writeFileSync(file, profile, 'utf8')
   return file
 }
 
@@ -131,6 +99,8 @@ export interface StartCoworkServerOptions {
   noSandbox?: boolean
   /** Variables de entorno extra para `opencode serve` (p.ej. OPENCODE_CONFIG_CONTENT). */
   extraEnv?: Record<string, string>
+  /** Dirs privados + userData (obligatorio para el modo sandbox). */
+  isolation?: SandboxIsolation
   onExit?: (code: number | null) => void
 }
 
@@ -165,26 +135,37 @@ export async function startCoworkServer(
   let command = bin
   let args = serveArgs
   let profile: string | null = null
+  const ocEnv = getOpencodeEnv()
+  let isolatedEnv: Record<string, string> = {}
   if (sandboxed) {
-    profile = writeSandboxProfile(folder)
+    if (!options.isolation) throw new Error('Falta el directorio privado del sandbox de Cowork.')
+    const dirs: SandboxDirs = sandboxDirs(options.isolation.privateDir)
+    for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
+    profile = writeSandboxProfile(folder, options.isolation, ocEnv.OPENCODE_CONFIG_DIR)
     command = SANDBOX_EXEC
     args = ['-f', profile, bin, ...serveArgs]
+    const auth = readProviderAuth()
+    isolatedEnv = { ...sandboxEnv(dirs), ...(auth ? { OPENCODE_AUTH_CONTENT: auth } : {}) }
   }
 
   const child: ChildProcess = spawn(command, args, {
     cwd: folder,
     env: {
       ...process.env,
-      ...getOpencodeEnv(),
+      ...ocEnv,
       PATH: augmentedPath(),
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
       OPENDESK_COWORK_FOLDER: folder,
+      ...isolatedEnv,
       ...options.extraEnv
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
+    // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
+    detached: true
   })
+  trackPid(child.pid, sandboxed ? 'cowork' : 'cowork-full')
 
   const tail: string[] = []
   const log = (d: Buffer | string): void => {
@@ -196,6 +177,8 @@ export async function startCoworkServer(
   child.on('error', (err) => log(`[spawn error] ${err.message}\n`))
   const exited = new Promise<number | null>((resolve) => {
     child.once('exit', (code) => {
+      untrackPid(child.pid)
+      killTree(child.pid, 'SIGKILL') // resto del grupo
       if (profile) rmSync(profile, { force: true })
       options.onExit?.(code)
       resolve(code)
@@ -204,8 +187,8 @@ export async function startCoworkServer(
 
   const stop = async (): Promise<void> => {
     if (child.exitCode !== null || child.signalCode !== null) return
-    const timer = setTimeout(() => child.kill('SIGKILL'), KILL_GRACE_MS)
-    child.kill('SIGTERM')
+    const timer = setTimeout(() => killTree(child.pid, 'SIGKILL'), KILL_GRACE_MS)
+    killTree(child.pid, 'SIGTERM')
     await exited
     clearTimeout(timer)
   }

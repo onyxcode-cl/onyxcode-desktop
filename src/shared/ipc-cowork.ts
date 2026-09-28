@@ -9,6 +9,9 @@ import type { ModelRef } from './types'
 
 // ───────────────────────────── Cowork ─────────────────────────────
 
+/** Prefijo del error de `cowork:start {fullAccess:true}` sin `cowork:grantFullAccess` previo. */
+export const FULL_ACCESS_NOT_GRANTED = 'FULL_ACCESS_NOT_GRANTED'
+
 /** Carpeta autorizada por el usuario para Cowork. */
 export interface CoworkFolder {
   path: string
@@ -226,6 +229,10 @@ export interface CoworkInvokeContract {
    * `fullAccess: true` ⇒ servidor aparte SIN sandbox, con el agente `computer` y el MCP de control del Mac.
    */
   'cowork:start': { req: { folder: string; fullAccess?: boolean }; res: CoworkConnection }
+  /** Registra en main el consentimiento de acceso total (requerido por `cowork:start {fullAccess}`). */
+  'cowork:grantFullAccess': { req: { folder: string }; res: void }
+  /** Retira el consentimiento de acceso total y detiene ese servidor. */
+  'cowork:revokeFullAccess': { req: { folder: string }; res: void }
   /** Detiene el/los servidor(es) de la carpeta (ambos modos si `fullAccess` se omite). */
   'cowork:stop': { req: { folder: string; fullAccess?: boolean }; res: void }
   'cowork:servers': { req: void; res: CoworkServerInfo[] }
@@ -233,7 +240,10 @@ export interface CoworkInvokeContract {
   'cowork:deliverables': { req: { folder: string; since: number }; res: CoworkDeliverable[] }
   /** Muestra el archivo/carpeta en Finder. */
   'cowork:reveal': { req: { path: string }; res: void }
-  /** Abre el archivo con la app por defecto. */
+  /**
+   * Abre el archivo con la app por defecto. Rechaza ejecutables/lanzadores (.app, .command,
+   * .sh, .pkg… o con bit de ejecución): para esos solo `cowork:reveal`.
+   */
   'cowork:openPath': { req: { path: string }; res: void }
   /**
    * Abre un diálogo nativo para elegir archivos y los COPIA a la carpeta autorizada
@@ -298,6 +308,8 @@ export const COWORK_INVOKE_CHANNELS = [
   'cowork:approveFolder',
   'cowork:removeFolder',
   'cowork:start',
+  'cowork:grantFullAccess',
+  'cowork:revokeFullAccess',
   'cowork:stop',
   'cowork:servers',
   'cowork:deliverables',

@@ -10,17 +10,27 @@ import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
-import type {
-  ComputerUseInfo,
-  CoworkConnection,
-  CoworkDeliverable,
-  CoworkFolder,
-  CoworkServerInfo
+import {
+  FULL_ACCESS_NOT_GRANTED,
+  type ComputerUseInfo,
+  type CoworkConnection,
+  type CoworkDeliverable,
+  type CoworkFolder,
+  type CoworkServerInfo
 } from '@shared/ipc-cowork'
-import { startCoworkServer, type CoworkServerHandle } from './sandbox'
+import { killTree } from '../opencode/pids'
+import { sandboxKey, startCoworkServer, type CoworkServerHandle } from './sandbox'
+
+/** Consentimiento de "Acceso total" registrado en main (AUDIT.md S7). */
+interface FullAccessGrant {
+  path: string
+  grantedAt: number
+}
 
 interface Persisted {
   folders: CoworkFolder[]
+  /** Carpetas con acceso total concedido explícitamente (`cowork:grantFullAccess`). */
+  fullAccess: FullAccessGrant[]
 }
 
 /** Integración con computer use (inyectada para no acoplar el gestor a Electron/IPC). */
@@ -93,7 +103,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
 
   private load(): Persisted {
     if (this.data) return this.data
-    let data: Persisted = { folders: [] }
+    let data: Persisted = { folders: [], fullAccess: [] }
     try {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
@@ -102,10 +112,15 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
             (f): f is CoworkFolder => !!f && typeof f.path === 'string' && typeof f.approvedAt === 'number'
           )
         }
+        if (Array.isArray(raw.fullAccess)) {
+          data.fullAccess = raw.fullAccess.filter(
+            (g): g is FullAccessGrant => !!g && typeof g.path === 'string' && typeof g.grantedAt === 'number'
+          )
+        }
       }
     } catch (err) {
       console.error('[cowork] cowork.json inválido:', err)
-      data = { folders: [] }
+      data = { folders: [], fullAccess: [] }
     }
     this.data = data
     return data
@@ -147,7 +162,34 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     await this.stop(f)
     const data = this.load()
     data.folders = data.folders.filter((x) => x.path !== f)
+    data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
     this.save()
+  }
+
+  hasFullAccessGrant(folder: string): boolean {
+    const f = normalizeFolder(folder)
+    return this.load().fullAccess.some((g) => g.path === f)
+  }
+
+  /** Registra el consentimiento explícito de acceso total (tras el diálogo de confirmación). */
+  grantFullAccess(folder: string): void {
+    const f = normalizeFolder(folder)
+    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para Cowork.')
+    const data = this.load()
+    if (!data.fullAccess.some((g) => g.path === f)) {
+      data.fullAccess.push({ path: f, grantedAt: Date.now() })
+      this.save()
+    }
+  }
+
+  /** Retira el acceso total y detiene su servidor (sin sandbox) si estaba en marcha. */
+  async revokeFullAccess(folder: string): Promise<void> {
+    const f = normalizeFolder(folder)
+    const data = this.load()
+    const before = data.fullAccess.length
+    data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
+    if (data.fullAccess.length !== before) this.save()
+    await this.stop(f, true)
   }
 
   private touch(folder: string): void {
@@ -188,6 +230,9 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   async start(folder: string, fullAccess = false): Promise<CoworkConnection> {
     const f = normalizeFolder(folder)
     if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para Cowork.')
+    if (fullAccess && !this.hasFullAccessGrant(f)) {
+      throw new Error(`${FULL_ACCESS_NOT_GRANTED}: el acceso total no está autorizado para esta carpeta.`)
+    }
     const key = serverKey(f, fullAccess)
     const existing = this.servers.get(key)
     let handle = existing?.handle
@@ -214,11 +259,12 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   private async inlineConfig(key: string, fullAccess: boolean): Promise<Record<string, unknown>> {
     if (!fullAccess) {
       // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox.
-      return { agent: { computer: { disable: true } } }
+      return { autoupdate: false, agent: { computer: { disable: true } } }
     }
     const mcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
     this.fullAccessMcp.set(key, !!mcp)
     return {
+      autoupdate: false,
       ...(mcp ? { mcp: { computer: mcp } } : {}),
       // Las herramientas del MCP solo para el agente `computer` (ver agents/computer.md).
       agent: { cowork: { permission: { 'computer_*': 'deny' } } }
@@ -232,6 +278,13 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       startCoworkServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
+        // Estado de OpenCode privado por carpeta (S1): nunca ~/.config|.local/share/opencode.
+        isolation: fullAccess
+          ? undefined
+          : {
+              privateDir: join(app.getPath('userData'), 'cowork-sandbox', sandboxKey(folder)),
+              userData: app.getPath('userData')
+            },
         extraEnv: {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {})
@@ -303,13 +356,8 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   /** Mata todo de forma síncrona (process.on('exit')). */
   killAllSync(): void {
     for (const e of this.servers.values()) {
-      if (e.handle?.pid) {
-        try {
-          process.kill(e.handle.pid, 'SIGKILL')
-        } catch {
-          // ya terminó
-        }
-      }
+      // Grupo entero (MCP, bash…): los servidores se lanzan detached.
+      if (e.handle?.pid) killTree(e.handle.pid, 'SIGKILL')
     }
   }
 

@@ -11,6 +11,8 @@ import { CHAT_AGENT } from '@shared/types'
 export function buildInlineConfig(): Record<string, unknown> {
   return {
     $schema: 'https://opencode.ai/config.json',
+    // La app fija la versión del SDK: sin auto-actualización del binario (AUDIT.md B3/§1.2).
+    autoupdate: false,
     agent: {
       [CHAT_AGENT]: {
         description: 'Conversación general, sin acceso a archivos ni terminal',

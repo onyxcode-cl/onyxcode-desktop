@@ -35,15 +35,19 @@ const PLUGIN_FILE = 'opendesk-env.js'
 const STAMP_FILE = '.opendesk-version'
 
 export function envScrubPluginSource(): string {
+  // Formato de plugin de ruta de opencode 1.18: `export default { id, server() }` (verificado).
   return `// Generado por la app: no editar (se regenera al arrancar).
 // Oculta a bash/pty las variables sensibles del proceso \`opencode serve\`.
 const HIDDEN = ${JSON.stringify(HIDDEN_SHELL_ENV)}
-export const OpendeskEnvScrub = async () => ({
-  'shell.env': async (_input, output) => {
-    output.env = output.env || {}
-    for (const k of HIDDEN) output.env[k] = ''
-  }
-})
+export default {
+  id: 'opendesk-env',
+  server: async () => ({
+    'shell.env': async (_input, output) => {
+      output.env = output.env || {}
+      for (const k of HIDDEN) output.env[k] = ''
+    }
+  })
+}
 `
 }
 

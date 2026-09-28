@@ -15,6 +15,7 @@ import { delimiter, join } from 'node:path'
 import { APP_SLUG } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
+import { killTree, trackPid, untrackPid } from './pids'
 
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
@@ -99,14 +100,16 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     if (child && child.exitCode === null && child.signalCode === null) {
       await new Promise<void>((resolve) => {
         const timer = setTimeout(() => {
-          child.kill('SIGKILL')
+          killTree(child.pid, 'SIGKILL')
           resolve()
         }, KILL_GRACE_MS)
         child.once('exit', () => {
           clearTimeout(timer)
+          // El líder terminó: rematar el resto del grupo (MCP, bash…).
+          killTree(child.pid, 'SIGKILL')
           resolve()
         })
-        child.kill('SIGTERM')
+        killTree(child.pid, 'SIGTERM')
       })
     }
     this.setStatus({ state: 'stopped' })
@@ -115,7 +118,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   /** Kill síncrono para `process.on('exit')`. */
   killSync(): void {
     this.stopping = true
-    if (this.child && this.child.exitCode === null) this.child.kill('SIGKILL')
+    if (this.child) killTree(this.child.pid, 'SIGKILL')
   }
 
   private async spawnAndWait(): Promise<OpencodeConnection> {
@@ -149,14 +152,20 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
           OPENCODE_SERVER_PASSWORD: password,
           OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig())
         },
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
+        detached: true
       })
       this.child = child
+      trackPid(child.pid, 'main')
       const spawnedAt = Date.now()
       child.stdout?.on('data', (d: Buffer) => this.log(d.toString()))
       child.stderr?.on('data', (d: Buffer) => this.log(d.toString()))
       child.on('error', (err) => this.log(`[spawn error] ${err.message}`))
-      child.on('exit', (code, signal) => this.onExit(child, code, signal, spawnedAt))
+      child.on('exit', (code, signal) => {
+        untrackPid(child.pid)
+        this.onExit(child, code, signal, spawnedAt)
+      })
 
       const version = await waitForHealth(baseUrl, authorization, child)
       if (this.child !== child) throw new Error('El servidor se detuvo durante el arranque')
@@ -180,7 +189,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       console.error('[opencode] fallo al arrancar:', error)
       const child = this.child
       this.child = null
-      if (child && child.exitCode === null) child.kill('SIGKILL')
+      if (child) killTree(child.pid, 'SIGKILL')
       this.setStatus({ state: 'error', error })
       throw new Error(error)
     }
