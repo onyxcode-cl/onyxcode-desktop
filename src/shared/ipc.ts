@@ -1,0 +1,129 @@
+/**
+ * Contrato IPC tipado entre main y renderer.
+ *
+ * - `IpcInvokeContract`: canales request/response (renderer → main, `ipcRenderer.invoke`).
+ * - `IpcEventContract`: eventos push (main → renderer, `webContents.send`).
+ *
+ * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
+ * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
+ */
+import type {
+  AppInfo,
+  GitStatus,
+  GitWorktree,
+  OpencodeConnection,
+  PtyCreateRequest,
+  PtyDataEvent,
+  PtyExitEvent,
+  PtyInfo,
+  Routine,
+  RoutineRun,
+  ServerStatus,
+  Settings
+} from './types'
+
+export type IpcErrorCode = 'NOT_IMPLEMENTED' | 'NOT_READY' | 'ERROR'
+
+/** Todas las respuestas IPC vienen envueltas; nunca se lanza a través del puente. */
+export type IpcResult<T> = { ok: true; data: T } | { ok: false; code: IpcErrorCode; error: string }
+
+export interface IpcInvokeContract {
+  // app
+  'app:info': { req: void; res: AppInfo }
+  'app:openExternal': { req: { url: string }; res: void }
+
+  // opencode sidecar
+  'opencode:connection': { req: void; res: OpencodeConnection }
+  'opencode:status': { req: void; res: ServerStatus }
+  'opencode:restart': { req: void; res: OpencodeConnection }
+
+  // settings
+  'settings:get': { req: void; res: Settings }
+  'settings:set': { req: Partial<Settings>; res: Settings }
+  'settings:addRecentFolder': { req: { path: string }; res: Settings }
+
+  // dialog
+  'dialog:openFolder': { req: { title?: string; defaultPath?: string }; res: string | null }
+
+  // pty (fase 2)
+  'pty:create': { req: PtyCreateRequest; res: PtyInfo }
+  'pty:write': { req: { id: string; data: string }; res: void }
+  'pty:resize': { req: { id: string; cols: number; rows: number }; res: void }
+  'pty:kill': { req: { id: string }; res: void }
+
+  // git (fase 2)
+  'git:status': { req: { cwd: string }; res: GitStatus }
+  'git:diff': { req: { cwd: string; path?: string; staged?: boolean }; res: string }
+  'git:worktrees': { req: { cwd: string }; res: GitWorktree[] }
+
+  // scheduler / rutinas (fase 3)
+  'scheduler:list': { req: void; res: Routine[] }
+  'scheduler:save': { req: Routine; res: Routine }
+  'scheduler:delete': { req: { id: string }; res: void }
+  'scheduler:runNow': { req: { id: string }; res: RoutineRun }
+}
+
+export interface IpcEventContract {
+  'opencode:status': ServerStatus
+  'opencode:connection': OpencodeConnection
+  'settings:changed': Settings
+  'pty:data': PtyDataEvent
+  'pty:exit': PtyExitEvent
+  'scheduler:run': RoutineRun
+}
+
+export type IpcInvokeChannel = keyof IpcInvokeContract
+export type IpcEventChannel = keyof IpcEventContract
+export type IpcRequest<C extends IpcInvokeChannel> = IpcInvokeContract[C]['req']
+export type IpcResponse<C extends IpcInvokeChannel> = IpcInvokeContract[C]['res']
+
+/** Lista en runtime de canales permitidos (el preload valida contra esto). */
+export const IPC_INVOKE_CHANNELS = [
+  'app:info',
+  'app:openExternal',
+  'opencode:connection',
+  'opencode:status',
+  'opencode:restart',
+  'settings:get',
+  'settings:set',
+  'settings:addRecentFolder',
+  'dialog:openFolder',
+  'pty:create',
+  'pty:write',
+  'pty:resize',
+  'pty:kill',
+  'git:status',
+  'git:diff',
+  'git:worktrees',
+  'scheduler:list',
+  'scheduler:save',
+  'scheduler:delete',
+  'scheduler:runNow'
+] as const satisfies readonly IpcInvokeChannel[]
+
+export const IPC_EVENT_CHANNELS = [
+  'opencode:status',
+  'opencode:connection',
+  'settings:changed',
+  'pty:data',
+  'pty:exit',
+  'scheduler:run'
+] as const satisfies readonly IpcEventChannel[]
+
+// Garantiza en compilación que las listas cubren todo el contrato.
+type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
+const _invokeCoverage: Missing<IpcInvokeChannel, (typeof IPC_INVOKE_CHANNELS)[number]> extends never ? true : never = true
+const _eventCoverage: Missing<IpcEventChannel, (typeof IPC_EVENT_CHANNELS)[number]> extends never ? true : never = true
+void _invokeCoverage
+void _eventCoverage
+
+/** API expuesta por el preload en `window.api`. */
+export interface WindowApi {
+  invoke<C extends IpcInvokeChannel>(
+    channel: C,
+    ...args: IpcRequest<C> extends void ? [] : [req: IpcRequest<C>]
+  ): Promise<IpcResult<IpcResponse<C>>>
+  /** Suscribe a un evento main → renderer. Devuelve función para desuscribir. */
+  on<C extends IpcEventChannel>(channel: C, listener: (payload: IpcEventContract[C]) => void): () => void
+  platform: string
+}

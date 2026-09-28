@@ -1,0 +1,24 @@
+# Nombre e ID de la app: mantener sincronizado con src/shared/brand.ts
+appId: cl.bentec.opendesk
+productName: OpenDesk
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,PLAN.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}-${arch}.${ext}
+npmRebuild: false

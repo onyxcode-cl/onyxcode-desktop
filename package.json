@@ -1,0 +1,52 @@
+{
+  "name": "opendesk",
+  "productName": "OpenDesk",
+  "version": "0.1.0",
+  "description": "Cliente de escritorio sobre OpenCode (Chat, Code, Cowork, Rutinas)",
+  "main": "./out/main/index.js",
+  "author": "bentec",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "package": "npm run build && electron-builder --mac --arm64"
+  },
+  "dependencies": {
+    "@electron-toolkit/utils": "^4.0.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "croner": "^10.0.1",
+    "diff": "^9.0.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@opencode-ai/sdk": "1.18.32",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/diff": "^7.0.2",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "44.4.5",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "5.0.0",
+    "highlight.js": "^11.12.0",
+    "lucide-react": "^1.48.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "zustand": "^5.0.15"
+  },
+  "optionalDependencies": {
+    "node-pty": "1.2.0-beta.14"
+  }
+}
