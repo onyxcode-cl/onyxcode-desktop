@@ -26,6 +26,8 @@ import { getOpencodeEnv } from './opencode-config'
 import { minimalEnv } from '../process/child-env'
 import { withDisclaim } from '../process/disclaim'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxDirs } from './sandbox-profile'
+import { CredentialProxy, EgressProxy, randomToken, type EgressBlockedEvent, type EgressLogEntry } from './proxy'
+import { PROVIDER_TARGETS, buildProviderOverride, placeholderAuthContent, type ProviderAuthEntry } from './provider-egress'
 
 export { buildSandboxProfile, defaultDeniedReadPaths, defaultWritablePaths, sandboxKey } from './sandbox-profile'
 
@@ -39,15 +41,17 @@ export function isSandboxAvailable(): boolean {
 }
 
 /**
- * Credenciales de proveedores del usuario (contenido de `auth.json` de OpenCode) para pasarlas
- * al servidor sandboxeado por entorno. NO se registra ni se escribe en ningún sitio.
+ * Credenciales de proveedores del usuario (contenido de `auth.json` de OpenCode), PARSEADAS para
+ * poder derivar la clave real por proveedor (credential proxy) y una versión centinela (para el
+ * entorno del sandbox). NO se registra ni se escribe en ningún sitio.
  */
-function readProviderAuth(): string | null {
+function readProviderAuth(): Record<string, ProviderAuthEntry> | null {
   const dataHome = process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share')
   try {
     const raw = readFileSync(join(dataHome, 'opencode', 'auth.json'), 'utf8')
-    JSON.parse(raw) // solo validar
-    return raw
+    const parsed = JSON.parse(raw) as Record<string, ProviderAuthEntry>
+    if (parsed && typeof parsed === 'object') return parsed
+    return null
   } catch {
     return null
   }
@@ -60,11 +64,21 @@ export interface SandboxIsolation {
   userData: string
 }
 
+export interface SandboxNetworkOptions {
+  /** Puertos localhost adicionales a permitir en salida (egress proxy, credential proxy…). */
+  allowedOutboundPorts: number[]
+  /** Puerto propio del servidor (bind + inbound). */
+  serverPort: number
+  /** "Permitir borrar" concedido para esta tarea (si no, `file-write-unlink` se deniega). */
+  allowDelete: boolean
+}
+
 /** Escribe el perfil en un archivo temporal y devuelve su ruta. */
 export function writeSandboxProfile(
   folder: string,
   iso: SandboxIsolation,
   configDir: string,
+  network?: SandboxNetworkOptions,
   dir = join(tmpdir(), 'lapis-cowork')
 ): string {
   mkdirSync(dir, { recursive: true })
@@ -73,7 +87,10 @@ export function writeSandboxProfile(
     folder,
     privateDir: iso.privateDir,
     userData: iso.userData,
-    readOnly: [configDir]
+    readOnly: [configDir],
+    allowedOutboundPorts: network?.allowedOutboundPorts,
+    serverPort: network?.serverPort,
+    allowDelete: network?.allowDelete
   })
   writeFileSync(file, profile, 'utf8')
   return file
@@ -93,6 +110,10 @@ export interface CoworkServerHandle {
   /** Se resuelve cuando el proceso termina. */
   exited: Promise<number | null>
   stop: () => Promise<void>
+  /** Puerto del proxy de egress (si el servidor está sandboxeado). */
+  egressPort?: number
+  /** true si esta instancia arrancó con "Permitir borrar" concedido. */
+  deleteAllowed: boolean
 }
 
 export interface StartCoworkServerOptions {
@@ -104,6 +125,12 @@ export interface StartCoworkServerOptions {
   /** Dirs privados + userData (obligatorio para el modo sandbox). */
   isolation?: SandboxIsolation
   onExit?: (code: number | null) => void
+  /** Lista blanca de red EFECTIVA en este instante (se re-evalúa en cada intento de conexión). */
+  networkAllowlist?: () => readonly string[]
+  onEgressBlocked?: (ev: EgressBlockedEvent) => void
+  onEgressLog?: (entry: EgressLogEntry) => void
+  /** "Permitir borrar" concedido para esta tarea (Seatbelt: `file-write-unlink`). */
+  allowDelete?: boolean
 }
 
 /**
@@ -132,15 +159,68 @@ export async function startCoworkServer(
   let profile: string | null = null
   const ocEnv = getOpencodeEnv()
   let isolatedEnv: Record<string, string> = {}
+  const egressToken = randomToken()
+  const egress = sandboxed
+    ? new EgressProxy({ token: egressToken, allowlist: options.networkAllowlist ?? (() => []), onBlocked: options.onEgressBlocked, onLog: options.onEgressLog })
+    : null
+  const credentialProxies: CredentialProxy[] = []
   if (sandboxed) {
     if (!options.isolation) throw new Error('Falta el directorio privado del sandbox de Cowork.')
     const dirs: SandboxDirs = sandboxDirs(options.isolation.privateDir)
     for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
-    profile = writeSandboxProfile(folder, options.isolation, ocEnv.OPENCODE_CONFIG_DIR)
+
+    await egress!.start()
+    const auth = readProviderAuth()
+    const baseUrls: Record<string, string> = {}
+    if (auth) {
+      for (const [id, entry] of Object.entries(auth)) {
+        const target = PROVIDER_TARGETS[id]
+        if (!target || target.auth !== 'bearer' || !entry.key) continue
+        const cred = new CredentialProxy({
+          token: randomToken(),
+          targetOrigin: target.origin,
+          targetPathPrefix: target.pathPrefix,
+          authorization: `Bearer ${entry.key}`
+        })
+        await cred.start()
+        credentialProxies.push(cred)
+        baseUrls[id] = cred.baseUrl()
+      }
+    }
+    const outboundPorts = [egress!.port, ...credentialProxies.map((c) => c.port)]
+    profile = writeSandboxProfile(folder, options.isolation, ocEnv.OPENCODE_CONFIG_DIR, {
+      allowedOutboundPorts: outboundPorts,
+      serverPort: port,
+      allowDelete: options.allowDelete === true
+    })
     command = SANDBOX_EXEC
     args = ['-f', profile, bin, ...serveArgs]
-    const auth = readProviderAuth()
-    isolatedEnv = { ...sandboxEnv(dirs), ...(auth ? { OPENCODE_AUTH_CONTENT: auth } : {}) }
+    const proxyUrl = `http://${egressToken}@127.0.0.1:${egress!.port}`
+    isolatedEnv = {
+      ...sandboxEnv(dirs),
+      ...(auth ? { OPENCODE_AUTH_CONTENT: placeholderAuthContent(auth) } : {}),
+      HTTP_PROXY: proxyUrl,
+      HTTPS_PROXY: proxyUrl,
+      ALL_PROXY: proxyUrl,
+      NO_PROXY: '127.0.0.1,localhost',
+      http_proxy: proxyUrl,
+      https_proxy: proxyUrl,
+      no_proxy: '127.0.0.1,localhost'
+    }
+    if (Object.keys(baseUrls).length) {
+      const override = buildProviderOverride(baseUrls)
+      const prevConfig = options.extraEnv?.OPENCODE_CONFIG_CONTENT
+      let merged: Record<string, unknown> = override
+      if (prevConfig) {
+        try {
+          const parsed = JSON.parse(prevConfig) as Record<string, unknown>
+          merged = { ...parsed, provider: { ...(parsed.provider as object | undefined), ...(override.provider as object) } }
+        } catch {
+          merged = override
+        }
+      }
+      options = { ...options, extraEnv: { ...options.extraEnv, OPENCODE_CONFIG_CONTENT: JSON.stringify(merged) } }
+    }
   }
 
   // Sin heredar los permisos TCC de la app (S6): el lanzador se ejecuta ANTES de sandbox-exec, así
@@ -176,6 +256,8 @@ export async function startCoworkServer(
       untrackPid(child.pid)
       killTree(child.pid, 'SIGKILL') // resto del grupo
       if (profile) rmSync(profile, { force: true })
+      void egress?.stop()
+      void Promise.all(credentialProxies.map((c) => c.stop()))
       options.onExit?.(code)
       resolve(code)
     })
@@ -208,7 +290,9 @@ export async function startCoworkServer(
     version,
     logs: () => tail.join(''),
     exited,
-    stop
+    stop,
+    egressPort: egress?.port,
+    deleteAllowed: options.allowDelete === true
   }
 }
 

@@ -172,6 +172,22 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'computer:resume': none,
   'computer:state': none,
   'computer:session': obj({ active: bool, label: optional(str({ max: 500 })) }),
+  'computer:grants': none,
+  'computer:setGrant': obj({ bundleId: str({ max: 255, min: 1 }), name: str({ max: 255, min: 1 }), tier: literal('view', 'click', 'full') }),
+  'computer:revokeGrant': obj({ bundleId: str({ max: 255, min: 1 }) }),
+  'computer:denyApp': obj({ bundleId: str({ max: 255, min: 1 }), name: str({ max: 255, min: 1 }) }),
+  'computer:undenyApp': obj({ bundleId: str({ max: 255, min: 1 }) }),
+  'computer:respondAccess': obj({
+    id: str({ max: 100, min: 1 }),
+    decisions: arr(
+      obj({
+        bundleId: str({ max: 255, min: 1 }),
+        name: str({ max: 255, min: 1 }),
+        decision: literal('view', 'click', 'full', 'deny')
+      }),
+      20
+    )
+  }),
   'cowork:keepAwakeState': none,
   'cowork:keepAwakeSetting': obj({ enabled: bool }),
   'cowork:keepAwakeActive': obj({ active: bool })

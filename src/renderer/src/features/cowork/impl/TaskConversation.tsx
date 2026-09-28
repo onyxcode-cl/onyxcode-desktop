@@ -13,6 +13,7 @@ import { ActivityRow } from './ProgressPanel'
 import { PermissionCard } from './PermissionPrompt'
 import { toolImages } from './computer-tools'
 import { ScreenshotThumbs } from './ComputerAccess'
+import { onScrollToPart } from './scroll'
 import { friendlyTool, isVisibleText } from './util'
 
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n'
@@ -88,8 +89,23 @@ function ReasoningRow({ part }: { part: ReasoningPart }): React.JSX.Element {
   )
 }
 
-function StepsBlock({ parts, live }: { parts: Array<ToolPart | ReasoningPart>; live: boolean }): React.JSX.Element {
+function StepsBlock({
+  id,
+  parts,
+  live,
+  forceOpen,
+  flash
+}: {
+  id: string
+  parts: Array<ToolPart | ReasoningPart>
+  live: boolean
+  forceOpen?: boolean
+  flash?: boolean
+}): React.JSX.Element {
   const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (forceOpen) setOpen(true)
+  }, [forceOpen])
   const tools = parts.filter((p): p is ToolPart => p.type === 'tool')
   const running = live ? [...tools].reverse().find((t) => t.state.status === 'running' || t.state.status === 'pending') : undefined
   const failed = tools.filter((t) => t.state.status === 'error').length
@@ -104,7 +120,10 @@ function StepsBlock({ parts, live }: { parts: Array<ToolPart | ReasoningPart>; l
   }, [tools])
   const count = tools.length
   return (
-    <div className="rounded-xl border border-border bg-elevated/60">
+    <div
+      id={`cw-block-${id}`}
+      className={`rounded-xl border bg-elevated/60 transition-colors duration-500 ${flash ? 'border-accent ring-2 ring-accent/25' : 'border-border'}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

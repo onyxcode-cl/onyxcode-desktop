@@ -237,6 +237,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         model: input.model,
         schedule: input.schedule,
         enabled: input.enabled,
+        originSessionId: input.originSessionId ?? null,
         createdAt: now,
         updatedAt: now
       }

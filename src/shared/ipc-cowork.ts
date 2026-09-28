@@ -47,6 +47,38 @@ export interface CoworkConnection {
   computerUse: ComputerUseInfo
 }
 
+// ───────────────────────────── Computer use: concesión por app ─────────────────────────────
+
+/** Nivel concedido a una app. */
+export type AppTier = 'view' | 'click' | 'full'
+
+export interface AppGrant {
+  bundleId: string
+  name: string
+  tier: AppTier
+  grantedAt: number
+}
+
+export interface GrantsSnapshot {
+  grants: AppGrant[]
+  denied: string[]
+}
+
+/** Decisión del usuario sobre una app pedida por `request_access`. */
+export type AccessDecision = AppTier | 'deny'
+
+export interface AccessRequestApp {
+  bundleId: string
+  name: string
+}
+
+/** Tarjeta "¿Permitir que el agente use X?" pendiente de respuesta del usuario. */
+export interface AccessRequest {
+  id: string
+  apps: AccessRequestApp[]
+  reason?: string
+}
+
 // ───────────────────────────── Computer use ─────────────────────────────
 
 export interface ComputerUseInfo {
@@ -320,6 +352,21 @@ export interface CoworkInvokeContract {
    * `label` = texto opcional para la píldora.
    */
   'computer:session': { req: { active: boolean; label?: string }; res: void }
+  /** Lista de apps concedidas (con nivel) y denegadas, para la pantalla de permisos. */
+  'computer:grants': { req: void; res: GrantsSnapshot }
+  /** Concede (o cambia el nivel de) una app manualmente desde Ajustes. */
+  'computer:setGrant': { req: { bundleId: string; name: string; tier: AppTier }; res: GrantsSnapshot }
+  /** Quita la concesión de una app (vuelve a "sin decidir": se pedirá de nuevo). */
+  'computer:revokeGrant': { req: { bundleId: string }; res: GrantsSnapshot }
+  /** Añade una app a la lista de denegadas (nunca se le pedirá acceso; toda acción se rechaza). */
+  'computer:denyApp': { req: { bundleId: string; name: string }; res: GrantsSnapshot }
+  /** Quita una app de la lista de denegadas. */
+  'computer:undenyApp': { req: { bundleId: string }; res: GrantsSnapshot }
+  /** Respuesta del usuario a una tarjeta `computer:accessRequest` pendiente (herramienta `request_access`). */
+  'computer:respondAccess': {
+    req: { id: string; decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }> }
+    res: void
+  }
 
   /** Estado actual (ajuste + si el bloqueo está activo). */
   'cowork:keepAwakeState': { req: void; res: KeepAwakeState }
@@ -343,6 +390,8 @@ export interface CoworkEventContract {
   'computer:killState': ComputerKillState
   /** Solo para las ventanas del overlay de control (no se difunde al resto). */
   'computer:overlay': ComputerOverlayMessage
+  /** Tarjeta "¿Permitir que el agente use X?" (herramienta MCP `request_access`). */
+  'computer:accessRequest': AccessRequest
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -383,6 +432,12 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:resume',
   'computer:state',
   'computer:session',
+  'computer:grants',
+  'computer:setGrant',
+  'computer:revokeGrant',
+  'computer:denyApp',
+  'computer:undenyApp',
+  'computer:respondAccess',
   'cowork:keepAwakeState',
   'cowork:keepAwakeSetting',
   'cowork:keepAwakeActive'
@@ -395,7 +450,8 @@ export const COWORK_EVENT_CHANNELS = [
   'computer:action',
   'computer:stopped',
   'computer:killState',
-  'computer:overlay'
+  'computer:overlay',
+  'computer:accessRequest'
 ] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>

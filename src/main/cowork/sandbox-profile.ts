@@ -180,6 +180,19 @@ export interface SandboxProfileOptions {
   /** Rutas extra con escritura permitida. */
   extraWritable?: string[]
   home?: string
+  /**
+   * Puertos `localhost` a los que el servidor puede CONECTARSE (egress proxy, credential proxy).
+   * Sin esto no hay red: `(deny network*)` con excepciones explícitas.
+   */
+  allowedOutboundPorts?: number[]
+  /** Puerto propio del `opencode serve` (bind + inbound: el proceso main habla con él). */
+  serverPort?: number
+  /**
+   * false (por defecto) ⇒ `file-write-unlink` DENEGADO en `folder` (borrado bloqueado a nivel de
+   * sandbox, no solo por patrones de bash): un `rm`, `unlink()` o `os.remove` falla con EPERM
+   * aunque el modelo lo intente. true ⇒ el usuario concedió "Permitir borrar" para esta tarea.
+   */
+  allowDelete?: boolean
 }
 
 /** Genera el texto del perfil Seatbelt (SBPL). En SBPL gana la ÚLTIMA regla que coincide. */
@@ -240,5 +253,38 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     ')',
     ''
   )
+
+  // ── Red: todo denegado salvo el proxy de egress y el proxy de credenciales (127.0.0.1) y el
+  // puerto propio del servidor (para que el proceso main pueda hablarle). Sin proxy configurado
+  // (p.ej. tests que no lo necesitan) no se abre nada: sin red en absoluto. SBPL solo admite
+  // "localhost"/"*" como host en reglas de red (no una IP literal), así que se usa "localhost:<puerto>".
+  const outboundPorts = [...new Set(opts.allowedOutboundPorts ?? [])]
+  lines.push(';; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.', '(deny network*)')
+  if (outboundPorts.length) {
+    lines.push(
+      '(allow network-outbound',
+      ...outboundPorts.map((p) => `  (remote ip "localhost:${p}")`),
+      ')'
+    )
+  }
+  if (opts.serverPort) {
+    lines.push(
+      `(allow network-bind (local ip "localhost:${opts.serverPort}"))`,
+      `(allow network-inbound (local ip "localhost:${opts.serverPort}"))`
+    )
+  }
+  // Puertos efímeros para las conexiones salientes propias del proceso (el kernel asigna el
+  // puerto local origen; sin esto el `connect()` del lado cliente falla al enlazar el socket).
+  lines.push('(allow network-bind (local ip "localhost:*"))', '')
+
+  // ── Borrado: sin "Permitir borrar" para esta tarea, `unlink`/`rmdir`/`rename`-sobre-destino en
+  // la carpeta de trabajo se deniega a nivel de kernel (no solo con un patrón de bash evadible).
+  if (!opts.allowDelete) {
+    lines.push(
+      ';; Borrado permanente NO concedido: unlink/rmdir denegados en la carpeta de la tarea.',
+      `(deny file-write-unlink (subpath ${sbString(folder)}))`,
+      ''
+    )
+  }
   return lines.join('\n')
 }

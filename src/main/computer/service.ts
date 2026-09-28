@@ -25,14 +25,25 @@
  * forman parte de esa cadena: se lanzan con `lapis-disclaim`.
  */
 import { app, globalShortcut, shell, systemPreferences } from 'electron'
-import { execFile } from 'node:child_process'
+import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createInterface } from 'node:readline'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { dirname, join } from 'node:path'
-import type { ComputerActionEvent, ComputerKillState, ComputerStatus, ComputerUseInfo } from '@shared/ipc-cowork'
+import type {
+  AccessDecision,
+  AccessRequest,
+  AccessRequestApp,
+  ComputerActionEvent,
+  ComputerKillState,
+  ComputerStatus,
+  ComputerUseInfo,
+  GrantsSnapshot
+} from '@shared/ipc-cowork'
+import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
 
 export const COMPUTER_MCP_NAME = 'computer'

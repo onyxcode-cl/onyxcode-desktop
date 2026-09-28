@@ -12,7 +12,9 @@ import {
   type ComputerStatus,
   type CoworkConnection,
   type CoworkDeliverable,
-  type CoworkFolder
+  type CoworkFolder,
+  type CoworkMemory,
+  type CoworkProject
 } from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
@@ -64,6 +66,12 @@ interface CoworkState {
   unseen: Record<string, true>
   /** Ids de tareas fijadas ("Pin"), persistido en localStorage (no hay campo equivalente en el SDK). */
   pinned: Record<string, true>
+  /** Proyecto (nombre + instrucciones) de la carpeta actual. */
+  project: CoworkProject | null
+  /** Memoria (`.lapis/memoria.md`) de la carpeta actual. */
+  memory: CoworkMemory | null
+  /** Panel "Proyecto y memoria" visible. */
+  projectPanelOpen: boolean
 
   set: (patch: Partial<CoworkState>) => void
 }
@@ -134,8 +142,46 @@ export const useCowork = create<CoworkState>((set) => ({
   panelOpen: readPanelOpen(),
   unseen: {},
   pinned: readPinned(),
+  project: null,
+  memory: null,
+  projectPanelOpen: false,
   set: (patch) => set(patch)
 }))
+
+export function setProjectPanelOpen(open: boolean): void {
+  useCowork.setState({ projectPanelOpen: open })
+}
+
+/** Carga proyecto + memoria de la carpeta actual (no bloquea la conexión si falla). */
+export async function loadProjectAndMemory(folder: string): Promise<void> {
+  try {
+    const [project, memory] = await Promise.all([cw('cowork:project:get', { folder }), cw('cowork:memory:get', { folder })])
+    if (useCowork.getState().folder === folder) useCowork.setState({ project, memory })
+  } catch {
+    if (useCowork.getState().folder === folder) useCowork.setState({ project: null, memory: null })
+  }
+}
+
+export async function saveProject(patch: { name?: string; instructions?: string }): Promise<void> {
+  const { folder } = useCowork.getState()
+  if (!folder) return
+  const project = await cw('cowork:project:save', { folder, ...patch })
+  if (useCowork.getState().folder === folder) useCowork.setState({ project })
+}
+
+export async function saveMemoryNotes(content: string): Promise<void> {
+  const { folder } = useCowork.getState()
+  if (!folder) return
+  const memory = await cw('cowork:memory:save', { folder, content })
+  if (useCowork.getState().folder === folder) useCowork.setState({ memory })
+}
+
+export async function deleteMemoryNotes(): Promise<void> {
+  const { folder } = useCowork.getState()
+  if (!folder) return
+  const memory = await cw('cowork:memory:delete', { folder })
+  if (useCowork.getState().folder === folder) useCowork.setState({ memory })
+}
 
 /** Fija/desfija una tarea en la barra lateral (persistido; no depende del servidor). */
 export function togglePinned(sessionID: string): void {
@@ -378,7 +424,9 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     questions: {},
     deliverables: {},
     attachments: [],
-    unseen: {}
+    unseen: {},
+    project: null,
+    memory: null
   })
   try {
     const conn = await cw('cowork:start', { folder, fullAccess })
@@ -388,6 +436,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     rememberFolder(conn.folder)
     useSessions.getState().setDirectorySource(conn.folder, conn.baseUrl)
     useCowork.setState({ folder: conn.folder, conn, client, phase: 'ready' })
+    void loadProjectAndMemory(conn.folder)
     if (conn.fullAccess) {
       void refreshComputerStatus()
       void syncKillState()

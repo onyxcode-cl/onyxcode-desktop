@@ -2,6 +2,7 @@
 import type { ModelRef } from '@shared/types'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
+import { useSettings } from '../../../stores/settings'
 import { cw } from './bridge'
 import {
   clearUnseen,
@@ -186,6 +187,23 @@ export function removeAttachment(path: string): void {
   useCowork.setState((s) => ({ attachments: s.attachments.filter((a) => a.path !== path) }))
 }
 
+/**
+ * Instrucciones globales de Cowork (Ajustes) + instrucciones del proyecto (carpeta) + memoria
+ * guardada (`.lapis/memoria.md`), combinadas como `system` extra del prompt (item 1: proyectos,
+ * instrucciones y memoria). `undefined` si no hay nada que añadir.
+ */
+function buildSystemPrompt(): string | undefined {
+  const { project, memory } = useCowork.getState()
+  const globalInstructions = useSettings.getState().settings.coworkGlobalInstructions?.trim()
+  const parts: string[] = []
+  if (globalInstructions) parts.push(`Instrucciones generales de Cowork (todas las tareas):\n${globalInstructions}`)
+  const projectInstructions = project?.instructions?.trim()
+  if (projectInstructions) parts.push(`Instrucciones del proyecto "${project?.name}":\n${projectInstructions}`)
+  const memoryContent = memory?.content?.trim()
+  if (memoryContent) parts.push(`Memoria guardada de este proyecto (.lapis/memoria.md):\n${memoryContent}`)
+  return parts.length > 0 ? parts.join('\n\n---\n\n') : undefined
+}
+
 /** Texto final del mensaje con la lista de adjuntos (rutas relativas a la carpeta). */
 function withAttachments(text: string): string {
   const files = useCowork.getState().attachments
@@ -231,6 +249,7 @@ export async function sendToTask(rawText: string, model: ModelRef): Promise<void
     directory: folder,
     agent: fullAccess ? COMPUTER_AGENT : COWORK_AGENT,
     model: { providerID: model.providerID, modelID: model.modelID },
+    system: buildSystemPrompt(),
     parts: [{ type: 'text', text }]
   })
   if (res.error) {
@@ -311,6 +330,42 @@ export async function deleteTask(sessionID: string): Promise<void> {
     return { sessions, messages }
   })
   if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
+}
+
+/**
+ * "Programar esta tarea": abre el editor de rutinas (modo Rutinas) prellenado con la
+ * instrucción original, la carpeta, el modo cowork y el modelo, enlazando la rutina a esta
+ * tarea (`originSessionId`) para poder mostrar sus ejecuciones en el panel de la tarea.
+ */
+export async function scheduleActiveTask(): Promise<void> {
+  const { activeTaskId, folder } = useCowork.getState()
+  if (!activeTaskId || !folder) return
+  const entries = useSessions.getState().messages[activeTaskId] ?? []
+  const firstUser = entries.find((e) => e.info.role === 'user')
+  const raw = (firstUser?.parts ?? [])
+    .filter((p): p is Extract<(typeof firstUser.parts)[number], { type: 'text' }> => p.type === 'text' && !p.synthetic)
+    .map((p) => p.text)
+    .join('\n')
+  const markerIdx = raw.indexOf('\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n')
+  const prompt = (markerIdx >= 0 ? raw.slice(0, markerIdx) : raw).trim()
+  const title = useSessions.getState().sessions[activeTaskId]?.title || 'Tarea programada'
+  const model = useSettings.getState().settings.defaultModel
+  const { openEditor } = await import('../../routines/impl/store')
+  const { useUi } = await import('../../../stores/ui')
+  openEditor(
+    {
+      name: title.slice(0, 200),
+      prompt: prompt || title,
+      mode: 'cowork',
+      folder,
+      model,
+      schedule: { kind: 'daily', time: '09:00' },
+      enabled: true,
+      originSessionId: activeTaskId
+    },
+    'Repite esta tarea con la programación que elijas.'
+  )
+  useUi.getState().setMode('routines')
 }
 
 export async function reveal(path: string): Promise<void> {

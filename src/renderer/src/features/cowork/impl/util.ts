@@ -219,3 +219,81 @@ export function groupActivityBySteps(entries: MessageEntry[]): StepGroup[] {
 export function isVisibleText(p: Part): p is Extract<Part, { type: 'text' }> {
   return p.type === 'text' && !p.synthetic && !p.ignored && !!p.text.trim()
 }
+
+// ───────────────────────────── Panel de contexto (item 2) ─────────────────────────────
+
+/** Una entrada del panel "Contexto": clic ⇒ hace scroll hasta donde ocurrió en la conversación. */
+export interface ContextItem {
+  label: string
+  sub?: string
+  partId: string
+}
+
+export interface ContextGroups {
+  filesRead: ContextItem[]
+  filesWritten: ContextItem[]
+  commands: ContextItem[]
+  web: ContextItem[]
+  /** Herramientas de MCP/conectores (no reconocidas como herramientas de archivo del sistema). */
+  connectors: ContextItem[]
+}
+
+const FILE_READ_TOOLS = new Set(['read', 'list', 'glob', 'grep'])
+const FILE_WRITE_TOOLS = new Set(['write', 'edit', 'multiedit', 'patch', 'apply_patch'])
+const KNOWN_TOOLS = new Set([
+  ...FILE_READ_TOOLS,
+  ...FILE_WRITE_TOOLS,
+  'bash',
+  'webfetch',
+  'websearch',
+  'todowrite',
+  'question',
+  'task'
+])
+
+/** Agrupa la actividad de la tarea por tipo (archivos leídos/escritos, comandos, web, conectores). */
+export function buildContext(entries: MessageEntry[]): ContextGroups {
+  const filesRead = new Map<string, string>()
+  const filesWritten = new Map<string, string>()
+  const commands: ContextItem[] = []
+  const web: ContextItem[] = []
+  const connectors: ContextItem[] = []
+  for (const e of entries) {
+    for (const p of e.parts) {
+      if (p.type !== 'tool') continue
+      if (computerToolKind(p.tool)) continue // ya se ve en "Control del Mac"
+      const input = p.state.input ?? {}
+      if (FILE_READ_TOOLS.has(p.tool)) {
+        const path = str(input, 'filePath', 'path')
+        if (path) filesRead.set(path, p.id)
+        continue
+      }
+      if (FILE_WRITE_TOOLS.has(p.tool)) {
+        const path = str(input, 'filePath', 'path')
+        if (path) filesWritten.set(path, p.id)
+        continue
+      }
+      if (p.tool === 'bash') {
+        const label = str(input, 'description') || str(input, 'command')
+        if (label) commands.push({ label: clip(label, 70), partId: p.id })
+        continue
+      }
+      if (p.tool === 'webfetch' || p.tool === 'websearch') {
+        const label = str(input, 'url') || str(input, 'query')
+        web.push({ label: clip(label, 60) || (p.tool === 'webfetch' ? 'Página web' : 'Búsqueda web'), partId: p.id })
+        continue
+      }
+      if (!KNOWN_TOOLS.has(p.tool)) {
+        const { verb, detail } = friendlyTool(p)
+        connectors.push({ label: verb, sub: detail || undefined, partId: p.id })
+      }
+    }
+  }
+  return {
+    filesRead: [...filesRead].map(([path, partId]) => ({ label: baseName(path), sub: path, partId })),
+    filesWritten: [...filesWritten].map(([path, partId]) => ({ label: baseName(path), sub: path, partId })),
+    commands,
+    web,
+    connectors
+  }
+}
