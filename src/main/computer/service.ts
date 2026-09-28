@@ -54,8 +54,6 @@ const PANE_ACCESSIBILITY = 'x-apple.systempreferences:com.apple.preference.secur
 const PANE_SCREEN = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
 /** Tras esto sin ninguna acción, se para el vigía de Esc (deja de escuchar el teclado). */
 const ESC_WATCHER_IDLE_MS = 8_000
-/** `request_access` sin respuesta en este tiempo ⇒ se trata como denegado. */
-const ACCESS_REQUEST_TIMEOUT_MS = 5 * 60_000
 
 /** Duración del movimiento animado del cursor (ms). Debe coincidir con `motionDuration` de helper.swift. */
 export function motionDurationMs(dist: number): number {
@@ -128,7 +126,24 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return this._grants
   }
   /** Tarjetas `request_access` pendientes de respuesta del usuario (canal lateral del MCP). */
-  private readonly pendingAccess = new Map<string, { resolve: (d: Record<string, AccessDecision>) => void }>()
+  private readonly pendingAccess = new Map<
+    string,
+    {
+      resolve: (r: { decisions: Record<string, AccessDecision>; feedback?: string }) => void
+      /** Presente si esta tarjeta es un plan inicial (flujo Plan → Aprobar → Ejecutar). */
+      plan?: string[]
+    }
+  >()
+  /**
+   * true = el usuario aprobó un plan inicial para la tarea en curso (`request_access` con `plan`).
+   * El MCP rechaza toda herramienta de acción (`computer_*`, salvo `request_access`/`screenshot`)
+   * hasta que esto sea true (consultado por `GET .../plan-status`). Se reinicia a false cuando
+   * termina la sesión de control (`computer:session {active:false}`) o al pulsar Detener: cada
+   * tarea nueva necesita su propio plan aprobado.
+   */
+  private planApproved = false
+  /** Última app que el agente pidió/objetivo de una tarjeta pendiente (para reactivarla tras responder). */
+  private lastTargetApp: AccessRequestApp | null = null
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
   private escWatcher: ChildProcessByStdio<null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
@@ -243,34 +258,75 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   // ───────────────────────────── Concesión por app: `request_access` ─────────────────────────────
 
-  /** Emite la tarjeta y espera la respuesta del usuario (o 5 min → todo denegado). */
-  requestAccess(apps: AccessRequestApp[], reason?: string): Promise<Record<string, AccessDecision>> {
+  /**
+   * Emite la tarjeta y ESPERA la respuesta del usuario sin límite de tiempo: no hay "sin respuesta
+   * ⇒ denegado" (antes 5 min; eso mataba tareas si el usuario tardaba o no veía el aviso). La
+   * única forma de que quede sin resolver para siempre es que el proceso muera; el único cierre
+   * forzado es `stop()` (Detener / kill-switch), que deniega todo lo pendiente como respaldo de
+   * seguridad. Mientras espera, la tarea queda en pausa ("Esperando tu permiso"): el agente no
+   * puede avanzar porque la llamada MCP no vuelve.
+   */
+  requestAccess(apps: AccessRequestApp[], reason?: string, plan?: string[]): Promise<{ decisions: Record<string, AccessDecision>; feedback?: string }> {
     const id = randomBytes(8).toString('hex')
+    this.lastTargetApp = apps[0] ?? null
     return new Promise((resolve) => {
-      this.pendingAccess.set(id, { resolve })
-      this.emit('requestAccess', { id, apps, reason })
-      setTimeout(() => {
-        const p = this.pendingAccess.get(id)
-        if (!p) return
-        this.pendingAccess.delete(id)
-        p.resolve(Object.fromEntries(apps.map((a) => [a.bundleId, 'deny' as const])))
-      }, ACCESS_REQUEST_TIMEOUT_MS).unref()
+      this.pendingAccess.set(id, { resolve, plan })
+      this.emit('requestAccess', { id, apps, reason, plan })
     })
   }
 
-  /** El renderer responde `computer:respondAccess`: aplica y persiste cada decisión. */
-  resolveAccessRequest(id: string, decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>): boolean {
+  /**
+   * El renderer responde `computer:respondAccess`: aplica y persiste cada decisión (salvo que
+   * `feedback` esté presente: el usuario pidió cambios al plan con "Editar" en vez de aprobar, no
+   * se concede nada). Reactiva la app objetivo (best-effort, sin bloquear) para que el agente
+   * retome donde lo dejó, y el resultado de `request_access` en el MCP adjunta una captura fresca.
+   */
+  resolveAccessRequest(
+    id: string,
+    decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>,
+    feedback?: string
+  ): boolean {
     const pending = this.pendingAccess.get(id)
     if (!pending) return false
     this.pendingAccess.delete(id)
     const map: Record<string, AccessDecision> = {}
-    for (const d of decisions) {
-      map[d.bundleId] = d.decision
-      if (d.decision === 'deny') this.grants.deny(d.bundleId)
-      else this.grants.grant(d.bundleId, d.name, d.decision)
+    let approvedSomething = false
+    if (!feedback) {
+      for (const d of decisions) {
+        map[d.bundleId] = d.decision
+        if (d.decision === 'deny') this.grants.deny(d.bundleId)
+        else {
+          this.grants.grant(d.bundleId, d.name, d.decision)
+          approvedSomething = true
+        }
+      }
+      if (pending.plan && approvedSomething) this.planApproved = true
     }
-    pending.resolve(map)
+    const firstApproved = decisions.find((d) => d.decision !== 'deny')
+    if (firstApproved) void this.activateApp(firstApproved.bundleId)
+    pending.resolve({ decisions: map, feedback })
     return true
+  }
+
+  /** ¿Hay un plan aprobado para la tarea en curso? (lo consulta el MCP antes de cada acción). */
+  isPlanApproved(): boolean {
+    return this.planApproved
+  }
+
+  /** Termina la tarea actual (fin de sesión de control, o Detener): la próxima necesita plan nuevo. */
+  resetPlanApproval(): void {
+    this.planApproved = false
+  }
+
+  /** Reactiva una app (NSRunningApplication.activate / `open -b`) para restaurar el contexto del agente. */
+  private async activateApp(bundleId: string): Promise<void> {
+    const bin = this.helperPath()
+    if (!bin || !bundleId) return
+    try {
+      await runHelper(bin, ['activate', bundleId], 5_000)
+    } catch (err) {
+      console.error('[computer] activate:', err)
+    }
   }
 
   registerShortcut(): void {
@@ -303,6 +359,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       console.error('[computer] archivo de parada:', err)
     }
     this.stopEscWatcher()
+    // Respaldo de seguridad: la ÚNICA forma de que `request_access` deniegue sin respuesta
+    // explícita es que se pare el control (Detener / ⌘⇧Esc / abortar sesión).
+    this.denyAllPending()
+    this.resetPlanApproval()
     const killed = this.killHelpers()
     this.emit('stopped', { at })
     this.emit('killState', this.state())
@@ -315,6 +375,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     await killed
     console.log(`[computer] kill-switch: ${report.aborted} sesión(es) abortada(s), ${report.failed} con error`)
     return report
+  }
+
+  /** Deniega toda tarjeta `request_access` pendiente (solo la llama `stop()`). */
+  private denyAllPending(): void {
+    for (const [id, pending] of this.pendingAccess) {
+      this.pendingAccess.delete(id)
+      pending.resolve({ decisions: Object.fromEntries([]), feedback: undefined })
+    }
   }
 
   /** "Reanudar control" (acción explícita del usuario). */
@@ -431,6 +499,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           res.end(JSON.stringify({ tier }))
           return
         }
+        if (req.method === 'GET' && req.url === `${path}/plan-status`) {
+          // El MCP la consulta antes de cada herramienta de acción (flujo Plan → Aprobar → Ejecutar).
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify({ approved: this.planApproved }))
+          return
+        }
         if (req.method === 'POST' && req.url === `${path}/request-access`) {
           let body = ''
           req.setEncoding('utf8')
@@ -441,8 +517,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           req.on('end', () => {
             let apps: AccessRequestApp[] = []
             let reason: string | undefined
+            let plan: string[] | undefined
             try {
-              const o = JSON.parse(body) as { apps?: unknown; reason?: unknown }
+              const o = JSON.parse(body) as { apps?: unknown; reason?: unknown; plan?: unknown }
               if (Array.isArray(o.apps)) {
                 apps = o.apps
                   .filter((a): a is Record<string, unknown> => !!a && typeof a === 'object')
@@ -454,6 +531,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
                   .slice(0, 20)
               }
               if (typeof o.reason === 'string') reason = o.reason.slice(0, 500)
+              if (Array.isArray(o.plan)) {
+                plan = o.plan
+                  .filter((s): s is string => typeof s === 'string')
+                  .map((s) => s.slice(0, 300))
+                  .slice(0, 30)
+              }
             } catch {
               res.statusCode = 400
               res.end(JSON.stringify({ error: 'JSON inválido' }))
@@ -464,11 +547,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
               res.end(JSON.stringify({ error: 'apps vacío' }))
               return
             }
-            void this.requestAccess(apps, reason).then((decisions) => {
+            void this.requestAccess(apps, reason, plan).then(({ decisions, feedback }) => {
               res.statusCode = 200
               res.setHeader('content-type', 'application/json')
               res.setHeader('cache-control', 'no-store')
-              res.end(JSON.stringify({ decisions }))
+              res.end(JSON.stringify({ decisions, feedback }))
             })
           })
           return
