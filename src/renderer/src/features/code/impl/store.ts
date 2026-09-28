@@ -101,6 +101,8 @@ export interface CodeState {
   setModel: (model: ModelRef) => void
   togglePanel: (panel: RightPanel) => void
   setGlobalError: (error: string | null) => void
+  /** Fuerza el refresco de Cambios/Archivos/rama (p. ej. tras un commit). */
+  touchFs: () => void
   applyEvent: (event: OcEvent, directory: string) => void
   resync: () => Promise<void>
 }
@@ -534,6 +536,8 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     setGlobalError: (globalError) => set({ globalError }),
+
+    touchFs: () => set((s) => ({ fsVersion: s.fsVersion + 1 })),
 
     resync: async () => {
       if (!get().directory) return

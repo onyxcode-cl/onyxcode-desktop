@@ -426,11 +426,6 @@ export function ToolRow({ part, root }: { part: ToolPart; root: string | null })
   }
 }
 
-/** Compatibilidad: una llamada suelta. */
-export function ToolCard({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
-  return <ToolRow part={part} root={root} />
-}
-
 // ---------------------------------------------------------------------------
 // Grupo de pasos
 // ---------------------------------------------------------------------------

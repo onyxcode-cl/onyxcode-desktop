@@ -6,3 +6,19 @@ export const APP_NAME = 'OpenDesk'
 export const APP_ID = 'cl.bentec.opendesk'
 /** Slug en minúsculas, útil para usuarios/identificadores técnicos. */
 export const APP_SLUG = 'opendesk'
+
+/**
+ * Colores de marca para el proceso principal (p.ej. `backgroundColor` de BrowserWindow,
+ * que se pinta antes de cargar el CSS). Deben coincidir con `--bg` de
+ * renderer/src/app/globals.css. El renderer usa SIEMPRE los tokens CSS, no esto.
+ */
+export const BRAND_COLORS = {
+  /** Fondo de ventana, tema claro. */
+  bgLight: '#f7f8fb',
+  /** Fondo de ventana, tema oscuro. */
+  bgDark: '#11131a',
+  /** Azul lapislázuli (acento). */
+  accent: '#2c4fd8',
+  /** Dorado pirita (chispa del logo). */
+  spark: '#f0c35a'
+} as const

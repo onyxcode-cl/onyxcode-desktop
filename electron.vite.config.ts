@@ -33,7 +33,10 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
-          quick: resolve(__dirname, 'src/renderer/quick/index.html')
+          quick: resolve(__dirname, 'src/renderer/quick/index.html'),
+          // Overlay de control del Mac (borde/ondas a pantalla completa) y píldora con "Detener"
+          overlay: resolve(__dirname, 'src/renderer/overlay/index.html'),
+          'overlay-pill': resolve(__dirname, 'src/renderer/overlay/pill.html')
         }
       }
     }

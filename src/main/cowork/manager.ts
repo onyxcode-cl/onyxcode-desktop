@@ -51,7 +51,7 @@ interface ManagerEvents {
   server: [CoworkServerInfo]
 }
 
-const SKIP_DIRS = new Set(['.git', 'node_modules', '.opencode', '.venv', '__pycache__', '.DS_Store'])
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.opencode', '.cowork', '.venv', '__pycache__', '.DS_Store'])
 const MAX_SCAN_FILES = 5000
 
 function normalizeFolder(p: string): string {

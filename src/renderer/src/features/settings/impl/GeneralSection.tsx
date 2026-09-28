@@ -19,6 +19,36 @@ const STATE: Record<string, { label: string; tone: 'ok' | 'warn' | 'error' | 'mu
   error: { label: 'Error', tone: 'error' }
 }
 
+/** Mini-maqueta de la ventana en cada tema (colores literales: deben verse aunque el tema activo sea otro). */
+function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
+  const light = { bg: '#f7f8fb', side: '#eff1f6', line: '#dde2ee', accent: '#2c4fd8', bubble: '#e8ecf8' }
+  const dark = { bg: '#11131a', side: '#0c0e14', line: '#292e3c', accent: '#7d97ff', bubble: '#1e2331' }
+  const pane = (c: typeof light): React.JSX.Element => (
+    <div className="flex h-full w-full" style={{ background: c.bg }}>
+      <div className="flex w-[30%] flex-col gap-1 p-1.5" style={{ background: c.side }}>
+        <div className="h-1.5 w-3 rounded-full" style={{ background: c.accent }} />
+        <div className="h-1 w-full rounded-full" style={{ background: c.line }} />
+        <div className="h-1 w-3/4 rounded-full" style={{ background: c.line }} />
+      </div>
+      <div className="flex flex-1 flex-col justify-end gap-1 p-1.5">
+        <div className="ml-auto h-2 w-1/2 rounded" style={{ background: c.bubble }} />
+        <div className="h-1 w-3/4 rounded-full" style={{ background: c.line }} />
+        <div className="h-1 w-1/2 rounded-full" style={{ background: c.line }} />
+      </div>
+    </div>
+  )
+  return (
+    <div className="relative h-16 w-full overflow-hidden rounded-lg border border-border/70">
+      {kind === 'dark' ? pane(dark) : pane(light)}
+      {kind === 'system' && (
+        <div className="absolute inset-0" style={{ clipPath: 'polygon(55% 0, 100% 0, 100% 100%, 45% 100%)' }}>
+          {pane(dark)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function GeneralSection(): React.JSX.Element {
   const { settings, update } = useSettings()
   const { status, connection, restart } = useServer()
@@ -38,10 +68,13 @@ export function GeneralSection(): React.JSX.Element {
             type="button"
             onClick={() => void update({ theme: id })}
             aria-pressed={settings.theme === id}
-            className={`flex flex-col items-center gap-2 rounded-xl border px-4 py-3 text-sm transition ${settings.theme === id ? 'border-accent bg-accent-soft' : 'border-border hover:bg-hover'}`}
+            className={`group flex flex-col gap-2 rounded-xl border p-2 text-sm transition-[border-color,box-shadow,background-color] ${settings.theme === id ? 'border-accent bg-accent-soft/50 shadow-[0_0_0_3px_var(--accent-ring)]' : 'border-border hover:border-border-strong hover:bg-hover/50'}`}
           >
-            <Icon size={18} />
-            {label}
+            <ThemePreview kind={id} />
+            <span className="flex items-center justify-center gap-1.5 pb-0.5">
+              <Icon size={14} className={settings.theme === id ? 'text-accent' : 'text-muted'} />
+              {label}
+            </span>
           </button>
         ))}
       </div>

@@ -2,15 +2,15 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 
 export function SectionHeader({ title, description }: { title: string; description?: ReactNode }): React.JSX.Element {
   return (
-    <div className="mb-5">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+    <div className="mb-6">
+      <h2 className="font-display text-[22px] font-semibold tracking-[-0.015em]">{title}</h2>
+      {description && <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>}
     </div>
   )
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
-  return <div className={`rounded-xl border border-border bg-elevated ${className}`}>{children}</div>
+  return <div className={`rounded-xl border border-border bg-elevated shadow-xs ${className}`}>{children}</div>
 }
 
 /** Fila etiqueta/descripción + control, separada por bordes dentro de una Card. */
@@ -35,14 +35,14 @@ export function Row({
 }
 
 export function SubTitle({ children }: { children: ReactNode }): React.JSX.Element {
-  return <h3 className="mt-8 mb-3 text-sm font-semibold">{children}</h3>
+  return <h3 className="mt-9 mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{children}</h3>
 }
 
 type Tone = 'ok' | 'warn' | 'error' | 'muted' | 'accent'
 
 const TONES: Record<Tone, string> = {
-  ok: 'bg-emerald-500/12 text-emerald-600 border-emerald-500/30',
-  warn: 'bg-amber-500/12 text-amber-600 border-amber-500/30',
+  ok: 'bg-success/10 text-success border-success/30',
+  warn: 'bg-warning/10 text-warning border-warning/30',
   error: 'bg-danger/10 text-danger border-danger/30',
   muted: 'bg-hover text-muted border-border',
   accent: 'bg-accent-soft text-accent border-accent/30'
@@ -57,7 +57,7 @@ export function Badge({ tone = 'muted', children }: { tone?: Tone; children: Rea
 }
 
 const FIELD =
-  'w-full rounded-lg border border-border bg-bg px-3 py-1.5 text-sm text-fg outline-none placeholder:text-subtle focus:border-accent'
+  'w-full rounded-lg border border-border bg-bg px-3 py-1.5 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-ring)] disabled:opacity-60 disabled:hover:border-border'
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>): React.JSX.Element {
   const { className = '', ...rest } = props
@@ -71,7 +71,7 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>): Re
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>): React.JSX.Element {
   const { className = '', ...rest } = props
-  return <select {...rest} className={`${FIELD} pr-8 ${className}`} />
+  return <select {...rest} className={`${FIELD} select-field pr-8 ${className}`} />
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }): React.JSX.Element {
@@ -104,10 +104,10 @@ export function Toggle({
       title={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-40 ${checked ? 'bg-accent' : 'bg-border-strong'}`}
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 disabled:opacity-40 ${checked ? 'bg-accent' : 'bg-border-strong'}`}
     >
       <span
-        className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`}
+        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`}
       />
     </button>
   )

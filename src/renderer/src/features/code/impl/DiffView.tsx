@@ -77,7 +77,7 @@ export function languageFor(path: string | undefined): string | null {
   return lang && hljs.getLanguage(lang) ? lang : null
 }
 
-function highlightLine(text: string, lang: string | null): string | null {
+export function highlightLine(text: string, lang: string | null): string | null {
   if (!lang || text.length > 2000) return null
   try {
     return hljs.highlight(text, { language: lang, ignoreIllegals: true }).value

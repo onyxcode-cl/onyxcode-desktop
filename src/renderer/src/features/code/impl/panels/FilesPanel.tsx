@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FileContent, FileNode } from '@opencode-ai/sdk/v2/client'
 import { ArrowLeft, ChevronRight, File, Folder, FolderOpen, Loader2, RefreshCw, Search, X } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
 import { errorMessage, useClient, sdkData } from '../client'
-import { DiffView } from '../DiffView'
+import { DiffView, highlightLine, languageFor } from '../DiffView'
 import { useCode } from '../store'
 
 type Listing = Record<string, FileNode[] | 'loading' | { error: string }>
@@ -37,7 +37,12 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
     }
   }, [client, directory, path, fsVersion])
 
-  const lines = content?.type === 'text' ? content.content.split('\n') : []
+  const lines = useMemo(() => {
+    if (content?.type !== 'text') return []
+    const raw = content.content.split('\n')
+    const lang = raw.length <= 5000 ? languageFor(path) : null
+    return raw.map((text) => ({ text, html: highlightLine(text, lang) }))
+  }, [content, path])
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-1 border-b border-border px-2 py-1">
@@ -63,14 +68,18 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
           </div>
         )}
         {content?.type === 'binary' && <div className="px-3 py-3 text-sm text-subtle">Archivo binario.</div>}
-        {content?.type === 'text' && showDiff && content.diff && <DiffView patch={content.diff} />}
+        {content?.type === 'text' && showDiff && content.diff && <DiffView patch={content.diff} path={path} />}
         {content?.type === 'text' && !(showDiff && content.diff) && (
           <table className="w-full border-collapse font-mono text-[12px] leading-[1.55]">
             <tbody>
               {lines.map((l, i) => (
                 <tr key={i}>
                   <td className="w-10 pr-3 text-right align-top text-subtle select-none">{i + 1}</td>
-                  <td className="pr-3 whitespace-pre-wrap break-all">{l || ' '}</td>
+                  {l.html ? (
+                    <td className="pr-3 whitespace-pre-wrap break-all" dangerouslySetInnerHTML={{ __html: l.html }} />
+                  ) : (
+                    <td className="pr-3 whitespace-pre-wrap break-all">{l.text || ' '}</td>
+                  )}
                 </tr>
               ))}
             </tbody>

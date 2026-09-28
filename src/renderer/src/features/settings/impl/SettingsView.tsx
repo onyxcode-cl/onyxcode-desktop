@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Blocks, Cpu, Info, Keyboard, SlidersHorizontal, X } from 'lucide-react'
+import { BarChart3, Blocks, Cpu, Info, Keyboard, Settings2, SlidersHorizontal, X } from 'lucide-react'
 import { IconButton } from '../../../components/IconButton'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
@@ -63,29 +63,40 @@ export function SettingsView({ initial }: { initial?: SettingsSectionId } = {}):
 
   return (
     <div className="flex h-full flex-col">
-      <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-        <span className="text-sm font-medium">Ajustes</span>
-        <IconButton label="Cerrar ajustes (Esc)" onClick={() => close(false)}>
-          <X size={16} />
-        </IconButton>
+      <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4">
+        <span className="flex items-center gap-2 text-[13.5px] font-medium">
+          <Settings2 size={15} className="text-accent" /> Ajustes
+        </span>
+        <span className="flex items-center gap-2">
+          <kbd className="kbd">Esc</kbd>
+          <IconButton label="Cerrar ajustes (Esc)" onClick={() => close(false)}>
+            <X size={16} />
+          </IconButton>
+        </span>
       </header>
       <div className="flex min-h-0 flex-1">
-        <nav className="w-48 shrink-0 space-y-0.5 overflow-y-auto border-r border-border p-3" aria-label="Secciones de ajustes">
-          {SECTIONS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => select(id)}
-              aria-current={section === id ? 'page' : undefined}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm transition ${section === id ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
+        <nav
+          className="w-52 shrink-0 space-y-0.5 overflow-y-auto border-r border-border/70 bg-sidebar/50 p-3"
+          aria-label="Secciones de ajustes"
+        >
+          {SECTIONS.map(({ id, label, icon: Icon }) => {
+            const active = section === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => select(id)}
+                aria-current={active ? 'page' : undefined}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              >
+                <Icon size={15} className={active ? 'text-accent' : ''} />
+                {label}
+              </button>
+            )
+          })}
         </nav>
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl px-8 py-8">
+          <div key={section} className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8">
             <Current />
           </div>
         </div>

@@ -74,13 +74,14 @@ export function taskStatus(args: {
   const last = lastAssistant(args.entries)
   if (last && last.role === 'assistant' && last.error && last.error.name !== 'MessageAbortedError') return 'error'
   if (last) return 'done'
-  return 'idle'
+  // Sin mensajes cargados (tarea antigua en la lista) ⇒ se asume terminada.
+  return args.entries && args.entries.length === 0 ? 'idle' : 'done'
 }
 
 /** ¿El permiso pertenece a la tarea (o a una subtarea suya)? */
 export function permissionBelongsTo(p: PermissionRequest, taskId: string, sessions: Record<string, Session>): boolean {
   if (p.sessionID === taskId) return true
-  let s = sessions[p.sessionID]
+  let s: Session | undefined = sessions[p.sessionID]
   for (let i = 0; s && i < 5; i++) {
     if (s.parentID === taskId) return true
     s = s.parentID ? sessions[s.parentID] : undefined

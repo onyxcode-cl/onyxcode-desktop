@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowUp, MessageSquarePlus } from 'lucide-react'
+import { ArrowUp } from 'lucide-react'
+import { LogoMark } from '../src/components/Logo'
 import type { ExtrasApi } from '@shared/ipc-extras'
 import './quick.css'
 
@@ -9,6 +10,7 @@ const extras = (window as unknown as { api?: { extras?: ExtrasApi } }).api?.extr
 function QuickEntry(): React.JSX.Element {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [shownKey, setShownKey] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -16,6 +18,7 @@ function QuickEntry(): React.JSX.Element {
     if (!extras) return
     return extras.on('extras:quick-shown', () => {
       setError(null)
+      setShownKey((k) => k + 1)
       inputRef.current?.focus()
       inputRef.current?.select()
     })
@@ -36,14 +39,22 @@ function QuickEntry(): React.JSX.Element {
     void extras?.invoke('extras:quickHide')
   }
 
+  const canSend = !!text.trim()
+
   return (
-    <div className="drag flex h-full w-full items-center p-1.5">
-      <div className="flex h-full w-full items-center gap-3 rounded-2xl border border-q-border bg-q-bg px-4 text-q-fg shadow-xl backdrop-blur-xl">
-        <MessageSquarePlus size={20} className="shrink-0 text-q-muted" aria-hidden />
+    <div className="drag flex h-full w-full items-center p-2">
+      <div
+        key={shownKey}
+        className="q-shell q-in flex h-full w-full items-center gap-3 rounded-[18px] bg-q-bg pr-2.5 pl-4 text-q-fg backdrop-blur-xl"
+      >
+        <LogoMark size={24} />
         <input
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value)
+            if (error) setError(null)
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
               e.preventDefault()
@@ -54,20 +65,26 @@ function QuickEntry(): React.JSX.Element {
               else hide()
             }
           }}
-          placeholder={error ?? '¿En qué puedo ayudarte?'}
+          placeholder={error ?? '¿En qué te ayudo?'}
           aria-label="Escribe un mensaje para el chat"
           spellCheck={false}
-          className={`no-drag min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-q-muted ${error ? 'placeholder:text-red-500' : ''}`}
+          className={`no-drag min-w-0 flex-1 bg-transparent text-[18px] tracking-[-0.01em] outline-none placeholder:text-q-muted ${error ? 'placeholder:text-q-danger' : ''}`}
         />
+        {!canSend && (
+          <span className="flex shrink-0 items-center gap-1 text-[11px] text-q-muted" aria-hidden>
+            <kbd className="rounded-md bg-q-kbd px-1.5 py-0.5 font-sans">esc</kbd>
+            cerrar
+          </span>
+        )}
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={!text.trim()}
+          disabled={!canSend}
           aria-label="Enviar"
           title="Enviar (Enter)"
-          className="no-drag inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-q-accent text-q-accent-fg transition disabled:opacity-30"
+          className={`no-drag inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-[background-color,color,opacity,transform] duration-150 active:scale-95 ${canSend ? 'bg-q-accent text-q-accent-fg' : 'bg-q-kbd text-q-muted'}`}
         >
-          <ArrowUp size={16} />
+          <ArrowUp size={17} strokeWidth={2.25} />
         </button>
       </div>
     </div>

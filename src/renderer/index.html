@@ -8,6 +8,12 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://127.0.0.1:*; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://localhost:* http://localhost:*"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Fondo inicial (antes de cargar CSS) para evitar destellos; valores = --bg de globals.css -->
+    <style>
+      html { background: #f7f8fb; }
+      @media (prefers-color-scheme: dark) { html { background: #11131a; } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
