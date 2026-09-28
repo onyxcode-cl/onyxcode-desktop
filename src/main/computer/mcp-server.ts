@@ -588,7 +588,8 @@ const TOOLS: ToolDef[] = [
       'Toma una captura de la pantalla principal. Devuelve la imagen y el tamaño en píxeles; ' +
       'todas las demás herramientas usan coordenadas en píxeles de esta captura.',
     inputSchema: obj({}),
-    action: false,
+    // Capturar la pantalla también es tomar control: requiere plan aprobado.
+    action: true,
     run: async () => '' // gestionado aparte
   },
   {

@@ -70,6 +70,8 @@ interface ServiceEvents {
   requestAccess: [AccessRequest]
   /** Se resolvió (o se canceló al parar el control) una tarjeta `requestAccess`: id de la tarjeta. */
   requestAccessResolved: [{ id: string }]
+  /** El usuario aprobó el plan de la tarea: recién ahora se entra en modo control. */
+  planApproved: []
 }
 
 /** Resultado de abortar las sesiones de los servidores de acceso total. */
@@ -299,7 +301,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           approvedSomething = true
         }
       }
-      if (pending.plan && approvedSomething) this.planApproved = true
+      if (pending.plan && approvedSomething) {
+        this.planApproved = true
+        this.emit('planApproved')
+      }
     }
     const firstApproved = decisions.find((d) => d.decision !== 'deny')
     if (firstApproved) void this.activateApp(firstApproved.bundleId)

@@ -253,11 +253,24 @@ export function registerCoworkHandlers(
   })
   handle(ipcMain, 'computer:resume', () => computer.resume())
   handle(ipcMain, 'computer:state', () => computer.state())
+  // Plan → Aprobar → Ejecutar: una tarea de acceso total que empieza a trabajar solo "pide" el
+  // modo control; el borde, la píldora de control y la minimización de Lapis llegan recién
+  // cuando el usuario aprueba el plan (evento `planApproved`).
+  let sessionWanted: { label?: string } | null = null
+  const enterControlMode = (): void => {
+    if (!sessionWanted) return
+    overlay.setSession(true, sessionWanted.label)
+    hideMainWindowForTask()
+  }
+  computer.on('planApproved', enterControlMode)
   handle(ipcMain, 'computer:session', (req) => {
     const active = req?.active === true
-    overlay.setSession(active, typeof req?.label === 'string' ? req.label : undefined)
-    if (active) hideMainWindowForTask()
-    else {
+    if (active) {
+      sessionWanted = { label: typeof req?.label === 'string' ? req.label : undefined }
+      if (computer.isPlanApproved()) enterControlMode()
+    } else {
+      sessionWanted = null
+      overlay.setSession(false)
       restoreMainWindowIfHidden()
       // Cada tarea nueva necesita su propio plan aprobado (flujo Plan → Aprobar → Ejecutar).
       computer.resetPlanApproval()
