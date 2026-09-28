@@ -308,8 +308,9 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
           />
         </ul>
         <p className="mt-3 text-xs text-muted">
-          Actívalos en Ajustes del Sistema › Privacidad y seguridad. En desarrollo el permiso se concede a{' '}
-          <strong className="text-fg">«Electron»</strong>; en la app empaquetada, a la propia app.
+          Actívalos en Ajustes del Sistema › Privacidad y seguridad. En desarrollo el permiso se concede a la app desde la
+          que ejecutas <code>npm run dev</code> (<strong className="text-fg">Terminal, iTerm o VS Code</strong>); en la app
+          empaquetada, a la propia app. Tras concederlo, reinicia la app.
         </p>
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}
         <div className="mt-3 flex flex-wrap gap-2">

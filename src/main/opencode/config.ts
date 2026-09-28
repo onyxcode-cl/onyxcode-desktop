@@ -4,6 +4,7 @@
  *
  * Define los agentes propios de la app:
  * - `chat`: conversación general, sin herramientas de archivos/shell (solo web).
+ * - `computer` se oculta aquí: solo existe en los servidores Cowork de acceso total.
  */
 import { CHAT_AGENT } from '@shared/types'
 
@@ -21,7 +22,8 @@ export function buildInlineConfig(): Record<string, unknown> {
           webfetch: 'allow',
           websearch: 'allow'
         }
-      }
+      },
+      computer: { disable: true }
     }
   }
 }
