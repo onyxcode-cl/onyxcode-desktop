@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto'
 import type * as NodePty from 'node-pty'
 import { APP_NAME } from '@shared/brand'
 import type { PtyAvailability, PtyCreateRequest, PtyInfo } from '@shared/ipc-code'
+import { withDisclaim } from '../process/disclaim'
 
 type PtyModule = typeof NodePty
 
@@ -93,11 +94,22 @@ export class PtyService {
     env.COLORTERM = 'truecolor'
     env.TERM_PROGRAM = APP_NAME
     if (!env.LANG) env.LANG = 'en_US.UTF-8'
-    // Variables propias de Electron que no deben filtrarse a la shell del usuario.
+    // Variables propias de Electron que no deben filtrarse a la shell del usuario (mismo criterio
+    // que `child-env.ts`, pero conservando el resto del entorno del usuario tal cual: la terminal
+    // es una acción del usuario, no un servidor headless, así que no conviene sobre-restringir).
     delete env.ELECTRON_RUN_AS_NODE
     delete env.ELECTRON_RENDERER_URL
+    delete env.NODE_OPTIONS
+    for (const k of Object.keys(env)) if (k.startsWith('DYLD_')) delete env[k]
 
-    const pty = mod.spawn(shell, args, {
+    // Desvinculada de TCC (AUDIT.md: "el PTY de la terminal integrada aún hereda los permisos de
+    // Lapis"), igual que los `opencode serve` (`process/disclaim.ts`): la shell del usuario no debe
+    // heredar Accesibilidad/Grabación de pantalla concedidas a Lapis para computer use. Solo cambia
+    // el binario que se ejecuta (mismo PID/grupo); el shell sigue siendo interactivo con su entorno
+    // normal (login shell, TERM, LANG, PATH, etc).
+    const launch = withDisclaim(shell, args)
+
+    const pty = mod.spawn(launch.command, launch.args, {
       name: 'xterm-256color',
       cols: clampDim(req.cols, 80, 1000),
       rows: clampDim(req.rows, 24, 500),

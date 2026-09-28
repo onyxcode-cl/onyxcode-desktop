@@ -18,7 +18,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
-import { confirmDialog } from '../../../components/ConfirmDialog'
+import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
 import { selectSessionsForDirectory, useSessions } from '../../../stores/sessions'
 import { archiveTask, deleteTask, openTask, renameTask } from './actions'
 import { isPinned, markUnread, togglePinned, useCowork } from './store'
@@ -91,8 +91,11 @@ function TaskMenu({ id, title, archived }: { id: string; title: string; archived
         >
           {item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? 'Desfijar' : 'Fijar', () => togglePinned(id))}
           {item(<Pencil size={13} />, 'Renombrar…', () => {
-            const next = window.prompt('Nuevo nombre de la tarea', title)
-            if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
+            void promptDialog({ title: 'Nuevo nombre de la tarea', defaultValue: title, confirmLabel: 'Renombrar' }).then(
+              (next) => {
+                if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
+              }
+            )
           })}
           {item(<Mail size={13} />, 'Marcar como no leída', () => markUnread(id))}
           {!archived && item(<Archive size={13} />, 'Archivar', () => void archiveTask(id).catch(() => undefined))}
