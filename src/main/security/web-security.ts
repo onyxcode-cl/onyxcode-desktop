@@ -32,14 +32,17 @@ function allowedNavigation(url: string): boolean {
 }
 
 function harden(wc: WebContents): void {
+  // Solo las ventanas de la app (sesión por defecto) abren enlaces en el navegador: un artifact
+  // (partición propia, sin red por CSP) no debe poder sacar datos abriendo una URL externa.
+  const mayOpenExternal = (): boolean => wc.session === session.defaultSession
   wc.setWindowOpenHandler(({ url }) => {
-    openExternalSafe(url)
+    if (mayOpenExternal()) openExternalSafe(url)
     return { action: 'deny' }
   })
   const guardNav = (event: Electron.Event, url: string, isMainFrame = true): void => {
     if (allowedNavigation(url)) return
     event.preventDefault()
-    if (isMainFrame) openExternalSafe(url)
+    if (isMainFrame && mayOpenExternal()) openExternalSafe(url)
     console.warn(`[security] navegación bloqueada: ${url.slice(0, 200)}`)
   }
   wc.on('will-navigate', (event, url) => guardNav(event, url))
