@@ -491,7 +491,7 @@ body {
 .streaming-caret::after {
   content: '';
   display: inline-block;
-  width: 0.5em;
+  width: 0.45em;
   height: 1.05em;
   margin-left: 2px;
   vertical-align: -0.15em;
@@ -510,7 +510,7 @@ body {
 .markdown.is-streaming > ol:last-child > li:last-child::after {
   content: '';
   display: inline-block;
-  width: 0.5em;
+  width: 0.45em;
   height: 1.05em;
   margin-left: 2px;
   vertical-align: -0.15em;

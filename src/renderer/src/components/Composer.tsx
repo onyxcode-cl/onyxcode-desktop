@@ -22,6 +22,15 @@ interface Props {
   hint?: ReactNode | false
 }
 
+const MAX_HEIGHT = 280
+
+function fit(el: HTMLTextAreaElement): void {
+  el.style.height = 'auto'
+  const h = el.scrollHeight
+  el.style.height = `${Math.min(h, MAX_HEIGHT)}px`
+  el.style.overflowY = h > MAX_HEIGHT ? 'auto' : 'hidden'
+}
+
 export function Composer({
   onSend,
   onAbort,
@@ -57,8 +66,7 @@ export function Composer({
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 280)}px`
+    fit(el)
   }, [text])
 
   useEffect(() => {
@@ -68,8 +76,7 @@ export function Composer({
     const ro = new ResizeObserver(() => {
       if (el.clientWidth === lastWidth) return
       lastWidth = el.clientWidth
-      el.style.height = 'auto'
-      el.style.height = `${Math.min(el.scrollHeight, 280)}px`
+      fit(el)
     })
     ro.observe(el)
     return () => ro.disconnect()

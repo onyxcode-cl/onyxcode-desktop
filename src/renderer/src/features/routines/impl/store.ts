@@ -10,6 +10,8 @@ interface RoutinesState {
   error: string | null
   /** Rutina en edición (sin id = nueva) o null. */
   editing: RoutineInput | null
+  /** Aviso a mostrar en el editor (p. ej. al partir de una plantilla). */
+  editingHint: string | null
   selectedId: string | null
 }
 
@@ -19,8 +21,17 @@ export const useRoutines = create<RoutinesState>(() => ({
   loading: false,
   error: null,
   editing: null,
+  editingHint: null,
   selectedId: null
 }))
+
+export function openEditor(input: RoutineInput, hint: string | null = null): void {
+  useRoutines.setState({ editing: input, editingHint: hint })
+}
+
+export function closeEditor(): void {
+  useRoutines.setState({ editing: null, editingHint: null })
+}
 
 function msg(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -54,7 +65,7 @@ export function subscribeRoutines(): () => void {
 
 export async function saveRoutine(input: RoutineInput): Promise<ScheduledRoutine> {
   const saved = await cw('routines:save', input)
-  useRoutines.setState({ editing: null, selectedId: saved.id })
+  useRoutines.setState({ editing: null, editingHint: null, selectedId: saved.id })
   return saved
 }
 

@@ -87,8 +87,11 @@ export function ChatView(): React.JSX.Element {
         <div className="drag h-12 shrink-0" />
         <div className="flex flex-1 flex-col items-center justify-center pb-20">
           <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 -z-10 scale-[2.2] rounded-full bg-accent/12 blur-2xl" aria-hidden />
+            <div className="relative isolate">
+              <div
+                className="pointer-events-none absolute inset-0 -z-10 scale-[3] rounded-full bg-[radial-gradient(closest-side,var(--accent-soft),transparent)]"
+                aria-hidden
+              />
               <LogoMark size={44} />
             </div>
             <div>

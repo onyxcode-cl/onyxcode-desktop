@@ -60,7 +60,7 @@ export function GeneralSection(): React.JSX.Element {
     <div>
       <SectionHeader title="General" description="Apariencia, idioma y servidor local de OpenCode." />
 
-      <h3 className="mb-3 text-sm font-semibold">Tema</h3>
+      <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">Tema</h3>
       <div className="grid grid-cols-3 gap-2">
         {THEMES.map(({ id, label, icon: Icon }) => (
           <button
