@@ -1,0 +1,376 @@
+/* Overlay de control a pantalla completa. Colores propios (no dependen del tema de la app). */
+:root {
+  --ov-1: #8b5cf6;
+  --ov-2: #3b82f6;
+  --ov-3: #22d3ee;
+  --ov-4: #f472b6;
+  --ov-stop: #f87171;
+  --ov-ink: rgba(18, 18, 24, 0.9);
+  --ov-ink-fg: #ffffff;
+  --ov-ink-border: rgba(255, 255, 255, 0.16);
+  --ov-width: 4px;
+  --ov-radius: 12px;
+  --ov-ease-hand: cubic-bezier(0.45, 0.05, 0.4, 1);
+  color-scheme: dark;
+}
+
+@property --ov-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  opacity: 0;
+  transition: opacity 380ms ease;
+}
+body.on {
+  opacity: 1;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+}
+
+/* ── Borde luminoso ── */
+.frame {
+  position: fixed;
+  inset: 0;
+  border-radius: var(--ov-radius);
+  padding: var(--ov-width);
+  background: conic-gradient(from var(--ov-angle), var(--ov-1), var(--ov-2), var(--ov-3), var(--ov-4), var(--ov-1));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: ov-spin 7s linear infinite;
+}
+.frame-glow {
+  padding: 16px;
+  filter: blur(16px);
+  opacity: 0.8;
+  animation:
+    ov-spin 7s linear infinite,
+    ov-pulse 2.6s ease-in-out infinite;
+}
+.edge-shade {
+  position: fixed;
+  inset: 0;
+  border-radius: var(--ov-radius);
+  box-shadow: inset 0 0 90px 10px color-mix(in srgb, var(--ov-2) 22%, transparent);
+  animation: ov-pulse 2.6s ease-in-out infinite;
+}
+
+body.stopped .frame,
+body.stopped .frame-glow {
+  background: var(--ov-stop);
+  animation: none;
+}
+body.stopped .edge-shade {
+  box-shadow: inset 0 0 90px 10px color-mix(in srgb, var(--ov-stop) 25%, transparent);
+  animation: none;
+}
+
+@keyframes ov-spin {
+  to {
+    --ov-angle: 360deg;
+  }
+}
+@keyframes ov-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+/* ── Destello de captura ── */
+.flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+.flash.on {
+  animation: ov-flash 340ms ease-out;
+}
+.flash.on.soft {
+  animation-name: ov-flash-soft;
+}
+@keyframes ov-flash {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ov-flash-soft {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.07;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Efectos en coordenadas ── */
+.fx {
+  position: fixed;
+  inset: 0;
+}
+
+.target {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 2px solid var(--ov-3);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--ov-3) 70%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--ov-3) 45%, transparent);
+  animation: ov-target 900ms ease-in-out infinite alternate;
+}
+.target::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--ov-3);
+}
+.target-scroll {
+  border-style: dashed;
+}
+.target-drag {
+  border-color: var(--ov-4);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ov-4) 70%, transparent);
+}
+@keyframes ov-target {
+  from {
+    transform: scale(0.82);
+    opacity: 0.75;
+  }
+  to {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.drag-line {
+  position: fixed;
+  inset: 0;
+  overflow: visible;
+}
+.drag-line line {
+  stroke: var(--ov-4);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+  stroke-linecap: round;
+  animation: ov-dash 600ms linear infinite;
+}
+@keyframes ov-dash {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+.ripple {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.ripple span {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ov-3);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ov-3) 70%, transparent);
+  opacity: 0;
+  animation: ov-ripple 720ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+.ripple span + span {
+  animation-delay: calc(var(--d, 0ms) + 110ms);
+  border-width: 1.5px;
+}
+.ripple i {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ov-3) 85%, #fff);
+  box-shadow: 0 0 16px var(--ov-3);
+  opacity: 0;
+  animation: ov-dot 520ms ease-out forwards;
+  animation-delay: var(--d, 0ms);
+}
+.ripple-alt span {
+  border-color: var(--ov-4);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ov-4) 70%, transparent);
+}
+.ripple-alt i {
+  background: var(--ov-4);
+  box-shadow: 0 0 16px var(--ov-4);
+}
+@keyframes ov-ripple {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@keyframes ov-dot {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* ── Etiqueta junto al cursor ── */
+.tag {
+  --x: -200px;
+  --y: -200px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 260px;
+  padding: 6px 11px 6px 8px;
+  border-radius: 999px;
+  background: var(--ov-ink);
+  color: var(--ov-ink-fg);
+  border: 1px solid var(--ov-ink-border);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in srgb, var(--ov-2) 35%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(calc(var(--x) + 18px), calc(var(--y) + 22px));
+  transition-property: transform, opacity, filter;
+  transition-duration: 0ms, 160ms, 160ms;
+  transition-timing-function: var(--ov-ease-hand), ease, ease;
+}
+.tag.flip-x {
+  transform: translate(calc(var(--x) - 100% - 14px), calc(var(--y) + 22px));
+}
+.tag.flip-y {
+  transform: translate(calc(var(--x) + 18px), calc(var(--y) - 100% - 14px));
+}
+.tag.flip-x.flip-y {
+  transform: translate(calc(var(--x) - 100% - 14px), calc(var(--y) - 100% - 14px));
+}
+.tag.visible {
+  opacity: 1;
+}
+.tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tag-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ov-1), var(--ov-3));
+  box-shadow: 0 0 8px var(--ov-3);
+  animation: ov-pulse 1.2s ease-in-out infinite;
+}
+.tag[data-variant='click'] .tag-dot {
+  background: var(--ov-3);
+}
+.tag[data-variant='type'] .tag-dot {
+  background: var(--ov-4);
+  box-shadow: 0 0 8px var(--ov-4);
+}
+.tag[data-variant='error'] .tag-dot {
+  background: var(--ov-stop);
+  box-shadow: 0 0 8px var(--ov-stop);
+  animation: none;
+}
+
+/* ── Movimiento reducido: sin giros, pulsos ni viajes; solo fundidos ── */
+@media (prefers-reduced-motion: reduce) {
+  .frame,
+  .frame-glow,
+  .edge-shade,
+  .tag-dot,
+  .target,
+  .drag-line line {
+    animation: none;
+  }
+  .frame-glow,
+  .edge-shade {
+    opacity: 0.7;
+  }
+  .ripple span {
+    animation-name: ov-fade;
+  }
+  .ripple span + span {
+    display: none;
+  }
+  .ripple i {
+    animation-name: ov-fade;
+  }
+  .flash.on,
+  .flash.on.soft {
+    animation-name: ov-flash-soft;
+  }
+  .tag {
+    transition-duration: 0ms, 160ms, 160ms !important;
+  }
+}
+@keyframes ov-fade {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}

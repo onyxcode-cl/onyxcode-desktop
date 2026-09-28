@@ -1,39 +1,36 @@
 /**
  * Modo Cowork: tareas autónomas sobre una carpeta autorizada, ejecutadas por el agente
- * `cowork` en un `opencode serve` dedicado y sandboxeado (sandbox-exec).
+ * `cowork` en un `opencode serve` dedicado y sandboxeado (sandbox-exec), o por el agente
+ * `computer` en un servidor de acceso total (control del Mac).
+ *
+ * Diseño: tareas a la izquierda · inicio / conversación al centro · Plan, Entregables y
+ * Actividad a la derecha (colapsable).
  */
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,
-  Archive,
-  ChevronDown,
   FolderOpen,
-  FolderPlus,
   Loader2,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   RefreshCw,
-  Trash2,
-  Users
+  Sparkles
 } from 'lucide-react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
+import type { CoworkDeliverable } from '@shared/ipc-cowork'
 import { Button } from '../../../components/Button'
-import { Composer } from '../../../components/Composer'
-import { MessageList } from '../../../components/MessageList'
-import { ModelPicker } from '../../../components/ModelPicker'
 import { errorMessage } from '../../../lib/opencode'
-import { selectSessionsForDirectory, useSessions, type MessageEntry } from '../../../stores/sessions'
+import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
 import {
   abortBusyTasks,
   abortTask,
   approvePending,
-  archiveTask,
   cancelPending,
   chooseFolder,
-  forgetFolder,
   loadFolders,
   newTask,
-  openTask,
   reveal,
   selectFolder,
   sendToTask,
@@ -42,166 +39,92 @@ import {
 import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
-import { PermissionPrompt } from './PermissionPrompt'
+import { CoworkComposer } from './CoworkComposer'
+import { FolderMenu } from './FolderMenu'
+import { Home } from './Home'
+import { ApprovalBar } from './PermissionPrompt'
 import { ProgressPanel } from './ProgressPanel'
-import { disconnect, lastFolder, resync, useCowork } from './store'
+import { TaskConversation } from './TaskConversation'
+import { StatusIcon, TaskList } from './TaskList'
+import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, useCowork } from './store'
+import { extOf, formatDuration, permissionBelongsTo, taskStatus, TASK_STATUS_LABEL, turnTiming, type TaskStatus } from './util'
 
 const EMPTY: MessageEntry[] = []
+const EMPTY_FILES: CoworkDeliverable[] = []
 
-const COMPUTER_SUGGESTIONS = [
-  'Crea una carpeta llamada Proyectos en el Escritorio',
-  'Abre Safari y busca el clima en Santiago',
-  'Toma una captura y dime qué hay en pantalla'
-]
-
-const SUGGESTIONS = [
-  'Resume todos los documentos de esta carpeta en un informe resumen.md',
-  'Ordena los archivos en subcarpetas por tipo y dame un índice',
-  'Convierte los datos de los .csv en un informe en Word (.docx)',
-  'Revisa la ortografía de los .md y crea versiones corregidas'
-]
-
-function baseName(p: string): string {
-  return p.split('/').filter(Boolean).pop() ?? p
+const PILL_TONE: Record<TaskStatus, string> = {
+  running: 'border-accent/40 bg-accent-soft text-accent',
+  waiting: 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400',
+  done: 'border-border bg-hover text-muted',
+  error: 'border-danger/40 bg-danger/10 text-danger',
+  idle: 'border-border text-muted'
 }
 
-function relTime(ts: number): string {
-  const diff = Date.now() - ts
-  const min = Math.round(diff / 60_000)
-  if (min < 1) return 'ahora'
-  if (min < 60) return `hace ${min} min`
-  const h = Math.round(min / 60)
-  if (h < 24) return `hace ${h} h`
-  return new Date(ts).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
-}
-
-function FolderMenu(): React.JSX.Element {
-  const folders = useCowork((s) => s.folders)
-  const folder = useCowork((s) => s.folder)
-  const [open, setOpen] = useState(false)
+function StatusPill({ status }: { status: TaskStatus }): React.JSX.Element {
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 rounded-lg border border-border bg-elevated px-2.5 py-2 text-left text-sm hover:bg-hover"
-      >
-        <FolderOpen size={15} className="shrink-0 text-accent" />
-        <span className="min-w-0 flex-1 truncate font-medium">{folder ? baseName(folder) : 'Elegir carpeta'}</span>
-        <ChevronDown size={14} className="shrink-0 text-muted" />
-      </button>
-      {open && (
-        <div
-          className="absolute top-full right-0 left-0 z-20 mt-1 rounded-xl border border-border bg-elevated p-1 shadow-lg"
-          onMouseLeave={() => setOpen(false)}
+    <span className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${PILL_TONE[status]}`}>
+      <StatusIcon status={status} size={11} />
+      {TASK_STATUS_LABEL[status]}
+    </span>
+  )
+}
+
+/** Tiempo del último turno (en vivo mientras trabaja). */
+function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }): React.JSX.Element | null {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!live) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [live])
+  const { start, end } = turnTiming(entries)
+  if (!start) return null
+  const stop = live ? now : (end ?? null)
+  if (!stop) return null
+  return (
+    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums" title="Duración de la última ejecución">
+      {formatDuration(stop - start)}
+    </span>
+  )
+}
+
+function followUpsFor(files: CoworkDeliverable[], fullAccess: boolean): string[] {
+  if (fullAccess) return ['Hazlo otra vez', 'Explícame paso a paso lo que hiciste', 'Deshaz el último cambio']
+  const exts = new Set(files.map((f) => extOf(f.path)))
+  const out: string[] = []
+  if (exts.has('md') || exts.has('txt') || exts.has('html')) out.push('Convertir a Word')
+  if (exts.has('md') || exts.has('docx') || exts.has('html')) out.push('Crear una versión en PDF')
+  if (exts.has('csv')) out.push('Crear gráficos con estos datos')
+  out.push('Resumir en 5 puntos', 'Revisar y mejorar la redacción')
+  if (files.length === 0) out.push('Guarda el resultado en un documento')
+  return out.slice(0, 5)
+}
+
+const FOLLOW_UP_PROMPTS: Record<string, string> = {
+  'Convertir a Word': 'Convierte el documento principal que entregaste a Word (.docx) con buen formato.',
+  'Crear una versión en PDF': 'Genera una versión en PDF del documento principal que entregaste.',
+  'Crear gráficos con estos datos': 'Crea gráficos PNG con los datos entregados y añádelos a un informe .md.',
+  'Resumir en 5 puntos': 'Resume el resultado en 5 puntos clave.',
+  'Revisar y mejorar la redacción': 'Revisa y mejora la redacción y el formato de los entregables, sin cambiar el contenido.',
+  'Guarda el resultado en un documento': 'Guarda el resultado de esta tarea en un documento .md bien formateado.',
+  'Hazlo otra vez': 'Repite la tarea anterior.',
+  'Explícame paso a paso lo que hiciste': 'Explícame paso a paso lo que hiciste en el Mac.',
+  'Deshaz el último cambio': 'Deshaz el último cambio que hiciste, si es posible.'
+}
+
+function FollowUps({ items, onPick }: { items: string[]; onPick: (text: string) => void }): React.JSX.Element {
+  return (
+    <div className="flex flex-wrap gap-1.5 pt-1">
+      {items.map((label) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => onPick(FOLLOW_UP_PROMPTS[label] ?? label)}
+          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted transition hover:border-accent/50 hover:bg-accent-soft hover:text-accent"
         >
-          {folders.map((f) => (
-            <div key={f.path} className="group flex items-center rounded-lg hover:bg-hover">
-              <button
-                type="button"
-                className="min-w-0 flex-1 px-2 py-1.5 text-left"
-                title={f.path}
-                onClick={() => {
-                  setOpen(false)
-                  void selectFolder(f.path)
-                }}
-              >
-                <div className={`truncate text-sm ${f.path === folder ? 'font-semibold text-accent' : ''}`}>{f.name}</div>
-                <div className="truncate font-mono text-[10px] text-subtle">{f.path}</div>
-              </button>
-              <button
-                type="button"
-                title="Quitar autorización"
-                className="mr-1 hidden rounded p-1 text-subtle group-hover:block hover:text-danger"
-                onClick={() => {
-                  setOpen(false)
-                  if (window.confirm(`¿Quitar la autorización de Cowork para «${f.name}»? No se borra ningún archivo.`)) {
-                    void forgetFolder(f.path)
-                  }
-                }}
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-          {folders.length > 0 && <div className="my-1 border-t border-border" />}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-hover"
-            onClick={() => {
-              setOpen(false)
-              void chooseFolder()
-            }}
-          >
-            <FolderPlus size={14} /> Elegir otra carpeta…
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TaskList(): React.JSX.Element {
-  const folder = useCowork((s) => s.folder)
-  const activeId = useCowork((s) => s.activeTaskId)
-  const loading = useCowork((s) => s.listLoading)
-  const sessions = useSessions((s) => s.sessions)
-  const status = useSessions((s) => s.status)
-  const tasks = useMemo(() => (folder ? selectSessionsForDirectory(sessions, folder) : []), [sessions, folder])
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between px-1 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
-        Tareas
-        {loading && <Loader2 size={12} className="animate-spin" />}
-      </div>
-      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-        {tasks.length === 0 && !loading && <p className="px-1 py-2 text-xs text-subtle">Aún no hay tareas en esta carpeta.</p>}
-        {tasks.map((t) => {
-          const busy = (status[t.id] ?? 'idle') !== 'idle'
-          return (
-            <div
-              key={t.id}
-              className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${t.id === activeId ? 'bg-active' : 'hover:bg-hover'}`}
-            >
-              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => void openTask(t.id)}>
-                <div className="truncate">{t.title || 'Tarea sin título'}</div>
-                <div className="text-[11px] text-subtle">{relTime(t.time.updated)}</div>
-              </button>
-              {busy ? (
-                <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
-              ) : (
-                <button
-                  type="button"
-                  title="Archivar"
-                  className="hidden shrink-0 rounded p-0.5 text-subtle group-hover:block hover:text-fg"
-                  onClick={() => void archiveTask(t.id).catch(() => undefined)}
-                >
-                  <Archive size={13} />
-                </button>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function EmptyFolderState(): React.JSX.Element {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-        <Users size={28} />
-      </div>
-      <h2 className="text-2xl font-medium tracking-tight">Cowork</h2>
-      <p className="max-w-md text-sm text-muted">
-        Delega tareas de oficina sobre una carpeta de documentos: el agente planifica, trabaja de forma autónoma en un
-        sandbox y te entrega los archivos listos.
-      </p>
-      <Button variant="primary" onClick={() => void chooseFolder()}>
-        <FolderPlus size={16} /> Elegir carpeta
-      </Button>
+          <Sparkles size={11} /> {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -215,15 +138,18 @@ export function CoworkWorkspace(): React.JSX.Element {
   const pending = useCowork((s) => s.pendingApproval)
   const activeId = useCowork((s) => s.activeTaskId)
   const permissions = useCowork((s) => s.permissions)
-  const session = useSessions((s) => (activeId ? s.sessions[activeId] : undefined))
+  const panelOpen = useCowork((s) => s.panelOpen)
+  const files = useCowork((s) => (activeId ? (s.deliverables[activeId] ?? EMPTY_FILES) : EMPTY_FILES))
+  const sessions = useSessions((s) => s.sessions)
+  const session = activeId ? sessions[activeId] : undefined
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
-  const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
+  const run = useSessions((s) => (activeId ? s.status[activeId] : undefined))
   const taskError = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const requestedFullAccess = useCowork((s) => s.fullAccess)
   const model = useSettings((s) => s.settings.defaultModel)
-  const updateSettings = useSettings((s) => s.update)
   const [sendError, setSendError] = useState<string | null>(null)
   const fullAccess = conn?.fullAccess === true
+  const busy = !!run && run !== 'idle'
   const folderBusy = useSessions((s) =>
     Object.keys(s.status).some((id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder)
   )
@@ -243,7 +169,7 @@ export function CoworkWorkspace(): React.JSX.Element {
     })()
   }, [bridge])
 
-  // Si el servidor sandboxeado de la carpeta se cae, mostrar el error (con "Reintentar").
+  // Si el servidor de la carpeta se cae, mostrar el error (con "Reintentar").
   useEffect(
     () =>
       onCowork('cowork:server', (info) => {
@@ -286,17 +212,48 @@ export function CoworkWorkspace(): React.JSX.Element {
     return () => document.removeEventListener('keydown', onKey)
   }, [fullAccess])
 
+  // La tarea activa se considera "vista" al volver a la ventana.
+  useEffect(() => {
+    const onFocus = (): void => {
+      const id = useCowork.getState().activeTaskId
+      if (id) clearUnseen(id)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  // ⌘N = nueva tarea.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key.toLowerCase() === 'n' && e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        newTask()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   const pendingForTask: PermissionRequest[] = useMemo(
-    () => Object.values(permissions).filter((p) => !activeId || p.sessionID === activeId),
-    [permissions, activeId]
+    () => (activeId ? Object.values(permissions).filter((p) => permissionBelongsTo(p, activeId, sessions)) : []),
+    [permissions, activeId, sessions]
   )
+
+  const status = activeId
+    ? taskStatus({ run, waiting: pendingForTask.length > 0, error: taskError, entries })
+    : 'idle'
 
   const send = async (text: string): Promise<void> => {
     setSendError(null)
+    if (!useCowork.getState().folder) {
+      await chooseFolder()
+      return
+    }
     try {
       await sendToTask(text, model)
     } catch (err) {
       setSendError(errorMessage(err))
+      if (!useCowork.getState().draft) useCowork.setState({ draft: text })
     }
   }
 
@@ -308,47 +265,54 @@ export function CoworkWorkspace(): React.JSX.Element {
     )
   }
 
-  const composer = (
-    <Composer
-      onSend={send}
-      onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
-      busy={busy}
-      disabled={phase !== 'ready'}
-      autoFocusKey={activeId ?? folder}
-      placeholder={activeId ? 'Responde o da más instrucciones…' : 'Describe la tarea que quieres delegar…'}
-      footer={<ModelPicker value={model} onChange={(m) => void updateSettings({ defaultModel: m })} />}
-    />
+  const phaseBanners = (
+    <>
+      {phase === 'ready' && requestedFullAccess && conn && !conn.fullAccess && (
+        <div className="mx-auto mt-3 flex w-full max-w-3xl items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          El servidor no activó el acceso total para esta carpeta; se usa el modo sandbox.
+        </div>
+      )}
+      {phase === 'error' && folder && (
+        <div className="mx-auto mt-3 flex w-full max-w-3xl items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
+          <Button variant="ghost" onClick={() => void selectFolder(folder)}>
+            <RefreshCw size={14} /> Reintentar
+          </Button>
+        </div>
+      )}
+    </>
   )
+
+  const showPanel = !!activeId && panelOpen
 
   return (
     <div className="flex h-full min-h-0">
-      {/* Columna izquierda: carpeta + tareas */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border px-3 pt-3 pb-3">
-        <FolderMenu />
-        {folder && (
-          <Button variant="secondary" className="mt-2 w-full" onClick={newTask} disabled={phase !== 'ready'}>
-            <Plus size={15} /> Nueva tarea
-          </Button>
-        )}
-        {folder && <TaskList />}
+      {/* Izquierda: nueva tarea + carpeta + lista */}
+      <aside className="flex w-64 shrink-0 flex-col border-r border-border px-3 pt-3 pb-3">
+        <Button variant="primary" className="w-full" onClick={newTask} title="Nueva tarea (⌘N)">
+          <Plus size={15} /> Nueva tarea
+        </Button>
+        <div className="mt-2">
+          <FolderMenu variant="block" />
+        </div>
+        <TaskList />
       </aside>
 
-      {/* Centro: conversación */}
+      {/* Centro */}
       <main className="flex min-w-0 flex-1 flex-col">
-        {!folder ? (
-          <EmptyFolderState />
-        ) : (
-          <>
-            <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
-              <span className="truncate text-sm font-medium">{activeId ? session?.title || 'Tarea' : 'Nueva tarea'}</span>
-              <span className="ml-auto flex items-center gap-2 text-xs text-muted">
-                {phase === 'starting' && (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" />{' '}
-                    {requestedFullAccess ? 'Iniciando acceso total…' : 'Iniciando sandbox…'}
-                  </span>
-                )}
-                {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
+        {activeId && (
+          <header className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4">
+            <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
+              {session?.title || 'Tarea'}
+            </span>
+            <StatusPill status={status} />
+            <Elapsed entries={entries} live={busy} />
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+              {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
+              {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
+              {folder && (
                 <button
                   type="button"
                   title="Abrir carpeta en Finder"
@@ -357,94 +321,86 @@ export function CoworkWorkspace(): React.JSX.Element {
                 >
                   <FolderOpen size={15} />
                 </button>
-              </span>
-            </header>
+              )}
+              <button
+                type="button"
+                title={panelOpen ? 'Ocultar panel' : 'Mostrar plan y entregables'}
+                className="rounded p-1 hover:bg-hover hover:text-fg"
+                onClick={() => setPanelOpen(!panelOpen)}
+              >
+                {panelOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+              </button>
+            </span>
+          </header>
+        )}
 
-            <ControlBanner />
+        <ControlBanner />
+        {phaseBanners}
 
-            {phase === 'ready' && requestedFullAccess && conn && !conn.fullAccess && (
-              <div className="m-4 mb-0 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                El servidor no activó el acceso total para esta carpeta; se usa el modo sandbox.
-              </div>
-            )}
-
-            {phase === 'error' && (
-              <div className="m-4 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
-                <Button variant="ghost" onClick={() => void selectFolder(folder)}>
-                  <RefreshCw size={14} /> Reintentar
-                </Button>
-              </div>
-            )}
-
-            {activeId ? (
-              <>
-                <ComputerPermissionsCard />
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <MessageList entries={entries} busy={busy} error={taskError} />
-                </div>
-                {pendingForTask.map((p) => (
-                  <PermissionPrompt key={p.id} request={p} />
-                ))}
-                {sendError && <p className="mx-auto mb-2 max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
-                <VisionModelHint />
-                {composer}
-              </>
-            ) : (
-              <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto">
-                <div className="mx-auto w-full max-w-3xl px-6">
-                  <h1 className="mb-1 text-3xl font-medium tracking-tight">¿Qué hacemos en «{baseName(folder)}»?</h1>
-                  <p className="mb-6 text-sm text-muted">
-                    {fullAccess
-                      ? 'Acceso total: el agente puede usar el ratón, el teclado y ver la pantalla de tu Mac. Detenlo cuando quieras con ⌘⇧Esc.'
-                      : 'Describe el resultado que esperas. El agente planificará, trabajará solo y te pedirá permiso antes de borrar nada.'}
-                  </p>
-                </div>
-                <ComputerPermissionsCard />
-                {sendError && <p className="mx-auto mb-2 max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
-                <VisionModelHint />
-                {composer}
-                <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-2 px-6 sm:grid-cols-2">
-                  {(fullAccess ? COMPUTER_SUGGESTIONS : SUGGESTIONS).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      disabled={phase !== 'ready'}
-                      onClick={() => void send(s)}
-                      className="rounded-xl border border-border px-3 py-2 text-left text-sm text-muted transition hover:bg-hover hover:text-fg disabled:opacity-50"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+        {activeId ? (
+          <>
+            <ComputerPermissionsCard />
+            <TaskConversation
+              entries={entries}
+              busy={busy}
+              error={taskError}
+              permissions={pendingForTask}
+              footer={
+                status === 'done' && entries.length > 0 ? (
+                  <FollowUps items={followUpsFor(files, fullAccess)} onPick={(t) => void send(t)} />
+                ) : null
+              }
+            />
+            <ApprovalBar requests={pendingForTask} />
+            {sendError && <p className="mx-auto mb-2 w-full max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
+            <VisionModelHint />
+            <CoworkComposer
+              onSend={send}
+              onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
+              busy={busy}
+              disabled={phase !== 'ready'}
+              autoFocusKey={activeId}
+              placeholder={busy ? 'El agente está trabajando…' : 'Responde o pide un cambio…'}
+            />
           </>
+        ) : (
+          <Home onSend={send} sendError={sendError} folderBusy={folderBusy} />
         )}
       </main>
 
-      {/* Derecha: progreso */}
-      {folder && (
-        <aside className="hidden w-72 shrink-0 flex-col border-l border-border lg:flex">
+      {/* Derecha: Plan · Entregables · Actividad */}
+      {showPanel && (
+        <aside className="hidden w-80 shrink-0 flex-col border-l border-border lg:flex">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4 text-sm font-medium">
             Progreso
-            <button type="button" title="Sincronizar" className="rounded p-1 text-muted hover:bg-hover hover:text-fg" onClick={() => void resync()}>
-              <RefreshCw size={13} />
-            </button>
+            <span className="flex items-center gap-0.5">
+              <button
+                type="button"
+                title="Sincronizar"
+                className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
+                onClick={() => void resync()}
+              >
+                <RefreshCw size={13} />
+              </button>
+              <button
+                type="button"
+                title="Ocultar panel"
+                className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
+                onClick={() => setPanelOpen(false)}
+              >
+                <PanelRightClose size={14} />
+              </button>
+            </span>
           </div>
           <div className="min-h-0 flex-1">
-            <ProgressPanel sessionID={activeId} />
+            <ProgressPanel sessionID={activeId} busy={busy} />
           </div>
         </aside>
       )}
 
       <FullAccessDialog />
 
-      {pending && (
-        <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />
-      )}
+      {pending && <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />}
     </div>
   )
 }

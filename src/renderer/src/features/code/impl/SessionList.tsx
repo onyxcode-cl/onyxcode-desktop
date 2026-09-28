@@ -93,7 +93,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
                   {s.summary && s.summary.files > 0 && (
                     <>
                       {' · '}
-                      <span className="text-[#16a34a]">+{s.summary.additions}</span>{' '}
+                      <span className="text-success">+{s.summary.additions}</span>{' '}
                       <span className="text-danger">-{s.summary.deletions}</span>
                     </>
                   )}

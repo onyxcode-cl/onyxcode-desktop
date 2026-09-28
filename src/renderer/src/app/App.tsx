@@ -67,21 +67,53 @@ export function App(): React.JSX.Element {
     }
   }, [])
 
+  // Atajos de la ventana: ⌘\ barra lateral, ⌘, ajustes.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.defaultPrevented || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return
+      if (e.key === '\\') {
+        e.preventDefault()
+        useUi.getState().toggleSidebar()
+      } else if (e.key === ',') {
+        e.preventDefault()
+        const ui = useUi.getState()
+        ui.openSettings(!ui.settingsOpen)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const View = MODES_BY_ID[mode].View
 
   return (
-    <div className="flex h-full">
-      {!collapsed && <Sidebar />}
+    <div className="flex h-full bg-bg">
+      <div
+        className={`h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
+        inert={collapsed}
+      >
+        <Sidebar />
+      </div>
       <main className="relative flex min-w-0 flex-1 flex-col">
         {collapsed && (
-          <div className="absolute top-2 left-20 z-10">
-            <IconButton label="Mostrar barra lateral" onClick={toggleSidebar}>
+          <div className="absolute top-2 left-20 z-10 animate-fade-in">
+            <IconButton label="Mostrar barra lateral (⌘\)" onClick={toggleSidebar}>
               <PanelLeftOpen size={16} />
             </IconButton>
           </div>
         )}
         <ServerBanner />
-        <div className="min-h-0 flex-1">{settingsOpen ? <SettingsView /> : <View key={mode} />}</div>
+        <div className="min-h-0 flex-1">
+          {settingsOpen ? (
+            <div key="settings" className="h-full animate-fade-in">
+              <SettingsView />
+            </div>
+          ) : (
+            <div key={mode} className="h-full animate-fade-in">
+              <View />
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )
