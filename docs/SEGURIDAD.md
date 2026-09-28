@@ -60,6 +60,19 @@ esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arran
   `node-pty.spawn(launcher, [shell, '-l'], …)`: el PID del pty es el de la propia shell (mismo PID
   que tendría sin el lanzador, por `POSIX_SPAWN_SETEXEC`) y `echo ok` funciona con normalidad.
 
+**Flujo Plan → Aprobar → Ejecutar y concesión por app** (`src/main/computer/{service,grants,mcp-server}.ts`):
+antes de tocar la pantalla, el agente debe llamar `request_access` con su plan y la lista completa
+de apps; `main` (`ComputerService.planApproved`, consultado por el MCP vía `GET .../plan-status`
+antes de CADA herramienta de acción) lo hace cumplir del lado del servidor, no solo por prompt. La
+tarjeta espera la respuesta del usuario SIN LÍMITE DE TIEMPO (ya no hay "sin respuesta en 5 min ⇒
+denegado": eso mataba tareas por un simple retraso); la única forma de que quede sin responder es
+que el proceso principal muera, y el único cierre forzado es `stop()` (kill-switch), que deniega lo
+pendiente como respaldo. Lapis misma, el Dock, Spotlight, Centro de Control, `WindowServer` y
+`loginwindow` (`grants.SYSTEM_EXEMPT_BUNDLE_IDS`) están exentos de la concesión por app: nunca se
+bloquean a sí mismos ni piden acceso. Mientras una tarea de acceso total está trabajando, la
+ventana principal se minimiza (píldora + overlay siguen visibles, `cowork-handlers.ts`) para que
+nunca quede en primer plano robándole el foco a la app que el agente está usando.
+
 Consecuencia práctica: si el agente de Code o de acceso total ejecuta `screencapture` o intenta
 controlar el Mac por su cuenta, macOS lo trata como el binario `opencode` (sin permisos: la captura
 falla y el sistema puede **pedir** permiso a nombre de «opencode» — no conviene concederlo). En
