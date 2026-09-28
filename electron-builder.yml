@@ -14,6 +14,7 @@ files:
   # Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
   - '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}'
   - '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}'
+  - '!resources/launcher/**'
 # Solo los agentes (se copian a userData/opencode-config al arrancar; OpenCode NUNCA escribe
 # en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
 asarUnpack:
@@ -24,6 +25,21 @@ extraResources:
     to: computer-use/bin
     filter:
       - cu-helper
+  # Lanzador que desvincula de TCC a los `opencode serve` (AUDIT.md S6) → Contents/Resources/launcher
+  - from: resources/launcher/bin
+    to: launcher
+    filter:
+      - lapis-disclaim
+# Fuses de Electron (docs/SEGURIDAD.md). RunAsNode off es posible porque el MCP de computer use
+# corre como utilityProcess (ya no con ELECTRON_RUN_AS_NODE).
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
 mac:
   # Icono generado desde build/icon.svg (node build/render-icon.mjs vía electron)
   icon: build/icon.icns
@@ -33,6 +49,11 @@ mac:
       arch:
         - arm64
   notarize: false
+  # Sin Developer ID: firma AD-HOC obligatoria en arm64 (los fuses modifican el binario de Electron y
+  # sin volver a firmar macOS lo mata al abrir). Con Developer ID: poner la identidad, activar
+  # hardenedRuntime con entitlements (allow-jit…) y notarizar (AUDIT.md 5).
+  identity: '-'
+  hardenedRuntime: false
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 npmRebuild: false

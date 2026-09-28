@@ -19,10 +19,12 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { join } from 'node:path'
 import { findOpencodeBinary, getFreePort } from '../opencode/server'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
+import { minimalEnv } from '../process/child-env'
+import { withDisclaim } from '../process/disclaim'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxDirs } from './sandbox-profile'
 
 export { buildSandboxProfile, defaultDeniedReadPaths, defaultWritablePaths, sandboxKey } from './sandbox-profile'
@@ -104,13 +106,6 @@ export interface StartCoworkServerOptions {
   onExit?: (code: number | null) => void
 }
 
-function augmentedPath(): string {
-  const extra = [join(homedir(), '.opencode', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin']
-  const cur = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
-  for (const d of extra) if (!cur.includes(d)) cur.push(d)
-  return cur.join(delimiter)
-}
-
 /**
  * Lanza un `opencode serve` dedicado a `folder`, dentro de `sandbox-exec` en macOS.
  * cwd = folder. Resuelve cuando `/global/health` responde.
@@ -129,7 +124,7 @@ export async function startCoworkServer(
   const password = randomBytes(24).toString('base64url')
   const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   const baseUrl = `http://${HOST}:${port}`
-  const cors = ['null', ...(options.corsOrigins ?? [])]
+  const cors = options.corsOrigins ?? []
   const serveArgs = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
 
   let command = bin
@@ -148,19 +143,20 @@ export async function startCoworkServer(
     isolatedEnv = { ...sandboxEnv(dirs), ...(auth ? { OPENCODE_AUTH_CONTENT: auth } : {}) }
   }
 
-  const child: ChildProcess = spawn(command, args, {
+  // Sin heredar los permisos TCC de la app (S6): el lanzador se ejecuta ANTES de sandbox-exec, así
+  // que sandbox-exec y opencode (y todo lo que lancen) quedan desvinculados. Entorno mínimo.
+  const launch = withDisclaim(command, args)
+  const child: ChildProcess = spawn(launch.command, launch.args, {
     cwd: folder,
-    env: {
-      ...process.env,
+    env: minimalEnv({
       ...ocEnv,
-      PATH: augmentedPath(),
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
       OPENDESK_COWORK_FOLDER: folder,
       ...isolatedEnv,
       ...options.extraEnv
-    },
+    }),
     stdio: ['ignore', 'pipe', 'pipe'],
     // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
     detached: true

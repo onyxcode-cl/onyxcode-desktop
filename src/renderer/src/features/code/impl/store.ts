@@ -45,6 +45,71 @@ function lsSet(key: string, value: string | null): void {
   }
 }
 
+function lsGetJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+function lsSetJSON(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // sin storage
+  }
+}
+
+/**
+ * Traduce un `PermissionMode` a un `PermissionRuleset` para `session.update`. `undefined` deja
+ * el ruleset de la sesión sin tocar (se usa para 'plan', que no depende de permisos sino del agente).
+ */
+function rulesetFor(mode: PermissionMode): PermissionRuleset | undefined {
+  switch (mode) {
+    case 'manual':
+      // Ruleset vacío no equivale a "preguntar por todo": si no hay reglas, el agente cae a su
+      // configuración por defecto (que puede permitir). Por eso Manual fija `ask` explícito en
+      // los permisos habituales en vez de dejar el array vacío.
+      return [
+        { permission: 'edit', pattern: '*', action: 'ask' },
+        { permission: 'write', pattern: '*', action: 'ask' },
+        { permission: 'bash', pattern: '*', action: 'ask' },
+        { permission: 'webfetch', pattern: '*', action: 'ask' },
+        { permission: 'websearch', pattern: '*', action: 'ask' },
+        { permission: 'external_directory', pattern: '*', action: 'ask' }
+      ]
+    case 'acceptEdits':
+      return [
+        { permission: 'edit', pattern: '*', action: 'allow' },
+        { permission: 'write', pattern: '*', action: 'allow' }
+      ]
+    case 'auto':
+      return [
+        { permission: 'edit', pattern: '*', action: 'allow' },
+        { permission: 'write', pattern: '*', action: 'allow' },
+        { permission: 'read', pattern: '*', action: 'allow' },
+        { permission: 'bash', pattern: 'git status*', action: 'allow' },
+        { permission: 'bash', pattern: 'git diff*', action: 'allow' },
+        { permission: 'bash', pattern: 'git log*', action: 'allow' },
+        { permission: 'bash', pattern: 'npm run*', action: 'allow' },
+        { permission: 'bash', pattern: 'npm test*', action: 'allow' }
+      ]
+    case 'bypass':
+      return [
+        { permission: 'edit', pattern: '*', action: 'allow' },
+        { permission: 'write', pattern: '*', action: 'allow' },
+        { permission: 'read', pattern: '*', action: 'allow' },
+        { permission: 'bash', pattern: '*', action: 'allow' },
+        { permission: 'webfetch', pattern: '*', action: 'allow' },
+        { permission: 'websearch', pattern: '*', action: 'allow' },
+        { permission: 'external_directory', pattern: '*', action: 'allow' }
+      ]
+    case 'plan':
+      return undefined
+  }
+}
+
 const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
 function upsertSorted<T extends { id: string }>(list: T[], item: T): T[] {
@@ -78,6 +143,7 @@ export interface CodeState {
   todos: Record<string, Todo[]>
   agent: CodeAgent
   model: ModelRef | null
+  variant: string | null
   panel: RightPanel | null
   /** Se incrementa cuando cambian archivos (para refrescar Cambios/Archivos). */
   fsVersion: number
@@ -85,14 +151,27 @@ export interface CodeState {
   loadingMessages: Record<string, boolean>
   globalError: string | null
 
+  /** Modo de permisos aplicado a la sesión activa (ver `types.ts`). */
+  permissionMode: PermissionMode
+  /** Mensajes en cola por sesión (se envían cuando la sesión queda libre, o con "Enviar ahora"). */
+  queue: Record<string, QueuedMessage[]>
+  /** Sesiones con actividad sin ver (terminó de trabajar o pide algo mientras no estaba activa/enfocada). */
+  unread: Record<string, boolean>
+  /** Sesiones fijadas (por proyecto). */
+  pinned: Record<string, string[]>
+  /** Carpetas en las que el usuario ya confirmó "confiar" (workspace trust). */
+  trustedFolders: string[]
+
   openProject: (directory: string) => Promise<void>
   closeProject: () => void
   loadSessions: () => Promise<void>
   newSession: () => Promise<string | null>
+  /** Crea la sesión en `dir` en vez de `directory` (usado para worktrees nuevos). */
+  newSessionAt: (dir: string, title?: string) => Promise<string | null>
   selectSession: (sessionID: string | null) => Promise<void>
   deleteSession: (sessionID: string) => Promise<void>
   /** Envía un prompt. `files` = rutas relativas al proyecto mencionadas con @. */
-  send: (text: string, files?: string[]) => Promise<void>
+  send: (text: string, files?: string[], attachments?: Attachment[]) => Promise<void>
   /** Ejecuta un comando del servidor (`/nombre args`). */
   runCommand: (name: string, args: string) => Promise<void>
   abort: () => Promise<void>
@@ -105,12 +184,41 @@ export interface CodeState {
   rejectQuestion: (q: PendingQuestion) => Promise<void>
   setAgent: (agent: CodeAgent) => void
   setModel: (model: ModelRef) => void
+  setVariant: (variant: string | null) => void
   togglePanel: (panel: RightPanel) => void
   setGlobalError: (error: string | null) => void
   /** Fuerza el refresco de Cambios/Archivos/rama (p. ej. tras un commit). */
   touchFs: () => void
   applyEvent: (event: OcEvent, directory: string) => void
   resync: () => Promise<void>
+
+  // -- Cola de mensajes --
+  enqueue: (sessionID: string, text: string, files?: string[], attachments?: Attachment[]) => void
+  dequeue: (sessionID: string, id: string) => void
+  moveQueued: (sessionID: string, id: string, dir: -1 | 1) => void
+  /** Interrumpe la ejecución actual (si la hay) y envía el texto de inmediato, saltando la cola. */
+  sendNow: (text: string, files?: string[], attachments?: Attachment[]) => Promise<void>
+
+  // -- Modo de permisos --
+  setPermissionMode: (mode: PermissionMode) => Promise<void>
+
+  // -- Sesiones: renombrar / fijar / archivar --
+  renameSession: (sessionID: string, title: string) => Promise<void>
+  togglePin: (sessionID: string) => void
+  isPinned: (sessionID: string) => boolean
+  archiveSession: (sessionID: string) => Promise<void>
+  unarchiveSession: (sessionID: string) => Promise<void>
+
+  // -- Fork / compactar --
+  forkSession: (sessionID: string, messageID?: string) => Promise<string | null>
+  compactSession: (sessionID: string) => Promise<void>
+
+  // -- Confianza de carpeta --
+  isTrusted: (dir: string) => boolean
+  trustFolder: (dir: string) => void
+
+  // -- No leído --
+  markRead: (sessionID: string) => void
 }
 
 const orphanParts = new Map<string, Part[]>()
@@ -134,6 +242,18 @@ function initialAgent(): CodeAgent {
 function initialPanel(): RightPanel | null {
   const p = lsGet(LS_PANEL)
   return p === 'changes' || p === 'terminal' || p === 'files' ? p : null
+}
+function initialPermissionMode(): PermissionMode {
+  const v = lsGet(LS_PERM_MODE)
+  return v === 'manual' || v === 'acceptEdits' || v === 'plan' || v === 'auto' || v === 'bypass' ? v : 'manual'
+}
+/** ¿La ventana tiene el foco Y la pestaña/sesión referida está actualmente visible al usuario? */
+function windowIsFocused(): boolean {
+  try {
+    return document.hasFocus() && document.visibilityState === 'visible'
+  } catch {
+    return true
+  }
 }
 
 export const useCode = create<CodeState>((set, get) => {
@@ -252,6 +372,80 @@ export const useCode = create<CodeState>((set, get) => {
     return { client, dir: get().sessionProject[activeSessionID] ?? directory, sid: activeSessionID }
   }
 
+  /** Envía un prompt a `sid` (no necesariamente la sesión activa: lo usa también el auto-envío de la cola). */
+  const doSend = async (
+    client: ReturnType<typeof requireClient>,
+    dir: string,
+    sid: string,
+    trimmed: string,
+    files: string[],
+    attachments: Attachment[],
+    agent: CodeAgent,
+    model: ModelRef | null,
+    variant: string | null
+  ): Promise<void> => {
+    setError(sid, null)
+    set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
+    const base = dir.replace(/[/\\]+$/, '')
+    const fileParts = [...new Set(files)].flatMap((rel) => {
+      const token = `@${rel}`
+      const start = trimmed.indexOf(token)
+      if (start < 0) return []
+      const abs = `${base}/${rel}`
+      return [
+        {
+          type: 'file' as const,
+          mime: 'text/plain',
+          filename: rel.split('/').pop() ?? rel,
+          url: `file://${abs}`,
+          source: { type: 'file' as const, path: abs, text: { value: token, start, end: start + token.length } }
+        }
+      ]
+    })
+    const attachParts = attachments.map((a) => ({
+      type: 'file' as const,
+      mime: a.mime,
+      filename: a.name,
+      url: a.url
+    }))
+    try {
+      sdkData(
+        await client.session.promptAsync({
+          sessionID: sid,
+          directory: dir,
+          agent,
+          model: model ? { providerID: model.providerID, modelID: model.modelID } : undefined,
+          variant: variant ?? undefined,
+          parts: [{ type: 'text', text: trimmed }, ...fileParts, ...attachParts]
+        })
+      )
+    } catch (err) {
+      setError(sid, errorMessage(err))
+      set((s) => ({ runState: { ...s.runState, [sid]: 'idle' } }))
+    }
+  }
+
+  /** Marca `sessionID` como no leída, salvo que sea la activa y la ventana tenga el foco. */
+  const markUnread = (sessionID: string): void => {
+    const s = get()
+    if (s.activeSessionID === sessionID && windowIsFocused()) return
+    if (s.unread[sessionID]) return
+    set((st) => ({ unread: { ...st.unread, [sessionID]: true } }))
+  }
+
+  /** Si hay mensajes en cola para `sessionID`, envía el primero (se llama al quedar libre). */
+  const maybeAutoSend = (sessionID: string): void => {
+    const s = get()
+    const q = s.queue[sessionID]
+    if (!q || q.length === 0) return
+    const dir = s.sessionProject[sessionID] ?? s.directory
+    const client = getClient()
+    if (!dir || !client) return
+    const [next, ...rest] = q
+    set((st) => ({ queue: { ...st.queue, [sessionID]: rest } }))
+    void doSend(client, dir, sessionID, next.text, next.files, next.attachments, s.agent, s.model, s.variant)
+  }
+
   return {
     directory: lsGet(LS_PROJECT),
     sessions: {},
@@ -265,11 +459,17 @@ export const useCode = create<CodeState>((set, get) => {
     todos: {},
     agent: initialAgent(),
     model: null,
+    variant: null,
     panel: initialPanel(),
     fsVersion: 0,
     loadingSessions: false,
     loadingMessages: {},
     globalError: null,
+    permissionMode: initialPermissionMode(),
+    queue: {},
+    unread: {},
+    pinned: lsGetJSON<Record<string, string[]>>(LS_PINNED, {}),
+    trustedFolders: lsGetJSON<string[]>(LS_TRUSTED, []),
 
     openProject: async (directory) => {
       lsSet(LS_PROJECT, directory)
@@ -320,15 +520,19 @@ export const useCode = create<CodeState>((set, get) => {
     newSession: async () => {
       const dir = get().directory
       if (!dir) return null
+      return get().newSessionAt(dir)
+    },
+
+    newSessionAt: async (dir, title) => {
       try {
         const client = requireClient()
-        const sess = sdkData(await client.session.create({ directory: dir }))
+        const sess = sdkData(await client.session.create({ directory: dir, title }))
         set((s) => ({
           sessions: { ...s.sessions, [sess.id]: sess },
           sessionProject: { ...s.sessionProject, [sess.id]: dir },
           messages: { ...s.messages, [sess.id]: s.messages[sess.id] ?? [] }
         }))
-        await get().selectSession(sess.id)
+        if (dir === get().directory) await get().selectSession(sess.id)
         return sess.id
       } catch (err) {
         set({ globalError: errorMessage(err) })
@@ -341,6 +545,7 @@ export const useCode = create<CodeState>((set, get) => {
       const dir = get().directory
       if (dir) lsSet(LS_SESSION + dir, sessionID)
       if (!sessionID) return
+      get().markRead(sessionID)
       await loadMessages(sessionID)
     },
 
@@ -366,46 +571,15 @@ export const useCode = create<CodeState>((set, get) => {
       })
     },
 
-    send: async (text, files = []) => {
+    send: async (text, files = [], attachments = []) => {
       const trimmed = text.trim()
       if (!trimmed) return
       let sid = get().activeSessionID
       if (!sid) sid = await get().newSession()
       if (!sid) return
       const { client, dir } = activeDir()
-      const { agent, model } = get()
-      setError(sid, null)
-      set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
-      const base = dir.replace(/[/\\]+$/, '')
-      const fileParts = [...new Set(files)].flatMap((rel) => {
-        const token = `@${rel}`
-        const start = trimmed.indexOf(token)
-        if (start < 0) return []
-        const abs = `${base}/${rel}`
-        return [
-          {
-            type: 'file' as const,
-            mime: 'text/plain',
-            filename: rel.split('/').pop() ?? rel,
-            url: `file://${abs}`,
-            source: { type: 'file' as const, path: abs, text: { value: token, start, end: start + token.length } }
-          }
-        ]
-      })
-      try {
-        sdkData(
-          await client.session.promptAsync({
-            sessionID: sid,
-            directory: dir,
-            agent,
-            model: model ? { providerID: model.providerID, modelID: model.modelID } : undefined,
-            parts: [{ type: 'text', text: trimmed }, ...fileParts]
-          })
-        )
-      } catch (err) {
-        setError(sid, errorMessage(err))
-        set((s) => ({ runState: { ...s.runState, [sid]: 'idle' } }))
-      }
+      const { agent, model, variant } = get()
+      await doSend(client, dir, sid, trimmed, files, attachments, agent, model, variant)
     },
 
     runCommand: async (name, args) => {
@@ -533,7 +707,179 @@ export const useCode = create<CodeState>((set, get) => {
       set({ agent })
     },
 
-    setModel: (model) => set({ model }),
+    setModel: (model) => set({ model, variant: null }),
+    setVariant: (variant) => set({ variant }),
+
+    // -- Cola de mensajes --
+    enqueue: (sessionID, text, files = [], attachments = []) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      const item: QueuedMessage = { id: `q${Date.now()}${Math.random().toString(36).slice(2, 6)}`, text: trimmed, files, attachments }
+      set((s) => ({ queue: { ...s.queue, [sessionID]: [...(s.queue[sessionID] ?? []), item] } }))
+    },
+    dequeue: (sessionID, id) => {
+      set((s) => ({ queue: { ...s.queue, [sessionID]: (s.queue[sessionID] ?? []).filter((m) => m.id !== id) } }))
+    },
+    moveQueued: (sessionID, id, dir) => {
+      set((s) => {
+        const list = s.queue[sessionID] ?? []
+        const idx = list.findIndex((m) => m.id === id)
+        const j = idx + dir
+        if (idx < 0 || j < 0 || j >= list.length) return s
+        const next = list.slice()
+        ;[next[idx], next[j]] = [next[j], next[idx]]
+        return { queue: { ...s.queue, [sessionID]: next } }
+      })
+    },
+    sendNow: async (text, files = [], attachments = []) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      let sid = get().activeSessionID
+      if (!sid) sid = await get().newSession()
+      if (!sid) return
+      const run = get().runState[sid]
+      if (run === 'busy' || run === 'retry') {
+        try {
+          const { client, dir } = activeDir()
+          sdkData(await client.session.abort({ sessionID: sid, directory: dir }))
+        } catch {
+          // si ya había terminado, seguimos igual
+        }
+      }
+      const { client, dir } = activeDir()
+      const { agent, model, variant } = get()
+      await doSend(client, dir, sid, trimmed, files, attachments, agent, model, variant)
+    },
+
+    // -- Modo de permisos --
+    setPermissionMode: async (mode) => {
+      lsSet(LS_PERM_MODE, mode)
+      set({ permissionMode: mode })
+      const sid = get().activeSessionID
+      if (!sid) return
+      if (mode === 'plan') {
+        get().setAgent('plan')
+        return
+      }
+      if (get().agent === 'plan') get().setAgent('build')
+      const permission = rulesetFor(mode)
+      if (!permission) return
+      try {
+        const { client, dir } = activeDir()
+        const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission }))
+        set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated } }))
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+      }
+    },
+
+    // -- Sesiones: renombrar / fijar / archivar --
+    renameSession: async (sessionID, title) => {
+      const trimmed = title.trim()
+      if (!trimmed) return
+      try {
+        const client = requireClient()
+        const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+        const updated = sdkData(await client.session.update({ sessionID, directory: dir, title: trimmed }))
+        set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated } }))
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+      }
+    },
+    togglePin: (sessionID) => {
+      const dir = get().sessionProject[sessionID] ?? get().directory
+      if (!dir) return
+      set((s) => {
+        const list = s.pinned[dir] ?? []
+        const next = list.includes(sessionID) ? list.filter((x) => x !== sessionID) : [...list, sessionID]
+        const pinned = { ...s.pinned, [dir]: next }
+        lsSetJSON(LS_PINNED, pinned)
+        return { pinned }
+      })
+    },
+    isPinned: (sessionID) => {
+      const s = get()
+      const dir = s.sessionProject[sessionID] ?? s.directory
+      return !!dir && (s.pinned[dir] ?? []).includes(sessionID)
+    },
+    archiveSession: async (sessionID) => {
+      try {
+        const client = requireClient()
+        const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+        const updated = sdkData(await client.session.update({ sessionID, directory: dir, time: { archived: Date.now() } }))
+        set((s) => ({
+          sessions: { ...s.sessions, [updated.id]: updated },
+          activeSessionID: s.activeSessionID === sessionID ? null : s.activeSessionID
+        }))
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+      }
+    },
+    unarchiveSession: async (sessionID) => {
+      try {
+        const client = requireClient()
+        const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+        // `archived: 0` es un timestamp falsy: `selectProjectSessions`/la vista de archivadas lo tratan
+        // como "no archivada" (mismo criterio `!x.time.archived` que ya usa el resto del código).
+        const updated = sdkData(await client.session.update({ sessionID, directory: dir, time: { archived: 0 } }))
+        set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated } }))
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+      }
+    },
+
+    // -- Fork / compactar --
+    forkSession: async (sessionID, messageID) => {
+      try {
+        const client = requireClient()
+        const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+        const forked = sdkData(await client.session.fork({ sessionID, directory: dir, messageID }))
+        const targetDir = dir ?? get().directory
+        if (targetDir) {
+          set((s) => ({
+            sessions: { ...s.sessions, [forked.id]: forked },
+            sessionProject: { ...s.sessionProject, [forked.id]: targetDir }
+          }))
+          await get().selectSession(forked.id)
+        }
+        return forked.id
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+        return null
+      }
+    },
+    compactSession: async (sessionID) => {
+      try {
+        const { client, dir } = activeDir()
+        setError(sessionID, null)
+        set((s) => ({ runState: { ...s.runState, [sessionID]: 'busy' } }))
+        sdkData(await client.session.summarize({ sessionID, directory: dir }))
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+        set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' } }))
+      }
+    },
+
+    // -- Confianza de carpeta --
+    isTrusted: (dir) => get().trustedFolders.includes(dir),
+    trustFolder: (dir) => {
+      set((s) => {
+        if (s.trustedFolders.includes(dir)) return s
+        const trustedFolders = [...s.trustedFolders, dir]
+        lsSetJSON(LS_TRUSTED, trustedFolders)
+        return { trustedFolders }
+      })
+    },
+
+    // -- No leído --
+    markRead: (sessionID) => {
+      if (!get().unread[sessionID]) return
+      set((s) => {
+        const unread = { ...s.unread }
+        delete unread[sessionID]
+        return { unread }
+      })
+    },
 
     togglePanel: (panel) => {
       const next = get().panel === panel ? null : panel
@@ -584,13 +930,20 @@ export const useCode = create<CodeState>((set, get) => {
           const next = toRunState(status)
           const prev = get().runState[sessionID]
           set((s) => ({ runState: { ...s.runState, [sessionID]: next } }))
-          if (prev !== 'idle' && next === 'idle') set((s) => ({ fsVersion: s.fsVersion + 1 }))
+          if (prev !== 'idle' && next === 'idle') {
+            set((s) => ({ fsVersion: s.fsVersion + 1 }))
+            markUnread(sessionID)
+            maybeAutoSend(sessionID)
+          }
           break
         }
         case 'session.idle': {
           const { sessionID } = event.properties
           if (!known(sessionID)) return
+          const prev = get().runState[sessionID]
           set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' }, fsVersion: s.fsVersion + 1 }))
+          if (prev !== 'idle') markUnread(sessionID)
+          maybeAutoSend(sessionID)
           break
         }
         case 'session.error': {
@@ -662,6 +1015,7 @@ export const useCode = create<CodeState>((set, get) => {
         case 'permission.asked': {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
+          markUnread(rootSessionID(get().sessions, p.sessionID))
           set((s) => ({
             permissions: {
               ...s.permissions,
@@ -682,6 +1036,7 @@ export const useCode = create<CodeState>((set, get) => {
         case 'permission.v2.asked': {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
+          markUnread(rootSessionID(get().sessions, p.sessionID))
           set((s) => ({
             permissions: {
               ...s.permissions,
@@ -713,6 +1068,7 @@ export const useCode = create<CodeState>((set, get) => {
         case 'question.asked': {
           const q = event.properties
           if (!adopt(q.sessionID, eventDir)) return
+          markUnread(rootSessionID(get().sessions, q.sessionID))
           set((s) => ({ questions: { ...s.questions, [q.id]: { id: q.id, sessionID: q.sessionID, questions: q.questions } } }))
           break
         }

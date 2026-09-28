@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { rendererPageUrl } from '../security/app-protocol'
 
 /** Ventanas creadas por extras (quick entry, artifacts): nunca son la "ventana principal". */
 export const extrasWindows = new WeakSet<BrowserWindow>()
@@ -32,14 +33,19 @@ export function showMainWindow(deps: MainWindowDeps): { win: BrowserWindow; fres
   return { win, fresh }
 }
 
-/** Ruta del preload compartido (bundle de main vive en out/main). */
-export function preloadPath(): string {
-  return join(__dirname, '../preload/index.js')
+/**
+ * Preload de cada tipo de ventana (bundle de main vive en out/main). `index` = API completa de la
+ * ventana principal; `quick`/`overlay`/`pill` = solo lo que esa ventana necesita.
+ */
+export type PreloadName = 'index' | 'quick' | 'overlay' | 'pill'
+export function preloadPath(name: PreloadName = 'index'): string {
+  return join(__dirname, `../preload/${name}.js`)
 }
 
-/** Carga una página del renderer multi-página (`quick`, …) en dev o prod. */
+/**
+ * Carga una página del renderer multi-página: dev server de Vite sin empaquetar, esquema propio
+ * `lapis://app/…` en producción (nunca `file://`). `page` = ruta relativa a out/renderer.
+ */
 export function loadRendererPage(win: BrowserWindow, page: string): Promise<void> {
-  const devUrl = process.env.ELECTRON_RENDERER_URL
-  if (!app.isPackaged && devUrl) return win.loadURL(`${devUrl.replace(/\/$/, '')}/${page}/index.html`)
-  return win.loadFile(join(__dirname, `../renderer/${page}/index.html`))
+  return win.loadURL(rendererPageUrl(page))
 }

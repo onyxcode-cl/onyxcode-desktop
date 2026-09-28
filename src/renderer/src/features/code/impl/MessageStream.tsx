@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AlertCircle, AtSign, Brain, ChevronRight, Copy, Check, Loader2, RotateCw, Undo2 } from 'lucide-react'
+import { AlertCircle, AtSign, Brain, ChevronRight, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from './client'
 import { PermissionCard, QuestionCard } from './PermissionCard'
@@ -104,7 +104,9 @@ function buildTurns(entries: CodeMessage[]): Turn[] {
 
 function UserMessage({ entry, busy, root }: { entry: CodeMessage; busy: boolean; root: string | null }): React.JSX.Element | null {
   const revertTo = useCode((s) => s.revertTo)
+  const forkSession = useCode((s) => s.forkSession)
   const [copied, setCopied] = useState(false)
+  const [forking, setForking] = useState(false)
   const text = entry.parts
     .filter((p): p is TextPart => p.type === 'text' && !p.synthetic)
     .map((p) => p.text)
@@ -144,6 +146,18 @@ function UserMessage({ entry, busy, root }: { entry: CodeMessage; busy: boolean;
             className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
+          </button>
+          <button
+            type="button"
+            title="Bifurcar la sesión desde aquí (crea una sesión nueva)"
+            disabled={forking}
+            onClick={() => {
+              setForking(true)
+              void forkSession(entry.info.sessionID, entry.info.id).finally(() => setForking(false))
+            }}
+            className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
+          >
+            <GitFork size={12} />
           </button>
           <ConfirmButton
             title="¿Revertir a este punto?"

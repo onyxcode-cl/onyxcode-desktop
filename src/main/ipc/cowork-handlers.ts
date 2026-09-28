@@ -20,6 +20,7 @@ import { ComputerOverlay } from '../computer/overlay'
 import { abortFullAccessSessions } from '../computer/abort'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { previewSchedule } from '../scheduler/schedule'
+import { guardInvoke, IpcGuardError } from './guard'
 
 export interface CoworkHandlerDeps {
   /** Conexión al sidecar principal (p.ej. `() => server.start()`). */
@@ -47,10 +48,12 @@ type Handler<C extends CoworkInvokeChannel> = (
 
 function handle<C extends CoworkInvokeChannel>(ipcMain: IpcMain, channel: C, fn: Handler<C>): void {
   ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, req: CoworkRequest<C>): Promise<IpcResult<CoworkResponse<C>>> => {
+  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcResult<CoworkResponse<C>>> => {
     try {
+      const req = guardInvoke(event, channel, args) as CoworkRequest<C>
       return { ok: true, data: await fn(req, event) }
     } catch (err) {
+      if (err instanceof IpcGuardError) return { ok: false, code: err.kind, error: err.message }
       console.error(`[ipc] ${channel}:`, err)
       return { ok: false, code: 'ERROR', error: err instanceof Error ? err.message : String(err) }
     }

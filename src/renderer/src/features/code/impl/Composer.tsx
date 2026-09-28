@@ -6,11 +6,102 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Command } from '@opencode-ai/sdk/v2/client'
-import { ArrowUp, AtSign, File, Hammer, ListChecks, Loader2, MessageSquarePlus, Slash, Square, Undo2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  AtSign,
+  File,
+  FileImage,
+  Hammer,
+  ListChecks,
+  Loader2,
+  MessageSquarePlus,
+  Paperclip,
+  Send,
+  Slash,
+  Square,
+  Undo2,
+  X
+} from 'lucide-react'
 import { useSettings } from '../../../stores/settings'
 import { useClient } from './client'
 import { useCode } from './store'
+import type { Attachment } from './types'
 import { Kbd, MOD } from './ui'
+
+/** Lee un `File`/`Blob` como `data:` URL (imágenes pegadas/arrastradas o adjuntos por botón). */
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error ?? new Error('No se pudo leer el archivo'))
+    reader.readAsDataURL(file)
+  })
+}
+
+let attachSeq = 0
+async function toAttachment(file: File): Promise<Attachment> {
+  const url = await readAsDataURL(file)
+  attachSeq += 1
+  return { id: `att${Date.now()}${attachSeq}`, name: file.name || 'archivo', mime: file.type || 'application/octet-stream', url }
+}
+
+/** Cola de mensajes de la sesión activa: reordenable, quitar, "Enviar ahora". */
+function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const items = useCode((s) => s.queue[sessionID])
+  const dequeue = useCode((s) => s.dequeue)
+  const moveQueued = useCode((s) => s.moveQueued)
+  const sendNow = useCode((s) => s.sendNow)
+  if (!items || items.length === 0) return null
+  return (
+    <div className="mx-auto mb-2 flex w-full max-w-3xl flex-col gap-1.5 px-6">
+      {items.map((m, i) => (
+        <div key={m.id} className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px]">
+          <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium text-subtle">en cola</span>
+          <span className="min-w-0 flex-1 truncate text-muted">{m.text}</span>
+          {m.attachments.length > 0 && <span className="shrink-0 text-[11px] text-subtle">+{m.attachments.length} adjunto(s)</span>}
+          <button
+            type="button"
+            title="Subir"
+            disabled={i === 0}
+            onClick={() => moveQueued(sessionID, m.id, -1)}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30"
+          >
+            <ArrowUp size={12} />
+          </button>
+          <button
+            type="button"
+            title="Bajar"
+            disabled={i === items.length - 1}
+            onClick={() => moveQueued(sessionID, m.id, 1)}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30"
+          >
+            <ArrowDown size={12} />
+          </button>
+          <button
+            type="button"
+            title="Enviar ahora (interrumpe)"
+            onClick={() => {
+              dequeue(sessionID, m.id)
+              void sendNow(m.text, m.files, m.attachments)
+            }}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-accent hover:bg-accent-soft"
+          >
+            <Send size={12} />
+          </button>
+          <button
+            type="button"
+            title="Quitar de la cola"
+            onClick={() => dequeue(sessionID, m.id)}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-danger"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 interface MenuItem {
   id: string
@@ -92,7 +183,10 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const [menuIndex, setMenuIndex] = useState(0)
   const [dismissed, setDismissed] = useState<number | null>(null)
   const [focused, setFocused] = useState(false)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [dragOver, setDragOver] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const directory = useCode((s) => s.directory)
   const activeSessionID = useCode((s) => s.activeSessionID)
   const agent = useCode((s) => s.agent)
@@ -100,12 +194,18 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const model = useCode((s) => s.model)
   const setModel = useCode((s) => s.setModel)
   const send = useCode((s) => s.send)
+  const enqueue = useCode((s) => s.enqueue)
+  const sendNow = useCode((s) => s.sendNow)
   const runCommand = useCode((s) => s.runCommand)
   const abort = useCode((s) => s.abort)
   const revertLast = useCode((s) => s.revertLast)
   const newSession = useCode((s) => s.newSession)
   const defaultModel = useSettings((s) => s.settings.defaultModel)
   const serverCommands = useServerCommands(directory)
+
+  const addFiles = (fileList: FileList | File[]): void => {
+    void Promise.all(Array.from(fileList).map(toAttachment)).then((added) => setAttachments((a) => [...a, ...added]))
+  }
 
   const trigger = useMemo(() => {
     const t = findTrigger(text, caret)
@@ -129,6 +229,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     setText('')
     setCaret(0)
     setMentions([])
+    setAttachments([])
   }
 
   const localCommands: MenuItem[] = useMemo(
@@ -187,12 +288,13 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     })
   }
 
-  const submit = (): void => {
+  /** `force`: ⌘/Ctrl+Enter → interrumpe lo que esté en curso y envía de inmediato (salta la cola). */
+  const submit = (force = false): void => {
     const t = text.trim()
-    if (!t || busy || disabled) return
+    if ((!t && attachments.length === 0) || disabled) return
     // Comandos locales escritos a mano.
     const local = /^\/(\S+)$/.exec(t)
-    const lc = local && localCommands.find((c) => c.id === local[1])
+    const lc = !busy && local && localCommands.find((c) => c.id === local[1])
     if (lc) {
       lc.run?.()
       clear()
@@ -200,14 +302,25 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     }
     if (!model) setModel(defaultModel)
     const cmd = /^\/(\S+)\s*([\s\S]*)$/.exec(t)
-    if (cmd && serverCommands.some((c) => c.name === cmd[1])) {
+    if (!busy && cmd && serverCommands.some((c) => c.name === cmd[1])) {
       clear()
       void runCommand(cmd[1], cmd[2])
       return
     }
     const used = mentions.filter((m) => text.includes(`@${m}`))
+    const atts = attachments
     clear()
-    void send(t, used)
+    if (force) {
+      void sendNow(t, used, atts)
+      return
+    }
+    if (busy) {
+      const sid = activeSessionID
+      if (sid) enqueue(sid, t, used, atts)
+      else void send(t, used, atts)
+      return
+    }
+    void send(t, used, atts)
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -237,9 +350,14 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         return
       }
     }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      submit()
+      submit(true)
+      return
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      submit(false)
       return
     }
     if (e.key === 'Escape' && busy) {
@@ -253,14 +371,43 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     }
   }
 
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
+    const imgFiles = Array.from(e.clipboardData.items)
+      .filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => !!f)
+    if (imgFiles.length > 0) addFiles(imgFiles)
+  }
+
+  const onDrop = (e: React.DragEvent<HTMLDivElement>): void => {
+    e.preventDefault()
+    setDragOver(false)
+    if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files)
+  }
+
   const syncCaret = (): void => {
     const el = ref.current
     if (el) setCaret(el.selectionStart ?? el.value.length)
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 pb-4">
+    <div className="pb-4">
+      {activeSessionID && <QueueList sessionID={activeSessionID} />}
+      <div
+        className="mx-auto w-full max-w-3xl px-6"
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+      >
       <div className="relative">
+        {dragOver && (
+          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent-soft/80 text-sm font-medium text-accent">
+            Suelta para adjuntar
+          </div>
+        )}
         {menuOpen && trigger && (
           <div className="absolute right-0 bottom-full left-0 z-30 mb-2 overflow-hidden rounded-xl border border-border bg-elevated shadow-xl">
             <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11px] font-medium tracking-wide text-subtle uppercase">
@@ -309,6 +456,37 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           </div>
         )}
         <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md">
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+              {attachments.map((a) => (
+                <span key={a.id} className="group/att relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-bg">
+                  {a.mime.startsWith('image/') ? (
+                    <img src={a.url} alt={a.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <FileImage size={18} className="text-subtle" />
+                  )}
+                  <button
+                    type="button"
+                    title={`Quitar ${a.name}`}
+                    onClick={() => setAttachments((cur) => cur.filter((x) => x.id !== a.id))}
+                    className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files)
+              e.target.value = ''
+            }}
+          />
           <textarea
             ref={ref}
             data-code-composer=""
@@ -321,6 +499,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             onSelect={syncCaret}
             onKeyUp={(e) => (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') && syncCaret()}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
             onBlur={() => setFocused(false)}
             onFocus={() => setFocused(true)}
             rows={1}
@@ -362,10 +541,18 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             >
               <AtSign size={14} />
             </button>
+            <button
+              type="button"
+              title="Adjuntar archivo o imagen"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
+              <Paperclip size={14} />
+            </button>
             <span className="ml-auto hidden items-center gap-1 text-[11px] text-subtle sm:flex">
               {busy ? (
                 <>
-                  <Kbd>esc</Kbd> detener
+                  <Kbd>esc</Kbd> detener · <Kbd>{MOD}↵</Kbd> enviar ya
                 </>
               ) : (
                 <>
@@ -373,7 +560,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 </>
               )}
             </span>
-            {busy ? (
+            {busy && (
               <button
                 type="button"
                 onClick={() => void abort()}
@@ -382,21 +569,21 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               >
                 <Square size={12} fill="currentColor" />
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={submit}
-                disabled={!text.trim() || disabled}
-                title={`Enviar (Enter o ${MOD}↵)`}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
-              >
-                <ArrowUp size={16} />
-              </button>
             )}
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={(!text.trim() && attachments.length === 0) || disabled}
+              title={busy ? `Encolar (se envía al quedar libre) · ${MOD}↵ para enviar ya` : `Enviar (Enter o ${MOD}↵)`}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
+            >
+              {busy ? <Send size={14} /> : <ArrowUp size={16} />}
+            </button>
           </div>
         </div>
       </div>
-      <div className="mt-1.5 flex justify-center gap-3 text-[11px] text-subtle">
+      </div>
+      <div className="mx-auto mt-1.5 flex max-w-3xl justify-center gap-3 px-6 text-[11px] text-subtle">
         <span>
           <Kbd>/</Kbd> comandos
         </span>

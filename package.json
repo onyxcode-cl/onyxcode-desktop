@@ -7,10 +7,11 @@
   "author": "bentec",
   "private": true,
   "scripts": {
-    "dev": "sh resources/computer-use/build.sh --if-missing && electron-vite dev",
-    "build": "sh resources/computer-use/build.sh --if-missing && electron-vite build",
+    "dev": "sh resources/computer-use/build.sh --if-missing && sh resources/launcher/build.sh --if-missing && electron-vite dev",
+    "build": "sh resources/computer-use/build.sh --if-missing && sh resources/launcher/build.sh --if-missing && electron-vite build",
     "preview": "electron-vite preview",
     "build:helper": "sh resources/computer-use/build.sh",
+    "build:launcher": "sh resources/launcher/build.sh",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",

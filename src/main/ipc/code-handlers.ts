@@ -17,6 +17,7 @@ import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
 import { PtyService } from '../pty/service'
 import { settingsStore } from '../store'
+import { guardInvoke, IpcGuardError } from './guard'
 
 type Handler<C extends CodeInvokeChannel> = (
   req: CodeRequest<C>,
@@ -25,10 +26,12 @@ type Handler<C extends CodeInvokeChannel> = (
 
 function on<C extends CodeInvokeChannel>(ipcMain: IpcMain, channel: C, handler: Handler<C>): void {
   ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, req: CodeRequest<C>): Promise<IpcResult<CodeResponse<C>>> => {
+  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcResult<CodeResponse<C>>> => {
     try {
+      const req = guardInvoke(event, channel, args) as CodeRequest<C>
       return { ok: true, data: await handler(req, event) }
     } catch (err) {
+      if (err instanceof IpcGuardError) return { ok: false, code: err.kind, error: err.message }
       if (!(err instanceof GitError)) console.error(`[ipc] ${channel}:`, err)
       return { ok: false, code: 'ERROR', error: err instanceof Error ? err.message : String(err) }
     }

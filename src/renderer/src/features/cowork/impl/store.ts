@@ -4,7 +4,7 @@
  * este store guarda lo específico: carpeta, conexión, todos, permisos y entregables.
  */
 import { create } from 'zustand'
-import { createOpencodeClient, type PermissionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
+import { createOpencodeClient, type PermissionRequest, type QuestionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
 import {
   FULL_ACCESS_NOT_GRANTED,
   type ComputerActionEvent,
@@ -34,6 +34,8 @@ interface CoworkState {
   pendingApproval: string | null
   todos: Record<string, Todo[]>
   permissions: Record<string, PermissionRequest>
+  /** Preguntas estructuradas pendientes (herramienta `question`), por id de solicitud. */
+  questions: Record<string, QuestionRequest>
   deliverables: Record<string, CoworkDeliverable[]>
   listLoading: boolean
   /** Modo de acceso solicitado para la carpeta actual (persistido por carpeta). */
@@ -60,8 +62,30 @@ interface CoworkState {
   panelOpen: boolean
   /** Ids de tareas cuyo resultado aún no se ha visto (terminaron en segundo plano). */
   unseen: Record<string, true>
+  /** Ids de tareas fijadas ("Pin"), persistido en localStorage (no hay campo equivalente en el SDK). */
+  pinned: Record<string, true>
 
   set: (patch: Partial<CoworkState>) => void
+}
+
+const PINNED_KEY = 'cowork.pinned'
+
+function readPinned(): Record<string, true> {
+  try {
+    const raw = localStorage.getItem(PINNED_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, true>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writePinned(map: Record<string, true>): void {
+  try {
+    localStorage.setItem(PINNED_KEY, JSON.stringify(map))
+  } catch {
+    // sin storage
+  }
 }
 
 const PANEL_KEY = 'cowork.panelOpen'
@@ -95,6 +119,7 @@ export const useCowork = create<CoworkState>((set) => ({
   pendingApproval: null,
   todos: {},
   permissions: {},
+  questions: {},
   deliverables: {},
   listLoading: false,
   fullAccess: false,
@@ -108,8 +133,28 @@ export const useCowork = create<CoworkState>((set) => ({
   attachments: [],
   panelOpen: readPanelOpen(),
   unseen: {},
+  pinned: readPinned(),
   set: (patch) => set(patch)
 }))
+
+/** Fija/desfija una tarea en la barra lateral (persistido; no depende del servidor). */
+export function togglePinned(sessionID: string): void {
+  const current = useCowork.getState().pinned
+  const pinned = { ...current }
+  if (pinned[sessionID]) delete pinned[sessionID]
+  else pinned[sessionID] = true
+  writePinned(pinned)
+  useCowork.setState({ pinned })
+}
+
+export function isPinned(sessionID: string): boolean {
+  return !!useCowork.getState().pinned[sessionID]
+}
+
+/** Marca una tarea como no leída a propósito (acción manual, además del "unseen" automático). */
+export function markUnread(sessionID: string): void {
+  useCowork.setState((s) => ({ unseen: { ...s.unseen, [sessionID]: true } }))
+}
 
 const LAST_FOLDER_KEY = 'cowork.lastFolder'
 const FULL_ACCESS_KEY = 'cowork.fullAccess'
@@ -251,6 +296,9 @@ function handleEvent(event: OcEvent, directory: string): void {
   } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
     notifyTask(id, 'Cowork necesita tu aprobación', taskTitle(id))
+  } else if (event.type === 'question.asked' && !st.questions[event.properties.id]) {
+    const id = rootTaskId(event.properties.sessionID)
+    notifyTask(id, 'Cowork tiene una pregunta para ti', taskTitle(id))
   }
   switch (event.type) {
     case 'todo.updated':
@@ -264,6 +312,27 @@ function handleEvent(event: OcEvent, directory: string): void {
         const permissions = { ...s.permissions }
         delete permissions[event.properties.requestID]
         return { permissions }
+      })
+      break
+    case 'question.asked':
+      useCowork.setState((s) => ({
+        questions: {
+          ...s.questions,
+          [event.properties.id]: {
+            id: event.properties.id,
+            sessionID: event.properties.sessionID,
+            questions: event.properties.questions,
+            tool: event.properties.tool
+          }
+        }
+      }))
+      break
+    case 'question.replied':
+    case 'question.rejected':
+      useCowork.setState((s) => {
+        const questions = { ...s.questions }
+        delete questions[event.properties.requestID]
+        return { questions }
       })
       break
     case 'session.idle':
@@ -306,6 +375,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     activeTaskId: null,
     todos: {},
     permissions: {},
+    questions: {},
     deliverables: {},
     attachments: [],
     unseen: {}
@@ -419,6 +489,10 @@ export async function resync(): Promise<void> {
     const permissions: Record<string, PermissionRequest> = {}
     for (const p of perms.data ?? []) permissions[p.id] = p
     useCowork.setState({ permissions })
+    const qs = await client.question.list({ directory: folder }).catch(() => ({ data: [] as QuestionRequest[] }))
+    const questions: Record<string, QuestionRequest> = {}
+    for (const q of qs.data ?? []) questions[q.id] = q
+    useCowork.setState({ questions })
     if (activeTaskId) await loadTask(activeTaskId)
   } catch (err) {
     useCowork.setState({ error: errorMessage(err) })

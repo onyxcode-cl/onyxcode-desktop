@@ -9,6 +9,7 @@ import type {
   IpcResponse,
   IpcResult
 } from '@shared/ipc'
+import { guardInvoke, IpcGuardError } from './guard'
 
 /** Error con código IPC explícito (p.ej. NOT_READY). */
 export class IpcError extends Error {
@@ -31,13 +32,18 @@ type Handler<C extends IpcInvokeChannel> = (
   event: IpcMainInvokeEvent
 ) => IpcResponse<C> | Promise<IpcResponse<C>>
 
-/** Registra un handler tipado; envuelve el resultado en IpcResult y captura errores. */
+/**
+ * Registra un handler tipado; valida emisor y payload (`guardInvoke`), envuelve el resultado en
+ * IpcResult y captura errores.
+ */
 export function handle<C extends IpcInvokeChannel>(ipcMain: IpcMain, channel: C, handler: Handler<C>): void {
   ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, req: IpcRequest<C>): Promise<IpcResult<IpcResponse<C>>> => {
+  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcResult<IpcResponse<C>>> => {
     try {
+      const req = guardInvoke(event, channel, args) as IpcRequest<C>
       return { ok: true, data: await handler(req, event) }
     } catch (err) {
+      if (err instanceof IpcGuardError) return { ok: false, code: err.kind, error: err.message }
       if (err instanceof IpcError) return { ok: false, code: err.code, error: err.message }
       console.error(`[ipc] ${channel}:`, err)
       return { ok: false, code: 'ERROR', error: err instanceof Error ? err.message : String(err) }

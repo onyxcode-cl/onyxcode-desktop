@@ -144,12 +144,22 @@ export function rendererPageUrl(page: string): string {
   return dev ? `${dev}/${clean}` : `${APP_ORIGIN}/${clean}`
 }
 
-/** ¿La URL pertenece a un origen propio? */
-export function isTrustedUrl(raw: string): boolean {
+/**
+ * Origen `esquema://host[:puerto]` de una URL. (En Node, `URL.origin` de un esquema no especial
+ * como `lapis:` es "null"; Chromium sí lo trata como origen porque está registrado como standard.)
+ */
+export function originOf(raw: string): string | null {
   try {
     const u = new URL(raw)
-    return trustedOrigins().includes(u.origin)
+    if (!u.host) return null
+    return `${u.protocol}//${u.host}`
   } catch {
-    return false
+    return null
   }
+}
+
+/** ¿La URL pertenece a un origen propio? */
+export function isTrustedUrl(raw: string): boolean {
+  const origin = originOf(raw)
+  return !!origin && trustedOrigins().includes(origin)
 }

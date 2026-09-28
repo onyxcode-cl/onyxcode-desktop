@@ -12,14 +12,26 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
-          // Servidor MCP de computer use (proceso aparte, node de Electron) → out/main/computer-mcp.js
+          // Servidor MCP de computer use: utilityProcess de main (HTTP en 127.0.0.1) → out/main/computer-mcp.js
           'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts')
         }
       }
     }
   },
   preload: {
-    resolve: { alias: { '@shared': shared } }
+    resolve: { alias: { '@shared': shared } },
+    build: {
+      rollupOptions: {
+        // Un preload por tipo de ventana (mínimo privilegio). quick/overlay/pill no importan nada
+        // en tiempo de ejecución salvo `electron`: un preload con sandbox no puede cargar chunks.
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          quick: resolve(__dirname, 'src/preload/quick.ts'),
+          overlay: resolve(__dirname, 'src/preload/overlay.ts'),
+          pill: resolve(__dirname, 'src/preload/pill.ts')
+        }
+      }
+    }
   },
   renderer: {
     resolve: {

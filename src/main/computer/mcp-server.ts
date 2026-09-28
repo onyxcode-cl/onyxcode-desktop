@@ -1,13 +1,19 @@
 /**
- * Servidor MCP (stdio) de "computer use" para Lapis.
+ * Servidor MCP de "computer use" para Lapis (transporte Streamable HTTP en 127.0.0.1).
  *
- * Se empaqueta como entrada aparte (`out/main/computer-mcp.js`) y lo lanza OpenCode como MCP
- * local con el node de Electron: `[process.execPath, computer-mcp.js]` + `ELECTRON_RUN_AS_NODE=1`.
+ * Se empaqueta como entrada aparte (`out/main/computer-mcp.js`) y el proceso principal lo arranca
+ * como **utilityProcess** (`computer/mcp-host.ts`): así hereda la responsabilidad TCC de Lapis
+ * (Accesibilidad / Grabación de pantalla, necesarias para `cu-helper` y `screencapture`) mientras
+ * que los `opencode serve` se lanzan desvinculados (`process/disclaim.ts`) y NO la tienen. OpenCode
+ * lo usa como MCP `remote` con cabecera `Authorization: Bearer <token>`. Ya no depende de
+ * `ELECTRON_RUN_AS_NODE` (el fuse RunAsNode está desactivado en el paquete).
  * NO importa `electron` ni módulos de la app: solo builtins de Node.
  *
- * Protocolo: JSON-RPC 2.0 delimitado por saltos de línea (MCP stdio, 2024-11-05 / 2025-06-18).
+ * Protocolo: JSON-RPC 2.0 (MCP 2024-11-05 / 2025-03-26 / 2025-06-18) por `POST /mcp`.
  *
  * Variables de entorno:
+ *   COMPUTER_MCP_TOKEN      token Bearer que exige cada petición (obligatorio, ≥32 caracteres)
+ *   COMPUTER_MCP_PORT       puerto en 127.0.0.1 (0 = cualquiera; se comunica a main por parentPort)
  *   CU_HELPER               ruta al binario nativo `cu-helper` (obligatoria)
  *   COMPUTER_STOP_FILE      kill-switch de RESPALDO: si el archivo existe, toda herramienta falla sin
  *                           actuar. Solo decide cuando no hay COMPUTER_EVENTS_URL.
@@ -32,9 +38,11 @@
  */
 import { execFile, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { timingSafeEqual } from 'node:crypto'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createInterface } from 'node:readline'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -549,7 +557,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<To
   }
 }
 
-// ───────────────────────────── JSON-RPC stdio ─────────────────────────────
+// ───────────────────────────── JSON-RPC ─────────────────────────────
 
 interface RpcRequest {
   jsonrpc: '2.0'
@@ -558,75 +566,172 @@ interface RpcRequest {
   params?: Record<string, unknown>
 }
 
-function send(msg: unknown): void {
-  process.stdout.write(JSON.stringify(msg) + '\n')
-}
+type RpcResponse =
+  | { jsonrpc: '2.0'; id: number | string | null; result: unknown }
+  | { jsonrpc: '2.0'; id: number | string | null; error: { code: number; message: string } }
 
 const SUPPORTED = ['2025-06-18', '2025-03-26', '2024-11-05']
 
-async function handle(req: RpcRequest): Promise<void> {
-  const reply = (result: unknown): void => send({ jsonrpc: '2.0', id: req.id, result })
-  const error = (code: number, message: string): void => send({ jsonrpc: '2.0', id: req.id, error: { code, message } })
+/** Atiende un mensaje JSON-RPC. Devuelve la respuesta o null (notificaciones). */
+async function dispatch(req: RpcRequest): Promise<RpcResponse | null> {
+  const id = req.id ?? null
   const isNotification = req.id === undefined || req.id === null
-  switch (req.method) {
-    case 'initialize': {
-      const asked = String(req.params?.protocolVersion ?? '')
-      reply({
-        protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
-        capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'lapis-computer', version: '0.1.0' },
-        instructions:
-          'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
-      })
-      return
+  const ok = (result: unknown): RpcResponse => ({ jsonrpc: '2.0', id, result })
+  const error = (code: number, message: string): RpcResponse | null =>
+    isNotification ? null : { jsonrpc: '2.0', id, error: { code, message } }
+  try {
+    switch (req.method) {
+      case 'initialize': {
+        const asked = String(req.params?.protocolVersion ?? '')
+        return ok({
+          protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
+          capabilities: { tools: { listChanged: false } },
+          serverInfo: { name: 'lapis-computer', version: '0.2.0' },
+          instructions:
+            'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
+        })
+      }
+      case 'ping':
+        return ok({})
+      case 'tools/list':
+        return ok({ tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) })
+      case 'tools/call': {
+        const name = String(req.params?.name ?? '')
+        const args = req.params?.arguments
+        const safeArgs = args && typeof args === 'object' && !Array.isArray(args) ? (args as Record<string, unknown>) : {}
+        return ok(await callTool(name, safeArgs))
+      }
+      case 'resources/list':
+        return ok({ resources: [] })
+      case 'prompts/list':
+        return ok({ prompts: [] })
+      default:
+        return isNotification ? null : error(-32601, `Método no soportado: ${req.method}`)
     }
-    case 'ping':
-      reply({})
-      return
-    case 'tools/list':
-      reply({
-        tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }))
-      })
-      return
-    case 'tools/call': {
-      const name = String(req.params?.name ?? '')
-      const args = (req.params?.arguments ?? {}) as Record<string, unknown>
-      reply(await callTool(name, args))
-      return
-    }
-    case 'resources/list':
-      reply({ resources: [] })
-      return
-    case 'prompts/list':
-      reply({ prompts: [] })
-      return
-    default:
-      if (!isNotification) error(-32601, `Método no soportado: ${req.method}`)
+  } catch (err) {
+    log('error', err)
+    return error(-32603, String(err))
   }
 }
 
-function main(): void {
-  const rl = createInterface({ input: process.stdin })
-  rl.on('line', (line) => {
-    const trimmed = line.trim()
-    if (!trimmed) return
-    let msg: RpcRequest
-    try {
-      msg = JSON.parse(trimmed) as RpcRequest
-    } catch {
-      send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })
+// ───────────────────────── transporte HTTP (streamable) ─────────────────────────
+//
+// MCP "Streamable HTTP" mínimo en 127.0.0.1: `POST /mcp` con un mensaje (o lote) JSON-RPC →
+// respuesta `application/json` (el cliente acepta JSON o SSE; aquí nunca hace falta streaming);
+// notificaciones → 202. `GET`/`DELETE` → 405 (sin stream de servidor ni sesiones).
+// Autenticación: `Authorization: Bearer <COMPUTER_MCP_TOKEN>` (comparación en tiempo constante).
+// Se rechaza cualquier petición con `Origin` (un navegador) o con un `Host` que no sea el nuestro
+// (DNS rebinding).
+
+const TOKEN = process.env.COMPUTER_MCP_TOKEN ?? ''
+const PORT = Number(process.env.COMPUTER_MCP_PORT ?? '0')
+const MAX_BODY = 1024 * 1024
+
+function tokenOk(header: string | undefined): boolean {
+  if (!TOKEN || !header?.startsWith('Bearer ')) return false
+  const a = Buffer.from(header.slice(7))
+  const b = Buffer.from(TOKEN)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+function reply(res: ServerResponse, status: number, body?: unknown, headers: Record<string, string> = {}): void {
+  res.statusCode = status
+  for (const [k, v] of Object.entries(headers)) res.setHeader(k, v)
+  if (body === undefined) {
+    res.end()
+    return
+  }
+  res.setHeader('content-type', 'application/json')
+  res.setHeader('cache-control', 'no-store')
+  res.end(JSON.stringify(body))
+}
+
+function handleHttp(req: IncomingMessage, res: ServerResponse, port: number): void {
+  const url = req.url ?? ''
+  if (url !== '/mcp' && !url.startsWith('/mcp?')) return reply(res, 404)
+  if (req.headers.origin) return reply(res, 403, { error: 'origin not allowed' })
+  const host = req.headers.host ?? ''
+  if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) return reply(res, 403, { error: 'bad host' })
+  if (!tokenOk(req.headers.authorization)) return reply(res, 401, { error: 'unauthorized' }, { 'www-authenticate': 'Bearer' })
+  if (req.method !== 'POST') return reply(res, 405, undefined, { allow: 'POST' })
+
+  const chunks: Buffer[] = []
+  let size = 0
+  req.on('data', (c: Buffer) => {
+    size += c.length
+    if (size > MAX_BODY) {
+      reply(res, 413)
+      req.destroy()
       return
     }
-    if (!msg || typeof msg.method !== 'string') return // respuestas / basura
-    handle(msg).catch((err) => {
-      log('error', err)
-      if (msg.id !== undefined && msg.id !== null) {
-        send({ jsonrpc: '2.0', id: msg.id, error: { code: -32603, message: String(err) } })
-      }
+    chunks.push(c)
+  })
+  req.on('end', () => {
+    if (res.writableEnded) return
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    } catch {
+      return reply(res, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })
+    }
+    const batch = Array.isArray(parsed)
+    const list: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
+    const msgs = list.filter(
+      (m): m is RpcRequest => !!m && typeof m === 'object' && typeof (m as RpcRequest).method === 'string'
+    )
+    // Solo respuestas/notificaciones → 202 sin cuerpo.
+    void Promise.all(msgs.map(dispatch)).then((out) => {
+      const responses = out.filter((r): r is RpcResponse => r !== null)
+      if (!responses.length) return reply(res, 202)
+      reply(res, 200, batch ? responses : responses[0])
     })
   })
-  rl.on('close', () => process.exit(0))
-  log(`listo (helper=${HELPER || '—'}, stop=${STOP_FILE || '—'}, events=${EVENTS_URL ? 'sí' : 'no'})`)
+}
+
+interface ParentPort {
+  postMessage(message: unknown): void
+  on(event: 'message', listener: (e: { data: unknown }) => void): void
+}
+
+function main(): void {
+  if (!TOKEN || TOKEN.length < 32) {
+    log('falta COMPUTER_MCP_TOKEN')
+    process.exit(2)
+  }
+  const server = createServer((req, res) => {
+    const port = (server.address() as AddressInfo | null)?.port ?? 0
+    try {
+      handleHttp(req, res, port)
+    } catch (err) {
+      log('http', err)
+      if (!res.headersSent) reply(res, 500)
+    }
+  })
+  // Acciones largas (tecleo de 5000 caracteres, esperas): sin timeouts de petición del servidor.
+  server.requestTimeout = 0
+  server.headersTimeout = 30_000
+  server.keepAliveTimeout = 60_000
+  const parent = (process as unknown as { parentPort?: ParentPort }).parentPort
+  server.on('error', (err) => {
+    log('no se pudo escuchar:', err)
+    parent?.postMessage({ type: 'error', message: String(err) })
+    process.exit(1)
+  })
+  server.listen(PORT, '127.0.0.1', () => {
+    const { port } = server.address() as AddressInfo
+    log(`listo en 127.0.0.1:${port} (helper=${HELPER || '—'}, events=${EVENTS_URL ? 'sí' : 'no'})`)
+    // utilityProcess: avisar a main; ejecución suelta (pruebas con node): imprimir el puerto.
+    if (parent) parent.postMessage({ type: 'ready', port })
+    else process.stdout.write(JSON.stringify({ type: 'ready', port }) + '\n')
+  })
+  // Si main nos pide salir (o muere), se cierra limpio.
+  parent?.on('message', (e) => {
+    if ((e.data as { type?: string } | null)?.type === 'shutdown') {
+      killChildren()
+      server.close()
+      setTimeout(() => process.exit(0), 200).unref()
+    }
+  })
 }
 
 main()

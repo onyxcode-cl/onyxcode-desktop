@@ -9,36 +9,45 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { Session } from '@opencode-ai/sdk/v2/client'
+import type { AssistantMessage, Session } from '@opencode-ai/sdk/v2/client'
 import {
   ChevronDown,
+  CircleSlash,
   Code2,
   FileCode2,
   FolderOpen,
   FolderSearch,
   GitBranch,
   GitCompare,
+  GitFork,
+  Gauge,
   LayoutGrid,
+  ListChecks,
   ListTodo,
   Loader2,
+  PencilLine,
+  Shield,
+  Sparkles,
   Square,
   SquareTerminal,
+  Wand2,
   X
 } from 'lucide-react'
 import { IconButton } from '../../../components/IconButton'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { useSettings } from '../../../stores/settings'
+import { useProviders } from '../../../stores/providers'
 import { getCodeApi, nativeCode, useClient } from './client'
 import { Composer } from './Composer'
 import { MessageStream } from './MessageStream'
 import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
 import { TerminalPanel } from './panels/TerminalPanel'
-import { ProjectPicker, baseName, pickAndOpenFolder } from './ProjectPicker'
+import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate } from './ProjectPicker'
 import { SessionList } from './SessionList'
 import { ensureCodeSubscription, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
-import type { RightPanel } from './types'
+import type { PermissionMode, RightPanel } from './types'
 import { AgentSegmented, MOD, Tip, isEditableTarget } from './ui'
 
 const PANEL_LABEL: Record<RightPanel, string> = { changes: 'Cambios', terminal: 'Terminal', files: 'Archivos' }
@@ -294,8 +303,175 @@ const PANEL_META: { id: RightPanel; label: string; key: string; icon: React.JSX.
   { id: 'files', label: 'Archivos', key: '3', icon: <FileCode2 size={16} /> }
 ]
 
+const PERMISSION_MODE_META: { id: PermissionMode; label: string; hint: string; icon: React.JSX.Element }[] = [
+  { id: 'manual', label: 'Manual', hint: 'Pregunta antes de cualquier acción', icon: <Shield size={13} /> },
+  { id: 'acceptEdits', label: 'Aceptar ediciones', hint: 'Permite leer/editar archivos sin preguntar; el resto pregunta', icon: <PencilLine size={13} /> },
+  { id: 'plan', label: 'Plan', hint: 'Solo explora y propone; no modifica nada', icon: <ListChecks size={13} /> },
+  { id: 'auto', label: 'Auto', hint: 'Permite ediciones y comandos seguros; pregunta en lo riesgoso', icon: <Wand2 size={13} /> },
+  { id: 'bypass', label: 'Bypass', hint: 'Permite todo sin preguntar (incluye bash). Úsalo con cuidado.', icon: <CircleSlash size={13} /> }
+]
+
+/** Selector de modo de permisos de la sesión activa (⌘⇧M). */
+function PermissionModeMenu(): React.JSX.Element {
+  const mode = useCode((s) => s.permissionMode)
+  const setPermissionMode = useCode((s) => s.setPermissionMode)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+  const current = PERMISSION_MODE_META.find((m) => m.id === mode) ?? PERMISSION_MODE_META[0]
+  return (
+    <div ref={ref} className="no-drag relative">
+      <Tip label="Modo de permisos" shortcut={`${MOD}⇧M`}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
+            mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'
+          }`}
+        >
+          {current.icon}
+          {current.label}
+        </button>
+      </Tip>
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1 w-64 overflow-hidden rounded-xl border border-border bg-elevated py-1 shadow-xl">
+          {PERMISSION_MODE_META.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                void setPermissionMode(m.id)
+              }}
+              className={`flex w-full items-start gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover ${mode === m.id ? 'text-fg' : 'text-muted'}`}
+            >
+              <span className="mt-0.5 shrink-0">{m.icon}</span>
+              <span className="min-w-0">
+                <span className="block font-medium">{m.label}</span>
+                <span className="block text-xs text-subtle">{m.hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Último mensaje del asistente en la sesión activa (para medidor de contexto). */
+function useLastAssistant(sessionID: string | null): AssistantMessage | null {
+  const entries = useCode((s) => (sessionID ? s.messages[sessionID] : undefined))
+  return useMemo(() => {
+    if (!entries) return null
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const info = entries[i].info
+      if (info.role === 'assistant') return info
+    }
+    return null
+  }, [entries])
+}
+
+/** Medidor de contexto usado / límite del modelo actual, y selector de variante (esfuerzo) si aplica. */
+function ContextAndVariant(): React.JSX.Element | null {
+  const client = useClient()
+  const directory = useCode((s) => s.directory)
+  const activeSessionID = useCode((s) => s.activeSessionID)
+  const model = useCode((s) => s.model)
+  const variant = useCode((s) => s.variant)
+  const setVariant = useCode((s) => s.setVariant)
+  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const providers = useProviders((s) => s.providers)
+  const loadProviders = useProviders((s) => s.load)
+  const last = useLastAssistant(activeSessionID)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (client) void loadProviders(client)
+  }, [client, loadProviders])
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const effective = model ?? defaultModel
+  const info = providers.find((p) => p.id === effective.providerID)?.models[effective.modelID]
+  if (!directory || !info) return null
+
+  const used = last && last.modelID === effective.modelID ? last.tokens.input + last.tokens.cache.read + last.tokens.cache.write : 0
+  const limit = info.limit.context
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
+  const variants = info.variants ? Object.keys(info.variants) : []
+
+  return (
+    <div className="no-drag flex items-center gap-1.5">
+      {used > 0 && (
+        <Tip label={`Contexto usado: ${used.toLocaleString('es-CL')} / ${limit.toLocaleString('es-CL')} tokens (${pct}%)`}>
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-subtle">
+            <Gauge size={12} className={pct > 85 ? 'text-danger' : pct > 60 ? 'text-warning' : 'text-subtle'} />
+            {pct}%
+          </span>
+        </Tip>
+      )}
+      {variants.length > 0 && (
+        <div ref={ref} className="relative">
+          <Tip label="Esfuerzo del modelo" shortcut={`${MOD}⇧E`}>
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
+            >
+              <Sparkles size={12} />
+              {variant ?? 'estándar'}
+            </button>
+          </Tip>
+          {open && (
+            <div className="absolute top-full right-0 z-50 mt-1 w-40 overflow-hidden rounded-xl border border-border bg-elevated py-1 shadow-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setVariant(null)
+                  setOpen(false)
+                }}
+                className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-hover ${!variant ? 'text-fg' : 'text-muted'}`}
+              >
+                Estándar
+              </button>
+              {variants.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => {
+                    setVariant(v)
+                    setOpen(false)
+                  }}
+                  className={`block w-full px-3 py-1.5 text-left text-sm capitalize hover:bg-hover ${variant === v ? 'text-fg' : 'text-muted'}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
+  const activeSessionID = useCode((s) => s.activeSessionID)
   const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
@@ -304,6 +480,8 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const setAgent = useCode((s) => s.setAgent)
   const model = useCode((s) => s.model)
   const setModel = useCode((s) => s.setModel)
+  const forkSession = useCode((s) => s.forkSession)
+  const compactSession = useCode((s) => s.compactSession)
   const defaultModel = useSettings((s) => s.settings.defaultModel)
   const busy = run === 'busy' || run === 'retry'
 
@@ -329,6 +507,32 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
             </button>
           </Tip>
         )}
+        {activeSessionID && (
+          <>
+            <Tip label="Bifurcar sesión (fork) desde aquí">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void forkSession(activeSessionID)}
+                className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+              >
+                <GitFork size={14} />
+              </button>
+            </Tip>
+            <Tip label="Compactar historial (resumir contexto)">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void compactSession(activeSessionID)}
+                className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+              >
+                <Sparkles size={14} />
+              </button>
+            </Tip>
+          </>
+        )}
+        <ContextAndVariant />
+        <PermissionModeMenu />
         <AgentSegmented value={agent} onChange={setAgent} size="sm" />
         {/* El menú del selector se alinea a la derecha para no salirse de la ventana. */}
         <div className="no-drag [&_.absolute]:right-0 [&_.absolute]:left-auto">
@@ -403,6 +607,57 @@ function belongs(sessions: Record<string, Session>, sessionID: string, active: s
   return root === active || !sessions[root]
 }
 
+/**
+ * Tarjeta que aparece cuando el agente "plan" termina de responder: ofrece pasar a Build y pedirle
+ * que ejecute lo planificado, sin que el usuario tenga que escribirlo.
+ */
+function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const agent = useCode((s) => s.agent)
+  const run = useCode((s) => s.runState[sessionID])
+  const entries = useCode((s) => s.messages[sessionID])
+  const setAgent = useCode((s) => s.setAgent)
+  const send = useCode((s) => s.send)
+  const [dismissedFor, setDismissedFor] = useState<string | null>(null)
+  const busy = run === 'busy' || run === 'retry'
+
+  const lastAssistant = useMemo(() => {
+    if (!entries) return null
+    for (let i = entries.length - 1; i >= 0; i--) if (entries[i].info.role === 'assistant') return entries[i]
+    return null
+  }, [entries])
+
+  if (agent !== 'plan' || busy || !lastAssistant) return null
+  const hasText = lastAssistant.parts.some((p) => p.type === 'text' && p.text.trim())
+  if (!hasText || dismissedFor === lastAssistant.info.id) return null
+
+  return (
+    <div className="mx-auto mb-2 w-full max-w-3xl px-6">
+      <div className="flex items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-3.5 py-2.5 text-sm">
+        <ListChecks size={16} className="shrink-0 text-accent" />
+        <span className="min-w-0 flex-1 text-fg/90">¿Construyo lo planificado?</span>
+        <button
+          type="button"
+          onClick={() => setDismissedFor(lastAssistant.info.id)}
+          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
+        >
+          Ahora no
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDismissedFor(lastAssistant.info.id)
+            setAgent('build')
+            void send('Procede con el plan.')
+          }}
+          className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-fg hover:opacity-90"
+        >
+          Aprobar y construir
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const sid = useCode((s) => s.activeSessionID)
   const entries = useCode((s) => (sid ? s.messages[sid] : undefined))
@@ -461,6 +716,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
         </div>
       )}
       {sid && <TodoBar sessionID={sid} />}
+      {sid && <PlanApprovalCard sessionID={sid} />}
       <Composer busy={busy} disabled={!client} />
     </div>
   )
@@ -512,10 +768,36 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     void openProject(dir)
   }, [client, openProject])
 
+  // Título del documento: prefijo "(n)" con sesiones no leídas + marca como leída la activa al recuperar el foco.
+  // Nota: esto es lo más parecido a un badge que se puede hacer sin tocar el proceso principal (Electron
+  // `Notification`/`app.dock.setBadge` requieren un canal IPC nuevo — ver informe final del agente).
+  const unread = useCode((s) => s.unread)
+  const sessionProject = useCode((s) => s.sessionProject)
+  const markRead = useCode((s) => s.markRead)
+  useEffect(() => {
+    if (!directory) return
+    const count = Object.entries(unread).filter(([sid, v]) => v && sessionProject[sid] === directory).length
+    const base = document.title.replace(/^\(\d+\)\s*/, '')
+    document.title = count > 0 ? `(${count}) ${base}` : base
+  }, [unread, sessionProject, directory])
+  useEffect(() => {
+    const onFocus = (): void => {
+      const st = useCode.getState()
+      if (st.activeSessionID) markRead(st.activeSessionID)
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [markRead])
+
   if (!directory) return <ProjectPicker />
 
   return (
     <div className="flex h-full min-h-0 w-full bg-bg text-fg">
+      <TrustGate />
       {showSessionList && (
         <div className="flex w-60 shrink-0 flex-col border-r border-border bg-sidebar pt-2">
           <SessionList />

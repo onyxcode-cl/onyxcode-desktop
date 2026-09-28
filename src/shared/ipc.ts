@@ -22,7 +22,8 @@ import type {
   Settings
 } from './types'
 
-export type IpcErrorCode = 'NOT_IMPLEMENTED' | 'NOT_READY' | 'ERROR'
+/** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
+export type IpcErrorCode = 'NOT_IMPLEMENTED' | 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
 
 /** Todas las respuestas IPC vienen envueltas; nunca se lanza a través del puente. */
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; code: IpcErrorCode; error: string }

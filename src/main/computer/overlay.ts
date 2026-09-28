@@ -18,10 +18,10 @@
  * principal), que es el mismo sistema que los DIP de Electron: basta restar el origen del display
  * principal (0,0) y el escalado Retina lo resuelve Chromium (1 px CSS = 1 punto).
  */
-import { app, BrowserWindow, screen, type Rectangle } from 'electron'
-import { join } from 'node:path'
+import { BrowserWindow, screen, type Rectangle } from 'electron'
 import type { ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-cowork'
-import { extrasWindows, preloadPath } from '../extras/windows'
+import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
+import { registerWindowRole } from '../ipc/guard'
 import { motionDurationMs } from './service'
 
 const IDLE_MS = 8_000
@@ -49,9 +49,7 @@ export interface ComputerOverlayOptions {
 type Page = 'index.html' | 'pill.html'
 
 function loadOverlayPage(win: BrowserWindow, page: Page): Promise<void> {
-  const devUrl = process.env.ELECTRON_RENDERER_URL
-  if (!app.isPackaged && devUrl) return win.loadURL(`${devUrl.replace(/\/$/, '')}/overlay/${page}`)
-  return win.loadFile(join(__dirname, `../renderer/overlay/${page}`))
+  return loadRendererPage(win, `overlay/${page}`)
 }
 
 function inside(r: Rectangle, x: number, y: number, margin: number): boolean {
@@ -299,6 +297,7 @@ export class ComputerOverlay {
 
   private prepare(win: BrowserWindow, page: Page): void {
     extrasWindows.add(win)
+    registerWindowRole(win.webContents, page === 'pill.html' ? 'pill' : 'overlay')
     const isMac = process.platform === 'darwin'
     win.setAlwaysOnTop(true, 'screen-saver', page === 'pill.html' ? 1 : 0)
     if (isMac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
@@ -316,12 +315,14 @@ export class ComputerOverlay {
     void loadOverlayPage(win, page).catch((err) => console.error(`[computer] overlay ${page}:`, err))
   }
 
-  private webPreferences(): Electron.WebPreferences {
+  private webPreferences(page: Page): Electron.WebPreferences {
     return {
-      preload: preloadPath(),
+      // Preload mínimo: el overlay solo escucha; la píldora además puede pedir `computer:stop`.
+      preload: preloadPath(page === 'pill.html' ? 'pill' : 'overlay'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: false,
       spellcheck: false,
       backgroundThrottling: false
     }
@@ -348,7 +349,7 @@ export class ComputerOverlay {
       enableLargerThanScreen: true,
       roundedCorners: false,
       ...(isMac ? { type: 'panel' as const } : {}),
-      webPreferences: this.webPreferences()
+      webPreferences: this.webPreferences('index.html')
     })
     // Atraviesa todos los clics (también los sintéticos del agente).
     win.setIgnoreMouseEvents(true, { forward: true })
@@ -380,7 +381,7 @@ export class ComputerOverlay {
       acceptFirstMouse: true,
       // Sin `type: 'panel'`: en macOS 26+ un NSPanel pequeño y transparente pinta un fondo opaco
       // detrás de la web (verificado con screencapture); una ventana normal queda transparente.
-      webPreferences: this.webPreferences()
+      webPreferences: this.webPreferences('pill.html')
     })
     // Solo movimientos del usuario (arrastre): desde entonces se respeta su posición.
     win.on('will-move', () => {

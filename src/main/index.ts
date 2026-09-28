@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
-import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
@@ -10,8 +10,15 @@ import { registerAllHandlers } from './ipc'
 import { registerCodeHandlers } from './ipc/code-handlers'
 import { registerCoworkHandlers } from './ipc/cowork-handlers'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
+import { registerWindowRole } from './ipc/guard'
+import { missingSchemas } from './ipc/schemas'
+import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './security/app-protocol'
+import { installWebSecurity } from './security/web-security'
+import { loadRendererPage, preloadPath } from './extras/windows'
 
 app.setName(APP_NAME)
+// Esquema `lapis://app` para el renderer de producción (antes de `ready`).
+registerAppSchemePrivileges()
 
 // La app se llamó "OpenDesk" durante el desarrollo: conserva ajustes, rutinas y sesiones.
 // Chromium puede crear la carpeta nueva antes de que corra este código, así que se mueven
@@ -33,17 +40,11 @@ if (existsSync(join(LEGACY_USER_DATA, 'settings.json')) && !existsSync(join(USER
 
 const chatDirectory = join(app.getPath('userData'), 'chat-workspace')
 
-const devOrigin = (() => {
-  const url = process.env.ELECTRON_RENDERER_URL
-  if (!url) return []
-  try {
-    return [new URL(url).origin]
-  } catch {
-    return []
-  }
-})()
+// Orígenes que pueden llamar a los servidores OpenCode por CORS: `lapis://app` y, sin empaquetar,
+// el dev server de Vite. Ya no se admite el origen `null` de file:// (AUDIT.md 2.6).
+const corsOrigins = trustedOrigins()
 
-const server = new OpencodeServer({ chatDirectory, corsOrigins: devOrigin })
+const server = new OpencodeServer({ chatDirectory, corsOrigins })
 
 let mainWindow: BrowserWindow | null = null
 let coworkMod: ReturnType<typeof registerCoworkHandlers> | null = null
@@ -60,12 +61,15 @@ function createWindow(): BrowserWindow {
     trafficLightPosition: { x: 16, y: 16 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: preloadPath('index'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: false,
+      devTools: !app.isPackaged
     }
   })
+  registerWindowRole(win.webContents, 'main')
 
   mainWindow = win
   win.on('ready-to-show', () => win.show())
@@ -74,28 +78,15 @@ function createWindow(): BrowserWindow {
     if (process.platform !== 'darwin') app.quit()
   })
 
-  // Links externos al navegador del sistema.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-  win.webContents.on('will-navigate', (event, url) => {
-    const current = win.webContents.getURL()
-    if (url !== current && /^https?:\/\//i.test(url) && !url.startsWith(process.env.ELECTRON_RENDERER_URL ?? '\0')) {
-      event.preventDefault()
-      void shell.openExternal(url)
-    }
-  })
-
-  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-    void win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'))
-  }
+  // Enlaces externos → navegador del sistema; cualquier otra navegación fuera de `lapis://app` (o
+  // del dev server) se bloquea: lo hace `installWebSecurity` para todo webContents.
+  void loadRendererPage(win, 'index.html')
   return win
 }
 
 app.whenReady().then(() => {
+  handleAppScheme()
+  installWebSecurity()
   electronApp.setAppUserModelId(APP_ID)
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
@@ -108,12 +99,22 @@ app.whenReady().then(() => {
   // Agentes de la app → userData/opencode-config (nunca escribir dentro del bundle, P1).
   prepareOpencodeConfigDir()
 
+  if (!app.isPackaged) {
+    // Un canal IPC sin esquema queda rechazado por el guard: avisar fuerte en desarrollo.
+    const missing = missingSchemas()
+    if (missing.length) {
+      const msg = `[ipc] canales sin esquema en src/main/ipc/schemas.ts (se rechazarán): ${missing.join(', ')}`
+      console.error(msg)
+      dialog.showErrorBox('Canales IPC sin esquema', msg)
+    }
+  }
+
   registerAllHandlers(ipcMain, { server, chatDirectory })
   registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
   coworkMod = registerCoworkHandlers(ipcMain, () => mainWindow, {
     getMainConnection: () => server.start(),
     chatDirectory,
-    corsOrigins: devOrigin
+    corsOrigins
   })
   registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
 

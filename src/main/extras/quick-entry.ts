@@ -6,6 +6,7 @@
 import { BrowserWindow, globalShortcut, screen } from 'electron'
 import type { QuickPromptEvent } from '@shared/ipc-extras'
 import { extrasWindows, loadRendererPage, preloadPath, showMainWindow, type MainWindowDeps } from './windows'
+import { registerWindowRole } from '../ipc/guard'
 
 const WIDTH = 680
 const HEIGHT = 76
@@ -34,14 +35,16 @@ function createQuickWindow(): BrowserWindow {
     ...(isMac ? { type: 'panel' as const, vibrancy: 'hud' as const, visualEffectState: 'active' as const } : {}),
     backgroundColor: '#00000000',
     webPreferences: {
-      preload: preloadPath(),
+      preload: preloadPath('quick'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: false,
       spellcheck: false
     }
   })
   extrasWindows.add(win)
+  registerWindowRole(win.webContents, 'quick')
   win.setAlwaysOnTop(true, 'floating')
   if (isMac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   win.on('blur', () => {
@@ -52,7 +55,7 @@ function createQuickWindow(): BrowserWindow {
   })
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (e) => e.preventDefault())
-  void loadRendererPage(win, 'quick')
+  void loadRendererPage(win, 'quick/index.html')
   return win
 }
 

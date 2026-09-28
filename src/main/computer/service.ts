@@ -11,15 +11,18 @@
  *   parar NUNCA se deshace solo: hace falta `resume()` (botón "Reanudar control");
  * - canal lateral de acciones: servidor HTTP en 127.0.0.1 al que el MCP hace `POST` de cada
  *   acción (`COMPUTER_EVENTS_URL`), reemitido como evento `computer:action`;
- * - bloque `mcp.computer` para la config de OpenCode del servidor de acceso completo.
+ * - bloque `mcp.computer` para la config de OpenCode del servidor de acceso completo: MCP `remote`
+ *   servido por un utilityProcess de main (`mcp-host.ts`), que conserva los permisos TCC de la app
+ *   mientras los `opencode serve` corren desvinculados (AUDIT.md S6).
  *
  * Movimiento visible: el helper anima el cursor (ver helper.swift). `OPENDESK_COMPUTER_INSTANT=1`
  * lo desactiva y `OPENDESK_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
  *
- * Permisos (TCC): el "proceso responsable" de toda la cadena Electron → opencode → node de
- * Electron → cu-helper es la app que lanzó Electron. Empaquetado = Lapis.app; en desarrollo
+ * Permisos (TCC): el "proceso responsable" de la cadena Electron → utilityProcess del MCP →
+ * cu-helper/screencapture es la app que lanzó Electron. Empaquetado = Lapis.app; en desarrollo
  * (`npm run dev` desde una terminal) es la TERMINAL (Terminal/iTerm/VS Code…), que es a quien
- * hay que conceder Accesibilidad y Grabación de pantalla.
+ * hay que conceder Accesibilidad y Grabación de pantalla. Los `opencode serve` (y su bash) NO
+ * forman parte de esa cadena: se lanzan con `lapis-disclaim`.
  */
 import { app, globalShortcut, shell, systemPreferences } from 'electron'
 import { execFile } from 'node:child_process'
@@ -30,6 +33,7 @@ import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { dirname, join } from 'node:path'
 import type { ComputerActionEvent, ComputerKillState, ComputerStatus, ComputerUseInfo } from '@shared/ipc-cowork'
+import { ComputerMcpHost } from './mcp-host'
 
 export const COMPUTER_MCP_NAME = 'computer'
 export const COMPUTER_AGENT_ID = 'computer'
@@ -95,6 +99,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * la protección de contenido no bastara para excluirlo de `screencapture`.
    */
   captureGuard: (() => Promise<void>) | null = null
+  /** MCP en utilityProcess (se arranca con el primer servidor de acceso total). */
+  private readonly mcpHost = new ComputerMcpHost(
+    () => this.mcpScriptPath(),
+    () => this.mcpEnv()
+  )
 
   /** Ruta del helper nativo o null si no está compilado. */
   helperPath(): string | null {
@@ -350,17 +359,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return this.eventsStarting
   }
 
-  /**
-   * Bloque de config de OpenCode (`mcp.computer`) o null si no está disponible.
-   * El MCP corre con el node embebido de Electron (sin depender de node del sistema).
-   */
-  async mcpConfig(): Promise<Record<string, unknown> | null> {
+  /** Entorno propio del MCP (se suma a `minimalEnv` en el host). */
+  private async mcpEnv(): Promise<Record<string, string>> {
     const helper = this.helperPath()
-    const script = this.mcpScriptPath()
-    if (!helper || !script) return null
+    if (!helper) throw new Error('Falta el helper nativo cu-helper')
     const eventsUrl = await this.ensureEventsServer()
     const environment: Record<string, string> = {
-      ELECTRON_RUN_AS_NODE: '1',
       CU_HELPER: helper,
       COMPUTER_STOP_FILE: this.stopFile,
       COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'lapis-computer')
@@ -369,16 +373,35 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     if (this.instant) environment.COMPUTER_INSTANT = '1'
     const typeDelay = process.env.OPENDESK_COMPUTER_TYPE_DELAY_MS
     if (typeDelay && Number.isFinite(Number(typeDelay))) environment.COMPUTER_TYPE_DELAY_MS = typeDelay
-    return {
-      type: 'local',
-      command: [process.execPath, script],
-      environment,
-      enabled: true,
-      timeout: 15_000
+    const fake = process.env.COMPUTER_FAKE_SCREENSHOT
+    if (!app.isPackaged && fake) environment.COMPUTER_FAKE_SCREENSHOT = fake
+    return environment
+  }
+
+  /**
+   * Bloque de config de OpenCode (`mcp.computer`) o null si no está disponible: MCP `remote` en
+   * 127.0.0.1 servido por el utilityProcess (token Bearer por cabecera, sin OAuth).
+   */
+  async mcpConfig(): Promise<Record<string, unknown> | null> {
+    if (!this.helperPath() || !this.mcpScriptPath()) return null
+    try {
+      const { url, token } = await this.mcpHost.ensure()
+      return {
+        type: 'remote',
+        url,
+        headers: { Authorization: `Bearer ${token}` },
+        oauth: false,
+        enabled: true,
+        timeout: 15_000
+      }
+    } catch (err) {
+      console.error('[computer] no se pudo arrancar el MCP:', err)
+      return null
     }
   }
 
   dispose(): void {
+    this.mcpHost.dispose()
     if (this.shortcutRegistered) {
       globalShortcut.unregister(STOP_SHORTCUT)
       this.shortcutRegistered = false

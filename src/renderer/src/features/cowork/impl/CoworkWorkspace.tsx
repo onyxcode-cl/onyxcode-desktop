@@ -43,11 +43,21 @@ import { CoworkComposer } from './CoworkComposer'
 import { FolderMenu } from './FolderMenu'
 import { Home } from './Home'
 import { ApprovalBar } from './PermissionPrompt'
+import { QuestionCard } from './QuestionPrompt'
 import { ProgressPanel } from './ProgressPanel'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon, TaskList } from './TaskList'
 import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, syncKillState, useCowork } from './store'
-import { extOf, formatDuration, permissionBelongsTo, taskStatus, TASK_STATUS_LABEL, turnTiming, type TaskStatus } from './util'
+import {
+  extOf,
+  formatDuration,
+  permissionBelongsTo,
+  sessionBelongsTo,
+  taskStatus,
+  TASK_STATUS_LABEL,
+  turnTiming,
+  type TaskStatus
+} from './util'
 
 const EMPTY: MessageEntry[] = []
 const EMPTY_FILES: CoworkDeliverable[] = []
@@ -55,6 +65,7 @@ const EMPTY_FILES: CoworkDeliverable[] = []
 const PILL_TONE: Record<TaskStatus, string> = {
   running: 'border-accent/40 bg-accent-soft text-accent',
   waiting: 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400',
+  question: 'border-accent/40 bg-accent-soft text-accent',
   done: 'border-border bg-hover text-muted',
   error: 'border-danger/40 bg-danger/10 text-danger',
   idle: 'border-border text-muted'
@@ -138,6 +149,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   const pending = useCowork((s) => s.pendingApproval)
   const activeId = useCowork((s) => s.activeTaskId)
   const permissions = useCowork((s) => s.permissions)
+  const questions = useCowork((s) => s.questions)
   const panelOpen = useCowork((s) => s.panelOpen)
   const files = useCowork((s) => (activeId ? (s.deliverables[activeId] ?? EMPTY_FILES) : EMPTY_FILES))
   const sessions = useSessions((s) => s.sessions)
@@ -241,9 +253,19 @@ export function CoworkWorkspace(): React.JSX.Element {
     () => (activeId ? Object.values(permissions).filter((p) => permissionBelongsTo(p, activeId, sessions)) : []),
     [permissions, activeId, sessions]
   )
+  const pendingQuestionsForTask = useMemo(
+    () => (activeId ? Object.values(questions).filter((q) => sessionBelongsTo(q.sessionID, activeId, sessions)) : []),
+    [questions, activeId, sessions]
+  )
 
   const status = activeId
-    ? taskStatus({ run, waiting: pendingForTask.length > 0, error: taskError, entries })
+    ? taskStatus({
+        run,
+        waiting: pendingForTask.length > 0,
+        hasQuestion: pendingQuestionsForTask.length > 0,
+        error: taskError,
+        entries
+      })
     : 'idle'
 
   const send = async (text: string): Promise<void> => {
@@ -349,9 +371,14 @@ export function CoworkWorkspace(): React.JSX.Element {
               error={taskError}
               permissions={pendingForTask}
               footer={
-                status === 'done' && entries.length > 0 ? (
-                  <FollowUps items={followUpsFor(files, fullAccess)} onPick={(t) => void send(t)} />
-                ) : null
+                <>
+                  {pendingQuestionsForTask.map((q) => (
+                    <QuestionCard key={q.id} request={q} />
+                  ))}
+                  {status === 'done' && entries.length > 0 && (
+                    <FollowUps items={followUpsFor(files, fullAccess)} onPick={(t) => void send(t)} />
+                  )}
+                </>
               }
             />
             <ApprovalBar requests={pendingForTask} />

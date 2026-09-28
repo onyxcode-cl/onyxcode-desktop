@@ -26,6 +26,7 @@ import {
   unregisterQuickEntryShortcut
 } from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
+import { guardInvoke, IpcGuardError } from './guard'
 
 export interface ExtrasDeps extends MainWindowDeps {
   server: OpencodeServer
@@ -40,10 +41,12 @@ function handle<C extends IpcExtrasInvokeChannel>(
   handler: (req: Req<C>, event: IpcMainInvokeEvent) => Res<C> | Promise<Res<C>>
 ): void {
   ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, req: Req<C>): Promise<IpcExtrasResult<Res<C>>> => {
+  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcExtrasResult<Res<C>>> => {
     try {
+      const req = guardInvoke(event, channel, args) as Req<C>
       return { ok: true, data: await handler(req, event) }
     } catch (err) {
+      if (err instanceof IpcGuardError) return { ok: false, error: err.message }
       console.error(`[ipc] ${channel}:`, err)
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }

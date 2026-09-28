@@ -10,12 +10,13 @@ import { EventEmitter } from 'node:events'
 import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { randomBytes } from 'node:crypto'
-import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { APP_SLUG } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
 import { killTree, trackPid, untrackPid } from './pids'
+import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
+import { withDisclaim } from '../process/disclaim'
 
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
@@ -24,17 +25,6 @@ const MAX_RESTARTS = 5
 /** Si el proceso vivió más que esto, el contador de reinicios se resetea. */
 const STABLE_AFTER_MS = 60_000
 const KILL_GRACE_MS = 3_000
-
-/** Directorios extra donde buscar binarios (apps lanzadas desde Finder tienen PATH mínimo). */
-const EXTRA_PATH_DIRS = [
-  join(homedir(), '.opencode', 'bin'),
-  '/opt/homebrew/bin',
-  '/usr/local/bin',
-  join(homedir(), '.local', 'bin'),
-  join(homedir(), '.bun', 'bin'),
-  '/usr/bin',
-  '/bin'
-]
 
 export interface OpencodeServerOptions {
   /** cwd del proceso y directorio del modo Chat. */
@@ -137,21 +127,21 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
       const baseUrl = `http://${HOST}:${port}`
 
-      // file:// envía Origin "null"; el dev server de Vite usa http://localhost:5173.
-      const cors = ['null', ...(this.options.corsOrigins ?? [])]
-      const args = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
+      // Renderer en `lapis://app` (producción) o el dev server de Vite; sin el origen `null`.
+      const cors = this.options.corsOrigins ?? []
+      const serveArgs = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
+      // Sin heredar los permisos TCC de la app (S6) y con entorno mínimo.
+      const launch = withDisclaim(bin, serveArgs)
 
-      const child = spawn(bin, args, {
+      const child = spawn(launch.command, launch.args, {
         cwd: this.options.chatDirectory,
-        env: {
-          ...process.env,
-          PATH: augmentedPath(),
+        env: minimalEnv({
           ...getOpencodeEnv(),
           ...appOpencodeConfigEnv(),
           OPENCODE_SERVER_USERNAME: username,
           OPENCODE_SERVER_PASSWORD: password,
           OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig())
-        },
+        }),
         stdio: ['ignore', 'pipe', 'pipe'],
         // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
         detached: true
@@ -178,7 +168,9 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         version
       }
       this.connection = connection
-      console.log(`[opencode] listo en ${baseUrl} (v${version ?? '?'}) pid=${child.pid}`)
+      console.log(
+        `[opencode] listo en ${baseUrl} (v${version ?? '?'}) pid=${child.pid}${launch.disclaimed ? ' (TCC desvinculado)' : ''}`
+      )
       this.setStatus({ state: 'ready', error: undefined, version })
       this.emit('connection', connection)
       return connection
@@ -258,13 +250,6 @@ export function findOpencodeBinary(): string | null {
     if (existsSync(candidate) && isExecutable(candidate)) return candidate
   }
   return null
-}
-
-function augmentedPath(): string {
-  const current = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
-  const merged = [...current]
-  for (const d of EXTRA_PATH_DIRS) if (!merged.includes(d)) merged.push(d)
-  return merged.join(delimiter)
 }
 
 export function getFreePort(): Promise<number> {

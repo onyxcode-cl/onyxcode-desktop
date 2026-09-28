@@ -45,11 +45,12 @@ export function formatDuration(ms: number): string {
 
 // ───────────────────────────── Estado de la tarea ─────────────────────────────
 
-export type TaskStatus = 'running' | 'waiting' | 'done' | 'error' | 'idle'
+export type TaskStatus = 'running' | 'waiting' | 'question' | 'done' | 'error' | 'idle'
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   running: 'Trabajando',
   waiting: 'Esperando tu aprobación',
+  question: 'Esperando tu respuesta',
   done: 'Terminado',
   error: 'Error',
   idle: 'Nueva'
@@ -61,13 +62,15 @@ function lastAssistant(entries: MessageEntry[] | undefined): Message | undefined
   return undefined
 }
 
-/** Estado visible de una tarea a partir del run state, permisos pendientes y mensajes. */
+/** Estado visible de una tarea a partir del run state, permisos/preguntas pendientes y mensajes. */
 export function taskStatus(args: {
   run: SessionRunState | undefined
   waiting: boolean
+  hasQuestion?: boolean
   error: string | null | undefined
   entries: MessageEntry[] | undefined
 }): TaskStatus {
+  if (args.hasQuestion) return 'question'
   if (args.waiting) return 'waiting'
   if (args.run && args.run !== 'idle') return 'running'
   if (args.error) return 'error'
@@ -78,15 +81,20 @@ export function taskStatus(args: {
   return args.entries && args.entries.length === 0 ? 'idle' : 'done'
 }
 
-/** ¿El permiso pertenece a la tarea (o a una subtarea suya)? */
-export function permissionBelongsTo(p: PermissionRequest, taskId: string, sessions: Record<string, Session>): boolean {
-  if (p.sessionID === taskId) return true
-  let s: Session | undefined = sessions[p.sessionID]
+/** ¿Una sesión (permiso, pregunta…) pertenece a la tarea (o a una subtarea suya)? */
+export function sessionBelongsTo(sessionID: string, taskId: string, sessions: Record<string, Session>): boolean {
+  if (sessionID === taskId) return true
+  let s: Session | undefined = sessions[sessionID]
   for (let i = 0; s && i < 5; i++) {
     if (s.parentID === taskId) return true
     s = s.parentID ? sessions[s.parentID] : undefined
   }
   return false
+}
+
+/** ¿El permiso pertenece a la tarea (o a una subtarea suya)? */
+export function permissionBelongsTo(p: PermissionRequest, taskId: string, sessions: Record<string, Session>): boolean {
+  return sessionBelongsTo(p.sessionID, taskId, sessions)
 }
 
 /** Inicio y fin del último turno (desde el último mensaje del usuario). */

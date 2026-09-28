@@ -6,10 +6,14 @@
  * - `CHANNEL_ROLES`: por defecto solo la ventana principal puede invocar; Quick Entry y la píldora
  *   del overlay tienen su lista mínima (el overlay a pantalla completa no invoca nada).
  */
-import type { IpcInvokeChannel, IpcRequest } from '@shared/ipc'
-import type { CodeInvokeChannel, CodeRequest } from '@shared/ipc-code'
-import type { CoworkInvokeChannel, CoworkRequest } from '@shared/ipc-cowork'
-import type { IpcExtrasInvokeChannel, IpcExtrasInvokeContract } from '@shared/ipc-extras'
+import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
+import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
+import { COWORK_INVOKE_CHANNELS, type CoworkInvokeChannel, type CoworkRequest } from '@shared/ipc-cowork'
+import {
+  IPC_EXTRAS_INVOKE_CHANNELS,
+  type IpcExtrasInvokeChannel,
+  type IpcExtrasInvokeContract
+} from '@shared/ipc-extras'
 import {
   absPath,
   arr,
@@ -160,7 +164,10 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'computer:stop': none,
   'computer:resume': none,
   'computer:state': none,
-  'computer:session': obj({ active: bool, label: optional(str({ max: 500 })) })
+  'computer:session': obj({ active: bool, label: optional(str({ max: 500 })) }),
+  'cowork:keepAwakeState': none,
+  'cowork:keepAwakeSetting': obj({ enabled: bool }),
+  'cowork:keepAwakeActive': obj({ active: bool })
 }
 
 type ExtrasReq<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
@@ -201,4 +208,14 @@ export const CHANNEL_ROLES: Record<Exclude<WindowRole, 'main'>, ReadonlySet<stri
   quick: new Set(['extras:quickSubmit', 'extras:quickHide']),
   pill: new Set(['computer:stop']),
   overlay: new Set()
+}
+
+/**
+ * Comprobación en tiempo de ejecución (desarrollo): todo canal invoke de los contratos tiene
+ * esquema. Las tablas ya están tipadas contra los contratos (tsc falla si falta uno); esto cubre
+ * además un canal añadido a una lista sin pasar por el tipo. Devuelve los que faltan.
+ */
+export function missingSchemas(): string[] {
+  const all = [...IPC_INVOKE_CHANNELS, ...CODE_INVOKE_CHANNELS, ...COWORK_INVOKE_CHANNELS, ...IPC_EXTRAS_INVOKE_CHANNELS]
+  return [...new Set<string>(all)].filter((c) => !IPC_SCHEMAS[c])
 }

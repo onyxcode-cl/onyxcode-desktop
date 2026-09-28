@@ -257,11 +257,59 @@ export async function replyPermission(requestID: string, reply: 'once' | 'always
   })
 }
 
+/** Responde una pregunta estructurada (una respuesta -array de labels seleccionados o texto libre- por pregunta). */
+export async function replyQuestion(requestID: string, answers: string[][]): Promise<void> {
+  const { client, folder } = ctx()
+  const res = await client.question.reply({ requestID, directory: folder, answers })
+  if (res.error) throw new Error(errorMessage(res.error))
+  useCowork.setState((s) => {
+    const questions = { ...s.questions }
+    delete questions[requestID]
+    return { questions }
+  })
+}
+
+export async function rejectQuestion(requestID: string): Promise<void> {
+  const { client, folder } = ctx()
+  const res = await client.question.reject({ requestID, directory: folder })
+  if (res.error) throw new Error(errorMessage(res.error))
+  useCowork.setState((s) => {
+    const questions = { ...s.questions }
+    delete questions[requestID]
+    return { questions }
+  })
+}
+
 export async function archiveTask(sessionID: string): Promise<void> {
   const { client, folder } = ctx()
   const res = await client.session.update({ sessionID, directory: folder, time: { archived: Date.now() } })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
+  if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
+}
+
+/** Renombra una tarea (título mostrado en la lista; no cambia el prompt original). */
+export async function renameTask(sessionID: string, title: string): Promise<void> {
+  const { client, folder } = ctx()
+  const trimmed = title.trim()
+  if (!trimmed) return
+  const res = await client.session.update({ sessionID, directory: folder, title: trimmed })
+  if (res.error) throw new Error(errorMessage(res.error))
+  if (res.data) useSessions.getState().upsertSession(res.data)
+}
+
+/** Borra una tarea (y su historial) de forma permanente. */
+export async function deleteTask(sessionID: string): Promise<void> {
+  const { client, folder } = ctx()
+  const res = await client.session.delete({ sessionID, directory: folder })
+  if (res.error) throw new Error(errorMessage(res.error))
+  useSessions.setState((s) => {
+    const sessions = { ...s.sessions }
+    const messages = { ...s.messages }
+    delete sessions[sessionID]
+    delete messages[sessionID]
+    return { sessions, messages }
+  })
   if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
 }
 
