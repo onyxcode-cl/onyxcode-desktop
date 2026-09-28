@@ -311,6 +311,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md">
           <textarea
             ref={ref}
+            data-code-composer=""
             value={text}
             onChange={(e) => {
               setText(e.target.value)

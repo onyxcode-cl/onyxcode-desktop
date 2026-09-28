@@ -51,7 +51,7 @@ function useNow(ms: number): number {
 function StatusBadge({ status, compact = false }: { status: RoutineRunRecord['status']; compact?: boolean }): React.JSX.Element {
   const meta = {
     running: { cls: 'bg-accent-soft text-accent', icon: <Loader2 size={11} className="animate-spin" />, label: 'En curso' },
-    success: { cls: 'bg-success/12 text-success', icon: <CheckCircle2 size={11} />, label: 'Correcta' },
+    success: { cls: 'bg-success/10 text-success', icon: <CheckCircle2 size={11} />, label: 'Correcta' },
     error: { cls: 'bg-danger/10 text-danger', icon: <XCircle size={11} />, label: 'Falló' }
   }[status]
   return (

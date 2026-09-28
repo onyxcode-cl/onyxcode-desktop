@@ -162,6 +162,17 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     return [...this.servers.values()].map((e) => e.info)
   }
 
+  /** Servidores de acceso total vivos, con sus credenciales (kill-switch del control del Mac). */
+  fullAccessConnections(): Array<{ folder: string; baseUrl: string; authorization: string }> {
+    const out: Array<{ folder: string; baseUrl: string; authorization: string }> = []
+    for (const e of this.servers.values()) {
+      if (e.info.fullAccess && e.handle) {
+        out.push({ folder: e.info.folder, baseUrl: e.handle.baseUrl, authorization: e.handle.authorization })
+      }
+    }
+    return out
+  }
+
   private setInfo(folder: string, fullAccess: boolean, patch: Partial<CoworkServerInfo>): void {
     const key = serverKey(folder, fullAccess)
     const entry = this.servers.get(key) ?? { info: { folder, state: 'stopped', sandboxed: false, fullAccess } }

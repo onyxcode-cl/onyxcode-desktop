@@ -89,6 +89,19 @@ export interface ComputerActionEvent {
   auto?: boolean
 }
 
+/**
+ * Estado del kill-switch del control del Mac. La fuente de verdad vive en memoria del proceso
+ * principal (el MCP la consulta por el canal lateral autenticado antes de cada acción).
+ */
+export interface ComputerKillState {
+  /** true = parado: toda acción del MCP se rechaza hasta `computer:resume` (acción explícita del usuario). */
+  stopped: boolean
+  stoppedAt: number | null
+  /** false si el atajo global ⌘⇧Esc no se pudo registrar (otra app lo usa). */
+  shortcutRegistered: boolean
+  shortcut: string
+}
+
 /** Mensajes del proceso principal al overlay de control (`src/renderer/overlay`). */
 export type ComputerOverlayMessage =
   | {
@@ -243,10 +256,16 @@ export interface CoworkInvokeContract {
   'computer:status': { req: void; res: ComputerStatus }
   /** Lanza los prompts de macOS y abre Ajustes › Privacidad (Accesibilidad / Grabación de pantalla). */
   'computer:requestPermissions': { req: void; res: void }
-  /** Kill-switch: crea el archivo de parada; toda herramienta del MCP falla sin actuar. */
+  /**
+   * Kill-switch (lo ejecuta el proceso principal, desde cualquier vista): marca el estado parado,
+   * aborta toda sesión en curso de los servidores de acceso total, mata los `cu-helper` en vuelo y
+   * avisa al renderer y al overlay.
+   */
   'computer:stop': { req: void; res: void }
-  /** Quita el archivo de parada. */
+  /** "Reanudar control": acción explícita del usuario; quita la parada. */
   'computer:resume': { req: void; res: void }
+  /** Estado actual del kill-switch (y del atajo global). */
+  'computer:state': { req: void; res: ComputerKillState }
   /**
    * Sesión de control activa (p.ej. al empezar una tarea de acceso completo): muestra el overlay
    * y la píldora "La IA está controlando tu Mac" y no los oculta por inactividad hasta `active: false`.
@@ -262,6 +281,8 @@ export interface CoworkEventContract {
   'computer:action': ComputerActionEvent
   /** Se detuvo el control (atajo global Cmd+Shift+Escape o computer:stop). */
   'computer:stopped': { at: number }
+  /** Cambio del kill-switch (parada, reanudación o fallo al registrar el atajo global). */
+  'computer:killState': ComputerKillState
   /** Solo para las ventanas del overlay de control (no se difunde al resto). */
   'computer:overlay': ComputerOverlayMessage
 }
@@ -295,6 +316,7 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:requestPermissions',
   'computer:stop',
   'computer:resume',
+  'computer:state',
   'computer:session'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
@@ -304,6 +326,7 @@ export const COWORK_EVENT_CHANNELS = [
   'routines:run',
   'computer:action',
   'computer:stopped',
+  'computer:killState',
   'computer:overlay'
 ] as const satisfies readonly CoworkEventChannel[]
 

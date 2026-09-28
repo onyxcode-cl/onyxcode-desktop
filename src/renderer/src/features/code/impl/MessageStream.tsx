@@ -206,6 +206,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   )
   const hidden = entries.length - visible.length
   const turns = useMemo(() => buildTurns(visible), [visible])
+  const turnBlocks = useMemo(() => turns.map((t) => buildBlocks(t.assistant)), [turns])
 
   // Permisos ligados a una llamada de herramienta visible se muestran junto a ella.
   const callIds = new Set<string>()
@@ -233,7 +234,7 @@ export function MessageStream(props: Props): React.JSX.Element {
         )}
         {turns.map((turn, ti) => {
           const isLastTurn = ti === turns.length - 1
-          const blocks = buildBlocks(turn.assistant)
+          const blocks = turnBlocks[ti]
           return (
             <div key={turn.user?.info.id ?? `t${ti}`} className="flex flex-col gap-3">
               {turn.user && <UserMessage entry={turn.user} busy={busy} root={root} />}

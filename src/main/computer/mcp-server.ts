@@ -9,8 +9,13 @@
  *
  * Variables de entorno:
  *   CU_HELPER               ruta al binario nativo `cu-helper` (obligatoria)
- *   COMPUTER_STOP_FILE      kill-switch: si el archivo existe, toda herramienta falla sin actuar
- *   COMPUTER_EVENTS_URL     canal lateral: cada acción se envía como `POST` con un JSON
+ *   COMPUTER_STOP_FILE      kill-switch de RESPALDO: si el archivo existe, toda herramienta falla sin
+ *                           actuar. Solo decide cuando no hay COMPUTER_EVENTS_URL.
+ *   COMPUTER_EVENTS_URL     canal lateral (URL con token). Kill-switch: antes de cada acción (y cada
+ *                           250 ms durante acciones largas) `GET <url>/state` → `{ stopped }`, con
+ *                           caché ≤200 ms; la fuente de verdad es la memoria del proceso principal.
+ *                           Si el proceso principal no responde se RECHAZA la acción (fail-closed).
+ *                           Además cada acción se envía como `POST` con un JSON
  *                           `{ tool, phase, x?, y?, text?, at }` (coordenadas en PUNTOS de pantalla):
  *                           `phase: 'start'` ANTES de mover el ratón y `phase: 'end'` al terminar.
  *                           Fire-and-forget (salvo el inicio de una captura, que espera ≤600 ms
@@ -25,7 +30,7 @@
  * Coordenadas: las herramientas reciben coordenadas EN PÍXELES DE LA ÚLTIMA CAPTURA y las
  * convierten a puntos de la pantalla principal (factor = anchoPuntos / anchoCaptura).
  */
-import { execFile } from 'node:child_process'
+import { execFile, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -42,15 +47,53 @@ const INSTANT = process.env.COMPUTER_INSTANT === '1'
 const TYPE_DELAY = process.env.COMPUTER_TYPE_DELAY_MS ?? ''
 const SETTLE_MS = 450
 const STOPPED_MSG = 'Control detenido por el usuario'
+const UNVERIFIED_MSG = 'No se pudo verificar el estado del kill-switch con OpenDesk; acción rechazada'
+const STATE_CACHE_MS = 200
+
+// ───────────────────────────── kill-switch ─────────────────────────────
+
+let stateCache: { at: number; stopped: boolean } | null = null
+let stateInflight: Promise<boolean> | null = null
+
+async function queryStopped(): Promise<boolean> {
+  const fileStop = !!STOP_FILE && existsSync(STOP_FILE)
+  if (!EVENTS_URL) return fileStop
+  try {
+    const r = await fetch(`${EVENTS_URL}/state`, { signal: AbortSignal.timeout(1500) })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const j = (await r.json()) as { stopped?: unknown }
+    if (typeof j.stopped !== 'boolean') throw new Error('respuesta inválida')
+    return j.stopped || fileStop
+  } catch (err) {
+    log('kill-switch no verificable:', err instanceof Error ? err.message : err)
+    throw new Error(UNVERIFIED_MSG)
+  }
+}
+
+/** true si el usuario detuvo el control. Lanza (fail-closed) si no se puede verificar. */
+async function isStopped(): Promise<boolean> {
+  if (stateCache && Date.now() - stateCache.at <= STATE_CACHE_MS) return stateCache.stopped
+  stateInflight ??= queryStopped().finally(() => {
+    stateInflight = null
+  })
+  const stopped = await stateInflight
+  stateCache = { at: Date.now(), stopped }
+  return stopped
+}
+
+/** Procesos del helper en vuelo (para matarlos si se pulsa Detener a mitad de una acción). */
+const children = new Set<ChildProcess>()
 
 // ───────────────────────────── utilidades ─────────────────────────────
 
 function run(cmd: string, args: string[], timeout = 15_000): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+    const child = execFile(cmd, args, { timeout, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+      children.delete(child)
       if (err) reject(new Error((stderr || err.message).toString().trim()))
       else resolve(stdout.toString())
     })
+    children.add(child)
   })
 }
 
@@ -103,14 +146,36 @@ function emit(ev: ActionEvent): void {
  * la acción y emite `end` (onda del clic) con el resultado.
  */
 async function act<T>(ev: ActionEvent, fn: () => Promise<T>): Promise<T> {
+  // Última comprobación justo antes de actuar (callTool ya comprobó al empezar).
+  if (await isStopped()) throw new Error(STOPPED_MSG)
   emit({ ...ev, phase: 'start' })
+  // Vigilancia durante la acción: si se detiene el control a mitad (tecleo largo, `wait`…), se
+  // matan los helpers en vuelo y la acción falla. El proceso principal además hace `pkill`.
+  let timer: NodeJS.Timeout | undefined
+  const watchdog = new Promise<never>((_, reject) => {
+    timer = setInterval(() => {
+      isStopped().then(
+        (stopped) => {
+          if (!stopped) return
+          for (const c of children) c.kill('SIGKILL')
+          reject(new Error(STOPPED_MSG))
+        },
+        (err: unknown) => {
+          for (const c of children) c.kill('SIGKILL')
+          reject(err instanceof Error ? err : new Error(String(err)))
+        }
+      )
+    }, 250)
+  })
   try {
-    const r = await fn()
+    const r = await Promise.race([fn(), watchdog])
     emit({ ...ev, phase: 'end', ok: true })
     return r
   } catch (err) {
     emit({ ...ev, phase: 'end', ok: false })
     throw err
+  } finally {
+    clearInterval(timer)
   }
 }
 
@@ -438,8 +503,10 @@ const TOOLS: ToolDef[] = [
 async function callTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
   const tool = TOOLS.find((t) => t.name === name)
   if (!tool) return { content: [{ type: 'text', text: `Herramienta desconocida: ${name}` }], isError: true }
-  if (STOP_FILE && existsSync(STOP_FILE)) {
-    return { content: [{ type: 'text', text: STOPPED_MSG }], isError: true }
+  try {
+    if (await isStopped()) return { content: [{ type: 'text', text: STOPPED_MSG }], isError: true }
+  } catch (err) {
+    return { content: [{ type: 'text', text: err instanceof Error ? err.message : String(err) }], isError: true }
   }
   try {
     if (name === 'screenshot') {
@@ -456,7 +523,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<To
     const wantShot = tool.action && AUTO_SHOT && args?.screenshot !== false
     if (wantShot) {
       await sleep(SETTLE_MS)
-      if (STOP_FILE && existsSync(STOP_FILE)) {
+      if (await isStopped().catch(() => true)) {
         content.push({ type: 'text', text: STOPPED_MSG })
       } else {
         try {

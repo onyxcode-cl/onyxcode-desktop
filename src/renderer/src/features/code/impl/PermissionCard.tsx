@@ -49,7 +49,11 @@ export function PermissionCard({
   useEffect(() => {
     if (!hotkeys) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isEditableTarget(e.target)) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      // Desde el composer vacío también valen (es donde está el foco normalmente).
+      const t = e.target
+      const emptyComposer = t instanceof HTMLTextAreaElement && t.dataset.codeComposer !== undefined && t.value === ''
+      if (isEditableTarget(t) && !emptyComposer) return
       if (e.key === '1') run('once')
       else if (e.key === '2') run('always')
       else if (e.key === '3') run('reject')

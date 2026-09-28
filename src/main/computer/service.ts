@@ -2,7 +2,13 @@
  * Servicio de "computer use" en el proceso principal:
  * - localiza el helper nativo (`cu-helper`) y el script del MCP (`out/main/computer-mcp.js`);
  * - estado de permisos de macOS (Accesibilidad / Grabación de pantalla) y cómo pedirlos;
- * - kill-switch (archivo de parada) + atajo global Cmd+Shift+Escape;
+ * - kill-switch + atajo global Cmd+Shift+Escape. La fuente de verdad es el estado EN MEMORIA de
+ *   este proceso (`stopped`): el MCP lo consulta con `GET <COMPUTER_EVENTS_URL>/state` antes de cada
+ *   acción, así que el agente no puede "des-pararse" borrando un archivo. `stop()` además aborta las
+ *   sesiones de los servidores de acceso total (`abortSessions`, lo inyecta cowork-handlers) y mata
+ *   los `cu-helper` en vuelo. El archivo STOP (en `userData/opendesk-killswitch/`, ruta que
+ *   agents/computer.md deniega a bash/edit) solo es el respaldo si el canal lateral no arrancó;
+ *   parar NUNCA se deshace solo: hace falta `resume()` (botón "Reanudar control");
  * - canal lateral de acciones: servidor HTTP en 127.0.0.1 al que el MCP hace `POST` de cada
  *   acción (`COMPUTER_EVENTS_URL`), reemitido como evento `computer:action`;
  * - bloque `mcp.computer` para la config de OpenCode del servidor de acceso completo.
@@ -23,7 +29,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { dirname, join } from 'node:path'
-import type { ComputerActionEvent, ComputerStatus, ComputerUseInfo } from '@shared/ipc-cowork'
+import type { ComputerActionEvent, ComputerKillState, ComputerStatus, ComputerUseInfo } from '@shared/ipc-cowork'
 
 export const COMPUTER_MCP_NAME = 'computer'
 export const COMPUTER_AGENT_ID = 'computer'
@@ -41,6 +47,19 @@ export function motionDurationMs(dist: number): number {
 interface ServiceEvents {
   action: [ComputerActionEvent]
   stopped: [{ at: number }]
+  /** Cualquier cambio del kill-switch (parada, reanudación, atajo global no disponible). */
+  killState: [ComputerKillState]
+}
+
+/** Resultado de abortar las sesiones de los servidores de acceso total. */
+export interface AbortReport {
+  aborted: number
+  failed: number
+}
+
+/** Escapa una cadena para usarla literal en una regex extendida (pkill -f). */
+function ereLiteral(s: string): string {
+  return s.replace(/[.[\]{}()*+?^$|\\]/g, '\\$&')
 }
 
 function unpacked(p: string): string {
@@ -61,6 +80,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private eventsUrl: string | null = null
   private eventsStarting: Promise<string | null> | null = null
   private shortcutRegistered = false
+  /** Kill-switch: fuente de verdad (en memoria del proceso principal). */
+  private stopped = false
+  private stoppedAt: number | null = null
+  /**
+   * Aborta toda sesión en curso de los servidores de acceso total (inyectado por cowork-handlers;
+   * el gestor de Cowork conoce los servidores y sus credenciales).
+   */
+  abortSessions: (() => Promise<AbortReport>) | null = null
   /** Sin animación del cursor (también lo usa el overlay para no simular el viaje). */
   readonly instant = process.env.OPENDESK_COMPUTER_INSTANT === '1'
   /**
@@ -90,16 +117,32 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return candidates.find((p) => existsSync(p)) ?? null
   }
 
+  /**
+   * Archivo de parada de RESPALDO (solo si el MCP no puede consultar a este proceso). El nombre de
+   * la carpeta coincide con la regla `*opendesk-killswitch*` que agents/computer.md deniega a
+   * bash/edit/write (defensa en profundidad: un comando ofuscado podría esquivarla, ver AUDIT S5).
+   */
   get stopFile(): string {
-    return join(app.getPath('userData'), 'computer-use', 'STOP')
+    return join(app.getPath('userData'), 'opendesk-killswitch', 'STOP')
   }
 
   isStopped(): boolean {
-    return existsSync(this.stopFile)
+    return this.stopped
   }
 
-  /** Inicializa: limpia un STOP de una sesión anterior y registra el atajo global. */
+  state(): ComputerKillState {
+    return {
+      stopped: this.stopped,
+      stoppedAt: this.stoppedAt,
+      shortcutRegistered: this.shortcutRegistered,
+      shortcut: STOP_SHORTCUT
+    }
+  }
+
+  /** Inicializa: arranca en estado reanudado (limpia un STOP previo) y registra el atajo global. */
   init(): void {
+    // Ubicación antigua del archivo de parada.
+    rmSync(join(app.getPath('userData'), 'computer-use', 'STOP'), { force: true })
     this.resume()
     this.registerShortcut()
   }
@@ -107,21 +150,63 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   registerShortcut(): void {
     if (this.shortcutRegistered) return
     try {
-      this.shortcutRegistered = globalShortcut.register(STOP_SHORTCUT, () => this.stop())
-      if (!this.shortcutRegistered) console.warn(`[computer] no se pudo registrar ${STOP_SHORTCUT}`)
+      this.shortcutRegistered = globalShortcut.register(STOP_SHORTCUT, () => void this.stop())
     } catch (err) {
       console.warn('[computer] atajo global:', err)
+      this.shortcutRegistered = false
+    }
+    if (!this.shortcutRegistered) {
+      console.warn(`[computer] no se pudo registrar ${STOP_SHORTCUT}`)
+      this.emit('killState', this.state())
     }
   }
 
-  stop(): void {
-    mkdirSync(dirname(this.stopFile), { recursive: true })
-    writeFileSync(this.stopFile, String(Date.now()), 'utf8')
-    this.emit('stopped', { at: Date.now() })
+  /**
+   * Kill-switch. Idempotente (pulsarlo otra vez vuelve a abortar y matar). Orden: primero el estado
+   * en memoria y el archivo (el MCP rechaza desde ya cualquier acción nueva), luego matar los
+   * helpers en vuelo, avisar a la UI y abortar las sesiones (que mata también sus bash).
+   */
+  async stop(): Promise<AbortReport> {
+    const at = Date.now()
+    this.stopped = true
+    this.stoppedAt ??= at
+    try {
+      mkdirSync(dirname(this.stopFile), { recursive: true, mode: 0o700 })
+      writeFileSync(this.stopFile, String(at), 'utf8')
+    } catch (err) {
+      console.error('[computer] archivo de parada:', err)
+    }
+    const killed = this.killHelpers()
+    this.emit('stopped', { at })
+    this.emit('killState', this.state())
+    let report: AbortReport = { aborted: 0, failed: 0 }
+    try {
+      if (this.abortSessions) report = await this.abortSessions()
+    } catch (err) {
+      console.error('[computer] abortar sesiones:', err)
+    }
+    await killed
+    console.log(`[computer] kill-switch: ${report.aborted} sesión(es) abortada(s), ${report.failed} con error`)
+    return report
   }
 
+  /** "Reanudar control" (acción explícita del usuario). */
   resume(): void {
     rmSync(this.stopFile, { force: true })
+    const changed = this.stopped
+    this.stopped = false
+    this.stoppedAt = null
+    if (changed) this.emit('killState', this.state())
+  }
+
+  /** SIGKILL a todo `cu-helper` en ejecución (acción del MCP a medio hacer: tecleo, arrastre…). */
+  private killHelpers(): Promise<void> {
+    const bin = this.helperPath()
+    if (!bin) return Promise.resolve()
+    return new Promise((resolve) => {
+      // Solo el binario de esta app (ruta completa; también cuando va con flags --instant, etc.).
+      execFile('/usr/bin/pkill', ['-KILL', '-f', `^${ereLiteral(bin)}( |$)`], { timeout: 3_000 }, () => resolve())
+    })
   }
 
   async status(): Promise<ComputerStatus> {
@@ -192,6 +277,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const path = `/computer-events/${token}`
     this.eventsStarting = new Promise((resolve) => {
       const srv = createServer((req, res) => {
+        if (req.method === 'GET' && req.url === `${path}/state`) {
+          // Consulta del kill-switch por el MCP antes de cada acción.
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify({ stopped: this.stopped }))
+          return
+        }
         if (req.method !== 'POST' || req.url !== path) {
           res.statusCode = 404
           res.end()
