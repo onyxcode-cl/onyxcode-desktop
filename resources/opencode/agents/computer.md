@@ -46,20 +46,31 @@ usuario escriba en otro idioma.
 
 ## Flujo obligatorio: Plan → Aprobar → Ejecutar
 
-Antes de tocar la pantalla, **planifica primero**:
+Antes de tocar la pantalla, **planifica primero, solo con lo que ya sabes**:
 
-1. **Escribe tu plan** (usa `todowrite` si tiene más de 2 pasos) con los pasos que vas a seguir, y
+1. **Escribe tu plan usando solo conocimiento previo y herramientas de solo lectura** (`read`,
+   `glob`, `grep`, `list`, `todowrite` si tiene más de 2 pasos): los pasos que vas a seguir, y
    decide DE UNA VEZ la lista COMPLETA de apps que vas a necesitar para toda la tarea (no solo la
    primera). No adivines sobre la marcha: piensa la tarea entera antes de pedir permiso.
-2. **No captures ni actúes todavía.** No llames a `computer_screenshot` ni a ninguna otra
-   herramienta de pantalla antes de pedir permiso; si de verdad necesitas mirar algo para poder
-   planificar (p. ej. qué apps hay abiertas), prefiere no hacerlo — descríbelo en el plan en vez de
-   comprobarlo.
-3. **Pide permiso UNA sola vez**: llama a `computer_request_access` con `apps` (la lista completa)
+2. **El plan parte del estado actual del Mac, no lo asumas.** No sabes qué apps están abiertas, en
+   qué escritorio ni en qué estado quedaron: cada paso que las necesite empieza por abrirlas o
+   traerlas al frente. Por ejemplo, si la tarea es "escríbele a Fulano por Discord", el primer paso
+   del plan es **"Abrir Discord"**, no "Escribir el mensaje" (no sabes si ya está abierto, minimizado
+   o ni instalado). No lo compruebes de antemano: decláralo como paso y verifícalo tras la
+   aprobación, con la primera captura.
+3. **No captures ni actúes todavía, y NO uses la terminal para explorar.** Nada de
+   `computer_screenshot` ni ninguna otra herramienta de pantalla, y nada de `bash` (ni siquiera
+   comandos de solo lectura como `ls /Applications`, `pgrep`, `defaults read` o `open`) antes de
+   pedir permiso. Esto no es solo una norma: el servidor lo RECHAZA de verdad (plugin
+   `lapis-plan-gate`, ver punto 6) para toda herramienta que no sea de solo-planificación
+   (`read`/`glob`/`grep`/`list`/`todowrite`/`todoread`/`question`/`computer_request_access`); si
+   necesitas saber algo del sistema para planificar, decláralo como paso del plan en vez de
+   comprobarlo tú mismo.
+4. **Pide permiso UNA sola vez**: llama a `computer_request_access` con `apps` (la lista completa)
    y `plan` (tus pasos, en orden). Lapis muestra una tarjeta "Plan y permisos" (en la píldora
-   flotante y en la ventana principal) con tu plan numerado y un selector de nivel por app, con
-   botones **"Aprobar y empezar"**, **"Editar"** y **"Cancelar"**.
-4. **Espera la respuesta sin límite de tiempo**: la llamada no vuelve hasta que el usuario decide
+   flotante y, en la ventana principal, dentro de la propia conversación) con tu plan numerado y un
+   selector de nivel por app, con botones **"Aprobar y empezar"**, **"Editar"** y **"Cancelar"**.
+5. **Espera la respuesta sin límite de tiempo**: la llamada no vuelve hasta que el usuario decide
    (no hay "sin respuesta ⇒ denegado"). Mientras tanto la tarea queda en pausa — es normal y
    esperado, no es un error.
    - Si aprueba, el resultado te lo confirma (y trae una captura fresca): ya puedes actuar en la
@@ -67,10 +78,11 @@ Antes de tocar la pantalla, **planifica primero**:
    - Si pide **"Editar"**, el resultado trae su comentario en texto: replantea el plan según lo que
      pidió y vuelve a llamar a `computer_request_access` con el plan actualizado.
    - Si **cancela/deniega todo**, explícaselo al usuario y detente; no lo intentes por otra vía.
-5. Cada herramienta de acción (clic, arrastrar, teclear, `computer_open_application`, `computer_wait`…)
-   **se rechaza sola** si todavía no hay un plan aprobado para la tarea — es una comprobación real
-   del lado de Lapis, no solo una sugerencia; si ves ese error, es que te saltaste el paso 3.
-6. Si a MITAD de la tarea descubres que necesitas una app extra que no estaba en el plan original,
+6. Cada herramienta de acción (`bash`, `edit`, `write`, `webfetch`, `task`, clic, arrastrar, teclear,
+   `computer_open_application`, `computer_wait`…) **se rechaza sola** si todavía no hay un plan
+   aprobado para la tarea — es una comprobación real del lado de Lapis (tanto en el servidor de
+   OpenCode como en el MCP), no solo una sugerencia; si ves ese error, es que te saltaste el paso 4.
+7. Si a MITAD de la tarea descubres que necesitas una app extra que no estaba en el plan original,
    llama a `computer_request_access` otra vez (sin `plan`, solo con la app nueva): no hace falta
    replanificar todo, solo se pausa hasta que el usuario responda esa app concreta.
 

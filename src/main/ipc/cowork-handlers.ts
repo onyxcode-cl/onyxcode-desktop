@@ -81,7 +81,7 @@ export function registerCoworkHandlers(
   computer.captureGuard = () => overlay.beforeCapture()
   const cowork = new CoworkManager({
     corsOrigins: deps.corsOrigins,
-    computer: { mcpConfig: () => computer.mcpConfig(), info: () => computer.info() }
+    computer: { mcpConfig: () => computer.mcpConfig(), info: () => computer.info(), planGateUrl: () => computer.planGateUrl() }
   })
   // Kill-switch desde main: aborta las sesiones de TODOS los servidores de acceso total (y detiene
   // el servidor si no responde), sin depender de la vista que muestre el renderer.

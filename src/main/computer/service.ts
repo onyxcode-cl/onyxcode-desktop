@@ -621,6 +621,17 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return this.eventsStarting
   }
 
+  /**
+   * URL (con token) del canal lateral de eventos: la usa tanto el MCP (`mcpEnv`) como el plugin
+   * `lapis-plan-gate` del servidor de OpenCode de acceso total (`cowork/manager.ts` la pasa por
+   * entorno como `LAPIS_PLAN_GATE_URL`, SOLO a servidores de acceso total; `lapis-env.js` la oculta
+   * a bash — ver `cowork/opencode-config.ts`). El plugin consulta `GET .../plan-status` antes de
+   * cada herramienta que no sea de solo-planificación, con el mismo fail-closed que el MCP.
+   */
+  async planGateUrl(): Promise<string | null> {
+    return this.ensureEventsServer()
+  }
+
   /** Entorno propio del MCP (se suma a `minimalEnv` en el host). */
   private async mcpEnv(): Promise<Record<string, string>> {
     const helper = this.helperPath()

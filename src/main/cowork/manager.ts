@@ -42,6 +42,12 @@ export interface CoworkComputerDeps {
   /** Bloque `mcp.computer` para la config de OpenCode, o null si no está disponible. */
   mcpConfig: () => Promise<Record<string, unknown> | null>
   info: () => Promise<ComputerUseInfo>
+  /**
+   * URL+token del canal lateral de eventos (mismo que usa el MCP), para el plugin
+   * `lapis-plan-gate` del servidor de acceso total. Null si no está disponible (el servidor arranca
+   * igual, pero el agente `computer` no tendría MCP tampoco en ese caso).
+   */
+  planGateUrl: () => Promise<string | null>
 }
 
 const NO_COMPUTER: ComputerUseInfo = {
@@ -326,7 +332,9 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   private spawn(folder: string, fullAccess: boolean): Promise<CoworkServerHandle> {
     const key = serverKey(folder, fullAccess)
     this.setInfo(folder, fullAccess, { state: 'starting', error: undefined })
-    const starting = this.inlineConfig(key, fullAccess).then((config) =>
+    const planGateUrl =
+      fullAccess && this.opts.computer ? this.opts.computer.planGateUrl().catch(() => null) : Promise.resolve<string | null>(null)
+    const starting = Promise.all([this.inlineConfig(key, fullAccess), planGateUrl]).then(([config, gateUrl]) =>
       startCoworkServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
@@ -339,7 +347,10 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
             },
         extraEnv: {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
-          ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {})
+          ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {}),
+          // Plugin `lapis-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
+          // SOLO en servidores de acceso total; `lapis-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
+          ...(gateUrl ? { LAPIS_PLAN_GATE_URL: gateUrl } : {})
         },
         networkAllowlist: fullAccess ? undefined : () => this.network.effectiveAllowlist(folder),
         allowDelete: fullAccess ? undefined : this.hasDeleteGrant(folder),
