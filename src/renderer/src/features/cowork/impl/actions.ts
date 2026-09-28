@@ -1,4 +1,5 @@
 /** Acciones del modo Cowork (carpetas, tareas, permisos). */
+import type { AccessDecision } from '@shared/ipc-cowork'
 import type { ModelRef } from '@shared/types'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
@@ -9,6 +10,7 @@ import {
   connectFolder,
   disconnect,
   fullAccessFor,
+  loadGrants,
   loadTask,
   refreshComputerStatus,
   rememberFolder,
@@ -136,6 +138,69 @@ export async function stopComputerControl(): Promise<void> {
 export async function resumeComputerControl(): Promise<void> {
   await cw('computer:resume')
   useCowork.setState({ controlStoppedAt: null, lastAction: null })
+}
+
+// ── Concesión por app ──
+
+/**
+ * Responde a la tarjeta `request_access` pendiente: una decisión por app (nivel o "denegar").
+ * Persiste en main y desbloquea la herramienta MCP que esperaba la respuesta.
+ */
+export async function respondAccessRequest(decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>): Promise<void> {
+  const req = useCowork.getState().accessRequest
+  if (!req) return
+  useCowork.setState({ accessRequest: null })
+  try {
+    await cw('computer:respondAccess', { id: req.id, decisions })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
+  await loadGrants()
+}
+
+export function dismissAccessRequest(): void {
+  // "Cerrar" sin decidir = denegar todas (no deja la tarjeta pendiente ni la herramienta colgada).
+  const req = useCowork.getState().accessRequest
+  if (!req) return
+  void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const })))
+}
+
+/** Cambia (o concede a mano) el nivel de una app desde Ajustes. */
+export async function setAppGrant(bundleId: string, name: string, tier: 'view' | 'click' | 'full'): Promise<void> {
+  try {
+    const grants = await cw('computer:setGrant', { bundleId, name, tier })
+    useCowork.setState({ grants })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
+}
+
+/** Quita la concesión (vuelve a "sin decidir": se preguntará de nuevo la próxima vez). */
+export async function revokeAppGrant(bundleId: string): Promise<void> {
+  try {
+    const grants = await cw('computer:revokeGrant', { bundleId })
+    useCowork.setState({ grants })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
+}
+
+export async function denyApp(bundleId: string, name: string): Promise<void> {
+  try {
+    const grants = await cw('computer:denyApp', { bundleId, name })
+    useCowork.setState({ grants })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
+}
+
+export async function undenyApp(bundleId: string): Promise<void> {
+  try {
+    const grants = await cw('computer:undenyApp', { bundleId })
+    useCowork.setState({ grants })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
 }
 
 export const CONTROL_STOPPED_SEND_ERROR =

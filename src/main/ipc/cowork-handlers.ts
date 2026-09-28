@@ -114,6 +114,9 @@ export function registerCoworkHandlers(
     send('computer:stopped', ev)
     overlay.stopped()
   })
+  // Tarjeta "¿Permitir que el agente use X?" (herramienta MCP request_access): se difunde a todas
+  // las ventanas; `computer:respondAccess` la resuelve.
+  computer.on('requestAccess', (req) => send('computer:accessRequest', req))
   // Tras los listeners: si el atajo global no se registra, `killState` llega a la UI (que además
   // lo consulta con `computer:state` al montar Cowork, por si la ventana aún no existía).
   computer.init()
@@ -205,6 +208,29 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'computer:resume', () => computer.resume())
   handle(ipcMain, 'computer:state', () => computer.state())
   handle(ipcMain, 'computer:session', (req) => overlay.setSession(req?.active === true, typeof req?.label === 'string' ? req.label : undefined))
+  // ── Concesión por app ──
+  handle(ipcMain, 'computer:grants', () => computer.grants.snapshot())
+  handle(ipcMain, 'computer:setGrant', ({ bundleId, name, tier }) => {
+    computer.grants.grant(bundleId, name, tier)
+    return computer.grants.snapshot()
+  })
+  handle(ipcMain, 'computer:revokeGrant', ({ bundleId }) => {
+    computer.grants.revoke(bundleId)
+    return computer.grants.snapshot()
+  })
+  handle(ipcMain, 'computer:denyApp', ({ bundleId, name }) => {
+    computer.grants.deny(bundleId)
+    // El nombre no se usa al denegar (no hay AppGrant para una app denegada), pero se valida igual.
+    void name
+    return computer.grants.snapshot()
+  })
+  handle(ipcMain, 'computer:undenyApp', ({ bundleId }) => {
+    computer.grants.undeny(bundleId)
+    return computer.grants.snapshot()
+  })
+  handle(ipcMain, 'computer:respondAccess', ({ id, decisions }) => {
+    computer.resolveAccessRequest(id, decisions)
+  })
 
   // ── Mantener el Mac despierto ──
   handle(ipcMain, 'cowork:keepAwakeState', () => keepAwake.state())

@@ -7,6 +7,7 @@ import { create } from 'zustand'
 import { createOpencodeClient, type PermissionRequest, type QuestionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
 import {
   FULL_ACCESS_NOT_GRANTED,
+  type AccessRequest,
   type ComputerActionEvent,
   type ComputerKillState,
   type ComputerStatus,
@@ -14,7 +15,8 @@ import {
   type CoworkDeliverable,
   type CoworkFolder,
   type CoworkMemory,
-  type CoworkProject
+  type CoworkProject,
+  type GrantsSnapshot
 } from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
@@ -72,6 +74,10 @@ interface CoworkState {
   memory: CoworkMemory | null
   /** Panel "Proyecto y memoria" visible. */
   projectPanelOpen: boolean
+  /** Apps concedidas/denegadas (concesión por app, `computer:grants`). */
+  grants: GrantsSnapshot | null
+  /** Tarjeta "¿Permitir que el agente use X?" pendiente (herramienta MCP `request_access`). */
+  accessRequest: AccessRequest | null
 
   set: (patch: Partial<CoworkState>) => void
 }
@@ -145,6 +151,8 @@ export const useCowork = create<CoworkState>((set) => ({
   project: null,
   memory: null,
   projectPanelOpen: false,
+  grants: null,
+  accessRequest: null,
   set: (patch) => set(patch)
 }))
 
@@ -587,6 +595,26 @@ export async function syncKillState(): Promise<void> {
     applyKillState(await cw('computer:state'))
   } catch {
     // Sin puente (p.ej. tests): nada que sincronizar.
+  }
+}
+
+// ── Concesión por app ──
+
+let accessRequestListening = false
+
+/** Se suscribe (una vez) a las tarjetas `request_access` del agente, en cualquier vista. */
+export function syncAccessRequests(): void {
+  if (accessRequestListening) return
+  accessRequestListening = true
+  onCowork('computer:accessRequest', (req) => useCowork.setState({ accessRequest: req }))
+}
+
+/** Carga la lista de apps concedidas/denegadas (pantalla de permisos). */
+export async function loadGrants(): Promise<void> {
+  try {
+    useCowork.setState({ grants: await cw('computer:grants') })
+  } catch {
+    // sin puente: nada que cargar
   }
 }
 

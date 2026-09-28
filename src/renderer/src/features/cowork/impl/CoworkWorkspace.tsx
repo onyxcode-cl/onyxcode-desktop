@@ -39,7 +39,7 @@ import {
   sendToTask,
   stopComputerControl
 } from './actions'
-import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
+import { AccessModeSwitch, AccessRequestDialog, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { CoworkComposer } from './CoworkComposer'
@@ -51,7 +51,17 @@ import { ProgressPanel } from './ProgressPanel'
 import { ProjectPanel } from './ProjectPanel'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon, TaskList } from './TaskList'
-import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, setProjectPanelOpen, syncKillState, useCowork } from './store'
+import {
+  clearUnseen,
+  disconnect,
+  lastFolder,
+  resync,
+  setPanelOpen,
+  setProjectPanelOpen,
+  syncAccessRequests,
+  syncKillState,
+  useCowork
+} from './store'
 import {
   extOf,
   formatDuration,
@@ -204,6 +214,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   // refleja su estado (`syncKillState` se suscribe a `computer:killState` una vez).
   useEffect(() => {
     void syncKillState()
+    syncAccessRequests()
     const offAction = onCowork('computer:action', (ev) => {
       if (useCowork.getState().conn?.fullAccess) useCowork.setState({ lastAction: ev })
     })
@@ -451,6 +462,7 @@ export function CoworkWorkspace(): React.JSX.Element {
       )}
 
       <FullAccessDialog />
+      <AccessRequestDialog />
       <ProjectPanel />
 
       {pending && <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />}

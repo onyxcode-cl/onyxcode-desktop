@@ -1,7 +1,8 @@
 /**
  * UI del modo "Acceso total + control del Mac" de Cowork: selector de modo, diálogo de
  * confirmación, tarjeta de permisos de macOS, aviso de modelo sin visión, banner
- * "Controlando tu Mac" y miniaturas de capturas de pantalla.
+ * "Controlando tu Mac", miniaturas de capturas de pantalla, tarjeta de concesión por app
+ * (`request_access`) y lista de permisos por app para Ajustes.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -9,6 +10,7 @@ import {
   Check,
   ChevronDown,
   Eye,
+  EyeOff,
   Keyboard,
   Loader2,
   MonitorCog,
@@ -20,8 +22,10 @@ import {
   ShieldAlert,
   ShieldOff,
   Square,
+  Trash2,
   X
 } from 'lucide-react'
+import type { AccessDecision, AppTier } from '@shared/ipc-cowork'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
@@ -32,13 +36,19 @@ import { useSettings } from '../../../stores/settings'
 import {
   cancelFullAccess,
   checkComputer,
+  denyApp,
+  dismissAccessRequest,
   requestComputerPermissions,
+  respondAccessRequest,
   resumeComputerControl,
+  revokeAppGrant,
   setAccessMode,
-  stopComputerControl
+  setAppGrant,
+  stopComputerControl,
+  undenyApp
 } from './actions'
 import { describeAction } from './computer-tools'
-import { useCowork } from './store'
+import { loadGrants, useCowork } from './store'
 
 export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kimi-k3' }
 
@@ -556,3 +566,247 @@ export function ScreenshotThumbs({ images }: { images: Array<{ id: string; url: 
     </>
   )
 }
+
+// ───────────────────────────── Concesión por app ─────────────────────────────
+
+const TIER_INFO: Record<AppTier, { label: string; icon: React.ReactNode; desc: string }> = {
+  view: { label: 'Solo ver', icon: <Eye size={13} />, desc: 'Aparece en las capturas; ninguna acción de ratón ni teclado.' },
+  click: { label: 'Ver y clic', icon: <MousePointerClick size={13} />, desc: 'Clic y scroll; nada de teclear, teclas ni arrastrar.' },
+  full: { label: 'Control total', icon: <MonitorCog size={13} />, desc: 'Todo, incluida la escritura.' }
+}
+
+/** Insignia compacta con el nivel concedido a una app. */
+function TierBadge({ tier }: { tier: AppTier }): React.JSX.Element {
+  const tone =
+    tier === 'full'
+      ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400'
+      : tier === 'click'
+        ? 'border-accent/40 bg-accent/10 text-accent'
+        : 'border-border bg-hover text-muted'
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${tone}`}>
+      {TIER_INFO[tier].icon} {TIER_INFO[tier].label}
+    </span>
+  )
+}
+
+/** Selector de nivel (o "Denegar") para una app dentro de la tarjeta de `request_access`. */
+function TierPicker({ value, onChange }: { value: AccessDecision; onChange: (v: AccessDecision) => void }): React.JSX.Element {
+  const options: Array<{ v: AccessDecision; label: string }> = [
+    { v: 'view', label: 'Solo ver' },
+    { v: 'click', label: 'Ver y clic' },
+    { v: 'full', label: 'Control total' },
+    { v: 'deny', label: 'Denegar' }
+  ]
+  return (
+    <div className="flex flex-wrap gap-1">
+      {options.map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          onClick={() => onChange(o.v)}
+          className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+            value === o.v
+              ? o.v === 'deny'
+                ? 'border-danger/50 bg-danger/10 text-danger'
+                : 'border-accent bg-accent/15 text-accent'
+              : 'border-border text-muted hover:bg-hover'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Tarjeta "¿Permitir que el agente use X?" (herramienta MCP `request_access`): una app puede
+ * necesitar acceso que no tiene todavía. El usuario elige el nivel (o deniega) por app; sin
+ * respuesta en 5 minutos, main lo trata como denegado y la herramienta del agente se desbloquea sola.
+ */
+export function AccessRequestDialog(): React.JSX.Element | null {
+  const req = useCowork((s) => s.accessRequest)
+  const [choices, setChoices] = useState<Record<string, AccessDecision>>({})
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!req) return
+    setChoices(Object.fromEntries(req.apps.map((a) => [a.bundleId, 'click' as AccessDecision])))
+  }, [req])
+
+  useEffect(() => {
+    if (!req) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') dismissAccessRequest()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [req])
+
+  if (!req) return null
+
+  const confirm = (): void => {
+    setBusy(true)
+    void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: choices[a.bundleId] ?? 'deny' }))).finally(() =>
+      setBusy(false)
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6" onMouseDown={dismissAccessRequest}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="cowork-access-request-title"
+        className="w-full max-w-lg rounded-2xl border border-border bg-elevated p-6 shadow-xl"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accent">
+          <ShieldAlert size={22} />
+        </div>
+        <h2 id="cowork-access-request-title" className="text-lg font-semibold">
+          {req.apps.length === 1 ? `¿Permitir que el agente use ${req.apps[0]?.name}?` : '¿Permitir que el agente use estas apps?'}
+        </h2>
+        {req.reason && <p className="mt-1 text-sm text-muted">«{req.reason}»</p>}
+        <ul className="mt-4 space-y-3">
+          {req.apps.map((a) => (
+            <li key={a.bundleId} className="rounded-lg border border-border p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="font-medium text-fg">{a.name}</span>
+                <span className="truncate text-xs text-muted">{a.bundleId}</span>
+              </div>
+              <TierPicker value={choices[a.bundleId] ?? 'click'} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-xs text-muted">Puedes cambiar el nivel de cada app cuando quieras desde Ajustes.</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={dismissAccessRequest} autoFocus>
+            Denegar todo
+          </Button>
+          <Button variant="primary" onClick={confirm} disabled={busy}>
+            {busy && <Loader2 size={14} className="animate-spin" />} Confirmar
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Fila de una app concedida, con selector de nivel y botón para revocar. */
+function GrantRow({ bundleId, name, tier }: { bundleId: string; name: string; tier: AppTier }): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const change = (t: AppTier): void => {
+    if (t === tier) return
+    setBusy(true)
+    void setAppGrant(bundleId, name, t).finally(() => setBusy(false))
+  }
+  const revoke = (): void => {
+    setBusy(true)
+    void revokeAppGrant(bundleId).finally(() => setBusy(false))
+  }
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+      <div className="min-w-0">
+        <div className="font-medium text-fg">{name}</div>
+        <div className="truncate text-xs text-muted">{bundleId}</div>
+      </div>
+      <div className="flex items-center gap-2">
+        {busy ? (
+          <Loader2 size={14} className="animate-spin text-muted" />
+        ) : (
+          <select
+            value={tier}
+            onChange={(e) => change(e.target.value as AppTier)}
+            className="rounded-md border border-border bg-elevated px-2 py-1 text-xs text-fg"
+          >
+            <option value="view">Solo ver</option>
+            <option value="click">Ver y clic</option>
+            <option value="full">Control total</option>
+          </select>
+        )}
+        <button type="button" title="Quitar concesión" onClick={revoke} className="rounded-md p-1.5 text-muted hover:bg-hover hover:text-danger">
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </li>
+  )
+}
+
+/** Fila de una app denegada, con botón para volver a permitirla (pasa a "sin decidir"). */
+function DeniedRow({ bundleId }: { bundleId: string }): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const allow = (): void => {
+    setBusy(true)
+    void undenyApp(bundleId).finally(() => setBusy(false))
+  }
+  return (
+    <li className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+      <span className="truncate text-muted">{bundleId}</span>
+      <button
+        type="button"
+        onClick={allow}
+        disabled={busy}
+        className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-hover disabled:opacity-60"
+      >
+        {busy ? <Loader2 size={12} className="animate-spin" /> : <EyeOff size={12} />} Permitir de nuevo
+      </button>
+    </li>
+  )
+}
+
+/**
+ * Lista de permisos por app para Ajustes: apps concedidas (con su nivel, editable) y apps
+ * denegadas. Se carga sola al montar; se actualiza tras cada cambio y tras responder una tarjeta
+ * `request_access` (ver `respondAccessRequest`).
+ */
+export function ComputerGrantsList(): React.JSX.Element {
+  const grants = useCowork((s) => s.grants)
+
+  useEffect(() => {
+    void loadGrants()
+  }, [])
+
+  const sorted = useMemo(() => [...(grants?.grants ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [grants])
+  const denied = grants?.denied ?? []
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-fg">Apps con acceso concedido</h3>
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted">
+            Ninguna todavía. Se conceden al pedirlo el agente (herramienta <code>request_access</code>) o al abrir un
+            navegador/terminal reconocido por primera vez.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {sorted.map((g) => (
+              <GrantRow key={g.bundleId} bundleId={g.bundleId} name={g.name} tier={g.tier} />
+            ))}
+          </ul>
+        )}
+      </div>
+      {denied.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-fg">Apps denegadas</h3>
+          <ul className="space-y-2">
+            {denied.map((bundleId) => (
+              <DeniedRow key={bundleId} bundleId={bundleId} />
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="text-xs text-muted">
+        Niveles: <TierBadge tier="view" /> {TIER_INFO.view.desc} · <TierBadge tier="click" /> {TIER_INFO.click.desc} ·{' '}
+        <TierBadge tier="full" /> {TIER_INFO.full.desc}
+      </p>
+    </div>
+  )
+}
+
+// `denyApp` se usa desde fuera (p. ej. un botón "Denegar" en una lista de apps detectadas); se
+// reexporta el tipo para quien construya esa lista sin duplicar el shape.
+export type { AppTier }
+export { denyApp }

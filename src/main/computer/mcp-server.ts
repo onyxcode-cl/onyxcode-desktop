@@ -362,6 +362,41 @@ async function takeScreenshot(auto = false): Promise<Shot> {
   }
 }
 
+/** Apps de sistema/la propia Lapis: nunca se excluyen de la captura aunque no tengan concesión. */
+const NEVER_EXCLUDE = new Set([
+  'cl.bentec.lapis',
+  'com.apple.dock',
+  'com.apple.systemuiserver',
+  'com.apple.controlcenter',
+  'com.apple.WindowServer',
+  'com.apple.notificationcenterui',
+  'com.apple.finder' // Finder es la app que casi siempre está detrás de todo; no es "contenido" ajeno
+])
+
+/**
+ * Bundle ids de apps con ventana visible que NO tienen concesión: se excluyen de la captura
+ * (ScreenCaptureKit las quita del compositor; el modelo nunca las ve). Best-effort: sin canal
+ * lateral o si el helper falla, no excluye nada (mejor que romper la captura).
+ */
+async function nonGrantedBundleIds(): Promise<string[]> {
+  if (!EVENTS_URL) return []
+  try {
+    const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string; name?: string }>
+    const results = await Promise.all(
+      apps
+        .filter((a) => a.bundleId && !NEVER_EXCLUDE.has(a.bundleId))
+        .map(async (a) => {
+          const tier = await tierOf({ bundleId: a.bundleId!, name: a.name || a.bundleId! }).catch(() => null)
+          return tier === null ? a.bundleId! : null
+        })
+    )
+    return results.filter((b): b is string => !!b)
+  } catch (err) {
+    log('nonGrantedBundleIds:', err instanceof Error ? err.message : err)
+    return []
+  }
+}
+
 async function captureScreen(): Promise<Shot> {
   mkdirSync(SHOT_DIR, { recursive: true })
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -371,16 +406,48 @@ async function captureScreen(): Promise<Shot> {
     if (FAKE_SHOT) {
       await run('/bin/cp', [FAKE_SHOT, raw])
     } else {
-      // -x sin sonido, -C incluye el cursor, -m solo la pantalla principal
-      try {
-        await run('/usr/sbin/screencapture', ['-x', '-C', '-m', '-t', 'png', raw])
-      } catch (err) {
-        throw new Error(
-          `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
-            'Falta el permiso de Grabación de pantalla para Lapis.'
-        )
+      const exclude = await nonGrantedBundleIds()
+      let sckOk = false
+      if (exclude.length) {
+        try {
+          await helper('screenshot-sck', raw, exclude.join(','))
+          sckOk = true
+        } catch (err) {
+          log('ScreenCaptureKit no disponible, uso screencapture + enmascarado:', err instanceof Error ? err.message : err)
+        }
       }
-      if (!existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
+      if (!sckOk) {
+        // -x sin sonido, -C incluye el cursor, -m solo la pantalla principal
+        try {
+          await run('/usr/sbin/screencapture', ['-x', '-C', '-m', '-t', 'png', raw])
+        } catch (err) {
+          throw new Error(
+            `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
+              'Falta el permiso de Grabación de pantalla para Lapis.'
+          )
+        }
+        if (!existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
+        // Fallback sin ScreenCaptureKit (macOS < 14 o SCK falló): enmascarar a mano las ventanas de
+        // las apps no concedidas con un rectángulo negro (mejor que enseñarlas).
+        if (exclude.length) {
+          try {
+            const s = await getMainScreen()
+            const scale = s.scale || 1
+            const windows = JSON.parse(await helper('windows-of', exclude.join(','))) as Array<{
+              x: number
+              y: number
+              width: number
+              height: number
+            }>
+            if (windows.length) {
+              const rects = windows.map((w) => `${w.x * scale},${w.y * scale},${w.width * scale},${w.height * scale}`)
+              await run(HELPER, ['mask-regions', raw, raw, ...rects])
+            }
+          } catch (err) {
+            log('enmascarado de apps no concedidas:', err instanceof Error ? err.message : err)
+          }
+        }
+      }
     }
     await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
     const dims = await run('/usr/bin/sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', out])
@@ -455,6 +522,7 @@ function shotText(s: Shot): string {
 
 async function clickTool(args: Record<string, unknown>, button: 'left' | 'right', count: number, tool: string): Promise<string> {
   const p = await toPoints(args.x, args.y)
+  await requireTier('click', p)
   await act({ tool, x: p.x, y: p.y }, () => helper('click', String(p.x), String(p.y), button, String(count)))
   return `${tool} en (${args.x}, ${args.y}) px → (${p.x}, ${p.y}) pt`
 }
@@ -497,6 +565,7 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a) => {
       const p = await toPoints(a.x, a.y)
+      await requireTier('click', p)
       await act({ tool: 'mouse_move', x: p.x, y: p.y }, () => helper('move', String(p.x), String(p.y)))
       return `Puntero movido a (${a.x}, ${a.y}) px → (${p.x}, ${p.y}) pt`
     }
@@ -518,6 +587,9 @@ const TOOLS: ToolDef[] = [
     run: async (a) => {
       const s = await toPoints(a.start_x, a.start_y)
       const e = await toPoints(a.end_x, a.end_y)
+      // Arrastrar necesita "Control total": mueve/reordena contenido, no es un simple clic.
+      await requireTier('full', s)
+      await requireTier('full', e)
       await act({ tool: 'drag', x: e.x, y: e.y, fromX: s.x, fromY: s.y }, () =>
         helper('drag', String(s.x), String(s.y), String(e.x), String(e.y))
       )
@@ -545,6 +617,7 @@ const TOOLS: ToolDef[] = [
       const dx = dir === 'right' ? n : dir === 'left' ? -n : 0
       const dy = dir === 'down' ? n : dir === 'up' ? -n : 0
       if (!dx && !dy) throw new Error('direction debe ser up, down, left o right')
+      await requireTier('click', p)
       await act({ tool: 'scroll', x: p.x, y: p.y, text: `${dir} ${n}` }, () =>
         helper('scroll', String(p.x), String(p.y), String(dx), String(dy))
       )
@@ -560,6 +633,8 @@ const TOOLS: ToolDef[] = [
       const text = String(a.text ?? '')
       if (!text) throw new Error('text vacío')
       if (text.length > 5000) throw new Error('Texto demasiado largo (máx. 5000 caracteres)')
+      await requireTier('full')
+      await requireCanType()
       await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
         helper('type', text)
       )
@@ -576,6 +651,8 @@ const TOOLS: ToolDef[] = [
     run: async (a) => {
       const keys = String(a.keys ?? '').trim()
       if (!keys) throw new Error('keys vacío')
+      await requireTier('full')
+      await requireCanType()
       await act({ tool: 'key', text: keys }, () => helper('key', keys))
       return `Teclas pulsadas: ${keys}`
     }
@@ -616,6 +693,40 @@ const TOOLS: ToolDef[] = [
       const s = Math.max(0, Math.min(10, Number(a.seconds) || 1))
       await act({ tool: 'wait', text: `${s}s` }, () => sleep(s * 1000))
       return `Esperado ${s}s`
+    }
+  },
+  {
+    name: 'request_access',
+    description:
+      'Pide permiso al usuario para actuar sobre una o más apps que todavía no tienen acceso concedido. ' +
+      'Úsala en cuanto una herramienta falle con "no tiene acceso concedido", ANTES de reintentar la acción. ' +
+      'Muestra una tarjeta en Lapis y ESPERA a que el usuario responda (hasta 5 minutos); si no responde, se trata como denegado.',
+    inputSchema: obj(
+      {
+        apps: { type: 'array', items: { type: 'string' }, description: 'Nombres de las apps, p.ej. ["Safari", "Terminal"]' },
+        reason: { type: 'string', description: 'Por qué necesitas actuar sobre esas apps (se le muestra al usuario)' }
+      },
+      ['apps']
+    ),
+    action: false,
+    run: async (a) => {
+      const names = Array.isArray(a.apps) ? a.apps.map(String).slice(0, 10) : []
+      if (!names.length) throw new Error('apps vacío')
+      const resolved = await Promise.all(names.map((n) => resolveApp(n)))
+      const valid = resolved.filter((r) => r.found)
+      if (!valid.length) {
+        return `No se pudo identificar ninguna app instalada con esos nombres: ${names.join(', ')}. Comprueba el nombre exacto.`
+      }
+      const decisions = await requestAccess(
+        valid.map((r) => ({ bundleId: r.bundleId, name: r.name })),
+        typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined
+      )
+      const label = (d: string): string =>
+        d === 'deny' ? 'denegado' : d === 'view' ? 'Solo ver' : d === 'click' ? 'Ver y clic' : d === 'full' ? 'Control total' : 'sin respuesta'
+      const lines = valid.map((r) => `- ${r.name}: ${label(decisions[r.bundleId] ?? '')}`)
+      const missing = names.filter((n) => !valid.some((r) => r.name.toLowerCase() === n.toLowerCase()))
+      if (missing.length) lines.push(`- (no identificadas: ${missing.join(', ')})`)
+      return `Respuesta del usuario:\n${lines.join('\n')}`
     }
   }
 ]

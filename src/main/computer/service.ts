@@ -25,7 +25,8 @@
  * forman parte de esa cadena: se lanzan con `lapis-disclaim`.
  */
 import { app, globalShortcut, shell, systemPreferences } from 'electron'
-import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
+import type { Readable } from 'node:stream'
 import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -40,8 +41,7 @@ import type {
   ComputerActionEvent,
   ComputerKillState,
   ComputerStatus,
-  ComputerUseInfo,
-  GrantsSnapshot
+  ComputerUseInfo
 } from '@shared/ipc-cowork'
 import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
@@ -130,7 +130,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   /** Tarjetas `request_access` pendientes de respuesta del usuario (canal lateral del MCP). */
   private readonly pendingAccess = new Map<string, { resolve: (d: Record<string, AccessDecision>) => void }>()
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
-  private escWatcher: ChildProcessWithoutNullStreams | null = null
+  private escWatcher: ChildProcessByStdio<null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
 
   /** Ruta del helper nativo o null si no está compilado. */
