@@ -1,6 +1,6 @@
 # Nombre e ID de la app: mantener sincronizado con src/shared/brand.ts
-appId: cl.bentec.opendesk
-productName: OpenDesk
+appId: cl.bentec.lapis
+productName: Lapis
 directories:
   buildResources: build
   output: dist

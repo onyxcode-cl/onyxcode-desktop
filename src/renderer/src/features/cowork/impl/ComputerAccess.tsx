@@ -107,7 +107,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
               ? 'Sin sandbox: el agente puede controlar el Mac y modificar archivos en cualquier lugar'
               : 'Escrituras limitadas a esta carpeta (sandbox-exec)'
         }
-        className={`flex items-center gap-1 rounded-full border px-2 py-0.5 transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 ${tone}`}
+        className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 ${tone}`}
       >
         {chip}
         <ChevronDown size={11} />

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
@@ -11,6 +12,24 @@ import { registerCoworkHandlers } from './ipc/cowork-handlers'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 
 app.setName(APP_NAME)
+
+// La app se llamó "OpenDesk" durante el desarrollo: conserva ajustes, rutinas y sesiones.
+// Chromium puede crear la carpeta nueva antes de que corra este código, así que se mueven
+// las entradas que aún no existen en ella en vez de renombrar la carpeta completa.
+const LEGACY_USER_DATA = join(app.getPath('appData'), 'OpenDesk')
+const USER_DATA = app.getPath('userData')
+if (existsSync(join(LEGACY_USER_DATA, 'settings.json')) && !existsSync(join(USER_DATA, 'settings.json'))) {
+  mkdirSync(USER_DATA, { recursive: true })
+  for (const entry of readdirSync(LEGACY_USER_DATA)) {
+    const target = join(USER_DATA, entry)
+    if (existsSync(target)) continue
+    try {
+      renameSync(join(LEGACY_USER_DATA, entry), target)
+    } catch (err) {
+      console.error(`[main] no se pudo migrar ${entry} de OpenDesk:`, err)
+    }
+  }
+}
 
 const chatDirectory = join(app.getPath('userData'), 'chat-workspace')
 

@@ -217,12 +217,12 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   const item = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-hover hover:text-fg'
   const native = nativeCode()
   return (
-    <div ref={ref} className="no-drag relative min-w-0">
+    <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         title={directory}
-        className="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm font-semibold hover:bg-hover"
+        className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-sm font-semibold hover:bg-hover"
       >
         <FolderOpen size={15} className="shrink-0 text-accent" />
         <span className="truncate">{baseName(directory)}</span>

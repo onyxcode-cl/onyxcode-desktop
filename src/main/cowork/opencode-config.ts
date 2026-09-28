@@ -11,7 +11,7 @@
  * `package.json`/`bun.lock`), así que nunca se apunta al bundle (rompería la firma o fallaría en
  * /Applications — AUDIT.md P1): al arrancar se copian a `userData/opencode-config/` y se apunta ahí.
  *
- * Además se genera `plugins/opendesk-env.js`: un plugin `shell.env` que oculta a bash/pty las
+ * Además se genera `plugins/lapis-env.js`: un plugin `shell.env` que oculta a bash/pty las
  * variables sensibles del proceso `opencode serve` (contraseña del propio servidor, credenciales
  * de proveedores de los sandboxes, config inline con el token del MCP de computer use). OpenCode
  * pasa `{...process.env, ...shell.env}` a cada comando bash (AUDIT.md S3).
@@ -31,8 +31,8 @@ export const HIDDEN_SHELL_ENV = [
   'OPENCODE_CONFIG_CONTENT'
 ] as const
 
-const PLUGIN_FILE = 'opendesk-env.js'
-const STAMP_FILE = '.opendesk-version'
+const PLUGIN_FILE = 'lapis-env.js'
+const STAMP_FILE = '.lapis-version'
 
 export function envScrubPluginSource(): string {
   // Formato de plugin de ruta de opencode 1.18: `export default { id, server() }` (verificado).
@@ -40,7 +40,7 @@ export function envScrubPluginSource(): string {
 // Oculta a bash/pty las variables sensibles del proceso \`opencode serve\`.
 const HIDDEN = ${JSON.stringify(HIDDEN_SHELL_ENV)}
 export default {
-  id: 'opendesk-env',
+  id: 'lapis-env',
   server: async () => ({
     'shell.env': async (_input, output) => {
       output.env = output.env || {}

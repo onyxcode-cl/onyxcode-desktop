@@ -6,7 +6,7 @@
  *   este proceso (`stopped`): el MCP lo consulta con `GET <COMPUTER_EVENTS_URL>/state` antes de cada
  *   acción, así que el agente no puede "des-pararse" borrando un archivo. `stop()` además aborta las
  *   sesiones de los servidores de acceso total (`abortSessions`, lo inyecta cowork-handlers) y mata
- *   los `cu-helper` en vuelo. El archivo STOP (en `userData/opendesk-killswitch/`, ruta que
+ *   los `cu-helper` en vuelo. El archivo STOP (en `userData/lapis-killswitch/`, ruta que
  *   agents/computer.md deniega a bash/edit) solo es el respaldo si el canal lateral no arrancó;
  *   parar NUNCA se deshace solo: hace falta `resume()` (botón "Reanudar control");
  * - canal lateral de acciones: servidor HTTP en 127.0.0.1 al que el MCP hace `POST` de cada
@@ -17,7 +17,7 @@
  * lo desactiva y `OPENDESK_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
  *
  * Permisos (TCC): el "proceso responsable" de toda la cadena Electron → opencode → node de
- * Electron → cu-helper es la app que lanzó Electron. Empaquetado = OpenDesk.app; en desarrollo
+ * Electron → cu-helper es la app que lanzó Electron. Empaquetado = Lapis.app; en desarrollo
  * (`npm run dev` desde una terminal) es la TERMINAL (Terminal/iTerm/VS Code…), que es a quien
  * hay que conceder Accesibilidad y Grabación de pantalla.
  */
@@ -119,11 +119,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /**
    * Archivo de parada de RESPALDO (solo si el MCP no puede consultar a este proceso). El nombre de
-   * la carpeta coincide con la regla `*opendesk-killswitch*` que agents/computer.md deniega a
+   * la carpeta coincide con la regla `*lapis-killswitch*` que agents/computer.md deniega a
    * bash/edit/write (defensa en profundidad: un comando ofuscado podría esquivarla, ver AUDIT S5).
    */
   get stopFile(): string {
-    return join(app.getPath('userData'), 'opendesk-killswitch', 'STOP')
+    return join(app.getPath('userData'), 'lapis-killswitch', 'STOP')
   }
 
   isStopped(): boolean {
@@ -363,7 +363,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       ELECTRON_RUN_AS_NODE: '1',
       CU_HELPER: helper,
       COMPUTER_STOP_FILE: this.stopFile,
-      COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'opendesk-computer')
+      COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'lapis-computer')
     }
     if (eventsUrl) environment.COMPUTER_EVENTS_URL = eventsUrl
     if (this.instant) environment.COMPUTER_INSTANT = '1'

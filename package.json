@@ -1,6 +1,6 @@
 {
-  "name": "opendesk",
-  "productName": "OpenDesk",
+  "name": "lapis",
+  "productName": "Lapis",
   "version": "0.1.0",
   "description": "Cliente de escritorio sobre OpenCode (Chat, Code, Cowork, Rutinas)",
   "main": "./out/main/index.js",

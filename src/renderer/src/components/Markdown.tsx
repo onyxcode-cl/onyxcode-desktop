@@ -104,7 +104,8 @@ export function CopyButton({
 function CodeBlock({ children }: { children?: ReactNode }): React.JSX.Element {
   const lang = languageOf(children)
   const code = textOf(children)
-  const renderable = lang?.toLowerCase() === 'html' && looksRenderable(code)
+  // Un bloque marcado como HTML se ofrece siempre que tenga alguna etiqueta (p.ej. un <button>).
+  const renderable = lang?.toLowerCase() === 'html' && (looksRenderable(code) || /<[a-z]/i.test(code))
   return (
     <div className="code-block">
       <div className="code-block-header">

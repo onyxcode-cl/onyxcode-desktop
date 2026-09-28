@@ -1,5 +1,5 @@
 /**
- * Servidor MCP (stdio) de "computer use" para OpenDesk.
+ * Servidor MCP (stdio) de "computer use" para Lapis.
  *
  * Se empaqueta como entrada aparte (`out/main/computer-mcp.js`) y lo lanza OpenCode como MCP
  * local con el node de Electron: `[process.execPath, computer-mcp.js]` + `ELECTRON_RUN_AS_NODE=1`.
@@ -24,7 +24,7 @@
  *   COMPUTER_TYPE_DELAY_MS  retardo base por carácter al escribir (por defecto el del helper, 14 ms)
  *   COMPUTER_AUTO_SCREENSHOT "0" desactiva la captura automática tras cada acción (por defecto 1)
  *   COMPUTER_MAX_LONG_SIDE  lado largo máximo de la captura en px (por defecto 1366)
- *   COMPUTER_SHOT_DIR       carpeta para las capturas (por defecto $TMPDIR/opendesk-computer)
+ *   COMPUTER_SHOT_DIR       carpeta para las capturas (por defecto $TMPDIR/lapis-computer)
  *   COMPUTER_FAKE_SCREENSHOT (solo pruebas) usa esta imagen en lugar de `screencapture`
  *
  * Coordenadas: las herramientas reciben coordenadas EN PÍXELES DE LA ÚLTIMA CAPTURA y las
@@ -41,13 +41,13 @@ const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
 const EVENTS_URL = process.env.COMPUTER_EVENTS_URL ?? ''
 const AUTO_SHOT = process.env.COMPUTER_AUTO_SCREENSHOT !== '0'
 const MAX_LONG = Math.max(400, Number(process.env.COMPUTER_MAX_LONG_SIDE) || 1366)
-const SHOT_DIR = process.env.COMPUTER_SHOT_DIR || join(tmpdir(), 'opendesk-computer')
+const SHOT_DIR = process.env.COMPUTER_SHOT_DIR || join(tmpdir(), 'lapis-computer')
 const FAKE_SHOT = process.env.COMPUTER_FAKE_SCREENSHOT ?? ''
 const INSTANT = process.env.COMPUTER_INSTANT === '1'
 const TYPE_DELAY = process.env.COMPUTER_TYPE_DELAY_MS ?? ''
 const SETTLE_MS = 450
 const STOPPED_MSG = 'Control detenido por el usuario'
-const UNVERIFIED_MSG = 'No se pudo verificar el estado del kill-switch con OpenDesk; acción rechazada'
+const UNVERIFIED_MSG = 'No se pudo verificar el estado del kill-switch con Lapis; acción rechazada'
 const STATE_CACHE_MS = 200
 
 // ───────────────────────────── kill-switch ─────────────────────────────
@@ -265,7 +265,7 @@ async function captureScreen(): Promise<Shot> {
       } catch (err) {
         throw new Error(
           `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
-            'Falta el permiso de Grabación de pantalla para OpenDesk.'
+            'Falta el permiso de Grabación de pantalla para Lapis.'
         )
       }
       if (!existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
@@ -574,7 +574,7 @@ async function handle(req: RpcRequest): Promise<void> {
       reply({
         protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'opendesk-computer', version: '0.1.0' },
+        serverInfo: { name: 'lapis-computer', version: '0.1.0' },
         instructions:
           'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
       })
