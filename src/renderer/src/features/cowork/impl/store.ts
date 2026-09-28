@@ -5,13 +5,14 @@
  */
 import { create } from 'zustand'
 import { createOpencodeClient, type PermissionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
-import type {
-  ComputerActionEvent,
-  ComputerKillState,
-  ComputerStatus,
-  CoworkConnection,
-  CoworkDeliverable,
-  CoworkFolder
+import {
+  FULL_ACCESS_NOT_GRANTED,
+  type ComputerActionEvent,
+  type ComputerKillState,
+  type ComputerStatus,
+  type CoworkConnection,
+  type CoworkDeliverable,
+  type CoworkFolder
 } from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
@@ -229,12 +230,13 @@ export function clearUnseen(sessionID: string): void {
 
 function handleEvent(event: OcEvent, directory: string): void {
   const st = useCowork.getState()
-  if (!st.folder || directory !== st.folder) return
+  if (!st.folder || directory !== st.folder || !st.conn) return
   const prevRun =
     event.type === 'session.idle' || event.type === 'session.status'
       ? useSessions.getState().status[event.properties.sessionID]
       : undefined
-  useSessions.getState().applyEvent(event)
+  // Origen = servidor de esta carpeta/modo (no mezclar con sesiones de Code/Chat, B2).
+  useSessions.getState().applyEvent(event, st.conn.baseUrl)
   // Avisos: tarea terminada / necesita aprobación / error (solo tareas raíz).
   if (event.type === 'session.idle' || (event.type === 'session.status' && event.properties.status.type === 'idle')) {
     const id = event.properties.sessionID
@@ -314,6 +316,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     if (now.folder !== folder || now.fullAccess !== fullAccess) return // el usuario cambió de carpeta/modo
     const client = makeClient(conn)
     rememberFolder(conn.folder)
+    useSessions.getState().setDirectorySource(conn.folder, conn.baseUrl)
     useCowork.setState({ folder: conn.folder, conn, client, phase: 'ready' })
     if (conn.fullAccess) {
       void refreshComputerStatus()
@@ -329,6 +332,11 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     await resync()
   } catch (err) {
     const now = useCowork.getState()
+    // Preferencia local de acceso total sin consentimiento registrado en main: volver a sandbox.
+    if (fullAccess && now.folder === folder && errorMessage(err).includes(FULL_ACCESS_NOT_GRANTED)) {
+      rememberFullAccess(folder, false)
+      return connectFolder(folder, false)
+    }
     if (now.folder === folder && now.fullAccess === fullAccess) useCowork.setState({ phase: 'error', error: errorMessage(err) })
   }
 }
@@ -339,13 +347,13 @@ let computerSessionActive = false
 /** Activa/desactiva `computer:session` según haya tareas de acceso total trabajando. */
 function syncComputerSession(): void {
   const { conn, folder } = useCowork.getState()
-  const { status, sessions } = useSessions.getState()
+  const { status, sessions, sessionSource } = useSessions.getState()
   let label: string | undefined
   let active = false
   if (conn?.fullAccess && folder) {
     for (const id of Object.keys(status)) {
       const sess = sessions[id]
-      if (status[id] !== 'idle' && sess?.directory === folder && !sess.parentID) {
+      if (status[id] !== 'idle' && sess?.directory === folder && !sess.parentID && sessionSource[id] === conn.baseUrl) {
         active = true
         label = sess.title || undefined
         break
@@ -376,7 +384,7 @@ export async function resync(): Promise<void> {
   if (!client || !folder) return
   useCowork.setState({ listLoading: true })
   try {
-    await useSessions.getState().loadSessions(client, folder)
+    await useSessions.getState().loadSessions(client, folder, useCowork.getState().conn?.baseUrl)
     const perms = await client.permission.list({ directory: folder })
     const permissions: Record<string, PermissionRequest> = {}
     for (const p of perms.data ?? []) permissions[p.id] = p
