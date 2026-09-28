@@ -12,7 +12,7 @@ import type { IpcResult } from '@shared/ipc'
 const invokeAllowed = new Set<string>(COWORK_INVOKE_CHANNELS)
 const eventAllowed = new Set<string>(COWORK_EVENT_CHANNELS)
 
-/** Construye `window.api.cowork` (canales `cowork:*` y `routines:*`). */
+/** Construye `window.api.cowork` (canales `cowork:*`, `routines:*` y `computer:*`). */
 export function buildCoworkApi(ipcRenderer: IpcRenderer): CoworkApi {
   return {
     invoke: ((channel: CoworkInvokeChannel, ...args: unknown[]): Promise<IpcResult<unknown>> => {

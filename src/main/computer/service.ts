@@ -1,0 +1,258 @@
+/**
+ * Servicio de "computer use" en el proceso principal:
+ * - localiza el helper nativo (`cu-helper`) y el script del MCP (`out/main/computer-mcp.js`);
+ * - estado de permisos de macOS (Accesibilidad / Grabación de pantalla) y cómo pedirlos;
+ * - kill-switch (archivo de parada) + atajo global Cmd+Shift+Escape;
+ * - canal lateral de acciones: servidor HTTP en 127.0.0.1 al que el MCP hace `POST` de cada
+ *   acción (`COMPUTER_EVENTS_URL`), reemitido como evento `computer:action`;
+ * - bloque `mcp.computer` para la config de OpenCode del servidor de acceso completo.
+ *
+ * Permisos (TCC): el "proceso responsable" de toda la cadena Electron → opencode → node de
+ * Electron → cu-helper es la app que lanzó Electron. Empaquetado = OpenDesk.app; en desarrollo
+ * (`npm run dev` desde una terminal) es la TERMINAL (Terminal/iTerm/VS Code…), que es a quien
+ * hay que conceder Accesibilidad y Grabación de pantalla.
+ */
+import { app, globalShortcut, shell, systemPreferences } from 'electron'
+import { execFile } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
+import { EventEmitter } from 'node:events'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { dirname, join } from 'node:path'
+import type { ComputerActionEvent, ComputerStatus, ComputerUseInfo } from '@shared/ipc-cowork'
+
+export const COMPUTER_MCP_NAME = 'computer'
+export const COMPUTER_AGENT_ID = 'computer'
+export const STOP_SHORTCUT = 'CommandOrControl+Shift+Escape'
+
+const PANE_ACCESSIBILITY = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
+const PANE_SCREEN = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+
+interface ServiceEvents {
+  action: [ComputerActionEvent]
+  stopped: [{ at: number }]
+}
+
+function unpacked(p: string): string {
+  return p.replace(/app\.asar([/\\])/, 'app.asar.unpacked$1')
+}
+
+function runHelper(bin: string, args: string[], timeout = 10_000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(bin, args, { timeout }, (err, stdout, stderr) => {
+      if (err) reject(new Error((stderr || err.message).toString().trim()))
+      else resolve(stdout.toString())
+    })
+  })
+}
+
+export class ComputerService extends EventEmitter<ServiceEvents> {
+  private events: Server | null = null
+  private eventsUrl: string | null = null
+  private eventsStarting: Promise<string | null> | null = null
+  private shortcutRegistered = false
+
+  /** Ruta del helper nativo o null si no está compilado. */
+  helperPath(): string | null {
+    if (process.platform !== 'darwin') return null
+    const candidates = [
+      join(process.resourcesPath ?? '', 'computer-use', 'bin', 'cu-helper'),
+      unpacked(join(app.getAppPath(), 'resources', 'computer-use', 'bin', 'cu-helper')),
+      join(process.cwd(), 'resources', 'computer-use', 'bin', 'cu-helper')
+    ]
+    return candidates.find((p) => existsSync(p)) ?? null
+  }
+
+  /** Ruta de `computer-mcp.js` (junto a out/main/index.js). */
+  mcpScriptPath(): string | null {
+    const candidates = [
+      unpacked(join(app.getAppPath(), 'out', 'main', 'computer-mcp.js')),
+      join(app.getAppPath(), 'out', 'main', 'computer-mcp.js'),
+      join(__dirname, 'computer-mcp.js')
+    ]
+    return candidates.find((p) => existsSync(p)) ?? null
+  }
+
+  get stopFile(): string {
+    return join(app.getPath('userData'), 'computer-use', 'STOP')
+  }
+
+  isStopped(): boolean {
+    return existsSync(this.stopFile)
+  }
+
+  /** Inicializa: limpia un STOP de una sesión anterior y registra el atajo global. */
+  init(): void {
+    this.resume()
+    this.registerShortcut()
+  }
+
+  registerShortcut(): void {
+    if (this.shortcutRegistered) return
+    try {
+      this.shortcutRegistered = globalShortcut.register(STOP_SHORTCUT, () => this.stop())
+      if (!this.shortcutRegistered) console.warn(`[computer] no se pudo registrar ${STOP_SHORTCUT}`)
+    } catch (err) {
+      console.warn('[computer] atajo global:', err)
+    }
+  }
+
+  stop(): void {
+    mkdirSync(dirname(this.stopFile), { recursive: true })
+    writeFileSync(this.stopFile, String(Date.now()), 'utf8')
+    this.emit('stopped', { at: Date.now() })
+  }
+
+  resume(): void {
+    rmSync(this.stopFile, { force: true })
+  }
+
+  async status(): Promise<ComputerStatus> {
+    const bin = this.helperPath()
+    const base: ComputerStatus = {
+      helperOk: false,
+      accessibility: process.platform === 'darwin' ? systemPreferences.isTrustedAccessibilityClient(false) : false,
+      screenRecording:
+        process.platform === 'darwin' ? systemPreferences.getMediaAccessStatus('screen') === 'granted' : false,
+      screens: []
+    }
+    if (!bin) return base
+    try {
+      const perms = JSON.parse(await runHelper(bin, ['permissions'])) as { accessibility: boolean; screenRecording: boolean }
+      const screens = JSON.parse(await runHelper(bin, ['screens'])) as Array<{ width: number; height: number; scale: number }>
+      return {
+        helperOk: true,
+        accessibility: !!perms.accessibility,
+        screenRecording: !!perms.screenRecording,
+        screens: screens.map((s) => ({ width: s.width, height: s.height, scale: s.scale }))
+      }
+    } catch (err) {
+      console.error('[computer] helper:', err)
+      return base
+    }
+  }
+
+  /** Estado resumido para `CoworkConnection.computerUse`. */
+  async info(): Promise<ComputerUseInfo> {
+    const st = await this.status()
+    const script = this.mcpScriptPath()
+    const available = st.helperOk && !!script
+    let reason: string | undefined
+    if (process.platform !== 'darwin') reason = 'El control del computador solo está disponible en macOS.'
+    else if (!st.helperOk) reason = 'Falta el helper nativo (ejecuta `npm run build:helper`).'
+    else if (!script) reason = 'Falta computer-mcp.js (ejecuta `npm run build`).'
+    else if (!st.accessibility && !st.screenRecording)
+      reason = 'Faltan los permisos de Accesibilidad y Grabación de pantalla.'
+    else if (!st.accessibility) reason = 'Falta el permiso de Accesibilidad (mover el ratón y teclear).'
+    else if (!st.screenRecording) reason = 'Falta el permiso de Grabación de pantalla (capturas).'
+    return { available, accessibility: st.accessibility, screenRecording: st.screenRecording, reason }
+  }
+
+  /** Lanza los prompts del sistema y abre el panel de Ajustes del primer permiso que falte. */
+  async requestPermissions(): Promise<void> {
+    if (process.platform !== 'darwin') return
+    const bin = this.helperPath()
+    let perms = { accessibility: false, screenRecording: false }
+    if (bin) {
+      try {
+        perms = JSON.parse(await runHelper(bin, ['request-permissions'])) as typeof perms
+      } catch (err) {
+        console.error('[computer] request-permissions:', err)
+      }
+    } else {
+      perms.accessibility = systemPreferences.isTrustedAccessibilityClient(true)
+      perms.screenRecording = systemPreferences.getMediaAccessStatus('screen') === 'granted'
+    }
+    if (!perms.accessibility) await shell.openExternal(PANE_ACCESSIBILITY)
+    else if (!perms.screenRecording) await shell.openExternal(PANE_SCREEN)
+  }
+
+  /** Servidor HTTP local para el canal lateral de acciones. Devuelve la URL (con token). */
+  private ensureEventsServer(): Promise<string | null> {
+    if (this.eventsUrl) return Promise.resolve(this.eventsUrl)
+    if (this.eventsStarting) return this.eventsStarting
+    const token = randomBytes(16).toString('hex')
+    const path = `/computer-events/${token}`
+    this.eventsStarting = new Promise((resolve) => {
+      const srv = createServer((req, res) => {
+        if (req.method !== 'POST' || req.url !== path) {
+          res.statusCode = 404
+          res.end()
+          return
+        }
+        let body = ''
+        req.setEncoding('utf8')
+        req.on('data', (c: string) => {
+          body += c
+          if (body.length > 16_384) req.destroy()
+        })
+        req.on('end', () => {
+          res.statusCode = 204
+          res.end()
+          try {
+            const o = JSON.parse(body) as Record<string, unknown>
+            if (typeof o.tool !== 'string') return
+            const ev: ComputerActionEvent = {
+              tool: o.tool.slice(0, 64),
+              at: typeof o.at === 'number' ? o.at : Date.now()
+            }
+            if (typeof o.x === 'number' && Number.isFinite(o.x)) ev.x = o.x
+            if (typeof o.y === 'number' && Number.isFinite(o.y)) ev.y = o.y
+            if (typeof o.text === 'string') ev.text = o.text.slice(0, 200)
+            this.emit('action', ev)
+          } catch {
+            // JSON inválido: ignorar
+          }
+        })
+      })
+      srv.on('error', (err) => {
+        console.error('[computer] servidor de eventos:', err)
+        resolve(null)
+      })
+      srv.listen(0, '127.0.0.1', () => {
+        const { port } = srv.address() as AddressInfo
+        this.events = srv
+        this.eventsUrl = `http://127.0.0.1:${port}${path}`
+        resolve(this.eventsUrl)
+      })
+    })
+    return this.eventsStarting
+  }
+
+  /**
+   * Bloque de config de OpenCode (`mcp.computer`) o null si no está disponible.
+   * El MCP corre con el node embebido de Electron (sin depender de node del sistema).
+   */
+  async mcpConfig(): Promise<Record<string, unknown> | null> {
+    const helper = this.helperPath()
+    const script = this.mcpScriptPath()
+    if (!helper || !script) return null
+    const eventsUrl = await this.ensureEventsServer()
+    const environment: Record<string, string> = {
+      ELECTRON_RUN_AS_NODE: '1',
+      CU_HELPER: helper,
+      COMPUTER_STOP_FILE: this.stopFile,
+      COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'opendesk-computer')
+    }
+    if (eventsUrl) environment.COMPUTER_EVENTS_URL = eventsUrl
+    return {
+      type: 'local',
+      command: [process.execPath, script],
+      environment,
+      enabled: true,
+      timeout: 15_000
+    }
+  }
+
+  dispose(): void {
+    if (this.shortcutRegistered) {
+      globalShortcut.unregister(STOP_SHORTCUT)
+      this.shortcutRegistered = false
+    }
+    this.events?.close()
+    this.events = null
+    this.eventsUrl = null
+    this.eventsStarting = null
+  }
+}

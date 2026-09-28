@@ -1,5 +1,5 @@
 /**
- * Handlers IPC de Cowork (`cowork:*`) y Rutinas (`routines:*`).
+ * Handlers IPC de Cowork (`cowork:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
  * Contrato en src/shared/ipc-cowork.ts; expuesto en `window.api.cowork`.
  */
 import { BrowserWindow, dialog, shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
@@ -12,6 +12,7 @@ import type {
   CoworkResponse
 } from '@shared/ipc-cowork'
 import { CoworkManager } from '../cowork/manager'
+import { ComputerService } from '../computer/service'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { previewSchedule } from '../scheduler/schedule'
 
@@ -26,6 +27,7 @@ export interface CoworkHandlerDeps {
 
 export interface CoworkModule {
   cowork: CoworkManager
+  computer: ComputerService
   scheduler: SchedulerService
   /** Llamar en before-quit. */
   shutdown: () => Promise<void>
@@ -59,7 +61,12 @@ export function registerCoworkHandlers(
   getWindow: () => BrowserWindow | null,
   deps: CoworkHandlerDeps
 ): CoworkModule {
-  const cowork = new CoworkManager({ corsOrigins: deps.corsOrigins })
+  const computer = new ComputerService()
+  computer.init()
+  const cowork = new CoworkManager({
+    corsOrigins: deps.corsOrigins,
+    computer: { mcpConfig: () => computer.mcpConfig(), info: () => computer.info() }
+  })
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
     chatDirectory: deps.chatDirectory,
@@ -74,6 +81,8 @@ export function registerCoworkHandlers(
   cowork.on('server', (info) => send('cowork:server', info))
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
+  computer.on('action', (ev) => send('computer:action', ev))
+  computer.on('stopped', (ev) => send('computer:stopped', ev))
 
   // ── Cowork ──
   handle(ipcMain, 'cowork:pickFolder', async (_req, event) => {
@@ -89,8 +98,8 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'cowork:listFolders', () => cowork.listFolders())
   handle(ipcMain, 'cowork:approveFolder', ({ folder }) => cowork.approveFolder(folder))
   handle(ipcMain, 'cowork:removeFolder', ({ folder }) => cowork.removeFolder(folder))
-  handle(ipcMain, 'cowork:start', ({ folder }) => cowork.start(folder))
-  handle(ipcMain, 'cowork:stop', ({ folder }) => cowork.stop(folder))
+  handle(ipcMain, 'cowork:start', ({ folder, fullAccess }) => cowork.start(folder, fullAccess === true))
+  handle(ipcMain, 'cowork:stop', ({ folder, fullAccess }) => cowork.stop(folder, fullAccess))
   handle(ipcMain, 'cowork:servers', () => cowork.listServers())
   handle(ipcMain, 'cowork:deliverables', ({ folder, since }) => cowork.deliverables(folder, since))
   handle(ipcMain, 'cowork:reveal', ({ path }) => {
@@ -110,14 +119,22 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'routines:history', (req) => scheduler.history(req?.id, req?.limit))
   handle(ipcMain, 'routines:preview', ({ schedule }) => previewSchedule(schedule, 3))
 
+  // ── Computer use ──
+  handle(ipcMain, 'computer:status', () => computer.status())
+  handle(ipcMain, 'computer:requestPermissions', () => computer.requestPermissions())
+  handle(ipcMain, 'computer:stop', () => computer.stop())
+  handle(ipcMain, 'computer:resume', () => computer.resume())
+
   scheduler.start()
 
   return {
     cowork,
+    computer,
     scheduler,
     shutdown: async () => {
       scheduler.stop()
       await cowork.stopAll()
+      computer.dispose()
     },
     killSync: () => cowork.killAllSync()
   }

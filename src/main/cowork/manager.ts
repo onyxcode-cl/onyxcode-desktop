@@ -1,17 +1,44 @@
 /**
  * Gestor de Cowork: carpetas autorizadas (userData/cowork.json) y un `opencode serve`
- * sandboxeado por carpeta (arranque perezoso, reutilizado, detenido al salir).
+ * por carpeta y modo (arranque perezoso, reutilizado, detenido al salir):
+ *  - normal: sandboxeado (Seatbelt), sin el agente `computer`;
+ *  - acceso completo (`fullAccess`): SIN sandbox, con el MCP `computer` (control del Mac)
+ *    y el agente `computer` (resources/opencode/agents/computer.md).
  */
 import { app } from 'electron'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
-import type { CoworkConnection, CoworkDeliverable, CoworkFolder, CoworkServerInfo } from '@shared/ipc-cowork'
+import type {
+  ComputerUseInfo,
+  CoworkConnection,
+  CoworkDeliverable,
+  CoworkFolder,
+  CoworkServerInfo
+} from '@shared/ipc-cowork'
 import { startCoworkServer, type CoworkServerHandle } from './sandbox'
 
 interface Persisted {
   folders: CoworkFolder[]
+}
+
+/** Integración con computer use (inyectada para no acoplar el gestor a Electron/IPC). */
+export interface CoworkComputerDeps {
+  /** Bloque `mcp.computer` para la config de OpenCode, o null si no está disponible. */
+  mcpConfig: () => Promise<Record<string, unknown> | null>
+  info: () => Promise<ComputerUseInfo>
+}
+
+const NO_COMPUTER: ComputerUseInfo = {
+  available: false,
+  accessibility: false,
+  screenRecording: false,
+  reason: 'Solo disponible en el modo de acceso completo.'
+}
+
+function serverKey(folder: string, fullAccess: boolean): string {
+  return fullAccess ? `${folder}\u0000full` : folder
 }
 
 interface Entry {
@@ -56,7 +83,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   private servers = new Map<string, Entry>()
   private data: Persisted | null = null
 
-  constructor(private readonly opts: { corsOrigins?: string[] } = {}) {
+  constructor(private readonly opts: { corsOrigins?: string[]; computer?: CoworkComputerDeps } = {}) {
     super()
   }
 
@@ -135,81 +162,131 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     return [...this.servers.values()].map((e) => e.info)
   }
 
-  private setInfo(folder: string, patch: Partial<CoworkServerInfo>): void {
-    const entry = this.servers.get(folder) ?? { info: { folder, state: 'stopped', sandboxed: false } }
-    entry.info = { ...entry.info, ...patch, folder }
-    this.servers.set(folder, entry)
+  private setInfo(folder: string, fullAccess: boolean, patch: Partial<CoworkServerInfo>): void {
+    const key = serverKey(folder, fullAccess)
+    const entry = this.servers.get(key) ?? { info: { folder, state: 'stopped', sandboxed: false, fullAccess } }
+    entry.info = { ...entry.info, ...patch, folder, fullAccess }
+    this.servers.set(key, entry)
     this.emit('server', entry.info)
   }
 
-  /** Arranca o reutiliza el servidor de una carpeta ya autorizada. */
-  async start(folder: string): Promise<CoworkConnection> {
+  /**
+   * Arranca o reutiliza el servidor de una carpeta ya autorizada.
+   * `fullAccess` ⇒ servidor aparte sin sandbox con el MCP de control del computador.
+   */
+  async start(folder: string, fullAccess = false): Promise<CoworkConnection> {
     const f = normalizeFolder(folder)
     if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para Cowork.')
-    const existing = this.servers.get(f)
+    const key = serverKey(f, fullAccess)
+    const existing = this.servers.get(key)
     let handle = existing?.handle
     if (!handle || existing?.info.state !== 'ready') {
-      handle = await (existing?.starting ?? this.spawn(f))
+      handle = await (existing?.starting ?? this.spawn(f, fullAccess))
     }
     this.touch(f)
+    const computerUse = fullAccess && this.opts.computer ? await this.opts.computer.info() : NO_COMPUTER
     return {
       folder: f,
       baseUrl: handle.baseUrl,
       authorization: handle.authorization,
       sandboxed: handle.sandboxed,
-      version: handle.version
+      version: handle.version,
+      fullAccess,
+      computerUse: fullAccess && !this.fullAccessMcp.get(key) ? { ...computerUse, available: false } : computerUse
     }
   }
 
-  private spawn(folder: string): Promise<CoworkServerHandle> {
-    this.setInfo(folder, { state: 'starting', error: undefined })
-    const starting = startCoworkServer(folder, {
-      corsOrigins: this.opts.corsOrigins,
-      onExit: (code) => {
-        const e = this.servers.get(folder)
-        if (!e) return
-        e.handle = undefined
-        if (e.info.state === 'ready') {
-          this.setInfo(folder, { state: 'error', error: `El servidor de Cowork terminó (code=${code})` })
+  /** true si el servidor de acceso completo de esa clave arrancó con el MCP `computer`. */
+  private fullAccessMcp = new Map<string, boolean>()
+
+  /** Config inline de OpenCode para cada modo. */
+  private async inlineConfig(key: string, fullAccess: boolean): Promise<Record<string, unknown>> {
+    if (!fullAccess) {
+      // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox.
+      return { agent: { computer: { disable: true } } }
+    }
+    const mcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
+    this.fullAccessMcp.set(key, !!mcp)
+    return {
+      ...(mcp ? { mcp: { computer: mcp } } : {}),
+      // Las herramientas del MCP solo para el agente `computer` (ver agents/computer.md).
+      agent: { cowork: { permission: { 'computer_*': 'deny' } } }
+    }
+  }
+
+  private spawn(folder: string, fullAccess: boolean): Promise<CoworkServerHandle> {
+    const key = serverKey(folder, fullAccess)
+    this.setInfo(folder, fullAccess, { state: 'starting', error: undefined })
+    const starting = this.inlineConfig(key, fullAccess).then((config) =>
+      startCoworkServer(folder, {
+        corsOrigins: this.opts.corsOrigins,
+        noSandbox: fullAccess,
+        extraEnv: {
+          OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
+          ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {})
+        },
+        onExit: (code) => {
+          const e = this.servers.get(key)
+          if (!e) return
+          e.handle = undefined
+          if (e.info.state === 'ready') {
+            this.setInfo(folder, fullAccess, { state: 'error', error: `El servidor de Cowork terminó (code=${code})` })
+          }
         }
-      }
-    })
-    const entry = this.servers.get(folder)
+      })
+    )
+    const entry = this.servers.get(key)
     if (entry) entry.starting = starting
     return starting.then(
       (handle) => {
-        const e = this.servers.get(folder)
+        const e = this.servers.get(key)
         if (e) {
           e.handle = handle
           e.starting = undefined
         }
-        this.setInfo(folder, { state: 'ready', sandboxed: handle.sandboxed, version: handle.version, error: undefined })
-        console.log(`[cowork] servidor listo ${handle.baseUrl} sandbox=${handle.sandboxed} (${folder})`)
+        this.setInfo(folder, fullAccess, {
+          state: 'ready',
+          sandboxed: handle.sandboxed,
+          version: handle.version,
+          error: undefined
+        })
+        console.log(
+          `[cowork] servidor listo ${handle.baseUrl} sandbox=${handle.sandboxed} fullAccess=${fullAccess} (${folder})`
+        )
         return handle
       },
       (err: unknown) => {
-        const e = this.servers.get(folder)
+        const e = this.servers.get(key)
         if (e) e.starting = undefined
         const error = err instanceof Error ? err.message : String(err)
-        this.setInfo(folder, { state: 'error', error })
+        this.setInfo(folder, fullAccess, { state: 'error', error })
         throw err
       }
     )
   }
 
-  async stop(folder: string): Promise<void> {
+  /** Detiene el servidor de la carpeta en el modo indicado (ambos si se omite). */
+  async stop(folder: string, fullAccess?: boolean): Promise<void> {
     const f = normalizeFolder(folder)
-    const e = this.servers.get(f)
+    const modes = fullAccess === undefined ? [false, true] : [fullAccess]
+    await Promise.all(modes.map((m) => this.stopOne(f, m)))
+  }
+
+  private async stopOne(f: string, fullAccess: boolean): Promise<void> {
+    const key = serverKey(f, fullAccess)
+    const e = this.servers.get(key)
     if (!e) return
     e.info = { ...e.info, state: 'stopped' }
     const handle = e.handle ?? (await e.starting?.catch(() => undefined))
     e.handle = undefined
     await handle?.stop()
-    this.setInfo(f, { state: 'stopped' })
+    this.setInfo(f, fullAccess, { state: 'stopped' })
   }
 
   async stopAll(): Promise<void> {
-    await Promise.all([...this.servers.keys()].map((f) => this.stop(f).catch(() => undefined)))
+    await Promise.all(
+      [...this.servers.values()].map((e) => this.stopOne(e.info.folder, !!e.info.fullAccess).catch(() => undefined))
+    )
   }
 
   /** Mata todo de forma síncrona (process.on('exit')). */

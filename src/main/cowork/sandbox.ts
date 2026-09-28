@@ -129,6 +129,8 @@ export interface StartCoworkServerOptions {
   corsOrigins?: string[]
   /** Desactivar el sandbox (solo para depuración). */
   noSandbox?: boolean
+  /** Variables de entorno extra para `opencode serve` (p.ej. OPENCODE_CONFIG_CONTENT). */
+  extraEnv?: Record<string, string>
   onExit?: (code: number | null) => void
 }
 
@@ -178,7 +180,8 @@ export async function startCoworkServer(
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
-      OPENDESK_COWORK_FOLDER: folder
+      OPENDESK_COWORK_FOLDER: folder,
+      ...options.extraEnv
     },
     stdio: ['ignore', 'pipe', 'pipe']
   })
