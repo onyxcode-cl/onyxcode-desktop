@@ -14,6 +14,7 @@ import type {
 import { CoworkManager } from '../cowork/manager'
 import { importFilesInto, previewFile } from '../cowork/files'
 import { ComputerService } from '../computer/service'
+import { ComputerOverlay } from '../computer/overlay'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { previewSchedule } from '../scheduler/schedule'
 
@@ -64,6 +65,12 @@ export function registerCoworkHandlers(
 ): CoworkModule {
   const computer = new ComputerService()
   computer.init()
+  // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
+  const overlay = new ComputerOverlay({
+    instant: computer.instant,
+    hideOnCapture: process.env.OPENDESK_OVERLAY_HIDE_ON_CAPTURE === '1'
+  })
+  computer.captureGuard = () => overlay.beforeCapture()
   const cowork = new CoworkManager({
     corsOrigins: deps.corsOrigins,
     computer: { mcpConfig: () => computer.mcpConfig(), info: () => computer.info() }
@@ -79,11 +86,20 @@ export function registerCoworkHandlers(
       if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
     }
   }
-  cowork.on('server', (info) => send('cowork:server', info))
+  cowork.on('server', (info) => {
+    send('cowork:server', info)
+    if (info.fullAccess && (info.state === 'stopped' || info.state === 'error')) overlay.serverGone()
+  })
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
-  computer.on('action', (ev) => send('computer:action', ev))
-  computer.on('stopped', (ev) => send('computer:stopped', ev))
+  computer.on('action', (ev) => {
+    send('computer:action', ev)
+    overlay.handleAction(ev)
+  })
+  computer.on('stopped', (ev) => {
+    send('computer:stopped', ev)
+    overlay.stopped()
+  })
 
   // ── Cowork ──
   handle(ipcMain, 'cowork:pickFolder', async (_req, event) => {
@@ -139,6 +155,7 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'computer:requestPermissions', () => computer.requestPermissions())
   handle(ipcMain, 'computer:stop', () => computer.stop())
   handle(ipcMain, 'computer:resume', () => computer.resume())
+  handle(ipcMain, 'computer:session', (req) => overlay.setSession(req?.active === true, typeof req?.label === 'string' ? req.label : undefined))
 
   scheduler.start()
 
@@ -149,6 +166,7 @@ export function registerCoworkHandlers(
     shutdown: async () => {
       scheduler.stop()
       await cowork.stopAll()
+      overlay.dispose()
       computer.dispose()
     },
     killSync: () => cowork.killAllSync()

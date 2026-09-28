@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, Loader2, Search } from 'lucide-react'
+import { Brain, Check, ChevronDown, Loader2, Search } from 'lucide-react'
 import type { ModelRef } from '@shared/types'
 import { useProviders } from '../stores/providers'
 import { useServer } from '../stores/server'
@@ -11,13 +11,17 @@ interface Props {
   placement?: 'top' | 'bottom'
 }
 
+const PREFERRED = 'opencode-go'
+
 /** Selector de modelo con los proveedores/modelos del servidor (`config.providers`). */
 export function ModelPicker({ value, onChange, placement = 'top' }: Props): React.JSX.Element {
   const client = useServer((s) => s.client)
   const { providers, loading, error, load } = useProviders()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [cursor, setCursor] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (client) void load(client)
@@ -28,61 +32,112 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
     const onDown = (e: MouseEvent): void => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
     }
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setOpen(false)
-    }
     document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
+    return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  const currentName = useMemo(() => {
+  const current = useMemo(() => {
     const p = providers.find((x) => x.id === value.providerID)
-    return p?.models[value.modelID]?.name ?? value.modelID
+    return { name: p?.models[value.modelID]?.name ?? value.modelID, provider: p?.name ?? value.providerID }
   }, [providers, value])
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return providers
+    return [...providers]
+      .sort((a, b) => (a.id === PREFERRED ? -1 : b.id === PREFERRED ? 1 : a.name.localeCompare(b.name, 'es')))
       .map((p) => ({
         provider: p,
         models: Object.values(p.models)
           .filter((m) => m.status !== 'deprecated')
-          .filter((m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .filter(
+            (m) =>
+              !q ||
+              m.name.toLowerCase().includes(q) ||
+              m.id.toLowerCase().includes(q) ||
+              p.name.toLowerCase().includes(q)
+          )
+          .sort((a, b) => a.name.localeCompare(b.name, 'es'))
       }))
       .filter((g) => g.models.length > 0)
   }, [providers, query])
+
+  const flat = useMemo(
+    () => groups.flatMap((g) => g.models.map((m) => ({ providerID: g.provider.id, modelID: m.id }))),
+    [groups]
+  )
+
+  // Al abrir, situar el cursor en el modelo actual.
+  useEffect(() => {
+    if (!open) return
+    const i = flat.findIndex((r) => r.providerID === value.providerID && r.modelID === value.modelID)
+    setCursor(i >= 0 ? i : 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  useEffect(() => {
+    listRef.current?.querySelector(`[data-idx="${cursor}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [cursor])
+
+  const choose = (ref: ModelRef): void => {
+    onChange(ref)
+    setOpen(false)
+    setQuery('')
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      setOpen(false)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setCursor((c) => Math.min(flat.length - 1, c + 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setCursor((c) => Math.max(0, c - 1))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const r = flat[cursor]
+      if (r) choose(r)
+    }
+  }
+
+  let idx = -1
 
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="no-drag flex max-w-[260px] items-center gap-1 rounded-lg px-2 py-1 text-[13px] text-muted hover:bg-hover hover:text-fg"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`no-drag flex max-w-[280px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] transition-colors ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
         title={`${value.providerID}/${value.modelID}`}
       >
-        <span className="truncate">{currentName}</span>
-        <ChevronDown size={14} className="shrink-0" />
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+        <span className="truncate font-medium">{current.name}</span>
+        <ChevronDown size={13} className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div
-          className={`absolute left-0 z-50 w-80 overflow-hidden rounded-xl border border-border bg-elevated shadow-xl ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+          className={`absolute left-0 z-50 w-80 animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated shadow-xl ${placement === 'top' ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left'}`}
+          onKeyDown={onKeyDown}
         >
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <Search size={14} className="text-subtle" />
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setCursor(0)
+              }}
               placeholder="Buscar modelo…"
+              aria-label="Buscar modelo"
               className="w-full bg-transparent text-sm outline-none placeholder:text-subtle"
             />
           </div>
-          <div className="max-h-80 overflow-y-auto py-1">
+          <div ref={listRef} role="listbox" className="max-h-80 overflow-y-auto p-1">
             {loading && (
               <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
                 <Loader2 size={14} className="animate-spin" /> Cargando modelos…
@@ -90,31 +145,44 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
             )}
             {error && <div className="px-3 py-2 text-sm text-danger">{error}</div>}
             {!loading && !error && groups.length === 0 && (
-              <div className="px-3 py-2 text-sm text-muted">Sin resultados</div>
+              <div className="px-3 py-6 text-center text-sm text-muted">Sin resultados</div>
             )}
             {groups.map(({ provider, models }) => (
-              <div key={provider.id}>
-                <div className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
+              <div key={provider.id} className="pb-1">
+                <div className="flex items-center gap-1.5 px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
                   {provider.name}
+                  {provider.id === PREFERRED && (
+                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold normal-case">
+                      recomendado
+                    </span>
+                  )}
                 </div>
                 {models.map((m) => {
+                  idx++
+                  const i = idx
                   const selected = provider.id === value.providerID && m.id === value.modelID
+                  const focused = i === cursor
                   return (
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => {
-                        onChange({ providerID: provider.id, modelID: m.id })
-                        setOpen(false)
-                        setQuery('')
-                      }}
-                      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover ${selected ? 'text-fg' : 'text-muted'}`}
+                      role="option"
+                      aria-selected={selected}
+                      data-idx={i}
+                      onMouseMove={() => cursor !== i && setCursor(i)}
+                      onClick={() => choose({ providerID: provider.id, modelID: m.id })}
+                      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors ${focused ? 'bg-hover text-fg' : selected ? 'text-fg' : 'text-muted'}`}
                     >
-                      <span className="flex-1 truncate">{m.name}</span>
+                      <span className={`flex-1 truncate ${selected ? 'font-medium' : ''}`}>{m.name}</span>
                       {m.capabilities.reasoning && (
-                        <span className="rounded border border-border px-1 text-[10px] text-subtle">razona</span>
+                        <span
+                          className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] text-subtle"
+                          title="Modelo con razonamiento"
+                        >
+                          <Brain size={10} /> razona
+                        </span>
                       )}
-                      {selected && <Check size={14} className="text-accent" />}
+                      {selected ? <Check size={14} className="text-accent" /> : <span className="w-3.5" />}
                     </button>
                   )
                 })}
