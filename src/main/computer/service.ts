@@ -144,8 +144,6 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * tarea nueva necesita su propio plan aprobado.
    */
   private planApproved = false
-  /** Última app que el agente pidió/objetivo de una tarjeta pendiente (para reactivarla tras responder). */
-  private lastTargetApp: AccessRequestApp | null = null
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
   private escWatcher: ChildProcessByStdio<null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
@@ -270,7 +268,6 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    */
   requestAccess(apps: AccessRequestApp[], reason?: string, plan?: string[]): Promise<{ decisions: Record<string, AccessDecision>; feedback?: string }> {
     const id = randomBytes(8).toString('hex')
-    this.lastTargetApp = apps[0] ?? null
     return new Promise((resolve) => {
       this.pendingAccess.set(id, { resolve, plan })
       this.emit('requestAccess', { id, apps, reason, plan })
