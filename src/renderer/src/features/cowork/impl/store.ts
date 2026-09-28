@@ -324,6 +324,37 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
   }
 }
 
+// ── Sesión de control del Mac (overlay + píldora del proceso principal) ──
+let computerSessionActive = false
+
+/** Activa/desactiva `computer:session` según haya tareas de acceso total trabajando. */
+function syncComputerSession(): void {
+  const { conn, folder } = useCowork.getState()
+  const { status, sessions } = useSessions.getState()
+  let label: string | undefined
+  let active = false
+  if (conn?.fullAccess && folder) {
+    for (const id of Object.keys(status)) {
+      const sess = sessions[id]
+      if (status[id] !== 'idle' && sess?.directory === folder && !sess.parentID) {
+        active = true
+        label = sess.title || undefined
+        break
+      }
+    }
+  }
+  if (active === computerSessionActive) return
+  computerSessionActive = active
+  cw('computer:session', active ? { active, label } : { active }).catch(() => undefined)
+}
+
+useSessions.subscribe((s, prev) => {
+  if (s.status !== prev.status) syncComputerSession()
+})
+useCowork.subscribe((s, prev) => {
+  if (s.conn !== prev.conn || s.folder !== prev.folder) syncComputerSession()
+})
+
 export function disconnect(): void {
   stopStream?.()
   stopStream = null

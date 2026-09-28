@@ -11,8 +11,12 @@
  *   CU_HELPER               ruta al binario nativo `cu-helper` (obligatoria)
  *   COMPUTER_STOP_FILE      kill-switch: si el archivo existe, toda herramienta falla sin actuar
  *   COMPUTER_EVENTS_URL     canal lateral: cada acción se envía como `POST` con un JSON
- *                           `{ tool, x?, y?, text?, at }` (coordenadas en PUNTOS de pantalla).
- *                           Fire-and-forget; si falla se ignora.
+ *                           `{ tool, phase, x?, y?, text?, at }` (coordenadas en PUNTOS de pantalla):
+ *                           `phase: 'start'` ANTES de mover el ratón y `phase: 'end'` al terminar.
+ *                           Fire-and-forget (salvo el inicio de una captura, que espera ≤600 ms
+ *                           para que la app pueda ocultar su overlay); si falla se ignora.
+ *   COMPUTER_INSTANT        "1" = sin animación del cursor ni ritmo de tecleo (`cu-helper --instant`)
+ *   COMPUTER_TYPE_DELAY_MS  retardo base por carácter al escribir (por defecto el del helper, 14 ms)
  *   COMPUTER_AUTO_SCREENSHOT "0" desactiva la captura automática tras cada acción (por defecto 1)
  *   COMPUTER_MAX_LONG_SIDE  lado largo máximo de la captura en px (por defecto 1366)
  *   COMPUTER_SHOT_DIR       carpeta para las capturas (por defecto $TMPDIR/opendesk-computer)
@@ -34,6 +38,8 @@ const AUTO_SHOT = process.env.COMPUTER_AUTO_SCREENSHOT !== '0'
 const MAX_LONG = Math.max(400, Number(process.env.COMPUTER_MAX_LONG_SIDE) || 1366)
 const SHOT_DIR = process.env.COMPUTER_SHOT_DIR || join(tmpdir(), 'opendesk-computer')
 const FAKE_SHOT = process.env.COMPUTER_FAKE_SCREENSHOT ?? ''
+const INSTANT = process.env.COMPUTER_INSTANT === '1'
+const TYPE_DELAY = process.env.COMPUTER_TYPE_DELAY_MS ?? ''
 const SETTLE_MS = 450
 const STOPPED_MSG = 'Control detenido por el usuario'
 
@@ -50,7 +56,10 @@ function run(cmd: string, args: string[], timeout = 15_000): Promise<string> {
 
 async function helper(...args: string[]): Promise<string> {
   if (!HELPER || !existsSync(HELPER)) throw new Error(`Helper nativo no encontrado (${HELPER || 'CU_HELPER vacío'})`)
-  return run(HELPER, args)
+  const flags: string[] = []
+  if (INSTANT) flags.push('--instant')
+  if (TYPE_DELAY && Number.isFinite(Number(TYPE_DELAY))) flags.push('--char-delay', String(Number(TYPE_DELAY)))
+  return run(HELPER, [...flags, ...args], 30_000)
 }
 
 function log(...a: unknown[]): void {
@@ -58,15 +67,51 @@ function log(...a: unknown[]): void {
   process.stderr.write(`[computer-mcp] ${a.map(String).join(' ')}\n`)
 }
 
-function emit(ev: { tool: string; x?: number; y?: number; text?: string }): void {
-  if (!EVENTS_URL) return
+interface ActionEvent {
+  tool: string
+  x?: number
+  y?: number
+  text?: string
+  phase?: 'start' | 'end'
+  ok?: boolean
+  fromX?: number
+  fromY?: number
+  auto?: boolean
+}
+
+function post(ev: ActionEvent, timeoutMs: number): Promise<void> {
+  if (!EVENTS_URL) return Promise.resolve()
   const body = JSON.stringify({ ...ev, at: Date.now() })
-  fetch(EVENTS_URL, {
+  return fetch(EVENTS_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body,
-    signal: AbortSignal.timeout(1500)
-  }).catch(() => undefined)
+    signal: AbortSignal.timeout(timeoutMs)
+  }).then(
+    () => undefined,
+    () => undefined
+  )
+}
+
+/** Fire-and-forget. */
+function emit(ev: ActionEvent): void {
+  void post(ev, 1500)
+}
+
+/**
+ * Emite `start` (antes de actuar: el overlay marca el destino mientras el cursor viaja), ejecuta
+ * la acción y emite `end` (onda del clic) con el resultado.
+ */
+async function act<T>(ev: ActionEvent, fn: () => Promise<T>): Promise<T> {
+  emit({ ...ev, phase: 'start' })
+  try {
+    const r = await fn()
+    emit({ ...ev, phase: 'end', ok: true })
+    return r
+  } catch (err) {
+    emit({ ...ev, phase: 'end', ok: false })
+    throw err
+  }
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -122,7 +167,17 @@ interface Shot {
   ratio: number
 }
 
-async function takeScreenshot(): Promise<Shot> {
+async function takeScreenshot(auto = false): Promise<Shot> {
+  // Espera (≤600 ms) a que la app prepare el overlay para la captura; luego el destello.
+  await post({ tool: 'screenshot', phase: 'start', auto }, 600)
+  try {
+    return await captureScreen()
+  } finally {
+    emit({ tool: 'screenshot', phase: 'end', auto })
+  }
+}
+
+async function captureScreen(): Promise<Shot> {
   mkdirSync(SHOT_DIR, { recursive: true })
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
   const raw = join(SHOT_DIR, `raw-${stamp}.png`)
@@ -215,8 +270,7 @@ function shotText(s: Shot): string {
 
 async function clickTool(args: Record<string, unknown>, button: 'left' | 'right', count: number, tool: string): Promise<string> {
   const p = await toPoints(args.x, args.y)
-  emit({ tool, x: p.x, y: p.y })
-  await helper('click', String(p.x), String(p.y), button, String(count))
+  await act({ tool, x: p.x, y: p.y }, () => helper('click', String(p.x), String(p.y), button, String(count)))
   return `${tool} en (${args.x}, ${args.y}) px → (${p.x}, ${p.y}) pt`
 }
 
@@ -258,8 +312,7 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a) => {
       const p = await toPoints(a.x, a.y)
-      emit({ tool: 'mouse_move', x: p.x, y: p.y })
-      await helper('move', String(p.x), String(p.y))
+      await act({ tool: 'mouse_move', x: p.x, y: p.y }, () => helper('move', String(p.x), String(p.y)))
       return `Puntero movido a (${a.x}, ${a.y}) px → (${p.x}, ${p.y}) pt`
     }
   },
@@ -280,8 +333,9 @@ const TOOLS: ToolDef[] = [
     run: async (a) => {
       const s = await toPoints(a.start_x, a.start_y)
       const e = await toPoints(a.end_x, a.end_y)
-      emit({ tool: 'drag', x: e.x, y: e.y })
-      await helper('drag', String(s.x), String(s.y), String(e.x), String(e.y))
+      await act({ tool: 'drag', x: e.x, y: e.y, fromX: s.x, fromY: s.y }, () =>
+        helper('drag', String(s.x), String(s.y), String(e.x), String(e.y))
+      )
       return `Arrastrado de (${a.start_x}, ${a.start_y}) a (${a.end_x}, ${a.end_y}) px`
     }
   },
@@ -306,8 +360,9 @@ const TOOLS: ToolDef[] = [
       const dx = dir === 'right' ? n : dir === 'left' ? -n : 0
       const dy = dir === 'down' ? n : dir === 'up' ? -n : 0
       if (!dx && !dy) throw new Error('direction debe ser up, down, left o right')
-      emit({ tool: 'scroll', x: p.x, y: p.y, text: `${dir} ${n}` })
-      await helper('scroll', String(p.x), String(p.y), String(dx), String(dy))
+      await act({ tool: 'scroll', x: p.x, y: p.y, text: `${dir} ${n}` }, () =>
+        helper('scroll', String(p.x), String(p.y), String(dx), String(dy))
+      )
       return `Scroll ${dir} ${n} en (${a.x}, ${a.y}) px`
     }
   },
@@ -320,8 +375,9 @@ const TOOLS: ToolDef[] = [
       const text = String(a.text ?? '')
       if (!text) throw new Error('text vacío')
       if (text.length > 5000) throw new Error('Texto demasiado largo (máx. 5000 caracteres)')
-      emit({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text })
-      await helper('type', text)
+      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
+        helper('type', text)
+      )
       return `Escrito: ${text.length} caracteres`
     }
   },
@@ -335,8 +391,7 @@ const TOOLS: ToolDef[] = [
     run: async (a) => {
       const keys = String(a.keys ?? '').trim()
       if (!keys) throw new Error('keys vacío')
-      emit({ tool: 'key', text: keys })
-      await helper('key', keys)
+      await act({ tool: 'key', text: keys }, () => helper('key', keys))
       return `Teclas pulsadas: ${keys}`
     }
   },
@@ -359,9 +414,10 @@ const TOOLS: ToolDef[] = [
     run: async (a) => {
       const name = String(a.name ?? '').trim()
       if (!name) throw new Error('name vacío')
-      emit({ tool: 'open_application', text: name })
-      await helper('open-app', name)
-      await sleep(800)
+      await act({ tool: 'open_application', text: name }, async () => {
+        await helper('open-app', name)
+        await sleep(800)
+      })
       const front = JSON.parse(await helper('frontmost')) as { name?: string }
       return `Abierta ${name}. App en primer plano: ${front.name ?? '?'}`
     }
@@ -373,8 +429,7 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a) => {
       const s = Math.max(0, Math.min(10, Number(a.seconds) || 1))
-      emit({ tool: 'wait', text: `${s}s` })
-      await sleep(s * 1000)
+      await act({ tool: 'wait', text: `${s}s` }, () => sleep(s * 1000))
       return `Esperado ${s}s`
     }
   }
@@ -388,7 +443,6 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<To
   }
   try {
     if (name === 'screenshot') {
-      emit({ tool: 'screenshot' })
       const s = await takeScreenshot()
       return {
         content: [
@@ -406,7 +460,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<To
         content.push({ type: 'text', text: STOPPED_MSG })
       } else {
         try {
-          const s = await takeScreenshot()
+          const s = await takeScreenshot(true)
           content.unshift({ type: 'image', data: s.base64, mimeType: 'image/jpeg' })
           content.push({ type: 'text', text: shotText(s) })
         } catch (err) {

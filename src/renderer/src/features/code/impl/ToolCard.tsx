@@ -1,3 +1,9 @@
+/**
+ * Llamadas a herramientas del agente, en formato compacto:
+ *  - pasos consecutivos se agrupan (`StepGroup`) con un resumen ("Leyó 3 archivos · Editó 1…"),
+ *  - las ediciones se muestran como chip de archivo con +/- que se expande al diff,
+ *  - bash muestra el comando y su salida plegable.
+ */
 import { useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import {
@@ -20,6 +26,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { DiffView, diffStats, makePatch } from './DiffView'
+import { ADD_TEXT, DEL_TEXT } from './ui'
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : ''
@@ -37,6 +44,11 @@ export function relPath(p: string, root: string | null): string {
     return r || '.'
   }
   return p
+}
+
+function splitPath(p: string): { dir: string; name: string } {
+  const i = p.lastIndexOf('/')
+  return i < 0 ? { dir: '', name: p } : { dir: p.slice(0, i), name: p.slice(i + 1) }
 }
 
 interface TodoItem {
@@ -58,7 +70,7 @@ export function TodoList({ todos }: { todos: TodoItem[] }): React.JSX.Element {
           {t.status === 'completed' ? (
             <Check size={14} className="mt-0.5 shrink-0 text-accent" />
           ) : t.status === 'in_progress' ? (
-            <CircleDot size={14} className="mt-0.5 shrink-0 text-accent" />
+            <CircleDot size={14} className="mt-0.5 shrink-0 animate-pulse text-accent" />
           ) : t.status === 'cancelled' ? (
             <XCircle size={14} className="mt-0.5 shrink-0 text-subtle" />
           ) : (
@@ -67,7 +79,7 @@ export function TodoList({ todos }: { todos: TodoItem[] }): React.JSX.Element {
           <span
             className={
               t.status === 'completed' || t.status === 'cancelled'
-                ? 'text-muted line-through'
+                ? 'text-muted line-through decoration-subtle'
                 : t.status === 'in_progress'
                   ? 'font-medium text-fg'
                   : 'text-fg'
@@ -90,164 +102,281 @@ function Output({ text, max = 'max-h-72' }: { text: string; max?: string }): Rea
   )
 }
 
-interface CardProps {
+// ---------------------------------------------------------------------------
+// Clasificación
+// ---------------------------------------------------------------------------
+
+export type ToolKind = 'edit' | 'bash' | 'read' | 'search' | 'web' | 'todo' | 'task' | 'other'
+
+export function toolKind(tool: string): ToolKind {
+  switch (tool) {
+    case 'edit':
+    case 'multiedit':
+    case 'write':
+    case 'patch':
+    case 'apply_patch':
+      return 'edit'
+    case 'bash':
+      return 'bash'
+    case 'read':
+      return 'read'
+    case 'grep':
+    case 'glob':
+    case 'list':
+    case 'ls':
+    case 'codesearch':
+      return 'search'
+    case 'webfetch':
+    case 'websearch':
+      return 'web'
+    case 'todowrite':
+    case 'todoread':
+      return 'todo'
+    case 'task':
+      return 'task'
+    default:
+      return 'other'
+  }
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+/** "Leyó 3 archivos · Editó 2 archivos · Ejecutó 1 comando". */
+export function summarizeSteps(parts: ToolPart[]): string {
+  const c: Record<ToolKind, number> = { edit: 0, bash: 0, read: 0, search: 0, web: 0, todo: 0, task: 0, other: 0 }
+  for (const p of parts) c[toolKind(p.tool)]++
+  const out: string[] = []
+  if (c.read) out.push(`Leyó ${plural(c.read, 'archivo', 'archivos')}`)
+  if (c.search) out.push(`Buscó ${c.search === 1 ? 'una vez' : `${c.search} veces`}`)
+  if (c.edit) out.push(`Editó ${plural(c.edit, 'archivo', 'archivos')}`)
+  if (c.bash) out.push(`Ejecutó ${plural(c.bash, 'comando', 'comandos')}`)
+  if (c.web) out.push(`Consultó la web${c.web > 1 ? ` (${c.web})` : ''}`)
+  if (c.task) out.push(plural(c.task, 'subagente', 'subagentes'))
+  if (c.todo) out.push('Actualizó tareas')
+  if (c.other) out.push(plural(c.other, 'herramienta', 'herramientas'))
+  return out.join(' · ')
+}
+
+// ---------------------------------------------------------------------------
+// Filas
+// ---------------------------------------------------------------------------
+
+type Status = ToolPart['state']['status']
+
+function StatusMark({ status }: { status: Status }): React.JSX.Element | null {
+  if (status === 'completed') return null
+  if (status === 'error') return <AlertCircle size={13} className="text-danger" />
+  return <Loader2 size={13} className="animate-spin text-muted" />
+}
+
+interface RowProps {
   icon: ReactNode
-  label: string
-  title?: string
+  verb: string
+  detail?: ReactNode
   extra?: ReactNode
-  status: ToolPart['state']['status']
-  defaultOpen?: boolean
+  status: Status
+  /** Abierto por defecto (se puede sobrescribir haciendo clic). */
+  autoOpen?: boolean
   children?: ReactNode
 }
 
-function Card({ icon, label, title, extra, status, defaultOpen = false, children }: CardProps): React.JSX.Element {
-  const [open, setOpen] = useState(defaultOpen)
-  const statusIcon =
-    status === 'completed' ? null : status === 'error' ? (
-      <AlertCircle size={13} className="text-danger" />
-    ) : (
-      <Loader2 size={13} className="animate-spin text-muted" />
-    )
+function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: RowProps): React.JSX.Element {
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
+  const open = userOpen ?? autoOpen
+  const expandable = !!children
   return (
-    <div
-      className={`my-1 overflow-hidden rounded-lg border bg-elevated text-[13px] ${status === 'error' ? 'border-danger/40' : 'border-border'}`}
-    >
+    <div className="text-[13px]">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        disabled={!children}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-muted hover:text-fg disabled:cursor-default"
+        onClick={() => expandable && setUserOpen(!open)}
+        aria-expanded={expandable ? open : undefined}
+        className={`group/row flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left text-muted ${expandable ? 'hover:bg-hover hover:text-fg' : 'cursor-default'}`}
       >
-        <ChevronRight
-          size={13}
-          className={`shrink-0 transition-transform ${open ? 'rotate-90' : ''} ${children ? '' : 'opacity-0'}`}
-        />
-        <span className="shrink-0">{icon}</span>
-        <span className="shrink-0 font-medium text-fg">{label}</span>
-        {title && <span className="min-w-0 truncate font-mono text-xs">{title}</span>}
-        <span className="ml-auto flex shrink-0 items-center gap-2">
+        <span className={`shrink-0 ${status === 'error' ? 'text-danger' : 'text-subtle group-hover/row:text-muted'}`}>{icon}</span>
+        <span className="shrink-0 text-fg/90">{verb}</span>
+        {detail && <span className="min-w-0 truncate">{detail}</span>}
+        <span className="ml-auto flex shrink-0 items-center gap-2 pl-2">
           {extra}
-          {statusIcon}
+          <StatusMark status={status} />
+          {expandable && (
+            <ChevronRight size={13} className={`text-subtle transition-transform ${open ? 'rotate-90' : 'opacity-0 group-hover/row:opacity-100'}`} />
+          )}
         </span>
       </button>
-      {open && children && <div className="border-t border-border">{children}</div>}
+      {open && children && <div className="mt-1 mb-1.5 ml-6 overflow-hidden rounded-lg border border-border bg-elevated">{children}</div>}
     </div>
   )
 }
 
-function Stats({ patch }: { patch: string }): React.JSX.Element | null {
-  const { additions, deletions } = useMemo(() => diffStats(patch), [patch])
+export function DiffStats({ additions, deletions }: { additions: number; deletions: number }): React.JSX.Element | null {
   if (!additions && !deletions) return null
   return (
-    <span className="font-mono text-xs">
-      <span className="text-[#16a34a]">+{additions}</span> <span className="text-danger">-{deletions}</span>
+    <span className="font-mono text-[11px] tabular-nums">
+      <span className={ADD_TEXT}>+{additions}</span> <span className={DEL_TEXT}>-{deletions}</span>
     </span>
   )
 }
 
-export function ToolCard({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
+function editInfo(part: ToolPart, root: string | null): { file: string; patch: string; label: string } {
+  const { state } = part
+  const input = state.input ?? {}
+  const meta = ('metadata' in state && state.metadata) || {}
+  const tool = part.tool
+  const file = relPath(str(input.filePath) || str(input.path), root) || ('title' in state ? (state.title ?? '') : '')
+  let patch = str(meta.diff)
+  if (!patch && tool === 'edit' && (str(input.oldString) || str(input.newString))) {
+    patch = makePatch(file, str(input.oldString), str(input.newString))
+  }
+  if (!patch && tool === 'write' && str(input.content)) patch = makePatch(file, '', str(input.content))
+  if (!patch && (tool === 'patch' || tool === 'apply_patch')) patch = str(input.patchText) || str(input.patch)
+  const label = tool === 'write' ? 'Creó' : 'Editó'
+  return { file, patch, label }
+}
+
+/** Chip de archivo editado con +/- que se expande al diff. */
+function EditChip({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const { file, patch, label } = useMemo(() => editInfo(part, root), [part, root])
+  const stats = useMemo(() => (patch ? diffStats(patch) : { additions: 0, deletions: 0 }), [patch])
+  const { dir, name } = splitPath(file)
+  const status = part.state.status
+  const error = status === 'error' ? part.state.error : ''
+  const Icon = part.tool === 'write' ? FilePlus : FilePen
+  return (
+    <div className="text-[13px]">
+      <div className="flex items-center gap-2 px-1.5 py-1">
+        <Icon size={14} className={status === 'error' ? 'shrink-0 text-danger' : 'shrink-0 text-subtle'} />
+        <span className="shrink-0 text-fg/90">{label}</span>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          disabled={!patch && !error}
+          aria-expanded={open}
+          title={file}
+          className={`flex min-w-0 items-center gap-2 rounded-md border px-2 py-0.5 transition ${open ? 'border-border-strong bg-hover' : 'border-border bg-elevated hover:border-border-strong hover:bg-hover'} disabled:cursor-default`}
+        >
+          <span className="min-w-0 truncate font-mono text-xs">
+            <span className="text-fg">{name || file}</span>
+            {dir && <span className="ml-1.5 text-subtle">{dir}</span>}
+          </span>
+          <DiffStats {...stats} />
+          {(patch || error) && <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />}
+        </button>
+        <span className="ml-auto shrink-0">
+          <StatusMark status={status} />
+        </span>
+      </div>
+      {open && (
+        <div className="mt-1 mb-1.5 ml-6 overflow-hidden rounded-lg border border-border bg-elevated">
+          {patch && <DiffView patch={patch} path={file} hideFileHeaders className="max-h-96" />}
+          {error && <div className="px-3 py-2 font-mono text-xs whitespace-pre-wrap text-danger">{error}</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function ToolRow({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const { state } = part
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
   const output = state.status === 'completed' ? state.output : ''
   const error = state.status === 'error' ? state.error : ''
   const errorBlock = error ? <div className="px-3 py-2 font-mono text-xs whitespace-pre-wrap text-danger">{error}</div> : null
+  const running = state.status === 'running' || state.status === 'pending'
   const tool = part.tool
+  const kind = toolKind(tool)
 
-  switch (tool) {
+  switch (kind) {
+    case 'edit':
+      return <EditChip part={part} root={root} />
     case 'bash': {
       const command = str(input.command)
       const live = str(meta.output) || output
+      const exit = num(meta.exit)
+      const desc = str(input.description)
       return (
-        <Card
+        <Row
           icon={<SquareTerminal size={14} />}
-          label="Terminal"
-          title={str(input.description) || command}
+          verb={running ? 'Ejecutando' : 'Ejecutó'}
+          detail={
+            <span className="rounded bg-code px-1.5 py-0.5 font-mono text-xs text-fg" title={desc || command}>
+              {command.split('\n')[0]}
+            </span>
+          }
           status={state.status}
-          extra={num(meta.exit) !== undefined && num(meta.exit) !== 0 ? <span className="text-xs text-danger">código {num(meta.exit)}</span> : null}
+          autoOpen={running && !!live}
+          extra={
+            exit !== undefined && exit !== 0 ? (
+              <span className="rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">exit {exit}</span>
+            ) : desc ? (
+              <span className="hidden max-w-56 truncate text-xs text-subtle md:inline">{desc}</span>
+            ) : null
+          }
         >
-          <pre className="bg-code px-3 pt-2 font-mono text-xs whitespace-pre-wrap text-muted">$ {command}</pre>
+          <pre className="bg-code px-3 pt-2 font-mono text-xs whitespace-pre-wrap text-muted">
+            <span className="text-accent select-none">$ </span>
+            {command}
+          </pre>
           <Output text={live} />
           {errorBlock}
-        </Card>
-      )
-    }
-    case 'edit':
-    case 'multiedit':
-    case 'write':
-    case 'patch':
-    case 'apply_patch': {
-      const file = str(input.filePath) || str(input.path)
-      let patch = str(meta.diff)
-      if (!patch && tool === 'edit' && (str(input.oldString) || str(input.newString))) {
-        patch = makePatch(relPath(file, root), str(input.oldString), str(input.newString))
-      }
-      if (!patch && tool === 'write' && str(input.content)) {
-        patch = makePatch(relPath(file, root), '', str(input.content))
-      }
-      if (!patch && (tool === 'patch' || tool === 'apply_patch')) patch = str(input.patchText) || str(input.patch)
-      const label = tool === 'write' ? 'Escribir' : tool === 'patch' || tool === 'apply_patch' ? 'Parche' : 'Editar'
-      return (
-        <Card
-          icon={tool === 'write' ? <FilePlus size={14} /> : <FilePen size={14} />}
-          label={label}
-          title={relPath(file, root) || ('title' in state ? (state.title ?? '') : '')}
-          status={state.status}
-          extra={patch ? <Stats patch={patch} /> : null}
-          defaultOpen={state.status !== 'error'}
-        >
-          {patch ? <DiffView patch={patch} hideFileHeaders className="max-h-96" /> : <Output text={output} />}
-          {errorBlock}
-        </Card>
+        </Row>
       )
     }
     case 'read': {
-      const file = str(input.filePath)
+      const file = relPath(str(input.filePath), root)
       const offset = num(input.offset)
       const limit = num(input.limit)
       return (
-        <Card
+        <Row
           icon={<FileText size={14} />}
-          label="Leer"
-          title={relPath(file, root) + (offset !== undefined ? ` (desde ${offset}${limit ? `, ${limit} líneas` : ''})` : '')}
+          verb={running ? 'Leyendo' : 'Leyó'}
+          detail={
+            <span className="font-mono text-xs">
+              {file}
+              {offset !== undefined && <span className="text-subtle"> · desde {offset}{limit ? `, ${limit} líneas` : ''}</span>}
+            </span>
+          }
           status={state.status}
         >
-          {error ? errorBlock : <Output text={output} max="max-h-60" />}
-        </Card>
+          {error ? errorBlock : output ? <Output text={output} max="max-h-60" /> : null}
+        </Row>
       )
     }
-    case 'grep':
-    case 'glob':
-    case 'list':
-    case 'ls':
-    case 'codesearch': {
+    case 'search': {
       const pattern = str(input.pattern) || str(input.query)
       const where = relPath(str(input.path), root)
       const count = num(meta.matches) ?? num(meta.count)
-      const label = tool === 'grep' ? 'Buscar' : tool === 'glob' ? 'Archivos' : tool === 'codesearch' ? 'Buscar código' : 'Listar'
+      const verb = tool === 'grep' || tool === 'codesearch' ? 'Buscó' : tool === 'glob' ? 'Buscó archivos' : 'Listó'
       return (
-        <Card
+        <Row
           icon={tool === 'grep' || tool === 'codesearch' ? <FileSearch size={14} /> : <FolderSearch size={14} />}
-          label={label}
-          title={[pattern, where && where !== '.' ? `en ${where}` : '', str(input.include)].filter(Boolean).join(' ')}
+          verb={verb}
+          detail={
+            <span className="font-mono text-xs">
+              {pattern || where}
+              {pattern && where && where !== '.' && <span className="text-subtle"> en {where}</span>}
+              {str(input.include) && <span className="text-subtle"> ({str(input.include)})</span>}
+            </span>
+          }
+          extra={count !== undefined ? <span className="text-xs text-subtle">{plural(count, 'resultado', 'resultados')}</span> : null}
           status={state.status}
-          extra={count !== undefined ? <span className="text-xs">{count} resultados</span> : null}
         >
-          {error ? errorBlock : <Output text={output} max="max-h-60" />}
-        </Card>
+          {error ? errorBlock : output ? <Output text={output} max="max-h-60" /> : null}
+        </Row>
       )
     }
-    case 'todowrite':
-    case 'todoread': {
+    case 'todo': {
       const todos = todosFrom(input.todos).length ? todosFrom(input.todos) : todosFrom(meta.todos)
       const done = todos.filter((t) => t.status === 'completed').length
       return (
-        <Card
+        <Row
           icon={<ListTodo size={14} />}
-          label="Tareas"
-          title={todos.length ? `${done}/${todos.length} completadas` : ''}
+          verb="Actualizó tareas"
+          detail={todos.length ? <span className="text-xs text-subtle">{done}/{todos.length} completadas</span> : undefined}
           status={state.status}
-          defaultOpen
         >
           {todos.length > 0 ? (
             <div className="px-3 py-2">
@@ -256,39 +385,112 @@ export function ToolCard({ part, root }: { part: ToolPart; root: string | null }
           ) : (
             errorBlock
           )}
-        </Card>
+        </Row>
       )
     }
-    case 'webfetch':
-    case 'websearch':
+    case 'web':
       return (
-        <Card icon={<Globe size={14} />} label={tool === 'webfetch' ? 'Web' : 'Buscar en la web'} title={str(input.url) || str(input.query)} status={state.status}>
-          {error ? errorBlock : <Output text={output} max="max-h-60" />}
-        </Card>
+        <Row
+          icon={<Globe size={14} />}
+          verb={tool === 'webfetch' ? 'Abrió' : 'Buscó en la web'}
+          detail={<span className="font-mono text-xs">{str(input.url) || str(input.query)}</span>}
+          status={state.status}
+        >
+          {error ? errorBlock : output ? <Output text={output} max="max-h-60" /> : null}
+        </Row>
       )
     case 'task':
       return (
-        <Card
+        <Row
           icon={<Bot size={14} />}
-          label={`Subagente${str(input.subagent_type) ? ` · ${str(input.subagent_type)}` : ''}`}
-          title={str(input.description)}
+          verb={`Subagente${str(input.subagent_type) ? ` ${str(input.subagent_type)}` : ''}`}
+          detail={<span className="text-xs">{str(input.description)}</span>}
           status={state.status}
         >
           {str(input.prompt) && <div className="px-3 py-2 text-xs whitespace-pre-wrap text-muted">{str(input.prompt)}</div>}
           {error ? errorBlock : <Output text={output} max="max-h-60" />}
-        </Card>
+        </Row>
       )
     default: {
       const title = ('title' in state && state.title) || str(input.description) || str(input.filePath) || str(input.path)
       return (
-        <Card icon={<Wrench size={14} />} label={tool} title={title} status={state.status}>
+        <Row icon={<Wrench size={14} />} verb={tool} detail={title ? <span className="text-xs">{title}</span> : undefined} status={state.status}>
           <pre className="max-h-48 overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap text-muted">
             {JSON.stringify(input, null, 2)}
           </pre>
           <Output text={output} />
           {errorBlock}
-        </Card>
+        </Row>
       )
     }
   }
+}
+
+/** Compatibilidad: una llamada suelta. */
+export function ToolCard({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
+  return <ToolRow part={part} root={root} />
+}
+
+// ---------------------------------------------------------------------------
+// Grupo de pasos
+// ---------------------------------------------------------------------------
+
+interface StepGroupProps {
+  parts: ToolPart[]
+  root: string | null
+  /** El grupo es lo último que está haciendo el agente ahora mismo. */
+  live: boolean
+  /** Hay algún permiso pendiente ligado a estas llamadas (fuerza abierto). */
+  hasPending: boolean
+  /** Contenido a mostrar después de una llamada concreta (p. ej. su tarjeta de permiso). */
+  after?: (part: ToolPart) => ReactNode
+}
+
+export function StepGroup({ parts, root, live, hasPending, after }: StepGroupProps): React.JSX.Element {
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
+  const summary = useMemo(() => summarizeSteps(parts), [parts])
+  const anyRunning = parts.some((p) => p.state.status === 'running' || p.state.status === 'pending')
+  const errors = parts.filter((p) => p.state.status === 'error').length
+  const edits = parts.filter((p) => toolKind(p.tool) === 'edit')
+  const collapsible = parts.length >= 3
+  const open = !collapsible || hasPending || (userOpen ?? live)
+
+  const rows = (list: ToolPart[]): React.JSX.Element[] =>
+    list.map((p) => (
+      <div key={p.id}>
+        <ToolRow part={p} root={root} />
+        {after?.(p)}
+      </div>
+    ))
+
+  if (!collapsible) return <div className="-mx-1.5 flex flex-col">{rows(parts)}</div>
+
+  return (
+    <div className="-mx-1.5">
+      <button
+        type="button"
+        onClick={() => setUserOpen(!open)}
+        aria-expanded={open}
+        className="group/steps flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[13px] text-muted hover:bg-hover hover:text-fg"
+      >
+        {anyRunning ? (
+          <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
+        ) : (
+          <ChevronRight size={14} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
+        )}
+        <span className="shrink-0 font-medium text-fg/90">{plural(parts.length, 'paso', 'pasos')}</span>
+        <span className="min-w-0 truncate">{summary}</span>
+        {errors > 0 && (
+          <span className="ml-auto shrink-0 rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">
+            {plural(errors, 'error', 'errores')}
+          </span>
+        )}
+      </button>
+      {open ? (
+        <div className="ml-[13px] border-l border-border pl-2">{rows(parts)}</div>
+      ) : (
+        edits.length > 0 && <div className="ml-[13px] border-l border-border pl-2">{edits.map((p) => <EditChip key={p.id} part={p} root={root} />)}</div>
+      )}
+    </div>
+  )
 }

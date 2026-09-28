@@ -7,6 +7,9 @@
  *   acción (`COMPUTER_EVENTS_URL`), reemitido como evento `computer:action`;
  * - bloque `mcp.computer` para la config de OpenCode del servidor de acceso completo.
  *
+ * Movimiento visible: el helper anima el cursor (ver helper.swift). `OPENDESK_COMPUTER_INSTANT=1`
+ * lo desactiva y `OPENDESK_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
+ *
  * Permisos (TCC): el "proceso responsable" de toda la cadena Electron → opencode → node de
  * Electron → cu-helper es la app que lanzó Electron. Empaquetado = OpenDesk.app; en desarrollo
  * (`npm run dev` desde una terminal) es la TERMINAL (Terminal/iTerm/VS Code…), que es a quien
@@ -28,6 +31,12 @@ export const STOP_SHORTCUT = 'CommandOrControl+Shift+Escape'
 
 const PANE_ACCESSIBILITY = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
 const PANE_SCREEN = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+
+/** Duración del movimiento animado del cursor (ms). Debe coincidir con `motionDuration` de helper.swift. */
+export function motionDurationMs(dist: number): number {
+  if (dist < 3) return 0
+  return 250 + 350 * Math.min(1, dist / 1400)
+}
 
 interface ServiceEvents {
   action: [ComputerActionEvent]
@@ -52,6 +61,13 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private eventsUrl: string | null = null
   private eventsStarting: Promise<string | null> | null = null
   private shortcutRegistered = false
+  /** Sin animación del cursor (también lo usa el overlay para no simular el viaje). */
+  readonly instant = process.env.OPENDESK_COMPUTER_INSTANT === '1'
+  /**
+   * Se espera (≤500 ms) antes de responder al inicio de una captura: permite ocultar el overlay si
+   * la protección de contenido no bastara para excluirlo de `screencapture`.
+   */
+  captureGuard: (() => Promise<void>) | null = null
 
   /** Ruta del helper nativo o null si no está compilado. */
   helperPath(): string | null {
@@ -188,21 +204,36 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           if (body.length > 16_384) req.destroy()
         })
         req.on('end', () => {
-          res.statusCode = 204
-          res.end()
+          const done = (): void => {
+            res.statusCode = 204
+            res.end()
+          }
+          let ev: ComputerActionEvent | null = null
           try {
             const o = JSON.parse(body) as Record<string, unknown>
-            if (typeof o.tool !== 'string') return
-            const ev: ComputerActionEvent = {
-              tool: o.tool.slice(0, 64),
-              at: typeof o.at === 'number' ? o.at : Date.now()
+            if (typeof o.tool === 'string') {
+              ev = { tool: o.tool.slice(0, 64), at: typeof o.at === 'number' ? o.at : Date.now() }
+              const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+              if (num(o.x)) ev.x = o.x
+              if (num(o.y)) ev.y = o.y
+              if (num(o.fromX)) ev.fromX = o.fromX
+              if (num(o.fromY)) ev.fromY = o.fromY
+              if (typeof o.text === 'string') ev.text = o.text.slice(0, 200)
+              if (o.phase === 'start' || o.phase === 'end') ev.phase = o.phase
+              if (typeof o.ok === 'boolean') ev.ok = o.ok
+              if (o.auto === true) ev.auto = true
             }
-            if (typeof o.x === 'number' && Number.isFinite(o.x)) ev.x = o.x
-            if (typeof o.y === 'number' && Number.isFinite(o.y)) ev.y = o.y
-            if (typeof o.text === 'string') ev.text = o.text.slice(0, 200)
-            this.emit('action', ev)
           } catch {
             // JSON inválido: ignorar
+          }
+          if (!ev) return done()
+          this.emit('action', ev)
+          const guard = this.captureGuard
+          if (ev.tool === 'screenshot' && ev.phase === 'start' && guard) {
+            const timeout = new Promise<void>((r) => setTimeout(r, 500))
+            void Promise.race([guard().catch(() => undefined), timeout]).then(done)
+          } else {
+            done()
           }
         })
       })
@@ -236,6 +267,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'opendesk-computer')
     }
     if (eventsUrl) environment.COMPUTER_EVENTS_URL = eventsUrl
+    if (this.instant) environment.COMPUTER_INSTANT = '1'
+    const typeDelay = process.env.OPENDESK_COMPUTER_TYPE_DELAY_MS
+    if (typeDelay && Number.isFinite(Number(typeDelay))) environment.COMPUTER_TYPE_DELAY_MS = typeDelay
     return {
       type: 'local',
       command: [process.execPath, script],

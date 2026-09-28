@@ -71,17 +71,16 @@ function inShape(x: number, y: number): boolean {
   const rx = (x - 16) * c + (y - 16) * c + 16
   const ry = -(x - 16) * c + (y - 16) * c + 16
   const gem = roundRect(rx, ry, 7.5, 7.5, 24.5, 24.5, 3.6)
-  // Cortes entre facetas: del centro óptico (16,14.6) a cada vértice.
+  // Cortes entre facetas: del centro óptico (16,14.6) a los vértices izq., der. e inferior.
   const cut = [
-    [16, 3],
     [29, 16],
     [16, 29],
     [3, 16]
-  ].some(([vx, vy]) => segDist(x, y, 16, 14.6, vx, vy) < 0.75)
+  ].some(([vx, vy]) => segDist(x, y, 16, 14.6, vx, vy) < 0.7)
   // Chispa de 4 puntas centrada en (26,6).
   const dx = Math.abs(x - 26)
   const dy = Math.abs(y - 6)
-  const spark = Math.sqrt(dx) + Math.sqrt(dy) <= Math.sqrt(4.8)
+  const spark = Math.sqrt(dx) + Math.sqrt(dy) <= Math.sqrt(5.6)
   return (gem && !cut) || spark
 }
 
