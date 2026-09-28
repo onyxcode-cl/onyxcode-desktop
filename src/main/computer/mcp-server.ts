@@ -375,10 +375,13 @@ async function takeScreenshot(auto = false): Promise<Shot> {
 /** Apps de sistema/la propia Lapis: nunca se excluyen de la captura aunque no tengan concesión. */
 const NEVER_EXCLUDE = new Set([
   'cl.bentec.lapis',
+  'com.github.Electron', // Lapis sin empaquetar (`npm run dev`)
   'com.apple.dock',
   'com.apple.systemuiserver',
+  'com.apple.Spotlight',
   'com.apple.controlcenter',
   'com.apple.WindowServer',
+  'com.apple.loginwindow',
   'com.apple.notificationcenterui',
   'com.apple.finder' // Finder es la app que casi siempre está detrás de todo; no es "contenido" ajeno
 ])

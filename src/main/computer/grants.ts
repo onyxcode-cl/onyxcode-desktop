@@ -60,6 +60,29 @@ function matches(patterns: RegExp[], bundleId: string, name: string): boolean {
 }
 
 /**
+ * Apps de sistema y la propia Lapis: NUNCA pasan por la concesión por app (ni bloquean cmd+space,
+ * ni aparecen en tarjetas `request_access`, ni se excluyen de las capturas). Sin esto, Lapis podía
+ * bloquearse a sí misma cuando quedaba en primer plano (p.ej. tras `cmd+space`) y el agente perdía
+ * el Spotlight que acababa de abrir. `com.github.Electron` es el bundle id del propio Electron
+ * cuando la app corre sin empaquetar (`npm run dev`).
+ */
+export const SYSTEM_EXEMPT_BUNDLE_IDS: ReadonlySet<string> = new Set([
+  'cl.bentec.lapis',
+  'com.github.Electron',
+  'com.apple.dock',
+  'com.apple.systemuiserver',
+  'com.apple.Spotlight',
+  'com.apple.controlcenter',
+  'com.apple.WindowServer',
+  'com.apple.loginwindow',
+  'com.apple.notificationcenterui'
+])
+
+export function isSystemExempt(bundleId: string): boolean {
+  return SYSTEM_EXEMPT_BUNDLE_IDS.has(bundleId)
+}
+
+/**
  * Nivel por defecto AUTOASIGNADO la primera vez que se ve la app (sin preguntar): navegadores y
  * apps de banca/trading → "Solo ver"; terminales/IDEs → "Ver y clic". Cualquier otra app devuelve
  * null: no se autoasigna nada, hay que PREGUNTAR con `request_access` (o concederla a mano en
@@ -121,6 +144,7 @@ export class ComputerGrantsStore {
    * responda a una tarjeta `request_access` (o las conceda a mano en Ajustes).
    */
   resolve(bundleId: string, name: string): AppTier | null {
+    if (isSystemExempt(bundleId)) return 'full'
     this.load()
     if (this.data.denied.includes(bundleId)) return null
     const existing = this.data.grants[bundleId]

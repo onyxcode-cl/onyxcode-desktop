@@ -77,6 +77,13 @@ export interface AccessRequest {
   id: string
   apps: AccessRequestApp[]
   reason?: string
+  /**
+   * Plan de pasos (flujo Plan → Aprobar → Ejecutar): presente cuando `request_access` se llama AL
+   * PRINCIPIO de una tarea con la lista completa de apps que el agente espera usar. Ausente cuando
+   * es una petición de acceso a una app extra descubierta a mitad de tarea (el plan ya está
+   * aprobado, solo hace falta el permiso nuevo).
+   */
+  plan?: string[]
 }
 
 // ───────────────────────────── Computer use ─────────────────────────────
@@ -153,6 +160,10 @@ export type ComputerOverlayMessage =
   | { type: 'show'; label?: string }
   | { type: 'hide' }
   | { type: 'stopped' }
+  /** Sesión pausada: esperando que el usuario responda una tarjeta `request_access` (sin límite de tiempo). */
+  | { type: 'waiting'; request: AccessRequest }
+  /** Se resolvió (o se canceló) la tarjeta pendiente: la píldora vuelve al estado normal. */
+  | { type: 'waitingCleared' }
 
 /** Archivo de la carpeta creado/modificado durante una tarea. */
 export interface CoworkDeliverable {
@@ -399,9 +410,18 @@ export interface CoworkInvokeContract {
   'computer:denyApp': { req: { bundleId: string; name: string }; res: GrantsSnapshot }
   /** Quita una app de la lista de denegadas. */
   'computer:undenyApp': { req: { bundleId: string }; res: GrantsSnapshot }
-  /** Respuesta del usuario a una tarjeta `computer:accessRequest` pendiente (herramienta `request_access`). */
+  /**
+   * Respuesta del usuario a una tarjeta `computer:accessRequest` pendiente (herramienta
+   * `request_access`). `feedback` = el usuario pidió cambios ("Editar") en vez de aprobar: no se
+   * concede nada (aunque `decisions` traiga algo, se ignora) y el texto vuelve al agente en el
+   * resultado de la herramienta para que replantee el plan.
+   */
   'computer:respondAccess': {
-    req: { id: string; decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }> }
+    req: {
+      id: string
+      decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>
+      feedback?: string
+    }
     res: void
   }
 

@@ -192,7 +192,8 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
         decision: literal('view', 'click', 'full', 'deny')
       }),
       20
-    )
+    ),
+    feedback: optional(str({ max: 1000 }))
   }),
   'cowork:keepAwakeState': none,
   'cowork:keepAwakeSetting': obj({ enabled: bool }),
@@ -235,7 +236,9 @@ export const IPC_SCHEMAS: Record<string, Validator<unknown>> = {
 /** Canales que puede invocar cada ventana secundaria (la principal: todos). */
 export const CHANNEL_ROLES: Record<Exclude<WindowRole, 'main'>, ReadonlySet<string>> = {
   quick: new Set(['extras:quickSubmit', 'extras:quickHide']),
-  pill: new Set(['computer:stop']),
+  // La píldora puede resolver una tarjeta pendiente sin activar la ventana principal
+  // (`showInactive`; ver `computer/overlay.ts`).
+  pill: new Set(['computer:stop', 'computer:respondAccess']),
   overlay: new Set()
 }
 
