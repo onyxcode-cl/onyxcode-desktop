@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { APP_ID, APP_NAME } from '@shared/brand'
+import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { registerAllHandlers } from './ipc'
 import { registerCodeHandlers } from './ipc/code-handlers'
@@ -37,7 +37,7 @@ function createWindow(): BrowserWindow {
     title: APP_NAME,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 16 },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1f1e1d' : '#faf9f5',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,

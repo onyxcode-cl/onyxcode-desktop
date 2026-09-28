@@ -330,7 +330,8 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
           </Tip>
         )}
         <AgentSegmented value={agent} onChange={setAgent} size="sm" />
-        <div className="no-drag">
+        {/* El menú del selector se alinea a la derecha para no salirse de la ventana. */}
+        <div className="no-drag [&_.absolute]:right-0 [&_.absolute]:left-auto">
           <ModelPicker value={model ?? defaultModel} onChange={setModel} placement="bottom" />
         </div>
         <span className="mx-0.5 h-5 w-px bg-border" />
