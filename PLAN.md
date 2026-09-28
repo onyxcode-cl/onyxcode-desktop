@@ -4,7 +4,7 @@ Clon funcional de Claude Desktop (Chat · Cowork · Code) usando **OpenCode** co
 y **OpenCode Go** como proveedor de modelos. Uso personal (macOS arm64 primero).
 
 > El nombre de la app vive SOLO en `src/shared/brand.ts` (`APP_NAME`, `APP_ID`) y en
-> `package.json`/`electron-builder.yml`. Nunca hardcodear el nombre en otro lugar.
+> `package.json`/`electron-builder.js`. Nunca hardcodear el nombre en otro lugar.
 
 ## Stack
 - Electron 44 + electron-vite 5 + TypeScript (strict) + React 19 + Tailwind CSS 4

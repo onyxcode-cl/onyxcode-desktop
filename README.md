@@ -4,7 +4,7 @@ Cliente de escritorio estilo Claude Desktop (modos **Chat · Code · Cowork · R
 el servidor de agentes de [OpenCode](https://opencode.ai), usando la suscripción **OpenCode Go** como
 proveedor de modelos. El plan completo está en [`PLAN.md`](./PLAN.md).
 
-> El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.yml`.
+> El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
 
 ## Requisitos
 

@@ -1,6 +1,6 @@
 /**
  * Identidad de la app. ÚNICO lugar donde vive el nombre (además de package.json y
- * electron-builder.yml). Todo el resto del código importa desde aquí.
+ * electron-builder.js). Todo el resto del código importa desde aquí.
  */
 export const APP_NAME = 'Lapis'
 export const APP_ID = 'cl.bentec.lapis'

@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@electron/notarize": "^2.5.0",
     "@opencode-ai/sdk": "1.18.32",
     "@tailwindcss/vite": "^4.3.3",
     "@types/diff": "^7.0.2",

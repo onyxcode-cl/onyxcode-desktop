@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Entitlements para hardened runtime (solo se aplican cuando hay firma real, ver
+  electron-builder.config.js). Sin Developer ID se firma ad-hoc y NO se usa este archivo
+  (docs/DISTRIBUCION.md, docs/SEGURIDAD.md §4).
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- V8 (renderer y main) necesita JIT: sin esto Electron no arranca bajo hardened runtime. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- opencode serve (sidecar), MCP de computer use y comprobaciones de red. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+  <!--
+    node-pty carga un addon nativo (.node) precompilado que no está firmado con nuestro Team ID;
+    bajo hardened runtime, sin esto macOS rechaza cargarlo y la terminal integrada deja de
+    funcionar. Es la única razón para desactivar la validación de librerías.
+  -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>
