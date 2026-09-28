@@ -90,23 +90,57 @@ export function isOpencodeServe(command: string): boolean {
   return /(^|\/)opencode(\s|$)/.test(command) && /\sserve(\s|$)/.test(command)
 }
 
+/** PIDs descendientes de `root` (snapshot de `ps`; vacío si falla). */
+function descendants(root: number): number[] {
+  let out: string
+  try {
+    out = execFileSync('/bin/ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8', timeout: 3000 })
+  } catch {
+    return []
+  }
+  const children = new Map<number, number[]>()
+  for (const line of out.split('\n')) {
+    const m = /^\s*(\d+)\s+(\d+)/.exec(line)
+    if (!m) continue
+    const pid = Number(m[1])
+    const ppid = Number(m[2])
+    const list = children.get(ppid) ?? []
+    list.push(pid)
+    children.set(ppid, list)
+  }
+  const result: number[] = []
+  const stack = [...(children.get(root) ?? [])]
+  while (stack.length) {
+    const pid = stack.pop() as number
+    if (pid === process.pid || result.includes(pid)) continue
+    result.push(pid)
+    stack.push(...(children.get(pid) ?? []))
+  }
+  return result
+}
+
+function signalSafe(pid: number, signal: NodeJS.Signals): boolean {
+  try {
+    process.kill(pid, signal)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
- * Envía `signal` al grupo de procesos de `pid` (si es su líder) o, si no, solo al proceso.
- * Nunca lanza.
+ * Envía `signal` al árbol de `pid`: su grupo de procesos (si lo encabeza) y además cada
+ * descendiente con su propio grupo (OpenCode lanza bash/MCP `detached`, en grupos propios, y
+ * sobrevivirían a un `kill(-pid)`). Nunca lanza.
  */
 export function killTree(pid: number | undefined, signal: NodeJS.Signals = 'SIGKILL'): void {
   if (!pid) return
-  try {
-    process.kill(-pid, signal)
-    return
-  } catch {
-    // no es líder de grupo (o ya murió)
+  const tree = descendants(pid)
+  for (const d of tree) {
+    signalSafe(-d, signal) // su grupo, si lo encabeza
+    signalSafe(d, signal)
   }
-  try {
-    process.kill(pid, signal)
-  } catch {
-    // ya terminó
-  }
+  if (!signalSafe(-pid, signal)) signalSafe(pid, signal)
 }
 
 /** Al arrancar: mata servidores huérfanos de una ejecución anterior que terminó mal. */
