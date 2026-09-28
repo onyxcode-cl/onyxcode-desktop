@@ -29,8 +29,10 @@
 
 import AppKit
 import ApplicationServices
+import Carbon
 import CoreGraphics
 import Foundation
+import ScreenCaptureKit
 
 // MARK: - Utilidades
 
@@ -53,7 +55,10 @@ func num(_ args: [String], _ i: Int, _ name: String) -> Double {
     return v
 }
 
-let source = CGEventSource(stateID: .hidSystemState)
+// `.privateState`, no `.hidSystemState`: así nuestros eventos sintéticos se distinguen de los
+// del teclado/ratón físico (campo eventSourceStateID de cada CGEvent). Lo usan `watch-esc`
+// (ignora los Esc que nosotros mismos posteamos) y `recent-input` (actividad HID real reciente).
+let source = CGEventSource(stateID: .privateState)
 
 func post(_ e: CGEvent?) {
     guard let e = e else { fail("No se pudo crear el evento (¿permiso de Accesibilidad?)") }
@@ -318,6 +323,174 @@ func permissions() -> [String: Any] {
     return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
 }
 
+// MARK: - Grants por app (identificación de la app en un punto, campos seguros, entrada reciente)
+
+func appInfo(pid: pid_t) -> [String: Any]? {
+    guard let app = NSRunningApplication(processIdentifier: pid) else { return nil }
+    return ["name": app.localizedName ?? "", "bundleId": app.bundleIdentifier ?? "", "pid": Int(pid)]
+}
+
+/// App bajo un punto de pantalla: primero AX (`AXUIElementCopyElementAtPosition`, más preciso con
+/// paneles/hojas modales), si falla se usa la ventana on-screen más al frente que contiene el punto
+/// (`CGWindowListCopyWindowInfo`, ya viene ordenada de frente hacia atrás).
+func appAt(_ p: CGPoint) -> [String: Any] {
+    let systemWide = AXUIElementCreateSystemWide()
+    var element: AXUIElement?
+    if AXUIElementCopyElementAtPosition(systemWide, Float(p.x), Float(p.y), &element) == .success, let el = element {
+        var pid: pid_t = 0
+        if AXUIElementGetPid(el, &pid) == .success, pid > 0, let info = appInfo(pid: pid) {
+            return info
+        }
+    }
+    let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    if let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] {
+        for w in list {
+            guard let b = w[kCGWindowBounds as String] as? [String: CGFloat],
+                  let x = b["X"], let y = b["Y"], let width = b["Width"], let height = b["Height"],
+                  let pidNum = w[kCGWindowOwnerPID as String] as? Int else { continue }
+            if CGRect(x: x, y: y, width: width, height: height).contains(p), let info = appInfo(pid: pid_t(pidNum)) {
+                return info
+            }
+        }
+    }
+    return ["name": "", "bundleId": "", "pid": 0]
+}
+
+/// Rectángulos (puntos de pantalla, origen arriba-izquierda) de las ventanas visibles de las apps
+/// dadas (por bundle id): usado para enmascarar apps no concedidas si ScreenCaptureKit no está
+/// disponible (fallback de `screenshot-sck`).
+func windowsOf(bundleIds: Set<String>) -> [[String: Any]] {
+    guard !bundleIds.isEmpty else { return [] }
+    let pids = Set(NSWorkspace.shared.runningApplications.compactMap { app -> pid_t? in
+        guard let b = app.bundleIdentifier, bundleIds.contains(b) else { return nil }
+        return app.processIdentifier
+    })
+    guard !pids.isEmpty else { return [] }
+    let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    guard let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { return [] }
+    return list.compactMap { w -> [String: Any]? in
+        guard let pidNum = w[kCGWindowOwnerPID as String] as? Int, pids.contains(pid_t(pidNum)),
+              let b = w[kCGWindowBounds as String] as? [String: CGFloat],
+              let x = b["X"], let y = b["Y"], let width = b["Width"], let height = b["Height"] else { return nil }
+        return ["x": Double(x), "y": Double(y), "width": Double(width), "height": Double(height)]
+    }
+}
+
+/// true si el foco de teclado es un campo de contraseña: entrada segura del sistema
+/// (`IsSecureEventInputEnabled`, la activa el propio campo al enfocarse) o el elemento con foco
+/// (AX) es `AXSecureTextField` por rol o subrol.
+func focusedIsSecure() -> Bool {
+    if IsSecureEventInputEnabled() { return true }
+    let systemWide = AXUIElementCreateSystemWide()
+    var focused: AnyObject?
+    guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+          let raw = focused else { return false }
+    let element = raw as! AXUIElement
+    var role: AnyObject?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    var subrole: AnyObject?
+    AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+    let r = (role as? String) ?? ""
+    let sr = (subrole as? String) ?? ""
+    return r == "AXSecureTextField" || sr == "AXSecureTextField"
+}
+
+// MARK: - Capturas con ScreenCaptureKit (excluye apps no concedidas en el compositor)
+
+func writePNG(_ image: CGImage, to path: String) -> Bool {
+    let rep = NSBitmapImageRep(cgImage: image)
+    guard let data = rep.representation(using: .png, properties: [:]) else { return false }
+    return (try? data.write(to: URL(fileURLWithPath: path))) != nil
+}
+
+@available(macOS 14.0, *)
+func sckScreenshotExcluding(bundleIds: Set<String>) throws -> CGImage {
+    let sem = DispatchSemaphore(value: 0)
+    var resultImage: CGImage?
+    var resultError: Error?
+    Task {
+        do {
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            guard let display = content.displays.first else {
+                throw NSError(domain: "cu-helper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Sin pantalla compartible"])
+            }
+            let excluded = content.applications.filter { bundleIds.contains($0.bundleIdentifier) }
+            let filter = SCContentFilter(display: display, excludingApplications: excluded, exceptingWindows: [])
+            let config = SCStreamConfiguration()
+            let scale = NSScreen.screens.first(where: { screen in
+                (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == display.displayID
+            })?.backingScaleFactor ?? 2
+            config.width = Int(Double(display.width) * scale)
+            config.height = Int(Double(display.height) * scale)
+            config.showsCursor = true
+            resultImage = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        } catch {
+            resultError = error
+        }
+        sem.signal()
+    }
+    sem.wait()
+    if let err = resultError { throw err }
+    guard let img = resultImage else {
+        throw NSError(domain: "cu-helper", code: 2, userInfo: [NSLocalizedDescriptionKey: "Sin imagen"])
+    }
+    return img
+}
+
+/// Enmascara rectángulos (negro sólido) sobre una imagen; `rects` en coordenadas de PÍXELES de la
+/// imagen, origen arriba-izquierda (se voltean internamente al espacio de `CGContext`).
+func maskImage(_ cgImg: CGImage, rects: [CGRect]) -> CGImage? {
+    let width = cgImg.width, height = cgImg.height
+    guard let ctx = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else { return nil }
+    ctx.translateBy(x: 0, y: CGFloat(height))
+    ctx.scaleBy(x: 1, y: -1)
+    ctx.draw(cgImg, in: CGRect(x: 0, y: 0, width: width, height: height))
+    ctx.setFillColor(CGColor(gray: 0.08, alpha: 1))
+    for r in rects { ctx.fill(r) }
+    return ctx.makeImage()
+}
+
+// MARK: - Esc físico (parada mientras el agente controla el Mac)
+
+/// Escucha SOLO Esc (sin modificadores) mientras corre. Ignora los que emite el propio helper
+/// (fuente `.privateState`, ver arriba): imprime "STOP\n" en stdout (con flush) ante cada Esc real
+/// del teclado físico. Vive hasta que el proceso padre lo mata (SIGTERM); lo arranca/para
+/// `service.ts` solo mientras hay control activo, así un Esc normal del usuario en cualquier otro
+/// momento no hace nada.
+func watchEsc() {
+    let mask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+    guard let tap = CGEvent.tapCreate(
+        tap: .cgSessionEventTap,
+        place: .headInsertEventTap,
+        options: .listenOnly,
+        eventsOfInterest: mask,
+        callback: { _, type, event, _ in
+            if type == .keyDown {
+                let keycode = event.getIntegerValueField(.keyboardEventKeycode)
+                let stateId = event.getIntegerValueField(.eventSourceStateID)
+                let isOurs = stateId == Int64(CGEventSourceStateID.privateState.rawValue)
+                if keycode == 0x35 && event.flags.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl]).isEmpty && !isOurs {
+                    print("STOP")
+                    fflush(stdout)
+                }
+            }
+            return Unmanaged.passUnretained(event)
+        },
+        userInfo: nil
+    ) else {
+        fail("No se pudo crear el event tap de Esc (¿permiso de Accesibilidad?)", code: 2)
+    }
+    guard let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+        fail("No se pudo crear la fuente del run loop")
+    }
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+    CGEvent.tapEnable(tap: tap, enable: true)
+    CFRunLoopRun()
+}
+
 // MARK: - Main
 
 // Kill-switch desde OpenDesk (SIGTERM → SIGKILL a los ~300 ms): suelta el botón si estaba
@@ -398,6 +571,51 @@ case "frontmost":
     } else {
         out(["name": ""])
     }
+case "app-at":
+    out(appAt(CGPoint(x: num(args, 1, "x"), y: num(args, 2, "y"))))
+case "windows-of":
+    guard args.count > 1 else { fail("Falta la lista de bundle ids (separados por coma)") }
+    out(windowsOf(bundleIds: Set(args[1].split(separator: ",").map(String.init))))
+case "focused-secure":
+    out(["secure": focusedIsSecure()])
+case "recent-input":
+    out([
+        "keyDownSeconds": CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown),
+        "mouseDownSeconds": CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .leftMouseDown)
+    ])
+case "screenshot-sck":
+    guard args.count > 1 else { fail("Uso: screenshot-sck <outPath> [bundleId1,bundleId2,…]") }
+    let outPath = args[1]
+    let excluded = args.count > 2 ? Set(args[2].split(separator: ",").map(String.init)) : Set<String>()
+    if #available(macOS 14.0, *) {
+        do {
+            let image = try sckScreenshotExcluding(bundleIds: excluded)
+            guard writePNG(image, to: outPath) else { fail("No se pudo guardar la captura") }
+            out(["ok": true, "width": image.width, "height": image.height])
+        } catch {
+            fail("ScreenCaptureKit: \(error.localizedDescription)", code: 4)
+        }
+    } else {
+        fail("ScreenCaptureKit no disponible (macOS < 14)", code: 5)
+    }
+case "mask-regions":
+    // mask-regions <inPath> <outPath> <x,y,w,h> ... (px de la imagen, origen arriba-izquierda)
+    guard args.count > 3, let nsImg = NSImage(contentsOfFile: args[1]),
+          let cgImg = nsImg.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+        fail("Uso: mask-regions <in> <out> <x,y,w,h> … (no se pudo abrir la imagen de entrada)")
+    }
+    let rects: [CGRect] = args[3...].compactMap { s in
+        let parts = s.split(separator: ",").compactMap { Double($0) }
+        guard parts.count == 4 else { return nil }
+        return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
+    }
+    guard let masked = maskImage(cgImg, rects: rects), writePNG(masked, to: args[2]) else {
+        fail("No se pudo enmascarar/guardar \(args[2])")
+    }
+    out(["ok": true])
+case "watch-esc":
+    requireAccessibility()
+    watchEsc()
 case "open-app":
     guard args.count > 1 else { fail("Falta el nombre de la app") }
     let name = args[1...].joined(separator: " ")

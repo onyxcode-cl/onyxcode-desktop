@@ -14,6 +14,7 @@ import type {
 import { CoworkManager } from '../cowork/manager'
 import { importFilesInto, previewFile } from '../cowork/files'
 import { assertSafeToOpen } from '../cowork/open-policy'
+import { CoworkProjectsStore, deleteMemory, getMemory, saveMemory } from '../cowork/projects'
 import { KeepAwakeService } from '../cowork/keep-awake'
 import { ComputerService } from '../computer/service'
 import { ComputerOverlay } from '../computer/overlay'
@@ -69,6 +70,7 @@ export function registerCoworkHandlers(
   getWindow: () => BrowserWindow | null,
   deps: CoworkHandlerDeps
 ): CoworkModule {
+  const projects = new CoworkProjectsStore()
   const keepAwake = new KeepAwakeService()
   const computer = new ComputerService()
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
@@ -158,6 +160,15 @@ export function registerCoworkHandlers(
     return importFilesInto(root, res.filePaths)
   })
   handle(ipcMain, 'cowork:previewFile', ({ path, maxBytes }) => previewFile(cowork.assertInsideApproved(path), maxBytes))
+
+  // ── Proyecto (por carpeta) y memoria ──
+  handle(ipcMain, 'cowork:project:get', ({ folder }) => projects.get(cowork.assertInsideApproved(folder)))
+  handle(ipcMain, 'cowork:project:save', ({ folder, name, instructions }) =>
+    projects.save(cowork.assertInsideApproved(folder), { name, instructions })
+  )
+  handle(ipcMain, 'cowork:memory:get', ({ folder }) => getMemory(cowork.assertInsideApproved(folder)))
+  handle(ipcMain, 'cowork:memory:save', ({ folder, content }) => saveMemory(cowork.assertInsideApproved(folder), content))
+  handle(ipcMain, 'cowork:memory:delete', ({ folder }) => deleteMemory(cowork.assertInsideApproved(folder)))
 
   // ── Rutinas ──
   handle(ipcMain, 'routines:list', () => scheduler.list())

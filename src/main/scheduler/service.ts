@@ -223,6 +223,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         model: input.model,
         schedule: input.schedule,
         enabled: input.enabled,
+        originSessionId: input.originSessionId !== undefined ? input.originSessionId : prev.originSessionId,
         updatedAt: now
       }
       data.routines[idx] = routine

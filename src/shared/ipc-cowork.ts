@@ -142,6 +142,24 @@ export interface CoworkFilePreview {
   truncated?: boolean
 }
 
+// ───────────────────────────── Proyecto (por carpeta) y memoria ─────────────────────────────
+
+/** "Proyecto" de Cowork: nombre + instrucciones propias de la carpeta. */
+export interface CoworkProject {
+  folder: string
+  name: string
+  instructions: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** Contenido de `.lapis/memoria.md` dentro de la carpeta (notas que el agente guarda entre tareas). */
+export interface CoworkMemory {
+  content: string
+  exists: boolean
+  updatedAt: number | null
+}
+
 // ───────────────────────────── Mantener el Mac despierto ─────────────────────────────
 
 export interface KeepAwakeState {
@@ -200,6 +218,8 @@ export interface ScheduledRoutine {
   nextRun?: number | null
   /** Calculado por main: true si hay una ejecución en curso. */
   running?: boolean
+  /** Id de la tarea de Cowork/Code desde la que se creó ("Programar esta tarea"), si aplica. */
+  originSessionId?: string | null
 }
 
 /** Datos editables al crear/actualizar (sin `id` = crear). */
@@ -212,6 +232,7 @@ export interface RoutineInput {
   model: ModelRef
   schedule: RoutineSchedule
   enabled: boolean
+  originSessionId?: string | null
 }
 
 export interface SchedulePreview {
@@ -261,6 +282,14 @@ export interface CoworkInvokeContract {
   'cowork:importFiles': { req: { folder: string }; res: CoworkDeliverable[] }
   /** Lee un archivo de una carpeta autorizada para previsualizarlo (texto recortado / imagen). */
   'cowork:previewFile': { req: { path: string; maxBytes?: number }; res: CoworkFilePreview }
+
+  /** Proyecto (nombre + instrucciones) de una carpeta autorizada. */
+  'cowork:project:get': { req: { folder: string }; res: CoworkProject }
+  'cowork:project:save': { req: { folder: string; name?: string; instructions?: string }; res: CoworkProject }
+  /** Memoria del proyecto: `.lapis/memoria.md` dentro de la carpeta. */
+  'cowork:memory:get': { req: { folder: string }; res: CoworkMemory }
+  'cowork:memory:save': { req: { folder: string; content: string }; res: CoworkMemory }
+  'cowork:memory:delete': { req: { folder: string }; res: CoworkMemory }
 
   'routines:list': { req: void; res: ScheduledRoutine[] }
   'routines:save': { req: RoutineInput; res: ScheduledRoutine }
@@ -336,6 +365,11 @@ export const COWORK_INVOKE_CHANNELS = [
   'cowork:openPath',
   'cowork:importFiles',
   'cowork:previewFile',
+  'cowork:project:get',
+  'cowork:project:save',
+  'cowork:memory:get',
+  'cowork:memory:save',
+  'cowork:memory:delete',
   'routines:list',
   'routines:save',
   'routines:delete',

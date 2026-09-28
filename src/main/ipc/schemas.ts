@@ -86,7 +86,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'settings:set': partial({
     defaultModel: modelRef,
     theme: literal('system', 'light', 'dark'),
-    recentFolders: arr(absPath, 50)
+    recentFolders: arr(absPath, 50),
+    coworkGlobalInstructions: str({ max: 20_000 })
   }),
   'settings:addRecentFolder': pathReq,
   'dialog:openFolder': (v, p) => openFolderOpts(v, p) ?? {},
@@ -143,6 +144,11 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'cowork:openPath': pathReq,
   'cowork:importFiles': folderReq,
   'cowork:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: 20 * 1024 * 1024 })) }),
+  'cowork:project:get': folderReq,
+  'cowork:project:save': obj({ folder: absPath, name: optional(str({ max: 200 })), instructions: optional(str({ max: 20_000 })) }),
+  'cowork:memory:get': folderReq,
+  'cowork:memory:save': obj({ folder: absPath, content: str({ max: 2 * 1024 * 1024 }) }),
+  'cowork:memory:delete': folderReq,
   'routines:list': none,
   'routines:save': obj({
     id: optional(id),
@@ -152,7 +158,8 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
     folder: optional(nullable(absPath)),
     model: modelRef,
     schedule,
-    enabled: bool
+    enabled: bool,
+    originSessionId: optional(nullable(id))
   }),
   'routines:delete': obj({ id }),
   'routines:toggle': obj({ id, enabled: bool }),

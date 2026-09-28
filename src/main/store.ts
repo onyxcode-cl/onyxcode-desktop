@@ -63,7 +63,8 @@ function normalize(s: Settings): Settings {
   const recentFolders = Array.isArray(s.recentFolders)
     ? s.recentFolders.filter((p): p is string => typeof p === 'string').slice(0, MAX_RECENT)
     : []
-  return { defaultModel, theme, recentFolders }
+  const coworkGlobalInstructions = typeof s.coworkGlobalInstructions === 'string' ? s.coworkGlobalInstructions.slice(0, 20_000) : ''
+  return { defaultModel, theme, recentFolders, coworkGlobalInstructions }
 }
 
 export const settingsStore = new SettingsStore()

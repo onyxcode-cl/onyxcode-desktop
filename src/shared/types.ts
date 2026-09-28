@@ -13,6 +13,8 @@ export interface Settings {
   defaultModel: ModelRef
   theme: ThemePreference
   recentFolders: string[]
+  /** Instrucciones globales aplicadas a todas las tareas de Cowork (además de las del proyecto). */
+  coworkGlobalInstructions: string
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -20,7 +22,8 @@ export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'de
 export const DEFAULT_SETTINGS: Settings = {
   defaultModel: DEFAULT_MODEL,
   theme: 'system',
-  recentFolders: []
+  recentFolders: [],
+  coworkGlobalInstructions: ''
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'
