@@ -175,6 +175,172 @@ body.on {
   }
 }
 
+/* ── Tarjeta "Plan y permisos" / request_access (píldora agrandada) ── */
+.request {
+  -webkit-app-region: drag;
+  width: 472px;
+  max-height: calc(100vh - 20px);
+  box-sizing: border-box;
+  padding: 14px 16px 14px;
+  border-radius: 20px;
+  background: var(--pl-bg);
+  color: var(--pl-fg);
+  border: 1px solid var(--pl-border);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in srgb, #f59e0b 35%, transparent),
+    0 0 18px color-mix(in srgb, #f59e0b 25%, transparent);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.request-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.request-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.req-close {
+  -webkit-app-region: no-drag;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pl-kbd-bg);
+  color: var(--pl-muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+.req-close:hover {
+  color: var(--pl-fg);
+}
+.request-reason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pl-muted);
+  font-style: italic;
+}
+.request-plan {
+  -webkit-app-region: no-drag;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pl-fg);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--pl-border);
+  border-radius: 10px;
+  padding: 8px 10px 8px 26px;
+}
+.request-apps {
+  -webkit-app-region: no-drag;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.req-app {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--pl-border);
+}
+.req-app-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.req-tiers {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+.req-tier {
+  border: 1px solid var(--pl-border);
+  background: transparent;
+  color: var(--pl-muted);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.req-tier:hover {
+  background: var(--pl-kbd-bg);
+}
+.req-tier.active {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.18);
+  color: #fff;
+}
+.req-tier-deny.active {
+  border-color: var(--pl-stop);
+  background: rgba(239, 68, 68, 0.18);
+  color: #fff;
+}
+.request-actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+.request-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.request-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.req-deny {
+  background: transparent;
+  border: 1px solid var(--pl-border) !important;
+  color: var(--pl-muted);
+}
+.req-deny:hover:not(:disabled) {
+  color: var(--pl-fg);
+}
+.req-edit {
+  background: var(--pl-kbd-bg);
+  color: var(--pl-fg);
+}
+.req-approve {
+  background: #f59e0b;
+  color: #1a1200;
+}
+.req-approve:hover:not(:disabled) {
+  background: #fbbf24;
+}
+.request-error {
+  margin: 0;
+  font-size: 11px;
+  color: var(--pl-stop);
+}
+.request-error:empty {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   body {
     transform: none;

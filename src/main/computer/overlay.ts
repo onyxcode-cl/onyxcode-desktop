@@ -19,7 +19,7 @@
  * principal (0,0) y el escalado Retina lo resuelve Chromium (1 px CSS = 1 punto).
  */
 import { BrowserWindow, screen, type Rectangle } from 'electron'
-import type { ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-cowork'
+import type { AccessRequest, ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-cowork'
 import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 import { motionDurationMs } from './service'
@@ -30,6 +30,9 @@ const SESSION_SAFETY_MS = 10 * 60_000
 const FADE_MS = 380
 const PILL_W = 500
 const PILL_H = 84
+/** Tamaño de la píldora agrandada con la tarjeta "Plan y permisos" / `request_access`. */
+const REQUEST_W = 500
+const REQUEST_H = 460
 /** Pausa del helper entre llegar al origen de un arrastre y empezar a arrastrar (aprox.). */
 const DRAG_PAUSE_MS = 210
 /** Herramientas que mueven el cursor hasta (x, y) antes de actuar. */
@@ -123,6 +126,40 @@ export class ComputerOverlay {
     if (ev.phase === 'end') this.schedulePillRestore(350)
     if (ev.tool === 'screenshot' && ev.phase === 'end') this.setCaptureOpacity(1)
     this.scheduleIdle()
+  }
+
+  /**
+   * Tarjeta `request_access` pendiente (herramienta MCP): la sesión se PAUSA sin límite de tiempo
+   * (borde ámbar "Esperando tu permiso") y la píldora se agranda para mostrar el plan/apps con un
+   * selector de nivel por app + Aprobar/Denegar, sin robar el foco (`showInactive`, igual que el
+   * resto del overlay). El diálogo de la ventana principal es solo el lugar SECUNDARIO.
+   */
+  showAccessRequest(req: AccessRequest): void {
+    if (this.disposed) return
+    this.show(this.sessionLabel)
+    this.resizePillForRequest(true)
+    this.post(this.overlay, { type: 'waiting', request: req })
+    this.post(this.pill, { type: 'waiting', request: req })
+    if (this.idleTimer) clearTimeout(this.idleTimer) // no ocultar por inactividad mientras se espera
+  }
+
+  /** Se resolvió (o se canceló) la tarjeta pendiente. */
+  clearAccessRequest(): void {
+    if (this.disposed) return
+    this.resizePillForRequest(false)
+    this.post(this.overlay, { type: 'waitingCleared' })
+    this.post(this.pill, { type: 'waitingCleared' })
+    this.scheduleIdle()
+  }
+
+  /** Agranda/reduce la píldora para mostrar (u ocultar) la tarjeta "Plan y permisos". */
+  private resizePillForRequest(active: boolean): void {
+    const pill = this.pill
+    if (!pill || pill.isDestroyed()) return
+    const b = pill.getBounds()
+    const h = active ? REQUEST_H : PILL_H
+    // Mantiene el borde superior fijo (crece hacia abajo); respeta si el usuario la arrastró.
+    pill.setBounds({ x: b.x, y: b.y, width: active ? REQUEST_W : PILL_W, height: h })
   }
 
   /** `computer:session` desde el renderer. */

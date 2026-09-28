@@ -6,7 +6,7 @@
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 
-const ALLOWED_INVOKE = new Set(['computer:stop', 'computer:respondAccess'])
+const ALLOWED_INVOKE = new Set(['computer:stop', 'computer:respondAccess', 'computer:showMainWindow'])
 
 contextBridge.exposeInMainWorld('api', {
   cowork: {

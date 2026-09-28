@@ -5,6 +5,7 @@
   --ov-3: #22d3ee;
   --ov-4: #f472b6;
   --ov-stop: #f87171;
+  --ov-pause: #f59e0b;
   --ov-ink: rgba(18, 18, 24, 0.9);
   --ov-ink-fg: #ffffff;
   --ov-ink-border: rgba(255, 255, 255, 0.16);
@@ -85,6 +86,26 @@ body.stopped .frame-glow {
 body.stopped .edge-shade {
   box-shadow: inset 0 0 90px 10px color-mix(in srgb, var(--ov-stop) 25%, transparent);
   animation: none;
+}
+
+/* "Esperando tu permiso" (request_access sin responder): borde ámbar, más lento, sin girar. */
+body.paused .frame,
+body.paused .frame-glow {
+  background: var(--ov-pause);
+  animation: ov-pulse-slow 1.8s ease-in-out infinite;
+}
+body.paused .edge-shade {
+  box-shadow: inset 0 0 90px 10px color-mix(in srgb, var(--ov-pause) 25%, transparent);
+  animation: ov-pulse-slow 1.8s ease-in-out infinite;
+}
+@keyframes ov-pulse-slow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 @keyframes ov-spin {
@@ -333,6 +354,10 @@ body.stopped .edge-shade {
   background: var(--ov-stop);
   box-shadow: 0 0 8px var(--ov-stop);
   animation: none;
+}
+.tag[data-variant='pause'] .tag-dot {
+  background: var(--ov-pause);
+  box-shadow: 0 0 8px var(--ov-pause);
 }
 
 /* ── Movimiento reducido: sin giros, pulsos ni viajes; solo fundidos ── */

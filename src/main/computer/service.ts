@@ -68,6 +68,8 @@ interface ServiceEvents {
   killState: [ComputerKillState]
   /** Tarjeta "¿Permitir que el agente use X?" pendiente (herramienta MCP `request_access`). */
   requestAccess: [AccessRequest]
+  /** Se resolvió (o se canceló al parar el control) una tarjeta `requestAccess`: id de la tarjeta. */
+  requestAccessResolved: [{ id: string }]
 }
 
 /** Resultado de abortar las sesiones de los servidores de acceso total. */
@@ -305,6 +307,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const firstApproved = decisions.find((d) => d.decision !== 'deny')
     if (firstApproved) void this.activateApp(firstApproved.bundleId)
     pending.resolve({ decisions: map, feedback })
+    this.emit('requestAccessResolved', { id })
     return true
   }
 
@@ -382,6 +385,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     for (const [id, pending] of this.pendingAccess) {
       this.pendingAccess.delete(id)
       pending.resolve({ decisions: Object.fromEntries([]), feedback: undefined })
+      this.emit('requestAccessResolved', { id })
     }
   }
 

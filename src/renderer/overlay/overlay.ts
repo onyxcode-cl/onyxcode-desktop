@@ -188,12 +188,26 @@ function handle(msg: ComputerOverlayMessage): void {
       clearTarget()
       return
     case 'stopped':
+      document.body.classList.remove('paused')
       document.body.classList.add('stopped')
       clearTarget()
       showTag('Control detenido', 'error')
       return
     case 'action':
       onAction(msg)
+      return
+    case 'waiting':
+      // Tarea en pausa esperando una respuesta a `request_access` (sin límite de tiempo): el borde
+      // cambia a ámbar para que se note de un vistazo que el agente no está actuando.
+      document.body.classList.add('paused')
+      clearTarget()
+      window.clearTimeout(tagTimer)
+      placeTag(window.innerWidth / 2, 46, 0)
+      showTag('Esperando tu permiso', 'pause')
+      return
+    case 'waitingCleared':
+      document.body.classList.remove('paused')
+      lingerTag(200)
       return
   }
 }

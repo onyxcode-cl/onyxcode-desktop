@@ -2,7 +2,7 @@
  * Handlers IPC de Cowork (`cowork:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
  * Contrato en src/shared/ipc-cowork.ts; expuesto en `window.api.cowork`.
  */
-import { BrowserWindow, dialog, shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow, Notification, dialog, shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import type { IpcResult } from '@shared/ipc'
 import type {
   CoworkEventChannel,
@@ -98,9 +98,36 @@ export function registerCoworkHandlers(
       if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
     }
   }
+
+  // ── Item 5: Lapis nunca se bloquea a sí misma y se aparta de en medio mientras el agente actúa ──
+  // Mientras una tarea de acceso total está trabajando, la ventana principal se minimiza (la
+  // píldora + el overlay siguen visibles): así nunca queda en primer plano robándole el foco a
+  // Spotlight/la app que el agente está usando, y el usuario ve el escritorio real, no Lapis. Se
+  // restaura sola al terminar, si hay un error, al pulsar Detener, o si el usuario la necesita
+  // (p.ej. abre la tarjeta "Editar" desde la píldora). Solo restaura si fue ELLA quien minimizó
+  // (no toca una minimización manual del usuario).
+  let minimizedByFullAccess = false
+  const hideMainWindowForTask = (): void => {
+    const win = getWindow()
+    if (!win || win.isDestroyed() || win.isMinimized()) return
+    minimizedByFullAccess = true
+    win.minimize()
+  }
+  const restoreMainWindowIfHidden = (opts: { focus?: boolean } = {}): void => {
+    if (!minimizedByFullAccess) return
+    minimizedByFullAccess = false
+    const win = getWindow()
+    if (!win || win.isDestroyed()) return
+    if (win.isMinimized()) win.restore()
+    if (opts.focus) win.focus()
+  }
+
   cowork.on('server', (info) => {
     send('cowork:server', info)
-    if (info.fullAccess && (info.state === 'stopped' || info.state === 'error')) overlay.serverGone()
+    if (info.fullAccess && (info.state === 'stopped' || info.state === 'error')) {
+      overlay.serverGone()
+      restoreMainWindowIfHidden()
+    }
   })
   cowork.on('networkBlocked', (ev) => send('cowork:networkBlocked', ev))
   scheduler.on('changed', (list) => send('routines:changed', list))
@@ -113,10 +140,29 @@ export function registerCoworkHandlers(
   computer.on('stopped', (ev) => {
     send('computer:stopped', ev)
     overlay.stopped()
+    restoreMainWindowIfHidden()
   })
   // Tarjeta "¿Permitir que el agente use X?" (herramienta MCP request_access): se difunde a todas
-  // las ventanas; `computer:respondAccess` la resuelve.
-  computer.on('requestAccess', (req) => send('computer:accessRequest', req))
+  // las ventanas (la principal, secundaria) y a la píldora (primaria, ver overlay.ts);
+  // `computer:respondAccess` la resuelve. Además, notificación nativa con acción "Revisar" (si el
+  // usuario no tiene el foco en Lapis) y aviso a la píldora para el estado "Esperando tu permiso".
+  computer.on('requestAccess', (req) => {
+    send('computer:accessRequest', req)
+    overlay.showAccessRequest(req)
+    try {
+      const n = new Notification({
+        title: req.plan ? 'Plan y permisos pendientes' : '¿Permitir que el agente use estas apps?',
+        body: req.apps.map((a) => a.name).join(', ') + (req.reason ? ` — ${req.reason}` : ''),
+        actions: process.platform === 'darwin' ? [{ type: 'button', text: 'Revisar' }] : undefined
+      })
+      n.on('click', () => restoreMainWindowIfHidden({ focus: true }))
+      n.on('action', () => restoreMainWindowIfHidden({ focus: true }))
+      n.show()
+    } catch (err) {
+      console.error('[computer] notificación de request_access:', err)
+    }
+  })
+  computer.on('requestAccessResolved', () => overlay.clearAccessRequest())
   // Tras los listeners: si el atajo global no se registra, `killState` llega a la UI (que además
   // lo consulta con `computer:state` al montar Cowork, por si la ventana aún no existía).
   computer.init()
@@ -207,7 +253,16 @@ export function registerCoworkHandlers(
   })
   handle(ipcMain, 'computer:resume', () => computer.resume())
   handle(ipcMain, 'computer:state', () => computer.state())
-  handle(ipcMain, 'computer:session', (req) => overlay.setSession(req?.active === true, typeof req?.label === 'string' ? req.label : undefined))
+  handle(ipcMain, 'computer:session', (req) => {
+    const active = req?.active === true
+    overlay.setSession(active, typeof req?.label === 'string' ? req.label : undefined)
+    if (active) hideMainWindowForTask()
+    else {
+      restoreMainWindowIfHidden()
+      // Cada tarea nueva necesita su propio plan aprobado (flujo Plan → Aprobar → Ejecutar).
+      computer.resetPlanApproval()
+    }
+  })
   // ── Concesión por app ──
   handle(ipcMain, 'computer:grants', () => computer.grants.snapshot())
   handle(ipcMain, 'computer:setGrant', ({ bundleId, name, tier }) => {
@@ -228,8 +283,17 @@ export function registerCoworkHandlers(
     computer.grants.undeny(bundleId)
     return computer.grants.snapshot()
   })
-  handle(ipcMain, 'computer:respondAccess', ({ id, decisions }) => {
-    computer.resolveAccessRequest(id, decisions)
+  handle(ipcMain, 'computer:respondAccess', ({ id, decisions, feedback }) => {
+    computer.resolveAccessRequest(id, decisions, feedback)
+  })
+  handle(ipcMain, 'computer:showMainWindow', () => {
+    restoreMainWindowIfHidden({ focus: true })
+    const win = getWindow()
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+    }
   })
 
   // ── Mantener el Mac despierto ──

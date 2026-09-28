@@ -195,6 +195,7 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
     ),
     feedback: optional(str({ max: 1000 }))
   }),
+  'computer:showMainWindow': none,
   'cowork:keepAwakeState': none,
   'cowork:keepAwakeSetting': obj({ enabled: bool }),
   'cowork:keepAwakeActive': obj({ active: bool })
@@ -238,7 +239,7 @@ export const CHANNEL_ROLES: Record<Exclude<WindowRole, 'main'>, ReadonlySet<stri
   quick: new Set(['extras:quickSubmit', 'extras:quickHide']),
   // La píldora puede resolver una tarjeta pendiente sin activar la ventana principal
   // (`showInactive`; ver `computer/overlay.ts`).
-  pill: new Set(['computer:stop', 'computer:respondAccess']),
+  pill: new Set(['computer:stop', 'computer:respondAccess', 'computer:showMainWindow']),
   overlay: new Set()
 }
 

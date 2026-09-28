@@ -424,6 +424,12 @@ export interface CoworkInvokeContract {
     }
     res: void
   }
+  /**
+   * "Editar en Lapis" desde la píldora: trae la ventana principal al frente (acción EXPLÍCITA del
+   * usuario, la única que activa Lapis fuera de que él lo pida) para escribir el feedback de una
+   * tarjeta `request_access` con más espacio que la píldora.
+   */
+  'computer:showMainWindow': { req: void; res: void }
 
   /** Estado actual (ajuste + si el bloqueo está activo). */
   'cowork:keepAwakeState': { req: void; res: KeepAwakeState }
@@ -503,6 +509,7 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:denyApp',
   'computer:undenyApp',
   'computer:respondAccess',
+  'computer:showMainWindow',
   'cowork:keepAwakeState',
   'cowork:keepAwakeSetting',
   'cowork:keepAwakeActive'
