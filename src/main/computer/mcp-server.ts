@@ -204,6 +204,36 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }): 
   }
 }
 
+// ───────────────────────────── flujo Plan → Aprobar → Ejecutar ─────────────────────────────
+//
+// Antes de tocar la pantalla, el agente debe escribir su plan y pedir TODAS las apps que espera
+// usar en una sola llamada a `request_access` con `plan`. Hasta que el usuario apruebe esa tarjeta
+// ("Aprobar y empezar"), toda herramienta de ACCIÓN (`action: true` en TOOLS) se rechaza aquí: no
+// solo por UX, es la comprobación que de verdad impide actuar aunque el modelo se salte el plan.
+
+async function isPlanApproved(): Promise<boolean> {
+  if (!EVENTS_URL) return false
+  try {
+    const r = await fetch(`${EVENTS_URL}/plan-status`, { signal: AbortSignal.timeout(1500) })
+    if (!r.ok) return false
+    const j = (await r.json()) as { approved?: unknown }
+    return j.approved === true
+  } catch (err) {
+    log('plan-status:', err instanceof Error ? err.message : err)
+    return false
+  }
+}
+
+async function requirePlanApproved(): Promise<void> {
+  if (await isPlanApproved()) return
+  throw new Error(
+    'Todavía no hay un plan aprobado para esta tarea (flujo Plan → Aprobar → Ejecutar). Antes de mover el ' +
+      'ratón, hacer clic o teclear: escribe tu plan de pasos y llama UNA VEZ a request_access con la lista ' +
+      'completa de apps que vas a necesitar y el argumento "plan" (los pasos, en orden). Espera a que el ' +
+      'usuario pulse "Aprobar y empezar" antes de hacer ninguna otra acción.'
+  )
+}
+
 /** Campo de contraseña con foco, o el usuario escribiendo ahora mismo: pausa y pide que lo haga él. */
 async function requireCanType(): Promise<void> {
   const secure = JSON.parse(await helper('focused-secure')) as { secure?: boolean }
@@ -219,20 +249,28 @@ async function requireCanType(): Promise<void> {
   }
 }
 
-async function requestAccess(apps: AppRef[], reason?: string): Promise<Record<string, string>> {
+/**
+ * POST al canal lateral y ESPERA (sin límite de tiempo: no hay "sin respuesta ⇒ denegado", ver
+ * `service.ts`). La única forma de que esto vuelva antes es que el usuario responda o pulse
+ * Detener (main deniega todo lo pendiente como respaldo de seguridad al parar el control).
+ */
+async function requestAccess(
+  apps: AppRef[],
+  reason?: string,
+  plan?: string[]
+): Promise<{ decisions: Record<string, string>; feedback?: string }> {
   if (!EVENTS_URL) throw new Error('Canal lateral no disponible: no se puede pedir acceso a apps.')
   const r = await fetch(`${EVENTS_URL}/request-access`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ apps, reason }),
-    signal: AbortSignal.timeout(5 * 60_000 + 5_000)
+    body: JSON.stringify({ apps, reason, plan })
   })
   if (!r.ok) {
     const body = await r.text().catch(() => '')
     throw new Error(`No se pudo pedir acceso (HTTP ${r.status})${body ? `: ${body}` : ''}`)
   }
-  const j = (await r.json()) as { decisions?: Record<string, string> }
-  return j.decisions ?? {}
+  const j = (await r.json()) as { decisions?: Record<string, string>; feedback?: string }
+  return { decisions: j.decisions ?? {}, feedback: j.feedback }
 }
 
 async function resolveApp(name: string): Promise<AppRef & { found: boolean }> {
@@ -502,13 +540,16 @@ interface ToolResult {
   isError?: boolean
 }
 
+/** Resultado de una herramienta: texto simple, o texto + una captura ya tomada (p.ej. `request_access`). */
+type ToolRunResult = string | { text: string; shot: Shot }
+
 interface ToolDef {
   name: string
   description: string
   inputSchema: Record<string, unknown>
   /** Acción (no lectura): se emite al canal lateral y se adjunta captura automática. */
   action: boolean
-  run: (args: Record<string, unknown>) => Promise<string>
+  run: (args: Record<string, unknown>) => Promise<ToolRunResult>
 }
 
 const XY = {
@@ -683,18 +724,29 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'open_application',
-    description: 'Abre o trae al frente una aplicación por nombre (p.ej. "Finder", "Safari", "Notas") o bundle id.',
+    description:
+      'Abre o trae al frente una aplicación por nombre (p.ej. "Finder", "Safari", "Notas") o bundle id. Si la ' +
+      'app queda sin ninguna ventana visible (minimizada o sin ventanas abiertas), intenta mostrar una.',
     inputSchema: obj({ name: { type: 'string' }, ...SHOT_FLAG }, ['name']),
     action: true,
     run: async (a) => {
       const name = String(a.name ?? '').trim()
       if (!name) throw new Error('name vacío')
+      let hasWindow: boolean | undefined
       await act({ tool: 'open_application', text: name }, async () => {
         await helper('open-app', name)
         await sleep(800)
+        // `activate` además reintenta desminimizar/reabrir una ventana (≤3 s) si no hay ninguna visible.
+        try {
+          const r = JSON.parse(await helper('activate', name)) as { hasWindow?: boolean }
+          hasWindow = r.hasWindow
+        } catch (err) {
+          log('activate tras open-app:', err instanceof Error ? err.message : err)
+        }
       })
       const front = JSON.parse(await helper('frontmost')) as { name?: string }
-      return `Abierta ${name}. App en primer plano: ${front.name ?? '?'}`
+      const windowNote = hasWindow === false ? ' Aviso: no se detectó ninguna ventana visible; puede seguir minimizada o cerrada.' : ''
+      return `Abierta ${name}. App en primer plano: ${front.name ?? '?'}.${windowNote}`
     }
   },
   {
@@ -711,13 +763,25 @@ const TOOLS: ToolDef[] = [
   {
     name: 'request_access',
     description:
-      'Pide permiso al usuario para actuar sobre una o más apps que todavía no tienen acceso concedido. ' +
-      'Úsala en cuanto una herramienta falle con "no tiene acceso concedido", ANTES de reintentar la acción. ' +
-      'Muestra una tarjeta en Lapis y ESPERA a que el usuario responda (hasta 5 minutos); si no responde, se trata como denegado.',
+      'Flujo Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO de cada tarea, ANTES de tocar la pantalla, con ' +
+      '"plan" (tus pasos, en orden) y "apps" con la lista COMPLETA de apps que vas a necesitar (no solo una). ' +
+      'Ninguna otra herramienta de acción (clic, teclear, abrir apps…) funciona hasta que el usuario apruebe ' +
+      'esta tarjeta. También sirve, SIN "plan", a mitad de tarea si descubres que necesitas una app extra que ' +
+      'no tenías prevista: llámala en cuanto una herramienta falle con "no tiene acceso concedido". En ambos ' +
+      'casos ESPERA a que el usuario responda (sin límite de tiempo: la tarea queda en pausa, no se cancela ' +
+      'sola). Si el usuario pide cambios ("Editar") en vez de aprobar, el resultado trae su feedback: replantea ' +
+      'el plan y vuelve a llamar a request_access.',
     inputSchema: obj(
       {
         apps: { type: 'array', items: { type: 'string' }, description: 'Nombres de las apps, p.ej. ["Safari", "Terminal"]' },
-        reason: { type: 'string', description: 'Por qué necesitas actuar sobre esas apps (se le muestra al usuario)' }
+        reason: { type: 'string', description: 'Por qué necesitas actuar sobre esas apps (se le muestra al usuario)' },
+        plan: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Solo al principio de la tarea: tus pasos en orden (p.ej. ["Abrir Spotlight y buscar Discord", ' +
+            '"Abrir el canal #pega", "Escribir un saludo"]). El usuario los ve y aprueba de una vez.'
+        }
       },
       ['apps']
     ),
@@ -725,21 +789,48 @@ const TOOLS: ToolDef[] = [
     run: async (a) => {
       const names = Array.isArray(a.apps) ? a.apps.map(String).slice(0, 10) : []
       if (!names.length) throw new Error('apps vacío')
+      const plan = Array.isArray(a.plan) ? a.plan.map(String).slice(0, 30) : undefined
       const resolved = await Promise.all(names.map((n) => resolveApp(n)))
       const valid = resolved.filter((r) => r.found)
       if (!valid.length) {
         return `No se pudo identificar ninguna app instalada con esos nombres: ${names.join(', ')}. Comprueba el nombre exacto.`
       }
-      const decisions = await requestAccess(
+      const { decisions, feedback } = await requestAccess(
         valid.map((r) => ({ bundleId: r.bundleId, name: r.name })),
-        typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined
+        typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined,
+        plan
       )
+      if (feedback) {
+        return (
+          `El usuario pidió AJUSTES al plan (no lo aprobó): "${feedback}"\n` +
+          'Replantea el plan y tus pasos según ese comentario, y vuelve a llamar a request_access con el plan actualizado.'
+        )
+      }
       const label = (d: string): string =>
         d === 'deny' ? 'denegado' : d === 'view' ? 'Solo ver' : d === 'click' ? 'Ver y clic' : d === 'full' ? 'Control total' : 'sin respuesta'
       const lines = valid.map((r) => `- ${r.name}: ${label(decisions[r.bundleId] ?? '')}`)
       const missing = names.filter((n) => !valid.some((r) => r.name.toLowerCase() === n.toLowerCase()))
       if (missing.length) lines.push(`- (no identificadas: ${missing.join(', ')})`)
-      return `Respuesta del usuario:\n${lines.join('\n')}`
+      const approved = valid.some((r) => decisions[r.bundleId] && decisions[r.bundleId] !== 'deny')
+      let text = `Respuesta del usuario:\n${lines.join('\n')}`
+      if (plan) {
+        text += approved
+          ? '\n\nPlan aprobado: ya puedes empezar a actuar en la pantalla.'
+          : '\n\nEl usuario NO aprobó ninguna app: no llames a ninguna otra herramienta de acción. Explícaselo y detente.'
+      }
+      // Contexto fresco tras la espera (que puede haber sido larga): reactiva la primera app
+      // aprobada (main ya lo intentó, best-effort) y adjunta una captura para que el agente vea
+      // dónde quedó todo antes de seguir.
+      if (approved) {
+        try {
+          await sleep(400)
+          const s = await takeScreenshot(true)
+          return { text, shot: s }
+        } catch {
+          // sin captura: seguir solo con el texto
+        }
+      }
+      return text
     }
   }
 ]
@@ -762,8 +853,15 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<To
         ]
       }
     }
-    const text = await tool.run(args ?? {})
+    // Flujo Plan → Aprobar → Ejecutar: ninguna herramienta de ACCIÓN corre sin un plan aprobado.
+    if (tool.action) await requirePlanApproved()
+    const result = await tool.run(args ?? {})
+    const text = typeof result === 'string' ? result : result.text
     const content: Content[] = [{ type: 'text', text }]
+    if (typeof result !== 'string') {
+      content.unshift({ type: 'image', data: result.shot.base64, mimeType: 'image/jpeg' })
+      content.push({ type: 'text', text: shotText(result.shot) })
+    }
     const wantShot = tool.action && AUTO_SHOT && args?.screenshot !== false
     if (wantShot) {
       await sleep(SETTLE_MS)

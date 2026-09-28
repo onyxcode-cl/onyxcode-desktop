@@ -17,6 +17,8 @@
 //   request-permissions           lanza los prompts del sistema y devuelve el estado
 //   frontmost                     {"name":…,"bundleId":…,"pid":…}
 //   open-app "Nombre"             abre/activa una app
+//   activate "bundleId|Nombre"    reactiva la app y se asegura de que tenga una ventana visible
+//                                 (≤3s: activa → desminimiza por AX → reabre si hace falta)
 //
 // Coordenadas: puntos de pantalla, origen arriba-izquierda de la pantalla principal
 // (el mismo sistema que usa CGEvent). Salida: JSON en stdout; errores en stderr + exit 1.
@@ -462,6 +464,84 @@ func resolveApp(_ name: String) -> [String: Any] {
     return ["name": name, "bundleId": "", "found": false]
 }
 
+// MARK: - Reactivar app + asegurar ventana visible (`activate`, restaura el contexto del agente)
+
+/// Busca una app EN EJECUCIÓN por bundle id exacto, o por nombre (exacto y luego parcial, sin
+/// distinguir mayúsculas) — igual criterio que `resolveApp`, para aceptar lo que ya resolvió el MCP.
+func findRunningApp(_ idOrName: String) -> NSRunningApplication? {
+    let running = NSWorkspace.shared.runningApplications
+    if let byBundle = running.first(where: { $0.bundleIdentifier == idOrName }) { return byBundle }
+    let lower = idOrName.lowercased()
+    if let exact = running.first(where: { ($0.localizedName ?? "").lowercased() == lower }) { return exact }
+    return running.first(where: { ($0.localizedName ?? "").lowercased().contains(lower) })
+}
+
+/// true si el proceso tiene al menos una ventana normal (capa 0, tamaño no trivial) en pantalla.
+func hasVisibleWindow(pid: pid_t) -> Bool {
+    let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    guard let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { return false }
+    for w in list {
+        guard let pidNum = w[kCGWindowOwnerPID as String] as? Int, pid_t(pidNum) == pid else { continue }
+        guard let layer = w[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
+        guard let b = w[kCGWindowBounds as String] as? [String: CGFloat],
+              let width = b["Width"], let height = b["Height"], width > 1, height > 1 else { continue }
+        return true
+    }
+    return false
+}
+
+/// Desminimiza (AX `kAXMinimizedAttribute` → false) todas las ventanas minimizadas del proceso.
+func unminimizeWindows(pid: pid_t) {
+    let appEl = AXUIElementCreateApplication(pid)
+    var windowsRef: AnyObject?
+    guard AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+          let windows = windowsRef as? [AXUIElement] else { return }
+    for w in windows {
+        var minimizedRef: AnyObject?
+        if AXUIElementCopyAttributeValue(w, kAXMinimizedAttribute as CFString, &minimizedRef) == .success,
+           let minimizedNum = minimizedRef as? NSNumber, minimizedNum.boolValue {
+            AXUIElementSetAttributeValue(w, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
+        }
+    }
+}
+
+/// Reactiva la app (bundle id o nombre) y se asegura de que quede una ventana visible en pantalla
+/// (≤3 s en total): activa → si no hay ventana, desminimiza por AX → si sigue sin ninguna, la
+/// reabre (`open -a`/`-b`, NO AppleScript "reopen": ver la política del proyecto). Usado para
+/// restaurar el contexto del agente tras una tarjeta `request_access` y por `open_application`.
+func activateAndEnsureWindow(_ idOrName: String) -> [String: Any] {
+    var app = findRunningApp(idOrName)
+    var activated = false
+    if let a = app { activated = a.activate(options: [.activateIgnoringOtherApps]) }
+    func waitForWindow(_ seconds: Double) -> Bool {
+        guard let a = app else { return false }
+        let deadline = Date().addingTimeInterval(seconds)
+        while true {
+            if hasVisibleWindow(pid: a.processIdentifier) { return true }
+            if Date() >= deadline { return false }
+            usleep(150_000)
+        }
+    }
+    if app == nil || !waitForWindow(1.2) {
+        if let a = app {
+            unminimizeWindows(pid: a.processIdentifier)
+            if waitForWindow(0.6) { return ["ok": true, "activated": activated, "hasWindow": true] }
+        }
+        // Ni ventana normal ni minimizada: reabrir (relanza o le pide una ventana nueva a la app).
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        p.arguments = idOrName.contains(".") && !idOrName.contains(" ") ? ["-b", idOrName] : ["-a", idOrName]
+        try? p.run()
+        p.waitUntilExit()
+        usleep(400_000)
+        app = findRunningApp(idOrName) ?? app
+        if let a = app { activated = a.activate(options: [.activateIgnoringOtherApps]) || activated }
+        _ = waitForWindow(1.2)
+    }
+    let finalHasWindow = app.map { hasVisibleWindow(pid: $0.processIdentifier) } ?? false
+    return ["ok": app != nil, "activated": activated, "hasWindow": finalHasWindow]
+}
+
 // MARK: - Capturas con ScreenCaptureKit (excluye apps no concedidas en el compositor)
 
 func writePNG(_ image: CGImage, to path: String) -> Bool {
@@ -721,6 +801,9 @@ case "open-app":
 case "resolve-app":
     guard args.count > 1 else { fail("Falta el nombre de la app") }
     out(resolveApp(args[1...].joined(separator: " ")))
+case "activate":
+    guard args.count > 1 else { fail("Falta el bundle id o nombre de la app") }
+    out(activateAndEnsureWindow(args[1...].joined(separator: " ")))
 default:
     fail("Comando desconocido: \(cmd)")
 }

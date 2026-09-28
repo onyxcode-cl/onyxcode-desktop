@@ -43,6 +43,11 @@ body.on {
   transform: none;
 }
 
+/* La regla de UA para [hidden] pierde contra `.pill{ display:flex }` (origen autor > UA): se fija a mano. */
+[hidden] {
+  display: none !important;
+}
+
 .pill {
   -webkit-app-region: drag;
   cursor: grab;
