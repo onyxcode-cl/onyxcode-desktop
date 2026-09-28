@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CalendarClock, Check, FolderOpen, Info, Loader2, X } from 'lucide-react'
 import type { CoworkFolder, RoutineInput, RoutineSchedule, SchedulePreview } from '@shared/ipc-cowork'
 import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { useSettings } from '../../../stores/settings'
 import { cw } from '../../cowork/impl/bridge'
@@ -93,7 +94,12 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     if (!picked) return
     if (form.mode === 'cowork' && !folders.some((f) => f.path === picked)) {
       const name = picked.split('/').filter(Boolean).pop() ?? picked
-      if (!window.confirm(`¿Permitir Cowork en «${name}»?\n\nEl agente podrá crear y modificar archivos dentro de esa carpeta (en sandbox).`)) return
+      const ok = await confirmDialog({
+        title: `¿Permitir Cowork en «${name}»?`,
+        message: 'El agente podrá crear y modificar archivos dentro de esa carpeta (en sandbox).',
+        confirmLabel: 'Permitir'
+      })
+      if (!ok) return
       try {
         const approved = await cw('cowork:approveFolder', { folder: picked })
         setFolders(await cw('cowork:listFolders'))

@@ -4,6 +4,7 @@ import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import type { ModelMode } from '@shared/ipc-extras'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errorMessage } from '../../../lib/opencode'
 import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
@@ -112,7 +113,13 @@ export function ModelsSection(): React.JSX.Element {
           busy={busy}
           onDisconnect={async (id) => {
             if (!client) return
-            if (!window.confirm(`¿Eliminar las credenciales guardadas de "${id}"?`)) return
+            const ok = await confirmDialog({
+              title: '¿Eliminar credenciales?',
+              message: `Se eliminarán las credenciales guardadas de "${id}".`,
+              confirmLabel: 'Eliminar',
+              danger: true
+            })
+            if (!ok) return
             setBusy(true)
             try {
               const r = await client.auth.remove({ providerID: id })

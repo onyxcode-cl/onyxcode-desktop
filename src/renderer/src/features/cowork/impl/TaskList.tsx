@@ -18,6 +18,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { selectSessionsForDirectory, useSessions } from '../../../stores/sessions'
 import { archiveTask, deleteTask, openTask, renameTask } from './actions'
 import { isPinned, markUnread, togglePinned, useCowork } from './store'
@@ -99,9 +100,14 @@ function TaskMenu({ id, title, archived }: { id: string; title: string; archived
             <Trash2 size={13} />,
             'Eliminar…',
             () => {
-              if (window.confirm(`¿Eliminar la tarea «${title || 'sin título'}»? Esta acción no se puede deshacer.`)) {
-                void deleteTask(id).catch(() => undefined)
-              }
+              void confirmDialog({
+                title: '¿Eliminar tarea?',
+                message: `Se eliminará la tarea «${title || 'sin título'}». Esta acción no se puede deshacer.`,
+                confirmLabel: 'Eliminar',
+                danger: true
+              }).then((ok) => {
+                if (ok) void deleteTask(id).catch(() => undefined)
+              })
             },
             true
           )}

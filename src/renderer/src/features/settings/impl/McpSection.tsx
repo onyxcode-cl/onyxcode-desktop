@@ -15,6 +15,7 @@ import {
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
 import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { IconButton } from '../../../components/IconButton'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
@@ -127,8 +128,14 @@ export function McpSection(): React.JSX.Element {
       if (r.error) throw new Error(errorMessage(r.error))
     })
 
-  const remove = (row: Row): Promise<void> => {
-    if (!window.confirm(`¿Eliminar el servidor MCP "${row.name}"?`)) return Promise.resolve()
+  const remove = async (row: Row): Promise<void> => {
+    const ok = await confirmDialog({
+      title: '¿Eliminar servidor MCP?',
+      message: `Se eliminará el servidor MCP "${row.name}".`,
+      confirmLabel: 'Eliminar',
+      danger: true
+    })
+    if (!ok) return
     return run(`remove:${row.name}`, () => requireExtras().invoke('mcp:remove', { name: row.name }))
   }
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import type { RoutineInput, RoutineMode, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-cowork'
 import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
@@ -256,7 +257,14 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
             title="Eliminar rutina"
             aria-label="Eliminar rutina"
             onClick={() => {
-              if (window.confirm(`¿Eliminar la rutina «${r.name}»? Se perderá su historial.`)) void deleteRoutine(r.id)
+              void confirmDialog({
+                title: '¿Eliminar rutina?',
+                message: `Se eliminará la rutina «${r.name}» y se perderá su historial.`,
+                confirmLabel: 'Eliminar',
+                danger: true
+              }).then((ok) => {
+                if (ok) void deleteRoutine(r.id)
+              })
             }}
           >
             <Trash2 size={14} />

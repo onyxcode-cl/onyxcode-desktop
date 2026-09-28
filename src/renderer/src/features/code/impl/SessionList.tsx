@@ -16,6 +16,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { rootSessionID, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
@@ -127,7 +128,14 @@ function SessionRow({
             type="button"
             title="Eliminar sesión"
             onClick={() => {
-              if (confirm(`¿Eliminar la sesión "${session.title || 'sin título'}"?`)) void deleteSession(session.id)
+              void confirmDialog({
+                title: '¿Eliminar sesión?',
+                message: `Se eliminará la sesión "${session.title || 'sin título'}".`,
+                confirmLabel: 'Eliminar',
+                danger: true
+              }).then((ok) => {
+                if (ok) void deleteSession(session.id)
+              })
             }}
             className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-danger"
           >

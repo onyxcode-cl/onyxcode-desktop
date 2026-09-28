@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
+import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { IconButton } from '../components/IconButton'
 import { SettingsView } from '../features/settings'
 import { onOpencodeEvent, useServer } from '../stores/server'
@@ -88,6 +89,7 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="flex h-full bg-bg">
+      <ConfirmDialogHost />
       <div
         className={`h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
         inert={collapsed}

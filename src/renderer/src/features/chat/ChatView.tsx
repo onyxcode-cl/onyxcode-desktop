@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { Composer } from '../../components/Composer'
+import { confirmDialog } from '../../components/ConfirmDialog'
 import { LogoMark } from '../../components/Logo'
 import { MessageList } from '../../components/MessageList'
 import { ModelPicker } from '../../components/ModelPicker'
@@ -62,7 +63,7 @@ export function ChatView(): React.JSX.Element {
     } catch (err) {
       const id = useChat.getState().activeSessionId
       if (id) useSessions.getState().setError(id, errorMessage(err))
-      else alert(errorMessage(err))
+      else void confirmDialog({ title: 'Error', message: errorMessage(err), confirmLabel: 'Aceptar', cancelLabel: null })
     }
   }
 

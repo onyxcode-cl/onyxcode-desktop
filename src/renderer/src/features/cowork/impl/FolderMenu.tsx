@@ -1,6 +1,7 @@
 /** Selector de carpeta de Cowork (chip del compositor o botón de la barra lateral). */
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, FolderOpen, FolderPlus, Trash2 } from 'lucide-react'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { chooseFolder, forgetFolder, selectFolder } from './actions'
 import { useCowork } from './store'
 import { baseName } from './util'
@@ -109,9 +110,14 @@ export function FolderMenu({
                   className="mr-1 hidden rounded p-1 text-subtle group-hover:block hover:text-danger"
                   onClick={() => {
                     setOpen(false)
-                    if (window.confirm(`¿Quitar la autorización de Cowork para «${f.name}»? No se borra ningún archivo.`)) {
-                      void forgetFolder(f.path)
-                    }
+                    void confirmDialog({
+                      title: '¿Quitar autorización?',
+                      message: `Se quitará la autorización de Cowork para «${f.name}». No se borra ningún archivo.`,
+                      confirmLabel: 'Quitar',
+                      danger: true
+                    }).then((ok) => {
+                      if (ok) void forgetFolder(f.path)
+                    })
                   }}
                 >
                   <Trash2 size={13} />

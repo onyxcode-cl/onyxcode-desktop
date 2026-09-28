@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, BookText, Check, Loader2, NotebookText, Trash2, X } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { DeleteGrantToggle } from './DeleteGrant'
 import { deleteMemoryNotes, saveMemoryNotes, saveProject, setProjectPanelOpen, useCowork } from './store'
 import { baseName } from './util'
@@ -81,7 +82,13 @@ export function ProjectPanel(): React.JSX.Element | null {
   }
 
   const clearMemory = async (): Promise<void> => {
-    if (!window.confirm('¿Borrar la memoria guardada de este proyecto? No se puede deshacer.')) return
+    const ok = await confirmDialog({
+      title: '¿Borrar memoria?',
+      message: 'Se borrará la memoria guardada de este proyecto. No se puede deshacer.',
+      confirmLabel: 'Borrar',
+      danger: true
+    })
+    if (!ok) return
     setSaving(true)
     setError(null)
     try {
