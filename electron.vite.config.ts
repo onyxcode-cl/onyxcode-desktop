@@ -30,6 +30,8 @@ export default defineConfig({
     },
     plugins: [react(), tailwindcss()],
     build: {
+      // electron-vite no minifica el renderer por defecto.
+      minify: 'esbuild',
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),

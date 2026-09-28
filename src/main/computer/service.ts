@@ -203,10 +203,16 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private killHelpers(): Promise<void> {
     const bin = this.helperPath()
     if (!bin) return Promise.resolve()
-    return new Promise((resolve) => {
-      // Solo el binario de esta app (ruta completa; también cuando va con flags --instant, etc.).
-      execFile('/usr/bin/pkill', ['-KILL', '-f', `^${ereLiteral(bin)}( |$)`], { timeout: 3_000 }, () => resolve())
-    })
+    // Solo el binario de esta app (ruta completa; también cuando va con flags --instant, etc.).
+    // SIGTERM primero: el helper suelta el botón si estaba arrastrando; SIGKILL por si no sale.
+    const pattern = `^${ereLiteral(bin)}( |$)`
+    const pkill = (sig: string): Promise<void> =>
+      new Promise((resolve) => {
+        execFile('/usr/bin/pkill', [`-${sig}`, '-f', pattern], { timeout: 3_000 }, () => resolve())
+      })
+    return pkill('TERM')
+      .then(() => new Promise((r) => setTimeout(r, 300)))
+      .then(() => pkill('KILL'))
   }
 
   async status(): Promise<ComputerStatus> {

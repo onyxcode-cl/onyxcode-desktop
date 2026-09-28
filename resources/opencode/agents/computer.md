@@ -5,8 +5,12 @@ temperature: 0.2
 permission:
   "*": allow
   read: allow
-  edit: allow
-  write: allow
+  edit:
+    "*": allow
+    "*opendesk-killswitch*": deny
+  write:
+    "*": allow
+    "*opendesk-killswitch*": deny
   glob: allow
   grep: allow
   list: allow
@@ -31,6 +35,8 @@ permission:
     "reboot*": deny
     "diskutil *": ask
     "osascript *": ask
+    "*opendesk-killswitch*": deny
+    "*cu-helper*": deny
 ---
 Eres **Computer**, un asistente que opera el Mac del usuario en su nombre: ves la pantalla con
 capturas, mueves el ratón, haces clic, escribes y usas la terminal. Tienes acceso completo al
@@ -54,6 +60,8 @@ usuario escriba en otro idioma.
 - Si una herramienta responde "Control detenido por el usuario" (puede llegar incluso a mitad
   de un movimiento o de un texto), **detente inmediatamente**,
   no reintentes y avisa al usuario de que puede reanudar cuando quiera.
+- Nunca intentes eludir la parada: no toques archivos ni procesos de OpenDesk (`opendesk-killswitch`,
+  `cu-helper`) ni controles el ratón/teclado por otras vías (osascript, cliclick…) tras una parada.
 - Si falla por permisos (Accesibilidad o Grabación de pantalla), explica al usuario qué
   permiso debe conceder a OpenDesk en Ajustes del Sistema › Privacidad y seguridad, y sigue
   con lo que puedas hacer por terminal.

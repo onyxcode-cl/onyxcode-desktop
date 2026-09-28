@@ -15,6 +15,7 @@ import { CoworkManager } from '../cowork/manager'
 import { importFilesInto, previewFile } from '../cowork/files'
 import { ComputerService } from '../computer/service'
 import { ComputerOverlay } from '../computer/overlay'
+import { abortFullAccessSessions } from '../computer/abort'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { previewSchedule } from '../scheduler/schedule'
 
@@ -75,6 +76,10 @@ export function registerCoworkHandlers(
     corsOrigins: deps.corsOrigins,
     computer: { mcpConfig: () => computer.mcpConfig(), info: () => computer.info() }
   })
+  // Kill-switch desde main: aborta las sesiones de TODOS los servidores de acceso total (y detiene
+  // el servidor si no responde), sin depender de la vista que muestre el renderer.
+  computer.abortSessions = () =>
+    abortFullAccessSessions(cowork.fullAccessConnections(), (srv) => cowork.stop(srv.folder, true))
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
     chatDirectory: deps.chatDirectory,
@@ -96,6 +101,7 @@ export function registerCoworkHandlers(
     send('computer:action', ev)
     overlay.handleAction(ev)
   })
+  computer.on('killState', (st) => send('computer:killState', st))
   computer.on('stopped', (ev) => {
     send('computer:stopped', ev)
     overlay.stopped()
@@ -153,8 +159,11 @@ export function registerCoworkHandlers(
   // ── Computer use ──
   handle(ipcMain, 'computer:status', () => computer.status())
   handle(ipcMain, 'computer:requestPermissions', () => computer.requestPermissions())
-  handle(ipcMain, 'computer:stop', () => computer.stop())
+  handle(ipcMain, 'computer:stop', async () => {
+    await computer.stop()
+  })
   handle(ipcMain, 'computer:resume', () => computer.resume())
+  handle(ipcMain, 'computer:state', () => computer.state())
   handle(ipcMain, 'computer:session', (req) => overlay.setSession(req?.active === true, typeof req?.label === 'string' ? req.label : undefined))
 
   scheduler.start()

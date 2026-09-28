@@ -320,6 +320,19 @@ func permissions() -> [String: Any] {
 
 // MARK: - Main
 
+// Kill-switch desde OpenDesk (SIGTERM → SIGKILL a los ~300 ms): suelta el botón si estaba
+// pulsado (arrastre a medias) y sale. Cola global: el hilo principal está ocupado en usleep().
+signal(SIGTERM, SIG_IGN)
+let termSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global(qos: .userInteractive))
+termSource.setEventHandler {
+    if buttonHeld {
+        post(CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: currentCursor(), mouseButton: .left))
+    }
+    FileHandle.standardError.write("Control detenido por el usuario\n".data(using: .utf8)!)
+    exit(3)
+}
+termSource.resume()
+
 var args = CommandLine.arguments
 args.removeFirst()
 // Banderas globales ANTES del comando (así un texto de `type` nunca se interpreta como bandera).

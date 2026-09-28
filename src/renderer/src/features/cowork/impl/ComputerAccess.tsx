@@ -14,6 +14,7 @@ import {
   MonitorCog,
   MousePointerClick,
   OctagonX,
+  Play,
   RefreshCw,
   Shield,
   ShieldAlert,
@@ -28,7 +29,14 @@ import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
 import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
-import { cancelFullAccess, checkComputer, requestComputerPermissions, setAccessMode, stopComputerControl } from './actions'
+import {
+  cancelFullAccess,
+  checkComputer,
+  requestComputerPermissions,
+  resumeComputerControl,
+  setAccessMode,
+  stopComputerControl
+} from './actions'
 import { describeAction } from './computer-tools'
 import { useCowork } from './store'
 
@@ -382,10 +390,13 @@ export function ControlBanner(): React.JSX.Element | null {
   const folder = useCowork((s) => s.folder)
   const lastAction = useCowork((s) => s.lastAction)
   const stoppedAt = useCowork((s) => s.controlStoppedAt)
+  const shortcutUnavailable = useCowork((s) => s.shortcutUnavailable)
   const anyBusy = useSessions((s) =>
     Object.keys(s.status).some((id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder)
   )
   const [stopping, setStopping] = useState(false)
+  const [resuming, setResuming] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
   const [, tick] = useState(0)
 
   // Refresca el "hace Xs" de la última acción.
@@ -395,27 +406,48 @@ export function ControlBanner(): React.JSX.Element | null {
     return () => clearInterval(t)
   }, [anyBusy])
 
-  // Oculta "Control detenido" pasado un rato.
-  useEffect(() => {
-    if (!stoppedAt || anyBusy) return
-    const t = setTimeout(() => useCowork.setState({ controlStoppedAt: null }), 6000)
-    return () => clearTimeout(t)
-  }, [stoppedAt, anyBusy])
-
   if (!conn?.fullAccess) return null
 
+  const shortcutWarning = shortcutUnavailable ? (
+    <div className="flex shrink-0 items-center gap-2 border-b border-warning/40 bg-warning/10 px-4 py-1.5 text-xs text-warning">
+      <ShieldAlert size={14} /> El atajo ⌘⇧Esc no está disponible; usa el botón Detener
+    </div>
+  ) : null
+
+  // La parada NO se deshace sola: sigue visible hasta que el usuario pulse "Reanudar control".
   if (stoppedAt) {
+    const resume = (): void => {
+      setResuming(true)
+      setResumeError(null)
+      resumeComputerControl()
+        .catch((err: unknown) => setResumeError(errorMessage(err)))
+        .finally(() => setResuming(false))
+    }
     return (
-      <div className="flex shrink-0 items-center gap-2 border-b border-danger/40 bg-danger/10 px-4 py-2 text-sm font-medium text-danger">
-        <OctagonX size={16} /> Control detenido
-        {anyBusy && <Loader2 size={14} className="animate-spin" />}
-        <span className="text-xs font-normal text-muted">
-          {anyBusy ? 'Cancelando la tarea…' : 'El agente ya no puede usar el ratón ni el teclado hasta la próxima tarea.'}
-        </span>
-      </div>
+      <>
+        <div className="flex shrink-0 items-center gap-2 border-b border-danger/40 bg-danger/10 px-4 py-2 text-sm font-medium text-danger">
+          <OctagonX size={16} className="shrink-0" /> Control detenido
+          {anyBusy && <Loader2 size={14} className="animate-spin" />}
+          <span className="min-w-0 flex-1 truncate text-xs font-normal text-muted">
+            {resumeError ??
+              (anyBusy
+                ? 'Cancelando la tarea…'
+                : 'El agente no puede usar el ratón ni el teclado hasta que reanudes el control.')}
+          </span>
+          <button
+            type="button"
+            onClick={resume}
+            disabled={resuming || anyBusy}
+            className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg border border-danger/40 bg-elevated px-3 py-1 text-xs font-semibold text-fg hover:bg-danger/10 disabled:opacity-60"
+          >
+            {resuming ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} Reanudar control
+          </button>
+        </div>
+        {shortcutWarning}
+      </>
     )
   }
-  if (!anyBusy) return null
+  if (!anyBusy) return shortcutWarning
 
   const ago = lastAction ? Math.max(0, Math.round((Date.now() - lastAction.at) / 1000)) : null
   const stop = (): void => {
@@ -442,9 +474,15 @@ export function ControlBanner(): React.JSX.Element | null {
           )}
         </div>
       </div>
-      <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
-        <Keyboard size={12} /> ⌘⇧Esc
-      </span>
+      {shortcutUnavailable ? (
+        <span className="hidden items-center gap-1 text-[11px] text-white/85 md:flex" title="El atajo ⌘⇧Esc no está disponible; usa el botón Detener">
+          <ShieldAlert size={12} /> ⌘⇧Esc no disponible
+        </span>
+      ) : (
+        <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
+          <Keyboard size={12} /> ⌘⇧Esc
+        </span>
+      )}
       <button
         type="button"
         onClick={stop}

@@ -212,7 +212,9 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     lines.push(
       '',
       ';; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…',
-      `(deny file-read* file-write* (subpath ${sbString(userData)}))`
+      `(deny file-read* file-write* (subpath ${sbString(userData)}))`,
+      ';; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)',
+      `(allow file-read-metadata (subpath ${sbString(userData)}))`
     )
     if (readOnly.length) {
       lines.push(

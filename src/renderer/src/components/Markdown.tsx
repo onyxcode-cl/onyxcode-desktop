@@ -3,6 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Check, Copy } from 'lucide-react'
+import { ArtifactButton, looksRenderable } from '../features/settings/impl/ArtifactButton'
 
 function textOf(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -102,10 +103,13 @@ export function CopyButton({
 
 function CodeBlock({ children }: { children?: ReactNode }): React.JSX.Element {
   const lang = languageOf(children)
+  const code = textOf(children)
+  const renderable = lang?.toLowerCase() === 'html' && looksRenderable(code)
   return (
     <div className="code-block">
       <div className="code-block-header">
         <span className="flex-1 truncate font-medium">{lang ?? 'Código'}</span>
+        {renderable && <ArtifactButton html={code} className="py-0.5 text-[11.5px]" />}
         <CopyButton text={() => textOf(children)} label="Copiar" showLabel size={12} className="text-[11.5px]" />
       </div>
       <pre>{children}</pre>

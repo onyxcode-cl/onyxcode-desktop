@@ -112,11 +112,24 @@ export async function abortBusyTasks(): Promise<void> {
   )
 }
 
-/** Botón "Detener": activa el kill-switch del helper y aborta la(s) tarea(s). */
+/**
+ * Botón "Detener": el proceso principal activa el kill-switch, aborta las sesiones de TODOS los
+ * servidores de acceso total y mata los helpers (igual que ⌘⇧Esc y la píldora). El abort local es
+ * solo redundancia por si main tardara.
+ */
 export async function stopComputerControl(): Promise<void> {
   useCowork.setState({ controlStoppedAt: Date.now() })
   await Promise.allSettled([cw('computer:stop'), abortBusyTasks()])
 }
+
+/** "Reanudar control": acción explícita del usuario tras una parada. */
+export async function resumeComputerControl(): Promise<void> {
+  await cw('computer:resume')
+  useCowork.setState({ controlStoppedAt: null, lastAction: null })
+}
+
+export const CONTROL_STOPPED_SEND_ERROR =
+  'El control del Mac está detenido. Pulsa «Reanudar control» para volver a darle el control al agente.'
 
 export async function forgetFolder(folder: string): Promise<void> {
   try {
@@ -175,6 +188,13 @@ function withAttachments(text: string): string {
 /** Envía un mensaje; si no hay tarea activa, crea una nueva sesión con el agente `cowork`. */
 export async function sendToTask(rawText: string, model: ModelRef): Promise<void> {
   const { client, folder } = ctx()
+  if (useCowork.getState().conn?.fullAccess === true) {
+    // Tras una parada NO se reanuda solo: hace falta "Reanudar control" (estado en main).
+    const st = await cw('computer:state').catch(() => null)
+    const stopped = st ? st.stopped : !!useCowork.getState().controlStoppedAt
+    useCowork.setState({ controlStoppedAt: stopped ? (st?.stoppedAt ?? Date.now()) : null })
+    if (stopped) throw new Error(CONTROL_STOPPED_SEND_ERROR)
+  }
   const text = withAttachments(rawText)
   useCowork.setState({ attachments: [], draft: '' })
   const sessions = useSessions.getState()
@@ -194,15 +214,7 @@ export async function sendToTask(rawText: string, model: ModelRef): Promise<void
     useCowork.setState({ activeTaskId: id })
   }
   const fullAccess = useCowork.getState().conn?.fullAccess === true
-  if (fullAccess) {
-    // Quita el kill-switch de una parada anterior antes de volver a dar control.
-    try {
-      await cw('computer:resume')
-    } catch {
-      // Sin helper: la tarjeta de permisos ya lo indica; no bloquear el envío.
-    }
-    useCowork.setState({ controlStoppedAt: null, lastAction: null })
-  }
+  if (fullAccess) useCowork.setState({ lastAction: null })
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
   const res = await client.session.promptAsync({

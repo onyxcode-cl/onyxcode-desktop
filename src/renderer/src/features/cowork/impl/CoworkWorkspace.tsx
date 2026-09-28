@@ -46,7 +46,7 @@ import { ApprovalBar } from './PermissionPrompt'
 import { ProgressPanel } from './ProgressPanel'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon, TaskList } from './TaskList'
-import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, useCowork } from './store'
+import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, syncKillState, useCowork } from './store'
 import { extOf, formatDuration, permissionBelongsTo, taskStatus, TASK_STATUS_LABEL, turnTiming, type TaskStatus } from './util'
 
 const EMPTY: MessageEntry[] = []
@@ -184,7 +184,10 @@ export function CoworkWorkspace(): React.JSX.Element {
   )
 
   // Control del Mac: última acción del agente y parada (botón Detener o atajo global ⌘⇧Esc).
+  // La parada (abortar sesiones, matar helpers) la ejecuta el proceso principal; aquí solo se
+  // refleja su estado (`syncKillState` se suscribe a `computer:killState` una vez).
   useEffect(() => {
+    void syncKillState()
     const offAction = onCowork('computer:action', (ev) => {
       if (useCowork.getState().conn?.fullAccess) useCowork.setState({ lastAction: ev })
     })

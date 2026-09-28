@@ -7,6 +7,7 @@ import { create } from 'zustand'
 import { createOpencodeClient, type PermissionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
 import type {
   ComputerActionEvent,
+  ComputerKillState,
   ComputerStatus,
   CoworkConnection,
   CoworkDeliverable,
@@ -15,7 +16,7 @@ import type {
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { useUi } from '../../../stores/ui'
-import { cw } from './bridge'
+import { cw, onCowork } from './bridge'
 
 export type CoworkServerPhase = 'idle' | 'starting' | 'ready' | 'error'
 
@@ -43,8 +44,13 @@ interface CoworkState {
   computerChecking: boolean
   /** Última acción del agente sobre el Mac (evento `computer:action`). */
   lastAction: ComputerActionEvent | null
-  /** Momento en que se detuvo el control (Detener / Cmd+Shift+Esc). */
+  /**
+   * Momento en que se detuvo el control (Detener / Cmd+Shift+Esc). Refleja el kill-switch del
+   * proceso principal (`computer:state` / `computer:killState`): solo se limpia con "Reanudar control".
+   */
   controlStoppedAt: number | null
+  /** El atajo global ⌘⇧Esc no se pudo registrar (hay que usar el botón Detener). */
+  shortcutUnavailable: boolean
   /** Texto del compositor (permite rellenarlo desde sugerencias / seguimientos). */
   draft: string
   /** Archivos adjuntos (ya copiados a la carpeta) para el próximo mensaje. */
@@ -96,6 +102,7 @@ export const useCowork = create<CoworkState>((set) => ({
   computerChecking: false,
   lastAction: null,
   controlStoppedAt: null,
+  shortcutUnavailable: false,
   draft: '',
   attachments: [],
   panelOpen: readPanelOpen(),
@@ -289,7 +296,6 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     fullAccess,
     computerStatus: null,
     lastAction: null,
-    controlStoppedAt: null,
     conn: null,
     client: null,
     phase: 'starting',
@@ -309,7 +315,10 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     const client = makeClient(conn)
     rememberFolder(conn.folder)
     useCowork.setState({ folder: conn.folder, conn, client, phase: 'ready' })
-    if (conn.fullAccess) void refreshComputerStatus()
+    if (conn.fullAccess) {
+      void refreshComputerStatus()
+      void syncKillState()
+    }
     stopStream = startEventStream(client, handleEvent, {
       onOpen: () => {
         useCowork.setState({ streaming: true })
@@ -395,6 +404,29 @@ export async function loadTask(sessionID: string): Promise<void> {
     sessions.setError(sessionID, errorMessage(err))
   }
   await refreshDeliverables(sessionID)
+}
+
+// ── Kill-switch (estado en el proceso principal) ──
+function applyKillState(st: ComputerKillState): void {
+  useCowork.setState({
+    controlStoppedAt: st.stopped ? (st.stoppedAt ?? Date.now()) : null,
+    shortcutUnavailable: !st.shortcutRegistered
+  })
+}
+
+let killStateListening = false
+
+/** Lee el kill-switch de main y se suscribe (una vez) a sus cambios, en cualquier vista. */
+export async function syncKillState(): Promise<void> {
+  if (!killStateListening) {
+    killStateListening = true
+    onCowork('computer:killState', applyKillState)
+  }
+  try {
+    applyKillState(await cw('computer:state'))
+  } catch {
+    // Sin puente (p.ej. tests): nada que sincronizar.
+  }
 }
 
 /** Consulta `computer:status` (helper nativo + permisos de macOS). */

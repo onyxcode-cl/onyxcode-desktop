@@ -84,6 +84,14 @@ async function isStopped(): Promise<boolean> {
 /** Procesos del helper en vuelo (para matarlos si se pulsa Detener a mitad de una acción). */
 const children = new Set<ChildProcess>()
 
+/** SIGTERM (el helper suelta el botón del ratón si lo tenía pulsado) y SIGKILL a los 300 ms. */
+function killChildren(): void {
+  for (const c of children) {
+    c.kill('SIGTERM')
+    setTimeout(() => c.exitCode === null && c.signalCode === null && c.kill('SIGKILL'), 300).unref()
+  }
+}
+
 // ───────────────────────────── utilidades ─────────────────────────────
 
 function run(cmd: string, args: string[], timeout = 15_000): Promise<string> {
@@ -157,11 +165,11 @@ async function act<T>(ev: ActionEvent, fn: () => Promise<T>): Promise<T> {
       isStopped().then(
         (stopped) => {
           if (!stopped) return
-          for (const c of children) c.kill('SIGKILL')
+          killChildren()
           reject(new Error(STOPPED_MSG))
         },
         (err: unknown) => {
-          for (const c of children) c.kill('SIGKILL')
+          killChildren()
           reject(err instanceof Error ? err : new Error(String(err)))
         }
       )
