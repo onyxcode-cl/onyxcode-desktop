@@ -459,7 +459,9 @@ export function ControlBanner(): React.JSX.Element | null {
     )
   }
   // Esperando que el usuario responda una tarjeta `request_access` (sin límite de tiempo): pausa,
-  // no error. El botón Detener sigue disponible por si el usuario prefiere cancelar del todo.
+  // no error. Fila COMPACTA de estado (una línea, en el flujo normal bajo la cabecera, sin tapar
+  // nada): el detalle (plan, apps, selector de nivel) vive en la tarjeta `PlanAccessCard`, fija
+  // sobre el compositor. El botón Detener sigue disponible por si el usuario prefiere cancelar.
   if (accessRequest) {
     const stop = (): void => {
       setStopping(true)
@@ -467,25 +469,22 @@ export function ControlBanner(): React.JSX.Element | null {
     }
     return (
       <>
-        <div className="flex shrink-0 items-center gap-3 border-b border-amber-600/40 bg-amber-500/10 px-4 py-2 text-amber-800 [[data-theme=dark]_&]:text-amber-300">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-amber-600/40 bg-amber-500/10 px-4 py-1.5 text-amber-800 [[data-theme=dark]_&]:text-amber-300">
+          <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold">Esperando tu permiso</div>
-            <div className="truncate text-xs opacity-80">
-              {accessRequest.plan ? 'Revisa el plan y las apps' : 'El agente necesita acceso a una app extra'} — sin límite
-              de tiempo, no se cancela sola.
-            </div>
-          </div>
+          <span className="min-w-0 flex-1 truncate text-xs font-medium">
+            Esperando tu permiso — revisa la tarjeta «{accessRequest.plan ? 'Plan y permisos' : 'Permisos'}» abajo, sin
+            límite de tiempo
+          </span>
           <button
             type="button"
             onClick={stop}
             disabled={stopping}
-            className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-600/40 bg-elevated px-3 py-1.5 text-xs font-semibold text-fg hover:bg-amber-500/10 disabled:opacity-70"
+            className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-600/40 bg-elevated px-2.5 py-1 text-xs font-semibold text-fg hover:bg-amber-500/10 disabled:opacity-70"
           >
-            {stopping ? <Loader2 size={13} className="animate-spin" /> : <Square size={12} fill="currentColor" />} Detener
+            {stopping ? <Loader2 size={12} className="animate-spin" /> : <Square size={11} fill="currentColor" />} Detener
           </button>
         </div>
         {shortcutWarning}
@@ -625,30 +624,39 @@ function TierBadge({ tier }: { tier: AppTier }): React.JSX.Element {
   )
 }
 
-/** Selector de nivel (o "Denegar") para una app dentro de la tarjeta de `request_access`. */
-function TierPicker({ value, onChange }: { value: AccessDecision; onChange: (v: AccessDecision) => void }): React.JSX.Element {
-  const options: Array<{ v: AccessDecision; label: string }> = [
-    { v: 'view', label: 'Solo ver' },
-    { v: 'click', label: 'Ver y clic' },
-    { v: 'full', label: 'Control total' },
-    { v: 'deny', label: 'Denegar' }
-  ]
+/** Opciones del selector segmentado de nivel (incluye "Denegar"), en orden de menos a más acceso. */
+const TIER_SEGMENT_OPTIONS: Array<{ v: AccessDecision; label: string; icon: React.ReactNode; title: string }> = [
+  { v: 'deny', label: 'Denegar', icon: <X size={12} />, title: 'No conceder acceso a esta app' },
+  { v: 'view', label: 'Solo ver', icon: <Eye size={12} />, title: TIER_INFO.view.desc },
+  { v: 'click', label: 'Ver y clic', icon: <MousePointerClick size={12} />, title: TIER_INFO.click.desc },
+  { v: 'full', label: 'Control total', icon: <MonitorCog size={12} />, title: TIER_INFO.full.desc }
+]
+
+/** Selector de nivel (o "Denegar") por app, en forma de control segmentado (como `AccessSegmented`). */
+function TierSegmented({ value, onChange }: { value: AccessDecision; onChange: (v: AccessDecision) => void }): React.JSX.Element {
   return (
-    <div className="flex flex-wrap gap-1">
-      {options.map((o) => (
+    <div
+      role="radiogroup"
+      aria-label="Nivel de acceso"
+      className="inline-flex shrink-0 flex-wrap items-center gap-0.5 rounded-full border border-border bg-hover/60 p-0.5"
+    >
+      {TIER_SEGMENT_OPTIONS.map((o) => (
         <button
           key={o.v}
           type="button"
+          role="radio"
+          aria-checked={value === o.v}
+          title={o.title}
           onClick={() => onChange(o.v)}
-          className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+          className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition ${
             value === o.v
               ? o.v === 'deny'
-                ? 'border-danger/50 bg-danger/10 text-danger'
-                : 'border-accent bg-accent/15 text-accent'
-              : 'border-border text-muted hover:bg-hover'
+                ? 'bg-danger/15 text-danger'
+                : 'bg-elevated text-accent shadow-sm'
+              : 'text-muted hover:text-fg'
           }`}
         >
-          {o.label}
+          {o.icon} {o.label}
         </button>
       ))}
     </div>
@@ -657,12 +665,13 @@ function TierPicker({ value, onChange }: { value: AccessDecision; onChange: (v: 
 
 /**
  * Tarjeta "Plan y permisos" / "¿Permitir que el agente use X?" (herramienta MCP `request_access`):
- * lugar SECUNDARIO (el primario es la píldora, ver `overlay/pill.ts`) para responder — útil cuando
- * el usuario ya tiene Lapis al frente, o para "Editar" con más espacio para escribir. El usuario
- * elige el nivel (o deniega) por app, o escribe feedback para que el agente replantee el plan. La
- * espera NO tiene límite de tiempo: solo Detener resuelve sin respuesta explícita.
+ * lugar PRINCIPAL en la ventana de Lapis — una tarjeta EN LA CONVERSACIÓN, fija sobre el
+ * compositor (igual que `ApprovalBar`), no un modal centrado que tape el resto de la tarea. La
+ * píldora flotante (`overlay/pill.ts`) sigue siendo el otro lugar donde responder, sin cambios. El
+ * usuario elige el nivel (o deniega) por app, o escribe feedback para que el agente replantee el
+ * plan. La espera NO tiene límite de tiempo: solo Detener resuelve sin respuesta explícita.
  */
-export function AccessRequestDialog(): React.JSX.Element | null {
+export function PlanAccessCard(): React.JSX.Element | null {
   const req = useCowork((s) => s.accessRequest)
   const [choices, setChoices] = useState<Record<string, AccessDecision>>({})
   const [busy, setBusy] = useState(false)
@@ -704,86 +713,92 @@ export function AccessRequestDialog(): React.JSX.Element | null {
     ).finally(() => setBusy(false))
   }
 
+  const title = req.plan
+    ? 'Plan y permisos'
+    : req.apps.length === 1
+      ? `¿Permitir que el agente use ${req.apps[0]?.name}?`
+      : '¿Permitir que el agente use estas apps?'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6" onMouseDown={dismissAccessRequest}>
+    <div className="mx-auto mb-2 w-full max-w-3xl px-6">
       <div
         role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="cowork-access-request-title"
-        className="w-full max-w-lg rounded-2xl border border-border bg-elevated p-6 shadow-xl"
-        onMouseDown={(e) => e.stopPropagation()}
+        aria-labelledby="cowork-plan-access-title"
+        className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
       >
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accent">
-          <ShieldAlert size={22} />
-        </div>
-        <h2 id="cowork-access-request-title" className="text-lg font-semibold">
-          {req.plan
-            ? 'Plan y permisos'
-            : req.apps.length === 1
-              ? `¿Permitir que el agente use ${req.apps[0]?.name}?`
-              : '¿Permitir que el agente use estas apps?'}
-        </h2>
-        {req.reason && <p className="mt-1 text-sm text-muted">«{req.reason}»</p>}
-        {req.plan && req.plan.length > 0 && (
-          <ol className="mt-3 list-decimal space-y-1 rounded-lg border border-border bg-hover px-4 py-2.5 pl-8 text-sm text-fg">
-            {req.plan.map((step, i) => (
-              <li key={i}>{step}</li>
-            ))}
-          </ol>
-        )}
-        <ul className="mt-4 space-y-3">
-          {req.apps.map((a) => (
-            <li key={a.bundleId} className="rounded-lg border border-border p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="font-medium text-fg">{a.name}</span>
-                <span className="truncate text-xs text-muted">{a.bundleId}</span>
-              </div>
-              <TierPicker value={choices[a.bundleId] ?? 'click'} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-muted">
-          Puedes cambiar el nivel de cada app cuando quieras desde Ajustes. La espera no tiene límite de tiempo: la
-          tarea queda en pausa hasta que respondas.
-        </p>
-        {editing ? (
-          <div className="mt-4">
-            <label htmlFor="cowork-access-feedback" className="mb-1 block text-xs font-medium text-muted">
-              Qué quieres que cambie del plan
-            </label>
-            <textarea
-              id="cowork-access-feedback"
-              autoFocus
-              rows={3}
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="p.ej. «No abras el navegador, solo necesito Discord»"
-              className="w-full resize-none rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-fg outline-none focus:border-accent"
-            />
-            <div className="mt-3 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
-                Volver
-              </Button>
-              <Button variant="primary" onClick={sendFeedback} disabled={busy || !feedback.trim()}>
-                {busy && <Loader2 size={14} className="animate-spin" />} Enviar cambios
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button variant="ghost" onClick={dismissAccessRequest} autoFocus disabled={busy}>
-              {req.plan ? 'Cancelar' : 'Denegar todo'}
-            </Button>
-            {req.plan && (
-              <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy}>
-                Editar
-              </Button>
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 [[data-theme=dark]_&]:text-amber-400">
+            <ShieldAlert size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 id="cowork-plan-access-title" className="text-sm font-semibold text-fg">
+              {title}
+            </h3>
+            {req.reason && <p className="mt-0.5 text-sm text-muted">«{req.reason}»</p>}
+            {req.plan && req.plan.length > 0 && (
+              <ol className="mt-2.5 list-decimal space-y-1 rounded-lg border border-border bg-hover/60 px-4 py-2.5 pl-8 text-sm text-fg">
+                {req.plan.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
             )}
-            <Button variant="primary" onClick={confirm} disabled={busy}>
-              {busy && <Loader2 size={14} className="animate-spin" />} {req.plan ? 'Aprobar y empezar' : 'Confirmar'}
-            </Button>
+            <ul className="mt-3 space-y-2">
+              {req.apps.map((a) => (
+                <li
+                  key={a.bundleId}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-elevated/60 px-3 py-2"
+                >
+                  <span className="min-w-0 truncate text-sm font-medium text-fg" title={a.bundleId}>
+                    {a.name}
+                  </span>
+                  <TierSegmented value={choices[a.bundleId] ?? 'click'} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2.5 text-xs text-muted">
+              La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas. Puedes cambiar el
+              nivel de cada app luego desde Ajustes.
+            </p>
+            {editing ? (
+              <div className="mt-3">
+                <label htmlFor="cowork-access-feedback" className="mb-1 block text-xs font-medium text-muted">
+                  Qué quieres que cambie del plan
+                </label>
+                <textarea
+                  id="cowork-access-feedback"
+                  autoFocus
+                  rows={2}
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="p.ej. «No abras el navegador, solo necesito Discord»"
+                  className="w-full resize-none rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-fg outline-none focus:border-accent"
+                />
+                <div className="mt-2.5 flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
+                    Volver
+                  </Button>
+                  <Button variant="primary" onClick={sendFeedback} disabled={busy || !feedback.trim()}>
+                    {busy && <Loader2 size={14} className="animate-spin" />} Enviar cambios
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3.5 flex flex-wrap justify-end gap-2">
+                <Button variant="ghost" onClick={dismissAccessRequest} disabled={busy}>
+                  {req.plan ? 'Cancelar' : 'Denegar todo'}
+                </Button>
+                {req.plan && (
+                  <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy}>
+                    Editar
+                  </Button>
+                )}
+                <Button variant="primary" onClick={confirm} disabled={busy}>
+                  {busy && <Loader2 size={14} className="animate-spin" />} {req.plan ? 'Aprobar y empezar' : 'Confirmar'}
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

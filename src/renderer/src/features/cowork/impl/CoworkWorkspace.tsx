@@ -39,7 +39,7 @@ import {
   sendToTask,
   stopComputerControl
 } from './actions'
-import { AccessModeSwitch, AccessRequestDialog, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
+import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, PlanAccessCard, VisionModelHint } from './ComputerAccess'
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { CoworkComposer } from './CoworkComposer'
@@ -422,6 +422,7 @@ export function CoworkWorkspace(): React.JSX.Element {
                 </>
               }
             />
+            <PlanAccessCard />
             <ApprovalBar requests={pendingForTask} />
             {sendError && <p className="mx-auto mb-2 w-full max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
             <VisionModelHint />
@@ -470,7 +471,6 @@ export function CoworkWorkspace(): React.JSX.Element {
       )}
 
       <FullAccessDialog />
-      <AccessRequestDialog />
       <ProjectPanel />
 
       {pending && <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />}
