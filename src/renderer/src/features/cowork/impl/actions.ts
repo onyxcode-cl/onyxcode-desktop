@@ -173,19 +173,24 @@ export async function resumeComputerControl(): Promise<void> {
 // ── Concesión por app ──
 
 /**
- * Responde a la tarjeta `request_access` pendiente: una decisión por app (nivel o "denegar").
- * Persiste en main y desbloquea la herramienta MCP que esperaba la respuesta.
+ * Responde a la tarjeta `request_access` pendiente: una decisión por app (nivel o "denegar"), o
+ * `feedback` si el usuario pidió cambios ("Editar" en vez de aprobar: no se concede nada, el
+ * texto vuelve al agente para que replantee el plan). Persiste en main y desbloquea la
+ * herramienta MCP que esperaba la respuesta (que ya no tiene límite de tiempo: puede llevar rato).
  */
-export async function respondAccessRequest(decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>): Promise<void> {
+export async function respondAccessRequest(
+  decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>,
+  feedback?: string
+): Promise<void> {
   const req = useCowork.getState().accessRequest
   if (!req) return
   useCowork.setState({ accessRequest: null })
   try {
-    await cw('computer:respondAccess', { id: req.id, decisions })
+    await cw('computer:respondAccess', { id: req.id, decisions, feedback })
   } catch (err) {
     useCowork.setState({ error: errorMessage(err) })
   }
-  await loadGrants()
+  if (!feedback) await loadGrants()
 }
 
 export function dismissAccessRequest(): void {
