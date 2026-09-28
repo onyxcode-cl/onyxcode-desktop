@@ -163,6 +163,17 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return join(app.getPath('userData'), 'lapis-killswitch', 'STOP')
   }
 
+  /**
+   * Última hora (epoch ms) de un keyDown REAL, anotada por `cu-helper watch-esc` (ver
+   * `noteRealKeyDown` en helper.swift). La herramienta `type_text`/`key` del MCP la lee (comando
+   * `recent-input`) para pausar si el usuario está escribiendo ahora mismo: no puede usar las APIs
+   * de "tiempo desde el último evento" del sistema porque también las actualizan nuestros propios
+   * eventos sintéticos en cuanto se postean (verificado).
+   */
+  private get inputFile(): string {
+    return join(app.getPath('temp'), 'lapis-computer-input')
+  }
+
   isStopped(): boolean {
     return this.stopped
   }
@@ -200,7 +211,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const bin = this.helperPath()
     if (!bin) return
     try {
-      const child = spawn(bin, ['watch-esc'], { stdio: ['ignore', 'pipe', 'pipe'] })
+      const child = spawn(bin, ['watch-esc'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, COMPUTER_INPUT_FILE: this.inputFile }
+      })
       this.escWatcher = child
       createInterface({ input: child.stdout }).on('line', (line) => {
         if (line.trim() === 'STOP') void this.stop()
@@ -526,6 +540,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const environment: Record<string, string> = {
       CU_HELPER: helper,
       COMPUTER_STOP_FILE: this.stopFile,
+      COMPUTER_INPUT_FILE: this.inputFile,
       COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'lapis-computer')
     }
     if (eventsUrl) environment.COMPUTER_EVENTS_URL = eventsUrl

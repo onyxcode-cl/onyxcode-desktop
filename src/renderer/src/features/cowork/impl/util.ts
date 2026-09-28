@@ -176,6 +176,17 @@ export function friendlyTool(part: ToolPart): { verb: string; detail: string } {
   }
 }
 
+// ───────────────────────────── Borrado bloqueado por el sandbox ─────────────────────────────
+
+const OPERATION_NOT_PERMITTED_RE = /operation not permitted/i
+
+/** ¿Esta parte de herramienta parece un `rm`/`unlink` bloqueado por el sandbox (Seatbelt, EPERM)? */
+export function looksLikeBlockedDelete(part: ToolPart): boolean {
+  if (part.tool !== 'bash') return false
+  const text = part.state.status === 'completed' ? part.state.output : part.state.status === 'error' ? part.state.error : ''
+  return !!text && OPERATION_NOT_PERMITTED_RE.test(text)
+}
+
 // ───────────────────────────── Pasos por etapa del plan ─────────────────────────────
 
 export interface StepGroup {

@@ -55,13 +55,21 @@ func num(_ args: [String], _ i: Int, _ name: String) -> Double {
     return v
 }
 
-// `.privateState`, no `.hidSystemState`: así nuestros eventos sintéticos se distinguen de los
-// del teclado/ratón físico (campo eventSourceStateID de cada CGEvent). Lo usan `watch-esc`
-// (ignora los Esc que nosotros mismos posteamos) y `recent-input` (actividad HID real reciente).
+// `.privateState`, no `.hidSystemState`: aísla nuestros eventos sintéticos del estado real de
+// modificadores del teclado físico. La distinción fiable para `watch-esc`, sin embargo, es la
+// marca `eventSourceUserData` de abajo: en este SDK, leer el campo `eventSourceStateID` de un
+// CGEvent YA POSTEADO no devuelve el enum pequeño esperado (verificado), así que no basta por sí
+// sola para diferenciar un Esc sintético de uno real.
 let source = CGEventSource(stateID: .privateState)
+
+/// Marca cada evento que posteamos nosotros mismos (campo `eventSourceUserData`, libre para
+/// cualquier valor de 32 bits) para poder ignorarlos en `watch-esc` sin depender de
+/// `eventSourceStateID`. Valor arbitrario, sin significado especial: "LAPIS" en ASCII truncado.
+let ownEventTag: Int64 = 0x4C41_5049
 
 func post(_ e: CGEvent?) {
     guard let e = e else { fail("No se pudo crear el evento (¿permiso de Accesibilidad?)") }
+    e.setIntegerValueField(.eventSourceUserData, value: ownEventTag)
     e.post(tap: .cghidEventTap)
 }
 
@@ -82,6 +90,11 @@ func requireAccessibility() {
 var instant = ProcessInfo.processInfo.environment["CU_INSTANT"] == "1"
 var charDelayMs: Double = Double(ProcessInfo.processInfo.environment["CU_CHAR_DELAY_MS"] ?? "") ?? 14
 let stopFile = ProcessInfo.processInfo.environment["COMPUTER_STOP_FILE"] ?? ""
+/// Archivo donde `watch-esc` anota el instante (epoch ms) del último keyDown REAL (no nuestro),
+/// para que `recent-input` pueda leerlo. Necesario porque una vez posteado a `cghidEventTap` un
+/// evento sintético es indistinguible de uno real para las APIs de "tiempo desde el último evento"
+/// del sistema (`CGEventSource.secondsSinceLastEventType`, verificado: también las actualiza).
+let inputFile = ProcessInfo.processInfo.environment["COMPUTER_INPUT_FILE"] ?? ""
 var buttonHeld = false
 
 /// Kill-switch: aborta a mitad de animación/escritura si el usuario pulsó Detener.
@@ -509,11 +522,33 @@ func maskImage(_ cgImg: CGImage, rects: [CGRect]) -> CGImage? {
 
 // MARK: - Esc físico (parada mientras el agente controla el Mac)
 
-/// Escucha SOLO Esc (sin modificadores) mientras corre. Ignora los que emite el propio helper
-/// (fuente `.privateState`, ver arriba): imprime "STOP\n" en stdout (con flush) ante cada Esc real
-/// del teclado físico. Vive hasta que el proceso padre lo mata (SIGTERM); lo arranca/para
-/// `service.ts` solo mientras hay control activo, así un Esc normal del usuario en cualquier otro
-/// momento no hace nada.
+/// Anota el instante de un keyDown REAL en `inputFile` (lo lee `recent-input`). Se sobrescribe en
+/// cada pulsación real; sin `COMPUTER_INPUT_FILE` no hace nada.
+func noteRealKeyDown() {
+    guard !inputFile.isEmpty else { return }
+    let ms = Int64(Date().timeIntervalSince1970 * 1000)
+    try? String(ms).write(toFile: inputFile, atomically: true, encoding: .utf8)
+}
+
+/// Segundos desde el último keyDown REAL anotado por `watch-esc` en `inputFile`. Un número grande
+/// (nunca bloquea) si no hay vigía corriendo (sesión sin actividad reciente) o el archivo es
+/// inválido: "no se puede saber" no debe impedir escribir, solo lo hace un dato positivo reciente.
+func realKeyDownSeconds() -> Double {
+    guard !inputFile.isEmpty,
+          let raw = try? String(contentsOfFile: inputFile, encoding: .utf8),
+          let ms = Int64(raw.trimmingCharacters(in: .whitespacesAndNewlines)) else { return 999_999 }
+    let seconds = Double(Int64(Date().timeIntervalSince1970 * 1000) - ms) / 1000
+    return max(0, seconds)
+}
+
+/// Escucha el teclado mientras corre (un solo tap para dos cosas, activo solo mientras hay control
+/// en curso — lo arranca/para `service.ts`):
+/// - Esc SIN modificadores de un Esc real (no nuestro, ver `ownEventTag`) → "STOP\n" en stdout (con
+///   flush): el proceso principal lo trata como el botón Detener / ⌘⇧Esc.
+/// - Cualquier keyDown real → anota la hora en `inputFile` (`recent-input`/"el usuario está
+///   escribiendo ahora" del MCP lee ese archivo en vez de las APIs de idle-time del sistema, que no
+///   distinguen un evento sintético nuestro de uno real una vez posteado — verificado).
+/// Vive hasta que el proceso padre lo mata (SIGTERM).
 func watchEsc() {
     let mask = CGEventMask(1 << CGEventType.keyDown.rawValue)
     guard let tap = CGEvent.tapCreate(
@@ -523,12 +558,16 @@ func watchEsc() {
         eventsOfInterest: mask,
         callback: { _, type, event, _ in
             if type == .keyDown {
-                let keycode = event.getIntegerValueField(.keyboardEventKeycode)
-                let stateId = event.getIntegerValueField(.eventSourceStateID)
-                let isOurs = stateId == Int64(CGEventSourceStateID.privateState.rawValue)
-                if keycode == 0x35 && event.flags.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl]).isEmpty && !isOurs {
-                    print("STOP")
-                    fflush(stdout)
+                // Ignora los eventos que nosotros mismos posteamos (marca `eventSourceUserData`
+                // en `post()`, ver arriba); un evento real del teclado físico no la lleva.
+                let isOurs = event.getIntegerValueField(.eventSourceUserData) == ownEventTag
+                if !isOurs {
+                    noteRealKeyDown()
+                    let keycode = event.getIntegerValueField(.keyboardEventKeycode)
+                    if keycode == 0x35 && event.flags.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl]).isEmpty {
+                        print("STOP")
+                        fflush(stdout)
+                    }
                 }
             }
             return Unmanaged.passUnretained(event)
@@ -635,10 +674,7 @@ case "windows-of":
 case "focused-secure":
     out(["secure": focusedIsSecure()])
 case "recent-input":
-    out([
-        "keyDownSeconds": CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown),
-        "mouseDownSeconds": CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .leftMouseDown)
-    ])
+    out(["keyDownSeconds": realKeyDownSeconds()])
 case "screenshot-sck":
     guard args.count > 1 else { fail("Uso: screenshot-sck <outPath> [bundleId1,bundleId2,…]") }
     let outPath = args[1]

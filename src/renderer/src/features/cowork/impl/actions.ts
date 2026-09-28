@@ -18,6 +18,36 @@ import {
   useCowork
 } from './store'
 
+// ── Red de Cowork (aviso "Se bloqueó el acceso a…") ──
+
+/** Tras permitir un host, reanuda la tarea: la abre (si no es la activa) y le pide que reintente. */
+export async function retryAfterNetworkAllow(taskId: string, host: string): Promise<void> {
+  if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
+  const model = useSettings.getState().settings.defaultModel
+  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, model)
+}
+
+// ── "Permitir borrar" (Seatbelt: file-write-unlink) ──
+
+/**
+ * Concede/retira "Permitir borrar" para la carpeta actual. El proceso principal reinicia el
+ * servidor sandboxeado para que el nuevo perfil Seatbelt tome efecto: si estaba en modo sandbox,
+ * reconectamos (nuevo cliente/URL) y la tarea activa queda cerrada — el usuario debe reabrirla y
+ * pedirle al agente que continúe.
+ */
+export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
+  const { folder, conn } = useCowork.getState()
+  if (!folder) return
+  useCowork.setState({ deleteGrantBusy: true })
+  try {
+    const now = await cw('cowork:deleteGrant:set', { folder, allowed })
+    useCowork.setState({ deleteGrant: now })
+    if (conn && !conn.fullAccess) await connectFolder(folder, false)
+  } finally {
+    useCowork.setState({ deleteGrantBusy: false })
+  }
+}
+
 export const COWORK_AGENT = 'cowork'
 /** Agente de los servidores de acceso total (sin sandbox + control del Mac). */
 export const COMPUTER_AGENT = 'computer'

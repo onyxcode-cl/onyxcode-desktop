@@ -16,7 +16,8 @@ import {
   type CoworkFolder,
   type CoworkMemory,
   type CoworkProject,
-  type GrantsSnapshot
+  type GrantsSnapshot,
+  type NetworkBlockedEvent
 } from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
@@ -24,6 +25,15 @@ import { useUi } from '../../../stores/ui'
 import { cw, onCowork } from './bridge'
 
 export type CoworkServerPhase = 'idle' | 'starting' | 'ready' | 'error'
+
+/** Aviso de red bloqueada pendiente/resuelto para una tarea (evento `cowork:networkBlocked`). */
+export interface NetworkBlockedEntry {
+  host: string
+  port: number
+  at: number
+  /** Cómo se resolvió (sin decidir aún = `undefined`); "Mantener bloqueado" quita la entrada. */
+  resolved?: 'once' | 'always'
+}
 
 interface CoworkState {
   folders: CoworkFolder[]
@@ -78,6 +88,11 @@ interface CoworkState {
   grants: GrantsSnapshot | null
   /** Tarjeta "¿Permitir que el agente use X?" pendiente (herramienta MCP `request_access`). */
   accessRequest: AccessRequest | null
+  /** Avisos "acceso bloqueado" del proxy de egress, por tarea (id de sesión raíz). Dedupe por host. */
+  networkBlocked: Record<string, NetworkBlockedEntry[]>
+  /** "Permitir borrar" de la carpeta actual (`cowork:deleteGrant:get`; null = aún sin cargar). */
+  deleteGrant: boolean | null
+  deleteGrantBusy: boolean
 
   set: (patch: Partial<CoworkState>) => void
 }
@@ -153,6 +168,9 @@ export const useCowork = create<CoworkState>((set) => ({
   projectPanelOpen: false,
   grants: null,
   accessRequest: null,
+  networkBlocked: {},
+  deleteGrant: null,
+  deleteGrantBusy: false,
   set: (patch) => set(patch)
 }))
 
@@ -189,6 +207,62 @@ export async function deleteMemoryNotes(): Promise<void> {
   if (!folder) return
   const memory = await cw('cowork:memory:delete', { folder })
   if (useCowork.getState().folder === folder) useCowork.setState({ memory })
+}
+
+/** Carga "Permitir borrar" de la carpeta actual (no bloquea la conexión si falla). */
+export async function loadDeleteGrant(folder: string): Promise<void> {
+  try {
+    const allowed = await cw('cowork:deleteGrant:get', { folder })
+    if (useCowork.getState().folder === folder) useCowork.setState({ deleteGrant: allowed })
+  } catch {
+    if (useCowork.getState().folder === folder) useCowork.setState({ deleteGrant: null })
+  }
+}
+
+// ── Red de Cowork (avisos de bloqueo por tarea) ──
+
+/**
+ * Asocia un `cowork:networkBlocked` a la tarea raíz que esté trabajando en esa carpeta (la
+ * activa si lo está; si no, la primera tarea raíz ocupada). Ignora eventos de otra carpeta y
+ * deduplica por host dentro de la misma tarea.
+ */
+export function addNetworkBlocked(ev: NetworkBlockedEvent): void {
+  const st = useCowork.getState()
+  if (ev.folder !== st.folder) return
+  const { sessions, status } = useSessions.getState()
+  const isBusyRoot = (id: string | null | undefined): boolean =>
+    !!id && status[id] !== undefined && status[id] !== 'idle' && !sessions[id]?.parentID
+  let taskId = st.activeTaskId
+  if (!isBusyRoot(taskId)) {
+    taskId =
+      Object.keys(status).find((id) => status[id] !== 'idle' && !sessions[id]?.parentID && sessions[id]?.directory === ev.folder) ??
+      taskId
+  }
+  if (!taskId) return
+  const id = taskId
+  useCowork.setState((s) => {
+    const list = s.networkBlocked[id] ?? []
+    if (list.some((b) => b.host === ev.host)) return s
+    return { networkBlocked: { ...s.networkBlocked, [id]: [...list, { host: ev.host, port: ev.port, at: ev.at }] } }
+  })
+}
+
+/** Marca cómo se resolvió el aviso ("Permitir esta vez"/"Permitir siempre"), sin quitar la tarjeta. */
+export function resolveNetworkBlocked(taskId: string, host: string, resolved: 'once' | 'always'): void {
+  useCowork.setState((s) => {
+    const list = s.networkBlocked[taskId]
+    if (!list) return s
+    return { networkBlocked: { ...s.networkBlocked, [taskId]: list.map((b) => (b.host === host ? { ...b, resolved } : b)) } }
+  })
+}
+
+/** Quita el aviso ("Mantener bloqueado" tras persistirlo, o tras "Reintentar"). */
+export function dismissNetworkBlocked(taskId: string, host: string): void {
+  useCowork.setState((s) => {
+    const list = s.networkBlocked[taskId]
+    if (!list) return s
+    return { networkBlocked: { ...s.networkBlocked, [taskId]: list.filter((b) => b.host !== host) } }
+  })
 }
 
 /** Fija/desfija una tarea en la barra lateral (persistido; no depende del servidor). */
@@ -434,7 +508,9 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     attachments: [],
     unseen: {},
     project: null,
-    memory: null
+    memory: null,
+    networkBlocked: {},
+    deleteGrant: null
   })
   try {
     const conn = await cw('cowork:start', { folder, fullAccess })
@@ -445,6 +521,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     useSessions.getState().setDirectorySource(conn.folder, conn.baseUrl)
     useCowork.setState({ folder: conn.folder, conn, client, phase: 'ready' })
     void loadProjectAndMemory(conn.folder)
+    void loadDeleteGrant(conn.folder)
     if (conn.fullAccess) {
       void refreshComputerStatus()
       void syncKillState()

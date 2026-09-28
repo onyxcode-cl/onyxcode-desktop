@@ -35,6 +35,16 @@
  *
  * Coordenadas: las herramientas reciben coordenadas EN PÍXELES DE LA ÚLTIMA CAPTURA y las
  * convierten a puntos de la pantalla principal (factor = anchoPuntos / anchoCaptura).
+ *
+ * Concesión por app (ver `computer/grants.ts`): antes de cada acción con ratón/teclado se
+ * comprueba, por `COMPUTER_EVENTS_URL`, el nivel de la app en primer plano (y de la app bajo el
+ * punto, en clics/arrastres). Sin nivel suficiente, la acción se rechaza con un mensaje que le
+ * dice al modelo que llame a la herramienta `request_access` (que también usa el canal lateral,
+ * `POST <url>/request-access`, y espera hasta 5 min la respuesta del usuario). Las capturas
+ * excluyen del compositor las apps sin concesión (ScreenCaptureKit, `cu-helper screenshot-sck`;
+ * si no está disponible se enmascaran a mano las ventanas de esas apps sobre la captura de
+ * `screencapture`). `type_text`/`key` además rechazan un campo de contraseña con foco
+ * (`cu-helper focused-secure`) o tecleo real reciente del usuario (`cu-helper recent-input`).
  */
 import { execFile, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'

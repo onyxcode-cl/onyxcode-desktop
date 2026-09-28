@@ -14,6 +14,7 @@ import {
   Pin,
   PinOff,
   Search,
+  ShieldOff,
   Trash2,
   X
 } from 'lucide-react'
@@ -148,6 +149,7 @@ export function TaskList(): React.JSX.Element {
 
   const perms = Object.values(permissions)
   const qs = Object.values(questions)
+  const networkBlocked = useCowork((s) => s.networkBlocked)
   const pinnedMap = useCowork((s) => s.pinned)
   const pinnedTasks = tasks.filter((t) => pinnedMap[t.id])
   const restTasks = tasks.filter((t) => !pinnedMap[t.id])
@@ -206,6 +208,7 @@ export function TaskList(): React.JSX.Element {
                 })
                 const busy = st === 'running' || st === 'waiting' || st === 'question'
                 const isUnseen = !!unseen[t.id] && t.id !== activeId
+                const hasBlockedHost = (networkBlocked[t.id] ?? []).some((b) => !b.resolved)
                 return (
                   <div
                     key={t.id}
@@ -233,6 +236,14 @@ export function TaskList(): React.JSX.Element {
                         )}
                       </div>
                     </button>
+                    {hasBlockedHost && (
+                      <span
+                        className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400"
+                        title="Se bloqueó el acceso a un sitio: necesita tu decisión"
+                      >
+                        <ShieldOff size={12} />
+                      </span>
+                    )}
                     {isUnseen && <span className="h-2 w-2 shrink-0 rounded-full bg-accent group-hover:hidden" />}
                     {!busy && <TaskMenu id={t.id} title={t.title || ''} />}
                   </div>

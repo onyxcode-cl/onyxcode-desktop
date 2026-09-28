@@ -43,8 +43,10 @@ import { AccessModeSwitch, AccessRequestDialog, ComputerPermissionsCard, Control
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { CoworkComposer } from './CoworkComposer'
+import { DeleteGrantHintCard } from './DeleteGrant'
 import { FolderMenu } from './FolderMenu'
 import { Home } from './Home'
+import { NetworkBlockedCards } from './NetworkBlocked'
 import { ApprovalBar } from './PermissionPrompt'
 import { QuestionCard } from './QuestionPrompt'
 import { ProgressPanel } from './ProgressPanel'
@@ -52,6 +54,7 @@ import { ProjectPanel } from './ProjectPanel'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon, TaskList } from './TaskList'
 import {
+  addNetworkBlocked,
   clearUnseen,
   disconnect,
   lastFolder,
@@ -229,6 +232,9 @@ export function CoworkWorkspace(): React.JSX.Element {
     }
   }, [])
 
+  // Proxy de egress: el servidor sandboxeado bloqueó una conexión de red durante una tarea.
+  useEffect(() => onCowork('cowork:networkBlocked', (ev) => addNetworkBlocked(ev)), [])
+
   // ⌘⇧Esc con la ventana enfocada (el main registra además el atajo global).
   useEffect(() => {
     if (!fullAccess) return
@@ -405,6 +411,8 @@ export function CoworkWorkspace(): React.JSX.Element {
               permissions={pendingForTask}
               footer={
                 <>
+                  {activeId && <NetworkBlockedCards taskId={activeId} />}
+                  {!fullAccess && <DeleteGrantHintCard key={activeId} entries={entries} />}
                   {pendingQuestionsForTask.map((q) => (
                     <QuestionCard key={q.id} request={q} />
                   ))}

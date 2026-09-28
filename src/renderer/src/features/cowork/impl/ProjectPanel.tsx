@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, BookText, Check, Loader2, NotebookText, Trash2, X } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { DeleteGrantToggle } from './DeleteGrant'
 import { deleteMemoryNotes, saveMemoryNotes, saveProject, setProjectPanelOpen, useCowork } from './store'
 import { baseName } from './util'
 
@@ -157,6 +158,10 @@ export function ProjectPanel(): React.JSX.Element | null {
                   Se añaden a todas las tareas de esta carpeta, junto con las instrucciones globales de
                   Ajustes y la memoria guardada.
                 </p>
+              </div>
+              <div>
+                <span className={labelCls}>Carpeta</span>
+                <DeleteGrantToggle />
               </div>
             </>
           ) : (
