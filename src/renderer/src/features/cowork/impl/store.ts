@@ -14,6 +14,7 @@ import type {
 } from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
+import { useUi } from '../../../stores/ui'
 import { cw } from './bridge'
 
 export type CoworkServerPhase = 'idle' | 'starting' | 'ready' | 'error'
@@ -44,8 +45,35 @@ interface CoworkState {
   lastAction: ComputerActionEvent | null
   /** Momento en que se detuvo el control (Detener / Cmd+Shift+Esc). */
   controlStoppedAt: number | null
+  /** Texto del compositor (permite rellenarlo desde sugerencias / seguimientos). */
+  draft: string
+  /** Archivos adjuntos (ya copiados a la carpeta) para el próximo mensaje. */
+  attachments: CoworkDeliverable[]
+  /** Panel derecho (Plan / Entregables / Actividad) visible. */
+  panelOpen: boolean
+  /** Ids de tareas cuyo resultado aún no se ha visto (terminaron en segundo plano). */
+  unseen: Record<string, true>
 
   set: (patch: Partial<CoworkState>) => void
+}
+
+const PANEL_KEY = 'cowork.panelOpen'
+
+function readPanelOpen(): boolean {
+  try {
+    return localStorage.getItem(PANEL_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+export function setPanelOpen(open: boolean): void {
+  try {
+    localStorage.setItem(PANEL_KEY, open ? '1' : '0')
+  } catch {
+    // sin storage
+  }
+  useCowork.setState({ panelOpen: open })
 }
 
 export const useCowork = create<CoworkState>((set) => ({
@@ -68,6 +96,10 @@ export const useCowork = create<CoworkState>((set) => ({
   computerChecking: false,
   lastAction: null,
   controlStoppedAt: null,
+  draft: '',
+  attachments: [],
+  panelOpen: readPanelOpen(),
+  unseen: {},
   set: (patch) => set(patch)
 }))
 
@@ -147,10 +179,70 @@ export async function refreshDeliverables(sessionID?: string): Promise<void> {
   }
 }
 
+/** Notificación nativa (solo si la ventana no tiene el foco). Clic ⇒ abre la tarea. */
+function notifyTask(sessionID: string, title: string, body: string): void {
+  if (typeof Notification === 'undefined' || document.hasFocus()) return
+  try {
+    const n = new Notification(title, { body, silent: false })
+    n.onclick = () => {
+      window.focus()
+      useUi.getState().setMode('cowork')
+      useCowork.setState({ activeTaskId: sessionID })
+      void loadTask(sessionID)
+      clearUnseen(sessionID)
+    }
+  } catch {
+    // Notificaciones no disponibles
+  }
+}
+
+function rootTaskId(sessionID: string): string {
+  const sessions = useSessions.getState().sessions
+  let id = sessionID
+  for (let i = 0; i < 5; i++) {
+    const parent = sessions[id]?.parentID
+    if (!parent) break
+    id = parent
+  }
+  return id
+}
+
+function taskTitle(sessionID: string): string {
+  return useSessions.getState().sessions[sessionID]?.title || 'Tarea de Cowork'
+}
+
+export function clearUnseen(sessionID: string): void {
+  if (!useCowork.getState().unseen[sessionID]) return
+  useCowork.setState((s) => {
+    const unseen = { ...s.unseen }
+    delete unseen[sessionID]
+    return { unseen }
+  })
+}
+
 function handleEvent(event: OcEvent, directory: string): void {
   const st = useCowork.getState()
   if (!st.folder || directory !== st.folder) return
+  const prevRun =
+    event.type === 'session.idle' || event.type === 'session.status'
+      ? useSessions.getState().status[event.properties.sessionID]
+      : undefined
   useSessions.getState().applyEvent(event)
+  // Avisos: tarea terminada / necesita aprobación / error (solo tareas raíz).
+  if (event.type === 'session.idle' || (event.type === 'session.status' && event.properties.status.type === 'idle')) {
+    const id = event.properties.sessionID
+    const isRoot = !useSessions.getState().sessions[id]?.parentID
+    if (isRoot && prevRun && prevRun !== 'idle') {
+      if (id !== st.activeTaskId || !document.hasFocus()) {
+        useCowork.setState((s) => ({ unseen: { ...s.unseen, [id]: true } }))
+      }
+      const failed = useSessions.getState().errors[id]
+      notifyTask(id, failed ? 'La tarea terminó con un error' : 'Tarea terminada', taskTitle(id))
+    }
+  } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
+    const id = rootTaskId(event.properties.sessionID)
+    notifyTask(id, 'Cowork necesita tu aprobación', taskTitle(id))
+  }
   switch (event.type) {
     case 'todo.updated':
       useCowork.setState((s) => ({ todos: { ...s.todos, [event.properties.sessionID]: event.properties.todos } }))
@@ -206,7 +298,9 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     activeTaskId: null,
     todos: {},
     permissions: {},
-    deliverables: {}
+    deliverables: {},
+    attachments: [],
+    unseen: {}
   })
   try {
     const conn = await cw('cowork:start', { folder, fullAccess })

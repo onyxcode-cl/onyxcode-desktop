@@ -85,6 +85,18 @@ export interface CoworkDeliverable {
   mtime: number
 }
 
+/** Vista previa de un archivo de la carpeta (entregables). */
+export interface CoworkFilePreview {
+  path: string
+  size: number
+  /** text = contenido UTF-8 (md, csv, txt…); image = data URL; unsupported = sin vista previa. */
+  kind: 'text' | 'image' | 'unsupported'
+  content?: string
+  dataUrl?: string
+  /** true si el texto se recortó a `maxBytes`. */
+  truncated?: boolean
+}
+
 // ───────────────────────────── Rutinas ─────────────────────────────
 
 export type RoutineMode = 'chat' | 'cowork' | 'code'
@@ -181,6 +193,13 @@ export interface CoworkInvokeContract {
   'cowork:reveal': { req: { path: string }; res: void }
   /** Abre el archivo con la app por defecto. */
   'cowork:openPath': { req: { path: string }; res: void }
+  /**
+   * Abre un diálogo nativo para elegir archivos y los COPIA a la carpeta autorizada
+   * (sin sobrescribir: añade " (2)"…). Devuelve los archivos copiados ([] si se cancela).
+   */
+  'cowork:importFiles': { req: { folder: string }; res: CoworkDeliverable[] }
+  /** Lee un archivo de una carpeta autorizada para previsualizarlo (texto recortado / imagen). */
+  'cowork:previewFile': { req: { path: string; maxBytes?: number }; res: CoworkFilePreview }
 
   'routines:list': { req: void; res: ScheduledRoutine[] }
   'routines:save': { req: RoutineInput; res: ScheduledRoutine }
@@ -226,6 +245,8 @@ export const COWORK_INVOKE_CHANNELS = [
   'cowork:deliverables',
   'cowork:reveal',
   'cowork:openPath',
+  'cowork:importFiles',
+  'cowork:previewFile',
   'routines:list',
   'routines:save',
   'routines:delete',

@@ -146,16 +146,42 @@ function ctx(): { client: NonNullable<ReturnType<typeof useCowork.getState>['cli
   return { client, folder }
 }
 
+/** Diálogo nativo para adjuntar archivos: se copian a la carpeta y quedan listos para el próximo mensaje. */
+export async function attachFiles(): Promise<void> {
+  const { folder } = useCowork.getState()
+  if (!folder) throw new Error('Elige primero una carpeta')
+  const files = await cw('cowork:importFiles', { folder })
+  if (files.length === 0) return
+  useCowork.setState((s) => {
+    const seen = new Set(s.attachments.map((a) => a.path))
+    return { attachments: [...s.attachments, ...files.filter((f) => !seen.has(f.path))] }
+  })
+}
+
+export function removeAttachment(path: string): void {
+  useCowork.setState((s) => ({ attachments: s.attachments.filter((a) => a.path !== path) }))
+}
+
+/** Texto final del mensaje con la lista de adjuntos (rutas relativas a la carpeta). */
+function withAttachments(text: string): string {
+  const files = useCowork.getState().attachments
+  if (files.length === 0) return text
+  const list = files.map((f) => `- ${f.relPath}`).join('\n')
+  return `${text}\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n${list}`
+}
+
 /** Envía un mensaje; si no hay tarea activa, crea una nueva sesión con el agente `cowork`. */
-export async function sendToTask(text: string, model: ModelRef): Promise<void> {
+export async function sendToTask(rawText: string, model: ModelRef): Promise<void> {
   const { client, folder } = ctx()
+  const text = withAttachments(rawText)
+  useCowork.setState({ attachments: [], draft: '' })
   const sessions = useSessions.getState()
   let sessionID = useCowork.getState().activeTaskId
   if (!sessionID) {
     const res = await client.session.create({
       directory: folder,
       agent: currentAgent(),
-      title: text.slice(0, 80),
+      title: rawText.slice(0, 80),
       metadata: { mode: 'cowork', fullAccess: useCowork.getState().conn?.fullAccess === true }
     })
     if (res.error || !res.data) throw new Error(errorMessage(res.error))

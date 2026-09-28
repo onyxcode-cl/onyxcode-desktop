@@ -79,3 +79,9 @@ export function getCodeApi(): CodeApi {
   cached = w.code ? { ...base, ...w.code } : base
   return cached
 }
+
+/** API git/diálogos completa de `window.api.code` (preload), o `null` si no existe. */
+export function nativeCode(): import('@shared/ipc-code').CodeApi | null {
+  const w = window.api as WindowApi & { code?: import('@shared/ipc-code').CodeApi }
+  return w.code && typeof w.code.git?.status === 'function' ? w.code : null
+}

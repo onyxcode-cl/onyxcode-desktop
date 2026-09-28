@@ -12,6 +12,7 @@ import type {
   CoworkResponse
 } from '@shared/ipc-cowork'
 import { CoworkManager } from '../cowork/manager'
+import { importFilesInto, previewFile } from '../cowork/files'
 import { ComputerService } from '../computer/service'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { previewSchedule } from '../scheduler/schedule'
@@ -109,6 +110,20 @@ export function registerCoworkHandlers(
     const err = await shell.openPath(cowork.assertInsideApproved(path))
     if (err) throw new Error(err)
   })
+  handle(ipcMain, 'cowork:importFiles', async ({ folder }, event) => {
+    const root = cowork.assertInsideApproved(folder)
+    const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
+    const options: Electron.OpenDialogOptions = {
+      title: 'Adjuntar archivos a la tarea',
+      buttonLabel: 'Adjuntar',
+      message: 'Los archivos se copiarán a la carpeta de Cowork.',
+      properties: ['openFile', 'multiSelections']
+    }
+    const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    if (res.canceled) return []
+    return importFilesInto(root, res.filePaths)
+  })
+  handle(ipcMain, 'cowork:previewFile', ({ path, maxBytes }) => previewFile(cowork.assertInsideApproved(path), maxBytes))
 
   // ── Rutinas ──
   handle(ipcMain, 'routines:list', () => scheduler.list())
