@@ -7,7 +7,16 @@ const shared = resolve(__dirname, 'src/shared')
 
 export default defineConfig({
   main: {
-    resolve: { alias: { '@shared': shared } }
+    resolve: { alias: { '@shared': shared } },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          // Servidor MCP de computer use (proceso aparte, node de Electron) → out/main/computer-mcp.js
+          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts')
+        }
+      }
+    }
   },
   preload: {
     resolve: { alias: { '@shared': shared } }

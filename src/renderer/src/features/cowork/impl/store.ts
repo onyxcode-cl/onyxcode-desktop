@@ -5,7 +5,13 @@
  */
 import { create } from 'zustand'
 import { createOpencodeClient, type PermissionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
-import type { CoworkConnection, CoworkDeliverable, CoworkFolder } from '@shared/ipc-cowork'
+import type {
+  ComputerActionEvent,
+  ComputerStatus,
+  CoworkConnection,
+  CoworkDeliverable,
+  CoworkFolder
+} from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { cw } from './bridge'
@@ -27,6 +33,17 @@ interface CoworkState {
   permissions: Record<string, PermissionRequest>
   deliverables: Record<string, CoworkDeliverable[]>
   listLoading: boolean
+  /** Modo de acceso solicitado para la carpeta actual (persistido por carpeta). */
+  fullAccess: boolean
+  /** Carpeta cuyo cambio a "Acceso total" espera confirmación. */
+  pendingFullAccess: string | null
+  /** Último estado de `computer:status` (null = sin comprobar). */
+  computerStatus: ComputerStatus | null
+  computerChecking: boolean
+  /** Última acción del agente sobre el Mac (evento `computer:action`). */
+  lastAction: ComputerActionEvent | null
+  /** Momento en que se detuvo el control (Detener / Cmd+Shift+Esc). */
+  controlStoppedAt: number | null
 
   set: (patch: Partial<CoworkState>) => void
 }
@@ -45,10 +62,17 @@ export const useCowork = create<CoworkState>((set) => ({
   permissions: {},
   deliverables: {},
   listLoading: false,
+  fullAccess: false,
+  pendingFullAccess: null,
+  computerStatus: null,
+  computerChecking: false,
+  lastAction: null,
+  controlStoppedAt: null,
   set: (patch) => set(patch)
 }))
 
 const LAST_FOLDER_KEY = 'cowork.lastFolder'
+const FULL_ACCESS_KEY = 'cowork.fullAccess'
 let stopStream: (() => void) | null = null
 let deliverablesTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -66,6 +90,32 @@ export function lastFolder(): string | null {
     return localStorage.getItem(LAST_FOLDER_KEY)
   } catch {
     return null
+  }
+}
+
+function readFullAccessMap(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(FULL_ACCESS_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, boolean>) : {}
+  } catch {
+    return {}
+  }
+}
+
+/** ¿El usuario eligió "Acceso total + control del Mac" para esta carpeta? */
+export function fullAccessFor(folder: string): boolean {
+  return readFullAccessMap()[folder] === true
+}
+
+export function rememberFullAccess(folder: string, fullAccess: boolean): void {
+  try {
+    const map = readFullAccessMap()
+    if (fullAccess) map[folder] = true
+    else delete map[folder]
+    localStorage.setItem(FULL_ACCESS_KEY, JSON.stringify(map))
+  } catch {
+    // sin storage
   }
 }
 
@@ -135,12 +185,19 @@ function handleEvent(event: OcEvent, directory: string): void {
   }
 }
 
-/** Conecta con el servidor sandboxeado de la carpeta y abre su stream de eventos. */
-export async function connectFolder(folder: string): Promise<void> {
+/**
+ * Conecta con el servidor de la carpeta (sandboxeado, o de acceso total si así se eligió)
+ * y abre su stream de eventos. `fullAccess` por defecto = preferencia guardada de la carpeta.
+ */
+export async function connectFolder(folder: string, fullAccess = fullAccessFor(folder)): Promise<void> {
   stopStream?.()
   stopStream = null
   useCowork.setState({
     folder,
+    fullAccess,
+    computerStatus: null,
+    lastAction: null,
+    controlStoppedAt: null,
     conn: null,
     client: null,
     phase: 'starting',
@@ -152,11 +209,13 @@ export async function connectFolder(folder: string): Promise<void> {
     deliverables: {}
   })
   try {
-    const conn = await cw('cowork:start', { folder })
-    if (useCowork.getState().folder !== folder) return // el usuario cambió de carpeta
+    const conn = await cw('cowork:start', { folder, fullAccess })
+    const now = useCowork.getState()
+    if (now.folder !== folder || now.fullAccess !== fullAccess) return // el usuario cambió de carpeta/modo
     const client = makeClient(conn)
     rememberFolder(conn.folder)
     useCowork.setState({ folder: conn.folder, conn, client, phase: 'ready' })
+    if (conn.fullAccess) void refreshComputerStatus()
     stopStream = startEventStream(client, handleEvent, {
       onOpen: () => {
         useCowork.setState({ streaming: true })
@@ -166,7 +225,8 @@ export async function connectFolder(folder: string): Promise<void> {
     })
     await resync()
   } catch (err) {
-    if (useCowork.getState().folder === folder) useCowork.setState({ phase: 'error', error: errorMessage(err) })
+    const now = useCowork.getState()
+    if (now.folder === folder && now.fullAccess === fullAccess) useCowork.setState({ phase: 'error', error: errorMessage(err) })
   }
 }
 
@@ -210,4 +270,17 @@ export async function loadTask(sessionID: string): Promise<void> {
     sessions.setError(sessionID, errorMessage(err))
   }
   await refreshDeliverables(sessionID)
+}
+
+/** Consulta `computer:status` (helper nativo + permisos de macOS). */
+export async function refreshComputerStatus(): Promise<void> {
+  useCowork.setState({ computerChecking: true })
+  try {
+    const status = await cw('computer:status')
+    useCowork.setState({ computerStatus: status })
+  } catch {
+    useCowork.setState({ computerStatus: { helperOk: false, accessibility: false, screenRecording: false, screens: [] } })
+  } finally {
+    useCowork.setState({ computerChecking: false })
+  }
 }

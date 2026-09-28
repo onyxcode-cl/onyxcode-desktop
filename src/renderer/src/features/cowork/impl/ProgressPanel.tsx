@@ -20,6 +20,8 @@ import {
 import type { CoworkDeliverable } from '@shared/ipc-cowork'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { openPath, reveal } from './actions'
+import { ScreenshotThumbs } from './ComputerAccess'
+import { computerToolDetail, computerToolInfo, computerToolKind, toolImages } from './computer-tools'
 import { refreshDeliverables, useCowork } from './store'
 
 const EMPTY_TODOS: Todo[] = []
@@ -224,25 +226,47 @@ export function ProgressPanel({ sessionID }: { sessionID: string | null }): Reac
           <p className="text-xs text-subtle">Sin actividad todavía.</p>
         ) : (
           <ul className="space-y-1">
-            {visibleTools.map((p) => (
-              <li key={p.id} className="flex items-start gap-2 text-xs">
-                <span className="mt-0.5 shrink-0">
-                  {p.state.status === 'completed' ? (
-                    <CheckCircle2 size={13} className="text-accent" />
-                  ) : p.state.status === 'error' ? (
-                    <AlertCircle size={13} className="text-danger" />
-                  ) : p.state.status === 'running' ? (
-                    <Loader2 size={13} className="animate-spin text-accent" />
-                  ) : (
-                    <CircleDashed size={13} className="text-subtle" />
+            {visibleTools.map((p) => {
+              const kind = computerToolKind(p.tool)
+              const info = kind ? computerToolInfo(kind) : null
+              const detail = kind ? computerToolDetail(kind, p.state.input) : toolLabel(p)
+              const images = toolImages(p)
+              const KindIcon = info?.icon
+              return (
+                <li key={p.id} className="text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 shrink-0">
+                      {p.state.status === 'completed' ? (
+                        <CheckCircle2 size={13} className="text-accent" />
+                      ) : p.state.status === 'error' ? (
+                        <AlertCircle size={13} className="text-danger" />
+                      ) : p.state.status === 'running' ? (
+                        <Loader2 size={13} className="animate-spin text-accent" />
+                      ) : (
+                        <CircleDashed size={13} className="text-subtle" />
+                      )}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1 font-medium text-fg">
+                      {KindIcon && <KindIcon size={12} className="text-amber-500" />}
+                      {info?.label ?? TOOL_NAMES[p.tool] ?? p.tool}
+                    </span>
+                    <span className="min-w-0 truncate font-mono text-subtle" title={detail}>
+                      {detail}
+                    </span>
+                  </div>
+                  {p.state.status === 'error' && kind && (
+                    <p className="mt-0.5 ml-5 line-clamp-2 text-danger" title={p.state.error}>
+                      {p.state.error}
+                    </p>
                   )}
-                </span>
-                <span className="shrink-0 font-medium text-fg">{TOOL_NAMES[p.tool] ?? p.tool}</span>
-                <span className="min-w-0 truncate font-mono text-subtle" title={toolLabel(p)}>
-                  {toolLabel(p)}
-                </span>
-              </li>
-            ))}
+                  {images.length > 0 && (
+                    <div className="ml-5">
+                      <ScreenshotThumbs images={images} />
+                    </div>
+                  )}
+                </li>
+              )
+            })}
             {tools.length > 12 && (
               <li>
                 <button type="button" className="text-xs text-accent hover:underline" onClick={() => setShowAll((v) => !v)}>

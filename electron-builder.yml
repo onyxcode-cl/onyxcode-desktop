@@ -12,6 +12,12 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+# Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
+extraResources:
+  - from: resources/computer-use/bin
+    to: computer-use/bin
+    filter:
+      - cu-helper
 mac:
   category: public.app-category.developer-tools
   target:

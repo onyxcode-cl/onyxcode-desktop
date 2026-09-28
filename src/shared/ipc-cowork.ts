@@ -24,6 +24,8 @@ export interface CoworkServerInfo {
   folder: string
   state: CoworkServerState
   sandboxed: boolean
+  /** Servidor de acceso completo (sin sandbox + control del computador). */
+  fullAccess?: boolean
   error?: string
   version?: string
 }
@@ -36,6 +38,43 @@ export interface CoworkConnection {
   authorization: string
   sandboxed: boolean
   version?: string
+  /** true = servidor SIN sandbox con el agente `computer` y el MCP de control del Mac. */
+  fullAccess: boolean
+  /** Estado del control del computador (solo relevante si fullAccess). */
+  computerUse: ComputerUseInfo
+}
+
+// ───────────────────────────── Computer use ─────────────────────────────
+
+export interface ComputerUseInfo {
+  /** true si el helper nativo existe y el MCP quedó configurado en el servidor. */
+  available: boolean
+  accessibility: boolean
+  screenRecording: boolean
+  /** Motivo si no está disponible o faltan permisos. */
+  reason?: string
+}
+
+export interface ComputerScreen {
+  width: number
+  height: number
+  scale: number
+}
+
+export interface ComputerStatus {
+  helperOk: boolean
+  accessibility: boolean
+  screenRecording: boolean
+  screens: ComputerScreen[]
+}
+
+/** Acción ejecutada por el agente (para el overlay de actividad). Coordenadas en puntos de pantalla. */
+export interface ComputerActionEvent {
+  tool: string
+  x?: number
+  y?: number
+  text?: string
+  at: number
 }
 
 /** Archivo de la carpeta creado/modificado durante una tarea. */
@@ -128,9 +167,13 @@ export interface CoworkInvokeContract {
   /** Autoriza una carpeta (tras confirmar en la UI). Rechaza carpetas peligrosas (/, ~, /System…). */
   'cowork:approveFolder': { req: { folder: string }; res: CoworkFolder }
   'cowork:removeFolder': { req: { folder: string }; res: void }
-  /** Arranca (o reutiliza) el servidor sandboxeado de una carpeta autorizada. */
-  'cowork:start': { req: { folder: string }; res: CoworkConnection }
-  'cowork:stop': { req: { folder: string }; res: void }
+  /**
+   * Arranca (o reutiliza) el servidor de una carpeta autorizada. Por defecto sandboxeado;
+   * `fullAccess: true` ⇒ servidor aparte SIN sandbox, con el agente `computer` y el MCP de control del Mac.
+   */
+  'cowork:start': { req: { folder: string; fullAccess?: boolean }; res: CoworkConnection }
+  /** Detiene el/los servidor(es) de la carpeta (ambos modos si `fullAccess` se omite). */
+  'cowork:stop': { req: { folder: string; fullAccess?: boolean }; res: void }
   'cowork:servers': { req: void; res: CoworkServerInfo[] }
   /** Archivos modificados en la carpeta desde `since` (epoch ms). */
   'cowork:deliverables': { req: { folder: string; since: number }; res: CoworkDeliverable[] }
@@ -147,12 +190,24 @@ export interface CoworkInvokeContract {
   'routines:runNow': { req: { id: string }; res: RoutineRunRecord }
   'routines:history': { req: { id?: string; limit?: number }; res: RoutineRunRecord[] }
   'routines:preview': { req: { schedule: RoutineSchedule }; res: SchedulePreview }
+
+  /** Estado del helper nativo y permisos de macOS. */
+  'computer:status': { req: void; res: ComputerStatus }
+  /** Lanza los prompts de macOS y abre Ajustes › Privacidad (Accesibilidad / Grabación de pantalla). */
+  'computer:requestPermissions': { req: void; res: void }
+  /** Kill-switch: crea el archivo de parada; toda herramienta del MCP falla sin actuar. */
+  'computer:stop': { req: void; res: void }
+  /** Quita el archivo de parada. */
+  'computer:resume': { req: void; res: void }
 }
 
 export interface CoworkEventContract {
   'cowork:server': CoworkServerInfo
   'routines:changed': ScheduledRoutine[]
   'routines:run': RoutineRunRecord
+  'computer:action': ComputerActionEvent
+  /** Se detuvo el control (atajo global Cmd+Shift+Escape o computer:stop). */
+  'computer:stopped': { at: number }
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -177,10 +232,20 @@ export const COWORK_INVOKE_CHANNELS = [
   'routines:toggle',
   'routines:runNow',
   'routines:history',
-  'routines:preview'
+  'routines:preview',
+  'computer:status',
+  'computer:requestPermissions',
+  'computer:stop',
+  'computer:resume'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
-export const COWORK_EVENT_CHANNELS = ['cowork:server', 'routines:changed', 'routines:run'] as const satisfies readonly CoworkEventChannel[]
+export const COWORK_EVENT_CHANNELS = [
+  'cowork:server',
+  'routines:changed',
+  'routines:run',
+  'computer:action',
+  'computer:stopped'
+] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
 const _inv: Missing<CoworkInvokeChannel, (typeof COWORK_INVOKE_CHANNELS)[number]> extends never ? true : never = true

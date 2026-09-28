@@ -12,8 +12,6 @@ import {
   Loader2,
   Plus,
   RefreshCw,
-  Shield,
-  ShieldOff,
   Trash2,
   Users
 } from 'lucide-react'
@@ -26,6 +24,7 @@ import { errorMessage } from '../../../lib/opencode'
 import { selectSessionsForDirectory, useSessions, type MessageEntry } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
 import {
+  abortBusyTasks,
   abortTask,
   approvePending,
   archiveTask,
@@ -37,8 +36,10 @@ import {
   openTask,
   reveal,
   selectFolder,
-  sendToTask
+  sendToTask,
+  stopComputerControl
 } from './actions'
+import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { PermissionPrompt } from './PermissionPrompt'
@@ -46,6 +47,12 @@ import { ProgressPanel } from './ProgressPanel'
 import { disconnect, lastFolder, resync, useCowork } from './store'
 
 const EMPTY: MessageEntry[] = []
+
+const COMPUTER_SUGGESTIONS = [
+  'Crea una carpeta llamada Proyectos en el Escritorio',
+  'Abre Safari y busca el clima en Santiago',
+  'Toma una captura y dime qué hay en pantalla'
+]
 
 const SUGGESTIONS = [
   'Resume todos los documentos de esta carpeta en un informe resumen.md',
@@ -212,9 +219,14 @@ export function CoworkWorkspace(): React.JSX.Element {
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   const taskError = useSessions((s) => (activeId ? s.errors[activeId] : null))
+  const requestedFullAccess = useCowork((s) => s.fullAccess)
   const model = useSettings((s) => s.settings.defaultModel)
   const updateSettings = useSettings((s) => s.update)
   const [sendError, setSendError] = useState<string | null>(null)
+  const fullAccess = conn?.fullAccess === true
+  const folderBusy = useSessions((s) =>
+    Object.keys(s.status).some((id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder)
+  )
 
   // Carga inicial: carpetas autorizadas y reconexión a la última usada.
   useEffect(() => {
@@ -236,13 +248,43 @@ export function CoworkWorkspace(): React.JSX.Element {
     () =>
       onCowork('cowork:server', (info) => {
         const st = useCowork.getState()
-        if (info.folder === st.folder && info.state === 'error' && st.phase === 'ready') {
+        const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
+        if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
           disconnect()
           useCowork.setState({ phase: 'error', error: info.error ?? 'El servidor de Cowork se detuvo' })
         }
       }),
     []
   )
+
+  // Control del Mac: última acción del agente y parada (botón Detener o atajo global ⌘⇧Esc).
+  useEffect(() => {
+    const offAction = onCowork('computer:action', (ev) => {
+      if (useCowork.getState().conn?.fullAccess) useCowork.setState({ lastAction: ev })
+    })
+    const offStopped = onCowork('computer:stopped', (ev) => {
+      if (!useCowork.getState().conn?.fullAccess) return
+      useCowork.setState({ controlStoppedAt: ev.at || Date.now() })
+      void abortBusyTasks()
+    })
+    return () => {
+      offAction()
+      offStopped()
+    }
+  }, [])
+
+  // ⌘⇧Esc con la ventana enfocada (el main registra además el atajo global).
+  useEffect(() => {
+    if (!fullAccess) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        void stopComputerControl()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [fullAccess])
 
   const pendingForTask: PermissionRequest[] = useMemo(
     () => Object.values(permissions).filter((p) => !activeId || p.sessionID === activeId),
@@ -269,7 +311,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   const composer = (
     <Composer
       onSend={send}
-      onAbort={() => void abortTask()}
+      onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
       busy={busy}
       disabled={phase !== 'ready'}
       autoFocusKey={activeId ?? folder}
@@ -302,18 +344,11 @@ export function CoworkWorkspace(): React.JSX.Element {
               <span className="ml-auto flex items-center gap-2 text-xs text-muted">
                 {phase === 'starting' && (
                   <span className="flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" /> Iniciando sandbox…
+                    <Loader2 size={12} className="animate-spin" />{' '}
+                    {requestedFullAccess ? 'Iniciando acceso total…' : 'Iniciando sandbox…'}
                   </span>
                 )}
-                {phase === 'ready' && conn && (
-                  <span
-                    className={`flex items-center gap-1 rounded-full border px-2 py-0.5 ${conn.sandboxed ? 'border-accent/40 text-accent' : 'border-danger/40 text-danger'}`}
-                    title={conn.sandboxed ? 'Escrituras limitadas a esta carpeta (sandbox-exec)' : 'Sin sandbox en esta plataforma'}
-                  >
-                    {conn.sandboxed ? <Shield size={12} /> : <ShieldOff size={12} />}
-                    {conn.sandboxed ? 'Sandbox activo' : 'Sin sandbox'}
-                  </span>
-                )}
+                {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
                 <button
                   type="button"
                   title="Abrir carpeta en Finder"
@@ -324,6 +359,15 @@ export function CoworkWorkspace(): React.JSX.Element {
                 </button>
               </span>
             </header>
+
+            <ControlBanner />
+
+            {phase === 'ready' && requestedFullAccess && conn && !conn.fullAccess && (
+              <div className="m-4 mb-0 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                El servidor no activó el acceso total para esta carpeta; se usa el modo sandbox.
+              </div>
+            )}
 
             {phase === 'error' && (
               <div className="m-4 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -337,6 +381,7 @@ export function CoworkWorkspace(): React.JSX.Element {
 
             {activeId ? (
               <>
+                <ComputerPermissionsCard />
                 <div className="flex min-h-0 flex-1 flex-col">
                   <MessageList entries={entries} busy={busy} error={taskError} />
                 </div>
@@ -344,6 +389,7 @@ export function CoworkWorkspace(): React.JSX.Element {
                   <PermissionPrompt key={p.id} request={p} />
                 ))}
                 {sendError && <p className="mx-auto mb-2 max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
+                <VisionModelHint />
                 {composer}
               </>
             ) : (
@@ -351,14 +397,17 @@ export function CoworkWorkspace(): React.JSX.Element {
                 <div className="mx-auto w-full max-w-3xl px-6">
                   <h1 className="mb-1 text-3xl font-medium tracking-tight">¿Qué hacemos en «{baseName(folder)}»?</h1>
                   <p className="mb-6 text-sm text-muted">
-                    Describe el resultado que esperas. El agente planificará, trabajará solo y te pedirá permiso antes de borrar
-                    nada.
+                    {fullAccess
+                      ? 'Acceso total: el agente puede usar el ratón, el teclado y ver la pantalla de tu Mac. Detenlo cuando quieras con ⌘⇧Esc.'
+                      : 'Describe el resultado que esperas. El agente planificará, trabajará solo y te pedirá permiso antes de borrar nada.'}
                   </p>
                 </div>
+                <ComputerPermissionsCard />
                 {sendError && <p className="mx-auto mb-2 max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
+                <VisionModelHint />
                 {composer}
                 <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-2 px-6 sm:grid-cols-2">
-                  {SUGGESTIONS.map((s) => (
+                  {(fullAccess ? COMPUTER_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <button
                       key={s}
                       type="button"
@@ -390,6 +439,8 @@ export function CoworkWorkspace(): React.JSX.Element {
           </div>
         </aside>
       )}
+
+      <FullAccessDialog />
 
       {pending && (
         <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />
