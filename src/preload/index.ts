@@ -9,6 +9,8 @@ import {
   type WindowApi
 } from '@shared/ipc'
 import { buildCodeApi } from './code-api'
+import { buildCoworkApi } from './cowork-api'
+import { buildExtrasApi } from './extras-api'
 
 const invokeAllowed = new Set<string>(IPC_INVOKE_CHANNELS)
 const eventAllowed = new Set<string>(IPC_EVENT_CHANNELS)
@@ -31,7 +33,9 @@ const api: WindowApi = {
   },
 
   platform: process.platform,
-  code: buildCodeApi(ipcRenderer)
+  code: buildCodeApi(ipcRenderer),
+  cowork: buildCoworkApi(ipcRenderer),
+  extras: buildExtrasApi(ipcRenderer)
 }
 
 contextBridge.exposeInMainWorld('api', api)

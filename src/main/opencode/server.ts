@@ -3,6 +3,8 @@
  * usuario/clave aleatorios (HTTP Basic vía OPENCODE_SERVER_USERNAME/PASSWORD),
  * espera a `/global/health`, reinicia con backoff si se cae y lo mata al salir.
  */
+import { appOpencodeConfigEnv } from '../extras/mcp-config'
+import { getOpencodeEnv } from '../cowork/opencode-config'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
@@ -141,6 +143,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         env: {
           ...process.env,
           PATH: augmentedPath(),
+          ...getOpencodeEnv(),
+          ...appOpencodeConfigEnv(),
           OPENCODE_SERVER_USERNAME: username,
           OPENCODE_SERVER_PASSWORD: password,
           OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig())

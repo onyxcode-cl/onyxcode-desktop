@@ -1,6 +1,6 @@
 import { CalendarClock } from 'lucide-react'
 import type { ModeDefinition } from '../../app/types'
-import { RoutinesView } from './RoutinesView'
+import { RoutinesView } from './impl/RoutinesView'
 
 export const routinesMode: ModeDefinition = {
   id: 'routines',

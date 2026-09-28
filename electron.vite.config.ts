@@ -19,6 +19,14 @@ export default defineConfig({
         '@shared': shared
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          quick: resolve(__dirname, 'src/renderer/quick/index.html')
+        }
+      }
+    }
   }
 })

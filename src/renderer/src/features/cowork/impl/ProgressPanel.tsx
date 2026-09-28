@@ -1,5 +1,6 @@
 /** Panel derecho: plan (todos), actividad de herramientas y entregables. */
 import { useMemo, useState } from 'react'
+import { shortenPath } from '../../../lib/paths'
 import type { Todo, ToolPart } from '@opencode-ai/sdk/v2/client'
 import {
   AlertCircle,
@@ -63,11 +64,11 @@ function Section({
 
 function toolLabel(part: ToolPart): string {
   const s = part.state
-  if ('title' in s && s.title) return s.title
+  if ('title' in s && s.title) return shortenPath(s.title)
   const input = s.input
   for (const key of ['description', 'filePath', 'path', 'command', 'pattern', 'url']) {
     const v = input[key]
-    if (typeof v === 'string' && v) return v
+    if (typeof v === 'string' && v) return shortenPath(v)
   }
   return ''
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
+import { shortenPath } from '../lib/paths'
 import { AlertCircle, Check, ChevronRight, Loader2, Wrench } from 'lucide-react'
 
 function summarizeInput(input: Record<string, unknown>): string {
@@ -14,7 +15,7 @@ function summarizeInput(input: Record<string, unknown>): string {
 export function ToolCall({ part }: { part: ToolPart }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const { state } = part
-  const title = ('title' in state && state.title) || summarizeInput(state.input)
+  const title = shortenPath(('title' in state && state.title) || summarizeInput(state.input))
   const icon =
     state.status === 'completed' ? (
       <Check size={13} className="text-accent" />

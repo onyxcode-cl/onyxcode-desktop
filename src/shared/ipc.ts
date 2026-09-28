@@ -127,4 +127,6 @@ export interface WindowApi {
   on<C extends IpcEventChannel>(channel: C, listener: (payload: IpcEventContract[C]) => void): () => void
   platform: string
   code: import('./ipc-code').CodeApi
+  cowork: import('./ipc-cowork').CoworkApi
+  extras: import('./ipc-extras').ExtrasApi
 }

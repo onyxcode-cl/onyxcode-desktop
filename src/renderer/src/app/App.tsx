@@ -6,6 +6,8 @@ import { onOpencodeEvent, useServer } from '../stores/server'
 import { useSessions } from '../stores/sessions'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
+import { initExtrasPrefs } from '../features/settings/impl/extras'
+import { newChat, sendChatMessage } from '../features/chat/actions'
 import { MODES_BY_ID } from './modes'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
@@ -28,6 +30,40 @@ export function App(): React.JSX.Element {
       offEvents()
       offServer()
       offSettings()
+    }
+  }, [])
+
+  // Quick Entry, bandeja del sistema y preferencias extra.
+  useEffect(() => {
+    const offPrefs = initExtrasPrefs()
+    const x = window.api.extras
+    const waitClient = (): Promise<void> =>
+      new Promise<void>((resolve) => {
+        if (useServer.getState().client) return resolve()
+        const un = useServer.subscribe((s) => {
+          if (s.client) {
+            un()
+            resolve()
+          }
+        })
+      })
+    const offQuick = x.onQuickPrompt(({ text }) => {
+      useUi.getState().openSettings(false)
+      useUi.getState().setMode('chat')
+      newChat()
+      void waitClient().then(() => sendChatMessage(text))
+    })
+    const offNew = x.onNewConversation(() => {
+      useUi.getState().openSettings(false)
+      useUi.getState().setMode('chat')
+      newChat()
+    })
+    const offOpenSettings = x.onOpenSettings(() => useUi.getState().openSettings(true))
+    return () => {
+      offPrefs()
+      offQuick()
+      offNew()
+      offOpenSettings()
     }
   }, [])
 

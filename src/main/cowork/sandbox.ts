@@ -11,7 +11,7 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { findOpencodeBinary, getFreePort } from '../opencode/server'
@@ -162,8 +162,9 @@ export async function startCoworkServer(
 
   let command = bin
   let args = serveArgs
+  let profile: string | null = null
   if (sandboxed) {
-    const profile = writeSandboxProfile(folder)
+    profile = writeSandboxProfile(folder)
     command = SANDBOX_EXEC
     args = ['-f', profile, bin, ...serveArgs]
   }
@@ -192,6 +193,7 @@ export async function startCoworkServer(
   child.on('error', (err) => log(`[spawn error] ${err.message}\n`))
   const exited = new Promise<number | null>((resolve) => {
     child.once('exit', (code) => {
+      if (profile) rmSync(profile, { force: true })
       options.onExit?.(code)
       resolve(code)
     })

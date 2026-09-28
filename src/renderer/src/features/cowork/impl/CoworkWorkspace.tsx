@@ -337,7 +337,7 @@ export function CoworkWorkspace(): React.JSX.Element {
 
             {activeId ? (
               <>
-                <div className="min-h-0 flex-1">
+                <div className="flex min-h-0 flex-1 flex-col">
                   <MessageList entries={entries} busy={busy} error={taskError} />
                 </div>
                 {pendingForTask.map((p) => (

@@ -5,7 +5,6 @@ import { registerDialogHandlers } from './dialog'
 import { registerGitHandlers } from './git'
 import { registerOpencodeHandlers } from './opencode'
 import { registerPtyHandlers } from './pty'
-import { registerSchedulerHandlers } from './scheduler'
 import { registerSettingsHandlers } from './settings'
 
 export interface IpcContext {
@@ -21,5 +20,4 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerDialogHandlers(ipcMain)
   registerPtyHandlers(ipcMain)
   registerGitHandlers(ipcMain)
-  registerSchedulerHandlers(ipcMain)
 }

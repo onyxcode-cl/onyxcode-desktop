@@ -5,6 +5,8 @@ import { APP_ID, APP_NAME } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { registerAllHandlers } from './ipc'
 import { registerCodeHandlers } from './ipc/code-handlers'
+import { registerCoworkHandlers } from './ipc/cowork-handlers'
+import { registerExtrasHandlers } from './ipc/extras-handlers'
 
 app.setName(APP_NAME)
 
@@ -21,6 +23,9 @@ const devOrigin = (() => {
 })()
 
 const server = new OpencodeServer({ chatDirectory, corsOrigins: devOrigin })
+
+let mainWindow: BrowserWindow | null = null
+let coworkMod: ReturnType<typeof registerCoworkHandlers> | null = null
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -41,7 +46,12 @@ function createWindow(): BrowserWindow {
     }
   })
 
+  mainWindow = win
   win.on('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
+    if (process.platform !== 'darwin') app.quit()
+  })
 
   // Links externos al navegador del sistema.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -70,6 +80,12 @@ app.whenReady().then(() => {
 
   registerAllHandlers(ipcMain, { server, chatDirectory })
   registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
+  coworkMod = registerCoworkHandlers(ipcMain, () => mainWindow, {
+    getMainConnection: () => server.start(),
+    chatDirectory,
+    corsOrigins: devOrigin
+  })
+  registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
 
   // Arranca el sidecar en paralelo a la ventana.
   server.start().catch((err: unknown) => console.error('[main] opencode no arrancó:', err))
@@ -77,7 +93,8 @@ app.whenReady().then(() => {
   createWindow()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    // La ventana oculta de Quick Entry cuenta en getAllWindows: usar la principal.
+    if (!mainWindow || mainWindow.isDestroyed()) createWindow()
   })
 })
 
@@ -90,17 +107,21 @@ app.on('before-quit', (event) => {
   if (quitting) return
   quitting = true
   event.preventDefault()
-  server
-    .stop()
+  Promise.allSettled([server.stop(), coworkMod?.shutdown()])
+    .then(() => undefined)
     .catch((err: unknown) => console.error('[main] error deteniendo opencode:', err))
     .finally(() => app.quit())
 })
 
 // Último recurso: nunca dejar el sidecar huérfano.
-process.on('exit', () => server.killSync())
+process.on('exit', () => {
+  server.killSync()
+  coworkMod?.killSync()
+})
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
     server.killSync()
+    coworkMod?.killSync()
     process.exit(0)
   })
 }
