@@ -41,7 +41,7 @@ export function Sidebar(): React.JSX.Element {
         <div
           role="tablist"
           aria-label="Modo"
-          className="relative grid rounded-xl border border-border/60 bg-hover/60 p-1"
+          className="relative grid rounded-xl border border-border/70 bg-inset p-1"
           style={{ gridTemplateColumns: `repeat(${MODES.length}, minmax(0, 1fr))` }}
         >
           {!settingsOpen && activeIndex >= 0 && (

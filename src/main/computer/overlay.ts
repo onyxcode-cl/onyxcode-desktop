@@ -362,7 +362,6 @@ export class ComputerOverlay {
 
   private ensurePill(): BrowserWindow {
     if (this.pill && !this.pill.isDestroyed()) return this.pill
-    const isMac = process.platform === 'darwin'
     const win = new BrowserWindow({
       width: PILL_W,
       height: PILL_H,
@@ -379,7 +378,8 @@ export class ComputerOverlay {
       skipTaskbar: true,
       alwaysOnTop: true,
       acceptFirstMouse: true,
-      ...(isMac ? { type: 'panel' as const } : {}),
+      // Sin `type: 'panel'`: en macOS 26+ un NSPanel pequeño y transparente pinta un fondo opaco
+      // detrás de la web (verificado con screencapture); una ventana normal queda transparente.
       webPreferences: this.webPreferences()
     })
     // Solo movimientos del usuario (arrastre): desde entonces se respeta su posición.

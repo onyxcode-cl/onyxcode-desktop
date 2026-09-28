@@ -53,12 +53,27 @@ export function Composer({
     })
   }, [insert])
 
+  // Autoajuste de alto: al cambiar el texto y cuando cambia el ancho disponible.
   useEffect(() => {
     const el = ref.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 280)}px`
   }, [text])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    let lastWidth = el.clientWidth
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === lastWidth) return
+      lastWidth = el.clientWidth
+      el.style.height = 'auto'
+      el.style.height = `${Math.min(el.scrollHeight, 280)}px`
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const canSend = !disabled && !busy && text.trim().length > 0
 
