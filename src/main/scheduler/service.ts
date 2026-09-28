@@ -5,7 +5,9 @@
  *   La próxima ejecución se calcula desde max(lastRun, updatedAt), así que si la app
  *   estuvo cerrada y se perdió una o más ejecuciones, se ejecuta UNA vez al arrancar
  *   (trigger `catchup`) y luego sigue el calendario normal.
- * - Cada ejecución crea una sesión OpenCode y hace `session.prompt` (bloqueante).
+ * - Cada ejecución crea una sesión OpenCode, lanza `session.promptAsync` y espera a que la
+ *   sesión quede inactiva sondeando `session.status` (NO `session.prompt` bloqueante: el `fetch`
+ *   de Node corta a los 300 s — undici `headersTimeout` — y las rutinas largas fallaban, B1).
  *   Modo chat/code → sidecar principal; modo cowork → servidor sandboxeado de la carpeta.
  * - Ejecución desatendida: los permisos `ask` y preguntas se rechazan automáticamente.
  * - Notificación nativa al terminar.
@@ -15,7 +17,13 @@ import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { createOpencodeClient, type OpencodeClient, type Part } from '@opencode-ai/sdk/v2/client'
+import {
+  createOpencodeClient,
+  type AssistantMessage,
+  type Message,
+  type OpencodeClient,
+  type Part
+} from '@opencode-ai/sdk/v2/client'
 import type {
   RoutineInput,
   RoutineMode,
@@ -31,6 +39,9 @@ const TICK_MS = 30_000
 const FIRST_TICK_DELAY_MS = 8_000
 const RUN_TIMEOUT_MS = 45 * 60_000
 const PERMISSION_POLL_MS = 2_000
+const STATUS_POLL_MS = 2_000
+/** Si la sesión nunca llegó a verse ocupada ni hay respuesta, tras esto se da por terminada. */
+const START_GRACE_MS = 60_000
 const MAX_HISTORY = 300
 const SUMMARY_MAX = 800
 
@@ -389,7 +400,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     }, RUN_TIMEOUT_MS)
 
     try {
-      const res = await client.session.prompt({
+      const sentAt = Date.now()
+      const res = await client.session.promptAsync({
         sessionID,
         directory: dirForSession,
         agent,
@@ -399,14 +411,75 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
           'Completa la tarea con supuestos razonables y termina con un resumen breve del resultado.',
         parts: [{ type: 'text', text: r.prompt }]
       })
-      if (res.error || !res.data) throw new Error(errMsg(res.error))
-      if (res.data.info.error) throw new Error(errMsg(res.data.info.error))
+      if (res.error) throw new Error(errMsg(res.error))
+      const final = await this.waitForCompletion(client, dirForSession, sessionID, sentAt, signal, () => !!record.error)
       if (record.error) throw new Error(record.error)
-      return truncate(extractText(res.data.parts) || '(Sin texto de respuesta)', SUMMARY_MAX)
+      if (!final) throw new Error('La sesión terminó sin respuesta del asistente')
+      if (final.info.error) throw new Error(errMsg(final.info.error))
+      return truncate(extractText(final.parts) || '(Sin texto de respuesta)', SUMMARY_MAX)
     } finally {
       clearInterval(poll)
       clearTimeout(timeout)
       signal.removeEventListener('abort', onAbort)
+    }
+  }
+
+  /**
+   * Espera a que la sesión termine el turno lanzado en `sentAt` y devuelve el último mensaje
+   * del asistente de ese turno (o null). Sondea `session.status` (sin peticiones largas).
+   */
+  private async waitForCompletion(
+    client: OpencodeClient,
+    directory: string,
+    sessionID: string,
+    sentAt: number,
+    signal: AbortSignal,
+    timedOut: () => boolean
+  ): Promise<{ info: AssistantMessage; parts: Part[] } | null> {
+    let sawBusy = false
+    let abortedPolls = 0
+    for (;;) {
+      await new Promise((r) => setTimeout(r, STATUS_POLL_MS))
+      if (signal.aborted || timedOut()) abortedPolls++
+      let busy = true
+      try {
+        const st = await client.session.status({ directory })
+        const s = st.data?.[sessionID]
+        busy = !!s && s.type !== 'idle'
+      } catch {
+        busy = true // servidor ocupado/reiniciando: reintentar
+      }
+      if (busy) {
+        sawBusy = true
+        if (abortedPolls < 15) continue // tras abortar, dar ~30 s para que se detenga
+      }
+      const turn = await this.lastTurn(client, directory, sessionID, sentAt)
+      const done = !!turn && (!!turn.info.time.completed || !!turn.info.error)
+      if (done || abortedPolls > 0) return turn
+      // Idle sin respuesta completa: o aún no empezó, o terminó sin mensaje del asistente.
+      if (sawBusy || Date.now() - sentAt > START_GRACE_MS) return turn
+    }
+  }
+
+  /** Último mensaje del asistente que responde al mensaje de usuario enviado en `sentAt`. */
+  private async lastTurn(
+    client: OpencodeClient,
+    directory: string,
+    sessionID: string,
+    sentAt: number
+  ): Promise<{ info: AssistantMessage; parts: Part[] } | null> {
+    try {
+      const res = await client.session.messages({ sessionID, directory })
+      const list = res.data ?? []
+      const user = [...list].reverse().find((m) => m.info.role === 'user' && m.info.time.created >= sentAt - 5_000)
+      if (!user) return null
+      const replies = list.filter(
+        (m): m is { info: AssistantMessage; parts: Part[] } =>
+          isAssistant(m.info) && m.info.parentID === user.info.id
+      )
+      return replies.at(-1) ?? null
+    } catch {
+      return null
     }
   }
 
@@ -441,6 +514,10 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     })
     n.show()
   }
+}
+
+function isAssistant(m: Message): m is AssistantMessage {
+  return m.role === 'assistant'
 }
 
 function extractText(parts: Part[]): string {

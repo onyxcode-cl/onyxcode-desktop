@@ -11,8 +11,13 @@ files:
   - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,PLAN.md,DESIGN.md,AUDIT.md}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!build/*'
+  # Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
+  - '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}'
+  - '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}'
+# Solo los agentes (se copian a userData/opencode-config al arrancar; OpenCode NUNCA escribe
+# en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
 asarUnpack:
-  - resources/**
+  - resources/opencode/agents/**
 # Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
 extraResources:
   - from: resources/computer-use/bin

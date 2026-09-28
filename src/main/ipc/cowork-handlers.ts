@@ -13,6 +13,7 @@ import type {
 } from '@shared/ipc-cowork'
 import { CoworkManager } from '../cowork/manager'
 import { importFilesInto, previewFile } from '../cowork/files'
+import { assertSafeToOpen } from '../cowork/open-policy'
 import { ComputerService } from '../computer/service'
 import { ComputerOverlay } from '../computer/overlay'
 import { abortFullAccessSessions } from '../computer/abort'
@@ -65,7 +66,6 @@ export function registerCoworkHandlers(
   deps: CoworkHandlerDeps
 ): CoworkModule {
   const computer = new ComputerService()
-  computer.init()
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
   const overlay = new ComputerOverlay({
     instant: computer.instant,
@@ -106,6 +106,9 @@ export function registerCoworkHandlers(
     send('computer:stopped', ev)
     overlay.stopped()
   })
+  // Tras los listeners: si el atajo global no se registra, `killState` llega a la UI (que además
+  // lo consulta con `computer:state` al montar Cowork, por si la ventana aún no existía).
+  computer.init()
 
   // ── Cowork ──
   handle(ipcMain, 'cowork:pickFolder', async (_req, event) => {
@@ -122,6 +125,8 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'cowork:approveFolder', ({ folder }) => cowork.approveFolder(folder))
   handle(ipcMain, 'cowork:removeFolder', ({ folder }) => cowork.removeFolder(folder))
   handle(ipcMain, 'cowork:start', ({ folder, fullAccess }) => cowork.start(folder, fullAccess === true))
+  handle(ipcMain, 'cowork:grantFullAccess', ({ folder }) => cowork.grantFullAccess(folder))
+  handle(ipcMain, 'cowork:revokeFullAccess', ({ folder }) => cowork.revokeFullAccess(folder))
   handle(ipcMain, 'cowork:stop', ({ folder, fullAccess }) => cowork.stop(folder, fullAccess))
   handle(ipcMain, 'cowork:servers', () => cowork.listServers())
   handle(ipcMain, 'cowork:deliverables', ({ folder, since }) => cowork.deliverables(folder, since))
@@ -129,7 +134,9 @@ export function registerCoworkHandlers(
     shell.showItemInFolder(cowork.assertInsideApproved(path))
   })
   handle(ipcMain, 'cowork:openPath', async ({ path }) => {
-    const err = await shell.openPath(cowork.assertInsideApproved(path))
+    const real = cowork.assertInsideApproved(path)
+    assertSafeToOpen(real) // ejecutables/lanzadores: solo "Mostrar en Finder" (S4)
+    const err = await shell.openPath(real)
     if (err) throw new Error(err)
   })
   handle(ipcMain, 'cowork:importFiles', async ({ folder }, event) => {

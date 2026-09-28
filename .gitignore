@@ -5,3 +5,9 @@ dist
 .DS_Store
 *.tsbuildinfo
 resources/computer-use/bin/
+# Generado por OpenCode si alguna vez usa resources/opencode como OPENCODE_CONFIG_DIR (ya no: P1)
+resources/opencode/node_modules/
+resources/opencode/package.json
+resources/opencode/package-lock.json
+resources/opencode/bun.lock
+resources/opencode/.gitignore

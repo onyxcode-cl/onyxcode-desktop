@@ -76,6 +76,15 @@ export async function setAccessMode(fullAccess: boolean, confirmed = false): Pro
     return
   }
   useCowork.setState({ pendingFullAccess: null })
+  // El consentimiento lo registra main (cowork:start {fullAccess} lo exige); volver a sandbox
+  // lo retira y detiene el servidor sin sandbox.
+  try {
+    if (fullAccess) await cw('cowork:grantFullAccess', { folder })
+    else await cw('cowork:revokeFullAccess', { folder })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+    if (fullAccess) return
+  }
   rememberFullAccess(folder, fullAccess)
   await connectFolder(folder, fullAccess)
 }

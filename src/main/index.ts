@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
+import { killStaleServers } from './opencode/pids'
+import { prepareOpencodeConfigDir } from './cowork/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerCodeHandlers } from './ipc/code-handlers'
 import { registerCoworkHandlers } from './ipc/cowork-handlers'
@@ -77,6 +79,15 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId(APP_ID)
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+
+  // Servidores `opencode serve` huérfanos de una ejecución anterior que no salió limpia (B3).
+  try {
+    killStaleServers()
+  } catch (err) {
+    console.error('[main] limpieza de servidores huérfanos:', err)
+  }
+  // Agentes de la app → userData/opencode-config (nunca escribir dentro del bundle, P1).
+  prepareOpencodeConfigDir()
 
   registerAllHandlers(ipcMain, { server, chatDirectory })
   registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
