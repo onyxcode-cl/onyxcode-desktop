@@ -20,6 +20,8 @@ import {
 } from '@shared/ipc-cowork'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startCoworkServer, type CoworkServerHandle } from './sandbox'
+import { NetworkPolicy, type NetworkPolicyState } from './proxy-policy'
+import type { EgressBlockedEvent, EgressLogEntry } from './proxy'
 
 /** Consentimiento de "Acceso total" registrado en main (AUDIT.md S7). */
 interface FullAccessGrant {
@@ -31,6 +33,8 @@ interface Persisted {
   folders: CoworkFolder[]
   /** Carpetas con acceso total concedido explícitamente (`cowork:grantFullAccess`). */
   fullAccess: FullAccessGrant[]
+  /** Carpetas con "Permitir borrar" concedido (Seatbelt: `file-write-unlink`). */
+  deleteGrants: string[]
 }
 
 /** Integración con computer use (inyectada para no acoplar el gestor a Electron/IPC). */
@@ -59,6 +63,7 @@ interface Entry {
 
 interface ManagerEvents {
   server: [CoworkServerInfo]
+  networkBlocked: [{ folder: string } & EgressBlockedEvent]
 }
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.opencode', '.cowork', '.venv', '__pycache__', '.DS_Store'])
@@ -92,9 +97,28 @@ export function forbiddenFolderReason(folder: string): string | null {
 export class CoworkManager extends EventEmitter<ManagerEvents> {
   private servers = new Map<string, Entry>()
   private data: Persisted | null = null
+  readonly network = new NetworkPolicy()
 
   constructor(private readonly opts: { corsOrigins?: string[]; computer?: CoworkComputerDeps } = {}) {
     super()
+  }
+
+  networkState(): NetworkPolicyState {
+    return this.network.state()
+  }
+
+  /** "Permitir esta vez" (tarjeta de bloqueo): no persiste, efecto inmediato (el proxy relee la lista en cada conexión). */
+  networkAllowOnce(folder: string, host: string): void {
+    this.network.allowOnce(normalizeFolder(folder), host)
+  }
+
+  /** "Permitir siempre" / "Mantener bloqueado" para un host (persistido, efecto inmediato). */
+  networkSetHost(host: string, decision: 'allow' | 'block' | 'unset'): NetworkPolicyState {
+    return this.network.setHostAlways(host, decision)
+  }
+
+  networkSetToggle(key: 'npmEnabled' | 'pypiEnabled', value: boolean): NetworkPolicyState {
+    return this.network.setToggle(key, value)
   }
 
   private get file(): string {
@@ -103,7 +127,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
 
   private load(): Persisted {
     if (this.data) return this.data
-    let data: Persisted = { folders: [], fullAccess: [] }
+    let data: Persisted = { folders: [], fullAccess: [], deleteGrants: [] }
     try {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
@@ -117,13 +141,39 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
             (g): g is FullAccessGrant => !!g && typeof g.path === 'string' && typeof g.grantedAt === 'number'
           )
         }
+        if (Array.isArray(raw.deleteGrants)) {
+          data.deleteGrants = raw.deleteGrants.filter((p): p is string => typeof p === 'string')
+        }
       }
     } catch (err) {
       console.error('[cowork] cowork.json inválido:', err)
-      data = { folders: [], fullAccess: [] }
+      data = { folders: [], fullAccess: [], deleteGrants: [] }
     }
     this.data = data
     return data
+  }
+
+  /** true si el usuario concedió "Permitir borrar" para esta carpeta. */
+  hasDeleteGrant(folder: string): boolean {
+    return this.load().deleteGrants.includes(normalizeFolder(folder))
+  }
+
+  /** Concede/retira "Permitir borrar" y reconfigura (reinicia) el servidor sandboxeado si está vivo. */
+  async setDeleteGrant(folder: string, allowed: boolean): Promise<void> {
+    const f = normalizeFolder(folder)
+    const data = this.load()
+    const before = data.deleteGrants.includes(f)
+    if (allowed && !before) data.deleteGrants.push(f)
+    else if (!allowed && before) data.deleteGrants = data.deleteGrants.filter((p) => p !== f)
+    else return
+    this.save()
+    // Reconfigurar: el permiso de borrado vive en el perfil Seatbelt (proceso ya lanzado), así
+    // que hace falta relanzar el servidor sandboxeado para que tome efecto.
+    const key = serverKey(f, false)
+    if (this.servers.get(key)?.handle) {
+      await this.stopOne(f, false)
+      await this.spawn(f, false)
+    }
   }
 
   private save(): void {
@@ -163,7 +213,9 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     const data = this.load()
     data.folders = data.folders.filter((x) => x.path !== f)
     data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
+    data.deleteGrants = data.deleteGrants.filter((p) => p !== f)
     this.save()
+    this.network.clearFolder(f)
   }
 
   hasFullAccessGrant(folder: string): boolean {
@@ -289,6 +341,11 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {})
         },
+        networkAllowlist: fullAccess ? undefined : () => this.network.effectiveAllowlist(folder),
+        allowDelete: fullAccess ? undefined : this.hasDeleteGrant(folder),
+        onEgressBlocked: fullAccess
+          ? undefined
+          : (ev) => this.emit('networkBlocked', { folder, ...ev }),
         onExit: (code) => {
           const e = this.servers.get(key)
           if (!e) return

@@ -188,6 +188,8 @@ export function TaskConversation({ entries, busy, error, permissions, footer }: 
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const blocks = useMemo(() => buildBlocks(entries), [entries])
+  const [forceOpenId, setForceOpenId] = useState<string | null>(null)
+  const [flashId, setFlashId] = useState<string | null>(null)
 
   const onScroll = (): void => {
     const el = scrollRef.current
@@ -204,6 +206,23 @@ export function TaskConversation({ entries, busy, error, permissions, footer }: 
   useEffect(() => {
     stickRef.current = true
   }, [firstId])
+
+  // Panel de contexto/actividad ⇒ abrir el bloque de pasos que contiene esa parte y hacer scroll.
+  useEffect(
+    () =>
+      onScrollToPart((partId) => {
+        const block = blocks.find((b) => b.kind === 'steps' && b.parts.some((p) => p.id === partId))
+        if (!block) return
+        stickRef.current = false
+        setForceOpenId(block.id)
+        setFlashId(block.id)
+        requestAnimationFrame(() => {
+          document.getElementById(`cw-block-${block.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        })
+        setTimeout(() => setFlashId((id) => (id === block.id ? null : id)), 1600)
+      }),
+    [blocks]
+  )
 
   const last = blocks[blocks.length - 1]
   const showThinking = busy && permissions.length === 0 && (!last || last.kind === 'user' || last.kind === 'text')
@@ -236,7 +255,16 @@ export function TaskConversation({ entries, busy, error, permissions, footer }: 
             case 'text':
               return <Markdown key={b.id} text={b.text} />
             case 'steps':
-              return <StepsBlock key={b.id} parts={b.parts} live={busy && i === blocks.length - 1} />
+              return (
+                <StepsBlock
+                  key={b.id}
+                  id={b.id}
+                  parts={b.parts}
+                  live={busy && i === blocks.length - 1}
+                  forceOpen={forceOpenId === b.id}
+                  flash={flashId === b.id}
+                />
+              )
             case 'error':
               return <AssistantError key={b.id} info={b.info} />
             case 'retry':

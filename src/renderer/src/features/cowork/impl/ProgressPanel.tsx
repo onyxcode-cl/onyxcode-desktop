@@ -1,26 +1,38 @@
-/** Panel derecho: Plan (todos en vivo), Entregables (con vista previa) y Actividad agrupada por paso. */
-import { useMemo, useState } from 'react'
+/**
+ * Panel derecho: Plan (todos en vivo), Entregables (con vista previa), Contexto (herramientas,
+ * archivos y conectores usados, con scroll a la conversación), Programada (rutina vinculada, si
+ * se creó con "Programar esta tarea") y Actividad agrupada por paso.
+ */
+import { useEffect, useMemo, useState } from 'react'
 import type { Todo, ToolPart } from '@opencode-ai/sdk/v2/client'
 import {
   AlertCircle,
+  CalendarClock,
   CheckCircle2,
   ChevronRight,
   Circle,
   CircleDashed,
   CircleX,
+  FileInput,
+  FileOutput,
+  Globe,
   ListChecks,
   Loader2,
   Package,
+  Plug,
   RefreshCw,
+  Terminal,
   Activity
 } from 'lucide-react'
-import type { CoworkDeliverable } from '@shared/ipc-cowork'
+import type { CoworkDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-cowork'
+import { cw } from './bridge'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { ScreenshotThumbs } from './ComputerAccess'
 import { computerToolKind, toolImages } from './computer-tools'
 import { DeliverableList } from './Deliverables'
+import { requestScrollToPart } from './scroll'
 import { refreshDeliverables, useCowork } from './store'
-import { friendlyTool, groupActivityBySteps } from './util'
+import { buildContext, friendlyTool, groupActivityBySteps, relTime, type ContextItem } from './util'
 
 const EMPTY_TODOS: Todo[] = []
 const EMPTY_FILES: CoworkDeliverable[] = []
@@ -153,12 +165,101 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
   )
 }
 
+function ContextRow({ item }: { item: ContextItem }): React.JSX.Element {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => requestScrollToPart(item.partId)}
+        title={item.sub ?? item.label}
+        className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1 text-left text-xs text-fg hover:bg-hover"
+      >
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      </button>
+    </li>
+  )
+}
+
+function ContextGroup({
+  icon: Icon,
+  label,
+  items
+}: {
+  icon: typeof FileInput
+  label: string
+  items: ContextItem[]
+}): React.JSX.Element | null {
+  if (items.length === 0) return null
+  return (
+    <div className="mb-2.5 last:mb-0">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-subtle">
+        <Icon size={12} /> {label} <span className="text-subtle/70">· {items.length}</span>
+      </div>
+      <ul className="space-y-0.5">
+        {items.map((it, i) => (
+          <ContextRow key={`${it.partId}-${i}`} item={it} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** Rutina vinculada a esta tarea ("Programar esta tarea") y sus últimas ejecuciones. */
+function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const [routine, setRoutine] = useState<ScheduledRoutine | null | undefined>(undefined)
+  const [runs, setRuns] = useState<RoutineRunRecord[]>([])
+
+  useEffect(() => {
+    let alive = true
+    setRoutine(undefined)
+    setRuns([])
+    void cw('routines:list').then((list) => {
+      if (!alive) return
+      const found = list.find((r) => r.originSessionId === sessionID) ?? null
+      setRoutine(found)
+      if (found) void cw('routines:history', { id: found.id, limit: 5 }).then((h) => alive && setRuns(h))
+    }, () => alive && setRoutine(null))
+    return () => {
+      alive = false
+    }
+  }, [sessionID])
+
+  if (!routine) return null
+  return (
+    <Section icon={CalendarClock} title="Programada" badge={routine.enabled ? 'Activa' : 'Pausada'}>
+      <p className="mb-2 text-[13px] font-medium text-fg">{routine.name}</p>
+      {runs.length === 0 ? (
+        <p className="text-xs text-subtle">Aún no se ha ejecutado.</p>
+      ) : (
+        <ul className="space-y-1">
+          {runs.map((r) => (
+            <li key={r.id} className="flex items-center gap-2 text-xs">
+              {r.status === 'success' ? (
+                <CheckCircle2 size={12} className="shrink-0 text-accent" />
+              ) : r.status === 'error' ? (
+                <AlertCircle size={12} className="shrink-0 text-danger" />
+              ) : (
+                <Loader2 size={12} className="shrink-0 animate-spin text-accent" />
+              )}
+              <span className="text-muted">{relTime(r.startedAt)}</span>
+              {r.summary && <span className="min-w-0 flex-1 truncate text-subtle" title={r.summary}>{r.summary}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  )
+}
+
 export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; busy: boolean }): React.JSX.Element {
   const todos = useCowork((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
   const files = useCowork((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
   const entries = useSessions((s) => (sessionID ? (s.messages[sessionID] ?? EMPTY_ENTRIES) : EMPTY_ENTRIES))
   const groups = useMemo(() => groupActivityBySteps(entries), [entries])
   const toolCount = groups.reduce((n, g) => n + g.tools.length, 0)
+  const context = useMemo(() => buildContext(entries), [entries])
+  const contextCount =
+    context.filesRead.length + context.filesWritten.length + context.commands.length + context.web.length + context.connectors.length
 
   if (!sessionID) {
     return (
@@ -238,6 +339,25 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
           <p className="text-xs text-subtle">Los archivos que cree o modifique el agente aparecerán aquí.</p>
         ) : (
           <DeliverableList files={files} />
+        )}
+      </Section>
+
+      <ScheduledSection sessionID={sessionID} />
+
+      <Section icon={Plug} title="Contexto" badge={contextCount > 0 ? contextCount : undefined} defaultOpen={false}>
+        {contextCount === 0 ? (
+          <p className="text-xs text-subtle">
+            Aquí verás qué archivos, comandos y conectores usó el agente. Haz clic en una entrada para ir a ese punto de
+            la conversación.
+          </p>
+        ) : (
+          <>
+            <ContextGroup icon={FileInput} label="Archivos leídos" items={context.filesRead} />
+            <ContextGroup icon={FileOutput} label="Archivos creados o editados" items={context.filesWritten} />
+            <ContextGroup icon={Terminal} label="Comandos" items={context.commands} />
+            <ContextGroup icon={Globe} label="Web" items={context.web} />
+            <ContextGroup icon={Plug} label="Conectores" items={context.connectors} />
+          </>
         )}
       </Section>
 

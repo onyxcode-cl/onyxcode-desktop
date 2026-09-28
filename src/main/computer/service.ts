@@ -52,6 +52,10 @@ export const STOP_SHORTCUT = 'CommandOrControl+Shift+Escape'
 
 const PANE_ACCESSIBILITY = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
 const PANE_SCREEN = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+/** Tras esto sin ninguna acción, se para el vigía de Esc (deja de escuchar el teclado). */
+const ESC_WATCHER_IDLE_MS = 8_000
+/** `request_access` sin respuesta en este tiempo ⇒ se trata como denegado. */
+const ACCESS_REQUEST_TIMEOUT_MS = 5 * 60_000
 
 /** Duración del movimiento animado del cursor (ms). Debe coincidir con `motionDuration` de helper.swift. */
 export function motionDurationMs(dist: number): number {
@@ -64,6 +68,8 @@ interface ServiceEvents {
   stopped: [{ at: number }]
   /** Cualquier cambio del kill-switch (parada, reanudación, atajo global no disponible). */
   killState: [ComputerKillState]
+  /** Tarjeta "¿Permitir que el agente use X?" pendiente (herramienta MCP `request_access`). */
+  requestAccess: [AccessRequest]
 }
 
 /** Resultado de abortar las sesiones de los servidores de acceso total. */
@@ -115,6 +121,17 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     () => this.mcpScriptPath(),
     () => this.mcpEnv()
   )
+  /** Concesión por app (bloque C, ítem 9): `userData/computer-grants.json`. */
+  private _grants: ComputerGrantsStore | null = null
+  get grants(): ComputerGrantsStore {
+    this._grants ??= new ComputerGrantsStore(join(app.getPath('userData'), 'computer-grants.json'))
+    return this._grants
+  }
+  /** Tarjetas `request_access` pendientes de respuesta del usuario (canal lateral del MCP). */
+  private readonly pendingAccess = new Map<string, { resolve: (d: Record<string, AccessDecision>) => void }>()
+  /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
+  private escWatcher: ChildProcessWithoutNullStreams | null = null
+  private escIdleTimer: NodeJS.Timeout | null = null
 
   /** Ruta del helper nativo o null si no está compilado. */
   helperPath(): string | null {
@@ -165,6 +182,81 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     rmSync(join(app.getPath('userData'), 'computer-use', 'STOP'), { force: true })
     this.resume()
     this.registerShortcut()
+    // Esc físico: solo vigila mientras hay actividad reciente (ver `noteActivity`); un Esc suelto
+    // en cualquier otro momento no para nada.
+    this.on('action', () => this.noteActivity())
+  }
+
+  // ───────────────────────────── Esc físico (parada mientras se controla) ─────────────────────────────
+
+  private noteActivity(): void {
+    this.ensureEscWatcher()
+    if (this.escIdleTimer) clearTimeout(this.escIdleTimer)
+    this.escIdleTimer = setTimeout(() => this.stopEscWatcher(), ESC_WATCHER_IDLE_MS)
+  }
+
+  private ensureEscWatcher(): void {
+    if (this.escWatcher || process.platform !== 'darwin') return
+    const bin = this.helperPath()
+    if (!bin) return
+    try {
+      const child = spawn(bin, ['watch-esc'], { stdio: ['ignore', 'pipe', 'pipe'] })
+      this.escWatcher = child
+      createInterface({ input: child.stdout }).on('line', (line) => {
+        if (line.trim() === 'STOP') void this.stop()
+      })
+      child.once('exit', () => {
+        if (this.escWatcher === child) this.escWatcher = null
+      })
+      child.once('error', (err) => {
+        console.error('[computer] watch-esc:', err)
+        if (this.escWatcher === child) this.escWatcher = null
+      })
+    } catch (err) {
+      console.error('[computer] watch-esc:', err)
+    }
+  }
+
+  private stopEscWatcher(): void {
+    if (this.escIdleTimer) {
+      clearTimeout(this.escIdleTimer)
+      this.escIdleTimer = null
+    }
+    const w = this.escWatcher
+    this.escWatcher = null
+    if (w) w.kill('SIGTERM')
+  }
+
+  // ───────────────────────────── Concesión por app: `request_access` ─────────────────────────────
+
+  /** Emite la tarjeta y espera la respuesta del usuario (o 5 min → todo denegado). */
+  requestAccess(apps: AccessRequestApp[], reason?: string): Promise<Record<string, AccessDecision>> {
+    const id = randomBytes(8).toString('hex')
+    return new Promise((resolve) => {
+      this.pendingAccess.set(id, { resolve })
+      this.emit('requestAccess', { id, apps, reason })
+      setTimeout(() => {
+        const p = this.pendingAccess.get(id)
+        if (!p) return
+        this.pendingAccess.delete(id)
+        p.resolve(Object.fromEntries(apps.map((a) => [a.bundleId, 'deny' as const])))
+      }, ACCESS_REQUEST_TIMEOUT_MS).unref()
+    })
+  }
+
+  /** El renderer responde `computer:respondAccess`: aplica y persiste cada decisión. */
+  resolveAccessRequest(id: string, decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>): boolean {
+    const pending = this.pendingAccess.get(id)
+    if (!pending) return false
+    this.pendingAccess.delete(id)
+    const map: Record<string, AccessDecision> = {}
+    for (const d of decisions) {
+      map[d.bundleId] = d.decision
+      if (d.decision === 'deny') this.grants.deny(d.bundleId)
+      else this.grants.grant(d.bundleId, d.name, d.decision)
+    }
+    pending.resolve(map)
+    return true
   }
 
   registerShortcut(): void {
@@ -196,6 +288,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     } catch (err) {
       console.error('[computer] archivo de parada:', err)
     }
+    this.stopEscWatcher()
     const killed = this.killHelpers()
     this.emit('stopped', { at })
     this.emit('killState', this.state())
@@ -412,6 +505,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   }
 
   dispose(): void {
+    this.stopEscWatcher()
     this.mcpHost.dispose()
     if (this.shortcutRegistered) {
       globalShortcut.unregister(STOP_SHORTCUT)

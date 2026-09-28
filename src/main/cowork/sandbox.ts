@@ -292,7 +292,7 @@ export async function startCoworkServer(
     exited,
     stop,
     egressPort: egress?.port,
-    deleteAllowed: options.allowDelete === true
+    deleteAllowed: !sandboxed || options.allowDelete === true
   }
 }
 

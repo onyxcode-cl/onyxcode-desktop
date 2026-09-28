@@ -9,6 +9,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,
+  BookText,
+  CalendarClock,
   FolderOpen,
   Loader2,
   PanelRightClose,
