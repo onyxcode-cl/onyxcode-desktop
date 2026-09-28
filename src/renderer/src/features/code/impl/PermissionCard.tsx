@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { HelpCircle, ShieldAlert } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { FilePen, HelpCircle, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import { Button } from '../../../components/Button'
-import { DiffView } from './DiffView'
-import { relPath } from './ToolCard'
+import { DiffView, diffStats } from './DiffView'
+import { DiffStats, relPath } from './ToolCard'
+import { isEditableTarget } from './ui'
 import { useCode } from './store'
 import type { PendingPermission, PendingQuestion } from './types'
 
@@ -19,48 +20,112 @@ const PERMISSION_LABEL: Record<string, string> = {
   todowrite: 'actualizar la lista de tareas'
 }
 
-export function PermissionCard({ request, root }: { request: PendingPermission; root: string | null }): React.JSX.Element {
+export function PermissionCard({
+  request,
+  root,
+  hotkeys = false
+}: {
+  request: PendingPermission
+  root: string | null
+  /** Escucha 1/2/3 (solo la primera tarjeta pendiente). */
+  hotkeys?: boolean
+}): React.JSX.Element {
   const reply = useCode((s) => s.replyPermission)
   const [busy, setBusy] = useState(false)
-  const run = (r: 'once' | 'always' | 'reject'): void => {
-    setBusy(true)
-    void reply(request, r).finally(() => setBusy(false))
-  }
+  const busyRef = useRef(false)
+  const run = useCallback(
+    (r: 'once' | 'always' | 'reject'): void => {
+      if (busyRef.current) return
+      busyRef.current = true
+      setBusy(true)
+      void reply(request, r).finally(() => {
+        busyRef.current = false
+        setBusy(false)
+      })
+    },
+    [reply, request]
+  )
+
+  useEffect(() => {
+    if (!hotkeys) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isEditableTarget(e.target)) return
+      if (e.key === '1') run('once')
+      else if (e.key === '2') run('always')
+      else if (e.key === '3') run('reject')
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [hotkeys, run])
+
   const md = request.metadata
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
+  const description = typeof md.description === 'string' ? md.description : ''
   const file = typeof md.filepath === 'string' ? md.filepath : typeof md.filePath === 'string' ? md.filePath : ''
   const label = PERMISSION_LABEL[request.permission] ?? request.permission
+  const stats = diff ? diffStats(diff) : null
+  const patterns = request.patterns.filter((p) => p && p !== command)
+  const Icon = request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
+
+  const actions: { key: string; label: string; reply: 'once' | 'always' | 'reject'; cls: string; title?: string }[] = [
+    { key: '1', label: 'Permitir una vez', reply: 'once', cls: 'bg-accent text-accent-fg hover:opacity-90' },
+    {
+      key: '2',
+      label: 'Permitir siempre',
+      reply: 'always',
+      cls: 'border border-border bg-elevated text-fg hover:bg-hover',
+      title: request.always.length ? `No volver a preguntar para: ${request.always.join(', ')}` : undefined
+    },
+    { key: '3', label: 'Rechazar', reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
+  ]
 
   return (
-    <div className="my-2 overflow-hidden rounded-xl border border-accent/50 bg-elevated shadow-sm">
-      <div className="flex items-start gap-2 px-3 py-2.5">
-        <ShieldAlert size={16} className="mt-0.5 shrink-0 text-accent" />
+    <div className="my-2 overflow-hidden rounded-xl border border-accent/40 bg-elevated shadow-sm ring-4 ring-accent/5">
+      <div className="flex items-start gap-2.5 px-3.5 pt-3 pb-2.5">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
+          <Icon size={14} />
+        </span>
         <div className="min-w-0 flex-1 text-sm">
           <div className="font-medium">El agente quiere {label}</div>
-          {file && <div className="mt-0.5 truncate font-mono text-xs text-muted">{relPath(file, root)}</div>}
-          {(command || request.patterns.length > 0) && (
-            <pre className="mt-1.5 max-h-40 overflow-auto rounded-md bg-code px-2 py-1.5 font-mono text-xs whitespace-pre-wrap break-all">
-              {command || request.patterns.map((p) => relPath(p, root)).join('\n')}
-            </pre>
+          {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
+          {file && (
+            <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted">
+              <span className="truncate">{relPath(file, root)}</span>
+              {stats && <DiffStats {...stats} />}
+            </div>
           )}
         </div>
       </div>
-      {diff && <DiffView patch={diff} hideFileHeaders className="max-h-72 border-t border-border" />}
-      <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2">
-        <Button variant="primary" disabled={busy} onClick={() => run('once')}>
-          Permitir una vez
-        </Button>
-        <Button
-          disabled={busy}
-          onClick={() => run('always')}
-          title={request.always.length ? `Patrones: ${request.always.join(', ')}` : undefined}
-        >
-          Permitir siempre
-        </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => run('reject')} className="text-danger">
-          Rechazar
-        </Button>
+      {command && (
+        <pre className="mx-3.5 mb-2.5 max-h-48 overflow-auto rounded-lg bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg">
+          <span className="text-accent select-none">$ </span>
+          {command}
+        </pre>
+      )}
+      {!command && !diff && patterns.length > 0 && (
+        <pre className="mx-3.5 mb-2.5 max-h-40 overflow-auto rounded-lg bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all">
+          {patterns.map((p) => relPath(p, root)).join('\n')}
+        </pre>
+      )}
+      {diff && <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80 border-t border-border" />}
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-bg/40 px-3 py-2">
+        {actions.map((a) => (
+          <button
+            key={a.key}
+            type="button"
+            disabled={busy}
+            title={a.title}
+            onClick={() => run(a.reply)}
+            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 ${a.cls}`}
+          >
+            {a.label}
+            {hotkeys && <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">{a.key}</kbd>}
+          </button>
+        ))}
+        {busy && <Loader2 size={14} className="ml-1 animate-spin text-muted" />}
       </div>
     </div>
   )
@@ -87,7 +152,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
   const ready = final.every((a) => a.length > 0)
 
   return (
-    <div className="my-2 rounded-xl border border-accent/50 bg-elevated px-3 py-2.5 shadow-sm">
+    <div className="my-2 rounded-xl border border-accent/40 bg-elevated px-3.5 py-3 shadow-sm ring-4 ring-accent/5">
       {request.questions.map((q, qi) => (
         <div key={qi} className="mb-3">
           <div className="flex items-start gap-2 text-sm">
