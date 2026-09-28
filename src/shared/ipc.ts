@@ -126,4 +126,5 @@ export interface WindowApi {
   /** Suscribe a un evento main → renderer. Devuelve función para desuscribir. */
   on<C extends IpcEventChannel>(channel: C, listener: (payload: IpcEventContract[C]) => void): () => void
   platform: string
+  code: import('./ipc-code').CodeApi
 }

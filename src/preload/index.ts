@@ -8,6 +8,7 @@ import {
   type IpcResult,
   type WindowApi
 } from '@shared/ipc'
+import { buildCodeApi } from './code-api'
 
 const invokeAllowed = new Set<string>(IPC_INVOKE_CHANNELS)
 const eventAllowed = new Set<string>(IPC_EVENT_CHANNELS)
@@ -29,7 +30,8 @@ const api: WindowApi = {
     }
   },
 
-  platform: process.platform
+  platform: process.platform,
+  code: buildCodeApi(ipcRenderer)
 }
 
 contextBridge.exposeInMainWorld('api', api)

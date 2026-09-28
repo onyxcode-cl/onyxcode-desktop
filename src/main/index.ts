@@ -4,6 +4,7 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { registerAllHandlers } from './ipc'
+import { registerCodeHandlers } from './ipc/code-handlers'
 
 app.setName(APP_NAME)
 
@@ -68,6 +69,7 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   registerAllHandlers(ipcMain, { server, chatDirectory })
+  registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
 
   // Arranca el sidecar en paralelo a la ventana.
   server.start().catch((err: unknown) => console.error('[main] opencode no arrancó:', err))

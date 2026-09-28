@@ -17,7 +17,14 @@ import {
   setMcpServerEnabled
 } from '../extras/mcp-config'
 import { extrasPrefs } from '../extras/prefs'
-import { deliverQuickPrompt, hideQuickEntry, takePendingPrompt, toggleQuickEntry } from '../extras/quick-entry'
+import {
+  deliverQuickPrompt,
+  hideQuickEntry,
+  registerQuickEntryShortcut,
+  takePendingPrompt,
+  toggleQuickEntry,
+  unregisterQuickEntryShortcut
+} from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
 
 export interface ExtrasDeps extends MainWindowDeps {
@@ -90,6 +97,10 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   })
   handle(ipcMain, 'extras:quickHide', () => hideQuickEntry())
   handle(ipcMain, 'extras:quickToggle', () => toggleQuickEntry())
+  handle(ipcMain, 'extras:suspendShortcut', ({ suspended }) => {
+    if (suspended) unregisterQuickEntryShortcut()
+    else registerQuickEntryShortcut(extrasPrefs.get().quickEntryShortcut)
+  })
   handle(ipcMain, 'extras:takePendingPrompt', () => takePendingPrompt())
 
   const afterMcpChange = async (): Promise<ReturnType<typeof readAppMcpConfig>> => {

@@ -94,6 +94,8 @@ export interface IpcExtrasInvokeContract {
   'extras:quickSubmit': { req: QuickPromptEvent; res: void }
   'extras:quickHide': { req: void; res: void }
   'extras:quickToggle': { req: void; res: void }
+  /** Suspende el atajo global mientras se graba uno nuevo en Ajustes. */
+  'extras:suspendShortcut': { req: { suspended: boolean }; res: void }
   /** La ventana principal lo llama al montar: prompt de Quick Entry que llegó mientras cargaba. */
   'extras:takePendingPrompt': { req: void; res: QuickPromptEvent | null }
   'mcp:getConfig': { req: void; res: AppMcpConfig }
@@ -128,6 +130,7 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:quickSubmit',
   'extras:quickHide',
   'extras:quickToggle',
+  'extras:suspendShortcut',
   'extras:takePendingPrompt',
   'mcp:getConfig',
   'mcp:save',
