@@ -10,6 +10,7 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import type { NetworkPolicyState } from '@shared/ipc-cowork'
 
 /** Host de la API de modelos usada por Cowork (OpenCode Go / OpenCode Zen). Ver opencode-config.ts. */
 export const PROVIDER_HOST = 'opencode.ai'
@@ -17,16 +18,7 @@ export const PROVIDER_HOST = 'opencode.ai'
 export const NPM_HOSTS = ['registry.npmjs.org']
 export const PYPI_HOSTS = ['pypi.org', 'files.pythonhosted.org']
 
-export interface NetworkPolicyState {
-  /** Host(s) siempre permitidos, además del proveedor (no editable: se calcula). */
-  providerHost: string
-  npmEnabled: boolean
-  pypiEnabled: boolean
-  /** Hosts añadidos por el usuario ("Permitir siempre" o desde Ajustes). */
-  custom: string[]
-  /** Hosts que el usuario marcó "Mantener bloqueado" (informativo; ya deniegan por defecto). */
-  blocked: string[]
-}
+export type { NetworkPolicyState }
 
 interface Persisted {
   npmEnabled: boolean

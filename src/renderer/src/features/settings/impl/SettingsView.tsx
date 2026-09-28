@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Blocks, Cpu, Info, Keyboard, Settings2, SlidersHorizontal, X } from 'lucide-react'
+import { BarChart3, Blocks, Cpu, Globe, Info, Keyboard, Settings2, SlidersHorizontal, X } from 'lucide-react'
 import { IconButton } from '../../../components/IconButton'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
@@ -7,15 +7,17 @@ import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
 import { McpSection } from './McpSection'
 import { ModelsSection } from './ModelsSection'
+import { NetworkSection } from './NetworkSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
-export type SettingsSectionId = 'general' | 'models' | 'mcp' | 'usage' | 'shortcuts' | 'about'
+export type SettingsSectionId = 'general' | 'models' | 'mcp' | 'network' | 'usage' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
   { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
+  { id: 'network', label: 'Red de Cowork', icon: Globe, View: NetworkSection },
   { id: 'usage', label: 'Uso', icon: BarChart3, View: UsageSection },
   { id: 'shortcuts', label: 'Atajos', icon: Keyboard, View: ShortcutsSection },
   { id: 'about', label: 'Acerca de', icon: Info, View: AboutSection }

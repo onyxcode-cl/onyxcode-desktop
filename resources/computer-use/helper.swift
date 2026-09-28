@@ -356,6 +356,26 @@ func appAt(_ p: CGPoint) -> [String: Any] {
     return ["name": "", "bundleId": "", "pid": 0]
 }
 
+/// Apps con al menos una ventana visible en pantalla (una entrada por PID). Se usa para decidir qué
+/// excluir de una captura (`screenshot-sck`): main pregunta el nivel de cada una y excluye las que
+/// no tengan concesión.
+func runningApps() -> [[String: Any]] {
+    let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    guard let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { return [] }
+    var seen = Set<pid_t>()
+    var result: [[String: Any]] = []
+    for w in list {
+        guard let pidNum = w[kCGWindowOwnerPID as String] as? Int else { continue }
+        let pid = pid_t(pidNum)
+        if seen.contains(pid) { continue }
+        seen.insert(pid)
+        if let info = appInfo(pid: pid), let b = info["bundleId"] as? String, !b.isEmpty {
+            result.append(info)
+        }
+    }
+    return result
+}
+
 /// Rectángulos (puntos de pantalla, origen arriba-izquierda) de las ventanas visibles de las apps
 /// dadas (por bundle id): usado para enmascarar apps no concedidas si ScreenCaptureKit no está
 /// disponible (fallback de `screenshot-sck`).
@@ -393,6 +413,40 @@ func focusedIsSecure() -> Bool {
     let r = (role as? String) ?? ""
     let sr = (subrole as? String) ?? ""
     return r == "AXSecureTextField" || sr == "AXSecureTextField"
+}
+
+/// Resuelve el nombre de una app (el que ve el usuario) a su bundle id: primero entre las apps EN
+/// EJECUCIÓN (coincidencia exacta y luego parcial, sin distinguir mayúsculas), y si no está
+/// abierta, por Spotlight (`mdfind`) entre las instaladas. Usado por la herramienta `request_access`
+/// del MCP para poder identificar la app que el modelo nombra en lenguaje natural.
+func resolveApp(_ name: String) -> [String: Any] {
+    let lower = name.lowercased()
+    let running = NSWorkspace.shared.runningApplications
+    if let exact = running.first(where: { ($0.localizedName ?? "").lowercased() == lower }) {
+        return ["name": exact.localizedName ?? name, "bundleId": exact.bundleIdentifier ?? "", "found": !(exact.bundleIdentifier ?? "").isEmpty]
+    }
+    if let partial = running.first(where: { ($0.localizedName ?? "").lowercased().contains(lower) }) {
+        return ["name": partial.localizedName ?? name, "bundleId": partial.bundleIdentifier ?? "", "found": !(partial.bundleIdentifier ?? "").isEmpty]
+    }
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+    p.arguments = ["kMDItemKind == 'Application' && kMDItemDisplayName ==[cd] '\(name)'"]
+    let pipe = Pipe()
+    p.standardOutput = pipe
+    p.standardError = Pipe()
+    do {
+        try p.run()
+        p.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        if let text = String(data: data, encoding: .utf8),
+           let firstPath = text.split(separator: "\n").first,
+           let bundle = Bundle(path: String(firstPath)) {
+            return ["name": name, "bundleId": bundle.bundleIdentifier ?? "", "found": bundle.bundleIdentifier != nil]
+        }
+    } catch {
+        // sin mdfind: seguir a "no encontrada"
+    }
+    return ["name": name, "bundleId": "", "found": false]
 }
 
 // MARK: - Capturas con ScreenCaptureKit (excluye apps no concedidas en el compositor)
@@ -573,6 +627,8 @@ case "frontmost":
     }
 case "app-at":
     out(appAt(CGPoint(x: num(args, 1, "x"), y: num(args, 2, "y"))))
+case "running-apps":
+    out(runningApps())
 case "windows-of":
     guard args.count > 1 else { fail("Falta la lista de bundle ids (separados por coma)") }
     out(windowsOf(bundleIds: Set(args[1].split(separator: ",").map(String.init))))
@@ -626,6 +682,9 @@ case "open-app":
     p.waitUntilExit()
     if p.terminationStatus != 0 { fail("No se encontró la app \(name)") }
     out(["ok": true])
+case "resolve-app":
+    guard args.count > 1 else { fail("Falta el nombre de la app") }
+    out(resolveApp(args[1...].joined(separator: " ")))
 default:
     fail("Comando desconocido: \(cmd)")
 }

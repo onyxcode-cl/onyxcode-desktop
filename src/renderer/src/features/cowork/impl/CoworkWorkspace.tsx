@@ -34,6 +34,7 @@ import {
   loadFolders,
   newTask,
   reveal,
+  scheduleActiveTask,
   selectFolder,
   sendToTask,
   stopComputerControl
@@ -47,9 +48,10 @@ import { Home } from './Home'
 import { ApprovalBar } from './PermissionPrompt'
 import { QuestionCard } from './QuestionPrompt'
 import { ProgressPanel } from './ProgressPanel'
+import { ProjectPanel } from './ProjectPanel'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon, TaskList } from './TaskList'
-import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, syncKillState, useCowork } from './store'
+import { clearUnseen, disconnect, lastFolder, resync, setPanelOpen, setProjectPanelOpen, syncKillState, useCowork } from './store'
 import {
   extOf,
   formatDuration,
@@ -324,6 +326,16 @@ export function CoworkWorkspace(): React.JSX.Element {
         <div className="mt-2">
           <FolderMenu variant="block" />
         </div>
+        {folder && (
+          <button
+            type="button"
+            onClick={() => setProjectPanelOpen(true)}
+            title="Instrucciones y memoria de esta carpeta"
+            className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg"
+          >
+            <BookText size={13} /> Proyecto e instrucciones
+          </button>
+        )}
         <TaskList />
       </aside>
 
@@ -339,6 +351,14 @@ export function CoworkWorkspace(): React.JSX.Element {
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
               {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
+              <button
+                type="button"
+                title="Programar esta tarea (repetirla con una rutina)"
+                className="rounded p-1 hover:bg-hover hover:text-fg"
+                onClick={() => void scheduleActiveTask()}
+              >
+                <CalendarClock size={15} />
+              </button>
               {folder && (
                 <button
                   type="button"
@@ -431,6 +451,7 @@ export function CoworkWorkspace(): React.JSX.Element {
       )}
 
       <FullAccessDialog />
+      <ProjectPanel />
 
       {pending && <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />}
     </div>

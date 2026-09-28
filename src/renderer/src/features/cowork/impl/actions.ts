@@ -342,8 +342,9 @@ export async function scheduleActiveTask(): Promise<void> {
   if (!activeTaskId || !folder) return
   const entries = useSessions.getState().messages[activeTaskId] ?? []
   const firstUser = entries.find((e) => e.info.role === 'user')
-  const raw = (firstUser?.parts ?? [])
-    .filter((p): p is Extract<(typeof firstUser.parts)[number], { type: 'text' }> => p.type === 'text' && !p.synthetic)
+  const firstUserParts = firstUser?.parts ?? []
+  const raw = firstUserParts
+    .filter((p): p is Extract<(typeof firstUserParts)[number], { type: 'text' }> => p.type === 'text' && !p.synthetic)
     .map((p) => p.text)
     .join('\n')
   const markerIdx = raw.indexOf('\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n')

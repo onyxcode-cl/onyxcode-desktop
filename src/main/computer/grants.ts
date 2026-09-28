@@ -15,20 +15,9 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import type { AppGrant, AppTier, GrantsSnapshot } from '@shared/ipc-cowork'
 
-export type AppTier = 'view' | 'click' | 'full'
-
-export interface AppGrant {
-  bundleId: string
-  name: string
-  tier: AppTier
-  grantedAt: number
-}
-
-export interface GrantsSnapshot {
-  grants: AppGrant[]
-  denied: string[]
-}
+export type { AppGrant, AppTier, GrantsSnapshot }
 
 interface StoreShape {
   grants: Record<string, AppGrant>
@@ -71,14 +60,15 @@ function matches(patterns: RegExp[], bundleId: string, name: string): boolean {
 }
 
 /**
- * Nivel por defecto sugerido al pedir acceso (el usuario puede elegir otro en la tarjeta):
- * navegadores y apps de banca/trading → "Solo ver"; terminales/IDEs → "Ver y clic"; el resto se
- * PREGUNTA siempre (se sugiere "Ver y clic" como punto de partida razonable).
+ * Nivel por defecto AUTOASIGNADO la primera vez que se ve la app (sin preguntar): navegadores y
+ * apps de banca/trading → "Solo ver"; terminales/IDEs → "Ver y clic". Cualquier otra app devuelve
+ * null: no se autoasigna nada, hay que PREGUNTAR con `request_access` (o concederla a mano en
+ * Ajustes). El usuario siempre puede subir o bajar el nivel después.
  */
-export function defaultTierFor(bundleId: string, name: string): AppTier {
+export function defaultTierFor(bundleId: string, name: string): AppTier | null {
   if (matches(VIEW_ONLY_PATTERNS, bundleId, name)) return 'view'
   if (matches(CLICK_ONLY_PATTERNS, bundleId, name)) return 'click'
-  return 'click'
+  return null
 }
 
 export class ComputerGrantsStore {
@@ -117,11 +107,27 @@ export class ComputerGrantsStore {
     return { grants: Object.values(this.data.grants), denied: [...this.data.denied] }
   }
 
-  /** Nivel concedido, o null si es desconocida o está denegada. */
+  /** Nivel concedido, o null si es desconocida o está denegada. No autoasigna (a diferencia de `resolve`). */
   tierFor(bundleId: string): AppTier | null {
     this.load()
     if (this.data.denied.includes(bundleId)) return null
     return this.data.grants[bundleId]?.tier ?? null
+  }
+
+  /**
+   * Nivel concedido, autoasignando el de su categoría (navegador/banca → 'view', terminal/IDE →
+   * 'click') la primera vez que se ve una app de esas categorías, para no tener que preguntar por
+   * apps ya clasificadas como sensibles. El resto de apps devuelve null hasta que el usuario
+   * responda a una tarjeta `request_access` (o las conceda a mano en Ajustes).
+   */
+  resolve(bundleId: string, name: string): AppTier | null {
+    this.load()
+    if (this.data.denied.includes(bundleId)) return null
+    const existing = this.data.grants[bundleId]
+    if (existing) return existing.tier
+    const def = defaultTierFor(bundleId, name)
+    if (def) return this.grant(bundleId, name, def).tier
+    return null
   }
 
   isDenied(bundleId: string): boolean {

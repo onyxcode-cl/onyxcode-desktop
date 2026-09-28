@@ -44,7 +44,7 @@ export class CoworkProjectsStore {
     return data
   }
 
-  private save(): void {
+  private persist(): void {
     const file = this.file
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(`${file}.tmp`, JSON.stringify(this.load(), null, 2), 'utf8')
@@ -73,7 +73,7 @@ export class CoworkProjectsStore {
     }
     if (typeof patch.instructions === 'string') entry.instructions = patch.instructions.slice(0, MAX_INSTRUCTIONS)
     entry.updatedAt = now
-    this.save()
+    this.persist()
     return entry
   }
 
@@ -81,7 +81,7 @@ export class CoworkProjectsStore {
     const data = this.load()
     const before = data.projects.length
     data.projects = data.projects.filter((p) => p.folder !== folder)
-    if (data.projects.length !== before) this.save()
+    if (data.projects.length !== before) this.persist()
   }
 }
 

@@ -81,6 +81,43 @@ function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
   )
 }
 
+/** Instrucciones globales de Cowork (item 1): se añaden a todas las tareas, junto con las de cada proyecto. */
+function CoworkInstructionsRow(): React.JSX.Element {
+  const globalInstructions = useSettings((s) => s.settings.coworkGlobalInstructions)
+  const update = useSettings((s) => s.update)
+  const [value, setValue] = useState(globalInstructions)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => setValue(globalInstructions), [globalInstructions])
+
+  const save = (): void => {
+    if (value === globalInstructions) return
+    void update({ coworkGlobalInstructions: value }).then(() => {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1200)
+    })
+  }
+
+  return (
+    <Row
+      label="Instrucciones globales de Cowork"
+      description="Se aplican a todas las tareas de Cowork, además de las instrucciones de cada proyecto (carpeta)."
+    >
+      <div className="w-full max-w-md">
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          maxLength={20_000}
+          placeholder="Ej.: escribe siempre en tono formal; usa formato de fecha es-CL…"
+          className="min-h-20 w-full resize-y rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle"
+        />
+        {saved && <p className="mt-1 text-xs text-accent">Guardado</p>}
+      </div>
+    </Row>
+  )
+}
+
 export function GeneralSection(): React.JSX.Element {
   const { settings, update } = useSettings()
   const { status, connection, restart } = useServer()
@@ -122,6 +159,11 @@ export function GeneralSection(): React.JSX.Element {
           <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label="Icono en la barra de menús" />
         </Row>
         <KeepAwakeRow />
+      </Card>
+
+      <SubTitle>Cowork</SubTitle>
+      <Card>
+        <CoworkInstructionsRow />
       </Card>
 
       <SubTitle>Servidor OpenCode</SubTitle>

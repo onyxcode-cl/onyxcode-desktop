@@ -57,6 +57,8 @@ const SETTLE_MS = 450
 const STOPPED_MSG = 'Control detenido por el usuario'
 const UNVERIFIED_MSG = 'No se pudo verificar el estado del kill-switch con Lapis; acción rechazada'
 const STATE_CACHE_MS = 200
+/** Por debajo de esto sin pulsar el teclado real, se considera "el usuario está escribiendo ahora". */
+const TYPING_PAUSE_SECONDS = 1.2
 
 // ───────────────────────────── kill-switch ─────────────────────────────
 
@@ -124,6 +126,108 @@ async function helper(...args: string[]): Promise<string> {
 function log(...a: unknown[]): void {
   // stderr: OpenCode lo guarda en sus logs; stdout es exclusivo del protocolo.
   process.stderr.write(`[computer-mcp] ${a.map(String).join(' ')}\n`)
+}
+
+// ───────────────────────────── concesión por app ─────────────────────────────
+//
+// "Acceso total" ya no es todo o nada: cada app tiene un nivel ('view'/'click'/'full') que vive en
+// main (`computer/grants.ts`) y se consulta por el canal lateral (`COMPUTER_EVENTS_URL`). Antes de
+// CADA acción sobre el ratón/teclado se comprueba la app en primer plano y, si la acción tiene un
+// punto, también la app bajo ese punto (pueden diferir: clic a través de una ventana de fondo).
+
+type AppTier = 'view' | 'click' | 'full'
+const TIER_RANK: Record<AppTier, number> = { view: 0, click: 1, full: 2 }
+const TIER_LABEL: Record<AppTier, string> = { view: 'Solo ver', click: 'Ver y clic', full: 'Control total' }
+
+interface AppRef {
+  bundleId: string
+  name: string
+}
+
+async function appFrontmost(): Promise<AppRef> {
+  const j = JSON.parse(await helper('frontmost')) as { name?: string; bundleId?: string }
+  return { bundleId: j.bundleId ?? '', name: j.name || j.bundleId || '' }
+}
+
+async function appAtPoint(x: number, y: number): Promise<AppRef> {
+  const j = JSON.parse(await helper('app-at', String(x), String(y))) as { name?: string; bundleId?: string }
+  return { bundleId: j.bundleId ?? '', name: j.name || j.bundleId || '' }
+}
+
+/** Nivel concedido a una app (y autoasignación de categoría en main), o null si hay que pedirlo. */
+async function tierOf(app: AppRef): Promise<AppTier | null> {
+  if (!EVENTS_URL || !app.bundleId) return null
+  const url = `${EVENTS_URL}/tier?bundleId=${encodeURIComponent(app.bundleId)}&name=${encodeURIComponent(app.name)}`
+  const r = await fetch(url, { signal: AbortSignal.timeout(1500) })
+  if (!r.ok) throw new Error(`No se pudo consultar la concesión (HTTP ${r.status})`)
+  const j = (await r.json()) as { tier?: AppTier | null }
+  return j.tier ?? null
+}
+
+/**
+ * Comprueba que la app en primer plano (y, si se da un punto, la app bajo ese punto) tenga AL
+ * MENOS `minTier`. Lanza con un mensaje que le dice al modelo que llame a `request_access` si
+ * falta la concesión, o que el nivel actual no alcanza si ya está concedida pero es insuficiente.
+ */
+async function requireTier(minTier: AppTier, point?: { x: number; y: number }): Promise<void> {
+  const apps = [await appFrontmost()]
+  if (point) {
+    const at = await appAtPoint(point.x, point.y)
+    if (at.bundleId && at.bundleId !== apps[0]?.bundleId) apps.push(at)
+  }
+  const known = apps.filter((a) => a.bundleId)
+  if (!known.length) return // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
+  for (const a of known) {
+    const tier = await tierOf(a)
+    if (tier === null) {
+      throw new Error(
+        `«${a.name}» no tiene acceso concedido. Llama a la herramienta request_access con apps: ["${a.name}"] ` +
+          'y un motivo, y espera la respuesta del usuario antes de reintentar esta acción.'
+      )
+    }
+    if (TIER_RANK[tier] < TIER_RANK[minTier]) {
+      throw new Error(
+        `«${a.name}» solo tiene el nivel "${TIER_LABEL[tier]}"; esta acción necesita "${TIER_LABEL[minTier]}". ` +
+          'Pide más acceso con request_access y espera la respuesta del usuario.'
+      )
+    }
+  }
+}
+
+/** Campo de contraseña con foco, o el usuario escribiendo ahora mismo: pausa y pide que lo haga él. */
+async function requireCanType(): Promise<void> {
+  const secure = JSON.parse(await helper('focused-secure')) as { secure?: boolean }
+  if (secure.secure) {
+    throw new Error(
+      'El elemento con foco es un campo de contraseña (u otra entrada segura del sistema). El agente ' +
+        'nunca teclea contraseñas ni códigos: pide al usuario que los escriba él mismo.'
+    )
+  }
+  const recent = JSON.parse(await helper('recent-input')) as { keyDownSeconds?: number }
+  if (typeof recent.keyDownSeconds === 'number' && recent.keyDownSeconds < TYPING_PAUSE_SECONDS) {
+    throw new Error('El usuario está escribiendo ahora mismo: el agente ha pausado para no interferir. Reintenta en un momento.')
+  }
+}
+
+async function requestAccess(apps: AppRef[], reason?: string): Promise<Record<string, string>> {
+  if (!EVENTS_URL) throw new Error('Canal lateral no disponible: no se puede pedir acceso a apps.')
+  const r = await fetch(`${EVENTS_URL}/request-access`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ apps, reason }),
+    signal: AbortSignal.timeout(5 * 60_000 + 5_000)
+  })
+  if (!r.ok) {
+    const body = await r.text().catch(() => '')
+    throw new Error(`No se pudo pedir acceso (HTTP ${r.status})${body ? `: ${body}` : ''}`)
+  }
+  const j = (await r.json()) as { decisions?: Record<string, string> }
+  return j.decisions ?? {}
+}
+
+async function resolveApp(name: string): Promise<AppRef & { found: boolean }> {
+  const j = JSON.parse(await helper('resolve-app', name)) as { name?: string; bundleId?: string; found?: boolean }
+  return { bundleId: j.bundleId ?? '', name: j.name || name, found: !!j.found && !!j.bundleId }
 }
 
 interface ActionEvent {

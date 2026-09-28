@@ -404,6 +404,61 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           res.end(JSON.stringify({ stopped: this.stopped }))
           return
         }
+        if (req.method === 'GET' && (req.url ?? '').startsWith(`${path}/tier?`)) {
+          // Nivel concedido a una app (bundleId + name para poder autoasignar el nivel por
+          // defecto de su categoría la primera vez que se ve). null = sin decidir o denegada.
+          const q = new URL(req.url ?? '', 'http://localhost').searchParams
+          const bundleId = (q.get('bundleId') ?? '').slice(0, 255)
+          const name = (q.get('name') ?? bundleId).slice(0, 255)
+          const tier = bundleId ? this.grants.resolve(bundleId, name) : null
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify({ tier }))
+          return
+        }
+        if (req.method === 'POST' && req.url === `${path}/request-access`) {
+          let body = ''
+          req.setEncoding('utf8')
+          req.on('data', (c: string) => {
+            body += c
+            if (body.length > 16_384) req.destroy()
+          })
+          req.on('end', () => {
+            let apps: AccessRequestApp[] = []
+            let reason: string | undefined
+            try {
+              const o = JSON.parse(body) as { apps?: unknown; reason?: unknown }
+              if (Array.isArray(o.apps)) {
+                apps = o.apps
+                  .filter((a): a is Record<string, unknown> => !!a && typeof a === 'object')
+                  .map((a) => ({
+                    bundleId: String(a.bundleId ?? '').slice(0, 255),
+                    name: String(a.name ?? a.bundleId ?? '').slice(0, 255)
+                  }))
+                  .filter((a) => a.bundleId)
+                  .slice(0, 20)
+              }
+              if (typeof o.reason === 'string') reason = o.reason.slice(0, 500)
+            } catch {
+              res.statusCode = 400
+              res.end(JSON.stringify({ error: 'JSON inválido' }))
+              return
+            }
+            if (!apps.length) {
+              res.statusCode = 400
+              res.end(JSON.stringify({ error: 'apps vacío' }))
+              return
+            }
+            void this.requestAccess(apps, reason).then((decisions) => {
+              res.statusCode = 200
+              res.setHeader('content-type', 'application/json')
+              res.setHeader('cache-control', 'no-store')
+              res.end(JSON.stringify({ decisions }))
+            })
+          })
+          return
+        }
         if (req.method !== 'POST' || req.url !== path) {
           res.statusCode = 404
           res.end()

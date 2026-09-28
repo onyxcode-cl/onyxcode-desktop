@@ -21,7 +21,7 @@ import {
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startCoworkServer, type CoworkServerHandle } from './sandbox'
 import { NetworkPolicy, type NetworkPolicyState } from './proxy-policy'
-import type { EgressBlockedEvent, EgressLogEntry } from './proxy'
+import type { EgressBlockedEvent } from './proxy'
 
 /** Consentimiento de "Acceso total" registrado en main (AUDIT.md S7). */
 interface FullAccessGrant {

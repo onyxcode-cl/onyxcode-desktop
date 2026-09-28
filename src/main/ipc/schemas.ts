@@ -149,6 +149,12 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'cowork:memory:get': folderReq,
   'cowork:memory:save': obj({ folder: absPath, content: str({ max: 2 * 1024 * 1024 }) }),
   'cowork:memory:delete': folderReq,
+  'cowork:network:state': none,
+  'cowork:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled'), value: bool }),
+  'cowork:network:setHost': obj({ host: str({ max: 255, min: 1 }), decision: literal('allow', 'block', 'unset') }),
+  'cowork:network:allowOnce': obj({ folder: absPath, host: str({ max: 255, min: 1 }) }),
+  'cowork:deleteGrant:get': folderReq,
+  'cowork:deleteGrant:set': obj({ folder: absPath, allowed: bool }),
   'routines:list': none,
   'routines:save': obj({
     id: optional(id),

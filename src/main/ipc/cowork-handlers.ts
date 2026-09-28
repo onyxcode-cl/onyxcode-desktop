@@ -102,6 +102,7 @@ export function registerCoworkHandlers(
     send('cowork:server', info)
     if (info.fullAccess && (info.state === 'stopped' || info.state === 'error')) overlay.serverGone()
   })
+  cowork.on('networkBlocked', (ev) => send('cowork:networkBlocked', ev))
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
   computer.on('action', (ev) => {
@@ -169,6 +170,22 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'cowork:memory:get', ({ folder }) => getMemory(cowork.assertInsideApproved(folder)))
   handle(ipcMain, 'cowork:memory:save', ({ folder, content }) => saveMemory(cowork.assertInsideApproved(folder), content))
   handle(ipcMain, 'cowork:memory:delete', ({ folder }) => deleteMemory(cowork.assertInsideApproved(folder)))
+
+  // ── Red de Cowork (egress) ──
+  handle(ipcMain, 'cowork:network:state', () => cowork.networkState())
+  handle(ipcMain, 'cowork:network:setToggle', ({ key, value }) => cowork.networkSetToggle(key, value))
+  handle(ipcMain, 'cowork:network:setHost', ({ host, decision }) => cowork.networkSetHost(host, decision))
+  handle(ipcMain, 'cowork:network:allowOnce', ({ folder, host }) => {
+    cowork.networkAllowOnce(cowork.assertInsideApproved(folder), host)
+  })
+
+  // ── Borrado (Seatbelt file-write-unlink) ──
+  handle(ipcMain, 'cowork:deleteGrant:get', ({ folder }) => cowork.hasDeleteGrant(cowork.assertInsideApproved(folder)))
+  handle(ipcMain, 'cowork:deleteGrant:set', async ({ folder, allowed }) => {
+    const f = cowork.assertInsideApproved(folder)
+    await cowork.setDeleteGrant(f, allowed)
+    return cowork.hasDeleteGrant(f)
+  })
 
   // ── Rutinas ──
   handle(ipcMain, 'routines:list', () => scheduler.list())

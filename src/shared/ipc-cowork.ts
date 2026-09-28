@@ -192,6 +192,29 @@ export interface CoworkMemory {
   updatedAt: number | null
 }
 
+// ───────────────────────────── Red de Cowork (egress) ─────────────────────────────
+
+/** Estado de la lista blanca de red de los servidores Cowork sandboxeados. */
+export interface NetworkPolicyState {
+  /** Host del proveedor de modelos: siempre permitido, no editable. */
+  providerHost: string
+  npmEnabled: boolean
+  pypiEnabled: boolean
+  /** Hosts añadidos por el usuario ("Permitir siempre" o desde Ajustes). */
+  custom: string[]
+  /** Hosts marcados "Mantener bloqueado" (informativo). */
+  blocked: string[]
+}
+
+/** Intento de red bloqueado por el proxy de egress de un servidor sandboxeado. */
+export interface NetworkBlockedEvent {
+  folder: string
+  host: string
+  port: number
+  at: number
+  kind: 'connect' | 'http'
+}
+
 // ───────────────────────────── Mantener el Mac despierto ─────────────────────────────
 
 export interface KeepAwakeState {
@@ -323,6 +346,20 @@ export interface CoworkInvokeContract {
   'cowork:memory:save': { req: { folder: string; content: string }; res: CoworkMemory }
   'cowork:memory:delete': { req: { folder: string }; res: CoworkMemory }
 
+  /** Lista blanca de red efectiva para los servidores Cowork sandboxeados (egress proxy). */
+  'cowork:network:state': { req: void; res: NetworkPolicyState }
+  /** Interruptores "PyPI"/"npm" (registros de paquetes) de la lista blanca por defecto. */
+  'cowork:network:setToggle': { req: { key: 'npmEnabled' | 'pypiEnabled'; value: boolean }; res: NetworkPolicyState }
+  /** "Permitir siempre" / "Mantener bloqueado" / quitar decisión para un host (persistido). */
+  'cowork:network:setHost': { req: { host: string; decision: 'allow' | 'block' | 'unset' }; res: NetworkPolicyState }
+  /** "Permitir esta vez" tras una tarjeta de bloqueo: solo para los servidores ya arrancados de esa carpeta. */
+  'cowork:network:allowOnce': { req: { folder: string; host: string }; res: void }
+
+  /** "Permitir borrar" concedido para esta tarea (Seatbelt: `file-write-unlink` en la carpeta). */
+  'cowork:deleteGrant:get': { req: { folder: string }; res: boolean }
+  /** Concede/retira "Permitir borrar" (reinicia el servidor sandboxeado si estaba en marcha). */
+  'cowork:deleteGrant:set': { req: { folder: string; allowed: boolean }; res: boolean }
+
   'routines:list': { req: void; res: ScheduledRoutine[] }
   'routines:save': { req: RoutineInput; res: ScheduledRoutine }
   'routines:delete': { req: { id: string }; res: void }
@@ -392,6 +429,8 @@ export interface CoworkEventContract {
   'computer:overlay': ComputerOverlayMessage
   /** Tarjeta "¿Permitir que el agente use X?" (herramienta MCP `request_access`). */
   'computer:accessRequest': AccessRequest
+  /** El proxy de egress de un servidor sandboxeado bloqueó una conexión (host fuera de lista blanca). */
+  'cowork:networkBlocked': NetworkBlockedEvent
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -419,6 +458,12 @@ export const COWORK_INVOKE_CHANNELS = [
   'cowork:memory:get',
   'cowork:memory:save',
   'cowork:memory:delete',
+  'cowork:network:state',
+  'cowork:network:setToggle',
+  'cowork:network:setHost',
+  'cowork:network:allowOnce',
+  'cowork:deleteGrant:get',
+  'cowork:deleteGrant:set',
   'routines:list',
   'routines:save',
   'routines:delete',
@@ -451,7 +496,8 @@ export const COWORK_EVENT_CHANNELS = [
   'computer:stopped',
   'computer:killState',
   'computer:overlay',
-  'computer:accessRequest'
+  'computer:accessRequest',
+  'cowork:networkBlocked'
 ] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
