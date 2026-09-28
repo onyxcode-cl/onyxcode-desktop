@@ -142,6 +142,15 @@ export interface CoworkFilePreview {
   truncated?: boolean
 }
 
+// ───────────────────────────── Mantener el Mac despierto ─────────────────────────────
+
+export interface KeepAwakeState {
+  /** Ajuste del usuario (persistido). */
+  enabled: boolean
+  /** true si el bloqueo de suspensión está activo ahora mismo. */
+  active: boolean
+}
+
 // ───────────────────────────── Rutinas ─────────────────────────────
 
 export type RoutineMode = 'chat' | 'cowork' | 'code'
@@ -282,6 +291,16 @@ export interface CoworkInvokeContract {
    * `label` = texto opcional para la píldora.
    */
   'computer:session': { req: { active: boolean; label?: string }; res: void }
+
+  /** Estado actual (ajuste + si el bloqueo está activo). */
+  'cowork:keepAwakeState': { req: void; res: KeepAwakeState }
+  /** Cambia el ajuste "Mantener el Mac despierto mientras corren tareas" (persistido). */
+  'cowork:keepAwakeSetting': { req: { enabled: boolean }; res: KeepAwakeState }
+  /**
+   * El renderer avisa si hay o no tareas en curso (running/waiting) en cualquier carpeta de
+   * Cowork; main activa/desactiva el `powerSaveBlocker` según el ajuste.
+   */
+  'cowork:keepAwakeActive': { req: { active: boolean }; res: KeepAwakeState }
 }
 
 export interface CoworkEventContract {
@@ -329,7 +348,10 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:stop',
   'computer:resume',
   'computer:state',
-  'computer:session'
+  'computer:session',
+  'cowork:keepAwakeState',
+  'cowork:keepAwakeSetting',
+  'cowork:keepAwakeActive'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
 export const COWORK_EVENT_CHANNELS = [

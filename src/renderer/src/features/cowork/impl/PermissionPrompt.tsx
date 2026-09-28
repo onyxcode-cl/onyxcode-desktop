@@ -16,11 +16,22 @@ type Reply = 'once' | 'always' | 'reject'
 interface Described {
   icon: LucideIcon
   title: string
-  /** Qué hará exactamente (frase). */
+  /** Qué hará exactamente (frase, redactada por nosotros, no por el modelo). */
   effect: string
-  /** Detalle literal (comando, ruta, URL…). */
+  /** Detalle literal (comando, ruta, URL…) tal como lo ejecutará el agente. Se muestra primero. */
   detail: string
+  /** Descripción libre generada por el modelo (p. ej. el "description" de un comando bash). No verificada. */
+  aiDescription?: string
   danger: boolean
+}
+
+/** Caracteres de control, marcas bidi y espacios invisibles que pueden ocultar el contenido real de un comando. */
+// eslint-disable-next-line no-control-regex
+const HIDDEN_CHARS_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/
+
+/** true si `text` contiene caracteres de control/unicode invisibles que podrían ocultar contenido. */
+export function hasHiddenChars(text: string): boolean {
+  return HIDDEN_CHARS_RE.test(text)
 }
 
 function meta(p: PermissionRequest, ...keys: string[]): string {
@@ -46,14 +57,16 @@ export function describePermission(p: PermissionRequest): Described {
           title: 'El agente quiere borrar archivos',
           effect: 'Se eliminarán de forma permanente los archivos o carpetas indicados en el comando.',
           detail: cmd,
+          aiDescription: desc || undefined,
           danger: true
         }
       }
       return {
         icon: Terminal,
         title: 'El agente quiere ejecutar un comando',
-        effect: desc ? `${desc}.` : 'Se ejecutará este comando en la terminal de la carpeta.',
+        effect: 'Se ejecutará este comando en la terminal de la carpeta.',
         detail: cmd,
+        aiDescription: desc || undefined,
         danger: false
       }
     }
@@ -159,6 +172,18 @@ export function PermissionCard({ request }: { request: PermissionRequest }): Rea
             <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
               {d.detail}
             </pre>
+          )}
+          {d.detail && hasHiddenChars(d.detail) && (
+            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
+              <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+              Contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+            </p>
+          )}
+          {d.aiDescription && (
+            <div className="mt-2 rounded-md border border-border/70 bg-hover/40 px-2.5 py-1.5">
+              <p className="text-[10px] font-semibold tracking-wide text-subtle uppercase">Descripción de la IA (no verificada)</p>
+              <p className="mt-0.5 text-xs text-muted">{d.aiDescription}</p>
+            </div>
           )}
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">

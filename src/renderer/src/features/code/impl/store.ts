@@ -5,14 +5,17 @@
  * de quién más esté aplicando eventos al store genérico de sesiones.
  */
 import { create } from 'zustand'
-import type { Part, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
+import type { Part, PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
 import type { ModelRef } from '@shared/types'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
+  Attachment,
   CodeAgent,
   CodeMessage,
   PendingPermission,
   PendingQuestion,
+  PermissionMode,
+  QueuedMessage,
   RightPanel,
   RunState,
   Todo
@@ -22,6 +25,9 @@ const LS_PROJECT = 'code.project'
 const LS_AGENT = 'code.agent'
 const LS_PANEL = 'code.panel'
 const LS_SESSION = 'code.session.'
+const LS_PERM_MODE = 'code.permissionMode'
+const LS_PINNED = 'code.pinned'
+const LS_TRUSTED = 'code.trustedFolders'
 
 function lsGet(key: string): string | null {
   try {

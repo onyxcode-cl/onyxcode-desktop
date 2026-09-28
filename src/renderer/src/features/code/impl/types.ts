@@ -57,3 +57,34 @@ export interface PendingQuestion {
 }
 
 export type { PermissionRequest, Todo }
+
+// ---------------------------------------------------------------------------
+// Modos de permiso, cola de mensajes y adjuntos (gap analysis vs Claude Desktop)
+// ---------------------------------------------------------------------------
+
+/**
+ * Modo de permisos de la sesión activa. Se traduce a un `PermissionRuleset` (array de
+ * `{ permission, pattern, action }`) enviado con `session.update`.
+ *  - manual: pregunta por todo (ruleset vacío → el agente usa su comportamiento por defecto de preguntar).
+ *  - acceptEdits: permite editar/escribir archivos sin preguntar; el resto pregunta.
+ *  - plan: fuerza el agente "plan" (solo lectura); no llama a session.update.
+ *  - auto: permite ediciones y comandos "seguros"; pregunta en bash/external_directory/webfetch.
+ *  - bypass: permite todo (equivalente a "Bypass permissions" de Claude Code). Requiere advertencia.
+ */
+export type PermissionMode = 'manual' | 'acceptEdits' | 'plan' | 'auto' | 'bypass'
+
+export interface Attachment {
+  id: string
+  name: string
+  mime: string
+  /** `data:` URL (imágenes pegadas/arrastradas) o `file://` (archivos adjuntados por ruta). */
+  url: string
+}
+
+export interface QueuedMessage {
+  id: string
+  text: string
+  /** Rutas `@mencionadas` relativas al proyecto. */
+  files: string[]
+  attachments: Attachment[]
+}

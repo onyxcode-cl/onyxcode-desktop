@@ -14,6 +14,7 @@ import type {
 import { CoworkManager } from '../cowork/manager'
 import { importFilesInto, previewFile } from '../cowork/files'
 import { assertSafeToOpen } from '../cowork/open-policy'
+import { KeepAwakeService } from '../cowork/keep-awake'
 import { ComputerService } from '../computer/service'
 import { ComputerOverlay } from '../computer/overlay'
 import { abortFullAccessSessions } from '../computer/abort'
@@ -65,6 +66,7 @@ export function registerCoworkHandlers(
   getWindow: () => BrowserWindow | null,
   deps: CoworkHandlerDeps
 ): CoworkModule {
+  const keepAwake = new KeepAwakeService()
   const computer = new ComputerService()
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
   const overlay = new ComputerOverlay({
@@ -173,6 +175,11 @@ export function registerCoworkHandlers(
   handle(ipcMain, 'computer:state', () => computer.state())
   handle(ipcMain, 'computer:session', (req) => overlay.setSession(req?.active === true, typeof req?.label === 'string' ? req.label : undefined))
 
+  // ── Mantener el Mac despierto ──
+  handle(ipcMain, 'cowork:keepAwakeState', () => keepAwake.state())
+  handle(ipcMain, 'cowork:keepAwakeSetting', ({ enabled }) => keepAwake.setEnabled(enabled))
+  handle(ipcMain, 'cowork:keepAwakeActive', ({ active }) => keepAwake.setActive(active))
+
   scheduler.start()
 
   return {
@@ -184,6 +191,7 @@ export function registerCoworkHandlers(
       await cowork.stopAll()
       overlay.dispose()
       computer.dispose()
+      keepAwake.dispose()
     },
     killSync: () => cowork.killAllSync()
   }

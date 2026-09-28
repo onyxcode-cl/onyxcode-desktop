@@ -372,6 +372,36 @@ useCowork.subscribe((s, prev) => {
   if (s.conn !== prev.conn || s.folder !== prev.folder) syncComputerSession()
 })
 
+// ── Mantener el Mac despierto (powerSaveBlocker en main) mientras haya tareas en curso ──
+let keepAwakeActive = false
+
+/** true si alguna tarea (en cualquier carpeta de Cowork conocida) está corriendo o reintentando. */
+function anyCoworkTaskRunning(): boolean {
+  const { folders } = useCowork.getState()
+  if (folders.length === 0) return false
+  const known = new Set(folders.map((f) => f.path))
+  const { status, sessions } = useSessions.getState()
+  for (const id of Object.keys(status)) {
+    const st = status[id]
+    if ((st === 'busy' || st === 'retry') && known.has(sessions[id]?.directory ?? '')) return true
+  }
+  return false
+}
+
+function syncKeepAwake(): void {
+  const active = anyCoworkTaskRunning()
+  if (active === keepAwakeActive) return
+  keepAwakeActive = active
+  cw('cowork:keepAwakeActive', { active }).catch(() => undefined)
+}
+
+useSessions.subscribe((s, prev) => {
+  if (s.status !== prev.status) syncKeepAwake()
+})
+useCowork.subscribe((s, prev) => {
+  if (s.folders !== prev.folders) syncKeepAwake()
+})
+
 export function disconnect(): void {
   stopStream?.()
   stopStream = null

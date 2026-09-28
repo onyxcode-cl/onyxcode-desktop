@@ -1,10 +1,42 @@
+import { useEffect, useState } from 'react'
 import { Monitor, Moon, RotateCw, Sun } from 'lucide-react'
 import type { ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
+import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
+
+/** Fila "Mantener el Mac despierto mientras corren tareas de Cowork" (powerSaveBlocker en main). */
+function KeepAwakeRow(): React.JSX.Element | null {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!hasCoworkBridge()) return
+    cw('cowork:keepAwakeState')
+      .then((st) => setEnabled(st.enabled))
+      .catch(() => undefined)
+  }, [])
+
+  if (!hasCoworkBridge() || enabled === null) return null
+
+  return (
+    <Row
+      label="Mantener el Mac despierto"
+      description="Evita que el equipo entre en reposo mientras hay tareas de Cowork trabajando en segundo plano."
+    >
+      <Toggle
+        checked={enabled}
+        onChange={(v) => {
+          setEnabled(v)
+          void cw('cowork:keepAwakeSetting', { enabled: v }).catch(() => undefined)
+        }}
+        label="Mantener el Mac despierto mientras corren tareas"
+      />
+    </Row>
+  )
+}
 
 const THEMES: { id: ThemePreference; label: string; icon: typeof Sun }[] = [
   { id: 'system', label: 'Sistema', icon: Monitor },
@@ -89,6 +121,7 @@ export function GeneralSection(): React.JSX.Element {
         <Row label="Icono en la barra de menús" description="Acceso rápido a nueva conversación, Quick Entry y salir.">
           <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label="Icono en la barra de menús" />
         </Row>
+        <KeepAwakeRow />
       </Card>
 
       <SubTitle>Servidor OpenCode</SubTitle>
