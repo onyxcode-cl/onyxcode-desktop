@@ -29,7 +29,10 @@ function normalize(input: Partial<ExtrasPrefs>): ExtrasPrefs {
     }
   }
   const showTray = typeof input.showTray === 'boolean' ? input.showTray : DEFAULT_EXTRAS_PREFS.showTray
-  return { quickEntryShortcut: shortcut, modelsByMode, showTray }
+  const notificationsEnabled =
+    typeof input.notificationsEnabled === 'boolean' ? input.notificationsEnabled : DEFAULT_EXTRAS_PREFS.notificationsEnabled
+  const soundEnabled = typeof input.soundEnabled === 'boolean' ? input.soundEnabled : DEFAULT_EXTRAS_PREFS.soundEnabled
+  return { quickEntryShortcut: shortcut, modelsByMode, showTray, notificationsEnabled, soundEnabled }
 }
 
 /** Preferencias de extras en `userData/extras.json` (separadas de settings.json). */

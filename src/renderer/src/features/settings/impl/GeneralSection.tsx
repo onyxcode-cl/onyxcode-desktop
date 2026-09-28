@@ -122,6 +122,8 @@ export function GeneralSection(): React.JSX.Element {
   const { settings, update } = useSettings()
   const { status, connection, restart } = useServer()
   const showTray = useExtrasPrefs((s) => s.prefs.showTray)
+  const notificationsEnabled = useExtrasPrefs((s) => s.prefs.notificationsEnabled)
+  const soundEnabled = useExtrasPrefs((s) => s.prefs.soundEnabled)
   const updatePrefs = useExtrasPrefs((s) => s.update)
   const st = STATE[status.state] ?? STATE.stopped
 
@@ -157,6 +159,20 @@ export function GeneralSection(): React.JSX.Element {
         </Row>
         <Row label="Icono en la barra de menús" description="Acceso rápido a nueva conversación, Quick Entry y salir.">
           <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label="Icono en la barra de menús" />
+        </Row>
+        <Row
+          label="Notificaciones"
+          description="Avisos nativos cuando una sesión de Code o una tarea de Cowork termina o necesita tu aprobación, con badge en el Dock."
+        >
+          <Toggle checked={notificationsEnabled} onChange={(v) => void updatePrefs({ notificationsEnabled: v })} label="Notificaciones" />
+        </Row>
+        <Row label="Sonido" description="Reproduce el sonido del sistema al mostrar una notificación.">
+          <Toggle
+            checked={soundEnabled}
+            onChange={(v) => void updatePrefs({ soundEnabled: v })}
+            label="Sonido"
+            disabled={!notificationsEnabled}
+          />
         </Row>
         <KeepAwakeRow />
       </Card>

@@ -19,6 +19,10 @@ export interface ExtrasPrefs {
   modelsByMode: Partial<Record<ModelMode, ModelRef>>
   /** Mostrar icono en la barra de menús. */
   showTray: boolean
+  /** Notificaciones nativas (Code/Cowork: sesión terminó o pide algo). */
+  notificationsEnabled: boolean
+  /** Sonido de las notificaciones (`Notification.silent` invertido). */
+  soundEnabled: boolean
 }
 
 export const DEFAULT_QUICK_ENTRY_SHORTCUT = 'Alt+Space'
@@ -26,7 +30,9 @@ export const DEFAULT_QUICK_ENTRY_SHORTCUT = 'Alt+Space'
 export const DEFAULT_EXTRAS_PREFS: ExtrasPrefs = {
   quickEntryShortcut: DEFAULT_QUICK_ENTRY_SHORTCUT,
   modelsByMode: {},
-  showTray: true
+  showTray: true,
+  notificationsEnabled: true,
+  soundEnabled: true
 }
 
 export interface ExtrasPrefsState {

@@ -11,6 +11,7 @@ import type {
   AppInfo,
   GitStatus,
   GitWorktree,
+  NotifyTarget,
   OpencodeConnection,
   PtyCreateRequest,
   PtyDataEvent,
@@ -32,6 +33,13 @@ export interface IpcInvokeContract {
   // app
   'app:info': { req: void; res: AppInfo }
   'app:openExternal': { req: { url: string }; res: void }
+  /**
+   * Notificación nativa desde main (Code/Cowork: sesión terminó o pide algo). `target`, si viene,
+   * es adónde llevar al usuario al hacer clic (evento `app:openTarget`).
+   */
+  'app:notify': { req: { title: string; body: string; target?: NotifyTarget }; res: void }
+  /** Badge del Dock (`app.dock.setBadge`); `count === 0` lo limpia. */
+  'app:setAttention': { req: { count: number }; res: void }
 
   // opencode sidecar
   'opencode:connection': { req: void; res: OpencodeConnection }
@@ -71,6 +79,8 @@ export interface IpcEventContract {
   'pty:data': PtyDataEvent
   'pty:exit': PtyExitEvent
   'scheduler:run': RoutineRun
+  /** Clic en una notificación (o "abrir" desde el Dock): el renderer cambia de modo y selecciona. */
+  'app:openTarget': NotifyTarget
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeContract
@@ -82,6 +92,8 @@ export type IpcResponse<C extends IpcInvokeChannel> = IpcInvokeContract[C]['res'
 export const IPC_INVOKE_CHANNELS = [
   'app:info',
   'app:openExternal',
+  'app:notify',
+  'app:setAttention',
   'opencode:connection',
   'opencode:status',
   'opencode:restart',
@@ -108,7 +120,8 @@ export const IPC_EVENT_CHANNELS = [
   'settings:changed',
   'pty:data',
   'pty:exit',
-  'scheduler:run'
+  'scheduler:run',
+  'app:openTarget'
 ] as const satisfies readonly IpcEventChannel[]
 
 // Garantiza en compilación que las listas cubren todo el contrato.

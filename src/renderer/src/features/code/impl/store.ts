@@ -7,6 +7,7 @@
 import { create } from 'zustand'
 import type { Part, PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
 import type { ModelRef } from '@shared/types'
+import { sendNotification } from '../../../lib/notify'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
   Attachment,
@@ -431,6 +432,16 @@ export const useCode = create<CodeState>((set, get) => {
     if (s.activeSessionID === sessionID && windowIsFocused()) return
     if (s.unread[sessionID]) return
     set((st) => ({ unread: { ...st.unread, [sessionID]: true } }))
+  }
+
+  /** Notificación nativa para `sessionID` (salvo que sea la activa y la ventana tenga el foco). */
+  const notifyCode = (sessionID: string, title: string): void => {
+    const s = get()
+    if (s.activeSessionID === sessionID && windowIsFocused()) return
+    const root = rootSessionID(s.sessions, sessionID)
+    const directory = s.sessionProject[root] ?? s.directory ?? undefined
+    const body = s.sessions[sessionID]?.title || 'Sesión de Code'
+    sendNotification(title, body, { mode: 'code', id: root, directory })
   }
 
   /** Si hay mensajes en cola para `sessionID`, envía el primero (se llama al quedar libre). */
@@ -933,6 +944,7 @@ export const useCode = create<CodeState>((set, get) => {
           if (prev !== 'idle' && next === 'idle') {
             set((s) => ({ fsVersion: s.fsVersion + 1 }))
             markUnread(sessionID)
+            notifyCode(sessionID, 'Code terminó')
             maybeAutoSend(sessionID)
           }
           break
@@ -942,7 +954,10 @@ export const useCode = create<CodeState>((set, get) => {
           if (!known(sessionID)) return
           const prev = get().runState[sessionID]
           set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' }, fsVersion: s.fsVersion + 1 }))
-          if (prev !== 'idle') markUnread(sessionID)
+          if (prev !== 'idle') {
+            markUnread(sessionID)
+            notifyCode(sessionID, 'Code terminó')
+          }
           maybeAutoSend(sessionID)
           break
         }
@@ -1016,6 +1031,7 @@ export const useCode = create<CodeState>((set, get) => {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, p.sessionID))
+          notifyCode(p.sessionID, 'Code necesita tu aprobación')
           set((s) => ({
             permissions: {
               ...s.permissions,
@@ -1037,6 +1053,7 @@ export const useCode = create<CodeState>((set, get) => {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, p.sessionID))
+          notifyCode(p.sessionID, 'Code necesita tu aprobación')
           set((s) => ({
             permissions: {
               ...s.permissions,
@@ -1069,6 +1086,7 @@ export const useCode = create<CodeState>((set, get) => {
           const q = event.properties
           if (!adopt(q.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, q.sessionID))
+          notifyCode(q.sessionID, 'Code tiene una pregunta para ti')
           set((s) => ({ questions: { ...s.questions, [q.id]: { id: q.id, sessionID: q.sessionID, questions: q.questions } } }))
           break
         }
@@ -1106,6 +1124,17 @@ export function selectProjectSessions(s: Pick<CodeState, 'sessions' | 'sessionPr
   return Object.values(s.sessions)
     .filter((x) => s.sessionProject[x.id] === directory && !x.parentID && !x.time.archived)
     .sort((a, b) => b.time.updated - a.time.updated)
+}
+
+/**
+ * Conteo combinado (para el badge del Dock): sesiones raíz con actividad sin ver (terminaron) o
+ * que esperan algo del usuario (permiso o pregunta pendiente), sin duplicar la misma raíz.
+ */
+export function selectCodeAttentionCount(s: Pick<CodeState, 'unread' | 'permissions' | 'questions' | 'sessions'>): number {
+  const ids = new Set<string>(Object.keys(s.unread))
+  for (const p of Object.values(s.permissions)) ids.add(rootSessionID(s.sessions, p.sessionID))
+  for (const q of Object.values(s.questions)) ids.add(rootSessionID(s.sessions, q.sessionID))
+  return ids.size
 }
 
 let subscribers = 0

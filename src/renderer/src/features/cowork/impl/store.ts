@@ -20,8 +20,8 @@ import {
   type NetworkBlockedEvent
 } from '@shared/ipc-cowork'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
+import { sendNotification } from '../../../lib/notify'
 import { useSessions } from '../../../stores/sessions'
-import { useUi } from '../../../stores/ui'
 import { cw, onCowork } from './bridge'
 
 export type CoworkServerPhase = 'idle' | 'starting' | 'ready' | 'error'
@@ -360,21 +360,14 @@ export async function refreshDeliverables(sessionID?: string): Promise<void> {
   }
 }
 
-/** Notificación nativa (solo si la ventana no tiene el foco). Clic ⇒ abre la tarea. */
+/**
+ * Notificación nativa (proceso principal, ver `lib/notify.ts`): un clic restaura/enfoca la
+ * ventana y reenvía `app:openTarget` (mode 'cowork', id de la tarea raíz), que `App.tsx` usa para
+ * cambiar de modo y seleccionar la tarea.
+ */
 function notifyTask(sessionID: string, title: string, body: string): void {
-  if (typeof Notification === 'undefined' || document.hasFocus()) return
-  try {
-    const n = new Notification(title, { body, silent: false })
-    n.onclick = () => {
-      window.focus()
-      useUi.getState().setMode('cowork')
-      useCowork.setState({ activeTaskId: sessionID })
-      void loadTask(sessionID)
-      clearUnseen(sessionID)
-    }
-  } catch {
-    // Notificaciones no disponibles
-  }
+  const folder = useCowork.getState().folder ?? undefined
+  sendNotification(title, body, { mode: 'cowork', id: sessionID, directory: folder })
 }
 
 function rootTaskId(sessionID: string): string {
@@ -693,6 +686,17 @@ export async function loadGrants(): Promise<void> {
   } catch {
     // sin puente: nada que cargar
   }
+}
+
+/**
+ * Conteo combinado (para el badge del Dock): tareas raíz con resultado sin ver (terminaron) o que
+ * esperan algo del usuario (permiso o pregunta pendiente), sin duplicar la misma raíz.
+ */
+export function selectCoworkAttentionCount(s: Pick<CoworkState, 'unseen' | 'permissions' | 'questions'>): number {
+  const ids = new Set<string>(Object.keys(s.unseen))
+  for (const p of Object.values(s.permissions)) ids.add(rootTaskId(p.sessionID))
+  for (const q of Object.values(s.questions)) ids.add(rootTaskId(q.sessionID))
+  return ids.size
 }
 
 /** Consulta `computer:status` (helper nativo + permisos de macOS). */

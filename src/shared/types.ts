@@ -115,3 +115,17 @@ export interface RoutineRun {
 
 /** Agente de OpenCode usado por el modo Chat (definido en src/main/opencode/config.ts). */
 export const CHAT_AGENT = 'chat'
+
+// ---- Notificaciones nativas + badge del Dock ----
+
+/** Modo al que pertenece la sesión/tarea que originó una notificación. */
+export type NotifyMode = 'code' | 'cowork'
+
+/** Dónde abrir al hacer clic en una notificación (o al restaurar desde el Dock). */
+export interface NotifyTarget {
+  mode: NotifyMode
+  /** Id de la sesión (Code) o tarea (Cowork), siempre la sesión RAÍZ. */
+  id: string
+  /** Carpeta del proyecto (Code) o de Cowork; si falta, se asume la ya abierta. */
+  directory?: string
+}

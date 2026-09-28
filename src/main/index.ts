@@ -109,7 +109,7 @@ app.whenReady().then(() => {
     }
   }
 
-  registerAllHandlers(ipcMain, { server, chatDirectory })
+  registerAllHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
   registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
   coworkMod = registerCoworkHandlers(ipcMain, () => mainWindow, {
     getMainConnection: () => server.start(),

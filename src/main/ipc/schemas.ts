@@ -41,6 +41,7 @@ const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
 const pathReq = obj({ path: absPath })
 const openFolderOpts = optional(obj({ title: optional(shortText), defaultPath: optional(absPath) }))
+const notifyTarget = obj({ mode: literal('code', 'cowork'), id, directory: optional(absPath) })
 const hhmm = str({ pattern: /^\d{1,2}:\d{2}$/ })
 const schedule = tagged('kind', {
   daily: obj({ kind: literal('daily'), time: hhmm }),
@@ -79,6 +80,8 @@ const mcpEntry = tagged('type', {
 const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:info': none,
   'app:openExternal': obj({ url: str({ max: 8192, pattern: /^https?:\/\//i }) }),
+  'app:notify': obj({ title: str({ max: 300, min: 1 }), body: str({ max: 2000, min: 1 }), target: optional(notifyTarget) }),
+  'app:setAttention': obj({ count: num({ int: true, min: 0, max: 999_999 }) }),
   'opencode:connection': none,
   'opencode:status': none,
   'opencode:restart': none,
@@ -207,7 +210,9 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:setPrefs': partial({
     quickEntryShortcut: str({ max: 100 }),
     modelsByMode: partial({ chat: modelRef, code: modelRef, cowork: modelRef }),
-    showTray: bool
+    showTray: bool,
+    notificationsEnabled: bool,
+    soundEnabled: bool
   }),
   'extras:versions': none,
   'extras:openArtifact': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
