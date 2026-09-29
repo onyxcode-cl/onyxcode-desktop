@@ -75,6 +75,7 @@ import {
   resync,
   setPanelOpen,
   syncAccessRequests,
+  syncAutoMode,
   syncKillState,
   useCowork,
   isPlanPending,
@@ -392,6 +393,9 @@ export function CoworkWorkspace(): React.JSX.Element {
   useEffect(() => {
     void syncKillState()
     syncAccessRequests()
+    // Modo auto (Lote C): sin esto, `useCowork().autoMode` nunca se rellena y el chip del
+    // compositor y la vía rápida de `permission.asked` quedan muertos aunque esté activo en Ajustes.
+    syncAutoMode()
     const offAction = onCowork('computer:action', (ev) => {
       if (useCowork.getState().conn?.fullAccess) useCowork.setState({ lastAction: ev })
     })
