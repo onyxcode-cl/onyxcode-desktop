@@ -735,7 +735,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** banco de pruebas; typecheck.
 
 **W3-F · Integración menor y documentación**
-- **Posee:** `src/main/ipc/cowork-handlers.ts`, `AUDIT.md`, `docs/analisis-claude/02-cowork.md`, `docs/SEGURIDAD.md` y el nuevo `docs/COWORK-LOTE-B.md`.
+- **Posee:** `src/main/ipc/cowork-handlers.ts`, `AUDIT.md`, notas privadas (fuera del repositorio), `docs/SEGURIDAD.md` y el nuevo `docs/COWORK-LOTE-B.md`.
 - **Pasos:**
   1. La notificación de `request_access` respeta `prefs.notify.approval`.
   2. `computer:session {active:false}` llama a `computer.cleanScreenshots()` tras 60 s.

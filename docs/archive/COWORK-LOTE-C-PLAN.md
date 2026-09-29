@@ -579,7 +579,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - `features/cowork/impl/{ComputerAccess.tsx,PermissionPrompt.tsx,store.ts,actions.ts,CoworkComposer.tsx,ProjectPanel.tsx}` y los nuevos `RecordSkill.tsx` y `AutoModeChip.tsx`
 - `features/settings/impl/{SettingsView.tsx,ComputerSection.tsx}` y los nuevos `AutoModeSection.tsx` y `BrowserSection.tsx`
 - `resources/opencode/agents/{computer.md,cowork.md}`
-- `AUDIT.md`, `docs/SEGURIDAD.md`, `docs/analisis-claude/02-cowork.md`, `docs/DISTRIBUCION.md` y el nuevo `docs/archive/COWORK-LOTE-C.md`
+- `AUDIT.md`, `docs/SEGURIDAD.md`, notas privadas (fuera del repositorio), `docs/DISTRIBUCION.md` y el nuevo `docs/archive/COWORK-LOTE-C.md`
 
 **Pasos:**
 1. **Tarjeta takeover** (`kind==='takeover'`) en `ComputerAccess.tsx` y en la píldora:

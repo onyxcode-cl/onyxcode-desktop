@@ -260,7 +260,7 @@ Bien diseñado: partición en memoria, sin preload, CSP `default-src 'none'` por
 | 15 | **Remoto/móvil** | Fuera de alcance |
 | 16 | Citas/fuentes de búsqueda web renderizadas | Se muestran como herramienta genérica |
 
-Detalle por función de Cowork (56 filas) en `docs/analisis-claude/02-cowork.md`; resumen del Lote B en `docs/COWORK-LOTE-B.md`.
+Resumen del Lote B en `docs/COWORK-LOTE-B.md` (el detalle por función vive en notas privadas, fuera del repositorio).
 
 ---
 

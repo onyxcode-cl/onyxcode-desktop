@@ -3,7 +3,7 @@
 Plan de origen: `docs/archive/COWORK-LOTE-B-PLAN.md` (arquitectura, contratos y reparto en oleadas). Antecedente:
 `docs/COWORK-LOTE-A.md` (Cowork autónomo: plan por sesión, niveles por app, escalada, búsqueda web).
 Hallazgos de seguridad y su estado: `AUDIT.md` §9. Modelo de seguridad vigente: `docs/SEGURIDAD.md` («3 bis»).
-Comparación con Claude Desktop, fila por fila: `docs/analisis-claude/02-cowork.md` («Tabla de brechas»).
+Comparación de funciones con otras herramientas: notas privadas, fuera del repositorio.
 
 > Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «OnyxCode» (`APP_NAME`,
 > `.onyxcode/memoria.md`, `onyxcode-plan-gate`, `temp/onyxcode-computer`…). No se renombró nada.

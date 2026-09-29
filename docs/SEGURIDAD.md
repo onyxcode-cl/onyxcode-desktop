@@ -1,7 +1,7 @@
 # Seguridad de OnyxCode — modelo actual
 
 Resumen de las defensas del proceso principal, las ventanas y los procesos hijos. Detalle de los
-hallazgos y su estado en `AUDIT.md`; motivación en `docs/analisis-claude/03-motor-interno.md`
+hallazgos y su estado en `AUDIT.md`; motivación en notas privadas (fuera del repositorio)
 («Lecciones para OnyxCode», bloques A y B).
 
 ## 1. Renderer y ventanas

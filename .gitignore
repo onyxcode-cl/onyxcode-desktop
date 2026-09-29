@@ -13,3 +13,6 @@ resources/opencode/package-lock.json
 resources/opencode/bun.lock
 resources/opencode/.gitignore
 e2e/.artifacts/
+
+# Notas privadas de analisis de software de terceros: NO publicar (ver docs/PUBLICACION.md)
+docs/analisis-claude/
