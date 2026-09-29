@@ -88,7 +88,7 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
     return
   }
   const dir = destinationDir(owner)
-  // Antes `.cowork/descargas`: pasar la carpeta vieja a `.onyxcode/trabajo/` antes de escribir.
+  // Migra la carpeta de trabajo heredada a `.onyxcode/trabajo/` antes de escribir.
   if (owner.kind === 'tasks') migrateFolderScratch(owner.folder, (m, e) => console.warn('[embedded-browser]', m, e ?? ''))
   try {
     mkdirSync(dir, { recursive: true })

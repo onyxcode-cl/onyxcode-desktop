@@ -186,7 +186,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     const srcDir = join(this.baseDir, id)
     const rec = this.loadRecording(srcDir)
     if (!rec) throw new Error('No se encontró la grabación (puede haberse purgado tras 24 h).')
-    // Antes `.cowork/`: si existe, pasarlo a `.onyxcode/trabajo/` antes de escribir.
+    // Migra la carpeta de trabajo heredada a `.onyxcode/trabajo/` antes de escribir.
     migrateFolderScratch(root, (m, e) => console.warn('[computer]', m, e ?? ''))
     const relDir = join('.onyxcode', 'trabajo', 'grabaciones', id)
     const destDir = join(root, relDir)
