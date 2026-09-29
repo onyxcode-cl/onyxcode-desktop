@@ -36,7 +36,7 @@ import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startCoworkServer, type CoworkServerHandle } from './sandbox'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
-import { deepMerge } from './config-merge'
+import { buildInlineConfig } from './inline-config'
 import { coworkMcpContribution } from './mcp-cowork'
 import { coworkRules, rulesPermissionConfig } from './rules'
 import { skillsInlineConfig } from './opencode-config'
@@ -610,72 +610,39 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     fullAccess: boolean,
     extras: ExtraFolder[]
   ): Promise<{ config: Record<string, unknown>; browserMcpPort: number | null }> {
-    let base: Record<string, unknown>
+    let browserMcp: Record<string, unknown> | null = null
+    let computerMcp: Record<string, unknown> | null = null
     let browserMcpPort: number | null = null
     // Idempotente: nos asegura la implementación real del navegador integrado la primera vez que
     // se arranca cualquier servidor de Cowork (sandbox o Control total).
     embeddedBrowserMcp.setApi(embeddedBrowser)
     if (!fullAccess) {
-      // Carpetas adicionales (vinculadas o de confianza): el agente no pregunta por ellas. `*` de
-      // OpenCode admite `/`, así que `<p>/*` cubre sus subcarpetas. El resto sigue en `ask`; el
-      // orden importa (gana la última regla que coincide).
-      const externalDirectory: Record<string, 'ask' | 'allow'> = { '*': 'ask' }
-      for (const e of extras) {
-        externalDirectory[e.path] = 'allow'
-        externalDirectory[`${e.path}/*`] = 'allow'
-      }
       // Navegador integrado en Sandbox (Lote D, novedad B.7: antes no había navegador aquí).
       // `browser_*` queda con el permiso por defecto ('ask'), como cualquier otra herramienta de acción del sandbox: sin `deny` explícito.
-      const browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: true }).catch(() => null)
+      browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: true }).catch(() => null)
       browserMcpPort = portOfMcpConfig(browserMcp)
-      // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox.
-      base = {
-        autoupdate: false,
-        ...(browserMcp ? { mcp: { browser: browserMcp } } : {}),
-        agent: {
-          computer: { disable: true },
-          ...(extras.length ? { cowork: { permission: { external_directory: externalDirectory } } } : {})
-        }
-      }
+      // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox (ver buildInlineConfig).
     } else {
-      const mcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
-      this.fullAccessMcp.set(key, !!mcp)
+      computerMcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
+      this.fullAccessMcp.set(key, !!computerMcp)
       // Navegador en Control total (Lote D, B.11): el navegador integrado.
-      const browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: false }).catch(() => null)
-      const mcpBlock: Record<string, unknown> = {}
-      if (mcp) mcpBlock.computer = mcp
-      if (browserMcp) mcpBlock.browser = browserMcp
-      base = {
-        autoupdate: false,
-        ...(Object.keys(mcpBlock).length ? { mcp: mcpBlock } : {}),
-        // Las herramientas de cada MCP solo para el agente que corresponde (ver agents/computer.md,
-        // agents/cowork.md): al agente `cowork` se le deniegan sus `*_*`, igual que ya pasaba con `computer_*`.
-        // La puerta del plan (`onyxcode-plan-gate`) es la que de verdad bloquea `browser_*` hasta aprobarlo.
-        agent: {
-          cowork: {
-            permission: {
-              'computer_*': 'deny',
-              ...(browserMcp ? { 'browser_*': 'deny' } : {})
-            }
-          }
-        }
-      }
+      browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: false }).catch(() => null)
     }
     // MCP del usuario disponibles en Cowork (`mcp-cowork.ts`); sus hosts remotos entran a la red.
     const c = coworkMcpContribution({ sandboxed: !fullAccess })
     // Con `disableCustomHosts` los hosts de MCP remotos no se suman a la red (política gestionada).
     this.serverHosts.set(key, loadManagedPolicy()?.disableCustomHosts ? [] : c.hosts)
-    const hasPerm = Object.keys(c.permission).length > 0
-    const mcpBlock: Record<string, unknown> = {
-      ...(Object.keys(c.mcp).length ? { mcp: c.mcp } : {}),
-      ...(hasPerm ? { agent: { cowork: { permission: c.permission }, computer: { permission: c.permission } } } : {})
-    }
     // Permisos "siempre permitir" recordados para esta carpeta (`rules.ts`).
-    const p = rulesPermissionConfig(coworkRules.list(folder))
-    const rulesBlock: Record<string, unknown> = Object.keys(p).length
-      ? { agent: { cowork: { permission: p }, computer: { permission: p } } }
-      : {}
-    return { config: deepMerge(base, mcpBlock, rulesBlock, skillsInlineConfig()), browserMcpPort }
+    const config = buildInlineConfig({
+      fullAccess,
+      extras,
+      browserMcp,
+      computerMcp,
+      mcpContribution: c,
+      rulesPermission: rulesPermissionConfig(coworkRules.list(folder)),
+      skills: skillsInlineConfig()
+    })
+    return { config, browserMcpPort }
   }
 
   private spawn(folder: string, fullAccess: boolean): Promise<CoworkServerHandle> {

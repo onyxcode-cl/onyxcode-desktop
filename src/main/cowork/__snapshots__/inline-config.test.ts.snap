@@ -1,0 +1,169 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildInlineConfig: permisos del agente de tareas > control total + computer + navegador: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "cowork": {
+      "permission": {
+        "browser_*": "deny",
+        "computer_*": "deny",
+      },
+    },
+  },
+  "autoupdate": false,
+  "mcp": {
+    "browser": {
+      "type": "remote",
+      "url": "http://127.0.0.1:1234/mcp",
+    },
+    "computer": {
+      "type": "remote",
+      "url": "http://127.0.0.1:5678/mcp",
+    },
+  },
+}
+`;
+
+exports[`buildInlineConfig: permisos del agente de tareas > control total + todo: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "computer": {
+      "permission": {
+        "bash": {
+          "npm test": "allow",
+        },
+        "external_directory": {
+          "/fixture/x/*": "allow",
+        },
+        "github_*": "ask",
+      },
+    },
+    "cowork": {
+      "permission": {
+        "bash": {
+          "npm test": "allow",
+        },
+        "browser_*": "deny",
+        "computer_*": "deny",
+        "external_directory": {
+          "/fixture/x/*": "allow",
+        },
+        "github_*": "ask",
+      },
+    },
+  },
+  "autoupdate": false,
+  "mcp": {
+    "browser": {
+      "type": "remote",
+      "url": "http://127.0.0.1:1234/mcp",
+    },
+    "computer": {
+      "type": "remote",
+      "url": "http://127.0.0.1:5678/mcp",
+    },
+    "github": {
+      "type": "local",
+    },
+  },
+}
+`;
+
+exports[`buildInlineConfig: permisos del agente de tareas > control total vacío: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "cowork": {
+      "permission": {
+        "computer_*": "deny",
+      },
+    },
+  },
+  "autoupdate": false,
+}
+`;
+
+exports[`buildInlineConfig: permisos del agente de tareas > sandbox + MCP usuario + reglas: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "computer": {
+      "disable": true,
+      "permission": {
+        "bash": {
+          "npm test": "allow",
+        },
+        "external_directory": {
+          "/fixture/x/*": "allow",
+        },
+        "github_*": "ask",
+      },
+    },
+    "cowork": {
+      "permission": {
+        "bash": {
+          "npm test": "allow",
+        },
+        "external_directory": {
+          "/fixture/x/*": "allow",
+        },
+        "github_*": "ask",
+      },
+    },
+  },
+  "autoupdate": false,
+  "mcp": {
+    "github": {
+      "type": "local",
+    },
+  },
+}
+`;
+
+exports[`buildInlineConfig: permisos del agente de tareas > sandbox + extras: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "computer": {
+      "disable": true,
+    },
+    "cowork": {
+      "permission": {
+        "external_directory": {
+          "*": "ask",
+          "/fixture/a": "allow",
+          "/fixture/a/*": "allow",
+          "/fixture/b": "allow",
+          "/fixture/b/*": "allow",
+        },
+      },
+    },
+  },
+  "autoupdate": false,
+}
+`;
+
+exports[`buildInlineConfig: permisos del agente de tareas > sandbox + navegador: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "computer": {
+      "disable": true,
+    },
+  },
+  "autoupdate": false,
+  "mcp": {
+    "browser": {
+      "type": "remote",
+      "url": "http://127.0.0.1:1234/mcp",
+    },
+  },
+}
+`;
+
+exports[`buildInlineConfig: permisos del agente de tareas > sandbox vacío: snapshot completo del config 1`] = `
+{
+  "agent": {
+    "computer": {
+      "disable": true,
+    },
+  },
+  "autoupdate": false,
+}
+`;

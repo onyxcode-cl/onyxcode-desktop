@@ -1,0 +1,744 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" concedido: sin deny de unlink en la principal, scratch sin regla extra 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+(deny file-read* file-write* (subpath "/fixture/userData"))
+;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
+(allow file-read-metadata (subpath "/fixture/userData"))
+;; …salvo la config de OpenCode de la app (agentes), solo lectura…
+(allow file-read* (subpath "/fixture/userData/opencode-config"))
+;; …y el directorio privado de este servidor.
+(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-bind (local ip "localhost:*"))
+"
+`;
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw, sin red y con scratchDirs POR DEFECTO 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+(deny file-read* file-write* (subpath "/fixture/userData"))
+;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
+(allow file-read-metadata (subpath "/fixture/userData"))
+;; …salvo la config de OpenCode de la app (agentes), solo lectura…
+(allow file-read* (subpath "/fixture/userData/opencode-config"))
+;; …y el directorio privado de este servidor.
+(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-bind (local ip "localhost:*"))
+
+;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
+(deny file-write-unlink (subpath "/fixture/work/proyecto"))
+
+;; Scratch (.cowork): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+"
+`;
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales: rw (sin borrado) y solo lectura 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (subpath "/fixture/otra/escribible")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+(deny file-read* file-write* (subpath "/fixture/userData"))
+;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
+(allow file-read-metadata (subpath "/fixture/userData"))
+;; …salvo la config de OpenCode de la app (agentes), solo lectura…
+(allow file-read* (subpath "/fixture/userData/opencode-config"))
+;; …y el directorio privado de este servidor.
+(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-bind (local ip "localhost:*"))
+
+;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
+(deny file-write-unlink (subpath "/fixture/work/proyecto"))
+(deny file-write-unlink (subpath "/fixture/otra/escribible"))
+
+;; Scratch (.cowork): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+
+;; Carpetas adicionales de solo lectura: ninguna escritura (gana sobre las escribibles que las contengan).
+(deny file-write* (subpath "/fixture/otra/lectura"))
+"
+`;
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies locales y el puerto del servidor 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+(deny file-read* file-write* (subpath "/fixture/userData"))
+;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
+(allow file-read-metadata (subpath "/fixture/userData"))
+;; …salvo la config de OpenCode de la app (agentes), solo lectura…
+(allow file-read* (subpath "/fixture/userData/opencode-config"))
+;; …y el directorio privado de este servidor.
+(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-outbound
+  (remote ip "localhost:40001")
+  (remote ip "localhost:40002")
+)
+(allow network-bind (local ip "localhost:40555"))
+(allow network-inbound (local ip "localhost:40555"))
+(allow network-bind (local ip "localhost:*"))
+
+;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
+(deny file-write-unlink (subpath "/fixture/work/proyecto"))
+
+;; Scratch (.cowork): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+"
+`;
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la principal con allowDelete 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (subpath "/fixture/work")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+(deny file-read* file-write* (subpath "/fixture/userData"))
+;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
+(allow file-read-metadata (subpath "/fixture/userData"))
+;; …salvo la config de OpenCode de la app (agentes), solo lectura…
+(allow file-read* (subpath "/fixture/userData/opencode-config"))
+;; …y el directorio privado de este servidor.
+(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-bind (local ip "localhost:*"))
+
+;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
+(deny file-write-unlink (subpath "/fixture/work"))
+
+;; Borrado concedido en la principal aunque una carpeta rw adicional la contenga.
+(allow file-write-unlink (subpath "/fixture/work/proyecto"))
+
+;; Scratch (.cowork): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+"
+`;
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícito sustituye al valor por defecto 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+(deny file-read* file-write* (subpath "/fixture/userData"))
+;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
+(allow file-read-metadata (subpath "/fixture/userData"))
+;; …salvo la config de OpenCode de la app (agentes), solo lectura…
+(allow file-read* (subpath "/fixture/userData/opencode-config"))
+;; …y el directorio privado de este servidor.
+(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-bind (local ip "localhost:*"))
+
+;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
+(deny file-write-unlink (subpath "/fixture/work/proyecto"))
+
+;; Scratch (.cowork): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/scratch-a"))
+(allow file-write-unlink (subpath "/fixture/work/proyecto/scratch-b"))
+"
+`;
+
+exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay bloque de userData 1`] = `
+"(version 1)
+(allow default)
+
+;; Escritura: solo la carpeta de la tarea + directorio privado del servidor + temporales.
+(deny file-write*)
+(allow file-write*
+  (subpath "/fixture/work/proyecto")
+  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (subpath "/private/var/folders/zz/fixed/T")
+  (literal "/dev/null") (literal "/dev/zero") (literal "/dev/tty")
+  (literal "/dev/dtracehelper") (literal "/dev/random") (literal "/dev/urandom")
+  (regex #"^/dev/ttys[0-9]+$") (regex #"^/dev/fd/"))
+
+;; Secretos del usuario: sin lectura ni escritura.
+(deny file-read* file-write*
+  (subpath "/Users/fixture/.ssh")
+  (subpath "/Users/fixture/.aws")
+  (subpath "/Users/fixture/.gnupg")
+  (subpath "/Users/fixture/.kube")
+  (subpath "/Users/fixture/.docker")
+  (subpath "/Users/fixture/.azure")
+  (subpath "/Users/fixture/.config/gcloud")
+  (subpath "/Users/fixture/.local/share/opencode")
+  (subpath "/Users/fixture/.local/state/opencode")
+  (subpath "/Users/fixture/.config/opencode")
+  (subpath "/Users/fixture/.config/gh")
+  (subpath "/Users/fixture/.config/hub")
+  (subpath "/Users/fixture/.netrc")
+  (subpath "/Users/fixture/.git-credentials")
+  (subpath "/Users/fixture/.npmrc")
+  (subpath "/Users/fixture/.yarnrc")
+  (subpath "/Users/fixture/.pypirc")
+  (subpath "/Users/fixture/.cargo/credentials")
+  (subpath "/Users/fixture/.cargo/credentials.toml")
+  (subpath "/Users/fixture/.gem/credentials")
+  (subpath "/Users/fixture/.terraform.d")
+  (subpath "/Users/fixture/.zsh_history")
+  (subpath "/Users/fixture/.bash_history")
+  (subpath "/Users/fixture/.zsh_sessions")
+  (subpath "/Users/fixture/.python_history")
+  (subpath "/Users/fixture/.node_repl_history")
+  (subpath "/Users/fixture/Library/Application Support/Google/Chrome")
+  (subpath "/Users/fixture/Library/Application Support/Chromium")
+  (subpath "/Users/fixture/Library/Application Support/Firefox")
+  (subpath "/Users/fixture/Library/Application Support/BraveSoftware")
+  (subpath "/Users/fixture/Library/Application Support/Microsoft Edge")
+  (subpath "/Users/fixture/Library/Application Support/Arc")
+  (subpath "/Users/fixture/Library/Application Support/com.operasoftware.Opera")
+  (subpath "/Users/fixture/Library/Application Support/Vivaldi")
+  (subpath "/Users/fixture/Library/Safari")
+  (subpath "/Users/fixture/Library/Cookies")
+  (subpath "/Users/fixture/Library/Keychains")
+  (subpath "/Users/fixture/Library/Mail")
+  (subpath "/Users/fixture/Library/Messages")
+  (subpath "/Users/fixture/Library/Containers/com.apple.Safari")
+  (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
+)
+
+;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
+;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/osacompile")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/automator")
+  (literal "/usr/bin/shortcuts")
+  (literal "/usr/bin/lsappinfo")
+  (literal "/usr/sbin/screencapture")
+  (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste")
+)
+(deny appleevent-send)
+(deny mach-lookup
+  (global-name "com.apple.coreservices.launchservicesd")
+  (global-name "com.apple.lsd.open")
+  (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.coreservices.appleevents")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.screencapture.interactive")
+)
+
+;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+(deny network*)
+(allow network-bind (local ip "localhost:*"))
+
+;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
+(deny file-write-unlink (subpath "/fixture/work/proyecto"))
+
+;; Scratch (.cowork): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+"
+`;
