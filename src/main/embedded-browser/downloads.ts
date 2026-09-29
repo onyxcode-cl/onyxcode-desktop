@@ -7,7 +7,7 @@
  *   abrir un archivo que trajo el agente, hay que añadirla a mano con `xattr`).
  * - Del usuario: diálogo de guardado nativo (`dialog.showSaveDialog`), como el resto de la app.
  * - Nunca se abren solas (ni `shell.openPath` ni nada parecido aquí).
- * - Destinos: Cowork → `<carpeta>/.cowork/descargas/`; Code → `~/Downloads/<APP_NAME>/`.
+ * - Destinos: Cowork → `<carpeta>/.onyxcode/trabajo/descargas/`; Code → `~/Downloads/<APP_NAME>/`.
  */
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { dialog, type DownloadItem, type WebContents } from 'electron'
 import { APP_NAME } from '@shared/brand'
 import type { BrowserOwner } from '@shared/ipc-browser'
+import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import { hostOf, siteOf } from './sites'
 import { requestApproval } from './approvals'
 import { tabByWebContents } from './surface'
@@ -37,7 +38,7 @@ export function initDownloads(d: DownloadsDeps): void {
 }
 
 function destinationDir(owner: BrowserOwner): string {
-  if (owner.kind === 'tasks') return join(owner.folder, '.cowork', 'descargas')
+  if (owner.kind === 'tasks') return join(owner.folder, '.onyxcode', 'trabajo', 'descargas')
   return join(homedir(), 'Downloads', APP_NAME)
 }
 
@@ -87,6 +88,8 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
     return
   }
   const dir = destinationDir(owner)
+  // Antes `.cowork/descargas`: pasar la carpeta vieja a `.onyxcode/trabajo/` antes de escribir.
+  if (owner.kind === 'tasks') migrateFolderScratch(owner.folder, (m, e) => console.warn('[embedded-browser]', m, e ?? ''))
   try {
     mkdirSync(dir, { recursive: true })
   } catch (err) {

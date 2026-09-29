@@ -190,7 +190,7 @@ export interface SandboxProfileOptions {
   extraFolders?: Array<{ path: string; mode: FolderAccessMode }>
   /**
    * Subcarpetas de `folder` donde SÍ se permite borrar/renombrar (scratch del agente).
-   * Por defecto `[join(folder, '.cowork')]`.
+   * Por defecto `[join(folder, '.onyxcode', 'trabajo')]` (NO `.onyxcode/` entera: `memoria.md` no debe poder borrarse).
    */
   scratchDirs?: string[]
   home?: string
@@ -313,9 +313,13 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     )
   }
   // Scratch del agente: sí se puede borrar y renombrar (archivos temporales de conversión, etc.).
-  const scratch = (opts.scratchDirs ?? [join(folder, '.cowork')]).map((p) => sbString(p))
+  const scratch = (opts.scratchDirs ?? [join(folder, '.onyxcode', 'trabajo')]).map((p) => sbString(p))
   if (noUnlink.length && scratch.length) {
-    lines.push(';; Scratch (.cowork): borrar y renombrar permitido.', ...scratch.map((p) => `(allow file-write-unlink (subpath ${p}))`), '')
+    lines.push(
+      ';; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.',
+      ...scratch.map((p) => `(allow file-write-unlink (subpath ${p}))`),
+      ''
+    )
   }
   // Carpetas de solo lectura: al final, por si una `ro` está dentro de una carpeta escribible.
   if (extraRo.length) {

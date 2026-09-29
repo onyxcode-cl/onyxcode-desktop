@@ -1,4 +1,4 @@
-# .cowork/make_xlsx_basico.py: libro Excel SIN dependencias (solo biblioteca estándar de Python).
+# .onyxcode/trabajo/make_xlsx_basico.py: libro Excel SIN dependencias (solo biblioteca estándar de Python).
 # Números como números, texto como texto, fórmulas si empiezan por "=", encabezado en negrita,
 # primera fila fija y anchos de columna. Una hoja por entrada de HOJAS.
 # Una fórmula puede ir como '=C2*D2' (Excel la calcula al abrir; una vista previa la mostrará vacía)

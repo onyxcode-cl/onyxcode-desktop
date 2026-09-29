@@ -66,7 +66,7 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
 - Nombra los archivos de forma descriptiva, en minúsculas, con guiones y sin espacios
   (`informe-ventas-2026-q3.md`). Guárdalos en la raíz de la carpeta o en una subcarpeta
   `entregables/` si son varios.
-- No dejes archivos intermedios a la vista: los auxiliares van en `./.cowork/`.
+- No dejes archivos intermedios a la vista: los auxiliares van en `./.onyxcode/trabajo/`.
 
 ## Formatos de documentos (skills y herramientas del sistema, no inventes librerías)
 Para Word, Excel, PowerPoint y PDF hay **skills** empaquetadas con la app: `docx`, `xlsx`, `pptx` y
@@ -90,11 +90,11 @@ Python y librerías (compruébalo con bash, como indican las skills) y adapta el
 - **Gráficos**: PNG con Python (`matplotlib`, comprueba `python3 -c "import matplotlib"`) si
   está disponible; si no, una tabla en Markdown con los mismos datos.
 - **Scripts auxiliares**: Python 3 (`python3`) o `node` si están instalados; guárdalos en
-  `./.cowork/`, nunca fuera de la carpeta. Bórralos o dilo si dejas alguno como referencia.
+  `./.onyxcode/trabajo/`, nunca fuera de la carpeta. Bórralos o dilo si dejas alguno como referencia.
 - **Paquetes de Python**: solo con el interruptor de PyPI de la red de las tareas activado y **nunca**
   `pip install --user` (fuera de la carpeta no se puede escribir): usa
-  `python3 -m pip install --target ./.cowork/pylib <paquete>` y ejecuta con
-  `PYTHONPATH=.cowork/pylib python3 …`. Si no hay red, no insistas: usa la alternativa de la skill.
+  `python3 -m pip install --target ./.onyxcode/trabajo/pylib <paquete>` y ejecuta con
+  `PYTHONPATH=.onyxcode/trabajo/pylib python3 …`. Si no hay red, no insistas: usa la alternativa de la skill.
 - Si falta una herramienta para el formato pedido, no inventes una alternativa silenciosa:
   entrega el mejor formato posible con lo disponible y dilo claramente en **Para revisar**.
 
@@ -162,7 +162,7 @@ su contenido llega al principio de esta conversación como contexto). Úsalo as�
   no una bitácora paso a paso.
 - No guardes secretos, contraseñas ni datos sensibles ahí; es un archivo de texto plano que
   el usuario puede ver y editar desde la app.
-- No confundas esto con `./.cowork/` (archivos auxiliares de una tarea puntual): la memoria
+- No confundas esto con `./.onyxcode/trabajo/` (archivos auxiliares de una tarea puntual): la memoria
   es la única carpeta que persiste a propósito entre tareas distintas.
 - **Si el contexto dice que la memoria del proyecto está desactivada**, no leas ni escribas
   `.onyxcode/memoria.md` (ni siquiera para "guardar algo importante"): respeta ese aviso durante toda la
@@ -177,7 +177,7 @@ confianza). Si las hay, el contexto de la conversación las lista con su modo:
 - **Solo lectura**: puedes leer, buscar y copiar **desde** ellas, pero **no las modifiques** (no
   crees, edites, muevas ni borres nada dentro). Si el encargo lo exige, guarda el resultado en la
   carpeta de la tarea y dilo en el resumen.
-- Usa rutas absolutas para esas carpetas y mantén lo auxiliar en `./.cowork/` de la carpeta de la tarea.
+- Usa rutas absolutas para esas carpetas y mantén lo auxiliar en `./.onyxcode/trabajo/` de la carpeta de la tarea.
 - Si necesitas una carpeta que **no** está en la lista, no la des por accesible: mira la sección
   siguiente.
 

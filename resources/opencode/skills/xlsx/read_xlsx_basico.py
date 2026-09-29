@@ -1,5 +1,5 @@
-# .cowork/read_xlsx_basico.py: muestra el contenido de un .xlsx SIN dependencias (biblioteca estándar).
-# Uso: python3 .cowork/read_xlsx_basico.py archivo.xlsx   -> una línea por fila, celdas separadas por tabulador.
+# .onyxcode/trabajo/read_xlsx_basico.py: muestra el contenido de un .xlsx SIN dependencias (biblioteca estándar).
+# Uso: python3 .onyxcode/trabajo/read_xlsx_basico.py archivo.xlsx   -> una línea por fila, celdas separadas por tabulador.
 # Muestra el valor guardado (las fórmulas sin valor calculado salen vacías) y no interpreta formatos de fecha.
 import re
 import sys

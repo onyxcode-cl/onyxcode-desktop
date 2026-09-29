@@ -8,7 +8,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -68,7 +68,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
 ;; …salvo la config de OpenCode de la app (agentes), solo lectura…
 (allow file-read* (subpath "/fixture/userData/opencode-config"))
 ;; …y el directorio privado de este servidor.
-(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+(allow file-read* file-write* (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef"))
 
 ;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
 ;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
@@ -108,7 +108,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -168,7 +168,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 ;; …salvo la config de OpenCode de la app (agentes), solo lectura…
 (allow file-read* (subpath "/fixture/userData/opencode-config"))
 ;; …y el directorio privado de este servidor.
-(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+(allow file-read* file-write* (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef"))
 
 ;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
 ;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
@@ -201,8 +201,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 ;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
 (deny file-write-unlink (subpath "/fixture/work/proyecto"))
 
-;; Scratch (.cowork): borrar y renombrar permitido.
-(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+;; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.onyxcode/trabajo"))
 "
 `;
 
@@ -214,7 +214,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -275,7 +275,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 ;; …salvo la config de OpenCode de la app (agentes), solo lectura…
 (allow file-read* (subpath "/fixture/userData/opencode-config"))
 ;; …y el directorio privado de este servidor.
-(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+(allow file-read* file-write* (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef"))
 
 ;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
 ;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
@@ -309,8 +309,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 (deny file-write-unlink (subpath "/fixture/work/proyecto"))
 (deny file-write-unlink (subpath "/fixture/otra/escribible"))
 
-;; Scratch (.cowork): borrar y renombrar permitido.
-(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+;; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.onyxcode/trabajo"))
 
 ;; Carpetas adicionales de solo lectura: ninguna escritura (gana sobre las escribibles que las contengan).
 (deny file-write* (subpath "/fixture/otra/lectura"))
@@ -325,7 +325,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -385,7 +385,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 ;; …salvo la config de OpenCode de la app (agentes), solo lectura…
 (allow file-read* (subpath "/fixture/userData/opencode-config"))
 ;; …y el directorio privado de este servidor.
-(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+(allow file-read* file-write* (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef"))
 
 ;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
 ;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
@@ -424,8 +424,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 ;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
 (deny file-write-unlink (subpath "/fixture/work/proyecto"))
 
-;; Scratch (.cowork): borrar y renombrar permitido.
-(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+;; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.onyxcode/trabajo"))
 "
 `;
 
@@ -437,7 +437,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -498,7 +498,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 ;; …salvo la config de OpenCode de la app (agentes), solo lectura…
 (allow file-read* (subpath "/fixture/userData/opencode-config"))
 ;; …y el directorio privado de este servidor.
-(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+(allow file-read* file-write* (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef"))
 
 ;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
 ;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
@@ -534,8 +534,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 ;; Borrado concedido en la principal aunque una carpeta rw adicional la contenga.
 (allow file-write-unlink (subpath "/fixture/work/proyecto"))
 
-;; Scratch (.cowork): borrar y renombrar permitido.
-(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+;; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.onyxcode/trabajo"))
 "
 `;
 
@@ -547,7 +547,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -607,7 +607,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 ;; …salvo la config de OpenCode de la app (agentes), solo lectura…
 (allow file-read* (subpath "/fixture/userData/opencode-config"))
 ;; …y el directorio privado de este servidor.
-(allow file-read* file-write* (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef"))
+(allow file-read* file-write* (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef"))
 
 ;; Sin procesos fuera del sandbox: LaunchServices (open), Apple Events (osascript),
 ;; launchd (launchctl), Automator/Atajos, capturas y portapapeles.
@@ -640,7 +640,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 ;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
 (deny file-write-unlink (subpath "/fixture/work/proyecto"))
 
-;; Scratch (.cowork): borrar y renombrar permitido.
+;; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.
 (allow file-write-unlink (subpath "/fixture/work/proyecto/scratch-a"))
 (allow file-write-unlink (subpath "/fixture/work/proyecto/scratch-b"))
 "
@@ -654,7 +654,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
 (deny file-write*)
 (allow file-write*
   (subpath "/fixture/work/proyecto")
-  (subpath "/fixture/userData/cowork-sandbox/0123456789abcdef")
+  (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef")
   (subpath "/private/tmp")
   (subpath "/private/var/folders")
   (subpath "/private/var/folders/zz/fixed/T")
@@ -738,7 +738,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
 ;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
 (deny file-write-unlink (subpath "/fixture/work/proyecto"))
 
-;; Scratch (.cowork): borrar y renombrar permitido.
-(allow file-write-unlink (subpath "/fixture/work/proyecto/.cowork"))
+;; Scratch (.onyxcode/trabajo): borrar y renombrar permitido.
+(allow file-write-unlink (subpath "/fixture/work/proyecto/.onyxcode/trabajo"))
 "
 `;

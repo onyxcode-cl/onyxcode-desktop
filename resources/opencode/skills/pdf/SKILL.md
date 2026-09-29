@@ -34,12 +34,12 @@ Comprueba qué hay antes de elegir (no asumas):
 - **Unir**: con `pypdf` (`PdfWriter().add_page(...)`, `write('unido.pdf')`) o `pdfunite a.pdf b.pdf unido.pdf` si existe.
 - Un PDF **escaneado** (imagen) no tiene texto que extraer: no hay OCR disponible; dilo y pídele al
   usuario el texto o un PDF con texto.
-- Si ni `pypdf` ni `pdftotext` existen y el usuario activó PyPI: `python3 -m pip install --target ./.cowork/pylib pypdf`
-  y `PYTHONPATH=.cowork/pylib python3 …` (nunca `pip install --user`). *(La descarga no se pudo comprobar
+- Si ni `pypdf` ni `pdftotext` existen y el usuario activó PyPI: `python3 -m pip install --target ./.onyxcode/trabajo/pylib pypdf`
+  y `PYTHONPATH=.onyxcode/trabajo/pylib python3 …` (nunca `pip install --user`). *(La descarga no se pudo comprobar
   en esta verificación, porque sin PyPI activado no hay red en el sandbox.)*
 
 ## Reglas
-- Archivos auxiliares en `./.cowork/`; los resultados con un nombre **nuevo** (en el sandbox no se puede
+- Archivos auxiliares en `./.onyxcode/trabajo/`; los resultados con un nombre **nuevo** (en el sandbox no se puede
   reemplazar ni renombrar un archivo existente, y nunca sobrescribas un original).
 - No uses `open`, `qlmanage` ni `osascript`: están bloqueados en el sandbox.
 - Cita la fuente (archivo y página) de todo dato que extraigas de un PDF.

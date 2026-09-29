@@ -18,6 +18,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameS
 import { homedir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { isInside } from '../util/paths'
+import { LEGACY_FOLDER_SCRATCH, LEGACY_PROJECT_DIR } from '../migrations/legacy-names'
+import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import {
   FULL_ACCESS_NOT_GRANTED,
   type ComputerUseInfo,
@@ -121,7 +123,17 @@ interface ManagerEvents {
 
 // '.lapis' se mantiene junto a '.onyxcode' mientras exista el fallback de lectura de memoria de la
 // versión anterior de la app (`src/main/cowork/projects.ts`).
-const SKIP_DIRS = new Set(['.git', 'node_modules', '.opencode', '.cowork', '.onyxcode', '.lapis', '.venv', '__pycache__', '.DS_Store'])
+const SKIP_DIRS = new Set([
+  '.git',
+  'node_modules',
+  '.opencode',
+  LEGACY_FOLDER_SCRATCH,
+  '.onyxcode',
+  LEGACY_PROJECT_DIR,
+  '.venv',
+  '__pycache__',
+  '.DS_Store'
+])
 const MAX_SCAN_FILES = 5000
 
 function normalizeFolder(p: string): string {
@@ -658,7 +670,11 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     const planGateUrl =
       fullAccess && this.opts.computer ? this.opts.computer.planGateUrl().catch(() => null) : Promise.resolve<string | null>(null)
     const before = Promise.resolve(this.beforeSpawn ? this.beforeSpawn(folder, fullAccess) : undefined)
-    const prepared = before.then(() => Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl]))
+    const prepared = before.then(() => {
+      // `.cowork/` → `.onyxcode/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
+      migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
+      return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
+    })
     const starting = prepared.then(([{ config, browserMcpPort }, gateUrl]) =>
       startCoworkServer(folder, {
         corsOrigins: this.opts.corsOrigins,

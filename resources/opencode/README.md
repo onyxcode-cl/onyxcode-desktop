@@ -1,4 +1,4 @@
-Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `cowork` y `computer`;
+Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `tasks` y `computer`;
 `skills/<nombre>/SKILL.md` → `docx`, `xlsx`, `pdf` y `pptx`).
 
 Este directorio es SOLO LECTURA (va dentro del bundle firmado). Al arrancar, main copia `agents/` y
@@ -12,7 +12,7 @@ empaquetado, `agents/**` y `skills/**` van en `asarUnpack` (`electron-builder.js
 ## Skills
 
 Cada skill es una carpeta con `SKILL.md` (frontmatter `name` = nombre de la carpeta, en minúsculas y
-guiones, y `description`) y, opcionalmente, plantillas (`*.py`) que el agente copia a `./.cowork/` desde
+guiones, y `description`) y, opcionalmente, plantillas (`*.py`) que el agente copia a `./.onyxcode/trabajo/` desde
 el «Base directory for this skill» que le devuelve la herramienta `skill`. Verificado con opencode
 1.18.32 en un servidor sandbox real: `GET /skill` lista las skills de `OPENCODE_CONFIG_DIR/skills`
 (no hace falta `skills.paths`; `skillsInlineConfig()` queda como gancho vacío).

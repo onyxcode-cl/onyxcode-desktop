@@ -1,6 +1,6 @@
-# .cowork/make_xlsx.py: libro Excel con openpyxl (si `python3 -c "import openpyxl"` funciona).
+# .onyxcode/trabajo/make_xlsx.py: libro Excel con openpyxl (si `python3 -c "import openpyxl"` funciona).
 import sys
-sys.path.insert(0, '.cowork/pylib')  # por si openpyxl se instaló con pip --target
+sys.path.insert(0, '.onyxcode/trabajo/pylib')  # por si openpyxl se instaló con pip --target
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter

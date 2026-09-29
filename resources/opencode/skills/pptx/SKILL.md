@@ -13,10 +13,10 @@ Genera un `.pptx` de 16:9 con una barra de color, portada y diapositivas de tít
 biblioteca estándar de Python (escribe las partes XML mínimas dentro de un zip).
 
 1. Copia la plantilla desde el «Base directory for this skill» que te indica la herramienta `skill`:
-   `cp "<directorio base>/make_pptx.py" .cowork/make_pptx.py`
+   `cp "<directorio base>/make_pptx.py" .onyxcode/trabajo/make_pptx.py`
 2. Edita `DIAPOSITIVAS` en la copia: la primera puede llevar `'portada': True` (título + subtítulo);
    el resto: `{'titulo': '…', 'texto': ['viñeta 1', 'viñeta 2']}`.
-3. Ejecuta `python3 .cowork/make_pptx.py presentacion-v1.pptx` (**nombre nuevo**: en el sandbox no se
+3. Ejecuta `python3 .onyxcode/trabajo/make_pptx.py presentacion-v1.pptx` (**nombre nuevo**: en el sandbox no se
    puede reemplazar ni renombrar un archivo existente).
 4. **Verifica**: `python3 -c "import zipfile; z=zipfile.ZipFile('presentacion-v1.pptx'); print(z.testzip(), len(z.namelist()))"`
    debe imprimir `None` y un número de partes; y `zip -T presentacion-v1.pptx` debe decir `OK`.
@@ -27,8 +27,8 @@ reduce el tamaño de letra por ti.
 
 ## Ruta B (con imágenes o gráficos): python-pptx
 Solo si el usuario activó PyPI (interruptor de red de las tareas) y necesita imágenes o gráficos:
-`python3 -m pip install --target ./.cowork/pylib python-pptx` y luego
-`PYTHONPATH=.cowork/pylib python3 tu_script.py`. Nunca uses `pip install --user` (`~/Library/Python` no
+`python3 -m pip install --target ./.onyxcode/trabajo/pylib python-pptx` y luego
+`PYTHONPATH=.onyxcode/trabajo/pylib python3 tu_script.py`. Nunca uses `pip install --user` (`~/Library/Python` no
 es escribible en el sandbox). *(No se pudo comprobar en esta verificación: sin PyPI no hay red en el
 sandbox; si falla, usa la ruta A o la C y dilo.)*
 

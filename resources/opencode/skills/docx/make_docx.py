@@ -1,5 +1,5 @@
-# .cowork/make_docx.py: crea un .docx real (títulos, párrafos, viñetas, tablas) solo con la
-# biblioteca estándar de Python. Edita la lista CONTENIDO y ejecuta: python3 .cowork/make_docx.py
+# .onyxcode/trabajo/make_docx.py: crea un .docx real (títulos, párrafos, viñetas, tablas) solo con la
+# biblioteca estándar de Python. Edita la lista CONTENIDO y ejecuta: python3 .onyxcode/trabajo/make_docx.py
 import re
 import sys
 import zipfile

@@ -71,12 +71,6 @@ const EXCEPTIONS: Exception[] = [
     reason: 'Aviso legal de Acerca de: debe nombrar a Anthropic para desvincularse.'
   },
   {
-    file: 'resources/opencode/agents/*.md',
-    rule: 'Cowork',
-    line: /\.cowork\//,
-    reason: 'Ruta técnica real `.cowork/` en los agentes.'
-  },
-  {
     file: '*',
     rule: 'Cowork',
     line: /console\.\w+\(\s*['"`]\[cowork\]/,
