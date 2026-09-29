@@ -56,7 +56,7 @@ export default defineConfig({
           'overlay-pill': resolve(__dirname, 'src/renderer/overlay/pill.html'),
           // Ventana "assist": globo de Teach mode y píldora de grabar una skill
           'overlay-assist': resolve(__dirname, 'src/renderer/overlay/assist.html'),
-          // Navegador integrado (Lote D): panel dentro de Code/Cowork y ventana aparte (lo crea D3/D4).
+          // Navegador integrado (Lote D): panel dentro de Code/Tareas y ventana aparte (lo crea D3/D4).
           browser: resolve(__dirname, 'src/renderer/browser/index.html')
         }
       }
