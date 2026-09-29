@@ -102,27 +102,33 @@ async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserD
     console.error('[embedded-browser] notificación de aprobación:', err)
   }
 
+  // El botón "seguro" (denegar) va SIEMPRE en el índice 0: verificado en vivo durante la revisión
+  // de este lote que, en macOS, `dialog.showMessageBox` no ata la tecla Return al botón de
+  // `defaultId` cuando no es 0 (Return activó el botón de índice 0 — "Permitir…" — pese a
+  // `defaultId`/`cancelId` apuntar al índice del "No"/"Cancelar"). Con el botón de índice 0 sí
+  // pensado como el seguro, una pulsación de Return sin leer (dialogo inesperado, foco robado)
+  // deniega en vez de conceder. `cancelId` también se deja en 0 por si Esc tiene el mismo problema.
   if (req.kind === 'sensitive' || req.kind === 'download') {
     const res = await dialog.showMessageBox({
       type: 'warning',
       message: req.summary ?? `¿Permitir que el agente descargue "${req.fileName ?? req.url}"?`,
       detail: req.url,
-      buttons: ['Permitir', 'Cancelar'],
-      defaultId: 1,
-      cancelId: 1,
+      buttons: ['Cancelar', 'Permitir'],
+      defaultId: 0,
+      cancelId: 0,
       noLink: true
     })
-    return res.response === 0 ? 'allow' : 'deny'
+    return res.response === 1 ? 'allow' : 'deny'
   }
 
   const res = await dialog.showMessageBox({
     type: 'warning',
     message: `¿Dejar que el agente abra ${labelFor(req)}?`,
     detail: req.url,
-    buttons: ['Permitir en esta tarea', 'Permitir siempre', 'No'],
-    defaultId: 2,
-    cancelId: 2,
+    buttons: ['No', 'Permitir en esta tarea', 'Permitir siempre'],
+    defaultId: 0,
+    cancelId: 0,
     noLink: true
   })
-  return res.response === 0 ? 'task' : res.response === 1 ? 'always' : 'deny'
+  return res.response === 1 ? 'task' : res.response === 2 ? 'always' : 'deny'
 }

@@ -68,6 +68,12 @@ interface OwnerRuntime {
   rect: BrowserRect | null
   visible: boolean
   taskApprovedSites: Set<string>
+  /** Origenes locales aprobados solo "para esta tarea" (B.8): NO se persisten en disco, a
+   * diferencia de `store.approveLocalOrigin` (decisión "siempre"). Sin esto, `siteApprovalGate`
+   * guardaba ambas decisiones igual (bug encontrado en la revisión del Lote D: el botón "Permitir
+   * en esta tarea" de la tarjeta/diálogo de origen local terminaba siendo permanente igual que
+   * "Permitir siempre"). Clave `sessionId:origin`, igual patrón que `taskApprovedSites`. */
+  taskApprovedLocalOrigins: Set<string>
   userVisitedHosts: Set<string>
   lastAgentActivityAt: number
 }
@@ -96,6 +102,7 @@ function ownerRuntime(owner: BrowserOwner): OwnerRuntime {
       rect: null,
       visible: false,
       taskApprovedSites: new Set(),
+      taskApprovedLocalOrigins: new Set(),
       userVisitedHosts: new Set(),
       lastAgentActivityAt: 0
     }
@@ -215,6 +222,8 @@ async function siteApprovalGate(rt: OwnerRuntime, tab: TabRuntime, url: string, 
   const product = tab.owner.kind
   if (parsed.isLocal) {
     if (store.isLocalOriginApproved(parsed.origin)) return true
+    const localTaskKey = `${rt.agentSessionId ?? ''}:${parsed.origin}`
+    if (rt.taskApprovedLocalOrigins.has(localTaskKey)) return true
     const decision = await requestApproval({
       owner: tab.owner,
       sessionId: rt.agentSessionId ?? '',
@@ -223,8 +232,16 @@ async function siteApprovalGate(rt: OwnerRuntime, tab: TabRuntime, url: string, 
       host: parsed.origin,
       site: parsed.site
     })
-    if (decision === 'always' || decision === 'task') {
+    // "Permitir siempre" persiste en disco (store.approveLocalOrigin); "Permitir en esta tarea"
+    // NO debe persistir (era el mismo bug que ya distingue `taskApprovedSites` de `store.addSite`
+    // para sitios remotos, pero faltaba aquí: ambas decisiones acababan llamando a
+    // `store.approveLocalOrigin`, así que "esta tarea" quedaba aprobado para siempre).
+    if (decision === 'always') {
       store.approveLocalOrigin(parsed.origin)
+      return true
+    }
+    if (decision === 'task') {
+      rt.taskApprovedLocalOrigins.add(localTaskKey)
       return true
     }
     return false
@@ -545,7 +562,8 @@ async function verifyAfterAction(actor: AgentActor, tabId: string): Promise<stri
   if (!parsed) return null
   const rt = ownerRuntime(actor.owner)
   if (parsed.isLocal) {
-    if (store.isLocalOriginApproved(parsed.origin)) return null
+    const localTaskKey = `${rt.agentSessionId ?? ''}:${parsed.origin}`
+    if (store.isLocalOriginApproved(parsed.origin) || rt.taskApprovedLocalOrigins.has(localTaskKey)) return null
     await navigateBypassing(tab, 'about:blank')
     return `Se bloqueó ${parsed.origin}: no es un origen local aprobado.`
   }
