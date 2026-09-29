@@ -1,20 +1,27 @@
-# OnyxCode (nombre provisorio)
+# OnyxCode
 
-Cliente de escritorio estilo Claude Desktop (modos **Chat · Code · Cowork · Rutinas**) construido sobre
-el servidor de agentes de [OpenCode](https://opencode.ai), usando la suscripción **OpenCode Go** como
-proveedor de modelos. El plan original está archivado en [`docs/archive/PLAN.md`](./docs/archive/PLAN.md); el plan vigente es [`docs/FASE6-PLAN.md`](./docs/FASE6-PLAN.md).
+> Proyecto independiente y sin fines de lucro para promover OpenCode Go. No está afiliado a OpenCode ni a Anthropic.
+
+OnyxCode es un cliente de escritorio para macOS, de código abierto, que usa el servidor de agentes de
+[OpenCode](https://opencode.ai) y la suscripción **OpenCode Go**. Tiene cuatro modos: **Chat**, **Code**,
+**Tareas** (trabajo autónomo sobre carpetas con sandbox) y **Rutinas**. El plan original está archivado en
+[`docs/archive/PLAN.md`](./docs/archive/PLAN.md); el plan vigente es [`docs/FASE6-PLAN.md`](./docs/FASE6-PLAN.md).
 
 > El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
 
 ## Requisitos
 
-- macOS (arm64 primero), Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
+Para usar la app:
+
+- macOS con Apple Silicon (arm64).
 - OpenCode CLI instalado (`~/.opencode/bin/opencode` o en el `PATH`) y con el proveedor
   `opencode-go` autenticado (`opencode auth login`). La app **no** lee ni copia tus credenciales:
   el propio `opencode serve` las usa.
 - Opcional: `OPENCODE_BIN=/ruta/a/opencode` para forzar un binario concreto.
 
-## Uso
+Para desarrollar: además, Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
+
+## Uso (desarrollo)
 
 ```bash
 export PATH=/opt/homebrew/opt/node@22/bin:$PATH
@@ -22,6 +29,8 @@ npm install
 npm run dev        # app en modo desarrollo (HMR)
 npm run typecheck  # tsc estricto (main/preload + renderer)
 npm run build      # compila a out/
+npm test           # tests unitarios (Vitest)
+npm run verify     # verificación completa: tipos, tests, lint, formato, build, smoke y E2E
 npm run package    # build + DMG mac arm64 en dist/ (electron-builder)
 ```
 
@@ -63,6 +72,10 @@ src/
   renderer/src/  app/ (layout, modos) · lib/ · stores/ · components/ · features/{chat,code,cowork,routines,settings,browser}
 ```
 
+> **Nota para contribuidores:** en el código, el modo que la app muestra como «Tareas» se llama `cowork`
+> (carpetas `features/cowork` y `main/cowork`, canales IPC `cowork:*`, `ModeId 'cowork'`). Los textos
+> visibles viven en `src/shared/labels.ts`.
+
 ### Agregar un modo o una vista
 
 Cada feature exporta un `ModeDefinition` desde `features/<modo>/index.ts` (vista, contenido de la
@@ -81,7 +94,17 @@ barra lateral y botón "nuevo"). Registrarlo es una línea en `src/renderer/src/
 
 ## Estado
 
-Chat, Code, Cowork, Rutinas, Ajustes y el navegador integrado están implementados. El detalle de cada
-etapa (Cowork lotes A–D, seguridad, rediseño) está en [`docs/`](./docs) y [`AUDIT.md`](./AUDIT.md).
-Pendiente: Dispatch (móvil → escritorio), firma con Developer ID y auto-actualización
+Chat, Code, Tareas, Rutinas, Ajustes y el navegador integrado están implementados. El detalle de cada
+etapa (lotes A–D de Tareas, seguridad, rediseño) está en [`docs/`](./docs) y [`AUDIT.md`](./AUDIT.md);
+la seguridad, en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md) y la verificación, en
+[`docs/VERIFICACION.md`](./docs/VERIFICACION.md).
+Pendiente: control remoto desde el móvil, firma con Developer ID y auto-actualización
 (ver [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).
+
+Licencia: pendiente de definir.
+
+## Marcas y agradecimientos
+
+OnyxCode es un proyecto independiente y sin fines de lucro. OpenCode y OpenCode Go pertenecen a sus
+autores. Anthropic y Claude son marcas de Anthropic, PBC. Este proyecto no tiene afiliación con ellos ni
+cuenta con su respaldo.
