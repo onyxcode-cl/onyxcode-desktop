@@ -62,7 +62,7 @@ export class ComputerMcpHost {
       COMPUTER_MCP_PORT: String(this.port)
     })
     const proc = utilityProcess.fork(script, [], {
-      serviceName: 'OnyxCode Computer Use MCP',
+      serviceName: 'OnyxCode MCP de control del Mac',
       env,
       stdio: 'pipe'
     })

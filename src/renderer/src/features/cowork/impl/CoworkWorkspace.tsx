@@ -393,7 +393,7 @@ export function CoworkWorkspace(): React.JSX.Element {
         const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
         if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
           disconnect()
-          useCowork.setState({ phase: 'error', error: info.error ?? 'El servidor de Cowork se detuvo' })
+          useCowork.setState({ phase: 'error', error: info.error ?? 'El servidor de las tareas se detuvo' })
         }
       }),
     []
