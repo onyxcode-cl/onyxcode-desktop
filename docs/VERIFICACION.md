@@ -56,6 +56,14 @@ Variables de entorno:
 | `E2E_VISIBLE=1` | No define `ONYXCODE_E2E_HEADLESS` (ventana visible). |
 | `E2E_KEEP=1` | No borra el userData temporal (para inspeccionarlo). |
 | `E2E_LAUNCH_ATTEMPTS` / `E2E_LAUNCH_TIMEOUT_MS` | Reintentos (6) y timeout por intento (8000 ms) de `electron.launch`. |
+14. **Asistente de primer uso con un OpenCode real (3 min; F8-B1 a F8-B4).** Con un userData nuevo
+    (`--user-data-dir=/tmp/onyx-nuevo`, sin `onboarded`) y `PATH`/`~/.opencode` sin OpenCode: aparece el paso 1; «Copiar comando
+    de instalación» deja `curl -fsSL https://opencode.ai/install | bash` en el portapapeles (la app no lo ejecuta), «Abrir
+    instrucciones» abre https://opencode.ai/docs. Instala OpenCode en una terminal, «Reintentar» → «OpenCode encontrado». En
+    el paso 2, «Obtener mi clave» abre la página de OpenCode y una clave real de OpenCode Go la deja «conectada»; el paso 3
+    lista sus modelos. Con tu userData real (todo ya funciona) el asistente NO aparece y `settings.json` queda con
+    `"onboarded": true`. Un OpenCode recién instalado y sin claves también debe mostrar el paso 2 (el proveedor gratuito
+    preinstalado no cuenta como conectado).
 
 Notas conocidas:
 
@@ -64,6 +72,9 @@ Notas conocidas:
   reintentos se anuncian como `[e2e] electron.launch intento n/6 falló` y no son un fallo del test.
 - El sidecar corre desvinculado de TCC (`disclaim`): no puede leer scripts dentro de `~/Documents`. Por eso el falso
   se copia al tmp antes de usarlo como `OPENCODE_BIN`.
+- `startApp` admite `userData` (reutilizar el estado al reiniciar) con `keepUserData`, y `noServer` (arrancar sin esperar
+  al servidor; `app.connectFake()` lo conecta después). Lo usa `onboarding.e2e.ts` (sin OpenCode → elegir binario →
+  clave → reinicio). Los harness siembran `onboarded: true`; un spec del asistente lo pone en `false` vía `settings`.
 - Un spec que provoque errores a propósito debe vaciar `app.errors` al terminar (ver `harness.e2e.ts`).
 
 ## Specs de los lotes B y D (`e2e/specs/lotes.e2e.ts`)
