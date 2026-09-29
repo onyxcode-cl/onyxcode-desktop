@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { KeyRound, Loader2, RefreshCw, Unplug } from 'lucide-react'
+import { Loader2, RefreshCw, Unplug } from 'lucide-react'
 import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import type { ModelMode } from '@shared/ipc-extras'
 import { MODE_LABELS } from '@shared/labels'
@@ -12,7 +12,8 @@ import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
 import { ModelSelect, sortProviders } from './ModelSelect'
-import { Badge, Card, ErrorText, Field, Row, SectionHeader, Select, SubTitle, TextInput } from './ui'
+import { ProviderKeyForm, saveProviderKey } from './ProviderKeyForm'
+import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 
 const MODES: { id: ModelMode; label: string; description: string }[] = [
   { id: 'chat', label: 'Chat', description: 'Conversaciones generales.' },
@@ -134,13 +135,11 @@ export function ModelsSection(): React.JSX.Element {
             if (!client) return
             setBusy(true)
             try {
-              const r = await client.auth.set({ providerID: id, auth: { type: 'api', key } })
-              if (r.error) throw new Error(errorMessage(r.error))
-              // Recarga proveedores (las respuestas en curso se interrumpen).
-              await client.global.dispose()
+              await saveProviderKey(client, id, key)
               await refresh()
             } catch (err) {
               setCatalogError(errorMessage(err))
+              throw err
             } finally {
               setBusy(false)
             }
@@ -167,11 +166,6 @@ function ProvidersList({
     () => catalog.all.filter((p) => !catalog.connected.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name, 'es')),
     [catalog]
   )
-  const [target, setTarget] = useState('')
-  const [key, setKey] = useState('')
-  const methods = target ? (catalog.auth[target] ?? []) : []
-  const supportsApi = !target || methods.length === 0 || methods.some((m) => m.type === 'api')
-  const targetProvider = others.find((p) => p.id === target)
 
   return (
     <>
@@ -198,50 +192,7 @@ function ProvidersList({
         ))}
       </Card>
 
-      <Card className="mt-3 p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-          <KeyRound size={15} /> Conectar proveedor con API key
-        </div>
-        <div className="grid grid-cols-[1fr_1.4fr_auto] items-end gap-2">
-          <Field label="Proveedor">
-            <Select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">Elegir…</option>
-              {others.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="API key">
-            <TextInput
-              type="password"
-              autoComplete="off"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder={targetProvider?.env[0] ?? 'sk-…'}
-              disabled={!target || !supportsApi}
-            />
-          </Field>
-          <Button
-            variant="primary"
-            disabled={busy || !target || !key.trim() || !supportsApi}
-            onClick={() => {
-              void onSetKey(target, key.trim()).then(() => {
-                setKey('')
-                setTarget('')
-              })
-            }}
-          >
-            {busy ? <Loader2 size={14} className="animate-spin" /> : null} Guardar
-          </Button>
-        </div>
-        <p className="mt-2 text-[11px] text-subtle">
-          {target && !supportsApi
-            ? 'Este proveedor sólo admite inicio de sesión OAuth: ejecuta `opencode auth login` en una terminal.'
-            : 'La clave se guarda en el almacén de credenciales de OpenCode (~/.local/share/opencode/auth.json). Para OAuth usa `opencode auth login`.'}
-        </p>
-      </Card>
+      <ProviderKeyForm providers={others} auth={catalog.auth} busy={busy} onSetKey={onSetKey} />
     </>
   )
 }
