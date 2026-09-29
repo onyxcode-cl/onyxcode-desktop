@@ -1,5 +1,7 @@
 # Lote D: navegador integrado en la ventana de la app. Qué se entregó, decisiones y guía de pruebas
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Plan de origen: `docs/archive/LOTE-D-PLAN.md` (hallazgos, arquitectura, contratos y reparto en paquetes
 D0–D5). Antecedente directo: `docs/archive/COWORK-LOTE-C.md` (el navegador propio con Chrome real, que este
 lote conserva como opción avanzada). Hallazgos de seguridad y su estado: `AUDIT.md` §11. Modelo de

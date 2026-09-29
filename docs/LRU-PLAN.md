@@ -1,5 +1,7 @@
 # Plan: LRU de `messages` (diferido de la Fase 6)
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Hecho por Opus 5.5, ejecutado por Sonnet 5.5. Versión condensada. Topes elegidos: **40** sesiones en
 `useSessions` (Chat + Cowork) y **20** en `useCode`.
 

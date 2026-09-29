@@ -1,5 +1,7 @@
 # Auditoría técnica — OnyxCode (cliente de escritorio sobre OpenCode)
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 - **Fecha:** 2026-09-27 (actualizada el 2026-09-28 con los hallazgos y correcciones del Lote B: §9) · **Commit auditado:** `af9032d` (rama `main`, con 4 agentes editando en paralelo)
 - **Alcance:** `docs/archive/PLAN.md`, `README.md`, `electron-builder.yml`, `electron.vite.config.ts`, todo `src/` (main, preload, shared, renderer) y `resources/` (agentes, helper Swift, build.sh), historial `git log --stat`.
 - **Método:** lectura de código + comprobaciones read-only (`tsc --noEmit`, inspección de `out/`, prueba mínima de `sandbox-exec` con un perfil equivalente). La app **no** se lanzó.
@@ -195,7 +197,7 @@ Bien diseñado: partición en memoria, sin preload, CSP `default-src 'none'` por
 
 ---
 
-## 4. UX/UI frente a Claude Desktop
+## 4. UX/UI frente a clientes de escritorio de referencia
 
 ### 4.1 Consistencia y descubribilidad
 - **[Alto] U1 · Artifacts invisibles.** ✅ Corregido (refactor fase 5: `components/artifacts/ArtifactButton.tsx`, usado en `Markdown.tsx`). Texto original: `features/settings/impl/ArtifactButton.tsx` (y `openArtifact` en main) están completos pero **ningún componente los usa** (`grep ArtifactButton` → solo su propio archivo). El usuario no puede abrir artifacts. Conectar en `Markdown.tsx` (bloques `language-html`/`svg`) y, idealmente, en un panel lateral como Claude Desktop.
@@ -239,7 +241,7 @@ Bien diseñado: partición en memoria, sin preload, CSP `default-src 'none'` por
 
 ---
 
-## 6. Brechas frente a Claude Desktop / Cowork (priorizadas)
+## 6. Brechas frente a clientes de escritorio de referencia (priorizadas)
 
 | Prio | Funcionalidad | Estado en OpenDesk (2026-09-28) |
 |---|---|---|

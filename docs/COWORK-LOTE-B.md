@@ -1,5 +1,7 @@
 # Lote B de Cowork: qué se entregó, decisiones y guía de pruebas
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Plan de origen: `docs/archive/COWORK-LOTE-B-PLAN.md` (arquitectura, contratos y reparto en oleadas). Antecedente:
 `docs/COWORK-LOTE-A.md` (Cowork autónomo: plan por sesión, niveles por app, escalada, búsqueda web).
 Hallazgos de seguridad y su estado: `AUDIT.md` §9. Modelo de seguridad vigente: `docs/SEGURIDAD.md` («3 bis»).

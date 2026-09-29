@@ -1,3 +1,5 @@
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 ## F7-B30 — Limpieza de datos huérfanos de «Chrome aparte» (G5.1)
 
 Al arrancar (en `start()`, tras el lock de instancia única y la migración de userData, antes de `whenReady`) se borran `userData/cowork-browser` (perfil, cookies, descargas) y `userData/cowork-browser.json` con `rmSync({recursive, force})` en try/catch. Solo dentro de `app.getPath('userData')` (se valida que la ruta resuelta quede estrictamente dentro). Log `[main] limpieza de datos de Chrome aparte` solo si borró algo. Irreversible: son datos de una función eliminada en el refactor (fase 3).

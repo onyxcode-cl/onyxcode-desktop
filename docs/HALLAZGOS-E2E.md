@@ -1,5 +1,7 @@
 # Bugs reales que destapó la red de verificación (ARREGLADOS en la Fase 7)
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Los 5 están arreglados (commit entre paréntesis) y sus tests pasaron de `it.fails` / describe desactivado a `it` normales.
 Detalle de cada arreglo en `CHANGELOG-FASE7.md` (F7-B*) y `docs/REVIEW-FASE7.md`.
 

@@ -1,5 +1,7 @@
 # Plan maestro: red de verificación, cierre del refactor, funciones y distribución
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Hecho por Opus 5.5, ejecutado por Sonnet 5.5. Versión condensada; el plan completo vive en el historial de la sesión.
 
 ## Decisiones tomadas

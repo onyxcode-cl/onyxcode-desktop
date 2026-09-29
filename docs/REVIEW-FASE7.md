@@ -1,5 +1,7 @@
 # Revisión de la rama y arreglos (Fase 7)
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Resultado de 5 revisiones adversariales (Sonnet, solo lectura) + 1 plan de arreglo de bugs (Opus). Sin bloqueantes de
 seguridad. Este documento reparte los arreglos por GRUPO de archivos (un agente por grupo, sin solaparse). Cada
 arreglo con comportamiento nuevo → test (Vitest o E2E) y entrada `F7-B<n>` en `CHANGELOG-FASE7.md`. Los `it.fails` /

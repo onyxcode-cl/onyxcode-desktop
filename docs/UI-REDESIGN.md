@@ -1,4 +1,6 @@
-# Plan de mejora UX/UI — nivel Claude Desktop / Codex
+# Plan de mejora UX/UI — nivel clientes de escritorio de referencia
+
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
 
 Base: el sistema "Lapislázuli" (`DESIGN.md`) ya es sólido en color, tipografía y componentes. La
 brecha con Claude Desktop / Codex está en **estructura del shell, consistencia entre modos y

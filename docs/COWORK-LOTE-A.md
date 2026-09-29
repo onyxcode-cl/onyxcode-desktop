@@ -1,5 +1,7 @@
 # Lote A — Cowork autónomo (plan de ejecución)
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Plan diseñado por un agente Opus tras leer el código; ejecutado por agentes Sonnet en paralelo sobre el mismo
 árbol de trabajo. **Objetivo:** que una tarea de Cowork se complete sola (abrir apps cerradas, teclear en ellas,
 buscar en la web, tareas de varios pasos) sin bucles de permisos.

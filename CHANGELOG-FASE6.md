@@ -1,5 +1,7 @@
 # CHANGELOG Fase 6
 
+> Documento histórico. "Cowork" es el nombre interno del modo que la app muestra como "Tareas"; las menciones a productos de terceros eran referencias de diseño.
+
 Cambios de comportamiento declarados (todo lo demás de la Fase 6 es refactor sin cambio de render).
 
 ## F6-B7 — Enter tras `compositionend` en IME (subfase 6.3)
