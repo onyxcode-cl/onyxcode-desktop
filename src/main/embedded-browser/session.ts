@@ -1,7 +1,7 @@
 /**
  * Sesiones del navegador integrado (Lote D, B.2 «Sesión»/«Identidad»/«Permisos»/«Red»/«Descargas»):
  * primer contenido web ARBITRARIO de la app. Dos particiones persistentes, separadas entre sí y de
- * la `defaultSession` de `lapis://app`: `persist:lapis-web-code` y `persist:lapis-web-cowork`.
+ * la `defaultSession` de `onyxcode://app`: `persist:onyxcode-web-code` y `persist:onyxcode-web-cowork`.
  *
  * `isEmbeddedBrowserSession` es la exención exacta de `web-security.ts` (B.3): compara la
  * IDENTIDAD del objeto `Session` (nunca una cadena), y solo la llenan las dos líneas de abajo.
@@ -13,8 +13,8 @@ import { isLocalOriginApproved } from './store'
 import { handleWillDownload } from './downloads'
 
 const PARTITION_BY_PRODUCT: Record<BrowserProduct, string> = {
-  code: 'persist:lapis-web-code',
-  cowork: 'persist:lapis-web-cowork'
+  code: 'persist:onyxcode-web-code',
+  cowork: 'persist:onyxcode-web-cowork'
 }
 
 /** Identidad de objeto: NUNCA comparar por nombre de partición (B.3). */

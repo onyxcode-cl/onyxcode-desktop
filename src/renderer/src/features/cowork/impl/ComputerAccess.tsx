@@ -733,7 +733,7 @@ function AppAccessMeta({ app, choice }: { app: AccessRequestApp; choice: AccessD
 
 /**
  * Tarjeta "Plan y permisos" / "¿Permitir que el agente use X?" (herramienta MCP `request_access`):
- * lugar PRINCIPAL en la ventana de Lapis — una tarjeta EN LA CONVERSACIÓN, fija sobre el
+ * lugar PRINCIPAL en la ventana de OnyxCode — una tarjeta EN LA CONVERSACIÓN, fija sobre el
  * compositor (igual que `ApprovalBar`), no un modal centrado que tape el resto de la tarea. La
  * píldora flotante (`overlay/pill.ts`) es el otro lugar donde responder. El usuario elige el nivel
  * (o deniega) por app, o escribe feedback para que el agente replantee el plan. La espera NO tiene

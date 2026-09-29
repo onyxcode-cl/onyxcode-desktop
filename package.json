@@ -1,6 +1,6 @@
 {
-  "name": "lapis",
-  "productName": "Lapis",
+  "name": "onyxcode",
+  "productName": "OnyxCode",
   "version": "0.1.0",
   "description": "Cliente de escritorio sobre OpenCode (Chat, Code, Cowork, Rutinas)",
   "main": "./out/main/index.js",

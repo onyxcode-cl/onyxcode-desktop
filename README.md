@@ -1,4 +1,4 @@
-# Lapis (nombre provisorio)
+# OnyxCode (nombre provisorio)
 
 Cliente de escritorio estilo Claude Desktop (modos **Chat · Code · Cowork · Rutinas**) construido sobre
 el servidor de agentes de [OpenCode](https://opencode.ai), usando la suscripción **OpenCode Go** como
@@ -45,7 +45,7 @@ Variables útiles:
    `@opencode-ai/sdk/v2/client` directamente. Los eventos llegan por un único stream SSE
    (`client.global.event()`), que alimenta el store genérico `stores/sessions.ts`.
 4. El modo Chat trabaja en `userData/chat-workspace` (en macOS:
-   `~/Library/Application Support/Lapis/chat-workspace`). Los ajustes se guardan en
+   `~/Library/Application Support/OnyxCode/chat-workspace`). Los ajustes se guardan en
    `userData/settings.json`.
 
 ## Estructura

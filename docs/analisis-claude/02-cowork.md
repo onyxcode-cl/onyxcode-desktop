@@ -1,4 +1,4 @@
-# 02 — Cowork en Claude Desktop (producto y UX) y comparación con Lapis
+# 02 — Cowork en Claude Desktop (producto y UX) y comparación con OnyxCode
 
 > Análisis de `/Applications/Claude.app` v2.9939.2. Solo se describe el **comportamiento** con
 > nuestras palabras; no se copia código de Anthropic. Las citas de UI son cadenas cortas (< 15
@@ -41,7 +41,7 @@
 - **Dispatch**: desde el móvil mandas trabajo al escritorio; un hilo continuo que muestra "los
   destacados" mientras una **conversación de fondo** hace el trabajo. Tareas programadas con
   frecuencia/cron, permisos, notificación (push/email/Slack) y **mover a la nube**.
-- Lapis cubre bien el núcleo local (carpeta + sandbox Seatbelt + plan + entregables + aprobaciones
+- OnyxCode cubre bien el núcleo local (carpeta + sandbox Seatbelt + plan + entregables + aprobaciones
   + overlay/kill-switch), pero le faltan: proyectos/memoria/instrucciones, varias carpetas por
   tarea, conectores MCP y skills dentro de Cowork, preguntas estructuradas, grants por app de
   computer use, confirmación de borrado de primera clase, allowlist de red, gestión de lista
@@ -359,7 +359,7 @@ Cowork/Code a dispositivos por **BLE** que muestran prompts de permiso y mensaje
 una "mascota de escritorio" que vive de aprobaciones). Emparejamiento con PIN de 6 dígitos,
 «Choose your Buddy», enviar carpeta de firmware («Pick a folder to send to your device»),
 «Forget device». Política admin: «Allow pairing Hardware Buddy Bluetooth devices in Cowork.»
-Prioridad baja para Lapis.
+Prioridad baja para OnyxCode.
 
 ---
 
@@ -421,14 +421,14 @@ exportar/importar sesiones; plugins montados por MDM.
 
 ---
 
-## Comparación con Lapis
+## Comparación con OnyxCode
 
-> Nota (2026-09-28): el párrafo siguiente describe Lapis tal como estaba al escribir este análisis (antes de los Lotes A y B). El estado actual, fila por fila, está en la «Tabla de brechas» de más abajo.
+> Nota (2026-09-28): el párrafo siguiente describe OnyxCode tal como estaba al escribir este análisis (antes de los Lotes A y B). El estado actual, fila por fila, está en la «Tabla de brechas» de más abajo.
 
-Lapis (`src/renderer/src/features/cowork/**`, `src/main/cowork/**`, `src/main/computer/**`,
+OnyxCode (`src/renderer/src/features/cowork/**`, `src/main/cowork/**`, `src/main/computer/**`,
 `src/renderer/overlay/**`, agentes `cowork.md` y `computer.md`) implementa Cowork sobre
 `opencode serve` por carpeta: modo **sandbox** (Seatbelt, agente `cowork`) y modo **Control total
-del Mac** (sin sandbox, agente `computer` + MCP `lapis-computer`). Tiene home con categorías,
+del Mac** (sin sandbox, agente `computer` + MCP `onyxcode-computer`). Tiene home con categorías,
 lista de tareas por carpeta con búsqueda y archivar, conversación con pasos agrupados, panel Plan
 / Entregables / Actividad, aprobaciones humanizadas (una vez / siempre / rechazar), adjuntos
 copiados a la carpeta, seguimientos sugeridos, notificaciones del sistema al terminar o pedir
@@ -443,7 +443,7 @@ bloqueo del flujo básico · **P1** gran impacto de UX · **P2** mejora notable 
 ### Tabla de brechas
 
 > **Actualizada el 2026-09-28** tras los Lotes A y B (`docs/COWORK-LOTE-A.md`, `docs/COWORK-LOTE-B.md`).
-> La columna «Lapis» describe el estado real actual; el texto original de «cómo implementarlo» se
+> La columna «OnyxCode» describe el estado real actual; el texto original de «cómo implementarlo» se
 > sustituye por lo que se hizo (o por el motivo de que no se haga). Las filas marcadas con «(UI:
 > Oleada 3)» tienen su lógica en main/estado verificada y su interfaz en los componentes de la
 > Oleada 3 del Lote B; ver `docs/COWORK-LOTE-B.md` para lo verificado en vivo y lo que no.
@@ -451,7 +451,7 @@ bloqueo del flujo básico · **P1** gran impacto de UX · **P2** mejora notable 
 > Leyenda de estado: ✅ hecho · ⚠️ parcial · ⏸ aplazado (técnicamente posible, pero costoso o de riesgo) ·
 > ⛔ fuera de alcance · ❌ sin abordar.
 
-| # | Función | Claude | Lapis (2026-09-28) | Estado | Cómo quedó / por qué |
+| # | Función | Claude | OnyxCode (2026-09-28) | Estado | Cómo quedó / por qué |
 |---|---|---|---|---|---|
 | 1 | Carpeta de trabajo por tarea | Proyecto o carpeta; varias carpetas por tarea | Carpeta principal + **carpetas adicionales** vinculadas a un espacio (`rw` o `ro`) y carpetas de confianza globales; el prompt de la tarea las lista | ✅ | `folderSet`/`linkFolder` en `manager.ts`, `extraFolders` en el perfil Seatbelt (`sandbox-profile.ts`). Ampliar exige reiniciar el servidor sandbox (Seatbelt fija el perfil al lanzar) |
 | 2 | Solicitud de carpeta durante la tarea | Tarjeta con motivo y «Don’t ask again» | Tarjeta «quiere trabajar en otra carpeta» (ruta, ancestros, modo, motivo «no verificado», «No volver a preguntar»); al permitir en sandbox se vincula, se reinicia el servidor y la tarea continúa sola | ✅ (UI: Oleada 3) | `answerFolderRequest` (`actions.ts`), `FolderRequestCard.tsx`. Patrones `external_directory` verificados solo leyendo el binario de 1.18.32 |
@@ -463,9 +463,9 @@ bloqueo del flujo básico · **P1** gran impacto de UX · **P2** mejora notable 
 | 8 | Vista unificada Pinned / Active / Scheduled | Barra única Chat+Cowork+Code | Secciones transversales **Fijadas / Activas / Programadas** (de todas las carpetas) sobre la lista por carpeta | ✅ (UI: Oleada 3) | `SidebarSections.tsx`; «Activas» sale del monitor de main (`cowork:activity`) |
 | 9 | Búsqueda en transcripciones | Búsqueda de texto completo | Títulos + transcripciones (≥ 3 caracteres, sin acentos, con fragmento y salto al mensaje) | ✅ (UI: Oleada 3) | `search.ts` (`useTranscriptSearch`). No es un índice: recorre los mensajes de la carpeta |
 | 10 | Archivado automático | Auto-archive por inactividad | Implementado en el monitor; **desactivado por defecto** (decisión), con opciones 7/14/30/90 días y tope de la política gestionada | ✅ | Nunca archiva fijadas ni en curso/en espera; revoca el plan de la tarea archivada |
-| 11 | Proyectos | Instrucciones, contexto, memoria, programadas | Por carpeta: nombre, instrucciones (contador n / 20.000), **enlaces**, interruptor **«Usar memoria»**, `AGENTS.md`, skills disponibles, permisos recordados | ⚠️ | Sin documentos de Drive ni proyectos de Chat vinculados (no aplican a Lapis); las rutinas usan el mismo prompt (`buildCoworkSystemPrompt`) |
+| 11 | Proyectos | Instrucciones, contexto, memoria, programadas | Por carpeta: nombre, instrucciones (contador n / 20.000), **enlaces**, interruptor **«Usar memoria»**, `AGENTS.md`, skills disponibles, permisos recordados | ⚠️ | Sin documentos de Drive ni proyectos de Chat vinculados (no aplican a OnyxCode); las rutinas usan el mismo prompt (`buildCoworkSystemPrompt`) |
 | 12 | Instrucciones globales y por carpeta | Editor con contador | Instrucciones globales (Ajustes) + instrucciones del proyecto + editor del `AGENTS.md` de la carpeta | ✅ (UI: Oleada 3) | `cowork:agentsMd:*`, validado con `assertInsideApproved` |
-| 13 | Memoria de Cowork | Archivos locales que Claude lee/escribe | `.lapis/memoria.md` por carpeta, editable en el panel, con interruptor (el prompt indica al agente que no la lea ni escriba si está desactivada); no aparece en Entregables | ✅ | Ya no se pisa lo que escribe el agente (Lote A) |
+| 13 | Memoria de Cowork | Archivos locales que Claude lee/escribe | `.onyxcode/memoria.md` por carpeta, editable en el panel, con interruptor (el prompt indica al agente que no la lea ni escriba si está desactivada); no aparece en Entregables | ✅ | Ya no se pisa lo que escribe el agente (Lote A) |
 | 14 | Panel Context (herramientas y archivos usados, con salto al mensaje) | Sí | «Actividad» agrupada por paso, sin índice por tipo | ❌ | No entró en el Lote B |
 | 15 | Entregables | Outputs con preview, Download all, Show in folder | Vista previa md/csv/txt/imágenes + **docx/doc/rtf/odt** (`textutil`), **Descargar todo** (zip), **Vista rápida** (QuickLook), **Abrir como artifact** y **Guardar como PDF** para HTML, agrupación por carpeta | ✅ (UI y handlers: W3-D) | Handlers `cowork:zip/quickLook/exportMarkdown/htmlToPdf` en `cowork-files-handlers.ts`; el PDF se genera con `renderHtmlToPdf` (`extras/artifact-window.ts`, ventana oculta aislada) |
 | 16 | Plan / progreso | Progress «Step X of Y» | `todowrite` en vivo + «Paso X de Y» | ✅ (UI: Oleada 3) | Sin modo «planificar primero» con el agente `plan` |
@@ -494,7 +494,7 @@ bloqueo del flujo básico · **P1** gran impacto de UX · **P2** mejora notable 
 | 39 | Vista «Live» en la tarea | Stream de pantalla | Sección «En vivo» con la última captura mientras se usa el Mac | ✅ (UI: Oleada 3) | Última imagen de las partes de herramienta, no un stream |
 | 40 | Retención de capturas | Aviso explícito | Se borran al Detener, al cerrar la app y a los 60 s sin tareas de Control total; el diálogo de Control total explica la retención | ✅ (diálogo: Oleada 3) | `ComputerService.cleanScreenshots()` |
 | 41 | Activación guiada de computer use | Advertencias + permisos macOS | `ComputerPermissionsCard` + `FullAccessDialog` | ✅ | |
-| 42 | Herencia TCC | Helper firmado aparte | S6 corregido con `lapis-disclaim` y MCP en `utilityProcess`; el `cu-helper` sigue sin bundle propio | ⏸ **omitido** | No hay ninguna identidad de firma de Apple Developer disponible en esta máquina (`security find-identity` devuelve 0 identidades): un helper firmado aparte necesitaría un Developer ID que no existe aquí. `build.sh` sigue firmando ad-hoc, que TCC no usa para atribuir el permiso |
+| 42 | Herencia TCC | Helper firmado aparte | S6 corregido con `onyxcode-disclaim` y MCP en `utilityProcess`; el `cu-helper` sigue sin bundle propio | ⏸ **omitido** | No hay ninguna identidad de firma de Apple Developer disponible en esta máquina (`security find-identity` devuelve 0 identidades): un helper firmado aparte necesitaría un Developer ID que no existe aquí. `build.sh` sigue firmando ad-hoc, que TCC no usa para atribuir el permiso |
 | 43 | Teach mode | Tooltips paso a paso | Globo propio (ventana `assist`, rol y preload aparte) junto al elemento, con «Siguiente»/«Salir de la guía»; el agente solo señala (`teach_step`) y nunca hace clic; pide solo el nivel «Solo ver» | ✅ (Lote C) | `helper.swift ax-frame`, `computer/assist-window.ts`, `overlay/assist.ts` |
 | 44 | Record a skill | Grabación con micro | Se registran eventos ordenados (clic, tecla, texto, cambio de app, scroll) con capturas por paso y, si el usuario quiere, narración por voz transcrita en el dispositivo; tarjeta de revisión (pasos, transcripción, «Incluir el texto que tecleé» desactivado) antes de proponer la skill con `question` | ✅ (Lote C) | `cu-helper record`/`transcribe`, `computer/recorder.ts`, `RecordSkill.tsx`. No es un vídeo: es exactamente lo que se le manda al modelo |
 | 45 | Navegador en Cowork | Chrome / navegador integrado | Navegador propio de Cowork (`chrome-devtools-mcp` detrás de una pasarela propia, `browser-mcp.js`) con permiso previo por sitio (diálogo nativo), perfil aislado y **solo en Control total del Mac**; desactivado por defecto | ✅ (Lote C) | `main/browser/{gateway,service,sites}.ts`; Playwright se descartó (~150 MB de Chromium); en Sandbox no aparece (correría fuera de Seatbelt y del proxy de egress) |

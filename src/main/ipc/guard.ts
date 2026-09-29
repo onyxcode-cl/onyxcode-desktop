@@ -3,7 +3,7 @@
  *
  * 1. Emisor: debe ser el frame PRINCIPAL (`senderFrame.parent === null`) de una ventana creada por
  *    la app y registrada con un rol (`registerWindowRole`), y su URL debe ser un origen propio
- *    (`lapis://app` o el dev server de Vite). Iframes, ventanas de artifacts (sin preload y otro
+ *    (`onyxcode://app` o el dev server de Vite). Iframes, ventanas de artifacts (sin preload y otro
  *    esquema) o una página que haya navegado fuera → rechazo.
  * 2. Rol: la ventana principal puede usar todos los canales; Quick Entry, overlay y píldora solo
  *    los suyos (`CHANNEL_ROLES`).

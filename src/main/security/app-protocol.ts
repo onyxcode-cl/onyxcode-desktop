@@ -1,7 +1,7 @@
 /**
- * Esquema propio para el renderer de producción: `lapis://app/<ruta>` en vez de `file://`.
+ * Esquema propio para el renderer de producción: `onyxcode://app/<ruta>` en vez de `file://`.
  *
- * - Registrado como privilegiado (`standard` + `secure`): origen estable `lapis://app`, contexto
+ * - Registrado como privilegiado (`standard` + `secure`): origen estable `onyxcode://app`, contexto
  *   seguro, `fetch` y caché de código; sin los privilegios extra de `file://` (que además quedan
  *   desactivados con el fuse GrantFileProtocolExtraPrivileges).
  * - Solo sirve archivos de `out/renderer` (sin `..`, sin enlaces fuera de la raíz) y solo para el
@@ -16,7 +16,7 @@ import { APP_SLUG } from '@shared/brand'
 
 export const APP_SCHEME = APP_SLUG
 export const APP_HOST = 'app'
-/** Origen del renderer empaquetado (`lapis://app`). */
+/** Origen del renderer empaquetado (`onyxcode://app`). */
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`
 
 const MIME: Record<string, string> = {
@@ -146,7 +146,7 @@ export function rendererPageUrl(page: string): string {
 
 /**
  * Origen `esquema://host[:puerto]` de una URL. (En Node, `URL.origin` de un esquema no especial
- * como `lapis:` es "null"; Chromium sí lo trata como origen porque está registrado como standard.)
+ * como `onyxcode:` es "null"; Chromium sí lo trata como origen porque está registrado como standard.)
  */
 export function originOf(raw: string): string | null {
   try {

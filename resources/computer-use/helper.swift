@@ -93,7 +93,7 @@ let source = CGEventSource(stateID: .privateState)
 
 /// Marca cada evento que posteamos nosotros mismos (campo `eventSourceUserData`, libre para
 /// cualquier valor de 32 bits) para poder ignorarlos en `watch-esc` sin depender de
-/// `eventSourceStateID`. Valor arbitrario, sin significado especial: "LAPIS" en ASCII truncado.
+/// `eventSourceStateID`. Valor arbitrario, sin significado especial: "ONYXCODE" en ASCII truncado.
 let ownEventTag: Int64 = 0x4C41_5049
 
 /// Gancho global opcional que el handler de SIGTERM ejecuta antes de `exit` (kill-switch de
@@ -1126,7 +1126,7 @@ func watchEsc() {
 // MARK: - Micrófono y voz
 
 /// Estado de autorización del micrófono ("authorized"/"denied"/"notDetermined"/"restricted"),
-/// sin pedirlo. Atribuido al proceso responsable (la terminal en desarrollo, Lapis empaquetada).
+/// sin pedirlo. Atribuido al proceso responsable (la terminal en desarrollo, OnyxCode empaquetada).
 func micStatusString() -> String {
     switch AVCaptureDevice.authorizationStatus(for: .audio) {
     case .authorized: return "authorized"

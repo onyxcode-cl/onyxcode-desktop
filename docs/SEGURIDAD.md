@@ -1,21 +1,21 @@
-# Seguridad de Lapis — modelo actual
+# Seguridad de OnyxCode — modelo actual
 
 Resumen de las defensas del proceso principal, las ventanas y los procesos hijos. Detalle de los
 hallazgos y su estado en `AUDIT.md`; motivación en `docs/analisis-claude/03-motor-interno.md`
-(«Lecciones para Lapis», bloques A y B).
+(«Lecciones para OnyxCode», bloques A y B).
 
 ## 1. Renderer y ventanas
 
 | Control | Dónde |
 |---|---|
-| Renderer de producción servido por `lapis://app/…` (esquema privilegiado `standard`+`secure`), nunca `file://`. Solo host `app`, solo archivos de `out/renderer` (sin `..` ni enlaces fuera), `nosniff`, COOP/CORP | `src/main/security/app-protocol.ts` |
+| Renderer de producción servido por `onyxcode://app/…` (esquema privilegiado `standard`+`secure`), nunca `file://`. Solo host `app`, solo archivos de `out/renderer` (sin `..` ni enlaces fuera), `nosniff`, COOP/CORP | `src/main/security/app-protocol.ts` |
 | CSP por **cabecera** en cada HTML: `script-src 'self'`, `connect-src 'self' http://127.0.0.1:*`, sin frames/workers/objetos, `base-uri`/`form-action 'none'` (la `<meta>` se mantiene para el dev server) | `RENDERER_CSP` |
 | Navegación: `will-navigate`/`will-redirect`/`will-frame-navigate` solo al origen propio (o el dev server); http(s) → navegador del sistema (solo desde ventanas de la app, nunca desde un artifact); `window.open` denegado; `<webview>` bloqueado y `webviewTag:false` | `src/main/security/web-security.ts` |
 | Permisos de la sesión por defecto: denegados salvo `notifications` y `clipboard-sanitized-write` para páginas propias; sin dispositivos, sin captura de pantalla desde el renderer, sin descargas | idem |
 | Menú propio en producción (sin Recargar/DevTools) y `devTools:false` en la ventana principal empaquetada | idem, `src/main/index.ts` |
 | Preload por ventana: principal = API completa; Quick Entry = `extras:quickSubmit/quickHide` + evento `quick-shown`; overlay = solo evento `computer:overlay`; píldora = overlay + `computer:stop`; assist (Teach mode / grabar una skill, Lote C) = `computer:teachRespond`/`computer:record:stop` + evento `computer:assist`; **navegador aparte (`browser-host`, Lote D)** = solo `window.api.browser` (todo `browser:*` salvo `sites:*`/`clearData`/`devServers`). Artifacts: sin preload, partición propia | `src/preload/{index,quick,overlay,pill,assist,browser-host}.ts` |
-| OpenCode (`--cors`) solo acepta `lapis://app` (y el dev server sin empaquetar); ya no `null` | `src/main/index.ts` → servidores |
-| **Pestañas del navegador integrado (Lote D):** `WebContentsView` por pestaña, sin preload, en `persist:lapis-web-{code\|cowork}` (nunca la sesión por defecto de `lapis://app`); eximidas de `harden()` por identidad de objeto de sesión (`isEmbeddedBrowserSession`), con sus propias guardas equivalentes (detalle en «3 quater»). Se alojan en el panel principal o en una **ventana «Navegador» aparte** (rol `browserHost`, se abre sola con `showInactive()` si la principal está minimizada/oculta) | `src/main/embedded-browser/{session,surface,popout}.ts` |
+| OpenCode (`--cors`) solo acepta `onyxcode://app` (y el dev server sin empaquetar); ya no `null` | `src/main/index.ts` → servidores |
+| **Pestañas del navegador integrado (Lote D):** `WebContentsView` por pestaña, sin preload, en `persist:onyxcode-web-{code\|cowork}` (nunca la sesión por defecto de `onyxcode://app`); eximidas de `harden()` por identidad de objeto de sesión (`isEmbeddedBrowserSession`), con sus propias guardas equivalentes (detalle en «3 quater»). Se alojan en el panel principal o en una **ventana «Navegador» aparte** (rol `browserHost`, se abre sola con `showInactive()` si la principal está minimizada/oculta) | `src/main/embedded-browser/{session,surface,popout}.ts` |
 
 ## 2. IPC (renderer → main)
 
@@ -35,11 +35,11 @@ esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arran
 
 ## 3. Procesos hijos y permisos de macOS (TCC)
 
-- **`lapis-disclaim`** (`resources/launcher/disclaim.c`, `npm run build:launcher`, va en
+- **`onyxcode-disclaim`** (`resources/launcher/disclaim.c`, `npm run build:launcher`, va en
   `Contents/Resources/launcher/`): `posix_spawn` con `POSIX_SPAWN_SETEXEC` + atributo *disclaim*
   (`responsibility_spawnattrs_setdisclaim`, vía `dlsym`; sin él, falla cerrado). El programa
   reemplaza al lanzador (mismo PID/grupo) y pasa a ser **responsable de sí mismo**: no hereda
-  Accesibilidad ni Grabación de pantalla de Lapis. Se usa para **todos** los `opencode serve`
+  Accesibilidad ni Grabación de pantalla de OnyxCode. Se usa para **todos** los `opencode serve`
   (sidecar de Chat/Code, Cowork con sandbox y Cowork de acceso total).
 - Lo que sí necesita esos permisos — el **MCP de computer use** y su `cu-helper`/`screencapture` —
   corre en un **`utilityProcess`** de main (`src/main/computer/mcp-host.ts`), que expone MCP
@@ -52,8 +52,8 @@ esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arran
   más las variables explícitas de la app. No pasan `ELECTRON_*`, `NODE_OPTIONS`, `DYLD_*` ni tokens
   exportados en la shell del usuario.
 - **Terminal integrada** (`src/main/pty/service.ts`): la shell del usuario también se lanza con el
-  mismo `lapis-disclaim` (`withDisclaim`, `process/disclaim.ts`), así que tampoco hereda
-  Accesibilidad/Grabación de pantalla de Lapis — antes sí lo hacía (ver «Riesgos conocidos» más
+  mismo `onyxcode-disclaim` (`withDisclaim`, `process/disclaim.ts`), así que tampoco hereda
+  Accesibilidad/Grabación de pantalla de OnyxCode — antes sí lo hacía (ver «Riesgos conocidos» más
   abajo, ya corregido). A diferencia de los servidores OpenCode, aquí **no** se usa `minimalEnv`:
   la terminal es una acción explícita del usuario (login shell, `TERM`, `LANG`, `PATH`…), así que se
   conserva casi todo `process.env` y solo se quitan `ELECTRON_RUN_AS_NODE`, `ELECTRON_RENDERER_URL`,
@@ -64,12 +64,12 @@ esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arran
 **Flujo Plan → Aprobar → Ejecutar y concesión por app** (`src/main/computer/{service,grants,mcp-server}.ts`):
 antes de tocar la pantalla, el agente debe llamar `request_access` con su plan y la lista completa
 de apps; `main` (`ComputerService`, aprobación **por sesión**, consultada por el MCP y por el
-plugin `lapis-plan-gate` vía `GET .../plan-status?session=<id>` antes de CADA herramienta de acción)
+plugin `onyxcode-plan-gate` vía `GET .../plan-status?session=<id>` antes de CADA herramienta de acción)
 lo hace cumplir del lado del servidor, no solo por prompt. La
 tarjeta espera la respuesta del usuario SIN LÍMITE DE TIEMPO (ya no hay "sin respuesta en 5 min ⇒
 denegado": eso mataba tareas por un simple retraso); la única forma de que quede sin responder es
 que el proceso principal muera, y el único cierre forzado es `stop()` (kill-switch), que deniega lo
-pendiente como respaldo. Lapis misma, el Dock, Spotlight, Centro de Control, `WindowServer` y
+pendiente como respaldo. OnyxCode misma, el Dock, Spotlight, Centro de Control, `WindowServer` y
 `loginwindow` (`grants.SYSTEM_EXEMPT_BUNDLE_IDS`) están exentos de la concesión por app: nunca se
 bloquean a sí mismos ni piden acceso. Mientras una tarea de Control total está trabajando, la
 ventana principal se minimiza (píldora + overlay siguen visibles, `cowork-handlers.ts`) para que
@@ -84,14 +84,14 @@ Cowork con sandbox, además, Seatbelt impide ejecutar `screencapture`.
 
 Detalle de los hallazgos en `AUDIT.md` §9; resumen del lote en `docs/COWORK-LOTE-B.md`.
 
-**Puerta del plan por sesión.** El plugin `lapis-plan-gate` (`src/main/cowork/opencode-config.ts`)
+**Puerta del plan por sesión.** El plugin `onyxcode-plan-gate` (`src/main/cowork/opencode-config.ts`)
 se aplica a **toda** sesión del servidor de Control total, con clave en su propio `sessionID`: las
 sesiones hijas de `task` y cualquier agente distinto de `computer` quedan bloqueadas (fail-closed)
 hasta que el usuario apruebe el plan de esa sesión; solo pasan las herramientas de planificar
 (`computer_request_access`, `todowrite`, `todoread`, `question`, `read`, `glob`, `grep`, `list`).
 `computer.md` tiene `task: deny`. La aprobación dura toda la tarea hasta «Revocar», Detener o
 archivar/borrar. En el sandbox y en el sidecar principal el plugin no hace nada (sin
-`LAPIS_PLAN_GATE_URL`).
+`ONYXCODE_PLAN_GATE_URL`).
 
 **Carpetas de trabajo** (`sandbox-profile.ts`, `folder-policy.ts`, `manager.ts`).
 - Carpeta principal: escritura permitida; `unlink`/`rmdir`/`rename` denegados salvo la concesión
@@ -130,7 +130,7 @@ Con `disableCustomHosts` (política) no se pueden añadir sitios ni se suman los
 **MCP del usuario dentro de Cowork** (`mcp-cowork.ts`). Solo entran los servidores activos y marcados
 «Disponible en Cowork» (`userData/cowork-mcp.json`; nunca se escribe en `opencode/opencode.json`).
 - **MCP locales**: se lanzan con el prefijo `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u
-  OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u LAPIS_PLAN_GATE_URL`,
+  OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u ONYXCODE_PLAN_GATE_URL`,
   para que no hereden las credenciales del propio servidor. Heredan el perfil Seatbelt y necesitan el
   interruptor de npm o PyPI si descargan paquetes.
 - **MCP remotos**: su host entra en la lista blanca de red; los que usan OAuth no funcionan en el
@@ -148,8 +148,8 @@ recuerdan `external_directory`, `doom_loop`, `computer_*`, patrones de borrado (
 `unlink`, `trash`, `srm`, `-delete`) ni patrones de bash que empiecen por comodín. Con
 `disableAlwaysAllow` (política) `add` lanza error y las reglas guardadas no se aplican.
 
-**Política gestionada** (`policy.ts`). Archivo `/Library/Application Support/Lapis/managed.json` (solo
-un administrador escribe ahí; en desarrollo se puede forzar con `LAPIS_MANAGED_POLICY` si la app no está
+**Política gestionada** (`policy.ts`). Archivo `/Library/Application Support/OnyxCode/managed.json` (solo
+un administrador escribe ahí; en desarrollo se puede forzar con `ONYXCODE_MANAGED_POLICY` si la app no está
 empaquetada). Claves: `disableFullAccess`, `allowedFolderRoots`, `disableCustomHosts`,
 `extraAllowedHosts`, `disableAlwaysAllow`, `disableRoutines`, `maxAutoArchiveDays`. Solo restringe
 (salvo `extraAllowedHosts`) y **falla hacia el lado seguro**: un booleano que no sea exactamente
@@ -170,7 +170,7 @@ concesión previa de Control total vale y `grantFullAccess` falla.
   plan»); sin aprobación, la ejecución termina por tiempo (45 min) con un error claro. `disableRoutines`
   (política) impide guardarlas y ejecutarlas.
 
-**Capturas de Control total.** Se guardan temporalmente en `temp/lapis-computer` (últimas 20) y se
+**Capturas de Control total.** Se guardan temporalmente en `temp/onyxcode-computer` (últimas 20) y se
 borran al pulsar Detener, al cerrar la app y a los 60 s sin tareas de Control total en curso. Las
 capturas se envían al proveedor del modelo y quedan en el historial de la tarea.
 
@@ -229,7 +229,7 @@ maliciosas». Si `list_pages` no se puede leer o interpretar, la pasarela (`brow
 falla cerrado (nunca asume que todo está bien) y manda a `about:blank` cualquier página en un host
 no permitido. El proceso se lanza con `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u
 OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u
-LAPIS_PLAN_GATE_URL` (igual que los MCP locales del usuario, `MCP_ENV_WRAPPER`), para que Chrome
+ONYXCODE_PLAN_GATE_URL` (igual que los MCP locales del usuario, `MCP_ENV_WRAPPER`), para que Chrome
 nunca herede las credenciales del propio servidor de OpenCode; `--no-usage-statistics` y
 `CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS=1` evitan que escriba en `~/.cache/chrome-devtools-mcp` del
 usuario. `upload_file` se quita de `tools/list` antes de que el modelo la vea. El navegador corre
@@ -242,7 +242,7 @@ ventana nueva tiene su propio preload (`src/preload/assist.ts`) con su propia li
 (`ALLOWED_INVOKE = {'computer:teachRespond', 'computer:record:stop'}`, `on` solo acepta
 `computer:assist`) y su propio rol en `CHANNEL_ROLES` (`assist`), sin tocar la entrada `pill`. Es
 una ventana sin marco, transparente, con `setContentProtection(true)` y `showInactive` (nunca activa
-Lapis ni le roba el foco al usuario), igual que la píldora de control. La grabación en sí
+OnyxCode ni le roba el foco al usuario), igual que la píldora de control. La grabación en sí
 (`cu-helper record`) usa un tap de solo ESCUCHA (nunca inyecta eventos) y nunca guarda el texto
 tecleado si `IsSecureEventInputEnabled()` está activo (campo seguro con foco); el texto tecleado
 tampoco se envía al agente por defecto («Incluir el texto que tecleé», desactivado) y el prompt que
@@ -255,12 +255,12 @@ prueba manual en `docs/LOTE-D.md`.
 
 **Aislamiento por sesión: nunca la sesión por defecto.** Cada pestaña del navegador integrado
 (`WebContentsView`, `sandbox:true, contextIsolation:true, nodeIntegration:false, webviewTag:false,
-devTools:false`, **sin preload propio**) vive en `session.fromPartition('persist:lapis-web-code')`
-o `'persist:lapis-web-cowork'` (`embedded-browser/session.ts`): dos perfiles separados entre sí y
-completamente distintos de la `defaultSession` que sirve `lapis://app` y guarda las credenciales de
-OpenCode. Ni el esquema `lapis:` ni `*-artifact:` existen en esas particiones (`protocol.handle` es
+devTools:false`, **sin preload propio**) vive en `session.fromPartition('persist:onyxcode-web-code')`
+o `'persist:onyxcode-web-cowork'` (`embedded-browser/session.ts`): dos perfiles separados entre sí y
+completamente distintos de la `defaultSession` que sirve `onyxcode://app` y guarda las credenciales de
+OpenCode. Ni el esquema `onyxcode:` ni `*-artifact:` existen en esas particiones (`protocol.handle` es
 de la sesión por defecto y de la del artifact), así que una pestaña del navegador nunca puede pedir
-una página propia de la app. **Cowork usa UNA sola partición compartida** (`persist:lapis-web-
+una página propia de la app. **Cowork usa UNA sola partición compartida** (`persist:onyxcode-web-
 cowork`) para Sandbox y Control total, sea cual sea la carpeta o la tarea — no una por carpeta ni
 por tarea. Es una decisión explícita, reconfirmada por el usuario junto con el resto de defaults del
 Lote D (2026-09-28): las cookies/sesiones iniciadas del navegador de Cowork son las mismas entre
@@ -343,7 +343,7 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
   variables `CSC_*` automáticamente), se activa `hardenedRuntime` y se firma con
   `build/entitlements.mac.plist` (`entitlements`/`entitlementsInherit`) — JIT de V8, red
   cliente/servidor y `disable-library-validation` (necesario para que el addon nativo precompilado
-  de `node-pty` cargue bajo hardened runtime). Los binarios embebidos `cu-helper` y `lapis-disclaim`
+  de `node-pty` cargue bajo hardened runtime). Los binarios embebidos `cu-helper` y `onyxcode-disclaim`
   se listan en `mac.binaries` para que quede explícito que también se firman.
 - **Notarización:** hook `afterSign` propio (`build/notarize.js`, usa `@electron/notarize`
   directamente) en vez de la opción `mac.notarize` de electron-builder, para loguear con claridad
@@ -353,13 +353,13 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
 ## 5. Riesgos conocidos / pendiente
 
 - El token del MCP viaja en `OPENCODE_CONFIG_CONTENT` del servidor de acceso total (oculto a su
-  bash por el plugin `lapis-env`). Otro proceso del mismo usuario **sin sandbox** (p. ej. el bash
+  bash por el plugin `onyxcode-env`). Otro proceso del mismo usuario **sin sandbox** (p. ej. el bash
   del modo Code) podría leer ese entorno (`ps eww`) y llamar al MCP. Mitigación futura: verificar el
   PID del cliente TCP (que sea descendiente del servidor de acceso total) o un canal por socket Unix.
 - El `cu-helper` no es un bundle con identidad propia (lección 7): los permisos siguen siendo de
-  Lapis.app.
-- ✅ **Corregido** — El PTY de la terminal integrada ya no hereda los permisos de Lapis: se lanza
-  con `lapis-disclaim` igual que los `opencode serve` (`src/main/pty/service.ts`, §3 arriba).
+  OnyxCode.app.
+- ✅ **Corregido** — El PTY de la terminal integrada ya no hereda los permisos de OnyxCode: se lanza
+  con `onyxcode-disclaim` igual que los `opencode serve` (`src/main/pty/service.ts`, §3 arriba).
 - Sin Developer ID + hardened runtime + notarización configurados (ver `docs/DISTRIBUCION.md`): cada
   build ad-hoc cambia la identidad y macOS olvida los permisos concedidos. La config ya soporta
   ambos casos (`electron-builder.js` + `build/notarize.js`); falta que el usuario aporte su propio

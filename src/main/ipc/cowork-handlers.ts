@@ -150,10 +150,10 @@ export function registerCoworkHandlers(
   const handle = makeCoworkHandle(ipcMain)
   const ctx: CoworkIpcContext = { handle, send, getWindow, cowork, computer, scheduler, projects, keepAwake }
 
-  // ── Item 5: Lapis nunca se bloquea a sí misma y se aparta de en medio mientras el agente actúa ──
+  // ── Item 5: OnyxCode nunca se bloquea a sí misma y se aparta de en medio mientras el agente actúa ──
   // Mientras una tarea de Control total está trabajando, la ventana principal se minimiza (la
   // píldora + el overlay siguen visibles): así nunca queda en primer plano robándole el foco a
-  // Spotlight/la app que el agente está usando, y el usuario ve el escritorio real, no Lapis. Se
+  // Spotlight/la app que el agente está usando, y el usuario ve el escritorio real, no OnyxCode. Se
   // restaura sola al terminar, si hay un error, al pulsar Detener, o si el usuario la necesita
   // (p.ej. abre la tarjeta "Editar" desde la píldora). Solo restaura si fue ELLA quien minimizó
   // (no toca una minimización manual del usuario).
@@ -213,7 +213,7 @@ export function registerCoworkHandlers(
   // Tarjeta "¿Permitir que el agente use X?" (herramienta MCP request_access): se difunde a todas
   // las ventanas y a la píldora (que la muestra solo si la app no está al frente, ver overlay.ts);
   // `computer:respondAccess` la resuelve. Además, notificación nativa con acción "Revisar" (si el
-  // usuario no tiene el foco en Lapis) y aviso a la píldora para el estado "Esperando tu permiso".
+  // usuario no tiene el foco en OnyxCode) y aviso a la píldora para el estado "Esperando tu permiso".
   // ¿La ventana principal está al frente? Entonces su tarjeta es la única (la píldora no la duplica);
   // si no (minimizada, oculta o el agente se llevó el foco a otra app), la píldora muestra la tarjeta.
   const mainIsFront = (): boolean => {
@@ -351,7 +351,7 @@ export function registerCoworkHandlers(
   handle('computer:resume', () => computer.resume())
   handle('computer:state', () => computer.state())
   // Plan → Aprobar → Ejecutar: una tarea de Control total que empieza a trabajar solo "pide" el
-  // modo control; el borde, la píldora de control y la minimización de Lapis llegan recién
+  // modo control; el borde, la píldora de control y la minimización de OnyxCode llegan recién
   // cuando el usuario aprueba el plan (evento `planApproved`). La aprobación es POR SESIÓN: dura
   // toda la tarea (seguimientos incluidos) hasta Revocar, Detener o archivar/borrar la tarea.
   let sessionWanted: { label?: string; sessionId?: string } | null = null

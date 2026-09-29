@@ -3,8 +3,8 @@ Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `cowor
 
 Este directorio es SOLO LECTURA (va dentro del bundle firmado). Al arrancar, main copia `agents/` y
 `skills/` a `userData/opencode-config/` (sobrescribe si cambia la versión de la app, y borra lo que
-ya no exista en el bundle) junto con los plugins generados `plugins/lapis-env.js` y
-`plugins/lapis-plan-gate.js`, y es ESE directorio el que se pasa como `OPENCODE_CONFIG_DIR`
+ya no exista en el bundle) junto con los plugins generados `plugins/onyxcode-env.js` y
+`plugins/onyxcode-plan-gate.js`, y es ESE directorio el que se pasa como `OPENCODE_CONFIG_DIR`
 (OpenCode escribe en su config dir: `node_modules`, `bun.lock`…). Ver
 `src/main/cowork/opencode-config.ts`. Se fusiona con ~/.config/opencode del usuario. En el
 empaquetado, `agents/**` y `skills/**` van en `asarUnpack` (`electron-builder.js`).
@@ -33,5 +33,5 @@ el «Base directory for this skill» que le devuelve la herramienta `skill`. Ver
 MCP `computer` (out/main/computer-mcp.js + resources/computer-use/bin/cu-helper). Los servidores
 sandboxeados lo desactivan vía `OPENCODE_CONFIG_CONTENT` (`agent.computer.disable`).
 
-En ese servidor, el plugin `lapis-plan-gate` exige un plan aprobado para TODA sesión (incluidas las
+En ese servidor, el plugin `onyxcode-plan-gate` exige un plan aprobado para TODA sesión (incluidas las
 hijas de `task`, cuyo permiso está en `deny` para `computer`), no solo para las del agente `computer`.

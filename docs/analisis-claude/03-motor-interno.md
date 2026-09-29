@@ -334,9 +334,9 @@ y configuración remota del servidor, con precedencia definida.
 - **stall-sampler** en `worker_threads` para detectar bloqueos del main.
 - Limpieza ordenada al salir/actualizar mediante registro de «cleanup tasks».
 
-## Lecciones para Lapis
+## Lecciones para OnyxCode
 
-Estado actual de Lapis (según `src/main/**`, `src/preload/**`, `helper.swift`, AUDIT.md, PLAN.md):
+Estado actual de OnyxCode (según `src/main/**`, `src/preload/**`, `helper.swift`, AUDIT.md, PLAN.md):
 sidecar `opencode serve` por HTTP local con Basic auth; Cowork con Seatbelt `(allow default)` + denegaciones;
 computer use con `cu-helper` Swift (CGEvent) + `screencapture` + MCP propio lanzado con
 `ELECTRON_RUN_AS_NODE`; kill-switch en main ya corregido; IPC con lista blanca de canales en preload
@@ -406,7 +406,7 @@ Claude Desktop que lo motiva.
     acceso total, egress de Cowork; precedencia sobre ajustes del usuario.
 
 **Bloque E — Code y distribución**
-17. **[M] Worktrees gestionados**: en `<repo>/.claude…`-equivalente (`.lapis/worktrees/<nombre>`),
+17. **[M] Worktrees gestionados**: en `<repo>/.claude…`-equivalente (`.onyxcode/worktrees/<nombre>`),
     nombre slug+hex, rama con prefijo, pool pre-creado, conservar los sucios al archivar; copia en worker.
 18. **[S] Confianza de carpeta** antes de abrir un repo en Code (y `git -c core.fsmonitor=`), registrada
     en main.

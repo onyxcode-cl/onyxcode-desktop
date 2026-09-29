@@ -60,14 +60,14 @@ function matches(patterns: RegExp[], bundleId: string, name: string): boolean {
 }
 
 /**
- * Apps de sistema y la propia Lapis: NUNCA pasan por la concesión por app (ni bloquean cmd+space,
- * ni aparecen en tarjetas `request_access`, ni se excluyen de las capturas). Sin esto, Lapis podía
+ * Apps de sistema y la propia OnyxCode: NUNCA pasan por la concesión por app (ni bloquean cmd+space,
+ * ni aparecen en tarjetas `request_access`, ni se excluyen de las capturas). Sin esto, OnyxCode podía
  * bloquearse a sí misma cuando quedaba en primer plano (p.ej. tras `cmd+space`) y el agente perdía
  * el Spotlight que acababa de abrir. `com.github.Electron` es el bundle id del propio Electron
  * cuando la app corre sin empaquetar (`npm run dev`).
  */
 export const SYSTEM_EXEMPT_BUNDLE_IDS: ReadonlySet<string> = new Set([
-  'cl.bentec.lapis',
+  'cl.bentec.onyxcode',
   'com.github.Electron',
   'com.apple.dock',
   'com.apple.systemuiserver',

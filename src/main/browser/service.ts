@@ -404,12 +404,12 @@ export class BrowserService extends EventEmitter<{ changed: [BrowserState] }> {
         timeout: 30_000,
         command: [...MCP_ENV_WRAPPER, d.runtimeBin, gatewayScript],
         environment: {
-          LAPIS_BROWSER_URL: siteCheckUrl,
-          LAPIS_BROWSER_FOLDER: folder,
+          ONYXCODE_BROWSER_URL: siteCheckUrl,
+          ONYXCODE_BROWSER_FOLDER: folder,
           CDM_BIN: cdmBin,
           CDM_RUNTIME: d.runtimeBin,
           CHROME_PATH: s.chromePath,
-          LAPIS_BROWSER_PROFILE: this.profileDir(),
+          ONYXCODE_BROWSER_PROFILE: this.profileDir(),
           ...(d.runtime === 'bun' ? { BUN_BE_BUN: '1' } : {})
         }
       }

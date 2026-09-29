@@ -1,7 +1,7 @@
 /**
  * "Proyecto" de Cowork por carpeta: nombre + instrucciones + enlaces + interruptor de memoria, persistidos en
  * `userData/cowork-projects.json`. La memoria (notas que el agente guarda entre tareas) vive
- * aparte, como archivo de texto dentro de la propia carpeta (`.lapis/memoria.md`), para que el
+ * aparte, como archivo de texto dentro de la propia carpeta (`.onyxcode/memoria.md`), para que el
  * usuario pueda verla/editarla con cualquier editor y viaje con la carpeta.
  */
 import { app } from 'electron'
@@ -124,21 +124,38 @@ export function sanitizeLinks(input: readonly unknown[]): string[] {
   return out
 }
 
+/** Nombres de carpeta de memoria de versiones anteriores de la app, más reciente primero. */
+const LEGACY_MEMORY_DIRS = ['.lapis'] as const
+
 /** Ruta del archivo de memoria dentro de la carpeta de la tarea. */
 export function memoryPath(folder: string): string {
-  return join(folder, '.lapis', 'memoria.md')
+  return join(folder, '.onyxcode', 'memoria.md')
 }
 
-function readMemoryFile(folder: string): CoworkMemory {
-  const file = memoryPath(folder)
+function readMemoryFileAt(file: string): CoworkMemory | null {
   try {
     const st = statSync(file)
-    if (!st.isFile()) return { content: '', exists: false, updatedAt: null }
+    if (!st.isFile()) return null
     const raw = readFileSync(file, 'utf8')
     return { content: raw, exists: true, updatedAt: st.mtimeMs }
   } catch {
-    return { content: '', exists: false, updatedAt: null }
+    return null
   }
+}
+
+/**
+ * Lee la memoria de la carpeta. Si `.onyxcode/memoria.md` todavía no existe (carpeta usada con una
+ * versión anterior de la app), cae de vuelta a `.lapis/memoria.md` para no perder notas ya escritas
+ * antes de que el usuario vuelva a guardar (lo que migra la memoria a la carpeta nueva).
+ */
+function readMemoryFile(folder: string): CoworkMemory {
+  const current = readMemoryFileAt(memoryPath(folder))
+  if (current) return current
+  for (const legacyDir of LEGACY_MEMORY_DIRS) {
+    const legacy = readMemoryFileAt(join(folder, legacyDir, 'memoria.md'))
+    if (legacy) return legacy
+  }
+  return { content: '', exists: false, updatedAt: null }
 }
 
 export function getMemory(folder: string): CoworkMemory {
@@ -154,11 +171,13 @@ export function saveMemory(folder: string, content: string): CoworkMemory {
 }
 
 export function deleteMemory(folder: string): CoworkMemory {
-  const file = memoryPath(folder)
-  try {
-    if (existsSync(file)) unlinkSync(file)
-  } catch (err) {
-    console.error('[cowork] no se pudo borrar la memoria:', err)
+  const files = [memoryPath(folder), ...LEGACY_MEMORY_DIRS.map((d) => join(folder, d, 'memoria.md'))]
+  for (const file of files) {
+    try {
+      if (existsSync(file)) unlinkSync(file)
+    } catch (err) {
+      console.error('[cowork] no se pudo borrar la memoria:', err)
+    }
   }
   return readMemoryFile(folder)
 }
@@ -213,7 +232,7 @@ export function saveAgentsMd(folder: string, content: string): CoworkAgentsMd {
     throw new Error(`AGENTS.md no puede superar ${AGENTS_MD_MAX_CHARS.toLocaleString('es-CL')} caracteres.`)
   }
   const r = resolveAgentsMd(folder)
-  const tmp = `${r.real}.lapis-tmp`
+  const tmp = `${r.real}.onyxcode-tmp`
   writeFileSync(tmp, content, 'utf8')
   renameSync(tmp, r.real)
   return getAgentsMd(folder)

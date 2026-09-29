@@ -39,7 +39,7 @@ const INJECTION_PATTERNS: RegExp[] = [
   /bypass/i,
   /salt(ar|ate)\s+(la\s+)?(aprobaci|permiso)/i,
   /(disable|desactiva\w*)\s+(the\s+|el\s+|la\s+)?(approval|permission|sandbox|gate|modo|permiso|aprobaci)/i,
-  /lapis_session/i,
+  /onyxcode_session/i,
   /plan-gate/i,
   /killswitch/i,
   /OPENCODE_(SERVER|AUTH|CONFIG)/,
@@ -74,7 +74,7 @@ const DELETE_RE = /(^|[;&|]\s*)(rm|rmdir|unlink|trash|srm)\b|\s-delete\b/
 const BASH_FORBIDDEN_CHARS_RE = /[;&|`$<>\n\r\\]/
 
 /** Rutas que nunca deben aparecer en un comando de solo lectura auto-aprobado. */
-const SENSITIVE_PATH_RE = /(lapis-killswitch|cu-helper|\.ssh|\.aws|\.gnupg|Keychains|\.netrc|auth\.json|opencode\.json|\.env)\b/
+const SENSITIVE_PATH_RE = /(onyxcode-killswitch|cu-helper|\.ssh|\.aws|\.gnupg|Keychains|\.netrc|auth\.json|opencode\.json|\.env)\b/
 
 const BASH_ALLOWED_COMMANDS: ReadonlySet<string> = new Set([
   'ls',

@@ -141,7 +141,7 @@ export class EgressProxy {
     }
 
     if (!this.checkAuth(headers)) {
-      socket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="lapis-egress"\r\nConnection: close\r\n\r\n')
+      socket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="onyxcode-egress"\r\nConnection: close\r\n\r\n')
       return
     }
 
@@ -171,7 +171,7 @@ export class EgressProxy {
     this.opts.onLog?.(entry)
     if (!allowed) {
       this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lapis Cowork egress policy\r\n')
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode Cowork egress policy\r\n')
       return
     }
     const upstream = netConnect(port, host, () => {
@@ -200,7 +200,7 @@ export class EgressProxy {
     this.opts.onLog?.(entry)
     if (!allowed) {
       this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lapis Cowork egress policy\r\n')
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode Cowork egress policy\r\n')
       return
     }
     const upstream = netConnect(port, host, () => {

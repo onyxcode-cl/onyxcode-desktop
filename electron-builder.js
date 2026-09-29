@@ -20,8 +20,8 @@ if (hasSigningIdentity && !hasNotarizeCreds) {
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   // Nombre e ID de la app: mantener sincronizado con src/shared/brand.ts
-  appId: 'cl.bentec.lapis',
-  productName: 'Lapis',
+  appId: 'cl.bentec.onyxcode',
+  productName: 'OnyxCode',
   directories: {
     buildResources: 'build',
     output: 'dist'
@@ -55,7 +55,7 @@ module.exports = {
     {
       from: 'resources/launcher/bin',
       to: 'launcher',
-      filter: ['lapis-disclaim']
+      filter: ['onyxcode-disclaim']
     }
   ],
   // Fuses de Electron (docs/SEGURIDAD.md). RunAsNode off es posible porque el MCP de computer use
@@ -90,7 +90,7 @@ module.exports = {
           entitlementsInherit: 'build/entitlements.mac.plist',
           binaries: [
             'Contents/Resources/computer-use/bin/cu-helper',
-            'Contents/Resources/launcher/lapis-disclaim'
+            'Contents/Resources/launcher/onyxcode-disclaim'
           ]
         }
       : {}),
@@ -101,8 +101,8 @@ module.exports = {
     // Grabar una skill con micro (Lote C, B.1/B.8): macOS exige el texto en Info.plist antes de
     // poder pedir estos permisos, o el proceso aborta al intentarlo.
     extendInfo: {
-      NSMicrophoneUsageDescription: 'Lapis necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
-      NSSpeechRecognitionUsageDescription: 'Lapis necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
+      NSMicrophoneUsageDescription: 'OnyxCode necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
+      NSSpeechRecognitionUsageDescription: 'OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
     }
   },
   afterSign: 'build/notarize.js',

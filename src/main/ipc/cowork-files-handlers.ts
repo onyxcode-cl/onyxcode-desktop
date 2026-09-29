@@ -53,7 +53,7 @@ function runZip(args: string[], cwd?: string): Promise<void> {
 /** Crea el zip en `out` (reemplazándolo si existe: zip por sí solo AÑADIRÍA a un archivo previo). */
 async function createZip(out: string, files: string[]): Promise<void> {
   // Se escribe en un temporal del mismo directorio y se renombra al final.
-  const stage = mkdtempSync(join(dirname(out), '.lapis-zip-'))
+  const stage = mkdtempSync(join(dirname(out), '.onyxcode-zip-'))
   const tmp = join(stage, 'salida.zip')
   try {
     const names = files.map((f) => basename(f))

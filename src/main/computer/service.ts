@@ -6,7 +6,7 @@
  *   este proceso (`stopped`): el MCP lo consulta con `GET <COMPUTER_EVENTS_URL>/state` antes de cada
  *   acción, así que el agente no puede "des-pararse" borrando un archivo. `stop()` además aborta las
  *   sesiones de los servidores de acceso total (`abortSessions`, lo inyecta cowork-handlers) y mata
- *   los `cu-helper` en vuelo. El archivo STOP (en `userData/lapis-killswitch/`, ruta que
+ *   los `cu-helper` en vuelo. El archivo STOP (en `userData/onyxcode-killswitch/`, ruta que
  *   agents/computer.md deniega a bash/edit) solo es el respaldo si el canal lateral no arrancó;
  *   parar NUNCA se deshace solo: hace falta `resume()` (botón "Reanudar control");
  * - canal lateral de acciones: servidor HTTP en 127.0.0.1 al que el MCP hace `POST` de cada
@@ -19,10 +19,10 @@
  * lo desactiva y `OPENDESK_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
  *
  * Permisos (TCC): el "proceso responsable" de la cadena Electron → utilityProcess del MCP →
- * cu-helper/screencapture es la app que lanzó Electron. Empaquetado = Lapis.app; en desarrollo
+ * cu-helper/screencapture es la app que lanzó Electron. Empaquetado = OnyxCode.app; en desarrollo
  * (`npm run dev` desde una terminal) es la TERMINAL (Terminal/iTerm/VS Code…), que es a quien
  * hay que conceder Accesibilidad y Grabación de pantalla. Los `opencode serve` (y su bash) NO
- * forman parte de esa cadena: se lanzan con `lapis-disclaim`.
+ * forman parte de esa cadena: se lanzan con `onyxcode-disclaim`.
  */
 import { app, globalShortcut, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
@@ -202,7 +202,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       plan?: string[]
       /** Apps de la tarjeta (con `requested`/`current`/`denied`): solo estas se aceptan al responder. */
       apps: AccessRequestApp[]
-      /** Sesión (tarea) de OpenCode que pidió la tarjeta (la inyecta el plugin `lapis-plan-gate`). */
+      /** Sesión (tarea) de OpenCode que pidió la tarjeta (la inyecta el plugin `onyxcode-plan-gate`). */
       sessionId?: string
       /** Lote C: `'takeover'` = pide tomar el ratón y el teclado en modo segundo plano. */
       kind?: 'access' | 'takeover'
@@ -225,7 +225,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private readonly pendingTeach = new Map<string, { resolve: (a: 'next' | 'exit') => void }>()
   /**
    * Sesiones (tareas de OpenCode) con el plan aprobado → instante de aprobación. El MCP rechaza toda
-   * herramienta de acción (`computer_*`, salvo `request_access`) y el plugin `lapis-plan-gate` toda
+   * herramienta de acción (`computer_*`, salvo `request_access`) y el plugin `onyxcode-plan-gate` toda
    * herramienta que no sea de solo-planificación mientras la sesión no esté aquí (consultado por
    * `GET .../plan-status?session=<id>`). La aprobación dura TODA la tarea (sesión): se pierde con
    * "Revocar" (`revokePlan`), archivar/borrar la tarea, Detener (`stop()`, todas) o al reiniciar la
@@ -233,7 +233,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    */
   private readonly approvedPlans = new Map<string, number>()
   /**
-   * Respaldo si la inyección de `lapis_session` falla (tarjeta o consulta sin sesión): aprobación
+   * Respaldo si la inyección de `onyxcode_session` falla (tarjeta o consulta sin sesión): aprobación
    * global como antes. Se apaga al terminar la sesión de control (`endLegacyPlan`) o con `stop()`.
    */
   private legacyPlanApproved = false
@@ -264,11 +264,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /**
    * Archivo de parada de RESPALDO (solo si el MCP no puede consultar a este proceso). El nombre de
-   * la carpeta coincide con la regla `*lapis-killswitch*` que agents/computer.md deniega a
+   * la carpeta coincide con la regla `*onyxcode-killswitch*` que agents/computer.md deniega a
    * bash/edit/write (defensa en profundidad: un comando ofuscado podría esquivarla, ver AUDIT S5).
    */
   get stopFile(): string {
-    return join(app.getPath('userData'), 'lapis-killswitch', 'STOP')
+    return join(app.getPath('userData'), 'onyxcode-killswitch', 'STOP')
   }
 
   /**
@@ -279,7 +279,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * eventos sintéticos en cuanto se postean (verificado).
    */
   private get inputFile(): string {
-    return join(app.getPath('temp'), 'lapis-computer-input')
+    return join(app.getPath('temp'), 'onyxcode-computer-input')
   }
 
   isStopped(): boolean {
@@ -512,7 +512,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       this.approvedPlans.set(sessionId, Date.now())
       this.emit('planState', { sessionId, approved: true })
     } else {
-      console.warn('[computer] plan aprobado sin sessionId (falló la inyección de lapis_session): modo global')
+      console.warn('[computer] plan aprobado sin sessionId (falló la inyección de onyxcode_session): modo global')
       this.legacyPlanApproved = true
     }
     this.emit('planApproved', { sessionId })
@@ -789,7 +789,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           return
         }
         if (req.method === 'GET' && (req.url ?? '').startsWith(`${path}/plan-status`)) {
-          // El MCP y el plugin `lapis-plan-gate` la consultan antes de cada herramienta de acción
+          // El MCP y el plugin `onyxcode-plan-gate` la consultan antes de cada herramienta de acción
           // (flujo Plan → Aprobar → Ejecutar). `session` = sesión (tarea) de OpenCode; sin ella se
           // aplica el respaldo legado (ver `isPlanApproved`).
           const sess = new URL(req.url ?? '', 'http://localhost').searchParams.get('session') ?? ''
@@ -982,8 +982,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /**
    * URL (con token) del canal lateral de eventos: la usa tanto el MCP (`mcpEnv`) como el plugin
-   * `lapis-plan-gate` del servidor de OpenCode de acceso total (`cowork/manager.ts` la pasa por
-   * entorno como `LAPIS_PLAN_GATE_URL`, SOLO a servidores de acceso total; `lapis-env.js` la oculta
+   * `onyxcode-plan-gate` del servidor de OpenCode de acceso total (`cowork/manager.ts` la pasa por
+   * entorno como `ONYXCODE_PLAN_GATE_URL`, SOLO a servidores de acceso total; `onyxcode-env.js` la oculta
    * a bash — ver `cowork/opencode-config.ts`). El plugin consulta `GET .../plan-status` antes de
    * cada herramienta que no sea de solo-planificación (con `?session=<id>`), con el mismo fail-closed
    * que el MCP.
@@ -1001,7 +1001,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       CU_HELPER: helper,
       COMPUTER_STOP_FILE: this.stopFile,
       COMPUTER_INPUT_FILE: this.inputFile,
-      COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'lapis-computer')
+      COMPUTER_SHOT_DIR: join(app.getPath('temp'), 'onyxcode-computer')
     }
     if (eventsUrl) environment.COMPUTER_EVENTS_URL = eventsUrl
     if (this.instant) environment.COMPUTER_INSTANT = '1'
@@ -1036,7 +1036,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /** Carpeta temporal de capturas del MCP (`COMPUTER_SHOT_DIR`); el MCP la recrea al capturar. */
   get screenshotsDir(): string {
-    return join(app.getPath('temp'), 'lapis-computer')
+    return join(app.getPath('temp'), 'onyxcode-computer')
   }
 
   /** Borra las capturas temporales de Control total (retención: no se conservan tras terminar). */

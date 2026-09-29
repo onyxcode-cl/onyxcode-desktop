@@ -5,8 +5,8 @@ Plan de origen: `docs/COWORK-LOTE-B-PLAN.md` (arquitectura, contratos y reparto 
 Hallazgos de seguridad y su estado: `AUDIT.md` §9. Modelo de seguridad vigente: `docs/SEGURIDAD.md` («3 bis»).
 Comparación con Claude Desktop, fila por fila: `docs/analisis-claude/02-cowork.md` («Tabla de brechas»).
 
-> Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «Lapis» (`APP_NAME`,
-> `.lapis/memoria.md`, `lapis-plan-gate`, `temp/lapis-computer`…). No se renombró nada.
+> Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «OnyxCode» (`APP_NAME`,
+> `.onyxcode/memoria.md`, `onyxcode-plan-gate`, `temp/onyxcode-computer`…). No se renombró nada.
 
 ## 1. Qué se entregó, por área
 
@@ -41,7 +41,7 @@ un componente de esa oleada.
   y `scratchDirs`, reglas `external_directory` en la config inline (solo sandbox).
 - `src/main/cowork/folder-policy.ts`: carpetas prohibidas con motivo accionable (raíz/home, sistema, `/Volumes`,
   volúmenes de red, userData, `~/Library`, iCloud, Papelera, rutas de secretos, raíces de la política).
-- `src/main/cowork/policy.ts`: `managed.json` (`/Library/Application Support/Lapis/managed.json`) con
+- `src/main/cowork/policy.ts`: `managed.json` (`/Library/Application Support/OnyxCode/managed.json`) con
   validación fail-closed; se aplica en `manager.ts`, `rules.ts`, `prefs.ts` y `scheduler/service.ts`.
 - Tarjeta de petición de carpeta y modos Lectura y escritura / Solo lectura (UI: `FolderRequestCard.tsx`,
   `FolderMenu.tsx`, `answerFolderRequest` en `actions.ts`).
@@ -132,7 +132,7 @@ está siempre denegado (la concesión solo vale para la principal).
 ### NO verificado en vivo (hacerlo con la app real; ver §4)
 - Que `agent.cowork.permission.external_directory` con `<ruta>` y `<ruta>/*` cubra las subcarpetas en OpenCode
   (revisar `/config` del servidor) y los patrones y metadata de `external_directory` (solo leídos del binario 1.18.32).
-- Que la inyección de `lapis_session` y la puerta del plan sobre sesiones hijas funcionen en ejecución (la inyección
+- Que la inyección de `onyxcode_session` y la puerta del plan sobre sesiones hijas funcionen en ejecución (la inyección
   se verificó solo leyendo el bundle en el Lote A): prueba 20.
 - Que OpenCode lance los MCP locales heredando el `process.env` del servidor (el envoltorio se probó aparte).
 - `session.update({time:{archived:0}})` para desarchivar (hay respaldo con `metadata.unarchivedAt`).
@@ -183,7 +183,7 @@ Requisitos: modelo con visión para las pruebas de Control total; una carpeta A 
 15. **Proyecto:**
     - El contador de instrucciones funciona (`n / 20.000`).
     - Añade un enlace y comprueba que el agente lo usa.
-    - Con «Usar memoria» desactivado, el agente no escribe `.lapis/memoria.md`.
+    - Con «Usar memoria» desactivado, el agente no escribe `.onyxcode/memoria.md`.
     - Edita `AGENTS.md` de la carpeta.
     - Ves la lista de skills.
 16. **MCP en Cowork:** marca un MCP como «Disponible en Cowork» con «Preguntar en cada uso»: sale una tarjeta por
@@ -196,9 +196,9 @@ Requisitos: modelo con visión para las pruebas de Control total; una carpeta A 
     plan en persona (notificación «necesita que apruebes su plan»).
 20. **Subagentes en Control total:** tras aprobar un plan, pide «usa un subagente para listar ~/Desktop»: el subagente
     queda bloqueado (fail-closed; `task` está en `deny` y la puerta se aplica a toda sesión).
-21. **Limpieza:** cierra la app y comprueba que `temp/lapis-computer` ya no existe. En Ajustes → Cowork → Almacenamiento,
+21. **Limpieza:** cierra la app y comprueba que `temp/onyxcode-computer` ya no existe. En Ajustes → Cowork → Almacenamiento,
     limpia la caché de una carpeta parada.
-22. **Política gestionada (opcional):** con la app sin empaquetar, `LAPIS_MANAGED_POLICY=/ruta/managed.json` con
+22. **Política gestionada (opcional):** con la app sin empaquetar, `ONYXCODE_MANAGED_POLICY=/ruta/managed.json` con
     `{"disableRoutines": true, "allowedFolderRoots": ["~/Documents"]}`: aparece el banner «Gestionado por tu
     organización», no se pueden guardar rutinas y solo se aceptan carpetas dentro de Documentos. Con un JSON inválido en
     ese archivo se activan todas las restricciones.
@@ -230,7 +230,7 @@ Requisitos: modelo con visión para las pruebas de Control total; una carpeta A 
 - **Parada por inactividad:** el monitor solo detiene servidores sin sesiones ocupadas, permisos ni preguntas pendientes,
   tras dos sondeos seguidos y sin estar mirados.
 - **Reverificar al subir de versión de OpenCode:** rutas de skills, patrones de `external_directory`, `session.revert`,
-  `/skill`, `/api/permission/saved`, la mutación de `lapis_session` y `OPENCODE_WEBSEARCH_PROVIDER`.
+  `/skill`, `/api/permission/saved`, la mutación de `onyxcode_session` y `OPENCODE_WEBSEARCH_PROVIDER`.
 
 ## 7. Archivos comprobados al escribir este documento
 

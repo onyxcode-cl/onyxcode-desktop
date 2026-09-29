@@ -1,7 +1,7 @@
 /**
  * Ventana «Navegador» aparte (Lote D, B.10 y D1 paso 8): el mismo `BrowserPanel`, en su propia
  * `BrowserWindow` (rol `browserHost`, preload `browser-host`, página
- * `lapis://app/browser/index.html`). Se abre a petición o automáticamente con `showInactive()`
+ * `onyxcode://app/browser/index.html`). Se abre a petición o automáticamente con `showInactive()`
  * cuando el agente actúa y la ventana principal está minimizada u oculta (Control total, A.5).
  *
  * Este módulo solo gestiona la ventana; qué `WebContentsView` aloja y sus bounds los decide

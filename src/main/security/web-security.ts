@@ -2,7 +2,7 @@
  * Endurecimiento global de Electron (AUDIT.md 2.1 / S8), aplicado a TODO webContents que se cree:
  *
  * - Navegación: `will-navigate`, `will-redirect` y `will-frame-navigate` solo permiten los orígenes
- *   propios (`lapis://app`, dev server); los enlaces http(s) se abren en el navegador del sistema y
+ *   propios (`onyxcode://app`, dev server); los enlaces http(s) se abren en el navegador del sistema y
  *   todo lo demás (file:, data:, javascript:, otros esquemas) se bloquea. Las ventanas de artifacts
  *   (esquema propio en su partición) conservan además sus propias reglas, más estrictas.
  * - `window.open`: denegado siempre (http(s) → navegador del sistema).

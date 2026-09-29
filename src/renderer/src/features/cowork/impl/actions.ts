@@ -356,7 +356,7 @@ function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?:
 
 /**
  * Prompt de sistema extra: instrucciones generales (Ajustes) + proyecto (instrucciones, enlaces) + memoria
- * (`.lapis/memoria.md`, si está activada) + carpetas adicionales. Lo arma el módulo compartido con main
+ * (`.onyxcode/memoria.md`, si está activada) + carpetas adicionales. Lo arma el módulo compartido con main
  * (rutinas). `undefined` si no hay nada que añadir.
  */
 function buildSystemPrompt(): string | undefined {
@@ -391,7 +391,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
     useCowork.setState({ controlStoppedAt: stopped ? (st?.stoppedAt ?? Date.now()) : null })
     if (stopped) throw new Error(CONTROL_STOPPED_SEND_ERROR)
   }
-  // La memoria (`.lapis/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
+  // La memoria (`.onyxcode/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
   await loadProjectAndMemory(folder)
   const text = withAttachments(rawText)
   useCowork.setState({ attachments: [], draft: '' })

@@ -75,7 +75,7 @@ export interface CoworkComputerDeps {
   info: () => Promise<ComputerUseInfo>
   /**
    * URL+token del canal lateral de eventos (mismo que usa el MCP), para el plugin
-   * `lapis-plan-gate` del servidor de acceso total. Null si no está disponible (el servidor arranca
+   * `onyxcode-plan-gate` del servidor de acceso total. Null si no está disponible (el servidor arranca
    * igual, pero el agente `computer` no tendría MCP tampoco en ese caso).
    */
   planGateUrl: () => Promise<string | null>
@@ -119,7 +119,9 @@ interface ManagerEvents {
   networkBlocked: [{ folder: string } & EgressBlockedEvent]
 }
 
-const SKIP_DIRS = new Set(['.git', 'node_modules', '.opencode', '.cowork', '.lapis', '.venv', '__pycache__', '.DS_Store'])
+// '.lapis' se mantiene junto a '.onyxcode' mientras exista el fallback de lectura de memoria de la
+// versión anterior de la app (`src/main/cowork/projects.ts`).
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.opencode', '.cowork', '.onyxcode', '.lapis', '.venv', '__pycache__', '.DS_Store'])
 const MAX_SCAN_FILES = 5000
 
 function normalizeFolder(p: string): string {
@@ -667,7 +669,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
         ...(Object.keys(mcpBlock).length ? { mcp: mcpBlock } : {}),
         // Las herramientas de cada MCP solo para el agente que corresponde (ver agents/computer.md,
         // agents/cowork.md): al agente `cowork` se le deniegan sus `*_*`, igual que ya pasaba con `computer_*`.
-        // La puerta del plan (`lapis-plan-gate`) es la que de verdad bloquea `browser_*` hasta aprobarlo.
+        // La puerta del plan (`onyxcode-plan-gate`) es la que de verdad bloquea `browser_*` hasta aprobarlo.
         agent: {
           cowork: {
             permission: {
@@ -726,9 +728,9 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
         extraEnv: {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {}),
-          // Plugin `lapis-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
-          // SOLO en servidores de acceso total; `lapis-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
-          ...(gateUrl ? { LAPIS_PLAN_GATE_URL: gateUrl } : {}),
+          // Plugin `onyxcode-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
+          // SOLO en servidores de acceso total; `onyxcode-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
+          ...(gateUrl ? { ONYXCODE_PLAN_GATE_URL: gateUrl } : {}),
           // Solo sandbox: sin esto la búsqueda web de OpenCode alterna entre mcp.exa.ai y
           // search.parallel.ai según el hash de la sesión. Fijar el proveedor deja UN único host
           // (`WEB_SEARCH_HOSTS`) que la lista blanca del proxy de egress puede permitir.

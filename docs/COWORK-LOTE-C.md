@@ -6,8 +6,8 @@ ciclo de vida). Hallazgos de seguridad y su estado: `AUDIT.md` §10. Modelo de s
 `docs/SEGURIDAD.md` («3 ter»). Comparación con Claude Desktop, fila por fila:
 `docs/analisis-claude/02-cowork.md` (filas 19, 35, 37, 42–45).
 
-> Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «Lapis» (`APP_NAME`,
-> `.lapis/memoria.md`, `lapis-plan-gate`, `temp/lapis-computer`…). No se renombró nada.
+> Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «OnyxCode» (`APP_NAME`,
+> `.onyxcode/memoria.md`, `onyxcode-plan-gate`, `temp/onyxcode-computer`…). No se renombró nada.
 
 Orden de los paquetes: **C1 solo y primero** (helper nativo, secuencial, aislado); **C2, C3 y C4 en
 paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); **C5 solo y al final**
@@ -60,7 +60,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   `webfetch`, `websearch`, nada con `DELETE_RE`, tarjetas con plan/`takeover`/nivel distinto de
   «Solo ver», ni texto que huela a inyección (`looksLikeInjection`, es/en).
 - `bash`: lista cerrada de programas de solo lectura con sus opciones prohibidas (`find -delete`,
-  `sort -o`, `rg --pre`…) y rutas sensibles bloqueadas (`.ssh`, `cu-helper`, `lapis-killswitch`…).
+  `sort -o`, `rg --pre`…) y rutas sensibles bloqueadas (`.ssh`, `cu-helper`, `onyxcode-killswitch`…).
 - MCP: solo servidores marcados «Disponible en Cowork» (nunca `computer`/`browser`), herramienta con
   prefijo de solo consulta y sin palabras de escritura.
 - Acceso a apps: «Solo ver» efímero por sesión (`grantAutoView`, nunca persiste en
@@ -80,7 +80,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   detección de Chrome/Brave y del runtime (`node ≥20.19` o el binario de OpenCode con
   `BUN_BE_BUN=1`), «Borrar datos del navegador» (rechaza si Chrome está abierto con ese perfil).
 - `src/main/browser/sites.ts` (eTLD+1 heurístico, `checkUrl` solo http/https/about:blank), lanzamiento
-  con el mismo envoltorio `env -u OPENCODE_SERVER_PASSWORD -u … -u LAPIS_PLAN_GATE_URL` que los MCP
+  con el mismo envoltorio `env -u OPENCODE_SERVER_PASSWORD -u … -u ONYXCODE_PLAN_GATE_URL` que los MCP
   locales del usuario, `--no-usage-statistics` y `CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS=1`.
 - `src/main/cowork/manager.ts`: `mcp.browser` inyectado solo en Control total (si está activado, sin
   política y con Chrome/runtime disponibles) + `browser_*: deny` para el agente `cowork`.

@@ -684,9 +684,9 @@ UserPromptSubmit hook stopped this prompt before it reached Claude." (**SES**). 
 
 ---
 
-## 9. Comparación con Lapis
+## 9. Comparación con OnyxCode
 
-Estado de Lapis leído en `src/renderer/src/features/code/**` (CodeWorkspace, Composer, store,
+Estado de OnyxCode leído en `src/renderer/src/features/code/**` (CodeWorkspace, Composer, store,
 MessageStream, ToolCard, PermissionCard/QuestionCard, SessionList, ProjectPicker, DiffView, panels
 Changes/Files/Terminal), `src/main/{pty,git,dialog}`, `src/shared/ipc-code.ts`, `DESIGN.md`,
 `AUDIT.md`. Resumen de lo que **sí** hay: selector de proyecto con recientes; lista de sesiones por
@@ -702,7 +702,7 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.1 Sidebar, navegación y layout
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Sesiones de todos los proyectos en una lista | Recents + Projects + Pinned | ⚠️ sólo proyecto activo | P0 | `client.session.list()` sin `directory` por servidor/instancia y agrupar por `session.directory`; persistir proyectos abiertos en `settings`. Resolver AUDIT B2/Pf1 antes (un store por servidor). |
 | Renombrar sesión (in-place, `/rename`) | ✅ | ❌ | P0 | `session.update({title})`; input inline en `SessionList`, atajo ⌘⌥R. |
@@ -723,12 +723,12 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.2 Ciclo de vida de sesión
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Pantalla "nueva sesión" con composer + carpeta/rama/worktree | ✅ | ⚠️ (ProjectPicker + sesión vacía) | P0 | Vista "Nueva sesión": composer grande + chips Carpeta · Rama · Worktree · Modelo · Modo; crea la sesión al enviar (`session.create` + `promptAsync`). |
 | Confianza de carpeta (trust) | ✅ obligatoria | ❌ | P0 | Diálogo al abrir carpeta nueva; guardar `trustedFolders`; negarse a arrancar sidecar/`git status` en no confiadas (AUDIT: `core.fsmonitor`/hooks ejecutan código). |
-| Worktree por sesión al iniciar | ✅ | ⚠️ (diálogo manual en Cambios) | P0 | Usar `client.worktree.create/list/remove` de OpenCode o `git:createWorktree`; carpeta `userData/worktrees/<repo>/<slug>` o `.lapis/worktrees`; la sesión se crea con `directory` = worktree. |
-| Prefijo y nombre de rama automático | ✅ `Branch prefix` | ❌ | P1 | Ajuste `code.branchPrefix` (p.ej. `lapis/`) + slug del primer prompt; validar con `check-ref-format`. |
+| Worktree por sesión al iniciar | ✅ | ⚠️ (diálogo manual en Cambios) | P0 | Usar `client.worktree.create/list/remove` de OpenCode o `git:createWorktree`; carpeta `userData/worktrees/<repo>/<slug>` o `.onyxcode/worktrees`; la sesión se crea con `directory` = worktree. |
+| Prefijo y nombre de rama automático | ✅ `Branch prefix` | ❌ | P1 | Ajuste `code.branchPrefix` (p.ej. `onyxcode/`) + slug del primer prompt; validar con `check-ref-format`. |
 | Elegir rama base / continuar en rama | ✅ | ⚠️ (diálogo de worktree) | P1 | Combobox de ramas (`git:branches`), "Continuar en {rama}" con prompt prefabricado. |
 | Cambiar de rama con cambios sucios (stash/WIP/descartar) | ✅ | ❌ | P2 | `git stash push -u`, commit WIP, `git checkout -- .` con confirmación. |
 | Presets de sesión | ✅ | ❌ | P3 | Guardar `{model, variant, agent, env}` en settings. |
@@ -750,7 +750,7 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.3 Modos, modelo y esfuerzo
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Modos de permiso (Manual/Accept edits/Plan/Auto/Bypass/Don’t ask) | ✅ 6 modos | ⚠️ Plan/Build (agentes) | P0 | Mapear a reglas `permission` de OpenCode por sesión: Manual = `edit/bash: ask`; Accept edits = `edit: allow, bash: ask`; Plan = agente `plan`; Bypass = todo `allow` (con advertencia y ajuste que lo habilite); Don’t ask = `ask→deny`. Aplicar vía agente dinámico en config o respondiendo automáticamente `permission.asked` según el modo. |
 | Auto mode con clasificador | ✅ | ❌ | P2 | Auto-responder `permission.asked` con un modelo pequeño que clasifique riesgo (comando + diff) y denegar lo dudoso; mostrar "Bloqueado por auto". |
@@ -763,7 +763,7 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.4 Composer
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Adjuntar imágenes/archivos (drag, pegar, ⌘U) | ✅ | ❌ (AUDIT #2) | P0 | Partes `file` con `mime` + `url` `data:` o `file://` en `session.prompt`; validar tamaño/tipo; chips con preview. |
 | `@` archivos | ✅ (+carpetas, agentes, dotfiles) | ⚠️ sólo archivos | P1 | `find.files({dirs:'true'})` para carpetas; `agent.list()` para `@agente` → parte `agent`. |
@@ -780,7 +780,7 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.5 Transcript
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Tarjetas por herramienta con verbo progreso/pasado/error | ✅ | ✅ (ToolRow/StepGroup) | — | Añadir verbos git/PR cuando existan. |
 | Vistas Normal / Verbose / Thinking (⌃O) | ✅ | ❌ | P2 | Estado `transcriptView` que controla si se expanden tools y razonamiento. |
@@ -804,7 +804,7 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.6 Git / PR
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Diff pane con alcance (sin commitear / todo / por commit / vs base) | ✅ | ⚠️ (staged/unstaged) | P1 | `git diff <base>...HEAD`, `git show <sha>`; selector de alcance; OpenCode `session.diff` para "cambios de este turno". |
 | Opciones de diff (ocultar espacios, palabras, wrap, agrupar por carpeta) | ✅ | ❌ | P2 | Flags `-w`, word-diff con `diff` lib; toggles en cabecera. |
@@ -817,13 +817,13 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 | Sincronizar con rama base | ✅ | ❌ | P2 | `git fetch` + `git merge origin/<base>`; conflictos → prompt al agente. |
 | Worktrees: limpieza, mantener/borrar al archivar | ✅ | ⚠️ (crear/eliminar manual) | P1 | Al archivar/borrar sesión con worktree: diálogo "Mantener / Borrar (y rama)" con recuento de cambios sin commitear; limpieza por inactividad en Ajustes → Almacenamiento. |
 | Pinned git origins / archivos protegidos | ✅ | ❌ | P2 | Guardar `origin` por repo al confiar; si cambia, avisar antes de cargar `.opencode/`, `opencode.json`, `.mcp.json` del worktree (vector de inyección de config). |
-| Hooks de creación de worktree | ✅ | ❌ | P3 | Script opcional `.lapis/worktree-setup.sh` tras crear (instalar deps), ejecutado con confirmación. |
+| Hooks de creación de worktree | ✅ | ❌ | P3 | Script opcional `.onyxcode/worktree-setup.sh` tras crear (instalar deps), ejecutado con confirmación. |
 
 ### 9.7 Preview, simulador, dev servers
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
-| Dev servers con `launch.json` y detección | ✅ | ❌ | P1 | Leer `.claude/launch.json` (compatibilidad) o `.lapis/launch.json`; detectar `package.json` scripts (`dev`, `start`) y puerto; lanzar con `pty` en main y mostrar logs. |
+| Dev servers con `launch.json` y detección | ✅ | ❌ | P1 | Leer `.claude/launch.json` (compatibilidad) o `.onyxcode/launch.json`; detectar `package.json` scripts (`dev`, `start`) y puerto; lanzar con `pty` en main y mostrar logs. |
 | Pane Preview/Browser (pestañas, URL, viewport) | ✅ | ❌ | P1 | `WebContentsView` en partición aislada por proyecto; restringir a `localhost` (reutilizar la política de artifacts). |
 | Seleccionar elemento → contexto | ✅ | ❌ | P2 | Script inyectado en la vista (preload del preview) que devuelve `outerHTML`, estilos computados, selector y captura `capturePage(rect)`; adjunta como parte `file` imagen + texto. |
 | Anotar/dibujar sobre la página | ✅ | ❌ | P3 | Canvas overlay sobre `capturePage()`, exportar PNG como adjunto. |
@@ -835,12 +835,12 @@ Leyenda: ✅ equivalente · ⚠️ parcial · ❌ ausente. Prioridad: **P0** cr�
 
 ### 9.8 Ajustes, políticas, onboarding, microcopy
 
-| Función | Claude | Lapis | Prioridad | Cómo implementarlo sobre OpenCode |
+| Función | Claude | OnyxCode | Prioridad | Cómo implementarlo sobre OpenCode |
 |---|---|---|---|---|
 | Sección "Ajustes → Code" | ✅ (~30 toggles) | ❌ | P1 | Nueva sección: prefijo de rama, ubicación worktrees, vista de transcript por defecto, fuente/tema de código, auto-archivo, notificaciones, mantener despierto, permitir bypass, sandbox de comandos. |
 | Sandbox de comandos para Code | ✅ Local/Strict sandbox | ❌ (sólo Cowork tiene sandbox) | P2 | Reutilizar el perfil `sandbox-exec` de Cowork como opción para Code (AUDIT S6: bash de Code hereda TCC). |
 | Almacenamiento y limpieza | ✅ | ❌ | P3 | Calcular tamaño de worktrees/`userData`; limpiar inactivos. |
-| Políticas gestionadas (MDM/managed settings) | ✅ | ❌ | P3 | Leer `/Library/Application Support/Lapis/managed.json` que fuerce/oculte ajustes. |
+| Políticas gestionadas (MDM/managed settings) | ✅ | ❌ | P3 | Leer `/Library/Application Support/OnyxCode/managed.json` que fuerce/oculte ajustes. |
 | Onboarding de Code (checklist con prompts) | ✅ | ⚠️ (4 sugerencias en sesión vacía) | P1 | Checklist persistente: elegir carpeta, `/init` (AGENTS.md vía `session.init`), plan, primer commit/PR, MCP, notificaciones. |
 | Detección de git ausente / bloqueado | ✅ | ⚠️ | P2 | `git --version` al abrir proyecto; errores guiados (xcode-select). |
 | Microcopy: causa + acción + qué pasa con tus datos | ✅ | ⚠️ | P1 | Guía de estilo en DESIGN.md; revisar `alert()`/`confirm()` nativos (AUDIT) → diálogos propios con recuentos. |

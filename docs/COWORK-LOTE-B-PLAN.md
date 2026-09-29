@@ -40,7 +40,7 @@ Leí los documentos obligatorios y todo el código de Cowork (main, renderer, ag
 
 ### Proyectos y contexto
 
-- **11 Proyectos: ⚠️.** Hay nombre, instrucciones y memoria `.lapis/memoria.md` (`projects.ts`). Faltan enlaces e interruptor de memoria. Confirmado: las rutinas usan un `system` fijo (`scheduler/service.ts:411-413`) y `cowork.start(directory)` solo en sandbox (`:370`).
+- **11 Proyectos: ⚠️.** Hay nombre, instrucciones y memoria `.onyxcode/memoria.md` (`projects.ts`). Faltan enlaces e interruptor de memoria. Confirmado: las rutinas usan un `system` fijo (`scheduler/service.ts:411-413`) y `cowork.start(directory)` solo en sandbox (`:370`).
 - **12 Contador y AGENTS.md: ⚠️.** El textarea tiene `maxLength` 20 000 pero no muestra contador (`ProjectPanel.tsx:156-162`). No hay editor de `AGENTS.md`.
 - **55 Exportar transcripción: ❌.**
 - **24 Consulta lateral: ❌.** El SDK tiene `session.fork` y `session.create({parentID, agent})`, y el agente `chat` existe en el sandbox.
@@ -69,7 +69,7 @@ Leí los documentos obligatorios y todo el código de Cowork (main, renderer, ag
   - Útil: `session.create` acepta `permission: PermissionRule[]` (`{permission, pattern, action}`), es decir, reglas por sesión.
 - **15 Entregables: ⚠️.** Hay vista previa de md/csv/txt/imágenes. Falta el zip y la vista de docx/xlsx/pdf.
 - **39 Vista en vivo: ⚠️.** Solo miniaturas por herramienta.
-- **40 Retención de capturas: ⚠️.** Se guardan las últimas 20 en `app.getPath('temp')/lapis-computer` (`service.ts:778`, `mcp-server.ts:557-561`) y nunca se borran. El diálogo dice que se envían al proveedor, pero no habla de retención.
+- **40 Retención de capturas: ⚠️.** Se guardan las últimas 20 en `app.getPath('temp')/onyxcode-computer` (`service.ts:778`, `mcp-server.ts:557-561`) y nunca se borran. El diálogo dice que se envían al proveedor, pero no habla de retención.
 - **46 Entregables HTML en la ventana de artifacts: ⚠️.** **Corrección:** `ArtifactButton` sí se usa ahora en `Markdown.tsx:113`, para los bloques ```html de los mensajes. Lo que falta es usarlo con los **archivos** HTML entregables.
 - **49 Onboarding: ❌.**
 - **50 Plantillas de inicio: ⚠️.** Hay 5 categorías y 20 plantillas (`Home.tsx:28-85`), sin el patrón "escanea → propone → actúa" ni opción de ocultar.
@@ -273,7 +273,7 @@ Secciones unidas con `\n\n---\n\n`:
 1. Instrucciones generales.
 2. Instrucciones del proyecto "X".
 3. `Enlaces de referencia del proyecto (consúltalos con webfetch si hace falta):` más la lista.
-4. La memoria, solo si `memoryEnabled !== false` y no está vacía. Si es `false`: `La memoria del proyecto está desactivada: no leas ni escribas .lapis/memoria.md.`
+4. La memoria, solo si `memoryEnabled !== false` y no está vacía. Si es `false`: `La memoria del proyecto está desactivada: no leas ni escribas .onyxcode/memoria.md.`
 5. `Carpetas adicionales de esta tarea:\n- <ruta> (lectura y escritura)` o `(solo lectura: no intentes modificarla)`.
 6. Si `unattended`, el texto actual de `service.ts:411-413`.
 
@@ -381,13 +381,13 @@ Esto cubre sus subcarpetas porque `*` de OpenCode admite `/`. Está por verifica
 - **`cowork-prefs.json`**: `CoworkPrefs`, recortando cada valor a su rango.
 - **`cowork-projects.json`**: añade `links` y `memoryEnabled`.
 - **`routines.json`**: los campos nuevos.
-- **`/Library/Application Support/${APP_NAME}/managed.json`**: `ManagedPolicy` sin `source`. Solo el admin puede escribir ahí. En desarrollo se puede forzar con `LAPIS_MANAGED_POLICY` si `!app.isPackaged`.
+- **`/Library/Application Support/${APP_NAME}/managed.json`**: `ManagedPolicy` sin `source`. Solo el admin puede escribir ahí. En desarrollo se puede forzar con `ONYXCODE_MANAGED_POLICY` si `!app.isPackaged`.
 
 ### C.6 Inyección de MCP (W2-D)
 
 Solo entran los servidores activos y marcados en Cowork.
 
-- **Local:** el comando se envuelve así: `['/usr/bin/env','-u','OPENCODE_SERVER_PASSWORD','-u','OPENCODE_SERVER_USERNAME','-u','OPENCODE_AUTH_CONTENT','-u','OPENCODE_CONFIG_CONTENT','-u','LAPIS_PLAN_GATE_URL', ...command]`. Hereda Seatbelt y necesita el interruptor npm o PyPI si descarga paquetes.
+- **Local:** el comando se envuelve así: `['/usr/bin/env','-u','OPENCODE_SERVER_PASSWORD','-u','OPENCODE_SERVER_USERNAME','-u','OPENCODE_AUTH_CONTENT','-u','OPENCODE_CONFIG_CONTENT','-u','ONYXCODE_PLAN_GATE_URL', ...command]`. Hereda Seatbelt y necesita el interruptor npm o PyPI si descarga paquetes.
 - **Remoto:** su host va a `hosts`, que se suma a la lista blanca del proxy. Si el MCP usa OAuth: `oauth: true` y aviso "no disponible en sandbox".
 - **`askEachTool`:** `permission["<name>_*"] = 'ask'`.
 
@@ -412,7 +412,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 - Editar solo los archivos que se poseen.
 - No recompilar ni tocar el helper.
 - No tocar `pill.ts` ni `CHANNEL_ROLES`.
-- Interfaz en español; nombre del producto solo desde `brand.ts`; no renombrar "Lapis".
+- Interfaz en español; nombre del producto solo desde `brand.ts`; no renombrar "OnyxCode".
 - `npm run typecheck` sin errores atribuibles al paquete.
 - **Ningún paquete ejecuta `npx electron-vite build`**: lo hace el orquestador al final de cada oleada.
 - Los harness van al scratchpad, no al repo.
@@ -469,7 +469,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 - **Prueba B, ejecutable:**
   ```sh
   SP=<scratchpad>; npx esbuild src/main/cowork/sandbox-profile.ts --bundle --platform=node --format=cjs --outfile=$SP/sp.cjs
-  T=$(mktemp -d "$HOME/lapis-sbtest.XXXX"); mkdir -p $T/f/.cowork $T/f/sub $T/p
+  T=$(mktemp -d "$HOME/onyxcode-sbtest.XXXX"); mkdir -p $T/f/.cowork $T/f/sub $T/p
   node -e 'const {buildSandboxProfile}=require(process.argv[1]);require("fs").writeFileSync(process.argv[2]+"/prof.sb",buildSandboxProfile({folder:process.argv[2]+"/f",privateDir:process.argv[2]+"/p",allowDelete:false}))' $SP/sp.cjs $T
   cd $T/f && echo a>a.txt && echo c>c.txt && echo d>d.txt
   /usr/bin/sandbox-exec -f $T/prof.sb /bin/sh -c 'mv a.txt b.txt; echo rename=$?; mv c.txt sub/c.txt; echo move=$?; mv d.txt c.txt; echo overwrite=$?; rm d.txt; echo rm=$?; : > d.txt; echo truncate=$?; echo x>.cowork/t && rm .cowork/t; echo scratch=$?; cp -c d.txt clone.txt; echo clone=$?'
@@ -487,9 +487,9 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
   3. `CoworkMonitor` según C.7, con dependencias `{ servers: () => LiveServer[]; stop(folder, fullAccess): Promise<void>; prefs; tasks; notify(ev); onArchived(sessionId); now?; pollMs? }` y métodos `start/stop/snapshot/setViewing/anyBusy/isIdle`.
   4. `KeepAwakeService.setActive(active, source: 'renderer'|'monitor' = 'renderer')` combina las dos fuentes con OR.
   5. `storage.ts`:
-     - `report(userData, folders, live)` con `/usr/bin/du -sk` (execFile) por `cowork-sandbox/<key>` y su `cache/`, `tmp/`; el mapeo inverso sale de `sandboxKey(folder)`; `screenshotsBytes` de `temp/lapis-computer`.
+     - `report(userData, folders, live)` con `/usr/bin/du -sk` (execFile) por `cowork-sandbox/<key>` y su `cache/`, `tmp/`; el mapeo inverso sale de `sandboxKey(folder)`; `screenshotsBytes` de `temp/onyxcode-computer`.
      - `clean(key, scope)`: rechaza si el servidor está vivo; `cache` borra `cache/` y `tmp/`; `all` borra el directorio, **incluido el historial de tareas** (la interfaz lo advierte).
-  6. `computer.cleanScreenshots()` hace `rmSync(temp/lapis-computer, {recursive, force})`.
+  6. `computer.cleanScreenshots()` hace `rmSync(temp/onyxcode-computer, {recursive, force})`.
   7. Handlers: `activity`, `viewing` (a `monitor.setViewing`), `tasks`, `prefs`, `storage`; `send('cowork:activity')` desde el monitor; limpiar capturas cuando pasan 60 s sin tareas de Control total en curso. `dispose` para el monitor.
 - **Verificación:** esbuild de `monitor.ts` al scratchpad y un servidor HTTP falso (`/session/status`, `/permission`, `/question`, `GET /session/:id`, `GET /session`, `PATCH /session/:id`, que registra):
   - Pasar de busy a idle emite `finished` una vez.
@@ -644,7 +644,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
      - "Crear skill": guardar en `.opencode/skills/<nombre>/SKILL.md`.
   6. Glosario en ambos agentes.
 - **Verificación:**
-  - Harness del plugin (como en Lote A): con `LAPIS_PLAN_GATE_URL` apuntando a un falso, `chat.params` de la sesión `ses_child` con agente `general` y `tool.execute.before({tool:'bash', sessionID:'ses_child'})` **lanza**; con `/plan-status` true para `ses_child`, pasa; la inyección de `lapis_session` se mantiene.
+  - Harness del plugin (como en Lote A): con `ONYXCODE_PLAN_GATE_URL` apuntando a un falso, `chat.params` de la sesión `ses_child` con agente `general` y `tool.execute.before({tool:'bash', sessionID:'ses_child'})` **lanza**; con `/plan-status` true para `ses_child`, pasa; la inyección de `onyxcode_session` se mantiene.
   - `grep -n "task: allow" computer.md` y `grep -rn "convert pdf" resources` dan vacío.
   - Transcripción de las pruebas de cada skill dentro de Seatbelt.
 
@@ -790,7 +790,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 15. En Proyecto:
     - El contador de instrucciones funciona.
     - Añadir un enlace y ver cómo se usa.
-    - Con la memoria desactivada, el agente no escribe `.lapis/memoria.md`.
+    - Con la memoria desactivada, el agente no escribe `.onyxcode/memoria.md`.
     - Editar `AGENTS.md`.
     - Ver la lista de skills.
 16. Marca un MCP como «Disponible en Cowork» con «Preguntar en cada uso»: sale una tarjeta por herramienta. En Red aparece su host.
@@ -798,7 +798,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 18. Rutina en sandbox con «Esperar mi aprobación»: al pedir `rm` llega la notificación y puedes aprobar desde la tarea. Con «Rechazar», el historial muestra lo rechazado.
 19. Rutina en Control total: pide el consentimiento al crearla y la aprobación del plan en cada ejecución.
 20. En Control total, tras aprobar un plan, pide «usa un subagente para listar ~/Desktop»: el subagente queda bloqueado (fail-closed).
-21. Cierra la app y comprueba que `temp/lapis-computer` ya no existe. Ajustes, Almacenamiento: limpia la caché de una carpeta parada.
+21. Cierra la app y comprueba que `temp/onyxcode-computer` ya no existe. Ajustes, Almacenamiento: limpia la caché de una carpeta parada.
 
 ---
 
@@ -817,7 +817,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - Patrones `<dir>/*` y metadata de `external_directory`.
 - Permiso `skill`.
 - `session.create({permission, parentID, model})`, `session.revert`, `app.skills`, `/api/permission/saved`.
-- Mutación de `lapis_session` (de Lote A).
+- Mutación de `onyxcode_session` (de Lote A).
 - Por verificar en ejecución: desarchivar con `archived:0` y el escaneo de `OPENCODE_CONFIG_DIR/skills`.
 
 **Preguntas para el usuario (máx. 5)**

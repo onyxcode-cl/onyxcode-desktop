@@ -12,7 +12,7 @@ import type { BrowserWindow, WebContents } from 'electron'
 import type { BrowserOwner, BrowserProduct, BrowserTab } from '@shared/ipc-browser'
 import type { OpencodeConnection } from '@shared/types'
 
-/** Identidad del agente que actúa, derivada de `lapis_session` en el MCP (ver B.6/B.7). */
+/** Identidad del agente que actúa, derivada de `onyxcode_session` en el MCP (ver B.6/B.7). */
 export interface AgentActor {
   sessionId: string
   product: BrowserProduct

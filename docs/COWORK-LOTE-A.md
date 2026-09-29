@@ -11,7 +11,7 @@ buscar en la web, tareas de varios pasos) sin bucles de permisos.
 >   firma y macOS olvida los permisos TCC). Sumas: helper.swift `d42da8a3…8013`, cu-helper `8985f8f6…258ae1`.
 > - **No tocar** `src/preload/pill.ts` ni `CHANNEL_ROLES` (la píldora sigue usando solo `computer:stop`,
 >   `computer:respondAccess`, `computer:showMainWindow`).
-> - No renombrar nada de "Lapis" a "OnyxCode". Todo el texto de UI en español. Nombre del producto solo desde `src/shared/brand.ts`.
+> - No renombrar nada de "OnyxCode" a "OnyxCode". Todo el texto de UI en español. Nombre del producto solo desde `src/shared/brand.ts`.
 > - No hacer commits. No lanzar la app (`npm run dev`); el orquestador la reinicia al final.
 > - Cada paquete edita **solo los archivos que posee**. Si necesitas algo de otro paquete, no lo edites: anótalo en tu informe final.
 > - Criterio mínimo: `npm run typecheck` (node y web) sin errores atribuibles a tus archivos.
@@ -25,16 +25,16 @@ buscar en la web, tareas de varios pasos) sin bucles de permisos.
    `resolveAccessRequest` acepta cualquier `bundleId` del renderer sin compararlo con la tarjeta.
 2. **Plan sin apps = callejón sin salida** (`required: ['apps']`, 400 en `service.ts` ~551-555, plan solo se aprueba con ≥1 app).
 3. **Aprobación global y por turno**: `planApproved` booleano global (`service.ts` ~148), `resetPlanApproval()` en
-   `cowork-handlers.ts` ~291-297; el plugin `lapis-plan-gate` cachea global. El MCP no conoce el sessionID; en el bundle de
+   `cowork-handlers.ts` ~291-297; el plugin `onyxcode-plan-gate` cachea global. El MCP no conoce el sessionID; en el bundle de
    opencode 1.18.32 el hook `tool.execute.before` recibe `{tool, sessionID}` y el MCP se llama con el **mismo** objeto de
-   args, así que el plugin puede inyectar `output.args.lapis_session` **mutando el objeto en sitio** (no reasignar).
+   args, así que el plugin puede inyectar `output.args.onyxcode_session` **mutando el objeto en sitio** (no reasignar).
    Además `callTool` atiende `screenshot` antes de `requirePlanApproved` (bug).
 4. **Sandbox no abre apps** (Seatbelt deniega `open`, `osascript`, `launchctl`, `screencapture`). Las sesiones **no se comparten**
    entre modos (XDG privado del sandbox) → "continuar" = tarea nueva en el servidor de Control total.
 5. **Búsqueda web**: allowlist por defecto solo `opencode.ai`; websearch usa `mcp.exa.ai` o `search.parallel.ai`
    (`hash(sessionID)%2` salvo `OPENCODE_WEBSEARCH_PROVIDER`).
 6. **`question: deny`** en `computer.md` contradice el plan (`PLAN_GATE_ALLOWED_TOOLS` incluye `question`).
-7. Memoria `.lapis/memoria.md` solo se carga al conectar (el panel pisa lo que escribió el agente) y `.lapis` no está en
+7. Memoria `.onyxcode/memoria.md` solo se carga al conectar (el panel pisa lo que escribió el agente) y `.onyxcode` no está en
    `SKIP_DIRS`; textos obsoletos (`mcp-server.ts:43` "5 min", `AUDIT.md:134` "red abierta").
    Extra: responder desde la píldora deja obsoleta la tarjeta de la ventana principal; la notificación de un plan sin apps sale vacía.
 
@@ -64,7 +64,7 @@ export interface AccessRequest {
   apps: AccessRequestApp[]          // puede ser [] SOLO si hay plan (plan sin apps)
   reason?: string
   plan?: string[]
-  /** Sesión (tarea) de OpenCode que pidió la tarjeta (inyectada por lapis-plan-gate). */
+  /** Sesión (tarea) de OpenCode que pidió la tarjeta (inyectada por onyxcode-plan-gate). */
   sessionId?: string
   /** Nombres que el agente pidió y no se encontraron instalados. */
   unresolved?: string[]
@@ -89,7 +89,7 @@ Cambios en contratos invoke y eventos (y añadir los canales nuevos a `COWORK_IN
 
 ### Herramienta MCP `request_access`
 - Args: `apps?: string[]` (ya no obligatorio), `levels?: ('view'|'click'|'full')[]` (mismo orden que `apps`), `reason?`, `plan?`,
-  `lapis_session?` oculto (no va en el schema; lo inyecta el plugin y siempre sobrescribe lo del modelo).
+  `onyxcode_session?` oculto (no va en el schema; lo inyecta el plugin y siempre sobrescribe lo del modelo).
   El parser tolera también `apps: [{name, level}]`.
 - Validación: sin `plan` y sin apps → error. Con `plan` y sin apps (o ninguna resuelta) → se envía el plan con `apps: []` y `unresolved`.
   Duplicados por bundleId: se conserva el `requested` más alto.
@@ -169,15 +169,15 @@ Tras A, `npm run typecheck` debe pasar (todos los campos nuevos son opcionales).
 1. Cabecera (~línea 43): "espera sin límite de tiempo (solo Detener la cancela)".
 2. Schema de `request_access`: añadir `levels` (array con el enum; descripción: "nivel que necesitas por app, mismo orden que apps: 'full' si vas a
    teclear, pulsar teclas o arrastrar; 'click' si solo clic o scroll; 'view' si solo mirar"); `apps` opcional (`required: []`); la descripción explica el plan sin apps (`apps: []`).
-3. Parseo según B; el POST incluye `session: args.lapis_session`.
+3. Parseo según B; el POST incluye `session: args.onyxcode_session`.
 4. Texto de resultado: `cancelled` → "El usuario canceló: no se concedió nada ni se aprobó el plan. No actúes; explícaselo y detente."; líneas con el nivel **efectivo**;
    con plan: "Plan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas)" o que se detenga; captura si `planApproved` o alguna app aprobada.
 5. Mensajes de `requireTier`: `Llama a request_access con apps: ["X"] y levels: ["<minTier>"]`.
-6. `requirePlanApproved(session?)` pasa `?session=`. En `callTool`: `const session = typeof args.lapis_session === 'string' ? args.lapis_session : undefined` y quitarlo de `args`.
+6. `requirePlanApproved(session?)` pasa `?session=`. En `callTool`: `const session = typeof args.onyxcode_session === 'string' ? args.onyxcode_session : undefined` y quitarlo de `args`.
    **Mover la comprobación del plan antes de la rama `screenshot`**.
 
-`opencode-config.ts` (fuente del plugin `lapis-plan-gate`):
-1. El hook pasa a `(input, output)`. 2. **Primero la inyección:** si `input.tool` empieza por `computer_` y `output.args` es objeto → `output.args.lapis_session = input.sessionID`
+`opencode-config.ts` (fuente del plugin `onyxcode-plan-gate`):
+1. El hook pasa a `(input, output)`. 2. **Primero la inyección:** si `input.tool` empieza por `computer_` y `output.args` es objeto → `output.args.onyxcode_session = input.sessionID`
    (mutar, **no** reasignar). 3. Después el control por sesión: `isApproved(sessionID)` con caché `Map<sessionID,{at,ok}>` y
    `GET GATE_URL+'/plan-status?session='+encodeURIComponent(sessionID)`, manteniendo fail-closed. 4. `DENY_MSG` menciona el plan sin apps.
 5. Cabecera: la aprobación dura toda la tarea (sesión) hasta Revocar, Detener o archivar/borrar.
@@ -194,8 +194,8 @@ Tras A, `npm run typecheck` debe pasar (todos los campos nuevos son opcionales).
 **Verificación (harness node en scratchpad, sin Electron):** `npx electron-vite build`; servidor HTTP falso con `/state`, `/tier`, `/plan-status` (registrando la query) y `/request-access`
 (registrando el cuerpo, respondiendo `{decisions:{},planApproved:true}`); lanzar `node out/main/computer-mcp.js` con `COMPUTER_MCP_TOKEN` (≥32 caracteres), `CU_HELPER=/usr/bin/false`,
 `COMPUTER_EVENTS_URL=<falso>`, `COMPUTER_AUTO_SCREENSHOT=0`, leer el puerto de stdout; `tools/list` (request_access sin `required` y con `levels`);
-`tools/call request_access {plan:['x'],apps:[],lapis_session:'ses_a'}` → el falso recibe `session:'ses_a'` y `apps:[]`; `tools/call screenshot {lapis_session:'ses_b'}` con `plan-status` en false → error de plan.
-Plugin: bundlear `opencode-config.ts` con `--external:electron`, escribir `planGatePluginSource()` en el scratchpad, importarlo con `LAPIS_PLAN_GATE_URL` al falso y comprobar que (a) `args.lapis_session` queda inyectado y (b) bloquea/permite según la sesión.
+`tools/call request_access {plan:['x'],apps:[],onyxcode_session:'ses_a'}` → el falso recibe `session:'ses_a'` y `apps:[]`; `tools/call screenshot {onyxcode_session:'ses_b'}` con `plan-status` en false → error de plan.
+Plugin: bundlear `opencode-config.ts` con `--external:electron`, escribir `planGatePluginSource()` en el scratchpad, importarlo con `ONYXCODE_PLAN_GATE_URL` al falso y comprobar que (a) `args.onyxcode_session` queda inyectado y (b) bloquea/permite según la sesión.
 
 ### PKG-C — UI de aprobación y estado en el renderer (bloqueos 1, 2, 3, 6 y 7a)
 **Posee:** `src/renderer/overlay/pill.ts`, `src/renderer/overlay/pill.css`, `src/renderer/src/features/cowork/impl/ComputerAccess.tsx`,
@@ -237,7 +237,7 @@ Plugin: bundlear `opencode-config.ts` con `--external:electron`, escribir `planG
 ### PKG-D — red, agente `computer` y documentación (bloqueos 5, 6 y 7)
 **Posee:** `src/main/cowork/manager.ts` (el resto; A ya terminó), `src/renderer/src/features/settings/impl/NetworkSection.tsx`,
 `resources/opencode/agents/computer.md`, `AUDIT.md`.
-1. `manager.ts`: `'.lapis'` en `SKIP_DIRS`; en `spawn`, en `extraEnv` y **solo cuando `!fullAccess`**: `OPENCODE_WEBSEARCH_PROVIDER: 'exa'` con comentario (lista blanca de un único host).
+1. `manager.ts`: `'.onyxcode'` en `SKIP_DIRS`; en `spawn`, en `extraEnv` y **solo cuando `!fullAccess`**: `OPENCODE_WEBSEARCH_PROVIDER: 'exa'` con comentario (lista blanca de un único host).
 2. `NetworkSection.tsx`: interruptor "Búsqueda web del agente" (mismo patrón que npm/PyPI, `key: 'webSearchEnabled'`). Descripción:
    `Permite la herramienta de búsqueda web (${state.webSearchHosts.join(', ')}). Las consultas se envían a ese servicio.`
 3. `computer.md`: `question: allow`; flujo actualizado: `request_access` siempre con `levels` (`full` para teclear, pulsar teclas o arrastrar —incluido escribir URLs o búsquedas en el navegador—;
@@ -266,7 +266,7 @@ Plugin: bundlear `opencode-config.ts` con `--external:electron`, escribir `planG
 ## D. Comprobaciones de integración (orquestador)
 1. `npm run typecheck` (node y web) y `npx electron-vite build`.
 2. Greps: `resetPlanApproval|'click' as AccessDecision` en `src` → vacío; `5 min` en `mcp-server.ts` → vacío; `question: deny` en `resources/opencode/agents` → vacío;
-   `'.lapis'` en `manager.ts` → presente; `computer:revokePlan|computer:accessResolved|computer:planState` presentes en shared, schemas, handlers y renderer;
+   `'.onyxcode'` en `manager.ts` → presente; `computer:revokePlan|computer:accessResolved|computer:planState` presentes en shared, schemas, handlers y renderer;
    `git diff --stat src/preload/pill.ts resources/computer-use` → vacío; `shasum resources/computer-use/helper.swift` → `d42da8a3…`.
 3. Harnesses de A y B en el scratchpad (no en el repo).
 4. **Prueba manual para el usuario** (`npm run dev -- --watch`, modelo con visión):
@@ -281,11 +281,11 @@ Plugin: bundlear `opencode-config.ts` con `--external:electron`, escribir `planG
    9. ⌘⇧Esc, Reanudar, seguimiento: vuelve a pedir el plan.
    10. En sandbox: «abre Discord y entra al canal pega» → el agente responde «Necesita Control total del Mac» → tarjeta → «Cambiar a Control total y continuar» → diálogo → Confirmar → tarea nueva en Control total con el encargo original → pide su plan.
    11. Sandbox con «Búsqueda web» activada: «busca noticias de hoy sobre X» devuelve resultados. Desactivada: tarjeta de red bloqueada para `mcp.exa.ai` (demuestra que websearch respeta `HTTPS_PROXY`; si en su lugar sale un error de conexión, el proxy no se respeta).
-   12. «Recuerda que prefiero informes en PDF»: se crea `.lapis/memoria.md`, **no** aparece en Entregables, el panel «Proyecto y memoria» muestra el contenido nuevo y el siguiente turno lo usa.
+   12. «Recuerda que prefiero informes en PDF»: se crea `.onyxcode/memoria.md`, **no** aparece en Entregables, el panel «Proyecto y memoria» muestra el contenido nuevo y el siguiente turno lo usa.
 
 ## E. Riesgos y decisiones abiertas
 1. **Búsqueda web activada por defecto en el sandbox** (también para usuarios existentes): da autonomía pero es un canal de fuga por prompt injection. Visible y desactivable en Ajustes.
 2. **Duración de la aprobación del plan**: se pierde con Detener (todas), al archivar/borrar, con Revocar y al reiniciar la app. Un seguimiento hereda el permiso aunque cambie de objetivo (depende de las instrucciones al agente; el servidor no lo fuerza). Los niveles por app se siguen aplicando.
-3. La inyección de `lapis_session` está verificada solo leyendo el bundle de opencode 1.18.32; si falla en ejecución cae al modo global anterior (con aviso en el log). **Reverificar al subir de versión de opencode.**
+3. La inyección de `onyxcode_session` está verificada solo leyendo el bundle de opencode 1.18.32; si falla en ejecución cae al modo global anterior (con aviso en el log). **Reverificar al subir de versión de opencode.**
 4. Con aprobación por sesión, los subagentes (`task`) ya no pueden usar `computer_*` (tienen otro sessionID). "Denegar" por app en una tarjeta sigue guardándose en la lista de denegadas.
 5. "Continuar" desde el sandbox crea una tarea nueva en Control total con un resumen, no con el historial (los servidores no comparten el almacén de sesiones).

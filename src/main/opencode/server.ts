@@ -129,7 +129,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
       const baseUrl = `http://${HOST}:${port}`
 
-      // Renderer en `lapis://app` (producción) o el dev server de Vite; sin el origen `null`.
+      // Renderer en `onyxcode://app` (producción) o el dev server de Vite; sin el origen `null`.
       const cors = this.options.corsOrigins ?? []
       const serveArgs = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
       // Sin heredar los permisos TCC de la app (S6) y con entorno mínimo.

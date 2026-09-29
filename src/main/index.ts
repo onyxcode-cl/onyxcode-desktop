@@ -19,30 +19,36 @@ import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
 
 app.setName(APP_NAME)
-// Esquema `lapis://app` para el renderer de producción (antes de `ready`).
+// Esquema `onyxcode://app` para el renderer de producción (antes de `ready`).
 registerAppSchemePrivileges()
 
-// La app se llamó "OpenDesk" durante el desarrollo: conserva ajustes, rutinas y sesiones.
-// Chromium puede crear la carpeta nueva antes de que corra este código, así que se mueven
-// las entradas que aún no existen en ella en vez de renombrar la carpeta completa.
-const LEGACY_USER_DATA = join(app.getPath('appData'), 'OpenDesk')
+// La app se llamó "OpenDesk" y luego "Lapis" durante el desarrollo: conserva ajustes, rutinas y
+// sesiones de cualquiera de esos nombres anteriores. Se revisan en orden (el más reciente primero)
+// y, para el primero que tenga datos reales, se copian entrada por entrada las que aún no existen
+// en la carpeta nueva (nunca se sobrescribe nada que ya esté ahí). Chromium puede crear la carpeta
+// nueva antes de que corra este código, así que se mueven las entradas sueltas en vez de renombrar
+// la carpeta completa.
+const LEGACY_APP_NAMES = ['Lapis', 'OpenDesk']
 const USER_DATA = app.getPath('userData')
-if (existsSync(join(LEGACY_USER_DATA, 'settings.json')) && !existsSync(join(USER_DATA, 'settings.json'))) {
+for (const legacyName of LEGACY_APP_NAMES) {
+  if (existsSync(join(USER_DATA, 'settings.json'))) break
+  const legacyUserData = join(app.getPath('appData'), legacyName)
+  if (!existsSync(join(legacyUserData, 'settings.json'))) continue
   mkdirSync(USER_DATA, { recursive: true })
-  for (const entry of readdirSync(LEGACY_USER_DATA)) {
+  for (const entry of readdirSync(legacyUserData)) {
     const target = join(USER_DATA, entry)
     if (existsSync(target)) continue
     try {
-      renameSync(join(LEGACY_USER_DATA, entry), target)
+      renameSync(join(legacyUserData, entry), target)
     } catch (err) {
-      console.error(`[main] no se pudo migrar ${entry} de OpenDesk:`, err)
+      console.error(`[main] no se pudo migrar ${entry} de ${legacyName}:`, err)
     }
   }
 }
 
 const chatDirectory = join(app.getPath('userData'), 'chat-workspace')
 
-// Orígenes que pueden llamar a los servidores OpenCode por CORS: `lapis://app` y, sin empaquetar,
+// Orígenes que pueden llamar a los servidores OpenCode por CORS: `onyxcode://app` y, sin empaquetar,
 // el dev server de Vite. Ya no se admite el origen `null` de file:// (AUDIT.md 2.6).
 const corsOrigins = trustedOrigins()
 
@@ -80,7 +86,7 @@ function createWindow(): BrowserWindow {
     if (process.platform !== 'darwin') app.quit()
   })
 
-  // Enlaces externos → navegador del sistema; cualquier otra navegación fuera de `lapis://app` (o
+  // Enlaces externos → navegador del sistema; cualquier otra navegación fuera de `onyxcode://app` (o
   // del dev server) se bloquea: lo hace `installWebSecurity` para todo webContents.
   void loadRendererPage(win, 'index.html')
   return win

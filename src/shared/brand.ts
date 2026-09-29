@@ -2,10 +2,10 @@
  * Identidad de la app. ÚNICO lugar donde vive el nombre (además de package.json y
  * electron-builder.js). Todo el resto del código importa desde aquí.
  */
-export const APP_NAME = 'Lapis'
-export const APP_ID = 'cl.bentec.lapis'
+export const APP_NAME = 'OnyxCode'
+export const APP_ID = 'cl.bentec.onyxcode'
 /** Slug en minúsculas, útil para usuarios/identificadores técnicos. */
-export const APP_SLUG = 'lapis'
+export const APP_SLUG = 'onyxcode'
 
 /**
  * Colores de marca para el proceso principal (p.ej. `backgroundColor` de BrowserWindow,

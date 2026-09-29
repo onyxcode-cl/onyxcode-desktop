@@ -1,11 +1,11 @@
 /*
- * lapis-disclaim — lanza un programa SIN heredar la "responsabilidad" TCC de Lapis.
+ * onyxcode-disclaim — lanza un programa SIN heredar la "responsabilidad" TCC de OnyxCode.
  *
- * Uso: lapis-disclaim <programa> [args...]
+ * Uso: onyxcode-disclaim <programa> [args...]
  *
  * macOS atribuye los permisos de privacidad (Accesibilidad, Grabación de pantalla, Automatización…)
  * al "proceso responsable" de una cadena de procesos: por defecto, la app que la inició. Así, todo
- * hijo de Lapis.app (opencode serve → bash → screencapture) usaría los permisos concedidos a Lapis.
+ * hijo de OnyxCode.app (opencode serve → bash → screencapture) usaría los permisos concedidos a OnyxCode.
  *
  * Este lanzador reemplaza su propia imagen por la del programa (`POSIX_SPAWN_SETEXEC`: mismo PID,
  * mismos descriptores y grupo de procesos, así que el padre lo gestiona igual que si lo hubiera
@@ -14,9 +14,9 @@
  * responsable de sí mismo: no hereda ningún permiso TCC, y lo que pida lo pedirá a nombre propio.
  *
  * Si el símbolo no existe (otra versión de macOS), falla cerrado por defecto: sale con código 126 y
- * un mensaje; LAPIS_DISCLAIM_OPTIONAL=1 permite continuar sin disclaim (solo depuración).
+ * un mensaje; ONYXCODE_DISCLAIM_OPTIONAL=1 permite continuar sin disclaim (solo depuración).
  *
- * Implementación propia de Lapis (C estándar + API de spawn de POSIX).
+ * Implementación propia de OnyxCode (C estándar + API de spawn de POSIX).
  */
 #include <dlfcn.h>
 #include <errno.h>
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   posix_spawnattr_t attr;
   int rc = posix_spawnattr_init(&attr);
   if (rc != 0) {
-    fprintf(stderr, "lapis-disclaim: posix_spawnattr_init: %s\n", strerror(rc));
+    fprintf(stderr, "onyxcode-disclaim: posix_spawnattr_init: %s\n", strerror(rc));
     return 126;
   }
 
@@ -54,17 +54,17 @@ int main(int argc, char *argv[]) {
   if (setdisclaim) {
     rc = setdisclaim(&attr, 1);
     if (rc != 0) {
-      fprintf(stderr, "lapis-disclaim: setdisclaim: %s\n", strerror(rc));
+      fprintf(stderr, "onyxcode-disclaim: setdisclaim: %s\n", strerror(rc));
       setdisclaim = NULL;
     }
   }
   if (!setdisclaim) {
-    const char *optional = getenv("LAPIS_DISCLAIM_OPTIONAL");
+    const char *optional = getenv("ONYXCODE_DISCLAIM_OPTIONAL");
     if (!optional || strcmp(optional, "1") != 0) {
-      fprintf(stderr, "lapis-disclaim: API de disclaim no disponible; no se lanza %s\n", argv[1]);
+      fprintf(stderr, "onyxcode-disclaim: API de disclaim no disponible; no se lanza %s\n", argv[1]);
       return 126;
     }
-    fprintf(stderr, "lapis-disclaim: aviso: sin disclaim (LAPIS_DISCLAIM_OPTIONAL=1)\n");
+    fprintf(stderr, "onyxcode-disclaim: aviso: sin disclaim (ONYXCODE_DISCLAIM_OPTIONAL=1)\n");
   }
 
   /* Reemplazar este proceso (mismo PID) y restablecer señales/máscara a los valores por defecto. */
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
   short flags = POSIX_SPAWN_SETEXEC | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
   rc = posix_spawnattr_setflags(&attr, flags);
   if (rc != 0) {
-    fprintf(stderr, "lapis-disclaim: setflags: %s\n", strerror(rc));
+    fprintf(stderr, "onyxcode-disclaim: setflags: %s\n", strerror(rc));
     return 126;
   }
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   /* Con SETEXEC, si tiene éxito no vuelve. Ruta absoluta o búsqueda en PATH. */
   rc = strchr(argv[1], '/') ? posix_spawn(&pid, argv[1], NULL, &attr, &argv[1], environ)
                             : posix_spawnp(&pid, argv[1], NULL, &attr, &argv[1], environ);
-  fprintf(stderr, "lapis-disclaim: no se pudo ejecutar %s: %s\n", argv[1], strerror(rc));
+  fprintf(stderr, "onyxcode-disclaim: no se pudo ejecutar %s: %s\n", argv[1], strerror(rc));
   posix_spawnattr_destroy(&attr);
   return rc == ENOENT ? 127 : 126;
 }

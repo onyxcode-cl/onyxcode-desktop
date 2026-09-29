@@ -1,4 +1,4 @@
-# Distribución de Lapis (firma + notarización)
+# Distribución de OnyxCode (firma + notarización)
 
 `npm run package` funciona sin nada de esto: firma **ad-hoc** (`identity: '-'`) porque los fuses de
 Electron (`electron-builder.js` → `electronFuses`) modifican el binario y, sin volver a firmarlo,
@@ -8,7 +8,7 @@ macOS lo mata al abrir. Un build ad-hoc sirve para probar en esta máquina, pero
 - Cada build cambia de "identidad" ante TCC: macOS olvida los permisos de Accesibilidad/Grabación de
   pantalla que el usuario concedió a una build anterior, y hay que volver a concederlos.
 
-Para repartir Lapis a otra persona (o subirlo a algún sitio) hace falta firmarlo con un
+Para repartir OnyxCode a otra persona (o subirlo a algún sitio) hace falta firmarlo con un
 **Developer ID Application** de Apple y notarizarlo. La config ya está lista
 (`electron-builder.js`, `build/entitlements.mac.plist`, `build/notarize.js`): solo falta que
 alguien con una cuenta de Apple Developer aporte el certificado y las credenciales.
@@ -48,7 +48,7 @@ del Developer ID (no la contraseña normal de la cuenta):
 
 1. Entrar a <https://appleid.apple.com/account/manage> con ese Apple ID.
 2. **Inicio de sesión y seguridad** → **Contraseñas específicas de apps** → **Generar contraseña…**
-   → ponerle un nombre (p. ej. "Lapis notarize") → copiar la contraseña `xxxx-xxxx-xxxx-xxxx` que
+   → ponerle un nombre (p. ej. "OnyxCode notarize") → copiar la contraseña `xxxx-xxxx-xxxx-xxxx` que
    muestra (solo se ve una vez).
 3. El **Team ID** se ve en <https://developer.apple.com/account> → **Membership** (o en el propio
    nombre del certificado, entre paréntesis: `(EQUIPOID)`).
@@ -80,25 +80,25 @@ npm run package
 
 Con las variables puestas, verás en la salida:
 
-- `signing file=dist/mac-arm64/Lapis.app … identityName=Developer ID Application: …`
-- `[notarize] enviando dist/mac-arm64/Lapis.app a Apple (equipo EQUIPOID)…` seguido de
+- `signing file=dist/mac-arm64/OnyxCode.app … identityName=Developer ID Application: …`
+- `[notarize] enviando dist/mac-arm64/OnyxCode.app a Apple (equipo EQUIPOID)…` seguido de
   `[notarize] notarización completa.` (puede tardar varios minutos: Apple procesa el binario en su
   nube antes de responder).
 
-El `.dmg` queda en `dist/lapis-<version>-arm64.dmg`.
+El `.dmg` queda en `dist/onyxcode-<version>-arm64.dmg`.
 
 ## 5. Verificar la firma y la notarización
 
 ```bash
 # Firma válida (Developer ID, no ad-hoc) y hardened runtime activo:
-codesign -dv --verbose=4 dist/mac-arm64/Lapis.app
+codesign -dv --verbose=4 dist/mac-arm64/OnyxCode.app
 
 # Gatekeeper acepta el binario (debe decir "accepted", no "rejected"):
-spctl -a -vvv dist/mac-arm64/Lapis.app
+spctl -a -vvv dist/mac-arm64/OnyxCode.app
 
 # El ticket de notarización quedó grapado al .app y al .dmg:
-xcrun stapler validate dist/mac-arm64/Lapis.app
-xcrun stapler validate dist/lapis-<version>-arm64.dmg
+xcrun stapler validate dist/mac-arm64/OnyxCode.app
+xcrun stapler validate dist/onyxcode-<version>-arm64.dmg
 ```
 
 Si `spctl` dice `rejected` o `stapler validate` falla, revisar que las cinco variables estén bien
@@ -111,7 +111,7 @@ presentes; si faltan, el log lo dice explícitamente en vez de fallar en silenci
 |---|---|---|
 | Firma | Ad-hoc (`identity: '-'`) | Developer ID Application (via `CSC_NAME`/`CSC_LINK`, electron-builder los detecta solo) |
 | Hardened runtime | Off | On, con `build/entitlements.mac.plist` |
-| `cu-helper` / `lapis-disclaim` | Firmados igual (deep-sign automático) | Firmados explícitamente (`mac.binaries`) |
+| `cu-helper` / `onyxcode-disclaim` | Firmados igual (deep-sign automático) | Firmados explícitamente (`mac.binaries`) |
 | Notarización | Omitida (log lo indica) | `build/notarize.js` vía `@electron/notarize` |
 | Gatekeeper en otro Mac | Rechaza | Acepta |
 | Permisos TCC entre builds | Se pierden en cada build | Se conservan (identidad estable) |
@@ -122,10 +122,10 @@ presentes; si faltan, el log lo dice explícitamente en vez de fallar en silenci
   la app las copia a `userData/opencode-config/skills`. Comprueba en el `.app` que existe
   `Contents/Resources/app.asar.unpacked/resources/opencode/skills/{docx,xlsx,pdf,pptx}/SKILL.md`.
 - **Política gestionada (opcional, para despliegues en organizaciones):** un administrador puede crear
-  `/Library/Application Support/Lapis/managed.json` (solo un administrador puede escribir ahí; se relee al cambiar).
+  `/Library/Application Support/OnyxCode/managed.json` (solo un administrador puede escribir ahí; se relee al cambiar).
   Claves admitidas: `disableFullAccess`, `allowedFolderRoots`, `disableCustomHosts`, `extraAllowedHosts`,
   `disableAlwaysAllow`, `disableRoutines` y `maxAutoArchiveDays`. Un archivo ilegible activa todas las restricciones
-  (falla hacia el lado seguro). Detalle en `docs/SEGURIDAD.md` («3 bis»). La variable `LAPIS_MANAGED_POLICY` solo
+  (falla hacia el lado seguro). Detalle en `docs/SEGURIDAD.md` («3 bis»). La variable `ONYXCODE_MANAGED_POLICY` solo
   funciona con la app sin empaquetar.
 - Lote C añade dos claves más a `managed.json`: `disableAutoMode` (Modo auto) y `disableBrowser`
   (navegador propio), con el mismo criterio fail-closed que las demás.
@@ -135,13 +135,13 @@ presentes; si faltan, el log lo dice explícitamente en vez de fallar en silenci
 - **Permisos de Micrófono y Reconocimiento de voz (grabar una skill con micro):** `build/entitlements.mac.plist`
   añade `com.apple.security.device.audio-input` (necesario bajo hardened runtime; sin Developer ID, ad-hoc no lo
   usa) e `Info.plist` (vía `electron-builder.js` → `mac.extendInfo`) declara, en español:
-  - `NSMicrophoneUsageDescription`: «Lapis necesita el micrófono para grabar tu voz al grabar una skill (opcional).»
-  - `NSSpeechRecognitionUsageDescription`: «Lapis necesita reconocimiento de voz para transcribir en el dispositivo
+  - `NSMicrophoneUsageDescription`: «OnyxCode necesita el micrófono para grabar tu voz al grabar una skill (opcional).»
+  - `NSSpeechRecognitionUsageDescription`: «OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo
     lo grabado al crear una skill.»
 
   La primera vez que se grabe una skill con micro, macOS pedirá estos dos permisos por separado (Micrófono y
   luego Reconocimiento de voz), atribuidos al mismo proceso responsable que Accesibilidad/Grabación de pantalla
-  (la terminal en desarrollo, o Lapis empaquetada): no hace falta nada nuevo en Ajustes del Sistema más allá de
+  (la terminal en desarrollo, o OnyxCode empaquetada): no hace falta nada nuevo en Ajustes del Sistema más allá de
   aceptar esos dos prompts la primera vez. **Terminal.app no declara uso de micrófono**: si la grabación con voz
   falla o el proceso aborta al pedir el permiso desde ahí, prueba desde iTerm o VS Code (la grabación sigue
   funcionando sin audio si el permiso falla o se deniega).

@@ -12,21 +12,21 @@
  * `package.json`/`bun.lock`), así que nunca se apunta al bundle (rompería la firma o fallaría en
  * /Applications — AUDIT.md P1): al arrancar se copian a `userData/opencode-config/` y se apunta ahí.
  *
- * Además se genera `plugins/lapis-env.js`: un plugin `shell.env` que oculta a bash/pty las
+ * Además se genera `plugins/onyxcode-env.js`: un plugin `shell.env` que oculta a bash/pty las
  * variables sensibles del proceso `opencode serve` (contraseña del propio servidor, credenciales
  * de proveedores de los sandboxes, config inline con el token del MCP de computer use, y la URL+
- * token del canal lateral que usa `lapis-plan-gate.js`). OpenCode pasa `{...process.env,
+ * token del canal lateral que usa `onyxcode-plan-gate.js`). OpenCode pasa `{...process.env,
  * ...shell.env}` a cada comando bash (AUDIT.md S3).
  *
- * Y `plugins/lapis-session.js` (Lote D, B.7): en TODO servidor (también el sidecar de Code), en
- * `tool.execute.before`, si `input.tool` empieza por `browser_` inyecta `output.args.lapis_session =
- * input.sessionID` MUTANDO el objeto en sitio, igual que `lapis-plan-gate` hace con `computer_*`
+ * Y `plugins/onyxcode-session.js` (Lote D, B.7): en TODO servidor (también el sidecar de Code), en
+ * `tool.execute.before`, si `input.tool` empieza por `browser_` inyecta `output.args.onyxcode_session =
+ * input.sessionID` MUTANDO el objeto en sitio, igual que `onyxcode-plan-gate` hace con `computer_*`
  * (mismo bundle de opencode 1.18.32, mismo motivo: el MCP del navegador integrado no conoce la
  * sesión que lo llama, así que hay que decírselo por fuera del propio modelo, que nunca puede fijar
  * ese argumento por su cuenta —siempre se sobrescribe—). Sin esto, `owner.ts` (`src/main/embedded-
  * browser/`) no podría identificar de qué tarea viene la llamada y fallaría cerrado.
  *
- * Y `plugins/lapis-plan-gate.js`: flujo Plan → Aprobar → Ejecutar, aplicado del lado del SERVIDOR
+ * Y `plugins/onyxcode-plan-gate.js`: flujo Plan → Aprobar → Ejecutar, aplicado del lado del SERVIDOR
  * de OpenCode (no solo por prompt ni por el MCP): en el servidor de acceso total, ninguna
  * herramienta corre en NINGUNA sesión (agente `computer`, hijas de `task`, otros agentes) hasta que
  * el usuario apruebe el plan de esa sesión — salvo las de solo planificar (`computer_request_access`,
@@ -35,13 +35,13 @@
  * `webfetch`/`websearch` y `task` son herramientas NATIVAS de OpenCode: el agente podía usarlas
  * (p. ej. `ls /Applications`, `open -a Discord`) antes de que el usuario viera la tarjeta del plan.
  * Este plugin cierra ese hueco con `tool.execute.before`, consultando el mismo `/plan-status` que
- * el MCP (`LAPIS_PLAN_GATE_URL`, oculto a bash por `lapis-env.js`), con el mismo fail-closed: si no
+ * el MCP (`ONYXCODE_PLAN_GATE_URL`, oculto a bash por `onyxcode-env.js`), con el mismo fail-closed: si no
  * se puede verificar, se deniega. Solo se activa cuando la variable está presente (servidores de
  * acceso total); en el sandbox y en el sidecar principal no hace nada.
  *
  * La aprobación es POR SESIÓN (tarea): la consulta lleva `?session=<sessionID>` y dura toda la
  * tarea (varios turnos y seguimientos) hasta "Revocar", Detener o archivar/borrar la tarea. Además,
- * el hook INYECTA `lapis_session` (= `input.sessionID`) en los args de las herramientas `computer_*`
+ * el hook INYECTA `onyxcode_session` (= `input.sessionID`) en los args de las herramientas `computer_*`
  * para que el MCP —que no conoce la sesión— consulte la aprobación de la tarea correcta. Verificado
  * en el bundle de opencode 1.18.32: `tool.execute.before` recibe `(input, output)` y el MCP se llama
  * con el MISMO objeto `output.args`, así que hay que MUTARLO (no reasignarlo). Reverificar al subir
@@ -56,7 +56,7 @@ export const COWORK_AGENT_ID = 'cowork'
 /** Agente del flujo Plan → Aprobar → Ejecutar (`resources/opencode/agents/computer.md`). */
 export const COMPUTER_AGENT_ID = 'computer'
 
-/** Herramientas de solo-planificación: las únicas que `lapis-plan-gate` deja pasar sin plan aprobado. */
+/** Herramientas de solo-planificación: las únicas que `onyxcode-plan-gate` deja pasar sin plan aprobado. */
 export const PLAN_GATE_ALLOWED_TOOLS = [
   'computer_request_access',
   'todowrite',
@@ -74,13 +74,13 @@ export const HIDDEN_SHELL_ENV = [
   'OPENCODE_SERVER_USERNAME',
   'OPENCODE_AUTH_CONTENT',
   'OPENCODE_CONFIG_CONTENT',
-  'LAPIS_PLAN_GATE_URL'
+  'ONYXCODE_PLAN_GATE_URL'
 ] as const
 
-const ENV_PLUGIN_FILE = 'lapis-env.js'
-const PLAN_GATE_PLUGIN_FILE = 'lapis-plan-gate.js'
-const SESSION_PLUGIN_FILE = 'lapis-session.js'
-const STAMP_FILE = '.lapis-version'
+const ENV_PLUGIN_FILE = 'onyxcode-env.js'
+const PLAN_GATE_PLUGIN_FILE = 'onyxcode-plan-gate.js'
+const SESSION_PLUGIN_FILE = 'onyxcode-session.js'
+const STAMP_FILE = '.onyxcode-version'
 
 export function envScrubPluginSource(): string {
   // Formato de plugin de ruta de opencode 1.18: `export default { id, server() }` (verificado).
@@ -88,7 +88,7 @@ export function envScrubPluginSource(): string {
 // Oculta a bash/pty las variables sensibles del proceso \`opencode serve\`.
 const HIDDEN = ${JSON.stringify(HIDDEN_SHELL_ENV)}
 export default {
-  id: 'lapis-env',
+  id: 'onyxcode-env',
   server: async () => ({
     'shell.env': async (_input, output) => {
       output.env = output.env || {}
@@ -101,7 +101,7 @@ export default {
 
 /**
  * Plugin `tool.execute.before`: bloquea, del lado del servidor, toda herramienta que no sea de
- * solo-planificación hasta que `GET <LAPIS_PLAN_GATE_URL>/plan-status?session=<id>` confirme
+ * solo-planificación hasta que `GET <ONYXCODE_PLAN_GATE_URL>/plan-status?session=<id>` confirme
  * `{ approved: true }`. Se aplica a TODA sesión del servidor con la variable (también las sesiones
  * hijas de `task` y cualquier agente que no sea `computer`), con clave en su propio `sessionID`:
  * una sesión sin plan aprobado queda bloqueada (fail-closed). Sin la variable de entorno (sandbox /
@@ -113,7 +113,7 @@ export function planGatePluginSource(): string {
 // Flujo Plan -> Aprobar -> Ejecutar (servidor de acceso total): bloquea del lado del servidor toda
 // herramienta que no sea de solo-planificacion, en CUALQUIER sesion del servidor, hasta que se
 // apruebe el plan de esa sesion. Ver src/main/cowork/opencode-config.ts para el contexto completo.
-const GATE_URL = process.env.LAPIS_PLAN_GATE_URL || ''
+const GATE_URL = process.env.ONYXCODE_PLAN_GATE_URL || ''
 const ALLOWED = new Set(${JSON.stringify(PLAN_GATE_ALLOWED_TOOLS)})
 const CACHE_MS = 250
 const DENY_MSG =
@@ -124,7 +124,7 @@ const DENY_MSG =
   'espera a que el usuario apruebe con "Aprobar y empezar".'
 
 export default {
-  id: 'lapis-plan-gate',
+  id: 'onyxcode-plan-gate',
   server: async () => {
     if (!GATE_URL) return {}
     const cache = new Map()
@@ -153,7 +153,7 @@ export default {
         // objeto en sitio (opencode llama al MCP con ese mismo objeto) y SIEMPRE sobrescribe lo que
         // ponga el modelo. Va antes de cualquier return para que se aplique a todo agente.
         if (typeof input.tool === 'string' && input.tool.startsWith('computer_') && output && output.args && typeof output.args === 'object') {
-          output.args.lapis_session = input.sessionID
+          output.args.onyxcode_session = input.sessionID
         }
         // 2) Control del plan, por sesion. Se aplica a TODA sesion del servidor (tambien las hijas
         // creadas con la herramienta task y cualquier otro agente), con clave en su propio
@@ -170,22 +170,22 @@ export default {
 
 /**
  * Plugin `tool.execute.before` (Lote D, B.7): en TODO servidor (sidecar de Code y cada servidor de
- * Cowork, sandbox o Control total), inyecta `lapis_session` en los args de cualquier herramienta
+ * Cowork, sandbox o Control total), inyecta `onyxcode_session` en los args de cualquier herramienta
  * `browser_*` con el `sessionID` de quien llama, MUTANDO el objeto en sitio (opencode llama al MCP
  * con ese mismo objeto `output.args`) y SIEMPRE sobrescribiendo lo que ponga el modelo — igual que
- * `lapis-plan-gate` hace con `computer_*`. Sin variable de entorno que lo condicione: a diferencia
+ * `onyxcode-plan-gate` hace con `computer_*`. Sin variable de entorno que lo condicione: a diferencia
  * del plan-gate (solo acceso total), el navegador integrado existe en todos los servidores.
  */
 export function sessionPluginSource(): string {
   return `// Generado por la app: no editar (se regenera al arrancar).
-// Inyecta lapis_session en las herramientas browser_* del MCP del navegador integrado (Lote D).
+// Inyecta onyxcode_session en las herramientas browser_* del MCP del navegador integrado (Lote D).
 // Ver src/main/cowork/opencode-config.ts para el contexto completo.
 export default {
-  id: 'lapis-session',
+  id: 'onyxcode-session',
   server: async () => ({
     'tool.execute.before': async (input, output) => {
       if (typeof input.tool === 'string' && input.tool.startsWith('browser_') && output && output.args && typeof output.args === 'object') {
-        output.args.lapis_session = input.sessionID
+        output.args.onyxcode_session = input.sessionID
       }
     }
   })

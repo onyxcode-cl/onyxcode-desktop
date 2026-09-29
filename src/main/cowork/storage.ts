@@ -12,7 +12,7 @@ import type { CoworkStorageEntry, CoworkStorageReport } from '@shared/ipc-cowork
 export interface StorageEnv {
   /** `app.getPath('userData')`. */
   userData: string
-  /** Carpeta de capturas temporales de Control total (`temp/lapis-computer`). */
+  /** Carpeta de capturas temporales de Control total (`temp/onyxcode-computer`). */
   screenshotsDir: string
   /** Clave del directorio privado de una carpeta (`sandboxKey` de sandbox-profile). */
   sandboxKey: (folder: string) => string

@@ -6,7 +6,7 @@
  * tarea, o una app extra a mitad de tarea): mientras está pendiente, la sesión queda en pausa SIN
  * LÍMITE DE TIEMPO (no hay "sin respuesta ⇒ denegado") y la píldora se agranda para mostrar el
  * plan y un selector de nivel por app. Aprobar/Denegar desde aquí NUNCA activa la ventana
- * principal de Lapis (`showInactive`, ver `computer/overlay.ts`); "Editar en Lapis" es la única
+ * principal de OnyxCode (`showInactive`, ver `computer/overlay.ts`); "Editar en OnyxCode" es la única
  * acción que la trae al frente, y solo porque el usuario la pulsó.
  *
  * Nunca escala ni baja permisos en silencio: se preselecciona `defaultAccessDecision` (lo que declara
@@ -56,7 +56,7 @@ root.innerHTML = `
     <ul class="request-apps"></ul>
     <div class="request-actions">
       <button type="button" class="req-deny">Denegar todo</button>
-      <button type="button" class="req-edit">Editar en Lapis</button>
+      <button type="button" class="req-edit">Editar en OnyxCode</button>
       <button type="button" class="req-approve">Aprobar y empezar</button>
     </div>
     <p class="request-error"></p>
@@ -286,7 +286,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && activeRequest) cancelRequest()
 })
 reqEdit.addEventListener('click', () => {
-  // Trae Lapis al frente (acción EXPLÍCITA del usuario) para escribir el feedback con más espacio;
+  // Trae OnyxCode al frente (acción EXPLÍCITA del usuario) para escribir el feedback con más espacio;
   // la tarjeta sigue pendiente (no se responde desde aquí).
   void cowork?.invoke('computer:showMainWindow')
 })

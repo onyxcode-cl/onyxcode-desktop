@@ -1,5 +1,5 @@
 /**
- * Resolución del actor que llama al MCP (Lote D, B.6 guarda 1): `lapis_session` es obligatorio y
+ * Resolución del actor que llama al MCP (Lote D, B.6 guarda 1): `onyxcode_session` es obligatorio y
  * el TOKEN del cliente (registrado por `mcp-server.ts` con `clientFor`) determina el producto, si
  * está sandboxeado y, en Cowork, la carpeta. En Code (un único sidecar compartido por todas las
  * carpetas) la carpeta se resuelve por sesión con `GET /session/:id` al propio sidecar, con caché:
@@ -79,16 +79,16 @@ async function resolveCodeDirectory(sessionId: string, deps: ResolveActorDeps): 
 }
 
 /**
- * Construye el `AgentActor` a partir de `lapis_session` (inyectado por el plugin `lapis-session`)
+ * Construye el `AgentActor` a partir de `onyxcode_session` (inyectado por el plugin `onyxcode-session`)
  * y la atadura del cliente MCP que llamó. Falla cerrado si falta la sesión o no se puede resolver
  * la carpeta de Code.
  */
-export async function resolveActor(binding: ClientBinding, lapisSession: unknown, deps: ResolveActorDeps): Promise<AgentActor> {
-  const sessionId = typeof lapisSession === 'string' ? lapisSession.trim() : ''
+export async function resolveActor(binding: ClientBinding, onyxcodeSession: unknown, deps: ResolveActorDeps): Promise<AgentActor> {
+  const sessionId = typeof onyxcodeSession === 'string' ? onyxcodeSession.trim() : ''
   if (!sessionId) {
     throw new Error(
-      'No se pudo identificar la tarea (falta lapis_session). Esto no debería pasar si el plugin ' +
-        'lapis-session está activo: reinicia el servidor de OpenCode.'
+      'No se pudo identificar la tarea (falta onyxcode_session). Esto no debería pasar si el plugin ' +
+        'onyxcode-session está activo: reinicia el servidor de OpenCode.'
     )
   }
   if (binding.product === 'cowork') {

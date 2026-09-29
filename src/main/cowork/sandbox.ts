@@ -11,7 +11,7 @@
  * carga el sidecar principal SIN sandbox. Las credenciales de proveedores se le pasan por
  * `OPENCODE_AUTH_CONTENT` (OpenCode lo prefiere a `auth.json`, verificado en 1.18.32): el
  * `auth.json` del usuario queda ilegible dentro del sandbox, no se copia a disco y nunca se
- * registra en logs; el plugin `lapis-env` lo oculta del entorno de bash.
+ * registra en logs; el plugin `onyxcode-env` lo oculta del entorno de bash.
  *
  * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
  */
@@ -82,7 +82,7 @@ export function writeSandboxProfile(
   iso: SandboxIsolation,
   configDir: string,
   network?: SandboxNetworkOptions,
-  dir = join(tmpdir(), 'lapis-cowork')
+  dir = join(tmpdir(), 'onyxcode-cowork')
 ): string {
   mkdirSync(dir, { recursive: true })
   const file = join(dir, `profile-${randomBytes(6).toString('hex')}.sb`)

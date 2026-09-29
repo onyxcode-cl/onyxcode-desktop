@@ -12,7 +12,7 @@
  *    bloqueado); cualquier otro nombre es un error, incluso antes de la primera `tools/list`
  *    (nada se permite por defecto).
  *  - Antes de `navigate_page` (tipo `url`) y `new_page`: valida el esquema (`checkUrl`) y pide
- *    aprobación por sitio al canal lateral de `browser/service.ts` (`LAPIS_BROWSER_URL`). Si se
+ *    aprobación por sitio al canal lateral de `browser/service.ts` (`ONYXCODE_BROWSER_URL`). Si se
  *    niega, ni se reenvía la llamada al hijo.
  *  - Después de `click`, `fill`, `fill_form`, `press_key`, `evaluate_script`, `type_text` (añadido
  *    por prudencia: también puede enviar un formulario) y cualquier `navigate_page`: pide
@@ -31,14 +31,14 @@ import { checkUrl, hostOf } from './sites'
 const CDM_RUNTIME = process.env.CDM_RUNTIME
 const CDM_BIN = process.env.CDM_BIN
 const CHROME_PATH = process.env.CHROME_PATH
-const PROFILE = process.env.LAPIS_BROWSER_PROFILE
-const SITE_CHECK_URL = process.env.LAPIS_BROWSER_URL
-const FOLDER = process.env.LAPIS_BROWSER_FOLDER ?? ''
+const PROFILE = process.env.ONYXCODE_BROWSER_PROFILE
+const SITE_CHECK_URL = process.env.ONYXCODE_BROWSER_URL
+const FOLDER = process.env.ONYXCODE_BROWSER_FOLDER ?? ''
 // Solo para las pruebas de este paquete (B.10): nunca lo fija `service.ts` en producción.
-const HEADLESS = process.env.LAPIS_BROWSER_HEADLESS === '1'
+const HEADLESS = process.env.ONYXCODE_BROWSER_HEADLESS === '1'
 
 if (!CDM_RUNTIME || !CDM_BIN || !CHROME_PATH || !PROFILE) {
-  console.error('[browser-mcp] faltan variables de entorno: CDM_RUNTIME, CDM_BIN, CHROME_PATH, LAPIS_BROWSER_PROFILE.')
+  console.error('[browser-mcp] faltan variables de entorno: CDM_RUNTIME, CDM_BIN, CHROME_PATH, ONYXCODE_BROWSER_PROFILE.')
   process.exit(1)
 }
 

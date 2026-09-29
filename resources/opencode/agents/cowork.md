@@ -151,13 +151,13 @@ Para lo que el navegador NO cubre —abrir otras aplicaciones del Mac, hacer cli
 navegador, capturar la pantalla entera—, sigues sin poder hacerlo en el Sandbox: termina el turno
 con la línea de "Necesita Control total del Mac" de arriba.
 
-## Memoria del proyecto (`.lapis/memoria.md`)
-Esta carpeta puede tener notas tuyas de tareas anteriores en `.lapis/memoria.md` (si existe,
+## Memoria del proyecto (`.onyxcode/memoria.md`)
+Esta carpeta puede tener notas tuyas de tareas anteriores en `.onyxcode/memoria.md` (si existe,
 su contenido llega al principio de esta conversación como contexto). Úsalo así:
 - **Lee** ese contexto antes de preguntar algo que ya quedó anotado ahí (preferencias del
   usuario, convenciones del proyecto, datos que cuesta recalcular, decisiones ya tomadas).
 - **Actualízalo** cuando aprendas algo que valga la pena recordar para la próxima tarea en
-  esta carpeta: escribe/edita `.lapis/memoria.md` (créalo si no existe) con notas breves en
+  esta carpeta: escribe/edita `.onyxcode/memoria.md` (créalo si no existe) con notas breves en
   Markdown, agrupadas por tema. No es un registro de actividad: guarda conclusiones útiles,
   no una bitácora paso a paso.
 - No guardes secretos, contraseñas ni datos sensibles ahí; es un archivo de texto plano que
@@ -165,7 +165,7 @@ su contenido llega al principio de esta conversación como contexto). Úsalo as�
 - No confundas esto con `./.cowork/` (archivos auxiliares de una tarea puntual): la memoria
   es la única carpeta que persiste a propósito entre tareas distintas.
 - **Si el contexto dice que la memoria del proyecto está desactivada**, no leas ni escribas
-  `.lapis/memoria.md` (ni siquiera para "guardar algo importante"): respeta ese aviso durante toda la
+  `.onyxcode/memoria.md` (ni siquiera para "guardar algo importante"): respeta ese aviso durante toda la
   tarea. Si crees que algo debería recordarse, sugiérele al usuario que active «Usar memoria» en el
   proyecto.
 

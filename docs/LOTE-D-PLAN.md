@@ -56,7 +56,7 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 - **Choque con el endurecimiento global:** `harden()` se aplica a TODO webContents (`web-security.ts:109`). Bloquearía la navegación de la vista y abriría cada URL en el navegador del sistema (`:42-53`). Hace falta una exención explícita **por identidad de sesión** (B.3).
 - `will-navigate` no se dispara con `loadURL` programático. El agente navegará con `loadURL` precedido de la puerta propia; los clics en enlaces se cubren con `will-frame-navigate`/`will-redirect`, y `did-start-navigation` actúa de respaldo.
 - **Sandbox:** Seatbelt solo deja conectar a puertos localhost listados (`sandbox-profile.ts:281-297`; `sandbox.ts:97-99`), así que el puerto del MCP debe añadirse al lanzar. Debe ser **fijo durante toda la vida de la app**.
-- Todos los `opencode serve` cargan plugins de `userData/opencode-config` (`opencode-config.ts:271-277`). Un plugin nuevo que inyecte `lapis_session` en `browser_*` llega también al sidecar de Code. Hoy la inyección solo existe en plan-gate y solo con `LAPIS_PLAN_GATE_URL` (`:142-148`).
+- Todos los `opencode serve` cargan plugins de `userData/opencode-config` (`opencode-config.ts:271-277`). Un plugin nuevo que inyecte `onyxcode_session` en `browser_*` llega también al sidecar de Code. Hoy la inyección solo existe en plan-gate y solo con `ONYXCODE_PLAN_GATE_URL` (`:142-148`).
 - **Code** es un sidecar compartido con Chat. La config inline es `buildInlineConfig()` al arrancar (`server.ts:143`); `chat` ya tiene `'*': deny` (`config.ts:22-26`). `build`/`plan` son agentes internos de OpenCode sin `.md` propio en `resources`.
 - **Colisión de nombres:** el Lote C inyecta `mcp.browser` (`manager.ts:631-645`). Se resuelve en B.11: un solo `mcp.browser` por servidor, el motor que toque.
 
@@ -66,14 +66,14 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 
 ### B.1 Arquitectura
 ```
-Renderer (lapis://app, rol main)                     Main (privilegiado)
+Renderer (onyxcode://app, rol main)                     Main (privilegiado)
  BrowserPanel (barra, pestañas, tarjetas) ──IPC browser:*──► embedded-browser/service
    └─ <div> hueco medido (ResizeObserver) ──browser:attach──► WebContentsView por pestaña
-                                                              · sesión persist:lapis-web-{code|cowork}
+                                                              · sesión persist:onyxcode-web-{code|cowork}
                                                               · sin preload, sandbox, contextIsolation
                                                               · cdp.ts = webContents.debugger (lista blanca)
  OpenCode (sidecar Code / servidores Cowork) ──MCP remote HTTP 127.0.0.1 + Bearer por servidor──► embedded-browser/mcp-server
-   plugin lapis-session.js inyecta lapis_session en browser_*       └─ tools.ts → service (puertas, aprobaciones)
+   plugin onyxcode-session.js inyecta onyxcode_session en browser_*       └─ tools.ts → service (puertas, aprobaciones)
 ```
 - El MCP corre **en el proceso principal**, porque `webContents.debugger` solo existe allí. No hay utilityProcess ni dependencias npm nuevas (ni `package.json` ni `electron-builder.js` cambian).
 - Transporte y esqueleto JSON-RPC copiados de `computer/mcp-server.ts:1600-1779`: Bearer con `timingSafeEqual` y rechazo de cualquier cabecera `Origin`.
@@ -84,10 +84,10 @@ Renderer (lapis://app, rol main)                     Main (privilegiado)
 |---|---|
 | Proceso | Cada pestaña es un `WebContentsView` con `sandbox:true, contextIsolation:true, nodeIntegration:false, nodeIntegrationInSubFrames:false, webviewTag:false, devTools:false, spellcheck:false, safeDialogs:true, navigateOnDragDrop:false, backgroundThrottling:false, focusOnNavigation:false, autoplayPolicy:'document-user-activation-required'`. Renderer propio, aislado del de la app (otra partición, otro origen). |
 | Preload | **Ninguno.** Todo control viene de main (API de webContents, sesión, debugger). Un preload correría dentro del proceso de la página y solo añadiría superficie; además `guardInvoke` rechaza cualquier IPC de un emisor sin rol ni origen propio (`guard.ts:49-54`). |
-| Sesión | `session.fromPartition('persist:lapis-web-code')` y `'persist:lapis-web-cowork'`: perfiles separados entre sí y NUNCA la `defaultSession` de `lapis://app`. Cookies cifradas (fuse `EnableCookieEncryption`). El esquema `lapis:` y `*-artifact:` no existen en esa sesión (`protocol.handle` es de la sesión por defecto y de la del artifact). |
+| Sesión | `session.fromPartition('persist:onyxcode-web-code')` y `'persist:onyxcode-web-cowork'`: perfiles separados entre sí y NUNCA la `defaultSession` de `onyxcode://app`. Cookies cifradas (fuse `EnableCookieEncryption`). El esquema `onyxcode:` y `*-artifact:` no existen en esa sesión (`protocol.handle` es de la sesión por defecto y de la del artifact). |
 | Identidad | `setUserAgent` sin `Electron/…` ni `${APP_NAME}/…`; `wc.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')`. |
 | Permisos | Request/check handlers: **todo denegado** salvo `clipboard-sanitized-write` y solo en el frame principal. Denegados de forma explícita: `openExternal` (mailto:, zoommtg:… escaparían al SO), `display-capture` (y `setDisplayMediaRequestHandler → callback({})`), `media`, `geolocation`, `notifications`, `fullscreen`, `pointerLock`, `keyboardLock`, `local-network-access`, `loopback-network`, `fileSystem`, `window-management`, `payment-handler`, `storage-access`. `setDevicePermissionHandler→false`; `select-{hid,serial,usb,bluetooth}-*` cancelados; `select-client-certificate` → `preventDefault` + `callback()` sin certificado; `login` (auth HTTP) cancelado en v1; `certificate-error` sin handler que conceda. |
-| Red | `webRequest.onBeforeRequest`: solo `http(s):`, `ws(s):`, `data:`, `blob:`, `about:`. Cancela `file:`, `chrome:`, `devtools:`, `lapis:`, `*-artifact:` y el resto. Destino loopback o privado (127/8, ::1, 10/8, 172.16/12, 192.168/16, 169.254/16, `.local`) cancelado salvo que la página de primer nivel sea un origen local **aprobado por el usuario** (`localhost:PUERTO`). La CSP es la del sitio: la app no puede imponer una sin romperlos; lo «estricto» se garantiza por proceso, partición, permisos y red. |
+| Red | `webRequest.onBeforeRequest`: solo `http(s):`, `ws(s):`, `data:`, `blob:`, `about:`. Cancela `file:`, `chrome:`, `devtools:`, `onyxcode:`, `*-artifact:` y el resto. Destino loopback o privado (127/8, ::1, 10/8, 172.16/12, 192.168/16, 169.254/16, `.local`) cancelado salvo que la página de primer nivel sea un origen local **aprobado por el usuario** (`localhost:PUERTO`). La CSP es la del sitio: la app no puede imponer una sin romperlos; lo «estricto» se garantiza por proceso, partición, permisos y red. |
 | Navegación | `setWindowOpenHandler → deny` (el enlace se abre en una pestaña nueva de la misma superficie si hubo gesto del usuario). Puerta por sitio para lo atribuido al agente (B.8). `will-prevent-unload → preventDefault`. |
 | Descargas | `will-download` en la partición (B.9). |
 | Crash | `render-process-gone` → estado `crashed` y «Recargar». |
@@ -233,7 +233,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 **Nunca:** subir archivos, emular, performance/lighthouse, extensiones, `filePath`, `initScript` ni scripts en Cowork.
 
 **Guardas del servidor, en este orden:**
-1. **Actor.** `lapis_session` es obligatorio: sin él, fallo cerrado («No se pudo identificar la tarea»).
+1. **Actor.** `onyxcode_session` es obligatorio: sin él, fallo cerrado («No se pudo identificar la tarea»).
    - El token del cliente determina producto, carpeta y sandbox.
    - En Code, la carpeta se obtiene con `GET /session/:id` al sidecar vía `mainConnection()`, con caché.
 2. **Activación.** `agentEnabled(product)` y política `disableBrowser`. El error explica que se activa en Ajustes; la lista de herramientas no cambia, así que activar o desactivar no exige reiniciar servidores.
@@ -268,7 +268,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - El servidor `initialize` devuelve `instructions` (resumen de uso en español). Las descripciones de cada herramienta son autosuficientes: son la vía garantizada para Code, que no tiene `.md` propio.
 
 ### B.7 Cableado con OpenCode
-- **Plugin nuevo `lapis-session.js`** (en `opencode-config.ts`, activo en TODOS los servidores): en `tool.execute.before`, si `input.tool` empieza por `browser_`, hace `output.args.lapis_session = input.sessionID` mutando el objeto en sitio, igual que plan-gate (`opencode-config.ts:142-148`). Añadir `lapis_session` a lo que ya vigila `looksLikeInjection` no hace falta: ya está.
+- **Plugin nuevo `onyxcode-session.js`** (en `opencode-config.ts`, activo en TODOS los servidores): en `tool.execute.before`, si `input.tool` empieza por `browser_`, hace `output.args.onyxcode_session = input.sessionID` mutando el objeto en sitio, igual que plan-gate (`opencode-config.ts:142-148`). Añadir `onyxcode_session` a lo que ya vigila `looksLikeInjection` no hace falta: ya está.
 - **Code (sidecar):**
   - `server.ts` pasa a hacer `await browserMcp.configFor({product:'code'})` antes del `spawn`, que se pasa a `buildInlineConfig({ browserMcp })` y produce `mcp.browser`.
   - Si el MCP no arranca, el sidecar arranca igual, sin navegador.
@@ -353,7 +353,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - «Añadir al chat» → inserta el texto en el compositor (v1 sin imagen).
 
 **Ventana aparte:**
-- `BrowserWindow` «{APP_NAME} · Navegador», con preload `browser-host`, rol `browserHost` y página `lapis://app/browser/index.html`, que solo renderiza `BrowserPanel`.
+- `BrowserWindow` «{APP_NAME} · Navegador», con preload `browser-host`, rol `browserHost` y página `onyxcode://app/browser/index.html`, que solo renderiza `BrowserPanel`.
 - Se abre al pedirlo o **automáticamente** con `showInactive()` cuando el agente actúa y la ventana principal está minimizada u oculta (Control total).
 - La vista se mueve a esta ventana; el panel principal muestra «Abierto en ventana aparte · Traer aquí».
 - «Añadir al chat» desde aquí → `browser:toChat` → main lo reenvía a la ventana principal.
@@ -381,7 +381,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 ## C. Paquetes
 
 Reglas comunes:
-- No renombrar «Lapis». Texto en español; el nombre solo desde `brand.ts` y el glosario desde `cowork-glossary.ts`.
+- No renombrar «OnyxCode». Texto en español; el nombre solo desde `brand.ts` y el glosario desde `cowork-glossary.ts`.
 - Sin commits. Harnesses solo en el scratchpad propio (`$SP`).
 - `npm run typecheck` limpio en lo propio.
 - **Nadie toca** `resources/computer-use/**`, `src/preload/pill.ts` ni `CHANNEL_ROLES.pill`/`assist`. Nadie usa `--remote-debugging-port`.
@@ -466,7 +466,7 @@ Typecheck.
 1. `mcp-server.ts`: HTTP en main con un puerto fijo reservado una vez, `clientFor`/`configFor`, JSON-RPC copiado de `computer/mcp-server.ts:1600-1779`, 401/403 e `instructions`.
 2. `owner.ts` (B.6.1); `snapshot.ts` (AXTree → texto con uids que caducan al navegar); `input.ts` (B.6.4–6); `keys.ts` (tabla de teclas; bloquea `Meta+Q`/`Meta+W`).
 3. `tools.ts`: las 17 + 4 herramientas con las guardas de B.6, siempre a través de la API de D1.
-4. El plugin `lapis-session.js` (B.7) en `opencode-config.ts`.
+4. El plugin `onyxcode-session.js` (B.7) en `opencode-config.ts`.
 5. Code: `server.ts`/`config.ts`. Cowork: `manager.ts`/`sandbox.ts`, con la elección de motor de B.11.
 6. Los prompts de B.7.
 
@@ -474,7 +474,7 @@ Typecheck.
 - `grep -n "setFileInputFiles\|getAllCookies\|remote-debugging" src/main/embedded-browser` vacío.
 - `tools/list`: 17 herramientas en Cowork y 21 en Code.
 
-**Verificación:** harness Electron con la API real de D1 y la página de prueba. Llamadas HTTP JSON-RPC con `lapis_session` puesto a mano; las aprobaciones se resuelven desde el harness escuchando `browser:approval`.
+**Verificación:** harness Electron con la API real de D1 y la página de prueba. Llamadas HTTP JSON-RPC con `onyxcode_session` puesto a mano; las aprobaciones se resuelven desde el harness escuchando `browser:approval`.
 - `initialize` y `tools/list`.
 - Sin token → 401; con `Origin` → 403.
 - `navigate_page` al origen de prueba → tarjeta `local-origin` → `task` → ok.
@@ -587,7 +587,7 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
     - rendimiento: un proceso por pestaña, con los topes de 6/12.
 11. **Capas nativas:** fallos visuales de orden z o de bounds (zoom, pantallas múltiples).
 12. **Rutinas desatendidas:** las aprobaciones esperan hasta 10 min y luego se deniegan.
-13. **Deriva de versiones de OpenCode:** la inyección de `lapis_session` y la semántica de los MCP `remote` deben reverificarse al actualizar.
+13. **Deriva de versiones de OpenCode:** la inyección de `onyxcode_session` y la semántica de los MCP `remote` deben reverificarse al actualizar.
 
 **Decisiones del usuario (2026-09-28)**
 1. Anfitrión: en línea (pestaña en el panel) + ventana «Navegador» propia cuando la principal está minimizada o se pide — tal como proponía el plan.

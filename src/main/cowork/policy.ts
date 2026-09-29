@@ -3,7 +3,7 @@
  *
  * Ubicación: `/Library/Application Support/${APP_NAME}/managed.json` (solo un administrador puede
  * escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de
- * entorno `LAPIS_MANAGED_POLICY`.
+ * entorno `ONYXCODE_MANAGED_POLICY`.
  *
  * La política solo RESTRINGE (salvo `extraAllowedHosts`, decidido por la organización), y la
  * validación es estricta y falla hacia el lado seguro:
@@ -79,7 +79,7 @@ export function parseManagedPolicy(raw: unknown, source: string): ManagedPolicy 
 }
 
 function policyFile(): string {
-  const override = process.env.LAPIS_MANAGED_POLICY
+  const override = process.env.ONYXCODE_MANAGED_POLICY
   if (override && !app.isPackaged) return resolve(override)
   return join('/Library/Application Support', APP_NAME, 'managed.json')
 }

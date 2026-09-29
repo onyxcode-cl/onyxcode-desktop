@@ -91,7 +91,7 @@ interface CoworkState {
   pinned: Record<string, true>
   /** Proyecto (nombre + instrucciones) de la carpeta actual. */
   project: CoworkProject | null
-  /** Memoria (`.lapis/memoria.md`) de la carpeta actual. */
+  /** Memoria (`.onyxcode/memoria.md`) de la carpeta actual. */
   memory: CoworkMemory | null
   /** Panel "Proyecto y memoria" visible. */
   projectPanelOpen: boolean
@@ -246,7 +246,7 @@ export const useCowork = create<CoworkState>((set) => ({
 
 export function setProjectPanelOpen(open: boolean): void {
   useCowork.setState({ projectPanelOpen: open })
-  // Al abrir el panel se relee la memoria: el agente pudo escribir `.lapis/memoria.md` mientras estaba cerrado.
+  // Al abrir el panel se relee la memoria: el agente pudo escribir `.onyxcode/memoria.md` mientras estaba cerrado.
   if (open) {
     const { folder } = useCowork.getState()
     if (folder) void loadProjectAndMemory(folder)
@@ -619,7 +619,7 @@ function handleEvent(event: OcEvent, directory: string): void {
       }
       const failed = useSessions.getState().errors[id]
       notifyTask(id, failed ? 'error' : 'done', failed ? 'La tarea terminó con un error' : 'Tarea terminada', taskTitle(id))
-      // El agente pudo guardar memoria (`.lapis/memoria.md`): si el panel está cerrado se relee; si está
+      // El agente pudo guardar memoria (`.onyxcode/memoria.md`): si el panel está cerrado se relee; si está
       // abierto no se pisa lo que el usuario esté editando.
       if (!st.projectPanelOpen) void loadProjectAndMemory(st.folder)
     }

@@ -13,17 +13,17 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
 ### A.0 Permisos TCC: el encargo se equivoca en un punto importante
 - **Recompilar `cu-helper` probablemente NO obliga a volver a conceder Accesibilidad ni Grabación de pantalla.**
   - El helper no tiene identidad TCC propia: macOS atribuye el permiso al "proceso responsable".
-  - Ese proceso es Lapis.app empaquetada, o la terminal desde la que se lanzó `npm run dev` (`service.ts:21-25`, `SEGURIDAD.md` §3, `AUDIT.md` S6).
+  - Ese proceso es OnyxCode.app empaquetada, o la terminal desde la que se lanzó `npm run dev` (`service.ts:21-25`, `SEGURIDAD.md` §3, `AUDIT.md` S6).
   - `build.sh:22` firma ad-hoc, pero TCC no mira esa firma.
   - Aun así cumplo la restricción: **un único paquete, una sola recompilación**. Ver el aviso al usuario en D.
 - **Dónde sí se pierden los permisos:** con cada `npm run package` ad-hoc (`DISTRIBUCION.md:8-9`). Eso ya pasaba antes y no cambia.
 - **Permisos nuevos que aparecerán:**
   - Micrófono y Reconocimiento de voz, la primera vez que se grabe una skill con micro.
-  - Se atribuyen a la terminal en desarrollo y a Lapis empaquetada.
+  - Se atribuyen a la terminal en desarrollo y a OnyxCode empaquetada.
 - **Riesgo con Terminal.app:** no declara `NSMicrophoneUsageDescription` ni `NSSpeechRecognitionUsageDescription` (lo comprobé con PlistBuddy). Electron sí declara micrófono.
   - En desarrollo desde Terminal, el micrófono o la transcripción pueden fallar o abortar el proceso.
   - Mitigación: aislar esas llamadas en subcomandos del helper separados y hacer que la grabación siga sin audio si fallan.
-- **Las pruebas desde un harness no representan a Lapis.** El Bash de los agentes corre bajo Claude.app, así que `cu-helper permissions` refleja los permisos de Claude.app, no los de Lapis.
+- **Las pruebas desde un harness no representan a OnyxCode.** El Bash de los agentes corre bajo Claude.app, así que `cu-helper permissions` refleja los permisos de Claude.app, no los de OnyxCode.
   - Las pruebas positivas de AX, captura de ventana y grabación solo son fiables en la prueba manual dentro de la app.
   - Los paquetes solo prueban las rutas de error y lo que no necesita TCC.
   - Nadie debe disparar el aviso de micrófono ni de voz desde el harness.
@@ -81,7 +81,7 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
   - Que puppeteer funcione bajo Bun **no está verificado**: C4 lo prueba.
 - **Integración:**
   - No pasa por `coworkMcpContribution`. Es un MCP de la app inyectado igual que `mcp.computer` (`manager.ts:624-632`), como `local` lanzado por OpenCode, con una **pasarela propia** (`browser-mcp.js`) delante que controla los sitios.
-  - Al lanzarlo el `opencode serve` desvinculado, Chrome no hereda los permisos TCC de Lapis.
+  - Al lanzarlo el `opencode serve` desvinculado, Chrome no hereda los permisos TCC de OnyxCode.
 - **Solo en Control total en v1.** En Sandbox, el navegador correría fuera de Seatbelt y fuera del proxy de egress.
 
 ### A.4 Overlay y Teach mode
@@ -267,12 +267,12 @@ Reglas comunes:
 - Lista a conservar: todas las apps con concesión, `SYSTEM_EXEMPT_BUNDLE_IDS` y `com.apple.finder`.
 - Persiste `userData/computer-hidden.json` = `{hidden:string[], at:number}`.
 - Muestra de nuevo las apps (si `unhideOnFinish`) en `setSession(false)`, `stop()` y `dispose()`, y al arrancar si quedó el archivo (recuperación tras un crash).
-- En modo background no se minimiza Lapis ni se oculta nada. `overlay.handleAction` no anima las herramientas `app_*` (solo etiqueta en la píldora).
+- En modo background no se minimiza OnyxCode ni se oculta nada. `overlay.handleAction` no anima las herramientas `app_*` (solo etiqueta en la píldora).
 
 ### B.8 Grabar una skill (C2: `src/main/computer/recorder.ts` y `src/shared/skill-recording.ts`)
 - **`SkillRecorder`:**
   - Una grabación a la vez, en `userData/skill-recordings/<id>/`.
-  - `--exclude` = `cl.bentec.lapis,com.github.Electron`.
+  - `--exclude` = `cl.bentec.onyxcode,com.github.Electron`.
   - Micrófono: primero `mic-request` en un proceso aparte; si falla o muere, se graba sin micro.
   - `stop` = SIGINT, espera ≤5 s, lee `events.jsonl`, y `transcribe` con timeout de 120 s.
   - Emite `recordState` y `recordDone`.
@@ -319,7 +319,7 @@ export const NEVER_AUTO_VIEW: RegExp[]          // keychainaccess, systemprefere
      - `rg`: `--pre/--pre-glob`
      - `uniq`: más de un argumento
    - `git` solo con `status log diff show rev-parse ls-files blame describe`, `branch` sin opciones de escritura, `remote -v` y `tag -l`; nunca `-c`, `--output`, `--ext-diff`, `--exec` ni `--upload-pack`.
-   - Se rechazan rutas sensibles: `lapis-killswitch`, `cu-helper`, `.ssh`, `.aws`, `.gnupg`, `Keychains`, `.netrc`, `auth.json`, `opencode.json`, `.env`.
+   - Se rechazan rutas sensibles: `onyxcode-killswitch`, `cu-helper`, `.ssh`, `.aws`, `.gnupg`, `Keychains`, `.netrc`, `auth.json`, `opencode.json`, `.env`.
 3. **MCP:** el servidor debe estar en `ctx.mcpServers`, es decir, MCP del usuario marcado en Cowork, excluidos `computer` y `browser`.
    - El nombre de la herramienta debe casar con `^(get|list|search|read|find|query|describe|view|show|lookup|count|check)(_|$)`.
    - No puede contener: `delete remove destroy drop send post create update write edit put patch set insert upload move rename share invite pay purchase buy order transfer approve grant revoke exec run eval execute deploy publish merge close archive trash reply comment submit login token secret password credential key auth`.
@@ -331,7 +331,7 @@ export const NEVER_AUTO_VIEW: RegExp[]          // keychainaccess, systemprefere
    - `auto-?approv`, `aprobaci[oó]n autom`
    - `bypass`, `salt(ar|ate) (la )?(aprobaci|permiso)`
    - `(disable|desactiva\w*) (the |el |la )?(approval|permission|sandbox|gate|modo|permiso|aprobaci)`
-   - `lapis_session`, `plan-gate`, `killswitch`, `OPENCODE_(SERVER|AUTH|CONFIG)`
+   - `onyxcode_session`, `plan-gate`, `killswitch`, `OPENCODE_(SERVER|AUTH|CONFIG)`
    - `system prompt`, `you are now`, `eres ahora`, `developer mode`, `<\|im_start\|>`
 
 **Motor, `src/main/cowork/auto-approver.ts`** (dependencias inyectadas para probarlo sin Electron):
@@ -371,8 +371,8 @@ export function getAutoApprover(): AutoApprover | null
 - **Config inyectada:**
 ```json
 { "type":"local", "enabled":true, "timeout":30000,
-  "command":["/usr/bin/env","-u","OPENCODE_SERVER_PASSWORD","-u","OPENCODE_SERVER_USERNAME","-u","OPENCODE_AUTH_CONTENT","-u","OPENCODE_CONFIG_CONTENT","-u","LAPIS_PLAN_GATE_URL","<runtime>","<unpacked>/out/main/browser-mcp.js"],
-  "environment":{"LAPIS_BROWSER_URL":"<canal con token>","LAPIS_BROWSER_FOLDER":"<folder>","CDM_BIN":"<unpacked>/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js","CDM_RUNTIME":"<runtime>","CHROME_PATH":"…","LAPIS_BROWSER_PROFILE":"…", "BUN_BE_BUN":"1 (solo si runtime=bun)"} }
+  "command":["/usr/bin/env","-u","OPENCODE_SERVER_PASSWORD","-u","OPENCODE_SERVER_USERNAME","-u","OPENCODE_AUTH_CONTENT","-u","OPENCODE_CONFIG_CONTENT","-u","ONYXCODE_PLAN_GATE_URL","<runtime>","<unpacked>/out/main/browser-mcp.js"],
+  "environment":{"ONYXCODE_BROWSER_URL":"<canal con token>","ONYXCODE_BROWSER_FOLDER":"<folder>","CDM_BIN":"<unpacked>/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js","CDM_RUNTIME":"<runtime>","CHROME_PATH":"…","ONYXCODE_BROWSER_PROFILE":"…", "BUN_BE_BUN":"1 (solo si runtime=bun)"} }
 ```
 - **`manager.ts`:** en `inlineConfig` de Control total, si `browserService.mcpConfig()` no es null, `mcp.browser = …` y `agent.cowork.permission['browser_*']='deny'`.
 - **Pasarela `src/main/browser/gateway.ts`** (entrada `browser-mcp`, solo builtins de Node):
@@ -383,7 +383,7 @@ export function getAutoApprover(): AutoApprover | null
   - Tras `click`, `fill`, `fill_form`, `press_key`, `evaluate_script` y `navigate_page` back/forward: `list_pages` interno. Toda página con host no permitido se deja en `about:blank` y la herramienta devuelve error.
   - Si no se puede leer la lista de páginas: error (fail-closed).
   - Al cerrarse stdin, mata al hijo y con ello Chrome.
-- `LAPIS_BROWSER_HEADLESS=1` solo para las pruebas.
+- `ONYXCODE_BROWSER_HEADLESS=1` solo para las pruebas.
 
 ---
 
@@ -395,7 +395,7 @@ export function getAutoApprover(): AutoApprover | null
 3. **C5 solo y el último.** Interfaz, agentes y documentación, y es **el único que ejecuta `npx electron-vite build`**.
 
 Reglas comunes:
-- No renombrar «Lapis».
+- No renombrar «OnyxCode».
 - Texto de interfaz en español; nombre del producto solo desde `brand.ts`.
 - No hacer commits.
 - Harnesses en el scratchpad propio (`$SP`), nunca en el repo.
@@ -561,7 +561,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 
 **Verificación:**
 - esbuild de `gateway.ts` a `$SP/gw.js` y un servidor `/site-check` falso (allow `example.com`, deny `evil.test`).
-- Con `LAPIS_BROWSER_HEADLESS=1` y el perfil en `$SP/prof`, enviar por stdin a `node $SP/gw.js` y **también** a `BUN_BE_BUN=1 ~/.opencode/bin/opencode $SP/gw.js`:
+- Con `ONYXCODE_BROWSER_HEADLESS=1` y el perfil en `$SP/prof`, enviar por stdin a `node $SP/gw.js` y **también** a `BUN_BE_BUN=1 ~/.opencode/bin/opencode $SP/gw.js`:
   - `initialize`, `tools/list`;
   - `tools/call navigate_page {type:'url',url:'https://example.com'}` → ok;
   - `https://evil.test` → error;
@@ -640,7 +640,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 0. **Momento de volver a conceder permisos (tras la única recompilación de C1).**
    - Abre Ajustes → Control del Mac y mira el estado de los permisos.
    - Lo esperado es que siga «concedido», porque macOS los atribuye a tu terminal y no al helper.
-   - Si aparece «Falta Accesibilidad» o «Grabación de pantalla»: Ajustes del Sistema → Privacidad y seguridad → Accesibilidad **y** Grabación de pantalla, desactiva y vuelve a activar tu terminal (o Lapis si usas la app empaquetada), y reinicia la app.
+   - Si aparece «Falta Accesibilidad» o «Grabación de pantalla»: Ajustes del Sistema → Privacidad y seguridad → Accesibilidad **y** Grabación de pantalla, desactiva y vuelve a activar tu terminal (o OnyxCode si usas la app empaquetada), y reinicia la app.
    - En la primera grabación con micro, macOS pedirá **Micrófono** y luego **Reconocimiento de voz** para esa terminal.
    - Si la terminal es Terminal.app y el micro falla, prueba desde iTerm o VS Code: Terminal no declara uso del micrófono.
 1. **Segundo plano:** Ajustes → «En segundo plano». Pide «en TextEdit (abierto) escribe hola en el documento sin tomar la pantalla».
