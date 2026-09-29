@@ -3,7 +3,7 @@
 exports[`buildInlineConfig: permisos del agente de tareas > control total + computer + navegador: snapshot completo del config 1`] = `
 {
   "agent": {
-    "cowork": {
+    "tasks": {
       "permission": {
         "browser_*": "deny",
         "computer_*": "deny",
@@ -38,7 +38,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total + todo
         "github_*": "ask",
       },
     },
-    "cowork": {
+    "tasks": {
       "permission": {
         "bash": {
           "npm test": "allow",
@@ -72,7 +72,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total + todo
 exports[`buildInlineConfig: permisos del agente de tareas > control total vacío: snapshot completo del config 1`] = `
 {
   "agent": {
-    "cowork": {
+    "tasks": {
       "permission": {
         "computer_*": "deny",
       },
@@ -97,7 +97,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + MCP usuari
         "github_*": "ask",
       },
     },
-    "cowork": {
+    "tasks": {
       "permission": {
         "bash": {
           "npm test": "allow",
@@ -124,7 +124,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + extras: sn
     "computer": {
       "disable": true,
     },
-    "cowork": {
+    "tasks": {
       "permission": {
         "external_directory": {
           "*": "ask",

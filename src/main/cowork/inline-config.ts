@@ -4,6 +4,7 @@
  * `inline-config.test.ts`). Las claves `agent.<id>.permission` son SEGURIDAD: deniegan MCP,
  * aplican `external_directory` y las reglas recordadas.
  */
+import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { deepMerge } from './config-merge'
 
 export interface InlineConfigInput {
@@ -34,8 +35,8 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
       autoupdate: false,
       ...(i.browserMcp ? { mcp: { browser: i.browserMcp } } : {}),
       agent: {
-        computer: { disable: true },
-        ...(i.extras.length ? { cowork: { permission: { external_directory: externalDirectory } } } : {})
+        [COMPUTER_AGENT_ID]: { disable: true },
+        ...(i.extras.length ? { [TASKS_AGENT_ID]: { permission: { external_directory: externalDirectory } } } : {})
       }
     }
   } else {
@@ -46,7 +47,7 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
       autoupdate: false,
       ...(Object.keys(mcpBlock).length ? { mcp: mcpBlock } : {}),
       agent: {
-        cowork: {
+        [TASKS_AGENT_ID]: {
           permission: {
             'computer_*': 'deny',
             ...(i.browserMcp ? { 'browser_*': 'deny' } : {})
@@ -59,11 +60,16 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
   const mcpBlock: Record<string, unknown> = {
     ...(Object.keys(i.mcpContribution.mcp).length ? { mcp: i.mcpContribution.mcp } : {}),
     ...(hasPerm
-      ? { agent: { cowork: { permission: i.mcpContribution.permission }, computer: { permission: i.mcpContribution.permission } } }
+      ? {
+          agent: {
+            [TASKS_AGENT_ID]: { permission: i.mcpContribution.permission },
+            [COMPUTER_AGENT_ID]: { permission: i.mcpContribution.permission }
+          }
+        }
       : {})
   }
   const rulesBlock: Record<string, unknown> = Object.keys(i.rulesPermission).length
-    ? { agent: { cowork: { permission: i.rulesPermission }, computer: { permission: i.rulesPermission } } }
+    ? { agent: { [TASKS_AGENT_ID]: { permission: i.rulesPermission }, [COMPUTER_AGENT_ID]: { permission: i.rulesPermission } } }
     : {}
   return deepMerge(base, mcpBlock, rulesBlock, i.skills)
 }

@@ -1,6 +1,7 @@
 /** Acciones del modo Cowork (carpetas, tareas, permisos). */
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FOLDER_MODE_LABEL_ES, type AccessDecision, type CoworkFolderSet, type FolderAccessMode } from '@shared/ipc-cowork'
+import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildCoworkSystemPrompt } from '@shared/cowork-prompt'
 import type { ModelRef } from '@shared/types'
 import { confirmDialog } from '../../../components/ConfirmDialog'
@@ -59,13 +60,9 @@ export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
   }
 }
 
-export const COWORK_AGENT = 'cowork'
-/** Agente de los servidores de Control total (sin sandbox + control del Mac). */
-export const COMPUTER_AGENT = 'computer'
-
 /** Agente a usar según el servidor conectado. */
 export function currentAgent(): string {
-  return useCowork.getState().conn?.fullAccess ? COMPUTER_AGENT : COWORK_AGENT
+  return useCowork.getState().conn?.fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID
 }
 
 export async function loadFolders(): Promise<void> {
@@ -423,7 +420,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   const res = await client.session.promptAsync({
     sessionID,
     directory: folder,
-    agent: fullAccess ? COMPUTER_AGENT : COWORK_AGENT,
+    agent: fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID,
     model: { providerID: useModel.providerID, modelID: useModel.modelID },
     ...(variant ? { variant } : {}),
     system: buildSystemPrompt(),

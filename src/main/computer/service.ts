@@ -52,7 +52,6 @@ import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
 
-export const COMPUTER_AGENT_ID = 'computer'
 export const STOP_SHORTCUT = 'CommandOrControl+Shift+Escape'
 
 const PANE_ACCESSIBILITY = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'

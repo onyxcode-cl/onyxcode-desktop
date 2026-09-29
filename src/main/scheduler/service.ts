@@ -29,7 +29,7 @@ import type { NotifyTarget, Settings } from '@shared/types'
 import type { CoworkManager } from '../cowork/manager'
 import { loadManagedPolicy } from '../cowork/policy'
 import { getMemory, type CoworkProjectsStore } from '../cowork/projects'
-import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, COWORK_AGENT_ID } from '../cowork/opencode-config'
+import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { decideUnattended } from './approvals'
 import { nextRunAfter, validateSchedule } from './schedule'
 
@@ -97,7 +97,7 @@ interface RunCtx {
 
 const AGENT_BY_MODE: Record<RoutineMode, string> = {
   chat: CHAT_AGENT_ID,
-  tasks: COWORK_AGENT_ID,
+  tasks: TASKS_AGENT_ID,
   code: 'build'
 }
 

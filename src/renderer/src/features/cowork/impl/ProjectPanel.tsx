@@ -2,7 +2,7 @@
  * Panel "Proyecto" de la carpeta actual: instrucciones propias de la carpeta (además de las
  * instrucciones globales de Ajustes), enlaces de referencia, "Memoria" (`.onyxcode/memoria.md`, que el
  * agente lee y actualiza entre tareas, con interruptor "Usar memoria"), el `AGENTS.md` de la carpeta,
- * las skills disponibles y los permisos recordados — ver `resources/opencode/agents/cowork.md`.
+ * las skills disponibles y los permisos recordados — ver `resources/opencode/agents/tasks.md`.
  */
 import { useEffect, useState } from 'react'
 import { AlertCircle, BookText, Check, FileText, Link2, Loader2, NotebookText, Plus, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react'

@@ -3,7 +3,7 @@
  * `CoworkManager.inlineConfig`) ANTES del renombre `cowork` → `tasks`. Las claves
  * `agent.<id>.permission` son SEGURIDAD: si se renombra el agente sin moverlas, los permisos dejan
  * de aplicarse SIN AVISO. Estos tests fijan los permisos actuales, que existan para los ids
- * `COWORK_AGENT_ID`/`COMPUTER_AGENT_ID` y que ninguna clave de agente quede sin agente definido.
+ * `TASKS_AGENT_ID`/`COMPUTER_AGENT_ID` y que ninguna clave de agente quede sin agente definido.
  */
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -14,7 +14,7 @@ vi.mock('electron', () => ({
 }))
 
 import { buildInlineConfig, type InlineConfigInput } from './inline-config'
-import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, COWORK_AGENT_ID } from './opencode-config'
+import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from './opencode-config'
 
 const AGENTS_DIR = join(process.cwd(), 'resources', 'opencode', 'agents')
 const definedAgents = (): string[] =>
@@ -68,9 +68,9 @@ const scenarios: Array<[string, InlineConfigInput]> = [
 
 describe('buildInlineConfig: ids de agente', () => {
   it('los ids actuales son los del bundle de agentes', () => {
-    expect(COWORK_AGENT_ID).toBe('cowork')
+    expect(TASKS_AGENT_ID).toBe('tasks')
     expect(COMPUTER_AGENT_ID).toBe('computer')
-    expect(definedAgents()).toEqual([CHAT_AGENT_ID, COMPUTER_AGENT_ID, COWORK_AGENT_ID].sort())
+    expect(definedAgents()).toEqual([CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID].sort())
   })
 
   it.each(scenarios)('%s: toda clave agent.<id> tiene su agente definido (o es un disable del computer)', (_n, input) => {
@@ -79,7 +79,7 @@ describe('buildInlineConfig: ids de agente', () => {
   })
 
   it.each(scenarios)('%s: solo se tocan los agentes de tareas y computer, nunca chat', (_n, input) => {
-    for (const id of Object.keys(agentsOf(buildInlineConfig(input)))) expect([COWORK_AGENT_ID, COMPUTER_AGENT_ID]).toContain(id)
+    for (const id of Object.keys(agentsOf(buildInlineConfig(input)))) expect([TASKS_AGENT_ID, COMPUTER_AGENT_ID]).toContain(id)
   })
 })
 
@@ -91,7 +91,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
 
   it('sandbox + extras: external_directory pregunta por defecto y permite las carpetas extra (orden importa)', () => {
     const c = buildInlineConfig({ ...empty, extras: [{ path: '/fixture/a' }, { path: '/fixture/b' }] })
-    const perm = agentsOf(c)[COWORK_AGENT_ID].permission!
+    const perm = agentsOf(c)[TASKS_AGENT_ID].permission!
     expect(perm).toEqual({
       external_directory: { '*': 'ask', '/fixture/a': 'allow', '/fixture/a/*': 'allow', '/fixture/b': 'allow', '/fixture/b/*': 'allow' }
     })
@@ -102,15 +102,15 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
   it('sandbox: el navegador entra como MCP sin deny de browser_*', () => {
     const c = buildInlineConfig({ ...empty, browserMcp: BROWSER })
     expect(c.mcp).toEqual({ browser: BROWSER })
-    expect(agentsOf(c)[COWORK_AGENT_ID]).toBeUndefined()
+    expect(agentsOf(c)[TASKS_AGENT_ID]).toBeUndefined()
   })
 
   it('Control total: el agente de tareas deniega computer_* y browser_* (solo si hay navegador)', () => {
     const sin = buildInlineConfig({ ...empty, fullAccess: true, computerMcp: COMPUTER })
-    expect(agentsOf(sin)[COWORK_AGENT_ID].permission).toEqual({ 'computer_*': 'deny' })
+    expect(agentsOf(sin)[TASKS_AGENT_ID].permission).toEqual({ 'computer_*': 'deny' })
     expect(sin.mcp).toEqual({ computer: COMPUTER })
     const con = buildInlineConfig({ ...empty, fullAccess: true, computerMcp: COMPUTER, browserMcp: BROWSER })
-    expect(agentsOf(con)[COWORK_AGENT_ID].permission).toEqual({ 'computer_*': 'deny', 'browser_*': 'deny' })
+    expect(agentsOf(con)[TASKS_AGENT_ID].permission).toEqual({ 'computer_*': 'deny', 'browser_*': 'deny' })
     expect(con.mcp).toEqual({ computer: COMPUTER, browser: BROWSER })
     // Control total: el agente computer NO se deshabilita.
     expect(agentsOf(con)[COMPUTER_AGENT_ID]).toBeUndefined()
@@ -119,7 +119,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
   it('Control total sin ningún MCP: mantiene igualmente el deny de computer_*', () => {
     const c = buildInlineConfig({ ...empty, fullAccess: true })
     expect(c.mcp).toBeUndefined()
-    expect(agentsOf(c)[COWORK_AGENT_ID].permission).toEqual({ 'computer_*': 'deny' })
+    expect(agentsOf(c)[TASKS_AGENT_ID].permission).toEqual({ 'computer_*': 'deny' })
   })
 
   it('permisos de MCP del usuario y reglas recordadas: idénticos en el agente de tareas y en computer', () => {
@@ -130,7 +130,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
       rulesPermission: RULES_PERM
     })
     const a = agentsOf(c)
-    expect(a[COWORK_AGENT_ID].permission).toEqual({
+    expect(a[TASKS_AGENT_ID].permission).toEqual({
       external_directory: {
         '*': 'ask',
         '/fixture/a': 'allow',
@@ -153,7 +153,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
       browserMcp: BROWSER,
       rulesPermission: { bash: { ls: 'allow' } }
     })
-    expect(agentsOf(c)[COWORK_AGENT_ID].permission).toMatchObject({ 'computer_*': 'deny', 'browser_*': 'deny', bash: { ls: 'allow' } })
+    expect(agentsOf(c)[TASKS_AGENT_ID].permission).toMatchObject({ 'computer_*': 'deny', 'browser_*': 'deny', bash: { ls: 'allow' } })
   })
 
   it.each(scenarios)('%s: snapshot completo del config', (_n, input) => {

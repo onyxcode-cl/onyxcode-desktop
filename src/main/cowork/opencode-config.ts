@@ -1,5 +1,5 @@
 /**
- * Configuración de OpenCode propia de la app (agentes `chat`, `cowork` y `computer`).
+ * Configuración de OpenCode propia de la app (agentes `chat`, `tasks` y `computer`).
  *
  * Mecanismo verificado con opencode v1.18.32: la variable de entorno `OPENCODE_CONFIG_DIR`
  * apunta a un directorio con la misma estructura que `~/.config/opencode`
@@ -52,10 +52,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
 import { join } from 'node:path'
 import { unpacked } from '../util/asar'
 
-export const CHAT_AGENT_ID = 'chat'
-export const COWORK_AGENT_ID = 'cowork'
-/** Agente del flujo Plan → Aprobar → Ejecutar (`resources/opencode/agents/computer.md`). */
-export const COMPUTER_AGENT_ID = 'computer'
+// Ids únicos compartidos con el renderer (`src/shared/agents.ts`).
+export { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 
 /** Herramientas de solo-planificación: las únicas que `onyxcode-plan-gate` deja pasar sin plan aprobado. */
 export const PLAN_GATE_ALLOWED_TOOLS = [
