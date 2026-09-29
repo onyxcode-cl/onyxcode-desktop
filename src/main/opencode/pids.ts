@@ -36,7 +36,7 @@ function file(): string {
 }
 
 /**
- * `kind` que escribía una versión anterior (`cowork`, `cowork-full`) → el actual. Un `pids.json` de
+ * `kind` de tipo antiguo que escribía una versión anterior (sandbox y acceso total) → el actual. Un `pids.json` de
  * una ejecución previa puede traerlos: `killStaleServers` debe seguir reconociendo esos servidores.
  */
 export function normalizePidKind(kind: unknown): string {

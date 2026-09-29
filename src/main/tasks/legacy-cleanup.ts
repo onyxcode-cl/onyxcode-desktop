@@ -10,7 +10,7 @@ export const LEGACY_BROWSER_ENTRIES = ['cowork-browser', 'cowork-browser.json'] 
  * Nunca lanza: un fallo (permisos, archivo en uso) se registra y se sigue. Devuelve las rutas
  * que realmente existían y se borraron. Idempotente: tras borrar, no hay nada más que hacer.
  */
-export function cleanLegacyCoworkBrowserData(userDataDir: string): string[] {
+export function cleanLegacyBrowserData(userDataDir: string): string[] {
   const base = resolve(userDataDir)
   const removed: string[] = []
   for (const name of LEGACY_BROWSER_ENTRIES) {

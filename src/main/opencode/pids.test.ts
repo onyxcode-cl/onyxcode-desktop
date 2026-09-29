@@ -1,6 +1,6 @@
 /**
  * `killStaleServers` sigue reconociendo servidores huérfanos cuyo `pids.json` trae el `kind` de una
- * versión anterior (`cowork`, `cowork-full`) además de los actuales (`tasks`, `tasks-full`).
+ * versión anterior (tipos antiguos de sandbox y acceso total) además de los actuales (`tasks`, `tasks-full`).
  */
 import { spawn, type ChildProcess } from 'node:child_process'
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'

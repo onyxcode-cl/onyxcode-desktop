@@ -5,7 +5,7 @@ import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { migrateLegacyUserData, runMigrations } from './migrations'
-import { cleanLegacyCoworkBrowserData } from './tasks/legacy-cleanup'
+import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
 import { prepareOpencodeConfigDir } from './tasks/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
@@ -96,7 +96,7 @@ function start(): void {
   migrateLegacyUserData(app.getPath('userData'), app.getPath('appData'))
   // «Chrome aparte» ya no existe: se borran sus datos huérfanos (perfil, cookies, descargas y json).
   // Solo dentro de userData; tras borrarse no queda nada, así que en la práctica corre una vez.
-  const legacyRemoved = cleanLegacyCoworkBrowserData(app.getPath('userData'))
+  const legacyRemoved = cleanLegacyBrowserData(app.getPath('userData'))
   if (legacyRemoved.length > 0) console.log('[main] limpieza de datos de Chrome aparte:', legacyRemoved.length)
   // Un segundo lanzamiento (dock, `open`, onyxcode://) enfoca esta instancia. Antes de `ready` se
   // ignora: la ventana se crea igualmente al arrancar.

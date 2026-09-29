@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * Guardia: el texto visible (y los prompts/agentes) no debe nombrar productos de terceros.
- * Los identificadores internos (useCowork, HtmlArtifact, 'cowork:*'…) no cuentan porque la
+ * Los identificadores internos (useTasks, HtmlArtifact, 'tasks:*'…) no cuentan porque la
  * detección es sensible a MAYÚSCULA inicial y exige que no haya \w o $ pegado al término.
  */
 
@@ -20,7 +20,7 @@ interface Rule {
 }
 
 const RULES: Rule[] = [
-  { id: 'Cowork', re: /(?<![\w$])Cowork(?![\w$])/ },
+  // El nombre antiguo del modo Tareas lo vigila `legacy-terms.test.ts` (contenido y nombres de fichero).
   { id: 'Artifact', re: /(?<![\w$])Artifacts?(?![\w$])/ },
   // Se evalúa solo dentro de literales de cadena completos (ver `stringLiterals`).
   { id: 'artifact-en-comillas', re: / artifact/, inStrings: true },
@@ -57,12 +57,6 @@ const EXCEPTIONS: Exception[] = [
     rule: 'Claude|Anthropic',
     line: /no afiliado a OpenCode ni a Anthropic/,
     reason: 'Aviso legal de Acerca de: debe nombrar a Anthropic para desvincularse.'
-  },
-  {
-    file: 'src/main/tasks/sandbox-profile.ts',
-    rule: 'Cowork',
-    line: /;; Red: denegada/,
-    reason: 'Perfil Seatbelt (SBPL): su texto no se muestra ni se toca (ver plan: no modificar).'
   },
   {
     file: 'src/*',
