@@ -1,4 +1,4 @@
-// Lo automatizable de las guías manuales de los Lotes B (Tareas, docs/COWORK-LOTE-B.md §4) y D (navegador integrado,
+// Lo automatizable de las guías manuales de los Lotes B (Tareas, docs/TASKS-LOTE-B.md §4) y D (navegador integrado,
 // docs/LOTE-D.md §4) contra la app real de Electron y el OpenCode falso. Ver el mapa en docs/VERIFICACION.md.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -6,14 +6,14 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { stubDialog } from '../lib/dialogs'
 import { useApp } from '../lib/harness'
-import { BrowserMcp, coworkFake, fakeOutsideUserData, killByPath, makeCoworkDir, neutralizeNativeApprovalDialog, prepareCodeBrowser, servePages, waitUserIdle, type PageServer } from '../lib/lotes'
+import { BrowserMcp, tasksFake, fakeOutsideUserData, killByPath, makeTasksDir, neutralizeNativeApprovalDialog, prepareCodeBrowser, servePages, waitUserIdle, type PageServer } from '../lib/lotes'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { MODE_LABELS, UI_LABELS } from '../../src/shared/labels'
 import { setMode, storeCall, storeState, waitForHooks } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
 
 const fakeBin = fakeOutsideUserData()
-const work = makeCoworkDir()
+const work = makeTasksDir()
 afterAll(() => {
   fakeBin.dispose()
   work.dispose()
@@ -21,7 +21,7 @@ afterAll(() => {
 
 const DEV = MODE === 'dev'
 
-async function goCowork(app: E2EApp): Promise<void> {
+async function goTasks(app: E2EApp): Promise<void> {
   await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.tasks }).click()
 }
 
@@ -44,14 +44,14 @@ describe.skipIf(!DEV)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)'
 
   it('paso 1: el onboarding se descarta y no vuelve tras recargar', async () => {
     const a = app()
-    await goCowork(a)
+    await goTasks(a)
     await expectVisible(a.page.getByText('Así funcionan las tareas'))
     await a.page.getByRole('button', { name: 'Entendido, no mostrar más' }).click()
     await expect.poll(() => a.page.getByText('Así funcionan las tareas').count()).toBe(0)
     await a.page.reload({ waitUntil: 'domcontentloaded' })
     await waitForHooks(a.page)
     await a.page.locator('nav[aria-label="Modo"]').waitFor()
-    await goCowork(a)
+    await goTasks(a)
     await expectVisible(a.page.getByText('¿En qué trabajamos hoy?'))
     expect(await a.page.getByText('Así funcionan las tareas').count()).toBe(0)
   })
@@ -61,35 +61,35 @@ describe.skipIf(!DEV)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)'
 
   it('paso 2: carpetas prohibidas (~ y ~/Library) se rechazan con su mensaje concreto (estado del store)', async () => {
     const a = app()
-    await goCowork(a)
+    await goTasks(a)
     await pickFolder(a, homedir())
-    await expect.poll(() => storeState<string | null>(a.page, 'useCowork', 'error')).toContain(ROOT_MSG)
+    await expect.poll(() => storeState<string | null>(a.page, 'useTasks', 'error')).toContain(ROOT_MSG)
     await pickFolder(a, join(homedir(), 'Library'))
-    await expect.poll(() => storeState<string | null>(a.page, 'useCowork', 'error')).toContain(LIB_MSG)
-    expect(await storeState(a.page, 'useCowork', 'folder')).toBeNull()
+    await expect.poll(() => storeState<string | null>(a.page, 'useTasks', 'error')).toContain(LIB_MSG)
+    expect(await storeState(a.page, 'useTasks', 'folder')).toBeNull()
     expect(await a.page.getByRole('dialog').count()).toBe(0)
   })
 
   // F7-B4: el motivo de la carpeta rechazada se pinta en un banner `role="alert"` con «Cerrar».
   it('paso 2 (UI): el mensaje de carpeta prohibida es visible para el usuario y se puede cerrar', async () => {
     const a = app()
-    await goCowork(a)
+    await goTasks(a)
     await pickFolder(a, homedir())
-    await expect.poll(() => storeState<string | null>(a.page, 'useCowork', 'error')).toContain(ROOT_MSG)
+    await expect.poll(() => storeState<string | null>(a.page, 'useTasks', 'error')).toContain(ROOT_MSG)
     await expectVisible(a.page.getByRole('alert').getByText(ROOT_MSG), 3_000)
     await pickFolder(a, join(homedir(), 'Library'))
     await expectVisible(a.page.getByRole('alert').getByText(LIB_MSG, { exact: false }), 3_000)
     await a.page.getByRole('alert').getByRole('button', { name: 'Cerrar' }).click()
-    await expect.poll(() => storeState(a.page, 'useCowork', 'error')).toBeNull()
+    await expect.poll(() => storeState(a.page, 'useTasks', 'error')).toBeNull()
     expect(await a.page.getByRole('alert').getByText(LIB_MSG, { exact: false }).count()).toBe(0)
   })
 
   it('paso 3 (preparación): una carpeta válida arranca el servidor Tareas (sandbox Seatbelt + OpenCode falso)', async () => {
     const a = app()
-    await goCowork(a)
+    await goTasks(a)
     await pickFolder(a, work.dir)
-    await expect.poll(() => storeState(a.page, 'useCowork', 'phase'), { timeout: 60_000 }).toBe('ready')
-    expect(await storeState<{ sandboxed: boolean }>(a.page, 'useCowork', 'conn')).toMatchObject({ sandboxed: true })
+    await expect.poll(() => storeState(a.page, 'useTasks', 'phase'), { timeout: 60_000 }).toBe('ready')
+    expect(await storeState<{ sandboxed: boolean }>(a.page, 'useTasks', 'conn')).toMatchObject({ sandboxed: true })
     await expectVisible(a.page.getByText('Sandbox activo'))
   })
 
@@ -101,7 +101,7 @@ describe.skipIf(!DEV)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)'
 
   it('paso 3: permission.asked de external_directory muestra «El agente quiere trabajar en otra carpeta»', async () => {
     const a = app()
-    const cw = await coworkFake(a.page)
+    const cw = await tasksFake(a.page)
     const other = join(homedir(), 'onyx-e2e-otra-carpeta')
     await cw.script({
       steps: [
@@ -201,10 +201,10 @@ describe.skipIf(!DEV)('Lote B: política gestionada (paso 22)', () => {
   })
 
   it('una carpeta fuera de allowedFolderRoots se rechaza con el motivo de la organización', async () => {
-    await goCowork(app)
+    await goTasks(app)
     await pickFolder(app, work.dir)
-    await expect.poll(() => storeState<string | null>(app.page, 'useCowork', 'error')).toContain('Tu organización solo permite carpetas dentro de')
-    expect(await storeState(app.page, 'useCowork', 'folder')).toBeNull()
+    await expect.poll(() => storeState<string | null>(app.page, 'useTasks', 'error')).toContain('Tu organización solo permite carpetas dentro de')
+    expect(await storeState(app.page, 'useTasks', 'folder')).toBeNull()
   })
 })
 
@@ -245,10 +245,10 @@ describe.skipIf(!DEV)('Lote D: navegador integrado', () => {
   let secundario: PageServer
   let mcp: BrowserMcp
   let sessionId: string
-  let project: ReturnType<typeof makeCoworkDir>
+  let project: ReturnType<typeof makeTasksDir>
 
   beforeAll(async () => {
-    project = makeCoworkDir()
+    project = makeTasksDir()
     tienda = await servePages({ '/': TIENDA, '/otra': '<title>otra</title><p>otra página</p>' })
     secundario = await servePages({ '/secreto': 'no deberías verme' })
   })
@@ -477,9 +477,9 @@ describe.skipIf(!DEV)('Lote D: navegador integrado', () => {
 describe.skipIf(!DEV)('Lote D: mailto: y tel: en el navegador integrado', () => {
   let app: E2EApp
   let tienda: PageServer
-  let project: ReturnType<typeof makeCoworkDir>
+  let project: ReturnType<typeof makeTasksDir>
   beforeAll(async () => {
-    project = makeCoworkDir()
+    project = makeTasksDir()
     tienda = await servePages({ '/': TIENDA })
     app = await startApp({ env: { OPENCODE_BIN: fakeBin.bin } })
   })

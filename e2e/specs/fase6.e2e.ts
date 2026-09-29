@@ -8,7 +8,7 @@ import { FakeClient } from '../lib/fake'
 import { connection, hook, storeState, waitForHooks } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
 import { spyNotifications } from '../lib/notifications'
-import { assistantInfo, chatDirectory, consumeErrors, countIpc, makeGitRepo, openCodeProject, connectCoworkFolder, makeHomeFolder, prepareFakeBin, type CoworkConn, fakeApi, newChatAndSend, sessionInfo } from '../lib/fase6'
+import { assistantInfo, chatDirectory, consumeErrors, countIpc, makeGitRepo, openCodeProject, connectTasksFolder, makeHomeFolder, prepareFakeBin, type TasksConn, fakeApi, newChatAndSend, sessionInfo } from '../lib/fase6'
 
 describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
   const app = useApp()
@@ -373,7 +373,7 @@ describe.skipIf(MODE === 'prod')(`fase 6: Tareas y Code en la misma carpeta (${M
 
   it('5. una sesión de Code ocupada en la misma carpeta NO marca ocupado a Tareas (F6-B1); una de Tareas sí', async () => {
     const a = app()
-    const { conn } = await connectCoworkFolder(a, folder.path)
+    const { conn } = await connectTasksFolder(a, folder.path)
     expect(conn.baseUrl).not.toBe(a.fake.conn.baseUrl) // dos sidecars distintos
     // Con la carpeta lista y nada ocupado, el selector de acceso está habilitado.
     await expect.poll(() => accessRadios(a).first().isDisabled(), { timeout: 15_000 }).toBe(false)

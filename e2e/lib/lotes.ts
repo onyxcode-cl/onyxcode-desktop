@@ -40,7 +40,7 @@ export function killByPath(path: string): void {
  * Carpeta de trabajo de Tareas. Tiene que estar bajo el home y fuera de `~/Library`/`/private`: la política de carpetas
  * (folder-policy.ts) rechaza `/private/var/...` (el tmp de macOS). Se crea en `~/onyx-e2e-cw-XXXXXX`.
  */
-export function makeCoworkDir(): { dir: string; dispose: () => void } {
+export function makeTasksDir(): { dir: string; dispose: () => void } {
   const dir = realpathSync(mkdtempSync(join(homedir(), 'onyx-e2e-cw-')))
   return { dir, dispose: () => rmSync(dir, { recursive: true, force: true }) }
 }
@@ -122,11 +122,11 @@ export { mkdirSync }
 import type { Page } from 'playwright-core'
 import { FakeClient } from './fake'
 
-/** Cliente del OpenCode falso que sirve la carpeta de Tareas abierta (conexión leída del store `useCowork`). */
-export async function coworkFake(page: Page): Promise<FakeClient> {
-  await page.waitForFunction(() => Boolean((window as any).__onyxE2E?.useCowork.getState().conn), undefined, { timeout: 60_000 })
+/** Cliente del OpenCode falso que sirve la carpeta de Tareas abierta (conexión leída del store `useTareas`). */
+export async function tasksFake(page: Page): Promise<FakeClient> {
+  await page.waitForFunction(() => Boolean((window as any).__onyxE2E?.useTasks.getState().conn), undefined, { timeout: 60_000 })
   const conn = await page.evaluate(() => {
-    const c = (window as any).__onyxE2E.useCowork.getState().conn
+    const c = (window as any).__onyxE2E.useTasks.getState().conn
     return { baseUrl: c.baseUrl as string, authorization: c.authorization as string }
   })
   return new FakeClient(conn)

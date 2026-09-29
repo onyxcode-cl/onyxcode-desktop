@@ -1,7 +1,7 @@
 // Ayudantes sobre `window.__onyxE2E` (ganchos DEV: stores zustand y acciones). Requieren `localStorage['onyx.e2e']='1'`.
 import type { Page } from 'playwright-core'
 
-export type StoreName = 'useSessions' | 'useCode' | 'useCowork' | 'useUi' | 'useServer' | 'useChat' | 'useSettings' | 'useProviders'
+export type StoreName = 'useSessions' | 'useCode' | 'useTasks' | 'useUi' | 'useServer' | 'useChat' | 'useSettings' | 'useProviders'
 
 /** Espera a que los ganchos existan (se cargan con un import dinámico tras el arranque). */
 export async function waitForHooks(page: Page, timeout = 30_000): Promise<void> {

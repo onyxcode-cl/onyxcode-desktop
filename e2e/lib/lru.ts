@@ -110,21 +110,21 @@ export function makeHomeFolder(): { path: string; cleanup: () => void } {
   return { path, cleanup: () => rmSync(path, { recursive: true, force: true }) }
 }
 
-export interface CoworkConn {
+export interface TasksConn {
   folder: string
   baseUrl: string
   authorization: string
 }
 
 /** Elige la carpeta por la UI (diálogo nativo stubbeado), acepta el permiso y espera a que Tareas esté listo. */
-export async function connectCowork(app: E2EApp, folder: string): Promise<{ conn: CoworkConn; fake: FakeClient }> {
+export async function connectTasks(app: E2EApp, folder: string): Promise<{ conn: TasksConn; fake: FakeClient }> {
   const { page, electronApp } = app
   await stubDialog(electronApp, { openPaths: [folder] })
   await gotoMode(page, MODE_LABELS.tasks)
   await page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await page.getByRole('button', { name: 'Permitir' }).click()
-  await expect.poll(() => storeState(page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')
-  const conn = await storeState<CoworkConn>(page, 'useCowork', 'conn')
+  await expect.poll(() => storeState(page, 'useTasks', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')
+  const conn = await storeState<TasksConn>(page, 'useTasks', 'conn')
   return { conn, fake: new FakeClient(conn) }
 }
 
@@ -134,7 +134,7 @@ export async function newTaskVia(page: Page, prompt: string, waitText: string): 
   await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill(prompt)
   await page.getByRole('button', { name: 'Enviar' }).click()
   await expectVisible(page.getByText(waitText, { exact: false }).first(), 30_000)
-  const id = await storeState<string | null>(page, 'useCowork', 'activeTaskId')
+  const id = await storeState<string | null>(page, 'useTasks', 'activeTaskId')
   if (!id) throw new Error('newTaskVia: sin tarea activa')
   await waitIdle(page, id)
   return id

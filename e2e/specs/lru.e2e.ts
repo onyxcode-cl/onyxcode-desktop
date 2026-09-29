@@ -7,7 +7,7 @@ import { FakeClient } from '../lib/fake'
 import { hook, setMode, storeCall, storeState } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
 import {
-  connectCowork,
+  connectTasks,
   emitGhostSessions,
   makeHomeFolder,
   matchesMessageList,
@@ -205,7 +205,7 @@ describe.skipIf(!dev)('LRU de messages: Tareas real (tope 2)', () => {
 
   it('conecta Tareas con una carpeta temporal y crea 4 tareas', async () => {
     const { page } = app()
-    const c = await connectCowork(app(), folder.path)
+    const c = await connectTasks(app(), folder.path)
     cw = c.fake
     dir = c.conn.folder
     for (let n = 1; n <= 4; n++) {
@@ -217,10 +217,10 @@ describe.skipIf(!dev)('LRU de messages: Tareas real (tope 2)', () => {
     expect(new Set(tasks).size).toBe(4)
     // Todas viven en el origen de Tareas (no en Chat).
     const src = await storeState<Record<string, string>>(page, 'useSessions', 'sessionSource')
-    for (const id of tasks) expect(src[id]).toBe((await storeState<{ baseUrl: string }>(page, 'useCowork', 'conn')).baseUrl)
+    for (const id of tasks) expect(src[id]).toBe((await storeState<{ baseUrl: string }>(page, 'useTasks', 'conn')).baseUrl)
   })
 
-  it('F7-B5: la vista de una tarea terminada no emite claves React duplicadas (CoworkWorkspace.tsx:656-657)', async () => {
+  it('F7-B5: la vista de una tarea terminada no emite claves React duplicadas (TasksWorkspace.tsx:656-657)', async () => {
     await openTaskRow(1)
     await openTaskRow(2)
     const dups = app().errors.filter((e) => DUP_KEY.test(e.text))
@@ -260,7 +260,7 @@ describe.skipIf(!dev)('LRU de messages: Tareas real (tope 2)', () => {
       directory: dir,
       properties: { id: 'per_lru_1', sessionID: p, permission: 'bash', patterns: ['echo lru'], metadata: {}, always: [] }
     })
-    await expect.poll(() => storeState<object>(page, 'useCowork', 'permissions'), { message: 'permiso en el store' }).toHaveProperty('per_lru_1')
+    await expect.poll(() => storeState<object>(page, 'useTasks', 'permissions'), { message: 'permiso en el store' }).toHaveProperty('per_lru_1')
 
     for (const n of [1, 2, 3, 4]) {
       await openTaskRow(n)
@@ -275,7 +275,7 @@ describe.skipIf(!dev)('LRU de messages: Tareas real (tope 2)', () => {
 
     // Resolver el permiso la libera: después de otras visitas, sale.
     await cw.emit({ type: 'permission.replied', directory: dir, properties: { sessionID: p, requestID: 'per_lru_1', reply: 'reject' } })
-    await expect.poll(() => storeState<object>(page, 'useCowork', 'permissions')).not.toHaveProperty('per_lru_1')
+    await expect.poll(() => storeState<object>(page, 'useTasks', 'permissions')).not.toHaveProperty('per_lru_1')
     for (const n of [1, 2, 3, 4]) await openTaskRow(n)
     await expect.poll(async () => (await messageKeys(page)).includes(p), { message: 'sin permiso, se desaloja' }).toBe(false)
   })

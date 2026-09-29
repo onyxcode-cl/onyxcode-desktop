@@ -6,7 +6,7 @@ import type { CDPSession, Page } from 'playwright-core'
 import { useApp } from '../lib/harness'
 import { MODE } from '../lib/launch'
 import { newChatAndSend } from '../lib/fase6'
-import { connectCowork, makeHomeFolder, newTaskVia, prepareFakeBin, storeAssistantText } from '../lib/lru'
+import { connectTasks, makeHomeFolder, newTaskVia, prepareFakeBin, storeAssistantText } from '../lib/lru'
 import { hook, storeState } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
 
@@ -153,7 +153,7 @@ describe.skipIf(!DEV)('Tareas: content-visibility y salto a un mensaje antiguo',
 
   it('la búsqueda abre la tarea y centra el mensaje antiguo (sin saltos por alturas estimadas)', async () => {
     const a = app()
-    const { fake } = await connectCowork(a, folder.path)
+    const { fake } = await connectTasks(a, folder.path)
     await fake.script({ match: 'cv-t0', title: 'Tarea CV', steps: [{ type: 'text', text: 'Respuesta cv 0' }] })
     await newTaskVia(a.page, 'cv-t0 empieza', 'Respuesta cv 0')
     const box = a.page.getByPlaceholder('Responde o pide un cambio…')
