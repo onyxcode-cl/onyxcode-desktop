@@ -1,0 +1,8 @@
+{
+  "quickEntryShortcut": "Alt+Space",
+  "modelsByMode": {
+    "chat": { "providerID": "fake", "modelID": "fake-model" },
+    "cowork": { "providerID": "fake", "modelID": "fake-tareas" }
+  },
+  "showTray": true
+}

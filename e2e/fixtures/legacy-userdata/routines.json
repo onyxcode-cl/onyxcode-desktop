@@ -1,0 +1,8 @@
+{
+  "routines": [
+    { "id": "rt_1", "name": "Resumen diario", "mode": "cowork", "folder": "/Users/tester/Proyectos/alfa", "prompt": "Resumí los cambios", "schedule": "0 9 * * *" },
+    { "id": "rt_2", "name": "Chat semanal", "mode": "chat", "prompt": "Hola", "schedule": "0 9 * * 1" },
+    { "id": "rt_3", "name": "Revisar código", "mode": "code", "folder": "/Users/tester/Proyectos/beta", "prompt": "Revisá", "schedule": "0 10 * * *" }
+  ],
+  "history": [{ "id": "run_1", "routineId": "rt_1", "status": "ok", "startedAt": 1758900000000, "mode": "cowork" }]
+}

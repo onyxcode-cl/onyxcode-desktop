@@ -1,0 +1,12 @@
+{
+  "folders": [
+    { "path": "/Users/tester/Proyectos/alfa", "approvedAt": 1758000000000 },
+    { "path": "/Users/tester/Proyectos/beta", "approvedAt": 1758100000000 }
+  ],
+  "fullAccess": [{ "path": "/Users/tester/Proyectos/alfa", "grantedAt": 1758200000000 }],
+  "deleteGrants": ["/Users/tester/Proyectos/beta"],
+  "linked": {
+    "/Users/tester/Proyectos/alfa": [{ "path": "/Users/tester/Datos", "name": "Datos", "mode": "ro", "addedAt": 1758300000000 }]
+  },
+  "trusted": []
+}

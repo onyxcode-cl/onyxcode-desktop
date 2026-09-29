@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "prefs": { "agentEnabled": { "code": false, "cowork": true } },
+  "sites": { "code": [], "cowork": [{ "site": "example.com", "addedAt": 1758800000000 }] },
+  "denied": { "code": [], "cowork": ["malo.example"] },
+  "localOrigins": []
+}

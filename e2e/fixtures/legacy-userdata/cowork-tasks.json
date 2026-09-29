@@ -1,0 +1,7 @@
+{
+  "tasks": [
+    { "sessionId": "ses_pinned_1", "folder": "/Users/tester/Proyectos/alfa", "fullAccess": false, "title": "Informe trimestral", "updatedAt": 1758400000000, "pinned": true },
+    { "sessionId": "ses_pinned_2", "folder": "/Users/tester/Proyectos/beta", "fullAccess": true, "title": "Limpiar descargas", "updatedAt": 1758500000000, "pinned": true, "group": "Casa" },
+    { "sessionId": "ses_plain", "folder": "/Users/tester/Proyectos/alfa", "fullAccess": false, "title": "Sin fijar", "updatedAt": 1758600000000, "group": "Trabajo" }
+  ]
+}

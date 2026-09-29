@@ -1,0 +1,1 @@
+{ "hosts": { "registry.npmjs.org": "allow", "example.invalid": "block" }, "toggles": {} }

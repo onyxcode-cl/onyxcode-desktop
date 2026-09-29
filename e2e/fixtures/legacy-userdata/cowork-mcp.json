@@ -1,0 +1,6 @@
+{
+  "servers": {
+    "docs": { "cowork": true, "askEachTool": false },
+    "crm": { "cowork": false, "askEachTool": true }
+  }
+}

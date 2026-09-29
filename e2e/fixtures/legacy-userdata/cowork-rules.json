@@ -1,0 +1,6 @@
+{
+  "rules": [
+    { "id": "rule_1", "folder": "/Users/tester/Proyectos/alfa", "permission": "bash", "pattern": "npm test", "createdAt": 1758700000000 },
+    { "id": "rule_2", "folder": "/Users/tester/Proyectos/alfa", "permission": "edit", "pattern": "src/**", "createdAt": 1758700100000 }
+  ]
+}
