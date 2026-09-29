@@ -5,9 +5,11 @@ interface UiState {
   mode: ModeId
   settingsOpen: boolean
   sidebarCollapsed: boolean
+  paletteOpen: boolean
   setMode: (mode: ModeId) => void
   openSettings: (open: boolean) => void
   toggleSidebar: () => void
+  setPaletteOpen: (open: boolean) => void
 }
 
 const MODE_KEY = 'ui.mode'
@@ -26,6 +28,8 @@ export const useUi = create<UiState>((set) => ({
   mode: initialMode(),
   settingsOpen: false,
   sidebarCollapsed: false,
+  paletteOpen: false,
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setMode: (mode) => {
     try {
       localStorage.setItem(MODE_KEY, mode)

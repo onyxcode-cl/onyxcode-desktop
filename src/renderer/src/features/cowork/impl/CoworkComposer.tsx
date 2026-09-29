@@ -1,18 +1,30 @@
 /**
  * Compositor propio de Cowork: texto controlado por el store (para rellenarlo desde
- * sugerencias/seguimientos), adjuntos copiados a la carpeta, chip de carpeta y modelo.
+ * sugerencias/seguimientos), adjuntos copiados a la carpeta, chip de carpeta, chips de carpetas
+ * adicionales, modelo y esfuerzo por tarea, y medidor de uso de la tarea activa.
+ *
+ * Expone un `ref` con `focus()` para que quien inserte texto desde fuera (p.ej. «Añadir al
+ * chat» del navegador integrado, Lote D) pueda devolver el foco al compositor sin robárselo
+ * al resto de la interfaz.
  */
-import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, FileText, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
+import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
+import { UsageMeter } from '../../../components/UsageMeter'
 import { errorMessage } from '../../../lib/opencode'
-import { useSettings } from '../../../stores/settings'
-import { attachFiles, removeAttachment } from './actions'
+import { useSessions, type MessageEntry } from '../../../stores/sessions'
+import { useModeModel } from '../../settings/impl/extras'
+import { attachFiles, removeAttachment, unlinkFolder } from './actions'
+import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
-import { useCowork } from './store'
+import { currentCoworkModel, currentCoworkVariant, setTaskModel, setTaskVariant, useCowork } from './store'
 import { extOf } from './util'
 
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'])
+/** Referencia estable para "sin mensajes" (evita re-renders del selector de zustand). */
+const NO_MESSAGES: MessageEntry[] = []
 
 interface Props {
   onSend: (text: string) => void | Promise<void>
@@ -27,25 +39,33 @@ interface Props {
   extra?: React.ReactNode
 }
 
-export function CoworkComposer({
-  onSend,
-  onAbort,
-  busy,
-  disabled,
-  placeholder,
-  autoFocusKey,
-  hero,
-  extra
-}: Props): React.JSX.Element {
+/** Método imperativo expuesto por `CoworkComposer` (ver el comentario del archivo). */
+export interface CoworkComposerHandle {
+  focus: () => void
+}
+
+export const CoworkComposer = forwardRef<CoworkComposerHandle, Props>(function CoworkComposer(
+  { onSend, onAbort, busy, disabled, placeholder, autoFocusKey, hero, extra },
+  forwardedRef
+) {
   const text = useCowork((s) => s.draft)
   const attachments = useCowork((s) => s.attachments)
   const folder = useCowork((s) => s.folder)
-  const model = useSettings((s) => s.settings.defaultModel)
-  const updateSettings = useSettings((s) => s.update)
+  const activeTaskId = useCowork((s) => s.activeTaskId)
+  const linked = useCowork((s) => s.folderSet?.linked)
+  const entries = useSessions((s) => (activeTaskId ? s.messages[activeTaskId] : undefined)) ?? NO_MESSAGES
+  // Suscripción reactiva al modelo/esfuerzo de la tarea; el valor sale de las funciones del store.
+  useCowork((s) => s.taskModel)
+  useCowork((s) => s.taskVariant)
+  useModeModel('cowork')
+  const model = currentCoworkModel()
+  const variant = currentCoworkVariant()
   const [attaching, setAttaching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
   const setText = (draft: string): void => useCowork.setState({ draft })
+
+  useImperativeHandle(forwardedRef, () => ({ focus: () => ref.current?.focus() }), [])
 
   useEffect(() => {
     ref.current?.focus()
@@ -104,6 +124,34 @@ export function CoworkComposer({
             })}
           </div>
         )}
+        {linked && linked.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 px-3 pt-3" aria-label={COWORK_TERMS.linkedFolders}>
+            {linked.map((f) => (
+              <span
+                key={f.path}
+                title={`${f.path} · ${f.mode === 'ro' ? COWORK_TERMS.readOnly : COWORK_TERMS.readWrite}`}
+                className="flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border bg-hover px-2 py-1 text-xs"
+              >
+                <FolderPlus size={13} className="shrink-0 text-muted" />
+                <span className="truncate">{f.name}</span>
+                {f.mode === 'ro' && (
+                  <span className="shrink-0 rounded bg-warning/15 px-1.5 py-px text-[11px] font-medium text-warning">
+                    {COWORK_TERMS.readOnly}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  title={`Quitar «${f.name}» de las carpetas adicionales`}
+                  aria-label={`Quitar la carpeta adicional ${f.name}`}
+                  className="shrink-0 rounded text-subtle hover:text-fg"
+                  onClick={() => void unlinkFolder(f.path)}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
         <textarea
           ref={ref}
           value={text}
@@ -133,9 +181,12 @@ export function CoworkComposer({
               {attaching ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
             </button>
             {hero && <FolderMenu variant="chip" placement="bottom" />}
+            <AutoModeChip />
             {extra}
-            <ModelPicker value={model} onChange={(m) => void updateSettings({ defaultModel: m })} />
+            <ModelPicker value={model} onChange={setTaskModel} />
           </div>
+          <EffortPicker model={model} variant={variant} onChange={setTaskVariant} />
+          <UsageMeter messages={entries} model={model} />
           {busy ? (
             <button
               type="button"
@@ -163,4 +214,4 @@ export function CoworkComposer({
       {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
     </div>
   )
-}
+})

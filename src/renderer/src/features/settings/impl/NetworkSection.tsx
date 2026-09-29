@@ -6,15 +6,34 @@
  * de bloqueo ("Permitir siempre").
  */
 import { useEffect, useState } from 'react'
-import { Globe, Plus, Trash2 } from 'lucide-react'
-import type { NetworkPolicyState } from '@shared/ipc-cowork'
+import { Globe, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import type { CoworkMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/ipc-cowork'
 import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
+import { policyLocks } from './CoworkSection'
 import { Badge, Card, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
+
+/** Mensaje mostrado cuando la política gestionada rechaza añadir un sitio a la red. */
+export const CUSTOM_HOSTS_BLOCKED_MESSAGE = 'Tu organización no permite añadir sitios a la red de Cowork.'
+
+/** Servidores MCP «Disponible en Cowork» que aportan hosts a la red (informativo). */
+export function mcpHostContributors(list: CoworkMcpInfo[]): CoworkMcpInfo[] {
+  return list.filter((m) => m.cowork && m.hosts.length > 0)
+}
+
+/** Traduce un rechazo de `networkSetHost('allow')` por política al mensaje en español. */
+export function networkErrorMessage(err: unknown, policy: ManagedPolicy | null): string {
+  const text = err instanceof Error ? err.message : String(err)
+  if (policy?.disableCustomHosts || /organizaci|pol[ií]tica|managed/i.test(text)) return CUSTOM_HOSTS_BLOCKED_MESSAGE
+  return text
+}
 
 export function NetworkSection(): React.JSX.Element {
   const [state, setState] = useState<NetworkPolicyState | null>(null)
   const [newHost, setNewHost] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [policy, setPolicy] = useState<ManagedPolicy | null>(null)
+  const [mcpHosts, setMcpHosts] = useState<CoworkMcpInfo[]>([])
+  const locks = policyLocks(policy)
 
   const reload = (): void => {
     if (!hasCoworkBridge()) return
@@ -25,6 +44,14 @@ export function NetworkSection(): React.JSX.Element {
 
   useEffect(reload, [])
 
+  useEffect(() => {
+    if (!hasCoworkBridge()) return
+    cw('cowork:policy').then(setPolicy).catch(() => undefined)
+    cw('cowork:mcp:list')
+      .then((list) => setMcpHosts(mcpHostContributors(list)))
+      .catch(() => undefined)
+  }, [])
+
   if (!hasCoworkBridge()) {
     return (
       <div>
@@ -34,12 +61,14 @@ export function NetworkSection(): React.JSX.Element {
   }
 
   const addHost = (): void => {
+    if (locks.customHosts) return
     const host = newHost.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
     if (!host) return
     setNewHost('')
+    setError(null)
     void cw('cowork:network:setHost', { host, decision: 'allow' })
       .then(setState)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setError(networkErrorMessage(err, policy)))
   }
 
   const removeHost = (host: string): void => {
@@ -54,6 +83,21 @@ export function NetworkSection(): React.JSX.Element {
         title="Red de Cowork"
         description="Qué hosts pueden alcanzar los servidores de Cowork en modo sandbox. Todo lo que no esté en esta lista se bloquea (el proxy de egress lo registra y avisa)."
       />
+
+      {locks.managed && (locks.customHosts || (policy?.extraAllowedHosts?.length ?? 0) > 0) && (
+        <div role="status" className="mb-2 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
+          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+          <div className="min-w-0 text-muted">
+            <div className="text-sm font-medium text-fg">Gestionado por tu organización</div>
+            {locks.customHosts && <p className="mt-0.5">{CUSTOM_HOSTS_BLOCKED_MESSAGE}</p>}
+            {(policy?.extraAllowedHosts?.length ?? 0) > 0 && (
+              <p className="mt-0.5">
+                Sitios permitidos por tu organización: <span className="font-mono">{policy?.extraAllowedHosts?.join(', ')}</span>.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <SubTitle>Siempre permitido</SubTitle>
       <Card>
@@ -81,7 +125,41 @@ export function NetworkSection(): React.JSX.Element {
             label="Permitir PyPI"
           />
         </Row>
+        <Row
+          label="Búsqueda web del agente"
+          description={`Permite la herramienta de búsqueda web (${(state?.webSearchHosts ?? ['mcp.exa.ai']).join(', ')}). Las consultas se envían a ese servicio.`}
+        >
+          <Toggle
+            checked={state?.webSearchEnabled ?? true}
+            onChange={(v) => void cw('cowork:network:setToggle', { key: 'webSearchEnabled', value: v }).then(setState)}
+            label="Permitir búsqueda web del agente"
+          />
+        </Row>
       </Card>
+
+      {mcpHosts.length > 0 && (
+        <>
+          <SubTitle>De conectores MCP</SubTitle>
+          <Card>
+            {mcpHosts.map((m) => (
+              <Row
+                key={m.name}
+                label={m.name}
+                description={
+                  <>
+                    <span className="font-mono break-all">{m.hosts.join(', ')}</span>
+                    <span className="mt-0.5 block">
+                      Permitido porque el conector está marcado «Disponible en Cowork». Para quitarlo, desmárcalo en MCP.
+                    </span>
+                  </>
+                }
+              >
+                <Badge tone="accent">Disponible en Cowork</Badge>
+              </Row>
+            ))}
+          </Card>
+        </>
+      )}
 
       <SubTitle>Hosts añadidos</SubTitle>
       <Card>
@@ -91,18 +169,22 @@ export function NetworkSection(): React.JSX.Element {
             onChange={(e) => setNewHost(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addHost()}
             placeholder="ejemplo.com"
+            aria-label="Añadir host permitido siempre"
+            disabled={locks.customHosts}
             className="max-w-xs"
           />
           <button
             type="button"
             onClick={addHost}
-            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-hover"
+            disabled={locks.customHosts}
+            title={locks.customHosts ? CUSTOM_HOSTS_BLOCKED_MESSAGE : undefined}
+            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-hover disabled:pointer-events-none disabled:opacity-50"
           >
             <Plus size={13} /> Añadir
           </button>
         </div>
         {(state?.custom.length ?? 0) === 0 ? (
-          <Row label="Sin hosts adicionales" description="Se bloquea todo lo que no sea el proveedor (o npm/PyPI si los activaste)." />
+          <Row label="Sin hosts adicionales" description="Se bloquea todo lo que no sea el proveedor (o npm/PyPI/búsqueda web si los activaste)." />
         ) : (
           state?.custom.map((host) => (
             <Row key={host} label={host}>

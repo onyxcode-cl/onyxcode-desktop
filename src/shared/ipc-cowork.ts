@@ -18,6 +18,8 @@ export interface CoworkFolder {
   name: string
   approvedAt: number
   lastUsedAt?: number
+  /** Main lo rellena en `listFolders`: la carpeta tiene concedido el Control total del Mac. */
+  fullAccess?: boolean
 }
 
 export type CoworkServerState = 'starting' | 'ready' | 'stopped' | 'error'
@@ -52,6 +54,19 @@ export interface CoworkConnection {
 /** Nivel concedido a una app. */
 export type AppTier = 'view' | 'click' | 'full'
 
+/** Orden de los niveles (mayor = más poder). */
+export const APP_TIER_RANK: Record<AppTier, number> = { view: 0, click: 1, full: 2 }
+
+/** Máximo de dos niveles (`null`/`undefined` = sin concesión). Devuelve `null` si ninguno tiene nivel. */
+export function maxTier(a: AppTier | null | undefined, b: AppTier | null | undefined): AppTier | null {
+  if (!a) return b ?? null
+  if (!b) return a
+  return APP_TIER_RANK[a] >= APP_TIER_RANK[b] ? a : b
+}
+
+/** Etiqueta en español de cada nivel. */
+export const TIER_LABEL_ES: Record<AppTier, string> = { view: 'Solo ver', click: 'Ver y clic', full: 'Control total' }
+
 export interface AppGrant {
   bundleId: string
   name: string
@@ -70,11 +85,28 @@ export type AccessDecision = AppTier | 'deny'
 export interface AccessRequestApp {
   bundleId: string
   name: string
+  /** Nivel que DECLARA el agente (`levels` de `request_access`). Ausente = legado → 'click'. */
+  requested?: AppTier
+  /** Nivel ya concedido antes de esta tarjeta (`null` = ninguno). Lo rellena main. */
+  current?: AppTier | null
+  /** La app está en la lista de denegadas. Lo rellena main. */
+  denied?: boolean
+}
+
+/**
+ * Preselección de la tarjeta para una app: el nivel que pide el agente (por defecto 'click') y
+ * nunca por debajo de lo ya concedido. Si la app estaba denegada, se preselecciona lo pedido.
+ */
+export function defaultAccessDecision(app: AccessRequestApp): AccessDecision {
+  const requested = app.requested ?? 'click'
+  if (app.denied) return requested
+  return maxTier(app.current, requested) ?? 'click'
 }
 
 /** Tarjeta "¿Permitir que el agente use X?" pendiente de respuesta del usuario. */
 export interface AccessRequest {
   id: string
+  /** Puede ser `[]` SOLO si hay `plan` (plan sin apps: terminal, archivos o web). */
   apps: AccessRequestApp[]
   reason?: string
   /**
@@ -84,6 +116,22 @@ export interface AccessRequest {
    * aprobado, solo hace falta el permiso nuevo).
    */
   plan?: string[]
+  /** Sesión (tarea) de OpenCode que pidió la tarjeta (la inyecta el plugin `lapis-plan-gate`). */
+  sessionId?: string
+  /** Nombres de app que el agente pidió y no se encontraron instaladas. */
+  unresolved?: string[]
+  /**
+   * Lote C: `'takeover'` = el agente trabajaba en segundo plano y pide tomar el ratón y el
+   * teclado (`request_full_control`); `apps` trae solo la app implicada. Ausente/`'access'` =
+   * tarjeta normal de `request_access`.
+   */
+  kind?: 'access' | 'takeover'
+}
+
+/** Estado de la aprobación del plan de una sesión (tarea) de Control total. */
+export interface PlanApprovalState {
+  sessionId: string
+  approved: boolean
 }
 
 // ───────────────────────────── Computer use ─────────────────────────────
@@ -171,6 +219,8 @@ export interface CoworkDeliverable {
   relPath: string
   size: number
   mtime: number
+  /** Carpeta vinculada de la que procede (ausente = carpeta principal de la tarea). */
+  root?: string
 }
 
 /** Vista previa de un archivo de la carpeta (entregables). */
@@ -194,6 +244,10 @@ export interface CoworkProject {
   instructions: string
   createdAt: number
   updatedAt: number
+  /** Enlaces de referencia del proyecto (http/https, máx. 50). */
+  links?: string[]
+  /** false = el agente no lee ni escribe la memoria del proyecto (por defecto activada). */
+  memoryEnabled?: boolean
 }
 
 /** Contenido de `.lapis/memoria.md` dentro de la carpeta (notas que el agente guarda entre tareas). */
@@ -205,12 +259,19 @@ export interface CoworkMemory {
 
 // ───────────────────────────── Red de Cowork (egress) ─────────────────────────────
 
+/** Interruptores de la lista blanca por defecto (npm, PyPI y búsqueda web del agente). */
+export type NetworkToggleKey = 'npmEnabled' | 'pypiEnabled' | 'webSearchEnabled'
+
 /** Estado de la lista blanca de red de los servidores Cowork sandboxeados. */
 export interface NetworkPolicyState {
   /** Host del proveedor de modelos: siempre permitido, no editable. */
   providerHost: string
   npmEnabled: boolean
   pypiEnabled: boolean
+  /** Búsqueda web del agente (herramienta `websearch`): permite `webSearchHosts`. */
+  webSearchEnabled: boolean
+  /** Hosts que abre el interruptor de búsqueda web (informativo, no editable). */
+  webSearchHosts: string[]
   /** Hosts añadidos por el usuario ("Permitir siempre" o desde Ajustes). */
   custom: string[]
   /** Hosts marcados "Mantener bloqueado" (informativo). */
@@ -239,6 +300,16 @@ export interface KeepAwakeState {
 
 export type RoutineMode = 'chat' | 'cowork' | 'code'
 
+/** Cada ejecución empieza una tarea nueva ('fresh') o continúa la misma ('continue'). */
+export type RoutineSessionMode = 'fresh' | 'continue'
+/** Qué hacer si una ejecución desatendida pide un permiso fuera de la lista blanca. */
+export type RoutineOnAsk = 'reject' | 'wait'
+/** Regla de la lista blanca de una rutina: `pattern` admite `*` y `?`. */
+export interface RoutineAllowRule {
+  permission: string
+  pattern: string
+}
+
 /** Programación: presets simples o cron de 5 campos. `time` = "HH:MM" (24h, hora local). */
 export type RoutineSchedule =
   | { kind: 'daily'; time: string }
@@ -264,6 +335,14 @@ export interface RoutineRunRecord {
   /** Resumen (texto final del asistente, truncado). */
   summary?: string
   error?: string
+  /** Permisos rechazados durante la ejecución desatendida (para mostrarlos en el historial). */
+  rejected?: Array<{ permission: string; patterns: string[] }>
+  /** Permisos aprobados automáticamente por la lista blanca de la rutina. */
+  approved?: Array<{ permission: string; patterns: string[] }>
+  /** Hosts que el proxy de red bloqueó durante la ejecución. */
+  blockedHosts?: string[]
+  /** true = la ejecución está esperando la aprobación del usuario (`onAsk: 'wait'`). */
+  waiting?: boolean
 }
 
 export interface ScheduledRoutine {
@@ -286,6 +365,20 @@ export interface ScheduledRoutine {
   running?: boolean
   /** Id de la tarea de Cowork/Code desde la que se creó ("Programar esta tarea"), si aplica. */
   originSessionId?: string | null
+  /** Empezar de cero en cada ejecución (por defecto) o continuar la misma tarea. */
+  sessionMode?: RoutineSessionMode
+  /** Qué hacer si la ejecución pide un permiso que no está en la lista blanca. */
+  onAsk?: RoutineOnAsk
+  /** Lista blanca "Permitir sin preguntar" (permiso + patrón). */
+  allow?: RoutineAllowRule[]
+  /** Sitios extra permitidos solo mientras dura la ejecución. */
+  allowHosts?: string[]
+  /** La rutina se ejecuta en Control total del Mac (solo modo cowork). */
+  fullAccess?: boolean
+  /** Momento del consentimiento explícito del usuario para Control total (epoch ms). */
+  fullAccessConsentAt?: number | null
+  /** Sesión de la última ejecución (para `sessionMode: 'continue'`). Lo rellena main. */
+  lastSessionId?: string | null
 }
 
 /** Datos editables al crear/actualizar (sin `id` = crear). */
@@ -299,6 +392,12 @@ export interface RoutineInput {
   schedule: RoutineSchedule
   enabled: boolean
   originSessionId?: string | null
+  sessionMode?: RoutineSessionMode
+  onAsk?: RoutineOnAsk
+  allow?: RoutineAllowRule[]
+  allowHosts?: string[]
+  fullAccess?: boolean
+  fullAccessConsentAt?: number | null
 }
 
 export interface SchedulePreview {
@@ -310,6 +409,312 @@ export interface SchedulePreview {
   next: number[]
   /** Descripción legible en español. */
   label: string
+}
+
+// ───────────────────────────── Lote B: carpetas ─────────────────────────────
+
+/** Modo de acceso a una carpeta adicional: lectura y escritura, o solo lectura. */
+export type FolderAccessMode = 'rw' | 'ro'
+
+/** Etiquetas en español de cada modo de acceso. */
+export const FOLDER_MODE_LABEL_ES: Record<FolderAccessMode, string> = { rw: 'Lectura y escritura', ro: 'Solo lectura' }
+
+/** Carpeta adicional vinculada a un espacio de Cowork (servidor de la carpeta principal). */
+export interface LinkedFolder {
+  path: string
+  name: string
+  mode: FolderAccessMode
+  addedAt: number
+}
+
+/** Carpeta de confianza: disponible para todas las tareas sin volver a preguntar. */
+export interface TrustedFolder {
+  path: string
+  name: string
+  mode: FolderAccessMode
+  addedAt: number
+}
+
+/** Conjunto de carpetas de un espacio de Cowork. */
+export interface CoworkFolderSet {
+  primary: string
+  /** Vinculadas a este espacio (servidor de `primary`). */
+  linked: LinkedFolder[]
+  /** De confianza: todas las tareas, sin preguntar. */
+  trusted: TrustedFolder[]
+  /** false = el servidor sandbox en marcha arrancó con otro conjunto (falta reiniciar). */
+  applied: boolean
+}
+
+/** Resultado de comprobar si una carpeta se puede autorizar/vincular. */
+export interface FolderCheck {
+  ok: boolean
+  normalized: string
+  /** Motivo accionable en español cuando `ok` es false. */
+  reason?: string
+}
+
+/** Contenido de `AGENTS.md` en la raíz de la carpeta. */
+export interface CoworkAgentsMd {
+  path: string
+  content: string
+  exists: boolean
+}
+
+// ───────────────────────────── Lote B: tareas y actividad ─────────────────────────────
+
+/** Metadatos de una tarea de Cowork que main persiste (fijada, grupo, título). */
+export interface CoworkTaskMeta {
+  sessionId: string
+  folder: string
+  fullAccess: boolean
+  title: string
+  pinned?: boolean
+  group?: string | null
+  updatedAt: number
+}
+
+export type CoworkTaskActivityState = 'running' | 'waiting' | 'question'
+
+/** Tarea raíz en curso o pendiente de respuesta, en cualquier carpeta. */
+export interface CoworkTaskActivity {
+  sessionId: string
+  folder: string
+  fullAccess: boolean
+  title: string
+  state: CoworkTaskActivityState
+  since: number
+}
+
+/** Instantánea del monitor de main: tareas activas y servidores vivos. */
+export interface CoworkActivitySnapshot {
+  at: number
+  /** Solo tareas raíz (las hijas se agregan a su raíz). */
+  tasks: CoworkTaskActivity[]
+  servers: Array<{ folder: string; fullAccess: boolean; idleSince: number | null }>
+}
+
+// ───────────────────────────── Lote B: preferencias ─────────────────────────────
+
+/** Qué eventos de tareas en segundo plano generan notificación. */
+export interface CoworkNotifyPrefs {
+  done: boolean
+  approval: boolean
+  question: boolean
+  error: boolean
+}
+
+export interface CoworkPrefs {
+  /** Días sin actividad para archivar tareas (0 = nunca). */
+  autoArchiveDays: number
+  /** Minutos sin tareas para detener un servidor (0 = nunca). */
+  idleStopMinutes: number
+  /** Máximo de servidores Cowork vivos a la vez. */
+  maxServers: number
+  notify: CoworkNotifyPrefs
+}
+
+export const DEFAULT_COWORK_PREFS: CoworkPrefs = {
+  autoArchiveDays: 0,
+  idleStopMinutes: 15,
+  maxServers: 4,
+  notify: { done: true, approval: true, question: true, error: true }
+}
+
+// ───────────────────────────── Lote B: almacenamiento ─────────────────────────────
+
+export interface CoworkStorageEntry {
+  /** Clave del directorio `cowork-sandbox/<key>`. */
+  key: string
+  /** Carpeta de Cowork asociada (null si ya no se conoce). */
+  folder: string | null
+  bytes: number
+  cacheBytes: number
+  /** true = su servidor está vivo (no se puede limpiar). */
+  running: boolean
+}
+
+export interface CoworkStorageReport {
+  entries: CoworkStorageEntry[]
+  screenshotsBytes: number
+  totalBytes: number
+  at: number
+}
+
+// ───────────────────────────── Lote B: permisos recordados, MCP y política ─────────────────────────────
+
+/** Permiso "siempre permitir" recordado para una carpeta. */
+export interface CoworkPermissionRule {
+  id: string
+  folder: string
+  permission: string
+  pattern: string
+  createdAt: number
+}
+
+/** Servidor MCP del usuario y cómo se expone en Cowork. */
+export interface CoworkMcpInfo {
+  name: string
+  type: 'local' | 'remote'
+  enabled: boolean
+  /** Disponible en Cowork. */
+  cowork: boolean
+  /** Preguntar en cada uso de sus herramientas. */
+  askEachTool: boolean
+  /** Hosts remotos que se suman a la red de Cowork. */
+  hosts: string[]
+  /** Usa OAuth: no disponible en el sandbox. */
+  oauth: boolean
+}
+
+/** Política gestionada por la organización (`managed.json`), solo lectura. */
+export interface ManagedPolicy {
+  /** Ruta del archivo del que se leyó. */
+  source: string
+  disableFullAccess?: boolean
+  allowedFolderRoots?: string[]
+  disableCustomHosts?: boolean
+  extraAllowedHosts?: string[]
+  disableAlwaysAllow?: boolean
+  disableRoutines?: boolean
+  maxAutoArchiveDays?: number
+  /** Lote C: apaga el Modo auto (aprobación automática de bajo riesgo) para toda la organización. */
+  disableAutoMode?: boolean
+  /** Lote C: apaga el navegador propio (`chrome-devtools-mcp`) para toda la organización. */
+  disableBrowser?: boolean
+}
+
+// ───────────────────────────── Lote C: preferencias de computer use ─────────────────────────────
+
+/** Cómo controla el agente las apps del Mac: en segundo plano (AX, sin mover el ratón) o con el ratón y el teclado. */
+export type ComputerControlMode = 'background' | 'full'
+
+/** Preferencias persistidas de computer use (`userData/computer-prefs.json`). */
+export interface ComputerPrefs {
+  mode: ComputerControlMode
+  /** Oculta las demás apps mientras el agente controla la pantalla. */
+  hideOtherApps: boolean
+  /** Vuelve a mostrarlas al terminar (Detener, fin de la sesión de control). */
+  unhideOnFinish: boolean
+}
+
+/** Decisión del usuario (2026-09-28): por defecto "En segundo plano" y ocultar otras apps (como Claude). */
+export const DEFAULT_COMPUTER_PREFS: ComputerPrefs = { mode: 'background', hideOtherApps: true, unhideOnFinish: true }
+
+// ───────────────────────────── Lote C: Teach mode y grabar una skill ─────────────────────────────
+
+/** Paso de Teach mode: el agente señala un elemento y explica qué haría, sin hacer clic. */
+export interface TeachStep {
+  id: string
+  sessionId?: string
+  text: string
+  title?: string
+  step?: number
+  total?: number
+  /** Punto de pantalla (puntos), si el paso señala un elemento concreto. */
+  x?: number
+  y?: number
+}
+
+/** Estado de la grabación de una skill en curso (o inactiva). */
+export interface SkillRecordingState {
+  active: boolean
+  id: string | null
+  startedAt: number | null
+  steps: number
+  mic: 'off' | 'recording' | 'denied'
+  maxSeconds: number
+}
+
+/** Un evento registrado por `cu-helper record` (`events.jsonl`). */
+export interface RecordedStep {
+  t: number
+  type: 'click' | 'key' | 'text' | 'app' | 'scroll' | 'warning'
+  app?: { name: string; bundleId: string }
+  element?: { role?: string; subrole?: string; title?: string; description?: string }
+  x?: number
+  y?: number
+  button?: 'left' | 'right'
+  keys?: string
+  text?: string
+  /** Ruta de la captura asociada a este paso (relativa al directorio de la grabación). */
+  shot?: string
+}
+
+/** Grabación completa de una skill (eventos + capturas + transcripción, ya leída del disco). */
+export interface SkillRecording {
+  id: string
+  dir: string
+  startedAt: number
+  durationMs: number
+  steps: RecordedStep[]
+  shots: string[]
+  mic: 'off' | 'recorded' | 'denied'
+  transcript: string | null
+  transcriptError?: string
+}
+
+/** Mensajes de main a la ventana `assist` (Teach mode y píldora de grabación). */
+export type AssistMessage =
+  | { type: 'teach'; step: TeachStep }
+  | { type: 'teachClear' }
+  | { type: 'recording'; state: SkillRecordingState }
+  | { type: 'hide' }
+
+// ───────────────────────────── Lote C: Modo auto ─────────────────────────────
+
+/** Regla del clasificador que aprobó (o hubiera aprobado) algo automáticamente. */
+export type AutoRuleId = 'mcp-readonly' | 'bash-readonly' | 'computer-view'
+
+/** Ajustes persistidos del Modo auto (`userData/cowork-auto.json`). */
+export interface AutoModeSettings {
+  enabled: boolean
+  folders: string[]
+  tasks: string[]
+  viewApps: string[]
+}
+
+/** Entrada del registro de aprobaciones automáticas. */
+export interface AutoApprovalRecord {
+  id: string
+  at: number
+  folder: string | null
+  sessionId: string | null
+  kind: 'permission' | 'access'
+  permission: string
+  patterns: string[]
+  rule: AutoRuleId
+  summary: string
+  revocable: boolean
+  revokedAt?: number
+}
+
+/** Estado completo del Modo auto para Ajustes. */
+export interface AutoModeState {
+  settings: AutoModeSettings
+  log: AutoApprovalRecord[]
+  policyDisabled: boolean
+}
+
+// ───────────────────────────── Lote C: navegador propio ─────────────────────────────
+
+/** Sitio (eTLD+1) con "Permitir siempre" para el navegador propio de Cowork. */
+export interface BrowserSite {
+  site: string
+  addedAt: number
+}
+
+/** Estado del navegador propio (`chrome-devtools-mcp`), solo en Control total. */
+export interface BrowserState {
+  enabled: boolean
+  available: boolean
+  reason?: string
+  chromePath: string | null
+  runtime: 'node' | 'bun' | null
+  sites: BrowserSite[]
+  denied: string[]
+  profileDir: string
+  policyDisabled: boolean
 }
 
 // ───────────────────────────── Contrato ─────────────────────────────
@@ -351,7 +756,10 @@ export interface CoworkInvokeContract {
 
   /** Proyecto (nombre + instrucciones) de una carpeta autorizada. */
   'cowork:project:get': { req: { folder: string }; res: CoworkProject }
-  'cowork:project:save': { req: { folder: string; name?: string; instructions?: string }; res: CoworkProject }
+  'cowork:project:save': {
+    req: { folder: string; name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }
+    res: CoworkProject
+  }
   /** Memoria del proyecto: `.lapis/memoria.md` dentro de la carpeta. */
   'cowork:memory:get': { req: { folder: string }; res: CoworkMemory }
   'cowork:memory:save': { req: { folder: string; content: string }; res: CoworkMemory }
@@ -359,8 +767,8 @@ export interface CoworkInvokeContract {
 
   /** Lista blanca de red efectiva para los servidores Cowork sandboxeados (egress proxy). */
   'cowork:network:state': { req: void; res: NetworkPolicyState }
-  /** Interruptores "PyPI"/"npm" (registros de paquetes) de la lista blanca por defecto. */
-  'cowork:network:setToggle': { req: { key: 'npmEnabled' | 'pypiEnabled'; value: boolean }; res: NetworkPolicyState }
+  /** Interruptores "PyPI"/"npm"/"búsqueda web" de la lista blanca por defecto. */
+  'cowork:network:setToggle': { req: { key: NetworkToggleKey; value: boolean }; res: NetworkPolicyState }
   /** "Permitir siempre" / "Mantener bloqueado" / quitar decisión para un host (persistido). */
   'cowork:network:setHost': { req: { host: string; decision: 'allow' | 'block' | 'unset' }; res: NetworkPolicyState }
   /** "Permitir esta vez" tras una tarjeta de bloqueo: solo para los servidores ya arrancados de esa carpeta. */
@@ -397,9 +805,10 @@ export interface CoworkInvokeContract {
   /**
    * Sesión de control activa (p.ej. al empezar una tarea de acceso completo): muestra el overlay
    * y la píldora "La IA está controlando tu Mac" y no los oculta por inactividad hasta `active: false`.
-   * `label` = texto opcional para la píldora.
+   * `label` = texto opcional para la píldora. `sessionId` = sesión (tarea raíz) de OpenCode ocupada,
+   * para relacionar la aprobación del plan con la tarea.
    */
-  'computer:session': { req: { active: boolean; label?: string }; res: void }
+  'computer:session': { req: { active: boolean; label?: string; sessionId?: string }; res: void }
   /** Lista de apps concedidas (con nivel) y denegadas, para la pantalla de permisos. */
   'computer:grants': { req: void; res: GrantsSnapshot }
   /** Concede (o cambia el nivel de) una app manualmente desde Ajustes. */
@@ -415,15 +824,26 @@ export interface CoworkInvokeContract {
    * `request_access`). `feedback` = el usuario pidió cambios ("Editar") en vez de aprobar: no se
    * concede nada (aunque `decisions` traiga algo, se ignora) y el texto vuelve al agente en el
    * resultado de la herramienta para que replantee el plan.
+   * `approvePlan` = aprueba el plan de la tarjeta aunque no se conceda ninguna app (plan sin apps).
+   * `cancel` = Esc, ✕ o "Cancelar": no toca ninguna concesión ni aprueba nada (`decisions` puede ser `[]`).
    */
   'computer:respondAccess': {
     req: {
       id: string
       decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>
       feedback?: string
+      approvePlan?: boolean
+      cancel?: boolean
     }
     res: void
   }
+  /**
+   * Revoca la aprobación del plan de una sesión (botón "Revocar", o al archivar/borrar la tarea):
+   * la siguiente acción del agente en esa tarea vuelve a pedir un plan.
+   */
+  'computer:revokePlan': { req: { sessionId: string }; res: void }
+  /** Ids de las sesiones con el plan aprobado ahora mismo (para pintar "Plan aprobado" al cargar). */
+  'computer:approvedPlans': { req: void; res: string[] }
   /**
    * "Editar en Lapis" desde la píldora: trae la ventana principal al frente (acción EXPLÍCITA del
    * usuario, la única que activa Lapis fuera de que él lo pida) para escribir el feedback de una
@@ -440,6 +860,104 @@ export interface CoworkInvokeContract {
    * Cowork; main activa/desactiva el `powerSaveBlocker` según el ajuste.
    */
   'cowork:keepAwakeActive': { req: { active: boolean }; res: KeepAwakeState }
+
+  // ── Lote B: carpetas ──
+  /** Conjunto de carpetas (principal, vinculadas y de confianza) de un espacio. */
+  'cowork:folders:get': { req: { folder: string }; res: CoworkFolderSet }
+  /** Comprueba si una carpeta se puede autorizar/vincular (con motivo accionable si no). */
+  'cowork:folders:check': { req: { path: string }; res: FolderCheck }
+  /** Vincula una carpeta adicional; `restart` (por defecto true) reinicia el sandbox solo si está en marcha. */
+  'cowork:folders:link': {
+    req: { folder: string; path: string; mode: FolderAccessMode; trust?: boolean; restart?: boolean }
+    res: CoworkFolderSet & { restarted: boolean }
+  }
+  'cowork:folders:unlink': {
+    req: { folder: string; path: string; restart?: boolean }
+    res: CoworkFolderSet & { restarted: boolean }
+  }
+  'cowork:trusted:list': { req: void; res: TrustedFolder[] }
+  'cowork:trusted:set': { req: { path: string; mode: FolderAccessMode }; res: TrustedFolder[] }
+  'cowork:trusted:remove': { req: { path: string }; res: TrustedFolder[] }
+  /** Política gestionada por la organización (null = sin política). */
+  'cowork:policy': { req: void; res: ManagedPolicy | null }
+
+  // ── Lote B: actividad, tareas, preferencias y almacenamiento ──
+  /** Instantánea actual de tareas activas y servidores (también llega por el evento `cowork:activity`). */
+  'cowork:activity': { req: void; res: CoworkActivitySnapshot }
+  /** El renderer avisa qué servidor está mirando (para no notificar lo que el usuario ya ve). */
+  'cowork:viewing': { req: { folder: string | null; fullAccess?: boolean }; res: void }
+  'cowork:tasks:list': { req: void; res: CoworkTaskMeta[] }
+  'cowork:tasks:setMeta': {
+    req: { sessionId: string; folder: string; fullAccess: boolean; title?: string; pinned?: boolean; group?: string | null }
+    res: CoworkTaskMeta
+  }
+  'cowork:tasks:forget': { req: { sessionId: string }; res: void }
+  'cowork:prefs:get': { req: void; res: CoworkPrefs }
+  'cowork:prefs:set': {
+    req: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<CoworkNotifyPrefs> }
+    res: CoworkPrefs
+  }
+  'cowork:storage:report': { req: void; res: CoworkStorageReport }
+  /** Limpia la caché (`cache`) o todo el directorio, incluido el historial (`all`), de un servidor parado. */
+  'cowork:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: CoworkStorageReport }
+  'cowork:storage:cleanScreenshots': { req: void; res: CoworkStorageReport }
+
+  // ── Lote B: proyecto, MCP y permisos recordados ──
+  'cowork:agentsMd:get': { req: { folder: string }; res: CoworkAgentsMd }
+  'cowork:agentsMd:save': { req: { folder: string; content: string }; res: CoworkAgentsMd }
+  'cowork:mcp:list': { req: void; res: CoworkMcpInfo[] }
+  'cowork:mcp:set': { req: { name: string; cowork?: boolean; askEachTool?: boolean }; res: CoworkMcpInfo[] }
+  'cowork:rules:list': { req: { folder?: string }; res: CoworkPermissionRule[] }
+  'cowork:rules:add': { req: { folder: string; permission: string; patterns: string[] }; res: CoworkPermissionRule[] }
+  'cowork:rules:remove': { req: { id: string }; res: CoworkPermissionRule[] }
+
+  // ── Lote B: archivos ──
+  /** Comprime archivos en un zip (diálogo de guardado). Devuelve la ruta o null si se cancela. */
+  'cowork:zip': { req: { paths: string[]; suggestedName?: string }; res: string | null }
+  /** Vista rápida de macOS (QuickLook) del archivo. */
+  'cowork:quickLook': { req: { path: string }; res: void }
+  /** Guarda una transcripción en Markdown (diálogo de guardado). Devuelve la ruta o null si se cancela. */
+  'cowork:exportMarkdown': { req: { suggestedName: string; content: string }; res: string | null }
+  /** Convierte un `.html`/`.htm` entregable a PDF (sin red) y devuelve el nuevo entregable. */
+  'cowork:htmlToPdf': { req: { path: string }; res: CoworkDeliverable }
+
+  // ── Lote C: preferencias de computer use ──
+  'computer:prefs:get': { req: void; res: ComputerPrefs }
+  'computer:prefs:set': { req: Partial<ComputerPrefs>; res: ComputerPrefs }
+  /** Respuesta de la ventana `assist` a un paso de Teach mode. */
+  'computer:teachRespond': { req: { id: string; action: 'next' | 'exit' }; res: void }
+  'computer:record:start': { req: { mic: boolean }; res: SkillRecordingState }
+  /** Termina (o descarta) la grabación en curso. Solo la ventana `assist` puede invocarlo. */
+  'computer:record:stop': { req: { discard?: boolean }; res: SkillRecording | null }
+  'computer:record:state': { req: void; res: SkillRecordingState }
+  /**
+   * Copia las capturas de una grabación a la carpeta de la tarea y devuelve el prompt (en
+   * español) para que el agente proponga generalizarla a una skill.
+   */
+  'computer:record:prepare': { req: { id: string; folder: string; includeTyped: boolean }; res: { prompt: string; relDir: string } }
+
+  // ── Lote C: Modo auto (los handlers los registra C3) ──
+  'cowork:auto:state': { req: void; res: AutoModeState }
+  'cowork:auto:set': {
+    req: {
+      enabled?: boolean
+      folder?: { path: string; on: boolean }
+      task?: { sessionId: string; on: boolean }
+      viewApps?: string[]
+    }
+    res: AutoModeState
+  }
+  'cowork:auto:revoke': { req: { id: string }; res: AutoModeState }
+  'cowork:auto:clearLog': { req: void; res: AutoModeState }
+  /** El renderer pide considerar una petición de acceso a apps a mitad de tarea (vía rápida). */
+  'cowork:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean } }
+
+  // ── Lote C: navegador propio (los handlers los registra C4) ──
+  'cowork:browser:state': { req: void; res: BrowserState }
+  'cowork:browser:set': { req: { enabled: boolean }; res: BrowserState }
+  'cowork:browser:removeSite': { req: { site: string }; res: BrowserState }
+  'cowork:browser:undeny': { req: { site: string }; res: BrowserState }
+  'cowork:browser:clearData': { req: void; res: BrowserState }
 }
 
 export interface CoworkEventContract {
@@ -455,8 +973,23 @@ export interface CoworkEventContract {
   'computer:overlay': ComputerOverlayMessage
   /** Tarjeta "¿Permitir que el agente use X?" (herramienta MCP `request_access`). */
   'computer:accessRequest': AccessRequest
+  /** La tarjeta `request_access` con ese id ya se resolvió (en cualquier vista): las demás deben cerrarla. */
+  'computer:accessResolved': { id: string }
+  /** Cambió la aprobación del plan de una sesión (aprobado o revocado). */
+  'computer:planState': PlanApprovalState
   /** El proxy de egress de un servidor sandboxeado bloqueó una conexión (host fuera de lista blanca). */
   'cowork:networkBlocked': NetworkBlockedEvent
+  /** Lote B: instantánea de actividad (tareas activas y servidores) del monitor de main. */
+  'cowork:activity': CoworkActivitySnapshot
+
+  // ── Lote C ──
+  /** Solo para la ventana `assist` (Teach mode y píldora de grabación). */
+  'computer:assist': AssistMessage
+  'computer:recordState': SkillRecordingState
+  'computer:recordDone': SkillRecording
+  /** El Modo auto aprobó algo automáticamente (para el aviso "Aprobado por el modo auto: …"). */
+  'cowork:auto:approved': AutoApprovalRecord
+  'cowork:browser:changed': BrowserState
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -509,10 +1042,58 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:denyApp',
   'computer:undenyApp',
   'computer:respondAccess',
+  'computer:revokePlan',
+  'computer:approvedPlans',
   'computer:showMainWindow',
   'cowork:keepAwakeState',
   'cowork:keepAwakeSetting',
-  'cowork:keepAwakeActive'
+  'cowork:keepAwakeActive',
+  'cowork:folders:get',
+  'cowork:folders:check',
+  'cowork:folders:link',
+  'cowork:folders:unlink',
+  'cowork:trusted:list',
+  'cowork:trusted:set',
+  'cowork:trusted:remove',
+  'cowork:policy',
+  'cowork:activity',
+  'cowork:viewing',
+  'cowork:tasks:list',
+  'cowork:tasks:setMeta',
+  'cowork:tasks:forget',
+  'cowork:prefs:get',
+  'cowork:prefs:set',
+  'cowork:storage:report',
+  'cowork:storage:clean',
+  'cowork:storage:cleanScreenshots',
+  'cowork:agentsMd:get',
+  'cowork:agentsMd:save',
+  'cowork:mcp:list',
+  'cowork:mcp:set',
+  'cowork:rules:list',
+  'cowork:rules:add',
+  'cowork:rules:remove',
+  'cowork:zip',
+  'cowork:quickLook',
+  'cowork:exportMarkdown',
+  'cowork:htmlToPdf',
+  'computer:prefs:get',
+  'computer:prefs:set',
+  'computer:teachRespond',
+  'computer:record:start',
+  'computer:record:stop',
+  'computer:record:state',
+  'computer:record:prepare',
+  'cowork:auto:state',
+  'cowork:auto:set',
+  'cowork:auto:revoke',
+  'cowork:auto:clearLog',
+  'cowork:auto:consider',
+  'cowork:browser:state',
+  'cowork:browser:set',
+  'cowork:browser:removeSite',
+  'cowork:browser:undeny',
+  'cowork:browser:clearData'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
 export const COWORK_EVENT_CHANNELS = [
@@ -524,7 +1105,15 @@ export const COWORK_EVENT_CHANNELS = [
   'computer:killState',
   'computer:overlay',
   'computer:accessRequest',
-  'cowork:networkBlocked'
+  'computer:accessResolved',
+  'computer:planState',
+  'cowork:networkBlocked',
+  'cowork:activity',
+  'computer:assist',
+  'computer:recordState',
+  'computer:recordDone',
+  'cowork:auto:approved',
+  'cowork:browser:changed'
 ] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>

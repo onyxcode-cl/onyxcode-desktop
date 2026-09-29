@@ -1,5 +1,5 @@
 /**
- * UI del modo "Acceso total + control del Mac" de Cowork: selector de modo, diálogo de
+ * UI del modo "Control total del Mac" de Cowork: selector de modo, diálogo de
  * confirmación, tarjeta de permisos de macOS, aviso de modelo sin visión, banner
  * "Controlando tu Mac", miniaturas de capturas de pantalla, tarjeta de concesión por app
  * (`request_access`) y lista de permisos por app para Ajustes.
@@ -25,14 +25,22 @@ import {
   Trash2,
   X
 } from 'lucide-react'
-import type { AccessDecision, AppTier } from '@shared/ipc-cowork'
+import {
+  APP_TIER_RANK,
+  defaultAccessDecision,
+  type AccessDecision,
+  type AccessRequest,
+  type AccessRequestApp,
+  type AppTier
+} from '@shared/ipc-cowork'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
 import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
 import { useSessions } from '../../../stores/sessions'
-import { useSettings } from '../../../stores/settings'
+import { useModeModel } from '../../settings/impl/extras'
 import {
   cancelFullAccess,
   checkComputer,
@@ -42,19 +50,20 @@ import {
   respondAccessRequest,
   resumeComputerControl,
   revokeAppGrant,
+  revokePlanApproval,
   setAccessMode,
   setAppGrant,
   stopComputerControl,
   undenyApp
 } from './actions'
 import { describeAction } from './computer-tools'
-import { loadGrants, useCowork } from './store'
+import { loadGrants, setTaskModel, useCowork } from './store'
 
 export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kimi-k3' }
 
 // ───────────────────────────── Selector de modo ─────────────────────────────
 
-/** Chip del header con el modo de acceso de la carpeta (Sandbox / Acceso total). */
+/** Chip del header con el modo de acceso de la carpeta (Sandbox / Control total). */
 export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JSX.Element | null {
   const conn = useCowork((s) => s.conn)
   const phase = useCowork((s) => s.phase)
@@ -76,7 +85,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   if (full) {
     chip = (
       <>
-        <MonitorCog size={12} /> Acceso total
+        <MonitorCog size={12} /> {COWORK_TERMS.fullControlShort}
       </>
     )
   } else if (conn && !conn.sandboxed) {
@@ -134,7 +143,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
           <ModeOption
             active={full}
             icon={<MonitorCog size={16} className="text-amber-500" />}
-            title="Acceso total + control del Mac"
+            title={COWORK_TERMS.fullControl}
             desc="Sin sandbox. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar."
             onClick={() => pick(true)}
           />
@@ -219,8 +228,14 @@ export function FullAccessDialog(): React.JSX.Element | null {
           </li>
           <li className="flex gap-2.5">
             <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" />
-            Tomará capturas de pantalla, que <strong className="text-fg">se envían al proveedor del modelo</strong>.
-            Cierra o oculta lo que no quieras compartir.
+            <span>
+              Tomará capturas de pantalla, que <strong className="text-fg">se envían al proveedor del modelo</strong>.
+              Cierra o oculta lo que no quieras compartir.
+              <span className="mt-1 block text-xs text-subtle" data-testid="capture-retention">
+                Las capturas se envían al proveedor del modelo y quedan en el historial de la tarea; las copias
+                temporales se borran al terminar y al cerrar la app.
+              </span>
+            </span>
           </li>
           <li className="flex gap-2.5">
             <ShieldOff size={16} className="mt-0.5 shrink-0 text-amber-500" />
@@ -349,8 +364,10 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
 /** Aviso si el modelo elegido no acepta imágenes (necesario para ver las capturas). */
 export function VisionModelHint(): React.JSX.Element | null {
   const full = useCowork((s) => s.conn?.fullAccess === true)
-  const model = useSettings((s) => s.settings.defaultModel)
-  const update = useSettings((s) => s.update)
+  // Modelo de la tarea (o el del modo Cowork): nunca el modelo predeterminado de Chat.
+  const taskModel = useCowork((s) => s.taskModel)
+  const modeModel = useModeModel('cowork')
+  const model = taskModel ?? modeModel
   const client = useServer((s) => s.client)
   const providers = useProviders((s) => s.providers)
   const load = useProviders((s) => s.load)
@@ -381,7 +398,7 @@ export function VisionModelHint(): React.JSX.Element | null {
         {!isVision && visionAvailable && (
           <button
             type="button"
-            onClick={() => void update({ defaultModel: VISION_MODEL })}
+            onClick={() => setTaskModel(VISION_MODEL)}
             className="shrink-0 rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:opacity-90"
           >
             Usar Kimi K3
@@ -394,7 +411,7 @@ export function VisionModelHint(): React.JSX.Element | null {
 
 // ───────────────────────────── Banner "Controlando tu Mac" ─────────────────────────────
 
-/** Barra visible mientras una tarea con acceso total está trabajando, con botón Detener. */
+/** Barra visible mientras una tarea con Control total está trabajando, con botón Detener. */
 export function ControlBanner(): React.JSX.Element | null {
   const conn = useCowork((s) => s.conn)
   const folder = useCowork((s) => s.folder)
@@ -402,6 +419,9 @@ export function ControlBanner(): React.JSX.Element | null {
   const stoppedAt = useCowork((s) => s.controlStoppedAt)
   const shortcutUnavailable = useCowork((s) => s.shortcutUnavailable)
   const accessRequest = useCowork((s) => s.accessRequest)
+  const activeTaskId = useCowork((s) => s.activeTaskId)
+  const planApproved = useCowork((s) => (s.activeTaskId ? !!s.approvedPlans[s.activeTaskId] : false))
+  const [revoking, setRevoking] = useState(false)
   const anyBusy = useSessions((s) =>
     Object.keys(s.status).some((id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder)
   )
@@ -424,6 +444,26 @@ export function ControlBanner(): React.JSX.Element | null {
       <ShieldAlert size={14} /> El atajo ⌘⇧Esc no está disponible; usa el botón Detener
     </div>
   ) : null
+
+  // Fila compacta "Plan aprobado" (Control total): el permiso dura toda la tarea hasta Revocar/Detener.
+  const revokeRow =
+    planApproved && activeTaskId ? (
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-elevated px-4 py-1.5 text-xs text-muted">
+        <Check size={13} className="shrink-0 text-success" />
+        <span className="min-w-0 flex-1 truncate">Plan aprobado para esta tarea: puede seguir sin volver a pedirlo</span>
+        <button
+          type="button"
+          onClick={() => {
+            setRevoking(true)
+            void revokePlanApproval(activeTaskId).finally(() => setRevoking(false))
+          }}
+          disabled={revoking}
+          className="no-drag flex shrink-0 items-center gap-1 rounded-lg border border-border bg-elevated px-2.5 py-1 text-xs font-semibold text-fg hover:bg-hover disabled:opacity-60"
+        >
+          {revoking && <Loader2 size={12} className="animate-spin" />} Revocar
+        </button>
+      </div>
+    ) : null
 
   // La parada NO se deshace sola: sigue visible hasta que el usuario pulse "Reanudar control".
   if (stoppedAt) {
@@ -491,7 +531,13 @@ export function ControlBanner(): React.JSX.Element | null {
       </>
     )
   }
-  if (!anyBusy) return shortcutWarning
+  if (!anyBusy)
+    return (
+      <>
+        {revokeRow}
+        {shortcutWarning}
+      </>
+    )
 
   const ago = lastAction ? Math.max(0, Math.round((Date.now() - lastAction.at) / 1000)) : null
   const stop = (): void => {
@@ -500,42 +546,45 @@ export function ControlBanner(): React.JSX.Element | null {
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-red-700/50 bg-gradient-to-r from-red-600 to-amber-600 px-4 py-2 text-white shadow-sm">
-      <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold">Controlando tu Mac</div>
-        <div className="truncate text-xs text-white/85">
-          {lastAction ? (
-            <>
-              {describeAction(lastAction)}
-              {ago !== null && ago > 1 && <span className="text-white/60"> · hace {ago}s</span>}
-            </>
-          ) : (
-            'Esperando la primera acción…'
-          )}
+    <>
+      <div className="flex shrink-0 items-center gap-3 border-b border-red-700/50 bg-gradient-to-r from-red-600 to-amber-600 px-4 py-2 text-white shadow-sm">
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold">Controlando tu Mac</div>
+          <div className="truncate text-xs text-white/85">
+            {lastAction ? (
+              <>
+                {describeAction(lastAction)}
+                {ago !== null && ago > 1 && <span className="text-white/60"> · hace {ago}s</span>}
+              </>
+            ) : (
+              'Esperando la primera acción…'
+            )}
+          </div>
         </div>
+        {shortcutUnavailable ? (
+          <span className="hidden items-center gap-1 text-[11px] text-white/85 md:flex" title="El atajo ⌘⇧Esc no está disponible; usa el botón Detener">
+            <ShieldAlert size={12} /> ⌘⇧Esc no disponible
+          </span>
+        ) : (
+          <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
+            <Keyboard size={12} /> ⌘⇧Esc
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={stop}
+          disabled={stopping}
+          className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-red-700 shadow hover:bg-red-50 disabled:opacity-70"
+        >
+          {stopping ? <Loader2 size={15} className="animate-spin" /> : <Square size={14} fill="currentColor" />} Detener
+        </button>
       </div>
-      {shortcutUnavailable ? (
-        <span className="hidden items-center gap-1 text-[11px] text-white/85 md:flex" title="El atajo ⌘⇧Esc no está disponible; usa el botón Detener">
-          <ShieldAlert size={12} /> ⌘⇧Esc no disponible
-        </span>
-      ) : (
-        <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
-          <Keyboard size={12} /> ⌘⇧Esc
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={stop}
-        disabled={stopping}
-        className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-red-700 shadow hover:bg-red-50 disabled:opacity-70"
-      >
-        {stopping ? <Loader2 size={15} className="animate-spin" /> : <Square size={14} fill="currentColor" />} Detener
-      </button>
-    </div>
+      {revokeRow}
+    </>
   )
 }
 
@@ -663,14 +712,105 @@ function TierSegmented({ value, onChange }: { value: AccessDecision; onChange: (
   )
 }
 
+/** Línea "Solicita: X · Actual: Y · Denegada antes" de una app de la tarjeta (con la insignia de nivel). */
+function AppAccessMeta({ app, choice }: { app: AccessRequestApp; choice: AccessDecision }): React.JSX.Element {
+  const requested = app.requested ?? 'click'
+  // La tarjeta nunca baja un nivel ya concedido (main aplica el máximo): se avisa si la elección queda por debajo.
+  const keeps = app.current && choice !== 'deny' && APP_TIER_RANK[choice] < APP_TIER_RANK[app.current] ? app.current : null
+  return (
+    <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+      <span className="flex items-center gap-1.5">
+        Solicita <TierBadge tier={requested} />
+      </span>
+      <span className="flex items-center gap-1.5">
+        Actual {app.current ? <TierBadge tier={app.current} /> : <span className="text-subtle">Ninguno</span>}
+      </span>
+      {app.denied && <span className="text-danger">Denegada antes</span>}
+      {keeps && <span>Se mantiene «{TIER_INFO[keeps].label}»: para bajarlo usa Ajustes</span>}
+    </div>
+  )
+}
+
 /**
  * Tarjeta "Plan y permisos" / "¿Permitir que el agente use X?" (herramienta MCP `request_access`):
  * lugar PRINCIPAL en la ventana de Lapis — una tarjeta EN LA CONVERSACIÓN, fija sobre el
  * compositor (igual que `ApprovalBar`), no un modal centrado que tape el resto de la tarea. La
- * píldora flotante (`overlay/pill.ts`) sigue siendo el otro lugar donde responder, sin cambios. El
- * usuario elige el nivel (o deniega) por app, o escribe feedback para que el agente replantee el
- * plan. La espera NO tiene límite de tiempo: solo Detener resuelve sin respuesta explícita.
+ * píldora flotante (`overlay/pill.ts`) es el otro lugar donde responder. El usuario elige el nivel
+ * (o deniega) por app, o escribe feedback para que el agente replantee el plan. La espera NO tiene
+ * límite de tiempo: solo Detener resuelve sin respuesta explícita.
+ *
+ * Nunca escala ni baja en silencio: se preselecciona `defaultAccessDecision` (lo que declara el agente,
+ * sin bajar de lo ya concedido); Cancelar/Esc = `cancel` (no toca ninguna concesión) y solo el
+ * "Denegar" explícito por app (o "Denegar todo" en tarjetas sin plan) deniega.
  */
+/**
+ * Tarjeta "¿Tomar el control de la pantalla?" (`kind === 'takeover'`, herramienta MCP
+ * `request_full_control`): el agente trabajaba en segundo plano (por Accessibility API, sin mover
+ * el ratón) y necesita el ratón y el teclado reales para esa app concreta. Sin plan ni selector de
+ * nivel por app (el nivel pedido es siempre "Control total"): solo dos botones binarios.
+ * "Seguir en segundo plano" no toca ninguna concesión (`cancel: true`); "Permitir" aprueba sin
+ * decisiones por app (`approvePlan: true, decisions: []`) — la app ya tiene su nivel concedido por
+ * la tarjeta de acceso previa; esto solo entrega el control de la pantalla para la tarea.
+ */
+function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const appName = req.apps[0]?.name ?? 'una app'
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') dismissAccessRequest()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  const decline = (): void => {
+    setBusy(true)
+    void respondAccessRequest([], { cancel: true }).finally(() => setBusy(false))
+  }
+  const allow = (): void => {
+    setBusy(true)
+    void respondAccessRequest([], { approvePlan: true }).finally(() => setBusy(false))
+  }
+
+  return (
+    <div className="mx-auto mb-2 w-full max-w-3xl px-6">
+      <div
+        role="alertdialog"
+        aria-labelledby="cowork-takeover-title"
+        className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 [[data-theme=dark]_&]:text-amber-400">
+            <MonitorCog size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 id="cowork-takeover-title" className="text-sm font-semibold text-fg">
+              ¿Tomar el control de la pantalla?
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              El agente trabajaba en <strong className="text-fg">{appName}</strong> en segundo plano y necesita el
+              ratón y el teclado.
+            </p>
+            {req.reason && <p className="mt-1 text-xs text-muted italic">«{req.reason}»</p>}
+            <p className="mt-2.5 text-xs text-muted">
+              La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas.
+            </p>
+            <div className="mt-3.5 flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" onClick={decline} disabled={busy}>
+                Seguir en segundo plano
+              </Button>
+              <Button variant="primary" onClick={allow} disabled={busy}>
+                {busy && <Loader2 size={14} className="animate-spin" />} Permitir
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function PlanAccessCard(): React.JSX.Element | null {
   const req = useCowork((s) => s.accessRequest)
   const [choices, setChoices] = useState<Record<string, AccessDecision>>({})
@@ -680,7 +820,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
 
   useEffect(() => {
     if (!req) return
-    setChoices(Object.fromEntries(req.apps.map((a) => [a.bundleId, 'click' as AccessDecision])))
+    setChoices(Object.fromEntries(req.apps.map((a) => [a.bundleId, defaultAccessDecision(a)])))
     setEditing(false)
     setFeedback('')
   }, [req])
@@ -695,10 +835,23 @@ export function PlanAccessCard(): React.JSX.Element | null {
   }, [req])
 
   if (!req) return null
+  if (req.kind === 'takeover') return <TakeoverAccessCard req={req} />
+
+  const hasApps = req.apps.length > 0
+  const decisionFor = (a: AccessRequestApp): AccessDecision => choices[a.bundleId] ?? defaultAccessDecision(a)
 
   const confirm = (): void => {
     setBusy(true)
-    void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: choices[a.bundleId] ?? 'deny' }))).finally(() =>
+    void respondAccessRequest(
+      req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: decisionFor(a) })),
+      { approvePlan: !!req.plan }
+    ).finally(() => setBusy(false))
+  }
+
+  /** "Denegar todo" (solo tarjetas sin plan): denegación explícita de cada app. */
+  const denyAll = (): void => {
+    setBusy(true)
+    void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const }))).finally(() =>
       setBusy(false)
     )
   }
@@ -707,14 +860,14 @@ export function PlanAccessCard(): React.JSX.Element | null {
     const text = feedback.trim()
     if (!text) return
     setBusy(true)
-    void respondAccessRequest(
-      req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const })),
-      text
-    ).finally(() => setBusy(false))
+    // El feedback no concede ni deniega nada: no se envía ninguna decisión.
+    void respondAccessRequest([], { feedback: text }).finally(() => setBusy(false))
   }
 
   const title = req.plan
-    ? 'Plan y permisos'
+    ? hasApps
+      ? 'Plan y permisos'
+      : 'Plan de la tarea'
     : req.apps.length === 1
       ? `¿Permitir que el agente use ${req.apps[0]?.name}?`
       : '¿Permitir que el agente use estas apps?'
@@ -742,22 +895,31 @@ export function PlanAccessCard(): React.JSX.Element | null {
                 ))}
               </ol>
             )}
-            <ul className="mt-3 space-y-2">
-              {req.apps.map((a) => (
-                <li
-                  key={a.bundleId}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-elevated/60 px-3 py-2"
-                >
-                  <span className="min-w-0 truncate text-sm font-medium text-fg" title={a.bundleId}>
-                    {a.name}
-                  </span>
-                  <TierSegmented value={choices[a.bundleId] ?? 'click'} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
-                </li>
-              ))}
-            </ul>
+            {!hasApps && (
+              <p className="mt-2.5 text-xs text-muted">Este plan no controla ninguna app: usará la terminal, archivos o la web.</p>
+            )}
+            {req.unresolved && req.unresolved.length > 0 && (
+              <p className="mt-2.5 text-xs text-warning">No encontré: {req.unresolved.join(', ')}</p>
+            )}
+            {hasApps && (
+              <ul className="mt-3 space-y-2">
+                {req.apps.map((a) => (
+                  <li
+                    key={a.bundleId}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-elevated/60 px-3 py-2"
+                  >
+                    <span className="min-w-0 truncate text-sm font-medium text-fg" title={a.bundleId}>
+                      {a.name}
+                    </span>
+                    <TierSegmented value={decisionFor(a)} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
+                    <AppAccessMeta app={a} choice={decisionFor(a)} />
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="mt-2.5 text-xs text-muted">
-              La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas. Puedes cambiar el
-              nivel de cada app luego desde Ajustes.
+              La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas.
+              {hasApps && ' Aprobar nunca baja un nivel ya concedido; para bajarlo usa Ajustes.'}
             </p>
             {editing ? (
               <div className="mt-3">
@@ -784,9 +946,15 @@ export function PlanAccessCard(): React.JSX.Element | null {
               </div>
             ) : (
               <div className="mt-3.5 flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" onClick={dismissAccessRequest} disabled={busy}>
-                  {req.plan ? 'Cancelar' : 'Denegar todo'}
-                </Button>
+                {req.plan ? (
+                  <Button variant="ghost" onClick={dismissAccessRequest} disabled={busy} title="No concede ni deniega nada">
+                    Cancelar
+                  </Button>
+                ) : (
+                  <Button variant="ghost" onClick={denyAll} disabled={busy}>
+                    Denegar todo
+                  </Button>
+                )}
                 {req.plan && (
                   <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy}>
                     Editar

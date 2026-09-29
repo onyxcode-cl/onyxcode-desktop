@@ -8,6 +8,7 @@ import {
   type IpcResult,
   type WindowApi
 } from '@shared/ipc'
+import { buildBrowserApi } from './browser-api'
 import { buildCodeApi } from './code-api'
 import { buildCoworkApi } from './cowork-api'
 import { buildExtrasApi } from './extras-api'
@@ -35,7 +36,8 @@ const api: WindowApi = {
   platform: process.platform,
   code: buildCodeApi(ipcRenderer),
   cowork: buildCoworkApi(ipcRenderer),
-  extras: buildExtrasApi(ipcRenderer)
+  extras: buildExtrasApi(ipcRenderer),
+  browser: buildBrowserApi(ipcRenderer)
 }
 
 contextBridge.exposeInMainWorld('api', api)

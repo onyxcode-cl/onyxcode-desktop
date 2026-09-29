@@ -22,6 +22,7 @@ import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { FolderAccessMode } from '@shared/ipc-cowork'
 
 function real(p: string): string {
   try {
@@ -77,6 +78,8 @@ export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
     npm_config_cache: join(dirs.cache, 'npm'),
     BUN_INSTALL_CACHE_DIR: join(dirs.cache, 'bun'),
     PIP_CACHE_DIR: join(dirs.cache, 'pip'),
+    UV_CACHE_DIR: join(dirs.cache, 'uv'),
+    PIP_DISABLE_PIP_VERSION_CHECK: '1',
     OPENCODE_DISABLE_AUTOUPDATE: '1'
   }
 }
@@ -179,6 +182,17 @@ export interface SandboxProfileOptions {
   readOnly?: string[]
   /** Rutas extra con escritura permitida. */
   extraWritable?: string[]
+  /**
+   * Carpetas adicionales del espacio (vinculadas o de confianza). `rw`: escritura permitida pero
+   * SIN borrado (el permiso de borrar solo vale para la carpeta principal). `ro`: la lectura ya
+   * está permitida por `(allow default)`; aquí se deniega además toda escritura.
+   */
+  extraFolders?: Array<{ path: string; mode: FolderAccessMode }>
+  /**
+   * Subcarpetas de `folder` donde SÍ se permite borrar/renombrar (scratch del agente).
+   * Por defecto `[join(folder, '.cowork')]`.
+   */
+  scratchDirs?: string[]
   home?: string
   /**
    * Puertos `localhost` a los que el servidor puede CONECTARSE (egress proxy, credential proxy).
@@ -200,7 +214,12 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   const home = opts.home ?? homedir()
   const folder = real(opts.folder)
   const priv = real(opts.privateDir)
-  const writable = [...new Set([folder, priv, ...defaultWritablePaths(), ...(opts.extraWritable ?? []).map(real)])]
+  const extras = (opts.extraFolders ?? []).map((e) => ({ path: real(e.path), mode: e.mode }))
+  const extraRw = [...new Set(extras.filter((e) => e.mode === 'rw').map((e) => e.path))]
+  const extraRo = [...new Set(extras.filter((e) => e.mode === 'ro').map((e) => e.path))]
+  const writable = [
+    ...new Set([folder, priv, ...defaultWritablePaths(), ...(opts.extraWritable ?? []).map(real), ...extraRw])
+  ]
   const denied = defaultDeniedReadPaths(home)
   const userData = opts.userData ? real(opts.userData) : null
   const readOnly = (opts.readOnly ?? []).map(real)
@@ -277,12 +296,45 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   // puerto local origen; sin esto el `connect()` del lado cliente falla al enlazar el socket).
   lines.push('(allow network-bind (local ip "localhost:*"))', '')
 
-  // ── Borrado: sin "Permitir borrar" para esta tarea, `unlink`/`rmdir`/`rename`-sobre-destino en
-  // la carpeta de trabajo se deniega a nivel de kernel (no solo con un patrón de bash evadible).
-  if (!opts.allowDelete) {
+  // ── Borrado y renombrado: sin "Permitir borrar, mover y renombrar", `unlink`/`rmdir` y `rename` (que
+  // comprueba `file-write-unlink` sobre el ORIGEN) se deniegan a nivel de kernel en la carpeta
+  // principal (no solo con un patrón de bash evadible). En las carpetas adicionales `rw` se deniegan
+  // SIEMPRE: la concesión solo vale para la principal.
+  // Una `rw` que CONTIENE a la principal no debe anular el permiso de borrado de la principal, y una
+  // `rw` dentro de la principal (si alguien la pasa) sigue sin poder borrarse: por eso, con
+  // `allowDelete`, se reabre el borrado en la principal y se vuelven a denegar las `rw` interiores.
+  const inside = (p: string, dir: string): boolean => p === dir || p.startsWith(dir + '/')
+  const rwOthers = extraRw.filter((p) => p !== folder)
+  const noUnlink = [...(opts.allowDelete ? [] : [folder]), ...rwOthers]
+  if (noUnlink.length) {
     lines.push(
-      ';; Borrado permanente NO concedido: unlink/rmdir denegados en la carpeta de la tarea.',
-      `(deny file-write-unlink (subpath ${sbString(folder)}))`,
+      ';; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).',
+      ...noUnlink.map((p) => `(deny file-write-unlink (subpath ${sbString(p)}))`),
+      ''
+    )
+  }
+  if (opts.allowDelete && rwOthers.some((p) => inside(folder, p))) {
+    lines.push(
+      ';; Borrado concedido en la principal aunque una carpeta rw adicional la contenga.',
+      `(allow file-write-unlink (subpath ${sbString(folder)}))`,
+      ...rwOthers.filter((p) => inside(p, folder)).map((p) => `(deny file-write-unlink (subpath ${sbString(p)}))`),
+      ''
+    )
+  }
+  // Scratch del agente: sí se puede borrar y renombrar (archivos temporales de conversión, etc.).
+  const scratch = (opts.scratchDirs ?? [join(folder, '.cowork')]).map((p) => sbString(p))
+  if (noUnlink.length && scratch.length) {
+    lines.push(
+      ';; Scratch (.cowork): borrar y renombrar permitido.',
+      ...scratch.map((p) => `(allow file-write-unlink (subpath ${p}))`),
+      ''
+    )
+  }
+  // Carpetas de solo lectura: al final, por si una `ro` está dentro de una carpeta escribible.
+  if (extraRo.length) {
+    lines.push(
+      ';; Carpetas adicionales de solo lectura: ninguna escritura (gana sobre las escribibles que las contengan).',
+      ...extraRo.map((p) => `(deny file-write* (subpath ${sbString(p)}))`),
       ''
     )
   }

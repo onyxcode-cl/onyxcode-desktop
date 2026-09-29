@@ -334,7 +334,8 @@ export function selectSessionsForDirectory(sessions: Record<string, Session>, di
       (s) =>
         s.directory === directory &&
         !s.parentID &&
-        !s.time.archived &&
+        // Archivada, salvo que se restaurara después (respaldo `metadata.unarchivedAt`).
+        !(s.time.archived && !(typeof s.metadata?.unarchivedAt === 'number' && s.metadata.unarchivedAt > s.time.archived)) &&
         (sessionSource[s.id] ?? MAIN_SOURCE) === source
     )
     .sort((a, b) => b.time.updated - a.time.updated)

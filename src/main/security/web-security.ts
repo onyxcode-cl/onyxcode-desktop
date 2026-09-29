@@ -14,6 +14,7 @@
  */
 import { app, Menu, session, shell, type WebContents } from 'electron'
 import { isTrustedUrl, originOf } from './app-protocol'
+import { isEmbeddedBrowserSession } from '../embedded-browser/session'
 
 /** Permisos que la UI usa: notificaciones de Cowork y botones "Copiar". */
 const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write'])
@@ -32,6 +33,11 @@ function allowedNavigation(url: string): boolean {
 }
 
 function harden(wc: WebContents): void {
+  // Superficie de navegación (Lote D): sus reglas viven en embedded-browser/surface.ts y session.ts,
+  // NUNCA en este endurecimiento global (bloquearía toda navegación de la pestaña). La exención es
+  // por identidad de objeto de sesión (`Set<Session>`, ver embedded-browser/session.ts), no por
+  // cadena: solo esas dos particiones quedan fuera de este endurecimiento.
+  if (isEmbeddedBrowserSession(wc.session)) return
   // Solo las ventanas de la app (sesión por defecto) abren enlaces en el navegador: un artifact
   // (partición propia, sin red por CSP) no debe poder sacar datos abriendo una URL externa.
   const mayOpenExternal = (): boolean => wc.session === session.defaultSession

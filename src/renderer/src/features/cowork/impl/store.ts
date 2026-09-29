@@ -6,22 +6,33 @@
 import { create } from 'zustand'
 import { createOpencodeClient, type PermissionRequest, type QuestionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
 import {
+  DEFAULT_COWORK_PREFS,
   FULL_ACCESS_NOT_GRANTED,
   type AccessRequest,
+  type AutoApprovalRecord,
+  type AutoModeState,
   type ComputerActionEvent,
   type ComputerKillState,
   type ComputerStatus,
+  type CoworkActivitySnapshot,
   type CoworkConnection,
   type CoworkDeliverable,
   type CoworkFolder,
+  type CoworkFolderSet,
   type CoworkMemory,
+  type CoworkPrefs,
   type CoworkProject,
+  type CoworkTaskMeta,
   type GrantsSnapshot,
+  type ManagedPolicy,
   type NetworkBlockedEvent
 } from '@shared/ipc-cowork'
+import { APP_NAME } from '@shared/brand'
+import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
-import { useSessions } from '../../../stores/sessions'
+import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
+import { resolveModelForMode, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onCowork } from './bridge'
 
 export type CoworkServerPhase = 'idle' | 'starting' | 'ready' | 'error'
@@ -54,7 +65,7 @@ interface CoworkState {
   listLoading: boolean
   /** Modo de acceso solicitado para la carpeta actual (persistido por carpeta). */
   fullAccess: boolean
-  /** Carpeta cuyo cambio a "Acceso total" espera confirmación. */
+  /** Carpeta cuyo cambio a Control total espera confirmación. */
   pendingFullAccess: string | null
   /** Último estado de `computer:status` (null = sin comprobar). */
   computerStatus: ComputerStatus | null
@@ -93,6 +104,38 @@ interface CoworkState {
   /** "Permitir borrar" de la carpeta actual (`cowork:deleteGrant:get`; null = aún sin cargar). */
   deleteGrant: boolean | null
   deleteGrantBusy: boolean
+  /** Tareas (id de sesión raíz) con el plan aprobado en Control total (`computer:planState`). */
+  approvedPlans: Record<string, true>
+  /** Tareas activas y servidores de TODAS las carpetas (monitor de main, evento `cowork:activity`). */
+  activity: CoworkActivitySnapshot | null
+  /** Metadatos persistidos en main por id de sesión (fijada, grupo, título, carpeta y modo). */
+  taskMeta: Record<string, CoworkTaskMeta>
+  /** Carpetas principal / vinculadas / de confianza de la carpeta actual (null = sin cargar). */
+  folderSet: CoworkFolderSet | null
+  /** Modelo elegido para la tarea (null = el del modo Cowork, ver `currentCoworkModel`). */
+  taskModel: ModelRef | null
+  /** Esfuerzo (variante) elegido para la tarea (null = el predeterminado del modelo). */
+  taskVariant: string | null
+  /** Preferencias de Cowork (null = sin cargar; usar `DEFAULT_COWORK_PREFS`). */
+  prefs: CoworkPrefs | null
+  /** Política gestionada por la organización (null = ninguna o sin cargar). */
+  policy: ManagedPolicy | null
+  /** Consulta lateral abierta: tarea principal y su sesión hija (null hasta el primer mensaje). */
+  sideChat: { taskId: string; sessionId: string | null } | null
+  /** La lista de la carpeta muestra las tareas archivadas. */
+  showArchived: boolean
+
+  /** Lote C: estado del Modo auto (null = sin cargar; usar como apagado). */
+  autoMode: AutoModeState | null
+  /**
+   * Ids de peticiones de permiso (`permission.asked`) que el Modo auto está considerando ahora
+   * mismo (vía rápida, `cowork:auto:consider`): mientras están aquí, `PermissionPrompt` oculta su
+   * tarjeta (se resuelve solo, sin que el usuario tenga que tocar nada) o, si el Modo auto no la
+   * aprueba, vuelve a aparecer.
+   */
+  autoPending: Record<string, true>
+  /** Último aviso "Aprobado por el modo auto: …" (evento `cowork:auto:approved`), para un toast. */
+  autoApprovedNotice: AutoApprovalRecord | null
 
   set: (patch: Partial<CoworkState>) => void
 }
@@ -115,6 +158,20 @@ function writePinned(map: Record<string, true>): void {
   } catch {
     // sin storage
   }
+}
+
+/** Fijadas del formato antiguo (localStorage) que aún no se han migrado a main. */
+let legacyPinned: Record<string, true> = readPinned()
+
+/** `pinned` derivado: fijadas de `taskMeta` más las antiguas todavía sin migrar. */
+function derivePinned(taskMeta: Record<string, CoworkTaskMeta>): Record<string, true> {
+  const pinned: Record<string, true> = { ...legacyPinned }
+  for (const m of Object.values(taskMeta)) {
+    if (m.pinned) pinned[m.sessionId] = true
+    // Una tarea con metadatos de main que no está fijada manda sobre la lista antigua.
+    else delete pinned[m.sessionId]
+  }
+  return pinned
 }
 
 const PANEL_KEY = 'cowork.panelOpen'
@@ -171,11 +228,29 @@ export const useCowork = create<CoworkState>((set) => ({
   networkBlocked: {},
   deleteGrant: null,
   deleteGrantBusy: false,
+  approvedPlans: {},
+  activity: null,
+  taskMeta: {},
+  folderSet: null,
+  taskModel: null,
+  taskVariant: null,
+  prefs: null,
+  policy: null,
+  sideChat: null,
+  showArchived: false,
+  autoMode: null,
+  autoPending: {},
+  autoApprovedNotice: null,
   set: (patch) => set(patch)
 }))
 
 export function setProjectPanelOpen(open: boolean): void {
   useCowork.setState({ projectPanelOpen: open })
+  // Al abrir el panel se relee la memoria: el agente pudo escribir `.lapis/memoria.md` mientras estaba cerrado.
+  if (open) {
+    const { folder } = useCowork.getState()
+    if (folder) void loadProjectAndMemory(folder)
+  }
 }
 
 /** Carga proyecto + memoria de la carpeta actual (no bloquea la conexión si falla). */
@@ -265,18 +340,146 @@ export function dismissNetworkBlocked(taskId: string, host: string): void {
   })
 }
 
-/** Fija/desfija una tarea en la barra lateral (persistido; no depende del servidor). */
+/** Fija/desfija una tarea en la barra lateral (persistido en main con `cowork:tasks:setMeta`). */
 export function togglePinned(sessionID: string): void {
-  const current = useCowork.getState().pinned
-  const pinned = { ...current }
-  if (pinned[sessionID]) delete pinned[sessionID]
-  else pinned[sessionID] = true
-  writePinned(pinned)
-  useCowork.setState({ pinned })
+  void setTaskMeta(sessionID, { pinned: !isPinned(sessionID) })
 }
 
 export function isPinned(sessionID: string): boolean {
   return !!useCowork.getState().pinned[sessionID]
+}
+
+// ── Metadatos de tareas (fijadas, grupos) ──
+
+/** Carpeta y modo de una tarea: de su sesión / metadatos, o de la conexión actual. null = desconocida. */
+function taskOrigin(sessionId: string): { folder: string; fullAccess: boolean } | null {
+  const st = useCowork.getState()
+  const meta = st.taskMeta[sessionId]
+  const folder = useSessions.getState().sessions[sessionId]?.directory ?? meta?.folder ?? st.folder
+  if (!folder) return null
+  return { folder, fullAccess: meta ? meta.fullAccess : (st.conn?.fullAccess ?? false) }
+}
+
+/**
+ * Cambia fijada / grupo / título de una tarea en main (`cowork:tasks:setMeta`). Actualización
+ * optimista: si main falla se restaura el valor anterior y se muestra el error.
+ */
+export async function setTaskMeta(
+  sessionId: string,
+  patch: { pinned?: boolean; group?: string | null; title?: string }
+): Promise<void> {
+  const origin = taskOrigin(sessionId)
+  if (!origin) return
+  const prev = useCowork.getState().taskMeta[sessionId]
+  const title = (patch.title ?? prev?.title ?? useSessions.getState().sessions[sessionId]?.title ?? '').slice(0, 500)
+  const optimistic: CoworkTaskMeta = {
+    sessionId,
+    folder: origin.folder,
+    fullAccess: origin.fullAccess,
+    title,
+    pinned: patch.pinned ?? prev?.pinned,
+    group: patch.group !== undefined ? patch.group : prev?.group,
+    updatedAt: Date.now()
+  }
+  const apply = (meta: CoworkTaskMeta | undefined): void =>
+    useCowork.setState((s) => {
+      const taskMeta = { ...s.taskMeta }
+      if (meta) taskMeta[sessionId] = meta
+      else delete taskMeta[sessionId]
+      return { taskMeta, pinned: derivePinned(taskMeta) }
+    })
+  apply(optimistic)
+  try {
+    const saved = await cw('cowork:tasks:setMeta', {
+      sessionId,
+      folder: origin.folder,
+      fullAccess: origin.fullAccess,
+      ...(title ? { title } : {}),
+      ...(patch.pinned !== undefined ? { pinned: patch.pinned } : {}),
+      ...(patch.group !== undefined ? { group: patch.group } : {})
+    })
+    apply(saved)
+  } catch (err) {
+    apply(prev)
+    useCowork.setState({ error: errorMessage(err) })
+  }
+}
+
+/** Quita los metadatos de una tarea borrada (main y estado local). */
+export function forgetTaskMeta(sessionId: string): void {
+  useCowork.setState((s) => {
+    if (!s.taskMeta[sessionId] && !s.pinned[sessionId]) return s
+    const taskMeta = { ...s.taskMeta }
+    delete taskMeta[sessionId]
+    delete legacyPinned[sessionId]
+    return { taskMeta, pinned: derivePinned(taskMeta) }
+  })
+  void cw('cowork:tasks:forget', { sessionId }).catch(() => undefined)
+}
+
+let legacyMigrating = false
+
+/**
+ * Migra UNA vez las fijadas de localStorage (`cowork.pinned`) a main. Solo se migran las tareas cuya
+ * carpeta se conoce (las de la conexión actual); el resto queda pendiente hasta que se conecte su
+ * carpeta. Cuando no queda ninguna pendiente se borra la clave antigua.
+ */
+async function migrateLegacyPinned(): Promise<void> {
+  if (legacyMigrating || Object.keys(legacyPinned).length === 0) return
+  const { conn, taskMeta } = useCowork.getState()
+  if (!conn) return
+  legacyMigrating = true
+  try {
+    const { sessions, sessionSource } = useSessions.getState()
+    for (const id of Object.keys(legacyPinned)) {
+      if (taskMeta[id]) {
+        delete legacyPinned[id] // main ya la conoce
+        continue
+      }
+      const sess = sessions[id]
+      if (!sess || sessionSource[id] !== conn.baseUrl || sess.directory !== conn.folder) continue
+      try {
+        const saved = await cw('cowork:tasks:setMeta', {
+          sessionId: id,
+          folder: conn.folder,
+          fullAccess: conn.fullAccess,
+          title: (sess.title || '').slice(0, 500),
+          pinned: true
+        })
+        delete legacyPinned[id]
+        useCowork.setState((s) => {
+          const next = { ...s.taskMeta, [id]: saved }
+          return { taskMeta: next, pinned: derivePinned(next) }
+        })
+      } catch {
+        // main no disponible: se reintenta en la próxima carga
+      }
+    }
+    if (Object.keys(legacyPinned).length === 0) {
+      try {
+        localStorage.removeItem(PINNED_KEY)
+      } catch {
+        // sin storage
+      }
+    } else {
+      writePinned(legacyPinned)
+    }
+  } finally {
+    legacyMigrating = false
+  }
+}
+
+/** Carga los metadatos de tareas de main y migra las fijadas antiguas. */
+export async function loadTaskMetas(): Promise<void> {
+  try {
+    const list = await cw('cowork:tasks:list')
+    const taskMeta: Record<string, CoworkTaskMeta> = {}
+    for (const m of list) taskMeta[m.sessionId] = m
+    useCowork.setState({ taskMeta, pinned: derivePinned(taskMeta) })
+  } catch {
+    return // sin puente o main aún sin implementar: se conserva lo local
+  }
+  await migrateLegacyPinned()
 }
 
 /** Marca una tarea como no leída a propósito (acción manual, además del "unseen" automático). */
@@ -316,7 +519,7 @@ function readFullAccessMap(): Record<string, boolean> {
   }
 }
 
-/** ¿El usuario eligió "Acceso total + control del Mac" para esta carpeta? */
+/** ¿El usuario eligió Control total del Mac para esta carpeta? */
 export function fullAccessFor(folder: string): boolean {
   return readFullAccessMap()[folder] === true
 }
@@ -362,15 +565,18 @@ export async function refreshDeliverables(sessionID?: string): Promise<void> {
 
 /**
  * Notificación nativa (proceso principal, ver `lib/notify.ts`): un clic restaura/enfoca la
- * ventana y reenvía `app:openTarget` (mode 'cowork', id de la tarea raíz), que `App.tsx` usa para
- * cambiar de modo y seleccionar la tarea.
+ * ventana y reenvía `app:openTarget` (mode 'cowork', id de la tarea raíz, modo de acceso), que
+ * `App.tsx` usa para cambiar de modo y seleccionar la tarea. Respeta `prefs.notify` por tipo.
  */
-function notifyTask(sessionID: string, title: string, body: string): void {
-  const folder = useCowork.getState().folder ?? undefined
-  sendNotification(title, body, { mode: 'cowork', id: sessionID, directory: folder })
+export type CoworkNotifyKind = 'done' | 'error' | 'approval' | 'question'
+
+export function notifyTask(sessionID: string, kind: CoworkNotifyKind, title: string, body: string): void {
+  const { folder, conn, prefs } = useCowork.getState()
+  if (!(prefs?.notify ?? DEFAULT_COWORK_PREFS.notify)[kind]) return
+  sendNotification(title, body, { mode: 'cowork', id: sessionID, directory: folder ?? undefined, fullAccess: conn?.fullAccess === true })
 }
 
-function rootTaskId(sessionID: string): string {
+export function rootTaskId(sessionID: string): string {
   const sessions = useSessions.getState().sessions
   let id = sessionID
   for (let i = 0; i < 5; i++) {
@@ -412,14 +618,17 @@ function handleEvent(event: OcEvent, directory: string): void {
         useCowork.setState((s) => ({ unseen: { ...s.unseen, [id]: true } }))
       }
       const failed = useSessions.getState().errors[id]
-      notifyTask(id, failed ? 'La tarea terminó con un error' : 'Tarea terminada', taskTitle(id))
+      notifyTask(id, failed ? 'error' : 'done', failed ? 'La tarea terminó con un error' : 'Tarea terminada', taskTitle(id))
+      // El agente pudo guardar memoria (`.lapis/memoria.md`): si el panel está cerrado se relee; si está
+      // abierto no se pisa lo que el usuario esté editando.
+      if (!st.projectPanelOpen) void loadProjectAndMemory(st.folder)
     }
   } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'Cowork necesita tu aprobación', taskTitle(id))
+    notifyTask(id, 'approval', 'Cowork necesita tu aprobación', taskTitle(id))
   } else if (event.type === 'question.asked' && !st.questions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'Cowork tiene una pregunta para ti', taskTitle(id))
+    notifyTask(id, 'question', 'Cowork tiene una pregunta para ti', taskTitle(id))
   }
   switch (event.type) {
     case 'todo.updated':
@@ -427,12 +636,15 @@ function handleEvent(event: OcEvent, directory: string): void {
       break
     case 'permission.asked':
       useCowork.setState((s) => ({ permissions: { ...s.permissions, [event.properties.id]: event.properties } }))
+      maybeAutoConsider(event.properties)
       break
     case 'permission.replied':
       useCowork.setState((s) => {
         const permissions = { ...s.permissions }
         delete permissions[event.properties.requestID]
-        return { permissions }
+        const autoPending = { ...s.autoPending }
+        delete autoPending[event.properties.requestID]
+        return { permissions, autoPending }
       })
       break
     case 'question.asked':
@@ -477,12 +689,35 @@ function handleEvent(event: OcEvent, directory: string): void {
 }
 
 /**
- * Conecta con el servidor de la carpeta (sandboxeado, o de acceso total si así se eligió)
+ * Quita de `useSessions.status` los estados de sesiones de OTROS servidores de Cowork (su stream ya
+ * no está abierto). Las sesiones de Chat/Code (origen principal) no se tocan.
+ */
+function purgeForeignCoworkStatus(): void {
+  const { status, sessionSource } = useSessions.getState()
+  let changed = false
+  const next: typeof status = {}
+  for (const [id, run] of Object.entries(status)) {
+    const src = sessionSource[id]
+    if (src && src !== MAIN_SOURCE) {
+      changed = true
+      continue
+    }
+    next[id] = run
+  }
+  if (changed) useSessions.setState({ status: next })
+}
+
+/**
+ * Conecta con el servidor de la carpeta (sandboxeado, o de Control total si así se eligió)
  * y abre su stream de eventos. `fullAccess` por defecto = preferencia guardada de la carpeta.
  */
 export async function connectFolder(folder: string, fullAccess = fullAccessFor(folder)): Promise<void> {
   stopStream?.()
   stopStream = null
+  // Ya no llegan eventos de los demás servidores de Cowork: sus estados `busy` quedarían congelados
+  // (y mantendrían el Mac despierto). El estado de fondo lo da el monitor de main (`activity`).
+  purgeForeignCoworkStatus()
+  syncActivity()
   useCowork.setState({
     folder,
     fullAccess,
@@ -503,7 +738,11 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     project: null,
     memory: null,
     networkBlocked: {},
-    deleteGrant: null
+    deleteGrant: null,
+    folderSet: null,
+    taskModel: null,
+    taskVariant: null,
+    sideChat: null
   })
   try {
     const conn = await cw('cowork:start', { folder, fullAccess })
@@ -515,6 +754,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     useCowork.setState({ folder: conn.folder, conn, client, phase: 'ready' })
     void loadProjectAndMemory(conn.folder)
     void loadDeleteGrant(conn.folder)
+    void loadFolderSet(conn.folder)
     if (conn.fullAccess) {
       void refreshComputerStatus()
       void syncKillState()
@@ -529,7 +769,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     await resync()
   } catch (err) {
     const now = useCowork.getState()
-    // Preferencia local de acceso total sin consentimiento registrado en main: volver a sandbox.
+    // Preferencia local de Control total sin consentimiento registrado en main: volver a sandbox.
     if (fullAccess && now.folder === folder && errorMessage(err).includes(FULL_ACCESS_NOT_GRANTED)) {
       rememberFullAccess(folder, false)
       return connectFolder(folder, false)
@@ -539,48 +779,55 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
 }
 
 // ── Sesión de control del Mac (overlay + píldora del proceso principal) ──
-let computerSessionActive = false
+let computerSessionKey = 'false||'
 
-/** Activa/desactiva `computer:session` según haya tareas de acceso total trabajando. */
+/** Activa/desactiva `computer:session` según haya tareas de Control total trabajando. */
 function syncComputerSession(): void {
-  const { conn, folder } = useCowork.getState()
+  const { conn, folder, questions } = useCowork.getState()
   const { status, sessions, sessionSource } = useSessions.getState()
   let label: string | undefined
+  let sessionId: string | undefined
   let active = false
   if (conn?.fullAccess && folder) {
     for (const id of Object.keys(status)) {
       const sess = sessions[id]
       if (status[id] !== 'idle' && sess?.directory === folder && !sess.parentID && sessionSource[id] === conn.baseUrl) {
         active = true
-        label = sess.title || undefined
+        sessionId = id
+        // Si la tarea espera una respuesta tuya (`question`), la píldora lo dice en vez del título.
+        const asking = Object.values(questions).some((q) => rootTaskId(q.sessionID) === id)
+        label = asking ? `Tiene una pregunta para ti — responde en ${APP_NAME}` : sess.title || undefined
         break
       }
     }
   }
-  if (active === computerSessionActive) return
-  computerSessionActive = active
-  cw('computer:session', active ? { active, label } : { active }).catch(() => undefined)
+  const key = `${active}|${sessionId ?? ''}|${label ?? ''}`
+  if (key === computerSessionKey) return
+  computerSessionKey = key
+  cw('computer:session', active ? { active, label, sessionId } : { active }).catch(() => undefined)
 }
 
 useSessions.subscribe((s, prev) => {
   if (s.status !== prev.status) syncComputerSession()
 })
 useCowork.subscribe((s, prev) => {
-  if (s.conn !== prev.conn || s.folder !== prev.folder) syncComputerSession()
+  if (s.conn !== prev.conn || s.folder !== prev.folder || s.questions !== prev.questions) syncComputerSession()
 })
 
 // ── Mantener el Mac despierto (powerSaveBlocker en main) mientras haya tareas en curso ──
 let keepAwakeActive = false
 
-/** true si alguna tarea (en cualquier carpeta de Cowork conocida) está corriendo o reintentando. */
+/**
+ * true si alguna tarea del servidor actualmente conectado está corriendo o reintentando. Solo cuenta el
+ * origen actual: el resto lo cubre el monitor de main, que hace el OR con esta señal.
+ */
 function anyCoworkTaskRunning(): boolean {
-  const { folders } = useCowork.getState()
-  if (folders.length === 0) return false
-  const known = new Set(folders.map((f) => f.path))
-  const { status, sessions } = useSessions.getState()
+  const conn = useCowork.getState().conn
+  if (!conn) return false
+  const { status, sessionSource } = useSessions.getState()
   for (const id of Object.keys(status)) {
     const st = status[id]
-    if ((st === 'busy' || st === 'retry') && known.has(sessions[id]?.directory ?? '')) return true
+    if ((st === 'busy' || st === 'retry') && sessionSource[id] === conn.baseUrl) return true
   }
   return false
 }
@@ -596,12 +843,13 @@ useSessions.subscribe((s, prev) => {
   if (s.status !== prev.status) syncKeepAwake()
 })
 useCowork.subscribe((s, prev) => {
-  if (s.folders !== prev.folders) syncKeepAwake()
+  if (s.conn !== prev.conn) syncKeepAwake()
 })
 
 export function disconnect(): void {
   stopStream?.()
   stopStream = null
+  purgeForeignCoworkStatus()
   useCowork.setState({ conn: null, client: null, phase: 'idle', streaming: false })
 }
 
@@ -612,6 +860,8 @@ export async function resync(): Promise<void> {
   useCowork.setState({ listLoading: true })
   try {
     await useSessions.getState().loadSessions(client, folder, useCowork.getState().conn?.baseUrl)
+    await syncRunStatus(client, folder)
+    void migrateLegacyPinned()
     const perms = await client.permission.list({ directory: folder })
     const permissions: Record<string, PermissionRequest> = {}
     for (const p of perms.data ?? []) permissions[p.id] = p
@@ -626,6 +876,40 @@ export async function resync(): Promise<void> {
   } finally {
     useCowork.setState({ listLoading: false })
   }
+}
+
+/**
+ * Lee `session.status` del servidor y lo vuelca en `useSessions.status` (al conectar/reconectar hay
+ * tareas que ya estaban trabajando y de las que no llegó ningún evento).
+ */
+async function syncRunStatus(client: OpencodeClient, folder: string): Promise<void> {
+  const baseUrl = useCowork.getState().conn?.baseUrl
+  if (!baseUrl) return
+  const res = await client.session.status({ directory: folder }).catch(() => null)
+  const data = res?.data
+  if (!data) return
+  const { sessions, sessionSource, status } = useSessions.getState()
+  const next = { ...status }
+  let changed = false
+  const busy = (id: string): 'busy' | 'retry' | null => {
+    const t = data[id]?.type
+    return t === 'busy' || t === 'retry' ? t : null
+  }
+  for (const id of Object.keys(data)) {
+    const run = busy(id)
+    if (run && next[id] !== run) {
+      next[id] = run
+      changed = true
+    }
+  }
+  for (const [id, s] of Object.entries(sessions)) {
+    if (s.directory !== folder || sessionSource[id] !== baseUrl) continue
+    if (!busy(id) && next[id] && next[id] !== 'idle') {
+      next[id] = 'idle'
+      changed = true
+    }
+  }
+  if (changed) useSessions.setState({ status: next })
 }
 
 export async function loadTask(sessionID: string): Promise<void> {
@@ -672,11 +956,43 @@ export async function syncKillState(): Promise<void> {
 
 let accessRequestListening = false
 
-/** Se suscribe (una vez) a las tarjetas `request_access` del agente, en cualquier vista. */
+/**
+ * Se suscribe (una vez) a las tarjetas `request_access` del agente y a su resolución (también desde la
+ * píldora: `computer:accessResolved` cierra la tarjeta de la ventana), y al estado de aprobación del
+ * plan por tarea (`computer:planState`), en cualquier vista.
+ */
 export function syncAccessRequests(): void {
   if (accessRequestListening) return
   accessRequestListening = true
+  // Ids con evento `planState` recibido durante la carga inicial: mandan sobre la lista cargada.
+  const touched = new Set<string>()
+  let loaded = false
   onCowork('computer:accessRequest', (req) => useCowork.setState({ accessRequest: req }))
+  onCowork('computer:accessResolved', ({ id }) => {
+    if (useCowork.getState().accessRequest?.id === id) useCowork.setState({ accessRequest: null })
+  })
+  onCowork('computer:planState', ({ sessionId, approved }) => {
+    if (!loaded) touched.add(sessionId)
+    useCowork.setState((s) => {
+      if (!!s.approvedPlans[sessionId] === approved) return s
+      const approvedPlans = { ...s.approvedPlans }
+      if (approved) approvedPlans[sessionId] = true
+      else delete approvedPlans[sessionId]
+      return { approvedPlans }
+    })
+  })
+  cw('computer:approvedPlans')
+    .then((ids) => {
+      useCowork.setState((s) => {
+        const approvedPlans = { ...s.approvedPlans }
+        for (const id of ids) if (!touched.has(id)) approvedPlans[id] = true
+        return { approvedPlans }
+      })
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      loaded = true
+    })
 }
 
 /** Carga la lista de apps concedidas/denegadas (pantalla de permisos). */
@@ -686,6 +1002,87 @@ export async function loadGrants(): Promise<void> {
   } catch {
     // sin puente: nada que cargar
   }
+}
+
+// ── Lote C: Modo auto (vía rápida desde `permission.asked` + estado para Ajustes/AutoModeChip) ──
+
+/** true si `folder`/la raíz de `sessionID` tienen el Modo auto activo (maestro + carpeta o tarea). */
+function isAutoActiveFor(folder: string, sessionID: string): boolean {
+  const settings = useCowork.getState().autoMode?.settings
+  if (!settings?.enabled) return false
+  if (settings.folders.includes(folder)) return true
+  return settings.tasks.includes(rootTaskId(sessionID))
+}
+
+/** ¿El Modo auto está activo para la carpeta/tarea actuales? (usado por `AutoModeChip`). */
+export function isAutoActiveForCurrent(): boolean {
+  const { folder, activeTaskId } = useCowork.getState()
+  if (!folder) return false
+  return isAutoActiveFor(folder, activeTaskId ?? folder)
+}
+
+/**
+ * Vía rápida: ante un `permission.asked` con el Modo auto activo para esa carpeta/tarea, oculta la
+ * tarjeta (`autoPending`) y le pide a main que la considere (`cowork:auto:consider`). Si no la
+ * aprueba, la tarjeta vuelve a aparecer con normalidad.
+ */
+function maybeAutoConsider(perm: PermissionRequest): void {
+  const { folder, conn } = useCowork.getState()
+  if (!folder || !conn) return
+  if (!isAutoActiveFor(folder, perm.sessionID)) return
+  useCowork.setState((s) => ({ autoPending: { ...s.autoPending, [perm.id]: true } }))
+  const clear = (): void =>
+    useCowork.setState((s) => {
+      if (!s.autoPending[perm.id]) return s
+      const autoPending = { ...s.autoPending }
+      delete autoPending[perm.id]
+      return { autoPending }
+    })
+  cw('cowork:auto:consider', { folder, fullAccess: conn.fullAccess, requestId: perm.id })
+    .then((r) => {
+      if (!r.auto) clear()
+    })
+    .catch(() => clear())
+}
+
+/** Carga el estado del Modo auto (ajustes + registro) desde main. */
+export async function loadAutoMode(): Promise<void> {
+  try {
+    useCowork.setState({ autoMode: await cw('cowork:auto:state') })
+  } catch {
+    // sin puente: se conserva null (equivale a apagado)
+  }
+}
+
+let autoModeSynced = false
+
+/** Suscripción única (cualquier vista) al aviso "Aprobado por el modo auto: …" + carga inicial. */
+export function syncAutoMode(): void {
+  if (autoModeSynced) return
+  autoModeSynced = true
+  onCowork('cowork:auto:approved', (rec) => {
+    useCowork.setState((s) => ({
+      autoMode: s.autoMode ? { ...s.autoMode, log: [...s.autoMode.log, rec] } : s.autoMode,
+      autoApprovedNotice: rec
+    }))
+  })
+  void loadAutoMode()
+}
+
+/** Descarta el aviso "Aprobado por el modo auto: …" (p.ej. tras mostrarlo unos segundos). */
+export function dismissAutoApprovedNotice(): void {
+  useCowork.setState((s) => (s.autoApprovedNotice ? { autoApprovedNotice: null } : s))
+}
+
+/** Cambia los ajustes del Modo auto (interruptor maestro, carpeta, tarea o lista de apps). */
+export async function setAutoModeSettings(req: {
+  enabled?: boolean
+  folder?: { path: string; on: boolean }
+  task?: { sessionId: string; on: boolean }
+  viewApps?: string[]
+}): Promise<void> {
+  const autoMode = await cw('cowork:auto:set', req)
+  useCowork.setState({ autoMode })
 }
 
 /**
@@ -710,4 +1107,123 @@ export async function refreshComputerStatus(): Promise<void> {
   } finally {
     useCowork.setState({ computerChecking: false })
   }
+}
+
+// ── Estado nuevo del Lote B: actividad, carpetas, preferencias, política y modelo ──
+
+let activitySynced = false
+let viewingKey = ''
+
+/** Avisa a main qué servidor se está mirando (no se notifica lo que el usuario ya ve). */
+function reportViewing(): void {
+  const { conn } = useCowork.getState()
+  const key = conn ? `${conn.folder}|${conn.fullAccess}` : ''
+  if (key === viewingKey) return
+  viewingKey = key
+  cw('cowork:viewing', conn ? { folder: conn.folder, fullAccess: conn.fullAccess } : { folder: null }).catch(() => undefined)
+}
+
+/**
+ * Suscripción única a `cowork:activity` (tareas y servidores de todas las carpetas) + carga inicial de
+ * actividad, metadatos de tareas, preferencias y política. También reporta `cowork:viewing` cada vez
+ * que cambia la conexión. Idempotente: `connectFolder` la llama y puede llamarse desde cualquier vista.
+ */
+export function syncActivity(): void {
+  if (activitySynced) return
+  activitySynced = true
+  onCowork('cowork:activity', (activity) => useCowork.setState({ activity }))
+  cw('cowork:activity')
+    .then((snap) => {
+      // Un evento más reciente que la respuesta inicial manda.
+      if ((useCowork.getState().activity?.at ?? 0) < snap.at) useCowork.setState({ activity: snap })
+    })
+    .catch(() => undefined)
+  void loadTaskMetas()
+  void loadCoworkPrefs()
+  void loadPolicy()
+  syncAutoMode()
+  useCowork.subscribe((s, prev) => {
+    if (s.conn !== prev.conn) reportViewing()
+  })
+  reportViewing()
+}
+
+/** Carga carpeta principal, vinculadas y de confianza de `folder` (y si el servidor ya las aplicó). */
+export async function loadFolderSet(folder: string): Promise<void> {
+  try {
+    const folderSet = await cw('cowork:folders:get', { folder })
+    if (useCowork.getState().folder === folder) useCowork.setState({ folderSet })
+  } catch {
+    if (useCowork.getState().folder === folder) useCowork.setState({ folderSet: null })
+  }
+}
+
+export async function loadCoworkPrefs(): Promise<void> {
+  try {
+    useCowork.setState({ prefs: await cw('cowork:prefs:get') })
+  } catch {
+    // sin puente: se usan los valores por defecto
+  }
+}
+
+export async function saveCoworkPrefs(patch: Partial<CoworkPrefs>): Promise<void> {
+  const req: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<CoworkPrefs['notify']> } = {}
+  if (patch.autoArchiveDays !== undefined) req.autoArchiveDays = patch.autoArchiveDays
+  if (patch.idleStopMinutes !== undefined) req.idleStopMinutes = patch.idleStopMinutes
+  if (patch.maxServers !== undefined) req.maxServers = patch.maxServers
+  if (patch.notify !== undefined) req.notify = patch.notify
+  const prefs = await cw('cowork:prefs:set', req)
+  useCowork.setState({ prefs })
+}
+
+export async function loadPolicy(): Promise<void> {
+  try {
+    useCowork.setState({ policy: await cw('cowork:policy') })
+  } catch {
+    // sin puente: sin política
+  }
+}
+
+/** Modelo de la tarea: el elegido para ella o, si no hay, el configurado para el modo Cowork. */
+export function currentCoworkModel(): ModelRef {
+  return useCowork.getState().taskModel ?? resolveModelForMode('cowork')
+}
+
+/** Esfuerzo (variante) elegido para la tarea; undefined = el predeterminado del modelo. */
+export function currentCoworkVariant(): string | undefined {
+  return useCowork.getState().taskVariant ?? undefined
+}
+
+/**
+ * Elige el modelo de la tarea y lo recuerda como modelo del modo Cowork (`modelsByMode.cowork`).
+ * NUNCA toca `settings.defaultModel` (es el de Chat). Si cambia de modelo, se descarta el esfuerzo.
+ */
+export function setTaskModel(m: ModelRef): void {
+  const cur = useCowork.getState().taskModel
+  const changed = !cur || cur.providerID !== m.providerID || cur.modelID !== m.modelID
+  useCowork.setState((s) => ({ taskModel: m, taskVariant: changed ? null : s.taskVariant }))
+  try {
+    const extras = useExtrasPrefs.getState()
+    void extras.update({ modelsByMode: { ...extras.prefs.modelsByMode, cowork: m } }).catch(() => undefined)
+  } catch {
+    // sin puente "extras": el modelo vale solo para esta sesión de la app
+  }
+}
+
+export function setTaskVariant(v: string | null): void {
+  useCowork.setState({ taskVariant: v })
+}
+
+/** ¿La tarea está usando el Mac ahora? (Control total, corriendo y con una acción de hace < 15 s.) */
+export function isUsingComputer(taskId: string): boolean {
+  const { conn, lastAction } = useCowork.getState()
+  if (!conn?.fullAccess || !lastAction) return false
+  const run = useSessions.getState().status[taskId]
+  return !!run && run !== 'idle' && Date.now() - lastAction.at < 15_000
+}
+
+/** ¿Hay un plan esperando la aprobación del usuario para esta tarea? */
+export function isPlanPending(taskId: string): boolean {
+  const req = useCowork.getState().accessRequest
+  return !!req?.plan && req.sessionId === taskId
 }

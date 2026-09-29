@@ -159,6 +159,11 @@ export class ComputerGrantsStore {
     return this.data.denied.includes(bundleId)
   }
 
+  /**
+   * Fija el nivel de una app (sobrescribe, sin comparar con el anterior) y la saca de denegadas.
+   * Las tarjetas `request_access` NO deben bajar un nivel: `service.resolveAccessRequest` calcula
+   * `maxTier(tierFor(b), decisión)` ANTES de llamar aquí; bajar solo es posible desde Ajustes.
+   */
   grant(bundleId: string, name: string, tier: AppTier): AppGrant {
     this.load()
     this.data.denied = this.data.denied.filter((d) => d !== bundleId)
@@ -175,6 +180,10 @@ export class ComputerGrantsStore {
     this.persist()
   }
 
+  /**
+   * Borra la concesión y la mete en denegadas. Solo lo dispara una decisión EXPLÍCITA "Denegar" por
+   * app (o Ajustes): cancelar una tarjeta (Esc, ✕, "Cancelar") NUNCA llama aquí ni toca concesiones.
+   */
   deny(bundleId: string): void {
     this.load()
     delete this.data.grants[bundleId]

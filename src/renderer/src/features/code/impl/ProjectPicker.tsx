@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, FolderCode, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { PageHeader } from '../../../components/PageHeader'
 import { useSettings } from '../../../stores/settings'
 import { errorMessage, getCodeApi, nativeCode, useClient } from './client'
 import { useCode } from './store'
@@ -301,70 +302,71 @@ export function ProjectPicker(): React.JSX.Element {
   const list = recent.filter((d) => !query.trim() || d.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 12)
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div className="flex h-full flex-col">
       <TrustGate />
-      <div className="drag h-10 shrink-0" />
-      <div className="mx-auto w-full max-w-4xl px-8 pb-10">
-        <div className="flex items-end gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Proyectos</h1>
-            <p className="mt-1 text-sm text-muted">Elige un proyecto para trabajar con el agente sobre su código.</p>
-          </div>
-          <Button variant="primary" disabled={busy} onClick={open} className="shrink-0">
+      <PageHeader
+        title="Proyectos"
+        actions={
+          <Button variant="primary" disabled={busy} onClick={open}>
             <FolderOpen size={15} /> Abrir carpeta
           </Button>
-        </div>
-        {globalError && <div className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{globalError}</div>}
+        }
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-4xl px-8 pt-8 pb-10">
+          <p className="text-sm text-muted">Elige un proyecto para trabajar con el agente sobre su código.</p>
+          {globalError && <div className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{globalError}</div>}
 
-        {recent.length === 0 ? (
-          <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-border-strong px-6 py-14 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-              <FolderCode size={24} />
+          {recent.length === 0 ? (
+            <div className="mt-16 flex flex-col items-center px-6 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
+                <FolderCode size={24} />
+              </div>
+              <h2 className="text-lg font-semibold">Aún no has abierto ningún proyecto</h2>
+              <p className="mt-1 max-w-sm text-sm text-muted">
+                Abre la carpeta de un repositorio y el agente podrá leer el código, proponer planes, editar archivos y ejecutar comandos con tu permiso.
+              </p>
+              <Button variant="primary" className="mt-5" disabled={busy} onClick={open}>
+                <FolderOpen size={15} /> Abrir carpeta…
+              </Button>
             </div>
-            <h2 className="text-lg font-semibold">Aún no has abierto ningún proyecto</h2>
-            <p className="mt-1 max-w-sm text-sm text-muted">
-              Abre la carpeta de un repositorio y el agente podrá leer el código, proponer planes, editar archivos y ejecutar comandos con tu permiso.
-            </p>
-            <Button variant="primary" className="mt-5" disabled={busy} onClick={open}>
-              <FolderOpen size={15} /> Abrir carpeta…
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="mt-8 mb-3 flex items-center gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-subtle uppercase">Recientes</h2>
-              {recent.length > 6 && (
-                <div className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1">
-                  <Search size={13} className="text-subtle" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Filtrar…"
-                    className="w-40 bg-transparent text-xs outline-none placeholder:text-subtle"
+          ) : (
+            <>
+              <div className="mt-8 mb-3 flex items-center gap-3">
+                <h2 className="text-[12px] font-medium text-subtle">Recientes</h2>
+                {recent.length > 6 && (
+                  <div className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1">
+                    <Search size={13} className="text-subtle" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Filtrar…"
+                      className="w-40 bg-transparent text-xs outline-none placeholder:text-subtle"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((dir) => (
+                  <ProjectCard
+                    key={dir}
+                    dir={dir}
+                    onOpen={() => void openTrusted(dir)}
+                    onRemove={() => void update({ recentFolders: recent.filter((d) => d !== dir) })}
                   />
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {list.map((dir) => (
-                <ProjectCard
-                  key={dir}
-                  dir={dir}
-                  onOpen={() => void openTrusted(dir)}
-                  onRemove={() => void update({ recentFolders: recent.filter((d) => d !== dir) })}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={open}
-                disabled={busy}
-                className="flex min-h-[112px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong text-sm text-muted transition hover:border-accent hover:bg-accent-soft/40 hover:text-fg"
-              >
-                <Plus size={18} /> Abrir otra carpeta
-              </button>
-            </div>
-          </>
-        )}
+                ))}
+                <button
+                  type="button"
+                  onClick={open}
+                  disabled={busy}
+                  className="flex min-h-[112px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong text-sm text-muted transition hover:border-accent hover:bg-accent-soft/40 hover:text-fg"
+                >
+                  <Plus size={18} /> Abrir otra carpeta
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -10,9 +10,10 @@ import { useUi } from '../stores/ui'
 import { initExtrasPrefs } from '../features/settings/impl/extras'
 import { newChat, sendChatMessage } from '../features/chat/actions'
 import { useCode } from '../features/code/impl/store'
-import { clearUnseen, connectFolder, loadTask, useCowork } from '../features/cowork/impl/store'
+import { clearUnseen, connectFolder, loadTask, rememberFullAccess, useCowork } from '../features/cowork/impl/store'
 import { initAttentionBadge } from '../lib/attention'
-import { MODES_BY_ID } from './modes'
+import { CommandPalette } from './CommandPalette'
+import { MODES, MODES_BY_ID } from './modes'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
 import { useTheme } from './useTheme'
@@ -89,7 +90,12 @@ export function App(): React.JSX.Element {
         useUi.getState().setMode('cowork')
         void (async () => {
           const cowork = useCowork.getState()
-          if (target.directory && cowork.folder !== target.directory) await connectFolder(target.directory)
+          // `fullAccess` viene del monitor de main: la tarea puede vivir en el servidor de Control total.
+          const wanted = target.fullAccess
+          if (target.directory && (cowork.folder !== target.directory || (wanted !== undefined && cowork.fullAccess !== wanted))) {
+            if (wanted !== undefined) rememberFullAccess(target.directory, wanted)
+            await connectFolder(target.directory, wanted)
+          }
           useCowork.setState({ activeTaskId: target.id })
           await loadTask(target.id)
           clearUnseen(target.id)
@@ -98,17 +104,48 @@ export function App(): React.JSX.Element {
     })
   }, [])
 
-  // Atajos de la ventana: ⌘\ barra lateral, ⌘, ajustes.
+  // Atajos de la ventana: ⌘\ barra lateral · ⌘, ajustes · ⌘K / ⌘⇧P paleta · ⌘N nuevo · ⌃Tab cambia de modo.
+  // ⌘K en Code con proyecto abierto lo usa su selector de sesiones (⌘⇧P abre la paleta igualmente).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.defaultPrevented || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return
+      if (e.defaultPrevented) return
+      const ui = useUi.getState()
+
+      if (e.ctrlKey && !e.metaKey && !e.altKey && e.key === 'Tab') {
+        e.preventDefault()
+        const i = MODES.findIndex((m) => m.id === ui.mode)
+        const next = MODES[(i + (e.shiftKey ? -1 : 1) + MODES.length) % MODES.length]
+        ui.setMode(next.id)
+        return
+      }
+
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+
+      if (e.shiftKey) {
+        if (key === 'p') {
+          e.preventDefault()
+          ui.setPaletteOpen(!ui.paletteOpen)
+        }
+        return
+      }
+
       if (e.key === '\\') {
         e.preventDefault()
-        useUi.getState().toggleSidebar()
+        ui.toggleSidebar()
       } else if (e.key === ',') {
         e.preventDefault()
-        const ui = useUi.getState()
         ui.openSettings(!ui.settingsOpen)
+      } else if (key === 'k') {
+        if (!ui.paletteOpen && ui.mode === 'code' && useCode.getState().directory) return
+        e.preventDefault()
+        ui.setPaletteOpen(!ui.paletteOpen)
+      } else if (key === 'n') {
+        const action = MODES_BY_ID[ui.mode].newAction
+        if (!action || ui.paletteOpen) return
+        e.preventDefault()
+        ui.openSettings(false)
+        action.run()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -120,6 +157,7 @@ export function App(): React.JSX.Element {
   return (
     <div className="flex h-full bg-bg">
       <ConfirmDialogHost />
+      <CommandPalette />
       <div
         className={`h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
         inert={collapsed}

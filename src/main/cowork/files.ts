@@ -3,14 +3,18 @@
  * previsualizar entregables. Las rutas deben venir YA validadas (dentro de una carpeta
  * autorizada) por `CoworkManager.assertInsideApproved`.
  */
-import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
 import type { CoworkDeliverable, CoworkFilePreview } from '@shared/ipc-cowork'
 
 const TEXT_EXT = new Set([
   '.md', '.markdown', '.txt', '.csv', '.tsv', '.json', '.html', '.htm', '.xml', '.yaml', '.yml', '.log',
-  '.py', '.js', '.ts', '.sh', '.css', '.ini', '.toml', '.rtf', '.svg'
+  '.py', '.js', '.ts', '.sh', '.css', '.ini', '.toml', '.svg'
 ])
+/** Documentos de texto enriquecido: se previsualizan convertidos a texto con `textutil`. */
+const TEXTUTIL_EXT = new Set(['.docx', '.doc', '.rtf', '.odt'])
+const TEXTUTIL_TIMEOUT_MS = 10_000
 const IMAGE_MIME: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -57,11 +61,88 @@ export function importFilesInto(folder: string, sources: string[]): CoworkDelive
   return out
 }
 
-/** Vista previa segura: texto recortado o imagen como data URL. */
-export function previewFile(path: string, maxBytes = DEFAULT_TEXT_BYTES): CoworkFilePreview {
+/**
+ * Ruta libre `<dir>/<stem><ext>`; si existe, `<stem>-1<ext>`, `<stem>-2<ext>`… (nunca sobrescribe).
+ */
+export function freePathWithSuffix(dir: string, stem: string, ext: string): string {
+  let candidate = join(dir, `${stem}${ext}`)
+  for (let i = 1; existsSync(candidate) && i < 10_000; i++) candidate = join(dir, `${stem}-${i}${ext}`)
+  return candidate
+}
+
+/**
+ * Guarda `data` como `<stem><ext>` junto a `dir` sin sobrescribir nada (flag `wx`: si otro proceso
+ * crea el mismo nombre entre la comprobación y la escritura, reintenta con el siguiente sufijo).
+ */
+export function writeNewFile(dir: string, stem: string, ext: string, data: Buffer): string {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const target = freePathWithSuffix(dir, stem, ext)
+    try {
+      writeFileSync(target, data, { flag: 'wx' })
+      return target
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    }
+  }
+  throw new Error('No se pudo elegir un nombre libre para el archivo.')
+}
+
+/** Describe un archivo como entregable relativo a `root` (la carpeta que lo contiene por defecto). */
+export function describeDeliverable(path: string, root: string): CoworkDeliverable {
+  const st = statSync(path)
+  return { path, relPath: relative(root, path) || basename(path), size: st.size, mtime: st.mtimeMs }
+}
+
+/** Convierte un documento (docx, doc, rtf, odt) a texto plano con `/usr/bin/textutil` (sin shell, 10 s). */
+function textutilToText(path: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      '/usr/bin/textutil',
+      ['-convert', 'txt', '-stdout', path],
+      { timeout: TEXTUTIL_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, encoding: 'utf8', windowsHide: true },
+      (err, stdout) => {
+        if (err) {
+          const killed = (err as NodeJS.ErrnoException & { killed?: boolean }).killed
+          reject(new Error(killed ? 'La conversión del documento tardó demasiado.' : 'No se pudo leer el documento.'))
+          return
+        }
+        resolve(stdout)
+      }
+    )
+  })
+}
+
+async function previewDocument(path: string, size: number, maxBytes: number): Promise<CoworkFilePreview> {
+  const limit = Math.max(1024, Math.min(maxBytes, 2 * 1024 * 1024))
+  // `textutil` es indulgente (trata cualquier basura como texto): se comprueba la firma del formato.
+  const ext = extname(path).toLowerCase()
+  const head = Buffer.alloc(5)
+  const fd = openSync(path, 'r')
+  try {
+    readSync(fd, head, 0, 5, 0)
+  } finally {
+    closeSync(fd)
+  }
+  if ((ext === '.docx' || ext === '.odt') && head.subarray(0, 2).toString('latin1') !== 'PK') return { path, size, kind: 'unsupported' }
+  if (ext === '.rtf' && head.subarray(0, 5).toString('latin1') !== '{\\rtf') return { path, size, kind: 'unsupported' }
+  let text: string
+  try {
+    text = await textutilToText(path)
+  } catch {
+    // Documento dañado o formato no reconocible: sin vista previa (se puede abrir con su app).
+    return { path, size, kind: 'unsupported' }
+  }
+  const buf = Buffer.from(text, 'utf8')
+  if (buf.length <= limit) return { path, size, kind: 'text', content: text, truncated: false }
+  return { path, size, kind: 'text', content: buf.subarray(0, limit).toString('utf8'), truncated: true }
+}
+
+/** Vista previa segura: texto recortado o imagen como data URL (docx/doc/rtf/odt vía `textutil`, asíncrono). */
+export function previewFile(path: string, maxBytes = DEFAULT_TEXT_BYTES): CoworkFilePreview | Promise<CoworkFilePreview> {
   const st = statSync(path)
   if (!st.isFile()) throw new Error('No es un archivo.')
   const ext = extname(path).toLowerCase()
+  if (TEXTUTIL_EXT.has(ext)) return previewDocument(path, st.size, maxBytes)
   const mime = IMAGE_MIME[ext]
   if (mime) {
     if (st.size > MAX_IMAGE_BYTES) return { path, size: st.size, kind: 'unsupported' }

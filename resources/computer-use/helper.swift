@@ -17,8 +17,33 @@
 //   request-permissions           lanza los prompts del sistema y devuelve el estado
 //   frontmost                     {"name":…,"bundleId":…,"pid":…}
 //   open-app "Nombre"             abre/activa una app
+//   open-app-bg "Nombre|bundleId" abre la app SIN activarla (queda detrás)
 //   activate "bundleId|Nombre"    reactiva la app y se asegura de que tenga una ventana visible
 //                                 (≤3s: activa → desminimiza por AX → reabre si hace falta)
+//   hide-apps <keepCsv>           oculta las apps normales que no estén en la lista (nunca Finder)
+//   unhide-apps <csv>             vuelve a mostrar las apps de la lista
+//
+//   ax-tree <bundleId> [maxDepth=12] [maxNodes=500]         árbol AX de la app
+//   ax-find <bundleId> <jsonQuery>                          busca elementos: {role?,title?,text?,limit?≤50}
+//   find-elements --app <bundleId> [--role a,b,…] [--query "texto"]
+//                                  localiza elementos CLICABLES por texto/rol para el ratón REAL:
+//                                  acotado por nodos (4000) Y por tiempo (800 ms), a diferencia de
+//                                  ax-find. Cada resultado trae `screenPoint` (centro, en puntos de
+//                                  pantalla) listo para `click`. JSON: array de objetos.
+//   ax-frame <bundleId> <ref>                               marco de un elemento
+//   ax-press <bundleId> <ref> [expectRole] [expectTitle]    kAXPressAction
+//   ax-set-value <bundleId> <ref> <valor…>                  escribe kAXValueAttribute
+//   ax-action <bundleId> <ref> <acción>                     acción AX de la lista cerrada
+//   window-shot <bundleId> <outPath> [windowIndex=0]        captura una ventana con ScreenCaptureKit
+//   record <outDir> [--mic] [--max-seconds N≤900] [--exclude csv]   graba una demostración
+//   transcribe <audio> [locale=es-ES]                       transcribe en el dispositivo (SFSpeechRecognizer)
+//   mic-permission                 estado del micrófono, sin pedirlo
+//   mic-request                    pide el permiso de micrófono (proceso aislado) y devuelve el estado
+//
+// `ref` (ax-*): ruta de índices, "w<ventana>.<hijo>.<hijo>…" o "m.<i>…" para la barra de menús.
+// Códigos de salida nuevos: 6 = voz no autorizada, 7 = app no está en ejecución,
+// 8 = el elemento cambió, 9 = campo seguro, 10 = valor no editable, 11 = acción no permitida,
+// 12 = recurso no disponible.
 //
 // Coordenadas: puntos de pantalla, origen arriba-izquierda de la pantalla principal
 // (el mismo sistema que usa CGEvent). Salida: JSON en stdout; errores en stderr + exit 1.
@@ -31,10 +56,12 @@
 
 import AppKit
 import ApplicationServices
+import AVFoundation
 import Carbon
 import CoreGraphics
 import Foundation
 import ScreenCaptureKit
+import Speech
 
 // MARK: - Utilidades
 
@@ -68,6 +95,11 @@ let source = CGEventSource(stateID: .privateState)
 /// cualquier valor de 32 bits) para poder ignorarlos en `watch-esc` sin depender de
 /// `eventSourceStateID`. Valor arbitrario, sin significado especial: "LAPIS" en ASCII truncado.
 let ownEventTag: Int64 = 0x4C41_5049
+
+/// Gancho global opcional que el handler de SIGTERM ejecuta antes de `exit` (kill-switch de
+/// OpenDesk). Lo usa `record` para cerrar de forma ordenada (parar el tap, el micrófono y escribir
+/// `summary.json`) aunque solo queden ~300 ms antes del SIGKILL.
+var terminationHook: (() -> Void)?
 
 func post(_ e: CGEvent?) {
     guard let e = e else { fail("No se pudo crear el evento (¿permiso de Accesibilidad?)") }
@@ -430,6 +462,357 @@ func focusedIsSecure() -> Bool {
     return r == "AXSecureTextField" || sr == "AXSecureTextField"
 }
 
+// MARK: - AX genérico (ax-tree/ax-find/ax-frame/ax-press/ax-set-value/ax-action)
+//
+// `ref` = ruta de índices desde la raíz de la app: "w<ventana>.<hijo>.<hijo>…" (ventanas,
+// `kAXWindowsAttribute`) o "m.<i>…" (barra de menús, `kAXMenuBarAttribute`); cada componente
+// numérico posterior es un índice en `kAXChildrenAttribute` del elemento anterior. Es estable
+// mientras el árbol no cambie de forma; si cambió, `resolveRef` devuelve nil (exit 8 en las
+// llamadas que lo usan).
+
+func axString(_ el: AXUIElement, _ attr: String) -> String? {
+    var ref: AnyObject?
+    guard AXUIElementCopyAttributeValue(el, attr as CFString, &ref) == .success else { return nil }
+    return ref as? String
+}
+
+func axBool(_ el: AXUIElement, _ attr: String) -> Bool? {
+    var ref: AnyObject?
+    guard AXUIElementCopyAttributeValue(el, attr as CFString, &ref) == .success else { return nil }
+    return (ref as? NSNumber)?.boolValue
+}
+
+/// Marco de un elemento AX vía `kAXPositionAttribute`/`kAXSizeAttribute` (cada uno un `AXValue`
+/// que envuelve un `CGPoint`/`CGSize`), en puntos de pantalla, origen arriba-izquierda.
+func axFrame(_ el: AXUIElement) -> [String: Double]? {
+    var posRef: AnyObject?
+    var sizeRef: AnyObject?
+    guard AXUIElementCopyAttributeValue(el, kAXPositionAttribute as CFString, &posRef) == .success,
+          AXUIElementCopyAttributeValue(el, kAXSizeAttribute as CFString, &sizeRef) == .success,
+          let posValue = posRef, let sizeValue = sizeRef else { return nil }
+    var point = CGPoint.zero
+    var size = CGSize.zero
+    guard AXValueGetValue(posValue as! AXValue, .cgPoint, &point),
+          AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return nil }
+    return ["x": Double(point.x), "y": Double(point.y), "width": Double(size.width), "height": Double(size.height)]
+}
+
+func actionNames(_ el: AXUIElement) -> [String] {
+    var names: CFArray?
+    guard AXUIElementCopyActionNames(el, &names) == .success, let arr = names as? [String] else { return [] }
+    return arr
+}
+
+/// Nodo JSON de un elemento AX para `ax-tree`/`ax-find`. `value` se recorta a 200 caracteres y
+/// nunca se incluye en un `AXSecureTextField` (pone `secure:true` en su lugar).
+func nodeJSON(_ el: AXUIElement, ref: String) -> [String: Any] {
+    var d: [String: Any] = ["ref": ref]
+    let role = axString(el, kAXRoleAttribute as String) ?? ""
+    d["role"] = role
+    let subrole = axString(el, kAXSubroleAttribute as String)
+    if let sr = subrole { d["subrole"] = sr }
+    if let t = axString(el, kAXTitleAttribute as String) { d["title"] = t }
+    if let desc = axString(el, kAXDescriptionAttribute as String) { d["description"] = desc }
+    let secure = role == "AXSecureTextField" || subrole == "AXSecureTextField"
+    d["secure"] = secure
+    if !secure {
+        var valueRef: AnyObject?
+        if AXUIElementCopyAttributeValue(el, kAXValueAttribute as CFString, &valueRef) == .success {
+            if let s = valueRef as? String {
+                d["value"] = String(s.prefix(200))
+            } else if let n = valueRef as? NSNumber {
+                d["value"] = n.stringValue
+            }
+        }
+    }
+    d["enabled"] = axBool(el, kAXEnabledAttribute as String) ?? true
+    d["focused"] = axBool(el, kAXFocusedAttribute as String) ?? false
+    if let f = axFrame(el) { d["frame"] = f }
+    d["actions"] = actionNames(el)
+    return d
+}
+
+/// Resuelve un `ref` a su `AXUIElement`, o nil si el árbol cambió (índice fuera de rango, etc.).
+func resolveRef(_ appEl: AXUIElement, _ ref: String) -> AXUIElement? {
+    let parts = ref.split(separator: ".").map(String.init)
+    guard let first = parts.first else { return nil }
+    var current: AXUIElement
+    if first == "m" {
+        var menuBarRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(appEl, kAXMenuBarAttribute as CFString, &menuBarRef) == .success,
+              let menuBar = menuBarRef else { return nil }
+        current = menuBar as! AXUIElement
+    } else if first.hasPrefix("w"), let widx = Int(first.dropFirst()) {
+        var windowsRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let windows = windowsRef as? [AXUIElement], widx >= 0, widx < windows.count else { return nil }
+        current = windows[widx]
+    } else {
+        return nil
+    }
+    for comp in parts.dropFirst() {
+        guard let idx = Int(comp) else { return nil }
+        var childrenRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(current, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+              let children = childrenRef as? [AXUIElement], idx >= 0, idx < children.count else { return nil }
+        current = children[idx]
+    }
+    return current
+}
+
+/// Recorre el árbol AX en profundidad, acumulando nodos JSON hasta `maxDepth`/`maxNodes`.
+struct AXWalker {
+    var maxDepth: Int
+    var maxNodes: Int
+    var nodes: [[String: Any]] = []
+    var truncated = false
+
+    mutating func walk(_ el: AXUIElement, ref: String, depth: Int) {
+        if nodes.count >= maxNodes { truncated = true; return }
+        nodes.append(nodeJSON(el, ref: ref))
+        if depth >= maxDepth {
+            truncated = true
+            return
+        }
+        var childrenRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(el, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+              let children = childrenRef as? [AXUIElement] else { return }
+        for (i, c) in children.enumerated() {
+            if nodes.count >= maxNodes { truncated = true; return }
+            walk(c, ref: "\(ref).\(i)", depth: depth + 1)
+        }
+    }
+}
+
+/// App EN EJECUCIÓN que coincide con el bundle id, o nil (exit 7 en las llamadas que lo usan).
+func requireRunningApp(_ bundleId: String) -> NSRunningApplication? {
+    return NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == bundleId })
+}
+
+/// Recorre las ventanas (y, si `includeMenuBar`, la barra de menús) de una app y devuelve el
+/// resultado del walker, activando antes `AXManualAccessibility` (best-effort: necesario para que
+/// las apps Electron/Chromium expongan su árbol AX).
+func axTree(_ appEl: AXUIElement, maxDepth: Int, maxNodes: Int, includeMenuBar: Bool) -> AXWalker {
+    AXUIElementSetAttributeValue(appEl, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    var walker = AXWalker(maxDepth: maxDepth, maxNodes: maxNodes)
+    var windowsRef: AnyObject?
+    if AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+       let windows = windowsRef as? [AXUIElement] {
+        for (i, w) in windows.enumerated() {
+            if walker.nodes.count >= maxNodes { walker.truncated = true; break }
+            walker.walk(w, ref: "w\(i)", depth: 0)
+        }
+    }
+    if includeMenuBar, walker.nodes.count < maxNodes {
+        var menuBarRef: AnyObject?
+        if AXUIElementCopyAttributeValue(appEl, kAXMenuBarAttribute as CFString, &menuBarRef) == .success,
+           let menuBar = menuBarRef {
+            walker.walk(menuBar as! AXUIElement, ref: "m", depth: 0)
+        }
+    }
+    return walker
+}
+
+struct AXQuery { var role: String?; var title: String?; var text: String?; var limit: Int }
+
+func parseAXQuery(_ json: String) -> AXQuery {
+    guard let data = json.data(using: .utf8),
+          let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        fail("Consulta JSON inválida para ax-find")
+    }
+    let limit = min(50, max(1, (obj["limit"] as? Int) ?? 50))
+    return AXQuery(role: obj["role"] as? String, title: obj["title"] as? String, text: obj["text"] as? String, limit: limit)
+}
+
+func axFindMatches(_ nodes: [[String: Any]], query: AXQuery) -> [[String: Any]] {
+    var matches: [[String: Any]] = []
+    for node in nodes {
+        if let r = query.role, (node["role"] as? String) != r { continue }
+        if let t = query.title, !((node["title"] as? String) ?? "").lowercased().contains(t.lowercased()) { continue }
+        if let txt = query.text {
+            let hay = [node["title"] as? String, node["description"] as? String, node["value"] as? String]
+                .compactMap { $0 }.joined(separator: " ").lowercased()
+            if !hay.contains(txt.lowercased()) { continue }
+        }
+        matches.append(node)
+        if matches.count >= query.limit { break }
+    }
+    return matches
+}
+
+// MARK: - find-elements (localizar elementos por texto/rol para el ratón REAL)
+//
+// Implementación independiente de `AXWalker`/`ax-find`: aquélla alimenta las herramientas `app_*` de
+// fondo (referencias `ref` estables, sin límite de tiempo, pensada para árboles ya razonables) y
+// ésta alimenta el clic con coordenadas de pantalla del modo "Control de la pantalla" — necesita el
+// punto central YA calculado (`screenPoint`) y, sobre todo, un tope de TIEMPO además de nodos: hay
+// apps (Ajustes del Sistema, algunas Electron) cuyo árbol AX es enorme o lento de recorrer, y aquí no
+// hay ninguna `ref` que releer después si el recorrido se corta a medias — mejor devolver lo que haya.
+
+/// Alias en lenguaje llano → rol AX real, para que el llamador no tenga que conocer los nombres
+/// `AXFoo` exactos. Si el rol pedido ya empieza por "AX" (o no está en la lista), se usa tal cual
+/// (o con la primera letra en mayúscula) como mejor esfuerzo.
+let axRoleAliases: [String: String] = [
+    "button": "AXButton", "textfield": "AXTextField", "textinput": "AXTextField",
+    "searchfield": "AXTextField", "securetextfield": "AXSecureTextField", "textarea": "AXTextArea",
+    "checkbox": "AXCheckBox", "switch": "AXCheckBox", "radiobutton": "AXRadioButton", "radio": "AXRadioButton",
+    "menu": "AXMenu", "menuitem": "AXMenuItem", "menubutton": "AXMenuButton", "menubar": "AXMenuBar",
+    "link": "AXLink", "statictext": "AXStaticText", "text": "AXStaticText", "label": "AXStaticText",
+    "image": "AXImage", "slider": "AXSlider", "combobox": "AXComboBox", "popupbutton": "AXPopUpButton",
+    "popup": "AXPopUpButton", "table": "AXTable", "outline": "AXOutline", "row": "AXRow", "cell": "AXCell",
+    "list": "AXList", "window": "AXWindow", "sheet": "AXSheet", "toolbar": "AXToolbar", "group": "AXGroup",
+    "scrollarea": "AXScrollArea", "scrollbar": "AXScrollBar", "tabgroup": "AXTabGroup",
+    "disclosuretriangle": "AXDisclosureTriangle", "progressindicator": "AXProgressIndicator",
+    "stepper": "AXIncrementor", "incrementor": "AXIncrementor", "colorwell": "AXColorWell",
+]
+
+func normalizeAXRole(_ raw: String) -> String {
+    let trimmed = raw.trimmingCharacters(in: .whitespaces)
+    if trimmed.hasPrefix("AX") { return trimmed }
+    let key = trimmed.lowercased().replacingOccurrences(of: "_", with: "").replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
+    if let mapped = axRoleAliases[key] { return mapped }
+    guard let first = trimmed.first else { return trimmed }
+    return "AX" + String(first).uppercased() + trimmed.dropFirst()
+}
+
+/// Minúsculas y sin diacríticos ("Música" ≈ "musica"), para comparar texto en español sin acentos.
+func foldText(_ s: String) -> String {
+    return s.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+}
+
+/// "Difusa" y barata (sin dependencias): sustring directa, o subsecuencia de los caracteres de
+/// `needle` en `haystack` en el mismo orden (no necesariamente seguidos) — tolera pequeñas
+/// variaciones de orden/espaciado sin necesitar una librería de distancia de edición.
+/// La subsecuencia además debe caber en una ventana ajustada (como mucho el triple de caracteres de
+/// `needle`, o 12) para no dar por buena una coincidencia dispersa en un texto largo sin relación
+/// real (p. ej. "escritorio" "cabiendo" letra a letra dentro del nombre de un archivo cualquiera):
+/// mejor no encontrar nada (y caer a la captura de pantalla) que ofrecer una coordenada falsa.
+func fuzzyContains(_ haystack: String, _ needle: String) -> Bool {
+    if needle.isEmpty { return true }
+    if haystack.contains(needle) { return true }
+    guard needle.count >= 3 else { return false }
+    let hay = Array(haystack)
+    var hIdx = 0
+    var start: Int? = nil
+    var last = 0
+    for ch in needle {
+        var found = false
+        while hIdx < hay.count {
+            if hay[hIdx] == ch {
+                if start == nil { start = hIdx }
+                last = hIdx
+                hIdx += 1
+                found = true
+                break
+            }
+            hIdx += 1
+        }
+        if !found { return false }
+    }
+    guard let s = start else { return false }
+    return (last - s + 1) <= max(needle.count * 3, 12)
+}
+
+struct FindElementsQuery { var roles: Set<String>?; var query: String? }
+
+/// Texto combinado (título + descripción + identificador + valor, ya "folded") usado solo para
+/// decidir si el elemento coincide con `--query`; nunca se incluye tal cual en la salida.
+func findElementHaystack(_ el: AXUIElement, role: String, subrole: String?) -> String {
+    let secure = role == "AXSecureTextField" || subrole == "AXSecureTextField"
+    var parts: [String] = []
+    if let t = axString(el, kAXTitleAttribute as String) { parts.append(t) }
+    if let d = axString(el, kAXDescriptionAttribute as String) { parts.append(d) }
+    if let i = axString(el, kAXIdentifierAttribute as String) { parts.append(i) }
+    if !secure, let v = axString(el, kAXValueAttribute as String) { parts.append(v) }
+    return foldText(parts.joined(separator: " "))
+}
+
+/// Nodo de salida de `find-elements`: la forma que consume el MCP (`find_element`/`list_elements`),
+/// deliberadamente más simple que `nodeJSON` (sin `ref`/`actions`: este flujo actúa por coordenadas
+/// de pantalla reales, no por referencia AX).
+func findElementNode(_ el: AXUIElement, role: String, subrole: String?, frame: [String: Double]) -> [String: Any] {
+    let secure = role == "AXSecureTextField" || subrole == "AXSecureTextField"
+    var d: [String: Any] = ["role": role]
+    if let t = axString(el, kAXTitleAttribute as String), !t.isEmpty { d["title"] = t }
+    if let desc = axString(el, kAXDescriptionAttribute as String), !desc.isEmpty { d["description"] = desc }
+    if let ident = axString(el, kAXIdentifierAttribute as String), !ident.isEmpty { d["identifier"] = ident }
+    if !secure {
+        var valueRef: AnyObject?
+        if AXUIElementCopyAttributeValue(el, kAXValueAttribute as CFString, &valueRef) == .success {
+            if let s = valueRef as? String, !s.isEmpty { d["value"] = String(s.prefix(200)) }
+            else if let n = valueRef as? NSNumber { d["value"] = n.stringValue }
+        }
+    }
+    let x = frame["x"] ?? 0, y = frame["y"] ?? 0, w = frame["width"] ?? 0, h = frame["height"] ?? 0
+    d["enabled"] = axBool(el, kAXEnabledAttribute as String) ?? true
+    d["x"] = x
+    d["y"] = y
+    d["width"] = w
+    d["height"] = h
+    d["screenPoint"] = ["x": x + w / 2, "y": y + h / 2]
+    return d
+}
+
+/// Recorre el árbol AX acotado por NODOS y por TIEMPO (a diferencia de `AXWalker`): se detiene en
+/// cuanto se agote cualquiera de los dos límites, o al reunir `maxMatches`, devolviendo lo que ya
+/// tenga — nunca cuelga esperando a que una app termine de exponer un árbol gigante.
+struct FindElementsWalker {
+    let maxNodes: Int
+    let maxMatches: Int
+    let deadline: DispatchTime
+    var matches: [[String: Any]] = []
+    var visited = 0
+    var truncated = false
+
+    mutating func budgetExceeded() -> Bool {
+        if visited >= maxNodes || matches.count >= maxMatches || DispatchTime.now() >= deadline {
+            truncated = true
+            return true
+        }
+        return false
+    }
+
+    mutating func walk(_ el: AXUIElement, query: FindElementsQuery) {
+        if budgetExceeded() { return }
+        visited += 1
+        let role = axString(el, kAXRoleAttribute as String) ?? ""
+        let subrole = axString(el, kAXSubroleAttribute as String)
+        let roleOk = query.roles.map { $0.contains(role) } ?? true
+        if roleOk, let frame = axFrame(el), (frame["width"] ?? 0) > 0, (frame["height"] ?? 0) > 0 {
+            let textOk: Bool
+            if let q = query.query, !q.isEmpty {
+                textOk = fuzzyContains(findElementHaystack(el, role: role, subrole: subrole), q)
+            } else {
+                textOk = true
+            }
+            if textOk { matches.append(findElementNode(el, role: role, subrole: subrole, frame: frame)) }
+        }
+        var childrenRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(el, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+              let children = childrenRef as? [AXUIElement] else { return }
+        for c in children {
+            if budgetExceeded() { return }
+            walk(c, query: query)
+        }
+    }
+}
+
+/// Solo las ventanas de la app (a diferencia de `axTree`, no incluye la barra de menús: los ítems de
+/// un menú cerrado no tienen marco en pantalla útil para un clic real).
+func findElements(_ appEl: AXUIElement, maxNodes: Int, maxMatches: Int, budgetSeconds: Double, query: FindElementsQuery) -> (matches: [[String: Any]], truncated: Bool) {
+    AXUIElementSetAttributeValue(appEl, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    var walker = FindElementsWalker(maxNodes: maxNodes, maxMatches: maxMatches, deadline: DispatchTime.now() + budgetSeconds)
+    var windowsRef: AnyObject?
+    if AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+       let windows = windowsRef as? [AXUIElement] {
+        for w in windows {
+            if walker.budgetExceeded() { break }
+            walker.walk(w, query: query)
+        }
+    }
+    return (walker.matches, walker.truncated)
+}
+
 /// Resuelve el nombre de una app (el que ve el usuario) a su bundle id: primero entre las apps EN
 /// EJECUCIÓN (coincidencia exacta y luego parcial, sin distinguir mayúsculas), y si no está
 /// abierta, por Spotlight (`mdfind`) entre las instaladas. Usado por la herramienta `request_access`
@@ -550,6 +933,25 @@ func writePNG(_ image: CGImage, to path: String) -> Bool {
     return (try? data.write(to: URL(fileURLWithPath: path))) != nil
 }
 
+/// Guarda `image` como JPEG, reducido si su lado más largo excede `maxSide` px. Usado por `record`
+/// para las capturas por paso (ligeras: hasta 200 por grabación).
+func writeJPEG(_ image: CGImage, to path: String, maxSide: CGFloat = 1280, quality: CGFloat = 0.6) -> Bool {
+    let w = CGFloat(image.width), h = CGFloat(image.height)
+    let scale = min(1.0, maxSide / max(w, h))
+    let newW = max(1, Int(w * scale)), newH = max(1, Int(h * scale))
+    var toWrite = image
+    if scale < 1.0,
+       let ctx = CGContext(data: nil, width: newW, height: newH, bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) {
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: newW, height: newH))
+        if let scaled = ctx.makeImage() { toWrite = scaled }
+    }
+    let rep = NSBitmapImageRep(cgImage: toWrite)
+    guard let data = rep.representation(using: .jpeg, properties: [.compressionFactor: quality]) else { return false }
+    return (try? data.write(to: URL(fileURLWithPath: path))) != nil
+}
+
 @available(macOS 14.0, *)
 func sckScreenshotExcluding(bundleIds: Set<String>) throws -> CGImage {
     let sem = DispatchSemaphore(value: 0)
@@ -582,6 +984,63 @@ func sckScreenshotExcluding(bundleIds: Set<String>) throws -> CGImage {
         throw NSError(domain: "cu-helper", code: 2, userInfo: [NSLocalizedDescriptionKey: "Sin imagen"])
     }
     return img
+}
+
+/// Captura una ventana concreta de `bundleId` con ScreenCaptureKit: `SCContentFilter(desktopIndependentWindow:)`
+/// + `SCScreenshotManager` (nunca `CGWindowListCreateImage`, obsoleta/no disponible en este SDK).
+/// Elige, entre las ventanas normales (capa 0) no minimizadas de la app, la más grande según
+/// `CGWindowListCopyWindowInfo`, o la `windowIndex`-ésima de ese orden (0 = la más grande).
+@available(macOS 14.0, *)
+func windowShot(bundleId: String, windowIndex: Int) throws -> (CGImage, String) {
+    guard let app = requireRunningApp(bundleId) else {
+        fail("La app \(bundleId) no está en ejecución", code: 7)
+    }
+    let pid = app.processIdentifier
+    let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    guard let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else {
+        throw NSError(domain: "cu-helper", code: 12, userInfo: [NSLocalizedDescriptionKey: "No se pudo listar las ventanas"])
+    }
+    var candidates: [(id: CGWindowID, area: Double, title: String)] = []
+    for w in list {
+        guard let pidNum = w[kCGWindowOwnerPID as String] as? Int, pid_t(pidNum) == pid,
+              let layer = w[kCGWindowLayer as String] as? Int, layer == 0,
+              let winId = w[kCGWindowNumber as String] as? Int,
+              let b = w[kCGWindowBounds as String] as? [String: CGFloat],
+              let width = b["Width"], let height = b["Height"], width > 40, height > 40 else { continue }
+        let title = (w[kCGWindowName as String] as? String) ?? ""
+        candidates.append((id: CGWindowID(winId), area: Double(width * height), title: title))
+    }
+    candidates.sort { $0.area > $1.area }
+    guard windowIndex >= 0, windowIndex < candidates.count else {
+        throw NSError(domain: "cu-helper", code: 12, userInfo: [NSLocalizedDescriptionKey: "Sin ventana normal visible para \(bundleId)"])
+    }
+    let target = candidates[windowIndex]
+    let sem = DispatchSemaphore(value: 0)
+    var resultImage: CGImage?
+    var resultError: Error?
+    Task {
+        do {
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            guard let scWindow = content.windows.first(where: { $0.windowID == target.id }) else {
+                throw NSError(domain: "cu-helper", code: 12, userInfo: [NSLocalizedDescriptionKey: "Ventana no disponible para ScreenCaptureKit (¿permiso de Grabación de pantalla?)"])
+            }
+            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+            let config = SCStreamConfiguration()
+            config.width = max(1, Int(scWindow.frame.width * 2))
+            config.height = max(1, Int(scWindow.frame.height * 2))
+            config.showsCursor = false
+            resultImage = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        } catch {
+            resultError = error
+        }
+        sem.signal()
+    }
+    sem.wait()
+    if let err = resultError { throw err }
+    guard let img = resultImage else {
+        throw NSError(domain: "cu-helper", code: 12, userInfo: [NSLocalizedDescriptionKey: "Sin imagen"])
+    }
+    return (img, target.title)
 }
 
 /// Enmascara rectángulos (negro sólido) sobre una imagen; `rects` en coordenadas de PÍXELES de la
@@ -664,6 +1123,296 @@ func watchEsc() {
     CFRunLoopRun()
 }
 
+// MARK: - Micrófono y voz
+
+/// Estado de autorización del micrófono ("authorized"/"denied"/"notDetermined"/"restricted"),
+/// sin pedirlo. Atribuido al proceso responsable (la terminal en desarrollo, Lapis empaquetada).
+func micStatusString() -> String {
+    switch AVCaptureDevice.authorizationStatus(for: .audio) {
+    case .authorized: return "authorized"
+    case .denied: return "denied"
+    case .restricted: return "restricted"
+    case .notDetermined: return "notDetermined"
+    @unknown default: return "notDetermined"
+    }
+}
+
+// MARK: - Grabar una skill (`record`)
+//
+// Tap de solo escucha (leftMouseDown/rightMouseDown/keyDown/scrollWheel, ignora los eventos que
+// nosotros mismos posteamos, ver `ownEventTag`) + notificación de cambio de app de `NSWorkspace` +
+// capturas JPEG con ScreenCaptureKit, todo en un `CFRunLoop` en el hilo principal. Escribe
+// `events.jsonl` (una línea JSON por paso, con flush) y `summary.json` al terminar.
+
+func nowMs() -> Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
+
+/// Descripción de una combinación de teclas a partir del keycode/flags de un CGEvent REAL
+/// (mismo vocabulario que acepta `key`, invirtiendo `keyCodes`).
+func comboDescription(keycode: Int64, flags: CGEventFlags) -> String {
+    var parts: [String] = []
+    if flags.contains(.maskCommand) { parts.append("cmd") }
+    if flags.contains(.maskControl) { parts.append("ctrl") }
+    if flags.contains(.maskAlternate) { parts.append("alt") }
+    if flags.contains(.maskShift) { parts.append("shift") }
+    if flags.contains(.maskSecondaryFn) { parts.append("fn") }
+    let name = keyCodes.first(where: { $0.value == CGKeyCode(truncatingIfNeeded: keycode) })?.key ?? "code\(keycode)"
+    parts.append(name)
+    return parts.joined(separator: "+")
+}
+
+/// Elemento AX bajo un punto (para el `element` de un paso `click`), o nil si no hay ninguno.
+func axElementInfo(at p: CGPoint) -> [String: Any]? {
+    let systemWide = AXUIElementCreateSystemWide()
+    var element: AXUIElement?
+    guard AXUIElementCopyElementAtPosition(systemWide, Float(p.x), Float(p.y), &element) == .success, let el = element else { return nil }
+    var d: [String: Any] = [:]
+    if let r = axString(el, kAXRoleAttribute as String) { d["role"] = r }
+    if let sr = axString(el, kAXSubroleAttribute as String) { d["subrole"] = sr }
+    if let t = axString(el, kAXTitleAttribute as String) { d["title"] = t }
+    if let desc = axString(el, kAXDescriptionAttribute as String) { d["description"] = desc }
+    return d.isEmpty ? nil : d
+}
+
+/// Una grabación en curso. Todo el estado mutable compartido entre el tap (hilo del run loop), el
+/// observador de `NSWorkspace` y el hilo de stdin/temporizador pasa por `lock`.
+final class Recorder {
+    let outDir: String
+    let maxSeconds: Double
+    let wantsMic: Bool
+    let exclude: Set<String>
+    let startTime = Date()
+
+    private let lock = NSLock()
+    private var eventsHandle: FileHandle?
+    private var stepCount = 0
+    private var shotCount = 0
+    private var lastShotTime = Date.distantPast
+    private var textBuffer = ""
+    private var scrollDx: Int64 = 0
+    private var scrollDy: Int64 = 0
+    private var lastScrollTime = Date.distantPast
+    private var stopped = false
+    private var micState = "off" // off|recording|denied
+    private var tap: CFMachPort?
+    private var appObserver: NSObjectProtocol?
+    private var audioRecorder: AVAudioRecorder?
+
+    init(outDir: String, maxSeconds: Double, mic: Bool, exclude: Set<String>) {
+        self.outDir = outDir
+        self.maxSeconds = maxSeconds
+        self.wantsMic = mic
+        self.exclude = exclude
+    }
+
+    func start() {
+        try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(atPath: outDir + "/shots", withIntermediateDirectories: true)
+        let eventsPath = outDir + "/events.jsonl"
+        FileManager.default.createFile(atPath: eventsPath, contents: nil)
+        eventsHandle = FileHandle(forWritingAtPath: eventsPath)
+        if wantsMic { startMic() }
+        startAppObserver()
+        startTap()
+        print("{\"event\":\"started\"}")
+        fflush(stdout)
+    }
+
+    private func startMic() {
+        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
+            micState = "denied"
+            writeEvent(["t": nowMs(), "type": "warning", "text": "mic-denied"], withShot: false)
+            return
+        }
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 16_000,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
+        ]
+        let url = URL(fileURLWithPath: outDir + "/audio.m4a")
+        do {
+            let rec = try AVAudioRecorder(url: url, settings: settings)
+            if rec.record() {
+                audioRecorder = rec
+                micState = "recording"
+            } else {
+                micState = "denied"
+                writeEvent(["t": nowMs(), "type": "warning", "text": "mic-denied"], withShot: false)
+            }
+        } catch {
+            micState = "denied"
+            writeEvent(["t": nowMs(), "type": "warning", "text": "mic-denied"], withShot: false)
+        }
+    }
+
+    private func startAppObserver() {
+        appObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: nil
+        ) { [weak self] note in
+            guard let self = self,
+                  let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+            self.flushText()
+            self.writeEvent(["t": nowMs(), "type": "app",
+                              "app": ["name": app.localizedName ?? "", "bundleId": app.bundleIdentifier ?? ""]], withShot: true)
+        }
+    }
+
+    private func startTap() {
+        let mask: CGEventMask = CGEventMask(1 << CGEventType.leftMouseDown.rawValue) |
+            CGEventMask(1 << CGEventType.rightMouseDown.rawValue) |
+            CGEventMask(1 << CGEventType.keyDown.rawValue) |
+            CGEventMask(1 << CGEventType.scrollWheel.rawValue)
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: { _, type, event, info in
+                if let info = info {
+                    Unmanaged<Recorder>.fromOpaque(info).takeUnretainedValue().handle(type: type, event: event)
+                }
+                return Unmanaged.passUnretained(event)
+            },
+            userInfo: selfPtr
+        ) else {
+            fail("No se pudo crear el event tap de grabación (¿permiso de Accesibilidad?)", code: 2)
+        }
+        self.tap = tap
+        guard let src = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            fail("No se pudo crear la fuente del run loop")
+        }
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), src, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func handle(type: CGEventType, event: CGEvent) {
+        // Ignora los eventos sintéticos/propios (marca `eventSourceUserData`, ver `post()`).
+        if event.getIntegerValueField(.eventSourceUserData) == ownEventTag { return }
+        switch type {
+        case .keyDown:
+            handleKeyDown(event)
+        case .leftMouseDown, .rightMouseDown:
+            flushText()
+            let p = event.location
+            var step: [String: Any] = ["t": nowMs(), "type": "click", "x": Double(p.x), "y": Double(p.y),
+                                        "button": type == .rightMouseDown ? "right" : "left"]
+            if let el = axElementInfo(at: p) { step["element"] = el }
+            writeEvent(step, withShot: true)
+        case .scrollWheel:
+            handleScroll(event)
+        default:
+            break
+        }
+    }
+
+    private func handleKeyDown(_ event: CGEvent) {
+        let keycode = event.getIntegerValueField(.keyboardEventKeycode)
+        let flags = event.flags
+        let comboFlags = flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskSecondaryFn])
+        if !comboFlags.isEmpty {
+            flushText()
+            writeEvent(["t": nowMs(), "type": "key", "keys": comboDescription(keycode: keycode, flags: flags)], withShot: false)
+            return
+        }
+        if keycode == 0x24 || keycode == 0x30 || keycode == 0x33 { // return/tab/delete: cierran el tramo de texto
+            flushText()
+            let name = keycode == 0x24 ? "return" : (keycode == 0x30 ? "tab" : "delete")
+            writeEvent(["t": nowMs(), "type": "key", "keys": name], withShot: false)
+            return
+        }
+        // No se guarda texto si el foco es un campo seguro (entrada segura del sistema activa).
+        guard !IsSecureEventInputEnabled() else { return }
+        var length = 0
+        var chars = [UniChar](repeating: 0, count: 4)
+        event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length, unicodeString: &chars)
+        guard length > 0 else { return }
+        lock.lock()
+        textBuffer += String(utf16CodeUnits: chars, count: length)
+        lock.unlock()
+    }
+
+    private func handleScroll(_ event: CGEvent) {
+        let dy = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+        let dx = event.getIntegerValueField(.scrollWheelEventDeltaAxis2)
+        lock.lock()
+        scrollDx += dx; scrollDy += dy
+        let shouldEmit = Date().timeIntervalSince(lastScrollTime) > 0.3 && (scrollDx != 0 || scrollDy != 0)
+        if shouldEmit { lastScrollTime = Date(); scrollDx = 0; scrollDy = 0 }
+        lock.unlock()
+        guard shouldEmit else { return }
+        let p = currentCursor()
+        writeEvent(["t": nowMs(), "type": "scroll", "x": Double(p.x), "y": Double(p.y)], withShot: false)
+    }
+
+    private func flushText() {
+        lock.lock()
+        let text = textBuffer
+        textBuffer = ""
+        lock.unlock()
+        guard !text.isEmpty else { return }
+        writeEvent(["t": nowMs(), "type": "text", "text": text], withShot: false)
+    }
+
+    /// Captura JPEG best-effort (≤200 en total, ≤1 cada 700 ms); devuelve la ruta relativa o nil.
+    private func maybeCaptureShot() -> String? {
+        guard #available(macOS 14.0, *) else { return nil }
+        lock.lock()
+        guard shotCount < 200, Date().timeIntervalSince(lastShotTime) > 0.7 else { lock.unlock(); return nil }
+        shotCount += 1
+        let idx = shotCount
+        lastShotTime = Date()
+        lock.unlock()
+        guard let image = try? sckScreenshotExcluding(bundleIds: exclude) else { return nil }
+        let name = String(format: "shots/shot-%04d.jpg", idx)
+        guard writeJPEG(image, to: outDir + "/" + name) else { return nil }
+        return name
+    }
+
+    private func writeEvent(_ dict: [String: Any], withShot: Bool) {
+        var d = dict
+        if withShot, let shot = maybeCaptureShot() { d["shot"] = shot }
+        guard let data = try? JSONSerialization.data(withJSONObject: d, options: [.sortedKeys]) else { return }
+        lock.lock()
+        eventsHandle?.write(data)
+        eventsHandle?.write("\n".data(using: .utf8)!)
+        stepCount += 1
+        let count = stepCount
+        lock.unlock()
+        print("{\"event\":\"step\",\"count\":\(count)}")
+        fflush(stdout)
+    }
+
+    /// Cierre ordenado (SIGINT, "stop" por stdin, `--max-seconds`, o `terminationHook` en SIGTERM):
+    /// para el tap/observador/micrófono, escribe `summary.json` y el evento final "done".
+    /// Idempotente: solo el primer llamador hace el trabajo.
+    func finish(reason: String) {
+        lock.lock()
+        if stopped { lock.unlock(); return }
+        stopped = true
+        lock.unlock()
+        flushText()
+        if let tap = tap { CGEvent.tapEnable(tap: tap, enable: false) }
+        if let obs = appObserver { NSWorkspace.shared.notificationCenter.removeObserver(obs) }
+        if let rec = audioRecorder, rec.isRecording { rec.stop() }
+        eventsHandle?.closeFile()
+        let durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+        let micField = micState == "recording" ? "recorded" : (wantsMic ? "denied" : "off")
+        let summary: [String: Any] = [
+            "id": (outDir as NSString).lastPathComponent,
+            "dir": outDir,
+            "startedAt": Int(startTime.timeIntervalSince1970 * 1000),
+            "durationMs": durationMs,
+            "steps": stepCount,
+            "mic": micField,
+            "reason": reason,
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: summary, options: [.sortedKeys]) {
+            try? data.write(to: URL(fileURLWithPath: outDir + "/summary.json"))
+        }
+        print("{\"event\":\"done\",\"steps\":\(stepCount),\"durationMs\":\(durationMs),\"mic\":\"\(micField)\"}")
+        fflush(stdout)
+    }
+}
+
 // MARK: - Main
 
 // Kill-switch desde OpenDesk (SIGTERM → SIGKILL a los ~300 ms): suelta el botón si estaba
@@ -671,6 +1420,7 @@ func watchEsc() {
 signal(SIGTERM, SIG_IGN)
 let termSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global(qos: .userInteractive))
 termSource.setEventHandler {
+    terminationHook?()
     if buttonHeld {
         post(CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: currentCursor(), mouseButton: .left))
     }
@@ -690,7 +1440,7 @@ while let f = args.first, f.hasPrefix("--") {
     else { fail("Bandera desconocida: \(f)") }
 }
 guard let cmd = args.first else {
-    fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app …")
+    fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app|open-app-bg|resolve-app|activate|hide-apps|unhide-apps|app-at|running-apps|windows-of|focused-secure|recent-input|screenshot-sck|mask-regions|watch-esc|ax-tree|ax-find|ax-frame|ax-press|ax-set-value|ax-action|find-elements|window-shot|record|transcribe|mic-permission|mic-request …")
 }
 
 switch cmd {
@@ -804,6 +1554,289 @@ case "resolve-app":
 case "activate":
     guard args.count > 1 else { fail("Falta el bundle id o nombre de la app") }
     out(activateAndEnsureWindow(args[1...].joined(separator: " ")))
+case "open-app-bg":
+    guard args.count > 1 else { fail("Falta el nombre de la app") }
+    let name = args[1...].joined(separator: " ")
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+    let isBundle = name.contains(".") && !name.hasSuffix(".app") && !name.contains(" ")
+    p.arguments = ["-g"] + (isBundle ? ["-b", name] : ["-a", name])
+    do { try p.run() } catch { fail("No se pudo abrir \(name): \(error.localizedDescription)") }
+    p.waitUntilExit()
+    if p.terminationStatus != 0 { fail("No se encontró la app \(name)") }
+    out(["ok": true])
+case "hide-apps":
+    // `NSRunningApplication.hide()` es asíncrono y su valor de retorno no es fiable (puede dar
+    // `false` aunque la app SÍ termine oculta poco después — verificado). Además, `isHidden` NO
+    // se refresca si el proceso solo hace `usleep` mientras espera: hace falta darle vueltas al
+    // run loop (el aviso de cambio de estado llega por ahí) — verificado con y sin
+    // `RunLoop.current.run(mode:before:)`. Se dispara `hide()` en TODAS las candidatas primero y
+    // se confirma después con un sondeo COMPARTIDO de `isHidden` bombeando el run loop.
+    guard args.count > 1 else { fail("Uso: cu-helper hide-apps <keepCsv>") }
+    let keep = Set(args[1].split(separator: ",").map(String.init))
+    let hideCandidates = NSWorkspace.shared.runningApplications.filter { app in
+        guard app.activationPolicy == .regular, let bid = app.bundleIdentifier, !bid.isEmpty else { return false }
+        return bid != "com.apple.finder" && !keep.contains(bid) && !app.isHidden
+    }
+    for app in hideCandidates { _ = app.hide() }
+    var hidden: [String] = []
+    var pending = hideCandidates
+    let hideDeadline = Date().addingTimeInterval(3.0)
+    while !pending.isEmpty && Date() < hideDeadline {
+        pending.removeAll { app in
+            guard app.isHidden, let bid = app.bundleIdentifier else { return false }
+            hidden.append(bid)
+            return true
+        }
+        if !pending.isEmpty { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05)) }
+    }
+    out(["hidden": hidden])
+case "unhide-apps":
+    guard args.count > 1 else { fail("Uso: cu-helper unhide-apps <csv>") }
+    let list = Set(args[1].split(separator: ",").map(String.init))
+    let unhideCandidates = NSWorkspace.shared.runningApplications.filter { app in
+        guard let bid = app.bundleIdentifier else { return false }
+        return list.contains(bid) && app.isHidden
+    }
+    for app in unhideCandidates { _ = app.unhide() }
+    var unhidden: [String] = []
+    var pendingU = unhideCandidates
+    let unhideDeadline = Date().addingTimeInterval(3.0)
+    while !pendingU.isEmpty && Date() < unhideDeadline {
+        pendingU.removeAll { app in
+            guard !app.isHidden, let bid = app.bundleIdentifier else { return false }
+            unhidden.append(bid)
+            return true
+        }
+        if !pendingU.isEmpty { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05)) }
+    }
+    out(["unhidden": unhidden])
+case "ax-tree":
+    requireAccessibility()
+    guard args.count > 1 else { fail("Uso: cu-helper ax-tree <bundleId> [maxDepth=12] [maxNodes=500]") }
+    let bundleId = args[1]
+    let maxDepth = args.count > 2 ? (Int(args[2]) ?? 12) : 12
+    let maxNodes = args.count > 3 ? (Int(args[3]) ?? 500) : 500
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    let walker = axTree(appEl, maxDepth: maxDepth, maxNodes: maxNodes, includeMenuBar: true)
+    out(["app": ["name": app.localizedName ?? "", "bundleId": bundleId, "pid": Int(app.processIdentifier)],
+         "nodes": walker.nodes, "truncated": walker.truncated])
+case "ax-find":
+    requireAccessibility()
+    guard args.count > 2 else { fail("Uso: cu-helper ax-find <bundleId> <jsonQuery>") }
+    let bundleId = args[1]
+    let query = parseAXQuery(args[2])
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    let walker = axTree(appEl, maxDepth: 30, maxNodes: 4000, includeMenuBar: true)
+    out(["matches": axFindMatches(walker.nodes, query: query)])
+case "ax-frame":
+    requireAccessibility()
+    guard args.count > 2 else { fail("Uso: cu-helper ax-frame <bundleId> <ref>") }
+    let bundleId = args[1]; let ref = args[2]
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    guard let el = resolveRef(appEl, ref) else { fail("El elemento cambió o no existe: \(ref)", code: 8) }
+    guard let frame = axFrame(el) else { fail("Sin marco para \(ref)", code: 8) }
+    out(["frame": frame])
+case "ax-press":
+    requireAccessibility()
+    guard args.count > 2 else { fail("Uso: cu-helper ax-press <bundleId> <ref> [expectRole] [expectTitle]") }
+    let bundleId = args[1]; let ref = args[2]
+    let expectRole = args.count > 3 ? args[3] : nil
+    let expectTitle = args.count > 4 ? args[4...].joined(separator: " ") : nil
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    guard let el = resolveRef(appEl, ref) else { fail("El elemento cambió o no existe: \(ref)", code: 8) }
+    if let er = expectRole, !er.isEmpty, (axString(el, kAXRoleAttribute as String) ?? "") != er {
+        fail("El elemento cambió (rol distinto)", code: 8)
+    }
+    if let et = expectTitle, !et.isEmpty, (axString(el, kAXTitleAttribute as String) ?? "") != et {
+        fail("El elemento cambió (título distinto)", code: 8)
+    }
+    guard AXUIElementPerformAction(el, kAXPressAction as CFString) == .success else {
+        fail("El elemento cambió (no se pudo pulsar)", code: 8)
+    }
+    out(["ok": true])
+case "ax-set-value":
+    requireAccessibility()
+    guard args.count > 3 else { fail("Uso: cu-helper ax-set-value <bundleId> <ref> <valor…>") }
+    let bundleId = args[1]; let ref = args[2]
+    let value = args[3...].joined(separator: " ")
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    guard let el = resolveRef(appEl, ref) else { fail("El elemento cambió o no existe: \(ref)", code: 8) }
+    let role = axString(el, kAXRoleAttribute as String) ?? ""
+    let subrole = axString(el, kAXSubroleAttribute as String) ?? ""
+    if role == "AXSecureTextField" || subrole == "AXSecureTextField" {
+        fail("Campo seguro: no se puede escribir por AX", code: 9)
+    }
+    var settable: DarwinBoolean = false
+    AXUIElementIsAttributeSettable(el, kAXValueAttribute as CFString, &settable)
+    guard settable.boolValue else { fail("El valor no se puede editar", code: 10) }
+    guard AXUIElementSetAttributeValue(el, kAXValueAttribute as CFString, value as CFString) == .success else {
+        fail("No se pudo escribir el valor", code: 10)
+    }
+    out(["ok": true])
+case "ax-action":
+    requireAccessibility()
+    guard args.count > 3 else { fail("Uso: cu-helper ax-action <bundleId> <ref> <acción>") }
+    let bundleId = args[1]; let ref = args[2]; let action = args[3]
+    let allowedAXActions: Set<String> = ["AXShowMenu", "AXIncrement", "AXDecrement", "AXConfirm", "AXCancel", "AXRaise", "AXPick"]
+    guard allowedAXActions.contains(action) else { fail("Acción no permitida: \(action)", code: 11) }
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    guard let el = resolveRef(appEl, ref) else { fail("El elemento cambió o no existe: \(ref)", code: 8) }
+    guard AXUIElementPerformAction(el, action as CFString) == .success else {
+        fail("El elemento cambió (no se pudo realizar la acción)", code: 8)
+    }
+    out(["ok": true])
+case "find-elements":
+    requireAccessibility()
+    var feApp: String? = nil
+    var feRole: String? = nil
+    var feQuery: String? = nil
+    var fi = 1
+    while fi < args.count {
+        switch args[fi] {
+        case "--app":
+            fi += 1
+            guard fi < args.count else { fail("Falta el valor de --app") }
+            feApp = args[fi]; fi += 1
+        case "--role":
+            fi += 1
+            guard fi < args.count else { fail("Falta el valor de --role") }
+            feRole = args[fi]; fi += 1
+        case "--query":
+            fi += 1
+            guard fi < args.count else { fail("Falta el valor de --query") }
+            feQuery = args[fi]; fi += 1
+        default:
+            fail("Bandera desconocida para find-elements: \(args[fi])")
+        }
+    }
+    guard let feBundleId = feApp, !feBundleId.isEmpty else {
+        fail("Uso: cu-helper find-elements --app <bundleId> [--role button,textfield,…] [--query \"texto\"]")
+    }
+    guard let feRunningApp = requireRunningApp(feBundleId) else { fail("La app \(feBundleId) no está en ejecución", code: 7) }
+    let feRoles: Set<String>? = feRole.map { Set($0.split(separator: ",").map { normalizeAXRole(String($0)) }) }
+    let feQueryNorm = feQuery.map { foldText($0) }
+    let feAppEl = AXUIElementCreateApplication(feRunningApp.processIdentifier)
+    let (feMatches, feTruncated) = findElements(
+        feAppEl, maxNodes: 4000, maxMatches: 300, budgetSeconds: 0.8,
+        query: FindElementsQuery(roles: feRoles, query: feQueryNorm)
+    )
+    if feTruncated {
+        FileHandle.standardError.write("find-elements: límite de nodos/tiempo alcanzado (resultados parciales)\n".data(using: .utf8)!)
+    }
+    out(feMatches)
+case "window-shot":
+    guard args.count > 2 else { fail("Uso: cu-helper window-shot <bundleId> <outPath> [windowIndex=0]") }
+    let bundleId = args[1]; let outPath = args[2]
+    let windowIndex = args.count > 3 ? (Int(args[3]) ?? 0) : 0
+    if #available(macOS 14.0, *) {
+        do {
+            let (image, title) = try windowShot(bundleId: bundleId, windowIndex: windowIndex)
+            guard writePNG(image, to: outPath) else { fail("No se pudo guardar la captura") }
+            out(["ok": true, "width": image.width, "height": image.height, "title": title])
+        } catch {
+            fail("window-shot: \(error.localizedDescription)", code: 12)
+        }
+    } else {
+        fail("ScreenCaptureKit no disponible (macOS < 14)", code: 5)
+    }
+case "record":
+    requireAccessibility()
+    guard args.count > 1 else { fail("Uso: cu-helper record <outDir> [--mic] [--max-seconds N≤900] [--exclude csv]") }
+    let outDir = args[1]
+    var mic = false
+    var maxSeconds: Double = 900
+    var exclude = Set<String>()
+    var ri = 2
+    while ri < args.count {
+        switch args[ri] {
+        case "--mic": mic = true; ri += 1
+        case "--max-seconds":
+            ri += 1
+            guard ri < args.count, let v = Double(args[ri]) else { fail("Falta el valor de --max-seconds") }
+            maxSeconds = min(900, max(1, v)); ri += 1
+        case "--exclude":
+            ri += 1
+            guard ri < args.count else { fail("Falta la lista de --exclude") }
+            exclude = Set(args[ri].split(separator: ",").map(String.init)); ri += 1
+        default:
+            fail("Bandera desconocida: \(args[ri])")
+        }
+    }
+    _ = NSApplication.shared
+    let recorder = Recorder(outDir: outDir, maxSeconds: maxSeconds, mic: mic, exclude: exclude)
+    recorder.start()
+    terminationHook = { recorder.finish(reason: "sigterm") }
+    signal(SIGINT, SIG_IGN)
+    let sigintSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .global(qos: .userInteractive))
+    sigintSource.setEventHandler {
+        recorder.finish(reason: "sigint")
+        exit(0)
+    }
+    sigintSource.resume()
+    DispatchQueue.global(qos: .utility).async {
+        while let line = readLine(strippingNewline: true) {
+            if line.trimmingCharacters(in: .whitespaces) == "stop" {
+                recorder.finish(reason: "stop")
+                exit(0)
+            }
+        }
+    }
+    let recordTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+    recordTimer.schedule(deadline: .now() + maxSeconds)
+    recordTimer.setEventHandler {
+        recorder.finish(reason: "max-seconds")
+        exit(0)
+    }
+    recordTimer.resume()
+    CFRunLoopRun()
+case "transcribe":
+    guard args.count > 1 else { fail("Uso: cu-helper transcribe <audio> [locale=es-ES]") }
+    let audioPath = args[1]
+    let locale = args.count > 2 ? args[2] : "es-ES"
+    guard FileManager.default.fileExists(atPath: audioPath) else {
+        fail("No existe el archivo de audio: \(audioPath)")
+    }
+    guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
+        fail("Reconocimiento de voz no autorizado", code: 6)
+    }
+    guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: locale)), recognizer.isAvailable else {
+        fail("Reconocimiento de voz no disponible para \(locale)", code: 12)
+    }
+    let request = SFSpeechURLRecognitionRequest(url: URL(fileURLWithPath: audioPath))
+    request.requiresOnDeviceRecognition = true
+    request.shouldReportPartialResults = false
+    let transcribeSem = DispatchSemaphore(value: 0)
+    var transcribedText = ""
+    var transcribeError: Error?
+    let task = recognizer.recognitionTask(with: request) { result, error in
+        if let error = error { transcribeError = error; transcribeSem.signal(); return }
+        if let result = result, result.isFinal {
+            transcribedText = result.bestTranscription.formattedString
+            transcribeSem.signal()
+        }
+    }
+    _ = task
+    if transcribeSem.wait(timeout: .now() + 115) == .timedOut {
+        fail("Tiempo de espera agotado al transcribir", code: 12)
+    }
+    if let err = transcribeError {
+        fail("Error al transcribir: \(err.localizedDescription)", code: 12)
+    }
+    out(["text": transcribedText, "onDevice": true])
+case "mic-permission":
+    out(["status": micStatusString()])
+case "mic-request":
+    let micSem = DispatchSemaphore(value: 0)
+    AVCaptureDevice.requestAccess(for: .audio) { _ in micSem.signal() }
+    micSem.wait()
+    out(["status": micStatusString()])
 default:
     fail("Comando desconocido: \(cmd)")
 }

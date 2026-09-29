@@ -1,30 +1,47 @@
 /** Acciones del modo Cowork (carpetas, tareas, permisos). */
-import type { AccessDecision } from '@shared/ipc-cowork'
+import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
+import { FOLDER_MODE_LABEL_ES, type AccessDecision, type CoworkFolderSet, type FolderAccessMode } from '@shared/ipc-cowork'
+import { buildCoworkSystemPrompt } from '@shared/cowork-prompt'
 import type { ModelRef } from '@shared/types'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
+import { useUi } from '../../../stores/ui'
 import { cw } from './bridge'
 import {
   clearUnseen,
   connectFolder,
+  currentCoworkModel,
+  currentCoworkVariant,
   disconnect,
+  forgetTaskMeta,
   fullAccessFor,
   loadGrants,
+  loadProjectAndMemory,
   loadTask,
   refreshComputerStatus,
   rememberFolder,
   rememberFullAccess,
+  rootTaskId,
+  setTaskMeta,
   useCowork
 } from './store'
+import {
+  CREATE_SKILL_PROMPT,
+  buildContinuationPrompt,
+  buildSideChatSystem,
+  suggestedExportName,
+  transcriptToMarkdown
+} from './transcript'
+import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './util'
 
 // ── Red de Cowork (aviso "Se bloqueó el acceso a…") ──
 
 /** Tras permitir un host, reanuda la tarea: la abre (si no es la activa) y le pide que reintente. */
 export async function retryAfterNetworkAllow(taskId: string, host: string): Promise<void> {
   if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
-  const model = useSettings.getState().settings.defaultModel
-  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, model)
+  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, currentCoworkModel())
 }
 
 // ── "Permitir borrar" (Seatbelt: file-write-unlink) ──
@@ -49,7 +66,7 @@ export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
 }
 
 export const COWORK_AGENT = 'cowork'
-/** Agente de los servidores de acceso total (sin sandbox + control del Mac). */
+/** Agente de los servidores de Control total (sin sandbox + control del Mac). */
 export const COMPUTER_AGENT = 'computer'
 
 /** Agente a usar según el servidor conectado. */
@@ -98,7 +115,7 @@ export async function selectFolder(folder: string): Promise<void> {
 }
 
 /**
- * Cambia el modo de acceso de la carpeta actual. Pasar a acceso total pide confirmación
+ * Cambia el modo de acceso de la carpeta actual. Pasar a Control total pide confirmación
  * (diálogo) salvo que `confirmed` sea true; volver a sandbox es inmediato.
  */
 export async function setAccessMode(fullAccess: boolean, confirmed = false): Promise<void> {
@@ -156,7 +173,7 @@ export async function abortBusyTasks(): Promise<void> {
 
 /**
  * Botón "Detener": el proceso principal activa el kill-switch, aborta las sesiones de TODOS los
- * servidores de acceso total y mata los helpers (igual que ⌘⇧Esc y la píldora). El abort local es
+ * servidores de Control total y mata los helpers (igual que ⌘⇧Esc y la píldora). El abort local es
  * solo redundancia por si main tardara.
  */
 export async function stopComputerControl(): Promise<void> {
@@ -175,29 +192,39 @@ export async function resumeComputerControl(): Promise<void> {
 /**
  * Responde a la tarjeta `request_access` pendiente: una decisión por app (nivel o "denegar"), o
  * `feedback` si el usuario pidió cambios ("Editar" en vez de aprobar: no se concede nada, el
- * texto vuelve al agente para que replantee el plan). Persiste en main y desbloquea la
- * herramienta MCP que esperaba la respuesta (que ya no tiene límite de tiempo: puede llevar rato).
+ * texto vuelve al agente para que replantee el plan). `approvePlan` aprueba el plan aunque no se
+ * conceda ninguna app (plan sin apps); `cancel` (Esc, ✕, "Cancelar") no toca ninguna concesión ni
+ * aprueba nada. Persiste en main y desbloquea la herramienta MCP que esperaba la respuesta (que ya
+ * no tiene límite de tiempo: puede llevar rato).
  */
 export async function respondAccessRequest(
   decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>,
-  feedback?: string
+  opts: { feedback?: string; approvePlan?: boolean; cancel?: boolean } = {}
 ): Promise<void> {
   const req = useCowork.getState().accessRequest
   if (!req) return
   useCowork.setState({ accessRequest: null })
+  const { feedback, approvePlan, cancel } = opts
   try {
-    await cw('computer:respondAccess', { id: req.id, decisions, feedback })
+    await cw('computer:respondAccess', { id: req.id, decisions, feedback, approvePlan, cancel })
   } catch (err) {
     useCowork.setState({ error: errorMessage(err) })
   }
-  if (!feedback) await loadGrants()
+  if (!feedback && !cancel) await loadGrants()
 }
 
+/** Esc / ✕ / "Cancelar": no concede, no deniega y no aprueba nada (las concesiones quedan como estaban). */
 export function dismissAccessRequest(): void {
-  // "Cerrar" sin decidir = denegar todas (no deja la tarjeta pendiente ni la herramienta colgada).
-  const req = useCowork.getState().accessRequest
-  if (!req) return
-  void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const })))
+  void respondAccessRequest([], { cancel: true })
+}
+
+/** "Revocar": la siguiente acción del agente en esa tarea vuelve a pedir el plan. */
+export async function revokePlanApproval(sessionId: string): Promise<void> {
+  try {
+    await cw('computer:revokePlan', { sessionId })
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
 }
 
 /** Cambia (o concede a mano) el nivel de una app desde Ajustes. */
@@ -256,13 +283,37 @@ export async function forgetFolder(folder: string): Promise<void> {
 }
 
 export function newTask(): void {
-  useCowork.setState({ activeTaskId: null })
+  // Sin tarea activa se vuelve al modelo del modo Cowork (que `setTaskModel` ya recuerda).
+  useCowork.setState({ activeTaskId: null, taskModel: null, taskVariant: null, sideChat: null })
+}
+
+/** Modelo y esfuerzo con que se usó la tarea por última vez (último mensaje del usuario, o el de la sesión). */
+function taskModelOf(sessionID: string): { model: ModelRef; variant: string | null } | null {
+  const st = useSessions.getState()
+  const entries = st.messages[sessionID] ?? []
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const info = entries[i].info
+    if (info.role === 'user' && info.model) {
+      return { model: { providerID: info.model.providerID, modelID: info.model.modelID }, variant: info.model.variant ?? null }
+    }
+  }
+  const m = st.sessions[sessionID]?.model
+  return m ? { model: { providerID: m.providerID, modelID: m.id }, variant: m.variant ?? null } : null
 }
 
 export async function openTask(sessionID: string): Promise<void> {
-  useCowork.setState({ activeTaskId: sessionID })
+  useCowork.setState((s) => ({
+    activeTaskId: sessionID,
+    // La Consulta lateral pertenece a una tarea concreta.
+    sideChat: s.sideChat && s.sideChat.taskId !== sessionID ? null : s.sideChat
+  }))
   clearUnseen(sessionID)
   await loadTask(sessionID)
+  // La tarea conserva su modelo y su esfuerzo al reabrirla.
+  if (useCowork.getState().activeTaskId === sessionID) {
+    const m = taskModelOf(sessionID)
+    useCowork.setState({ taskModel: m?.model ?? null, taskVariant: m?.variant ?? null })
+  }
 }
 
 function ctx(): { client: NonNullable<ReturnType<typeof useCowork.getState>['client']>; folder: string } {
@@ -287,21 +338,35 @@ export function removeAttachment(path: string): void {
   useCowork.setState((s) => ({ attachments: s.attachments.filter((a) => a.path !== path) }))
 }
 
+/** Carpetas adicionales (vinculadas y de confianza) de la carpeta actual; solo aplican en sandbox. */
+function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }> {
+  const { folderSet, conn } = useCowork.getState()
+  if (!folderSet || conn?.fullAccess) return []
+  const out: Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }> = []
+  const seen = new Set<string>()
+  for (const f of folderSet.linked) {
+    seen.add(f.path)
+    out.push({ path: f.path, mode: f.mode })
+  }
+  for (const f of folderSet.trusted) {
+    if (!seen.has(f.path)) out.push({ path: f.path, mode: f.mode, trusted: true })
+  }
+  return out
+}
+
 /**
- * Instrucciones globales de Cowork (Ajustes) + instrucciones del proyecto (carpeta) + memoria
- * guardada (`.lapis/memoria.md`), combinadas como `system` extra del prompt (item 1: proyectos,
- * instrucciones y memoria). `undefined` si no hay nada que añadir.
+ * Prompt de sistema extra: instrucciones generales (Ajustes) + proyecto (instrucciones, enlaces) + memoria
+ * (`.lapis/memoria.md`, si está activada) + carpetas adicionales. Lo arma el módulo compartido con main
+ * (rutinas). `undefined` si no hay nada que añadir.
  */
 function buildSystemPrompt(): string | undefined {
   const { project, memory } = useCowork.getState()
-  const globalInstructions = useSettings.getState().settings.coworkGlobalInstructions?.trim()
-  const parts: string[] = []
-  if (globalInstructions) parts.push(`Instrucciones generales de Cowork (todas las tareas):\n${globalInstructions}`)
-  const projectInstructions = project?.instructions?.trim()
-  if (projectInstructions) parts.push(`Instrucciones del proyecto "${project?.name}":\n${projectInstructions}`)
-  const memoryContent = memory?.content?.trim()
-  if (memoryContent) parts.push(`Memoria guardada de este proyecto (.lapis/memoria.md):\n${memoryContent}`)
-  return parts.length > 0 ? parts.join('\n\n---\n\n') : undefined
+  return buildCoworkSystemPrompt({
+    globalInstructions: useSettings.getState().settings.coworkGlobalInstructions,
+    project,
+    memory: memory?.content,
+    folders: extraFolders()
+  })
 }
 
 /** Texto final del mensaje con la lista de adjuntos (rutas relativas a la carpeta). */
@@ -312,8 +377,12 @@ function withAttachments(text: string): string {
   return `${text}\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n${list}`
 }
 
-/** Envía un mensaje; si no hay tarea activa, crea una nueva sesión con el agente `cowork`. */
-export async function sendToTask(rawText: string, model: ModelRef): Promise<void> {
+/**
+ * Envía un mensaje; si no hay tarea activa, crea una nueva sesión con el agente `cowork`/`computer`.
+ * `model` (por defecto `currentCoworkModel()`) y `opts.variant` (esfuerzo; por defecto el de la tarea)
+ * quedan guardados en la sesión; `metadata.folders` recuerda las carpetas adicionales de la tarea.
+ */
+export async function sendToTask(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
   if (useCowork.getState().conn?.fullAccess === true) {
     // Tras una parada NO se reanuda solo: hace falta "Reanudar control" (estado en main).
@@ -322,16 +391,26 @@ export async function sendToTask(rawText: string, model: ModelRef): Promise<void
     useCowork.setState({ controlStoppedAt: stopped ? (st?.stoppedAt ?? Date.now()) : null })
     if (stopped) throw new Error(CONTROL_STOPPED_SEND_ERROR)
   }
+  // La memoria (`.lapis/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
+  await loadProjectAndMemory(folder)
   const text = withAttachments(rawText)
   useCowork.setState({ attachments: [], draft: '' })
+  const useModel = model ?? currentCoworkModel()
+  const variant = opts?.variant ?? currentCoworkVariant()
   const sessions = useSessions.getState()
   let sessionID = useCowork.getState().activeTaskId
   if (!sessionID) {
+    const folders = extraFolders()
     const res = await client.session.create({
       directory: folder,
       agent: currentAgent(),
       title: rawText.slice(0, 80),
-      metadata: { mode: 'cowork', fullAccess: useCowork.getState().conn?.fullAccess === true }
+      model: { id: useModel.modelID, providerID: useModel.providerID, ...(variant ? { variant } : {}) },
+      metadata: {
+        mode: 'cowork',
+        fullAccess: useCowork.getState().conn?.fullAccess === true,
+        ...(folders.length > 0 ? { folders: folders.map((f) => ({ path: f.path, mode: f.mode })) } : {})
+      }
     })
     if (res.error || !res.data) throw new Error(errorMessage(res.error))
     sessions.upsertSession(res.data)
@@ -348,7 +427,8 @@ export async function sendToTask(rawText: string, model: ModelRef): Promise<void
     sessionID,
     directory: folder,
     agent: fullAccess ? COMPUTER_AGENT : COWORK_AGENT,
-    model: { providerID: model.providerID, modelID: model.modelID },
+    model: { providerID: useModel.providerID, modelID: useModel.modelID },
+    ...(variant ? { variant } : {}),
     system: buildSystemPrompt(),
     parts: [{ type: 'text', text }]
   })
@@ -365,9 +445,9 @@ export async function abortTask(): Promise<void> {
   await client.session.abort({ sessionID: activeTaskId, directory: folder })
 }
 
-export async function replyPermission(requestID: string, reply: 'once' | 'always' | 'reject'): Promise<void> {
+export async function replyPermission(requestID: string, reply: 'once' | 'always' | 'reject', message?: string): Promise<void> {
   const { client, folder } = ctx()
-  const res = await client.permission.reply({ requestID, directory: folder, reply })
+  const res = await client.permission.reply({ requestID, directory: folder, reply, ...(message ? { message } : {}) })
   if (res.error) throw new Error(errorMessage(res.error))
   useCowork.setState((s) => {
     const permissions = { ...s.permissions }
@@ -405,6 +485,8 @@ export async function archiveTask(sessionID: string): Promise<void> {
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
+  // Una tarea archivada no debe conservar su plan aprobado.
+  void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
 }
 
 /** Renombra una tarea (título mostrado en la lista; no cambia el prompt original). */
@@ -415,6 +497,8 @@ export async function renameTask(sessionID: string, title: string): Promise<void
   const res = await client.session.update({ sessionID, directory: folder, title: trimmed })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
+  // Si main conoce la tarea (fijada / en un grupo), su título se mantiene al día.
+  if (useCowork.getState().taskMeta[sessionID]) void setTaskMeta(sessionID, { title: trimmed })
 }
 
 /** Borra una tarea (y su historial) de forma permanente. */
@@ -430,6 +514,8 @@ export async function deleteTask(sessionID: string): Promise<void> {
     return { sessions, messages }
   })
   if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
+  void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
+  forgetTaskMeta(sessionID)
 }
 
 /**
@@ -450,7 +536,7 @@ export async function scheduleActiveTask(): Promise<void> {
   const markerIdx = raw.indexOf('\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n')
   const prompt = (markerIdx >= 0 ? raw.slice(0, markerIdx) : raw).trim()
   const title = useSessions.getState().sessions[activeTaskId]?.title || 'Tarea programada'
-  const model = useSettings.getState().settings.defaultModel
+  const model = currentCoworkModel()
   const { openEditor } = await import('../../routines/impl/store')
   const { useUi } = await import('../../../stores/ui')
   openEditor(
@@ -475,4 +561,333 @@ export async function reveal(path: string): Promise<void> {
 
 export async function openPath(path: string): Promise<void> {
   await cw('cowork:openPath', { path })
+}
+
+// ───────────────────────────── Carpetas adicionales (Lote B) ─────────────────────────────
+
+/** Tareas raíz del servidor conectado que están trabajando (opcionalmente sin contar `exceptId`). */
+function runningRootIds(exceptId?: string): string[] {
+  const { conn, folder } = useCowork.getState()
+  if (!conn || !folder) return []
+  const { sessions, status, sessionSource } = useSessions.getState()
+  return Object.keys(status).filter((id) => {
+    const run = status[id]
+    const sess = sessions[id]
+    return (
+      id !== exceptId &&
+      (run === 'busy' || run === 'retry') &&
+      !!sess &&
+      !sess.parentID &&
+      sess.directory === folder &&
+      sessionSource[id] === conn.baseUrl
+    )
+  })
+}
+
+/** Cambiar las carpetas del sandbox reinicia su servidor: pide confirmación si hay otras tareas en curso. */
+async function confirmInterruptRunning(exceptId?: string): Promise<boolean> {
+  const n = runningRootIds(exceptId).length
+  if (n === 0) return true
+  return confirmDialog({
+    title: 'Se interrumpirán tareas en curso',
+    message: `${n === 1 ? 'Hay 1 tarea trabajando' : `Hay ${n} tareas trabajando`} en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.`,
+    confirmLabel: 'Continuar',
+    danger: true
+  })
+}
+
+function setFolderSetFrom(folder: string, res: CoworkFolderSet): void {
+  if (useCowork.getState().folder !== folder) return
+  useCowork.setState({ folderSet: { primary: res.primary, linked: res.linked, trusted: res.trusted, applied: res.applied } })
+}
+
+/**
+ * Vincula una carpeta adicional (y con `trust` la marca de confianza) a la carpeta actual. Si el sandbox
+ * está en marcha main lo reinicia (las tareas en curso se interrumpen: se pide confirmación) y aquí se
+ * reconecta. Los errores se muestran en `useCowork.error`. Devuelve true si se aplicó.
+ */
+export async function linkFolder(path: string, mode: FolderAccessMode, opts?: { trust?: boolean }): Promise<boolean> {
+  const { folder, conn } = useCowork.getState()
+  if (!folder) return false
+  try {
+    const sandbox = !!conn && !conn.fullAccess
+    if (sandbox && !(await confirmInterruptRunning())) return false
+    const chk = await cw('cowork:folders:check', { path })
+    if (!chk.ok) throw new Error(chk.reason ?? 'Esa carpeta no se puede añadir.')
+    const res = await cw('cowork:folders:link', {
+      folder,
+      path: chk.normalized,
+      mode,
+      restart: true,
+      ...(opts?.trust !== undefined ? { trust: opts.trust } : {})
+    })
+    setFolderSetFrom(folder, res)
+    if (res.restarted && sandbox) await connectFolder(folder, false)
+    return true
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+    return false
+  }
+}
+
+/** Quita una carpeta adicional de la carpeta actual (reinicia el sandbox si está en marcha). */
+export async function unlinkFolder(path: string): Promise<void> {
+  const { folder, conn } = useCowork.getState()
+  if (!folder) return
+  try {
+    const sandbox = !!conn && !conn.fullAccess
+    if (sandbox && !(await confirmInterruptRunning())) return
+    const res = await cw('cowork:folders:unlink', { folder, path, restart: true })
+    setFolderSetFrom(folder, res)
+    if (res.restarted && sandbox) await connectFolder(folder, false)
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
+}
+
+export type FolderRequestDecision =
+  | { kind: 'deny' }
+  | { kind: 'later' }
+  | { kind: 'allow'; path: string; mode: FolderAccessMode; trust: boolean }
+
+/** Texto de rechazo que recibe el agente cuando el usuario no concede la carpeta. */
+function folderRefusal(kind: 'deny' | 'later', path: string): string {
+  return kind === 'deny'
+    ? `El usuario denegó el acceso a ${path}; no lo vuelvas a pedir; adapta el plan para trabajar sin esa carpeta.`
+    : `El usuario prefiere no dar acceso a ${path} por ahora; sigue sin esa carpeta y menciónalo en el resumen.`
+}
+
+/**
+ * Responde a la tarjeta «quiere trabajar en otra carpeta» (permiso `external_directory`).
+ * - Denegar / Ahora no: rechaza con un mensaje que orienta al agente.
+ * - Permitir en Control total: `once`, o `always` + carpeta de confianza si se marcó «No volver a preguntar».
+ * - Permitir en sandbox: la carpeta hay que vincularla y reiniciar el servidor (Seatbelt fija el perfil al
+ *   lanzarlo): se confirma si hay otras tareas en curso, se rechaza la petición («se está concediendo
+ *   acceso»), se vincula con reinicio, se reconecta y se le pide a la tarea que continúe sola.
+ */
+export async function answerFolderRequest(req: PermissionRequest, d: FolderRequestDecision): Promise<void> {
+  const { conn, folder } = useCowork.getState()
+  if (!conn || !folder) return
+  const requested = folderRequestPaths(req).requested
+  try {
+    if (d.kind !== 'allow') {
+      await replyPermission(req.id, 'reject', folderRefusal(d.kind, requested || 'esa carpeta'))
+      return
+    }
+    if (conn.fullAccess) {
+      if (d.trust) {
+        await cw('cowork:trusted:set', { path: d.path, mode: d.mode })
+        await replyPermission(req.id, 'always')
+      } else {
+        await replyPermission(req.id, 'once')
+      }
+      return
+    }
+    // Sandbox.
+    const taskId = rootTaskId(req.sessionID)
+    if (!(await confirmInterruptRunning(taskId))) return
+    const chk = await cw('cowork:folders:check', { path: d.path })
+    if (!chk.ok) throw new Error(chk.reason ?? 'Esa carpeta no se puede añadir.')
+    await replyPermission(req.id, 'reject', 'Se está concediendo acceso; la tarea se reanudará sola.')
+    const res = await cw('cowork:folders:link', { folder, path: chk.normalized, mode: d.mode, trust: d.trust, restart: true })
+    setFolderSetFrom(folder, res)
+    if (res.restarted) {
+      await connectFolder(folder, false)
+      if (useCowork.getState().phase !== 'ready') return
+    }
+    await openTask(taskId)
+    await sendToTask(
+      `Ya tienes acceso a ${chk.normalized} (${FOLDER_MODE_LABEL_ES[d.mode].toLowerCase()}). Continúa la tarea donde la dejaste.`
+    )
+  } catch (err) {
+    useCowork.setState({ error: errorMessage(err) })
+  }
+}
+
+/**
+ * «Siempre»: responde `always` en OpenCode y guarda la regla en main (`cowork:rules:add`) para que valga al
+ * reabrir la carpeta. No se guardan `external_directory`, `doom_loop`, `computer_*` ni patrones de borrado
+ * (solo vale para esta sesión). Con `policy.disableAlwaysAllow` se responde solo `once`.
+ */
+export async function replyPermissionAlways(req: PermissionRequest): Promise<void> {
+  const { folder, policy } = useCowork.getState()
+  if (policy?.disableAlwaysAllow) {
+    await replyPermission(req.id, 'once')
+    return
+  }
+  await replyPermission(req.id, 'always')
+  const patterns = rememberablePatterns(req)
+  if (folder && patterns.length > 0) {
+    cw('cowork:rules:add', { folder, permission: req.permission, patterns }).catch(() => undefined)
+  }
+}
+
+// ───────────────────────────── Conversación: editar, continuar, exportar ─────────────────────────────
+
+/** Espera (hasta `ms`) a que la tarea deje de estar ocupada, consultando al servidor. */
+async function waitUntilIdle(taskId: string, ms = 4000): Promise<void> {
+  const { client, folder } = ctx()
+  const until = Date.now() + ms
+  while (Date.now() < until) {
+    const res = await client.session.status({ directory: folder }).catch(() => null)
+    const t = res?.data?.[taskId]?.type
+    if (!t || t === 'idle') {
+      useSessions.getState().setStatus(taskId, 'idle')
+      return
+    }
+    await new Promise((r) => setTimeout(r, 250))
+  }
+}
+
+/**
+ * «Editar y reintentar»: aborta si la tarea está trabajando, deshace desde ese mensaje del usuario
+ * (`session.revert`: también los cambios de archivos posteriores), recarga y envía el texto nuevo.
+ */
+export async function editAndRetry(taskId: string, userMessageId: string, text: string): Promise<void> {
+  const trimmed = text.trim()
+  if (!trimmed) return
+  const { client, folder } = ctx()
+  if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
+  const run = useSessions.getState().status[taskId]
+  if (run && run !== 'idle') {
+    await client.session.abort({ sessionID: taskId, directory: folder }).catch(() => undefined)
+    await waitUntilIdle(taskId)
+  }
+  const res = await client.session.revert({ sessionID: taskId, directory: folder, messageID: userMessageId })
+  if (res.error) throw new Error(errorMessage(res.error))
+  if (res.data) useSessions.getState().upsertSession(res.data)
+  await loadTask(taskId)
+  await sendToTask(trimmed)
+}
+
+async function ensureEntries(taskId: string): Promise<import('../../../stores/sessions').MessageEntry[]> {
+  if (!useSessions.getState().messages[taskId]) await loadTask(taskId)
+  return useSessions.getState().messages[taskId] ?? []
+}
+
+/** «Continuar en una tarea nueva»: nueva tarea (mismo modelo) con el encargo original y lo último concluido. */
+export async function continueInNewTask(taskId: string): Promise<void> {
+  const entries = await ensureEntries(taskId)
+  const title = useSessions.getState().sessions[taskId]?.title ?? ''
+  const prompt = buildContinuationPrompt(title, entries)
+  const m = taskModelOf(taskId)
+  newTask()
+  if (m) useCowork.setState({ taskModel: m.model, taskVariant: m.variant })
+  await sendToTask(prompt)
+}
+
+/** «Exportar a Markdown»: guarda la conversación con el diálogo de main. Devuelve la ruta (null si se canceló). */
+export async function exportTaskMarkdown(taskId: string): Promise<string | null> {
+  const entries = await ensureEntries(taskId)
+  const session = useSessions.getState().sessions[taskId]
+  if (!session) return null
+  const content = transcriptToMarkdown(session, entries)
+  return cw('cowork:exportMarkdown', { suggestedName: suggestedExportName(session.title), content })
+}
+
+/** «Crear skill de esta tarea»: le pide a la propia tarea que guarde `.opencode/skills/<nombre>/SKILL.md`. */
+export async function createSkillFromTask(taskId: string): Promise<void> {
+  if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
+  await sendToTask(CREATE_SKILL_PROMPT)
+}
+
+// ───────────────────────────── Consulta lateral ─────────────────────────────
+
+/** Abre la Consulta lateral de la tarea (la sesión hija se crea con el primer mensaje). */
+export function openSideChat(taskId: string): void {
+  useCowork.setState((s) => (s.sideChat?.taskId === taskId ? s : { sideChat: { taskId, sessionId: null } }))
+}
+
+/**
+ * Pregunta algo sobre la tarea sin modificarla: sesión hija (`parentID`, no sale en la lista) con el agente
+ * `chat`, cuyo `system` lleva la conversación de la tarea condensada.
+ */
+export async function sendSideChat(text: string): Promise<void> {
+  const trimmed = text.trim()
+  const side = useCowork.getState().sideChat
+  if (!trimmed || !side) return
+  const { client, folder } = ctx()
+  const sessions = useSessions.getState()
+  let sessionID = side.sessionId
+  if (!sessionID) {
+    const res = await client.session.create({ directory: folder, parentID: side.taskId, title: 'Consulta lateral', agent: 'chat' })
+    if (res.error || !res.data) throw new Error(errorMessage(res.error))
+    sessions.upsertSession(res.data)
+    sessionID = res.data.id
+    const id = sessionID
+    useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] } }))
+    useCowork.setState((s) => (s.sideChat?.taskId === side.taskId ? { sideChat: { taskId: side.taskId, sessionId: id } } : {}))
+  }
+  const entries = await ensureEntries(side.taskId)
+  const title = useSessions.getState().sessions[side.taskId]?.title ?? ''
+  const model = currentCoworkModel()
+  const variant = currentCoworkVariant()
+  sessions.setError(sessionID, null)
+  sessions.setStatus(sessionID, 'busy')
+  const res = await client.session.promptAsync({
+    sessionID,
+    directory: folder,
+    agent: 'chat',
+    model: { providerID: model.providerID, modelID: model.modelID },
+    ...(variant ? { variant } : {}),
+    system: buildSideChatSystem(title, entries),
+    parts: [{ type: 'text', text: trimmed }]
+  })
+  if (res.error) {
+    sessions.setStatus(sessionID, 'idle')
+    sessions.setError(sessionID, errorMessage(res.error))
+  }
+}
+
+/** Cierra la Consulta lateral (aborta la respuesta en curso; la sesión hija se conserva). */
+export function closeSideChat(): void {
+  const side = useCowork.getState().sideChat
+  useCowork.setState({ sideChat: null })
+  const { client, folder } = useCowork.getState()
+  if (side?.sessionId && client && folder) {
+    const run = useSessions.getState().status[side.sessionId]
+    if (run && run !== 'idle') void client.session.abort({ sessionID: side.sessionId, directory: folder }).catch(() => undefined)
+  }
+}
+
+// ───────────────────────────── Archivadas, grupos y navegación ─────────────────────────────
+
+/**
+ * Restaura una tarea archivada con `session.update({time:{archived:0}})`. Si el servidor lo rechaza o la
+ * sesión sigue archivada, respaldo: `metadata.unarchivedAt` (ver `isArchivedSession`).
+ */
+export async function restoreTask(sessionId: string): Promise<void> {
+  const { client, folder } = ctx()
+  const known = useSessions.getState().sessions[sessionId]
+  const first = await client.session.update({ sessionID: sessionId, directory: folder, time: { archived: 0 } })
+  let data = first.error ? undefined : first.data
+  if (!data || isArchivedSession(data)) {
+    const second = await client.session.update({
+      sessionID: sessionId,
+      directory: folder,
+      metadata: { ...(data?.metadata ?? known?.metadata ?? {}), unarchivedAt: Date.now() }
+    })
+    if (second.error) throw new Error(errorMessage(second.error))
+    data = second.data ?? data
+  }
+  if (data) useSessions.getState().upsertSession(data)
+}
+
+/** «Mover a grupo…»: asigna (o quita con `null`/vacío) el grupo de la tarea. Persistido en main. */
+export async function moveTaskToGroup(sessionId: string, group: string | null): Promise<void> {
+  const clean = group?.trim().slice(0, 80) || null
+  await setTaskMeta(sessionId, { group: clean })
+}
+
+/** Abre una tarea de cualquier carpeta/modo (vistas «Fijadas»/«Activas»): cambia a Cowork y conecta si hace falta. */
+export async function openTaskAnywhere(t: { sessionId: string; folder: string; fullAccess: boolean }): Promise<void> {
+  useUi.getState().openSettings(false)
+  useUi.getState().setMode('cowork')
+  const st = useCowork.getState()
+  if (st.folder !== t.folder || st.fullAccess !== t.fullAccess || st.phase !== 'ready') {
+    rememberFullAccess(t.folder, t.fullAccess)
+    await connectFolder(t.folder, t.fullAccess)
+  }
+  if (useCowork.getState().phase !== 'ready') return
+  await openTask(t.sessionId)
 }

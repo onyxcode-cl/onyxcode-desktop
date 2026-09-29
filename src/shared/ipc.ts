@@ -143,4 +143,5 @@ export interface WindowApi {
   code: import('./ipc-code').CodeApi
   cowork: import('./ipc-cowork').CoworkApi
   extras: import('./ipc-extras').ExtrasApi
+  browser: import('./ipc-browser').BrowserApi
 }

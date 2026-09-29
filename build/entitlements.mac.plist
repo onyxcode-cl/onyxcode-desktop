@@ -24,5 +24,8 @@
   -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
+  <!-- Grabar una skill con micro (Lote C, B.1/B.8). -->
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
 </dict>
 </plist>

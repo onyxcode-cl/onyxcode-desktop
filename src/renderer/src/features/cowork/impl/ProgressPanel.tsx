@@ -1,7 +1,8 @@
 /**
- * Panel derecho: Plan (todos en vivo), Entregables (con vista previa), Contexto (herramientas,
- * archivos y conectores usados, con scroll a la conversación), Programada (rutina vinculada, si
- * se creó con "Programar esta tarea") y Actividad agrupada por paso.
+ * Panel derecho: «En vivo» (última captura y acción mientras la tarea usa el Mac), Plan (todos en
+ * vivo, «Paso X de Y»), Entregables (con vista previa), Contexto (herramientas, archivos y conectores
+ * usados, con scroll a la conversación), Programada (rutina vinculada, con enlace a la sesión de
+ * cada ejecución) y Actividad agrupada por paso.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { Todo, ToolPart } from '@opencode-ai/sdk/v2/client'
@@ -18,6 +19,7 @@ import {
   Globe,
   ListChecks,
   Loader2,
+  MonitorCog,
   Package,
   Plug,
   RefreshCw,
@@ -27,11 +29,12 @@ import {
 import type { CoworkDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-cowork'
 import { cw } from './bridge'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
+import { openTaskAnywhere } from './actions'
 import { ScreenshotThumbs } from './ComputerAccess'
-import { computerToolKind, toolImages } from './computer-tools'
+import { computerToolKind, describeAction, toolImages } from './computer-tools'
 import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
-import { refreshDeliverables, useCowork } from './store'
+import { isUsingComputer, refreshDeliverables, useCowork } from './store'
 import { buildContext, friendlyTool, groupActivityBySteps, relTime, type ContextItem } from './util'
 
 const EMPTY_TODOS: Todo[] = []
@@ -204,6 +207,65 @@ function ContextGroup({
   )
 }
 
+/** Última captura de las partes de herramienta (la más reciente que tenga imagen). */
+function latestScreenshot(entries: MessageEntry[]): { url: string; name: string } | null {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const parts = entries[i].parts
+    for (let j = parts.length - 1; j >= 0; j--) {
+      const p = parts[j]
+      if (p.type !== 'tool') continue
+      const imgs = toolImages(p)
+      if (imgs.length > 0) return imgs[imgs.length - 1]
+    }
+  }
+  return null
+}
+
+/** `isUsingComputer` reactivo: se recalcula al cambiar la última acción o el estado, y cada 2 s (caduca a los 15 s). */
+function useUsingComputer(sessionID: string): boolean {
+  const fullAccess = useCowork((s) => s.conn?.fullAccess === true)
+  const lastAt = useCowork((s) => s.lastAction?.at ?? 0)
+  const run = useSessions((s) => s.status[sessionID])
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!fullAccess || !lastAt) return
+    const t = setInterval(() => tick((n) => n + 1), 2000)
+    return () => clearInterval(t)
+  }, [fullAccess, lastAt, run])
+  return isUsingComputer(sessionID)
+}
+
+/** Sección «En vivo»: qué ve y qué hace el agente en el Mac ahora mismo. */
+function LiveSection({ entries }: { entries: MessageEntry[] }): React.JSX.Element {
+  const lastAction = useCowork((s) => s.lastAction)
+  const shot = useMemo(() => latestScreenshot(entries), [entries])
+  const [broken, setBroken] = useState<string | null>(null)
+  const label = lastAction ? describeAction(lastAction) : null
+  return (
+    <Section icon={MonitorCog} title="En vivo" badge="Usando el Mac">
+      {shot && broken !== shot.url ? (
+        <img
+          src={shot.url}
+          alt="Última captura de pantalla"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(shot.url)}
+          className="w-full rounded-md border border-border"
+        />
+      ) : (
+        <p className="text-xs text-subtle">Esperando la primera captura de pantalla…</p>
+      )}
+      {label && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted" aria-live="polite">
+          <Loader2 size={12} className="shrink-0 animate-spin text-accent" />
+          <span className="min-w-0 flex-1 truncate" title={label}>
+            {label}
+          </span>
+        </p>
+      )}
+    </Section>
+  )
+}
+
 /** Rutina vinculada a esta tarea ("Programar esta tarea") y sus últimas ejecuciones. */
 function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Element | null {
   const [routine, setRoutine] = useState<ScheduledRoutine | null | undefined>(undefined)
@@ -241,7 +303,25 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
               ) : (
                 <Loader2 size={12} className="shrink-0 animate-spin text-accent" />
               )}
-              <span className="text-muted">{relTime(r.startedAt)}</span>
+              {r.sessionId ? (
+                <button
+                  type="button"
+                  title="Abrir la sesión de esta ejecución"
+                  className="text-accent hover:underline"
+                  onClick={() =>
+                    void openTaskAnywhere({
+                      sessionId: r.sessionId as string,
+                      folder: r.directory ?? routine.folder ?? '',
+                      fullAccess: routine.fullAccess === true
+                    }).catch(() => undefined)
+                  }
+                >
+                  {relTime(r.startedAt)}
+                </button>
+              ) : (
+                <span className="text-muted">{relTime(r.startedAt)}</span>
+              )}
+              {r.waiting && <span className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400">Esperando aprobación</span>}
               {r.summary && <span className="min-w-0 flex-1 truncate text-subtle" title={r.summary}>{r.summary}</span>}
             </li>
           ))}
@@ -258,6 +338,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
   const groups = useMemo(() => groupActivityBySteps(entries), [entries])
   const toolCount = groups.reduce((n, g) => n + g.tools.length, 0)
   const context = useMemo(() => buildContext(entries), [entries])
+  const usingComputer = useUsingComputer(sessionID ?? '')
   const contextCount =
     context.filesRead.length + context.filesWritten.length + context.commands.length + context.web.length + context.connectors.length
 
@@ -272,9 +353,21 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
 
   const done = todos.filter((t) => t.status === 'completed').length
   const pct = todos.length > 0 ? Math.round((done / todos.length) * 100) : 0
+  // «Paso X de Y»: el paso en curso (o el siguiente pendiente) entre los pasos no cancelados.
+  const steps = todos.filter((t) => t.status !== 'cancelled')
+  const stepsDone = steps.filter((t) => t.status === 'completed').length
+  const currentIdx = steps.findIndex((t) => t.status === 'in_progress')
+  const stepLabel =
+    steps.length === 0
+      ? null
+      : stepsDone === steps.length
+        ? 'Completado'
+        : `Paso ${(currentIdx >= 0 ? currentIdx : stepsDone) + 1} de ${steps.length}`
 
   return (
     <div className="h-full overflow-y-auto text-sm">
+      {usingComputer && <LiveSection entries={entries} />}
+
       <Section icon={ListChecks} title="Plan" badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}>
         {todos.length === 0 ? (
           <p className="text-xs text-subtle">
@@ -288,6 +381,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
               </div>
               <span className="text-[11px] text-muted tabular-nums">{pct}%</span>
             </div>
+            {stepLabel && <p className="mb-2 text-xs font-medium text-muted">{stepLabel}</p>}
             <ol className="space-y-1">
               {todos.map((t, i) => {
                 const current = t.status === 'in_progress'
@@ -338,7 +432,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         {files.length === 0 ? (
           <p className="text-xs text-subtle">Los archivos que cree o modifique el agente aparecerán aquí.</p>
         ) : (
-          <DeliverableList files={files} />
+          <DeliverableList files={files} onChanged={() => void refreshDeliverables(sessionID)} />
         )}
       </Section>
 

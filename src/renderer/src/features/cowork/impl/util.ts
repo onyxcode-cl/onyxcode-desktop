@@ -45,15 +45,27 @@ export function formatDuration(ms: number): string {
 
 // ───────────────────────────── Estado de la tarea ─────────────────────────────
 
-export type TaskStatus = 'running' | 'waiting' | 'question' | 'done' | 'error' | 'idle'
+export type TaskStatus =
+  | 'running'
+  | 'using_computer'
+  | 'plan_ready'
+  | 'waiting'
+  | 'question'
+  | 'done'
+  | 'error'
+  | 'idle'
+  | 'archived'
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   running: 'Trabajando',
+  using_computer: 'Usando el Mac',
+  plan_ready: 'Plan listo para revisar',
   waiting: 'Esperando tu aprobación',
   question: 'Esperando tu respuesta',
   done: 'Terminado',
   error: 'Error',
-  idle: 'Nueva'
+  idle: 'Nueva',
+  archived: 'Archivada'
 }
 
 function lastAssistant(entries: MessageEntry[] | undefined): Message | undefined {
@@ -62,17 +74,40 @@ function lastAssistant(entries: MessageEntry[] | undefined): Message | undefined
   return undefined
 }
 
-/** Estado visible de una tarea a partir del run state, permisos/preguntas pendientes y mensajes. */
+/**
+ * ¿La sesión está archivada? Igual que `time.archived`, salvo que el respaldo de "Restaurar"
+ * (`metadata.unarchivedAt`, cuando el servidor no acepta `archived: 0`) sea posterior al archivado.
+ */
+export function isArchivedSession(s: Pick<Session, 'time' | 'metadata'>): boolean {
+  const archived = s.time.archived
+  if (!archived) return false
+  const back = s.metadata?.unarchivedAt
+  return !(typeof back === 'number' && back > archived)
+}
+
+/**
+ * Estado visible de una tarea a partir del run state, permisos/preguntas pendientes y mensajes.
+ * Prioridad: archived > plan_ready > question > waiting > using_computer > running > error > done/idle.
+ */
 export function taskStatus(args: {
   run: SessionRunState | undefined
   waiting: boolean
   hasQuestion?: boolean
   error: string | null | undefined
   entries: MessageEntry[] | undefined
+  /** Control total: el agente está actuando sobre el Mac ahora mismo. */
+  usingComputer?: boolean
+  /** Control total: hay un plan esperando tu aprobación. */
+  planPending?: boolean
+  archived?: boolean
 }): TaskStatus {
+  if (args.archived) return 'archived'
+  if (args.planPending) return 'plan_ready'
   if (args.hasQuestion) return 'question'
   if (args.waiting) return 'waiting'
-  if (args.run && args.run !== 'idle') return 'running'
+  const running = !!args.run && args.run !== 'idle'
+  if (running && args.usingComputer) return 'using_computer'
+  if (running) return 'running'
   if (args.error) return 'error'
   const last = lastAssistant(args.entries)
   if (last && last.role === 'assistant' && last.error && last.error.name !== 'MessageAbortedError') return 'error'
@@ -307,4 +342,76 @@ export function buildContext(entries: MessageEntry[]): ContextGroups {
     web,
     connectors
   }
+}
+
+// ───────────────────────────── Carpetas pedidas por el agente ─────────────────────────────
+
+/** Quita el `/*` (o `/`) final de un patrón de `external_directory` para quedarse con la carpeta. */
+function stripGlob(p: string): string {
+  let out = p.trim().replace(/\/\*+$/, '')
+  while (out.length > 1 && out.endsWith('/')) out = out.slice(0, -1)
+  return out
+}
+
+/** Carpeta personal inferida de una ruta absoluta (`/Users/<x>` o `/home/<x>`); null si no cuelga de una. */
+function inferHome(p: string): string | null {
+  const m = /^(\/Users\/[^/]+|\/home\/[^/]+)(?=\/|$)/.exec(p)
+  return m ? m[1] : null
+}
+
+/**
+ * Carpeta que pide el agente en una petición `external_directory` y las carpetas que se pueden
+ * ofrecer (la pedida y hasta 4 ancestros; nunca la carpeta personal ni por encima de ella, ni la raíz).
+ * `requested` = `metadata.parentDir` (herramientas de archivos) o `metadata.directories[0]` (bash);
+ * si faltan, se deduce del primer patrón (`<dir>/*`) o de `metadata.filepath`.
+ * `candidates[0]` es siempre `requested`.
+ */
+export function folderRequestPaths(p: PermissionRequest, home?: string): { requested: string; candidates: string[] } {
+  const md = (p.metadata ?? {}) as Record<string, unknown>
+  const asStr = (v: unknown): string => (typeof v === 'string' ? v : '')
+  const dirs = Array.isArray(md.directories) ? md.directories.map(asStr).filter(Boolean) : []
+  let requested = asStr(md.parentDir) || dirs[0] || ''
+  if (!requested && p.patterns[0]) requested = p.patterns[0]
+  if (!requested && asStr(md.filepath)) requested = asStr(md.filepath).replace(/\/[^/]*$/, '')
+  requested = stripGlob(requested)
+  if (!requested) return { requested: '', candidates: [] }
+  const homeDir = stripGlob(home ?? inferHome(requested) ?? '')
+  const candidates = [requested]
+  let cur = requested
+  for (let i = 0; i < 4; i++) {
+    const idx = cur.lastIndexOf('/')
+    if (idx <= 0) break
+    const parent = cur.slice(0, idx)
+    // Nunca la raíz ni carpetas de primer nivel, ni la carpeta personal ni por encima de ella.
+    if (parent.split('/').filter(Boolean).length < 2) break
+    if (homeDir && (parent === homeDir || homeDir.startsWith(`${parent}/`))) break
+    candidates.push(parent)
+    cur = parent
+  }
+  return { requested, candidates }
+}
+
+// ───────────────────────────── Permisos recordables ─────────────────────────────
+
+/** Comandos de borrado (misma expresión que `PermissionPrompt.tsx` y `rules.ts` de main). */
+const DELETE_RE = /(^|[;&|]\s*)(rm|rmdir|unlink|trash|srm)\b|\s-delete\b/
+
+/**
+ * ¿Se puede guardar este par permiso/patrón como regla "siempre permitir"? Espejo de
+ * `ruleRejectionReason` de main: nunca `external_directory`, `doom_loop`, `computer_*`, borrados
+ * ni patrones de bash que empiecen por comodín.
+ */
+export function isRememberablePermission(permission: string, pattern: string): boolean {
+  if (!/^[A-Za-z0-9_*.:-]{1,200}$/.test(permission)) return false
+  if (permission === 'external_directory' || permission === 'doom_loop' || permission.startsWith('computer_')) return false
+  if (!pattern || pattern.length > 2000) return false
+  if (DELETE_RE.test(pattern)) return false
+  if (permission === 'bash' && (/^[\s*?]*$/.test(pattern) || /^[*?]/.test(pattern.trim()))) return false
+  return true
+}
+
+/** Patrones de una petición que se guardarían como regla (`always`, o los `patterns` si no hay). */
+export function rememberablePatterns(p: PermissionRequest): string[] {
+  const list = p.always.length > 0 ? p.always : p.patterns
+  return list.filter((pat) => isRememberablePermission(p.permission, pat))
 }

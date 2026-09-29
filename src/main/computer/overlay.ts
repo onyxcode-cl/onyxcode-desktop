@@ -72,6 +72,9 @@ export class ComputerOverlay {
   private hideTimer: NodeJS.Timeout | null = null
   private pillRestoreTimer: NodeJS.Timeout | null = null
   private pillMoved = false
+  /** Tarjeta `request_access` pendiente (para replegar/desplegar la píldora según el foco de la app). */
+  private pendingRequest: AccessRequest | null = null
+  private requestFloating = false
   private disposed = false
 
   constructor(private readonly opts: ComputerOverlayOptions = {}) {}
@@ -120,7 +123,10 @@ export class ComputerOverlay {
     }
 
     const msg: ComputerOverlayMessage = { type: 'action', action, cursor, moveMs, atCursor }
-    this.post(this.overlay, msg)
+    // Lote C: las herramientas `app_*` controlan por Accessibility API (sin ratón real ni
+    // coordenadas de pantalla): no hay nada que animar en el overlay a pantalla completa, solo la
+    // etiqueta de texto de la píldora (`describeStep`).
+    if (!ev.tool.startsWith('app_')) this.post(this.overlay, msg)
     this.post(this.pill, msg)
     if (ev.phase === 'start' && !atCursor) this.avoidPill(ev)
     if (ev.phase === 'end') this.schedulePillRestore(350)
@@ -130,26 +136,64 @@ export class ComputerOverlay {
 
   /**
    * Tarjeta `request_access` pendiente (herramienta MCP): la sesión se PAUSA sin límite de tiempo
-   * (borde ámbar "Esperando tu permiso") y la píldora se agranda para mostrar el plan/apps con un
-   * selector de nivel por app + Aprobar/Denegar, sin robar el foco (`showInactive`, igual que el
-   * resto del overlay). El diálogo de la ventana principal es solo el lugar SECUNDARIO.
+   * (borde ámbar "Esperando tu permiso" en el overlay). La píldora solo se agranda para mostrar el
+   * plan/apps (selector de nivel por app + Aprobar/Denegar, sin robar el foco) cuando la ventana
+   * principal NO está al frente (`floating`): si el usuario está mirando la app, la tarjeta de la app
+   * es la única y la píldora no la duplica. `setRequestFloating` la despliega/pliega al cambiar el foco.
    */
-  showAccessRequest(req: AccessRequest): void {
+  showAccessRequest(req: AccessRequest, floating = true): void {
     if (this.disposed) return
     this.show(this.sessionLabel)
-    this.resizePillForRequest(true)
+    this.pendingRequest = req
     this.post(this.overlay, { type: 'waiting', request: req })
-    this.post(this.pill, { type: 'waiting', request: req })
+    this.setRequestFloating(floating)
     if (this.idleTimer) clearTimeout(this.idleTimer) // no ocultar por inactividad mientras se espera
+  }
+
+  /** Despliega (o pliega) la tarjeta en la píldora flotante sin resolver la petición pendiente. */
+  setRequestFloating(floating: boolean): void {
+    if (this.disposed) return
+    this.requestFloating = floating
+    const req = this.pendingRequest
+    if (!req) return
+    if (floating) {
+      this.resizePillForRequest(true)
+      this.post(this.pill, { type: 'waiting', request: req })
+      // Ajusta el alto de la ventana al de la tarjeta cuando ya se pintó (evita una zona transparente vacía).
+      for (const ms of [120, 500]) setTimeout(() => void this.fitPillToRequest(), ms)
+    } else {
+      this.post(this.pill, { type: 'waitingCleared' })
+      this.resizePillForRequest(false)
+    }
   }
 
   /** Se resolvió (o se canceló) la tarjeta pendiente. */
   clearAccessRequest(): void {
     if (this.disposed) return
+    this.pendingRequest = null
+    this.requestFloating = false
     this.resizePillForRequest(false)
     this.post(this.overlay, { type: 'waitingCleared' })
     this.post(this.pill, { type: 'waitingCleared' })
     this.scheduleIdle()
+  }
+
+  /** Ajusta el alto de la ventana de la píldora al de la tarjeta "Plan y permisos" (con sitio para la sombra). */
+  private async fitPillToRequest(): Promise<void> {
+    const pill = this.pill
+    if (!pill || pill.isDestroyed() || !this.pendingRequest || !this.requestFloating) return
+    try {
+      const natural: unknown = await pill.webContents.executeJavaScript(
+        "(() => { const r = document.querySelector('.request'); return r && !r.hidden ? r.scrollHeight + 2 : 0 })()"
+      )
+      if (typeof natural !== 'number' || natural <= 0) return
+      const b = pill.getBounds()
+      const wa = screen.getDisplayMatching(b).workArea
+      const h = Math.min(Math.ceil(natural) + 10 + 24, wa.height - 24) // 10 px de margen superior + 24 de sombra
+      if (Math.abs(b.height - h) > 2) pill.setBounds({ x: b.x, y: b.y, width: REQUEST_W, height: h })
+    } catch {
+      // ventana destruida mientras se medía
+    }
   }
 
   /** Agranda/reduce la píldora para mostrar (u ocultar) la tarjeta "Plan y permisos". */

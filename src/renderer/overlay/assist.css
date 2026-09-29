@@ -1,0 +1,217 @@
+/* Ventana "assist": globo de Teach mode y píldora de grabar una skill (ventana propia, transparente). */
+:root {
+  --as-1: #8b5cf6;
+  --as-2: #3b82f6;
+  --as-amber: #f59e0b;
+  --as-bg: rgba(20, 20, 26, 0.94);
+  --as-fg: #f5f5f7;
+  --as-muted: rgba(245, 245, 247, 0.66);
+  --as-border: rgba(255, 255, 255, 0.14);
+  --as-rec: #ef4444;
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  box-sizing: border-box;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+body.on {
+  opacity: 1;
+  transform: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ── Globo de Teach mode (340×170) ── */
+body.teach {
+  padding: 6px;
+}
+.teach {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px 12px;
+  border-radius: 16px;
+  background: var(--as-bg);
+  color: var(--as-fg);
+  border: 1px solid var(--as-border);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in srgb, var(--as-1) 32%, transparent),
+    0 0 16px color-mix(in srgb, var(--as-2) 26%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.teach-head {
+  display: flex;
+  align-items: center;
+}
+.teach-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--as-1);
+  text-transform: uppercase;
+}
+.teach-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.teach-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--as-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.teach-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.teach-actions button {
+  -webkit-app-region: no-drag;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.teach-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.teach-exit {
+  background: transparent;
+  border: 1px solid var(--as-border) !important;
+  color: var(--as-muted);
+}
+.teach-exit:hover:not(:disabled) {
+  color: var(--as-fg);
+}
+.teach-next {
+  background: var(--as-1);
+  color: #fff;
+}
+.teach-next:hover:not(:disabled) {
+  background: #7c3aed;
+}
+
+/* ── Píldora de grabación (360×56) ── */
+body.record {
+  padding-top: 6px;
+  justify-content: center;
+}
+.record {
+  -webkit-app-region: drag;
+  cursor: default;
+  width: 100%;
+  height: 50px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  border-radius: 999px;
+  background: var(--as-bg);
+  color: var(--as-fg);
+  border: 1px solid var(--as-border);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.38),
+    0 0 0 1px color-mix(in srgb, var(--as-rec) 30%, transparent);
+}
+.record-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--as-rec);
+  animation: as-pulse 1.4s ease-in-out infinite;
+}
+.record-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.record button {
+  -webkit-app-region: no-drag;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.record button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.record-discard {
+  background: transparent;
+  border: 1px solid var(--as-border) !important;
+  color: var(--as-muted);
+}
+.record-discard:hover:not(:disabled) {
+  color: var(--as-fg);
+}
+.record-finish {
+  background: var(--as-rec);
+  color: #fff;
+}
+.record-finish:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+@keyframes as-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transform: none;
+    transition: opacity 160ms ease;
+  }
+  .record-dot {
+    animation: none;
+  }
+}

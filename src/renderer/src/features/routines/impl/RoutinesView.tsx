@@ -7,20 +7,26 @@ import {
   ChevronDown,
   Clock,
   ExternalLink,
+  FileText,
   FolderOpen,
+  Hourglass,
   Loader2,
   Newspaper,
   Pencil,
   Play,
   Plus,
+  ShieldAlert,
+  ShieldCheck,
   Terminal,
   Trash2,
   X,
   XCircle,
   type LucideIcon
 } from 'lucide-react'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
 import type { RoutineInput, RoutineMode, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-cowork'
 import { Button } from '../../../components/Button'
+import { PageHeader } from '../../../components/PageHeader'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { useSettings } from '../../../stores/settings'
@@ -83,7 +89,47 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 }
 
 function toInput(r: ScheduledRoutine): RoutineInput {
-  return { id: r.id, name: r.name, prompt: r.prompt, mode: r.mode, folder: r.folder ?? null, model: r.model, schedule: r.schedule, enabled: r.enabled }
+  return {
+    id: r.id,
+    name: r.name,
+    prompt: r.prompt,
+    mode: r.mode,
+    folder: r.folder ?? null,
+    model: r.model,
+    schedule: r.schedule,
+    enabled: r.enabled,
+    originSessionId: r.originSessionId ?? null,
+    sessionMode: r.sessionMode,
+    onAsk: r.onAsk,
+    allow: r.allow,
+    allowHosts: r.allowHosts,
+    fullAccess: r.fullAccess,
+    fullAccessConsentAt: r.fullAccessConsentAt ?? null
+  }
+}
+
+type PermEntry = { permission: string; patterns: string[] }
+
+/** Lista de permisos rechazados/aprobados de una ejecución (historial). */
+function PermList({ title, tone, items }: { title: string; tone: 'danger' | 'success'; items: PermEntry[] }): React.JSX.Element {
+  const Icon = tone === 'danger' ? ShieldAlert : ShieldCheck
+  return (
+    <div className="mb-2">
+      <div className={`mb-1 flex items-center gap-1.5 text-xs font-medium ${tone === 'danger' ? 'text-danger' : 'text-success'}`}>
+        <Icon size={13} /> {title} ({items.length})
+      </div>
+      <ul className="space-y-0.5">
+        {items.map((e, i) => (
+          <li key={i} className="flex items-baseline gap-1.5 text-xs text-muted">
+            <span className="shrink-0 rounded bg-hover px-1 font-mono text-[11px] text-fg">{e.permission}</span>
+            <span className="min-w-0 truncate font-mono text-[11px]" title={e.patterns.join('\n')}>
+              {e.patterns.join(', ')}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 function baseName(p: string): string {
@@ -97,6 +143,7 @@ function baseName(p: string): string {
 function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: boolean; now: number }): React.JSX.Element {
   const Icon = MODE_META[r.mode].icon
   const last = r.lastResult
+  const waiting = useRoutines((s) => s.history.some((h) => h.routineId === r.id && h.status === 'running' && h.waiting === true))
   const select = (): void => useRoutines.setState({ selectedId: selected ? null : r.id })
   return (
     <div
@@ -121,7 +168,13 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
       </div>
       <div className="flex items-center gap-2 border-t border-border pt-3 text-xs">
         {r.running ? (
-          <StatusBadge status="running" />
+          waiting ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning">
+              <Hourglass size={11} /> Esperando aprobación
+            </span>
+          ) : (
+            <StatusBadge status="running" />
+          )
         ) : r.enabled && r.nextRun ? (
           <span className="text-muted" title={fullDate(r.nextRun)}>
             Próxima <span className="font-medium text-fg">{untilText(r.nextRun, now)}</span>
@@ -160,7 +213,11 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
   const dot =
     run.status === 'running' ? 'bg-accent ring-accent/25 animate-pulse' : run.status === 'success' ? 'bg-success ring-success/20' : 'bg-danger ring-danger/20'
   const elapsed = (run.finishedAt ?? now) - run.startedAt
-  const hasBody = !!run.summary || !!run.error
+  const rejected = run.rejected ?? []
+  const approved = run.approved ?? []
+  const blocked = run.blockedHosts ?? []
+  const hasLog = rejected.length + approved.length + blocked.length > 0
+  const hasBody = !!run.summary || !!run.error || hasLog
   return (
     <li className="relative pl-6">
       {!last && <span className="absolute top-4 bottom-0 left-[5px] w-px bg-border" />}
@@ -172,11 +229,30 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
       >
         <span className="font-medium text-fg">{fullDate(run.startedAt)}</span>
         <span className="rounded-full border border-border px-1.5 text-[10px] text-muted">{TRIGGER_LABEL[run.trigger]}</span>
+        {run.waiting && run.status === 'running' && (
+          <span className="flex items-center gap-1 rounded-full bg-warning/10 px-1.5 text-[10px] font-medium text-warning">
+            <Hourglass size={10} /> Esperando aprobación
+          </span>
+        )}
         <span className="ml-auto flex items-center gap-2 text-subtle tabular-nums">
           {run.status === 'running' ? <span className="text-accent">{durationText(elapsed)}…</span> : run.finishedAt ? durationText(elapsed) : null}
           {hasBody && <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />}
         </span>
       </button>
+      {run.waiting && run.status === 'running' && !open && (
+        <p className="mt-1 text-xs text-warning">Esperando tu aprobación: abre la tarea para aprobar o rechazar el permiso.</p>
+      )}
+      {!open && (rejected.length > 0 || blocked.length > 0) && (
+        <p className="mt-1 flex items-center gap-1 text-xs text-danger">
+          <ShieldAlert size={12} className="shrink-0" />
+          {[
+            rejected.length > 0 && `${rejected.length} permiso${rejected.length === 1 ? '' : 's'} rechazado${rejected.length === 1 ? '' : 's'}`,
+            blocked.length > 0 && `${blocked.length} sitio${blocked.length === 1 ? '' : 's'} bloqueado${blocked.length === 1 ? '' : 's'}`
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      )}
       {run.status === 'error' && run.error && !open && <p className="mt-1 line-clamp-2 text-xs text-danger">{run.error}</p>}
       {run.summary && !open && run.status !== 'error' && <p className="mt-1 line-clamp-2 text-xs text-muted">{run.summary.replace(/[#*_`>]/g, '').slice(0, 240)}</p>}
       {open && (
@@ -186,8 +262,24 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
               <AlertCircle size={14} className="mt-0.5 shrink-0" /> {run.error}
             </p>
           )}
+          {run.waiting && run.status === 'running' && (
+            <p className="mb-2 flex items-start gap-1.5 text-xs text-warning">
+              <Hourglass size={13} className="mt-0.5 shrink-0" /> Esperando tu aprobación: abre la tarea para aprobar o rechazar el permiso.
+            </p>
+          )}
+          {rejected.length > 0 && <PermList title="Rechazados" tone="danger" items={rejected} />}
+          {approved.length > 0 && <PermList title="Aprobados por tu lista" tone="success" items={approved} />}
+          {blocked.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-danger">
+                <ShieldAlert size={13} /> Sitios bloqueados ({blocked.length})
+              </div>
+              <p className="font-mono text-[11px] break-all text-muted">{blocked.join(', ')}</p>
+              <p className="mt-0.5 text-[11px] text-subtle">Añádelos en «Sitios permitidos» de la rutina si son de confianza.</p>
+            </div>
+          )}
           {run.summary && (
-            <div className="max-h-96 overflow-y-auto text-sm">
+            <div className={`max-h-96 overflow-y-auto text-sm ${hasLog ? 'border-t border-border pt-2' : ''}`}>
               <Markdown text={run.summary} />
             </div>
           )}
@@ -288,6 +380,36 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
               </dd>
             </>
           )}
+          {r.mode === 'cowork' && (
+            <>
+              <dt className="text-subtle">Cada ejecución</dt>
+              <dd className="text-fg">{r.sessionMode === 'continue' ? 'Continúa la misma tarea' : 'Empieza de cero'}</dd>
+              <dt className="text-subtle">Si pide permiso</dt>
+              <dd className="text-fg">{r.onAsk === 'wait' ? 'Espera tu aprobación' : 'Rechaza y sigue'}</dd>
+              {(r.allow?.length ?? 0) > 0 && (
+                <>
+                  <dt className="text-subtle">Permitido</dt>
+                  <dd className="text-fg">
+                    {r.allow!.length} regla{r.allow!.length === 1 ? '' : 's'}
+                  </dd>
+                </>
+              )}
+              {(r.allowHosts?.length ?? 0) > 0 && (
+                <>
+                  <dt className="text-subtle">Sitios</dt>
+                  <dd className="truncate text-fg" title={r.allowHosts!.join(', ')}>
+                    {r.allowHosts!.join(', ')}
+                  </dd>
+                </>
+              )}
+              {r.fullAccess && (
+                <>
+                  <dt className="text-subtle">{COWORK_TERMS.fullControlShort}</dt>
+                  <dd className="text-warning">Activo · apruebas el plan en cada ejecución</dd>
+                </>
+              )}
+            </>
+          )}
           <dt className="text-subtle">Próxima</dt>
           <dd className="text-fg">{r.enabled && r.nextRun ? `${untilText(r.nextRun, now)} · ${fullDate(r.nextRun)}` : r.enabled ? '—' : 'En pausa'}</dd>
           {stats.total > 0 && (
@@ -332,7 +454,7 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
 // Estado vacío
 // ---------------------------------------------------------------------------
 
-const TEMPLATE_ICON: Record<string, LucideIcon> = { news: Newspaper, downloads: FolderOpen, repo: Terminal }
+const TEMPLATE_ICON: Record<string, LucideIcon> = { news: Newspaper, downloads: FolderOpen, inbox: FileText, repo: Terminal }
 
 function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
   const defaultModel = useSettings((s) => s.settings.defaultModel)
@@ -345,7 +467,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
       <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">
         Programa una instrucción para que el agente la ejecute solo y te avise con el resultado. Si la app estaba cerrada, se pone al día al volver a abrirla.
       </p>
-      <div className="mt-8 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-3">
+      <div className="mt-8 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
         {ROUTINE_TEMPLATES.map((t) => {
           const Icon = TEMPLATE_ICON[t.id] ?? CalendarClock
           const ModeIcon = MODE_META[t.input.mode].icon
@@ -427,20 +549,26 @@ export function RoutinesView(): React.JSX.Element {
   return (
     <div className="flex h-full min-h-0">
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="drag flex h-14 shrink-0 items-center gap-3 border-b border-border px-6">
-          <h1 className="text-base font-semibold">Rutinas</h1>
-          {routines.length > 0 && (
-            <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">
-              {activeCount} activa{activeCount === 1 ? '' : 's'}
-            </span>
-          )}
-          {loading && <Loader2 size={14} className="animate-spin text-muted" />}
-          {routines.length > 0 && (
-            <Button variant="primary" className="no-drag ml-auto" onClick={create}>
-              <Plus size={15} /> Nueva rutina
-            </Button>
-          )}
-        </header>
+        <PageHeader
+          title="Rutinas"
+          meta={
+            <>
+              {routines.length > 0 && (
+                <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">
+                  {activeCount} activa{activeCount === 1 ? '' : 's'}
+                </span>
+              )}
+              {loading && <Loader2 size={14} className="animate-spin text-muted" />}
+            </>
+          }
+          actions={
+            routines.length > 0 ? (
+              <Button variant="primary" onClick={create}>
+                <Plus size={15} /> Nueva rutina
+              </Button>
+            ) : undefined
+          }
+        />
         {error && (
           <div className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             <AlertCircle size={15} className="shrink-0" /> <span className="min-w-0 flex-1">{error}</span>

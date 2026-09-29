@@ -255,6 +255,7 @@ body.on {
 }
 .req-app {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -270,6 +271,23 @@ body.on {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Línea informativa "Pide: … · Ahora: … · Denegada antes" (ocupa su propia fila bajo el nombre y el selector). */
+.req-app-meta {
+  flex: 1 0 100%;
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--pl-muted);
+}
+.request-note {
+  -webkit-app-region: no-drag;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--pl-muted);
+}
+.request-unresolved {
+  color: #fbbf24;
 }
 .req-tiers {
   flex: none;
@@ -293,6 +311,11 @@ body.on {
   border-color: #60a5fa;
   background: rgba(96, 165, 250, 0.18);
   color: #fff;
+}
+.req-tier.requested:not(.active) {
+  /* El nivel que pide el agente se distingue aunque el usuario elija otro (nunca se preselecciona por debajo de lo concedido). */
+  border-color: rgba(96, 165, 250, 0.55);
+  color: var(--pl-fg);
 }
 .req-tier-deny.active {
   border-color: var(--pl-stop);
@@ -344,6 +367,22 @@ body.on {
 }
 .request-error:empty {
   display: none;
+}
+
+/* Tarjeta "¿Tomar el control de la pantalla?" (request_full_control): acento azul, no ámbar
+   (no es un plan de riesgo por aprobar, es solo entregar el ratón/teclado). */
+.request.takeover {
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in srgb, var(--pl-2) 40%, transparent),
+    0 0 18px color-mix(in srgb, var(--pl-2) 25%, transparent);
+}
+.request.takeover .req-approve {
+  background: var(--pl-2);
+  color: #fff;
+}
+.request.takeover .req-approve:hover:not(:disabled) {
+  background: #60a5fa;
 }
 
 @media (prefers-reduced-motion: reduce) {

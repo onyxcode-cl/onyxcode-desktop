@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import { useSettings } from '../../../stores/settings'
 import { useClient } from './client'
+import { ModelControls, PermissionChip } from './ComposerControls'
+import { subscribeComposerInbox } from './composer-inbox'
 import { useCode } from './store'
 import type { Attachment } from './types'
 import { Kbd, MOD } from './ui'
@@ -217,6 +219,24 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   useEffect(() => {
     ref.current?.focus()
   }, [activeSessionID])
+
+  // Bandeja del navegador integrado: "Añadir al chat" y "elemento elegido" insertan texto (y la
+  // imagen, si la hay) igual que un adjunto pegado/arrastrado.
+  useEffect(() => {
+    if (!directory) return
+    return subscribeComposerInbox(directory, ({ text, attachment }) => {
+      setText((t) => (t.trim() ? `${t}\n${text}` : text))
+      if (attachment) setAttachments((a) => [...a, attachment])
+      requestAnimationFrame(() => {
+        const el = ref.current
+        if (!el) return
+        el.focus()
+        const end = el.value.length
+        el.setSelectionRange(end, end)
+        setCaret(end)
+      })
+    })
+  }, [directory])
 
   useEffect(() => {
     const el = ref.current
@@ -549,17 +569,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             >
               <Paperclip size={14} />
             </button>
-            <span className="ml-auto hidden items-center gap-1 text-[11px] text-subtle sm:flex">
-              {busy ? (
-                <>
-                  <Kbd>esc</Kbd> detener · <Kbd>{MOD}↵</Kbd> enviar ya
-                </>
-              ) : (
-                <>
-                  <Kbd>{MOD}↵</Kbd> enviar
-                </>
-              )}
-            </span>
+            <PermissionChip />
+            <span className="ml-auto" />
+            <ModelControls />
             {busy && (
               <button
                 type="button"

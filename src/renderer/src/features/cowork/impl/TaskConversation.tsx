@@ -3,29 +3,34 @@
  * herramientas consecutivas se agrupan en bloques compactos de "Pasos" (expandibles) en lugar
  * de una lista larga de tarjetas de herramientas.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, Part, PermissionRequest, ReasoningPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AlertCircle, Brain, ChevronRight, FileText, Loader2, RotateCw, Sparkles } from 'lucide-react'
+import { AlertCircle, Brain, ChevronRight, FileText, Loader2, Pencil, RotateCw, Sparkles } from 'lucide-react'
+import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { ActivityRow } from './ProgressPanel'
+import { editAndRetry } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { toolImages } from './computer-tools'
 import { ScreenshotThumbs } from './ComputerAccess'
-import { onScrollToPart } from './scroll'
+import { blockIdForPart } from './conversation-logic'
+import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { friendlyTool, isVisibleText } from './util'
 
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n'
 
 type Block =
-  | { kind: 'user'; id: string; text: string; files: string[] }
-  | { kind: 'text'; id: string; text: string }
-  | { kind: 'steps'; id: string; parts: Array<ToolPart | ReasoningPart> }
-  | { kind: 'error'; id: string; info: AssistantMessage }
-  | { kind: 'retry'; id: string; text: string }
-  | { kind: 'file'; id: string; name: string }
+  | { kind: 'user'; id: string; text: string; files: string[]; partIds: string[] }
+  | { kind: 'text'; id: string; text: string; partIds: string[] }
+  | { kind: 'steps'; id: string; parts: Array<ToolPart | ReasoningPart>; partIds: string[] }
+  | { kind: 'error'; id: string; info: AssistantMessage; partIds: string[] }
+  | { kind: 'retry'; id: string; text: string; partIds: string[] }
+  | { kind: 'file'; id: string; name: string; partIds: string[] }
 
+/** Aplana los mensajes en bloques; `partIds` permite localizar el bloque de cualquier parte (búsqueda, contexto). */
 function buildBlocks(entries: MessageEntry[]): Block[] {
   const blocks: Block[] = []
   let steps: Extract<Block, { kind: 'steps' }> | null = null
@@ -47,29 +52,30 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
               .filter(Boolean)
           : []
       for (const p of entry.parts) if (p.type === 'file') files.push(p.filename ?? p.url)
-      blocks.push({ kind: 'user', id: entry.info.id, text, files })
+      blocks.push({ kind: 'user', id: entry.info.id, text, files, partIds: entry.parts.map((p) => p.id) })
       continue
     }
     for (const p of entry.parts) {
       if (p.type === 'tool' || (p.type === 'reasoning' && p.text.trim())) {
         if (!steps) {
-          steps = { kind: 'steps', id: p.id, parts: [] }
+          steps = { kind: 'steps', id: p.id, parts: [], partIds: [] }
           blocks.push(steps)
         }
         steps.parts.push(p as ToolPart | ReasoningPart)
+        steps.partIds.push(p.id)
       } else if (isVisibleText(p)) {
         steps = null
-        blocks.push({ kind: 'text', id: p.id, text: p.text })
+        blocks.push({ kind: 'text', id: p.id, text: p.text, partIds: [p.id] })
       } else if (p.type === 'retry') {
-        blocks.push({ kind: 'retry', id: p.id, text: `Reintento ${p.attempt}: ${p.error.data.message}` })
+        blocks.push({ kind: 'retry', id: p.id, text: `Reintento ${p.attempt}: ${p.error.data.message}`, partIds: [p.id] })
       } else if (p.type === 'file') {
         steps = null
-        blocks.push({ kind: 'file', id: p.id, name: p.filename ?? p.url })
+        blocks.push({ kind: 'file', id: p.id, name: p.filename ?? p.url, partIds: [p.id] })
       }
     }
     if (entry.info.role === 'assistant' && entry.info.error) {
       steps = null
-      blocks.push({ kind: 'error', id: `${entry.info.id}-err`, info: entry.info })
+      blocks.push({ kind: 'error', id: `${entry.info.id}-err`, info: entry.info, partIds: [] })
     }
   }
   return blocks
@@ -182,9 +188,138 @@ interface Props {
   permissions: PermissionRequest[]
   /** Contenido extra al final (p.ej. seguimientos). */
   footer?: React.ReactNode
+  /** Tarea a la que pertenece la conversación: habilita «Editar y reintentar» en los mensajes del usuario. */
+  taskId?: string
 }
 
-export function TaskConversation({ entries, busy, error, permissions, footer }: Props): React.JSX.Element {
+const HIGHLIGHT = 'outline-2 outline-offset-4 outline-accent/60'
+
+/** Mensaje del usuario con «Editar y reintentar»: edita el texto y, tras confirmar, deshace desde aquí y reenvía. */
+function UserMessage({
+  block,
+  taskId,
+  flash
+}: {
+  block: Extract<Block, { kind: 'user' }>
+  taskId?: string
+  flash: boolean
+}): React.JSX.Element {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(block.text)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (!editing) return
+    const el = taRef.current
+    if (el) {
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }
+  }, [editing])
+
+  const cancel = (): void => {
+    setEditing(false)
+    setError(null)
+    setDraft(block.text)
+  }
+
+  const submit = async (): Promise<void> => {
+    const text = draft.trim()
+    if (!text || !taskId || busy) return
+    const ok = await confirmDialog({
+      title: 'Editar y reintentar',
+      message: (
+        <>
+          Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y también se{' '}
+          <strong>revertirán los cambios en archivos</strong> que el agente hizo desde aquí. Después se enviará tu mensaje editado. Esto
+          no se puede deshacer.
+        </>
+      ),
+      confirmLabel: 'Deshacer y reintentar',
+      danger: true
+    })
+    if (!ok) return
+    setBusy(true)
+    setError(null)
+    try {
+      await editAndRetry(taskId, block.id, text)
+      setEditing(false)
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div id={`cw-block-${block.id}`} className="flex w-full flex-col items-end gap-1.5">
+        <textarea
+          ref={taRef}
+          value={draft}
+          disabled={busy}
+          rows={Math.min(8, Math.max(2, draft.split('\n').length))}
+          aria-label="Editar mensaje"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') cancel()
+            else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit()
+          }}
+          className="w-full max-w-[85%] resize-y rounded-xl border border-border-strong bg-elevated px-3 py-2 text-[15px] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"
+        />
+        {block.files.length > 0 && (
+          <p className="max-w-[85%] text-right text-[11px] text-subtle">
+            Los archivos adjuntos ya están en la carpeta, pero no se reenvían: menciónalos en el texto si hacen falta.
+          </p>
+        )}
+        {error && <p className="max-w-[85%] text-right text-xs text-danger">{error}</p>}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" disabled={busy} onClick={cancel}>
+            Cancelar
+          </Button>
+          <Button variant="primary" size="sm" disabled={busy || !draft.trim()} onClick={() => void submit()}>
+            {busy && <Loader2 size={13} className="animate-spin" />} Reintentar
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      id={`cw-block-${block.id}`}
+      className={`group flex flex-col items-end gap-1.5 rounded-2xl transition-[outline-color] duration-500 ${flash ? HIGHLIGHT : 'outline-0 outline-transparent'}`}
+    >
+      {block.files.length > 0 && (
+        <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+          {block.files.map((f) => (
+            <span key={f} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-xs text-muted">
+              <FileText size={12} /> {f}
+            </span>
+          ))}
+        </div>
+      )}
+      {block.text && <div className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] whitespace-pre-wrap">{block.text}</div>}
+      {taskId && block.text && (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(block.text)
+            setEditing(true)
+          }}
+          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:text-fg focus-visible:opacity-100"
+          title="Deshace la conversación desde este mensaje (y los cambios de archivos) y lo vuelve a enviar editado"
+        >
+          <Pencil size={11} /> Editar y reintentar
+        </button>
+      )}
+    </div>
+  )
+}
+
+export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const blocks = useMemo(() => buildBlocks(entries), [entries])
@@ -207,22 +342,28 @@ export function TaskConversation({ entries, busy, error, permissions, footer }: 
     stickRef.current = true
   }, [firstId])
 
-  // Panel de contexto/actividad ⇒ abrir el bloque de pasos que contiene esa parte y hacer scroll.
-  useEffect(
-    () =>
-      onScrollToPart((partId) => {
-        const block = blocks.find((b) => b.kind === 'steps' && b.parts.some((p) => p.id === partId))
-        if (!block) return
-        stickRef.current = false
-        setForceOpenId(block.id)
-        setFlashId(block.id)
-        requestAnimationFrame(() => {
-          document.getElementById(`cw-block-${block.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        })
-        setTimeout(() => setFlashId((id) => (id === block.id ? null : id)), 1600)
-      }),
+  // Búsqueda / panel de contexto ⇒ abrir el bloque que contiene esa parte, hacer scroll y resaltarlo.
+  // Si el bloque aún no existe (la tarea se acaba de abrir), la petición queda pendiente y se atiende al aparecer.
+  const goToPart = useCallback(
+    (partId: string): boolean => {
+      const id = blockIdForPart(blocks, partId)
+      if (!id) return false
+      const block = blocks.find((b) => b.id === id)
+      stickRef.current = false
+      if (block?.kind === 'steps') setForceOpenId(id)
+      setFlashId(id)
+      setTimeout(() => document.getElementById(`cw-block-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+      setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), 2000)
+      clearPendingScroll(partId)
+      return true
+    },
     [blocks]
   )
+  useEffect(() => onScrollToPart((partId) => void goToPart(partId)), [goToPart])
+  useEffect(() => {
+    const pid = peekPendingScroll()
+    if (pid) goToPart(pid)
+  }, [goToPart])
 
   const last = blocks[blocks.length - 1]
   const showThinking = busy && permissions.length === 0 && (!last || last.kind === 'user' || last.kind === 'text')
@@ -233,27 +374,17 @@ export function TaskConversation({ entries, busy, error, permissions, footer }: 
         {blocks.map((b, i) => {
           switch (b.kind) {
             case 'user':
+              return <UserMessage key={b.id} block={b} taskId={taskId} flash={flashId === b.id} />
+            case 'text':
               return (
-                <div key={b.id} className="flex flex-col items-end gap-1.5">
-                  {b.files.length > 0 && (
-                    <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-                      {b.files.map((f) => (
-                        <span
-                          key={f}
-                          className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-xs text-muted"
-                        >
-                          <FileText size={12} /> {f}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {b.text && (
-                    <div className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] whitespace-pre-wrap">{b.text}</div>
-                  )}
+                <div
+                  key={b.id}
+                  id={`cw-block-${b.id}`}
+                  className={`rounded-lg transition-[outline-color] duration-500 ${flashId === b.id ? HIGHLIGHT : 'outline-0 outline-transparent'}`}
+                >
+                  <Markdown text={b.text} />
                 </div>
               )
-            case 'text':
-              return <Markdown key={b.id} text={b.text} />
             case 'steps':
               return (
                 <StepsBlock

@@ -7,11 +7,13 @@ import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeConfigDir } from './cowork/opencode-config'
 import { registerAllHandlers } from './ipc'
+import { registerBrowserHandlers } from './ipc/browser-handlers'
 import { registerCodeHandlers } from './ipc/code-handlers'
 import { registerCoworkHandlers } from './ipc/cowork-handlers'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
+import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded-browser/service'
 import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './security/app-protocol'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
@@ -117,6 +119,8 @@ app.whenReady().then(() => {
     corsOrigins
   })
   registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
+  embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
+  registerBrowserHandlers(ipcMain)
 
   // Arranca el sidecar en paralelo a la ventana.
   server.start().catch((err: unknown) => console.error('[main] opencode no arrancó:', err))
@@ -138,6 +142,11 @@ app.on('before-quit', (event) => {
   if (quitting) return
   quitting = true
   event.preventDefault()
+  try {
+    shutdownEmbeddedBrowser()
+  } catch (err) {
+    console.error('[main] limpieza del navegador integrado:', err)
+  }
   Promise.allSettled([server.stop(), coworkMod?.shutdown()])
     .then(() => undefined)
     .catch((err: unknown) => console.error('[main] error deteniendo opencode:', err))

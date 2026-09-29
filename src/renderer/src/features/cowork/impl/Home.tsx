@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import {
   BarChart3,
+  Eye,
+  EyeOff,
   FileText,
   FolderTree,
   Globe,
@@ -10,31 +12,63 @@ import {
   ShieldCheck,
   type LucideIcon
 } from 'lucide-react'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { AccessSegmented } from './AccessSegmented'
 import { ComputerPermissionsCard, VisionModelHint } from './ComputerAccess'
 import { CoworkComposer } from './CoworkComposer'
 import { setAccessMode } from './actions'
+import { Onboarding } from './Onboarding'
 import { useCowork } from './store'
 import { baseName } from './util'
 
-interface Category {
+/** Plantilla de inicio. `note` es un aviso que se muestra en Sandbox (p. ej. permisos que se pedirán). */
+export interface HomeTemplate {
+  title: string
+  prompt: string
+  note?: string
+}
+
+export interface HomeCategory {
   id: string
   label: string
   icon: LucideIcon
   computer?: boolean
-  items: Array<{ title: string; prompt: string }>
+  items: HomeTemplate[]
 }
 
-const CATEGORIES: Category[] = [
+/** Aviso de las plantillas que mueven o renombran archivos dentro del sandbox. */
+const MOVE_NOTE = `Al mover archivos en Sandbox se te pedirá el permiso «${COWORK_TERMS.deleteGrant}»; sin él, ofrecerá una copia ordenada.`
+
+/**
+ * Plantillas de inicio: 5 categorías × 4. Todas siguen el patrón «primero revisa y resume; luego propón;
+ * cuando lo apruebe, actúa», para que el agente enseñe lo que va a hacer antes de tocar nada.
+ */
+export const CATEGORIES: HomeCategory[] = [
   {
     id: 'docs',
     label: 'Documentos',
     icon: FileText,
     items: [
-      { title: 'Informe resumen', prompt: 'Lee todos los documentos de esta carpeta y crea un informe resumen.md con los puntos clave de cada uno.' },
-      { title: 'Documento en Word', prompt: 'Redacta un documento en Word (.docx) bien formateado a partir de las notas de esta carpeta.' },
-      { title: 'Revisión de ortografía', prompt: 'Revisa la ortografía y el estilo de los documentos .md y .txt y crea versiones corregidas con sufijo -revisado.' },
-      { title: 'Acta de reunión', prompt: 'Convierte las notas de reunión de esta carpeta en un acta formal con acuerdos, responsables y fechas.' }
+      {
+        title: 'Informe resumen',
+        prompt:
+          'Primero revisa los documentos de esta carpeta y muéstrame un resumen de qué hay en cada uno; luego propón la estructura de un informe resumen.md con los puntos clave; cuando lo apruebe, escríbelo en la carpeta.'
+      },
+      {
+        title: 'Documento en Word',
+        prompt:
+          'Primero revisa las notas de esta carpeta y muéstrame un resumen de las ideas principales; luego propón el esquema de un documento Word (.docx) con sus secciones; cuando lo apruebe, créalo bien formateado.'
+      },
+      {
+        title: 'Revisión de ortografía',
+        prompt:
+          'Primero revisa los documentos .md y .txt de esta carpeta y muéstrame un resumen de los errores de ortografía y estilo que encuentres; luego propón las correcciones; cuando lo apruebe, guarda versiones corregidas con el sufijo -revisado sin tocar los originales.'
+      },
+      {
+        title: 'Acta de reunión',
+        prompt:
+          'Primero revisa las notas de reunión de esta carpeta y muéstrame un resumen de los temas tratados; luego propón la lista de acuerdos, responsables y fechas; cuando lo apruebe, redacta un acta formal en actas.md.'
+      }
     ]
   },
   {
@@ -42,10 +76,26 @@ const CATEGORIES: Category[] = [
     label: 'Datos',
     icon: BarChart3,
     items: [
-      { title: 'Analizar CSV', prompt: 'Analiza los archivos .csv de esta carpeta y crea un informe con totales, tendencias y hallazgos principales.' },
-      { title: 'Limpiar datos', prompt: 'Limpia los datos de los .csv (duplicados, formatos de fecha, espacios) y guarda versiones limpias.' },
-      { title: 'Gráficos', prompt: 'Genera gráficos PNG a partir de los datos de esta carpeta y un informe .md que los incluya.' },
-      { title: 'Consolidar hojas', prompt: 'Consolida todos los .csv con la misma estructura en un único archivo y explica lo que hiciste.' }
+      {
+        title: 'Analizar CSV',
+        prompt:
+          'Primero revisa los archivos .csv de esta carpeta y muéstrame un resumen de sus columnas, filas y datos faltantes; luego propón qué análisis harías (totales, tendencias, valores atípicos); cuando lo apruebe, ejecútalo y guarda un informe con los hallazgos principales.'
+      },
+      {
+        title: 'Limpiar datos',
+        prompt:
+          'Primero revisa los .csv de esta carpeta y muéstrame un resumen de los problemas (duplicados, fechas en formatos distintos, espacios sobrantes); luego propón las reglas de limpieza; cuando lo apruebe, guarda versiones limpias sin modificar los originales.'
+      },
+      {
+        title: 'Gráficos',
+        prompt:
+          'Primero revisa los datos de esta carpeta y muéstrame un resumen de qué variables se pueden graficar; luego propón 3 o 4 gráficos con su tipo y qué muestran; cuando lo apruebe, genéralos como PNG e inclúyelos en un informe .md.'
+      },
+      {
+        title: 'Consolidar hojas',
+        prompt:
+          'Primero revisa los .csv de esta carpeta y muéstrame un resumen de cuáles tienen la misma estructura; luego propón cómo unirlos y cómo tratarías los duplicados; cuando lo apruebe, crea un único archivo consolidado y explica lo que hiciste.'
+      }
     ]
   },
   {
@@ -53,10 +103,28 @@ const CATEGORIES: Category[] = [
     label: 'Organizar archivos',
     icon: FolderTree,
     items: [
-      { title: 'Ordenar por tipo', prompt: 'Ordena los archivos de esta carpeta en subcarpetas por tipo y crea un índice.md con lo que hay en cada una.' },
-      { title: 'Renombrar con criterio', prompt: 'Propón nombres descriptivos y consistentes para los archivos de esta carpeta y renómbralos tras mostrarme el plan.' },
-      { title: 'Encontrar duplicados', prompt: 'Busca archivos duplicados o casi duplicados en esta carpeta y dame un informe (no borres nada).' },
-      { title: 'Inventario', prompt: 'Crea un inventario.csv con todos los archivos de la carpeta: nombre, tipo, tamaño y fecha.' }
+      {
+        title: 'Ordenar por tipo',
+        prompt:
+          'Primero revisa los archivos de esta carpeta y muéstrame un resumen de cuántos hay de cada tipo; luego propón una estructura de subcarpetas y qué archivo iría a cada una; cuando lo apruebe, muévelos y crea un índice.md. Si mover está bloqueado, crea una copia ordenada sin tocar los originales.',
+        note: MOVE_NOTE
+      },
+      {
+        title: 'Renombrar con criterio',
+        prompt:
+          'Primero revisa los nombres de los archivos de esta carpeta y muéstrame un resumen de las inconsistencias; luego propón una tabla con el nombre actual y el nuevo; cuando lo apruebe, renómbralos. Si renombrar está bloqueado, crea copias con los nombres nuevos.',
+        note: MOVE_NOTE
+      },
+      {
+        title: 'Encontrar duplicados',
+        prompt:
+          'Primero revisa esta carpeta y muéstrame un resumen de los archivos duplicados o casi duplicados que encuentres; luego propón cuál conservar de cada grupo y por qué; cuando lo apruebe, escribe el informe duplicados.md. No borres nada.'
+      },
+      {
+        title: 'Inventario',
+        prompt:
+          'Primero revisa los archivos de esta carpeta y muéstrame un resumen de qué hay (tipos, tamaños y fechas); luego propón las columnas del inventario; cuando lo apruebe, crea un inventario.csv con nombre, tipo, tamaño y fecha de cada archivo.'
+      }
     ]
   },
   {
@@ -64,10 +132,26 @@ const CATEGORIES: Category[] = [
     label: 'Investigación',
     icon: Globe,
     items: [
-      { title: 'Informe de un tema', prompt: 'Investiga en la web sobre [tema] y escribe un informe.md con fuentes citadas.' },
-      { title: 'Comparativa', prompt: 'Compara [opción A] y [opción B] buscando información en la web y entrega una tabla comparativa en .md.' },
-      { title: 'Resumen de enlaces', prompt: 'Lee los enlaces que aparecen en los documentos de esta carpeta y resume cada uno en un informe.' },
-      { title: 'Noticias recientes', prompt: 'Busca las noticias más recientes sobre [tema] y prepara un resumen ejecutivo de una página.' }
+      {
+        title: 'Informe de un tema',
+        prompt:
+          'Primero busca en la web sobre [tema] y muéstrame un resumen de lo que encuentres con las fuentes; luego propón el índice de un informe; cuando lo apruebe, escribe informe.md con las fuentes citadas.'
+      },
+      {
+        title: 'Comparativa',
+        prompt:
+          'Primero busca información en la web sobre [opción A] y [opción B] y muéstrame un resumen de cada una; luego propón los criterios de comparación; cuando lo apruebe, entrega una tabla comparativa en comparativa.md con las fuentes.'
+      },
+      {
+        title: 'Resumen de enlaces',
+        prompt:
+          'Primero revisa los documentos de esta carpeta y muéstrame la lista de enlaces que aparecen; luego propón cuáles vale la pena leer y en qué orden; cuando lo apruebe, léelos y resume cada uno en un informe.'
+      },
+      {
+        title: 'Noticias recientes',
+        prompt:
+          'Primero busca las noticias más recientes sobre [tema] y muéstrame un resumen de los titulares con su fuente y fecha; luego propón los 5 puntos que más importan; cuando lo apruebe, prepara un resumen ejecutivo de una página.'
+      }
     ]
   },
   {
@@ -76,13 +160,50 @@ const CATEGORIES: Category[] = [
     icon: MonitorCog,
     computer: true,
     items: [
-      { title: 'Crear carpeta', prompt: 'Crea una carpeta llamada Proyectos en el Escritorio.' },
-      { title: 'Buscar en Safari', prompt: 'Abre Safari y busca el clima de hoy en Santiago.' },
-      { title: 'Describir pantalla', prompt: 'Toma una captura de pantalla y dime qué hay abierto.' },
-      { title: 'Ordenar Escritorio', prompt: 'Ordena los archivos sueltos del Escritorio en carpetas por tipo.' }
+      {
+        title: 'Crear carpeta',
+        prompt:
+          'Primero mira el Escritorio y dime si ya existe una carpeta llamada Proyectos; luego propón el plan; cuando lo apruebe, crea la carpeta Proyectos en el Escritorio.'
+      },
+      {
+        title: 'Buscar en Safari',
+        prompt:
+          'Primero dime qué tienes abierto en Safari; luego propón los pasos para buscar el clima de hoy en Santiago; cuando lo apruebe, hazlo y dime el resultado.'
+      },
+      {
+        title: 'Describir pantalla',
+        prompt:
+          'Primero toma una captura de pantalla y muéstrame un resumen de qué apps y ventanas hay abiertas; luego propón qué podrías hacer con ellas; cuando lo apruebe, hazlo. No cierres ni modifiques nada por tu cuenta.'
+      },
+      {
+        title: 'Ordenar Escritorio',
+        prompt:
+          'Primero revisa el Escritorio y muéstrame un resumen de los archivos sueltos que hay; luego propón las carpetas por tipo y qué iría a cada una; cuando lo apruebe, muévelos.'
+      }
     ]
   }
 ]
+
+const HIDE_KEY = 'cowork.hideSuggestions'
+const ONBOARDED_KEY = 'cowork.onboarded'
+
+/** Lee un indicador de localStorage ('1' = activo). Sin storage devuelve el valor por defecto. */
+function readFlag(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key)
+    return v === null ? fallback : v === '1'
+  } catch {
+    return fallback
+  }
+}
+
+function writeFlag(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, value ? '1' : '0')
+  } catch {
+    // sin storage: el valor solo dura mientras la ventana siga abierta
+  }
+}
 
 export function Home({
   onSend,
@@ -100,6 +221,18 @@ export function Home({
   const full = conn ? conn.fullAccess : requested
   const [cat, setCat] = useState<string>(full ? 'computer' : 'docs')
   const category = CATEGORIES.find((c) => c.id === cat) ?? CATEGORIES[0]
+  const [hidden, setHidden] = useState(() => readFlag(HIDE_KEY, false))
+  const [onboarded, setOnboarded] = useState(() => readFlag(ONBOARDED_KEY, false))
+
+  const toggleHidden = (): void => {
+    const next = !hidden
+    setHidden(next)
+    writeFlag(HIDE_KEY, next)
+  }
+  const setOnboardedPersisted = (value: boolean): void => {
+    setOnboarded(value)
+    writeFlag(ONBOARDED_KEY, value)
+  }
 
   const pick = (prompt: string, computer?: boolean): void => {
     useCowork.setState({ draft: prompt })
@@ -110,13 +243,13 @@ export function Home({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="m-auto w-full max-w-3xl py-10">
         <div className="mb-6 px-6 text-center">
-          <h1 className="text-[32px] leading-tight font-medium tracking-tight">¿En qué trabajamos hoy?</h1>
+          <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight">¿En qué trabajamos hoy?</h1>
           <p className="mt-2 text-sm text-muted">
             {!folder
-              ? 'Elige una carpeta y describe el resultado que esperas. El agente planifica, trabaja solo y te entrega los archivos.'
+              ? 'Elige una carpeta y describe el resultado que esperas. El agente revisa, te propone un plan y, cuando lo apruebes, trabaja y te entrega los archivos.'
               : full
                 ? `Control total: el agente puede usar el ratón, el teclado y ver la pantalla. Detenlo con ⌘⇧Esc.`
-                : `Trabajará dentro de «${baseName(folder)}». Te pedirá permiso antes de borrar nada.`}
+                : `Trabajará dentro de «${baseName(folder)}». Te pedirá permiso antes de borrar, mover o renombrar.`}
           </p>
           <div className="mt-4 flex items-center justify-center gap-2">
             <AccessSegmented disabled={folderBusy} />
@@ -128,6 +261,7 @@ export function Home({
           </div>
         </div>
 
+        {!onboarded && <Onboarding onDismiss={() => setOnboardedPersisted(true)} />}
         <ComputerPermissionsCard />
         <VisionModelHint />
         <CoworkComposer
@@ -152,59 +286,88 @@ export function Home({
         )}
 
         <div className="mt-8 px-6">
-          <div className="mb-3 flex flex-wrap justify-center gap-1.5">
-            {CATEGORIES.map((c) => {
-              const Icon = c.icon
-              const active = c.id === category.id
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setCat(c.id)}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    active
-                      ? c.computer
-                        ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400'
-                        : 'border-accent/50 bg-accent-soft text-accent'
-                      : 'border-border text-muted hover:bg-hover hover:text-fg'
-                  }`}
-                >
-                  <Icon size={13} /> {c.label}
-                </button>
-              )
-            })}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-xs font-medium text-muted">Sugerencias para empezar</h2>
+            <button
+              type="button"
+              onClick={toggleHidden}
+              aria-pressed={hidden}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition hover:bg-hover hover:text-fg"
+            >
+              {hidden ? <Eye size={13} /> : <EyeOff size={13} />}
+              {hidden ? 'Mostrar sugerencias' : 'Ocultar sugerencias'}
+            </button>
           </div>
-          {category.computer && !full && (
-            <p className="mb-2 text-center text-xs text-muted">
-              Estas tareas requieren <strong className="text-fg">Control total del Mac</strong>; al elegir una se te pedirá
-              confirmación.
+          {!hidden && (
+            <>
+              <div className="mb-3 flex flex-wrap justify-center gap-1.5" role="group" aria-label="Categorías de sugerencias">
+                {CATEGORIES.map((c) => {
+                  const Icon = c.icon
+                  const active = c.id === category.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setCat(c.id)}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        active
+                          ? c.computer
+                            ? 'border-warning/50 bg-warning/10 text-warning'
+                            : 'border-accent/50 bg-accent-soft text-accent'
+                          : 'border-border text-muted hover:bg-hover hover:text-fg'
+                      }`}
+                    >
+                      <Icon size={13} /> {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {category.computer && !full && (
+                <p className="mb-2 text-center text-xs text-muted">
+                  Estas tareas requieren <strong className="text-fg">{COWORK_TERMS.fullControl}</strong>; al elegir una se te pedirá
+                  confirmación.
+                </p>
+              )}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {category.items.map((s) => {
+                  const Icon = category.icon
+                  return (
+                    <button
+                      key={s.title}
+                      type="button"
+                      onClick={() => pick(s.prompt, category.computer)}
+                      className="group flex items-start gap-3 rounded-xl border border-border bg-elevated/50 px-3.5 py-3 text-left transition hover:border-border-strong hover:bg-hover"
+                    >
+                      <span
+                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                          category.computer ? 'bg-warning/15 text-warning' : 'bg-accent-soft text-accent'
+                        }`}
+                      >
+                        <Icon size={14} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">{s.title}</span>
+                        <span className="line-clamp-2 block text-xs text-muted">{s.prompt}</span>
+                        {s.note && !full && <span className="mt-1 block text-[11.5px] leading-snug text-warning">{s.note}</span>}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+          {onboarded && (
+            <p className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setOnboardedPersisted(false)}
+                className="text-xs text-muted underline-offset-2 transition hover:text-fg hover:underline"
+              >
+                Cómo usar Cowork de forma segura
+              </button>
             </p>
           )}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {category.items.map((s) => {
-              const Icon = category.icon
-              return (
-                <button
-                  key={s.title}
-                  type="button"
-                  onClick={() => pick(s.prompt, category.computer)}
-                  className="group flex items-start gap-3 rounded-xl border border-border bg-elevated/50 px-3.5 py-3 text-left transition hover:border-border-strong hover:bg-hover"
-                >
-                  <span
-                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                      category.computer ? 'bg-amber-500/15 text-amber-600' : 'bg-accent-soft text-accent'
-                    }`}
-                  >
-                    <Icon size={14} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">{s.title}</span>
-                    <span className="line-clamp-2 block text-xs text-muted">{s.prompt}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
         </div>
       </div>
     </div>

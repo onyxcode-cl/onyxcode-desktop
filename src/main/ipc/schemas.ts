@@ -15,6 +15,12 @@ import {
   type IpcExtrasInvokeContract
 } from '@shared/ipc-extras'
 import {
+  BROWSER_HOST_EXCLUDED_CHANNELS,
+  BROWSER_INVOKE_CHANNELS,
+  type BrowserInvokeChannel,
+  type BrowserInvokeContract
+} from '@shared/ipc-browser'
+import {
   absPath,
   arr,
   bool,
@@ -32,16 +38,42 @@ import {
 } from './validate'
 
 /** Rol de la ventana que envía (lo asigna main al crearla). */
-export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill'
+export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'browserHost'
 
 const id = str({ max: 200, min: 1 })
 const shortText = str({ max: 500 })
+/** Id de sesión de OpenCode (`ses_…`). */
+const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const modelRef = obj({ providerID: str({ max: 200, min: 1 }), modelID: str({ max: 200, min: 1 }) })
 const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
 const pathReq = obj({ path: absPath })
 const openFolderOpts = optional(obj({ title: optional(shortText), defaultPath: optional(absPath) }))
-const notifyTarget = obj({ mode: literal('code', 'cowork'), id, directory: optional(absPath) })
+const notifyTarget = obj({ mode: literal('code', 'cowork'), id, directory: optional(absPath), fullAccess: optional(bool) })
+/**
+ * Como `optional(nullable(x))` pero CONSERVANDO `null` (`optional` lo colapsa a `undefined`):
+ * necesario cuando `null` significa "quitar" (p.ej. `group: null`).
+ */
+function optNull<T>(inner: Validator<T>): Validator<T | null | undefined> {
+  return (v, path) => (v === undefined ? undefined : v === null ? null : inner(v, path))
+}
+/** Host (dominio) permitido en la red de una rutina. */
+const host = str({ max: 255, min: 1, pattern: /^[a-z0-9.-]+$/i })
+/** Nombre de permiso de OpenCode (`bash`, `edit`, `mcp_*`…). */
+const permName = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_*.:-]+$/ })
+/** Id hexadecimal corto (tarjeta `request_access`/Teach, grabación de skill). */
+const hexId = str({ max: 64, min: 1, pattern: /^[a-f0-9]+$/ })
+/** Sitio (eTLD+1) del navegador propio de Cowork. */
+const site = str({ max: 253, min: 1, pattern: /^[a-z0-9.-]+$/i })
+const pattern = str({ max: 2000, min: 1 })
+/** Nombre de archivo simple: sin separadores de ruta, dos puntos ni bytes nulos. */
+const fileName = str({ max: 200, min: 1, pattern: /^[^/\\:\0]+$/ })
+const folderMode = literal('rw', 'ro')
+/** Grupo de tareas: `null` = sin grupo. */
+const group = nullable(str({ max: 80 }))
+const links = arr(str({ max: 2048, pattern: /^https?:\/\//i }), 50)
+/** Clave del directorio `cowork-sandbox/<key>` (hash hexadecimal). */
+const storageKey = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const hhmm = str({ pattern: /^\d{1,2}:\d{2}$/ })
 const schedule = tagged('kind', {
   daily: obj({ kind: literal('daily'), time: hhmm }),
@@ -76,6 +108,55 @@ const mcpEntry = tagged('type', {
     )
   })
 })
+
+// ───────────────────────────── Lote D: navegador integrado ─────────────────────────────
+const tabId = str({ max: 34, min: 9, pattern: /^t[a-f0-9]{8,32}$/ })
+const browserInput = str({ max: 2048 })
+const browserOwner = tagged('kind', {
+  code: obj({ kind: literal('code'), directory: absPath }),
+  cowork: obj({ kind: literal('cowork'), folder: absPath })
+})
+const browserRectCoord = num({ min: -20_000, max: 20_000 })
+const browserRect = obj({ x: browserRectCoord, y: browserRectCoord, width: browserRectCoord, height: browserRectCoord })
+const browserDecision = literal('task', 'always', 'deny', 'allow')
+const browserProduct = literal('code', 'cowork')
+const localOrigin = str({ max: 261, min: 1, pattern: /^(localhost|127\.0\.0\.1|\[::1\]):\d{1,5}$/ })
+const browserToChat = obj({
+  owner: browserOwner,
+  text: str({ max: 20_000 }),
+  image: optional(
+    obj({
+      name: fileName,
+      mime: literal('image/jpeg'),
+      dataUrl: str({ max: 8 * 1024 * 1024, pattern: /^data:image\/jpeg;base64,/ })
+    })
+  )
+})
+
+const BROWSER_SCHEMAS: { [C in BrowserInvokeChannel]: Validator<BrowserInvokeContract[C]['req']> } = {
+  'browser:state': obj({ owner: browserOwner }),
+  'browser:attach': obj({ owner: browserOwner, rect: browserRect, visible: bool }),
+  'browser:detach': obj({ owner: browserOwner }),
+  'browser:newTab': obj({ owner: browserOwner, input: optional(browserInput) }),
+  'browser:closeTab': obj({ owner: browserOwner, tabId }),
+  'browser:selectTab': obj({ owner: browserOwner, tabId }),
+  'browser:navigate': obj({ owner: browserOwner, tabId, input: browserInput }),
+  'browser:history': obj({ owner: browserOwner, tabId, action: literal('back', 'forward', 'reload', 'stop') }),
+  'browser:agent': obj({ owner: browserOwner, action: literal('pause', 'resume', 'stop') }),
+  'browser:pick': obj({ owner: browserOwner, tabId, on: bool }),
+  'browser:capture': obj({ owner: browserOwner, tabId }),
+  'browser:toChat': browserToChat,
+  'browser:respond': obj({ id: hexId, decision: browserDecision }),
+  'browser:popOut': obj({ owner: browserOwner, on: bool }),
+  'browser:openExternal': obj({ owner: browserOwner, tabId }),
+  'browser:devServers': obj({ directory: absPath }),
+  'browser:sites:get': none,
+  'browser:sites:setPrefs': obj({ agentEnabled: optional(partial({ code: bool, cowork: bool })) }),
+  'browser:sites:remove': obj({ product: browserProduct, site }),
+  'browser:sites:undeny': obj({ product: browserProduct, site }),
+  'browser:sites:removeLocal': obj({ origin: localOrigin }),
+  'browser:clearData': obj({ product: browserProduct })
+}
 
 const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:info': none,
@@ -148,12 +229,18 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'cowork:importFiles': folderReq,
   'cowork:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: 20 * 1024 * 1024 })) }),
   'cowork:project:get': folderReq,
-  'cowork:project:save': obj({ folder: absPath, name: optional(str({ max: 200 })), instructions: optional(str({ max: 20_000 })) }),
+  'cowork:project:save': obj({
+    folder: absPath,
+    name: optional(str({ max: 200 })),
+    instructions: optional(str({ max: 20_000 })),
+    links: optional(links),
+    memoryEnabled: optional(bool)
+  }),
   'cowork:memory:get': folderReq,
   'cowork:memory:save': obj({ folder: absPath, content: str({ max: 2 * 1024 * 1024 }) }),
   'cowork:memory:delete': folderReq,
   'cowork:network:state': none,
-  'cowork:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled'), value: bool }),
+  'cowork:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
   'cowork:network:setHost': obj({ host: str({ max: 255, min: 1 }), decision: literal('allow', 'block', 'unset') }),
   'cowork:network:allowOnce': obj({ folder: absPath, host: str({ max: 255, min: 1 }) }),
   'cowork:deleteGrant:get': folderReq,
@@ -168,7 +255,13 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
     model: modelRef,
     schedule,
     enabled: bool,
-    originSessionId: optional(nullable(id))
+    originSessionId: optional(nullable(id)),
+    sessionMode: optional(literal('fresh', 'continue')),
+    onAsk: optional(literal('reject', 'wait')),
+    allow: optional(arr(obj({ permission: permName, pattern }), 50)),
+    allowHosts: optional(arr(host, 50)),
+    fullAccess: optional(bool),
+    fullAccessConsentAt: optNull(num({ min: 0 }))
   }),
   'routines:delete': obj({ id }),
   'routines:toggle': obj({ id, enabled: bool }),
@@ -180,7 +273,7 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'computer:stop': none,
   'computer:resume': none,
   'computer:state': none,
-  'computer:session': obj({ active: bool, label: optional(str({ max: 500 })) }),
+  'computer:session': obj({ active: bool, label: optional(str({ max: 500 })), sessionId: optional(sessionId) }),
   'computer:grants': none,
   'computer:setGrant': obj({ bundleId: str({ max: 255, min: 1 }), name: str({ max: 255, min: 1 }), tier: literal('view', 'click', 'full') }),
   'computer:revokeGrant': obj({ bundleId: str({ max: 255, min: 1 }) }),
@@ -196,12 +289,98 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
       }),
       20
     ),
-    feedback: optional(str({ max: 1000 }))
+    feedback: optional(str({ max: 1000 })),
+    approvePlan: optional(bool),
+    cancel: optional(bool)
   }),
+  'computer:revokePlan': obj({ sessionId }),
+  'computer:approvedPlans': none,
   'computer:showMainWindow': none,
   'cowork:keepAwakeState': none,
   'cowork:keepAwakeSetting': obj({ enabled: bool }),
-  'cowork:keepAwakeActive': obj({ active: bool })
+  'cowork:keepAwakeActive': obj({ active: bool }),
+
+  // Lote B: carpetas
+  'cowork:folders:get': folderReq,
+  'cowork:folders:check': pathReq,
+  'cowork:folders:link': obj({ folder: absPath, path: absPath, mode: folderMode, trust: optional(bool), restart: optional(bool) }),
+  'cowork:folders:unlink': obj({ folder: absPath, path: absPath, restart: optional(bool) }),
+  'cowork:trusted:list': none,
+  'cowork:trusted:set': obj({ path: absPath, mode: folderMode }),
+  'cowork:trusted:remove': pathReq,
+  'cowork:policy': none,
+  // Lote B: actividad, tareas, preferencias y almacenamiento
+  'cowork:activity': none,
+  'cowork:viewing': obj({ folder: nullable(absPath), fullAccess: optional(bool) }),
+  'cowork:tasks:list': none,
+  'cowork:tasks:setMeta': obj({
+    sessionId,
+    folder: absPath,
+    fullAccess: bool,
+    title: optional(str({ max: 500 })),
+    pinned: optional(bool),
+    group: optNull(group)
+  }),
+  'cowork:tasks:forget': obj({ sessionId }),
+  'cowork:prefs:get': none,
+  'cowork:prefs:set': partial({
+    autoArchiveDays: num({ int: true, min: 0, max: 365 }),
+    idleStopMinutes: num({ int: true, min: 0, max: 1440 }),
+    maxServers: num({ int: true, min: 1, max: 12 }),
+    notify: partial({ done: bool, approval: bool, question: bool, error: bool })
+  }),
+  'cowork:storage:report': none,
+  'cowork:storage:clean': obj({ key: storageKey, scope: literal('cache', 'all') }),
+  'cowork:storage:cleanScreenshots': none,
+  // Lote B: proyecto, MCP y permisos recordados
+  'cowork:agentsMd:get': folderReq,
+  'cowork:agentsMd:save': obj({ folder: absPath, content: str({ max: 200_000 }) }),
+  'cowork:mcp:list': none,
+  'cowork:mcp:set': obj({ name: mcpName, cowork: optional(bool), askEachTool: optional(bool) }),
+  'cowork:rules:list': (v, p) => optional(obj({ folder: optional(absPath) }))(v, p) ?? {},
+  'cowork:rules:add': obj({ folder: absPath, permission: permName, patterns: arr(pattern, 50) }),
+  'cowork:rules:remove': obj({ id }),
+  // Lote B: archivos
+  'cowork:zip': obj({ paths: arr(absPath, 500), suggestedName: optional(fileName) }),
+  'cowork:quickLook': pathReq,
+  'cowork:exportMarkdown': obj({ suggestedName: fileName, content: str({ max: 20 * 1024 * 1024 }) }),
+  'cowork:htmlToPdf': pathReq,
+
+  // Lote C: preferencias de computer use
+  'computer:prefs:get': none,
+  'computer:prefs:set': partial({
+    mode: literal('background', 'full'),
+    hideOtherApps: bool,
+    unhideOnFinish: bool
+  }),
+  'computer:teachRespond': obj({ id: hexId, action: literal('next', 'exit') }),
+  'computer:record:start': obj({ mic: bool }),
+  'computer:record:stop': (v, p) => optional(obj({ discard: optional(bool) }))(v, p) ?? {},
+  'computer:record:state': none,
+  'computer:record:prepare': obj({ id: hexId, folder: absPath, includeTyped: bool }),
+
+  // Lote C: Modo auto (handlers de C3)
+  'cowork:auto:state': none,
+  'cowork:auto:set': partial({
+    enabled: bool,
+    folder: obj({ path: absPath, on: bool }),
+    task: obj({ sessionId, on: bool }),
+    viewApps: arr(str({ max: 255, min: 1, pattern: /^[A-Za-z0-9._-]+$/ }), 100)
+  }),
+  'cowork:auto:revoke': obj({ id }),
+  'cowork:auto:clearLog': none,
+  'cowork:auto:consider': obj({
+    folder: absPath,
+    fullAccess: bool,
+    requestId: str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
+  }),
+
+  // Lote C: navegador propio (handlers de C4)
+  'cowork:browser:state': none,
+  'cowork:browser:set': obj({ enabled: bool }),
+  'cowork:browser:removeSite': obj({ site }),
+  'cowork:browser:undeny': obj({ site }),
+  'cowork:browser:clearData': none
 }
 
 type ExtrasReq<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
@@ -236,7 +415,8 @@ export const IPC_SCHEMAS: Record<string, Validator<unknown>> = {
   ...APP_SCHEMAS,
   ...COWORK_SCHEMAS,
   ...EXTRAS_SCHEMAS,
-  ...CODE_SCHEMAS
+  ...CODE_SCHEMAS,
+  ...BROWSER_SCHEMAS
 }
 
 /** Canales que puede invocar cada ventana secundaria (la principal: todos). */
@@ -245,7 +425,13 @@ export const CHANNEL_ROLES: Record<Exclude<WindowRole, 'main'>, ReadonlySet<stri
   // La píldora puede resolver una tarjeta pendiente sin activar la ventana principal
   // (`showInactive`; ver `computer/overlay.ts`).
   pill: new Set(['computer:stop', 'computer:respondAccess', 'computer:showMainWindow']),
-  overlay: new Set()
+  overlay: new Set(),
+  // Ventana `assist` (Teach mode y píldora de grabación): responder un paso o terminar/descartar
+  // la grabación, sin activar la ventana principal (ver `computer/assist-window.ts`).
+  assist: new Set(['computer:teachRespond', 'computer:record:stop']),
+  // Ventana «Navegador» aparte (Lote D, B.4): todo `browser:*` salvo Ajustes/`devServers`, que solo
+  // tiene sentido desde la ventana principal.
+  browserHost: new Set(BROWSER_INVOKE_CHANNELS.filter((c) => !BROWSER_HOST_EXCLUDED_CHANNELS.has(c)))
 }
 
 /**
@@ -254,6 +440,12 @@ export const CHANNEL_ROLES: Record<Exclude<WindowRole, 'main'>, ReadonlySet<stri
  * además un canal añadido a una lista sin pasar por el tipo. Devuelve los que faltan.
  */
 export function missingSchemas(): string[] {
-  const all = [...IPC_INVOKE_CHANNELS, ...CODE_INVOKE_CHANNELS, ...COWORK_INVOKE_CHANNELS, ...IPC_EXTRAS_INVOKE_CHANNELS]
+  const all = [
+    ...IPC_INVOKE_CHANNELS,
+    ...CODE_INVOKE_CHANNELS,
+    ...COWORK_INVOKE_CHANNELS,
+    ...IPC_EXTRAS_INVOKE_CHANNELS,
+    ...BROWSER_INVOKE_CHANNELS
+  ]
   return [...new Set<string>(all)].filter((c) => !IPC_SCHEMAS[c])
 }

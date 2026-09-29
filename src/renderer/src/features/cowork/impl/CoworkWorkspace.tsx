@@ -1,38 +1,49 @@
 /**
- * Modo Cowork: tareas autónomas sobre una carpeta autorizada, ejecutadas por el agente
+ * Modo Cowork: tareas autónomas sobre una carpeta de Cowork, ejecutadas por el agente
  * `cowork` en un `opencode serve` dedicado y sandboxeado (sandbox-exec), o por el agente
- * `computer` en un servidor de acceso total (control del Mac).
+ * `computer` en un servidor de Control total (control del Mac).
  *
- * Diseño: tareas a la izquierda · inicio / conversación al centro · Plan, Entregables y
- * Actividad a la derecha (colapsable).
+ * Diseño: tareas a la izquierda (barra lateral del shell) · inicio / conversación al centro ·
+ * Plan, Entregables y Actividad (o la Consulta lateral) a la derecha (colapsable).
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
-  BookText,
   CalendarClock,
+  FileDown,
   FolderOpen,
+  Globe,
   Loader2,
+  MessagesSquare,
+  MoreHorizontal,
   PanelRightClose,
   PanelRightOpen,
-  Plus,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Wand2,
+  Workflow,
+  type LucideIcon
 } from 'lucide-react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
+import type { BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 import type { CoworkDeliverable } from '@shared/ipc-cowork'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { Button } from '../../../components/Button'
+import { BrowserPanel, hasBrowserBridge, onBrowser } from '../../browser'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
-import { useSettings } from '../../../stores/settings'
 import {
   abortBusyTasks,
   abortTask,
   approvePending,
   cancelPending,
   chooseFolder,
+  closeSideChat,
+  continueInNewTask,
+  createSkillFromTask,
+  exportTaskMarkdown,
   loadFolders,
-  newTask,
+  openSideChat,
   reveal,
   scheduleActiveTask,
   selectFolder,
@@ -42,28 +53,32 @@ import {
 import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, PlanAccessCard, VisionModelHint } from './ComputerAccess'
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
-import { CoworkComposer } from './CoworkComposer'
+import { hideRevertedEntries } from './conversation-logic'
+import { CoworkComposer, type CoworkComposerHandle } from './CoworkComposer'
 import { DeleteGrantHintCard } from './DeleteGrant'
-import { FolderMenu } from './FolderMenu'
+import { EscalateCard } from './EscalateCard'
 import { Home } from './Home'
 import { NetworkBlockedCards } from './NetworkBlocked'
 import { ApprovalBar } from './PermissionPrompt'
 import { QuestionCard } from './QuestionPrompt'
 import { ProgressPanel } from './ProgressPanel'
 import { ProjectPanel } from './ProjectPanel'
+import { SideChat } from './SideChat'
 import { TaskConversation } from './TaskConversation'
-import { StatusIcon, TaskList } from './TaskList'
+import { StatusIcon } from './TaskList'
 import {
   addNetworkBlocked,
   clearUnseen,
+  currentCoworkModel,
   disconnect,
   lastFolder,
   resync,
   setPanelOpen,
-  setProjectPanelOpen,
   syncAccessRequests,
   syncKillState,
-  useCowork
+  useCowork,
+  isPlanPending,
+  isUsingComputer
 } from './store'
 import {
   extOf,
@@ -79,13 +94,29 @@ import {
 const EMPTY: MessageEntry[] = []
 const EMPTY_FILES: CoworkDeliverable[] = []
 
+/** Ancho del `aside` cuando la pestaña activa es «Navegador» (persistido; Progreso queda fijo). */
+const ASIDE_BROWSER_WIDTH_KEY = 'cowork.browserWidth'
+
+function readAsideBrowserWidth(): number {
+  try {
+    const v = Number(localStorage.getItem(ASIDE_BROWSER_WIDTH_KEY))
+    if (v >= 360 && v <= 900) return v
+  } catch {
+    // sin storage
+  }
+  return 560
+}
+
 const PILL_TONE: Record<TaskStatus, string> = {
   running: 'border-accent/40 bg-accent-soft text-accent',
-  waiting: 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400',
+  waiting: 'border-warning/50 bg-warning/10 text-warning',
   question: 'border-accent/40 bg-accent-soft text-accent',
   done: 'border-border bg-hover text-muted',
   error: 'border-danger/40 bg-danger/10 text-danger',
-  idle: 'border-border text-muted'
+  idle: 'border-border text-muted',
+  using_computer: 'border-accent/40 bg-accent-soft text-accent',
+  plan_ready: 'border-warning/50 bg-warning/10 text-warning',
+  archived: 'border-border text-muted'
 }
 
 function StatusPill({ status }: { status: TaskStatus }): React.JSX.Element {
@@ -113,6 +144,113 @@ function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }):
     <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums" title="Duración de la última ejecución">
       {formatDuration(stop - start)}
     </span>
+  )
+}
+
+interface MenuItem {
+  icon: LucideIcon
+  label: string
+  hint?: string
+  disabled?: boolean
+  run: () => void
+}
+
+/**
+ * Menú «…» de la cabecera de la tarea: exportar, continuar, crear skill, consulta lateral y programar.
+ * Accesible con teclado (flechas, Inicio/Fin, Esc devuelve el foco al botón).
+ */
+function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const refs = useRef<Array<HTMLButtonElement | null>>([])
+
+  useEffect(() => {
+    if (!open) return
+    refs.current.find((el) => el && !el.disabled)?.focus()
+    const onDown = (e: MouseEvent): void => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const close = (refocus: boolean): void => {
+    setOpen(false)
+    if (refocus) btnRef.current?.focus()
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      close(true)
+      return
+    }
+    if (e.key === 'Tab') {
+      setOpen(false)
+      return
+    }
+    const enabled = refs.current.filter((el): el is HTMLButtonElement => !!el && !el.disabled)
+    if (enabled.length === 0) return
+    const idx = enabled.findIndex((el) => el === document.activeElement)
+    let next = -1
+    if (e.key === 'ArrowDown') next = (idx + 1) % enabled.length
+    else if (e.key === 'ArrowUp') next = (idx - 1 + enabled.length) % enabled.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = enabled.length - 1
+    if (next >= 0) {
+      e.preventDefault()
+      enabled[next].focus()
+    }
+  }
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        title="Más acciones"
+        aria-label="Más acciones de la tarea"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="rounded p-1 hover:bg-hover hover:text-fg"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <MoreHorizontal size={15} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Acciones de la tarea"
+          onKeyDown={onKeyDown}
+          className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-border bg-elevated p-1 shadow-lg"
+        >
+          {items.map((it, i) => {
+            const Icon = it.icon
+            return (
+              <button
+                key={it.label}
+                ref={(el) => {
+                  refs.current[i] = el
+                }}
+                type="button"
+                role="menuitem"
+                disabled={it.disabled}
+                title={it.hint}
+                onClick={() => {
+                  close(false)
+                  it.run()
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] text-fg hover:bg-hover focus-visible:bg-hover focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Icon size={14} className="shrink-0 text-muted" />
+                {it.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -171,13 +309,49 @@ export function CoworkWorkspace(): React.JSX.Element {
   const files = useCowork((s) => (activeId ? (s.deliverables[activeId] ?? EMPTY_FILES) : EMPTY_FILES))
   const sessions = useSessions((s) => s.sessions)
   const session = activeId ? sessions[activeId] : undefined
-  const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
+  const allEntries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const run = useSessions((s) => (activeId ? s.status[activeId] : undefined))
   const taskError = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const requestedFullAccess = useCowork((s) => s.fullAccess)
-  const model = useSettings((s) => s.settings.defaultModel)
+  const sideChat = useCowork((s) => s.sideChat)
+  // «Editar y reintentar» deja los mensajes deshechos en la lista hasta el siguiente prompt: se ocultan.
+  const revertMessageID = session?.revert?.messageID
+  const entries = useMemo(() => hideRevertedEntries(allEntries, revertMessageID), [allEntries, revertMessageID])
   const [sendError, setSendError] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
   const fullAccess = conn?.fullAccess === true
+  // Navegador integrado del `aside`: pestaña "Progreso | Navegador" y ancho redimensionable.
+  const composerRef = useRef<CoworkComposerHandle>(null)
+  const [asideTab, setAsideTab] = useState<'progress' | 'browser'>('progress')
+  const [browserMounted, setBrowserMounted] = useState(false)
+  const [browserWidth, setBrowserWidth] = useState(readAsideBrowserWidth)
+  const asideDrag = useRef<{ x: number; w: number } | null>(null)
+  const browserOwner: BrowserOwner | null = folder ? { kind: 'cowork', folder } : null
+
+  /** «Añadir al chat» del navegador integrado: inserta el texto en el compositor (v1 sin imagen). */
+  const addPageToComposer = (item: BrowserToChat): void => {
+    const current = useCowork.getState().draft
+    useCowork.setState({ draft: current ? `${current}\n\n${item.text}` : item.text })
+    composerRef.current?.focus()
+  }
+
+  const onAsideResizeDown = (e: React.PointerEvent): void => {
+    asideDrag.current = { x: e.clientX, w: browserWidth }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  const onAsideResizeMove = (e: React.PointerEvent): void => {
+    if (!asideDrag.current) return
+    const next = Math.min(900, Math.max(360, asideDrag.current.w + (asideDrag.current.x - e.clientX)))
+    setBrowserWidth(next)
+  }
+  const onAsideResizeUp = (): void => {
+    asideDrag.current = null
+    try {
+      localStorage.setItem(ASIDE_BROWSER_WIDTH_KEY, String(browserWidth))
+    } catch {
+      // sin storage
+    }
+  }
   const busy = !!run && run !== 'idle'
   const folderBusy = useSessions((s) =>
     Object.keys(s.status).some((id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder)
@@ -235,6 +409,31 @@ export function CoworkWorkspace(): React.JSX.Element {
   // Proxy de egress: el servidor sandboxeado bloqueó una conexión de red durante una tarea.
   useEffect(() => onCowork('cowork:networkBlocked', (ev) => addNetworkBlocked(ev)), [])
 
+  // Navegador integrado: mantiene la pestaña montada tras la primera visita (como la Terminal de Code).
+  useEffect(() => {
+    if (asideTab === 'browser') setBrowserMounted(true)
+  }, [asideTab])
+
+  // El agente (o una tarjeta de aprobación) pide mostrar la pestaña del navegador, sin robar el foco.
+  useEffect(() => {
+    if (!hasBrowserBridge()) return
+    return onBrowser('browser:reveal', (ev) => {
+      if (ev.owner.kind !== 'cowork' || ev.owner.folder !== useCowork.getState().folder) return
+      setPanelOpen(true)
+      setAsideTab('browser')
+    })
+  }, [])
+
+  // «Añadir al chat» desde la ventana «Navegador» aparte (sin compositor propio): main lo reenvía aquí.
+  useEffect(() => {
+    if (!hasBrowserBridge()) return
+    return onBrowser('browser:toChat', (item) => {
+      if (item.owner.kind !== 'cowork' || item.owner.folder !== useCowork.getState().folder) return
+      addPageToComposer(item)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ⌘⇧Esc con la ventana enfocada (el main registra además el atajo global).
   useEffect(() => {
     if (!fullAccess) return
@@ -258,18 +457,6 @@ export function CoworkWorkspace(): React.JSX.Element {
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
-  // ⌘N = nueva tarea.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key.toLowerCase() === 'n' && e.metaKey && !e.shiftKey && !e.altKey) {
-        e.preventDefault()
-        newTask()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
-
   const pendingForTask: PermissionRequest[] = useMemo(
     () => (activeId ? Object.values(permissions).filter((p) => permissionBelongsTo(p, activeId, sessions)) : []),
     [permissions, activeId, sessions]
@@ -285,9 +472,74 @@ export function CoworkWorkspace(): React.JSX.Element {
         waiting: pendingForTask.length > 0,
         hasQuestion: pendingQuestionsForTask.length > 0,
         error: taskError,
-        entries
+        entries,
+        usingComputer: isUsingComputer(activeId),
+        planPending: isPlanPending(activeId)
       })
     : 'idle'
+
+  // La Consulta lateral pertenece a una tarea: al cambiar de tarea se cierra.
+  useEffect(() => {
+    const side = useCowork.getState().sideChat
+    if (side && side.taskId !== activeId) closeSideChat()
+  }, [activeId])
+
+  // Aviso breve tras una acción del menú (p. ej. la ruta del Markdown exportado).
+  useEffect(() => {
+    if (!note) return
+    const t = setTimeout(() => setNote(null), 6000)
+    return () => clearTimeout(t)
+  }, [note])
+
+  /** Ejecuta una acción del menú mostrando sus errores junto a la conversación. */
+  const guarded = (fn: () => Promise<void> | void): void => {
+    setSendError(null)
+    setNote(null)
+    Promise.resolve()
+      .then(fn)
+      .catch((err: unknown) => setSendError(errorMessage(err)))
+  }
+
+  const menuItems: MenuItem[] = activeId
+    ? [
+        {
+          icon: FileDown,
+          label: 'Exportar a Markdown',
+          run: () =>
+            guarded(async () => {
+              const path = await exportTaskMarkdown(activeId)
+              if (path) setNote(`Conversación guardada en ${path}`)
+            })
+        },
+        {
+          icon: Workflow,
+          label: 'Continuar en una tarea nueva',
+          hint: 'Empieza una tarea nueva con el encargo original y lo último que se concluyó',
+          disabled: phase !== 'ready',
+          run: () => guarded(() => continueInNewTask(activeId))
+        },
+        {
+          icon: Wand2,
+          label: 'Crear skill de esta tarea',
+          hint: 'Le pide al agente que guarde lo aprendido como una skill reutilizable',
+          disabled: phase !== 'ready' || busy,
+          run: () => guarded(() => createSkillFromTask(activeId))
+        },
+        {
+          icon: MessagesSquare,
+          label: COWORK_TERMS.sideChat,
+          hint: 'Pregunta sobre la tarea sin modificarla',
+          disabled: phase !== 'ready',
+          run: () => openSideChat(activeId)
+        },
+        {
+          icon: CalendarClock,
+          label: 'Programar',
+          hint: 'Repetir esta tarea con una rutina',
+          run: () => guarded(() => scheduleActiveTask())
+        }
+      ]
+    : []
 
   const send = async (text: string): Promise<void> => {
     setSendError(null)
@@ -296,7 +548,7 @@ export function CoworkWorkspace(): React.JSX.Element {
       return
     }
     try {
-      await sendToTask(text, model)
+      await sendToTask(text, currentCoworkModel())
     } catch (err) {
       setSendError(errorMessage(err))
       if (!useCowork.getState().draft) useCowork.setState({ draft: text })
@@ -316,7 +568,7 @@ export function CoworkWorkspace(): React.JSX.Element {
       {phase === 'ready' && requestedFullAccess && conn && !conn.fullAccess && (
         <div className="mx-auto mt-3 flex w-full max-w-3xl items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          El servidor no activó el acceso total para esta carpeta; se usa el modo sandbox.
+          El servidor no activó el Control total para esta carpeta; se usa el modo Sandbox.
         </div>
       )}
       {phase === 'error' && folder && (
@@ -331,31 +583,11 @@ export function CoworkWorkspace(): React.JSX.Element {
     </>
   )
 
-  const showPanel = !!activeId && panelOpen
+  const sideOpen = !!activeId && sideChat?.taskId === activeId
+  const showPanel = !!activeId && panelOpen && !sideOpen
 
   return (
     <div className="flex h-full min-h-0">
-      {/* Izquierda: nueva tarea + carpeta + lista */}
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border px-3 pt-3 pb-3">
-        <Button variant="primary" className="w-full" onClick={newTask} title="Nueva tarea (⌘N)">
-          <Plus size={15} /> Nueva tarea
-        </Button>
-        <div className="mt-2">
-          <FolderMenu variant="block" />
-        </div>
-        {folder && (
-          <button
-            type="button"
-            onClick={() => setProjectPanelOpen(true)}
-            title="Instrucciones y memoria de esta carpeta"
-            className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg"
-          >
-            <BookText size={13} /> Proyecto e instrucciones
-          </button>
-        )}
-        <TaskList />
-      </aside>
-
       {/* Centro */}
       <main className="flex min-w-0 flex-1 flex-col">
         {activeId && (
@@ -368,14 +600,7 @@ export function CoworkWorkspace(): React.JSX.Element {
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
               {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
-              <button
-                type="button"
-                title="Programar esta tarea (repetirla con una rutina)"
-                className="rounded p-1 hover:bg-hover hover:text-fg"
-                onClick={() => void scheduleActiveTask()}
-              >
-                <CalendarClock size={15} />
-              </button>
+              <TaskMenu items={menuItems} />
               {folder && (
                 <button
                   type="button"
@@ -388,11 +613,17 @@ export function CoworkWorkspace(): React.JSX.Element {
               )}
               <button
                 type="button"
-                title={panelOpen ? 'Ocultar panel' : 'Mostrar plan y entregables'}
+                title={panelOpen && !sideOpen ? 'Ocultar panel' : 'Mostrar plan y entregables'}
+                aria-label={panelOpen && !sideOpen ? 'Ocultar panel de progreso' : 'Mostrar plan y entregables'}
                 className="rounded p-1 hover:bg-hover hover:text-fg"
-                onClick={() => setPanelOpen(!panelOpen)}
+                onClick={() => {
+                  if (sideOpen) {
+                    closeSideChat()
+                    setPanelOpen(true)
+                  } else setPanelOpen(!panelOpen)
+                }}
               >
-                {panelOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+                {panelOpen && !sideOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
               </button>
             </span>
           </header>
@@ -405,6 +636,7 @@ export function CoworkWorkspace(): React.JSX.Element {
           <>
             <ComputerPermissionsCard />
             <TaskConversation
+              taskId={activeId}
               entries={entries}
               busy={busy}
               error={taskError}
@@ -413,6 +645,7 @@ export function CoworkWorkspace(): React.JSX.Element {
                 <>
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {!fullAccess && <DeleteGrantHintCard key={activeId} entries={entries} />}
+                  {!fullAccess && status === 'done' && activeId && <EscalateCard key={activeId} taskId={activeId} entries={entries} />}
                   {pendingQuestionsForTask.map((q) => (
                     <QuestionCard key={q.id} request={q} />
                   ))}
@@ -425,8 +658,14 @@ export function CoworkWorkspace(): React.JSX.Element {
             <PlanAccessCard />
             <ApprovalBar requests={pendingForTask} />
             {sendError && <p className="mx-auto mb-2 w-full max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
+            {note && (
+              <p role="status" className="mx-auto mb-2 w-full max-w-3xl px-6 text-xs break-all text-muted">
+                {note}
+              </p>
+            )}
             <VisionModelHint />
             <CoworkComposer
+              ref={composerRef}
               onSend={send}
               onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
               busy={busy}
@@ -440,20 +679,53 @@ export function CoworkWorkspace(): React.JSX.Element {
         )}
       </main>
 
-      {/* Derecha: Plan · Entregables · Actividad */}
+      {/* Derecha: Consulta lateral, o bien Plan · Entregables · Actividad */}
+      {sideOpen && <SideChat />}
       {showPanel && (
-        <aside className="hidden w-80 shrink-0 flex-col border-l border-border lg:flex">
-          <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4 text-sm font-medium">
-            Progreso
-            <span className="flex items-center gap-0.5">
-              <button
-                type="button"
-                title="Sincronizar"
-                className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
-                onClick={() => void resync()}
-              >
-                <RefreshCw size={13} />
-              </button>
+        <aside
+          className="relative hidden shrink-0 flex-col border-l border-border lg:flex"
+          style={{ width: asideTab === 'browser' ? browserWidth : 320 }}
+        >
+          {asideTab === 'browser' && (
+            <div
+              onPointerDown={onAsideResizeDown}
+              onPointerMove={onAsideResizeMove}
+              onPointerUp={onAsideResizeUp}
+              className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
+            />
+          )}
+          <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setAsideTab('progress')}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                asideTab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+              }`}
+            >
+              Progreso
+            </button>
+            <button
+              type="button"
+              onClick={() => setAsideTab('browser')}
+              disabled={!browserOwner}
+              title={COWORK_TERMS.browser}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
+                asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+              }`}
+            >
+              <Globe size={12} /> {COWORK_TERMS.browser}
+            </button>
+            <span className="ml-auto flex items-center gap-0.5">
+              {asideTab === 'progress' && (
+                <button
+                  type="button"
+                  title="Sincronizar"
+                  className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
+                  onClick={() => void resync()}
+                >
+                  <RefreshCw size={13} />
+                </button>
+              )}
               <button
                 type="button"
                 title="Ocultar panel"
@@ -464,9 +736,14 @@ export function CoworkWorkspace(): React.JSX.Element {
               </button>
             </span>
           </div>
-          <div className="min-h-0 flex-1">
+          <div className={`min-h-0 flex-1 ${asideTab === 'progress' ? 'flex flex-col' : 'hidden'}`}>
             <ProgressPanel sessionID={activeId} busy={busy} />
           </div>
+          {browserOwner && browserMounted && (
+            <div className={`min-h-0 flex-1 ${asideTab === 'browser' ? 'flex flex-col' : 'hidden'}`}>
+              <BrowserPanel owner={browserOwner} product="cowork" visible={asideTab === 'browser'} onAddToChat={addPageToComposer} />
+            </div>
+          )}
         </aside>
       )}
 

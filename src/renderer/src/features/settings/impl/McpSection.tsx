@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
   FolderOpen,
   Globe,
+  Info,
   KeyRound,
   Loader2,
   Pencil,
@@ -13,12 +15,14 @@ import {
   Unplug
 } from 'lucide-react'
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
+import type { CoworkMcpInfo } from '@shared/ipc-cowork'
 import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { IconButton } from '../../../components/IconButton'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
+import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import { getExtras, requireExtras } from './extras'
 import { Badge, Card, ErrorText, Field, SectionHeader, TextArea, TextInput, Toggle } from './ui'
 
@@ -51,6 +55,8 @@ export function McpSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ name: string; entry: McpEntry } | 'new' | null>(null)
+  // Marcas de Cowork por servidor (`cowork-mcp.json`), solo para los servidores de la app.
+  const [coworkInfo, setCoworkInfo] = useState<Record<string, CoworkMcpInfo>>({})
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -59,6 +65,10 @@ export function McpSection(): React.JSX.Element {
       const extras = getExtras()
       const own = extras ? await extras.invoke('mcp:getConfig') : null
       setAppCfg(own)
+      if (hasCoworkBridge()) {
+        const list = await cw('cowork:mcp:list').catch(() => [] as CoworkMcpInfo[])
+        setCoworkInfo(Object.fromEntries(list.map((i) => [i.name, i])))
+      }
       if (client) {
         const [st, cfg] = await Promise.all([client.mcp.status({ directory }), client.config.get({ directory })])
         if (st.error) throw new Error(errorMessage(st.error))
@@ -119,6 +129,11 @@ export function McpSection(): React.JSX.Element {
           : await client.mcp.disconnect({ name: row.name, directory })
         if (r.error) throw new Error(errorMessage(r.error))
       }
+    })
+
+  const setCowork = (name: string, patch: { cowork?: boolean; askEachTool?: boolean }): Promise<void> =>
+    run(`cowork:${name}`, async () => {
+      await cw('cowork:mcp:set', { name, ...patch })
     })
 
   const authenticate = (row: Row): Promise<void> =>
@@ -254,6 +269,13 @@ export function McpSection(): React.JSX.Element {
                 </div>
               </div>
               {err && <div className="mt-2 text-xs whitespace-pre-wrap text-danger">{err}</div>}
+              {row.owned && coworkInfo[row.name] && (
+                <CoworkFlags
+                  info={coworkInfo[row.name]}
+                  disabled={busy !== null}
+                  onChange={(patch) => void setCowork(row.name, patch)}
+                />
+              )}
             </div>
           )
         })}
@@ -262,7 +284,59 @@ export function McpSection(): React.JSX.Element {
         <Unplug size={12} /> En servidores de config externa el interruptor conecta/desconecta sólo hasta el próximo
         reinicio. El estado mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.
       </p>
+      <p className="mt-1 flex items-start gap-1.5 text-[11px] text-subtle">
+        <Info size={12} className="mt-0.5 shrink-0" /> «Disponible en Cowork» se aplica al abrir de nuevo la carpeta. En
+        el sandbox los servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los
+        servidores remotos se añaden a la Red de Cowork.
+      </p>
       {appCfg && <p className="mt-1 truncate font-mono text-[11px] text-subtle">{appCfg.path}</p>}
+    </div>
+  )
+}
+
+/** Interruptores de Cowork de un servidor de la app: disponibilidad y "Preguntar en cada uso". */
+function CoworkFlags({
+  info,
+  disabled,
+  onChange
+}: {
+  info: CoworkMcpInfo
+  disabled: boolean
+  onChange: (patch: { cowork?: boolean; askEachTool?: boolean }) => void
+}): React.JSX.Element {
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-bg px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <label className="flex items-center gap-2 text-xs">
+          <Toggle
+            checked={info.cowork}
+            disabled={disabled || !info.enabled}
+            label="Disponible en Cowork"
+            onChange={(v) => onChange({ cowork: v })}
+          />
+          <span className="font-medium">Disponible en Cowork</span>
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <Toggle
+            checked={info.askEachTool}
+            disabled={disabled || !info.cowork}
+            label="Preguntar en cada uso"
+            onChange={(v) => onChange({ askEachTool: v })}
+          />
+          <span className={info.cowork ? 'font-medium' : 'text-muted'}>Preguntar en cada uso</span>
+        </label>
+      </div>
+      {info.cowork && info.type === 'remote' && info.oauth && (
+        <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Este servidor remoto parece usar inicio de sesión
+          (OAuth): no estará disponible en el sandbox (en Control total puede funcionar).
+        </p>
+      )}
+      {info.cowork && info.hosts.length > 0 && (
+        <p className="mt-1.5 text-[11px] text-subtle">
+          Sitio añadido a la Red de Cowork: <span className="font-mono">{info.hosts.join(', ')}</span>
+        </p>
+      )}
     </div>
   )
 }

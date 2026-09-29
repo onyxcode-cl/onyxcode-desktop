@@ -27,7 +27,7 @@ export interface CodeApi {
 
 export type CodeAgent = 'build' | 'plan'
 
-export type RightPanel = 'changes' | 'terminal' | 'files'
+export type RightPanel = 'changes' | 'terminal' | 'files' | 'browser'
 
 export interface CodeMessage {
   info: Message

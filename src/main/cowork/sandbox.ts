@@ -25,6 +25,7 @@ import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
 import { minimalEnv } from '../process/child-env'
 import { withDisclaim } from '../process/disclaim'
+import type { FolderAccessMode } from '@shared/ipc-cowork'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxDirs } from './sandbox-profile'
 import { CredentialProxy, EgressProxy, randomToken, type EgressBlockedEvent, type EgressLogEntry } from './proxy'
 import { PROVIDER_TARGETS, buildProviderOverride, placeholderAuthContent, type ProviderAuthEntry } from './provider-egress'
@@ -69,8 +70,10 @@ export interface SandboxNetworkOptions {
   allowedOutboundPorts: number[]
   /** Puerto propio del servidor (bind + inbound). */
   serverPort: number
-  /** "Permitir borrar" concedido para esta tarea (si no, `file-write-unlink` se deniega). */
+  /** "Permitir borrar, mover y renombrar" concedido para esta tarea (si no, `file-write-unlink` se deniega). */
   allowDelete: boolean
+  /** Carpetas adicionales (vinculadas o de confianza): `rw` escribible sin borrado, `ro` sin escritura. */
+  extraFolders?: Array<{ path: string; mode: FolderAccessMode }>
 }
 
 /** Escribe el perfil en un archivo temporal y devuelve su ruta. */
@@ -90,7 +93,8 @@ export function writeSandboxProfile(
     readOnly: [configDir],
     allowedOutboundPorts: network?.allowedOutboundPorts,
     serverPort: network?.serverPort,
-    allowDelete: network?.allowDelete
+    allowDelete: network?.allowDelete,
+    extraFolders: network?.extraFolders
   })
   writeFileSync(file, profile, 'utf8')
   return file
@@ -112,7 +116,7 @@ export interface CoworkServerHandle {
   stop: () => Promise<void>
   /** Puerto del proxy de egress (si el servidor está sandboxeado). */
   egressPort?: number
-  /** true si esta instancia arrancó con "Permitir borrar" concedido. */
+  /** true si esta instancia arrancó con "Permitir borrar, mover y renombrar" concedido. */
   deleteAllowed: boolean
 }
 
@@ -129,8 +133,15 @@ export interface StartCoworkServerOptions {
   networkAllowlist?: () => readonly string[]
   onEgressBlocked?: (ev: EgressBlockedEvent) => void
   onEgressLog?: (entry: EgressLogEntry) => void
-  /** "Permitir borrar" concedido para esta tarea (Seatbelt: `file-write-unlink`). */
+  /** "Permitir borrar, mover y renombrar" concedido para esta tarea (Seatbelt: `file-write-unlink`). */
   allowDelete?: boolean
+  /** Carpetas adicionales del espacio (vinculadas o de confianza) con su modo. */
+  extraFolders?: Array<{ path: string; mode: FolderAccessMode }>
+  /**
+   * Puertos localhost adicionales a permitir en salida (Lote D, B.7): el puerto fijo del MCP del
+   * navegador integrado, para que Seatbelt deje conectar desde dentro del sandbox.
+   */
+  extraOutboundPorts?: number[]
 }
 
 /**
@@ -187,11 +198,12 @@ export async function startCoworkServer(
         baseUrls[id] = cred.baseUrl()
       }
     }
-    const outboundPorts = [egress!.port, ...credentialProxies.map((c) => c.port)]
+    const outboundPorts = [egress!.port, ...credentialProxies.map((c) => c.port), ...(options.extraOutboundPorts ?? [])]
     profile = writeSandboxProfile(folder, options.isolation, ocEnv.OPENCODE_CONFIG_DIR, {
       allowedOutboundPorts: outboundPorts,
       serverPort: port,
-      allowDelete: options.allowDelete === true
+      allowDelete: options.allowDelete === true,
+      extraFolders: options.extraFolders
     })
     command = SANDBOX_EXEC
     args = ['-f', profile, bin, ...serveArgs]

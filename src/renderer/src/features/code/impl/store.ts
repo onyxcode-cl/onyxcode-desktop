@@ -187,6 +187,8 @@ export interface CodeState {
   setModel: (model: ModelRef) => void
   setVariant: (variant: string | null) => void
   togglePanel: (panel: RightPanel) => void
+  /** Abre el panel del navegador (sin alternar/cerrar si ya estaba abierto) y sin robar el foco. */
+  revealBrowserPanel: () => void
   setGlobalError: (error: string | null) => void
   /** Fuerza el refresco de Cambios/Archivos/rama (p. ej. tras un commit). */
   touchFs: () => void
@@ -242,7 +244,7 @@ function initialAgent(): CodeAgent {
 }
 function initialPanel(): RightPanel | null {
   const p = lsGet(LS_PANEL)
-  return p === 'changes' || p === 'terminal' || p === 'files' ? p : null
+  return p === 'changes' || p === 'terminal' || p === 'files' || p === 'browser' ? p : null
 }
 function initialPermissionMode(): PermissionMode {
   const v = lsGet(LS_PERM_MODE)
@@ -896,6 +898,12 @@ export const useCode = create<CodeState>((set, get) => {
       const next = get().panel === panel ? null : panel
       lsSet(LS_PANEL, next)
       set({ panel: next })
+    },
+
+    revealBrowserPanel: () => {
+      if (get().panel === 'browser') return
+      lsSet(LS_PANEL, 'browser')
+      set({ panel: 'browser' })
     },
 
     setGlobalError: (globalError) => set({ globalError }),

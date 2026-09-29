@@ -8,7 +8,6 @@ import {
   FolderOpen,
   GitBranchPlus,
   Loader2,
-  MessageSquarePlus,
   Pencil,
   Pin,
   Search,
@@ -236,7 +235,6 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const unread = useCode((s) => s.unread)
   const pinnedMap = useCode((s) => s.pinned)
   const loading = useCode((s) => s.loadingSessions)
-  const newSession = useCode((s) => s.newSession)
   const [showArchived, setShowArchived] = useState(false)
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
@@ -289,13 +287,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         </button>
       )}
       <div className="mx-2 mb-2 flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => void newSession()}
-          className="no-drag flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted hover:bg-hover hover:text-fg"
-        >
-          <MessageSquarePlus size={15} /> Nueva sesión
-        </button>
+        <span className="flex-1 px-2 text-[11.5px] font-medium text-subtle">Sesiones</span>
         <button
           type="button"
           title="Nueva sesión en worktree nuevo"
@@ -339,7 +331,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             <button
               type="button"
               onClick={() => setShowArchived((o) => !o)}
-              className="no-drag flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium tracking-wide text-subtle uppercase hover:text-fg"
+              className="no-drag flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-medium text-subtle hover:text-fg"
             >
               <ChevronDown size={11} className={`transition-transform ${showArchived ? 'rotate-180' : ''}`} />
               Archivadas ({archivedList.length})

@@ -1,5 +1,6 @@
-/** Control segmentado visible: "Solo carpeta (sandbox)" / "Control total del Mac". */
+/** Control segmentado visible: «Sandbox» / «Control total del Mac» (términos del glosario de Cowork). */
 import { Loader2, MonitorCog, Shield } from 'lucide-react'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { setAccessMode } from './actions'
 import { useCowork } from './store'
 
@@ -17,12 +18,24 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
     void setAccessMode(fullAccess)
   }
 
+  // Flechas izquierda/derecha cambian de opción, como en cualquier grupo de radio.
+  const onKey = (e: React.KeyboardEvent): void => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      pick(false)
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      pick(true)
+    }
+  }
+
   const base =
     'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:cursor-not-allowed'
   return (
     <div
       role="radiogroup"
       aria-label="Modo de acceso"
+      onKeyDown={onKey}
       title={
         !folder
           ? 'Elige una carpeta primero'
@@ -36,25 +49,27 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
         type="button"
         role="radio"
         aria-checked={!full}
+        tabIndex={!full ? 0 : -1}
         disabled={off}
         onClick={() => pick(false)}
-        title="Lee y escribe solo dentro de la carpeta elegida (sandbox de macOS). Recomendado."
+        title={`${COWORK_TERMS.sandbox}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (sandbox de macOS). Recomendado.`}
         className={`${base} ${!full ? 'bg-elevated text-accent shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && !requested ? <Loader2 size={12} className="animate-spin" /> : <Shield size={12} />}
-        {compact ? 'Sandbox' : 'Solo carpeta (sandbox)'}
+        {COWORK_TERMS.sandbox}
       </button>
       <button
         type="button"
         role="radio"
         aria-checked={full}
+        tabIndex={full ? 0 : -1}
         disabled={off}
         onClick={() => pick(true)}
-        title="Sin sandbox: puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar."
-        className={`${base} ${full ? 'bg-amber-500/15 text-amber-600 shadow-sm [[data-theme=dark]_&]:text-amber-400' : 'text-muted hover:text-fg'}`}
+        title={`${COWORK_TERMS.fullControl}: sin sandbox; puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar.`}
+        className={`${base} ${full ? 'bg-warning/15 text-warning shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && requested ? <Loader2 size={12} className="animate-spin" /> : <MonitorCog size={12} />}
-        {compact ? 'Control total' : 'Control total del Mac'}
+        {compact ? COWORK_TERMS.fullControlShort : COWORK_TERMS.fullControl}
       </button>
     </div>
   )

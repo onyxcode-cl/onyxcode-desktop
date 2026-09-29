@@ -1,7 +1,8 @@
 /**
  * "Mantener el Mac despierto mientras corren tareas de Cowork": un `powerSaveBlocker` de
  * Electron (tipo `prevent-app-suspension`, no mantiene la pantalla encendida) que se activa
- * cuando el ajuste está en on Y el renderer avisa que hay al menos una tarea en curso.
+ * cuando el ajuste está en on Y el renderer o el monitor de main avisan que hay al menos una tarea
+ * en curso (OR de ambas señales).
  *
  * El ajuste se persiste en `userData/cowork-keep-awake.json`. El estado "activo ahora mismo"
  * vive solo en memoria de este proceso.
@@ -11,6 +12,9 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import type { KeepAwakeState } from '@shared/ipc-cowork'
 
+/** Quién avisa de que hay trabajo en curso: la ventana (carpeta actual) o el monitor de main (todas). */
+export type KeepAwakeSource = 'renderer' | 'monitor'
+
 interface Persisted {
   enabled: boolean
 }
@@ -19,7 +23,8 @@ const DEFAULT: Persisted = { enabled: true }
 
 export class KeepAwakeService {
   private blockerId: number | null = null
-  private wantActive = false
+  /** Señal de cada origen; el Mac se mantiene despierto si CUALQUIERA está activa (OR). */
+  private sources: Record<KeepAwakeSource, boolean> = { renderer: false, monitor: false }
   private cache: Persisted | null = null
 
   private get file(): string {
@@ -48,7 +53,7 @@ export class KeepAwakeService {
 
   private apply(): void {
     const enabled = this.load().enabled
-    const shouldBlock = enabled && this.wantActive
+    const shouldBlock = enabled && (this.sources.renderer || this.sources.monitor)
     if (shouldBlock && this.blockerId === null) {
       this.blockerId = powerSaveBlocker.start('prevent-app-suspension')
     } else if (!shouldBlock && this.blockerId !== null) {
@@ -67,9 +72,12 @@ export class KeepAwakeService {
     return this.state()
   }
 
-  /** El renderer llama esto cada vez que cambia si hay tareas corriendo/esperando en cualquier carpeta. */
-  setActive(active: boolean): KeepAwakeState {
-    this.wantActive = active
+  /**
+   * Cada origen informa si hay tareas corriendo/esperando. `renderer` = la carpeta que mira la
+   * ventana; `monitor` = todos los servidores vivos (sondeo en main). El resultado es el OR de ambos.
+   */
+  setActive(active: boolean, source: KeepAwakeSource = 'renderer'): KeepAwakeState {
+    this.sources[source] = active
     this.apply()
     return this.state()
   }

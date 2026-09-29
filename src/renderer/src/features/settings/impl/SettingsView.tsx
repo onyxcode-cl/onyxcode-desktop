@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Blocks, Cpu, Globe, Info, Keyboard, MonitorCog, Settings2, SlidersHorizontal, X } from 'lucide-react'
+import { BarChart3, Blocks, Compass, Cpu, Globe, Info, Keyboard, MonitorCog, Settings2, SlidersHorizontal, Users, X, Zap } from 'lucide-react'
 import { IconButton } from '../../../components/IconButton'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
+import { AutoModeSection } from './AutoModeSection'
+import { BrowserSection } from './BrowserSection'
 import { ComputerSection } from './ComputerSection'
+import { CoworkSection } from './CoworkSection'
 import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
 import { McpSection } from './McpSection'
@@ -12,14 +15,28 @@ import { NetworkSection } from './NetworkSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
-export type SettingsSectionId = 'general' | 'models' | 'mcp' | 'network' | 'computer' | 'usage' | 'shortcuts' | 'about'
+export type SettingsSectionId =
+  | 'general'
+  | 'models'
+  | 'mcp'
+  | 'cowork'
+  | 'network'
+  | 'computer'
+  | 'automode'
+  | 'browser'
+  | 'usage'
+  | 'shortcuts'
+  | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
   { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
+  { id: 'cowork', label: 'Cowork', icon: Users, View: CoworkSection },
   { id: 'network', label: 'Red de Cowork', icon: Globe, View: NetworkSection },
   { id: 'computer', label: 'Control del Mac', icon: MonitorCog, View: ComputerSection },
+  { id: 'automode', label: 'Modo auto', icon: Zap, View: AutoModeSection },
+  { id: 'browser', label: 'Navegador', icon: Compass, View: BrowserSection },
   { id: 'usage', label: 'Uso', icon: BarChart3, View: UsageSection },
   { id: 'shortcuts', label: 'Atajos', icon: Keyboard, View: ShortcutsSection },
   { id: 'about', label: 'Acerca de', icon: Info, View: AboutSection }

@@ -38,9 +38,11 @@ module.exports = {
     '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}',
     '!resources/launcher/**'
   ],
-  // Solo los agentes (se copian a userData/opencode-config al arrancar; OpenCode NUNCA escribe
-  // en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
-  asarUnpack: ['resources/opencode/agents/**'],
+  // Los agentes y las skills de oficina (se copian a userData/opencode-config al arrancar; OpenCode
+  // NUNCA escribe en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
+  // `browser-mcp.js` y `chrome-devtools-mcp` los ejecuta `node`/`bun` directamente (nunca
+  // Electron), así que no pueden quedar dentro de `app.asar` (Lote C, B.10).
+  asarUnpack: ['resources/opencode/agents/**', 'resources/opencode/skills/**', 'out/main/browser-mcp.js', 'node_modules/chrome-devtools-mcp/**'],
   extraResources: [
     // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
     {
@@ -95,7 +97,13 @@ module.exports = {
     // La notarización se maneja a mano en build/notarize.js (afterSign) para loguear con claridad
     // cuándo se omite; se deja explícitamente desactivada aquí para que electron-builder no intente
     // notarizar por su cuenta con `mac.notarize`.
-    notarize: false
+    notarize: false,
+    // Grabar una skill con micro (Lote C, B.1/B.8): macOS exige el texto en Info.plist antes de
+    // poder pedir estos permisos, o el proceso aborta al intentarlo.
+    extendInfo: {
+      NSMicrophoneUsageDescription: 'Lapis necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
+      NSSpeechRecognitionUsageDescription: 'Lapis necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
+    }
   },
   afterSign: 'build/notarize.js',
   dmg: {

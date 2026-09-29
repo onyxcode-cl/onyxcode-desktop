@@ -115,3 +115,40 @@ presentes; si faltan, el log lo dice explícitamente en vez de fallar en silenci
 | Notarización | Omitida (log lo indica) | `build/notarize.js` vía `@electron/notarize` |
 | Gatekeeper en otro Mac | Rechaza | Acepta |
 | Permisos TCC entre builds | Se pierden en cada build | Se conservan (identidad estable) |
+
+## 7. Novedades del Lote B que afectan a la distribución
+
+- **Skills empaquetadas:** `resources/opencode/skills/**` va en `asarUnpack` (junto a `agents/**`), y al arrancar
+  la app las copia a `userData/opencode-config/skills`. Comprueba en el `.app` que existe
+  `Contents/Resources/app.asar.unpacked/resources/opencode/skills/{docx,xlsx,pdf,pptx}/SKILL.md`.
+- **Política gestionada (opcional, para despliegues en organizaciones):** un administrador puede crear
+  `/Library/Application Support/Lapis/managed.json` (solo un administrador puede escribir ahí; se relee al cambiar).
+  Claves admitidas: `disableFullAccess`, `allowedFolderRoots`, `disableCustomHosts`, `extraAllowedHosts`,
+  `disableAlwaysAllow`, `disableRoutines` y `maxAutoArchiveDays`. Un archivo ilegible activa todas las restricciones
+  (falla hacia el lado seguro). Detalle en `docs/SEGURIDAD.md` («3 bis»). La variable `LAPIS_MANAGED_POLICY` solo
+  funciona con la app sin empaquetar.
+- Lote C añade dos claves más a `managed.json`: `disableAutoMode` (Modo auto) y `disableBrowser`
+  (navegador propio), con el mismo criterio fail-closed que las demás.
+
+## 8. Novedades del Lote C que afectan a la distribución
+
+- **Permisos de Micrófono y Reconocimiento de voz (grabar una skill con micro):** `build/entitlements.mac.plist`
+  añade `com.apple.security.device.audio-input` (necesario bajo hardened runtime; sin Developer ID, ad-hoc no lo
+  usa) e `Info.plist` (vía `electron-builder.js` → `mac.extendInfo`) declara, en español:
+  - `NSMicrophoneUsageDescription`: «Lapis necesita el micrófono para grabar tu voz al grabar una skill (opcional).»
+  - `NSSpeechRecognitionUsageDescription`: «Lapis necesita reconocimiento de voz para transcribir en el dispositivo
+    lo grabado al crear una skill.»
+
+  La primera vez que se grabe una skill con micro, macOS pedirá estos dos permisos por separado (Micrófono y
+  luego Reconocimiento de voz), atribuidos al mismo proceso responsable que Accesibilidad/Grabación de pantalla
+  (la terminal en desarrollo, o Lapis empaquetada): no hace falta nada nuevo en Ajustes del Sistema más allá de
+  aceptar esos dos prompts la primera vez. **Terminal.app no declara uso de micrófono**: si la grabación con voz
+  falla o el proceso aborta al pedir el permiso desde ahí, prueba desde iTerm o VS Code (la grabación sigue
+  funcionando sin audio si el permiso falla o se deniega).
+- **Navegador propio (`chrome-devtools-mcp`):** `electron-builder.js` → `asarUnpack` incluye
+  `'out/main/browser-mcp.js'` y `'node_modules/chrome-devtools-mcp/**'` (la pasarela y el paquete real van
+  desempaquetados: Node/el runtime de OpenCode los ejecutan directamente, no desde dentro del `.asar`).
+  Comprueba en el `.app`: `Contents/Resources/app.asar.unpacked/out/main/browser-mcp.js` y
+  `Contents/Resources/app.asar.unpacked/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js`.
+  El navegador solo se activa en Control total del Mac y solo si el usuario lo enciende en Ajustes (desactivado
+  por defecto): no cambia nada del flujo de firma/notarización, solo qué archivos van desempaquetados.

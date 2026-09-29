@@ -5,6 +5,7 @@ import { confirmDialog } from '../../components/ConfirmDialog'
 import { LogoMark } from '../../components/Logo'
 import { MessageList } from '../../components/MessageList'
 import { ModelPicker } from '../../components/ModelPicker'
+import { UsageMeter } from '../../components/UsageMeter'
 import { errorMessage } from '../../lib/opencode'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
@@ -67,7 +68,13 @@ export function ChatView(): React.JSX.Element {
     }
   }
 
-  const picker = <ModelPicker value={model} onChange={(m) => void updateSettings({ defaultModel: m })} />
+  const picker = (
+    <div className="flex w-full items-center">
+      <ModelPicker value={model} onChange={(m) => void updateSettings({ defaultModel: m })} />
+      <span className="ml-auto" />
+      <UsageMeter messages={entries} model={model} />
+    </div>
+  )
   const composer = (
     <Composer
       onSend={send}

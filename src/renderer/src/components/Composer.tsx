@@ -94,7 +94,7 @@ export function Composer({
   return (
     <div className="mx-auto w-full max-w-3xl px-6 pb-4">
       <div
-        className={`rounded-[20px] border bg-elevated shadow-md transition-[border-color,box-shadow] duration-200 ${disabled ? 'border-border' : 'border-border focus-within:border-accent/50 focus-within:shadow-[0_0_0_4px_var(--accent-ring),var(--shadow-md)]'}`}
+        className={`rounded-[20px] border bg-elevated shadow-md transition-[border-color,box-shadow] duration-200 ${disabled ? 'border-border' : 'border-border focus-within:border-accent/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--shadow-md)]'}`}
         onMouseDown={(e) => {
           // Clic en el "marco" enfoca el textarea.
           if (e.target === e.currentTarget) {

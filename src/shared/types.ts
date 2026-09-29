@@ -128,4 +128,6 @@ export interface NotifyTarget {
   id: string
   /** Carpeta del proyecto (Code) o de Cowork; si falta, se asume la ya abierta. */
   directory?: string
+  /** Cowork: la tarea vive en el servidor de Control total (no en el sandbox). */
+  fullAccess?: boolean
 }

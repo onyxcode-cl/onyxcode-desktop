@@ -98,11 +98,15 @@ nunca renombrar ni eliminar. Cada token de color tiene utilidad Tailwind (`bg-*`
 | `ToolCall` | Icono por herramienta, borde de estado, título con brillo mientras corre. |
 | `SessionList` | Indicador activo, esqueletos de carga, estado vacío, búsqueda (> 8 sesiones), menú animado. |
 | `PlaceholderView` | Halo de acento, tipografía display. |
+| `UsageMeter` | **Nuevo.** Anillo de contexto + popover de gasto (sesión, hoy, 30 días) para el compositor de Code y Chat. |
+| `PageHeader` | **Nuevo.** Cabecera de 48 px (título, metadatos, acciones) para páginas de lista (Proyectos, Rutinas). |
+| `CommandPalette` (`app/`) | **Nuevo.** ⌘K / ⌘⇧P: ir a modo, nuevo, Ajustes, tema, conversaciones recientes. |
 
 ## Shell
 
-- Barra lateral: selector de modo segmentado con indicador deslizante, botón "nuevo" de acento,
-  pie con símbolo + nombre + estado del servidor (punto de color) + Ajustes.
+- Barra lateral: buscador/paleta (⌘K), navegación vertical de modos (icono + etiqueta), fila "nuevo" neutra (⌘N),
+  lista contextual del modo (Cowork incluye carpeta y tareas; ya no hay segunda columna), pie con símbolo + nombre
+  + estado del servidor (punto de color) + Ajustes.
 - Colapso animado (ancho) con `⌘\`; `⌘,` abre/cierra Ajustes.
 - Chat vacío: saludo según hora ("Buenos días / Buenas tardes / Buenas noches"), subtítulo neutro, chips de sugerencias.
 - Ajustes: navegación con elemento activo "elevado", encabezados display, vista previa de temas.

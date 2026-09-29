@@ -37,7 +37,7 @@ export function showMainWindow(deps: MainWindowDeps): { win: BrowserWindow; fres
  * Preload de cada tipo de ventana (bundle de main vive en out/main). `index` = API completa de la
  * ventana principal; `quick`/`overlay`/`pill` = solo lo que esa ventana necesita.
  */
-export type PreloadName = 'index' | 'quick' | 'overlay' | 'pill'
+export type PreloadName = 'index' | 'quick' | 'overlay' | 'pill' | 'assist' | 'browser-host'
 export function preloadPath(name: PreloadName = 'index'): string {
   return join(__dirname, `../preload/${name}.js`)
 }

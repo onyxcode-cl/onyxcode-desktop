@@ -3,16 +3,28 @@
  * Se fusiona con la config global del usuario (~/.config/opencode) y la del proyecto.
  *
  * Define los agentes propios de la app:
- * - `chat`: conversación general, sin herramientas de archivos/shell (solo web).
+ * - `chat`: conversación general, sin herramientas de archivos/shell (solo web); `'*': deny` ya
+ *   cubre `browser_*` sin necesidad de listarlo aparte.
  * - `computer` se oculta aquí: solo existe en los servidores Cowork de acceso total.
+ *
+ * Navegador integrado (Lote D, B.7): `server.ts` resuelve `mcp.browser` con
+ * `embeddedBrowserMcp.configFor({product:'code'})` ANTES de arrancar y se lo pasa a
+ * `buildInlineConfig({ browserMcp })`. Si el MCP no arrancó (`browserMcp` es null), el sidecar
+ * arranca igual, sin navegador: `mcp.browser` simplemente no se incluye.
  */
 import { CHAT_AGENT } from '@shared/types'
 
-export function buildInlineConfig(): Record<string, unknown> {
+export interface InlineConfigOptions {
+  /** Bloque `mcp.browser` ya resuelto (o null si el MCP del navegador integrado no arrancó). */
+  browserMcp?: Record<string, unknown> | null
+}
+
+export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string, unknown> {
   return {
     $schema: 'https://opencode.ai/config.json',
     // La app fija la versión del SDK: sin auto-actualización del binario (AUDIT.md B3/§1.2).
     autoupdate: false,
+    ...(opts.browserMcp ? { mcp: { browser: opts.browserMcp } } : {}),
     agent: {
       [CHAT_AGENT]: {
         description: 'Conversación general, sin acceso a archivos ni terminal',

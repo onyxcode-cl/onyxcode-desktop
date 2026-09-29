@@ -1,12 +1,14 @@
-/** Lista de tareas de la carpeta: estado (icono), tiempo relativo, búsqueda, pin/renombrar/eliminar/archivar. */
+/**
+ * Lista de tareas de la carpeta: estado (icono), tiempo relativo, agrupación por fecha o por grupo, búsqueda
+ * (títulos y contenido de las conversaciones), fijar / renombrar / mover a grupo / archivar / eliminar y la
+ * vista de archivadas con "Restaurar".
+ */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
-  AlertCircle,
   Archive,
-  CheckCircle2,
-  Circle,
-  Hand,
-  HelpCircle,
+  ArchiveRestore,
+  FolderTree,
   Loader2,
   Mail,
   MoreHorizontal,
@@ -19,32 +21,54 @@ import {
   X
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
-import { selectSessionsForDirectory, useSessions } from '../../../stores/sessions'
-import { archiveTask, deleteTask, openTask, renameTask } from './actions'
-import { isPinned, markUnread, togglePinned, useCowork } from './store'
-import { permissionBelongsTo, relTime, sessionBelongsTo, taskStatus, type TaskStatus } from './util'
+import { MAIN_SOURCE, selectSessionsForDirectory, useSessions } from '../../../stores/sessions'
+import { archiveTask, deleteTask, moveTaskToGroup, openTask, renameTask, restoreTask } from './actions'
+import { MIN_QUERY_LENGTH, useTranscriptSearch, type TranscriptHit } from './search'
+import { requestScrollToPart } from './scroll'
+import {
+  archivedSessionsForDirectory,
+  filterByTitle,
+  groupByDate,
+  groupByGroup,
+  StatusIcon,
+  statusTextClass,
+  type TaskGroup
+} from './SidebarSections'
+import { isPinned, isPlanPending, isUsingComputer, markUnread, togglePinned, useCowork } from './store'
+import { isArchivedSession, permissionBelongsTo, relTime, sessionBelongsTo, taskStatus, TASK_STATUS_LABEL, type TaskStatus } from './util'
 
-export function StatusIcon({ status, size = 14 }: { status: TaskStatus; size?: number }): React.JSX.Element {
-  switch (status) {
-    case 'running':
-      return <Loader2 size={size} className="animate-spin text-accent" />
-    case 'waiting':
-      return <Hand size={size} className="text-amber-500" />
-    case 'question':
-      return <HelpCircle size={size} className="text-accent" />
-    case 'error':
-      return <AlertCircle size={size} className="text-danger" />
-    case 'done':
-      return <CheckCircle2 size={size} className="text-accent" />
-    default:
-      return <Circle size={size} className="text-subtle" />
+// `StatusIcon` vive en SidebarSections (evita un ciclo de imports); se reexporta para quien lo importaba de aquí.
+export { StatusIcon }
+
+type GroupMode = 'date' | 'group'
+const GROUP_MODE_KEY = 'cowork.sidebarGroupMode'
+
+function readGroupMode(): GroupMode {
+  try {
+    return localStorage.getItem(GROUP_MODE_KEY) === 'group' ? 'group' : 'date'
+  } catch {
+    return 'date'
   }
 }
 
-/** Menú "…" de una tarea: fijar/desfijar, renombrar, marcar como no leída, archivar, eliminar. */
-function TaskMenu({ id, title, archived }: { id: string; title: string; archived?: boolean }): React.JSX.Element {
+/** Botón "…" y menú de una tarea (fijar, renombrar, mover a grupo, no leída, archivar/restaurar, eliminar). */
+function TaskMenu({
+  id,
+  title,
+  archived,
+  group,
+  knownGroups
+}: {
+  id: string
+  title: string
+  archived?: boolean
+  group?: string | null
+  knownGroups: string[]
+}): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const pinned = useCowork((s) => !!s.pinned[id])
 
   useEffect(() => {
@@ -53,13 +77,32 @@ function TaskMenu({ id, title, archived }: { id: string; title: string; archived
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', onDown)
+    // Foco al primer elemento del menú para poder usarlo con el teclado.
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
+
+  const onMenuKey = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      setOpen(false)
+      triggerRef.current?.focus()
+      return
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])
+    if (items.length === 0) return
+    const i = items.indexOf(document.activeElement as HTMLButtonElement)
+    const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length
+    items[next].focus()
+  }
 
   const item = (icon: React.ReactNode, label: string, onClick: () => void, danger?: boolean): React.JSX.Element => (
     <button
       type="button"
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-hover ${danger ? 'text-danger' : ''}`}
+      role="menuitem"
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-hover focus-visible:bg-hover ${danger ? 'text-danger' : ''}`}
       onClick={(e) => {
         e.stopPropagation()
         setOpen(false)
@@ -71,12 +114,33 @@ function TaskMenu({ id, title, archived }: { id: string; title: string; archived
     </button>
   )
 
+  const moveToGroup = (): void => {
+    void promptDialog({
+      title: 'Mover a grupo',
+      message:
+        knownGroups.length > 0
+          ? `Grupos existentes: ${knownGroups.join(', ')}. Deja el nombre vacío para quitar la tarea de su grupo.`
+          : 'Escribe el nombre del grupo. Déjalo vacío para quitar la tarea de su grupo.',
+      defaultValue: group ?? '',
+      placeholder: 'Nombre del grupo',
+      confirmLabel: 'Mover'
+    }).then((next) => {
+      if (next !== null) void moveTaskToGroup(id, next.trim() || null).catch(() => undefined)
+    })
+  }
+
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         title="Más acciones"
-        className="hidden rounded p-0.5 text-subtle group-hover:block hover:text-fg"
+        aria-label={`Más acciones de la tarea «${title || 'sin título'}»`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`rounded p-0.5 text-subtle group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 ${
+          open ? 'opacity-100' : 'opacity-0'
+        }`}
         onClick={(e) => {
           e.stopPropagation()
           setOpen((o) => !o)
@@ -86,19 +150,28 @@ function TaskMenu({ id, title, archived }: { id: string; title: string; archived
       </button>
       {open && (
         <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Acciones de la tarea"
           className="absolute top-full right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-elevated p-1 shadow-lg"
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={onMenuKey}
         >
-          {item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? 'Desfijar' : 'Fijar', () => togglePinned(id))}
-          {item(<Pencil size={13} />, 'Renombrar…', () => {
-            void promptDialog({ title: 'Nuevo nombre de la tarea', defaultValue: title, confirmLabel: 'Renombrar' }).then(
-              (next) => {
-                if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
-              }
-            )
-          })}
-          {item(<Mail size={13} />, 'Marcar como no leída', () => markUnread(id))}
+          {!archived &&
+            item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? 'Desfijar' : 'Fijar', () => togglePinned(id))}
+          {!archived &&
+            item(<Pencil size={13} />, 'Renombrar…', () => {
+              void promptDialog({ title: 'Nuevo nombre de la tarea', defaultValue: title, confirmLabel: 'Renombrar' }).then(
+                (next) => {
+                  if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
+                }
+              )
+            })}
+          {!archived && item(<FolderTree size={13} />, 'Mover a grupo…', moveToGroup)}
+          {!archived && group && item(<X size={13} />, 'Quitar del grupo', () => void moveTaskToGroup(id, null).catch(() => undefined))}
+          {!archived && item(<Mail size={13} />, 'Marcar como no leída', () => markUnread(id))}
           {!archived && item(<Archive size={13} />, 'Archivar', () => void archiveTask(id).catch(() => undefined))}
+          {archived && item(<ArchiveRestore size={13} />, 'Restaurar', () => void restoreTask(id).catch(() => undefined))}
           {item(
             <Trash2 size={13} />,
             'Eliminar…',
@@ -120,14 +193,112 @@ function TaskMenu({ id, title, archived }: { id: string; title: string; archived
   )
 }
 
-function dayBucket(ts: number): string {
-  const d = new Date(ts)
-  const today = new Date()
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  if (ts >= start) return 'Hoy'
-  if (ts >= start - 86_400_000) return 'Ayer'
-  if (ts >= start - 6 * 86_400_000) return 'Esta semana'
-  return d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+/** Una tarea de la lista de la carpeta. */
+function TaskRow({
+  task,
+  status,
+  active,
+  unseen,
+  blockedHost,
+  archivedView,
+  group,
+  knownGroups
+}: {
+  task: Session
+  status: TaskStatus
+  active: boolean
+  unseen: boolean
+  blockedHost: boolean
+  archivedView: boolean
+  group: string | null | undefined
+  knownGroups: string[]
+}): React.JSX.Element {
+  const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
+  const pinned = isPinned(task.id)
+  return (
+    <div className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${active ? 'bg-active' : 'hover:bg-hover'}`}>
+      <span className="shrink-0">
+        <StatusIcon status={status} size={13} />
+      </span>
+      <button
+        type="button"
+        className="min-w-0 flex-1 text-left"
+        aria-current={active ? 'true' : undefined}
+        onClick={() => void openTask(task.id)}
+      >
+        <div className={`truncate ${unseen ? 'font-semibold' : ''}`}>
+          {pinned && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
+          {task.title || 'Tarea sin título'}
+        </div>
+        <div className={`truncate text-[11px] ${statusTextClass(status)}`}>
+          {status === 'archived'
+            ? `Archivada ${relTime(task.time.archived ?? task.time.updated)}`
+            : status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question' || status === 'plan_ready'
+              ? TASK_STATUS_LABEL[status]
+              : relTime(task.time.updated)}
+          {group && !archivedView && <span className="text-subtle"> · {group}</span>}
+        </div>
+      </button>
+      {blockedHost && (
+        <span className="shrink-0 text-warning" title="Se bloqueó el acceso a un sitio: necesita tu decisión">
+          <ShieldOff size={12} />
+        </span>
+      )}
+      {unseen && <span className="h-2 w-2 shrink-0 rounded-full bg-accent group-hover:hidden" />}
+      {archivedView && (
+        <button
+          type="button"
+          className="shrink-0 rounded-md px-1.5 py-0.5 text-[11.5px] text-accent hover:bg-hover"
+          onClick={() => void restoreTask(task.id).catch(() => undefined)}
+        >
+          Restaurar
+        </button>
+      )}
+      {!busy && (
+        <TaskMenu id={task.id} title={task.title || ''} archived={archivedView} group={group} knownGroups={knownGroups} />
+      )}
+    </div>
+  )
+}
+
+/** Coincidencias dentro de las conversaciones (con fragmento). */
+function TranscriptResults({ hits, loading, scanned, total }: { hits: TranscriptHit[]; loading: boolean; scanned: number; total: number }): React.JSX.Element {
+  const open = (h: TranscriptHit): void => {
+    void openTask(h.sessionId).then(() => {
+      // Deja que la conversación se pinte antes de pedir el scroll.
+      requestAnimationFrame(() => requestScrollToPart(h.partId))
+    })
+  }
+  return (
+    <div className="mb-1">
+      <div className="flex items-center gap-1.5 px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle">
+        En las conversaciones
+        {loading && (
+          <span className="flex items-center gap-1 font-normal">
+            <Loader2 size={10} className="animate-spin" /> {scanned}/{total}
+          </span>
+        )}
+      </div>
+      {hits.length === 0 && !loading && <p className="px-1 py-1 text-xs text-subtle">Sin coincidencias en el contenido de las tareas.</p>}
+      <ul className="space-y-0.5">
+        {hits.map((h) => (
+          <li key={`${h.sessionId}:${h.partId}`}>
+            <button
+              type="button"
+              className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-hover"
+              onClick={() => open(h)}
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{h.title || 'Tarea sin título'}</span>
+                <span className="shrink-0 text-[10.5px] text-subtle">{relTime(h.at)}</span>
+              </div>
+              <div className="line-clamp-2 text-[11.5px] leading-snug text-muted">{h.snippet}</div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 export function TaskList(): React.JSX.Element {
@@ -137,11 +308,18 @@ export function TaskList(): React.JSX.Element {
   const permissions = useCowork((s) => s.permissions)
   const questions = useCowork((s) => s.questions)
   const unseen = useCowork((s) => s.unseen)
+  const networkBlocked = useCowork((s) => s.networkBlocked)
+  const taskMeta = useCowork((s) => s.taskMeta)
+  const showArchived = useCowork((s) => s.showArchived)
+  // Solo para repintar el estado "usando el Mac" / "plan listo".
+  useCowork((s) => s.lastAction)
+  useCowork((s) => s.accessRequest)
   const sessions = useSessions((s) => s.sessions)
   const status = useSessions((s) => s.status)
   const errors = useSessions((s) => s.errors)
   const messages = useSessions((s) => s.messages)
   const [query, setQuery] = useState('')
+  const [groupMode, setGroupMode] = useState<GroupMode>(readGroupMode)
   const [, tick] = useState(0)
 
   // Refresca los "hace X min".
@@ -150,41 +328,89 @@ export function TaskList(): React.JSX.Element {
     return () => clearInterval(t)
   }, [])
 
-  const tasks = useMemo(() => {
-    const all = folder ? selectSessionsForDirectory(sessions, folder) : []
-    const q = query.trim().toLowerCase()
-    return q ? all.filter((t) => (t.title || '').toLowerCase().includes(q)) : all
-  }, [sessions, folder, query])
+  const changeGroupMode = (m: GroupMode): void => {
+    setGroupMode(m)
+    try {
+      localStorage.setItem(GROUP_MODE_KEY, m)
+    } catch {
+      // sin storage
+    }
+  }
+
+  // Tareas de la carpeta: activas y archivadas (el selector del store oculta las archivadas).
+  const liveTasks = useMemo(() => (folder ? selectSessionsForDirectory(sessions, folder) : []), [sessions, folder])
+  const archivedTasks = useMemo(() => {
+    if (!folder) return []
+    const { sessionSource, directorySource } = useSessions.getState()
+    const viewSource = directorySource[folder] ?? MAIN_SOURCE
+    return archivedSessionsForDirectory(sessions, folder, viewSource, (id) => sessionSource[id] ?? MAIN_SOURCE)
+  }, [sessions, folder])
+
+  const source = showArchived ? archivedTasks : liveTasks
+  const q = query.trim()
+  const tasks = useMemo(() => filterByTitle(source, q), [source, q])
+  const transcript = useTranscriptSearch(showArchived ? null : folder, q)
+
+  // Grupos que ya existen en esta carpeta (para sugerirlos al mover una tarea).
+  const knownGroups = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of liveTasks) {
+      const g = taskMeta[t.id]?.group?.trim()
+      if (g) set.add(g)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+  }, [liveTasks, taskMeta])
 
   const perms = Object.values(permissions)
   const qs = Object.values(questions)
-  const networkBlocked = useCowork((s) => s.networkBlocked)
-  const pinnedMap = useCowork((s) => s.pinned)
-  const pinnedTasks = tasks.filter((t) => pinnedMap[t.id])
-  const restTasks = tasks.filter((t) => !pinnedMap[t.id])
-  const groups: Array<{ label: string; items: typeof tasks }> = []
-  if (pinnedTasks.length > 0) groups.push({ label: 'Fijadas', items: pinnedTasks })
-  for (const t of restTasks) {
-    const label = dayBucket(t.time.updated)
-    const g = groups[groups.length - 1]
-    if (g && g.label === label && label !== 'Fijadas') g.items.push(t)
-    else groups.push({ label, items: [t] })
-  }
+
+  const statusOf = (t: Session): TaskStatus =>
+    taskStatus({
+      run: status[t.id],
+      waiting: perms.some((p) => permissionBelongsTo(p, t.id, sessions)),
+      hasQuestion: qs.some((x) => sessionBelongsTo(x.sessionID, t.id, sessions)),
+      error: errors[t.id],
+      entries: messages[t.id],
+      usingComputer: isUsingComputer(t.id),
+      planPending: isPlanPending(t.id),
+      archived: isArchivedSession(t)
+    })
+
+  const searching = q.length > 0
+  const groups: Array<TaskGroup<Session>> = searching
+    ? tasks.length > 0
+      ? [{ key: 'search', label: 'Coincidencias en los títulos', items: tasks }]
+      : []
+    : showArchived
+      ? groupByDate(tasks, (t) => t.time.archived ?? t.time.updated)
+      : groupMode === 'group'
+        ? groupByGroup(tasks, (t) => taskMeta[t.id]?.group)
+        : groupByDate(tasks, (t) => t.time.updated)
+
+  const emptyText = ((): string => {
+    if (!folder) return 'Elige una carpeta para ver sus tareas.'
+    if (showArchived) return searching ? 'Ninguna tarea archivada coincide con la búsqueda.' : 'No hay tareas archivadas en esta carpeta.'
+    if (searching) return 'Ninguna tarea coincide con la búsqueda.'
+    return 'Aún no hay tareas en esta carpeta.'
+  })()
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative mt-3 mb-1">
         <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle" />
         <input
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar tareas"
-          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong"
+          aria-label="Buscar tareas"
+          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
             type="button"
             title="Limpiar"
+            aria-label="Limpiar la búsqueda"
             className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-fg"
             onClick={() => setQuery('')}
           >
@@ -192,75 +418,68 @@ export function TaskList(): React.JSX.Element {
           </button>
         )}
       </div>
+      <div className="mb-1 flex items-center gap-1.5">
+        <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-subtle">
+          <span className="shrink-0">Agrupar:</span>
+          <select
+            value={groupMode}
+            disabled={showArchived || searching}
+            onChange={(e) => changeGroupMode(e.target.value as GroupMode)}
+            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50"
+          >
+            <option value="date">por fecha</option>
+            <option value="group">por grupo</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          aria-pressed={showArchived}
+          title={showArchived ? 'Volver a las tareas' : 'Ver las tareas archivadas'}
+          onClick={() => useCowork.setState({ showArchived: !showArchived })}
+          className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[12px] ${
+            showArchived ? 'border-accent/50 bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
+          }`}
+        >
+          <Archive size={12} /> Archivadas{archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
+        </button>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {loading && tasks.length === 0 && (
+        {loading && source.length === 0 && (
           <div className="flex items-center gap-2 px-1 py-2 text-xs text-subtle">
             <Loader2 size={12} className="animate-spin" /> Cargando tareas…
           </div>
         )}
-        {tasks.length === 0 && !loading && (
-          <p className="px-1 py-2 text-xs text-subtle">
-            {query ? 'Ninguna tarea coincide con la búsqueda.' : folder ? 'Aún no hay tareas en esta carpeta.' : 'Elige una carpeta para ver sus tareas.'}
-          </p>
+        {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && (
+          <p className="px-1 py-2 text-xs text-subtle">{emptyText}</p>
         )}
         {groups.map((g) => (
-          <div key={g.label} className="mb-1">
-            <div className="px-1 pt-2.5 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">{g.label}</div>
+          <div key={g.key} className="mb-1">
+            <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle">{g.label}</div>
             <div className="space-y-0.5">
-              {g.items.map((t) => {
-                const st = taskStatus({
-                  run: status[t.id],
-                  waiting: perms.some((p) => permissionBelongsTo(p, t.id, sessions)),
-                  hasQuestion: qs.some((q) => sessionBelongsTo(q.sessionID, t.id, sessions)),
-                  error: errors[t.id],
-                  entries: messages[t.id]
-                })
-                const busy = st === 'running' || st === 'waiting' || st === 'question'
-                const isUnseen = !!unseen[t.id] && t.id !== activeId
-                const hasBlockedHost = (networkBlocked[t.id] ?? []).some((b) => !b.resolved)
-                return (
-                  <div
-                    key={t.id}
-                    className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                      t.id === activeId ? 'bg-active' : 'hover:bg-hover'
-                    }`}
-                  >
-                    <span className="shrink-0" title={st === 'waiting' ? 'Necesita tu aprobación' : undefined}>
-                      <StatusIcon status={st} size={13} />
-                    </span>
-                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => void openTask(t.id)}>
-                      <div className={`truncate ${isUnseen ? 'font-semibold' : ''}`}>
-                        {isPinned(t.id) && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
-                        {t.title || 'Tarea sin título'}
-                      </div>
-                      <div className="text-[11px] text-subtle">
-                        {st === 'waiting' ? (
-                          <span className="text-amber-600 [[data-theme=dark]_&]:text-amber-400">Esperando aprobación</span>
-                        ) : st === 'question' ? (
-                          <span className="text-accent">Esperando tu respuesta</span>
-                        ) : st === 'running' ? (
-                          <span className="text-accent">Trabajando…</span>
-                        ) : (
-                          relTime(t.time.updated)
-                        )}
-                      </div>
-                    </button>
-                    {hasBlockedHost && (
-                      <span
-                        className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400"
-                        title="Se bloqueó el acceso a un sitio: necesita tu decisión"
-                      >
-                        <ShieldOff size={12} />
-                      </span>
-                    )}
-                    {isUnseen && <span className="h-2 w-2 shrink-0 rounded-full bg-accent group-hover:hidden" />}
-                    {!busy && <TaskMenu id={t.id} title={t.title || ''} />}
-                  </div>
-                )
-              })}
+              {g.items.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  status={statusOf(t)}
+                  active={t.id === activeId}
+                  unseen={!!unseen[t.id] && t.id !== activeId}
+                  blockedHost={(networkBlocked[t.id] ?? []).some((b) => !b.resolved)}
+                  archivedView={showArchived}
+                  group={taskMeta[t.id]?.group}
+                  knownGroups={knownGroups}
+                />
+              ))}
             </div>
           </div>
         ))}
+        {searching && !showArchived && q.length < MIN_QUERY_LENGTH && (
+          <p className="px-1 py-2 text-[11.5px] text-subtle">
+            Escribe {MIN_QUERY_LENGTH} o más letras para buscar también dentro de las conversaciones.
+          </p>
+        )}
+        {searching && !showArchived && q.length >= MIN_QUERY_LENGTH && (
+          <TranscriptResults hits={transcript.hits} loading={transcript.loading} scanned={transcript.scanned} total={transcript.total} />
+        )}
       </div>
     </div>
   )

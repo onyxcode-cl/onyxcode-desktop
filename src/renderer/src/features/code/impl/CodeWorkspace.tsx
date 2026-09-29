@@ -9,10 +9,9 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { AssistantMessage, Session } from '@opencode-ai/sdk/v2/client'
+import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
   ChevronDown,
-  CircleSlash,
   Code2,
   FileCode2,
   FolderOpen,
@@ -20,23 +19,19 @@ import {
   GitBranch,
   GitCompare,
   GitFork,
-  Gauge,
+  Globe,
   LayoutGrid,
   ListChecks,
   ListTodo,
   Loader2,
-  PencilLine,
-  Shield,
   Sparkles,
   Square,
   SquareTerminal,
-  Wand2,
   X
 } from 'lucide-react'
+import type { BrowserOwner } from '@shared/ipc-browser'
+import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
-import { ModelPicker } from '../../../components/ModelPicker'
-import { useSettings } from '../../../stores/settings'
-import { useProviders } from '../../../stores/providers'
 import { getCodeApi, nativeCode, useClient } from './client'
 import { Composer } from './Composer'
 import { MessageStream } from './MessageStream'
@@ -47,10 +42,11 @@ import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate } from './Project
 import { SessionList } from './SessionList'
 import { ensureCodeSubscription, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
-import type { PermissionMode, RightPanel } from './types'
-import { AgentSegmented, MOD, Tip, isEditableTarget } from './ui'
+import type { RightPanel } from './types'
+import { MOD, Tip, isEditableTarget } from './ui'
 
-const PANEL_LABEL: Record<RightPanel, string> = { changes: 'Cambios', terminal: 'Terminal', files: 'Archivos' }
+const PANEL_LABEL: Record<RightPanel, string> = { changes: 'Cambios', terminal: 'Terminal', files: 'Archivos', browser: 'Navegador' }
+const PANEL_MIN_WIDTH: Record<RightPanel, number> = { changes: 280, terminal: 280, files: 280, browser: 640 }
 const PANEL_WIDTH_KEY = 'code.panelWidth'
 
 function readWidth(): number {
@@ -103,19 +99,50 @@ function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null
   )
 }
 
+/** Título de la pestaña activa del navegador (para la etiqueta del panel), truncado por CSS. */
+function useBrowserTabTitle(directory: string): string {
+  const [title, setTitle] = useState('Navegador')
+  useEffect(() => {
+    const owner: BrowserOwner = { kind: 'code', directory }
+    const apply = (s: { owner: BrowserOwner; tabs: { id: string; title: string }[]; activeTabId: string | null }): void => {
+      if (s.owner.kind !== 'code' || s.owner.directory !== directory) return
+      const t = s.tabs.find((x) => x.id === s.activeTabId)?.title
+      setTitle(t && t.trim() ? t : 'Navegador')
+    }
+    let cancelled = false
+    void br('browser:state', { owner })
+      .then((s) => !cancelled && apply(s))
+      .catch(() => undefined)
+    const off = onBrowser('browser:state', apply)
+    return () => {
+      cancelled = true
+      off()
+    }
+  }, [directory])
+  return title
+}
+
 function SidePanels({ directory }: { directory: string }): React.JSX.Element | null {
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const [width, setWidth] = useState(readWidth)
-  // La terminal se mantiene montada tras abrirse para conservar el shell.
+  // La terminal se mantiene montada tras abrirse para conservar el shell; el navegador igual,
+  // para no perder pestañas/sesión al ocultar el panel.
   const [terminalMounted, setTerminalMounted] = useState(panel === 'terminal')
+  const [browserMounted, setBrowserMounted] = useState(panel === 'browser')
   useEffect(() => {
     if (panel === 'terminal') setTerminalMounted(true)
+    if (panel === 'browser') setBrowserMounted(true)
   }, [panel])
   useEffect(() => {
     setTerminalMounted(panel === 'terminal')
-    // Al cambiar de proyecto se descarta la terminal anterior (solo depende de `directory`).
+    setBrowserMounted(panel === 'browser')
+    // Al cambiar de proyecto se descartan la terminal y el navegador anteriores (solo depende de `directory`).
   }, [directory]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Al abrir el navegador, el panel pasa a tener al menos 640px de ancho.
+  useEffect(() => {
+    if (panel === 'browser') setWidth((w) => Math.max(w, PANEL_MIN_WIDTH.browser))
+  }, [panel])
 
   const dragging = useRef<{ x: number; w: number } | null>(null)
   const onPointerDown = (e: React.PointerEvent): void => {
@@ -124,7 +151,8 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
   }
   const onPointerMove = (e: React.PointerEvent): void => {
     if (!dragging.current) return
-    const next = Math.min(1200, Math.max(280, dragging.current.w + (dragging.current.x - e.clientX)))
+    const min = panel ? PANEL_MIN_WIDTH[panel] : 280
+    const next = Math.min(1200, Math.max(min, dragging.current.w + (dragging.current.x - e.clientX)))
     setWidth(next)
   }
   const onPointerUp = (): void => {
@@ -136,7 +164,10 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
     }
   }
 
-  if (!panel && !terminalMounted) return null
+  const owner = useMemo<BrowserOwner>(() => ({ kind: 'code', directory }), [directory])
+  const browserTitle = useBrowserTabTitle(directory)
+
+  if (!panel && !terminalMounted && !browserMounted) return null
   return (
     <div
       className={`relative flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
@@ -156,7 +187,7 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
               onClick={() => p !== panel && togglePanel(p)}
               className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition ${p === panel ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
-              {PANEL_LABEL[p]}
+              <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : PANEL_LABEL[p]}</span>
             </button>
           </Tip>
         ))}
@@ -170,6 +201,11 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
         {terminalMounted && (
           <div className={panel === 'terminal' ? 'h-full' : 'hidden'}>
             <TerminalPanel key={directory} directory={directory} visible={panel === 'terminal'} />
+          </div>
+        )}
+        {browserMounted && (
+          <div className={panel === 'browser' ? 'h-full' : 'hidden'}>
+            <BrowserPanel key={directory} owner={owner} product="code" visible={panel === 'browser'} />
           </div>
         )}
       </div>
@@ -300,174 +336,9 @@ function BranchPill({ directory }: { directory: string }): React.JSX.Element | n
 const PANEL_META: { id: RightPanel; label: string; key: string; icon: React.JSX.Element }[] = [
   { id: 'changes', label: 'Cambios', key: '1', icon: <GitCompare size={16} /> },
   { id: 'terminal', label: 'Terminal', key: '2', icon: <SquareTerminal size={16} /> },
-  { id: 'files', label: 'Archivos', key: '3', icon: <FileCode2 size={16} /> }
+  { id: 'files', label: 'Archivos', key: '3', icon: <FileCode2 size={16} /> },
+  { id: 'browser', label: 'Navegador', key: '4', icon: <Globe size={16} /> }
 ]
-
-const PERMISSION_MODE_META: { id: PermissionMode; label: string; hint: string; icon: React.JSX.Element }[] = [
-  { id: 'manual', label: 'Manual', hint: 'Pregunta antes de cualquier acción', icon: <Shield size={13} /> },
-  { id: 'acceptEdits', label: 'Aceptar ediciones', hint: 'Permite leer/editar archivos sin preguntar; el resto pregunta', icon: <PencilLine size={13} /> },
-  { id: 'plan', label: 'Plan', hint: 'Solo explora y propone; no modifica nada', icon: <ListChecks size={13} /> },
-  { id: 'auto', label: 'Auto', hint: 'Permite ediciones y comandos seguros; pregunta en lo riesgoso', icon: <Wand2 size={13} /> },
-  { id: 'bypass', label: 'Bypass', hint: 'Permite todo sin preguntar (incluye bash). Úsalo con cuidado.', icon: <CircleSlash size={13} /> }
-]
-
-/** Selector de modo de permisos de la sesión activa (⌘⇧M). */
-function PermissionModeMenu(): React.JSX.Element {
-  const mode = useCode((s) => s.permissionMode)
-  const setPermissionMode = useCode((s) => s.setPermissionMode)
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [open])
-  const current = PERMISSION_MODE_META.find((m) => m.id === mode) ?? PERMISSION_MODE_META[0]
-  return (
-    <div ref={ref} className="no-drag relative">
-      <Tip label="Modo de permisos" shortcut={`${MOD}⇧M`}>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
-            mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'
-          }`}
-        >
-          {current.icon}
-          {current.label}
-        </button>
-      </Tip>
-      {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-64 overflow-hidden rounded-xl border border-border bg-elevated py-1 shadow-xl">
-          {PERMISSION_MODE_META.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                void setPermissionMode(m.id)
-              }}
-              className={`flex w-full items-start gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover ${mode === m.id ? 'text-fg' : 'text-muted'}`}
-            >
-              <span className="mt-0.5 shrink-0">{m.icon}</span>
-              <span className="min-w-0">
-                <span className="block font-medium">{m.label}</span>
-                <span className="block text-xs text-subtle">{m.hint}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Último mensaje del asistente en la sesión activa (para medidor de contexto). */
-function useLastAssistant(sessionID: string | null): AssistantMessage | null {
-  const entries = useCode((s) => (sessionID ? s.messages[sessionID] : undefined))
-  return useMemo(() => {
-    if (!entries) return null
-    for (let i = entries.length - 1; i >= 0; i--) {
-      const info = entries[i].info
-      if (info.role === 'assistant') return info
-    }
-    return null
-  }, [entries])
-}
-
-/** Medidor de contexto usado / límite del modelo actual, y selector de variante (esfuerzo) si aplica. */
-function ContextAndVariant(): React.JSX.Element | null {
-  const client = useClient()
-  const directory = useCode((s) => s.directory)
-  const activeSessionID = useCode((s) => s.activeSessionID)
-  const model = useCode((s) => s.model)
-  const variant = useCode((s) => s.variant)
-  const setVariant = useCode((s) => s.setVariant)
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
-  const providers = useProviders((s) => s.providers)
-  const loadProviders = useProviders((s) => s.load)
-  const last = useLastAssistant(activeSessionID)
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (client) void loadProviders(client)
-  }, [client, loadProviders])
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [open])
-
-  const effective = model ?? defaultModel
-  const info = providers.find((p) => p.id === effective.providerID)?.models[effective.modelID]
-  if (!directory || !info) return null
-
-  const used = last && last.modelID === effective.modelID ? last.tokens.input + last.tokens.cache.read + last.tokens.cache.write : 0
-  const limit = info.limit.context
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
-  const variants = info.variants ? Object.keys(info.variants) : []
-
-  return (
-    <div className="no-drag flex items-center gap-1.5">
-      {used > 0 && (
-        <Tip label={`Contexto usado: ${used.toLocaleString('es-CL')} / ${limit.toLocaleString('es-CL')} tokens (${pct}%)`}>
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-subtle">
-            <Gauge size={12} className={pct > 85 ? 'text-danger' : pct > 60 ? 'text-warning' : 'text-subtle'} />
-            {pct}%
-          </span>
-        </Tip>
-      )}
-      {variants.length > 0 && (
-        <div ref={ref} className="relative">
-          <Tip label="Esfuerzo del modelo" shortcut={`${MOD}⇧E`}>
-            <button
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
-            >
-              <Sparkles size={12} />
-              {variant ?? 'estándar'}
-            </button>
-          </Tip>
-          {open && (
-            <div className="absolute top-full right-0 z-50 mt-1 w-40 overflow-hidden rounded-xl border border-border bg-elevated py-1 shadow-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setVariant(null)
-                  setOpen(false)
-                }}
-                className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-hover ${!variant ? 'text-fg' : 'text-muted'}`}
-              >
-                Estándar
-              </button>
-              {variants.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => {
-                    setVariant(v)
-                    setOpen(false)
-                  }}
-                  className={`block w-full px-3 py-1.5 text-left text-sm capitalize hover:bg-hover ${variant === v ? 'text-fg' : 'text-muted'}`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
@@ -476,13 +347,8 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const abort = useCode((s) => s.abort)
-  const agent = useCode((s) => s.agent)
-  const setAgent = useCode((s) => s.setAgent)
-  const model = useCode((s) => s.model)
-  const setModel = useCode((s) => s.setModel)
   const forkSession = useCode((s) => s.forkSession)
   const compactSession = useCode((s) => s.compactSession)
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
   const busy = run === 'busy' || run === 'retry'
 
   return (
@@ -531,16 +397,9 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
             </Tip>
           </>
         )}
-        <ContextAndVariant />
-        <PermissionModeMenu />
-        <AgentSegmented value={agent} onChange={setAgent} size="sm" />
-        {/* El menú del selector se alinea a la derecha para no salirse de la ventana. */}
-        <div className="no-drag [&_.absolute]:right-0 [&_.absolute]:left-auto">
-          <ModelPicker value={model ?? defaultModel} onChange={setModel} placement="bottom" />
-        </div>
         <span className="mx-0.5 h-5 w-px bg-border" />
         {PANEL_META.map((p) => (
-          <Tip key={p.id} label={p.label} shortcut={`${MOD}${p.key}`} align={p.id === 'files' ? 'end' : 'center'}>
+          <Tip key={p.id} label={p.label} shortcut={`${MOD}${p.key}`} align={p.id === 'browser' ? 'end' : 'center'}>
             <button
               type="button"
               aria-label={p.label}
@@ -737,13 +596,13 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
 
   useEffect(() => ensureCodeSubscription(), [])
 
-  // Atajos: ⌘1 Cambios · ⌘2 Terminal · ⌘3 Archivos · Esc detiene (fuera de campos de texto).
+  // Atajos: ⌘1 Cambios · ⌘2 Terminal · ⌘3 Archivos · ⌘4 Navegador · Esc detiene (fuera de campos de texto).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const st = useCode.getState()
       if (!st.directory) return
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && ['1', '2', '3'].includes(e.key)) {
-        const p = (['changes', 'terminal', 'files'] as RightPanel[])[Number(e.key) - 1]
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
+        const p = (['changes', 'terminal', 'files', 'browser'] as RightPanel[])[Number(e.key) - 1]
         e.preventDefault()
         st.togglePanel(p)
         return
@@ -756,6 +615,15 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // El navegador pide abrirse (el agente empezó a usarlo, o se aprobó un sitio) sin robar el foco.
+  useEffect(() => {
+    const off = onBrowser('browser:reveal', ({ owner }) => {
+      const dir = useCode.getState().directory
+      if (dir && owner.kind === 'code' && owner.directory === dir) useCode.getState().revealBrowserPanel()
+    })
+    return off
   }, [])
 
   // Al conectar (o reconectar con un cliente nuevo), recarga el proyecto abierto.

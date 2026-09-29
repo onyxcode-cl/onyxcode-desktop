@@ -1,7 +1,8 @@
 /** Formulario de creación/edición de una rutina (panel lateral). */
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, CalendarClock, Check, FolderOpen, Info, Loader2, X } from 'lucide-react'
-import type { CoworkFolder, RoutineInput, RoutineSchedule, SchedulePreview } from '@shared/ipc-cowork'
+import { AlertCircle, CalendarClock, Check, FolderOpen, Info, Loader2, Plus, ShieldAlert, X } from 'lucide-react'
+import type { CoworkFolder, RoutineAllowRule, RoutineInput, RoutineSchedule, SchedulePreview } from '@shared/ipc-cowork'
+import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -45,6 +46,10 @@ function toCron(s: RoutineSchedule): string {
   }
 }
 
+/** Permisos de OpenCode más habituales (el campo admite cualquier otro, p. ej. `github_*` para un MCP). */
+const PERMISSION_SUGGESTIONS = ['bash', 'edit', 'webfetch', 'websearch', 'skill']
+const HOST_RE = /^[a-z0-9.-]{1,255}$/i
+
 const inputCls =
   'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle'
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
@@ -64,7 +69,14 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const [error, setError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
 
+  const [hostDraft, setHostDraft] = useState('')
+
   const patch = (p: Partial<RoutineInput>): void => setForm((f) => ({ ...f, ...p }))
+  /** Cambiar de carpeta invalida el consentimiento de Control total (es por carpeta). */
+  const setFolder = (folder: string | null): void =>
+    setForm((f) =>
+      f.folder === folder ? f : { ...f, folder, fullAccess: false, fullAccessConsentAt: null }
+    )
   const setSchedule = (schedule: RoutineSchedule): void => patch({ schedule })
 
   useEffect(() => {
@@ -103,13 +115,57 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
       try {
         const approved = await cw('cowork:approveFolder', { folder: picked })
         setFolders(await cw('cowork:listFolders'))
-        patch({ folder: approved.path })
+        setFolder(approved.path)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       }
       return
     }
-    patch({ folder: picked })
+    setFolder(picked)
+  }
+
+  const allowRows: RoutineAllowRule[] = form.allow ?? []
+  const hosts: string[] = form.allowHosts ?? []
+  const setAllow = (rows: RoutineAllowRule[]): void => patch({ allow: rows })
+  const isCowork = form.mode === 'cowork'
+  const selectedFolder = folders.find((f) => f.path === form.folder)
+  const canFullControl = isCowork && !!selectedFolder?.fullAccess
+  const fullControl = isCowork && form.fullAccess === true
+
+  const addHost = (): void => {
+    const h = hostDraft.trim().toLowerCase()
+    if (!h) return
+    if (!HOST_RE.test(h)) {
+      setError(`Sitio inválido: ${h} (usa solo el dominio, p. ej. api.ejemplo.com)`)
+      return
+    }
+    setError(null)
+    if (!hosts.includes(h)) patch({ allowHosts: [...hosts, h] })
+    setHostDraft('')
+  }
+
+  const toggleFullControl = async (on: boolean): Promise<void> => {
+    if (!on) {
+      patch({ fullAccess: false, fullAccessConsentAt: null })
+      return
+    }
+    const ok = await confirmDialog({
+      title: `¿Ejecutar esta rutina con ${COWORK_TERMS.fullControl}?`,
+      message: (
+        <div className="space-y-2 text-sm">
+          <p>
+            La rutina saldrá del sandbox: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.
+          </p>
+          <p>
+            En cada ejecución tendrás que <b>aprobar el plan en persona</b> (te llegará una notificación); si no lo apruebas, la ejecución falla por tiempo. Cada ejecución empieza una tarea nueva.
+          </p>
+          <p>Solo actívalo si la instrucción es de tu confianza y aceptas estas condiciones.</p>
+        </div>
+      ),
+      confirmLabel: 'Acepto, activar',
+      danger: true
+    })
+    if (ok) patch({ fullAccess: true, fullAccessConsentAt: Date.now(), sessionMode: 'fresh', allowHosts: [] })
   }
 
   const s = form.schedule
@@ -125,7 +181,14 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     setSaving(true)
     setError(null)
     try {
-      await saveRoutine({ ...form, name: form.name.trim(), prompt: form.prompt.trim() })
+      const cowork = form.mode === 'cowork'
+      await saveRoutine({
+        ...form,
+        name: form.name.trim(),
+        prompt: form.prompt.trim(),
+        allow: cowork ? allowRows.filter((r) => r.permission.trim() || r.pattern.trim()).map((r) => ({ permission: r.permission.trim(), pattern: r.pattern.trim() })) : [],
+        allowHosts: cowork && !form.fullAccess ? hosts : []
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -201,7 +264,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               onChange={(e) => patch({ prompt: e.target.value })}
             />
             <p className="mt-1.5 text-xs text-subtle">
-              Se ejecuta sin supervisión: los permisos que requieran confirmación se rechazan automáticamente.
+              {isCowork
+                ? 'Se ejecuta sin supervisión: los permisos que no estén en «Permitir sin preguntar» se rechazan o esperan tu aprobación, según lo que elijas abajo.'
+                : 'Se ejecuta sin supervisión: los permisos que requieran confirmación se rechazan automáticamente.'}
             </p>
           </div>
 
@@ -376,7 +441,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     key={m}
                     type="button"
                     aria-pressed={on}
-                    onClick={() => patch({ mode: m, folder: m === 'chat' ? null : m === form.mode ? form.folder : null })}
+                    onClick={() => patch({ mode: m, folder: m === 'chat' ? null : m === form.mode ? form.folder : null, ...(m === form.mode ? {} : { fullAccess: false, fullAccessConsentAt: null }) })}
                     className={`flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition ${on ? 'border-accent bg-accent-soft/50 ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:bg-hover'}`}
                   >
                     <Icon size={17} className={on ? 'text-accent' : 'text-muted'} />
@@ -419,12 +484,171 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       key={f.path}
                       type="button"
                       title={f.path}
-                      onClick={() => patch({ folder: f.path })}
+                      onClick={() => setFolder(f.path)}
                       className={`rounded-full border px-2 py-0.5 text-[11px] transition ${form.folder === f.path ? 'border-accent bg-accent-soft text-accent' : 'border-border text-muted hover:border-border-strong hover:text-fg'}`}
                     >
                       {f.name}
                     </button>
                   ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {isCowork && (
+            <section className="space-y-5 rounded-xl border border-border bg-bg/50 p-4">
+              <div>
+                <span className={labelCls}>Cada ejecución</span>
+                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label="Sesión de cada ejecución">
+                  <button type="button" aria-pressed={form.sessionMode !== 'continue' || fullControl} className={tabCls(form.sessionMode !== 'continue' || fullControl)} onClick={() => patch({ sessionMode: 'fresh' })}>
+                    Empezar de cero
+                  </button>
+                  <button
+                    type="button"
+                    disabled={fullControl}
+                    aria-pressed={form.sessionMode === 'continue' && !fullControl}
+                    className={`${tabCls(form.sessionMode === 'continue' && !fullControl)} disabled:cursor-not-allowed disabled:opacity-50`}
+                    onClick={() => patch({ sessionMode: 'continue' })}
+                  >
+                    Continuar la misma tarea
+                  </button>
+                </div>
+                <p className="mt-1.5 text-xs text-subtle">
+                  {fullControl
+                    ? `Con ${COWORK_TERMS.fullControlShort} cada ejecución empieza una tarea nueva, para que ninguna aprobación se arrastre.`
+                    : form.sessionMode === 'continue'
+                      ? 'Conserva el contexto de la ejecución anterior en la misma tarea.'
+                      : 'Cada ejecución crea una tarea nueva, sin recordar las anteriores.'}
+                </p>
+              </div>
+
+              <div>
+                <span className={labelCls}>Si pide permiso</span>
+                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label="Qué hacer si pide permiso">
+                  <button type="button" aria-pressed={form.onAsk !== 'wait'} className={tabCls(form.onAsk !== 'wait')} onClick={() => patch({ onAsk: 'reject' })}>
+                    Rechazar y seguir
+                  </button>
+                  <button type="button" aria-pressed={form.onAsk === 'wait'} className={tabCls(form.onAsk === 'wait')} onClick={() => patch({ onAsk: 'wait' })}>
+                    Esperar mi aprobación (te avisará)
+                  </button>
+                </div>
+                <p className="mt-1.5 text-xs text-subtle">
+                  {form.onAsk === 'wait'
+                    ? 'La ejecución se detiene, te llega una notificación y la tarea sigue cuando apruebes o rechaces. Si no respondes en 45 min, falla.'
+                    : 'Lo que no esté permitido abajo se rechaza y queda anotado en el historial de la rutina.'}
+                </p>
+              </div>
+
+              <div>
+                <span className={labelCls}>Permitir sin preguntar</span>
+                {allowRows.length === 0 && <p className="mb-2 text-xs text-subtle">Ninguna regla: todo lo que pida permiso se tratará como indicaste arriba.</p>}
+                <datalist id="r-perm-suggestions">
+                  {PERMISSION_SUGGESTIONS.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+                <div className="space-y-2">
+                  {allowRows.map((row, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        className={`${inputCls} w-32 shrink-0 py-1.5 font-mono text-xs`}
+                        list="r-perm-suggestions"
+                        value={row.permission}
+                        placeholder="bash"
+                        spellCheck={false}
+                        aria-label="Permiso"
+                        onChange={(e) => setAllow(allowRows.map((r, j) => (j === i ? { ...r, permission: e.target.value } : r)))}
+                      />
+                      <input
+                        className={`${inputCls} min-w-0 flex-1 py-1.5 font-mono text-xs`}
+                        value={row.pattern}
+                        placeholder="git status*"
+                        spellCheck={false}
+                        aria-label="Patrón"
+                        onChange={(e) => setAllow(allowRows.map((r, j) => (j === i ? { ...r, pattern: e.target.value } : r)))}
+                      />
+                      <button type="button" aria-label="Quitar regla" title="Quitar regla" onClick={() => setAllow(allowRows.filter((_, j) => j !== i))} className="rounded-md p-1 text-muted hover:bg-hover hover:text-danger">
+                        <X size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAllow([...allowRows, { permission: '', pattern: '' }])}
+                  className="mt-2 flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                >
+                  <Plus size={13} /> Añadir regla
+                </button>
+                <p className="mt-1.5 text-xs text-subtle">
+                  El patrón admite <span className="font-mono">*</span> (cualquier cosa) y <span className="font-mono">?</span> (un carácter). Un permiso puede acabar en{' '}
+                  <span className="font-mono">*</span> para las herramientas de un MCP (p. ej. <span className="font-mono">github_*</span>).
+                </p>
+              </div>
+
+              {!fullControl && (
+                <div>
+                  <span className={labelCls}>Sitios permitidos</span>
+                  {hosts.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {hosts.map((h) => (
+                        <span key={h} className="flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 font-mono text-[11px]">
+                          {h}
+                          <button type="button" aria-label={`Quitar ${h}`} onClick={() => patch({ allowHosts: hosts.filter((x) => x !== h) })} className="text-muted hover:text-danger">
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      className={`${inputCls} py-1.5 font-mono text-xs`}
+                      value={hostDraft}
+                      placeholder="api.ejemplo.com"
+                      spellCheck={false}
+                      aria-label="Sitio permitido"
+                      onChange={(e) => setHostDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          addHost()
+                        }
+                      }}
+                    />
+                    <Button variant="secondary" onClick={addHost} disabled={!hostDraft.trim()}>
+                      Añadir
+                    </Button>
+                  </div>
+                  <p className="mt-1.5 text-xs text-subtle">Solo valen mientras dura cada ejecución; el resto de la red sigue bloqueada. Los bloqueos quedan en el historial.</p>
+                </div>
+              )}
+
+              {(canFullControl || fullControl) && (
+                <div className={`rounded-lg border p-3 ${fullControl ? 'border-warning/40 bg-warning/10' : 'border-border bg-elevated'}`}>
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert size={16} className={`mt-0.5 shrink-0 ${fullControl ? 'text-warning' : 'text-muted'}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">{COWORK_TERMS.fullControl}</div>
+                      <p className="mt-0.5 text-xs text-muted">
+                        Sin sandbox y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada ejecución.
+                      </p>
+                      {fullControl && form.fullAccessConsentAt ? (
+                        <p className="mt-1 text-[11px] text-warning">Consentimiento dado el {new Date(form.fullAccessConsentAt).toLocaleString('es-CL')}.</p>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={fullControl}
+                      aria-label={COWORK_TERMS.fullControl}
+                      onClick={() => void toggleFullControl(!fullControl)}
+                      className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${fullControl ? 'bg-accent' : 'bg-border-strong'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${fullControl ? 'translate-x-4' : ''}`} />
+                    </button>
+                  </div>
                 </div>
               )}
             </section>

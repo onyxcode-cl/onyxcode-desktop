@@ -180,7 +180,7 @@ export function SessionList({
   }
   if (sessions.length === 0) {
     return (
-      <div className="mx-1 mt-2 flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-6 text-center">
+      <div className="mx-1 mt-6 flex flex-col items-center gap-2 px-4 text-center">
         <MessagesSquare size={18} className="text-subtle" />
         <span className="text-xs text-subtle">{emptyText ?? 'No hay conversaciones'}</span>
       </div>

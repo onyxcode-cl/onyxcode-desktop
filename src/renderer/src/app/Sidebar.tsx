@@ -1,4 +1,4 @@
-import { PanelLeftClose, Plus, Settings } from 'lucide-react'
+import { PanelLeftClose, Plus, Search, Settings } from 'lucide-react'
 import { APP_NAME } from '@shared/brand'
 import { IconButton } from '../components/IconButton'
 import { LogoMark } from '../components/Logo'
@@ -13,12 +13,14 @@ const STATUS_LABEL: Record<string, string> = {
   error: 'Error de conexión'
 }
 
+const isMac = navigator.userAgent.includes('Mac')
+const MOD = isMac ? '⌘' : 'Ctrl+'
+
 export function Sidebar(): React.JSX.Element {
-  const { mode, setMode, settingsOpen, openSettings, toggleSidebar } = useUi()
+  const { mode, setMode, settingsOpen, openSettings, toggleSidebar, setPaletteOpen } = useUi()
   const serverState = useServer((s) => s.status.state)
   const def = MODES_BY_ID[mode]
   const SidebarContent = def.SidebarContent
-  const activeIndex = MODES.findIndex((m) => m.id === mode)
 
   const dot =
     serverState === 'ready'
@@ -31,49 +33,45 @@ export function Sidebar(): React.JSX.Element {
     <aside className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar">
       {/* Zona de titlebar (semáforos de macOS) */}
       <div className="drag flex h-12 shrink-0 items-center justify-end px-2">
-        <IconButton label="Ocultar barra lateral (⌘\)" onClick={toggleSidebar}>
+        <IconButton label={`Ocultar barra lateral (${MOD}\\)`} onClick={toggleSidebar}>
           <PanelLeftClose size={16} />
         </IconButton>
       </div>
 
-      {/* Selector de modo (segmentado con indicador deslizante) */}
+      {/* Búsqueda / paleta de comandos */}
       <div className="px-3">
-        <div
-          role="tablist"
-          aria-label="Modo"
-          className="relative grid rounded-xl border border-border/70 bg-inset p-1"
-          style={{ gridTemplateColumns: `repeat(${MODES.length}, minmax(0, 1fr))` }}
+        <button
+          type="button"
+          onClick={() => setPaletteOpen(true)}
+          className="no-drag flex h-8 w-full items-center gap-2 rounded-lg border border-border bg-inset px-2.5 text-[13px] text-subtle transition-colors hover:border-border-strong hover:text-muted"
         >
-          {!settingsOpen && activeIndex >= 0 && (
-            <span
-              aria-hidden
-              className="absolute top-1 bottom-1 left-1 rounded-lg bg-elevated shadow-sm ring-1 ring-border/70 transition-transform duration-300 ease-out"
-              style={{
-                width: `calc((100% - 8px) / ${MODES.length})`,
-                transform: `translateX(${activeIndex * 100}%)`
-              }}
-            />
-          )}
-          {MODES.map((m) => {
-            const Icon = m.icon
-            const active = m.id === mode && !settingsOpen
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setMode(m.id)}
-                title={m.label}
-                className={`no-drag relative z-10 flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[11px] font-medium transition-colors duration-200 ${active ? 'text-fg' : 'text-muted hover:text-fg'}`}
-              >
-                <Icon size={15} className={active ? 'text-accent' : ''} strokeWidth={active ? 2.2 : 1.9} />
-                {m.label}
-              </button>
-            )
-          })}
-        </div>
+          <Search size={14} />
+          <span className="flex-1 text-left">Buscar o ir a…</span>
+          <kbd className="kbd">{MOD}K</kbd>
+        </button>
       </div>
+
+      {/* Modos */}
+      <nav aria-label="Modo" className="flex flex-col gap-0.5 px-3 pt-2.5">
+        {MODES.map((m) => {
+          const Icon = m.icon
+          const active = m.id === mode && !settingsOpen
+          return (
+            <button
+              key={m.id}
+              type="button"
+              aria-current={active ? 'page' : undefined}
+              onClick={() => setMode(m.id)}
+              className={`no-drag group flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition-colors duration-150 ${active ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+            >
+              <Icon size={16} className={active ? 'text-accent' : 'text-subtle group-hover:text-muted'} strokeWidth={active ? 2.2 : 1.9} />
+              {m.label}
+            </button>
+          )
+        })}
+      </nav>
+
+      {(def.newAction || SidebarContent) && <div className="mx-3 mt-3 border-t border-border" />}
 
       {def.newAction && (
         <div className="px-3 pt-3">
@@ -83,18 +81,19 @@ export function Sidebar(): React.JSX.Element {
               openSettings(false)
               def.newAction?.run()
             }}
-            className="no-drag group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-hover"
+            className="no-drag group flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium text-fg transition-colors hover:bg-hover"
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-accent-fg shadow-sm transition-transform duration-200 group-hover:scale-105 group-hover:rotate-90 group-active:scale-95">
-              <Plus size={15} strokeWidth={2.4} />
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-accent-soft text-accent transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
+              <Plus size={14} strokeWidth={2.4} />
             </span>
-            {def.newAction.label}
+            <span className="flex-1 text-left">{def.newAction.label}</span>
+            <span className="text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100">{MOD}N</span>
           </button>
         </div>
       )}
 
       <div
-        className="min-h-0 flex-1 overflow-y-auto px-2 pt-3 pb-2"
+        className="min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-2"
         onClickCapture={() => settingsOpen && openSettings(false)}
       >
         {SidebarContent ? <SidebarContent /> : null}
@@ -112,7 +111,7 @@ export function Sidebar(): React.JSX.Element {
           <span className="truncate font-display text-[13px] font-semibold tracking-tight">{APP_NAME}</span>
           <span className="truncate text-[10.5px] text-subtle">{STATUS_LABEL[serverState] ?? serverState}</span>
         </span>
-        <IconButton label="Ajustes (⌘,)" active={settingsOpen} onClick={() => openSettings(!settingsOpen)}>
+        <IconButton label={`Ajustes (${MOD},)`} active={settingsOpen} onClick={() => openSettings(!settingsOpen)}>
           <Settings size={16} className={`transition-transform duration-300 ${settingsOpen ? 'rotate-45' : ''}`} />
         </IconButton>
       </div>

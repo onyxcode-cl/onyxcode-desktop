@@ -5,6 +5,8 @@
  */
 import { appOpencodeConfigEnv } from '../extras/mcp-config'
 import { getOpencodeEnv } from '../cowork/opencode-config'
+import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
+import { embeddedBrowser } from '../embedded-browser/service'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
@@ -133,6 +135,13 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // Sin heredar los permisos TCC de la app (S6) y con entorno mínimo.
       const launch = withDisclaim(bin, serveArgs)
 
+      // Navegador integrado (Lote D, B.7): si el MCP no arranca, el sidecar arranca igual sin él
+      // (`configFor` nunca lanza: devuelve null en ese caso). `setApi` es idempotente (main.ts de
+      // D1 no tiene por qué conocer este módulo): cada punto que arranca un servidor de OpenCode
+      // se asegura de que el MCP del navegador conoce la implementación real.
+      embeddedBrowserMcp.setApi(embeddedBrowser)
+      const browserMcp = await embeddedBrowserMcp.configFor({ product: 'code', sandboxed: false, folder: null })
+
       const child = spawn(launch.command, launch.args, {
         cwd: this.options.chatDirectory,
         env: minimalEnv({
@@ -140,7 +149,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
           ...appOpencodeConfigEnv(),
           OPENCODE_SERVER_USERNAME: username,
           OPENCODE_SERVER_PASSWORD: password,
-          OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig())
+          OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))
         }),
         stdio: ['ignore', 'pipe', 'pipe'],
         // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).

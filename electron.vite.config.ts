@@ -13,7 +13,10 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           // Servidor MCP de computer use: utilityProcess de main (HTTP en 127.0.0.1) → out/main/computer-mcp.js
-          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts')
+          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts'),
+          // Pasarela del navegador propio (Lote C, la crea C4): proceso `local` lanzado por OpenCode
+          // (node/bun), nunca por Electron → out/main/browser-mcp.js
+          'browser-mcp': resolve(__dirname, 'src/main/browser/gateway.ts')
         }
       }
     }
@@ -28,7 +31,10 @@ export default defineConfig({
           index: resolve(__dirname, 'src/preload/index.ts'),
           quick: resolve(__dirname, 'src/preload/quick.ts'),
           overlay: resolve(__dirname, 'src/preload/overlay.ts'),
-          pill: resolve(__dirname, 'src/preload/pill.ts')
+          pill: resolve(__dirname, 'src/preload/pill.ts'),
+          assist: resolve(__dirname, 'src/preload/assist.ts'),
+          // Ventana «Navegador» aparte (Lote D): preload autocontenido, ver browser-host.ts.
+          'browser-host': resolve(__dirname, 'src/preload/browser-host.ts')
         }
       }
     }
@@ -50,7 +56,11 @@ export default defineConfig({
           quick: resolve(__dirname, 'src/renderer/quick/index.html'),
           // Overlay de control del Mac (borde/ondas a pantalla completa) y píldora con "Detener"
           overlay: resolve(__dirname, 'src/renderer/overlay/index.html'),
-          'overlay-pill': resolve(__dirname, 'src/renderer/overlay/pill.html')
+          'overlay-pill': resolve(__dirname, 'src/renderer/overlay/pill.html'),
+          // Ventana "assist": globo de Teach mode y píldora de grabar una skill
+          'overlay-assist': resolve(__dirname, 'src/renderer/overlay/assist.html'),
+          // Navegador integrado (Lote D): panel dentro de Code/Cowork y ventana aparte (lo crea D3/D4).
+          browser: resolve(__dirname, 'src/renderer/browser/index.html')
         }
       }
     }

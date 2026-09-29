@@ -158,3 +158,77 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
   void win.loadURL(`${SCHEME}://${id}`)
   return win
 }
+
+/** Tiempo máximo para cargar y maquetar el HTML antes de abandonar la conversión a PDF. */
+const PDF_TIMEOUT_MS = 30_000
+
+/**
+ * Renderiza `html` a PDF con una ventana OCULTA que usa la MISMA sesión que los artifacts:
+ * partición propia en memoria, esquema propio con CSP estricta (+ <meta>), sin red (webRequest
+ * cancela http(s)/ws/file/ftp), permisos denegados y navegación bloqueada. Nada remoto se carga:
+ * un `<img src="http://…">` queda roto en el PDF. Devuelve los bytes del PDF (A4, con fondos).
+ */
+export async function renderHtmlToPdf(html: string, title = 'Documento'): Promise<Buffer> {
+  const source = String(html ?? '')
+  if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
+  const id = randomUUID()
+  artifacts.set(id, { title, html: source })
+
+  const win = new BrowserWindow({
+    width: 1024,
+    height: 768,
+    show: false,
+    frame: false,
+    skipTaskbar: true,
+    focusable: false,
+    backgroundColor: '#ffffff',
+    webPreferences: {
+      session: artifactSession(),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      nodeIntegrationInSubFrames: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      spellcheck: false,
+      devTools: false
+    }
+  })
+  extrasWindows.add(win)
+  const wc = win.webContents
+  wc.setWindowOpenHandler(() => ({ action: 'deny' }))
+  wc.on('will-navigate', (event) => event.preventDefault())
+  wc.on('will-redirect', (event) => event.preventDefault())
+  wc.on('will-attach-webview', (event) => event.preventDefault())
+
+  let timer: NodeJS.Timeout | undefined
+  try {
+    const loaded = new Promise<void>((resolve, reject) => {
+      wc.once('did-finish-load', () => resolve())
+      wc.once('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
+        if (isMainFrame) reject(new Error(`No se pudo cargar el HTML (${desc || code}).`))
+      })
+      wc.once('render-process-gone', () => reject(new Error('El proceso de renderizado se cerró.')))
+    })
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('La conversión a PDF tardó demasiado.')), PDF_TIMEOUT_MS)
+    })
+    void win.loadURL(`${SCHEME}://${id}`).catch(() => undefined) // el fallo se informa por did-fail-load
+    await Promise.race([loaded, timeout])
+    // Deja que terminen de decodificarse las imágenes data: y las fuentes antes de imprimir.
+    await Promise.race([
+      wc.executeJavaScript('document.fonts ? document.fonts.ready.then(() => true) : true', true).catch(() => true),
+      new Promise((resolve) => setTimeout(resolve, 3000))
+    ])
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    return await Promise.race([
+      wc.printToPDF({ printBackground: true, pageSize: 'A4', preferCSSPageSize: true }),
+      timeout
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+    artifacts.delete(id)
+    if (!win.isDestroyed()) win.destroy()
+  }
+}

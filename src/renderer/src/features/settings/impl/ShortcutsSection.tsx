@@ -23,6 +23,16 @@ const KEY_LABEL: Record<string, string> = {
   Tab: '⇥'
 }
 
+/** Atajos de la ventana principal (los gestiona `app/App.tsx`). */
+const APP_SHORTCUTS: [label: string, accelerator: string][] = [
+  ['Paleta de comandos', 'CommandOrControl+K'],
+  ['Paleta de comandos (también en Code)', 'CommandOrControl+Shift+P'],
+  ['Nueva conversación / sesión / tarea', 'CommandOrControl+N'],
+  ['Cambiar de modo', 'Control+Tab'],
+  ['Ajustes', 'CommandOrControl+,'],
+  ['Mostrar u ocultar la barra lateral', 'CommandOrControl+\\']
+]
+
 /** Convierte un acelerador de Electron a teclas legibles. */
 export function acceleratorParts(acc: string): string[] {
   if (!acc) return []
@@ -182,6 +192,15 @@ export function ShortcutsSection(): React.JSX.Element {
           <ErrorText>{shortcutError ?? error}</ErrorText>
         </div>
       )}
+
+      <SubTitle>En la aplicación</SubTitle>
+      <Card>
+        {APP_SHORTCUTS.map(([label, accelerator]) => (
+          <Row key={label} label={label}>
+            <Keys accelerator={accelerator} />
+          </Row>
+        ))}
+      </Card>
 
       <SubTitle>En Quick Entry</SubTitle>
       <Card>
