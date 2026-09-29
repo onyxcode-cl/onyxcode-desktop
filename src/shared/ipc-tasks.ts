@@ -1,5 +1,5 @@
 /**
- * Contrato IPC tipado de Cowork + Rutinas (tareas programadas).
+ * Contrato IPC tipado de Tareas + Rutinas (tareas programadas).
  *
  * Expuesto en el renderer como `window.api.tasks` (ver src/preload/tasks-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
@@ -7,13 +7,13 @@
 import type { IpcResult } from './ipc'
 import type { ModelRef } from './types'
 
-// ───────────────────────────── Cowork ─────────────────────────────
+// ───────────────────────────── Tareas ─────────────────────────────
 
 /** Prefijo del error de `tasks:start {fullAccess:true}` sin `tasks:grantFullAccess` previo. */
 export const FULL_ACCESS_NOT_GRANTED = 'FULL_ACCESS_NOT_GRANTED'
 
-/** Carpeta autorizada por el usuario para Cowork. */
-export interface CoworkFolder {
+/** Carpeta autorizada por el usuario para Tareas. */
+export interface TasksFolder {
   path: string
   name: string
   approvedAt: number
@@ -22,12 +22,12 @@ export interface CoworkFolder {
   fullAccess?: boolean
 }
 
-export type CoworkServerState = 'starting' | 'ready' | 'stopped' | 'error'
+export type TasksServerState = 'starting' | 'ready' | 'stopped' | 'error'
 
 /** Estado del `opencode serve` dedicado (y sandboxeado) de una carpeta. */
-export interface CoworkServerInfo {
+export interface TasksServerInfo {
   folder: string
-  state: CoworkServerState
+  state: TasksServerState
   sandboxed: boolean
   /** Servidor de acceso completo (sin sandbox + control del computador). */
   fullAccess?: boolean
@@ -36,7 +36,7 @@ export interface CoworkServerInfo {
 }
 
 /** Datos para que el renderer cree un cliente SDK contra el servidor de la carpeta. */
-export interface CoworkConnection {
+export interface TasksConnection {
   folder: string
   baseUrl: string
   /** Valor completo del header Authorization (Basic …). */
@@ -214,7 +214,7 @@ export type ComputerOverlayMessage =
   | { type: 'waitingCleared' }
 
 /** Archivo de la carpeta creado/modificado durante una tarea. */
-export interface CoworkDeliverable {
+export interface TasksDeliverable {
   path: string
   relPath: string
   size: number
@@ -224,7 +224,7 @@ export interface CoworkDeliverable {
 }
 
 /** Vista previa de un archivo de la carpeta (entregables). */
-export interface CoworkFilePreview {
+export interface TasksFilePreview {
   path: string
   size: number
   /** text = contenido UTF-8 (md, csv, txt…); image = data URL; unsupported = sin vista previa. */
@@ -237,8 +237,8 @@ export interface CoworkFilePreview {
 
 // ───────────────────────────── Proyecto (por carpeta) y memoria ─────────────────────────────
 
-/** "Proyecto" de Cowork: nombre + instrucciones propias de la carpeta. */
-export interface CoworkProject {
+/** "Proyecto" de Tareas: nombre + instrucciones propias de la carpeta. */
+export interface TasksProject {
   folder: string
   name: string
   instructions: string
@@ -251,18 +251,18 @@ export interface CoworkProject {
 }
 
 /** Contenido de `.onyxcode/memoria.md` dentro de la carpeta (notas que el agente guarda entre tareas). */
-export interface CoworkMemory {
+export interface TasksMemory {
   content: string
   exists: boolean
   updatedAt: number | null
 }
 
-// ───────────────────────────── Red de Cowork (egress) ─────────────────────────────
+// ───────────────────────────── Red de Tareas (egress) ─────────────────────────────
 
 /** Interruptores de la lista blanca por defecto (npm, PyPI y búsqueda web del agente). */
 export type NetworkToggleKey = 'npmEnabled' | 'pypiEnabled' | 'webSearchEnabled'
 
-/** Estado de la lista blanca de red de los servidores Cowork sandboxeados. */
+/** Estado de la lista blanca de red de los servidores Tareas sandboxeados. */
 export interface NetworkPolicyState {
   /** Host del proveedor de modelos: siempre permitido, no editable. */
   providerHost: string
@@ -330,7 +330,7 @@ export interface RoutineRunRecord {
   startedAt: number
   finishedAt?: number
   sessionId?: string
-  /** Directorio de la sesión OpenCode (para abrirla desde Chat/Code/Cowork). */
+  /** Directorio de la sesión OpenCode (para abrirla desde Chat/Code/Tareas). */
   directory?: string
   /** Resumen (texto final del asistente, truncado). */
   summary?: string
@@ -350,7 +350,7 @@ export interface ScheduledRoutine {
   name: string
   prompt: string
   mode: RoutineMode
-  /** Obligatorio para `cowork` y `code`. */
+  /** Obligatorio para `tasks` y `code`. */
   folder?: string | null
   model: ModelRef
   schedule: RoutineSchedule
@@ -363,7 +363,7 @@ export interface ScheduledRoutine {
   nextRun?: number | null
   /** Calculado por main: true si hay una ejecución en curso. */
   running?: boolean
-  /** Id de la tarea de Cowork/Code desde la que se creó ("Programar esta tarea"), si aplica. */
+  /** Id de la tarea de Tareas/Code desde la que se creó ("Programar esta tarea"), si aplica. */
   originSessionId?: string | null
   /** Empezar de cero en cada ejecución (por defecto) o continuar la misma tarea. */
   sessionMode?: RoutineSessionMode
@@ -373,7 +373,7 @@ export interface ScheduledRoutine {
   allow?: RoutineAllowRule[]
   /** Sitios extra permitidos solo mientras dura la ejecución. */
   allowHosts?: string[]
-  /** La rutina se ejecuta en Control total del Mac (solo modo cowork). */
+  /** La rutina se ejecuta en Control total del Mac (solo modo tasks). */
   fullAccess?: boolean
   /** Momento del consentimiento explícito del usuario para Control total (epoch ms). */
   fullAccessConsentAt?: number | null
@@ -419,7 +419,7 @@ export type FolderAccessMode = 'rw' | 'ro'
 /** Etiquetas en español de cada modo de acceso. */
 export const FOLDER_MODE_LABEL_ES: Record<FolderAccessMode, string> = { rw: 'Lectura y escritura', ro: 'Solo lectura' }
 
-/** Carpeta adicional vinculada a un espacio de Cowork (servidor de la carpeta principal). */
+/** Carpeta adicional vinculada a un espacio de Tareas (servidor de la carpeta principal). */
 export interface LinkedFolder {
   path: string
   name: string
@@ -435,8 +435,8 @@ export interface TrustedFolder {
   addedAt: number
 }
 
-/** Conjunto de carpetas de un espacio de Cowork. */
-export interface CoworkFolderSet {
+/** Conjunto de carpetas de un espacio de Tareas. */
+export interface TasksFolderSet {
   primary: string
   /** Vinculadas a este espacio (servidor de `primary`). */
   linked: LinkedFolder[]
@@ -455,7 +455,7 @@ export interface FolderCheck {
 }
 
 /** Contenido de `AGENTS.md` en la raíz de la carpeta. */
-export interface CoworkAgentsMd {
+export interface TasksAgentsMd {
   path: string
   content: string
   exists: boolean
@@ -463,8 +463,8 @@ export interface CoworkAgentsMd {
 
 // ───────────────────────────── Lote B: tareas y actividad ─────────────────────────────
 
-/** Metadatos de una tarea de Cowork que main persiste (fijada, grupo, título). */
-export interface CoworkTaskMeta {
+/** Metadatos de una tarea de Tareas que main persiste (fijada, grupo, título). */
+export interface TasksTaskMeta {
   sessionId: string
   folder: string
   fullAccess: boolean
@@ -474,47 +474,47 @@ export interface CoworkTaskMeta {
   updatedAt: number
 }
 
-export type CoworkTaskActivityState = 'running' | 'waiting' | 'question'
+export type TasksTaskActivityState = 'running' | 'waiting' | 'question'
 
 /** Tarea raíz en curso o pendiente de respuesta, en cualquier carpeta. */
-export interface CoworkTaskActivity {
+export interface TasksTaskActivity {
   sessionId: string
   folder: string
   fullAccess: boolean
   title: string
-  state: CoworkTaskActivityState
+  state: TasksTaskActivityState
   since: number
 }
 
 /** Instantánea del monitor de main: tareas activas y servidores vivos. */
-export interface CoworkActivitySnapshot {
+export interface TasksActivitySnapshot {
   at: number
   /** Solo tareas raíz (las hijas se agregan a su raíz). */
-  tasks: CoworkTaskActivity[]
+  tasks: TasksTaskActivity[]
   servers: Array<{ folder: string; fullAccess: boolean; idleSince: number | null }>
 }
 
 // ───────────────────────────── Lote B: preferencias ─────────────────────────────
 
 /** Qué eventos de tareas en segundo plano generan notificación. */
-export interface CoworkNotifyPrefs {
+export interface TasksNotifyPrefs {
   done: boolean
   approval: boolean
   question: boolean
   error: boolean
 }
 
-export interface CoworkPrefs {
+export interface TasksPrefs {
   /** Días sin actividad para archivar tareas (0 = nunca). */
   autoArchiveDays: number
   /** Minutos sin tareas para detener un servidor (0 = nunca). */
   idleStopMinutes: number
-  /** Máximo de servidores Cowork vivos a la vez. */
+  /** Máximo de servidores Tareas vivos a la vez. */
   maxServers: number
-  notify: CoworkNotifyPrefs
+  notify: TasksNotifyPrefs
 }
 
-export const DEFAULT_COWORK_PREFS: CoworkPrefs = {
+export const DEFAULT_TASKS_PREFS: TasksPrefs = {
   autoArchiveDays: 0,
   idleStopMinutes: 15,
   maxServers: 4,
@@ -523,10 +523,10 @@ export const DEFAULT_COWORK_PREFS: CoworkPrefs = {
 
 // ───────────────────────────── Lote B: almacenamiento ─────────────────────────────
 
-export interface CoworkStorageEntry {
+export interface TasksStorageEntry {
   /** Clave del directorio `tasks-sandbox/<key>`. */
   key: string
-  /** Carpeta de Cowork asociada (null si ya no se conoce). */
+  /** Carpeta de Tareas asociada (null si ya no se conoce). */
   folder: string | null
   bytes: number
   cacheBytes: number
@@ -534,8 +534,8 @@ export interface CoworkStorageEntry {
   running: boolean
 }
 
-export interface CoworkStorageReport {
-  entries: CoworkStorageEntry[]
+export interface TasksStorageReport {
+  entries: TasksStorageEntry[]
   screenshotsBytes: number
   totalBytes: number
   at: number
@@ -544,7 +544,7 @@ export interface CoworkStorageReport {
 // ───────────────────────────── Lote B: permisos recordados, MCP y política ─────────────────────────────
 
 /** Permiso "siempre permitir" recordado para una carpeta. */
-export interface CoworkPermissionRule {
+export interface TasksPermissionRule {
   id: string
   folder: string
   permission: string
@@ -552,16 +552,16 @@ export interface CoworkPermissionRule {
   createdAt: number
 }
 
-/** Servidor MCP del usuario y cómo se expone en Cowork. */
-export interface CoworkMcpInfo {
+/** Servidor MCP del usuario y cómo se expone en Tareas. */
+export interface TasksMcpInfo {
   name: string
   type: 'local' | 'remote'
   enabled: boolean
-  /** Disponible en Cowork. */
+  /** Disponible en Tareas. */
   tasks: boolean
   /** Preguntar en cada uso de sus herramientas. */
   askEachTool: boolean
-  /** Hosts remotos que se suman a la red de Cowork. */
+  /** Hosts remotos que se suman a la red de Tareas. */
   hosts: string[]
   /** Usa OAuth: no disponible en el sandbox. */
   oauth: boolean
@@ -703,23 +703,23 @@ export interface BrowserSite {
 
 // ───────────────────────────── Contrato ─────────────────────────────
 
-export interface CoworkInvokeContract {
+export interface TasksInvokeContract {
   'tasks:pickFolder': { req: void; res: string | null }
-  'tasks:listFolders': { req: void; res: CoworkFolder[] }
+  'tasks:listFolders': { req: void; res: TasksFolder[] }
   /** Autoriza una carpeta (tras confirmar en la UI). Rechaza carpetas peligrosas (/, ~, /System…). */
-  'tasks:approveFolder': { req: { folder: string }; res: CoworkFolder }
+  'tasks:approveFolder': { req: { folder: string }; res: TasksFolder }
   'tasks:removeFolder': { req: { folder: string }; res: void }
   /**
    * Arranca (o reutiliza) el servidor de una carpeta autorizada. Por defecto sandboxeado;
    * `fullAccess: true` ⇒ servidor aparte SIN sandbox, con el agente `computer` y el MCP de control del Mac.
    */
-  'tasks:start': { req: { folder: string; fullAccess?: boolean }; res: CoworkConnection }
+  'tasks:start': { req: { folder: string; fullAccess?: boolean }; res: TasksConnection }
   /** Registra en main el consentimiento de acceso total (requerido por `tasks:start {fullAccess}`). */
   'tasks:grantFullAccess': { req: { folder: string }; res: void }
   /** Retira el consentimiento de acceso total y detiene ese servidor. */
   'tasks:revokeFullAccess': { req: { folder: string }; res: void }
   /** Archivos modificados en la carpeta desde `since` (epoch ms). */
-  'tasks:deliverables': { req: { folder: string; since: number }; res: CoworkDeliverable[] }
+  'tasks:deliverables': { req: { folder: string; since: number }; res: TasksDeliverable[] }
   /** Muestra el archivo/carpeta en Finder. */
   'tasks:reveal': { req: { path: string }; res: void }
   /**
@@ -731,22 +731,22 @@ export interface CoworkInvokeContract {
    * Abre un diálogo nativo para elegir archivos y los COPIA a la carpeta autorizada
    * (sin sobrescribir: añade " (2)"…). Devuelve los archivos copiados ([] si se cancela).
    */
-  'tasks:importFiles': { req: { folder: string }; res: CoworkDeliverable[] }
+  'tasks:importFiles': { req: { folder: string }; res: TasksDeliverable[] }
   /** Lee un archivo de una carpeta autorizada para previsualizarlo (texto recortado / imagen). */
-  'tasks:previewFile': { req: { path: string; maxBytes?: number }; res: CoworkFilePreview }
+  'tasks:previewFile': { req: { path: string; maxBytes?: number }; res: TasksFilePreview }
 
   /** Proyecto (nombre + instrucciones) de una carpeta autorizada. */
-  'tasks:project:get': { req: { folder: string }; res: CoworkProject }
+  'tasks:project:get': { req: { folder: string }; res: TasksProject }
   'tasks:project:save': {
     req: { folder: string; name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }
-    res: CoworkProject
+    res: TasksProject
   }
   /** Memoria del proyecto: `.onyxcode/memoria.md` dentro de la carpeta. */
-  'tasks:memory:get': { req: { folder: string }; res: CoworkMemory }
-  'tasks:memory:save': { req: { folder: string; content: string }; res: CoworkMemory }
-  'tasks:memory:delete': { req: { folder: string }; res: CoworkMemory }
+  'tasks:memory:get': { req: { folder: string }; res: TasksMemory }
+  'tasks:memory:save': { req: { folder: string; content: string }; res: TasksMemory }
+  'tasks:memory:delete': { req: { folder: string }; res: TasksMemory }
 
-  /** Lista blanca de red efectiva para los servidores Cowork sandboxeados (egress proxy). */
+  /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }
   /** Interruptores "PyPI"/"npm"/"búsqueda web" de la lista blanca por defecto. */
   'tasks:network:setToggle': { req: { key: NetworkToggleKey; value: boolean }; res: NetworkPolicyState }
@@ -838,23 +838,23 @@ export interface CoworkInvokeContract {
   'tasks:keepAwakeSetting': { req: { enabled: boolean }; res: KeepAwakeState }
   /**
    * El renderer avisa si hay o no tareas en curso (running/waiting) en cualquier carpeta de
-   * Cowork; main activa/desactiva el `powerSaveBlocker` según el ajuste.
+   * Tareas; main activa/desactiva el `powerSaveBlocker` según el ajuste.
    */
   'tasks:keepAwakeActive': { req: { active: boolean }; res: KeepAwakeState }
 
   // ── Lote B: carpetas ──
   /** Conjunto de carpetas (principal, vinculadas y de confianza) de un espacio. */
-  'tasks:folders:get': { req: { folder: string }; res: CoworkFolderSet }
+  'tasks:folders:get': { req: { folder: string }; res: TasksFolderSet }
   /** Comprueba si una carpeta se puede autorizar/vincular (con motivo accionable si no). */
   'tasks:folders:check': { req: { path: string }; res: FolderCheck }
   /** Vincula una carpeta adicional; `restart` (por defecto true) reinicia el sandbox solo si está en marcha. */
   'tasks:folders:link': {
     req: { folder: string; path: string; mode: FolderAccessMode; trust?: boolean; restart?: boolean }
-    res: CoworkFolderSet & { restarted: boolean }
+    res: TasksFolderSet & { restarted: boolean }
   }
   'tasks:folders:unlink': {
     req: { folder: string; path: string; restart?: boolean }
-    res: CoworkFolderSet & { restarted: boolean }
+    res: TasksFolderSet & { restarted: boolean }
   }
   'tasks:trusted:list': { req: void; res: TrustedFolder[] }
   'tasks:trusted:set': { req: { path: string; mode: FolderAccessMode }; res: TrustedFolder[] }
@@ -864,33 +864,33 @@ export interface CoworkInvokeContract {
 
   // ── Lote B: actividad, tareas, preferencias y almacenamiento ──
   /** Instantánea actual de tareas activas y servidores (también llega por el evento `tasks:activity`). */
-  'tasks:activity': { req: void; res: CoworkActivitySnapshot }
+  'tasks:activity': { req: void; res: TasksActivitySnapshot }
   /** El renderer avisa qué servidor está mirando (para no notificar lo que el usuario ya ve). */
   'tasks:viewing': { req: { folder: string | null; fullAccess?: boolean }; res: void }
-  'tasks:tasks:list': { req: void; res: CoworkTaskMeta[] }
+  'tasks:tasks:list': { req: void; res: TasksTaskMeta[] }
   'tasks:tasks:setMeta': {
     req: { sessionId: string; folder: string; fullAccess: boolean; title?: string; pinned?: boolean; group?: string | null }
-    res: CoworkTaskMeta
+    res: TasksTaskMeta
   }
   'tasks:tasks:forget': { req: { sessionId: string }; res: void }
-  'tasks:prefs:get': { req: void; res: CoworkPrefs }
+  'tasks:prefs:get': { req: void; res: TasksPrefs }
   'tasks:prefs:set': {
-    req: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<CoworkNotifyPrefs> }
-    res: CoworkPrefs
+    req: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<TasksNotifyPrefs> }
+    res: TasksPrefs
   }
-  'tasks:storage:report': { req: void; res: CoworkStorageReport }
+  'tasks:storage:report': { req: void; res: TasksStorageReport }
   /** Limpia la caché (`cache`) o todo el directorio, incluido el historial (`all`), de un servidor parado. */
-  'tasks:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: CoworkStorageReport }
-  'tasks:storage:cleanScreenshots': { req: void; res: CoworkStorageReport }
+  'tasks:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: TasksStorageReport }
+  'tasks:storage:cleanScreenshots': { req: void; res: TasksStorageReport }
 
   // ── Lote B: proyecto, MCP y permisos recordados ──
-  'tasks:agentsMd:get': { req: { folder: string }; res: CoworkAgentsMd }
-  'tasks:agentsMd:save': { req: { folder: string; content: string }; res: CoworkAgentsMd }
-  'tasks:mcp:list': { req: void; res: CoworkMcpInfo[] }
-  'tasks:mcp:set': { req: { name: string; tasks?: boolean; askEachTool?: boolean }; res: CoworkMcpInfo[] }
-  'tasks:rules:list': { req: { folder?: string }; res: CoworkPermissionRule[] }
-  'tasks:rules:add': { req: { folder: string; permission: string; patterns: string[] }; res: CoworkPermissionRule[] }
-  'tasks:rules:remove': { req: { id: string }; res: CoworkPermissionRule[] }
+  'tasks:agentsMd:get': { req: { folder: string }; res: TasksAgentsMd }
+  'tasks:agentsMd:save': { req: { folder: string; content: string }; res: TasksAgentsMd }
+  'tasks:mcp:list': { req: void; res: TasksMcpInfo[] }
+  'tasks:mcp:set': { req: { name: string; tasks?: boolean; askEachTool?: boolean }; res: TasksMcpInfo[] }
+  'tasks:rules:list': { req: { folder?: string }; res: TasksPermissionRule[] }
+  'tasks:rules:add': { req: { folder: string; permission: string; patterns: string[] }; res: TasksPermissionRule[] }
+  'tasks:rules:remove': { req: { id: string }; res: TasksPermissionRule[] }
 
   // ── Lote B: archivos ──
   /** Comprime archivos en un zip (diálogo de guardado). Devuelve la ruta o null si se cancela. */
@@ -900,7 +900,7 @@ export interface CoworkInvokeContract {
   /** Guarda una transcripción en Markdown (diálogo de guardado). Devuelve la ruta o null si se cancela. */
   'tasks:exportMarkdown': { req: { suggestedName: string; content: string }; res: string | null }
   /** Convierte un `.html`/`.htm` entregable a PDF (sin red) y devuelve el nuevo entregable. */
-  'tasks:htmlToPdf': { req: { path: string }; res: CoworkDeliverable }
+  'tasks:htmlToPdf': { req: { path: string }; res: TasksDeliverable }
 
   // ── Lote C: preferencias de computer use ──
   'computer:prefs:get': { req: void; res: ComputerPrefs }
@@ -933,8 +933,8 @@ export interface CoworkInvokeContract {
   'tasks:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean } }
 }
 
-export interface CoworkEventContract {
-  'tasks:server': CoworkServerInfo
+export interface TasksEventContract {
+  'tasks:server': TasksServerInfo
   'routines:changed': ScheduledRoutine[]
   'routines:run': RoutineRunRecord
   'computer:action': ComputerActionEvent
@@ -953,7 +953,7 @@ export interface CoworkEventContract {
   /** El proxy de egress de un servidor sandboxeado bloqueó una conexión (host fuera de lista blanca). */
   'tasks:networkBlocked': NetworkBlockedEvent
   /** Lote B: instantánea de actividad (tareas activas y servidores) del monitor de main. */
-  'tasks:activity': CoworkActivitySnapshot
+  'tasks:activity': TasksActivitySnapshot
 
   // ── Lote C ──
   /** Solo para la ventana `assist` (Teach mode y píldora de grabación). */
@@ -963,12 +963,12 @@ export interface CoworkEventContract {
   'tasks:auto:approved': AutoApprovalRecord
 }
 
-export type CoworkInvokeChannel = keyof CoworkInvokeContract
-export type CoworkEventChannel = keyof CoworkEventContract
-export type CoworkRequest<C extends CoworkInvokeChannel> = CoworkInvokeContract[C]['req']
-export type CoworkResponse<C extends CoworkInvokeChannel> = CoworkInvokeContract[C]['res']
+export type TasksInvokeChannel = keyof TasksInvokeContract
+export type TasksEventChannel = keyof TasksEventContract
+export type TasksRequest<C extends TasksInvokeChannel> = TasksInvokeContract[C]['req']
+export type TasksResponse<C extends TasksInvokeChannel> = TasksInvokeContract[C]['res']
 
-export const COWORK_INVOKE_CHANNELS = [
+export const TASKS_INVOKE_CHANNELS = [
   'tasks:pickFolder',
   'tasks:listFolders',
   'tasks:approveFolder',
@@ -1057,9 +1057,9 @@ export const COWORK_INVOKE_CHANNELS = [
   'tasks:auto:revoke',
   'tasks:auto:clearLog',
   'tasks:auto:consider'
-] as const satisfies readonly CoworkInvokeChannel[]
+] as const satisfies readonly TasksInvokeChannel[]
 
-export const COWORK_EVENT_CHANNELS = [
+export const TASKS_EVENT_CHANNELS = [
   'tasks:server',
   'routines:changed',
   'routines:run',
@@ -1075,21 +1075,21 @@ export const COWORK_EVENT_CHANNELS = [
   'computer:assist',
   'computer:recordDone',
   'tasks:auto:approved'
-] as const satisfies readonly CoworkEventChannel[]
+] as const satisfies readonly TasksEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
-const _inv: Missing<CoworkInvokeChannel, (typeof COWORK_INVOKE_CHANNELS)[number]> extends never ? true : never = true
-const _evt: Missing<CoworkEventChannel, (typeof COWORK_EVENT_CHANNELS)[number]> extends never ? true : never = true
+const _inv: Missing<TasksInvokeChannel, (typeof TASKS_INVOKE_CHANNELS)[number]> extends never ? true : never = true
+const _evt: Missing<TasksEventChannel, (typeof TASKS_EVENT_CHANNELS)[number]> extends never ? true : never = true
 void _inv
 void _evt
 
 /** API expuesta en `window.api.tasks`. */
-export interface CoworkApi {
-  invoke<C extends CoworkInvokeChannel>(
+export interface TasksApi {
+  invoke<C extends TasksInvokeChannel>(
     channel: C,
-    ...args: CoworkRequest<C> extends void ? [] : [req: CoworkRequest<C>]
-  ): Promise<IpcResult<CoworkResponse<C>>>
-  on<C extends CoworkEventChannel>(channel: C, listener: (payload: CoworkEventContract[C]) => void): () => void
+    ...args: TasksRequest<C> extends void ? [] : [req: TasksRequest<C>]
+  ): Promise<IpcResult<TasksResponse<C>>>
+  on<C extends TasksEventChannel>(channel: C, listener: (payload: TasksEventContract[C]) => void): () => void
 }
 
 export const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'] as const

@@ -1,5 +1,5 @@
 /**
- * Prompt de sistema extra de Cowork (módulo PURO: sin imports de Electron ni de Node; lo usan
+ * Prompt de sistema extra de Tareas (módulo PURO: sin imports de Electron ni de Node; lo usan
  * tanto main —rutinas— como el renderer —tareas interactivas—).
  *
  * Combina, en este orden y separadas por `\n\n---\n\n`: instrucciones generales, instrucciones del
@@ -9,7 +9,7 @@
 import type { FolderAccessMode } from './ipc-tasks'
 
 /** Máximo de caracteres de las instrucciones (globales y de proyecto). */
-export const COWORK_INSTRUCTIONS_MAX = 20_000
+export const TASKS_INSTRUCTIONS_MAX = 20_000
 
 /** Separador entre secciones del prompt. */
 const SECTION_SEPARATOR = '\n\n---\n\n'
@@ -19,8 +19,8 @@ const UNATTENDED_TEXT =
   'Esta es una ejecución PROGRAMADA y desatendida: nadie puede responder preguntas ni aprobar permisos. ' +
   'Completa la tarea con supuestos razonables y termina con un resumen breve del resultado.'
 
-export interface CoworkPromptInput {
-  /** Instrucciones generales de Cowork (Ajustes), válidas para todas las tareas. */
+export interface TasksPromptInput {
+  /** Instrucciones generales de Tareas (Ajustes), válidas para todas las tareas. */
   globalInstructions?: string | null
   /** Proyecto de la carpeta. `memoryEnabled === false` desactiva la memoria. */
   project?: { name: string; instructions?: string; links?: string[]; memoryEnabled?: boolean } | null
@@ -38,10 +38,10 @@ function clean(text: string | null | undefined): string {
 }
 
 /**
- * Construye el `system` extra del prompt de una tarea de Cowork.
+ * Construye el `system` extra del prompt de una tarea de Tareas.
  * Devuelve `undefined` si no hay nada que añadir.
  */
-export function buildCoworkSystemPrompt(i: CoworkPromptInput): string | undefined {
+export function buildTasksSystemPrompt(i: TasksPromptInput): string | undefined {
   const parts: string[] = []
 
   const globalInstructions = clean(i.globalInstructions)

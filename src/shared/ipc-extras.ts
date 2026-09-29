@@ -17,7 +17,7 @@ export interface ExtrasPrefs {
   modelsByMode: Partial<Record<ModelMode, ModelRef>>
   /** Mostrar icono en la barra de menús. */
   showTray: boolean
-  /** Notificaciones nativas (Code/Cowork: sesión terminó o pide algo). */
+  /** Notificaciones nativas (Code/Tareas: sesión terminó o pide algo). */
   notificationsEnabled: boolean
   /** Sonido de las notificaciones (`Notification.silent` invertido). */
   soundEnabled: boolean

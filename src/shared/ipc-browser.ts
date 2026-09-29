@@ -7,7 +7,7 @@ import type { BrowserSite } from './ipc-tasks'
 
 export type BrowserProduct = 'code' | 'tasks'
 
-/** Dueño de una superficie de navegador: una tarea de Code (carpeta) o de Cowork (carpeta). */
+/** Dueño de una superficie de navegador: una tarea de Code (carpeta) o de Tareas (carpeta). */
 export type BrowserOwner = { kind: 'code'; directory: string } | { kind: 'tasks'; folder: string }
 
 export interface BrowserRect {

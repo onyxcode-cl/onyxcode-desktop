@@ -1,10 +1,10 @@
 /**
- * Glosario de Cowork (módulo PURO): términos únicos de la interfaz, para que main y renderer
+ * Glosario de Tareas (módulo PURO): términos únicos de la interfaz, para que main y renderer
  * usen siempre las mismas palabras.
  *
  * Prohibido en la interfaz: "Acceso total", "acceso completo" y "Carpetas autorizadas".
  */
-export const COWORK_TERMS = {
+export const TASKS_TERMS = {
   sandbox: 'Sandbox',
   fullControl: 'Control total del Mac',
   fullControlShort: 'Control total',

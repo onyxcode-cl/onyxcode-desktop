@@ -3,7 +3,7 @@ import { IPC_EVENT_CHANNELS, IPC_INVOKE_CHANNELS, type IpcEventChannel, type Ipc
 import { makeBridge } from './bridge'
 import { buildBrowserApi } from './browser-api'
 import { buildCodeApi } from './code-api'
-import { buildCoworkApi } from './tasks-api'
+import { buildTasksApi } from './tasks-api'
 import { buildExtrasApi } from './extras-api'
 
 const bridge = makeBridge<IpcInvokeChannel, IpcEventChannel>(ipcRenderer, {
@@ -16,7 +16,7 @@ const api: WindowApi = {
   on: bridge.on as WindowApi['on'],
   platform: process.platform,
   code: buildCodeApi(ipcRenderer),
-  tasks: buildCoworkApi(ipcRenderer),
+  tasks: buildTasksApi(ipcRenderer),
   extras: buildExtrasApi(ipcRenderer),
   browser: buildBrowserApi(ipcRenderer)
 }

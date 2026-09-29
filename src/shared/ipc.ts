@@ -24,7 +24,7 @@ export interface IpcInvokeContract {
   'app:info': { req: void; res: AppInfo }
   'app:openExternal': { req: { url: string }; res: void }
   /**
-   * Notificación nativa desde main (Code/Cowork: sesión terminó o pide algo). `target`, si viene,
+   * Notificación nativa desde main (Code/Tareas: sesión terminó o pide algo). `target`, si viene,
    * es adónde llevar al usuario al hacer clic (evento `app:openTarget`).
    */
   'app:notify': { req: { title: string; body: string; target?: NotifyTarget }; res: void }
@@ -103,7 +103,7 @@ export interface WindowApi {
   on<C extends IpcEventChannel>(channel: C, listener: (payload: IpcEventContract[C]) => void): () => void
   platform: string
   code: import('./ipc-code').CodeApi
-  tasks: import('./ipc-tasks').CoworkApi
+  tasks: import('./ipc-tasks').TasksApi
   extras: import('./ipc-extras').ExtrasApi
   browser: import('./ipc-browser').BrowserApi
 }

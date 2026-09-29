@@ -13,7 +13,7 @@ export interface Settings {
   defaultModel: ModelRef
   theme: ThemePreference
   recentFolders: string[]
-  /** Instrucciones globales aplicadas a todas las tareas de Cowork (además de las del proyecto). */
+  /** Instrucciones globales aplicadas a todas las tareas de Tareas (además de las del proyecto). */
   tasksGlobalInstructions: string
   /** true cuando el asistente de primer uso terminó, se omitió o no hacía falta (todo ya funcionaba). */
   onboarded: boolean
@@ -88,10 +88,10 @@ type NotifyMode = 'code' | 'tasks'
 /** Dónde abrir al hacer clic en una notificación (o al restaurar desde el Dock). */
 export interface NotifyTarget {
   mode: NotifyMode
-  /** Id de la sesión (Code) o tarea (Cowork), siempre la sesión RAÍZ. */
+  /** Id de la sesión (Code) o tarea (Tareas), siempre la sesión RAÍZ. */
   id: string
-  /** Carpeta del proyecto (Code) o de Cowork; si falta, se asume la ya abierta. */
+  /** Carpeta del proyecto (Code) o de Tareas; si falta, se asume la ya abierta. */
   directory?: string
-  /** Cowork: la tarea vive en el servidor de Control total (no en el sandbox). */
+  /** Tareas: la tarea vive en el servidor de Control total (no en el sandbox). */
   fullAccess?: boolean
 }
