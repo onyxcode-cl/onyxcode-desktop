@@ -648,6 +648,9 @@ async function takeScreenshot(auto = false, session?: string): Promise<Shot> {
 
 /** Apps de sistema/la propia OnyxCode: nunca se excluyen de la captura aunque no tengan concesión. */
 const NEVER_EXCLUDE = new Set([
+  // Literal = APP_ID de src/shared/brand.ts. NO importarlo: este bundle (`computer-mcp`) debe quedar
+  // autónomo y importar brand crea un chunk compartido (`out/main/chunks/`) que el utilityProcess no
+  // espera. src/test/brand-consistency.test.ts comprueba que coincide.
   'cl.bentec.onyxcode',
   'com.github.Electron', // OnyxCode sin empaquetar (`npm run dev`)
   'com.apple.dock',

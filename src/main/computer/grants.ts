@@ -16,6 +16,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { AppGrant, AppTier, GrantsSnapshot } from '@shared/ipc-cowork'
+import { APP_ID } from '@shared/brand'
 
 export type { AppGrant, AppTier, GrantsSnapshot }
 
@@ -67,7 +68,7 @@ function matches(patterns: RegExp[], bundleId: string, name: string): boolean {
  * cuando la app corre sin empaquetar (`npm run dev`).
  */
 export const SYSTEM_EXEMPT_BUNDLE_IDS: ReadonlySet<string> = new Set([
-  'cl.bentec.onyxcode',
+  APP_ID,
   'com.github.Electron',
   'com.apple.dock',
   'com.apple.systemuiserver',

@@ -3,7 +3,20 @@
  * electron-builder.js). Todo el resto del código importa desde aquí.
  */
 export const APP_NAME = 'OnyxCode'
-export const APP_ID = 'cl.bentec.onyxcode'
+
+// TODO(alias): cambiar AUTHOR_ALIAS y los literales; ver docs (plan «Identidad»).
+// Punto de cambio ÚNICO de la identidad. Hoy los valores derivados son EXACTAMENTE los históricos
+// (cambiar el appId haría que macOS pidiera de nuevo Accesibilidad/Grabación de pantalla).
+// Literales que NO pueden importar esto y deben cambiarse a la vez (los comprueba
+// src/test/brand-consistency.test.ts): electron-builder.js, package.json `author`,
+// resources/computer-use/build.sh y resources/launcher/build.sh.
+export const AUTHOR_ALIAS = 'bentec'
+/** Identificador de bundle de la app. */
+export const APP_ID = `cl.${AUTHOR_ALIAS}.onyxcode`
+/** Firma del helper nativo de computer use. «opendesk» se mantiene para no cambiar la firma. */
+export const HELPER_ID = `cl.${AUTHOR_ALIAS}.opendesk.cu-helper`
+/** Firma del lanzador «disclaim». */
+export const DISCLAIM_ID = `${APP_ID}.disclaim`
 /** Slug en minúsculas, útil para usuarios/identificadores técnicos. */
 export const APP_SLUG = 'onyxcode'
 
