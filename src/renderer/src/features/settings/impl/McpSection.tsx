@@ -275,16 +275,16 @@ export function McpSection(): React.JSX.Element {
         mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.
       </p>
       <p className="mt-1 flex items-start gap-1.5 text-[11px] text-subtle">
-        <Info size={12} className="mt-0.5 shrink-0" /> «Disponible en Cowork» se aplica al abrir de nuevo la carpeta. En el sandbox los
-        servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los servidores remotos se añaden a la Red de
-        Cowork.
+        <Info size={12} className="mt-0.5 shrink-0" /> «Disponible en Tareas» se aplica al abrir de nuevo la carpeta. En el sandbox los
+        servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los servidores remotos se añaden a la Red del
+        sandbox.
       </p>
       {appCfg && <p className="mt-1 truncate font-mono text-[11px] text-subtle">{appCfg.path}</p>}
     </div>
   )
 }
 
-/** Interruptores de Cowork de un servidor de la app: disponibilidad y "Preguntar en cada uso". */
+/** Interruptores de Tareas de un servidor de la app: disponibilidad y "Preguntar en cada uso". */
 function CoworkFlags({
   info,
   disabled,
@@ -301,10 +301,10 @@ function CoworkFlags({
           <Toggle
             checked={info.cowork}
             disabled={disabled || !info.enabled}
-            label="Disponible en Cowork"
+            label="Disponible en Tareas"
             onChange={(v) => onChange({ cowork: v })}
           />
-          <span className="font-medium">Disponible en Cowork</span>
+          <span className="font-medium">Disponible en Tareas</span>
         </label>
         <label className="flex items-center gap-2 text-xs">
           <Toggle
@@ -324,7 +324,7 @@ function CoworkFlags({
       )}
       {info.cowork && info.hosts.length > 0 && (
         <p className="mt-1.5 text-[11px] text-subtle">
-          Sitio añadido a la Red de Cowork: <span className="font-mono">{info.hosts.join(', ')}</span>
+          Sitio añadido a la Red del sandbox: <span className="font-mono">{info.hosts.join(', ')}</span>
         </p>
       )}
     </div>

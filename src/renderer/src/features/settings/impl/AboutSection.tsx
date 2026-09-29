@@ -70,6 +70,7 @@ export function AboutSection(): React.JSX.Element {
         <Row label="Sistema">
           <span className="font-mono text-sm">{versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}</span>
         </Row>
+        <Row label="Proyecto independiente, no afiliado a OpenCode ni a Anthropic." />
       </Card>
 
       {info && (

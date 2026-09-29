@@ -1,6 +1,6 @@
 /**
  * Ajustes › Navegador: «Navegador integrado», una pestaña dentro de la propia ventana (Code) o
- * del `aside` de Cowork, sin depender de un Chrome externo. Apagado por defecto en los dos
+ * del `aside` de Tareas, sin depender de un Chrome externo. Apagado por defecto en los dos
  * productos (`browser:sites:*`, `main/embedded-browser/store.ts`).
  */
 import { useEffect, useState } from 'react'

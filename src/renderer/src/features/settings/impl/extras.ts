@@ -1,7 +1,7 @@
 /**
  * Acceso a `window.api.extras` + store de preferencias de extras (atajo, modelos por modo).
  *
- * Exporta `resolveModelForMode(mode)` / `useModeModel(mode)` para que Chat/Code/Cowork usen
+ * Exporta `resolveModelForMode(mode)` / `useModeModel(mode)` para que Chat/Code/Tareas usen
  * el modelo configurado por modo (con fallback a `settings.defaultModel`).
  */
 import { create } from 'zustand'

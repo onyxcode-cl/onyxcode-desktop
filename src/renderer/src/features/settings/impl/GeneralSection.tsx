@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Monitor, Moon, RotateCw, Sun } from 'lucide-react'
 import type { ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
+import { MODE_LABELS } from '@shared/labels'
 import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
 
-/** Fila "Mantener el Mac despierto mientras corren tareas de Cowork" (powerSaveBlocker en main). */
+/** Fila "Mantener el Mac despierto mientras corren tareas" (powerSaveBlocker en main). */
 function KeepAwakeRow(): React.JSX.Element | null {
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
@@ -24,7 +25,7 @@ function KeepAwakeRow(): React.JSX.Element | null {
   return (
     <Row
       label="Mantener el Mac despierto"
-      description="Evita que el equipo entre en reposo mientras hay tareas de Cowork trabajando en segundo plano."
+      description="Evita que el equipo entre en reposo mientras hay tareas trabajando en segundo plano."
     >
       <Toggle
         checked={enabled}
@@ -81,7 +82,7 @@ function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
   )
 }
 
-/** Instrucciones globales de Cowork (item 1): se añaden a todas las tareas, junto con las de cada proyecto. */
+/** Instrucciones globales de las tareas (item 1): se añaden a todas las tareas, junto con las de cada proyecto. */
 function CoworkInstructionsRow(): React.JSX.Element {
   const globalInstructions = useSettings((s) => s.settings.coworkGlobalInstructions)
   const update = useSettings((s) => s.update)
@@ -100,8 +101,8 @@ function CoworkInstructionsRow(): React.JSX.Element {
 
   return (
     <Row
-      label="Instrucciones globales de Cowork"
-      description="Se aplican a todas las tareas de Cowork, además de las instrucciones de cada proyecto (carpeta)."
+      label="Instrucciones globales de las tareas"
+      description="Se aplican a todas las tareas, además de las instrucciones de cada proyecto (carpeta)."
     >
       <div className="w-full max-w-md">
         <textarea
@@ -162,7 +163,7 @@ export function GeneralSection(): React.JSX.Element {
         </Row>
         <Row
           label="Notificaciones"
-          description="Avisos nativos cuando una sesión de Code o una tarea de Cowork termina o necesita tu aprobación, con badge en el Dock."
+          description="Avisos nativos cuando una sesión de Code o una tarea termina o necesita tu aprobación, con badge en el Dock."
         >
           <Toggle checked={notificationsEnabled} onChange={(v) => void updatePrefs({ notificationsEnabled: v })} label="Notificaciones" />
         </Row>
@@ -177,7 +178,7 @@ export function GeneralSection(): React.JSX.Element {
         <KeepAwakeRow />
       </Card>
 
-      <SubTitle>Cowork</SubTitle>
+      <SubTitle>{MODE_LABELS.cowork}</SubTitle>
       <Card>
         <CoworkInstructionsRow />
       </Card>

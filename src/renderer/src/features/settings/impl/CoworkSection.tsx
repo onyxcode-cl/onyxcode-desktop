@@ -1,5 +1,5 @@
 /**
- * Ajustes › Cowork: carpetas de confianza, carpetas de Cowork (Control total), permisos recordados,
+ * Ajustes › Tareas: carpetas de confianza, carpetas de trabajo (Control total), permisos recordados,
  * notificaciones por tipo, archivado automático, servidores y almacenamiento. Si hay una política
  * gestionada (`managed.json`), se muestra un aviso y se desactivan los controles que restringe.
  * Todo el estado vive en main (`cowork:*`); el renderer solo lo muestra y lo edita.
@@ -19,6 +19,7 @@ import {
 import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { MODE_LABELS } from '@shared/labels'
 import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import {
   connectFolder,
@@ -103,7 +104,7 @@ export function policySummary(locks: PolicyLocks): string[] {
   const out: string[] = []
   if (locks.fullAccess) out.push(`${COWORK_TERMS.fullControl} está desactivado.`)
   if (locks.allowedRoots.length > 0) out.push(`Las carpetas solo pueden estar dentro de: ${locks.allowedRoots.join(', ')}.`)
-  if (locks.customHosts) out.push('No se pueden añadir sitios a la red de Cowork.')
+  if (locks.customHosts) out.push('No se pueden añadir sitios a la red del sandbox.')
   if (locks.alwaysAllow) out.push('No se pueden recordar permisos con «Siempre permitir».')
   if (locks.routines) out.push('Las rutinas están desactivadas.')
   if (locks.maxArchiveDays !== null) out.push(`El archivado automático no puede superar ${locks.maxArchiveDays} días.`)
@@ -279,7 +280,7 @@ export function CoworkSection(): React.JSX.Element {
   }, [])
 
   if (!bridge) {
-    return <SectionHeader title="Cowork" description="Solo disponible en la app de escritorio." />
+    return <SectionHeader title={MODE_LABELS.cowork} description="Solo disponible en la app de escritorio." />
   }
 
   // ── Carpetas de confianza ──
@@ -297,7 +298,7 @@ export function CoworkSection(): React.JSX.Element {
       if (newMode === 'rw') {
         const ok = await confirmDialog({
           title: `¿Confiar en «${name}» con escritura?`,
-          message: `Cualquier tarea de Cowork podrá leer y modificar archivos de ${check.normalized} sin volver a preguntarte. Puedes quitarla de esta lista cuando quieras.`,
+          message: `Cualquier tarea podrá leer y modificar archivos de ${check.normalized} sin volver a preguntarte. Puedes quitarla de esta lista cuando quieras.`,
           confirmLabel: 'Confiar'
         })
         if (!ok) return
@@ -322,7 +323,7 @@ export function CoworkSection(): React.JSX.Element {
       .catch((err: unknown) => fail('trusted', err))
   }
 
-  // ── Carpetas de Cowork / Control total ──
+  // ── Carpetas de trabajo / Control total ──
   const revokeFullControl = async (f: CoworkFolder): Promise<void> => {
     const ok = await confirmDialog({
       title: `¿Revocar ${COWORK_TERMS.fullControl} en «${f.name}»?`,
@@ -411,8 +412,8 @@ export function CoworkSection(): React.JSX.Element {
   return (
     <div>
       <SectionHeader
-        title="Cowork"
-        description="Carpetas, permisos, notificaciones, servidores y almacenamiento de las tareas de Cowork."
+        title={MODE_LABELS.cowork}
+        description="Carpetas, permisos, notificaciones, servidores y almacenamiento de las tareas."
       />
 
       {locks.managed && (
@@ -421,7 +422,7 @@ export function CoworkSection(): React.JSX.Element {
           <div className="min-w-0">
             <div className="font-medium text-fg">Gestionado por tu organización</div>
             <p className="mt-0.5 text-xs leading-relaxed text-muted">
-              Algunos ajustes de Cowork los define tu organización y no se pueden cambiar aquí.
+              Algunos ajustes de las tareas los define tu organización y no se pueden cambiar aquí.
               {policy?.source && (
                 <>
                   {' '}
@@ -494,16 +495,16 @@ export function CoworkSection(): React.JSX.Element {
         {errors.trusted && <p className="mt-2 text-xs text-danger">{errors.trusted}</p>}
       </Group>
 
-      {/* 2 · Carpetas de Cowork */}
+      {/* 2 · Carpetas de trabajo */}
       <Group
         title={COWORK_TERMS.workFolders}
-        description={`Las carpetas donde trabaja Cowork. Aquí puedes revocar el ${COWORK_TERMS.fullControl} concedido a una carpeta.`}
+        description={`Las carpetas donde trabajan las tareas. Aquí puedes revocar el ${COWORK_TERMS.fullControl} concedido a una carpeta.`}
       >
         <Card>
           {folders === null ? (
             <EmptyRow>Cargando…</EmptyRow>
           ) : folders.length === 0 ? (
-            <EmptyRow>Todavía no hay carpetas de Cowork. Añade una desde el selector de carpetas de Cowork.</EmptyRow>
+            <EmptyRow>Todavía no hay carpetas de trabajo. Añade una desde el selector de carpetas de trabajo.</EmptyRow>
           ) : (
             folders.map((f) => (
               <Row key={f.path} label={f.name || folderLabel(f.path)} description={<span className="font-mono break-all">{f.path}</span>}>
@@ -686,7 +687,7 @@ export function CoworkSection(): React.JSX.Element {
           {report === null ? (
             <EmptyRow>{storageBusy === 'report' ? 'Calculando…' : 'No se pudo calcular el almacenamiento.'}</EmptyRow>
           ) : report.entries.length === 0 ? (
-            <EmptyRow>Aún no hay datos guardados por Cowork.</EmptyRow>
+            <EmptyRow>Aún no hay datos guardados por las tareas.</EmptyRow>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">

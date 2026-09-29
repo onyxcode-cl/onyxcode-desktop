@@ -157,7 +157,7 @@ export function AutoModeSection(): React.JSX.Element {
       <SubTitle>Carpetas con el modo activo</SubTitle>
       <Card>
         {folders.length === 0 ? (
-          <Row label="Sin carpetas de Cowork todavía" description="Autoriza una carpeta desde Cowork para poder activarlo aquí." />
+          <Row label="Sin carpetas de trabajo todavía" description="Autoriza una carpeta desde Tareas para poder activarlo aquí." />
         ) : (
           folders.map((f) => (
             <Row key={f.path} label={f.name} description={<span className="font-mono break-all">{f.path}</span>}>

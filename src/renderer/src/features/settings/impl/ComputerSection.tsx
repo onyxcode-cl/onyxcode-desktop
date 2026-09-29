@@ -74,7 +74,7 @@ export function ComputerSection(): React.JSX.Element {
     <div>
       <SectionHeader
         title="Control del Mac"
-        description="Cuando una tarea de Cowork tiene el Control total del Mac, así decide el agente cuándo mover el ratón real y qué apps puede usar."
+        description="Cuando una tarea tiene el Control total del Mac, así decide el agente cuándo mover el ratón real y qué apps puede usar."
       />
 
       <SubTitle>Cómo usa el agente las apps</SubTitle>

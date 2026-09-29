@@ -1,7 +1,7 @@
 /**
- * Ajustes → "Red de Cowork": lista blanca de red del proxy de egress de los servidores
+ * Ajustes → "Red del sandbox": lista blanca de red del proxy de egress de los servidores
  * sandboxeados (`src/main/cowork/proxy.ts` + `proxy-policy.ts`). El host del proveedor de
- * modelos siempre está permitido (si no, ninguna tarea de Cowork podría llamar al modelo);
+ * modelos siempre está permitido (si no, ninguna tarea podría llamar al modelo);
  * todo lo demás se deniega salvo que el usuario lo añada aquí o lo apruebe desde una tarjeta
  * de bloqueo ("Permitir siempre").
  */
@@ -14,9 +14,9 @@ import { Badge, Card, Row, SectionHeader, SubTitle, TextInput, Toggle } from './
 import { isSubmitKey } from '../../../lib/textarea'
 
 /** Mensaje mostrado cuando la política gestionada rechaza añadir un sitio a la red. */
-export const CUSTOM_HOSTS_BLOCKED_MESSAGE = 'Tu organización no permite añadir sitios a la red de Cowork.'
+export const CUSTOM_HOSTS_BLOCKED_MESSAGE = 'Tu organización no permite añadir sitios a la red del sandbox.'
 
-/** Servidores MCP «Disponible en Cowork» que aportan hosts a la red (informativo). */
+/** Servidores MCP «Disponible en Tareas» que aportan hosts a la red (informativo). */
 export function mcpHostContributors(list: CoworkMcpInfo[]): CoworkMcpInfo[] {
   return list.filter((m) => m.cowork && m.hosts.length > 0)
 }
@@ -58,7 +58,7 @@ export function NetworkSection(): React.JSX.Element {
   if (!hasCoworkBridge()) {
     return (
       <div>
-        <SectionHeader title="Red de Cowork" description="Solo disponible en la app de escritorio." />
+        <SectionHeader title="Red del sandbox" description="Solo disponible en la app de escritorio." />
       </div>
     )
   }
@@ -87,8 +87,8 @@ export function NetworkSection(): React.JSX.Element {
   return (
     <div>
       <SectionHeader
-        title="Red de Cowork"
-        description="Qué hosts pueden alcanzar los servidores de Cowork en modo sandbox. Todo lo que no esté en esta lista se bloquea (el proxy de egress lo registra y avisa)."
+        title="Red del sandbox"
+        description="Qué hosts pueden alcanzar los servidores de las tareas en modo sandbox. Todo lo que no esté en esta lista se bloquea (el proxy de egress lo registra y avisa)."
       />
 
       {locks.managed && (locks.customHosts || (policy?.extraAllowedHosts?.length ?? 0) > 0) && (
@@ -156,12 +156,12 @@ export function NetworkSection(): React.JSX.Element {
                   <>
                     <span className="font-mono break-all">{m.hosts.join(', ')}</span>
                     <span className="mt-0.5 block">
-                      Permitido porque el conector está marcado «Disponible en Cowork». Para quitarlo, desmárcalo en MCP.
+                      Permitido porque el conector está marcado «Disponible en Tareas». Para quitarlo, desmárcalo en MCP.
                     </span>
                   </>
                 }
               >
-                <Badge tone="accent">Disponible en Cowork</Badge>
+                <Badge tone="accent">Disponible en Tareas</Badge>
               </Row>
             ))}
           </Card>
