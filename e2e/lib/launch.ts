@@ -6,7 +6,7 @@
 // Variables: E2E_DEBUG=1 (vuelca stdout/stderr de main), E2E_VISIBLE=1 (ventana visible), E2E_RENDERER_URL (la fija global-setup), E2E_KEEP=1 (no borra userData tmp), E2E_HEADLESS no existe:
 // la ventana se crea con show:false salvo que main la muestre (ready-to-show la muestra; es normal).
 import { execFileSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -54,13 +54,26 @@ export interface LaunchOptions {
   env?: Record<string, string>
   /** Settings adicionales sobre el mínimo (defaultModel del fake). */
   settings?: Record<string, unknown>
+  /** userData a reutilizar (p. ej. reiniciar la app con el mismo estado). Por defecto, un tmp nuevo. `settings.json` solo se escribe si falta. */
+  userData?: string
+  /** No borra el userData al parar (quien lo pidió lo limpia). */
+  keepUserData?: boolean
+  /**
+   * No espera al servidor de OpenCode ni al falso (p. ej. `OPENCODE_BIN` inexistente a propósito). `app.fake` falla hasta que
+   * se llame a `app.connectFake()`.
+   */
+  noServer?: boolean
 }
 
 export interface E2EApp {
   mode: 'dev' | 'prod'
   electronApp: ElectronApplication
   page: Page
-  fake: FakeClient
+  /** Cliente del falso; con `noServer` lanza hasta llamar a `connectFake()`. */
+  readonly fake: FakeClient
+  /** Conecta con el falso ya en marcha (tal como lo ve el renderer) y lo deja en `app.fake`. */
+  connectFake(): Promise<FakeClient>
+  keepUserData: boolean
   userData: string
   errors: CollectedError[]
   /** Errores no cubiertos por la lista blanca. */
@@ -114,7 +127,7 @@ function hookExit(): void {
         /* ya muerto */
       }
       killByUserData(a.userData)
-      if (process.env.E2E_KEEP !== '1') rmSync(a.userData, { recursive: true, force: true })
+      if (process.env.E2E_KEEP !== '1' && !a.keepUserData) rmSync(a.userData, { recursive: true, force: true })
     }
   }
   process.on('exit', sweep)
@@ -129,23 +142,27 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
   hookExit()
   const allow = loadAllowlist()
   // realpath: /var → /private/var en macOS; el falso decide `isMain` comparando import.meta.url con argv[1] sin resolver symlinks.
-  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-')))
+  const userData = opts.userData ?? realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-')))
+  const removeUserData = process.env.E2E_KEEP !== '1' && !opts.keepUserData
   const xdg = (n: string): string => {
     const d = join(userData, 'xdg', n)
     mkdirSync(d, { recursive: true })
     return d
   }
   // settings.json ANTES de arrancar: si falta, `migrateLegacyUserData` movería datos reales de Lapis/OpenDesk.
-  writeFileSync(
-    join(userData, 'settings.json'),
-    JSON.stringify({
-      defaultModel: { providerID: 'fake', modelID: 'fake-model' },
-      theme: 'system',
-      recentFolders: [],
-      coworkGlobalInstructions: '',
-      ...opts.settings
-    })
-  )
+  if (!existsSync(join(userData, 'settings.json')))
+    writeFileSync(
+      join(userData, 'settings.json'),
+      JSON.stringify({
+        defaultModel: { providerID: 'fake', modelID: 'fake-model' },
+        theme: 'system',
+        recentFolders: [],
+        coworkGlobalInstructions: '',
+        // Sin el asistente de primer uso (los specs existentes no lo esperan); `onboarding.e2e.ts` lo desactiva.
+        onboarded: true,
+        ...opts.settings
+      })
+    )
 
   // Copia del falso fuera de ~/Documents: el sidecar corre «desvinculado de TCC» (disclaim) y macOS le niega
   // leer scripts dentro de carpetas protegidas (sh: Operation not permitted, code=126).
@@ -199,7 +216,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     }
   }
   if (!electronApp) {
-    if (process.env.E2E_KEEP !== '1') rmSync(userData, { recursive: true, force: true })
+    if (removeUserData) rmSync(userData, { recursive: true, force: true })
     throw lastErr
   }
   const launched: ElectronApplication = electronApp
@@ -210,7 +227,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     await Promise.race([launched.close().catch(() => undefined), new Promise((r) => setTimeout(r, 15_000))])
     for (const p of [...(pid ? [pid] : []), ...kids]) if (alive(p)) try { process.kill(p, 'SIGKILL') } catch { /* */ }
     killByUserData(userData)
-    if (process.env.E2E_KEEP !== '1') rmSync(userData, { recursive: true, force: true })
+    if (removeUserData) rmSync(userData, { recursive: true, force: true })
   }
 
   try {
@@ -256,18 +273,12 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     }
     await page.locator('nav[aria-label="Modo"]').waitFor({ timeout: 60_000 })
 
-    // Conexión al fake tal como la ve el renderer (IPC real; sirve también en prod, sin ganchos).
-    const conn = await page.evaluate(async () => {
-      const w = window as unknown as { api: { invoke: (c: string) => Promise<{ ok: boolean; data: { baseUrl: string; authorization: string } }> } }
-      for (let i = 0; i < 300; i++) {
-        const r = await w.api.invoke('opencode:connection')
-        if (r.ok && r.data) return r.data
-        await new Promise((res) => setTimeout(res, 200))
-      }
-      throw new Error('opencode:connection sin respuesta')
-    })
-    const fake = new FakeClient(conn)
-    await fake.status() // verifica auth y que es el falso
+    let fake: FakeClient | null = null
+    const connectFake = async (): Promise<FakeClient> => {
+      fake = await connectFakeClient(page)
+      return fake
+    }
+    if (!opts.noServer) await connectFake()
 
     const unexpectedErrors = (): CollectedError[] => errors.filter((e) => !allow.some((re) => re.test(e.text)))
     const screenshot = async (name: string): Promise<string> => {
@@ -280,7 +291,12 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
       mode: MODE,
       electronApp: launched,
       page,
-      fake,
+      get fake(): FakeClient {
+        if (!fake) throw new Error('app.fake no disponible: arranque con noServer; llama a app.connectFake() primero')
+        return fake
+      },
+      connectFake,
+      keepUserData: !removeUserData,
       userData,
       errors,
       unexpectedErrors,
@@ -288,7 +304,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
         const bad = unexpectedErrors()
         if (!bad.length) return
         const shot = await screenshot(label)
-        const unknown = await fake.unknownRoutes().catch(() => [])
+        const unknown = (await fake?.unknownRoutes().catch(() => [])) ?? []
         const detail = { errors: bad, unknownRoutes: unknown }
         writeFileSync(join(ARTIFACTS_DIR, `${label.replace(/[^\w.-]+/g, '_')}.json`), JSON.stringify(detail, null, 2))
         throw new Error(
@@ -308,6 +324,22 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     await cleanup()
     throw err
   }
+}
+
+/** Conexión al falso tal como la ve el renderer (IPC real; sirve también en prod, sin ganchos). Verifica auth y que es el falso. */
+export async function connectFakeClient(page: Page): Promise<FakeClient> {
+  const conn = await page.evaluate(async () => {
+    const w = window as unknown as { api: { invoke: (c: string) => Promise<{ ok: boolean; data: { baseUrl: string; authorization: string } }> } }
+    for (let i = 0; i < 300; i++) {
+      const r = await w.api.invoke('opencode:connection')
+      if (r.ok && r.data) return r.data
+      await new Promise((res) => setTimeout(res, 200))
+    }
+    throw new Error('opencode:connection sin respuesta')
+  })
+  const fake = new FakeClient(conn)
+  await fake.status()
+  return fake
 }
 
 /** Fija el tope LRU de sesiones (`localStorage['onyx.lru.max']`) y recarga la ventana. Solo modo dev. */

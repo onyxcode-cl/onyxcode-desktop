@@ -3,6 +3,7 @@ import { PanelLeftOpen } from 'lucide-react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { IconButton } from '../components/IconButton'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { OnboardingGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
 import { onOpencodeEvent, useServer } from '../stores/server'
 import { routeEventToSessions } from '../stores/eventRouter'
@@ -164,6 +165,9 @@ export function App(): React.JSX.Element {
   return (
     <div className="flex h-full bg-bg">
       <ConfirmDialogHost />
+      <ErrorBoundary label="el asistente de inicio">
+        <OnboardingGate />
+      </ErrorBoundary>
       <ErrorBoundary label="la paleta de comandos">
         <CommandPalette />
       </ErrorBoundary>

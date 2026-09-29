@@ -113,7 +113,7 @@ async function main() {
   writeFileSync(
     join(userData, 'settings.json'),
     JSON.stringify(
-      { defaultModel: { providerID: 'fake', modelID: 'fake-model' }, theme: 'dark', recentFolders: [], coworkGlobalInstructions: '' },
+      { defaultModel: { providerID: 'fake', modelID: 'fake-model' }, theme: 'dark', recentFolders: [], coworkGlobalInstructions: '', onboarded: true },
       null,
       2
     )
