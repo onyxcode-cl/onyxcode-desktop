@@ -61,19 +61,19 @@ Variables útiles:
 
 ```
 src/
-  shared/        brand.ts · ipc.ts + ipc-{code,cowork,extras,browser}.ts (contratos IPC tipados) · types.ts
+  shared/        brand.ts · ipc.ts + ipc-{code,tasks,extras,browser}.ts (contratos IPC tipados) · types.ts
   main/          index.ts · store.ts
                  opencode/ (sidecar) · ipc/ (register*Handlers, schemas, guard)
-                 cowork/ (sandbox Seatbelt, servidores por carpeta, permisos) · scheduler/ (rutinas)
+                 tasks/ (sandbox Seatbelt, servidores por carpeta, permisos) · scheduler/ (rutinas)
                  computer/ (control del Mac, helper Swift) · embedded-browser/ (navegador integrado, CDP)
                  pty/ · git/ · dialog/ · security/ · extras/ (bandeja, atajos) · util/ (net, exec, asar, paths)
-  preload/       index.ts → window.api tipado (+ code-api, cowork-api, extras-api, browser-api)
+  preload/       index.ts → window.api tipado (+ code-api, tasks-api, extras-api, browser-api)
                  quick · overlay · pill · assist · browser-host: preloads con sandbox, autocontenidos a propósito
-  renderer/src/  app/ (layout, modos) · lib/ · stores/ · components/ · features/{chat,code,cowork,routines,settings,browser}
+  renderer/src/  app/ (layout, modos) · lib/ · stores/ · components/ · features/{chat,code,tasks,routines,settings,browser}
 ```
 
-> **Nota para contribuidores:** en el código, el modo que la app muestra como «Tareas» se llama `cowork`
-> (carpetas `features/cowork` y `main/cowork`, canales IPC `cowork:*`, `ModeId 'cowork'`). Los textos
+> **Nota para contribuidores:** en el código el modo Tareas se llama `tasks`
+> (carpetas `features/tasks` y `main/tasks`, canales IPC `tasks:*`, `ModeId 'tasks'`). Los textos
 > visibles viven en `src/shared/labels.ts`.
 
 ### Agregar un modo o una vista
@@ -84,13 +84,13 @@ barra lateral y botón "nuevo"). Registrarlo es una línea en `src/renderer/src/
 ### Agregar un canal IPC
 
 1. Declararlo en el contrato de su área (`IpcInvokeContract` en `src/shared/ipc.ts`, o `ipc-code.ts`,
-   `ipc-cowork.ts`, `ipc-extras.ts`, `ipc-browser.ts`) y en su lista de canales.
+   `ipc-tasks.ts`, `ipc-extras.ts`, `ipc-browser.ts`) y en su lista de canales.
 2. Añadir su esquema de validación en `src/main/ipc/schemas.ts`.
 3. Implementarlo con `handle(ipcMain, 'canal', fn)` (o el `handle` de su área, todos creados con
    `makeInvokeHandler` de `src/main/ipc/handle.ts`) en `src/main/ipc/<modulo>.ts`; los registradores
    se llaman desde `src/main/index.ts`.
 4. Usarlo en el renderer con `call('canal', req)` (`lib/api.ts`) o la API de su preload
-   (`window.api.code`, `.cowork`, `.extras`, `.browser`).
+   (`window.api.code`, `.tasks`, `.extras`, `.browser`).
 
 ## Estado
 

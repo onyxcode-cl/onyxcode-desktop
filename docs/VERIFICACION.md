@@ -79,14 +79,14 @@ Notas conocidas:
 
 ## Specs de los lotes B y D (`e2e/specs/lotes.e2e.ts`)
 
-Automatiza lo posible de las guías manuales de `docs/COWORK-LOTE-B.md` §4 y `docs/LOTE-D.md` §4 contra la app real.
+Automatiza lo posible de las guías manuales del lote B §4 y del lote D §4 (documentación interna de proceso) contra la app real.
 Ayudantes propios en `e2e/lib/lotes.ts`; página de prueba `e2e/pages/tienda.html`. Solo modo dev (`describe.skipIf` en prod).
 
 - **Las tareas sí corren en el harness**: el sandbox Seatbelt de las tareas deniega leer el userData de la app, y el falso que
   copia `startApp` vive dentro de él (`code=126`). `fakeOutsideUserData()` lo copia a otro tmp y se pasa como
-  `OPENCODE_BIN` en `startApp({ env })`. La carpeta de trabajo tiene que estar bajo `~` (`makeCoworkDir()` crea
+  `OPENCODE_BIN` en `startApp({ env })`. La carpeta de trabajo tiene que estar bajo `~` (`makeTasksDir()` crea
   `~/onyx-e2e-cw-*`): la política de carpetas rechaza `/private/var/...`. La conexión del servidor de la carpeta se obtiene
-  con `coworkFake(page)` (un `FakeClient` sobre `useCowork.conn`).
+  con `tasksFake(page)` (un `FakeClient` sobre `useTasks.conn`).
 - **MCP del navegador**: `mcp.browser` (URL + Bearer) sale de `fake.config().content.mcp.browser`; `BrowserMcp` habla JSON-RPC
   con `onyxcode_session` = id de una sesión real del falso (main la resuelve con `GET /session/:id`). Antes de `new_page`
   hay que tener una pestaña humana y el panel abierto (`prepareCodeBrowser`), y esperar a que el usuario esté inactivo
@@ -98,7 +98,7 @@ Ayudantes propios en `e2e/lib/lotes.ts`; página de prueba `e2e/pages/tienda.htm
 
 | Caso | Qué pasa | Dónde |
 |---|---|---|
-| Carpeta prohibida en Tareas (`~`, `~/Library`) | `approvePending` guarda el motivo en `useCowork.error` pero solo se pinta con `phase === 'error' && folder`: el usuario no ve el mensaje. | `cowork/impl/actions.ts` + `CoworkWorkspace.tsx` (`phaseBanners`) |
+| Carpeta prohibida en Tareas (`~`, `~/Library`) | `approvePending` guarda el motivo en `useTasks.error` pero solo se pinta con `phase === 'error' && folder`: el usuario no ve el mensaje. | `tasks/impl/actions.ts` + `TasksWorkspace.tsx` (`phaseBanners`) |
 | Foco por defecto en «Cancelar» de la tarjeta de aprobación | `denyRef.current?.focus()` corre al montar con el botón `disabled` (aún sin armar): no recibe foco y nada lo enfoca al armarse. Enter no deniega. | `browser/Cards.tsx` (`ApprovalCard`) |
 | Navegar el navegador integrado a `mailto:` / `tel:` | Mata el proceso principal (SIGTRAP en `CrBrowserMain`, informes `~/Library/Logs/DiagnosticReports/Electron-*.ips`); la guía esperaba «no abre Mail». Arreglado en F7-B1. | `embedded-browser/surface.ts` / `service.ts` (guardas de navegación) |
 
@@ -157,7 +157,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 `lotes` = `e2e/specs/lotes.e2e.ts`; `fase6` = `fase6.e2e.ts`; `lru` = `lru.e2e.ts`; `instance` = `instance.e2e.ts`;
 «H n» = punto n de la checklist humana de arriba.
 
-**`docs/COWORK-LOTE-B.md` §4 (22 pasos)**
+**Guía del lote B §4 (22 pasos)**
 
 | Paso | Cobertura |
 |---|---|
@@ -178,7 +178,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 | 20 Subagentes en Control total · 21 Limpieza | H 1 |
 | 22 Política gestionada | `lotes`: banner, `disableRoutines`, `disableBrowser`, `allowedFolderRoots`, JSON inválido = todo restringido |
 
-**`docs/archive/COWORK-LOTE-C.md` §4**
+**Guía del lote C §4 (archivada)**
 
 | Punto | Cobertura |
 |---|---|

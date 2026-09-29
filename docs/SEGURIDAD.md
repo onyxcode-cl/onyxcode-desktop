@@ -15,7 +15,7 @@ hallazgos y su estado en `AUDIT.md`; motivación en notas privadas (fuera del re
 | Menú propio en producción (sin Recargar/DevTools) y `devTools:false` en la ventana principal empaquetada | idem, `src/main/index.ts` |
 | Preload por ventana: principal = API completa; Quick Entry = `extras:quickSubmit/quickHide` + evento `quick-shown`; overlay = solo evento `computer:overlay`; píldora = overlay + `computer:stop`; assist (Modo guía / grabar una skill, Lote C) = `computer:teachRespond`/`computer:record:stop` + evento `computer:assist`; **navegador aparte (`browser-host`, Lote D)** = solo `window.api.browser` (todo `browser:*` salvo `sites:*`/`clearData`/`devServers`). Vista previa: sin preload, partición propia | `src/preload/{index,quick,overlay,pill,assist,browser-host}.ts` |
 | OpenCode (`--cors`) solo acepta `onyxcode://app` (y el dev server sin empaquetar); ya no `null` | `src/main/index.ts` → servidores |
-| **Pestañas del navegador integrado (Lote D):** `WebContentsView` por pestaña, sin preload, en `persist:onyxcode-web-{code\|cowork}` (nunca la sesión por defecto de `onyxcode://app`); eximidas de `harden()` por identidad de objeto de sesión (`isEmbeddedBrowserSession`), con sus propias guardas equivalentes (detalle en «3 quater»). Se alojan en el panel principal o en una **ventana «Navegador» aparte** (rol `browserHost`, se abre sola con `showInactive()` si la principal está minimizada/oculta) | `src/main/embedded-browser/{session,surface,popout}.ts` |
+| **Pestañas del navegador integrado (Lote D):** `WebContentsView` por pestaña, sin preload, en `persist:onyxcode-web-{code\|tasks}` (nunca la sesión por defecto de `onyxcode://app`); eximidas de `harden()` por identidad de objeto de sesión (`isEmbeddedBrowserSession`), con sus propias guardas equivalentes (detalle en «3 quater»). Se alojan en el panel principal o en una **ventana «Navegador» aparte** (rol `browserHost`, se abre sola con `showInactive()` si la principal está minimizada/oculta) | `src/main/embedded-browser/{session,surface,popout}.ts` |
 
 ## 2. IPC (renderer → main)
 
@@ -72,7 +72,7 @@ que el proceso principal muera, y el único cierre forzado es `stop()` (kill-swi
 pendiente como respaldo. OnyxCode misma, el Dock, Spotlight, Centro de Control, `WindowServer` y
 `loginwindow` (`grants.SYSTEM_EXEMPT_BUNDLE_IDS`) están exentos de la concesión por app: nunca se
 bloquean a sí mismos ni piden acceso. Mientras una tarea de Control total está trabajando, la
-ventana principal se minimiza (píldora + overlay siguen visibles, `cowork-handlers.ts`) para que
+ventana principal se minimiza (píldora + overlay siguen visibles, `tasks-handlers.ts`) para que
 nunca quede en primer plano robándole el foco a la app que el agente está usando.
 
 Consecuencia práctica: si el agente de Code o de acceso total ejecuta `screencapture` o intenta
@@ -82,9 +82,9 @@ Tareas con sandbox, además, Seatbelt impide ejecutar `screencapture`.
 
 ## 3 bis. Tareas: puerta del plan, carpetas, red, MCP, política y rutinas (Lote B)
 
-Detalle de los hallazgos en `AUDIT.md` §9; resumen del lote en `docs/COWORK-LOTE-B.md`.
+Detalle de los hallazgos en `AUDIT.md` §9; resumen del lote B en la documentación interna de proceso.
 
-**Puerta del plan por sesión.** El plugin `onyxcode-plan-gate` (`src/main/cowork/opencode-config.ts`)
+**Puerta del plan por sesión.** El plugin `onyxcode-plan-gate` (`src/main/tasks/opencode-config.ts`)
 se aplica a **toda** sesión del servidor de Control total, con clave en su propio `sessionID`: las
 sesiones hijas de `task` y cualquier agente distinto de `computer` quedan bloqueadas (fail-closed)
 hasta que el usuario apruebe el plan de esa sesión; solo pasan las herramientas de planificar
@@ -102,10 +102,10 @@ archivar/borrar. En el sandbox y en el sidecar principal el plugin no hace nada 
     `(deny file-write-unlink …)` SIEMPRE: la concesión de borrado vale solo para la principal.
   - **`ro`** («Solo lectura»): la lectura ya la da `(allow default)` (menos los secretos); al final
     del perfil `(deny file-write* (subpath …))`, que gana incluso sobre una `rw` que la contenga.
-  - `.cowork/` de la principal (scratch del agente) permite borrar y renombrar.
+  - `.onyxcode/trabajo/` de la principal (scratch del agente) permite borrar y renombrar.
 - Seatbelt fija el perfil al lanzar el proceso: ampliar carpetas exige **reiniciar** el servidor
   sandbox (`restartSandbox`, con confirmación en la interfaz si hay tareas en curso; `applied` indica
-  si el servidor en marcha ya usa el conjunto actual). En OpenCode, `agent.cowork.permission.external_directory`
+  si el servidor en marcha ya usa el conjunto actual). En OpenCode, `agent.tasks.permission.external_directory`
   se abre solo para esas rutas (`<ruta>` y `<ruta>/*`) y el resto sigue en `ask`.
 - Carpetas rechazadas con un motivo accionable (`forbiddenFolderReason` → `folder-policy.ts`): raíz o
   home, carpeta que contiene el home, carpetas del sistema (`/System /Library /Applications /usr /bin
@@ -127,8 +127,8 @@ lista blanca (`proxy-policy.ts`):
 - `extraAllowedHosts` de la política gestionada.
 Con `disableCustomHosts` (política) no se pueden añadir sitios ni se suman los hosts de MCP remotos.
 
-**MCP del usuario dentro de Tareas** (`mcp-cowork.ts`). Solo entran los servidores activos y marcados
-«Disponible en Tareas» (`userData/cowork-mcp.json`; nunca se escribe en `opencode/opencode.json`).
+**MCP del usuario dentro de Tareas** (`mcp-tasks.ts`). Solo entran los servidores activos y marcados
+«Disponible en Tareas» (`userData/tasks-mcp.json`; nunca se escribe en `opencode/opencode.json`).
 - **MCP locales**: se lanzan con el prefijo `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u
   OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u ONYXCODE_PLAN_GATE_URL`,
   para que no hereden las credenciales del propio servidor. Heredan el perfil Seatbelt y necesitan el
@@ -142,8 +142,8 @@ Con `disableCustomHosts` (política) no se pueden añadir sitios ni se suman los
 `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`: no carga `~/.claude/skills` (evita colisiones de nombre y skills
 ajenas), y sí las del proyecto (`.opencode/skills`).
 
-**Permisos recordados** (`rules.ts`, `userData/cowork-rules.json`). «Siempre permitir» se guarda por
-carpeta y se inyecta en `agent.<cowork|computer>.permission` al abrir la carpeta. **Nunca** se
+**Permisos recordados** (`rules.ts`, `userData/tasks-rules.json`). «Siempre permitir» se guarda por
+carpeta y se inyecta en `agent.<tasks|computer>.permission` al abrir la carpeta. **Nunca** se
 recuerdan `external_directory`, `doom_loop`, `computer_*`, patrones de borrado (`rm`, `rmdir`,
 `unlink`, `trash`, `srm`, `-delete`) ni patrones de bash que empiecen por comodín. Con
 `disableAlwaysAllow` (política) `add` lanza error y las reglas guardadas no se aplican.
@@ -180,7 +180,7 @@ comparte `~/.local/share/opencode` con el sidecar principal. Documentado, no cam
 
 ## 3 ter. Control del Mac en segundo plano, Modo auto y navegador propio (Lote C)
 
-Detalle de los hallazgos en `AUDIT.md` §10; resumen del lote en `docs/archive/COWORK-LOTE-C.md`.
+Detalle de los hallazgos en `AUDIT.md` §10; resumen del lote C en la documentación interna de proceso.
 
 **Acciones en segundo plano por Accessibility API.** Las herramientas `app_tree`/`app_find`/
 `app_press`/`app_set_value`/`app_action`/`app_screenshot` (`computer/mcp-server.ts`) llaman a
@@ -200,7 +200,7 @@ takeover, nunca en segundo plano; conserva las apps con concesión, las del sist
 persiste el conjunto ocultado (`userData/computer-hidden.json`) para recuperarse tras un cierre
 brusco.
 
-**Modo auto: la allowlist es la frontera, no el motor.** `cowork/auto-mode.ts` es un módulo PURO
+**Modo auto: la allowlist es la frontera, no el motor.** `tasks/auto-mode.ts` es un módulo PURO
 (sin Electron, sin red) que decide `allow`/`ask` mirando solo texto: comandos de bash contra una
 lista cerrada de programas y opciones prohibidas (`isReadOnlyBash`), nombres de herramientas MCP
 contra un prefijo de solo-consulta y una lista de palabras de escritura (`isReadOnlyMcpTool`), y
@@ -216,16 +216,16 @@ el interruptor maestro (apagado por defecto, kill switch) **y** la carpeta o la 
 persiste en `computer-grants.json`, y es revocable desde el registro de Ajustes.
 
 > **HISTÓRICO — ELIMINADO en el refactor fase 3 (nota añadida el 2026-09-29, revisión Fase 7).** El «navegador propio» / «Chrome aparte»
-> (`chrome-devtools-mcp`, `browser/{gateway,service,sites}.ts`, `cowork-browser-handlers.ts`) ya no existe en el
+> (`chrome-devtools-mcp`, `browser/{gateway,service,sites}.ts`, y sus manejadores IPC) ya no existe en el
 > código. Lo sustituye el **navegador integrado** (`embedded-browser/`, sección «3 quater» de este documento). Sus datos
-> en disco (`userData/cowork-browser*`) se borran al arrancar. El párrafo siguiente se conserva solo como registro
+> en disco (la carpeta y el JSON antiguos del navegador en `userData`) se borran al arrancar. El párrafo siguiente se conserva solo como registro
 > del modelo de seguridad que tuvo; NO describe la app actual.
 >
 > **[Histórico] Navegador propio: diálogo por sitio, perfil aislado y lanzamiento con el entorno reducido.** El
 navegador (`chrome-devtools-mcp` (histórico: eliminado en la fase 3 del refactor)) solo existe en Control total, desactivado por defecto, y corre
-sobre un **perfil propio** (`userData/cowork-browser/profile`), nunca el Chrome personal del
+sobre un **perfil propio** (carpeta `browser/profile` del userData antiguo), nunca el Chrome personal del
 usuario: no comparte cookies, historial ni sesiones, y sus descargas van a
-`userData/cowork-browser/downloads`. Cada navegación de primer nivel (`navigate_page`, `new_page`,
+`browser/downloads` del mismo userData antiguo. Cada navegación de primer nivel (`navigate_page`, `new_page`,
 y tras `click`/`fill`/`fill_form`/`press_key`/`evaluate_script` se revisan TODAS las páginas
 abiertas) pasa por un canal lateral HTTP con token en 127.0.0.1 hacia `browser/service.ts`; si el
 sitio no está en «Permitir siempre» ni denegado ni con «una vez» ya concedido, aparece un diálogo
@@ -262,12 +262,12 @@ prueba manual en `docs/LOTE-D.md`.
 **Aislamiento por sesión: nunca la sesión por defecto.** Cada pestaña del navegador integrado
 (`WebContentsView`, `sandbox:true, contextIsolation:true, nodeIntegration:false, webviewTag:false,
 devTools:false`, **sin preload propio**) vive en `session.fromPartition('persist:onyxcode-web-code')`
-o `'persist:onyxcode-web-cowork'` (`embedded-browser/session.ts`): dos perfiles separados entre sí y
+o `'persist:onyxcode-web-tasks'` (`embedded-browser/session.ts`): dos perfiles separados entre sí y
 completamente distintos de la `defaultSession` que sirve `onyxcode://app` y guarda las credenciales de
 OpenCode. Ni el esquema `onyxcode:` ni `*-artifact:` existen en esas particiones (`protocol.handle` es
 de la sesión por defecto y de la de la vista previa), así que una pestaña del navegador nunca puede pedir
 una página propia de la app. **Tareas usa UNA sola partición compartida** (`persist:onyxcode-web-
-cowork`) para Sandbox y Control total, sea cual sea la carpeta o la tarea — no una por carpeta ni
+tasks`) para Sandbox y Control total, sea cual sea la carpeta o la tarea — no una por carpeta ni
 por tarea. Es una decisión explícita, reconfirmada por el usuario junto con el resto de defaults del
 Lote D (2026-09-28): las cookies/sesiones iniciadas del navegador de Tareas son las mismas entre
 tareas de un mismo día a día, igual que un Chrome real tiene un solo perfil; «Borrar datos» (Ajustes
@@ -333,13 +333,13 @@ confirmar compra, eliminar cuenta/repositorio, transferir…), se pide confirmac
 
 **Descargas: cuarentena manual y siempre bajo revisión.** Las descargas atribuidas al agente quedan
 pausadas (`item.pause()`) hasta que el usuario decide en una tarjeta con nombre y destino
-(`<carpeta>/.cowork/descargas/` en Tareas, `~/Downloads/<APP_NAME>/` en Code); las del usuario usan
+(`<carpeta>/.onyxcode/trabajo/descargas/` en Tareas, `~/Downloads/<APP_NAME>/` en Code); las del usuario usan
 el diálogo de guardado nativo. Ninguna se abre sola. **Hallazgo D0, verificado con evidencia
 directa:** Electron/macOS NO añade `com.apple.quarantine` automáticamente a lo que `will-download` +
 `setSavePath` escriben (`xattr -p com.apple.quarantine` no encuentra el atributo tras la descarga),
 así que `downloads.ts` lo añade a mano (`xattr -w com.apple.quarantine …`) en toda descarga
 atribuida al agente, para que Gatekeeper avise antes de que algo la abra — coherente con el hallazgo
-S4 (§2) sobre `cowork:openPath`.
+S4 (§2) sobre `tasks:openPath`.
 
 **Lista blanca de CDP.** `cdp.ts` solo puede enviar los métodos de `ALLOWED_CDP`
 (`embedded-browser/api.ts`): nunca `Network.getCookies`/`getAllCookies`/`setCookie`, `Storage.*`,

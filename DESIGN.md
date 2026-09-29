@@ -105,7 +105,7 @@ nunca renombrar ni eliminar. Cada token de color tiene utilidad Tailwind (`bg-*`
 ## Shell
 
 - Barra lateral: buscador/paleta (⌘K), navegación vertical de modos (icono + etiqueta), fila "nuevo" neutra (⌘N),
-  lista contextual del modo (Cowork incluye carpeta y tareas; ya no hay segunda columna), pie con símbolo + nombre
+  lista contextual del modo (Tareas incluye carpeta y tareas; ya no hay segunda columna), pie con símbolo + nombre
   + estado del servidor (punto de color) + Ajustes.
 - Colapso animado (ancho) con `⌘\`; `⌘,` abre/cierra Ajustes.
 - Chat vacío: saludo según hora ("Buenos días / Buenas tardes / Buenas noches"), subtítulo neutro, chips de sugerencias.
