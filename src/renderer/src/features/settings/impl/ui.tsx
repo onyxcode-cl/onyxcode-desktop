@@ -84,49 +84,10 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
   )
 }
 
-export function Toggle({
-  checked,
-  onChange,
-  label,
-  disabled
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-  label: string
-  disabled?: boolean
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 disabled:opacity-40 ${checked ? 'bg-accent' : 'bg-border-strong'}`}
-    >
-      <span
-        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`}
-      />
-    </button>
-  )
-}
+export { Toggle } from '../../../components/Toggle'
 
 export function ErrorText({ children }: { children: ReactNode }): React.JSX.Element {
   return <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs whitespace-pre-wrap text-danger">{children}</div>
 }
 
-export function formatNumber(n: number): string {
-  return new Intl.NumberFormat('es-CL').format(Math.round(n))
-}
-
-export function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toLocaleString('es-CL', { maximumFractionDigits: 2 })} M`
-  if (n >= 1_000) return `${(n / 1_000).toLocaleString('es-CL', { maximumFractionDigits: 1 })} k`
-  return formatNumber(n)
-}
-
-export function formatCost(n: number): string {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'USD', maximumFractionDigits: n < 1 ? 4 : 2 }).format(n)
-}
+export { formatCost, formatNumber, formatTokens } from '../../../lib/format'

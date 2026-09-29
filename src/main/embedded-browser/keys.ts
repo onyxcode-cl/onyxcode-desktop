@@ -90,7 +90,13 @@ const BLOCKED_COMBOS = new Set(['meta+q', 'meta+w'])
 
 function letterOrDigitDef(base: string): KeyDef | null {
   if (/^[a-z]$/.test(base)) {
-    return { key: base, code: `Key${base.toUpperCase()}`, keyCode: base.toUpperCase().charCodeAt(0), text: base, shiftText: base.toUpperCase() }
+    return {
+      key: base,
+      code: `Key${base.toUpperCase()}`,
+      keyCode: base.toUpperCase().charCodeAt(0),
+      text: base,
+      shiftText: base.toUpperCase()
+    }
   }
   if (/^[0-9]$/.test(base)) {
     return { key: base, code: `Digit${base}`, keyCode: base.charCodeAt(0), text: base }
@@ -111,7 +117,10 @@ export interface ParsedKeyCombo {
 export function parseKeyCombo(input: string): ParsedKeyCombo {
   const raw = input.trim()
   if (!raw) throw new Error('key vacío')
-  const parts = raw.split('+').map((p) => p.trim().toLowerCase()).filter(Boolean)
+  const parts = raw
+    .split('+')
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean)
   if (!parts.length) throw new Error(`Combinación de teclas inválida: "${input}"`)
   const base = parts[parts.length - 1]
   const modParts = parts.slice(0, -1)
@@ -128,7 +137,7 @@ export function parseKeyCombo(input: string): ParsedKeyCombo {
   const def = NAMED_KEYS[base] ?? letterOrDigitDef(base)
   if (!def) throw new Error(`Tecla no reconocida: "${base}"`)
   const shifted = (modifiers & MOD.shift) !== 0
-  const text = shifted ? def.shiftText ?? def.text : def.text
+  const text = shifted ? (def.shiftText ?? def.text) : def.text
   const hasNonShiftMod = (modifiers & (MOD.ctrl | MOD.alt | MOD.meta)) !== 0
   const eventText = hasNonShiftMod ? undefined : text
   const common = {

@@ -20,7 +20,8 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { findOpencodeBinary, getFreePort } from '../opencode/server'
+import { findOpencodeBinary } from '../opencode/server'
+import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
 import { minimalEnv } from '../process/child-env'
@@ -148,10 +149,7 @@ export interface StartCoworkServerOptions {
  * Lanza un `opencode serve` dedicado a `folder`, dentro de `sandbox-exec` en macOS.
  * cwd = folder. Resuelve cuando `/global/health` responde.
  */
-export async function startCoworkServer(
-  folder: string,
-  options: StartCoworkServerOptions = {}
-): Promise<CoworkServerHandle> {
+export async function startCoworkServer(folder: string, options: StartCoworkServerOptions = {}): Promise<CoworkServerHandle> {
   const bin = findOpencodeBinary()
   if (!bin) throw new Error('No se encontró el binario `opencode` (instálalo o define OPENCODE_BIN).')
   if (!existsSync(folder)) throw new Error(`La carpeta no existe: ${folder}`)
@@ -172,7 +170,12 @@ export async function startCoworkServer(
   let isolatedEnv: Record<string, string> = {}
   const egressToken = randomToken()
   const egress = sandboxed
-    ? new EgressProxy({ token: egressToken, allowlist: options.networkAllowlist ?? (() => []), onBlocked: options.onEgressBlocked, onLog: options.onEgressLog })
+    ? new EgressProxy({
+        token: egressToken,
+        allowlist: options.networkAllowlist ?? (() => []),
+        onBlocked: options.onEgressBlocked,
+        onLog: options.onEgressLog
+      })
     : null
   const credentialProxies: CredentialProxy[] = []
   if (sandboxed) {
@@ -285,7 +288,10 @@ export async function startCoworkServer(
 
   let version: string | undefined
   try {
-    version = await waitForHealth(baseUrl, authorization, child)
+    version = await waitForHealth(baseUrl, authorization, child, {
+      label: 'opencode (cowork)',
+      timeoutMs: HEALTH_TIMEOUT_MS
+    })
   } catch (err) {
     await stop()
     const msg = err instanceof Error ? err.message : String(err)
@@ -306,27 +312,4 @@ export async function startCoworkServer(
     egressPort: egress?.port,
     deleteAllowed: !sandboxed || options.allowDelete === true
   }
-}
-
-async function waitForHealth(baseUrl: string, authorization: string, child: ChildProcess): Promise<string | undefined> {
-  const deadline = Date.now() + HEALTH_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null || child.signalCode !== null) {
-      throw new Error(`opencode (cowork) terminó durante el arranque (code=${child.exitCode})`)
-    }
-    try {
-      const res = await fetch(`${baseUrl}/global/health`, {
-        headers: { authorization },
-        signal: AbortSignal.timeout(2000)
-      })
-      if (res.ok) {
-        const body = (await res.json()) as { healthy?: boolean; version?: string }
-        if (body.healthy !== false) return body.version
-      }
-    } catch {
-      // aún no escucha
-    }
-    await new Promise((r) => setTimeout(r, 150))
-  }
-  throw new Error(`opencode (cowork) no respondió en ${HEALTH_TIMEOUT_MS / 1000}s`)
 }

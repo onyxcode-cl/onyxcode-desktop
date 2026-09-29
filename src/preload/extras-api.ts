@@ -1,4 +1,5 @@
-import type { IpcRenderer, IpcRendererEvent } from 'electron'
+import type { IpcRenderer } from 'electron'
+import { makeBridge } from './bridge'
 import {
   IPC_EXTRAS_EVENT_CHANNELS,
   IPC_EXTRAS_INVOKE_CHANNELS,
@@ -6,30 +7,17 @@ import {
   type ExtrasApi,
   type IpcExtrasEventChannel,
   type IpcExtrasInvokeChannel,
-  type IpcExtrasResult,
   type QuickPromptEvent
 } from '@shared/ipc-extras'
 
-const invokeAllowed = new Set<string>(IPC_EXTRAS_INVOKE_CHANNELS)
-const eventAllowed = new Set<string>(IPC_EXTRAS_EVENT_CHANNELS)
-
 /** Construye `window.api.extras`. Uso en preload/index.ts: `extras: buildExtrasApi(ipcRenderer)`. */
 export function buildExtrasApi(ipcRenderer: IpcRenderer): ExtrasApi {
-  const invoke = async (channel: IpcExtrasInvokeChannel, ...args: unknown[]): Promise<unknown> => {
-    if (!invokeAllowed.has(channel)) throw new Error(`Canal IPC no permitido: ${channel}`)
-    const result = (await ipcRenderer.invoke(channel, ...args)) as IpcExtrasResult<unknown>
-    if (!result.ok) throw new Error(result.error)
-    return result.data
-  }
-
-  const on = (channel: IpcExtrasEventChannel, listener: (payload?: unknown) => void): (() => void) => {
-    if (!eventAllowed.has(channel)) throw new Error(`Evento IPC no permitido: ${channel}`)
-    const wrapped = (_e: IpcRendererEvent, payload: unknown): void => listener(payload)
-    ipcRenderer.on(channel, wrapped)
-    return () => {
-      ipcRenderer.removeListener(channel, wrapped)
-    }
-  }
+  const bridge = makeBridge<IpcExtrasInvokeChannel, IpcExtrasEventChannel>(ipcRenderer, {
+    invoke: IPC_EXTRAS_INVOKE_CHANNELS,
+    events: IPC_EXTRAS_EVENT_CHANNELS
+  })
+  const invoke = bridge.invokeUnwrap
+  const on = bridge.on
 
   return {
     invoke: invoke as ExtrasApi['invoke'],

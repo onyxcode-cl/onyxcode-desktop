@@ -68,10 +68,7 @@ export function ModelsSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader
-        title="Modelos"
-        description="Modelo predeterminado y por modo. Los modelos de OpenCode Go aparecen primero."
-      />
+      <SectionHeader title="Modelos" description="Modelo predeterminado y por modo. Los modelos de OpenCode Go aparecen primero." />
 
       {!client && <p className="text-sm text-muted">Esperando al servidor de OpenCode…</p>}
       {error && <ErrorText>{error}</ErrorText>}
@@ -164,15 +161,9 @@ function ProvidersList({
   onDisconnect: (id: string) => Promise<void>
   onSetKey: (id: string, key: string) => Promise<void>
 }): React.JSX.Element {
-  const connected = useMemo(
-    () => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))),
-    [catalog]
-  )
+  const connected = useMemo(() => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))), [catalog])
   const others = useMemo(
-    () =>
-      catalog.all
-        .filter((p) => !catalog.connected.includes(p.id))
-        .sort((a, b) => a.name.localeCompare(b.name, 'es')),
+    () => catalog.all.filter((p) => !catalog.connected.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name, 'es')),
     [catalog]
   )
   const [target, setTarget] = useState('')

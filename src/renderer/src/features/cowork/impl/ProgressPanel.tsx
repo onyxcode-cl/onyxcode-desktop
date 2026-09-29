@@ -142,9 +142,7 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
     <li>
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-start gap-1.5 text-left text-xs">
         <ChevronRight size={12} className={`mt-0.5 shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
-        <span className={`min-w-0 flex-1 ${live ? 'font-semibold text-fg' : 'font-medium text-muted'}`}>
-          {title ?? 'Preparación'}
-        </span>
+        <span className={`min-w-0 flex-1 ${live ? 'font-semibold text-fg' : 'font-medium text-muted'}`}>{title ?? 'Preparación'}</span>
         <span className="shrink-0 text-[11px] text-subtle">
           {failed > 0 && <span className="mr-1 text-danger">{failed} ✕</span>}
           {tools.length}
@@ -275,12 +273,15 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
     let alive = true
     setRoutine(undefined)
     setRuns([])
-    void cw('routines:list').then((list) => {
-      if (!alive) return
-      const found = list.find((r) => r.originSessionId === sessionID) ?? null
-      setRoutine(found)
-      if (found) void cw('routines:history', { id: found.id, limit: 5 }).then((h) => alive && setRuns(h))
-    }, () => alive && setRoutine(null))
+    void cw('routines:list').then(
+      (list) => {
+        if (!alive) return
+        const found = list.find((r) => r.originSessionId === sessionID) ?? null
+        setRoutine(found)
+        if (found) void cw('routines:history', { id: found.id, limit: 5 }).then((h) => alive && setRuns(h))
+      },
+      () => alive && setRoutine(null)
+    )
     return () => {
       alive = false
     }
@@ -322,7 +323,11 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
                 <span className="text-muted">{relTime(r.startedAt)}</span>
               )}
               {r.waiting && <span className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400">Esperando aprobación</span>}
-              {r.summary && <span className="min-w-0 flex-1 truncate text-subtle" title={r.summary}>{r.summary}</span>}
+              {r.summary && (
+                <span className="min-w-0 flex-1 truncate text-subtle" title={r.summary}>
+                  {r.summary}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -370,9 +375,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
 
       <Section icon={ListChecks} title="Plan" badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}>
         {todos.length === 0 ? (
-          <p className="text-xs text-subtle">
-            {busy ? 'El agente está preparando el plan…' : 'Esta tarea no tiene un plan publicado.'}
-          </p>
+          <p className="text-xs text-subtle">{busy ? 'El agente está preparando el plan…' : 'Esta tarea no tiene un plan publicado.'}</p>
         ) : (
           <>
             <div className="mb-3 flex items-center gap-2">
@@ -441,8 +444,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
       <Section icon={Plug} title="Contexto" badge={contextCount > 0 ? contextCount : undefined} defaultOpen={false}>
         {contextCount === 0 ? (
           <p className="text-xs text-subtle">
-            Aquí verás qué archivos, comandos y conectores usó el agente. Haz clic en una entrada para ir a ese punto de
-            la conversación.
+            Aquí verás qué archivos, comandos y conectores usó el agente. Haz clic en una entrada para ir a ese punto de la conversación.
           </p>
         ) : (
           <>
@@ -461,12 +463,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         ) : (
           <ul className="space-y-2">
             {groups.map((g, i) => (
-              <ActivityGroup
-                key={`${i}-${g.title ?? ''}`}
-                title={g.title}
-                tools={g.tools}
-                live={busy && i === groups.length - 1}
-              />
+              <ActivityGroup key={`${i}-${g.title ?? ''}`} title={g.title} tools={g.tools} live={busy && i === groups.length - 1} />
             ))}
           </ul>
         )}

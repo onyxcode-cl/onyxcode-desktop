@@ -25,7 +25,6 @@ const MODES: Array<{ mode: FolderAccessMode; label: string; hint: string }> = [
 ]
 
 function hiddenNote(text: string): boolean {
-  // eslint-disable-next-line no-control-regex
   return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/.test(text)
 }
 
@@ -40,10 +39,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
     return own && own.length > 0 ? own : s.messages[taskId]
   })
   const paths = useMemo(() => folderRequestPaths(request), [request])
-  const view = useMemo(
-    () => folderRequestView(request, paths, entries ? lastAssistantText(entries) : ''),
-    [request, paths, entries]
-  )
+  const view = useMemo(() => folderRequestView(request, paths, entries ? lastAssistantText(entries) : ''), [request, paths, entries])
 
   const [selected, setSelected] = useState(view.candidates[0] ?? '')
   const [mode, setMode] = useState<FolderAccessMode>('ro')

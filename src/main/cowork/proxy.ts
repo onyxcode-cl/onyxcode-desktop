@@ -26,7 +26,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer as createHttpServer, request as httpRequest, type IncomingMessage, type ServerResponse } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { connect as netConnect, createServer as createNetServer, type Socket } from 'node:net'
-import { createServer } from 'node:net'
+import { getFreePort } from '../util/net'
 
 export interface EgressBlockedEvent {
   host: string
@@ -38,19 +38,6 @@ export interface EgressBlockedEvent {
 
 export interface EgressLogEntry extends EgressBlockedEvent {
   allowed: boolean
-}
-
-/** Puerto libre en 127.0.0.1 (mismo mecanismo que `getFreePort` de opencode/server.ts). */
-export function getFreeLoopbackPort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer()
-    srv.once('error', reject)
-    srv.listen(0, '127.0.0.1', () => {
-      const addr = srv.address()
-      const port = typeof addr === 'object' && addr ? addr.port : 0
-      srv.close(() => resolve(port))
-    })
-  })
 }
 
 function timingSafeStringEqual(a: string, b: string): boolean {
@@ -90,7 +77,7 @@ export class EgressProxy {
   }
 
   async start(): Promise<number> {
-    this.port = await getFreeLoopbackPort()
+    this.port = await getFreePort()
     return new Promise((resolve, reject) => {
       this.server.once('error', reject)
       this.server.listen(this.port, '127.0.0.1', () => resolve(this.port))
@@ -141,7 +128,9 @@ export class EgressProxy {
     }
 
     if (!this.checkAuth(headers)) {
-      socket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="onyxcode-egress"\r\nConnection: close\r\n\r\n')
+      socket.end(
+        'HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="onyxcode-egress"\r\nConnection: close\r\n\r\n'
+      )
       return
     }
 
@@ -209,9 +198,7 @@ export class EgressProxy {
       const lines = headerText.split('\r\n')
       const [, , httpVer = 'HTTP/1.1'] = (lines[0] ?? '').split(' ')
       const originTarget = `${url.pathname}${url.search}`
-      const outHeaders = lines
-        .slice(1)
-        .filter((l) => !/^proxy-(authorization|connection):/i.test(l))
+      const outHeaders = lines.slice(1).filter((l) => !/^proxy-(authorization|connection):/i.test(l))
       const out = [`${method} ${originTarget} ${httpVer}`, ...outHeaders, '', ''].join('\r\n')
       upstream.write(out)
       if (leftover.length) upstream.write(leftover)
@@ -242,7 +229,7 @@ export class CredentialProxy {
   constructor(private opts: CredentialProxyOptions) {}
 
   async start(): Promise<number> {
-    this.port = await getFreeLoopbackPort()
+    this.port = await getFreePort()
     return new Promise((resolve, reject) => {
       this.server.once('error', reject)
       this.server.listen(this.port, '127.0.0.1', () => resolve(this.port))

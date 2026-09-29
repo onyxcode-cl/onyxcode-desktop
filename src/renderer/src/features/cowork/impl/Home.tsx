@@ -1,17 +1,6 @@
 /** Pantalla de inicio de Cowork: compositor grande, carpeta, modo de acceso y sugerencias por categoría. */
 import { useState } from 'react'
-import {
-  BarChart3,
-  Eye,
-  EyeOff,
-  FileText,
-  FolderTree,
-  Globe,
-  Loader2,
-  MonitorCog,
-  ShieldCheck,
-  type LucideIcon
-} from 'lucide-react'
+import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { AccessSegmented } from './AccessSegmented'
 import { ComputerPermissionsCard, VisionModelHint } from './ComputerAccess'

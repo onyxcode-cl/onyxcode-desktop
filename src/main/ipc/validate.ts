@@ -140,13 +140,3 @@ export function tagged<K extends string, M extends Record<string, Validator<unkn
     return variants[tag](v, path) as ReturnType<M[keyof M]>
   }
 }
-
-export function union<A, B>(a: Validator<A>, b: Validator<B>): Validator<A | B> {
-  return (v, path) => {
-    try {
-      return a(v, path)
-    } catch {
-      return b(v, path)
-    }
-  }
-}

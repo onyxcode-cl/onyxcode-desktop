@@ -31,7 +31,6 @@ import { registerCoworkLifecycleHandlers } from './cowork-lifecycle-handlers'
 import { registerCoworkProjectHandlers } from './cowork-project-handlers'
 import { registerCoworkFilesHandlers } from './cowork-files-handlers'
 import { registerCoworkAutoHandlers } from './cowork-auto-handlers'
-import { registerCoworkBrowserHandlers } from './cowork-browser-handlers'
 
 /**
  * ¿Debe salir la notificación nativa de una petición de permisos (`request_access`)?
@@ -78,11 +77,7 @@ export interface CoworkModule {
  * Registra los canales `cowork:*` y `routines:*`, crea el gestor de Cowork y arranca el
  * scheduler. Devuelve el módulo para apagarlo al salir.
  */
-export function registerCoworkHandlers(
-  ipcMain: IpcMain,
-  getWindow: () => BrowserWindow | null,
-  deps: CoworkHandlerDeps
-): CoworkModule {
+export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null, deps: CoworkHandlerDeps): CoworkModule {
   const projects = new CoworkProjectsStore()
   const keepAwake = new KeepAwakeService()
   const computer = new ComputerService()
@@ -119,8 +114,7 @@ export function registerCoworkHandlers(
   })
   // Kill-switch desde main: aborta las sesiones de TODOS los servidores de Control total (y detiene
   // el servidor si no responde), sin depender de la vista que muestre el renderer.
-  computer.abortSessions = () =>
-    abortFullAccessSessions(cowork.fullAccessConnections(), (srv) => cowork.stop(srv.folder, true))
+  computer.abortSessions = () => abortFullAccessSessions(cowork.fullAccessConnections(), (srv) => cowork.stop(srv.folder, true))
   // Abre una tarea/sesión en la ventana principal (clic en una notificación): la trae al frente y
   // avisa al renderer con `app:openTarget` (mismo canal que usa `ipc/notify.ts`).
   const openTarget = (target: NotifyTarget): void => {
@@ -195,14 +189,11 @@ export function registerCoworkHandlers(
     maybeUnhideApps()
   })
   // Lote C: Teach mode (globo junto al elemento) y "Grabar una skill" (píldora arriba, bajo la de
-  // control): la ventana `assist` los muestra; `computer:record*` además se difunden para que la
+  // control): la ventana `assist` los muestra; `computer:recordDone` además se difunde para que la
   // ventana principal pinte la tarjeta de revisión (`RecordSkill.tsx`, C5).
   computer.on('teachStep', (step) => assist.showTeach(step))
   computer.on('teachClear', () => assist.clearTeach())
-  recorder.on('state', (st) => {
-    assist.showRecording(st)
-    send('computer:recordState', st)
-  })
+  recorder.on('state', (st) => assist.showRecording(st))
   recorder.on('done', (rec) => send('computer:recordDone', rec))
   // Un takeover aprobado (`request_full_control`) pone a esa sesión al mando del ratón y el
   // teclado en segundo plano: si "Ocultar las demás apps" está activo, se ocultan igual que en
@@ -282,8 +273,6 @@ export function registerCoworkHandlers(
   handle('cowork:start', ({ folder, fullAccess }) => cowork.start(folder, fullAccess === true))
   handle('cowork:grantFullAccess', ({ folder }) => cowork.grantFullAccess(folder))
   handle('cowork:revokeFullAccess', ({ folder }) => cowork.revokeFullAccess(folder))
-  handle('cowork:stop', ({ folder, fullAccess }) => cowork.stop(folder, fullAccess))
-  handle('cowork:servers', () => cowork.listServers())
   handle('cowork:deliverables', ({ folder, since }) => cowork.deliverables(folder, since))
   handle('cowork:reveal', ({ path }) => {
     shell.showItemInFolder(cowork.assertInsideApproved(path))
@@ -435,7 +424,6 @@ export function registerCoworkHandlers(
   handle('computer:record:start', ({ mic }) => recorder.start(mic))
   // Rol `assist`: "Terminar"/"Descartar" en la píldora de grabación.
   handle('computer:record:stop', (req) => recorder.stop(req?.discard === true))
-  handle('computer:record:state', () => recorder.state())
   handle('computer:record:prepare', ({ id, folder, includeTyped }) => {
     const root = cowork.assertInsideApproved(folder)
     return recorder.prepare(id, root, includeTyped)
@@ -446,15 +434,13 @@ export function registerCoworkHandlers(
   handle('cowork:keepAwakeSetting', ({ enabled }) => keepAwake.setEnabled(enabled))
   handle('cowork:keepAwakeActive', ({ active }) => keepAwake.setActive(active))
 
-  // ── Lote B/C: submódulos (carpetas, ciclo de vida, proyecto/MCP/reglas, archivos, Modo auto,
-  // navegador propio) ──
+  // ── Lote B/C: submódulos (carpetas, ciclo de vida, proyecto/MCP/reglas, archivos, Modo auto) ──
   const submodules: CoworkSubmodule[] = [
     registerCoworkFoldersHandlers(ctx),
     registerCoworkLifecycleHandlers(ctx),
     registerCoworkProjectHandlers(ctx),
     registerCoworkFilesHandlers(ctx),
-    registerCoworkAutoHandlers(ctx),
-    registerCoworkBrowserHandlers(ctx)
+    registerCoworkAutoHandlers(ctx)
   ]
 
   scheduler.start()

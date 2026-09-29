@@ -26,7 +26,7 @@ import {
 import type { CoworkDeliverable, CoworkFilePreview } from '@shared/ipc-cowork'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
-import { ArtifactButton } from '../../settings/impl/ArtifactButton'
+import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
 import { openPath, reveal } from './actions'
 import { cw } from './bridge'
 import { baseName, extOf, formatSize, relTime } from './util'
@@ -180,7 +180,10 @@ function PreviewBody({ file }: { file: CoworkDeliverable }): React.JSX.Element {
       {MARKDOWN.has(e) ? (
         <Markdown text={text} />
       ) : TABLE.has(e) ? (
-        <CsvTable text={text} sep={e === 'tsv' ? '\t' : text.split('\n', 1)[0].includes(';') && !text.split('\n', 1)[0].includes(',') ? ';' : ','} />
+        <CsvTable
+          text={text}
+          sep={e === 'tsv' ? '\t' : text.split('\n', 1)[0].includes(';') && !text.split('\n', 1)[0].includes(',') ? ';' : ','}
+        />
       ) : (
         <pre className="overflow-auto rounded-lg bg-code p-3 font-mono text-xs whitespace-pre-wrap">{text}</pre>
       )}
@@ -246,7 +249,8 @@ function ImageThumb({ file }: { file: CoworkDeliverable }): React.JSX.Element | 
   return <img src={data.dataUrl} alt="" className="mt-1.5 max-h-28 w-full rounded-md border border-border object-cover" />
 }
 
-const ACTION_BTN = 'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50'
+const ACTION_BTN =
+  'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50'
 
 /** «Abrir como artifact» para un HTML entregable: carga su contenido y usa el `ArtifactButton` de siempre. */
 function HtmlArtifactAction({ file }: { file: CoworkDeliverable }): React.JSX.Element | null {
@@ -276,13 +280,7 @@ function groupByRoot(files: CoworkDeliverable[]): Array<{ root: string | null; f
 }
 
 /** Lista de entregables del panel derecho. `onChanged` se llama al crear archivos nuevos (PDF). */
-export function DeliverableList({
-  files,
-  onChanged
-}: {
-  files: CoworkDeliverable[]
-  onChanged?: () => void
-}): React.JSX.Element {
+export function DeliverableList({ files, onChanged }: { files: CoworkDeliverable[]; onChanged?: () => void }): React.JSX.Element {
   const [preview, setPreview] = useState<CoworkDeliverable | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -399,8 +397,8 @@ export function DeliverableList({
                         title="Genera un PDF junto al HTML, sin conexión a internet"
                         onClick={() => savePdf(f)}
                       >
-                        {busy === `pdf:${f.path}` ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />} Guardar
-                        como PDF
+                        {busy === `pdf:${f.path}` ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />} Guardar como
+                        PDF
                       </button>
                     )}
                   </div>

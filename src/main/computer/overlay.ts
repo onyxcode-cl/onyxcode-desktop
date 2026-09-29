@@ -332,8 +332,7 @@ export class ComputerOverlay {
     const pill = this.pill
     if (!pill || pill.isDestroyed()) return
     const b = pill.getBounds()
-    const hit = (x?: number, y?: number): boolean =>
-      typeof x === 'number' && typeof y === 'number' && inside(b, x, y, 16)
+    const hit = (x?: number, y?: number): boolean => typeof x === 'number' && typeof y === 'number' && inside(b, x, y, 16)
     if (!hit(ev.x, ev.y) && !hit(ev.fromX, ev.fromY)) return
     if (this.pillRestoreTimer) {
       clearTimeout(this.pillRestoreTimer)

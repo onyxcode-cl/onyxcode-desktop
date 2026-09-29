@@ -37,7 +37,6 @@ interface Described {
 }
 
 /** Caracteres de control, marcas bidi y espacios invisibles que pueden ocultar el contenido real de un comando. */
-// eslint-disable-next-line no-control-regex
 const HIDDEN_CHARS_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/
 
 /** true si `text` contiene caracteres de control/unicode invisibles que podrían ocultar contenido. */
@@ -311,12 +310,7 @@ function ApprovalBarInner({ request, more }: { request: PermissionRequest; more:
         }`}
       >
         <Icon size={16} className={`shrink-0 ${d.danger ? 'text-danger' : 'text-warning'}`} />
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left"
-          title="Ver detalles"
-          onClick={review}
-        >
+        <button type="button" className="min-w-0 flex-1 text-left" title="Ver detalles" onClick={review}>
           <span className="block truncate text-sm font-medium">
             {d.title}
             {more > 0 && <span className="ml-1.5 text-xs font-normal text-muted">+{more} más</span>}

@@ -29,6 +29,11 @@ module.exports = {
   files: [
     '!**/.vscode/*',
     '!src/*',
+    '!e2e/**',
+    '!vitest*.config.ts',
+    // Higiene del paquete (F7-B34): config de lint/formato, changelogs y documentación no van en el .asar.
+    '!{eslint.config.mjs,.prettierrc,.prettierignore,CHANGELOG-FASE*.md}',
+    '!docs/**',
     '!electron.vite.config.{js,ts,mjs,cjs}',
     '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,PLAN.md,DESIGN.md,AUDIT.md}',
     '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}',
@@ -40,9 +45,7 @@ module.exports = {
   ],
   // Los agentes y las skills de oficina (se copian a userData/opencode-config al arrancar; OpenCode
   // NUNCA escribe en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
-  // `browser-mcp.js` y `chrome-devtools-mcp` los ejecuta `node`/`bun` directamente (nunca
-  // Electron), así que no pueden quedar dentro de `app.asar` (Lote C, B.10).
-  asarUnpack: ['resources/opencode/agents/**', 'resources/opencode/skills/**', 'out/main/browser-mcp.js', 'node_modules/chrome-devtools-mcp/**'],
+  asarUnpack: ['resources/opencode/agents/**', 'resources/opencode/skills/**'],
   extraResources: [
     // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
     {

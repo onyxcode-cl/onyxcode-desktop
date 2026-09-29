@@ -3,19 +3,13 @@
  *   registerExtrasHandlers(ipcMain, { server, createMainWindow, getMainWindow })
  * Además inicializa atajo global de Quick Entry y bandeja (idempotente).
  */
-import { app, shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, shell, type IpcMain } from 'electron'
 import { release } from 'node:os'
-import type { IpcExtrasInvokeChannel, IpcExtrasInvokeContract, IpcExtrasResult } from '@shared/ipc-extras'
+import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { openArtifact } from '../extras/artifact-window'
-import {
-  ensureAppOpencodeConfig,
-  readAppMcpConfig,
-  removeMcpServer,
-  saveMcpServer,
-  setMcpServerEnabled
-} from '../extras/mcp-config'
+import { ensureAppOpencodeConfig, readAppMcpConfig, removeMcpServer, saveMcpServer, setMcpServerEnabled } from '../extras/mcp-config'
 import { extrasPrefs } from '../extras/prefs'
 import {
   deliverQuickPrompt,
@@ -26,32 +20,13 @@ import {
   unregisterQuickEntryShortcut
 } from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
-import { guardInvoke, IpcGuardError } from './guard'
+import { makeInvokeHandler } from './handle'
 
 export interface ExtrasDeps extends MainWindowDeps {
   server: OpencodeServer
 }
 
-type Req<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
-type Res<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['res']
-
-function handle<C extends IpcExtrasInvokeChannel>(
-  ipcMain: IpcMain,
-  channel: C,
-  handler: (req: Req<C>, event: IpcMainInvokeEvent) => Res<C> | Promise<Res<C>>
-): void {
-  ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcExtrasResult<Res<C>>> => {
-    try {
-      const req = guardInvoke(event, channel, args) as Req<C>
-      return { ok: true, data: await handler(req, event) }
-    } catch (err) {
-      if (err instanceof IpcGuardError) return { ok: false, error: err.message }
-      console.error(`[ipc] ${channel}:`, err)
-      return { ok: false, error: err instanceof Error ? err.message : String(err) }
-    }
-  })
-}
+const handle = makeInvokeHandler<IpcExtrasInvokeContract>({ withCode: false })
 
 /**
  * Recarga la config del sidecar sin reiniciar el proceso (`POST /global/dispose`).

@@ -41,11 +41,6 @@ function rememberCodeDir(sessionId: string, directory: string): void {
   codeDirCache.set(sessionId, { directory, at: Date.now() })
 }
 
-/** Solo para pruebas: vacía la caché de carpetas de Code. */
-export function clearCodeDirCacheForTests(): void {
-  codeDirCache.clear()
-}
-
 async function resolveCodeDirectory(sessionId: string, deps: ResolveActorDeps): Promise<string> {
   const cached = codeDirCache.get(sessionId)
   if (cached) return cached.directory

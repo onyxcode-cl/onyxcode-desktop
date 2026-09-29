@@ -1,42 +1,18 @@
 /**
  * Handlers IPC del modo Code (pty, git, dialog) según `shared/ipc-code.ts`.
- * Registrar DESPUÉS de `registerAllHandlers` para reemplazar los placeholders `NOT_IMPLEMENTED`.
+ * Canales propios de Code (ya no comparten nombre con `shared/ipc.ts`).
  */
 import { app, BrowserWindow, webContents, type IpcMain, type IpcMainInvokeEvent } from 'electron'
-import type { IpcResult } from '@shared/ipc'
-import {
-  CODE_EVENTS,
-  type CodeEventChannel,
-  type CodeEventContract,
-  type CodeInvokeChannel,
-  type CodeRequest,
-  type CodeResponse
-} from '@shared/ipc-code'
+import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeInvokeContract } from '@shared/ipc-code'
 import * as git from '../git/service'
 import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
 import { PtyService } from '../pty/service'
+import { shouldKillOnNavigation } from '../pty/lifecycle'
 import { settingsStore } from '../store'
-import { guardInvoke, IpcGuardError } from './guard'
+import { makeInvokeHandler } from './handle'
 
-type Handler<C extends CodeInvokeChannel> = (
-  req: CodeRequest<C>,
-  event: IpcMainInvokeEvent
-) => CodeResponse<C> | Promise<CodeResponse<C>>
-
-function on<C extends CodeInvokeChannel>(ipcMain: IpcMain, channel: C, handler: Handler<C>): void {
-  ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcResult<CodeResponse<C>>> => {
-    try {
-      const req = guardInvoke(event, channel, args) as CodeRequest<C>
-      return { ok: true, data: await handler(req, event) }
-    } catch (err) {
-      if (err instanceof IpcGuardError) return { ok: false, code: err.kind, error: err.message }
-      if (!(err instanceof GitError)) console.error(`[ipc] ${channel}:`, err)
-      return { ok: false, code: 'ERROR', error: err instanceof Error ? err.message : String(err) }
-    }
-  })
-}
+const on = makeInvokeHandler<CodeInvokeContract>({ withCode: true, silent: (err) => err instanceof GitError })
 
 function sendToId<C extends CodeEventChannel>(wcId: number, channel: C, payload: CodeEventContract[C]): void {
   const wc = webContents.fromId(wcId)
@@ -46,13 +22,6 @@ function sendToId<C extends CodeEventChannel>(wcId: number, channel: C, payload:
 function req<T>(value: T | undefined | null, name: string): T {
   if (value === undefined || value === null) throw new Error(`Falta el parámetro "${name}"`)
   return value
-}
-
-let ptyService: PtyService | null = null
-
-/** Servicio de terminales (singleton) — útil para matar todo al salir. */
-export function getPtyService(): PtyService | null {
-  return ptyService
 }
 
 export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null): void {
@@ -69,7 +38,6 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
       if (wcId !== undefined) sendToId(wcId, CODE_EVENTS.ptyExit, { id, exitCode })
     }
   })
-  ptyService = pty
   const trackedSenders = new Set<number>()
 
   const assertOwner = (id: string, event: IpcMainInvokeEvent): void => {
@@ -84,11 +52,19 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     if (!trackedSenders.has(sender.id)) {
       trackedSenders.add(sender.id)
       const senderId = sender.id
-      sender.once('destroyed', () => {
-        trackedSenders.delete(senderId)
+      const release = (): void => {
         pty.killOwner(senderId)
         for (const [id, owner] of owners) if (owner === senderId) owners.delete(id)
+      }
+      sender.once('destroyed', () => {
+        trackedSenders.delete(senderId)
+        release()
       })
+      // Recarga de la ventana / renderer caído: el webContents sigue vivo pero sus terminales ya no existen.
+      sender.on('did-start-navigation', (details) => {
+        if (shouldKillOnNavigation(details)) release()
+      })
+      sender.on('render-process-gone', release)
     }
     return info
   })

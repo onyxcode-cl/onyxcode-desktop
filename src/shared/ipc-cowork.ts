@@ -580,7 +580,7 @@ export interface ManagedPolicy {
   maxAutoArchiveDays?: number
   /** Lote C: apaga el Modo auto (aprobación automática de bajo riesgo) para toda la organización. */
   disableAutoMode?: boolean
-  /** Lote C: apaga el navegador propio (`chrome-devtools-mcp`) para toda la organización. */
+  /** Apaga el navegador integrado del agente para toda la organización (originado en el Lote C). */
   disableBrowser?: boolean
 }
 
@@ -656,10 +656,7 @@ export interface SkillRecording {
 
 /** Mensajes de main a la ventana `assist` (Teach mode y píldora de grabación). */
 export type AssistMessage =
-  | { type: 'teach'; step: TeachStep }
-  | { type: 'teachClear' }
-  | { type: 'recording'; state: SkillRecordingState }
-  | { type: 'hide' }
+  { type: 'teach'; step: TeachStep } | { type: 'teachClear' } | { type: 'recording'; state: SkillRecordingState } | { type: 'hide' }
 
 // ───────────────────────────── Lote C: Modo auto ─────────────────────────────
 
@@ -696,25 +693,12 @@ export interface AutoModeState {
   policyDisabled: boolean
 }
 
-// ───────────────────────────── Lote C: navegador propio ─────────────────────────────
+// ───────────────────────────── Navegador integrado: sitios permitidos ─────────────────────────────
 
-/** Sitio (eTLD+1) con "Permitir siempre" para el navegador propio de Cowork. */
+/** Sitio (eTLD+1) con "Permitir siempre" para el navegador integrado (el «navegador propio» del Lote C ya no existe). */
 export interface BrowserSite {
   site: string
   addedAt: number
-}
-
-/** Estado del navegador propio (`chrome-devtools-mcp`), solo en Control total. */
-export interface BrowserState {
-  enabled: boolean
-  available: boolean
-  reason?: string
-  chromePath: string | null
-  runtime: 'node' | 'bun' | null
-  sites: BrowserSite[]
-  denied: string[]
-  profileDir: string
-  policyDisabled: boolean
 }
 
 // ───────────────────────────── Contrato ─────────────────────────────
@@ -734,9 +718,6 @@ export interface CoworkInvokeContract {
   'cowork:grantFullAccess': { req: { folder: string }; res: void }
   /** Retira el consentimiento de acceso total y detiene ese servidor. */
   'cowork:revokeFullAccess': { req: { folder: string }; res: void }
-  /** Detiene el/los servidor(es) de la carpeta (ambos modos si `fullAccess` se omite). */
-  'cowork:stop': { req: { folder: string; fullAccess?: boolean }; res: void }
-  'cowork:servers': { req: void; res: CoworkServerInfo[] }
   /** Archivos modificados en la carpeta desde `since` (epoch ms). */
   'cowork:deliverables': { req: { folder: string; since: number }; res: CoworkDeliverable[] }
   /** Muestra el archivo/carpeta en Finder. */
@@ -929,7 +910,6 @@ export interface CoworkInvokeContract {
   'computer:record:start': { req: { mic: boolean }; res: SkillRecordingState }
   /** Termina (o descarta) la grabación en curso. Solo la ventana `assist` puede invocarlo. */
   'computer:record:stop': { req: { discard?: boolean }; res: SkillRecording | null }
-  'computer:record:state': { req: void; res: SkillRecordingState }
   /**
    * Copia las capturas de una grabación a la carpeta de la tarea y devuelve el prompt (en
    * español) para que el agente proponga generalizarla a una skill.
@@ -951,13 +931,6 @@ export interface CoworkInvokeContract {
   'cowork:auto:clearLog': { req: void; res: AutoModeState }
   /** El renderer pide considerar una petición de acceso a apps a mitad de tarea (vía rápida). */
   'cowork:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean } }
-
-  // ── Lote C: navegador propio (los handlers los registra C4) ──
-  'cowork:browser:state': { req: void; res: BrowserState }
-  'cowork:browser:set': { req: { enabled: boolean }; res: BrowserState }
-  'cowork:browser:removeSite': { req: { site: string }; res: BrowserState }
-  'cowork:browser:undeny': { req: { site: string }; res: BrowserState }
-  'cowork:browser:clearData': { req: void; res: BrowserState }
 }
 
 export interface CoworkEventContract {
@@ -985,11 +958,9 @@ export interface CoworkEventContract {
   // ── Lote C ──
   /** Solo para la ventana `assist` (Teach mode y píldora de grabación). */
   'computer:assist': AssistMessage
-  'computer:recordState': SkillRecordingState
   'computer:recordDone': SkillRecording
   /** El Modo auto aprobó algo automáticamente (para el aviso "Aprobado por el modo auto: …"). */
   'cowork:auto:approved': AutoApprovalRecord
-  'cowork:browser:changed': BrowserState
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -1005,8 +976,6 @@ export const COWORK_INVOKE_CHANNELS = [
   'cowork:start',
   'cowork:grantFullAccess',
   'cowork:revokeFullAccess',
-  'cowork:stop',
-  'cowork:servers',
   'cowork:deliverables',
   'cowork:reveal',
   'cowork:openPath',
@@ -1082,18 +1051,12 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:teachRespond',
   'computer:record:start',
   'computer:record:stop',
-  'computer:record:state',
   'computer:record:prepare',
   'cowork:auto:state',
   'cowork:auto:set',
   'cowork:auto:revoke',
   'cowork:auto:clearLog',
-  'cowork:auto:consider',
-  'cowork:browser:state',
-  'cowork:browser:set',
-  'cowork:browser:removeSite',
-  'cowork:browser:undeny',
-  'cowork:browser:clearData'
+  'cowork:auto:consider'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
 export const COWORK_EVENT_CHANNELS = [
@@ -1110,10 +1073,8 @@ export const COWORK_EVENT_CHANNELS = [
   'cowork:networkBlocked',
   'cowork:activity',
   'computer:assist',
-  'computer:recordState',
   'computer:recordDone',
-  'cowork:auto:approved',
-  'cowork:browser:changed'
+  'cowork:auto:approved'
 ] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>

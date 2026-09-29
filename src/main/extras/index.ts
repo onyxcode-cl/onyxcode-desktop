@@ -5,12 +5,7 @@
 import { app, BrowserWindow } from 'electron'
 import type { ExtrasPrefs, ExtrasPrefsState, IpcExtrasEventChannel, IpcExtrasEventContract } from '@shared/ipc-extras'
 import { extrasPrefs } from './prefs'
-import {
-  destroyQuickEntry,
-  registerQuickEntryShortcut,
-  toggleQuickEntry,
-  warmQuickEntry
-} from './quick-entry'
+import { destroyQuickEntry, registerQuickEntryShortcut, toggleQuickEntry, warmQuickEntry } from './quick-entry'
 import { createTray, destroyTray, updateTrayShortcut } from './tray'
 import { showMainWindow, type MainWindowDeps } from './windows'
 

@@ -1,6 +1,6 @@
 # Lote B de Cowork: qué se entregó, decisiones y guía de pruebas
 
-Plan de origen: `docs/COWORK-LOTE-B-PLAN.md` (arquitectura, contratos y reparto en oleadas). Antecedente:
+Plan de origen: `docs/archive/COWORK-LOTE-B-PLAN.md` (arquitectura, contratos y reparto en oleadas). Antecedente:
 `docs/COWORK-LOTE-A.md` (Cowork autónomo: plan por sesión, niveles por app, escalada, búsqueda web).
 Hallazgos de seguridad y su estado: `AUDIT.md` §9. Modelo de seguridad vigente: `docs/SEGURIDAD.md` («3 bis»).
 Comparación con Claude Desktop, fila por fila: `docs/analisis-claude/02-cowork.md` («Tabla de brechas»).
@@ -210,7 +210,7 @@ Requisitos: modelo con visión para las pruebas de Control total; una carpeta A 
   `resources/computer-use/helper.swift`; recompilar cambia la firma y macOS olvida los permisos TCC (Accesibilidad,
   Grabación de pantalla). No hay una vía solo-TS segura; conviene hacerlos juntos con un plan de migración de permisos.
 - **Navegador propio**: Playwright descarga ~150 MB de Chromium y Chrome dentro de Seatbelt choca con su propio sandbox,
-  perfiles y proxy. Alternativa ya disponible: activar `chrome-devtools-mcp` como MCP «Disponible en Cowork» en Control total.
+  perfiles y proxy. Alternativa ya disponible: activar `chrome-devtools-mcp` como MCP «Disponible en Cowork» en Control total. *(Histórico, nota del 2026-09-29: además hoy existe el navegador integrado del Lote D; «Chrome aparte» se eliminó en el refactor fase 3.)*
 - **Modo auto** (clasificador de permisos): necesita otro modelo por cada permiso, con riesgo de inyección.
 - **Marketplace de plugins**: fase posterior (solo se listan las skills instaladas).
 - **Snapshots APFS («punto de restauración») antes de conceder borrado**: la red de seguridad actual es `session.revert`.

@@ -13,10 +13,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           // Servidor MCP de computer use: utilityProcess de main (HTTP en 127.0.0.1) → out/main/computer-mcp.js
-          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts'),
-          // Pasarela del navegador propio (Lote C, la crea C4): proceso `local` lanzado por OpenCode
-          // (node/bun), nunca por Electron → out/main/browser-mcp.js
-          'browser-mcp': resolve(__dirname, 'src/main/browser/gateway.ts')
+          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts')
         }
       }
     }

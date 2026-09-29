@@ -1,0 +1,6 @@
+[
+  {
+    "pattern": "504 \\(Outdated Optimize Dep\\)",
+    "reason": "Vite re-optimiza dependencias tras descubrir una nueva en frío y recarga la página sola; es transitorio, no un error de la app."
+  }
+]

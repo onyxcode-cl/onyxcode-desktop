@@ -15,13 +15,7 @@
  * INDEPENDIENTE de Electron: todo lo externo entra por `MonitorDeps` (probado contra un servidor
  * HTTP falso). El servidor de OpenCode se consulta con `fetch` y `?directory=<carpeta>`.
  */
-import type {
-  CoworkActivitySnapshot,
-  CoworkPrefs,
-  CoworkTaskActivity,
-  CoworkTaskActivityState,
-  CoworkTaskMeta
-} from '@shared/ipc-cowork'
+import type { CoworkActivitySnapshot, CoworkPrefs, CoworkTaskActivity, CoworkTaskActivityState, CoworkTaskMeta } from '@shared/ipc-cowork'
 // Solo el TIPO (se borra al compilar): el monitor sigue sin depender de Electron en tiempo de
 // ejecución aunque `auto-approver.ts` sí lo haga.
 import type { AutoServer } from './auto-approver'
@@ -253,7 +247,11 @@ export class CoworkMonitor {
     const tasks: CoworkTaskActivity[] = []
     const servers: CoworkActivitySnapshot['servers'] = []
     for (const st of this.states.values()) {
-      servers.push({ folder: st.folder, fullAccess: st.fullAccess, idleSince: st.busy === 0 && st.pending === 0 && st.polled ? st.idleSince : null })
+      servers.push({
+        folder: st.folder,
+        fullAccess: st.fullAccess,
+        idleSince: st.busy === 0 && st.pending === 0 && st.polled ? st.idleSince : null
+      })
       for (const [sessionId, r] of st.roots) {
         if (r.missing > 0 || r.routine) continue
         tasks.push({ sessionId, folder: st.folder, fullAccess: st.fullAccess, title: r.title, state: r.state, since: r.since })
@@ -438,7 +436,8 @@ export class CoworkMonitor {
         sessionID: p.sessionID,
         permission: p.permission,
         patterns: Array.isArray(p.patterns) ? p.patterns.filter((x): x is string => typeof x === 'string') : undefined,
-        metadata: p.metadata && typeof p.metadata === 'object' && !Array.isArray(p.metadata) ? (p.metadata as Record<string, unknown>) : undefined
+        metadata:
+          p.metadata && typeof p.metadata === 'object' && !Array.isArray(p.metadata) ? (p.metadata as Record<string, unknown>) : undefined
       }))
     const questionList = (Array.isArray(questions.data) ? questions.data : []).filter(
       (q): q is { id: string; sessionID: string } => typeof q?.id === 'string' && typeof q?.sessionID === 'string'
@@ -447,7 +446,10 @@ export class CoworkMonitor {
     // Lote C, Modo auto: se avisa con la lista cruda de este sondeo (aparte del resto del monitor).
     if (this.deps.onPermissions) {
       try {
-        this.deps.onPermissions({ folder: st.folder, fullAccess: st.fullAccess, baseUrl: st.baseUrl, authorization: st.authorization }, permList)
+        this.deps.onPermissions(
+          { folder: st.folder, fullAccess: st.fullAccess, baseUrl: st.baseUrl, authorization: st.authorization },
+          permList
+        )
       } catch (err) {
         this.deps.log?.('[monitor] onPermissions:', err)
       }
@@ -495,7 +497,8 @@ export class CoworkMonitor {
     if (!complete) return
 
     // Permisos y preguntas nuevas: una notificación por tarea y tipo.
-    const notify = (kind: MonitorNotifyKind, rootId: string, title: string): void => this.emitNotify(st, { kind, sessionId: rootId, folder: st.folder, fullAccess: st.fullAccess, title })
+    const notify = (kind: MonitorNotifyKind, rootId: string, title: string): void =>
+      this.emitNotify(st, { kind, sessionId: rootId, folder: st.folder, fullAccess: st.fullAccess, title })
     const newPermRoots = new Set<string>()
     for (const [id, root] of permRoots) if (!st.notifiedPerms.has(id)) newPermRoots.add(root)
     const newQuestionRoots = new Set<string>()

@@ -27,13 +27,7 @@ import {
   setTaskMeta,
   useCowork
 } from './store'
-import {
-  CREATE_SKILL_PROMPT,
-  buildContinuationPrompt,
-  buildSideChatSystem,
-  suggestedExportName,
-  transcriptToMarkdown
-} from './transcript'
+import { CREATE_SKILL_PROMPT, buildContinuationPrompt, buildSideChatSystem, suggestedExportName, transcriptToMarkdown } from './transcript'
 import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './util'
 
 // ── Red de Cowork (aviso "Se bloqueó el acceso a…") ──
@@ -86,6 +80,7 @@ export async function loadFolders(): Promise<void> {
 export async function chooseFolder(): Promise<void> {
   const picked = await cw('cowork:pickFolder')
   if (!picked) return
+  useCowork.setState({ error: null })
   const { folders } = useCowork.getState()
   if (folders.some((f) => f.path === picked)) await selectFolder(picked)
   else useCowork.setState({ pendingApproval: picked })
@@ -94,6 +89,7 @@ export async function chooseFolder(): Promise<void> {
 export async function approvePending(): Promise<void> {
   const folder = useCowork.getState().pendingApproval
   if (!folder) return
+  useCowork.setState({ error: null })
   try {
     const approved = await cw('cowork:approveFolder', { folder })
     useCowork.setState({ pendingApproval: null })
@@ -166,9 +162,7 @@ export async function abortBusyTasks(): Promise<void> {
   if (!client || !folder) return
   const ids = new Set(busySessionIds())
   if (activeTaskId) ids.add(activeTaskId)
-  await Promise.all(
-    [...ids].map((sessionID) => client.session.abort({ sessionID, directory: folder }).catch(() => undefined))
-  )
+  await Promise.all([...ids].map((sessionID) => client.session.abort({ sessionID, directory: folder }).catch(() => undefined)))
 }
 
 /**
@@ -308,6 +302,8 @@ export async function openTask(sessionID: string): Promise<void> {
     sideChat: s.sideChat && s.sideChat.taskId !== sessionID ? null : s.sideChat
   }))
   clearUnseen(sessionID)
+  // Reabrir fija la sesión (activa + acceso) ANTES de cargar (LRU de `messages`).
+  useSessions.getState().touchSession(sessionID)
   await loadTask(sessionID)
   // La tarea conserva su modelo y su esfuerzo al reabrirla.
   if (useCowork.getState().activeTaskId === sessionID) {
@@ -416,11 +412,12 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
     sessions.upsertSession(res.data)
     sessionID = res.data.id
     const id = sessionID
-    useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] } }))
+    useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] }, loaded: { ...s.loaded, [id]: true } }))
     useCowork.setState({ activeTaskId: id })
   }
   const fullAccess = useCowork.getState().conn?.fullAccess === true
   if (fullAccess) useCowork.setState({ lastAction: null })
+  sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
   const res = await client.session.promptAsync({
@@ -506,12 +503,15 @@ export async function deleteTask(sessionID: string): Promise<void> {
   const { client, folder } = ctx()
   const res = await client.session.delete({ sessionID, directory: folder })
   if (res.error) throw new Error(errorMessage(res.error))
+  // `removeSession` limpia sessions/messages/sessionSource/loaded/lastAccess; status y errors se limpian aquí también
+  // (no dejar entradas huérfanas de una tarea borrada, F7-B36).
+  useSessions.getState().removeSession(sessionID)
   useSessions.setState((s) => {
-    const sessions = { ...s.sessions }
-    const messages = { ...s.messages }
-    delete sessions[sessionID]
-    delete messages[sessionID]
-    return { sessions, messages }
+    const status = { ...s.status }
+    const errors = { ...s.errors }
+    delete status[sessionID]
+    delete errors[sessionID]
+    return { status, errors }
   })
   if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
   void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
@@ -646,9 +646,7 @@ export async function unlinkFolder(path: string): Promise<void> {
 }
 
 export type FolderRequestDecision =
-  | { kind: 'deny' }
-  | { kind: 'later' }
-  | { kind: 'allow'; path: string; mode: FolderAccessMode; trust: boolean }
+  { kind: 'deny' } | { kind: 'later' } | { kind: 'allow'; path: string; mode: FolderAccessMode; trust: boolean }
 
 /** Texto de rechazo que recibe el agente cuando el usuario no concede la carpeta. */
 function folderRefusal(kind: 'deny' | 'later', path: string): string {
@@ -761,7 +759,8 @@ export async function editAndRetry(taskId: string, userMessageId: string, text: 
 }
 
 async function ensureEntries(taskId: string): Promise<import('../../../stores/sessions').MessageEntry[]> {
-  if (!useSessions.getState().messages[taskId]) await loadTask(taskId)
+  // `loaded` y no la presencia/longitud de la lista: puede ser parcial por eventos sueltos (F6-B14).
+  if (!useSessions.getState().loaded[taskId]) await loadTask(taskId)
   return useSessions.getState().messages[taskId] ?? []
 }
 
@@ -815,7 +814,7 @@ export async function sendSideChat(text: string): Promise<void> {
     sessions.upsertSession(res.data)
     sessionID = res.data.id
     const id = sessionID
-    useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] } }))
+    useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] }, loaded: { ...s.loaded, [id]: true } }))
     useCowork.setState((s) => (s.sideChat?.taskId === side.taskId ? { sideChat: { taskId: side.taskId, sessionId: id } } : {}))
   }
   const entries = await ensureEntries(side.taskId)

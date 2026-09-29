@@ -1,8 +1,14 @@
 /** Utilidades de presentación del modo Cowork (tiempos, tamaños, estado y etiquetas de pasos). */
-import type { Message, Part, PermissionRequest, Session, Todo, ToolPart } from '@opencode-ai/sdk/v2/client'
-import type { MessageEntry, SessionRunState } from '../../../stores/sessions'
+import type { Message, Part, PermissionRequest, Session, ToolPart } from '@opencode-ai/sdk/v2/client'
+import { MAIN_SOURCE, type MessageEntry, type SessionRunState } from '../../../stores/sessions'
+import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
+
+/** ¿El origen de una sesión es un servidor de Cowork (cualquiera)? Chat/Code usan el origen principal (ausente). */
+export function isCoworkSource(src: string | undefined): boolean {
+  return !!src && src !== MAIN_SOURCE
+}
 
 export function baseName(p: string): string {
   return p.split('/').filter(Boolean).pop() ?? p
@@ -45,16 +51,7 @@ export function formatDuration(ms: number): string {
 
 // ───────────────────────────── Estado de la tarea ─────────────────────────────
 
-export type TaskStatus =
-  | 'running'
-  | 'using_computer'
-  | 'plan_ready'
-  | 'waiting'
-  | 'question'
-  | 'done'
-  | 'error'
-  | 'idle'
-  | 'archived'
+export type TaskStatus = 'running' | 'using_computer' | 'plan_ready' | 'waiting' | 'question' | 'done' | 'error' | 'idle' | 'archived'
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   running: 'Trabajando',
@@ -100,6 +97,8 @@ export function taskStatus(args: {
   /** Control total: hay un plan esperando tu aprobación. */
   planPending?: boolean
   archived?: boolean
+  /** Estado terminal que la tarea tenía al desalojarse su historial (`evictedStatusOf`); solo se usa sin `entries`. */
+  evicted?: TaskStatus
 }): TaskStatus {
   if (args.archived) return 'archived'
   if (args.planPending) return 'plan_ready'
@@ -109,11 +108,27 @@ export function taskStatus(args: {
   if (running && args.usingComputer) return 'using_computer'
   if (running) return 'running'
   if (args.error) return 'error'
+  // Historial desalojado (LRU): no degradar a «done» una tarea que terminó con error.
+  if (!args.entries && args.evicted) return args.evicted
   const last = lastAssistant(args.entries)
   if (last && last.role === 'assistant' && last.error && last.error.name !== 'MessageAbortedError') return 'error'
   if (last) return 'done'
   // Sin mensajes cargados (tarea antigua en la lista) ⇒ se asume terminada.
   return args.entries && args.entries.length === 0 ? 'idle' : 'done'
+}
+
+// F7-B35: estado terminal de las tareas cuyo historial se desalojó (sin historial no se puede recalcular).
+const evictedStatus = new Map<string, TaskStatus>()
+
+/** Guarda (o borra) el estado terminal de una tarea al desalojarse su historial; solo se conserva `error`. */
+export function rememberEvictedStatus(id: string, entries: MessageEntry[]): void {
+  const st = taskStatus({ run: 'idle', waiting: false, error: null, entries })
+  if (st === 'error') evictedStatus.set(id, st)
+  else evictedStatus.delete(id)
+}
+
+export function evictedStatusOf(id: string): TaskStatus | undefined {
+  return evictedStatus.get(id)
 }
 
 /** ¿Una sesión (permiso, pregunta…) pertenece a la tarea (o a una subtarea suya)? */
@@ -230,12 +245,6 @@ export interface StepGroup {
   tools: ToolPart[]
 }
 
-function todosFrom(part: ToolPart): Todo[] | null {
-  const raw = part.state.input?.todos
-  if (!Array.isArray(raw)) return null
-  return raw.filter((t): t is Todo => !!t && typeof t === 'object' && typeof (t as Todo).content === 'string')
-}
-
 /** Agrupa las herramientas de la tarea según el paso del plan que estaba "in_progress". */
 export function groupActivityBySteps(entries: MessageEntry[]): StepGroup[] {
   const groups: StepGroup[] = []
@@ -249,7 +258,7 @@ export function groupActivityBySteps(entries: MessageEntry[]): StepGroup[] {
     for (const p of e.parts) {
       if (p.type !== 'tool') continue
       if (p.tool === 'todowrite') {
-        const todos = todosFrom(p)
+        const todos = parseTodos(p.state.input?.todos)
         const active = todos?.find((t) => t.status === 'in_progress')?.content ?? null
         if (active && active !== current?.title) current = push(active)
         continue
@@ -286,16 +295,7 @@ export interface ContextGroups {
 
 const FILE_READ_TOOLS = new Set(['read', 'list', 'glob', 'grep'])
 const FILE_WRITE_TOOLS = new Set(['write', 'edit', 'multiedit', 'patch', 'apply_patch'])
-const KNOWN_TOOLS = new Set([
-  ...FILE_READ_TOOLS,
-  ...FILE_WRITE_TOOLS,
-  'bash',
-  'webfetch',
-  'websearch',
-  'todowrite',
-  'question',
-  'task'
-])
+const KNOWN_TOOLS = new Set([...FILE_READ_TOOLS, ...FILE_WRITE_TOOLS, 'bash', 'webfetch', 'websearch', 'todowrite', 'question', 'task'])
 
 /** Agrupa la actividad de la tarea por tipo (archivos leídos/escritos, comandos, web, conectores). */
 export function buildContext(entries: MessageEntry[]): ContextGroups {

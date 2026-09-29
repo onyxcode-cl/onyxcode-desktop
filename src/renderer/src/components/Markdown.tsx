@@ -3,7 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Check, Copy } from 'lucide-react'
-import { ArtifactButton, looksRenderable } from '../features/settings/impl/ArtifactButton'
+import { ArtifactButton, looksRenderable } from './artifacts/ArtifactButton'
 
 function textOf(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -128,19 +128,33 @@ const components: Components = {
 }
 
 const remarkPlugins = [remarkGfm]
-const rehypePlugins = [[rehypeHighlight, { detect: true, ignoreMissing: true }] as [typeof rehypeHighlight, object]]
+// F7-B45: `detect:false` (solo se resaltan los bloques con lenguaje declarado; la autodetección probaba TODOS los
+// lenguajes en cada bloque y era lo más caro) y sin resaltar mientras el mensaje se está escribiendo (`highlight` falso).
+const rehypePlugins = [[rehypeHighlight, { detect: false, ignoreMissing: true }] as [typeof rehypeHighlight, object]]
+const NO_REHYPE: never[] = []
 
 interface MarkdownProps {
   text: string
   /** Muestra el cursor de escritura al final (respuesta en curso). */
   streaming?: boolean
+  /**
+   * Resaltar la sintaxis de los bloques de código. Por defecto `!streaming`: lo que aún se está escribiendo no se
+   * resalta (re-resaltar todo el mensaje en cada frame era el mayor coste del streaming); al terminar se resalta una vez.
+   * Code y Cowork no muestran cursor, así que pasan `highlight={false}` para su último bloque de texto en curso.
+   */
+  highlight?: boolean
   className?: string
 }
 
-export const Markdown = memo(function Markdown({ text, streaming, className = '' }: MarkdownProps): React.JSX.Element {
+export const Markdown = memo(function Markdown({
+  text,
+  streaming,
+  highlight = !streaming,
+  className = ''
+}: MarkdownProps): React.JSX.Element {
   return (
     <div className={`markdown ${streaming ? 'is-streaming' : ''} ${className}`}>
-      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
+      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={highlight ? rehypePlugins : NO_REHYPE} components={components}>
         {text}
       </ReactMarkdown>
     </div>

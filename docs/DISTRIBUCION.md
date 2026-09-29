@@ -145,10 +145,5 @@ presentes; si faltan, el log lo dice explícitamente en vez de fallar en silenci
   aceptar esos dos prompts la primera vez. **Terminal.app no declara uso de micrófono**: si la grabación con voz
   falla o el proceso aborta al pedir el permiso desde ahí, prueba desde iTerm o VS Code (la grabación sigue
   funcionando sin audio si el permiso falla o se deniega).
-- **Navegador propio (`chrome-devtools-mcp`):** `electron-builder.js` → `asarUnpack` incluye
-  `'out/main/browser-mcp.js'` y `'node_modules/chrome-devtools-mcp/**'` (la pasarela y el paquete real van
-  desempaquetados: Node/el runtime de OpenCode los ejecutan directamente, no desde dentro del `.asar`).
-  Comprueba en el `.app`: `Contents/Resources/app.asar.unpacked/out/main/browser-mcp.js` y
-  `Contents/Resources/app.asar.unpacked/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js`.
-  El navegador solo se activa en Control total del Mac y solo si el usuario lo enciende en Ajustes (desactivado
-  por defecto): no cambia nada del flujo de firma/notarización, solo qué archivos van desempaquetados.
+- **Navegador propio (`chrome-devtools-mcp`, `browser-mcp.js`): ELIMINADO** en el refactor fase 3 (nota del 2026-09-29). Ya no hay nada que
+  desempaquetar ni verificar en el `.app`; el navegador integrado vive dentro del proceso principal.

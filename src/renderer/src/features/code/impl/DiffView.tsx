@@ -23,7 +23,13 @@ export function parseUnifiedDiff(patch: string): DiffLine[] {
       out.push({ kind: 'file', text: raw.replace(/^diff --git a\/(.*) b\/.*$/, '$1').replace(/^Index: /, '') })
       continue
     }
-    if (!inHunk && (raw.startsWith('--- ') || raw.startsWith('+++ ') || raw.startsWith('===') || /^(index|new file|deleted file|old mode|new mode|similarity|rename|Binary)/.test(raw))) {
+    if (
+      !inHunk &&
+      (raw.startsWith('--- ') ||
+        raw.startsWith('+++ ') ||
+        raw.startsWith('===') ||
+        /^(index|new file|deleted file|old mode|new mode|similarity|rename|Binary)/.test(raw))
+    ) {
       if (raw.startsWith('Binary')) out.push({ kind: 'meta', text: 'Archivo binario' })
       else if (raw.startsWith('new file')) out.push({ kind: 'meta', text: 'Archivo nuevo' })
       else if (raw.startsWith('deleted file')) out.push({ kind: 'meta', text: 'Archivo eliminado' })
@@ -72,7 +78,16 @@ export function languageFor(path: string | undefined): string | null {
   if (lower === 'dockerfile') return 'dockerfile'
   if (lower === 'makefile') return 'makefile'
   const ext = lower.includes('.') ? lower.slice(lower.lastIndexOf('.') + 1) : ''
-  const alias: Record<string, string> = { mjs: 'javascript', cjs: 'javascript', mts: 'typescript', cts: 'typescript', vue: 'xml', svelte: 'xml', zsh: 'bash', toml: 'ini' }
+  const alias: Record<string, string> = {
+    mjs: 'javascript',
+    cjs: 'javascript',
+    mts: 'typescript',
+    cts: 'typescript',
+    vue: 'xml',
+    svelte: 'xml',
+    zsh: 'bash',
+    toml: 'ini'
+  }
   const lang = alias[ext] ?? ext
   return lang && hljs.getLanguage(lang) ? lang : null
 }

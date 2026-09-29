@@ -168,7 +168,10 @@ export const useBrowserUi = create<BrowserUiState>((set) => ({
 }))
 
 /** Aprobaciones pendientes de un dueño concreto (selector estable para `useBrowserUi`). */
-export function approvalsFor(state: { approvals: Record<string, BrowserApprovalRequest[]> }, owner: BrowserOwner): BrowserApprovalRequest[] {
+export function approvalsFor(
+  state: { approvals: Record<string, BrowserApprovalRequest[]> },
+  owner: BrowserOwner
+): BrowserApprovalRequest[] {
   return state.approvals[ownerKey(owner)] ?? []
 }
 

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Brain, Check, ChevronDown, Loader2, Search } from 'lucide-react'
 import type { ModelRef } from '@shared/types'
-import { useProviders } from '../stores/providers'
+import { PREFERRED_PROVIDER, sortProviders, useProviders } from '../stores/providers'
 import { useServer } from '../stores/server'
+import { isSubmitKey } from '../lib/textarea'
 
 interface Props {
   value: ModelRef
@@ -10,8 +11,6 @@ interface Props {
   /** Hacia dónde se abre el menú. */
   placement?: 'top' | 'bottom'
 }
-
-const PREFERRED = 'opencode-go'
 
 /** Selector de modelo con los proveedores/modelos del servidor (`config.providers`). */
 export function ModelPicker({ value, onChange, placement = 'top' }: Props): React.JSX.Element {
@@ -43,28 +42,18 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return [...providers]
-      .sort((a, b) => (a.id === PREFERRED ? -1 : b.id === PREFERRED ? 1 : a.name.localeCompare(b.name, 'es')))
+    return sortProviders(providers)
       .map((p) => ({
         provider: p,
         models: Object.values(p.models)
           .filter((m) => m.status !== 'deprecated')
-          .filter(
-            (m) =>
-              !q ||
-              m.name.toLowerCase().includes(q) ||
-              m.id.toLowerCase().includes(q) ||
-              p.name.toLowerCase().includes(q)
-          )
+          .filter((m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
           .sort((a, b) => a.name.localeCompare(b.name, 'es'))
       }))
       .filter((g) => g.models.length > 0)
   }, [providers, query])
 
-  const flat = useMemo(
-    () => groups.flatMap((g) => g.models.map((m) => ({ providerID: g.provider.id, modelID: m.id }))),
-    [groups]
-  )
+  const flat = useMemo(() => groups.flatMap((g) => g.models.map((m) => ({ providerID: g.provider.id, modelID: m.id }))), [groups])
 
   // Al abrir, situar el cursor en el modelo actual.
   useEffect(() => {
@@ -95,7 +84,7 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setCursor((c) => Math.max(0, c - 1))
-    } else if (e.key === 'Enter') {
+    } else if (isSubmitKey(e, { allowShift: true })) {
       e.preventDefault()
       const r = flat[cursor]
       if (r) choose(r)
@@ -144,17 +133,13 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
               </div>
             )}
             {error && <div className="px-3 py-2 text-sm text-danger">{error}</div>}
-            {!loading && !error && groups.length === 0 && (
-              <div className="px-3 py-6 text-center text-sm text-muted">Sin resultados</div>
-            )}
+            {!loading && !error && groups.length === 0 && <div className="px-3 py-6 text-center text-sm text-muted">Sin resultados</div>}
             {groups.map(({ provider, models }) => (
               <div key={provider.id} className="pb-1">
                 <div className="flex items-center gap-1.5 px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
                   {provider.name}
-                  {provider.id === PREFERRED && (
-                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold normal-case">
-                      recomendado
-                    </span>
+                  {provider.id === PREFERRED_PROVIDER && (
+                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold normal-case">recomendado</span>
                   )}
                 </div>
                 {models.map((m) => {

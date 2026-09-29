@@ -118,7 +118,11 @@ body.on {
 
 .hint {
   flex: none;
-  font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font:
+    600 11px/1 -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
   color: var(--pl-muted);
   padding: 5px 7px;
   border-radius: 7px;
@@ -135,7 +139,11 @@ body.on {
   border-radius: 999px;
   background: var(--pl-stop);
   color: var(--pl-stop-fg);
-  font: 650 12.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font:
+    650 12.5px/1 -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
   cursor: pointer;
   transition:
     background 120ms ease,

@@ -2,10 +2,11 @@
  * Construye `window.api.code`: wrappers tipados sobre los canales de `shared/ipc-code.ts`.
  * Desenvuelve `IpcResult` y lanza `Error` cuando `ok === false`.
  */
-import type { IpcRenderer, IpcRendererEvent } from 'electron'
-import type { IpcResult } from '@shared/ipc'
+import type { IpcRenderer } from 'electron'
+import { makeBridge } from './bridge'
 import {
   CODE_EVENTS,
+  CODE_INVOKE_CHANNELS,
   type CodeApi,
   type CodeEventChannel,
   type CodeEventContract,
@@ -15,19 +16,14 @@ import {
 } from '@shared/ipc-code'
 
 export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
-  async function call<C extends CodeInvokeChannel>(channel: C, req?: CodeRequest<C>): Promise<CodeResponse<C>> {
-    const result = (await ipcRenderer.invoke(channel, req)) as IpcResult<CodeResponse<C>>
-    if (result.ok) return result.data
-    throw new Error(result.error)
-  }
-
-  function subscribe<C extends CodeEventChannel>(channel: C, cb: (payload: CodeEventContract[C]) => void): () => void {
-    const listener = (_e: IpcRendererEvent, payload: CodeEventContract[C]): void => cb(payload)
-    ipcRenderer.on(channel, listener)
-    return () => {
-      ipcRenderer.removeListener(channel, listener)
-    }
-  }
+  const bridge = makeBridge<CodeInvokeChannel, CodeEventChannel>(ipcRenderer, {
+    invoke: CODE_INVOKE_CHANNELS,
+    events: Object.values(CODE_EVENTS)
+  })
+  const call = <C extends CodeInvokeChannel>(channel: C, req?: CodeRequest<C>): Promise<CodeResponse<C>> =>
+    bridge.invokeUnwrap(channel, req) as Promise<CodeResponse<C>>
+  const subscribe = <C extends CodeEventChannel>(channel: C, cb: (payload: CodeEventContract[C]) => void): (() => void) =>
+    bridge.on(channel, cb as (payload: unknown) => void)
 
   return {
     pty: {

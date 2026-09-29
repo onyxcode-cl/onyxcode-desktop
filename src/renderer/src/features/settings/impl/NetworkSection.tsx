@@ -11,6 +11,7 @@ import type { CoworkMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/i
 import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import { policyLocks } from './CoworkSection'
 import { Badge, Card, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
+import { isSubmitKey } from '../../../lib/textarea'
 
 /** Mensaje mostrado cuando la política gestionada rechaza añadir un sitio a la red. */
 export const CUSTOM_HOSTS_BLOCKED_MESSAGE = 'Tu organización no permite añadir sitios a la red de Cowork.'
@@ -46,7 +47,9 @@ export function NetworkSection(): React.JSX.Element {
 
   useEffect(() => {
     if (!hasCoworkBridge()) return
-    cw('cowork:policy').then(setPolicy).catch(() => undefined)
+    cw('cowork:policy')
+      .then(setPolicy)
+      .catch(() => undefined)
     cw('cowork:mcp:list')
       .then((list) => setMcpHosts(mcpHostContributors(list)))
       .catch(() => undefined)
@@ -62,7 +65,11 @@ export function NetworkSection(): React.JSX.Element {
 
   const addHost = (): void => {
     if (locks.customHosts) return
-    const host = newHost.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+    const host = newHost
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
     if (!host) return
     setNewHost('')
     setError(null)
@@ -167,7 +174,7 @@ export function NetworkSection(): React.JSX.Element {
           <TextInput
             value={newHost}
             onChange={(e) => setNewHost(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addHost()}
+            onKeyDown={(e) => isSubmitKey(e, { allowShift: true }) && addHost()}
             placeholder="ejemplo.com"
             aria-label="Añadir host permitido siempre"
             disabled={locks.customHosts}
@@ -184,7 +191,10 @@ export function NetworkSection(): React.JSX.Element {
           </button>
         </div>
         {(state?.custom.length ?? 0) === 0 ? (
-          <Row label="Sin hosts adicionales" description="Se bloquea todo lo que no sea el proveedor (o npm/PyPI/búsqueda web si los activaste)." />
+          <Row
+            label="Sin hosts adicionales"
+            description="Se bloquea todo lo que no sea el proveedor (o npm/PyPI/búsqueda web si los activaste)."
+          />
         ) : (
           state?.custom.map((host) => (
             <Row key={host} label={host}>
@@ -207,11 +217,7 @@ export function NetworkSection(): React.JSX.Element {
           <Card>
             {state?.blocked.map((host) => (
               <Row key={host} label={host} description="Marcado 'Mantener bloqueado' desde una tarjeta de aviso.">
-                <button
-                  type="button"
-                  onClick={() => removeHost(host)}
-                  className="rounded-lg px-2 py-1 text-xs text-muted hover:bg-hover"
-                >
+                <button type="button" onClick={() => removeHost(host)} className="rounded-lg px-2 py-1 text-xs text-muted hover:bg-hover">
                   Quitar
                 </button>
               </Row>

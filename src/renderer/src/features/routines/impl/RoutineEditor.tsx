@@ -11,6 +11,8 @@ import { cw } from '../../cowork/impl/bridge'
 import { MODE_META } from './meta'
 import { SCHEDULE_PRESETS, describeCron, fromDaysSpec, fullDate, sameSchedule, scheduleText, toDaysSpec, untilText } from './schedule'
 import { closeEditor, saveRoutine, useRoutines } from './store'
+import { tildify } from '../../../lib/paths'
+import { isSubmitKey } from '../../../lib/textarea'
 
 type Builder = 'days' | 'interval' | 'cron'
 
@@ -54,10 +56,6 @@ const inputCls =
   'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle'
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
 
-function tildify(p: string): string {
-  return p.replace(/^\/Users\/[^/]+/, '~')
-}
-
 export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX.Element {
   const hint = useRoutines((s) => s.editingHint)
   const recentFolders = useSettings((s) => s.settings.recentFolders)
@@ -74,9 +72,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const patch = (p: Partial<RoutineInput>): void => setForm((f) => ({ ...f, ...p }))
   /** Cambiar de carpeta invalida el consentimiento de Control total (es por carpeta). */
   const setFolder = (folder: string | null): void =>
-    setForm((f) =>
-      f.folder === folder ? f : { ...f, folder, fullAccess: false, fullAccessConsentAt: null }
-    )
+    setForm((f) => (f.folder === folder ? f : { ...f, folder, fullAccess: false, fullAccessConsentAt: null }))
   const setSchedule = (schedule: RoutineSchedule): void => patch({ schedule })
 
   useEffect(() => {
@@ -154,10 +150,12 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
       message: (
         <div className="space-y-2 text-sm">
           <p>
-            La rutina saldrá del sandbox: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.
+            La rutina saldrá del sandbox: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los
+            archivos de la carpeta.
           </p>
           <p>
-            En cada ejecución tendrás que <b>aprobar el plan en persona</b> (te llegará una notificación); si no lo apruebas, la ejecución falla por tiempo. Cada ejecución empieza una tarea nueva.
+            En cada ejecución tendrás que <b>aprobar el plan en persona</b> (te llegará una notificación); si no lo apruebas, la ejecución
+            falla por tiempo. Cada ejecución empieza una tarea nueva.
           </p>
           <p>Solo actívalo si la instrucción es de tu confianza y aceptas estas condiciones.</p>
         </div>
@@ -172,7 +170,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const days = toDaysSpec(s)
   const human = s.kind === 'cron' ? describeCron(s.expr) : scheduleText(s)
   const needsFolder = form.mode !== 'chat' && !form.folder
-  const missing = [!form.name.trim() && 'un nombre', !form.prompt.trim() && 'la instrucción', needsFolder && 'una carpeta'].filter(Boolean) as string[]
+  const missing = [!form.name.trim() && 'un nombre', !form.prompt.trim() && 'la instrucción', needsFolder && 'una carpeta'].filter(
+    Boolean
+  ) as string[]
   const canSave = !saving && missing.length === 0 && !(preview && !preview.valid)
 
   const submit = async (): Promise<void> => {
@@ -186,7 +186,11 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
         ...form,
         name: form.name.trim(),
         prompt: form.prompt.trim(),
-        allow: cowork ? allowRows.filter((r) => r.permission.trim() || r.pattern.trim()).map((r) => ({ permission: r.permission.trim(), pattern: r.pattern.trim() })) : [],
+        allow: cowork
+          ? allowRows
+              .filter((r) => r.permission.trim() || r.pattern.trim())
+              .map((r) => ({ permission: r.permission.trim(), pattern: r.pattern.trim() }))
+          : [],
         allowHosts: cowork && !form.fullAccess ? hosts : []
       })
     } catch (err) {
@@ -226,7 +230,12 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
           <h2 id="routine-editor-title" className="text-base font-semibold">
             {form.id ? 'Editar rutina' : 'Nueva rutina'}
           </h2>
-          <button type="button" onClick={closeEditor} className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg" aria-label="Cerrar">
+          <button
+            type="button"
+            onClick={closeEditor}
+            className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
+            aria-label="Cerrar"
+          >
             <X size={18} />
           </button>
         </header>
@@ -295,22 +304,34 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
             <div className="mt-3 rounded-xl border border-border bg-bg/50 p-3">
               <div className="mb-3 inline-flex rounded-lg bg-hover/70 p-0.5">
-                <button type="button" className={tabCls(builder === 'days')} onClick={() => {
-                  setBuilder('days')
-                  if (!days) setSchedule({ kind: 'daily', time: '09:00' })
-                }}>
+                <button
+                  type="button"
+                  className={tabCls(builder === 'days')}
+                  onClick={() => {
+                    setBuilder('days')
+                    if (!days) setSchedule({ kind: 'daily', time: '09:00' })
+                  }}
+                >
                   Días y hora
                 </button>
-                <button type="button" className={tabCls(builder === 'interval')} onClick={() => {
-                  setBuilder('interval')
-                  if (s.kind !== 'interval') setSchedule({ kind: 'interval', hours: 4 })
-                }}>
+                <button
+                  type="button"
+                  className={tabCls(builder === 'interval')}
+                  onClick={() => {
+                    setBuilder('interval')
+                    if (s.kind !== 'interval') setSchedule({ kind: 'interval', hours: 4 })
+                  }}
+                >
                   Intervalo
                 </button>
-                <button type="button" className={tabCls(builder === 'cron')} onClick={() => {
-                  setBuilder('cron')
-                  if (s.kind !== 'cron') setSchedule({ kind: 'cron', expr: toCron(s) })
-                }}>
+                <button
+                  type="button"
+                  className={tabCls(builder === 'cron')}
+                  onClick={() => {
+                    setBuilder('cron')
+                    if (s.kind !== 'cron') setSchedule({ kind: 'cron', expr: toCron(s) })
+                  }}
+                >
                   Cron avanzado
                 </button>
               </div>
@@ -401,7 +422,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                 </div>
               )}
 
-              <div className={`mt-3 flex items-start gap-2 border-t border-border pt-3 text-xs ${preview && !preview.valid ? 'text-danger' : 'text-muted'}`}>
+              <div
+                className={`mt-3 flex items-start gap-2 border-t border-border pt-3 text-xs ${preview && !preview.valid ? 'text-danger' : 'text-muted'}`}
+              >
                 {preview && !preview.valid ? (
                   <>
                     <AlertCircle size={14} className="mt-0.5 shrink-0" /> {preview.error}
@@ -441,7 +464,13 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     key={m}
                     type="button"
                     aria-pressed={on}
-                    onClick={() => patch({ mode: m, folder: m === 'chat' ? null : m === form.mode ? form.folder : null, ...(m === form.mode ? {} : { fullAccess: false, fullAccessConsentAt: null }) })}
+                    onClick={() =>
+                      patch({
+                        mode: m,
+                        folder: m === 'chat' ? null : m === form.mode ? form.folder : null,
+                        ...(m === form.mode ? {} : { fullAccess: false, fullAccessConsentAt: null })
+                      })
+                    }
                     className={`flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition ${on ? 'border-accent bg-accent-soft/50 ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:bg-hover'}`}
                   >
                     <Icon size={17} className={on ? 'text-accent' : 'text-muted'} />
@@ -500,7 +529,12 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               <div>
                 <span className={labelCls}>Cada ejecución</span>
                 <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label="Sesión de cada ejecución">
-                  <button type="button" aria-pressed={form.sessionMode !== 'continue' || fullControl} className={tabCls(form.sessionMode !== 'continue' || fullControl)} onClick={() => patch({ sessionMode: 'fresh' })}>
+                  <button
+                    type="button"
+                    aria-pressed={form.sessionMode !== 'continue' || fullControl}
+                    className={tabCls(form.sessionMode !== 'continue' || fullControl)}
+                    onClick={() => patch({ sessionMode: 'fresh' })}
+                  >
                     Empezar de cero
                   </button>
                   <button
@@ -525,10 +559,20 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               <div>
                 <span className={labelCls}>Si pide permiso</span>
                 <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label="Qué hacer si pide permiso">
-                  <button type="button" aria-pressed={form.onAsk !== 'wait'} className={tabCls(form.onAsk !== 'wait')} onClick={() => patch({ onAsk: 'reject' })}>
+                  <button
+                    type="button"
+                    aria-pressed={form.onAsk !== 'wait'}
+                    className={tabCls(form.onAsk !== 'wait')}
+                    onClick={() => patch({ onAsk: 'reject' })}
+                  >
                     Rechazar y seguir
                   </button>
-                  <button type="button" aria-pressed={form.onAsk === 'wait'} className={tabCls(form.onAsk === 'wait')} onClick={() => patch({ onAsk: 'wait' })}>
+                  <button
+                    type="button"
+                    aria-pressed={form.onAsk === 'wait'}
+                    className={tabCls(form.onAsk === 'wait')}
+                    onClick={() => patch({ onAsk: 'wait' })}
+                  >
                     Esperar mi aprobación (te avisará)
                   </button>
                 </div>
@@ -541,7 +585,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
               <div>
                 <span className={labelCls}>Permitir sin preguntar</span>
-                {allowRows.length === 0 && <p className="mb-2 text-xs text-subtle">Ninguna regla: todo lo que pida permiso se tratará como indicaste arriba.</p>}
+                {allowRows.length === 0 && (
+                  <p className="mb-2 text-xs text-subtle">Ninguna regla: todo lo que pida permiso se tratará como indicaste arriba.</p>
+                )}
                 <datalist id="r-perm-suggestions">
                   {PERMISSION_SUGGESTIONS.map((p) => (
                     <option key={p} value={p} />
@@ -567,7 +613,13 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                         aria-label="Patrón"
                         onChange={(e) => setAllow(allowRows.map((r, j) => (j === i ? { ...r, pattern: e.target.value } : r)))}
                       />
-                      <button type="button" aria-label="Quitar regla" title="Quitar regla" onClick={() => setAllow(allowRows.filter((_, j) => j !== i))} className="rounded-md p-1 text-muted hover:bg-hover hover:text-danger">
+                      <button
+                        type="button"
+                        aria-label="Quitar regla"
+                        title="Quitar regla"
+                        onClick={() => setAllow(allowRows.filter((_, j) => j !== i))}
+                        className="rounded-md p-1 text-muted hover:bg-hover hover:text-danger"
+                      >
                         <X size={15} />
                       </button>
                     </div>
@@ -581,8 +633,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   <Plus size={13} /> Añadir regla
                 </button>
                 <p className="mt-1.5 text-xs text-subtle">
-                  El patrón admite <span className="font-mono">*</span> (cualquier cosa) y <span className="font-mono">?</span> (un carácter). Un permiso puede acabar en{' '}
-                  <span className="font-mono">*</span> para las herramientas de un MCP (p. ej. <span className="font-mono">github_*</span>).
+                  El patrón admite <span className="font-mono">*</span> (cualquier cosa) y <span className="font-mono">?</span> (un
+                  carácter). Un permiso puede acabar en <span className="font-mono">*</span> para las herramientas de un MCP (p. ej.{' '}
+                  <span className="font-mono">github_*</span>).
                 </p>
               </div>
 
@@ -592,9 +645,17 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   {hosts.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {hosts.map((h) => (
-                        <span key={h} className="flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 font-mono text-[11px]">
+                        <span
+                          key={h}
+                          className="flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 font-mono text-[11px]"
+                        >
                           {h}
-                          <button type="button" aria-label={`Quitar ${h}`} onClick={() => patch({ allowHosts: hosts.filter((x) => x !== h) })} className="text-muted hover:text-danger">
+                          <button
+                            type="button"
+                            aria-label={`Quitar ${h}`}
+                            onClick={() => patch({ allowHosts: hosts.filter((x) => x !== h) })}
+                            className="text-muted hover:text-danger"
+                          >
                             <X size={12} />
                           </button>
                         </span>
@@ -610,7 +671,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       aria-label="Sitio permitido"
                       onChange={(e) => setHostDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (isSubmitKey(e, { allowShift: true })) {
                           e.preventDefault()
                           e.stopPropagation()
                           addHost()
@@ -621,7 +682,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       Añadir
                     </Button>
                   </div>
-                  <p className="mt-1.5 text-xs text-subtle">Solo valen mientras dura cada ejecución; el resto de la red sigue bloqueada. Los bloqueos quedan en el historial.</p>
+                  <p className="mt-1.5 text-xs text-subtle">
+                    Solo valen mientras dura cada ejecución; el resto de la red sigue bloqueada. Los bloqueos quedan en el historial.
+                  </p>
                 </div>
               )}
 
@@ -632,10 +695,13 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{COWORK_TERMS.fullControl}</div>
                       <p className="mt-0.5 text-xs text-muted">
-                        Sin sandbox y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada ejecución.
+                        Sin sandbox y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada
+                        ejecución.
                       </p>
                       {fullControl && form.fullAccessConsentAt ? (
-                        <p className="mt-1 text-[11px] text-warning">Consentimiento dado el {new Date(form.fullAccessConsentAt).toLocaleString('es-CL')}.</p>
+                        <p className="mt-1 text-[11px] text-warning">
+                          Consentimiento dado el {new Date(form.fullAccessConsentAt).toLocaleString('es-CL')}.
+                        </p>
                       ) : null}
                     </div>
                     <button
@@ -646,7 +712,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       onClick={() => void toggleFullControl(!fullControl)}
                       className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${fullControl ? 'bg-accent' : 'bg-border-strong'}`}
                     >
-                      <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${fullControl ? 'translate-x-4' : ''}`} />
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${fullControl ? 'translate-x-4' : ''}`}
+                      />
                     </button>
                   </div>
                 </div>

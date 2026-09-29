@@ -9,33 +9,14 @@
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
 import { COWORK_INVOKE_CHANNELS, type CoworkInvokeChannel, type CoworkRequest } from '@shared/ipc-cowork'
-import {
-  IPC_EXTRAS_INVOKE_CHANNELS,
-  type IpcExtrasInvokeChannel,
-  type IpcExtrasInvokeContract
-} from '@shared/ipc-extras'
+import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import {
   BROWSER_HOST_EXCLUDED_CHANNELS,
   BROWSER_INVOKE_CHANNELS,
   type BrowserInvokeChannel,
   type BrowserInvokeContract
 } from '@shared/ipc-browser'
-import {
-  absPath,
-  arr,
-  bool,
-  literal,
-  none,
-  num,
-  obj,
-  optional,
-  nullable,
-  partial,
-  record,
-  str,
-  tagged,
-  type Validator
-} from './validate'
+import { absPath, arr, bool, literal, none, num, obj, optional, nullable, partial, record, str, tagged, type Validator } from './validate'
 
 /** Rol de la ventana que envía (lo asigna main al crearla). */
 export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'browserHost'
@@ -104,7 +85,9 @@ const mcpEntry = tagged('type', {
     enabled: optional(bool),
     timeout: optional(num({ min: 0, max: 3_600_000 })),
     oauth: optional((v: unknown, path?: string) =>
-      v === false ? (false as const) : record((x: unknown, p?: string) => (typeof x === 'number' ? num()(x, p) : str({ max: 4096 })(x, p)), 50)(v, path)
+      v === false
+        ? (false as const)
+        : record((x: unknown, p?: string) => (typeof x === 'number' ? num()(x, p) : str({ max: 4096 })(x, p)), 50)(v, path)
     )
   })
 })
@@ -173,34 +156,19 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     recentFolders: arr(absPath, 50),
     coworkGlobalInstructions: str({ max: 20_000 })
   }),
-  'settings:addRecentFolder': pathReq,
-  'dialog:openFolder': (v, p) => openFolderOpts(v, p) ?? {},
-  'pty:create': ptyCreate,
-  'pty:write': obj({ id, data: str({ max: 1024 * 1024 }) }),
-  'pty:resize': obj({ id, cols: num({ int: true, min: 1, max: 1000 }), rows: num({ int: true, min: 1, max: 500 }) }),
-  'pty:kill': obj({ id }),
-  'git:status': cwdReq,
-  'git:diff': obj({ cwd: absPath, path: optional(str({ max: 4096 })), staged: optional(bool) }),
-  'git:worktrees': cwdReq,
-  // Canales antiguos sin implementación (responden NOT_IMPLEMENTED): no aceptan nada.
-  'scheduler:list': none,
-  'scheduler:save': () => {
-    throw new Error('scheduler:save no está disponible')
-  },
-  'scheduler:delete': obj({ id }),
-  'scheduler:runNow': obj({ id })
+  'settings:addRecentFolder': pathReq
 }
 
 const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'pty:create': ptyCreate,
-  'pty:write': APP_SCHEMAS['pty:write'],
-  'pty:resize': APP_SCHEMAS['pty:resize'],
-  'pty:kill': APP_SCHEMAS['pty:kill'],
+  'pty:write': obj({ id, data: str({ max: 1024 * 1024 }) }),
+  'pty:resize': obj({ id, cols: num({ int: true, min: 1, max: 1000 }), rows: num({ int: true, min: 1, max: 500 }) }),
+  'pty:kill': obj({ id }),
   'pty:list': none,
   'pty:available': none,
   'git:isRepo': cwdReq,
   'git:status': cwdReq,
-  'git:diff': APP_SCHEMAS['git:diff'],
+  'git:diff': obj({ cwd: absPath, path: optional(str({ max: 4096 })), staged: optional(bool) }),
   'git:branches': cwdReq,
   'git:currentBranch': cwdReq,
   'git:worktrees': cwdReq,
@@ -221,8 +189,6 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'cowork:start': obj({ folder: absPath, fullAccess: optional(bool) }),
   'cowork:grantFullAccess': folderReq,
   'cowork:revokeFullAccess': folderReq,
-  'cowork:stop': obj({ folder: absPath, fullAccess: optional(bool) }),
-  'cowork:servers': none,
   'cowork:deliverables': obj({ folder: absPath, since: num({ min: 0 }) }),
   'cowork:reveal': pathReq,
   'cowork:openPath': pathReq,
@@ -275,7 +241,11 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'computer:state': none,
   'computer:session': obj({ active: bool, label: optional(str({ max: 500 })), sessionId: optional(sessionId) }),
   'computer:grants': none,
-  'computer:setGrant': obj({ bundleId: str({ max: 255, min: 1 }), name: str({ max: 255, min: 1 }), tier: literal('view', 'click', 'full') }),
+  'computer:setGrant': obj({
+    bundleId: str({ max: 255, min: 1 }),
+    name: str({ max: 255, min: 1 }),
+    tier: literal('view', 'click', 'full')
+  }),
   'computer:revokeGrant': obj({ bundleId: str({ max: 255, min: 1 }) }),
   'computer:denyApp': obj({ bundleId: str({ max: 255, min: 1 }), name: str({ max: 255, min: 1 }) }),
   'computer:undenyApp': obj({ bundleId: str({ max: 255, min: 1 }) }),
@@ -356,7 +326,6 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'computer:teachRespond': obj({ id: hexId, action: literal('next', 'exit') }),
   'computer:record:start': obj({ mic: bool }),
   'computer:record:stop': (v, p) => optional(obj({ discard: optional(bool) }))(v, p) ?? {},
-  'computer:record:state': none,
   'computer:record:prepare': obj({ id: hexId, folder: absPath, includeTyped: bool }),
 
   // Lote C: Modo auto (handlers de C3)
@@ -373,14 +342,7 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
     folder: absPath,
     fullAccess: bool,
     requestId: str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
-  }),
-
-  // Lote C: navegador propio (handlers de C4)
-  'cowork:browser:state': none,
-  'cowork:browser:set': obj({ enabled: bool }),
-  'cowork:browser:removeSite': obj({ site }),
-  'cowork:browser:undeny': obj({ site }),
-  'cowork:browser:clearData': none
+  })
 }
 
 type ExtrasReq<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
@@ -408,8 +370,7 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
 }
 
 /**
- * Validador por canal. Los canales repetidos entre contratos (`pty:*`, `git:*`,
- * `dialog:openFolder`) los atiende el handler de Code (registrado después), así que gana su esquema.
+ * Validador por canal.
  */
 export const IPC_SCHEMAS: Record<string, Validator<unknown>> = {
   ...APP_SCHEMAS,

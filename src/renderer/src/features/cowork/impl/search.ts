@@ -4,7 +4,8 @@
  * carpeta actual leyendo sus mensajes con poca concurrencia y una caché de texto por sesión.
  */
 import { useEffect, useState } from 'react'
-import { selectSessionsForDirectory, useSessions, type MessageEntry } from '../../../stores/sessions'
+import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../../stores/sessions'
+import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { splitAttachments, visibleTextParts } from './transcript'
 import { useCowork } from './store'
 
@@ -68,6 +69,17 @@ export function extractSearchable(entries: MessageEntry[]): SearchableText[] {
   return out
 }
 
+/**
+ * Mensajes de una sesión SOLO si su historial completo ya se cargó (`loaded`). Una lista parcial (eventos
+ * sueltos de una rutina) o ausente devuelve `undefined`, y quien llama la pide al servidor (F6-B14).
+ */
+export function loadedTranscript(
+  st: { loaded: Record<string, boolean>; messages: Record<string, MessageEntry[]> },
+  sessionId: string
+): MessageEntry[] | undefined {
+  return st.loaded[sessionId] ? st.messages[sessionId] : undefined
+}
+
 /** Busca `query` en textos ya extraídos. Devuelve como máximo `max` coincidencias (una por parte). */
 export function searchTexts(sessionId: string, title: string, texts: SearchableText[], query: string, max = 3): TranscriptHit[] {
   const q = foldText(query)
@@ -112,6 +124,22 @@ function cacheSet(key: string, value: { updated: number; texts: SearchableText[]
   textCache.set(key, value)
 }
 
+/** Texto en caché de la sesión si sigue vigente (`updated` igual al de la sesión). */
+export function cachedTranscriptTexts(sessionId: string, updated: number): SearchableText[] | undefined {
+  const cached = textCache.get(sessionId)
+  return cached && cached.updated === updated ? cached.texts : undefined
+}
+
+// Al desalojar una tarea de Cowork su texto se conserva aquí: buscarlo no obliga a pedir su historial (D4).
+useSessions.getState().addEvictionListener((evicted, st) => {
+  for (const { id, entries } of evicted) {
+    const src = st.sessionSource[id]
+    const session = st.sessions[id]
+    if (!session || !src || src === MAIN_SOURCE) continue // solo sesiones de Cowork
+    cacheSet(id, { updated: session.time.updated, texts: extractSearchable(entries) })
+  }
+})
+
 interface SearchState {
   hits: TranscriptHit[]
   loading: boolean
@@ -139,7 +167,7 @@ export function useTranscriptSearch(folder: string | null, query: string): Searc
     let cancelled = false
     const timer = setTimeout(() => {
       const st = useSessions.getState()
-      const list = selectSessionsForDirectory(st.sessions, folder).slice(0, MAX_SESSIONS)
+      const list = selectSessionsForDirectory(st, folder).slice(0, MAX_SESSIONS)
       const results: Array<TranscriptHit[] | undefined> = new Array(list.length)
       let scanned = 0
       let next = 0
@@ -151,10 +179,10 @@ export function useTranscriptSearch(folder: string | null, query: string): Searc
 
       const textsFor = async (i: number): Promise<SearchableText[]> => {
         const s = list[i]
-        const loaded = useSessions.getState().messages[s.id]
-        if (loaded && loaded.length > 0) return extractSearchable(loaded)
-        const cached = textCache.get(s.id)
-        if (cached && cached.updated === s.time.updated) return cached.texts
+        const loaded = loadedTranscript(useSessions.getState(), s.id)
+        if (loaded) return extractSearchable(loaded)
+        const cached = cachedTranscriptTexts(s.id, s.time.updated)
+        if (cached) return cached
         const res = await client.session.messages({ sessionID: s.id, directory: folder })
         const entries: MessageEntry[] = (res.data ?? []).map((m) => ({ info: m.info, parts: m.parts }))
         const texts = extractSearchable(entries)

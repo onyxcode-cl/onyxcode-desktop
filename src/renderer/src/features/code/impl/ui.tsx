@@ -1,7 +1,5 @@
 /** Piezas de UI pequeñas y reutilizables dentro del modo Code (tooltips, kbd, segmentado…). */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Hammer, ListChecks } from 'lucide-react'
-import type { CodeAgent } from './types'
 
 export const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 export const MOD = IS_MAC ? '⌘' : 'Ctrl+'
@@ -9,7 +7,6 @@ export const MOD = IS_MAC ? '⌘' : 'Ctrl+'
 /** Colores de estado (tokens del tema). */
 export const ADD_TEXT = 'text-success'
 export const DEL_TEXT = 'text-danger'
-export const WARN_TEXT = 'text-warning'
 
 export function Kbd({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
   return (
@@ -45,41 +42,6 @@ export function Tip({ label, shortcut, side = 'bottom', align = 'center', childr
         {shortcut && <Kbd>{shortcut}</Kbd>}
       </span>
     </span>
-  )
-}
-
-/** Control segmentado Plan / Build. */
-export function AgentSegmented({
-  value,
-  onChange,
-  size = 'md'
-}: {
-  value: CodeAgent
-  onChange: (a: CodeAgent) => void
-  size?: 'sm' | 'md'
-}): React.JSX.Element {
-  const opts: { id: CodeAgent; label: string; icon: ReactNode; hint: string }[] = [
-    { id: 'plan', label: 'Plan', icon: <ListChecks size={13} />, hint: 'Planifica sin modificar archivos' },
-    { id: 'build', label: 'Build', icon: <Hammer size={13} />, hint: 'Edita archivos y ejecuta comandos' }
-  ]
-  const pad = size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1'
-  return (
-    <div role="radiogroup" aria-label="Agente" className="no-drag inline-flex rounded-lg border border-border bg-bg p-0.5 text-xs">
-      {opts.map((o) => (
-        <Tip key={o.id} label={o.hint} shortcut="⇧Tab">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={value === o.id}
-            onClick={() => onChange(o.id)}
-            className={`flex items-center gap-1 rounded-md ${pad} font-medium transition ${value === o.id ? 'bg-elevated text-fg shadow-sm ring-1 ring-border' : 'text-muted hover:text-fg'}`}
-          >
-            <span className={value === o.id ? 'text-accent' : ''}>{o.icon}</span>
-            {o.label}
-          </button>
-        </Tip>
-      ))}
-    </div>
   )
 }
 
@@ -136,7 +98,11 @@ export function ConfirmButton({
           <div className="text-sm font-medium text-fg">{title}</div>
           {body && <p className="mt-1 text-xs leading-relaxed text-muted">{body}</p>}
           <div className="mt-3 flex justify-end gap-2">
-            <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-2.5 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
+            >
               Cancelar
             </button>
             <button

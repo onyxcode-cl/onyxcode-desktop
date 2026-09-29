@@ -2,14 +2,12 @@
  * Adaptador del modo Code hacia:
  *  - el cliente SDK de OpenCode (se reutiliza el de `stores/server`, creado con baseUrl + auth del sidecar),
  *  - el stream global de eventos (`/global/event`, vía `onOpencodeEvent`),
- *  - la API del proceso principal (`CodeApi`): `window.api.code` si existe, o los canales IPC genéricos.
+ *  - la API del proceso principal (`CodeApi`): `window.api.code` (preload).
  */
 import type { WindowApi } from '@shared/ipc'
-import type { IpcResult } from '@shared/ipc'
 import { useServer, onOpencodeEvent, onStreamReconnect } from '../../../stores/server'
 import type { OcEvent, OpencodeClient } from '../../../lib/opencode'
 import { errorMessage } from '../../../lib/opencode'
-import type { CodeApi } from './types'
 
 export { errorMessage }
 export type { OcEvent, OpencodeClient }
@@ -46,42 +44,15 @@ export function sdkData<T>(res: { data?: T; error?: unknown }): T {
   return res.data
 }
 
-// ---------------------------------------------------------------------------
-// CodeApi
-// ---------------------------------------------------------------------------
-
-function unwrap<T>(r: IpcResult<T>): T {
-  if (r.ok) return r.data
-  throw new Error(r.code === 'NOT_IMPLEMENTED' ? `No implementado todavía: ${r.error}` : r.error)
-}
-
-function buildFromIpc(api: WindowApi): CodeApi {
-  return {
-    openFolder: async (opts) => unwrap(await api.invoke('dialog:openFolder', opts ?? {})),
-    gitStatus: async (cwd) => unwrap(await api.invoke('git:status', { cwd })),
-    gitDiff: async (req) => unwrap(await api.invoke('git:diff', req)),
-    ptyCreate: async (req) => unwrap(await api.invoke('pty:create', req)),
-    ptyWrite: async (id, data) => unwrap(await api.invoke('pty:write', { id, data })),
-    ptyResize: async (id, cols, rows) => unwrap(await api.invoke('pty:resize', { id, cols, rows })),
-    ptyKill: async (id) => unwrap(await api.invoke('pty:kill', { id })),
-    onPtyData: (listener) => api.on('pty:data', listener),
-    onPtyExit: (listener) => api.on('pty:exit', listener)
-  }
-}
-
-let cached: CodeApi | null = null
-
-export function getCodeApi(): CodeApi {
-  if (cached) return cached
-  const w = window.api as WindowApi & { code?: Partial<CodeApi> }
-  const base = buildFromIpc(w)
-  // Si el preload expone `window.api.code`, sus métodos tienen prioridad (mismos nombres).
-  cached = w.code ? { ...base, ...w.code } : base
-  return cached
-}
-
-/** API git/diálogos completa de `window.api.code` (preload), o `null` si no existe. */
+/** API pty/git/diálogos completa de `window.api.code` (preload), o `null` si no existe. */
 export function nativeCode(): import('@shared/ipc-code').CodeApi | null {
   const w = window.api as WindowApi & { code?: import('@shared/ipc-code').CodeApi }
   return w.code && typeof w.code.git?.status === 'function' ? w.code : null
+}
+
+/** Como `nativeCode` pero lanza si `window.api.code` no está disponible. */
+export function requireCode(): import('@shared/ipc-code').CodeApi {
+  const c = nativeCode()
+  if (!c) throw new Error('API nativa de Code no disponible')
+  return c
 }

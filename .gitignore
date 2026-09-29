@@ -12,4 +12,4 @@ resources/opencode/package.json
 resources/opencode/package-lock.json
 resources/opencode/bun.lock
 resources/opencode/.gitignore
-resources/launcher/bin/
+e2e/.artifacts/

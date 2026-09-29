@@ -14,11 +14,12 @@
  *   `buildRecordedSkillPrompt` (`@shared/skill-recording.ts`).
  * - Al arrancar la app, `purgeOld()` borra las grabaciones de más de 24 h (nadie las recogió).
  */
-import { execFile, spawn, type ChildProcess } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { join } from 'node:path'
+import { runHelper } from '../util/exec'
 import { EventEmitter } from 'node:events'
 import { APP_ID } from '@shared/brand'
 import type { RecordedStep, SkillRecording, SkillRecordingState } from '@shared/ipc-cowork'
@@ -30,6 +31,7 @@ export const RECORD_MAX_SECONDS = 900
 const STOP_WAIT_MS = 5_000
 const TRANSCRIBE_TIMEOUT_MS = 120_000
 const MIC_REQUEST_TIMEOUT_MS = 20_000
+const HELPER_MAX_BUFFER = 8 * 1024 * 1024
 const MAX_AGE_MS = 24 * 60 * 60 * 1000
 /** Apps que nunca deben aparecer en la propia grabación: la app y Electron sin empaquetar. */
 const RECORD_EXCLUDE = `${APP_ID},com.github.Electron`
@@ -37,15 +39,6 @@ const RECORD_EXCLUDE = `${APP_ID},com.github.Electron`
 interface RecorderEvents {
   state: [SkillRecordingState]
   done: [SkillRecording]
-}
-
-function runHelper(bin: string, args: string[], timeout: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(bin, args, { timeout, maxBuffer: 8 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) reject(new Error((stderr || err.message).toString().trim()))
-      else resolve(stdout.toString())
-    })
-  })
 }
 
 export class SkillRecorder extends EventEmitter<RecorderEvents> {
@@ -110,7 +103,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     let micState: 'off' | 'recording' | 'denied' = 'off'
     if (mic) {
       try {
-        const out = await runHelper(bin, ['mic-request'], MIC_REQUEST_TIMEOUT_MS)
+        const out = await runHelper(bin, ['mic-request'], MIC_REQUEST_TIMEOUT_MS, HELPER_MAX_BUFFER)
         useMic = /authorized/i.test(out)
         micState = useMic ? 'recording' : 'denied'
       } catch (err) {
@@ -259,12 +252,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     }
   }
 
-  private async buildRecording(
-    id: string,
-    dir: string,
-    durationMs: number,
-    mic: 'off' | 'recording' | 'denied'
-  ): Promise<SkillRecording> {
+  private async buildRecording(id: string, dir: string, durationMs: number, mic: 'off' | 'recording' | 'denied'): Promise<SkillRecording> {
     const steps = this.readEvents(dir)
     const shots = steps.map((s) => s.shot).filter((s): s is string => !!s)
     const micResult: SkillRecording['mic'] = mic === 'recording' ? 'recorded' : mic === 'denied' ? 'denied' : 'off'
@@ -275,7 +263,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
       const bin = this.helperPath()
       if (bin) {
         try {
-          const out = await runHelper(bin, ['transcribe', audio], TRANSCRIBE_TIMEOUT_MS)
+          const out = await runHelper(bin, ['transcribe', audio], TRANSCRIBE_TIMEOUT_MS, HELPER_MAX_BUFFER)
           const j = JSON.parse(out) as { text?: unknown }
           transcript = typeof j.text === 'string' ? j.text : null
         } catch (err) {

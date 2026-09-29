@@ -50,6 +50,7 @@
 import { app } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { unpacked } from '../util/asar'
 
 export const CHAT_AGENT_ID = 'chat'
 export const COWORK_AGENT_ID = 'cowork'
@@ -196,7 +197,7 @@ export default {
 /** `resources/opencode` del bundle (dev y empaquetado, fuera del asar). Solo lectura. */
 export function getBundledOpencodeDir(): string {
   const candidates = [
-    join(app.getAppPath(), 'resources', 'opencode').replace(/app\.asar([/\\])/, 'app.asar.unpacked$1'),
+    unpacked(join(app.getAppPath(), 'resources', 'opencode')),
     join(process.resourcesPath ?? '', 'opencode'),
     join(process.cwd(), 'resources', 'opencode')
   ]

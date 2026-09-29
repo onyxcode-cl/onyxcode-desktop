@@ -8,6 +8,7 @@ import { AlertCircle, ArrowUp, Info, Loader2, MessagesSquare, X } from 'lucide-r
 import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
+import { isSubmitKey } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { closeSideChat, sendSideChat } from './actions'
 import { useCowork } from './store'
@@ -98,8 +99,8 @@ export function SideChat(): React.JSX.Element | null {
       <p className="flex shrink-0 items-start gap-1.5 border-b border-border bg-accent-soft/50 px-4 py-2 text-xs text-muted">
         <Info size={13} className="mt-0.5 shrink-0 text-accent" />
         <span>
-          <strong className="font-medium text-fg">No modifica la tarea.</strong> Pregunta sobre lo que hizo el agente; esta conversación
-          va aparte.
+          <strong className="font-medium text-fg">No modifica la tarea.</strong> Pregunta sobre lo que hizo el agente; esta conversación va
+          aparte.
         </span>
       </p>
 
@@ -158,7 +159,7 @@ export function SideChat(): React.JSX.Element | null {
             placeholder="Pregunta sobre esta tarea…"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              if (isSubmitKey(e)) {
                 e.preventDefault()
                 void send()
               }

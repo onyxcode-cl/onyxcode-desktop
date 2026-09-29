@@ -5,26 +5,12 @@
  * el modelo configurado por modo (con fallback a `settings.defaultModel`).
  */
 import { create } from 'zustand'
-import {
-  DEFAULT_EXTRAS_PREFS,
-  type ExtrasApi,
-  type ExtrasPrefs,
-  type ExtrasPrefsState,
-  type ModelMode
-} from '@shared/ipc-extras'
+import { DEFAULT_EXTRAS_PREFS, type ExtrasPrefs, type ExtrasPrefsState, type ModelMode } from '@shared/ipc-extras'
 import type { ModelRef } from '@shared/types'
 import { useSettings } from '../../../stores/settings'
 
-/** `window.api.extras` o null si el preload aún no lo expone. */
-export function getExtras(): ExtrasApi | null {
-  return (window as unknown as { api?: { extras?: ExtrasApi } }).api?.extras ?? null
-}
-
-export function requireExtras(): ExtrasApi {
-  const e = getExtras()
-  if (!e) throw new Error('El puente "extras" no está disponible (falta registrar buildExtrasApi en el preload).')
-  return e
-}
+import { getExtras, requireExtras } from '../../../lib/extrasApi'
+export { getExtras, requireExtras }
 
 interface ExtrasPrefsStore extends ExtrasPrefsState {
   loaded: boolean

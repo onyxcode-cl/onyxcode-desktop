@@ -5,9 +5,31 @@
  * de quién más esté aplicando eventos al store genérico de sesiones.
  */
 import { create } from 'zustand'
-import type { Part, PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
+import type { PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
 import type { ModelRef } from '@shared/types'
 import { sendNotification } from '../../../lib/notify'
+import { debounce } from '../../../lib/debounce'
+import { lruMax } from '../../../lib/lru'
+import { createFrameQueue } from '../../../lib/frame-queue'
+import {
+  byId,
+  createBuffers,
+  createLoadTracker,
+  evictMessages,
+  forgetOrphansOf,
+  markSeen,
+  isChildOfAny,
+  mergeSnapshot,
+  pickEvictions,
+  pinClosure,
+  messageEventSessionID,
+  reconcilePending,
+  reconcileRunStatus,
+  reduceEvent,
+  unchangedSince,
+  type ConvSlice,
+  type LoadTracker
+} from '../../../lib/session-reducer'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
   Attachment,
@@ -111,20 +133,6 @@ function rulesetFor(mode: PermissionMode): PermissionRuleset | undefined {
   }
 }
 
-const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-
-function upsertSorted<T extends { id: string }>(list: T[], item: T): T[] {
-  const idx = list.findIndex((x) => x.id === item.id)
-  if (idx >= 0) {
-    const next = list.slice()
-    next[idx] = item
-    return next
-  }
-  const next = [...list, item]
-  if (next.length > 1 && byId(next[next.length - 2], item) > 0) next.sort(byId)
-  return next
-}
-
 function toRunState(s: SessionStatus): RunState {
   return s.type === 'busy' || s.type === 'retry' ? s.type : 'idle'
 }
@@ -222,22 +230,30 @@ export interface CodeState {
 
   // -- No leído --
   markRead: (sessionID: string) => void
+
+  // -- LRU de `messages` (docs/LRU-PLAN.md) --
+  /** Marca la sesión como usada ahora. NO hace `set` (Map de módulo); solo desaloja si hay exceso. Un evento NO cuenta. */
+  touchSession: (sessionID: string) => void
+  /** Desaloja `messages`/`loadingMessages` de las sesiones no fijadas que sobran del tope (un solo `set`). */
+  evictIdle: () => void
 }
 
-const orphanParts = new Map<string, Part[]>()
-const seenEvents = new Set<string>()
-const seenOrder: string[] = []
-
-function markSeen(id: string): boolean {
-  if (seenEvents.has(id)) return false
-  seenEvents.add(id)
-  seenOrder.push(id)
-  if (seenOrder.length > 2000) {
-    const old = seenOrder.splice(0, 500)
-    for (const o of old) seenEvents.delete(o)
-  }
-  return true
+/** Tope de sesiones con contenido no fijadas en `useCode` (`localStorage['onyx.lru.max']` lo sobrescribe). */
+export const CODE_LRU_MAX = 20
+/** Ventana para reconocer `session.status→idle` y `session.idle` de una misma terminación (F7-B18). */
+const IDLE_DUP_WINDOW_MS = 2000
+/** Último acceso por sesión (contador monótono; sin registro = nunca abierta). Estado de módulo, sin `set`. */
+const lastAccess = new Map<string, number>()
+let accessTick = 0
+let evictScheduled = false
+/** Vacía ya la cola de deltas del store (se asigna al crearlo; uso interno y de tests). */
+let flushDeltas: () => void = () => undefined
+export function flushPendingDeltas(): void {
+  flushDeltas()
 }
+
+/** Buffers de este store (partes huérfanas, ids de evento vistos). Instancia propia, no compartida con useSessions. */
+const buffers = createBuffers({ seenMax: 2000 })
 
 function initialAgent(): CodeAgent {
   return lsGet(LS_AGENT) === 'plan' ? 'plan' : 'build'
@@ -259,20 +275,39 @@ function windowIsFocused(): boolean {
   }
 }
 
+/** Debounce de `fsVersion` para eventos externos (Pf1): 400 ms tras el último, como mucho 2 s de espera. */
+export const FS_BUMP_WAIT_MS = 400
+export const FS_BUMP_MAX_WAIT_MS = 2000
+const bumpFsDebounced = debounce(() => useCode.setState((s) => ({ fsVersion: s.fsVersion + 1 })), {
+  wait: FS_BUMP_WAIT_MS,
+  maxWait: FS_BUMP_MAX_WAIT_MS
+})
+
+const trimSlash = (p: string): string => (p.length > 1 ? p.replace(/[\\/]+$/, '') : p)
+
 export const useCode = create<CodeState>((set, get) => {
-  const updateMessages = (sessionID: string, fn: (list: CodeMessage[]) => CodeMessage[]): void => {
-    set((s) => ({ messages: { ...s.messages, [sessionID]: fn(s.messages[sessionID] ?? []) } }))
+  /** Desalojo agrupado: varios eventos en el mismo tick producen un único `evictIdle`. */
+  const scheduleEvict = (): void => {
+    if (evictScheduled) return
+    evictScheduled = true
+    queueMicrotask(() => {
+      evictScheduled = false
+      get().evictIdle()
+    })
   }
 
-  const updatePart = (sessionID: string, messageID: string, fn: (parts: Part[]) => Part[]): boolean => {
-    const list = get().messages[sessionID]
-    const idx = list?.findIndex((m) => m.info.id === messageID) ?? -1
-    if (!list || idx < 0) return false
-    const entry = list[idx]
-    const next = list.slice()
-    next[idx] = { info: entry.info, parts: fn(entry.parts) }
-    set((s) => ({ messages: { ...s.messages, [sessionID]: next } }))
-    return true
+  /** ¿El directorio del evento es el del proyecto o el de una sesión del proyecto (worktrees)? */
+  const isProjectDir = (eventDir: string): boolean => {
+    const s = get()
+    if (!s.directory || !eventDir) return false
+    const ev = trimSlash(eventDir)
+    if (ev === trimSlash(s.directory)) return true
+    for (const [sid, proj] of Object.entries(s.sessionProject)) {
+      if (proj !== s.directory) continue
+      const d = s.sessions[sid]?.directory
+      if (d && trimSlash(d) === ev) return true
+    }
+    return false
   }
 
   /** Proyecto al que pertenece una sesión reportada por el servidor (o null). */
@@ -291,6 +326,28 @@ export const useCode = create<CodeState>((set, get) => {
   const known = (sessionID: string): boolean => sessionID in get().sessionProject
 
   /**
+   * Deltas de texto pendientes (F7-B43): se encolan en `applyEvent` y se aplican en lote una vez por frame con un
+   * solo `set`. Cualquier otro evento, `loadMessages`, `deleteSession` y el desalojo vacían la cola ANTES de actuar
+   * (mismo orden relativo que aplicando uno a uno). El dedupe por `event.id` y la guarda `known` se aplican al encolar.
+   */
+  const deltaQueue = createFrameQueue<OcEvent>((events) => {
+    const cur = get()
+    let slice: ConvSlice = { messages: cur.messages, status: cur.runState, errors: cur.errors, sessions: cur.sessions }
+    for (const ev of events) slice = reduceEvent(slice, ev, buffers, { accept: known, dedupe: false }).slice
+    if (slice.messages === cur.messages) return
+    set({ messages: slice.messages })
+    // Un delta no crea claves en `messages`, pero se mantiene la misma comprobación que el resto de eventos.
+    for (const ev of events) {
+      const sid = messageEventSessionID(ev)
+      if (sid && !(sid in cur.messages)) {
+        scheduleEvict()
+        break
+      }
+    }
+  })
+  flushDeltas = deltaQueue.flush
+
+  /**
    * Para permisos/preguntas: acepta sesiones desconocidas (p. ej. subagentes creados antes de
    * cargar la lista) si el evento viene del directorio del proyecto abierto.
    */
@@ -302,30 +359,102 @@ export const useCode = create<CodeState>((set, get) => {
     return true
   }
 
-  const setError = (sessionID: string, error: string | null): void =>
-    set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
+  const setError = (sessionID: string, error: string | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
 
-  const loadMessages = async (sessionID: string): Promise<void> => {
+  /** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
+  const inflightLoads = new Map<string, Promise<void>>()
+
+  const loadMessages = (sessionID: string): Promise<void> => {
     const client = getClient()
     const dir = get().sessionProject[sessionID] ?? get().directory
-    if (!client || !dir) return
-    set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: true } }))
-    try {
-      const data = sdkData(await client.session.messages({ sessionID, directory: dir }))
-      const entries = data
-        .map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) }))
-        .sort((a, b) => byId(a.info, b.info))
-      set((s) => ({ messages: { ...s.messages, [sessionID]: entries } }))
-      const todo = await client.session.todo({ sessionID, directory: dir }).catch(() => null)
-      if (todo?.data) {
-        const todos = todo.data
-        set((s) => ({ todos: { ...s.todos, [sessionID]: todos } }))
-      }
-    } catch (err) {
-      setError(sessionID, errorMessage(err))
-    } finally {
-      set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: false } }))
+    if (!client || !dir) return Promise.resolve()
+    // F7-B11: antes cada llamada abría su propio tracker (pisaba al anterior) y el `finally` de la que
+    // terminaba antes apagaba `loadingMessages` de la otra.
+    const running = inflightLoads.get(sessionID)
+    if (running) {
+      lastAccess.set(sessionID, ++accessTick)
+      return running
     }
+    const p: Promise<void> = (async () => {
+      lastAccess.set(sessionID, ++accessTick) // cargar es acceder
+      deltaQueue.flush() // los deltas anteriores a la carga no deben registrarse en el tracker
+      set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: true } }))
+      // Registra lo que llega por el stream durante la carga y lo fusiona con el snapshot (F6-B6).
+      const tracker: LoadTracker = createLoadTracker()
+      buffers.loading.set(sessionID, tracker)
+      // Si se borró la sesión mientras se esperaba, `purgeSession` retiró el tracker: no resucitarla (F7-B17).
+      const dropped = (): boolean => buffers.loading.get(sessionID) !== tracker
+      try {
+        const data = sdkData(await client.session.messages({ sessionID, directory: dir }))
+        if (dropped()) return
+        deltaQueue.flush() // los deltas de la carga ya están en `messages` y en el tracker
+        const entries = data.map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) })).sort((a, b) => byId(a.info, b.info))
+        set((s) => ({ messages: { ...s.messages, [sessionID]: mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker) } }))
+        scheduleEvict()
+        const todo = await client.session.todo({ sessionID, directory: dir }).catch(() => null)
+        if (todo?.data && !dropped()) {
+          const todos = todo.data
+          set((s) => ({ todos: { ...s.todos, [sessionID]: todos } }))
+        }
+      } catch (err) {
+        if (!dropped()) setError(sessionID, errorMessage(err))
+      } finally {
+        if (!dropped()) {
+          buffers.loading.delete(sessionID)
+          set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: false } }))
+        }
+      }
+    })().finally(() => {
+      if (inflightLoads.get(sessionID) === p) inflightLoads.delete(sessionID)
+    })
+    inflightLoads.set(sessionID, p)
+    return p
+  }
+
+  /**
+   * Último paso a idle procesado por sesión y por qué evento llegó (`session.status` o `session.idle`). El servidor
+   * emite AMBOS al terminar: el segundo, si llega tras `maybeAutoSend` (que deja la sesión `busy` en local), lo
+   * confundía con un fin de ejecución nuevo (F7-B18). Se descarta como duplicado si es del OTRO tipo, llegó hace
+   * menos de `IDLE_DUP_WINDOW_MS` y no hubo un `busy` confirmado por el servidor entre medias.
+   */
+  const idleSeen = new Map<string, { kind: 'status' | 'idle'; at: number }>()
+  const isDupIdle = (sessionID: string, kind: 'status' | 'idle'): boolean => {
+    const e = idleSeen.get(sessionID)
+    return !!e && e.kind !== kind && Date.now() - e.at < IDLE_DUP_WINDOW_MS
+  }
+
+  /** Parche que borra TODO el estado de `id` (F7-B17): antes solo se quitaban `sessions` y `sessionProject`. */
+  const purgePatch = (s: CodeState, id: string): Partial<CodeState> => {
+    const without = <V>(rec: Record<string, V>): Record<string, V> => {
+      if (!(id in rec)) return rec
+      const next = { ...rec }
+      delete next[id]
+      return next
+    }
+    const bySession = <V extends { sessionID: string }>(rec: Record<string, V>): Record<string, V> =>
+      Object.fromEntries(Object.entries(rec).filter(([, v]) => v.sessionID !== id))
+    return {
+      sessions: without(s.sessions),
+      sessionProject: without(s.sessionProject),
+      messages: without(s.messages),
+      queue: without(s.queue),
+      todos: without(s.todos),
+      runState: without(s.runState),
+      errors: without(s.errors),
+      unread: without(s.unread),
+      loadingMessages: without(s.loadingMessages),
+      permissions: bySession(s.permissions),
+      questions: bySession(s.questions),
+      activeSessionID: s.activeSessionID === id ? null : s.activeSessionID
+    }
+  }
+  /** Lo que no vive en el estado de Zustand: acceso LRU, cargas en vuelo, partes huérfanas, marcas de idle. */
+  const purgeSessionSideState = (id: string): void => {
+    lastAccess.delete(id)
+    buffers.loading.delete(id)
+    inflightLoads.delete(id)
+    idleSeen.delete(id)
+    forgetOrphansOf(buffers, new Set([id]))
   }
 
   /** Permisos y preguntas pendientes + estado de ejecución del proyecto actual. */
@@ -333,36 +462,60 @@ export const useCode = create<CodeState>((set, get) => {
     const client = getClient()
     const dir = get().directory
     if (!client || !dir) return
+    const beforePerms = get().permissions
+    const beforeQs = get().questions
+    const beforeRun = get().runState
     const [perms, questions, status] = await Promise.all([
       client.permission.list({ directory: dir }).catch(() => null),
       client.question.list({ directory: dir }).catch(() => null),
       client.session.status({ directory: dir }).catch(() => null)
     ])
+    // F7-B16: se RECONSTRUYEN desde el servidor (filtrando por proyecto) en vez de solo acumular: uno respondido
+    // desde otro cliente o mientras la app no escuchaba quedaba pegado. Si la petición falló no se toca nada.
     if (perms?.data) {
-      const list = perms.data
-      set((s) => {
-        const permissions = { ...s.permissions }
-        for (const p of list) {
-          if (!known(p.sessionID)) continue
-          permissions[p.id] = { ...p, metadata: p.metadata ?? {}, api: 'v1' }
-        }
-        return { permissions }
-      })
+      const list: PendingPermission[] = perms.data
+        .filter((p) => known(p.sessionID))
+        .map((p) => ({ ...p, metadata: p.metadata ?? {}, api: 'v1' as const }))
+      set((s) => ({
+        permissions: reconcilePending({
+          cur: s.permissions,
+          before: beforePerms,
+          server: list,
+          inScope: (p) => s.sessionProject[p.sessionID] === dir
+        })
+      }))
     }
     if (questions?.data) {
-      const list = questions.data
-      set((s) => {
-        const qs = { ...s.questions }
-        for (const q of list) if (known(q.sessionID)) qs[q.id] = { id: q.id, sessionID: q.sessionID, questions: q.questions }
-        return { questions: qs }
-      })
+      const list: PendingQuestion[] = questions.data
+        .filter((q) => known(q.sessionID))
+        .map((q) => ({ id: q.id, sessionID: q.sessionID, questions: q.questions }))
+      set((s) => ({
+        questions: reconcilePending({
+          cur: s.questions,
+          before: beforeQs,
+          server: list,
+          inScope: (q) => s.sessionProject[q.sessionID] === dir
+        })
+      }))
     }
     if (status?.data) {
       const map = status.data
+      // Lo ausente del mapa en el proyecto pasa a idle: evita el `busy` pegado (F6-B5).
       set((s) => {
-        const runState = { ...s.runState }
-        for (const [sid, st] of Object.entries(map)) runState[sid] = toRunState(st)
-        return { runState }
+        // F7-B10: también las entradas de `runState` sin sesión (huérfanas: `loadSessions` ya las quitó), y solo las
+        // que no cambiaron durante la petición (una sesión que pasó a busy por evento no debe degradarse).
+        const scope = unchangedSince(
+          [
+            ...Object.entries(s.sessionProject)
+              .filter(([, proj]) => proj === dir)
+              .map(([sid]) => sid),
+            ...Object.keys(s.runState).filter((sid) => !(sid in s.sessionProject))
+          ],
+          beforeRun,
+          s.runState
+        )
+        const runState = reconcileRunStatus(s.runState, map, scope)
+        return runState ? { runState } : {}
       })
     }
   }
@@ -386,7 +539,8 @@ export const useCode = create<CodeState>((set, get) => {
     agent: CodeAgent,
     model: ModelRef | null,
     variant: string | null
-  ): Promise<void> => {
+  ): Promise<boolean> => {
+    lastAccess.set(sid, ++accessTick)
     setError(sid, null)
     set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
     const base = dir.replace(/[/\\]+$/, '')
@@ -422,9 +576,11 @@ export const useCode = create<CodeState>((set, get) => {
           parts: [{ type: 'text', text: trimmed }, ...fileParts, ...attachParts]
         })
       )
+      return true
     } catch (err) {
       setError(sid, errorMessage(err))
       set((s) => ({ runState: { ...s.runState, [sid]: 'idle' } }))
+      return false
     }
   }
 
@@ -456,7 +612,11 @@ export const useCode = create<CodeState>((set, get) => {
     if (!dir || !client) return
     const [next, ...rest] = q
     set((st) => ({ queue: { ...st.queue, [sessionID]: rest } }))
-    void doSend(client, dir, sessionID, next.text, next.files, next.attachments, s.agent, s.model, s.variant)
+    void doSend(client, dir, sessionID, next.text, next.files, next.attachments, s.agent, s.model, s.variant).then((ok) => {
+      // F7-B18: si el envío falla el ítem no se pierde: vuelve al frente de la cola (si la sesión sigue existiendo).
+      if (ok || !known(sessionID)) return
+      set((st) => ({ queue: { ...st.queue, [sessionID]: [next, ...(st.queue[sessionID] ?? [])] } }))
+    })
   }
 
   return {
@@ -510,8 +670,10 @@ export const useCode = create<CodeState>((set, get) => {
         set((s) => {
           const sessions = { ...s.sessions }
           const sessionProject = { ...s.sessionProject }
+          // La lista es `roots:true`: las hijas (subagentes) cuya raíz sigue se conservan (F6-B4).
+          const rootIds = new Set(list.map((x) => x.id))
           for (const [sid, proj] of Object.entries(sessionProject)) {
-            if (proj === dir && !list.some((x) => x.id === sid)) {
+            if (proj === dir && !rootIds.has(sid) && !isChildOfAny(s.sessions, sid, rootIds)) {
               delete sessionProject[sid]
               delete sessions[sid]
             }
@@ -558,6 +720,8 @@ export const useCode = create<CodeState>((set, get) => {
       const dir = get().directory
       if (dir) lsSet(LS_SESSION + dir, sessionID)
       if (!sessionID) return
+      // Reabrir fija la sesión (activa + acceso) ANTES de cargar: no se desaloja a mitad de la recarga.
+      get().touchSession(sessionID)
       get().markRead(sessionID)
       await loadMessages(sessionID)
     },
@@ -571,17 +735,9 @@ export const useCode = create<CodeState>((set, get) => {
         set({ globalError: errorMessage(err) })
         return
       }
-      set((s) => {
-        const sessions = { ...s.sessions }
-        const sessionProject = { ...s.sessionProject }
-        delete sessions[sessionID]
-        delete sessionProject[sessionID]
-        return {
-          sessions,
-          sessionProject,
-          activeSessionID: s.activeSessionID === sessionID ? null : s.activeSessionID
-        }
-      })
+      deltaQueue.flush()
+      set((s) => purgePatch(s, sessionID))
+      purgeSessionSideState(sessionID)
     },
 
     send: async (text, files = [], attachments = []) => {
@@ -634,9 +790,7 @@ export const useCode = create<CodeState>((set, get) => {
         const { client, dir, sid } = activeDir()
         const sess = get().sessions[sid]
         const boundary = sess?.revert?.messageID
-        const users = (get().messages[sid] ?? []).filter(
-          (m) => m.info.role === 'user' && (!boundary || m.info.id < boundary)
-        )
+        const users = (get().messages[sid] ?? []).filter((m) => m.info.role === 'user' && (!boundary || m.info.id < boundary))
         const target = users[users.length - 1]
         if (!target) throw new Error('No hay cambios que revertir')
         const updated = sdkData(await client.session.revert({ sessionID: sid, directory: dir, messageID: target.info.id }))
@@ -894,6 +1048,38 @@ export const useCode = create<CodeState>((set, get) => {
       })
     },
 
+    touchSession: (sessionID) => {
+      lastAccess.set(sessionID, ++accessTick)
+      get().evictIdle()
+    },
+
+    evictIdle: () => {
+      const max = lruMax(CODE_LRU_MAX)
+      if (Object.keys(get().messages).length <= max) return // atajo: ni con todas sin fijar hay exceso
+      deltaQueue.flush() // un delta encolado de una sesión que se desaloja debe aplicarse antes, como uno a uno
+      const cur = get()
+      // Fijadas: activa, ejecutando, carga en vuelo, cola no vacía y permisos/preguntas pendientes (+ raíz e hijas).
+      const seeds = new Set<string>()
+      if (cur.activeSessionID) seeds.add(cur.activeSessionID)
+      for (const [id, run] of Object.entries(cur.runState)) if (run === 'busy' || run === 'retry') seeds.add(id)
+      for (const [id, on] of Object.entries(cur.loadingMessages)) if (on) seeds.add(id)
+      for (const id of buffers.loading.keys()) seeds.add(id)
+      for (const [id, q] of Object.entries(cur.queue)) if (q.length > 0) seeds.add(id)
+      for (const p of Object.values(cur.permissions)) seeds.add(p.sessionID)
+      for (const q of Object.values(cur.questions)) seeds.add(q.sessionID)
+      const ids = pickEvictions({
+        candidates: Object.keys(cur.messages),
+        pinned: pinClosure(cur.sessions, seeds),
+        lastAccess,
+        max
+      })
+      if (ids.length === 0) return
+      // Code no tiene `loaded` (selectSession siempre recarga): se reutiliza `evictMessages` con un `loaded` vacío.
+      const next = evictMessages({ messages: cur.messages, loaded: {}, loadingMessages: cur.loadingMessages }, ids)
+      set({ messages: next.messages, loadingMessages: next.loadingMessages })
+      forgetOrphansOf(buffers, new Set(ids))
+    },
+
     togglePanel: (panel) => {
       const next = get().panel === panel ? null : panel
       lsSet(LS_PANEL, next)
@@ -918,7 +1104,12 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     applyEvent: (event, eventDir) => {
-      if (event.id && !markSeen(event.id)) return
+      if (event.id && !markSeen(buffers.seen, event.id)) return
+      if (event.type === 'message.part.delta') {
+        if (known(event.properties.sessionID)) deltaQueue.push(event)
+        return
+      }
+      deltaQueue.flush() // orden: lo encolado va antes que este evento
       switch (event.type) {
         case 'session.created':
         case 'session.updated': {
@@ -934,22 +1125,20 @@ export const useCode = create<CodeState>((set, get) => {
         case 'session.deleted': {
           const id = event.properties.info.id
           if (!known(id)) return
-          set((s) => {
-            const sessions = { ...s.sessions }
-            const sessionProject = { ...s.sessionProject }
-            delete sessions[id]
-            delete sessionProject[id]
-            return { sessions, sessionProject, activeSessionID: s.activeSessionID === id ? null : s.activeSessionID }
-          })
+          set((s) => purgePatch(s, id))
+          purgeSessionSideState(id)
           break
         }
         case 'session.status': {
           const { sessionID, status } = event.properties
           if (!known(sessionID)) return
           const next = toRunState(status)
+          if (next === 'idle' && isDupIdle(sessionID, 'status')) return // duplicado de `session.idle` ya tratado (F7-B18)
+          if (next !== 'idle') idleSeen.delete(sessionID) // `busy` confirmado por el servidor: nueva ejecución
           const prev = get().runState[sessionID]
           set((s) => ({ runState: { ...s.runState, [sessionID]: next } }))
           if (prev !== 'idle' && next === 'idle') {
+            idleSeen.set(sessionID, { kind: 'status', at: Date.now() })
             set((s) => ({ fsVersion: s.fsVersion + 1 }))
             markUnread(sessionID)
             notifyCode(sessionID, 'Code terminó')
@@ -961,11 +1150,18 @@ export const useCode = create<CodeState>((set, get) => {
           const { sessionID } = event.properties
           if (!known(sessionID)) return
           const prev = get().runState[sessionID]
-          set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' }, fsVersion: s.fsVersion + 1 }))
-          if (prev !== 'idle') {
-            markUnread(sessionID)
-            notifyCode(sessionID, 'Code terminó')
+          // F7-B18: ya está idle, o es el duplicado de un `session.status→idle` ya tratado (tras el cual `maybeAutoSend`
+          // dejó la sesión `busy` en local): no hacer nada (ni pisar ese `busy`, ni notificar ni lanzar otro ítem).
+          if (prev === 'idle') {
+            // Solo refresca Cambios/Archivos (como antes); sin notificar ni lanzar el siguiente de la cola.
+            set((s) => ({ fsVersion: s.fsVersion + 1 }))
+            return
           }
+          if (isDupIdle(sessionID, 'idle')) return
+          idleSeen.set(sessionID, { kind: 'idle', at: Date.now() })
+          set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' }, fsVersion: s.fsVersion + 1 }))
+          markUnread(sessionID)
+          notifyCode(sessionID, 'Code terminó')
           maybeAutoSend(sessionID)
           break
         }
@@ -979,54 +1175,27 @@ export const useCode = create<CodeState>((set, get) => {
         case 'session.diff':
         case 'file.edited':
         case 'file.watcher.updated':
-          set((s) => ({ fsVersion: s.fsVersion + 1 }))
+          // Pf1: solo eventos del proyecto (o del worktree de una de sus sesiones) y con debounce.
+          if (isProjectDir(eventDir)) bumpFsDebounced()
           break
-        case 'message.updated': {
-          const info = event.properties.info
-          if (!known(info.sessionID)) return
-          updateMessages(info.sessionID, (list) => {
-            const existing = list.find((m) => m.info.id === info.id)
-            const orphans = orphanParts.get(info.id) ?? []
-            orphanParts.delete(info.id)
-            let parts = existing?.parts ?? []
-            for (const p of orphans) parts = upsertSorted(parts, p)
-            const entry: CodeMessage = { info, parts }
-            const idx = list.findIndex((m) => m.info.id === info.id)
-            if (idx >= 0) return list.map((m, i) => (i === idx ? entry : m))
-            return [...list, entry].sort((a, b) => byId(a.info, b.info))
-          })
-          break
-        }
-        case 'message.removed': {
-          const { sessionID, messageID } = event.properties
-          if (!known(sessionID)) return
-          updateMessages(sessionID, (list) => list.filter((m) => m.info.id !== messageID))
-          break
-        }
-        case 'message.part.updated': {
-          const part = event.properties.part
-          if (!known(part.sessionID)) return
-          const ok = updatePart(part.sessionID, part.messageID, (parts) => upsertSorted(parts, part))
-          if (!ok) orphanParts.set(part.messageID, upsertSorted(orphanParts.get(part.messageID) ?? [], part))
-          break
-        }
+        case 'message.updated':
+        case 'message.removed':
+        case 'message.part.updated':
         case 'message.part.removed': {
-          const { sessionID, messageID, partID } = event.properties
-          if (!known(sessionID)) return
-          updatePart(sessionID, messageID, (parts) => parts.filter((p) => p.id !== partID))
-          break
-        }
-        case 'message.part.delta': {
-          const { sessionID, messageID, partID, field, delta } = event.properties
-          if (!known(sessionID)) return
-          updatePart(sessionID, messageID, (parts) =>
-            parts.map((p) => {
-              if (p.id !== partID) return p
-              const current = (p as unknown as Record<string, unknown>)[field]
-              if (current !== undefined && typeof current !== 'string') return p
-              return { ...p, [field]: (current ?? '') + delta } as Part
-            })
+          // Reductor común (lib/session-reducer). El dedupe ya se hizo arriba para TODOS los eventos.
+          const cur = get()
+          const { slice } = reduceEvent(
+            { messages: cur.messages, status: cur.runState, errors: cur.errors, sessions: cur.sessions },
+            event,
+            buffers,
+            { accept: known, dedupe: false }
           )
+          if (slice.messages !== cur.messages) {
+            set({ messages: slice.messages })
+            // Clave nueva en `messages` (sesión que empieza a tener contenido): puede pasarse del tope.
+            const sid = messageEventSessionID(event)
+            if (sid && !(sid in cur.messages)) scheduleEvict()
+          }
           break
         }
         case 'todo.updated': {
@@ -1135,6 +1304,19 @@ export function selectProjectSessions(s: Pick<CodeState, 'sessions' | 'sessionPr
 }
 
 /**
+ * ¿Hay que mostrar el loader del historial de `sid`? Sesión conocida cuyo contenido no está en `messages` (nunca abierta
+ * o desalojada por el LRU) mientras se carga: `selectSession` marca `loadingMessages` en el mismo tick que la activa,
+ * así que cubre también el instante «recién seleccionada». Con historial ya presente (aunque recargue) o sin carga en
+ * curso (sesión nueva vacía, error) es falso y se ve la vista de siempre.
+ */
+export function isCodeTranscriptLoading(
+  s: Pick<CodeState, 'sessions' | 'messages' | 'loadingMessages'>,
+  sid: string | null | undefined
+): boolean {
+  return !!sid && !!s.sessions[sid] && s.messages[sid] === undefined && !!s.loadingMessages[sid]
+}
+
+/**
  * Conteo combinado (para el badge del Dock): sesiones raíz con actividad sin ver (terminaron) o
  * que esperan algo del usuario (permiso o pregunta pendiente), sin duplicar la misma raíz.
  */
@@ -1158,6 +1340,7 @@ export function ensureCodeSubscription(): () => void {
     const offEvents = subscribeEvents((event, directory) => useCode.getState().applyEvent(event, directory))
     const offReconnect = subscribeReconnect(() => void useCode.getState().resync())
     unsubscribe = () => {
+      bumpFsDebounced.cancel()
       offEvents()
       offReconnect()
     }

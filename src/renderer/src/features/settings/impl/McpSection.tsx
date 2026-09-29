@@ -160,9 +160,9 @@ export function McpSection(): React.JSX.Element {
         title="Servidores MCP"
         description={
           <>
-            Herramientas externas vía Model Context Protocol. Los servidores que agregues aquí se guardan en un
-            archivo propio de la app (no se modifica tu <code className="font-mono">~/.config/opencode</code>). Al
-            guardar, OpenCode recarga su configuración y las respuestas en curso se interrumpen.
+            Herramientas externas vía Model Context Protocol. Los servidores que agregues aquí se guardan en un archivo propio de la app (no
+            se modifica tu <code className="font-mono">~/.config/opencode</code>). Al guardar, OpenCode recarga su configuración y las
+            respuestas en curso se interrumpen.
           </>
         }
       />
@@ -208,18 +208,12 @@ export function McpSection(): React.JSX.Element {
           const st = row.status ? STATUS[row.status.status] : null
           const enabled = row.status ? row.status.status !== 'disabled' : row.entry ? isEnabled(row.entry) : false
           const err =
-            row.status && (row.status.status === 'failed' || row.status.status === 'needs_client_registration')
-              ? row.status.error
-              : null
+            row.status && (row.status.status === 'failed' || row.status.status === 'needs_client_registration') ? row.status.error : null
           return (
             <div key={row.name} className="border-b border-border px-4 py-3 last:border-b-0">
               <div className="flex items-center gap-3">
                 <span className="text-muted">
-                  {row.entry && 'type' in row.entry && row.entry.type === 'remote' ? (
-                    <Globe size={16} />
-                  ) : (
-                    <Terminal size={16} />
-                  )}
+                  {row.entry && 'type' in row.entry && row.entry.type === 'remote' ? <Globe size={16} /> : <Terminal size={16} />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
@@ -270,24 +264,20 @@ export function McpSection(): React.JSX.Element {
               </div>
               {err && <div className="mt-2 text-xs whitespace-pre-wrap text-danger">{err}</div>}
               {row.owned && coworkInfo[row.name] && (
-                <CoworkFlags
-                  info={coworkInfo[row.name]}
-                  disabled={busy !== null}
-                  onChange={(patch) => void setCowork(row.name, patch)}
-                />
+                <CoworkFlags info={coworkInfo[row.name]} disabled={busy !== null} onChange={(patch) => void setCowork(row.name, patch)} />
               )}
             </div>
           )
         })}
       </Card>
       <p className="mt-2 flex items-center gap-1.5 text-[11px] text-subtle">
-        <Unplug size={12} /> En servidores de config externa el interruptor conecta/desconecta sólo hasta el próximo
-        reinicio. El estado mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.
+        <Unplug size={12} /> En servidores de config externa el interruptor conecta/desconecta sólo hasta el próximo reinicio. El estado
+        mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.
       </p>
       <p className="mt-1 flex items-start gap-1.5 text-[11px] text-subtle">
-        <Info size={12} className="mt-0.5 shrink-0" /> «Disponible en Cowork» se aplica al abrir de nuevo la carpeta. En
-        el sandbox los servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los
-        servidores remotos se añaden a la Red de Cowork.
+        <Info size={12} className="mt-0.5 shrink-0" /> «Disponible en Cowork» se aplica al abrir de nuevo la carpeta. En el sandbox los
+        servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los servidores remotos se añaden a la Red de
+        Cowork.
       </p>
       {appCfg && <p className="mt-1 truncate font-mono text-[11px] text-subtle">{appCfg.path}</p>}
     </div>
@@ -328,8 +318,8 @@ function CoworkFlags({
       </div>
       {info.cowork && info.type === 'remote' && info.oauth && (
         <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
-          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Este servidor remoto parece usar inicio de sesión
-          (OAuth): no estará disponible en el sandbox (en Control total puede funcionar).
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Este servidor remoto parece usar inicio de sesión (OAuth): no estará
+          disponible en el sandbox (en Control total puede funcionar).
         </p>
       )}
       {info.cowork && info.hosts.length > 0 && (
@@ -401,7 +391,11 @@ function parsePairs(text: string, sep: '=' | ':'): Record<string, string> {
 }
 
 function formatPairs(rec: Record<string, string> | undefined, sep: '=' | ': '): string {
-  return rec ? Object.entries(rec).map(([k, v]) => `${k}${sep}${v}`).join('\n') : ''
+  return rec
+    ? Object.entries(rec)
+        .map(([k, v]) => `${k}${sep}${v}`)
+        .join('\n')
+    : ''
 }
 
 function McpForm({
@@ -518,12 +512,7 @@ function McpForm({
               />
             </Field>
             <Field label="Cabeceras (una por línea)">
-              <TextArea
-                rows={3}
-                value={headers}
-                onChange={(e) => setHeaders(e.target.value)}
-                placeholder="Authorization: Bearer ..."
-              />
+              <TextArea rows={3} value={headers} onChange={(e) => setHeaders(e.target.value)} placeholder="Authorization: Bearer ..." />
             </Field>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={noOauth} onChange={(e) => setNoOauth(e.target.checked)} />

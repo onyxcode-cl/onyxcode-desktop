@@ -1,0 +1,3 @@
+#!/bin/sh
+# OpenCode FALSO para E2E (sin LLM). Se usa con OPENCODE_BIN=<esta ruta>.
+exec node "$(dirname "$0")/server.mjs" "$@"

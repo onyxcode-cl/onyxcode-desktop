@@ -5,6 +5,7 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
+import { cleanLegacyCoworkBrowserData } from './cowork/legacy-cleanup'
 import { prepareOpencodeConfigDir } from './cowork/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
@@ -17,8 +18,17 @@ import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded
 import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './security/app-protocol'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
+import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
 app.setName(APP_NAME)
+
+// Instancia única: se pide lo antes posible y ANTES de cualquier efecto (migración de userData,
+// killStaleServers, handlers, ventanas). Electron deriva el lock del userData ('OnyxCode'), que el
+// modo dev comparte con la app instalada: si la empaquetada está abierta, `npm run dev` saldrá aquí
+// (y viceversa). Sin lock, esta instancia no ejecuta nada más.
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) app.quit()
+
 // Esquema `onyxcode://app` para el renderer de producción (antes de `ready`).
 registerAppSchemePrivileges()
 
@@ -29,19 +39,21 @@ registerAppSchemePrivileges()
 // nueva antes de que corra este código, así que se mueven las entradas sueltas en vez de renombrar
 // la carpeta completa.
 const LEGACY_APP_NAMES = ['Lapis', 'OpenDesk']
-const USER_DATA = app.getPath('userData')
-for (const legacyName of LEGACY_APP_NAMES) {
-  if (existsSync(join(USER_DATA, 'settings.json'))) break
-  const legacyUserData = join(app.getPath('appData'), legacyName)
-  if (!existsSync(join(legacyUserData, 'settings.json'))) continue
-  mkdirSync(USER_DATA, { recursive: true })
-  for (const entry of readdirSync(legacyUserData)) {
-    const target = join(USER_DATA, entry)
-    if (existsSync(target)) continue
-    try {
-      renameSync(join(legacyUserData, entry), target)
-    } catch (err) {
-      console.error(`[main] no se pudo migrar ${entry} de ${legacyName}:`, err)
+function migrateLegacyUserData(): void {
+  const USER_DATA = app.getPath('userData')
+  for (const legacyName of LEGACY_APP_NAMES) {
+    if (existsSync(join(USER_DATA, 'settings.json'))) break
+    const legacyUserData = join(app.getPath('appData'), legacyName)
+    if (!existsSync(join(legacyUserData, 'settings.json'))) continue
+    mkdirSync(USER_DATA, { recursive: true })
+    for (const entry of readdirSync(legacyUserData)) {
+      const target = join(USER_DATA, entry)
+      if (existsSync(target)) continue
+      try {
+        renameSync(join(legacyUserData, entry), target)
+      } catch (err) {
+        console.error(`[main] no se pudo migrar ${entry} de ${legacyName}:`, err)
+      }
     }
   }
 }
@@ -80,7 +92,7 @@ function createWindow(): BrowserWindow {
   registerWindowRole(win.webContents, 'main')
 
   mainWindow = win
-  win.on('ready-to-show', () => win.show())
+  win.on('ready-to-show', () => presentWindow(win))
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
     if (process.platform !== 'darwin') app.quit()
@@ -92,82 +104,110 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-app.whenReady().then(() => {
-  handleAppScheme()
-  installWebSecurity()
-  electronApp.setAppUserModelId(APP_ID)
-  app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
-
-  // Servidores `opencode serve` huérfanos de una ejecución anterior que no salió limpia (B3).
-  try {
-    killStaleServers()
-  } catch (err) {
-    console.error('[main] limpieza de servidores huérfanos:', err)
+/** Trae la ventana principal al frente (la crea si no existe). Solo para `second-instance`:
+ *  `activate` conserva su comportamiento (únicamente recrear si falta). */
+function focusMainWindow(): void {
+  // La ventana oculta de Quick Entry cuenta en getAllWindows: usar la referencia a la principal.
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow()
+    return
   }
-  // Agentes de la app → userData/opencode-config (nunca escribir dentro del bundle, P1).
-  prepareOpencodeConfigDir()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  if (!mainWindow.isVisible()) presentWindow(mainWindow, { focus: true })
+  else if (!E2E_HEADLESS) mainWindow.focus()
+}
 
-  if (!app.isPackaged) {
-    // Un canal IPC sin esquema queda rechazado por el guard: avisar fuerte en desarrollo.
-    const missing = missingSchemas()
-    if (missing.length) {
-      const msg = `[ipc] canales sin esquema en src/main/ipc/schemas.ts (se rechazarán): ${missing.join(', ')}`
-      console.error(msg)
-      dialog.showErrorBox('Canales IPC sin esquema', msg)
+function start(): void {
+  migrateLegacyUserData()
+  // «Chrome aparte» ya no existe: se borran sus datos huérfanos (perfil, cookies, descargas y json).
+  // Solo dentro de userData; tras borrarse no queda nada, así que en la práctica corre una vez.
+  const legacyRemoved = cleanLegacyCoworkBrowserData(app.getPath('userData'))
+  if (legacyRemoved.length > 0) console.log('[main] limpieza de datos de Chrome aparte:', legacyRemoved.length)
+  // Un segundo lanzamiento (dock, `open`, onyxcode://) enfoca esta instancia. Antes de `ready` se
+  // ignora: la ventana se crea igualmente al arrancar.
+  app.on('second-instance', () => {
+    if (app.isReady()) focusMainWindow()
+  })
+  app.whenReady().then(() => {
+    applyE2eHeadless()
+    handleAppScheme()
+    installWebSecurity()
+    electronApp.setAppUserModelId(APP_ID)
+    app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+
+    // Servidores `opencode serve` huérfanos de una ejecución anterior que no salió limpia (B3).
+    try {
+      killStaleServers()
+    } catch (err) {
+      console.error('[main] limpieza de servidores huérfanos:', err)
     }
-  }
+    // Agentes de la app → userData/opencode-config (nunca escribir dentro del bundle, P1).
+    prepareOpencodeConfigDir()
 
-  registerAllHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
-  registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
-  coworkMod = registerCoworkHandlers(ipcMain, () => mainWindow, {
-    getMainConnection: () => server.start(),
-    chatDirectory,
-    corsOrigins
+    if (!app.isPackaged) {
+      // Un canal IPC sin esquema queda rechazado por el guard: avisar fuerte en desarrollo.
+      const missing = missingSchemas()
+      if (missing.length) {
+        const msg = `[ipc] canales sin esquema en src/main/ipc/schemas.ts (se rechazarán): ${missing.join(', ')}`
+        console.error(msg)
+        dialog.showErrorBox('Canales IPC sin esquema', msg)
+      }
+    }
+
+    registerAllHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
+    registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
+    coworkMod = registerCoworkHandlers(ipcMain, () => mainWindow, {
+      getMainConnection: () => server.start(),
+      chatDirectory,
+      corsOrigins
+    })
+    registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
+    embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
+    registerBrowserHandlers(ipcMain)
+
+    // Arranca el sidecar en paralelo a la ventana.
+    server.start().catch((err: unknown) => console.error('[main] opencode no arrancó:', err))
+
+    createWindow()
+
+    app.on('activate', () => {
+      // La ventana oculta de Quick Entry cuenta en getAllWindows: usar la principal.
+      if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+    })
   })
-  registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
-  embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
-  registerBrowserHandlers(ipcMain)
 
-  // Arranca el sidecar en paralelo a la ventana.
-  server.start().catch((err: unknown) => console.error('[main] opencode no arrancó:', err))
-
-  createWindow()
-
-  app.on('activate', () => {
-    // La ventana oculta de Quick Entry cuenta en getAllWindows: usar la principal.
-    if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
   })
-})
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+  let quitting = false
+  app.on('before-quit', (event) => {
+    if (quitting) return
+    quitting = true
+    event.preventDefault()
+    try {
+      shutdownEmbeddedBrowser()
+    } catch (err) {
+      console.error('[main] limpieza del navegador integrado:', err)
+    }
+    Promise.allSettled([server.stop(), coworkMod?.shutdown()])
+      .then(() => undefined)
+      .catch((err: unknown) => console.error('[main] error deteniendo opencode:', err))
+      .finally(() => app.quit())
+  })
 
-let quitting = false
-app.on('before-quit', (event) => {
-  if (quitting) return
-  quitting = true
-  event.preventDefault()
-  try {
-    shutdownEmbeddedBrowser()
-  } catch (err) {
-    console.error('[main] limpieza del navegador integrado:', err)
-  }
-  Promise.allSettled([server.stop(), coworkMod?.shutdown()])
-    .then(() => undefined)
-    .catch((err: unknown) => console.error('[main] error deteniendo opencode:', err))
-    .finally(() => app.quit())
-})
-
-// Último recurso: nunca dejar el sidecar huérfano.
-process.on('exit', () => {
-  server.killSync()
-  coworkMod?.killSync()
-})
-for (const sig of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(sig, () => {
+  // Último recurso: nunca dejar el sidecar huérfano.
+  process.on('exit', () => {
     server.killSync()
     coworkMod?.killSync()
-    process.exit(0)
   })
+  for (const sig of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(sig, () => {
+      server.killSync()
+      coworkMod?.killSync()
+      process.exit(0)
+    })
+  }
 }
+
+if (gotSingleInstanceLock) start()

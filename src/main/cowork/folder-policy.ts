@@ -11,6 +11,7 @@
  */
 import { resolve, sep } from 'node:path'
 import { APP_NAME } from '@shared/brand'
+import { isInside } from '../util/paths'
 import { defaultDeniedReadPaths } from './sandbox-profile'
 
 /** Una línea de la salida de `/sbin/mount`. */
@@ -71,10 +72,6 @@ function key(p: string): string {
   let r = resolve(p)
   if (r.length > 1 && r.endsWith(sep)) r = r.slice(0, -1)
   return r.toLowerCase()
-}
-
-function isInside(f: string, dir: string): boolean {
-  return f === dir || f.startsWith(dir === '/' ? '/' : dir + sep)
 }
 
 /** Ruta con `~` en lugar del home, para los mensajes. */

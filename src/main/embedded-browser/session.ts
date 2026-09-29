@@ -10,6 +10,7 @@ import { app, session, type Session } from 'electron'
 import { APP_NAME } from '@shared/brand'
 import type { BrowserProduct } from '@shared/ipc-browser'
 import { isLocalOriginApproved } from './store'
+import { schemeOf } from './sites'
 import { handleWillDownload } from './downloads'
 
 const PARTITION_BY_PRODUCT: Record<BrowserProduct, string> = {
@@ -104,8 +105,24 @@ function installNetworkGuard(ses: Session): void {
 
 const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write'])
 
+type ExternalOpenListener = (wc: Electron.WebContents, url: string) => void
+let externalOpenListener: ExternalOpenListener | null = null
+
+/** `surface.ts` se registra aquí (sin ciclo de imports) para registrar/avisar cuando se deniega `openExternal`. */
+export function setExternalOpenBlockedListener(fn: ExternalOpenListener): void {
+  externalOpenListener = fn
+}
+
 function installPermissionHandlers(ses: Session, product: BrowserProduct): void {
-  ses.setPermissionRequestHandler((_wc, permission, callback, details) => {
+  ses.setPermissionRequestHandler((wc, permission, callback, details) => {
+    if (permission === 'openExternal') {
+      // Un esquema externo (`mailto:`, `tel:`…) nunca abre otra aplicación desde el navegador integrado.
+      const url = (details as { externalURL?: string }).externalURL ?? ''
+      if (externalOpenListener) externalOpenListener(wc, url)
+      else console.warn(`[embedded-browser:${product}] navegación bloqueada: ${schemeOf(url) ?? 'esquema desconocido'} (openExternal)`)
+      callback(false)
+      return
+    }
     const ok = ALLOWED_PERMISSIONS.has(permission) && details.isMainFrame !== false
     if (!ok) console.warn(`[embedded-browser:${product}] permiso denegado: ${permission}`)
     callback(ok)
@@ -165,8 +182,4 @@ function strippedUserAgent(ua: string): string {
     .replace(new RegExp(`\\s*${APP_NAME}/\\S+`, 'gi'), '')
     .replace(/\s*Electron\/\S+/gi, '')
     .trim()
-}
-
-export function partitionNameFor(product: BrowserProduct): string {
-  return PARTITION_BY_PRODUCT[product]
 }

@@ -1,9 +1,8 @@
 /**
  * Panel "Cambios": estado git del proyecto, diff por archivo, commit y ramas/worktrees.
- * Usa `window.api.code.git` (preload) si está disponible; si no, cae a los canales IPC
- * genéricos y, en último caso, al estado de archivos de OpenCode.
+ * Usa `window.api.code.git` (preload); si no está disponible, cae al estado de archivos de OpenCode.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GitBranch as GitBranchInfo, GitChangeKind, GitWorktreeDetailed } from '@shared/ipc-code'
 import {
   Check,
@@ -20,10 +19,13 @@ import {
   X
 } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
-import { errorMessage, getClient, getCodeApi, nativeCode } from '../client'
+import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
 import { DiffStats } from '../ToolCard'
 import { useCode } from '../store'
+import { useVisibleFsVersion } from '../useVisibleFsVersion'
+import { openProjectTrusted } from '../trust'
+import { isImeComposing } from '../../../../lib/textarea'
 import { ConfirmButton, Kbd, MOD } from '../ui'
 
 interface ChangedFile {
@@ -55,25 +57,6 @@ const KIND_META: Record<GitChangeKind, { letter: string; label: string; cls: str
   ignored: { letter: 'I', label: 'Ignorado', cls: 'bg-hover text-subtle' }
 }
 
-function kindFromCode(code: string): GitChangeKind {
-  switch (code) {
-    case 'A':
-      return 'added'
-    case 'D':
-      return 'deleted'
-    case 'R':
-      return 'renamed'
-    case 'C':
-      return 'copied'
-    case '?':
-      return 'untracked'
-    case 'U':
-      return 'conflicted'
-    default:
-      return 'modified'
-  }
-}
-
 async function loadStatus(cwd: string): Promise<StatusInfo> {
   const native = nativeCode()
   if (native) {
@@ -84,53 +67,43 @@ async function loadStatus(cwd: string): Promise<StatusInfo> {
       upstream: st.upstream,
       ahead: st.ahead,
       behind: st.behind,
-      files: st.files.map((f) => ({ path: f.path, origPath: f.origPath, kind: f.kind, staged: f.staged, unstaged: f.unstaged || f.untracked }))
-    }
-  }
-  try {
-    const st = await getCodeApi().gitStatus(cwd)
-    return {
-      isRepo: true,
-      branch: st.branch,
-      upstream: null,
-      ahead: st.ahead,
-      behind: st.behind,
-      files: st.files.map((f) => {
-        const idx = f.index.trim()
-        const wd = f.workingDir.trim()
-        const code = idx === '?' || wd === '?' ? '?' : wd || idx || 'M'
-        const staged = !!idx && idx !== '?'
-        return { path: f.path, kind: kindFromCode(code), staged, unstaged: !!wd || code === '?' }
-      })
-    }
-  } catch (ipcErr) {
-    // Alternativa: estado vía OpenCode (`GET /file/status`).
-    const client = getClient()
-    if (!client) throw ipcErr
-    const res = await client.file.status({ directory: cwd })
-    if (res.error || !res.data) throw ipcErr
-    return {
-      isRepo: true,
-      branch: null,
-      upstream: null,
-      ahead: 0,
-      behind: 0,
-      files: res.data.map((f) => ({
+      files: st.files.map((f) => ({
         path: f.path,
-        kind: f.status === 'added' ? 'added' : f.status === 'deleted' ? 'deleted' : 'modified',
-        staged: false,
-        unstaged: true
+        origPath: f.origPath,
+        kind: f.kind,
+        staged: f.staged,
+        unstaged: f.unstaged || f.untracked
       }))
     }
   }
+  const ipcErr = new Error('API nativa de Code no disponible')
+  // Alternativa: estado vía OpenCode (`GET /file/status`).
+  const client = getClient()
+  if (!client) throw ipcErr
+  const res = await client.file.status({ directory: cwd })
+  if (res.error || !res.data) throw ipcErr
+  return {
+    isRepo: true,
+    branch: null,
+    upstream: null,
+    ahead: 0,
+    behind: 0,
+    files: res.data.map((f) => ({
+      path: f.path,
+      kind: f.status === 'added' ? 'added' : f.status === 'deleted' ? 'deleted' : 'modified',
+      staged: false,
+      unstaged: true
+    }))
+  }
 }
 
-async function loadDiff(cwd: string, file: ChangedFile, staged: boolean): Promise<string> {
+async function loadDiff(cwd: string, file: Pick<ChangedFile, 'path' | 'kind'>, staged: boolean): Promise<string> {
   let text = ''
   try {
-    text = await getCodeApi().gitDiff({ cwd, path: file.path, staged })
-  } catch {
-    // se intentará con OpenCode
+    text = await requireCode().git.diff({ cwd, path: file.path, staged })
+  } catch (err) {
+    // Con git nativo, el fallo se muestra (no se disfraza de «Sin diferencias»); sin él se usa OpenCode.
+    if (nativeCode()) throw err
   }
   if (text.trim()) return text
   const client = getClient()
@@ -152,7 +125,17 @@ interface Selection {
   staged: boolean
 }
 
-function FileRow({ file, staged, selected, onSelect }: { file: ChangedFile; staged: boolean; selected: boolean; onSelect: () => void }): React.JSX.Element {
+function FileRow({
+  file,
+  staged,
+  selected,
+  onSelect
+}: {
+  file: ChangedFile
+  staged: boolean
+  selected: boolean
+  onSelect: () => void
+}): React.JSX.Element {
   const meta = KIND_META[file.kind] ?? KIND_META.modified
   const { dir, name } = splitPath(file.path)
   return (
@@ -162,7 +145,9 @@ function FileRow({ file, staged, selected, onSelect }: { file: ChangedFile; stag
       title={`${meta.label}${staged ? ' · preparado' : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
       className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[13px] ${selected ? 'bg-active' : 'hover:bg-hover'}`}
     >
-      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold ${meta.cls}`}>{meta.letter}</span>
+      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold ${meta.cls}`}>
+        {meta.letter}
+      </span>
       <span className="min-w-0 truncate">
         <span className={file.kind === 'deleted' ? 'text-muted line-through' : 'text-fg'}>{name}</span>
         {dir && <span className="ml-1.5 text-xs text-subtle">{dir}</span>}
@@ -193,7 +178,17 @@ function Section({ title, count, children }: { title: string; count: number; chi
 // Commit
 // ---------------------------------------------------------------------------
 
-function CommitBox({ directory, stagedCount, total, onDone }: { directory: string; stagedCount: number; total: number; onDone: () => void }): React.JSX.Element | null {
+function CommitBox({
+  directory,
+  stagedCount,
+  total,
+  onDone
+}: {
+  directory: string
+  stagedCount: number
+  total: number
+  onDone: () => void
+}): React.JSX.Element | null {
   const native = nativeCode()
   const [message, setMessage] = useState('')
   const [stageAll, setStageAll] = useState(stagedCount === 0)
@@ -274,9 +269,17 @@ function CommitBox({ directory, stagedCount, total, onDone }: { directory: strin
 // Ramas / worktrees
 // ---------------------------------------------------------------------------
 
-function WorktreeDialog({ directory, current, onClose }: { directory: string; current: string | null; onClose: () => void }): React.JSX.Element | null {
+function WorktreeDialog({
+  directory,
+  current,
+  onClose
+}: {
+  directory: string
+  current: string | null
+  onClose: () => void
+}): React.JSX.Element | null {
   const native = nativeCode()
-  const openProject = useCode((s) => s.openProject)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const [branches, setBranches] = useState<GitBranchInfo[]>([])
   const [worktrees, setWorktrees] = useState<GitWorktreeDetailed[]>([])
   const [name, setName] = useState('')
@@ -299,7 +302,32 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const root = dialogRef.current
+      if (!root) return
+      const items = [
+        ...root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        )
+      ]
+      if (items.length === 0) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement
+      if (!root.contains(active)) {
+        e.preventDefault()
+        first.focus()
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -325,12 +353,14 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
     }
   }
 
-  const inputCls = 'w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm outline-none focus:border-border-strong placeholder:text-subtle'
+  const inputCls =
+    'w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm outline-none focus:border-border-strong placeholder:text-subtle'
   const others = worktrees.filter((w) => !w.bare)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6" onMouseDown={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="wt-title"
@@ -342,7 +372,12 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
           <h2 id="wt-title" className="text-sm font-semibold">
             Nueva rama en un worktree
           </h2>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
+          >
             <X size={15} />
           </button>
         </div>
@@ -359,7 +394,10 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value.replace(/\s+/g, '-'))}
-              onKeyDown={(e) => e.key === 'Enter' && void create()}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' || busy || isImeComposing(e)) return
+                void create()
+              }}
               placeholder="feature/mi-cambio"
               className={`${inputCls} font-mono`}
             />
@@ -395,7 +433,7 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
                 type="button"
                 onClick={() => {
                   onClose()
-                  void openProject(created.path)
+                  void openProjectTrusted(created.path)
                 }}
                 className="shrink-0 rounded-md bg-accent px-2 py-1 font-medium text-accent-fg hover:opacity-90"
               >
@@ -422,7 +460,7 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
                         type="button"
                         onClick={() => {
                           onClose()
-                          void openProject(w.path)
+                          void openProjectTrusted(w.path)
                         }}
                         className="shrink-0 rounded-md px-1.5 py-0.5 text-muted hover:bg-hover hover:text-fg"
                       >
@@ -455,7 +493,11 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
           )}
         </div>
         <div className="flex justify-end gap-2 border-t border-border px-4 py-2.5">
-          <button type="button" onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+          >
             Cerrar
           </button>
           <button
@@ -477,7 +519,7 @@ function WorktreeDialog({ directory, current, onClose }: { directory: string; cu
 // ---------------------------------------------------------------------------
 
 export function ChangesPanel({ directory }: { directory: string }): React.JSX.Element {
-  const fsVersion = useCode((s) => s.fsVersion)
+  const fsVersion = useVisibleFsVersion()
   const touchFs = useCode((s) => s.touchFs)
   const native = nativeCode()
   const [status, setStatus] = useState<StatusInfo | null>(null)
@@ -486,17 +528,22 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const [selected, setSelected] = useState<Selection | null>(null)
   const [diff, setDiff] = useState<string>('')
   const [diffLoading, setDiffLoading] = useState(false)
+  const [diffError, setDiffError] = useState<string | null>(null)
   const [dialog, setDialog] = useState(false)
 
+  const refreshGen = useRef(0)
   const refresh = useCallback(async () => {
+    const gen = ++refreshGen.current
     setLoading(true)
     try {
-      setStatus(await loadStatus(directory))
+      const next = await loadStatus(directory)
+      if (gen !== refreshGen.current) return
+      setStatus(next)
       setError(null)
     } catch (err) {
-      setError(errorMessage(err))
+      if (gen === refreshGen.current) setError(errorMessage(err))
     } finally {
-      setLoading(false)
+      if (gen === refreshGen.current) setLoading(false)
     }
   }, [directory])
 
@@ -509,21 +556,30 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
 
   const selectedFile = status?.files.find((f) => f.path === selected?.path) ?? null
   const selStaged = selected?.staged ?? false
+  // El objeto `selectedFile` cambia en cada refresh: el diff solo depende de path/kind/staged (+ fsVersion).
+  const selPath = selectedFile?.path ?? null
+  const selKind = selectedFile?.kind ?? null
   useEffect(() => {
-    if (!selectedFile) {
+    if (selPath === null || selKind === null) {
       setDiff('')
+      setDiffError(null)
       return
     }
     let cancelled = false
     setDiffLoading(true)
-    loadDiff(directory, selectedFile, selStaged)
+    setDiffError(null)
+    loadDiff(directory, { path: selPath, kind: selKind }, selStaged)
       .then((d) => !cancelled && setDiff(d))
-      .catch((err: unknown) => !cancelled && setDiff(`Error: ${errorMessage(err)}`))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setDiff('')
+        setDiffError(errorMessage(err))
+      })
       .finally(() => !cancelled && setDiffLoading(false))
     return () => {
       cancelled = true
     }
-  }, [directory, selectedFile, selStaged])
+  }, [directory, selPath, selKind, selStaged, fsVersion])
 
   const stats = useMemo(() => (diff ? diffStats(diff) : null), [diff])
   const abs = selectedFile ? `${directory.replace(/[/\\]+$/, '')}/${selectedFile.path}` : ''
@@ -533,7 +589,9 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
         <GitBranch size={22} className="text-subtle" />
         <div className="text-sm font-medium">Esta carpeta no es un repositorio git</div>
-        <p className="text-xs text-muted">Ejecuta <code className="rounded bg-code px-1">git init</code> en la terminal para seguir los cambios del agente.</p>
+        <p className="text-xs text-muted">
+          Ejecuta <code className="rounded bg-code px-1">git init</code> en la terminal para seguir los cambios del agente.
+        </p>
       </div>
     )
   }
@@ -541,13 +599,18 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs text-muted">
-        <span className="flex min-w-0 items-center gap-1.5 rounded-full border border-border bg-bg px-2 py-0.5 font-mono" title={status?.upstream ? `Sigue a ${status.upstream}` : 'Sin upstream'}>
+        <span
+          className="flex min-w-0 items-center gap-1.5 rounded-full border border-border bg-bg px-2 py-0.5 font-mono"
+          title={status?.upstream ? `Sigue a ${status.upstream}` : 'Sin upstream'}
+        >
           <GitBranch size={12} className="shrink-0" />
           <span className="truncate">{status?.branch ?? '—'}</span>
           {status && status.ahead > 0 && <span className="text-subtle">↑{status.ahead}</span>}
           {status && status.behind > 0 && <span className="text-subtle">↓{status.behind}</span>}
         </span>
-        <span className="ml-auto shrink-0">{status ? (status.files.length === 1 ? '1 archivo' : `${status.files.length} archivos`) : ''}</span>
+        <span className="ml-auto shrink-0">
+          {status ? (status.files.length === 1 ? '1 archivo' : `${status.files.length} archivos`) : ''}
+        </span>
         {native && (
           <IconButton label="Nueva rama / worktree" onClick={() => setDialog(true)} className="h-6 w-6">
             <GitBranchPlus size={13} />
@@ -629,7 +692,12 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 </div>
               )}
               {selectedFile && diff && <DiffView patch={diff} path={selectedFile.path} hideFileHeaders />}
-              {selectedFile && !diff && !diffLoading && <div className="px-3 py-3 text-sm text-subtle">Sin diferencias de texto.</div>}
+              {selectedFile && diffError && !diffLoading && (
+                <div className="px-3 py-3 text-xs text-danger">No se pudo obtener el diff: {diffError}</div>
+              )}
+              {selectedFile && !diff && !diffLoading && !diffError && (
+                <div className="px-3 py-3 text-sm text-subtle">Sin diferencias de texto.</div>
+              )}
             </div>
           </div>
           {status && (

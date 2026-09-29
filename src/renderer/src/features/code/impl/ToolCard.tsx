@@ -4,7 +4,7 @@
  *  - las ediciones se muestran como chip de archivo con +/- que se expande al diff,
  *  - bash muestra el comando y su salida plegable.
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { memo, useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import {
   AlertCircle,
@@ -25,6 +25,7 @@ import {
   Wrench,
   XCircle
 } from 'lucide-react'
+import { parseTodos } from '../../../lib/conversation/parts'
 import { DiffView, diffStats, makePatch } from './DiffView'
 import { ADD_TEXT, DEL_TEXT } from './ui'
 
@@ -55,11 +56,6 @@ interface TodoItem {
   content: string
   status: string
   priority?: string
-}
-
-function todosFrom(v: unknown): TodoItem[] {
-  if (!Array.isArray(v)) return []
-  return v.filter((t): t is TodoItem => !!t && typeof t === 'object' && typeof (t as TodoItem).content === 'string')
 }
 
 export function TodoList({ todos }: { todos: TodoItem[] }): React.JSX.Element {
@@ -95,11 +91,7 @@ export function TodoList({ todos }: { todos: TodoItem[] }): React.JSX.Element {
 
 function Output({ text, max = 'max-h-72' }: { text: string; max?: string }): React.JSX.Element | null {
   if (!text) return null
-  return (
-    <pre className={`${max} overflow-auto bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg`}>
-      {text}
-    </pre>
-  )
+  return <pre className={`${max} overflow-auto bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg`}>{text}</pre>
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +193,10 @@ function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: 
           {extra}
           <StatusMark status={status} />
           {expandable && (
-            <ChevronRight size={13} className={`text-subtle transition-transform ${open ? 'rotate-90' : 'opacity-0 group-hover/row:opacity-100'}`} />
+            <ChevronRight
+              size={13}
+              className={`text-subtle transition-transform ${open ? 'rotate-90' : 'opacity-0 group-hover/row:opacity-100'}`}
+            />
           )}
         </span>
       </button>
@@ -262,7 +257,9 @@ function EditChip({ part, root }: { part: ToolPart; root: string | null }): Reac
             {dir && <span className="ml-1.5 text-subtle">{dir}</span>}
           </span>
           <DiffStats {...stats} />
-          {(patch || error) && <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />}
+          {(patch || error) && (
+            <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
+          )}
         </button>
         <span className="ml-auto shrink-0">
           <StatusMark status={status} />
@@ -278,7 +275,8 @@ function EditChip({ part, root }: { part: ToolPart; root: string | null }): Reac
   )
 }
 
-export function ToolRow({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
+// Memoizada (F7-B44): `part` conserva su referencia en el store mientras no cambia.
+export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const { state } = part
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
@@ -336,7 +334,13 @@ export function ToolRow({ part, root }: { part: ToolPart; root: string | null })
           detail={
             <span className="font-mono text-xs">
               {file}
-              {offset !== undefined && <span className="text-subtle"> · desde {offset}{limit ? `, ${limit} líneas` : ''}</span>}
+              {offset !== undefined && (
+                <span className="text-subtle">
+                  {' '}
+                  · desde {offset}
+                  {limit ? `, ${limit} líneas` : ''}
+                </span>
+              )}
             </span>
           }
           status={state.status}
@@ -369,13 +373,20 @@ export function ToolRow({ part, root }: { part: ToolPart; root: string | null })
       )
     }
     case 'todo': {
-      const todos = todosFrom(input.todos).length ? todosFrom(input.todos) : todosFrom(meta.todos)
+      const fromInput = parseTodos(input.todos) ?? []
+      const todos = fromInput.length ? fromInput : (parseTodos(meta.todos) ?? [])
       const done = todos.filter((t) => t.status === 'completed').length
       return (
         <Row
           icon={<ListTodo size={14} />}
           verb="Actualizó tareas"
-          detail={todos.length ? <span className="text-xs text-subtle">{done}/{todos.length} completadas</span> : undefined}
+          detail={
+            todos.length ? (
+              <span className="text-xs text-subtle">
+                {done}/{todos.length} completadas
+              </span>
+            ) : undefined
+          }
           status={state.status}
         >
           {todos.length > 0 ? (
@@ -414,7 +425,12 @@ export function ToolRow({ part, root }: { part: ToolPart; root: string | null })
     default: {
       const title = ('title' in state && state.title) || str(input.description) || str(input.filePath) || str(input.path)
       return (
-        <Row icon={<Wrench size={14} />} verb={tool} detail={title ? <span className="text-xs">{title}</span> : undefined} status={state.status}>
+        <Row
+          icon={<Wrench size={14} />}
+          verb={tool}
+          detail={title ? <span className="text-xs">{title}</span> : undefined}
+          status={state.status}
+        >
           <pre className="max-h-48 overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap text-muted">
             {JSON.stringify(input, null, 2)}
           </pre>
@@ -424,7 +440,7 @@ export function ToolRow({ part, root }: { part: ToolPart; root: string | null })
       )
     }
   }
-}
+})
 
 // ---------------------------------------------------------------------------
 // Grupo de pasos
@@ -484,7 +500,13 @@ export function StepGroup({ parts, root, live, hasPending, after }: StepGroupPro
       {open ? (
         <div className="ml-[13px] border-l border-border pl-2">{rows(parts)}</div>
       ) : (
-        edits.length > 0 && <div className="ml-[13px] border-l border-border pl-2">{edits.map((p) => <EditChip key={p.id} part={p} root={root} />)}</div>
+        edits.length > 0 && (
+          <div className="ml-[13px] border-l border-border pl-2">
+            {edits.map((p) => (
+              <EditChip key={p.id} part={p} root={root} />
+            ))}
+          </div>
+        )
       )}
     </div>
   )

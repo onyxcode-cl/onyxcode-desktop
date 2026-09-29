@@ -22,21 +22,8 @@ import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import {
-  createOpencodeClient,
-  type AssistantMessage,
-  type Message,
-  type OpencodeClient,
-  type Part
-} from '@opencode-ai/sdk/v2/client'
-import type {
-  RoutineAllowRule,
-  RoutineInput,
-  RoutineMode,
-  RoutineRunRecord,
-  RoutineTrigger,
-  ScheduledRoutine
-} from '@shared/ipc-cowork'
+import { createOpencodeClient, type AssistantMessage, type Message, type OpencodeClient, type Part } from '@opencode-ai/sdk/v2/client'
+import type { RoutineAllowRule, RoutineInput, RoutineMode, RoutineRunRecord, RoutineTrigger, ScheduledRoutine } from '@shared/ipc-cowork'
 import { buildCoworkSystemPrompt } from '@shared/cowork-prompt'
 import type { NotifyTarget, Settings } from '@shared/types'
 import type { CoworkManager } from '../cowork/manager'
@@ -144,7 +131,8 @@ function sanitizeAllow(raw: RoutineAllowRule[] | undefined): RoutineAllowRule[] 
     const pattern = typeof r?.pattern === 'string' ? r.pattern.trim() : ''
     if (!permission && !pattern) continue
     if (!PERM_RE.test(permission)) throw new Error(`Permiso inválido en «Permitir sin preguntar»: ${permission || '(vacío)'}`)
-    if (permission === '*') throw new Error('«Permitir sin preguntar» no admite «*» como permiso: indica el permiso concreto (p. ej. bash).')
+    if (permission === '*')
+      throw new Error('«Permitir sin preguntar» no admite «*» como permiso: indica el permiso concreto (p. ej. bash).')
     if (!pattern) throw new Error(`Falta el patrón de la regla «${permission}».`)
     if (pattern.length > 2000) throw new Error('Un patrón de «Permitir sin preguntar» es demasiado largo.')
     if (!out.some((x) => x.permission === permission && x.pattern === pattern)) out.push({ permission, pattern })
@@ -356,7 +344,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         fullAccess,
         fullAccessConsentAt,
         // Si cambia la carpeta o el modo, la sesión anterior ya no corresponde.
-        lastSessionId: prev.folder === folder && prev.mode === input.mode ? prev.lastSessionId ?? null : null,
+        lastSessionId: prev.folder === folder && prev.mode === input.mode ? (prev.lastSessionId ?? null) : null,
         updatedAt: now
       }
       data.routines[idx] = routine
@@ -626,7 +614,9 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       const folderSet = isCowork ? this.deps.cowork.folderSet(dirForSession) : null
       const system = buildCoworkSystemPrompt({
         globalInstructions: isCowork ? this.deps.getSettings?.().coworkGlobalInstructions : null,
-        project: project ? { name: project.name, instructions: project.instructions, links: project.links, memoryEnabled: project.memoryEnabled } : null,
+        project: project
+          ? { name: project.name, instructions: project.instructions, links: project.links, memoryEnabled: project.memoryEnabled }
+          : null,
         memory,
         folders: folderSet ? [...folderSet.linked, ...folderSet.trusted].map((f) => ({ path: f.path, mode: f.mode })) : [],
         unattended: true
@@ -738,8 +728,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       const user = [...list].reverse().find((m) => m.info.role === 'user' && m.info.time.created >= sentAt - 5_000)
       if (!user) return null
       const replies = list.filter(
-        (m): m is { info: AssistantMessage; parts: Part[] } =>
-          isAssistant(m.info) && m.info.parentID === user.info.id
+        (m): m is { info: AssistantMessage; parts: Part[] } => isAssistant(m.info) && m.info.parentID === user.info.id
       )
       return replies.at(-1) ?? null
     } catch {
@@ -811,7 +800,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
             requestID: p.id,
             directory,
             reply: 'reject',
-            message: 'Ejecución programada desatendida: este permiso no está en la lista «Permitir sin preguntar» de la rutina. Continúa sin esta acción.'
+            message:
+              'Ejecución programada desatendida: este permiso no está en la lista «Permitir sin preguntar» de la rutina. Continúa sin esta acción.'
           })
           if (!res.error) {
             logEntry((record.rejected ??= []), p.permission, patterns)
@@ -825,7 +815,11 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         if (!mine(q.sessionID)) continue
         const res = await client.question.reject({ requestID: q.id, directory })
         if (!res.error) {
-          logEntry((record.rejected ??= []), 'question', (q.questions ?? []).map((x) => x.question))
+          logEntry(
+            (record.rejected ??= []),
+            'question',
+            (q.questions ?? []).map((x) => x.question)
+          )
           changed = true
         }
       }
@@ -862,7 +856,9 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const rejected = record.rejected ?? []
     const extras: string[] = []
     if (rejected.length > 0) {
-      extras.push(`${rejected.length === 1 ? 'Se rechazó 1 permiso' : `Se rechazaron ${rejected.length} permisos`}: ${describeEntries(rejected)}.`)
+      extras.push(
+        `${rejected.length === 1 ? 'Se rechazó 1 permiso' : `Se rechazaron ${rejected.length} permisos`}: ${describeEntries(rejected)}.`
+      )
     }
     if ((record.blockedHosts?.length ?? 0) > 0) {
       extras.push(`Sitios bloqueados: ${record.blockedHosts!.slice(0, 4).join(', ')}${record.blockedHosts!.length > 4 ? '…' : ''}.`)

@@ -117,8 +117,7 @@ export function readAppMcpConfig(): AppMcpConfig {
 
 function mutate(fn: (mcp: Record<string, unknown>) => void): AppMcpConfig {
   const raw = readRaw()
-  const mcp: Record<string, unknown> =
-    raw.mcp && typeof raw.mcp === 'object' && !Array.isArray(raw.mcp) ? { ...raw.mcp } : {}
+  const mcp: Record<string, unknown> = raw.mcp && typeof raw.mcp === 'object' && !Array.isArray(raw.mcp) ? { ...raw.mcp } : {}
   fn(mcp)
   writeRaw({ $schema: SCHEMA, ...raw, mcp })
   return readAppMcpConfig()
@@ -131,9 +130,7 @@ export function saveMcpServer(name: string, entry: McpEntry, previousName?: stri
   }
   const valid = toEntry(entry)
   if (!valid) {
-    throw new Error(
-      entry.type === 'remote' ? 'URL inválida (debe ser http:// o https://).' : 'Falta el comando del servidor.'
-    )
+    throw new Error(entry.type === 'remote' ? 'URL inválida (debe ser http:// o https://).' : 'Falta el comando del servidor.')
   }
   return mutate((mcp) => {
     if (previousName && previousName !== clean) delete mcp[previousName]

@@ -11,10 +11,8 @@ import { Eye, FolderClosed, Loader2, Plus, ShieldCheck, Trash2, Zap } from 'luci
 import type { AutoModeState, CoworkFolder, CoworkTaskMeta } from '@shared/ipc-cowork'
 import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
-
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
+import { errText } from '../../../lib/format'
+import { isSubmitKey } from '../../../lib/textarea'
 
 /** Nombres legibles de las apps propuestas por defecto (el resto se muestra por su bundle id). */
 const APP_LABELS: Record<string, string> = {
@@ -57,7 +55,9 @@ export function AutoModeSection(): React.JSX.Element {
 
   useEffect(() => {
     if (!hasCoworkBridge()) return
-    cw('cowork:listFolders').then(setFolders).catch(() => undefined)
+    cw('cowork:listFolders')
+      .then(setFolders)
+      .catch(() => undefined)
     cw('cowork:tasks:list')
       .then((list) => setTaskMeta(Object.fromEntries(list.map((m) => [m.sessionId, m]))))
       .catch(() => undefined)
@@ -83,8 +83,7 @@ export function AutoModeSection(): React.JSX.Element {
   const settings = state?.settings
   const enabled = settings?.enabled === true
 
-  const toggleFolder = (path: string, on: boolean): void =>
-    run(`folder:${path}`, () => cw('cowork:auto:set', { folder: { path, on } }))
+  const toggleFolder = (path: string, on: boolean): void => run(`folder:${path}`, () => cw('cowork:auto:set', { folder: { path, on } }))
   const toggleTask = (sessionId: string, on: boolean): void =>
     run(`task:${sessionId}`, () => cw('cowork:auto:set', { task: { sessionId, on } }))
 
@@ -143,7 +142,10 @@ export function AutoModeSection(): React.JSX.Element {
       <Card className="px-4 py-3 text-xs text-muted">
         <ul className="list-disc space-y-1 pl-4">
           <li>Carpetas fuera de la tarea, bucles repetidos, y las herramientas del navegador o de control del Mac.</li>
-          <li>Borrar, mover o renombrar nada (comandos como <code className="font-mono">rm</code>, <code className="font-mono">mv</code> o <code className="font-mono">find -delete</code>).</li>
+          <li>
+            Borrar, mover o renombrar nada (comandos como <code className="font-mono">rm</code>, <code className="font-mono">mv</code> o{' '}
+            <code className="font-mono">find -delete</code>).
+          </li>
           <li>Editar o escribir archivos, ejecutar tareas de fondo, o consultar la web.</li>
           <li>Cualquier herramienta MCP que no sea claramente de consulta por su nombre (nada de crear, enviar, borrar, pagar…).</li>
           <li>Texto que parezca una instrucción inyectada (p. ej. «ignora las instrucciones anteriores»).</li>
@@ -208,7 +210,7 @@ export function AutoModeSection(): React.JSX.Element {
           <TextInput
             value={newApp}
             onChange={(e) => setNewApp(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addViewApp()}
+            onKeyDown={(e) => isSubmitKey(e, { allowShift: true }) && addViewApp()}
             placeholder="com.ejemplo.app (bundle id)"
             aria-label="Añadir app que el modo auto puede ver"
             className="max-w-xs font-mono"
@@ -238,9 +240,8 @@ export function AutoModeSection(): React.JSX.Element {
           ))
         )}
         <p className="border-t border-border px-4 py-2.5 text-xs text-subtle">
-          Solo aplica a peticiones a mitad de tarea con nivel «Solo ver»: gestores de contraseñas, Ajustes del
-          sistema, Mensajes, Mail, terminales, IDE y apps de banca nunca se conceden en automático, aunque las
-          añadas aquí.
+          Solo aplica a peticiones a mitad de tarea con nivel «Solo ver»: gestores de contraseñas, Ajustes del sistema, Mensajes, Mail,
+          terminales, IDE y apps de banca nunca se conceden en automático, aunque las añadas aquí.
         </p>
       </Card>
 
@@ -294,8 +295,8 @@ export function AutoModeSection(): React.JSX.Element {
         </div>
       )}
       <p className="mt-4 flex items-center gap-2 text-xs text-subtle">
-        <Badge tone="muted">Solo motor de reglas</Badge> Sin clasificador por modelo: cada aprobación pasa por una
-        lista cerrada de patrones seguros, no por una decisión del propio agente.
+        <Badge tone="muted">Solo motor de reglas</Badge> Sin clasificador por modelo: cada aprobación pasa por una lista cerrada de patrones
+        seguros, no por una decisión del propio agente.
       </p>
     </div>
   )

@@ -39,7 +39,12 @@ export function duBytes(path: string): Promise<number> {
   return new Promise((res) => {
     execFile(DU, ['-sk', path], { timeout: 60_000, maxBuffer: 1024 * 1024 }, (err, stdout) => {
       // `du` sale con código 1 si algún archivo no se pudo leer, pero igual imprime el total.
-      const kb = Number.parseInt(String(stdout ?? '').trim().split(/\s+/)[0] ?? '', 10)
+      const kb = Number.parseInt(
+        String(stdout ?? '')
+          .trim()
+          .split(/\s+/)[0] ?? '',
+        10
+      )
       if (Number.isFinite(kb) && kb >= 0) return res(kb * 1024)
       if (err) console.error('[cowork] du:', err.message)
       res(0)
@@ -56,11 +61,7 @@ async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promis
 }
 
 /** Informe de uso. `folders` = carpetas de Cowork conocidas (para el mapeo clave → carpeta). */
-export async function storageReport(
-  env: StorageEnv,
-  folders: string[],
-  live: StorageLiveServer[]
-): Promise<CoworkStorageReport> {
+export async function storageReport(env: StorageEnv, folders: string[], live: StorageLiveServer[]): Promise<CoworkStorageReport> {
   const du = env.du ?? duBytes
   const root = sandboxRoot(env)
   const byKey = new Map<string, string>()

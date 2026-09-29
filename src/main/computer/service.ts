@@ -34,6 +34,8 @@ import { createInterface } from 'node:readline'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { dirname, join } from 'node:path'
+import { unpacked } from '../util/asar'
+import { runHelper } from '../util/exec'
 import {
   maxTier,
   type AccessDecision,
@@ -50,7 +52,6 @@ import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
 
-export const COMPUTER_MCP_NAME = 'computer'
 export const COMPUTER_AGENT_ID = 'computer'
 export const STOP_SHORTCUT = 'CommandOrControl+Shift+Escape'
 
@@ -141,19 +142,6 @@ export interface AbortReport {
 /** Escapa una cadena para usarla literal en una regex extendida (pkill -f). */
 function ereLiteral(s: string): string {
   return s.replace(/[.[\]{}()*+?^$|\\]/g, '\\$&')
-}
-
-function unpacked(p: string): string {
-  return p.replace(/app\.asar([/\\])/, 'app.asar.unpacked$1')
-}
-
-function runHelper(bin: string, args: string[], timeout = 10_000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(bin, args, { timeout }, (err, stdout, stderr) => {
-      if (err) reject(new Error((stderr || err.message).toString().trim()))
-      else resolve(stdout.toString())
-    })
-  })
 }
 
 export class ComputerService extends EventEmitter<ServiceEvents> {
@@ -380,7 +368,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     if (verdict) {
       const decisions: Record<string, AccessDecision> = {}
       for (const a of enriched) decisions[a.bundleId] = 'view'
-      if (sessionId) this.grantAutoView(sessionId, enriched.map((a) => a.bundleId))
+      if (sessionId)
+        this.grantAutoView(
+          sessionId,
+          enriched.map((a) => a.bundleId)
+        )
       return { decisions, auto: true }
     }
     const id = randomBytes(8).toString('hex')
@@ -688,8 +680,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const base: ComputerStatus = {
       helperOk: false,
       accessibility: process.platform === 'darwin' ? systemPreferences.isTrustedAccessibilityClient(false) : false,
-      screenRecording:
-        process.platform === 'darwin' ? systemPreferences.getMediaAccessStatus('screen') === 'granted' : false,
+      screenRecording: process.platform === 'darwin' ? systemPreferences.getMediaAccessStatus('screen') === 'granted' : false,
       screens: []
     }
     if (!bin) return base
@@ -717,8 +708,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     if (process.platform !== 'darwin') reason = 'El control del computador solo está disponible en macOS.'
     else if (!st.helperOk) reason = 'Falta el helper nativo (ejecuta `npm run build:helper`).'
     else if (!script) reason = 'Falta computer-mcp.js (ejecuta `npm run build`).'
-    else if (!st.accessibility && !st.screenRecording)
-      reason = 'Faltan los permisos de Accesibilidad y Grabación de pantalla.'
+    else if (!st.accessibility && !st.screenRecording) reason = 'Faltan los permisos de Accesibilidad y Grabación de pantalla.'
     else if (!st.accessibility) reason = 'Falta el permiso de Accesibilidad (mover el ratón y teclear).'
     else if (!st.screenRecording) reason = 'Falta el permiso de Grabación de pantalla (capturas).'
     return { available, accessibility: st.accessibility, screenRecording: st.screenRecording, reason }

@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { RotateCcw } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
-import { errorMessage, getCodeApi } from '../client'
+import { errorMessage, requireCode } from '../client'
 
 function cssVar(name: string, fallback: string): string {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
@@ -35,7 +35,13 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    const api = getCodeApi()
+    let api: ReturnType<typeof requireCode>
+    try {
+      api = requireCode()
+    } catch (err) {
+      setError(errorMessage(err))
+      return
+    }
     const term = new Terminal({
       fontFamily: cssVar('--font-mono', "ui-monospace, 'SF Mono', Menlo, monospace"),
       fontSize: 12.5,
@@ -57,6 +63,7 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
     let ptyId: string | null = null
     let disposed = false
     const early = new Map<string, string[]>()
+    const earlyExit = new Map<string, number>()
 
     const offData = api.onPtyData((ev) => {
       if (ptyId === null) {
@@ -66,31 +73,36 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
       if (ev.id === ptyId) term.write(ev.data)
     })
     const offExit = api.onPtyExit((ev) => {
-      if (ev.id === ptyId) setExited(ev.exitCode)
+      if (ptyId === null) earlyExit.set(ev.id, ev.exitCode)
+      else if (ev.id === ptyId) setExited(ev.exitCode)
     })
 
     setError(null)
     setExited(null)
-    api
-      .ptyCreate({ cwd: directory, cols: term.cols, rows: term.rows })
+    api.pty
+      .create({ cwd: directory, cols: term.cols, rows: term.rows })
       .then((info) => {
         if (disposed) {
-          void api.ptyKill(info.id).catch(() => undefined)
+          void api.pty.kill(info.id).catch(() => undefined)
           return
         }
         ptyId = info.id
         for (const chunk of early.get(info.id) ?? []) term.write(chunk)
         early.clear()
+        // El shell puede haber terminado antes de que `create` resolviera: muestra el banner de salida.
+        const code = earlyExit.get(info.id)
+        if (code !== undefined) setExited(code)
+        else void api.pty.resize(info.id, term.cols, term.rows).catch(() => undefined)
       })
       .catch((err: unknown) => {
         if (!disposed) setError(errorMessage(err))
       })
 
     const onInput = term.onData((data) => {
-      if (ptyId) void api.ptyWrite(ptyId, data).catch(() => undefined)
+      if (ptyId) void api.pty.write(ptyId, data).catch(() => undefined)
     })
     const onResize = term.onResize(({ cols, rows }) => {
-      if (ptyId) void api.ptyResize(ptyId, cols, rows).catch(() => undefined)
+      if (ptyId) void api.pty.resize(ptyId, cols, rows).catch(() => undefined)
     })
 
     const ro = new ResizeObserver(() => {
@@ -118,7 +130,7 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
       onResize.dispose()
       offData()
       offExit()
-      if (ptyId) void api.ptyKill(ptyId).catch(() => undefined)
+      if (ptyId) void api.pty.kill(ptyId).catch(() => undefined)
       fitRef.current = null
       term.dispose()
     }

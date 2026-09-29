@@ -1,40 +1,15 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AlertCircle, AtSign, Brain, ChevronRight, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
+import { AlertCircle, AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
 import { Markdown } from '../../../components/Markdown'
-import { errorMessage } from './client'
+import { isOldRow, withCv } from '../../../lib/conversation/cv'
+import { AssistantError } from '../../../components/conversation/AssistantError'
+import { Reasoning } from '../../../components/conversation/Reasoning'
 import { PermissionCard, QuestionCard } from './PermissionCard'
 import { StepGroup, relPath } from './ToolCard'
 import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
-
-function Reasoning({ part, live }: { part: ReasoningPart; live: boolean }): React.JSX.Element | null {
-  const [open, setOpen] = useState(false)
-  if (!part.text.trim()) return null
-  const seconds = part.time.end ? Math.max(1, Math.round((part.time.end - part.time.start) / 1000)) : null
-  return (
-    <div className="text-[13px]">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="-mx-1.5 flex items-center gap-2 rounded-md px-1.5 py-1 text-muted hover:bg-hover hover:text-fg">
-        <Brain size={14} className={live && !part.time.end ? 'animate-pulse text-accent' : 'text-subtle'} />
-        {live && !part.time.end ? 'Razonando…' : seconds ? `Razonó durante ${seconds} s` : 'Razonamiento'}
-        <ChevronRight size={13} className={`text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
-      </button>
-      {open && <div className="mt-1 ml-2 border-l-2 border-border pl-3 text-[13px] leading-relaxed whitespace-pre-wrap text-muted">{part.text}</div>}
-    </div>
-  )
-}
-
-function AssistantError({ info }: { info: AssistantMessage }): React.JSX.Element | null {
-  if (!info.error) return null
-  if (info.error.name === 'MessageAbortedError') return <div className="text-xs text-subtle">Detenido por el usuario.</div>
-  return (
-    <div className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-      <AlertCircle size={16} className="mt-0.5 shrink-0" />
-      <span>{errorMessage(info.error)}</span>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Agrupación en bloques
@@ -102,7 +77,16 @@ function buildTurns(entries: CodeMessage[]): Turn[] {
 // Mensaje de usuario
 // ---------------------------------------------------------------------------
 
-function UserMessage({ entry, busy, root }: { entry: CodeMessage; busy: boolean; root: string | null }): React.JSX.Element | null {
+// Memoizada (F7-B44): props primitivas o referencias estables del store.
+const UserMessage = memo(function UserMessage({
+  entry,
+  busy,
+  root
+}: {
+  entry: CodeMessage
+  busy: boolean
+  root: string | null
+}): React.JSX.Element | null {
   const revertTo = useCode((s) => s.revertTo)
   const forkSession = useCode((s) => s.forkSession)
   const [copied, setCopied] = useState(false)
@@ -121,9 +105,13 @@ function UserMessage({ entry, busy, root }: { entry: CodeMessage; busy: boolean;
         {files.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {files.map((f) => {
-              const path = f.source && 'path' in f.source ? f.source.path : f.filename ?? f.url
+              const path = f.source && 'path' in f.source ? f.source.path : (f.filename ?? f.url)
               return (
-                <span key={f.id} className="inline-flex items-center gap-1 rounded-md border border-border bg-bg/60 px-1.5 py-0.5 font-mono text-[11px] text-muted" title={path}>
+                <span
+                  key={f.id}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-bg/60 px-1.5 py-0.5 font-mono text-[11px] text-muted"
+                  title={path}
+                >
                   <AtSign size={11} /> {relPath(path.replace(/^file:\/\//, ''), root)}
                 </span>
               )
@@ -174,7 +162,100 @@ function UserMessage({ entry, busy, root }: { entry: CodeMessage; busy: boolean;
       </div>
     </div>
   )
+})
+
+// ---------------------------------------------------------------------------
+// Turno (memoizado, F7-B44)
+// ---------------------------------------------------------------------------
+
+/** Sin permisos ligados: referencia estable para no romper la memoización de los turnos. */
+const NO_PERMS: PendingPermission[] = []
+
+interface TurnViewProps {
+  user: CodeMessage | null
+  assistant: CodeMessage[]
+  isLastTurn: boolean
+  /** Turno antiguo: `content-visibility: auto`. */
+  old: boolean
+  busy: boolean
+  root: string | null
+  /** Permisos ligados a llamadas de herramienta de ESTE turno (`NO_PERMS` si no hay). */
+  perms: PendingPermission[]
+  hotkeyID: string | undefined
 }
+
+const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (a.length === b.length && a.every((x, i) => x === b[i]))
+
+/**
+ * Un turno solo se vuelve a pintar si cambió alguno de sus mensajes (las entradas sin cambios conservan la
+ * referencia en el store), `busy`, `root`, sus permisos o si dejó de ser el último. Los `Turn`/`Block` se
+ * reconstruyen en cada render del padre, por eso el comparador mira los mensajes y no los objetos de turno.
+ */
+const TurnView = memo(
+  function TurnView({ user, assistant, isLastTurn, old, busy, root, perms, hotkeyID }: TurnViewProps): React.JSX.Element {
+    const blocks = buildBlocks(assistant)
+    const inlinePerms = new Map<string, PendingPermission[]>()
+    for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
+    return (
+      <div className={withCv('flex flex-col gap-3', old && perms.length === 0, true)}>
+        {user && <UserMessage entry={user} busy={busy} root={root} />}
+        {blocks.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {blocks.map((b, bi) => {
+              const live = busy && isLastTurn && bi === blocks.length - 1
+              switch (b.kind) {
+                case 'text':
+                  return <Markdown key={b.key} text={b.part.text} highlight={!live} />
+                case 'reasoning':
+                  return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} variant="code" />
+                case 'steps': {
+                  const hasPending = b.parts.some((p) => inlinePerms.has(p.callID))
+                  return (
+                    <StepGroup
+                      key={b.key}
+                      parts={b.parts}
+                      root={root}
+                      live={live}
+                      hasPending={hasPending}
+                      after={(p) =>
+                        inlinePerms
+                          .get(p.callID)
+                          ?.map((perm) => <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />)
+                      }
+                    />
+                  )
+                }
+                case 'retry':
+                  return (
+                    <div key={b.key} className="flex items-center gap-1.5 text-xs text-muted">
+                      <RotateCw size={12} /> Reintento {b.attempt}: {b.text}
+                    </div>
+                  )
+                case 'subtask':
+                  return (
+                    <div key={b.key} className="text-xs text-muted">
+                      {b.text}
+                    </div>
+                  )
+                case 'error':
+                  return <AssistantError key={b.key} info={b.info} abortedLabel="Detenido por el usuario." />
+              }
+            })}
+          </div>
+        )}
+      </div>
+    )
+  },
+  (a, b) =>
+    a.user === b.user &&
+    a.isLastTurn === b.isLastTurn &&
+    a.old === b.old &&
+    a.busy === b.busy &&
+    a.root === b.root &&
+    a.hotkeyID === b.hotkeyID &&
+    sameList(a.assistant, b.assistant) &&
+    sameList(a.perms, b.perms)
+)
 
 // ---------------------------------------------------------------------------
 // Stream
@@ -220,16 +301,27 @@ export function MessageStream(props: Props): React.JSX.Element {
   )
   const hidden = entries.length - visible.length
   const turns = useMemo(() => buildTurns(visible), [visible])
-  const turnBlocks = useMemo(() => turns.map((t) => buildBlocks(t.assistant)), [turns])
 
-  // Permisos ligados a una llamada de herramienta visible se muestran junto a ella.
-  const callIds = new Set<string>()
-  for (const e of visible) for (const p of e.parts) if (p.type === 'tool') callIds.add(p.callID)
-  const inlinePerms = new Map<string, PendingPermission[]>()
+  // Permisos ligados a una llamada de herramienta visible se muestran junto a ella (en el turno que la contiene).
   const loosePerms: PendingPermission[] = []
-  for (const p of permissions) {
-    if (p.tool && callIds.has(p.tool.callID)) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
-    else loosePerms.push(p)
+  const turnPerms: PendingPermission[][] = turns.map(() => NO_PERMS)
+  if (permissions.length > 0) {
+    const callIdsByTurn = turns.map((t) => {
+      const ids = new Set<string>()
+      for (const e of t.assistant) for (const p of e.parts) if (p.type === 'tool') ids.add(p.callID)
+      if (t.user) for (const p of t.user.parts) if (p.type === 'tool') ids.add(p.callID)
+      return ids
+    })
+    for (const p of permissions) {
+      let placed = false
+      callIdsByTurn.forEach((ids, ti) => {
+        if (p.tool && ids.has(p.tool.callID)) {
+          turnPerms[ti] = turnPerms[ti] === NO_PERMS ? [p] : [...turnPerms[ti], p]
+          placed = true
+        }
+      })
+      if (!placed) loosePerms.push(p)
+    }
   }
   const hotkeyID = permissions[0]?.id
 
@@ -246,59 +338,19 @@ export function MessageStream(props: Props): React.JSX.Element {
             <Loader2 size={15} className="animate-spin" /> Cargando…
           </div>
         )}
-        {turns.map((turn, ti) => {
-          const isLastTurn = ti === turns.length - 1
-          const blocks = turnBlocks[ti]
-          return (
-            <div key={turn.user?.info.id ?? `t${ti}`} className="flex flex-col gap-3">
-              {turn.user && <UserMessage entry={turn.user} busy={busy} root={root} />}
-              {blocks.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {blocks.map((b, bi) => {
-                    const live = busy && isLastTurn && bi === blocks.length - 1
-                    switch (b.kind) {
-                      case 'text':
-                        return <Markdown key={b.key} text={b.part.text} />
-                      case 'reasoning':
-                        return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} />
-                      case 'steps': {
-                        const hasPending = b.parts.some((p) => inlinePerms.has(p.callID))
-                        return (
-                          <StepGroup
-                            key={b.key}
-                            parts={b.parts}
-                            root={root}
-                            live={live}
-                            hasPending={hasPending}
-                            after={(p) =>
-                              inlinePerms
-                                .get(p.callID)
-                                ?.map((perm) => <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />)
-                            }
-                          />
-                        )
-                      }
-                      case 'retry':
-                        return (
-                          <div key={b.key} className="flex items-center gap-1.5 text-xs text-muted">
-                            <RotateCw size={12} /> Reintento {b.attempt}: {b.text}
-                          </div>
-                        )
-                      case 'subtask':
-                        return (
-                          <div key={b.key} className="text-xs text-muted">
-                            {b.text}
-                          </div>
-                        )
-                      case 'error':
-                        return <AssistantError key={b.key} info={b.info} />
-                    }
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {turns.map((turn, ti) => (
+          <TurnView
+            key={turn.user?.info.id ?? `t${ti}`}
+            user={turn.user}
+            assistant={turn.assistant}
+            isLastTurn={ti === turns.length - 1}
+            old={isOldRow(ti, turns.length, 4)}
+            busy={busy}
+            root={root}
+            perms={turnPerms[ti]}
+            hotkeyID={hotkeyID}
+          />
+        ))}
         {hidden > 0 && (
           <div className="flex items-center justify-between rounded-xl border border-dashed border-border-strong px-3 py-2 text-sm text-muted">
             <span className="flex items-center gap-2">

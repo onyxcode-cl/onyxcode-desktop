@@ -24,6 +24,7 @@ import {
   X
 } from 'lucide-react'
 import { useSettings } from '../../../stores/settings'
+import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { useClient } from './client'
 import { ModelControls, PermissionChip } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
@@ -58,7 +59,10 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
   return (
     <div className="mx-auto mb-2 flex w-full max-w-3xl flex-col gap-1.5 px-6">
       {items.map((m, i) => (
-        <div key={m.id} className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px]">
+        <div
+          key={m.id}
+          className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px]"
+        >
           <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium text-subtle">en cola</span>
           <span className="min-w-0 flex-1 truncate text-muted">{m.text}</span>
           {m.attachments.length > 0 && <span className="shrink-0 text-[11px] text-subtle">+{m.attachments.length} adjunto(s)</span>}
@@ -238,12 +242,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     })
   }, [directory])
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 260)}px`
-  }, [text])
+  useAutosizeTextarea(ref, text, { max: 260 })
 
   const clear = (): void => {
     setText('')
@@ -254,10 +253,28 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
 
   const localCommands: MenuItem[] = useMemo(
     () => [
-      { id: 'plan', label: '/plan', hint: 'Cambiar a Plan (sin modificar archivos)', icon: <ListChecks size={14} />, run: () => setAgent('plan') },
+      {
+        id: 'plan',
+        label: '/plan',
+        hint: 'Cambiar a Plan (sin modificar archivos)',
+        icon: <ListChecks size={14} />,
+        run: () => setAgent('plan')
+      },
       { id: 'build', label: '/build', hint: 'Cambiar a Build (edita y ejecuta)', icon: <Hammer size={14} />, run: () => setAgent('build') },
-      { id: 'revertir', label: '/revertir', hint: 'Deshacer el último mensaje y sus cambios', icon: <Undo2 size={14} />, run: () => void revertLast() },
-      { id: 'nueva', label: '/nueva', hint: 'Empezar una sesión nueva', icon: <MessageSquarePlus size={14} />, run: () => void newSession() }
+      {
+        id: 'revertir',
+        label: '/revertir',
+        hint: 'Deshacer el último mensaje y sus cambios',
+        icon: <Undo2 size={14} />,
+        run: () => void revertLast()
+      },
+      {
+        id: 'nueva',
+        label: '/nueva',
+        hint: 'Empezar una sesión nueva',
+        icon: <MessageSquarePlus size={14} />,
+        run: () => void newSession()
+      }
     ],
     [setAgent, revertLast, newSession]
   )
@@ -344,7 +361,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (e.nativeEvent.isComposing) return
+    if (isImeComposing(e)) return
     if (menuOpen) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
@@ -422,178 +439,183 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
       >
-      <div className="relative">
-        {dragOver && (
-          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent-soft/80 text-sm font-medium text-accent">
-            Suelta para adjuntar
-          </div>
-        )}
-        {menuOpen && trigger && (
-          <div className="absolute right-0 bottom-full left-0 z-30 mb-2 overflow-hidden rounded-xl border border-border bg-elevated shadow-xl">
-            <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11px] font-medium tracking-wide text-subtle uppercase">
-              {trigger.kind === '/' ? (
-                <>
-                  <Slash size={11} /> Comandos
-                </>
-              ) : (
-                <>
-                  <AtSign size={11} /> Archivos
-                  {filesLoading && <Loader2 size={11} className="ml-1 animate-spin" />}
-                </>
-              )}
-              <span className="ml-auto flex items-center gap-1 normal-case">
-                <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>esc</Kbd>
-              </span>
-            </div>
-            <div role="listbox" className="max-h-64 overflow-y-auto py-1">
-              {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">Buscando…</div>}
-              {items.map((item, i) => {
-                const { dir, name } =
-                  item.id.startsWith('f:') && item.label.includes('/')
-                    ? { dir: item.label.slice(0, item.label.lastIndexOf('/')), name: item.label.slice(item.label.lastIndexOf('/') + 1) }
-                    : { dir: '', name: item.label }
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="option"
-                    aria-selected={i === menuIndex}
-                    onMouseEnter={() => setMenuIndex(i)}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      choose(item)
-                    }}
-                    className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm ${i === menuIndex ? 'bg-hover text-fg' : 'text-muted'}`}
-                  >
-                    <span className={i === menuIndex ? 'text-accent' : 'text-subtle'}>{item.icon}</span>
-                    <span className={`shrink-0 ${item.id.startsWith('f:') ? 'font-mono text-[13px]' : 'font-medium'} text-fg`}>{name}</span>
-                    {dir && <span className="min-w-0 truncate font-mono text-xs text-subtle">{dir}</span>}
-                    {item.hint && <span className="min-w-0 truncate text-xs text-subtle">{item.hint}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-        <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md">
-          {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 px-4 pt-3">
-              {attachments.map((a) => (
-                <span key={a.id} className="group/att relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-bg">
-                  {a.mime.startsWith('image/') ? (
-                    <img src={a.url} alt={a.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <FileImage size={18} className="text-subtle" />
-                  )}
-                  <button
-                    type="button"
-                    title={`Quitar ${a.name}`}
-                    onClick={() => setAttachments((cur) => cur.filter((x) => x.id !== a.id))}
-                    className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100"
-                  >
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
+        <div className="relative">
+          {dragOver && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent-soft/80 text-sm font-medium text-accent">
+              Suelta para adjuntar
             </div>
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) addFiles(e.target.files)
-              e.target.value = ''
-            }}
-          />
-          <textarea
-            ref={ref}
-            data-code-composer=""
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value)
-              setCaret(e.target.selectionStart ?? e.target.value.length)
-              setDismissed(null)
-            }}
-            onSelect={syncCaret}
-            onKeyUp={(e) => (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') && syncCaret()}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            onBlur={() => setFocused(false)}
-            onFocus={() => setFocused(true)}
-            rows={1}
-            disabled={disabled}
-            placeholder={
-              agent === 'plan'
-                ? 'Describe qué quieres planificar… (@ para archivos, / para comandos)'
-                : 'Pide un cambio en el código… (@ para archivos, / para comandos)'
-            }
-            className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
-          />
-          <div className="flex items-center gap-2 px-3 pb-2.5">
-            <button
-              type="button"
-              onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
-              title="Alternar Plan / Build (⇧Tab)"
-              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
-            >
-              {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
-              {agent === 'plan' ? 'Plan' : 'Build'}
-            </button>
-            <button
-              type="button"
-              title="Mencionar archivo"
-              onClick={() => {
-                const el = ref.current
-                const pos = el?.selectionStart ?? text.length
-                const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
-                const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
-                const np = pos + (needsSpace ? 2 : 1)
-                setText(next)
-                setCaret(np)
-                requestAnimationFrame(() => {
-                  el?.focus()
-                  el?.setSelectionRange(np, np)
-                })
+          {menuOpen && trigger && (
+            <div className="absolute right-0 bottom-full left-0 z-30 mb-2 overflow-hidden rounded-xl border border-border bg-elevated shadow-xl">
+              <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11px] font-medium tracking-wide text-subtle uppercase">
+                {trigger.kind === '/' ? (
+                  <>
+                    <Slash size={11} /> Comandos
+                  </>
+                ) : (
+                  <>
+                    <AtSign size={11} /> Archivos
+                    {filesLoading && <Loader2 size={11} className="ml-1 animate-spin" />}
+                  </>
+                )}
+                <span className="ml-auto flex items-center gap-1 normal-case">
+                  <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>esc</Kbd>
+                </span>
+              </div>
+              <div role="listbox" className="max-h-64 overflow-y-auto py-1">
+                {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">Buscando…</div>}
+                {items.map((item, i) => {
+                  const { dir, name } =
+                    item.id.startsWith('f:') && item.label.includes('/')
+                      ? { dir: item.label.slice(0, item.label.lastIndexOf('/')), name: item.label.slice(item.label.lastIndexOf('/') + 1) }
+                      : { dir: '', name: item.label }
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="option"
+                      aria-selected={i === menuIndex}
+                      onMouseEnter={() => setMenuIndex(i)}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        choose(item)
+                      }}
+                      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm ${i === menuIndex ? 'bg-hover text-fg' : 'text-muted'}`}
+                    >
+                      <span className={i === menuIndex ? 'text-accent' : 'text-subtle'}>{item.icon}</span>
+                      <span className={`shrink-0 ${item.id.startsWith('f:') ? 'font-mono text-[13px]' : 'font-medium'} text-fg`}>
+                        {name}
+                      </span>
+                      {dir && <span className="min-w-0 truncate font-mono text-xs text-subtle">{dir}</span>}
+                      {item.hint && <span className="min-w-0 truncate text-xs text-subtle">{item.hint}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md">
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+                {attachments.map((a) => (
+                  <span
+                    key={a.id}
+                    className="group/att relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-bg"
+                  >
+                    {a.mime.startsWith('image/') ? (
+                      <img src={a.url} alt={a.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <FileImage size={18} className="text-subtle" />
+                    )}
+                    <button
+                      type="button"
+                      title={`Quitar ${a.name}`}
+                      onClick={() => setAttachments((cur) => cur.filter((x) => x.id !== a.id))}
+                      className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) addFiles(e.target.files)
+                e.target.value = ''
               }}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
-            >
-              <AtSign size={14} />
-            </button>
-            <button
-              type="button"
-              title="Adjuntar archivo o imagen"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
-            >
-              <Paperclip size={14} />
-            </button>
-            <PermissionChip />
-            <span className="ml-auto" />
-            <ModelControls />
-            {busy && (
+            />
+            <textarea
+              ref={ref}
+              data-code-composer=""
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value)
+                setCaret(e.target.selectionStart ?? e.target.value.length)
+                setDismissed(null)
+              }}
+              onSelect={syncCaret}
+              onKeyUp={(e) => (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') && syncCaret()}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              onBlur={() => setFocused(false)}
+              onFocus={() => setFocused(true)}
+              rows={1}
+              disabled={disabled}
+              placeholder={
+                agent === 'plan'
+                  ? 'Describe qué quieres planificar… (@ para archivos, / para comandos)'
+                  : 'Pide un cambio en el código… (@ para archivos, / para comandos)'
+              }
+              className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
+            />
+            <div className="flex items-center gap-2 px-3 pb-2.5">
               <button
                 type="button"
-                onClick={() => void abort()}
-                title="Detener (Esc)"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85"
+                onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
+                title="Alternar Plan / Build (⇧Tab)"
+                className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
               >
-                <Square size={12} fill="currentColor" />
+                {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
+                {agent === 'plan' ? 'Plan' : 'Build'}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => submit(false)}
-              disabled={(!text.trim() && attachments.length === 0) || disabled}
-              title={busy ? `Encolar (se envía al quedar libre) · ${MOD}↵ para enviar ya` : `Enviar (Enter o ${MOD}↵)`}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
-            >
-              {busy ? <Send size={14} /> : <ArrowUp size={16} />}
-            </button>
+              <button
+                type="button"
+                title="Mencionar archivo"
+                onClick={() => {
+                  const el = ref.current
+                  const pos = el?.selectionStart ?? text.length
+                  const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
+                  const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
+                  const np = pos + (needsSpace ? 2 : 1)
+                  setText(next)
+                  setCaret(np)
+                  requestAnimationFrame(() => {
+                    el?.focus()
+                    el?.setSelectionRange(np, np)
+                  })
+                }}
+                className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+              >
+                <AtSign size={14} />
+              </button>
+              <button
+                type="button"
+                title="Adjuntar archivo o imagen"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+              >
+                <Paperclip size={14} />
+              </button>
+              <PermissionChip />
+              <span className="ml-auto" />
+              <ModelControls />
+              {busy && (
+                <button
+                  type="button"
+                  onClick={() => void abort()}
+                  title="Detener (Esc)"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85"
+                >
+                  <Square size={12} fill="currentColor" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => submit(false)}
+                disabled={(!text.trim() && attachments.length === 0) || disabled}
+                title={busy ? `Encolar (se envía al quedar libre) · ${MOD}↵ para enviar ya` : `Enviar (Enter o ${MOD}↵)`}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
+              >
+                {busy ? <Send size={14} /> : <ArrowUp size={16} />}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
       <div className="mx-auto mt-1.5 flex max-w-3xl justify-center gap-3 px-6 text-[11px] text-subtle">
         <span>

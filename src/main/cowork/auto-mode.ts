@@ -156,7 +156,19 @@ function hasBalancedQuotes(s: string): boolean {
 }
 
 function isReadOnlyGit(args: string[]): boolean {
-  if (args.some((a) => a === '-c' || a === '--output' || a.startsWith('--output=') || a === '--ext-diff' || a === '--exec' || a.startsWith('--exec=') || a === '--upload-pack' || a.startsWith('--upload-pack='))) {
+  if (
+    args.some(
+      (a) =>
+        a === '-c' ||
+        a === '--output' ||
+        a.startsWith('--output=') ||
+        a === '--ext-diff' ||
+        a === '--exec' ||
+        a.startsWith('--exec=') ||
+        a === '--upload-pack' ||
+        a.startsWith('--upload-pack=')
+    )
+  ) {
     return false
   }
   const sub = args.find((a) => !a.startsWith('-'))
@@ -290,7 +302,15 @@ function findMcpServer(permission: string, servers: string[]): { server: string;
 
 // ───────────────────────────── permisos que nunca se aprueban solos ─────────────────────────────
 
-const NEVER_ALONE_PERMISSIONS: ReadonlySet<string> = new Set(['external_directory', 'doom_loop', 'edit', 'write', 'task', 'webfetch', 'websearch'])
+const NEVER_ALONE_PERMISSIONS: ReadonlySet<string> = new Set([
+  'external_directory',
+  'doom_loop',
+  'edit',
+  'write',
+  'task',
+  'webfetch',
+  'websearch'
+])
 
 /**
  * Clasifica una petición de permiso (`GET /permission`) del servidor de OpenCode. Puro: solo
@@ -391,7 +411,12 @@ function isNeverAutoView(bundleId: string, name: string): boolean {
  * automático "Solo ver" (`view`), sin plan, sin `takeover`, de 1 a 3 apps conocidas de la lista.
  */
 export function classifyAccess(
-  q: { apps: Array<{ bundleId: string; name: string; requested?: AppTier; denied?: boolean }>; plan?: string[]; kind?: 'access' | 'takeover'; reason?: string },
+  q: {
+    apps: Array<{ bundleId: string; name: string; requested?: AppTier; denied?: boolean }>
+    plan?: string[]
+    kind?: 'access' | 'takeover'
+    reason?: string
+  },
   ctx: { viewApps: string[] }
 ): AutoVerdict {
   if (q.plan && q.plan.length > 0) return ask('la tarjeta incluye un plan de pasos')

@@ -124,7 +124,6 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
     const target = req.danger ? cancelRef.current : confirmRef.current
     target?.focus()
     return undefined
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [req])
 
   useEffect(() => {
@@ -152,9 +151,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
       if (e.key === 'Tab') {
         const root = dialogRef.current
         if (!root) return
-        const focusable = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-          (el) => !el.hasAttribute('disabled')
-        )
+        const focusable = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute('disabled'))
         if (focusable.length === 0) return
         const first = focusable[0]
         const last = focusable[focusable.length - 1]
@@ -240,7 +237,10 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
   const danger = req.danger ?? false
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-fg/30 p-6 animate-fade-in" onMouseDown={() => finishConfirm(false)}>
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-fg/30 p-6 animate-fade-in"
+      onMouseDown={() => finishConfirm(false)}
+    >
       <div
         ref={dialogRef}
         role="alertdialog"

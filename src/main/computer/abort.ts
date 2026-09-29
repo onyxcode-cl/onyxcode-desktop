@@ -18,8 +18,7 @@ export interface FullAccessServer {
 
 const REQUEST_TIMEOUT_MS = 4_000
 
-const timedFetch: typeof fetch = (input, init) =>
-  fetch(input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
+const timedFetch: typeof fetch = (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
 
 /** Aborta las sesiones no inactivas de un servidor. Lanza si el servidor no responde. */
 async function abortServer(srv: FullAccessServer): Promise<number> {

@@ -125,7 +125,3 @@ export function destroyTray(): void {
   if (tray && !tray.isDestroyed()) tray.destroy()
   tray = null
 }
-
-export function hasTray(): boolean {
-  return !!tray && !tray.isDestroyed()
-}

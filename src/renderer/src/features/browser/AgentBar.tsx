@@ -47,9 +47,7 @@ export function AgentBar({
   return (
     <div className="flex h-8 shrink-0 items-center gap-2 border-b border-accent/30 bg-accent-soft/40 px-3 text-xs">
       <Bot size={13} className="shrink-0 text-accent" />
-      <span className="min-w-0 flex-1 truncate text-fg/90">
-        El agente está usando esta pestaña{agentLabel ? ` · ${agentLabel}` : ''}
-      </span>
+      <span className="min-w-0 flex-1 truncate text-fg/90">El agente está usando esta pestaña{agentLabel ? ` · ${agentLabel}` : ''}</span>
       <button
         type="button"
         onClick={onPause}

@@ -31,6 +31,7 @@ import { APP_NAME } from '@shared/brand'
 import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
+import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onCowork } from './bridge'
@@ -161,7 +162,7 @@ function writePinned(map: Record<string, true>): void {
 }
 
 /** Fijadas del formato antiguo (localStorage) que aún no se han migrado a main. */
-let legacyPinned: Record<string, true> = readPinned()
+const legacyPinned: Record<string, true> = readPinned()
 
 /** `pinned` derivado: fijadas de `taskMeta` más las antiguas todavía sin migrar. */
 function derivePinned(taskMeta: Record<string, CoworkTaskMeta>): Record<string, true> {
@@ -263,13 +264,6 @@ export async function loadProjectAndMemory(folder: string): Promise<void> {
   }
 }
 
-export async function saveProject(patch: { name?: string; instructions?: string }): Promise<void> {
-  const { folder } = useCowork.getState()
-  if (!folder) return
-  const project = await cw('cowork:project:save', { folder, ...patch })
-  if (useCowork.getState().folder === folder) useCowork.setState({ project })
-}
-
 export async function saveMemoryNotes(content: string): Promise<void> {
   const { folder } = useCowork.getState()
   if (!folder) return
@@ -310,8 +304,7 @@ export function addNetworkBlocked(ev: NetworkBlockedEvent): void {
   let taskId = st.activeTaskId
   if (!isBusyRoot(taskId)) {
     taskId =
-      Object.keys(status).find((id) => status[id] !== 'idle' && !sessions[id]?.parentID && sessions[id]?.directory === ev.folder) ??
-      taskId
+      Object.keys(status).find((id) => status[id] !== 'idle' && !sessions[id]?.parentID && sessions[id]?.directory === ev.folder) ?? taskId
   }
   if (!taskId) return
   const id = taskId
@@ -364,10 +357,7 @@ function taskOrigin(sessionId: string): { folder: string; fullAccess: boolean } 
  * Cambia fijada / grupo / título de una tarea en main (`cowork:tasks:setMeta`). Actualización
  * optimista: si main falla se restaura el valor anterior y se muestra el error.
  */
-export async function setTaskMeta(
-  sessionId: string,
-  patch: { pinned?: boolean; group?: string | null; title?: string }
-): Promise<void> {
+export async function setTaskMeta(sessionId: string, patch: { pinned?: boolean; group?: string | null; title?: string }): Promise<void> {
   const origin = taskOrigin(sessionId)
   if (!origin) return
   const prev = useCowork.getState().taskMeta[sessionId]
@@ -604,9 +594,7 @@ function handleEvent(event: OcEvent, directory: string): void {
   const st = useCowork.getState()
   if (!st.folder || directory !== st.folder || !st.conn) return
   const prevRun =
-    event.type === 'session.idle' || event.type === 'session.status'
-      ? useSessions.getState().status[event.properties.sessionID]
-      : undefined
+    event.type === 'session.idle' || event.type === 'session.status' ? useSessions.getState().status[event.properties.sessionID] : undefined
   // Origen = servidor de esta carpeta/modo (no mezclar con sesiones de Code/Chat, B2).
   useSessions.getState().applyEvent(event, st.conn.baseUrl)
   // Avisos: tarea terminada / necesita aprobación / error (solo tareas raíz).
@@ -693,6 +681,9 @@ function handleEvent(event: OcEvent, directory: string): void {
  * no está abierto). Las sesiones de Chat/Code (origen principal) no se tocan.
  */
 function purgeForeignCoworkStatus(): void {
+  // F7-B14: ya no llega ningún evento de esos servidores: su historial cargado puede quedar obsoleto (y al
+  // reconectar el mismo origen debe recargarse al reabrir la tarea). Las de Chat/Code (origen principal) no se tocan.
+  useSessions.getState().invalidateLoaded((src) => src !== MAIN_SOURCE)
   const { status, sessionSource } = useSessions.getState()
   let changed = false
   const next: typeof status = {}
@@ -885,31 +876,19 @@ export async function resync(): Promise<void> {
 async function syncRunStatus(client: OpencodeClient, folder: string): Promise<void> {
   const baseUrl = useCowork.getState().conn?.baseUrl
   if (!baseUrl) return
+  const before = useSessions.getState().status
   const res = await client.session.status({ directory: folder }).catch(() => null)
   const data = res?.data
   if (!data) return
+  // F7-B10: el ámbito incluye las entradas de `status` huérfanas de este servidor y excluye lo que cambió durante la petición.
   const { sessions, sessionSource, status } = useSessions.getState()
-  const next = { ...status }
-  let changed = false
-  const busy = (id: string): 'busy' | 'retry' | null => {
-    const t = data[id]?.type
-    return t === 'busy' || t === 'retry' ? t : null
-  }
-  for (const id of Object.keys(data)) {
-    const run = busy(id)
-    if (run && next[id] !== run) {
-      next[id] = run
-      changed = true
-    }
-  }
-  for (const [id, s] of Object.entries(sessions)) {
-    if (s.directory !== folder || sessionSource[id] !== baseUrl) continue
-    if (!busy(id) && next[id] && next[id] !== 'idle') {
-      next[id] = 'idle'
-      changed = true
-    }
-  }
-  if (changed) useSessions.setState({ status: next })
+  const scope = unchangedSince(
+    runStatusScope({ sessions, sessionSource, status }, folder, (src) => src === baseUrl),
+    before,
+    status
+  )
+  const next = reconcileRunStatus(status, data, scope)
+  if (next) useSessions.setState({ status: next })
 }
 
 export async function loadTask(sessionID: string): Promise<void> {
@@ -1014,13 +993,6 @@ function isAutoActiveFor(folder: string, sessionID: string): boolean {
   return settings.tasks.includes(rootTaskId(sessionID))
 }
 
-/** ¿El Modo auto está activo para la carpeta/tarea actuales? (usado por `AutoModeChip`). */
-export function isAutoActiveForCurrent(): boolean {
-  const { folder, activeTaskId } = useCowork.getState()
-  if (!folder) return false
-  return isAutoActiveFor(folder, activeTaskId ?? folder)
-}
-
 /**
  * Vía rápida: ante un `permission.asked` con el Modo auto activo para esa carpeta/tarea, oculta la
  * tarjeta (`autoPending`) y le pide a main que la considere (`cowork:auto:consider`). Si no la
@@ -1069,11 +1041,6 @@ export function syncAutoMode(): void {
   void loadAutoMode()
 }
 
-/** Descarta el aviso "Aprobado por el modo auto: …" (p.ej. tras mostrarlo unos segundos). */
-export function dismissAutoApprovedNotice(): void {
-  useCowork.setState((s) => (s.autoApprovedNotice ? { autoApprovedNotice: null } : s))
-}
-
 /** Cambia los ajustes del Modo auto (interruptor maestro, carpeta, tarea o lista de apps). */
 export async function setAutoModeSettings(req: {
   enabled?: boolean
@@ -1084,6 +1051,21 @@ export async function setAutoModeSettings(req: {
   const autoMode = await cw('cowork:auto:set', req)
   useCowork.setState({ autoMode })
 }
+
+// Guarda del LRU de `messages`: tarea activa, Consulta lateral y sesiones con permiso/pregunta pendiente
+// (el store añade su raíz e hijas). Se registra al importar este módulo.
+useSessions.getState().addEvictionGuard(() => {
+  const { activeTaskId, sideChat, permissions, questions } = useCowork.getState()
+  const ids: string[] = []
+  if (activeTaskId) ids.push(activeTaskId)
+  if (sideChat) {
+    ids.push(sideChat.taskId)
+    if (sideChat.sessionId) ids.push(sideChat.sessionId)
+  }
+  for (const p of Object.values(permissions)) ids.push(p.sessionID)
+  for (const q of Object.values(questions)) ids.push(q.sessionID)
+  return ids
+})
 
 /**
  * Conteo combinado (para el badge del Dock): tareas raíz con resultado sin ver (terminaron) o que

@@ -10,10 +10,7 @@ import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
 import { ComputerGrantsList } from '../../cowork/impl/ComputerAccess'
 import { Card, ErrorText, SectionHeader, SubTitle, Toggle } from './ui'
-
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
+import { errText } from '../../../lib/format'
 
 /** Fila-botón de una opción del modo (como un radio, pero con la descripción bajo el título). */
 function ModeOption({
@@ -111,8 +108,8 @@ export function ComputerSection(): React.JSX.Element {
               <EyeOff size={13} className="text-muted" /> Ocultar las demás apps mientras controla
             </div>
             <div className="mt-0.5 text-xs text-muted">
-              Oculta el resto de apps abiertas (deja Finder y {COWORK_TERMS.fullControlShort.toLowerCase()} intactos)
-              mientras dura el control, para que nadie más pueda tocarlas mientras tanto.
+              Oculta el resto de apps abiertas (deja Finder y {COWORK_TERMS.fullControlShort.toLowerCase()} intactos) mientras dura el
+              control, para que nadie más pueda tocarlas mientras tanto.
             </div>
           </div>
           <Toggle
@@ -150,8 +147,8 @@ export function ComputerSection(): React.JSX.Element {
 
       <SubTitle>Permisos por app</SubTitle>
       <p className="mb-4 -mt-1 text-sm text-muted">
-        El agente solo puede actuar sobre las apps que le hayas concedido, con el nivel que elijas. Las nuevas apps se
-        piden con una tarjeta cuando el agente las necesita.
+        El agente solo puede actuar sobre las apps que le hayas concedido, con el nivel que elijas. Las nuevas apps se piden con una tarjeta
+        cuando el agente las necesita.
       </p>
       <ComputerGrantsList />
     </div>

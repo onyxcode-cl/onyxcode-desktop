@@ -42,6 +42,8 @@ export interface BrowserOwnerState {
   picking: boolean
   hostedIn: 'panel' | 'popout' | 'none'
   disabledReason?: string
+  /** Aviso efímero para el usuario (p.ej. enlace `mailto:` bloqueado); el `id` cambia con cada aviso nuevo. */
+  notice?: { id: number; text: string }
 }
 
 export interface BrowserApprovalRequest {
@@ -105,8 +107,6 @@ export interface BrowserToChat {
   text: string
   image?: { name: string; mime: 'image/jpeg'; dataUrl: string }
 }
-
-export type IpcBrowserResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
 export interface BrowserInvokeContract {
   'browser:state': { req: { owner: BrowserOwner }; res: BrowserOwnerState }
@@ -189,12 +189,8 @@ export const BROWSER_EVENT_CHANNELS = [
 ] as const satisfies readonly BrowserEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
-const _browserInvokeCoverage: Missing<BrowserInvokeChannel, (typeof BROWSER_INVOKE_CHANNELS)[number]> extends never
-  ? true
-  : never = true
-const _browserEventCoverage: Missing<BrowserEventChannel, (typeof BROWSER_EVENT_CHANNELS)[number]> extends never
-  ? true
-  : never = true
+const _browserInvokeCoverage: Missing<BrowserInvokeChannel, (typeof BROWSER_INVOKE_CHANNELS)[number]> extends never ? true : never = true
+const _browserEventCoverage: Missing<BrowserEventChannel, (typeof BROWSER_EVENT_CHANNELS)[number]> extends never ? true : never = true
 void _browserInvokeCoverage
 void _browserEventCoverage
 
@@ -215,8 +211,5 @@ export interface BrowserApi {
     channel: C,
     ...args: BrowserRequest<C> extends void ? [] : [req: BrowserRequest<C>]
   ): Promise<BrowserResponse<C>>
-  on<C extends BrowserEventChannel>(
-    channel: C,
-    listener: (payload: BrowserEventContract[C]) => void
-  ): () => void
+  on<C extends BrowserEventChannel>(channel: C, listener: (payload: BrowserEventContract[C]) => void): () => void
 }

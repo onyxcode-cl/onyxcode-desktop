@@ -15,7 +15,7 @@
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { createServer as createNetServer } from 'node:net'
+import { getFreePort } from '../util/net'
 import type { EmbeddedBrowserApi } from './api'
 import { resolveActor, type ClientBinding } from './owner'
 import { callBrowserTool, toolsForProduct } from './tools'
@@ -25,23 +25,6 @@ export type { ClientBinding } from './owner'
 const HOST = '127.0.0.1'
 const MAX_BODY = 1024 * 1024
 const SUPPORTED = ['2025-06-18', '2025-03-26', '2024-11-05']
-
-function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createNetServer()
-    srv.unref()
-    srv.on('error', reject)
-    srv.listen(0, HOST, () => {
-      const addr = srv.address()
-      if (addr && typeof addr === 'object') {
-        const { port } = addr
-        srv.close(() => resolve(port))
-      } else {
-        srv.close(() => reject(new Error('No se pudo obtener un puerto libre')))
-      }
-    })
-  })
-}
 
 function log(...a: unknown[]): void {
   console.log('[embedded-browser-mcp]', ...a.map(String))
@@ -83,7 +66,7 @@ export class EmbeddedBrowserMcpServer {
   }
 
   private async launch(): Promise<number> {
-    const port = await getFreePort()
+    const port = await getFreePort(HOST)
     const server = createServer((req, res) => {
       try {
         this.handleHttp(req, res, port)
@@ -206,7 +189,8 @@ export class EmbeddedBrowserMcpServer {
     const id = req.id ?? null
     const isNotification = req.id === undefined || req.id === null
     const ok = (result: unknown): RpcResponse => ({ jsonrpc: '2.0', id, result })
-    const error = (code: number, message: string): RpcResponse | null => (isNotification ? null : { jsonrpc: '2.0', id, error: { code, message } })
+    const error = (code: number, message: string): RpcResponse | null =>
+      isNotification ? null : { jsonrpc: '2.0', id, error: { code, message } }
     try {
       switch (req.method) {
         case 'initialize': {

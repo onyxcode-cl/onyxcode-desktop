@@ -111,10 +111,7 @@ export function Logo({ size = 22, className = '', variant = 'color', markOnly, n
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <LogoMark size={size} variant={variant} title={markOnly ? name : undefined} />
       {!markOnly && (
-        <span
-          className="font-display leading-none font-semibold tracking-[-0.015em] text-fg"
-          style={{ fontSize: Math.round(size * 0.68) }}
-        >
+        <span className="font-display leading-none font-semibold tracking-[-0.015em] text-fg" style={{ fontSize: Math.round(size * 0.68) }}>
           {name}
         </span>
       )}

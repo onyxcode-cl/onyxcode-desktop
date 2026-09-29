@@ -35,10 +35,6 @@ export function registerWindowRole(wc: WebContents, role: WindowRole): void {
   })
 }
 
-export function windowRole(wc: WebContents): WindowRole | undefined {
-  return roles.get(wc.id)
-}
-
 let rejections = 0
 function reject(kind: 'FORBIDDEN' | 'INVALID', channel: string, detail: string): never {
   // Registro acotado (un renderer comprometido podría inundar el log).

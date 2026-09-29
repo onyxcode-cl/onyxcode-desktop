@@ -18,9 +18,7 @@ export function registerCoworkProjectHandlers(ctx: CoworkIpcContext): CoworkSubm
   handle('cowork:agentsMd:save', ({ folder, content }) => saveAgentsMd(cowork.assertInsideApproved(folder), content))
 
   handle('cowork:mcp:list', () => coworkMcpPrefs.list())
-  handle('cowork:mcp:set', ({ name, cowork: inCowork, askEachTool }) =>
-    coworkMcpPrefs.set(name, { cowork: inCowork, askEachTool })
-  )
+  handle('cowork:mcp:set', ({ name, cowork: inCowork, askEachTool }) => coworkMcpPrefs.set(name, { cowork: inCowork, askEachTool }))
 
   handle('cowork:rules:list', ({ folder }) => coworkRules.list(folder ? cowork.assertInsideApproved(folder) : undefined))
   handle('cowork:rules:add', ({ folder, permission, patterns }) =>

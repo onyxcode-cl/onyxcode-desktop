@@ -14,14 +14,36 @@
  * durante la carga y aplicando los deltas recibidos sin duplicar lo que el snapshot ya incluye.
  */
 import { create } from 'zustand'
-import type { Message, Part, Session } from '@opencode-ai/sdk/v2/client'
+import type { Session } from '@opencode-ai/sdk/v2/client'
 import type { OcEvent, OpencodeClient } from '../lib/opencode'
 import { errorMessage } from '../lib/opencode'
+import { lruMax } from '../lib/lru'
+import { createFrameQueue } from '../lib/frame-queue'
+import {
+  appendWithoutOverlap,
+  byId,
+  createBuffers,
+  createLoadTracker,
+  evictMessages,
+  forgetOrphansOf,
+  isChildOfAny,
+  markSeen,
+  messageEventSessionID,
+  mergeSnapshot,
+  pickEvictions,
+  pinClosure,
+  reduceEvent,
+  selectSessionsForDirectory as selectSessionsPure,
+  upsertSorted,
+  type Buffers,
+  type ConvSlice,
+  type LoadTracker,
+  type MessageEntry
+} from '../lib/session-reducer'
 
-export interface MessageEntry {
-  info: Message
-  parts: Part[]
-}
+export type { MessageEntry }
+// Re-exportadas: viven en lib/session-reducer (6.4); se mantienen aquí por compatibilidad.
+export { appendWithoutOverlap, upsertSorted }
 
 export type SessionRunState = 'idle' | 'busy' | 'retry'
 
@@ -39,6 +61,8 @@ interface SessionsState {
   status: Record<string, SessionRunState>
   errors: Record<string, string | null>
   loadingMessages: Record<string, boolean>
+  /** sessionID → el historial completo ya se cargó (F6-B12; `messages[id]` puede ser parcial por eventos sueltos). */
+  loaded: Record<string, boolean>
 
   loadSessions: (client: OpencodeClient, directory: string, source?: string) => Promise<void>
   loadMessages: (client: OpencodeClient, sessionID: string, directory: string) => Promise<void>
@@ -50,114 +74,121 @@ interface SessionsState {
   /** Fija (o quita con null) el origen visible de un directorio. */
   setDirectorySource: (directory: string, source: string | null) => void
   applyEvent: (event: OcEvent, source?: string) => void
+  /**
+   * LRU: marca la sesión como usada ahora. NO hace `set` (el registro es un Map de
+   * módulo); solo puede desalojar las más antiguas. Recibir un evento NO cuenta como acceso.
+   */
+  touchSession: (sessionID: string) => void
+  /** Registra una guarda: ids de sesiones que no se pueden desalojar (más su raíz e hijas). Devuelve la baja. */
+  addEvictionGuard: (guard: () => Iterable<string>) => () => void
+  /**
+   * Avisa (antes de desalojar) con las listas cargadas (`loaded`) de cada sesión que se va: permite sembrar cachés
+   * derivadas (búsqueda de Cowork). Devuelve la baja.
+   */
+  addEvictionListener: (fn: EvictionListener) => () => void
+  /** Desaloja `messages`/`loaded`/`loadingMessages` de las sesiones no fijadas que sobran del tope (un solo `set`). */
+  evictIdle: () => void
+  /**
+   * F7-B14: marca `loaded=false` en las sesiones cargadas cuyo origen cumple `isSource` (salvo `keep`): tras
+   * reconectar/reiniciar un servidor su historial pudo cambiar sin que llegaran los eventos. `messages` no se
+   * toca (se sigue mostrando hasta que se reabra la sesión y se recargue).
+   */
+  invalidateLoaded: (isSource: (source: string) => boolean, keep?: Iterable<string>) => void
 }
 
-/** Partes que llegan antes que su mensaje (message.updated). */
-const orphanParts = new Map<string, Part[]>()
+export type EvictionListener = (evicted: Array<{ id: string; entries: MessageEntry[] }>, state: SessionsState) => void
 
-/** Eventos registrados mientras se carga el snapshot de mensajes de una sesión. */
-interface LoadTracker {
-  /** Mensajes creados/actualizados durante la carga. */
-  messages: Set<string>
-  /** Partes creadas/actualizadas durante la carga (messageID → partIDs). */
-  parts: Map<string, Set<string>>
-  /** Deltas recibidos durante la carga: `${partID}\u0000${field}` → trozos en orden. */
-  deltas: Map<string, string[]>
-}
-const loading = new Map<string, LoadTracker>()
+/** Tope de sesiones con contenido no fijadas en `useSessions` (Chat + Cowork). */
+export const SESSIONS_LRU_MAX = 40
 
-const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+/** Último acceso por sesión (contador monótono; sin registro = nunca abierta). Estado de módulo, sin `set`. */
+const lastAccess = new Map<string, number>()
+let accessTick = 0
+const evictionGuards = new Set<() => Iterable<string>>()
+const evictionListeners = new Set<EvictionListener>()
+let evictScheduled = false
 
-function upsertSorted<T extends { id: string }>(list: T[], item: T): T[] {
-  const idx = list.findIndex((x) => x.id === item.id)
-  if (idx >= 0) {
-    const next = list.slice()
-    next[idx] = item
-    return next
+/**
+ * Buffers de este store (partes huérfanas, cargas en curso, ids de evento vistos). Instancia propia,
+ * no compartida con Code, y UNA por origen (F6-B3): dos servidores pueden emitir el mismo `event.id`.
+ */
+const buffersBySource = new Map<string, Buffers>()
+/** Tope de orígenes con buffers (F7-B19): cada reinicio de un servidor de Cowork trae un baseUrl nuevo. */
+const BUFFERS_MAX_SOURCES = 8
+let lastSource: string | null = null
+function buffersFor(source: string): Buffers {
+  let b = buffersBySource.get(source)
+  if (b) {
+    // Más recientemente usado al final (solo reinserta al cambiar de origen: el caso normal es el mismo seguido).
+    if (source !== lastSource) {
+      buffersBySource.delete(source)
+      buffersBySource.set(source, b)
+      lastSource = source
+    }
+    return b
   }
-  const next = [...list, item]
-  // Casi siempre llega al final; solo ordenar si hace falta.
-  if (next.length > 1 && byId(next[next.length - 2], item) > 0) next.sort(byId)
-  return next
+  b = createBuffers()
+  buffersBySource.set(source, b)
+  lastSource = source
+  // Acota: descarta los orígenes más antiguos (nunca el principal ni uno con una carga en curso).
+  for (const [key, old] of buffersBySource) {
+    if (buffersBySource.size <= BUFFERS_MAX_SOURCES) break
+    if (key === MAIN_SOURCE || key === source || old.loading.size > 0) continue
+    buffersBySource.delete(key)
+  }
+  return b
+}
+
+/** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
+const inflightLoads = new Map<string, Promise<void>>()
+
+/** Quita todo el estado derivado de `sessionID` de los buffers (cargas y partes huérfanas). */
+function forgetInBuffers(sessionID: string): void {
+  const ids = new Set([sessionID])
+  for (const b of buffersBySource.values()) {
+    b.loading.delete(sessionID)
+    forgetOrphansOf(b, ids)
+  }
+  inflightLoads.delete(sessionID)
 }
 
 /**
- * `base` + los trozos de delta recibidos durante la carga, sin repetir los que el snapshot ya
- * incluía: se busca el mayor prefijo de trozos COMPLETOS con el que termina `base`
- * (solo en fronteras de trozo, para no comerse caracteres por coincidencias casuales).
+ * Deltas de texto pendientes (F7-B43): `applyEvent` los encola y se aplican en lote una vez por frame con un solo
+ * `set`. Cualquier otro evento, `loadMessages`, `removeSession` y el desalojo vacían la cola ANTES de actuar, así el
+ * orden relativo con el resto de eventos es el mismo que aplicando uno a uno. El dedupe se hizo al encolar.
  */
-export function appendWithoutOverlap(base: string, chunks: string[]): string {
-  let prefix = chunks.join('')
-  for (let i = chunks.length; i > 0; i--) {
-    if (prefix && base.endsWith(prefix)) return base + chunks.slice(i).join('')
-    prefix = prefix.slice(0, prefix.length - chunks[i - 1].length)
+const deltaQueue = createFrameQueue<{ event: OcEvent; source: string }>((items) => {
+  const cur = useSessions.getState()
+  let slice: ConvSlice = cur
+  for (const { event, source } of items) {
+    slice = reduceEvent(slice, event, buffersFor(source), { accept: () => true, dedupe: false }).slice
   }
-  return base + chunks.join('')
+  if (slice !== cur) useSessions.setState(slicePatch(cur, slice))
+})
+
+/** Aplica ya los deltas encolados (uso interno y de tests). */
+export function flushPendingDeltas(): void {
+  deltaQueue.flush()
 }
 
-/** Fusiona el snapshot de `session.messages` con lo recibido por el stream durante la carga. */
-function mergeSnapshot(snapshot: MessageEntry[], current: MessageEntry[], t: LoadTracker): MessageEntry[] {
-  const currentById = new Map(current.map((m) => [m.info.id, m]))
-  const out = new Map<string, MessageEntry>()
-  for (const snap of snapshot) {
-    const live = currentById.get(snap.info.id)
-    let parts = snap.parts
-    const touchedParts = t.parts.get(snap.info.id)
-    const fromLive = new Set<string>()
-    if (live && touchedParts) {
-      // Partes creadas/actualizadas durante la carga: la versión del stream es más reciente
-      // (y ya lleva sus deltas aplicados).
-      for (const p of live.parts) {
-        if (!touchedParts.has(p.id)) continue
-        parts = upsertSorted(parts, p)
-        fromLive.add(p.id)
-      }
-    }
-    // Deltas recibidos durante la carga sobre partes del snapshot.
-    parts = parts.map((p) => {
-      if (fromLive.has(p.id)) return p
-      let next = p
-      for (const [key, delta] of t.deltas) {
-        const [partID, field] = key.split('\u0000')
-        if (partID !== p.id) continue
-        const cur = (next as unknown as Record<string, unknown>)[field]
-        if (cur !== undefined && typeof cur !== 'string') continue
-        next = { ...next, [field]: appendWithoutOverlap(cur ?? '', delta) } as Part
-      }
-      return next
-    })
-    const info = live && t.messages.has(snap.info.id) ? live.info : snap.info
-    out.set(snap.info.id, { info, parts })
-  }
-  // Mensajes nuevos que llegaron por el stream durante la carga y no están en el snapshot.
-  for (const id of t.messages) {
-    if (!out.has(id)) {
-      const live = currentById.get(id)
-      if (live) out.set(id, live)
-    }
-  }
-  return [...out.values()].sort((a, b) => byId(a.info, b.info))
+/** Cambios de `slice` respecto de `cur` como parche de Zustand (solo las claves con referencia nueva). */
+function slicePatch(cur: SessionsState, slice: ConvSlice): Partial<SessionsState> {
+  const patch: Partial<SessionsState> = {}
+  if (slice.messages !== cur.messages) patch.messages = slice.messages
+  if (slice.status !== cur.status) patch.status = slice.status
+  if (slice.errors !== cur.errors) patch.errors = slice.errors
+  return patch
 }
 
 export const useSessions = create<SessionsState>((set, get) => {
-  const updateMessages = (sessionID: string, fn: (list: MessageEntry[]) => MessageEntry[]): void => {
-    set((s) => ({ messages: { ...s.messages, [sessionID]: fn(s.messages[sessionID] ?? []) } }))
-  }
-
-  const updatePart = (sessionID: string, messageID: string, fn: (parts: Part[]) => Part[]): boolean => {
-    const list = get().messages[sessionID]
-    const idx = list?.findIndex((m) => m.info.id === messageID) ?? -1
-    if (!list || idx < 0) return false
-    const entry = list[idx]
-    const next = list.slice()
-    next[idx] = { info: entry.info, parts: fn(entry.parts) }
-    set((s) => ({ messages: { ...s.messages, [sessionID]: next } }))
-    return true
-  }
-
-  const track = (sessionID: string, fn: (t: LoadTracker) => void): void => {
-    const t = loading.get(sessionID)
-    if (t) fn(t)
+  /** Desalojo agrupado: varios eventos en el mismo tick producen un único `evictIdle`. */
+  const scheduleEvict = (): void => {
+    if (evictScheduled) return
+    evictScheduled = true
+    queueMicrotask(() => {
+      evictScheduled = false
+      get().evictIdle()
+    })
   }
 
   return {
@@ -168,6 +199,7 @@ export const useSessions = create<SessionsState>((set, get) => {
     status: {},
     errors: {},
     loadingMessages: {},
+    loaded: {},
 
     loadSessions: async (client, directory, source = MAIN_SOURCE) => {
       const res = await client.session.list({ directory, roots: true, limit: 200 })
@@ -176,9 +208,14 @@ export const useSessions = create<SessionsState>((set, get) => {
       set((s) => {
         const sessions = { ...s.sessions }
         const sessionSource = { ...s.sessionSource }
-        // Reemplaza las sesiones de este directorio Y de este origen por la lista fresca.
-        for (const [id, sess] of Object.entries(sessions)) {
-          if (sess.directory === directory && (sessionSource[id] ?? MAIN_SOURCE) === source) delete sessions[id]
+        // Reemplaza las sesiones de este directorio Y de este origen por la lista fresca, salvo las
+        // hijas (subagentes) cuya raíz sigue en la lista: la lista es `roots:true` y no las incluye (F6-B4).
+        const rootIds = new Set(list.map((x) => x.id))
+        const before = s.sessions
+        for (const [id, sess] of Object.entries(before)) {
+          if (sess.directory !== directory || (sessionSource[id] ?? MAIN_SOURCE) !== source) continue
+          if (isChildOfAny(before, id, rootIds)) continue
+          delete sessions[id]
         }
         for (const sess of list) {
           sessions[sess.id] = sess
@@ -189,21 +226,46 @@ export const useSessions = create<SessionsState>((set, get) => {
       })
     },
 
-    loadMessages: async (client, sessionID, directory) => {
-      set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: true } }))
-      const tracker: LoadTracker = { messages: new Set(), parts: new Map(), deltas: new Map() }
-      loading.set(sessionID, tracker)
-      try {
-        const res = await client.session.messages({ sessionID, directory })
-        if (res.error || !res.data) throw new Error(errorMessage(res.error))
-        const entries = res.data.map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) })).sort((a, b) => byId(a.info, b.info))
-        set((s) => ({
-          messages: { ...s.messages, [sessionID]: mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker) }
-        }))
-      } finally {
-        if (loading.get(sessionID) === tracker) loading.delete(sessionID)
-        set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: false } }))
+    loadMessages: (client, sessionID, directory) => {
+      // F7-B11: si ya hay una carga de esta sesión en vuelo se reutiliza. Antes cada llamada abría su propio
+      // tracker (el segundo pisaba al primero en `buffers.loading`) y el `finally` de la que terminaba antes
+      // apagaba `loadingMessages` de la otra.
+      const running = inflightLoads.get(sessionID)
+      if (running) {
+        lastAccess.set(sessionID, ++accessTick)
+        return running
       }
+      const p: Promise<void> = (async () => {
+        lastAccess.set(sessionID, ++accessTick) // cargar es acceder: no debe salir desalojada al terminar
+        deltaQueue.flush() // los deltas anteriores a la carga no deben registrarse en el tracker
+        set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: true } }))
+        const tracker: LoadTracker = createLoadTracker()
+        const buffers = buffersFor(get().sessionSource[sessionID] ?? MAIN_SOURCE)
+        buffers.loading.set(sessionID, tracker)
+        // Si `removeSession` retiró el tracker mientras se esperaba, la sesión ya no existe: no resucitarla.
+        const dropped = (): boolean => buffers.loading.get(sessionID) !== tracker
+        try {
+          const res = await client.session.messages({ sessionID, directory })
+          if (res.error || !res.data) throw new Error(errorMessage(res.error))
+          if (dropped()) return
+          deltaQueue.flush() // los deltas de la carga ya están en `messages` y en el tracker
+          const entries = res.data.map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) })).sort((a, b) => byId(a.info, b.info))
+          set((s) => ({
+            messages: { ...s.messages, [sessionID]: mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker) },
+            loaded: { ...s.loaded, [sessionID]: true }
+          }))
+          scheduleEvict()
+        } finally {
+          if (!dropped()) {
+            buffers.loading.delete(sessionID)
+            set((s) => ({ loadingMessages: { ...s.loadingMessages, [sessionID]: false } }))
+          }
+        }
+      })().finally(() => {
+        if (inflightLoads.get(sessionID) === p) inflightLoads.delete(sessionID)
+      })
+      inflightLoads.set(sessionID, p)
+      return p
     },
 
     upsertSession: (session, source) =>
@@ -215,16 +277,29 @@ export const useSessions = create<SessionsState>((set, get) => {
         return { sessions: { ...s.sessions, [session.id]: session }, sessionSource }
       }),
 
-    removeSession: (sessionID) =>
+    removeSession: (sessionID) => {
+      deltaQueue.flush()
       set((s) => {
         const sessions = { ...s.sessions }
         const messages = { ...s.messages }
         const sessionSource = { ...s.sessionSource }
+        const loaded = { ...s.loaded }
+        const status = { ...s.status }
+        const errors = { ...s.errors }
+        const loadingMessages = { ...s.loadingMessages }
         delete sessions[sessionID]
         delete messages[sessionID]
         delete sessionSource[sessionID]
-        return { sessions, messages, sessionSource }
-      }),
+        delete loaded[sessionID]
+        // F7-B10: antes quedaban `status` (busy para siempre), `errors` y `loadingMessages` de la sesión borrada.
+        delete status[sessionID]
+        delete errors[sessionID]
+        delete loadingMessages[sessionID]
+        lastAccess.delete(sessionID)
+        return { sessions, messages, sessionSource, loaded, status, errors, loadingMessages }
+      })
+      forgetInBuffers(sessionID)
+    },
 
     setStatus: (sessionID, status) => set((s) => ({ status: { ...s.status, [sessionID]: status } })),
     setError: (sessionID, error) => set((s) => ({ errors: { ...s.errors, [sessionID]: error } })),
@@ -238,6 +313,13 @@ export const useSessions = create<SessionsState>((set, get) => {
       }),
 
     applyEvent: (event, source = MAIN_SOURCE) => {
+      if (event.type === 'message.part.delta') {
+        // Dedupe por event.id y origen al ENCOLAR (mismo criterio que antes); se aplica en el siguiente frame.
+        if (event.id && !markSeen(buffersFor(source).seen, event.id)) return
+        deltaQueue.push({ event, source })
+        return
+      }
+      deltaQueue.flush() // orden: lo encolado va antes que este evento
       switch (event.type) {
         case 'session.created':
         case 'session.updated':
@@ -249,78 +331,102 @@ export const useSessions = create<SessionsState>((set, get) => {
             get().removeSession(event.properties.info.id)
           }
           break
-        case 'session.status': {
-          const st = event.properties.status.type
-          get().setStatus(event.properties.sessionID, st === 'busy' || st === 'retry' ? st : 'idle')
+        default: {
+          // session.status/idle/error y message.*: reductor común (sin filtro; dedupe por event.id y origen, F6-B3).
+          const cur = get()
+          const { slice } = reduceEvent(cur, event, buffersFor(source), { accept: () => true, dedupe: true })
+          if (slice === cur) break
+          const patch = slicePatch(cur, slice)
+          set(patch)
+          // Clave nueva en `messages` (sesión que empieza a tener contenido): puede pasarse del tope.
+          // F7-B19: `in` sobre la sesión del evento en vez de contar las claves de `messages` en cada delta.
+          const sid = messageEventSessionID(event)
+          if (patch.messages && sid && !(sid in cur.messages)) scheduleEvict()
           break
         }
-        case 'session.idle':
-          get().setStatus(event.properties.sessionID, 'idle')
-          break
-        case 'session.error': {
-          const { sessionID, error } = event.properties
-          if (sessionID && error && error.name !== 'MessageAbortedError') get().setError(sessionID, errorMessage(error))
-          break
-        }
-        case 'message.updated': {
-          const info = event.properties.info
-          track(info.sessionID, (t) => t.messages.add(info.id))
-          updateMessages(info.sessionID, (list) => {
-            const existing = list.find((m) => m.info.id === info.id)
-            const orphans = orphanParts.get(info.id) ?? []
-            orphanParts.delete(info.id)
-            let parts = existing?.parts ?? []
-            for (const p of orphans) parts = upsertSorted(parts, p)
-            const entry: MessageEntry = { info, parts }
-            const idx = list.findIndex((m) => m.info.id === info.id)
-            if (idx >= 0) return list.map((m, i) => (i === idx ? entry : m))
-            return [...list, entry].sort((a, b) => byId(a.info, b.info))
-          })
-          break
-        }
-        case 'message.removed':
-          updateMessages(event.properties.sessionID, (list) => list.filter((m) => m.info.id !== event.properties.messageID))
-          break
-        case 'message.part.updated': {
-          const part = event.properties.part
-          track(part.sessionID, (t) => {
-            const set = t.parts.get(part.messageID) ?? new Set<string>()
-            set.add(part.id)
-            t.parts.set(part.messageID, set)
-          })
-          const ok = updatePart(part.sessionID, part.messageID, (parts) => upsertSorted(parts, part))
-          if (!ok) orphanParts.set(part.messageID, upsertSorted(orphanParts.get(part.messageID) ?? [], part))
-          break
-        }
-        case 'message.part.removed': {
-          const { sessionID, messageID, partID } = event.properties
-          updatePart(sessionID, messageID, (parts) => parts.filter((p) => p.id !== partID))
-          break
-        }
-        case 'message.part.delta': {
-          const { sessionID, messageID, partID, field, delta } = event.properties
-          track(sessionID, (t) => {
-            const key = `${partID}\u0000${field}`
-            const chunks = t.deltas.get(key) ?? []
-            chunks.push(delta)
-            t.deltas.set(key, chunks)
-          })
-          updatePart(sessionID, messageID, (parts) =>
-            parts.map((p) => {
-              if (p.id !== partID) return p
-              const current = (p as unknown as Record<string, unknown>)[field]
-              if (current !== undefined && typeof current !== 'string') return p
-              return { ...p, [field]: (current ?? '') + delta } as Part
-            })
-          )
-          break
-        }
-        default:
-          break
       }
+    },
+
+    touchSession: (sessionID) => {
+      lastAccess.set(sessionID, ++accessTick)
+      get().evictIdle()
+    },
+
+    addEvictionGuard: (guard) => {
+      evictionGuards.add(guard)
+      return () => {
+        evictionGuards.delete(guard)
+      }
+    },
+
+    addEvictionListener: (fn) => {
+      evictionListeners.add(fn)
+      return () => {
+        evictionListeners.delete(fn)
+      }
+    },
+
+    evictIdle: () => {
+      if (Object.keys(get().messages).length <= lruMax(SESSIONS_LRU_MAX)) return // atajo: ni con todas sin fijar hay exceso
+      deltaQueue.flush() // un delta encolado de una sesión que se desaloja debe aplicarse antes, como uno a uno
+      const cur = get()
+      const seeds = new Set<string>()
+      for (const [id, run] of Object.entries(cur.status)) if (run === 'busy' || run === 'retry') seeds.add(id)
+      for (const [id, on] of Object.entries(cur.loadingMessages)) if (on) seeds.add(id)
+      for (const b of buffersBySource.values()) for (const id of b.loading.keys()) seeds.add(id)
+      try {
+        for (const guard of evictionGuards) for (const id of guard()) seeds.add(id)
+      } catch {
+        return // una guarda rota nunca debe llevar a desalojar de más
+      }
+      const ids = pickEvictions({
+        candidates: Object.keys(cur.messages),
+        pinned: pinClosure(cur.sessions, seeds),
+        lastAccess,
+        max: lruMax(SESSIONS_LRU_MAX)
+      })
+      if (ids.length === 0) return
+      if (evictionListeners.size > 0) {
+        const gone = ids.filter((id) => cur.loaded[id] && cur.messages[id]).map((id) => ({ id, entries: cur.messages[id] }))
+        if (gone.length > 0) {
+          for (const fn of evictionListeners) {
+            // F7-B19: un listener que lanza no debe impedir el desalojo ni romper `touchSession`.
+            try {
+              fn(gone, cur)
+            } catch (err) {
+              console.error('[sessions] listener de desalojo falló', err)
+            }
+          }
+        }
+      }
+      const next = evictMessages(cur, ids)
+      set({ messages: next.messages, loaded: next.loaded, loadingMessages: next.loadingMessages })
+      const gone = new Set(ids)
+      for (const b of buffersBySource.values()) forgetOrphansOf(b, gone)
+    },
+
+    invalidateLoaded: (isSource, keep = []) => {
+      const cur = get()
+      const keepSet = new Set(keep)
+      const ids = Object.keys(cur.loaded).filter(
+        (id) => cur.loaded[id] && !keepSet.has(id) && isSource(cur.sessionSource[id] ?? MAIN_SOURCE)
+      )
+      if (ids.length === 0) return
+      const loaded = { ...cur.loaded }
+      for (const id of ids) loaded[id] = false
+      set({ loaded })
     }
   }
 })
+
+/**
+ * Borra TODO el estado de una sesión en `useSessions` (sesión, mensajes, `loaded`, `status`, `errors`,
+ * `loadingMessages`, origen, acceso LRU, cargas y partes huérfanas). Para quien borra una sesión por su cuenta
+ * (p. ej. `deleteTask` de Cowork): equivale a `removeSession`.
+ */
+export function purgeSessionState(sessionID: string): void {
+  useSessions.getState().removeSession(sessionID)
+}
 
 /**
  * Sesiones raíz (no hijas, no archivadas) de un directorio, más recientes primero.
@@ -328,15 +434,13 @@ export const useSessions = create<SessionsState>((set, get) => {
  */
 export function selectSessionsForDirectory(sessions: Record<string, Session>, directory: string): Session[] {
   const { sessionSource, directorySource } = useSessions.getState()
-  const source = directorySource[directory] ?? MAIN_SOURCE
-  return Object.values(sessions)
-    .filter(
-      (s) =>
-        s.directory === directory &&
-        !s.parentID &&
-        // Archivada, salvo que se restaurara después (respaldo `metadata.unarchivedAt`).
-        !(s.time.archived && !(typeof s.metadata?.unarchivedAt === 'number' && s.metadata.unarchivedAt > s.time.archived)) &&
-        (sessionSource[s.id] ?? MAIN_SOURCE) === source
-    )
-    .sort((a, b) => b.time.updated - a.time.updated)
+  return selectSessionsPure({ sessions, sessionSource, directorySource }, directory)
+}
+
+/**
+ * ¿Hay que mostrar el loader de la conversación `id`? Solo mientras se recarga un
+ * historial que todavía no está cargado (`!loaded && loadingMessages`): en cualquier otro caso el render no cambia.
+ */
+export function isTranscriptLoading(s: Pick<SessionsState, 'loaded' | 'loadingMessages'>, id: string | null | undefined): boolean {
+  return !!id && !s.loaded[id] && !!s.loadingMessages[id]
 }

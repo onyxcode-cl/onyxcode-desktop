@@ -32,10 +32,7 @@ export async function br<C extends BrowserInvokeChannel>(
 }
 
 /** Suscribe a un evento `browser:*`. Sin puente disponible, no hace nada (devuelve un no-op). */
-export function onBrowser<C extends BrowserEventChannel>(
-  channel: C,
-  listener: (payload: BrowserEventContract[C]) => void
-): () => void {
+export function onBrowser<C extends BrowserEventChannel>(channel: C, listener: (payload: BrowserEventContract[C]) => void): () => void {
   if (!hasBrowserBridge()) return () => undefined
   return getApi().on(channel, listener)
 }

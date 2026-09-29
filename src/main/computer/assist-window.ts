@@ -77,8 +77,7 @@ export class AssistWindow {
   // ───────────────────────────── posición ─────────────────────────────
 
   private positionTeach(win: BrowserWindow, x?: number, y?: number): void {
-    const display =
-      typeof x === 'number' && typeof y === 'number' ? screen.getDisplayNearestPoint({ x, y }) : screen.getPrimaryDisplay()
+    const display = typeof x === 'number' && typeof y === 'number' ? screen.getDisplayNearestPoint({ x, y }) : screen.getPrimaryDisplay()
     const wa = display.workArea
     const rawLeft = typeof x === 'number' ? x + TEACH_OFFSET : wa.x + (wa.width - TEACH_W) / 2
     const rawTop = typeof y === 'number' ? y + TEACH_OFFSET : wa.y + (wa.height - TEACH_H) / 2

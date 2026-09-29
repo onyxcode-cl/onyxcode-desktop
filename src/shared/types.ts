@@ -56,70 +56,13 @@ export interface AppInfo {
   isDev: boolean
 }
 
-// ---- Placeholders tipados para módulos futuros ----
-
-export interface PtyCreateRequest {
-  cwd: string
-  cols: number
-  rows: number
-  shell?: string
-}
-export interface PtyInfo {
-  id: string
-  pid: number
-  cwd: string
-}
-export interface PtyDataEvent {
-  id: string
-  data: string
-}
-export interface PtyExitEvent {
-  id: string
-  exitCode: number
-}
-
-export interface GitFileStatus {
-  path: string
-  index: string
-  workingDir: string
-}
-export interface GitStatus {
-  branch: string | null
-  ahead: number
-  behind: number
-  files: GitFileStatus[]
-}
-export interface GitWorktree {
-  path: string
-  branch: string | null
-  head: string
-}
-
-export interface Routine {
-  id: string
-  name: string
-  /** Expresión cron (5 campos). */
-  cron: string
-  prompt: string
-  model: ModelRef
-  /** Directorio donde corre la sesión; null = chat workspace. */
-  directory: string | null
-  enabled: boolean
-  lastRunAt?: number
-}
-export interface RoutineRun {
-  routineId: string
-  sessionId: string
-  startedAt: number
-}
-
 /** Agente de OpenCode usado por el modo Chat (definido en src/main/opencode/config.ts). */
 export const CHAT_AGENT = 'chat'
 
 // ---- Notificaciones nativas + badge del Dock ----
 
 /** Modo al que pertenece la sesión/tarea que originó una notificación. */
-export type NotifyMode = 'code' | 'cowork'
+type NotifyMode = 'code' | 'cowork'
 
 /** Dónde abrir al hacer clic en una notificación (o al restaurar desde el Dock). */
 export interface NotifyTarget {

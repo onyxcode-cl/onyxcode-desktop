@@ -3,10 +3,12 @@
  * y saltar a una conversación reciente. Solo navegación y acciones ya existentes: no toca stores ajenos.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { isSubmitKey } from '../lib/textarea'
 import { BarChart3, CornerDownLeft, Monitor, MessageSquare, Moon, Plus, Search, Settings, Sun, type LucideIcon } from 'lucide-react'
 import { openChatSession } from '../features/chat/actions'
 import { useServer } from '../stores/server'
-import { selectSessionsForDirectory, useSessions } from '../stores/sessions'
+import { useSessions } from '../stores/sessions'
+import { selectSessionsForDirectory } from '../lib/session-reducer'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
@@ -33,6 +35,8 @@ function useCommands(): Command[] {
   const mode = useUi((s) => s.mode)
   const connection = useServer((s) => s.connection)
   const allSessions = useSessions((s) => s.sessions)
+  const sessionSource = useSessions((s) => s.sessionSource)
+  const directorySource = useSessions((s) => s.directorySource)
   const updateSettings = useSettings((s) => s.update)
 
   return useMemo(() => {
@@ -112,7 +116,7 @@ function useCommands(): Command[] {
     }
 
     if (connection) {
-      const recents = selectSessionsForDirectory(allSessions, connection.chatDirectory)
+      const recents = selectSessionsForDirectory({ sessions: allSessions, sessionSource, directorySource }, connection.chatDirectory)
         .slice()
         .sort((a, b) => b.time.updated - a.time.updated)
         .slice(0, 8)
@@ -131,7 +135,7 @@ function useCommands(): Command[] {
       }
     }
     return list
-  }, [mode, connection, allSessions, updateSettings])
+  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings])
 }
 
 export function CommandPalette(): React.JSX.Element | null {
@@ -189,7 +193,7 @@ function PaletteDialog(): React.JSX.Element {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setIndex((i) => (results.length ? (i - 1 + results.length) % results.length : 0))
-    } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+    } else if (isSubmitKey(e, { allowShift: true })) {
       e.preventDefault()
       run(results[index])
     } else if (e.key === 'Escape') {

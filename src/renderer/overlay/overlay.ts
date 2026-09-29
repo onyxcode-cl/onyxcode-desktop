@@ -220,8 +220,5 @@ if (location.hash === '#demo') {
   const cx = window.innerWidth / 2
   const cy = window.innerHeight / 2
   handle({ type: 'action', action: { tool: 'left_click', x: cx, y: cy, phase: 'start', at: 0 }, cursor: { x: 80, y: 80 }, moveMs: 450 })
-  window.setTimeout(
-    () => handle({ type: 'action', action: { tool: 'left_click', x: cx, y: cy, phase: 'end', ok: true, at: 0 } }),
-    520
-  )
+  window.setTimeout(() => handle({ type: 'action', action: { tool: 'left_click', x: cx, y: cy, phase: 'end', ok: true, at: 0 } }), 520)
 }

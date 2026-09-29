@@ -29,6 +29,7 @@ import type { BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 import type { CoworkDeliverable } from '@shared/ipc-cowork'
 import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { Button } from '../../../components/Button'
+import { TranscriptLoader } from '../../../components/TranscriptLoader'
 import { BrowserPanel, hasBrowserBridge, onBrowser } from '../../browser'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
@@ -50,7 +51,14 @@ import {
   sendToTask,
   stopComputerControl
 } from './actions'
-import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, PlanAccessCard, VisionModelHint } from './ComputerAccess'
+import {
+  AccessModeSwitch,
+  ComputerPermissionsCard,
+  ControlBanner,
+  FullAccessDialog,
+  PlanAccessCard,
+  VisionModelHint
+} from './ComputerAccess'
 import { hasCoworkBridge, onCowork } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { hideRevertedEntries } from './conversation-logic'
@@ -84,6 +92,7 @@ import {
 import {
   extOf,
   formatDuration,
+  isCoworkSource,
   permissionBelongsTo,
   sessionBelongsTo,
   taskStatus,
@@ -354,8 +363,11 @@ export function CoworkWorkspace(): React.JSX.Element {
     }
   }
   const busy = !!run && run !== 'idle'
+  // Solo sesiones de un servidor de Cowork (F6-B1, F7-B37): no cuenta Code/Chat (origen principal), pero sí el otro servidor de Cowork.
   const folderBusy = useSessions((s) =>
-    Object.keys(s.status).some((id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder)
+    Object.keys(s.status).some(
+      (id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder && isCoworkSource(s.sessionSource[id])
+    )
   )
 
   // Carga inicial: carpetas autorizadas y reconexión a la última usada.
@@ -435,7 +447,6 @@ export function CoworkWorkspace(): React.JSX.Element {
       if (item.owner.kind !== 'cowork' || item.owner.folder !== useCowork.getState().folder) return
       addPageToComposer(item)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ⌘⇧Esc con la ventana enfocada (el main registra además el atajo global).
@@ -584,6 +595,18 @@ export function CoworkWorkspace(): React.JSX.Element {
           </Button>
         </div>
       )}
+      {error && !(phase === 'error' && folder) && (
+        <div
+          role="alert"
+          className="mx-auto mt-3 flex w-full max-w-3xl items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
+          <Button variant="ghost" onClick={() => useCowork.setState({ error: null })}>
+            Cerrar
+          </Button>
+        </div>
+      )}
     </>
   )
 
@@ -639,6 +662,7 @@ export function CoworkWorkspace(): React.JSX.Element {
         {activeId ? (
           <>
             <ComputerPermissionsCard />
+            <TranscriptLoader sessionId={activeId} />
             <TaskConversation
               taskId={activeId}
               entries={entries}
@@ -648,8 +672,10 @@ export function CoworkWorkspace(): React.JSX.Element {
               footer={
                 <>
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
-                  {!fullAccess && <DeleteGrantHintCard key={activeId} entries={entries} />}
-                  {!fullAccess && status === 'done' && activeId && <EscalateCard key={activeId} taskId={activeId} entries={entries} />}
+                  {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
+                  {!fullAccess && status === 'done' && activeId && (
+                    <EscalateCard key={`escalate-${activeId}`} taskId={activeId} entries={entries} />
+                  )}
                   {pendingQuestionsForTask.map((q) => (
                     <QuestionCard key={q.id} request={q} />
                   ))}

@@ -4,31 +4,12 @@
  * este archivo solo valida el emisor (vía `guardInvoke`, igual que el resto de canales) y traduce
  * cada canal a su función correspondiente.
  */
-import { BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from 'electron'
-import type { BrowserInvokeChannel, BrowserInvokeContract, IpcBrowserResult } from '@shared/ipc-browser'
+import { BrowserWindow, type IpcMain } from 'electron'
+import type { BrowserInvokeContract } from '@shared/ipc-browser'
 import * as svc from '../embedded-browser/service'
-import { guardInvoke, IpcGuardError } from './guard'
+import { makeInvokeHandler } from './handle'
 
-type Req<C extends BrowserInvokeChannel> = BrowserInvokeContract[C]['req']
-type Res<C extends BrowserInvokeChannel> = BrowserInvokeContract[C]['res']
-
-function handle<C extends BrowserInvokeChannel>(
-  ipcMain: IpcMain,
-  channel: C,
-  handler: (req: Req<C>, event: IpcMainInvokeEvent) => Res<C> | Promise<Res<C>>
-): void {
-  ipcMain.removeHandler(channel)
-  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcBrowserResult<Res<C>>> => {
-    try {
-      const req = guardInvoke(event, channel, args) as Req<C>
-      return { ok: true, data: await handler(req, event) }
-    } catch (err) {
-      if (err instanceof IpcGuardError) return { ok: false, error: err.message }
-      console.error(`[ipc] ${channel}:`, err)
-      return { ok: false, error: err instanceof Error ? err.message : String(err) }
-    }
-  })
-}
+const handle = makeInvokeHandler<BrowserInvokeContract>({ withCode: false })
 
 export function registerBrowserHandlers(ipcMain: IpcMain): void {
   handle(ipcMain, 'browser:state', ({ owner }) => svc.getOwnerState(owner))

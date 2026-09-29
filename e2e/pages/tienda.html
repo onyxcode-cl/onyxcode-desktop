@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tienda de prueba</title>
+  </head>
+  <body>
+    <h1>Tienda de prueba</h1>
+    <!-- Sonda: /?probe=<puerto> intenta un fetch a otro puerto de loopback y deja el resultado en el título. -->
+    <script>
+      const probe = new URLSearchParams(location.search).get('probe')
+      if (probe) {
+        document.title = 'sonda:esperando'
+        fetch('http://127.0.0.1:' + probe + '/secreto', { mode: 'no-cors' })
+          .then(() => (document.title = 'sonda:llego'))
+          .catch(() => (document.title = 'sonda:bloqueado'))
+      }
+    </script>
+    <button id="pagar" type="button" onclick="document.title = 'pagado'">Pagar ahora</button>
+    <form onsubmit="return false">
+      <label>Contraseña <input id="clave" type="password" name="clave" autocomplete="off" /></label>
+    </form>
+    <a id="enlace" href="/otra">Ir a otra página</a>
+    <a id="correo" href="mailto:ventas@example.com">Escríbenos</a>
+  </body>
+</html>

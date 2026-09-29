@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowUp } from 'lucide-react'
 import { LogoMark } from '../src/components/Logo'
+import { isSubmitKey } from '../src/lib/textarea'
 import type { ExtrasApi } from '@shared/ipc-extras'
 import './quick.css'
 
@@ -56,7 +57,7 @@ function QuickEntry(): React.JSX.Element {
             if (error) setError(null)
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            if (isSubmitKey(e, { allowShift: true })) {
               e.preventDefault()
               void submit()
             } else if (e.key === 'Escape') {

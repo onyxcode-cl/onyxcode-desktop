@@ -282,7 +282,7 @@ export async function status(cwd: string): Promise<GitStatusDetailed> {
       files: []
     }
   }
-  const out = await git(root, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'])
+  const out = await git(root, [...NO_FSMONITOR, 'status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'])
   return parseStatusV2(out, root)
 }
 
@@ -290,10 +290,13 @@ export async function status(cwd: string): Promise<GitStatusDetailed> {
 // Diff
 // ---------------------------------------------------------------------------
 
+/** Repos no confiables: `core.fsmonitor` puede ejecutar un hook arbitrario del repo en status/diff. */
+const NO_FSMONITOR = ['-c', 'core.fsmonitor=false']
+
 const DIFF_FLAGS = ['--no-color', '--no-ext-diff', '--no-textconv', '--find-renames']
 
 async function untrackedFiles(root: string, rel?: string): Promise<string[]> {
-  const args = ['ls-files', '--others', '--exclude-standard', '-z']
+  const args = [...NO_FSMONITOR, 'ls-files', '--others', '--exclude-standard', '-z']
   if (rel) args.push('--', rel)
   const out = await git(root, args)
   return out.split('\0').filter(Boolean)
@@ -301,10 +304,29 @@ async function untrackedFiles(root: string, rel?: string): Promise<string[]> {
 
 async function untrackedDiff(root: string, file: string): Promise<string> {
   // --no-index sale con 1 cuando hay diferencias.
-  const out = await git(root, ['diff', '--no-index', '--no-color', '--no-ext-diff', '--', '/dev/null', file], {
+  const out = await git(root, [...NO_FSMONITOR, 'diff', '--no-index', '--no-color', '--no-ext-diff', '--', '/dev/null', file], {
     okCodes: [1]
   })
   return out
+}
+
+/**
+ * Pathspec para el diff staged de `rel`. Si el archivo está renombrado en el índice, incluye
+ * también el path antiguo: con solo el nuevo, git no ve el origen y lo muestra como archivo añadido.
+ */
+async function stagedPathspec(root: string, rel: string): Promise<string[]> {
+  const out = await git(root, [...NO_FSMONITOR, 'diff', '--cached', '--name-status', '-z', '--find-renames'])
+  const tok = out.split('\0')
+  for (let i = 0; i < tok.length;) {
+    const status = tok[i]
+    if (!status) break
+    if (status[0] === 'R') {
+      const [from, to] = [tok[i + 1], tok[i + 2]]
+      if (to === rel && from) return [from, rel]
+      i += 3
+    } else i += 2
+  }
+  return [rel]
 }
 
 export async function diff(req: GitDiffRequest): Promise<string> {
@@ -315,10 +337,11 @@ export async function diff(req: GitDiffRequest): Promise<string> {
   const parts: string[] = []
 
   if (req.staged !== false) {
-    parts.push(await git(root, ['diff', '--cached', ...DIFF_FLAGS, ...pathArgs]))
+    const stagedPaths = rel ? ['--', ...(await stagedPathspec(root, rel))] : []
+    parts.push(await git(root, [...NO_FSMONITOR, 'diff', '--cached', ...DIFF_FLAGS, ...stagedPaths]))
   }
   if (req.staged !== true) {
-    parts.push(await git(root, ['diff', ...DIFF_FLAGS, ...pathArgs]))
+    parts.push(await git(root, [...NO_FSMONITOR, 'diff', ...DIFF_FLAGS, ...pathArgs]))
     const files = await untrackedFiles(root, rel)
     for (const f of files.slice(0, MAX_UNTRACKED_DIFFS)) {
       try {
@@ -424,11 +447,7 @@ async function mainRoot(cwd: string): Promise<string> {
  * Crea un worktree en `<repo>/../.<repoName>-worktrees/<branch>`.
  * Si la rama existe se hace checkout; si no, se crea desde `base` (o HEAD).
  */
-export async function createWorktree(
-  cwd: string,
-  branch: string,
-  base?: string
-): Promise<{ path: string; branch: string }> {
+export async function createWorktree(cwd: string, branch: string, base?: string): Promise<{ path: string; branch: string }> {
   const root = await mainRoot(cwd)
   await assertBranchName(root, branch)
   if (base !== undefined && (typeof base !== 'string' || !base || base.startsWith('-'))) {
@@ -440,9 +459,7 @@ export async function createWorktree(
 
   const exists = await run(root, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], { okCodes: [1] })
   const args =
-    exists.code === 0
-      ? ['worktree', 'add', '--', target, branch]
-      : ['worktree', 'add', '-b', branch, '--', target, ...(base ? [base] : [])]
+    exists.code === 0 ? ['worktree', 'add', '--', target, branch] : ['worktree', 'add', '-b', branch, '--', target, ...(base ? [base] : [])]
   await git(root, args)
   return { path: target, branch }
 }

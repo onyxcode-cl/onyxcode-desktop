@@ -176,11 +176,7 @@ export function ShortcutsSection(): React.JSX.Element {
             >
               <RotateCcw size={14} /> Restablecer
             </Button>
-            <Button
-              variant="ghost"
-              disabled={!prefs.quickEntryShortcut}
-              onClick={() => void update({ quickEntryShortcut: '' })}
-            >
+            <Button variant="ghost" disabled={!prefs.quickEntryShortcut} onClick={() => void update({ quickEntryShortcut: '' })}>
               <X size={14} /> Desactivar
             </Button>
           </div>

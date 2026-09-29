@@ -2,19 +2,7 @@
  * Utilidades para las herramientas de control del Mac (MCP `computer`): etiquetas en español,
  * iconos, resumen de la acción y extracción segura de capturas de pantalla.
  */
-import {
-  AppWindow,
-  Camera,
-  Hand,
-  Keyboard,
-  Mouse,
-  MousePointer2,
-  MousePointerClick,
-  Move,
-  ScrollText,
-  Timer,
-  Type
-} from 'lucide-react'
+import { AppWindow, Camera, Hand, Keyboard, Mouse, MousePointer2, MousePointerClick, Move, ScrollText, Timer, Type } from 'lucide-react'
 import type { ComputerActionEvent } from '@shared/ipc-cowork'
 import type { FilePart, ToolPart } from '@opencode-ai/sdk/v2/client'
 

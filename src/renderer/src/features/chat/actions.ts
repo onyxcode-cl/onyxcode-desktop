@@ -4,8 +4,9 @@
  */
 import { CHAT_AGENT } from '@shared/types'
 import { errorMessage } from '../../lib/opencode'
-import { useServer } from '../../stores/server'
-import { useSessions } from '../../stores/sessions'
+import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
+import { onStreamReconnect, useServer } from '../../stores/server'
+import { MAIN_SOURCE, useSessions } from '../../stores/sessions'
 import { useSettings } from '../../stores/settings'
 import { useChat } from './store'
 
@@ -14,6 +15,20 @@ function ctx(): { client: NonNullable<ReturnType<typeof useServer.getState>['cli
   if (!client || !connection) throw new Error('El servidor de OpenCode aún no está listo')
   return { client, directory: connection.chatDirectory }
 }
+
+// Guarda del LRU de `messages`: la conversación abierta nunca se desaloja.
+useSessions.getState().addEvictionGuard(() => {
+  const id = useChat.getState().activeSessionId
+  return id ? [id] : []
+})
+
+// F7-B14: al reconectar el stream (p. ej. tras reiniciar el sidecar) el historial cargado pudo cambiar sin que
+// llegaran los eventos: se marca como no cargado (salvo la conversación abierta, que recarga `ChatView`).
+// Vive aquí (y no en `ChatSidebar`) para actuar aunque la vista de Chat no esté montada.
+onStreamReconnect(() => {
+  const active = useChat.getState().activeSessionId
+  useSessions.getState().invalidateLoaded((src) => src === MAIN_SOURCE, active ? [active] : [])
+})
 
 export async function loadChatSessions(): Promise<void> {
   const chat = useChat.getState()
@@ -27,12 +42,39 @@ export async function loadChatSessions(): Promise<void> {
   }
 }
 
+/**
+ * Tras reconectar el stream: lee `session.status` del servidor y limpia los spinners de sesiones de
+ * Chat que quedaron `busy` porque se perdió el evento de fin (F6-B5). Errores de red se ignoran.
+ */
+export async function syncChatRunStatus(): Promise<void> {
+  const { client, connection } = useServer.getState()
+  if (!client || !connection) return
+  const directory = connection.chatDirectory
+  const before = useSessions.getState().status
+  const res = await client.session.status({ directory }).catch(() => null)
+  const data = res?.data
+  if (!data) return
+  // Se lee el estado JUSTO antes del `set` (no antes del fetch) y se excluyen las sesiones que cambiaron durante
+  // la petición. El ámbito incluye las entradas de `status` sin sesión (huérfanas tras reiniciar el sidecar).
+  const { sessions, sessionSource, status } = useSessions.getState()
+  const scope = unchangedSince(
+    runStatusScope({ sessions, sessionSource, status }, directory, (src) => src === MAIN_SOURCE),
+    before,
+    status
+  )
+  const next = reconcileRunStatus(status, data, scope)
+  if (next) useSessions.setState({ status: next })
+}
+
 export async function openChatSession(sessionID: string | null): Promise<void> {
   useChat.getState().setActive(sessionID)
   if (!sessionID) return
   const { client, directory } = ctx()
   const store = useSessions.getState()
-  if (!store.messages[sessionID]) {
+  // Reabrir fija la sesión (activa + acceso) ANTES de cargar: así no se desaloja a mitad de la recarga.
+  store.touchSession(sessionID)
+  // `loaded` y no `messages[id]`: pueden existir mensajes parciales por eventos sueltos (F6-B12).
+  if (!store.loaded[sessionID]) {
     try {
       await store.loadMessages(client, sessionID, directory)
     } catch (err) {
@@ -56,10 +98,14 @@ export async function sendChatMessage(text: string): Promise<void> {
     if (res.error || !res.data) throw new Error(errorMessage(res.error))
     sessions.upsertSession(res.data)
     sessionID = res.data.id
-    useSessions.setState((s) => ({ messages: { ...s.messages, [res.data.id]: s.messages[res.data.id] ?? [] } }))
+    useSessions.setState((s) => ({
+      messages: { ...s.messages, [res.data.id]: s.messages[res.data.id] ?? [] },
+      loaded: { ...s.loaded, [res.data.id]: true } // sesión nueva: no hay historial que cargar
+    }))
     useChat.getState().setActive(sessionID)
   }
 
+  sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
   const res = await client.session.promptAsync({

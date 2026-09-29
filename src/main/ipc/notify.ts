@@ -12,8 +12,6 @@ import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import { handle } from './handle'
 
-let lastBadgeCount = 0
-
 export function registerNotifyHandlers(ipcMain: IpcMain, deps: MainWindowDeps): void {
   handle(ipcMain, 'app:notify', ({ title, body, target }) => {
     const prefs = extrasPrefs.get()
@@ -40,11 +38,6 @@ export function registerNotifyHandlers(ipcMain: IpcMain, deps: MainWindowDeps): 
   })
 
   handle(ipcMain, 'app:setAttention', ({ count }) => {
-    lastBadgeCount = count
     if (process.platform === 'darwin') app.dock?.setBadge(count > 0 ? String(count) : '')
   })
-}
-
-export function currentAttentionCount(): number {
-  return lastBadgeCount
 }

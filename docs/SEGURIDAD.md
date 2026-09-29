@@ -180,7 +180,7 @@ comparte `~/.local/share/opencode` con el sidecar principal. Documentado, no cam
 
 ## 3 ter. Computer use en segundo plano, Modo auto y navegador propio (Lote C)
 
-Detalle de los hallazgos en `AUDIT.md` §10; resumen del lote en `docs/COWORK-LOTE-C.md`.
+Detalle de los hallazgos en `AUDIT.md` §10; resumen del lote en `docs/archive/COWORK-LOTE-C.md`.
 
 **Acciones en segundo plano por Accessibility API.** Las herramientas `app_tree`/`app_find`/
 `app_press`/`app_set_value`/`app_action`/`app_screenshot` (`computer/mcp-server.ts`) llaman a
@@ -215,8 +215,14 @@ el interruptor maestro (apagado por defecto, kill switch) **y** la carpeta o la 
 «Solo ver» que concede a mitad de tarea (`grantAutoView`) es **efímero por sesión**: nunca se
 persiste en `computer-grants.json`, y es revocable desde el registro de Ajustes.
 
-**Navegador propio: diálogo por sitio, perfil aislado y lanzamiento con el entorno reducido.** El
-navegador (`chrome-devtools-mcp`) solo existe en Control total, desactivado por defecto, y corre
+> **HISTÓRICO — ELIMINADO en el refactor fase 3 (nota añadida el 2026-09-29, revisión Fase 7).** El «navegador propio» / «Chrome aparte»
+> (`chrome-devtools-mcp`, `browser/{gateway,service,sites}.ts`, `cowork-browser-handlers.ts`) ya no existe en el
+> código. Lo sustituye el **navegador integrado** (`embedded-browser/`, sección «3 quater» de este documento). Sus datos
+> en disco (`userData/cowork-browser*`) se borran al arrancar. El párrafo siguiente se conserva solo como registro
+> del modelo de seguridad que tuvo; NO describe la app actual.
+>
+> **[Histórico] Navegador propio: diálogo por sitio, perfil aislado y lanzamiento con el entorno reducido.** El
+navegador (`chrome-devtools-mcp` (histórico: eliminado en la fase 3 del refactor)) solo existe en Control total, desactivado por defecto, y corre
 sobre un **perfil propio** (`userData/cowork-browser/profile`), nunca el Chrome personal del
 usuario: no comparte cookies, historial ni sesiones, y sus descargas van a
 `userData/cowork-browser/downloads`. Cada navegación de primer nivel (`navigate_page`, `new_page`,
@@ -225,7 +231,7 @@ abiertas) pasa por un canal lateral HTTP con token en 127.0.0.1 hacia `browser/s
 sitio no está en «Permitir siempre» ni denegado ni con «una vez» ya concedido, aparece un diálogo
 nativo (`dialog.showMessageBox`, en cola, sin ventana padre porque en Control total la principal
 puede estar minimizada) con la URL LITERAL y el aviso «Las páginas pueden contener instrucciones
-maliciosas». Si `list_pages` no se puede leer o interpretar, la pasarela (`browser/gateway.ts`)
+maliciosas». Si `list_pages` no se puede leer o interpretar, la pasarela (`browser/gateway.ts` (histórico: eliminado en la fase 3 del refactor))
 falla cerrado (nunca asume que todo está bien) y manda a `about:blank` cualquier página en un host
 no permitido. El proceso se lanza con `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u
 OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u
@@ -281,6 +287,24 @@ access`/`loopback-network` en los `setPermissionRequestHandler` **no tiene ning�
 observable** por sí solo — sin la regla de `webRequest`, un `fetch` desde una página remota alcanza
 sin problema un puerto loopback; con ella, queda bloqueado. Por eso esta regla es obligatoria y no
 una capa de refuerzo opcional.
+
+**Límite conocido: «Permitir siempre» de un origen local abre todo el loopback a esa página.** La regla
+de red decide por el origen de la **página de primer nivel**, no por puerto de destino: una vez que un
+origen local (`localhost:5173`) queda aprobado con «Permitir siempre», esa página puede hacer `fetch`
+a cualquier OTRO puerto de loopback o de red privada (otro servidor de desarrollo, una base de datos
+local, etc.), y con la aprobación persistida vale también en tareas futuras. La aprobación «en esta
+tarea» NO cuenta para esta regla (no se persiste ni se consulta en `webRequest`: una página aprobada
+solo para la tarea sigue bloqueada hacia otros puertos). Está fijado por el E2E
+(`lotes.e2e.ts`, «observación: … sí alcanza otro puerto de loopback»); aprobar solo lo que el usuario
+conoce es decisión suya, y acotar por puerto de destino requeriría una lista de destinos por origen.
+
+**Esquemas externos (`mailto:`, `tel:`…) nunca abren otra aplicación.** Primer nivel: solo `http(s):` y
+`about:blank`; subframes: `http(s):`, `about:`, `data:` y `blob:` (`sites.ts`, `subframeUrlAllowed`). Lo
+demás se cancela en `will-navigate`/`will-redirect`/`will-frame-navigate`, `window.open` se deniega y el
+permiso `openExternal` se rechaza; el registro solo lleva el esquema (nunca la dirección ni el
+teléfono) y el usuario recibe un aviso en el panel. El respaldo tras confirmarse una navegación va en
+`did-navigate` con `setImmediate` (nunca `stop()`/`loadURL()` síncronos dentro de un evento de inicio de
+navegación: mataban el proceso principal, F7-B1).
 
 **Aprobación por sitio: solo lo que decide el agente, no lo que el usuario ya visitó.** Una
 navegación de primer nivel **atribuida al agente** hacia un sitio nuevo (eTLD+1, reutilizando

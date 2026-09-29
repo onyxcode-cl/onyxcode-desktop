@@ -10,7 +10,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { Globe, RotateCw, ShieldCheck } from 'lucide-react'
 import { APP_NAME } from '@shared/brand'
-import type { BrowserDecision, BrowserOwner, BrowserOwnerState, BrowserProduct, BrowserTab, BrowserToChat, DevServerCandidate } from '@shared/ipc-browser'
+import type {
+  BrowserDecision,
+  BrowserOwner,
+  BrowserOwnerState,
+  BrowserProduct,
+  BrowserTab,
+  BrowserToChat,
+  DevServerCandidate
+} from '@shared/ipc-browser'
 import { AgentBar } from './AgentBar'
 import { br, onBrowser } from './bridge'
 import { Cards } from './Cards'
@@ -65,11 +73,37 @@ function FirstRunNotice({ onDismiss }: { onDismiss: () => void }): React.JSX.Ele
   return (
     <div className="flex items-center gap-2 border-b border-accent/30 bg-accent-soft/40 px-3 py-2 text-[12px]">
       <ShieldCheck size={14} className="shrink-0 text-accent" />
-      <span className="min-w-0 flex-1 text-fg/90">
-        Estás navegando dentro de {APP_NAME}. Nunca te pediremos contraseñas en esta zona.
-      </span>
-      <button type="button" onClick={onDismiss} className="shrink-0 rounded-md px-2 py-0.5 font-medium text-muted hover:bg-hover hover:text-fg">
+      <span className="min-w-0 flex-1 text-fg/90">Estás navegando dentro de {APP_NAME}. Nunca te pediremos contraseñas en esta zona.</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded-md px-2 py-0.5 font-medium text-muted hover:bg-hover hover:text-fg"
+      >
         Entendido
+      </button>
+    </div>
+  )
+}
+
+/** Aviso efímero en el flujo normal (nunca sobre la vista nativa): se oculta a los 8 s o al llegar otro aviso. */
+function NoticeLine({ notice }: { notice?: { id: number; text: string } }): React.JSX.Element | null {
+  const [dismissedId, setDismissedId] = useState<number | null>(null)
+  const id = notice?.id ?? null
+  useEffect(() => {
+    if (id === null) return
+    const t = setTimeout(() => setDismissedId(id), 8_000)
+    return () => clearTimeout(t)
+  }, [id])
+  if (!notice || dismissedId === notice.id) return null
+  return (
+    <div role="status" className="flex items-center gap-2 border-b border-warning/40 bg-elevated px-3 py-1.5 text-[12px]">
+      <span className="min-w-0 flex-1 text-fg/90">{notice.text}</span>
+      <button
+        type="button"
+        onClick={() => setDismissedId(notice.id)}
+        className="shrink-0 rounded-md px-2 py-0.5 font-medium text-muted hover:bg-hover hover:text-fg"
+      >
+        Cerrar
       </button>
     </div>
   )
@@ -87,7 +121,11 @@ function EmptyState({ disabledReason, onNewTab }: { disabledReason?: string; onN
           Puedes navegar aquí mismo cuando quieras: el navegador es tuyo, con o sin el agente.
         </p>
       </div>
-      <button type="button" onClick={onNewTab} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90">
+      <button
+        type="button"
+        onClick={onNewTab}
+        className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
+      >
         Nueva pestaña
       </button>
       {disabledReason && <p className="mt-1 max-w-xs text-[12px] text-subtle">{disabledReason}</p>}
@@ -99,7 +137,11 @@ function CrashedTab({ onReload }: { onReload: () => void }): React.JSX.Element {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-muted">
       <p>La página dejó de responder.</p>
-      <button type="button" onClick={onReload} className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 hover:bg-hover">
+      <button
+        type="button"
+        onClick={onReload}
+        className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 hover:bg-hover"
+      >
         <RotateCw size={13} /> Recargar
       </button>
     </div>
@@ -121,7 +163,8 @@ function Viewport({
 }): React.JSX.Element {
   const { hostRef, shouldShowNative, frozen } = useNativeViewport(owner, tab?.id ?? null, visible && !!tab && !tab.crashed)
 
-  if (tab?.crashed) return <CrashedTab onReload={() => void br('browser:history', { owner, tabId: tab.id, action: 'reload' }).catch(() => undefined)} />
+  if (tab?.crashed)
+    return <CrashedTab onReload={() => void br('browser:history', { owner, tabId: tab.id, action: 'reload' }).catch(() => undefined)} />
 
   return (
     <div className="relative h-full min-h-0 w-full">
@@ -134,7 +177,14 @@ function Viewport({
   )
 }
 
-export function BrowserPanel({ owner, product, visible, onAddToChat, variant = 'panel', className = '' }: BrowserPanelProps): React.JSX.Element {
+export function BrowserPanel({
+  owner,
+  product,
+  visible,
+  onAddToChat,
+  variant = 'panel',
+  className = ''
+}: BrowserPanelProps): React.JSX.Element {
   const key = ownerKey(owner)
   const [state, setState] = useState<BrowserOwnerState | null>(null)
   const firstRunSeen = useBrowserUi((s) => s.firstRunSeen)
@@ -164,7 +214,7 @@ export function BrowserPanel({ owner, product, visible, onAddToChat, variant = '
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  const tabs = state?.tabs ?? []
+  const tabs = useMemo(() => state?.tabs ?? [], [state?.tabs])
   const activeTabId = state?.activeTabId ?? null
   const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId) ?? null, [tabs, activeTabId])
   const devServers = useDevServers(owner, product === 'code' && isEmptyTab(activeTab))
@@ -243,6 +293,7 @@ export function BrowserPanel({ owner, product, visible, onAddToChat, variant = '
         onResume={() => void br('browser:agent', { owner, action: 'resume' }).catch(() => undefined)}
         onStop={() => void br('browser:agent', { owner, action: 'stop' }).catch(() => undefined)}
       />
+      <NoticeLine notice={state?.notice} />
       <Cards requests={approvals} onRespond={handleRespond} />
       <div className="min-h-0 flex-1">
         {state?.hostedIn === 'popout' ? (

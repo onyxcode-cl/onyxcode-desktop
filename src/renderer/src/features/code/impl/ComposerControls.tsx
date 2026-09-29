@@ -14,7 +14,12 @@ import type { PermissionMode } from './types'
 
 const PERMISSION_MODES: { id: PermissionMode; label: string; hint: string; icon: React.JSX.Element }[] = [
   { id: 'manual', label: 'Manual', hint: 'Pregunta antes de cualquier acción', icon: <Shield size={14} /> },
-  { id: 'acceptEdits', label: 'Aceptar ediciones', hint: 'Edita archivos sin preguntar; el resto pregunta', icon: <PencilLine size={14} /> },
+  {
+    id: 'acceptEdits',
+    label: 'Aceptar ediciones',
+    hint: 'Edita archivos sin preguntar; el resto pregunta',
+    icon: <PencilLine size={14} />
+  },
   { id: 'plan', label: 'Plan', hint: 'Solo explora y propone; no modifica nada', icon: <ListChecks size={14} /> },
   { id: 'auto', label: 'Auto', hint: 'Ediciones y comandos seguros sin preguntar; pregunta lo riesgoso', icon: <Wand2 size={14} /> },
   { id: 'bypass', label: 'Bypass', hint: 'Permite todo sin preguntar (incluye bash). Úsalo con cuidado.', icon: <CircleSlash size={14} /> }
@@ -41,8 +46,7 @@ function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivEl
   return ref
 }
 
-const chip =
-  'no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors'
+const chip = 'no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors'
 
 function MenuItem({
   active,

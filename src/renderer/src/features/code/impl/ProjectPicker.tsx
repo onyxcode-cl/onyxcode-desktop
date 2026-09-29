@@ -1,86 +1,69 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Clock, FolderCode, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { baseName, tildify } from '../../../lib/paths'
 import { PageHeader } from '../../../components/PageHeader'
 import { useSettings } from '../../../stores/settings'
-import { errorMessage, getCodeApi, nativeCode, useClient } from './client'
+import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
 import { timeAgo } from './ui'
+import { openProjectTrusted, resolveTrust, usePendingTrust } from './trust'
 
-export function baseName(p: string): string {
-  const parts = p.replace(/[/\\]+$/, '').split(/[/\\]/)
-  return parts[parts.length - 1] || p
-}
-
-function tildify(p: string): string {
-  return p.replace(/^\/Users\/[^/]+/, '~')
-}
-
-/**
- * Carpeta pendiente de confianza (workspace trust): se fija cuando el usuario elige/abre una
- * carpeta no confiada todavía, y `TrustGate` (en `ProjectPicker`) muestra el diálogo de confirmación.
- * La primera vez que se confía en una carpeta, se guarda en `trustedFolders` (localStorage).
- */
-let pendingTrustResolve: ((trust: boolean) => void) | null = null
-const trustListeners = new Set<(dir: string | null) => void>()
-let pendingTrustDir: string | null = null
-
-function setPendingTrust(dir: string | null): void {
-  pendingTrustDir = dir
-  for (const l of trustListeners) l(dir)
-}
-
-/** Hook: carpeta esperando confirmación de confianza (o `null`). */
-function usePendingTrust(): string | null {
-  const [dir, setDir] = useState(pendingTrustDir)
-  useEffect(() => {
-    trustListeners.add(setDir)
-    return () => {
-      trustListeners.delete(setDir)
-    }
-  }, [])
-  return dir
-}
-
-/** Si la carpeta no es de confianza, pide confirmación (resuelve `true`/`false`). Si ya lo es, `true` directo. */
-async function ensureTrusted(dir: string): Promise<boolean> {
-  if (useCode.getState().isTrusted(dir)) return true
-  setPendingTrust(dir)
-  return new Promise<boolean>((resolve) => {
-    pendingTrustResolve = resolve
-  })
-}
-
-function resolveTrust(trust: boolean): void {
-  const dir = pendingTrustDir
-  setPendingTrust(null)
-  if (trust && dir) useCode.getState().trustFolder(dir)
-  pendingTrustResolve?.(trust)
-  pendingTrustResolve = null
-}
+export { baseName }
+export { openProjectTrusted }
 
 /** Diálogo de confianza de carpeta ("Trust this workspace?"), montado una vez en `ProjectPicker`/`CodeWorkspace`. */
 export function TrustGate(): React.JSX.Element | null {
   const dir = usePendingTrust()
+  const confirmRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!dir) return
+    confirmRef.current?.focus()
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        resolveTrust(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dir])
   if (!dir) return null
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-fg/30 p-6">
-      <div role="alertdialog" className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="trust-title"
+        aria-describedby="trust-desc"
+        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+      >
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <ShieldCheck size={20} />
         </div>
-        <h3 className="text-base font-semibold">¿Confiar en esta carpeta?</h3>
+        <h3 id="trust-title" className="text-base font-semibold">
+          ¿Confiar en esta carpeta?
+        </h3>
         <p className="mt-1.5 truncate font-mono text-xs text-subtle" title={dir}>
           {tildify(dir)}
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
+        <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted">
           El agente podrá leer, escribir y ejecutar archivos dentro de esta carpeta. Solo confía en carpetas cuyo contenido conoces.
         </p>
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={() => resolveTrust(false)} className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg">
+          <button
+            type="button"
+            onClick={() => resolveTrust(false)}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+          >
             Cancelar
           </button>
-          <button type="button" onClick={() => resolveTrust(true)} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90">
+          <button
+            ref={confirmRef}
+            type="button"
+            onClick={() => resolveTrust(true)}
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
+          >
             Confiar y continuar
           </button>
         </div>
@@ -91,10 +74,10 @@ export function TrustGate(): React.JSX.Element | null {
 
 /** Abre el diálogo nativo y, si se elige, abre el proyecto (tras confirmar confianza). */
 export async function pickAndOpenFolder(): Promise<void> {
-  const { openProject, directory, setGlobalError } = useCode.getState()
+  const { directory, setGlobalError } = useCode.getState()
   try {
-    const dir = await getCodeApi().openFolder({ title: 'Abrir carpeta de proyecto', defaultPath: directory ?? undefined })
-    if (dir && (await ensureTrusted(dir))) await openProject(dir)
+    const dir = await requireCode().dialog.openFolder({ title: 'Abrir carpeta de proyecto', defaultPath: directory ?? undefined })
+    if (dir) await openProjectTrusted(dir)
   } catch (err) {
     setGlobalError(errorMessage(err))
   }
@@ -102,9 +85,9 @@ export async function pickAndOpenFolder(): Promise<void> {
 
 /** Abre una carpeta ya conocida (tarjeta de recientes), pidiendo confianza si hace falta. */
 async function openTrusted(dir: string): Promise<void> {
-  const { openProject, setGlobalError } = useCode.getState()
+  const { setGlobalError } = useCode.getState()
   try {
-    if (await ensureTrusted(dir)) await openProject(dir)
+    await openProjectTrusted(dir)
   } catch (err) {
     setGlobalError(errorMessage(err))
   }
@@ -116,7 +99,7 @@ async function openTrusted(dir: string): Promise<void> {
  * modelo de sesión-por-carpeta del resto de la app.
  */
 export async function createWorktreeAndOpen(base: string, branch: string): Promise<void> {
-  const { setGlobalError, openProject } = useCode.getState()
+  const { setGlobalError } = useCode.getState()
   const native = nativeCode()
   if (!native) {
     setGlobalError('Los worktrees requieren la app de escritorio (no disponible en este cliente).')
@@ -124,7 +107,7 @@ export async function createWorktreeAndOpen(base: string, branch: string): Promi
   }
   try {
     const { path } = await native.git.createWorktree(base, branch)
-    if (await ensureTrusted(path)) await openProject(path)
+    await openProjectTrusted(path)
   } catch (err) {
     setGlobalError(errorMessage(err))
   }
@@ -153,14 +136,18 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-fg/30 p-6" onClick={onClose}>
-      <div role="dialog" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl">
+      <div
+        role="dialog"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+      >
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <GitBranchPlus size={20} />
         </div>
         <h3 className="text-base font-semibold">Nueva sesión en worktree</h3>
         <p className="mt-1 text-sm leading-relaxed text-muted">
-          Crea una copia aislada del repositorio (<code className="font-mono text-xs">git worktree</code>) en una rama nueva y abre una sesión ahí. Los
-          cambios no tocan tu copia de trabajo actual.
+          Crea una copia aislada del repositorio (<code className="font-mono text-xs">git worktree</code>) en una rama nueva y abre una
+          sesión ahí. Los cambios no tocan tu copia de trabajo actual.
         </p>
         <label className="mt-3 block text-xs font-medium text-subtle">Nombre de rama</label>
         <div className="mt-1 flex items-center overflow-hidden rounded-lg border border-border bg-bg">
@@ -173,7 +160,11 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
         </div>
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+          >
             Cancelar
           </button>
           <button
@@ -243,7 +234,9 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
       >
         <div className="flex w-full items-center gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-sm font-semibold text-accent uppercase">
-            {baseName(dir).replace(/^[._-]+/, '').charAt(0) || '·'}
+            {baseName(dir)
+              .replace(/^[._-]+/, '')
+              .charAt(0) || '·'}
           </span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{baseName(dir)}</div>
@@ -264,7 +257,9 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
                   <span className="truncate">{meta.branch}</span>
                 </span>
               ) : (
-                <span className="rounded-full border border-dashed border-border px-1.5 py-px">{meta.isRepo ? 'HEAD separado' : 'sin git'}</span>
+                <span className="rounded-full border border-dashed border-border px-1.5 py-px">
+                  {meta.isRepo ? 'HEAD separado' : 'sin git'}
+                </span>
               )}
               {meta.lastActivity && (
                 <span className="ml-auto flex shrink-0 items-center gap-1">
@@ -324,7 +319,8 @@ export function ProjectPicker(): React.JSX.Element {
               </div>
               <h2 className="text-lg font-semibold">Aún no has abierto ningún proyecto</h2>
               <p className="mt-1 max-w-sm text-sm text-muted">
-                Abre la carpeta de un repositorio y el agente podrá leer el código, proponer planes, editar archivos y ejecutar comandos con tu permiso.
+                Abre la carpeta de un repositorio y el agente podrá leer el código, proponer planes, editar archivos y ejecutar comandos con
+                tu permiso.
               </p>
               <Button variant="primary" className="mt-5" disabled={busy} onClick={open}>
                 <FolderOpen size={15} /> Abrir carpeta…

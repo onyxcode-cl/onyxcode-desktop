@@ -35,10 +35,9 @@ let loadError: string | undefined
 
 function loadNodePty(): PtyModule | null {
   if (cachedModule !== undefined) return cachedModule
-  const bases = [
-    typeof __filename === 'string' ? __filename : undefined,
-    join(process.cwd(), 'package.json')
-  ].filter((b): b is string => !!b)
+  const bases = [typeof __filename === 'string' ? __filename : undefined, join(process.cwd(), 'package.json')].filter(
+    (b): b is string => !!b
+  )
   const errors: string[] = []
   for (const base of bases) {
     try {

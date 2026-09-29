@@ -133,7 +133,6 @@ export function transcriptToMarkdown(
 /** Nombre de archivo sugerido (con `.md`) para exportar la tarea: sin caracteres prohibidos, ≤ 80 letras. */
 export function suggestedExportName(title: string): string {
   const base = title
-    // eslint-disable-next-line no-control-regex
     .replace(/[/\\:\0-\x1f*?"<>|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

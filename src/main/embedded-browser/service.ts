@@ -14,7 +14,6 @@
  */
 import { BrowserWindow, shell } from 'electron'
 import type {
-  BrowserApprovalRequest,
   BrowserCapture,
   BrowserDecision,
   BrowserOwner,
@@ -29,13 +28,13 @@ import type {
 import type { BrowserEventChannel, BrowserEventContract } from '@shared/ipc-browser'
 import type { OpencodeConnection } from '@shared/types'
 import { loadManagedPolicy } from '../cowork/policy'
-import { hostOf, siteOf } from '../browser/sites'
+import { hostOf, schemeOf, siteOf } from './sites'
 import { BrowserBusyError, type AgentActor, type AgentLease, type CdpSession, type EmbeddedBrowserApi } from './api'
 import { cdpSessionFor } from './cdp'
 import { findDevServers } from './dev-servers'
 import { isLoopbackOrPrivateHost, sessionFor } from './session'
 import { closePopout, ensurePopoutWindow, popoutWindow, showPopoutInactive } from './popout'
-import { initApprovals, pendingFor, requestApproval, respondApproval } from './approvals'
+import { initApprovals, requestApproval, respondApproval } from './approvals'
 import { initDownloads } from './downloads'
 import * as store from './store'
 import {
@@ -76,6 +75,9 @@ interface OwnerRuntime {
   taskApprovedLocalOrigins: Set<string>
   userVisitedHosts: Set<string>
   lastAgentActivityAt: number
+  /** Último aviso al usuario (enlace externo bloqueado); `noticeAt` = cuándo, para `verifyAfterAction`. */
+  notice?: { id: number; text: string }
+  noticeAt: number
 }
 
 const owners = new Map<string, OwnerRuntime>()
@@ -104,7 +106,8 @@ function ownerRuntime(owner: BrowserOwner): OwnerRuntime {
       taskApprovedSites: new Set(),
       taskApprovedLocalOrigins: new Set(),
       userVisitedHosts: new Set(),
-      lastAgentActivityAt: 0
+      lastAgentActivityAt: 0,
+      noticeAt: 0
     }
     owners.set(key, rt)
   }
@@ -180,7 +183,8 @@ function stateFor(owner: BrowserOwner) {
     userActive: !!active && isUserActive(active),
     picking: rt.picking,
     hostedIn: rt.hostKind,
-    disabledReason: agentEnabled(owner.kind) ? undefined : disabledReasonFor(owner.kind)
+    disabledReason: agentEnabled(owner.kind) ? undefined : disabledReasonFor(owner.kind),
+    notice: rt.notice
   }
 }
 
@@ -410,9 +414,33 @@ function ensureHostForAgent(owner: BrowserOwner): void {
 function normalizeInput(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return 'about:blank'
+  // `mailto:`/`tel:` escritos a mano no son una búsqueda: se devuelven tal cual y `refuseExternalTyped` avisa (`localhost:5173` no encaja).
+  if (/^(mailto|tel):/i.test(trimmed)) return trimmed
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed
   if (/^[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/i.test(trimmed)) return `https://${trimmed}`
   return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`
+}
+
+let noticeSeq = 0
+
+/** Aviso visible en el panel (sin canal nuevo: viaja en `BrowserOwnerState.notice`). */
+function setNotice(owner: BrowserOwner, scheme: string | null): void {
+  const rt = ownerRuntime(owner)
+  rt.notice = {
+    id: ++noticeSeq,
+    text: `El navegador integrado no abre enlaces ${scheme ?? 'de ese tipo'} (abrirían otra aplicación).`
+  }
+  rt.noticeAt = Date.now()
+  broadcastState(owner)
+}
+
+/** `mailto:`/`tel:` escritos en la barra: no se navega, se avisa. */
+function refuseExternalTyped(owner: BrowserOwner, url: string): boolean {
+  const scheme = schemeOf(url)
+  if (scheme !== 'mailto:' && scheme !== 'tel:') return false
+  console.warn(`[embedded-browser] navegación bloqueada: ${scheme} (barra de URL)`)
+  setNotice(owner, scheme)
+  return true
 }
 
 // ───────────────────────────── API del agente (`EmbeddedBrowserApi`, B.5) ─────────────────────────────
@@ -558,6 +586,14 @@ function selectAgentTab(actor: AgentActor, tabId: string): void {
 async function verifyAfterAction(actor: AgentActor, tabId: string): Promise<string | null> {
   const tab = tabById(tabId)
   if (!tab || tab.destroyed) return 'La pestaña ya no existe.'
+  const rt = ownerRuntime(actor.owner)
+  // Un enlace externo bloqueado hace <5 s (p.ej. el clic del agente en un `mailto:`) se cuenta al agente.
+  const noticeText = rt.notice && Date.now() - rt.noticeAt < 5_000 ? rt.notice.text : null
+  const msg = await verifyNavigation(actor, tab)
+  return noticeText ? (msg ? `${noticeText}\n${msg}` : noticeText) : msg
+}
+
+async function verifyNavigation(actor: AgentActor, tab: TabRuntime): Promise<string | null> {
   const parsed = parseNav(tab.wc.getURL())
   if (!parsed) return null
   const rt = ownerRuntime(actor.owner)
@@ -643,10 +679,9 @@ function init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection()
   surfaceEvents.on('created', (tab: TabRuntime) => installNavigationGate(tab))
   surfaceEvents.on('updated', (tab: TabRuntime) => broadcastState(tab.owner))
   surfaceEvents.on('crashed', (tab: TabRuntime) => broadcastState(tab.owner))
+  surfaceEvents.on('blocked', (tab: TabRuntime, scheme: string | null) => setNotice(tab.owner, scheme))
   surfaceEvents.on('destroyed', (tab: TabRuntime) => broadcastState(tab.owner))
-  surfaceEvents.on('shortcut', (tab: TabRuntime, key: string) =>
-    sendEvent('browser:shortcut', { owner: tab.owner, key: key as never })
-  )
+  surfaceEvents.on('shortcut', (tab: TabRuntime, key: string) => sendEvent('browser:shortcut', { owner: tab.owner, key: key as never }))
 }
 
 async function mainConnection(): Promise<OpencodeConnection> {
@@ -702,6 +737,10 @@ export function newTab(owner: BrowserOwner, input?: string) {
     rt.activeTabId = tab.id
     if (input) {
       const url = normalizeInput(input)
+      if (refuseExternalTyped(owner, url)) {
+        layoutView(rt)
+        return stateFor(owner)
+      }
       const host = hostOf(url)
       if (host) rt.userVisitedHosts.add(host)
       void navigateBypassing(tab, url).catch((err) => console.error('[embedded-browser] newTab:', err))
@@ -736,6 +775,7 @@ export async function navigate(owner: BrowserOwner, tabId: string, input: string
   const tab = tabById(tabId)
   if (tab) {
     const url = normalizeInput(input)
+    if (refuseExternalTyped(owner, url)) return stateFor(owner)
     const rt = ownerRuntime(owner)
     const host = hostOf(url)
     if (host) rt.userVisitedHosts.add(host)
@@ -874,10 +914,6 @@ export function toChat(payload: BrowserToChat): void {
 
 export function respond(id: string, decision: BrowserDecision): void {
   respondApproval(id, decision)
-}
-
-export function pendingApprovalsFor(owner: BrowserOwner): BrowserApprovalRequest[] {
-  return pendingFor(owner)
 }
 
 export async function popOut(owner: BrowserOwner, on: boolean) {

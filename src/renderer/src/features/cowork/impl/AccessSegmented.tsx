@@ -29,20 +29,13 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
     }
   }
 
-  const base =
-    'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:cursor-not-allowed'
+  const base = 'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:cursor-not-allowed'
   return (
     <div
       role="radiogroup"
       aria-label="Modo de acceso"
       onKeyDown={onKey}
-      title={
-        !folder
-          ? 'Elige una carpeta primero'
-          : disabled
-            ? 'Espera a que termine la tarea para cambiar el modo de acceso'
-            : undefined
-      }
+      title={!folder ? 'Elige una carpeta primero' : disabled ? 'Espera a que termine la tarea para cambiar el modo de acceso' : undefined}
       className={`inline-flex items-center gap-0.5 rounded-full border border-border bg-hover/60 p-0.5 ${off ? 'opacity-70' : ''}`}
     >
       <button

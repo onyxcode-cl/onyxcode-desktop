@@ -13,10 +13,10 @@ import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { app, dialog, type DownloadItem, type WebContents } from 'electron'
+import { dialog, type DownloadItem, type WebContents } from 'electron'
 import { APP_NAME } from '@shared/brand'
 import type { BrowserOwner } from '@shared/ipc-browser'
-import { hostOf, siteOf } from '../browser/sites'
+import { hostOf, siteOf } from './sites'
 import { requestApproval } from './approvals'
 import { tabByWebContents } from './surface'
 
@@ -130,9 +130,4 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
         finish(null)
       })
   }
-}
-
-/** Ruta por defecto de descargas de Code, para mostrarla en Ajustes si hiciera falta. */
-export function codeDownloadsDir(): string {
-  return join(app.getPath('home'), 'Downloads', APP_NAME)
 }

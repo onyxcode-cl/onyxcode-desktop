@@ -289,7 +289,10 @@ export class AutoApprover {
     if (this.seen.has(key)) return false
     const rootId = await this.resolveRoot(server, p.sessionID)
     if (!this.optedIn(server.folder, rootId)) return false
-    const verdict = classifyPermission({ permission: p.permission, patterns: p.patterns ?? [], metadata: p.metadata }, { mcpServers: this.deps.mcpServers() })
+    const verdict = classifyPermission(
+      { permission: p.permission, patterns: p.patterns ?? [], metadata: p.metadata },
+      { mcpServers: this.deps.mcpServers() }
+    )
     if (verdict.decision !== 'allow') return false
     this.markSeen(key)
     const ok = await this.replyOnce(server, p.id)
@@ -330,11 +333,9 @@ export class AutoApprover {
     if (this.deps.policyDisabled() || !this.load().enabled) return false
     const server = this.deps.servers().find((s) => s.folder === folder && s.fullAccess === fullAccess)
     if (!server) return false
-    const list = await this.fetchJson<Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown }>>(
-      server,
-      '/permission',
-      HTTP_TIMEOUT_MS
-    )
+    const list = await this.fetchJson<
+      Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown }>
+    >(server, '/permission', HTTP_TIMEOUT_MS)
     const found = Array.isArray(list) ? list.find((p) => p?.id === requestId) : null
     if (!found || typeof found.sessionID !== 'string' || typeof found.permission !== 'string') return false
     const perm: RawPerm = {
@@ -342,7 +343,10 @@ export class AutoApprover {
       sessionID: found.sessionID,
       permission: found.permission,
       patterns: Array.isArray(found.patterns) ? found.patterns.filter((x): x is string => typeof x === 'string') : undefined,
-      metadata: found.metadata && typeof found.metadata === 'object' && !Array.isArray(found.metadata) ? (found.metadata as Record<string, unknown>) : undefined
+      metadata:
+        found.metadata && typeof found.metadata === 'object' && !Array.isArray(found.metadata)
+          ? (found.metadata as Record<string, unknown>)
+          : undefined
     }
     return this.tryApprovePermission(server, perm)
   }
@@ -374,7 +378,10 @@ export class AutoApprover {
     if (verdict.decision !== 'allow') return null
     if (rootId) {
       try {
-        this.deps.grantAutoView(rootId, q.apps.map((a) => a.bundleId))
+        this.deps.grantAutoView(
+          rootId,
+          q.apps.map((a) => a.bundleId)
+        )
       } catch (err) {
         this.deps.log?.('[cowork] modo auto: grantAutoView:', err)
       }

@@ -1,17 +1,10 @@
 /**
- * Ajustes › Navegador (Lote D): dos motores, excluyentes.
- *
- * 1. «Navegador integrado»: pestaña dentro de la propia ventana (Code) o del `aside` de
- *    Cowork, sin depender de un Chrome externo. Apagado por defecto en los dos productos
- *    (`browser:sites:*`, `main/embedded-browser/store.ts`).
- * 2. «Chrome aparte» (Lote C, sin cambios de lógica): `chrome-devtools-mcp` con una pasarela
- *    propia, solo en Control total. Su interruptor `enabled` ahora significa «usar Chrome
- *    aparte en vez del navegador integrado» (B.11): son excluyentes, un solo `mcp.browser`
- *    por servidor. Estado y lógica siguen en `main/browser/service.ts`; aquí solo se lee y
- *    se edita (`cowork:browser:*`, sin tocar).
+ * Ajustes › Navegador: «Navegador integrado», una pestaña dentro de la propia ventana (Code) o
+ * del `aside` de Cowork, sin depender de un Chrome externo. Apagado por defecto en los dos
+ * productos (`browser:sites:*`, `main/embedded-browser/store.ts`).
  */
 import { useEffect, useState } from 'react'
-import { Eraser, Globe2, Laptop, Loader2, MonitorSmartphone, ShieldCheck, Trash2 } from 'lucide-react'
+import { Eraser, Globe2, Loader2, ShieldCheck, Trash2 } from 'lucide-react'
 import type {
   BrowserApi,
   BrowserEventChannel,
@@ -22,15 +15,9 @@ import type {
   BrowserResponse,
   BrowserSitesState
 } from '@shared/ipc-browser'
-import type { BrowserState } from '@shared/ipc-cowork'
-import { COWORK_TERMS } from '@shared/cowork-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
-import { cw, hasCoworkBridge, onCowork } from '../../cowork/impl/bridge'
-import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
-
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
+import { Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
+import { errText } from '../../../lib/format'
 
 const PRODUCT_LABEL: Record<BrowserProduct, string> = { code: 'Code', cowork: 'Cowork' }
 
@@ -58,15 +45,9 @@ function onBrowser<C extends BrowserEventChannel>(channel: C, listener: (payload
 }
 
 export function BrowserSection(): React.JSX.Element {
-  // Navegador integrado (nuevo).
   const [sitesState, setSitesState] = useState<BrowserSitesState | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  // Chrome aparte (Lote C, sin cambios).
-  const [chromeState, setChromeState] = useState<BrowserState | null>(null)
-  const [chromeBusy, setChromeBusy] = useState<string | null>(null)
-  const [chromeError, setChromeError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!hasBrowserBridge()) return
@@ -76,17 +57,7 @@ export function BrowserSection(): React.JSX.Element {
     return onBrowser('browser:sites', setSitesState)
   }, [])
 
-  useEffect(() => {
-    if (!hasCoworkBridge()) return
-    void cw('cowork:browser:state')
-      .then(setChromeState)
-      .catch((err: unknown) => setChromeError(errText(err)))
-    // El diálogo nativo de aprobación ("Permitir siempre"/"Denegar") cambia el estado sin pasar por
-    // ningún invoke de este panel: hay que escuchar el evento para no quedarse desactualizado.
-    return onCowork('cowork:browser:changed', setChromeState)
-  }, [])
-
-  if (!hasBrowserBridge() && !hasCoworkBridge()) {
+  if (!hasBrowserBridge()) {
     return (
       <div>
         <SectionHeader title="Navegador" description="Solo disponible en la app de escritorio." />
@@ -122,40 +93,11 @@ export function BrowserSection(): React.JSX.Element {
     run(`clearData:${product}`, () => bw('browser:clearData', { product }))
   }
 
-  // ---- Chrome aparte (Lote C, sin cambios de lógica) ----
-  const runChrome = (key: string, fn: () => Promise<BrowserState>): void => {
-    setChromeError(null)
-    setChromeBusy(key)
-    fn()
-      .then(setChromeState)
-      .catch((err: unknown) => setChromeError(errText(err)))
-      .finally(() => setChromeBusy(null))
-  }
-  const toggleExternalChrome = (v: boolean): void => runChrome('enabled', () => cw('cowork:browser:set', { enabled: v }))
-  const removeChromeSite = (site: string): void => runChrome(`site:${site}`, () => cw('cowork:browser:removeSite', { site }))
-  const undenyChromeSite = (site: string): void => runChrome(`deny:${site}`, () => cw('cowork:browser:undeny', { site }))
-  const clearChromeData = async (): Promise<void> => {
-    const ok = await confirmDialog({
-      title: '¿Borrar los datos de Chrome aparte?',
-      message:
-        'Se borrará el perfil propio de Chrome aparte (cookies, sesiones, historial) y sus descargas. No se puede deshacer. Tu Chrome personal no se toca.',
-      confirmLabel: 'Borrar',
-      danger: true
-    })
-    if (!ok) return
-    runChrome('clearData', () => cw('cowork:browser:clearData'))
-  }
-  const chromeOk = !!chromeState?.chromePath
-  const runtimeOk = !!chromeState?.runtime
-
   const products: BrowserProduct[] = ['code', 'cowork']
 
   return (
     <div>
-      <SectionHeader
-        title="Navegador"
-        description="Dos formas de dejar que el agente navegue: el navegador integrado en la propia ventana, o un Chrome aparte para cuando un sitio rechaza navegadores embebidos."
-      />
+      <SectionHeader title="Navegador" description="Deja que el agente navegue con el navegador integrado en la propia ventana." />
 
       {sitesState?.policyDisabled && (
         <div role="status" className="mb-5 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
@@ -202,15 +144,20 @@ export function BrowserSection(): React.JSX.Element {
         const denied = sitesState?.denied[product] ?? []
         return (
           <div key={product}>
-            <SubTitle>
-              {PRODUCT_LABEL[product]} · Sitios con «Permitir siempre»
-            </SubTitle>
+            <SubTitle>{PRODUCT_LABEL[product]} · Sitios con «Permitir siempre»</SubTitle>
             <Card>
               {sites.length === 0 ? (
-                <Row label="Ninguno todavía" description="Se añaden desde la tarjeta de aprobación cuando el agente pide abrir un sitio nuevo." />
+                <Row
+                  label="Ninguno todavía"
+                  description="Se añaden desde la tarjeta de aprobación cuando el agente pide abrir un sitio nuevo."
+                />
               ) : (
                 sites.map((s) => (
-                  <Row key={s.site} label={<span className="font-mono">{s.site}</span>} description={new Date(s.addedAt).toLocaleDateString('es-CL')}>
+                  <Row
+                    key={s.site}
+                    label={<span className="font-mono">{s.site}</span>}
+                    description={new Date(s.addedAt).toLocaleDateString('es-CL')}
+                  >
                     <button
                       type="button"
                       onClick={() => removeSite(product, s.site)}
@@ -295,134 +242,6 @@ export function BrowserSection(): React.JSX.Element {
           <ErrorText>{error}</ErrorText>
         </div>
       )}
-
-      <SubTitle>
-        Chrome aparte (avanzado, solo {COWORK_TERMS.fullControlShort})
-      </SubTitle>
-      <p className="mb-3 text-xs text-subtle">
-        Un Chrome real y aparte de {COWORK_TERMS.fullControlShort.toLowerCase()}, con permiso previo por sitio. Útil cuando un sitio (Google,
-        Microsoft…) rechaza el navegador integrado. Excluyente con él: si lo activas, {COWORK_TERMS.fullControlShort.toLowerCase()} deja de
-        usar el navegador integrado y pasa a usar este Chrome aparte.
-      </p>
-
-      {chromeState?.policyDisabled && (
-        <div role="status" className="mb-5 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
-          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
-          <div className="min-w-0 text-muted">
-            <div className="text-sm font-medium text-fg">Gestionado por tu organización</div>
-            <p className="mt-0.5">Tu organización desactivó Chrome aparte.</p>
-          </div>
-        </div>
-      )}
-
-      <Card>
-        <Row
-          label={
-            <span className="flex items-center gap-2">
-              <MonitorSmartphone size={14} className="text-accent" /> Usar Chrome aparte en vez del navegador integrado
-            </span>
-          }
-          description={
-            chromeState?.available
-              ? `Perfil propio, aislado de tu Chrome personal: no comparte cookies, historial ni sesiones. Solo en ${COWORK_TERMS.fullControl}.`
-              : chromeState?.reason ?? 'No disponible.'
-          }
-        >
-          {chromeBusy === 'enabled' ? (
-            <Loader2 size={14} className="animate-spin text-muted" />
-          ) : (
-            <Toggle
-              checked={chromeState?.enabled === true}
-              onChange={toggleExternalChrome}
-              label="Usar Chrome aparte en vez del navegador integrado"
-              disabled={!chromeState?.available}
-            />
-          )}
-        </Row>
-        <Row label="Chrome detectado" description={chromeState?.chromePath ?? 'No se encontró Google Chrome ni Brave en /Applications.'}>
-          <Badge tone={chromeOk ? 'ok' : 'error'}>{chromeOk ? 'Detectado' : 'No detectado'}</Badge>
-        </Row>
-        <Row
-          label="Runtime para ejecutarlo"
-          description={
-            chromeState?.runtime === 'node'
-              ? 'Node ≥20.19 del sistema.'
-              : chromeState?.runtime === 'bun'
-                ? 'Binario de OpenCode (sin Node ≥20.19 instalado).'
-                : 'No se encontró Node ≥20.19 ni el binario de OpenCode.'
-          }
-        >
-          <Badge tone={runtimeOk ? 'ok' : 'error'}>{runtimeOk ? chromeState?.runtime : 'Ninguno'}</Badge>
-        </Row>
-      </Card>
-
-      <SubTitle>Chrome aparte · Sitios con «Permitir siempre»</SubTitle>
-      <Card>
-        {(chromeState?.sites.length ?? 0) === 0 ? (
-          <Row label="Ninguno todavía" description="Se añaden desde el diálogo de aprobación cuando el agente pide abrir un sitio nuevo." />
-        ) : (
-          chromeState?.sites.map((s) => (
-            <Row key={s.site} label={<span className="font-mono">{s.site}</span>} description={new Date(s.addedAt).toLocaleDateString('es-CL')}>
-              <button
-                type="button"
-                onClick={() => removeChromeSite(s.site)}
-                disabled={chromeBusy === `site:${s.site}`}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
-              >
-                {chromeBusy === `site:${s.site}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Quitar
-              </button>
-            </Row>
-          ))
-        )}
-      </Card>
-
-      {(chromeState?.denied.length ?? 0) > 0 && (
-        <>
-          <SubTitle>Chrome aparte · Sitios denegados</SubTitle>
-          <Card>
-            {chromeState?.denied.map((site) => (
-              <Row key={site} label={<span className="font-mono">{site}</span>}>
-                <button
-                  type="button"
-                  onClick={() => undenyChromeSite(site)}
-                  disabled={chromeBusy === `deny:${site}`}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-accent hover:bg-hover disabled:opacity-50"
-                >
-                  {chromeBusy === `deny:${site}` ? <Loader2 size={12} className="animate-spin" /> : null} Permitir de nuevo
-                </button>
-              </Row>
-            ))}
-          </Card>
-        </>
-      )}
-
-      <SubTitle>Chrome aparte · Datos</SubTitle>
-      <Card>
-        <Row
-          label="Borrar datos de Chrome aparte"
-          description="Borra el perfil propio (cookies, sesiones, historial) y sus descargas. Se rechaza si una tarea lo está usando."
-        >
-          <button
-            type="button"
-            onClick={() => void clearChromeData()}
-            disabled={chromeBusy === 'clearData'}
-            className="flex items-center gap-1.5 rounded-lg border border-danger/30 px-2.5 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
-          >
-            {chromeBusy === 'clearData' ? <Loader2 size={13} className="animate-spin" /> : <Eraser size={13} />} Borrar datos
-          </button>
-        </Row>
-      </Card>
-
-      {chromeError && (
-        <div className="mt-3">
-          <ErrorText>{chromeError}</ErrorText>
-        </div>
-      )}
-      <p className="mt-4 flex items-center gap-1.5 text-xs text-subtle">
-        <Laptop size={12} className="shrink-0" />
-        Solo en {COWORK_TERMS.fullControl}; usa su propio perfil (<span className="font-mono break-all">{chromeState?.profileDir}</span>) y
-        nunca toca tu Chrome.
-      </p>
     </div>
   )
 }

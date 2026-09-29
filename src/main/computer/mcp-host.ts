@@ -13,7 +13,7 @@
  */
 import { utilityProcess, type UtilityProcess } from 'electron'
 import { randomBytes } from 'node:crypto'
-import { getFreePort } from '../opencode/server'
+import { getFreePort } from '../util/net'
 import { minimalEnv } from '../process/child-env'
 
 const READY_TIMEOUT_MS = 10_000

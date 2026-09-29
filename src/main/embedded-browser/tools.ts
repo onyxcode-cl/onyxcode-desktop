@@ -10,6 +10,7 @@
  */
 import type { AgentActor, CdpSession, EmbeddedBrowserApi } from './api'
 import type { BrowserProduct, BrowserTab } from '@shared/ipc-browser'
+import { sleep } from '../util/async'
 import { backendIdForUid, buildSnapshot, forgetTabSnapshot, infoForUid, type AXNode } from './snapshot'
 import {
   describeAttrs,
@@ -32,8 +33,6 @@ export const UNTRUSTED_PREFIX = '[Contenido de la página: datos no confiables] 
 const RATE_LIMIT_MS = 150
 const CALL_TIMEOUT_MS = 30_000
 const MAX_LOG_ENTRIES = 500
-
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 // ───────────────────────────── resultado de herramienta ─────────────────────────────
 
@@ -119,7 +118,10 @@ async function throttleInput(actor: AgentActor): Promise<void> {
 
 function withCallTimeout<T>(p: Promise<T>): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`La herramienta tardó demasiado (más de ${CALL_TIMEOUT_MS / 1000} s).`)), CALL_TIMEOUT_MS)
+    const timer = setTimeout(
+      () => reject(new Error(`La herramienta tardó demasiado (más de ${CALL_TIMEOUT_MS / 1000} s).`)),
+      CALL_TIMEOUT_MS
+    )
     p.then(
       (v) => {
         clearTimeout(timer)
@@ -359,7 +361,8 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'take_screenshot',
-    description: 'Captura JPEG de la pestaña seleccionada, o solo del elemento de "uid" si se da (fullPage se ignora: siempre es el viewport).',
+    description:
+      'Captura JPEG de la pestaña seleccionada, o solo del elemento de "uid" si se da (fullPage se ignora: siempre es el viewport).',
     inputSchema: obj({ fullPage: { type: 'boolean' }, uid: { type: 'string' } }),
     kind: 'read',
     run: async (api, actor, args) => {
@@ -377,13 +380,20 @@ const TOOLS: ToolDef[] = [
           const y = Math.min(...ys)
           const width = Math.max(...xs) - x
           const height = Math.max(...ys) - y
-          return cdp.send<{ data: string }>('Page.captureScreenshot', { format: 'jpeg', quality: 70, clip: { x, y, width, height, scale: 1 } })
+          return cdp.send<{ data: string }>('Page.captureScreenshot', {
+            format: 'jpeg',
+            quality: 70,
+            clip: { x, y, width, height, scale: 1 }
+          })
         })
         return { text: `Captura JPEG del elemento (uid=${uid}).`, image: { data: result.data, mimeType: 'image/jpeg' } }
       }
       await runOnTab(api, actor, tabId, 'read', async () => undefined)
       const shot = await api.capture(tabId, 1366)
-      return { text: `Captura JPEG (${shot.width}x${shot.height} px).`, image: { data: shot.jpeg.toString('base64'), mimeType: 'image/jpeg' } }
+      return {
+        text: `Captura JPEG (${shot.width}x${shot.height} px).`,
+        image: { data: shot.jpeg.toString('base64'), mimeType: 'image/jpeg' }
+      }
     }
   },
   {
@@ -399,7 +409,9 @@ const TOOLS: ToolDef[] = [
         const ok = await api.confirmSensitive(actor, tabId, `pulsar "${target.name}" en ${hostOfTab(tab) || tab?.url || 'esta página'}`)
         if (!ok) throw new Error('El usuario no confirmó esta acción sensible: no se hace clic.')
       }
-      const { verifyMsg } = await runOnTab(api, actor, tabId, 'input', (cdp) => performClick(cdp, target.backendNodeId, { dblClick: args.dblClick === true }))
+      const { verifyMsg } = await runOnTab(api, actor, tabId, 'input', (cdp) =>
+        performClick(cdp, target.backendNodeId, { dblClick: args.dblClick === true })
+      )
       return withVerify(`Clic en "${target.name || target.role}" (uid=${args.uid}).`, verifyMsg)
     }
   },
@@ -467,7 +479,8 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'type_text',
-    description: 'Escribe texto en el elemento con foco (usa fill/click antes si hace falta). submitKey opcional (p.ej. "Enter") al terminar.',
+    description:
+      'Escribe texto en el elemento con foco (usa fill/click antes si hace falta). submitKey opcional (p.ej. "Enter") al terminar.',
     inputSchema: obj({ text: { type: 'string', maxLength: 5000 }, submitKey: { type: 'string', maxLength: 60 } }, ['text']),
     kind: 'input',
     run: async (api, actor, args) => {
@@ -502,7 +515,11 @@ const TOOLS: ToolDef[] = [
     name: 'scroll',
     description: 'Desplaza la página (o el elemento de "uid" si se da). direction: up|down|left|right; amount en px (por defecto 400).',
     inputSchema: obj(
-      { direction: { type: 'string', enum: ['up', 'down', 'left', 'right'] }, amount: { type: 'number', maximum: 5000 }, uid: { type: 'string' } },
+      {
+        direction: { type: 'string', enum: ['up', 'down', 'left', 'right'] },
+        amount: { type: 'number', maximum: 5000 },
+        uid: { type: 'string' }
+      },
       ['direction']
     ),
     kind: 'input',
@@ -524,9 +541,10 @@ const TOOLS: ToolDef[] = [
   {
     name: 'wait_for',
     description: 'Espera hasta que aparezca alguno de los textos dados en la página (innerText), o hasta el timeout (por defecto 10 s).',
-    inputSchema: obj({ text: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' } }, timeout: { type: 'integer', maximum: 30_000 } }, [
-      'text'
-    ]),
+    inputSchema: obj(
+      { text: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' } }, timeout: { type: 'integer', maximum: 30_000 } },
+      ['text']
+    ),
     kind: 'read',
     run: async (api, actor, args) => {
       const tabId = requireTab(api, actor)
@@ -548,13 +566,17 @@ const TOOLS: ToolDef[] = [
   {
     name: 'handle_dialog',
     description: 'Acepta o descarta un diálogo JavaScript (alert/confirm/prompt) pendiente en la pestaña.',
-    inputSchema: obj({ action: { type: 'string', enum: ['accept', 'dismiss'] }, promptText: { type: 'string', maxLength: 2000 } }, ['action']),
+    inputSchema: obj({ action: { type: 'string', enum: ['accept', 'dismiss'] }, promptText: { type: 'string', maxLength: 2000 } }, [
+      'action'
+    ]),
     kind: 'input',
     run: async (api, actor, args) => {
       const tabId = requireTab(api, actor)
       const accept = String(args.action) === 'accept'
       const promptText = typeof args.promptText === 'string' ? args.promptText : undefined
-      const { verifyMsg } = await runOnTab(api, actor, tabId, 'input', (cdp) => cdp.send('Page.handleJavaScriptDialog', { accept, promptText }))
+      const { verifyMsg } = await runOnTab(api, actor, tabId, 'input', (cdp) =>
+        cdp.send('Page.handleJavaScriptDialog', { accept, promptText })
+      )
       return withVerify(`Diálogo ${accept ? 'aceptado' : 'descartado'}.`, verifyMsg)
     }
   },
@@ -585,7 +607,10 @@ const TOOLS: ToolDef[] = [
       const tabId = requireTab(api, actor)
       await ensureDiagnosticListeners(api, tabId)
       const types = Array.isArray(args.types) ? new Set(args.types.map(String)) : null
-      const all = (consoleBuffers.get(tabId) ?? []).filter((e) => !types || types.has(e.type)).slice().reverse()
+      const all = (consoleBuffers.get(tabId) ?? [])
+        .filter((e) => !types || types.has(e.type))
+        .slice()
+        .reverse()
       const pageSize = Math.max(1, Math.min(200, Number(args.pageSize) || 50))
       const pageIdx = Math.max(0, Number(args.pageIdx) || 0)
       const page = all.slice(pageIdx * pageSize, pageIdx * pageSize + pageSize)
@@ -607,7 +632,10 @@ const TOOLS: ToolDef[] = [
       const tabId = requireTab(api, actor)
       await ensureDiagnosticListeners(api, tabId)
       const types = Array.isArray(args.resourceTypes) ? new Set(args.resourceTypes.map(String)) : null
-      const all = (networkBuffers.get(tabId) ?? []).filter((e) => !types || types.has(e.resourceType)).slice().reverse()
+      const all = (networkBuffers.get(tabId) ?? [])
+        .filter((e) => !types || types.has(e.resourceType))
+        .slice()
+        .reverse()
       const pageSize = Math.max(1, Math.min(200, Number(args.pageSize) || 50))
       const pageIdx = Math.max(0, Number(args.pageIdx) || 0)
       const page = all.slice(pageIdx * pageSize, pageIdx * pageSize + pageSize)
@@ -636,7 +664,8 @@ const TOOLS: ToolDef[] = [
       }
       if (body.length > 100_000) body = `${body.slice(0, 100_000)}\n… (recortado a 100 KB)`
       return (
-        `${entry.method} ${entry.url}\nEstado: ${entry.status ?? '?'} · Tipo: ${entry.mimeType ?? entry.resourceType}\n\n` + `${UNTRUSTED_PREFIX}${body}`
+        `${entry.method} ${entry.url}\nEstado: ${entry.status ?? '?'} · Tipo: ${entry.mimeType ?? entry.resourceType}\n\n` +
+        `${UNTRUSTED_PREFIX}${body}`
       )
     }
   },
@@ -690,12 +719,15 @@ const TOOLS: ToolDef[] = [
   }
 ]
 
-export const SHARED_TOOL_COUNT = TOOLS.filter((t) => !t.codeOnly).length
-export const CODE_TOOL_COUNT = TOOLS.length
-
 /** Lista de herramientas para `tools/list`, filtradas por producto (17 en Cowork, 21 en Code). */
-export function toolsForProduct(product: BrowserProduct): Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> {
-  return TOOLS.filter((t) => product === 'code' || !t.codeOnly).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }))
+export function toolsForProduct(
+  product: BrowserProduct
+): Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> {
+  return TOOLS.filter((t) => product === 'code' || !t.codeOnly).map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: t.inputSchema
+  }))
 }
 
 /**
@@ -703,7 +735,12 @@ export function toolsForProduct(product: BrowserProduct): Array<{ name: string; 
  * y devuelve el resultado en forma de contenido MCP. Nunca lanza: los errores se devuelven como
  * `isError: true` (igual que `computer/mcp-server.ts`).
  */
-export async function callBrowserTool(api: EmbeddedBrowserApi, actor: AgentActor, name: string, args: Record<string, unknown>): Promise<ToolCallResult> {
+export async function callBrowserTool(
+  api: EmbeddedBrowserApi,
+  actor: AgentActor,
+  name: string,
+  args: Record<string, unknown>
+): Promise<ToolCallResult> {
   const tool = TOOLS.find((t) => t.name === name)
   if (!tool) return { content: [{ type: 'text', text: `Herramienta desconocida: ${name}` }], isError: true }
   if (tool.codeOnly && actor.product !== 'code') {

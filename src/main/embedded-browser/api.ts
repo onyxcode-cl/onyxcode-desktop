@@ -77,7 +77,7 @@ export type AllowedCdpMethod = (typeof ALLOWED_CDP)[number]
 /** Sesión CDP de una pestaña (`webContents.debugger`). Ver `cdp.ts`. */
 export interface CdpSession {
   send<T = unknown>(method: AllowedCdpMethod, params?: object, timeoutMs?: number): Promise<T>
-  on(event: string, fn: (params: any) => void): () => void
+  on<T = unknown>(event: string, fn: (params: T) => void): () => void
   /** Mundo aislado del frame principal (crea uno si no existe todavía, vía `Page.createIsolatedWorld`). */
   isolatedContext(): Promise<number>
 }

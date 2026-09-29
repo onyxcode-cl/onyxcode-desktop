@@ -90,7 +90,11 @@ export function AutoModeChip(): React.JSX.Element | null {
               <span className="block font-medium">Activarlo en esta carpeta</span>
               <span className="block text-xs text-muted">Vale para todas las tareas de esta carpeta.</span>
             </span>
-            {busy === 'folder' ? <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" /> : folderOn && <Check size={15} className="mt-0.5 shrink-0 text-accent" />}
+            {busy === 'folder' ? (
+              <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" />
+            ) : (
+              folderOn && <Check size={15} className="mt-0.5 shrink-0 text-accent" />
+            )}
           </button>
           <button
             type="button"
@@ -105,7 +109,11 @@ export function AutoModeChip(): React.JSX.Element | null {
                 {activeTaskId ? 'Vale mientras exista esta tarea.' : 'Abre o empieza una tarea primero.'}
               </span>
             </span>
-            {busy === 'task' ? <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" /> : taskOn && <Check size={15} className="mt-0.5 shrink-0 text-accent" />}
+            {busy === 'task' ? (
+              <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" />
+            ) : (
+              taskOn && <Check size={15} className="mt-0.5 shrink-0 text-accent" />
+            )}
           </button>
         </div>
       )}

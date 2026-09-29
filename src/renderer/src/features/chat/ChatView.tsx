@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
-import { Composer } from '../../components/Composer'
+import { ChatComposer } from './ChatComposer'
 import { confirmDialog } from '../../components/ConfirmDialog'
 import { LogoMark } from '../../components/Logo'
-import { MessageList } from '../../components/MessageList'
+import { ChatMessageList } from './ChatMessageList'
 import { ModelPicker } from '../../components/ModelPicker'
+import { TranscriptLoader } from '../../components/TranscriptLoader'
 import { UsageMeter } from '../../components/UsageMeter'
 import { errorMessage } from '../../lib/opencode'
 import { onStreamReconnect, useServer } from '../../stores/server'
@@ -76,7 +77,7 @@ export function ChatView(): React.JSX.Element {
     </div>
   )
   const composer = (
-    <Composer
+    <ChatComposer
       onSend={send}
       onAbort={() => activeId && void abortChat(activeId)}
       busy={busy}
@@ -103,9 +104,7 @@ export function ChatView(): React.JSX.Element {
               <LogoMark size={44} />
             </div>
             <div>
-              <h1 className="font-display text-[32px] leading-tight font-semibold tracking-[-0.02em]">
-                {greeting()}
-              </h1>
+              <h1 className="font-display text-[32px] leading-tight font-semibold tracking-[-0.02em]">{greeting()}</h1>
               <p className="mt-1.5 text-[15px] text-muted">¿En qué te ayudo hoy?</p>
             </div>
           </div>
@@ -134,7 +133,8 @@ export function ChatView(): React.JSX.Element {
       <header className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur">
         <span className="truncate text-[13.5px] font-medium">{session?.title || 'Nueva conversación'}</span>
       </header>
-      <MessageList entries={entries} busy={busy} error={error} onRetry={(text) => void send(text)} />
+      <TranscriptLoader sessionId={activeId} />
+      <ChatMessageList entries={entries} busy={busy} error={error} onRetry={(text) => void send(text)} />
       {composer}
     </div>
   )

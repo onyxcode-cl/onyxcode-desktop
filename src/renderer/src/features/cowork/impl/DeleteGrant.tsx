@@ -39,8 +39,8 @@ export function DeleteGrantToggle(): React.JSX.Element | null {
           <p className="text-sm font-medium">{COWORK_TERMS.deleteGrant}</p>
           <p className="mt-0.5 text-xs text-subtle">
             Si lo activas, el agente podrá borrar, mover y renombrar archivos dentro de esta carpeta (comandos como{' '}
-            <code className="font-mono">rm</code> o <code className="font-mono">mv</code>). Cambiar esto reinicia el servidor sandboxeado de la tarea: la tarea en curso se cerrará y tendrás que reabrirla y pedirle
-            que continúe.
+            <code className="font-mono">rm</code> o <code className="font-mono">mv</code>). Cambiar esto reinicia el servidor sandboxeado de
+            la tarea: la tarea en curso se cerrará y tendrás que reabrirla y pedirle que continúe.
           </p>
         </div>
         <button
@@ -54,9 +54,7 @@ export function DeleteGrantToggle(): React.JSX.Element | null {
             allowed ? 'bg-accent' : 'bg-border-strong'
           }`}
         >
-          {busy && (
-            <Loader2 size={12} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin text-white/80" />
-          )}
+          {busy && <Loader2 size={12} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin text-white/80" />}
           <span
             className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
               allowed ? 'translate-x-4.5' : 'translate-x-0.5'
@@ -109,9 +107,9 @@ export function DeleteGrantHintCard({ entries }: { entries: MessageEntry[] }): R
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">El agente intentó borrar, mover o renombrar un archivo y no pudo</p>
           <p className="mt-0.5 text-xs text-muted">
-            Por seguridad, esta carpeta no permite borrar, mover ni renombrar archivos todavía. Si lo activas, el servidor de la tarea
-            se reiniciará y tendrás que reabrir esta tarea y pedirle al agente que continúe. Si prefieres no hacerlo, pídele una
-            copia ordenada sin tocar los originales.
+            Por seguridad, esta carpeta no permite borrar, mover ni renombrar archivos todavía. Si lo activas, el servidor de la tarea se
+            reiniciará y tendrás que reabrir esta tarea y pedirle al agente que continúe. Si prefieres no hacerlo, pídele una copia ordenada
+            sin tocar los originales.
           </p>
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Blocks, Compass, Cpu, Globe, Info, Keyboard, MonitorCog, Settings2, SlidersHorizontal, Users, X, Zap } from 'lucide-react'
+import {
+  BarChart3,
+  Blocks,
+  Compass,
+  Cpu,
+  Globe,
+  Info,
+  Keyboard,
+  MonitorCog,
+  Settings2,
+  SlidersHorizontal,
+  Users,
+  X,
+  Zap
+} from 'lucide-react'
+import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
@@ -16,17 +31,7 @@ import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
 export type SettingsSectionId =
-  | 'general'
-  | 'models'
-  | 'mcp'
-  | 'cowork'
-  | 'network'
-  | 'computer'
-  | 'automode'
-  | 'browser'
-  | 'usage'
-  | 'shortcuts'
-  | 'about'
+  'general' | 'models' | 'mcp' | 'cowork' | 'network' | 'computer' | 'automode' | 'browser' | 'usage' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
@@ -55,7 +60,15 @@ function initialSection(): SettingsSectionId {
 }
 
 /** Vista de Ajustes: navegación lateral por secciones. */
-export function SettingsView({ initial }: { initial?: SettingsSectionId } = {}): React.JSX.Element {
+export function SettingsView(props: { initial?: SettingsSectionId } = {}): React.JSX.Element {
+  return (
+    <ErrorBoundary label="Ajustes">
+      <SettingsPanel {...props} />
+    </ErrorBoundary>
+  )
+}
+
+function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React.JSX.Element {
   const close = useUi((s) => s.openSettings)
   const [section, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
 

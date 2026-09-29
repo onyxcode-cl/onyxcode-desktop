@@ -42,11 +42,7 @@ function useAssignedOwner(): BrowserOwner | null {
 function BrowserWindowApp(): React.JSX.Element {
   const owner = useAssignedOwner()
   if (!owner) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bg text-sm text-subtle">
-        Abriendo el navegador…
-      </div>
-    )
+    return <div className="flex h-screen w-screen items-center justify-center bg-bg text-sm text-subtle">Abriendo el navegador…</div>
   }
   const product: BrowserProduct = owner.kind
   return <BrowserPanel owner={owner} product={product} visible variant="popout" className="h-screen w-screen" />

@@ -134,9 +134,7 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
   handle('cowork:prefs:get', () => prefs.get())
   handle('cowork:prefs:set', (patch) => prefs.set(patch))
   handle('cowork:storage:report', () => report())
-  handle('cowork:storage:clean', ({ key, scope }) =>
-    storageClean(storageEnv(), folderPaths(), cowork.liveServers(), key, scope)
-  )
+  handle('cowork:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), cowork.liveServers(), key, scope))
   handle('cowork:storage:cleanScreenshots', () => {
     computer.cleanScreenshots()
     return report()

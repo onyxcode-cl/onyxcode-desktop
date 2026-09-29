@@ -336,7 +336,7 @@ y configuración remota del servidor, con precedencia definida.
 
 ## Lecciones para OnyxCode
 
-Estado actual de OnyxCode (según `src/main/**`, `src/preload/**`, `helper.swift`, AUDIT.md, PLAN.md):
+Estado actual de OnyxCode (según `src/main/**`, `src/preload/**`, `helper.swift`, AUDIT.md, docs/archive/PLAN.md):
 sidecar `opencode serve` por HTTP local con Basic auth; Cowork con Seatbelt `(allow default)` + denegaciones;
 computer use con `cu-helper` Swift (CGEvent) + `screencapture` + MCP propio lanzado con
 `ELECTRON_RUN_AS_NODE`; kill-switch en main ya corregido; IPC con lista blanca de canales en preload

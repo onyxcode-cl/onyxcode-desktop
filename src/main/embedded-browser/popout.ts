@@ -58,11 +58,6 @@ export function showPopoutInactive(): BrowserWindow {
   return w
 }
 
-export function isPopoutVisible(): boolean {
-  const w = popoutWindow()
-  return !!w && w.isVisible() && !w.isMinimized()
-}
-
 export function closePopout(): void {
   const w = popoutWindow()
   if (w) w.close()

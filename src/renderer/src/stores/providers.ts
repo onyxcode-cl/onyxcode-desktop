@@ -11,7 +11,12 @@ interface ProvidersState {
   load: (client: OpencodeClient, force?: boolean) => Promise<void>
 }
 
-const PREFERRED_PROVIDER = 'opencode-go'
+export const PREFERRED_PROVIDER = 'opencode-go'
+
+/** Proveedor preferido primero; el resto por nombre. */
+export function sortProviders(list: Provider[]): Provider[] {
+  return [...list].sort((a, b) => (a.id === PREFERRED_PROVIDER ? -1 : b.id === PREFERRED_PROVIDER ? 1 : a.name.localeCompare(b.name, 'es')))
+}
 
 export const useProviders = create<ProvidersState>((set, get) => ({
   providers: [],
@@ -24,9 +29,7 @@ export const useProviders = create<ProvidersState>((set, get) => ({
     try {
       const res = await client.config.providers()
       if (res.error || !res.data) throw new Error(errorMessage(res.error))
-      const providers = [...res.data.providers].sort((a, b) =>
-        a.id === PREFERRED_PROVIDER ? -1 : b.id === PREFERRED_PROVIDER ? 1 : a.name.localeCompare(b.name)
-      )
+      const providers = sortProviders(res.data.providers)
       set({ providers, defaults: res.data.default, loading: false })
     } catch (err) {
       set({ error: errorMessage(err), loading: false })

@@ -5,13 +5,12 @@
  */
 import type { CdpSession } from './api'
 import { parseKeyCombo } from './keys'
+import { sleep } from '../util/async'
 
 export interface Point {
   x: number
   y: number
 }
-
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 /** `DOM.scrollIntoViewIfNeeded` + `DOM.getContentQuads` → centro del primer cuadrilátero visible. */
 export async function resolveClickPoint(cdp: CdpSession, backendNodeId: number): Promise<Point> {
@@ -138,7 +137,11 @@ export async function describeAttrs(cdp: CdpSession, backendNodeId: number): Pro
     const k = flat[i]?.toLowerCase()
     if (k) attrs[k] = flat[i + 1] ?? ''
   }
-  return { tag: String(node?.nodeName ?? '').toLowerCase(), type: attrs.type?.toLowerCase(), autocomplete: attrs.autocomplete?.toLowerCase() }
+  return {
+    tag: String(node?.nodeName ?? '').toLowerCase(),
+    type: attrs.type?.toLowerCase(),
+    autocomplete: attrs.autocomplete?.toLowerCase()
+  }
 }
 
 /** `type=password` o `autocomplete` de tarjeta/OTP/contraseña (B.6 punto 5). */

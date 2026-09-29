@@ -1,36 +1,21 @@
-import type { IpcRenderer, IpcRendererEvent } from 'electron'
 import {
   BROWSER_EVENT_CHANNELS,
   BROWSER_INVOKE_CHANNELS,
   type BrowserApi,
   type BrowserEventChannel,
-  type BrowserInvokeChannel,
-  type IpcBrowserResult
+  type BrowserInvokeChannel
 } from '@shared/ipc-browser'
+import type { IpcRenderer } from 'electron'
+import { makeBridge } from './bridge'
 
-const invokeAllowed = new Set<string>(BROWSER_INVOKE_CHANNELS)
-const eventAllowed = new Set<string>(BROWSER_EVENT_CHANNELS)
-
-/** Construye `window.api.browser`. Uso en preload/index.ts y preload/browser-host.ts. */
+/** Construye `window.api.browser`. Solo para preload/index.ts (browser-host.ts es autocontenido). */
 export function buildBrowserApi(ipcRenderer: IpcRenderer): BrowserApi {
-  const invoke = async (channel: BrowserInvokeChannel, ...args: unknown[]): Promise<unknown> => {
-    if (!invokeAllowed.has(channel)) throw new Error(`Canal IPC no permitido: ${channel}`)
-    const result = (await ipcRenderer.invoke(channel, ...args)) as IpcBrowserResult<unknown>
-    if (!result.ok) throw new Error(result.error)
-    return result.data
-  }
-
-  const on = (channel: BrowserEventChannel, listener: (payload: unknown) => void): (() => void) => {
-    if (!eventAllowed.has(channel)) throw new Error(`Evento IPC no permitido: ${channel}`)
-    const wrapped = (_e: IpcRendererEvent, payload: unknown): void => listener(payload)
-    ipcRenderer.on(channel, wrapped)
-    return () => {
-      ipcRenderer.removeListener(channel, wrapped)
-    }
-  }
-
+  const bridge = makeBridge<BrowserInvokeChannel, BrowserEventChannel>(ipcRenderer, {
+    invoke: BROWSER_INVOKE_CHANNELS,
+    events: BROWSER_EVENT_CHANNELS
+  })
   return {
-    invoke: invoke as BrowserApi['invoke'],
-    on: on as BrowserApi['on']
+    invoke: bridge.invokeUnwrap as BrowserApi['invoke'],
+    on: bridge.on as BrowserApi['on']
   }
 }

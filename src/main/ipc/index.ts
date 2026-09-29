@@ -2,11 +2,8 @@ import type { IpcMain } from 'electron'
 import type { OpencodeServer } from '../opencode/server'
 import type { MainWindowDeps } from '../extras/windows'
 import { registerAppHandlers } from './app'
-import { registerDialogHandlers } from './dialog'
-import { registerGitHandlers } from './git'
 import { registerNotifyHandlers } from './notify'
 import { registerOpencodeHandlers } from './opencode'
-import { registerPtyHandlers } from './pty'
 import { registerSettingsHandlers } from './settings'
 
 export interface IpcContext extends MainWindowDeps {
@@ -19,8 +16,5 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerAppHandlers(ipcMain, ctx)
   registerOpencodeHandlers(ipcMain, ctx.server)
   registerSettingsHandlers(ipcMain)
-  registerDialogHandlers(ipcMain)
-  registerPtyHandlers(ipcMain)
-  registerGitHandlers(ipcMain)
   registerNotifyHandlers(ipcMain, ctx)
 }

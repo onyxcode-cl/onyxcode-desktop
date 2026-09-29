@@ -7,24 +7,13 @@
  * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
-import type {
-  AppInfo,
-  GitStatus,
-  GitWorktree,
-  NotifyTarget,
-  OpencodeConnection,
-  PtyCreateRequest,
-  PtyDataEvent,
-  PtyExitEvent,
-  PtyInfo,
-  Routine,
-  RoutineRun,
-  ServerStatus,
-  Settings
-} from './types'
+import type { AppInfo, NotifyTarget, OpencodeConnection, ServerStatus, Settings } from './types'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
-export type IpcErrorCode = 'NOT_IMPLEMENTED' | 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
+export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
+
+/** Respuesta sin código de error (canales `extras:`/`mcp:`/`browser:`). */
+export type IpcPlainResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
 /** Todas las respuestas IPC vienen envueltas; nunca se lanza a través del puente. */
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; code: IpcErrorCode; error: string }
@@ -50,35 +39,12 @@ export interface IpcInvokeContract {
   'settings:get': { req: void; res: Settings }
   'settings:set': { req: Partial<Settings>; res: Settings }
   'settings:addRecentFolder': { req: { path: string }; res: Settings }
-
-  // dialog
-  'dialog:openFolder': { req: { title?: string; defaultPath?: string }; res: string | null }
-
-  // pty (fase 2)
-  'pty:create': { req: PtyCreateRequest; res: PtyInfo }
-  'pty:write': { req: { id: string; data: string }; res: void }
-  'pty:resize': { req: { id: string; cols: number; rows: number }; res: void }
-  'pty:kill': { req: { id: string }; res: void }
-
-  // git (fase 2)
-  'git:status': { req: { cwd: string }; res: GitStatus }
-  'git:diff': { req: { cwd: string; path?: string; staged?: boolean }; res: string }
-  'git:worktrees': { req: { cwd: string }; res: GitWorktree[] }
-
-  // scheduler / rutinas (fase 3)
-  'scheduler:list': { req: void; res: Routine[] }
-  'scheduler:save': { req: Routine; res: Routine }
-  'scheduler:delete': { req: { id: string }; res: void }
-  'scheduler:runNow': { req: { id: string }; res: RoutineRun }
 }
 
 export interface IpcEventContract {
   'opencode:status': ServerStatus
   'opencode:connection': OpencodeConnection
   'settings:changed': Settings
-  'pty:data': PtyDataEvent
-  'pty:exit': PtyExitEvent
-  'scheduler:run': RoutineRun
   /** Clic en una notificación (o "abrir" desde el Dock): el renderer cambia de modo y selecciona. */
   'app:openTarget': NotifyTarget
 }
@@ -99,28 +65,13 @@ export const IPC_INVOKE_CHANNELS = [
   'opencode:restart',
   'settings:get',
   'settings:set',
-  'settings:addRecentFolder',
-  'dialog:openFolder',
-  'pty:create',
-  'pty:write',
-  'pty:resize',
-  'pty:kill',
-  'git:status',
-  'git:diff',
-  'git:worktrees',
-  'scheduler:list',
-  'scheduler:save',
-  'scheduler:delete',
-  'scheduler:runNow'
+  'settings:addRecentFolder'
 ] as const satisfies readonly IpcInvokeChannel[]
 
 export const IPC_EVENT_CHANNELS = [
   'opencode:status',
   'opencode:connection',
   'settings:changed',
-  'pty:data',
-  'pty:exit',
-  'scheduler:run',
   'app:openTarget'
 ] as const satisfies readonly IpcEventChannel[]
 

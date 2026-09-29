@@ -16,7 +16,8 @@ import { EventEmitter } from 'node:events'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
+import { isInside } from '../util/paths'
 import {
   FULL_ACCESS_NOT_GRANTED,
   type ComputerUseInfo,
@@ -30,7 +31,6 @@ import {
   type LinkedFolder,
   type TrustedFolder
 } from '@shared/ipc-cowork'
-import { browserService } from '../browser/service'
 import { embeddedBrowser } from '../embedded-browser/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { killTree } from '../opencode/pids'
@@ -165,10 +165,6 @@ export function forbiddenFolderReason(folder: string): string | null {
   })
 }
 
-function isInside(p: string, dir: string): boolean {
-  return p === dir || p.startsWith(dir + sep)
-}
-
 /** Puerto de un bloque MCP `remote` (`{type:'remote', url:'http://127.0.0.1:<puerto>/mcp', ...}`), o null. */
 function portOfMcpConfig(cfg: Record<string, unknown> | null): number | null {
   const url = cfg && typeof cfg.url === 'string' ? cfg.url : ''
@@ -228,9 +224,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
         if (Array.isArray(raw.folders)) {
-          data.folders = raw.folders.filter(
-            (f): f is CoworkFolder => !!f && typeof f.path === 'string' && typeof f.approvedAt === 'number'
-          )
+          data.folders = raw.folders.filter((f): f is CoworkFolder => !!f && typeof f.path === 'string' && typeof f.approvedAt === 'number')
         }
         if (Array.isArray(raw.fullAccess)) {
           data.fullAccess = raw.fullAccess.filter(
@@ -438,11 +432,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   }
 
   /** Quita una carpeta vinculada del espacio. `restart` igual que en `linkFolder`. */
-  async unlinkFolder(
-    folder: string,
-    path: string,
-    opts: { restart?: boolean } = {}
-  ): Promise<CoworkFolderSet & { restarted: boolean }> {
+  async unlinkFolder(folder: string, path: string, opts: { restart?: boolean } = {}): Promise<CoworkFolderSet & { restarted: boolean }> {
     const f = this.requireApproved(folder)
     const p = normalizeFolder(path)
     const data = this.load()
@@ -523,10 +513,6 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       entry.lastUsedAt = Date.now()
       this.save()
     }
-  }
-
-  listServers(): CoworkServerInfo[] {
-    return [...this.servers.values()].map((e) => e.info)
   }
 
   /** Servidores de acceso total vivos, con sus credenciales (kill-switch del control del Mac). */
@@ -638,9 +624,8 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
         externalDirectory[e.path] = 'allow'
         externalDirectory[`${e.path}/*`] = 'allow'
       }
-      // Navegador integrado en Sandbox (Lote D, novedad B.7: antes no había navegador aquí). Sin
-      // "Chrome aparte" (solo existe en Control total, B.11). `browser_*` queda con el permiso por
-      // defecto ('ask'), como cualquier otra herramienta de acción del sandbox: sin `deny` explícito.
+      // Navegador integrado en Sandbox (Lote D, novedad B.7: antes no había navegador aquí).
+      // `browser_*` queda con el permiso por defecto ('ask'), como cualquier otra herramienta de acción del sandbox: sin `deny` explícito.
       const browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: true }).catch(() => null)
       browserMcpPort = portOfMcpConfig(browserMcp)
       // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox.
@@ -655,12 +640,8 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     } else {
       const mcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
       this.fullAccessMcp.set(key, !!mcp)
-      // Motor de navegador en Control total (Lote D, B.11): Chrome aparte del Lote C si el usuario
-      // lo activó ("Usar Chrome aparte") y está disponible; si no, el navegador integrado. Nunca los
-      // dos a la vez: un único `mcp.browser` por servidor, con los mismos nombres de herramienta.
-      const browserMcp = browserService.state().enabled
-        ? await browserService.mcpConfig(folder).catch(() => null)
-        : await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: false }).catch(() => null)
+      // Navegador en Control total (Lote D, B.11): el navegador integrado.
+      const browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: false }).catch(() => null)
       const mcpBlock: Record<string, unknown> = {}
       if (mcp) mcpBlock.computer = mcp
       if (browserMcp) mcpBlock.browser = browserMcp
@@ -750,9 +731,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
             ],
         allowDelete,
         extraFolders: fullAccess ? undefined : extras,
-        onEgressBlocked: fullAccess
-          ? undefined
-          : (ev) => this.emit('networkBlocked', { folder, ...ev }),
+        onEgressBlocked: fullAccess ? undefined : (ev) => this.emit('networkBlocked', { folder, ...ev }),
         onExit: (code) => {
           const e = this.servers.get(key)
           if (!e) return
@@ -779,9 +758,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
           version: handle.version,
           error: undefined
         })
-        console.log(
-          `[cowork] servidor listo ${handle.baseUrl} sandbox=${handle.sandboxed} fullAccess=${fullAccess} (${folder})`
-        )
+        console.log(`[cowork] servidor listo ${handle.baseUrl} sandbox=${handle.sandboxed} fullAccess=${fullAccess} (${folder})`)
         return handle
       },
       (err: unknown) => {
@@ -813,9 +790,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   }
 
   async stopAll(): Promise<void> {
-    await Promise.all(
-      [...this.servers.values()].map((e) => this.stopOne(e.info.folder, !!e.info.fullAccess).catch(() => undefined))
-    )
+    await Promise.all([...this.servers.values()].map((e) => this.stopOne(e.info.folder, !!e.info.fullAccess).catch(() => undefined)))
   }
 
   /** Mata todo de forma síncrona (process.on('exit')). */

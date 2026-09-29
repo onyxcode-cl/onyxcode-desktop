@@ -21,7 +21,8 @@ import {
   X
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
-import { MAIN_SOURCE, selectSessionsForDirectory, useSessions } from '../../../stores/sessions'
+import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
+import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { archiveTask, deleteTask, moveTaskToGroup, openTask, renameTask, restoreTask } from './actions'
 import { MIN_QUERY_LENGTH, useTranscriptSearch, type TranscriptHit } from './search'
 import { requestScrollToPart } from './scroll'
@@ -35,12 +36,27 @@ import {
   type TaskGroup
 } from './SidebarSections'
 import { isPinned, isPlanPending, isUsingComputer, markUnread, togglePinned, useCowork } from './store'
-import { isArchivedSession, permissionBelongsTo, relTime, sessionBelongsTo, taskStatus, TASK_STATUS_LABEL, type TaskStatus } from './util'
+import {
+  evictedStatusOf,
+  isArchivedSession,
+  permissionBelongsTo,
+  relTime,
+  rememberEvictedStatus,
+  sessionBelongsTo,
+  taskStatus,
+  TASK_STATUS_LABEL,
+  type TaskStatus
+} from './util'
 
 // `StatusIcon` vive en SidebarSections (evita un ciclo de imports); se reexporta para quien lo importaba de aquí.
 export { StatusIcon }
 
 type GroupMode = 'date' | 'group'
+// F7-B35: al desalojar el historial de una tarea (LRU) se conserva su estado terminal (error) para la lista.
+useSessions.getState().addEvictionListener((evicted) => {
+  for (const { id, entries } of evicted) rememberEvictedStatus(id, entries)
+})
+
 const GROUP_MODE_KEY = 'cowork.sidebarGroupMode'
 
 function readGroupMode(): GroupMode {
@@ -157,15 +173,12 @@ function TaskMenu({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={onMenuKey}
         >
-          {!archived &&
-            item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? 'Desfijar' : 'Fijar', () => togglePinned(id))}
+          {!archived && item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? 'Desfijar' : 'Fijar', () => togglePinned(id))}
           {!archived &&
             item(<Pencil size={13} />, 'Renombrar…', () => {
-              void promptDialog({ title: 'Nuevo nombre de la tarea', defaultValue: title, confirmLabel: 'Renombrar' }).then(
-                (next) => {
-                  if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
-                }
-              )
+              void promptDialog({ title: 'Nuevo nombre de la tarea', defaultValue: title, confirmLabel: 'Renombrar' }).then((next) => {
+                if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
+              })
             })}
           {!archived && item(<FolderTree size={13} />, 'Mover a grupo…', moveToGroup)}
           {!archived && group && item(<X size={13} />, 'Quitar del grupo', () => void moveTaskToGroup(id, null).catch(() => undefined))}
@@ -233,7 +246,11 @@ function TaskRow({
         <div className={`truncate text-[11px] ${statusTextClass(status)}`}>
           {status === 'archived'
             ? `Archivada ${relTime(task.time.archived ?? task.time.updated)}`
-            : status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question' || status === 'plan_ready'
+            : status === 'running' ||
+                status === 'using_computer' ||
+                status === 'waiting' ||
+                status === 'question' ||
+                status === 'plan_ready'
               ? TASK_STATUS_LABEL[status]
               : relTime(task.time.updated)}
           {group && !archivedView && <span className="text-subtle"> · {group}</span>}
@@ -254,15 +271,23 @@ function TaskRow({
           Restaurar
         </button>
       )}
-      {!busy && (
-        <TaskMenu id={task.id} title={task.title || ''} archived={archivedView} group={group} knownGroups={knownGroups} />
-      )}
+      {!busy && <TaskMenu id={task.id} title={task.title || ''} archived={archivedView} group={group} knownGroups={knownGroups} />}
     </div>
   )
 }
 
 /** Coincidencias dentro de las conversaciones (con fragmento). */
-function TranscriptResults({ hits, loading, scanned, total }: { hits: TranscriptHit[]; loading: boolean; scanned: number; total: number }): React.JSX.Element {
+function TranscriptResults({
+  hits,
+  loading,
+  scanned,
+  total
+}: {
+  hits: TranscriptHit[]
+  loading: boolean
+  scanned: number
+  total: number
+}): React.JSX.Element {
   const open = (h: TranscriptHit): void => {
     void openTask(h.sessionId).then(() => {
       // Deja que la conversación se pinte antes de pedir el scroll.
@@ -283,11 +308,7 @@ function TranscriptResults({ hits, loading, scanned, total }: { hits: Transcript
       <ul className="space-y-0.5">
         {hits.map((h) => (
           <li key={`${h.sessionId}:${h.partId}`}>
-            <button
-              type="button"
-              className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-hover"
-              onClick={() => open(h)}
-            >
+            <button type="button" className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-hover" onClick={() => open(h)}>
               <div className="flex items-baseline gap-2">
                 <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{h.title || 'Tarea sin título'}</span>
                 <span className="shrink-0 text-[10.5px] text-subtle">{relTime(h.at)}</span>
@@ -315,6 +336,8 @@ export function TaskList(): React.JSX.Element {
   useCowork((s) => s.lastAction)
   useCowork((s) => s.accessRequest)
   const sessions = useSessions((s) => s.sessions)
+  const sessionSource = useSessions((s) => s.sessionSource)
+  const directorySource = useSessions((s) => s.directorySource)
   const status = useSessions((s) => s.status)
   const errors = useSessions((s) => s.errors)
   const messages = useSessions((s) => s.messages)
@@ -338,13 +361,15 @@ export function TaskList(): React.JSX.Element {
   }
 
   // Tareas de la carpeta: activas y archivadas (el selector del store oculta las archivadas).
-  const liveTasks = useMemo(() => (folder ? selectSessionsForDirectory(sessions, folder) : []), [sessions, folder])
+  const liveTasks = useMemo(
+    () => (folder ? selectSessionsForDirectory({ sessions, sessionSource, directorySource }, folder) : []),
+    [sessions, sessionSource, directorySource, folder]
+  )
   const archivedTasks = useMemo(() => {
     if (!folder) return []
-    const { sessionSource, directorySource } = useSessions.getState()
     const viewSource = directorySource[folder] ?? MAIN_SOURCE
     return archivedSessionsForDirectory(sessions, folder, viewSource, (id) => sessionSource[id] ?? MAIN_SOURCE)
-  }, [sessions, folder])
+  }, [sessions, sessionSource, directorySource, folder])
 
   const source = showArchived ? archivedTasks : liveTasks
   const q = query.trim()
@@ -371,6 +396,7 @@ export function TaskList(): React.JSX.Element {
       hasQuestion: qs.some((x) => sessionBelongsTo(x.sessionID, t.id, sessions)),
       error: errors[t.id],
       entries: messages[t.id],
+      evicted: evictedStatusOf(t.id),
       usingComputer: isUsingComputer(t.id),
       planPending: isPlanPending(t.id),
       archived: isArchivedSession(t)

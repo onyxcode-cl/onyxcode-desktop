@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronRight, File, Folder, FolderOpen, Loader2, RefreshCw, 
 import { IconButton } from '../../../../components/IconButton'
 import { errorMessage, useClient, sdkData } from '../client'
 import { DiffView, highlightLine, languageFor } from '../DiffView'
-import { useCode } from '../store'
+import { useVisibleFsVersion } from '../useVisibleFsVersion'
 
 type Listing = Record<string, FileNode[] | 'loading' | { error: string }>
 
@@ -16,7 +16,7 @@ function sortNodes(nodes: FileNode[]): FileNode[] {
 
 function FileViewer({ directory, path, onClose }: { directory: string; path: string; onClose: () => void }): React.JSX.Element {
   const client = useClient()
-  const fsVersion = useCode((s) => s.fsVersion)
+  const fsVersion = useVisibleFsVersion()
   const [content, setContent] = useState<FileContent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showDiff, setShowDiff] = useState(false)

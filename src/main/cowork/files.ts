@@ -9,8 +9,26 @@ import { basename, extname, join, relative } from 'node:path'
 import type { CoworkDeliverable, CoworkFilePreview } from '@shared/ipc-cowork'
 
 const TEXT_EXT = new Set([
-  '.md', '.markdown', '.txt', '.csv', '.tsv', '.json', '.html', '.htm', '.xml', '.yaml', '.yml', '.log',
-  '.py', '.js', '.ts', '.sh', '.css', '.ini', '.toml', '.svg'
+  '.md',
+  '.markdown',
+  '.txt',
+  '.csv',
+  '.tsv',
+  '.json',
+  '.html',
+  '.htm',
+  '.xml',
+  '.yaml',
+  '.yml',
+  '.log',
+  '.py',
+  '.js',
+  '.ts',
+  '.sh',
+  '.css',
+  '.ini',
+  '.toml',
+  '.svg'
 ])
 /** Documentos de texto enriquecido: se previsualizan convertidos a texto con `textutil`. */
 const TEXTUTIL_EXT = new Set(['.docx', '.doc', '.rtf', '.odt'])

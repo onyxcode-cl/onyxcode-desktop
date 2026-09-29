@@ -265,9 +265,8 @@ herramientas se llaman igual en ambos casos) ni lo necesitas saber: trátalo igu
 - Como con cualquier app, **incluye la navegación en tu plan** (paso 5 del flujo de arriba): si vas
   a usar el navegador, dilo como parte del plan que apruebas con `computer_request_access` (no
   necesita `apps`/`levels` propios: es una herramienta MCP más, sujeta al mismo plan aprobado).
-- Si el navegador no aparece entre tus herramientas, es que está desactivado (Ajustes › Navegador)
-  o, si el usuario usa "Chrome aparte", que Chrome/el runtime no están disponibles: dilo y sigue
-  con lo que puedas (terminal, `webfetch`/`websearch`).
+- Si el navegador no aparece entre tus herramientas, es que está desactivado (Ajustes › Navegador):
+  dilo y sigue con lo que puedas (terminal, `webfetch`/`websearch`).
 
 ## Acceso por app (obligatorio, no lo puedes saltar)
 

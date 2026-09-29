@@ -7,8 +7,6 @@
  */
 import type { ModelRef } from './types'
 
-export type IpcExtrasResult<T> = { ok: true; data: T } | { ok: false; error: string }
-
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
 export type ModelMode = 'chat' | 'code' | 'cowork'
 

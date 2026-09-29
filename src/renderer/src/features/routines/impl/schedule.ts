@@ -1,7 +1,20 @@
 /** Utilidades de programación para la UI de Rutinas: textos en español, presets y cuenta atrás. */
 import { WEEKDAYS_ES, type RoutineSchedule } from '@shared/ipc-cowork'
 
-const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const MONTHS_ES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre'
+]
 const DOW_NAMES: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
 function pad(n: number): string {

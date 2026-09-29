@@ -42,10 +42,7 @@ export function permissionMatches(rulePermission: string, permission: string): b
  * casan con alguna regla del mismo permiso; en cualquier otro caso (incluido sin reglas o sin
  * patrones) devuelve 'no-match'.
  */
-export function decideUnattended(
-  p: { permission: string; patterns: string[] },
-  rules: RoutineAllowRule[]
-): 'allow' | 'no-match' {
+export function decideUnattended(p: { permission: string; patterns: string[] }, rules: RoutineAllowRule[]): 'allow' | 'no-match' {
   if (!rules || rules.length === 0) return 'no-match'
   if (!p.patterns || p.patterns.length === 0) return 'no-match'
   const same = rules.filter((r) => r && typeof r.permission === 'string' && permissionMatches(r.permission, p.permission))

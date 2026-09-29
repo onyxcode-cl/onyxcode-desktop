@@ -102,14 +102,12 @@ export function RecordSkillButton(): React.JSX.Element {
             </p>
             <label className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
               <span className="flex items-center gap-2 text-sm font-medium">
-                {mic ? <Mic size={15} className="text-accent" /> : <MicOff size={15} className="text-muted" />} Narrar con el
-                micrófono
+                {mic ? <Mic size={15} className="text-accent" /> : <MicOff size={15} className="text-muted" />} Narrar con el micrófono
               </span>
               <MiniToggle checked={mic} onChange={() => setMic((v) => !v)} label="Narrar con el micrófono" />
             </label>
             <p className="mt-2 text-xs text-subtle">
-              macOS puede pedir permiso de Micrófono y de Reconocimiento de voz la primera vez. Si algo falla, la
-              grabación sigue sin audio.
+              macOS puede pedir permiso de Micrófono y de Reconocimiento de voz la primera vez. Si algo falla, la grabación sigue sin audio.
             </p>
             {error && <p className="mt-3 text-xs text-danger">{error}</p>}
             <div className="mt-5 flex justify-end gap-2">
@@ -205,7 +203,11 @@ export function RecordSkillReview(): React.JSX.Element | null {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <p className="text-xs text-muted">
             {rec.steps.length} paso{rec.steps.length === 1 ? '' : 's'} · {Math.max(0, Math.round(rec.durationMs / 1000))}s
-            {rec.mic === 'recorded' ? ' · con narración' : rec.mic === 'denied' ? ' · sin micrófono (se denegó el permiso)' : ' · sin micrófono'}
+            {rec.mic === 'recorded'
+              ? ' · con narración'
+              : rec.mic === 'denied'
+                ? ' · sin micrófono (se denegó el permiso)'
+                : ' · sin micrófono'}
           </p>
           {rec.steps.length > 0 && (
             <ol className="list-decimal space-y-1.5 rounded-lg border border-border bg-hover/40 px-4 py-3 pl-8 text-sm text-fg">
@@ -226,8 +228,8 @@ export function RecordSkillReview(): React.JSX.Element | null {
             <MiniToggle checked={includeTyped} onChange={() => setIncludeTyped((v) => !v)} label="Incluir el texto que tecleé" />
           </label>
           <p className="text-xs text-subtle">
-            Desactivado por defecto: lo que tecleaste durante la grabación (que puede incluir datos sensibles) no se
-            envía al agente salvo que lo actives.
+            Desactivado por defecto: lo que tecleaste durante la grabación (que puede incluir datos sensibles) no se envía al agente salvo
+            que lo actives.
           </p>
           {error && <p className="text-xs text-danger">{error}</p>}
         </div>

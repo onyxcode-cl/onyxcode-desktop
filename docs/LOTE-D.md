@@ -1,9 +1,14 @@
 # Lote D: navegador integrado en la ventana de la app. Qué se entregó, decisiones y guía de pruebas
 
-Plan de origen: `docs/LOTE-D-PLAN.md` (hallazgos, arquitectura, contratos y reparto en paquetes
-D0–D5). Antecedente directo: `docs/COWORK-LOTE-C.md` (el navegador propio con Chrome real, que este
+Plan de origen: `docs/archive/LOTE-D-PLAN.md` (hallazgos, arquitectura, contratos y reparto en paquetes
+D0–D5). Antecedente directo: `docs/archive/COWORK-LOTE-C.md` (el navegador propio con Chrome real, que este
 lote conserva como opción avanzada). Hallazgos de seguridad y su estado: `AUDIT.md` §11. Modelo de
 seguridad vigente: `docs/SEGURIDAD.md` («3 quater»).
+
+> **Nota histórica (2026-09-29, Fase 7):** este documento describe «Chrome aparte» (Lote C) como una opción avanzada
+> que se conservaba (Decisiones, B.11, punto 11 de la guía). **Esa opción se eliminó en el refactor fase 3**: hoy solo
+> existe el navegador integrado y `userData/cowork-browser*` se borra al arrancar. Las menciones a «Chrome aparte» de
+> abajo son históricas y no describen la app actual.
 
 > Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «OnyxCode» (`APP_NAME`,
 > `persist:onyxcode-web-*`, `onyxcode_session`, `embedded-browser/`…). No se renombró nada.
@@ -29,7 +34,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
   entre dos ventanas conserva página y debugger (G8); una descarga NO lleva `com.apple.quarantine`
   automáticamente (G9).
 - **5 correcciones obligatorias al encargo original**, verificadas con evidencia directa y aplicadas
-  al pie de la letra por D1–D2 (detalle en `docs/LOTE-D-PLAN.md`, sección «Correcciones de D0», y en
+  al pie de la letra por D1–D2 (detalle en `docs/archive/LOTE-D-PLAN.md`, sección «Correcciones de D0», y en
   `AUDIT.md` §11): usar siempre `Page.captureScreenshot` por CDP para la captura congelada, nunca
   `webContents.capturePage`; tratar la regla de `webRequest` como obligatoria, no como refuerzo; la
   ventana `userActive` de B.8 es indispensable (no hay forma de distinguir humano de agente en el
@@ -105,7 +110,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 |---|---|---|
 | Anfitrión de la vista | En línea (panel de Code / `aside` de Cowork) **+** ventana «Navegador» propia cuando la principal está minimizada o se pide | `embedded-browser/{service,popout}.ts` |
 | Navegador del agente por defecto | **Apagado** en Code y en Cowork (igual criterio que el Lote C: se activa a mano en Ajustes) | `embedded-browser/store.ts` (`agentEnabled: {code:false, cowork:false}`) |
-| Chrome aparte (Lote C) | Se **conserva** como opción avanzada, sin borrar código, excluyente con el navegador integrado | `cowork/manager.ts`, B.11 |
+| Chrome aparte (Lote C) | **[Histórico: eliminado en el refactor fase 3; nota del 2026-09-29]** Se conservaba como opción avanzada, sin borrar código, excluyente con el navegador integrado | `cowork/manager.ts`, B.11 |
 | Navegador en Cowork Sandbox | **Se activa también ahí** (antes solo existía en Control total), con permiso por sitio, aceptando que ese tráfico no pasa por el proxy de egress | `cowork/{manager,sandbox}.ts` |
 | Particiones de sesión | Code y Cowork **separados** (`persist:onyxcode-web-code` / `-cowork`); dentro de Cowork, **una sola partición compartida** para Sandbox y Control total (reconfirmado por el usuario junto con el resto, no es un descuido) | `embedded-browser/session.ts` |
 | Buscador de la barra de URL | Google (si el texto no parece una URL) | `embedded-browser/service.ts::normalizeInput` |
@@ -175,7 +180,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
   typecheckan.
 - Detección real del dev server a partir de `pty:data` de la Terminal (regex verificado por lectura,
   no contra una sesión de terminal real corriendo `npm run dev`).
-- Los 13 puntos de la guía de prueba manual del plan original (`docs/LOTE-D-PLAN.md`, sección D),
+- Los 13 puntos de la guía de prueba manual del plan original (`docs/archive/LOTE-D-PLAN.md`, sección D),
   condensados en la §4 de aquí abajo.
 - Que el interruptor «Permitir que el agente use el navegador» de `BrowserSection.tsx` se vea
   realmente apagado al abrir Ajustes en la app empaquetada (el default corregido en `store.ts` se
@@ -206,7 +211,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
    Ajustes aparecen los sitios por producto; prueba quitar uno y «Borrar datos».
 10. **Cowork Control total.** Minimiza la ventana → aparece la ventana «Navegador» sin robar el foco,
     en vivo. ⌘⇧Esc la detiene.
-11. **Chrome aparte.** Actívalo en Ajustes → Control total pasa a usar el Chrome del Lote C.
+11. **[Histórico: eliminado en el refactor fase 3; nota del 2026-09-29; ya no hay prueba manual]** **Chrome aparte.** Actívalo en Ajustes → Control total pasa a usar el Chrome del Lote C.
     Desactívalo y confirma que vuelve al navegador integrado.
 12. **Seguridad a mano:** un demo de `getDisplayMedia`/geolocalización se deniega; un `mailto:` no
     abre Mail; `file:///etc/hosts` en la barra se rechaza; `ps aux | grep remote-debugging` vacío; un
@@ -250,7 +255,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 
 ## 7. Archivos comprobados al escribir este documento
 
-`docs/LOTE-D-PLAN.md`; `src/main/security/web-security.ts`; `src/main/embedded-browser/{api,session,
+`docs/archive/LOTE-D-PLAN.md`; `src/main/security/web-security.ts`; `src/main/embedded-browser/{api,session,
 cdp,surface,service,approvals,downloads,store,popout,dev-servers,snapshot,input,keys,tools,
 mcp-server,owner}.ts`; `src/main/ipc/browser-handlers.ts`; `src/main/ipc/schemas.ts`;
 `src/preload/{browser-api,browser-host}.ts`; `src/shared/{ipc-browser,cowork-glossary}.ts`;

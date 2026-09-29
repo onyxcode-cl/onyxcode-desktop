@@ -16,8 +16,5 @@ export const COWORK_TERMS = {
   deleteGrant: 'Permitir borrar, mover y renombrar',
   sideChat: 'Consulta lateral',
   routine: 'Rutina',
-  browser: 'Navegador',
-  externalChrome: 'Chrome aparte'
+  browser: 'Navegador'
 } as const
-
-export type CoworkTerm = keyof typeof COWORK_TERMS

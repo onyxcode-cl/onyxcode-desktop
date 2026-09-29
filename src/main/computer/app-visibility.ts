@@ -4,22 +4,13 @@
  * qué se ocultó en `userData/computer-hidden.json` para poder recuperarlas si la app se cierra a
  * mitad (crash, ⌘Q): se comprueba una vez al arrancar (`recoverAtStartup`).
  */
-import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { runHelper } from '../util/exec'
 
 interface HiddenFile {
   hidden: string[]
   at: number
-}
-
-function runHelper(bin: string, args: string[], timeout = 10_000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(bin, args, { timeout }, (err, stdout, stderr) => {
-      if (err) reject(new Error((stderr || err.message).toString().trim()))
-      else resolve(stdout.toString())
-    })
-  })
 }
 
 export class AppVisibility {

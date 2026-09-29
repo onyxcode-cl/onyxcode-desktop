@@ -11,9 +11,7 @@ export function registerCoworkFoldersHandlers(ctx: CoworkIpcContext): CoworkSubm
   handle('cowork:folders:get', ({ folder }) => cowork.folderSet(folder))
   handle('cowork:folders:check', ({ path }) => cowork.checkFolder(path))
   // `restart !== false` reinicia SOLO si el servidor sandbox del espacio está vivo (`restarted`).
-  handle('cowork:folders:link', ({ folder, path, mode, trust, restart }) =>
-    cowork.linkFolder(folder, path, mode, { trust, restart })
-  )
+  handle('cowork:folders:link', ({ folder, path, mode, trust, restart }) => cowork.linkFolder(folder, path, mode, { trust, restart }))
   handle('cowork:folders:unlink', ({ folder, path, restart }) => cowork.unlinkFolder(folder, path, { restart }))
   handle('cowork:trusted:list', () => cowork.trustedList())
   handle('cowork:trusted:set', ({ path, mode }) => cowork.setTrusted(path, mode))

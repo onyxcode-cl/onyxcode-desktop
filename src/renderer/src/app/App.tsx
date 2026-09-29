@@ -2,16 +2,19 @@ import { useEffect } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { IconButton } from '../components/IconButton'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { SettingsView } from '../features/settings'
 import { onOpencodeEvent, useServer } from '../stores/server'
-import { useSessions } from '../stores/sessions'
+import { routeEventToSessions } from '../stores/eventRouter'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { initExtrasPrefs } from '../features/settings/impl/extras'
 import { newChat, sendChatMessage } from '../features/chat/actions'
-import { useCode } from '../features/code/impl/store'
+import { ensureCodeSubscription, useCode } from '../features/code/impl/store'
+import { openProjectTrusted } from '../features/code/impl/trust'
 import { clearUnseen, connectFolder, loadTask, rememberFullAccess, useCowork } from '../features/cowork/impl/store'
 import { initAttentionBadge } from '../lib/attention'
+import { E2EFault } from './E2EFault'
 import { CommandPalette } from './CommandPalette'
 import { MODES, MODES_BY_ID } from './modes'
 import { ServerBanner } from './ServerBanner'
@@ -29,14 +32,18 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const offSettings = useSettings.getState().init()
     const offServer = useServer.getState().init()
-    // Todos los eventos de OpenCode alimentan el store genérico de sesiones.
-    const offEvents = onOpencodeEvent((event) => useSessions.getState().applyEvent(event))
+    // Eventos de OpenCode → store genérico de sesiones (Chat/Cowork), filtrados por directorio del sobre (6.5).
+    const offEvents = onOpencodeEvent((event, dir) => routeEventToSessions(event, dir))
     return () => {
       offEvents()
       offServer()
       offSettings()
     }
   }, [])
+
+  // Code suscrito a nivel de App (D3): avisos, cola y badge siguen vivos fuera de la vista Code.
+  // Ref-count de ensureCodeSubscription: CodeWorkspace/CodeSidebar suman su propia referencia sin duplicar.
+  useEffect(() => ensureCodeSubscription(), [])
 
   // Quick Entry, bandeja del sistema y preferencias extra.
   useEffect(() => {
@@ -83,7 +90,7 @@ export function App(): React.JSX.Element {
         useUi.getState().setMode('code')
         void (async () => {
           const code = useCode.getState()
-          if (target.directory && code.directory !== target.directory) await code.openProject(target.directory)
+          if (target.directory && code.directory !== target.directory && !(await openProjectTrusted(target.directory))) return
           await useCode.getState().selectSession(target.id)
         })()
       } else {
@@ -157,12 +164,16 @@ export function App(): React.JSX.Element {
   return (
     <div className="flex h-full bg-bg">
       <ConfirmDialogHost />
-      <CommandPalette />
+      <ErrorBoundary label="la paleta de comandos">
+        <CommandPalette />
+      </ErrorBoundary>
       <div
         className={`h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
         inert={collapsed}
       >
-        <Sidebar />
+        <ErrorBoundary label="la barra lateral">
+          <Sidebar />
+        </ErrorBoundary>
       </div>
       <main className="relative flex min-w-0 flex-1 flex-col">
         {collapsed && (
@@ -172,7 +183,9 @@ export function App(): React.JSX.Element {
             </IconButton>
           </div>
         )}
-        <ServerBanner />
+        <ErrorBoundary label="el estado del servidor">
+          <ServerBanner />
+        </ErrorBoundary>
         <div className="min-h-0 flex-1">
           {settingsOpen ? (
             <div key="settings" className="h-full animate-fade-in">
@@ -180,7 +193,10 @@ export function App(): React.JSX.Element {
             </div>
           ) : (
             <div key={mode} className="h-full animate-fade-in">
-              <View />
+              <ErrorBoundary key={mode} label={MODES_BY_ID[mode].label}>
+                {import.meta.env.DEV && <E2EFault mode={mode} />}
+                <View />
+              </ErrorBoundary>
             </div>
           )}
         </div>

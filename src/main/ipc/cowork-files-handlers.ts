@@ -23,8 +23,10 @@ const MAX_HTML_BYTES = 5 * 1024 * 1024
 
 /** Quita del nombre lo que no sea seguro como nombre de archivo (sin separadores ni control). */
 function safeFileName(name: string, fallback: string): string {
-  // eslint-disable-next-line no-control-regex
-  const clean = name.replace(/[/\\:\u0000-\u001f]+/g, ' ').trim().replace(/^\.+/, '')
+  const clean = name
+    .replace(/[/\\:\u0000-\u001f]+/g, ' ')
+    .trim()
+    .replace(/^\.+/, '')
   return clean || fallback
 }
 
@@ -44,7 +46,14 @@ function commonDir(paths: string[]): string {
 function runZip(args: string[], cwd?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     execFile(ZIP_BIN, args, { cwd, timeout: 120_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true }, (err, _out, stderr) => {
-      if (err) reject(new Error(`No se pudo crear el zip. ${String(stderr || err.message).trim().slice(0, 300)}`))
+      if (err)
+        reject(
+          new Error(
+            `No se pudo crear el zip. ${String(stderr || err.message)
+              .trim()
+              .slice(0, 300)}`
+          )
+        )
       else resolve()
     })
   })

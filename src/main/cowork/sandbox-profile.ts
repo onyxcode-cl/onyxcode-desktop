@@ -217,9 +217,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   const extras = (opts.extraFolders ?? []).map((e) => ({ path: real(e.path), mode: e.mode }))
   const extraRw = [...new Set(extras.filter((e) => e.mode === 'rw').map((e) => e.path))]
   const extraRo = [...new Set(extras.filter((e) => e.mode === 'ro').map((e) => e.path))]
-  const writable = [
-    ...new Set([folder, priv, ...defaultWritablePaths(), ...(opts.extraWritable ?? []).map(real), ...extraRw])
-  ]
+  const writable = [...new Set([folder, priv, ...defaultWritablePaths(), ...(opts.extraWritable ?? []).map(real), ...extraRw])]
   const denied = defaultDeniedReadPaths(home)
   const userData = opts.userData ? real(opts.userData) : null
   const readOnly = (opts.readOnly ?? []).map(real)
@@ -254,10 +252,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
         `(allow file-read* ${readOnly.map((p) => `(subpath ${sbString(p)})`).join(' ')})`
       )
     }
-    lines.push(
-      ';; …y el directorio privado de este servidor.',
-      `(allow file-read* file-write* (subpath ${sbString(priv)}))`
-    )
+    lines.push(';; …y el directorio privado de este servidor.', `(allow file-read* file-write* (subpath ${sbString(priv)}))`)
   }
   lines.push(
     '',
@@ -280,11 +275,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   const outboundPorts = [...new Set(opts.allowedOutboundPorts ?? [])]
   lines.push(';; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.', '(deny network*)')
   if (outboundPorts.length) {
-    lines.push(
-      '(allow network-outbound',
-      ...outboundPorts.map((p) => `  (remote ip "localhost:${p}")`),
-      ')'
-    )
+    lines.push('(allow network-outbound', ...outboundPorts.map((p) => `  (remote ip "localhost:${p}")`), ')')
   }
   if (opts.serverPort) {
     lines.push(
@@ -324,11 +315,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   // Scratch del agente: sí se puede borrar y renombrar (archivos temporales de conversión, etc.).
   const scratch = (opts.scratchDirs ?? [join(folder, '.cowork')]).map((p) => sbString(p))
   if (noUnlink.length && scratch.length) {
-    lines.push(
-      ';; Scratch (.cowork): borrar y renombrar permitido.',
-      ...scratch.map((p) => `(allow file-write-unlink (subpath ${p}))`),
-      ''
-    )
+    lines.push(';; Scratch (.cowork): borrar y renombrar permitido.', ...scratch.map((p) => `(allow file-write-unlink (subpath ${p}))`), '')
   }
   // Carpetas de solo lectura: al final, por si una `ro` está dentro de una carpeta escribible.
   if (extraRo.length) {

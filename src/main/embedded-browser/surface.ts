@@ -13,8 +13,8 @@
 import { EventEmitter } from 'node:events'
 import { Menu, WebContentsView, clipboard, shell, type WebContents } from 'electron'
 import type { BrowserOwner, BrowserProduct } from '@shared/ipc-browser'
-import { checkUrl } from '../browser/sites'
-import { sessionFor } from './session'
+import { checkUrl, schemeOf, subframeUrlAllowed } from './sites'
+import { sessionFor, setExternalOpenBlockedListener } from './session'
 import { detachCdp } from './cdp'
 
 export const MAX_TABS_PER_OWNER = 6
@@ -150,33 +150,69 @@ function installShortcuts(tab: TabRuntime): void {
   })
 }
 
+/** Último aviso emitido por pestaña (esquema + instante): evita repetir el mismo esquema en <200 ms. */
+const lastBlocked = new Map<string, { scheme: string; at: number }>()
+const BLOCKED_DEDUPE_MS = 200
+
+/**
+ * Registra un bloqueo SIN volcar la dirección: si el esquema no es http(s) solo se escribe el esquema
+ * (un `mailto:`/`tel:` lleva un correo o un teléfono). Emite `blocked` (deduplicado) para que
+ * `service.ts` avise al usuario en el panel.
+ */
+function reportBlocked(tab: TabRuntime, url: string, label: string): void {
+  const scheme = schemeOf(url)
+  if (scheme === 'http:' || scheme === 'https:') console.warn(`[embedded-browser] navegación bloqueada (${label}): ${url.slice(0, 200)}`)
+  else console.warn(`[embedded-browser] navegación bloqueada: ${scheme ?? 'esquema desconocido'} (${label})`)
+  const now = Date.now()
+  const prev = lastBlocked.get(tab.id)
+  const key = scheme ?? ''
+  if (prev && prev.scheme === key && now - prev.at < BLOCKED_DEDUPE_MS) return
+  lastBlocked.set(tab.id, { scheme: key, at: now })
+  surfaceEvents.emit('blocked', tab, scheme)
+}
+
+// `openExternal` (permiso que Chromium pide al navegar a un esquema externo): denegado en `session.ts`; aquí solo se registra y avisa.
+let externalListenerInstalled = false
+/** Se instala en el primer `createTab` (no al importar el módulo: el orden de evaluación del bundle rompe la inicialización). */
+function ensureExternalOpenListener(): void {
+  if (externalListenerInstalled) return
+  externalListenerInstalled = true
+  setExternalOpenBlockedListener((wc, url) => {
+    const tab = tabByWebContents(wc)
+    if (tab && !tab.destroyed) reportBlocked(tab, url, 'openExternal')
+    else console.warn(`[embedded-browser] navegación bloqueada: ${schemeOf(url) ?? 'esquema desconocido'} (openExternal)`)
+  })
+}
+
 function installBaselineNavigationGuard(tab: TabRuntime): void {
-  const guard = (url: string, prevent: () => void, label: string): void => {
-    if (allowedTopLevelUrl(url)) return
+  // Primer nivel: solo http(s)/about:blank (`checkUrl`); subframes: `subframeUrlAllowed` (sin mailto:/tel:/file:…).
+  const guard = (url: string, prevent: () => void, label: string, isMainFrame: boolean): void => {
+    if (isMainFrame ? allowedTopLevelUrl(url) : subframeUrlAllowed(url)) return
     prevent()
-    console.warn(`[embedded-browser] navegación bloqueada (${label}): ${url.slice(0, 200)}`)
+    reportBlocked(tab, url, label)
   }
   // `details` viene fusionado con el `Event` (tiene `.url`, `.isMainFrame` y `.preventDefault()`).
-  tab.wc.on('will-navigate', (details) => guard(details.url, () => details.preventDefault(), 'will-navigate'))
-  tab.wc.on('will-redirect', (details) => {
-    if (!details.isMainFrame) return
-    guard(details.url, () => details.preventDefault(), 'will-redirect')
-  })
-  tab.wc.on('will-frame-navigate', (details) => {
-    if (!details.isMainFrame) return // los subframes (anuncios, embebidos) no navegan la página completa
-    guard(details.url, () => details.preventDefault(), 'will-frame-navigate')
-  })
-  // Respaldo (B.8): si algo se coló, detener y volver a un estado seguro.
-  tab.wc.on('did-start-navigation', (details) => {
-    if (!details.isMainFrame || allowedTopLevelUrl(details.url)) return
-    tab.wc.stop()
-    if (tab.wc.navigationHistory.canGoBack()) tab.wc.navigationHistory.goBack()
-    else void tab.wc.loadURL('about:blank')
+  tab.wc.on('will-navigate', (details) => guard(details.url, () => details.preventDefault(), 'will-navigate', true))
+  tab.wc.on('will-redirect', (details) => guard(details.url, () => details.preventDefault(), 'will-redirect', details.isMainFrame))
+  tab.wc.on('will-frame-navigate', (details) =>
+    guard(details.url, () => details.preventDefault(), 'will-frame-navigate', details.isMainFrame)
+  )
+  // Respaldo (B.8): si algo se coló y llegó a confirmarse, volver a un estado seguro. NUNCA dentro de
+  // un evento de inicio de navegación: `stop()`/`goBack()`/`loadURL()` síncronos allí (Chromium emite
+  // `DidStartNavigation` antes de los throttles) mataban el proceso principal con `mailto:`/`tel:` (F7-B1).
+  tab.wc.on('did-navigate', (_e, url) => {
+    if (allowedTopLevelUrl(url) || url.startsWith('chrome-error:')) return
+    setImmediate(() => {
+      if (tab.destroyed || tab.wc.isDestroyed()) return
+      if (tab.wc.navigationHistory.canGoBack()) tab.wc.navigationHistory.goBack()
+      else void tab.wc.loadURL('about:blank').catch(() => undefined)
+    })
   })
   tab.wc.setWindowOpenHandler((details) => {
     // El destino real (ver A.5/B.2): nunca una ventana nativa nueva. Si hubo gesto del usuario
     // (target=_blank, clic con botón central…) abrimos una pestaña nueva de la misma superficie.
-    if (details.disposition !== 'other' && allowedTopLevelUrl(details.url)) {
+    if (!allowedTopLevelUrl(details.url)) reportBlocked(tab, details.url, 'window-open')
+    else if (details.disposition !== 'other') {
       try {
         const created = createTab(tab.owner, { openedBy: 'user' })
         void created.wc.loadURL(details.url).catch((err) => console.error('[embedded-browser] pestaña nueva:', err))
@@ -211,6 +247,7 @@ function installLifecycle(tab: TabRuntime): void {
   tab.wc.once('destroyed', () => {
     tab.destroyed = true
     tabsById.delete(tab.id)
+    lastBlocked.delete(tab.id)
     surfaceEvents.emit('destroyed', tab)
   })
 }
@@ -220,6 +257,7 @@ export function createTab(owner: BrowserOwner, opts: { openedBy: 'user' | 'agent
   if (totalTabCount() >= MAX_TABS_TOTAL) throw new TabLimitError('Demasiadas pestañas abiertas en total (máx. 12)')
   if (tabsForOwner(owner).length >= MAX_TABS_PER_OWNER) throw new TabLimitError('Demasiadas pestañas abiertas (máx. 6)')
 
+  ensureExternalOpenListener()
   const ses = sessionFor(owner.kind)
   const view = new WebContentsView({
     webPreferences: {
@@ -293,6 +331,7 @@ export function destroyTab(tab: TabRuntime): void {
   if (tab.destroyed) return
   tab.destroyed = true
   tabsById.delete(tab.id)
+  lastBlocked.delete(tab.id)
   try {
     detachCdp(tab.wc)
   } catch (err) {

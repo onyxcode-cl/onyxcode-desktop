@@ -1,0 +1,334 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`traza chat-simple > useCode (proyecto abierto = directorio de la traza) 1`] = `
+{
+  "fsVersion": 1,
+  "messages": {
+    "ses_chat1": [
+      {
+        "id": "msg_001",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_001",
+            "text": "Explícame qué hace ls",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+      {
+        "id": "msg_002",
+        "parts": [
+          {
+            "ended": true,
+            "id": "prt_002",
+            "text": "El usuario pregunta por ls.",
+            "type": "reasoning",
+          },
+          {
+            "id": "prt_003",
+            "status": "completed",
+            "tool": "bash",
+            "type": "tool",
+          },
+          {
+            "ended": false,
+            "id": "prt_004",
+            "text": "\`ls\` lista los archivos.",
+            "type": "text",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+  },
+  "permissions": [],
+  "runState": {
+    "ses_chat1": "idle",
+  },
+  "sessions": [
+    "ses_chat1",
+  ],
+  "unread": {
+    "ses_chat1": true,
+  },
+}
+`;
+
+exports[`traza chat-simple > useSessions (store genérico, sin origen) 1`] = `
+{
+  "errors": {},
+  "messages": {
+    "ses_chat1": [
+      {
+        "id": "msg_001",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_001",
+            "text": "Explícame qué hace ls",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+      {
+        "id": "msg_002",
+        "parts": [
+          {
+            "ended": true,
+            "id": "prt_002",
+            "text": "El usuario pregunta por ls.",
+            "type": "reasoning",
+          },
+          {
+            "id": "prt_003",
+            "status": "completed",
+            "tool": "bash",
+            "type": "tool",
+          },
+          {
+            "ended": false,
+            "id": "prt_004",
+            "text": "\`ls\` lista los archivos.",
+            "type": "text",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+  },
+  "sessions": [
+    "ses_chat1",
+  ],
+  "status": {
+    "ses_chat1": "idle",
+  },
+}
+`;
+
+exports[`traza code-subagent > useCode (proyecto abierto = directorio de la traza) 1`] = `
+{
+  "fsVersion": 2,
+  "messages": {
+    "ses_child": [
+      {
+        "id": "msg_101",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_101",
+            "text": "Buscar foo",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+      {
+        "id": "msg_102",
+        "parts": [
+          {
+            "id": "prt_103",
+            "status": "running",
+            "tool": "bash",
+            "type": "tool",
+          },
+          {
+            "ended": false,
+            "id": "prt_104",
+            "text": "foo se usa en a.ts",
+            "type": "text",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+    "ses_parent": [
+      {
+        "id": "msg_001",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_001",
+            "text": "Busca dónde se usa foo",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+      {
+        "id": "msg_002",
+        "parts": [
+          {
+            "id": "prt_002",
+            "status": "completed",
+            "tool": "task",
+            "type": "tool",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+  },
+  "permissions": [
+    "per_001",
+  ],
+  "runState": {
+    "ses_child": "idle",
+    "ses_parent": "idle",
+  },
+  "sessions": [
+    "ses_child",
+    "ses_parent",
+  ],
+  "unread": {
+    "ses_child": true,
+    "ses_parent": true,
+  },
+}
+`;
+
+exports[`traza code-subagent > useSessions (store genérico, sin origen) 1`] = `
+{
+  "errors": {},
+  "messages": {
+    "ses_child": [
+      {
+        "id": "msg_101",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_101",
+            "text": "Buscar foo",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+      {
+        "id": "msg_102",
+        "parts": [
+          {
+            "id": "prt_103",
+            "status": "running",
+            "tool": "bash",
+            "type": "tool",
+          },
+          {
+            "ended": false,
+            "id": "prt_104",
+            "text": "foo se usa en a.ts",
+            "type": "text",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+    "ses_parent": [
+      {
+        "id": "msg_001",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_001",
+            "text": "Busca dónde se usa foo",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+      {
+        "id": "msg_002",
+        "parts": [
+          {
+            "id": "prt_002",
+            "status": "completed",
+            "tool": "task",
+            "type": "tool",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+  },
+  "sessions": [
+    "ses_child",
+    "ses_parent",
+  ],
+  "status": {
+    "ses_child": "idle",
+    "ses_parent": "idle",
+  },
+}
+`;
+
+exports[`traza reconnect > useCode (proyecto abierto = directorio de la traza) 1`] = `
+{
+  "fsVersion": 1,
+  "messages": {
+    "ses_rc": [
+      {
+        "id": "msg_001",
+        "parts": [],
+        "role": "user",
+      },
+      {
+        "id": "msg_002",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_002",
+            "text": "Hola mundo",
+            "type": "text",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+  },
+  "permissions": [],
+  "runState": {
+    "ses_rc": "idle",
+  },
+  "sessions": [
+    "ses_rc",
+  ],
+  "unread": {
+    "ses_rc": true,
+  },
+}
+`;
+
+exports[`traza reconnect > useSessions (store genérico, sin origen) 1`] = `
+{
+  "errors": {},
+  "messages": {
+    "ses_rc": [
+      {
+        "id": "msg_001",
+        "parts": [],
+        "role": "user",
+      },
+      {
+        "id": "msg_002",
+        "parts": [
+          {
+            "ended": false,
+            "id": "prt_002",
+            "text": "Hola mundo",
+            "type": "text",
+          },
+        ],
+        "role": "assistant",
+      },
+    ],
+  },
+  "sessions": [
+    "ses_rc",
+  ],
+  "status": {
+    "ses_rc": "idle",
+  },
+}
+`;

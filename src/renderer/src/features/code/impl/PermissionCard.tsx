@@ -72,7 +72,8 @@ export function PermissionCard({
   const label = PERMISSION_LABEL[request.permission] ?? request.permission
   const stats = diff ? diffStats(diff) : null
   const patterns = request.patterns.filter((p) => p && p !== command)
-  const Icon = request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
+  const Icon =
+    request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
 
   const actions: { key: string; label: string; reply: 'once' | 'always' | 'reject'; cls: string; title?: string }[] = [
     { key: '1', label: 'Permitir una vez', reply: 'once', cls: 'bg-accent text-accent-fg hover:opacity-90' },

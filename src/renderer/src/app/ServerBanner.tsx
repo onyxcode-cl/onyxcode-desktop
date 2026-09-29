@@ -18,11 +18,7 @@ export function ServerBanner(): React.JSX.Element | null {
           style={{ animation: 'shimmer 1.6s linear infinite' }}
         />
       )}
-      {failed ? (
-        <AlertTriangle size={14} className="shrink-0" />
-      ) : (
-        <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
-      )}
+      {failed ? <AlertTriangle size={14} className="shrink-0" /> : <Loader2 size={14} className="shrink-0 animate-spin text-accent" />}
       <span className="flex-1 truncate" title={status.error ?? error ?? ''}>
         {failed
           ? `No se pudo conectar con OpenCode: ${(status.error ?? error ?? '').split('\n')[0]}`

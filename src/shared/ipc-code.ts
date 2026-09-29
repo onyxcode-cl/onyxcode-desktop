@@ -1,25 +1,10 @@
 /**
  * Contrato IPC tipado del modo Code: terminal (pty), git y diálogos del sistema.
  *
- * - Los canales invoke responden SIEMPRE envueltos en `IpcResult<T>` (igual que `shared/ipc.ts`),
- *   por lo que son compatibles con `window.api.invoke(...)` para los canales que ya existen allí
- *   (`pty:create`, `pty:write`, `pty:resize`, `pty:kill`, `git:status`, `git:diff`,
- *   `git:worktrees`, `dialog:openFolder`). Los tipos de respuesta aquí son superconjuntos de los
- *   de `shared/types.ts`.
+ * - Los canales invoke responden SIEMPRE envueltos en `IpcResult<T>` (igual que `shared/ipc.ts`).
  * - `window.api.code` (ver `src/preload/code-api.ts`) desenvuelve el resultado y lanza
  *   `Error` si `ok === false`.
  */
-import type {
-  GitFileStatus,
-  GitStatus,
-  GitWorktree,
-  PtyCreateRequest,
-  PtyDataEvent,
-  PtyExitEvent,
-  PtyInfo
-} from './types'
-
-export type { PtyCreateRequest, PtyDataEvent, PtyExitEvent, PtyInfo }
 
 // ---------------------------------------------------------------------------
 // Canales
@@ -58,6 +43,43 @@ export const CODE_EVENTS = {
 // ---------------------------------------------------------------------------
 // Tipos de dominio
 // ---------------------------------------------------------------------------
+
+export interface PtyCreateRequest {
+  cwd: string
+  cols: number
+  rows: number
+  shell?: string
+}
+export interface PtyInfo {
+  id: string
+  pid: number
+  cwd: string
+}
+export interface PtyDataEvent {
+  id: string
+  data: string
+}
+export interface PtyExitEvent {
+  id: string
+  exitCode: number
+}
+
+export interface GitFileStatus {
+  path: string
+  index: string
+  workingDir: string
+}
+export interface GitStatus {
+  branch: string | null
+  ahead: number
+  behind: number
+  files: GitFileStatus[]
+}
+export interface GitWorktree {
+  path: string
+  branch: string | null
+  head: string
+}
 
 export interface PtyAvailability {
   available: boolean
@@ -178,7 +200,6 @@ void _cover1
 void _cover2
 
 export const CODE_INVOKE_CHANNELS = Object.values(CODE_CHANNELS) as readonly CodeInvokeChannel[]
-export const CODE_EVENT_CHANNELS = Object.values(CODE_EVENTS) as readonly CodeEventChannel[]
 
 // ---------------------------------------------------------------------------
 // API expuesta en `window.api.code`

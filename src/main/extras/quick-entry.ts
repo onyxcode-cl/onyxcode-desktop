@@ -7,6 +7,7 @@ import { BrowserWindow, globalShortcut, screen } from 'electron'
 import type { QuickPromptEvent } from '@shared/ipc-extras'
 import { extrasWindows, loadRendererPage, preloadPath, showMainWindow, type MainWindowDeps } from './windows'
 import { registerWindowRole } from '../ipc/guard'
+import { presentWindow } from '../e2e-headless'
 
 const WIDTH = 680
 const HEIGHT = 76
@@ -72,8 +73,7 @@ export function showQuickEntry(): void {
   const win = quickWin
   position(win)
   const reveal = (): void => {
-    win.show()
-    win.focus()
+    presentWindow(win, { focus: true })
     win.webContents.send('extras:quick-shown')
   }
   if (win.webContents.isLoading()) win.webContents.once('did-finish-load', reveal)

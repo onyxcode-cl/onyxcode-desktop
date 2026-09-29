@@ -5,20 +5,7 @@
  * las skills disponibles y los permisos recordados — ver `resources/opencode/agents/cowork.md`.
  */
 import { useEffect, useState } from 'react'
-import {
-  AlertCircle,
-  BookText,
-  Check,
-  FileText,
-  Link2,
-  Loader2,
-  NotebookText,
-  Plus,
-  ShieldCheck,
-  Sparkles,
-  Trash2,
-  X
-} from 'lucide-react'
+import { AlertCircle, BookText, Check, FileText, Link2, Loader2, NotebookText, Plus, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react'
 import type { CoworkPermissionRule } from '@shared/ipc-cowork'
 import { COWORK_INSTRUCTIONS_MAX } from '@shared/cowork-prompt'
 import { Button } from '../../../components/Button'
@@ -28,6 +15,8 @@ import { DeleteGrantToggle } from './DeleteGrant'
 import { RecordSkillButton, RecordSkillReview } from './RecordSkill'
 import { deleteMemoryNotes, saveMemoryNotes, setProjectPanelOpen, useCowork } from './store'
 import { baseName } from './util'
+import { errText } from '../../../lib/format'
+import { isSubmitKey } from '../../../lib/textarea'
 
 type Tab = 'project' | 'memory' | 'agents'
 
@@ -38,10 +27,6 @@ const numFmt = new Intl.NumberFormat('es-CL')
 interface SkillInfo {
   name: string
   description?: string
-}
-
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
 }
 
 /** Acepta solo enlaces http(s) válidos. */
@@ -273,302 +258,300 @@ export function ProjectPanel(): React.JSX.Element | null {
     <>
       <RecordSkillReview />
       <div className="fixed inset-0 z-40 flex justify-end bg-black/25 backdrop-blur-[1px]" onMouseDown={() => setProjectPanelOpen(false)}>
-      <div
-        className="flex h-full w-full max-w-lg flex-col border-l border-border bg-elevated shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="project-panel-title"
-      >
-        <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-soft text-accent">
-            <BookText size={15} />
-          </span>
-          <h2 id="project-panel-title" className="min-w-0 truncate text-base font-semibold">
-            {project?.name || baseName(folder)}
-          </h2>
-          <button
-            type="button"
-            onClick={() => setProjectPanelOpen(false)}
-            className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
-            aria-label="Cerrar"
-          >
-            <X size={18} />
-          </button>
-        </header>
+        <div
+          className="flex h-full w-full max-w-lg flex-col border-l border-border bg-elevated shadow-2xl"
+          onMouseDown={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="project-panel-title"
+        >
+          <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-soft text-accent">
+              <BookText size={15} />
+            </span>
+            <h2 id="project-panel-title" className="min-w-0 truncate text-base font-semibold">
+              {project?.name || baseName(folder)}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setProjectPanelOpen(false)}
+              className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+          </header>
 
-        <div className="flex shrink-0 gap-1 border-b border-border px-5 py-2">
-          <button type="button" className={tabCls(tab === 'project')} onClick={() => setTab('project')}>
-            <BookText size={13} /> Proyecto
-          </button>
-          <button type="button" className={tabCls(tab === 'memory')} onClick={() => setTab('memory')}>
-            <NotebookText size={13} /> Memoria
-          </button>
-          <button type="button" className={tabCls(tab === 'agents')} onClick={() => setTab('agents')}>
-            <FileText size={13} /> AGENTS.md
-          </button>
-        </div>
+          <div className="flex shrink-0 gap-1 border-b border-border px-5 py-2">
+            <button type="button" className={tabCls(tab === 'project')} onClick={() => setTab('project')}>
+              <BookText size={13} /> Proyecto
+            </button>
+            <button type="button" className={tabCls(tab === 'memory')} onClick={() => setTab('memory')}>
+              <NotebookText size={13} /> Memoria
+            </button>
+            <button type="button" className={tabCls(tab === 'agents')} onClick={() => setTab('agents')}>
+              <FileText size={13} /> AGENTS.md
+            </button>
+          </div>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          {tab === 'project' ? (
-            <>
-              <div>
-                <label className={labelCls} htmlFor="proj-name">
-                  Nombre del proyecto
-                </label>
-                <input id="proj-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
-              </div>
-              <div>
-                <label className={labelCls} htmlFor="proj-instructions">
-                  Instrucciones de esta carpeta
-                </label>
-                <textarea
-                  id="proj-instructions"
-                  className={`${inputCls} min-h-56 resize-y leading-relaxed`}
-                  value={instructions}
-                  placeholder="Convenciones, tono, formatos preferidos, contexto del proyecto…"
-                  onChange={(e) => setInstructions(e.target.value)}
-                  maxLength={COWORK_INSTRUCTIONS_MAX}
-                />
-                <div className="mt-1.5 flex items-start gap-3">
-                  <p className="min-w-0 flex-1 text-xs text-subtle">
-                    Se añaden a todas las tareas de esta carpeta, junto con las instrucciones globales de
-                    Ajustes y la memoria guardada.
-                  </p>
-                  <span
-                    className={`shrink-0 text-xs tabular-nums ${instructions.length >= COWORK_INSTRUCTIONS_MAX * 0.9 ? 'text-danger' : 'text-subtle'}`}
-                    aria-live="polite"
-                  >
-                    {numFmt.format(instructions.length)} / {numFmt.format(COWORK_INSTRUCTIONS_MAX)}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className={labelCls}>Enlaces de referencia</span>
-                <div className="flex gap-2">
-                  <input
-                    className={inputCls}
-                    value={linkDraft}
-                    placeholder="https://…"
-                    inputMode="url"
-                    aria-label="Nuevo enlace de referencia"
-                    onChange={(e) => setLinkDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        addLink()
-                      }
-                    }}
-                  />
-                  <Button variant="ghost" onClick={addLink} disabled={!linkDraft.trim()}>
-                    <Plus size={14} /> Añadir
-                  </Button>
-                </div>
-                {links.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {links.map((l) => (
-                      <li key={l} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-                        <Link2 size={13} className="shrink-0 text-subtle" />
-                        <span className="min-w-0 flex-1 truncate font-mono text-xs" title={l}>
-                          {l}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setLinks(links.filter((x) => x !== l))}
-                          className="rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
-                          aria-label={`Quitar ${l}`}
-                        >
-                          <X size={13} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="mt-1.5 text-xs text-subtle">
-                  El agente los consulta con la herramienta de web si hace falta (máx. {MAX_LINKS}). Pulsa Guardar
-                  para aplicar los cambios.
-                </p>
-              </div>
-
-              <div>
-                <span className={labelCls}>Carpeta</span>
-                <DeleteGrantToggle />
-              </div>
-
-              <div>
-                <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-muted">
-                    <Sparkles size={12} className="mr-1 inline align-[-1px]" />
-                    Skills disponibles
-                  </span>
-                  <RecordSkillButton />
-                </div>
-                {skills === null ? (
-                  <p className="text-xs text-subtle">
-                    {useCowork.getState().client ? 'Cargando…' : 'Abre una tarea en esta carpeta para ver las skills.'}
-                  </p>
-                ) : skills.length === 0 ? (
-                  <p className="text-xs text-subtle">
-                    No hay skills instaladas. Puedes crear una en <code className="font-mono">.opencode/skills/&lt;nombre&gt;/SKILL.md</code>.
-                  </p>
-                ) : (
-                  <ul className="space-y-1">
-                    {skills.map((k) => (
-                      <li key={k.name} className="rounded-lg border border-border px-2.5 py-1.5">
-                        <span className="font-mono text-xs font-medium">{k.name}</span>
-                        {k.description && <p className="mt-0.5 line-clamp-2 text-xs text-subtle">{k.description}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <span className={labelCls}>
-                  <ShieldCheck size={12} className="mr-1 inline align-[-1px]" />
-                  Permisos recordados
-                </span>
-                {rules.length === 0 ? (
-                  <p className="text-xs text-subtle">
-                    Aún no hay permisos recordados. Aparecen aquí cuando eliges «Siempre» en una petición.
-                  </p>
-                ) : (
-                  <ul className="space-y-1">
-                    {rules.map((r) => (
-                      <li key={r.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-                        <div className="min-w-0 flex-1">
-                          <span className="text-xs font-medium">{r.permission}</span>
-                          <p className="truncate font-mono text-xs text-subtle" title={r.pattern}>
-                            {r.pattern}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void removeRule(r.id)}
-                          className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-danger hover:bg-danger/10"
-                        >
-                          <Trash2 size={12} /> Quitar
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {rules.length > 0 && (
-                  <p className="mt-1.5 text-xs text-subtle">Los cambios se aplican al abrir de nuevo la carpeta.</p>
-                )}
-              </div>
-            </>
-          ) : tab === 'agents' ? (
-            <div>
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <label className={labelCls} htmlFor="proj-agents">
-                  AGENTS.md de la carpeta
-                </label>
-                {agentsLoading && <Loader2 size={13} className="animate-spin text-subtle" />}
-              </div>
-              <textarea
-                id="proj-agents"
-                className={`${inputCls} min-h-72 resize-y font-mono leading-relaxed`}
-                value={agentsText}
-                disabled={agentsLoading}
-                maxLength={AGENTS_MD_MAX}
-                placeholder="Instrucciones para agentes de esta carpeta: comandos, convenciones, estructura…"
-                onChange={(e) => setAgentsText(e.target.value)}
-              />
-              <p className="mt-1.5 text-xs text-subtle">
-                {agentsInfo && !agentsInfo.exists
-                  ? 'Este archivo aún no existe: se creará al guardar. '
-                  : 'Es el archivo AGENTS.md de la carpeta; también lo usan otras herramientas. '}
-                {agentsInfo && <span className="font-mono break-all">{agentsInfo.path}</span>}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-lg border border-border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Usar memoria</p>
-                    <p className="mt-0.5 text-xs text-subtle">
-                      Si la desactivas, el agente no lee ni escribe las notas de este proyecto. El archivo no se borra.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={project?.memoryEnabled !== false}
-                    aria-label="Usar memoria"
-                    onClick={() => void toggleMemory()}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
-                      project?.memoryEnabled !== false ? 'bg-accent' : 'bg-border-strong'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
-                        project?.memoryEnabled !== false ? 'translate-x-4.5' : 'translate-x-0.5'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className={labelCls} htmlFor="proj-memory">
-                    Notas guardadas (.onyxcode/memoria.md)
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+            {tab === 'project' ? (
+              <>
+                <div>
+                  <label className={labelCls} htmlFor="proj-name">
+                    Nombre del proyecto
                   </label>
-                  {memory?.exists && (
-                    <button
-                      type="button"
-                      onClick={() => void clearMemory()}
-                      className="flex items-center gap-1 text-xs text-danger hover:underline"
+                  <input id="proj-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+                </div>
+                <div>
+                  <label className={labelCls} htmlFor="proj-instructions">
+                    Instrucciones de esta carpeta
+                  </label>
+                  <textarea
+                    id="proj-instructions"
+                    className={`${inputCls} min-h-56 resize-y leading-relaxed`}
+                    value={instructions}
+                    placeholder="Convenciones, tono, formatos preferidos, contexto del proyecto…"
+                    onChange={(e) => setInstructions(e.target.value)}
+                    maxLength={COWORK_INSTRUCTIONS_MAX}
+                  />
+                  <div className="mt-1.5 flex items-start gap-3">
+                    <p className="min-w-0 flex-1 text-xs text-subtle">
+                      Se añaden a todas las tareas de esta carpeta, junto con las instrucciones globales de Ajustes y la memoria guardada.
+                    </p>
+                    <span
+                      className={`shrink-0 text-xs tabular-nums ${instructions.length >= COWORK_INSTRUCTIONS_MAX * 0.9 ? 'text-danger' : 'text-subtle'}`}
+                      aria-live="polite"
                     >
-                      <Trash2 size={12} /> Borrar
-                    </button>
+                      {numFmt.format(instructions.length)} / {numFmt.format(COWORK_INSTRUCTIONS_MAX)}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className={labelCls}>Enlaces de referencia</span>
+                  <div className="flex gap-2">
+                    <input
+                      className={inputCls}
+                      value={linkDraft}
+                      placeholder="https://…"
+                      inputMode="url"
+                      aria-label="Nuevo enlace de referencia"
+                      onChange={(e) => setLinkDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (isSubmitKey(e, { allowShift: true })) {
+                          e.preventDefault()
+                          addLink()
+                        }
+                      }}
+                    />
+                    <Button variant="ghost" onClick={addLink} disabled={!linkDraft.trim()}>
+                      <Plus size={14} /> Añadir
+                    </Button>
+                  </div>
+                  {links.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {links.map((l) => (
+                        <li key={l} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
+                          <Link2 size={13} className="shrink-0 text-subtle" />
+                          <span className="min-w-0 flex-1 truncate font-mono text-xs" title={l}>
+                            {l}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setLinks(links.filter((x) => x !== l))}
+                            className="rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
+                            aria-label={`Quitar ${l}`}
+                          >
+                            <X size={13} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="mt-1.5 text-xs text-subtle">
+                    El agente los consulta con la herramienta de web si hace falta (máx. {MAX_LINKS}). Pulsa Guardar para aplicar los
+                    cambios.
+                  </p>
+                </div>
+
+                <div>
+                  <span className={labelCls}>Carpeta</span>
+                  <DeleteGrantToggle />
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <span className="text-xs font-medium text-muted">
+                      <Sparkles size={12} className="mr-1 inline align-[-1px]" />
+                      Skills disponibles
+                    </span>
+                    <RecordSkillButton />
+                  </div>
+                  {skills === null ? (
+                    <p className="text-xs text-subtle">
+                      {useCowork.getState().client ? 'Cargando…' : 'Abre una tarea en esta carpeta para ver las skills.'}
+                    </p>
+                  ) : skills.length === 0 ? (
+                    <p className="text-xs text-subtle">
+                      No hay skills instaladas. Puedes crear una en{' '}
+                      <code className="font-mono">.opencode/skills/&lt;nombre&gt;/SKILL.md</code>.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {skills.map((k) => (
+                        <li key={k.name} className="rounded-lg border border-border px-2.5 py-1.5">
+                          <span className="font-mono text-xs font-medium">{k.name}</span>
+                          {k.description && <p className="mt-0.5 line-clamp-2 text-xs text-subtle">{k.description}</p>}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
+
+                <div>
+                  <span className={labelCls}>
+                    <ShieldCheck size={12} className="mr-1 inline align-[-1px]" />
+                    Permisos recordados
+                  </span>
+                  {rules.length === 0 ? (
+                    <p className="text-xs text-subtle">
+                      Aún no hay permisos recordados. Aparecen aquí cuando eliges «Siempre» en una petición.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {rules.map((r) => (
+                        <li key={r.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-medium">{r.permission}</span>
+                            <p className="truncate font-mono text-xs text-subtle" title={r.pattern}>
+                              {r.pattern}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void removeRule(r.id)}
+                            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-danger hover:bg-danger/10"
+                          >
+                            <Trash2 size={12} /> Quitar
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {rules.length > 0 && <p className="mt-1.5 text-xs text-subtle">Los cambios se aplican al abrir de nuevo la carpeta.</p>}
+                </div>
+              </>
+            ) : tab === 'agents' ? (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <label className={labelCls} htmlFor="proj-agents">
+                    AGENTS.md de la carpeta
+                  </label>
+                  {agentsLoading && <Loader2 size={13} className="animate-spin text-subtle" />}
+                </div>
                 <textarea
-                  id="proj-memory"
-                  className={`${inputCls} min-h-64 resize-y font-mono leading-relaxed`}
-                  value={memoryText}
-                  placeholder="El agente guarda aquí notas útiles entre tareas (preferencias, decisiones, datos recurrentes)…"
-                  onChange={(e) => setMemoryText(e.target.value)}
+                  id="proj-agents"
+                  className={`${inputCls} min-h-72 resize-y font-mono leading-relaxed`}
+                  value={agentsText}
+                  disabled={agentsLoading}
+                  maxLength={AGENTS_MD_MAX}
+                  placeholder="Instrucciones para agentes de esta carpeta: comandos, convenciones, estructura…"
+                  onChange={(e) => setAgentsText(e.target.value)}
                 />
                 <p className="mt-1.5 text-xs text-subtle">
-                  El agente Cowork lee y actualiza este archivo. También puedes editarlo tú a mano; se
-                  incluye como contexto en cada nueva tarea de esta carpeta.
+                  {agentsInfo && !agentsInfo.exists
+                    ? 'Este archivo aún no existe: se creará al guardar. '
+                    : 'Es el archivo AGENTS.md de la carpeta; también lo usan otras herramientas. '}
+                  {agentsInfo && <span className="font-mono break-all">{agentsInfo.path}</span>}
                 </p>
               </div>
-            </>
-          )}
-
-          {error && (
-            <p className="flex items-start gap-1.5 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-              <AlertCircle size={15} className="mt-0.5 shrink-0" /> {error}
-            </p>
-          )}
-        </div>
-
-        <footer className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3">
-          <span className="min-w-0 flex-1 truncate text-xs text-subtle">
-            {saved && (
-              <span className="flex items-center gap-1 text-accent">
-                <Check size={13} /> Guardado
-              </span>
+            ) : (
+              <>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Usar memoria</p>
+                      <p className="mt-0.5 text-xs text-subtle">
+                        Si la desactivas, el agente no lee ni escribe las notas de este proyecto. El archivo no se borra.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={project?.memoryEnabled !== false}
+                      aria-label="Usar memoria"
+                      onClick={() => void toggleMemory()}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
+                        project?.memoryEnabled !== false ? 'bg-accent' : 'bg-border-strong'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                          project?.memoryEnabled !== false ? 'translate-x-4.5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className={labelCls} htmlFor="proj-memory">
+                      Notas guardadas (.onyxcode/memoria.md)
+                    </label>
+                    {memory?.exists && (
+                      <button
+                        type="button"
+                        onClick={() => void clearMemory()}
+                        className="flex items-center gap-1 text-xs text-danger hover:underline"
+                      >
+                        <Trash2 size={12} /> Borrar
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    id="proj-memory"
+                    className={`${inputCls} min-h-64 resize-y font-mono leading-relaxed`}
+                    value={memoryText}
+                    placeholder="El agente guarda aquí notas útiles entre tareas (preferencias, decisiones, datos recurrentes)…"
+                    onChange={(e) => setMemoryText(e.target.value)}
+                  />
+                  <p className="mt-1.5 text-xs text-subtle">
+                    El agente Cowork lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada nueva
+                    tarea de esta carpeta.
+                  </p>
+                </div>
+              </>
             )}
-          </span>
-          <Button variant="ghost" onClick={() => setProjectPanelOpen(false)}>
-            Cerrar
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => void (tab === 'project' ? submitProject() : tab === 'agents' ? submitAgents() : submitMemory())}
-            disabled={saving || (tab === 'agents' && agentsLoading)}
-          >
-            {saving && <Loader2 size={14} className="animate-spin" />}
-            Guardar
-          </Button>
-        </footer>
-      </div>
+
+            {error && (
+              <p className="flex items-start gap-1.5 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+                <AlertCircle size={15} className="mt-0.5 shrink-0" /> {error}
+              </p>
+            )}
+          </div>
+
+          <footer className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3">
+            <span className="min-w-0 flex-1 truncate text-xs text-subtle">
+              {saved && (
+                <span className="flex items-center gap-1 text-accent">
+                  <Check size={13} /> Guardado
+                </span>
+              )}
+            </span>
+            <Button variant="ghost" onClick={() => setProjectPanelOpen(false)}>
+              Cerrar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void (tab === 'project' ? submitProject() : tab === 'agents' ? submitAgents() : submitMemory())}
+              disabled={saving || (tab === 'agents' && agentsLoading)}
+            >
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              Guardar
+            </Button>
+          </footer>
+        </div>
       </div>
     </>
   )

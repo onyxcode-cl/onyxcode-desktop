@@ -53,10 +53,7 @@ export function AboutSection(): React.JSX.Element {
         <Row label={APP_NAME} description={info?.isDev ? 'Modo desarrollo' : undefined}>
           <span className="font-mono text-sm">v{versions?.app ?? info?.version ?? '…'}</span>
         </Row>
-        <Row
-          label="Servidor OpenCode"
-          description={connection ? <span className="font-mono">{connection.baseUrl}</span> : 'Sin conexión'}
-        >
+        <Row label="Servidor OpenCode" description={connection ? <span className="font-mono">{connection.baseUrl}</span> : 'Sin conexión'}>
           <span className="font-mono text-sm">
             {server ? `v${server.version}` : (connection?.version && `v${connection.version}`) || '—'}
           </span>
@@ -71,9 +68,7 @@ export function AboutSection(): React.JSX.Element {
           <span className="font-mono text-sm">{versions?.node ?? '…'}</span>
         </Row>
         <Row label="Sistema">
-          <span className="font-mono text-sm">
-            {versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}
-          </span>
+          <span className="font-mono text-sm">{versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}</span>
         </Row>
       </Card>
 

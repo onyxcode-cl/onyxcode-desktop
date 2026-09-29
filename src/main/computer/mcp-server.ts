@@ -243,8 +243,7 @@ async function requireTierFor(app: AppRef, minTier: AppTier, session?: string): 
 // (`ComputerService.isForeground`) es la fuente de verdad; sin canal lateral no se puede saber:
 // fail-closed, igual que el kill-switch.
 
-const BACKGROUND_REJECT_MSG =
-  'Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control'
+const BACKGROUND_REJECT_MSG = 'Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control'
 
 async function controlMode(session?: string): Promise<{ mode: 'background' | 'full'; foreground: boolean }> {
   if (!EVENTS_URL) return { mode: 'full', foreground: true } // sin main que consultar (pruebas sueltas): no bloquear
@@ -768,9 +767,7 @@ async function toPoints(x: unknown, y: unknown): Promise<{ x: number; y: number 
 
 // ───────────────────────────── herramientas ─────────────────────────────
 
-type Content =
-  | { type: 'text'; text: string }
-  | { type: 'image'; data: string; mimeType: string }
+type Content = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
 
 interface ToolResult {
   content: Content[]
@@ -933,7 +930,11 @@ async function axAction(bundleId: string, ref: string, action: string): Promise<
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-action falló (código ${code})`)
 }
 
-async function windowShotHelper(bundleId: string, outPath: string, windowIndex = 0): Promise<{ width: number; height: number; title?: string }> {
+async function windowShotHelper(
+  bundleId: string,
+  outPath: string,
+  windowIndex = 0
+): Promise<{ width: number; height: number; title?: string }> {
   const { stdout, code } = await helperExit('window-shot', bundleId, outPath, String(windowIndex))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `window-shot falló (código ${code})`)
   return JSON.parse(stdout) as { width: number; height: number; title?: string }
@@ -1170,8 +1171,7 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'scroll',
-    description:
-      'Desplaza con la rueda en (x, y) px de la captura. direction: up|down|left|right; amount: líneas (1-30, por defecto 5).',
+    description: 'Desplaza con la rueda en (x, y) px de la captura. direction: up|down|left|right; amount: líneas (1-30, por defecto 5).',
     inputSchema: obj(
       {
         ...XY,
@@ -1209,9 +1209,7 @@ const TOOLS: ToolDef[] = [
       if (text.length > 5000) throw new Error('Texto demasiado largo (máx. 5000 caracteres)')
       await requireTier('full', undefined, session)
       await requireCanType()
-      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
-        helper('type', text)
-      )
+      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () => helper('type', text))
       return `Escrito: ${text.length} caracteres`
     }
   },
@@ -1390,11 +1388,20 @@ const TOOLS: ToolDef[] = [
         )
       }
       const label = (d: string): string =>
-        d === 'deny' ? 'denegado' : d === 'view' ? 'Solo ver' : d === 'click' ? 'Ver y clic' : d === 'full' ? 'Control total' : 'sin respuesta'
+        d === 'deny'
+          ? 'denegado'
+          : d === 'view'
+            ? 'Solo ver'
+            : d === 'click'
+              ? 'Ver y clic'
+              : d === 'full'
+                ? 'Control total'
+                : 'sin respuesta'
       const lines = valid.map((r) => {
         const d = decisions[r.bundleId] ?? ''
         const t = asTier(d)
-        const short = t && TIER_RANK[t] < TIER_RANK[r.requested] ? ` (pediste "${TIER_LABEL[r.requested]}": si lo necesitas, díselo al usuario)` : ''
+        const short =
+          t && TIER_RANK[t] < TIER_RANK[r.requested] ? ` (pediste "${TIER_LABEL[r.requested]}": si lo necesitas, díselo al usuario)` : ''
         return `- ${r.name}: ${label(d)}${short}`
       })
       if (missing.length) lines.push(`- (no identificadas: ${missing.join(', ')})`)
@@ -1664,7 +1671,14 @@ const TOOLS: ToolDef[] = [
       if (mode === 'full') return 'Ya tienes control de la pantalla (el modo no es "En segundo plano"): no hace falta pedirlo.'
       if (foreground) return `Ya tienes el control del ratón y el teclado en esta tarea para ${app.name}.`
       const reason = typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined
-      const { decisions, cancelled } = await requestAccess([{ ...app, requested: 'full' }], reason, undefined, session, undefined, 'takeover')
+      const { decisions, cancelled } = await requestAccess(
+        [{ ...app, requested: 'full' }],
+        reason,
+        undefined,
+        session,
+        undefined,
+        'takeover'
+      )
       if (cancelled) {
         return (
           'El usuario prefirió seguir en segundo plano: NO tienes el control del ratón ni el teclado. ' +
@@ -1827,8 +1841,7 @@ async function dispatch(req: RpcRequest): Promise<RpcResponse | null> {
           protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'onyxcode-computer', version: '0.2.0' },
-          instructions:
-            'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
+          instructions: 'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
         })
       }
       case 'ping':
@@ -1916,9 +1929,7 @@ function handleHttp(req: IncomingMessage, res: ServerResponse, port: number): vo
     }
     const batch = Array.isArray(parsed)
     const list: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
-    const msgs = list.filter(
-      (m): m is RpcRequest => !!m && typeof m === 'object' && typeof (m as RpcRequest).method === 'string'
-    )
+    const msgs = list.filter((m): m is RpcRequest => !!m && typeof m === 'object' && typeof (m as RpcRequest).method === 'string')
     // Solo respuestas/notificaciones → 202 sin cuerpo.
     void Promise.all(msgs.map(dispatch)).then((out) => {
       const responses = out.filter((r): r is RpcResponse => r !== null)

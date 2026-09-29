@@ -19,6 +19,7 @@ import { confirmDialog } from '../../../components/ConfirmDialog'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { rootSessionID, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
+import { isSubmitKey } from '../../../lib/textarea'
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
 function SessionRow({
@@ -68,7 +69,7 @@ function SessionRow({
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') commit()
+            if (isSubmitKey(e, { allowShift: true })) commit()
             else if (e.key === 'Escape') setEditing(false)
           }}
           className="no-drag mx-2 my-1 min-w-0 flex-1 rounded-md border border-accent bg-bg px-1.5 py-1 text-[13px] outline-none"
@@ -96,7 +97,8 @@ function SessionRow({
             {session.summary && session.summary.files > 0 && (
               <>
                 {' · '}
-                <span className="text-success">+{session.summary.additions}</span> <span className="text-danger">-{session.summary.deletions}</span>
+                <span className="text-success">+{session.summary.additions}</span>{' '}
+                <span className="text-danger">-{session.summary.deletions}</span>
               </>
             )}
           </span>
@@ -104,7 +106,12 @@ function SessionRow({
       )}
       {!editing && (
         <span className="mr-1 hidden shrink-0 items-center gap-0.5 group-hover:flex">
-          <button type="button" title="Renombrar" onClick={() => setEditing(true)} className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-fg">
+          <button
+            type="button"
+            title="Renombrar"
+            onClick={() => setEditing(true)}
+            className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-fg"
+          >
             <Pencil size={12} />
           </button>
           <button
@@ -340,7 +347,15 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
               archivedList
                 .sort((a, b) => b.time.updated - a.time.updated)
                 .map((s) => (
-                  <SessionRow key={s.id} session={s} active={s.id === activeSessionID} waiting={false} busy={false} unread={false} pinned={false} />
+                  <SessionRow
+                    key={s.id}
+                    session={s}
+                    active={s.id === activeSessionID}
+                    waiting={false}
+                    busy={false}
+                    unread={false}
+                    pinned={false}
+                  />
                 ))}
           </div>
         )}

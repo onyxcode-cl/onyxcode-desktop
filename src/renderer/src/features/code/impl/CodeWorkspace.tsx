@@ -32,15 +32,17 @@ import {
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
-import { getCodeApi, nativeCode, useClient } from './client'
+import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
 import { MessageStream } from './MessageStream'
+import { useVisibleFsVersion } from './useVisibleFsVersion'
+import { TranscriptLoading } from '../../../components/TranscriptLoader'
 import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
 import { TerminalPanel } from './panels/TerminalPanel'
-import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate } from './ProjectPicker'
+import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
 import { SessionList } from './SessionList'
-import { ensureCodeSubscription, rootSessionID, useCode } from './store'
+import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
 import type { RightPanel } from './types'
 import { MOD, Tip, isEditableTarget } from './ui'
@@ -196,7 +198,7 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
         </IconButton>
       </div>
       <div className="min-h-0 flex-1">
-        {panel === 'changes' && <ChangesPanel directory={directory} />}
+        {panel === 'changes' && <ChangesPanel key={directory} directory={directory} />}
         {panel === 'files' && <FilesPanel directory={directory} />}
         {terminalMounted && (
           <div className={panel === 'terminal' ? 'h-full' : 'hidden'}>
@@ -223,8 +225,12 @@ interface BranchInfo {
 
 /** Rama actual + ahead/behind (se refresca cuando cambian archivos). */
 function useBranch(directory: string): BranchInfo | null {
-  const fsVersion = useCode((s) => s.fsVersion)
+  const fsVersion = useVisibleFsVersion()
   const [info, setInfo] = useState<BranchInfo | null>(null)
+  // Al cambiar de proyecto no se muestra la rama del anterior mientras carga la nueva.
+  useEffect(() => {
+    setInfo(null)
+  }, [directory])
   useEffect(() => {
     let cancelled = false
     const api = nativeCode()
@@ -232,10 +238,15 @@ function useBranch(directory: string): BranchInfo | null {
       if (api) {
         const st = await api.git.status(directory)
         if (!st.isRepo) return null
-        return { branch: st.detached ? (st.head?.slice(0, 7) ?? null) : st.branch, ahead: st.ahead, behind: st.behind, changes: st.files.length, upstream: st.upstream }
+        return {
+          branch: st.detached ? (st.head?.slice(0, 7) ?? null) : st.branch,
+          ahead: st.ahead,
+          behind: st.behind,
+          changes: st.files.length,
+          upstream: st.upstream
+        }
       }
-      const st = await getCodeApi().gitStatus(directory)
-      return { branch: st.branch, ahead: st.ahead, behind: st.behind, changes: st.files.length, upstream: null }
+      return null
     }
     load()
       .then((i) => !cancelled && setInfo(i))
@@ -417,10 +428,26 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
 }
 
 const SUGGESTIONS: { label: string; prompt: string; agent: 'plan' | 'build' }[] = [
-  { label: 'Explícame este proyecto', prompt: 'Explícame la estructura de este proyecto: qué hace, cómo está organizado y cuáles son sus piezas principales.', agent: 'plan' },
-  { label: 'Revisa los cambios sin commitear', prompt: 'Revisa los cambios sin commitear (git diff) y dime si ves bugs, riesgos o mejoras.', agent: 'plan' },
-  { label: 'Busca y corrige errores de tipos', prompt: 'Ejecuta el chequeo de tipos/lint del proyecto y corrige los errores que encuentres.', agent: 'build' },
-  { label: 'Escribe tests para lo más crítico', prompt: 'Identifica la lógica más crítica sin tests y escribe tests para ella siguiendo las convenciones del proyecto.', agent: 'build' }
+  {
+    label: 'Explícame este proyecto',
+    prompt: 'Explícame la estructura de este proyecto: qué hace, cómo está organizado y cuáles son sus piezas principales.',
+    agent: 'plan'
+  },
+  {
+    label: 'Revisa los cambios sin commitear',
+    prompt: 'Revisa los cambios sin commitear (git diff) y dime si ves bugs, riesgos o mejoras.',
+    agent: 'plan'
+  },
+  {
+    label: 'Busca y corrige errores de tipos',
+    prompt: 'Ejecuta el chequeo de tipos/lint del proyecto y corrige los errores que encuentres.',
+    agent: 'build'
+  },
+  {
+    label: 'Escribe tests para lo más crítico',
+    prompt: 'Identifica la lógica más crítica sin tests y escribe tests para ella siguiendo las convenciones del proyecto.',
+    agent: 'build'
+  }
 ]
 
 function EmptySession({ directory, error }: { directory: string; error: string | null }): React.JSX.Element {
@@ -449,7 +476,9 @@ function EmptySession({ directory, error }: { directory: string; error: string |
             }}
             className="group flex items-start gap-2 rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm transition hover:border-border-strong hover:bg-hover disabled:opacity-50"
           >
-            <span className={`mt-0.5 shrink-0 rounded px-1 text-[10px] font-semibold uppercase ${sug.agent === 'plan' ? 'bg-accent-soft text-accent' : 'bg-hover text-muted'}`}>
+            <span
+              className={`mt-0.5 shrink-0 rounded px-1 text-[10px] font-semibold uppercase ${sug.agent === 'plan' ? 'bg-accent-soft text-accent' : 'bg-hover text-muted'}`}
+            >
               {sug.agent}
             </span>
             <span className="text-fg/90">{sug.label}</span>
@@ -523,6 +552,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const run = useCode((s) => (sid ? s.runState[sid] : undefined))
   const error = useCode((s) => (sid ? (s.errors[sid] ?? null) : null))
   const loading = useCode((s) => (sid ? !!s.loadingMessages[sid] : false))
+  const evictedLoading = useCode((s) => isCodeTranscriptLoading(s, sid))
   const revertID = useCode((s) => (sid ? s.sessions[sid]?.revert?.messageID : undefined))
   const globalError = useCode((s) => s.globalError)
   const setGlobalError = useCode((s) => s.setGlobalError)
@@ -535,10 +565,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
     () => permissionsAll.filter((p) => !!sid && belongs(sessions, p.sessionID, sid)),
     [permissionsAll, sessions, sid]
   )
-  const questions = useMemo(
-    () => questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid)),
-    [questionsAll, sessions, sid]
-  )
+  const questions = useMemo(() => questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid)), [questionsAll, sessions, sid])
   const client = useClient()
   const busy = run === 'busy' || run === 'retry'
 
@@ -567,7 +594,9 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
         />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
-          {loading ? (
+          {evictedLoading ? (
+            <TranscriptLoading />
+          ) : loading ? (
             <Loader2 size={18} className="animate-spin text-muted" />
           ) : (
             <EmptySession directory={directory} error={error} />
@@ -592,8 +621,6 @@ interface CodeWorkspaceProps {
 export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): React.JSX.Element {
   const client = useClient()
   const directory = useCode((s) => s.directory)
-  const openProject = useCode((s) => s.openProject)
-
   useEffect(() => ensureCodeSubscription(), [])
 
   // Atajos: ⌘1 Cambios · ⌘2 Terminal · ⌘3 Archivos · ⌘4 Navegador · Esc detiene (fuera de campos de texto).
@@ -633,8 +660,8 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     const dir = useCode.getState().directory
     if (!dir || loadedFor.current === client) return
     loadedFor.current = client
-    void openProject(dir)
-  }, [client, openProject])
+    void openProjectTrusted(dir)
+  }, [client])
 
   // Título del documento: prefijo "(n)" con sesiones no leídas + marca como leída la activa al recuperar el foco.
   // Nota: esto es lo más parecido a un badge que se puede hacer sin tocar el proceso principal (Electron

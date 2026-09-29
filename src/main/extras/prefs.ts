@@ -9,17 +9,11 @@ type Listener = (prefs: ExtrasPrefs) => void
 const MODES: readonly ModelMode[] = ['chat', 'code', 'cowork']
 
 function isModelRef(v: unknown): v is ModelRef {
-  return (
-    !!v &&
-    typeof v === 'object' &&
-    typeof (v as ModelRef).providerID === 'string' &&
-    typeof (v as ModelRef).modelID === 'string'
-  )
+  return !!v && typeof v === 'object' && typeof (v as ModelRef).providerID === 'string' && typeof (v as ModelRef).modelID === 'string'
 }
 
 function normalize(input: Partial<ExtrasPrefs>): ExtrasPrefs {
-  const shortcut =
-    typeof input.quickEntryShortcut === 'string' ? input.quickEntryShortcut.trim() : DEFAULT_EXTRAS_PREFS.quickEntryShortcut
+  const shortcut = typeof input.quickEntryShortcut === 'string' ? input.quickEntryShortcut.trim() : DEFAULT_EXTRAS_PREFS.quickEntryShortcut
   const modelsByMode: ExtrasPrefs['modelsByMode'] = {}
   const raw = input.modelsByMode
   if (raw && typeof raw === 'object') {

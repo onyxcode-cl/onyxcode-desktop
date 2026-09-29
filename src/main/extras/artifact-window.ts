@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto'
 import { APP_SLUG } from '@shared/brand'
 import type { ArtifactPayload } from '@shared/ipc-extras'
 import { extrasWindows } from './windows'
+import { presentWindow } from '../e2e-headless'
 
 const PARTITION = 'artifact'
 const SCHEME = `${APP_SLUG}-artifact`
@@ -125,7 +126,7 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
   wc.on('will-attach-webview', (event) => event.preventDefault())
   // Mantener el título elegido aunque el HTML tenga su propio <title>.
   win.on('page-title-updated', (event) => event.preventDefault())
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => presentWindow(win))
   win.on('closed', () => artifacts.delete(id))
 
   wc.on('context-menu', () => {
@@ -222,10 +223,7 @@ export async function renderHtmlToPdf(html: string, title = 'Documento'): Promis
       new Promise((resolve) => setTimeout(resolve, 3000))
     ])
     await new Promise((resolve) => setTimeout(resolve, 250))
-    return await Promise.race([
-      wc.printToPDF({ printBackground: true, pageSize: 'A4', preferCSSPageSize: true }),
-      timeout
-    ])
+    return await Promise.race([wc.printToPDF({ printBackground: true, pageSize: 'A4', preferCSSPageSize: true }), timeout])
   } finally {
     if (timer) clearTimeout(timer)
     artifacts.delete(id)

@@ -3,23 +3,12 @@ import type { Provider } from '@opencode-ai/sdk/v2/client'
 import { Check, ChevronsUpDown, Search } from 'lucide-react'
 import type { ModelRef } from '@shared/types'
 
-const PREFERRED = 'opencode-go'
+import { PREFERRED_PROVIDER, sortProviders } from '../../../stores/providers'
 
-export function sortProviders(list: Provider[]): Provider[] {
-  return [...list].sort((a, b) =>
-    a.id === PREFERRED ? -1 : b.id === PREFERRED ? 1 : a.name.localeCompare(b.name, 'es')
-  )
-}
+export { sortProviders }
 
 export function modelKey(ref: ModelRef): string {
   return `${ref.providerID}/${ref.modelID}`
-}
-
-/** providerID nunca contiene "/", modelID sí puede. */
-export function parseModelKey(key: string): ModelRef | null {
-  const i = key.indexOf('/')
-  if (i <= 0) return null
-  return { providerID: key.slice(0, i), modelID: key.slice(i + 1) }
 }
 
 export function modelLabel(providers: Provider[], ref: ModelRef): string {
@@ -120,7 +109,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
             {groups.map(({ provider, models }) => (
               <div key={provider.id}>
                 <div className="px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
-                  {provider.id === PREFERRED ? `${provider.name} ★` : provider.name}
+                  {provider.id === PREFERRED_PROVIDER ? `${provider.name} ★` : provider.name}
                 </div>
                 {models.map((m) => {
                   const key = `${provider.id}/${m.id}`

@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path'
 import type { CoworkMcpInfo } from '@shared/ipc-cowork'
 import type { McpEntry } from '@shared/ipc-extras'
 import { readAppMcpConfig } from '../extras/mcp-config'
+import { hostOf } from '../util/url'
 
 export interface CoworkMcpContribution {
   /** Bloque `mcp` de OpenCode a inyectar. */
@@ -81,15 +82,6 @@ function writeFlags(data: Persisted): void {
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(`${file}.tmp`, JSON.stringify(data, null, 2), 'utf8')
   renameSync(`${file}.tmp`, file)
-}
-
-/** Host (sin puerto) de una URL remota, o null si no es válida. */
-function hostOf(url: string): string | null {
-  try {
-    return new URL(url).hostname.toLowerCase() || null
-  } catch {
-    return null
-  }
 }
 
 /**

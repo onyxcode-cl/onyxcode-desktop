@@ -2,7 +2,7 @@
 
 Cliente de escritorio estilo Claude Desktop (modos **Chat · Code · Cowork · Rutinas**) construido sobre
 el servidor de agentes de [OpenCode](https://opencode.ai), usando la suscripción **OpenCode Go** como
-proveedor de modelos. El plan completo está en [`PLAN.md`](./PLAN.md).
+proveedor de modelos. El plan original está archivado en [`docs/archive/PLAN.md`](./docs/archive/PLAN.md); el plan vigente es [`docs/FASE6-PLAN.md`](./docs/FASE6-PLAN.md).
 
 > El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
 
@@ -52,11 +52,15 @@ Variables útiles:
 
 ```
 src/
-  shared/        brand.ts · ipc.ts (contrato IPC tipado) · types.ts
-  main/          index.ts · store.ts · opencode/ (sidecar) · ipc/ (register*Handlers)
-                 pty/ · git/ · scheduler/ (fases 2–3)
-  preload/       index.ts → window.api tipado
-  renderer/src/  app/ (layout, modos) · lib/ · stores/ · components/ · features/{chat,code,cowork,routines,settings}
+  shared/        brand.ts · ipc.ts + ipc-{code,cowork,extras,browser}.ts (contratos IPC tipados) · types.ts
+  main/          index.ts · store.ts
+                 opencode/ (sidecar) · ipc/ (register*Handlers, schemas, guard)
+                 cowork/ (sandbox Seatbelt, servidores por carpeta, permisos) · scheduler/ (rutinas)
+                 computer/ (control del Mac, helper Swift) · embedded-browser/ (navegador integrado, CDP)
+                 pty/ · git/ · dialog/ · security/ · extras/ (bandeja, atajos) · util/ (net, exec, asar, paths)
+  preload/       index.ts → window.api tipado (+ code-api, cowork-api, extras-api, browser-api)
+                 quick · overlay · pill · assist · browser-host: preloads con sandbox, autocontenidos a propósito
+  renderer/src/  app/ (layout, modos) · lib/ · stores/ · components/ · features/{chat,code,cowork,routines,settings,browser}
 ```
 
 ### Agregar un modo o una vista
@@ -66,13 +70,18 @@ barra lateral y botón "nuevo"). Registrarlo es una línea en `src/renderer/src/
 
 ### Agregar un canal IPC
 
-1. Declararlo en `IpcInvokeContract` (y en `IPC_INVOKE_CHANNELS`) en `src/shared/ipc.ts`.
-2. Implementarlo con `handle(ipcMain, 'canal', fn)` en `src/main/ipc/<modulo>.ts`
-   (`register<Modulo>Handlers`, registrado en `src/main/ipc/index.ts`).
-3. Usarlo en el renderer con `call('canal', req)` (`lib/api.ts`).
+1. Declararlo en el contrato de su área (`IpcInvokeContract` en `src/shared/ipc.ts`, o `ipc-code.ts`,
+   `ipc-cowork.ts`, `ipc-extras.ts`, `ipc-browser.ts`) y en su lista de canales.
+2. Añadir su esquema de validación en `src/main/ipc/schemas.ts`.
+3. Implementarlo con `handle(ipcMain, 'canal', fn)` (o el `handle` de su área, todos creados con
+   `makeInvokeHandler` de `src/main/ipc/handle.ts`) en `src/main/ipc/<modulo>.ts`; los registradores
+   se llaman desde `src/main/index.ts`.
+4. Usarlo en el renderer con `call('canal', req)` (`lib/api.ts`) o la API de su preload
+   (`window.api.code`, `.cowork`, `.extras`, `.browser`).
 
 ## Estado
 
-Fase 1 (base) lista: sidecar, IPC tipado, layout con selector de modo, selector de modelo y Chat con
-streaming (texto, razonamiento colapsado, herramientas compactas, Markdown con resaltado, detener,
-renombrar y eliminar conversaciones). Code, Cowork, Rutinas y Ajustes avanzados son placeholders.
+Chat, Code, Cowork, Rutinas, Ajustes y el navegador integrado están implementados. El detalle de cada
+etapa (Cowork lotes A–D, seguridad, rediseño) está en [`docs/`](./docs) y [`AUDIT.md`](./AUDIT.md).
+Pendiente: Dispatch (móvil → escritorio), firma con Developer ID y auto-actualización
+(ver [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).

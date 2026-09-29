@@ -30,6 +30,8 @@ import {
   useCowork
 } from '../../cowork/impl/store'
 import { Badge, Card, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
+import { errText } from '../../../lib/format'
+import { isSubmitKey } from '../../../lib/textarea'
 
 // ───────────────────────────── Helpers puros ─────────────────────────────
 
@@ -136,12 +138,18 @@ export function groupRulesByFolder(rules: CoworkPermissionRule[]): Array<{ folde
   return [...map].map(([folder, list]) => ({ folder, rules: list }))
 }
 
-const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
-
 // ───────────────────────────── UI ─────────────────────────────
 
 /** Grupo con título (sin mayúsculas forzadas) y descripción opcional. */
-function Group({ title, description, children }: { title: string; description?: React.ReactNode; children: React.ReactNode }): React.JSX.Element {
+function Group({
+  title,
+  description,
+  children
+}: {
+  title: string
+  description?: React.ReactNode
+  children: React.ReactNode
+}): React.JSX.Element {
   return (
     <section className="mt-9 first:mt-0">
       <h3 className="text-[13.5px] font-semibold text-fg">{title}</h3>
@@ -204,7 +212,7 @@ function NumberField({
       disabled={disabled}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
-      onKeyDown={(e) => e.key === 'Enter' && commit()}
+      onKeyDown={(e) => isSubmitKey(e, { allowShift: true }) && commit()}
       className="w-24 text-right"
     />
   )
@@ -252,9 +260,15 @@ export function CoworkSection(): React.JSX.Element {
     syncActivity()
     void loadCoworkPrefs()
     void loadPolicy()
-    cw('cowork:trusted:list').then(setTrusted).catch((err: unknown) => fail('trusted', err))
-    cw('cowork:listFolders').then(setFolders).catch((err: unknown) => fail('folders', err))
-    cw('cowork:rules:list', {}).then(setRules).catch((err: unknown) => fail('rules', err))
+    cw('cowork:trusted:list')
+      .then(setTrusted)
+      .catch((err: unknown) => fail('trusted', err))
+    cw('cowork:listFolders')
+      .then(setFolders)
+      .catch((err: unknown) => fail('folders', err))
+    cw('cowork:rules:list', {})
+      .then(setRules)
+      .catch((err: unknown) => fail('rules', err))
     loadStorage()
   }, [bridge, fail, loadStorage])
 
@@ -296,12 +310,16 @@ export function CoworkSection(): React.JSX.Element {
 
   const setTrustedMode = (path: string, mode: FolderAccessMode): void => {
     clear('trusted')
-    cw('cowork:trusted:set', { path, mode }).then(setTrusted).catch((err: unknown) => fail('trusted', err))
+    cw('cowork:trusted:set', { path, mode })
+      .then(setTrusted)
+      .catch((err: unknown) => fail('trusted', err))
   }
 
   const removeTrusted = (t: TrustedFolder): void => {
     clear('trusted')
-    cw('cowork:trusted:remove', { path: t.path }).then(setTrusted).catch((err: unknown) => fail('trusted', err))
+    cw('cowork:trusted:remove', { path: t.path })
+      .then(setTrusted)
+      .catch((err: unknown) => fail('trusted', err))
   }
 
   // ── Carpetas de Cowork / Control total ──
@@ -331,7 +349,9 @@ export function CoworkSection(): React.JSX.Element {
   // ── Permisos recordados ──
   const removeRule = (r: CoworkPermissionRule): void => {
     clear('rules')
-    cw('cowork:rules:remove', { id: r.id }).then(setRules).catch((err: unknown) => fail('rules', err))
+    cw('cowork:rules:remove', { id: r.id })
+      .then(setRules)
+      .catch((err: unknown) => fail('rules', err))
   }
 
   // ── Almacenamiento ──
@@ -396,10 +416,7 @@ export function CoworkSection(): React.JSX.Element {
       />
 
       {locks.managed && (
-        <div
-          role="status"
-          className="mb-8 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm"
-        >
+        <div role="status" className="mb-8 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm">
           <ShieldCheck size={17} className="mt-0.5 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0">
             <div className="font-medium text-fg">Gestionado por tu organización</div>
@@ -465,7 +482,10 @@ export function CoworkSection(): React.JSX.Element {
                       <option value="rw">{FOLDER_MODE_LABEL_ES.rw}</option>
                     </Select>
                   </div>
-                  <RemoveButton label={`Quitar ${t.name || folderLabel(t.path)} de las carpetas de confianza`} onClick={() => removeTrusted(t)} />
+                  <RemoveButton
+                    label={`Quitar ${t.name || folderLabel(t.path)} de las carpetas de confianza`}
+                    onClick={() => removeTrusted(t)}
+                  />
                 </div>
               </Row>
             ))
@@ -502,7 +522,9 @@ export function CoworkSection(): React.JSX.Element {
           )}
         </Card>
         {locks.fullAccess && (
-          <p className="mt-2 text-xs text-muted">Tu organización ha desactivado el {COWORK_TERMS.fullControl}: no se puede conceder en ninguna carpeta.</p>
+          <p className="mt-2 text-xs text-muted">
+            Tu organización ha desactivado el {COWORK_TERMS.fullControl}: no se puede conceder en ninguna carpeta.
+          </p>
         )}
         {errors.folders && <p className="mt-2 text-xs text-danger">{errors.folders}</p>}
       </Group>
@@ -543,7 +565,10 @@ export function CoworkSection(): React.JSX.Element {
       </Group>
 
       {/* 4 · Notificaciones por tipo */}
-      <Group title="Notificaciones por tipo" description="Aplica a las tareas que ocurren en segundo plano. El interruptor general está en General.">
+      <Group
+        title="Notificaciones por tipo"
+        description="Aplica a las tareas que ocurren en segundo plano. El interruptor general está en General."
+      >
         <Card>
           {NOTIFY_ROWS.map((n) => (
             <Row key={n.key} label={n.label} description={n.description}>
@@ -560,9 +585,17 @@ export function CoworkSection(): React.JSX.Element {
       </Group>
 
       {/* 5 · Archivado automático */}
-      <Group title="Archivado automático" description="Archiva las tareas sin actividad. Las tareas fijadas o que esperan tu respuesta no se archivan.">
+      <Group
+        title="Archivado automático"
+        description="Archiva las tareas sin actividad. Las tareas fijadas o que esperan tu respuesta no se archivan."
+      >
         <Card>
-          <Row label="Archivar tareas tras" description={archiveOverMax ? `Tu organización limita este ajuste a ${locks.maxArchiveDays} días como máximo.` : 'Por defecto: Nunca.'}>
+          <Row
+            label="Archivar tareas tras"
+            description={
+              archiveOverMax ? `Tu organización limita este ajuste a ${locks.maxArchiveDays} días como máximo.` : 'Por defecto: Nunca.'
+            }
+          >
             <div className="w-36">
               <Select
                 value={archiveValue}
@@ -625,7 +658,9 @@ export function CoworkSection(): React.JSX.Element {
                 description={<span className="font-mono break-all">{s.folder}</span>}
               >
                 <div className="flex items-center gap-2">
-                  <Badge tone={s.fullAccess ? 'warn' : 'muted'}>{s.fullAccess ? COWORK_TERMS.fullControlShort : COWORK_TERMS.sandbox}</Badge>
+                  <Badge tone={s.fullAccess ? 'warn' : 'muted'}>
+                    {s.fullAccess ? COWORK_TERMS.fullControlShort : COWORK_TERMS.sandbox}
+                  </Badge>
                   <span className="text-xs text-muted">{formatIdle(s.idleSince, now)}</span>
                 </div>
               </Row>
@@ -642,8 +677,7 @@ export function CoworkSection(): React.JSX.Element {
         <Card>
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="text-sm">
-              <span className="font-medium">Total</span>{' '}
-              <span className="text-muted">{report ? formatBytes(report.totalBytes) : '…'}</span>
+              <span className="font-medium">Total</span> <span className="text-muted">{report ? formatBytes(report.totalBytes) : '…'}</span>
             </div>
             <Button size="sm" variant="ghost" onClick={loadStorage} disabled={storageBusy !== null}>
               {storageBusy === 'report' ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Actualizar
@@ -658,10 +692,18 @@ export function CoworkSection(): React.JSX.Element {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-sidebar/60 text-xs text-muted">
-                    <th scope="col" className="px-4 py-2 font-medium">Carpeta</th>
-                    <th scope="col" className="px-3 py-2 text-right font-medium">Total</th>
-                    <th scope="col" className="px-3 py-2 text-right font-medium">Caché</th>
-                    <th scope="col" className="px-4 py-2 text-right font-medium">Acciones</th>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      Carpeta
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">
+                      Total
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">
+                      Caché
+                    </th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

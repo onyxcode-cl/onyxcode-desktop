@@ -5,18 +5,9 @@
  * usuario pueda verla/editarla con cualquier editor y viaje con la carpeta.
  */
 import { app } from 'electron'
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  renameSync,
-  statSync,
-  unlinkSync,
-  writeFileSync
-} from 'node:fs'
-import { basename, dirname, join, sep } from 'node:path'
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
+import { isInside } from '../util/paths'
 import type { CoworkAgentsMd, CoworkMemory, CoworkProject } from '@shared/ipc-cowork'
 import { COWORK_INSTRUCTIONS_MAX } from '@shared/cowork-prompt'
 
@@ -45,9 +36,7 @@ export class CoworkProjectsStore {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
         if (Array.isArray(raw.projects)) {
-          data.projects = raw.projects.filter(
-            (p): p is CoworkProject => !!p && typeof p.folder === 'string' && typeof p.name === 'string'
-          )
+          data.projects = raw.projects.filter((p): p is CoworkProject => !!p && typeof p.folder === 'string' && typeof p.name === 'string')
         }
       }
     } catch (err) {
@@ -73,10 +62,7 @@ export class CoworkProjectsStore {
     return { folder, name: basename(folder), instructions: '', createdAt: now, updatedAt: now }
   }
 
-  save(
-    folder: string,
-    patch: { name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }
-  ): CoworkProject {
+  save(folder: string, patch: { name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }): CoworkProject {
     const data = this.load()
     const now = Date.now()
     let entry = data.projects.find((p) => p.folder === folder)
@@ -182,11 +168,6 @@ export function deleteMemory(folder: string): CoworkMemory {
   return readMemoryFile(folder)
 }
 
-/** Evita rutas fuera de la carpeta (defensa en profundidad; el llamador ya valida con assertInsideApproved). */
-export function isInside(root: string, path: string): boolean {
-  return path === root || path.startsWith(root + sep)
-}
-
 // ── AGENTS.md de la carpeta ────────────────────────────────────────────────────────────
 
 /**
@@ -208,7 +189,7 @@ function resolveAgentsMd(folder: string): { path: string; real: string; exists: 
     } catch {
       throw new Error('AGENTS.md es un enlace simbólico roto.')
     }
-    if (!isInside(realpathSync(folder), real)) {
+    if (!isInside(real, realpathSync(folder))) {
       throw new Error('AGENTS.md es un enlace simbólico que apunta fuera de la carpeta; edítalo desde el terminal.')
     }
     if (!statSync(real).isFile()) throw new Error('AGENTS.md no es un archivo.')

@@ -14,6 +14,7 @@ import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { errorMessage } from '../../../lib/opencode'
+import { isSubmitKey, useAutosizeTextarea } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { useModeModel } from '../../settings/impl/extras'
 import { attachFiles, removeAttachment, unlinkFolder } from './actions'
@@ -71,12 +72,7 @@ export const CoworkComposer = forwardRef<CoworkComposerHandle, Props>(function C
     ref.current?.focus()
   }, [autoFocusKey])
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, hero ? 320 : 240)}px`
-  }, [text, hero])
+  useAutosizeTextarea(ref, text, { max: hero ? 320 : 240 })
 
   const canSend = !disabled && !busy && text.trim().length > 0
 
@@ -160,7 +156,7 @@ export const CoworkComposer = forwardRef<CoworkComposerHandle, Props>(function C
           placeholder={placeholder ?? 'Escribe un mensaje…'}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            if (isSubmitKey(e)) {
               e.preventDefault()
               submit()
             }

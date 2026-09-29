@@ -58,6 +58,7 @@ import {
 } from './actions'
 import { describeAction } from './computer-tools'
 import { loadGrants, setTaskModel, useCowork } from './store'
+import { isCoworkSource } from './util'
 
 export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kimi-k3' }
 
@@ -218,8 +219,7 @@ export function FullAccessDialog(): React.JSX.Element | null {
           ¿Permitir que el agente controle tu Mac?
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Las tareas de «{name}» se ejecutarán <strong className="text-fg">sin sandbox</strong> y con control del
-          computador.
+          Las tareas de «{name}» se ejecutarán <strong className="text-fg">sin sandbox</strong> y con control del computador.
         </p>
         <ul className="mt-4 space-y-2.5 text-sm text-muted">
           <li className="flex gap-2.5">
@@ -229,18 +229,17 @@ export function FullAccessDialog(): React.JSX.Element | null {
           <li className="flex gap-2.5">
             <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" />
             <span>
-              Tomará capturas de pantalla, que <strong className="text-fg">se envían al proveedor del modelo</strong>.
-              Cierra o oculta lo que no quieras compartir.
+              Tomará capturas de pantalla, que <strong className="text-fg">se envían al proveedor del modelo</strong>. Cierra o oculta lo
+              que no quieras compartir.
               <span className="mt-1 block text-xs text-subtle" data-testid="capture-retention">
-                Las capturas se envían al proveedor del modelo y quedan en el historial de la tarea; las copias
-                temporales se borran al terminar y al cerrar la app.
+                Las capturas se envían al proveedor del modelo y quedan en el historial de la tarea; las copias temporales se borran al
+                terminar y al cerrar la app.
               </span>
             </span>
           </li>
           <li className="flex gap-2.5">
             <ShieldOff size={16} className="mt-0.5 shrink-0 text-amber-500" />
-            Podrá crear, modificar y borrar archivos y ejecutar comandos en cualquier lugar de tu Mac, no solo en esta
-            carpeta.
+            Podrá crear, modificar y borrar archivos y ejecutar comandos en cualquier lugar de tu Mac, no solo en esta carpeta.
           </li>
           <li className="flex gap-2.5">
             <OctagonX size={16} className="mt-0.5 shrink-0 text-danger" />
@@ -251,19 +250,13 @@ export function FullAccessDialog(): React.JSX.Element | null {
           </li>
         </ul>
         <p className="mt-4 rounded-lg bg-hover px-3 py-2 text-xs text-muted">
-          Úsalo solo con tareas y sitios de confianza: el contenido de la pantalla (webs, correos…) podría intentar
-          engañar al agente.
+          Úsalo solo con tareas y sitios de confianza: el contenido de la pantalla (webs, correos…) podría intentar engañar al agente.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={cancelFullAccess} autoFocus>
             Cancelar
           </Button>
-          <Button
-            variant="primary"
-            className="!bg-amber-600 !text-white"
-            onClick={confirm}
-            disabled={busy}
-          >
+          <Button variant="primary" className="!bg-amber-600 !text-white" onClick={confirm} disabled={busy}>
             {busy && <Loader2 size={14} className="animate-spin" />} Permitir control
           </Button>
         </div>
@@ -277,11 +270,7 @@ export function FullAccessDialog(): React.JSX.Element | null {
 function PermRow({ ok, label, hint }: { ok: boolean; label: string; hint: string }): React.JSX.Element {
   return (
     <li className="flex items-start gap-2">
-      {ok ? (
-        <Check size={15} className="mt-0.5 shrink-0 text-accent" />
-      ) : (
-        <X size={15} className="mt-0.5 shrink-0 text-danger" />
-      )}
+      {ok ? <Check size={15} className="mt-0.5 shrink-0 text-accent" /> : <X size={15} className="mt-0.5 shrink-0 text-danger" />}
       <span>
         <span className={ok ? 'text-muted' : 'font-medium text-fg'}>{label}</span>
         {!ok && <span className="block text-xs text-muted">{hint}</span>}
@@ -329,11 +318,7 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
             label="Helper nativo de control"
             hint={conn.computerUse?.reason ?? 'No se encontró el helper de ratón/teclado o no se pudo iniciar.'}
           />
-          <PermRow
-            ok={accessibility}
-            label="Accesibilidad"
-            hint="Necesario para mover el ratón, hacer clic y escribir."
-          />
+          <PermRow ok={accessibility} label="Accesibilidad" hint="Necesario para mover el ratón, hacer clic y escribir." />
           <PermRow
             ok={screenRecording}
             label="Grabación de pantalla"
@@ -341,9 +326,9 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
           />
         </ul>
         <p className="mt-3 text-xs text-muted">
-          Actívalos en Ajustes del Sistema › Privacidad y seguridad. En desarrollo el permiso se concede a la app desde la
-          que ejecutas <code>npm run dev</code> (<strong className="text-fg">Terminal, iTerm o VS Code</strong>); en la app
-          empaquetada, a la propia app. Tras concederlo, reinicia la app.
+          Actívalos en Ajustes del Sistema › Privacidad y seguridad. En desarrollo el permiso se concede a la app desde la que ejecutas{' '}
+          <code>npm run dev</code> (<strong className="text-fg">Terminal, iTerm o VS Code</strong>); en la app empaquetada, a la propia app.
+          Tras concederlo, reinicia la app.
         </p>
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -392,8 +377,8 @@ export function VisionModelHint(): React.JSX.Element | null {
       <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 [[data-theme=dark]_&]:text-amber-300">
         <Eye size={14} className="shrink-0" />
         <span className="min-w-0 flex-1">
-          <strong>{current.name}</strong> no acepta imágenes: no podrá ver las capturas de pantalla. El control del Mac
-          necesita un modelo con visión.
+          <strong>{current.name}</strong> no acepta imágenes: no podrá ver las capturas de pantalla. El control del Mac necesita un modelo
+          con visión.
         </span>
         {!isVision && visionAvailable && (
           <button
@@ -422,8 +407,11 @@ export function ControlBanner(): React.JSX.Element | null {
   const activeTaskId = useCowork((s) => s.activeTaskId)
   const planApproved = useCowork((s) => (s.activeTaskId ? !!s.approvedPlans[s.activeTaskId] : false))
   const [revoking, setRevoking] = useState(false)
+  // Solo sesiones de un servidor de Cowork (F6-B1, F7-B37): Code/Chat (origen principal) no cuentan; el otro servidor de Cowork sí.
   const anyBusy = useSessions((s) =>
-    Object.keys(s.status).some((id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder)
+    Object.keys(s.status).some(
+      (id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder && isCoworkSource(s.sessionSource[id])
+    )
   )
   const [stopping, setStopping] = useState(false)
   const [resuming, setResuming] = useState(false)
@@ -481,9 +469,7 @@ export function ControlBanner(): React.JSX.Element | null {
           {anyBusy && <Loader2 size={14} className="animate-spin" />}
           <span className="min-w-0 flex-1 truncate text-xs font-normal text-muted">
             {resumeError ??
-              (anyBusy
-                ? 'Cancelando la tarea…'
-                : 'El agente no puede usar el ratón ni el teclado hasta que reanudes el control.')}
+              (anyBusy ? 'Cancelando la tarea…' : 'El agente no puede usar el ratón ni el teclado hasta que reanudes el control.')}
           </span>
           <button
             type="button"
@@ -515,8 +501,7 @@ export function ControlBanner(): React.JSX.Element | null {
             <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
           </span>
           <span className="min-w-0 flex-1 truncate text-xs font-medium">
-            Esperando tu permiso — revisa la tarjeta «{accessRequest.plan ? 'Plan y permisos' : 'Permisos'}» abajo, sin
-            límite de tiempo
+            Esperando tu permiso — revisa la tarjeta «{accessRequest.plan ? 'Plan y permisos' : 'Permisos'}» abajo, sin límite de tiempo
           </span>
           <button
             type="button"
@@ -566,7 +551,10 @@ export function ControlBanner(): React.JSX.Element | null {
           </div>
         </div>
         {shortcutUnavailable ? (
-          <span className="hidden items-center gap-1 text-[11px] text-white/85 md:flex" title="El atajo ⌘⇧Esc no está disponible; usa el botón Detener">
+          <span
+            className="hidden items-center gap-1 text-[11px] text-white/85 md:flex"
+            title="El atajo ⌘⇧Esc no está disponible; usa el botón Detener"
+          >
             <ShieldAlert size={12} /> ⌘⇧Esc no disponible
           </span>
         ) : (
@@ -630,12 +618,7 @@ export function ScreenshotThumbs({ images }: { images: Array<{ id: string; url: 
       </div>
       {zoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8" onMouseDown={() => setZoom(null)}>
-          <img
-            src={zoom}
-            alt="Captura de pantalla"
-            referrerPolicy="no-referrer"
-            className="max-h-full max-w-full rounded-lg shadow-2xl"
-          />
+          <img src={zoom} alt="Captura de pantalla" referrerPolicy="no-referrer" className="max-h-full max-w-full rounded-lg shadow-2xl" />
           <button
             type="button"
             title="Cerrar"
@@ -698,11 +681,7 @@ function TierSegmented({ value, onChange }: { value: AccessDecision; onChange: (
           title={o.title}
           onClick={() => onChange(o.v)}
           className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition ${
-            value === o.v
-              ? o.v === 'deny'
-                ? 'bg-danger/15 text-danger'
-                : 'bg-elevated text-accent shadow-sm'
-              : 'text-muted hover:text-fg'
+            value === o.v ? (o.v === 'deny' ? 'bg-danger/15 text-danger' : 'bg-elevated text-accent shadow-sm') : 'text-muted hover:text-fg'
           }`}
         >
           {o.icon} {o.label}
@@ -789,13 +768,10 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
               ¿Tomar el control de la pantalla?
             </h3>
             <p className="mt-1 text-sm text-muted">
-              El agente trabajaba en <strong className="text-fg">{appName}</strong> en segundo plano y necesita el
-              ratón y el teclado.
+              El agente trabajaba en <strong className="text-fg">{appName}</strong> en segundo plano y necesita el ratón y el teclado.
             </p>
             {req.reason && <p className="mt-1 text-xs text-muted italic">«{req.reason}»</p>}
-            <p className="mt-2.5 text-xs text-muted">
-              La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas.
-            </p>
+            <p className="mt-2.5 text-xs text-muted">La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas.</p>
             <div className="mt-3.5 flex flex-wrap justify-end gap-2">
               <Button variant="ghost" onClick={decline} disabled={busy}>
                 Seguir en segundo plano
@@ -1004,7 +980,12 @@ function GrantRow({ bundleId, name, tier }: { bundleId: string; name: string; ti
             <option value="full">Control total</option>
           </select>
         )}
-        <button type="button" title="Quitar concesión" onClick={revoke} className="rounded-md p-1.5 text-muted hover:bg-hover hover:text-danger">
+        <button
+          type="button"
+          title="Quitar concesión"
+          onClick={revoke}
+          className="rounded-md p-1.5 text-muted hover:bg-hover hover:text-danger"
+        >
           <Trash2 size={14} />
         </button>
       </div>
@@ -1055,8 +1036,8 @@ export function ComputerGrantsList(): React.JSX.Element {
         <h3 className="mb-2 text-sm font-semibold text-fg">Apps con acceso concedido</h3>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted">
-            Ninguna todavía. Se conceden al pedirlo el agente (herramienta <code>request_access</code>) o al abrir un
-            navegador/terminal reconocido por primera vez.
+            Ninguna todavía. Se conceden al pedirlo el agente (herramienta <code>request_access</code>) o al abrir un navegador/terminal
+            reconocido por primera vez.
           </p>
         ) : (
           <ul className="space-y-2">

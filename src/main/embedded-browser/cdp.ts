@@ -87,12 +87,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   })
 }
 
-/** La página navegó: los uids/handles del mundo aislado anterior ya no valen. */
-export function invalidateIsolatedWorld(wc: WebContents): void {
-  const m = sessions.get(wc)
-  if (m) m.isolatedWorldId = null
-}
-
 export interface CdpSessionOptions {
   /** Se llama justo antes de enviar cualquier `Input.*` (marca la ventana `userActive`, ver surface.ts). */
   onInputSent?: () => void

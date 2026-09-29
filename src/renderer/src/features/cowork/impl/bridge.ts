@@ -32,10 +32,7 @@ export async function cw<C extends CoworkInvokeChannel>(
   return unwrap(await getApi().invoke(channel, ...args))
 }
 
-export function onCowork<C extends CoworkEventChannel>(
-  channel: C,
-  listener: (payload: CoworkEventContract[C]) => void
-): () => void {
+export function onCowork<C extends CoworkEventChannel>(channel: C, listener: (payload: CoworkEventContract[C]) => void): () => void {
   if (!hasCoworkBridge()) return () => undefined
   return getApi().on(channel, listener)
 }

@@ -108,9 +108,7 @@ useCowork.subscribe((state, prev) => {
   // (b) Llegó la conexión de Control total de la misma carpeta: se consume (una sola vez).
   if (state.conn?.fullAccess && state.phase === 'ready' && state.folder === c.folder && state.conn !== prev.conn) {
     cont = null
-    void sendToTask(c.prompt, currentCoworkModel()).catch((e) =>
-      useCowork.setState({ error: errorMessage(e) })
-    )
+    void sendToTask(c.prompt, currentCoworkModel()).catch((e) => useCowork.setState({ error: errorMessage(e) }))
   }
 })
 

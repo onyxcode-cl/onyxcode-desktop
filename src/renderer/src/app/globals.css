@@ -114,10 +114,8 @@
   --color-danger: var(--danger);
   --color-user: var(--user-bubble);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui,
-    sans-serif;
-  --font-display: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Display',
-    system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Display', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
 
   --shadow-xs: 0 1px 1px hsl(var(--shadow-color) / 0.05);
@@ -254,28 +252,12 @@ body {
 }
 
 /* ---------- Utilidades de marca ---------- */
-.bg-brand {
-  background: var(--brand-gradient);
-}
-.text-brand {
-  background: var(--brand-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 .font-display {
   font-family: var(--font-display);
 }
 /* Texto con brillo animado (estados "pensando"/"razonando"). */
 .text-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--fg-muted) 0%,
-    var(--fg-muted) 40%,
-    var(--fg) 50%,
-    var(--fg-muted) 60%,
-    var(--fg-muted) 100%
-  );
+  background: linear-gradient(90deg, var(--fg-muted) 0%, var(--fg-muted) 40%, var(--fg) 50%, var(--fg-muted) 60%, var(--fg-muted) 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -461,6 +443,22 @@ body {
   background: transparent;
   padding: 0;
 }
+/*
+ * Filas de las listas de mensajes (F7-B46, ver lib/conversation/cv.ts). `.turn-row` (todas) hace que el navegador recuerde
+ * el último alto real de la fila (`auto`); `.turn-cv` (solo las ANTIGUAS) le deja no maquetear ni pintar lo que está fuera
+ * de pantalla. Las últimas filas no llevan `.turn-cv`, así que el pegado al final y el streaming ven alturas reales. `.turn-cv-pad` compensa el recorte de `contain: paint` para las
+ * filas con márgenes negativos u hover que sobresalen (padding y margen negativo se anulan: la maquetación no cambia).
+ */
+.turn-row {
+  contain-intrinsic-block-size: auto 160px;
+}
+.turn-cv {
+  content-visibility: auto;
+}
+.turn-cv-pad {
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
 /* Bloque de código con cabecera (ver components/Markdown.tsx). */
 .markdown .code-block {
   border: 1px solid var(--border);
@@ -487,8 +485,7 @@ body {
 }
 
 /* Cursor de streaming al final del último bloque. */
-.markdown.is-streaming > :last-child::after,
-.streaming-caret::after {
+.markdown.is-streaming > :last-child::after {
   content: '';
   display: inline-block;
   width: 0.45em;

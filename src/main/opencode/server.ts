@@ -10,9 +10,9 @@ import { embeddedBrowser } from '../embedded-browser/service'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
-import { createServer } from 'node:net'
 import { randomBytes } from 'node:crypto'
 import { delimiter, join } from 'node:path'
+import { getFreePort, waitForHealth } from '../util/net'
 import { APP_SLUG } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
@@ -166,7 +166,11 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         this.onExit(child, code, signal, spawnedAt)
       })
 
-      const version = await waitForHealth(baseUrl, authorization, child)
+      const version = await waitForHealth(baseUrl, authorization, child, {
+        label: 'opencode serve',
+        timeoutMs: HEALTH_TIMEOUT_MS,
+        intervalMs: HEALTH_INTERVAL_MS
+      })
       if (this.child !== child) throw new Error('El servidor se detuvo durante el arranque')
 
       const connection: OpencodeConnection = {
@@ -177,9 +181,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         version
       }
       this.connection = connection
-      console.log(
-        `[opencode] listo en ${baseUrl} (v${version ?? '?'}) pid=${child.pid}${launch.disclaimed ? ' (TCC desvinculado)' : ''}`
-      )
+      console.log(`[opencode] listo en ${baseUrl} (v${version ?? '?'}) pid=${child.pid}${launch.disclaimed ? ' (TCC desvinculado)' : ''}`)
       this.setStatus({ state: 'ready', error: undefined, version })
       this.emit('connection', connection)
       return connection
@@ -259,44 +261,4 @@ export function findOpencodeBinary(): string | null {
     if (existsSync(candidate) && isExecutable(candidate)) return candidate
   }
   return null
-}
-
-export function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer()
-    srv.unref()
-    srv.on('error', reject)
-    srv.listen(0, HOST, () => {
-      const addr = srv.address()
-      if (addr && typeof addr === 'object') {
-        const { port } = addr
-        srv.close(() => resolve(port))
-      } else {
-        srv.close(() => reject(new Error('No se pudo obtener un puerto libre')))
-      }
-    })
-  })
-}
-
-async function waitForHealth(baseUrl: string, authorization: string, child: ChildProcess): Promise<string | undefined> {
-  const deadline = Date.now() + HEALTH_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null || child.signalCode !== null) {
-      throw new Error(`opencode serve terminó durante el arranque (code=${child.exitCode})`)
-    }
-    try {
-      const res = await fetch(`${baseUrl}/global/health`, {
-        headers: { authorization },
-        signal: AbortSignal.timeout(2000)
-      })
-      if (res.ok) {
-        const body = (await res.json()) as { healthy?: boolean; version?: string }
-        if (body.healthy !== false) return body.version
-      }
-    } catch {
-      // aún no escucha
-    }
-    await new Promise((r) => setTimeout(r, HEALTH_INTERVAL_MS))
-  }
-  throw new Error(`opencode serve no respondió en ${HEALTH_TIMEOUT_MS / 1000}s`)
 }

@@ -33,11 +33,14 @@ import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { hasCoworkBridge } from '../../cowork/impl/bridge'
 import { useCode } from '../../code/impl/store'
+import { openProjectTrusted } from '../../code/impl/trust'
 import { MODE_META } from './meta'
 import { RoutineEditor } from './RoutineEditor'
 import { agoText, durationText, fullDate, scheduleText, untilText } from './schedule'
 import { deleteRoutine, loadRoutines, openEditor, runRoutineNow, subscribeRoutines, toggleRoutine, useRoutines } from './store'
 import { ROUTINE_TEMPLATES } from './templates'
+import { baseName } from '../../../lib/paths'
+import { Toggle } from '../../../components/Toggle'
 
 const TRIGGER_LABEL: Record<RoutineRunRecord['trigger'], string> = {
   schedule: 'Programada',
@@ -66,25 +69,6 @@ function StatusBadge({ status, compact = false }: { status: RoutineRunRecord['st
       {meta.icon}
       {!compact && meta.label}
     </span>
-  )
-}
-
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      title={label}
-      onClick={(e) => {
-        e.stopPropagation()
-        onChange(!checked)
-      }}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-border-strong'}`}
-    >
-      <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : ''}`} />
-    </button>
   )
 }
 
@@ -132,10 +116,6 @@ function PermList({ title, tone, items }: { title: string; tone: 'danger' | 'suc
   )
 }
 
-function baseName(p: string): string {
-  return p.replace(/[/\\]+$/, '').split(/[/\\]/).pop() || p
-}
-
 // ---------------------------------------------------------------------------
 // Tarjeta
 // ---------------------------------------------------------------------------
@@ -151,11 +131,19 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
       tabIndex={0}
       aria-pressed={selected}
       onClick={select}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), select())}
+      onKeyDown={(e) => {
+        // El interruptor interno recibe su propio Enter/Espacio: no lo secuestra la tarjeta.
+        if (e.target !== e.currentTarget) return
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        select()
+      }}
       className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:shadow-sm'}`}
     >
       <div className="flex items-start gap-3">
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}>
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
+        >
           <Icon size={17} />
         </div>
         <div className="min-w-0 flex-1">
@@ -164,7 +152,12 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
             <Clock size={11} className="shrink-0" /> <span className="truncate">{scheduleText(r.schedule)}</span>
           </div>
         </div>
-        <Toggle checked={r.enabled} onChange={(v) => void toggleRoutine(r.id, v)} label={r.enabled ? 'Desactivar' : 'Activar'} />
+        <Toggle
+          stopPropagation
+          checked={r.enabled}
+          onChange={(v) => void toggleRoutine(r.id, v)}
+          label={r.enabled ? 'Desactivar' : 'Activar'}
+        />
       </div>
       <div className="flex items-center gap-2 border-t border-border pt-3 text-xs">
         {r.running ? (
@@ -202,16 +195,19 @@ function openRunInCode(run: RoutineRunRecord): void {
   const sid = run.sessionId
   const dir = run.directory
   useUi.getState().setMode('code')
-  void useCode
-    .getState()
-    .openProject(dir)
-    .then(() => useCode.getState().selectSession(sid))
+  void openProjectTrusted(dir).then(async (ok) => {
+    if (ok) await useCode.getState().selectSession(sid)
+  })
 }
 
 function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: RoutineMode; last: boolean; now: number }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const dot =
-    run.status === 'running' ? 'bg-accent ring-accent/25 animate-pulse' : run.status === 'success' ? 'bg-success ring-success/20' : 'bg-danger ring-danger/20'
+    run.status === 'running'
+      ? 'bg-accent ring-accent/25 animate-pulse'
+      : run.status === 'success'
+        ? 'bg-success ring-success/20'
+        : 'bg-danger ring-danger/20'
   const elapsed = (run.finishedAt ?? now) - run.startedAt
   const rejected = run.rejected ?? []
   const approved = run.approved ?? []
@@ -235,7 +231,11 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
           </span>
         )}
         <span className="ml-auto flex items-center gap-2 text-subtle tabular-nums">
-          {run.status === 'running' ? <span className="text-accent">{durationText(elapsed)}…</span> : run.finishedAt ? durationText(elapsed) : null}
+          {run.status === 'running' ? (
+            <span className="text-accent">{durationText(elapsed)}…</span>
+          ) : run.finishedAt ? (
+            durationText(elapsed)
+          ) : null}
           {hasBody && <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />}
         </span>
       </button>
@@ -246,7 +246,8 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
         <p className="mt-1 flex items-center gap-1 text-xs text-danger">
           <ShieldAlert size={12} className="shrink-0" />
           {[
-            rejected.length > 0 && `${rejected.length} permiso${rejected.length === 1 ? '' : 's'} rechazado${rejected.length === 1 ? '' : 's'}`,
+            rejected.length > 0 &&
+              `${rejected.length} permiso${rejected.length === 1 ? '' : 's'} rechazado${rejected.length === 1 ? '' : 's'}`,
             blocked.length > 0 && `${blocked.length} sitio${blocked.length === 1 ? '' : 's'} bloqueado${blocked.length === 1 ? '' : 's'}`
           ]
             .filter(Boolean)
@@ -254,7 +255,9 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
         </p>
       )}
       {run.status === 'error' && run.error && !open && <p className="mt-1 line-clamp-2 text-xs text-danger">{run.error}</p>}
-      {run.summary && !open && run.status !== 'error' && <p className="mt-1 line-clamp-2 text-xs text-muted">{run.summary.replace(/[#*_`>]/g, '').slice(0, 240)}</p>}
+      {run.summary && !open && run.status !== 'error' && (
+        <p className="mt-1 line-clamp-2 text-xs text-muted">{run.summary.replace(/[#*_`>]/g, '').slice(0, 240)}</p>
+      )}
       {open && (
         <div className="mt-2 rounded-lg border border-border bg-elevated p-3">
           {run.error && (
@@ -284,7 +287,11 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
             </div>
           )}
           {mode === 'code' && run.sessionId && run.directory && (
-            <button type="button" onClick={() => openRunInCode(run)} className="mt-2 flex items-center gap-1 text-xs font-medium text-accent hover:underline">
+            <button
+              type="button"
+              onClick={() => openRunInCode(run)}
+              className="mt-2 flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+            >
               <ExternalLink size={12} /> Abrir la sesión en Code
             </button>
           )}
@@ -297,7 +304,10 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
 
 function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.JSX.Element {
   const allHistory = useRoutines((s) => s.history)
-  const history = useMemo(() => allHistory.filter((h) => h.routineId === r.id).sort((a, b) => b.startedAt - a.startedAt), [allHistory, r.id])
+  const history = useMemo(
+    () => allHistory.filter((h) => h.routineId === r.id).sort((a, b) => b.startedAt - a.startedAt),
+    [allHistory, r.id]
+  )
   const [starting, setStarting] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const Icon = MODE_META[r.mode].icon
@@ -411,7 +421,9 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
             </>
           )}
           <dt className="text-subtle">Próxima</dt>
-          <dd className="text-fg">{r.enabled && r.nextRun ? `${untilText(r.nextRun, now)} · ${fullDate(r.nextRun)}` : r.enabled ? '—' : 'En pausa'}</dd>
+          <dd className="text-fg">
+            {r.enabled && r.nextRun ? `${untilText(r.nextRun, now)} · ${fullDate(r.nextRun)}` : r.enabled ? '—' : 'En pausa'}
+          </dd>
           {stats.total > 0 && (
             <>
               <dt className="text-subtle">Éxito</dt>
@@ -422,7 +434,11 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
           )}
         </dl>
 
-        <button type="button" onClick={() => setShowPrompt((s) => !s)} className="mt-3 flex items-center gap-1 text-xs font-medium text-muted hover:text-fg">
+        <button
+          type="button"
+          onClick={() => setShowPrompt((s) => !s)}
+          className="mt-3 flex items-center gap-1 text-xs font-medium text-muted hover:text-fg"
+        >
           <ChevronDown size={13} className={`transition-transform ${showPrompt ? 'rotate-180' : ''}`} /> Instrucción
         </button>
         {showPrompt ? (
@@ -465,7 +481,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
       </div>
       <h2 className="mt-4 text-xl font-semibold tracking-tight">Automatiza tareas recurrentes</h2>
       <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">
-        Programa una instrucción para que el agente la ejecute solo y te avise con el resultado. Si la app estaba cerrada, se pone al día al volver a abrirla.
+        Programa una instrucción para que el agente la ejecute solo y te avise con el resultado. Si la app estaba cerrada, se pone al día al
+        volver a abrirla.
       </p>
       <div className="mt-8 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
         {ROUTINE_TEMPLATES.map((t) => {
@@ -536,7 +553,15 @@ export function RoutinesView(): React.JSX.Element {
   const activeCount = routines.filter((r) => r.enabled).length
 
   const create = (): void =>
-    openEditor({ name: '', prompt: '', mode: 'chat', folder: null, model: defaultModel, schedule: { kind: 'daily', time: '09:00' }, enabled: true })
+    openEditor({
+      name: '',
+      prompt: '',
+      mode: 'chat',
+      folder: null,
+      model: defaultModel,
+      schedule: { kind: 'daily', time: '09:00' },
+      enabled: true
+    })
 
   if (!bridge) {
     return (
