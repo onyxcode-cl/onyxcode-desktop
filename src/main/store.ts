@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
 
 const MAX_RECENT = 10
@@ -63,7 +63,13 @@ function normalize(s: Settings): Settings {
     ? s.recentFolders.filter((p): p is string => typeof p === 'string').slice(0, MAX_RECENT)
     : []
   const coworkGlobalInstructions = typeof s.coworkGlobalInstructions === 'string' ? s.coworkGlobalInstructions.slice(0, 20_000) : ''
-  return { defaultModel, theme, recentFolders, coworkGlobalInstructions }
+  const onboarded = s.onboarded === true
+  // Solo rutas absolutas sin bytes nulos; el resto se descarta (vuelve la detección automática).
+  const opencodeBin =
+    typeof s.opencodeBin === 'string' && s.opencodeBin.length <= 4096 && isAbsolute(s.opencodeBin) && !s.opencodeBin.includes('\0')
+      ? s.opencodeBin
+      : ''
+  return { defaultModel, theme, recentFolders, coworkGlobalInstructions, onboarded, opencodeBin }
 }
 
 export const settingsStore = new SettingsStore()

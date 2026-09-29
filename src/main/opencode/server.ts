@@ -19,6 +19,7 @@ import { buildInlineConfig } from './config'
 import { killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
 import { withDisclaim } from '../process/disclaim'
+import { settingsStore } from '../store'
 
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
@@ -119,7 +120,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const bin = findOpencodeBinary()
       if (!bin) {
         throw new Error(
-          'No se encontró el binario `opencode`. Instálalo (curl -fsSL https://opencode.ai/install | bash) o define OPENCODE_BIN.'
+          'No se encontró el binario `opencode`. Instálalo (curl -fsSL https://opencode.ai/install | bash), elige el binario en el asistente o define OPENCODE_BIN.'
         )
       }
       mkdirSync(this.options.chatDirectory, { recursive: true })
@@ -250,9 +251,20 @@ function isExecutable(path: string): boolean {
   }
 }
 
-export function findOpencodeBinary(): string | null {
+/** Binario elegido en el asistente (`settings.opencodeBin`); '' si no hay o los ajustes no están disponibles. */
+function configuredBinary(): string {
+  try {
+    return settingsStore.get().opencodeBin
+  } catch {
+    return ''
+  }
+}
+
+/** Orden: `OPENCODE_BIN` → `settings.opencodeBin` → PATH y carpetas habituales. */
+export function findOpencodeBinary(configured: string = configuredBinary()): string | null {
   const fromEnv = process.env.OPENCODE_BIN
   if (fromEnv && isExecutable(fromEnv)) return fromEnv
+  if (configured && isExecutable(configured)) return configured
   const name = process.platform === 'win32' ? 'opencode.exe' : 'opencode'
   const dirs = [EXTRA_PATH_DIRS[0], ...(process.env.PATH ?? '').split(delimiter), ...EXTRA_PATH_DIRS.slice(1)]
   for (const dir of dirs) {

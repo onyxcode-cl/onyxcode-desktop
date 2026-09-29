@@ -15,6 +15,10 @@ export interface Settings {
   recentFolders: string[]
   /** Instrucciones globales aplicadas a todas las tareas de Cowork (además de las del proyecto). */
   coworkGlobalInstructions: string
+  /** true cuando el asistente de primer uso terminó, se omitió o no hacía falta (todo ya funcionaba). */
+  onboarded: boolean
+  /** Ruta absoluta del binario de OpenCode elegido por el usuario ('' = detección automática). Solo main la escribe. */
+  opencodeBin: string
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -23,7 +27,9 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultModel: DEFAULT_MODEL,
   theme: 'system',
   recentFolders: [],
-  coworkGlobalInstructions: ''
+  coworkGlobalInstructions: '',
+  onboarded: false,
+  opencodeBin: ''
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'
@@ -55,6 +61,21 @@ export interface AppInfo {
   chatDirectory: string
   isDev: boolean
 }
+
+/** Resultado de `app:opencodeInfo`: qué binario de OpenCode se usaría y si encaja con el SDK de la app. */
+export interface OpencodeInfo {
+  found: boolean
+  path: string | null
+  /** Salida de `opencode --version` (número de versión), o null si no se pudo leer. */
+  version: string | null
+  /** Versión del SDK con la que se compiló la app. */
+  sdkVersion: string
+  /** Misma versión mayor y menor que el SDK (un parche distinto es compatible). */
+  compatible: boolean
+}
+
+/** Resultado de `app:pickOpencodeBin` (diálogo «Elegir binario…»). */
+export type PickOpencodeBinResult = { status: 'canceled' } | { status: 'invalid'; error: string } | { status: 'ok'; info: OpencodeInfo }
 
 /** Agente de OpenCode usado por el modo Chat (definido en src/main/opencode/config.ts). */
 export const CHAT_AGENT = 'chat'

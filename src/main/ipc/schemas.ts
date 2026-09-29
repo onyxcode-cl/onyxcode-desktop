@@ -7,6 +7,7 @@
  *   del overlay tienen su lista mínima (el overlay a pantalla completa no invoca nada).
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
+import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
 import { COWORK_INVOKE_CHANNELS, type CoworkInvokeChannel, type CoworkRequest } from '@shared/ipc-cowork'
 import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
@@ -146,6 +147,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:openExternal': obj({ url: str({ max: 8192, pattern: /^https?:\/\//i }) }),
   'app:notify': obj({ title: str({ max: 300, min: 1 }), body: str({ max: 2000, min: 1 }), target: optional(notifyTarget) }),
   'app:setAttention': obj({ count: num({ int: true, min: 0, max: 999_999 }) }),
+  'app:opencodeInfo': none,
+  'app:opencodeAction': obj({ action: literal(...OPENCODE_ACTIONS) }),
+  'app:pickOpencodeBin': none,
   'opencode:connection': none,
   'opencode:status': none,
   'opencode:restart': none,
@@ -154,7 +158,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     defaultModel: modelRef,
     theme: literal('system', 'light', 'dark'),
     recentFolders: arr(absPath, 50),
-    coworkGlobalInstructions: str({ max: 20_000 })
+    coworkGlobalInstructions: str({ max: 20_000 }),
+    onboarded: bool
+    // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq
 }

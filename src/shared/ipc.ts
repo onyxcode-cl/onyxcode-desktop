@@ -7,7 +7,8 @@
  * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
-import type { AppInfo, NotifyTarget, OpencodeConnection, ServerStatus, Settings } from './types'
+import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpencodeBinResult, ServerStatus, Settings } from './types'
+import type { OpencodeAction } from './opencode-links'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
 export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
@@ -29,6 +30,13 @@ export interface IpcInvokeContract {
   'app:notify': { req: { title: string; body: string; target?: NotifyTarget }; res: void }
   /** Badge del Dock (`app.dock.setBadge`); `count === 0` lo limpia. */
   'app:setAttention': { req: { count: number }; res: void }
+
+  /** Binario de OpenCode detectado (ejecuta `--version` en main). */
+  'app:opencodeInfo': { req: void; res: OpencodeInfo }
+  /** Acciones fijas del asistente: copiar el comando de instalación o abrir una página de OpenCode (lista blanca). */
+  'app:opencodeAction': { req: { action: OpencodeAction }; res: void }
+  /** Diálogo «Elegir binario…»: valida el archivo y lo guarda en `settings.opencodeBin`. */
+  'app:pickOpencodeBin': { req: void; res: PickOpencodeBinResult }
 
   // opencode sidecar
   'opencode:connection': { req: void; res: OpencodeConnection }
@@ -60,6 +68,9 @@ export const IPC_INVOKE_CHANNELS = [
   'app:openExternal',
   'app:notify',
   'app:setAttention',
+  'app:opencodeInfo',
+  'app:opencodeAction',
+  'app:pickOpencodeBin',
   'opencode:connection',
   'opencode:status',
   'opencode:restart',
