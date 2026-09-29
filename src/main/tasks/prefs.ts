@@ -82,12 +82,7 @@ export class TasksPrefsStore {
     return { ...p, notify: { ...p.notify } }
   }
 
-  set(patch: {
-    autoArchiveDays?: number
-    idleStopMinutes?: number
-    maxServers?: number
-    notify?: Partial<TasksNotifyPrefs>
-  }): TasksPrefs {
+  set(patch: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<TasksNotifyPrefs> }): TasksPrefs {
     const cur = this.load()
     const next = normalizeTasksPrefs(
       {

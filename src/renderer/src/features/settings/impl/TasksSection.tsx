@@ -659,9 +659,7 @@ export function TasksSection(): React.JSX.Element {
                 description={<span className="font-mono break-all">{s.folder}</span>}
               >
                 <div className="flex items-center gap-2">
-                  <Badge tone={s.fullAccess ? 'warn' : 'muted'}>
-                    {s.fullAccess ? TASKS_TERMS.fullControlShort : TASKS_TERMS.sandbox}
-                  </Badge>
+                  <Badge tone={s.fullAccess ? 'warn' : 'muted'}>{s.fullAccess ? TASKS_TERMS.fullControlShort : TASKS_TERMS.sandbox}</Badge>
                   <span className="text-xs text-muted">{formatIdle(s.idleSince, now)}</span>
                 </div>
               </Row>

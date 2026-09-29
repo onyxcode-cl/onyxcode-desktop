@@ -1,13 +1,6 @@
 /** Acceso tipado a `window.api.tasks` (canales `tasks:*` y `routines:*`). */
 import type { IpcResult, WindowApi } from '@shared/ipc'
-import type {
-  TasksApi,
-  TasksEventChannel,
-  TasksEventContract,
-  TasksInvokeChannel,
-  TasksRequest,
-  TasksResponse
-} from '@shared/ipc-tasks'
+import type { TasksApi, TasksEventChannel, TasksEventContract, TasksInvokeChannel, TasksRequest, TasksResponse } from '@shared/ipc-tasks'
 
 function getApi(): TasksApi {
   const api = (window as unknown as { api?: WindowApi & { tasks?: TasksApi } }).api?.tasks

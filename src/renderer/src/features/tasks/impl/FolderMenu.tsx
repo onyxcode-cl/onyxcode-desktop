@@ -261,9 +261,7 @@ export function FolderMenu({
                           onChange={() => setPending({ ...pending, mode: m })}
                         />
                         <span>
-                          <span className="block text-[13px] font-medium">
-                            {m === 'rw' ? TASKS_TERMS.readWrite : TASKS_TERMS.readOnly}
-                          </span>
+                          <span className="block text-[13px] font-medium">{m === 'rw' ? TASKS_TERMS.readWrite : TASKS_TERMS.readOnly}</span>
                           <span className="block text-[11px] text-muted">{MODE_HINT[m]}</span>
                         </span>
                       </label>

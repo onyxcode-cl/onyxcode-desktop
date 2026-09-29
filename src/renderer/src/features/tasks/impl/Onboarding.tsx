@@ -106,15 +106,15 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           <span className="flex items-start gap-1.5">
             <Shield size={13} className="mt-0.5 shrink-0 text-accent" />
             <span>
-              <strong className="font-medium text-fg">{TASKS_TERMS.sandbox}:</strong> lee y escribe solo en tus carpetas, no ve tus claves
-              y pide permiso para borrar, mover o renombrar.
+              <strong className="font-medium text-fg">{TASKS_TERMS.sandbox}:</strong> lee y escribe solo en tus carpetas, no ve tus claves y
+              pide permiso para borrar, mover o renombrar.
             </span>
           </span>
           <span className="mt-1.5 flex items-start gap-1.5">
             <MonitorCog size={13} className="mt-0.5 shrink-0 text-warning" />
             <span>
-              <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> sin sandbox; usa ratón, teclado y pantalla y
-              puede tocar cualquier archivo. Exige aprobar un plan.
+              <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> sin sandbox; usa ratón, teclado y pantalla y puede
+              tocar cualquier archivo. Exige aprobar un plan.
             </span>
           </span>
         </Step>

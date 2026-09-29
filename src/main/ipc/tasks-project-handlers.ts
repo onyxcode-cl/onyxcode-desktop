@@ -21,9 +21,7 @@ export function registerTasksProjectHandlers(ctx: TasksIpcContext): TasksSubmodu
   handle('tasks:mcp:set', ({ name, tasks: inTasks, askEachTool }) => tasksMcpPrefs.set(name, { tasks: inTasks, askEachTool }))
 
   handle('tasks:rules:list', ({ folder }) => tasksRules.list(folder ? tasks.assertInsideApproved(folder) : undefined))
-  handle('tasks:rules:add', ({ folder, permission, patterns }) =>
-    tasksRules.add(tasks.assertInsideApproved(folder), permission, patterns)
-  )
+  handle('tasks:rules:add', ({ folder, permission, patterns }) => tasksRules.add(tasks.assertInsideApproved(folder), permission, patterns))
   handle('tasks:rules:remove', ({ id }) => tasksRules.remove(id))
 
   return {}
