@@ -183,9 +183,9 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
   })
 })
 
-// ─────────────────────────────── Cowork ───────────────────────────────
+// ─────────────────────────────── Tareas ───────────────────────────────
 
-describe.skipIf(!dev)('LRU de messages: Cowork real (tope 2)', () => {
+describe.skipIf(!dev)('LRU de messages: Tareas real (tope 2)', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
   afterAll(() => {
@@ -203,7 +203,7 @@ describe.skipIf(!dev)('LRU de messages: Cowork real (tope 2)', () => {
     await app().page.getByRole('button', { name: `Tarea LRU ${n}` }).first().click()
   }
 
-  it('conecta Cowork con una carpeta temporal y crea 4 tareas', async () => {
+  it('conecta Tareas con una carpeta temporal y crea 4 tareas', async () => {
     const { page } = app()
     const c = await connectCowork(app(), folder.path)
     cw = c.fake
@@ -215,7 +215,7 @@ describe.skipIf(!dev)('LRU de messages: Cowork real (tope 2)', () => {
       await expectVisible(page.getByRole('button', { name: `Tarea LRU ${n}` }).first())
     }
     expect(new Set(tasks).size).toBe(4)
-    // Todas viven en el origen de Cowork (no en Chat).
+    // Todas viven en el origen de Tareas (no en Chat).
     const src = await storeState<Record<string, string>>(page, 'useSessions', 'sessionSource')
     for (const id of tasks) expect(src[id]).toBe((await storeState<{ baseUrl: string }>(page, 'useCowork', 'conn')).baseUrl)
   })
@@ -227,7 +227,7 @@ describe.skipIf(!dev)('LRU de messages: Cowork real (tope 2)', () => {
     expect(dups.map((e) => e.text.slice(0, 120))).toEqual([])
   })
 
-  it('búsqueda Cowork encuentra texto de una tarea desalojada sin pedir historial', async () => {
+  it('búsqueda Tareas encuentra texto de una tarea desalojada sin pedir historial', async () => {
     const { page } = app()
     const [t1] = tasks
     // Abrir T1 la deja `loaded` (solo entonces el desalojo siembra la caché de búsqueda), y luego T2..T4 la desalojan.
@@ -249,7 +249,7 @@ describe.skipIf(!dev)('LRU de messages: Cowork real (tope 2)', () => {
     await page.getByRole('button', { name: 'Limpiar la búsqueda' }).click()
   })
 
-  it('permiso pendiente en Cowork no se desaloja (y al resolverlo vuelve a ser desalojable)', async () => {
+  it('permiso pendiente en Tareas no se desaloja (y al resolverlo vuelve a ser desalojable)', async () => {
     const { page } = app()
     await cw.script({ match: 'CW-PERM', title: 'Tarea LRU perm', steps: [{ type: 'text', text: 'Previo al permiso PERM-UNICO fin' }] })
     const p = await newTaskVia(page, 'CW-PERM haz algo', 'Previo al permiso PERM-UNICO')

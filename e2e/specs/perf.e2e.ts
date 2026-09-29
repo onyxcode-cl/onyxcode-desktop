@@ -141,7 +141,7 @@ describe.skipIf(!DEV)('rendimiento del streaming', () => {
   })
 })
 
-describe.skipIf(!DEV)('Cowork: content-visibility y salto a un mensaje antiguo', () => {
+describe.skipIf(!DEV)('Tareas: content-visibility y salto a un mensaje antiguo', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
   afterAll(() => {

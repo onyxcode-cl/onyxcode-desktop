@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { ROOT } from './launch'
 
 /**
- * Copia del OpenCode falso FUERA del userData tmp. El sandbox Seatbelt de Cowork deniega leer el userData de la app
+ * Copia del OpenCode falso FUERA del userData tmp. El sandbox Seatbelt de Tareas deniega leer el userData de la app
  * (por eso el `opencode` copiado por `startApp` dentro de él da `code=126`); el resto (`/private/var/...`) se lee bien.
  * Devuelve `OPENCODE_BIN` y un limpiador.
  */
@@ -37,7 +37,7 @@ export function killByPath(path: string): void {
 }
 
 /**
- * Carpeta de trabajo de Cowork. Tiene que estar bajo el home y fuera de `~/Library`/`/private`: la política de carpetas
+ * Carpeta de trabajo de Tareas. Tiene que estar bajo el home y fuera de `~/Library`/`/private`: la política de carpetas
  * (folder-policy.ts) rechaza `/private/var/...` (el tmp de macOS). Se crea en `~/onyx-e2e-cw-XXXXXX`.
  */
 export function makeCoworkDir(): { dir: string; dispose: () => void } {
@@ -122,7 +122,7 @@ export { mkdirSync }
 import type { Page } from 'playwright-core'
 import { FakeClient } from './fake'
 
-/** Cliente del OpenCode falso que sirve la carpeta de Cowork abierta (conexión leída del store `useCowork`). */
+/** Cliente del OpenCode falso que sirve la carpeta de Tareas abierta (conexión leída del store `useCowork`). */
 export async function coworkFake(page: Page): Promise<FakeClient> {
   await page.waitForFunction(() => Boolean((window as any).__onyxE2E?.useCowork.getState().conn), undefined, { timeout: 60_000 })
   const conn = await page.evaluate(() => {

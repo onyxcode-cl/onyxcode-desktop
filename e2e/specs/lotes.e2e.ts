@@ -1,4 +1,4 @@
-// Lo automatizable de las guías manuales de los Lotes B (Cowork, docs/COWORK-LOTE-B.md §4) y D (navegador integrado,
+// Lo automatizable de las guías manuales de los Lotes B (Tareas, docs/COWORK-LOTE-B.md §4) y D (navegador integrado,
 // docs/LOTE-D.md §4) contra la app real de Electron y el OpenCode falso. Ver el mapa en docs/VERIFICACION.md.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -8,6 +8,7 @@ import { stubDialog } from '../lib/dialogs'
 import { useApp } from '../lib/harness'
 import { BrowserMcp, coworkFake, fakeOutsideUserData, killByPath, makeCoworkDir, neutralizeNativeApprovalDialog, prepareCodeBrowser, servePages, waitUserIdle, type PageServer } from '../lib/lotes'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
+import { MODE_LABELS, UI_LABELS } from '../../src/shared/labels'
 import { setMode, storeCall, storeState, waitForHooks } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
 
@@ -21,7 +22,7 @@ afterAll(() => {
 const DEV = MODE === 'dev'
 
 async function goCowork(app: E2EApp): Promise<void> {
-  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Cowork' }).click()
+  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.cowork }).click()
 }
 
 async function openSettings(app: E2EApp, section: string): Promise<void> {
@@ -31,28 +32,28 @@ async function openSettings(app: E2EApp, section: string): Promise<void> {
   await nav.getByRole('button', { name: section, exact: true }).click()
 }
 
-/** Elige carpeta con el diálogo sustituido y pulsa «Permitir» en la confirmación de Cowork. */
+/** Elige carpeta con el diálogo sustituido y pulsa «Permitir» en la confirmación de Tareas. */
 async function pickFolder(app: E2EApp, path: string): Promise<void> {
   await stubDialog(app.electronApp, { openPaths: [path] })
   await app.page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await app.page.getByRole('dialog').getByRole('button', { name: 'Permitir', exact: true }).click()
 }
 
-describe.skipIf(!DEV)('Lote B: Cowork (guion manual §4, pasos 1, 2, 3, 11, 13)', () => {
+describe.skipIf(!DEV)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)', () => {
   const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin } })
 
   it('paso 1: el onboarding se descarta y no vuelve tras recargar', async () => {
     const a = app()
     await goCowork(a)
-    await expectVisible(a.page.getByText('Así funciona Cowork'))
+    await expectVisible(a.page.getByText('Así funcionan las tareas'))
     await a.page.getByRole('button', { name: 'Entendido, no mostrar más' }).click()
-    await expect.poll(() => a.page.getByText('Así funciona Cowork').count()).toBe(0)
+    await expect.poll(() => a.page.getByText('Así funcionan las tareas').count()).toBe(0)
     await a.page.reload({ waitUntil: 'domcontentloaded' })
     await waitForHooks(a.page)
     await a.page.locator('nav[aria-label="Modo"]').waitFor()
     await goCowork(a)
     await expectVisible(a.page.getByText('¿En qué trabajamos hoy?'))
-    expect(await a.page.getByText('Así funciona Cowork').count()).toBe(0)
+    expect(await a.page.getByText('Así funcionan las tareas').count()).toBe(0)
   })
 
   const ROOT_MSG = 'No se puede usar la raíz del disco ni tu carpeta personal completa.'
@@ -83,7 +84,7 @@ describe.skipIf(!DEV)('Lote B: Cowork (guion manual §4, pasos 1, 2, 3, 11, 13)'
     expect(await a.page.getByRole('alert').getByText(LIB_MSG, { exact: false }).count()).toBe(0)
   })
 
-  it('paso 3 (preparación): una carpeta válida arranca el servidor Cowork (sandbox Seatbelt + OpenCode falso)', async () => {
+  it('paso 3 (preparación): una carpeta válida arranca el servidor Tareas (sandbox Seatbelt + OpenCode falso)', async () => {
     const a = app()
     await goCowork(a)
     await pickFolder(a, work.dir)
@@ -183,8 +184,8 @@ describe.skipIf(!DEV)('Lote B: política gestionada (paso 22)', () => {
     await app?.stop()
   })
 
-  it('Ajustes → Cowork muestra «Gestionado por tu organización» con las restricciones', async () => {
-    await openSettings(app, 'Cowork')
+  it('Ajustes → Tareas muestra «Gestionado por tu organización» con las restricciones', async () => {
+    await openSettings(app, UI_LABELS.tasksMode)
     const banner = app.page.getByRole('status').filter({ hasText: 'Gestionado por tu organización' })
     await expectVisible(banner)
     await expectVisible(app.page.getByText('Las rutinas están desactivadas.'))
@@ -218,9 +219,9 @@ describe.skipIf(!DEV)('Lote B: política gestionada con JSON inválido (falla ce
   })
 
   it('activa todas las restricciones booleanas', async () => {
-    await openSettings(app, 'Cowork')
+    await openSettings(app, UI_LABELS.tasksMode)
     await expectVisible(app.page.getByRole('status').filter({ hasText: 'Gestionado por tu organización' }))
-    for (const t of ['Control total del Mac está desactivado.', 'Las rutinas están desactivadas.', 'No se pueden añadir sitios a la red de Cowork.', 'No se pueden recordar permisos con «Siempre permitir».'])
+    for (const t of ['Control total del Mac está desactivado.', 'Las rutinas están desactivadas.', 'No se pueden añadir sitios a la red del sandbox.', 'No se pueden recordar permisos con «Siempre permitir».'])
       await expectVisible(app.page.getByText(t))
     await app.page.keyboard.press('Escape')
     // El error de lectura del JSON lo escribe main con console.error a propósito.

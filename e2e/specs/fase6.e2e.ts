@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { MODE } from '../lib/launch'
+import { MODE_LABELS } from '../../src/shared/labels'
 import { FakeClient } from '../lib/fake'
 import { connection, hook, storeState, waitForHooks } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
@@ -350,9 +351,9 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-// Caso 5 (Cowork real): sidecar sandboxeado de Cowork + sidecar principal, ambos con el OpenCode falso.
+// Caso 5 (Tareas real): sidecar sandboxeado de Tareas + sidecar principal, ambos con el OpenCode falso.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-describe.skipIf(MODE === 'prod')(`fase 6: Cowork y Code en la misma carpeta (${MODE})`, () => {
+describe.skipIf(MODE === 'prod')(`fase 6: Tareas y Code en la misma carpeta (${MODE})`, () => {
   // Recursos creados en beforeAll (no en la fase de colección) para no dejar carpetas si el describe se filtra u omite.
   const res = {} as { bin: ReturnType<typeof prepareFakeBin>; folder: ReturnType<typeof makeHomeFolder> }
   const env: Record<string, string> = {}
@@ -370,7 +371,7 @@ describe.skipIf(MODE === 'prod')(`fase 6: Cowork y Code en la misma carpeta (${M
 
   const accessRadios = (a: ReturnType<typeof app>) => a.page.getByRole('radiogroup', { name: 'Modo de acceso' }).getByRole('radio')
 
-  it('5. una sesión de Code ocupada en la misma carpeta NO marca ocupado a Cowork (F6-B1); una de Cowork sí', async () => {
+  it('5. una sesión de Code ocupada en la misma carpeta NO marca ocupado a Tareas (F6-B1); una de Tareas sí', async () => {
     const a = app()
     const { conn } = await connectCoworkFolder(a, folder.path)
     expect(conn.baseUrl).not.toBe(a.fake.conn.baseUrl) // dos sidecars distintos
@@ -391,9 +392,9 @@ describe.skipIf(MODE === 'prod')(`fase 6: Cowork y Code en la misma carpeta (${M
     expect(codeDirs.map((x) => x.status)).toContain('busy')
 
     // Con el enrutado por directorio (default) la sesión de Code ni siquiera entra en useSessions.
-    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Cowork' }).click()
+    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.cowork }).click()
     expect(Object.keys(await storeState<Record<string, unknown>>(a.page, 'useSessions', 'sessions'))).not.toContain(codeSid)
-    await new Promise((r) => setTimeout(r, 500)) // espera acotada (negativa): que el estado de Cowork se repinte
+    await new Promise((r) => setTimeout(r, 500)) // espera acotada (negativa): que el estado de Tareas se repinte
     expect(await accessRadios(a).first().isDisabled()).toBe(false)
     expect(await accessRadios(a).last().isDisabled()).toBe(false)
 
@@ -407,7 +408,7 @@ describe.skipIf(MODE === 'prod')(`fase 6: Cowork y Code en la misma carpeta (${M
     await new Promise((r) => setTimeout(r, 500)) // espera acotada (negativa)
     expect(await accessRadios(a).first().isDisabled()).toBe(false)
 
-    // Control positivo: la misma sesión atribuida al origen de Cowork sí marca ocupada la carpeta.
+    // Control positivo: la misma sesión atribuida al origen de Tareas sí marca ocupada la carpeta.
     await a.page.evaluate(([id, baseUrl]) => {
       const st = (window as any).__onyxE2E.useSessions
       st.setState({ sessionSource: { ...st.getState().sessionSource, [id as string]: baseUrl } })

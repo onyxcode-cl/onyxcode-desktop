@@ -7,11 +7,12 @@ import type { Page } from 'playwright-core'
 import { stubDialog } from './dialogs'
 import { FakeClient, type FakeConnection, type FakeRequest } from './fake'
 import { ROOT, type E2EApp } from './launch'
+import { MODE_LABELS } from '../../src/shared/labels'
 import { storeState } from './stores'
 import { expectVisible } from './wait'
 
 /** Cambia a un modo por la barra de modos (clic real). */
-export async function gotoMode(page: Page, name: 'Chat' | 'Code' | 'Cowork' | 'Rutinas'): Promise<void> {
+export async function gotoMode(page: Page, name: 'Chat' | 'Code' | 'Tareas' | 'Rutinas'): Promise<void> {
   await page.locator('nav[aria-label="Modo"]').getByRole('button', { name }).click()
 }
 
@@ -91,10 +92,10 @@ export async function setLocalAndReload(app: E2EApp, entries: Record<string, str
   await app.page.locator('nav[aria-label="Modo"]').waitFor()
 }
 
-// ───────────── Cowork real (sidecar sandboxeado + OpenCode falso propio) ─────────────
+// ───────────── Tareas real (sidecar sandboxeado + OpenCode falso propio) ─────────────
 
 /**
- * Copia del falso FUERA de userData (el sandbox de Cowork niega leer userData, y el `opencode` del harness vive ahí).
+ * Copia del falso FUERA de userData (el sandbox de Tareas niega leer userData, y el `opencode` del harness vive ahí).
  * Devuelve el `OPENCODE_BIN` para `useApp({ env })` y la función de limpieza.
  */
 export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => void } {
@@ -103,7 +104,7 @@ export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => 
   return { env: { OPENCODE_BIN: join(dir, 'opencode') }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
-/** Carpeta temporal DENTRO del home (Cowork rechaza `/private`, `/tmp`… como «carpeta del sistema»). */
+/** Carpeta temporal DENTRO del home (Tareas rechaza `/private`, `/tmp`… como «carpeta del sistema»). */
 export function makeHomeFolder(): { path: string; cleanup: () => void } {
   const path = realpathSync(mkdtempSync(join(homedir(), '.onyx-e2e-lru-')))
   return { path, cleanup: () => rmSync(path, { recursive: true, force: true }) }
@@ -115,19 +116,19 @@ export interface CoworkConn {
   authorization: string
 }
 
-/** Elige la carpeta por la UI (diálogo nativo stubbeado), acepta el permiso y espera a que Cowork esté listo. */
+/** Elige la carpeta por la UI (diálogo nativo stubbeado), acepta el permiso y espera a que Tareas esté listo. */
 export async function connectCowork(app: E2EApp, folder: string): Promise<{ conn: CoworkConn; fake: FakeClient }> {
   const { page, electronApp } = app
   await stubDialog(electronApp, { openPaths: [folder] })
-  await gotoMode(page, 'Cowork')
+  await gotoMode(page, MODE_LABELS.cowork)
   await page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await page.getByRole('button', { name: 'Permitir' }).click()
-  await expect.poll(() => storeState(page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Cowork phase' }).toBe('ready')
+  await expect.poll(() => storeState(page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')
   const conn = await storeState<CoworkConn>(page, 'useCowork', 'conn')
   return { conn, fake: new FakeClient(conn) }
 }
 
-/** Crea una TAREA nueva de Cowork desde el hero (Nueva tarea → compositor → Enviar). Devuelve su id (ya en reposo). */
+/** Crea una tarea nueva desde el hero (Nueva tarea → compositor → Enviar). Devuelve su id (ya en reposo). */
 export async function newTaskVia(page: Page, prompt: string, waitText: string): Promise<string> {
   await page.getByRole('button', { name: /^Nueva tarea/ }).first().click()
   await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill(prompt)

@@ -11,7 +11,7 @@
 //    Vite no fija `strictPort`: si 5173 está ocupado toma el siguiente libre (electron-vite exporta ELECTRON_RENDERER_URL).
 //  - proceso lanzado `detached` y cerrado con SIGTERM al grupo (luego SIGKILL); el tmp se borra siempre.
 //
-// Flujo: espera `#root` con hijos → recorre Chat/Code/Cowork/Rutinas → Ajustes y cada sección → vuelve. En cada paso
+// Flujo: espera `#root` con hijos → recorre Chat/Code/Tareas/Rutinas → Ajustes y cada sección → vuelve. En cada paso
 // falla si hay: patrones de error en stdout/stderr, `Runtime.exceptionThrown`, `console.error`/`Log` error fuera de
 // `e2e/smoke-allowlist.json` (entradas {pattern (regex), reason}), overlay de error de Vite o el fallback del
 // ErrorBoundary ("Algo salió mal"). Tope global: 90 s. Salida 1 con el detalle si algo falla.
@@ -297,7 +297,7 @@ async function main() {
     return !(await check(name))
   }
 
-  for (const mode of ['Chat', 'Code', 'Cowork', 'Rutinas', 'Chat']) {
+  for (const mode of ['Chat', 'Code', 'Tareas', 'Rutinas', 'Chat']) {
     const ok = await step(`modo ${mode}`, () => clickBy('nav[aria-label="Modo"]', mode), `document.querySelector('nav[aria-label="Modo"] button[aria-current="page"]')?.textContent.trim().startsWith(${JSON.stringify(mode)})`)
     if (!ok) return failures
   }

@@ -7,6 +7,7 @@ import { expect } from 'vitest'
 import type { ElectronApplication } from 'playwright-core'
 import { FakeClient } from './fake'
 import { ROOT, type E2EApp } from './launch'
+import { MODE_LABELS } from '../../src/shared/labels'
 import { stubDialog } from './dialogs'
 import { storeState } from './stores'
 
@@ -127,10 +128,10 @@ export async function openCodeProject(app: E2EApp, dir: string): Promise<void> {
   await expect.poll(() => storeState<string | null>(app.page, 'useCode', 'directory'), { timeout: 15_000 }).toBe(dir)
 }
 
-// ───────────── Cowork real (sidecar sandboxeado + OpenCode falso propio) ─────────────
+// ───────────── Tareas real (sidecar sandboxeado + OpenCode falso propio) ─────────────
 
 /**
- * Copia del falso fuera de userData: el sandbox de Cowork (`sandbox-exec`) niega leer userData, donde el harness deja
+ * Copia del falso fuera de userData: el sandbox de Tareas (`sandbox-exec`) niega leer userData, donde el harness deja
  * el `opencode` falso. Devuelve el `OPENCODE_BIN` para `useApp({ env })` y la limpieza.
  */
 export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => void } {
@@ -139,7 +140,7 @@ export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => 
   return { env: { OPENCODE_BIN: join(dir, 'opencode') }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
-/** Carpeta temporal DENTRO del home (Cowork rechaza `/private`, `/tmp`… como carpeta del sistema). */
+/** Carpeta temporal DENTRO del home (Tareas rechaza `/private`, `/tmp`… como carpeta del sistema). */
 export function makeHomeFolder(): { path: string; cleanup: () => void } {
   const path = realpathSync(mkdtempSync(join(homedir(), '.onyx-e2e-f6-')))
   return { path, cleanup: () => rmSync(path, { recursive: true, force: true }) }
@@ -151,13 +152,13 @@ export interface CoworkConn {
   authorization: string
 }
 
-/** Elige la carpeta en Cowork por la UI (diálogo stubbeado), acepta el permiso y espera a `phase === 'ready'`. */
+/** Elige la carpeta en Tareas por la UI (diálogo stubbeado), acepta el permiso y espera a `phase === 'ready'`. */
 export async function connectCoworkFolder(app: E2EApp, folder: string): Promise<{ conn: CoworkConn; fake: FakeClient }> {
   await stubDialog(app.electronApp, { openPaths: [folder] })
-  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Cowork' }).click()
+  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.cowork }).click()
   await app.page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await app.page.getByRole('button', { name: 'Permitir' }).click()
-  await expect.poll(() => storeState(app.page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Cowork phase' }).toBe('ready')
+  await expect.poll(() => storeState(app.page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')
   const conn = await storeState<CoworkConn>(app.page, 'useCowork', 'conn')
   return { conn, fake: new FakeClient(conn) }
 }

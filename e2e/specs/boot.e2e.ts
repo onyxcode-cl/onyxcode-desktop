@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { MODE } from '../lib/launch'
 import { useApp } from '../lib/harness'
+import { MODE_LABELS, UI_LABELS } from '../../src/shared/labels'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
 
 const app = useApp()
 
-const MODES = ['Chat', 'Code', 'Cowork', 'Rutinas'] as const
-const SETTINGS = ['General', 'Modelos', 'MCP', 'Cowork', 'Red de Cowork', 'Control del Mac', 'Modo auto', 'Navegador', 'Uso', 'Atajos', 'Acerca de']
+const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.cowork, MODE_LABELS.routines] as const
+const SETTINGS = ['General', 'Modelos', 'MCP', UI_LABELS.tasksMode, UI_LABELS.network, UI_LABELS.computer, UI_LABELS.autoMode, 'Navegador', 'Uso', 'Atajos', 'Acerca de']
 
 describe(`arranque (${MODE})`, () => {
   it('conecta con el OpenCode falso', async () => {
@@ -17,7 +18,7 @@ describe(`arranque (${MODE})`, () => {
     expect(await fake.unknownRoutes()).toEqual([])
   })
 
-  it('recorre Chat/Code/Cowork/Rutinas con ⌃Tab sin caer en el ErrorBoundary', async () => {
+  it('recorre Chat/Code/Tareas/Rutinas con ⌃Tab sin caer en el ErrorBoundary', async () => {
     const { page } = app()
     const nav = page.locator('nav[aria-label="Modo"]')
     await page.locator('main').click({ position: { x: 300, y: 300 } }).catch(() => undefined)
