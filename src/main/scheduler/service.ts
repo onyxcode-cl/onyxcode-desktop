@@ -285,10 +285,10 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     validateSchedule(input.schedule)
     const folder = input.folder?.trim() || null
     if (input.mode !== 'chat') {
-      if (!folder) throw new Error('Los modos Cowork y Code requieren una carpeta')
+      if (!folder) throw new Error('Los modos Tareas y Code requieren una carpeta')
       if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(`La carpeta no existe: ${folder}`)
       if (input.mode === 'cowork' && !this.deps.cowork.isApproved(folder)) {
-        throw new Error('La carpeta no está autorizada para Cowork (autorízala primero desde Cowork).')
+        throw new Error('La carpeta no está autorizada para las tareas (autorízala primero desde Tareas).')
       }
     }
 
@@ -320,7 +320,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         throw new Error('Confirma de nuevo el consentimiento de Control total para esta carpeta.')
       }
       if (!folder || !this.deps.cowork.hasFullAccessGrant(folder)) {
-        throw new Error('Esta carpeta no tiene Control total del Mac concedido (concédelo primero desde Cowork).')
+        throw new Error('Esta carpeta no tiene Control total del Mac concedido (concédelo primero desde Tareas).')
       }
       fullAccessConsentAt = consent
     }
@@ -502,7 +502,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         throw new Error('Esta rutina usa Control total del Mac pero no tiene consentimiento registrado: edítala y confírmalo.')
       }
       if (!this.deps.cowork.hasFullAccessGrant(directory)) {
-        throw new Error('La carpeta ya no tiene Control total del Mac concedido: concédelo de nuevo desde Cowork o edita la rutina.')
+        throw new Error('La carpeta ya no tiene Control total del Mac concedido: concédelo de nuevo desde Tareas o edita la rutina.')
       }
     }
 

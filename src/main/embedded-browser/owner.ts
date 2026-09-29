@@ -87,7 +87,7 @@ export async function resolveActor(binding: ClientBinding, onyxcodeSession: unkn
     )
   }
   if (binding.product === 'cowork') {
-    if (!binding.folder) throw new Error('No se pudo identificar la carpeta de la tarea de Cowork.')
+    if (!binding.folder) throw new Error('No se pudo identificar la carpeta de la tarea.')
     const owner: BrowserOwner = { kind: 'cowork', folder: binding.folder }
     return { sessionId, product: 'cowork', owner, sandboxed: binding.sandboxed, label: binding.label }
   }

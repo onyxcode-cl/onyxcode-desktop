@@ -112,10 +112,10 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
   // ~/Library: iCloud Drive con su propio mensaje
   const icloud = key(`${ctx.home}/Library/Mobile Documents`)
   if (isInside(f, icloud)) {
-    return 'iCloud Drive está en una ubicación protegida de macOS (~/Library/Mobile Documents) y Cowork no puede trabajar ahí. Copia los archivos a una carpeta local, por ejemplo dentro de Documentos, y elige esa carpeta.'
+    return 'iCloud Drive está en una ubicación protegida de macOS (~/Library/Mobile Documents) y las tareas no pueden trabajar ahí. Copia los archivos a una carpeta local, por ejemplo dentro de Documentos, y elige esa carpeta.'
   }
   if (isInside(f, key(`${ctx.home}/Library`))) {
-    return 'Esa es una ubicación protegida de macOS (Library), donde las apps guardan sus datos, y Cowork no puede usarla. Prueba con una carpeta dentro de Documentos.'
+    return 'Esa es una ubicación protegida de macOS (Library), donde las apps guardan sus datos, y las tareas no pueden usarla. Prueba con una carpeta dentro de Documentos.'
   }
 
   // Carpetas del sistema
@@ -135,13 +135,13 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
     if (!mount || mp.length > key(mount.mountPoint).length) mount = m
   }
   if (mount && NETWORK_FS_TYPES.includes(mount.fsType)) {
-    return `Esa carpeta está en un volumen de red (${mount.fsType}, ${mount.mountPoint}). Cowork no puede trabajar de forma segura sobre volúmenes de red: copia los archivos a una carpeta local y elige esa carpeta.`
+    return `Esa carpeta está en un volumen de red (${mount.fsType}, ${mount.mountPoint}). Las tareas no pueden trabajar de forma segura sobre volúmenes de red: copia los archivos a una carpeta local y elige esa carpeta.`
   }
 
   // Credenciales y datos privados
   for (const denied of defaultDeniedReadPaths(ctx.home)) {
     if (isInside(f, key(denied))) {
-      return `Esa carpeta guarda credenciales o datos privados (${tilde(resolve(denied), ctx.home)}) y Cowork no puede darle acceso al agente. Elige otra carpeta.`
+      return `Esa carpeta guarda credenciales o datos privados (${tilde(resolve(denied), ctx.home)}) y las tareas no pueden darle acceso al agente. Elige otra carpeta.`
     }
   }
 
@@ -151,7 +151,7 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
     if (!roots.some((r) => isInside(f, r))) {
       return roots.length
         ? `Tu organización solo permite carpetas dentro de: ${ctx.allowedRoots.join(', ')}. «${tilde(shown, ctx.home)}» queda fuera.`
-        : 'Tu organización no permite usar carpetas en Cowork.'
+        : 'Tu organización no permite usar carpetas en Tareas.'
     }
   }
   return null

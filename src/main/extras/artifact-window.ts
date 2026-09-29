@@ -47,7 +47,7 @@ function artifactSession(): Session {
   ses.protocol.handle(SCHEME, (request) => {
     const id = request.url.slice(`${SCHEME}://`.length).replace(/[/?#].*$/, '')
     const artifact = artifacts.get(id)
-    if (!artifact) return new Response('Artifact no encontrado', { status: 404 })
+    if (!artifact) return new Response('Vista previa no encontrada', { status: 404 })
     return new Response(withCspMeta(artifact.html, artifact.title), {
       status: 200,
       headers: {
@@ -89,8 +89,8 @@ function withCspMeta(html: string, title: string): string {
 
 export function openArtifact(payload: ArtifactPayload): BrowserWindow {
   const html = String(payload.html ?? '')
-  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML del artifact supera 5 MB.')
-  const title = (payload.title ?? '').trim() || 'Artifact'
+  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML de la vista previa supera 5 MB.')
+  const title = (payload.title ?? '').trim() || 'Vista previa'
   const id = randomUUID()
   artifacts.set(id, { title, html })
 
@@ -140,9 +140,9 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
         click: () => {
           if (!artifact) return
           void (async () => {
-            const safe = title.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'artifact'
+            const safe = title.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'vista-previa'
             const res = await dialog.showSaveDialog(win, {
-              title: 'Guardar artifact',
+              title: 'Guardar vista previa',
               defaultPath: `${safe}.html`,
               filters: [{ name: 'HTML', extensions: ['html', 'htm'] }]
             })

@@ -260,7 +260,7 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   handle('cowork:pickFolder', async (_req, event) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
-      title: 'Elegir carpeta para Cowork',
+      title: 'Elegir carpeta de trabajo',
       buttonLabel: 'Elegir',
       properties: ['openDirectory', 'createDirectory']
     }
@@ -289,7 +289,7 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     const options: Electron.OpenDialogOptions = {
       title: 'Adjuntar archivos a la tarea',
       buttonLabel: 'Adjuntar',
-      message: 'Los archivos se copiarán a la carpeta de Cowork.',
+      message: 'Los archivos se copiarán a la carpeta de trabajo.',
       properties: ['openFile', 'multiSelections']
     }
     const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)

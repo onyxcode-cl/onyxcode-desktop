@@ -1078,13 +1078,13 @@ interface TeachStepBody {
 
 /** POST al canal lateral y ESPERA la respuesta ("Siguiente"/"Salir de la guía"), sin límite de tiempo. */
 async function postTeachStep(step: TeachStepBody): Promise<'next' | 'exit'> {
-  if (!EVENTS_URL) throw new Error('Canal lateral no disponible: no se puede mostrar Teach mode.')
+  if (!EVENTS_URL) throw new Error('Canal lateral no disponible: no se puede mostrar el modo guía.')
   const r = await fetch(`${EVENTS_URL}/teach-step`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(step)
   })
-  if (!r.ok) throw new Error(`No se pudo mostrar el paso de Teach mode (HTTP ${r.status})`)
+  if (!r.ok) throw new Error(`No se pudo mostrar el paso del modo guía (HTTP ${r.status})`)
   const j = (await r.json()) as { action?: unknown }
   return j.action === 'exit' ? 'exit' : 'next'
 }
@@ -1694,7 +1694,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'teach_step',
     description:
-      'Teach mode: muestra un globo junto a un punto o elemento y EXPLICA qué harías, SIN hacer clic ni ' +
+      'Modo guía: muestra un globo junto a un punto o elemento y EXPLICA qué harías, SIN hacer clic ni ' +
       'escribir nada. Usa "app"+"ref" (de app_tree/app_find) para señalar un elemento concreto, o "x"/"y" en px ' +
       'de la última captura. Llama a esta herramienta paso a paso y espera a que el usuario pulse "Siguiente" ' +
       'antes de describir el paso siguiente.',
@@ -1747,13 +1747,13 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'teach_end',
-    description: 'Termina Teach mode (cierra el globo). Llámala al terminar la guía o si el usuario cambia de tema.',
+    description: 'Termina el modo guía (cierra el globo). Llámala al terminar la guía o si el usuario cambia de tema.',
     inputSchema: obj({}),
     action: true,
     noAutoShot: true,
     run: async () => {
       await postTeachEnd()
-      return 'Teach mode terminado.'
+      return 'Modo guía terminado.'
     }
   }
 ]

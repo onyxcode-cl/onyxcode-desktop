@@ -343,7 +343,7 @@ export function classifyPermission(
   }
 
   const m = findMcpServer(permission, ctx.mcpServers)
-  if (!m) return ask(`"${permission}" no es bash ni una herramienta MCP marcada en Cowork`)
+  if (!m) return ask(`"${permission}" no es bash ni una herramienta MCP marcada en Tareas`)
   if (metaText.length > 4000) return ask('los metadatos de la petición son demasiado largos')
   if (!isReadOnlyMcpTool(m.server, m.tool)) return ask(`"${permission}" no parece de solo lectura por su nombre`)
   return allow('mcp-readonly', `MCP de solo lectura: ${permission}`)

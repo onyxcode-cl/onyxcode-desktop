@@ -179,7 +179,7 @@ export async function startCoworkServer(folder: string, options: StartCoworkServ
     : null
   const credentialProxies: CredentialProxy[] = []
   if (sandboxed) {
-    if (!options.isolation) throw new Error('Falta el directorio privado del sandbox de Cowork.')
+    if (!options.isolation) throw new Error('Falta el directorio privado del sandbox de las tareas.')
     const dirs: SandboxDirs = sandboxDirs(options.isolation.privateDir)
     for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
 

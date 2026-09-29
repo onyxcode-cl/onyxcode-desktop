@@ -216,7 +216,7 @@ elemento sin accesibilidad expuesta…), llama a `request_full_control(app, reas
 - No la llames "por si acaso": intenta primero con `app_*` y solo pide el control real cuando de
   verdad lo necesites.
 
-## Enseñar al usuario (Teach mode, `teach_step`/`teach_end`)
+## Enseñar al usuario (Modo guía, `teach_step`/`teach_end`)
 
 Si el usuario te pide que le **enseñes** a hacer algo (p.ej. "enséñame a cambiar el fondo de
 pantalla", "¿cómo hago X?") en vez de que lo hagas tú:

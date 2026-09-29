@@ -26,7 +26,7 @@ palabras, la conclusión al principio. Si el texto es largo, divide en más diap
 reduce el tamaño de letra por ti.
 
 ## Ruta B (con imágenes o gráficos): python-pptx
-Solo si el usuario activó PyPI (interruptor de red de Cowork) y necesita imágenes o gráficos:
+Solo si el usuario activó PyPI (interruptor de red de las tareas) y necesita imágenes o gráficos:
 `python3 -m pip install --target ./.cowork/pylib python-pptx` y luego
 `PYTHONPATH=.cowork/pylib python3 tu_script.py`. Nunca uses `pip install --user` (`~/Library/Python` no
 es escribible en el sandbox). *(No se pudo comprobar en esta verificación: sin PyPI no hay red en el

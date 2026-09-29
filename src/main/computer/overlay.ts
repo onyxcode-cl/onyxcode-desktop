@@ -1,5 +1,5 @@
 /**
- * Overlay de control ("la IA está controlando tu Mac"), al estilo de Claude Cowork:
+ * Overlay de control ("la IA está controlando tu Mac"), al estilo de otros clientes de referencia:
  *
  * - **overlay**: ventana transparente, sin marco, que atraviesa los clics, siempre encima (nivel
  *   `screen-saver`), en todos los escritorios y protegida contra capturas (`setContentProtection`),

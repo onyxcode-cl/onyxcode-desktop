@@ -45,7 +45,7 @@ export function buildCoworkSystemPrompt(i: CoworkPromptInput): string | undefine
   const parts: string[] = []
 
   const globalInstructions = clean(i.globalInstructions)
-  if (globalInstructions) parts.push(`Instrucciones generales de Cowork (todas las tareas):\n${globalInstructions}`)
+  if (globalInstructions) parts.push(`Instrucciones generales de las tareas:\n${globalInstructions}`)
 
   const project = i.project
   const projectInstructions = clean(project?.instructions)

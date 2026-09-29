@@ -66,7 +66,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     osRelease: release()
   }))
   handle(ipcMain, 'extras:openArtifact', (payload) => {
-    if (!payload || typeof payload.html !== 'string') throw new Error('Artifact sin HTML')
+    if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     openArtifact({ title: String(payload.title ?? ''), html: payload.html })
   })
   handle(ipcMain, 'extras:quickSubmit', (req) => {

@@ -196,10 +196,10 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     this.network.allowOnce(normalizeFolder(folder), host)
   }
 
-  /** Política gestionada: con `disableCustomHosts` no se añaden sitios a la red de Cowork. */
+  /** Política gestionada: con `disableCustomHosts` no se añaden sitios a la red del sandbox. */
   private assertCustomHostsAllowed(): void {
     if (loadManagedPolicy()?.disableCustomHosts) {
-      throw new Error('Tu organización no permite añadir sitios a la red de Cowork.')
+      throw new Error('Tu organización no permite añadir sitios a la red del sandbox.')
     }
   }
 
@@ -365,7 +365,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
 
   private requireApproved(folder: string): string {
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para Cowork.')
+    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
     return f
   }
 
@@ -489,7 +489,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       throw new Error('Tu organización ha desactivado el Control total del Mac.')
     }
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para Cowork.')
+    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
     const data = this.load()
     if (!data.fullAccess.some((g) => g.path === f)) {
       data.fullAccess.push({ path: f, grantedAt: Date.now() })
@@ -571,7 +571,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
    */
   async start(folder: string, fullAccess = false): Promise<CoworkConnection> {
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para Cowork.')
+    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
     if (fullAccess && !this.hasFullAccessGrant(f)) {
       throw new Error(`${FULL_ACCESS_NOT_GRANTED}: el Control total no está autorizado para esta carpeta.`)
     }
@@ -737,7 +737,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
           if (!e) return
           e.handle = undefined
           if (e.info.state === 'ready') {
-            this.setInfo(folder, fullAccess, { state: 'error', error: `El servidor de Cowork terminó (code=${code})` })
+            this.setInfo(folder, fullAccess, { state: 'error', error: `El servidor de las tareas terminó (code=${code})` })
           }
         }
       })
@@ -807,7 +807,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
    */
   deliverables(folder: string, since: number): CoworkDeliverable[] {
     const root = normalizeFolder(folder)
-    if (!this.isApproved(root)) throw new Error('La carpeta no está autorizada para Cowork.')
+    if (!this.isApproved(root)) throw new Error('La carpeta no está autorizada para las tareas.')
     const out: CoworkDeliverable[] = []
     let seen = 0
     const scan = (base: string, linkedRoot?: string): void => {
@@ -860,7 +860,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       data.folders.some((f) => isInside(p, f.path)) ||
       Object.values(data.linked).some((list) => list.some((l) => isInside(p, l.path))) ||
       data.trusted.some((t) => isInside(p, t.path))
-    if (!ok) throw new Error('La ruta no pertenece a una carpeta de Cowork autorizada.')
+    if (!ok) throw new Error('La ruta no pertenece a una carpeta de trabajo autorizada.')
     return p
   }
 }

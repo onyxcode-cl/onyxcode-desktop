@@ -4,7 +4,7 @@ description: Prepara documentos para PDF y trabaja con PDF existentes en el Mac 
 ---
 # Skill: PDF
 
-## Crear un PDF: qué se puede y qué no (comprobado en el sandbox de Cowork)
+## Crear un PDF: qué se puede y qué no (comprobado en el sandbox de las tareas)
 - `textutil` **no puede convertir a PDF** (al pedirle ese formato responde `Invalid output format`).
 - `cupsfilter -m application/pdf archivo.html` **no** convierte HTML (`No hay ningún filtro para convertir
   de text/html a application/pdf`), ni RTF, ni docx.

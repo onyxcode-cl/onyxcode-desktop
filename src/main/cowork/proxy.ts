@@ -17,7 +17,7 @@
  *    proveedor en OpenCode admite una URL propia — `ProviderConfig.options.baseURL`) con una
  *    clave CENTINELA en `OPENCODE_AUTH_CONTENT`; este proxy verifica el `token` del path,
  *    lo quita, reenvía la petición por HTTPS a la API real y AÑADE el header `Authorization`
- *    real. La alternativa (interceptar TLS con una CA efímera igual que hace Claude Desktop en
+ *    real. La alternativa (interceptar TLS con una CA efímera igual que hacen otros clientes de referencia en
  *    su VM) exige instalar esa CA como confiable dentro del sandbox y descifrar todo el tráfico
  *    del proveedor; para un único destino conocido, un proxy inverso sin TLS interception logra
  *    lo mismo (la clave real nunca sale del proceso main) con muchísima menos superficie.
@@ -160,7 +160,7 @@ export class EgressProxy {
     this.opts.onLog?.(entry)
     if (!allowed) {
       this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode Cowork egress policy\r\n')
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode sandbox egress policy\r\n')
       return
     }
     const upstream = netConnect(port, host, () => {
@@ -189,7 +189,7 @@ export class EgressProxy {
     this.opts.onLog?.(entry)
     if (!allowed) {
       this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode Cowork egress policy\r\n')
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode sandbox egress policy\r\n')
       return
     }
     const upstream = netConnect(port, host, () => {

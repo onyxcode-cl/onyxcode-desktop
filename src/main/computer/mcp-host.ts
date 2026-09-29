@@ -1,5 +1,5 @@
 /**
- * Anfitrión del MCP de computer use: lo ejecuta como `utilityProcess` del proceso principal y lo
+ * Anfitrión del MCP de control del Mac: lo ejecuta como `utilityProcess` del proceso principal y lo
  * expone a OpenCode como MCP `remote` (Streamable HTTP en 127.0.0.1 con token Bearer).
  *
  * Por qué así (AUDIT.md S6 + fuses):
@@ -71,7 +71,7 @@ export class ComputerMcpHost {
     proc.stderr?.on('data', (d: Buffer) => process.stderr.write(d.toString()))
 
     const ready = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('El MCP de computer use no arrancó a tiempo')), READY_TIMEOUT_MS)
+      const timer = setTimeout(() => reject(new Error('El MCP de control del Mac no arrancó a tiempo')), READY_TIMEOUT_MS)
       proc.on('message', (msg: { type?: string; port?: number; message?: string }) => {
         if (msg?.type === 'ready') {
           clearTimeout(timer)
@@ -83,7 +83,7 @@ export class ComputerMcpHost {
       })
       proc.once('exit', (code) => {
         clearTimeout(timer)
-        reject(new Error(`El MCP de computer use terminó al arrancar (code=${code})`))
+        reject(new Error(`El MCP de control del Mac terminó al arrancar (code=${code})`))
       })
     })
     proc.once('exit', (code) => this.onExit(proc, code))

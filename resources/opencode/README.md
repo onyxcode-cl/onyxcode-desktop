@@ -17,7 +17,7 @@ el «Base directory for this skill» que le devuelve la herramienta `skill`. Ver
 1.18.32 en un servidor sandbox real: `GET /skill` lista las skills de `OPENCODE_CONFIG_DIR/skills`
 (no hace falta `skills.paths`; `skillsInlineConfig()` queda como gancho vacío).
 
-- Los comandos de cada skill están comprobados DENTRO del perfil Seatbelt real de Cowork
+- Los comandos de cada skill están comprobados DENTRO del perfil Seatbelt real de las tareas
   (`sandbox-exec`). Si cambias una skill, vuelve a probarla ahí; no añadas comandos sin verificar.
 - Herramientas que NO funcionan en el sandbox: `open`, `osascript`, `qlmanage`, `screencapture`.
 - `textutil` no convierte a PDF, aplana las tablas HTML y no incrusta imágenes; `cupsfilter` no
@@ -28,7 +28,7 @@ el «Base directory for this skill» que le devuelve la herramienta `skill`. Ver
 
 ## Agentes
 
-`computer` (control del Mac) solo funciona en el servidor de Cowork de Control total del Mac
+`computer` (control del Mac) solo funciona en el servidor de las tareas de Control total del Mac
 (`cowork:start { fullAccess: true }`, que exige `cowork:grantFullAccess` previo), que añade el
 MCP `computer` (out/main/computer-mcp.js + resources/computer-use/bin/cu-helper). Los servidores
 sandboxeados lo desactivan vía `OPENCODE_CONFIG_CONTENT` (`agent.computer.disable`).

@@ -6,7 +6,7 @@ description: Crea o lee documentos de Word (.docx) en el Mac, con títulos, tabl
 
 Sirve para **crear** un `.docx` desde cero y para **leer** el texto de un `.docx`/`.doc`/`.rtf`/`.odt`
 existente. Todo se hace con herramientas que ya trae macOS y con `python3` (Command Line Tools); no
-necesita internet ni instalar nada. En Cowork (sandbox) estos comandos están comprobados dentro del
+necesita internet ni instalar nada. En las tareas (sandbox) estos comandos están comprobados dentro del
 sandbox.
 
 ## Antes de empezar

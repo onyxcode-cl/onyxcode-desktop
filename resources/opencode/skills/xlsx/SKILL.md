@@ -21,7 +21,7 @@ forma atómica fallan con "no tienes permiso". Nunca sobrescribas un original de
 2. Edita `HOJAS` (nombre de hoja → filas; una fórmula es un texto que empieza por `=`) y ejecuta
    `python3 .cowork/make_xlsx.py ventas.xlsx`. Da encabezado en negrita sobre fondo oscuro, fila
    fija, anchos según el contenido y formato de miles en números y fórmulas.
-3. Si `openpyxl` no está en el Mac pero el usuario activó PyPI (interruptor de red de Cowork):
+3. Si `openpyxl` no está en el Mac pero el usuario activó PyPI (interruptor de red de las tareas):
    `python3 -m pip install --target ./.cowork/pylib openpyxl` (sin `--user`: `~/Library/Python` no es
    escribible en el sandbox). La plantilla ya busca en `.cowork/pylib`. *(La descarga no se pudo
    comprobar en esta verificación: sin PyPI activado no hay red en el sandbox.)* Sin PyPI, usa la ruta B.
