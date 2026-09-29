@@ -1,5 +1,5 @@
 /**
- * Monitor de Cowork en main: fuente del estado "de fondo" de TODAS las carpetas.
+ * Monitor de Tareas en main: fuente del estado "de fondo" de TODAS las carpetas.
  *
  * El renderer solo mantiene un stream SSE de la carpeta que mira, así que no sabe qué pasa en las
  * demás. El monitor sondea cada ~3 s cada servidor vivo (`session.status`, `permission.list`,
@@ -15,7 +15,7 @@
  * INDEPENDIENTE de Electron: todo lo externo entra por `MonitorDeps` (probado contra un servidor
  * HTTP falso). El servidor de OpenCode se consulta con `fetch` y `?directory=<carpeta>`.
  */
-import type { CoworkActivitySnapshot, CoworkPrefs, CoworkTaskActivity, CoworkTaskActivityState, CoworkTaskMeta } from '@shared/ipc-tasks'
+import type { TasksActivitySnapshot, TasksPrefs, TasksTaskActivity, TasksTaskActivityState, TasksTaskMeta } from '@shared/ipc-tasks'
 // Solo el TIPO (se borra al compilar): el monitor sigue sin depender de Electron en tiempo de
 // ejecución aunque `auto-approver.ts` sí lo haga.
 import type { AutoServer } from './auto-approver'
@@ -29,7 +29,7 @@ export interface RawPerm {
   metadata?: Record<string, unknown>
 }
 
-/** Servidor vivo tal como lo entrega `CoworkManager.liveServers()`. */
+/** Servidor vivo tal como lo entrega `TasksManager.liveServers()`. */
 export interface MonitorServer {
   folder: string
   fullAccess: boolean
@@ -56,14 +56,14 @@ export type MonitorWindowState = 'none' | 'visible' | 'focused'
 export interface MonitorDeps {
   servers: () => MonitorServer[]
   stop: (folder: string, fullAccess: boolean) => Promise<void>
-  prefs: { get(): CoworkPrefs }
-  tasks: { list(): CoworkTaskMeta[] }
+  prefs: { get(): TasksPrefs }
+  tasks: { list(): TasksTaskMeta[] }
   /** Ya filtrada por `prefs.notify` y por "lo estás mirando". El ajuste global lo aplica quien la implementa. */
   notify: (ev: MonitorNotifyEvent) => void
   /** Se llama tras archivar una tarea (p.ej. revocar su plan aprobado). */
   onArchived?: (sessionId: string) => void
   /** Recibe la instantánea cuando cambia. */
-  onActivity?: (snap: CoworkActivitySnapshot) => void
+  onActivity?: (snap: TasksActivitySnapshot) => void
   /**
    * Lote C, Modo auto: recibe la lista CRUDA de `GET /permission` de cada servidor en cada sondeo
    * (antes de resolver raíces ni de nada propio del monitor). Quien la implementa decide qué
@@ -92,7 +92,7 @@ interface SessionInfo {
 
 interface RootEntry {
   title: string
-  state: CoworkTaskActivityState
+  state: TasksTaskActivityState
   since: number
   /** Sondeos seguidos en que la raíz no aparece (se da por terminada a los 2). */
   missing: number
@@ -149,7 +149,7 @@ interface ReqFail {
   status: number
 }
 
-export class CoworkMonitor {
+export class TasksMonitor {
   private readonly states = new Map<string, ServerState>()
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
@@ -243,9 +243,9 @@ export class CoworkMonitor {
     return !!st && st.polled && st.ok && st.busy === 0 && st.pending === 0
   }
 
-  snapshot(): CoworkActivitySnapshot {
-    const tasks: CoworkTaskActivity[] = []
-    const servers: CoworkActivitySnapshot['servers'] = []
+  snapshot(): TasksActivitySnapshot {
+    const tasks: TasksTaskActivity[] = []
+    const servers: TasksActivitySnapshot['servers'] = []
     for (const st of this.states.values()) {
       servers.push({
         folder: st.folder,
@@ -468,10 +468,10 @@ export class CoworkMonitor {
     }
 
     // Raíces con actividad: waiting > question > running (los hijos se agregan a su raíz).
-    const current = new Map<string, { title: string; routine: boolean; state: CoworkTaskActivityState }>()
-    const rank: Record<CoworkTaskActivityState, number> = { running: 0, question: 1, waiting: 2 }
+    const current = new Map<string, { title: string; routine: boolean; state: TasksTaskActivityState }>()
+    const rank: Record<TasksTaskActivityState, number> = { running: 0, question: 1, waiting: 2 }
     let complete = true
-    const add = async (sessionID: string, state: CoworkTaskActivityState): Promise<string | null> => {
+    const add = async (sessionID: string, state: TasksTaskActivityState): Promise<string | null> => {
       const root = await this.resolveRoot(st, sessionID)
       if (!root) {
         complete = false
@@ -594,7 +594,7 @@ export class CoworkMonitor {
 
   // ───────────────────────────── parada por inactividad y límite ─────────────────────────────
 
-  private maybeStopIdle(st: ServerState, prefs: CoworkPrefs, now: number): void {
+  private maybeStopIdle(st: ServerState, prefs: TasksPrefs, now: number): void {
     const minutes = prefs.idleStopMinutes
     if (minutes <= 0 || st.stopping) return
     if (!st.ok || st.busy > 0 || st.pending > 0 || st.idlePolls < IDLE_POLLS_TO_STOP) return
@@ -658,7 +658,7 @@ export class CoworkMonitor {
 
   // ───────────────────────────── auto-archivo ─────────────────────────────
 
-  private maybeArchive(st: ServerState, prefs: CoworkPrefs, now: number): void {
+  private maybeArchive(st: ServerState, prefs: TasksPrefs, now: number): void {
     if (prefs.autoArchiveDays <= 0 || st.archiving || st.stopping || !st.ok) return
     if (st.lastArchiveAt && now - st.lastArchiveAt < ARCHIVE_EVERY_MS) return
     st.lastArchiveAt = now

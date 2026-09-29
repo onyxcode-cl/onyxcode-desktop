@@ -25,7 +25,7 @@ function defaultStore(): StoreShape {
   return {
     version: 1,
     // Decisión del usuario (docs/LOTE-D-PLAN.md, «Decisiones del usuario» #2, 2026-09-28): el
-    // navegador del agente empieza APAGADO en Code y en Cowork, como el antiguo
+    // navegador del agente empieza APAGADO en Code y en Tareas, como el antiguo
     // «Chrome aparte» (eliminado); se activa a mano en Ajustes. El esqueleto
     // original de B.4/D1 paso 6 traía `true/true`: corregido en D5 al detectar que contradecía la
     // decisión final del usuario (ver `docs/LOTE-D.md` §2 y `AUDIT.md` §11).

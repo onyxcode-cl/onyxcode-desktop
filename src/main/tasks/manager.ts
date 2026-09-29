@@ -1,5 +1,5 @@
 /**
- * Gestor de Cowork: carpetas de Cowork (userData/tasks-folders.json) y un `opencode serve`
+ * Gestor de Tareas: carpetas de Tareas (userData/tasks-folders.json) y un `opencode serve`
  * por carpeta y modo (arranque perezoso, reutilizado, detenido al salir):
  *  - normal: sandboxeado (Seatbelt), sin el agente `computer`;
  *  - Control total (`fullAccess`): SIN sandbox, con el MCP `computer` (control del Mac)
@@ -23,11 +23,11 @@ import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import {
   FULL_ACCESS_NOT_GRANTED,
   type ComputerUseInfo,
-  type CoworkConnection,
-  type CoworkDeliverable,
-  type CoworkFolder,
-  type CoworkFolderSet,
-  type CoworkServerInfo,
+  type TasksConnection,
+  type TasksDeliverable,
+  type TasksFolder,
+  type TasksFolderSet,
+  type TasksServerInfo,
   type FolderAccessMode,
   type FolderCheck,
   type LinkedFolder,
@@ -36,11 +36,11 @@ import {
 import { embeddedBrowser } from '../embedded-browser/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { killTree } from '../opencode/pids'
-import { sandboxKey, startCoworkServer, type CoworkServerHandle } from './sandbox'
+import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
 import { buildInlineConfig } from './inline-config'
-import { coworkMcpContribution } from './mcp-tasks'
-import { coworkRules, rulesPermissionConfig } from './rules'
+import { tasksMcpContribution } from './mcp-tasks'
+import { tasksRules, rulesPermissionConfig } from './rules'
 import { skillsInlineConfig } from './opencode-config'
 import type { EgressBlockedEvent } from './proxy'
 import { forbiddenFolderReason as folderPolicyReason, parseMountOutput, type MountInfo } from './folder-policy'
@@ -53,7 +53,7 @@ interface FullAccessGrant {
 }
 
 interface Persisted {
-  folders: CoworkFolder[]
+  folders: TasksFolder[]
   /** Carpetas con Control total concedido explícitamente (`tasks:grantFullAccess`). */
   fullAccess: FullAccessGrant[]
   /** Carpetas con "Permitir borrar, mover y renombrar" concedido (Seatbelt: `file-write-unlink`). */
@@ -71,7 +71,7 @@ interface ExtraFolder {
 }
 
 /** Integración con computer use (inyectada para no acoplar el gestor a Electron/IPC). */
-export interface CoworkComputerDeps {
+export interface TasksComputerDeps {
   /** Bloque `mcp.computer` para la config de OpenCode, o null si no está disponible. */
   mcpConfig: () => Promise<Record<string, unknown> | null>
   info: () => Promise<ComputerUseInfo>
@@ -95,9 +95,9 @@ function serverKey(folder: string, fullAccess: boolean): string {
 }
 
 interface Entry {
-  info: CoworkServerInfo
-  handle?: CoworkServerHandle
-  starting?: Promise<CoworkServerHandle>
+  info: TasksServerInfo
+  handle?: TasksServerHandle
+  starting?: Promise<TasksServerHandle>
   /** Instante (ms) en que el servidor quedó listo. */
   startedAt?: number
   /** Última vez que el renderer pidió `start()` para este servidor (uso reciente). */
@@ -117,7 +117,7 @@ export interface LiveServer {
 }
 
 interface ManagerEvents {
-  server: [CoworkServerInfo]
+  server: [TasksServerInfo]
   networkBlocked: [{ folder: string } & EgressBlockedEvent]
 }
 
@@ -189,12 +189,12 @@ function portOfMcpConfig(cfg: Record<string, unknown> | null): number | null {
   }
 }
 
-export class CoworkManager extends EventEmitter<ManagerEvents> {
+export class TasksManager extends EventEmitter<ManagerEvents> {
   private servers = new Map<string, Entry>()
   private data: Persisted | null = null
   readonly network = new NetworkPolicy()
 
-  constructor(private readonly opts: { corsOrigins?: string[]; computer?: CoworkComputerDeps } = {}) {
+  constructor(private readonly opts: { corsOrigins?: string[]; computer?: TasksComputerDeps } = {}) {
     super()
   }
 
@@ -236,7 +236,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
         if (Array.isArray(raw.folders)) {
-          data.folders = raw.folders.filter((f): f is CoworkFolder => !!f && typeof f.path === 'string' && typeof f.approvedAt === 'number')
+          data.folders = raw.folders.filter((f): f is TasksFolder => !!f && typeof f.path === 'string' && typeof f.approvedAt === 'number')
         }
         if (Array.isArray(raw.fullAccess)) {
           data.fullAccess = raw.fullAccess.filter(
@@ -303,7 +303,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     renameSync(`${file}.tmp`, file)
   }
 
-  listFolders(): CoworkFolder[] {
+  listFolders(): TasksFolder[] {
     return [...this.load().folders]
       .sort((a, b) => (b.lastUsedAt ?? b.approvedAt) - (a.lastUsedAt ?? a.approvedAt))
       .map((f) => ({ ...f, fullAccess: this.hasFullAccessGrant(f.path) }))
@@ -314,7 +314,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     return this.load().folders.some((x) => x.path === f)
   }
 
-  approveFolder(folder: string): CoworkFolder {
+  approveFolder(folder: string): TasksFolder {
     const f = normalizeFolder(folder)
     if (!existsSync(f) || !statSync(f).isDirectory()) throw new Error(`No es una carpeta válida: ${f}`)
     const reason = forbiddenFolderReason(f)
@@ -339,7 +339,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     delete data.linked[f]
     this.save()
     this.network.clearFolder(f)
-    coworkRules.removeFolder(f)
+    tasksRules.removeFolder(f)
   }
 
   // ───────────────────────── Carpetas adicionales y de confianza ─────────────────────────
@@ -382,7 +382,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   }
 
   /** Conjunto de carpetas de un espacio; `applied` es false si el servidor sandbox en marcha arrancó con otro. */
-  folderSet(folder: string): CoworkFolderSet {
+  folderSet(folder: string): TasksFolderSet {
     const f = this.requireApproved(folder)
     const data = this.load()
     const entry = this.servers.get(serverKey(f, false))
@@ -425,7 +425,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     path: string,
     mode: FolderAccessMode,
     opts: { trust?: boolean; restart?: boolean } = {}
-  ): Promise<CoworkFolderSet & { restarted: boolean }> {
+  ): Promise<TasksFolderSet & { restarted: boolean }> {
     const f = this.requireApproved(folder)
     const p = this.assertCheck(path)
     if (p === f) throw new Error('Esa es la carpeta principal del espacio; ya tiene acceso de escritura.')
@@ -444,7 +444,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   }
 
   /** Quita una carpeta vinculada del espacio. `restart` igual que en `linkFolder`. */
-  async unlinkFolder(folder: string, path: string, opts: { restart?: boolean } = {}): Promise<CoworkFolderSet & { restarted: boolean }> {
+  async unlinkFolder(folder: string, path: string, opts: { restart?: boolean } = {}): Promise<TasksFolderSet & { restarted: boolean }> {
     const f = this.requireApproved(folder)
     const p = normalizeFolder(path)
     const data = this.load()
@@ -455,7 +455,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     return this.applyFolderChange(f, opts.restart)
   }
 
-  private async applyFolderChange(f: string, restart: boolean | undefined): Promise<CoworkFolderSet & { restarted: boolean }> {
+  private async applyFolderChange(f: string, restart: boolean | undefined): Promise<TasksFolderSet & { restarted: boolean }> {
     let restarted = false
     if (restart !== false && !this.folderSet(f).applied) restarted = await this.restartSandbox(f)
     return { ...this.folderSet(f), restarted }
@@ -569,7 +569,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   /** Hosts extra (MCP remotos) por clave de servidor; se suman a la lista blanca del proxy. */
   private serverHosts = new Map<string, string[]>()
 
-  private setInfo(folder: string, fullAccess: boolean, patch: Partial<CoworkServerInfo>): void {
+  private setInfo(folder: string, fullAccess: boolean, patch: Partial<TasksServerInfo>): void {
     const key = serverKey(folder, fullAccess)
     const entry = this.servers.get(key) ?? { info: { folder, state: 'stopped', sandboxed: false, fullAccess } }
     entry.info = { ...entry.info, ...patch, folder, fullAccess }
@@ -581,7 +581,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
    * Arranca o reutiliza el servidor de una carpeta ya autorizada.
    * `fullAccess` ⇒ servidor aparte sin sandbox con el MCP de control del computador.
    */
-  async start(folder: string, fullAccess = false): Promise<CoworkConnection> {
+  async start(folder: string, fullAccess = false): Promise<TasksConnection> {
     const f = normalizeFolder(folder)
     if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
     if (fullAccess && !this.hasFullAccessGrant(f)) {
@@ -626,7 +626,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     let computerMcp: Record<string, unknown> | null = null
     let browserMcpPort: number | null = null
     // Idempotente: nos asegura la implementación real del navegador integrado la primera vez que
-    // se arranca cualquier servidor de Cowork (sandbox o Control total).
+    // se arranca cualquier servidor de Tareas (sandbox o Control total).
     embeddedBrowserMcp.setApi(embeddedBrowser)
     if (!fullAccess) {
       // Navegador integrado en Sandbox (Lote D, novedad B.7: antes no había navegador aquí).
@@ -640,8 +640,8 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       // Navegador en Control total (Lote D, B.11): el navegador integrado.
       browserMcp = await embeddedBrowserMcp.configFor({ product: 'tasks', folder, sandboxed: false }).catch(() => null)
     }
-    // MCP del usuario disponibles en Cowork (`mcp-tasks.ts`); sus hosts remotos entran a la red.
-    const c = coworkMcpContribution({ sandboxed: !fullAccess })
+    // MCP del usuario disponibles en Tareas (`mcp-tasks.ts`); sus hosts remotos entran a la red.
+    const c = tasksMcpContribution({ sandboxed: !fullAccess })
     // Con `disableCustomHosts` los hosts de MCP remotos no se suman a la red (política gestionada).
     this.serverHosts.set(key, loadManagedPolicy()?.disableCustomHosts ? [] : c.hosts)
     // Permisos "siempre permitir" recordados para esta carpeta (`rules.ts`).
@@ -651,13 +651,13 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       browserMcp,
       computerMcp,
       mcpContribution: c,
-      rulesPermission: rulesPermissionConfig(coworkRules.list(folder)),
+      rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
       skills: skillsInlineConfig()
     })
     return { config, browserMcpPort }
   }
 
-  private spawn(folder: string, fullAccess: boolean): Promise<CoworkServerHandle> {
+  private spawn(folder: string, fullAccess: boolean): Promise<TasksServerHandle> {
     const key = serverKey(folder, fullAccess)
     // Carpetas extra y borrado se fijan AHORA (el perfil Seatbelt no se puede cambiar en caliente);
     // la firma registrada es la de lo realmente usado, para que `applied` sea fiable.
@@ -671,12 +671,12 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
       fullAccess && this.opts.computer ? this.opts.computer.planGateUrl().catch(() => null) : Promise.resolve<string | null>(null)
     const before = Promise.resolve(this.beforeSpawn ? this.beforeSpawn(folder, fullAccess) : undefined)
     const prepared = before.then(() => {
-      // `.cowork/` → `.onyxcode/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
+      // scratch antiguo → `.onyxcode/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
       migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
     const starting = prepared.then(([{ config, browserMcpPort }, gateUrl]) =>
-      startCoworkServer(folder, {
+      startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
         // Puerto fijo del MCP del navegador integrado (Lote D, B.7): sin esto, Seatbelt bloquearía
@@ -788,10 +788,10 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
    * Archivos modificados desde `since` en la carpeta principal y en sus carpetas vinculadas `rw`
    * (las de solo lectura no producen entregables). Los de una vinculada llevan `root`.
    */
-  deliverables(folder: string, since: number): CoworkDeliverable[] {
+  deliverables(folder: string, since: number): TasksDeliverable[] {
     const root = normalizeFolder(folder)
     if (!this.isApproved(root)) throw new Error('La carpeta no está autorizada para las tareas.')
-    const out: CoworkDeliverable[] = []
+    const out: TasksDeliverable[] = []
     let seen = 0
     const scan = (base: string, linkedRoot?: string): void => {
       const walk = (dir: string, depth: number): void => {
@@ -835,7 +835,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     return out.sort((a, b) => b.mtime - a.mtime).slice(0, 200)
   }
 
-  /** Verifica que una ruta esté dentro de una carpeta de Cowork, vinculada o de confianza. */
+  /** Verifica que una ruta esté dentro de una carpeta de Tareas, vinculada o de confianza. */
   assertInsideApproved(path: string): string {
     const p = normalizeFolder(path)
     const data = this.load()

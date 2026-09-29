@@ -17,7 +17,7 @@ import type { AutoAccessQuery, AutoAccessVerdict } from '../computer/service'
 import { classifyAccess, classifyPermission, DEFAULT_AUTO_VIEW_APPS } from './auto-mode'
 import type { RawPerm } from './monitor'
 
-/** Servidor vivo de Cowork tal como lo entrega `CoworkManager.liveServers()` (mismos campos). */
+/** Servidor vivo de Tareas tal como lo entrega `TasksManager.liveServers()` (mismos campos). */
 export interface AutoServer {
   folder: string
   fullAccess: boolean
@@ -39,7 +39,7 @@ export interface AutoApproverDeps {
   file: string
   now?: () => number
   fetch?: typeof fetch
-  /** Nombres de los MCP del usuario marcados "Disponible en Cowork" (nunca `computer`/`browser`). */
+  /** Nombres de los MCP del usuario marcados "Disponible en Tareas" (nunca `computer`/`browser`). */
   mcpServers: () => string[]
   /** true si `managed.json` desactiva el Modo auto para toda la organización. */
   policyDisabled: () => boolean
@@ -400,10 +400,10 @@ export class AutoApprover {
   }
 }
 
-/** Instancia única, creada por `registerCoworkAutoHandlers` (`tasks-auto-handlers.ts`). */
+/** Instancia única, creada por `registerTasksAutoHandlers` (`tasks-auto-handlers.ts`). */
 export let autoApprover: AutoApprover | null = null
 
-/** La crea `registerCoworkAutoHandlers`; el resto de main la consulta con `getAutoApprover()`. */
+/** La crea `registerTasksAutoHandlers`; el resto de main la consulta con `getAutoApprover()`. */
 export function createAutoApprover(deps: AutoApproverDeps): AutoApprover {
   autoApprover = new AutoApprover(deps)
   return autoApprover

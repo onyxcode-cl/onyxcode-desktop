@@ -1,5 +1,5 @@
 /**
- * Política de carpetas de Cowork: qué carpetas NO se pueden autorizar ni vincular, con un
+ * Política de carpetas de Tareas: qué carpetas NO se pueden autorizar ni vincular, con un
  * motivo accionable en español para cada caso.
  *
  * Módulo PURO (solo `node:path` y `sandbox-profile`, sin Electron ni acceso a disco) para poder
@@ -81,7 +81,7 @@ function tilde(p: string, home: string): string {
 }
 
 /**
- * Motivo por el que `folder` (ya normalizada) no puede usarse como carpeta de Cowork, o `null`
+ * Motivo por el que `folder` (ya normalizada) no puede usarse como carpeta de Tareas, o `null`
  * si es válida. Los mensajes dicen qué hacer en su lugar.
  */
 export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext): string | null {

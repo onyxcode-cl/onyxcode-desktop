@@ -1,7 +1,7 @@
 /**
  * Permisos recordados por carpeta ("Siempre permitir"), persistidos en `userData/tasks-rules.json`.
  *
- * Se inyectan en la config inline de los servidores Cowork (`agent.<cowork|computer>.permission`),
+ * Se inyectan en la config inline de los servidores Tareas (`agent.<tasks|computer>.permission`),
  * así que se aplican al (re)abrir la carpeta. NUNCA se recuerdan:
  * - `external_directory` (el acceso a otras carpetas se concede por la vía de carpetas de confianza),
  * - `doom_loop` (el aviso de bucle debe seguir preguntando),
@@ -13,11 +13,11 @@ import { randomUUID } from 'node:crypto'
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { CoworkPermissionRule } from '@shared/ipc-tasks'
+import type { TasksPermissionRule } from '@shared/ipc-tasks'
 import { loadManagedPolicy } from './policy'
 
 interface Persisted {
-  rules: CoworkPermissionRule[]
+  rules: TasksPermissionRule[]
 }
 
 /** Misma expresión que `DELETE_RE` de `PermissionPrompt.tsx` (renderer): comandos de borrado. */
@@ -47,7 +47,7 @@ export function ruleRejectionReason(permission: string, pattern: string): string
   return null
 }
 
-export class CoworkRulesStore {
+export class TasksRulesStore {
   private data: Persisted | null = null
 
   private get file(): string {
@@ -62,7 +62,7 @@ export class CoworkRulesStore {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
         if (Array.isArray(raw.rules)) {
           data.rules = raw.rules.filter(
-            (r): r is CoworkPermissionRule =>
+            (r): r is TasksPermissionRule =>
               !!r &&
               typeof r.id === 'string' &&
               typeof r.folder === 'string' &&
@@ -90,14 +90,14 @@ export class CoworkRulesStore {
   }
 
   /** Reglas recordadas (de una carpeta, o todas si se omite). */
-  list(folder?: string): CoworkPermissionRule[] {
+  list(folder?: string): TasksPermissionRule[] {
     return this.load()
       .rules.filter((r) => folder === undefined || r.folder === folder)
       .map((r) => ({ ...r }))
   }
 
   /** Recuerda `permission` + cada patrón para la carpeta. Lanza si alguno no es admisible. */
-  add(folder: string, permission: string, patterns: string[]): CoworkPermissionRule[] {
+  add(folder: string, permission: string, patterns: string[]): TasksPermissionRule[] {
     if (loadManagedPolicy()?.disableAlwaysAllow) {
       throw new Error('Tu organización desactivó "Siempre permitir".')
     }
@@ -122,7 +122,7 @@ export class CoworkRulesStore {
   }
 
   /** Quita una regla por id. Devuelve todas las que quedan. */
-  remove(id: string): CoworkPermissionRule[] {
+  remove(id: string): TasksPermissionRule[] {
     const data = this.load()
     const before = data.rules.length
     data.rules = data.rules.filter((r) => r.id !== id)
@@ -130,7 +130,7 @@ export class CoworkRulesStore {
     return this.list()
   }
 
-  /** Olvida todas las reglas de una carpeta (al quitarla de Cowork). */
+  /** Olvida todas las reglas de una carpeta (al quitarla de Tareas). */
   removeFolder(folder: string): void {
     const data = this.load()
     const before = data.rules.length
@@ -139,13 +139,13 @@ export class CoworkRulesStore {
   }
 }
 
-export const coworkRules = new CoworkRulesStore()
+export const tasksRules = new TasksRulesStore()
 
 /**
  * Reglas → bloque `permission` de OpenCode: `{ [permission]: { [pattern]: 'allow' } }`.
  * Con `policy.disableAlwaysAllow` devuelve `{}` (las reglas guardadas dejan de aplicarse).
  */
-export function rulesPermissionConfig(rules: CoworkPermissionRule[]): Record<string, Record<string, 'allow'>> {
+export function rulesPermissionConfig(rules: TasksPermissionRule[]): Record<string, Record<string, 'allow'>> {
   const out: Record<string, Record<string, 'allow'>> = {}
   if (loadManagedPolicy()?.disableAlwaysAllow) return out
   for (const r of rules) {

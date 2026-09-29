@@ -41,7 +41,7 @@ const MIME: Record<string, string> = {
 
 /**
  * CSP del renderer. El cliente de OpenCode habla con `http://127.0.0.1:<puerto>` (sidecar y
- * servidores de Cowork); nada más sale a la red. Sin `unsafe-eval`, sin frames, sin objetos.
+ * servidores de Tareas); nada más sale a la red. Sin `unsafe-eval`, sin frames, sin objetos.
  */
 export const RENDERER_CSP = [
   "default-src 'self'",

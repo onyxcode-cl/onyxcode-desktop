@@ -1,6 +1,6 @@
 /**
  * Agentes del bundle y refresco de `userData/opencode-config/agents/`: al cambiar de versión, el
- * agente viejo `cowork.md` debe BORRARSE (si no, OpenCode seguiría cargando un agente huérfano).
+ * agente antiguo (con el nombre anterior) debe BORRARSE (si no, OpenCode seguiría cargando un agente huérfano).
  */
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -40,7 +40,7 @@ describe('agentes del bundle', () => {
 })
 
 describe('prepareOpencodeConfigDir: refresco por versión', () => {
-  it('borra agents/cowork.md heredado y deja los agentes del bundle', async () => {
+  it('borra agents/tasks.md heredado y deja los agentes del bundle', async () => {
     const dest = join(userData, 'opencode-config')
     mkdirSync(join(dest, 'agents'), { recursive: true })
     writeFileSync(join(dest, 'agents', `${LEGACY_AGENT_ID}.md`), 'agente viejo')

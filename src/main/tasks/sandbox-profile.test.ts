@@ -1,6 +1,6 @@
 /**
- * Caracterización del perfil Seatbelt (SBPL) ANTES del renombre `cowork` → `tasks`: el snapshot
- * fija el texto exacto. El scratch por defecto es `.onyxcode/trabajo` (antes `.cowork`):
+ * Caracterización del perfil Seatbelt (SBPL) ANTES del renombre interno a `tasks`: el snapshot
+ * fija el texto exacto. El scratch por defecto es `.onyxcode/trabajo`:
  * solo pueden cambiar las líneas de esa ruta y sus comentarios. No cambies el snapshot para
  * que pase: revisa el diff.
  */

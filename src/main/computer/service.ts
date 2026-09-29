@@ -153,7 +153,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private stoppedAt: number | null = null
   /**
    * Aborta toda sesión en curso de los servidores de acceso total (inyectado por tasks-handlers;
-   * el gestor de Cowork conoce los servidores y sus credenciales).
+   * el gestor de Tareas conoce los servidores y sus credenciales).
    */
   abortSessions: (() => Promise<AbortReport>) | null = null
   /** Sin animación del cursor (también lo usa el overlay para no simular el viaje). */
@@ -698,7 +698,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     }
   }
 
-  /** Estado resumido para `CoworkConnection.computerUse`. */
+  /** Estado resumido para `TasksConnection.computerUse`. */
   async info(): Promise<ComputerUseInfo> {
     const st = await this.status()
     const script = this.mcpScriptPath()
@@ -971,9 +971,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /**
    * URL (con token) del canal lateral de eventos: la usa tanto el MCP (`mcpEnv`) como el plugin
-   * `onyxcode-plan-gate` del servidor de OpenCode de acceso total (`cowork/manager.ts` la pasa por
+   * `onyxcode-plan-gate` del servidor de OpenCode de acceso total (`tasks/manager.ts` la pasa por
    * entorno como `ONYXCODE_PLAN_GATE_URL`, SOLO a servidores de acceso total; `onyxcode-env.js` la oculta
-   * a bash — ver `cowork/opencode-config.ts`). El plugin consulta `GET .../plan-status` antes de
+   * a bash — ver `tasks/opencode-config.ts`). El plugin consulta `GET .../plan-status` antes de
    * cada herramienta que no sea de solo-planificación (con `?session=<id>`), con el mismo fail-closed
    * que el MCP.
    */

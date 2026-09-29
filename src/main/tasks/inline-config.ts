@@ -1,6 +1,6 @@
 /**
  * Construcción PURA del config inline de OpenCode (`OPENCODE_CONFIG_CONTENT`) de un servidor de
- * Cowork. Extraída de `CoworkManager.inlineConfig` sin cambiar el resultado (fijado por
+ * Tareas. Extraída de `TasksManager.inlineConfig` sin cambiar el resultado (fijado por
  * `inline-config.test.ts`). Las claves `agent.<id>.permission` son SEGURIDAD: deniegan MCP,
  * aplican `external_directory` y las reglas recordadas.
  */
@@ -15,7 +15,7 @@ export interface InlineConfigInput {
   browserMcp: Record<string, unknown> | null
   /** Config del MCP `computer` (solo Control total; o null). */
   computerMcp: Record<string, unknown> | null
-  /** Aportación de los MCP del usuario (`coworkMcpContribution`). */
+  /** Aportación de los MCP del usuario (`tasksMcpContribution`). */
   mcpContribution: { mcp: Record<string, unknown>; permission: Record<string, unknown> }
   /** Permisos «siempre permitir» recordados (`rulesPermissionConfig`). */
   rulesPermission: Record<string, unknown>

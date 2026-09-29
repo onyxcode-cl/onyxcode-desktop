@@ -1,12 +1,12 @@
 /**
- * Metadatos de tareas de Cowork que main persiste (`userData/tasks-meta.json`): fijada, grupo y
+ * Metadatos de tareas de Tareas que main persiste (`userData/tasks-meta.json`): fijada, grupo y
  * título, para poder listar tareas de todas las carpetas (Fijadas / Activas) sin abrir sus
  * servidores. Solo se guardan las que tienen algo que recordar (fijada o con grupo). Sin
  * dependencias de Electron: la ruta del archivo la pone quien lo crea.
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { CoworkTaskMeta } from '@shared/ipc-tasks'
+import type { TasksTaskMeta } from '@shared/ipc-tasks'
 
 const MAX_TASKS = 5000
 const MAX_GROUP = 80
@@ -28,12 +28,12 @@ function normGroup(v: unknown): string | null {
 }
 
 /** Valida una entrada persistida; devuelve null si no sirve. */
-function normalizeEntry(v: unknown): CoworkTaskMeta | null {
+function normalizeEntry(v: unknown): TasksTaskMeta | null {
   if (!v || typeof v !== 'object') return null
   const o = v as Record<string, unknown>
   if (typeof o.sessionId !== 'string' || !o.sessionId || o.sessionId.length > 200) return null
   if (typeof o.folder !== 'string' || !o.folder || o.folder.length > 4096) return null
-  const meta: CoworkTaskMeta = {
+  const meta: TasksTaskMeta = {
     sessionId: o.sessionId,
     folder: o.folder,
     fullAccess: o.fullAccess === true,
@@ -46,14 +46,14 @@ function normalizeEntry(v: unknown): CoworkTaskMeta | null {
   return meta
 }
 
-export class CoworkTasksStore {
-  private cache: Map<string, CoworkTaskMeta> | null = null
+export class TasksTasksStore {
+  private cache: Map<string, TasksTaskMeta> | null = null
 
   constructor(private readonly file: string) {}
 
-  private load(): Map<string, CoworkTaskMeta> {
+  private load(): Map<string, TasksTaskMeta> {
     if (this.cache) return this.cache
-    const map = new Map<string, CoworkTaskMeta>()
+    const map = new Map<string, TasksTaskMeta>()
     try {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as { tasks?: unknown }
@@ -78,7 +78,7 @@ export class CoworkTasksStore {
     renameSync(tmp, this.file)
   }
 
-  list(): CoworkTaskMeta[] {
+  list(): TasksTaskMeta[] {
     return [...this.load().values()].map((m) => ({ ...m }))
   }
 
@@ -90,10 +90,10 @@ export class CoworkTasksStore {
    * Fusiona los campos recibidos con lo guardado. Si la tarea queda sin fijar y sin grupo se
    * deja de guardar (pero se devuelve el metadato resultante).
    */
-  set(req: TaskMetaSetRequest): CoworkTaskMeta {
+  set(req: TaskMetaSetRequest): TasksTaskMeta {
     const map = this.load()
     const prev = map.get(req.sessionId)
-    const next: CoworkTaskMeta = {
+    const next: TasksTaskMeta = {
       sessionId: req.sessionId,
       folder: req.folder,
       fullAccess: req.fullAccess,

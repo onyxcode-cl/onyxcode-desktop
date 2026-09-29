@@ -16,7 +16,7 @@ import { app, Menu, session, shell, type WebContents } from 'electron'
 import { isTrustedUrl, originOf } from './app-protocol'
 import { isEmbeddedBrowserSession } from '../embedded-browser/session'
 
-/** Permisos que la UI usa: notificaciones de Cowork y botones "Copiar". */
+/** Permisos que la UI usa: notificaciones de Tareas y botones "Copiar". */
 const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write'])
 
 function openExternalSafe(url: string): void {

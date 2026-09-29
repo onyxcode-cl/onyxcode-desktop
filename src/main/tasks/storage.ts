@@ -1,5 +1,5 @@
 /**
- * Almacenamiento de Cowork: cuánto ocupan los directorios privados del sandbox
+ * Almacenamiento de Tareas: cuánto ocupan los directorios privados del sandbox
  * (`userData/tasks-sandbox/<clave>`, con su `cache/` y `tmp/`) y las capturas temporales de
  * Control total, y cómo limpiarlos. Mide con `/usr/bin/du -sk` (execFile, sin shell). Sin
  * dependencias de Electron: las rutas y `sandboxKey` los inyecta quien lo llama.
@@ -7,7 +7,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
-import type { CoworkStorageEntry, CoworkStorageReport } from '@shared/ipc-tasks'
+import type { TasksStorageEntry, TasksStorageReport } from '@shared/ipc-tasks'
 
 export interface StorageEnv {
   /** `app.getPath('userData')`. */
@@ -60,8 +60,8 @@ async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promis
   return out
 }
 
-/** Informe de uso. `folders` = carpetas de Cowork conocidas (para el mapeo clave → carpeta). */
-export async function storageReport(env: StorageEnv, folders: string[], live: StorageLiveServer[]): Promise<CoworkStorageReport> {
+/** Informe de uso. `folders` = carpetas de Tareas conocidas (para el mapeo clave → carpeta). */
+export async function storageReport(env: StorageEnv, folders: string[], live: StorageLiveServer[]): Promise<TasksStorageReport> {
   const du = env.du ?? duBytes
   const root = sandboxRoot(env)
   const byKey = new Map<string, string>()
@@ -89,7 +89,7 @@ export async function storageReport(env: StorageEnv, folders: string[], live: St
   } catch {
     // el directorio aún no existe
   }
-  const entries = await inBatches(keys, 4, async (key): Promise<CoworkStorageEntry> => {
+  const entries = await inBatches(keys, 4, async (key): Promise<TasksStorageEntry> => {
     const dir = join(root, key)
     const [bytes, cache, tmp] = await Promise.all([du(dir), du(join(dir, 'cache')), du(join(dir, 'tmp'))])
     return {
@@ -117,7 +117,7 @@ export async function storageClean(
   live: StorageLiveServer[],
   key: string,
   scope: 'cache' | 'all'
-): Promise<CoworkStorageReport> {
+): Promise<TasksStorageReport> {
   if (!KEY_RE.test(key)) throw new Error('Clave de almacenamiento no válida')
   for (const s of live) {
     if (s.fullAccess) continue

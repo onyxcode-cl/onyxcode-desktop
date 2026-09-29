@@ -8,7 +8,7 @@
  * - Cada ejecución crea una sesión OpenCode, lanza `session.promptAsync` y espera a que la
  *   sesión quede inactiva sondeando `session.status` (NO `session.prompt` bloqueante: el `fetch`
  *   de Node corta a los 300 s — undici `headersTimeout` — y las rutinas largas fallaban, B1).
- *   Modo chat/code → sidecar principal; modo cowork → servidor sandboxeado de la carpeta.
+ *   Modo chat/code → sidecar principal; modo tasks → servidor sandboxeado de la carpeta.
  * - Ejecución desatendida: solo las reglas explícitas de la lista blanca de la rutina se aprueban
  *   solas (`approvals.ts`); el resto se rechaza (por defecto) o espera al usuario con una
  *   notificación (`onAsk: 'wait'`). Todo lo aprobado/rechazado y los hosts bloqueados quedan en el
@@ -24,11 +24,11 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { dirname, join } from 'node:path'
 import { createOpencodeClient, type AssistantMessage, type Message, type OpencodeClient, type Part } from '@opencode-ai/sdk/v2/client'
 import type { RoutineAllowRule, RoutineInput, RoutineMode, RoutineRunRecord, RoutineTrigger, ScheduledRoutine } from '@shared/ipc-tasks'
-import { buildCoworkSystemPrompt } from '@shared/tasks-prompt'
+import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import type { NotifyTarget, Settings } from '@shared/types'
-import type { CoworkManager } from '../tasks/manager'
+import type { TasksManager } from '../tasks/manager'
 import { loadManagedPolicy } from '../tasks/policy'
-import { getMemory, type CoworkProjectsStore } from '../tasks/projects'
+import { getMemory, type TasksProjectsStore } from '../tasks/projects'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { decideUnattended } from './approvals'
 import { nextRunAfter, validateSchedule } from './schedule'
@@ -56,12 +56,12 @@ export interface SchedulerDeps {
   getMainConnection: () => Promise<{ baseUrl: string; authorization: string }>
   /** Directorio del modo Chat (userData/chat-workspace). */
   chatDirectory: string
-  cowork: CoworkManager
+  tasks: TasksManager
   /** Agente para rutinas en modo code (por defecto `build`). */
   codeAgent?: string
-  /** Proyectos de Cowork (instrucciones/enlaces/memoria) para el prompt de las rutinas. */
-  projects?: CoworkProjectsStore
-  /** Ajustes de la app (p.ej. instrucciones globales de Cowork). */
+  /** Proyectos de Tareas (instrucciones/enlaces/memoria) para el prompt de las rutinas. */
+  projects?: TasksProjectsStore
+  /** Ajustes de la app (p.ej. instrucciones globales de Tareas). */
   getSettings?: () => Settings
   /** Abre una tarea/sesión en la ventana principal (clic en una notificación de rutina). */
   openTarget?: (t: NotifyTarget) => void
@@ -287,7 +287,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (input.mode !== 'chat') {
       if (!folder) throw new Error('Los modos Tareas y Code requieren una carpeta')
       if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(`La carpeta no existe: ${folder}`)
-      if (input.mode === 'tasks' && !this.deps.cowork.isApproved(folder)) {
+      if (input.mode === 'tasks' && !this.deps.tasks.isApproved(folder)) {
         throw new Error('La carpeta no está autorizada para las tareas (autorízala primero desde Tareas).')
       }
     }
@@ -296,18 +296,18 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const now = Date.now()
     const idx = input.id ? data.routines.findIndex((r) => r.id === input.id) : -1
     const prev = idx >= 0 ? data.routines[idx] : null
-    const isCowork = input.mode === 'tasks'
+    const isTasks = input.mode === 'tasks'
 
-    // Campos de Lote B (solo tienen sentido en modo Cowork; en otros modos se limpian).
-    const sessionMode = input.sessionMode === 'continue' && isCowork ? 'continue' : 'fresh'
-    const onAsk = input.onAsk === 'wait' && isCowork ? 'wait' : 'reject'
-    const allow = isCowork ? sanitizeAllow(input.allow) : []
+    // Campos de Lote B (solo tienen sentido en modo Tareas; en otros modos se limpian).
+    const sessionMode = input.sessionMode === 'continue' && isTasks ? 'continue' : 'fresh'
+    const onAsk = input.onAsk === 'wait' && isTasks ? 'wait' : 'reject'
+    const allow = isTasks ? sanitizeAllow(input.allow) : []
 
     // Control total: consentimiento explícito + concesión vigente de la carpeta. La aprobación del
     // plan sigue siendo humana en cada ejecución, así que estas rutinas no son 100 % desatendidas.
-    const fullAccess = isCowork && input.fullAccess === true
+    const fullAccess = isTasks && input.fullAccess === true
     // Control total no usa el proxy del sandbox: los sitios permitidos no aplican.
-    const allowHosts = isCowork && !fullAccess ? sanitizeHosts(input.allowHosts) : []
+    const allowHosts = isTasks && !fullAccess ? sanitizeHosts(input.allowHosts) : []
     let fullAccessConsentAt: number | null = null
     if (fullAccess) {
       const consent = input.fullAccessConsentAt ?? prev?.fullAccessConsentAt ?? null
@@ -319,7 +319,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (!sameFolder && consent <= (prev?.fullAccessConsentAt ?? 0)) {
         throw new Error('Confirma de nuevo el consentimiento de Control total para esta carpeta.')
       }
-      if (!folder || !this.deps.cowork.hasFullAccessGrant(folder)) {
+      if (!folder || !this.deps.tasks.hasFullAccessGrant(folder)) {
         throw new Error('Esta carpeta no tiene Control total del Mac concedido (concédelo primero desde Tareas).')
       }
       fullAccessConsentAt = consent
@@ -495,21 +495,21 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (!directory) throw new Error('La rutina no tiene carpeta')
     if (r.mode !== 'chat' && !existsSync(directory)) throw new Error(`La carpeta no existe: ${directory}`)
 
-    const isCowork = r.mode === 'tasks'
-    const fullAccess = isCowork && r.fullAccess === true
+    const isTasks = r.mode === 'tasks'
+    const fullAccess = isTasks && r.fullAccess === true
     if (fullAccess) {
       if (!r.fullAccessConsentAt) {
         throw new Error('Esta rutina usa Control total del Mac pero no tiene consentimiento registrado: edítala y confírmalo.')
       }
-      if (!this.deps.cowork.hasFullAccessGrant(directory)) {
+      if (!this.deps.tasks.hasFullAccessGrant(directory)) {
         throw new Error('La carpeta ya no tiene Control total del Mac concedido: concédelo de nuevo desde Tareas o edita la rutina.')
       }
     }
 
     let conn: { baseUrl: string; authorization: string }
     let dirForSession = directory
-    if (isCowork) {
-      const cw = await this.deps.cowork.start(directory, fullAccess)
+    if (isTasks) {
+      const cw = await this.deps.tasks.start(directory, fullAccess)
       conn = cw
       dirForSession = cw.folder // ruta real (normalizada) de la carpeta
     } else {
@@ -557,7 +557,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     // Sitios permitidos solo mientras dura la ejecución (proxy del sandbox) y hosts bloqueados.
     const hostsToRelease: string[] = []
     let offBlocked: (() => void) | null = null
-    if (isCowork && !fullAccess) {
+    if (isTasks && !fullAccess) {
       for (const h of r.allowHosts ?? []) if (this.acquireHost(dirForSession, h)) hostsToRelease.push(h)
       const onBlocked = (ev: { folder: string; host: string }): void => {
         if (ev.folder !== dirForSession) return
@@ -567,8 +567,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         list.push(host)
         this.touch(record)
       }
-      this.deps.cowork.on('networkBlocked', onBlocked)
-      offBlocked = () => this.deps.cowork.off('networkBlocked', onBlocked)
+      this.deps.tasks.on('networkBlocked', onBlocked)
+      offBlocked = () => this.deps.tasks.off('networkBlocked', onBlocked)
     }
 
     const run: RunCtx = {
@@ -609,11 +609,11 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
     try {
       const sentAt = Date.now()
-      const project = isCowork ? this.deps.projects?.get(dirForSession) : undefined
-      const memory = isCowork && project?.memoryEnabled !== false ? getMemory(dirForSession).content : null
-      const folderSet = isCowork ? this.deps.cowork.folderSet(dirForSession) : null
-      const system = buildCoworkSystemPrompt({
-        globalInstructions: isCowork ? this.deps.getSettings?.().tasksGlobalInstructions : null,
+      const project = isTasks ? this.deps.projects?.get(dirForSession) : undefined
+      const memory = isTasks && project?.memoryEnabled !== false ? getMemory(dirForSession).content : null
+      const folderSet = isTasks ? this.deps.tasks.folderSet(dirForSession) : null
+      const system = buildTasksSystemPrompt({
+        globalInstructions: isTasks ? this.deps.getSettings?.().tasksGlobalInstructions : null,
         project: project
           ? { name: project.name, instructions: project.instructions, links: project.links, memoryEnabled: project.memoryEnabled }
           : null,
@@ -656,8 +656,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       return true
     }
     // Si ya había una concesión temporal del usuario ("Permitir esta vez"), no es nuestra: no se retira.
-    const foreign = this.deps.cowork.network.hasOnce(folder, host)
-    if (!foreign) this.deps.cowork.networkAllowOnce(folder, host)
+    const foreign = this.deps.tasks.network.hasOnce(folder, host)
+    if (!foreign) this.deps.tasks.networkAllowOnce(folder, host)
     this.hostGrants.set(key, { count: 1, owned: !foreign })
     return true
   }
@@ -669,7 +669,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     cur.count--
     if (cur.count > 0) return
     this.hostGrants.delete(key)
-    if (cur.owned) this.deps.cowork.network.revokeOnce(folder, host)
+    if (cur.owned) this.deps.tasks.network.revokeOnce(folder, host)
   }
 
   /** Guarda y notifica al renderer un cambio en el registro de la ejecución en curso. */

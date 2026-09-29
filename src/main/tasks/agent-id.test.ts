@@ -41,7 +41,7 @@ describe('id del agente: única fuente compartida', () => {
     expect(inlineConfig).toMatch(/import \{[^}]*\bTASKS_AGENT_ID\b[^}]*\} from '@shared\/agents'/)
     expect(inlineConfig).toContain('[TASKS_AGENT_ID]')
     expect(inlineConfig).toContain('[COMPUTER_AGENT_ID]')
-    expect(inlineConfig).not.toMatch(/\b(?:cowork|tasks|computer):\s*\{/)
+    expect(inlineConfig).not.toMatch(/\b(?:tasks|tasks|computer):\s*\{/)
   })
   it('cada id tiene su agente en resources/opencode/agents', () => {
     for (const id of [shared.CHAT_AGENT_ID, shared.TASKS_AGENT_ID, shared.COMPUTER_AGENT_ID]) {

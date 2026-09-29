@@ -1,7 +1,7 @@
 /**
- * Sandbox de Cowork (macOS Seatbelt / `sandbox-exec`).
+ * Sandbox de Tareas (macOS Seatbelt / `sandbox-exec`).
  *
- * Cada carpeta de Cowork tiene su PROPIO `opencode serve` lanzado dentro de
+ * Cada carpeta de Tareas tiene su PROPIO `opencode serve` lanzado dentro de
  * `sandbox-exec -f <perfil>`; todos los procesos hijos (bash, python, textutil…) heredan
  * el perfil (ver `sandbox-profile.ts`: qué se puede escribir/leer/ejecutar).
  *
@@ -101,7 +101,7 @@ export function writeSandboxProfile(
   return file
 }
 
-export interface CoworkServerHandle {
+export interface TasksServerHandle {
   folder: string
   baseUrl: string
   /** Valor completo del header Authorization (Basic …). */
@@ -121,7 +121,7 @@ export interface CoworkServerHandle {
   deleteAllowed: boolean
 }
 
-export interface StartCoworkServerOptions {
+export interface StartTasksServerOptions {
   corsOrigins?: string[]
   /** Desactivar el sandbox (solo para depuración). */
   noSandbox?: boolean
@@ -149,7 +149,7 @@ export interface StartCoworkServerOptions {
  * Lanza un `opencode serve` dedicado a `folder`, dentro de `sandbox-exec` en macOS.
  * cwd = folder. Resuelve cuando `/global/health` responde.
  */
-export async function startCoworkServer(folder: string, options: StartCoworkServerOptions = {}): Promise<CoworkServerHandle> {
+export async function startTasksServer(folder: string, options: StartTasksServerOptions = {}): Promise<TasksServerHandle> {
   const bin = findOpencodeBinary()
   if (!bin) throw new Error('No se encontró el binario `opencode` (instálalo o define OPENCODE_BIN).')
   if (!existsSync(folder)) throw new Error(`La carpeta no existe: ${folder}`)

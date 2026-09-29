@@ -5,7 +5,7 @@
  * Define los agentes propios de la app:
  * - `chat`: conversación general, sin herramientas de archivos/shell (solo web); `'*': deny` ya
  *   cubre `browser_*` sin necesidad de listarlo aparte.
- * - `computer` se oculta aquí: solo existe en los servidores Cowork de acceso total.
+ * - `computer` se oculta aquí: solo existe en los servidores Tareas de acceso total.
  *
  * Navegador integrado (Lote D, B.7): `server.ts` resuelve `mcp.browser` con
  * `embeddedBrowserMcp.configFor({product:'code'})` ANTES de arrancar y se lo pasa a

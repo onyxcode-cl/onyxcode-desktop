@@ -2,7 +2,7 @@ import { sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { isInside } from './paths'
 
-/** Copia literal de la versión privada que tenía cowork/folder-policy.ts (para demostrar equivalencia). */
+/** Copia literal de la versión privada que tenía tasks/folder-policy.ts (para demostrar equivalencia). */
 function legacyPolicyIsInside(f: string, dir: string): boolean {
   return f === dir || f.startsWith(dir === '/' ? '/' : dir + sep)
 }

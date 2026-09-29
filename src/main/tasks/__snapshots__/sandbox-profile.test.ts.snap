@@ -61,7 +61,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
   (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
 )
 
-;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+;; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…
 (deny file-read* file-write* (subpath "/fixture/userData"))
 ;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
 (allow file-read-metadata (subpath "/fixture/userData"))
@@ -94,7 +94,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
 "
@@ -161,7 +161,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
   (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
 )
 
-;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+;; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…
 (deny file-read* file-write* (subpath "/fixture/userData"))
 ;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
 (allow file-read-metadata (subpath "/fixture/userData"))
@@ -194,7 +194,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
 
@@ -268,7 +268,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
   (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
 )
 
-;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+;; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…
 (deny file-read* file-write* (subpath "/fixture/userData"))
 ;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
 (allow file-read-metadata (subpath "/fixture/userData"))
@@ -301,7 +301,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
 
@@ -378,7 +378,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
   (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
 )
 
-;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+;; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…
 (deny file-read* file-write* (subpath "/fixture/userData"))
 ;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
 (allow file-read-metadata (subpath "/fixture/userData"))
@@ -411,7 +411,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-outbound
   (remote ip "localhost:40001")
@@ -491,7 +491,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
   (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
 )
 
-;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+;; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…
 (deny file-read* file-write* (subpath "/fixture/userData"))
 ;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
 (allow file-read-metadata (subpath "/fixture/userData"))
@@ -524,7 +524,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
 
@@ -600,7 +600,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
   (subpath "/Users/fixture/Library/Group Containers/group.com.apple.notes")
 )
 
-;; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…
+;; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…
 (deny file-read* file-write* (subpath "/fixture/userData"))
 ;; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)
 (allow file-read-metadata (subpath "/fixture/userData"))
@@ -633,7 +633,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
 
@@ -731,7 +731,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
   (global-name "com.apple.screencapture.interactive")
 )
 
-;; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.
+;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
 

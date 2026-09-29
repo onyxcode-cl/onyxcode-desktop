@@ -8,7 +8,7 @@
  * `resources/launcher/bin/onyxcode-disclaim` (C, `resources/launcher/disclaim.c`) hace un
  * `posix_spawn` con `POSIX_SPAWN_SETEXEC` y el atributo "disclaim": el programa sustituye al
  * lanzador (MISMO PID, descriptores y grupo de procesos) y pasa a ser responsable de sí mismo.
- * Se usa para TODOS los `opencode serve` (sidecar principal, Cowork con sandbox y de acceso total).
+ * Se usa para TODOS los `opencode serve` (sidecar principal, Tareas con sandbox y de acceso total).
  *
  * Lo que SÍ debe conservar los permisos de OnyxCode — el MCP de computer use y su `cu-helper` — corre
  * en un utilityProcess de main (`computer/mcp-host.ts`), nunca debajo de un OpenCode desvinculado.

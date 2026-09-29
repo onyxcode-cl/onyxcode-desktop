@@ -1,5 +1,5 @@
 /**
- * Control de red saliente de un servidor Cowork sandboxeado: dos servidores HTTP locales,
+ * Control de red saliente de un servidor Tareas sandboxeado: dos servidores HTTP locales,
  * ambos en `127.0.0.1` con un puerto aleatorio libre por sesión.
  *
  * 1. `EgressProxy` — proxy HTTP(S) de reenvío (forward proxy) que el `opencode serve`

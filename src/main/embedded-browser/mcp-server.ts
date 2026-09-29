@@ -2,7 +2,7 @@
  * Servidor MCP del navegador integrado (Lote D, B.6 "Transporte"): HTTP JSON-RPC en el PROCESO
  * PRINCIPAL (nunca un `utilityProcess`: `webContents.debugger` solo existe en main). Un único
  * puerto fijo en 127.0.0.1 durante toda la vida de la app, con un Bearer de 32 bytes POR SERVIDOR
- * de OpenCode que lo usa (`clientFor`/`configFor`): el sidecar de Code y cada servidor Cowork
+ * de OpenCode que lo usa (`clientFor`/`configFor`): el sidecar de Code y cada servidor Tareas
  * (sandbox o Control total) reciben su propio token, registrado aquí.
  *
  * Transporte y esqueleto JSON-RPC calcados de `computer/mcp-server.ts` (líneas ~1600-1779): mismo
@@ -244,5 +244,5 @@ export class EmbeddedBrowserMcpServer {
   }
 }
 
-/** Instancia única compartida por el sidecar de Code y todos los servidores de Cowork (un solo puerto). */
+/** Instancia única compartida por el sidecar de Code y todos los servidores de Tareas (un solo puerto). */
 export const embeddedBrowserMcp = new EmbeddedBrowserMcpServer()

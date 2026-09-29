@@ -9,7 +9,7 @@
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
-import { COWORK_INVOKE_CHANNELS, type CoworkInvokeChannel, type CoworkRequest } from '@shared/ipc-tasks'
+import { TASKS_INVOKE_CHANNELS, type TasksInvokeChannel, type TasksRequest } from '@shared/ipc-tasks'
 import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import {
   BROWSER_HOST_EXCLUDED_CHANNELS,
@@ -45,7 +45,7 @@ const host = str({ max: 255, min: 1, pattern: /^[a-z0-9.-]+$/i })
 const permName = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_*.:-]+$/ })
 /** Id hexadecimal corto (tarjeta `request_access`/Teach, grabación de skill). */
 const hexId = str({ max: 64, min: 1, pattern: /^[a-f0-9]+$/ })
-/** Sitio (eTLD+1) del navegador propio de Cowork. */
+/** Sitio (eTLD+1) del navegador propio de Tareas. */
 const site = str({ max: 253, min: 1, pattern: /^[a-z0-9.-]+$/i })
 const pattern = str({ max: 2000, min: 1 })
 /** Nombre de archivo simple: sin separadores de ruta, dos puntos ni bytes nulos. */
@@ -187,7 +187,7 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'dialog:openInEditor': pathReq
 }
 
-const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> } = {
+const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } = {
   'tasks:pickFolder': none,
   'tasks:listFolders': none,
   'tasks:approveFolder': folderReq,
@@ -380,7 +380,7 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
  */
 export const IPC_SCHEMAS: Record<string, Validator<unknown>> = {
   ...APP_SCHEMAS,
-  ...COWORK_SCHEMAS,
+  ...TASKS_SCHEMAS,
   ...EXTRAS_SCHEMAS,
   ...CODE_SCHEMAS,
   ...BROWSER_SCHEMAS
@@ -410,7 +410,7 @@ export function missingSchemas(): string[] {
   const all = [
     ...IPC_INVOKE_CHANNELS,
     ...CODE_INVOKE_CHANNELS,
-    ...COWORK_INVOKE_CHANNELS,
+    ...TASKS_INVOKE_CHANNELS,
     ...IPC_EXTRAS_INVOKE_CHANNELS,
     ...BROWSER_INVOKE_CHANNELS
   ]

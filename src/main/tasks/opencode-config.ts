@@ -169,7 +169,7 @@ export default {
 
 /**
  * Plugin `tool.execute.before` (Lote D, B.7): en TODO servidor (sidecar de Code y cada servidor de
- * Cowork, sandbox o Control total), inyecta `onyxcode_session` en los args de cualquier herramienta
+ * Tareas, sandbox o Control total), inyecta `onyxcode_session` en los args de cualquier herramienta
  * `browser_*` con el `sessionID` de quien llama, MUTANDO el objeto en sitio (opencode llama al MCP
  * con ese mismo objeto `output.args`) y SIEMPRE sobrescribiendo lo que ponga el modelo — igual que
  * `onyxcode-plan-gate` hace con `computer_*`. Sin variable de entorno que lo condicione: a diferencia
@@ -300,7 +300,7 @@ export function getOpencodeConfigDir(): string {
 
 /**
  * Variables de entorno para cualquier `opencode serve` de la app (sidecar principal y
- * servidores de Cowork). Fusionar con `process.env` al hacer spawn.
+ * servidores de Tareas). Fusionar con `process.env` al hacer spawn.
  */
 export function getOpencodeEnv(): Record<string, string> {
   return {

@@ -1,24 +1,24 @@
 /**
- * MCP del usuario disponibles en Cowork.
+ * MCP del usuario disponibles en Tareas.
  *
- * Los servidores Cowork NO reciben `OPENCODE_CONFIG` (solo el sidecar lo tiene), así que sin esto
- * no habría ningún MCP del usuario dentro de Cowork. Aquí se leen los servidores que la app
- * administra (`readAppMcpConfig()`), se filtran los activos y marcados "Disponible en Cowork" y
+ * Los servidores Tareas NO reciben `OPENCODE_CONFIG` (solo el sidecar lo tiene), así que sin esto
+ * no habría ningún MCP del usuario dentro de Tareas. Aquí se leen los servidores que la app
+ * administra (`readAppMcpConfig()`), se filtran los activos y marcados "Disponible en Tareas" y
  * se devuelven como bloque `mcp` para la config inline (`manager.inlineConfig`).
  *
- * Las marcas propias de Cowork viven en `userData/tasks-mcp.json`
- * (`{ servers: { <nombre>: { cowork, askEachTool } } }`). NUNCA se escribe en
+ * Las marcas propias de Tareas viven en `userData/tasks-mcp.json`
+ * (`{ servers: { <nombre>: { tasks, askEachTool } } }`). NUNCA se escribe en
  * `userData/opencode/opencode.json`: OpenCode valida ese archivo de forma estricta.
  */
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { CoworkMcpInfo } from '@shared/ipc-tasks'
+import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { McpEntry } from '@shared/ipc-extras'
 import { readAppMcpConfig } from '../extras/mcp-config'
 import { hostOf } from '../util/url'
 
-export interface CoworkMcpContribution {
+export interface TasksMcpContribution {
   /** Bloque `mcp` de OpenCode a inyectar. */
   mcp: Record<string, unknown>
   /** Permisos por herramienta (`"<servidor>_*": 'ask'`). */
@@ -95,7 +95,7 @@ function usesOAuth(entry: McpEntry): boolean {
   return !entry.headers || Object.keys(entry.headers).length === 0
 }
 
-function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): CoworkMcpInfo {
+function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): TasksMcpInfo {
   const host = entry.type === 'remote' ? hostOf(entry.url) : null
   return {
     name,
@@ -109,11 +109,11 @@ function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): Cow
 }
 
 /**
- * Bloque `mcp`/`permission`/`hosts` a inyectar en un servidor Cowork. Solo entran los servidores
- * activos y marcados "Disponible en Cowork". Los hosts solo importan en sandbox (allowlist del proxy).
+ * Bloque `mcp`/`permission`/`hosts` a inyectar en un servidor Tareas. Solo entran los servidores
+ * activos y marcados "Disponible en Tareas". Los hosts solo importan en sandbox (allowlist del proxy).
  */
-export function coworkMcpContribution(opts: { sandboxed: boolean }): CoworkMcpContribution {
-  const out: CoworkMcpContribution = { mcp: {}, permission: {}, hosts: [] }
+export function tasksMcpContribution(opts: { sandboxed: boolean }): TasksMcpContribution {
+  const out: TasksMcpContribution = { mcp: {}, permission: {}, hosts: [] }
   let servers: Record<string, McpEntry>
   try {
     servers = readAppMcpConfig().servers
@@ -153,9 +153,9 @@ export function coworkMcpContribution(opts: { sandboxed: boolean }): CoworkMcpCo
   return out
 }
 
-export class CoworkMcpPrefs {
-  /** Todos los MCP de la app (para la lista de Ajustes), con sus marcas de Cowork. */
-  list(): CoworkMcpInfo[] {
+export class TasksMcpPrefs {
+  /** Todos los MCP de la app (para la lista de Ajustes), con sus marcas de Tareas. */
+  list(): TasksMcpInfo[] {
     let servers: Record<string, McpEntry> = {}
     try {
       servers = readAppMcpConfig().servers
@@ -168,7 +168,7 @@ export class CoworkMcpPrefs {
       .map(([name, entry]) => infoOf(name, entry, flags[name]))
   }
 
-  set(name: string, patch: { tasks?: boolean; askEachTool?: boolean }): CoworkMcpInfo[] {
+  set(name: string, patch: { tasks?: boolean; askEachTool?: boolean }): TasksMcpInfo[] {
     const servers = readAppMcpConfig().servers
     if (!(name in servers)) throw new Error(`No existe el servidor MCP "${name}".`)
     const data = readFlags()
@@ -183,4 +183,4 @@ export class CoworkMcpPrefs {
   }
 }
 
-export const coworkMcpPrefs = new CoworkMcpPrefs()
+export const tasksMcpPrefs = new TasksMcpPrefs()

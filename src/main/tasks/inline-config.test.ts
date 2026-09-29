@@ -1,6 +1,6 @@
 /**
  * Caracterización del config inline de OpenCode (`buildInlineConfig`, usado por
- * `CoworkManager.inlineConfig`) ANTES del renombre `cowork` → `tasks`. Las claves
+ * `TasksManager.inlineConfig`) ANTES del renombre interno a `tasks`. Las claves
  * `agent.<id>.permission` son SEGURIDAD: si se renombra el agente sin moverlas, los permisos dejan
  * de aplicarse SIN AVISO. Estos tests fijan los permisos actuales, que existan para los ids
  * `TASKS_AGENT_ID`/`COMPUTER_AGENT_ID` y que ninguna clave de agente quede sin agente definido.

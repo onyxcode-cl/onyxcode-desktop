@@ -1,5 +1,5 @@
 /**
- * Política gestionada de Cowork (`managed.json`), de solo lectura.
+ * Política gestionada de Tareas (`managed.json`), de solo lectura.
  *
  * Ubicación: `/Library/Application Support/${APP_NAME}/managed.json` (solo un administrador puede
  * escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de

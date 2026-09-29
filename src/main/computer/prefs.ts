@@ -2,7 +2,7 @@
  * Preferencias de computer use (`userData/computer-prefs.json`): modo de control (en segundo
  * plano / control de la pantalla) y si se ocultan las demás apps mientras el agente actúa.
  *
- * Decisión del usuario (2026-09-28, ver `docs/COWORK-LOTE-C-PLAN.md` §E): por defecto "En segundo
+ * Decisión del usuario (2026-09-28, ver `docs/TASKS-LOTE-C-PLAN.md` §E): por defecto "En segundo
  * plano" y "Ocultar las demás apps" activado (`DEFAULT_COMPUTER_PREFS`).
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'

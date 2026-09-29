@@ -1,12 +1,12 @@
 /**
- * Utilidades de archivos de Cowork: importar adjuntos a la carpeta de la tarea y
+ * Utilidades de archivos de Tareas: importar adjuntos a la carpeta de la tarea y
  * previsualizar entregables. Las rutas deben venir YA validadas (dentro de una carpeta
- * autorizada) por `CoworkManager.assertInsideApproved`.
+ * autorizada) por `TasksManager.assertInsideApproved`.
  */
 import { execFile } from 'node:child_process'
 import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
-import type { CoworkDeliverable, CoworkFilePreview } from '@shared/ipc-tasks'
+import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 
 const TEXT_EXT = new Set([
   '.md',
@@ -56,8 +56,8 @@ function freeName(dir: string, name: string): string {
 }
 
 /** Copia `sources` (archivos) a `folder` sin sobrescribir. */
-export function importFilesInto(folder: string, sources: string[]): CoworkDeliverable[] {
-  const out: CoworkDeliverable[] = []
+export function importFilesInto(folder: string, sources: string[]): TasksDeliverable[] {
+  const out: TasksDeliverable[] = []
   for (const src of sources) {
     let st
     try {
@@ -106,7 +106,7 @@ export function writeNewFile(dir: string, stem: string, ext: string, data: Buffe
 }
 
 /** Describe un archivo como entregable relativo a `root` (la carpeta que lo contiene por defecto). */
-export function describeDeliverable(path: string, root: string): CoworkDeliverable {
+export function describeDeliverable(path: string, root: string): TasksDeliverable {
   const st = statSync(path)
   return { path, relPath: relative(root, path) || basename(path), size: st.size, mtime: st.mtimeMs }
 }
@@ -130,7 +130,7 @@ function textutilToText(path: string): Promise<string> {
   })
 }
 
-async function previewDocument(path: string, size: number, maxBytes: number): Promise<CoworkFilePreview> {
+async function previewDocument(path: string, size: number, maxBytes: number): Promise<TasksFilePreview> {
   const limit = Math.max(1024, Math.min(maxBytes, 2 * 1024 * 1024))
   // `textutil` es indulgente (trata cualquier basura como texto): se comprueba la firma del formato.
   const ext = extname(path).toLowerCase()
@@ -156,7 +156,7 @@ async function previewDocument(path: string, size: number, maxBytes: number): Pr
 }
 
 /** Vista previa segura: texto recortado o imagen como data URL (docx/doc/rtf/odt vía `textutil`, asíncrono). */
-export function previewFile(path: string, maxBytes = DEFAULT_TEXT_BYTES): CoworkFilePreview | Promise<CoworkFilePreview> {
+export function previewFile(path: string, maxBytes = DEFAULT_TEXT_BYTES): TasksFilePreview | Promise<TasksFilePreview> {
   const st = statSync(path)
   if (!st.isFile()) throw new Error('No es un archivo.')
   const ext = extname(path).toLowerCase()

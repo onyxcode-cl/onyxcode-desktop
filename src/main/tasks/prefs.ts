@@ -1,12 +1,12 @@
 /**
- * Preferencias de Cowork (`userData/tasks-prefs.json`): auto-archivo, parada por inactividad,
+ * Preferencias de Tareas (`userData/tasks-prefs.json`): auto-archivo, parada por inactividad,
  * máximo de servidores y notificaciones por tipo. Todo valor persistido o recibido se valida y se
  * recorta a su rango; la política gestionada (`maxAutoArchiveDays`) se inyecta como función para
  * que este módulo no dependa de Electron.
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { DEFAULT_COWORK_PREFS, type CoworkNotifyPrefs, type CoworkPrefs } from '@shared/ipc-tasks'
+import { DEFAULT_TASKS_PREFS, type TasksNotifyPrefs, type TasksPrefs } from '@shared/ipc-tasks'
 
 export const AUTO_ARCHIVE_MAX_DAYS = 365
 export const IDLE_STOP_MAX_MINUTES = 1440
@@ -22,11 +22,11 @@ function bool(v: unknown, fallback: boolean): boolean {
   return typeof v === 'boolean' ? v : fallback
 }
 
-/** Normaliza un objeto cualquiera a `CoworkPrefs` válidos (sin política). */
-export function normalizeCoworkPrefs(input: unknown, base: CoworkPrefs = DEFAULT_COWORK_PREFS): CoworkPrefs {
+/** Normaliza un objeto cualquiera a `TasksPrefs` válidos (sin política). */
+export function normalizeTasksPrefs(input: unknown, base: TasksPrefs = DEFAULT_TASKS_PREFS): TasksPrefs {
   const o = input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
   const n = o.notify && typeof o.notify === 'object' ? (o.notify as Record<string, unknown>) : {}
-  const notify: CoworkNotifyPrefs = {
+  const notify: TasksNotifyPrefs = {
     done: bool(n.done, base.notify.done),
     approval: bool(n.approval, base.notify.approval),
     question: bool(n.question, base.notify.question),
@@ -44,27 +44,27 @@ export function normalizeCoworkPrefs(input: unknown, base: CoworkPrefs = DEFAULT
  * Aplica el tope de la política: con `maxAutoArchiveDays = m > 0`, "nunca" (0) y cualquier valor
  * mayor que `m` quedan en `m`.
  */
-export function applyPolicyToPrefs(p: CoworkPrefs, maxAutoArchiveDays: number | undefined | null): CoworkPrefs {
+export function applyPolicyToPrefs(p: TasksPrefs, maxAutoArchiveDays: number | undefined | null): TasksPrefs {
   const m = typeof maxAutoArchiveDays === 'number' && Number.isFinite(maxAutoArchiveDays) ? Math.floor(maxAutoArchiveDays) : 0
   if (m <= 0) return p
   const days = p.autoArchiveDays === 0 || p.autoArchiveDays > m ? m : p.autoArchiveDays
   return days === p.autoArchiveDays ? p : { ...p, autoArchiveDays: days }
 }
 
-export interface CoworkPrefsStoreOptions {
+export interface TasksPrefsStoreOptions {
   /** `maxAutoArchiveDays` de la política gestionada (o undefined si no hay). */
   policyMaxAutoArchiveDays?: () => number | undefined | null
 }
 
-export class CoworkPrefsStore {
-  private cache: CoworkPrefs | null = null
+export class TasksPrefsStore {
+  private cache: TasksPrefs | null = null
 
   constructor(
     private readonly file: string,
-    private readonly opts: CoworkPrefsStoreOptions = {}
+    private readonly opts: TasksPrefsStoreOptions = {}
   ) {}
 
-  private load(): CoworkPrefs {
+  private load(): TasksPrefs {
     if (this.cache) return this.cache
     let raw: unknown = null
     try {
@@ -72,12 +72,12 @@ export class CoworkPrefsStore {
     } catch (err) {
       console.error('[tasks] tasks-prefs.json inválido, usando valores por defecto:', err)
     }
-    this.cache = normalizeCoworkPrefs(raw)
+    this.cache = normalizeTasksPrefs(raw)
     return this.cache
   }
 
   /** Preferencias efectivas (recortadas y con el tope de la política aplicado). */
-  get(): CoworkPrefs {
+  get(): TasksPrefs {
     const p = applyPolicyToPrefs(this.load(), this.opts.policyMaxAutoArchiveDays?.())
     return { ...p, notify: { ...p.notify } }
   }
@@ -86,10 +86,10 @@ export class CoworkPrefsStore {
     autoArchiveDays?: number
     idleStopMinutes?: number
     maxServers?: number
-    notify?: Partial<CoworkNotifyPrefs>
-  }): CoworkPrefs {
+    notify?: Partial<TasksNotifyPrefs>
+  }): TasksPrefs {
     const cur = this.load()
-    const next = normalizeCoworkPrefs(
+    const next = normalizeTasksPrefs(
       {
         autoArchiveDays: patch.autoArchiveDays ?? cur.autoArchiveDays,
         idleStopMinutes: patch.idleStopMinutes ?? cur.idleStopMinutes,

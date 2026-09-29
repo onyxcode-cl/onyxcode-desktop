@@ -1,5 +1,5 @@
 /**
- * Notificaciones nativas + badge del Dock desde main (Code/Cowork: sesión terminó o pide algo).
+ * Notificaciones nativas + badge del Dock desde main (Code/Tareas: sesión terminó o pide algo).
  *
  * `app:notify` crea la `Notification` (respeta el ajuste "Notificaciones"/"Sonido" de
  * `extrasPrefs`); un clic restaura/enfoca la ventana principal y reenvía el destino al renderer

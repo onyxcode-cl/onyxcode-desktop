@@ -1,5 +1,5 @@
 /**
- * "Proyecto" de Cowork por carpeta: nombre + instrucciones + enlaces + interruptor de memoria, persistidos en
+ * "Proyecto" de Tareas por carpeta: nombre + instrucciones + enlaces + interruptor de memoria, persistidos en
  * `userData/tasks-projects.json`. La memoria (notas que el agente guarda entre tareas) vive
  * aparte, como archivo de texto dentro de la propia carpeta (`.onyxcode/memoria.md`), para que el
  * usuario pueda verla/editarla con cualquier editor y viaje con la carpeta.
@@ -8,21 +8,21 @@ import { app } from 'electron'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { isInside } from '../util/paths'
-import type { CoworkAgentsMd, CoworkMemory, CoworkProject } from '@shared/ipc-tasks'
-import { COWORK_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
+import type { TasksAgentsMd, TasksMemory, TasksProject } from '@shared/ipc-tasks'
+import { TASKS_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
 
 interface Persisted {
-  projects: CoworkProject[]
+  projects: TasksProject[]
 }
 
-const MAX_INSTRUCTIONS = COWORK_INSTRUCTIONS_MAX
+const MAX_INSTRUCTIONS = TASKS_INSTRUCTIONS_MAX
 const MAX_NAME = 200
 const MAX_LINKS = 50
 const MAX_LINK_LENGTH = 2048
 const AGENTS_MD_MAX_CHARS = 200_000
 const MEMORY_MAX_BYTES = 2 * 1024 * 1024
 
-export class CoworkProjectsStore {
+export class TasksProjectsStore {
   private data: Persisted | null = null
 
   private get file(): string {
@@ -36,7 +36,7 @@ export class CoworkProjectsStore {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
         if (Array.isArray(raw.projects)) {
-          data.projects = raw.projects.filter((p): p is CoworkProject => !!p && typeof p.folder === 'string' && typeof p.name === 'string')
+          data.projects = raw.projects.filter((p): p is TasksProject => !!p && typeof p.folder === 'string' && typeof p.name === 'string')
         }
       }
     } catch (err) {
@@ -55,14 +55,14 @@ export class CoworkProjectsStore {
   }
 
   /** Devuelve el proyecto de la carpeta (con valores por defecto si aún no se guardó nada). */
-  get(folder: string): CoworkProject {
+  get(folder: string): TasksProject {
     const existing = this.load().projects.find((p) => p.folder === folder)
     if (existing) return existing
     const now = Date.now()
     return { folder, name: basename(folder), instructions: '', createdAt: now, updatedAt: now }
   }
 
-  save(folder: string, patch: { name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }): CoworkProject {
+  save(folder: string, patch: { name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }): TasksProject {
     const data = this.load()
     const now = Date.now()
     let entry = data.projects.find((p) => p.folder === folder)
@@ -118,7 +118,7 @@ export function memoryPath(folder: string): string {
   return join(folder, '.onyxcode', 'memoria.md')
 }
 
-function readMemoryFileAt(file: string): CoworkMemory | null {
+function readMemoryFileAt(file: string): TasksMemory | null {
   try {
     const st = statSync(file)
     if (!st.isFile()) return null
@@ -134,7 +134,7 @@ function readMemoryFileAt(file: string): CoworkMemory | null {
  * versión anterior de la app), cae de vuelta a `.lapis/memoria.md` para no perder notas ya escritas
  * antes de que el usuario vuelva a guardar (lo que migra la memoria a la carpeta nueva).
  */
-function readMemoryFile(folder: string): CoworkMemory {
+function readMemoryFile(folder: string): TasksMemory {
   const current = readMemoryFileAt(memoryPath(folder))
   if (current) return current
   for (const legacyDir of LEGACY_MEMORY_DIRS) {
@@ -144,11 +144,11 @@ function readMemoryFile(folder: string): CoworkMemory {
   return { content: '', exists: false, updatedAt: null }
 }
 
-export function getMemory(folder: string): CoworkMemory {
+export function getMemory(folder: string): TasksMemory {
   return readMemoryFile(folder)
 }
 
-export function saveMemory(folder: string, content: string): CoworkMemory {
+export function saveMemory(folder: string, content: string): TasksMemory {
   const trimmed = content.slice(0, MEMORY_MAX_BYTES)
   const file = memoryPath(folder)
   mkdirSync(dirname(file), { recursive: true })
@@ -156,7 +156,7 @@ export function saveMemory(folder: string, content: string): CoworkMemory {
   return readMemoryFile(folder)
 }
 
-export function deleteMemory(folder: string): CoworkMemory {
+export function deleteMemory(folder: string): TasksMemory {
   const files = [memoryPath(folder), ...LEGACY_MEMORY_DIRS.map((d) => join(folder, d, 'memoria.md'))]
   for (const file of files) {
     try {
@@ -200,7 +200,7 @@ function resolveAgentsMd(folder: string): { path: string; real: string; exists: 
 }
 
 /** Lee `<folder>/AGENTS.md` (vacío y `exists:false` si no existe). */
-export function getAgentsMd(folder: string): CoworkAgentsMd {
+export function getAgentsMd(folder: string): TasksAgentsMd {
   const r = resolveAgentsMd(folder)
   if (!r.exists) return { path: r.path, content: '', exists: false }
   if (statSync(r.real).size > AGENTS_MD_MAX_CHARS * 4) throw new Error('AGENTS.md es demasiado grande para editarlo aquí.')
@@ -208,7 +208,7 @@ export function getAgentsMd(folder: string): CoworkAgentsMd {
 }
 
 /** Guarda `<folder>/AGENTS.md` (escritura atómica). */
-export function saveAgentsMd(folder: string, content: string): CoworkAgentsMd {
+export function saveAgentsMd(folder: string, content: string): TasksAgentsMd {
   if (content.length > AGENTS_MD_MAX_CHARS) {
     throw new Error(`AGENTS.md no puede superar ${AGENTS_MD_MAX_CHARS.toLocaleString('es-CL')} caracteres.`)
   }

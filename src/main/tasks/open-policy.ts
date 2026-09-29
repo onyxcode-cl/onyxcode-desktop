@@ -1,7 +1,7 @@
 /**
  * Política de `tasks:openPath` (AUDIT.md S4).
  *
- * Los archivos de la carpeta de Cowork los puede crear el agente. Abrirlos con la app por
+ * Los archivos de la carpeta de Tareas los puede crear el agente. Abrirlos con la app por
  * defecto (`shell.openPath`) ejecuta FUERA del sandbox cualquier lanzador: `x.command`/`.tool`
  * (Terminal), `.app`, `.terminal`, `.workflow`, `.pkg`, `.fileloc`… Esos tipos (y todo archivo
  * con bit de ejecución) se rechazan: solo se ofrecen "Mostrar en Finder".

@@ -1,50 +1,50 @@
 /**
- * Utilidades compartidas por los módulos de handlers de Cowork: registro tipado de un canal
+ * Utilidades compartidas por los módulos de handlers de Tareas: registro tipado de un canal
  * `invoke` (con guard de esquema y envoltorio `IpcResult`) y el contexto que reciben los
- * submódulos (`cowork-*-handlers.ts`).
+ * submódulos (`tasks-*-handlers.ts`).
  */
 import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron'
 import type {
-  CoworkEventChannel,
-  CoworkEventContract,
-  CoworkInvokeChannel,
-  CoworkInvokeContract,
-  CoworkRequest,
-  CoworkResponse
+  TasksEventChannel,
+  TasksEventContract,
+  TasksInvokeChannel,
+  TasksInvokeContract,
+  TasksRequest,
+  TasksResponse
 } from '@shared/ipc-tasks'
-import type { CoworkManager } from '../tasks/manager'
-import type { CoworkProjectsStore } from '../tasks/projects'
+import type { TasksManager } from '../tasks/manager'
+import type { TasksProjectsStore } from '../tasks/projects'
 import type { KeepAwakeService } from '../tasks/keep-awake'
 import type { ComputerService } from '../computer/service'
 import type { SchedulerService } from '../scheduler/service'
 import { makeInvokeHandler } from './handle'
 
-export type CoworkHandler<C extends CoworkInvokeChannel> = (
-  req: CoworkRequest<C>,
+export type TasksHandler<C extends TasksInvokeChannel> = (
+  req: TasksRequest<C>,
   event: IpcMainInvokeEvent
-) => CoworkResponse<C> | Promise<CoworkResponse<C>>
+) => TasksResponse<C> | Promise<TasksResponse<C>>
 
-const handle = makeInvokeHandler<CoworkInvokeContract>({ withCode: true })
+const handle = makeInvokeHandler<TasksInvokeContract>({ withCode: true })
 
 /** Devuelve un `handle(canal, fn)` ligado a `ipcMain`. */
-export function makeCoworkHandle(ipcMain: IpcMain): <C extends CoworkInvokeChannel>(ch: C, fn: CoworkHandler<C>) => void {
+export function makeTasksHandle(ipcMain: IpcMain): <C extends TasksInvokeChannel>(ch: C, fn: TasksHandler<C>) => void {
   return (ch, fn) => handle(ipcMain, ch, fn)
 }
 
 /** Contexto que `tasks-handlers.ts` entrega a cada submódulo de handlers. */
-export interface CoworkIpcContext {
-  handle: <C extends CoworkInvokeChannel>(ch: C, fn: CoworkHandler<C>) => void
+export interface TasksIpcContext {
+  handle: <C extends TasksInvokeChannel>(ch: C, fn: TasksHandler<C>) => void
   /** Difunde un evento a todas las ventanas. */
-  send: <C extends CoworkEventChannel>(ch: C, payload: CoworkEventContract[C]) => void
+  send: <C extends TasksEventChannel>(ch: C, payload: TasksEventContract[C]) => void
   getWindow: () => BrowserWindow | null
-  cowork: CoworkManager
+  tasks: TasksManager
   computer: ComputerService
   scheduler: SchedulerService
-  projects: CoworkProjectsStore
+  projects: TasksProjectsStore
   keepAwake: KeepAwakeService
 }
 
 /** Cada `registerX(ctx)` devuelve esto; `dispose` se espera al apagar. */
-export interface CoworkSubmodule {
+export interface TasksSubmodule {
   dispose?: () => void | Promise<void>
 }

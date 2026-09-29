@@ -2,24 +2,24 @@
  * Handlers de actividad, tareas, preferencias y almacenamiento
  * (`tasks:activity`, `tasks:viewing`, `tasks:tasks:*`, `tasks:prefs:*`, `tasks:storage:*`).
  *
- * Aquí vive el `CoworkMonitor` (sondeo de todos los servidores vivos, ver `cowork/monitor.ts`):
+ * Aquí vive el `TasksMonitor` (sondeo de todos los servidores vivos, ver `tasks/monitor.ts`):
  * este archivo le inyecta lo que depende de Electron (notificaciones, ventana, mantener despierto,
  * parada de servidores, revocar planes al archivar) y reenvía su actividad al renderer.
  */
 import { app, Notification } from 'electron'
 import { realpathSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
-import type { CoworkActivitySnapshot } from '@shared/ipc-tasks'
+import type { TasksActivitySnapshot } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
-import { CoworkMonitor, type MonitorNotifyEvent, type MonitorWindowState } from '../tasks/monitor'
+import { TasksMonitor, type MonitorNotifyEvent, type MonitorWindowState } from '../tasks/monitor'
 import { getAutoApprover } from '../tasks/auto-approver'
-import { CoworkPrefsStore } from '../tasks/prefs'
-import { CoworkTasksStore } from '../tasks/tasks-meta'
+import { TasksPrefsStore } from '../tasks/prefs'
+import { TasksTasksStore } from '../tasks/tasks-meta'
 import { storageClean, storageReport, type StorageEnv } from '../tasks/storage'
 import { loadManagedPolicy } from '../tasks/policy'
 import { sandboxKey } from '../tasks/sandbox'
 import { extrasPrefs } from '../extras/prefs'
-import type { CoworkIpcContext, CoworkSubmodule } from './tasks-handle'
+import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
 /** Tiempo sin tareas de Control total en curso antes de borrar las capturas temporales. */
 const SCREENSHOT_CLEAN_DELAY_MS = 60_000
@@ -40,14 +40,14 @@ const NOTIFY_TEXT: Record<MonitorNotifyEvent['kind'], string> = {
   error: 'Una tarea terminó con un error'
 }
 
-export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSubmodule {
-  const { handle, send, getWindow, cowork, computer, keepAwake } = ctx
+export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmodule {
+  const { handle, send, getWindow, tasks: tasksManager, computer, keepAwake } = ctx
   const userData = app.getPath('userData')
 
-  const prefs = new CoworkPrefsStore(join(userData, 'tasks-prefs.json'), {
+  const prefs = new TasksPrefsStore(join(userData, 'tasks-prefs.json'), {
     policyMaxAutoArchiveDays: () => loadManagedPolicy()?.maxAutoArchiveDays
   })
-  const tasks = new CoworkTasksStore(join(userData, 'tasks-meta.json'))
+  const tasks = new TasksTasksStore(join(userData, 'tasks-meta.json'))
 
   const windowState = (): MonitorWindowState => {
     const win = getWindow()
@@ -93,15 +93,15 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
     shotTimer.unref?.()
   }
 
-  const monitor: CoworkMonitor = new CoworkMonitor({
-    servers: () => cowork.liveServers(),
-    stop: (folder, fullAccess) => cowork.stop(folder, fullAccess),
+  const monitor: TasksMonitor = new TasksMonitor({
+    servers: () => tasksManager.liveServers(),
+    stop: (folder, fullAccess) => tasksManager.stop(folder, fullAccess),
     prefs,
     tasks,
     notify,
     // Archivada = sin plan aprobado (la puerta de Control total vuelve a pedirlo).
     onArchived: (sessionId) => computer.revokePlan(sessionId),
-    onActivity: (snap: CoworkActivitySnapshot) => {
+    onActivity: (snap: TasksActivitySnapshot) => {
       send('tasks:activity', snap)
       syncScreenshotCleanup()
     },
@@ -115,12 +115,12 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
     onPermissions: (s, p) => void getAutoApprover()?.considerPermissions(s, p),
     log: (...args) => console.log(...args)
   })
-  cowork.setBeforeSpawn((folder, fullAccess) => monitor.ensureCapacity(folder, fullAccess))
+  tasksManager.setBeforeSpawn((folder, fullAccess) => monitor.ensureCapacity(folder, fullAccess))
   monitor.start()
 
   const storageEnv = (): StorageEnv => ({ userData, screenshotsDir: computer.screenshotsDir, sandboxKey })
-  const folderPaths = (): string[] => cowork.listFolders().map((f) => f.path)
-  const report = () => storageReport(storageEnv(), folderPaths(), cowork.liveServers())
+  const folderPaths = (): string[] => tasksManager.listFolders().map((f) => f.path)
+  const report = () => storageReport(storageEnv(), folderPaths(), tasksManager.liveServers())
 
   handle('tasks:activity', () => monitor.snapshot())
   handle('tasks:viewing', ({ folder, fullAccess }) => {
@@ -134,7 +134,7 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
   handle('tasks:prefs:get', () => prefs.get())
   handle('tasks:prefs:set', (patch) => prefs.set(patch))
   handle('tasks:storage:report', () => report())
-  handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), cowork.liveServers(), key, scope))
+  handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), tasksManager.liveServers(), key, scope))
   handle('tasks:storage:cleanScreenshots', () => {
     computer.cleanScreenshots()
     return report()
@@ -143,7 +143,7 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
   return {
     dispose: () => {
       monitor.stop()
-      cowork.setBeforeSpawn(null)
+      tasksManager.setBeforeSpawn(null)
       keepAwake.setActive(false, 'monitor')
       if (shotTimer) clearTimeout(shotTimer)
       shotTimer = null

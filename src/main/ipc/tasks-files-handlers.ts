@@ -2,8 +2,8 @@
  * Handlers de archivos entregables: `tasks:zip`, `tasks:quickLook`, `tasks:exportMarkdown`
  * y `tasks:htmlToPdf`.
  *
- * Seguridad: toda ruta que viene del renderer se valida con `CoworkManager.assertInsideApproved`
- * (realpath + carpeta de Cowork autorizada) y los procesos externos se lanzan con `execFile` /
+ * Seguridad: toda ruta que viene del renderer se valida con `TasksManager.assertInsideApproved`
+ * (realpath + carpeta de Tareas autorizada) y los procesos externos se lanzan con `execFile` /
  * `spawn` y argumentos en array (nunca una cadena de shell).
  */
 import { app, BrowserWindow, dialog } from 'electron'
@@ -11,11 +11,11 @@ import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, renameSync, rmSync, statSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
-import type { CoworkDeliverable } from '@shared/ipc-tasks'
+import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { describeDeliverable, writeNewFile } from '../tasks/files'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { renderHtmlToPdf } from '../extras/artifact-window'
-import type { CoworkIpcContext, CoworkSubmodule } from './tasks-handle'
+import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
 const ZIP_BIN = '/usr/bin/zip'
 const QLMANAGE_BIN = '/usr/bin/qlmanage'
@@ -80,8 +80,8 @@ async function createZip(out: string, files: string[]): Promise<void> {
   }
 }
 
-export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmodule {
-  const { handle, cowork, getWindow } = ctx
+export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule {
+  const { handle, tasks, getWindow } = ctx
   const windowFor = (event: { sender: Electron.WebContents }): BrowserWindow | null =>
     BrowserWindow.fromWebContents(event.sender) ?? getWindow()
 
@@ -89,7 +89,7 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
   handle('tasks:zip', async ({ paths, suggestedName }, event) => {
     const files: string[] = []
     for (const p of paths) {
-      const real = cowork.assertInsideApproved(p)
+      const real = tasks.assertInsideApproved(p)
       let st
       try {
         st = statSync(real)
@@ -130,7 +130,7 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
     }
   }
   handle('tasks:quickLook', ({ path }) => {
-    const real = cowork.assertInsideApproved(path)
+    const real = tasks.assertInsideApproved(path)
     assertSafeToOpen(real) // misma política que "Abrir": nada de ejecutables/lanzadores
     if (!statSync(real).isFile()) throw new Error('La vista rápida solo funciona con archivos.')
     killQuickLook()
@@ -165,8 +165,8 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
   })
 
   // ── Guardar HTML como PDF ──
-  handle('tasks:htmlToPdf', async ({ path }): Promise<CoworkDeliverable> => {
-    const real = cowork.assertInsideApproved(path)
+  handle('tasks:htmlToPdf', async ({ path }): Promise<TasksDeliverable> => {
+    const real = tasks.assertInsideApproved(path)
     const ext = extname(real).toLowerCase()
     if (ext !== '.html' && ext !== '.htm') throw new Error('Solo se pueden convertir archivos .html o .htm.')
     const st = statSync(real)
@@ -181,9 +181,9 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
     if (!existsSync(dir)) throw new Error('La carpeta del archivo ya no existe.')
     // `<nombre>.pdf` junto al HTML; si existe, `<nombre>-1.pdf`… (nunca sobrescribe).
     const target = writeNewFile(dir, stem, '.pdf', pdf)
-    // relPath respecto a la carpeta de Cowork que lo contiene (la más profunda).
+    // relPath respecto a la carpeta de Tareas que lo contiene (la más profunda).
     const root =
-      cowork
+      tasks
         .listFolders()
         .map((f) => f.path)
         .filter((p) => target === p || target.startsWith(p + sep))

@@ -1,11 +1,11 @@
 /**
- * Política de red de Cowork: lista blanca persistida (`userData/tasks-network.json`) que usa
+ * Política de red de Tareas: lista blanca persistida (`userData/tasks-network.json`) que usa
  * `EgressProxy` (`proxy.ts`) para decidir qué hosts puede alcanzar un servidor sandboxeado.
  *
  * Por defecto: el host del proveedor de modelos (necesario para que el agente funcione) y el host
  * de la búsqueda web del agente (`WEB_SEARCH_HOSTS`, interruptor activado por defecto y desactivable).
  * El usuario puede añadir hosts (npm/PyPI con un interruptor, o cualquier otro dominio) desde
- * Ajustes → "Red de Cowork", o al aprobar una tarjeta de bloqueo ("Permitir siempre").
+ * Ajustes → "Red de Tareas", o al aprobar una tarjeta de bloqueo ("Permitir siempre").
  * Todo lo demás sigue bloqueado por defecto (deny-by-default).
  * "Permitir esta vez" NO se persiste: solo vale para los servidores ya arrancados (en memoria).
  */
@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import type { NetworkPolicyState, NetworkToggleKey } from '@shared/ipc-tasks'
 
-/** Host de la API de modelos usada por Cowork (OpenCode Go / OpenCode Zen). Ver opencode-config.ts. */
+/** Host de la API de modelos usada por Tareas (OpenCode Go / OpenCode Zen). Ver opencode-config.ts. */
 export const PROVIDER_HOST = 'opencode.ai'
 
 export const NPM_HOSTS = ['registry.npmjs.org']

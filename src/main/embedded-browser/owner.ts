@@ -1,7 +1,7 @@
 /**
  * Resolución del actor que llama al MCP (Lote D, B.6 guarda 1): `onyxcode_session` es obligatorio y
  * el TOKEN del cliente (registrado por `mcp-server.ts` con `clientFor`) determina el producto, si
- * está sandboxeado y, en Cowork, la carpeta. En Code (un único sidecar compartido por todas las
+ * está sandboxeado y, en Tareas, la carpeta. En Code (un único sidecar compartido por todas las
  * carpetas) la carpeta se resuelve por sesión con `GET /session/:id` al propio sidecar, con caché:
  * el cliente NUNCA puede decir por qué carpeta actúa, solo de qué sesión de OpenCode viene.
  */
@@ -13,7 +13,7 @@ import type { AgentActor } from './api'
 export interface ClientBinding {
   product: BrowserProduct
   sandboxed: boolean
-  /** Cowork: la carpeta de este servidor, fija de por vida. Code: null (varía por sesión). */
+  /** Tareas: la carpeta de este servidor, fija de por vida. Code: null (varía por sesión). */
   folder: string | null
   /** Para logs. */
   label?: string

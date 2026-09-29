@@ -10,7 +10,7 @@ import { prepareOpencodeConfigDir } from './tasks/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
 import { registerCodeHandlers } from './ipc/code-handlers'
-import { registerCoworkHandlers } from './ipc/tasks-handlers'
+import { registerTasksHandlers } from './ipc/tasks-handlers'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
@@ -41,7 +41,7 @@ const corsOrigins = trustedOrigins()
 const server = new OpencodeServer({ chatDirectory, corsOrigins })
 
 let mainWindow: BrowserWindow | null = null
-let coworkMod: ReturnType<typeof registerCoworkHandlers> | null = null
+let tasksMod: ReturnType<typeof registerTasksHandlers> | null = null
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -116,8 +116,8 @@ function start(): void {
     } catch (err) {
       console.error('[main] limpieza de servidores huérfanos:', err)
     }
-    // Migración de nombres persistidos (cowork -> tasks): tras parar los servidores huérfanos (no hay nadie usando
-    // cowork-sandbox/) y ANTES de tocar la config de OpenCode, los handlers y las ventanas. Nunca rompe el arranque.
+    // Migración de nombres persistidos (nombres antiguos -> actuales): tras parar los servidores huérfanos (no hay nadie usando
+    // tasks-sandbox/) y ANTES de tocar la config de OpenCode, los handlers y las ventanas. Nunca rompe el arranque.
     try {
       runMigrations(app.getPath('userData'), { appVersion: app.getVersion() })
     } catch (err) {
@@ -138,7 +138,7 @@ function start(): void {
 
     registerAllHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
-    coworkMod = registerCoworkHandlers(ipcMain, () => mainWindow, {
+    tasksMod = registerTasksHandlers(ipcMain, () => mainWindow, {
       getMainConnection: () => server.start(),
       chatDirectory,
       corsOrigins
@@ -172,7 +172,7 @@ function start(): void {
     } catch (err) {
       console.error('[main] limpieza del navegador integrado:', err)
     }
-    Promise.allSettled([server.stop(), coworkMod?.shutdown()])
+    Promise.allSettled([server.stop(), tasksMod?.shutdown()])
       .then(() => undefined)
       .catch((err: unknown) => console.error('[main] error deteniendo opencode:', err))
       .finally(() => app.quit())
@@ -181,12 +181,12 @@ function start(): void {
   // Último recurso: nunca dejar el sidecar huérfano.
   process.on('exit', () => {
     server.killSync()
-    coworkMod?.killSync()
+    tasksMod?.killSync()
   })
   for (const sig of ['SIGINT', 'SIGTERM'] as const) {
     process.on(sig, () => {
       server.killSync()
-      coworkMod?.killSync()
+      tasksMod?.killSync()
       process.exit(0)
     })
   }

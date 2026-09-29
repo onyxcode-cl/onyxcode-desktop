@@ -1,5 +1,5 @@
 /**
- * "Mantener el Mac despierto mientras corren tareas de Cowork": un `powerSaveBlocker` de
+ * "Mantener el Mac despierto mientras corren tareas de Tareas": un `powerSaveBlocker` de
  * Electron (tipo `prevent-app-suspension`, no mantiene la pantalla encendida) que se activa
  * cuando el ajuste está en on Y el renderer o el monitor de main avisan que hay al menos una tarea
  * en curso (OR de ambas señales).

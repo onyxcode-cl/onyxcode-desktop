@@ -1,5 +1,5 @@
 /**
- * Perfil Seatbelt (SBPL) y entorno aislado de los servidores de Cowork sandboxeados.
+ * Perfil Seatbelt (SBPL) y entorno aislado de los servidores de Tareas sandboxeados.
  *
  * Módulo PURO (solo `node:*`, sin Electron) para poder probarlo con `sandbox-exec` fuera
  * de la app (ver AUDIT.md S1–S3).
@@ -8,7 +8,7 @@
  *  - `(allow default)` + denegaciones explícitas (un perfil `(deny default)` rompe bun/opencode
  *    en formas difíciles de mantener; ver AUDIT.md §2.3 "fix real").
  *  - Escritura: SOLO la carpeta de la tarea, el directorio privado del servidor
- *    (`userData/cowork-sandbox/<hash>`: XDG_*, cachés de npm/bun/pip) y temporales.
+ *    (`userData/tasks-sandbox/<hash>`: XDG_*, cachés de npm/bun/pip) y temporales.
  *    Nada de `~/.config/opencode`, `~/.local/share/opencode`, `~/.npm`, `~/Library/Caches`…:
  *    todo lo que el sidecar principal (sin sandbox) u otras herramientas del usuario
  *    ejecutan/cargan fuera del sandbox (S1).
@@ -42,7 +42,7 @@ export function sandboxKey(folder: string): string {
   return createHash('sha256').update(real(folder)).digest('hex').slice(0, 16)
 }
 
-/** Directorios privados de un servidor sandboxeado (dentro de `root` = userData/cowork-sandbox/<hash>). */
+/** Directorios privados de un servidor sandboxeado (dentro de `root` = userData/tasks-sandbox/<hash>). */
 export interface SandboxDirs {
   root: string
   config: string
@@ -241,7 +241,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   if (userData) {
     lines.push(
       '',
-      ';; userData de la app (tokens MCP, cowork.json, otros sandboxes): denegado…',
+      ';; userData de la app (tokens MCP, tasks-folders.json, otros sandboxes): denegado…',
       `(deny file-read* file-write* (subpath ${sbString(userData)}))`,
       ';; (stat sí: realpath/lstat de las rutas intermedias; no expone contenido)',
       `(allow file-read-metadata (subpath ${sbString(userData)}))`
@@ -273,7 +273,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   // (p.ej. tests que no lo necesitan) no se abre nada: sin red en absoluto. SBPL solo admite
   // "localhost"/"*" como host en reglas de red (no una IP literal), así que se usa "localhost:<puerto>".
   const outboundPorts = [...new Set(opts.allowedOutboundPorts ?? [])]
-  lines.push(';; Red: denegada salvo el/los proxy(es) locales de Cowork y el puerto del servidor.', '(deny network*)')
+  lines.push(';; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.', '(deny network*)')
   if (outboundPorts.length) {
     lines.push('(allow network-outbound', ...outboundPorts.map((p) => `  (remote ip "localhost:${p}")`), ')')
   }

@@ -1,19 +1,19 @@
 /**
- * Handlers IPC de Cowork (`cowork:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
+ * Handlers IPC de Tareas (`tasks:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
  * Contrato en src/shared/ipc-tasks.ts; expuesto en `window.api.tasks`.
  */
 import { BrowserWindow, Notification, app, dialog, shell, type IpcMain } from 'electron'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { CoworkEventChannel, CoworkEventContract } from '@shared/ipc-tasks'
+import type { TasksEventChannel, TasksEventContract } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
 import { settingsStore } from '../store'
-import { CoworkManager } from '../tasks/manager'
+import { TasksManager } from '../tasks/manager'
 import { importFilesInto, previewFile } from '../tasks/files'
 import { assertSafeToOpen } from '../tasks/open-policy'
-import { CoworkProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
+import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
 import { KeepAwakeService } from '../tasks/keep-awake'
-import { normalizeCoworkPrefs } from '../tasks/prefs'
+import { normalizeTasksPrefs } from '../tasks/prefs'
 import { extrasPrefs } from '../extras/prefs'
 import { ComputerService } from '../computer/service'
 import { ComputerOverlay } from '../computer/overlay'
@@ -25,16 +25,16 @@ import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { previewSchedule } from '../scheduler/schedule'
-import { makeCoworkHandle, type CoworkIpcContext, type CoworkSubmodule } from './tasks-handle'
-import { registerCoworkFoldersHandlers } from './tasks-folders-handlers'
-import { registerCoworkLifecycleHandlers } from './tasks-lifecycle-handlers'
-import { registerCoworkProjectHandlers } from './tasks-project-handlers'
-import { registerCoworkFilesHandlers } from './tasks-files-handlers'
-import { registerCoworkAutoHandlers } from './tasks-auto-handlers'
+import { makeTasksHandle, type TasksIpcContext, type TasksSubmodule } from './tasks-handle'
+import { registerTasksFoldersHandlers } from './tasks-folders-handlers'
+import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
+import { registerTasksProjectHandlers } from './tasks-project-handlers'
+import { registerTasksFilesHandlers } from './tasks-files-handlers'
+import { registerTasksAutoHandlers } from './tasks-auto-handlers'
 
 /**
  * ¿Debe salir la notificación nativa de una petición de permisos (`request_access`)?
- * Respeta el interruptor global de notificaciones y `prefs.notify.approval` de Cowork. Las
+ * Respeta el interruptor global de notificaciones y `prefs.notify.approval` de Tareas. Las
  * preferencias las gestiona `tasks-lifecycle-handlers.ts` (con caché en memoria); aquí se lee
  * el JSON en cada petición (sin caché, así siempre refleja el último cambio) y se normaliza con la
  * misma función. Ante cualquier fallo de lectura vale el valor por defecto (activada).
@@ -43,7 +43,7 @@ function approvalNotificationsEnabled(): boolean {
   try {
     if (!extrasPrefs.get().notificationsEnabled) return false
   } catch {
-    // sin preferencias globales legibles: se sigue con las de Cowork
+    // sin preferencias globales legibles: se sigue con las de Tareas
   }
   let raw: unknown = null
   try {
@@ -51,20 +51,20 @@ function approvalNotificationsEnabled(): boolean {
   } catch {
     // archivo ausente o ilegible: valores por defecto
   }
-  return normalizeCoworkPrefs(raw).notify.approval
+  return normalizeTasksPrefs(raw).notify.approval
 }
 
-export interface CoworkHandlerDeps {
+export interface TasksHandlerDeps {
   /** Conexión al sidecar principal (p.ej. `() => server.start()`). */
   getMainConnection: SchedulerDeps['getMainConnection']
   /** userData/chat-workspace. */
   chatDirectory: string
-  /** Orígenes CORS extra para los servidores de Cowork (dev server de Vite). */
+  /** Orígenes CORS extra para los servidores de Tareas (dev server de Vite). */
   corsOrigins?: string[]
 }
 
-export interface CoworkModule {
-  cowork: CoworkManager
+export interface TasksModule {
+  tasks: TasksManager
   computer: ComputerService
   scheduler: SchedulerService
   /** Llamar en before-quit. */
@@ -74,11 +74,11 @@ export interface CoworkModule {
 }
 
 /**
- * Registra los canales `cowork:*` y `routines:*`, crea el gestor de Cowork y arranca el
+ * Registra los canales `tasks:*` y `routines:*`, crea el gestor de Tareas y arranca el
  * scheduler. Devuelve el módulo para apagarlo al salir.
  */
-export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null, deps: CoworkHandlerDeps): CoworkModule {
-  const projects = new CoworkProjectsStore()
+export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null, deps: TasksHandlerDeps): TasksModule {
+  const projects = new TasksProjectsStore()
   const keepAwake = new KeepAwakeService()
   const computer = new ComputerService()
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
@@ -108,13 +108,13 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   const maybeUnhideApps = (): void => {
     if (computer.prefs.get().unhideOnFinish) void appVisibility.unhide()
   }
-  const cowork = new CoworkManager({
+  const tasks = new TasksManager({
     corsOrigins: deps.corsOrigins,
     computer: { mcpConfig: () => computer.mcpConfig(), info: () => computer.info(), planGateUrl: () => computer.planGateUrl() }
   })
   // Kill-switch desde main: aborta las sesiones de TODOS los servidores de Control total (y detiene
   // el servidor si no responde), sin depender de la vista que muestre el renderer.
-  computer.abortSessions = () => abortFullAccessSessions(cowork.fullAccessConnections(), (srv) => cowork.stop(srv.folder, true))
+  computer.abortSessions = () => abortFullAccessSessions(tasks.fullAccessConnections(), (srv) => tasks.stop(srv.folder, true))
   // Abre una tarea/sesión en la ventana principal (clic en una notificación): la trae al frente y
   // avisa al renderer con `app:openTarget` (mismo canal que usa `ipc/notify.ts`).
   const openTarget = (target: NotifyTarget): void => {
@@ -128,21 +128,21 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
     chatDirectory: deps.chatDirectory,
-    cowork,
+    tasks,
     projects,
     getSettings: () => settingsStore.get(),
     openTarget
   })
 
-  const send = <C extends CoworkEventChannel>(channel: C, payload: CoworkEventContract[C]): void => {
+  const send = <C extends TasksEventChannel>(channel: C, payload: TasksEventContract[C]): void => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
     }
   }
 
   // Contexto compartido con los submódulos de handlers (carpetas, ciclo de vida, proyecto, archivos).
-  const handle = makeCoworkHandle(ipcMain)
-  const ctx: CoworkIpcContext = { handle, send, getWindow, cowork, computer, scheduler, projects, keepAwake }
+  const handle = makeTasksHandle(ipcMain)
+  const ctx: TasksIpcContext = { handle, send, getWindow, tasks, computer, scheduler, projects, keepAwake }
 
   // ── Item 5: OnyxCode nunca se bloquea a sí misma y se aparta de en medio mientras el agente actúa ──
   // Mientras una tarea de Control total está trabajando, la ventana principal se minimiza (la
@@ -167,14 +167,14 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     if (opts.focus) win.focus()
   }
 
-  cowork.on('server', (info) => {
+  tasks.on('server', (info) => {
     send('tasks:server', info)
     if (info.fullAccess && (info.state === 'stopped' || info.state === 'error')) {
       overlay.serverGone()
       restoreMainWindowIfHidden()
     }
   })
-  cowork.on('networkBlocked', (ev) => send('tasks:networkBlocked', ev))
+  tasks.on('networkBlocked', (ev) => send('tasks:networkBlocked', ev))
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
   computer.on('action', (ev) => {
@@ -253,10 +253,10 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   // Aprobación del plan por sesión (aprobado / revocado): el renderer pinta "Plan aprobado · Revocar".
   computer.on('planState', (st) => send('computer:planState', st))
   // Tras los listeners: si el atajo global no se registra, `killState` llega a la UI (que además
-  // lo consulta con `computer:state` al montar Cowork, por si la ventana aún no existía).
+  // lo consulta con `computer:state` al montar Tareas, por si la ventana aún no existía).
   computer.init()
 
-  // ── Cowork ──
+  // ── Tareas ──
   handle('tasks:pickFolder', async (_req, event) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
@@ -267,24 +267,24 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
     return res.canceled ? null : (res.filePaths[0] ?? null)
   })
-  handle('tasks:listFolders', () => cowork.listFolders())
-  handle('tasks:approveFolder', ({ folder }) => cowork.approveFolder(folder))
-  handle('tasks:removeFolder', ({ folder }) => cowork.removeFolder(folder))
-  handle('tasks:start', ({ folder, fullAccess }) => cowork.start(folder, fullAccess === true))
-  handle('tasks:grantFullAccess', ({ folder }) => cowork.grantFullAccess(folder))
-  handle('tasks:revokeFullAccess', ({ folder }) => cowork.revokeFullAccess(folder))
-  handle('tasks:deliverables', ({ folder, since }) => cowork.deliverables(folder, since))
+  handle('tasks:listFolders', () => tasks.listFolders())
+  handle('tasks:approveFolder', ({ folder }) => tasks.approveFolder(folder))
+  handle('tasks:removeFolder', ({ folder }) => tasks.removeFolder(folder))
+  handle('tasks:start', ({ folder, fullAccess }) => tasks.start(folder, fullAccess === true))
+  handle('tasks:grantFullAccess', ({ folder }) => tasks.grantFullAccess(folder))
+  handle('tasks:revokeFullAccess', ({ folder }) => tasks.revokeFullAccess(folder))
+  handle('tasks:deliverables', ({ folder, since }) => tasks.deliverables(folder, since))
   handle('tasks:reveal', ({ path }) => {
-    shell.showItemInFolder(cowork.assertInsideApproved(path))
+    shell.showItemInFolder(tasks.assertInsideApproved(path))
   })
   handle('tasks:openPath', async ({ path }) => {
-    const real = cowork.assertInsideApproved(path)
+    const real = tasks.assertInsideApproved(path)
     assertSafeToOpen(real) // ejecutables/lanzadores: solo "Mostrar en Finder" (S4)
     const err = await shell.openPath(real)
     if (err) throw new Error(err)
   })
   handle('tasks:importFiles', async ({ folder }, event) => {
-    const root = cowork.assertInsideApproved(folder)
+    const root = tasks.assertInsideApproved(folder)
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
       title: 'Adjuntar archivos a la tarea',
@@ -296,30 +296,30 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     if (res.canceled) return []
     return importFilesInto(root, res.filePaths)
   })
-  handle('tasks:previewFile', ({ path, maxBytes }) => previewFile(cowork.assertInsideApproved(path), maxBytes))
+  handle('tasks:previewFile', ({ path, maxBytes }) => previewFile(tasks.assertInsideApproved(path), maxBytes))
 
   // ── Proyecto (por carpeta) y memoria ──
-  handle('tasks:project:get', ({ folder }) => projects.get(cowork.assertInsideApproved(folder)))
+  handle('tasks:project:get', ({ folder }) => projects.get(tasks.assertInsideApproved(folder)))
   // `rest` lleva también `links` y `memoryEnabled` (Lote B): `projects.save` los toma cuando W2-D los soporte.
-  handle('tasks:project:save', ({ folder, ...rest }) => projects.save(cowork.assertInsideApproved(folder), rest))
-  handle('tasks:memory:get', ({ folder }) => getMemory(cowork.assertInsideApproved(folder)))
-  handle('tasks:memory:save', ({ folder, content }) => saveMemory(cowork.assertInsideApproved(folder), content))
-  handle('tasks:memory:delete', ({ folder }) => deleteMemory(cowork.assertInsideApproved(folder)))
+  handle('tasks:project:save', ({ folder, ...rest }) => projects.save(tasks.assertInsideApproved(folder), rest))
+  handle('tasks:memory:get', ({ folder }) => getMemory(tasks.assertInsideApproved(folder)))
+  handle('tasks:memory:save', ({ folder, content }) => saveMemory(tasks.assertInsideApproved(folder), content))
+  handle('tasks:memory:delete', ({ folder }) => deleteMemory(tasks.assertInsideApproved(folder)))
 
-  // ── Red de Cowork (egress) ──
-  handle('tasks:network:state', () => cowork.networkState())
-  handle('tasks:network:setToggle', ({ key, value }) => cowork.networkSetToggle(key, value))
-  handle('tasks:network:setHost', ({ host, decision }) => cowork.networkSetHost(host, decision))
+  // ── Red de Tareas (egress) ──
+  handle('tasks:network:state', () => tasks.networkState())
+  handle('tasks:network:setToggle', ({ key, value }) => tasks.networkSetToggle(key, value))
+  handle('tasks:network:setHost', ({ host, decision }) => tasks.networkSetHost(host, decision))
   handle('tasks:network:allowOnce', ({ folder, host }) => {
-    cowork.networkAllowOnce(cowork.assertInsideApproved(folder), host)
+    tasks.networkAllowOnce(tasks.assertInsideApproved(folder), host)
   })
 
   // ── Borrado (Seatbelt file-write-unlink) ──
-  handle('tasks:deleteGrant:get', ({ folder }) => cowork.hasDeleteGrant(cowork.assertInsideApproved(folder)))
+  handle('tasks:deleteGrant:get', ({ folder }) => tasks.hasDeleteGrant(tasks.assertInsideApproved(folder)))
   handle('tasks:deleteGrant:set', async ({ folder, allowed }) => {
-    const f = cowork.assertInsideApproved(folder)
-    await cowork.setDeleteGrant(f, allowed)
-    return cowork.hasDeleteGrant(f)
+    const f = tasks.assertInsideApproved(folder)
+    await tasks.setDeleteGrant(f, allowed)
+    return tasks.hasDeleteGrant(f)
   })
 
   // ── Rutinas ──
@@ -425,7 +425,7 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   // Rol `assist`: "Terminar"/"Descartar" en la píldora de grabación.
   handle('computer:record:stop', (req) => recorder.stop(req?.discard === true))
   handle('computer:record:prepare', ({ id, folder, includeTyped }) => {
-    const root = cowork.assertInsideApproved(folder)
+    const root = tasks.assertInsideApproved(folder)
     return recorder.prepare(id, root, includeTyped)
   })
 
@@ -435,25 +435,25 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   handle('tasks:keepAwakeActive', ({ active }) => keepAwake.setActive(active))
 
   // ── Lote B/C: submódulos (carpetas, ciclo de vida, proyecto/MCP/reglas, archivos, Modo auto) ──
-  const submodules: CoworkSubmodule[] = [
-    registerCoworkFoldersHandlers(ctx),
-    registerCoworkLifecycleHandlers(ctx),
-    registerCoworkProjectHandlers(ctx),
-    registerCoworkFilesHandlers(ctx),
-    registerCoworkAutoHandlers(ctx)
+  const submodules: TasksSubmodule[] = [
+    registerTasksFoldersHandlers(ctx),
+    registerTasksLifecycleHandlers(ctx),
+    registerTasksProjectHandlers(ctx),
+    registerTasksFilesHandlers(ctx),
+    registerTasksAutoHandlers(ctx)
   ]
 
   scheduler.start()
 
   return {
-    cowork,
+    tasks,
     computer,
     scheduler,
     shutdown: async () => {
       scheduler.stop()
       // Los submódulos (p.ej. el monitor) se detienen antes de parar los servidores.
       await Promise.all(submodules.map((m) => Promise.resolve(m.dispose?.()).catch((err) => console.error('[tasks] dispose:', err))))
-      await cowork.stopAll()
+      await tasks.stopAll()
       overlay.dispose()
       recorder.dispose()
       assist.dispose()
@@ -461,6 +461,6 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
       computer.dispose()
       keepAwake.dispose()
     },
-    killSync: () => cowork.killAllSync()
+    killSync: () => tasks.killAllSync()
   }
 }

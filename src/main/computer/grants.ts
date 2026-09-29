@@ -11,7 +11,7 @@
  * CADA acción (frontmost y, en clics, la app bajo el punto); este módulo solo persiste el estado.
  *
  * Persistencia: `userData/computer-grants.json` (por app, identificada por bundle id; el nombre se
- * guarda solo para mostrarlo en Ajustes). Editable desde la lista de permisos de Cowork.
+ * guarda solo para mostrarlo en Ajustes). Editable desde la lista de permisos de Tareas.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'

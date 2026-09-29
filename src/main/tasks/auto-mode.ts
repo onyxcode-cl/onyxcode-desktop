@@ -4,7 +4,7 @@
  * Sin Electron, sin `node:fs`, sin red: solo texto y regex, para poder probarlo sin la app (ver el
  * arnés del paquete C3). La allowlist de aquí es la FRONTERA de seguridad real, no el motor
  * (`auto-approver.ts`): ante la duda, todo lo que sigue devuelve 'ask'. Nunca se amplía esta lista
- * sin repetir la verificación completa del plan (`docs/COWORK-LOTE-C-PLAN.md`, B.9).
+ * sin repetir la verificación completa del plan (`docs/TASKS-LOTE-C-PLAN.md`, B.9).
  *
  * Decisión del usuario (2026-09-28): Modo auto es SOLO motor de reglas, sin clasificador por modelo.
  */
@@ -67,7 +67,7 @@ function metadataToText(metadata: Record<string, unknown> | undefined): string {
 
 // ───────────────────────────── bash de solo lectura ─────────────────────────────
 
-/** Igual que `DELETE_RE` de `cowork/rules.ts`: mantener sincronizadas si una de las dos cambia. */
+/** Igual que `DELETE_RE` de `tasks/rules.ts`: mantener sincronizadas si una de las dos cambia. */
 const DELETE_RE = /(^|[;&|]\s*)(rm|rmdir|unlink|trash|srm)\b|\s-delete\b/
 
 /** Cualquiera de estos caracteres permite encadenar comandos, sustituir o redirigir: se rechaza. */
@@ -184,7 +184,7 @@ function isReadOnlyGit(args: string[]): boolean {
 
 /**
  * ¿`command` es un comando de bash de solo lectura, según la lista cerrada del plan (B.9)? Puro:
- * solo mira el texto. La sesión que lo ejecuta corre igualmente dentro del sandbox de Cowork.
+ * solo mira el texto. La sesión que lo ejecuta corre igualmente dentro del sandbox de Tareas.
  */
 export function isReadOnlyBash(command: string): boolean {
   if (typeof command !== 'string') return false
@@ -287,7 +287,7 @@ export function isReadOnlyMcpTool(server: string, tool: string): boolean {
   return !MCP_WRITE_WORDS.some((w) => t.includes(w))
 }
 
-/** Servidor MCP (de `servers`, marcados en Cowork) cuyo nombre es prefijo de `permission`, si hay uno. */
+/** Servidor MCP (de `servers`, marcados en Tareas) cuyo nombre es prefijo de `permission`, si hay uno. */
 function findMcpServer(permission: string, servers: string[]): { server: string; tool: string } | null {
   let best: { server: string; tool: string } | null = null
   for (const s of servers) {
@@ -314,7 +314,7 @@ const NEVER_ALONE_PERMISSIONS: ReadonlySet<string> = new Set([
 
 /**
  * Clasifica una petición de permiso (`GET /permission`) del servidor de OpenCode. Puro: solo
- * texto + la lista de MCP del usuario marcados en Cowork (nunca `computer`/`browser`).
+ * texto + la lista de MCP del usuario marcados en Tareas (nunca `computer`/`browser`).
  */
 export function classifyPermission(
   p: { permission: string; patterns: string[]; metadata?: Record<string, unknown> },

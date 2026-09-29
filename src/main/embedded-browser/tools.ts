@@ -719,7 +719,7 @@ const TOOLS: ToolDef[] = [
   }
 ]
 
-/** Lista de herramientas para `tools/list`, filtradas por producto (17 en Cowork, 21 en Code). */
+/** Lista de herramientas para `tools/list`, filtradas por producto (17 en Tareas, 21 en Code). */
 export function toolsForProduct(
   product: BrowserProduct
 ): Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> {

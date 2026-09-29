@@ -9,7 +9,7 @@
  *   micro, transcribe con `cu-helper transcribe` (timeout 120 s, best-effort: sin transcripción no
  *   es un error para el usuario).
  * - `prepare`: copia las capturas a `<folder>/.onyxcode/trabajo/grabaciones/<id>/` (el `root` que recibe ya
- *   viene validado por el llamador con `cowork.assertInsideApproved`), quita el texto tecleado
+ *   viene validado por el llamador con `tasks.assertInsideApproved`), quita el texto tecleado
  *   salvo que se pida incluirlo, borra la copia de `userData` y devuelve el prompt puro de
  *   `buildRecordedSkillPrompt` (`@shared/skill-recording.ts`).
  * - Al arrancar la app, `purgeOld()` borra las grabaciones de más de 24 h (nadie las recogió).

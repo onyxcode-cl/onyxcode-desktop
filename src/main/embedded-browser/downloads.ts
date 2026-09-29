@@ -7,7 +7,7 @@
  *   abrir un archivo que trajo el agente, hay que añadirla a mano con `xattr`).
  * - Del usuario: diálogo de guardado nativo (`dialog.showSaveDialog`), como el resto de la app.
  * - Nunca se abren solas (ni `shell.openPath` ni nada parecido aquí).
- * - Destinos: Cowork → `<carpeta>/.onyxcode/trabajo/descargas/`; Code → `~/Downloads/<APP_NAME>/`.
+ * - Destinos: Tareas → `<carpeta>/.onyxcode/trabajo/descargas/`; Code → `~/Downloads/<APP_NAME>/`.
  */
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
