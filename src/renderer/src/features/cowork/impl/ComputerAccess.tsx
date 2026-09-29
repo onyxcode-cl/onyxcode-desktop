@@ -208,14 +208,14 @@ export function FullAccessDialog(): React.JSX.Element | null {
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="cowork-fullaccess-title"
+        aria-labelledby="tasks-fullaccess-title"
         className="w-full max-w-lg rounded-2xl border border-border bg-elevated p-6 shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
           <ShieldAlert size={22} />
         </div>
-        <h2 id="cowork-fullaccess-title" className="text-lg font-semibold">
+        <h2 id="tasks-fullaccess-title" className="text-lg font-semibold">
           ¿Permitir que el agente controle tu Mac?
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -756,7 +756,7 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
       <div
         role="alertdialog"
-        aria-labelledby="cowork-takeover-title"
+        aria-labelledby="tasks-takeover-title"
         className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
       >
         <div className="flex items-start gap-3">
@@ -764,7 +764,7 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
             <MonitorCog size={18} />
           </span>
           <div className="min-w-0 flex-1">
-            <h3 id="cowork-takeover-title" className="text-sm font-semibold text-fg">
+            <h3 id="tasks-takeover-title" className="text-sm font-semibold text-fg">
               ¿Tomar el control de la pantalla?
             </h3>
             <p className="mt-1 text-sm text-muted">
@@ -852,7 +852,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
       <div
         role="alertdialog"
-        aria-labelledby="cowork-plan-access-title"
+        aria-labelledby="tasks-plan-access-title"
         className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
       >
         <div className="flex items-start gap-3">
@@ -860,7 +860,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
             <ShieldAlert size={18} />
           </span>
           <div className="min-w-0 flex-1">
-            <h3 id="cowork-plan-access-title" className="text-sm font-semibold text-fg">
+            <h3 id="tasks-plan-access-title" className="text-sm font-semibold text-fg">
               {title}
             </h3>
             {req.reason && <p className="mt-0.5 text-sm text-muted">«{req.reason}»</p>}
@@ -899,11 +899,11 @@ export function PlanAccessCard(): React.JSX.Element | null {
             </p>
             {editing ? (
               <div className="mt-3">
-                <label htmlFor="cowork-access-feedback" className="mb-1 block text-xs font-medium text-muted">
+                <label htmlFor="tasks-access-feedback" className="mb-1 block text-xs font-medium text-muted">
                   Qué quieres que cambie del plan
                 </label>
                 <textarea
-                  id="cowork-access-feedback"
+                  id="tasks-access-feedback"
                   autoFocus
                   rows={2}
                   value={feedback}

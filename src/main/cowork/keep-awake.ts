@@ -37,7 +37,7 @@ export class KeepAwakeService {
     try {
       if (existsSync(this.file)) loaded = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
     } catch (err) {
-      console.error('[cowork] tasks-keep-awake.json inválido, usando valores por defecto:', err)
+      console.error('[tasks] tasks-keep-awake.json inválido, usando valores por defecto:', err)
     }
     this.cache = { enabled: typeof loaded.enabled === 'boolean' ? loaded.enabled : DEFAULT.enabled }
     return this.cache

@@ -83,7 +83,7 @@ export function writeSandboxProfile(
   iso: SandboxIsolation,
   configDir: string,
   network?: SandboxNetworkOptions,
-  dir = join(tmpdir(), 'onyxcode-cowork')
+  dir = join(tmpdir(), 'onyxcode-tasks')
 ): string {
   mkdirSync(dir, { recursive: true })
   const file = join(dir, `profile-${randomBytes(6).toString('hex')}.sb`)
@@ -156,7 +156,7 @@ export async function startCoworkServer(folder: string, options: StartCoworkServ
 
   const sandboxed = !options.noSandbox && isSandboxAvailable()
   const port = await getFreePort()
-  const username = 'cowork'
+  const username = 'tasks'
   const password = randomBytes(24).toString('base64url')
   const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   const baseUrl = `http://${HOST}:${port}`
@@ -248,7 +248,7 @@ export async function startCoworkServer(folder: string, options: StartCoworkServ
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
-      OPENDESK_COWORK_FOLDER: folder,
+      ONYXCODE_TASKS_FOLDER: folder,
       ...isolatedEnv,
       ...options.extraEnv
     }),
@@ -256,7 +256,7 @@ export async function startCoworkServer(folder: string, options: StartCoworkServ
     // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
     detached: true
   })
-  trackPid(child.pid, sandboxed ? 'cowork' : 'cowork-full')
+  trackPid(child.pid, sandboxed ? 'tasks' : 'tasks-full')
 
   const tail: string[] = []
   const log = (d: Buffer | string): void => {
@@ -289,7 +289,7 @@ export async function startCoworkServer(folder: string, options: StartCoworkServ
   let version: string | undefined
   try {
     version = await waitForHealth(baseUrl, authorization, child, {
-      label: 'opencode (cowork)',
+      label: 'opencode (tareas)',
       timeoutMs: HEALTH_TIMEOUT_MS
     })
   } catch (err) {

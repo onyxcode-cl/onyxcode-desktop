@@ -110,7 +110,7 @@ export function loadManagedPolicy(file: string = policyFile()): ManagedPolicy | 
   try {
     policy = parseManagedPolicy(JSON.parse(readFileSync(file, 'utf8')), file)
   } catch (err) {
-    console.error('[cowork] managed.json ilegible; se aplican todas las restricciones:', err)
+    console.error('[tasks] managed.json ilegible; se aplican todas las restricciones:', err)
     policy = lockedDown(file)
   }
   cache = { file, mtimeMs: st.mtimeMs, size: st.size, policy }

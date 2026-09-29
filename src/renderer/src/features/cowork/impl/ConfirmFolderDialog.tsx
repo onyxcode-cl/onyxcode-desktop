@@ -24,14 +24,14 @@ export function ConfirmFolderDialog({ folder, onConfirm, onCancel }: Props): Rea
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cowork-confirm-title"
+        aria-labelledby="tasks-confirm-title"
         className="w-full max-w-md rounded-2xl border border-border bg-elevated p-6 shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <FolderLock size={22} />
         </div>
-        <h2 id="cowork-confirm-title" className="text-lg font-semibold">
+        <h2 id="tasks-confirm-title" className="text-lg font-semibold">
           ¿Permitir trabajar en «{name}»?
         </h2>
         <p className="mt-1 truncate font-mono text-xs text-subtle" title={folder}>

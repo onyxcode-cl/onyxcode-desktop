@@ -75,7 +75,7 @@ export class CoworkRulesStore {
         }
       }
     } catch (err) {
-      console.error('[cowork] tasks-rules.json inválido:', err)
+      console.error('[tasks] tasks-rules.json inválido:', err)
       data = { rules: [] }
     }
     this.data = data

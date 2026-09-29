@@ -41,12 +41,6 @@ interface Exception {
 
 const EXCEPTIONS: Exception[] = [
   {
-    file: 'src/main/cowork/sandbox.ts',
-    rule: 'Cowork',
-    line: /'opencode \(cowork\)'/,
-    reason: "Etiqueta interna 'opencode (cowork)' del sandbox: contrato que no se renombra."
-  },
-  {
     file: '*',
     rule: 'artifact-en-comillas',
     line: /-artifact|['"`]artifact['"`]/,
@@ -59,22 +53,10 @@ const EXCEPTIONS: Exception[] = [
     reason: 'Canal IPC `extras:openArtifact`: contrato interno (allowlists y esquemas).'
   },
   {
-    file: '*',
-    rule: 'Cowork',
-    line: /cowork\.md|agents\/cowork|['"`]cowork['"`]/,
-    reason: 'Nombre del fichero del agente `cowork.md` y su id `cowork`: contrato con OpenCode.'
-  },
-  {
     file: 'src/renderer/src/features/settings/impl/AboutSection.tsx',
     rule: 'Claude|Anthropic',
     line: /no afiliado a OpenCode ni a Anthropic/,
     reason: 'Aviso legal de Acerca de: debe nombrar a Anthropic para desvincularse.'
-  },
-  {
-    file: '*',
-    rule: 'Cowork',
-    line: /console\.\w+\(\s*['"`]\[cowork\]/,
-    reason: 'Logs de consola `[cowork] …`: no son texto visible al usuario.'
   },
   {
     file: 'src/main/cowork/sandbox-profile.ts',

@@ -72,7 +72,7 @@ function readFlags(): Persisted {
       }
     }
   } catch (err) {
-    console.error('[cowork] tasks-mcp.json inválido:', err)
+    console.error('[tasks] tasks-mcp.json inválido:', err)
   }
   return out
 }
@@ -118,7 +118,7 @@ export function coworkMcpContribution(opts: { sandboxed: boolean }): CoworkMcpCo
   try {
     servers = readAppMcpConfig().servers
   } catch (err) {
-    console.error('[cowork] no se pudo leer la config MCP de la app:', err)
+    console.error('[tasks] no se pudo leer la config MCP de la app:', err)
     return out
   }
   const flags = readFlags().servers
@@ -160,7 +160,7 @@ export class CoworkMcpPrefs {
     try {
       servers = readAppMcpConfig().servers
     } catch (err) {
-      console.error('[cowork] no se pudo leer la config MCP de la app:', err)
+      console.error('[tasks] no se pudo leer la config MCP de la app:', err)
     }
     const flags = readFlags().servers
     return Object.entries(servers)

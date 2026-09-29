@@ -15,8 +15,8 @@
  *   servido por un utilityProcess de main (`mcp-host.ts`), que conserva los permisos TCC de la app
  *   mientras los `opencode serve` corren desvinculados (AUDIT.md S6).
  *
- * Movimiento visible: el helper anima el cursor (ver helper.swift). `OPENDESK_COMPUTER_INSTANT=1`
- * lo desactiva y `OPENDESK_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
+ * Movimiento visible: el helper anima el cursor (ver helper.swift). `ONYXCODE_COMPUTER_INSTANT=1`
+ * lo desactiva y `ONYXCODE_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
  *
  * Permisos (TCC): el "proceso responsable" de la cadena Electron → utilityProcess del MCP →
  * cu-helper/screencapture es la app que lanzó Electron. Empaquetado = OnyxCode.app; en desarrollo
@@ -157,7 +157,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    */
   abortSessions: (() => Promise<AbortReport>) | null = null
   /** Sin animación del cursor (también lo usa el overlay para no simular el viaje). */
-  readonly instant = process.env.OPENDESK_COMPUTER_INSTANT === '1'
+  readonly instant = process.env.ONYXCODE_COMPUTER_INSTANT === '1'
   /**
    * Se espera (≤500 ms) antes de responder al inicio de una captura: permite ocultar el overlay si
    * la protección de contenido no bastara para excluirlo de `screencapture`.
@@ -994,7 +994,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     }
     if (eventsUrl) environment.COMPUTER_EVENTS_URL = eventsUrl
     if (this.instant) environment.COMPUTER_INSTANT = '1'
-    const typeDelay = process.env.OPENDESK_COMPUTER_TYPE_DELAY_MS
+    const typeDelay = process.env.ONYXCODE_COMPUTER_TYPE_DELAY_MS
     if (typeDelay && Number.isFinite(Number(typeDelay))) environment.COMPUTER_TYPE_DELAY_MS = typeDelay
     const fake = process.env.COMPUTER_FAKE_SCREENSHOT
     if (!app.isPackaged && fake) environment.COMPUTER_FAKE_SCREENSHOT = fake

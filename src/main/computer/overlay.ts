@@ -44,7 +44,7 @@ export interface ComputerOverlayOptions {
   /**
    * Ocultar (opacidad 0) overlay y píldora durante cada captura. No hace falta en macOS 14+:
    * `setContentProtection(true)` ya los excluye de `screencapture` (verificado). Activable con
-   * `OPENDESK_OVERLAY_HIDE_ON_CAPTURE=1` por si otra versión de macOS no lo respetara.
+   * `ONYXCODE_OVERLAY_HIDE_ON_CAPTURE=1` por si otra versión de macOS no lo respetara.
    */
   hideOnCapture?: boolean
 }

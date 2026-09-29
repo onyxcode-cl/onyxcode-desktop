@@ -40,7 +40,7 @@ export class CoworkProjectsStore {
         }
       }
     } catch (err) {
-      console.error('[cowork] tasks-projects.json inválido:', err)
+      console.error('[tasks] tasks-projects.json inválido:', err)
       data = { projects: [] }
     }
     this.data = data
@@ -162,7 +162,7 @@ export function deleteMemory(folder: string): CoworkMemory {
     try {
       if (existsSync(file)) unlinkSync(file)
     } catch (err) {
-      console.error('[cowork] no se pudo borrar la memoria:', err)
+      console.error('[tasks] no se pudo borrar la memoria:', err)
     }
   }
   return readMemoryFile(folder)

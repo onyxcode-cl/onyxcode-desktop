@@ -84,7 +84,7 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
   const overlay = new ComputerOverlay({
     instant: computer.instant,
-    hideOnCapture: process.env.OPENDESK_OVERLAY_HIDE_ON_CAPTURE === '1'
+    hideOnCapture: process.env.ONYXCODE_OVERLAY_HIDE_ON_CAPTURE === '1'
   })
   computer.captureGuard = () => overlay.beforeCapture()
   // Lote C: ventana "assist" (globo de Teach mode + píldora de grabar una skill), grabadora de
@@ -452,7 +452,7 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     shutdown: async () => {
       scheduler.stop()
       // Los submódulos (p.ej. el monitor) se detienen antes de parar los servidores.
-      await Promise.all(submodules.map((m) => Promise.resolve(m.dispose?.()).catch((err) => console.error('[cowork] dispose:', err))))
+      await Promise.all(submodules.map((m) => Promise.resolve(m.dispose?.()).catch((err) => console.error('[tasks] dispose:', err))))
       await cowork.stopAll()
       overlay.dispose()
       recorder.dispose()

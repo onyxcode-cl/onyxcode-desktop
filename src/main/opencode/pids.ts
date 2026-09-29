@@ -11,6 +11,7 @@ import { app } from 'electron'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { LEGACY_FULL_ACCESS_PID_KIND, LEGACY_SANDBOX_PID_KIND } from '../migrations/legacy-names'
 
 interface PidEntry {
   pid: number
@@ -34,13 +35,23 @@ function file(): string {
   return join(app.getPath('userData'), 'pids.json')
 }
 
+/**
+ * `kind` que escribía una versión anterior (`cowork`, `cowork-full`) → el actual. Un `pids.json` de
+ * una ejecución previa puede traerlos: `killStaleServers` debe seguir reconociendo esos servidores.
+ */
+export function normalizePidKind(kind: unknown): string {
+  if (kind === LEGACY_SANDBOX_PID_KIND) return 'tasks'
+  if (kind === LEGACY_FULL_ACCESS_PID_KIND) return 'tasks-full'
+  return typeof kind === 'string' ? kind : 'desconocido'
+}
+
 function read(): PidEntry[] {
   try {
     const raw = JSON.parse(readFileSync(file(), 'utf8')) as unknown
     if (!Array.isArray(raw)) return []
-    return raw.filter(
-      (e): e is PidEntry => !!e && typeof e === 'object' && Number.isInteger((e as PidEntry).pid) && (e as PidEntry).pid > 1
-    )
+    return raw
+      .filter((e): e is PidEntry => !!e && typeof e === 'object' && Number.isInteger((e as PidEntry).pid) && (e as PidEntry).pid > 1)
+      .map((e) => ({ ...e, kind: normalizePidKind(e.kind) }))
   } catch {
     return []
   }

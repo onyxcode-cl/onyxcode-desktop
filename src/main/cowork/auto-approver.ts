@@ -116,7 +116,7 @@ export class AutoApprover {
         }
       }
     } catch (err) {
-      this.deps.log?.('[cowork] tasks-auto.json inválido; se reinicia:', err)
+      this.deps.log?.('[tasks] tasks-auto.json inválido; se reinicia:', err)
       data = defaultPersisted()
     }
     this.data = data
@@ -177,7 +177,7 @@ export class AutoApprover {
         try {
           this.deps.revokeAutoView(entry.sessionId)
         } catch (err) {
-          this.deps.log?.('[cowork] modo auto: revokeAutoView:', err)
+          this.deps.log?.('[tasks] modo auto: revokeAutoView:', err)
         }
       }
       this.persist()
@@ -211,7 +211,7 @@ export class AutoApprover {
     try {
       this.deps.onApproved(rec)
     } catch (err) {
-      this.deps.log?.('[cowork] modo auto: onApproved:', err)
+      this.deps.log?.('[tasks] modo auto: onApproved:', err)
     }
     return rec
   }
@@ -233,7 +233,7 @@ export class AutoApprover {
       const text = await res.text()
       return (text ? JSON.parse(text) : null) as T
     } catch (err) {
-      this.deps.log?.('[cowork] modo auto: GET', path, err instanceof Error ? err.message : err)
+      this.deps.log?.('[tasks] modo auto: GET', path, err instanceof Error ? err.message : err)
       return null
     }
   }
@@ -251,7 +251,7 @@ export class AutoApprover {
       })
       return res.ok
     } catch (err) {
-      this.deps.log?.('[cowork] modo auto: fallo al responder el permiso:', err instanceof Error ? err.message : err)
+      this.deps.log?.('[tasks] modo auto: fallo al responder el permiso:', err instanceof Error ? err.message : err)
       return false
     }
   }
@@ -320,7 +320,7 @@ export class AutoApprover {
       try {
         await this.tryApprovePermission(server, p)
       } catch (err) {
-        this.deps.log?.('[cowork] modo auto (sondeo):', err)
+        this.deps.log?.('[tasks] modo auto (sondeo):', err)
       }
     }
   }
@@ -383,7 +383,7 @@ export class AutoApprover {
           q.apps.map((a) => a.bundleId)
         )
       } catch (err) {
-        this.deps.log?.('[cowork] modo auto: grantAutoView:', err)
+        this.deps.log?.('[tasks] modo auto: grantAutoView:', err)
       }
     }
     const rec = this.record({

@@ -66,7 +66,7 @@ export class NetworkPolicy {
         }
       }
     } catch (err) {
-      console.error('[cowork] tasks-network.json inválido:', err)
+      console.error('[tasks] tasks-network.json inválido:', err)
     }
     this.data = data
     return data

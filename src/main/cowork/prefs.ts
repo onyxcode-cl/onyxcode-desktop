@@ -70,7 +70,7 @@ export class CoworkPrefsStore {
     try {
       if (existsSync(this.file)) raw = JSON.parse(readFileSync(this.file, 'utf8'))
     } catch (err) {
-      console.error('[cowork] tasks-prefs.json inválido, usando valores por defecto:', err)
+      console.error('[tasks] tasks-prefs.json inválido, usando valores por defecto:', err)
     }
     this.cache = normalizeCoworkPrefs(raw)
     return this.cache

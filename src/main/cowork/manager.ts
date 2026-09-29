@@ -156,7 +156,7 @@ function currentMounts(): MountInfo[] {
   try {
     mounts = parseMountOutput(execFileSync('/sbin/mount', [], { encoding: 'utf8', timeout: 3000 }))
   } catch (err) {
-    console.error('[cowork] no se pudo leer /sbin/mount:', err)
+    console.error('[tasks] no se pudo leer /sbin/mount:', err)
     if (mountCache) mounts = mountCache.mounts
   }
   mountCache = { at: now, mounts }
@@ -260,7 +260,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
         if (Array.isArray(raw.trusted)) data.trusted = raw.trusted.filter(validFolder)
       }
     } catch (err) {
-      console.error('[cowork] tasks-folders.json inválido:', err)
+      console.error('[tasks] tasks-folders.json inválido:', err)
       data = { folders: [], fullAccess: [], deleteGrants: [], linked: {}, trusted: [] }
     }
     this.data = data
@@ -691,7 +691,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
             },
         extraEnv: {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
-          ...(fullAccess ? { OPENDESK_FULL_ACCESS: '1' } : {}),
+          ...(fullAccess ? { ONYXCODE_FULL_ACCESS: '1' } : {}),
           // Plugin `onyxcode-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
           // SOLO en servidores de acceso total; `onyxcode-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
           ...(gateUrl ? { ONYXCODE_PLAN_GATE_URL: gateUrl } : {}),
@@ -741,7 +741,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
           version: handle.version,
           error: undefined
         })
-        console.log(`[cowork] servidor listo ${handle.baseUrl} sandbox=${handle.sandboxed} fullAccess=${fullAccess} (${folder})`)
+        console.log(`[tasks] servidor listo ${handle.baseUrl} sandbox=${handle.sandboxed} fullAccess=${fullAccess} (${folder})`)
         return handle
       },
       (err: unknown) => {

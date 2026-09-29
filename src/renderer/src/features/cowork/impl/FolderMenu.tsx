@@ -255,7 +255,7 @@ export function FolderMenu({
                       >
                         <input
                           type="radio"
-                          name="cowork-link-mode"
+                          name="tasks-link-mode"
                           className="mt-0.5 accent-[var(--accent)]"
                           checked={pending.mode === m}
                           onChange={() => setPending({ ...pending, mode: m })}

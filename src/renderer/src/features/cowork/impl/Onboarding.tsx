@@ -67,12 +67,12 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
 
   return (
     <section
-      aria-labelledby="cowork-onboarding-title"
+      aria-labelledby="tasks-onboarding-title"
       className="mx-6 mb-5 rounded-2xl border border-border bg-elevated p-4 shadow-sm sm:p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 id="cowork-onboarding-title" className="font-display text-base font-medium">
+          <h2 id="tasks-onboarding-title" className="font-display text-base font-medium">
             Así funcionan las tareas
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">Tres pasos para delegar tu primera tarea con tranquilidad.</p>
@@ -137,14 +137,14 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           type="button"
           onClick={() => setSafeOpen((o) => !o)}
           aria-expanded={safeOpen}
-          aria-controls="cowork-safe-use"
+          aria-controls="tasks-safe-use"
           className="flex items-center gap-1.5 text-[13px] font-medium text-accent transition hover:underline"
         >
           Cómo usar las tareas de forma segura
           <ChevronDown size={14} className={`transition-transform ${safeOpen ? 'rotate-180' : ''}`} />
         </button>
         {safeOpen && (
-          <ul id="cowork-safe-use" className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-snug text-muted marker:text-subtle">
+          <ul id="tasks-safe-use" className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-snug text-muted marker:text-subtle">
             {SAFETY_TIPS.map((t) => (
               <li key={t}>{t}</li>
             ))}

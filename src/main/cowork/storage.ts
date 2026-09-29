@@ -46,7 +46,7 @@ export function duBytes(path: string): Promise<number> {
         10
       )
       if (Number.isFinite(kb) && kb >= 0) return res(kb * 1024)
-      if (err) console.error('[cowork] du:', err.message)
+      if (err) console.error('[tasks] du:', err.message)
       res(0)
     })
   })

@@ -64,7 +64,7 @@ export class CoworkTasksStore {
         }
       }
     } catch (err) {
-      console.error('[cowork] tasks-meta.json inválido, empezando vacío:', err)
+      console.error('[tasks] tasks-meta.json inválido, empezando vacío:', err)
     }
     this.cache = map
     return map
