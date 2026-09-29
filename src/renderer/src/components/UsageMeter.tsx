@@ -1,5 +1,5 @@
 /**
- * Medidor de uso del compositor (estilo Claude Desktop / Codex): un anillo con el % de contexto usado
+ * Medidor de uso del compositor (estilo de los clientes de escritorio de referencia): un anillo con el % de contexto usado
  * y, al abrirlo, el contexto, el gasto de la sesión y el de hoy / últimos 30 días (todos los proyectos).
  * Los datos salen de los mensajes ya cargados y de `experimental.session.list` (cacheado 60 s).
  */

@@ -1,5 +1,5 @@
 /**
- * Controles de la barra inferior del compositor de Code (estilo Claude Code / Codex):
+ * Controles de la barra inferior del compositor de Code (estilo de los clientes de escritorio de referencia):
  * modo de permisos, esfuerzo del modelo, selector de modelo y medidor de uso.
  * Los menús se abren hacia arriba porque el compositor vive al fondo de la ventana.
  */

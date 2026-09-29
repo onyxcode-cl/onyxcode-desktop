@@ -37,7 +37,7 @@ export interface PendingQuestion {
 export type { PermissionRequest, Todo }
 
 // ---------------------------------------------------------------------------
-// Modos de permiso, cola de mensajes y adjuntos (gap analysis vs Claude Desktop)
+// Modos de permiso, cola de mensajes y adjuntos (gap analysis vs clientes de escritorio de referencia)
 // ---------------------------------------------------------------------------
 
 /**

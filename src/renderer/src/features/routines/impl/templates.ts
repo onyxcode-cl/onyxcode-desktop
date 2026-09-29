@@ -35,7 +35,7 @@ export const ROUTINE_TEMPLATES: RoutineTemplate[] = [
     id: 'downloads',
     title: 'Revisar Descargas y ordenar',
     description: 'Cada viernes, revisa Descargas, propone un orden y mueve solo lo evidente.',
-    needs: 'Elige tu carpeta Descargas para que Cowork pueda ordenarla.',
+    needs: 'Elige tu carpeta Descargas para que la tarea pueda ordenarla.',
     input: {
       name: 'Ordenar Descargas',
       mode: 'cowork',

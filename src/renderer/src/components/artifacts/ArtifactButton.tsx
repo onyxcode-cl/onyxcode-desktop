@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import { AppWindow, Loader2 } from 'lucide-react'
 import { getExtras } from '../../lib/extrasApi'
+import { UI_LABELS } from '@shared/labels'
 
 export interface HtmlArtifact {
   /** Posición del bloque dentro del texto (útil como key). */
@@ -45,7 +46,7 @@ export function guessTitle(html: string, n = 1): string {
     .replace(/<[^>]+>/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-  return raw ? raw.slice(0, 80) : `Artifact ${n}`
+  return raw ? raw.slice(0, 80) : `Vista previa ${n}`
 }
 
 /** Heurística: ¿vale la pena ofrecer el botón? (documento completo o con estructura visual). */
@@ -85,11 +86,11 @@ export function ArtifactButton({ html, title, className = '', compact }: Props):
       onClick={() => void open()}
       disabled={busy}
       title={error ?? 'Abrir el HTML en una ventana aislada (sin acceso a red ni a la app)'}
-      aria-label="Abrir como artifact"
+      aria-label={UI_LABELS.openHtmlPreview}
       className={`no-drag inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${error ? 'border-danger/40 text-danger' : 'border-border bg-elevated text-muted hover:bg-hover hover:text-fg'} ${className}`}
     >
       {busy ? <Loader2 size={13} className="animate-spin" /> : <AppWindow size={13} />}
-      {!compact && (error ? 'Error al abrir' : 'Abrir como artifact')}
+      {!compact && (error ? 'Error al abrir' : UI_LABELS.openHtmlPreview)}
     </button>
   )
 }

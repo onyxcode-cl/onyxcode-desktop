@@ -103,7 +103,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     if (form.mode === 'cowork' && !folders.some((f) => f.path === picked)) {
       const name = picked.split('/').filter(Boolean).pop() ?? picked
       const ok = await confirmDialog({
-        title: `¿Permitir Cowork en «${name}»?`,
+        title: `¿Permitir trabajar en «${name}»?`,
         message: 'El agente podrá crear y modificar archivos dentro de esa carpeta (en sandbox).',
         confirmLabel: 'Permitir'
       })

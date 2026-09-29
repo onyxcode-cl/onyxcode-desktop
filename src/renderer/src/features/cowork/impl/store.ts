@@ -578,7 +578,7 @@ export function rootTaskId(sessionID: string): string {
 }
 
 function taskTitle(sessionID: string): string {
-  return useSessions.getState().sessions[sessionID]?.title || 'Tarea de Cowork'
+  return useSessions.getState().sessions[sessionID]?.title || 'Tarea'
 }
 
 export function clearUnseen(sessionID: string): void {
@@ -613,10 +613,10 @@ function handleEvent(event: OcEvent, directory: string): void {
     }
   } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'approval', 'Cowork necesita tu aprobación', taskTitle(id))
+    notifyTask(id, 'approval', 'Una tarea necesita tu aprobación', taskTitle(id))
   } else if (event.type === 'question.asked' && !st.questions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'question', 'Cowork tiene una pregunta para ti', taskTitle(id))
+    notifyTask(id, 'question', 'Una tarea tiene una pregunta para ti', taskTitle(id))
   }
   switch (event.type) {
     case 'todo.updated':

@@ -91,7 +91,7 @@ export function transcriptToMarkdown(
   entries: MessageEntry[],
   opts: { includeTools?: boolean } = {}
 ): string {
-  const title = s.title.trim() || 'Tarea de Cowork'
+  const title = s.title.trim() || 'Tarea'
   const out: string[] = [
     `# ${title}`,
     '',
@@ -174,7 +174,7 @@ export function buildContinuationPrompt(title: string, entries: MessageEntry[]):
     .map((e) => clipStart(userText(e).replace(/\s+/g, ' '), CONT_FOLLOWUP_MAX))
     .filter(Boolean)
   const parts = [
-    `Continúa una tarea anterior de Cowork: «${clipStart(title.trim() || 'sin título', 120)}». La conversación anterior no está disponible; este es el contexto que necesitas.`,
+    `Continúa una tarea anterior: «${clipStart(title.trim() || 'sin título', 120)}». La conversación anterior no está disponible; este es el contexto que necesitas.`,
     `Encargo original:\n${original || '(sin texto)'}`
   ]
   if (followUps.length > 0) parts.push(`Mensajes posteriores del usuario:\n${followUps.map((f) => `- ${f}`).join('\n')}`)
@@ -193,7 +193,7 @@ const SIDE_HEADER_MAX = 600
  */
 export function buildSideChatSystem(title: string, entries: MessageEntry[], maxChars = 12_000): string {
   const header = clipStart(
-    'Eres un asistente de consulta lateral dentro de una tarea de Cowork. Responde en español, breve y claro, ' +
+    'Eres un asistente de consulta lateral dentro de una tarea. Responde en español, breve y claro, ' +
       'usando solo el contexto de la tarea que aparece abajo. No modifiques archivos ni ejecutes acciones: ' +
       'esta conversación no cambia la tarea. Si te piden algo que requiere actuar, sugiere hacerlo en la tarea principal.\n\n' +
       `Tarea: «${clipStart(title.trim() || 'sin título', 120)}».`,

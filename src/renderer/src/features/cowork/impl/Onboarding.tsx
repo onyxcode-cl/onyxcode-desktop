@@ -1,6 +1,6 @@
 /**
  * Tarjeta de primer uso de Cowork (se muestra desde `Home` hasta que se descarta; el estado vive en
- * localStorage `cowork.onboarded`): 3 pasos y una sección «Cómo usar Cowork de forma segura».
+ * localStorage `cowork.onboarded`): 3 pasos y una sección «Cómo usar las tareas de forma segura».
  */
 import { useState } from 'react'
 import { Check, ChevronDown, FolderOpen, MonitorCog, Play, Shield, X } from 'lucide-react'
@@ -73,7 +73,7 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="cowork-onboarding-title" className="font-display text-base font-medium">
-            Así funciona Cowork
+            Así funcionan las tareas
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">Tres pasos para delegar tu primera tarea con tranquilidad.</p>
         </div>
@@ -140,7 +140,7 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           aria-controls="cowork-safe-use"
           className="flex items-center gap-1.5 text-[13px] font-medium text-accent transition hover:underline"
         >
-          Cómo usar Cowork de forma segura
+          Cómo usar las tareas de forma segura
           <ChevronDown size={14} className={`transition-transform ${safeOpen ? 'rotate-180' : ''}`} />
         </button>
         {safeOpen && (

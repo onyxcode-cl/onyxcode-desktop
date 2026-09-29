@@ -32,7 +32,7 @@ export function ConfirmFolderDialog({ folder, onConfirm, onCancel }: Props): Rea
           <FolderLock size={22} />
         </div>
         <h2 id="cowork-confirm-title" className="text-lg font-semibold">
-          ¿Permitir Cowork en «{name}»?
+          ¿Permitir trabajar en «{name}»?
         </h2>
         <p className="mt-1 truncate font-mono text-xs text-subtle" title={folder}>
           {folder}

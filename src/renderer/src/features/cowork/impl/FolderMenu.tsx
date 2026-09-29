@@ -178,14 +178,14 @@ export function FolderMenu({
                 </button>
                 <button
                   type="button"
-                  title="Quitar de Cowork"
-                  aria-label={`Quitar «${f.name}» de Cowork`}
+                  title="Quitar de Tareas"
+                  aria-label={`Quitar «${f.name}» de Tareas`}
                   className="mr-1 rounded p-1 text-subtle opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
                   onClick={() => {
                     setOpen(false)
                     void confirmDialog({
-                      title: '¿Quitar carpeta de Cowork?',
-                      message: `«${f.name}» dejará de estar disponible en Cowork. No se borra ningún archivo.`,
+                      title: '¿Quitar carpeta de trabajo?',
+                      message: `«${f.name}» dejará de estar disponible en Tareas. No se borra ningún archivo.`,
                       confirmLabel: 'Quitar',
                       danger: true
                     }).then((ok) => {

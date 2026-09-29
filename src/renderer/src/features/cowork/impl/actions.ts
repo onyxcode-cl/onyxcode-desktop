@@ -314,7 +314,7 @@ export async function openTask(sessionID: string): Promise<void> {
 
 function ctx(): { client: NonNullable<ReturnType<typeof useCowork.getState>['client']>; folder: string } {
   const { client, folder } = useCowork.getState()
-  if (!client || !folder) throw new Error('El servidor de Cowork no está listo')
+  if (!client || !folder) throw new Error('El servidor de las tareas no está listo')
   return { client, folder }
 }
 

@@ -162,7 +162,7 @@ export function RecordSkillReview(): React.JSX.Element | null {
   const send = (): void => {
     const folder = useCowork.getState().folder
     if (!folder) {
-      setError('Abre una carpeta de Cowork para enviárselo al agente.')
+      setError('Abre una carpeta de trabajo para enviárselo al agente.')
       return
     }
     setBusy('send')

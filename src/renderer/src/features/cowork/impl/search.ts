@@ -135,7 +135,7 @@ useSessions.getState().addEvictionListener((evicted, st) => {
   for (const { id, entries } of evicted) {
     const src = st.sessionSource[id]
     const session = st.sessions[id]
-    if (!session || !src || src === MAIN_SOURCE) continue // solo sesiones de Cowork
+    if (!session || !src || src === MAIN_SOURCE) continue // solo sesiones de Tareas
     cacheSet(id, { updated: session.time.updated, texts: extractSearchable(entries) })
   }
 })
@@ -197,7 +197,7 @@ export function useTranscriptSearch(folder: string | null, query: string): Searc
           const s = list[i]
           try {
             const texts = await textsFor(i)
-            const hits = searchTexts(s.id, s.title || 'Tarea de Cowork', texts, q, HITS_PER_SESSION)
+            const hits = searchTexts(s.id, s.title || 'Tarea', texts, q, HITS_PER_SESSION)
             results[i] = hits
           } catch {
             results[i] = []

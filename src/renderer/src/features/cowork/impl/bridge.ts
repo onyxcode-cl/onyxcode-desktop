@@ -11,7 +11,7 @@ import type {
 
 function getApi(): CoworkApi {
   const api = (window as unknown as { api?: WindowApi & { cowork?: CoworkApi } }).api?.cowork
-  if (!api) throw new Error('El puente de Cowork no está disponible (falta window.api.cowork en el preload).')
+  if (!api) throw new Error('El puente de las tareas no está disponible (falta window.api.cowork en el preload).')
   return api
 }
 

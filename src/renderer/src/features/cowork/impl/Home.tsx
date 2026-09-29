@@ -353,7 +353,7 @@ export function Home({
                 onClick={() => setOnboardedPersisted(false)}
                 className="text-xs text-muted underline-offset-2 transition hover:text-fg hover:underline"
               >
-                Cómo usar Cowork de forma segura
+                Cómo usar las tareas de forma segura
               </button>
             </p>
           )}

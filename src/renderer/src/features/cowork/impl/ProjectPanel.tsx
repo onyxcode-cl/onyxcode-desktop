@@ -517,8 +517,8 @@ export function ProjectPanel(): React.JSX.Element | null {
                     onChange={(e) => setMemoryText(e.target.value)}
                   />
                   <p className="mt-1.5 text-xs text-subtle">
-                    El agente Cowork lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada nueva
-                    tarea de esta carpeta.
+                    El agente de tareas lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada
+                    nueva tarea de esta carpeta.
                   </p>
                 </div>
               </>

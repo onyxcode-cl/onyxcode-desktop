@@ -100,7 +100,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
           <p className="mt-0.5 text-xs text-muted">
             {fullAccess
               ? 'Esta ubicación queda fuera de la carpeta de la tarea. Si la permites, el agente podrá acceder a ella.'
-              : 'Esta ubicación queda fuera de la carpeta de la tarea. Al permitirla se reiniciará el espacio de trabajo de Cowork y la tarea continuará sola.'}
+              : 'Esta ubicación queda fuera de la carpeta de la tarea. Al permitirla se reiniciará el espacio de trabajo de las tareas y la tarea continuará sola.'}
           </p>
 
           <p className="mt-2.5 text-[11px] font-medium text-subtle">Carpeta que pide el agente</p>
