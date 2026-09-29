@@ -55,7 +55,7 @@ export function McpSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ name: string; entry: McpEntry } | 'new' | null>(null)
-  // Marcas de Cowork por servidor (`cowork-mcp.json`), solo para los servidores de la app.
+  // Marcas de Cowork por servidor (`tasks-mcp.json`), solo para los servidores de la app.
   const [coworkInfo, setCoworkInfo] = useState<Record<string, CoworkMcpInfo>>({})
 
   const refresh = useCallback(async () => {
@@ -131,7 +131,7 @@ export function McpSection(): React.JSX.Element {
       }
     })
 
-  const setCowork = (name: string, patch: { cowork?: boolean; askEachTool?: boolean }): Promise<void> =>
+  const setCowork = (name: string, patch: { tasks?: boolean; askEachTool?: boolean }): Promise<void> =>
     run(`cowork:${name}`, async () => {
       await cw('tasks:mcp:set', { name, ...patch })
     })
@@ -292,37 +292,37 @@ function CoworkFlags({
 }: {
   info: CoworkMcpInfo
   disabled: boolean
-  onChange: (patch: { cowork?: boolean; askEachTool?: boolean }) => void
+  onChange: (patch: { tasks?: boolean; askEachTool?: boolean }) => void
 }): React.JSX.Element {
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <label className="flex items-center gap-2 text-xs">
           <Toggle
-            checked={info.cowork}
+            checked={info.tasks}
             disabled={disabled || !info.enabled}
             label="Disponible en Tareas"
-            onChange={(v) => onChange({ cowork: v })}
+            onChange={(v) => onChange({ tasks: v })}
           />
           <span className="font-medium">Disponible en Tareas</span>
         </label>
         <label className="flex items-center gap-2 text-xs">
           <Toggle
             checked={info.askEachTool}
-            disabled={disabled || !info.cowork}
+            disabled={disabled || !info.tasks}
             label="Preguntar en cada uso"
             onChange={(v) => onChange({ askEachTool: v })}
           />
-          <span className={info.cowork ? 'font-medium' : 'text-muted'}>Preguntar en cada uso</span>
+          <span className={info.tasks ? 'font-medium' : 'text-muted'}>Preguntar en cada uso</span>
         </label>
       </div>
-      {info.cowork && info.type === 'remote' && info.oauth && (
+      {info.tasks && info.type === 'remote' && info.oauth && (
         <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Este servidor remoto parece usar inicio de sesión (OAuth): no estará
           disponible en el sandbox (en Control total puede funcionar).
         </p>
       )}
-      {info.cowork && info.hosts.length > 0 && (
+      {info.tasks && info.hosts.length > 0 && (
         <p className="mt-1.5 text-[11px] text-subtle">
           Sitio añadido a la Red del sandbox: <span className="font-mono">{info.hosts.join(', ')}</span>
         </p>

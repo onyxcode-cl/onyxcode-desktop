@@ -44,10 +44,10 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
   const { handle, send, getWindow, cowork, computer, keepAwake } = ctx
   const userData = app.getPath('userData')
 
-  const prefs = new CoworkPrefsStore(join(userData, 'cowork-prefs.json'), {
+  const prefs = new CoworkPrefsStore(join(userData, 'tasks-prefs.json'), {
     policyMaxAutoArchiveDays: () => loadManagedPolicy()?.maxAutoArchiveDays
   })
-  const tasks = new CoworkTasksStore(join(userData, 'cowork-tasks.json'))
+  const tasks = new CoworkTasksStore(join(userData, 'tasks-meta.json'))
 
   const windowState = (): MonitorWindowState => {
     const win = getWindow()
@@ -71,7 +71,7 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
       if (win.isMinimized()) win.restore()
       win.show()
       win.focus()
-      const target: NotifyTarget = { mode: 'cowork', id: ev.sessionId, directory: ev.folder, fullAccess: ev.fullAccess }
+      const target: NotifyTarget = { mode: 'tasks', id: ev.sessionId, directory: ev.folder, fullAccess: ev.fullAccess }
       if (!win.webContents.isDestroyed()) win.webContents.send('app:openTarget', target)
     })
     n.show()

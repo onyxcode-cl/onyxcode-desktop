@@ -97,7 +97,7 @@ interface RunCtx {
 
 const AGENT_BY_MODE: Record<RoutineMode, string> = {
   chat: CHAT_AGENT_ID,
-  cowork: COWORK_AGENT_ID,
+  tasks: COWORK_AGENT_ID,
   code: 'build'
 }
 
@@ -280,14 +280,14 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const prompt = input.prompt?.trim()
     if (!name) throw new Error('La rutina necesita un nombre')
     if (!prompt) throw new Error('La rutina necesita una instrucción (prompt)')
-    if (!['chat', 'cowork', 'code'].includes(input.mode)) throw new Error('Modo inválido')
+    if (!['chat', 'tasks', 'code'].includes(input.mode)) throw new Error('Modo inválido')
     if (!input.model?.providerID || !input.model?.modelID) throw new Error('Selecciona un modelo')
     validateSchedule(input.schedule)
     const folder = input.folder?.trim() || null
     if (input.mode !== 'chat') {
       if (!folder) throw new Error('Los modos Tareas y Code requieren una carpeta')
       if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(`La carpeta no existe: ${folder}`)
-      if (input.mode === 'cowork' && !this.deps.cowork.isApproved(folder)) {
+      if (input.mode === 'tasks' && !this.deps.cowork.isApproved(folder)) {
         throw new Error('La carpeta no está autorizada para las tareas (autorízala primero desde Tareas).')
       }
     }
@@ -296,7 +296,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const now = Date.now()
     const idx = input.id ? data.routines.findIndex((r) => r.id === input.id) : -1
     const prev = idx >= 0 ? data.routines[idx] : null
-    const isCowork = input.mode === 'cowork'
+    const isCowork = input.mode === 'tasks'
 
     // Campos de Lote B (solo tienen sentido en modo Cowork; en otros modos se limpian).
     const sessionMode = input.sessionMode === 'continue' && isCowork ? 'continue' : 'fresh'
@@ -495,7 +495,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (!directory) throw new Error('La rutina no tiene carpeta')
     if (r.mode !== 'chat' && !existsSync(directory)) throw new Error(`La carpeta no existe: ${directory}`)
 
-    const isCowork = r.mode === 'cowork'
+    const isCowork = r.mode === 'tasks'
     const fullAccess = isCowork && r.fullAccess === true
     if (fullAccess) {
       if (!r.fullAccessConsentAt) {
@@ -603,7 +603,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       this.notifyPlain(
         `La rutina «${r.name}» necesita que apruebes su plan`,
         'Usa Control total del Mac: abre la tarea y aprueba el plan para que continúe.',
-        { mode: 'cowork', id: sessionID, directory: dirForSession, fullAccess: true }
+        { mode: 'tasks', id: sessionID, directory: dirForSession, fullAccess: true }
       )
     }
 
@@ -613,7 +613,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       const memory = isCowork && project?.memoryEnabled !== false ? getMemory(dirForSession).content : null
       const folderSet = isCowork ? this.deps.cowork.folderSet(dirForSession) : null
       const system = buildCoworkSystemPrompt({
-        globalInstructions: isCowork ? this.deps.getSettings?.().coworkGlobalInstructions : null,
+        globalInstructions: isCowork ? this.deps.getSettings?.().tasksGlobalInstructions : null,
         project: project
           ? { name: project.name, instructions: project.instructions, links: project.links, memoryEnabled: project.memoryEnabled }
           : null,
@@ -792,7 +792,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
             this.notifyPlain(
               `La rutina «${run.routineName}» necesita tu aprobación`,
               patterns[0] ? `${p.permission}: ${truncate(patterns[0], 140)}` : p.permission,
-              { mode: 'cowork', id: run.root, directory, fullAccess: run.fullAccess }
+              { mode: 'tasks', id: run.root, directory, fullAccess: run.fullAccess }
             )
           }
         } else {
@@ -866,9 +866,9 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const main = truncate((ok ? record.summary : record.error) ?? '', 180)
     const body = [...extras, main].filter(Boolean).join('\n')
     const target: NotifyTarget | undefined =
-      record.sessionId && record.directory && this.load().routines.find((x) => x.id === record.routineId)?.mode === 'cowork'
+      record.sessionId && record.directory && this.load().routines.find((x) => x.id === record.routineId)?.mode === 'tasks'
         ? {
-            mode: 'cowork',
+            mode: 'tasks',
             id: record.sessionId,
             directory: record.directory,
             fullAccess: this.load().routines.find((x) => x.id === record.routineId)?.fullAccess === true

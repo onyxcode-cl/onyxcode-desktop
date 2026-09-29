@@ -1,10 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
-import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
+import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyCoworkBrowserData } from './cowork/legacy-cleanup'
 import { prepareOpencodeConfigDir } from './cowork/opencode-config'
 import { registerAllHandlers } from './ipc'
@@ -31,32 +31,6 @@ if (!gotSingleInstanceLock) app.quit()
 
 // Esquema `onyxcode://app` para el renderer de producción (antes de `ready`).
 registerAppSchemePrivileges()
-
-// La app se llamó "OpenDesk" y luego "Lapis" durante el desarrollo: conserva ajustes, rutinas y
-// sesiones de cualquiera de esos nombres anteriores. Se revisan en orden (el más reciente primero)
-// y, para el primero que tenga datos reales, se copian entrada por entrada las que aún no existen
-// en la carpeta nueva (nunca se sobrescribe nada que ya esté ahí). Chromium puede crear la carpeta
-// nueva antes de que corra este código, así que se mueven las entradas sueltas en vez de renombrar
-// la carpeta completa.
-const LEGACY_APP_NAMES = ['Lapis', 'OpenDesk']
-function migrateLegacyUserData(): void {
-  const USER_DATA = app.getPath('userData')
-  for (const legacyName of LEGACY_APP_NAMES) {
-    if (existsSync(join(USER_DATA, 'settings.json'))) break
-    const legacyUserData = join(app.getPath('appData'), legacyName)
-    if (!existsSync(join(legacyUserData, 'settings.json'))) continue
-    mkdirSync(USER_DATA, { recursive: true })
-    for (const entry of readdirSync(legacyUserData)) {
-      const target = join(USER_DATA, entry)
-      if (existsSync(target)) continue
-      try {
-        renameSync(join(legacyUserData, entry), target)
-      } catch (err) {
-        console.error(`[main] no se pudo migrar ${entry} de ${legacyName}:`, err)
-      }
-    }
-  }
-}
 
 const chatDirectory = join(app.getPath('userData'), 'chat-workspace')
 
@@ -118,7 +92,8 @@ function focusMainWindow(): void {
 }
 
 function start(): void {
-  migrateLegacyUserData()
+  // Nombres anteriores de la app (Lapis/OpenDesk): antes de `ready`, como siempre (ver migrations/legacy-app-names.ts).
+  migrateLegacyUserData(app.getPath('userData'), app.getPath('appData'))
   // «Chrome aparte» ya no existe: se borran sus datos huérfanos (perfil, cookies, descargas y json).
   // Solo dentro de userData; tras borrarse no queda nada, así que en la práctica corre una vez.
   const legacyRemoved = cleanLegacyCoworkBrowserData(app.getPath('userData'))
@@ -140,6 +115,13 @@ function start(): void {
       killStaleServers()
     } catch (err) {
       console.error('[main] limpieza de servidores huérfanos:', err)
+    }
+    // Migración de nombres persistidos (cowork -> tasks): tras parar los servidores huérfanos (no hay nadie usando
+    // cowork-sandbox/) y ANTES de tocar la config de OpenCode, los handlers y las ventanas. Nunca rompe el arranque.
+    try {
+      runMigrations(app.getPath('userData'), { appVersion: app.getVersion() })
+    } catch (err) {
+      console.error('[main] migraciones de datos:', err)
     }
     // Agentes de la app → userData/opencode-config (nunca escribir dentro del bundle, P1).
     prepareOpencodeConfigDir()

@@ -6,7 +6,7 @@ describe('e2e-fault', () => {
     expect(shouldThrow(null, 'chat')).toBe(false)
     expect(shouldThrow('code', 'chat')).toBe(false)
     expect(shouldThrow('chat', 'chat')).toBe(true)
-    expect(shouldThrow('*', 'cowork')).toBe(true)
+    expect(shouldThrow('*', 'tasks')).toBe(true)
   })
   it('setFault notifica solo ante cambios y se puede desuscribir', () => {
     const fn = vi.fn()

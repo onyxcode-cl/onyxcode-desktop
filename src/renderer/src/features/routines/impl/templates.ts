@@ -38,7 +38,7 @@ export const ROUTINE_TEMPLATES: RoutineTemplate[] = [
     needs: 'Elige tu carpeta Descargas para que la tarea pueda ordenarla.',
     input: {
       name: 'Ordenar Descargas',
-      mode: 'cowork',
+      mode: 'tasks',
       folder: null,
       schedule: { kind: 'weekly', day: 5, time: '17:00' },
       sessionMode: 'fresh',
@@ -62,7 +62,7 @@ export const ROUTINE_TEMPLATES: RoutineTemplate[] = [
     needs: 'Elige la carpeta donde llegan los documentos. Cada ejecución continúa la misma tarea, así recuerda lo que ya vio.',
     input: {
       name: 'Documentos nuevos',
-      mode: 'cowork',
+      mode: 'tasks',
       folder: null,
       schedule: { kind: 'cron', expr: '0 9 * * 1-5' },
       sessionMode: 'continue',

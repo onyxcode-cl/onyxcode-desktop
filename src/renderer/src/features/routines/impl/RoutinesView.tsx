@@ -390,7 +390,7 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
               </dd>
             </>
           )}
-          {r.mode === 'cowork' && (
+          {r.mode === 'tasks' && (
             <>
               <dt className="text-subtle">Cada ejecución</dt>
               <dd className="text-fg">{r.sessionMode === 'continue' ? 'Continúa la misma tarea' : 'Empieza de cero'}</dd>

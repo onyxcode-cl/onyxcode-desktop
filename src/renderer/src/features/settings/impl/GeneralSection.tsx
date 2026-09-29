@@ -84,7 +84,7 @@ function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
 
 /** Instrucciones globales de las tareas (item 1): se añaden a todas las tareas, junto con las de cada proyecto. */
 function CoworkInstructionsRow(): React.JSX.Element {
-  const globalInstructions = useSettings((s) => s.settings.coworkGlobalInstructions)
+  const globalInstructions = useSettings((s) => s.settings.tasksGlobalInstructions)
   const update = useSettings((s) => s.update)
   const [value, setValue] = useState(globalInstructions)
   const [saved, setSaved] = useState(false)
@@ -93,7 +93,7 @@ function CoworkInstructionsRow(): React.JSX.Element {
 
   const save = (): void => {
     if (value === globalInstructions) return
-    void update({ coworkGlobalInstructions: value }).then(() => {
+    void update({ tasksGlobalInstructions: value }).then(() => {
       setSaved(true)
       setTimeout(() => setSaved(false), 1200)
     })
@@ -178,7 +178,7 @@ export function GeneralSection(): React.JSX.Element {
         <KeepAwakeRow />
       </Card>
 
-      <SubTitle>{MODE_LABELS.cowork}</SubTitle>
+      <SubTitle>{MODE_LABELS.tasks}</SubTitle>
       <Card>
         <CoworkInstructionsRow />
       </Card>

@@ -1,5 +1,5 @@
 /**
- * Gestor de Cowork: carpetas de Cowork (userData/cowork.json) y un `opencode serve`
+ * Gestor de Cowork: carpetas de Cowork (userData/tasks-folders.json) y un `opencode serve`
  * por carpeta y modo (arranque perezoso, reutilizado, detenido al salir):
  *  - normal: sandboxeado (Seatbelt), sin el agente `computer`;
  *  - Control total (`fullAccess`): SIN sandbox, con el MCP `computer` (control del Mac)
@@ -214,7 +214,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
   }
 
   private get file(): string {
-    return join(app.getPath('userData'), 'cowork.json')
+    return join(app.getPath('userData'), 'tasks-folders.json')
   }
 
   private load(): Persisted {
@@ -248,7 +248,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
         if (Array.isArray(raw.trusted)) data.trusted = raw.trusted.filter(validFolder)
       }
     } catch (err) {
-      console.error('[cowork] cowork.json inválido:', err)
+      console.error('[cowork] tasks-folders.json inválido:', err)
       data = { folders: [], fullAccess: [], deleteGrants: [], linked: {}, trusted: [] }
     }
     this.data = data
@@ -619,14 +619,14 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
     if (!fullAccess) {
       // Navegador integrado en Sandbox (Lote D, novedad B.7: antes no había navegador aquí).
       // `browser_*` queda con el permiso por defecto ('ask'), como cualquier otra herramienta de acción del sandbox: sin `deny` explícito.
-      browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: true }).catch(() => null)
+      browserMcp = await embeddedBrowserMcp.configFor({ product: 'tasks', folder, sandboxed: true }).catch(() => null)
       browserMcpPort = portOfMcpConfig(browserMcp)
       // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox (ver buildInlineConfig).
     } else {
       computerMcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
       this.fullAccessMcp.set(key, !!computerMcp)
       // Navegador en Control total (Lote D, B.11): el navegador integrado.
-      browserMcp = await embeddedBrowserMcp.configFor({ product: 'cowork', folder, sandboxed: false }).catch(() => null)
+      browserMcp = await embeddedBrowserMcp.configFor({ product: 'tasks', folder, sandboxed: false }).catch(() => null)
     }
     // MCP del usuario disponibles en Cowork (`mcp-cowork.ts`); sus hosts remotos entran a la red.
     const c = coworkMcpContribution({ sandboxed: !fullAccess })
@@ -670,7 +670,7 @@ export class CoworkManager extends EventEmitter<ManagerEvents> {
         isolation: fullAccess
           ? undefined
           : {
-              privateDir: join(app.getPath('userData'), 'cowork-sandbox', sandboxKey(folder)),
+              privateDir: join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)),
               userData: app.getPath('userData')
             },
         extraEnv: {

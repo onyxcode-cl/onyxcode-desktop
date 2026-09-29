@@ -86,10 +86,10 @@ export async function resolveActor(binding: ClientBinding, onyxcodeSession: unkn
         'onyxcode-session está activo: reinicia el servidor de OpenCode.'
     )
   }
-  if (binding.product === 'cowork') {
+  if (binding.product === 'tasks') {
     if (!binding.folder) throw new Error('No se pudo identificar la carpeta de la tarea.')
-    const owner: BrowserOwner = { kind: 'cowork', folder: binding.folder }
-    return { sessionId, product: 'cowork', owner, sandboxed: binding.sandboxed, label: binding.label }
+    const owner: BrowserOwner = { kind: 'tasks', folder: binding.folder }
+    return { sessionId, product: 'tasks', owner, sandboxed: binding.sandboxed, label: binding.label }
   }
   const directory = await resolveCodeDirectory(sessionId, deps)
   const owner: BrowserOwner = { kind: 'code', directory }

@@ -392,7 +392,7 @@ describe.skipIf(MODE === 'prod')(`fase 6: Tareas y Code en la misma carpeta (${M
     expect(codeDirs.map((x) => x.status)).toContain('busy')
 
     // Con el enrutado por directorio (default) la sesión de Code ni siquiera entra en useSessions.
-    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.cowork }).click()
+    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.tasks }).click()
     expect(Object.keys(await storeState<Record<string, unknown>>(a.page, 'useSessions', 'sessions'))).not.toContain(codeSid)
     await new Promise((r) => setTimeout(r, 500)) // espera acotada (negativa): que el estado de Tareas se repinte
     expect(await accessRadios(a).first().isDisabled()).toBe(false)

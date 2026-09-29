@@ -2,7 +2,6 @@
  * Migraciones de datos de userData. `runMigrations(userData)` es idempotente: lo aplicado queda en
  * `userData/migrations.json` (`{schema:1, applied:[{id,at,appVersion}]}`), que se escribe SOLO si todos los pasos de la
  * migración terminaron bien; si alguno falla se reintenta en el siguiente arranque. Nunca lanza: la app arranca igual.
- * (Todavía no se llama desde el arranque.)
  */
 import { readFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
@@ -10,6 +9,7 @@ import { writeFileAtomic, exists } from './json-util'
 import { M001_ID, runM001, type M001Report } from './m001-tasks-rename'
 
 export { migrateFolderScratch, type FolderScratchResult } from './migrate-folder-scratch'
+export { migrateLegacyUserData } from './legacy-app-names'
 export { rollbackM001 } from './rollback'
 export { M001_ID } from './m001-tasks-rename'
 

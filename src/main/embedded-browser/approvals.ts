@@ -78,7 +78,7 @@ export function pendingFor(owner: BrowserOwner): BrowserApprovalRequest[] {
 }
 
 function ownerKey(owner: BrowserOwner): string {
-  return owner.kind === 'code' ? `code:${owner.directory}` : `cowork:${owner.folder}`
+  return owner.kind === 'code' ? `code:${owner.directory}` : `tasks:${owner.folder}`
 }
 
 function labelFor(req: BrowserApprovalRequest): string {

@@ -1,5 +1,5 @@
 /**
- * Permisos recordados por carpeta ("Siempre permitir"), persistidos en `userData/cowork-rules.json`.
+ * Permisos recordados por carpeta ("Siempre permitir"), persistidos en `userData/tasks-rules.json`.
  *
  * Se inyectan en la config inline de los servidores Cowork (`agent.<cowork|computer>.permission`),
  * así que se aplican al (re)abrir la carpeta. NUNCA se recuerdan:
@@ -51,7 +51,7 @@ export class CoworkRulesStore {
   private data: Persisted | null = null
 
   private get file(): string {
-    return join(app.getPath('userData'), 'cowork-rules.json')
+    return join(app.getPath('userData'), 'tasks-rules.json')
   }
 
   private load(): Persisted {
@@ -75,7 +75,7 @@ export class CoworkRulesStore {
         }
       }
     } catch (err) {
-      console.error('[cowork] cowork-rules.json inválido:', err)
+      console.error('[cowork] tasks-rules.json inválido:', err)
       data = { rules: [] }
     }
     this.data = data

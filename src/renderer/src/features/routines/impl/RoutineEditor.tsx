@@ -100,7 +100,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const pickFolder = async (): Promise<void> => {
     const picked = await cw('tasks:pickFolder')
     if (!picked) return
-    if (form.mode === 'cowork' && !folders.some((f) => f.path === picked)) {
+    if (form.mode === 'tasks' && !folders.some((f) => f.path === picked)) {
       const name = picked.split('/').filter(Boolean).pop() ?? picked
       const ok = await confirmDialog({
         title: `¿Permitir trabajar en «${name}»?`,
@@ -123,7 +123,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const allowRows: RoutineAllowRule[] = form.allow ?? []
   const hosts: string[] = form.allowHosts ?? []
   const setAllow = (rows: RoutineAllowRule[]): void => patch({ allow: rows })
-  const isCowork = form.mode === 'cowork'
+  const isCowork = form.mode === 'tasks'
   const selectedFolder = folders.find((f) => f.path === form.folder)
   const canFullControl = isCowork && !!selectedFolder?.fullAccess
   const fullControl = isCowork && form.fullAccess === true
@@ -181,7 +181,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     setSaving(true)
     setError(null)
     try {
-      const cowork = form.mode === 'cowork'
+      const cowork = form.mode === 'tasks'
       await saveRoutine({
         ...form,
         name: form.name.trim(),
@@ -201,7 +201,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   }
 
   const folderOptions = useMemo(() => {
-    if (form.mode === 'cowork') return folders.map((f) => ({ path: f.path, name: f.name }))
+    if (form.mode === 'tasks') return folders.map((f) => ({ path: f.path, name: f.name }))
     return recentFolders.slice(0, 6).map((p) => ({ path: p, name: p.split('/').filter(Boolean).pop() ?? p }))
   }, [form.mode, folders, recentFolders])
 
@@ -507,7 +507,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               </button>
               {folderOptions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <span className="py-0.5 text-[11px] text-subtle">{form.mode === 'cowork' ? 'Autorizadas:' : 'Recientes:'}</span>
+                  <span className="py-0.5 text-[11px] text-subtle">{form.mode === 'tasks' ? 'Autorizadas:' : 'Recientes:'}</span>
                   {folderOptions.map((f) => (
                     <button
                       key={f.path}

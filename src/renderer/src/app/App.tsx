@@ -95,7 +95,7 @@ export function App(): React.JSX.Element {
           await useCode.getState().selectSession(target.id)
         })()
       } else {
-        useUi.getState().setMode('cowork')
+        useUi.getState().setMode('tasks')
         void (async () => {
           const cowork = useCowork.getState()
           // `fullAccess` viene del monitor de main: la tarea puede vivir en el servidor de Control total.

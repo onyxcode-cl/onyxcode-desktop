@@ -83,7 +83,7 @@ interface OwnerRuntime {
 const owners = new Map<string, OwnerRuntime>()
 
 function ownerKeyOf(owner: BrowserOwner): string {
-  return owner.kind === 'code' ? `code:${owner.directory}` : `cowork:${owner.folder}`
+  return owner.kind === 'code' ? `code:${owner.directory}` : `tasks:${owner.folder}`
 }
 
 function ownerRuntime(owner: BrowserOwner): OwnerRuntime {
@@ -946,8 +946,8 @@ export function sitesState(): BrowserSitesState {
   const policy = loadManagedPolicy()
   return {
     prefs: store.getPrefs(),
-    sites: { code: store.sitesFor('code'), cowork: store.sitesFor('cowork') },
-    denied: { code: store.deniedFor('code'), cowork: store.deniedFor('cowork') },
+    sites: { code: store.sitesFor('code'), tasks: store.sitesFor('tasks') },
+    denied: { code: store.deniedFor('code'), tasks: store.deniedFor('tasks') },
     localOrigins: store.localOrigins(),
     policyDisabled: policy?.disableBrowser === true
   }
@@ -959,7 +959,7 @@ function broadcastSites(): BrowserSitesState {
   return s
 }
 
-export function setSitesPrefs(patch: { agentEnabled?: { code?: boolean; cowork?: boolean } }): BrowserSitesState {
+export function setSitesPrefs(patch: { agentEnabled?: { code?: boolean; tasks?: boolean } }): BrowserSitesState {
   store.setPrefs(patch)
   return broadcastSites()
 }

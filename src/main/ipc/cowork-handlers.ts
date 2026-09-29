@@ -47,7 +47,7 @@ function approvalNotificationsEnabled(): boolean {
   }
   let raw: unknown = null
   try {
-    raw = JSON.parse(readFileSync(join(app.getPath('userData'), 'cowork-prefs.json'), 'utf8'))
+    raw = JSON.parse(readFileSync(join(app.getPath('userData'), 'tasks-prefs.json'), 'utf8'))
   } catch {
     // archivo ausente o ilegible: valores por defecto
   }

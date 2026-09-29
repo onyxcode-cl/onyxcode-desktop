@@ -1,7 +1,7 @@
 /**
  * Preferencias y listas del navegador integrado (Lote D, B.2.6): `userData/embedded-browser.json`.
- * `{ version: 1, prefs: { agentEnabled: { code, cowork } }, sites: { code: [], cowork: [] },
- *   denied: { code: [], cowork: [] }, localOrigins: [] }`.
+ * `{ version: 1, prefs: { agentEnabled: { code, tasks } }, sites: { code: [], tasks: [] },
+ *   denied: { code: [], tasks: [] }, localOrigins: [] }`.
  *
  * `isLocalOriginApproved` es LOAD-BEARING: la lee `session.ts` en cada petición de red
  * (`webRequest.onBeforeRequest`), así que el estado vive en memoria (cache) y la escritura a
@@ -29,9 +29,9 @@ function defaultStore(): StoreShape {
     // «Chrome aparte» (eliminado); se activa a mano en Ajustes. El esqueleto
     // original de B.4/D1 paso 6 traía `true/true`: corregido en D5 al detectar que contradecía la
     // decisión final del usuario (ver `docs/LOTE-D.md` §2 y `AUDIT.md` §11).
-    prefs: { agentEnabled: { code: false, cowork: false } },
-    sites: { code: [], cowork: [] },
-    denied: { code: [], cowork: [] },
+    prefs: { agentEnabled: { code: false, tasks: false } },
+    sites: { code: [], tasks: [] },
+    denied: { code: [], tasks: [] },
     localOrigins: []
   }
 }
@@ -73,11 +73,11 @@ function normalize(raw: unknown): StoreShape {
     prefs: {
       agentEnabled: {
         code: typeof agentRaw.code === 'boolean' ? agentRaw.code : base.prefs.agentEnabled.code,
-        cowork: typeof agentRaw.cowork === 'boolean' ? agentRaw.cowork : base.prefs.agentEnabled.cowork
+        tasks: typeof agentRaw.tasks === 'boolean' ? agentRaw.tasks : base.prefs.agentEnabled.tasks
       }
     },
-    sites: { code: normalizeSiteList(sitesRaw.code), cowork: normalizeSiteList(sitesRaw.cowork) },
-    denied: { code: normalizeStringList(deniedRaw.code), cowork: normalizeStringList(deniedRaw.cowork) },
+    sites: { code: normalizeSiteList(sitesRaw.code), tasks: normalizeSiteList(sitesRaw.tasks) },
+    denied: { code: normalizeStringList(deniedRaw.code), tasks: normalizeStringList(deniedRaw.tasks) },
     localOrigins: normalizeStringList(o.localOrigins)
   }
 }

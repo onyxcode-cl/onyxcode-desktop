@@ -5,10 +5,10 @@
  */
 import type { BrowserSite } from './ipc-cowork'
 
-export type BrowserProduct = 'code' | 'cowork'
+export type BrowserProduct = 'code' | 'tasks'
 
 /** Dueño de una superficie de navegador: una tarea de Code (carpeta) o de Cowork (carpeta). */
-export type BrowserOwner = { kind: 'code'; directory: string } | { kind: 'cowork'; folder: string }
+export type BrowserOwner = { kind: 'code'; directory: string } | { kind: 'tasks'; folder: string }
 
 export interface BrowserRect {
   x: number
@@ -82,7 +82,7 @@ export interface DevServerCandidate {
 }
 
 export interface BrowserPrefs {
-  agentEnabled: { code: boolean; cowork: boolean }
+  agentEnabled: { code: boolean; tasks: boolean }
 }
 
 export interface BrowserSitesState {
@@ -126,7 +126,7 @@ export interface BrowserInvokeContract {
   'browser:openExternal': { req: { owner: BrowserOwner; tabId: string }; res: void }
   'browser:devServers': { req: { directory: string }; res: DevServerCandidate[] }
   'browser:sites:get': { req: void; res: BrowserSitesState }
-  'browser:sites:setPrefs': { req: { agentEnabled?: { code?: boolean; cowork?: boolean } }; res: BrowserSitesState }
+  'browser:sites:setPrefs': { req: { agentEnabled?: { code?: boolean; tasks?: boolean } }; res: BrowserSitesState }
   'browser:sites:remove': { req: { product: BrowserProduct; site: string }; res: BrowserSitesState }
   'browser:sites:undeny': { req: { product: BrowserProduct; site: string }; res: BrowserSitesState }
   'browser:sites:removeLocal': { req: { origin: string }; res: BrowserSitesState }

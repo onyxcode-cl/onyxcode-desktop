@@ -8,7 +8,7 @@
 import type { ModelRef } from './types'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
-export type ModelMode = 'chat' | 'code' | 'cowork'
+export type ModelMode = 'chat' | 'code' | 'tasks'
 
 export interface ExtrasPrefs {
   /** Acelerador de Electron para Quick Entry (p.ej. "Alt+Space"). Vacío = desactivado. */

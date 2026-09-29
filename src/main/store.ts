@@ -62,14 +62,14 @@ function normalize(s: Settings): Settings {
   const recentFolders = Array.isArray(s.recentFolders)
     ? s.recentFolders.filter((p): p is string => typeof p === 'string').slice(0, MAX_RECENT)
     : []
-  const coworkGlobalInstructions = typeof s.coworkGlobalInstructions === 'string' ? s.coworkGlobalInstructions.slice(0, 20_000) : ''
+  const tasksGlobalInstructions = typeof s.tasksGlobalInstructions === 'string' ? s.tasksGlobalInstructions.slice(0, 20_000) : ''
   const onboarded = s.onboarded === true
   // Solo rutas absolutas sin bytes nulos; el resto se descarta (vuelve la detección automática).
   const opencodeBin =
     typeof s.opencodeBin === 'string' && s.opencodeBin.length <= 4096 && isAbsolute(s.opencodeBin) && !s.opencodeBin.includes('\0')
       ? s.opencodeBin
       : ''
-  return { defaultModel, theme, recentFolders, coworkGlobalInstructions, onboarded, opencodeBin }
+  return { defaultModel, theme, recentFolders, tasksGlobalInstructions, onboarded, opencodeBin }
 }
 
 export const settingsStore = new SettingsStore()

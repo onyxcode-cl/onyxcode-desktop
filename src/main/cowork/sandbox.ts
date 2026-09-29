@@ -6,7 +6,7 @@
  * el perfil (ver `sandbox-profile.ts`: qué se puede escribir/leer/ejecutar).
  *
  * Aislamiento de OpenCode (AUDIT.md S1): el servidor sandboxeado usa sus propios
- * XDG_CONFIG/DATA/CACHE/STATE_HOME en `userData/cowork-sandbox/<hash>/` (DB, logs, binarios de
+ * XDG_CONFIG/DATA/CACHE/STATE_HOME en `userData/tasks-sandbox/<hash>/` (DB, logs, binarios de
  * LSP, cachés de npm/bun/pip), así que no puede tocar la config/plugins globales de OpenCode que
  * carga el sidecar principal SIN sandbox. Las credenciales de proveedores se le pasan por
  * `OPENCODE_AUTH_CONTENT` (OpenCode lo prefiere a `auth.json`, verificado en 1.18.32): el
@@ -60,7 +60,7 @@ function readProviderAuth(): Record<string, ProviderAuthEntry> | null {
 }
 
 export interface SandboxIsolation {
-  /** Directorio privado del servidor (userData/cowork-sandbox/<hash>). */
+  /** Directorio privado del servidor (userData/tasks-sandbox/<hash>). */
   privateDir: string
   /** userData de la app (lectura denegada dentro del sandbox salvo privateDir/readOnly). */
   userData: string

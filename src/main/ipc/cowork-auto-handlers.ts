@@ -15,13 +15,13 @@ export function registerCoworkAutoHandlers(ctx: CoworkIpcContext): CoworkSubmodu
   const { handle, send, cowork, computer } = ctx
 
   const approver = createAutoApprover({
-    file: join(app.getPath('userData'), 'cowork-auto.json'),
+    file: join(app.getPath('userData'), 'tasks-auto.json'),
     // MCP del usuario marcados "Disponible en Cowork" y activos (nunca `computer`/`browser`, que no
     // pasan por `coworkMcpPrefs`).
     mcpServers: () =>
       coworkMcpPrefs
         .list()
-        .filter((m) => m.cowork && m.enabled)
+        .filter((m) => m.tasks && m.enabled)
         .map((m) => m.name),
     servers: () => cowork.liveServers(),
     policyDisabled: () => loadManagedPolicy()?.disableAutoMode === true,

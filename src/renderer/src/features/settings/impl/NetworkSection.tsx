@@ -18,7 +18,7 @@ export const CUSTOM_HOSTS_BLOCKED_MESSAGE = 'Tu organización no permite añadir
 
 /** Servidores MCP «Disponible en Tareas» que aportan hosts a la red (informativo). */
 export function mcpHostContributors(list: CoworkMcpInfo[]): CoworkMcpInfo[] {
-  return list.filter((m) => m.cowork && m.hosts.length > 0)
+  return list.filter((m) => m.tasks && m.hosts.length > 0)
 }
 
 /** Traduce un rechazo de `networkSetHost('allow')` por política al mensaje en español. */

@@ -120,7 +120,7 @@ export interface CoworkConn {
 export async function connectCowork(app: E2EApp, folder: string): Promise<{ conn: CoworkConn; fake: FakeClient }> {
   const { page, electronApp } = app
   await stubDialog(electronApp, { openPaths: [folder] })
-  await gotoMode(page, MODE_LABELS.cowork)
+  await gotoMode(page, MODE_LABELS.tasks)
   await page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await page.getByRole('button', { name: 'Permitir' }).click()
   await expect.poll(() => storeState(page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')

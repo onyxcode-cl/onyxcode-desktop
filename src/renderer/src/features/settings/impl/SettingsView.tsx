@@ -28,17 +28,18 @@ import { GeneralSection } from './GeneralSection'
 import { McpSection } from './McpSection'
 import { ModelsSection } from './ModelsSection'
 import { NetworkSection } from './NetworkSection'
+import { LEGACY_MODE } from '../../../../../main/migrations/legacy-names'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
 export type SettingsSectionId =
-  'general' | 'models' | 'mcp' | 'cowork' | 'network' | 'computer' | 'automode' | 'browser' | 'usage' | 'shortcuts' | 'about'
+  'general' | 'models' | 'mcp' | 'tasks' | 'network' | 'computer' | 'automode' | 'browser' | 'usage' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
   { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
-  { id: 'cowork', label: MODE_LABELS.cowork, icon: Users, View: CoworkSection },
+  { id: 'tasks', label: MODE_LABELS.tasks, icon: Users, View: CoworkSection },
   { id: 'network', label: UI_LABELS.network, icon: Globe, View: NetworkSection },
   { id: 'computer', label: UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
   { id: 'automode', label: UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
@@ -54,6 +55,7 @@ function initialSection(): SettingsSectionId {
   try {
     const v = localStorage.getItem(KEY)
     if (SECTIONS.some((s) => s.id === v)) return v as SettingsSectionId
+    if (v === LEGACY_MODE) return 'tasks'
   } catch {
     // sin storage
   }

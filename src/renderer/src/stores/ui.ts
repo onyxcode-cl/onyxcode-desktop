@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ModeId } from '@shared/types'
+import { LEGACY_MODE } from '../../../main/migrations/legacy-names'
 
 interface UiState {
   mode: ModeId
@@ -17,7 +18,8 @@ const MODE_KEY = 'ui.mode'
 function initialMode(): ModeId {
   try {
     const m = localStorage.getItem(MODE_KEY)
-    if (m === 'chat' || m === 'code' || m === 'cowork' || m === 'routines') return m
+    if (m === 'chat' || m === 'code' || m === 'tasks' || m === 'routines') return m
+    if (m === LEGACY_MODE) return 'tasks'
   } catch {
     // sin storage
   }

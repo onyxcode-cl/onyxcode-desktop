@@ -105,7 +105,7 @@ const EMPTY: MessageEntry[] = []
 const EMPTY_FILES: CoworkDeliverable[] = []
 
 /** Ancho del `aside` cuando la pestaña activa es «Navegador» (persistido; Progreso queda fijo). */
-const ASIDE_BROWSER_WIDTH_KEY = 'cowork.browserWidth'
+const ASIDE_BROWSER_WIDTH_KEY = 'tasks.browserWidth'
 
 function readAsideBrowserWidth(): number {
   try {
@@ -336,7 +336,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   const [browserMounted, setBrowserMounted] = useState(false)
   const [browserWidth, setBrowserWidth] = useState(readAsideBrowserWidth)
   const asideDrag = useRef<{ x: number; w: number } | null>(null)
-  const browserOwner: BrowserOwner | null = folder ? { kind: 'cowork', folder } : null
+  const browserOwner: BrowserOwner | null = folder ? { kind: 'tasks', folder } : null
 
   /** «Añadir al chat» del navegador integrado: inserta el texto en el compositor (v1 sin imagen). */
   const addPageToComposer = (item: BrowserToChat): void => {
@@ -434,7 +434,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   useEffect(() => {
     if (!hasBrowserBridge()) return
     return onBrowser('browser:reveal', (ev) => {
-      if (ev.owner.kind !== 'cowork' || ev.owner.folder !== useCowork.getState().folder) return
+      if (ev.owner.kind !== 'tasks' || ev.owner.folder !== useCowork.getState().folder) return
       setPanelOpen(true)
       setAsideTab('browser')
     })
@@ -444,7 +444,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   useEffect(() => {
     if (!hasBrowserBridge()) return
     return onBrowser('browser:toChat', (item) => {
-      if (item.owner.kind !== 'cowork' || item.owner.folder !== useCowork.getState().folder) return
+      if (item.owner.kind !== 'tasks' || item.owner.folder !== useCowork.getState().folder) return
       addPageToComposer(item)
     })
   }, [])
@@ -771,7 +771,7 @@ export function CoworkWorkspace(): React.JSX.Element {
           </div>
           {browserOwner && browserMounted && (
             <div className={`min-h-0 flex-1 ${asideTab === 'browser' ? 'flex flex-col' : 'hidden'}`}>
-              <BrowserPanel owner={browserOwner} product="cowork" visible={asideTab === 'browser'} onAddToChat={addPageToComposer} />
+              <BrowserPanel owner={browserOwner} product="tasks" visible={asideTab === 'browser'} onAddToChat={addPageToComposer} />
             </div>
           )}
         </aside>

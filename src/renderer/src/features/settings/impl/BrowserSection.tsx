@@ -20,7 +20,7 @@ import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 
-const PRODUCT_LABEL: Record<BrowserProduct, string> = { code: 'Code', cowork: MODE_LABELS.cowork }
+const PRODUCT_LABEL: Record<BrowserProduct, string> = { code: 'Code', tasks: MODE_LABELS.tasks }
 
 function hasBrowserBridge(): boolean {
   return !!(window as unknown as { api?: { browser?: unknown } }).api?.browser
@@ -94,7 +94,7 @@ export function BrowserSection(): React.JSX.Element {
     run(`clearData:${product}`, () => bw('browser:clearData', { product }))
   }
 
-  const products: BrowserProduct[] = ['code', 'cowork']
+  const products: BrowserProduct[] = ['code', 'tasks']
 
   return (
     <div>
@@ -121,7 +121,7 @@ export function BrowserSection(): React.JSX.Element {
               </span>
             }
             description={
-              product === 'cowork'
+              product === 'tasks'
                 ? 'Disponible en Sandbox y en Control total, con permiso previo por sitio. Desactivado por defecto.'
                 : 'El agente pide permiso antes de abrir cada sitio nuevo. Desactivado por defecto.'
             }

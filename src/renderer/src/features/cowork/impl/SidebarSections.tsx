@@ -148,7 +148,7 @@ export function pinnedEntries(taskMeta: Record<string, CoworkTaskMeta>, sessions
 /** Rutinas programadas de Cowork y activas, por próxima ejecución (las que no la tienen, al final). */
 export function upcomingRoutines(routines: ScheduledRoutine[]): ScheduledRoutine[] {
   return routines
-    .filter((r) => r.mode === 'cowork' && r.enabled)
+    .filter((r) => r.mode === 'tasks' && r.enabled)
     .sort((a, b) => (a.nextRun ?? Infinity) - (b.nextRun ?? Infinity) || a.name.localeCompare(b.name, 'es'))
 }
 

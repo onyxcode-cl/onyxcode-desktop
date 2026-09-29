@@ -18,7 +18,7 @@ import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 const MODES: { id: ModelMode; label: string; description: string }[] = [
   { id: 'chat', label: 'Chat', description: 'Conversaciones generales.' },
   { id: 'code', label: 'Code', description: 'Agente de programación sobre una carpeta.' },
-  { id: 'cowork', label: MODE_LABELS.cowork, description: 'Tareas autónomas sobre documentos.' }
+  { id: 'tasks', label: MODE_LABELS.tasks, description: 'Tareas autónomas sobre documentos.' }
 ]
 
 interface ProviderCatalog {

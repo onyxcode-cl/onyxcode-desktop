@@ -103,7 +103,7 @@ function hostOfTab(tab: BrowserTab | null): string {
 // ───────────────────────────── ritmo (B.6 punto 9) ─────────────────────────────
 
 function ownerKey(actor: AgentActor): string {
-  return actor.owner.kind === 'code' ? `code:${actor.owner.directory}` : `cowork:${actor.owner.folder}`
+  return actor.owner.kind === 'code' ? `code:${actor.owner.directory}` : `tasks:${actor.owner.folder}`
 }
 
 const lastInputAt = new Map<string, number>()

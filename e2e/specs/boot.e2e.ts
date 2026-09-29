@@ -6,7 +6,7 @@ import { expectAttr, expectCount, expectVisible } from '../lib/wait'
 
 const app = useApp()
 
-const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.cowork, MODE_LABELS.routines] as const
+const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines] as const
 const SETTINGS = ['General', 'Modelos', 'MCP', UI_LABELS.tasksMode, UI_LABELS.network, UI_LABELS.computer, UI_LABELS.autoMode, 'Navegador', 'Uso', 'Atajos', 'Acerca de']
 
 describe(`arranque (${MODE})`, () => {

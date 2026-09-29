@@ -141,7 +141,7 @@ interface CoworkState {
   set: (patch: Partial<CoworkState>) => void
 }
 
-const PINNED_KEY = 'cowork.pinned'
+const PINNED_KEY = 'tasks.pinned'
 
 function readPinned(): Record<string, true> {
   try {
@@ -175,7 +175,7 @@ function derivePinned(taskMeta: Record<string, CoworkTaskMeta>): Record<string, 
   return pinned
 }
 
-const PANEL_KEY = 'cowork.panelOpen'
+const PANEL_KEY = 'tasks.panelOpen'
 
 function readPanelOpen(): boolean {
   try {
@@ -477,8 +477,8 @@ export function markUnread(sessionID: string): void {
   useCowork.setState((s) => ({ unseen: { ...s.unseen, [sessionID]: true } }))
 }
 
-const LAST_FOLDER_KEY = 'cowork.lastFolder'
-const FULL_ACCESS_KEY = 'cowork.fullAccess'
+const LAST_FOLDER_KEY = 'tasks.lastFolder'
+const FULL_ACCESS_KEY = 'tasks.fullAccess'
 let stopStream: (() => void) | null = null
 let deliverablesTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -555,7 +555,7 @@ export async function refreshDeliverables(sessionID?: string): Promise<void> {
 
 /**
  * Notificación nativa (proceso principal, ver `lib/notify.ts`): un clic restaura/enfoca la
- * ventana y reenvía `app:openTarget` (mode 'cowork', id de la tarea raíz, modo de acceso), que
+ * ventana y reenvía `app:openTarget` (mode 'tasks', id de la tarea raíz, modo de acceso), que
  * `App.tsx` usa para cambiar de modo y seleccionar la tarea. Respeta `prefs.notify` por tipo.
  */
 export type CoworkNotifyKind = 'done' | 'error' | 'approval' | 'question'
@@ -563,7 +563,7 @@ export type CoworkNotifyKind = 'done' | 'error' | 'approval' | 'question'
 export function notifyTask(sessionID: string, kind: CoworkNotifyKind, title: string, body: string): void {
   const { folder, conn, prefs } = useCowork.getState()
   if (!(prefs?.notify ?? DEFAULT_COWORK_PREFS.notify)[kind]) return
-  sendNotification(title, body, { mode: 'cowork', id: sessionID, directory: folder ?? undefined, fullAccess: conn?.fullAccess === true })
+  sendNotification(title, body, { mode: 'tasks', id: sessionID, directory: folder ?? undefined, fullAccess: conn?.fullAccess === true })
 }
 
 export function rootTaskId(sessionID: string): string {
@@ -1168,7 +1168,7 @@ export async function loadPolicy(): Promise<void> {
 
 /** Modelo de la tarea: el elegido para ella o, si no hay, el configurado para el modo Cowork. */
 export function currentCoworkModel(): ModelRef {
-  return useCowork.getState().taskModel ?? resolveModelForMode('cowork')
+  return useCowork.getState().taskModel ?? resolveModelForMode('tasks')
 }
 
 /** Esfuerzo (variante) elegido para la tarea; undefined = el predeterminado del modelo. */
@@ -1186,7 +1186,7 @@ export function setTaskModel(m: ModelRef): void {
   useCowork.setState((s) => ({ taskModel: m, taskVariant: changed ? null : s.taskVariant }))
   try {
     const extras = useExtrasPrefs.getState()
-    void extras.update({ modelsByMode: { ...extras.prefs.modelsByMode, cowork: m } }).catch(() => undefined)
+    void extras.update({ modelsByMode: { ...extras.prefs.modelsByMode, tasks: m } }).catch(() => undefined)
   } catch {
     // sin puente "extras": el modelo vale solo para esta sesión de la app
   }

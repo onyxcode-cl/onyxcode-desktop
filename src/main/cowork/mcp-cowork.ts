@@ -6,7 +6,7 @@
  * administra (`readAppMcpConfig()`), se filtran los activos y marcados "Disponible en Cowork" y
  * se devuelven como bloque `mcp` para la config inline (`manager.inlineConfig`).
  *
- * Las marcas propias de Cowork viven en `userData/cowork-mcp.json`
+ * Las marcas propias de Cowork viven en `userData/tasks-mcp.json`
  * (`{ servers: { <nombre>: { cowork, askEachTool } } }`). NUNCA se escribe en
  * `userData/opencode/opencode.json`: OpenCode valida ese archivo de forma estricta.
  */
@@ -28,7 +28,7 @@ export interface CoworkMcpContribution {
 }
 
 interface McpFlags {
-  cowork: boolean
+  tasks: boolean
   askEachTool: boolean
 }
 
@@ -55,7 +55,7 @@ export const MCP_ENV_WRAPPER: readonly string[] = [
 ]
 
 function flagsFile(): string {
-  return join(app.getPath('userData'), 'cowork-mcp.json')
+  return join(app.getPath('userData'), 'tasks-mcp.json')
 }
 
 function readFlags(): Persisted {
@@ -68,11 +68,11 @@ function readFlags(): Persisted {
       for (const [name, v] of Object.entries(raw.servers)) {
         if (!v || typeof v !== 'object') continue
         const o = v as Partial<McpFlags>
-        out.servers[name] = { cowork: o.cowork === true, askEachTool: o.askEachTool === true }
+        out.servers[name] = { tasks: o.tasks === true, askEachTool: o.askEachTool === true }
       }
     }
   } catch (err) {
-    console.error('[cowork] cowork-mcp.json inválido:', err)
+    console.error('[cowork] tasks-mcp.json inválido:', err)
   }
   return out
 }
@@ -101,7 +101,7 @@ function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): Cow
     name,
     type: entry.type,
     enabled: entry.enabled !== false,
-    cowork: flags?.cowork === true,
+    tasks: flags?.tasks === true,
     askEachTool: flags?.askEachTool === true,
     hosts: host ? [host] : [],
     oauth: usesOAuth(entry)
@@ -125,7 +125,7 @@ export function coworkMcpContribution(opts: { sandboxed: boolean }): CoworkMcpCo
   const hosts = new Set<string>()
   for (const [name, entry] of Object.entries(servers)) {
     const f = flags[name]
-    if (!f?.cowork || entry.enabled === false) continue
+    if (!f?.tasks || entry.enabled === false) continue
     if (entry.type === 'local') {
       out.mcp[name] = {
         type: 'local',
@@ -168,14 +168,14 @@ export class CoworkMcpPrefs {
       .map(([name, entry]) => infoOf(name, entry, flags[name]))
   }
 
-  set(name: string, patch: { cowork?: boolean; askEachTool?: boolean }): CoworkMcpInfo[] {
+  set(name: string, patch: { tasks?: boolean; askEachTool?: boolean }): CoworkMcpInfo[] {
     const servers = readAppMcpConfig().servers
     if (!(name in servers)) throw new Error(`No existe el servidor MCP "${name}".`)
     const data = readFlags()
     // Limpia marcas de servidores que ya no existen.
     for (const n of Object.keys(data.servers)) if (!(n in servers)) delete data.servers[n]
-    const cur = data.servers[name] ?? { cowork: false, askEachTool: false }
-    if (typeof patch.cowork === 'boolean') cur.cowork = patch.cowork
+    const cur = data.servers[name] ?? { tasks: false, askEachTool: false }
+    if (typeof patch.tasks === 'boolean') cur.tasks = patch.tasks
     if (typeof patch.askEachTool === 'boolean') cur.askEachTool = patch.askEachTool
     data.servers[name] = cur
     writeFlags(data)

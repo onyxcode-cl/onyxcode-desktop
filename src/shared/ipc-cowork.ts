@@ -298,7 +298,7 @@ export interface KeepAwakeState {
 
 // ───────────────────────────── Rutinas ─────────────────────────────
 
-export type RoutineMode = 'chat' | 'cowork' | 'code'
+export type RoutineMode = 'chat' | 'tasks' | 'code'
 
 /** Cada ejecución empieza una tarea nueva ('fresh') o continúa la misma ('continue'). */
 export type RoutineSessionMode = 'fresh' | 'continue'
@@ -524,7 +524,7 @@ export const DEFAULT_COWORK_PREFS: CoworkPrefs = {
 // ───────────────────────────── Lote B: almacenamiento ─────────────────────────────
 
 export interface CoworkStorageEntry {
-  /** Clave del directorio `cowork-sandbox/<key>`. */
+  /** Clave del directorio `tasks-sandbox/<key>`. */
   key: string
   /** Carpeta de Cowork asociada (null si ya no se conoce). */
   folder: string | null
@@ -558,7 +558,7 @@ export interface CoworkMcpInfo {
   type: 'local' | 'remote'
   enabled: boolean
   /** Disponible en Cowork. */
-  cowork: boolean
+  tasks: boolean
   /** Preguntar en cada uso de sus herramientas. */
   askEachTool: boolean
   /** Hosts remotos que se suman a la red de Cowork. */
@@ -663,7 +663,7 @@ export type AssistMessage =
 /** Regla del clasificador que aprobó (o hubiera aprobado) algo automáticamente. */
 export type AutoRuleId = 'mcp-readonly' | 'bash-readonly' | 'computer-view'
 
-/** Ajustes persistidos del Modo auto (`userData/cowork-auto.json`). */
+/** Ajustes persistidos del Modo auto (`userData/tasks-auto.json`). */
 export interface AutoModeSettings {
   enabled: boolean
   folders: string[]
@@ -887,7 +887,7 @@ export interface CoworkInvokeContract {
   'tasks:agentsMd:get': { req: { folder: string }; res: CoworkAgentsMd }
   'tasks:agentsMd:save': { req: { folder: string; content: string }; res: CoworkAgentsMd }
   'tasks:mcp:list': { req: void; res: CoworkMcpInfo[] }
-  'tasks:mcp:set': { req: { name: string; cowork?: boolean; askEachTool?: boolean }; res: CoworkMcpInfo[] }
+  'tasks:mcp:set': { req: { name: string; tasks?: boolean; askEachTool?: boolean }; res: CoworkMcpInfo[] }
   'tasks:rules:list': { req: { folder?: string }; res: CoworkPermissionRule[] }
   'tasks:rules:add': { req: { folder: string; permission: string; patterns: string[] }; res: CoworkPermissionRule[] }
   'tasks:rules:remove': { req: { id: string }; res: CoworkPermissionRule[] }

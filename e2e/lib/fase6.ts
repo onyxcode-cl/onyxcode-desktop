@@ -155,7 +155,7 @@ export interface CoworkConn {
 /** Elige la carpeta en Tareas por la UI (diálogo stubbeado), acepta el permiso y espera a `phase === 'ready'`. */
 export async function connectCoworkFolder(app: E2EApp, folder: string): Promise<{ conn: CoworkConn; fake: FakeClient }> {
   await stubDialog(app.electronApp, { openPaths: [folder] })
-  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.cowork }).click()
+  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.tasks }).click()
   await app.page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await app.page.getByRole('button', { name: 'Permitir' }).click()
   await expect.poll(() => storeState(app.page, 'useCowork', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')

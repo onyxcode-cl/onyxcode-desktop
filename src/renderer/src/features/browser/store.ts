@@ -8,7 +8,7 @@ import type { BrowserApprovalRequest, BrowserOwner, BrowserToChat } from '@share
 
 /** Clave estable para agrupar estado por dueño (carpeta de Code o de Cowork). */
 export function ownerKey(owner: BrowserOwner): string {
-  return owner.kind === 'code' ? `code:${owner.directory}` : `cowork:${owner.folder}`
+  return owner.kind === 'code' ? `code:${owner.directory}` : `tasks:${owner.folder}`
 }
 
 export function sameOwner(a: BrowserOwner, b: BrowserOwner): boolean {

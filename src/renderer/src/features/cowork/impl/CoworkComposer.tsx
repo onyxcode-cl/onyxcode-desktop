@@ -58,7 +58,7 @@ export const CoworkComposer = forwardRef<CoworkComposerHandle, Props>(function C
   // Suscripción reactiva al modelo/esfuerzo de la tarea; el valor sale de las funciones del store.
   useCowork((s) => s.taskModel)
   useCowork((s) => s.taskVariant)
-  useModeModel('cowork')
+  useModeModel('tasks')
   const model = currentCoworkModel()
   const variant = currentCoworkVariant()
   const [attaching, setAttaching] = useState(false)

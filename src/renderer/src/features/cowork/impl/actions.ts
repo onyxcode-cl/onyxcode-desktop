@@ -358,7 +358,7 @@ function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?:
 function buildSystemPrompt(): string | undefined {
   const { project, memory } = useCowork.getState()
   return buildCoworkSystemPrompt({
-    globalInstructions: useSettings.getState().settings.coworkGlobalInstructions,
+    globalInstructions: useSettings.getState().settings.tasksGlobalInstructions,
     project,
     memory: memory?.content,
     folders: extraFolders()
@@ -403,7 +403,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
       title: rawText.slice(0, 80),
       model: { id: useModel.modelID, providerID: useModel.providerID, ...(variant ? { variant } : {}) },
       metadata: {
-        mode: 'cowork',
+        mode: 'tasks',
         fullAccess: useCowork.getState().conn?.fullAccess === true,
         ...(folders.length > 0 ? { folders: folders.map((f) => ({ path: f.path, mode: f.mode })) } : {})
       }
@@ -543,7 +543,7 @@ export async function scheduleActiveTask(): Promise<void> {
     {
       name: title.slice(0, 200),
       prompt: prompt || title,
-      mode: 'cowork',
+      mode: 'tasks',
       folder,
       model,
       schedule: { kind: 'daily', time: '09:00' },
@@ -881,7 +881,7 @@ export async function moveTaskToGroup(sessionId: string, group: string | null): 
 /** Abre una tarea de cualquier carpeta/modo (vistas «Fijadas»/«Activas»): cambia a Cowork y conecta si hace falta. */
 export async function openTaskAnywhere(t: { sessionId: string; folder: string; fullAccess: boolean }): Promise<void> {
   useUi.getState().openSettings(false)
-  useUi.getState().setMode('cowork')
+  useUi.getState().setMode('tasks')
   const st = useCowork.getState()
   if (st.folder !== t.folder || st.fullAccess !== t.fullAccess || st.phase !== 'ready') {
     rememberFullAccess(t.folder, t.fullAccess)

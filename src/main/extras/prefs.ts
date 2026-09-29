@@ -6,7 +6,7 @@ import type { ModelRef } from '@shared/types'
 
 type Listener = (prefs: ExtrasPrefs) => void
 
-const MODES: readonly ModelMode[] = ['chat', 'code', 'cowork']
+const MODES: readonly ModelMode[] = ['chat', 'code', 'tasks']
 
 function isModelRef(v: unknown): v is ModelRef {
   return !!v && typeof v === 'object' && typeof (v as ModelRef).providerID === 'string' && typeof (v as ModelRef).modelID === 'string'

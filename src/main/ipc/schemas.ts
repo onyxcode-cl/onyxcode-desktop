@@ -31,7 +31,7 @@ const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
 const pathReq = obj({ path: absPath })
 const openFolderOpts = optional(obj({ title: optional(shortText), defaultPath: optional(absPath) }))
-const notifyTarget = obj({ mode: literal('code', 'cowork'), id, directory: optional(absPath), fullAccess: optional(bool) })
+const notifyTarget = obj({ mode: literal('code', 'tasks'), id, directory: optional(absPath), fullAccess: optional(bool) })
 /**
  * Como `optional(nullable(x))` pero CONSERVANDO `null` (`optional` lo colapsa a `undefined`):
  * necesario cuando `null` significa "quitar" (p.ej. `group: null`).
@@ -54,7 +54,7 @@ const folderMode = literal('rw', 'ro')
 /** Grupo de tareas: `null` = sin grupo. */
 const group = nullable(str({ max: 80 }))
 const links = arr(str({ max: 2048, pattern: /^https?:\/\//i }), 50)
-/** Clave del directorio `cowork-sandbox/<key>` (hash hexadecimal). */
+/** Clave del directorio `tasks-sandbox/<key>` (hash hexadecimal). */
 const storageKey = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const hhmm = str({ pattern: /^\d{1,2}:\d{2}$/ })
 const schedule = tagged('kind', {
@@ -98,12 +98,12 @@ const tabId = str({ max: 34, min: 9, pattern: /^t[a-f0-9]{8,32}$/ })
 const browserInput = str({ max: 2048 })
 const browserOwner = tagged('kind', {
   code: obj({ kind: literal('code'), directory: absPath }),
-  cowork: obj({ kind: literal('cowork'), folder: absPath })
+  tasks: obj({ kind: literal('tasks'), folder: absPath })
 })
 const browserRectCoord = num({ min: -20_000, max: 20_000 })
 const browserRect = obj({ x: browserRectCoord, y: browserRectCoord, width: browserRectCoord, height: browserRectCoord })
 const browserDecision = literal('task', 'always', 'deny', 'allow')
-const browserProduct = literal('code', 'cowork')
+const browserProduct = literal('code', 'tasks')
 const localOrigin = str({ max: 261, min: 1, pattern: /^(localhost|127\.0\.0\.1|\[::1\]):\d{1,5}$/ })
 const browserToChat = obj({
   owner: browserOwner,
@@ -135,7 +135,7 @@ const BROWSER_SCHEMAS: { [C in BrowserInvokeChannel]: Validator<BrowserInvokeCon
   'browser:openExternal': obj({ owner: browserOwner, tabId }),
   'browser:devServers': obj({ directory: absPath }),
   'browser:sites:get': none,
-  'browser:sites:setPrefs': obj({ agentEnabled: optional(partial({ code: bool, cowork: bool })) }),
+  'browser:sites:setPrefs': obj({ agentEnabled: optional(partial({ code: bool, tasks: bool })) }),
   'browser:sites:remove': obj({ product: browserProduct, site }),
   'browser:sites:undeny': obj({ product: browserProduct, site }),
   'browser:sites:removeLocal': obj({ origin: localOrigin }),
@@ -158,7 +158,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     defaultModel: modelRef,
     theme: literal('system', 'light', 'dark'),
     recentFolders: arr(absPath, 50),
-    coworkGlobalInstructions: str({ max: 20_000 }),
+    tasksGlobalInstructions: str({ max: 20_000 }),
     onboarded: bool
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
@@ -222,7 +222,7 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
     id: optional(id),
     name: str({ max: 200, min: 1 }),
     prompt: str({ max: 100_000, min: 1 }),
-    mode: literal('chat', 'cowork', 'code'),
+    mode: literal('chat', 'tasks', 'code'),
     folder: optional(nullable(absPath)),
     model: modelRef,
     schedule,
@@ -312,7 +312,7 @@ const COWORK_SCHEMAS: { [C in CoworkInvokeChannel]: Validator<CoworkRequest<C>> 
   'tasks:agentsMd:get': folderReq,
   'tasks:agentsMd:save': obj({ folder: absPath, content: str({ max: 200_000 }) }),
   'tasks:mcp:list': none,
-  'tasks:mcp:set': obj({ name: mcpName, cowork: optional(bool), askEachTool: optional(bool) }),
+  'tasks:mcp:set': obj({ name: mcpName, tasks: optional(bool), askEachTool: optional(bool) }),
   'tasks:rules:list': (v, p) => optional(obj({ folder: optional(absPath) }))(v, p) ?? {},
   'tasks:rules:add': obj({ folder: absPath, permission: permName, patterns: arr(pattern, 50) }),
   'tasks:rules:remove': obj({ id }),
@@ -356,7 +356,7 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:getPrefs': none,
   'extras:setPrefs': partial({
     quickEntryShortcut: str({ max: 100 }),
-    modelsByMode: partial({ chat: modelRef, code: modelRef, cowork: modelRef }),
+    modelsByMode: partial({ chat: modelRef, code: modelRef, tasks: modelRef }),
     showTray: bool,
     notificationsEnabled: bool,
     soundEnabled: bool

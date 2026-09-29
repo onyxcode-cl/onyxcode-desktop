@@ -37,7 +37,7 @@ export async function hook<T = unknown>(page: Page, name: 'openChatSession' | 'n
   return page.evaluate(async ([n, a]) => (window as any).__onyxE2E[n](...(a as unknown[])), [name, args] as const) as Promise<T>
 }
 
-export async function setMode(page: Page, mode: 'chat' | 'code' | 'cowork' | 'routines'): Promise<void> {
+export async function setMode(page: Page, mode: 'chat' | 'code' | 'tasks' | 'routines'): Promise<void> {
   await storeCall(page, 'useUi', 'setMode', mode)
 }
 

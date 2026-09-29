@@ -6,7 +6,7 @@
  * defecto = kill switch) Y ADEMÁS la carpeta o la tarea concreta. `policy.disableAutoMode` (gestionada
  * por la organización) desactiva todo sin tocar los ajustes del usuario.
  *
- * Persistencia: `userData/cowork-auto.json`. Nunca escribe si `policyDisabled()` es true (solo lee
+ * Persistencia: `userData/tasks-auto.json`. Nunca escribe si `policyDisabled()` es true (solo lee
  * para poder mostrar el banner), y nunca aprueba tampoco.
  */
 import { randomUUID } from 'node:crypto'
@@ -35,7 +35,7 @@ interface Persisted {
 }
 
 export interface AutoApproverDeps {
-  /** Ruta de `userData/cowork-auto.json`. */
+  /** Ruta de `userData/tasks-auto.json`. */
   file: string
   now?: () => number
   fetch?: typeof fetch
@@ -116,7 +116,7 @@ export class AutoApprover {
         }
       }
     } catch (err) {
-      this.deps.log?.('[cowork] cowork-auto.json inválido; se reinicia:', err)
+      this.deps.log?.('[cowork] tasks-auto.json inválido; se reinicia:', err)
       data = defaultPersisted()
     }
     this.data = data

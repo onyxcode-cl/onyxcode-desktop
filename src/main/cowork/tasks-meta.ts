@@ -1,5 +1,5 @@
 /**
- * Metadatos de tareas de Cowork que main persiste (`userData/cowork-tasks.json`): fijada, grupo y
+ * Metadatos de tareas de Cowork que main persiste (`userData/tasks-meta.json`): fijada, grupo y
  * título, para poder listar tareas de todas las carpetas (Fijadas / Activas) sin abrir sus
  * servidores. Solo se guardan las que tienen algo que recordar (fijada o con grupo). Sin
  * dependencias de Electron: la ruta del archivo la pone quien lo crea.
@@ -64,7 +64,7 @@ export class CoworkTasksStore {
         }
       }
     } catch (err) {
-      console.error('[cowork] cowork-tasks.json inválido, empezando vacío:', err)
+      console.error('[cowork] tasks-meta.json inválido, empezando vacío:', err)
     }
     this.cache = map
     return map

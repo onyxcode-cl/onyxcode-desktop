@@ -280,7 +280,7 @@ export function CoworkSection(): React.JSX.Element {
   }, [])
 
   if (!bridge) {
-    return <SectionHeader title={MODE_LABELS.cowork} description="Solo disponible en la app de escritorio." />
+    return <SectionHeader title={MODE_LABELS.tasks} description="Solo disponible en la app de escritorio." />
   }
 
   // ── Carpetas de confianza ──
@@ -412,7 +412,7 @@ export function CoworkSection(): React.JSX.Element {
   return (
     <div>
       <SectionHeader
-        title={MODE_LABELS.cowork}
+        title={MODE_LABELS.tasks}
         description="Carpetas, permisos, notificaciones, servidores y almacenamiento de las tareas."
       />
 

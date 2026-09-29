@@ -1,8 +1,7 @@
 // Datos viejos: arranca la app REAL con un userData sembrado desde `e2e/fixtures/legacy-userdata/` (nombres anteriores del
 // modo Tareas) y comprueba que la migración m001 los pasa a los nombres nuevos sin perder nada.
 //
-// SALTADO: se activa en el paso 3 del plan de renombrado («se activa en el paso 3»), cuando `runMigrations` se conecte al
-// arranque de main. Hasta entonces la app no migra y estas aserciones fallarían. Para activarlo: quitar `.skip`.
+// Activo desde el paso 3 del plan de renombrado: `runMigrations` se llama en el arranque de main (`whenReady`).
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -14,7 +13,7 @@ const json = <T>(userData: string, rel: string): T => JSON.parse(readFileSync(jo
 const backupsOf = (userData: string): string[] =>
   existsSync(join(userData, 'backups')) ? readdirSync(join(userData, 'backups')).filter((n) => n.startsWith('pre-m001-')) : []
 
-describe.skip('datos viejos de userData (se activa en el paso 3)', () => {
+describe('datos viejos de userData', () => {
   let userData = ''
   let app: E2EApp | null = null
   let registryAt = ''

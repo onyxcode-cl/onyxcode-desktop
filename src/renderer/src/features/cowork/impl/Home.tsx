@@ -173,8 +173,8 @@ export const CATEGORIES: HomeCategory[] = [
   }
 ]
 
-const HIDE_KEY = 'cowork.hideSuggestions'
-const ONBOARDED_KEY = 'cowork.onboarded'
+const HIDE_KEY = 'tasks.hideSuggestions'
+const ONBOARDED_KEY = 'tasks.onboarded'
 
 /** Lee un indicador de localStorage ('1' = activo). Sin storage devuelve el valor por defecto. */
 function readFlag(key: string, fallback: boolean): boolean {

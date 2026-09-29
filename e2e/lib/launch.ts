@@ -157,7 +157,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
         defaultModel: { providerID: 'fake', modelID: 'fake-model' },
         theme: 'system',
         recentFolders: [],
-        coworkGlobalInstructions: '',
+        tasksGlobalInstructions: '',
         // Sin el asistente de primer uso (los specs existentes no lo esperan); `onboarding.e2e.ts` lo desactiva.
         onboarded: true,
         ...opts.settings

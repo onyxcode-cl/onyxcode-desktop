@@ -405,7 +405,7 @@ const MODE_INFO: { id: ModeId; icon: React.ReactNode; description: string }[] = 
   { id: 'chat', icon: <MessageSquare size={16} />, description: 'Conversaciones generales con el modelo, sin tocar tus archivos.' },
   { id: 'code', icon: <Code2 size={16} />, description: 'Un agente de programación que trabaja sobre la carpeta de tu proyecto.' },
   {
-    id: 'cowork',
+    id: 'tasks',
     icon: <ListChecks size={16} />,
     description: 'Tareas autónomas sobre tus documentos y carpetas, con permisos que tú apruebas.'
   },

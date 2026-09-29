@@ -1,6 +1,6 @@
 /**
  * Almacenamiento de Cowork: cuánto ocupan los directorios privados del sandbox
- * (`userData/cowork-sandbox/<clave>`, con su `cache/` y `tmp/`) y las capturas temporales de
+ * (`userData/tasks-sandbox/<clave>`, con su `cache/` y `tmp/`) y las capturas temporales de
  * Control total, y cómo limpiarlos. Mide con `/usr/bin/du -sk` (execFile, sin shell). Sin
  * dependencias de Electron: las rutas y `sandboxKey` los inyecta quien lo llama.
  */
@@ -30,7 +30,7 @@ const DU = '/usr/bin/du'
 const KEY_RE = /^[A-Za-z0-9_-]{4,64}$/
 
 function sandboxRoot(env: StorageEnv): string {
-  return join(env.userData, 'cowork-sandbox')
+  return join(env.userData, 'tasks-sandbox')
 }
 
 /** Bytes que ocupa una ruta según `du -sk` (0 si no existe o falla). */

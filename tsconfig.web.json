@@ -9,6 +9,7 @@
     "src/renderer/browser/**/*",
     "src/preload/*.d.ts",
     "src/shared/**/*",
+    "src/main/migrations/legacy-names.ts",
     "src/test/**/*"
   ],
   "compilerOptions": {

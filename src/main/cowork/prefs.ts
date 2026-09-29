@@ -1,5 +1,5 @@
 /**
- * Preferencias de Cowork (`userData/cowork-prefs.json`): auto-archivo, parada por inactividad,
+ * Preferencias de Cowork (`userData/tasks-prefs.json`): auto-archivo, parada por inactividad,
  * máximo de servidores y notificaciones por tipo. Todo valor persistido o recibido se valida y se
  * recorta a su rango; la política gestionada (`maxAutoArchiveDays`) se inyecta como función para
  * que este módulo no dependa de Electron.
@@ -70,7 +70,7 @@ export class CoworkPrefsStore {
     try {
       if (existsSync(this.file)) raw = JSON.parse(readFileSync(this.file, 'utf8'))
     } catch (err) {
-      console.error('[cowork] cowork-prefs.json inválido, usando valores por defecto:', err)
+      console.error('[cowork] tasks-prefs.json inválido, usando valores por defecto:', err)
     }
     this.cache = normalizeCoworkPrefs(raw)
     return this.cache

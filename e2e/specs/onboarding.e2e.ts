@@ -88,7 +88,7 @@ describe('asistente de primer uso', () => {
     await expectVisible(dialog().getByRole('heading', { name: 'Elige tu modelo' }))
     await dialog().getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(dialog().getByRole('heading', { name: 'Los cuatro modos' }))
-    for (const label of [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.cowork, MODE_LABELS.routines]) {
+    for (const label of [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines]) {
       await expectVisible(dialog().getByText(label, { exact: true }))
     }
     await dialog().getByRole('button', { name: 'Continuar' }).click()

@@ -1,5 +1,5 @@
 /**
- * Política de red de Cowork: lista blanca persistida (`userData/cowork-network.json`) que usa
+ * Política de red de Cowork: lista blanca persistida (`userData/tasks-network.json`) que usa
  * `EgressProxy` (`proxy.ts`) para decidir qué hosts puede alcanzar un servidor sandboxeado.
  *
  * Por defecto: el host del proveedor de modelos (necesario para que el agente funcione) y el host
@@ -42,7 +42,7 @@ interface Persisted {
 const DEFAULTS: Persisted = { npmEnabled: false, pypiEnabled: false, webSearchEnabled: true, custom: [], blocked: [] }
 
 function file(): string {
-  return join(app.getPath('userData'), 'cowork-network.json')
+  return join(app.getPath('userData'), 'tasks-network.json')
 }
 
 export class NetworkPolicy {
@@ -66,7 +66,7 @@ export class NetworkPolicy {
         }
       }
     } catch (err) {
-      console.error('[cowork] cowork-network.json inválido:', err)
+      console.error('[cowork] tasks-network.json inválido:', err)
     }
     this.data = data
     return data

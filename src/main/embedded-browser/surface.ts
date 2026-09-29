@@ -49,7 +49,7 @@ export const surfaceEvents = new EventEmitter()
 const tabsById = new Map<string, TabRuntime>()
 
 export function ownerKeyOf(owner: BrowserOwner): string {
-  return owner.kind === 'code' ? `code:${owner.directory}` : `cowork:${owner.folder}`
+  return owner.kind === 'code' ? `code:${owner.directory}` : `tasks:${owner.folder}`
 }
 
 export function tabById(id: string): TabRuntime | undefined {

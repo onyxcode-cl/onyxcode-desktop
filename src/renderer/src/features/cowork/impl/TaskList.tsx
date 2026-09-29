@@ -57,7 +57,7 @@ useSessions.getState().addEvictionListener((evicted) => {
   for (const { id, entries } of evicted) rememberEvictedStatus(id, entries)
 })
 
-const GROUP_MODE_KEY = 'cowork.sidebarGroupMode'
+const GROUP_MODE_KEY = 'tasks.sidebarGroupMode'
 
 function readGroupMode(): GroupMode {
   try {

@@ -37,7 +37,7 @@ export function initDownloads(d: DownloadsDeps): void {
 }
 
 function destinationDir(owner: BrowserOwner): string {
-  if (owner.kind === 'cowork') return join(owner.folder, '.cowork', 'descargas')
+  if (owner.kind === 'tasks') return join(owner.folder, '.cowork', 'descargas')
   return join(homedir(), 'Downloads', APP_NAME)
 }
 

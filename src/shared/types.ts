@@ -1,6 +1,6 @@
 /** Tipos de dominio compartidos entre main, preload y renderer. */
 
-export type ModeId = 'chat' | 'code' | 'cowork' | 'routines'
+export type ModeId = 'chat' | 'code' | 'tasks' | 'routines'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 
@@ -14,7 +14,7 @@ export interface Settings {
   theme: ThemePreference
   recentFolders: string[]
   /** Instrucciones globales aplicadas a todas las tareas de Cowork (además de las del proyecto). */
-  coworkGlobalInstructions: string
+  tasksGlobalInstructions: string
   /** true cuando el asistente de primer uso terminó, se omitió o no hacía falta (todo ya funcionaba). */
   onboarded: boolean
   /** Ruta absoluta del binario de OpenCode elegido por el usuario ('' = detección automática). Solo main la escribe. */
@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultModel: DEFAULT_MODEL,
   theme: 'system',
   recentFolders: [],
-  coworkGlobalInstructions: '',
+  tasksGlobalInstructions: '',
   onboarded: false,
   opencodeBin: ''
 }
@@ -83,7 +83,7 @@ export const CHAT_AGENT = 'chat'
 // ---- Notificaciones nativas + badge del Dock ----
 
 /** Modo al que pertenece la sesión/tarea que originó una notificación. */
-type NotifyMode = 'code' | 'cowork'
+type NotifyMode = 'code' | 'tasks'
 
 /** Dónde abrir al hacer clic en una notificación (o al restaurar desde el Dock). */
 export interface NotifyTarget {

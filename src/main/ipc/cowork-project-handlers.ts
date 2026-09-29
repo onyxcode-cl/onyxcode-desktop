@@ -3,7 +3,7 @@
  * (`tasks:agentsMd:*`, `tasks:mcp:*`, `tasks:rules:*`).
  *
  * - AGENTS.md: la carpeta se valida con `assertInsideApproved` y solo se toca `<carpeta>/AGENTS.md`.
- * - MCP: marcas propias de Cowork en `cowork-mcp.json` (nunca se escribe `opencode.json`).
+ * - MCP: marcas propias de Cowork en `tasks-mcp.json` (nunca se escribe `opencode.json`).
  * - Reglas: "siempre permitir" por carpeta; se aplican al abrir de nuevo la carpeta.
  */
 import { coworkMcpPrefs } from '../cowork/mcp-cowork'
@@ -18,7 +18,7 @@ export function registerCoworkProjectHandlers(ctx: CoworkIpcContext): CoworkSubm
   handle('tasks:agentsMd:save', ({ folder, content }) => saveAgentsMd(cowork.assertInsideApproved(folder), content))
 
   handle('tasks:mcp:list', () => coworkMcpPrefs.list())
-  handle('tasks:mcp:set', ({ name, cowork: inCowork, askEachTool }) => coworkMcpPrefs.set(name, { cowork: inCowork, askEachTool }))
+  handle('tasks:mcp:set', ({ name, tasks: inTasks, askEachTool }) => coworkMcpPrefs.set(name, { tasks: inTasks, askEachTool }))
 
   handle('tasks:rules:list', ({ folder }) => coworkRules.list(folder ? cowork.assertInsideApproved(folder) : undefined))
   handle('tasks:rules:add', ({ folder, permission, patterns }) =>

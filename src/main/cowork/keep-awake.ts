@@ -4,7 +4,7 @@
  * cuando el ajuste está en on Y el renderer o el monitor de main avisan que hay al menos una tarea
  * en curso (OR de ambas señales).
  *
- * El ajuste se persiste en `userData/cowork-keep-awake.json`. El estado "activo ahora mismo"
+ * El ajuste se persiste en `userData/tasks-keep-awake.json`. El estado "activo ahora mismo"
  * vive solo en memoria de este proceso.
  */
 import { powerSaveBlocker, app } from 'electron'
@@ -28,7 +28,7 @@ export class KeepAwakeService {
   private cache: Persisted | null = null
 
   private get file(): string {
-    return join(app.getPath('userData'), 'cowork-keep-awake.json')
+    return join(app.getPath('userData'), 'tasks-keep-awake.json')
   }
 
   private load(): Persisted {
@@ -37,7 +37,7 @@ export class KeepAwakeService {
     try {
       if (existsSync(this.file)) loaded = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
     } catch (err) {
-      console.error('[cowork] cowork-keep-awake.json inválido, usando valores por defecto:', err)
+      console.error('[cowork] tasks-keep-awake.json inválido, usando valores por defecto:', err)
     }
     this.cache = { enabled: typeof loaded.enabled === 'boolean' ? loaded.enabled : DEFAULT.enabled }
     return this.cache

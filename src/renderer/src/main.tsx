@@ -1,3 +1,5 @@
+// Debe ir PRIMERO: migra localStorage antes de que cualquier store lo lea al cargar su módulo.
+import './migrations/local-storage'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { APP_NAME } from '@shared/brand'

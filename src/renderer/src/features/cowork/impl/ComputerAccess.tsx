@@ -351,7 +351,7 @@ export function VisionModelHint(): React.JSX.Element | null {
   const full = useCowork((s) => s.conn?.fullAccess === true)
   // Modelo de la tarea (o el del modo Cowork): nunca el modelo predeterminado de Chat.
   const taskModel = useCowork((s) => s.taskModel)
-  const modeModel = useModeModel('cowork')
+  const modeModel = useModeModel('tasks')
   const model = taskModel ?? modeModel
   const client = useServer((s) => s.client)
   const providers = useProviders((s) => s.providers)

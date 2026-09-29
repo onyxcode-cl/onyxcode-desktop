@@ -6,8 +6,8 @@ import { CoworkSidebar } from './impl/CoworkSidebar'
 import { CoworkWorkspace } from './impl/CoworkWorkspace'
 
 export const coworkMode: ModeDefinition = {
-  id: 'cowork',
-  label: MODE_LABELS.cowork,
+  id: 'tasks',
+  label: MODE_LABELS.tasks,
   icon: Users,
   View: CoworkWorkspace,
   SidebarContent: CoworkSidebar,

@@ -21,7 +21,7 @@ const hooks = {
   useProviders,
   openChatSession,
   newChat,
-  /** Hace que la vista `mode` ('chat' | 'code' | 'cowork' | '*') lance al renderizar; null lo limpia. */
+  /** Hace que la vista `mode` ('chat' | 'code' | 'tasks' | '*') lance al renderizar; null lo limpia. */
   throwIn: (mode: FaultMode): void => setFault(mode)
 }
 

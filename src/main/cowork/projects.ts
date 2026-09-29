@@ -1,6 +1,6 @@
 /**
  * "Proyecto" de Cowork por carpeta: nombre + instrucciones + enlaces + interruptor de memoria, persistidos en
- * `userData/cowork-projects.json`. La memoria (notas que el agente guarda entre tareas) vive
+ * `userData/tasks-projects.json`. La memoria (notas que el agente guarda entre tareas) vive
  * aparte, como archivo de texto dentro de la propia carpeta (`.onyxcode/memoria.md`), para que el
  * usuario pueda verla/editarla con cualquier editor y viaje con la carpeta.
  */
@@ -26,7 +26,7 @@ export class CoworkProjectsStore {
   private data: Persisted | null = null
 
   private get file(): string {
-    return join(app.getPath('userData'), 'cowork-projects.json')
+    return join(app.getPath('userData'), 'tasks-projects.json')
   }
 
   private load(): Persisted {
@@ -40,7 +40,7 @@ export class CoworkProjectsStore {
         }
       }
     } catch (err) {
-      console.error('[cowork] cowork-projects.json inválido:', err)
+      console.error('[cowork] tasks-projects.json inválido:', err)
       data = { projects: [] }
     }
     this.data = data

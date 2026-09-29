@@ -22,7 +22,7 @@ afterAll(() => {
 const DEV = MODE === 'dev'
 
 async function goCowork(app: E2EApp): Promise<void> {
-  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.cowork }).click()
+  await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.tasks }).click()
 }
 
 async function openSettings(app: E2EApp, section: string): Promise<void> {
