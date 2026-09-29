@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { KeyRound, Loader2, RefreshCw, Unplug } from 'lucide-react'
 import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import type { ModelMode } from '@shared/ipc-extras'
+import { MODE_LABELS } from '@shared/labels'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
@@ -16,7 +17,7 @@ import { Badge, Card, ErrorText, Field, Row, SectionHeader, Select, SubTitle, Te
 const MODES: { id: ModelMode; label: string; description: string }[] = [
   { id: 'chat', label: 'Chat', description: 'Conversaciones generales.' },
   { id: 'code', label: 'Code', description: 'Agente de programación sobre una carpeta.' },
-  { id: 'cowork', label: 'Cowork', description: 'Tareas autónomas sobre documentos.' }
+  { id: 'cowork', label: MODE_LABELS.cowork, description: 'Tareas autónomas sobre documentos.' }
 ]
 
 interface ProviderCatalog {

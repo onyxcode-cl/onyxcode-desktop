@@ -8,7 +8,7 @@ export const COWORK_TERMS = {
   sandbox: 'Sandbox',
   fullControl: 'Control total del Mac',
   fullControlShort: 'Control total',
-  workFolders: 'Carpetas de Cowork',
+  workFolders: 'Carpetas de trabajo',
   trustedFolders: 'Carpetas de confianza',
   linkedFolders: 'Carpetas adicionales',
   readOnly: 'Solo lectura',

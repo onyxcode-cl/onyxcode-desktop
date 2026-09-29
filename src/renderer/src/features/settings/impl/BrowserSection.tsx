@@ -15,11 +15,12 @@ import type {
   BrowserResponse,
   BrowserSitesState
 } from '@shared/ipc-browser'
+import { MODE_LABELS } from '@shared/labels'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 
-const PRODUCT_LABEL: Record<BrowserProduct, string> = { code: 'Code', cowork: 'Cowork' }
+const PRODUCT_LABEL: Record<BrowserProduct, string> = { code: 'Code', cowork: MODE_LABELS.cowork }
 
 function hasBrowserBridge(): boolean {
   return !!(window as unknown as { api?: { browser?: unknown } }).api?.browser

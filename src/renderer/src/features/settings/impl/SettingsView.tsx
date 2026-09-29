@@ -14,6 +14,7 @@ import {
   X,
   Zap
 } from 'lucide-react'
+import { MODE_LABELS, UI_LABELS } from '@shared/labels'
 import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
 import { useUi } from '../../../stores/ui'
@@ -37,10 +38,10 @@ const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: 
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
   { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
-  { id: 'cowork', label: 'Cowork', icon: Users, View: CoworkSection },
-  { id: 'network', label: 'Red de Cowork', icon: Globe, View: NetworkSection },
-  { id: 'computer', label: 'Control del Mac', icon: MonitorCog, View: ComputerSection },
-  { id: 'automode', label: 'Modo auto', icon: Zap, View: AutoModeSection },
+  { id: 'cowork', label: MODE_LABELS.cowork, icon: Users, View: CoworkSection },
+  { id: 'network', label: UI_LABELS.network, icon: Globe, View: NetworkSection },
+  { id: 'computer', label: UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
+  { id: 'automode', label: UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
   { id: 'browser', label: 'Navegador', icon: Compass, View: BrowserSection },
   { id: 'usage', label: 'Uso', icon: BarChart3, View: UsageSection },
   { id: 'shortcuts', label: 'Atajos', icon: Keyboard, View: ShortcutsSection },

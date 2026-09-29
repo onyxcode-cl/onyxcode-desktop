@@ -598,7 +598,7 @@ export interface ComputerPrefs {
   unhideOnFinish: boolean
 }
 
-/** Decisión del usuario (2026-09-28): por defecto "En segundo plano" y ocultar otras apps (como Claude). */
+/** Decisión del usuario (2026-09-28): por defecto "En segundo plano" y ocultar otras apps. */
 export const DEFAULT_COMPUTER_PREFS: ComputerPrefs = { mode: 'background', hideOtherApps: true, unhideOnFinish: true }
 
 // ───────────────────────────── Lote C: Teach mode y grabar una skill ─────────────────────────────
