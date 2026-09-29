@@ -71,7 +71,7 @@ Notas conocidas:
 Automatiza lo posible de las guías manuales de `docs/COWORK-LOTE-B.md` §4 y `docs/LOTE-D.md` §4 contra la app real.
 Ayudantes propios en `e2e/lib/lotes.ts`; página de prueba `e2e/pages/tienda.html`. Solo modo dev (`describe.skipIf` en prod).
 
-- **Cowork sí corre en el harness**: el sandbox Seatbelt de Cowork deniega leer el userData de la app, y el falso que
+- **Las tareas sí corren en el harness**: el sandbox Seatbelt de las tareas deniega leer el userData de la app, y el falso que
   copia `startApp` vive dentro de él (`code=126`). `fakeOutsideUserData()` lo copia a otro tmp y se pasa como
   `OPENCODE_BIN` en `startApp({ env })`. La carpeta de trabajo tiene que estar bajo `~` (`makeCoworkDir()` crea
   `~/onyx-e2e-cw-*`): la política de carpetas rechaza `/private/var/...`. La conexión del servidor de la carpeta se obtiene
@@ -87,7 +87,7 @@ Ayudantes propios en `e2e/lib/lotes.ts`; página de prueba `e2e/pages/tienda.htm
 
 | Caso | Qué pasa | Dónde |
 |---|---|---|
-| Carpeta prohibida en Cowork (`~`, `~/Library`) | `approvePending` guarda el motivo en `useCowork.error` pero solo se pinta con `phase === 'error' && folder`: el usuario no ve el mensaje. | `cowork/impl/actions.ts` + `CoworkWorkspace.tsx` (`phaseBanners`) |
+| Carpeta prohibida en Tareas (`~`, `~/Library`) | `approvePending` guarda el motivo en `useCowork.error` pero solo se pinta con `phase === 'error' && folder`: el usuario no ve el mensaje. | `cowork/impl/actions.ts` + `CoworkWorkspace.tsx` (`phaseBanners`) |
 | Foco por defecto en «Cancelar» de la tarjeta de aprobación | `denyRef.current?.focus()` corre al montar con el botón `disabled` (aún sin armar): no recibe foco y nada lo enfoca al armarse. Enter no deniega. | `browser/Cards.tsx` (`ApprovalCard`) |
 | Navegar el navegador integrado a `mailto:` / `tel:` | Mata el proceso principal (SIGTRAP en `CrBrowserMain`, informes `~/Library/Logs/DiagnosticReports/Electron-*.ips`); la guía esperaba «no abre Mail». Arreglado en F7-B1. | `embedded-browser/surface.ts` / `service.ts` (guardas de navegación) |
 
@@ -102,12 +102,12 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 
 1. **Permisos TCC y computer use (3 min; Lote C 0–2, 8).** Ajustes → Control del Mac: «Accesibilidad» y «Grabación de
    pantalla» siguen concedidos tras cualquier recompilación del helper. Pide «abre Calculadora y suma 2+2» en Control total:
-   aparece el plan, lo apruebas, el cursor se mueve y el resultado se ve. ⌘⇧Esc detiene todo (Teach, takeover, grabación).
+   aparece el plan, lo apruebas, el cursor se mueve y el resultado se ve. ⌘⇧Esc detiene todo (Modo guía, takeover, grabación).
    Esperado: nunca se pide de nuevo un permiso ya concedido.
-2. **Teach y grabar skill con micrófono (2 min; Lote C 3–4).** «Enséñame a abrir Ajustes del Sistema»: globo junto al
+2. **Modo guía y grabar skill con micrófono (2 min; Lote C 3–4).** «Enséñame a abrir Ajustes del Sistema»: globo junto al
    elemento con «Siguiente»/«Salir de la guía», sin clics del agente. «Grabar skill»: macOS pide Micrófono y Reconocimiento
    de voz; narra 3 pasos y «Terminar»; la tarjeta muestra pasos y transcripción; solo «Guardar» escribe `SKILL.md`.
-3. **Notificaciones nativas (2 min).** Lanza una tarea de Cowork larga, cambia de carpeta y espera: llega la notificación
+3. **Notificaciones nativas (2 min).** Lanza una tarea larga en Tareas, cambia de carpeta y espera: llega la notificación
    con el aspecto y sonido correctos en el Centro de notificaciones, el clic enfoca la ventana y abre esa tarea, y el badge
    del Dock suma/resta con las pendientes. Con «Sonido» apagado no suena.
 4. **Atajo global de Quick Entry (1 min).** Con la app en segundo plano, pulsa el atajo físico: aparece el cuadro, escribes
@@ -117,7 +117,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 6. **Login de Google en el navegador embebido (1 min; Lote D 6, 12).** Abre accounts.google.com en el panel Navegador:
    puede rechazar el navegador embebido (esperado); el agente nunca teclea la contraseña. `ps aux | grep remote-debugging`
    sin resultados. Una página de prueba con `getDisplayMedia` y geolocalización se deniega.
-7. **Calidad con LLM real y búsqueda web real (2 min; Lote B 3–7, 15).** En Cowork Sandbox: «Primero revisa esta carpeta y
+7. **Calidad con LLM real y búsqueda web real (2 min; Lote B 3–7, 15).** En Tareas (sandbox): «Primero revisa esta carpeta y
    resume…»: respuesta coherente; «busca en la web X y cita fuentes»: devuelve fuentes reales. En una carpeta de prueba:
    pide mover archivos (aparece «Permitir borrar, mover y renombrar»; sin permiso ofrece copia ordenada), crea un docx/xlsx/pdf
    y prueba Vista rápida, Descargar todo (zip) y Guardar como PDF. Pide leer otra carpeta, permite en Solo lectura: el
@@ -157,7 +157,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 | 5 Mover y renombrar | H 7 (Seatbelt + modelo reales) |
 | 6 Documentos · 7 Entregables | H 7 |
 | 8 Segundo plano | notificación «terminó» en `fase6` (caso 4); clic en la notificación y «mantener despierto» → H 3 |
-| 9 Inactividad | manual, opcional (bajar el tiempo a 1 min en Ajustes → Cowork → Servidores) |
+| 9 Inactividad | manual, opcional (bajar el tiempo a 1 min en Ajustes → Tareas → Servidores) |
 | 10 Búsqueda | `lru` (búsqueda en tarea desalojada) |
 | 11 Lista | `lotes`: fijar, archivar, restaurar; agrupar → manual |
 | 12 Modelo y esfuerzo | H 7 |
@@ -172,7 +172,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 | Punto | Cobertura |
 |---|---|
 | 0 Permisos tras recompilar · 1 Segundo plano · 2 Ocultar apps | H 1 |
-| 3 Teach · 4 Grabar skill | H 2 |
+| 3 Modo guía · 4 Grabar skill | H 2 |
 | 5 Modo auto | manual con modelo real (chip del compositor y registro) |
 | 6 Navegador (Control total) · 7 Sandbox sin navegador | H 9 / manual |
 | 8 ⌘⇧Esc | H 1 |
@@ -189,18 +189,18 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 | 6 Login | `lotes`: `fill` sobre contraseña rechazado; login de Google → H 6 |
 | 7 Pago | `lotes`: tarjeta «acción sensible», «Permitir» hace el clic, «Cancelar» da error y no toca la página |
 | 8 Descarga | H 9 |
-| 9–10 Cowork Sandbox / Control total con el navegador | manual (H 9) |
+| 9–10 Tareas (sandbox) / Control total con el navegador | manual (H 9) |
 | 12 Seguridad | `lotes`: `file:///etc/hosts`, `fetch` a otro puerto de loopback bloqueado en una página no aprobada; `mailto:`/`tel:` bloqueados sin crash (F7-B1, arreglado); resto → H 6 |
-| 13 `mcp.browser` en la config | `lotes` (sidecar de Code); servidores de Cowork → manual |
+| 13 `mcp.browser` en la config | `lotes` (sidecar de Code); servidores de Tareas → manual |
 
 **`docs/FASE6-PLAN.md` y `docs/LRU-PLAN.md` (verificación manual)**
 
 | Punto | Cobertura |
 |---|---|
-| Fase 6: 10 casos automatizados (aislamiento de eventos, busy pegado, ErrorBoundary, toggle de Rutinas, notificación, panel Cambios, Cowork/Code en la misma carpeta) | `fase6` |
+| Fase 6: 10 casos automatizados (aislamiento de eventos, busy pegado, ErrorBoundary, toggle de Rutinas, notificación, panel Cambios, Tareas/Code en la misma carpeta) | `fase6` |
 | Fase 6: `kill -STOP` real, `npm install` real, IME real, portapapeles, aspecto del knob, clic en la notificación | H 3 y `it.skip` con motivo en `fase6` (checklist humana del propio spec) |
 | LRU: 4 chats y volver · streaming largo · claves ≤ N + fijadas | `lru` |
-| LRU: Cowork con permiso pendiente y búsqueda de tarea desalojada | `lru` |
+| LRU: Tareas con permiso pendiente y búsqueda de tarea desalojada | `lru` |
 | LRU: `FolderRequestCard` de una subtarea | manual (`lotes` cubre la tarjeta en una tarea raíz) |
 | LRU: Code encolado, revert y fork | `lru` |
 | Instancia única, second-instance, Quick Entry (lógica) | `instance`; atajo físico → H 4, foco real → H 5, migración de userData → H 12 |
