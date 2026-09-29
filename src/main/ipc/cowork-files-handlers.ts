@@ -1,6 +1,6 @@
 /**
- * Handlers de archivos entregables: `cowork:zip`, `cowork:quickLook`, `cowork:exportMarkdown`
- * y `cowork:htmlToPdf`.
+ * Handlers de archivos entregables: `tasks:zip`, `tasks:quickLook`, `tasks:exportMarkdown`
+ * y `tasks:htmlToPdf`.
  *
  * Seguridad: toda ruta que viene del renderer se valida con `CoworkManager.assertInsideApproved`
  * (realpath + carpeta de Cowork autorizada) y los procesos externos se lanzan con `execFile` /
@@ -86,7 +86,7 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
     BrowserWindow.fromWebContents(event.sender) ?? getWindow()
 
   // ── Descargar todo (zip) ──
-  handle('cowork:zip', async ({ paths, suggestedName }, event) => {
+  handle('tasks:zip', async ({ paths, suggestedName }, event) => {
     const files: string[] = []
     for (const p of paths) {
       const real = cowork.assertInsideApproved(p)
@@ -129,7 +129,7 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
       }
     }
   }
-  handle('cowork:quickLook', ({ path }) => {
+  handle('tasks:quickLook', ({ path }) => {
     const real = cowork.assertInsideApproved(path)
     assertSafeToOpen(real) // misma política que "Abrir": nada de ejecutables/lanzadores
     if (!statSync(real).isFile()) throw new Error('La vista rápida solo funciona con archivos.')
@@ -147,7 +147,7 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
   })
 
   // ── Exportar transcripción a Markdown ──
-  handle('cowork:exportMarkdown', async ({ suggestedName, content }, event) => {
+  handle('tasks:exportMarkdown', async ({ suggestedName, content }, event) => {
     // El renderer ya envía un nombre acabado en `.md`; solo se completa si viniera sin extensión.
     const name = safeFileName(suggestedName, 'tarea.md')
     const withExt = extname(name) ? name : `${name}.md`
@@ -165,7 +165,7 @@ export function registerCoworkFilesHandlers(ctx: CoworkIpcContext): CoworkSubmod
   })
 
   // ── Guardar HTML como PDF ──
-  handle('cowork:htmlToPdf', async ({ path }): Promise<CoworkDeliverable> => {
+  handle('tasks:htmlToPdf', async ({ path }): Promise<CoworkDeliverable> => {
     const real = cowork.assertInsideApproved(path)
     const ext = extname(real).toLowerCase()
     if (ext !== '.html' && ext !== '.htm') throw new Error('Solo se pueden convertir archivos .html o .htm.')

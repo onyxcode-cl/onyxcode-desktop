@@ -8,7 +8,7 @@ import {
 import type { IpcRenderer } from 'electron'
 import { makeBridge } from './bridge'
 
-/** Construye `window.api.cowork` (canales `cowork:*`, `routines:*` y `computer:*`). */
+/** Construye `window.api.tasks` (canales `cowork:*`, `routines:*` y `computer:*`). */
 export function buildCoworkApi(ipcRenderer: IpcRenderer): CoworkApi {
   const bridge = makeBridge<CoworkInvokeChannel, CoworkEventChannel>(ipcRenderer, {
     invoke: COWORK_INVOKE_CHANNELS,

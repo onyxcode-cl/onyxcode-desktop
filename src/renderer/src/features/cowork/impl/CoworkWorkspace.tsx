@@ -388,7 +388,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   // Si el servidor de la carpeta se cae, mostrar el error (con "Reintentar").
   useEffect(
     () =>
-      onCowork('cowork:server', (info) => {
+      onCowork('tasks:server', (info) => {
         const st = useCowork.getState()
         const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
         if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
@@ -423,7 +423,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   }, [])
 
   // Proxy de egress: el servidor sandboxeado bloqueó una conexión de red durante una tarea.
-  useEffect(() => onCowork('cowork:networkBlocked', (ev) => addNetworkBlocked(ev)), [])
+  useEffect(() => onCowork('tasks:networkBlocked', (ev) => addNetworkBlocked(ev)), [])
 
   // Navegador integrado: mantiene la pestaña montada tras la primera visita (como la Terminal de Code).
   useEffect(() => {
@@ -573,7 +573,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   if (!bridge) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-sm text-danger">
-        <AlertCircle size={16} className="mr-2" /> Falta `window.api.cowork` en el preload.
+        <AlertCircle size={16} className="mr-2" /> Falta `window.api.tasks` en el preload.
       </div>
     )
   }

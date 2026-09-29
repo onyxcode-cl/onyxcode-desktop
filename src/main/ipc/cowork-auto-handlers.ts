@@ -1,5 +1,5 @@
 /**
- * Handlers del Modo auto (`cowork:auto:*`, Lote C / paquete C3). La lógica vive en
+ * Handlers del Modo auto (`tasks:auto:*`, Lote C / paquete C3). La lógica vive en
  * `cowork/auto-approver.ts` (motor) y `cowork/auto-mode.ts` (clasificador puro); aquí se crea la
  * instancia única (`createAutoApprover`, expuesta también como `getAutoApprover()` para que la use
  * el monitor y `ComputerService.autoAccess`) y se conecta al IPC.
@@ -25,17 +25,17 @@ export function registerCoworkAutoHandlers(ctx: CoworkIpcContext): CoworkSubmodu
         .map((m) => m.name),
     servers: () => cowork.liveServers(),
     policyDisabled: () => loadManagedPolicy()?.disableAutoMode === true,
-    onApproved: (r) => send('cowork:auto:approved', r),
+    onApproved: (r) => send('tasks:auto:approved', r),
     grantAutoView: (sessionId, bundleIds) => computer.grantAutoView(sessionId, bundleIds),
     revokeAutoView: (sessionId, bundleId) => computer.revokeAutoView(sessionId, bundleId),
     log: (...args) => console.log(...args)
   })
 
-  handle('cowork:auto:state', () => approver.state())
-  handle('cowork:auto:set', (req) => approver.set(req))
-  handle('cowork:auto:revoke', ({ id }) => approver.revoke(id))
-  handle('cowork:auto:clearLog', () => approver.clearLog())
-  handle('cowork:auto:consider', async ({ folder, fullAccess, requestId }) => ({
+  handle('tasks:auto:state', () => approver.state())
+  handle('tasks:auto:set', (req) => approver.set(req))
+  handle('tasks:auto:revoke', ({ id }) => approver.revoke(id))
+  handle('tasks:auto:clearLog', () => approver.clearLog())
+  handle('tasks:auto:consider', async ({ folder, fullAccess, requestId }) => ({
     auto: await approver.considerOne(folder, fullAccess, requestId)
   }))
 

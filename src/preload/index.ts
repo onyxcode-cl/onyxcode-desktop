@@ -16,7 +16,7 @@ const api: WindowApi = {
   on: bridge.on as WindowApi['on'],
   platform: process.platform,
   code: buildCodeApi(ipcRenderer),
-  cowork: buildCoworkApi(ipcRenderer),
+  tasks: buildCoworkApi(ipcRenderer),
   extras: buildExtrasApi(ipcRenderer),
   browser: buildBrowserApi(ipcRenderer)
 }

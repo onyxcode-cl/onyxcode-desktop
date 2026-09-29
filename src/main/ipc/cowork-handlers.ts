@@ -1,6 +1,6 @@
 /**
  * Handlers IPC de Cowork (`cowork:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
- * Contrato en src/shared/ipc-cowork.ts; expuesto en `window.api.cowork`.
+ * Contrato en src/shared/ipc-cowork.ts; expuesto en `window.api.tasks`.
  */
 import { BrowserWindow, Notification, app, dialog, shell, type IpcMain } from 'electron'
 import { readFileSync } from 'node:fs'
@@ -168,13 +168,13 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   }
 
   cowork.on('server', (info) => {
-    send('cowork:server', info)
+    send('tasks:server', info)
     if (info.fullAccess && (info.state === 'stopped' || info.state === 'error')) {
       overlay.serverGone()
       restoreMainWindowIfHidden()
     }
   })
-  cowork.on('networkBlocked', (ev) => send('cowork:networkBlocked', ev))
+  cowork.on('networkBlocked', (ev) => send('tasks:networkBlocked', ev))
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
   computer.on('action', (ev) => {
@@ -257,7 +257,7 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   computer.init()
 
   // ── Cowork ──
-  handle('cowork:pickFolder', async (_req, event) => {
+  handle('tasks:pickFolder', async (_req, event) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
       title: 'Elegir carpeta de trabajo',
@@ -267,23 +267,23 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
     return res.canceled ? null : (res.filePaths[0] ?? null)
   })
-  handle('cowork:listFolders', () => cowork.listFolders())
-  handle('cowork:approveFolder', ({ folder }) => cowork.approveFolder(folder))
-  handle('cowork:removeFolder', ({ folder }) => cowork.removeFolder(folder))
-  handle('cowork:start', ({ folder, fullAccess }) => cowork.start(folder, fullAccess === true))
-  handle('cowork:grantFullAccess', ({ folder }) => cowork.grantFullAccess(folder))
-  handle('cowork:revokeFullAccess', ({ folder }) => cowork.revokeFullAccess(folder))
-  handle('cowork:deliverables', ({ folder, since }) => cowork.deliverables(folder, since))
-  handle('cowork:reveal', ({ path }) => {
+  handle('tasks:listFolders', () => cowork.listFolders())
+  handle('tasks:approveFolder', ({ folder }) => cowork.approveFolder(folder))
+  handle('tasks:removeFolder', ({ folder }) => cowork.removeFolder(folder))
+  handle('tasks:start', ({ folder, fullAccess }) => cowork.start(folder, fullAccess === true))
+  handle('tasks:grantFullAccess', ({ folder }) => cowork.grantFullAccess(folder))
+  handle('tasks:revokeFullAccess', ({ folder }) => cowork.revokeFullAccess(folder))
+  handle('tasks:deliverables', ({ folder, since }) => cowork.deliverables(folder, since))
+  handle('tasks:reveal', ({ path }) => {
     shell.showItemInFolder(cowork.assertInsideApproved(path))
   })
-  handle('cowork:openPath', async ({ path }) => {
+  handle('tasks:openPath', async ({ path }) => {
     const real = cowork.assertInsideApproved(path)
     assertSafeToOpen(real) // ejecutables/lanzadores: solo "Mostrar en Finder" (S4)
     const err = await shell.openPath(real)
     if (err) throw new Error(err)
   })
-  handle('cowork:importFiles', async ({ folder }, event) => {
+  handle('tasks:importFiles', async ({ folder }, event) => {
     const root = cowork.assertInsideApproved(folder)
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
@@ -296,27 +296,27 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
     if (res.canceled) return []
     return importFilesInto(root, res.filePaths)
   })
-  handle('cowork:previewFile', ({ path, maxBytes }) => previewFile(cowork.assertInsideApproved(path), maxBytes))
+  handle('tasks:previewFile', ({ path, maxBytes }) => previewFile(cowork.assertInsideApproved(path), maxBytes))
 
   // ── Proyecto (por carpeta) y memoria ──
-  handle('cowork:project:get', ({ folder }) => projects.get(cowork.assertInsideApproved(folder)))
+  handle('tasks:project:get', ({ folder }) => projects.get(cowork.assertInsideApproved(folder)))
   // `rest` lleva también `links` y `memoryEnabled` (Lote B): `projects.save` los toma cuando W2-D los soporte.
-  handle('cowork:project:save', ({ folder, ...rest }) => projects.save(cowork.assertInsideApproved(folder), rest))
-  handle('cowork:memory:get', ({ folder }) => getMemory(cowork.assertInsideApproved(folder)))
-  handle('cowork:memory:save', ({ folder, content }) => saveMemory(cowork.assertInsideApproved(folder), content))
-  handle('cowork:memory:delete', ({ folder }) => deleteMemory(cowork.assertInsideApproved(folder)))
+  handle('tasks:project:save', ({ folder, ...rest }) => projects.save(cowork.assertInsideApproved(folder), rest))
+  handle('tasks:memory:get', ({ folder }) => getMemory(cowork.assertInsideApproved(folder)))
+  handle('tasks:memory:save', ({ folder, content }) => saveMemory(cowork.assertInsideApproved(folder), content))
+  handle('tasks:memory:delete', ({ folder }) => deleteMemory(cowork.assertInsideApproved(folder)))
 
   // ── Red de Cowork (egress) ──
-  handle('cowork:network:state', () => cowork.networkState())
-  handle('cowork:network:setToggle', ({ key, value }) => cowork.networkSetToggle(key, value))
-  handle('cowork:network:setHost', ({ host, decision }) => cowork.networkSetHost(host, decision))
-  handle('cowork:network:allowOnce', ({ folder, host }) => {
+  handle('tasks:network:state', () => cowork.networkState())
+  handle('tasks:network:setToggle', ({ key, value }) => cowork.networkSetToggle(key, value))
+  handle('tasks:network:setHost', ({ host, decision }) => cowork.networkSetHost(host, decision))
+  handle('tasks:network:allowOnce', ({ folder, host }) => {
     cowork.networkAllowOnce(cowork.assertInsideApproved(folder), host)
   })
 
   // ── Borrado (Seatbelt file-write-unlink) ──
-  handle('cowork:deleteGrant:get', ({ folder }) => cowork.hasDeleteGrant(cowork.assertInsideApproved(folder)))
-  handle('cowork:deleteGrant:set', async ({ folder, allowed }) => {
+  handle('tasks:deleteGrant:get', ({ folder }) => cowork.hasDeleteGrant(cowork.assertInsideApproved(folder)))
+  handle('tasks:deleteGrant:set', async ({ folder, allowed }) => {
     const f = cowork.assertInsideApproved(folder)
     await cowork.setDeleteGrant(f, allowed)
     return cowork.hasDeleteGrant(f)
@@ -430,9 +430,9 @@ export function registerCoworkHandlers(ipcMain: IpcMain, getWindow: () => Browse
   })
 
   // ── Mantener el Mac despierto ──
-  handle('cowork:keepAwakeState', () => keepAwake.state())
-  handle('cowork:keepAwakeSetting', ({ enabled }) => keepAwake.setEnabled(enabled))
-  handle('cowork:keepAwakeActive', ({ active }) => keepAwake.setActive(active))
+  handle('tasks:keepAwakeState', () => keepAwake.state())
+  handle('tasks:keepAwakeSetting', ({ enabled }) => keepAwake.setEnabled(enabled))
+  handle('tasks:keepAwakeActive', ({ active }) => keepAwake.setActive(active))
 
   // ── Lote B/C: submódulos (carpetas, ciclo de vida, proyecto/MCP/reglas, archivos, Modo auto) ──
   const submodules: CoworkSubmodule[] = [

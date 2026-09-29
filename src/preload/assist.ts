@@ -8,7 +8,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 const ALLOWED_INVOKE = new Set(['computer:teachRespond', 'computer:record:stop'])
 
 contextBridge.exposeInMainWorld('api', {
-  cowork: {
+  tasks: {
     invoke: (channel: string, ...args: unknown[]): Promise<unknown> => {
       if (!ALLOWED_INVOKE.has(channel)) {
         return Promise.resolve({ ok: false, code: 'FORBIDDEN', error: `Canal IPC no permitido: ${channel}` })

@@ -247,7 +247,7 @@ export function CoworkSection(): React.JSX.Element {
 
   const loadStorage = useCallback((): void => {
     setStorageBusy('report')
-    cw('cowork:storage:report')
+    cw('tasks:storage:report')
       .then((r) => {
         setReport(r)
         clear('storage')
@@ -261,13 +261,13 @@ export function CoworkSection(): React.JSX.Element {
     syncActivity()
     void loadCoworkPrefs()
     void loadPolicy()
-    cw('cowork:trusted:list')
+    cw('tasks:trusted:list')
       .then(setTrusted)
       .catch((err: unknown) => fail('trusted', err))
-    cw('cowork:listFolders')
+    cw('tasks:listFolders')
       .then(setFolders)
       .catch((err: unknown) => fail('folders', err))
-    cw('cowork:rules:list', {})
+    cw('tasks:rules:list', {})
       .then(setRules)
       .catch((err: unknown) => fail('rules', err))
     loadStorage()
@@ -287,9 +287,9 @@ export function CoworkSection(): React.JSX.Element {
   const addTrusted = async (): Promise<void> => {
     clear('trusted')
     try {
-      const picked = await cw('cowork:pickFolder')
+      const picked = await cw('tasks:pickFolder')
       if (!picked) return
-      const check = await cw('cowork:folders:check', { path: picked })
+      const check = await cw('tasks:folders:check', { path: picked })
       if (!check.ok) {
         fail('trusted', new Error(check.reason ?? 'Esa carpeta no se puede usar.'))
         return
@@ -303,7 +303,7 @@ export function CoworkSection(): React.JSX.Element {
         })
         if (!ok) return
       }
-      setTrusted(await cw('cowork:trusted:set', { path: check.normalized, mode: newMode }))
+      setTrusted(await cw('tasks:trusted:set', { path: check.normalized, mode: newMode }))
     } catch (err) {
       fail('trusted', err)
     }
@@ -311,14 +311,14 @@ export function CoworkSection(): React.JSX.Element {
 
   const setTrustedMode = (path: string, mode: FolderAccessMode): void => {
     clear('trusted')
-    cw('cowork:trusted:set', { path, mode })
+    cw('tasks:trusted:set', { path, mode })
       .then(setTrusted)
       .catch((err: unknown) => fail('trusted', err))
   }
 
   const removeTrusted = (t: TrustedFolder): void => {
     clear('trusted')
-    cw('cowork:trusted:remove', { path: t.path })
+    cw('tasks:trusted:remove', { path: t.path })
       .then(setTrusted)
       .catch((err: unknown) => fail('trusted', err))
   }
@@ -335,11 +335,11 @@ export function CoworkSection(): React.JSX.Element {
     if (!ok) return
     clear('folders')
     try {
-      await cw('cowork:revokeFullAccess', { folder: f.path })
+      await cw('tasks:revokeFullAccess', { folder: f.path })
       rememberFullAccess(f.path, false)
       const conn = useCowork.getState().conn
       if (conn?.folder === f.path && conn.fullAccess) await connectFolder(f.path, false)
-      const list = await cw('cowork:listFolders')
+      const list = await cw('tasks:listFolders')
       setFolders(list)
       useCowork.setState({ folders: list })
     } catch (err) {
@@ -350,7 +350,7 @@ export function CoworkSection(): React.JSX.Element {
   // ── Permisos recordados ──
   const removeRule = (r: CoworkPermissionRule): void => {
     clear('rules')
-    cw('cowork:rules:remove', { id: r.id })
+    cw('tasks:rules:remove', { id: r.id })
       .then(setRules)
       .catch((err: unknown) => fail('rules', err))
   }
@@ -369,7 +369,7 @@ export function CoworkSection(): React.JSX.Element {
     }
     setStorageBusy(`${scope}:${key}`)
     try {
-      setReport(await cw('cowork:storage:clean', { key, scope }))
+      setReport(await cw('tasks:storage:clean', { key, scope }))
       clear('storage')
     } catch (err) {
       fail('storage', err)
@@ -388,7 +388,7 @@ export function CoworkSection(): React.JSX.Element {
     if (!ok) return
     setStorageBusy('screenshots')
     try {
-      setReport(await cw('cowork:storage:cleanScreenshots'))
+      setReport(await cw('tasks:storage:cleanScreenshots'))
       clear('storage')
     } catch (err) {
       fail('storage', err)

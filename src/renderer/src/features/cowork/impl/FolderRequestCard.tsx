@@ -54,7 +54,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
     setReason(null)
     if (fullAccess || !selected) return
     let cancelled = false
-    cw('cowork:folders:check', { path: selected })
+    cw('tasks:folders:check', { path: selected })
       .then((chk) => {
         if (!cancelled && !chk.ok) setReason(chk.reason ?? 'Esa carpeta no se puede añadir.')
       })

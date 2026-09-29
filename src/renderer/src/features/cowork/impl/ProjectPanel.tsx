@@ -95,7 +95,7 @@ export function ProjectPanel(): React.JSX.Element | null {
           if (!cancelled) setSkills([])
         })
     }
-    void cw('cowork:rules:list', { folder })
+    void cw('tasks:rules:list', { folder })
       .then((list) => {
         if (!cancelled) setRules(list)
       })
@@ -112,7 +112,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     if (!open || !folder || tab !== 'agents') return
     let cancelled = false
     setAgentsLoading(true)
-    void cw('cowork:agentsMd:get', { folder })
+    void cw('tasks:agentsMd:get', { folder })
       .then((a) => {
         if (cancelled) return
         setAgentsText(a.content)
@@ -152,7 +152,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     setSaving(true)
     setError(null)
     try {
-      const p = await cw('cowork:project:save', { folder, name, instructions, links })
+      const p = await cw('tasks:project:save', { folder, name, instructions, links })
       if (useCowork.getState().folder === folder) useCowork.setState({ project: p })
       flashSaved()
     } catch (err) {
@@ -185,7 +185,7 @@ export function ProjectPanel(): React.JSX.Element | null {
   const toggleMemory = async (): Promise<void> => {
     setError(null)
     try {
-      const p = await cw('cowork:project:save', { folder, memoryEnabled: project?.memoryEnabled === false })
+      const p = await cw('tasks:project:save', { folder, memoryEnabled: project?.memoryEnabled === false })
       if (useCowork.getState().folder === folder) useCowork.setState({ project: p })
     } catch (err) {
       setError(errText(err))
@@ -196,7 +196,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     setSaving(true)
     setError(null)
     try {
-      const a = await cw('cowork:agentsMd:save', { folder, content: agentsText })
+      const a = await cw('tasks:agentsMd:save', { folder, content: agentsText })
       setAgentsText(a.content)
       setAgentsInfo({ path: a.path, exists: a.exists })
       flashSaved()
@@ -210,7 +210,7 @@ export function ProjectPanel(): React.JSX.Element | null {
   const removeRule = async (id: string): Promise<void> => {
     setError(null)
     try {
-      await cw('cowork:rules:remove', { id })
+      await cw('tasks:rules:remove', { id })
       setRules((cur) => cur.filter((r) => r.id !== id))
     } catch (err) {
       setError(errText(err))

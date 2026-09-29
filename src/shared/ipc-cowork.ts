@@ -1,7 +1,7 @@
 /**
  * Contrato IPC tipado de Cowork + Rutinas (tareas programadas).
  *
- * Expuesto en el renderer como `window.api.cowork` (ver src/preload/cowork-api.ts).
+ * Expuesto en el renderer como `window.api.tasks` (ver src/preload/cowork-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
  */
 import type { IpcResult } from './ipc'
@@ -9,7 +9,7 @@ import type { ModelRef } from './types'
 
 // ───────────────────────────── Cowork ─────────────────────────────
 
-/** Prefijo del error de `cowork:start {fullAccess:true}` sin `cowork:grantFullAccess` previo. */
+/** Prefijo del error de `tasks:start {fullAccess:true}` sin `tasks:grantFullAccess` previo. */
 export const FULL_ACCESS_NOT_GRANTED = 'FULL_ACCESS_NOT_GRANTED'
 
 /** Carpeta autorizada por el usuario para Cowork. */
@@ -704,61 +704,61 @@ export interface BrowserSite {
 // ───────────────────────────── Contrato ─────────────────────────────
 
 export interface CoworkInvokeContract {
-  'cowork:pickFolder': { req: void; res: string | null }
-  'cowork:listFolders': { req: void; res: CoworkFolder[] }
+  'tasks:pickFolder': { req: void; res: string | null }
+  'tasks:listFolders': { req: void; res: CoworkFolder[] }
   /** Autoriza una carpeta (tras confirmar en la UI). Rechaza carpetas peligrosas (/, ~, /System…). */
-  'cowork:approveFolder': { req: { folder: string }; res: CoworkFolder }
-  'cowork:removeFolder': { req: { folder: string }; res: void }
+  'tasks:approveFolder': { req: { folder: string }; res: CoworkFolder }
+  'tasks:removeFolder': { req: { folder: string }; res: void }
   /**
    * Arranca (o reutiliza) el servidor de una carpeta autorizada. Por defecto sandboxeado;
    * `fullAccess: true` ⇒ servidor aparte SIN sandbox, con el agente `computer` y el MCP de control del Mac.
    */
-  'cowork:start': { req: { folder: string; fullAccess?: boolean }; res: CoworkConnection }
-  /** Registra en main el consentimiento de acceso total (requerido por `cowork:start {fullAccess}`). */
-  'cowork:grantFullAccess': { req: { folder: string }; res: void }
+  'tasks:start': { req: { folder: string; fullAccess?: boolean }; res: CoworkConnection }
+  /** Registra en main el consentimiento de acceso total (requerido por `tasks:start {fullAccess}`). */
+  'tasks:grantFullAccess': { req: { folder: string }; res: void }
   /** Retira el consentimiento de acceso total y detiene ese servidor. */
-  'cowork:revokeFullAccess': { req: { folder: string }; res: void }
+  'tasks:revokeFullAccess': { req: { folder: string }; res: void }
   /** Archivos modificados en la carpeta desde `since` (epoch ms). */
-  'cowork:deliverables': { req: { folder: string; since: number }; res: CoworkDeliverable[] }
+  'tasks:deliverables': { req: { folder: string; since: number }; res: CoworkDeliverable[] }
   /** Muestra el archivo/carpeta en Finder. */
-  'cowork:reveal': { req: { path: string }; res: void }
+  'tasks:reveal': { req: { path: string }; res: void }
   /**
    * Abre el archivo con la app por defecto. Rechaza ejecutables/lanzadores (.app, .command,
-   * .sh, .pkg… o con bit de ejecución): para esos solo `cowork:reveal`.
+   * .sh, .pkg… o con bit de ejecución): para esos solo `tasks:reveal`.
    */
-  'cowork:openPath': { req: { path: string }; res: void }
+  'tasks:openPath': { req: { path: string }; res: void }
   /**
    * Abre un diálogo nativo para elegir archivos y los COPIA a la carpeta autorizada
    * (sin sobrescribir: añade " (2)"…). Devuelve los archivos copiados ([] si se cancela).
    */
-  'cowork:importFiles': { req: { folder: string }; res: CoworkDeliverable[] }
+  'tasks:importFiles': { req: { folder: string }; res: CoworkDeliverable[] }
   /** Lee un archivo de una carpeta autorizada para previsualizarlo (texto recortado / imagen). */
-  'cowork:previewFile': { req: { path: string; maxBytes?: number }; res: CoworkFilePreview }
+  'tasks:previewFile': { req: { path: string; maxBytes?: number }; res: CoworkFilePreview }
 
   /** Proyecto (nombre + instrucciones) de una carpeta autorizada. */
-  'cowork:project:get': { req: { folder: string }; res: CoworkProject }
-  'cowork:project:save': {
+  'tasks:project:get': { req: { folder: string }; res: CoworkProject }
+  'tasks:project:save': {
     req: { folder: string; name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }
     res: CoworkProject
   }
   /** Memoria del proyecto: `.onyxcode/memoria.md` dentro de la carpeta. */
-  'cowork:memory:get': { req: { folder: string }; res: CoworkMemory }
-  'cowork:memory:save': { req: { folder: string; content: string }; res: CoworkMemory }
-  'cowork:memory:delete': { req: { folder: string }; res: CoworkMemory }
+  'tasks:memory:get': { req: { folder: string }; res: CoworkMemory }
+  'tasks:memory:save': { req: { folder: string; content: string }; res: CoworkMemory }
+  'tasks:memory:delete': { req: { folder: string }; res: CoworkMemory }
 
   /** Lista blanca de red efectiva para los servidores Cowork sandboxeados (egress proxy). */
-  'cowork:network:state': { req: void; res: NetworkPolicyState }
+  'tasks:network:state': { req: void; res: NetworkPolicyState }
   /** Interruptores "PyPI"/"npm"/"búsqueda web" de la lista blanca por defecto. */
-  'cowork:network:setToggle': { req: { key: NetworkToggleKey; value: boolean }; res: NetworkPolicyState }
+  'tasks:network:setToggle': { req: { key: NetworkToggleKey; value: boolean }; res: NetworkPolicyState }
   /** "Permitir siempre" / "Mantener bloqueado" / quitar decisión para un host (persistido). */
-  'cowork:network:setHost': { req: { host: string; decision: 'allow' | 'block' | 'unset' }; res: NetworkPolicyState }
+  'tasks:network:setHost': { req: { host: string; decision: 'allow' | 'block' | 'unset' }; res: NetworkPolicyState }
   /** "Permitir esta vez" tras una tarjeta de bloqueo: solo para los servidores ya arrancados de esa carpeta. */
-  'cowork:network:allowOnce': { req: { folder: string; host: string }; res: void }
+  'tasks:network:allowOnce': { req: { folder: string; host: string }; res: void }
 
   /** "Permitir borrar" concedido para esta tarea (Seatbelt: `file-write-unlink` en la carpeta). */
-  'cowork:deleteGrant:get': { req: { folder: string }; res: boolean }
+  'tasks:deleteGrant:get': { req: { folder: string }; res: boolean }
   /** Concede/retira "Permitir borrar" (reinicia el servidor sandboxeado si estaba en marcha). */
-  'cowork:deleteGrant:set': { req: { folder: string; allowed: boolean }; res: boolean }
+  'tasks:deleteGrant:set': { req: { folder: string; allowed: boolean }; res: boolean }
 
   'routines:list': { req: void; res: ScheduledRoutine[] }
   'routines:save': { req: RoutineInput; res: ScheduledRoutine }
@@ -833,74 +833,74 @@ export interface CoworkInvokeContract {
   'computer:showMainWindow': { req: void; res: void }
 
   /** Estado actual (ajuste + si el bloqueo está activo). */
-  'cowork:keepAwakeState': { req: void; res: KeepAwakeState }
+  'tasks:keepAwakeState': { req: void; res: KeepAwakeState }
   /** Cambia el ajuste "Mantener el Mac despierto mientras corren tareas" (persistido). */
-  'cowork:keepAwakeSetting': { req: { enabled: boolean }; res: KeepAwakeState }
+  'tasks:keepAwakeSetting': { req: { enabled: boolean }; res: KeepAwakeState }
   /**
    * El renderer avisa si hay o no tareas en curso (running/waiting) en cualquier carpeta de
    * Cowork; main activa/desactiva el `powerSaveBlocker` según el ajuste.
    */
-  'cowork:keepAwakeActive': { req: { active: boolean }; res: KeepAwakeState }
+  'tasks:keepAwakeActive': { req: { active: boolean }; res: KeepAwakeState }
 
   // ── Lote B: carpetas ──
   /** Conjunto de carpetas (principal, vinculadas y de confianza) de un espacio. */
-  'cowork:folders:get': { req: { folder: string }; res: CoworkFolderSet }
+  'tasks:folders:get': { req: { folder: string }; res: CoworkFolderSet }
   /** Comprueba si una carpeta se puede autorizar/vincular (con motivo accionable si no). */
-  'cowork:folders:check': { req: { path: string }; res: FolderCheck }
+  'tasks:folders:check': { req: { path: string }; res: FolderCheck }
   /** Vincula una carpeta adicional; `restart` (por defecto true) reinicia el sandbox solo si está en marcha. */
-  'cowork:folders:link': {
+  'tasks:folders:link': {
     req: { folder: string; path: string; mode: FolderAccessMode; trust?: boolean; restart?: boolean }
     res: CoworkFolderSet & { restarted: boolean }
   }
-  'cowork:folders:unlink': {
+  'tasks:folders:unlink': {
     req: { folder: string; path: string; restart?: boolean }
     res: CoworkFolderSet & { restarted: boolean }
   }
-  'cowork:trusted:list': { req: void; res: TrustedFolder[] }
-  'cowork:trusted:set': { req: { path: string; mode: FolderAccessMode }; res: TrustedFolder[] }
-  'cowork:trusted:remove': { req: { path: string }; res: TrustedFolder[] }
+  'tasks:trusted:list': { req: void; res: TrustedFolder[] }
+  'tasks:trusted:set': { req: { path: string; mode: FolderAccessMode }; res: TrustedFolder[] }
+  'tasks:trusted:remove': { req: { path: string }; res: TrustedFolder[] }
   /** Política gestionada por la organización (null = sin política). */
-  'cowork:policy': { req: void; res: ManagedPolicy | null }
+  'tasks:policy': { req: void; res: ManagedPolicy | null }
 
   // ── Lote B: actividad, tareas, preferencias y almacenamiento ──
-  /** Instantánea actual de tareas activas y servidores (también llega por el evento `cowork:activity`). */
-  'cowork:activity': { req: void; res: CoworkActivitySnapshot }
+  /** Instantánea actual de tareas activas y servidores (también llega por el evento `tasks:activity`). */
+  'tasks:activity': { req: void; res: CoworkActivitySnapshot }
   /** El renderer avisa qué servidor está mirando (para no notificar lo que el usuario ya ve). */
-  'cowork:viewing': { req: { folder: string | null; fullAccess?: boolean }; res: void }
-  'cowork:tasks:list': { req: void; res: CoworkTaskMeta[] }
-  'cowork:tasks:setMeta': {
+  'tasks:viewing': { req: { folder: string | null; fullAccess?: boolean }; res: void }
+  'tasks:tasks:list': { req: void; res: CoworkTaskMeta[] }
+  'tasks:tasks:setMeta': {
     req: { sessionId: string; folder: string; fullAccess: boolean; title?: string; pinned?: boolean; group?: string | null }
     res: CoworkTaskMeta
   }
-  'cowork:tasks:forget': { req: { sessionId: string }; res: void }
-  'cowork:prefs:get': { req: void; res: CoworkPrefs }
-  'cowork:prefs:set': {
+  'tasks:tasks:forget': { req: { sessionId: string }; res: void }
+  'tasks:prefs:get': { req: void; res: CoworkPrefs }
+  'tasks:prefs:set': {
     req: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<CoworkNotifyPrefs> }
     res: CoworkPrefs
   }
-  'cowork:storage:report': { req: void; res: CoworkStorageReport }
+  'tasks:storage:report': { req: void; res: CoworkStorageReport }
   /** Limpia la caché (`cache`) o todo el directorio, incluido el historial (`all`), de un servidor parado. */
-  'cowork:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: CoworkStorageReport }
-  'cowork:storage:cleanScreenshots': { req: void; res: CoworkStorageReport }
+  'tasks:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: CoworkStorageReport }
+  'tasks:storage:cleanScreenshots': { req: void; res: CoworkStorageReport }
 
   // ── Lote B: proyecto, MCP y permisos recordados ──
-  'cowork:agentsMd:get': { req: { folder: string }; res: CoworkAgentsMd }
-  'cowork:agentsMd:save': { req: { folder: string; content: string }; res: CoworkAgentsMd }
-  'cowork:mcp:list': { req: void; res: CoworkMcpInfo[] }
-  'cowork:mcp:set': { req: { name: string; cowork?: boolean; askEachTool?: boolean }; res: CoworkMcpInfo[] }
-  'cowork:rules:list': { req: { folder?: string }; res: CoworkPermissionRule[] }
-  'cowork:rules:add': { req: { folder: string; permission: string; patterns: string[] }; res: CoworkPermissionRule[] }
-  'cowork:rules:remove': { req: { id: string }; res: CoworkPermissionRule[] }
+  'tasks:agentsMd:get': { req: { folder: string }; res: CoworkAgentsMd }
+  'tasks:agentsMd:save': { req: { folder: string; content: string }; res: CoworkAgentsMd }
+  'tasks:mcp:list': { req: void; res: CoworkMcpInfo[] }
+  'tasks:mcp:set': { req: { name: string; cowork?: boolean; askEachTool?: boolean }; res: CoworkMcpInfo[] }
+  'tasks:rules:list': { req: { folder?: string }; res: CoworkPermissionRule[] }
+  'tasks:rules:add': { req: { folder: string; permission: string; patterns: string[] }; res: CoworkPermissionRule[] }
+  'tasks:rules:remove': { req: { id: string }; res: CoworkPermissionRule[] }
 
   // ── Lote B: archivos ──
   /** Comprime archivos en un zip (diálogo de guardado). Devuelve la ruta o null si se cancela. */
-  'cowork:zip': { req: { paths: string[]; suggestedName?: string }; res: string | null }
+  'tasks:zip': { req: { paths: string[]; suggestedName?: string }; res: string | null }
   /** Vista rápida de macOS (QuickLook) del archivo. */
-  'cowork:quickLook': { req: { path: string }; res: void }
+  'tasks:quickLook': { req: { path: string }; res: void }
   /** Guarda una transcripción en Markdown (diálogo de guardado). Devuelve la ruta o null si se cancela. */
-  'cowork:exportMarkdown': { req: { suggestedName: string; content: string }; res: string | null }
+  'tasks:exportMarkdown': { req: { suggestedName: string; content: string }; res: string | null }
   /** Convierte un `.html`/`.htm` entregable a PDF (sin red) y devuelve el nuevo entregable. */
-  'cowork:htmlToPdf': { req: { path: string }; res: CoworkDeliverable }
+  'tasks:htmlToPdf': { req: { path: string }; res: CoworkDeliverable }
 
   // ── Lote C: preferencias de computer use ──
   'computer:prefs:get': { req: void; res: ComputerPrefs }
@@ -917,8 +917,8 @@ export interface CoworkInvokeContract {
   'computer:record:prepare': { req: { id: string; folder: string; includeTyped: boolean }; res: { prompt: string; relDir: string } }
 
   // ── Lote C: Modo auto (los handlers los registra C3) ──
-  'cowork:auto:state': { req: void; res: AutoModeState }
-  'cowork:auto:set': {
+  'tasks:auto:state': { req: void; res: AutoModeState }
+  'tasks:auto:set': {
     req: {
       enabled?: boolean
       folder?: { path: string; on: boolean }
@@ -927,14 +927,14 @@ export interface CoworkInvokeContract {
     }
     res: AutoModeState
   }
-  'cowork:auto:revoke': { req: { id: string }; res: AutoModeState }
-  'cowork:auto:clearLog': { req: void; res: AutoModeState }
+  'tasks:auto:revoke': { req: { id: string }; res: AutoModeState }
+  'tasks:auto:clearLog': { req: void; res: AutoModeState }
   /** El renderer pide considerar una petición de acceso a apps a mitad de tarea (vía rápida). */
-  'cowork:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean } }
+  'tasks:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean } }
 }
 
 export interface CoworkEventContract {
-  'cowork:server': CoworkServerInfo
+  'tasks:server': CoworkServerInfo
   'routines:changed': ScheduledRoutine[]
   'routines:run': RoutineRunRecord
   'computer:action': ComputerActionEvent
@@ -951,16 +951,16 @@ export interface CoworkEventContract {
   /** Cambió la aprobación del plan de una sesión (aprobado o revocado). */
   'computer:planState': PlanApprovalState
   /** El proxy de egress de un servidor sandboxeado bloqueó una conexión (host fuera de lista blanca). */
-  'cowork:networkBlocked': NetworkBlockedEvent
+  'tasks:networkBlocked': NetworkBlockedEvent
   /** Lote B: instantánea de actividad (tareas activas y servidores) del monitor de main. */
-  'cowork:activity': CoworkActivitySnapshot
+  'tasks:activity': CoworkActivitySnapshot
 
   // ── Lote C ──
   /** Solo para la ventana `assist` (Teach mode y píldora de grabación). */
   'computer:assist': AssistMessage
   'computer:recordDone': SkillRecording
   /** El Modo auto aprobó algo automáticamente (para el aviso "Aprobado por el modo auto: …"). */
-  'cowork:auto:approved': AutoApprovalRecord
+  'tasks:auto:approved': AutoApprovalRecord
 }
 
 export type CoworkInvokeChannel = keyof CoworkInvokeContract
@@ -969,29 +969,29 @@ export type CoworkRequest<C extends CoworkInvokeChannel> = CoworkInvokeContract[
 export type CoworkResponse<C extends CoworkInvokeChannel> = CoworkInvokeContract[C]['res']
 
 export const COWORK_INVOKE_CHANNELS = [
-  'cowork:pickFolder',
-  'cowork:listFolders',
-  'cowork:approveFolder',
-  'cowork:removeFolder',
-  'cowork:start',
-  'cowork:grantFullAccess',
-  'cowork:revokeFullAccess',
-  'cowork:deliverables',
-  'cowork:reveal',
-  'cowork:openPath',
-  'cowork:importFiles',
-  'cowork:previewFile',
-  'cowork:project:get',
-  'cowork:project:save',
-  'cowork:memory:get',
-  'cowork:memory:save',
-  'cowork:memory:delete',
-  'cowork:network:state',
-  'cowork:network:setToggle',
-  'cowork:network:setHost',
-  'cowork:network:allowOnce',
-  'cowork:deleteGrant:get',
-  'cowork:deleteGrant:set',
+  'tasks:pickFolder',
+  'tasks:listFolders',
+  'tasks:approveFolder',
+  'tasks:removeFolder',
+  'tasks:start',
+  'tasks:grantFullAccess',
+  'tasks:revokeFullAccess',
+  'tasks:deliverables',
+  'tasks:reveal',
+  'tasks:openPath',
+  'tasks:importFiles',
+  'tasks:previewFile',
+  'tasks:project:get',
+  'tasks:project:save',
+  'tasks:memory:get',
+  'tasks:memory:save',
+  'tasks:memory:delete',
+  'tasks:network:state',
+  'tasks:network:setToggle',
+  'tasks:network:setHost',
+  'tasks:network:allowOnce',
+  'tasks:deleteGrant:get',
+  'tasks:deleteGrant:set',
   'routines:list',
   'routines:save',
   'routines:delete',
@@ -1014,53 +1014,53 @@ export const COWORK_INVOKE_CHANNELS = [
   'computer:revokePlan',
   'computer:approvedPlans',
   'computer:showMainWindow',
-  'cowork:keepAwakeState',
-  'cowork:keepAwakeSetting',
-  'cowork:keepAwakeActive',
-  'cowork:folders:get',
-  'cowork:folders:check',
-  'cowork:folders:link',
-  'cowork:folders:unlink',
-  'cowork:trusted:list',
-  'cowork:trusted:set',
-  'cowork:trusted:remove',
-  'cowork:policy',
-  'cowork:activity',
-  'cowork:viewing',
-  'cowork:tasks:list',
-  'cowork:tasks:setMeta',
-  'cowork:tasks:forget',
-  'cowork:prefs:get',
-  'cowork:prefs:set',
-  'cowork:storage:report',
-  'cowork:storage:clean',
-  'cowork:storage:cleanScreenshots',
-  'cowork:agentsMd:get',
-  'cowork:agentsMd:save',
-  'cowork:mcp:list',
-  'cowork:mcp:set',
-  'cowork:rules:list',
-  'cowork:rules:add',
-  'cowork:rules:remove',
-  'cowork:zip',
-  'cowork:quickLook',
-  'cowork:exportMarkdown',
-  'cowork:htmlToPdf',
+  'tasks:keepAwakeState',
+  'tasks:keepAwakeSetting',
+  'tasks:keepAwakeActive',
+  'tasks:folders:get',
+  'tasks:folders:check',
+  'tasks:folders:link',
+  'tasks:folders:unlink',
+  'tasks:trusted:list',
+  'tasks:trusted:set',
+  'tasks:trusted:remove',
+  'tasks:policy',
+  'tasks:activity',
+  'tasks:viewing',
+  'tasks:tasks:list',
+  'tasks:tasks:setMeta',
+  'tasks:tasks:forget',
+  'tasks:prefs:get',
+  'tasks:prefs:set',
+  'tasks:storage:report',
+  'tasks:storage:clean',
+  'tasks:storage:cleanScreenshots',
+  'tasks:agentsMd:get',
+  'tasks:agentsMd:save',
+  'tasks:mcp:list',
+  'tasks:mcp:set',
+  'tasks:rules:list',
+  'tasks:rules:add',
+  'tasks:rules:remove',
+  'tasks:zip',
+  'tasks:quickLook',
+  'tasks:exportMarkdown',
+  'tasks:htmlToPdf',
   'computer:prefs:get',
   'computer:prefs:set',
   'computer:teachRespond',
   'computer:record:start',
   'computer:record:stop',
   'computer:record:prepare',
-  'cowork:auto:state',
-  'cowork:auto:set',
-  'cowork:auto:revoke',
-  'cowork:auto:clearLog',
-  'cowork:auto:consider'
+  'tasks:auto:state',
+  'tasks:auto:set',
+  'tasks:auto:revoke',
+  'tasks:auto:clearLog',
+  'tasks:auto:consider'
 ] as const satisfies readonly CoworkInvokeChannel[]
 
 export const COWORK_EVENT_CHANNELS = [
-  'cowork:server',
+  'tasks:server',
   'routines:changed',
   'routines:run',
   'computer:action',
@@ -1070,11 +1070,11 @@ export const COWORK_EVENT_CHANNELS = [
   'computer:accessRequest',
   'computer:accessResolved',
   'computer:planState',
-  'cowork:networkBlocked',
-  'cowork:activity',
+  'tasks:networkBlocked',
+  'tasks:activity',
   'computer:assist',
   'computer:recordDone',
-  'cowork:auto:approved'
+  'tasks:auto:approved'
 ] as const satisfies readonly CoworkEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
@@ -1083,7 +1083,7 @@ const _evt: Missing<CoworkEventChannel, (typeof COWORK_EVENT_CHANNELS)[number]> 
 void _inv
 void _evt
 
-/** API expuesta en `window.api.cowork`. */
+/** API expuesta en `window.api.tasks`. */
 export interface CoworkApi {
   invoke<C extends CoworkInvokeChannel>(
     channel: C,

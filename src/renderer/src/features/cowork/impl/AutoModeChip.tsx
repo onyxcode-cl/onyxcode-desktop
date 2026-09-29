@@ -2,7 +2,7 @@
  * Chip "Modo auto" del compositor: visible SOLO si el interruptor maestro está activo (Ajustes ›
  * Modo auto). Muestra si está encendido para la carpeta/tarea actuales y deja activarlo/desactivarlo
  * sin salir de la conversación. Cuando el Modo auto aprueba algo, el chip muestra brevemente
- * "Aprobado por el modo auto: …" (evento `cowork:auto:approved`, vía el store).
+ * "Aprobado por el modo auto: …" (evento `tasks:auto:approved`, vía el store).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Check, Eye, FolderClosed, Loader2, Zap } from 'lucide-react'

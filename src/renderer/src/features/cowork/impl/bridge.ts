@@ -1,4 +1,4 @@
-/** Acceso tipado a `window.api.cowork` (canales `cowork:*` y `routines:*`). */
+/** Acceso tipado a `window.api.tasks` (canales `cowork:*` y `routines:*`). */
 import type { IpcResult, WindowApi } from '@shared/ipc'
 import type {
   CoworkApi,
@@ -10,13 +10,13 @@ import type {
 } from '@shared/ipc-cowork'
 
 function getApi(): CoworkApi {
-  const api = (window as unknown as { api?: WindowApi & { cowork?: CoworkApi } }).api?.cowork
-  if (!api) throw new Error('El puente de las tareas no está disponible (falta window.api.cowork en el preload).')
+  const api = (window as unknown as { api?: WindowApi & { tasks?: CoworkApi } }).api?.tasks
+  if (!api) throw new Error('El puente de las tareas no está disponible (falta window.api.tasks en el preload).')
   return api
 }
 
 export function hasCoworkBridge(): boolean {
-  return !!(window as unknown as { api?: { cowork?: unknown } }).api?.cowork
+  return !!(window as unknown as { api?: { tasks?: unknown } }).api?.tasks
 }
 
 function unwrap<T>(r: IpcResult<T>): T {

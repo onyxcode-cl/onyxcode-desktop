@@ -1,6 +1,6 @@
 /**
  * Tarjeta "Se bloqueó el acceso a {host}" cuando el proxy de egress de un servidor sandboxeado
- * bloquea una conexión de red durante una tarea (evento `cowork:networkBlocked`, ver
+ * bloquea una conexión de red durante una tarea (evento `tasks:networkBlocked`, ver
  * `src/main/cowork/proxy.ts` + `proxy-policy.ts`). Acciones: permitir esta vez (solo para los
  * servidores ya arrancados de esta carpeta), permitir siempre (lista blanca persistida) o
  * mantener bloqueado (se registra como bloqueado explícito y se descarta la tarjeta).
@@ -44,7 +44,7 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
     setBusy('once')
     setError(null)
     try {
-      await cw('cowork:network:allowOnce', { folder: useCowork.getState().folder ?? '', host: entry.host })
+      await cw('tasks:network:allowOnce', { folder: useCowork.getState().folder ?? '', host: entry.host })
       resolveNetworkBlocked(taskId, entry.host, 'once')
     } catch (err) {
       setError(errorMessage(err))
@@ -57,7 +57,7 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
     setBusy('always')
     setError(null)
     try {
-      await cw('cowork:network:setHost', { host: entry.host, decision: 'allow' })
+      await cw('tasks:network:setHost', { host: entry.host, decision: 'allow' })
       resolveNetworkBlocked(taskId, entry.host, 'always')
     } catch (err) {
       setError(errorMessage(err))
@@ -70,7 +70,7 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
     setBusy('block')
     setError(null)
     try {
-      await cw('cowork:network:setHost', { host: entry.host, decision: 'block' })
+      await cw('tasks:network:setHost', { host: entry.host, decision: 'block' })
       dismissNetworkBlocked(taskId, entry.host)
     } catch (err) {
       setError(errorMessage(err))

@@ -1,6 +1,6 @@
 /**
  * Handlers de actividad, tareas, preferencias y almacenamiento
- * (`cowork:activity`, `cowork:viewing`, `cowork:tasks:*`, `cowork:prefs:*`, `cowork:storage:*`).
+ * (`tasks:activity`, `tasks:viewing`, `tasks:tasks:*`, `tasks:prefs:*`, `tasks:storage:*`).
  *
  * Aquí vive el `CoworkMonitor` (sondeo de todos los servidores vivos, ver `cowork/monitor.ts`):
  * este archivo le inyecta lo que depende de Electron (notificaciones, ventana, mantener despierto,
@@ -102,7 +102,7 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
     // Archivada = sin plan aprobado (la puerta de Control total vuelve a pedirlo).
     onArchived: (sessionId) => computer.revokePlan(sessionId),
     onActivity: (snap: CoworkActivitySnapshot) => {
-      send('cowork:activity', snap)
+      send('tasks:activity', snap)
       syncScreenshotCleanup()
     },
     onBusyChange: (busy) => {
@@ -122,20 +122,20 @@ export function registerCoworkLifecycleHandlers(ctx: CoworkIpcContext): CoworkSu
   const folderPaths = (): string[] => cowork.listFolders().map((f) => f.path)
   const report = () => storageReport(storageEnv(), folderPaths(), cowork.liveServers())
 
-  handle('cowork:activity', () => monitor.snapshot())
-  handle('cowork:viewing', ({ folder, fullAccess }) => {
+  handle('tasks:activity', () => monitor.snapshot())
+  handle('tasks:viewing', ({ folder, fullAccess }) => {
     monitor.setViewing(folder, fullAccess)
   })
-  handle('cowork:tasks:list', () => tasks.list())
-  handle('cowork:tasks:setMeta', (req) => tasks.set(req))
-  handle('cowork:tasks:forget', ({ sessionId }) => {
+  handle('tasks:tasks:list', () => tasks.list())
+  handle('tasks:tasks:setMeta', (req) => tasks.set(req))
+  handle('tasks:tasks:forget', ({ sessionId }) => {
     tasks.forget(sessionId)
   })
-  handle('cowork:prefs:get', () => prefs.get())
-  handle('cowork:prefs:set', (patch) => prefs.set(patch))
-  handle('cowork:storage:report', () => report())
-  handle('cowork:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), cowork.liveServers(), key, scope))
-  handle('cowork:storage:cleanScreenshots', () => {
+  handle('tasks:prefs:get', () => prefs.get())
+  handle('tasks:prefs:set', (patch) => prefs.set(patch))
+  handle('tasks:storage:report', () => report())
+  handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), cowork.liveServers(), key, scope))
+  handle('tasks:storage:cleanScreenshots', () => {
     computer.cleanScreenshots()
     return report()
   })

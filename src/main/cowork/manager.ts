@@ -52,7 +52,7 @@ interface FullAccessGrant {
 
 interface Persisted {
   folders: CoworkFolder[]
-  /** Carpetas con Control total concedido explícitamente (`cowork:grantFullAccess`). */
+  /** Carpetas con Control total concedido explícitamente (`tasks:grantFullAccess`). */
   fullAccess: FullAccessGrant[]
   /** Carpetas con "Permitir borrar, mover y renombrar" concedido (Seatbelt: `file-write-unlink`). */
   deleteGrants: string[]

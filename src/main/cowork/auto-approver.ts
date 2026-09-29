@@ -326,7 +326,7 @@ export class AutoApprover {
   }
 
   /**
-   * Vía rápida desde el renderer (`cowork:auto:consider`): busca esa petición concreta en el
+   * Vía rápida desde el renderer (`tasks:auto:consider`): busca esa petición concreta en el
    * servidor de `folder`/`fullAccess` y la considera igual que el sondeo. Devuelve si se aprobó.
    */
   async considerOne(folder: string, fullAccess: boolean, requestId: string): Promise<boolean> {

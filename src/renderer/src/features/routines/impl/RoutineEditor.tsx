@@ -76,7 +76,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const setSchedule = (schedule: RoutineSchedule): void => patch({ schedule })
 
   useEffect(() => {
-    void cw('cowork:listFolders').then(setFolders, () => setFolders([]))
+    void cw('tasks:listFolders').then(setFolders, () => setFolders([]))
   }, [])
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   }, [form.schedule])
 
   const pickFolder = async (): Promise<void> => {
-    const picked = await cw('cowork:pickFolder')
+    const picked = await cw('tasks:pickFolder')
     if (!picked) return
     if (form.mode === 'cowork' && !folders.some((f) => f.path === picked)) {
       const name = picked.split('/').filter(Boolean).pop() ?? picked
@@ -109,8 +109,8 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
       })
       if (!ok) return
       try {
-        const approved = await cw('cowork:approveFolder', { folder: picked })
-        setFolders(await cw('cowork:listFolders'))
+        const approved = await cw('tasks:approveFolder', { folder: picked })
+        setFolders(await cw('tasks:listFolders'))
         setFolder(approved.path)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))

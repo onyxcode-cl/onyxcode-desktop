@@ -15,7 +15,7 @@ function KeepAwakeRow(): React.JSX.Element | null {
 
   useEffect(() => {
     if (!hasCoworkBridge()) return
-    cw('cowork:keepAwakeState')
+    cw('tasks:keepAwakeState')
       .then((st) => setEnabled(st.enabled))
       .catch(() => undefined)
   }, [])
@@ -31,7 +31,7 @@ function KeepAwakeRow(): React.JSX.Element | null {
         checked={enabled}
         onChange={(v) => {
           setEnabled(v)
-          void cw('cowork:keepAwakeSetting', { enabled: v }).catch(() => undefined)
+          void cw('tasks:keepAwakeSetting', { enabled: v }).catch(() => undefined)
         }}
         label="Mantener el Mac despierto mientras corren tareas"
       />

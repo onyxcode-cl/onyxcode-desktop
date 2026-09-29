@@ -66,7 +66,7 @@ export function McpSection(): React.JSX.Element {
       const own = extras ? await extras.invoke('mcp:getConfig') : null
       setAppCfg(own)
       if (hasCoworkBridge()) {
-        const list = await cw('cowork:mcp:list').catch(() => [] as CoworkMcpInfo[])
+        const list = await cw('tasks:mcp:list').catch(() => [] as CoworkMcpInfo[])
         setCoworkInfo(Object.fromEntries(list.map((i) => [i.name, i])))
       }
       if (client) {
@@ -133,7 +133,7 @@ export function McpSection(): React.JSX.Element {
 
   const setCowork = (name: string, patch: { cowork?: boolean; askEachTool?: boolean }): Promise<void> =>
     run(`cowork:${name}`, async () => {
-      await cw('cowork:mcp:set', { name, ...patch })
+      await cw('tasks:mcp:set', { name, ...patch })
     })
 
   const authenticate = (row: Row): Promise<void> =>

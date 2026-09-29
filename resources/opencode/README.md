@@ -29,7 +29,7 @@ el «Base directory for this skill» que le devuelve la herramienta `skill`. Ver
 ## Agentes
 
 `computer` (control del Mac) solo funciona en el servidor de las tareas de Control total del Mac
-(`cowork:start { fullAccess: true }`, que exige `cowork:grantFullAccess` previo), que añade el
+(`tasks:start { fullAccess: true }`, que exige `tasks:grantFullAccess` previo), que añade el
 MCP `computer` (out/main/computer-mcp.js + resources/computer-use/bin/cu-helper). Los servidores
 sandboxeados lo desactivan vía `OPENCODE_CONFIG_CONTENT` (`agent.computer.disable`).
 

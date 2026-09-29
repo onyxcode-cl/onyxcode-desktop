@@ -6,7 +6,7 @@
  * Si quien llama abre la tarea justo antes (los mensajes aún no están pintados), la petición queda
  * pendiente unos segundos y `TaskConversation` la atiende en cuanto el bloque exista.
  */
-const EVENT = 'cowork:scroll-to-part'
+const EVENT = 'tasks:scroll-to-part'
 
 /** Cuánto tiempo sigue vigente una petición que aún no encontró su bloque. */
 export const PENDING_SCROLL_MS = 8000

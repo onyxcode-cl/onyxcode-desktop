@@ -137,7 +137,7 @@ function usePreview(path: string | null, maxBytes?: number): { data: CoworkFileP
     if (!path) return
     let alive = true
     setState({ data: null, error: null, loading: true })
-    cw('cowork:previewFile', maxBytes ? { path, maxBytes } : { path })
+    cw('tasks:previewFile', maxBytes ? { path, maxBytes } : { path })
       .then((data) => alive && setState({ data, error: null, loading: false }))
       .catch((err: unknown) => alive && setState({ data: null, error: errorMessage(err), loading: false }))
     return () => {
@@ -304,12 +304,12 @@ export function DeliverableList({ files, onChanged }: { files: CoworkDeliverable
 
   const downloadAll = (): void =>
     withBusy('zip', async () => {
-      const out = await cw('cowork:zip', { paths: files.map((f) => f.path), suggestedName: 'Entregables.zip' })
+      const out = await cw('tasks:zip', { paths: files.map((f) => f.path), suggestedName: 'Entregables.zip' })
       if (out) setNotice(`Zip guardado: ${baseName(out)}`)
     })
   const savePdf = (f: CoworkDeliverable): void =>
     withBusy(`pdf:${f.path}`, async () => {
-      const pdf = await cw('cowork:htmlToPdf', { path: f.path })
+      const pdf = await cw('tasks:htmlToPdf', { path: f.path })
       setNotice(`PDF guardado: ${baseName(pdf.path)}`)
       onChanged?.()
     })
@@ -381,7 +381,7 @@ export function DeliverableList({ files, onChanged }: { files: CoworkDeliverable
                       type="button"
                       className={ACTION_BTN}
                       title="Vista rápida de macOS (QuickLook)"
-                      onClick={() => run(() => cw('cowork:quickLook', { path: f.path }))}
+                      onClick={() => run(() => cw('tasks:quickLook', { path: f.path }))}
                     >
                       <ScanEye size={12} /> Vista rápida
                     </button>

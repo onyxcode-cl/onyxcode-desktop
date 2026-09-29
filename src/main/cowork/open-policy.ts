@@ -1,5 +1,5 @@
 /**
- * Política de `cowork:openPath` (AUDIT.md S4).
+ * Política de `tasks:openPath` (AUDIT.md S4).
  *
  * Los archivos de la carpeta de Cowork los puede crear el agente. Abrirlos con la app por
  * defecto (`shell.openPath`) ejecuta FUERA del sandbox cualquier lanzador: `x.command`/`.tool`

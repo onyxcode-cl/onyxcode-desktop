@@ -158,7 +158,7 @@ function useMcpServers(): string[] {
   const [names, setNames] = useState<string[]>([])
   useEffect(() => {
     let alive = true
-    mcpNamesPromise ??= cw('cowork:mcp:list')
+    mcpNamesPromise ??= cw('tasks:mcp:list')
       .then((l) => l.map((m) => m.name))
       .catch(() => {
         mcpNamesPromise = null

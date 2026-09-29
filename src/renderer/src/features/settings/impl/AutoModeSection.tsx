@@ -4,7 +4,7 @@
  * apagado por defecto (kill switch), opt-in por carpeta o por tarea, un registro con "Revocar" y
  * "Vaciar registro", y un editor de las apps que puede ver sin preguntar. La lógica vive en
  * `main/cowork/auto-mode.ts` (clasificador puro) y `auto-approver.ts` (motor); aquí solo se lee y
- * se edita ese estado (`cowork:auto:*`).
+ * se edita ese estado (`tasks:auto:*`).
  */
 import { useEffect, useState } from 'react'
 import { Eye, FolderClosed, Loader2, Plus, ShieldCheck, Trash2, Zap } from 'lucide-react'
@@ -46,7 +46,7 @@ export function AutoModeSection(): React.JSX.Element {
 
   const reload = (): void => {
     if (!hasCoworkBridge()) return
-    void cw('cowork:auto:state')
+    void cw('tasks:auto:state')
       .then(setState)
       .catch((err: unknown) => setError(errText(err)))
   }
@@ -55,10 +55,10 @@ export function AutoModeSection(): React.JSX.Element {
 
   useEffect(() => {
     if (!hasCoworkBridge()) return
-    cw('cowork:listFolders')
+    cw('tasks:listFolders')
       .then(setFolders)
       .catch(() => undefined)
-    cw('cowork:tasks:list')
+    cw('tasks:tasks:list')
       .then((list) => setTaskMeta(Object.fromEntries(list.map((m) => [m.sessionId, m]))))
       .catch(() => undefined)
   }, [])
@@ -83,23 +83,23 @@ export function AutoModeSection(): React.JSX.Element {
   const settings = state?.settings
   const enabled = settings?.enabled === true
 
-  const toggleFolder = (path: string, on: boolean): void => run(`folder:${path}`, () => cw('cowork:auto:set', { folder: { path, on } }))
+  const toggleFolder = (path: string, on: boolean): void => run(`folder:${path}`, () => cw('tasks:auto:set', { folder: { path, on } }))
   const toggleTask = (sessionId: string, on: boolean): void =>
-    run(`task:${sessionId}`, () => cw('cowork:auto:set', { task: { sessionId, on } }))
+    run(`task:${sessionId}`, () => cw('tasks:auto:set', { task: { sessionId, on } }))
 
   const addViewApp = (): void => {
     const bundleId = newApp.trim()
     if (!bundleId || !settings) return
     setNewApp('')
-    run('viewApps', () => cw('cowork:auto:set', { viewApps: [...new Set([...settings.viewApps, bundleId])] }))
+    run('viewApps', () => cw('tasks:auto:set', { viewApps: [...new Set([...settings.viewApps, bundleId])] }))
   }
   const removeViewApp = (bundleId: string): void => {
     if (!settings) return
-    run('viewApps', () => cw('cowork:auto:set', { viewApps: settings.viewApps.filter((a) => a !== bundleId) }))
+    run('viewApps', () => cw('tasks:auto:set', { viewApps: settings.viewApps.filter((a) => a !== bundleId) }))
   }
 
-  const revoke = (id: string): void => run(`revoke:${id}`, () => cw('cowork:auto:revoke', { id }))
-  const clearLog = (): void => run('clearLog', () => cw('cowork:auto:clearLog'))
+  const revoke = (id: string): void => run(`revoke:${id}`, () => cw('tasks:auto:revoke', { id }))
+  const clearLog = (): void => run('clearLog', () => cw('tasks:auto:clearLog'))
 
   const log = [...(state?.log ?? [])].sort((a, b) => b.at - a.at)
 
@@ -131,7 +131,7 @@ export function AutoModeSection(): React.JSX.Element {
         >
           <Toggle
             checked={enabled}
-            onChange={(v) => run('enabled', () => cw('cowork:auto:set', { enabled: v }))}
+            onChange={(v) => run('enabled', () => cw('tasks:auto:set', { enabled: v }))}
             label="Modo auto"
             disabled={busy === 'enabled' || state?.policyDisabled}
           />

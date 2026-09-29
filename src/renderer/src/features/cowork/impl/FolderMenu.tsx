@@ -66,15 +66,15 @@ export function FolderMenu({
     }
   }, [open])
 
-  /** Elige la carpeta, la valida en main (`cowork:folders:check`) y pasa a elegir el modo de acceso. */
+  /** Elige la carpeta, la valida en main (`tasks:folders:check`) y pasa a elegir el modo de acceso. */
   const startAdd = async (): Promise<void> => {
     if (picking || linking) return
     setLinkError(null)
     setPicking(true)
     try {
-      const picked = await cw('cowork:pickFolder')
+      const picked = await cw('tasks:pickFolder')
       if (!picked) return
-      const chk = await cw('cowork:folders:check', { path: picked })
+      const chk = await cw('tasks:folders:check', { path: picked })
       if (!chk.ok) {
         setLinkError(chk.reason ?? 'Esa carpeta no se puede añadir.')
         return

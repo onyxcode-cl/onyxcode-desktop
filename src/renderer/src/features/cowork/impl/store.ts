@@ -38,7 +38,7 @@ import { cw, onCowork } from './bridge'
 
 export type CoworkServerPhase = 'idle' | 'starting' | 'ready' | 'error'
 
-/** Aviso de red bloqueada pendiente/resuelto para una tarea (evento `cowork:networkBlocked`). */
+/** Aviso de red bloqueada pendiente/resuelto para una tarea (evento `tasks:networkBlocked`). */
 export interface NetworkBlockedEntry {
   host: string
   port: number
@@ -102,12 +102,12 @@ interface CoworkState {
   accessRequest: AccessRequest | null
   /** Avisos "acceso bloqueado" del proxy de egress, por tarea (id de sesión raíz). Dedupe por host. */
   networkBlocked: Record<string, NetworkBlockedEntry[]>
-  /** "Permitir borrar" de la carpeta actual (`cowork:deleteGrant:get`; null = aún sin cargar). */
+  /** "Permitir borrar" de la carpeta actual (`tasks:deleteGrant:get`; null = aún sin cargar). */
   deleteGrant: boolean | null
   deleteGrantBusy: boolean
   /** Tareas (id de sesión raíz) con el plan aprobado en Control total (`computer:planState`). */
   approvedPlans: Record<string, true>
-  /** Tareas activas y servidores de TODAS las carpetas (monitor de main, evento `cowork:activity`). */
+  /** Tareas activas y servidores de TODAS las carpetas (monitor de main, evento `tasks:activity`). */
   activity: CoworkActivitySnapshot | null
   /** Metadatos persistidos en main por id de sesión (fijada, grupo, título, carpeta y modo). */
   taskMeta: Record<string, CoworkTaskMeta>
@@ -130,12 +130,12 @@ interface CoworkState {
   autoMode: AutoModeState | null
   /**
    * Ids de peticiones de permiso (`permission.asked`) que el Modo auto está considerando ahora
-   * mismo (vía rápida, `cowork:auto:consider`): mientras están aquí, `PermissionPrompt` oculta su
+   * mismo (vía rápida, `tasks:auto:consider`): mientras están aquí, `PermissionPrompt` oculta su
    * tarjeta (se resuelve solo, sin que el usuario tenga que tocar nada) o, si el Modo auto no la
    * aprueba, vuelve a aparecer.
    */
   autoPending: Record<string, true>
-  /** Último aviso "Aprobado por el modo auto: …" (evento `cowork:auto:approved`), para un toast. */
+  /** Último aviso "Aprobado por el modo auto: …" (evento `tasks:auto:approved`), para un toast. */
   autoApprovedNotice: AutoApprovalRecord | null
 
   set: (patch: Partial<CoworkState>) => void
@@ -257,7 +257,7 @@ export function setProjectPanelOpen(open: boolean): void {
 /** Carga proyecto + memoria de la carpeta actual (no bloquea la conexión si falla). */
 export async function loadProjectAndMemory(folder: string): Promise<void> {
   try {
-    const [project, memory] = await Promise.all([cw('cowork:project:get', { folder }), cw('cowork:memory:get', { folder })])
+    const [project, memory] = await Promise.all([cw('tasks:project:get', { folder }), cw('tasks:memory:get', { folder })])
     if (useCowork.getState().folder === folder) useCowork.setState({ project, memory })
   } catch {
     if (useCowork.getState().folder === folder) useCowork.setState({ project: null, memory: null })
@@ -267,21 +267,21 @@ export async function loadProjectAndMemory(folder: string): Promise<void> {
 export async function saveMemoryNotes(content: string): Promise<void> {
   const { folder } = useCowork.getState()
   if (!folder) return
-  const memory = await cw('cowork:memory:save', { folder, content })
+  const memory = await cw('tasks:memory:save', { folder, content })
   if (useCowork.getState().folder === folder) useCowork.setState({ memory })
 }
 
 export async function deleteMemoryNotes(): Promise<void> {
   const { folder } = useCowork.getState()
   if (!folder) return
-  const memory = await cw('cowork:memory:delete', { folder })
+  const memory = await cw('tasks:memory:delete', { folder })
   if (useCowork.getState().folder === folder) useCowork.setState({ memory })
 }
 
 /** Carga "Permitir borrar" de la carpeta actual (no bloquea la conexión si falla). */
 export async function loadDeleteGrant(folder: string): Promise<void> {
   try {
-    const allowed = await cw('cowork:deleteGrant:get', { folder })
+    const allowed = await cw('tasks:deleteGrant:get', { folder })
     if (useCowork.getState().folder === folder) useCowork.setState({ deleteGrant: allowed })
   } catch {
     if (useCowork.getState().folder === folder) useCowork.setState({ deleteGrant: null })
@@ -291,7 +291,7 @@ export async function loadDeleteGrant(folder: string): Promise<void> {
 // ── Red de Cowork (avisos de bloqueo por tarea) ──
 
 /**
- * Asocia un `cowork:networkBlocked` a la tarea raíz que esté trabajando en esa carpeta (la
+ * Asocia un `tasks:networkBlocked` a la tarea raíz que esté trabajando en esa carpeta (la
  * activa si lo está; si no, la primera tarea raíz ocupada). Ignora eventos de otra carpeta y
  * deduplica por host dentro de la misma tarea.
  */
@@ -333,7 +333,7 @@ export function dismissNetworkBlocked(taskId: string, host: string): void {
   })
 }
 
-/** Fija/desfija una tarea en la barra lateral (persistido en main con `cowork:tasks:setMeta`). */
+/** Fija/desfija una tarea en la barra lateral (persistido en main con `tasks:tasks:setMeta`). */
 export function togglePinned(sessionID: string): void {
   void setTaskMeta(sessionID, { pinned: !isPinned(sessionID) })
 }
@@ -354,7 +354,7 @@ function taskOrigin(sessionId: string): { folder: string; fullAccess: boolean } 
 }
 
 /**
- * Cambia fijada / grupo / título de una tarea en main (`cowork:tasks:setMeta`). Actualización
+ * Cambia fijada / grupo / título de una tarea en main (`tasks:tasks:setMeta`). Actualización
  * optimista: si main falla se restaura el valor anterior y se muestra el error.
  */
 export async function setTaskMeta(sessionId: string, patch: { pinned?: boolean; group?: string | null; title?: string }): Promise<void> {
@@ -380,7 +380,7 @@ export async function setTaskMeta(sessionId: string, patch: { pinned?: boolean; 
     })
   apply(optimistic)
   try {
-    const saved = await cw('cowork:tasks:setMeta', {
+    const saved = await cw('tasks:tasks:setMeta', {
       sessionId,
       folder: origin.folder,
       fullAccess: origin.fullAccess,
@@ -404,7 +404,7 @@ export function forgetTaskMeta(sessionId: string): void {
     delete legacyPinned[sessionId]
     return { taskMeta, pinned: derivePinned(taskMeta) }
   })
-  void cw('cowork:tasks:forget', { sessionId }).catch(() => undefined)
+  void cw('tasks:tasks:forget', { sessionId }).catch(() => undefined)
 }
 
 let legacyMigrating = false
@@ -429,7 +429,7 @@ async function migrateLegacyPinned(): Promise<void> {
       const sess = sessions[id]
       if (!sess || sessionSource[id] !== conn.baseUrl || sess.directory !== conn.folder) continue
       try {
-        const saved = await cw('cowork:tasks:setMeta', {
+        const saved = await cw('tasks:tasks:setMeta', {
           sessionId: id,
           folder: conn.folder,
           fullAccess: conn.fullAccess,
@@ -462,7 +462,7 @@ async function migrateLegacyPinned(): Promise<void> {
 /** Carga los metadatos de tareas de main y migra las fijadas antiguas. */
 export async function loadTaskMetas(): Promise<void> {
   try {
-    const list = await cw('cowork:tasks:list')
+    const list = await cw('tasks:tasks:list')
     const taskMeta: Record<string, CoworkTaskMeta> = {}
     for (const m of list) taskMeta[m.sessionId] = m
     useCowork.setState({ taskMeta, pinned: derivePinned(taskMeta) })
@@ -546,7 +546,7 @@ export async function refreshDeliverables(sessionID?: string): Promise<void> {
   if (!session) return
   try {
     // Pequeño margen por diferencias de reloj/mtime.
-    const files = await cw('cowork:deliverables', { folder, since: session.time.created - 2000 })
+    const files = await cw('tasks:deliverables', { folder, since: session.time.created - 2000 })
     useCowork.setState((s) => ({ deliverables: { ...s.deliverables, [id]: files } }))
   } catch {
     // ignorar: carpeta quizá movida
@@ -736,7 +736,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     sideChat: null
   })
   try {
-    const conn = await cw('cowork:start', { folder, fullAccess })
+    const conn = await cw('tasks:start', { folder, fullAccess })
     const now = useCowork.getState()
     if (now.folder !== folder || now.fullAccess !== fullAccess) return // el usuario cambió de carpeta/modo
     const client = makeClient(conn)
@@ -827,7 +827,7 @@ function syncKeepAwake(): void {
   const active = anyCoworkTaskRunning()
   if (active === keepAwakeActive) return
   keepAwakeActive = active
-  cw('cowork:keepAwakeActive', { active }).catch(() => undefined)
+  cw('tasks:keepAwakeActive', { active }).catch(() => undefined)
 }
 
 useSessions.subscribe((s, prev) => {
@@ -995,7 +995,7 @@ function isAutoActiveFor(folder: string, sessionID: string): boolean {
 
 /**
  * Vía rápida: ante un `permission.asked` con el Modo auto activo para esa carpeta/tarea, oculta la
- * tarjeta (`autoPending`) y le pide a main que la considere (`cowork:auto:consider`). Si no la
+ * tarjeta (`autoPending`) y le pide a main que la considere (`tasks:auto:consider`). Si no la
  * aprueba, la tarjeta vuelve a aparecer con normalidad.
  */
 function maybeAutoConsider(perm: PermissionRequest): void {
@@ -1010,7 +1010,7 @@ function maybeAutoConsider(perm: PermissionRequest): void {
       delete autoPending[perm.id]
       return { autoPending }
     })
-  cw('cowork:auto:consider', { folder, fullAccess: conn.fullAccess, requestId: perm.id })
+  cw('tasks:auto:consider', { folder, fullAccess: conn.fullAccess, requestId: perm.id })
     .then((r) => {
       if (!r.auto) clear()
     })
@@ -1020,7 +1020,7 @@ function maybeAutoConsider(perm: PermissionRequest): void {
 /** Carga el estado del Modo auto (ajustes + registro) desde main. */
 export async function loadAutoMode(): Promise<void> {
   try {
-    useCowork.setState({ autoMode: await cw('cowork:auto:state') })
+    useCowork.setState({ autoMode: await cw('tasks:auto:state') })
   } catch {
     // sin puente: se conserva null (equivale a apagado)
   }
@@ -1032,7 +1032,7 @@ let autoModeSynced = false
 export function syncAutoMode(): void {
   if (autoModeSynced) return
   autoModeSynced = true
-  onCowork('cowork:auto:approved', (rec) => {
+  onCowork('tasks:auto:approved', (rec) => {
     useCowork.setState((s) => ({
       autoMode: s.autoMode ? { ...s.autoMode, log: [...s.autoMode.log, rec] } : s.autoMode,
       autoApprovedNotice: rec
@@ -1048,7 +1048,7 @@ export async function setAutoModeSettings(req: {
   task?: { sessionId: string; on: boolean }
   viewApps?: string[]
 }): Promise<void> {
-  const autoMode = await cw('cowork:auto:set', req)
+  const autoMode = await cw('tasks:auto:set', req)
   useCowork.setState({ autoMode })
 }
 
@@ -1102,19 +1102,19 @@ function reportViewing(): void {
   const key = conn ? `${conn.folder}|${conn.fullAccess}` : ''
   if (key === viewingKey) return
   viewingKey = key
-  cw('cowork:viewing', conn ? { folder: conn.folder, fullAccess: conn.fullAccess } : { folder: null }).catch(() => undefined)
+  cw('tasks:viewing', conn ? { folder: conn.folder, fullAccess: conn.fullAccess } : { folder: null }).catch(() => undefined)
 }
 
 /**
- * Suscripción única a `cowork:activity` (tareas y servidores de todas las carpetas) + carga inicial de
- * actividad, metadatos de tareas, preferencias y política. También reporta `cowork:viewing` cada vez
+ * Suscripción única a `tasks:activity` (tareas y servidores de todas las carpetas) + carga inicial de
+ * actividad, metadatos de tareas, preferencias y política. También reporta `tasks:viewing` cada vez
  * que cambia la conexión. Idempotente: `connectFolder` la llama y puede llamarse desde cualquier vista.
  */
 export function syncActivity(): void {
   if (activitySynced) return
   activitySynced = true
-  onCowork('cowork:activity', (activity) => useCowork.setState({ activity }))
-  cw('cowork:activity')
+  onCowork('tasks:activity', (activity) => useCowork.setState({ activity }))
+  cw('tasks:activity')
     .then((snap) => {
       // Un evento más reciente que la respuesta inicial manda.
       if ((useCowork.getState().activity?.at ?? 0) < snap.at) useCowork.setState({ activity: snap })
@@ -1133,7 +1133,7 @@ export function syncActivity(): void {
 /** Carga carpeta principal, vinculadas y de confianza de `folder` (y si el servidor ya las aplicó). */
 export async function loadFolderSet(folder: string): Promise<void> {
   try {
-    const folderSet = await cw('cowork:folders:get', { folder })
+    const folderSet = await cw('tasks:folders:get', { folder })
     if (useCowork.getState().folder === folder) useCowork.setState({ folderSet })
   } catch {
     if (useCowork.getState().folder === folder) useCowork.setState({ folderSet: null })
@@ -1142,7 +1142,7 @@ export async function loadFolderSet(folder: string): Promise<void> {
 
 export async function loadCoworkPrefs(): Promise<void> {
   try {
-    useCowork.setState({ prefs: await cw('cowork:prefs:get') })
+    useCowork.setState({ prefs: await cw('tasks:prefs:get') })
   } catch {
     // sin puente: se usan los valores por defecto
   }
@@ -1154,13 +1154,13 @@ export async function saveCoworkPrefs(patch: Partial<CoworkPrefs>): Promise<void
   if (patch.idleStopMinutes !== undefined) req.idleStopMinutes = patch.idleStopMinutes
   if (patch.maxServers !== undefined) req.maxServers = patch.maxServers
   if (patch.notify !== undefined) req.notify = patch.notify
-  const prefs = await cw('cowork:prefs:set', req)
+  const prefs = await cw('tasks:prefs:set', req)
   useCowork.setState({ prefs })
 }
 
 export async function loadPolicy(): Promise<void> {
   try {
-    useCowork.setState({ policy: await cw('cowork:policy') })
+    useCowork.setState({ policy: await cw('tasks:policy') })
   } catch {
     // sin puente: sin política
   }

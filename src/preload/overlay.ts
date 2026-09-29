@@ -5,7 +5,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 
 contextBridge.exposeInMainWorld('api', {
-  cowork: {
+  tasks: {
     on: (channel: string, listener: (payload: unknown) => void): (() => void) => {
       if (channel !== 'computer:overlay') throw new Error(`Evento IPC no permitido: ${channel}`)
       const wrapped = (_e: IpcRendererEvent, payload: unknown): void => listener(payload)

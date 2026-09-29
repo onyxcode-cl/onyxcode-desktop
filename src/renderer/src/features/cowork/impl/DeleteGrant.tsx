@@ -1,6 +1,6 @@
 /**
  * "Permitir borrar, mover y renombrar": concede/retira el permiso de Seatbelt `file-write-unlink`
- * para el servidor sandboxeado de la carpeta (`cowork:deleteGrant:*`, ver
+ * para el servidor sandboxeado de la carpeta (`tasks:deleteGrant:*`, ver
  * `src/main/cowork/sandbox-profile.ts`). Como mover o renombrar también es un `unlink` del origen,
  * el mismo permiso cubre las tres cosas. Incluye el interruptor (panel de proyecto) y la tarjeta
  * que aparece cuando el agente lo intenta y falla con "Operation not permitted".

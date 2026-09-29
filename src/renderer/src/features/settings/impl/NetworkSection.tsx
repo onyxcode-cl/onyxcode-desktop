@@ -38,7 +38,7 @@ export function NetworkSection(): React.JSX.Element {
 
   const reload = (): void => {
     if (!hasCoworkBridge()) return
-    void cw('cowork:network:state')
+    void cw('tasks:network:state')
       .then(setState)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }
@@ -47,10 +47,10 @@ export function NetworkSection(): React.JSX.Element {
 
   useEffect(() => {
     if (!hasCoworkBridge()) return
-    cw('cowork:policy')
+    cw('tasks:policy')
       .then(setPolicy)
       .catch(() => undefined)
-    cw('cowork:mcp:list')
+    cw('tasks:mcp:list')
       .then((list) => setMcpHosts(mcpHostContributors(list)))
       .catch(() => undefined)
   }, [])
@@ -73,13 +73,13 @@ export function NetworkSection(): React.JSX.Element {
     if (!host) return
     setNewHost('')
     setError(null)
-    void cw('cowork:network:setHost', { host, decision: 'allow' })
+    void cw('tasks:network:setHost', { host, decision: 'allow' })
       .then(setState)
       .catch((err: unknown) => setError(networkErrorMessage(err, policy)))
   }
 
   const removeHost = (host: string): void => {
-    void cw('cowork:network:setHost', { host, decision: 'unset' })
+    void cw('tasks:network:setHost', { host, decision: 'unset' })
       .then(setState)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }
@@ -121,14 +121,14 @@ export function NetworkSection(): React.JSX.Element {
         <Row label="Registro de npm" description="registry.npmjs.org — necesario para instalar paquetes de Node dentro de una tarea.">
           <Toggle
             checked={state?.npmEnabled ?? false}
-            onChange={(v) => void cw('cowork:network:setToggle', { key: 'npmEnabled', value: v }).then(setState)}
+            onChange={(v) => void cw('tasks:network:setToggle', { key: 'npmEnabled', value: v }).then(setState)}
             label="Permitir registro de npm"
           />
         </Row>
         <Row label="PyPI" description="pypi.org y files.pythonhosted.org — necesario para instalar paquetes de Python.">
           <Toggle
             checked={state?.pypiEnabled ?? false}
-            onChange={(v) => void cw('cowork:network:setToggle', { key: 'pypiEnabled', value: v }).then(setState)}
+            onChange={(v) => void cw('tasks:network:setToggle', { key: 'pypiEnabled', value: v }).then(setState)}
             label="Permitir PyPI"
           />
         </Row>
@@ -138,7 +138,7 @@ export function NetworkSection(): React.JSX.Element {
         >
           <Toggle
             checked={state?.webSearchEnabled ?? true}
-            onChange={(v) => void cw('cowork:network:setToggle', { key: 'webSearchEnabled', value: v }).then(setState)}
+            onChange={(v) => void cw('tasks:network:setToggle', { key: 'webSearchEnabled', value: v }).then(setState)}
             label="Permitir búsqueda web del agente"
           />
         </Row>

@@ -51,7 +51,7 @@ export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
   if (!folder) return
   useCowork.setState({ deleteGrantBusy: true })
   try {
-    const now = await cw('cowork:deleteGrant:set', { folder, allowed })
+    const now = await cw('tasks:deleteGrant:set', { folder, allowed })
     useCowork.setState({ deleteGrant: now })
     if (conn && !conn.fullAccess) await connectFolder(folder, false)
   } finally {
@@ -70,7 +70,7 @@ export function currentAgent(): string {
 
 export async function loadFolders(): Promise<void> {
   try {
-    useCowork.setState({ folders: await cw('cowork:listFolders') })
+    useCowork.setState({ folders: await cw('tasks:listFolders') })
   } catch (err) {
     useCowork.setState({ error: errorMessage(err) })
   }
@@ -78,7 +78,7 @@ export async function loadFolders(): Promise<void> {
 
 /** Abre el diálogo nativo; si la carpeta ya está autorizada, conecta; si no, pide confirmación. */
 export async function chooseFolder(): Promise<void> {
-  const picked = await cw('cowork:pickFolder')
+  const picked = await cw('tasks:pickFolder')
   if (!picked) return
   useCowork.setState({ error: null })
   const { folders } = useCowork.getState()
@@ -91,7 +91,7 @@ export async function approvePending(): Promise<void> {
   if (!folder) return
   useCowork.setState({ error: null })
   try {
-    const approved = await cw('cowork:approveFolder', { folder })
+    const approved = await cw('tasks:approveFolder', { folder })
     useCowork.setState({ pendingApproval: null })
     await loadFolders()
     await selectFolder(approved.path)
@@ -122,11 +122,11 @@ export async function setAccessMode(fullAccess: boolean, confirmed = false): Pro
     return
   }
   useCowork.setState({ pendingFullAccess: null })
-  // El consentimiento lo registra main (cowork:start {fullAccess} lo exige); volver a sandbox
+  // El consentimiento lo registra main (tasks:start {fullAccess} lo exige); volver a sandbox
   // lo retira y detiene el servidor sin sandbox.
   try {
-    if (fullAccess) await cw('cowork:grantFullAccess', { folder })
-    else await cw('cowork:revokeFullAccess', { folder })
+    if (fullAccess) await cw('tasks:grantFullAccess', { folder })
+    else await cw('tasks:revokeFullAccess', { folder })
   } catch (err) {
     useCowork.setState({ error: errorMessage(err) })
     if (fullAccess) return
@@ -264,7 +264,7 @@ export const CONTROL_STOPPED_SEND_ERROR =
 
 export async function forgetFolder(folder: string): Promise<void> {
   try {
-    await cw('cowork:removeFolder', { folder })
+    await cw('tasks:removeFolder', { folder })
     if (useCowork.getState().folder === folder) {
       disconnect()
       rememberFolder(null)
@@ -322,7 +322,7 @@ function ctx(): { client: NonNullable<ReturnType<typeof useCowork.getState>['cli
 export async function attachFiles(): Promise<void> {
   const { folder } = useCowork.getState()
   if (!folder) throw new Error('Elige primero una carpeta')
-  const files = await cw('cowork:importFiles', { folder })
+  const files = await cw('tasks:importFiles', { folder })
   if (files.length === 0) return
   useCowork.setState((s) => {
     const seen = new Set(s.attachments.map((a) => a.path))
@@ -556,11 +556,11 @@ export async function scheduleActiveTask(): Promise<void> {
 }
 
 export async function reveal(path: string): Promise<void> {
-  await cw('cowork:reveal', { path })
+  await cw('tasks:reveal', { path })
 }
 
 export async function openPath(path: string): Promise<void> {
-  await cw('cowork:openPath', { path })
+  await cw('tasks:openPath', { path })
 }
 
 // ───────────────────────────── Carpetas adicionales (Lote B) ─────────────────────────────
@@ -612,9 +612,9 @@ export async function linkFolder(path: string, mode: FolderAccessMode, opts?: { 
   try {
     const sandbox = !!conn && !conn.fullAccess
     if (sandbox && !(await confirmInterruptRunning())) return false
-    const chk = await cw('cowork:folders:check', { path })
+    const chk = await cw('tasks:folders:check', { path })
     if (!chk.ok) throw new Error(chk.reason ?? 'Esa carpeta no se puede añadir.')
-    const res = await cw('cowork:folders:link', {
+    const res = await cw('tasks:folders:link', {
       folder,
       path: chk.normalized,
       mode,
@@ -637,7 +637,7 @@ export async function unlinkFolder(path: string): Promise<void> {
   try {
     const sandbox = !!conn && !conn.fullAccess
     if (sandbox && !(await confirmInterruptRunning())) return
-    const res = await cw('cowork:folders:unlink', { folder, path, restart: true })
+    const res = await cw('tasks:folders:unlink', { folder, path, restart: true })
     setFolderSetFrom(folder, res)
     if (res.restarted && sandbox) await connectFolder(folder, false)
   } catch (err) {
@@ -674,7 +674,7 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
     }
     if (conn.fullAccess) {
       if (d.trust) {
-        await cw('cowork:trusted:set', { path: d.path, mode: d.mode })
+        await cw('tasks:trusted:set', { path: d.path, mode: d.mode })
         await replyPermission(req.id, 'always')
       } else {
         await replyPermission(req.id, 'once')
@@ -684,10 +684,10 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
     // Sandbox.
     const taskId = rootTaskId(req.sessionID)
     if (!(await confirmInterruptRunning(taskId))) return
-    const chk = await cw('cowork:folders:check', { path: d.path })
+    const chk = await cw('tasks:folders:check', { path: d.path })
     if (!chk.ok) throw new Error(chk.reason ?? 'Esa carpeta no se puede añadir.')
     await replyPermission(req.id, 'reject', 'Se está concediendo acceso; la tarea se reanudará sola.')
-    const res = await cw('cowork:folders:link', { folder, path: chk.normalized, mode: d.mode, trust: d.trust, restart: true })
+    const res = await cw('tasks:folders:link', { folder, path: chk.normalized, mode: d.mode, trust: d.trust, restart: true })
     setFolderSetFrom(folder, res)
     if (res.restarted) {
       await connectFolder(folder, false)
@@ -703,7 +703,7 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
 }
 
 /**
- * «Siempre»: responde `always` en OpenCode y guarda la regla en main (`cowork:rules:add`) para que valga al
+ * «Siempre»: responde `always` en OpenCode y guarda la regla en main (`tasks:rules:add`) para que valga al
  * reabrir la carpeta. No se guardan `external_directory`, `doom_loop`, `computer_*` ni patrones de borrado
  * (solo vale para esta sesión). Con `policy.disableAlwaysAllow` se responde solo `once`.
  */
@@ -716,7 +716,7 @@ export async function replyPermissionAlways(req: PermissionRequest): Promise<voi
   await replyPermission(req.id, 'always')
   const patterns = rememberablePatterns(req)
   if (folder && patterns.length > 0) {
-    cw('cowork:rules:add', { folder, permission: req.permission, patterns }).catch(() => undefined)
+    cw('tasks:rules:add', { folder, permission: req.permission, patterns }).catch(() => undefined)
   }
 }
 
@@ -781,7 +781,7 @@ export async function exportTaskMarkdown(taskId: string): Promise<string | null>
   const session = useSessions.getState().sessions[taskId]
   if (!session) return null
   const content = transcriptToMarkdown(session, entries)
-  return cw('cowork:exportMarkdown', { suggestedName: suggestedExportName(session.title), content })
+  return cw('tasks:exportMarkdown', { suggestedName: suggestedExportName(session.title), content })
 }
 
 /** «Crear skill de esta tarea»: le pide a la propia tarea que guarde `.opencode/skills/<nombre>/SKILL.md`. */

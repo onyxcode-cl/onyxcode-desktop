@@ -566,7 +566,7 @@ export function RoutinesView(): React.JSX.Element {
   if (!bridge) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-sm text-danger">
-        <AlertCircle size={16} className="mr-2" /> Falta `window.api.cowork` en el preload.
+        <AlertCircle size={16} className="mr-2" /> Falta `window.api.tasks` en el preload.
       </div>
     )
   }
