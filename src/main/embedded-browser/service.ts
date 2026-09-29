@@ -27,7 +27,7 @@ import type {
 } from '@shared/ipc-browser'
 import type { BrowserEventChannel, BrowserEventContract } from '@shared/ipc-browser'
 import type { OpencodeConnection } from '@shared/types'
-import { loadManagedPolicy } from '../cowork/policy'
+import { loadManagedPolicy } from '../tasks/policy'
 import { hostOf, schemeOf, siteOf } from './sites'
 import { BrowserBusyError, type AgentActor, type AgentLease, type CdpSession, type EmbeddedBrowserApi } from './api'
 import { cdpSessionFor } from './cdp'

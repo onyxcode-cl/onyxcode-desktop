@@ -3,13 +3,13 @@
  * herramientas MCP de solo consulta y "Solo ver" de un puñado de apps), con un interruptor maestro
  * apagado por defecto (kill switch), opt-in por carpeta o por tarea, un registro con "Revocar" y
  * "Vaciar registro", y un editor de las apps que puede ver sin preguntar. La lógica vive en
- * `main/cowork/auto-mode.ts` (clasificador puro) y `auto-approver.ts` (motor); aquí solo se lee y
+ * `main/tasks/auto-mode.ts` (clasificador puro) y `auto-approver.ts` (motor); aquí solo se lee y
  * se edita ese estado (`tasks:auto:*`).
  */
 import { useEffect, useState } from 'react'
 import { Eye, FolderClosed, Loader2, Plus, ShieldCheck, Trash2, Zap } from 'lucide-react'
-import type { AutoModeState, CoworkFolder, CoworkTaskMeta } from '@shared/ipc-cowork'
-import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
+import type { AutoModeState, CoworkFolder, CoworkTaskMeta } from '@shared/ipc-tasks'
+import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 import { isSubmitKey } from '../../../lib/textarea'

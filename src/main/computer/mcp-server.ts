@@ -150,7 +150,7 @@ type AppTier = 'view' | 'click' | 'full'
 const TIER_RANK: Record<AppTier, number> = { view: 0, click: 1, full: 2 }
 const TIER_LABEL: Record<AppTier, string> = { view: 'Solo ver', click: 'Ver y clic', full: 'Control total' }
 // Este bundle no importa módulos de la app: estos tipos, constantes y `maxTier` DUPLICAN los de
-// `src/shared/ipc-cowork.ts` (`APP_TIER_RANK`, `TIER_LABEL_ES`, `maxTier`). Mantenerlos consistentes.
+// `src/shared/ipc-tasks.ts` (`APP_TIER_RANK`, `TIER_LABEL_ES`, `maxTier`). Mantenerlos consistentes.
 function maxTier(a: AppTier | null | undefined, b: AppTier | null | undefined): AppTier | null {
   if (!a) return b ?? null
   if (!b) return a

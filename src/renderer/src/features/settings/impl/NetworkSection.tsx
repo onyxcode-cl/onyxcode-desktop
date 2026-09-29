@@ -1,15 +1,15 @@
 /**
  * Ajustes → "Red del sandbox": lista blanca de red del proxy de egress de los servidores
- * sandboxeados (`src/main/cowork/proxy.ts` + `proxy-policy.ts`). El host del proveedor de
+ * sandboxeados (`src/main/tasks/proxy.ts` + `proxy-policy.ts`). El host del proveedor de
  * modelos siempre está permitido (si no, ninguna tarea podría llamar al modelo);
  * todo lo demás se deniega salvo que el usuario lo añada aquí o lo apruebe desde una tarjeta
  * de bloqueo ("Permitir siempre").
  */
 import { useEffect, useState } from 'react'
 import { Globe, Plus, ShieldCheck, Trash2 } from 'lucide-react'
-import type { CoworkMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/ipc-cowork'
-import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
-import { policyLocks } from './CoworkSection'
+import type { CoworkMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/ipc-tasks'
+import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import { policyLocks } from './TasksSection'
 import { Badge, Card, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { isSubmitKey } from '../../../lib/textarea'
 

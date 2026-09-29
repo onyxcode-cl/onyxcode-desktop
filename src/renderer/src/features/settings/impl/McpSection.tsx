@@ -15,14 +15,14 @@ import {
   Unplug
 } from 'lucide-react'
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
-import type { CoworkMcpInfo } from '@shared/ipc-cowork'
+import type { CoworkMcpInfo } from '@shared/ipc-tasks'
 import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { IconButton } from '../../../components/IconButton'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
-import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
+import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
 import { getExtras, requireExtras } from './extras'
 import { Badge, Card, ErrorText, Field, SectionHeader, TextArea, TextInput, Toggle } from './ui'
 

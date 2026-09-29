@@ -5,10 +5,10 @@
  */
 import { useEffect, useState } from 'react'
 import { Check, Eye, EyeOff, Loader2, MonitorCog } from 'lucide-react'
-import { DEFAULT_COMPUTER_PREFS, type ComputerControlMode, type ComputerPrefs } from '@shared/ipc-cowork'
-import { COWORK_TERMS } from '@shared/cowork-glossary'
-import { cw, hasCoworkBridge } from '../../cowork/impl/bridge'
-import { ComputerGrantsList } from '../../cowork/impl/ComputerAccess'
+import { DEFAULT_COMPUTER_PREFS, type ComputerControlMode, type ComputerPrefs } from '@shared/ipc-tasks'
+import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import { ComputerGrantsList } from '../../tasks/impl/ComputerAccess'
 import { Card, ErrorText, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 

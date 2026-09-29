@@ -23,7 +23,7 @@ import { runHelper } from '../util/exec'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import { EventEmitter } from 'node:events'
 import { APP_ID } from '@shared/brand'
-import type { RecordedStep, SkillRecording, SkillRecordingState } from '@shared/ipc-cowork'
+import type { RecordedStep, SkillRecording, SkillRecordingState } from '@shared/ipc-tasks'
 import { buildRecordedSkillPrompt } from '@shared/skill-recording'
 
 /** Tope del helper (`record --max-seconds`). */

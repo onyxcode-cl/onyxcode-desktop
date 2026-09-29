@@ -23,15 +23,15 @@ import {
   XCircle,
   type LucideIcon
 } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/cowork-glossary'
-import type { RoutineInput, RoutineMode, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-cowork'
+import { COWORK_TERMS } from '@shared/tasks-glossary'
+import type { RoutineInput, RoutineMode, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
 import { Button } from '../../../components/Button'
 import { PageHeader } from '../../../components/PageHeader'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
-import { hasCoworkBridge } from '../../cowork/impl/bridge'
+import { hasCoworkBridge } from '../../tasks/impl/bridge'
 import { useCode } from '../../code/impl/store'
 import { openProjectTrusted } from '../../code/impl/trust'
 import { MODE_META } from './meta'

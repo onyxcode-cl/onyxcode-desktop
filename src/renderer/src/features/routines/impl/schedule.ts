@@ -1,5 +1,5 @@
 /** Utilidades de programación para la UI de Rutinas: textos en español, presets y cuenta atrás. */
-import { WEEKDAYS_ES, type RoutineSchedule } from '@shared/ipc-cowork'
+import { WEEKDAYS_ES, type RoutineSchedule } from '@shared/ipc-tasks'
 
 const MONTHS_ES = [
   'enero',

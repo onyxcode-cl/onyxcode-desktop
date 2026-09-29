@@ -14,7 +14,7 @@
  * `showInactive` (nunca roba el foco) y `acceptFirstMouse` (el primer clic ya cuenta).
  */
 import { BrowserWindow, screen } from 'electron'
-import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-cowork'
+import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-tasks'
 import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 

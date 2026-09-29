@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import type { Provider } from '@opencode-ai/sdk/v2/client'
 import { APP_NAME } from '@shared/brand'
-import { COWORK_TERMS } from '@shared/cowork-glossary'
+import { COWORK_TERMS } from '@shared/tasks-glossary'
 import { MODE_LABELS } from '@shared/labels'
 import { OPENCODE_INSTALL_COMMAND, type OpencodeAction } from '@shared/opencode-links'
 import type { ModeId, OpencodeInfo } from '@shared/types'

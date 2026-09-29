@@ -4,7 +4,7 @@
  * espera a `/global/health`, reinicia con backoff si se cae y lo mata al salir.
  */
 import { appOpencodeConfigEnv } from '../extras/mcp-config'
-import { getOpencodeEnv } from '../cowork/opencode-config'
+import { getOpencodeEnv } from '../tasks/opencode-config'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { embeddedBrowser } from '../embedded-browser/service'
 import { spawn, type ChildProcess } from 'node:child_process'

@@ -3,7 +3,7 @@
  * skill" (`#record`). Qué se muestra lo decide el hash de la URL: son dos `BrowserWindow`
  * independientes que cargan la misma página (ver `main/computer/assist-window.ts`).
  */
-import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-cowork'
+import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-tasks'
 import { cowork } from './shared'
 import './assist.css'
 

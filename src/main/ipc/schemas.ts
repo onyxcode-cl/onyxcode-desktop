@@ -9,7 +9,7 @@
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
-import { COWORK_INVOKE_CHANNELS, type CoworkInvokeChannel, type CoworkRequest } from '@shared/ipc-cowork'
+import { COWORK_INVOKE_CHANNELS, type CoworkInvokeChannel, type CoworkRequest } from '@shared/ipc-tasks'
 import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import {
   BROWSER_HOST_EXCLUDED_CHANNELS,

@@ -19,7 +19,7 @@
  * principal (0,0) y el escalado Retina lo resuelve Chromium (1 px CSS = 1 punto).
  */
 import { BrowserWindow, screen, type Rectangle } from 'electron'
-import type { AccessRequest, ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-cowork'
+import type { AccessRequest, ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-tasks'
 import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 import { motionDurationMs } from './service'

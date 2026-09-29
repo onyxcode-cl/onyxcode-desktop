@@ -15,7 +15,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { AppGrant, AppTier, GrantsSnapshot } from '@shared/ipc-cowork'
+import type { AppGrant, AppTier, GrantsSnapshot } from '@shared/ipc-tasks'
 import { APP_ID } from '@shared/brand'
 
 export type { AppGrant, AppTier, GrantsSnapshot }

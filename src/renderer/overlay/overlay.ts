@@ -4,7 +4,7 @@
  * cursor y destello tras cada captura. Recibe `computer:overlay` del proceso principal
  * (src/main/computer/overlay.ts). Coordenadas ya en px CSS de esta ventana.
  */
-import type { ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-cowork'
+import type { ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-tasks'
 import { cowork, reducedMotion, shortLabel } from './shared'
 import './overlay.css'
 

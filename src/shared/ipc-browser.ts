@@ -3,7 +3,7 @@
  * canales `browser:*`. Se registra en `src/main/ipc/browser-handlers.ts` y se expone en el
  * preload como `window.api.browser` (`src/preload/browser-api.ts` / `browser-host.ts`).
  */
-import type { BrowserSite } from './ipc-cowork'
+import type { BrowserSite } from './ipc-tasks'
 
 export type BrowserProduct = 'code' | 'tasks'
 

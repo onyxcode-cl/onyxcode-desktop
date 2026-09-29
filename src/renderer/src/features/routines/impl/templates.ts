@@ -1,5 +1,5 @@
 /** Plantillas de rutinas para el estado vacío. */
-import type { RoutineInput } from '@shared/ipc-cowork'
+import type { RoutineInput } from '@shared/ipc-tasks'
 
 export interface RoutineTemplate {
   id: string

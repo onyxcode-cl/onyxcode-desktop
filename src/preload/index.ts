@@ -3,7 +3,7 @@ import { IPC_EVENT_CHANNELS, IPC_INVOKE_CHANNELS, type IpcEventChannel, type Ipc
 import { makeBridge } from './bridge'
 import { buildBrowserApi } from './browser-api'
 import { buildCodeApi } from './code-api'
-import { buildCoworkApi } from './cowork-api'
+import { buildCoworkApi } from './tasks-api'
 import { buildExtrasApi } from './extras-api'
 
 const bridge = makeBridge<IpcInvokeChannel, IpcEventChannel>(ipcRenderer, {

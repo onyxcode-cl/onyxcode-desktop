@@ -1,5 +1,5 @@
 /** Utilidades compartidas por el overlay de control y la píldora. */
-import type { ComputerActionEvent, CoworkApi } from '@shared/ipc-cowork'
+import type { ComputerActionEvent, CoworkApi } from '@shared/ipc-tasks'
 
 export const cowork = (window as unknown as { api?: { tasks?: CoworkApi } }).api?.tasks
 

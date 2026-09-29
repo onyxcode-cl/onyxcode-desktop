@@ -5,7 +5,7 @@
  * herramienta `question` (Guardar / Ajustar / Descartar). Nunca instruye a ejecutar los pasos
  * grabados: son una demostración para APRENDER el procedimiento, no un guion.
  */
-import type { RecordedStep, SkillRecording } from './ipc-cowork'
+import type { RecordedStep, SkillRecording } from './ipc-tasks'
 
 export interface BuildRecordedSkillPromptOptions {
   /** Carpeta (relativa a la raíz de la tarea) donde quedaron copiadas las capturas. */

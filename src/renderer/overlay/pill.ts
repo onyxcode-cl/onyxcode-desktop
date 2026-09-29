@@ -21,7 +21,7 @@ import {
   type AccessRequest,
   type AccessRequestApp,
   type ComputerOverlayMessage
-} from '@shared/ipc-cowork'
+} from '@shared/ipc-tasks'
 import { cowork, describeStep } from './shared'
 import './pill.css'
 

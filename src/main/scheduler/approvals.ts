@@ -4,7 +4,7 @@
  * Solo las reglas explícitas de la lista blanca de la rutina ("Permitir sin preguntar") se aprueban
  * automáticamente; todo lo demás se rechaza o espera al usuario (lo decide el scheduler).
  */
-import type { RoutineAllowRule } from '@shared/ipc-cowork'
+import type { RoutineAllowRule } from '@shared/ipc-tasks'
 
 /** Escapa los metacaracteres de una expresión regular. */
 function escapeRegex(s: string): string {

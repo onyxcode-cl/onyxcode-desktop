@@ -4,7 +4,7 @@
  * cada vez que cualquiera de los dos stores cambia.
  */
 import { selectCodeAttentionCount, useCode } from '../features/code/impl/store'
-import { selectCoworkAttentionCount, useCowork } from '../features/cowork/impl/store'
+import { selectCoworkAttentionCount, useCowork } from '../features/tasks/impl/store'
 import { setAttentionCount } from './notify'
 
 function publish(): void {

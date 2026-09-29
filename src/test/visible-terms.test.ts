@@ -59,7 +59,7 @@ const EXCEPTIONS: Exception[] = [
     reason: 'Aviso legal de Acerca de: debe nombrar a Anthropic para desvincularse.'
   },
   {
-    file: 'src/main/cowork/sandbox-profile.ts',
+    file: 'src/main/tasks/sandbox-profile.ts',
     rule: 'Cowork',
     line: /;; Red: denegada/,
     reason: 'Perfil Seatbelt (SBPL): su texto no se muestra ni se toca (ver plan: no modificar).'

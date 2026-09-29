@@ -5,7 +5,7 @@
  * - kill-switch + atajo global Cmd+Shift+Escape. La fuente de verdad es el estado EN MEMORIA de
  *   este proceso (`stopped`): el MCP lo consulta con `GET <COMPUTER_EVENTS_URL>/state` antes de cada
  *   acción, así que el agente no puede "des-pararse" borrando un archivo. `stop()` además aborta las
- *   sesiones de los servidores de acceso total (`abortSessions`, lo inyecta cowork-handlers) y mata
+ *   sesiones de los servidores de acceso total (`abortSessions`, lo inyecta tasks-handlers) y mata
  *   los `cu-helper` en vuelo. El archivo STOP (en `userData/onyxcode-killswitch/`, ruta que
  *   agents/computer.md deniega a bash/edit) solo es el respaldo si el canal lateral no arrancó;
  *   parar NUNCA se deshace solo: hace falta `resume()` (botón "Reanudar control");
@@ -47,7 +47,7 @@ import {
   type ComputerUseInfo,
   type PlanApprovalState,
   type TeachStep
-} from '@shared/ipc-cowork'
+} from '@shared/ipc-tasks'
 import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
@@ -104,7 +104,7 @@ export interface AccessResponse {
 }
 
 /**
- * Lote C: petición al Modo auto (`cowork-handlers` la conecta con `getAutoApprover()`) antes de
+ * Lote C: petición al Modo auto (`tasks-handlers` la conecta con `getAutoApprover()`) antes de
  * mostrar la tarjeta `request_access`/`request_full_control`. Se espera como mucho 1,5 s.
  */
 export interface AutoAccessQuery {
@@ -152,7 +152,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private stopped = false
   private stoppedAt: number | null = null
   /**
-   * Aborta toda sesión en curso de los servidores de acceso total (inyectado por cowork-handlers;
+   * Aborta toda sesión en curso de los servidores de acceso total (inyectado por tasks-handlers;
    * el gestor de Cowork conoce los servidores y sus credenciales).
    */
   abortSessions: (() => Promise<AbortReport>) | null = null
@@ -196,7 +196,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     }
   >()
   /**
-   * Lote C: el Modo auto (inyectado por `cowork-handlers` desde `getAutoApprover()`) puede
+   * Lote C: el Modo auto (inyectado por `tasks-handlers` desde `getAutoApprover()`) puede
    * conceder una petición sencilla sin mostrar tarjeta. Se espera como mucho 1,5 s antes de seguir
    * con el flujo normal (tarjeta al usuario). `null` = sin Modo auto conectado o no aplica.
    */

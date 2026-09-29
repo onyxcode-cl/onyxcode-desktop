@@ -1,7 +1,7 @@
 /** Estado del modo Rutinas (lista, historial, edición). */
 import { create } from 'zustand'
-import type { RoutineInput, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-cowork'
-import { cw, onCowork } from '../../cowork/impl/bridge'
+import type { RoutineInput, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
+import { cw, onCowork } from '../../tasks/impl/bridge'
 
 interface RoutinesState {
   routines: ScheduledRoutine[]

@@ -6,7 +6,7 @@ Este directorio es SOLO LECTURA (va dentro del bundle firmado). Al arrancar, mai
 ya no exista en el bundle) junto con los plugins generados `plugins/onyxcode-env.js` y
 `plugins/onyxcode-plan-gate.js`, y es ESE directorio el que se pasa como `OPENCODE_CONFIG_DIR`
 (OpenCode escribe en su config dir: `node_modules`, `bun.lock`…). Ver
-`src/main/cowork/opencode-config.ts`. Se fusiona con ~/.config/opencode del usuario. En el
+`src/main/tasks/opencode-config.ts`. Se fusiona con ~/.config/opencode del usuario. En el
 empaquetado, `agents/**` y `skills/**` van en `asarUnpack` (`electron-builder.js`).
 
 ## Skills

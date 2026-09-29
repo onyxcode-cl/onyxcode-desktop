@@ -1,6 +1,6 @@
 /** Utilidades puras de programación (presets → cron, próxima ejecución, etiquetas). */
 import { Cron } from 'croner'
-import { WEEKDAYS_ES, type RoutineSchedule, type SchedulePreview } from '@shared/ipc-cowork'
+import { WEEKDAYS_ES, type RoutineSchedule, type SchedulePreview } from '@shared/ipc-tasks'
 
 const HOUR_MS = 3_600_000
 

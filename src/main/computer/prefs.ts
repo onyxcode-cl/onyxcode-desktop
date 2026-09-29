@@ -7,7 +7,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { DEFAULT_COMPUTER_PREFS, type ComputerControlMode, type ComputerPrefs } from '@shared/ipc-cowork'
+import { DEFAULT_COMPUTER_PREFS, type ComputerControlMode, type ComputerPrefs } from '@shared/ipc-tasks'
 
 function bool(v: unknown, fallback: boolean): boolean {
   return typeof v === 'boolean' ? v : fallback
