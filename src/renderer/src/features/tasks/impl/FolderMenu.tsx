@@ -1,12 +1,12 @@
-/** Selector de carpeta de Cowork (chip del compositor o botón de la barra lateral). */
+/** Selector de carpeta de Tareas (chip del compositor o botón de la barra lateral). */
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, FolderOpen, FolderPlus, Loader2, Lock, Trash2, X } from 'lucide-react'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { chooseFolder, forgetFolder, linkFolder, selectFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
-import { loadFolderSet, useCowork } from './store'
+import { loadFolderSet, useTasks } from './store'
 import { baseName } from './util'
 
 /** Carpeta elegida para añadir, pendiente de decidir su modo. */
@@ -29,10 +29,10 @@ export function FolderMenu({
   placement?: 'top' | 'bottom'
   disabled?: boolean
 }): React.JSX.Element {
-  const folders = useCowork((s) => s.folders)
-  const folder = useCowork((s) => s.folder)
-  const folderSet = useCowork((s) => s.folderSet)
-  const fullAccess = useCowork((s) => !!s.conn?.fullAccess)
+  const folders = useTasks((s) => s.folders)
+  const folder = useTasks((s) => s.folder)
+  const folderSet = useTasks((s) => s.folderSet)
+  const fullAccess = useTasks((s) => !!s.conn?.fullAccess)
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState<PendingLink | null>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
@@ -156,7 +156,7 @@ export function FolderMenu({
             placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
-          <div className="px-2 pt-1 pb-1.5 text-[11.5px] font-medium text-subtle">{COWORK_TERMS.workFolders}</div>
+          <div className="px-2 pt-1 pb-1.5 text-[11.5px] font-medium text-subtle">{TASKS_TERMS.workFolders}</div>
           <div className="max-h-64 overflow-y-auto">
             {folders.map((f) => (
               <div key={f.path} className="group flex items-center rounded-lg hover:bg-hover">
@@ -201,7 +201,7 @@ export function FolderMenu({
           {folder && linked.length > 0 && (
             <>
               <div className="my-1 border-t border-border" />
-              <div className="px-2 pt-1 pb-1 text-[11.5px] font-medium text-subtle">{COWORK_TERMS.linkedFolders}</div>
+              <div className="px-2 pt-1 pb-1 text-[11.5px] font-medium text-subtle">{TASKS_TERMS.linkedFolders}</div>
               <div className="max-h-40 overflow-y-auto">
                 {linked.map((l) => (
                   <div key={l.path} className="group flex items-center rounded-lg hover:bg-hover">
@@ -212,7 +212,7 @@ export function FolderMenu({
                           <span className="truncate text-sm">{l.name}</span>
                           {l.mode === 'ro' && (
                             <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">
-                              <Lock size={9} /> {COWORK_TERMS.readOnly}
+                              <Lock size={9} /> {TASKS_TERMS.readOnly}
                             </span>
                           )}
                         </span>
@@ -262,7 +262,7 @@ export function FolderMenu({
                         />
                         <span>
                           <span className="block text-[13px] font-medium">
-                            {m === 'rw' ? COWORK_TERMS.readWrite : COWORK_TERMS.readOnly}
+                            {m === 'rw' ? TASKS_TERMS.readWrite : TASKS_TERMS.readOnly}
                           </span>
                           <span className="block text-[11px] text-muted">{MODE_HINT[m]}</span>
                         </span>

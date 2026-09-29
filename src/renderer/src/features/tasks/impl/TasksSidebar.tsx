@@ -1,12 +1,12 @@
-/** Contenido de la barra lateral del shell en modo Cowork: carpeta, proyecto, secciones transversales y lista de tareas. */
+/** Contenido de la barra lateral del shell en modo Tareas: carpeta, proyecto, secciones transversales y lista de tareas. */
 import { BookText } from 'lucide-react'
 import { FolderMenu } from './FolderMenu'
 import { SidebarSections } from './SidebarSections'
-import { setProjectPanelOpen, useCowork } from './store'
+import { setProjectPanelOpen, useTasks } from './store'
 import { TaskList } from './TaskList'
 
-export function CoworkSidebar(): React.JSX.Element {
-  const folder = useCowork((s) => s.folder)
+export function TasksSidebar(): React.JSX.Element {
+  const folder = useTasks((s) => s.folder)
   return (
     <div className="flex flex-col px-1">
       <FolderMenu variant="block" />

@@ -23,7 +23,7 @@ import {
   X,
   type LucideIcon
 } from 'lucide-react'
-import type { CoworkDeliverable, CoworkFilePreview } from '@shared/ipc-tasks'
+import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
 import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
@@ -127,8 +127,8 @@ function CsvTable({ text, sep }: { text: string; sep: string }): React.JSX.Eleme
   )
 }
 
-function usePreview(path: string | null, maxBytes?: number): { data: CoworkFilePreview | null; error: string | null; loading: boolean } {
-  const [state, setState] = useState<{ data: CoworkFilePreview | null; error: string | null; loading: boolean }>({
+function usePreview(path: string | null, maxBytes?: number): { data: TasksFilePreview | null; error: string | null; loading: boolean } {
+  const [state, setState] = useState<{ data: TasksFilePreview | null; error: string | null; loading: boolean }>({
     data: null,
     error: null,
     loading: false
@@ -147,7 +147,7 @@ function usePreview(path: string | null, maxBytes?: number): { data: CoworkFileP
   return state
 }
 
-function PreviewBody({ file }: { file: CoworkDeliverable }): React.JSX.Element {
+function PreviewBody({ file }: { file: TasksDeliverable }): React.JSX.Element {
   const { data, error, loading } = usePreview(file.path)
   if (loading) {
     return (
@@ -193,7 +193,7 @@ function PreviewBody({ file }: { file: CoworkDeliverable }): React.JSX.Element {
 }
 
 /** Diálogo grande de vista previa. */
-export function PreviewDialog({ file, onClose }: { file: CoworkDeliverable; onClose: () => void }): React.JSX.Element {
+export function PreviewDialog({ file, onClose }: { file: TasksDeliverable; onClose: () => void }): React.JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -243,7 +243,7 @@ export function PreviewDialog({ file, onClose }: { file: CoworkDeliverable; onCl
 }
 
 /** Miniatura en línea para imágenes. */
-function ImageThumb({ file }: { file: CoworkDeliverable }): React.JSX.Element | null {
+function ImageThumb({ file }: { file: TasksDeliverable }): React.JSX.Element | null {
   const { data } = usePreview(file.size < 4 * 1024 * 1024 ? file.path : null)
   if (!data?.dataUrl) return null
   return <img src={data.dataUrl} alt="" className="mt-1.5 max-h-28 w-full rounded-md border border-border object-cover" />
@@ -253,7 +253,7 @@ const ACTION_BTN =
   'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50'
 
 /** «Abrir como artifact» para un HTML entregable: carga su contenido y usa el `ArtifactButton` de siempre. */
-function HtmlArtifactAction({ file }: { file: CoworkDeliverable }): React.JSX.Element | null {
+function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Element | null {
   const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES + 1)
   if (!data || data.kind !== 'text' || data.truncated || !data.content?.trim()) return null
   return (
@@ -266,8 +266,8 @@ function HtmlArtifactAction({ file }: { file: CoworkDeliverable }): React.JSX.El
 }
 
 /** Agrupa por carpeta de origen: la principal (sin `root`) primero y luego cada carpeta adicional. */
-function groupByRoot(files: CoworkDeliverable[]): Array<{ root: string | null; files: CoworkDeliverable[] }> {
-  const map = new Map<string | null, CoworkDeliverable[]>()
+function groupByRoot(files: TasksDeliverable[]): Array<{ root: string | null; files: TasksDeliverable[] }> {
+  const map = new Map<string | null, TasksDeliverable[]>()
   for (const f of files) {
     const key = f.root ?? null
     const list = map.get(key)
@@ -280,8 +280,8 @@ function groupByRoot(files: CoworkDeliverable[]): Array<{ root: string | null; f
 }
 
 /** Lista de entregables del panel derecho. `onChanged` se llama al crear archivos nuevos (PDF). */
-export function DeliverableList({ files, onChanged }: { files: CoworkDeliverable[]; onChanged?: () => void }): React.JSX.Element {
-  const [preview, setPreview] = useState<CoworkDeliverable | null>(null)
+export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[]; onChanged?: () => void }): React.JSX.Element {
+  const [preview, setPreview] = useState<TasksDeliverable | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -307,7 +307,7 @@ export function DeliverableList({ files, onChanged }: { files: CoworkDeliverable
       const out = await cw('tasks:zip', { paths: files.map((f) => f.path), suggestedName: 'Entregables.zip' })
       if (out) setNotice(`Zip guardado: ${baseName(out)}`)
     })
-  const savePdf = (f: CoworkDeliverable): void =>
+  const savePdf = (f: TasksDeliverable): void =>
     withBusy(`pdf:${f.path}`, async () => {
       const pdf = await cw('tasks:htmlToPdf', { path: f.path })
       setNotice(`PDF guardado: ${baseName(pdf.path)}`)

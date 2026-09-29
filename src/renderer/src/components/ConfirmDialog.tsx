@@ -1,6 +1,6 @@
 /**
  * Diálogo de confirmación compartido: reemplaza `window.confirm` / `window.alert` / `window.prompt`
- * nativos con un componente propio (mismo estilo que `TrustGate` / `FullAccessDialog` en Cowork).
+ * nativos con un componente propio (mismo estilo que `TrustGate` / `FullAccessDialog` en Tareas).
  * Se monta una única vez en `App.tsx` (`<ConfirmDialogHost />`) y se usa desde cualquier parte vía
  * `confirmDialog({ title, message, ... })` (devuelve `boolean`) o `promptDialog({ title, ... })`
  * (devuelve `string | null`).

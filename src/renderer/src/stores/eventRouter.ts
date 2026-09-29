@@ -1,6 +1,6 @@
 /**
  * Enrutado de eventos del sidecar por directorio del sobre (Fase 6.5, D1). `useSessions` solo debe
- * recibir lo de Chat (y lo que Cowork aplica por su cuenta con su origen); Code tiene su propio store.
+ * recibir lo de Chat (y lo que Tareas aplica por su cuenta con su origen); Code tiene su propio store.
  */
 import type { OcEvent } from '../lib/opencode'
 import { useServer } from './server'

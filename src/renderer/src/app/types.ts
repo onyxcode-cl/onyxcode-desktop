@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { ModeId } from '@shared/types'
 
 /**
- * Definición de un modo (Chat, Code, Cowork, Rutinas). Cada feature exporta la suya
+ * Definición de un modo (Chat, Code, Tareas, Rutinas). Cada feature exporta la suya
  * desde `features/<modo>/index.ts` y se registra con UNA línea en `app/modes.ts`.
  */
 export interface ModeDefinition {

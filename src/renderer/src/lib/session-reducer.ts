@@ -1,6 +1,6 @@
 /**
  * Reductor común de eventos de sesión/mensajes (Fase 6.4). Lo comparten `useSessions`
- * (Chat/Cowork) y `useCode`: funciones puras + `Buffers` como instancia por store (antes eran
+ * (Chat/Tareas) y `useCode`: funciones puras + `Buffers` como instancia por store (antes eran
  * Map/Set globales de módulo). Sin Zustand: los efectos secundarios (notificaciones, no leído,
  * auto-envío, fsVersion) los aplica quien llama a partir de `Effect`.
  *

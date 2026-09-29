@@ -15,8 +15,8 @@ import type { RecordedStep, SkillRecording } from '@shared/ipc-tasks'
 import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
 import { sendToTask } from './actions'
-import { cw, onCowork } from './bridge'
-import { useCowork } from './store'
+import { cw, onTasks } from './bridge'
+import { useTasks } from './store'
 
 /** Descripción en español de un paso registrado (solo para mostrar; `text` se omite si `includeTyped` es falso). */
 function describeStep(step: RecordedStep, includeTyped: boolean): string {
@@ -135,7 +135,7 @@ export function RecordSkillReview(): React.JSX.Element | null {
 
   useEffect(
     () =>
-      onCowork('computer:recordDone', (r) => {
+      onTasks('computer:recordDone', (r) => {
         setRec(r)
         setIncludeTyped(false)
         setError(null)
@@ -160,7 +160,7 @@ export function RecordSkillReview(): React.JSX.Element | null {
   }
 
   const send = (): void => {
-    const folder = useCowork.getState().folder
+    const folder = useTasks.getState().folder
     if (!folder) {
       setError('Abre una carpeta de trabajo para enviárselo al agente.')
       return

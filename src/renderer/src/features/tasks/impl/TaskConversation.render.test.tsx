@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { allEntries, assistantFull, userWithFile } from '../../../../../test/fixtures/entries'
 
-// NO se importa el store real de Cowork (suscribe a useSessions al cargar): se sustituye por un
+// NO se importa el store real de Tareas (suscribe a useSessions al cargar): se sustituye por un
 // stub mínimo para los módulos que lo arrastran (PermissionPrompt/actions/ProgressPanel/…).
 vi.mock('./store', () => ({
-  useCowork: Object.assign(() => undefined, { getState: () => ({}), setState: () => undefined, subscribe: () => () => undefined })
+  useTasks: Object.assign(() => undefined, { getState: () => ({}), setState: () => undefined, subscribe: () => () => undefined })
 }))
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 

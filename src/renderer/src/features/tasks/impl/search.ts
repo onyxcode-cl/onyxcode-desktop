@@ -1,5 +1,5 @@
 /**
- * Búsqueda dentro del contenido de las tareas de Cowork (barra lateral). La parte pura
+ * Búsqueda dentro del contenido de las tareas de Tareas (barra lateral). La parte pura
  * (`searchEntries`) ignora mayúsculas y tildes; el hook `useTranscriptSearch` recorre las tareas de la
  * carpeta actual leyendo sus mensajes con poca concurrencia y una caché de texto por sesión.
  */
@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../../stores/sessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { splitAttachments, visibleTextParts } from './transcript'
-import { useCowork } from './store'
+import { useTasks } from './store'
 
 export interface TranscriptHit {
   sessionId: string
@@ -130,7 +130,7 @@ export function cachedTranscriptTexts(sessionId: string, updated: number): Searc
   return cached && cached.updated === updated ? cached.texts : undefined
 }
 
-// Al desalojar una tarea de Cowork su texto se conserva aquí: buscarlo no obliga a pedir su historial (D4).
+// Al desalojar una tarea de Tareas su texto se conserva aquí: buscarlo no obliga a pedir su historial (D4).
 useSessions.getState().addEvictionListener((evicted, st) => {
   for (const { id, entries } of evicted) {
     const src = st.sessionSource[id]
@@ -155,8 +155,8 @@ const EMPTY: SearchState = { hits: [], loading: false, scanned: 0, total: 0 }
  */
 export function useTranscriptSearch(folder: string | null, query: string): SearchState {
   const [state, setState] = useState<SearchState>(EMPTY)
-  const client = useCowork((s) => s.client)
-  const connectedFolder = useCowork((s) => s.folder)
+  const client = useTasks((s) => s.client)
+  const connectedFolder = useTasks((s) => s.folder)
   const q = query.trim()
 
   useEffect(() => {

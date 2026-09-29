@@ -13,7 +13,7 @@ import { initExtrasPrefs } from '../features/settings/impl/extras'
 import { newChat, sendChatMessage } from '../features/chat/actions'
 import { ensureCodeSubscription, useCode } from '../features/code/impl/store'
 import { openProjectTrusted } from '../features/code/impl/trust'
-import { clearUnseen, connectFolder, loadTask, rememberFullAccess, useCowork } from '../features/tasks/impl/store'
+import { clearUnseen, connectFolder, loadTask, rememberFullAccess, useTasks } from '../features/tasks/impl/store'
 import { initAttentionBadge } from '../lib/attention'
 import { E2EFault } from './E2EFault'
 import { CommandPalette } from './CommandPalette'
@@ -33,7 +33,7 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const offSettings = useSettings.getState().init()
     const offServer = useServer.getState().init()
-    // Eventos de OpenCode → store genérico de sesiones (Chat/Cowork), filtrados por directorio del sobre (6.5).
+    // Eventos de OpenCode → store genérico de sesiones (Chat/Tareas), filtrados por directorio del sobre (6.5).
     const offEvents = onOpencodeEvent((event, dir) => routeEventToSessions(event, dir))
     return () => {
       offEvents()
@@ -80,7 +80,7 @@ export function App(): React.JSX.Element {
     }
   }, [])
 
-  // Badge combinado del Dock (Code + Cowork: sesiones/tareas esperando o sin ver).
+  // Badge combinado del Dock (Code + Tareas: sesiones/tareas esperando o sin ver).
   useEffect(() => initAttentionBadge(), [])
 
   // Clic en una notificación nativa (o "abrir" desde el Dock): cambia de modo y selecciona.
@@ -97,14 +97,14 @@ export function App(): React.JSX.Element {
       } else {
         useUi.getState().setMode('tasks')
         void (async () => {
-          const cowork = useCowork.getState()
+          const tasks = useTasks.getState()
           // `fullAccess` viene del monitor de main: la tarea puede vivir en el servidor de Control total.
           const wanted = target.fullAccess
-          if (target.directory && (cowork.folder !== target.directory || (wanted !== undefined && cowork.fullAccess !== wanted))) {
+          if (target.directory && (tasks.folder !== target.directory || (wanted !== undefined && tasks.fullAccess !== wanted))) {
             if (wanted !== undefined) rememberFullAccess(target.directory, wanted)
             await connectFolder(target.directory, wanted)
           }
-          useCowork.setState({ activeTaskId: target.id })
+          useTasks.setState({ activeTaskId: target.id })
           await loadTask(target.id)
           clearUnseen(target.id)
         })()

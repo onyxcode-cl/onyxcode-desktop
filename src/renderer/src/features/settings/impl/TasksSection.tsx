@@ -2,33 +2,33 @@
  * Ajustes › Tareas: carpetas de confianza, carpetas de trabajo (Control total), permisos recordados,
  * notificaciones por tipo, archivado automático, servidores y almacenamiento. Si hay una política
  * gestionada (`managed.json`), se muestra un aviso y se desactivan los controles que restringe.
- * Todo el estado vive en main (`cowork:*`); el renderer solo lo muestra y lo edita.
+ * Todo el estado vive en main (`tasks:*`); el renderer solo lo muestra y lo edita.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { FolderPlus, Loader2, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 import {
   FOLDER_MODE_LABEL_ES,
-  type CoworkFolder,
-  type CoworkNotifyPrefs,
-  type CoworkPermissionRule,
-  type CoworkStorageReport,
+  type TasksFolder,
+  type TasksNotifyPrefs,
+  type TasksPermissionRule,
+  type TasksStorageReport,
   type FolderAccessMode,
   type ManagedPolicy,
   type TrustedFolder
 } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { MODE_LABELS } from '@shared/labels'
-import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import {
   connectFolder,
-  loadCoworkPrefs,
+  loadTasksPrefs,
   loadPolicy,
   rememberFullAccess,
-  saveCoworkPrefs,
+  saveTasksPrefs,
   syncActivity,
-  useCowork
+  useTasks
 } from '../../tasks/impl/store'
 import { Badge, Card, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
@@ -102,7 +102,7 @@ export function policyLocks(policy: ManagedPolicy | null | undefined): PolicyLoc
 /** Frases que resumen las restricciones activas de la política (para el aviso). */
 export function policySummary(locks: PolicyLocks): string[] {
   const out: string[] = []
-  if (locks.fullAccess) out.push(`${COWORK_TERMS.fullControl} está desactivado.`)
+  if (locks.fullAccess) out.push(`${TASKS_TERMS.fullControl} está desactivado.`)
   if (locks.allowedRoots.length > 0) out.push(`Las carpetas solo pueden estar dentro de: ${locks.allowedRoots.join(', ')}.`)
   if (locks.customHosts) out.push('No se pueden añadir sitios a la red del sandbox.')
   if (locks.alwaysAllow) out.push('No se pueden recordar permisos con «Siempre permitir».')
@@ -129,8 +129,8 @@ export function archiveOptions(maxDays: number | null): ArchiveOption[] {
 }
 
 /** Agrupa reglas por carpeta conservando el orden de primera aparición. */
-export function groupRulesByFolder(rules: CoworkPermissionRule[]): Array<{ folder: string; rules: CoworkPermissionRule[] }> {
-  const map = new Map<string, CoworkPermissionRule[]>()
+export function groupRulesByFolder(rules: TasksPermissionRule[]): Array<{ folder: string; rules: TasksPermissionRule[] }> {
+  const map = new Map<string, TasksPermissionRule[]>()
   for (const r of rules) {
     const list = map.get(r.folder)
     if (list) list.push(r)
@@ -219,24 +219,24 @@ function NumberField({
   )
 }
 
-const NOTIFY_ROWS: Array<{ key: keyof CoworkNotifyPrefs; label: string; description: string }> = [
+const NOTIFY_ROWS: Array<{ key: keyof TasksNotifyPrefs; label: string; description: string }> = [
   { key: 'done', label: 'Tarea terminada', description: 'Cuando una tarea en segundo plano termina.' },
   { key: 'approval', label: 'Necesita tu aprobación', description: 'Cuando una tarea espera un permiso o la aprobación de un plan.' },
   { key: 'question', label: 'Tiene una pregunta', description: 'Cuando el agente te hace una pregunta y espera tu respuesta.' },
   { key: 'error', label: 'Falló', description: 'Cuando una tarea termina con un error.' }
 ]
 
-export function CoworkSection(): React.JSX.Element {
-  const bridge = hasCoworkBridge()
-  const prefs = useCowork((s) => s.prefs)
-  const policy = useCowork((s) => s.policy)
-  const activity = useCowork((s) => s.activity)
+export function TasksSection(): React.JSX.Element {
+  const bridge = hasTasksBridge()
+  const prefs = useTasks((s) => s.prefs)
+  const policy = useTasks((s) => s.policy)
+  const activity = useTasks((s) => s.activity)
   const locks = policyLocks(policy)
 
   const [trusted, setTrusted] = useState<TrustedFolder[] | null>(null)
-  const [folders, setFolders] = useState<CoworkFolder[] | null>(null)
-  const [rules, setRules] = useState<CoworkPermissionRule[] | null>(null)
-  const [report, setReport] = useState<CoworkStorageReport | null>(null)
+  const [folders, setFolders] = useState<TasksFolder[] | null>(null)
+  const [rules, setRules] = useState<TasksPermissionRule[] | null>(null)
+  const [report, setReport] = useState<TasksStorageReport | null>(null)
   const [storageBusy, setStorageBusy] = useState<string | null>(null)
   const [newMode, setNewMode] = useState<FolderAccessMode>('ro')
   const [errors, setErrors] = useState<Record<string, string | null>>({})
@@ -259,7 +259,7 @@ export function CoworkSection(): React.JSX.Element {
   useEffect(() => {
     if (!bridge) return
     syncActivity()
-    void loadCoworkPrefs()
+    void loadTasksPrefs()
     void loadPolicy()
     cw('tasks:trusted:list')
       .then(setTrusted)
@@ -324,9 +324,9 @@ export function CoworkSection(): React.JSX.Element {
   }
 
   // ── Carpetas de trabajo / Control total ──
-  const revokeFullControl = async (f: CoworkFolder): Promise<void> => {
+  const revokeFullControl = async (f: TasksFolder): Promise<void> => {
     const ok = await confirmDialog({
-      title: `¿Revocar ${COWORK_TERMS.fullControl} en «${f.name}»?`,
+      title: `¿Revocar ${TASKS_TERMS.fullControl} en «${f.name}»?`,
       message:
         'Se detendrá el servidor de Control total de esta carpeta y se perderán las tareas en curso allí. Para volver a usarlo tendrás que concederlo de nuevo.',
       confirmLabel: 'Revocar',
@@ -337,18 +337,18 @@ export function CoworkSection(): React.JSX.Element {
     try {
       await cw('tasks:revokeFullAccess', { folder: f.path })
       rememberFullAccess(f.path, false)
-      const conn = useCowork.getState().conn
+      const conn = useTasks.getState().conn
       if (conn?.folder === f.path && conn.fullAccess) await connectFolder(f.path, false)
       const list = await cw('tasks:listFolders')
       setFolders(list)
-      useCowork.setState({ folders: list })
+      useTasks.setState({ folders: list })
     } catch (err) {
       fail('folders', err)
     }
   }
 
   // ── Permisos recordados ──
-  const removeRule = (r: CoworkPermissionRule): void => {
+  const removeRule = (r: TasksPermissionRule): void => {
     clear('rules')
     cw('tasks:rules:remove', { id: r.id })
       .then(setRules)
@@ -381,7 +381,7 @@ export function CoworkSection(): React.JSX.Element {
   const cleanScreenshots = async (): Promise<void> => {
     const ok = await confirmDialog({
       title: '¿Borrar las capturas temporales?',
-      message: `Se borran las copias temporales de pantalla del ${COWORK_TERMS.fullControl}. No afecta al historial de las tareas.`,
+      message: `Se borran las copias temporales de pantalla del ${TASKS_TERMS.fullControl}. No afecta al historial de las tareas.`,
       confirmLabel: 'Borrar',
       danger: true
     })
@@ -397,9 +397,9 @@ export function CoworkSection(): React.JSX.Element {
     }
   }
 
-  const savePrefs = (patch: Parameters<typeof saveCoworkPrefs>[0], area: string): void => {
+  const savePrefs = (patch: Parameters<typeof saveTasksPrefs>[0], area: string): void => {
     clear(area)
-    saveCoworkPrefs(patch).catch((err: unknown) => fail(area, err))
+    saveTasksPrefs(patch).catch((err: unknown) => fail(area, err))
   }
 
   const archiveValue = prefs?.autoArchiveDays ?? 0
@@ -443,7 +443,7 @@ export function CoworkSection(): React.JSX.Element {
 
       {/* 1 · Carpetas de confianza */}
       <Group
-        title={COWORK_TERMS.trustedFolders}
+        title={TASKS_TERMS.trustedFolders}
         description="Todas las tareas pueden usar estas carpetas sin volver a preguntarte. Añade solo carpetas en las que confíes."
       >
         <Card>
@@ -497,8 +497,8 @@ export function CoworkSection(): React.JSX.Element {
 
       {/* 2 · Carpetas de trabajo */}
       <Group
-        title={COWORK_TERMS.workFolders}
-        description={`Las carpetas donde trabajan las tareas. Aquí puedes revocar el ${COWORK_TERMS.fullControl} concedido a una carpeta.`}
+        title={TASKS_TERMS.workFolders}
+        description={`Las carpetas donde trabajan las tareas. Aquí puedes revocar el ${TASKS_TERMS.fullControl} concedido a una carpeta.`}
       >
         <Card>
           {folders === null ? (
@@ -510,13 +510,13 @@ export function CoworkSection(): React.JSX.Element {
               <Row key={f.path} label={f.name || folderLabel(f.path)} description={<span className="font-mono break-all">{f.path}</span>}>
                 {f.fullAccess ? (
                   <div className="flex items-center gap-2">
-                    <Badge tone="warn">{COWORK_TERMS.fullControlShort} concedido</Badge>
+                    <Badge tone="warn">{TASKS_TERMS.fullControlShort} concedido</Badge>
                     <Button size="sm" onClick={() => void revokeFullControl(f)}>
                       Revocar
                     </Button>
                   </div>
                 ) : (
-                  <Badge>{COWORK_TERMS.sandbox}</Badge>
+                  <Badge>{TASKS_TERMS.sandbox}</Badge>
                 )}
               </Row>
             ))
@@ -524,7 +524,7 @@ export function CoworkSection(): React.JSX.Element {
         </Card>
         {locks.fullAccess && (
           <p className="mt-2 text-xs text-muted">
-            Tu organización ha desactivado el {COWORK_TERMS.fullControl}: no se puede conceder en ninguna carpeta.
+            Tu organización ha desactivado el {TASKS_TERMS.fullControl}: no se puede conceder en ninguna carpeta.
           </p>
         )}
         {errors.folders && <p className="mt-2 text-xs text-danger">{errors.folders}</p>}
@@ -660,7 +660,7 @@ export function CoworkSection(): React.JSX.Element {
               >
                 <div className="flex items-center gap-2">
                   <Badge tone={s.fullAccess ? 'warn' : 'muted'}>
-                    {s.fullAccess ? COWORK_TERMS.fullControlShort : COWORK_TERMS.sandbox}
+                    {s.fullAccess ? TASKS_TERMS.fullControlShort : TASKS_TERMS.sandbox}
                   </Badge>
                   <span className="text-xs text-muted">{formatIdle(s.idleSince, now)}</span>
                 </div>
@@ -673,7 +673,7 @@ export function CoworkSection(): React.JSX.Element {
       {/* 7 · Almacenamiento */}
       <Group
         title="Almacenamiento"
-        description={`Espacio privado que usa cada carpeta en el ${COWORK_TERMS.sandbox.toLowerCase()} (historial de tareas, caché y temporales). Solo se puede limpiar si su servidor está detenido.`}
+        description={`Espacio privado que usa cada carpeta en el ${TASKS_TERMS.sandbox.toLowerCase()} (historial de tareas, caché y temporales). Solo se puede limpiar si su servidor está detenido.`}
       >
         <Card>
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -751,7 +751,7 @@ export function CoworkSection(): React.JSX.Element {
           )}
           <Row
             label="Capturas temporales"
-            description={`Copias de pantalla del ${COWORK_TERMS.fullControl}${report ? ` (${formatBytes(report.screenshotsBytes)})` : ''}. Se borran solas al terminar y al cerrar la app.`}
+            description={`Copias de pantalla del ${TASKS_TERMS.fullControl}${report ? ` (${formatBytes(report.screenshotsBytes)})` : ''}. Se borran solas al terminar y al cerrar la app.`}
           >
             <Button
               size="sm"

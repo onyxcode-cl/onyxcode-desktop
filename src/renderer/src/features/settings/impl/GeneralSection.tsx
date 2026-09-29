@@ -3,7 +3,7 @@ import { Monitor, Moon, RotateCw, Sun } from 'lucide-react'
 import type { ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { MODE_LABELS } from '@shared/labels'
-import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
@@ -14,13 +14,13 @@ function KeepAwakeRow(): React.JSX.Element | null {
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
   useEffect(() => {
-    if (!hasCoworkBridge()) return
+    if (!hasTasksBridge()) return
     cw('tasks:keepAwakeState')
       .then((st) => setEnabled(st.enabled))
       .catch(() => undefined)
   }, [])
 
-  if (!hasCoworkBridge() || enabled === null) return null
+  if (!hasTasksBridge() || enabled === null) return null
 
   return (
     <Row
@@ -83,7 +83,7 @@ function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
 }
 
 /** Instrucciones globales de las tareas (item 1): se añaden a todas las tareas, junto con las de cada proyecto. */
-function CoworkInstructionsRow(): React.JSX.Element {
+function TasksInstructionsRow(): React.JSX.Element {
   const globalInstructions = useSettings((s) => s.settings.tasksGlobalInstructions)
   const update = useSettings((s) => s.update)
   const [value, setValue] = useState(globalInstructions)
@@ -180,7 +180,7 @@ export function GeneralSection(): React.JSX.Element {
 
       <SubTitle>{MODE_LABELS.tasks}</SubTitle>
       <Card>
-        <CoworkInstructionsRow />
+        <TasksInstructionsRow />
       </Card>
 
       <SubTitle>Servidor OpenCode</SubTitle>

@@ -1,23 +1,23 @@
 /**
- * Tarjeta de primer uso de Cowork (se muestra desde `Home` hasta que se descarta; el estado vive en
- * localStorage `cowork.onboarded`): 3 pasos y una sección «Cómo usar las tareas de forma segura».
+ * Tarjeta de primer uso de Tareas (se muestra desde `Home` hasta que se descarta; el estado vive en
+ * localStorage `tasks.onboarded`): 3 pasos y una sección «Cómo usar las tareas de forma segura».
  */
 import { useState } from 'react'
 import { Check, ChevronDown, FolderOpen, MonitorCog, Play, Shield, X } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { chooseFolder } from './actions'
-import { useCowork } from './store'
+import { useTasks } from './store'
 
 /** Tarea de prueba segura: solo lee y resume, no modifica nada. */
 export const ONBOARDING_SAMPLE_PROMPT =
   'Primero revisa esta carpeta y muéstrame un resumen de qué hay (tipos de archivo y para qué parece servir cada parte); luego propón tres tareas útiles que podríamos hacer aquí; no modifiques nada todavía.'
 
 const SAFETY_TIPS = [
-  `Empieza en ${COWORK_TERMS.sandbox}: solo toca la carpeta elegida y las carpetas adicionales que añadas. Usa ${COWORK_TERMS.fullControl} solo cuando de verdad lo necesites.`,
+  `Empieza en ${TASKS_TERMS.sandbox}: solo toca la carpeta elegida y las carpetas adicionales que añadas. Usa ${TASKS_TERMS.fullControl} solo cuando de verdad lo necesites.`,
   'Pide primero un resumen y un plan: «Primero revisa… y muéstrame un resumen; luego propón…; cuando lo apruebe, hazlo».',
-  `Mover, renombrar y borrar piden el permiso «${COWORK_TERMS.deleteGrant}». Concédelo solo en carpetas que tengas respaldadas.`,
+  `Mover, renombrar y borrar piden el permiso «${TASKS_TERMS.deleteGrant}». Concédelo solo en carpetas que tengas respaldadas.`,
   'Lee cada tarjeta de permiso antes de aprobar. El motivo que muestra lo dice el agente y no está verificado.',
-  `En ${COWORK_TERMS.fullControl} revisa el plan antes de aprobarlo y no dejes datos sensibles a la vista. Detén al agente en cualquier momento con ⌘⇧Esc.`,
+  `En ${TASKS_TERMS.fullControl} revisa el plan antes de aprobarlo y no dejes datos sensibles a la vista. Detén al agente en cualquier momento con ⌘⇧Esc.`,
   'No pegues contraseñas ni claves en la tarea: el agente puede escribirlas en archivos o enviarlas a los sitios que permitas.'
 ]
 
@@ -57,12 +57,12 @@ const stepBtn =
   'flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs font-medium text-fg transition hover:border-border-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50'
 
 export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.Element {
-  const folder = useCowork((s) => s.folder)
-  const phase = useCowork((s) => s.phase)
+  const folder = useTasks((s) => s.folder)
+  const phase = useTasks((s) => s.phase)
   const [safeOpen, setSafeOpen] = useState(false)
 
   const trySample = (): void => {
-    useCowork.setState({ draft: ONBOARDING_SAMPLE_PROMPT })
+    useTasks.setState({ draft: ONBOARDING_SAMPLE_PROMPT })
   }
 
   return (
@@ -106,14 +106,14 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           <span className="flex items-start gap-1.5">
             <Shield size={13} className="mt-0.5 shrink-0 text-accent" />
             <span>
-              <strong className="font-medium text-fg">{COWORK_TERMS.sandbox}:</strong> lee y escribe solo en tus carpetas, no ve tus claves
+              <strong className="font-medium text-fg">{TASKS_TERMS.sandbox}:</strong> lee y escribe solo en tus carpetas, no ve tus claves
               y pide permiso para borrar, mover o renombrar.
             </span>
           </span>
           <span className="mt-1.5 flex items-start gap-1.5">
             <MonitorCog size={13} className="mt-0.5 shrink-0 text-warning" />
             <span>
-              <strong className="font-medium text-fg">{COWORK_TERMS.fullControl}:</strong> sin sandbox; usa ratón, teclado y pantalla y
+              <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> sin sandbox; usa ratón, teclado y pantalla y
               puede tocar cualquier archivo. Exige aprobar un plan.
             </span>
           </span>

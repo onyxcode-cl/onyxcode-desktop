@@ -1,6 +1,6 @@
 /**
  * LRU de `useSessions.messages` (docs/LRU-PLAN.md, paso 4).
- * `vi.resetModules` deja el módulo sin guardas: cada test registra las suyas (Chat/Cowork se registran al importarse).
+ * `vi.resetModules` deja el módulo sin guardas: cada test registra las suyas (Chat/Tareas se registran al importarse).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OpencodeClient } from '../lib/opencode'

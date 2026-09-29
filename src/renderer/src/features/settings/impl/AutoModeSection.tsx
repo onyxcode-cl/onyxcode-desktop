@@ -8,8 +8,8 @@
  */
 import { useEffect, useState } from 'react'
 import { Eye, FolderClosed, Loader2, Plus, ShieldCheck, Trash2, Zap } from 'lucide-react'
-import type { AutoModeState, CoworkFolder, CoworkTaskMeta } from '@shared/ipc-tasks'
-import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import type { AutoModeState, TasksFolder, TasksTaskMeta } from '@shared/ipc-tasks'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -38,14 +38,14 @@ function fmtAt(at: number): string {
 
 export function AutoModeSection(): React.JSX.Element {
   const [state, setState] = useState<AutoModeState | null>(null)
-  const [folders, setFolders] = useState<CoworkFolder[]>([])
-  const [taskMeta, setTaskMeta] = useState<Record<string, CoworkTaskMeta>>({})
+  const [folders, setFolders] = useState<TasksFolder[]>([])
+  const [taskMeta, setTaskMeta] = useState<Record<string, TasksTaskMeta>>({})
   const [newApp, setNewApp] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const reload = (): void => {
-    if (!hasCoworkBridge()) return
+    if (!hasTasksBridge()) return
     void cw('tasks:auto:state')
       .then(setState)
       .catch((err: unknown) => setError(errText(err)))
@@ -54,7 +54,7 @@ export function AutoModeSection(): React.JSX.Element {
   useEffect(reload, [])
 
   useEffect(() => {
-    if (!hasCoworkBridge()) return
+    if (!hasTasksBridge()) return
     cw('tasks:listFolders')
       .then(setFolders)
       .catch(() => undefined)
@@ -63,7 +63,7 @@ export function AutoModeSection(): React.JSX.Element {
       .catch(() => undefined)
   }, [])
 
-  if (!hasCoworkBridge()) {
+  if (!hasTasksBridge()) {
     return (
       <div>
         <SectionHeader title="Modo auto" description="Solo disponible en la app de escritorio." />

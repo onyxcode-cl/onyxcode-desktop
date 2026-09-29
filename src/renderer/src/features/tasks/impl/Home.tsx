@@ -1,13 +1,13 @@
-/** Pantalla de inicio de Cowork: compositor grande, carpeta, modo de acceso y sugerencias por categoría. */
+/** Pantalla de inicio de Tareas: compositor grande, carpeta, modo de acceso y sugerencias por categoría. */
 import { useState } from 'react'
 import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { AccessSegmented } from './AccessSegmented'
 import { ComputerPermissionsCard, VisionModelHint } from './ComputerAccess'
-import { CoworkComposer } from './TasksComposer'
+import { TasksComposer } from './TasksComposer'
 import { setAccessMode } from './actions'
 import { Onboarding } from './Onboarding'
-import { useCowork } from './store'
+import { useTasks } from './store'
 import { baseName } from './util'
 
 /** Plantilla de inicio. `note` es un aviso que se muestra en Sandbox (p. ej. permisos que se pedirán). */
@@ -26,7 +26,7 @@ export interface HomeCategory {
 }
 
 /** Aviso de las plantillas que mueven o renombran archivos dentro del sandbox. */
-const MOVE_NOTE = `Al mover archivos en Sandbox se te pedirá el permiso «${COWORK_TERMS.deleteGrant}»; sin él, ofrecerá una copia ordenada.`
+const MOVE_NOTE = `Al mover archivos en Sandbox se te pedirá el permiso «${TASKS_TERMS.deleteGrant}»; sin él, ofrecerá una copia ordenada.`
 
 /**
  * Plantillas de inicio: 5 categorías × 4. Todas siguen el patrón «primero revisa y resume; luego propón;
@@ -203,10 +203,10 @@ export function Home({
   sendError: string | null
   folderBusy: boolean
 }): React.JSX.Element {
-  const folder = useCowork((s) => s.folder)
-  const phase = useCowork((s) => s.phase)
-  const conn = useCowork((s) => s.conn)
-  const requested = useCowork((s) => s.fullAccess)
+  const folder = useTasks((s) => s.folder)
+  const phase = useTasks((s) => s.phase)
+  const conn = useTasks((s) => s.conn)
+  const requested = useTasks((s) => s.fullAccess)
   const full = conn ? conn.fullAccess : requested
   const [cat, setCat] = useState<string>(full ? 'computer' : 'docs')
   const category = CATEGORIES.find((c) => c.id === cat) ?? CATEGORIES[0]
@@ -224,7 +224,7 @@ export function Home({
   }
 
   const pick = (prompt: string, computer?: boolean): void => {
-    useCowork.setState({ draft: prompt })
+    useTasks.setState({ draft: prompt })
     if (computer && !full && folder) void setAccessMode(true)
   }
 
@@ -253,7 +253,7 @@ export function Home({
         {!onboarded && <Onboarding onDismiss={() => setOnboardedPersisted(true)} />}
         <ComputerPermissionsCard />
         <VisionModelHint />
-        <CoworkComposer
+        <TasksComposer
           hero
           onSend={onSend}
           busy={false}
@@ -314,7 +314,7 @@ export function Home({
               </div>
               {category.computer && !full && (
                 <p className="mb-2 text-center text-xs text-muted">
-                  Estas tareas requieren <strong className="text-fg">{COWORK_TERMS.fullControl}</strong>; al elegir una se te pedirá
+                  Estas tareas requieren <strong className="text-fg">{TASKS_TERMS.fullControl}</strong>; al elegir una se te pedirá
                   confirmación.
                 </p>
               )}

@@ -1,5 +1,5 @@
 /**
- * Preguntas estructuradas de Cowork (herramienta `question`): una tarjeta por solicitud, con
+ * Preguntas estructuradas de Tareas (herramienta `question`): una tarjeta por solicitud, con
  * una o más preguntas (opciones de un solo valor, múltiples, y/o texto libre si `custom`).
  */
 import { useState } from 'react'

@@ -1,5 +1,5 @@
 /**
- * Notificaciones nativas (Code/Cowork) vía IPC (`app:notify`, main-process `Notification`) y
+ * Notificaciones nativas (Code/Tareas) vía IPC (`app:notify`, main-process `Notification`) y
  * badge combinado del Dock (`app:setAttention`). Reemplaza el uso directo de `new Notification`
  * en el renderer (ver docs/SEGURIDAD.md: los permisos por defecto solo dejan `notifications` a
  * páginas propias, pero mostrarla desde main permite respetar el ajuste "Sonido" y hacer clic

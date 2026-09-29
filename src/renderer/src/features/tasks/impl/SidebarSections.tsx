@@ -1,5 +1,5 @@
 /**
- * Secciones transversales de la barra lateral de Cowork (Fijadas, Activas, Programadas: de TODAS las carpetas)
+ * Secciones transversales de la barra lateral de Tareas (Fijadas, Activas, Programadas: de TODAS las carpetas)
  * y utilidades puras de la lista de tareas (agrupar por fecha / por grupo, "Mostrar más", orden de las activas).
  * Las funciones puras no dependen de React ni de los stores para poder probarlas con node.
  */
@@ -18,13 +18,13 @@ import {
   Pin
 } from 'lucide-react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
-import type { CoworkTaskActivity, CoworkTaskMeta, ScheduledRoutine } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import type { TasksTaskActivity, TasksTaskMeta, ScheduledRoutine } from '@shared/ipc-tasks'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useSessions } from '../../../stores/sessions'
 import { untilText } from '../../routines/impl/schedule'
-import { cw, onCowork } from './bridge'
+import { cw, onTasks } from './bridge'
 import { openTaskAnywhere } from './actions'
-import { syncActivity, useCowork } from './store'
+import { syncActivity, useTasks } from './store'
 import { baseName, isArchivedSession, relTime, TASK_STATUS_LABEL, type TaskStatus } from './util'
 
 // ───────────────────────────── Puras ─────────────────────────────
@@ -107,10 +107,10 @@ export function takeVisible<T>(items: T[], limit: number, expanded: boolean): { 
   return { shown: items.slice(0, limit), hidden: items.length - limit }
 }
 
-const ACTIVE_RANK: Record<CoworkTaskActivity['state'], number> = { question: 0, waiting: 1, running: 2 }
+const ACTIVE_RANK: Record<TasksTaskActivity['state'], number> = { question: 0, waiting: 1, running: 2 }
 
 /** Tareas activas: primero las que esperan al usuario (pregunta, aprobación), luego las que trabajan; más recientes primero. */
-export function orderActiveTasks(tasks: CoworkTaskActivity[]): CoworkTaskActivity[] {
+export function orderActiveTasks(tasks: TasksTaskActivity[]): TasksTaskActivity[] {
   return [...tasks].sort(
     (a, b) => ACTIVE_RANK[a.state] - ACTIVE_RANK[b.state] || b.since - a.since || a.sessionId.localeCompare(b.sessionId)
   )
@@ -128,7 +128,7 @@ export interface PinnedEntry {
  * Fijadas de todas las carpetas (metadatos de main). Si la sesión ya se conoce (carpeta conectada) se usa su
  * título y su fecha reales y se omiten las archivadas. Más recientes primero.
  */
-export function pinnedEntries(taskMeta: Record<string, CoworkTaskMeta>, sessions: Record<string, Session>): PinnedEntry[] {
+export function pinnedEntries(taskMeta: Record<string, TasksTaskMeta>, sessions: Record<string, Session>): PinnedEntry[] {
   const out: PinnedEntry[] = []
   for (const m of Object.values(taskMeta)) {
     if (!m.pinned) continue
@@ -145,7 +145,7 @@ export function pinnedEntries(taskMeta: Record<string, CoworkTaskMeta>, sessions
   return out.sort((a, b) => b.updated - a.updated || a.sessionId.localeCompare(b.sessionId))
 }
 
-/** Rutinas programadas de Cowork y activas, por próxima ejecución (las que no la tienen, al final). */
+/** Rutinas programadas de Tareas y activas, por próxima ejecución (las que no la tienen, al final). */
 export function upcomingRoutines(routines: ScheduledRoutine[]): ScheduledRoutine[] {
   return routines
     .filter((r) => r.mode === 'tasks' && r.enabled)
@@ -259,7 +259,7 @@ function SectionRow({
       </span>
       {fullAccess && (
         <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">
-          {COWORK_TERMS.fullControlShort}
+          {TASKS_TERMS.fullControlShort}
         </span>
       )}
     </button>
@@ -318,9 +318,9 @@ async function openRoutine(r: ScheduledRoutine, editor = false): Promise<void> {
 
 /** Fijadas, Activas y Programadas de todas las carpetas (arriba de la lista de la carpeta actual). */
 export function SidebarSections(): React.JSX.Element {
-  const activity = useCowork((s) => s.activity)
-  const taskMeta = useCowork((s) => s.taskMeta)
-  const activeTaskId = useCowork((s) => s.activeTaskId)
+  const activity = useTasks((s) => s.activity)
+  const taskMeta = useTasks((s) => s.taskMeta)
+  const activeTaskId = useTasks((s) => s.activeTaskId)
   const sessions = useSessions((s) => s.sessions)
   const [routines, setRoutines] = useState<ScheduledRoutine[]>([])
   const [, tick] = useState(0)
@@ -340,7 +340,7 @@ export function SidebarSections(): React.JSX.Element {
         if (alive) setRoutines(list)
       })
       .catch(() => undefined)
-    const off = onCowork('routines:changed', (list) => setRoutines(list))
+    const off = onTasks('routines:changed', (list) => setRoutines(list))
     return () => {
       alive = false
       off()

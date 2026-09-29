@@ -4,7 +4,7 @@
  * independientes que cargan la misma página (ver `main/computer/assist-window.ts`).
  */
 import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-tasks'
-import { cowork } from './shared'
+import { tasks } from './shared'
 import './assist.css'
 
 const root = document.getElementById('root') as HTMLDivElement
@@ -64,14 +64,14 @@ function initTeach(root: HTMLDivElement): void {
     const step = current
     if (!step || busy) return
     setBusy(true)
-    await cowork?.invoke('computer:teachRespond', { id: step.id, action })
+    await tasks?.invoke('computer:teachRespond', { id: step.id, action })
     if (action === 'exit') clear()
   }
 
   next.addEventListener('click', () => void respond('next'))
   exit.addEventListener('click', () => void respond('exit'))
 
-  cowork?.on('computer:assist', (payload) => {
+  tasks?.on('computer:assist', (payload) => {
     const msg = payload as AssistMessage
     if (msg.type === 'teach') render(msg.step)
     else if (msg.type === 'teachClear' || msg.type === 'hide') clear()
@@ -116,14 +116,14 @@ function initRecord(root: HTMLDivElement): void {
   async function stop(discardIt: boolean): Promise<void> {
     if (busy) return
     setBusy(true)
-    await cowork?.invoke('computer:record:stop', { discard: discardIt })
+    await tasks?.invoke('computer:record:stop', { discard: discardIt })
     setBusy(false)
   }
 
   finish.addEventListener('click', () => void stop(false))
   discard.addEventListener('click', () => void stop(true))
 
-  cowork?.on('computer:assist', (payload) => {
+  tasks?.on('computer:assist', (payload) => {
     const msg = payload as AssistMessage
     if (msg.type === 'recording') {
       last = msg.state

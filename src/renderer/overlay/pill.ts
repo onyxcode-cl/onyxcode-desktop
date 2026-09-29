@@ -22,7 +22,7 @@ import {
   type AccessRequestApp,
   type ComputerOverlayMessage
 } from '@shared/ipc-tasks'
-import { cowork, describeStep } from './shared'
+import { tasks, describeStep } from './shared'
 import './pill.css'
 
 const DEFAULT_STEP = 'Trabajando…'
@@ -96,7 +96,7 @@ stopBtn.addEventListener('click', () => {
   stopBtn.disabled = true
   stopBtn.textContent = 'Deteniendo…'
   pill.classList.add('stopping')
-  void cowork?.invoke('computer:stop').then((r) => {
+  void tasks?.invoke('computer:stop').then((r) => {
     if (!r.ok) {
       stopBtn.disabled = false
       stopBtn.textContent = 'Detener'
@@ -240,7 +240,7 @@ async function respond(
   const req = activeRequest
   if (!req || busy) return
   setBusy(true)
-  const r = await cowork?.invoke('computer:respondAccess', { id: req.id, decisions, ...extra })
+  const r = await tasks?.invoke('computer:respondAccess', { id: req.id, decisions, ...extra })
   if (r && !r.ok) {
     reqError.textContent = `No se pudo responder: ${r.error}`
     setBusy(false)
@@ -288,7 +288,7 @@ document.addEventListener('keydown', (e) => {
 reqEdit.addEventListener('click', () => {
   // Trae OnyxCode al frente (acción EXPLÍCITA del usuario) para escribir el feedback con más espacio;
   // la tarjeta sigue pendiente (no se responde desde aquí).
-  void cowork?.invoke('computer:showMainWindow')
+  void tasks?.invoke('computer:showMainWindow')
 })
 
 function handle(msg: ComputerOverlayMessage): void {
@@ -331,7 +331,7 @@ function handle(msg: ComputerOverlayMessage): void {
   }
 }
 
-cowork?.on('computer:overlay', handle)
+tasks?.on('computer:overlay', handle)
 
 if (location.hash === '#demo') {
   document.body.classList.add('on')

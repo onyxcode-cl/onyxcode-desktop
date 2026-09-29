@@ -1,6 +1,6 @@
 /**
  * Acciones del modo Chat sobre el SDK de OpenCode (v2).
- * Patrón reutilizable para Code/Cowork: cambiar `directory` y `agent`.
+ * Patrón reutilizable para Code/Tareas: cambiar `directory` y `agent`.
  */
 import { CHAT_AGENT } from '@shared/types'
 import { errorMessage } from '../../lib/opencode'

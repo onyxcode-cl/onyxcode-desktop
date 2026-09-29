@@ -62,9 +62,9 @@ describe('F7-B10: syncChatRunStatus limpia entradas busy huérfanas', () => {
     expect(st().status['s1']).toBe('busy')
   })
 
-  it('las entradas de un servidor de Cowork no se tocan', async () => {
+  it('las entradas de un servidor de Tasks no se tocan', async () => {
     installServer({})
-    st().upsertSession(makeSession('cw', D), 'http://cowork')
+    st().upsertSession(makeSession('cw', D), 'http://tasks')
     st().setStatus('cw', 'busy')
     await A.syncChatRunStatus()
     expect(st().status['cw']).toBe('busy')
@@ -92,7 +92,7 @@ describe('F7-B10: syncChatRunStatus limpia entradas busy huérfanas', () => {
 })
 
 describe('F7-B14: al reconectar el stream, loaded=false salvo la conversación activa', () => {
-  it('invalida las de Chat (origen principal), no la activa ni las de Cowork', async () => {
+  it('invalida las de Chat (origen principal), no la activa ni las de Tasks', async () => {
     const chat = await import('./store')
     for (const [id, src] of [
       ['a', undefined],

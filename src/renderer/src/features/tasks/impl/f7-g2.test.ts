@@ -1,4 +1,4 @@
-/** F7 · G2: estado de tareas desalojadas, origen de Cowork y limpieza al borrar una tarea. */
+/** F7 · G2: estado de tareas desalojadas, origen de Tareas y limpieza al borrar una tarea. */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeSession } from '../../../../../test/fixtures/events'
 
@@ -9,7 +9,7 @@ const D = '/proj'
 const SRC = 'http://cw'
 
 let useSessions: (typeof import('../../../stores/sessions'))['useSessions']
-let useCowork: (typeof import('./store'))['useCowork']
+let useTasks: (typeof import('./store'))['useTasks']
 let util: typeof import('./util')
 let actions: typeof import('./actions')
 
@@ -17,17 +17,17 @@ beforeEach(async () => {
   vi.resetModules()
   localStorage.clear()
   ;({ useSessions } = await import('../../../stores/sessions'))
-  ;({ useCowork } = await import('./store'))
+  ;({ useTasks } = await import('./store'))
   util = await import('./util')
   actions = await import('./actions')
 })
 
-describe('isCoworkSource (F7-B37)', () => {
-  it('cualquier servidor de Cowork cuenta; Chat/Code (origen principal o ausente) no', () => {
-    expect(util.isCoworkSource('http://cw')).toBe(true)
-    expect(util.isCoworkSource('http://otro-cw')).toBe(true)
-    expect(util.isCoworkSource('main')).toBe(false)
-    expect(util.isCoworkSource(undefined)).toBe(false)
+describe('isTasksSource (F7-B37)', () => {
+  it('cualquier servidor de Tasks cuenta; Chat/Code (origen principal o ausente) no', () => {
+    expect(util.isTasksSource('http://cw')).toBe(true)
+    expect(util.isTasksSource('http://otro-cw')).toBe(true)
+    expect(util.isTasksSource('main')).toBe(false)
+    expect(util.isTasksSource(undefined)).toBe(false)
   })
 })
 
@@ -57,7 +57,7 @@ describe('taskStatus con historial desalojado (F7-B35)', () => {
 describe('deleteTask y creación de tareas (F7-B36)', () => {
   it('deleteTask borra también status, errors, sessionSource y loaded', async () => {
     const client = { session: { delete: vi.fn(async () => ({ data: true })) } }
-    useCowork.setState({ client: client as never, folder: D })
+    useTasks.setState({ client: client as never, folder: D })
     const st = useSessions.getState()
     st.upsertSession(makeSession('t1', D), SRC)
     st.setStatus('t1', 'busy')

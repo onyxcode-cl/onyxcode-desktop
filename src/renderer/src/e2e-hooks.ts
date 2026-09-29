@@ -7,13 +7,13 @@ import { useUi } from './stores/ui'
 import { useChat } from './features/chat/store'
 import { openChatSession, newChat } from './features/chat/actions'
 import { useCode } from './features/code/impl/store'
-import { useCowork } from './features/tasks/impl/store'
+import { useTasks } from './features/tasks/impl/store'
 import { setFault, type FaultMode } from './e2e-fault'
 
 const hooks = {
   useSessions,
   useCode,
-  useCowork,
+  useTasks,
   useUi,
   useServer,
   useChat,

@@ -1,21 +1,21 @@
-/** Acceso tipado a `window.api.tasks` (canales `cowork:*` y `routines:*`). */
+/** Acceso tipado a `window.api.tasks` (canales `tasks:*` y `routines:*`). */
 import type { IpcResult, WindowApi } from '@shared/ipc'
 import type {
-  CoworkApi,
-  CoworkEventChannel,
-  CoworkEventContract,
-  CoworkInvokeChannel,
-  CoworkRequest,
-  CoworkResponse
+  TasksApi,
+  TasksEventChannel,
+  TasksEventContract,
+  TasksInvokeChannel,
+  TasksRequest,
+  TasksResponse
 } from '@shared/ipc-tasks'
 
-function getApi(): CoworkApi {
-  const api = (window as unknown as { api?: WindowApi & { tasks?: CoworkApi } }).api?.tasks
+function getApi(): TasksApi {
+  const api = (window as unknown as { api?: WindowApi & { tasks?: TasksApi } }).api?.tasks
   if (!api) throw new Error('El puente de las tareas no está disponible (falta window.api.tasks en el preload).')
   return api
 }
 
-export function hasCoworkBridge(): boolean {
+export function hasTasksBridge(): boolean {
   return !!(window as unknown as { api?: { tasks?: unknown } }).api?.tasks
 }
 
@@ -25,14 +25,14 @@ function unwrap<T>(r: IpcResult<T>): T {
 }
 
 /** `invoke` que devuelve el dato o lanza `Error`. */
-export async function cw<C extends CoworkInvokeChannel>(
+export async function cw<C extends TasksInvokeChannel>(
   channel: C,
-  ...args: CoworkRequest<C> extends void ? [] : [req: CoworkRequest<C>]
-): Promise<CoworkResponse<C>> {
+  ...args: TasksRequest<C> extends void ? [] : [req: TasksRequest<C>]
+): Promise<TasksResponse<C>> {
   return unwrap(await getApi().invoke(channel, ...args))
 }
 
-export function onCowork<C extends CoworkEventChannel>(channel: C, listener: (payload: CoworkEventContract[C]) => void): () => void {
-  if (!hasCoworkBridge()) return () => undefined
+export function onTasks<C extends TasksEventChannel>(channel: C, listener: (payload: TasksEventContract[C]) => void): () => void {
+  if (!hasTasksBridge()) return () => undefined
   return getApi().on(channel, listener)
 }

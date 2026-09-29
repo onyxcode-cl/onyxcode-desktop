@@ -26,7 +26,7 @@ import {
   Terminal,
   Activity
 } from 'lucide-react'
-import type { CoworkDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
+import type { TasksDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
 import { cw } from './bridge'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { openTaskAnywhere } from './actions'
@@ -34,11 +34,11 @@ import { ScreenshotThumbs } from './ComputerAccess'
 import { computerToolKind, describeAction, toolImages } from './computer-tools'
 import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
-import { isUsingComputer, refreshDeliverables, useCowork } from './store'
+import { isUsingComputer, refreshDeliverables, useTasks } from './store'
 import { buildContext, friendlyTool, groupActivityBySteps, relTime, type ContextItem } from './util'
 
 const EMPTY_TODOS: Todo[] = []
-const EMPTY_FILES: CoworkDeliverable[] = []
+const EMPTY_FILES: TasksDeliverable[] = []
 const EMPTY_ENTRIES: MessageEntry[] = []
 
 function TodoIcon({ status }: { status: string }): React.JSX.Element {
@@ -221,8 +221,8 @@ function latestScreenshot(entries: MessageEntry[]): { url: string; name: string 
 
 /** `isUsingComputer` reactivo: se recalcula al cambiar la última acción o el estado, y cada 2 s (caduca a los 15 s). */
 function useUsingComputer(sessionID: string): boolean {
-  const fullAccess = useCowork((s) => s.conn?.fullAccess === true)
-  const lastAt = useCowork((s) => s.lastAction?.at ?? 0)
+  const fullAccess = useTasks((s) => s.conn?.fullAccess === true)
+  const lastAt = useTasks((s) => s.lastAction?.at ?? 0)
   const run = useSessions((s) => s.status[sessionID])
   const [, tick] = useState(0)
   useEffect(() => {
@@ -235,7 +235,7 @@ function useUsingComputer(sessionID: string): boolean {
 
 /** Sección «En vivo»: qué ve y qué hace el agente en el Mac ahora mismo. */
 function LiveSection({ entries }: { entries: MessageEntry[] }): React.JSX.Element {
-  const lastAction = useCowork((s) => s.lastAction)
+  const lastAction = useTasks((s) => s.lastAction)
   const shot = useMemo(() => latestScreenshot(entries), [entries])
   const [broken, setBroken] = useState<string | null>(null)
   const label = lastAction ? describeAction(lastAction) : null
@@ -337,8 +337,8 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
 }
 
 export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; busy: boolean }): React.JSX.Element {
-  const todos = useCowork((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
-  const files = useCowork((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
+  const todos = useTasks((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
+  const files = useTasks((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
   const entries = useSessions((s) => (sessionID ? (s.messages[sessionID] ?? EMPTY_ENTRIES) : EMPTY_ENTRIES))
   const groups = useMemo(() => groupActivityBySteps(entries), [entries])
   const toolCount = groups.reduce((n, g) => n + g.tools.length, 0)

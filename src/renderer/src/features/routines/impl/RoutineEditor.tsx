@@ -1,8 +1,8 @@
 /** Formulario de creación/edición de una rutina (panel lateral). */
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CalendarClock, Check, FolderOpen, Info, Loader2, Plus, ShieldAlert, X } from 'lucide-react'
-import type { CoworkFolder, RoutineAllowRule, RoutineInput, RoutineSchedule, SchedulePreview } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import type { TasksFolder, RoutineAllowRule, RoutineInput, RoutineSchedule, SchedulePreview } from '@shared/ipc-tasks'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -62,7 +62,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const [form, setForm] = useState<RoutineInput>(initial)
   const [builder, setBuilder] = useState<Builder>(() => builderFor(initial.schedule))
   const [preview, setPreview] = useState<SchedulePreview | null>(null)
-  const [folders, setFolders] = useState<CoworkFolder[]>([])
+  const [folders, setFolders] = useState<TasksFolder[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
@@ -123,10 +123,10 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const allowRows: RoutineAllowRule[] = form.allow ?? []
   const hosts: string[] = form.allowHosts ?? []
   const setAllow = (rows: RoutineAllowRule[]): void => patch({ allow: rows })
-  const isCowork = form.mode === 'tasks'
+  const isTasks = form.mode === 'tasks'
   const selectedFolder = folders.find((f) => f.path === form.folder)
-  const canFullControl = isCowork && !!selectedFolder?.fullAccess
-  const fullControl = isCowork && form.fullAccess === true
+  const canFullControl = isTasks && !!selectedFolder?.fullAccess
+  const fullControl = isTasks && form.fullAccess === true
 
   const addHost = (): void => {
     const h = hostDraft.trim().toLowerCase()
@@ -146,7 +146,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
       return
     }
     const ok = await confirmDialog({
-      title: `¿Ejecutar esta rutina con ${COWORK_TERMS.fullControl}?`,
+      title: `¿Ejecutar esta rutina con ${TASKS_TERMS.fullControl}?`,
       message: (
         <div className="space-y-2 text-sm">
           <p>
@@ -181,17 +181,17 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     setSaving(true)
     setError(null)
     try {
-      const cowork = form.mode === 'tasks'
+      const tasks = form.mode === 'tasks'
       await saveRoutine({
         ...form,
         name: form.name.trim(),
         prompt: form.prompt.trim(),
-        allow: cowork
+        allow: tasks
           ? allowRows
               .filter((r) => r.permission.trim() || r.pattern.trim())
               .map((r) => ({ permission: r.permission.trim(), pattern: r.pattern.trim() }))
           : [],
-        allowHosts: cowork && !form.fullAccess ? hosts : []
+        allowHosts: tasks && !form.fullAccess ? hosts : []
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -273,7 +273,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               onChange={(e) => patch({ prompt: e.target.value })}
             />
             <p className="mt-1.5 text-xs text-subtle">
-              {isCowork
+              {isTasks
                 ? 'Se ejecuta sin supervisión: los permisos que no estén en «Permitir sin preguntar» se rechazan o esperan tu aprobación, según lo que elijas abajo.'
                 : 'Se ejecuta sin supervisión: los permisos que requieran confirmación se rechazan automáticamente.'}
             </p>
@@ -524,7 +524,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
             </section>
           )}
 
-          {isCowork && (
+          {isTasks && (
             <section className="space-y-5 rounded-xl border border-border bg-bg/50 p-4">
               <div>
                 <span className={labelCls}>Cada ejecución</span>
@@ -549,7 +549,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                 </div>
                 <p className="mt-1.5 text-xs text-subtle">
                   {fullControl
-                    ? `Con ${COWORK_TERMS.fullControlShort} cada ejecución empieza una tarea nueva, para que ninguna aprobación se arrastre.`
+                    ? `Con ${TASKS_TERMS.fullControlShort} cada ejecución empieza una tarea nueva, para que ninguna aprobación se arrastre.`
                     : form.sessionMode === 'continue'
                       ? 'Conserva el contexto de la ejecución anterior en la misma tarea.'
                       : 'Cada ejecución crea una tarea nueva, sin recordar las anteriores.'}
@@ -693,7 +693,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   <div className="flex items-start gap-3">
                     <ShieldAlert size={16} className={`mt-0.5 shrink-0 ${fullControl ? 'text-warning' : 'text-muted'}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium">{COWORK_TERMS.fullControl}</div>
+                      <div className="text-sm font-medium">{TASKS_TERMS.fullControl}</div>
                       <p className="mt-0.5 text-xs text-muted">
                         Sin sandbox y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada
                         ejecución.
@@ -708,7 +708,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       type="button"
                       role="switch"
                       aria-checked={fullControl}
-                      aria-label={COWORK_TERMS.fullControl}
+                      aria-label={TASKS_TERMS.fullControl}
                       onClick={() => void toggleFullControl(!fullControl)}
                       className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${fullControl ? 'bg-accent' : 'bg-border-strong'}`}
                     >

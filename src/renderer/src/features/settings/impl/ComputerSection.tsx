@@ -6,8 +6,8 @@
 import { useEffect, useState } from 'react'
 import { Check, Eye, EyeOff, Loader2, MonitorCog } from 'lucide-react'
 import { DEFAULT_COMPUTER_PREFS, type ComputerControlMode, type ComputerPrefs } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
-import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { ComputerGrantsList } from '../../tasks/impl/ComputerAccess'
 import { Card, ErrorText, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
@@ -50,7 +50,7 @@ export function ComputerSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!hasCoworkBridge()) return
+    if (!hasTasksBridge()) return
     cw('computer:prefs:get')
       .then(setPrefs)
       .catch(() => undefined)
@@ -108,7 +108,7 @@ export function ComputerSection(): React.JSX.Element {
               <EyeOff size={13} className="text-muted" /> Ocultar las demás apps mientras controla
             </div>
             <div className="mt-0.5 text-xs text-muted">
-              Oculta el resto de apps abiertas (deja Finder y {COWORK_TERMS.fullControlShort.toLowerCase()} intactos) mientras dura el
+              Oculta el resto de apps abiertas (deja Finder y {TASKS_TERMS.fullControlShort.toLowerCase()} intactos) mientras dura el
               control, para que nadie más pueda tocarlas mientras tanto.
             </div>
           </div>

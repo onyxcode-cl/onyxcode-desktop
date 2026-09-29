@@ -1,14 +1,14 @@
-/** Control segmentado visible: «Sandbox» / «Control total del Mac» (términos del glosario de Cowork). */
+/** Control segmentado visible: «Sandbox» / «Control total del Mac» (términos del glosario de Tareas). */
 import { Loader2, MonitorCog, Shield } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { setAccessMode } from './actions'
-import { useCowork } from './store'
+import { useTasks } from './store'
 
 export function AccessSegmented({ disabled, compact }: { disabled?: boolean; compact?: boolean }): React.JSX.Element {
-  const conn = useCowork((s) => s.conn)
-  const phase = useCowork((s) => s.phase)
-  const requested = useCowork((s) => s.fullAccess)
-  const folder = useCowork((s) => s.folder)
+  const conn = useTasks((s) => s.conn)
+  const phase = useTasks((s) => s.phase)
+  const requested = useTasks((s) => s.fullAccess)
+  const folder = useTasks((s) => s.folder)
   const full = conn ? conn.fullAccess : requested
   const starting = phase === 'starting'
   const off = disabled || starting || !folder
@@ -45,11 +45,11 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
         tabIndex={!full ? 0 : -1}
         disabled={off}
         onClick={() => pick(false)}
-        title={`${COWORK_TERMS.sandbox}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (sandbox de macOS). Recomendado.`}
+        title={`${TASKS_TERMS.sandbox}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (sandbox de macOS). Recomendado.`}
         className={`${base} ${!full ? 'bg-elevated text-accent shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && !requested ? <Loader2 size={12} className="animate-spin" /> : <Shield size={12} />}
-        {COWORK_TERMS.sandbox}
+        {TASKS_TERMS.sandbox}
       </button>
       <button
         type="button"
@@ -58,11 +58,11 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
         tabIndex={full ? 0 : -1}
         disabled={off}
         onClick={() => pick(true)}
-        title={`${COWORK_TERMS.fullControl}: sin sandbox; puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar.`}
+        title={`${TASKS_TERMS.fullControl}: sin sandbox; puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar.`}
         className={`${base} ${full ? 'bg-warning/15 text-warning shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && requested ? <Loader2 size={12} className="animate-spin" /> : <MonitorCog size={12} />}
-        {compact ? COWORK_TERMS.fullControlShort : COWORK_TERMS.fullControl}
+        {compact ? TASKS_TERMS.fullControlShort : TASKS_TERMS.fullControl}
       </button>
     </div>
   )

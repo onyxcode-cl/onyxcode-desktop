@@ -6,14 +6,14 @@
  */
 import { useEffect, useState } from 'react'
 import { AlertCircle, BookText, Check, FileText, Link2, Loader2, NotebookText, Plus, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react'
-import type { CoworkPermissionRule } from '@shared/ipc-tasks'
-import { COWORK_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
+import type { TasksPermissionRule } from '@shared/ipc-tasks'
+import { TASKS_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { cw } from './bridge'
 import { DeleteGrantToggle } from './DeleteGrant'
 import { RecordSkillButton, RecordSkillReview } from './RecordSkill'
-import { deleteMemoryNotes, saveMemoryNotes, setProjectPanelOpen, useCowork } from './store'
+import { deleteMemoryNotes, saveMemoryNotes, setProjectPanelOpen, useTasks } from './store'
 import { baseName } from './util'
 import { errText } from '../../../lib/format'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -46,10 +46,10 @@ const inputCls =
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
 
 export function ProjectPanel(): React.JSX.Element | null {
-  const open = useCowork((s) => s.projectPanelOpen)
-  const folder = useCowork((s) => s.folder)
-  const project = useCowork((s) => s.project)
-  const memory = useCowork((s) => s.memory)
+  const open = useTasks((s) => s.projectPanelOpen)
+  const folder = useTasks((s) => s.folder)
+  const project = useTasks((s) => s.project)
+  const memory = useTasks((s) => s.memory)
   const [tab, setTab] = useState<Tab>('project')
   const [name, setName] = useState('')
   const [instructions, setInstructions] = useState('')
@@ -60,7 +60,7 @@ export function ProjectPanel(): React.JSX.Element | null {
   const [agentsInfo, setAgentsInfo] = useState<{ path: string; exists: boolean } | null>(null)
   const [agentsLoading, setAgentsLoading] = useState(false)
   const [skills, setSkills] = useState<SkillInfo[] | null>(null)
-  const [rules, setRules] = useState<CoworkPermissionRule[]>([])
+  const [rules, setRules] = useState<TasksPermissionRule[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +84,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     if (!open || !folder) return
     let cancelled = false
     setSkills(null)
-    const client = useCowork.getState().client
+    const client = useTasks.getState().client
     if (client) {
       void client.app
         .skills({ directory: folder })
@@ -140,7 +140,7 @@ export function ProjectPanel(): React.JSX.Element | null {
   }, [open])
 
   // La revisión de una grabación no depende de que este panel esté abierto: se muestra en cuanto
-  // llega `computer:recordDone`, sea cual sea la vista de Cowork en la que esté el usuario.
+  // llega `computer:recordDone`, sea cual sea la vista de Tareas en la que esté el usuario.
   if (!open || !folder) return <RecordSkillReview />
 
   const flashSaved = (): void => {
@@ -153,7 +153,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     setError(null)
     try {
       const p = await cw('tasks:project:save', { folder, name, instructions, links })
-      if (useCowork.getState().folder === folder) useCowork.setState({ project: p })
+      if (useTasks.getState().folder === folder) useTasks.setState({ project: p })
       flashSaved()
     } catch (err) {
       setError(errText(err))
@@ -186,7 +186,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     setError(null)
     try {
       const p = await cw('tasks:project:save', { folder, memoryEnabled: project?.memoryEnabled === false })
-      if (useCowork.getState().folder === folder) useCowork.setState({ project: p })
+      if (useTasks.getState().folder === folder) useTasks.setState({ project: p })
     } catch (err) {
       setError(errText(err))
     }
@@ -313,17 +313,17 @@ export function ProjectPanel(): React.JSX.Element | null {
                     value={instructions}
                     placeholder="Convenciones, tono, formatos preferidos, contexto del proyecto…"
                     onChange={(e) => setInstructions(e.target.value)}
-                    maxLength={COWORK_INSTRUCTIONS_MAX}
+                    maxLength={TASKS_INSTRUCTIONS_MAX}
                   />
                   <div className="mt-1.5 flex items-start gap-3">
                     <p className="min-w-0 flex-1 text-xs text-subtle">
                       Se añaden a todas las tareas de esta carpeta, junto con las instrucciones globales de Ajustes y la memoria guardada.
                     </p>
                     <span
-                      className={`shrink-0 text-xs tabular-nums ${instructions.length >= COWORK_INSTRUCTIONS_MAX * 0.9 ? 'text-danger' : 'text-subtle'}`}
+                      className={`shrink-0 text-xs tabular-nums ${instructions.length >= TASKS_INSTRUCTIONS_MAX * 0.9 ? 'text-danger' : 'text-subtle'}`}
                       aria-live="polite"
                     >
-                      {numFmt.format(instructions.length)} / {numFmt.format(COWORK_INSTRUCTIONS_MAX)}
+                      {numFmt.format(instructions.length)} / {numFmt.format(TASKS_INSTRUCTIONS_MAX)}
                     </span>
                   </div>
                 </div>
@@ -390,7 +390,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                   </div>
                   {skills === null ? (
                     <p className="text-xs text-subtle">
-                      {useCowork.getState().client ? 'Cargando…' : 'Abre una tarea en esta carpeta para ver las skills.'}
+                      {useTasks.getState().client ? 'Cargando…' : 'Abre una tarea en esta carpeta para ver las skills.'}
                     </p>
                   ) : skills.length === 0 ? (
                     <p className="text-xs text-subtle">

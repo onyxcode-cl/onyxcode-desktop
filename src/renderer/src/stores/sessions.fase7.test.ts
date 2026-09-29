@@ -116,7 +116,7 @@ describe('F7-B10: removeSession / session.deleted no dejan estado de la sesión'
     expect(st().loadingMessages['s']).toBeUndefined()
   })
 
-  it('purgeSessionState equivale a removeSession (helper compartido para deleteTask de Cowork)', () => {
+  it('purgeSessionState equivale a removeSession (helper compartido para deleteTask de Tasks)', () => {
     st().upsertSession(makeSession('s', D), 'http://cw')
     st().applyEvent(statusBusy('s', D).event)
     st().setError('s', 'x')
@@ -190,7 +190,7 @@ describe('F7-B19: robustez', () => {
     err.mockRestore()
   })
 
-  it('los buffers por origen están acotados (no crecen con cada reinicio de un servidor de Cowork)', () => {
+  it('los buffers por origen están acotados (no crecen con cada reinicio de un servidor de Tasks)', () => {
     // Cada origen distinto recibe un evento (crea sus buffers); no hay API pública de tamaño: se comprueba que un
     // origen antiguo pierde su `seen` (dedupe) y el principal lo conserva.
     const ev = { id: 'evt_same', type: 'session.status', properties: { sessionID: 's', status: { type: 'busy' } } } as never

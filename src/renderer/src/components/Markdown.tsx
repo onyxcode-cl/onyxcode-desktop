@@ -140,7 +140,7 @@ interface MarkdownProps {
   /**
    * Resaltar la sintaxis de los bloques de código. Por defecto `!streaming`: lo que aún se está escribiendo no se
    * resalta (re-resaltar todo el mensaje en cada frame era el mayor coste del streaming); al terminar se resalta una vez.
-   * Code y Cowork no muestran cursor, así que pasan `highlight={false}` para su último bloque de texto en curso.
+   * Code y Tareas no muestran cursor, así que pasan `highlight={false}` para su último bloque de texto en curso.
    */
   highlight?: boolean
   className?: string

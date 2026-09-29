@@ -1,5 +1,5 @@
 /**
- * Escalada sandbox → Control total. El agente `cowork` (sandbox) no puede abrir apps, teclear en
+ * Escalada sandbox → Control total. El agente `tasks` (sandbox) no puede abrir apps, teclear en
  * otras apps ni capturar pantalla: cuando la tarea lo necesita, termina su turno con la línea
  * literal «**Necesita Control total del Mac**: <motivo>». Aquí se detecta y se ofrece una tarjeta.
  *
@@ -15,7 +15,7 @@ import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { sendToTask, setAccessMode } from './actions'
-import { currentCoworkModel, useCowork } from './store'
+import { currentTasksModel, useTasks } from './store'
 import { firstUserPrompt, lastAssistantText } from './transcript'
 
 // Se re-exporta para no romper a quien lo importaba de aquí (la implementación vive en `transcript.ts`).
@@ -91,7 +91,7 @@ const CONT_TTL_MS = 5 * 60_000
 /** Margen tras cerrarse el diálogo para que llegue `fullAccess = true` (si no llega, se canceló). */
 const CANCEL_GRACE_MS = 3000
 
-useCowork.subscribe((state, prev) => {
+useTasks.subscribe((state, prev) => {
   const c = cont
   if (!c) return
   // (c) Cambió la carpeta o pasó demasiado tiempo: se descarta.
@@ -102,18 +102,18 @@ useCowork.subscribe((state, prev) => {
   // (a) El diálogo se cerró: si no se activó el Control total, el usuario canceló.
   if (prev.pendingFullAccess && !state.pendingFullAccess) {
     setTimeout(() => {
-      if (cont === c && !useCowork.getState().fullAccess) cont = null
+      if (cont === c && !useTasks.getState().fullAccess) cont = null
     }, CANCEL_GRACE_MS)
   }
   // (b) Llegó la conexión de Control total de la misma carpeta: se consume (una sola vez).
   if (state.conn?.fullAccess && state.phase === 'ready' && state.folder === c.folder && state.conn !== prev.conn) {
     cont = null
-    void sendToTask(c.prompt, currentCoworkModel()).catch((e) => useCowork.setState({ error: errorMessage(e) }))
+    void sendToTask(c.prompt, currentTasksModel()).catch((e) => useTasks.setState({ error: errorMessage(e) }))
   }
 })
 
 function armContinuation(entries: MessageEntry[]): boolean {
-  const folder = useCowork.getState().folder
+  const folder = useTasks.getState().folder
   if (!folder) return false
   const c: Continuation = { folder, prompt: buildContinuationPrompt(entries), at: Date.now() }
   cont = c

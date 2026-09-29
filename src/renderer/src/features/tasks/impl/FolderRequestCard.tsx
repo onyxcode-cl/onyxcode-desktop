@@ -8,20 +8,20 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { FolderInput, Loader2, ShieldAlert } from 'lucide-react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { answerFolderRequest } from './actions'
 import { cw } from './bridge'
 import { folderRequestView } from './conversation-logic'
-import { rootTaskId, useCowork } from './store'
+import { rootTaskId, useTasks } from './store'
 import { lastAssistantText } from './transcript'
 import { folderRequestPaths } from './util'
 
 const MODES: Array<{ mode: FolderAccessMode; label: string; hint: string }> = [
-  { mode: 'ro', label: COWORK_TERMS.readOnly, hint: 'Podrá leer los archivos, no cambiarlos.' },
-  { mode: 'rw', label: COWORK_TERMS.readWrite, hint: 'Podrá leer, crear y modificar archivos.' }
+  { mode: 'ro', label: TASKS_TERMS.readOnly, hint: 'Podrá leer los archivos, no cambiarlos.' },
+  { mode: 'rw', label: TASKS_TERMS.readWrite, hint: 'Podrá leer, crear y modificar archivos.' }
 ]
 
 function hiddenNote(text: string): boolean {
@@ -29,8 +29,8 @@ function hiddenNote(text: string): boolean {
 }
 
 export function FolderRequestCard({ request }: { request: PermissionRequest }): React.JSX.Element {
-  const conn = useCowork((s) => s.conn)
-  const policy = useCowork((s) => s.policy)
+  const conn = useTasks((s) => s.conn)
+  const policy = useTasks((s) => s.policy)
   const fullAccess = conn?.fullAccess === true
   const taskId = useMemo(() => rootTaskId(request.sessionID), [request.sessionID])
   // Mensajes de la sesión que pide (puede ser una subtarea) o, si no hay, los de la tarea.
@@ -72,15 +72,15 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
   const respond = async (kind: 'deny' | 'later' | 'allow'): Promise<void> => {
     setBusy(true)
     setError(null)
-    const before = useCowork.getState().error
+    const before = useTasks.getState().error
     try {
       if (kind === 'allow') {
         await answerFolderRequest(request, { kind, path: selected, mode, trust: trust && canTrust })
       } else {
         await answerFolderRequest(request, { kind })
       }
-      // `answerFolderRequest` deja sus fallos en el estado de Cowork: se muestran aquí, junto a la tarjeta.
-      const after = useCowork.getState().error
+      // `answerFolderRequest` deja sus fallos en el estado de Tareas: se muestran aquí, junto a la tarjeta.
+      const after = useTasks.getState().error
       if (after && after !== before) setError(after)
     } catch (err) {
       setError(errorMessage(err))
@@ -206,7 +206,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
                 No volver a preguntar (carpeta de confianza)
                 {trust && (
                   <span className="mt-0.5 block text-[11px] text-subtle">
-                    Se añadirá a «{COWORK_TERMS.trustedFolders}» en Ajustes, donde podrás quitarla.
+                    Se añadirá a «{TASKS_TERMS.trustedFolders}» en Ajustes, donde podrás quitarla.
                   </span>
                 )}
               </span>

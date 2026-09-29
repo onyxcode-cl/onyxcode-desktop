@@ -1,5 +1,5 @@
 /**
- * Compositor propio de Cowork: texto controlado por el store (para rellenarlo desde
+ * Compositor propio de Tareas: texto controlado por el store (para rellenarlo desde
  * sugerencias/seguimientos), adjuntos copiados a la carpeta, chip de carpeta, chips de carpetas
  * adicionales, modelo y esfuerzo por tarea, y medidor de uso de la tarea activa.
  *
@@ -9,7 +9,7 @@
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
@@ -20,7 +20,7 @@ import { useModeModel } from '../../settings/impl/extras'
 import { attachFiles, removeAttachment, unlinkFolder } from './actions'
 import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
-import { currentCoworkModel, currentCoworkVariant, setTaskModel, setTaskVariant, useCowork } from './store'
+import { currentTasksModel, currentTasksVariant, setTaskModel, setTaskVariant, useTasks } from './store'
 import { extOf } from './util'
 
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'])
@@ -40,31 +40,31 @@ interface Props {
   extra?: React.ReactNode
 }
 
-/** Método imperativo expuesto por `CoworkComposer` (ver el comentario del archivo). */
-export interface CoworkComposerHandle {
+/** Método imperativo expuesto por `TasksComposer` (ver el comentario del archivo). */
+export interface TasksComposerHandle {
   focus: () => void
 }
 
-export const CoworkComposer = forwardRef<CoworkComposerHandle, Props>(function CoworkComposer(
+export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function TasksComposer(
   { onSend, onAbort, busy, disabled, placeholder, autoFocusKey, hero, extra },
   forwardedRef
 ) {
-  const text = useCowork((s) => s.draft)
-  const attachments = useCowork((s) => s.attachments)
-  const folder = useCowork((s) => s.folder)
-  const activeTaskId = useCowork((s) => s.activeTaskId)
-  const linked = useCowork((s) => s.folderSet?.linked)
+  const text = useTasks((s) => s.draft)
+  const attachments = useTasks((s) => s.attachments)
+  const folder = useTasks((s) => s.folder)
+  const activeTaskId = useTasks((s) => s.activeTaskId)
+  const linked = useTasks((s) => s.folderSet?.linked)
   const entries = useSessions((s) => (activeTaskId ? s.messages[activeTaskId] : undefined)) ?? NO_MESSAGES
   // Suscripción reactiva al modelo/esfuerzo de la tarea; el valor sale de las funciones del store.
-  useCowork((s) => s.taskModel)
-  useCowork((s) => s.taskVariant)
+  useTasks((s) => s.taskModel)
+  useTasks((s) => s.taskVariant)
   useModeModel('tasks')
-  const model = currentCoworkModel()
-  const variant = currentCoworkVariant()
+  const model = currentTasksModel()
+  const variant = currentTasksVariant()
   const [attaching, setAttaching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
-  const setText = (draft: string): void => useCowork.setState({ draft })
+  const setText = (draft: string): void => useTasks.setState({ draft })
 
   useImperativeHandle(forwardedRef, () => ({ focus: () => ref.current?.focus() }), [])
 
@@ -121,18 +121,18 @@ export const CoworkComposer = forwardRef<CoworkComposerHandle, Props>(function C
           </div>
         )}
         {linked && linked.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 px-3 pt-3" aria-label={COWORK_TERMS.linkedFolders}>
+          <div className="flex flex-wrap items-center gap-1.5 px-3 pt-3" aria-label={TASKS_TERMS.linkedFolders}>
             {linked.map((f) => (
               <span
                 key={f.path}
-                title={`${f.path} · ${f.mode === 'ro' ? COWORK_TERMS.readOnly : COWORK_TERMS.readWrite}`}
+                title={`${f.path} · ${f.mode === 'ro' ? TASKS_TERMS.readOnly : TASKS_TERMS.readWrite}`}
                 className="flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border bg-hover px-2 py-1 text-xs"
               >
                 <FolderPlus size={13} className="shrink-0 text-muted" />
                 <span className="truncate">{f.name}</span>
                 {f.mode === 'ro' && (
                   <span className="shrink-0 rounded bg-warning/15 px-1.5 py-px text-[11px] font-medium text-warning">
-                    {COWORK_TERMS.readOnly}
+                    {TASKS_TERMS.readOnly}
                   </span>
                 )}
                 <button

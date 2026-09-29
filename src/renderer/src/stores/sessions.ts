@@ -1,12 +1,12 @@
 /**
  * Estado de sesiones/mensajes de OpenCode alimentado por eventos SSE.
- * Es genérico (no depende del modo): Chat y Cowork lo reutilizan filtrando por directorio.
+ * Es genérico (no depende del modo): Chat y Tareas lo reutilizan filtrando por directorio.
  *
  * ORIGEN (AUDIT.md B2): lo alimentan varios servidores (sidecar principal = Chat/Code y un
- * servidor por carpeta/modo de Cowork, cada uno con su propio almacenamiento). Cada sesión
+ * servidor por carpeta/modo de Tareas, cada uno con su propio almacenamiento). Cada sesión
  * guarda de qué servidor vino (`sessionSource`, clave = `MAIN_SOURCE` o el baseUrl del servidor
- * de Cowork) y cada directorio puede fijar qué origen se muestra (`directorySource`, lo pone
- * Cowork al conectar su carpeta). Así una misma carpeta abierta en Code y en Cowork no mezcla
+ * de Tareas) y cada directorio puede fijar qué origen se muestra (`directorySource`, lo pone
+ * Tareas al conectar su carpeta). Así una misma carpeta abierta en Code y en Tareas no mezcla
  * listas, y `loadSessions` solo reemplaza las sesiones del origen que recarga.
  *
  * CARGA vs. STREAM (AUDIT.md B4): mientras `loadMessages` espera el snapshot, los eventos de esa
@@ -83,7 +83,7 @@ interface SessionsState {
   addEvictionGuard: (guard: () => Iterable<string>) => () => void
   /**
    * Avisa (antes de desalojar) con las listas cargadas (`loaded`) de cada sesión que se va: permite sembrar cachés
-   * derivadas (búsqueda de Cowork). Devuelve la baja.
+   * derivadas (búsqueda de Tareas). Devuelve la baja.
    */
   addEvictionListener: (fn: EvictionListener) => () => void
   /** Desaloja `messages`/`loaded`/`loadingMessages` de las sesiones no fijadas que sobran del tope (un solo `set`). */
@@ -98,7 +98,7 @@ interface SessionsState {
 
 export type EvictionListener = (evicted: Array<{ id: string; entries: MessageEntry[] }>, state: SessionsState) => void
 
-/** Tope de sesiones con contenido no fijadas en `useSessions` (Chat + Cowork). */
+/** Tope de sesiones con contenido no fijadas en `useSessions` (Chat + Tareas). */
 export const SESSIONS_LRU_MAX = 40
 
 /** Último acceso por sesión (contador monótono; sin registro = nunca abierta). Estado de módulo, sin `set`. */
@@ -113,7 +113,7 @@ let evictScheduled = false
  * no compartida con Code, y UNA por origen (F6-B3): dos servidores pueden emitir el mismo `event.id`.
  */
 const buffersBySource = new Map<string, Buffers>()
-/** Tope de orígenes con buffers (F7-B19): cada reinicio de un servidor de Cowork trae un baseUrl nuevo. */
+/** Tope de orígenes con buffers (F7-B19): cada reinicio de un servidor de Tareas trae un baseUrl nuevo. */
 const BUFFERS_MAX_SOURCES = 8
 let lastSource: string | null = null
 function buffersFor(source: string): Buffers {
@@ -422,7 +422,7 @@ export const useSessions = create<SessionsState>((set, get) => {
 /**
  * Borra TODO el estado de una sesión en `useSessions` (sesión, mensajes, `loaded`, `status`, `errors`,
  * `loadingMessages`, origen, acceso LRU, cargas y partes huérfanas). Para quien borra una sesión por su cuenta
- * (p. ej. `deleteTask` de Cowork): equivale a `removeSession`.
+ * (p. ej. `deleteTask` de Tareas): equivale a `removeSession`.
  */
 export function purgeSessionState(sessionID: string): void {
   useSessions.getState().removeSession(sessionID)

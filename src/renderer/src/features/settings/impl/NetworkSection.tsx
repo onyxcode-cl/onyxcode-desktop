@@ -7,8 +7,8 @@
  */
 import { useEffect, useState } from 'react'
 import { Globe, Plus, ShieldCheck, Trash2 } from 'lucide-react'
-import type { CoworkMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/ipc-tasks'
-import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import type { TasksMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/ipc-tasks'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { policyLocks } from './TasksSection'
 import { Badge, Card, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -17,7 +17,7 @@ import { isSubmitKey } from '../../../lib/textarea'
 export const CUSTOM_HOSTS_BLOCKED_MESSAGE = 'Tu organización no permite añadir sitios a la red del sandbox.'
 
 /** Servidores MCP «Disponible en Tareas» que aportan hosts a la red (informativo). */
-export function mcpHostContributors(list: CoworkMcpInfo[]): CoworkMcpInfo[] {
+export function mcpHostContributors(list: TasksMcpInfo[]): TasksMcpInfo[] {
   return list.filter((m) => m.tasks && m.hosts.length > 0)
 }
 
@@ -33,11 +33,11 @@ export function NetworkSection(): React.JSX.Element {
   const [newHost, setNewHost] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [policy, setPolicy] = useState<ManagedPolicy | null>(null)
-  const [mcpHosts, setMcpHosts] = useState<CoworkMcpInfo[]>([])
+  const [mcpHosts, setMcpHosts] = useState<TasksMcpInfo[]>([])
   const locks = policyLocks(policy)
 
   const reload = (): void => {
-    if (!hasCoworkBridge()) return
+    if (!hasTasksBridge()) return
     void cw('tasks:network:state')
       .then(setState)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
@@ -46,7 +46,7 @@ export function NetworkSection(): React.JSX.Element {
   useEffect(reload, [])
 
   useEffect(() => {
-    if (!hasCoworkBridge()) return
+    if (!hasTasksBridge()) return
     cw('tasks:policy')
       .then(setPolicy)
       .catch(() => undefined)
@@ -55,7 +55,7 @@ export function NetworkSection(): React.JSX.Element {
       .catch(() => undefined)
   }, [])
 
-  if (!hasCoworkBridge()) {
+  if (!hasTasksBridge()) {
     return (
       <div>
         <SectionHeader title="Red del sandbox" description="Solo disponible en la app de escritorio." />

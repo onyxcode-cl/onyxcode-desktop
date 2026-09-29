@@ -11,7 +11,7 @@ import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
 import { retryAfterNetworkAllow } from './actions'
 import { cw } from './bridge'
-import { dismissNetworkBlocked, resolveNetworkBlocked, useCowork, type NetworkBlockedEntry } from './store'
+import { dismissNetworkBlocked, resolveNetworkBlocked, useTasks, type NetworkBlockedEntry } from './store'
 
 type Busy = 'once' | 'always' | 'block' | null
 
@@ -44,7 +44,7 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
     setBusy('once')
     setError(null)
     try {
-      await cw('tasks:network:allowOnce', { folder: useCowork.getState().folder ?? '', host: entry.host })
+      await cw('tasks:network:allowOnce', { folder: useTasks.getState().folder ?? '', host: entry.host })
       resolveNetworkBlocked(taskId, entry.host, 'once')
     } catch (err) {
       setError(errorMessage(err))
@@ -109,7 +109,7 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
 
 /** Tarjetas de red bloqueada de una tarea (una por host, deduplicadas). */
 export function NetworkBlockedCards({ taskId }: { taskId: string }): React.JSX.Element | null {
-  const entries = useCowork((s) => s.networkBlocked[taskId])
+  const entries = useTasks((s) => s.networkBlocked[taskId])
   if (!entries || entries.length === 0) return null
   return (
     <div className="flex flex-col gap-2">

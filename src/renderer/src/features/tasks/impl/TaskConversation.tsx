@@ -1,5 +1,5 @@
 /**
- * Conversación de una tarea de Cowork: los mensajes del asistente se aplanan y las llamadas a
+ * Conversación de una tarea de Tareas: los mensajes del asistente se aplanan y las llamadas a
  * herramientas consecutivas se agrupan en bloques compactos de "Pasos" (expandibles) en lugar
  * de una lista larga de tarjetas de herramientas.
  */

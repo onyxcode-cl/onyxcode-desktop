@@ -139,7 +139,7 @@ export function suggestedExportName(title: string): string {
     .replace(/^\.+/, '')
     .slice(0, 80)
     .trim()
-  return `${base || 'tarea-de-cowork'}.md`
+  return `${base || 'tarea'}.md`
 }
 
 // ───────────────────────────── Continuar en una tarea nueva ─────────────────────────────

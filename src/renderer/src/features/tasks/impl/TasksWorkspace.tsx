@@ -1,6 +1,6 @@
 /**
- * Modo Cowork: tareas autónomas sobre una carpeta de Cowork, ejecutadas por el agente
- * `cowork` en un `opencode serve` dedicado y sandboxeado (sandbox-exec), o por el agente
+ * Modo Tareas: tareas autónomas sobre una carpeta de Tareas, ejecutadas por el agente
+ * `tasks` en un `opencode serve` dedicado y sandboxeado (sandbox-exec), o por el agente
  * `computer` en un servidor de Control total (control del Mac).
  *
  * Diseño: tareas a la izquierda (barra lateral del shell) · inicio / conversación al centro ·
@@ -26,8 +26,8 @@ import {
 } from 'lucide-react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import type { BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
-import type { CoworkDeliverable } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import type { TasksDeliverable } from '@shared/ipc-tasks'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
 import { TranscriptLoader } from '../../../components/TranscriptLoader'
 import { BrowserPanel, hasBrowserBridge, onBrowser } from '../../browser'
@@ -59,10 +59,10 @@ import {
   PlanAccessCard,
   VisionModelHint
 } from './ComputerAccess'
-import { hasCoworkBridge, onCowork } from './bridge'
+import { hasTasksBridge, onTasks } from './bridge'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { hideRevertedEntries } from './conversation-logic'
-import { CoworkComposer, type CoworkComposerHandle } from './TasksComposer'
+import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
 import { Home } from './Home'
@@ -77,7 +77,7 @@ import { StatusIcon } from './TaskList'
 import {
   addNetworkBlocked,
   clearUnseen,
-  currentCoworkModel,
+  currentTasksModel,
   disconnect,
   lastFolder,
   resync,
@@ -85,14 +85,14 @@ import {
   syncAccessRequests,
   syncAutoMode,
   syncKillState,
-  useCowork,
+  useTasks,
   isPlanPending,
   isUsingComputer
 } from './store'
 import {
   extOf,
   formatDuration,
-  isCoworkSource,
+  isTasksSource,
   permissionBelongsTo,
   sessionBelongsTo,
   taskStatus,
@@ -102,7 +102,7 @@ import {
 } from './util'
 
 const EMPTY: MessageEntry[] = []
-const EMPTY_FILES: CoworkDeliverable[] = []
+const EMPTY_FILES: TasksDeliverable[] = []
 
 /** Ancho del `aside` cuando la pestaña activa es «Navegador» (persistido; Progreso queda fijo). */
 const ASIDE_BROWSER_WIDTH_KEY = 'tasks.browserWidth'
@@ -264,7 +264,7 @@ function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
   )
 }
 
-function followUpsFor(files: CoworkDeliverable[], fullAccess: boolean): string[] {
+function followUpsFor(files: TasksDeliverable[], fullAccess: boolean): string[] {
   if (fullAccess) return ['Hazlo otra vez', 'Explícame paso a paso lo que hiciste', 'Deshaz el último cambio']
   const exts = new Set(files.map((f) => extOf(f.path)))
   const out: string[] = []
@@ -305,25 +305,25 @@ function FollowUps({ items, onPick }: { items: string[]; onPick: (text: string) 
   )
 }
 
-export function CoworkWorkspace(): React.JSX.Element {
-  const bridge = hasCoworkBridge()
-  const folder = useCowork((s) => s.folder)
-  const phase = useCowork((s) => s.phase)
-  const conn = useCowork((s) => s.conn)
-  const error = useCowork((s) => s.error)
-  const pending = useCowork((s) => s.pendingApproval)
-  const activeId = useCowork((s) => s.activeTaskId)
-  const permissions = useCowork((s) => s.permissions)
-  const questions = useCowork((s) => s.questions)
-  const panelOpen = useCowork((s) => s.panelOpen)
-  const files = useCowork((s) => (activeId ? (s.deliverables[activeId] ?? EMPTY_FILES) : EMPTY_FILES))
+export function TasksWorkspace(): React.JSX.Element {
+  const bridge = hasTasksBridge()
+  const folder = useTasks((s) => s.folder)
+  const phase = useTasks((s) => s.phase)
+  const conn = useTasks((s) => s.conn)
+  const error = useTasks((s) => s.error)
+  const pending = useTasks((s) => s.pendingApproval)
+  const activeId = useTasks((s) => s.activeTaskId)
+  const permissions = useTasks((s) => s.permissions)
+  const questions = useTasks((s) => s.questions)
+  const panelOpen = useTasks((s) => s.panelOpen)
+  const files = useTasks((s) => (activeId ? (s.deliverables[activeId] ?? EMPTY_FILES) : EMPTY_FILES))
   const sessions = useSessions((s) => s.sessions)
   const session = activeId ? sessions[activeId] : undefined
   const allEntries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const run = useSessions((s) => (activeId ? s.status[activeId] : undefined))
   const taskError = useSessions((s) => (activeId ? s.errors[activeId] : null))
-  const requestedFullAccess = useCowork((s) => s.fullAccess)
-  const sideChat = useCowork((s) => s.sideChat)
+  const requestedFullAccess = useTasks((s) => s.fullAccess)
+  const sideChat = useTasks((s) => s.sideChat)
   // «Editar y reintentar» deja los mensajes deshechos en la lista hasta el siguiente prompt: se ocultan.
   const revertMessageID = session?.revert?.messageID
   const entries = useMemo(() => hideRevertedEntries(allEntries, revertMessageID), [allEntries, revertMessageID])
@@ -331,7 +331,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   const [note, setNote] = useState<string | null>(null)
   const fullAccess = conn?.fullAccess === true
   // Navegador integrado del `aside`: pestaña "Progreso | Navegador" y ancho redimensionable.
-  const composerRef = useRef<CoworkComposerHandle>(null)
+  const composerRef = useRef<TasksComposerHandle>(null)
   const [asideTab, setAsideTab] = useState<'progress' | 'browser'>('progress')
   const [browserMounted, setBrowserMounted] = useState(false)
   const [browserWidth, setBrowserWidth] = useState(readAsideBrowserWidth)
@@ -340,8 +340,8 @@ export function CoworkWorkspace(): React.JSX.Element {
 
   /** «Añadir al chat» del navegador integrado: inserta el texto en el compositor (v1 sin imagen). */
   const addPageToComposer = (item: BrowserToChat): void => {
-    const current = useCowork.getState().draft
-    useCowork.setState({ draft: current ? `${current}\n\n${item.text}` : item.text })
+    const current = useTasks.getState().draft
+    useTasks.setState({ draft: current ? `${current}\n\n${item.text}` : item.text })
     composerRef.current?.focus()
   }
 
@@ -363,10 +363,10 @@ export function CoworkWorkspace(): React.JSX.Element {
     }
   }
   const busy = !!run && run !== 'idle'
-  // Solo sesiones de un servidor de Cowork (F6-B1, F7-B37): no cuenta Code/Chat (origen principal), pero sí el otro servidor de Cowork.
+  // Solo sesiones de un servidor de Tareas (F6-B1, F7-B37): no cuenta Code/Chat (origen principal), pero sí el otro servidor de Tareas.
   const folderBusy = useSessions((s) =>
     Object.keys(s.status).some(
-      (id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder && isCoworkSource(s.sessionSource[id])
+      (id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder && isTasksSource(s.sessionSource[id])
     )
   )
 
@@ -375,7 +375,7 @@ export function CoworkWorkspace(): React.JSX.Element {
     if (!bridge) return
     void (async () => {
       await loadFolders()
-      const st = useCowork.getState()
+      const st = useTasks.getState()
       if (st.folder) {
         if (st.phase !== 'ready') void selectFolder(st.folder)
         return
@@ -388,12 +388,12 @@ export function CoworkWorkspace(): React.JSX.Element {
   // Si el servidor de la carpeta se cae, mostrar el error (con "Reintentar").
   useEffect(
     () =>
-      onCowork('tasks:server', (info) => {
-        const st = useCowork.getState()
+      onTasks('tasks:server', (info) => {
+        const st = useTasks.getState()
         const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
         if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
           disconnect()
-          useCowork.setState({ phase: 'error', error: info.error ?? 'El servidor de las tareas se detuvo' })
+          useTasks.setState({ phase: 'error', error: info.error ?? 'El servidor de las tareas se detuvo' })
         }
       }),
     []
@@ -405,15 +405,15 @@ export function CoworkWorkspace(): React.JSX.Element {
   useEffect(() => {
     void syncKillState()
     syncAccessRequests()
-    // Modo auto (Lote C): sin esto, `useCowork().autoMode` nunca se rellena y el chip del
+    // Modo auto (Lote C): sin esto, `useTasks().autoMode` nunca se rellena y el chip del
     // compositor y la vía rápida de `permission.asked` quedan muertos aunque esté activo en Ajustes.
     syncAutoMode()
-    const offAction = onCowork('computer:action', (ev) => {
-      if (useCowork.getState().conn?.fullAccess) useCowork.setState({ lastAction: ev })
+    const offAction = onTasks('computer:action', (ev) => {
+      if (useTasks.getState().conn?.fullAccess) useTasks.setState({ lastAction: ev })
     })
-    const offStopped = onCowork('computer:stopped', (ev) => {
-      if (!useCowork.getState().conn?.fullAccess) return
-      useCowork.setState({ controlStoppedAt: ev.at || Date.now() })
+    const offStopped = onTasks('computer:stopped', (ev) => {
+      if (!useTasks.getState().conn?.fullAccess) return
+      useTasks.setState({ controlStoppedAt: ev.at || Date.now() })
       void abortBusyTasks()
     })
     return () => {
@@ -423,7 +423,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   }, [])
 
   // Proxy de egress: el servidor sandboxeado bloqueó una conexión de red durante una tarea.
-  useEffect(() => onCowork('tasks:networkBlocked', (ev) => addNetworkBlocked(ev)), [])
+  useEffect(() => onTasks('tasks:networkBlocked', (ev) => addNetworkBlocked(ev)), [])
 
   // Navegador integrado: mantiene la pestaña montada tras la primera visita (como la Terminal de Code).
   useEffect(() => {
@@ -434,7 +434,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   useEffect(() => {
     if (!hasBrowserBridge()) return
     return onBrowser('browser:reveal', (ev) => {
-      if (ev.owner.kind !== 'tasks' || ev.owner.folder !== useCowork.getState().folder) return
+      if (ev.owner.kind !== 'tasks' || ev.owner.folder !== useTasks.getState().folder) return
       setPanelOpen(true)
       setAsideTab('browser')
     })
@@ -444,7 +444,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   useEffect(() => {
     if (!hasBrowserBridge()) return
     return onBrowser('browser:toChat', (item) => {
-      if (item.owner.kind !== 'tasks' || item.owner.folder !== useCowork.getState().folder) return
+      if (item.owner.kind !== 'tasks' || item.owner.folder !== useTasks.getState().folder) return
       addPageToComposer(item)
     })
   }, [])
@@ -465,7 +465,7 @@ export function CoworkWorkspace(): React.JSX.Element {
   // La tarea activa se considera "vista" al volver a la ventana.
   useEffect(() => {
     const onFocus = (): void => {
-      const id = useCowork.getState().activeTaskId
+      const id = useTasks.getState().activeTaskId
       if (id) clearUnseen(id)
     }
     window.addEventListener('focus', onFocus)
@@ -495,7 +495,7 @@ export function CoworkWorkspace(): React.JSX.Element {
 
   // La Consulta lateral pertenece a una tarea: al cambiar de tarea se cierra.
   useEffect(() => {
-    const side = useCowork.getState().sideChat
+    const side = useTasks.getState().sideChat
     if (side && side.taskId !== activeId) closeSideChat()
   }, [activeId])
 
@@ -542,7 +542,7 @@ export function CoworkWorkspace(): React.JSX.Element {
         },
         {
           icon: MessagesSquare,
-          label: COWORK_TERMS.sideChat,
+          label: TASKS_TERMS.sideChat,
           hint: 'Pregunta sobre la tarea sin modificarla',
           disabled: phase !== 'ready',
           run: () => openSideChat(activeId)
@@ -558,15 +558,15 @@ export function CoworkWorkspace(): React.JSX.Element {
 
   const send = async (text: string): Promise<void> => {
     setSendError(null)
-    if (!useCowork.getState().folder) {
+    if (!useTasks.getState().folder) {
       await chooseFolder()
       return
     }
     try {
-      await sendToTask(text, currentCoworkModel())
+      await sendToTask(text, currentTasksModel())
     } catch (err) {
       setSendError(errorMessage(err))
-      if (!useCowork.getState().draft) useCowork.setState({ draft: text })
+      if (!useTasks.getState().draft) useTasks.setState({ draft: text })
     }
   }
 
@@ -602,7 +602,7 @@ export function CoworkWorkspace(): React.JSX.Element {
         >
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
-          <Button variant="ghost" onClick={() => useCowork.setState({ error: null })}>
+          <Button variant="ghost" onClick={() => useTasks.setState({ error: null })}>
             Cerrar
           </Button>
         </div>
@@ -694,7 +694,7 @@ export function CoworkWorkspace(): React.JSX.Element {
               </p>
             )}
             <VisionModelHint />
-            <CoworkComposer
+            <TasksComposer
               ref={composerRef}
               onSend={send}
               onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
@@ -738,12 +738,12 @@ export function CoworkWorkspace(): React.JSX.Element {
               type="button"
               onClick={() => setAsideTab('browser')}
               disabled={!browserOwner}
-              title={COWORK_TERMS.browser}
+              title={TASKS_TERMS.browser}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
                 asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
               }`}
             >
-              <Globe size={12} /> {COWORK_TERMS.browser}
+              <Globe size={12} /> {TASKS_TERMS.browser}
             </button>
             <span className="ml-auto flex items-center gap-0.5">
               {asideTab === 'progress' && (
@@ -785,4 +785,4 @@ export function CoworkWorkspace(): React.JSX.Element {
   )
 }
 
-export default CoworkWorkspace
+export default TasksWorkspace

@@ -1,5 +1,5 @@
 /**
- * Fase 7 · G3: `syncRunStatus` con huérfanas (F7-B10) e invalidación de `loaded` de los servidores de Cowork que
+ * Fase 7 · G3: `syncRunStatus` con huérfanas (F7-B10) e invalidación de `loaded` de los servidores de Tareas que
  * dejan de emitir (F7-B14).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -20,8 +20,8 @@ beforeEach(async () => {
 })
 const sessions = (): ReturnType<typeof S.useSessions.getState> => S.useSessions.getState()
 
-describe('F7-B14: disconnect/connectFolder invalidan loaded de los orígenes de Cowork', () => {
-  it('disconnect marca loaded=false en las tareas de Cowork y no en las de Chat', () => {
+describe('F7-B14: disconnect/connectFolder invalidan loaded de los orígenes de Tasks', () => {
+  it('disconnect marca loaded=false en las tareas de Tasks y no en las de Chat', () => {
     sessions().upsertSession(makeSession('chat1', D)) // main
     sessions().upsertSession(makeSession('t1', D), SRC)
     S.useSessions.setState((s) => ({ loaded: { chat1: true, t1: true }, messages: { ...s.messages, chat1: [], t1: [] } }))
@@ -30,7 +30,7 @@ describe('F7-B14: disconnect/connectFolder invalidan loaded de los orígenes de 
   })
 })
 
-describe('F7-B10: resync limpia entradas busy huérfanas del servidor de Cowork', () => {
+describe('F7-B10: resync limpia entradas busy huérfanas del servidor de Tasks', () => {
   function connectFake(statusData: Record<string, { type: string }>): void {
     const client = {
       session: {
@@ -40,7 +40,7 @@ describe('F7-B10: resync limpia entradas busy huérfanas del servidor de Cowork'
       permission: { list: () => Promise.resolve({ data: [] }) },
       question: { list: () => Promise.resolve({ data: [] }) }
     }
-    C.useCowork.setState({ client: client as never, folder: D, conn: { baseUrl: SRC } as never, activeTaskId: null })
+    C.useTasks.setState({ client: client as never, folder: D, conn: { baseUrl: SRC } as never, activeTaskId: null })
   }
 
   it('la tarea desaparecida deja de estar busy; la de otro servidor no se toca', async () => {

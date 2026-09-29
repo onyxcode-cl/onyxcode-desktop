@@ -1,9 +1,9 @@
 /**
  * Ventana «Navegador» aparte (rol `browserHost`, ver `main/embedded-browser/popout.ts`): la
  * misma página que carga en `onyxcode://app/browser/index.html`, y que solo renderiza
- * `BrowserPanel` (compartido con Code y Cowork) para el `owner` que main le asigne.
+ * `BrowserPanel` (compartido con Code y Tareas) para el `owner` que main le asigne.
  *
- * Sin preload propio de Code/Cowork ni de extras: no hay tema de usuario que leer aquí (el
+ * Sin preload propio de Code/Tareas ni de extras: no hay tema de usuario que leer aquí (el
  * `browser-host` solo expone `window.api.browser`), así que se sigue la preferencia del
  * sistema. La ventana es única y se reutiliza para el owner que la pida cada vez, así que el
  * `owner` NO viaja en la URL: main lo empuja por el evento `browser:state` en cuanto abre o

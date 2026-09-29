@@ -17,7 +17,7 @@ describe('Markdown: resaltado de código (F7-B45)', () => {
     expect(html).toContain('language-ts')
     expect(html).toContain('is-streaming')
   })
-  it('`highlight={false}` sin cursor (Code/Cowork): sin resaltar ni is-streaming', () => {
+  it('`highlight={false}` sin cursor (Code/Tasks): sin resaltar ni is-streaming', () => {
     const html = renderToStaticMarkup(<Markdown text={TS} highlight={false} />)
     expect(html).not.toContain('hljs')
     expect(html).not.toContain('is-streaming')

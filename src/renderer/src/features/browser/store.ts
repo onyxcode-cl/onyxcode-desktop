@@ -1,12 +1,12 @@
 /**
  * Lógica pura del navegador integrado (detección URL/búsqueda, resaltado de host, armado de
  * tarjetas) más un store de UI mínimo (Zustand) para las aprobaciones pendientes y el aviso de
- * primer uso. No importa nada de Code ni de Cowork: solo tipos de `@shared/ipc-browser`.
+ * primer uso. No importa nada de Code ni de Tareas: solo tipos de `@shared/ipc-browser`.
  */
 import { create } from 'zustand'
 import type { BrowserApprovalRequest, BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 
-/** Clave estable para agrupar estado por dueño (carpeta de Code o de Cowork). */
+/** Clave estable para agrupar estado por dueño (carpeta de Code o de Tareas). */
 export function ownerKey(owner: BrowserOwner): string {
   return owner.kind === 'code' ? `code:${owner.directory}` : `tasks:${owner.folder}`
 }
@@ -86,7 +86,7 @@ export function approvalButtons(kind: BrowserApprovalRequest['kind']): 'simple' 
 }
 
 // ---------------------------------------------------------------------------
-// "Añadir al chat": formato de texto compartido entre Code y Cowork.
+// "Añadir al chat": formato de texto compartido entre Code y Tareas.
 // ---------------------------------------------------------------------------
 
 export function formatPageChatText(title: string, url: string): string {

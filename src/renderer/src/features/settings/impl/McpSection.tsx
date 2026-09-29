@@ -15,14 +15,14 @@ import {
   Unplug
 } from 'lucide-react'
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
-import type { CoworkMcpInfo } from '@shared/ipc-tasks'
+import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { IconButton } from '../../../components/IconButton'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
-import { cw, hasCoworkBridge } from '../../tasks/impl/bridge'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { getExtras, requireExtras } from './extras'
 import { Badge, Card, ErrorText, Field, SectionHeader, TextArea, TextInput, Toggle } from './ui'
 
@@ -55,8 +55,8 @@ export function McpSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ name: string; entry: McpEntry } | 'new' | null>(null)
-  // Marcas de Cowork por servidor (`tasks-mcp.json`), solo para los servidores de la app.
-  const [coworkInfo, setCoworkInfo] = useState<Record<string, CoworkMcpInfo>>({})
+  // Marcas de Tareas por servidor (`tasks-mcp.json`), solo para los servidores de la app.
+  const [tasksInfo, setTasksInfo] = useState<Record<string, TasksMcpInfo>>({})
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -65,9 +65,9 @@ export function McpSection(): React.JSX.Element {
       const extras = getExtras()
       const own = extras ? await extras.invoke('mcp:getConfig') : null
       setAppCfg(own)
-      if (hasCoworkBridge()) {
-        const list = await cw('tasks:mcp:list').catch(() => [] as CoworkMcpInfo[])
-        setCoworkInfo(Object.fromEntries(list.map((i) => [i.name, i])))
+      if (hasTasksBridge()) {
+        const list = await cw('tasks:mcp:list').catch(() => [] as TasksMcpInfo[])
+        setTasksInfo(Object.fromEntries(list.map((i) => [i.name, i])))
       }
       if (client) {
         const [st, cfg] = await Promise.all([client.mcp.status({ directory }), client.config.get({ directory })])
@@ -131,8 +131,8 @@ export function McpSection(): React.JSX.Element {
       }
     })
 
-  const setCowork = (name: string, patch: { tasks?: boolean; askEachTool?: boolean }): Promise<void> =>
-    run(`cowork:${name}`, async () => {
+  const setTasks = (name: string, patch: { tasks?: boolean; askEachTool?: boolean }): Promise<void> =>
+    run(`tasks:${name}`, async () => {
       await cw('tasks:mcp:set', { name, ...patch })
     })
 
@@ -263,8 +263,8 @@ export function McpSection(): React.JSX.Element {
                 </div>
               </div>
               {err && <div className="mt-2 text-xs whitespace-pre-wrap text-danger">{err}</div>}
-              {row.owned && coworkInfo[row.name] && (
-                <CoworkFlags info={coworkInfo[row.name]} disabled={busy !== null} onChange={(patch) => void setCowork(row.name, patch)} />
+              {row.owned && tasksInfo[row.name] && (
+                <TasksFlags info={tasksInfo[row.name]} disabled={busy !== null} onChange={(patch) => void setTasks(row.name, patch)} />
               )}
             </div>
           )
@@ -285,12 +285,12 @@ export function McpSection(): React.JSX.Element {
 }
 
 /** Interruptores de Tareas de un servidor de la app: disponibilidad y "Preguntar en cada uso". */
-function CoworkFlags({
+function TasksFlags({
   info,
   disabled,
   onChange
 }: {
-  info: CoworkMcpInfo
+  info: TasksMcpInfo
   disabled: boolean
   onChange: (patch: { tasks?: boolean; askEachTool?: boolean }) => void
 }): React.JSX.Element {

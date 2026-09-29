@@ -4,7 +4,7 @@ import { errorMessage } from '../../lib/opencode'
 
 /**
  * Error (o aborto) de un mensaje del asistente.
- * - `panel`: Code y Cowork (aborto sin margen; error con borde/fondo más marcados).
+ * - `panel`: Code y Tareas (aborto sin margen; error con borde/fondo más marcados).
  * - `chat`: Chat (aborto en cursiva; error suave con animación de entrada).
  */
 export function AssistantError({

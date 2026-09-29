@@ -1,5 +1,5 @@
 /**
- * Acceso tipado a `window.api.browser` (canales `browser:*`). A diferencia de Cowork/Code,
+ * Acceso tipado a `window.api.browser` (canales `browser:*`). A diferencia de Tareas/Code,
  * `BrowserApi.invoke` ya lanza `Error` en vez de envolver la respuesta en `IpcResult`
  * (ver `src/shared/ipc-browser.ts`), así que aquí no hace falta `unwrap`.
  */

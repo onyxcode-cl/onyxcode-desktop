@@ -1,5 +1,5 @@
 /**
- * UI del modo "Control total del Mac" de Cowork: selector de modo, diálogo de
+ * UI del modo "Control total del Mac" de Tareas: selector de modo, diálogo de
  * confirmación, tarjeta de permisos de macOS, aviso de modelo sin visión, banner
  * "Controlando tu Mac", miniaturas de capturas de pantalla, tarjeta de concesión por app
  * (`request_access`) y lista de permisos por app para Ajustes.
@@ -33,7 +33,7 @@ import {
   type AccessRequestApp,
   type AppTier
 } from '@shared/ipc-tasks'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
@@ -57,8 +57,8 @@ import {
   undenyApp
 } from './actions'
 import { describeAction } from './computer-tools'
-import { loadGrants, setTaskModel, useCowork } from './store'
-import { isCoworkSource } from './util'
+import { loadGrants, setTaskModel, useTasks } from './store'
+import { isTasksSource } from './util'
 
 export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kimi-k3' }
 
@@ -66,9 +66,9 @@ export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kim
 
 /** Chip del header con el modo de acceso de la carpeta (Sandbox / Control total). */
 export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JSX.Element | null {
-  const conn = useCowork((s) => s.conn)
-  const phase = useCowork((s) => s.phase)
-  const requested = useCowork((s) => s.fullAccess)
+  const conn = useTasks((s) => s.conn)
+  const phase = useTasks((s) => s.phase)
+  const requested = useTasks((s) => s.fullAccess)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -86,7 +86,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   if (full) {
     chip = (
       <>
-        <MonitorCog size={12} /> {COWORK_TERMS.fullControlShort}
+        <MonitorCog size={12} /> {TASKS_TERMS.fullControlShort}
       </>
     )
   } else if (conn && !conn.sandboxed) {
@@ -144,7 +144,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
           <ModeOption
             active={full}
             icon={<MonitorCog size={16} className="text-amber-500" />}
-            title={COWORK_TERMS.fullControl}
+            title={TASKS_TERMS.fullControl}
             desc="Sin sandbox. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar."
             onClick={() => pick(true)}
           />
@@ -183,7 +183,7 @@ function ModeOption({
 
 /** "¿Permitir que el agente controle tu Mac?" */
 export function FullAccessDialog(): React.JSX.Element | null {
-  const folder = useCowork((s) => s.pendingFullAccess)
+  const folder = useTasks((s) => s.pendingFullAccess)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -281,9 +281,9 @@ function PermRow({ ok, label, hint }: { ok: boolean; label: string; hint: string
 
 /** Tarjeta con los permisos que faltan (Accesibilidad / Grabación de pantalla / helper). */
 export function ComputerPermissionsCard(): React.JSX.Element | null {
-  const conn = useCowork((s) => s.conn)
-  const status = useCowork((s) => s.computerStatus)
-  const checking = useCowork((s) => s.computerChecking)
+  const conn = useTasks((s) => s.conn)
+  const status = useTasks((s) => s.computerStatus)
+  const checking = useTasks((s) => s.computerChecking)
   const [error, setError] = useState<string | null>(null)
   const full = conn?.fullAccess === true
 
@@ -348,9 +348,9 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
 
 /** Aviso si el modelo elegido no acepta imágenes (necesario para ver las capturas). */
 export function VisionModelHint(): React.JSX.Element | null {
-  const full = useCowork((s) => s.conn?.fullAccess === true)
-  // Modelo de la tarea (o el del modo Cowork): nunca el modelo predeterminado de Chat.
-  const taskModel = useCowork((s) => s.taskModel)
+  const full = useTasks((s) => s.conn?.fullAccess === true)
+  // Modelo de la tarea (o el del modo Tareas): nunca el modelo predeterminado de Chat.
+  const taskModel = useTasks((s) => s.taskModel)
   const modeModel = useModeModel('tasks')
   const model = taskModel ?? modeModel
   const client = useServer((s) => s.client)
@@ -398,19 +398,19 @@ export function VisionModelHint(): React.JSX.Element | null {
 
 /** Barra visible mientras una tarea con Control total está trabajando, con botón Detener. */
 export function ControlBanner(): React.JSX.Element | null {
-  const conn = useCowork((s) => s.conn)
-  const folder = useCowork((s) => s.folder)
-  const lastAction = useCowork((s) => s.lastAction)
-  const stoppedAt = useCowork((s) => s.controlStoppedAt)
-  const shortcutUnavailable = useCowork((s) => s.shortcutUnavailable)
-  const accessRequest = useCowork((s) => s.accessRequest)
-  const activeTaskId = useCowork((s) => s.activeTaskId)
-  const planApproved = useCowork((s) => (s.activeTaskId ? !!s.approvedPlans[s.activeTaskId] : false))
+  const conn = useTasks((s) => s.conn)
+  const folder = useTasks((s) => s.folder)
+  const lastAction = useTasks((s) => s.lastAction)
+  const stoppedAt = useTasks((s) => s.controlStoppedAt)
+  const shortcutUnavailable = useTasks((s) => s.shortcutUnavailable)
+  const accessRequest = useTasks((s) => s.accessRequest)
+  const activeTaskId = useTasks((s) => s.activeTaskId)
+  const planApproved = useTasks((s) => (s.activeTaskId ? !!s.approvedPlans[s.activeTaskId] : false))
   const [revoking, setRevoking] = useState(false)
-  // Solo sesiones de un servidor de Cowork (F6-B1, F7-B37): Code/Chat (origen principal) no cuentan; el otro servidor de Cowork sí.
+  // Solo sesiones de un servidor de Tareas (F6-B1, F7-B37): Code/Chat (origen principal) no cuentan; el otro servidor de Tareas sí.
   const anyBusy = useSessions((s) =>
     Object.keys(s.status).some(
-      (id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder && isCoworkSource(s.sessionSource[id])
+      (id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder && isTasksSource(s.sessionSource[id])
     )
   )
   const [stopping, setStopping] = useState(false)
@@ -788,7 +788,7 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
 }
 
 export function PlanAccessCard(): React.JSX.Element | null {
-  const req = useCowork((s) => s.accessRequest)
+  const req = useTasks((s) => s.accessRequest)
   const [choices, setChoices] = useState<Record<string, AccessDecision>>({})
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -1021,7 +1021,7 @@ function DeniedRow({ bundleId }: { bundleId: string }): React.JSX.Element {
  * `request_access` (ver `respondAccessRequest`).
  */
 export function ComputerGrantsList(): React.JSX.Element {
-  const grants = useCowork((s) => s.grants)
+  const grants = useTasks((s) => s.grants)
 
   useEffect(() => {
     void loadGrants()

@@ -1,5 +1,5 @@
 /**
- * Punto de entrada del navegador integrado compartido (Code, Cowork y la ventana "Navegador"
+ * Punto de entrada del navegador integrado compartido (Code, Tareas y la ventana "Navegador"
  * aparte). Todo lo que hay aquí es agnóstico de producto: solo usa `window.api.browser`.
  */
 export { BrowserPanel } from './BrowserPanel'

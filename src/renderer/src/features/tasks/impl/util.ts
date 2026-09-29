@@ -1,12 +1,12 @@
-/** Utilidades de presentación del modo Cowork (tiempos, tamaños, estado y etiquetas de pasos). */
+/** Utilidades de presentación del modo Tareas (tiempos, tamaños, estado y etiquetas de pasos). */
 import type { Message, Part, PermissionRequest, Session, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { MAIN_SOURCE, type MessageEntry, type SessionRunState } from '../../../stores/sessions'
 import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
 
-/** ¿El origen de una sesión es un servidor de Cowork (cualquiera)? Chat/Code usan el origen principal (ausente). */
-export function isCoworkSource(src: string | undefined): boolean {
+/** ¿El origen de una sesión es un servidor de Tareas (cualquiera)? Chat/Code usan el origen principal (ausente). */
+export function isTasksSource(src: string | undefined): boolean {
   return !!src && src !== MAIN_SOURCE
 }
 

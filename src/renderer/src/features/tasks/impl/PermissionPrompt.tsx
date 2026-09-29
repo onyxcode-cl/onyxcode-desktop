@@ -1,5 +1,5 @@
 /**
- * Aprobaciones de Cowork: tarjeta detallada (en la conversación) y barra fija sobre el
+ * Aprobaciones de Tareas: tarjeta detallada (en la conversación) y barra fija sobre el
  * compositor con "Permitir una vez / Siempre / Rechazar" y qué ocurrirá exactamente.
  * Las peticiones de otra carpeta (`external_directory`) tienen su propia tarjeta (`FolderRequestCard`).
  * Siempre se muestra el comando, la ruta o los parámetros LITERALES; la descripción del modelo va aparte
@@ -15,7 +15,7 @@ import { cw } from './bridge'
 import { computerToolInfo, computerToolKind } from './computer-tools'
 import { metadataJson, parseMcpPermission, showAlways } from './conversation-logic'
 import { FolderRequestCard } from './FolderRequestCard'
-import { useCowork } from './store'
+import { useTasks } from './store'
 import { baseName, rememberablePatterns } from './util'
 
 type Reply = 'once' | 'always' | 'reject'
@@ -187,7 +187,7 @@ function useReply(request: PermissionRequest): { busy: boolean; error: string | 
 
 /** ¿Se ofrece «Siempre»? Oculto con la política `disableAlwaysAllow` o si nada de la petición se puede recordar. */
 function useCanAlways(request: PermissionRequest, danger: boolean): boolean {
-  const disable = useCowork((s) => s.policy?.disableAlwaysAllow === true)
+  const disable = useTasks((s) => s.policy?.disableAlwaysAllow === true)
   return showAlways({ danger, disableAlwaysAllow: disable, rememberableCount: rememberablePatterns(request).length })
 }
 
@@ -202,7 +202,7 @@ function alwaysHint(p: PermissionRequest): string {
 export function PermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element | null {
   // Lote C: mientras el Modo auto está considerando esta petición (vía rápida), no se muestra
   // ninguna tarjeta; si no la aprueba, `autoPending` se limpia y vuelve a aparecer con normalidad.
-  const autoPending = useCowork((s) => !!s.autoPending[request.id])
+  const autoPending = useTasks((s) => !!s.autoPending[request.id])
   if (autoPending) return null
   if (request.permission === 'external_directory') return <FolderRequestCard request={request} />
   return <GenericPermissionCard request={request} />
@@ -284,7 +284,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
 
 /** Barra fija sobre el compositor (la primera solicitud pendiente, sin contar las del Modo auto). */
 export function ApprovalBar({ requests }: { requests: PermissionRequest[] }): React.JSX.Element | null {
-  const autoPending = useCowork((s) => s.autoPending)
+  const autoPending = useTasks((s) => s.autoPending)
   const visible = requests.filter((r) => !autoPending[r.id])
   const first = visible[0]
   if (!first) return null

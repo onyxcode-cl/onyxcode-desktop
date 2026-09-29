@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import type { Provider } from '@opencode-ai/sdk/v2/client'
 import { APP_NAME } from '@shared/brand'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { MODE_LABELS } from '@shared/labels'
 import { OPENCODE_INSTALL_COMMAND, type OpencodeAction } from '@shared/opencode-links'
 import type { ModeId, OpencodeInfo } from '@shared/types'
@@ -441,7 +441,7 @@ function StepPermissions(): React.JSX.Element {
         <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
         <div className="text-xs leading-relaxed text-muted">
           <p>
-            Solo si activas «{COWORK_TERMS.fullControl}» en una tarea, macOS te pedirá dos permisos:{' '}
+            Solo si activas «{TASKS_TERMS.fullControl}» en una tarea, macOS te pedirá dos permisos:{' '}
             <strong className="font-medium text-fg">Accesibilidad</strong> (mover el ratón, hacer clic y escribir) y{' '}
             <strong className="font-medium text-fg">Grabación de pantalla</strong> (ver lo que hay en pantalla).
           </p>

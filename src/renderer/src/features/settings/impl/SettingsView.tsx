@@ -22,7 +22,7 @@ import { AboutSection } from './AboutSection'
 import { AutoModeSection } from './AutoModeSection'
 import { BrowserSection } from './BrowserSection'
 import { ComputerSection } from './ComputerSection'
-import { CoworkSection } from './TasksSection'
+import { TasksSection } from './TasksSection'
 import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
 import { McpSection } from './McpSection'
@@ -39,7 +39,7 @@ const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: 
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
   { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
-  { id: 'tasks', label: MODE_LABELS.tasks, icon: Users, View: CoworkSection },
+  { id: 'tasks', label: MODE_LABELS.tasks, icon: Users, View: TasksSection },
   { id: 'network', label: UI_LABELS.network, icon: Globe, View: NetworkSection },
   { id: 'computer', label: UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
   { id: 'automode', label: UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },

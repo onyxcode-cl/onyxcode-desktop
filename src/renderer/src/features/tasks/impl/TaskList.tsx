@@ -35,7 +35,7 @@ import {
   statusTextClass,
   type TaskGroup
 } from './SidebarSections'
-import { isPinned, isPlanPending, isUsingComputer, markUnread, togglePinned, useCowork } from './store'
+import { isPinned, isPlanPending, isUsingComputer, markUnread, togglePinned, useTasks } from './store'
 import {
   evictedStatusOf,
   isArchivedSession,
@@ -85,7 +85,7 @@ function TaskMenu({
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const pinned = useCowork((s) => !!s.pinned[id])
+  const pinned = useTasks((s) => !!s.pinned[id])
 
   useEffect(() => {
     if (!open) return
@@ -323,18 +323,18 @@ function TranscriptResults({
 }
 
 export function TaskList(): React.JSX.Element {
-  const folder = useCowork((s) => s.folder)
-  const activeId = useCowork((s) => s.activeTaskId)
-  const loading = useCowork((s) => s.listLoading)
-  const permissions = useCowork((s) => s.permissions)
-  const questions = useCowork((s) => s.questions)
-  const unseen = useCowork((s) => s.unseen)
-  const networkBlocked = useCowork((s) => s.networkBlocked)
-  const taskMeta = useCowork((s) => s.taskMeta)
-  const showArchived = useCowork((s) => s.showArchived)
+  const folder = useTasks((s) => s.folder)
+  const activeId = useTasks((s) => s.activeTaskId)
+  const loading = useTasks((s) => s.listLoading)
+  const permissions = useTasks((s) => s.permissions)
+  const questions = useTasks((s) => s.questions)
+  const unseen = useTasks((s) => s.unseen)
+  const networkBlocked = useTasks((s) => s.networkBlocked)
+  const taskMeta = useTasks((s) => s.taskMeta)
+  const showArchived = useTasks((s) => s.showArchived)
   // Solo para repintar el estado "usando el Mac" / "plan listo".
-  useCowork((s) => s.lastAction)
-  useCowork((s) => s.accessRequest)
+  useTasks((s) => s.lastAction)
+  useTasks((s) => s.accessRequest)
   const sessions = useSessions((s) => s.sessions)
   const sessionSource = useSessions((s) => s.sessionSource)
   const directorySource = useSessions((s) => s.directorySource)
@@ -461,7 +461,7 @@ export function TaskList(): React.JSX.Element {
           type="button"
           aria-pressed={showArchived}
           title={showArchived ? 'Volver a las tareas' : 'Ver las tareas archivadas'}
-          onClick={() => useCowork.setState({ showArchived: !showArchived })}
+          onClick={() => useTasks.setState({ showArchived: !showArchived })}
           className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[12px] ${
             showArchived ? 'border-accent/50 bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
           }`}

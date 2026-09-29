@@ -1,7 +1,7 @@
 /** Utilidades compartidas por el overlay de control y la píldora. */
-import type { ComputerActionEvent, CoworkApi } from '@shared/ipc-tasks'
+import type { ComputerActionEvent, TasksApi } from '@shared/ipc-tasks'
 
-export const cowork = (window as unknown as { api?: { tasks?: CoworkApi } }).api?.tasks
+export const tasks = (window as unknown as { api?: { tasks?: TasksApi } }).api?.tasks
 
 export const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 

@@ -1,7 +1,7 @@
 /** Estado del modo Rutinas (lista, historial, edición). */
 import { create } from 'zustand'
 import type { RoutineInput, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
-import { cw, onCowork } from '../../tasks/impl/bridge'
+import { cw, onTasks } from '../../tasks/impl/bridge'
 
 interface RoutinesState {
   routines: ScheduledRoutine[]
@@ -49,8 +49,8 @@ export async function loadRoutines(): Promise<void> {
 
 /** Suscripción a cambios push desde main. Devuelve la función para desuscribir. */
 export function subscribeRoutines(): () => void {
-  const off1 = onCowork('routines:changed', (routines) => useRoutines.setState({ routines }))
-  const off2 = onCowork('routines:run', (run) =>
+  const off1 = onTasks('routines:changed', (routines) => useRoutines.setState({ routines }))
+  const off2 = onTasks('routines:run', (run) =>
     useRoutines.setState((s) => {
       const idx = s.history.findIndex((h) => h.id === run.id)
       const history = idx >= 0 ? s.history.map((h, i) => (i === idx ? run : h)) : [run, ...s.history]

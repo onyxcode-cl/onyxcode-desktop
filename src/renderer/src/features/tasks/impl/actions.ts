@@ -1,8 +1,8 @@
-/** Acciones del modo Cowork (carpetas, tareas, permisos). */
+/** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
-import { FOLDER_MODE_LABEL_ES, type AccessDecision, type CoworkFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
+import { FOLDER_MODE_LABEL_ES, type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
-import { buildCoworkSystemPrompt } from '@shared/tasks-prompt'
+import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import type { ModelRef } from '@shared/types'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errorMessage } from '../../../lib/opencode'
@@ -13,8 +13,8 @@ import { cw } from './bridge'
 import {
   clearUnseen,
   connectFolder,
-  currentCoworkModel,
-  currentCoworkVariant,
+  currentTasksModel,
+  currentTasksVariant,
   disconnect,
   forgetTaskMeta,
   fullAccessFor,
@@ -26,17 +26,17 @@ import {
   rememberFullAccess,
   rootTaskId,
   setTaskMeta,
-  useCowork
+  useTasks
 } from './store'
 import { CREATE_SKILL_PROMPT, buildContinuationPrompt, buildSideChatSystem, suggestedExportName, transcriptToMarkdown } from './transcript'
 import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './util'
 
-// ── Red de Cowork (aviso "Se bloqueó el acceso a…") ──
+// ── Red de Tareas (aviso "Se bloqueó el acceso a…") ──
 
 /** Tras permitir un host, reanuda la tarea: la abre (si no es la activa) y le pide que reintente. */
 export async function retryAfterNetworkAllow(taskId: string, host: string): Promise<void> {
-  if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
-  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, currentCoworkModel())
+  if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
+  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, currentTasksModel())
 }
 
 // ── "Permitir borrar" (Seatbelt: file-write-unlink) ──
@@ -48,28 +48,28 @@ export async function retryAfterNetworkAllow(taskId: string, host: string): Prom
  * pedirle al agente que continúe.
  */
 export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
-  const { folder, conn } = useCowork.getState()
+  const { folder, conn } = useTasks.getState()
   if (!folder) return
-  useCowork.setState({ deleteGrantBusy: true })
+  useTasks.setState({ deleteGrantBusy: true })
   try {
     const now = await cw('tasks:deleteGrant:set', { folder, allowed })
-    useCowork.setState({ deleteGrant: now })
+    useTasks.setState({ deleteGrant: now })
     if (conn && !conn.fullAccess) await connectFolder(folder, false)
   } finally {
-    useCowork.setState({ deleteGrantBusy: false })
+    useTasks.setState({ deleteGrantBusy: false })
   }
 }
 
 /** Agente a usar según el servidor conectado. */
 export function currentAgent(): string {
-  return useCowork.getState().conn?.fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID
+  return useTasks.getState().conn?.fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID
 }
 
 export async function loadFolders(): Promise<void> {
   try {
-    useCowork.setState({ folders: await cw('tasks:listFolders') })
+    useTasks.setState({ folders: await cw('tasks:listFolders') })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
@@ -77,32 +77,32 @@ export async function loadFolders(): Promise<void> {
 export async function chooseFolder(): Promise<void> {
   const picked = await cw('tasks:pickFolder')
   if (!picked) return
-  useCowork.setState({ error: null })
-  const { folders } = useCowork.getState()
+  useTasks.setState({ error: null })
+  const { folders } = useTasks.getState()
   if (folders.some((f) => f.path === picked)) await selectFolder(picked)
-  else useCowork.setState({ pendingApproval: picked })
+  else useTasks.setState({ pendingApproval: picked })
 }
 
 export async function approvePending(): Promise<void> {
-  const folder = useCowork.getState().pendingApproval
+  const folder = useTasks.getState().pendingApproval
   if (!folder) return
-  useCowork.setState({ error: null })
+  useTasks.setState({ error: null })
   try {
     const approved = await cw('tasks:approveFolder', { folder })
-    useCowork.setState({ pendingApproval: null })
+    useTasks.setState({ pendingApproval: null })
     await loadFolders()
     await selectFolder(approved.path)
   } catch (err) {
-    useCowork.setState({ pendingApproval: null, error: errorMessage(err) })
+    useTasks.setState({ pendingApproval: null, error: errorMessage(err) })
   }
 }
 
 export function cancelPending(): void {
-  useCowork.setState({ pendingApproval: null })
+  useTasks.setState({ pendingApproval: null })
 }
 
 export async function selectFolder(folder: string): Promise<void> {
-  const st = useCowork.getState()
+  const st = useTasks.getState()
   if (st.folder === folder && st.phase === 'ready' && st.fullAccess === fullAccessFor(folder)) return
   await connectFolder(folder)
 }
@@ -112,20 +112,20 @@ export async function selectFolder(folder: string): Promise<void> {
  * (diálogo) salvo que `confirmed` sea true; volver a sandbox es inmediato.
  */
 export async function setAccessMode(fullAccess: boolean, confirmed = false): Promise<void> {
-  const { folder } = useCowork.getState()
+  const { folder } = useTasks.getState()
   if (!folder) return
   if (fullAccess && !confirmed) {
-    useCowork.setState({ pendingFullAccess: folder })
+    useTasks.setState({ pendingFullAccess: folder })
     return
   }
-  useCowork.setState({ pendingFullAccess: null })
+  useTasks.setState({ pendingFullAccess: null })
   // El consentimiento lo registra main (tasks:start {fullAccess} lo exige); volver a sandbox
   // lo retira y detiene el servidor sin sandbox.
   try {
     if (fullAccess) await cw('tasks:grantFullAccess', { folder })
     else await cw('tasks:revokeFullAccess', { folder })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
     if (fullAccess) return
   }
   rememberFullAccess(folder, fullAccess)
@@ -133,7 +133,7 @@ export async function setAccessMode(fullAccess: boolean, confirmed = false): Pro
 }
 
 export function cancelFullAccess(): void {
-  useCowork.setState({ pendingFullAccess: null })
+  useTasks.setState({ pendingFullAccess: null })
 }
 
 export async function checkComputer(): Promise<void> {
@@ -148,14 +148,14 @@ export async function requestComputerPermissions(): Promise<void> {
 
 /** Sesiones de la carpeta actual que están trabajando. */
 function busySessionIds(): string[] {
-  const { folder } = useCowork.getState()
+  const { folder } = useTasks.getState()
   const { sessions, status } = useSessions.getState()
   return Object.keys(status).filter((id) => status[id] !== 'idle' && (!folder || sessions[id]?.directory === folder))
 }
 
 /** Aborta todas las tareas en curso de la carpeta (tras detener el control del Mac). */
 export async function abortBusyTasks(): Promise<void> {
-  const { client, folder, activeTaskId } = useCowork.getState()
+  const { client, folder, activeTaskId } = useTasks.getState()
   if (!client || !folder) return
   const ids = new Set(busySessionIds())
   if (activeTaskId) ids.add(activeTaskId)
@@ -168,14 +168,14 @@ export async function abortBusyTasks(): Promise<void> {
  * solo redundancia por si main tardara.
  */
 export async function stopComputerControl(): Promise<void> {
-  useCowork.setState({ controlStoppedAt: Date.now() })
+  useTasks.setState({ controlStoppedAt: Date.now() })
   await Promise.allSettled([cw('computer:stop'), abortBusyTasks()])
 }
 
 /** "Reanudar control": acción explícita del usuario tras una parada. */
 export async function resumeComputerControl(): Promise<void> {
   await cw('computer:resume')
-  useCowork.setState({ controlStoppedAt: null, lastAction: null })
+  useTasks.setState({ controlStoppedAt: null, lastAction: null })
 }
 
 // ── Concesión por app ──
@@ -192,14 +192,14 @@ export async function respondAccessRequest(
   decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>,
   opts: { feedback?: string; approvePlan?: boolean; cancel?: boolean } = {}
 ): Promise<void> {
-  const req = useCowork.getState().accessRequest
+  const req = useTasks.getState().accessRequest
   if (!req) return
-  useCowork.setState({ accessRequest: null })
+  useTasks.setState({ accessRequest: null })
   const { feedback, approvePlan, cancel } = opts
   try {
     await cw('computer:respondAccess', { id: req.id, decisions, feedback, approvePlan, cancel })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
   if (!feedback && !cancel) await loadGrants()
 }
@@ -214,7 +214,7 @@ export async function revokePlanApproval(sessionId: string): Promise<void> {
   try {
     await cw('computer:revokePlan', { sessionId })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
@@ -222,9 +222,9 @@ export async function revokePlanApproval(sessionId: string): Promise<void> {
 export async function setAppGrant(bundleId: string, name: string, tier: 'view' | 'click' | 'full'): Promise<void> {
   try {
     const grants = await cw('computer:setGrant', { bundleId, name, tier })
-    useCowork.setState({ grants })
+    useTasks.setState({ grants })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
@@ -232,27 +232,27 @@ export async function setAppGrant(bundleId: string, name: string, tier: 'view' |
 export async function revokeAppGrant(bundleId: string): Promise<void> {
   try {
     const grants = await cw('computer:revokeGrant', { bundleId })
-    useCowork.setState({ grants })
+    useTasks.setState({ grants })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
 export async function denyApp(bundleId: string, name: string): Promise<void> {
   try {
     const grants = await cw('computer:denyApp', { bundleId, name })
-    useCowork.setState({ grants })
+    useTasks.setState({ grants })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
 export async function undenyApp(bundleId: string): Promise<void> {
   try {
     const grants = await cw('computer:undenyApp', { bundleId })
-    useCowork.setState({ grants })
+    useTasks.setState({ grants })
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
@@ -262,20 +262,20 @@ export const CONTROL_STOPPED_SEND_ERROR =
 export async function forgetFolder(folder: string): Promise<void> {
   try {
     await cw('tasks:removeFolder', { folder })
-    if (useCowork.getState().folder === folder) {
+    if (useTasks.getState().folder === folder) {
       disconnect()
       rememberFolder(null)
-      useCowork.setState({ folder: null, activeTaskId: null })
+      useTasks.setState({ folder: null, activeTaskId: null })
     }
     await loadFolders()
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
 export function newTask(): void {
-  // Sin tarea activa se vuelve al modelo del modo Cowork (que `setTaskModel` ya recuerda).
-  useCowork.setState({ activeTaskId: null, taskModel: null, taskVariant: null, sideChat: null })
+  // Sin tarea activa se vuelve al modelo del modo Tareas (que `setTaskModel` ya recuerda).
+  useTasks.setState({ activeTaskId: null, taskModel: null, taskVariant: null, sideChat: null })
 }
 
 /** Modelo y esfuerzo con que se usó la tarea por última vez (último mensaje del usuario, o el de la sesión). */
@@ -293,7 +293,7 @@ function taskModelOf(sessionID: string): { model: ModelRef; variant: string | nu
 }
 
 export async function openTask(sessionID: string): Promise<void> {
-  useCowork.setState((s) => ({
+  useTasks.setState((s) => ({
     activeTaskId: sessionID,
     // La Consulta lateral pertenece a una tarea concreta.
     sideChat: s.sideChat && s.sideChat.taskId !== sessionID ? null : s.sideChat
@@ -303,37 +303,37 @@ export async function openTask(sessionID: string): Promise<void> {
   useSessions.getState().touchSession(sessionID)
   await loadTask(sessionID)
   // La tarea conserva su modelo y su esfuerzo al reabrirla.
-  if (useCowork.getState().activeTaskId === sessionID) {
+  if (useTasks.getState().activeTaskId === sessionID) {
     const m = taskModelOf(sessionID)
-    useCowork.setState({ taskModel: m?.model ?? null, taskVariant: m?.variant ?? null })
+    useTasks.setState({ taskModel: m?.model ?? null, taskVariant: m?.variant ?? null })
   }
 }
 
-function ctx(): { client: NonNullable<ReturnType<typeof useCowork.getState>['client']>; folder: string } {
-  const { client, folder } = useCowork.getState()
+function ctx(): { client: NonNullable<ReturnType<typeof useTasks.getState>['client']>; folder: string } {
+  const { client, folder } = useTasks.getState()
   if (!client || !folder) throw new Error('El servidor de las tareas no está listo')
   return { client, folder }
 }
 
 /** Diálogo nativo para adjuntar archivos: se copian a la carpeta y quedan listos para el próximo mensaje. */
 export async function attachFiles(): Promise<void> {
-  const { folder } = useCowork.getState()
+  const { folder } = useTasks.getState()
   if (!folder) throw new Error('Elige primero una carpeta')
   const files = await cw('tasks:importFiles', { folder })
   if (files.length === 0) return
-  useCowork.setState((s) => {
+  useTasks.setState((s) => {
     const seen = new Set(s.attachments.map((a) => a.path))
     return { attachments: [...s.attachments, ...files.filter((f) => !seen.has(f.path))] }
   })
 }
 
 export function removeAttachment(path: string): void {
-  useCowork.setState((s) => ({ attachments: s.attachments.filter((a) => a.path !== path) }))
+  useTasks.setState((s) => ({ attachments: s.attachments.filter((a) => a.path !== path) }))
 }
 
 /** Carpetas adicionales (vinculadas y de confianza) de la carpeta actual; solo aplican en sandbox. */
 function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }> {
-  const { folderSet, conn } = useCowork.getState()
+  const { folderSet, conn } = useTasks.getState()
   if (!folderSet || conn?.fullAccess) return []
   const out: Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }> = []
   const seen = new Set<string>()
@@ -353,8 +353,8 @@ function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?:
  * (rutinas). `undefined` si no hay nada que añadir.
  */
 function buildSystemPrompt(): string | undefined {
-  const { project, memory } = useCowork.getState()
-  return buildCoworkSystemPrompt({
+  const { project, memory } = useTasks.getState()
+  return buildTasksSystemPrompt({
     globalInstructions: useSettings.getState().settings.tasksGlobalInstructions,
     project,
     memory: memory?.content,
@@ -364,34 +364,34 @@ function buildSystemPrompt(): string | undefined {
 
 /** Texto final del mensaje con la lista de adjuntos (rutas relativas a la carpeta). */
 function withAttachments(text: string): string {
-  const files = useCowork.getState().attachments
+  const files = useTasks.getState().attachments
   if (files.length === 0) return text
   const list = files.map((f) => `- ${f.relPath}`).join('\n')
   return `${text}\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n${list}`
 }
 
 /**
- * Envía un mensaje; si no hay tarea activa, crea una nueva sesión con el agente `cowork`/`computer`.
- * `model` (por defecto `currentCoworkModel()`) y `opts.variant` (esfuerzo; por defecto el de la tarea)
+ * Envía un mensaje; si no hay tarea activa, crea una nueva sesión con el agente `tasks`/`computer`.
+ * `model` (por defecto `currentTasksModel()`) y `opts.variant` (esfuerzo; por defecto el de la tarea)
  * quedan guardados en la sesión; `metadata.folders` recuerda las carpetas adicionales de la tarea.
  */
 export async function sendToTask(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
-  if (useCowork.getState().conn?.fullAccess === true) {
+  if (useTasks.getState().conn?.fullAccess === true) {
     // Tras una parada NO se reanuda solo: hace falta "Reanudar control" (estado en main).
     const st = await cw('computer:state').catch(() => null)
-    const stopped = st ? st.stopped : !!useCowork.getState().controlStoppedAt
-    useCowork.setState({ controlStoppedAt: stopped ? (st?.stoppedAt ?? Date.now()) : null })
+    const stopped = st ? st.stopped : !!useTasks.getState().controlStoppedAt
+    useTasks.setState({ controlStoppedAt: stopped ? (st?.stoppedAt ?? Date.now()) : null })
     if (stopped) throw new Error(CONTROL_STOPPED_SEND_ERROR)
   }
   // La memoria (`.onyxcode/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
   await loadProjectAndMemory(folder)
   const text = withAttachments(rawText)
-  useCowork.setState({ attachments: [], draft: '' })
-  const useModel = model ?? currentCoworkModel()
-  const variant = opts?.variant ?? currentCoworkVariant()
+  useTasks.setState({ attachments: [], draft: '' })
+  const useModel = model ?? currentTasksModel()
+  const variant = opts?.variant ?? currentTasksVariant()
   const sessions = useSessions.getState()
-  let sessionID = useCowork.getState().activeTaskId
+  let sessionID = useTasks.getState().activeTaskId
   if (!sessionID) {
     const folders = extraFolders()
     const res = await client.session.create({
@@ -401,7 +401,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
       model: { id: useModel.modelID, providerID: useModel.providerID, ...(variant ? { variant } : {}) },
       metadata: {
         mode: 'tasks',
-        fullAccess: useCowork.getState().conn?.fullAccess === true,
+        fullAccess: useTasks.getState().conn?.fullAccess === true,
         ...(folders.length > 0 ? { folders: folders.map((f) => ({ path: f.path, mode: f.mode })) } : {})
       }
     })
@@ -410,10 +410,10 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
     sessionID = res.data.id
     const id = sessionID
     useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] }, loaded: { ...s.loaded, [id]: true } }))
-    useCowork.setState({ activeTaskId: id })
+    useTasks.setState({ activeTaskId: id })
   }
-  const fullAccess = useCowork.getState().conn?.fullAccess === true
-  if (fullAccess) useCowork.setState({ lastAction: null })
+  const fullAccess = useTasks.getState().conn?.fullAccess === true
+  if (fullAccess) useTasks.setState({ lastAction: null })
   sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
@@ -433,7 +433,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
 }
 
 export async function abortTask(): Promise<void> {
-  const { activeTaskId } = useCowork.getState()
+  const { activeTaskId } = useTasks.getState()
   if (!activeTaskId) return
   const { client, folder } = ctx()
   await client.session.abort({ sessionID: activeTaskId, directory: folder })
@@ -443,7 +443,7 @@ export async function replyPermission(requestID: string, reply: 'once' | 'always
   const { client, folder } = ctx()
   const res = await client.permission.reply({ requestID, directory: folder, reply, ...(message ? { message } : {}) })
   if (res.error) throw new Error(errorMessage(res.error))
-  useCowork.setState((s) => {
+  useTasks.setState((s) => {
     const permissions = { ...s.permissions }
     delete permissions[requestID]
     return { permissions }
@@ -455,7 +455,7 @@ export async function replyQuestion(requestID: string, answers: string[][]): Pro
   const { client, folder } = ctx()
   const res = await client.question.reply({ requestID, directory: folder, answers })
   if (res.error) throw new Error(errorMessage(res.error))
-  useCowork.setState((s) => {
+  useTasks.setState((s) => {
     const questions = { ...s.questions }
     delete questions[requestID]
     return { questions }
@@ -466,7 +466,7 @@ export async function rejectQuestion(requestID: string): Promise<void> {
   const { client, folder } = ctx()
   const res = await client.question.reject({ requestID, directory: folder })
   if (res.error) throw new Error(errorMessage(res.error))
-  useCowork.setState((s) => {
+  useTasks.setState((s) => {
     const questions = { ...s.questions }
     delete questions[requestID]
     return { questions }
@@ -478,7 +478,7 @@ export async function archiveTask(sessionID: string): Promise<void> {
   const res = await client.session.update({ sessionID, directory: folder, time: { archived: Date.now() } })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
-  if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
+  if (useTasks.getState().activeTaskId === sessionID) useTasks.setState({ activeTaskId: null })
   // Una tarea archivada no debe conservar su plan aprobado.
   void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
 }
@@ -492,7 +492,7 @@ export async function renameTask(sessionID: string, title: string): Promise<void
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   // Si main conoce la tarea (fijada / en un grupo), su título se mantiene al día.
-  if (useCowork.getState().taskMeta[sessionID]) void setTaskMeta(sessionID, { title: trimmed })
+  if (useTasks.getState().taskMeta[sessionID]) void setTaskMeta(sessionID, { title: trimmed })
 }
 
 /** Borra una tarea (y su historial) de forma permanente. */
@@ -510,18 +510,18 @@ export async function deleteTask(sessionID: string): Promise<void> {
     delete errors[sessionID]
     return { status, errors }
   })
-  if (useCowork.getState().activeTaskId === sessionID) useCowork.setState({ activeTaskId: null })
+  if (useTasks.getState().activeTaskId === sessionID) useTasks.setState({ activeTaskId: null })
   void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
   forgetTaskMeta(sessionID)
 }
 
 /**
  * "Programar esta tarea": abre el editor de rutinas (modo Rutinas) prellenado con la
- * instrucción original, la carpeta, el modo cowork y el modelo, enlazando la rutina a esta
+ * instrucción original, la carpeta, el modo tasks y el modelo, enlazando la rutina a esta
  * tarea (`originSessionId`) para poder mostrar sus ejecuciones en el panel de la tarea.
  */
 export async function scheduleActiveTask(): Promise<void> {
-  const { activeTaskId, folder } = useCowork.getState()
+  const { activeTaskId, folder } = useTasks.getState()
   if (!activeTaskId || !folder) return
   const entries = useSessions.getState().messages[activeTaskId] ?? []
   const firstUser = entries.find((e) => e.info.role === 'user')
@@ -533,7 +533,7 @@ export async function scheduleActiveTask(): Promise<void> {
   const markerIdx = raw.indexOf('\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n')
   const prompt = (markerIdx >= 0 ? raw.slice(0, markerIdx) : raw).trim()
   const title = useSessions.getState().sessions[activeTaskId]?.title || 'Tarea programada'
-  const model = currentCoworkModel()
+  const model = currentTasksModel()
   const { openEditor } = await import('../../routines/impl/store')
   const { useUi } = await import('../../../stores/ui')
   openEditor(
@@ -564,7 +564,7 @@ export async function openPath(path: string): Promise<void> {
 
 /** Tareas raíz del servidor conectado que están trabajando (opcionalmente sin contar `exceptId`). */
 function runningRootIds(exceptId?: string): string[] {
-  const { conn, folder } = useCowork.getState()
+  const { conn, folder } = useTasks.getState()
   if (!conn || !folder) return []
   const { sessions, status, sessionSource } = useSessions.getState()
   return Object.keys(status).filter((id) => {
@@ -593,18 +593,18 @@ async function confirmInterruptRunning(exceptId?: string): Promise<boolean> {
   })
 }
 
-function setFolderSetFrom(folder: string, res: CoworkFolderSet): void {
-  if (useCowork.getState().folder !== folder) return
-  useCowork.setState({ folderSet: { primary: res.primary, linked: res.linked, trusted: res.trusted, applied: res.applied } })
+function setFolderSetFrom(folder: string, res: TasksFolderSet): void {
+  if (useTasks.getState().folder !== folder) return
+  useTasks.setState({ folderSet: { primary: res.primary, linked: res.linked, trusted: res.trusted, applied: res.applied } })
 }
 
 /**
  * Vincula una carpeta adicional (y con `trust` la marca de confianza) a la carpeta actual. Si el sandbox
  * está en marcha main lo reinicia (las tareas en curso se interrumpen: se pide confirmación) y aquí se
- * reconecta. Los errores se muestran en `useCowork.error`. Devuelve true si se aplicó.
+ * reconecta. Los errores se muestran en `useTasks.error`. Devuelve true si se aplicó.
  */
 export async function linkFolder(path: string, mode: FolderAccessMode, opts?: { trust?: boolean }): Promise<boolean> {
-  const { folder, conn } = useCowork.getState()
+  const { folder, conn } = useTasks.getState()
   if (!folder) return false
   try {
     const sandbox = !!conn && !conn.fullAccess
@@ -622,14 +622,14 @@ export async function linkFolder(path: string, mode: FolderAccessMode, opts?: { 
     if (res.restarted && sandbox) await connectFolder(folder, false)
     return true
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
     return false
   }
 }
 
 /** Quita una carpeta adicional de la carpeta actual (reinicia el sandbox si está en marcha). */
 export async function unlinkFolder(path: string): Promise<void> {
-  const { folder, conn } = useCowork.getState()
+  const { folder, conn } = useTasks.getState()
   if (!folder) return
   try {
     const sandbox = !!conn && !conn.fullAccess
@@ -638,7 +638,7 @@ export async function unlinkFolder(path: string): Promise<void> {
     setFolderSetFrom(folder, res)
     if (res.restarted && sandbox) await connectFolder(folder, false)
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
@@ -661,7 +661,7 @@ function folderRefusal(kind: 'deny' | 'later', path: string): string {
  *   acceso»), se vincula con reinicio, se reconecta y se le pide a la tarea que continúe sola.
  */
 export async function answerFolderRequest(req: PermissionRequest, d: FolderRequestDecision): Promise<void> {
-  const { conn, folder } = useCowork.getState()
+  const { conn, folder } = useTasks.getState()
   if (!conn || !folder) return
   const requested = folderRequestPaths(req).requested
   try {
@@ -688,14 +688,14 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
     setFolderSetFrom(folder, res)
     if (res.restarted) {
       await connectFolder(folder, false)
-      if (useCowork.getState().phase !== 'ready') return
+      if (useTasks.getState().phase !== 'ready') return
     }
     await openTask(taskId)
     await sendToTask(
       `Ya tienes acceso a ${chk.normalized} (${FOLDER_MODE_LABEL_ES[d.mode].toLowerCase()}). Continúa la tarea donde la dejaste.`
     )
   } catch (err) {
-    useCowork.setState({ error: errorMessage(err) })
+    useTasks.setState({ error: errorMessage(err) })
   }
 }
 
@@ -705,7 +705,7 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
  * (solo vale para esta sesión). Con `policy.disableAlwaysAllow` se responde solo `once`.
  */
 export async function replyPermissionAlways(req: PermissionRequest): Promise<void> {
-  const { folder, policy } = useCowork.getState()
+  const { folder, policy } = useTasks.getState()
   if (policy?.disableAlwaysAllow) {
     await replyPermission(req.id, 'once')
     return
@@ -742,7 +742,7 @@ export async function editAndRetry(taskId: string, userMessageId: string, text: 
   const trimmed = text.trim()
   if (!trimmed) return
   const { client, folder } = ctx()
-  if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
+  if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
   const run = useSessions.getState().status[taskId]
   if (run && run !== 'idle') {
     await client.session.abort({ sessionID: taskId, directory: folder }).catch(() => undefined)
@@ -768,7 +768,7 @@ export async function continueInNewTask(taskId: string): Promise<void> {
   const prompt = buildContinuationPrompt(title, entries)
   const m = taskModelOf(taskId)
   newTask()
-  if (m) useCowork.setState({ taskModel: m.model, taskVariant: m.variant })
+  if (m) useTasks.setState({ taskModel: m.model, taskVariant: m.variant })
   await sendToTask(prompt)
 }
 
@@ -783,7 +783,7 @@ export async function exportTaskMarkdown(taskId: string): Promise<string | null>
 
 /** «Crear skill de esta tarea»: le pide a la propia tarea que guarde `.opencode/skills/<nombre>/SKILL.md`. */
 export async function createSkillFromTask(taskId: string): Promise<void> {
-  if (useCowork.getState().activeTaskId !== taskId) await openTask(taskId)
+  if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
   await sendToTask(CREATE_SKILL_PROMPT)
 }
 
@@ -791,7 +791,7 @@ export async function createSkillFromTask(taskId: string): Promise<void> {
 
 /** Abre la Consulta lateral de la tarea (la sesión hija se crea con el primer mensaje). */
 export function openSideChat(taskId: string): void {
-  useCowork.setState((s) => (s.sideChat?.taskId === taskId ? s : { sideChat: { taskId, sessionId: null } }))
+  useTasks.setState((s) => (s.sideChat?.taskId === taskId ? s : { sideChat: { taskId, sessionId: null } }))
 }
 
 /**
@@ -800,7 +800,7 @@ export function openSideChat(taskId: string): void {
  */
 export async function sendSideChat(text: string): Promise<void> {
   const trimmed = text.trim()
-  const side = useCowork.getState().sideChat
+  const side = useTasks.getState().sideChat
   if (!trimmed || !side) return
   const { client, folder } = ctx()
   const sessions = useSessions.getState()
@@ -812,12 +812,12 @@ export async function sendSideChat(text: string): Promise<void> {
     sessionID = res.data.id
     const id = sessionID
     useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] }, loaded: { ...s.loaded, [id]: true } }))
-    useCowork.setState((s) => (s.sideChat?.taskId === side.taskId ? { sideChat: { taskId: side.taskId, sessionId: id } } : {}))
+    useTasks.setState((s) => (s.sideChat?.taskId === side.taskId ? { sideChat: { taskId: side.taskId, sessionId: id } } : {}))
   }
   const entries = await ensureEntries(side.taskId)
   const title = useSessions.getState().sessions[side.taskId]?.title ?? ''
-  const model = currentCoworkModel()
-  const variant = currentCoworkVariant()
+  const model = currentTasksModel()
+  const variant = currentTasksVariant()
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
   const res = await client.session.promptAsync({
@@ -837,9 +837,9 @@ export async function sendSideChat(text: string): Promise<void> {
 
 /** Cierra la Consulta lateral (aborta la respuesta en curso; la sesión hija se conserva). */
 export function closeSideChat(): void {
-  const side = useCowork.getState().sideChat
-  useCowork.setState({ sideChat: null })
-  const { client, folder } = useCowork.getState()
+  const side = useTasks.getState().sideChat
+  useTasks.setState({ sideChat: null })
+  const { client, folder } = useTasks.getState()
   if (side?.sessionId && client && folder) {
     const run = useSessions.getState().status[side.sessionId]
     if (run && run !== 'idle') void client.session.abort({ sessionID: side.sessionId, directory: folder }).catch(() => undefined)
@@ -875,15 +875,15 @@ export async function moveTaskToGroup(sessionId: string, group: string | null): 
   await setTaskMeta(sessionId, { group: clean })
 }
 
-/** Abre una tarea de cualquier carpeta/modo (vistas «Fijadas»/«Activas»): cambia a Cowork y conecta si hace falta. */
+/** Abre una tarea de cualquier carpeta/modo (vistas «Fijadas»/«Activas»): cambia a Tareas y conecta si hace falta. */
 export async function openTaskAnywhere(t: { sessionId: string; folder: string; fullAccess: boolean }): Promise<void> {
   useUi.getState().openSettings(false)
   useUi.getState().setMode('tasks')
-  const st = useCowork.getState()
+  const st = useTasks.getState()
   if (st.folder !== t.folder || st.fullAccess !== t.fullAccess || st.phase !== 'ready') {
     rememberFullAccess(t.folder, t.fullAccess)
     await connectFolder(t.folder, t.fullAccess)
   }
-  if (useCowork.getState().phase !== 'ready') return
+  if (useTasks.getState().phase !== 'ready') return
   await openTask(t.sessionId)
 }

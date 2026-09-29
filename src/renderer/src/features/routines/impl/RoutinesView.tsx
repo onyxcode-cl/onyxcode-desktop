@@ -1,4 +1,4 @@
-/** Modo Rutinas: tareas programadas que lanzan prompts en Chat, Cowork o Code. */
+/** Modo Rutinas: tareas programadas que lanzan prompts en Chat, Tareas o Code. */
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,
@@ -23,7 +23,7 @@ import {
   XCircle,
   type LucideIcon
 } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import type { RoutineInput, RoutineMode, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
 import { Button } from '../../../components/Button'
 import { PageHeader } from '../../../components/PageHeader'
@@ -31,7 +31,7 @@ import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
-import { hasCoworkBridge } from '../../tasks/impl/bridge'
+import { hasTasksBridge } from '../../tasks/impl/bridge'
 import { useCode } from '../../code/impl/store'
 import { openProjectTrusted } from '../../code/impl/trust'
 import { MODE_META } from './meta'
@@ -414,7 +414,7 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
               )}
               {r.fullAccess && (
                 <>
-                  <dt className="text-subtle">{COWORK_TERMS.fullControlShort}</dt>
+                  <dt className="text-subtle">{TASKS_TERMS.fullControlShort}</dt>
                   <dd className="text-warning">Activo · apruebas el plan en cada ejecución</dd>
                 </>
               )}
@@ -524,7 +524,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
 // ---------------------------------------------------------------------------
 
 export function RoutinesView(): React.JSX.Element {
-  const bridge = hasCoworkBridge()
+  const bridge = hasTasksBridge()
   const routines = useRoutines((s) => s.routines)
   const loading = useRoutines((s) => s.loading)
   const error = useRoutines((s) => s.error)

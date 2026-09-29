@@ -1,7 +1,7 @@
 /**
- * Panel del navegador integrado, compartido entre Code y Cowork (y la ventana "Navegador"
+ * Panel del navegador integrado, compartido entre Code y Tareas (y la ventana "Navegador"
  * aparte). Solo usa `window.api.browser` (vía `bridge.ts`): no importa nada específico de Code
- * ni de Cowork — quien lo monta decide el `owner`/`product`.
+ * ni de Tareas — quien lo monta decide el `owner`/`product`.
  *
  * El navegador está OFF por defecto para el AGENTE (ver `disabledReason` en el estado): el humano
  * siempre puede escribir una URL y navegar a mano, con o sin el agente activado.

@@ -8,7 +8,7 @@ interface Props {
   onCancel: () => void
 }
 
-/** "¿Permitir Cowork en {carpeta}?" */
+/** "¿Permitir Tareas en {carpeta}?" */
 export function ConfirmFolderDialog({ folder, onConfirm, onCancel }: Props): React.JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

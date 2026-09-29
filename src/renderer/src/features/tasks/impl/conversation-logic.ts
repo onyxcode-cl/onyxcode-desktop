@@ -1,5 +1,5 @@
 /**
- * Lógica PURA de la conversación y de las aprobaciones de Cowork (sin React ni stores), para poder
+ * Lógica PURA de la conversación y de las aprobaciones de Tareas (sin React ni stores), para poder
  * comprobarla con node: ocultar lo deshecho por «Editar y reintentar», recorte del motivo que
  * declara el agente, reconocimiento de herramientas MCP y qué botones se ofrecen.
  */

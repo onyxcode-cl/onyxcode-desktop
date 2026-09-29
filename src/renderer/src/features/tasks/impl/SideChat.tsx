@@ -5,13 +5,13 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, ArrowUp, Info, Loader2, MessagesSquare, X } from 'lucide-react'
-import { COWORK_TERMS } from '@shared/tasks-glossary'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { closeSideChat, sendSideChat } from './actions'
-import { useCowork } from './store'
+import { useTasks } from './store'
 import { splitAttachments, visibleTextParts } from './transcript'
 
 const EMPTY: MessageEntry[] = []
@@ -25,7 +25,7 @@ function messageText(entry: MessageEntry): string {
 }
 
 export function SideChat(): React.JSX.Element | null {
-  const side = useCowork((s) => s.sideChat)
+  const side = useTasks((s) => s.sideChat)
   const sessionId = side?.sessionId ?? null
   const entries = useSessions((s) => (sessionId ? (s.messages[sessionId] ?? EMPTY) : EMPTY))
   const run = useSessions((s) => (sessionId ? s.status[sessionId] : undefined))
@@ -79,11 +79,11 @@ export function SideChat(): React.JSX.Element | null {
   const showThinking = busy && (!last || last.role === 'user' || !last.text)
 
   return (
-    <aside aria-label={COWORK_TERMS.sideChat} className="flex w-80 shrink-0 flex-col border-l border-border bg-bg lg:w-96">
+    <aside aria-label={TASKS_TERMS.sideChat} className="flex w-80 shrink-0 flex-col border-l border-border bg-bg lg:w-96">
       <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
         <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
           <MessagesSquare size={15} className="shrink-0 text-accent" />
-          <span className="truncate">{COWORK_TERMS.sideChat}</span>
+          <span className="truncate">{TASKS_TERMS.sideChat}</span>
         </span>
         <button
           type="button"

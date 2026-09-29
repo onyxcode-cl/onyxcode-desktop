@@ -6,15 +6,15 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Check, Eye, FolderClosed, Loader2, Zap } from 'lucide-react'
-import { setAutoModeSettings, useCowork } from './store'
+import { setAutoModeSettings, useTasks } from './store'
 
 const NOTICE_MS = 5000
 
 export function AutoModeChip(): React.JSX.Element | null {
-  const settings = useCowork((s) => s.autoMode?.settings)
-  const folder = useCowork((s) => s.folder)
-  const activeTaskId = useCowork((s) => s.activeTaskId)
-  const notice = useCowork((s) => s.autoApprovedNotice)
+  const settings = useTasks((s) => s.autoMode?.settings)
+  const folder = useTasks((s) => s.folder)
+  const activeTaskId = useTasks((s) => s.activeTaskId)
+  const notice = useTasks((s) => s.autoApprovedNotice)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<'folder' | 'task' | null>(null)
   const [showNotice, setShowNotice] = useState(false)

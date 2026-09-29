@@ -5,7 +5,7 @@
  * (src/main/computer/overlay.ts). Coordenadas ya en px CSS de esta ventana.
  */
 import type { ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-tasks'
-import { cowork, reducedMotion, shortLabel } from './shared'
+import { tasks, reducedMotion, shortLabel } from './shared'
 import './overlay.css'
 
 const CLICK_TOOLS = new Set(['left_click', 'right_click', 'double_click'])
@@ -212,7 +212,7 @@ function handle(msg: ComputerOverlayMessage): void {
   }
 }
 
-cowork?.on('computer:overlay', handle)
+tasks?.on('computer:overlay', handle)
 
 // Vista previa sin Electron (abrir index.html#demo en un navegador).
 if (location.hash === '#demo') {
