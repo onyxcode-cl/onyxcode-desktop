@@ -32,6 +32,7 @@ const ALLOWED = new Set([
   'SSL_CERT_DIR',
   'NODE_EXTRA_CA_CERTS',
   // Ubicación de config/datos de OpenCode del usuario (auth.json, sesiones).
+  // XDG_* del usuario: el sidecar sobrescribe XDG_DATA_HOME con el almacén propio (ver getOpencodeEnv).
   'XDG_CONFIG_HOME',
   'XDG_DATA_HOME',
   'XDG_CACHE_HOME',

@@ -51,6 +51,7 @@ import { app } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { unpacked } from '../util/asar'
+import { opencodeDataHome } from '../opencode/data-dir'
 
 // Ids únicos compartidos con el renderer (`src/shared/agents.ts`).
 export { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -306,6 +307,8 @@ export function getOpencodeEnv(): Record<string, string> {
   return {
     OPENCODE_CONFIG_DIR: getOpencodeConfigDir(),
     // La app fija la versión del SDK: el binario no debe actualizarse solo.
-    OPENCODE_DISABLE_AUTOUPDATE: '1'
+    OPENCODE_DISABLE_AUTOUPDATE: '1',
+    // Almacén propio de OnyxCode: nunca el ~/.local/share/opencode del CLI.
+    XDG_DATA_HOME: opencodeDataHome(app.getPath('userData'))
   }
 }
