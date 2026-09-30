@@ -13,6 +13,7 @@ import { Markdown } from '../../../components/Markdown'
 import { AssistantError } from '../../../components/conversation/AssistantError'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
+import { lastAssistantFailed } from '../../../lib/conversation/errors'
 import { errorMessage } from '../../../lib/opencode'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MessageEntry } from '../../../stores/sessions'
@@ -460,7 +461,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
             <Loader2 size={15} className="animate-spin" /> Pensando…
           </div>
         )}
-        {error && <ErrorNotice error={error} />}
+        {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
         {footer}
       </div>
     </div>

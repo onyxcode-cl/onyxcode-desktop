@@ -3,6 +3,7 @@ import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPar
 import { AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
 import { Markdown } from '../../../components/Markdown'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
+import { lastAssistantFailed } from '../../../lib/conversation/errors'
 import { AssistantError } from '../../../components/conversation/AssistantError'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../../components/conversation/Reasoning'
@@ -380,7 +381,7 @@ export function MessageStream(props: Props): React.JSX.Element {
             Trabajando…
           </div>
         )}
-        {error && <ErrorNotice error={error} />}
+        {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import { AssistantError } from '../../components/conversation/AssistantError'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../components/conversation/Reasoning'
 import { isOldRow, withCv } from '../../lib/conversation/cv'
+import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ChatToolCall } from './ChatToolCall'
 
 // Filas memoizadas (F7-B44): las partes y mensajes sin cambios conservan su referencia en el store, así que durante
@@ -213,7 +214,7 @@ export function ChatMessageList({ entries, busy, error, onRetry }: Props): React
             )
           })}
           {showThinking && <ThinkingIndicator />}
-          {error && <ErrorNotice error={error} variant="chat" />}
+          {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} variant="chat" />}
         </div>
       </div>
       {!atBottom && (
