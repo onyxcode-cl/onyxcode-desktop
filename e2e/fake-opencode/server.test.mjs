@@ -258,6 +258,23 @@ test('CRUD de sesiones, revert, fork y listados', async () => {
   assert.ok(b.id)
 })
 
+test('OAuth falso: authorize, callback con código y conexión del proveedor', async () => {
+  await ctl('POST', 'reset', {})
+  const methods = (await call('GET', '/provider/auth')).data
+  assert.deepEqual(methods.openai.map((m) => m.type), ['oauth', 'api'])
+  assert.equal(methods.openai[0].label, 'Cuenta (E2E)')
+  assert.deepEqual(methods['opencode-go'], [{ type: 'api', label: 'API key' }])
+  const authz = (await call('POST', '/provider/openai/oauth/authorize', { method: 0 })).data
+  assert.equal(authz.url, 'http://127.0.0.1/fake-oauth/provider/openai')
+  assert.equal(authz.method, 'code')
+  assert.equal((await call('POST', '/provider/openai/oauth/callback', { method: 0 })).status, 400)
+  assert.equal((await call('GET', '/provider')).data.connected.includes('openai'), false)
+  assert.equal((await call('POST', '/provider/openai/oauth/callback', { method: 0, code: 'abc' })).data, true)
+  assert.ok((await call('GET', '/provider')).data.connected.includes('openai'))
+  await call('DELETE', '/auth/openai')
+  assert.equal((await call('GET', '/provider')).data.connected.includes('openai'), false)
+})
+
 test('requests registra peticiones; providers, mcp, auth y config', async () => {
   await ctl('POST', 'reset', {})
   await call('GET', `/session/status?${q()}`)
