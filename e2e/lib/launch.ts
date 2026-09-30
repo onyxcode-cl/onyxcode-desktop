@@ -160,6 +160,9 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
         tasksGlobalInstructions: '',
         // Sin el asistente de primer uso (los specs existentes no lo esperan); `onboarding.e2e.ts` lo desactiva.
         onboarded: true,
+        // Aviso de Rutinas ya reconocido (si no, las rutinas no se ejecutan solas y activar pide el diálogo);
+        // `routines-terms.e2e.ts` lo pone en false.
+        routinesTermsAcknowledged: true,
         ...opts.settings
       })
     )

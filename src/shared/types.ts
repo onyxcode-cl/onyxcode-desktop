@@ -17,6 +17,8 @@ export interface Settings {
   tasksGlobalInstructions: string
   /** true cuando el asistente de primer uso terminó, se omitió o no hacía falta (todo ya funcionaba). */
   onboarded: boolean
+  /** true cuando el usuario reconoció el aviso sobre los términos de OpenCode y las Rutinas; sin él, las rutinas programadas no se ejecutan solas. */
+  routinesTermsAcknowledged: boolean
   /** Ruta absoluta del binario de OpenCode elegido por el usuario ('' = detección automática). Solo main la escribe. */
   opencodeBin: string
 }
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recentFolders: [],
   tasksGlobalInstructions: '',
   onboarded: false,
+  routinesTermsAcknowledged: false,
   opencodeBin: ''
 }
 

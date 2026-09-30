@@ -159,7 +159,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     theme: literal('system', 'light', 'dark'),
     recentFolders: arr(absPath, 50),
     tasksGlobalInstructions: str({ max: 20_000 }),
-    onboarded: bool
+    onboarded: bool,
+    routinesTermsAcknowledged: bool
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq

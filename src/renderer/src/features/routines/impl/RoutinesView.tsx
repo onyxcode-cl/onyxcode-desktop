@@ -24,6 +24,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { needsRoutinesNotice, ROUTINES_NOTICE_BUTTON, ROUTINES_NOTICE_TEXT } from '@shared/routines-terms'
 import type { RoutineInput, RoutineMode, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
 import { Button } from '../../../components/Button'
 import { PageHeader } from '../../../components/PageHeader'
@@ -39,6 +40,7 @@ import { RoutineEditor } from './RoutineEditor'
 import { agoText, durationText, fullDate, scheduleText, untilText } from './schedule'
 import { deleteRoutine, loadRoutines, openEditor, runRoutineNow, subscribeRoutines, toggleRoutine, useRoutines } from './store'
 import { ROUTINE_TEMPLATES } from './templates'
+import { ensureRoutinesTermsAck, showRoutinesTermsDialog } from './terms'
 import { baseName } from '../../../lib/paths'
 import { Toggle } from '../../../components/Toggle'
 
@@ -155,7 +157,11 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
         <Toggle
           stopPropagation
           checked={r.enabled}
-          onChange={(v) => void toggleRoutine(r.id, v)}
+          onChange={(v) =>
+            void ensureRoutinesTermsAck(v).then((ok) => {
+              if (ok) void toggleRoutine(r.id, v)
+            })
+          }
           label={r.enabled ? 'Desactivar' : 'Activar'}
         />
       </div>
@@ -531,6 +537,7 @@ export function RoutinesView(): React.JSX.Element {
   const editing = useRoutines((s) => s.editing)
   const selectedId = useRoutines((s) => s.selectedId)
   const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const acknowledged = useSettings((s) => s.settings.routinesTermsAcknowledged)
   const now = useNow(20_000)
   const hasRunning = routines.some((r) => r.running)
   const fastNow = useNow(hasRunning ? 1000 : 60_000)
@@ -594,6 +601,18 @@ export function RoutinesView(): React.JSX.Element {
             ) : undefined
           }
         />
+        {needsRoutinesNotice(acknowledged, routines) && (
+          <div
+            role="status"
+            data-testid="routines-terms-notice"
+            className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning"
+          >
+            <ShieldAlert size={15} className="shrink-0" /> <span className="min-w-0 flex-1">{ROUTINES_NOTICE_TEXT}</span>
+            <Button variant="secondary" onClick={() => void showRoutinesTermsDialog()}>
+              {ROUTINES_NOTICE_BUTTON}
+            </Button>
+          </div>
+        )}
         {error && (
           <div className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             <AlertCircle size={15} className="shrink-0" /> <span className="min-w-0 flex-1">{error}</span>

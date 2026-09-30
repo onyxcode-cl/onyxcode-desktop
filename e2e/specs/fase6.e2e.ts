@@ -131,6 +131,8 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
 
   it('8. toggle de Rutinas (F6-B8): persiste en routines.json y el clic no abre el editor ni selecciona la tarjeta', async () => {
     const a = app()
+    // El userData sembrado por `startApp` ya trae `routinesTermsAcknowledged: true`: aquí no aparece el diálogo del aviso
+    // (su flujo lo cubre `routines-terms.e2e.ts`).
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Rutinas' }).click()
     await a.page.getByRole('button', { name: /Empezar desde cero|Nueva rutina/ }).first().click()
     const editor = a.page.getByRole('dialog', { name: 'Nueva rutina' })
