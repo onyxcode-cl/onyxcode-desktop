@@ -43,6 +43,33 @@ Ajustes › Acerca de muestra qué motor y qué versión estás usando. Los avis
 incluimos están en [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md); cómo se empaqueta y actualiza, en
 [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md).
 
+## Términos de OpenCode y buenas prácticas de uso
+
+OnyxCode es solo un cliente: los servicios (OpenCode, OpenCode Go y los modelos) son de OpenCode y de sus
+proveedores, y **cada persona es responsable de usarlos conforme a sus
+[términos de servicio](https://opencode.ai/legal/terms-of-service)** y su
+[política de privacidad](https://opencode.ai/legal/privacy-policy). OpenCode Go no tiene términos propios: aplican
+los generales. Léelos; estos son los puntos que más importan aquí (resumen, no asesoría legal):
+
+- **Uso propio.** El servicio es para tu uso interno, no en nombre ni en beneficio de terceros.
+- **Procesos sin sesión iniciada.** Los términos restringen los procesos que corren o se activan mientras no has
+  iniciado sesión en sus servicios, y OpenCode decide qué cuenta como infracción. Las **Rutinas** se ejecutan solas,
+  así que la app pide un aviso explícito antes de activarlas y no ejecuta ninguna por horario hasta que lo aceptes.
+- **Extracción programática de datos.** Los términos limitan extraer datos o resultados de forma automática. Úsalo
+  de forma interactiva y razonable.
+- **Suspensión.** OpenCode puede suspender el acceso por cualquier motivo. OnyxCode no controla eso.
+- **Modelos gratuitos.** El contenido enviado a los modelos gratuitos puede ser usado por OpenCode para mejorar sus
+  servicios. No envíes información sensible con ellos.
+
+Buenas prácticas:
+
+- No compartas tu cuenta ni tu clave, ni rotes cuentas para saltarte límites.
+- No exportes las respuestas para entrenar otros modelos ni las presentes como escritas por una persona.
+- No metas secretos en los prompts ni en las carpetas que abras en Tareas.
+- Revisa lo que hacen los agentes: pueden ejecutar comandos y modificar archivos.
+
+OnyxCode desactiva la función de compartir sesiones de OpenCode (`share: "disabled"`) y no la usa.
+
 ## Uso (desarrollo)
 
 ```bash
