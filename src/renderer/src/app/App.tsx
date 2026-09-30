@@ -19,6 +19,7 @@ import { E2EFault } from './E2EFault'
 import { CommandPalette } from './CommandPalette'
 import { MODES, MODES_BY_ID } from './modes'
 import { EngineNotice } from './EngineNotice'
+import { UpdateNotice } from './UpdateNotice'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
 import { useTheme } from './useTheme'
@@ -191,6 +192,7 @@ export function App(): React.JSX.Element {
         <ErrorBoundary label="el estado del servidor">
           <ServerBanner />
           <EngineNotice />
+          <UpdateNotice />
         </ErrorBoundary>
         <div className="min-h-0 flex-1">
           {settingsOpen ? (
