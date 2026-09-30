@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, RefreshCw, Unplug } from 'lucide-react'
-import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import type { ModelMode } from '@shared/ipc-extras'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModelRef } from '@shared/types'
@@ -12,6 +11,7 @@ import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
 import { ModelSelect, sortProviders } from './ModelSelect'
+import { useProviderCatalog, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 import { ProviderKeyForm, saveProviderKey } from './ProviderKeyForm'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 
@@ -21,12 +21,6 @@ const MODES: { id: ModelMode; label: string; description: string }[] = [
   { id: 'tasks', label: MODE_LABELS.tasks, description: 'Tareas autónomas sobre documentos.' }
 ]
 
-interface ProviderCatalog {
-  all: Provider[]
-  connected: string[]
-  auth: Record<string, ProviderAuthMethod[]>
-}
-
 export function ModelsSection(): React.JSX.Element {
   const client = useServer((s) => s.client)
   const { providers, loading, error, load } = useProviders()
@@ -34,30 +28,18 @@ export function ModelsSection(): React.JSX.Element {
   const modelsByMode = useExtrasPrefs((s) => s.prefs.modelsByMode)
   const updatePrefs = useExtrasPrefs((s) => s.update)
 
-  const [catalog, setCatalog] = useState<ProviderCatalog | null>(null)
-  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const { catalog, error: loadError, reload: loadCatalog } = useProviderCatalog(client)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const catalogError = actionError ?? loadError
   const [busy, setBusy] = useState(false)
 
-  const loadCatalog = useCallback(async () => {
-    if (!client) return
-    setCatalogError(null)
-    try {
-      const [list, auth] = await Promise.all([client.provider.list(), client.provider.auth()])
-      if (list.error || !list.data) throw new Error(errorMessage(list.error))
-      setCatalog({ all: list.data.all, connected: list.data.connected, auth: auth.data ?? {} })
-    } catch (err) {
-      setCatalogError(errorMessage(err))
-    }
-  }, [client])
-
   useEffect(() => {
-    if (!client) return
-    void load(client)
-    void loadCatalog()
-  }, [client, load, loadCatalog])
+    if (client) void load(client)
+  }, [client, load])
 
   const refresh = async (): Promise<void> => {
     if (!client) return
+    setActionError(null)
     await Promise.all([load(client, true), loadCatalog()])
   }
 
@@ -126,7 +108,7 @@ export function ModelsSection(): React.JSX.Element {
               await client.global.dispose()
               await refresh()
             } catch (err) {
-              setCatalogError(errorMessage(err))
+              setActionError(errorMessage(err))
             } finally {
               setBusy(false)
             }
@@ -138,7 +120,7 @@ export function ModelsSection(): React.JSX.Element {
               await saveProviderKey(client, id, key)
               await refresh()
             } catch (err) {
-              setCatalogError(errorMessage(err))
+              setActionError(errorMessage(err))
               throw err
             } finally {
               setBusy(false)
@@ -162,10 +144,7 @@ function ProvidersList({
   onSetKey: (id: string, key: string) => Promise<void>
 }): React.JSX.Element {
   const connected = useMemo(() => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))), [catalog])
-  const others = useMemo(
-    () => catalog.all.filter((p) => !catalog.connected.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name, 'es')),
-    [catalog]
-  )
+  const others = useMemo(() => unconnectedProviders(catalog), [catalog])
 
   return (
     <>
