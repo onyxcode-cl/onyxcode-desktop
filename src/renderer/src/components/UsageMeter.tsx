@@ -151,13 +151,8 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
   const pct = limit > 0 ? Math.min(100, Math.round((session.context / limit) * 100)) : 0
 
   const openDetail = (): void => {
-    try {
-      localStorage.setItem('settings.section', 'usage')
-    } catch {
-      // sin storage: se abre en la sección que estuviera
-    }
     setOpen(false)
-    useUi.getState().openSettings(true)
+    useUi.getState().openSettingsAt('usage')
   }
 
   return (

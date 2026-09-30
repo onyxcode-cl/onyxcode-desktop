@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentProps } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import { Loader2, RefreshCw, Unplug } from 'lucide-react'
 import type { ModelMode } from '@shared/ipc-extras'
 import { MODE_LABELS } from '@shared/labels'
@@ -9,6 +9,7 @@ import { errorMessage } from '../../../lib/opencode'
 import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
+import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs } from './extras'
 import { ModelSelect, sortProviders } from './ModelSelect'
 import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
@@ -35,6 +36,15 @@ export function ModelsSection(): React.JSX.Element {
   useEffect(() => {
     if (client) void load(client)
   }, [client, load])
+
+  // «Conectar una IA» abre esta sección con el foco en Proveedores: desplazarse hasta allí una sola vez.
+  const focus = useUi((s) => s.settingsFocus)
+  const providersRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (focus !== 'providers') return
+    providersRef.current?.scrollIntoView({ block: 'start' })
+    useUi.getState().clearSettingsFocus()
+  }, [focus])
 
   const refresh = async (): Promise<void> => {
     if (!client) return
@@ -89,7 +99,9 @@ export function ModelsSection(): React.JSX.Element {
         </Button>
       </div>
 
-      <SubTitle>Proveedores</SubTitle>
+      <div id="settings-providers" ref={providersRef}>
+        <SubTitle>Proveedores</SubTitle>
+      </div>
       {catalogError && <ErrorText>{catalogError}</ErrorText>}
       {catalog && (
         <ProvidersList

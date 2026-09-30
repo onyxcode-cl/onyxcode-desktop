@@ -6,7 +6,10 @@
  */
 import { create } from 'zustand'
 import type { PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
+import { NO_AI_ERROR } from '@shared/ai-errors'
 import type { ModelRef } from '@shared/types'
+import { currentAiGate } from '../../../lib/ai-gate'
+import { useSettings } from '../../../stores/settings'
 import { sendNotification } from '../../../lib/notify'
 import { debounce } from '../../../lib/debounce'
 import { lruMax } from '../../../lib/lru'
@@ -27,6 +30,7 @@ import {
   reconcileRunStatus,
   reduceEvent,
   unchangedSince,
+  type ConvError,
   type ConvSlice,
   type LoadTracker
 } from '../../../lib/session-reducer'
@@ -146,7 +150,7 @@ export interface CodeState {
   activeSessionID: string | null
   messages: Record<string, CodeMessage[]>
   runState: Record<string, RunState>
-  errors: Record<string, string | null>
+  errors: Record<string, ConvError | null>
   permissions: Record<string, PendingPermission>
   questions: Record<string, PendingQuestion>
   todos: Record<string, Todo[]>
@@ -359,7 +363,7 @@ export const useCode = create<CodeState>((set, get) => {
     return true
   }
 
-  const setError = (sessionID: string, error: string | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
+  const setError = (sessionID: string, error: ConvError | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
 
   /** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
   const inflightLoads = new Map<string, Promise<void>>()
@@ -541,6 +545,13 @@ export const useCode = create<CodeState>((set, get) => {
     variant: string | null
   ): Promise<boolean> => {
     lastAccess.set(sid, ++accessTick)
+    // Modelo efectivo: sin ninguna IA conectada no se envía (evita el error técnico del motor).
+    const aiGate = currentAiGate(model ?? useSettings.getState().settings.defaultModel)
+    if (aiGate.gate.blocked) {
+      setError(sid, NO_AI_ERROR)
+      return false
+    }
+    const sendModel = aiGate.avail === 'unknown' ? model : aiGate.effective
     setError(sid, null)
     set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
     const base = dir.replace(/[/\\]+$/, '')
@@ -571,7 +582,7 @@ export const useCode = create<CodeState>((set, get) => {
           sessionID: sid,
           directory: dir,
           agent,
-          model: model ? { providerID: model.providerID, modelID: model.modelID } : undefined,
+          model: sendModel ? { providerID: sendModel.providerID, modelID: sendModel.modelID } : undefined,
           variant: variant ?? undefined,
           parts: [{ type: 'text', text: trimmed }, ...fileParts, ...attachParts]
         })

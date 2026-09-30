@@ -7,6 +7,10 @@ interface ProvidersState {
   providers: Provider[]
   defaults: Record<string, string>
   loading: boolean
+  /** true cuando ya hubo una carga correcta (antes de eso no se sabe qué IA hay conectada). */
+  loaded: boolean
+  /** Cliente de la última carga: si cambia (servidor reiniciado) se vuelve a cargar. */
+  client: OpencodeClient | null
   error: string | null
   load: (client: OpencodeClient, force?: boolean) => Promise<void>
 }
@@ -22,15 +26,17 @@ export const useProviders = create<ProvidersState>((set, get) => ({
   providers: [],
   defaults: {},
   loading: false,
+  loaded: false,
+  client: null,
   error: null,
   load: async (client, force = false) => {
-    if (get().loading || (!force && get().providers.length > 0)) return
+    if (get().loading || (!force && get().loaded && get().client === client)) return
     set({ loading: true, error: null })
     try {
       const res = await client.config.providers()
       if (res.error || !res.data) throw new Error(errorMessage(res.error))
       const providers = sortProviders(res.data.providers)
-      set({ providers, defaults: res.data.default, loading: false })
+      set({ providers, defaults: res.data.default, loading: false, loaded: true, client })
     } catch (err) {
       set({ error: errorMessage(err), loading: false })
     }

@@ -2,6 +2,7 @@
  * Lógica pura del asistente de primer uso: qué decidir al arrancar y en qué paso empezar.
  * Sin React ni IPC (se prueba con `steps.test.ts`).
  */
+import { isConfiguredProvider } from '@shared/ai-availability'
 import { APP_NAME } from '@shared/brand'
 import { MODE_LABELS } from '@shared/labels'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
@@ -37,14 +38,7 @@ export type OnboardingDecision =
   | { kind: 'complete' }
   | { kind: 'show'; step: OnboardingStep }
 
-/**
- * ¿Cuenta como proveedor configurado por el usuario? Un servidor recién instalado ya «conecta» el
- * proveedor gratuito `opencode` (origen `custom`, sin clave): eso no cuenta, o el asistente no
- * aparecería nunca a un usuario nuevo.
- */
-export function isConfiguredProvider(p: ProviderState): boolean {
-  return !(p.id === 'opencode' && p.source === 'custom')
-}
+export { isConfiguredProvider }
 
 /** Nombres visibles de los proveedores conectados que cuenta como configurados (sin el gratuito preinstalado). */
 export function connectedNames(connected: ProviderState[] | null, names: Record<string, string>): string[] {

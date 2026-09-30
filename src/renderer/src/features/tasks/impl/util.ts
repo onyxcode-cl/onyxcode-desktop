@@ -1,6 +1,7 @@
 /** Utilidades de presentación del modo Tareas (tiempos, tamaños, estado y etiquetas de pasos). */
 import type { Message, Part, PermissionRequest, Session, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { MAIN_SOURCE, type MessageEntry, type SessionRunState } from '../../../stores/sessions'
+import type { ConvError } from '../../../lib/session-reducer'
 import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
@@ -90,7 +91,7 @@ export function taskStatus(args: {
   run: SessionRunState | undefined
   waiting: boolean
   hasQuestion?: boolean
-  error: string | null | undefined
+  error: ConvError | null | undefined
   entries: MessageEntry[] | undefined
   /** Control total: el agente está actuando sobre el Mac ahora mismo. */
   usingComputer?: boolean

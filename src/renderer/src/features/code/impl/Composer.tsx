@@ -23,10 +23,9 @@ import {
   Undo2,
   X
 } from 'lucide-react'
-import { useSettings } from '../../../stores/settings'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { useClient } from './client'
-import { ModelControls, PermissionChip } from './ComposerControls'
+import { ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
 import { useCode } from './store'
 import type { Attachment } from './types'
@@ -206,7 +205,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const abort = useCode((s) => s.abort)
   const revertLast = useCode((s) => s.revertLast)
   const newSession = useCode((s) => s.newSession)
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const aiGate = useCodeAiGate()
   const serverCommands = useServerCommands(directory)
 
   const addFiles = (fileList: FileList | File[]): void => {
@@ -337,7 +336,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
       clear()
       return
     }
-    if (!model) setModel(defaultModel)
+    // Modelo efectivo (no se toca el ajuste global): si el elegido ya no existe, se usa el de la primera IA conectada.
+    const eff = aiGate.effective
+    if (eff && (!model || model.providerID !== eff.providerID || model.modelID !== eff.modelID)) setModel(eff)
     const cmd = /^\/(\S+)\s*([\s\S]*)$/.exec(t)
     if (!busy && cmd && serverCommands.some((c) => c.name === cmd[1])) {
       clear()
@@ -547,9 +548,11 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               rows={1}
               disabled={disabled}
               placeholder={
-                agent === 'plan'
-                  ? 'Describe qué quieres planificar… (@ para archivos, / para comandos)'
-                  : 'Pide un cambio en el código… (@ para archivos, / para comandos)'
+                aiGate.gate.blocked
+                  ? 'Conecta una IA para empezar'
+                  : agent === 'plan'
+                    ? 'Describe qué quieres planificar… (@ para archivos, / para comandos)'
+                    : 'Pide un cambio en el código… (@ para archivos, / para comandos)'
               }
               className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
             />

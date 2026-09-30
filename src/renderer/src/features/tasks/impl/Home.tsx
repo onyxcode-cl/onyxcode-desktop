@@ -1,4 +1,5 @@
 /** Pantalla de inicio de Tareas: compositor grande, carpeta, modo de acceso y sugerencias por categoría. */
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { useState } from 'react'
 import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
@@ -200,7 +201,7 @@ export function Home({
   folderBusy
 }: {
   onSend: (text: string) => Promise<void>
-  sendError: string | null
+  sendError: unknown
   folderBusy: boolean
 }): React.JSX.Element {
   const folder = useTasks((s) => s.folder)
@@ -267,7 +268,11 @@ export function Home({
               : 'Describe la tarea… (elige una carpeta para empezar)'
           }
         />
-        {sendError && <p className="mx-auto mt-2 max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
+        {sendError != null && (
+          <div className="mx-auto mt-2 max-w-3xl px-6">
+            <ErrorNotice error={sendError} />
+          </div>
+        )}
         {!full && folder && phase === 'ready' && (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-subtle">
             <ShieldCheck size={12} /> Sandbox activo: no puede escribir fuera de la carpeta ni leer tus claves.

@@ -7,6 +7,9 @@
  *  │          │ composer (Plan / Build)       │ Archivos         │
  *  └──────────┴──────────────────────────────┴──────────────────┘
  */
+import { NoAiBanner } from '../../../components/NoAiBanner'
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
+import type { ConvError } from '../../../lib/session-reducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Session } from '@opencode-ai/sdk/v2/client'
@@ -34,6 +37,7 @@ import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
 import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
+import { useCodeAiGate } from './ComposerControls'
 import { MessageStream } from './MessageStream'
 import { useVisibleFsVersion } from './useVisibleFsVersion'
 import { TranscriptLoading } from '../../../components/TranscriptLoader'
@@ -450,7 +454,7 @@ const SUGGESTIONS: { label: string; prompt: string; agent: 'plan' | 'build' }[] 
   }
 ]
 
-function EmptySession({ directory, error }: { directory: string; error: string | null }): React.JSX.Element {
+function EmptySession({ directory, error }: { directory: string; error: ConvError | null }): React.JSX.Element {
   const send = useCode((s) => s.send)
   const setAgent = useCode((s) => s.setAgent)
   const client = useClient()
@@ -485,7 +489,11 @@ function EmptySession({ directory, error }: { directory: string; error: string |
           </button>
         ))}
       </div>
-      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      {error && (
+        <div className="mt-3 w-full max-w-xl text-left">
+          <ErrorNotice error={error} />
+        </div>
+      )}
     </div>
   )
 }
@@ -567,6 +575,8 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   )
   const questions = useMemo(() => questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid)), [questionsAll, sessions, sid])
   const client = useClient()
+  const aiGate = useCodeAiGate()
+  const setModel = useCode((s) => s.setModel)
   const busy = run === 'busy' || run === 'retry'
 
   return (
@@ -605,7 +615,10 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       )}
       {sid && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
-      <Composer busy={busy} disabled={!client} />
+      <div className="mx-auto w-full max-w-3xl px-6">
+        <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setModel} />
+      </div>
+      <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />
     </div>
   )
 }

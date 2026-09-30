@@ -6,6 +6,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, ArrowUp, Info, Loader2, MessagesSquare, X } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -136,9 +137,8 @@ export function SideChat(): React.JSX.Element | null {
           </div>
         )}
         {(error || storeError) && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
-            <AlertCircle size={13} className="mt-0.5 shrink-0" />
-            <span>{error ?? storeError}</span>
+          <div className="mt-3">
+            <ErrorNotice error={error ?? storeError} />
           </div>
         )}
       </div>

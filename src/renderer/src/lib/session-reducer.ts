@@ -9,19 +9,21 @@
  */
 import type { Message, Part, Session } from '@opencode-ai/sdk/v2/client'
 import type { OcEvent } from './opencode'
-import { errorMessage } from './opencode'
 
 export interface MessageEntry {
   info: Message
   parts: Part[]
 }
 
+/** Error de una sesión: texto propio o el objeto del SDK (`{name, data}`), que conserva el código HTTP para clasificarlo. */
+export type ConvError = string | object
+
 export type RunState = 'idle' | 'busy' | 'retry'
 
 export interface ConvSlice {
   messages: Record<string, MessageEntry[]>
   status: Record<string, RunState>
-  errors: Record<string, string | null>
+  errors: Record<string, ConvError | null>
   sessions: Record<string, Session>
 }
 
@@ -287,7 +289,7 @@ export function reduceEvent(slice: ConvSlice, ev: OcEvent, b: Buffers, opt: Redu
       const { sessionID, error } = ev.properties
       if (sessionID && opt.accept(sessionID) && error && error.name !== 'MessageAbortedError') {
         return {
-          slice: { ...slice, errors: { ...slice.errors, [sessionID]: errorMessage(error) } },
+          slice: { ...slice, errors: { ...slice.errors, [sessionID]: error } },
           effects: [{ type: 'error', sessionID }]
         }
       }

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ChatComposer } from './ChatComposer'
-import { confirmDialog } from '../../components/ConfirmDialog'
+import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { LogoMark } from '../../components/Logo'
 import { ChatMessageList } from './ChatMessageList'
 import { ModelPicker } from '../../components/ModelPicker'
+import { NoAiBanner } from '../../components/NoAiBanner'
 import { TranscriptLoader } from '../../components/TranscriptLoader'
 import { UsageMeter } from '../../components/UsageMeter'
-import { errorMessage } from '../../lib/opencode'
+import { useAiGate } from '../../lib/ai-gate'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
 import { useSettings } from '../../stores/settings'
@@ -40,6 +41,8 @@ export function ChatView(): React.JSX.Element {
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const model = useSettings((s) => s.settings.defaultModel)
   const updateSettings = useSettings((s) => s.update)
+  const { effective, gate, free } = useAiGate(model)
+  const [sendError, setSendError] = useState<unknown>(null)
   const [insert, setInsert] = useState<{ text: string; key: number } | null>(null)
 
   // Si la conversación abierta se eliminó (aquí o desde otro cliente), volver a "nueva".
@@ -60,20 +63,21 @@ export function ChatView(): React.JSX.Element {
   )
 
   const send = async (text: string): Promise<void> => {
+    setSendError(null)
     try {
       await sendChatMessage(text)
     } catch (err) {
       const id = useChat.getState().activeSessionId
-      if (id) useSessions.getState().setError(id, errorMessage(err))
-      else void confirmDialog({ title: 'Error', message: errorMessage(err), confirmLabel: 'Aceptar', cancelLabel: null })
+      if (id) useSessions.getState().setError(id, typeof err === 'object' && err ? err : String(err))
+      else setSendError(err)
     }
   }
 
   const picker = (
     <div className="flex w-full items-center">
-      <ModelPicker value={model} onChange={(m) => void updateSettings({ defaultModel: m })} />
+      <ModelPicker value={effective ?? model} onChange={(m) => void updateSettings({ defaultModel: m })} />
       <span className="ml-auto" />
-      <UsageMeter messages={entries} model={model} />
+      <UsageMeter messages={entries} model={effective ?? model} />
     </div>
   )
   const composer = (
@@ -81,13 +85,24 @@ export function ChatView(): React.JSX.Element {
       onSend={send}
       onAbort={() => activeId && void abortChat(activeId)}
       busy={busy}
-      disabled={!ready}
-      placeholder={ready ? 'Escribe un mensaje…' : 'Conectando con OpenCode…'}
+      disabled={!ready || gate.blocked}
+      placeholder={!ready ? 'Conectando con OpenCode…' : gate.blocked ? 'Conecta una IA para empezar' : 'Escribe un mensaje…'}
       footer={picker}
       autoFocusKey={activeId}
       showAttach
       insert={insert}
     />
+  )
+
+  const notices = (
+    <div className="mx-auto w-full max-w-3xl px-6">
+      {sendError != null && (
+        <div className="mb-2">
+          <ErrorNotice error={sendError} variant="chat" />
+        </div>
+      )}
+      <NoAiBanner gate={gate} freeModel={free} onUseFree={(m) => void updateSettings({ defaultModel: m })} />
+    </div>
   )
 
   if (!activeId) {
@@ -108,7 +123,10 @@ export function ChatView(): React.JSX.Element {
               <p className="mt-1.5 text-[15px] text-muted">¿En qué te ayudo hoy?</p>
             </div>
           </div>
-          <div className="w-full animate-rise-in [animation-delay:60ms]">{composer}</div>
+          <div className="w-full animate-rise-in [animation-delay:60ms]">
+            {notices}
+            {composer}
+          </div>
           <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms]">
             {SUGGESTIONS.map(({ icon: Icon, label, prompt }) => (
               <button
@@ -135,6 +153,7 @@ export function ChatView(): React.JSX.Element {
       </header>
       <TranscriptLoader sessionId={activeId} />
       <ChatMessageList entries={entries} busy={busy} error={error} onRetry={(text) => void send(text)} />
+      {notices}
       {composer}
     </div>
   )

@@ -36,6 +36,7 @@ import {
   selectSessionsForDirectory as selectSessionsPure,
   upsertSorted,
   type Buffers,
+  type ConvError,
   type ConvSlice,
   type LoadTracker,
   type MessageEntry
@@ -59,7 +60,7 @@ interface SessionsState {
   /** Mensajes por sessionID, ordenados por id (ascendente = cronológico). */
   messages: Record<string, MessageEntry[]>
   status: Record<string, SessionRunState>
-  errors: Record<string, string | null>
+  errors: Record<string, ConvError | null>
   loadingMessages: Record<string, boolean>
   /** sessionID → el historial completo ya se cargó (F6-B12; `messages[id]` puede ser parcial por eventos sueltos). */
   loaded: Record<string, boolean>
@@ -70,7 +71,7 @@ interface SessionsState {
   upsertSession: (session: Session, source?: string) => void
   removeSession: (sessionID: string) => void
   setStatus: (sessionID: string, status: SessionRunState) => void
-  setError: (sessionID: string, error: string | null) => void
+  setError: (sessionID: string, error: ConvError | null) => void
   /** Fija (o quita con null) el origen visible de un directorio. */
   setDirectorySource: (directory: string, source: string | null) => void
   applyEvent: (event: OcEvent, source?: string) => void

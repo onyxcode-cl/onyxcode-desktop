@@ -1,10 +1,14 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AlertCircle, AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
+import { AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
 import { Markdown } from '../../../components/Markdown'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
+import { lastAssistantFailed } from '../../../lib/conversation/errors'
 import { AssistantError } from '../../../components/conversation/AssistantError'
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../../components/conversation/Reasoning'
+import { friendlyError } from '@shared/ai-errors'
+import type { ConvError } from '../../../lib/session-reducer'
 import { PermissionCard, QuestionCard } from './PermissionCard'
 import { StepGroup, relPath } from './ToolCard'
 import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
@@ -45,7 +49,7 @@ function buildBlocks(messages: CodeMessage[]): Block[] {
       flush()
       if (p.type === 'text') blocks.push({ kind: 'text', key: p.id, part: p })
       else if (p.type === 'reasoning') blocks.push({ kind: 'reasoning', key: p.id, part: p })
-      else if (p.type === 'retry') blocks.push({ kind: 'retry', key: p.id, text: p.error.data.message, attempt: p.attempt })
+      else if (p.type === 'retry') blocks.push({ kind: 'retry', key: p.id, text: friendlyError(p.error).message, attempt: p.attempt })
       else if (p.type === 'subtask') blocks.push({ kind: 'subtask', key: p.id, text: `Subtarea (${p.agent}): ${p.description}` })
     }
     if (m.info.role === 'assistant' && m.info.error) {
@@ -264,7 +268,7 @@ const TurnView = memo(
 interface Props {
   entries: CodeMessage[]
   busy: boolean
-  error: string | null
+  error: ConvError | null
   root: string | null
   permissions: PendingPermission[]
   questions: PendingQuestion[]
@@ -377,12 +381,7 @@ export function MessageStream(props: Props): React.JSX.Element {
             Trabajando…
           </div>
         )}
-        {error && (
-          <div className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-            <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
       </div>
     </div>
   )

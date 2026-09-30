@@ -6,12 +6,16 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, Part, PermissionRequest, ReasoningPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AlertCircle, Brain, ChevronRight, FileText, Loader2, Pencil, RotateCw, Sparkles } from 'lucide-react'
+import { friendlyError } from '@shared/ai-errors'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { AssistantError } from '../../../components/conversation/AssistantError'
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
+import { lastAssistantFailed } from '../../../lib/conversation/errors'
 import { errorMessage } from '../../../lib/opencode'
+import type { ConvError } from '../../../lib/session-reducer'
 import type { MessageEntry } from '../../../stores/sessions'
 import { ActivityRow } from './ProgressPanel'
 import { editAndRetry } from './actions'
@@ -69,7 +73,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         steps = null
         blocks.push({ kind: 'text', id: p.id, text: p.text, partIds: [p.id] })
       } else if (p.type === 'retry') {
-        blocks.push({ kind: 'retry', id: p.id, text: `Reintento ${p.attempt}: ${p.error.data.message}`, partIds: [p.id] })
+        blocks.push({ kind: 'retry', id: p.id, text: `Reintento ${p.attempt}: ${friendlyError(p.error).message}`, partIds: [p.id] })
       } else if (p.type === 'file') {
         steps = null
         blocks.push({ kind: 'file', id: p.id, name: p.filename ?? p.url, partIds: [p.id] })
@@ -192,7 +196,7 @@ const StepsBlock = memo(
 interface Props {
   entries: MessageEntry[]
   busy: boolean
-  error?: string | null
+  error?: ConvError | null
   permissions: PermissionRequest[]
   /** Contenido extra al final (p.ej. seguimientos). */
   footer?: React.ReactNode
@@ -457,12 +461,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
             <Loader2 size={15} className="animate-spin" /> Pensando…
           </div>
         )}
-        {error && (
-          <div className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-            <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
         {footer}
       </div>
     </div>
