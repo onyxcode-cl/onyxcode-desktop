@@ -1,10 +1,13 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2/client'
-import { AlertCircle, ArrowDown, FileText, RotateCcw, RotateCw } from 'lucide-react'
+import { ArrowDown, FileText, RotateCcw, RotateCw } from 'lucide-react'
+import { friendlyError } from '@shared/ai-errors'
+import type { ConvError } from '../../lib/session-reducer'
 import type { MessageEntry } from '../../stores/sessions'
 import { LogoMark } from '../../components/Logo'
 import { CopyButton, Markdown } from '../../components/Markdown'
 import { AssistantError } from '../../components/conversation/AssistantError'
+import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../components/conversation/Reasoning'
 import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { ChatToolCall } from './ChatToolCall'
@@ -37,7 +40,7 @@ const PartView = memo(function PartView({
     case 'retry':
       return (
         <div className="flex items-center gap-1.5 text-xs text-muted">
-          <RotateCw size={12} /> Reintento {part.attempt}: {part.error.data.message}
+          <RotateCw size={12} /> Reintento {part.attempt}: {friendlyError(part.error).message}
         </div>
       )
     default:
@@ -140,7 +143,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
 interface Props {
   entries: MessageEntry[]
   busy: boolean
-  error?: string | null
+  error?: ConvError | null
   /** Si se entrega, la última respuesta muestra "Reintentar" (recibe el texto del último mensaje del usuario). */
   onRetry?: (userText: string) => void
 }
@@ -210,12 +213,7 @@ export function ChatMessageList({ entries, busy, error, onRetry }: Props): React
             )
           })}
           {showThinking && <ThinkingIndicator />}
-          {error && (
-            <div className="flex animate-fade-in items-start gap-2 rounded-lg border border-danger/30 bg-danger/8 px-3 py-2 text-sm text-danger">
-              <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <ErrorNotice error={error} variant="chat" />}
         </div>
       </div>
       {!atBottom && (

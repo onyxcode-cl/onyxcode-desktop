@@ -15,7 +15,7 @@ interface Props {
 /** Selector de modelo con los proveedores/modelos del servidor (`config.providers`). */
 export function ModelPicker({ value, onChange, placement = 'top' }: Props): React.JSX.Element {
   const client = useServer((s) => s.client)
-  const { providers, loading, error, load } = useProviders()
+  const { providers, loading, error, load, loaded } = useProviders()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
@@ -37,8 +37,10 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
 
   const current = useMemo(() => {
     const p = providers.find((x) => x.id === value.providerID)
-    return { name: p?.models[value.modelID]?.name ?? value.modelID, provider: p?.name ?? value.providerID }
-  }, [providers, value])
+    const model = p?.models[value.modelID]
+    // Ya cargados los proveedores y el modelo no está entre ellos: no mostrar un id crudo que no se puede usar.
+    return { name: model?.name ?? (loaded ? null : value.modelID) }
+  }, [providers, value, loaded])
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -103,8 +105,12 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
         className={`no-drag flex max-w-[280px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] transition-colors ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
         title={`${value.providerID}/${value.modelID}`}
       >
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-        <span className="truncate font-medium">{current.name}</span>
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${current.name === null ? 'bg-warning' : 'bg-accent'}`} />
+        {current.name === null ? (
+          <span className="truncate font-medium text-warning">Elige un modelo</span>
+        ) : (
+          <span className="truncate font-medium">{current.name}</span>
+        )}
         <ChevronDown size={13} className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (

@@ -2,7 +2,9 @@
  * Acciones del modo Chat sobre el SDK de OpenCode (v2).
  * Patrón reutilizable para Code/Tareas: cambiar `directory` y `agent`.
  */
+import { NO_AI_ERROR } from '@shared/ai-errors'
 import { CHAT_AGENT } from '@shared/types'
+import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
 import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
 import { onStreamReconnect, useServer } from '../../stores/server'
@@ -90,7 +92,10 @@ export function newChat(): void {
 export async function sendChatMessage(text: string): Promise<void> {
   const { client, directory } = ctx()
   const sessions = useSessions.getState()
-  const model = useSettings.getState().settings.defaultModel
+  // Modelo efectivo (el guardado si existe entre los proveedores cargados; si no, el de la primera IA conectada).
+  const { effective, gate } = currentAiGate(useSettings.getState().settings.defaultModel)
+  if (gate.blocked || !effective) throw NO_AI_ERROR
+  const model = effective
   let sessionID = useChat.getState().activeSessionId
 
   if (!sessionID) {
@@ -117,7 +122,7 @@ export async function sendChatMessage(text: string): Promise<void> {
   })
   if (res.error) {
     sessions.setStatus(sessionID, 'idle')
-    sessions.setError(sessionID, errorMessage(res.error))
+    sessions.setError(sessionID, res.error)
   }
 }
 

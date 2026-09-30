@@ -27,6 +27,7 @@ import {
   reconcileRunStatus,
   reduceEvent,
   unchangedSince,
+  type ConvError,
   type ConvSlice,
   type LoadTracker
 } from '../../../lib/session-reducer'
@@ -146,7 +147,7 @@ export interface CodeState {
   activeSessionID: string | null
   messages: Record<string, CodeMessage[]>
   runState: Record<string, RunState>
-  errors: Record<string, string | null>
+  errors: Record<string, ConvError | null>
   permissions: Record<string, PendingPermission>
   questions: Record<string, PendingQuestion>
   todos: Record<string, Todo[]>
@@ -359,7 +360,7 @@ export const useCode = create<CodeState>((set, get) => {
     return true
   }
 
-  const setError = (sessionID: string, error: string | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
+  const setError = (sessionID: string, error: ConvError | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
 
   /** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
   const inflightLoads = new Map<string, Promise<void>>()

@@ -7,6 +7,8 @@
  *  │          │ composer (Plan / Build)       │ Archivos         │
  *  └──────────┴──────────────────────────────┴──────────────────┘
  */
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
+import type { ConvError } from '../../../lib/session-reducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Session } from '@opencode-ai/sdk/v2/client'
@@ -450,7 +452,7 @@ const SUGGESTIONS: { label: string; prompt: string; agent: 'plan' | 'build' }[] 
   }
 ]
 
-function EmptySession({ directory, error }: { directory: string; error: string | null }): React.JSX.Element {
+function EmptySession({ directory, error }: { directory: string; error: ConvError | null }): React.JSX.Element {
   const send = useCode((s) => s.send)
   const setAgent = useCode((s) => s.setAgent)
   const client = useClient()
@@ -485,7 +487,11 @@ function EmptySession({ directory, error }: { directory: string; error: string |
           </button>
         ))}
       </div>
-      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      {error && (
+        <div className="mt-3 w-full max-w-xl text-left">
+          <ErrorNotice error={error} />
+        </div>
+      )}
     </div>
   )
 }
