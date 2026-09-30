@@ -29,3 +29,19 @@ export async function stubDialog(app: ElectronApplication, stub: DialogStub): Pr
 export async function dialogCalls(app: ElectronApplication): Promise<{ kind: string; options: unknown }[]> {
   return app.evaluate(() => (globalThis as unknown as { __e2eDialogCalls?: { kind: string; options: unknown }[] }).__e2eDialogCalls ?? [])
 }
+
+/** Sustituye shell.openExternal en main: guarda las URLs en vez de abrir el navegador (ver `openedUrls`). */
+export async function stubOpenExternal(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ shell }) => {
+    const g = globalThis as unknown as { __opened?: string[] }
+    g.__opened = []
+    shell.openExternal = (async (u: string) => {
+      g.__opened!.push(u)
+    }) as unknown as typeof shell.openExternal
+  })
+}
+
+/** URLs que se intentaron abrir desde `stubOpenExternal`. */
+export async function openedUrls(app: ElectronApplication): Promise<string[]> {
+  return app.evaluate(() => (globalThis as unknown as { __opened?: string[] }).__opened ?? [])
+}
