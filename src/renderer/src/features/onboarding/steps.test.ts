@@ -1,8 +1,13 @@
+import { MODE_LABELS } from '@shared/labels'
 import { describe, expect, it } from 'vitest'
 import {
   canAdvance,
   decideOnboarding,
+  connectedNames,
+  CONNECT_TASKS_NOTICE,
+  CONNECT_TERMS_NOTICE,
   hasConfiguredProvider,
+  isConfiguredProvider,
   nextStep,
   opencodeStepMode,
   prevStep,
@@ -23,7 +28,7 @@ describe('decideOnboarding', () => {
 
   it('usuario existente (binario, servidor listo y proveedor): marca onboarded en silencio', () => {
     expect(decide({})).toEqual({ kind: 'complete' })
-    expect(decide({ connected: [{ id: 'anthropic', source: 'env' }] })).toEqual({ kind: 'complete' })
+    expect(decide({ connected: [{ id: 'openai', source: 'env' }] })).toEqual({ kind: 'complete' })
   })
 
   it('falta el binario: paso 1, sin esperar al servidor ni a los proveedores', () => {
@@ -93,7 +98,7 @@ describe('paso 1 informativo', () => {
     expect(stepTitle('opencode', 'bundled')).toBe('Motor incluido')
     expect(stepTitle('opencode', 'missing')).toBe('Instala o localiza OpenCode')
     expect(stepTitle('opencode', 'found')).toBe('Instala o localiza OpenCode')
-    expect(stepTitle('auth', 'bundled')).toBe('Conecta OpenCode Go')
+    expect(stepTitle('auth', 'bundled')).toBe('Conecta tu IA')
   })
 
   it('con el motor incluido se puede continuar aunque el servidor aún no esté listo', () => {
@@ -117,5 +122,28 @@ describe('navegación', () => {
     expect(canAdvance('opencode', { binaryFound: true, serverReady: false })).toBe(false)
     expect(canAdvance('opencode', { binaryFound: true, serverReady: true })).toBe(true)
     expect(canAdvance('auth', { binaryFound: false, serverReady: false })).toBe(true)
+  })
+})
+
+describe('paso «Conecta tu IA»', () => {
+  it('cualquier proveedor con credencial cuenta como configurado, también por OAuth', () => {
+    expect(isConfiguredProvider({ id: 'openai', source: 'api' })).toBe(true)
+    expect(decide({ connected: [{ id: 'openai', source: 'oauth' }] })).toEqual({ kind: 'complete' })
+  })
+
+  it('connectedNames excluye el gratuito preinstalado y usa el nombre del catálogo', () => {
+    const connected = [
+      { id: 'opencode', source: 'custom' },
+      { id: 'openai', source: 'api' },
+      { id: 'otro', source: 'env' }
+    ]
+    expect(connectedNames(connected, { openai: 'Nombre visible' })).toEqual(['Nombre visible', 'otro'])
+    expect(connectedNames(null, {})).toEqual([])
+  })
+
+  it('los avisos nombran OpenCode Go y el modo Tareas con su nombre visible', () => {
+    expect(CONNECT_TASKS_NOTICE).toContain('OpenCode Go')
+    expect(CONNECT_TASKS_NOTICE).toContain(MODE_LABELS.tasks)
+    expect(CONNECT_TERMS_NOTICE).toContain('términos')
   })
 })

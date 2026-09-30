@@ -2,6 +2,9 @@
  * Lógica pura del asistente de primer uso: qué decidir al arrancar y en qué paso empezar.
  * Sin React ni IPC (se prueba con `steps.test.ts`).
  */
+import { APP_NAME } from '@shared/brand'
+import { MODE_LABELS } from '@shared/labels'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import type { OpencodeInfo, OpencodeSource, ServerState } from '@shared/types'
 
 export const ONBOARDING_STEPS = ['opencode', 'auth', 'model', 'modes', 'permissions'] as const
@@ -43,6 +46,15 @@ export function isConfiguredProvider(p: ProviderState): boolean {
   return !(p.id === 'opencode' && p.source === 'custom')
 }
 
+/** Nombres visibles de los proveedores conectados que cuenta como configurados (sin el gratuito preinstalado). */
+export function connectedNames(connected: ProviderState[] | null, names: Record<string, string>): string[] {
+  return (connected ?? []).filter(isConfiguredProvider).map((p) => names[p.id] ?? p.id)
+}
+
+/** Aviso del paso «Conecta tu IA»: qué modos funcionan con cualquier proveedor y cuál tiene una excepción. */
+export const CONNECT_TASKS_NOTICE = `OpenCode funciona con cualquiera de estos proveedores. La única excepción es ${MODE_LABELS.tasks} con sandbox, que en ${APP_NAME} solo admite OpenCode Go (y los modelos gratuitos de OpenCode); para usar otro proveedor ahí, elige ${TASKS_TERMS.fullControlShort}.`
+export const CONNECT_TERMS_NOTICE = 'Cada persona es responsable de cumplir los términos de su proveedor y los de OpenCode.'
+
 export function hasConfiguredProvider(connected: ProviderState[]): boolean {
   return connected.some(isConfiguredProvider)
 }
@@ -83,7 +95,7 @@ export function opencodeStepMode(info: Pick<OpencodeInfo, 'found' | 'source'> | 
 
 export function stepTitle(step: OnboardingStep, mode: OpencodeStepMode): string {
   if (step === 'opencode') return mode === 'bundled' ? 'Motor incluido' : 'Instala o localiza OpenCode'
-  return { auth: 'Conecta OpenCode Go', model: 'Elige tu modelo', modes: 'Los cuatro modos', permissions: 'Permisos de macOS' }[step]
+  return { auth: 'Conecta tu IA', model: 'Elige tu modelo', modes: 'Los cuatro modos', permissions: 'Permisos de macOS' }[step]
 }
 
 /**
