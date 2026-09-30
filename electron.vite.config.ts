@@ -8,6 +8,8 @@ const shared = resolve(__dirname, 'src/shared')
 export default defineConfig({
   main: {
     resolve: { alias: { '@shared': shared } },
+    // `true` solo en el build de prueba del actualizador (docs/DISTRIBUCION.md §11); nunca en uno normal.
+    define: { __ONYXCODE_TEST_BUILD__: JSON.stringify(process.env.ONYXCODE_TEST_BUILD === '1') },
     build: {
       rollupOptions: {
         input: {

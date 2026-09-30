@@ -15,6 +15,7 @@ import { ensureCodeSubscription, useCode } from '../features/code/impl/store'
 import { openProjectTrusted } from '../features/code/impl/trust'
 import { clearUnseen, connectFolder, loadTask, rememberFullAccess, useTasks } from '../features/tasks/impl/store'
 import { initAttentionBadge } from '../lib/attention'
+import { call } from '../lib/api'
 import { E2EFault } from './E2EFault'
 import { CommandPalette } from './CommandPalette'
 import { MODES, MODES_BY_ID } from './modes'
@@ -42,6 +43,12 @@ export function App(): React.JSX.Element {
       offServer()
       offSettings()
     }
+  }, [])
+
+  // Confirma al proceso principal que la interfaz pintó (marcador de arranque del actualizador).
+  useEffect(() => {
+    const t = window.setTimeout(() => void call('app:bootConfirm').catch(() => undefined), 300)
+    return () => window.clearTimeout(t)
   }, [])
 
   // Code suscrito a nivel de App (D3): avisos, cola y badge siguen vivos fuera de la vista Code.

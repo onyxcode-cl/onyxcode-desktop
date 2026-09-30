@@ -21,6 +21,8 @@ import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded
 import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './security/app-protocol'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
+import { bootMarkers, startBoot } from './update/boot'
+import { isUpdating } from './update/swap'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
 app.setName(APP_NAME)
@@ -70,6 +72,8 @@ function createWindow(): BrowserWindow {
 
   mainWindow = win
   win.on('ready-to-show', () => presentWindow(win))
+  // Marcador de arranque para el actualizador: la ventana principal cargó (el renderer confirma aparte).
+  win.webContents.once('did-finish-load', () => bootMarkers()?.loaded())
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
     if (process.platform !== 'darwin') app.quit()
@@ -104,10 +108,12 @@ function start(): void {
   // Un segundo lanzamiento (dock, `open`, onyxcode://) enfoca esta instancia. Antes de `ready` se
   // ignora: la ventana se crea igualmente al arrancar.
   app.on('second-instance', () => {
-    if (app.isReady()) focusMainWindow()
+    // Mientras se sustituye la app no se enfoca ni se abren ventanas (la instancia está cerrándose).
+    if (app.isReady() && !isUpdating()) focusMainWindow()
   })
   app.whenReady().then(() => {
     applyE2eHeadless()
+    startBoot()
     handleAppScheme()
     installWebSecurity()
     electronApp.setAppUserModelId(APP_ID)

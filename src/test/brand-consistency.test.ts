@@ -1,7 +1,8 @@
+import { createPublicKey } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { APP_ID, AUTHOR_ALIAS, DISCLAIM_ID, HELPER_ID } from '../shared/brand'
+import { APP_ID, AUTHOR_ALIAS, DISCLAIM_ID, HELPER_ID, UPDATE_KEY_ID, UPDATE_PUBLIC_KEY } from '../shared/brand'
 
 /**
  * Guardia: los literales de identidad que no pueden importar `brand.ts` (electron-builder.js,
@@ -43,5 +44,27 @@ describe('identidad centralizada en brand.ts', () => {
     const src = read('src/main/computer/mcp-server.ts')
     expect(src).toContain(`'${APP_ID}',`)
     expect(src).not.toContain('@shared/')
+  })
+
+  it('actualizador: clave pública vacía o Ed25519 válida, e identificador de clave seguro', () => {
+    if (UPDATE_PUBLIC_KEY !== '') {
+      const raw = Buffer.from(UPDATE_PUBLIC_KEY, 'base64')
+      const der = raw.length === 32 ? Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), raw]) : raw
+      expect(createPublicKey({ key: der, format: 'der', type: 'spki' }).asymmetricKeyType).toBe('ed25519')
+    }
+    expect(UPDATE_KEY_ID).toMatch(/^[A-Za-z0-9._-]{1,64}$/)
+  })
+
+  it('verify-release.mjs lee UPDATE_PUBLIC_KEY, RELEASES_REPO y swap.sh', () => {
+    const src = read('scripts/verify-release.mjs')
+    expect(src).toContain('UPDATE_PUBLIC_KEY')
+    expect(src).toContain('RELEASES_REPO')
+    expect(src).toContain('resources/updater/swap.sh')
+  })
+
+  it('electron-builder.js lleva swap.sh en extraResources y fuera del asar', () => {
+    const src = read('electron-builder.js')
+    expect(src).toMatch(/from: 'resources\/updater',\s*to: 'updater',\s*filter: \['swap\.sh'\]/)
+    expect(src).toContain("'!resources/updater/**'")
   })
 })

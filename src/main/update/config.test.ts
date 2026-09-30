@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { resolveUpdateConfig } from './config'
+import { generateKeyPairSync } from 'node:crypto'
+import { resolveInstallConfig, resolveUpdateConfig } from './config'
 
 const env = {
   ONYXCODE_TEST_RELEASES_API: 'http://127.0.0.1:4567',
@@ -47,5 +48,62 @@ describe('resolveUpdateConfig', () => {
     expect(
       resolveUpdateConfig({ isPackaged: false, env: { ...env, ONYXCODE_TEST_RELEASES_API: 'https://example.test' }, repo: '' }).apiBase
     ).toBe('https://example.test')
+  })
+})
+
+describe('resolveInstallConfig', () => {
+  const KEY = generateKeyPairSync('ed25519').publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
+  const inst = (o: { isPackaged: boolean; env?: Record<string, string>; repo?: string; key?: string; platform?: string }) => {
+    const env = o.env ?? {}
+    const repo = o.repo ?? 'o/r'
+    const update = resolveUpdateConfig({ isPackaged: o.isPackaged, env, repo })
+    return resolveInstallConfig({
+      isPackaged: o.isPackaged,
+      env,
+      repo,
+      update,
+      updateKey: o.key ?? '',
+      updateKeyId: 'k1',
+      platform: o.platform ?? 'darwin'
+    })
+  }
+  it('empaquetada: activa solo con repo + clave + macOS; https://github.com; ignora el entorno', () => {
+    const c = inst({
+      isPackaged: true,
+      key: KEY,
+      env: { ONYXCODE_TEST_UPDATE_PUBKEY: 'otra', ONYXCODE_TEST_UPDATE_INSTALL_DIR: '/tmp/x', ...env }
+    })
+    expect(c).toEqual({
+      enabled: true,
+      downloadBase: 'https://github.com',
+      allowLoopbackHttp: false,
+      keys: [{ id: 'k1', key: KEY }],
+      testInstallDir: null
+    })
+  })
+  it('empaquetada: sin clave, sin repo o fuera de macOS queda desactivada', () => {
+    expect(inst({ isPackaged: true, key: '' }).enabled).toBe(false)
+    expect(inst({ isPackaged: true, key: KEY, repo: '' }).enabled).toBe(false)
+    expect(inst({ isPackaged: true, key: KEY, platform: 'linux' }).enabled).toBe(false)
+    expect(inst({ isPackaged: true, key: 'no-es-una-clave' }).enabled).toBe(false)
+  })
+  it('sin empaquetar: clave y carpeta de instalación de pruebas, descarga del servidor local', () => {
+    const c = inst({
+      isPackaged: false,
+      env: { ...env, ONYXCODE_TEST_UPDATE_PUBKEY: KEY, ONYXCODE_TEST_UPDATE_INSTALL_DIR: '/tmp/onyx-x' },
+      repo: ''
+    })
+    expect(c).toMatchObject({
+      enabled: true,
+      downloadBase: 'http://127.0.0.1:4567',
+      allowLoopbackHttp: true,
+      testInstallDir: '/tmp/onyx-x'
+    })
+  })
+  it('sin empaquetar y sin variables: desactivada; ruta relativa no vale', () => {
+    expect(inst({ isPackaged: false, env }).enabled).toBe(false)
+    expect(
+      inst({ isPackaged: false, env: { ...env, ONYXCODE_TEST_UPDATE_PUBKEY: KEY, ONYXCODE_TEST_UPDATE_INSTALL_DIR: 'rel' } }).testInstallDir
+    ).toBeNull()
   })
 })

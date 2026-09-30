@@ -13,6 +13,7 @@ import {
   type Semver,
   type UpdateState
 } from '@shared/update-check'
+import { IDLE_INSTALL, type InstallState } from '@shared/update-install'
 import type { UpdateConfig } from './config'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -30,6 +31,8 @@ export interface UpdateCheckerDeps {
   isEnabled: () => boolean
   stateFile: string
   onState: (state: UpdateState) => void
+  /** Instalador propio (opcional): si esta copia puede instalar y el estado de la descarga. */
+  installer?: { installable: () => boolean; install: () => InstallState }
 }
 
 interface Persisted {
@@ -72,11 +75,12 @@ async function readLimited(res: Response): Promise<string | null> {
 
 /**
  * Aviso NO bloqueante de versión nueva: una petición GET sin autenticar a la API pública de
- * GitHub como mucho cada 24 h. No descarga ni instala nada.
+ * GitHub como mucho cada 24 h. Por sí solo no descarga ni instala nada (eso lo hace `UpdateInstaller` al pulsar «Actualizar»).
  */
 export class UpdateChecker {
   private saved: Persisted
   private latest: { version: string; url: string } | null = null
+  private tag: string | null = null
   private inflight: Promise<UpdateState> | null = null
 
   constructor(private readonly d: UpdateCheckerDeps) {
@@ -107,8 +111,15 @@ export class UpdateChecker {
       latest,
       dismissed: this.saved.dismissed,
       lastCheck: this.saved.lastCheck,
-      checking: this.inflight !== null
+      checking: this.inflight !== null,
+      installable: this.d.installer?.installable() ?? false,
+      install: this.d.installer?.install() ?? IDLE_INSTALL
     }
+  }
+
+  /** Tag de la release más nueva conocida (p.ej. «v0.4.0»), o null. */
+  latestTag(): string | null {
+    return this.latest ? this.tag : null
   }
 
   /** Reemite el estado actual (p.ej. al cambiar el ajuste). */
@@ -170,6 +181,7 @@ export class UpdateChecker {
         const newer = isNewerRelease({ tag: rel.tag, prerelease: rel.prerelease, draft: rel.draft }, this.d.currentVersion)
         const parsed = parseSemver(rel.tag)
         this.latest = newer && parsed ? { version: fmt(parsed), url: safeReleaseUrl(rel.url, config.repo, rel.tag) } : null
+        this.tag = this.latest ? rel.tag : null
         this.saved = { ...this.saved, lastCheck: now, retryAfter: null }
         this.persist()
       } else if (res.status === 404) {

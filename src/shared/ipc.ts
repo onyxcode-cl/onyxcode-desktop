@@ -10,6 +10,7 @@
 import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpencodeBinResult, ServerStatus, Settings } from './types'
 import type { OpencodeAction } from './opencode-links'
 import type { UpdateState } from './update-check'
+import type { InstallState } from './update-install'
 import type { AccountState } from './account'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
@@ -45,6 +46,14 @@ export interface IpcInvokeContract {
   'app:checkUpdates': { req: void; res: UpdateState }
   /** «Más tarde»: no vuelve a avisar de esa versión (sí de una mayor). */
   'app:dismissUpdate': { req: { version: string }; res: UpdateState }
+  /** «Actualizar»: descarga y verifica la versión que el aviso ya conoce (el renderer no aporta URLs ni rutas). */
+  'app:updateDownload': { req: void; res: UpdateState }
+  /** «Cancelar» (descarga en curso) o descartar una actualización lista / con error. */
+  'app:updateCancel': { req: void; res: UpdateState }
+  /** «Reiniciar ahora»: sustituye la app por la versión ya verificada y la reabre. */
+  'app:updateInstall': { req: void; res: UpdateState }
+  /** El renderer de la ventana principal ya pintó: con la carga de la ventana completa el marcador de arranque del actualizador. */
+  'app:bootConfirm': { req: void; res: void }
 
   // cuenta (solo ventana principal; ver main/account y docs/CUENTAS-SERVIDOR.md)
   'account:state': { req: void; res: AccountState }
@@ -82,6 +91,8 @@ export interface IpcEventContract {
   'app:openTarget': NotifyTarget
   /** Cambio en el estado del aviso de versión nueva (mismo nombre que el invoke, como `opencode:status`). */
   'app:updateState': UpdateState
+  /** Progreso y fase de la descarga/instalación de una actualización. */
+  'app:updateProgress': InstallState
   /** Cambio en el estado de la cuenta (nunca incluye el token). */
   'account:changed': AccountState
 }
@@ -103,6 +114,10 @@ export const IPC_INVOKE_CHANNELS = [
   'app:updateState',
   'app:checkUpdates',
   'app:dismissUpdate',
+  'app:updateDownload',
+  'app:updateCancel',
+  'app:updateInstall',
+  'app:bootConfirm',
   'account:state',
   'account:google',
   'account:cancel',
@@ -126,6 +141,7 @@ export const IPC_EVENT_CHANNELS = [
   'settings:changed',
   'app:openTarget',
   'app:updateState',
+  'app:updateProgress',
   'account:changed'
 ] as const satisfies readonly IpcEventChannel[]
 

@@ -1,4 +1,5 @@
 import { isValidRepo } from '@shared/update-check'
+import { decodePublicKey, type UpdateKey } from './signature'
 
 export const GITHUB_API_BASE = 'https://api.github.com'
 
@@ -48,4 +49,41 @@ export function resolveUpdateConfig(i: ResolveInput): UpdateConfig {
   const d = Number(i.env.ONYXCODE_TEST_UPDATE_DELAY_MS)
   const startDelayMs = Number.isFinite(d) && d >= 0 && d <= 60_000 ? d : DEFAULT_TEST_DELAY_MS
   return { configured: isValidRepo(repo), repo, apiBase: api, startDelayMs }
+}
+
+export interface InstallConfig {
+  /** Instalador activo: repositorio válido + clave pública + macOS. Si no, la interfaz queda como el aviso de siempre. */
+  enabled: boolean
+  /** Origen de `…/{owner}/{repo}/releases/download/{tag}/…` (https://github.com; en tests el servidor local). */
+  downloadBase: string
+  allowLoopbackHttp: boolean
+  keys: UpdateKey[]
+  /** Solo pruebas (app sin empaquetar): carpeta que hace de «carpeta de instalación». */
+  testInstallDir: string | null
+}
+
+export interface InstallResolveInput extends ResolveInput {
+  update: UpdateConfig
+  /** `UPDATE_PUBLIC_KEY` y `UPDATE_KEY_ID` (brand.ts). */
+  updateKey: string
+  updateKeyId: string
+  platform: string
+}
+
+/**
+ * App empaquetada: clave de brand.ts y https://github.com, las variables de entorno se ignoran.
+ * Sin empaquetar: `ONYXCODE_TEST_UPDATE_PUBKEY` y `ONYXCODE_TEST_UPDATE_INSTALL_DIR` (con el servidor de test).
+ */
+export function resolveInstallConfig(i: InstallResolveInput): InstallConfig {
+  const key = i.isPackaged ? i.updateKey : (i.env.ONYXCODE_TEST_UPDATE_PUBKEY ?? '')
+  const keys = key !== '' && decodePublicKey(key) ? [{ id: i.updateKeyId, key }] : []
+  const enabled = i.update.configured && keys.length > 0 && i.platform === 'darwin'
+  const testDir = !i.isPackaged && i.env.ONYXCODE_TEST_UPDATE_INSTALL_DIR?.startsWith('/') ? i.env.ONYXCODE_TEST_UPDATE_INSTALL_DIR : null
+  return {
+    enabled,
+    downloadBase: i.isPackaged ? 'https://github.com' : i.update.apiBase,
+    allowLoopbackHttp: !i.isPackaged && /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(i.update.apiBase),
+    keys,
+    testInstallDir: testDir
+  }
 }

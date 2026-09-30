@@ -88,6 +88,13 @@ async function main() {
     record('tamaño del .dmg < 200 MB', size < DMG_LIMIT, `${size} bytes (${(size / 1024 / 1024).toFixed(1)} MiB) ${dmgPath}`)
   }
 
+  // 3 bis. Script de reemplazo del actualizador: presente, ejecutable por sh y cubierto por el sello del .app.
+  const swap = join(res, 'updater/swap.sh')
+  record('presente Contents/Resources/updater/swap.sh', existsSync(swap) && statSync(swap).size > 0, existsSync(swap) ? `${statSync(swap).size} bytes` : 'falta')
+  const sealFile = join(appPath, 'Contents/_CodeSignature/CodeResources')
+  const sealed = existsSync(sealFile) && readFileSync(sealFile, 'utf8').includes('Resources/updater/swap.sh')
+  record('el sello del .app cubre Resources/updater/swap.sh', sealed, sealed ? 'listado en _CodeSignature/CodeResources' : 'no aparece en CodeResources (¿firma ad-hoc sin sellar recursos?)')
+
   // 4. Avisos y licencias
   for (const f of ['THIRD_PARTY_NOTICES.md', 'licenses/electron/LICENSE', 'licenses/electron/LICENSES.chromium.html']) {
     const p = join(res, f)
