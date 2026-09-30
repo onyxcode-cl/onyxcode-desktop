@@ -403,6 +403,65 @@ lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la págin
   `fetch` de Node no usa el proxy del sistema (tras un proxy obligatorio el aviso simplemente no llega). Sin
   `retryAfter` persistido, un fallo se reintenta en el siguiente arranque pasada 1 h.
 
+## 3 sexies. Cuenta (pendiente de activación)
+
+> **Estado: pendiente de activación.** El código está completo en el cliente (Fase 1) pero **apagado**:
+> `ACCOUNT_API` (`src/shared/brand.ts`) es `null`, así que la app no exige iniciar sesión, no crea el servicio
+> de cuenta con red ni muestra la sección Ajustes › Cuenta. Se enciende solo al definir `ACCOUNT_API` y desplegar
+> el servidor (Fase 2, contrato en `docs/CUENTAS-SERVIDOR.md`). Lo que hay que retocar al activar está en
+> `docs/CUENTAS-ACTIVACION.md`. Hasta entonces, §1 y §2 y el README siguen siendo ciertos tal cual.
+
+- **Flujo.** Cuenta obligatoria con dos entradas, sin contraseñas: (a) **correo + código** de 6 dígitos (`email/start` →
+  `email/verify`) y (b) **Google por loopback** (RFC 8252) con PKCE S256, nunca por el esquema `onyxcode://`
+  (ese esquema es solo interno). La app nunca habla con Google: abre en el navegador del sistema la `auth_url` que
+  devuelve **nuestro** servidor y recibe el `code` en un receptor local; el servidor lo canjea (`/v1/auth/exchange`).
+  La pantalla de acceso está montada **antes** de la app (`<AccountGate><App/></AccountGate>`): hasta pasar no se montan
+  los efectos de `App` ni el asistente «Conecta tu IA».
+- **Receptor loopback** (`src/main/account/loopback.ts`). Escucha solo en `127.0.0.1`, puerto aleatorio, como mucho
+  5 minutos; acepta **una** petición `GET /callback` con `state` correcto (256 bits, comparación en tiempo constante) y
+  se cierra. Otras rutas/métodos, `Host` distinto de `127.0.0.1:<puerto>` (anti DNS-rebinding) o `state` incorrecto se
+  rechazan sin gastar el turno (una página ajena no puede romper el inicio de sesión) y tras 20 rechazos se abandona.
+  Respuesta: una página mínima «Puedes volver a la app» con CSP `default-src 'none'`, `no-store` y `no-referrer`.
+- **Sesión.** Token **opaco** emitido por el servidor. Se guarda en `userData/account.bin` cifrado con
+  `safeStorage` (Llavero de macOS), modo 0600, **solo en main**; el renderer recibe un estado público
+  `{required,status,email,provider,graceEndsAt,checking,memoryOnly}` **sin token** (hay pruebas unitarias y E2E que lo
+  comprueban). Si `safeStorage.isEncryptionAvailable()` es falso, la sesión vive solo en memoria (la pantalla avisa) y
+  no se escribe nada en claro. Un archivo ilegible se borra y cuenta como «sin sesión». Solo con la app **sin
+  empaquetar** y `ONYXCODE_TEST_PLAIN_STORE=1` se usa un archivo de prueba en claro (`account.test.json`) para que los
+  E2E no toquen el Llavero real.
+- **Validación y gracia.** Al arrancar y cada 24 h, `GET /v1/me` con `Authorization: Bearer`. Sesión válida → abre;
+  **401** (revocada/caducada) → bloquea al instante y borra la sesión; **404/410** (cuenta borrada) → bloquea y la
+  borra; servidor sin respuesta (red, 5xx, 429…) → la app abre **mientras la última validación correcta tenga menos de
+  30 días** y si no, bloquea («Sin conexión con el servidor», con «Reintentar»). Una validación anotada «en el futuro»
+  (reloj atrasado más de 5 min) no da gracia. Lógica pura y exhaustivamente probada en `src/shared/account.ts`.
+- **Qué sale a la red** (todo por `net.fetch` desde main; la CSP del renderer no cambia y sigue sin permitir internet):
+  `POST /v1/auth/email/start {email}`, `POST /v1/auth/email/verify {email,code}`, `POST /v1/auth/google/start
+  {redirect_uri,state,code_challenge}` (solo el *challenge*), `POST /v1/auth/exchange {code,code_verifier,redirect_uri}`,
+  `GET /v1/me`, `POST /v1/logout`, `DELETE /v1/me`; todas con `credentials:'omit'` (sin cookies), `redirect:'error'`,
+  sin cabecera `Origin`, tiempo máximo de 10 s, respuesta de hasta 256 KB y `User-Agent: <APP_NAME>/<versión>`. El
+  servidor ve el correo, la IP y el momento. **No** sale ninguna conversación, archivo ni clave de IA.
+- **Dominio único.** La app solo habla con el origen fijo `ACCOUNT_API` (`https://`, sin ruta ni credenciales; uno
+  inválido deja la cuenta activa pero sin servidor: **falla cerrado**, nunca «sin login»). `ONYXCODE_ACCOUNT_URL` solo
+  se respeta con la app sin empaquetar (servidor falso de E2E). La URL del navegador para Google solo se abre si es
+  `https:` (y, sin empaquetar, `http://127.0.0.1`).
+- **Quick Entry, atajo global y bandeja** solo actúan con la cuenta al día (`isAccountAllowed()`); sin ella, «Nueva
+  conversación», Quick Entry y Ajustes de la bandeja no hacen nada (quedan «Abrir» y «Salir») y una Quick Entry abierta
+  se oculta al perderse la sesión. Con la cuenta apagada nada de esto cambia.
+- **IPC.** Canales `account:*` (estado, Google, cancelar, reintentar, enviar/verificar código, cerrar sesión, borrar,
+  exportar) y evento `account:changed`; **solo** la ventana principal (no están en `CHANNEL_ROLES`), con esquemas
+  estrictos (correo ≤ 254, código `^\d{6}$`). «Borrar mi cuenta» exige confirmación y **no** toca `opencode-data`
+  (claves de IA) ni las conversaciones.
+- **Riesgos conocidos.** (1) El bloqueo es del lado cliente: quien modifique su copia de la app puede saltárselo; la
+  cuenta sirve para gestionar y contar usuarios, no es DRM. (2) Quien controle el servidor controla la `auth_url` a la
+  que se manda al navegador (siempre `https`) y puede emitir sesiones, pero no ve datos locales. (3) Adelantar/atrasar el
+  reloj del sistema dentro de la ventana de 30 días alarga la gracia. (4) Otro proceso del mismo usuario con acceso
+  al Llavero (y su aviso) podría leer el token. (5) Sin *certificate pinning*: un CA comprometido o un proxy con
+  certificado instalado ve el tráfico. (6) `net.fetch` usa la pila de Chromium y el proxy del sistema. (7) El correo es
+  un dato personal: hay obligaciones legales (borradores `docs/PRIVACIDAD-BORRADOR.md` y `docs/TERMINOS-BORRADOR.md`,
+  pendientes de revisión por un abogado). (8) Nada de esto está probado aún contra Google ni contra un servidor real.
+- **Pruebas.** Servidor falso `e2e/fake-auth/server.mjs` (con sus propios tests) y `e2e/specs/account.e2e.ts`; nunca hay
+  red real, Google ni correo.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —
