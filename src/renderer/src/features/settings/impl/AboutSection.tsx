@@ -6,8 +6,9 @@ import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { api } from '../../../lib/api'
 import { engineNoticeText, engineSummary } from '../../../lib/engine-notice'
-import { CHECK_FAILED_TEXT, checkResultText, lastCheckText } from '../../../lib/update-notice'
-import { useUpdateState } from '../../../lib/use-update-state'
+import { CHECK_FAILED_TEXT, checkResultText, lastCheckText, updateView } from '../../../lib/update-notice'
+import { runUpdateAction, useUpdateState } from '../../../lib/use-update-state'
+import { ProgressBar } from '../../../components/ProgressBar'
 import { useSettings } from '../../../stores/settings'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
@@ -61,6 +62,7 @@ export function AboutSection(): React.JSX.Element {
     })
   }
   const configured = update?.configured ?? false
+  const view = updateView(update, { later: false })
 
   return (
     <div>
@@ -113,7 +115,7 @@ export function AboutSection(): React.JSX.Element {
           label="Buscar actualizaciones automáticamente"
           description={
             configured
-              ? `Una vez al día como mucho, la app pide a GitHub (api.github.com) cuál es la última versión publicada. Solo se envía esa petición con el nombre y la versión de la app (${APP_NAME}/${update?.current ?? info?.version ?? ''}); ningún dato tuyo ni identificador. No descarga ni instala nada.`
+              ? `Una vez al día como mucho, la app pide a GitHub (api.github.com) cuál es la última versión publicada. Solo se envía esa petición con el nombre y la versión de la app (${APP_NAME}/${update?.current ?? info?.version ?? ''}); ningún dato tuyo ni identificador. Solo descarga cuando pulsas Actualizar.`
               : 'Esta compilación no tiene configurado dónde buscar versiones nuevas.'
           }
         >
@@ -123,6 +125,14 @@ export function AboutSection(): React.JSX.Element {
             label="Buscar actualizaciones automáticamente"
             disabled={!configured}
           />
+        </Row>
+        <Row label="Versión actual">
+          <span data-testid="update-current" className="font-mono text-sm">
+            v{update?.current ?? info?.version ?? '…'}
+          </span>
+        </Row>
+        <Row label="Canal" description="Solo versiones estables.">
+          <span className="text-sm">Estable</span>
         </Row>
         <Row
           label="Buscar ahora"
@@ -141,6 +151,39 @@ export function AboutSection(): React.JSX.Element {
             {update?.checking ? 'Buscando…' : 'Buscar ahora'}
           </Button>
         </Row>
+        {view && update && (
+          <Row
+            label={
+              view.phase === 'idle' || view.phase === 'cancelled' ? `Versión ${update.latest?.version ?? ''} disponible` : 'Actualización'
+            }
+            description={
+              <span data-testid="update-status" data-phase={view.phase}>
+                <span className="block text-fg">
+                  {view.text}
+                  {view.percent !== null && <span className="ml-1.5 font-mono tabular-nums text-muted">{view.percent} %</span>}
+                </span>
+                {view.progress && view.phase !== 'installing' && view.phase !== 'restarting' && (
+                  <span className="mt-1.5 block">
+                    <ProgressBar percent={view.percent} label={view.text} />
+                  </span>
+                )}
+              </span>
+            }
+          >
+            <div className="flex gap-2">
+              {view.actions.map((a) => (
+                <Button
+                  key={a.id}
+                  size="sm"
+                  variant={a.primary ? 'primary' : 'secondary'}
+                  onClick={() => runUpdateAction(a.id, update, setUpdate)}
+                >
+                  {a.label}
+                </Button>
+              ))}
+            </div>
+          </Row>
+        )}
       </Card>
 
       <SubTitle>Enlaces</SubTitle>
