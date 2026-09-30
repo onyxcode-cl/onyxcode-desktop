@@ -4,7 +4,7 @@
  */
 import { execFile } from 'node:child_process'
 import { accessSync, constants, realpathSync, statSync } from 'node:fs'
-import { isAbsolute } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { OPENCODE_SDK_VERSION } from '@shared/opencode-links'
 import type { OpencodeInfo, OpencodeSource } from '@shared/types'
@@ -26,13 +26,24 @@ export function isCompatible(version: string | null, sdk: string = OPENCODE_SDK_
   return a === c && b === d
 }
 
+/** Entorno de la sonda: XDG_* en un temporal para que `--version` no cree carpetas en los datos del CLI del usuario. */
+export function probeEnv(): Record<string, string> {
+  const root = join(tmpdir(), 'onyxcode-version-probe')
+  return minimalEnv({
+    XDG_DATA_HOME: join(root, 'data'),
+    XDG_CONFIG_HOME: join(root, 'config'),
+    XDG_CACHE_HOME: join(root, 'cache'),
+    XDG_STATE_HOME: join(root, 'state')
+  })
+}
+
 /** Ejecuta `<bin> --version`; devuelve la salida recortada (stdout, o stderr si stdout está vacío). */
 export function runVersion(bin: string, timeoutMs = VERSION_TIMEOUT_MS): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       bin,
       ['--version'],
-      { env: minimalEnv(), cwd: tmpdir(), timeout: timeoutMs, maxBuffer: 64 * 1024, windowsHide: true },
+      { env: probeEnv(), cwd: tmpdir(), timeout: timeoutMs, maxBuffer: 64 * 1024, windowsHide: true },
       (err, stdout, stderr) => {
         if (err) return reject(err)
         resolve((stdout.toString().trim() || stderr.toString().trim()).slice(0, 500))

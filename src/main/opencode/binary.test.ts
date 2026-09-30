@@ -10,6 +10,7 @@ import {
   isCompatible,
   parseVersion,
   pickOpencode,
+  probeEnv,
   validateOpencodeBin,
   warmCliVersion,
   type PickInput
@@ -28,6 +29,15 @@ function script(name: string, body: string, mode = 0o755): string {
   chmodSync(file, mode)
   return file
 }
+
+describe('probeEnv', () => {
+  it('manda los XDG_* a un temporal y no a los datos del usuario', () => {
+    const env = probeEnv()
+    for (const k of ['XDG_DATA_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME']) {
+      expect(env[k]).toContain(join(tmpdir(), 'onyxcode-version-probe'))
+    }
+  })
+})
 
 describe('parseVersion / isCompatible', () => {
   it('extrae el número de versión', () => {
