@@ -14,12 +14,32 @@ OnyxCode es un cliente de escritorio para macOS, de código abierto, que usa el 
 Para usar la app:
 
 - macOS con Apple Silicon (arm64).
-- OpenCode CLI instalado (`~/.opencode/bin/opencode` o en el `PATH`) y con el proveedor
-  `opencode-go` autenticado (`opencode auth login`). La app **no** lee ni copia tus credenciales:
-  el propio `opencode serve` las usa.
+- Nada más que instalar: **OpenCode ya viene incluido en el instalador**. El CLI de OpenCode es **opcional**
+  (si ya lo tienes, la app puede usarlo; ver «Motor»). Ya no hace falta `opencode auth login`: la API key de
+  OpenCode Go se pega en el asistente de primer uso (o en Ajustes › Modelos) y la guarda OpenCode.
 - Opcional: `OPENCODE_BIN=/ruta/a/opencode` para forzar un binario concreto.
 
+**Sobre tus credenciales.** OnyxCode no guarda tus claves de proveedor: las guarda OpenCode en su propio
+`auth.json` (`~/.local/share/opencode/auth.json`, o donde apunte `XDG_DATA_HOME`). Ese fichero lo lee el motor
+y, además, el proceso principal de la app lo lee al arrancar una Tarea con sandbox: pone la clave real solo
+en un proxy local (fuera del sandbox) y le pasa al motor de la Tarea un valor centinela, de modo que el
+agente sandboxeado nunca ve tu clave real. La app no la registra ni la envía a ningún sitio salvo al
+proveedor. Detalle en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md).
+
 Para desarrollar: además, Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
+
+## Motor
+
+El motor que hace el trabajo de fondo es **OpenCode oficial**, sin modificar y fijado a una versión que
+probamos con esta versión de la app. Va **incluido dentro del instalador** (por eso no tienes que instalar
+nada) y lo actualizamos nosotros más o menos una vez al mes, con cada versión nueva de OnyxCode.
+
+Si prefieres tu propio OpenCode, puedes usarlo: la app usa tu CLI si tiene una versión compatible con la
+probada y, si no, el motor incluido. También puedes elegir un binario concreto desde el asistente
+(«Usar mi CLI…») o en Ajustes. Si el motor en uso no es el probado, la app te avisa (aviso cerrable) y
+Ajustes › Acerca de muestra qué motor y qué versión estás usando. Los avisos de licencia de lo que
+incluimos están en [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md); cómo se empaqueta y actualiza, en
+[`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md).
 
 ## Uso (desarrollo)
 
@@ -44,7 +64,8 @@ Variables útiles:
 
 ## Cómo funciona
 
-1. El proceso principal (`src/main/opencode/server.ts`) busca el binario `opencode`, elige un puerto
+1. El proceso principal (`src/main/opencode/server.ts`) resuelve el binario `opencode` (`OPENCODE_BIN` →
+   ruta de Ajustes → tu CLI si es compatible → motor incluido), elige un puerto
    libre y lanza `opencode serve --hostname 127.0.0.1 --port <n> --cors null` con usuario/clave
    aleatorios (`OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD`, HTTP Basic). Espera a
    `/global/health`, lo reinicia con backoff si se cae y lo mata al cerrar la app.
