@@ -14,8 +14,12 @@
 # Escribe DIR_MARCADORES/result.json con {"version","ok","rolledBack","error"}.
 #
 # Modo de prueba (solo para la prueba de integración): ONYXCODE_SWAP_TEST_NO_OPEN=1 solo se acepta si
-# DESTINO está bajo $TMPDIR; entonces `open -n` se sustituye por ejecutar Contents/MacOS/toy y los
-# tiempos de espera se pueden acortar con ONYXCODE_SWAP_WAIT_PID / ONYXCODE_SWAP_WAIT_BOOT (segundos).
+# DESTINO está bajo $TMPDIR; entonces `open -n` se sustituye por ejecutar Contents/MacOS/$ONYXCODE_SWAP_TEST_EXEC
+# (por defecto «toy») sin pasar por LaunchServices, y los tiempos de espera se pueden acortar con
+# ONYXCODE_SWAP_WAIT_PID / ONYXCODE_SWAP_WAIT_BOOT (segundos). Además:
+#   ONYXCODE_SWAP_TEST_USERDATA=/ruta  → la app se lanza con --user-data-dir=/ruta (nunca toca el userData real)
+#   ONYXCODE_SWAP_TEST_FAIL_NEW=1      → la app NUEVA se lanza con ONYXCODE_TEST_FAIL_BOOT=1 (rollback forzado; solo lo
+#                                        honra un build de prueba); la antigua restaurada se lanza sin esa variable.
 set -eu
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
@@ -50,6 +54,9 @@ case "$BAK" in "$(dirname "$TARGET")"/.OnyxCode.app.bak-*) ;; *) echo "copia fue
 TEST=0
 WAIT_PID=60
 WAIT_BOOT=90
+TEST_EXEC=toy
+TEST_UD=
+TEST_FAIL_NEW=0
 if [ "${ONYXCODE_SWAP_TEST_NO_OPEN:-}" = 1 ]; then
   TMP_ROOT=${TMPDIR:-/nonexistent}
   TMP_ROOT=${TMP_ROOT%/}
@@ -59,6 +66,18 @@ if [ "${ONYXCODE_SWAP_TEST_NO_OPEN:-}" = 1 ]; then
   esac
   WAIT_PID=${ONYXCODE_SWAP_WAIT_PID:-$WAIT_PID}
   WAIT_BOOT=${ONYXCODE_SWAP_WAIT_BOOT:-$WAIT_BOOT}
+  TEST_EXEC=${ONYXCODE_SWAP_TEST_EXEC:-toy}
+  case "$TEST_EXEC" in '' | *[!A-Za-z0-9._-]*) echo "ejecutable de prueba no válido" >&2; exit 64 ;; esac
+  TEST_UD=${ONYXCODE_SWAP_TEST_USERDATA:-}
+  if [ -n "$TEST_UD" ]; then
+    case "$TEST_UD" in
+      /*) ;;
+      *) echo "userdata de prueba no absoluto" >&2; exit 64 ;;
+    esac
+    case "$TEST_UD" in *'
+'* | *'"'* | *'\'* | */../* | */..) echo "userdata de prueba no válido" >&2; exit 64 ;; esac
+  fi
+  [ "${ONYXCODE_SWAP_TEST_FAIL_NEW:-}" = 1 ] && TEST_FAIL_NEW=1
 fi
 
 FAILED="$(dirname "$TARGET")/.OnyxCode.app.failed-$VER"
@@ -67,9 +86,15 @@ write_result() { # ok rolledBack error
   printf '{"version":"%s","ok":%s,"rolledBack":%s,"error":"%s"}\n' "$VER" "$1" "$2" "$3" > "$RESULT.tmp" && mv -f "$RESULT.tmp" "$RESULT"
 }
 
-launch() { # ruta de la .app
+launch() { # ruta de la .app; $2 = 1 si es la app NUEVA (solo cuenta en modo de prueba)
   if [ "$TEST" = 1 ]; then
-    ONYXCODE_SWAP_TEST_DIR="$DIR" "$1/Contents/MacOS/toy" >/dev/null 2>&1 </dev/null &
+    FAIL=
+    [ "${2:-0}" = 1 ] && [ "$TEST_FAIL_NEW" = 1 ] && FAIL=1
+    if [ -n "$TEST_UD" ]; then
+      ONYXCODE_SWAP_TEST_DIR="$DIR" ONYXCODE_TEST_FAIL_BOOT="$FAIL" "$1/Contents/MacOS/$TEST_EXEC" --user-data-dir="$TEST_UD" >/dev/null 2>&1 </dev/null &
+    else
+      ONYXCODE_SWAP_TEST_DIR="$DIR" ONYXCODE_TEST_FAIL_BOOT="$FAIL" "$1/Contents/MacOS/$TEST_EXEC" >/dev/null 2>&1 </dev/null &
+    fi
   else
     open -n "$1"
   fi
@@ -116,7 +141,7 @@ fi
 
 # 4. Abrir la nueva y esperar su confirmación de arranque.
 rm -f "$DIR/booting-$VER" "$DIR/boot-ok-$VER"
-if ! launch "$TARGET"; then
+if ! launch "$TARGET" 1; then
   WAIT_BOOT=0
 fi
 i=0

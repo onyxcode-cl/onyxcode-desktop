@@ -8,8 +8,15 @@ import { canWrite, nodeInstallerFs, nodeRun, UpdateInstaller } from '../update/i
 import { clearSwapResult, readSwapResult, updateDir } from '../update/markers'
 import { currentAppRealPath, startSwap } from '../update/swap'
 import { bootMarkers } from '../update/boot'
+import { IS_TEST_BUILD } from '../update/test-build'
 import { settingsStore } from '../store'
 import { broadcast, handle } from './handle'
+
+function testEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(env)) if (v !== undefined && /^ONYXCODE_(SWAP_|TEST_)/.test(k)) out[k] = v
+  return out
+}
 
 /**
  * Aviso de versión nueva + actualizador propio: servicios en main y canales
@@ -18,9 +25,12 @@ import { broadcast, handle } from './handle'
  */
 export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
   const userData = app.getPath('userData')
-  const updateConfig = resolveUpdateConfig({ isPackaged: app.isPackaged, env: process.env, repo: RELEASES_REPO })
+  // Las variables de prueba solo se honran sin empaquetar o en un build de prueba (`ONYXCODE_TEST_BUILD=1`, compilación
+  // aparte, docs/DISTRIBUCION.md §11); un build normal las ignora siempre.
+  const useRealConfig = app.isPackaged && !IS_TEST_BUILD
+  const updateConfig = resolveUpdateConfig({ isPackaged: useRealConfig, env: process.env, repo: RELEASES_REPO })
   const installConfig = resolveInstallConfig({
-    isPackaged: app.isPackaged,
+    isPackaged: useRealConfig,
     env: process.env,
     repo: RELEASES_REPO,
     update: updateConfig,
@@ -76,7 +86,7 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
     let inApplications: boolean
     if (app.isPackaged) {
       appPath = currentAppRealPath(app.getPath('exe'))
-      inApplications = typeof app.isInApplicationsFolder === 'function' && app.isInApplicationsFolder()
+      inApplications = IS_TEST_BUILD || (typeof app.isInApplicationsFolder === 'function' && app.isInApplicationsFolder())
     } else if (installConfig.testInstallDir) {
       appPath = join(installConfig.testInstallDir, 'OnyxCode.app')
       inApplications = true
@@ -136,6 +146,8 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
         {
           scriptSource: join(process.resourcesPath, 'updater', 'swap.sh'),
           ctx: { userData, currentApp, currentVersion: app.getVersion(), pid: process.pid },
+          // Solo un build de prueba pasa variables al script (modo de prueba de swap.sh; docs/DISTRIBUCION.md §11).
+          extraEnv: IS_TEST_BUILD ? testEnv(process.env) : undefined,
           quit: () => app.quit()
         },
         ready.stagedApp,

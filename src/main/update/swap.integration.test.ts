@@ -12,9 +12,11 @@ APP=$(cd "$(dirname "$0")/../.." && pwd)
 VER=$(cat "$APP/Contents/Resources/version")
 D="$ONYXCODE_SWAP_TEST_DIR"
 : > "$D/started-$VER"
+echo "$*" > "$D/args-$VER"
+echo "[$ONYXCODE_TEST_FAIL_BOOT]" > "$D/failenv-$VER"
 echo $$ > "$D/booting-$VER"
 [ -f "$APP/Contents/Resources/crash-boot" ] && exit 3
-if [ -f "$APP/Contents/Resources/fail-boot" ]; then
+if [ -f "$APP/Contents/Resources/fail-boot" ] || [ "$ONYXCODE_TEST_FAIL_BOOT" = 1 ]; then
   while :; do sleep 1; done
 fi
 echo $$ > "$D/boot-ok-$VER"
@@ -103,6 +105,32 @@ const deadPid = (): number => {
   pids.push(pid)
   return pid
 }
+
+describe('swap.sh: modo de prueba para apps reales', () => {
+  it('lanza con --user-data-dir y solo la NUEVA lleva ONYXCODE_TEST_FAIL_BOOT=1 (rollback forzado)', async () => {
+    const s = setup()
+    const ud = join(root, 'userData-real')
+    const r = runSwap(s, deadPid(), { ONYXCODE_SWAP_TEST_USERDATA: ud, ONYXCODE_SWAP_TEST_FAIL_NEW: '1', ONYXCODE_SWAP_WAIT_BOOT: '3' })
+    expect(r.status).toBe(1)
+    expect(version(s.target)).toBe('1.0.0')
+    expect(result(s)).toMatchObject({ ok: false, rolledBack: true })
+    for (let i = 0; i < 40 && !existsSync(join(s.dir, 'failenv-1.0.0')); i++) await new Promise((ok) => setTimeout(ok, 100))
+    expect(readFileSync(join(s.dir, 'failenv-2.0.0'), 'utf8').trim()).toBe('[1]') // la nueva recibe la variable
+    expect(readFileSync(join(s.dir, 'failenv-1.0.0'), 'utf8').trim()).toBe('[]') // la antigua restaurada, no
+    expect(readFileSync(join(s.dir, 'args-2.0.0'), 'utf8').trim()).toBe(`--user-data-dir=${ud}`)
+    expect(readFileSync(join(s.dir, 'args-1.0.0'), 'utf8').trim()).toBe(`--user-data-dir=${ud}`)
+    pids.push(Number(readFileSync(join(s.dir, 'booting-2.0.0'), 'utf8').trim()))
+  }, 30_000)
+
+  it('rechaza un ejecutable o un userdata peligrosos', () => {
+    const s = setup()
+    const pid = deadPid()
+    expect(runSwap(s, pid, { ONYXCODE_SWAP_TEST_EXEC: '../../bin/sh' }).status).toBe(64)
+    expect(runSwap(s, pid, { ONYXCODE_SWAP_TEST_USERDATA: 'relativo' }).status).toBe(64)
+    expect(runSwap(s, pid, { ONYXCODE_SWAP_TEST_USERDATA: '/tmp/a/../b' }).status).toBe(64)
+    expect(version(s.target)).toBe('1.0.0')
+  })
+})
 
 describe('swap.sh', () => {
   it('reemplazo correcto: copia de seguridad, nueva en su sitio, boot-ok y result ok', () => {
