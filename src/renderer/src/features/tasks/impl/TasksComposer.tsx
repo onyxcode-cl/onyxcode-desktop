@@ -9,6 +9,7 @@
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
+import { sandboxModelNotice } from '@shared/sandbox-providers'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -61,6 +62,10 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   useModeModel('tasks')
   const model = currentTasksModel()
   const variant = currentTasksVariant()
+  const conn = useTasks((s) => s.conn)
+  const requestedFull = useTasks((s) => s.fullAccess)
+  const sandboxed = conn ? conn.sandboxed && !conn.fullAccess : !requestedFull
+  const providerNotice = sandboxModelNotice(sandboxed, model.providerID)
   const [attaching, setAttaching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -207,6 +212,11 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           )}
         </div>
       </div>
+      {providerNotice && (
+        <p role="status" data-testid="sandbox-provider-notice" className="mt-1.5 text-xs text-warning">
+          {providerNotice}
+        </p>
+      )}
       {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
     </div>
   )
