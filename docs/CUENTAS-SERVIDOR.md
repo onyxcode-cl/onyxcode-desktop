@@ -44,22 +44,54 @@ Cuerpo: `{"email": "...", "code": "123456"}` (`code` = `^\d{6}$`, si no `400 inv
 - `200 {"token","email","provider":"email","expires_at"}`. Si la cuenta no existe, **se crea** aquí. Consume el código.
 - `401 invalid_code` (incorrecto, caducado o ya usado; respuesta uniforme), `429 too_many_attempts`.
 
+### Flujo de Google (OAuth web mediado por el servidor)
+
+Decisión: el cliente de Google es de tipo **«Aplicación web»**, con **una sola URI de redirección autorizada**,
+`https://api.onyxcode.cl/v1/auth/google/callback`. Google nunca redirige al loopback de la app: redirige al servidor, y el
+servidor entrega a la app un código propio de un solo uso (*handoff*) por su loopback. El `client_secret` de Google vive
+**solo en el servidor**; la app no lo conoce ni habla con Google.
+
+**El cliente Electron no cambia.** Solo exige que `auth_url` sea `https:` y que a su loopback llegue
+`GET /callback?code=…&state=…` con `code` que cumpla `^[A-Za-z0-9._~/+=-]{1,2048}$` (el handoff base64url lo cumple) y el
+`state` que la app envió. El PKCE de la app (`code_challenge`/`code_verifier`) protege el tramo servidor → app; el PKCE
+propio del servidor (`verifier_g`) protege el tramo servidor → Google.
+
 ### `POST /v1/auth/google/start`
-Cuerpo: `{"redirect_uri","state","code_challenge","code_challenge_method":"S256"}`.
+Cuerpo: `{"redirect_uri","state","code_challenge","code_challenge_method":"S256"}` (lo que manda la app).
 - Validar `redirect_uri` con `^http://127\.0\.0\.1:\d{1,5}/callback$` (loopback, RFC 8252), `state` ≥ 16 caracteres y
   `code_challenge_method = "S256"`; si no `400 invalid_redirect_uri | invalid_request`.
-- Guardar (TTL 10 min) `{hash(state), code_challenge, redirect_uri, nonce}` y responder `200 {"auth_url":"https://accounts.google.com/o/oauth2/v2/auth?..."}`
-  con `client_id` (tipo «Aplicación de escritorio» de Google), `redirect_uri`, `response_type=code`, `scope=openid email`,
-  `state`, `code_challenge`/`code_challenge_method=S256` (el mismo de la app), `nonce`, `prompt=select_account`.
-- Google redirige al loopback de la app (`GET <redirect_uri>?code=…&state=…`); el servidor **no** recibe esa redirección.
+- Generar `state_g`, `nonce` y `verifier_g` **propios del servidor** (CSPRNG; distintos del `state` y del PKCE de la app).
+  Guardar en `oauth_pending` (TTL 10 min) `{hash(state_g), state_app, code_challenge_app, redirect_uri_app, nonce, verifier_g}`.
+- Responder `200 {"auth_url":"https://accounts.google.com/o/oauth2/v2/auth?..."}` con `client_id`,
+  `redirect_uri=https://api.onyxcode.cl/v1/auth/google/callback` (el del servidor, **no** el de la app),
+  `response_type=code`, `scope=openid email`, `state=state_g`, `code_challenge=S256(verifier_g)`,
+  `code_challenge_method=S256`, `nonce`, `prompt=select_account`.
+
+### `GET /v1/auth/google/callback`
+Lo invoca el navegador del usuario, redirigido por Google: `?code=<código de Google>&state=<state_g>` (o `?error=…`).
+No lleva `Origin` ni Bearer y no devuelve JSON: responde redirecciones `302` o una página HTML.
+- Buscar `hash(state_g)` en `oauth_pending`: debe existir y no haber caducado (10 min); es de **un solo uso** (se consume al
+  leerlo, tenga éxito o no). Si el `state` es **desconocido** o caducado: página HTML `400` y **no se redirige** (no hay un
+  `redirect_uri_app` de confianza al que volver).
+- Si Google devolvió `error` (p. ej. el usuario canceló): `302` a `redirect_uri_app?error=access_denied&state=<state_app>`.
+- Canjear el código en el endpoint de tokens de Google con `code`, `client_id`, `client_secret`, `redirect_uri` (el del
+  servidor) y `code_verifier=verifier_g`.
+- Validar el `id_token`: firma con el JWKS de Google, `iss` (`https://accounts.google.com`), `aud` (nuestro `client_id`),
+  `exp` (tolerancia de reloj de **60 s**), `nonce` (el guardado) y **`email_verified === true`**.
+- Guardar `sub` y correo, y un **handoff** aleatorio de 32 bytes (CSPRNG, base64url) del que **solo se guarda el hash**,
+  asociado a `code_challenge_app` y `redirect_uri_app`, con TTL corto y de un solo uso.
+- Responder `302` a `redirect_uri_app?code=<handoff>&state=<state_app>`.
+- Cualquier fallo del canje o de la validación: `302` a `redirect_uri_app?error=server_error&state=<state_app>`.
 
 ### `POST /v1/auth/exchange`
-Cuerpo: `{"code","code_verifier","redirect_uri"}` (el `code` de Google).
-- El servidor canjea el código con el endpoint de tokens de Google enviando `code`, `code_verifier`, `redirect_uri`,
-  `client_id` (y `client_secret` si el tipo de cliente lo exige). Validar el `id_token`: firma (JWKS), `iss`, `aud`, `exp`,
-  `nonce` y **`email_verified = true`**. Crear o vincular el usuario por `sub` (+ correo) y abrir sesión.
-- `200 {"token","email","provider":"google","expires_at"}`. Cualquier fallo (código usado/inválido, `redirect_uri` distinto,
-  PKCE que no cuadra, `id_token` inválido): `401 invalid_code`. El `code` es de **un solo uso** aunque falle.
+Cuerpo: `{"code","code_verifier","redirect_uri"}` (el `code` es el **handoff** del servidor, no el de Google).
+- Comprobar el hash del handoff, que no haya caducado y que `redirect_uri` sea **idéntico** al guardado, y que
+  `S256(code_verifier) == code_challenge_app`. **Marcar el handoff como usado ANTES de validar** (un intento fallido también
+  lo consume, para que no se pueda adivinar el verifier).
+- Crear o vincular el usuario: **primero por `sub`** de Google; si no existe, por el **correo verificado** de una cuenta ya
+  existente (p. ej. creada con correo + código); si no, se crea. Abrir sesión.
+- `200 {"token","email","provider":"google","expires_at"}`. Cualquier fallo (handoff desconocido, usado o caducado,
+  `redirect_uri` distinto, PKCE que no cuadra): `401 invalid_code`, sin distinguir la causa.
 
 ### `GET /v1/me`   (Bearer)
 - `200 {"email","provider","created_at","last_seen","session_token"?}`. Es también el contenido de «Descargar mis datos»:

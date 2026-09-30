@@ -10,6 +10,9 @@ activarlas. Esta lista es el «paso 0» de la activación: no se cambian antes p
       `docs/PRIVACIDAD-BORRADOR.md` y `docs/TERMINOS-BORRADOR.md`). Si quedan vacías, la app muestra el borrador corto
       de `src/shared/account-legal.ts` **y eso no debe salir en una versión pública**.
 - [ ] Mantener alineado `src/shared/account-legal.ts` (texto corto en la app) con los documentos largos.
+- [ ] Google Cloud: cliente OAuth de tipo **«Aplicación web»** con una única URI de redirección,
+      `https://api.onyxcode.cl/v1/auth/google/callback`; el `client_secret` solo en el almacén de secretos del servidor
+      (ver `docs/CUENTAS-SERVIDOR.md` §2). El cliente Electron no cambia.
 - [ ] `npm run verify` completo y una prueba manual con el servidor real: correo + código, Google real, cerrar sesión,
       descargar datos, borrar cuenta, servidor caído (gracia) y Llavero real.
 

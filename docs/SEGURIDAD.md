@@ -414,7 +414,10 @@ lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la págin
 - **Flujo.** Cuenta obligatoria con dos entradas, sin contraseñas: (a) **correo + código** de 6 dígitos (`email/start` →
   `email/verify`) y (b) **Google por loopback** (RFC 8252) con PKCE S256, nunca por el esquema `onyxcode://`
   (ese esquema es solo interno). La app nunca habla con Google: abre en el navegador del sistema la `auth_url` que
-  devuelve **nuestro** servidor y recibe el `code` en un receptor local; el servidor lo canjea (`/v1/auth/exchange`).
+  devuelve **nuestro** servidor. El flujo es OAuth **web mediado por el servidor**: Google redirige al callback
+  `https://api.onyxcode.cl/v1/auth/google/callback` (no al loopback), el servidor canjea con Google (el `client_secret`
+  vive solo allí), valida el `id_token` y redirige al loopback de la app con un código propio de un solo uso; la app lo
+  recibe en un receptor local y el servidor lo canjea (`/v1/auth/exchange`). Detalle en `docs/CUENTAS-SERVIDOR.md` §2.
   La pantalla de acceso está montada **antes** de la app (`<AccountGate><App/></AccountGate>`): hasta pasar no se montan
   los efectos de `App` ni el asistente «Conecta tu IA».
 - **Receptor loopback** (`src/main/account/loopback.ts`). Escucha solo en `127.0.0.1`, puerto aleatorio, como mucho
