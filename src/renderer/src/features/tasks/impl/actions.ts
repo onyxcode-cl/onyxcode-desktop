@@ -3,7 +3,7 @@ import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FOLDER_MODE_LABEL_ES, type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
-import { sandboxModelNotice } from '@shared/sandbox-providers'
+import { sandboxSendBlocked } from '@shared/sandbox-providers'
 import type { ModelRef } from '@shared/types'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errorMessage } from '../../../lib/opencode'
@@ -378,10 +378,14 @@ function withAttachments(text: string): string {
  */
 export async function sendToTask(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
-  // Sandbox: el servidor solo tiene OpenCode Go; con otro proveedor, error claro (no fallo silencioso).
+  // Sandbox: el servidor solo tiene OpenCode Go; con un modelo de otro proveedor, error claro (no fallo silencioso).
   const conn0 = useTasks.getState().conn
-  const unavailable = sandboxModelNotice(!!conn0 && conn0.sandboxed && !conn0.fullAccess, (model ?? currentTasksModel()).providerID)
-  if (unavailable) throw new Error(unavailable)
+  if (conn0 && conn0.sandboxed && !conn0.fullAccess) {
+    const providers = await client.config.providers({ directory: folder }).catch(() => null)
+    const available = providers?.data ? providers.data.providers.map((p) => p.id) : null
+    const blocked = sandboxSendBlocked(available, (model ?? currentTasksModel()).providerID)
+    if (blocked) throw new Error(blocked)
+  }
   if (useTasks.getState().conn?.fullAccess === true) {
     // Tras una parada NO se reanuda solo: hace falta "Reanudar control" (estado en main).
     const st = await cw('computer:state').catch(() => null)

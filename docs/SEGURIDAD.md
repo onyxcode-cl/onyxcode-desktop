@@ -136,8 +136,8 @@ con `placeholderAuthContent` (`provider-egress.ts`), una lista blanca estricta:
   que apunta al proxy;
 - todo lo demás (otros proveedores, entradas OAuth, entradas sin `key`, cualquier otro campo) se **omite**;
   sin ninguno el contenido es `{}` (el motor arranca igual, verificado con opencode 1.18.33). Por eso en
-  Tareas con sandbox solo está disponible OpenCode Go; la interfaz avisa y rechaza el envío con otro
-  proveedor («Para otros proveedores usa Control total, Chat o Code»).
+  Tareas con sandbox solo está disponible OpenCode Go (más los modelos gratuitos de OpenCode, que no usan
+  clave); la interfaz avisa y rechaza el envío si el servidor sandboxeado no tiene el proveedor del modelo («Para otros proveedores usa Control total, Chat o Code»).
 - Cubierto por `provider-egress.test.ts` (incluye una prueba de propiedad: la salida nunca contiene una
   clave real de entrada, y una comprobación estática de que `sandbox.ts` solo asigna
   `OPENCODE_AUTH_CONTENT` con esa función).
