@@ -209,6 +209,27 @@ test('script personalizado: modelo, texto, herramienta, permiso, pregunta y erro
   s.close()
 })
 
+test('modelo de un proveedor no conectado: session.error con ProviderModelNotFoundError y vuelve a idle', async () => {
+  await ctl('POST', 'reset', {})
+  const s = await openSse()
+  const sid = (await call('POST', `/session?${q()}`, { title: 'T' })).data.id
+  // `opencode` (gratuito, origen custom) no está conectado por defecto.
+  assert.equal((await call('GET', '/config/providers')).data.providers.some((p) => p.id === 'opencode'), false)
+  const r = await call('POST', `/session/${sid}/prompt_async?${q()}`, { parts: [{ type: 'text', text: 'hola' }], model: { providerID: 'opencode', modelID: 'fake-free-model' } })
+  assert.equal(r.status, 204)
+  await s.until((e) => e.some((x) => x.payload.type === 'session.idle'))
+  const err = s.events.find((x) => x.payload.type === 'session.error').payload.properties.error
+  assert.equal(err.name, 'UnknownError')
+  assert.match(err.data.message, /^ProviderModelNotFoundError: Model not found: opencode\/fake-free-model\. Did you mean: fake-free-model\?\n\s+at <anonymous>/)
+  // Conectado con /__e2e/set, el mismo modelo responde normal.
+  await ctl('POST', 'set', { connectedProviders: ['opencode'] })
+  assert.ok((await call('GET', '/config/providers')).data.providers.some((p) => p.id === 'opencode' && p.source === 'custom'))
+  const ok = await call('POST', `/session/${sid}/message?${q()}`, { parts: [{ type: 'text', text: 'hola' }], model: { providerID: 'opencode', modelID: 'fake-free-model' } })
+  assert.equal(ok.status, 200)
+  assert.equal(ok.data.parts[0].text, 'Respuesta simulada: hola')
+  s.close()
+})
+
 test('abort durante un retraso termina la ejecución con MessageAbortedError', async () => {
   await ctl('POST', 'reset', {})
   const s = await openSse()

@@ -210,7 +210,9 @@ export function createFakeServer(options = {}) {
     ]),
     provider('opencode-go', 'OpenCode Go', [model('opencode-go', 'fake-go-model', 'Fake Go Model')], 'api'),
     provider('anthropic', 'Anthropic', [model('anthropic', 'fake-claude', 'Fake Claude')], 'api'),
-    provider('openai', 'OpenAI', [model('openai', 'fake-gpt', 'Fake GPT')], 'api')
+    provider('openai', 'OpenAI', [model('openai', 'fake-gpt', 'Fake GPT')], 'api'),
+    // Gratuito preinstalado del motor real: origen `custom`, sin clave. Solo está conectado si se pide (connected.json o /__e2e/set).
+    provider('opencode', 'OpenCode Zen', [model('opencode', 'fake-free-model', 'Fake Free')], 'custom')
   ]
   const connectedIds = () => [...new Set([...(state.connectedOverride ?? ['fake', 'opencode-go']), ...Object.keys(state.authProviders)])]
   const connectedProviders = () => catalog().filter((p) => connectedIds().includes(p.id))
@@ -546,7 +548,23 @@ export function createFakeServer(options = {}) {
   }
 
   /** Encola una ejecución en la sesión (una a la vez, como el real). */
+  // Como el motor real: un modelo de un proveedor no conectado falla con `ProviderModelNotFoundError` (con pila cruda).
+  function failModelNotFound(s, m) {
+    const message = `ProviderModelNotFoundError: Model not found: ${m.providerID}/${m.modelID}. Did you mean: ${m.modelID}?\n    at <anonymous> (/$bunfs/root/chunk.js:1:1)`
+    emit('session.error', { sessionID: s.info.id, error: { name: 'UnknownError', data: { message } } }, s.info.directory)
+    setStatus(s, { type: 'idle' })
+  }
+
   function enqueue(s, body, runOpts) {
+    const m = body.model
+    if (m && typeof m === 'object' && m.providerID && !connectedIds().includes(m.providerID)) {
+      const p = s.chain.then(async () => {
+        await new Promise((r) => setTimeout(r, runOpts?.startDelayMs ?? 0))
+        failModelNotFound(s, { providerID: m.providerID, modelID: m.modelID ?? m.id })
+      })
+      s.chain = p.catch(() => undefined)
+      return p
+    }
     const text = promptText(body.parts)
     const p = s.chain.then(() => execute(s, body, takeScript(s.info.id, text) ?? null, runOpts))
     s.chain = p.catch(() => undefined)
