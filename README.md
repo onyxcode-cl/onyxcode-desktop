@@ -21,9 +21,11 @@ Para usar la app:
 
 **Sobre tus credenciales.** OnyxCode no guarda tus claves de proveedor: las guarda OpenCode en su propio
 `auth.json` (`~/.local/share/opencode/auth.json`, o donde apunte `XDG_DATA_HOME`). Ese fichero lo lee el motor
-y, además, el proceso principal de la app lo lee al arrancar una Tarea con sandbox: pone la clave real solo
-en un proxy local (fuera del sandbox) y le pasa al motor de la Tarea un valor centinela, de modo que el
-agente sandboxeado nunca ve tu clave real. La app no la registra ni la envía a ningún sitio salvo al
+y, además, el proceso principal de la app lo lee al arrancar una Tarea con sandbox. En **Tareas con sandbox
+solo se usa OpenCode Go**: su clave real queda en un proxy local fuera del sandbox y el motor de la Tarea
+recibe un valor falso; los demás proveedores (y los inicios de sesión OAuth) **no se pasan** al sandbox, así
+que ahí no están disponibles. En **Control total** y en **Chat/Code no hay aislamiento de credenciales**: el
+motor lee tu `auth.json` como haría el CLI. La app no registra la clave ni la envía a ningún sitio salvo al
 proveedor. Detalle en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md).
 
 Para desarrollar: además, Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
