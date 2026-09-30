@@ -393,14 +393,19 @@ describe('UpdateInstaller: descarga', () => {
 })
 
 describe('UpdateInstaller: contenido del ZIP', () => {
-  it.each(['../evil', 'OnyxCode.app/../../x', '/etc/passwd', 'Otra.app/x', '__MACOSX/._x', 'OnyxCode.app/a\\b'])(
-    'entrada %j: no se extrae nada',
-    async (entry) => {
-      const { inst, calls } = make(world(), { entries: ['OnyxCode.app/', entry] })
-      expect(await go(inst)).toMatchObject({ phase: 'error', code: 'zip' })
-      expect(calls.some((c) => c[0] === '/usr/bin/ditto')).toBe(false)
-    }
-  )
+  it.each([
+    '../evil',
+    'OnyxCode.app/../../x',
+    '/etc/passwd',
+    'Otra.app/x',
+    '__MACOSX/._x',
+    '__MACOSX/OnyxCode.app/evil',
+    'OnyxCode.app/a\\b'
+  ])('entrada %j: no se extrae nada', async (entry) => {
+    const { inst, calls } = make(world(), { entries: ['OnyxCode.app/', entry] })
+    expect(await go(inst)).toMatchObject({ phase: 'error', code: 'zip' })
+    expect(calls.some((c) => c[0] === '/usr/bin/ditto')).toBe(false)
+  })
   it('ZIP que se expande demasiado', async () => {
     const { inst, calls } = make(world(), { uncompressed: 50 * 1024 * 1024 * 1024 })
     expect(await go(inst)).toMatchObject({ code: 'zip' })

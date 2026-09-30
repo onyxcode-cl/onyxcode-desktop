@@ -93,15 +93,32 @@ export function validateManifest(m: UpdateManifest, ctx: ManifestContext): Manif
   return { ok: true }
 }
 
-/** Entrada del listado del ZIP (`zipinfo -1`): solo rutas relativas dentro de OnyxCode.app/. */
+const SIDECAR_DIR = '__MACOSX'
+
+function safeParts(path: string): string[] | null {
+  const parts = path.split('/')
+  if (parts[parts.length - 1] === '') parts.pop() // directorio: termina en «/»
+  if (parts.length === 0 || parts[0] !== APP_BUNDLE_NAME) return null
+  return parts.every((p) => p.length > 0 && p !== '.' && p !== '..') ? parts : null
+}
+
+/**
+ * Entrada del listado del ZIP (`zipinfo -1`): solo rutas relativas dentro de OnyxCode.app/. Única excepción: los metadatos
+ * AppleDouble que `ditto --sequesterRsrc` guarda bajo `__MACOSX/OnyxCode.app/…/._nombre` (ditto -x los aplica como atributos
+ * del archivo y no crea nada fuera de la .app); con las mismas reglas de ruta.
+ */
 export function isSafeZipEntry(entry: string): boolean {
   if (typeof entry !== 'string' || entry.length === 0 || entry.length > 1024) return false
   if (entry.includes('\0') || entry.includes('\\')) return false
   if (entry.startsWith('/') || /^[A-Za-z]:/.test(entry)) return false
-  const parts = entry.split('/')
-  if (parts[parts.length - 1] === '') parts.pop() // directorio: termina en «/»
-  if (parts.length === 0 || parts[0] !== APP_BUNDLE_NAME) return false
-  return parts.every((p) => p.length > 0 && p !== '.' && p !== '..')
+  if (entry === `${SIDECAR_DIR}/`) return true
+  if (entry.startsWith(`${SIDECAR_DIR}/`)) {
+    const rest = entry.slice(SIDECAR_DIR.length + 1)
+    const parts = safeParts(rest)
+    if (!parts) return false
+    return rest.endsWith('/') || parts[parts.length - 1].startsWith('._')
+  }
+  return safeParts(entry) !== null
 }
 
 export interface InstallLocationInput {
