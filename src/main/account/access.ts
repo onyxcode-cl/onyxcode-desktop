@@ -17,3 +17,10 @@ export function isAccountAllowed(): boolean {
     return false // ante un fallo del servicio de cuenta, cerrado
   }
 }
+
+/** Envuelve una acción para que solo corra con la cuenta al día (atajo global, bandeja). */
+export function whenAccountAllowed<A extends unknown[]>(fn: (...args: A) => void): (...args: A) => void {
+  return (...args) => {
+    if (isAccountAllowed()) fn(...args)
+  }
+}
