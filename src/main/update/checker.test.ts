@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CHECK_INTERVAL_MS, type UpdateState } from '@shared/update-check'
+import { IDLE_INSTALL } from '@shared/update-install'
 import { UpdateChecker, type UpdateCheckerDeps } from './checker'
 
 const T0 = 1_800_000_000_000
@@ -44,6 +45,28 @@ beforeEach(() => {
   timers = []
   fetchMock = vi.fn(async () => release('v1.1.0'))
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+})
+
+describe('UpdateChecker: instalador', () => {
+  it('sin instalador: installable=false e install inactivo', async () => {
+    const c = make()
+    await c.check(false)
+    expect(c.getState()).toMatchObject({ installable: false, install: IDLE_INSTALL })
+    expect(c.latestTag()).toBe('v1.1.0')
+  })
+  it('con instalador: refleja installable y el estado de la descarga; latestTag es null si no hay versión nueva', async () => {
+    let ok = true
+    const install = { ...IDLE_INSTALL, phase: 'downloading' as const, version: '1.1.0', received: 1, total: 4 }
+    const c = make({ installer: { installable: () => ok, install: () => install } })
+    expect(c.latestTag()).toBeNull()
+    await c.check(false)
+    expect(c.getState()).toMatchObject({ installable: true, install })
+    ok = false
+    expect(c.getState().installable).toBe(false)
+    fetchMock.mockResolvedValueOnce(release('v1.0.0'))
+    await c.check(true)
+    expect(c.latestTag()).toBeNull()
+  })
 })
 
 describe('UpdateChecker', () => {

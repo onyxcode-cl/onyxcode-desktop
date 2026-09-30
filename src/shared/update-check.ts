@@ -1,4 +1,5 @@
 /** Lógica pura (sin Electron) del aviso de versión nueva. */
+import type { InstallState } from './update-install'
 
 export const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const HOUR_MS = 60 * 60 * 1000
@@ -12,6 +13,10 @@ export interface UpdateState {
   dismissed: string | null
   lastCheck: number | null
   checking: boolean
+  /** true si esta copia puede descargar e instalar sola (clave de firma, repositorio y carpeta con permiso). */
+  installable: boolean
+  /** Estado de la descarga/instalación (idle si no hay nada en curso). */
+  install: InstallState
 }
 
 export interface Semver {

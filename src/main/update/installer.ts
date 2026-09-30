@@ -146,6 +146,13 @@ export class UpdateInstaller {
     return p
   }
 
+  /** Muestra como error el resultado de un reemplazo anterior que no salió bien (lo deja swap.sh). */
+  preset(code: InstallErrorCode, version: string): void {
+    if (this.state.phase !== 'idle') return
+    this.state = { phase: 'error', version, received: 0, total: 0, code }
+    this.d.onState(this.state)
+  }
+
   cancel(): void {
     if (this.state.phase !== 'downloading' && this.state.phase !== 'verifying') return
     this.cancelled = true

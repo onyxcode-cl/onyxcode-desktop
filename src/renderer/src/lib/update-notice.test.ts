@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { UpdateState } from '@shared/update-check'
+import { IDLE_INSTALL } from '@shared/update-install'
 import { checkResultText, downloadUrl, lastCheckText, updateNoticeText } from './update-notice'
 
 const base: UpdateState = {
@@ -10,7 +11,9 @@ const base: UpdateState = {
   latest: { version: '1.1.0', url: 'https://github.com/o/r/releases/tag/v1.1.0' },
   dismissed: null,
   lastCheck: 1000,
-  checking: false
+  checking: false,
+  installable: false,
+  install: IDLE_INSTALL
 }
 
 describe('updateNoticeText', () => {
