@@ -7,6 +7,7 @@
  *  │          │ composer (Plan / Build)       │ Archivos         │
  *  └──────────┴──────────────────────────────┴──────────────────┘
  */
+import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -36,6 +37,7 @@ import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
 import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
+import { useCodeAiGate } from './ComposerControls'
 import { MessageStream } from './MessageStream'
 import { useVisibleFsVersion } from './useVisibleFsVersion'
 import { TranscriptLoading } from '../../../components/TranscriptLoader'
@@ -573,6 +575,8 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   )
   const questions = useMemo(() => questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid)), [questionsAll, sessions, sid])
   const client = useClient()
+  const aiGate = useCodeAiGate()
+  const setModel = useCode((s) => s.setModel)
   const busy = run === 'busy' || run === 'retry'
 
   return (
@@ -611,7 +615,10 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       )}
       {sid && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
-      <Composer busy={busy} disabled={!client} />
+      <div className="mx-auto w-full max-w-3xl px-6">
+        <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setModel} />
+      </div>
+      <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />
     </div>
   )
 }

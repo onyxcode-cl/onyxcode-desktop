@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Brain, Check, CircleSlash, ListChecks, PencilLine, Shield, Wand2 } from 'lucide-react'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
+import { useAiGate, type AiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
 import { useSettings } from '../../../stores/settings'
 import { useCode } from './store'
@@ -24,6 +25,13 @@ const PERMISSION_MODES: { id: PermissionMode; label: string; hint: string; icon:
   { id: 'auto', label: 'Auto', hint: 'Ediciones y comandos seguros sin preguntar; pregunta lo riesgoso', icon: <Wand2 size={14} /> },
   { id: 'bypass', label: 'Bypass', hint: 'Permite todo sin preguntar (incluye bash). Úsalo con cuidado.', icon: <CircleSlash size={14} /> }
 ]
+
+/** Modelo pedido (el elegido en Code o el predeterminado) resuelto contra las IA conectadas. */
+export function useCodeAiGate(): AiGate {
+  const model = useCode((s) => s.model)
+  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  return useAiGate(model ?? defaultModel)
+}
 
 /** Cierra al hacer clic fuera o con Esc. */
 function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivElement | null> {
@@ -131,10 +139,11 @@ export function EffortChip(): React.JSX.Element | null {
   const setVariant = useCode((s) => s.setVariant)
   const defaultModel = useSettings((s) => s.settings.defaultModel)
   const providers = useProviders((s) => s.providers)
+  const gate = useCodeAiGate()
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open, () => setOpen(false))
 
-  const effective = model ?? defaultModel
+  const effective = gate.effective ?? model ?? defaultModel
   const info = providers.find((p) => p.id === effective.providerID)?.models[effective.modelID]
   const variants = info?.variants ? Object.keys(info.variants) : []
   if (variants.length === 0) return null
@@ -180,7 +189,8 @@ export function ModelControls(): React.JSX.Element {
   const activeSessionID = useCode((s) => s.activeSessionID)
   const messages = useCode((s) => (activeSessionID ? s.messages[activeSessionID] : undefined))
   const defaultModel = useSettings((s) => s.settings.defaultModel)
-  const effective = model ?? defaultModel
+  const gate = useCodeAiGate()
+  const effective = gate.effective ?? model ?? defaultModel
 
   return (
     <div className="flex items-center gap-0.5">
