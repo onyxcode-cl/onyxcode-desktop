@@ -11,6 +11,7 @@ import { cw } from '../../tasks/impl/bridge'
 import { MODE_META } from './meta'
 import { SCHEDULE_PRESETS, describeCron, fromDaysSpec, fullDate, sameSchedule, scheduleText, toDaysSpec, untilText } from './schedule'
 import { closeEditor, saveRoutine, useRoutines } from './store'
+import { ensureRoutinesTermsAck } from './terms'
 import { tildify } from '../../../lib/paths'
 import { isSubmitKey } from '../../../lib/textarea'
 
@@ -178,6 +179,8 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const submit = async (): Promise<void> => {
     setTouched(true)
     if (!canSave) return
+    // Rutina programada y activa: primero el aviso sobre los términos de OpenCode (si aún no se reconoció).
+    if (!(await ensureRoutinesTermsAck(form.enabled))) return
     setSaving(true)
     setError(null)
     try {

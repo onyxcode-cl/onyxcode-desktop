@@ -16,3 +16,5 @@ e2e/.artifacts/
 
 # Notas privadas de analisis de software de terceros: NO publicar (ver docs/PUBLICACION.md)
 docs/analisis-claude/
+# OpenCode oficial descargado por scripts/fetch-opencode.mjs (segun resources/opencode-bin/pin.json)
+resources/opencode-bin/bin/

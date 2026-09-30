@@ -42,7 +42,9 @@ module.exports = {
     // Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
     '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}',
-    '!resources/launcher/**'
+    '!resources/launcher/**',
+    // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
+    '!resources/opencode-bin/**'
   ],
   // Los agentes y las skills de oficina (se copian a userData/opencode-config al arrancar; OpenCode
   // NUNCA escribe en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
@@ -60,6 +62,26 @@ module.exports = {
       from: 'resources/launcher/bin',
       to: 'launcher',
       filter: ['onyxcode-disclaim']
+    },
+    // OpenCode oficial fijado en resources/opencode-bin/pin.json (lo descarga `npm run package` con
+    // scripts/fetch-opencode.mjs) → Contents/Resources/opencode/opencode. Dentro del .app (no en
+    // userData) para que el perfil Seatbelt de Tareas pueda ejecutarlo. electron-builder/osx-sign
+    // recorre TODO el bundle y vuelve a firmar cada Mach-O que encuentra (aquí también este).
+    {
+      from: 'resources/opencode-bin/bin',
+      to: 'opencode',
+      filter: ['opencode']
+    },
+    // Avisos de terceros: los propios (MIT de OpenCode, Bun/JavaScriptCore, Electron) y los de Electron/Chromium,
+    // que electron-builder no deja dentro del .app → Contents/Resources/THIRD_PARTY_NOTICES.md y licenses/electron/
+    {
+      from: 'THIRD_PARTY_NOTICES.md',
+      to: 'THIRD_PARTY_NOTICES.md'
+    },
+    {
+      from: 'node_modules/electron/dist',
+      to: 'licenses/electron',
+      filter: ['LICENSE', 'LICENSES.chromium.html']
     }
   ],
   // Fuses de Electron (docs/SEGURIDAD.md). RunAsNode off es posible porque el MCP de computer use
@@ -94,7 +116,8 @@ module.exports = {
           entitlementsInherit: 'build/entitlements.mac.plist',
           binaries: [
             'Contents/Resources/computer-use/bin/cu-helper',
-            'Contents/Resources/launcher/onyxcode-disclaim'
+            'Contents/Resources/launcher/onyxcode-disclaim',
+            'Contents/Resources/opencode/opencode'
           ]
         }
       : {}),

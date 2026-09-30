@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { APP_NAME } from '@shared/brand'
 import type { VersionsInfo } from '@shared/ipc-extras'
-import type { AppInfo } from '@shared/types'
+import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { api } from '../../../lib/api'
+import { engineNoticeText, engineSummary } from '../../../lib/engine-notice'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
 import { getExtras } from './extras'
@@ -16,6 +17,7 @@ export function AboutSection(): React.JSX.Element {
   const [versions, setVersions] = useState<VersionsInfo | null>(null)
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [server, setServer] = useState<{ version: string; healthy: boolean } | null>(null)
+  const [engine, setEngine] = useState<OpencodeInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,6 +26,7 @@ export function AboutSection(): React.JSX.Element {
       .then(setVersions)
       .catch((err: unknown) => setError(errorMessage(err)))
     void api.invoke('app:info').then((r) => r.ok && setInfo(r.data))
+    void api.invoke('app:opencodeInfo').then((r) => r.ok && setEngine(r.data))
   }, [])
 
   useEffect(() => {
@@ -52,6 +55,9 @@ export function AboutSection(): React.JSX.Element {
       <Card>
         <Row label={APP_NAME} description={info?.isDev ? 'Modo desarrollo' : undefined}>
           <span className="font-mono text-sm">v{versions?.app ?? info?.version ?? '…'}</span>
+        </Row>
+        <Row label="Motor" description={engineNoticeText(engine) ?? undefined}>
+          <span className="font-mono text-sm">{engineSummary(engine) ?? '—'}</span>
         </Row>
         <Row label="Servidor OpenCode" description={connection ? <span className="font-mono">{connection.baseUrl}</span> : 'Sin conexión'}>
           <span className="font-mono text-sm">

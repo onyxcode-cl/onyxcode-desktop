@@ -83,10 +83,16 @@ describe('buildInlineConfig: ids de agente', () => {
   })
 })
 
+describe('buildInlineConfig: share', () => {
+  it.each(scenarios)('%s: share queda en disabled (nada se sube a opencode.ai)', (_n, input) => {
+    expect(buildInlineConfig(input).share).toBe('disabled')
+  })
+})
+
 describe('buildInlineConfig: permisos del agente de tareas', () => {
   it('sandbox vacío: solo oculta el agente computer', () => {
     const c = buildInlineConfig(empty)
-    expect(c).toEqual({ autoupdate: false, agent: { [COMPUTER_AGENT_ID]: { disable: true } } })
+    expect(c).toEqual({ autoupdate: false, share: 'disabled', agent: { [COMPUTER_AGENT_ID]: { disable: true } } })
   })
 
   it('sandbox + extras: external_directory pregunta por defecto y permite las carpetas extra (orden importa)', () => {

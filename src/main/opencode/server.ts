@@ -10,12 +10,14 @@ import { embeddedBrowser } from '../embedded-browser/service'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
+import { app } from 'electron'
 import { randomBytes } from 'node:crypto'
 import { delimiter, join } from 'node:path'
 import { getFreePort, waitForHealth } from '../util/net'
 import { APP_SLUG } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
+import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
 import { killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
 import { withDisclaim } from '../process/disclaim'
@@ -117,7 +119,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private async spawnAndWait(): Promise<OpencodeConnection> {
     this.setStatus({ state: 'starting', error: undefined })
     try {
-      const bin = findOpencodeBinary()
+      const bin = (await resolveOpencodeAsync())?.path
       if (!bin) {
         throw new Error(
           'No se encontró el binario `opencode`. Instálalo (curl -fsSL https://opencode.ai/install | bash), elige el binario en el asistente o define OPENCODE_BIN.'
@@ -260,11 +262,46 @@ function configuredBinary(): string {
   }
 }
 
-/** Orden: `OPENCODE_BIN` → `settings.opencodeBin` → PATH y carpetas habituales. */
-export function findOpencodeBinary(configured: string = configuredBinary()): string | null {
-  const fromEnv = process.env.OPENCODE_BIN
-  if (fromEnv && isExecutable(fromEnv)) return fromEnv
-  if (configured && isExecutable(configured)) return configured
+/** Variable SOLO para tests (se ignora en la app empaquetada): directorio que hace de `Resources/opencode`. */
+const TEST_BUNDLED_ENV = 'ONYXCODE_TEST_BUNDLED_DIR'
+
+function appIsPackaged(): boolean {
+  try {
+    return app.isPackaged === true
+  } catch {
+    return false
+  }
+}
+
+export interface BundledOptions {
+  isPackaged?: boolean
+  resourcesPath?: string
+  /** Valor de `ONYXCODE_TEST_BUNDLED_DIR` (por defecto, el de `process.env`). */
+  testDir?: string
+}
+
+/**
+ * OpenCode incluido en la app: `<Resources>/opencode/opencode`, solo si la app está empaquetada y
+ * el archivo existe y es ejecutable. En desarrollo es null (el repo vive en ~/Documents y un binario
+ * bajo `resources/` fallaría por TCC): allí se usa el CLI del usuario u `OPENCODE_BIN`. Para tests,
+ * `ONYXCODE_TEST_BUNDLED_DIR` (honrada ÚNICAMENTE si `!isPackaged`) apunta a un directorio que
+ * hace de `Resources/opencode`.
+ */
+export function bundledOpencodePath(o: BundledOptions = {}): string | null {
+  const packaged = o.isPackaged ?? appIsPackaged()
+  let candidate: string | null = null
+  if (packaged) {
+    const res = o.resourcesPath ?? process.resourcesPath
+    if (res) candidate = join(res, 'opencode', 'opencode')
+  } else {
+    const dir = o.testDir ?? process.env[TEST_BUNDLED_ENV]
+    if (dir) candidate = join(dir, 'opencode')
+  }
+  return candidate && existsSync(candidate) && isExecutable(candidate) ? candidate : null
+}
+
+/** CLI del usuario: PATH y carpetas habituales. */
+function findCliBinary(): string | null {
   const name = process.platform === 'win32' ? 'opencode.exe' : 'opencode'
   const dirs = [EXTRA_PATH_DIRS[0], ...(process.env.PATH ?? '').split(delimiter), ...EXTRA_PATH_DIRS.slice(1)]
   for (const dir of dirs) {
@@ -273,4 +310,39 @@ export function findOpencodeBinary(configured: string = configuredBinary()): str
     if (existsSync(candidate) && isExecutable(candidate)) return candidate
   }
   return null
+}
+
+/**
+ * Resolución SÍNCRONA (solo usa la versión del CLI ya cacheada): `OPENCODE_BIN` → `settings.opencodeBin`
+ * → CLI compatible → embebido → CLI incompatible. Sin embebido nunca mide versiones.
+ */
+export function resolveOpencode(
+  configured: string = configuredBinary(),
+  bundled: string | null = bundledOpencodePath()
+): ResolvedOpencode | null {
+  return pickOpencode({
+    env: process.env.OPENCODE_BIN,
+    configured,
+    cli: findCliBinary(),
+    bundled,
+    isExecutable,
+    cliVersion: cachedCliVersion
+  })
+}
+
+/** Igual que `resolveOpencode`, pero midiendo antes (async, con timeout y cacheado por ruta+mtime) la versión del CLI si hace falta. */
+export async function resolveOpencodeAsync(configured: string = configuredBinary()): Promise<ResolvedOpencode | null> {
+  const bundled = bundledOpencodePath()
+  if (bundled) {
+    const env = process.env.OPENCODE_BIN
+    const decided = (env && isExecutable(env)) || (configured && isExecutable(configured))
+    const cli = decided ? null : findCliBinary()
+    if (cli) await warmCliVersion(cli)
+  }
+  return resolveOpencode(configured, bundled)
+}
+
+/** Ruta del binario según `resolveOpencode` (firma histórica; sin medir versiones). */
+export function findOpencodeBinary(configured: string = configuredBinary()): string | null {
+  return resolveOpencode(configured)?.path ?? null
 }

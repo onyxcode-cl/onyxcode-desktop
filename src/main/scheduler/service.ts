@@ -30,6 +30,7 @@ import type { TasksManager } from '../tasks/manager'
 import { loadManagedPolicy } from '../tasks/policy'
 import { getMemory, type TasksProjectsStore } from '../tasks/projects'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
+import { shouldRunUnattended } from '@shared/routines-terms'
 import { decideUnattended } from './approvals'
 import { nextRunAfter, validateSchedule } from './schedule'
 
@@ -175,6 +176,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
   private running = new Map<string, AbortController>()
   private readonly bootAt = Date.now()
   private firstTick = true
+  /** Para registrar una sola vez (no cada tick) que se omiten las rutinas por falta del aviso. */
+  private skippedForTerms = false
   private offResume: (() => void) | null = null
   /** Concesiones temporales de hosts por ejecución (con recuento: varias rutinas pueden solaparse). */
   private hostGrants = new Map<string, { count: number; owned: boolean }>()
@@ -430,6 +433,19 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const now = Date.now()
     const first = this.firstTick
     this.firstTick = false
+    // Sin el reconocimiento del aviso sobre los términos de OpenCode no se ejecuta nada por horario.
+    // «Ejecutar ahora» (`runNow`) no pasa por aquí y sigue funcionando siempre.
+    if (!shouldRunUnattended(this.deps.getSettings?.())) {
+      const active = this.load().routines.filter((r) => r.enabled).length
+      if (active > 0 && !this.skippedForTerms) {
+        console.warn(
+          `[scheduler] ${active} rutina(s) activa(s) NO se ejecutan solas: falta reconocer el aviso sobre los términos de OpenCode (Rutinas). «Ejecutar ahora» sigue disponible.`
+        )
+      }
+      this.skippedForTerms = active > 0
+      return
+    }
+    this.skippedForTerms = false
     for (const r of this.load().routines) {
       if (!r.enabled || this.running.has(r.id)) continue
       let due: number | null

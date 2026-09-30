@@ -20,7 +20,7 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { findOpencodeBinary } from '../opencode/server'
+import { resolveOpencodeAsync } from '../opencode/server'
 import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
@@ -150,7 +150,7 @@ export interface StartTasksServerOptions {
  * cwd = folder. Resuelve cuando `/global/health` responde.
  */
 export async function startTasksServer(folder: string, options: StartTasksServerOptions = {}): Promise<TasksServerHandle> {
-  const bin = findOpencodeBinary()
+  const bin = (await resolveOpencodeAsync())?.path
   if (!bin) throw new Error('No se encontró el binario `opencode` (instálalo o define OPENCODE_BIN).')
   if (!existsSync(folder)) throw new Error(`La carpeta no existe: ${folder}`)
 

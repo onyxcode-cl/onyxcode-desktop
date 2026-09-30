@@ -127,6 +127,25 @@ lista blanca (`proxy-policy.ts`):
 - `extraAllowedHosts` de la política gestionada.
 Con `disableCustomHosts` (política) no se pueden añadir sitios ni se suman los hosts de MCP remotos.
 
+**Credenciales de proveedor en Tareas con sandbox (falla cerrado).** El proceso main lee el `auth.json`
+del usuario (ilegible dentro del sandbox) y construye el `OPENCODE_AUTH_CONTENT` del servidor sandboxeado
+con `placeholderAuthContent` (`provider-egress.ts`), una lista blanca estricta:
+- solo los proveedores de `PROVIDER_TARGETS` (hoy `opencode-go`) con `key`: su clave real vive en un
+  `CredentialProxy` del proceso main (fuera del sandbox, con token en la ruta) y el servidor recibe una
+  clave **centinela aleatoria** (`sandboxed-placeholder-<hex>`, no derivada de la real) más un `baseURL`
+  que apunta al proxy;
+- todo lo demás (otros proveedores, entradas OAuth, entradas sin `key`, cualquier otro campo) se **omite**;
+  sin ninguno el contenido es `{}` (el motor arranca igual, verificado con opencode 1.18.33). Por eso en
+  Tareas con sandbox solo está disponible OpenCode Go (más los modelos gratuitos de OpenCode, que no usan
+  clave); la interfaz avisa y rechaza el envío si el servidor sandboxeado no tiene el proveedor del modelo («Para otros proveedores usa Control total, Chat o Code»).
+- Cubierto por `provider-egress.test.ts` (incluye una prueba de propiedad: la salida nunca contiene una
+  clave real de entrada, y una comprobación estática de que `sandbox.ts` solo asigna
+  `OPENCODE_AUTH_CONTENT` con esa función).
+**Sin aislamiento de credenciales fuera de ese caso:** en Control total (sin sandbox) y en Chat/Code el
+motor lee el `auth.json` real como haría el CLI. Los MCP del usuario marcados «Disponible en Tareas»
+llevan sus propios `environment`/`headers` en la config inline del servidor: son secretos que el usuario
+decide compartir con Tareas al marcarlos.
+
 **MCP del usuario dentro de Tareas** (`mcp-tasks.ts`). Solo entran los servidores activos y marcados
 «Disponible en Tareas» (`userData/tasks-mcp.json`; nunca se escribe en `opencode/opencode.json`).
 - **MCP locales**: se lanzan con el prefijo `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u

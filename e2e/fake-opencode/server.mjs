@@ -34,6 +34,15 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+function initialConnected() {
+  try {
+    const list = JSON.parse(readFileSync(new URL('./connected.json', import.meta.url), 'utf8'))
+    return Array.isArray(list) ? list : null
+  } catch {
+    return null
+  }
+}
+
 export const FAKE_VERSION = '1.18.32'
 const DEFAULT_MODEL = { providerID: 'fake', modelID: 'fake-model' }
 
@@ -82,7 +91,8 @@ export function createFakeServer(options = {}) {
       mcpAdded: {}, // POST /mcp
       configPatch: {},
       authProviders: {},
-      connectedOverride: null,
+      // `connected.json` junto al falso (lista de ids; el sidecar no hereda variables de entorno ajenas) fija los proveedores conectados desde el arranque.
+      connectedOverride: initialConnected(),
       fileStatus: {},
       commands: null,
       requests: [],
@@ -202,7 +212,7 @@ export function createFakeServer(options = {}) {
     provider('anthropic', 'Anthropic', [model('anthropic', 'fake-claude', 'Fake Claude')], 'api'),
     provider('openai', 'OpenAI', [model('openai', 'fake-gpt', 'Fake GPT')], 'api')
   ]
-  const connectedIds = () => state.connectedOverride ?? ['fake', 'opencode-go', ...Object.keys(state.authProviders)]
+  const connectedIds = () => [...new Set([...(state.connectedOverride ?? ['fake', 'opencode-go']), ...Object.keys(state.authProviders)])]
   const connectedProviders = () => catalog().filter((p) => connectedIds().includes(p.id))
   const defaultModels = (list) => Object.fromEntries(list.map((p) => [p.id, Object.keys(p.models)[0]]))
 
@@ -905,7 +915,31 @@ export function createFakeServer(options = {}) {
     const all = catalog()
     json(c.res, { all, default: defaultModels(connectedProviders()), connected: connectedIds().filter((id) => all.some((p) => p.id === id)) })
   })
-  route('GET', '/provider/auth', (c) => json(c.res, Object.fromEntries(catalog().map((p) => [p.id, [{ type: 'api', label: 'API key' }]]))))
+  route('GET', '/provider/auth', (c) =>
+    json(
+      c.res,
+      Object.fromEntries(
+        catalog().map((p) => [
+          p.id,
+          p.id === 'openai'
+            ? [
+                { type: 'oauth', label: 'Cuenta (E2E)' },
+                { type: 'api', label: 'API key' }
+              ]
+            : [{ type: 'api', label: 'API key' }]
+        ])
+      )
+    )
+  )
+  // OAuth falso: «authorize» devuelve una URL local con método `code`; «callback» exige el código y deja el proveedor conectado.
+  route('POST', '/provider/{providerID}/oauth/authorize', (c) =>
+    json(c.res, { url: `http://127.0.0.1/fake-oauth/provider/${c.params.providerID}`, method: 'code', instructions: 'Pega el código (E2E)' })
+  )
+  route('POST', '/provider/{providerID}/oauth/callback', (c) => {
+    if (!c.body?.code) return badRequest(c.res, 'code requerido')
+    state.authProviders[c.params.providerID] = { type: 'oauth' }
+    json(c.res, true)
+  })
   route('GET', '/config/providers', (c) => {
     const providers = connectedProviders()
     json(c.res, { providers, default: defaultModels(providers) })

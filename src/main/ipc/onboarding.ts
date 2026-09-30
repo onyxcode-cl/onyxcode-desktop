@@ -4,13 +4,16 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { OPENCODE_INSTALL_COMMAND, OPENCODE_LINKS } from '@shared/opencode-links'
 import { getOpencodeInfo, validateOpencodeBin } from '../opencode/binary'
-import { findOpencodeBinary } from '../opencode/server'
+import { resolveOpencodeAsync } from '../opencode/server'
 import { settingsStore } from '../store'
 import { handle } from './handle'
 
 /** Canales del asistente de primer uso. La app NUNCA ejecuta un instalador: el comando solo se copia. */
 export function registerOnboardingHandlers(ipcMain: IpcMain): void {
-  handle(ipcMain, 'app:opencodeInfo', () => getOpencodeInfo(() => findOpencodeBinary()))
+  handle(ipcMain, 'app:opencodeInfo', async () => {
+    const resolved = await resolveOpencodeAsync()
+    return getOpencodeInfo(() => resolved)
+  })
 
   handle(ipcMain, 'app:opencodeAction', async ({ action }) => {
     if (action === 'copyInstall') clipboard.writeText(OPENCODE_INSTALL_COMMAND)
@@ -30,6 +33,6 @@ export function registerOnboardingHandlers(ipcMain: IpcMain): void {
     const check = await validateOpencodeBin(picked.filePaths[0])
     if (!check.ok) return { status: 'invalid' as const, error: check.error }
     settingsStore.set({ opencodeBin: check.path })
-    return { status: 'ok' as const, info: await getOpencodeInfo(() => findOpencodeBinary()) }
+    return { status: 'ok' as const, info: await resolveOpencodeAsync().then((resolved) => getOpencodeInfo(() => resolved)) }
   })
 }

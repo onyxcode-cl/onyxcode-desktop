@@ -17,6 +17,8 @@ export interface ConfirmDialogOptions {
   cancelLabel?: string | null
   /** Estilo de advertencia (icono/botón en rojo) para acciones destructivas. */
   danger?: boolean
+  /** Foco inicial en «Cancelar» (y Enter respeta el botón enfocado) sin el estilo de peligro. */
+  focusCancel?: boolean
 }
 
 export interface PromptDialogOptions {
@@ -121,7 +123,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
       return () => clearTimeout(t)
     }
     // Foco inicial: en acciones destructivas, cancelar es lo seguro por defecto.
-    const target = req.danger ? cancelRef.current : confirmRef.current
+    const target = req.danger || req.focusCancel ? cancelRef.current : confirmRef.current
     target?.focus()
     return undefined
   }, [req])
@@ -145,7 +147,8 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
         }
         // Evita confirmar sin querer si el foco está en un elemento que ya maneja Enter (p.ej. un link).
         e.preventDefault()
-        finishConfirm(true)
+        // Con `focusCancel`, Enter actúa sobre el botón enfocado: por defecto, Cancelar.
+        finishConfirm(req.focusCancel && document.activeElement === cancelRef.current ? false : true)
         return
       }
       if (e.key === 'Tab') {

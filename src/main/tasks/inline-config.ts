@@ -33,6 +33,7 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     }
     base = {
       autoupdate: false,
+      share: 'disabled',
       ...(i.browserMcp ? { mcp: { browser: i.browserMcp } } : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
@@ -45,6 +46,7 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     if (i.browserMcp) mcpBlock.browser = i.browserMcp
     base = {
       autoupdate: false,
+      share: 'disabled',
       ...(Object.keys(mcpBlock).length ? { mcp: mcpBlock } : {}),
       agent: {
         [TASKS_AGENT_ID]: {

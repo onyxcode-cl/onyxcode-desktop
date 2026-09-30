@@ -1,5 +1,7 @@
 /**
- * Asistente de primer uso (5 pasos: OpenCode, OpenCode Go, modelo, modos, permisos de macOS).
+ * Asistente de primer uso (5 pasos: OpenCode, «Conecta tu IA», modelo, modos, permisos de macOS).
+ * El paso 2 ofrece OpenCode Go (recomendado) y cualquier otro proveedor del catálogo de OpenCode (API key u OAuth).
+ * Con el motor incluido en la app, el paso 1 es solo informativo («Incluido: OpenCode X»).
  * Solo aparece si `settings.onboarded !== true` y falta el binario o ningún proveedor está
  * configurado (`decideOnboarding`); si todo ya funciona, marca `onboarded` sin mostrar nada.
  * La app nunca ejecuta un instalador: el comando de instalación solo se copia al portapapeles.
@@ -18,7 +20,6 @@ import {
   RotateCw,
   Shield
 } from 'lucide-react'
-import type { Provider } from '@opencode-ai/sdk/v2/client'
 import { APP_NAME } from '@shared/brand'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { MODE_LABELS } from '@shared/labels'
@@ -31,28 +32,26 @@ import { errorMessage } from '../../lib/opencode'
 import { useProviders } from '../../stores/providers'
 import { useServer } from '../../stores/server'
 import { useSettings } from '../../stores/settings'
-import { ProviderKeyForm, saveProviderKey } from '../settings'
+import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
+import { Badge, ErrorText } from '../settings/impl/ui'
 import {
   canAdvance,
+  CONNECT_TASKS_NOTICE,
+  CONNECT_TERMS_NOTICE,
+  connectedNames,
   decideOnboarding,
   nextStep,
   ONBOARDING_STEPS,
+  opencodeStepMode,
   prevStep,
   stepIndex,
+  stepTitle,
   type OnboardingStep,
   type ProviderState
 } from './steps'
 
 const GO_PROVIDER = 'opencode-go'
-const GO_FORM_PROVIDERS: Pick<Provider, 'id' | 'name' | 'env'>[] = [{ id: GO_PROVIDER, name: 'OpenCode Go', env: [] }]
-
-const STEP_TITLES: Record<OnboardingStep, string> = {
-  opencode: 'Instala o localiza OpenCode',
-  auth: 'Conecta OpenCode Go',
-  model: 'Elige tu modelo',
-  modes: 'Los cuatro modos',
-  permissions: 'Permisos de macOS'
-}
+const GO_FORM_PROVIDERS = [{ id: GO_PROVIDER, name: 'OpenCode Go', env: [] as string[] }]
 
 /** Puerta del asistente: no monta nada hasta que los ajustes cargaron y `onboarded` es false. */
 export function OnboardingGate(): React.JSX.Element | null {
@@ -103,6 +102,7 @@ function OnboardingHost(): React.JSX.Element | null {
   const decision = decideOnboarding({
     onboarded: false,
     binary: info === null ? 'unknown' : info.found ? 'found' : 'missing',
+    source: info?.source ?? null,
     server: serverStatus.state,
     connected
   })
@@ -120,7 +120,11 @@ function OnboardingHost(): React.JSX.Element | null {
 
   const finish = (): void => void update({ onboarded: true })
   const last = nextStep(step) === null
-  const advance = canAdvance(step, { binaryFound: info?.found === true, serverReady: serverStatus.state === 'ready' })
+  const advance = canAdvance(step, {
+    binaryFound: info?.found === true,
+    serverReady: serverStatus.state === 'ready',
+    source: info?.source ?? null
+  })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 p-4 backdrop-blur-sm">
@@ -135,7 +139,7 @@ function OnboardingHost(): React.JSX.Element | null {
             Bienvenido a {APP_NAME} · Paso {stepIndex(step) + 1} de {ONBOARDING_STEPS.length}
           </p>
           <h2 id="onboarding-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.015em]">
-            {STEP_TITLES[step]}
+            {stepTitle(step, opencodeStepMode(info))}
           </h2>
           <div className="mt-3 flex gap-1.5" aria-hidden>
             {ONBOARDING_STEPS.map((s, i) => (
@@ -239,6 +243,47 @@ function StepOpencode({
 
   const failure = status.state === 'error' || serverError ? (serverError ?? status.error ?? '').split('\n')[0] : ''
   const ready = status.state === 'ready'
+  const mode = opencodeStepMode(info)
+
+  if (mode === 'bundled' && info) {
+    return (
+      <div className="space-y-4">
+        <Lead>{APP_NAME} incluye OpenCode como motor: no tienes que instalar nada.</Lead>
+        <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <Check size={15} className="text-success" /> Incluido: OpenCode{info.version ? ` ${info.version}` : ''}
+          </p>
+          {!ready && !failure && (
+            <p className="mt-2 flex items-center gap-2 text-xs text-muted">
+              <Loader2 size={12} className="animate-spin" /> Iniciando OpenCode…
+            </p>
+          )}
+          {ready && <p className="mt-2 text-xs text-success">OpenCode está en marcha.</p>}
+        </div>
+        <p className="text-xs text-subtle">¿Prefieres tu propio OpenCode ya instalado? Puedes usarlo en su lugar.</p>
+        {failure && (
+          <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs whitespace-pre-wrap text-danger">
+            {failure}
+          </div>
+        )}
+        {pickError && (
+          <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+            {pickError}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" disabled={busy} onClick={() => void pick()}>
+            <FolderSearch size={13} /> Usar mi CLI…
+          </Button>
+          {failure && (
+            <Button size="sm" disabled={busy} onClick={() => void retry()}>
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Reintentar
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -307,7 +352,7 @@ function StepOpencode({
   )
 }
 
-// ───────────── Paso 2: OpenCode Go ─────────────
+// ───────────── Paso 2: Conecta tu IA ─────────────
 
 function StepAuth({
   connected,
@@ -317,61 +362,146 @@ function StepAuth({
   refreshProviders: () => Promise<void>
 }): React.JSX.Element {
   const client = useServer((s) => s.client)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-  const goConnected = saved || (connected?.some((p) => p.id === GO_PROVIDER) ?? false)
+  const { catalog, loading, error: catalogError, reload } = useProviderCatalog(client)
+  const connect = useProviderConnect(client, async () => {
+    await Promise.all([refreshProviders(), reload(), client ? useProviders.getState().load(client, true) : Promise.resolve()])
+  })
+  const [savedIds, setSavedIds] = useState<string[]>([])
+  /** Tarjeta que originó la última acción, para mostrar el error bajo ella. */
+  const [origin, setOrigin] = useState<'go' | 'other'>('go')
+  const markSaved = (id: string): void => setSavedIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
 
-  const onSetKey = async (providerID: string, key: string): Promise<void> => {
-    if (!client) return
-    setBusy(true)
-    setError(null)
-    try {
-      await saveProviderKey(client, providerID, key)
-      setSaved(true)
-      await Promise.all([refreshProviders(), useProviders.getState().load(client, true)])
-    } catch (err) {
-      setError(errorMessage(err))
-      throw err
-    } finally {
-      setBusy(false)
-    }
+  const connectedNow: ProviderState[] = [
+    ...(connected ?? []),
+    ...savedIds.filter((id) => !connected?.some((p) => p.id === id)).map((id) => ({ id, source: 'api' }))
+  ]
+  const goConnected = connectedNow.some((p) => p.id === GO_PROVIDER)
+  const names = Object.fromEntries((catalog?.all ?? []).map((p) => [p.id, p.name]))
+  const otherNames = connectedNames(
+    connectedNow.filter((p) => p.id !== GO_PROVIDER),
+    names
+  )
+  const others = catalog ? unconnectedProviders(catalog, [GO_PROVIDER]) : []
+
+  const setKeyFrom = (card: 'go' | 'other') => async (providerID: string, key: string) => {
+    setOrigin(card)
+    await connect.setKey(providerID, key)
+    markSaved(providerID)
+  }
+  const oauthStart = (providerID: string, method: number): ReturnType<typeof connect.oauthStart> => {
+    setOrigin('other')
+    return connect.oauthStart(providerID, method)
+  }
+  const oauthFinish = async (providerID: string, method: number, code?: string): Promise<void> => {
+    setOrigin('other')
+    await connect.oauthFinish(providerID, method, code)
+    markSaved(providerID)
   }
 
   return (
     <div className="space-y-4">
-      <Lead>
-        OpenCode Go es una suscripción económica con acceso a modelos abiertos para programar. Crea tu cuenta, suscríbete y copia tu API
-        key; luego pégala aquí. Se guarda en OpenCode, no en {APP_NAME}.
-      </Lead>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => void runAction('openAuth')}>
-          <ExternalLink size={13} /> Obtener mi clave
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => void runAction('openGo')}>
-          Conocer OpenCode Go
-        </Button>
-        {goConnected && (
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-            <Check size={11} /> OpenCode Go conectado
-          </span>
-        )}
-      </div>
-      <ProviderKeyForm
-        providers={GO_FORM_PROVIDERS}
-        auth={{}}
-        busy={busy || !client}
-        onSetKey={onSetKey}
-        fixedProviderId={GO_PROVIDER}
-        className="p-4"
-      />
-      {!client && <p className="text-xs text-muted">Esperando a OpenCode… Vuelve al paso anterior si no arranca.</p>}
-      {error && (
-        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs whitespace-pre-wrap text-danger">
-          {error}
+      <Lead>Elige cómo darle acceso a modelos de IA. Puedes añadir o cambiar proveedores después en Ajustes › Modelos.</Lead>
+
+      <section aria-labelledby="onb-go" className="rounded-xl border border-accent bg-bg p-4">
+        <div className="flex items-center gap-2">
+          <h3 id="onb-go" className="text-sm font-semibold">
+            OpenCode Go
+          </h3>
+          <Badge tone="accent">Recomendado</Badge>
+          {goConnected && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+              <Check size={11} /> OpenCode Go conectado
+            </span>
+          )}
         </div>
-      )}
-      <p className="text-xs text-subtle">¿Usas otro proveedor? Puedes conectarlo después en Ajustes › Modelos.</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          OpenCode Go es una suscripción económica con acceso a modelos abiertos para programar. Crea tu cuenta, suscríbete y copia tu API
+          key; luego pégala aquí. Se guarda en OpenCode, no en {APP_NAME}.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => void runAction('openAuth')}>
+            <ExternalLink size={13} /> Obtener mi clave
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => void runAction('openGo')}>
+            Conocer OpenCode Go
+          </Button>
+        </div>
+        <ProviderKeyForm
+          providers={GO_FORM_PROVIDERS}
+          auth={{}}
+          busy={connect.busy || !client}
+          onSetKey={setKeyFrom('go')}
+          fixedProviderId={GO_PROVIDER}
+          title={null}
+          className="mt-3 p-3"
+        />
+        {connect.error && origin === 'go' && (
+          <div role="alert" className="mt-2">
+            <ErrorText>{connect.error}</ErrorText>
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="onb-other" className="rounded-xl border border-border bg-bg p-4">
+        <h3 id="onb-other" className="text-sm font-semibold">
+          Otro proveedor / API key
+        </h3>
+        <p className="mt-1 text-sm text-muted">Usa una clave o inicia sesión con un proveedor del catálogo de OpenCode.</p>
+        <div className="mt-3 space-y-2">
+          {!client ? (
+            <p className="text-xs text-muted">Esperando a OpenCode… Vuelve al paso anterior si no arranca.</p>
+          ) : catalogError && !catalog ? (
+            <div className="space-y-2">
+              <ErrorText>No se pudo cargar la lista de proveedores: {catalogError}</ErrorText>
+              <Button size="sm" onClick={() => void reload()}>
+                Reintentar
+              </Button>
+            </div>
+          ) : loading && !catalog ? (
+            <p className="flex items-center gap-2 text-xs text-muted" aria-live="polite">
+              <Loader2 size={13} className="animate-spin" /> Cargando proveedores…
+            </p>
+          ) : catalog && others.length === 0 ? (
+            <p className="text-xs text-muted">No hay otros proveedores disponibles en OpenCode ahora mismo.</p>
+          ) : catalog ? (
+            <ProviderKeyForm
+              providers={others}
+              auth={catalog.auth}
+              busy={connect.busy}
+              onSetKey={setKeyFrom('other')}
+              onOauthStart={oauthStart}
+              onOauthFinish={oauthFinish}
+              title={null}
+              className="p-3"
+            />
+          ) : null}
+          {otherNames.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {otherNames.map((n) => (
+                <span
+                  key={n}
+                  className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
+                >
+                  <Check size={11} /> {n} conectado
+                </span>
+              ))}
+            </div>
+          )}
+          {connect.error && origin === 'other' && (
+            <div role="alert">
+              <ErrorText>{connect.error}</ErrorText>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div role="note" className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
+        <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
+        <div className="text-xs leading-relaxed text-muted">
+          <p>{CONNECT_TASKS_NOTICE}</p>
+          <p className="mt-1.5 text-subtle">{CONNECT_TERMS_NOTICE}</p>
+        </div>
+      </div>
     </div>
   )
 }

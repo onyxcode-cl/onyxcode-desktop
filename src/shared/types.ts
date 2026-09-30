@@ -17,6 +17,8 @@ export interface Settings {
   tasksGlobalInstructions: string
   /** true cuando el asistente de primer uso terminó, se omitió o no hacía falta (todo ya funcionaba). */
   onboarded: boolean
+  /** true cuando el usuario reconoció el aviso sobre los términos de OpenCode y las Rutinas; sin él, las rutinas programadas no se ejecutan solas. */
+  routinesTermsAcknowledged: boolean
   /** Ruta absoluta del binario de OpenCode elegido por el usuario ('' = detección automática). Solo main la escribe. */
   opencodeBin: string
 }
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recentFolders: [],
   tasksGlobalInstructions: '',
   onboarded: false,
+  routinesTermsAcknowledged: false,
   opencodeBin: ''
 }
 
@@ -62,10 +65,15 @@ export interface AppInfo {
   isDev: boolean
 }
 
+/** Origen del binario de OpenCode en uso: variable OPENCODE_BIN, ajuste del usuario, CLI instalado o el incluido en la app. */
+export type OpencodeSource = 'env' | 'settings' | 'cli' | 'bundled'
+
 /** Resultado de `app:opencodeInfo`: qué binario de OpenCode se usaría y si encaja con el SDK de la app. */
 export interface OpencodeInfo {
   found: boolean
   path: string | null
+  /** De dónde sale `path` (null si no se encontró). */
+  source: OpencodeSource | null
   /** Salida de `opencode --version` (número de versión), o null si no se pudo leer. */
   version: string | null
   /** Versión del SDK con la que se compiló la app. */

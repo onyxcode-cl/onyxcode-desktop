@@ -24,6 +24,9 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     $schema: 'https://opencode.ai/config.json',
     // La app fija la versión del SDK: sin auto-actualización del binario (AUDIT.md B3/§1.2).
     autoupdate: false,
+    // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
+    // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
+    share: 'disabled',
     ...(opts.browserMcp ? { mcp: { browser: opts.browserMcp } } : {}),
     agent: {
       [CHAT_AGENT]: {

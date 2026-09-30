@@ -15,7 +15,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "package": "npm run build && electron-builder --mac --arm64",
+    "package": "node scripts/fetch-opencode.mjs --if-missing && npm run build && electron-builder --mac --arm64",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src",
@@ -25,6 +25,8 @@
     "test:e2e": "vitest run -c vitest.e2e.config.ts",
     "test:e2e:prod": "E2E_MODE=prod vitest run -c vitest.e2e.config.ts",
     "verify:release": "node scripts/verify-release.mjs",
+    "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
+    "check:opencode": "node scripts/check-opencode.mjs",
     "verify": "npm run typecheck && npm test && npm run lint && npm run format:check && npm run build && npm run test:transform && npm run test:smoke && npm run test:e2e"
   },
   "dependencies": {

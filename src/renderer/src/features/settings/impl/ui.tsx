@@ -74,9 +74,19 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>): React.JS
   return <select {...rest} className={`${FIELD} select-field pr-8 ${className}`} />
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }): React.JSX.Element {
+export function Field({
+  label,
+  hint,
+  children,
+  className = ''
+}: {
+  label: string
+  hint?: ReactNode
+  children: ReactNode
+  className?: string
+}): React.JSX.Element {
   return (
-    <label className="block">
+    <label className={`block ${className}`}>
       <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-[11px] text-subtle">{hint}</span>}
