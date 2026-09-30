@@ -147,3 +147,54 @@ presentes; si faltan, el log lo dice explícitamente en vez de fallar en silenci
   funcionando sin audio si el permiso falla o se deniega).
 - **Navegador propio (`chrome-devtools-mcp`, `browser-mcp.js`): ELIMINADO** en el refactor fase 3 (nota del 2026-09-29). Ya no hay nada que
   desempaquetar ni verificar en el `.app`; el navegador integrado vive dentro del proceso principal.
+
+## 9. Motor embebido (OpenCode dentro del instalador)
+
+El instalador lleva el **OpenCode oficial** como motor, para que nadie tenga que instalar nada. Se copia a
+`OnyxCode.app/Contents/Resources/opencode/opencode` (dentro del `.app` y no en `userData`, para que el perfil
+Seatbelt de Tareas pueda ejecutarlo). En desarrollo (`npm run dev`) no se usa: allí manda el CLI del usuario u
+`OPENCODE_BIN`.
+
+**Origen y versión.** Es el binario del release oficial de GitHub (`opencode-darwin-arm64.zip`, sin modificar).
+Versión, URL, tamaño y **SHA-256** del ZIP están fijados en `resources/opencode-bin/pin.json` (hoy 1.18.33). Cambiar
+de versión es cambiar ese fichero, nada más.
+
+**Descarga.** `scripts/fetch-opencode.mjs` baja el ZIP, verifica tamaño y SHA-256 **antes** de descomprimir (si no
+coinciden, borra lo descargado y no extrae nada) y deja el binario en `resources/opencode-bin/bin/opencode`
+(ignorado por git). Solo se ejecuta dentro de `npm run package` (`--if-missing`); `dev`, `build`, los tests y
+`verify` no descargan nada. Sin red, `package` falla con un error explícito.
+
+**Firma.** electron-builder recorre todo el bundle y vuelve a firmar cada Mach-O, también este binario; al
+hacerlo cambia el hash del ejecutable respecto al original (es esperable):
+
+- Sin Developer ID: firma **ad-hoc**, igual que el resto de la app.
+- Con Developer ID: hardened runtime y `build/entitlements.mac.plist` (que ya trae JIT y memoria ejecutable, lo
+  que necesita el motor de JavaScript del binario). El binario también figura en `mac.binaries`, y se notariza
+  con el resto de la app.
+
+**Avisos de terceros.** `THIRD_PARTY_NOTICES.md` (raíz) recoge el aviso MIT de OpenCode, el de Bun/JavaScriptCore
+(enlazado estáticamente en el binario, LGPL-2, con enlace a las fuentes) y los de Electron/Chromium. Se copia a
+`Contents/Resources/THIRD_PARTY_NOTICES.md`, y el `LICENSE` y `LICENSES.chromium.html` de Electron a
+`Contents/Resources/licenses/electron/` (ambos vía `extraResources` en `electron-builder.js`). Al subir el pin hay que
+actualizar la versión y la URL de la release en ese fichero. El fichero `LICENSE` de OnyxCode sigue pendiente
+(`verify:release` lo exige aparte).
+
+**Política de actualización.** Fijamos una versión probada y la subimos más o menos una vez al mes, con una versión
+nueva de OnyxCode. Procedimiento, contrato de la API y qué hacer si algo cambia:
+[`ACTUALIZAR-OPENCODE.md`](./ACTUALIZAR-OPENCODE.md).
+
+**Tamaño esperado.** El `.dmg` pasa de unos 130 MB a **unos 170 MB** (el binario ocupa ~100 MB sin comprimir). Por
+encima de 200 MB algo va mal (p. ej. se empaquetó dos veces).
+
+**Cómo comprobarlo** tras `npm run package`:
+
+```bash
+ls -lh dist/onyxcode-*-arm64.dmg                                  # ~170 MB
+APP=dist/mac-arm64/OnyxCode.app
+codesign --verify --deep --strict "$APP" && echo firma OK
+"$APP/Contents/Resources/opencode/opencode" --version             # = "version" de pin.json
+ls "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/licenses/electron/"
+```
+
+Ojo: no ejecutes el binario contra tu `HOME` real (crea datos en `~/.local/share/opencode`); usa `HOME` y
+`XDG_*` temporales para cualquier prueba distinta de `--version`.
