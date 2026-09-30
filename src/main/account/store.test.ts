@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ACCOUNT_FILE, ACCOUNT_TEST_FILE, createAccountStore, usePlainTestStore, type SafeStorageLike, type StoredAccount } from './store'
+import { ACCOUNT_FILE, ACCOUNT_TEST_FILE, createAccountStore, isPlainTestStore, type SafeStorageLike, type StoredAccount } from './store'
 
 /** safeStorage falso: «cifra» invirtiendo y con prefijo; nunca toca el Llavero. */
 function fakeSafeStorage(available = true): SafeStorageLike & { calls: number } {
@@ -137,10 +137,10 @@ describe('almacén en claro de prueba', () => {
     })
   })
 
-  it('usePlainTestStore: solo sin empaquetar y con la variable a «1»', () => {
-    expect(usePlainTestStore({ isPackaged: false, env: { ONYXCODE_TEST_PLAIN_STORE: '1' } })).toBe(true)
-    expect(usePlainTestStore({ isPackaged: true, env: { ONYXCODE_TEST_PLAIN_STORE: '1' } })).toBe(false)
-    expect(usePlainTestStore({ isPackaged: false, env: {} })).toBe(false)
-    expect(usePlainTestStore({ isPackaged: false, env: { ONYXCODE_TEST_PLAIN_STORE: 'true' } })).toBe(false)
+  it('isPlainTestStore: solo sin empaquetar y con la variable a «1»', () => {
+    expect(isPlainTestStore({ isPackaged: false, env: { ONYXCODE_TEST_PLAIN_STORE: '1' } })).toBe(true)
+    expect(isPlainTestStore({ isPackaged: true, env: { ONYXCODE_TEST_PLAIN_STORE: '1' } })).toBe(false)
+    expect(isPlainTestStore({ isPackaged: false, env: {} })).toBe(false)
+    expect(isPlainTestStore({ isPackaged: false, env: { ONYXCODE_TEST_PLAIN_STORE: 'true' } })).toBe(false)
   })
 })

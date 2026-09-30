@@ -35,12 +35,12 @@ export interface StoreOptions {
   /** Carpeta de datos de la app (`userData`). */
   dir: string
   safeStorage: SafeStorageLike
-  /** Almacén en claro de prueba (ver `usePlainTestStore`). */
+  /** Almacén en claro de prueba (ver `isPlainTestStore`). */
   plainTest?: boolean
 }
 
 /** El almacén en claro solo existe para pruebas: nunca en la app empaquetada. */
-export function usePlainTestStore(i: { isPackaged: boolean; env: Record<string, string | undefined> }): boolean {
+export function isPlainTestStore(i: { isPackaged: boolean; env: Record<string, string | undefined> }): boolean {
   return !i.isPackaged && i.env.ONYXCODE_TEST_PLAIN_STORE === '1'
 }
 
