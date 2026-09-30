@@ -70,7 +70,16 @@ function normalize(s: Settings): Settings {
     typeof s.opencodeBin === 'string' && s.opencodeBin.length <= 4096 && isAbsolute(s.opencodeBin) && !s.opencodeBin.includes('\0')
       ? s.opencodeBin
       : ''
-  return { defaultModel, theme, recentFolders, tasksGlobalInstructions, onboarded, routinesTermsAcknowledged, opencodeBin }
+  return {
+    defaultModel,
+    theme,
+    recentFolders,
+    tasksGlobalInstructions,
+    onboarded,
+    routinesTermsAcknowledged,
+    opencodeBin,
+    checkUpdates: s.checkUpdates !== false
+  }
 }
 
 export const settingsStore = new SettingsStore()
