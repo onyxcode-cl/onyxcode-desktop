@@ -13,6 +13,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron, type ElectronApplication, type Page } from 'playwright-core'
 import { FakeClient } from './fake'
+import type { FakeAuth } from './fake-auth'
 
 const require = createRequire(import.meta.url)
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -63,6 +64,20 @@ export interface LaunchOptions {
    * se llame a `app.connectFake()`.
    */
   noServer?: boolean
+  /**
+   * Cuenta: apunta la app al servidor de cuentas falso (`ONYXCODE_ACCOUNT_URL`, solo sin empaquetar) y usa el almacén de
+   * sesión en claro de prueba (`ONYXCODE_TEST_PLAIN_STORE`; nunca el Llavero). Sin esta opción la cuenta queda APAGADA
+   * (`ACCOUNT_API = null`) y los E2E no dependen del login.
+   */
+  account?: {
+    fake: FakeAuth
+    /** Por defecto true: siembra una sesión válida en el falso y en `userData` para que la app abra directa. false = pantalla de acceso. */
+    signedIn?: boolean
+    email?: string
+    provider?: 'google' | 'email'
+    /** Antigüedad de la última validación sembrada (ms). Por defecto 0 (ahora); >30 días deja fuera de gracia. */
+    lastValidationAgoMs?: number
+  }
 }
 
 export interface E2EApp {
@@ -190,6 +205,23 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     ...(process.env.E2E_VISIBLE === '1' ? {} : { ONYXCODE_E2E_HEADLESS: '1' }),
     ...opts.env
   })
+  if (opts.account) {
+    env.ONYXCODE_ACCOUNT_URL = opts.account.fake.url
+    env.ONYXCODE_TEST_PLAIN_STORE = '1'
+  } else {
+    // Nunca heredar una cuenta del entorno del runner: por defecto la cuenta está apagada.
+    delete env.ONYXCODE_ACCOUNT_URL
+    delete env.ONYXCODE_TEST_PLAIN_STORE
+  }
+  if (opts.account && opts.account.signedIn !== false && !existsSync(join(userData, 'account.test.json'))) {
+    const email = opts.account.email ?? 'sembrada@example.test'
+    const provider = opts.account.provider ?? 'email'
+    const { token } = await opts.account.fake.seed({ email, provider })
+    writeFileSync(
+      join(userData, 'account.test.json'),
+      JSON.stringify({ token, email, provider, lastValidation: Date.now() - (opts.account.lastValidationAgoMs ?? 0) })
+    )
+  }
   if (MODE === 'dev') {
     const url = process.env.E2E_RENDERER_URL
     if (!url) throw new Error('E2E_RENDERER_URL no definida (¿globalSetup no corrió?)')
@@ -274,7 +306,11 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
       }, opts.localStorage)
       await page.reload({ waitUntil: 'domcontentloaded' })
     }
-    await page.locator('nav[aria-label="Modo"]').waitFor({ timeout: 60_000 })
+    // Con la cuenta exigida y sin sesión válida la app no se monta: se espera la pantalla de acceso (o la app, si hay sesión).
+    await page
+      .locator(opts.account ? 'nav[aria-label="Modo"], [data-testid="account-gate"]' : 'nav[aria-label="Modo"]')
+      .first()
+      .waitFor({ timeout: 60_000 })
 
     let fake: FakeClient | null = null
     const connectFake = async (): Promise<FakeClient> => {

@@ -24,8 +24,6 @@ function AccessHost({ state }: { state: NonNullable<ReturnType<typeof useAccount
   const onboarded = useSettings((s) => s.settings.onboarded)
   useTheme()
   useEffect(() => useSettings.getState().init(), [])
-  // La nota se da por vista cuando la persona entra.
-  useEffect(() => () => markNoteSeen(), [])
   return (
     <AccessScreen
       state={state}
@@ -41,6 +39,11 @@ function AccessHost({ state }: { state: NonNullable<ReturnType<typeof useAccount
  */
 export function AccountGate({ children }: { children: React.ReactNode }): React.JSX.Element | null {
   const [state, , failed, reload] = useAccountState()
+  // La nota «ya tenías la app» se da por vista cuando la persona entra.
+  const open = state !== null && state.required && isAccessOpen(state)
+  useEffect(() => {
+    if (open) markNoteSeen()
+  }, [open])
   if (failed && !state) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-bg p-6 text-sm text-muted" role="alert">

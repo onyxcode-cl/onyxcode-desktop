@@ -153,7 +153,7 @@ export function AccessScreen({
         <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
           <WifiOff size={20} />
         </div>
-        <Title sub="No pudimos comprobar tu sesión con el servidor y pasaron más de 30 días desde la última vez. Conéctate a internet y vuelve a intentarlo.">
+        <Title sub="No pudimos comprobar tu sesión con el servidor. Sin conexión, la app solo abre hasta 30 días después de la última comprobación. Conéctate a internet y vuelve a intentarlo.">
           Sin conexión con el servidor
         </Title>
         {error && (
@@ -236,192 +236,197 @@ export function AccessScreen({
   )
 
   return (
-    <Shell>
+    <>
+      {/* Fuera de la tarjeta: su animación crearía un bloque contenedor y el diálogo quedaría recortado. */}
       {legal && <LegalDialog doc={legal} onClose={() => setLegal(null)} />}
+      <Shell>
+        {step === 'choose' && (
+          <>
+            <Title sub="Entra con tu cuenta de Google o crea una con tu correo. No hay contraseñas.">Entra a {APP_NAME}</Title>
 
-      {step === 'choose' && (
-        <>
-          <Title sub="Entra con tu cuenta de Google o crea una con tu correo. No hay contraseñas.">Entra a {APP_NAME}</Title>
-
-          {banner && (
-            <div role="status" className="mb-4 flex gap-2.5 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-[13px]">
-              <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
-              <div>
-                <p className="font-medium">{banner.title}</p>
-                <p className="text-muted">{banner.body}</p>
+            {banner && (
+              <div role="status" className="mb-4 flex gap-2.5 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-[13px]">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
+                <div>
+                  <p className="font-medium">{banner.title}</p>
+                  <p className="text-muted">{banner.body}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {showExistingNote && (
-            <p
-              className="mb-4 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5 text-[13px] leading-snug"
-              data-testid="account-existing-note"
-            >
-              Ya usabas {APP_NAME}: ahora pedimos una cuenta. {EXISTING_USER_NOTE}
-            </p>
-          )}
-
-          {error && (
-            <div className="mb-4">
-              <ErrorBox>{error}</ErrorBox>
-            </div>
-          )}
-
-          <div className="space-y-2.5">
-            <Button
-              variant="secondary"
-              className="w-full !py-2.5"
-              disabled={!canStart}
-              data-testid="account-google"
-              onClick={() => void run(actions.google, 'No se pudo iniciar sesión con Google.')}
-            >
-              <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-hover text-[11px] font-bold">
-                G
-              </span>
-              Continuar con Google
-            </Button>
-            <Button
-              variant="primary"
-              className="w-full !py-2.5"
-              disabled={!canStart}
-              data-testid="account-email-open"
-              onClick={() => {
-                setError(null)
-                setStep('email')
-              }}
-            >
-              <Mail size={15} /> Crear una cuenta con tu correo
-            </Button>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {terms}
-            {!accepted && <p className="text-xs text-subtle">Marca la casilla para continuar.</p>}
-            <p className="text-xs leading-relaxed text-subtle">{ACCOUNT_DATA_SENTENCE}</p>
-            {state.memoryOnly && (
-              <p className="text-xs leading-relaxed text-warning" data-testid="account-memory-only">
-                No se pudo usar el Llavero de macOS en este equipo: tu sesión durará solo hasta que cierres la app.
+            {showExistingNote && (
+              <p
+                className="mb-4 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5 text-[13px] leading-snug"
+                data-testid="account-existing-note"
+              >
+                Ya usabas {APP_NAME}: ahora pedimos una cuenta. {EXISTING_USER_NOTE}
               </p>
             )}
-          </div>
-        </>
-      )}
 
-      {step === 'email' && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void sendCode()
-          }}
-        >
-          <Title sub="Te enviaremos un código de 6 dígitos para confirmar que el correo es tuyo.">Crear una cuenta</Title>
-          {error && (
-            <div className="mb-4">
-              <ErrorBox>{error}</ErrorBox>
-            </div>
-          )}
-          <label className="mb-1.5 block text-[13px] font-medium" htmlFor="account-email">
-            Correo electrónico
-          </label>
-          <input
-            id="account-email"
-            data-testid="account-email-input"
-            type="email"
-            autoFocus
-            autoComplete="email"
-            maxLength={EMAIL_MAX}
-            value={email}
-            placeholder="tu@correo.com"
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-ring)]"
-          />
-          <div className="mt-5 flex items-center justify-between gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setError(null)
-                setStep('choose')
-              }}
-            >
-              <ArrowLeft size={14} /> Volver
-            </Button>
-            <Button variant="primary" type="submit" disabled={!emailOk || !accepted || busy} data-testid="account-email-send">
-              {busy ? <Loader2 size={14} className="animate-spin" /> : null} Enviar código
-            </Button>
-          </div>
-        </form>
-      )}
+            {error && (
+              <div className="mb-4">
+                <ErrorBox>{error}</ErrorBox>
+              </div>
+            )}
 
-      {step === 'code' && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void verify(code)
-          }}
-        >
-          <Title
-            sub={
-              <>
-                Escribe el código de {CODE_LENGTH} dígitos que enviamos a{' '}
-                <span className="font-medium text-fg">{normalizeEmail(email)}</span>. Vence en 10 minutos.
-              </>
-            }
-          >
-            Revisa tu correo
-          </Title>
-          {error && (
-            <div className="mb-4">
-              <ErrorBox>{error}</ErrorBox>
+            <div className="mb-4 space-y-1.5">
+              {terms}
+              {!accepted && <p className="pl-[26px] text-xs text-subtle">Marca la casilla para continuar.</p>}
             </div>
-          )}
-          <label className="mb-1.5 block text-[13px] font-medium" htmlFor="account-code">
-            Código
-          </label>
-          <input
-            id="account-code"
-            ref={codeRef}
-            data-testid="account-code-input"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            maxLength={CODE_LENGTH}
-            value={code}
-            placeholder="000000"
-            onChange={(e) => {
-              const v = cleanCodeInput(e.target.value)
-              setCode(v)
-              if (v.length === CODE_LENGTH) void verify(v)
+
+            <div className="space-y-2.5">
+              <Button
+                variant="secondary"
+                className="w-full !py-2.5"
+                disabled={!canStart}
+                data-testid="account-google"
+                onClick={() => void run(actions.google, 'No se pudo iniciar sesión con Google.')}
+              >
+                <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-hover text-[11px] font-bold">
+                  G
+                </span>
+                Continuar con Google
+              </Button>
+              <Button
+                variant="primary"
+                className="w-full !py-2.5"
+                disabled={!canStart}
+                data-testid="account-email-open"
+                onClick={() => {
+                  setError(null)
+                  setStep('email')
+                }}
+              >
+                <Mail size={15} /> Crear una cuenta con tu correo
+              </Button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <p className="text-xs leading-relaxed text-subtle">{ACCOUNT_DATA_SENTENCE}</p>
+              {state.memoryOnly && (
+                <p className="text-xs leading-relaxed text-warning" data-testid="account-memory-only">
+                  No se pudo usar el Llavero de macOS en este equipo: tu sesión durará solo hasta que cierres la app.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {step === 'email' && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void sendCode()
             }}
-            className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-center font-mono text-xl tracking-[0.5em] text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-ring)]"
-          />
-          <div className="mt-5 flex items-center justify-between gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setError(null)
-                setStep('email')
+          >
+            <Title sub="Te enviaremos un código de 6 dígitos para confirmar que el correo es tuyo.">Crear una cuenta</Title>
+            {error && (
+              <div className="mb-4">
+                <ErrorBox>{error}</ErrorBox>
+              </div>
+            )}
+            <label className="mb-1.5 block text-[13px] font-medium" htmlFor="account-email">
+              Correo electrónico
+            </label>
+            <input
+              id="account-email"
+              data-testid="account-email-input"
+              type="email"
+              autoFocus
+              autoComplete="email"
+              maxLength={EMAIL_MAX}
+              value={email}
+              placeholder="tu@correo.com"
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+            />
+            <div className="mt-5 flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setError(null)
+                  setStep('choose')
+                }}
+              >
+                <ArrowLeft size={14} /> Volver
+              </Button>
+              <Button variant="primary" type="submit" disabled={!emailOk || !accepted || busy} data-testid="account-email-send">
+                {busy ? <Loader2 size={14} className="animate-spin" /> : null} Enviar código
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {step === 'code' && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void verify(code)
+            }}
+          >
+            <Title
+              sub={
+                <>
+                  Escribe el código de {CODE_LENGTH} dígitos que enviamos a{' '}
+                  <span className="font-medium text-fg">{normalizeEmail(email)}</span>. Vence en 10 minutos.
+                </>
+              }
+            >
+              Revisa tu correo
+            </Title>
+            {error && (
+              <div className="mb-4">
+                <ErrorBox>{error}</ErrorBox>
+              </div>
+            )}
+            <label className="mb-1.5 block text-[13px] font-medium" htmlFor="account-code">
+              Código
+            </label>
+            <input
+              id="account-code"
+              ref={codeRef}
+              data-testid="account-code-input"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              maxLength={CODE_LENGTH}
+              value={code}
+              placeholder="000000"
+              onChange={(e) => {
+                const v = cleanCodeInput(e.target.value)
+                setCode(v)
+                if (v.length === CODE_LENGTH) void verify(v)
               }}
-            >
-              <ArrowLeft size={14} /> Cambiar correo
-            </Button>
-            <Button variant="primary" type="submit" disabled={!isValidCode(code) || busy} data-testid="account-code-verify">
-              {busy ? <Loader2 size={14} className="animate-spin" /> : null} Entrar
-            </Button>
-          </div>
-          <p className="mt-4 text-xs text-subtle">
-            ¿No llegó?{' '}
-            <button
-              type="button"
-              disabled={busy}
-              className="text-accent underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
-              onClick={() => void run(() => actions.emailStart(normalizeEmail(email)), 'No se pudo enviar el código.')}
-            >
-              Enviar otro código
-            </button>
-          </p>
-        </form>
-      )}
-    </Shell>
+              className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-center font-mono text-xl tracking-[0.5em] text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+            />
+            <div className="mt-5 flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setError(null)
+                  setStep('email')
+                }}
+              >
+                <ArrowLeft size={14} /> Cambiar correo
+              </Button>
+              <Button variant="primary" type="submit" disabled={!isValidCode(code) || busy} data-testid="account-code-verify">
+                {busy ? <Loader2 size={14} className="animate-spin" /> : null} Entrar
+              </Button>
+            </div>
+            <p className="mt-4 text-xs text-subtle">
+              ¿No llegó?{' '}
+              <button
+                type="button"
+                disabled={busy}
+                className="text-accent underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
+                onClick={() => void run(() => actions.emailStart(normalizeEmail(email)), 'No se pudo enviar el código.')}
+              >
+                Enviar otro código
+              </button>
+            </p>
+          </form>
+        )}
+      </Shell>
+    </>
   )
 }
