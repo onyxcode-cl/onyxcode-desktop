@@ -4,7 +4,7 @@
  * sin red/servidor caído, sesión caducada/revocada y cuenta borrada. Sin contraseñas: el correo
  * recibe un código de 6 dígitos. Todo el tráfico va por main (el renderer no sale a internet).
  */
-import { useRef, useState } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { AlertTriangle, ArrowLeft, Loader2, Mail, WifiOff } from 'lucide-react'
 import { cleanCodeInput, CODE_LENGTH, EMAIL_MAX, isValidCode, isValidEmail, normalizeEmail, type AccountState } from '@shared/account'
 import { ACCOUNT_DATA_SENTENCE, EXISTING_USER_NOTE, PRIVACY_DRAFT, TERMS_DRAFT, type LegalDoc } from '@shared/account-legal'
@@ -25,6 +25,54 @@ export interface AccessActions {
 }
 
 type Step = 'choose' | 'email' | 'code'
+/** Pestaña de la pantalla de acceso. Solo cambia los textos: el flujo (Google o correo + código) es el mismo. */
+export type AccessMode = 'login' | 'signup'
+
+const MODES: { id: AccessMode; label: string }[] = [
+  { id: 'login', label: 'Iniciar sesión' },
+  { id: 'signup', label: 'Crear cuenta' }
+]
+
+function ModeTabs({ mode, onChange }: { mode: AccessMode; onChange: (m: AccessMode) => void }): React.JSX.Element {
+  const onKey = (e: KeyboardEvent<HTMLButtonElement>): void => {
+    const i = MODES.findIndex((m) => m.id === mode)
+    let next = i
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % MODES.length
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i + MODES.length - 1) % MODES.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = MODES.length - 1
+    else return
+    e.preventDefault()
+    onChange(MODES[next].id)
+    document.getElementById(`account-tab-${MODES[next].id}`)?.focus()
+  }
+  return (
+    <div role="tablist" aria-label="Acceso" className="mb-5 grid grid-cols-2 gap-1 rounded-lg border border-border bg-bg p-1">
+      {MODES.map((m) => {
+        const on = m.id === mode
+        return (
+          <button
+            key={m.id}
+            id={`account-tab-${m.id}`}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            aria-controls="account-tabpanel"
+            tabIndex={on ? 0 : -1}
+            data-testid={`account-tab-${m.id}`}
+            onClick={() => onChange(m.id)}
+            onKeyDown={onKey}
+            className={`rounded-md px-3 py-1.5 text-[13px] font-medium outline-none transition-colors focus-visible:shadow-[0_0_0_3px_var(--accent-ring)] ${
+              on ? 'border border-border-strong bg-elevated text-fg shadow-sm' : 'border border-transparent text-muted hover:text-fg'
+            }`}
+          >
+            {m.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export interface AccessScreenProps {
   state: AccountState
@@ -32,7 +80,7 @@ export interface AccessScreenProps {
   /** Ya usaba la app antes de las cuentas: se muestra la nota una vez. */
   showExistingNote?: boolean
   /** Solo para pruebas y capturas. */
-  initial?: { step?: Step; accepted?: boolean; email?: string; error?: string }
+  initial?: { step?: Step; mode?: AccessMode; accepted?: boolean; email?: string; error?: string }
   /** Mensaje del último intento de entrar (pruebas). */
   privacyUrl?: string
   termsUrl?: string
@@ -77,7 +125,7 @@ function Title({ children, sub }: { children: React.ReactNode; sub?: React.React
       <h1 id="account-title" className="font-display text-[22px] font-semibold tracking-[-0.015em]">
         {children}
       </h1>
-      {sub && <p className="mt-1.5 text-sm leading-relaxed text-muted">{sub}</p>}
+      {sub && <p className="mt-1.5 text-sm leading-relaxed text-muted [text-wrap:pretty]">{sub}</p>}
     </div>
   )
 }
@@ -93,6 +141,7 @@ export function AccessScreen({
   const view = accessView(state)
   const banner = accessBanner(state)
   const [step, setStep] = useState<Step>(initial?.step ?? 'choose')
+  const [mode, setMode] = useState<AccessMode>(initial?.mode ?? 'login')
   const [accepted, setAccepted] = useState(initial?.accepted ?? false)
   const [email, setEmail] = useState(initial?.email ?? '')
   const [code, setCode] = useState('')
@@ -181,6 +230,7 @@ export function AccessScreen({
 
   // --- choose / email / code ---
   const canStart = accepted && !busy
+  const login = mode === 'login'
   const emailOk = isValidEmail(email)
 
   const sendCode = async (): Promise<void> => {
@@ -242,72 +292,83 @@ export function AccessScreen({
       <Shell>
         {step === 'choose' && (
           <>
-            <Title sub="Entra con tu cuenta de Google o crea una con tu correo. No hay contraseñas.">Entra a {APP_NAME}</Title>
+            <ModeTabs mode={mode} onChange={setMode} />
+            <div role="tabpanel" id="account-tabpanel" aria-labelledby={`account-tab-${mode}`}>
+              <Title
+                sub={
+                  login
+                    ? 'Entra con tu cuenta de Google o con el código que te enviamos por correo. No hay contraseñas.'
+                    : 'Crea una cuenta con tu cuenta de Google o con tu correo. No hay contraseñas.'
+                }
+              >
+                {login ? `Inicia sesión en ${APP_NAME}` : `Crea tu cuenta de ${APP_NAME}`}
+              </Title>
 
-            {banner && (
-              <div role="status" className="mb-4 flex gap-2.5 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-[13px]">
-                <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
-                <div>
-                  <p className="font-medium">{banner.title}</p>
-                  <p className="text-muted">{banner.body}</p>
+              {banner && (
+                <div role="status" className="mb-4 flex gap-2.5 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-[13px]">
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
+                  <div>
+                    <p className="font-medium">{banner.title}</p>
+                    <p className="text-muted">{banner.body}</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {showExistingNote && (
-              <p
-                className="mb-4 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5 text-[13px] leading-snug"
-                data-testid="account-existing-note"
-              >
-                Ya usabas {APP_NAME}: ahora pedimos una cuenta. {EXISTING_USER_NOTE}
-              </p>
-            )}
-
-            {error && (
-              <div className="mb-4">
-                <ErrorBox>{error}</ErrorBox>
-              </div>
-            )}
-
-            <div className="mb-4 space-y-1.5">
-              {terms}
-              {!accepted && <p className="pl-[26px] text-xs text-subtle">Marca la casilla para continuar.</p>}
-            </div>
-
-            <div className="space-y-2.5">
-              <Button
-                variant="secondary"
-                className="w-full !py-2.5"
-                disabled={!canStart}
-                data-testid="account-google"
-                onClick={() => void run(actions.google, 'No se pudo iniciar sesión con Google.')}
-              >
-                <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-hover text-[11px] font-bold">
-                  G
-                </span>
-                Continuar con Google
-              </Button>
-              <Button
-                variant="primary"
-                className="w-full !py-2.5"
-                disabled={!canStart}
-                data-testid="account-email-open"
-                onClick={() => {
-                  setError(null)
-                  setStep('email')
-                }}
-              >
-                <Mail size={15} /> Crear una cuenta con tu correo
-              </Button>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <p className="text-xs leading-relaxed text-subtle">{ACCOUNT_DATA_SENTENCE}</p>
-              {state.memoryOnly && (
-                <p className="text-xs leading-relaxed text-warning" data-testid="account-memory-only">
-                  No se pudo usar el Llavero de macOS en este equipo: tu sesión durará solo hasta que cierres la app.
+              {showExistingNote && (
+                <p
+                  className="mb-4 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5 text-[13px] leading-snug"
+                  data-testid="account-existing-note"
+                >
+                  Ya usabas {APP_NAME}: ahora pedimos una cuenta. {EXISTING_USER_NOTE}
                 </p>
               )}
+
+              {error && (
+                <div className="mb-4">
+                  <ErrorBox>{error}</ErrorBox>
+                </div>
+              )}
+
+              <div className="mb-4 space-y-1.5">
+                {terms}
+                {!accepted && <p className="pl-[26px] text-xs text-subtle">Marca la casilla para continuar.</p>}
+              </div>
+
+              <div className="space-y-2.5">
+                <Button
+                  variant="secondary"
+                  className="w-full !py-2.5"
+                  disabled={!canStart}
+                  data-testid="account-google"
+                  onClick={() => void run(actions.google, 'No se pudo iniciar sesión con Google.')}
+                >
+                  <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-hover text-[11px] font-bold">
+                    G
+                  </span>
+                  {login ? 'Iniciar sesión con Google' : 'Registrarse con Google'}
+                </Button>
+                <Button
+                  variant="primary"
+                  className="w-full !py-2.5"
+                  disabled={!canStart}
+                  data-testid="account-email-open"
+                  onClick={() => {
+                    setError(null)
+                    setStep('email')
+                  }}
+                >
+                  <Mail size={15} /> {login ? 'Iniciar sesión con tu correo' : 'Crear una cuenta con tu correo'}
+                </Button>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <p className="text-xs leading-relaxed text-subtle [text-wrap:pretty]">{ACCOUNT_DATA_SENTENCE}</p>
+                {state.memoryOnly && (
+                  <p className="text-xs leading-relaxed text-warning" data-testid="account-memory-only">
+                    No se pudo usar el Llavero de macOS en este equipo: tu sesión durará solo hasta que cierres la app.
+                  </p>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -319,7 +380,9 @@ export function AccessScreen({
               void sendCode()
             }}
           >
-            <Title sub="Te enviaremos un código de 6 dígitos para confirmar que el correo es tuyo.">Crear una cuenta</Title>
+            <Title sub="Te enviaremos un código de 6 dígitos para confirmar que el correo es tuyo.">
+              {login ? 'Inicia sesión con tu correo' : 'Crear una cuenta'}
+            </Title>
             {error && (
               <div className="mb-4">
                 <ErrorBox>{error}</ErrorBox>
@@ -369,6 +432,7 @@ export function AccessScreen({
                 <>
                   Escribe el código de {CODE_LENGTH} dígitos que enviamos a{' '}
                   <span className="font-medium text-fg">{normalizeEmail(email)}</span>. Vence en 10 minutos.
+                  {login && <span className="mt-1.5 block">Si no tenías cuenta, la crearemos al confirmar el código.</span>}
                 </>
               }
             >

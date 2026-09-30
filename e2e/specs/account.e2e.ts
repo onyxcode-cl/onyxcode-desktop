@@ -47,7 +47,9 @@ function noDefaultProviders(userData: string): void {
   writeFileSync(join(userData, 'fake-opencode', 'connected.json'), '[]')
 }
 
-async function launch(o: { signedIn?: boolean; agoMs?: number; settings?: Record<string, unknown>; userData?: string; wizard?: boolean } = {}): Promise<E2EApp> {
+async function launch(
+  o: { signedIn?: boolean; agoMs?: number; settings?: Record<string, unknown>; userData?: string; wizard?: boolean } = {}
+): Promise<E2EApp> {
   const userData = o.userData ?? newDir()
   if (o.wizard) noDefaultProviders(userData)
   const app = await startApp({
@@ -110,7 +112,11 @@ describe('cuenta apagada (por defecto)', () => {
     const nav = app.page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(nav)
     await expectCount(nav.getByRole('button', { name: 'Cuenta', exact: true }), 0)
-    const st = await app.page.evaluate(() => (window as unknown as { api: { invoke: (c: string) => Promise<{ data: { required: boolean; status: string } }> } }).api.invoke('account:state'))
+    const st = await app.page.evaluate(() =>
+      (window as unknown as { api: { invoke: (c: string) => Promise<{ data: { required: boolean; status: string } }> } }).api.invoke(
+        'account:state'
+      )
+    )
     expect(st.data.required).toBe(false)
     expect((await fake.requests()).length).toBe(0)
   })
@@ -124,7 +130,7 @@ describe('primer arranque: correo + código', () => {
     // La app (y el asistente) no se montan hasta pasar la cuenta.
     await expectCount(modeNav(page), 0)
     await expectCount(page.getByRole('dialog'), 0)
-    await expectVisible(page.getByRole('button', { name: /Continuar con Google/ }))
+    await expectVisible(page.getByRole('button', { name: /Iniciar sesión con Google/ }))
     await expectCount(page.getByTestId('account-existing-note'), 0)
 
     // Casilla desmarcada y obligatoria.
@@ -143,7 +149,7 @@ describe('primer arranque: correo + código', () => {
     await accept(page)
     expect(await page.getByTestId('account-email-open').isDisabled()).toBe(false)
     await page.getByTestId('account-email-open').click()
-    await expectVisible(page.getByRole('heading', { name: 'Crear una cuenta' }))
+    await expectVisible(page.getByRole('heading', { name: 'Inicia sesión con tu correo' }))
     // Correo inválido: no se puede enviar.
     await page.getByTestId('account-email-input').fill('no-es-correo')
     expect(await page.getByTestId('account-email-send').isDisabled()).toBe(true)
@@ -170,13 +176,12 @@ describe('primer arranque: correo + código', () => {
     // La sesión quedó guardada (almacén de prueba) y el token nunca llegó al renderer.
     const saved = sessionOf(app.userData)
     expect(saved).toMatchObject({ email: 'ana.perez@ejemplo.test', provider: 'email' })
-    const leaked = await page.evaluate(
-      async (tok) => {
-        const r = await (window as unknown as { api: { invoke: (c: string) => Promise<unknown> } }).api.invoke('account:state')
-        return JSON.stringify(r).includes(tok) || document.documentElement.outerHTML.includes(tok) || JSON.stringify(localStorage).includes(tok)
-      },
-      saved.token
-    )
+    const leaked = await page.evaluate(async (tok) => {
+      const r = await (window as unknown as { api: { invoke: (c: string) => Promise<unknown> } }).api.invoke('account:state')
+      return (
+        JSON.stringify(r).includes(tok) || document.documentElement.outerHTML.includes(tok) || JSON.stringify(localStorage).includes(tok)
+      )
+    }, saved.token)
     expect(leaked).toBe(false)
 
     // Lo que salió a la red: correo a /start, correo+código a /verify, sin cookies ni Origin, con el User-Agent de la app.
@@ -196,8 +201,73 @@ describe('primer arranque: correo + código', () => {
     await expectVisible(gate(app.page))
     await expectVisible(app.page.getByTestId('account-existing-note'))
     await shot(app.page, 'acceso-nota-existente')
-    await expect(app.page.getByTestId('account-existing-note').innerText()).resolves.toContain('Tus conversaciones y claves de IA siguen en tu Mac.')
+    await expect(app.page.getByTestId('account-existing-note').innerText()).resolves.toContain(
+      'Tus conversaciones y claves de IA siguen en tu Mac.'
+    )
   })
+})
+
+describe('pestañas «Iniciar sesión» | «Crear cuenta»', () => {
+  const tab = (p: Page, name: string): ReturnType<Page['getByRole']> => p.getByRole('tab', { name, exact: true })
+
+  it('(1b) por defecto «Iniciar sesión»; cambiar a «Crear cuenta» cambia los textos y el teclado mueve la pestaña', async () => {
+    const app = await launch({ signedIn: false })
+    const { page } = app
+    await expectVisible(gate(page))
+    await expectVisible(page.getByRole('tablist'))
+    expect(await tab(page, 'Iniciar sesión').getAttribute('aria-selected')).toBe('true')
+    expect(await tab(page, 'Crear cuenta').getAttribute('aria-selected')).toBe('false')
+    await expectVisible(page.getByRole('heading', { name: 'Inicia sesión en OnyxCode' }))
+    await expectVisible(page.getByText('Entra con tu cuenta de Google o con el código que te enviamos por correo. No hay contraseñas.'))
+    await expectVisible(page.getByRole('button', { name: 'Iniciar sesión con Google' }))
+    await expectVisible(page.getByRole('button', { name: 'Iniciar sesión con tu correo' }))
+    await shot(page, 'acceso-pestana-iniciar')
+
+    await tab(page, 'Crear cuenta').click()
+    expect(await tab(page, 'Crear cuenta').getAttribute('aria-selected')).toBe('true')
+    await expectVisible(page.getByRole('heading', { name: 'Crea tu cuenta de OnyxCode' }))
+    await expectVisible(page.getByText('Crea una cuenta con tu cuenta de Google o con tu correo. No hay contraseñas.'))
+    await expectVisible(page.getByRole('button', { name: 'Registrarse con Google' }))
+    await expectVisible(page.getByRole('button', { name: 'Crear una cuenta con tu correo' }))
+    await expectCount(page.getByRole('button', { name: 'Iniciar sesión con Google' }), 0)
+    // La casilla sigue desmarcada y obligatoria en ambas pestañas.
+    expect(await page.getByTestId('account-terms').isChecked()).toBe(false)
+    expect(await page.getByTestId('account-google').isDisabled()).toBe(true)
+    await shot(page, 'acceso-pestana-crear')
+
+    // Teclado: flechas mueven la selección y el foco.
+    await page.keyboard.press('ArrowLeft')
+    expect(await tab(page, 'Iniciar sesión').getAttribute('aria-selected')).toBe('true')
+    await expect(tab(page, 'Iniciar sesión').evaluate((el) => el === document.activeElement)).resolves.toBe(true)
+    await page.keyboard.press('ArrowRight')
+    expect(await tab(page, 'Crear cuenta').getAttribute('aria-selected')).toBe('true')
+  })
+
+  for (const [name, first, phrase] of [
+    ['Iniciar sesión', 'Iniciar sesión con tu correo', true],
+    ['Crear cuenta', 'Crear una cuenta con tu correo', false]
+  ] as const) {
+    it(`(1c) desde «${name}» el correo llega al mismo paso de código y completa el login (frase de cuenta nueva: ${phrase})`, async () => {
+      const app = await launch({ signedIn: false })
+      const { page } = app
+      const email = `tab.${phrase ? 'login' : 'signup'}@ejemplo.test`
+      await tab(page, name).click()
+      await accept(page)
+      await page.getByRole('button', { name: first }).click()
+      await page.getByTestId('account-email-input').fill(email)
+      await page.getByTestId('account-email-send').click()
+      await expectVisible(page.getByRole('heading', { name: 'Revisa tu correo' }))
+      await expectCount(page.getByText('Si no tenías cuenta, la crearemos al confirmar el código.'), phrase ? 1 : 0)
+      await expectVisible(page.getByText('Vence en 10 minutos.'))
+      await shot(page, phrase ? 'acceso-codigo-iniciar' : 'acceso-codigo-crear')
+      await expect.poll(() => fake.lastCode(email), { timeout: 10_000 }).not.toBeNull()
+      await page.getByTestId('account-code-input').fill((await fake.lastCode(email)) as string)
+      await expectVisible(modeNav(page), 30_000)
+      expect(sessionOf(app.userData)).toMatchObject({ email, provider: 'email' })
+      // Mismo contrato con el servidor en ambas pestañas.
+      expect((await fake.requests('/v1/auth/email/start', 'POST'))[0].body).toEqual({ email })
+    })
+  }
 })
 
 describe('Google (loopback + PKCE)', () => {
@@ -256,10 +326,17 @@ describe('Google (loopback + PKCE)', () => {
     await shot(page, 'acceso-esperando')
     const start = (await fake.requests('/v1/auth/google/start'))[0].body as Record<string, string>
     await page.getByTestId('account-cancel').click()
-    await expectVisible(page.getByRole('button', { name: /Continuar con Google/ }))
+    await expectVisible(page.getByRole('button', { name: /Iniciar sesión con Google/ }))
     // Con el intento cancelado, el receptor está cerrado.
     await expect
-      .poll(() => fetch(`${start.redirect_uri}?code=x&state=${start.state}`).then(() => 'abierto', () => 'cerrado'), { timeout: 5_000 })
+      .poll(
+        () =>
+          fetch(`${start.redirect_uri}?code=x&state=${start.state}`).then(
+            () => 'abierto',
+            () => 'cerrado'
+          ),
+        { timeout: 5_000 }
+      )
       .toBe('cerrado')
 
     await fake.setGoogle({ mode: 'deny' })
@@ -375,9 +452,12 @@ describe('Ajustes › Cuenta', () => {
 })
 
 describe('Quick Entry y la cuenta', () => {
-  const quickVisible = async (app: E2EApp): Promise<boolean> => (await listWindows(app.electronApp)).some((w) => isQuickUrl(w.url) && w.visible)
+  const quickVisible = async (app: E2EApp): Promise<boolean> =>
+    (await listWindows(app.electronApp)).some((w) => isQuickUrl(w.url) && w.visible)
   const toggle = (app: E2EApp): Promise<unknown> =>
-    app.page.evaluate(() => (window as unknown as { api: { extras: { invoke: (c: string) => Promise<unknown> } } }).api.extras.invoke('extras:quickToggle'))
+    app.page.evaluate(() =>
+      (window as unknown as { api: { extras: { invoke: (c: string) => Promise<unknown> } } }).api.extras.invoke('extras:quickToggle')
+    )
 
   it('(7) sin sesión Quick Entry no se abre; con sesión sí', async () => {
     const app = await launch({ signedIn: false })
