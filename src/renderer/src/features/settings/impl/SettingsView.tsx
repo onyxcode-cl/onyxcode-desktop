@@ -7,6 +7,7 @@ import {
   Globe,
   Info,
   Keyboard,
+  UserRound,
   MonitorCog,
   Settings2,
   SlidersHorizontal,
@@ -17,8 +18,10 @@ import {
 import { MODE_LABELS, UI_LABELS } from '@shared/labels'
 import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
+import { useAccountState } from '../../../lib/use-account-state'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
+import { AccountSection } from './AccountSection'
 import { AutoModeSection } from './AutoModeSection'
 import { BrowserSection } from './BrowserSection'
 import { ComputerSection } from './ComputerSection'
@@ -33,10 +36,11 @@ import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
 export type SettingsSectionId =
-  'general' | 'models' | 'mcp' | 'tasks' | 'network' | 'computer' | 'automode' | 'browser' | 'usage' | 'shortcuts' | 'about'
+  'general' | 'account' | 'models' | 'mcp' | 'tasks' | 'network' | 'computer' | 'automode' | 'browser' | 'usage' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
+  { id: 'account', label: 'Cuenta', icon: UserRound, View: AccountSection },
   { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
   { id: 'tasks', label: MODE_LABELS.tasks, icon: Users, View: TasksSection },
@@ -73,7 +77,11 @@ export function SettingsView(props: { initial?: SettingsSectionId } = {}): React
 
 function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React.JSX.Element {
   const close = useUi((s) => s.openSettings)
-  const [section, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
+  const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
+  // «Cuenta» solo existe si la app exige cuenta (ACCOUNT_API definido).
+  const [account] = useAccountState()
+  const sections = SECTIONS.filter((s) => s.id !== 'account' || account?.required === true)
+  const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 
   useEffect(() => initExtrasPrefs(), [])
 
@@ -96,7 +104,7 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
     }
   }
 
-  const Current = SECTIONS.find((s) => s.id === section)?.View ?? GeneralSection
+  const Current = sections.find((s) => s.id === section)?.View ?? GeneralSection
 
   return (
     <div className="flex h-full flex-col">
@@ -116,7 +124,7 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
           className="w-52 shrink-0 space-y-0.5 overflow-y-auto border-r border-border/70 bg-sidebar/50 p-3"
           aria-label="Secciones de ajustes"
         >
-          {SECTIONS.map(({ id, label, icon: Icon }) => {
+          {sections.map(({ id, label, icon: Icon }) => {
             const active = section === id
             return (
               <button
