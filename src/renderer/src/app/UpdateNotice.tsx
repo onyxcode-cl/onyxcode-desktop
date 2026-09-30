@@ -21,15 +21,15 @@ export function UpdateNotice(): React.JSX.Element | null {
     <div
       role="status"
       data-testid="update-notice"
-      className="flex animate-fade-in items-center gap-2.5 border-b border-accent/25 bg-accent-soft px-4 py-2 text-xs text-accent"
+      className="flex animate-fade-in items-center gap-2.5 border-b border-accent/25 bg-accent-soft px-4 py-2 text-xs text-fg"
     >
-      <Download size={14} className="shrink-0" />
+      <Download size={14} className="shrink-0 text-accent" />
       <span className="flex-1">{text}</span>
       {url && (
         <button
           type="button"
           onClick={() => void api.invoke('app:openExternal', { url })}
-          className="no-drag shrink-0 rounded-md px-2 py-0.5 font-medium underline-offset-2 transition-colors hover:bg-accent/15 hover:underline"
+          className="no-drag shrink-0 rounded-md px-2 py-0.5 font-medium text-accent underline-offset-2 transition-colors hover:bg-accent/15 hover:underline"
         >
           Descargar
         </button>
