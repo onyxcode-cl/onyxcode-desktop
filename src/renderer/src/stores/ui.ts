@@ -7,8 +7,13 @@ interface UiState {
   settingsOpen: boolean
   sidebarCollapsed: boolean
   paletteOpen: boolean
+  /** Elemento al que debe desplazarse la sección de Ajustes al abrirse (p. ej. `providers`); lo consume la sección. */
+  settingsFocus: 'providers' | null
   setMode: (mode: ModeId) => void
   openSettings: (open: boolean) => void
+  /** Abre Ajustes directamente en una sección (y, si se indica, desplazada a un punto de ella). */
+  openSettingsAt: (section: string, focus?: 'providers') => void
+  clearSettingsFocus: () => void
   toggleSidebar: () => void
   setPaletteOpen: (open: boolean) => void
 }
@@ -31,6 +36,7 @@ export const useUi = create<UiState>((set) => ({
   settingsOpen: false,
   sidebarCollapsed: false,
   paletteOpen: false,
+  settingsFocus: null,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setMode: (mode) => {
     try {
@@ -41,5 +47,14 @@ export const useUi = create<UiState>((set) => ({
     set({ mode, settingsOpen: false })
   },
   openSettings: (settingsOpen) => set({ settingsOpen }),
+  openSettingsAt: (section, focus) => {
+    try {
+      localStorage.setItem('settings.section', section)
+    } catch {
+      // sin storage: se abre en la sección que estuviera
+    }
+    set({ settingsOpen: true, settingsFocus: focus ?? null })
+  },
+  clearSettingsFocus: () => set({ settingsFocus: null }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))
 }))
