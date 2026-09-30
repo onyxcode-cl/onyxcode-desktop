@@ -170,7 +170,7 @@ export function AboutSection(): React.JSX.Element {
               </span>
             }
           >
-            <div className="flex gap-2">
+            <div data-testid="update-actions" className="flex gap-2">
               {view.actions.map((a) => (
                 <Button
                   key={a.id}

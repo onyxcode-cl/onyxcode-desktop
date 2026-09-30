@@ -1,4 +1,4 @@
-import { Download, Loader2, RefreshCw, X } from 'lucide-react'
+import { Download, Loader2, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
 import { updateView } from '../lib/update-notice'
@@ -14,7 +14,7 @@ export function UpdateNotice(): React.JSX.Element | null {
   if (!view || !state) return null
   const act = (id: Parameters<typeof runUpdateAction>[0]): void => runUpdateAction(id, state, setState)
   const busy = view.phase === 'installing' || view.phase === 'restarting'
-  const Icon = view.progress ? Loader2 : view.phase === 'ready' ? RefreshCw : Download
+  const Icon = view.progress ? Loader2 : view.phase === 'ready' ? RefreshCw : view.phase === 'error' ? TriangleAlert : Download
 
   return (
     <div
