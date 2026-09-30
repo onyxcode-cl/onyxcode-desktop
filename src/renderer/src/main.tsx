@@ -4,6 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { APP_NAME } from '@shared/brand'
 import { App } from './app/App'
+import { AccountGate } from './features/account'
 import './app/globals.css'
 
 document.title = APP_NAME
@@ -19,6 +20,8 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <App />
+    <AccountGate>
+      <App />
+    </AccountGate>
   </StrictMode>
 )
