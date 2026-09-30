@@ -130,7 +130,7 @@ export function ProviderKeyForm({
   }
 
   return (
-    <Card className={className}>
+    <Card className={`@container ${className}`}>
       {heading !== null && (
         <div className="mb-3 flex items-center gap-2 text-sm font-medium">
           <KeyRound size={15} /> {heading}
@@ -141,10 +141,10 @@ export function ProviderKeyForm({
           e.preventDefault()
           submit()
         }}
-        className={`grid items-end gap-2 ${fixedProviderId ? 'grid-cols-[1fr_auto]' : 'grid-cols-[1fr_1.4fr_auto]'}`}
+        className={`grid items-end gap-2 ${fixedProviderId ? 'grid-cols-[1fr_auto]' : 'grid-cols-[1fr_auto] @md:grid-cols-[1fr_1.4fr_auto]'}`}
       >
         {!fixedProviderId && (
-          <Field label="Proveedor">
+          <Field label="Proveedor" className="col-span-2 @md:col-span-1">
             <Select value={picked} onChange={(e) => pick(e.target.value)}>
               <option value="">Elegir…</option>
               {providers.map((p) => (
@@ -199,8 +199,8 @@ export function ProviderKeyForm({
               }}
             >
               {flow.instructions && <p className="text-xs text-muted">{flow.instructions}</p>}
-              <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
-                <Field label="Código de autorización">
+              <div className="grid grid-cols-[1fr_auto] items-end gap-2 @md:grid-cols-[1fr_auto_auto]">
+                <Field label="Código de autorización" className="col-span-2 @md:col-span-1">
                   <TextInput
                     autoComplete="off"
                     value={flow.code}
