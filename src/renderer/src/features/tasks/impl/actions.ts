@@ -4,8 +4,10 @@ import { FOLDER_MODE_LABEL_ES, type AccessDecision, type TasksFolderSet, type Fo
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import { sandboxSendBlocked } from '@shared/sandbox-providers'
+import { NO_AI_ERROR } from '@shared/ai-errors'
 import type { ModelRef } from '@shared/types'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { currentAiGate } from '../../../lib/ai-gate'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
@@ -379,11 +381,16 @@ function withAttachments(text: string): string {
 export async function sendToTask(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
   // Sandbox: el servidor solo tiene OpenCode Go; con un modelo de otro proveedor, error claro (no fallo silencioso).
+  // Modelo efectivo contra las IA conectadas (globales): sin ninguna, no se envía; no se persiste nada.
+  const wanted = model ?? currentTasksModel()
+  const aiGate = currentAiGate(wanted)
+  if (aiGate.gate.blocked || !aiGate.effective) throw NO_AI_ERROR
+  const sendModel = aiGate.effective
   const conn0 = useTasks.getState().conn
   if (conn0 && conn0.sandboxed && !conn0.fullAccess) {
     const providers = await client.config.providers({ directory: folder }).catch(() => null)
     const available = providers?.data ? providers.data.providers.map((p) => p.id) : null
-    const blocked = sandboxSendBlocked(available, (model ?? currentTasksModel()).providerID)
+    const blocked = sandboxSendBlocked(available, sendModel.providerID)
     if (blocked) throw new Error(blocked)
   }
   if (useTasks.getState().conn?.fullAccess === true) {
@@ -397,7 +404,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   await loadProjectAndMemory(folder)
   const text = withAttachments(rawText)
   useTasks.setState({ attachments: [], draft: '' })
-  const useModel = model ?? currentTasksModel()
+  const useModel = sendModel
   const variant = opts?.variant ?? currentTasksVariant()
   const sessions = useSessions.getState()
   let sessionID = useTasks.getState().activeTaskId

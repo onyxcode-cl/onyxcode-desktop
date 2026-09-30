@@ -7,6 +7,8 @@
  * chat» del navegador integrado, Lote D) pueda devolver el foco al compositor sin robárselo
  * al resto de la interfaz.
  */
+import { NoAiBanner } from '../../../components/NoAiBanner'
+import { useAiGate } from '../../../lib/ai-gate'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
 import { sandboxModelNotice } from '@shared/sandbox-providers'
@@ -60,7 +62,9 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   useTasks((s) => s.taskModel)
   useTasks((s) => s.taskVariant)
   useModeModel('tasks')
-  const model = currentTasksModel()
+  const wantedModel = currentTasksModel()
+  const aiGate = useAiGate(wantedModel)
+  const model = aiGate.effective ?? wantedModel
   const variant = currentTasksVariant()
   const conn = useTasks((s) => s.conn)
   const requestedFull = useTasks((s) => s.fullAccess)
@@ -79,7 +83,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
 
   useAutosizeTextarea(ref, text, { max: hero ? 320 : 240 })
 
-  const canSend = !disabled && !busy && text.trim().length > 0
+  const blocked = aiGate.gate.blocked
+  const canSend = !disabled && !blocked && !busy && text.trim().length > 0
 
   const submit = (): void => {
     if (!canSend) return
@@ -99,6 +104,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
 
   return (
     <div className={`mx-auto w-full max-w-3xl px-6 ${hero ? '' : 'pb-4'}`}>
+      <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setTaskModel} />
       <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong">
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-3 pt-3">
@@ -157,8 +163,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           ref={ref}
           value={text}
           rows={hero ? 3 : 1}
-          disabled={disabled}
-          placeholder={placeholder ?? 'Escribe un mensaje…'}
+          disabled={disabled || blocked}
+          placeholder={blocked ? 'Conecta una IA para empezar' : (placeholder ?? 'Escribe un mensaje…')}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (isSubmitKey(e)) {

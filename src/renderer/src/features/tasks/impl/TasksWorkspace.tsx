@@ -6,6 +6,7 @@
  * Diseño: tareas a la izquierda (barra lateral del shell) · inicio / conversación al centro ·
  * Plan, Entregables y Actividad (o la Consulta lateral) a la derecha (colapsable).
  */
+import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
@@ -31,7 +32,6 @@ import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
 import { TranscriptLoader } from '../../../components/TranscriptLoader'
 import { BrowserPanel, hasBrowserBridge, onBrowser } from '../../browser'
-import { errorMessage } from '../../../lib/opencode'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import {
   abortBusyTasks,
@@ -327,7 +327,7 @@ export function TasksWorkspace(): React.JSX.Element {
   // «Editar y reintentar» deja los mensajes deshechos en la lista hasta el siguiente prompt: se ocultan.
   const revertMessageID = session?.revert?.messageID
   const entries = useMemo(() => hideRevertedEntries(allEntries, revertMessageID), [allEntries, revertMessageID])
-  const [sendError, setSendError] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<unknown>(null)
   const [note, setNote] = useState<string | null>(null)
   const fullAccess = conn?.fullAccess === true
   // Navegador integrado del `aside`: pestaña "Progreso | Navegador" y ancho redimensionable.
@@ -512,7 +512,7 @@ export function TasksWorkspace(): React.JSX.Element {
     setNote(null)
     Promise.resolve()
       .then(fn)
-      .catch((err: unknown) => setSendError(errorMessage(err)))
+      .catch((err: unknown) => setSendError(err))
   }
 
   const menuItems: MenuItem[] = activeId
@@ -565,7 +565,7 @@ export function TasksWorkspace(): React.JSX.Element {
     try {
       await sendToTask(text, currentTasksModel())
     } catch (err) {
-      setSendError(errorMessage(err))
+      setSendError(err)
       if (!useTasks.getState().draft) useTasks.setState({ draft: text })
     }
   }
@@ -687,7 +687,11 @@ export function TasksWorkspace(): React.JSX.Element {
             />
             <PlanAccessCard />
             <ApprovalBar requests={pendingForTask} />
-            {sendError && <p className="mx-auto mb-2 w-full max-w-3xl px-6 text-xs text-danger">{sendError}</p>}
+            {sendError != null && (
+              <div className="mx-auto mb-2 w-full max-w-3xl px-6">
+                <ErrorNotice error={sendError} />
+              </div>
+            )}
             {note && (
               <p role="status" className="mx-auto mb-2 w-full max-w-3xl px-6 text-xs break-all text-muted">
                 {note}
