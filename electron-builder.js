@@ -4,12 +4,24 @@
 // entorno: sin Developer ID (CSC_NAME/CSC_LINK) no hay forma de firmar de verdad en esta máquina,
 // así que el build ad-hoc (`identity: '-'`, `hardenedRuntime: false`) sigue siendo el default de
 // `npm run package`. Ver docs/DISTRIBUCION.md para publicar una build firmada y notarizada.
+//
+// `ONYXCODE_SELF_SIGNED=1` (opcional; por defecto NO cambia nada): firma con un certificado de firma de código
+// AUTOFIRMADO que el usuario crea en Acceso a Llaveros y pasa en `CSC_NAME`, sin notarizar. Existe para que macOS
+// conserve los permisos (TCC) entre actualizaciones: con firma ad-hoc los vuelve a pedir tras cada versión.
+// Ver docs/DISTRIBUCION.md §10.
+const selfSigned = process.env.ONYXCODE_SELF_SIGNED === '1'
+if (selfSigned && !process.env.CSC_NAME) {
+  throw new Error('ONYXCODE_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado de firma de código (docs/DISTRIBUCION.md §10).')
+}
 const hasSigningIdentity = Boolean(process.env.CSC_NAME || process.env.CSC_LINK)
 const hasNotarizeCreds = Boolean(
   process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID
 )
 
-if (hasSigningIdentity && !hasNotarizeCreds) {
+if (selfSigned && hasNotarizeCreds) {
+  console.warn('[electron-builder.config] ONYXCODE_SELF_SIGNED=1: se ignoran las credenciales de Apple; este build NO se notariza.')
+}
+if (hasSigningIdentity && !selfSigned && !hasNotarizeCreds) {
   console.warn(
     '[electron-builder.config] Hay identidad de firma (CSC_NAME/CSC_LINK) pero faltan ' +
       'APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID: el build quedará firmado pero SIN notarizar ' +
@@ -113,13 +125,16 @@ module.exports = {
     // de Electron y sin volver a firmar macOS lo mata al abrir). `identity: '-'` fuerza el ad-hoc e
     // ignora cualquier CSC_NAME/CSC_LINK, así que solo lo fijamos cuando NO hay identidad real —
     // si la hay, se omite y electron-builder usa CSC_NAME/CSC_LINK automáticamente.
-    ...(hasSigningIdentity ? {} : { identity: '-' }),
+    ...(selfSigned ? { identity: process.env.CSC_NAME } : hasSigningIdentity ? {} : { identity: '-' }),
     // Hardened runtime + entitlements solo tienen sentido (y solo funcionan) con firma real: un
     // binario ad-hoc con hardened runtime activado no arranca. Con Developer ID sí lo activamos y
     // firmamos los helpers embebidos explícitamente (electron-builder los detecta como Mach-O igual,
     // pero se listan para que quede explícito qué se firma — AUDIT.md 5 / docs/SEGURIDAD.md §4).
-    hardenedRuntime: hasSigningIdentity,
-    ...(hasSigningIdentity
+    // Autofirmado: SIN hardened runtime. No aporta nada sin notarización (Gatekeeper no lo exige y TCC identifica por
+    // «identificador + certificado»), y un runtime endurecido con un certificado sin cadena de confianza de Apple
+    // puede impedir cargar los Mach-O embebidos. (entitlements.plist ya lleva disable-library-validation, por si se activa.)
+    hardenedRuntime: hasSigningIdentity && !selfSigned,
+    ...(hasSigningIdentity && !selfSigned
       ? {
           entitlements: 'build/entitlements.mac.plist',
           entitlementsInherit: 'build/entitlements.mac.plist',
@@ -141,7 +156,7 @@ module.exports = {
       NSSpeechRecognitionUsageDescription: 'OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
     }
   },
-  afterSign: 'build/notarize.js',
+  afterSign: selfSigned ? 'build/after-sign-self-signed.js' : 'build/notarize.js',
   dmg: {
     artifactName: '${name}-${version}-${arch}.${ext}'
   },
