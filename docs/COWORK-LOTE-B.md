@@ -228,7 +228,7 @@ Requisitos: modelo con visión para las pruebas de Control total; una carpeta A 
 - **Rutinas en Control total:** siguen exigiendo aprobar el plan en persona.
 - **Canales de salida nuevos:** búsqueda web (activada por defecto) y hosts de MCP remotos; visibles y revocables en Ajustes.
 - **Servidor de Control total:** carga el `~/.config/opencode` global del usuario (MCP y plugins sin sandbox) y comparte
-  `~/.local/share/opencode` con el sidecar principal. Documentado, no cambiado.
+  con el sidecar principal el almacén propio de la app (`userData/opencode-data`, ya no el `~/.local/share/opencode` del CLI).
 - **Parada por inactividad:** el monitor solo detiene servidores sin sesiones ocupadas, permisos ni preguntas pendientes,
   tras dos sondeos seguidos y sin estar mirados.
 - **Reverificar al subir de versión de OpenCode:** rutas de skills, patrones de `external_directory`, `session.revert`,
