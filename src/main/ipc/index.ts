@@ -6,6 +6,7 @@ import { registerNotifyHandlers } from './notify'
 import { registerOnboardingHandlers } from './onboarding'
 import { registerOpencodeHandlers } from './opencode'
 import { registerSettingsHandlers } from './settings'
+import { registerUpdateHandlers } from './update'
 
 export interface IpcContext extends MainWindowDeps {
   server: OpencodeServer
@@ -19,4 +20,5 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerOpencodeHandlers(ipcMain, ctx.server)
   registerSettingsHandlers(ipcMain)
   registerNotifyHandlers(ipcMain, ctx)
+  registerUpdateHandlers(ipcMain)
 }

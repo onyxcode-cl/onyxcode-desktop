@@ -9,6 +9,7 @@
  */
 import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpencodeBinResult, ServerStatus, Settings } from './types'
 import type { OpencodeAction } from './opencode-links'
+import type { UpdateState } from './update-check'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
 export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
@@ -37,6 +38,12 @@ export interface IpcInvokeContract {
   'app:opencodeAction': { req: { action: OpencodeAction }; res: void }
   /** Diálogo «Elegir binario…»: valida el archivo y lo guarda en `settings.opencodeBin`. */
   'app:pickOpencodeBin': { req: void; res: PickOpencodeBinResult }
+  /** Estado del aviso de versión nueva (la versión publicada se consulta como mucho una vez al día). */
+  'app:updateState': { req: void; res: UpdateState }
+  /** «Buscar ahora»: fuerza una comprobación (respeta la espera por límite de GitHub). */
+  'app:checkUpdates': { req: void; res: UpdateState }
+  /** «Más tarde»: no vuelve a avisar de esa versión (sí de una mayor). */
+  'app:dismissUpdate': { req: { version: string }; res: UpdateState }
 
   // opencode sidecar
   'opencode:connection': { req: void; res: OpencodeConnection }
@@ -55,6 +62,8 @@ export interface IpcEventContract {
   'settings:changed': Settings
   /** Clic en una notificación (o "abrir" desde el Dock): el renderer cambia de modo y selecciona. */
   'app:openTarget': NotifyTarget
+  /** Cambio en el estado del aviso de versión nueva (mismo nombre que el invoke, como `opencode:status`). */
+  'app:updateState': UpdateState
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeContract
@@ -71,6 +80,9 @@ export const IPC_INVOKE_CHANNELS = [
   'app:opencodeInfo',
   'app:opencodeAction',
   'app:pickOpencodeBin',
+  'app:updateState',
+  'app:checkUpdates',
+  'app:dismissUpdate',
   'opencode:connection',
   'opencode:status',
   'opencode:restart',
@@ -83,7 +95,8 @@ export const IPC_EVENT_CHANNELS = [
   'opencode:status',
   'opencode:connection',
   'settings:changed',
-  'app:openTarget'
+  'app:openTarget',
+  'app:updateState'
 ] as const satisfies readonly IpcEventChannel[]
 
 // Garantiza en compilación que las listas cubren todo el contrato.
