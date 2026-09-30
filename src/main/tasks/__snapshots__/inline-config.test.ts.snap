@@ -21,6 +21,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total + comp
       "url": "http://127.0.0.1:5678/mcp",
     },
   },
+  "share": "disabled",
 }
 `;
 
@@ -66,6 +67,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total + todo
       "type": "local",
     },
   },
+  "share": "disabled",
 }
 `;
 
@@ -79,6 +81,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total vacío
     },
   },
   "autoupdate": false,
+  "share": "disabled",
 }
 `;
 
@@ -115,6 +118,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + MCP usuari
       "type": "local",
     },
   },
+  "share": "disabled",
 }
 `;
 
@@ -137,6 +141,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + extras: sn
     },
   },
   "autoupdate": false,
+  "share": "disabled",
 }
 `;
 
@@ -154,6 +159,7 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + navegador:
       "url": "http://127.0.0.1:1234/mcp",
     },
   },
+  "share": "disabled",
 }
 `;
 
@@ -165,5 +171,6 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox vacío: snap
     },
   },
   "autoupdate": false,
+  "share": "disabled",
 }
 `;
