@@ -1,0 +1,72 @@
+import { useMemo, useState } from 'react'
+import { AlertCircle } from 'lucide-react'
+import { friendlyError } from '@shared/ai-errors'
+import { useProviders } from '../../stores/providers'
+import { useUi } from '../../stores/ui'
+import { Button } from '../Button'
+
+/**
+ * Error de la IA para personas: título y mensaje claros, botón para conectar una IA cuando toca y el
+ * texto técnico (redactado) plegado en «Ver detalle». Nunca muestra pilas ni mensajes crudos.
+ * - `panel`: Code y Tareas. - `chat`: Chat (más suave, con animación de entrada).
+ */
+export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; variant?: 'chat' | 'panel' }): React.JSX.Element {
+  const providers = useProviders((s) => s.providers)
+  const f = useMemo(() => {
+    const providerNames: Record<string, string> = {}
+    for (const p of providers) providerNames[p.id] = p.name
+    return friendlyError(error, { providerNames })
+  }, [error, providers])
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const chat = variant === 'chat'
+
+  const copy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(f.detail ?? '')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* portapapeles no disponible: sin efecto */
+    }
+  }
+
+  return (
+    <div
+      role="alert"
+      className={
+        chat
+          ? 'mt-2 flex animate-fade-in items-start gap-2 rounded-lg border border-danger/30 bg-danger/8 px-3 py-2 text-sm text-danger'
+          : 'flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger'
+      }
+    >
+      <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold">{f.title}</div>
+        <p className="mt-0.5 break-words">{f.message}</p>
+        {f.action === 'connect' && (
+          <div className="mt-2">
+            <Button size="sm" variant="primary" onClick={() => useUi.getState().openSettingsAt('models', 'providers')}>
+              Conectar una IA
+            </Button>
+          </div>
+        )}
+        {f.detail && (
+          <details className="mt-2 text-xs text-muted" onToggle={(e) => setOpen(e.currentTarget.open)}>
+            <summary className="cursor-pointer text-subtle select-none hover:text-fg">{open ? 'Ocultar detalle' : 'Ver detalle'}</summary>
+            <pre className="mt-1.5 max-h-48 overflow-auto rounded-md border border-border/70 bg-inset px-2.5 py-2 font-mono text-[11.5px] break-words whitespace-pre-wrap text-muted select-text">
+              {f.detail}
+            </pre>
+            <button
+              type="button"
+              onClick={() => void copy()}
+              className="no-drag mt-1.5 text-subtle underline-offset-2 hover:text-fg hover:underline"
+            >
+              {copied ? 'Copiado' : 'Copiar'}
+            </button>
+          </details>
+        )}
+      </div>
+    </div>
+  )
+}
