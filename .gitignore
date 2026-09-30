@@ -18,3 +18,6 @@ e2e/.artifacts/
 docs/analisis-claude/
 # OpenCode oficial descargado por scripts/fetch-opencode.mjs (segun resources/opencode-bin/pin.json)
 resources/opencode-bin/bin/
+
+# Permisos locales de Claude Code (no publicar)
+.claude/settings.local.json
