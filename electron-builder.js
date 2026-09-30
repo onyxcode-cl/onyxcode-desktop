@@ -71,6 +71,17 @@ module.exports = {
       from: 'resources/opencode-bin/bin',
       to: 'opencode',
       filter: ['opencode']
+    },
+    // Avisos de terceros: los propios (MIT de OpenCode, Bun/JavaScriptCore, Electron) y los de Electron/Chromium,
+    // que electron-builder no deja dentro del .app → Contents/Resources/THIRD_PARTY_NOTICES.md y licenses/electron/
+    {
+      from: 'THIRD_PARTY_NOTICES.md',
+      to: 'THIRD_PARTY_NOTICES.md'
+    },
+    {
+      from: 'node_modules/electron/dist',
+      to: 'licenses/electron',
+      filter: ['LICENSE', 'LICENSES.chromium.html']
     }
   ],
   // Fuses de Electron (docs/SEGURIDAD.md). RunAsNode off es posible porque el MCP de computer use
