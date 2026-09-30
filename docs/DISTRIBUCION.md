@@ -212,22 +212,161 @@ ls "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/lic
 Ojo: no ejecutes el binario contra tu `HOME` real (crea datos en `~/.local/share/opencode`, el almacén del CLI; la app usa el suyo en `userData/opencode-data`); usa `HOME` y
 `XDG_*` temporales para cualquier prueba distinta de `--version`.
 
-## 10. Publicar una versión
+## 10. Publicar una versión y actualizar desde la app
 
-El aviso de versión nueva (ver `docs/SEGURIDAD.md`, sección 3 quinquies) lee `releases/latest` del repositorio
-indicado en `RELEASES_REPO` (`src/shared/brand.ts`). Para que funcione, cada versión se publica así:
+OnyxCode avisa de las versiones nuevas (ver `docs/SEGURIDAD.md`, secciones 3 quinquies y 3 septies) y, si esta
+copia puede instalar sola, el botón **«Actualizar»** descarga la versión, la verifica y la sustituye. Sin la
+clave de firma (`UPDATE_PUBLIC_KEY` vacía) o en una carpeta sin permiso, todo sigue como antes: «Descargar» abre la
+página de la release y el usuario arrastra el `.dmg` a Aplicaciones.
+
+### 10.1 Una sola vez: el par de claves de actualización (Ed25519)
+
+La **autenticidad** de una actualización la da **solo** la firma Ed25519 del manifiesto `update.json`. `codesign
+--verify` no prueba nada de eso (cualquiera puede generar una firma ad-hoc coherente). La clave **privada** la genera
+y guarda quien publica, **fuera del repositorio**, y **nunca** se sube a GitHub ni a un CI.
+
+```bash
+mkdir -p ~/.onyxcode-keys && chmod 700 ~/.onyxcode-keys
+# Con OpenSSL 3 (p. ej. Homebrew: /opt/homebrew/bin/openssl; el LibreSSL de /usr/bin/openssl NO sabe Ed25519):
+/opt/homebrew/bin/openssl genpkey -algorithm ed25519 -out ~/.onyxcode-keys/update.pem
+chmod 600 ~/.onyxcode-keys/update.pem
+/opt/homebrew/bin/openssl pkey -in ~/.onyxcode-keys/update.pem -pubout -outform DER | base64     # clave pública
+
+# …o, sin OpenSSL 3, con Node (escribe la privada con permisos 0600 e imprime la pública):
+node -e "const c=require('node:crypto');const fs=require('node:fs');const k=c.generateKeyPairSync('ed25519');fs.writeFileSync(process.argv[1],k.privateKey.export({type:'pkcs8',format:'pem'}),{mode:0o600});console.log(k.publicKey.export({type:'spki',format:'der'}).toString('base64'))" ~/.onyxcode-keys/update.pem
+```
+
+Pega la clave pública (base64, 44 bytes en SPKI DER; también valen los 32 bytes crudos) en `UPDATE_PUBLIC_KEY` de
+`src/shared/brand.ts` (y deja `UPDATE_KEY_ID` como identificador de esa clave, p. ej. `onyxcode-1`). **Haz copia de
+la clave privada** (gestor de contraseñas o disco cifrado aparte).
+
+- **Si se pierde la clave privada:** no se pueden firmar más actualizaciones, y las copias instaladas solo aceptan esa
+  clave. No habrá más actualizaciones automáticas: hay que publicar un `.dmg` nuevo (con la clave nueva en
+  `brand.ts`) y cada usuario lo baja y lo instala a mano. El aviso de versión nueva sigue funcionando.
+- **Si se filtra:** no hay defensa para lo ya instalado (quien la tenga puede firmar una «actualización» que esas copias
+  aceptarán). Hay que publicar cuanto antes una versión con clave nueva (rotación, abajo) y avisar a los usuarios.
+- **Rotación.** La versión N lleva las dos claves, `[nueva, vieja]`, cada una con su `keyId`, y se firma con la
+  **vieja** (así la aceptan las copias anteriores); desde la N+1 se firma con la **nueva**. (El cliente ya admite una
+  lista de claves; `brand.ts` tiene hoy una sola constante `UPDATE_PUBLIC_KEY` + `UPDATE_KEY_ID`: para rotar hay que
+  ampliarla a una lista.)
+
+### 10.2 Cada versión
 
 1. Subir la versión en `package.json` (semver `X.Y.Z`).
-2. `npm run verify:release && npm run package` (`verify:release` falla mientras `RELEASES_REPO`, el alias o la
-   licencia sigan sin definir).
-3. `git tag vX.Y.Z && git push --tags`. El tag debe coincidir con la versión de `package.json`.
-4. `gh release create vX.Y.Z dist/onyxcode-X.Y.Z-arm64.dmg --title "OnyxCode X.Y.Z"` — **sin** `--prerelease` (con
-   una prerelease, `/releases/latest` no la devuelve y nadie recibe el aviso).
+2. `npm run verify:release && npm run package`. `verify:release` falla mientras `RELEASES_REPO`, el alias, la
+   licencia o `UPDATE_PUBLIC_KEY` (vacía o que no decodifique a una clave Ed25519) sigan sin definir, o si
+   `resources/updater/swap.sh` no va en `extraResources`. `npm run verify:bundled` comprueba además que el `.app`
+   lleva `Contents/Resources/updater/swap.sh` y que el sello de la firma lo cubre.
+3. Generar y firmar la actualización (el ZIP lo hace `ditto`, **no** electron-builder: rompería los symlinks de
+   `Electron Framework.framework`):
+   ```bash
+   ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/publish-update.mjs
+   node scripts/verify-update.mjs --dir dist/update        # reproduce la verificación del cliente
+   ```
+   `publish-update.mjs` rechaza una clave dentro del repo o con permisos más abiertos que `0600`, comprueba que
+   corresponde a `UPDATE_PUBLIC_KEY`, no la imprime nunca, crea `dist/update/OnyxCode-X.Y.Z-arm64.zip`
+   (`ditto -c -k --sequesterRsrc --keepParent dist/mac-arm64/OnyxCode.app`), calcula el SHA-256 y escribe
+   `update.json` + `update.json.sig` (Ed25519 sobre los bytes exactos del manifiesto).
+4. `git tag vX.Y.Z && git push --tags`. El tag debe coincidir con la versión de `package.json` (el manifiesto lo exige).
+5. `gh release create vX.Y.Z dist/onyxcode-X.Y.Z-arm64.dmg dist/update/OnyxCode-X.Y.Z-arm64.zip dist/update/update.json dist/update/update.json.sig --title "OnyxCode X.Y.Z"`
+   — **sin** `--prerelease` (con una prerelease, `/releases/latest` no la devuelve y nadie recibe el aviso). Los cuatro
+   archivos son assets de la misma release.
 
-Es un aviso, no una actualización: el usuario descarga el `.dmg` y lo arrastra a Aplicaciones.
+GitHub sirve `releases/download/...` con una redirección a `release-assets.githubusercontent.com` /
+`objects.githubusercontent.com`: el instalador las sigue a mano (máx. 3 saltos, solo https, hosts `github.com` y
+`*.githubusercontent.com`, sin credenciales).
 
-**Migración futura a `electron-updater`** (autoinstalación). No está hecha; `electron-builder.js` NO tiene `publish`.
-Haría falta: Developer ID y notarización (macOS no deja actualizar en sitio una app sin firma válida), el target
-`zip` además de `dmg`, `publish: { provider: 'github' }`, subir `latest-mac.yml` y el zip a cada release, y una
-`UpdateSource` nueva en main sobre `autoUpdater` que sustituya a la consulta actual (la interfaz del estado
-`UpdateState` y el aviso del renderer se pueden conservar).
+### 10.3 Permisos de macOS (TCC) y el certificado autofirmado
+
+Con firma **ad-hoc**, macOS identifica la app por el hash de su código: tras **cada** actualización considera que es
+otra app y **vuelve a pedir** Accesibilidad, Grabación de pantalla, etc. Mitigación sin pagar Developer ID: un
+**certificado de firma de código autofirmado** que crea el usuario; macOS recuerda los permisos por «identificador +
+certificado» y se conservan entre versiones.
+
+1. Acceso a Llaveros → menú *Acceso a Llaveros › Asistente de Certificados › Crear un certificado…* → nombre
+   (p. ej. `OnyxCode Local`), *Tipo de identidad:* **Raíz autofirmada**, *Tipo de certificado:* **Firma de código**.
+   Comprueba que aparece como válido: `security find-identity -v -p codesign`.
+2. Empaqueta con `ONYXCODE_SELF_SIGNED=1 CSC_NAME="OnyxCode Local" npm run package`. `electron-builder.js` firma con
+   ese certificado, **sin hardened runtime** y **sin notarizar** (ignora las variables `APPLE_*`); sin esa variable el
+   comportamiento es exactamente el de siempre. `build/after-sign-self-signed.js` vuelve a firmar
+   `cu-helper` y `onyxcode-disclaim` con el **mismo certificado** manteniendo `HELPER_ID` y `DISCLAIM_ID` (electron-builder
+   los re-firma con un identificador derivado del nombre del archivo, p. ej. `cu-helper-5555…`; con ad-hoc da igual,
+   con certificado los permisos se pierden) y resella el `.app`.
+3. **La primera migración ad-hoc → autofirmado pedirá los permisos una vez más** (la identidad cambia). Desde ahí,
+   las actualizaciones firmadas con el mismo certificado los conservan. Si se pierde el certificado hay que crear otro y
+   se vuelven a pedir.
+4. Sigue sin haber notarización: Gatekeeper en otro Mac rechazará el primer `.dmg` («no se puede abrir porque no se
+   puede verificar al desarrollador»: clic derecho › Abrir). Las actualizaciones hechas por la propia app no pasan por
+   Gatekeeper (se les quita la cuarentena tras verificarlas).
+
+(Esto lo hace el usuario; las pruebas del repositorio no crean certificados ni firman con uno.)
+
+## 11. Prueba manual del actualizador (dos builds de prueba, todo en directorios temporales)
+
+Comprueba de punta a punta, con dos apps empaquetadas reales, la descarga, verificación, reemplazo, arranque confirmado
+y el rollback. No toca `/Applications`, ni `~/Library/Application Support/OnyxCode`, ni `~/.local/share/opencode`, y no
+hace peticiones a GitHub (un servidor local imita la release). Usa un **build de prueba** (`ONYXCODE_TEST_BUILD=1`, se
+sustituye en compilación: un build normal no contiene estos ganchos): honra las variables `ONYXCODE_TEST_*` aunque esté
+empaquetado, acepta cualquier carpeta de instalación y `swap.sh` en modo de prueba arranca la app por ejecución directa
+(sin `open`) con `--user-data-dir` propio. `ONYXCODE_TEST_FAIL_BOOT=1` (la app nueva no confirma el arranque) **solo** se
+honra en este build.
+
+```bash
+export T=~/tmp/onyx-update-test; mkdir -p $T/keys
+export TMPDIR=$(cd ~/tmp && pwd -P)/      # swap.sh en modo de prueba exige que el destino esté bajo $TMPDIR (ruta real)
+REPO=$PWD
+
+# 1. Copia del repo (sin node_modules) para no ensuciar out/ ni dist/; clave de PRUEBA desechable
+tar cf - --exclude=./node_modules --exclude=./.git --exclude=./dist --exclude=./out . | (mkdir -p $T/wt && tar xf - -C $T/wt)
+ln -s $REPO/node_modules $T/wt/node_modules
+openssl genpkey -algorithm ed25519 -out $T/keys/update.pem && chmod 600 $T/keys/update.pem   # OpenSSL 3 (ver §10.1)
+PUB=$(openssl pkey -in $T/keys/update.pem -pubout -outform DER | base64)
+python3 - "$T/wt/src/shared/brand.ts" "$PUB" <<'PY'
+import sys; p,k=sys.argv[1:]; s=open(p).read()
+open(p,'w').write(s.replace("UPDATE_PUBLIC_KEY = '' as string","UPDATE_PUBLIC_KEY = '%s' as string"%k))
+PY
+
+# 2. Dos builds de prueba: la «vieja» (0.3.0) y la «nueva» (0.3.1)
+build() { (cd $T/wt && node -e "const f=require('fs'),p=JSON.parse(f.readFileSync('package.json'));p.version='$1';f.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')" \
+  && ONYXCODE_TEST_BUILD=1 npm run build && npx electron-builder --mac --arm64 --dir -c electron-builder.js --config.directories.output=$2); }
+build 0.3.0 $T/out-old
+build 0.3.1 $T/out-new
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs --app $T/out-new/mac-arm64/OnyxCode.app --dmg /no.dmg  # swap.sh presente y sellado (el .dmg fallará: es normal)
+
+# 3. Publicar la «nueva» con la clave de prueba y servirla en local
+(cd $T/wt && ONYXCODE_UPDATE_KEY_FILE=$T/keys/update.pem node scripts/publish-update.mjs --app $T/out-new/mac-arm64/OnyxCode.app --out $T/release \
+  && node scripts/verify-update.mjs --dir $T/release --current 0.3.0)
+node scripts/serve-test-release.mjs --dir $T/release --port 8799 &        # 127.0.0.1 solamente
+
+# 4. Caso A — actualización correcta. «Instalada» = copia de la vieja en $T/a/app
+mkdir -p $T/a/app $T/a/userdata && ditto $T/out-old/mac-arm64/OnyxCode.app $T/a/app/OnyxCode.app
+env ONYXCODE_TEST_RELEASES_API=http://127.0.0.1:8799 ONYXCODE_TEST_RELEASES_REPO=test-owner/test-repo \
+    ONYXCODE_TEST_UPDATE_DELAY_MS=500 ONYXCODE_TEST_UPDATE_PUBKEY="$PUB" \
+    ONYXCODE_SWAP_TEST_NO_OPEN=1 ONYXCODE_SWAP_TEST_EXEC=OnyxCode ONYXCODE_SWAP_TEST_USERDATA=$T/a/userdata \
+    $T/a/app/OnyxCode.app/Contents/MacOS/OnyxCode --user-data-dir=$T/a/userdata &
+#    En la ventana: aviso «Hay una versión nueva de OnyxCode (0.3.1)» → «Actualizar» → Descargando (%) → Verificando →
+#    «Lista: reinicia» → «Reiniciar ahora».
+```
+
+Esperado (caso A): la app vieja se cierra; `swap.sh` espera su PID, mueve `OnyxCode.app` a `.OnyxCode.app.bak-0.3.0`
+(misma carpeta), pone la nueva y la arranca; la nueva escribe `booting-0.3.1` (su PID) y, tras cargar la ventana y
+confirmar el renderer, `boot-ok-0.3.1`. `$T/a/userdata/update/result.json` = `{"version":"0.3.1","ok":true,"rolledBack":false,"error":""}`,
+`Info.plist` de `$T/a/app/OnyxCode.app` dice 0.3.1 y `codesign --verify --deep --strict` pasa. Al **volver a abrir** la
+app nueva (siguiente sesión), borra la copia `.bak-0.3.0`, los marcadores viejos y el staging.
+
+Caso B — rollback forzado: igual que A (carpetas `$T/b/...`, copia nueva de la vieja) añadiendo
+`ONYXCODE_SWAP_TEST_FAIL_NEW=1 ONYXCODE_SWAP_WAIT_BOOT=25` al `env` de la app vieja (acorta la espera de 90 s). La app
+nueva se lanza con `ONYXCODE_TEST_FAIL_BOOT=1`: escribe `booting-0.3.1` pero nunca `boot-ok-0.3.1`. Esperado: a los 25 s
+`swap.sh` mata el PID de la nueva (solo si su línea de comandos está dentro del `.app` nuevo), la aparta a
+`.OnyxCode.app.failed-0.3.1`, restaura la vieja, la abre y escribe `{"version":"0.3.1","ok":false,"rolledBack":true,"error":"boot-timeout"}`.
+La app vieja lo lee al iniciar y muestra «La versión nueva no arrancó bien y se volvió a la anterior.»; después borra
+los restos (`.failed`).
+
+Limpieza: `pkill -f onyx-update-test; rm -rf $T` (incluye la clave de prueba; no es la de producción).
+
+Caso C — `swap.sh` sin reemplazar nada si la app vieja no termina: lo cubre
+`src/main/update/swap.integration.test.ts` (PID que no muere → `pid-timeout`, sin tocar nada).
+
+**Qué NO cubre esta prueba:** `open -n` real (LaunchServices) en vez de la ejecución directa, permisos TCC reales,
+Gatekeeper en otro Mac, la protección «Gestión de apps» de macOS 13+ al modificar `/Applications`, proxy corporativo y
+disco lleno.

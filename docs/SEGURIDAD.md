@@ -373,8 +373,10 @@ lista.
 
 ## 3 quinquies. Aviso de versión nueva
 
-Aviso NO bloqueante de que hay una versión publicada más reciente. No descarga, no instala y no ejecuta nada: solo
-lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la página de la release.
+Aviso NO bloqueante de que hay una versión publicada más reciente. Por sí solo no descarga, no instala y no ejecuta
+nada: lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la página de la release. Si esta copia puede
+actualizarse sola, el botón «Actualizar» inicia la descarga verificada de la sección 3 septies; **solo** al pulsarlo se
+descarga algo (la comprobación automática sigue siendo únicamente el `GET` de abajo).
 
 - **Qué se envía.** Un único `GET https://api.github.com/repos/{owner}/{repo}/releases/latest` (`owner/repo` es la
   constante `RELEASES_REPO` de `src/shared/brand.ts`; vacía = sin red y aviso apagado). Sin autenticación: cabeceras
@@ -395,10 +397,14 @@ lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la págin
   (`lastCheck`, `retryAfter`, `dismissed`) se escribe de forma atómica y tolera un fichero corrupto.
 - **Variables de test.** `ONYXCODE_TEST_RELEASES_API`, `_REPO` y `ONYXCODE_TEST_UPDATE_DELAY_MS` solo se honran con la
   app SIN empaquetar (y la base debe ser `http://127.0.0.1:<puerto>` o `https:`); en la app empaquetada se ignoran y
-  siempre se usa la API de GitHub. Las pruebas usan un servidor local; nunca llaman a api.github.com.
+  siempre se usa la API de GitHub. Las pruebas usan un servidor local; nunca llaman a api.github.com. Lo mismo vale para
+  `ONYXCODE_TEST_UPDATE_PUBKEY` y `ONYXCODE_TEST_UPDATE_INSTALL_DIR` (actualizador, sección 3 septies). Única excepción:
+  un **build de prueba** (`ONYXCODE_TEST_BUILD=1` en compilación, `docs/DISTRIBUCION.md` §11) las honra también
+  empaquetado; un build normal no contiene ese código (el valor se sustituye en compilación y el resto se elimina).
 - **Riesgos conocidos.** Quien controle el repositorio o la cuenta de GitHub de `RELEASES_REPO` controla qué versión
   se anuncia y la página a la que lleva «Descargar» (siempre dentro de ese repositorio): la app no verifica firmas de
-  esa descarga, eso lo hace macOS (Developer ID y notarización, cuando existan). Un repositorio renombrado o movido
+  esa descarga manual («Descargar»), eso lo hace macOS (Developer ID y notarización, cuando existan); la ruta
+  «Actualizar» sí verifica una firma Ed25519 propia (sección 3 septies). Un repositorio renombrado o movido
   devuelve una redirección y, con `redirect: 'error'`, nunca avisa. `/releases/latest` no devuelve prereleases. El
   `fetch` de Node no usa el proxy del sistema (tras un proxy obligatorio el aviso simplemente no llega). Sin
   `retryAfter` persistido, un fallo se reintenta en el siguiente arranque pasada 1 h.
@@ -464,6 +470,83 @@ lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la págin
   pendientes de revisión por un abogado). (8) Nada de esto está probado aún contra Google ni contra un servidor real.
 - **Pruebas.** Servidor falso `e2e/fake-auth/server.mjs` (con sus propios tests) y `e2e/specs/account.e2e.ts`; nunca hay
   red real, Google ni correo.
+
+## 3 septies. Actualizador propio («Actualizar»)
+
+Sobre el aviso de la sección 3 quinquies: descarga la versión nueva desde la release de GitHub, la verifica y sustituye
+la app. Solo está activo si `isValidRepo(RELEASES_REPO)` **y** `UPDATE_PUBLIC_KEY !== ''` (`src/shared/brand.ts`) **y** la
+plataforma es macOS **y** la app está en una carpeta válida; si no, `UpdateState.installable` es `false` y la interfaz
+queda como antes («Descargar»). El renderer solo pide acciones (`app:updateDownload`, `app:updateCancel`,
+`app:updateInstall`, evento `app:updateProgress`): **nunca** aporta URLs ni rutas; main las construye.
+
+**Modelo de confianza.** La autenticidad la da **únicamente** la firma Ed25519 del manifiesto `update.json`
+(`update.json.sig`, sobre los **bytes exactos** del manifiesto). `codesign --verify` no prueba autenticidad (una firma
+ad-hoc coherente la genera cualquiera) y solo se usa como control de integridad. Se verifica la firma **antes** de
+interpretar el JSON (`crypto.verify(null, bytes, createPublicKey({key, format:'der', type:'spki'}), sig)`); límites:
+manifiesto ≤ 16 KB, firma ≤ 1 KB, y el `size` firmado del ZIP (≤ 600 MB) es el tope real de lectura en streaming.
+
+**Flujo.** `Actualizar` → (1) manifiesto y firma; (2) `validateManifest`: `appId` igual, `keyId` de la clave que verificó,
+`version === tag` sin la `v`, versión **mayor** que `app.getVersion()` (anti-downgrade), nombre `OnyxCode-X.Y.Z-arm64.zip`;
+(3) espacio libre (`statfs` ≈ 3× el tamaño); (4) descarga a `userData/update/staging/<ver>/` (0700, se borra al empezar) con
+SHA-256 incremental; (5) hash y tamaño == los firmados; (6) `zipinfo -1` y cada entrada validada (`isSafeZipEntry`: nada
+de `..`, rutas absolutas, `\`, NUL ni nada fuera de `OnyxCode.app/`; única excepción, los metadatos AppleDouble de `ditto
+--sequesterRsrc` bajo `__MACOSX/OnyxCode.app/…/._x`, que `ditto -x` aplica como atributos y no crea nada fuera); tope
+de tamaño descomprimido; (7) `ditto -x -k`; (8) recorrido `lstat` (todo symlink se resuelve **dentro** de la `.app`, sin
+enlaces absolutos, dispositivos ni FIFOs); (9) `codesign --verify --deep --strict`; (10) `codesign -dv` con
+`Identifier = APP_ID`; (11) `plutil`: `CFBundleIdentifier` y `CFBundleShortVersionString` == manifiesto; (12)
+`xattr -dr com.apple.quarantine`. Solo entonces el estado es «Lista para reiniciar». **Nada del staging se ejecuta antes
+de «installing»** y se vuelve a verificar (8 a 11) justo antes de sustituir.
+
+**Descarga.** `fetch` con `redirect: 'manual'`, `credentials: 'omit'`, sin `Authorization` ni `Cookie`. GitHub redirige
+`releases/download/…` a `release-assets.githubusercontent.com` / `objects.githubusercontent.com`; se siguen **a mano**
+(máx. 3 saltos, solo `https`, host `github.com` o `*.githubusercontent.com` exacto — `githubusercontent.com.evil.example`
+no vale —, sin credenciales ni puerto). (El `redirect: 'error'` del aviso solo vale para la API, que no redirige.)
+
+**Sustitución.** `app.isInApplicationsFolder()` (admite `~/Applications`), ruta no trasladada (sin `/AppTranslocation/`),
+fuera de `/Volumes/` y `fs.access(W_OK)` sobre la carpeta padre y el `.app`; si falla, solo «Descargar». El script de
+reemplazo **no se ejecuta desde el `.app` que sustituye**: `resources/updater/swap.sh` viaja sellado en
+`Contents/Resources/updater/`, se copia a `userData/update/run/` (0700, `0700` el archivo) y se lanza con
+`spawn('/bin/sh', [copia, …args], {detached: true, stdio: 'ignore'}).unref()` — **nunca** `sh -c` con cadenas. Los
+argumentos los valida `swap.ts` (PID = el de la propia app; rutas absolutas y normalizadas; `target` == ruta real de la
+`.app` en ejecución; `staged` == `userData/update/staging/<ver>/extract/OnyxCode.app`; marcadores bajo
+`userData/update`; copia `<dir>/.OnyxCode.app.bak-<ver>`) y `swap.sh` los vuelve a validar. `swap.sh` (POSIX, `set -eu`):
+espera a que el PID termine (tope 60 s; si no, aborta **sin tocar nada** y escribe `result.json`), mueve `target → bak`
+(mismo directorio: `rename` atómico; `ditto` solo si falla), `staged → target` (si falla restaura), abre la nueva y espera
+hasta 90 s el archivo `boot-ok-<ver>`; si no aparece mata el PID que la nueva escribió en `booting-<ver>` (solo si es un
+proceso de ese `.app`), mueve la nueva a `.OnyxCode.app.failed-<ver>`, restaura la copia, abre la vieja y escribe
+`result.json {rolledBack: true}` (la vieja lo muestra como error). La app nueva escribe `booting-<ver>` (su PID) al
+arrancar (solo si obtuvo el lock de instancia única) y `boot-ok-<ver>` tras `did-finish-load` **y** la confirmación del
+renderer (`app:bootConfirm`). La copia de seguridad la borra la app nueva en el **siguiente** inicio tras un arranque ya
+confirmado. Durante la sustitución, `second-instance` se ignora (`isUpdating`); `before-quit` ya detiene sidecar, Tareas y
+navegador embebido y ni rutinas ni Quick Entry lo cancelan (revisado: el único `preventDefault` de cierre es el propio).
+
+### Amenazas
+
+| Amenaza | Defensa |
+|---|---|
+| Cuenta de GitHub comprometida | Puede subir ZIP y manifiesto pero **no firmarlos**: la clave privada no está nunca en GitHub ni en CI. Sin firma válida la descarga se descarta antes de tocar nada. |
+| MITM / proxy hostil | `https` + firma Ed25519 del manifiesto (que contiene el SHA-256 y el tamaño del ZIP). Hosts permitidos y redirecciones limitadas. |
+| Downgrade | Manifiesto firmado + `version == tag` + versión mayor que la actual + `Info.plist` coherente con el manifiesto. |
+| Repetición de un manifiesto antiguo | Solo se ofrecen versiones **mayores** que la instalada y el manifiesto debe corresponder al tag de la release anunciada. **Riesgo aceptado:** un atacante con una cuenta comprometida podría re-publicar un manifiesto viejo *firmado* (vulnerable) mientras siga siendo más nuevo que la copia instalada. |
+| ZIP con `../` o symlinks | Listado validado **antes** de extraer; recorrido `lstat` **después** (todo symlink dentro de la `.app`). |
+| ZIP bomba | Tamaño del ZIP firmado (tope ≤ 600 MB) como tope real de lectura; tope del tamaño descomprimido; espacio libre comprobado. |
+| TOCTOU | Staging 0700 en `userData`; se vuelve a verificar justo antes del `mv`. Un atacante con el mismo usuario queda **fuera del modelo** (ya puede modificar la `.app` instalada). |
+| Script de reemplazo manipulable | Sellado en el `.app`, copiado a una carpeta 0700, argumentos validados dos veces, nunca `sh -c` con cadenas. |
+| Clave privada perdida / filtrada | Perdida: no hay más actualizaciones automáticas (hay que bajar un `.dmg` a mano; el aviso sigue). Filtrada: no hay defensa para lo ya instalado; publicar una versión con clave nueva y avisar (rotación: la versión N lleva `[nueva, vieja]` y firma la vieja; desde la N+1 firma la nueva). `docs/DISTRIBUCION.md` §10. |
+
+**Permisos de macOS (TCC).** Con firma ad-hoc macOS vuelve a pedir los permisos tras cada actualización. La mitigación es
+un certificado de firma de código **autofirmado** del usuario (`ONYXCODE_SELF_SIGNED=1`, `docs/DISTRIBUCION.md` §10.3):
+sin hardened runtime y sin notarizar; `cu-helper` y `onyxcode-disclaim` se firman con el mismo certificado conservando
+`HELPER_ID`/`DISCLAIM_ID`. La primera migración ad-hoc → autofirmado pedirá los permisos una vez más.
+
+**Variables y ganchos de prueba.** `ONYXCODE_TEST_UPDATE_PUBKEY` y `ONYXCODE_TEST_UPDATE_INSTALL_DIR` solo con la app sin
+empaquetar (igual que `config.ts`); sin empaquetar **nunca** se sustituye nada («Reiniciar ahora» se rechaza). En
+`swap.sh`, `ONYXCODE_SWAP_TEST_NO_OPEN` solo se acepta si el destino está bajo `$TMPDIR`. `ONYXCODE_TEST_FAIL_BOOT=1` solo
+en un build de prueba (compilado con `ONYXCODE_TEST_BUILD=1`).
+
+**No verificado aquí:** permisos TCC reales, Gatekeeper en otro Mac, la protección «Gestión de apps» de macOS 13+ al
+modificar `/Applications` (el reemplazo se probó en directorios temporales, con `open` sustituido por ejecución
+directa), proxy corporativo (el `fetch` de Node no usa el proxy del sistema) y disco lleno.
 
 ## 4. Paquete (`electron-builder.js`)
 

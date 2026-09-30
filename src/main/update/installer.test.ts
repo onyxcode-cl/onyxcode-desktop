@@ -192,6 +192,19 @@ describe('UpdateInstaller: camino feliz', () => {
   })
 })
 
+describe('UpdateInstaller: resultado de un reemplazo anterior', () => {
+  it('preset muestra el error solo si no hay nada en curso', async () => {
+    const { inst, states } = make(world())
+    inst.preset('rolled-back', '0.4.0')
+    expect(inst.getState()).toMatchObject({ phase: 'error', code: 'rolled-back', version: '0.4.0' })
+    expect(states).toHaveLength(1)
+    // Se puede reintentar desde ese error.
+    expect((await go(inst)).phase).toBe('ready')
+    inst.preset('install', '0.4.0')
+    expect(inst.getState().phase).toBe('ready')
+  })
+})
+
 describe('UpdateInstaller: redirecciones', () => {
   const cdn = 'https://release-assets.githubusercontent.com/github-production-release-asset/1?sig=abc'
   it('sigue el 302 de GitHub hacia *.githubusercontent.com (sin credenciales)', async () => {
