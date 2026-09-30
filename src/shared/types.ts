@@ -62,10 +62,15 @@ export interface AppInfo {
   isDev: boolean
 }
 
+/** Origen del binario de OpenCode en uso: variable OPENCODE_BIN, ajuste del usuario, CLI instalado o el incluido en la app. */
+export type OpencodeSource = 'env' | 'settings' | 'cli' | 'bundled'
+
 /** Resultado de `app:opencodeInfo`: qué binario de OpenCode se usaría y si encaja con el SDK de la app. */
 export interface OpencodeInfo {
   found: boolean
   path: string | null
+  /** De dónde sale `path` (null si no se encontró). */
+  source: OpencodeSource | null
   /** Salida de `opencode --version` (número de versión), o null si no se pudo leer. */
   version: string | null
   /** Versión del SDK con la que se compiló la app. */

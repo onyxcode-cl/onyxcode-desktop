@@ -7,7 +7,7 @@ import { accessSync, constants, realpathSync, statSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { tmpdir } from 'node:os'
 import { OPENCODE_SDK_VERSION } from '@shared/opencode-links'
-import type { OpencodeInfo } from '@shared/types'
+import type { OpencodeInfo, OpencodeSource } from '@shared/types'
 import { minimalEnv } from '../process/child-env'
 
 const VERSION_TIMEOUT_MS = 5_000
@@ -70,15 +70,92 @@ export async function validateOpencodeBin(path: string, timeoutMs = VERSION_TIME
   }
 }
 
-/** Estado del binario que la app usaría ahora (`findOpencodeBinary` inyectado para poder probarlo). */
-export async function getOpencodeInfo(find: () => string | null): Promise<OpencodeInfo> {
-  const path = find()
-  if (!path) return { found: false, path: null, version: null, sdkVersion: OPENCODE_SDK_VERSION, compatible: false }
+/** Binario elegido por la resolución y de dónde sale. */
+export interface ResolvedOpencode {
+  path: string
+  source: OpencodeSource
+}
+
+// Caché de la versión del CLI del usuario por (ruta, mtime): `--version` (un proceso de ~100 MB)
+// no se ejecuta en cada llamada. `undefined` = aún no medida; `null` = no se pudo leer.
+const cliVersions = new Map<string, { mtimeMs: number; version: string | null }>()
+
+function mtimeOf(path: string): number | null {
+  try {
+    return statSync(path).mtimeMs
+  } catch {
+    return null
+  }
+}
+
+/** Versión cacheada del CLI en `path` (undefined si no se midió o el archivo cambió desde entonces). */
+export function cachedCliVersion(path: string): string | null | undefined {
+  const hit = cliVersions.get(path)
+  if (!hit) return undefined
+  return hit.mtimeMs === mtimeOf(path) ? hit.version : undefined
+}
+
+/** Mide (con `execFile` y timeout, sin bloquear el proceso) y cachea la versión del CLI en `path`. */
+export async function warmCliVersion(path: string, run: (bin: string) => Promise<string> = runVersion): Promise<string | null> {
+  const cached = cachedCliVersion(path)
+  if (cached !== undefined) return cached
+  const mtimeMs = mtimeOf(path)
+  let version: string | null = null
+  try {
+    version = parseVersion(await run(path))
+  } catch {
+    version = null
+  }
+  if (mtimeMs !== null) cliVersions.set(path, { mtimeMs, version })
+  return version
+}
+
+export function clearCliVersionCache(): void {
+  cliVersions.clear()
+}
+
+export interface PickInput {
+  /** `OPENCODE_BIN`. */
+  env?: string
+  /** `settings.opencodeBin`. */
+  configured?: string
+  /** CLI del usuario (PATH y carpetas habituales), o null. */
+  cli: string | null
+  /** Binario embebido presente (solo empaquetado), o null. */
+  bundled: string | null
+  isExecutable: (path: string) => boolean
+  /** Versión del CLI si ya se midió (`undefined` = desconocida). */
+  cliVersion: (path: string) => string | null | undefined
+}
+
+/**
+ * Orden de resolución: `OPENCODE_BIN` → `settings.opencodeBin` → CLI del usuario SI es compatible →
+ * embebido → CLI incompatible (último recurso). Sin embebido (desarrollo) el CLI se usa tal cual,
+ * sin medir su versión: el comportamiento es el de siempre. Con embebido, un CLI de versión aún
+ * desconocida NO se da por bueno (gana el embebido, que es el probado).
+ */
+export function pickOpencode(i: PickInput): ResolvedOpencode | null {
+  if (i.env && i.isExecutable(i.env)) return { path: i.env, source: 'env' }
+  if (i.configured && i.isExecutable(i.configured)) return { path: i.configured, source: 'settings' }
+  if (i.cli && !i.bundled) return { path: i.cli, source: 'cli' }
+  if (i.cli && i.bundled) {
+    const v = i.cliVersion(i.cli)
+    if (v !== undefined && isCompatible(v)) return { path: i.cli, source: 'cli' }
+    return { path: i.bundled, source: 'bundled' }
+  }
+  return i.bundled ? { path: i.bundled, source: 'bundled' } : null
+}
+
+/** Estado del binario que la app usaría ahora (`find` inyectado para poder probarlo). */
+export async function getOpencodeInfo(find: () => string | ResolvedOpencode | null): Promise<OpencodeInfo> {
+  const found = find()
+  if (!found) return { found: false, path: null, source: null, version: null, sdkVersion: OPENCODE_SDK_VERSION, compatible: false }
+  const { path, source } = typeof found === 'string' ? { path: found, source: 'cli' as const } : found
   let version: string | null = null
   try {
     version = parseVersion(await runVersion(path))
   } catch {
     version = null
   }
-  return { found: true, path, version, sdkVersion: OPENCODE_SDK_VERSION, compatible: isCompatible(version) }
+  return { found: true, path, source, version, sdkVersion: OPENCODE_SDK_VERSION, compatible: isCompatible(version) }
 }
