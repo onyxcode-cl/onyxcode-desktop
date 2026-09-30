@@ -34,6 +34,15 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+function initialConnected() {
+  try {
+    const list = JSON.parse(readFileSync(new URL('./connected.json', import.meta.url), 'utf8'))
+    return Array.isArray(list) ? list : null
+  } catch {
+    return null
+  }
+}
+
 export const FAKE_VERSION = '1.18.32'
 const DEFAULT_MODEL = { providerID: 'fake', modelID: 'fake-model' }
 
@@ -82,7 +91,8 @@ export function createFakeServer(options = {}) {
       mcpAdded: {}, // POST /mcp
       configPatch: {},
       authProviders: {},
-      connectedOverride: null,
+      // `connected.json` junto al falso (lista de ids; el sidecar no hereda variables de entorno ajenas) fija los proveedores conectados desde el arranque.
+      connectedOverride: initialConnected(),
       fileStatus: {},
       commands: null,
       requests: [],

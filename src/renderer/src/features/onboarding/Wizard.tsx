@@ -1,5 +1,6 @@
 /**
  * Asistente de primer uso (5 pasos: OpenCode, OpenCode Go, modelo, modos, permisos de macOS).
+ * Con el motor incluido en la app, el paso 1 es solo informativo («Incluido: OpenCode X»).
  * Solo aparece si `settings.onboarded !== true` y falta el binario o ningún proveedor está
  * configurado (`decideOnboarding`); si todo ya funciona, marca `onboarded` sin mostrar nada.
  * La app nunca ejecuta un instalador: el comando de instalación solo se copia al portapapeles.
@@ -37,22 +38,16 @@ import {
   decideOnboarding,
   nextStep,
   ONBOARDING_STEPS,
+  opencodeStepMode,
   prevStep,
   stepIndex,
+  stepTitle,
   type OnboardingStep,
   type ProviderState
 } from './steps'
 
 const GO_PROVIDER = 'opencode-go'
 const GO_FORM_PROVIDERS: Pick<Provider, 'id' | 'name' | 'env'>[] = [{ id: GO_PROVIDER, name: 'OpenCode Go', env: [] }]
-
-const STEP_TITLES: Record<OnboardingStep, string> = {
-  opencode: 'Instala o localiza OpenCode',
-  auth: 'Conecta OpenCode Go',
-  model: 'Elige tu modelo',
-  modes: 'Los cuatro modos',
-  permissions: 'Permisos de macOS'
-}
 
 /** Puerta del asistente: no monta nada hasta que los ajustes cargaron y `onboarded` es false. */
 export function OnboardingGate(): React.JSX.Element | null {
@@ -103,6 +98,7 @@ function OnboardingHost(): React.JSX.Element | null {
   const decision = decideOnboarding({
     onboarded: false,
     binary: info === null ? 'unknown' : info.found ? 'found' : 'missing',
+    source: info?.source ?? null,
     server: serverStatus.state,
     connected
   })
@@ -120,7 +116,11 @@ function OnboardingHost(): React.JSX.Element | null {
 
   const finish = (): void => void update({ onboarded: true })
   const last = nextStep(step) === null
-  const advance = canAdvance(step, { binaryFound: info?.found === true, serverReady: serverStatus.state === 'ready' })
+  const advance = canAdvance(step, {
+    binaryFound: info?.found === true,
+    serverReady: serverStatus.state === 'ready',
+    source: info?.source ?? null
+  })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 p-4 backdrop-blur-sm">
@@ -135,7 +135,7 @@ function OnboardingHost(): React.JSX.Element | null {
             Bienvenido a {APP_NAME} · Paso {stepIndex(step) + 1} de {ONBOARDING_STEPS.length}
           </p>
           <h2 id="onboarding-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.015em]">
-            {STEP_TITLES[step]}
+            {stepTitle(step, opencodeStepMode(info))}
           </h2>
           <div className="mt-3 flex gap-1.5" aria-hidden>
             {ONBOARDING_STEPS.map((s, i) => (
@@ -239,6 +239,47 @@ function StepOpencode({
 
   const failure = status.state === 'error' || serverError ? (serverError ?? status.error ?? '').split('\n')[0] : ''
   const ready = status.state === 'ready'
+  const mode = opencodeStepMode(info)
+
+  if (mode === 'bundled' && info) {
+    return (
+      <div className="space-y-4">
+        <Lead>{APP_NAME} incluye OpenCode como motor: no tienes que instalar nada.</Lead>
+        <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <Check size={15} className="text-success" /> Incluido: OpenCode{info.version ? ` ${info.version}` : ''}
+          </p>
+          {!ready && !failure && (
+            <p className="mt-2 flex items-center gap-2 text-xs text-muted">
+              <Loader2 size={12} className="animate-spin" /> Iniciando OpenCode…
+            </p>
+          )}
+          {ready && <p className="mt-2 text-xs text-success">OpenCode está en marcha.</p>}
+        </div>
+        <p className="text-xs text-subtle">¿Prefieres tu propio OpenCode ya instalado? Puedes usarlo en su lugar.</p>
+        {failure && (
+          <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs whitespace-pre-wrap text-danger">
+            {failure}
+          </div>
+        )}
+        {pickError && (
+          <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+            {pickError}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" disabled={busy} onClick={() => void pick()}>
+            <FolderSearch size={13} /> Usar mi CLI…
+          </Button>
+          {failure && (
+            <Button size="sm" disabled={busy} onClick={() => void retry()}>
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Reintentar
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { canAdvance, decideOnboarding, hasConfiguredProvider, nextStep, prevStep, ONBOARDING_STEPS, type OnboardingInputs } from './steps'
+import {
+  canAdvance,
+  decideOnboarding,
+  hasConfiguredProvider,
+  nextStep,
+  opencodeStepMode,
+  prevStep,
+  stepTitle,
+  ONBOARDING_STEPS,
+  type OnboardingInputs
+} from './steps'
 
 const base: OnboardingInputs = { onboarded: false, binary: 'found', server: 'ready', connected: [{ id: 'opencode-go', source: 'api' }] }
 const decide = (patch: Partial<OnboardingInputs>) => decideOnboarding({ ...base, ...patch })
@@ -41,6 +51,54 @@ describe('decideOnboarding', () => {
     expect(decide({ server: 'starting' })).toEqual({ kind: 'wait' })
     expect(decide({ server: 'error' })).toEqual({ kind: 'wait' })
     expect(decide({ connected: null })).toEqual({ kind: 'wait' })
+  })
+})
+
+describe('decideOnboarding según el origen del binario', () => {
+  it('con el motor incluido y sin proveedor: paso 2 (el paso 1 no aparece)', () => {
+    expect(decide({ source: 'bundled', connected: [] })).toEqual({ kind: 'show', step: 'auth' })
+    expect(decide({ source: 'bundled', connected: [{ id: 'opencode', source: 'custom' }] })).toEqual({ kind: 'show', step: 'auth' })
+  })
+
+  it('con el motor incluido y proveedor conectado (usuario existente): no muestra nada', () => {
+    expect(decide({ source: 'bundled' })).toEqual({ kind: 'complete' })
+    expect(decide({ source: 'bundled', onboarded: true, connected: [] })).toEqual({ kind: 'hidden' })
+  })
+
+  it('con el motor incluido espera al servidor antes de decidir', () => {
+    expect(decide({ source: 'bundled', server: 'starting', connected: null })).toEqual({ kind: 'wait' })
+  })
+
+  it('CLI propio (cli/env/settings): mismo comportamiento que siempre', () => {
+    for (const source of ['cli', 'env', 'settings'] as const) {
+      expect(decide({ source, connected: [] })).toEqual({ kind: 'show', step: 'auth' })
+      expect(decide({ source })).toEqual({ kind: 'complete' })
+    }
+  })
+
+  it('desarrollo sin binario (source null): paso 1 como hoy', () => {
+    expect(decide({ binary: 'missing', source: null, server: 'error', connected: null })).toEqual({ kind: 'show', step: 'opencode' })
+  })
+})
+
+describe('paso 1 informativo', () => {
+  it('opencodeStepMode distingue cargando, incluido, CLI propio y ausente', () => {
+    expect(opencodeStepMode(null)).toBe('loading')
+    expect(opencodeStepMode({ found: false, source: null })).toBe('missing')
+    expect(opencodeStepMode({ found: true, source: 'bundled' })).toBe('bundled')
+    for (const source of ['cli', 'env', 'settings'] as const) expect(opencodeStepMode({ found: true, source })).toBe('found')
+  })
+
+  it('el título del paso 1 cambia solo con el motor incluido', () => {
+    expect(stepTitle('opencode', 'bundled')).toBe('Motor incluido')
+    expect(stepTitle('opencode', 'missing')).toBe('Instala o localiza OpenCode')
+    expect(stepTitle('opencode', 'found')).toBe('Instala o localiza OpenCode')
+    expect(stepTitle('auth', 'bundled')).toBe('Conecta OpenCode Go')
+  })
+
+  it('con el motor incluido se puede continuar aunque el servidor aún no esté listo', () => {
+    expect(canAdvance('opencode', { binaryFound: true, serverReady: false, source: 'bundled' })).toBe(true)
+    expect(canAdvance('opencode', { binaryFound: true, serverReady: false, source: 'cli' })).toBe(false)
   })
 })
 
