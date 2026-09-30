@@ -40,6 +40,16 @@ export const BRAND_COLORS = {
 export const RELEASES_REPO = '' as string
 
 /**
+ * Clave PÚBLICA Ed25519 con la que se verifica el manifiesto de cada actualización (SPKI DER en base64,
+ * 44 bytes, o los 32 bytes crudos). Vacía = el botón «Actualizar» no existe y el aviso solo ofrece
+ * «Descargar». La clave PRIVADA la genera el mantenedor fuera del repo (docs/DISTRIBUCION.md §10) y
+ * nunca se sube a GitHub ni a CI.
+ */
+export const UPDATE_PUBLIC_KEY = '' as string
+/** Identificador de esa clave; va dentro del manifiesto firmado (`keyId`) y permite rotarla. */
+export const UPDATE_KEY_ID = 'onyxcode-1' as string
+
+/**
  * Servidor de cuentas (origen `https://…`, sin ruta). `null` = la app NO exige iniciar sesión y no
  * contacta ningún servidor de cuenta. Se rellena SOLO al activar las cuentas (ver
  * docs/CUENTAS-SERVIDOR.md y docs/SEGURIDAD.md «Cuenta»).
