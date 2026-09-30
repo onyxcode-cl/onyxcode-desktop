@@ -43,6 +43,8 @@ module.exports = {
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
     '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}',
     '!resources/launcher/**',
+    // El script de reemplazo del actualizador va por extraResources (sellado), no dentro del .asar.
+    '!resources/updater/**',
     // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
     '!resources/opencode-bin/**'
   ],
@@ -62,6 +64,13 @@ module.exports = {
       from: 'resources/launcher/bin',
       to: 'launcher',
       filter: ['onyxcode-disclaim']
+    },
+    // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
+    // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).
+    {
+      from: 'resources/updater',
+      to: 'updater',
+      filter: ['swap.sh']
     },
     // OpenCode oficial fijado en resources/opencode-bin/pin.json (lo descarga `npm run package` con
     // scripts/fetch-opencode.mjs) → Contents/Resources/opencode/opencode. Dentro del .app (no en

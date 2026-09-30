@@ -155,6 +155,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:updateState': none,
   'app:checkUpdates': none,
   'app:dismissUpdate': obj({ version: str({ max: 64, min: 1, pattern: /^v?\d+\.\d+\.\d+[0-9A-Za-z.+-]*$/ }) }),
+  'app:bootConfirm': none,
   'account:state': none,
   'account:google': none,
   'account:cancel': none,

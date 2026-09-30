@@ -61,4 +61,10 @@ describe('identidad centralizada en brand.ts', () => {
     expect(src).toContain('RELEASES_REPO')
     expect(src).toContain('resources/updater/swap.sh')
   })
+
+  it('electron-builder.js lleva swap.sh en extraResources y fuera del asar', () => {
+    const src = read('electron-builder.js')
+    expect(src).toMatch(/from: 'resources\/updater',\s*to: 'updater',\s*filter: \['swap\.sh'\]/)
+    expect(src).toContain("'!resources/updater/**'")
+  })
 })

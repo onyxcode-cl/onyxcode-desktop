@@ -4,6 +4,7 @@ import { RELEASES_REPO } from '@shared/brand'
 import { resolveUpdateConfig } from '../update/config'
 import { UpdateChecker } from '../update/checker'
 import { settingsStore } from '../store'
+import { bootMarkers } from '../update/boot'
 import { broadcast, handle } from './handle'
 
 /** Aviso de versión nueva: servicio en main + canales `app:updateState|checkUpdates|dismissUpdate`. */
@@ -26,6 +27,7 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
   handle(ipcMain, 'app:updateState', () => checker.getState())
   handle(ipcMain, 'app:checkUpdates', () => checker.check(true))
   handle(ipcMain, 'app:dismissUpdate', ({ version }) => checker.dismiss(version))
+  handle(ipcMain, 'app:bootConfirm', () => bootMarkers()?.confirmed())
 
   let wasEnabled = settingsStore.get().checkUpdates
   settingsStore.onChange((s) => {

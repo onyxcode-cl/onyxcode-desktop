@@ -45,6 +45,8 @@ export interface IpcInvokeContract {
   'app:checkUpdates': { req: void; res: UpdateState }
   /** «Más tarde»: no vuelve a avisar de esa versión (sí de una mayor). */
   'app:dismissUpdate': { req: { version: string }; res: UpdateState }
+  /** El renderer de la ventana principal ya pintó: con la carga de la ventana completa el marcador de arranque del actualizador. */
+  'app:bootConfirm': { req: void; res: void }
 
   // cuenta (solo ventana principal; ver main/account y docs/CUENTAS-SERVIDOR.md)
   'account:state': { req: void; res: AccountState }
@@ -103,6 +105,7 @@ export const IPC_INVOKE_CHANNELS = [
   'app:updateState',
   'app:checkUpdates',
   'app:dismissUpdate',
+  'app:bootConfirm',
   'account:state',
   'account:google',
   'account:cancel',
