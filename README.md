@@ -151,10 +151,15 @@ Chat, Code, Tareas, Rutinas, Ajustes y el navegador integrado están implementad
 etapa (lotes A–D de Tareas, seguridad, rediseño) está en [`docs/`](./docs) y [`AUDIT.md`](./AUDIT.md);
 la seguridad, en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md) y la verificación, en
 [`docs/VERIFICACION.md`](./docs/VERIFICACION.md).
-Pendiente: control remoto desde el móvil, firma con Developer ID y auto-actualización
-(ver [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).
+Pendiente: control remoto desde el móvil, firma con Developer ID y auto-actualización (hoy solo hay un
+aviso de versión nueva, sin instalación automática;
+ver [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).
 
 Licencia: pendiente de definir.
+
+## Privacidad
+
+OnyxCode se conecta al proveedor de IA que elijas y, salvo que lo desactives en Ajustes → Acerca de, consulta una vez al día como mucho la API pública de GitHub para saber si hay una versión nueva (sin datos tuyos; no descarga ni instala nada).
 
 ## Marcas y agradecimientos
 

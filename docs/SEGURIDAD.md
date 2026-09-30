@@ -371,6 +371,38 @@ S4 (§2) sobre `tasks:openPath`.
 array en cada paquete que tocó el archivo (D1–D5): ninguno de esos métodos aparece nunca en la
 lista.
 
+## 3 quinquies. Aviso de versión nueva
+
+Aviso NO bloqueante de que hay una versión publicada más reciente. No descarga, no instala y no ejecuta nada: solo
+lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la página de la release.
+
+- **Qué se envía.** Un único `GET https://api.github.com/repos/{owner}/{repo}/releases/latest` (`owner/repo` es la
+  constante `RELEASES_REPO` de `src/shared/brand.ts`; vacía = sin red y aviso apagado). Sin autenticación: cabeceras
+  `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28` y `User-Agent: <APP_NAME>/<versión>`;
+  `credentials: 'omit'`, sin `Authorization` ni `Cookie`. GitHub ve, como a cualquier cliente, la IP. Como mucho una
+  vez cada 24 h (más «Buscar ahora», manual), con espera y tiempo límite de 8 s. Se puede apagar en Ajustes →
+  Acerca de (`checkUpdates`); apagado no hay ninguna petición y un resultado que llegue tarde se descarta.
+- **Qué se lee.** Solo `tag_name`, `html_url`, `draft` y `prerelease`; respuestas de más de 256 KB se rechazan.
+  Se avisa únicamente si el tag es una versión semver mayor que `app.getVersion()` (un borrador, un tag ilegible o
+  una prerelease frente a una app estable nunca avisan).
+- **Validación de la URL.** `html_url` solo se usa si es `https:`, host exactamente `github.com`, sin usuario,
+  contraseña ni puerto y con ruta bajo `/{owner}/{repo}/releases/`; si no, se usa
+  `https://github.com/{owner}/{repo}/releases/tag/{tag}`. El renderer lo vuelve a comprobar antes de pedir abrirla
+  (`app:openExternal`, que ya solo admite http/https). `redirect: 'error'`: una redirección se trata como fallo.
+- **403/429 (límite de GitHub).** Se guarda `retryAfter` (de `Retry-After` o `X-RateLimit-Reset`, entre 1 h y 24 h)
+  en `userData/update-check.json`; hasta entonces no se vuelve a preguntar, tampoco con «Buscar ahora». Cualquier otro
+  fallo (red, tiempo, 5xx, JSON inválido) espera 1 h; no hay reintentos dentro de la sesión. El estado
+  (`lastCheck`, `retryAfter`, `dismissed`) se escribe de forma atómica y tolera un fichero corrupto.
+- **Variables de test.** `ONYXCODE_TEST_RELEASES_API`, `_REPO` y `ONYXCODE_TEST_UPDATE_DELAY_MS` solo se honran con la
+  app SIN empaquetar (y la base debe ser `http://127.0.0.1:<puerto>` o `https:`); en la app empaquetada se ignoran y
+  siempre se usa la API de GitHub. Las pruebas usan un servidor local; nunca llaman a api.github.com.
+- **Riesgos conocidos.** Quien controle el repositorio o la cuenta de GitHub de `RELEASES_REPO` controla qué versión
+  se anuncia y la página a la que lleva «Descargar» (siempre dentro de ese repositorio): la app no verifica firmas de
+  esa descarga, eso lo hace macOS (Developer ID y notarización, cuando existan). Un repositorio renombrado o movido
+  devuelve una redirección y, con `redirect: 'error'`, nunca avisa. `/releases/latest` no devuelve prereleases. El
+  `fetch` de Node no usa el proxy del sistema (tras un proxy obligatorio el aviso simplemente no llega). Sin
+  `retryAfter` persistido, un fallo se reintenta en el siguiente arranque pasada 1 h.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

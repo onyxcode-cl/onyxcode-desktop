@@ -211,3 +211,23 @@ ls "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/lic
 
 Ojo: no ejecutes el binario contra tu `HOME` real (crea datos en `~/.local/share/opencode`, el almacén del CLI; la app usa el suyo en `userData/opencode-data`); usa `HOME` y
 `XDG_*` temporales para cualquier prueba distinta de `--version`.
+
+## 10. Publicar una versión
+
+El aviso de versión nueva (ver `docs/SEGURIDAD.md`, sección 3 quinquies) lee `releases/latest` del repositorio
+indicado en `RELEASES_REPO` (`src/shared/brand.ts`). Para que funcione, cada versión se publica así:
+
+1. Subir la versión en `package.json` (semver `X.Y.Z`).
+2. `npm run verify:release && npm run package` (`verify:release` falla mientras `RELEASES_REPO`, el alias o la
+   licencia sigan sin definir).
+3. `git tag vX.Y.Z && git push --tags`. El tag debe coincidir con la versión de `package.json`.
+4. `gh release create vX.Y.Z dist/onyxcode-X.Y.Z-arm64.dmg --title "OnyxCode X.Y.Z"` — **sin** `--prerelease` (con
+   una prerelease, `/releases/latest` no la devuelve y nadie recibe el aviso).
+
+Es un aviso, no una actualización: el usuario descarga el `.dmg` y lo arrastra a Aplicaciones.
+
+**Migración futura a `electron-updater`** (autoinstalación). No está hecha; `electron-builder.js` NO tiene `publish`.
+Haría falta: Developer ID y notarización (macOS no deja actualizar en sitio una app sin firma válida), el target
+`zip` además de `dmg`, `publish: { provider: 'github' }`, subir `latest-mac.yml` y el zip a cada release, y una
+`UpdateSource` nueva en main sobre `autoUpdater` que sustituya a la consulta actual (la interfaz del estado
+`UpdateState` y el aviso del renderer se pueden conservar).
