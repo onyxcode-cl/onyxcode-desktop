@@ -55,3 +55,10 @@ describe('prepareOpencodeConfigDir: refresco por versión', () => {
     expect(readFileSync(join(dir, '.onyxcode-version'), 'utf8')).toBe('0.3.0')
   })
 })
+
+describe('getOpencodeEnv', () => {
+  it('XDG_DATA_HOME apunta al almacén propio <userData>/opencode-data', async () => {
+    const { getOpencodeEnv } = await import('./opencode-config')
+    expect(getOpencodeEnv().XDG_DATA_HOME).toBe(join(userData, 'opencode-data'))
+  })
+})

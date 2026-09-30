@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { KeyRound, Loader2 } from 'lucide-react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
+import { APP_NAME } from '@shared/brand'
 import { Button } from '../../../components/Button'
 import { call } from '../../../lib/api'
 import { authOptions, saveProviderKey } from './providerCatalog'
@@ -222,8 +223,8 @@ export function ProviderKeyForm({
 
       <p className="mt-2 text-[11px] text-subtle">
         {target && !supportsApi && oauth.length === 0
-          ? 'Este proveedor sólo admite inicio de sesión OAuth: ejecuta `opencode auth login` en una terminal.'
-          : 'La clave se guarda en el almacén de credenciales de OpenCode (~/.local/share/opencode/auth.json).'}
+          ? `Este proveedor sólo admite un inicio de sesión que ${APP_NAME} todavía no puede hacer: elige otro proveedor.`
+          : `La clave se guarda solo para ${APP_NAME}, en su propio almacén de credenciales (no se comparte con el CLI de OpenCode).`}
       </p>
     </Card>
   )

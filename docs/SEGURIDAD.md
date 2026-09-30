@@ -128,7 +128,7 @@ lista blanca (`proxy-policy.ts`):
 Con `disableCustomHosts` (política) no se pueden añadir sitios ni se suman los hosts de MCP remotos.
 
 **Credenciales de proveedor en Tareas con sandbox (falla cerrado).** El proceso main lee el `auth.json`
-del usuario (ilegible dentro del sandbox) y construye el `OPENCODE_AUTH_CONTENT` del servidor sandboxeado
+propio de la app (`userData/opencode-data`, ilegible dentro del sandbox) y construye el `OPENCODE_AUTH_CONTENT` del servidor sandboxeado
 con `placeholderAuthContent` (`provider-egress.ts`), una lista blanca estricta:
 - solo los proveedores de `PROVIDER_TARGETS` (hoy `opencode-go`) con `key`: su clave real vive en un
   `CredentialProxy` del proceso main (fuera del sandbox, con token en la ruta) y el servidor recibe una
@@ -142,7 +142,7 @@ con `placeholderAuthContent` (`provider-egress.ts`), una lista blanca estricta:
   clave real de entrada, y una comprobación estática de que `sandbox.ts` solo asigna
   `OPENCODE_AUTH_CONTENT` con esa función).
 **Sin aislamiento de credenciales fuera de ese caso:** en Control total (sin sandbox) y en Chat/Code el
-motor lee el `auth.json` real como haría el CLI. Los MCP del usuario marcados «Disponible en Tareas»
+motor lee el `auth.json` propio de la app (no el del CLI). Los MCP del usuario marcados «Disponible en Tareas»
 llevan sus propios `environment`/`headers` en la config inline del servidor: son secretos que el usuario
 decide compartir con Tareas al marcarlos.
 
@@ -193,9 +193,13 @@ concesión previa de Control total vale y `grantFullAccess` falla.
 borran al pulsar Detener, al cerrar la app y a los 60 s sin tareas de Control total en curso. Las
 capturas se envían al proveedor del modelo y quedan en el historial de la tarea.
 
-**Servidor de Control total y el XDG real.** A diferencia del sandbox, el servidor de Control total usa
-el XDG real del usuario: carga su `~/.config/opencode` global (MCP y plugins propios, sin sandbox) y
-comparte `~/.local/share/opencode` con el sidecar principal. Documentado, no cambiado.
+**Servidor de Control total y el XDG real.** A diferencia del sandbox, el servidor de Control total
+carga su `~/.config/opencode` global (MCP y plugins propios, sin sandbox); los datos (claves, sesiones)
+viven en el almacén propio de la app, compartido con el sidecar principal y separado del CLI.
+
+**Riesgo residual (config del CLI).** La config global `~/.config/opencode` sigue compartida con el CLI:
+si allí hay `provider.*.options.apiKey` en `opencode.json`, ese proveedor aparecerá conectado en la app aunque
+no esté en el almacén propio (y no pasa al sandbox de Tareas, que solo parte del `auth.json` propio).
 
 ## 3 ter. Control del Mac en segundo plano, Modo auto y navegador propio (Lote C)
 

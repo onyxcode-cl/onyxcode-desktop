@@ -10,6 +10,12 @@
  *   OPENCODE_SERVER_USERNAME / OPENCODE_SERVER_PASSWORD  -> HTTP Basic (401 si no coincide)
  *   OPENCODE_CONFIG_CONTENT / OPENCODE_CONFIG            -> config (mcp, ...) que devuelven /config y /mcp
  *   FAKE_OPENCODE_HEARTBEAT_MS                           -> latido SSE (por defecto 10000; 0 = sin latido)
+ *   OPENCODE_AUTH_CONTENT / XDG_DATA_HOME                -> credenciales, como el real (1.18.33): al arrancar, si hay
+ *                                                           OPENCODE_AUTH_CONTENT (JSON) sus claves entran en authProviders
+ *                                                           y el contenido SUSTITUYE al auth.json (no se mezcla); si no, se
+ *                                                           lee $XDG_DATA_HOME/opencode/auth.json. PUT /auth/{id} y el callback
+ *                                                           OAuth ESCRIBEN ese fichero (0600). El reset vuelve a las
+ *                                                           credenciales de arranque.
  *
  * API de control (misma auth), prefijo /__e2e/:
  *   POST emit       { type, properties, directory?, id? } | { directory, payload } | { events: [...] }
@@ -19,6 +25,8 @@
  *   GET  requests   ?limit=100&path=<prefijo>&method=GET&since=<seq>
  *   GET  config     OPENCODE_CONFIG_CONTENT recibido: { raw, content, config }
  *   GET  unknown-routes
+ *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder } }: NUNCA devuelve valores secretos;
+ *                   allPlaceholder = todas las claves de OPENCODE_AUTH_CONTENT son centinelas (sandboxed-placeholder-*)
  *   POST set        { mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
  *                     commands:[...], connectedProviders:[ids] }
  *   POST reset      vuelve al estado inicial (aborta ejecuciones; no corta los SSE)
@@ -30,9 +38,34 @@
  */
 import http from 'node:http'
 import { timingSafeEqual } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { extname, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+/** Credenciales de arranque: OPENCODE_AUTH_CONTENT (sustituye) o $XDG_DATA_HOME/opencode/auth.json. */
+function authFileOf(env) {
+  return env.XDG_DATA_HOME ? join(env.XDG_DATA_HOME, 'opencode', 'auth.json') : null
+}
+
+function parseAuthObject(raw) {
+  try {
+    const v = JSON.parse(raw)
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : null
+  } catch {
+    return null
+  }
+}
+
+export function initialAuth(env) {
+  if (typeof env.OPENCODE_AUTH_CONTENT === 'string' && env.OPENCODE_AUTH_CONTENT) return parseAuthObject(env.OPENCODE_AUTH_CONTENT) ?? {}
+  const file = authFileOf(env)
+  if (!file) return {}
+  try {
+    return parseAuthObject(readFileSync(file, 'utf8')) ?? {}
+  } catch {
+    return {}
+  }
+}
 
 function initialConnected() {
   try {
@@ -76,6 +109,17 @@ export function createFakeServer(options = {}) {
   const username = env.OPENCODE_SERVER_USERNAME || 'opencode'
   const password = env.OPENCODE_SERVER_PASSWORD || ''
   const startedAt = Date.now()
+  const startupAuth = initialAuth(env)
+  const persistAuth = () => {
+    const file = authFileOf(env)
+    if (!file) return
+    try {
+      mkdirSync(join(file, '..'), { recursive: true, mode: 0o700 })
+      writeFileSync(file, JSON.stringify(state.authProviders), { mode: 0o600 })
+    } catch {
+      // sin disco: el falso sigue con el estado en memoria
+    }
+  }
   let state = freshState()
 
   function freshState() {
@@ -90,7 +134,7 @@ export function createFakeServer(options = {}) {
       mcpForced: {}, // fijado por /__e2e/set (persistente)
       mcpAdded: {}, // POST /mcp
       configPatch: {},
-      authProviders: {},
+      authProviders: { ...startupAuth },
       // `connected.json` junto al falso (lista de ids; el sidecar no hereda variables de entorno ajenas) fija los proveedores conectados desde el arranque.
       connectedOverride: initialConnected(),
       fileStatus: {},
@@ -956,6 +1000,7 @@ export function createFakeServer(options = {}) {
   route('POST', '/provider/{providerID}/oauth/callback', (c) => {
     if (!c.body?.code) return badRequest(c.res, 'code requerido')
     state.authProviders[c.params.providerID] = { type: 'oauth' }
+    persistAuth()
     json(c.res, true)
   })
   route('GET', '/config/providers', (c) => {
@@ -969,10 +1014,12 @@ export function createFakeServer(options = {}) {
   })
   route('PUT', '/auth/{providerID}', (c) => {
     state.authProviders[c.params.providerID] = c.body ?? {}
+    persistAuth()
     json(c.res, true)
   })
   route('DELETE', '/auth/{providerID}', (c) => {
     delete state.authProviders[c.params.providerID]
+    persistAuth()
     json(c.res, true)
   })
 
@@ -1134,6 +1181,12 @@ export function createFakeServer(options = {}) {
         content = null
       }
       json(c.res, { raw, content, config: mergedConfig() })
+    },
+    'GET env': (c) => {
+      const content = typeof env.OPENCODE_AUTH_CONTENT === 'string' && env.OPENCODE_AUTH_CONTENT ? parseAuthObject(env.OPENCODE_AUTH_CONTENT) ?? {} : {}
+      const providers = Object.keys(content)
+      const allPlaceholder = Object.values(content).every((e) => e && typeof e === 'object' && typeof e.key === 'string' && e.key.startsWith('sandboxed-placeholder-'))
+      json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder } })
     },
     'GET unknown-routes': (c) => json(c.res, [...state.unknownRoutes.values()]),
     'POST set': (c) => {

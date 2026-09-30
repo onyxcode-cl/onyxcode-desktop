@@ -19,14 +19,15 @@ Para usar la app:
   OpenCode Go se pega en el asistente de primer uso (o en Ajustes › Modelos) y la guarda OpenCode.
 - Opcional: `OPENCODE_BIN=/ruta/a/opencode` para forzar un binario concreto.
 
-**Sobre tus credenciales.** OnyxCode no guarda tus claves de proveedor: las guarda OpenCode en su propio
-`auth.json` (`~/.local/share/opencode/auth.json`, o donde apunte `XDG_DATA_HOME`). Ese fichero lo lee el motor
-y, además, el proceso principal de la app lo lee al arrancar una Tarea con sandbox. En **Tareas con sandbox
-solo se usa OpenCode Go**: su clave real queda en un proxy local fuera del sandbox y el motor de la Tarea
-recibe un valor falso; los demás proveedores (y los inicios de sesión OAuth) **no se pasan** al sandbox, así
-que ahí no están disponibles. En **Control total** y en **Chat/Code no hay aislamiento de credenciales**: el
-motor lee tu `auth.json` como haría el CLI. La app no registra la clave ni la envía a ningún sitio salvo al
-proveedor. Detalle en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md).
+**Sobre tus credenciales.** OnyxCode tiene su propia conexión: las claves que pegas en el asistente o en
+Ajustes › Modelos las guarda el motor en el almacén propio de la app
+(`~/Library/Application Support/OnyxCode/opencode-data/opencode/auth.json`), aislado del CLI de OpenCode: la app no
+lee `~/.local/share/opencode`. Ese fichero lo lee el motor y, además, el proceso principal de la app lo lee al
+arrancar una Tarea con sandbox. En **Tareas con sandbox solo se usa OpenCode Go**: su clave real queda en un proxy
+local fuera del sandbox y el motor de la Tarea recibe un valor falso; los demás proveedores (y los inicios de
+sesión OAuth) **no se pasan** al sandbox, así que ahí no están disponibles. En **Control total** y en **Chat/Code
+no hay aislamiento de credenciales**: el motor lee el almacén propio de la app. La app no registra la clave ni la
+envía a ningún sitio salvo al proveedor. Detalle en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md).
 
 Para desarrollar: además, Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
 
@@ -42,6 +43,8 @@ probada y, si no, el motor incluido. También puedes elegir un binario concreto 
 Ajustes › Acerca de muestra qué motor y qué versión estás usando. Los avisos de licencia de lo que
 incluimos están en [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md); cómo se empaqueta y actualiza, en
 [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md).
+
+Aunque uses tu CLI como motor, la app usa su propio almacén de claves y sesiones.
 
 ## Términos de OpenCode y buenas prácticas de uso
 

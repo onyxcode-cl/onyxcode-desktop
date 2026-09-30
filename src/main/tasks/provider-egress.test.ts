@@ -3,10 +3,13 @@
  * Go con clave centinela; ningún secreto real pasa por `OPENCODE_AUTH_CONTENT`.
  */
 import { randomBytes } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { PROVIDER_TARGETS, placeholderAuthContent, type ProviderAuthEntry } from './provider-egress'
+
+vi.mock('electron', () => ({ app: { getPath: () => tmpdir(), getAppPath: () => process.cwd(), isPackaged: false } }))
 
 const rnd = (): string => randomBytes(24).toString('hex')
 const parse = (s: string): Record<string, ProviderAuthEntry> => JSON.parse(s) as Record<string, ProviderAuthEntry>
@@ -137,5 +140,31 @@ describe('sandbox.ts: el entorno del sandbox no recibe secretos reales', () => {
     const mgr = readFileSync(join(process.cwd(), 'src/main/tasks/manager.ts'), 'utf8')
     expect(mgr).not.toMatch(/OPENCODE_AUTH_CONTENT/)
     expect(mgr).not.toMatch(/OPENCODE_API_KEY/)
+  })
+})
+
+describe('sandbox.ts: auth propio de la app (nunca el del CLI)', () => {
+  const src = readFileSync(join(process.cwd(), 'src/main/tasks/sandbox.ts'), 'utf8')
+
+  it('no lee ~/.local ni XDG_DATA_HOME y usa appAuthFile(', () => {
+    expect(src).not.toContain('.local')
+    expect(src).not.toContain('XDG_DATA_HOME')
+    expect(src).toContain('appAuthFile(')
+  })
+
+  it('readProviderAuth falla cerrado: fichero ausente o JSON inválido → null', async () => {
+    const { readProviderAuth } = await import('./sandbox')
+    const dir = mkdtempSync(join(tmpdir(), 'onyx-auth-'))
+    try {
+      expect(readProviderAuth(join(dir, 'no-existe.json'))).toBeNull()
+      const bad = join(dir, 'bad.json')
+      writeFileSync(bad, '{no es json')
+      expect(readProviderAuth(bad)).toBeNull()
+      const ok = join(dir, 'auth.json')
+      writeFileSync(ok, JSON.stringify({ 'opencode-go': { type: 'api', key: 'k' } }))
+      expect(readProviderAuth(ok)).toEqual({ 'opencode-go': { type: 'api', key: 'k' } })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

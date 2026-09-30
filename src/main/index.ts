@@ -1,9 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
+import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
+import { settingsStore } from './store'
 import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
 import { prepareOpencodeConfigDir } from './tasks/opencode-config'
@@ -122,6 +125,16 @@ function start(): void {
       runMigrations(app.getPath('userData'), { appVersion: app.getVersion() })
     } catch (err) {
       console.error('[main] migraciones de datos:', err)
+    }
+    // Almacén de datos propio del motor (claves y sesiones, aislado del CLI). Si una instalación ya
+    // configurada lo estrena (vacío), se reabre el asistente UNA vez para conectar la IA de la app.
+    try {
+      const { created } = prepareOpencodeData(app.getPath('userData'))
+      if (shouldReopenOnboarding({ created, chatWorkspaceExists: existsSync(chatDirectory), onboarded: settingsStore.get().onboarded })) {
+        settingsStore.set({ onboarded: false })
+      }
+    } catch (err) {
+      console.error('[main] almacén de datos propio del motor:', err)
     }
     // Agentes de la app → userData/opencode-config (nunca escribir dentro del bundle, P1).
     prepareOpencodeConfigDir()

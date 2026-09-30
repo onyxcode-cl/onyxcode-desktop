@@ -47,6 +47,10 @@ export class FakeClient {
   config(): Promise<{ raw: string | null; content: unknown; config: unknown }> {
     return this.call('GET', 'config')
   }
+  /** Entorno que recibió el falso (nunca valores secretos): XDG_DATA_HOME y los ids de OPENCODE_AUTH_CONTENT. */
+  env(): Promise<{ xdgDataHome: string | null; authContent: { providers: string[]; allPlaceholder: boolean } }> {
+    return this.call('GET', 'env')
+  }
   unknownRoutes(): Promise<unknown[]> {
     return this.call('GET', 'unknown-routes')
   }

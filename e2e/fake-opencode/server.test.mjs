@@ -368,3 +368,45 @@ test('CLI: --version, flags desconocidos ignorados, auth y config desde el entor
     await new Promise((r) => child.once('exit', r))
   }
 })
+
+test('credenciales: OPENCODE_AUTH_CONTENT sustituye al auth.json, PUT /auth escribe el fichero y /__e2e/env no expone valores', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const xdg = mkdtempSync(join(tmpdir(), 'fake-auth-'))
+  const file = join(xdg, 'opencode', 'auth.json')
+  const start = async (extra) => {
+    const f = createFakeServer({ env: { OPENCODE_SERVER_USERNAME: 'user', OPENCODE_SERVER_PASSWORD: 'secret', FAKE_OPENCODE_HEARTBEAT_MS: '0', XDG_DATA_HOME: xdg, ...extra }, cors: [] })
+    const a = await f.listen(0, '127.0.0.1')
+    const get = async (path) => (await fetch(`http://127.0.0.1:${a.port}${path}`, { headers: { authorization: AUTH } })).json()
+    return { f, a, get }
+  }
+  try {
+    // 1) sin fichero ni contenido: nada
+    let s = await start({})
+    assert.deepEqual((await s.get('/__e2e/status')).authProviders, [])
+    const env0 = await s.get('/__e2e/env')
+    assert.equal(env0.xdgDataHome, xdg)
+    assert.deepEqual(env0.authContent.providers, [])
+    // 2) PUT /auth escribe el fichero
+    const put = await fetch(`http://127.0.0.1:${s.a.port}/auth/opencode-go`, { method: 'PUT', headers: { authorization: AUTH, 'content-type': 'application/json' }, body: JSON.stringify({ type: 'api', key: 'k-real' }) })
+    assert.equal(put.status, 200)
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { 'opencode-go': { type: 'api', key: 'k-real' } })
+    await s.f.close()
+    // 3) al arrancar lee el fichero
+    s = await start({})
+    assert.deepEqual((await s.get('/__e2e/status')).authProviders, ['opencode-go'])
+    await s.f.close()
+    // 4) AUTH_CONTENT sustituye (no mezcla) y /__e2e/env no revela la clave
+    s = await start({ OPENCODE_AUTH_CONTENT: JSON.stringify({ anthropic: { type: 'api', key: 'sandboxed-placeholder-abc' } }) })
+    assert.deepEqual((await s.get('/__e2e/status')).authProviders, ['anthropic'])
+    const env1 = await s.get('/__e2e/env')
+    assert.deepEqual(env1, { xdgDataHome: xdg, authContent: { providers: ['anthropic'], allPlaceholder: true } })
+    assert.ok(!JSON.stringify(env1).includes('abc'))
+    await s.f.close()
+    s = await start({ OPENCODE_AUTH_CONTENT: JSON.stringify({ anthropic: { type: 'api', key: 'real-secret' } }) })
+    assert.equal((await s.get('/__e2e/env')).authContent.allPlaceholder, false)
+    await s.f.close()
+  } finally {
+    rmSync(xdg, { recursive: true, force: true })
+  }
+})

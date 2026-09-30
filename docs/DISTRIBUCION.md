@@ -209,5 +209,5 @@ codesign --verify --deep --strict "$APP" && echo firma OK
 ls "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/licenses/electron/"
 ```
 
-Ojo: no ejecutes el binario contra tu `HOME` real (crea datos en `~/.local/share/opencode`); usa `HOME` y
+Ojo: no ejecutes el binario contra tu `HOME` real (crea datos en `~/.local/share/opencode`, el almacén del CLI; la app usa el suyo en `userData/opencode-data`); usa `HOME` y
 `XDG_*` temporales para cualquier prueba distinta de `--version`.

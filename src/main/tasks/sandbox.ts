@@ -10,16 +10,19 @@
  * LSP, cachés de npm/bun/pip), así que no puede tocar la config/plugins globales de OpenCode que
  * carga el sidecar principal SIN sandbox. Las credenciales de proveedores se le pasan por
  * `OPENCODE_AUTH_CONTENT` (OpenCode lo prefiere a `auth.json`, verificado en 1.18.32): el
- * `auth.json` del usuario queda ilegible dentro del sandbox, no se copia a disco y nunca se
- * registra en logs; el plugin `onyxcode-env` lo oculta del entorno de bash.
+ * `auth.json` PROPIO de la app (`userData/opencode-data/opencode/auth.json`, nunca el del CLI)
+ * queda ilegible dentro del sandbox, no se copia a disco y nunca se registra en logs; el plugin
+ * `onyxcode-env` lo oculta del entorno de bash.
  *
  * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
  */
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { app } from 'electron'
+import { appAuthFile } from '../opencode/data-dir'
 import { resolveOpencodeAsync } from '../opencode/server'
 import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
@@ -47,10 +50,9 @@ export function isSandboxAvailable(): boolean {
  * poder derivar la clave real por proveedor (credential proxy) y una versión centinela (para el
  * entorno del sandbox). NO se registra ni se escribe en ningún sitio.
  */
-function readProviderAuth(): Record<string, ProviderAuthEntry> | null {
-  const dataHome = process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share')
+export function readProviderAuth(file: string = appAuthFile(app.getPath('userData'))): Record<string, ProviderAuthEntry> | null {
   try {
-    const raw = readFileSync(join(dataHome, 'opencode', 'auth.json'), 'utf8')
+    const raw = readFileSync(file, 'utf8')
     const parsed = JSON.parse(raw) as Record<string, ProviderAuthEntry>
     if (parsed && typeof parsed === 'object') return parsed
     return null
