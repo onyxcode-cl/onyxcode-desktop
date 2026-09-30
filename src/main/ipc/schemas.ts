@@ -150,6 +150,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:opencodeInfo': none,
   'app:opencodeAction': obj({ action: literal(...OPENCODE_ACTIONS) }),
   'app:pickOpencodeBin': none,
+  'app:updateState': none,
+  'app:checkUpdates': none,
+  'app:dismissUpdate': obj({ version: str({ max: 64, min: 1, pattern: /^v?\d+\.\d+\.\d+[0-9A-Za-z.+-]*$/ }) }),
   'opencode:connection': none,
   'opencode:status': none,
   'opencode:restart': none,
@@ -160,7 +163,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     recentFolders: arr(absPath, 50),
     tasksGlobalInstructions: str({ max: 20_000 }),
     onboarded: bool,
-    routinesTermsAcknowledged: bool
+    routinesTermsAcknowledged: bool,
+    checkUpdates: bool
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq

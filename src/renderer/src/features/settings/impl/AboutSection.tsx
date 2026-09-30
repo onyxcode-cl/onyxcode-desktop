@@ -6,10 +6,13 @@ import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { api } from '../../../lib/api'
 import { engineNoticeText, engineSummary } from '../../../lib/engine-notice'
+import { CHECK_FAILED_TEXT, checkResultText, lastCheckText } from '../../../lib/update-notice'
+import { useUpdateState } from '../../../lib/use-update-state'
+import { useSettings } from '../../../stores/settings'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
 import { getExtras } from './extras'
-import { Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
+import { Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
 
 export function AboutSection(): React.JSX.Element {
   const client = useServer((s) => s.client)
@@ -19,6 +22,9 @@ export function AboutSection(): React.JSX.Element {
   const [server, setServer] = useState<{ version: string; healthy: boolean } | null>(null)
   const [engine, setEngine] = useState<OpencodeInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [update, setUpdate] = useUpdateState()
+  const checkUpdates = useSettings((s) => s.settings.checkUpdates)
+  const [checkResult, setCheckResult] = useState<string | null>(null)
 
   useEffect(() => {
     void getExtras()
@@ -43,6 +49,18 @@ export function AboutSection(): React.JSX.Element {
   const open = (url: string): void => {
     void api.invoke('app:openExternal', { url })
   }
+
+  const searchNow = (): void => {
+    const startedAt = Date.now()
+    setCheckResult(null)
+    void api.invoke('app:checkUpdates').then((r) => {
+      if (r.ok) {
+        setUpdate(r.data)
+        setCheckResult(checkResultText(r.data, startedAt))
+      } else setCheckResult(CHECK_FAILED_TEXT)
+    })
+  }
+  const configured = update?.configured ?? false
 
   return (
     <div>
@@ -88,6 +106,42 @@ export function AboutSection(): React.JSX.Element {
           </Card>
         </>
       )}
+
+      <SubTitle>Actualizaciones</SubTitle>
+      <Card>
+        <Row
+          label="Buscar actualizaciones automáticamente"
+          description={
+            configured
+              ? `Una vez al día como mucho, la app pide a GitHub (api.github.com) cuál es la última versión publicada. Solo se envía esa petición con el nombre y la versión de la app (${APP_NAME}/${update?.current ?? info?.version ?? ''}); ningún dato tuyo ni identificador. No descarga ni instala nada.`
+              : 'Esta compilación no tiene configurado dónde buscar versiones nuevas.'
+          }
+        >
+          <Toggle
+            checked={checkUpdates}
+            onChange={(v) => void useSettings.getState().update({ checkUpdates: v })}
+            label="Buscar actualizaciones automáticamente"
+            disabled={!configured}
+          />
+        </Row>
+        <Row
+          label="Buscar ahora"
+          description={
+            <span data-testid="update-last-check">
+              {checkResult && (
+                <span data-testid="update-result" className="mb-0.5 block text-fg">
+                  {checkResult}
+                </span>
+              )}
+              {lastCheckText(update?.lastCheck ?? null)}
+            </span>
+          }
+        >
+          <Button size="sm" onClick={searchNow} disabled={!configured || !checkUpdates || update?.checking === true}>
+            {update?.checking ? 'Buscando…' : 'Buscar ahora'}
+          </Button>
+        </Row>
+      </Card>
 
       <SubTitle>Enlaces</SubTitle>
       <div className="flex flex-wrap gap-2">

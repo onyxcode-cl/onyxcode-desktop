@@ -35,3 +35,6 @@ export const BRAND_COLORS = {
   /** Dorado pirita (chispa del logo). */
   spark: '#f0c35a'
 } as const
+
+/** «owner/repo» público en GitHub donde se publican las releases. Vacío = sin aviso de versión nueva (sin red). */
+export const RELEASES_REPO = '' as string

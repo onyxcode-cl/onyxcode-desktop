@@ -21,6 +21,8 @@ export interface Settings {
   routinesTermsAcknowledged: boolean
   /** Ruta absoluta del binario de OpenCode elegido por el usuario ('' = detección automática). Solo main la escribe. */
   opencodeBin: string
+  /** Buscar versiones nuevas en GitHub (una petición al día como mucho). */
+  checkUpdates: boolean
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -32,7 +34,8 @@ export const DEFAULT_SETTINGS: Settings = {
   tasksGlobalInstructions: '',
   onboarded: false,
   routinesTermsAcknowledged: false,
-  opencodeBin: ''
+  opencodeBin: '',
+  checkUpdates: true
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'

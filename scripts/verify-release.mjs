@@ -14,6 +14,12 @@ if (!alias) errors.push('No se encontró AUTHOR_ALIAS en src/shared/brand.ts')
 else if (alias === 'aliaspendiente' || alias === 'bentec')
   errors.push(`AUTHOR_ALIAS sigue siendo provisional («${alias}»): definí el alias público`)
 
+// Misma regla que isValidRepo de src/shared/update-check.ts (este script no importa TS).
+const repo = /export const RELEASES_REPO = '([^']*)'/.exec(brand)?.[1] ?? ''
+const repoName = repo.split('/')[1]
+if (!/^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/.test(repo) || repoName === '.' || repoName === '..')
+  errors.push('RELEASES_REPO está vacío o no es «owner/repo»: publica el repositorio y defínelo en src/shared/brand.ts')
+
 for (const f of [
   'src/shared/brand.ts',
   'electron-builder.js',
