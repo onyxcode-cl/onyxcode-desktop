@@ -38,3 +38,14 @@ export const BRAND_COLORS = {
 
 /** «owner/repo» público en GitHub donde se publican las releases. Vacío = sin aviso de versión nueva (sin red). */
 export const RELEASES_REPO = '' as string
+
+/**
+ * Servidor de cuentas (origen `https://…`, sin ruta). `null` = la app NO exige iniciar sesión y no
+ * contacta ningún servidor de cuenta. Se rellena SOLO al activar las cuentas (ver
+ * docs/CUENTAS-SERVIDOR.md y docs/SEGURIDAD.md «Cuenta»).
+ */
+export const ACCOUNT_API = null as string | null
+
+/** Política de privacidad y términos publicados (URL `https://…`). Vacío = la pantalla muestra el borrador local. */
+export const PRIVACY_URL = '' as string
+export const TERMS_URL = '' as string

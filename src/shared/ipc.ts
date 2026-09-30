@@ -10,6 +10,7 @@
 import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpencodeBinResult, ServerStatus, Settings } from './types'
 import type { OpencodeAction } from './opencode-links'
 import type { UpdateState } from './update-check'
+import type { AccountState } from './account'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
 export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
@@ -45,6 +46,23 @@ export interface IpcInvokeContract {
   /** «Más tarde»: no vuelve a avisar de esa versión (sí de una mayor). */
   'app:dismissUpdate': { req: { version: string }; res: UpdateState }
 
+  // cuenta (solo ventana principal; ver main/account y docs/CUENTAS-SERVIDOR.md)
+  'account:state': { req: void; res: AccountState }
+  /** Inicia sesión con Google (navegador + receptor loopback). Resuelve al terminar o cancelar. */
+  'account:google': { req: void; res: AccountState }
+  /** «Cancelar» mientras se espera al navegador. */
+  'account:cancel': { req: void; res: AccountState }
+  /** «Reintentar»: vuelve a validar la sesión guardada con el servidor. */
+  'account:retry': { req: void; res: AccountState }
+  /** Pide un código de 6 dígitos por correo (respuesta uniforme: no revela si la cuenta existe). */
+  'account:emailStart': { req: { email: string }; res: void }
+  'account:emailVerify': { req: { email: string; code: string }; res: AccountState }
+  'account:signOut': { req: void; res: AccountState }
+  /** Borra la cuenta en el servidor y la sesión local (no toca las claves de IA ni las conversaciones). */
+  'account:delete': { req: void; res: AccountState }
+  /** «Descargar mis datos»: guarda el JSON de la cuenta con un diálogo «Guardar como…». */
+  'account:export': { req: void; res: { saved: boolean } }
+
   // opencode sidecar
   'opencode:connection': { req: void; res: OpencodeConnection }
   'opencode:status': { req: void; res: ServerStatus }
@@ -64,6 +82,8 @@ export interface IpcEventContract {
   'app:openTarget': NotifyTarget
   /** Cambio en el estado del aviso de versión nueva (mismo nombre que el invoke, como `opencode:status`). */
   'app:updateState': UpdateState
+  /** Cambio en el estado de la cuenta (nunca incluye el token). */
+  'account:changed': AccountState
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeContract
@@ -83,6 +103,15 @@ export const IPC_INVOKE_CHANNELS = [
   'app:updateState',
   'app:checkUpdates',
   'app:dismissUpdate',
+  'account:state',
+  'account:google',
+  'account:cancel',
+  'account:retry',
+  'account:emailStart',
+  'account:emailVerify',
+  'account:signOut',
+  'account:delete',
+  'account:export',
   'opencode:connection',
   'opencode:status',
   'opencode:restart',
@@ -96,7 +125,8 @@ export const IPC_EVENT_CHANNELS = [
   'opencode:connection',
   'settings:changed',
   'app:openTarget',
-  'app:updateState'
+  'app:updateState',
+  'account:changed'
 ] as const satisfies readonly IpcEventChannel[]
 
 // Garantiza en compilación que las listas cubren todo el contrato.

@@ -4,6 +4,7 @@
  */
 import { app, BrowserWindow } from 'electron'
 import type { ExtrasPrefs, ExtrasPrefsState, IpcExtrasEventChannel, IpcExtrasEventContract } from '@shared/ipc-extras'
+import { whenAccountAllowed } from '../account/access'
 import { extrasPrefs } from './prefs'
 import { destroyQuickEntry, registerQuickEntryShortcut, toggleQuickEntry, warmQuickEntry } from './quick-entry'
 import { createTray, destroyTray, updateTrayShortcut } from './tray'
@@ -51,10 +52,11 @@ function applyPrefs(deps: MainWindowDeps, prefs: ExtrasPrefs): void {
   if (prefs.showTray) {
     createTray(
       {
-        onNewConversation: () => sendToMain(deps, 'extras:new-conversation'),
-        onQuickEntry: () => toggleQuickEntry(),
+        // Con la cuenta obligatoria sin iniciar, la bandeja solo deja abrir la app (que muestra el acceso) y salir.
+        onNewConversation: whenAccountAllowed(() => sendToMain(deps, 'extras:new-conversation')),
+        onQuickEntry: whenAccountAllowed(() => toggleQuickEntry()),
         onOpenApp: () => void showMainWindow(deps),
-        onOpenSettings: () => sendToMain(deps, 'extras:open-settings'),
+        onOpenSettings: whenAccountAllowed(() => sendToMain(deps, 'extras:open-settings')),
         onQuit: () => app.quit()
       },
       prefs.quickEntryShortcut

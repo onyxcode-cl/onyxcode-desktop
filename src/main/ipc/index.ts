@@ -1,6 +1,7 @@
 import type { IpcMain } from 'electron'
 import type { OpencodeServer } from '../opencode/server'
 import type { MainWindowDeps } from '../extras/windows'
+import { registerAccountHandlers } from './account'
 import { registerAppHandlers } from './app'
 import { registerNotifyHandlers } from './notify'
 import { registerOnboardingHandlers } from './onboarding'
@@ -15,6 +16,7 @@ export interface IpcContext extends MainWindowDeps {
 
 /** Registra todos los módulos IPC. Un módulo nuevo = una línea aquí. */
 export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
+  registerAccountHandlers(ipcMain)
   registerAppHandlers(ipcMain, ctx)
   registerOnboardingHandlers(ipcMain)
   registerOpencodeHandlers(ipcMain, ctx.server)

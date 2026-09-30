@@ -53,6 +53,8 @@ const fileName = str({ max: 200, min: 1, pattern: /^[^/\\:\0]+$/ })
 const folderMode = literal('rw', 'ro')
 /** Grupo de tareas: `null` = sin grupo. */
 const group = nullable(str({ max: 80 }))
+/** Correo de la cuenta: forma mínima aquí (el servicio hace la validación completa). */
+const accountEmail = str({ max: 254, min: 3, pattern: /^[^\s@]+@[^\s@]+$/ })
 const links = arr(str({ max: 2048, pattern: /^https?:\/\//i }), 50)
 /** Clave del directorio `tasks-sandbox/<key>` (hash hexadecimal). */
 const storageKey = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
@@ -153,6 +155,15 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:updateState': none,
   'app:checkUpdates': none,
   'app:dismissUpdate': obj({ version: str({ max: 64, min: 1, pattern: /^v?\d+\.\d+\.\d+[0-9A-Za-z.+-]*$/ }) }),
+  'account:state': none,
+  'account:google': none,
+  'account:cancel': none,
+  'account:retry': none,
+  'account:emailStart': obj({ email: accountEmail }),
+  'account:emailVerify': obj({ email: accountEmail, code: str({ min: 6, max: 6, pattern: /^\d{6}$/ }) }),
+  'account:signOut': none,
+  'account:delete': none,
+  'account:export': none,
   'opencode:connection': none,
   'opencode:status': none,
   'opencode:restart': none,
