@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { Loader2, RefreshCw, Unplug } from 'lucide-react'
 import type { ModelMode } from '@shared/ipc-extras'
 import { MODE_LABELS } from '@shared/labels'
@@ -11,8 +11,8 @@ import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
 import { ModelSelect, sortProviders } from './ModelSelect'
-import { useProviderCatalog, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
-import { ProviderKeyForm, saveProviderKey } from './ProviderKeyForm'
+import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
+import { ProviderKeyForm } from './ProviderKeyForm'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 
 const MODES: { id: ModelMode; label: string; description: string }[] = [
@@ -29,9 +29,8 @@ export function ModelsSection(): React.JSX.Element {
   const updatePrefs = useExtrasPrefs((s) => s.update)
 
   const { catalog, error: loadError, reload: loadCatalog } = useProviderCatalog(client)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const catalogError = actionError ?? loadError
-  const [busy, setBusy] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
+  const [removing, setRemoving] = useState(false)
 
   useEffect(() => {
     if (client) void load(client)
@@ -39,9 +38,13 @@ export function ModelsSection(): React.JSX.Element {
 
   const refresh = async (): Promise<void> => {
     if (!client) return
-    setActionError(null)
+    setRemoveError(null)
     await Promise.all([load(client, true), loadCatalog()])
   }
+
+  const connect = useProviderConnect(client, refresh)
+  const catalogError = connect.error ?? removeError ?? loadError
+  const busy = connect.busy || removing
 
   const setModeModel = (mode: ModelMode, value: ModelRef | null): void => {
     const next = { ...modelsByMode }
@@ -101,31 +104,21 @@ export function ModelsSection(): React.JSX.Element {
               danger: true
             })
             if (!ok) return
-            setBusy(true)
+            setRemoving(true)
             try {
               const r = await client.auth.remove({ providerID: id })
               if (r.error) throw new Error(errorMessage(r.error))
               await client.global.dispose()
               await refresh()
             } catch (err) {
-              setActionError(errorMessage(err))
+              setRemoveError(errorMessage(err))
             } finally {
-              setBusy(false)
+              setRemoving(false)
             }
           }}
-          onSetKey={async (id, key) => {
-            if (!client) return
-            setBusy(true)
-            try {
-              await saveProviderKey(client, id, key)
-              await refresh()
-            } catch (err) {
-              setActionError(errorMessage(err))
-              throw err
-            } finally {
-              setBusy(false)
-            }
-          }}
+          onSetKey={connect.setKey}
+          onOauthStart={connect.oauthStart}
+          onOauthFinish={connect.oauthFinish}
         />
       )}
     </div>
@@ -136,12 +129,16 @@ function ProvidersList({
   catalog,
   busy,
   onDisconnect,
-  onSetKey
+  onSetKey,
+  onOauthStart,
+  onOauthFinish
 }: {
   catalog: ProviderCatalog
   busy: boolean
   onDisconnect: (id: string) => Promise<void>
   onSetKey: (id: string, key: string) => Promise<void>
+  onOauthStart: ComponentProps<typeof ProviderKeyForm>['onOauthStart']
+  onOauthFinish: ComponentProps<typeof ProviderKeyForm>['onOauthFinish']
 }): React.JSX.Element {
   const connected = useMemo(() => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))), [catalog])
   const others = useMemo(() => unconnectedProviders(catalog), [catalog])
@@ -171,7 +168,14 @@ function ProvidersList({
         ))}
       </Card>
 
-      <ProviderKeyForm providers={others} auth={catalog.auth} busy={busy} onSetKey={onSetKey} />
+      <ProviderKeyForm
+        providers={others}
+        auth={catalog.auth}
+        busy={busy}
+        onSetKey={onSetKey}
+        onOauthStart={onOauthStart}
+        onOauthFinish={onOauthFinish}
+      />
     </>
   )
 }

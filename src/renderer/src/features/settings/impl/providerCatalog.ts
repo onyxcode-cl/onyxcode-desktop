@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
+import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import { errorMessage, type OpencodeClient } from '../../../lib/opencode'
 
 /** Catálogo de proveedores de OpenCode (`provider.list` + `provider.auth`). */
@@ -74,4 +74,81 @@ export function authOptions(methods: ProviderAuthMethod[] | undefined): AuthOpti
     if (m.type === 'oauth' && !m.prompts?.length) oauth.push({ index, label: m.label })
   })
   return { api: list.length === 0 || list.some((m) => m.type === 'api'), oauth }
+}
+
+/**
+ * Guarda una API key en OpenCode (`auth.set`) y recarga los proveedores del servidor
+ * (las respuestas en curso se interrumpen). Lanza si el servidor rechaza la clave.
+ */
+export async function saveProviderKey(client: OpencodeClient, providerID: string, key: string): Promise<void> {
+  const r = await client.auth.set({ providerID, auth: { type: 'api', key } })
+  if (r.error) throw new Error(errorMessage(r.error))
+  await client.global.dispose()
+}
+
+/**
+ * Acciones para conectar un proveedor (API key u OAuth) con estado `busy`/`error` compartido.
+ * `onChanged` recarga lo que dependa de los proveedores conectados. Todas las acciones relanzan el error.
+ */
+export function useProviderConnect(
+  client: OpencodeClient | null,
+  onChanged: () => Promise<void>
+): {
+  busy: boolean
+  error: string | null
+  setKey: (providerID: string, key: string) => Promise<void>
+  oauthStart: (providerID: string, method: number) => Promise<ProviderAuthAuthorization>
+  oauthFinish: (providerID: string, method: number, code?: string) => Promise<void>
+} {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const run = useCallback(
+    async <T>(fn: (c: OpencodeClient) => Promise<T>): Promise<T> => {
+      if (!client) throw new Error('OpenCode no está listo.')
+      setBusy(true)
+      setError(null)
+      try {
+        return await fn(client)
+      } catch (err) {
+        setError(errorMessage(err))
+        throw err
+      } finally {
+        setBusy(false)
+      }
+    },
+    [client]
+  )
+
+  const setKey = useCallback(
+    (providerID: string, key: string) =>
+      run(async (c) => {
+        await saveProviderKey(c, providerID, key)
+        await onChanged()
+      }),
+    [run, onChanged]
+  )
+
+  const oauthStart = useCallback(
+    (providerID: string, method: number) =>
+      run(async (c) => {
+        const r = await c.provider.oauth.authorize({ providerID, method })
+        if (r.error || !r.data) throw new Error(errorMessage(r.error))
+        return r.data
+      }),
+    [run]
+  )
+
+  const oauthFinish = useCallback(
+    (providerID: string, method: number, code?: string) =>
+      run(async (c) => {
+        const r = await c.provider.oauth.callback({ providerID, method, code })
+        if (r.error) throw new Error(errorMessage(r.error))
+        await c.global.dispose()
+        await onChanged()
+      }),
+    [run, onChanged]
+  )
+
+  return { busy, error, setKey, oauthStart, oauthFinish }
 }

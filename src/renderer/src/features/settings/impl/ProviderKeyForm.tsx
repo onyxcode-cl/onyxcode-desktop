@@ -1,19 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { KeyRound, Loader2 } from 'lucide-react'
-import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
+import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import { Button } from '../../../components/Button'
-import { errorMessage, type OpencodeClient } from '../../../lib/opencode'
+import { call } from '../../../lib/api'
+import { authOptions, saveProviderKey } from './providerCatalog'
 import { Card, Field, Select, TextInput } from './ui'
 
-/**
- * Guarda una API key en OpenCode (`auth.set`) y recarga los proveedores del servidor
- * (las respuestas en curso se interrumpen). Lanza si el servidor rechaza la clave.
- */
-export async function saveProviderKey(client: OpencodeClient, providerID: string, key: string): Promise<void> {
-  const r = await client.auth.set({ providerID, auth: { type: 'api', key } })
-  if (r.error) throw new Error(errorMessage(r.error))
-  await client.global.dispose()
-}
+export { saveProviderKey }
 
 interface Props {
   /** Proveedores entre los que elegir (o el único, con `fixedProviderId`). */
@@ -25,27 +18,134 @@ interface Props {
   onSetKey: (providerID: string, key: string) => Promise<void>
   /** Proveedor fijo (asistente de primer uso): oculta el selector. */
   fixedProviderId?: string
+  /** Encabezado del formulario; `null` lo oculta (el anfitrión ya pone uno). */
+  title?: string | null
+  /** Inicia un inicio de sesión OAuth (devuelve la URL a abrir). Sin esta función y `onOauthFinish` no se ofrece OAuth. */
+  onOauthStart?: (providerID: string, method: number) => Promise<ProviderAuthAuthorization>
+  /** Completa el inicio de sesión (con `code` si el método lo pide). Rechaza si falla. */
+  onOauthFinish?: (providerID: string, method: number, code?: string) => Promise<void>
   className?: string
 }
 
-/** Formulario «Conectar proveedor con API key»: lo usan Ajustes › Modelos y el asistente de primer uso. */
-export function ProviderKeyForm({ providers, auth, busy, onSetKey, fixedProviderId, className = 'mt-3 p-4' }: Props): React.JSX.Element {
+type Flow =
+  | { kind: 'idle' }
+  | { kind: 'starting'; index: number }
+  | { kind: 'auto'; index: number }
+  | { kind: 'code'; index: number; instructions: string; code: string; submitting: boolean }
+
+/** Formulario «Conectar proveedor» (API key u OAuth): lo usan Ajustes › Modelos y el asistente de primer uso. */
+export function ProviderKeyForm({
+  providers,
+  auth,
+  busy,
+  onSetKey,
+  fixedProviderId,
+  title,
+  onOauthStart,
+  onOauthFinish,
+  className = 'mt-3 p-4'
+}: Props): React.JSX.Element {
   const [picked, setPicked] = useState('')
   const [key, setKey] = useState('')
+  const [flow, setFlow] = useState<Flow>({ kind: 'idle' })
+  /** Contador de generación: una respuesta de OAuth solo cuenta si sigue siendo la vigente (cancelar, cambiar de proveedor o desmontar la invalidan). */
+  const generation = useRef(0)
   const target = fixedProviderId ?? picked
-  const methods = target ? (auth[target] ?? []) : []
-  const supportsApi = !target || methods.length === 0 || methods.some((m) => m.type === 'api')
+  const opts = authOptions(target ? auth[target] : undefined)
+  const oauth = onOauthStart && onOauthFinish ? opts.oauth : []
+  const supportsApi = !target || opts.api
   const targetProvider = providers.find((p) => p.id === target)
+  const heading =
+    title === undefined
+      ? fixedProviderId
+        ? `Clave de ${targetProvider?.name ?? fixedProviderId}`
+        : 'Conectar proveedor con API key'
+      : title
+
+  useEffect(() => {
+    const gen = generation
+    return () => {
+      gen.current++
+    }
+  }, [])
+
+  const cancelFlow = (): void => {
+    generation.current++
+    setFlow({ kind: 'idle' })
+  }
+
+  const pick = (id: string): void => {
+    cancelFlow()
+    setPicked(id)
+  }
+
+  const submit = (): void => {
+    if (busy || !target || !key.trim() || !supportsApi) return
+    void onSetKey(target, key.trim()).then(
+      () => {
+        setKey('')
+        setPicked('')
+      },
+      () => undefined
+    )
+  }
+
+  const startOauth = async (index: number): Promise<void> => {
+    if (!onOauthStart || !onOauthFinish || !target) return
+    const mine = ++generation.current
+    setFlow({ kind: 'starting', index })
+    try {
+      const authz = await onOauthStart(target, index)
+      if (mine !== generation.current) return
+      await call('app:openExternal', { url: authz.url })
+      if (mine !== generation.current) return
+      if (authz.method === 'auto') {
+        setFlow({ kind: 'auto', index })
+        await onOauthFinish(target, index)
+        if (mine !== generation.current) return
+        setFlow({ kind: 'idle' })
+        setPicked('')
+      } else {
+        setFlow({ kind: 'code', index, instructions: authz.instructions, code: '', submitting: false })
+      }
+    } catch {
+      if (mine === generation.current) setFlow({ kind: 'idle' })
+    }
+  }
+
+  const confirmCode = async (): Promise<void> => {
+    if (flow.kind !== 'code' || !onOauthFinish || !target || !flow.code.trim() || flow.submitting) return
+    const { index, instructions } = flow
+    const code = flow.code.trim()
+    const mine = ++generation.current
+    setFlow({ kind: 'code', index, instructions, code, submitting: true })
+    try {
+      await onOauthFinish(target, index, code)
+      if (mine !== generation.current) return
+      setFlow({ kind: 'idle' })
+      setPicked('')
+    } catch {
+      if (mine === generation.current) setFlow({ kind: 'code', index, instructions, code, submitting: false })
+    }
+  }
 
   return (
     <Card className={className}>
-      <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-        <KeyRound size={15} /> {fixedProviderId ? `Clave de ${targetProvider?.name ?? fixedProviderId}` : 'Conectar proveedor con API key'}
-      </div>
-      <div className={`grid items-end gap-2 ${fixedProviderId ? 'grid-cols-[1fr_auto]' : 'grid-cols-[1fr_1.4fr_auto]'}`}>
+      {heading !== null && (
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+          <KeyRound size={15} /> {heading}
+        </div>
+      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+        className={`grid items-end gap-2 ${fixedProviderId ? 'grid-cols-[1fr_auto]' : 'grid-cols-[1fr_1.4fr_auto]'}`}
+      >
         {!fixedProviderId && (
           <Field label="Proveedor">
-            <Select value={picked} onChange={(e) => setPicked(e.target.value)}>
+            <Select value={picked} onChange={(e) => pick(e.target.value)}>
               <option value="">Elegir…</option>
               {providers.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -65,26 +165,65 @@ export function ProviderKeyForm({ providers, auth, busy, onSetKey, fixedProvider
             disabled={!target || !supportsApi}
           />
         </Field>
-        <Button
-          variant="primary"
-          disabled={busy || !target || !key.trim() || !supportsApi}
-          onClick={() => {
-            void onSetKey(target, key.trim()).then(
-              () => {
-                setKey('')
-                setPicked('')
-              },
-              () => undefined
-            )
-          }}
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : null} Guardar
+        <Button variant="primary" type="submit" disabled={busy || !target || !key.trim() || !supportsApi}>
+          {busy && flow.kind === 'idle' ? <Loader2 size={14} className="animate-spin" /> : null} Guardar
         </Button>
-      </div>
+      </form>
+
+      {target && oauth.length > 0 && (
+        <div className="mt-3 border-t border-border pt-3">
+          {flow.kind === 'idle' || flow.kind === 'starting' ? (
+            <div className="flex flex-wrap gap-2">
+              {oauth.map((m) => (
+                <Button key={m.index} disabled={busy || flow.kind === 'starting'} onClick={() => void startOauth(m.index)}>
+                  {flow.kind === 'starting' && flow.index === m.index ? <Loader2 size={14} className="animate-spin" /> : null} Iniciar
+                  sesión · {m.label}
+                </Button>
+              ))}
+            </div>
+          ) : flow.kind === 'auto' ? (
+            <div className="flex items-center justify-between gap-2" aria-live="polite">
+              <p className="flex items-center gap-2 text-xs text-muted">
+                <Loader2 size={13} className="animate-spin" /> Completa el inicio de sesión en el navegador…
+              </p>
+              <Button size="sm" variant="ghost" onClick={cancelFlow}>
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <form
+              className="space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void confirmCode()
+              }}
+            >
+              {flow.instructions && <p className="text-xs text-muted">{flow.instructions}</p>}
+              <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
+                <Field label="Código de autorización">
+                  <TextInput
+                    autoComplete="off"
+                    value={flow.code}
+                    disabled={flow.submitting}
+                    onChange={(e) => setFlow({ ...flow, code: e.target.value })}
+                  />
+                </Field>
+                <Button variant="primary" type="submit" disabled={flow.submitting || !flow.code.trim()}>
+                  {flow.submitting ? <Loader2 size={14} className="animate-spin" /> : null} Confirmar
+                </Button>
+                <Button variant="ghost" onClick={cancelFlow}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
       <p className="mt-2 text-[11px] text-subtle">
-        {target && !supportsApi
+        {target && !supportsApi && oauth.length === 0
           ? 'Este proveedor sólo admite inicio de sesión OAuth: ejecuta `opencode auth login` en una terminal.'
-          : 'La clave se guarda en el almacén de credenciales de OpenCode (~/.local/share/opencode/auth.json). Para OAuth usa `opencode auth login`.'}
+          : 'La clave se guarda en el almacén de credenciales de OpenCode (~/.local/share/opencode/auth.json).'}
       </p>
     </Card>
   )
