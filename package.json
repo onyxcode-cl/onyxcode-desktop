@@ -25,6 +25,7 @@
     "test:e2e": "vitest run -c vitest.e2e.config.ts",
     "test:e2e:prod": "E2E_MODE=prod vitest run -c vitest.e2e.config.ts",
     "verify:release": "node scripts/verify-release.mjs",
+    "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
     "check:opencode": "node scripts/check-opencode.mjs",
     "verify": "npm run typecheck && npm test && npm run lint && npm run format:check && npm run build && npm run test:transform && npm run test:smoke && npm run test:e2e"
   },

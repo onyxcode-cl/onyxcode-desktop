@@ -167,7 +167,16 @@ coinciden, borra lo descargado y no extrae nada) y deja el binario en `resources
 **Firma.** electron-builder recorre todo el bundle y vuelve a firmar cada Mach-O, también este binario; al
 hacerlo cambia el hash del ejecutable respecto al original (es esperable):
 
-- Sin Developer ID: firma **ad-hoc**, igual que el resto de la app.
+- Sin Developer ID: firma **ad-hoc**, igual que el resto de la app. Medido con `npm run verify:bundled` (1.18.33):
+
+  | | Antes (descargado) | Después (dentro del .app) |
+  | --- | --- | --- |
+  | SHA-256 | `139ddeb6a46ba276827bb8f79c7b28208621746e4fd6914d9ae71cc1a0a57524` | `774e92503dbb21d9708651f9a8becd8209d9abe8746a6eb7599b14481be24018` |
+  | Tamaño | 144 800 738 bytes | 143 959 952 bytes |
+  | Firma | ad-hoc, `Identifier=a.out` | ad-hoc, `Identifier=opencode-<hash>` |
+
+  Solo cambia la firma (identificador y bloque de firma); el `--version` y el servidor siguen igual. El SHA-256
+  que se verifica contra el release es el del ZIP (`pin.json`), no el del ejecutable ya firmado.
 - Con Developer ID: hardened runtime y `build/entitlements.mac.plist` (que ya trae JIT y memoria ejecutable, lo
   que necesita el motor de JavaScript del binario). El binario también figura en `mac.binaries`, y se notariza
   con el resto de la app.
@@ -186,7 +195,11 @@ nueva de OnyxCode. Procedimiento, contrato de la API y qué hacer si algo cambia
 **Tamaño esperado.** El `.dmg` pasa de unos 130 MB a **unos 170 MB** (el binario ocupa ~100 MB sin comprimir). Por
 encima de 200 MB algo va mal (p. ej. se empaquetó dos veces).
 
-**Cómo comprobarlo** tras `npm run package`:
+**Cómo comprobarlo** tras `npm run package`: `npm run verify:bundled` (`scripts/verify-bundled.mjs`) hace todo lo
+siguiente de una vez, sin tocar tu `HOME`: `codesign --verify --deep --strict` del `.app`, `--version` == `pin.version`,
+el binario sirviendo `/global/health` dentro del perfil Seatbelt real de Tareas (`buildSandboxProfile`, con
+`HOME`/`XDG_*` temporales) más un control negativo (el perfil sigue negando leer `userData`), `.dmg` < 200 MB y los
+avisos de licencias en `Contents/Resources`. A mano:
 
 ```bash
 ls -lh dist/onyxcode-*-arm64.dmg                                  # ~170 MB
