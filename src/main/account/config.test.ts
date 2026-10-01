@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { isAllowedAccountBase, isSafeBrowserUrl } from '@shared/account-url'
 import { resolveAccountConfig } from './config'
@@ -36,6 +38,47 @@ describe('resolveAccountConfig', () => {
 
   it('variable vacía se ignora', () => {
     expect(resolveAccountConfig({ isPackaged: false, env: { ONYXCODE_ACCOUNT_URL: '' }, api: null }).enabled).toBe(false)
+  })
+})
+
+describe('ONYXCODE_ACCOUNT_DISABLED (solo pruebas)', () => {
+  const API = 'https://cuentas.ejemplo.cl'
+  const off = { enabled: false, baseUrl: null, allowLocalHttp: false }
+  it('empaquetada: se ignora siempre (la cuenta sigue activa con ACCOUNT_API)', () => {
+    const env = { ONYXCODE_ACCOUNT_DISABLED: '1' }
+    expect(resolveAccountConfig({ isPackaged: true, env, api: API })).toEqual({ enabled: true, baseUrl: API, allowLocalHttp: false })
+    const both = { ONYXCODE_ACCOUNT_DISABLED: '1', ONYXCODE_ACCOUNT_URL: 'http://127.0.0.1:9' }
+    expect(resolveAccountConfig({ isPackaged: true, env: both, api: API })).toEqual({ enabled: true, baseUrl: API, allowLocalHttp: false })
+  })
+  it('sin empaquetar: =1 apaga la cuenta aunque ACCOUNT_API esté definido', () => {
+    expect(resolveAccountConfig({ isPackaged: false, env: { ONYXCODE_ACCOUNT_DISABLED: '1' }, api: API })).toEqual(off)
+  })
+  it('sin empaquetar: otros valores no apagan', () => {
+    for (const v of ['0', 'true', '', ' 1'])
+      expect(resolveAccountConfig({ isPackaged: false, env: { ONYXCODE_ACCOUNT_DISABLED: v }, api: API }).enabled).toBe(true)
+  })
+  it('precedencia: ONYXCODE_ACCOUNT_URL gana sobre DISABLED (los specs de cuenta usan su servidor falso)', () => {
+    const env = { ONYXCODE_ACCOUNT_DISABLED: '1', ONYXCODE_ACCOUNT_URL: 'http://127.0.0.1:4321' }
+    expect(resolveAccountConfig({ isPackaged: false, env, api: API })).toEqual({
+      enabled: true,
+      baseUrl: 'http://127.0.0.1:4321',
+      allowLocalHttp: true
+    })
+  })
+  it('guardia estática: solo config.ts la lee y lo hace bajo !isPackaged', () => {
+    const root = resolve(__dirname, '..', '..')
+    const hits: string[] = []
+    const walk = (d: string): void => {
+      for (const n of readdirSync(d)) {
+        const f = join(d, n)
+        if (statSync(f).isDirectory()) walk(f)
+        else if (/\.(ts|tsx)$/.test(n) && !n.endsWith('.test.ts') && readFileSync(f, 'utf8').includes('ONYXCODE_ACCOUNT_DISABLED'))
+          hits.push(f)
+      }
+    }
+    walk(root)
+    expect(hits.map((h) => h.slice(root.length))).toEqual(['/main/account/config.ts'])
+    expect(readFileSync(hits[0], 'utf8')).toMatch(/const disabled = !i\.isPackaged && i\.env\.ONYXCODE_ACCOUNT_DISABLED === '1'/)
   })
 })
 

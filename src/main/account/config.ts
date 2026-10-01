@@ -18,11 +18,17 @@ export interface AccountConfigInput {
 
 /**
  * App empaquetada: SIEMPRE `ACCOUNT_API` (las variables de entorno se ignoran). Sin empaquetar
- * se respeta `ONYXCODE_ACCOUNT_URL` (servidor falso de los E2E). Una dirección inválida NO apaga la
+ * se respetan dos variables SOLO PARA PRUEBAS, con esta precedencia:
+ *  1. `ONYXCODE_ACCOUNT_URL` (servidor falso de los E2E) gana siempre sobre la otra;
+ *  2. `ONYXCODE_ACCOUNT_DISABLED=1` apaga la cuenta (los E2E/smoke que no prueban el login).
+ *  3. Sin ninguna: `ACCOUNT_API`.
+ * Una dirección inválida NO apaga la
  * cuenta: queda activa sin servidor, de modo que la app no abre (falla cerrado, nunca «sin login»).
  */
 export function resolveAccountConfig(i: AccountConfigInput): AccountConfig {
   const fromEnv = !i.isPackaged ? i.env.ONYXCODE_ACCOUNT_URL : undefined
+  const disabled = !i.isPackaged && i.env.ONYXCODE_ACCOUNT_DISABLED === '1'
+  if (disabled && !(fromEnv && fromEnv.length > 0)) return { enabled: false, baseUrl: null, allowLocalHttp: false }
   const raw = fromEnv && fromEnv.length > 0 ? fromEnv : i.api
   if (raw === null || raw === undefined) return { enabled: false, baseUrl: null, allowLocalHttp: false }
   const allowLocalHttp = !i.isPackaged

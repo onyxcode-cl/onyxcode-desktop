@@ -1,7 +1,10 @@
 # Cuentas — qué cambiar al ACTIVAR
 
-Hoy las cuentas están **apagadas** (`ACCOUNT_API = null`) y los textos públicos dicen lo contrario de lo que pasará al
-activarlas. Esta lista es el «paso 0» de la activación: no se cambian antes para no mentir sobre la versión actual.
+**Estado (2026-09-30):** las cuentas están **activas** (`ACCOUNT_API = 'https://api.onyxcode.cl'`) y los textos de esta
+lista ya se actualizaron (README › Privacidad, `docs/SEGURIDAD.md` §1/§2/§3 quinquies/§3 sexies, `docs/DISTRIBUCION.md`,
+`AUDIT.md` §12). Siguen pendientes `PRIVACY_URL`/`TERMS_URL` (páginas legales sin publicar; la app muestra el borrador
+local) y la prueba manual con el servidor real. Los E2E/smoke apagan la cuenta con `ONYXCODE_ACCOUNT_DISABLED=1`
+(solo sin empaquetar; `ONYXCODE_ACCOUNT_URL` tiene prioridad).
 
 ## Interruptor
 

@@ -54,7 +54,7 @@ export const UPDATE_KEY_ID = 'onyxcode-1' as string
  * contacta ningún servidor de cuenta. Se rellena SOLO al activar las cuentas (ver
  * docs/CUENTAS-SERVIDOR.md y docs/SEGURIDAD.md «Cuenta»).
  */
-export const ACCOUNT_API = null as string | null
+export const ACCOUNT_API = 'https://api.onyxcode.cl' as string | null
 
 /** Política de privacidad y términos publicados (URL `https://…`). Vacío = la pantalla muestra el borrador local. */
 export const PRIVACY_URL = '' as string
