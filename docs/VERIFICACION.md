@@ -18,9 +18,30 @@ ni los servidores OpenCode del usuario.
 | `npm run test:fs` | **Opcional, solo macOS, fuera de `verify`.** Puntos de restauración sobre volúmenes reales: monta imágenes `hdiutil` ExFAT, FAT32 y HFS+ con mayúsculas (`-nobrowse`, `detach -force` al terminar) y repite crear → modificar/crear/borrar → cambios → deshacer → rehacer. Activa `ONYXCODE_FS_IT=1`. |
 | `npm run test:stress` | **Opcional, fuera de `verify`.** Estrés de los puntos de restauración (`ONYXCODE_STRESS=1`): 19 990 archivos entran y 20 010 dejan el punto omitido, incremental de 5 000 archivos rápido, p99 del retraso del bucle de eventos < 100 ms y RSS < +200 MB con dos archivos de 45 MB. Tarda ~15 s. |
 | `npm run check:mcp-catalog` | **Manual, con red, fuera de `verify`.** Cada ficha del catálogo MCP (`src/shared/mcp-catalog.ts`) debe responder como servidor MCP a un `initialize` (200, 401 o 405) y su documentación debe responder 200. Salida 1 si alguna falla, 3 sin red. Ejecutar al tocar el catálogo y de vez en cuando (las URL de los proveedores cambian). |
+| `npm run perf:startup` | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria». |
 | `npm run verify` | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden. |
 
-## Harness E2E (`e2e/lib`, `e2e/specs`, `vitest.e2e.config.ts`)
+## Medición de arranque y memoria (`npm run perf:startup`)
+
+`e2e/perf/startup.perf.ts` (config `vitest.perf.config.ts`, `E2E_MODE=prod`, con OpenCode falso y userData temporal; nunca toca datos reales). No forma parte de `verify`: tarda ~5,5 min y depende de la máquina. Hace dos cosas:
+
+1. **Arranque en frío** (`PERF_STARTS`, 5 lanzamientos): milisegundos desde el inicio del proceso principal hasta el primer pintado del renderer (`first-contentful-paint`) y hasta que la app está **interactiva** (barra de modos visible y servidor falso conectado; es el tiempo de pared desde el lanzamiento, con la ventana oculta del modo E2E).
+2. **Memoria** (`PERF_MINUTES`, 5): crea 3 conversaciones de Chat largas (`PERF_TURNS`=6 turnos de 1 500 deltas cada una, ~25 KB por respuesta), las alterna cada 30 s con la app abierta y mide el RSS de **todo el árbol** de procesos (Electron, helpers y el servidor falso; `ps -o rss`) cada 30 s.
+
+Variables: `PERF_STARTS`, `PERF_MINUTES`, `PERF_TURNS`, `PERF_JSON=/ruta` (guarda `.startup.json` y `.memory.json`), `PERF_STRICT=1` (superar un umbral falla en vez de avisar). Hace falta el cerrojo de E2E si otra tarea usa Electron a la vez.
+
+| Métrica | Umbral sugerido | Medido (R3-B, M-series, macOS, prod) |
+|---|---|---|
+| Primer pintado (mediana / máx.) | ≤ 1 500 ms | 398 / 466 ms |
+| Interactiva (mediana / máx.) | ≤ 2 500 ms | 600 / 645 ms |
+| RSS del árbol sin conversaciones | (referencia) | 585 MB |
+| RSS pico tras cargar 3 conversaciones largas | ≤ 1 200 MB | 871 MB |
+| RSS asentado a los 1–3,5 min | ≤ pico | 711–726 MB |
+| RSS a los 5 min | sin crecimiento > 10 % desde el minuto 1 | 586 MB (−19 %: el sistema recupera memoria; no hay fuga) |
+
+Si un umbral se supera: repetir (la primera medición tras compilar suele ser peor), mirar `PERF_JSON` y comparar con `E2E_MODE=dev` solo para descartar Vite; un arranque lento real suele ser una carga síncrona nueva en `main/index.ts` o en el primer render, y un crecimiento sostenido de RSS un almacén (`stores/`) que acumula mensajes sin liberar al cambiar de conversación.
+
+## Harness E2E (`e2e/lib, `e2e/specs`, `vitest.e2e.config.ts`)
 
 Runner: Vitest con `pool: forks`, sin paralelismo entre archivos (una app Electron por archivo de spec),
 `testTimeout`/`hookTimeout` de 120 s. Los specs son `e2e/specs/**/*.e2e.ts`.

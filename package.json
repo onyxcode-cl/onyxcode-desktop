@@ -26,6 +26,7 @@
     "test:smoke": "node e2e/smoke.mjs",
     "test:e2e": "vitest run -c vitest.e2e.config.ts",
     "test:e2e:prod": "E2E_MODE=prod vitest run -c vitest.e2e.config.ts",
+    "perf:startup": "E2E_MODE=prod vitest run -c vitest.perf.config.ts",
     "verify:release": "node scripts/verify-release.mjs",
     "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
     "check:opencode": "node scripts/check-opencode.mjs",
