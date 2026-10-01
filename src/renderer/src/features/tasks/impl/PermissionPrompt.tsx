@@ -10,7 +10,7 @@ import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
 import { t } from '@shared/i18n'
 import { Button } from '../../../components/Button'
-import { DiffView, parseUnifiedDiff } from '../../../components/DiffView'
+import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { replyPermission, replyPermissionAlways } from './actions'
@@ -281,7 +281,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
   const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon
-  const showDiff = !!d.diff && parseUnifiedDiff(d.diff).some((l) => l.kind === 'add' || l.kind === 'del')
+  const showDiff = !!d.diff && hasDiffChanges(d.diff)
   return (
     <div
       id={`perm-${request.id}`}

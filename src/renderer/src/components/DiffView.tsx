@@ -62,14 +62,49 @@ export function makePatch(path: string, before: string, after: string): string {
   return createTwoFilesPatch(path, path, before, after, undefined, undefined, { context: 3 })
 }
 
+const HUNK_RE = /^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/
+
+/**
+ * Recorre las líneas de `patch` sin trocear ni crear objetos (un diff de 64 MB no asigna un array de líneas).
+ * `visit(kind)` recibe 'add' | 'del' con la misma semántica que `parseUnifiedDiff`; si devuelve `true` se detiene.
+ */
+function scanChanges(patch: string, visit: (kind: 'add' | 'del') => boolean | void): void {
+  let inHunk = false
+  let start = 0
+  const len = patch.length
+  while (start <= len) {
+    let end = patch.indexOf('\n', start)
+    if (end === -1) end = len
+    const c = patch.charCodeAt(start) // NaN en la línea vacía
+    if (inHunk && c === 43 /* + */) {
+      if (visit('add') === true) return
+    } else if (inHunk && c === 45 /* - */) {
+      if (visit('del') === true) return
+    } else if (c === 100 /* d */ || c === 73 /* I */) {
+      if (patch.startsWith('diff --git ', start) || patch.startsWith('Index: ', start)) inHunk = false
+    } else if (c === 64 /* @ */ && patch.startsWith('@@ ', start)) {
+      if (HUNK_RE.test(patch.slice(start, Math.min(end, start + 80)))) inHunk = true
+    }
+    start = end + 1
+  }
+}
+
+/** Cifras +N −M exactas, contando sin parsear el diff completo (barato también para diffs enormes). */
 export function diffStats(patch: string): { additions: number; deletions: number } {
   let additions = 0
   let deletions = 0
-  for (const l of parseUnifiedDiff(patch)) {
-    if (l.kind === 'add') additions++
-    else if (l.kind === 'del') deletions++
-  }
+  scanChanges(patch, (k) => {
+    if (k === 'add') additions++
+    else deletions++
+  })
   return { additions, deletions }
+}
+
+/** ¿Hay alguna línea añadida o borrada? Se detiene en la primera. */
+export function hasDiffChanges(patch: string): boolean {
+  let found = false
+  scanChanges(patch, () => (found = true))
+  return found
 }
 
 /** Lenguaje de highlight.js a partir de la extensión (o `null`). */
