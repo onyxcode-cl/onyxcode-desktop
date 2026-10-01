@@ -138,7 +138,7 @@ function Row({
                   setConfirmDelete(false)
                   onDelete()
                 }}
-                className="flex-1 rounded-md bg-danger px-2 py-1 text-xs font-medium text-white"
+                className="flex-1 rounded-md bg-danger px-2 py-1 text-xs font-medium text-danger-fg"
               >
                 {t('chat.list.confirm')}
               </button>

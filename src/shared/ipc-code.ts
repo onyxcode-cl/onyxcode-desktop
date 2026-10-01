@@ -31,6 +31,7 @@ export const CODE_CHANNELS = {
   gitLog: 'git:log',
   gitDiscard: 'git:discard',
   gitDiscardUndo: 'git:discardUndo',
+  gitDiscardHunk: 'git:discardHunk',
   // dialog
   dialogOpenFolder: 'dialog:openFolder',
   dialogRevealInFinder: 'dialog:revealInFinder',
@@ -156,6 +157,11 @@ export interface GitDiscardResult {
   /** Identificador para «Rehacer» (restaura el contenido que había), o null si no hay nada que rehacer. */
   undoId: string | null
 }
+/** Resultado de descartar un solo bloque (hunk) de un archivo modificado. */
+export interface GitDiscardHunkResult {
+  /** Identificador para «Deshacer» (`git:discardUndo`). */
+  undoId: string
+}
 export interface GitDiscardUndoResult {
   restored: string[]
   failed: Array<{ path: string; reason: string }>
@@ -193,7 +199,9 @@ export interface CodeInvokeContract {
   'git:removeWorktree': { req: { cwd: string; path: string; force?: boolean }; res: void }
   'git:commit': { req: { cwd: string; message: string; stageAll?: boolean }; res: GitCommitResult }
   'git:log': { req: { cwd: string; n?: number }; res: GitLogEntry[] }
-  'git:discard': { req: { cwd: string; paths: string[] }; res: GitDiscardResult }
+  /** `scope: 'unstaged'` = solo los cambios sin preparar (lo preparado se conserva); por defecto todo vuelve a HEAD. */
+  'git:discard': { req: { cwd: string; paths: string[]; scope?: 'all' | 'unstaged' }; res: GitDiscardResult }
+  'git:discardHunk': { req: { cwd: string; path: string; index: number; hunk: string }; res: GitDiscardHunkResult }
   'git:discardUndo': { req: { cwd: string; undoId: string }; res: GitDiscardUndoResult }
 
   'dialog:openFolder': { req: { title?: string; defaultPath?: string } | undefined; res: string | null }
@@ -244,7 +252,8 @@ export interface CodeApi {
     removeWorktree(cwd: string, path: string, force?: boolean): Promise<void>
     commit(cwd: string, message: string, stageAll?: boolean): Promise<GitCommitResult>
     log(cwd: string, n?: number): Promise<GitLogEntry[]>
-    discard(cwd: string, paths: string[]): Promise<GitDiscardResult>
+    discard(cwd: string, paths: string[], scope?: 'all' | 'unstaged'): Promise<GitDiscardResult>
+    discardHunk(cwd: string, path: string, index: number, hunk: string): Promise<GitDiscardHunkResult>
     discardUndo(cwd: string, undoId: string): Promise<GitDiscardUndoResult>
   }
   dialog: {

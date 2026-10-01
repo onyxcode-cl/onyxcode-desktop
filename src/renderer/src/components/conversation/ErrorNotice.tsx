@@ -88,8 +88,16 @@ export function ErrorNotice({
           </div>
         )}
         {f.detail && (
-          <details className="mt-2 text-xs text-muted" onToggle={(e) => setOpen(e.currentTarget.open)}>
-            <summary className="cursor-pointer text-subtle select-none hover:text-fg">
+          // Controlado: el evento `toggle` de <details> llega en una tarea posterior y dejaba el rótulo («Ver detalle»)
+          // desfasado respecto al contenido ya visible (prueba inestable no-ai (d)). Así el rótulo y el contenido van juntos.
+          <details open={open} className="mt-2 text-xs text-muted">
+            <summary
+              className="cursor-pointer text-subtle select-none hover:text-fg"
+              onClick={(e) => {
+                e.preventDefault()
+                setOpen((o) => !o)
+              }}
+            >
               {open ? t('chat.error.hideDetail') : t('chat.error.showDetail')}
             </summary>
             <pre className="mt-1.5 max-h-48 overflow-auto rounded-md border border-border/70 bg-inset px-2.5 py-2 font-mono text-[11.5px] break-words whitespace-pre-wrap text-muted select-text">

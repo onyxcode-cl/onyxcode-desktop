@@ -119,7 +119,7 @@ export function ConfirmButton({
                   setOpen(false)
                 })
               }}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${danger ? 'bg-danger text-white' : 'bg-accent text-accent-fg'} hover:opacity-90`}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${danger ? 'bg-danger text-danger-fg' : 'bg-accent text-accent-fg'} hover:opacity-90`}
             >
               {confirmLabel}
             </button>

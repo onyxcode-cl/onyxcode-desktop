@@ -106,7 +106,10 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     trash: testTrash ? trashToDir(testTrash) : (p) => shell.trashItem(p),
     backupDir: join(app.getPath('userData'), 'code-discard')
   })
-  on(ipcMain, 'git:discard', (r) => git.discardChanges(req(r, 'req').cwd, r.paths, discardDeps()))
+  on(ipcMain, 'git:discard', (r) =>
+    git.discardChanges(req(r, 'req').cwd, r.paths, discardDeps(), r.scope === 'unstaged' ? 'unstaged' : 'all')
+  )
+  on(ipcMain, 'git:discardHunk', (r) => git.discardHunk(req(r, 'req').cwd, r.path, r.index, r.hunk, discardDeps()))
   on(ipcMain, 'git:discardUndo', (r) => git.undoDiscard(req(r, 'req').cwd, r.undoId, discardDeps()))
 
   // ---- dialog ----

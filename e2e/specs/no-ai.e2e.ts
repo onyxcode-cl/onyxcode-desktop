@@ -43,7 +43,8 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.emulateMedia({ colorScheme: null })
 }
 
-const modeButton = (page: Page, name: string): ReturnType<Page['getByRole']> => page.locator('nav[aria-label="Modo"]').getByRole('button', { name })
+const modeButton = (page: Page, name: string): ReturnType<Page['getByRole']> =>
+  page.locator('nav[aria-label="Modo"]').getByRole('button', { name })
 const blockedBox = (page: Page): ReturnType<Page['getByPlaceholder']> => page.getByPlaceholder('Conecta una IA para empezar').first()
 const banner = (page: Page): ReturnType<Page['getByText']> => page.getByText(BANNER_TITLE)
 
@@ -98,10 +99,12 @@ describe('sin ninguna IA conectada', () => {
     const providers = page.locator('#settings-providers')
     await expectVisible(providers.getByText('Proveedores'))
     await expect
-      .poll(() => providers.evaluate((el) => {
-        const r = el.getBoundingClientRect()
-        return r.top >= 0 && r.bottom <= window.innerHeight
-      }))
+      .poll(() =>
+        providers.evaluate((el) => {
+          const r = el.getBoundingClientRect()
+          return r.top >= 0 && r.bottom <= window.innerHeight
+        })
+      )
       .toBe(true)
     await shot(page, 'ajustes-proveedores')
   })
@@ -159,7 +162,10 @@ describe('errores de la IA nunca crudos', () => {
     const app = await launch(null)
     const { page, fake } = app
     await modeButton(page, 'Chat').click()
-    await fake.script({ steps: [{ type: 'error', name: 'APIError', statusCode: 401, message: 'Unauthorized: invalid key sk-e2e-secreto-0123456789' }], match: 'falla' })
+    await fake.script({
+      steps: [{ type: 'error', name: 'APIError', statusCode: 401, message: 'Unauthorized: invalid key sk-e2e-secreto-0123456789' }],
+      match: 'falla'
+    })
     const box = page.getByPlaceholder('Escribe un mensaje…')
     await expectVisible(box)
     await box.fill('falla ahora')
@@ -173,6 +179,9 @@ describe('errores de la IA nunca crudos', () => {
     await shot(page, 'error-401-plegado')
     await detail.click()
     await expectVisible(page.getByText(/statusCode: 401/))
+    // El rótulo cambia junto con el contenido (antes seguía en «Ver detalle» hasta el evento `toggle`, que llega en otra tarea:
+    // la causa de la prueba inestable). Se espera igualmente con reintento, por si el equipo va muy cargado.
+    await expectVisible(page.getByText('Ocultar detalle'))
     const text = await page.locator('body').innerText()
     expect(text).toContain('Ocultar detalle')
     expect(text).not.toMatch(/at <anonymous>/)

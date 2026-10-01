@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setLang } from '@shared/i18n'
-import { canDiscard, discardMessage, goesToTrash } from './discard-logic'
+import { canDiscard, discardMessage, goesToTrash, hunkLines } from './discard-logic'
 
 afterEach(() => setLang('es'))
 
@@ -41,5 +41,24 @@ describe('discard-logic', () => {
   it('en inglés', () => {
     setLang('en')
     expect(discardMessage({ path: 'a.ts', kind: 'deleted', staged: false })).toContain('restored')
+  })
+})
+
+describe('discard-logic: lo preparado y los bloques', () => {
+  it('scope unstaged con cambios preparados: avisa de que se conserva y no de que se pierda', () => {
+    const m = discardMessage({ path: 'src/a.ts', kind: 'modified', staged: true }, 'unstaged')
+    expect(m).toContain('se conserva')
+    expect(m).not.toContain('Se perderán')
+    expect(m).toContain('• src/a.ts')
+  })
+
+  it('scope unstaged sin lo preparado se comporta como siempre', () => {
+    expect(discardMessage({ path: 'a.ts', kind: 'modified', staged: false }, 'unstaged')).toContain('Se perderán')
+  })
+
+  it('hunkLines resume el rango del archivo nuevo', () => {
+    expect(hunkLines('@@ -3,4 +3,6 @@ fn\n x\n')).toBe('3–8')
+    expect(hunkLines('@@ -3 +9 @@\n')).toBe('9')
+    expect(hunkLines('nada')).toBe('')
   })
 })

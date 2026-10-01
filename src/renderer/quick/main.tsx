@@ -45,7 +45,7 @@ function QuickEntry(): React.JSX.Element {
   const canSend = !!text.trim()
 
   return (
-    <div className="drag flex h-full w-full items-center p-2">
+    <main className="drag flex h-full w-full items-center p-2">
       <div
         key={shownKey}
         className="q-shell q-in flex h-full w-full items-center gap-3 rounded-[18px] bg-q-bg pr-2.5 pl-4 text-q-fg backdrop-blur-xl"
@@ -91,7 +91,7 @@ function QuickEntry(): React.JSX.Element {
           <ArrowUp size={17} strokeWidth={2.25} />
         </button>
       </div>
-    </div>
+    </main>
   )
 }
 

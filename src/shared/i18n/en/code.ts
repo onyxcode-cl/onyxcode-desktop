@@ -288,6 +288,12 @@ export const code = {
   'code.changes.discardUndoFailed': 'Couldn’t undo: {error}',
   'code.changes.discardDismiss': 'Dismiss notice',
   'code.changes.discardRowLabel': 'Discard the changes to {name}',
+  'code.changes.discardKeepsStaged': 'Anything already staged is kept: the file goes back to the staged version.',
+  'code.changes.discardHunk': 'Discard this block',
+  'code.changes.discardHunkTitle': 'Discard this block of {name}?',
+  'code.changes.discardHunkBody':
+    'This block of changes (lines {lines}) will be lost; the rest of the file and anything staged are left alone. Right afterwards you can use “Undo”.',
+  'code.changes.discardHunkDone': 'Block discarded.',
   'code.files.back': 'Back',
   'code.files.diff': 'Diff',
   'code.files.binary': 'Binary file.',
