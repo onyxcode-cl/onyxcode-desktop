@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { rootSessionID, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
@@ -37,6 +38,7 @@ function SessionRow({
   unread: boolean
   pinned: boolean
 }): React.JSX.Element {
+  const t = useT()
   const selectSession = useCode((s) => s.selectSession)
   const deleteSession = useCode((s) => s.deleteSession)
   const renameSession = useCode((s) => s.renameSession)
@@ -90,7 +92,7 @@ function SessionRow({
             ) : unread ? (
               <Circle size={7} fill="currentColor" className="shrink-0 text-accent" />
             ) : null}
-            <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || 'Sesión sin título'}</span>
+            <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || t('code.sessions.untitled')}</span>
           </span>
           <span className="text-[11px] text-subtle">
             {timeAgo(session.time.updated)}
@@ -108,7 +110,7 @@ function SessionRow({
         <span className="mr-1 hidden shrink-0 items-center gap-0.5 group-hover:flex">
           <button
             type="button"
-            title="Renombrar"
+            title={t('code.sessions.rename')}
             onClick={() => setEditing(true)}
             className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-fg"
           >
@@ -116,7 +118,7 @@ function SessionRow({
           </button>
           <button
             type="button"
-            title={pinned ? 'Quitar de fijadas' : 'Fijar sesión'}
+            title={pinned ? t('code.sessions.unpin') : t('code.sessions.pin')}
             onClick={() => togglePin(session.id)}
             className={`no-drag flex h-6 w-6 items-center justify-center rounded-md hover:bg-bg hover:text-fg ${pinned ? 'text-accent' : 'text-subtle'}`}
           >
@@ -124,7 +126,7 @@ function SessionRow({
           </button>
           <button
             type="button"
-            title={archived ? 'Desarchivar' : 'Archivar'}
+            title={archived ? t('code.sessions.unarchive') : t('code.sessions.archive')}
             onClick={() => void (archived ? unarchiveSession(session.id) : archiveSession(session.id))}
             className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-fg"
           >
@@ -132,12 +134,12 @@ function SessionRow({
           </button>
           <button
             type="button"
-            title="Eliminar sesión"
+            title={t('code.sessions.delete')}
             onClick={() => {
               void confirmDialog({
-                title: '¿Eliminar sesión?',
-                message: `Se eliminará la sesión "${session.title || 'sin título'}".`,
-                confirmLabel: 'Eliminar',
+                title: t('code.sessions.deleteTitle'),
+                message: t('code.sessions.deleteMessage', { title: session.title || t('code.sessions.untitledLower') }),
+                confirmLabel: t('code.sessions.deleteConfirm'),
                 danger: true
               }).then((ok) => {
                 if (ok) void deleteSession(session.id)
@@ -155,6 +157,7 @@ function SessionRow({
 
 /** Paleta ⌘K: busca sesiones del proyecto actual por título (incluye archivadas). */
 export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () => void }): React.JSX.Element | null {
+  const t = useT()
   const directory = useCode((s) => s.directory)
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const selectSession = useCode((s) => s.selectSession)
@@ -182,7 +185,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-fg/20 pt-[15vh]" onClick={onClose}>
       <div
         role="dialog"
-        aria-label="Cambiar de sesión"
+        aria-label={t('code.sessions.switch')}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-elevated shadow-2xl"
       >
@@ -199,7 +202,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
                 onClose()
               }
             }}
-            placeholder="Buscar sesión por título…"
+            placeholder={t('code.sessions.searchPlaceholder')}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-subtle"
           />
           <button type="button" onClick={onClose} className="text-subtle hover:text-fg">
@@ -207,7 +210,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
           </button>
         </div>
         <div className="max-h-80 overflow-y-auto py-1">
-          {list.length === 0 && <div className="px-3 py-3 text-sm text-subtle">Sin resultados.</div>}
+          {list.length === 0 && <div className="px-3 py-3 text-sm text-subtle">{t('code.sessions.noResults')}</div>}
           {list.map((s) => (
             <button
               key={s.id}
@@ -219,7 +222,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-hover"
             >
               {s.time.archived ? <Archive size={12} className="shrink-0 text-subtle" /> : null}
-              <span className="min-w-0 flex-1 truncate">{s.title || 'Sesión sin título'}</span>
+              <span className="min-w-0 flex-1 truncate">{s.title || t('code.sessions.untitled')}</span>
               <span className="shrink-0 text-[11px] text-subtle">{timeAgo(s.time.updated)}</span>
             </button>
           ))}
@@ -234,6 +237,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
  * `CodeWorkspace` como para `SidebarContent` del modo en la barra lateral global.
  */
 export function SessionList({ compact = false }: { compact?: boolean }): React.JSX.Element | null {
+  const t = useT()
   const directory = useCode((s) => s.directory)
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const activeSessionID = useCode((s) => s.activeSessionID)
@@ -294,10 +298,10 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         </button>
       )}
       <div className="mx-2 mb-2 flex items-center gap-1">
-        <span className="flex-1 px-2 text-[11.5px] font-medium text-subtle">Sesiones</span>
+        <span className="flex-1 px-2 text-[11.5px] font-medium text-subtle">{t('code.sessions.title')}</span>
         <button
           type="button"
-          title="Nueva sesión en worktree nuevo"
+          title={t('code.sessions.newWorktree')}
           onClick={() => setWorktreeOpen(true)}
           className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg"
         >
@@ -305,7 +309,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         </button>
         <button
           type="button"
-          title="Buscar sesiones (⌘K)"
+          title={t('code.sessions.searchTitle')}
           onClick={() => setSwitcherOpen(true)}
           className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg"
         >
@@ -315,10 +319,10 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
       <div className="min-h-0 flex-1 overflow-y-auto px-2">
         {loading && list.length === 0 && (
           <div className="flex items-center gap-2 px-2 py-1 text-xs text-subtle">
-            <Loader2 size={12} className="animate-spin" /> Cargando sesiones…
+            <Loader2 size={12} className="animate-spin" /> {t('code.sessions.loading')}
           </div>
         )}
-        {!loading && list.length === 0 && <div className="px-2 py-1 text-xs text-subtle">Sin sesiones todavía.</div>}
+        {!loading && list.length === 0 && <div className="px-2 py-1 text-xs text-subtle">{t('code.sessions.empty')}</div>}
         {sortedList.map((s) => {
           const st = runState[s.id]
           return (
@@ -341,7 +345,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
               className="no-drag flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-medium text-subtle hover:text-fg"
             >
               <ChevronDown size={11} className={`transition-transform ${showArchived ? 'rotate-180' : ''}`} />
-              Archivadas ({archivedList.length})
+              {t('code.sessions.archived', { count: archivedList.length })}
             </button>
             {showArchived &&
               archivedList
