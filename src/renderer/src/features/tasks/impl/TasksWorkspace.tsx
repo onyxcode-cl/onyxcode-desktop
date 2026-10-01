@@ -29,6 +29,7 @@ import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import type { BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { t as tNow } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { Button } from '../../../components/Button'
 import { TranscriptLoader } from '../../../components/TranscriptLoader'
@@ -389,7 +390,7 @@ export function TasksWorkspace(): React.JSX.Element {
         const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
         if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
           disconnect()
-          useTasks.setState({ phase: 'error', error: info.error ?? t('tasks.ws.serverStopped') })
+          useTasks.setState({ phase: 'error', error: info.error ?? tNow('tasks.ws.serverStopped') })
         }
       }),
     []

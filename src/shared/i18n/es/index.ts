@@ -38,4 +38,23 @@ export const es = {
   ...browser
 }
 
-export const AREAS = { common, app, settings, models, mcp, tasksSettings, misc, wizard, account, chat, errors, notices, main, code, tasks, tasksComputer, routines, browser }
+export const AREAS = {
+  common,
+  app,
+  settings,
+  models,
+  mcp,
+  tasksSettings,
+  misc,
+  wizard,
+  account,
+  chat,
+  errors,
+  notices,
+  main,
+  code,
+  tasks,
+  tasksComputer,
+  routines,
+  browser
+}
