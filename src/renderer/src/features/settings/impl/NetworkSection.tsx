@@ -26,11 +26,13 @@ export function mcpHostContributors(list: TasksMcpInfo[]): TasksMcpInfo[] {
   return list.filter((m) => m.tasks && m.hosts.length > 0)
 }
 
-/** Traduce un rechazo de `networkSetHost('allow')` por política al mensaje en español. */
+/**
+ * Mensaje de un rechazo de `networkSetHost('allow')`. Se clasifica por causa (la política gestionada que
+ * el renderer ya conoce), nunca por el texto del error: main ya lo redacta en el idioma activo.
+ */
 export function networkErrorMessage(err: unknown, policy: ManagedPolicy | null): string {
-  const text = err instanceof Error ? err.message : String(err)
-  if (policy?.disableCustomHosts || /organizaci|pol[ií]tica|managed/i.test(text)) return customHostsBlockedMessage()
-  return text
+  if (policy?.disableCustomHosts) return customHostsBlockedMessage()
+  return err instanceof Error ? err.message : String(err)
 }
 
 export function NetworkSection(): React.JSX.Element {

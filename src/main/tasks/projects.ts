@@ -4,6 +4,7 @@
  * aparte, como archivo de texto dentro de la propia carpeta (`.onyxcode/memoria.md`), para que el
  * usuario pueda verla/editarla con cualquier editor y viaje con la carpeta.
  */
+import { getLang, t } from '@shared/i18n'
 import { app } from 'electron'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
@@ -187,15 +188,15 @@ function resolveAgentsMd(folder: string): { path: string; real: string; exists: 
     try {
       real = realpathSync(path)
     } catch {
-      throw new Error('AGENTS.md es un enlace simbólico roto.')
+      throw new Error(t('merr.projects.brokenLink'))
     }
     if (!isInside(real, realpathSync(folder))) {
-      throw new Error('AGENTS.md es un enlace simbólico que apunta fuera de la carpeta; edítalo desde el terminal.')
+      throw new Error(t('merr.projects.linkOutside'))
     }
-    if (!statSync(real).isFile()) throw new Error('AGENTS.md no es un archivo.')
+    if (!statSync(real).isFile()) throw new Error(t('merr.projects.notFile'))
     return { path, real, exists: true }
   }
-  if (!st.isFile()) throw new Error('AGENTS.md no es un archivo.')
+  if (!st.isFile()) throw new Error(t('merr.projects.notFile'))
   return { path, real: path, exists: true }
 }
 
@@ -203,14 +204,14 @@ function resolveAgentsMd(folder: string): { path: string; real: string; exists: 
 export function getAgentsMd(folder: string): TasksAgentsMd {
   const r = resolveAgentsMd(folder)
   if (!r.exists) return { path: r.path, content: '', exists: false }
-  if (statSync(r.real).size > AGENTS_MD_MAX_CHARS * 4) throw new Error('AGENTS.md es demasiado grande para editarlo aquí.')
+  if (statSync(r.real).size > AGENTS_MD_MAX_CHARS * 4) throw new Error(t('merr.projects.tooBig'))
   return { path: r.path, content: readFileSync(r.real, 'utf8'), exists: true }
 }
 
 /** Guarda `<folder>/AGENTS.md` (escritura atómica). */
 export function saveAgentsMd(folder: string, content: string): TasksAgentsMd {
   if (content.length > AGENTS_MD_MAX_CHARS) {
-    throw new Error(`AGENTS.md no puede superar ${AGENTS_MD_MAX_CHARS.toLocaleString('es-CL')} caracteres.`)
+    throw new Error(t('merr.projects.overLimit', { max: AGENTS_MD_MAX_CHARS.toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL') }))
   }
   const r = resolveAgentsMd(folder)
   const tmp = `${r.real}.onyxcode-tmp`

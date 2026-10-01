@@ -9,6 +9,7 @@
  * - patrones de borrado (`rm`, `rmdir`, `unlink`, `trash`, `srm`, `-delete`).
  * Con `policy.disableAlwaysAllow` (managed.json) `add` lanza error y las reglas no se inyectan.
  */
+import { t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -34,15 +35,15 @@ function isNeverRemembered(permission: string): boolean {
 
 /** Motivo por el que un par permiso/patrón no puede recordarse, o null si es admisible. */
 export function ruleRejectionReason(permission: string, pattern: string): string | null {
-  if (!PERMISSION_RE.test(permission)) return `Permiso inválido: "${permission}".`
+  if (!PERMISSION_RE.test(permission)) return t('merr.rules.permInvalid', { permission })
   if (isNeverRemembered(permission)) {
-    return `El permiso "${permission}" no se puede recordar: siempre pregunta.`
+    return t('merr.rules.neverRemembered', { permission })
   }
-  if (!pattern || pattern.length > MAX_PATTERN) return 'Patrón inválido.'
-  if (DELETE_RE.test(pattern)) return `No se recuerdan permisos de borrado ("${pattern}"): siempre preguntan.`
+  if (!pattern || pattern.length > MAX_PATTERN) return t('merr.rules.patternInvalid')
+  if (DELETE_RE.test(pattern)) return t('merr.rules.deleteNotRemembered', { pattern })
   // Un patrón de bash que empieza por comodín (o es solo comodines) cubriría también `rm`.
   if (permission === 'bash' && (/^[\s*?]*$/.test(pattern) || /^[*?]/.test(pattern.trim()))) {
-    return 'No se puede recordar un patrón de bash tan amplio: cubriría también comandos de borrado.'
+    return t('merr.rules.patternTooBroad')
   }
   return null
 }
@@ -99,10 +100,10 @@ export class TasksRulesStore {
   /** Recuerda `permission` + cada patrón para la carpeta. Lanza si alguno no es admisible. */
   add(folder: string, permission: string, patterns: string[]): TasksPermissionRule[] {
     if (loadManagedPolicy()?.disableAlwaysAllow) {
-      throw new Error('Tu organización desactivó "Siempre permitir".')
+      throw new Error(t('merr.rules.orgNoAlways'))
     }
-    if (!folder) throw new Error('Falta la carpeta.')
-    if (!patterns.length) throw new Error('No hay patrones que recordar.')
+    if (!folder) throw new Error(t('merr.rules.noFolder'))
+    if (!patterns.length) throw new Error(t('merr.rules.noPatterns'))
     // Todo o nada: si uno no es admisible no se guarda ninguno.
     for (const pattern of patterns) {
       const why = ruleRejectionReason(permission, pattern)
@@ -113,7 +114,7 @@ export class TasksRulesStore {
     let changed = false
     for (const pattern of patterns) {
       if (data.rules.some((r) => r.folder === folder && r.permission === permission && r.pattern === pattern)) continue
-      if (data.rules.length >= MAX_RULES) throw new Error('Demasiados permisos recordados; quita alguno antes.')
+      if (data.rules.length >= MAX_RULES) throw new Error(t('merr.rules.tooMany'))
       data.rules.push({ id: randomUUID(), folder, permission, pattern, createdAt: now })
       changed = true
     }

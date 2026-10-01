@@ -6,6 +6,7 @@
  * (Terminal), `.app`, `.terminal`, `.workflow`, `.pkg`, `.fileloc`… Esos tipos (y todo archivo
  * con bit de ejecución) se rechazan: solo se ofrecen "Mostrar en Finder".
  */
+import { t } from '@shared/i18n'
 import { statSync } from 'node:fs'
 import { extname } from 'node:path'
 
@@ -87,10 +88,7 @@ export const BLOCKED_OPEN_EXTENSIONS = new Set([
 export function assertSafeToOpen(path: string): void {
   const ext = extname(path).toLowerCase()
   const blocked = (): never => {
-    throw new Error(
-      `Por seguridad no se abre "${ext || 'ejecutable'}" directamente: podría ejecutar código fuera del sandbox. ` +
-        'Usa «Mostrar en Finder» si confías en el archivo.'
-    )
+    throw new Error(t('merr.open.blocked', { ext: ext || t('merr.open.blockedExecutable') }))
   }
   if (BLOCKED_OPEN_EXTENSIONS.has(ext)) blocked()
   const st = statSync(path)
