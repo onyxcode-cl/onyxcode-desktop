@@ -12,7 +12,8 @@ import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
-import { cw } from './bridge'
+import { cw, hasTasksBridge } from './bridge'
+import { failedText, firstPoint, pickPointForMessage, restoreWarningText, type RestoreResult } from './restore-logic'
 import {
   clearUnseen,
   connectFolder,
@@ -430,6 +431,9 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   }
   const fullAccess = useTasks.getState().conn?.fullAccess === true
   if (fullAccess) useTasks.setState({ lastAction: null })
+  // Punto de restauración: copia de la carpeta justo antes de que el agente toque nada. Si falla o
+  // se salta, el mensaje se envía igualmente y se avisa en la conversación.
+  await saveRestorePoint(folder, sessionID, rawText.slice(0, 80))
   sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
@@ -446,6 +450,141 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
     sessions.setStatus(sessionID, 'idle')
     sessions.setError(sessionID, errorMessage(res.error))
   }
+}
+
+// ── Puntos de restauración ──
+
+function setRestoreWarning(sessionId: string, text: string | null): void {
+  useTasks.setState((s) => {
+    const restoreWarning = { ...s.restoreWarning }
+    if (text) restoreWarning[sessionId] = text
+    else delete restoreWarning[sessionId]
+    return { restoreWarning }
+  })
+}
+
+/** Crea el punto previo al envío. Nunca lanza: un fallo solo deja un aviso en la conversación. */
+async function saveRestorePoint(folder: string, sessionId: string, label: string): Promise<void> {
+  if (!hasTasksBridge()) return
+  setRestoreWarning(sessionId, null)
+  useTasks.setState({ restoreSaving: true })
+  try {
+    const point = await cw('tasks:restore:create', { folder, sessionId, label })
+    if (point.status !== 'ok') setRestoreWarning(sessionId, restoreWarningText(point.reason ?? 'motivo desconocido'))
+  } catch (err) {
+    setRestoreWarning(sessionId, restoreWarningText(errorMessage(err)))
+  } finally {
+    useTasks.setState((s) => ({ restoreSaving: false, restoreVersion: s.restoreVersion + 1 }))
+  }
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+/** Aplica un punto; si el monitor aún ve la carpeta ocupada (sondeo cada 3 s) espera y reintenta. */
+async function applyRestorePoint(folder: string, pointId: string, paths?: string[]): ReturnType<typeof applyOnce> {
+  for (let i = 0; ; i++) {
+    try {
+      return await applyOnce(folder, pointId, paths)
+    } catch (err) {
+      if (i < 6 && /sigue trabajando/.test(errorMessage(err))) {
+        await sleep(1500)
+        continue
+      }
+      throw err
+    }
+  }
+}
+function applyOnce(folder: string, pointId: string, paths?: string[]) {
+  return cw('tasks:restore:apply', { folder, pointId, ...(paths ? { paths } : {}) })
+}
+
+async function listRestorePoints(folder: string, taskId: string) {
+  return cw('tasks:restore:list', { folder, sessionId: taskId })
+}
+
+function messageCreatedAt(taskId: string, messageId: string): number | null {
+  const e = (useSessions.getState().messages[taskId] ?? []).find((m) => m.info.id === messageId)
+  return e ? e.info.time.created : null
+}
+
+async function stopIfBusy(taskId: string): Promise<void> {
+  const { client, folder } = ctx()
+  const run = useSessions.getState().status[taskId]
+  if (run && run !== 'idle') {
+    await client.session.abort({ sessionID: taskId, directory: folder }).catch(() => undefined)
+    await waitUntilIdle(taskId)
+  }
+}
+
+/** «Deshacer los cambios de esta tarea»: vuelve la carpeta a como estaba antes del primer mensaje. */
+export async function undoTaskChanges(taskId: string): Promise<void> {
+  const { folder } = ctx()
+  const point = firstPoint(await listRestorePoints(folder, taskId))
+  if (!point) throw new Error('Esta tarea no tiene un punto de restauración guardado.')
+  const res = await applyRestorePoint(folder, point.id)
+  useTasks.setState((s) => ({
+    restoreVersion: s.restoreVersion + 1,
+    restoreResult: {
+      taskId,
+      kind: 'undone',
+      restored: res.restored,
+      trashed: res.trashed,
+      failed: res.failed,
+      undoPointId: res.undoPointId
+    }
+  }))
+}
+
+/** «Deshacer desde aquí»: restaura los archivos al punto de ese mensaje y oculta los mensajes posteriores. */
+export async function undoFromMessage(taskId: string, userMessageId: string): Promise<void> {
+  const { client, folder } = ctx()
+  if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
+  const at = messageCreatedAt(taskId, userMessageId)
+  const point = at === null ? null : pickPointForMessage(await listRestorePoints(folder, taskId), at)
+  if (!point) throw new Error('Para este mensaje no se guardó un punto de restauración, así que no se pueden restaurar los archivos.')
+  await stopIfBusy(taskId)
+  const res = await applyRestorePoint(folder, point.id)
+  const rev = await client.session.revert({ sessionID: taskId, directory: folder, messageID: userMessageId })
+  if (rev.error) throw new Error(errorMessage(rev.error))
+  if (rev.data) useSessions.getState().upsertSession(rev.data)
+  await loadTask(taskId)
+  useTasks.setState((s) => ({
+    restoreVersion: s.restoreVersion + 1,
+    restoreResult: {
+      taskId,
+      kind: 'undone',
+      restored: res.restored,
+      trashed: res.trashed,
+      failed: res.failed,
+      undoPointId: res.undoPointId,
+      revertedMessageId: userMessageId
+    }
+  }))
+}
+
+/** «Rehacer»: aplica el punto «Antes de deshacer» (y recupera los mensajes ocultos, si los había). */
+export async function redoRestore(): Promise<void> {
+  const { client, folder } = ctx()
+  const prev: RestoreResult | null = useTasks.getState().restoreResult
+  if (!prev || prev.kind !== 'undone') return
+  const res = await applyRestorePoint(folder, prev.undoPointId)
+  if (prev.revertedMessageId) {
+    const un = await client.session.unrevert({ sessionID: prev.taskId, directory: folder })
+    if (un.error) throw new Error(errorMessage(un.error))
+    if (un.data) useSessions.getState().upsertSession(un.data)
+    await loadTask(prev.taskId)
+  }
+  useTasks.setState((s) => ({
+    restoreVersion: s.restoreVersion + 1,
+    restoreResult: {
+      taskId: prev.taskId,
+      kind: 'redone',
+      restored: res.restored,
+      trashed: res.trashed,
+      failed: res.failed,
+      undoPointId: res.undoPointId
+    }
+  }))
 }
 
 export async function abortTask(): Promise<void> {
@@ -529,6 +668,9 @@ export async function deleteTask(sessionID: string): Promise<void> {
   if (useTasks.getState().activeTaskId === sessionID) useTasks.setState({ activeTaskId: null })
   void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
   forgetTaskMeta(sessionID)
+  void cw('tasks:restore:forget', { sessionId: sessionID }).catch(() => {})
+  setRestoreWarning(sessionID, null)
+  if (useTasks.getState().restoreResult?.taskId === sessionID) useTasks.setState({ restoreResult: null })
 }
 
 /**
@@ -751,24 +893,25 @@ async function waitUntilIdle(taskId: string, ms = 4000): Promise<void> {
 }
 
 /**
- * «Editar y reintentar»: aborta si la tarea está trabajando, deshace desde ese mensaje del usuario
- * (`session.revert`: también los cambios de archivos posteriores), recarga y envía el texto nuevo.
+ * «Editar y reintentar»: aborta si la tarea está trabajando, restaura los archivos al punto de ese
+ * turno (si se guardó uno), deshace la conversación desde ese mensaje (`session.revert`), recarga y
+ * envía el texto nuevo.
  */
 export async function editAndRetry(taskId: string, userMessageId: string, text: string): Promise<void> {
   const trimmed = text.trim()
   if (!trimmed) return
   const { client, folder } = ctx()
   if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
-  const run = useSessions.getState().status[taskId]
-  if (run && run !== 'idle') {
-    await client.session.abort({ sessionID: taskId, directory: folder }).catch(() => undefined)
-    await waitUntilIdle(taskId)
-  }
+  await stopIfBusy(taskId)
+  const at = messageCreatedAt(taskId, userMessageId)
+  const point = at === null ? null : pickPointForMessage(await listRestorePoints(folder, taskId).catch(() => []), at)
+  const restored = point ? await applyRestorePoint(folder, point.id) : null
   const res = await client.session.revert({ sessionID: taskId, directory: folder, messageID: userMessageId })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   await loadTask(taskId)
   await sendToTask(trimmed)
+  if (restored && restored.failed.length > 0) setRestoreWarning(taskId, failedText(restored.failed))
 }
 
 async function ensureEntries(taskId: string): Promise<import('../../../stores/sessions').MessageEntry[]> {

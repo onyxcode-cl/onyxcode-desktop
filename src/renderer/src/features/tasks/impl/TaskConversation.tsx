@@ -248,9 +248,9 @@ const UserMessage = memo(
         title: 'Editar y reintentar',
         message: (
           <>
-            Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y también se{' '}
-            <strong>revertirán los cambios en archivos</strong> que el agente hizo desde aquí. Después se enviará tu mensaje editado. Esto
-            no se puede deshacer.
+            Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y se{' '}
+            <strong>restaurarán los archivos de la carpeta</strong> tal como estaban antes de ese mensaje (si se guardó un punto de
+            restauración). Lo creado después irá a la Papelera. Después se enviará tu mensaje editado.
           </>
         ),
         confirmLabel: 'Deshacer y reintentar',
