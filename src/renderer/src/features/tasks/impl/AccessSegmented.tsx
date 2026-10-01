@@ -1,10 +1,12 @@
 /** Control segmentado visible: «Sandbox» / «Control total del Mac» (términos del glosario de Tareas). */
 import { Loader2, MonitorCog, Shield } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { useT } from '../../../lib/i18n'
 import { setAccessMode } from './actions'
 import { useTasks } from './store'
 
 export function AccessSegmented({ disabled, compact }: { disabled?: boolean; compact?: boolean }): React.JSX.Element {
+  const t = useT()
   const conn = useTasks((s) => s.conn)
   const phase = useTasks((s) => s.phase)
   const requested = useTasks((s) => s.fullAccess)
@@ -33,9 +35,9 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
   return (
     <div
       role="radiogroup"
-      aria-label="Modo de acceso"
+      aria-label={t('tasksComputer.access.aria')}
       onKeyDown={onKey}
-      title={!folder ? 'Elige una carpeta primero' : disabled ? 'Espera a que termine la tarea para cambiar el modo de acceso' : undefined}
+      title={!folder ? t('tasksComputer.access.pickFolder') : disabled ? t('tasksComputer.access.waitTask') : undefined}
       className={`inline-flex items-center gap-0.5 rounded-full border border-border bg-hover/60 p-0.5 ${off ? 'opacity-70' : ''}`}
     >
       <button
@@ -45,7 +47,7 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
         tabIndex={!full ? 0 : -1}
         disabled={off}
         onClick={() => pick(false)}
-        title={`${TASKS_TERMS.sandbox}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (sandbox de macOS). Recomendado.`}
+        title={t('tasksComputer.access.sandboxTitle', { name: TASKS_TERMS.sandbox })}
         className={`${base} ${!full ? 'bg-elevated text-accent shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && !requested ? <Loader2 size={12} className="animate-spin" /> : <Shield size={12} />}
@@ -58,7 +60,7 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
         tabIndex={full ? 0 : -1}
         disabled={off}
         onClick={() => pick(true)}
-        title={`${TASKS_TERMS.fullControl}: sin sandbox; puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar.`}
+        title={t('tasksComputer.access.fullTitle', { name: TASKS_TERMS.fullControl })}
         className={`${base} ${full ? 'bg-warning/15 text-warning shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && requested ? <Loader2 size={12} className="animate-spin" /> : <MonitorCog size={12} />}

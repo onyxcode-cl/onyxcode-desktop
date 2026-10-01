@@ -21,10 +21,4 @@ export function needsRoutinesConsent(acknowledged: boolean, willBeEnabled: boole
   return !acknowledged && willBeEnabled
 }
 
-export const ROUTINES_TERMS_TITLE = 'Rutinas y los términos de OpenCode'
-export const ROUTINES_TERMS_BODY =
-  'Las rutinas se ejecutan solas, aunque no estés mirando la app. Los términos de servicio de OpenCode restringen los procesos que corren o se activan mientras no has iniciado sesión en sus servicios, y dejan a OpenCode decidir qué cuenta como infracción; pueden suspender el acceso. Es tu responsabilidad usar las rutinas de acuerdo con esos términos (opencode.ai/legal/terms-of-service).'
-export const ROUTINES_TERMS_CANCEL = 'Cancelar'
-export const ROUTINES_TERMS_CONFIRM = 'Entiendo, activar rutinas'
-export const ROUTINES_NOTICE_TEXT = 'Tus rutinas no se ejecutan solas hasta que aceptes el aviso sobre los términos de OpenCode'
-export const ROUTINES_NOTICE_BUTTON = 'Ver aviso y activar'
+// Los textos del aviso (título, cuerpo, botones) viven en el diccionario de idioma (`routines.terms.*`).

@@ -4,6 +4,7 @@
  *  - el stream global de eventos (`/global/event`, vía `onOpencodeEvent`),
  *  - la API del proceso principal (`CodeApi`): `window.api.code` (preload).
  */
+import { t } from '@shared/i18n'
 import type { WindowApi } from '@shared/ipc'
 import { useServer, onOpencodeEvent, onStreamReconnect } from '../../../stores/server'
 import type { OcEvent, OpencodeClient } from '../../../lib/opencode'
@@ -20,7 +21,7 @@ export function getClient(): OpencodeClient | null {
 /** Igual que `getClient` pero lanza si no hay conexión. */
 export function requireClient(): OpencodeClient {
   const c = getClient()
-  if (!c) throw new Error('OpenCode no está conectado todavía')
+  if (!c) throw new Error(t('code.client.notConnected'))
   return c
 }
 
@@ -40,7 +41,7 @@ export function subscribeReconnect(listener: () => void): () => void {
 /** Desenvuelve el resultado `{ data, error }` del SDK. */
 export function sdkData<T>(res: { data?: T; error?: unknown }): T {
   if (res.error !== undefined && res.error !== null) throw new Error(errorMessage(res.error))
-  if (res.data === undefined) throw new Error('Respuesta vacía de OpenCode')
+  if (res.data === undefined) throw new Error(t('code.client.emptyResponse'))
   return res.data
 }
 
@@ -53,6 +54,6 @@ export function nativeCode(): import('@shared/ipc-code').CodeApi | null {
 /** Como `nativeCode` pero lanza si `window.api.code` no está disponible. */
 export function requireCode(): import('@shared/ipc-code').CodeApi {
   const c = nativeCode()
-  if (!c) throw new Error('API nativa de Code no disponible')
+  if (!c) throw new Error(t('code.client.noNative'))
   return c
 }

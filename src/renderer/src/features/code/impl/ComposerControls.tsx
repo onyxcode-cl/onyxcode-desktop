@@ -5,6 +5,8 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Brain, Check, CircleSlash, ListChecks, PencilLine, Shield, Wand2 } from 'lucide-react'
+import type { MsgKey } from '@shared/i18n'
+import { useT } from '../../../lib/i18n'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useAiGate, type AiGate } from '../../../lib/ai-gate'
@@ -13,17 +15,12 @@ import { useSettings } from '../../../stores/settings'
 import { useCode } from './store'
 import type { PermissionMode } from './types'
 
-const PERMISSION_MODES: { id: PermissionMode; label: string; hint: string; icon: React.JSX.Element }[] = [
-  { id: 'manual', label: 'Manual', hint: 'Pregunta antes de cualquier acción', icon: <Shield size={14} /> },
-  {
-    id: 'acceptEdits',
-    label: 'Aceptar ediciones',
-    hint: 'Edita archivos sin preguntar; el resto pregunta',
-    icon: <PencilLine size={14} />
-  },
-  { id: 'plan', label: 'Plan', hint: 'Solo explora y propone; no modifica nada', icon: <ListChecks size={14} /> },
-  { id: 'auto', label: 'Auto', hint: 'Ediciones y comandos seguros sin preguntar; pregunta lo riesgoso', icon: <Wand2 size={14} /> },
-  { id: 'bypass', label: 'Bypass', hint: 'Permite todo sin preguntar (incluye bash). Úsalo con cuidado.', icon: <CircleSlash size={14} /> }
+const PERMISSION_MODES: { id: PermissionMode; label: MsgKey; hint: MsgKey; icon: React.JSX.Element }[] = [
+  { id: 'manual', label: 'code.mode.manual', hint: 'code.mode.manual.hint', icon: <Shield size={14} /> },
+  { id: 'acceptEdits', label: 'code.mode.acceptEdits', hint: 'code.mode.acceptEdits.hint', icon: <PencilLine size={14} /> },
+  { id: 'plan', label: 'code.mode.plan', hint: 'code.mode.plan.hint', icon: <ListChecks size={14} /> },
+  { id: 'auto', label: 'code.mode.auto', hint: 'code.mode.auto.hint', icon: <Wand2 size={14} /> },
+  { id: 'bypass', label: 'code.mode.bypass', hint: 'code.mode.bypass.hint', icon: <CircleSlash size={14} /> }
 ]
 
 /** Modelo pedido (el elegido en Code o el predeterminado) resuelto contra las IA conectadas. */
@@ -89,6 +86,7 @@ function MenuItem({
 
 /** Modo de permisos de la sesión activa. */
 export function PermissionChip(): React.JSX.Element {
+  const t = useT()
   const mode = useCode((s) => s.permissionMode)
   const setPermissionMode = useCode((s) => s.setPermissionMode)
   const [open, setOpen] = useState(false)
@@ -102,11 +100,11 @@ export function PermissionChip(): React.JSX.Element {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Modo de permisos"
+        title={t('code.mode.title')}
         className={`${chip} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
       >
         {current.icon}
-        {current.label}
+        {t(current.label)}
       </button>
       {open && (
         <div
@@ -118,8 +116,8 @@ export function PermissionChip(): React.JSX.Element {
               key={m.id}
               active={mode === m.id}
               icon={m.icon}
-              label={m.label}
-              hint={m.hint}
+              label={t(m.label)}
+              hint={t(m.hint)}
               onClick={() => {
                 setOpen(false)
                 void setPermissionMode(m.id)
@@ -134,6 +132,7 @@ export function PermissionChip(): React.JSX.Element {
 
 /** Esfuerzo del modelo (variantes de razonamiento). No se muestra si el modelo no tiene variantes. */
 export function EffortChip(): React.JSX.Element | null {
+  const t = useT()
   const model = useCode((s) => s.model)
   const variant = useCode((s) => s.variant)
   const setVariant = useCode((s) => s.setVariant)
@@ -160,19 +159,19 @@ export function EffortChip(): React.JSX.Element | null {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Esfuerzo del modelo"
+        title={t('code.effort.title')}
         className={`${chip} text-muted hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
       >
         <Brain size={14} />
-        <span className="capitalize">{variant ?? 'Estándar'}</span>
+        <span className="capitalize">{variant ?? t('code.effort.standard')}</span>
       </button>
       {open && (
         <div
           role="menu"
           className="absolute right-0 bottom-full z-50 mb-2 w-48 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-1 shadow-xl"
         >
-          <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">Esfuerzo de razonamiento</div>
-          <MenuItem active={!variant} label="Estándar" onClick={() => pick(null)} />
+          <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">{t('code.effort.menu')}</div>
+          <MenuItem active={!variant} label={t('code.effort.standard')} onClick={() => pick(null)} />
           {variants.map((v) => (
             <MenuItem key={v} active={variant === v} label={v.charAt(0).toUpperCase() + v.slice(1)} onClick={() => pick(v)} />
           ))}

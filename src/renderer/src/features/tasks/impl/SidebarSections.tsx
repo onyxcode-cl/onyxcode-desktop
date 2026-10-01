@@ -18,8 +18,10 @@ import {
   Pin
 } from 'lucide-react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
+import { t as tr } from '@shared/i18n'
 import type { TasksTaskActivity, TasksTaskMeta, ScheduledRoutine } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { dateLocale, useT } from '../../../lib/i18n'
 import { useSessions } from '../../../stores/sessions'
 import { untilText } from '../../routines/impl/schedule'
 import { cw, onTasks } from './bridge'
@@ -45,10 +47,10 @@ export function filterByTitle<T extends { title?: string }>(items: T[], query: s
 export function dayBucket(ts: number, now = Date.now()): string {
   const today = new Date(now)
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  if (ts >= start) return 'Hoy'
-  if (ts >= start - 86_400_000) return 'Ayer'
-  if (ts >= start - 6 * 86_400_000) return 'Esta semana'
-  const label = new Date(ts).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+  if (ts >= start) return tr('tasks.side.today')
+  if (ts >= start - 86_400_000) return tr('tasks.side.yesterday')
+  if (ts >= start - 6 * 86_400_000) return tr('tasks.side.thisWeek')
+  const label = new Date(ts).toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
@@ -76,7 +78,7 @@ export function groupByDate<T>(items: T[], tsOf: (t: T) => number, now = Date.no
 }
 
 /** Etiqueta del grupo de las tareas que no tienen grupo. */
-export const NO_GROUP_LABEL = 'Sin grupo'
+export const noGroupLabel = (): string => tr('tasks.side.noGroup')
 
 /**
  * Agrupa por el grupo definido por el usuario: grupos con nombre por orden alfabético (es) y al final
@@ -95,9 +97,9 @@ export function groupByGroup<T>(items: T[], groupOf: (t: T) => string | null | u
     }
   }
   const out: TaskGroup<T>[] = [...named.entries()]
-    .sort(([a], [b]) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+    .sort(([a], [b]) => a.localeCompare(b, dateLocale(), { sensitivity: 'base' }))
     .map(([label, list]) => ({ key: `group:${label}`, label, items: list }))
-  if (loose.length > 0) out.push({ key: 'group:', label: NO_GROUP_LABEL, items: loose })
+  if (loose.length > 0) out.push({ key: 'group:', label: noGroupLabel(), items: loose })
   return out
 }
 
@@ -254,7 +256,7 @@ function SectionRow({
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate">{title || 'Tarea sin título'}</span>
+        <span className="block truncate">{title || tr('tasks.list.untitled')}</span>
         <span className={`block truncate text-[11px] ${subtitleClass}`}>{subtitle}</span>
       </span>
       {fullAccess && (
@@ -280,6 +282,7 @@ function Section<T>({
   keyOf: (t: T) => string
   render: (t: T) => React.JSX.Element
 }): React.JSX.Element | null {
+  const t = useT()
   const [expanded, setExpanded] = useState(false)
   const { shown, hidden } = takeVisible(items, limit, expanded)
   if (items.length === 0) return null
@@ -298,7 +301,7 @@ function Section<T>({
           className="mt-0.5 w-full rounded-lg px-2 py-1 text-left text-[11.5px] text-muted hover:bg-hover hover:text-fg"
           onClick={() => setExpanded((e) => !e)}
         >
-          {expanded ? 'Mostrar menos' : `Mostrar ${hidden} más`}
+          {expanded ? t('tasks.side.showLess') : t('tasks.side.showMore', { n: hidden })}
         </button>
       )}
     </section>
@@ -318,6 +321,7 @@ async function openRoutine(r: ScheduledRoutine, editor = false): Promise<void> {
 
 /** Fijadas, Activas y Programadas de todas las carpetas (arriba de la lista de la carpeta actual). */
 export function SidebarSections(): React.JSX.Element {
+  const t = useT()
   const activity = useTasks((s) => s.activity)
   const taskMeta = useTasks((s) => s.taskMeta)
   const activeTaskId = useTasks((s) => s.activeTaskId)
@@ -359,7 +363,7 @@ export function SidebarSections(): React.JSX.Element {
   return (
     <div>
       <Section
-        label="Fijadas"
+        label={t('tasks.side.pinned')}
         items={pinned}
         limit={5}
         keyOf={(p) => p.sessionId}
@@ -380,7 +384,7 @@ export function SidebarSections(): React.JSX.Element {
         }}
       />
       <Section
-        label="Activas"
+        label={t('tasks.side.active')}
         items={active}
         limit={4}
         keyOf={(t) => t.sessionId}
@@ -398,7 +402,7 @@ export function SidebarSections(): React.JSX.Element {
         )}
       />
       <Section
-        label="Programadas"
+        label={t('tasks.side.scheduled')}
         items={scheduled}
         limit={3}
         keyOf={(r) => r.id}
@@ -406,9 +410,9 @@ export function SidebarSections(): React.JSX.Element {
           <SectionRow
             icon={<CalendarClock size={13} className="text-subtle" />}
             title={r.name}
-            subtitle={`${r.folder ? `${baseName(r.folder)} · ` : ''}${r.running ? 'En ejecución' : r.nextRun ? untilText(r.nextRun) : 'Sin próxima ejecución'}`}
+            subtitle={`${r.folder ? `${baseName(r.folder)} · ` : ''}${r.running ? t('tasks.side.running') : r.nextRun ? untilText(r.nextRun) : t('tasks.side.noNext')}`}
             fullAccess={r.fullAccess}
-            hint={r.originSessionId && r.folder ? 'Abrir la tarea de origen' : 'Abrir en Rutinas'}
+            hint={r.originSessionId && r.folder ? t('tasks.side.openOrigin') : t('tasks.side.openRoutines')}
             onClick={() => void openRoutine(r).catch(() => undefined)}
           />
         )}

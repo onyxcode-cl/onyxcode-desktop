@@ -8,8 +8,10 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { FolderInput, Loader2, ShieldAlert } from 'lucide-react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
+import { t as tr } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { answerFolderRequest } from './actions'
@@ -19,16 +21,20 @@ import { rootTaskId, useTasks } from './store'
 import { lastAssistantText } from './transcript'
 import { folderRequestPaths } from './util'
 
-const MODES: Array<{ mode: FolderAccessMode; label: string; hint: string }> = [
-  { mode: 'ro', label: TASKS_TERMS.readOnly, hint: 'Podrá leer los archivos, no cambiarlos.' },
-  { mode: 'rw', label: TASKS_TERMS.readWrite, hint: 'Podrá leer, crear y modificar archivos.' }
-]
+function folderModes(t: ReturnType<typeof useT>): Array<{ mode: FolderAccessMode; label: string; hint: string }> {
+  return [
+    { mode: 'ro', label: TASKS_TERMS.readOnly, hint: t('tasksComputer.folder.roHint') },
+    { mode: 'rw', label: TASKS_TERMS.readWrite, hint: t('tasksComputer.folder.rwHint') }
+  ]
+}
 
 function hiddenNote(text: string): boolean {
   return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/.test(text)
 }
 
 export function FolderRequestCard({ request }: { request: PermissionRequest }): React.JSX.Element {
+  const t = useT()
+  const MODES = folderModes(t)
   const conn = useTasks((s) => s.conn)
   const policy = useTasks((s) => s.policy)
   const fullAccess = conn?.fullAccess === true
@@ -56,7 +62,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
     let cancelled = false
     cw('tasks:folders:check', { path: selected })
       .then((chk) => {
-        if (!cancelled && !chk.ok) setReason(chk.reason ?? 'Esa carpeta no se puede añadir.')
+        if (!cancelled && !chk.ok) setReason(chk.reason ?? tr('tasksComputer.folder.cannotAdd'))
       })
       .catch(() => undefined)
     return () => {
@@ -96,46 +102,44 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
           <FolderInput size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">El agente quiere trabajar en otra carpeta</p>
+          <p className="text-sm font-semibold">{t('tasksComputer.perm.folderTitle')}</p>
           <p className="mt-0.5 text-xs text-muted">
-            {fullAccess
-              ? 'Esta ubicación queda fuera de la carpeta de la tarea. Si la permites, el agente podrá acceder a ella.'
-              : 'Esta ubicación queda fuera de la carpeta de la tarea. Al permitirla se reiniciará el espacio de trabajo de las tareas y la tarea continuará sola.'}
+            {fullAccess ? t('tasksComputer.folder.outsideFull') : t('tasksComputer.folder.outsideSandbox')}
           </p>
 
-          <p className="mt-2.5 text-[11px] font-medium text-subtle">Carpeta que pide el agente</p>
+          <p className="mt-2.5 text-[11px] font-medium text-subtle">{t('tasksComputer.folder.requested')}</p>
           <pre className="mt-1 max-h-24 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
-            {view.requested || 'No se pudo determinar la carpeta'}
+            {view.requested || t('tasksComputer.folder.unknown')}
           </pre>
           {view.requested && hiddenNote(view.requested) && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
               <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-              La ruta contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+              {t('tasksComputer.folder.hiddenPath')}
             </p>
           )}
           {view.command && (
             <>
-              <p className="mt-2 text-[11px] font-medium text-subtle">Comando que lo provoca</p>
+              <p className="mt-2 text-[11px] font-medium text-subtle">{t('tasksComputer.folder.command')}</p>
               <pre className="mt-1 max-h-24 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
                 {view.command}
               </pre>
               {hiddenNote(view.command) && (
                 <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
                   <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-                  El comando contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+                  {t('tasksComputer.folder.hiddenCommand')}
                 </p>
               )}
             </>
           )}
 
           <div className="mt-2.5 rounded-md border border-border/70 bg-hover/40 px-2.5 py-1.5">
-            <p className="text-[11px] font-medium text-subtle">Motivo (según el agente, no verificado)</p>
-            <p className="mt-0.5 text-xs text-muted">{view.motive || 'El agente no indicó un motivo.'}</p>
+            <p className="text-[11px] font-medium text-subtle">{t('tasksComputer.folder.motive')}</p>
+            <p className="mt-0.5 text-xs text-muted">{view.motive || t('tasksComputer.folder.noMotive')}</p>
           </div>
 
           {view.candidates.length > 1 && (
             <fieldset className="mt-3 min-w-0">
-              <legend className="text-[11px] font-medium text-subtle">Carpeta a la que darás acceso</legend>
+              <legend className="text-[11px] font-medium text-subtle">{t('tasksComputer.folder.pick')}</legend>
               <div role="radiogroup" className="mt-1 space-y-1">
                 {view.candidates.map((c, i) => (
                   <label
@@ -153,21 +157,17 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
                     <span className="min-w-0 flex-1 truncate font-mono" title={c}>
                       {c}
                     </span>
-                    {i === 0 && <span className="shrink-0 text-[11px] text-subtle">la que pide</span>}
+                    {i === 0 && <span className="shrink-0 text-[11px] text-subtle">{t('tasksComputer.folder.theRequested')}</span>}
                   </label>
                 ))}
               </div>
-              {widened && (
-                <p className="mt-1 text-[11px] text-warning">
-                  Darás acceso también a todo lo que hay dentro de esta carpeta, más amplia que la que pide el agente.
-                </p>
-              )}
+              {widened && <p className="mt-1 text-[11px] text-warning">{t('tasksComputer.folder.widened')}</p>}
             </fieldset>
           )}
 
           {showMode && (
             <fieldset className="mt-3 min-w-0">
-              <legend className="text-[11px] font-medium text-subtle">Modo de acceso</legend>
+              <legend className="text-[11px] font-medium text-subtle">{t('tasksComputer.access.aria')}</legend>
               <div role="radiogroup" className="mt-1 flex flex-wrap gap-1.5">
                 {MODES.map((m) => (
                   <label
@@ -203,10 +203,10 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
                 className="mt-0.5 accent-[var(--accent)]"
               />
               <span>
-                No volver a preguntar (carpeta de confianza)
+                {t('tasksComputer.folder.trust')}
                 {trust && (
                   <span className="mt-0.5 block text-[11px] text-subtle">
-                    Se añadirá a «{TASKS_TERMS.trustedFolders}» en Ajustes, donde podrás quitarla.
+                    {t('tasksComputer.folder.trustNote', { name: TASKS_TERMS.trustedFolders })}
                   </span>
                 )}
               </span>
@@ -223,13 +223,13 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="ghost" disabled={busy} onClick={() => void respond('deny')}>
-              Denegar
+              {t('tasksComputer.tier.deny')}
             </Button>
             <Button variant="secondary" disabled={busy} onClick={() => void respond('later')}>
-              Ahora no
+              {t('tasksComputer.delete.notNow')}
             </Button>
             <Button variant="primary" disabled={busy || noPath || (!fullAccess && !!reason)} onClick={() => void respond('allow')}>
-              {busy && <Loader2 size={14} className="animate-spin" />} Permitir
+              {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.confirm.allow')}
             </Button>
           </div>
         </div>

@@ -4,6 +4,7 @@
  * (ver `src/shared/ipc-browser.ts`), así que aquí no hace falta `unwrap`.
  */
 import type { WindowApi } from '@shared/ipc'
+import { t } from '@shared/i18n'
 import type {
   BrowserApi,
   BrowserEventChannel,
@@ -15,7 +16,7 @@ import type {
 
 function getApi(): BrowserApi {
   const api = (window as unknown as { api?: WindowApi & { browser?: BrowserApi } }).api?.browser
-  if (!api) throw new Error('El puente del navegador no está disponible (falta window.api.browser en el preload).')
+  if (!api) throw new Error(t('browser.bridgeMissing'))
   return api
 }
 

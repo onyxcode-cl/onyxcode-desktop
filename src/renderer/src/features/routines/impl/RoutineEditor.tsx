@@ -14,19 +14,12 @@ import { closeEditor, saveRoutine, useRoutines } from './store'
 import { ensureRoutinesTermsAck } from './terms'
 import { tildify } from '../../../lib/paths'
 import { isSubmitKey } from '../../../lib/textarea'
+import { dateLocale, useT } from '../../../lib/i18n'
 
 type Builder = 'days' | 'interval' | 'cron'
 
-/** L M X J V S D (0 = domingo). */
-const DAY_CHIPS: { day: number; short: string; name: string }[] = [
-  { day: 1, short: 'L', name: 'lunes' },
-  { day: 2, short: 'M', name: 'martes' },
-  { day: 3, short: 'X', name: 'miércoles' },
-  { day: 4, short: 'J', name: 'jueves' },
-  { day: 5, short: 'V', name: 'viernes' },
-  { day: 6, short: 'S', name: 'sábado' },
-  { day: 0, short: 'D', name: 'domingo' }
-]
+/** Orden de los chips: lunes a domingo (0 = domingo). La inicial y el nombre salen del diccionario. */
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 const INTERVALS = [1, 2, 3, 4, 6, 8, 12, 24]
 
@@ -58,6 +51,7 @@ const inputCls =
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
 
 export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX.Element {
+  const t = useT()
   const hint = useRoutines((s) => s.editingHint)
   const recentFolders = useSettings((s) => s.settings.recentFolders)
   const [form, setForm] = useState<RoutineInput>(initial)
@@ -90,12 +84,12 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
   // Vista previa de la programación (debounce).
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       void cw('routines:preview', { schedule: form.schedule }).then(setPreview, (err: unknown) =>
         setPreview({ valid: false, error: String(err), cron: null, next: [], label: '' })
       )
     }, 200)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [form.schedule])
 
   const pickFolder = async (): Promise<void> => {
@@ -104,9 +98,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     if (form.mode === 'tasks' && !folders.some((f) => f.path === picked)) {
       const name = picked.split('/').filter(Boolean).pop() ?? picked
       const ok = await confirmDialog({
-        title: `¿Permitir trabajar en «${name}»?`,
-        message: 'El agente podrá crear y modificar archivos dentro de esa carpeta (en sandbox).',
-        confirmLabel: 'Permitir'
+        title: t('routines.editor.allowTitle', { name }),
+        message: t('routines.editor.allowMessage'),
+        confirmLabel: t('routines.editor.allowConfirm')
       })
       if (!ok) return
       try {
@@ -133,7 +127,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     const h = hostDraft.trim().toLowerCase()
     if (!h) return
     if (!HOST_RE.test(h)) {
-      setError(`Sitio inválido: ${h} (usa solo el dominio, p. ej. api.ejemplo.com)`)
+      setError(t('routines.editor.invalidHost', { host: h }))
       return
     }
     setError(null)
@@ -147,21 +141,19 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
       return
     }
     const ok = await confirmDialog({
-      title: `¿Ejecutar esta rutina con ${TASKS_TERMS.fullControl}?`,
+      title: t('routines.editor.fullTitle', { fullControl: TASKS_TERMS.fullControl }),
       message: (
         <div className="space-y-2 text-sm">
+          <p>{t('routines.editor.fullP1')}</p>
           <p>
-            La rutina saldrá del sandbox: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los
-            archivos de la carpeta.
+            {t('routines.editor.fullP2a')}
+            <b>{t('routines.editor.fullP2b')}</b>
+            {t('routines.editor.fullP2c')}
           </p>
-          <p>
-            En cada ejecución tendrás que <b>aprobar el plan en persona</b> (te llegará una notificación); si no lo apruebas, la ejecución
-            falla por tiempo. Cada ejecución empieza una tarea nueva.
-          </p>
-          <p>Solo actívalo si la instrucción es de tu confianza y aceptas estas condiciones.</p>
+          <p>{t('routines.editor.fullP3')}</p>
         </div>
       ),
-      confirmLabel: 'Acepto, activar',
+      confirmLabel: t('routines.editor.fullConfirm'),
       danger: true
     })
     if (ok) patch({ fullAccess: true, fullAccessConsentAt: Date.now(), sessionMode: 'fresh', allowHosts: [] })
@@ -171,9 +163,11 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const days = toDaysSpec(s)
   const human = s.kind === 'cron' ? describeCron(s.expr) : scheduleText(s)
   const needsFolder = form.mode !== 'chat' && !form.folder
-  const missing = [!form.name.trim() && 'un nombre', !form.prompt.trim() && 'la instrucción', needsFolder && 'una carpeta'].filter(
-    Boolean
-  ) as string[]
+  const missing = [
+    !form.name.trim() && t('routines.editor.missingName'),
+    !form.prompt.trim() && t('routines.editor.missingPrompt'),
+    needsFolder && t('routines.editor.missingFolder')
+  ].filter(Boolean) as string[]
   const canSave = !saving && missing.length === 0 && !(preview && !preview.valid)
 
   const submit = async (): Promise<void> => {
@@ -231,13 +225,13 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
             <CalendarClock size={15} />
           </span>
           <h2 id="routine-editor-title" className="text-base font-semibold">
-            {form.id ? 'Editar rutina' : 'Nueva rutina'}
+            {form.id ? t('routines.editor.edit') : t('routines.editor.new')}
           </h2>
           <button
             type="button"
             onClick={closeEditor}
             className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
-            aria-label="Cerrar"
+            aria-label={t('routines.editor.close')}
           >
             <X size={18} />
           </button>
@@ -252,13 +246,13 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
           <div>
             <label className={labelCls} htmlFor="r-name">
-              Nombre
+              {t('routines.editor.name')}
             </label>
             <input
               id="r-name"
               className={`${inputCls} ${touched && !form.name.trim() ? 'border-danger/60' : ''}`}
               value={form.name}
-              placeholder="Resumen diario de correos"
+              placeholder={t('routines.editor.namePlaceholder')}
               onChange={(e) => patch({ name: e.target.value })}
               autoFocus
             />
@@ -266,25 +260,21 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
           <div>
             <label className={labelCls} htmlFor="r-prompt">
-              Instrucción
+              {t('routines.editor.prompt')}
             </label>
             <textarea
               id="r-prompt"
               className={`${inputCls} min-h-32 resize-y leading-relaxed ${touched && !form.prompt.trim() ? 'border-danger/60' : ''}`}
               value={form.prompt}
-              placeholder="Revisa los documentos nuevos de la carpeta y actualiza informe.md con un resumen…"
+              placeholder={t('routines.editor.promptPlaceholder')}
               onChange={(e) => patch({ prompt: e.target.value })}
             />
-            <p className="mt-1.5 text-xs text-subtle">
-              {isTasks
-                ? 'Se ejecuta sin supervisión: los permisos que no estén en «Permitir sin preguntar» se rechazan o esperan tu aprobación, según lo que elijas abajo.'
-                : 'Se ejecuta sin supervisión: los permisos que requieran confirmación se rechazan automáticamente.'}
-            </p>
+            <p className="mt-1.5 text-xs text-subtle">{isTasks ? t('routines.editor.unattendedTasks') : t('routines.editor.unattended')}</p>
           </div>
 
           {/* ── Programación ── */}
           <section>
-            <span className={labelCls}>Cuándo</span>
+            <span className={labelCls}>{t('routines.editor.when')}</span>
             <div className="flex flex-wrap gap-1.5">
               {SCHEDULE_PRESETS.map((p) => {
                 const on = sameSchedule(p.schedule, s)
@@ -315,7 +305,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     if (!days) setSchedule({ kind: 'daily', time: '09:00' })
                   }}
                 >
-                  Días y hora
+                  {t('routines.editor.tabDays')}
                 </button>
                 <button
                   type="button"
@@ -325,7 +315,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     if (s.kind !== 'interval') setSchedule({ kind: 'interval', hours: 4 })
                   }}
                 >
-                  Intervalo
+                  {t('routines.editor.tabInterval')}
                 </button>
                 <button
                   type="button"
@@ -335,35 +325,35 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     if (s.kind !== 'cron') setSchedule({ kind: 'cron', expr: toCron(s) })
                   }}
                 >
-                  Cron avanzado
+                  {t('routines.editor.tabCron')}
                 </button>
               </div>
 
               {builder === 'days' && days && (
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex gap-1" role="group" aria-label="Días de la semana">
-                    {DAY_CHIPS.map((d) => {
-                      const on = days.days.includes(d.day)
+                  <div className="flex gap-1" role="group" aria-label={t('routines.editor.weekdays')}>
+                    {DAY_ORDER.map((day) => {
+                      const on = days.days.includes(day)
                       return (
                         <button
-                          key={d.day}
+                          key={day}
                           type="button"
-                          title={d.name}
+                          title={t(`routines.weekday.${day}` as 'routines.weekday.0')}
                           aria-pressed={on}
                           onClick={() => {
-                            const next = on ? days.days.filter((x) => x !== d.day) : [...days.days, d.day]
+                            const next = on ? days.days.filter((x) => x !== day) : [...days.days, day]
                             if (next.length === 0) return
                             setSchedule(fromDaysSpec({ days: next, time: days.time }))
                           }}
                           className={`h-8 w-8 rounded-full text-xs font-semibold transition ${on ? 'bg-accent text-accent-fg' : 'border border-border text-muted hover:border-border-strong hover:text-fg'}`}
                         >
-                          {d.short}
+                          {t(`routines.editor.chip.${day}` as 'routines.editor.chip.0')}
                         </button>
                       )
                     })}
                   </div>
                   <label className="flex items-center gap-2 text-sm text-muted">
-                    a las
+                    {t('routines.editor.at')}
                     <input
                       type="time"
                       className={`${inputCls} w-28 py-1.5`}
@@ -376,7 +366,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
               {builder === 'interval' && s.kind === 'interval' && (
                 <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
-                  Cada
+                  {t('routines.editor.every')}
                   {INTERVALS.map((h) => (
                     <button
                       key={h}
@@ -388,7 +378,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       {h}
                     </button>
                   ))}
-                  horas
+                  {t('routines.editor.hours')}
                 </div>
               )}
 
@@ -399,15 +389,15 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     value={s.expr}
                     spellCheck={false}
                     placeholder="0 9 * * 1-5"
-                    aria-label="Expresión cron"
+                    aria-label={t('routines.editor.cronAria')}
                     onChange={(e) => setSchedule({ kind: 'cron', expr: e.target.value })}
                   />
                   <div className="mt-1.5 grid grid-cols-5 gap-1 text-center font-mono text-[10px] text-subtle">
-                    <span>minuto</span>
-                    <span>hora</span>
-                    <span>día mes</span>
-                    <span>mes</span>
-                    <span>día sem.</span>
+                    <span>{t('routines.editor.cronMinute')}</span>
+                    <span>{t('routines.editor.cronHour')}</span>
+                    <span>{t('routines.editor.cronDom')}</span>
+                    <span>{t('routines.editor.cronMonth')}</span>
+                    <span>{t('routines.editor.cronDow')}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {['0 9 * * 1-5', '*/30 9-18 * * 1-5', '0 8,20 * * *', '0 10 1 * *'].map((ex) => (
@@ -436,14 +426,16 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   <>
                     <CalendarClock size={14} className="mt-0.5 shrink-0 text-accent" />
                     <div className="min-w-0">
-                      <div className="font-medium text-fg">{human ?? 'Expresión cron personalizada'}</div>
+                      <div className="font-medium text-fg">{human ?? t('routines.editor.cronCustom')}</div>
                       {preview && preview.next.length > 0 && (
                         <div className="mt-0.5">
-                          Próxima {untilText(preview.next[0])} · luego{' '}
-                          {preview.next
-                            .slice(1)
-                            .map((n) => fullDate(n))
-                            .join(' · ')}
+                          {t('routines.editor.nextThen', {
+                            next: untilText(preview.next[0]),
+                            rest: preview.next
+                              .slice(1)
+                              .map((n) => fullDate(n))
+                              .join(' · ')
+                          })}
                         </div>
                       )}
                       {!preview && <Loader2 size={12} className="mt-1 animate-spin" />}
@@ -456,7 +448,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
           {/* ── Dónde ── */}
           <section>
-            <span className={labelCls}>Modo</span>
+            <span className={labelCls}>{t('routines.editor.mode')}</span>
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(MODE_META) as RoutineInput['mode'][]).map((m) => {
                 const meta = MODE_META[m]
@@ -487,7 +479,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
           {form.mode !== 'chat' && (
             <section>
-              <span className={labelCls}>{form.mode === 'code' ? 'Proyecto' : 'Carpeta'}</span>
+              <span className={labelCls}>{form.mode === 'code' ? t('routines.editor.project') : t('routines.editor.folder')}</span>
               <button
                 type="button"
                 onClick={() => void pickFolder()}
@@ -503,14 +495,18 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       <span className="block truncate font-mono text-[11px] text-subtle">{tildify(form.folder)}</span>
                     </>
                   ) : (
-                    <span className="text-sm text-muted">Elegir carpeta…</span>
+                    <span className="text-sm text-muted">{t('routines.editor.pickFolder')}</span>
                   )}
                 </span>
-                <span className="shrink-0 text-xs font-medium text-accent">{form.folder ? 'Cambiar' : 'Elegir'}</span>
+                <span className="shrink-0 text-xs font-medium text-accent">
+                  {form.folder ? t('routines.editor.change') : t('routines.editor.choose')}
+                </span>
               </button>
               {folderOptions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <span className="py-0.5 text-[11px] text-subtle">{form.mode === 'tasks' ? 'Autorizadas:' : 'Recientes:'}</span>
+                  <span className="py-0.5 text-[11px] text-subtle">
+                    {form.mode === 'tasks' ? t('routines.editor.authorized') : t('routines.editor.recent')}
+                  </span>
                   {folderOptions.map((f) => (
                     <button
                       key={f.path}
@@ -530,15 +526,15 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
           {isTasks && (
             <section className="space-y-5 rounded-xl border border-border bg-bg/50 p-4">
               <div>
-                <span className={labelCls}>Cada ejecución</span>
-                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label="Sesión de cada ejecución">
+                <span className={labelCls}>{t('routines.editor.eachRun')}</span>
+                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label={t('routines.editor.sessionAria')}>
                   <button
                     type="button"
                     aria-pressed={form.sessionMode !== 'continue' || fullControl}
                     className={tabCls(form.sessionMode !== 'continue' || fullControl)}
                     onClick={() => patch({ sessionMode: 'fresh' })}
                   >
-                    Empezar de cero
+                    {t('routines.editor.fresh')}
                   </button>
                   <button
                     type="button"
@@ -547,28 +543,28 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     className={`${tabCls(form.sessionMode === 'continue' && !fullControl)} disabled:cursor-not-allowed disabled:opacity-50`}
                     onClick={() => patch({ sessionMode: 'continue' })}
                   >
-                    Continuar la misma tarea
+                    {t('routines.editor.continue')}
                   </button>
                 </div>
                 <p className="mt-1.5 text-xs text-subtle">
                   {fullControl
-                    ? `Con ${TASKS_TERMS.fullControlShort} cada ejecución empieza una tarea nueva, para que ninguna aprobación se arrastre.`
+                    ? t('routines.editor.freshFull', { short: TASKS_TERMS.fullControlShort })
                     : form.sessionMode === 'continue'
-                      ? 'Conserva el contexto de la ejecución anterior en la misma tarea.'
-                      : 'Cada ejecución crea una tarea nueva, sin recordar las anteriores.'}
+                      ? t('routines.editor.continueHint')
+                      : t('routines.editor.freshHint')}
                 </p>
               </div>
 
               <div>
-                <span className={labelCls}>Si pide permiso</span>
-                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label="Qué hacer si pide permiso">
+                <span className={labelCls}>{t('routines.editor.onAsk')}</span>
+                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label={t('routines.editor.onAskAria')}>
                   <button
                     type="button"
                     aria-pressed={form.onAsk !== 'wait'}
                     className={tabCls(form.onAsk !== 'wait')}
                     onClick={() => patch({ onAsk: 'reject' })}
                   >
-                    Rechazar y seguir
+                    {t('routines.editor.reject')}
                   </button>
                   <button
                     type="button"
@@ -576,21 +572,17 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     className={tabCls(form.onAsk === 'wait')}
                     onClick={() => patch({ onAsk: 'wait' })}
                   >
-                    Esperar mi aprobación (te avisará)
+                    {t('routines.editor.wait')}
                   </button>
                 </div>
                 <p className="mt-1.5 text-xs text-subtle">
-                  {form.onAsk === 'wait'
-                    ? 'La ejecución se detiene, te llega una notificación y la tarea sigue cuando apruebes o rechaces. Si no respondes en 45 min, falla.'
-                    : 'Lo que no esté permitido abajo se rechaza y queda anotado en el historial de la rutina.'}
+                  {form.onAsk === 'wait' ? t('routines.editor.waitHint') : t('routines.editor.rejectHint')}
                 </p>
               </div>
 
               <div>
-                <span className={labelCls}>Permitir sin preguntar</span>
-                {allowRows.length === 0 && (
-                  <p className="mb-2 text-xs text-subtle">Ninguna regla: todo lo que pida permiso se tratará como indicaste arriba.</p>
-                )}
+                <span className={labelCls}>{t('routines.editor.allowNoAsk')}</span>
+                {allowRows.length === 0 && <p className="mb-2 text-xs text-subtle">{t('routines.editor.noRules')}</p>}
                 <datalist id="r-perm-suggestions">
                   {PERMISSION_SUGGESTIONS.map((p) => (
                     <option key={p} value={p} />
@@ -603,23 +595,25 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                         className={`${inputCls} w-32 shrink-0 py-1.5 font-mono text-xs`}
                         list="r-perm-suggestions"
                         value={row.permission}
+                        // i18n-ignore: ejemplo técnico
                         placeholder="bash"
                         spellCheck={false}
-                        aria-label="Permiso"
+                        aria-label={t('routines.editor.permission')}
                         onChange={(e) => setAllow(allowRows.map((r, j) => (j === i ? { ...r, permission: e.target.value } : r)))}
                       />
                       <input
                         className={`${inputCls} min-w-0 flex-1 py-1.5 font-mono text-xs`}
                         value={row.pattern}
+                        // i18n-ignore: ejemplo técnico
                         placeholder="git status*"
                         spellCheck={false}
-                        aria-label="Patrón"
+                        aria-label={t('routines.editor.pattern')}
                         onChange={(e) => setAllow(allowRows.map((r, j) => (j === i ? { ...r, pattern: e.target.value } : r)))}
                       />
                       <button
                         type="button"
-                        aria-label="Quitar regla"
-                        title="Quitar regla"
+                        aria-label={t('routines.editor.removeRule')}
+                        title={t('routines.editor.removeRule')}
                         onClick={() => setAllow(allowRows.filter((_, j) => j !== i))}
                         className="rounded-md p-1 text-muted hover:bg-hover hover:text-danger"
                       >
@@ -633,18 +627,23 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   onClick={() => setAllow([...allowRows, { permission: '', pattern: '' }])}
                   className="mt-2 flex items-center gap-1 text-xs font-medium text-accent hover:underline"
                 >
-                  <Plus size={13} /> Añadir regla
+                  <Plus size={13} /> {t('routines.editor.addRule')}
                 </button>
                 <p className="mt-1.5 text-xs text-subtle">
-                  El patrón admite <span className="font-mono">*</span> (cualquier cosa) y <span className="font-mono">?</span> (un
-                  carácter). Un permiso puede acabar en <span className="font-mono">*</span> para las herramientas de un MCP (p. ej.{' '}
+                  {t('routines.editor.patternHelp1')}
+                  <span className="font-mono">*</span>
+                  {t('routines.editor.patternHelp2')}
+                  <span className="font-mono">?</span>
+                  {t('routines.editor.patternHelp3')}
+                  <span className="font-mono">*</span>
+                  {t('routines.editor.patternHelp4')}
                   <span className="font-mono">github_*</span>).
                 </p>
               </div>
 
               {!fullControl && (
                 <div>
-                  <span className={labelCls}>Sitios permitidos</span>
+                  <span className={labelCls}>{t('routines.editor.allowedSites')}</span>
                   {hosts.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {hosts.map((h) => (
@@ -655,7 +654,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                           {h}
                           <button
                             type="button"
-                            aria-label={`Quitar ${h}`}
+                            aria-label={t('routines.editor.removeHost', { host: h })}
                             onClick={() => patch({ allowHosts: hosts.filter((x) => x !== h) })}
                             className="text-muted hover:text-danger"
                           >
@@ -669,9 +668,9 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     <input
                       className={`${inputCls} py-1.5 font-mono text-xs`}
                       value={hostDraft}
-                      placeholder="api.ejemplo.com"
+                      placeholder={t('routines.editor.hostPlaceholder')}
                       spellCheck={false}
-                      aria-label="Sitio permitido"
+                      aria-label={t('routines.editor.hostAria')}
                       onChange={(e) => setHostDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (isSubmitKey(e, { allowShift: true })) {
@@ -682,12 +681,10 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       }}
                     />
                     <Button variant="secondary" onClick={addHost} disabled={!hostDraft.trim()}>
-                      Añadir
+                      {t('routines.editor.add')}
                     </Button>
                   </div>
-                  <p className="mt-1.5 text-xs text-subtle">
-                    Solo valen mientras dura cada ejecución; el resto de la red sigue bloqueada. Los bloqueos quedan en el historial.
-                  </p>
+                  <p className="mt-1.5 text-xs text-subtle">{t('routines.editor.sitesHint')}</p>
                 </div>
               )}
 
@@ -697,13 +694,10 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     <ShieldAlert size={16} className={`mt-0.5 shrink-0 ${fullControl ? 'text-warning' : 'text-muted'}`} />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{TASKS_TERMS.fullControl}</div>
-                      <p className="mt-0.5 text-xs text-muted">
-                        Sin sandbox y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada
-                        ejecución.
-                      </p>
+                      <p className="mt-0.5 text-xs text-muted">{t('routines.editor.fullDesc')}</p>
                       {fullControl && form.fullAccessConsentAt ? (
                         <p className="mt-1 text-[11px] text-warning">
-                          Consentimiento dado el {new Date(form.fullAccessConsentAt).toLocaleString('es-CL')}.
+                          {t('routines.editor.consent', { date: new Date(form.fullAccessConsentAt).toLocaleString(dateLocale()) })}
                         </p>
                       ) : null}
                     </div>
@@ -727,7 +721,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
           <section className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <span className={labelCls}>Modelo</span>
+              <span className={labelCls}>{t('routines.editor.model')}</span>
               <div className="inline-flex rounded-lg border border-border">
                 <ModelPicker value={form.model} onChange={(model) => patch({ model })} placement="top" />
               </div>
@@ -739,7 +733,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                 onChange={(e) => patch({ enabled: e.target.checked })}
                 className="h-4 w-4 accent-[var(--accent)]"
               />
-              Activa
+              {t('routines.editor.active')}
             </label>
           </section>
 
@@ -752,14 +746,18 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
         <footer className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3">
           <span className="min-w-0 truncate text-xs text-subtle">
-            {touched && missing.length > 0 ? <span className="text-danger">Falta {missing.join(', ')}.</span> : '⌘↵ para guardar'}
+            {touched && missing.length > 0 ? (
+              <span className="text-danger">{t('routines.editor.missing', { items: missing.join(', ') })}</span>
+            ) : (
+              t('routines.editor.saveHint')
+            )}
           </span>
           <Button variant="ghost" className="ml-auto" onClick={closeEditor}>
-            Cancelar
+            {t('routines.editor.cancel')}
           </Button>
           <Button variant="primary" onClick={() => void submit()} disabled={saving || (preview !== null && !preview.valid)}>
             {saving && <Loader2 size={14} className="animate-spin" />}
-            {saving ? 'Guardando…' : form.id ? 'Guardar cambios' : 'Crear rutina'}
+            {saving ? t('routines.editor.saving') : form.id ? t('routines.editor.saveChanges') : t('routines.editor.create')}
           </Button>
         </footer>
       </div>

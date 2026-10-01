@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Clock, FolderCode, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
+import { t } from '@shared/i18n'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { baseName, tildify } from '../../../lib/paths'
 import { PageHeader } from '../../../components/PageHeader'
 import { useSettings } from '../../../stores/settings'
@@ -14,6 +16,7 @@ export { openProjectTrusted }
 
 /** Diálogo de confianza de carpeta ("Trust this workspace?"), montado una vez en `ProjectPicker`/`CodeWorkspace`. */
 export function TrustGate(): React.JSX.Element | null {
+  const t = useT()
   const dir = usePendingTrust()
   const confirmRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -42,13 +45,13 @@ export function TrustGate(): React.JSX.Element | null {
           <ShieldCheck size={20} />
         </div>
         <h3 id="trust-title" className="text-base font-semibold">
-          ¿Confiar en esta carpeta?
+          {t('code.trust.title')}
         </h3>
         <p className="mt-1.5 truncate font-mono text-xs text-subtle" title={dir}>
           {tildify(dir)}
         </p>
         <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted">
-          El agente podrá leer, escribir y ejecutar archivos dentro de esta carpeta. Solo confía en carpetas cuyo contenido conoces.
+          {t('code.trust.body')}
         </p>
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -56,7 +59,7 @@ export function TrustGate(): React.JSX.Element | null {
             onClick={() => resolveTrust(false)}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
           >
-            Cancelar
+            {t('code.ui.cancel')}
           </button>
           <button
             ref={confirmRef}
@@ -64,7 +67,7 @@ export function TrustGate(): React.JSX.Element | null {
             onClick={() => resolveTrust(true)}
             className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
           >
-            Confiar y continuar
+            {t('code.trust.confirm')}
           </button>
         </div>
       </div>
@@ -76,7 +79,7 @@ export function TrustGate(): React.JSX.Element | null {
 export async function pickAndOpenFolder(): Promise<void> {
   const { directory, setGlobalError } = useCode.getState()
   try {
-    const dir = await requireCode().dialog.openFolder({ title: 'Abrir carpeta de proyecto', defaultPath: directory ?? undefined })
+    const dir = await requireCode().dialog.openFolder({ title: t('code.picker.dialogTitle'), defaultPath: directory ?? undefined })
     if (dir) await openProjectTrusted(dir)
   } catch (err) {
     setGlobalError(errorMessage(err))
@@ -102,7 +105,7 @@ export async function createWorktreeAndOpen(base: string, branch: string): Promi
   const { setGlobalError } = useCode.getState()
   const native = nativeCode()
   if (!native) {
-    setGlobalError('Los worktrees requieren la app de escritorio (no disponible en este cliente).')
+    setGlobalError(t('code.picker.worktreeDesktopOnly'))
     return
   }
   try {
@@ -115,6 +118,7 @@ export async function createWorktreeAndOpen(base: string, branch: string): Promi
 
 /** Diálogo "Nueva sesión en worktree": rama (con prefijo) a partir de la carpeta actual. */
 export function NewWorktreeDialog({ directory, onClose }: { directory: string; onClose: () => void }): React.JSX.Element {
+  const t = useT()
   const [prefix] = useState('sesion/')
   const [name, setName] = useState(() => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'))
   const [busy, setBusy] = useState(false)
@@ -144,12 +148,13 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <GitBranchPlus size={20} />
         </div>
-        <h3 className="text-base font-semibold">Nueva sesión en worktree</h3>
+        <h3 className="text-base font-semibold">{t('code.worktree.title')}</h3>
         <p className="mt-1 text-sm leading-relaxed text-muted">
-          Crea una copia aislada del repositorio (<code className="font-mono text-xs">git worktree</code>) en una rama nueva y abre una
-          sesión ahí. Los cambios no tocan tu copia de trabajo actual.
+          {t('code.worktree.descBefore')}
+          <code className="font-mono text-xs">{'git worktree'}</code>
+          {t('code.worktree.descAfter')}
         </p>
-        <label className="mt-3 block text-xs font-medium text-subtle">Nombre de rama</label>
+        <label className="mt-3 block text-xs font-medium text-subtle">{t('code.worktree.branchName')}</label>
         <div className="mt-1 flex items-center overflow-hidden rounded-lg border border-border bg-bg">
           <span className="shrink-0 border-r border-border bg-hover px-2 py-1.5 font-mono text-xs text-subtle">{prefix}</span>
           <input
@@ -165,7 +170,7 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
             onClick={onClose}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
           >
-            Cancelar
+            {t('code.ui.cancel')}
           </button>
           <button
             type="button"
@@ -173,7 +178,7 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
             onClick={() => void submit()}
             className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? 'Creando…' : `Crear worktree y sesión (${branch})`}
+            {busy ? t('code.worktree.creating') : t('code.worktree.create', { branch })}
           </button>
         </div>
       </div>
@@ -224,6 +229,7 @@ function useProjectMeta(dir: string): ProjectMeta | null {
 }
 
 function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => void; onRemove: () => void }): React.JSX.Element {
+  const t = useT()
   const meta = useProjectMeta(dir)
   return (
     <div className="group relative">
@@ -258,7 +264,7 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
                 </span>
               ) : (
                 <span className="rounded-full border border-dashed border-border px-1.5 py-px">
-                  {meta.isRepo ? 'HEAD separado' : 'sin git'}
+                  {meta.isRepo ? t('code.picker.detached') : t('code.picker.noGit')}
                 </span>
               )}
               {meta.lastActivity && (
@@ -272,8 +278,8 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
       </button>
       <button
         type="button"
-        title="Quitar de recientes"
-        aria-label="Quitar de recientes"
+        title={t('code.picker.removeRecent')}
+        aria-label={t('code.picker.removeRecent')}
         onClick={onRemove}
         className="absolute top-2 right-2 hidden h-6 w-6 items-center justify-center rounded-md text-subtle group-hover:flex hover:bg-hover hover:text-fg"
       >
@@ -284,6 +290,7 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
 }
 
 export function ProjectPicker(): React.JSX.Element {
+  const t = useT()
   const recent = useSettings((s) => s.settings.recentFolders)
   const update = useSettings((s) => s.update)
   const globalError = useCode((s) => s.globalError)
@@ -300,16 +307,16 @@ export function ProjectPicker(): React.JSX.Element {
     <div className="flex h-full flex-col">
       <TrustGate />
       <PageHeader
-        title="Proyectos"
+        title={t('code.picker.title')}
         actions={
           <Button variant="primary" disabled={busy} onClick={open}>
-            <FolderOpen size={15} /> Abrir carpeta
+            <FolderOpen size={15} /> {t('code.picker.open')}
           </Button>
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-4xl px-8 pt-8 pb-10">
-          <p className="text-sm text-muted">Elige un proyecto para trabajar con el agente sobre su código.</p>
+          <p className="text-sm text-muted">{t('code.picker.choose')}</p>
           {globalError && <div className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{globalError}</div>}
 
           {recent.length === 0 ? (
@@ -317,26 +324,23 @@ export function ProjectPicker(): React.JSX.Element {
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
                 <FolderCode size={24} />
               </div>
-              <h2 className="text-lg font-semibold">Aún no has abierto ningún proyecto</h2>
-              <p className="mt-1 max-w-sm text-sm text-muted">
-                Abre la carpeta de un repositorio y el agente podrá leer el código, proponer planes, editar archivos y ejecutar comandos con
-                tu permiso.
-              </p>
+              <h2 className="text-lg font-semibold">{t('code.picker.emptyTitle')}</h2>
+              <p className="mt-1 max-w-sm text-sm text-muted">{t('code.picker.emptyBody')}</p>
               <Button variant="primary" className="mt-5" disabled={busy} onClick={open}>
-                <FolderOpen size={15} /> Abrir carpeta…
+                <FolderOpen size={15} /> {t('code.picker.openEllipsis')}
               </Button>
             </div>
           ) : (
             <>
               <div className="mt-8 mb-3 flex items-center gap-3">
-                <h2 className="text-[12px] font-medium text-subtle">Recientes</h2>
+                <h2 className="text-[12px] font-medium text-subtle">{t('code.picker.recent')}</h2>
                 {recent.length > 6 && (
                   <div className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1">
                     <Search size={13} className="text-subtle" />
                     <input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Filtrar…"
+                      placeholder={t('code.picker.filter')}
                       className="w-40 bg-transparent text-xs outline-none placeholder:text-subtle"
                     />
                   </div>
@@ -357,7 +361,7 @@ export function ProjectPicker(): React.JSX.Element {
                   disabled={busy}
                   className="flex min-h-[112px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong text-sm text-muted transition hover:border-accent hover:bg-accent-soft/40 hover:text-fg"
                 >
-                  <Plus size={18} /> Abrir otra carpeta
+                  <Plus size={18} /> {t('code.picker.openAnother')}
                 </button>
               </div>
             </>

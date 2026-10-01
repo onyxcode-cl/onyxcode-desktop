@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SANDBOX_PROVIDER_NOTICE } from './sandbox-providers'
+import { sandboxProviderNotice } from './sandbox-providers'
 import { NO_AI_ERROR, friendlyError, redactSecrets } from './ai-errors'
 
 const CAPTURE =
@@ -53,9 +53,9 @@ describe('friendlyError', () => {
   })
 
   it('el aviso de sandbox pasa intacto y sin detalle', () => {
-    const f = friendlyError(SANDBOX_PROVIDER_NOTICE)
+    const f = friendlyError(sandboxProviderNotice())
     expect(f.kind).toBe('unknown')
-    expect(f.message).toBe(SANDBOX_PROVIDER_NOTICE)
+    expect(f.message).toBe(sandboxProviderNotice())
     expect(f.detail).toBeNull()
   })
 

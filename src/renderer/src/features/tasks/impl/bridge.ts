@@ -1,10 +1,11 @@
 /** Acceso tipado a `window.api.tasks` (canales `tasks:*` y `routines:*`). */
+import { t } from '@shared/i18n'
 import type { IpcResult, WindowApi } from '@shared/ipc'
 import type { TasksApi, TasksEventChannel, TasksEventContract, TasksInvokeChannel, TasksRequest, TasksResponse } from '@shared/ipc-tasks'
 
 function getApi(): TasksApi {
   const api = (window as unknown as { api?: WindowApi & { tasks?: TasksApi } }).api?.tasks
-  if (!api) throw new Error('El puente de las tareas no está disponible (falta window.api.tasks en el preload).')
+  if (!api) throw new Error(t('tasks.bridge.missing'))
   return api
 }
 

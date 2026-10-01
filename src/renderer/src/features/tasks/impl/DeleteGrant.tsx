@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { setDeleteGrantAllowed } from './actions'
@@ -17,6 +18,7 @@ import { looksLikeBlockedDelete } from './util'
 
 /** Interruptor «Permitir borrar, mover y renombrar», con la advertencia de que reinicia el servidor de la tarea. */
 export function DeleteGrantToggle(): React.JSX.Element | null {
+  const t = useT()
   const folder = useTasks((s) => s.folder)
   const allowed = useTasks((s) => s.deleteGrant)
   const busy = useTasks((s) => s.deleteGrantBusy)
@@ -38,9 +40,9 @@ export function DeleteGrantToggle(): React.JSX.Element | null {
         <div className="min-w-0">
           <p className="text-sm font-medium">{TASKS_TERMS.deleteGrant}</p>
           <p className="mt-0.5 text-xs text-subtle">
-            Si lo activas, el agente podrá borrar, mover y renombrar archivos dentro de esta carpeta (comandos como{' '}
-            <code className="font-mono">rm</code> o <code className="font-mono">mv</code>). Cambiar esto reinicia el servidor sandboxeado de
-            la tarea: la tarea en curso se cerrará y tendrás que reabrirla y pedirle que continúe.
+            {t('tasksComputer.delete.toggleA')} <code className="font-mono">rm</code> {t('tasksComputer.delete.or')}{' '}
+            <code className="font-mono">mv</code>
+            {t('tasksComputer.delete.toggleB')}
           </p>
         </div>
         <button
@@ -69,6 +71,7 @@ export function DeleteGrantToggle(): React.JSX.Element | null {
 
 /** Tarjeta ofreciendo activar «Permitir borrar, mover y renombrar» cuando un intento falló por el sandbox. */
 export function DeleteGrantHintCard({ entries }: { entries: MessageEntry[] }): React.JSX.Element | null {
+  const t = useT()
   const deleteGrant = useTasks((s) => s.deleteGrant)
   const busy = useTasks((s) => s.deleteGrantBusy)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
@@ -105,19 +108,15 @@ export function DeleteGrantHintCard({ entries }: { entries: MessageEntry[] }): R
           <Trash2 size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">El agente intentó borrar, mover o renombrar un archivo y no pudo</p>
-          <p className="mt-0.5 text-xs text-muted">
-            Por seguridad, esta carpeta no permite borrar, mover ni renombrar archivos todavía. Si lo activas, el servidor de la tarea se
-            reiniciará y tendrás que reabrir esta tarea y pedirle al agente que continúe. Si prefieres no hacerlo, pídele una copia ordenada
-            sin tocar los originales.
-          </p>
+          <p className="text-sm font-semibold">{t('tasksComputer.delete.hintTitle')}</p>
+          <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.delete.hintBody')}</p>
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="primary" disabled={busy} onClick={() => void enable()}>
               {busy && <Loader2 size={14} className="animate-spin" />} {TASKS_TERMS.deleteGrant}
             </Button>
             <Button variant="ghost" disabled={busy} onClick={() => setDismissed((s) => new Set(s).add(id))}>
-              Ahora no
+              {t('tasksComputer.delete.notNow')}
             </Button>
           </div>
         </div>

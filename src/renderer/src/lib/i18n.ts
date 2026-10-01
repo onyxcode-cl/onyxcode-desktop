@@ -92,3 +92,11 @@ export function useLocale(): string {
 }
 
 export { getLang, localeTag }
+
+/**
+ * Configuración regional para fechas y números en Code, Tareas y Rutinas: con español se conserva
+ * `es-CL` (el producto no cambia); con inglés, `en-US`. Se lee en el momento de formatear.
+ */
+export function dateLocale(): string {
+  return getLang() === 'en' ? 'en-US' : 'es-CL'
+}

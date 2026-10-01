@@ -12,6 +12,11 @@ import { errors } from './errors'
 import { notices } from './notices'
 import { main } from './main'
 import { mainErrors } from './mainErrors'
+import { code } from './code'
+import { tasks } from './tasks'
+import { tasksComputer } from './tasksComputer'
+import { routines } from './routines'
+import { browser } from './browser'
 
 export const es = {
   ...common,
@@ -27,7 +32,32 @@ export const es = {
   ...errors,
   ...notices,
   ...main,
-  ...mainErrors
+  ...mainErrors,
+  ...code,
+  ...tasks,
+  ...tasksComputer,
+  ...routines,
+  ...browser
 }
 
-export const AREAS = { common, app, settings, models, mcp, tasksSettings, misc, wizard, account, chat, errors, notices, main, mainErrors }
+export const AREAS = {
+  common,
+  app,
+  settings,
+  models,
+  mcp,
+  tasksSettings,
+  misc,
+  wizard,
+  account,
+  chat,
+  errors,
+  notices,
+  main,
+  mainErrors,
+  code,
+  tasks,
+  tasksComputer,
+  routines,
+  browser
+}

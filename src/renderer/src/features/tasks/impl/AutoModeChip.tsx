@@ -6,11 +6,14 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Check, Eye, FolderClosed, Loader2, Zap } from 'lucide-react'
+import { UI_LABELS } from '@shared/labels'
+import { useT } from '../../../lib/i18n'
 import { setAutoModeSettings, useTasks } from './store'
 
 const NOTICE_MS = 5000
 
 export function AutoModeChip(): React.JSX.Element | null {
+  const t = useT()
   const settings = useTasks((s) => s.autoMode?.settings)
   const folder = useTasks((s) => s.folder)
   const activeTaskId = useTasks((s) => s.activeTaskId)
@@ -23,8 +26,8 @@ export function AutoModeChip(): React.JSX.Element | null {
   useEffect(() => {
     if (!notice) return
     setShowNotice(true)
-    const t = setTimeout(() => setShowNotice(false), NOTICE_MS)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setShowNotice(false), NOTICE_MS)
+    return () => clearTimeout(timer)
   }, [notice])
 
   useEffect(() => {
@@ -60,7 +63,7 @@ export function AutoModeChip(): React.JSX.Element | null {
         className="flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
         title={notice.summary}
       >
-        <Check size={12} /> Aprobado por el modo auto: {notice.summary}
+        <Check size={12} /> {t('tasksComputer.auto.approved', { summary: notice.summary })}
       </span>
     )
   }
@@ -70,12 +73,12 @@ export function AutoModeChip(): React.JSX.Element | null {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title="Modo auto: aprueba en automático lo de bajo riesgo para esta carpeta o tarea"
+        title={t('tasksComputer.auto.title')}
         className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium transition hover:opacity-80 ${
           active ? 'border-accent/40 bg-accent-soft text-accent' : 'border-border bg-hover text-muted'
         }`}
       >
-        <Zap size={12} /> Modo auto
+        <Zap size={12} /> {UI_LABELS.autoMode}
       </button>
       {open && (
         <div className="absolute bottom-full left-0 z-30 mb-1 w-72 rounded-xl border border-border bg-elevated p-1 text-sm text-fg shadow-lg">
@@ -87,8 +90,8 @@ export function AutoModeChip(): React.JSX.Element | null {
           >
             <FolderClosed size={15} className="mt-0.5 shrink-0 text-muted" />
             <span className="min-w-0 flex-1">
-              <span className="block font-medium">Activarlo en esta carpeta</span>
-              <span className="block text-xs text-muted">Vale para todas las tareas de esta carpeta.</span>
+              <span className="block font-medium">{t('tasksComputer.auto.folder')}</span>
+              <span className="block text-xs text-muted">{t('tasksComputer.auto.folderDesc')}</span>
             </span>
             {busy === 'folder' ? (
               <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" />
@@ -104,9 +107,9 @@ export function AutoModeChip(): React.JSX.Element | null {
           >
             <Eye size={15} className="mt-0.5 shrink-0 text-muted" />
             <span className="min-w-0 flex-1">
-              <span className="block font-medium">Activarlo solo en esta tarea</span>
+              <span className="block font-medium">{t('tasksComputer.auto.task')}</span>
               <span className="block text-xs text-muted">
-                {activeTaskId ? 'Vale mientras exista esta tarea.' : 'Abre o empieza una tarea primero.'}
+                {activeTaskId ? t('tasksComputer.auto.taskDesc') : t('tasksComputer.auto.taskNone')}
               </span>
             </span>
             {busy === 'task' ? (

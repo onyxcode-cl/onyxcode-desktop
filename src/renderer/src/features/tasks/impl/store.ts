@@ -28,6 +28,7 @@ import {
   type NetworkBlockedEvent
 } from '@shared/ipc-tasks'
 import { APP_NAME } from '@shared/brand'
+import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
@@ -592,7 +593,7 @@ export function rootTaskId(sessionID: string): string {
 }
 
 function taskTitle(sessionID: string): string {
-  return useSessions.getState().sessions[sessionID]?.title || 'Tarea'
+  return useSessions.getState().sessions[sessionID]?.title || t('tasks.ws.untitled')
 }
 
 export function clearUnseen(sessionID: string): void {
@@ -620,17 +621,17 @@ function handleEvent(event: OcEvent, directory: string): void {
         useTasks.setState((s) => ({ unseen: { ...s.unseen, [id]: true } }))
       }
       const failed = useSessions.getState().errors[id]
-      notifyTask(id, failed ? 'error' : 'done', failed ? 'La tarea terminó con un error' : 'Tarea terminada', taskTitle(id))
+      notifyTask(id, failed ? 'error' : 'done', failed ? t('tasks.notify.failed') : t('tasks.notify.done'), taskTitle(id))
       // El agente pudo guardar memoria (`.onyxcode/memoria.md`): si el panel está cerrado se relee; si está
       // abierto no se pisa lo que el usuario esté editando.
       if (!st.projectPanelOpen) void loadProjectAndMemory(st.folder)
     }
   } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'approval', 'Una tarea necesita tu aprobación', taskTitle(id))
+    notifyTask(id, 'approval', t('tasks.notify.approval'), taskTitle(id))
   } else if (event.type === 'question.asked' && !st.questions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'question', 'Una tarea tiene una pregunta para ti', taskTitle(id))
+    notifyTask(id, 'question', t('tasks.notify.question'), taskTitle(id))
   }
   switch (event.type) {
     case 'todo.updated':
@@ -801,7 +802,7 @@ function syncComputerSession(): void {
         sessionId = id
         // Si la tarea espera una respuesta tuya (`question`), la píldora lo dice en vez del título.
         const asking = Object.values(questions).some((q) => rootTaskId(q.sessionID) === id)
-        label = asking ? `Tiene una pregunta para ti — responde en ${APP_NAME}` : sess.title || undefined
+        label = asking ? t('tasks.pill.asking', { app: APP_NAME }) : sess.title || undefined
         break
       }
     }

@@ -27,6 +27,7 @@ import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
 import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
+import { useT } from '../../../lib/i18n'
 import { openPath, reveal } from './actions'
 import { cw } from './bridge'
 import { baseName, extOf, formatSize, relTime } from './util'
@@ -96,9 +97,10 @@ function parseDelimited(text: string, sep: string, maxRows = 200): string[][] {
 }
 
 function CsvTable({ text, sep }: { text: string; sep: string }): React.JSX.Element {
+  const t = useT()
   const rows = parseDelimited(text, sep)
   const [head, ...body] = rows
-  if (!head) return <p className="text-sm text-muted">Archivo vacío.</p>
+  if (!head) return <p className="text-sm text-muted">{t('tasks.deliv.emptyFile')}</p>
   return (
     <div className="overflow-auto rounded-lg border border-border">
       <table className="w-full border-collapse text-xs">
@@ -148,11 +150,12 @@ function usePreview(path: string | null, maxBytes?: number): { data: TasksFilePr
 }
 
 function PreviewBody({ file }: { file: TasksDeliverable }): React.JSX.Element {
+  const t = useT()
   const { data, error, loading } = usePreview(file.path)
   if (loading) {
     return (
       <div className="flex items-center gap-2 p-6 text-sm text-muted">
-        <Loader2 size={15} className="animate-spin" /> Cargando vista previa…
+        <Loader2 size={15} className="animate-spin" /> {t('tasks.deliv.loading')}
       </div>
     )
   }
@@ -164,7 +167,7 @@ function PreviewBody({ file }: { file: TasksDeliverable }): React.JSX.Element {
     )
   }
   if (!data || data.kind === 'unsupported') {
-    return <p className="p-6 text-sm text-muted">No hay vista previa para este tipo de archivo. Ábrelo con su aplicación.</p>
+    return <p className="p-6 text-sm text-muted">{t('tasks.deliv.noPreview')}</p>
   }
   if (data.kind === 'image' && data.dataUrl) {
     return (
@@ -187,13 +190,14 @@ function PreviewBody({ file }: { file: TasksDeliverable }): React.JSX.Element {
       ) : (
         <pre className="overflow-auto rounded-lg bg-code p-3 font-mono text-xs whitespace-pre-wrap">{text}</pre>
       )}
-      {data.truncated && <p className="mt-3 text-xs text-subtle">Vista previa recortada ({formatSize(data.size)} en total).</p>}
+      {data.truncated && <p className="mt-3 text-xs text-subtle">{t('tasks.deliv.truncated', { size: formatSize(data.size) })}</p>}
     </div>
   )
 }
 
 /** Diálogo grande de vista previa. */
 export function PreviewDialog({ file, onClose }: { file: TasksDeliverable; onClose: () => void }): React.JSX.Element {
+  const t = useT()
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -221,16 +225,21 @@ export function PreviewDialog({ file, onClose }: { file: TasksDeliverable; onClo
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
             onClick={() => void openPath(file.path)}
           >
-            <ExternalLink size={13} /> Abrir
+            <ExternalLink size={13} /> {t('tasks.deliv.open')}
           </button>
           <button
             type="button"
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
             onClick={() => void reveal(file.path)}
           >
-            <FolderOpen size={13} /> Mostrar en Finder
+            <FolderOpen size={13} /> {t('tasks.deliv.reveal')}
           </button>
-          <button type="button" title="Cerrar" className="rounded-lg p-1 text-muted hover:bg-hover hover:text-fg" onClick={onClose}>
+          <button
+            type="button"
+            title={t('tasks.deliv.close')}
+            className="rounded-lg p-1 text-muted hover:bg-hover hover:text-fg"
+            onClick={onClose}
+          >
             <X size={16} />
           </button>
         </header>
@@ -281,6 +290,7 @@ function groupByRoot(files: TasksDeliverable[]): Array<{ root: string | null; fi
 
 /** Lista de entregables del panel derecho. `onChanged` se llama al crear archivos nuevos (PDF). */
 export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[]; onChanged?: () => void }): React.JSX.Element {
+  const t = useT()
   const [preview, setPreview] = useState<TasksDeliverable | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -304,13 +314,13 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
 
   const downloadAll = (): void =>
     withBusy('zip', async () => {
-      const out = await cw('tasks:zip', { paths: files.map((f) => f.path), suggestedName: 'Entregables.zip' })
-      if (out) setNotice(`Zip guardado: ${baseName(out)}`)
+      const out = await cw('tasks:zip', { paths: files.map((f) => f.path), suggestedName: t('tasks.deliv.zipName') })
+      if (out) setNotice(t('tasks.deliv.zipSaved', { name: baseName(out) }))
     })
   const savePdf = (f: TasksDeliverable): void =>
     withBusy(`pdf:${f.path}`, async () => {
       const pdf = await cw('tasks:htmlToPdf', { path: f.path })
-      setNotice(`PDF guardado: ${baseName(pdf.path)}`)
+      setNotice(t('tasks.deliv.pdfSaved', { name: baseName(pdf.path) }))
       onChanged?.()
     })
 
@@ -321,10 +331,10 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
           type="button"
           className="flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1 text-xs font-medium text-muted transition hover:bg-hover hover:text-fg disabled:opacity-50"
           disabled={files.length === 0 || busy === 'zip'}
-          title="Guardar todos los entregables en un archivo zip"
+          title={t('tasks.deliv.zipTitle')}
           onClick={downloadAll}
         >
-          {busy === 'zip' ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />} Descargar todo
+          {busy === 'zip' ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />} {t('tasks.deliv.downloadAll')}
         </button>
       </div>
       {error && (
@@ -341,7 +351,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
         <div key={g.root ?? '·'} className={grouped ? 'mb-3 last:mb-0' : ''}>
           {grouped && (
             <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-subtle" title={g.root ?? undefined}>
-              <FolderOpen size={12} /> {g.root ? baseName(g.root) : 'Carpeta de la tarea'}
+              <FolderOpen size={12} /> {g.root ? baseName(g.root) : t('tasks.deliv.taskFolder')}
               <span className="text-subtle/70">· {g.files.length}</span>
             </div>
           )}
@@ -371,22 +381,22 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 pl-6">
                     {previewable && (
                       <button type="button" className={ACTION_BTN} onClick={() => setPreview(f)}>
-                        <Eye size={12} /> Ver
+                        <Eye size={12} /> {t('tasks.deliv.view')}
                       </button>
                     )}
                     <button type="button" className={ACTION_BTN} onClick={() => run(() => openPath(f.path))}>
-                      <ExternalLink size={12} /> Abrir
+                      <ExternalLink size={12} /> {t('tasks.deliv.open')}
                     </button>
                     <button
                       type="button"
                       className={ACTION_BTN}
-                      title="Vista rápida de macOS (QuickLook)"
+                      title={t('tasks.deliv.quickLookTitle')}
                       onClick={() => run(() => cw('tasks:quickLook', { path: f.path }))}
                     >
-                      <ScanEye size={12} /> Vista rápida
+                      <ScanEye size={12} /> {t('tasks.deliv.quickLook')}
                     </button>
                     <button type="button" className={ACTION_BTN} onClick={() => run(() => reveal(f.path))}>
-                      <FolderOpen size={12} /> Finder
+                      <FolderOpen size={12} /> {t('tasks.deliv.finder')}
                     </button>
                     {html && <HtmlArtifactAction file={f} />}
                     {html && (
@@ -394,11 +404,11 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                         type="button"
                         className={ACTION_BTN}
                         disabled={busy === `pdf:${f.path}`}
-                        title="Genera un PDF junto al HTML, sin conexión a internet"
+                        title={t('tasks.deliv.pdfTitle')}
                         onClick={() => savePdf(f)}
                       >
-                        {busy === `pdf:${f.path}` ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />} Guardar como
-                        PDF
+                        {busy === `pdf:${f.path}` ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}{' '}
+                        {t('tasks.deliv.savePdf')}
                       </button>
                     )}
                   </div>

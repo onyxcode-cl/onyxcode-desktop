@@ -2,7 +2,9 @@
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { useState } from 'react'
 import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
+import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { useT } from '../../../lib/i18n'
 import { AccessSegmented } from './AccessSegmented'
 import { ComputerPermissionsCard, VisionModelHint } from './ComputerAccess'
 import { TasksComposer } from './TasksComposer'
@@ -26,153 +28,130 @@ export interface HomeCategory {
   items: HomeTemplate[]
 }
 
-/** Aviso de las plantillas que mueven o renombran archivos dentro del sandbox. */
-const MOVE_NOTE = `Al mover archivos en Sandbox se te pedirá el permiso «${TASKS_TERMS.deleteGrant}»; sin él, ofrecerá una copia ordenada.`
-
-/**
- * Plantillas de inicio: 5 categorías × 4. Todas siguen el patrón «primero revisa y resume; luego propón;
- * cuando lo apruebe, actúa», para que el agente enseñe lo que va a hacer antes de tocar nada.
- */
-export const CATEGORIES: HomeCategory[] = [
-  {
-    id: 'docs',
-    label: 'Documentos',
-    icon: FileText,
-    items: [
-      {
-        title: 'Informe resumen',
-        prompt:
-          'Primero revisa los documentos de esta carpeta y muéstrame un resumen de qué hay en cada uno; luego propón la estructura de un informe resumen.md con los puntos clave; cuando lo apruebe, escríbelo en la carpeta.'
-      },
-      {
-        title: 'Documento en Word',
-        prompt:
-          'Primero revisa las notas de esta carpeta y muéstrame un resumen de las ideas principales; luego propón el esquema de un documento Word (.docx) con sus secciones; cuando lo apruebe, créalo bien formateado.'
-      },
-      {
-        title: 'Revisión de ortografía',
-        prompt:
-          'Primero revisa los documentos .md y .txt de esta carpeta y muéstrame un resumen de los errores de ortografía y estilo que encuentres; luego propón las correcciones; cuando lo apruebe, guarda versiones corregidas con el sufijo -revisado sin tocar los originales.'
-      },
-      {
-        title: 'Acta de reunión',
-        prompt:
-          'Primero revisa las notas de reunión de esta carpeta y muéstrame un resumen de los temas tratados; luego propón la lista de acuerdos, responsables y fechas; cuando lo apruebe, redacta un acta formal en actas.md.'
-      }
-    ]
-  },
-  {
-    id: 'data',
-    label: 'Datos',
-    icon: BarChart3,
-    items: [
-      {
-        title: 'Analizar CSV',
-        prompt:
-          'Primero revisa los archivos .csv de esta carpeta y muéstrame un resumen de sus columnas, filas y datos faltantes; luego propón qué análisis harías (totales, tendencias, valores atípicos); cuando lo apruebe, ejecútalo y guarda un informe con los hallazgos principales.'
-      },
-      {
-        title: 'Limpiar datos',
-        prompt:
-          'Primero revisa los .csv de esta carpeta y muéstrame un resumen de los problemas (duplicados, fechas en formatos distintos, espacios sobrantes); luego propón las reglas de limpieza; cuando lo apruebe, guarda versiones limpias sin modificar los originales.'
-      },
-      {
-        title: 'Gráficos',
-        prompt:
-          'Primero revisa los datos de esta carpeta y muéstrame un resumen de qué variables se pueden graficar; luego propón 3 o 4 gráficos con su tipo y qué muestran; cuando lo apruebe, genéralos como PNG e inclúyelos en un informe .md.'
-      },
-      {
-        title: 'Consolidar hojas',
-        prompt:
-          'Primero revisa los .csv de esta carpeta y muéstrame un resumen de cuáles tienen la misma estructura; luego propón cómo unirlos y cómo tratarías los duplicados; cuando lo apruebe, crea un único archivo consolidado y explica lo que hiciste.'
-      }
-    ]
-  },
-  {
-    id: 'organize',
-    label: 'Organizar archivos',
-    icon: FolderTree,
-    items: [
-      {
-        title: 'Ordenar por tipo',
-        prompt:
-          'Primero revisa los archivos de esta carpeta y muéstrame un resumen de cuántos hay de cada tipo; luego propón una estructura de subcarpetas y qué archivo iría a cada una; cuando lo apruebe, muévelos y crea un índice.md. Si mover está bloqueado, crea una copia ordenada sin tocar los originales.',
-        note: MOVE_NOTE
-      },
-      {
-        title: 'Renombrar con criterio',
-        prompt:
-          'Primero revisa los nombres de los archivos de esta carpeta y muéstrame un resumen de las inconsistencias; luego propón una tabla con el nombre actual y el nuevo; cuando lo apruebe, renómbralos. Si renombrar está bloqueado, crea copias con los nombres nuevos.',
-        note: MOVE_NOTE
-      },
-      {
-        title: 'Encontrar duplicados',
-        prompt:
-          'Primero revisa esta carpeta y muéstrame un resumen de los archivos duplicados o casi duplicados que encuentres; luego propón cuál conservar de cada grupo y por qué; cuando lo apruebe, escribe el informe duplicados.md. No borres nada.'
-      },
-      {
-        title: 'Inventario',
-        prompt:
-          'Primero revisa los archivos de esta carpeta y muéstrame un resumen de qué hay (tipos, tamaños y fechas); luego propón las columnas del inventario; cuando lo apruebe, crea un inventario.csv con nombre, tipo, tamaño y fecha de cada archivo.'
-      }
-    ]
-  },
-  {
-    id: 'research',
-    label: 'Investigación',
-    icon: Globe,
-    items: [
-      {
-        title: 'Informe de un tema',
-        prompt:
-          'Primero busca en la web sobre [tema] y muéstrame un resumen de lo que encuentres con las fuentes; luego propón el índice de un informe; cuando lo apruebe, escribe informe.md con las fuentes citadas.'
-      },
-      {
-        title: 'Comparativa',
-        prompt:
-          'Primero busca información en la web sobre [opción A] y [opción B] y muéstrame un resumen de cada una; luego propón los criterios de comparación; cuando lo apruebe, entrega una tabla comparativa en comparativa.md con las fuentes.'
-      },
-      {
-        title: 'Resumen de enlaces',
-        prompt:
-          'Primero revisa los documentos de esta carpeta y muéstrame la lista de enlaces que aparecen; luego propón cuáles vale la pena leer y en qué orden; cuando lo apruebe, léelos y resume cada uno en un informe.'
-      },
-      {
-        title: 'Noticias recientes',
-        prompt:
-          'Primero busca las noticias más recientes sobre [tema] y muéstrame un resumen de los titulares con su fuente y fecha; luego propón los 5 puntos que más importan; cuando lo apruebe, prepara un resumen ejecutivo de una página.'
-      }
-    ]
-  },
-  {
-    id: 'computer',
-    label: 'Control del Mac',
-    icon: MonitorCog,
-    computer: true,
-    items: [
-      {
-        title: 'Crear carpeta',
-        prompt:
-          'Primero mira el Escritorio y dime si ya existe una carpeta llamada Proyectos; luego propón el plan; cuando lo apruebe, crea la carpeta Proyectos en el Escritorio.'
-      },
-      {
-        title: 'Buscar en Safari',
-        prompt:
-          'Primero dime qué tienes abierto en Safari; luego propón los pasos para buscar el clima de hoy en Santiago; cuando lo apruebe, hazlo y dime el resultado.'
-      },
-      {
-        title: 'Describir pantalla',
-        prompt:
-          'Primero toma una captura de pantalla y muéstrame un resumen de qué apps y ventanas hay abiertas; luego propón qué podrías hacer con ellas; cuando lo apruebe, hazlo. No cierres ni modifiques nada por tu cuenta.'
-      },
-      {
-        title: 'Ordenar Escritorio',
-        prompt:
-          'Primero revisa el Escritorio y muéstrame un resumen de los archivos sueltos que hay; luego propón las carpetas por tipo y qué iría a cada una; cuando lo apruebe, muévelos.'
-      }
-    ]
-  }
-]
+/** Categorías de plantillas de inicio en el idioma activo (se calculan al pintar). */
+export function getCategories(t: (key: MsgKey, params?: Params) => string): HomeCategory[] {
+  const moveNote = t('tasks.home.moveNote', { term: TASKS_TERMS.deleteGrant })
+  return [
+    {
+      id: 'docs',
+      label: t('tasks.home.cat.docs'),
+      icon: FileText,
+      items: [
+        {
+          title: t('tasks.home.tpl.docs.0.title'),
+          prompt: t('tasks.home.tpl.docs.0.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.docs.1.title'),
+          prompt: t('tasks.home.tpl.docs.1.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.docs.2.title'),
+          prompt: t('tasks.home.tpl.docs.2.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.docs.3.title'),
+          prompt: t('tasks.home.tpl.docs.3.prompt')
+        }
+      ]
+    },
+    {
+      id: 'data',
+      label: t('tasks.home.cat.data'),
+      icon: BarChart3,
+      items: [
+        {
+          title: t('tasks.home.tpl.data.0.title'),
+          prompt: t('tasks.home.tpl.data.0.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.data.1.title'),
+          prompt: t('tasks.home.tpl.data.1.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.data.2.title'),
+          prompt: t('tasks.home.tpl.data.2.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.data.3.title'),
+          prompt: t('tasks.home.tpl.data.3.prompt')
+        }
+      ]
+    },
+    {
+      id: 'organize',
+      label: t('tasks.home.cat.organize'),
+      icon: FolderTree,
+      items: [
+        {
+          title: t('tasks.home.tpl.organize.0.title'),
+          prompt: t('tasks.home.tpl.organize.0.prompt'),
+          note: moveNote
+        },
+        {
+          title: t('tasks.home.tpl.organize.1.title'),
+          prompt: t('tasks.home.tpl.organize.1.prompt'),
+          note: moveNote
+        },
+        {
+          title: t('tasks.home.tpl.organize.2.title'),
+          prompt: t('tasks.home.tpl.organize.2.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.organize.3.title'),
+          prompt: t('tasks.home.tpl.organize.3.prompt')
+        }
+      ]
+    },
+    {
+      id: 'research',
+      label: t('tasks.home.cat.research'),
+      icon: Globe,
+      items: [
+        {
+          title: t('tasks.home.tpl.research.0.title'),
+          prompt: t('tasks.home.tpl.research.0.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.research.1.title'),
+          prompt: t('tasks.home.tpl.research.1.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.research.2.title'),
+          prompt: t('tasks.home.tpl.research.2.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.research.3.title'),
+          prompt: t('tasks.home.tpl.research.3.prompt')
+        }
+      ]
+    },
+    {
+      id: 'computer',
+      label: t('tasks.home.cat.computer'),
+      icon: MonitorCog,
+      computer: true,
+      items: [
+        {
+          title: t('tasks.home.tpl.computer.0.title'),
+          prompt: t('tasks.home.tpl.computer.0.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.computer.1.title'),
+          prompt: t('tasks.home.tpl.computer.1.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.computer.2.title'),
+          prompt: t('tasks.home.tpl.computer.2.prompt')
+        },
+        {
+          title: t('tasks.home.tpl.computer.3.title'),
+          prompt: t('tasks.home.tpl.computer.3.prompt')
+        }
+      ]
+    }
+  ]
+}
 
 const HIDE_KEY = 'tasks.hideSuggestions'
 const ONBOARDED_KEY = 'tasks.onboarded'
@@ -204,13 +183,15 @@ export function Home({
   sendError: unknown
   folderBusy: boolean
 }): React.JSX.Element {
+  const t = useT()
   const folder = useTasks((s) => s.folder)
   const phase = useTasks((s) => s.phase)
   const conn = useTasks((s) => s.conn)
   const requested = useTasks((s) => s.fullAccess)
   const full = conn ? conn.fullAccess : requested
   const [cat, setCat] = useState<string>(full ? 'computer' : 'docs')
-  const category = CATEGORIES.find((c) => c.id === cat) ?? CATEGORIES[0]
+  const categories = getCategories(t)
+  const category = categories.find((c) => c.id === cat) ?? categories[0]
   const [hidden, setHidden] = useState(() => readFlag(HIDE_KEY, false))
   const [onboarded, setOnboarded] = useState(() => readFlag(ONBOARDED_KEY, false))
 
@@ -233,19 +214,19 @@ export function Home({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="m-auto w-full max-w-3xl py-10">
         <div className="mb-6 px-6 text-center">
-          <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight">¿En qué trabajamos hoy?</h1>
+          <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight">{t('tasks.home.title')}</h1>
           <p className="mt-2 text-sm text-muted">
             {!folder
-              ? 'Elige una carpeta y describe el resultado que esperas. El agente revisa, te propone un plan y, cuando lo apruebes, trabaja y te entrega los archivos.'
+              ? t('tasks.home.lead.noFolder')
               : full
-                ? `Control total: el agente puede usar el ratón, el teclado y ver la pantalla. Detenlo con ⌘⇧Esc.`
-                : `Trabajará dentro de «${baseName(folder)}». Te pedirá permiso antes de borrar, mover o renombrar.`}
+                ? t('tasks.home.lead.full')
+                : t('tasks.home.lead.sandbox', { folder: baseName(folder) })}
           </p>
           <div className="mt-4 flex items-center justify-center gap-2">
             <AccessSegmented disabled={folderBusy} />
             {phase === 'starting' && (
               <span className="flex items-center gap-1 text-xs text-muted">
-                <Loader2 size={12} className="animate-spin" /> {requested ? 'Iniciando control total…' : 'Iniciando sandbox…'}
+                <Loader2 size={12} className="animate-spin" /> {requested ? t('tasks.home.startingFull') : t('tasks.home.startingSandbox')}
               </span>
             )}
           </div>
@@ -260,13 +241,7 @@ export function Home({
           busy={false}
           disabled={phase === 'starting'}
           autoFocusKey={folder}
-          placeholder={
-            folder
-              ? full
-                ? 'Describe qué debe hacer en tu Mac…'
-                : 'Describe la tarea que quieres delegar…'
-              : 'Describe la tarea… (elige una carpeta para empezar)'
-          }
+          placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />
         {sendError != null && (
           <div className="mx-auto mt-2 max-w-3xl px-6">
@@ -275,13 +250,13 @@ export function Home({
         )}
         {!full && folder && phase === 'ready' && (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-subtle">
-            <ShieldCheck size={12} /> Sandbox activo: no puede escribir fuera de la carpeta ni leer tus claves.
+            <ShieldCheck size={12} /> {t('tasks.home.sandboxActive')}
           </p>
         )}
 
         <div className="mt-8 px-6">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-xs font-medium text-muted">Sugerencias para empezar</h2>
+            <h2 className="text-xs font-medium text-muted">{t('tasks.home.suggestions')}</h2>
             <button
               type="button"
               onClick={toggleHidden}
@@ -289,13 +264,13 @@ export function Home({
               className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition hover:bg-hover hover:text-fg"
             >
               {hidden ? <Eye size={13} /> : <EyeOff size={13} />}
-              {hidden ? 'Mostrar sugerencias' : 'Ocultar sugerencias'}
+              {hidden ? t('tasks.home.show') : t('tasks.home.hide')}
             </button>
           </div>
           {!hidden && (
             <>
-              <div className="mb-3 flex flex-wrap justify-center gap-1.5" role="group" aria-label="Categorías de sugerencias">
-                {CATEGORIES.map((c) => {
+              <div className="mb-3 flex flex-wrap justify-center gap-1.5" role="group" aria-label={t('tasks.home.catAria')}>
+                {categories.map((c) => {
                   const Icon = c.icon
                   const active = c.id === category.id
                   return (
@@ -319,8 +294,9 @@ export function Home({
               </div>
               {category.computer && !full && (
                 <p className="mb-2 text-center text-xs text-muted">
-                  Estas tareas requieren <strong className="text-fg">{TASKS_TERMS.fullControl}</strong>; al elegir una se te pedirá
-                  confirmación.
+                  {t('tasks.home.needsFull.pre')}
+                  <strong className="text-fg">{TASKS_TERMS.fullControl}</strong>
+                  {t('tasks.home.needsFull.post')}
                 </p>
               )}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -358,7 +334,7 @@ export function Home({
                 onClick={() => setOnboardedPersisted(false)}
                 className="text-xs text-muted underline-offset-2 transition hover:text-fg hover:underline"
               >
-                Cómo usar las tareas de forma segura
+                {t('tasks.home.safeUse')}
               </button>
             </p>
           )}

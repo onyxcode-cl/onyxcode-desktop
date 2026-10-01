@@ -4,6 +4,7 @@ import { Check, ChevronDown, FolderOpen, FolderPlus, Loader2, Lock, Trash2, X } 
 import type { FolderAccessMode } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { useT } from '../../../lib/i18n'
 import { chooseFolder, forgetFolder, linkFolder, selectFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
@@ -15,10 +16,10 @@ interface PendingLink {
   mode: FolderAccessMode
 }
 
-const MODE_HINT: Record<FolderAccessMode, string> = {
-  rw: 'El agente puede leer y modificar sus archivos.',
-  ro: 'El agente puede leerla, pero no modificarla.'
-}
+const MODE_HINT_KEY = {
+  rw: 'tasksComputer.menu.hintRw',
+  ro: 'tasksComputer.menu.hintRo'
+} as const
 
 export function FolderMenu({
   variant = 'chip',
@@ -29,6 +30,7 @@ export function FolderMenu({
   placement?: 'top' | 'bottom'
   disabled?: boolean
 }): React.JSX.Element {
+  const t = useT()
   const folders = useTasks((s) => s.folders)
   const folder = useTasks((s) => s.folder)
   const folderSet = useTasks((s) => s.folderSet)
@@ -76,15 +78,15 @@ export function FolderMenu({
       if (!picked) return
       const chk = await cw('tasks:folders:check', { path: picked })
       if (!chk.ok) {
-        setLinkError(chk.reason ?? 'Esa carpeta no se puede añadir.')
+        setLinkError(chk.reason ?? t('tasksComputer.folder.cannotAdd'))
         return
       }
       if (chk.normalized === folder) {
-        setLinkError('Esa ya es la carpeta principal de este espacio.')
+        setLinkError(t('tasksComputer.menu.isPrimary'))
         return
       }
       if (linked.some((l) => l.path === chk.normalized)) {
-        setLinkError('Esa carpeta ya está añadida.')
+        setLinkError(t('tasksComputer.menu.alreadyAdded'))
         return
       }
       setPending({ path: chk.normalized, mode: 'rw' })
@@ -120,7 +122,7 @@ export function FolderMenu({
         type="button"
         disabled={disabled}
         onClick={toggle}
-        title={folder ?? 'Elegir la carpeta en la que trabajará el agente'}
+        title={folder ?? t('tasksComputer.menu.chooseTitle')}
         aria-haspopup="listbox"
         aria-expanded={open}
         className={`flex max-w-[220px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-hover disabled:opacity-50 ${
@@ -128,7 +130,7 @@ export function FolderMenu({
         }`}
       >
         {folder ? <FolderOpen size={13} className="shrink-0 text-accent" /> : <FolderPlus size={13} className="shrink-0" />}
-        <span className="truncate">{folder ? baseName(folder) : 'Elegir carpeta'}</span>
+        <span className="truncate">{folder ? baseName(folder) : t('tasksComputer.menu.choose')}</span>
         <ChevronDown size={12} className="shrink-0 text-muted" />
       </button>
     ) : (
@@ -142,7 +144,7 @@ export function FolderMenu({
         className="flex w-full items-center gap-2 rounded-lg border border-border bg-elevated px-2.5 py-2 text-left text-sm hover:bg-hover"
       >
         <FolderOpen size={15} className="shrink-0 text-accent" />
-        <span className="min-w-0 flex-1 truncate font-medium">{folder ? baseName(folder) : 'Elegir carpeta'}</span>
+        <span className="min-w-0 flex-1 truncate font-medium">{folder ? baseName(folder) : t('tasksComputer.menu.choose')}</span>
         <ChevronDown size={14} className="shrink-0 text-muted" />
       </button>
     )
@@ -178,15 +180,15 @@ export function FolderMenu({
                 </button>
                 <button
                   type="button"
-                  title="Quitar de Tareas"
-                  aria-label={`Quitar «${f.name}» de Tareas`}
+                  title={t('tasksComputer.menu.removeTitle')}
+                  aria-label={t('tasksComputer.menu.removeAria', { name: f.name })}
                   className="mr-1 rounded p-1 text-subtle opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
                   onClick={() => {
                     setOpen(false)
                     void confirmDialog({
-                      title: '¿Quitar carpeta de trabajo?',
-                      message: `«${f.name}» dejará de estar disponible en Tareas. No se borra ningún archivo.`,
-                      confirmLabel: 'Quitar',
+                      title: t('tasksComputer.menu.removeConfirmTitle'),
+                      message: t('tasksComputer.menu.removeConfirmMessage', { name: f.name }),
+                      confirmLabel: t('tasksSettings.remove'),
                       danger: true
                     }).then((ok) => {
                       if (ok) void forgetFolder(f.path)
@@ -221,8 +223,8 @@ export function FolderMenu({
                     </span>
                     <button
                       type="button"
-                      title="Quitar carpeta adicional"
-                      aria-label={`Quitar la carpeta adicional «${l.name}»`}
+                      title={t('tasksComputer.menu.unlinkTitle')}
+                      aria-label={t('tasksComputer.menu.unlinkAria', { name: l.name })}
                       className="mr-1 rounded p-1 text-subtle opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
                       onClick={() => void unlinkFolder(l.path)}
                     >
@@ -232,7 +234,7 @@ export function FolderMenu({
                 ))}
               </div>
               {folderSet && !folderSet.applied && (
-                <p className="px-2 pb-1 text-[11px] text-subtle">Los cambios se aplicarán al reiniciar el sandbox de esta carpeta.</p>
+                <p className="px-2 pb-1 text-[11px] text-subtle">{t('tasksComputer.menu.appliedOnRestart')}</p>
               )}
             </>
           )}
@@ -242,10 +244,10 @@ export function FolderMenu({
               {pending ? (
                 <div className="px-2 py-1.5">
                   <div className="truncate text-sm font-medium" title={pending.path}>
-                    Añadir «{baseName(pending.path)}»
+                    {t('tasksComputer.menu.addNamed', { name: baseName(pending.path) })}
                   </div>
                   <div className="truncate font-mono text-[10px] text-subtle">{pending.path}</div>
-                  <div role="radiogroup" aria-label="Modo de acceso" className="mt-1.5 space-y-1">
+                  <div role="radiogroup" aria-label={t('tasksComputer.access.aria')} className="mt-1.5 space-y-1">
                     {(['rw', 'ro'] as const).map((m) => (
                       <label
                         key={m}
@@ -262,7 +264,7 @@ export function FolderMenu({
                         />
                         <span>
                           <span className="block text-[13px] font-medium">{m === 'rw' ? TASKS_TERMS.readWrite : TASKS_TERMS.readOnly}</span>
-                          <span className="block text-[11px] text-muted">{MODE_HINT[m]}</span>
+                          <span className="block text-[11px] text-muted">{t(MODE_HINT_KEY[m])}</span>
                         </span>
                       </label>
                     ))}
@@ -274,7 +276,7 @@ export function FolderMenu({
                       onClick={() => setPending(null)}
                       disabled={linking}
                     >
-                      Cancelar
+                      {t('tasksComputer.cancel')}
                     </button>
                     <button
                       type="button"
@@ -282,7 +284,7 @@ export function FolderMenu({
                       onClick={() => void confirmAdd()}
                       disabled={linking}
                     >
-                      {linking && <Loader2 size={12} className="animate-spin" />} Añadir
+                      {linking && <Loader2 size={12} className="animate-spin" />} {t('tasksComputer.menu.add')}
                     </button>
                   </div>
                 </div>
@@ -293,7 +295,7 @@ export function FolderMenu({
                   disabled={picking}
                   onClick={() => void startAdd()}
                 >
-                  {picking ? <Loader2 size={14} className="animate-spin" /> : <FolderPlus size={14} />} Añadir carpeta adicional…
+                  {picking ? <Loader2 size={14} className="animate-spin" /> : <FolderPlus size={14} />} {t('tasksComputer.menu.addLinked')}
                 </button>
               )}
               {linkError && (
@@ -312,7 +314,7 @@ export function FolderMenu({
               void chooseFolder()
             }}
           >
-            <FolderPlus size={14} /> Elegir otra carpeta…
+            <FolderPlus size={14} /> {t('tasksComputer.menu.chooseOther')}
           </button>
         </div>
       )}

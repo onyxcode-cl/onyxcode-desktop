@@ -8,6 +8,7 @@ import { AlertCircle, ArrowUp, Info, Loader2, MessagesSquare, X } from 'lucide-r
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { Markdown } from '../../../components/Markdown'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
@@ -26,6 +27,7 @@ function messageText(entry: MessageEntry): string {
 }
 
 export function SideChat(): React.JSX.Element | null {
+  const t = useT()
   const side = useTasks((s) => s.sideChat)
   const sessionId = side?.sessionId ?? null
   const entries = useSessions((s) => (sessionId ? (s.messages[sessionId] ?? EMPTY) : EMPTY))
@@ -88,8 +90,8 @@ export function SideChat(): React.JSX.Element | null {
         </span>
         <button
           type="button"
-          title="Cerrar la consulta lateral"
-          aria-label="Cerrar la consulta lateral"
+          title={t('tasks.sidechat.close')}
+          aria-label={t('tasks.sidechat.close')}
           className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
           onClick={closeSideChat}
         >
@@ -100,16 +102,14 @@ export function SideChat(): React.JSX.Element | null {
       <p className="flex shrink-0 items-start gap-1.5 border-b border-border bg-accent-soft/50 px-4 py-2 text-xs text-muted">
         <Info size={13} className="mt-0.5 shrink-0 text-accent" />
         <span>
-          <strong className="font-medium text-fg">No modifica la tarea.</strong> Pregunta sobre lo que hizo el agente; esta conversación va
-          aparte.
+          <strong className="font-medium text-fg">{t('tasks.sidechat.noChange')}</strong>
+          {t('tasks.sidechat.lead')}
         </span>
       </p>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4" aria-live="polite">
         {messages.length === 0 && !busy ? (
-          <p className="text-xs text-subtle">
-            Por ejemplo: «¿Qué archivos has cambiado?», «Explícame por qué elegiste ese enfoque» o «¿Qué queda por hacer?».
-          </p>
+          <p className="text-xs text-subtle">{t('tasks.sidechat.examples')}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {messages.map((m) =>
@@ -131,7 +131,7 @@ export function SideChat(): React.JSX.Element | null {
             )}
             {showThinking && (
               <div className="flex items-center gap-2 text-xs text-muted">
-                <Loader2 size={13} className="animate-spin" /> Pensando…
+                <Loader2 size={13} className="animate-spin" /> {t('tasks.sidechat.thinking')}
               </div>
             )}
           </div>
@@ -155,8 +155,8 @@ export function SideChat(): React.JSX.Element | null {
             ref={taRef}
             value={draft}
             rows={1}
-            aria-label="Pregunta de la consulta lateral"
-            placeholder="Pregunta sobre esta tarea…"
+            aria-label={t('tasks.sidechat.inputAria')}
+            placeholder={t('tasks.sidechat.placeholder')}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (isSubmitKey(e)) {
@@ -168,8 +168,8 @@ export function SideChat(): React.JSX.Element | null {
           />
           <button
             type="submit"
-            title="Enviar"
-            aria-label="Enviar pregunta"
+            title={t('tasks.sidechat.send')}
+            aria-label={t('tasks.sidechat.sendAria')}
             disabled={busy || !draft.trim()}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg transition hover:bg-accent-hover disabled:opacity-40"
           >

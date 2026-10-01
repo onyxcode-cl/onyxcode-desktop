@@ -10,6 +10,7 @@ import type { TasksPermissionRule } from '@shared/ipc-tasks'
 import { TASKS_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { dateLocale, useT } from '../../../lib/i18n'
 import { cw } from './bridge'
 import { DeleteGrantToggle } from './DeleteGrant'
 import { RecordSkillButton, RecordSkillReview } from './RecordSkill'
@@ -22,7 +23,6 @@ type Tab = 'project' | 'memory' | 'agents'
 
 const MAX_LINKS = 50
 const AGENTS_MD_MAX = 200_000
-const numFmt = new Intl.NumberFormat('es-CL')
 
 interface SkillInfo {
   name: string
@@ -46,6 +46,8 @@ const inputCls =
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
 
 export function ProjectPanel(): React.JSX.Element | null {
+  const t = useT()
+  const numFmt = new Intl.NumberFormat(dateLocale())
   const open = useTasks((s) => s.projectPanelOpen)
   const folder = useTasks((s) => s.folder)
   const project = useTasks((s) => s.project)
@@ -165,7 +167,7 @@ export function ProjectPanel(): React.JSX.Element | null {
   const addLink = (): void => {
     const link = normalizeLink(linkDraft)
     if (!link) {
-      setError('Escribe un enlace válido que empiece por http:// o https://')
+      setError(t('tasks.proj.linkInvalid'))
       return
     }
     setError(null)
@@ -174,7 +176,7 @@ export function ProjectPanel(): React.JSX.Element | null {
       return
     }
     if (links.length >= MAX_LINKS) {
-      setError(`Máximo ${MAX_LINKS} enlaces por proyecto.`)
+      setError(t('tasks.proj.maxLinks', { max: MAX_LINKS }))
       return
     }
     setLinks([...links, link])
@@ -232,9 +234,9 @@ export function ProjectPanel(): React.JSX.Element | null {
 
   const clearMemory = async (): Promise<void> => {
     const ok = await confirmDialog({
-      title: '¿Borrar memoria?',
-      message: 'Se borrará la memoria guardada de este proyecto. No se puede deshacer.',
-      confirmLabel: 'Borrar',
+      title: t('tasks.proj.clearTitle'),
+      message: t('tasks.proj.clearMsg'),
+      confirmLabel: t('tasks.proj.clearConfirm'),
       danger: true
     })
     if (!ok) return
@@ -276,7 +278,7 @@ export function ProjectPanel(): React.JSX.Element | null {
               type="button"
               onClick={() => setProjectPanelOpen(false)}
               className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
-              aria-label="Cerrar"
+              aria-label={t('tasks.proj.close')}
             >
               <X size={18} />
             </button>
@@ -284,13 +286,13 @@ export function ProjectPanel(): React.JSX.Element | null {
 
           <div className="flex shrink-0 gap-1 border-b border-border px-5 py-2">
             <button type="button" className={tabCls(tab === 'project')} onClick={() => setTab('project')}>
-              <BookText size={13} /> Proyecto
+              <BookText size={13} /> {t('tasks.proj.tabProject')}
             </button>
             <button type="button" className={tabCls(tab === 'memory')} onClick={() => setTab('memory')}>
-              <NotebookText size={13} /> Memoria
+              <NotebookText size={13} /> {t('tasks.proj.tabMemory')}
             </button>
             <button type="button" className={tabCls(tab === 'agents')} onClick={() => setTab('agents')}>
-              <FileText size={13} /> AGENTS.md
+              <FileText size={13} /> {'AGENTS.md'}
             </button>
           </div>
 
@@ -299,26 +301,24 @@ export function ProjectPanel(): React.JSX.Element | null {
               <>
                 <div>
                   <label className={labelCls} htmlFor="proj-name">
-                    Nombre del proyecto
+                    {t('tasks.proj.name')}
                   </label>
                   <input id="proj-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="proj-instructions">
-                    Instrucciones de esta carpeta
+                    {t('tasks.proj.instructions')}
                   </label>
                   <textarea
                     id="proj-instructions"
                     className={`${inputCls} min-h-56 resize-y leading-relaxed`}
                     value={instructions}
-                    placeholder="Convenciones, tono, formatos preferidos, contexto del proyecto…"
+                    placeholder={t('tasks.proj.instructionsPh')}
                     onChange={(e) => setInstructions(e.target.value)}
                     maxLength={TASKS_INSTRUCTIONS_MAX}
                   />
                   <div className="mt-1.5 flex items-start gap-3">
-                    <p className="min-w-0 flex-1 text-xs text-subtle">
-                      Se añaden a todas las tareas de esta carpeta, junto con las instrucciones globales de Ajustes y la memoria guardada.
-                    </p>
+                    <p className="min-w-0 flex-1 text-xs text-subtle">{t('tasks.proj.instructionsHint')}</p>
                     <span
                       className={`shrink-0 text-xs tabular-nums ${instructions.length >= TASKS_INSTRUCTIONS_MAX * 0.9 ? 'text-danger' : 'text-subtle'}`}
                       aria-live="polite"
@@ -329,14 +329,14 @@ export function ProjectPanel(): React.JSX.Element | null {
                 </div>
 
                 <div>
-                  <span className={labelCls}>Enlaces de referencia</span>
+                  <span className={labelCls}>{t('tasks.proj.links')}</span>
                   <div className="flex gap-2">
                     <input
                       className={inputCls}
                       value={linkDraft}
-                      placeholder="https://…"
+                      placeholder={'https://…'}
                       inputMode="url"
-                      aria-label="Nuevo enlace de referencia"
+                      aria-label={t('tasks.proj.newLinkAria')}
                       onChange={(e) => setLinkDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (isSubmitKey(e, { allowShift: true })) {
@@ -346,7 +346,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                       }}
                     />
                     <Button variant="ghost" onClick={addLink} disabled={!linkDraft.trim()}>
-                      <Plus size={14} /> Añadir
+                      <Plus size={14} /> {t('tasks.proj.add')}
                     </Button>
                   </div>
                   {links.length > 0 && (
@@ -361,7 +361,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                             type="button"
                             onClick={() => setLinks(links.filter((x) => x !== l))}
                             className="rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
-                            aria-label={`Quitar ${l}`}
+                            aria-label={t('tasks.proj.removeLink', { link: l })}
                           >
                             <X size={13} />
                           </button>
@@ -369,14 +369,11 @@ export function ProjectPanel(): React.JSX.Element | null {
                       ))}
                     </ul>
                   )}
-                  <p className="mt-1.5 text-xs text-subtle">
-                    El agente los consulta con la herramienta de web si hace falta (máx. {MAX_LINKS}). Pulsa Guardar para aplicar los
-                    cambios.
-                  </p>
+                  <p className="mt-1.5 text-xs text-subtle">{t('tasks.proj.linksHint', { max: MAX_LINKS })}</p>
                 </div>
 
                 <div>
-                  <span className={labelCls}>Carpeta</span>
+                  <span className={labelCls}>{t('tasks.proj.folder')}</span>
                   <DeleteGrantToggle />
                 </div>
 
@@ -384,18 +381,18 @@ export function ProjectPanel(): React.JSX.Element | null {
                   <div className="mb-1.5 flex items-center justify-between gap-3">
                     <span className="text-xs font-medium text-muted">
                       <Sparkles size={12} className="mr-1 inline align-[-1px]" />
-                      Skills disponibles
+                      {t('tasks.proj.skills')}
                     </span>
                     <RecordSkillButton />
                   </div>
                   {skills === null ? (
                     <p className="text-xs text-subtle">
-                      {useTasks.getState().client ? 'Cargando…' : 'Abre una tarea en esta carpeta para ver las skills.'}
+                      {useTasks.getState().client ? t('tasks.proj.loading') : t('tasks.proj.openTaskForSkills')}
                     </p>
                   ) : skills.length === 0 ? (
                     <p className="text-xs text-subtle">
-                      No hay skills instaladas. Puedes crear una en{' '}
-                      <code className="font-mono">.opencode/skills/&lt;nombre&gt;/SKILL.md</code>.
+                      {t('tasks.proj.noSkills')}
+                      <code className="font-mono">{t('tasks.proj.skillPath')}</code>.
                     </p>
                   ) : (
                     <ul className="space-y-1">
@@ -412,12 +409,10 @@ export function ProjectPanel(): React.JSX.Element | null {
                 <div>
                   <span className={labelCls}>
                     <ShieldCheck size={12} className="mr-1 inline align-[-1px]" />
-                    Permisos recordados
+                    {t('tasks.proj.rules')}
                   </span>
                   {rules.length === 0 ? (
-                    <p className="text-xs text-subtle">
-                      Aún no hay permisos recordados. Aparecen aquí cuando eliges «Siempre» en una petición.
-                    </p>
+                    <p className="text-xs text-subtle">{t('tasks.proj.noRules')}</p>
                   ) : (
                     <ul className="space-y-1">
                       {rules.map((r) => (
@@ -433,20 +428,20 @@ export function ProjectPanel(): React.JSX.Element | null {
                             onClick={() => void removeRule(r.id)}
                             className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-danger hover:bg-danger/10"
                           >
-                            <Trash2 size={12} /> Quitar
+                            <Trash2 size={12} /> {t('tasks.proj.removeRule')}
                           </button>
                         </li>
                       ))}
                     </ul>
                   )}
-                  {rules.length > 0 && <p className="mt-1.5 text-xs text-subtle">Los cambios se aplican al abrir de nuevo la carpeta.</p>}
+                  {rules.length > 0 && <p className="mt-1.5 text-xs text-subtle">{t('tasks.proj.rulesHint')}</p>}
                 </div>
               </>
             ) : tab === 'agents' ? (
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
                   <label className={labelCls} htmlFor="proj-agents">
-                    AGENTS.md de la carpeta
+                    {t('tasks.proj.agentsTitle')}
                   </label>
                   {agentsLoading && <Loader2 size={13} className="animate-spin text-subtle" />}
                 </div>
@@ -456,13 +451,11 @@ export function ProjectPanel(): React.JSX.Element | null {
                   value={agentsText}
                   disabled={agentsLoading}
                   maxLength={AGENTS_MD_MAX}
-                  placeholder="Instrucciones para agentes de esta carpeta: comandos, convenciones, estructura…"
+                  placeholder={t('tasks.proj.agentsPh')}
                   onChange={(e) => setAgentsText(e.target.value)}
                 />
                 <p className="mt-1.5 text-xs text-subtle">
-                  {agentsInfo && !agentsInfo.exists
-                    ? 'Este archivo aún no existe: se creará al guardar. '
-                    : 'Es el archivo AGENTS.md de la carpeta; también lo usan otras herramientas. '}
+                  {agentsInfo && !agentsInfo.exists ? t('tasks.proj.agentsNew') : t('tasks.proj.agentsExists')}
                   {agentsInfo && <span className="font-mono break-all">{agentsInfo.path}</span>}
                 </p>
               </div>
@@ -471,16 +464,14 @@ export function ProjectPanel(): React.JSX.Element | null {
                 <div className="rounded-lg border border-border p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">Usar memoria</p>
-                      <p className="mt-0.5 text-xs text-subtle">
-                        Si la desactivas, el agente no lee ni escribe las notas de este proyecto. El archivo no se borra.
-                      </p>
+                      <p className="text-sm font-medium">{t('tasks.proj.useMemory')}</p>
+                      <p className="mt-0.5 text-xs text-subtle">{t('tasks.proj.useMemoryHint')}</p>
                     </div>
                     <button
                       type="button"
                       role="switch"
                       aria-checked={project?.memoryEnabled !== false}
-                      aria-label="Usar memoria"
+                      aria-label={t('tasks.proj.useMemory')}
                       onClick={() => void toggleMemory()}
                       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
                         project?.memoryEnabled !== false ? 'bg-accent' : 'bg-border-strong'
@@ -497,7 +488,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <label className={labelCls} htmlFor="proj-memory">
-                      Notas guardadas (.onyxcode/memoria.md)
+                      {t('tasks.proj.notes')}
                     </label>
                     {memory?.exists && (
                       <button
@@ -505,7 +496,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                         onClick={() => void clearMemory()}
                         className="flex items-center gap-1 text-xs text-danger hover:underline"
                       >
-                        <Trash2 size={12} /> Borrar
+                        <Trash2 size={12} /> {t('tasks.proj.clearConfirm')}
                       </button>
                     )}
                   </div>
@@ -513,13 +504,10 @@ export function ProjectPanel(): React.JSX.Element | null {
                     id="proj-memory"
                     className={`${inputCls} min-h-64 resize-y font-mono leading-relaxed`}
                     value={memoryText}
-                    placeholder="El agente guarda aquí notas útiles entre tareas (preferencias, decisiones, datos recurrentes)…"
+                    placeholder={t('tasks.proj.notesPh')}
                     onChange={(e) => setMemoryText(e.target.value)}
                   />
-                  <p className="mt-1.5 text-xs text-subtle">
-                    El agente de tareas lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada
-                    nueva tarea de esta carpeta.
-                  </p>
+                  <p className="mt-1.5 text-xs text-subtle">{t('tasks.proj.notesHint')}</p>
                 </div>
               </>
             )}
@@ -535,12 +523,12 @@ export function ProjectPanel(): React.JSX.Element | null {
             <span className="min-w-0 flex-1 truncate text-xs text-subtle">
               {saved && (
                 <span className="flex items-center gap-1 text-accent">
-                  <Check size={13} /> Guardado
+                  <Check size={13} /> {t('tasks.proj.saved')}
                 </span>
               )}
             </span>
             <Button variant="ghost" onClick={() => setProjectPanelOpen(false)}>
-              Cerrar
+              {t('tasks.proj.close')}
             </Button>
             <Button
               variant="primary"
@@ -548,7 +536,7 @@ export function ProjectPanel(): React.JSX.Element | null {
               disabled={saving || (tab === 'agents' && agentsLoading)}
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
-              Guardar
+              {t('tasks.proj.save')}
             </Button>
           </footer>
         </div>

@@ -1,8 +1,9 @@
 /**
- * Utilidades para las herramientas de control del Mac (MCP `computer`): etiquetas en español,
+ * Utilidades para las herramientas de control del Mac (MCP `computer`): etiquetas (idioma activo),
  * iconos, resumen de la acción y extracción segura de capturas de pantalla.
  */
 import { AppWindow, Camera, Hand, Keyboard, Mouse, MousePointer2, MousePointerClick, Move, ScrollText, Timer, Type } from 'lucide-react'
+import { t, type MsgKey } from '@shared/i18n'
 import type { ComputerActionEvent } from '@shared/ipc-tasks'
 import type { FilePart, ToolPart } from '@opencode-ai/sdk/v2/client'
 
@@ -25,22 +26,22 @@ export type ComputerToolKind =
 
 type Icon = typeof Camera
 
-const KIND_INFO: Record<ComputerToolKind, { label: string; icon: Icon }> = {
-  screenshot: { label: 'Captura', icon: Camera },
-  click: { label: 'Clic', icon: MousePointerClick },
-  right_click: { label: 'Clic derecho', icon: MousePointerClick },
-  middle_click: { label: 'Clic central', icon: MousePointerClick },
-  double_click: { label: 'Doble clic', icon: MousePointerClick },
-  triple_click: { label: 'Triple clic', icon: MousePointerClick },
-  type: { label: 'Escribir', icon: Type },
-  key: { label: 'Tecla', icon: Keyboard },
-  move: { label: 'Mover', icon: MousePointer2 },
-  drag: { label: 'Arrastrar', icon: Hand },
-  scroll: { label: 'Desplazar', icon: ScrollText },
-  open_app: { label: 'Abrir app', icon: AppWindow },
-  cursor: { label: 'Posición del cursor', icon: Move },
-  wait: { label: 'Esperar', icon: Timer },
-  other: { label: 'Control del Mac', icon: Mouse }
+const KIND_INFO: Record<ComputerToolKind, { label: MsgKey; icon: Icon }> = {
+  screenshot: { label: 'tasksComputer.kind.screenshot', icon: Camera },
+  click: { label: 'tasksComputer.kind.click', icon: MousePointerClick },
+  right_click: { label: 'tasksComputer.kind.right_click', icon: MousePointerClick },
+  middle_click: { label: 'tasksComputer.kind.middle_click', icon: MousePointerClick },
+  double_click: { label: 'tasksComputer.kind.double_click', icon: MousePointerClick },
+  triple_click: { label: 'tasksComputer.kind.triple_click', icon: MousePointerClick },
+  type: { label: 'tasksComputer.kind.type', icon: Type },
+  key: { label: 'tasksComputer.kind.key', icon: Keyboard },
+  move: { label: 'tasksComputer.kind.move', icon: MousePointer2 },
+  drag: { label: 'tasksComputer.kind.drag', icon: Hand },
+  scroll: { label: 'tasksComputer.kind.scroll', icon: ScrollText },
+  open_app: { label: 'tasksComputer.kind.open_app', icon: AppWindow },
+  cursor: { label: 'tasksComputer.kind.cursor', icon: Move },
+  wait: { label: 'tasksComputer.kind.wait', icon: Timer },
+  other: { label: 'tasksComputer.kind.other', icon: Mouse }
 }
 
 /** Sufijo de la herramienta MCP → tipo de acción. */
@@ -99,7 +100,8 @@ export function computerToolKind(tool: string): ComputerToolKind | null {
 }
 
 export function computerToolInfo(kind: ComputerToolKind): { label: string; icon: Icon } {
-  return KIND_INFO[kind]
+  const info = KIND_INFO[kind]
+  return { label: t(info.label), icon: info.icon }
 }
 
 function num(v: unknown): number | undefined {
@@ -137,9 +139,14 @@ export function computerToolDetail(kind: ComputerToolKind, input: Record<string,
       return str('app') ?? str('name') ?? str('application') ?? str('bundleId') ?? ''
     case 'scroll': {
       const dir = str('direction')
-      const dirEs: Record<string, string> = { up: 'arriba', down: 'abajo', left: 'izquierda', right: 'derecha' }
+      const dirEs: Record<string, MsgKey> = {
+        up: 'tasksComputer.dir.up',
+        down: 'tasksComputer.dir.down',
+        left: 'tasksComputer.dir.left',
+        right: 'tasksComputer.dir.right'
+      }
       const at = coords(input)
-      return [dir ? (dirEs[dir] ?? dir) : null, at].filter(Boolean).join(' ')
+      return [dir ? (dirEs[dir] ? t(dirEs[dir]) : dir) : null, at].filter(Boolean).join(' ')
     }
     case 'drag': {
       const from = coords(input)
@@ -159,30 +166,30 @@ export function computerToolDetail(kind: ComputerToolKind, input: Record<string,
 export function describeAction(ev: ComputerActionEvent): string {
   const kind = computerToolKind(ev.tool.includes('computer') ? ev.tool : `computer_${ev.tool}`) ?? 'other'
   const pos = ev.x !== undefined && ev.y !== undefined ? `(${Math.round(ev.x)}, ${Math.round(ev.y)})` : ''
-  const at = pos ? ` en ${pos}` : ''
+  const at = pos ? t('tasksComputer.action.at', { pos }) : ''
   switch (kind) {
     case 'screenshot':
-      return 'Captura de pantalla'
+      return t('tasksComputer.action.screenshot')
     case 'type':
-      return ev.text ? `Escribiendo «${clip(ev.text)}»` : 'Escribiendo'
+      return ev.text ? t('tasksComputer.action.typingText', { text: clip(ev.text) }) : t('tasksComputer.action.typing')
     case 'key':
-      return ev.text ? `Pulsando ${ev.text}` : 'Pulsando tecla'
+      return ev.text ? t('tasksComputer.action.pressing', { key: ev.text }) : t('tasksComputer.action.pressingKey')
     case 'move':
-      return `Moviendo el ratón${pos ? ` a ${pos}` : ''}`
+      return pos ? t('tasksComputer.action.movingTo', { pos }) : t('tasksComputer.action.moving')
     case 'drag':
-      return `Arrastrando${at}`
+      return `${t('tasksComputer.action.dragging')}${at}`
     case 'scroll':
-      return `Desplazando${at}`
+      return `${t('tasksComputer.action.scrolling')}${at}`
     case 'open_app':
-      return ev.text ? `Abriendo ${ev.text}` : 'Abriendo app'
+      return ev.text ? t('tasksComputer.action.openingApp', { app: ev.text }) : t('tasksComputer.action.opening')
     case 'wait':
-      return 'Esperando'
+      return t('tasksComputer.action.waiting')
     case 'cursor':
-      return 'Leyendo posición del cursor'
+      return t('tasksComputer.action.cursor')
     case 'other':
       return ev.tool
     default:
-      return `${KIND_INFO[kind].label}${at}`
+      return `${t(KIND_INFO[kind].label)}${at}`
   }
 }
 
@@ -207,7 +214,7 @@ export function toolImages(part: ToolPart): Array<{ id: string; url: string; nam
   for (const a of part.state.attachments ?? []) {
     if (!a.mime.startsWith('image/')) continue
     const url = safeImageUrl(a)
-    if (url) out.push({ id: a.id, url, name: a.filename ?? 'Captura' })
+    if (url) out.push({ id: a.id, url, name: a.filename ?? t('tasksComputer.shot.name') })
   }
   return out
 }

@@ -19,6 +19,7 @@ import type {
   BrowserToChat,
   DevServerCandidate
 } from '@shared/ipc-browser'
+import { useT } from '../../lib/i18n'
 import { AgentBar } from './AgentBar'
 import { br, onBrowser } from './bridge'
 import { Cards } from './Cards'
@@ -70,16 +71,17 @@ function useDevServers(owner: BrowserOwner, enabled: boolean): DevServerCandidat
 }
 
 function FirstRunNotice({ onDismiss }: { onDismiss: () => void }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="flex items-center gap-2 border-b border-accent/30 bg-accent-soft/40 px-3 py-2 text-[12px]">
       <ShieldCheck size={14} className="shrink-0 text-accent" />
-      <span className="min-w-0 flex-1 text-fg/90">Estás navegando dentro de {APP_NAME}. Nunca te pediremos contraseñas en esta zona.</span>
+      <span className="min-w-0 flex-1 text-fg/90">{t('browser.firstRun', { app: APP_NAME })}</span>
       <button
         type="button"
         onClick={onDismiss}
         className="shrink-0 rounded-md px-2 py-0.5 font-medium text-muted hover:bg-hover hover:text-fg"
       >
-        Entendido
+        {t('browser.firstRunOk')}
       </button>
     </div>
   )
@@ -87,6 +89,7 @@ function FirstRunNotice({ onDismiss }: { onDismiss: () => void }): React.JSX.Ele
 
 /** Aviso efímero en el flujo normal (nunca sobre la vista nativa): se oculta a los 8 s o al llegar otro aviso. */
 function NoticeLine({ notice }: { notice?: { id: number; text: string } }): React.JSX.Element | null {
+  const t = useT()
   const [dismissedId, setDismissedId] = useState<number | null>(null)
   const id = notice?.id ?? null
   useEffect(() => {
@@ -103,30 +106,29 @@ function NoticeLine({ notice }: { notice?: { id: number; text: string } }): Reac
         onClick={() => setDismissedId(notice.id)}
         className="shrink-0 rounded-md px-2 py-0.5 font-medium text-muted hover:bg-hover hover:text-fg"
       >
-        Cerrar
+        {t('browser.notice.close')}
       </button>
     </div>
   )
 }
 
 function EmptyState({ disabledReason, onNewTab }: { disabledReason?: string; onNewTab: () => void }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent">
         <Globe size={20} />
       </div>
       <div>
-        <p className="text-sm font-medium text-fg">Sin pestañas abiertas</p>
-        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted">
-          Puedes navegar aquí mismo cuando quieras: el navegador es tuyo, con o sin el agente.
-        </p>
+        <p className="text-sm font-medium text-fg">{t('browser.empty.title')}</p>
+        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted">{t('browser.empty.desc')}</p>
       </div>
       <button
         type="button"
         onClick={onNewTab}
         className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
       >
-        Nueva pestaña
+        {t('browser.newTab')}
       </button>
       {disabledReason && <p className="mt-1 max-w-xs text-[12px] text-subtle">{disabledReason}</p>}
     </div>
@@ -134,15 +136,16 @@ function EmptyState({ disabledReason, onNewTab }: { disabledReason?: string; onN
 }
 
 function CrashedTab({ onReload }: { onReload: () => void }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-muted">
-      <p>La página dejó de responder.</p>
+      <p>{t('browser.crashed')}</p>
       <button
         type="button"
         onClick={onReload}
         className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 hover:bg-hover"
       >
-        <RotateCw size={13} /> Recargar
+        <RotateCw size={13} /> {t('browser.url.reload')}
       </button>
     </div>
   )
@@ -185,6 +188,7 @@ export function BrowserPanel({
   variant = 'panel',
   className = ''
 }: BrowserPanelProps): React.JSX.Element {
+  const t = useT()
   const key = ownerKey(owner)
   const [state, setState] = useState<BrowserOwnerState | null>(null)
   const firstRunSeen = useBrowserUi((s) => s.firstRunSeen)
@@ -298,9 +302,9 @@ export function BrowserPanel({
       <div className="min-h-0 flex-1">
         {state?.hostedIn === 'popout' ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-muted">
-            <p>Abierto en ventana aparte</p>
+            <p>{t('browser.popout')}</p>
             <button type="button" onClick={handlePopOut} className="rounded-md border border-border px-2.5 py-1 hover:bg-hover">
-              Traer aquí
+              {t('browser.bringBack')}
             </button>
           </div>
         ) : tabs.length === 0 ? (

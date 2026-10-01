@@ -23,6 +23,8 @@ import {
   Undo2,
   X
 } from 'lucide-react'
+import { t as tg } from '@shared/i18n'
+import { useT } from '../../../lib/i18n'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { useClient } from './client'
 import { ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
@@ -36,7 +38,7 @@ function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error ?? new Error('No se pudo leer el archivo'))
+    reader.onerror = () => reject(reader.error ?? new Error(tg('code.composer.readFailed')))
     reader.readAsDataURL(file)
   })
 }
@@ -45,11 +47,17 @@ let attachSeq = 0
 async function toAttachment(file: File): Promise<Attachment> {
   const url = await readAsDataURL(file)
   attachSeq += 1
-  return { id: `att${Date.now()}${attachSeq}`, name: file.name || 'archivo', mime: file.type || 'application/octet-stream', url }
+  return {
+    id: `att${Date.now()}${attachSeq}`,
+    name: file.name || tg('code.composer.fileDefault'),
+    mime: file.type || 'application/octet-stream',
+    url
+  }
 }
 
 /** Cola de mensajes de la sesión activa: reordenable, quitar, "Enviar ahora". */
 function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const t = useT()
   const items = useCode((s) => s.queue[sessionID])
   const dequeue = useCode((s) => s.dequeue)
   const moveQueued = useCode((s) => s.moveQueued)
@@ -62,12 +70,14 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
           key={m.id}
           className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px]"
         >
-          <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium text-subtle">en cola</span>
+          <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium text-subtle">{t('code.queue.queued')}</span>
           <span className="min-w-0 flex-1 truncate text-muted">{m.text}</span>
-          {m.attachments.length > 0 && <span className="shrink-0 text-[11px] text-subtle">+{m.attachments.length} adjunto(s)</span>}
+          {m.attachments.length > 0 && (
+            <span className="shrink-0 text-[11px] text-subtle">{t('code.queue.attachments', { count: m.attachments.length })}</span>
+          )}
           <button
             type="button"
-            title="Subir"
+            title={t('code.queue.up')}
             disabled={i === 0}
             onClick={() => moveQueued(sessionID, m.id, -1)}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30"
@@ -76,7 +86,7 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
           </button>
           <button
             type="button"
-            title="Bajar"
+            title={t('code.queue.down')}
             disabled={i === items.length - 1}
             onClick={() => moveQueued(sessionID, m.id, 1)}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30"
@@ -85,7 +95,7 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
           </button>
           <button
             type="button"
-            title="Enviar ahora (interrumpe)"
+            title={t('code.queue.sendNow')}
             onClick={() => {
               dequeue(sessionID, m.id)
               void sendNow(m.text, m.files, m.attachments)
@@ -96,7 +106,7 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
           </button>
           <button
             type="button"
-            title="Quitar de la cola"
+            title={t('code.queue.remove')}
             onClick={() => dequeue(sessionID, m.id)}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-danger"
           >
@@ -182,6 +192,7 @@ function useFileSearch(directory: string | null, query: string | null): { files:
 }
 
 export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean }): React.JSX.Element {
+  const t = useT()
   const [text, setText] = useState('')
   const [caret, setCaret] = useState(0)
   const [mentions, setMentions] = useState<string[]>([])
@@ -255,27 +266,27 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
       {
         id: 'plan',
         label: '/plan',
-        hint: 'Cambiar a Plan (sin modificar archivos)',
+        hint: t('code.cmd.plan'),
         icon: <ListChecks size={14} />,
         run: () => setAgent('plan')
       },
-      { id: 'build', label: '/build', hint: 'Cambiar a Build (edita y ejecuta)', icon: <Hammer size={14} />, run: () => setAgent('build') },
+      { id: 'build', label: '/build', hint: t('code.cmd.build'), icon: <Hammer size={14} />, run: () => setAgent('build') },
       {
-        id: 'revertir',
-        label: '/revertir',
-        hint: 'Deshacer el último mensaje y sus cambios',
+        id: t('code.cmd.undoName'),
+        label: `/${t('code.cmd.undoName')}`,
+        hint: t('code.cmd.undo'),
         icon: <Undo2 size={14} />,
         run: () => void revertLast()
       },
       {
-        id: 'nueva',
-        label: '/nueva',
-        hint: 'Empezar una sesión nueva',
+        id: t('code.cmd.newName'),
+        label: `/${t('code.cmd.newName')}`,
+        hint: t('code.cmd.new'),
         icon: <MessageSquarePlus size={14} />,
         run: () => void newSession()
       }
     ],
-    [setAgent, revertLast, newSession]
+    [setAgent, revertLast, newSession, t]
   )
 
   const items: MenuItem[] = useMemo(() => {
@@ -289,7 +300,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         .map<MenuItem>((c) => ({
           id: `srv:${c.name}`,
           label: `/${c.name}`,
-          hint: c.description ?? (c.source === 'mcp' ? 'MCP' : c.source === 'skill' ? 'Skill' : 'Comando'),
+          hint: c.description ?? (c.source === 'mcp' ? 'MCP' : c.source === 'skill' ? 'Skill' : tg('code.cmd.command')),
           icon: <Slash size={14} />,
           insert: `/${c.name} `
         }))
@@ -443,7 +454,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         <div className="relative">
           {dragOver && (
             <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent-soft/80 text-sm font-medium text-accent">
-              Suelta para adjuntar
+              {t('code.composer.drop')}
             </div>
           )}
           {menuOpen && trigger && (
@@ -451,20 +462,20 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11px] font-medium tracking-wide text-subtle uppercase">
                 {trigger.kind === '/' ? (
                   <>
-                    <Slash size={11} /> Comandos
+                    <Slash size={11} /> {t('code.composer.commands')}
                   </>
                 ) : (
                   <>
-                    <AtSign size={11} /> Archivos
+                    <AtSign size={11} /> {t('code.composer.files')}
                     {filesLoading && <Loader2 size={11} className="ml-1 animate-spin" />}
                   </>
                 )}
                 <span className="ml-auto flex items-center gap-1 normal-case">
-                  <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>esc</Kbd>
+                  <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>{'esc'}</Kbd>
                 </span>
               </div>
               <div role="listbox" className="max-h-64 overflow-y-auto py-1">
-                {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">Buscando…</div>}
+                {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">{t('code.composer.searching')}</div>}
                 {items.map((item, i) => {
                   const { dir, name } =
                     item.id.startsWith('f:') && item.label.includes('/')
@@ -549,10 +560,10 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               disabled={disabled}
               placeholder={
                 aiGate.gate.blocked
-                  ? 'Conecta una IA para empezar'
+                  ? t('code.composer.noAi')
                   : agent === 'plan'
-                    ? 'Describe qué quieres planificar… (@ para archivos, / para comandos)'
-                    : 'Pide un cambio en el código… (@ para archivos, / para comandos)'
+                    ? t('code.composer.placeholderPlan')
+                    : t('code.composer.placeholderBuild')
               }
               className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
             />
@@ -560,7 +571,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               <button
                 type="button"
                 onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
-                title="Alternar Plan / Build (⇧Tab)"
+                title={t('code.composer.toggleAgent')}
                 className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
               >
                 {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
@@ -568,7 +579,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               </button>
               <button
                 type="button"
-                title="Mencionar archivo"
+                title={t('code.composer.mention')}
                 onClick={() => {
                   const el = ref.current
                   const pos = el?.selectionStart ?? text.length
@@ -588,7 +599,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               </button>
               <button
                 type="button"
-                title="Adjuntar archivo o imagen"
+                title={t('code.composer.attach')}
                 onClick={() => fileInputRef.current?.click()}
                 className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
               >
@@ -601,7 +612,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 <button
                   type="button"
                   onClick={() => void abort()}
-                  title="Detener (Esc)"
+                  title={t('code.composer.stop')}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85"
                 >
                   <Square size={12} fill="currentColor" />
@@ -611,7 +622,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 type="button"
                 onClick={() => submit(false)}
                 disabled={(!text.trim() && attachments.length === 0) || disabled}
-                title={busy ? `Encolar (se envía al quedar libre) · ${MOD}↵ para enviar ya` : `Enviar (Enter o ${MOD}↵)`}
+                title={busy ? t('code.composer.queueTitle', { mod: MOD }) : t('code.composer.sendTitle', { mod: MOD })}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
               >
                 {busy ? <Send size={14} /> : <ArrowUp size={16} />}
@@ -622,16 +633,16 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
       </div>
       <div className="mx-auto mt-1.5 flex max-w-3xl justify-center gap-3 px-6 text-[11px] text-subtle">
         <span>
-          <Kbd>/</Kbd> comandos
+          <Kbd>/</Kbd> {t('code.composer.hintCommands')}
         </span>
         <span>
-          <Kbd>@</Kbd> archivos
+          <Kbd>@</Kbd> {t('code.composer.hintFiles')}
         </span>
         <span>
-          <Kbd>⇧Tab</Kbd> Plan / Build
+          <Kbd>⇧Tab</Kbd> {'Plan / Build'}
         </span>
         <span>
-          <Kbd>⇧↵</Kbd> nueva línea
+          <Kbd>⇧↵</Kbd> {t('code.composer.hintNewline')}
         </span>
       </div>
     </div>

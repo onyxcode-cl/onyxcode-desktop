@@ -6,6 +6,8 @@
  */
 import { memo, useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
+import { t, type MsgKey } from '@shared/i18n'
+import { useLocale, useT } from '../../../lib/i18n'
 import {
   AlertCircle,
   Bot,
@@ -131,8 +133,8 @@ export function toolKind(tool: string): ToolKind {
   }
 }
 
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`
+function plural(n: number, key: MsgKey): string {
+  return t(key, { count: n })
 }
 
 /** "Leyó 3 archivos · Editó 2 archivos · Ejecutó 1 comando". */
@@ -140,14 +142,14 @@ export function summarizeSteps(parts: ToolPart[]): string {
   const c: Record<ToolKind, number> = { edit: 0, bash: 0, read: 0, search: 0, web: 0, todo: 0, task: 0, other: 0 }
   for (const p of parts) c[toolKind(p.tool)]++
   const out: string[] = []
-  if (c.read) out.push(`Leyó ${plural(c.read, 'archivo', 'archivos')}`)
-  if (c.search) out.push(`Buscó ${c.search === 1 ? 'una vez' : `${c.search} veces`}`)
-  if (c.edit) out.push(`Editó ${plural(c.edit, 'archivo', 'archivos')}`)
-  if (c.bash) out.push(`Ejecutó ${plural(c.bash, 'comando', 'comandos')}`)
-  if (c.web) out.push(`Consultó la web${c.web > 1 ? ` (${c.web})` : ''}`)
-  if (c.task) out.push(plural(c.task, 'subagente', 'subagentes'))
-  if (c.todo) out.push('Actualizó tareas')
-  if (c.other) out.push(plural(c.other, 'herramienta', 'herramientas'))
+  if (c.read) out.push(t('code.sum.read', { items: plural(c.read, 'code.n.file') }))
+  if (c.search) out.push(t('code.sum.search', { count: c.search }))
+  if (c.edit) out.push(t('code.sum.edit', { items: plural(c.edit, 'code.n.file') }))
+  if (c.bash) out.push(t('code.sum.bash', { items: plural(c.bash, 'code.n.command') }))
+  if (c.web) out.push(c.web > 1 ? t('code.sum.webMany', { count: c.web }) : t('code.sum.web'))
+  if (c.task) out.push(plural(c.task, 'code.n.subagent'))
+  if (c.todo) out.push(t('code.tool.todoUpdated'))
+  if (c.other) out.push(plural(c.other, 'code.n.tool'))
   return out.join(' · ')
 }
 
@@ -214,7 +216,7 @@ export function DiffStats({ additions, deletions }: { additions: number; deletio
   )
 }
 
-function editInfo(part: ToolPart, root: string | null): { file: string; patch: string; label: string } {
+function editInfo(part: ToolPart, root: string | null): { file: string; patch: string } {
   const { state } = part
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
@@ -226,14 +228,15 @@ function editInfo(part: ToolPart, root: string | null): { file: string; patch: s
   }
   if (!patch && tool === 'write' && str(input.content)) patch = makePatch(file, '', str(input.content))
   if (!patch && (tool === 'patch' || tool === 'apply_patch')) patch = str(input.patchText) || str(input.patch)
-  const label = tool === 'write' ? 'Creó' : 'Editó'
-  return { file, patch, label }
+  return { file, patch }
 }
 
 /** Chip de archivo editado con +/- que se expande al diff. */
 function EditChip({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const [open, setOpen] = useState(false)
-  const { file, patch, label } = useMemo(() => editInfo(part, root), [part, root])
+  const t = useT()
+  const { file, patch } = useMemo(() => editInfo(part, root), [part, root])
+  const label = part.tool === 'write' ? t('code.tool.created') : t('code.tool.edited')
   const stats = useMemo(() => (patch ? diffStats(patch) : { additions: 0, deletions: 0 }), [patch])
   const { dir, name } = splitPath(file)
   const status = part.state.status
@@ -277,6 +280,7 @@ function EditChip({ part, root }: { part: ToolPart; root: string | null }): Reac
 
 // Memoizada (F7-B44): `part` conserva su referencia en el store mientras no cambia.
 export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
+  const t = useT()
   const { state } = part
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
@@ -298,7 +302,7 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       return (
         <Row
           icon={<SquareTerminal size={14} />}
-          verb={running ? 'Ejecutando' : 'Ejecutó'}
+          verb={running ? t('code.tool.running') : t('code.tool.ran')}
           detail={
             <span className="rounded bg-code px-1.5 py-0.5 font-mono text-xs text-fg" title={desc || command}>
               {command.split('\n')[0]}
@@ -308,7 +312,10 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           autoOpen={running && !!live}
           extra={
             exit !== undefined && exit !== 0 ? (
-              <span className="rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">exit {exit}</span>
+              <span className="rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">
+                {'exit '}
+                {exit}
+              </span>
             ) : desc ? (
               <span className="hidden max-w-56 truncate text-xs text-subtle md:inline">{desc}</span>
             ) : null
@@ -330,15 +337,15 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       return (
         <Row
           icon={<FileText size={14} />}
-          verb={running ? 'Leyendo' : 'Leyó'}
+          verb={running ? t('code.tool.reading') : t('code.tool.read')}
           detail={
             <span className="font-mono text-xs">
               {file}
               {offset !== undefined && (
                 <span className="text-subtle">
                   {' '}
-                  · desde {offset}
-                  {limit ? `, ${limit} líneas` : ''}
+                  {t('code.tool.fromLine', { offset })}
+                  {limit ? t('code.tool.lines', { limit }) : ''}
                 </span>
               )}
             </span>
@@ -353,7 +360,12 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       const pattern = str(input.pattern) || str(input.query)
       const where = relPath(str(input.path), root)
       const count = num(meta.matches) ?? num(meta.count)
-      const verb = tool === 'grep' || tool === 'codesearch' ? 'Buscó' : tool === 'glob' ? 'Buscó archivos' : 'Listó'
+      const verb =
+        tool === 'grep' || tool === 'codesearch'
+          ? t('code.tool.searched')
+          : tool === 'glob'
+            ? t('code.tool.searchedFiles')
+            : t('code.tool.listed')
       return (
         <Row
           icon={tool === 'grep' || tool === 'codesearch' ? <FileSearch size={14} /> : <FolderSearch size={14} />}
@@ -361,11 +373,11 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           detail={
             <span className="font-mono text-xs">
               {pattern || where}
-              {pattern && where && where !== '.' && <span className="text-subtle"> en {where}</span>}
+              {pattern && where && where !== '.' && <span className="text-subtle"> {t('code.tool.inPath', { where })}</span>}
               {str(input.include) && <span className="text-subtle"> ({str(input.include)})</span>}
             </span>
           }
-          extra={count !== undefined ? <span className="text-xs text-subtle">{plural(count, 'resultado', 'resultados')}</span> : null}
+          extra={count !== undefined ? <span className="text-xs text-subtle">{plural(count, 'code.n.result')}</span> : null}
           status={state.status}
         >
           {error ? errorBlock : output ? <Output text={output} max="max-h-60" /> : null}
@@ -375,16 +387,14 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
     case 'todo': {
       const fromInput = parseTodos(input.todos) ?? []
       const todos = fromInput.length ? fromInput : (parseTodos(meta.todos) ?? [])
-      const done = todos.filter((t) => t.status === 'completed').length
+      const done = todos.filter((todo) => todo.status === 'completed').length
       return (
         <Row
           icon={<ListTodo size={14} />}
-          verb="Actualizó tareas"
+          verb={t('code.tool.todoUpdated')}
           detail={
             todos.length ? (
-              <span className="text-xs text-subtle">
-                {done}/{todos.length} completadas
-              </span>
+              <span className="text-xs text-subtle">{t('code.tool.todosDone', { done, total: todos.length })}</span>
             ) : undefined
           }
           status={state.status}
@@ -403,7 +413,7 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       return (
         <Row
           icon={<Globe size={14} />}
-          verb={tool === 'webfetch' ? 'Abrió' : 'Buscó en la web'}
+          verb={tool === 'webfetch' ? t('code.tool.opened') : t('code.tool.searchedWeb')}
           detail={<span className="font-mono text-xs">{str(input.url) || str(input.query)}</span>}
           status={state.status}
         >
@@ -414,7 +424,7 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       return (
         <Row
           icon={<Bot size={14} />}
-          verb={`Subagente${str(input.subagent_type) ? ` ${str(input.subagent_type)}` : ''}`}
+          verb={`${t('code.tool.subagent')}${str(input.subagent_type) ? ` ${str(input.subagent_type)}` : ''}`}
           detail={<span className="text-xs">{str(input.description)}</span>}
           status={state.status}
         >
@@ -459,7 +469,10 @@ interface StepGroupProps {
 
 export function StepGroup({ parts, root, live, hasPending, after }: StepGroupProps): React.JSX.Element {
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
-  const summary = useMemo(() => summarizeSteps(parts), [parts])
+  const locale = useLocale()
+  // `locale` fuerza recalcular el resumen (texto traducido) al cambiar de idioma.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const summary = useMemo(() => summarizeSteps(parts), [parts, locale])
   const anyRunning = parts.some((p) => p.state.status === 'running' || p.state.status === 'pending')
   const errors = parts.filter((p) => p.state.status === 'error').length
   const edits = parts.filter((p) => toolKind(p.tool) === 'edit')
@@ -489,11 +502,11 @@ export function StepGroup({ parts, root, live, hasPending, after }: StepGroupPro
         ) : (
           <ChevronRight size={14} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
         )}
-        <span className="shrink-0 font-medium text-fg/90">{plural(parts.length, 'paso', 'pasos')}</span>
+        <span className="shrink-0 font-medium text-fg/90">{plural(parts.length, 'code.n.step')}</span>
         <span className="min-w-0 truncate">{summary}</span>
         {errors > 0 && (
           <span className="ml-auto shrink-0 rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">
-            {plural(errors, 'error', 'errores')}
+            {plural(errors, 'code.n.error')}
           </span>
         )}
       </button>

@@ -21,12 +21,13 @@ import { ActivityRow } from './ProgressPanel'
 import { editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { toolImages } from './computer-tools'
+import { useT } from '../../../lib/i18n'
 import { ScreenshotThumbs } from './ComputerAccess'
 import { blockIdForPart } from './conversation-logic'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { friendlyTool, isVisibleText } from './util'
 
-export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n'
+export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
 
 type Block =
   | { kind: 'user'; id: string; text: string; files: string[]; partIds: string[] }
@@ -88,13 +89,14 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
 }
 
 const ReasoningRow = memo(function ReasoningRow({ part }: { part: ReasoningPart }): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const seconds = part.time.end ? Math.max(1, Math.round((part.time.end - part.time.start) / 1000)) : null
   return (
     <li className="text-xs">
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 text-muted hover:text-fg">
         <Brain size={12} className="shrink-0" />
-        {seconds ? `Pensó durante ${seconds} s` : 'Pensando…'}
+        {seconds ? t('tasks.conv.thoughtFor', { seconds }) : t('tasks.conv.thinking')}
       </button>
       {open && <div className="mt-1 ml-5 border-l-2 border-border pl-2 whitespace-pre-wrap text-muted">{part.text}</div>}
     </li>
@@ -122,6 +124,7 @@ const StepsBlock = memo(
     /** Bloque antiguo: `content-visibility: auto` (nunca el resaltado por búsqueda). */
     old?: boolean
   }): React.JSX.Element {
+    const t = useT()
     const [open, setOpen] = useState(false)
     useEffect(() => {
       if (forceOpen) setOpen(true)
@@ -158,7 +161,9 @@ const StepsBlock = memo(
           ) : (
             <Sparkles size={13} className="shrink-0 text-accent" />
           )}
-          <span className="shrink-0 font-medium text-fg">{count === 0 ? 'Pensando' : count === 1 ? '1 paso' : `${count} pasos`}</span>
+          <span className="shrink-0 font-medium text-fg">
+            {count === 0 ? t('tasks.conv.thinkingShort') : t('tasks.conv.steps', { count })}
+          </span>
           {current && (
             <span className="min-w-0 truncate">
               · {current.verb} {current.detail}
@@ -220,6 +225,7 @@ const UserMessage = memo(
     /** Bloque antiguo: `content-visibility: auto`. */
     old?: boolean
   }): React.JSX.Element {
+    const t = useT()
     const [editing, setEditing] = useState(false)
     const [draft, setDraft] = useState(block.text)
     const [busy, setBusy] = useState(false)
@@ -245,15 +251,15 @@ const UserMessage = memo(
       const text = draft.trim()
       if (!text || !taskId || busy) return
       const ok = await confirmDialog({
-        title: 'Editar y reintentar',
+        title: t('tasks.conv.editRetry'),
         message: (
           <>
-            Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y se{' '}
-            <strong>restaurarán los archivos de la carpeta</strong> tal como estaban antes de ese mensaje (si se guardó un punto de
-            restauración). Lo creado después irá a la Papelera. Después se enviará tu mensaje editado.
+            {t('tasks.conv.editMsg.pre')}
+            <strong>{t('tasks.conv.editMsg.strong')}</strong>
+            {t('tasks.conv.editMsg.post')}
           </>
         ),
-        confirmLabel: 'Deshacer y reintentar',
+        confirmLabel: t('tasks.conv.undoRetry'),
         danger: true
       })
       if (!ok) return
@@ -272,10 +278,9 @@ const UserMessage = memo(
     const undoHere = async (): Promise<void> => {
       if (!taskId || busy) return
       const ok = await confirmDialog({
-        title: '¿Deshacer desde este mensaje?',
-        message:
-          'Se ocultarán los mensajes posteriores y los archivos de la carpeta volverán a como estaban antes de este mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera. Lo que el agente hizo fuera de la carpeta no se deshace. Podrás rehacerlo.',
-        confirmLabel: 'Deshacer desde aquí',
+        title: t('tasks.conv.undoTitle'),
+        message: t('tasks.conv.undoMsg'),
+        confirmLabel: t('tasks.conv.undoHere'),
         danger: true
       })
       if (!ok) return
@@ -298,7 +303,7 @@ const UserMessage = memo(
             value={draft}
             disabled={busy}
             rows={Math.min(8, Math.max(2, draft.split('\n').length))}
-            aria-label="Editar mensaje"
+            aria-label={t('tasks.conv.editAria')}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') cancel()
@@ -306,18 +311,14 @@ const UserMessage = memo(
             }}
             className="w-full max-w-[85%] resize-y rounded-xl border border-border-strong bg-elevated px-3 py-2 text-[15px] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"
           />
-          {block.files.length > 0 && (
-            <p className="max-w-[85%] text-right text-[11px] text-subtle">
-              Los archivos adjuntos ya están en la carpeta, pero no se reenvían: menciónalos en el texto si hacen falta.
-            </p>
-          )}
+          {block.files.length > 0 && <p className="max-w-[85%] text-right text-[11px] text-subtle">{t('tasks.conv.attachNote')}</p>}
           {error && <p className="max-w-[85%] text-right text-xs text-danger">{error}</p>}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" disabled={busy} onClick={cancel}>
-              Cancelar
+              {t('tasks.conv.cancel')}
             </Button>
             <Button variant="primary" size="sm" disabled={busy || !draft.trim()} onClick={() => void submit()}>
-              {busy && <Loader2 size={13} className="animate-spin" />} Reintentar
+              {busy && <Loader2 size={13} className="animate-spin" />} {t('tasks.conv.retry')}
             </Button>
           </div>
         </div>
@@ -351,18 +352,18 @@ const UserMessage = memo(
                 setEditing(true)
               }}
               className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle hover:text-fg"
-              title="Deshace la conversación desde este mensaje (y los cambios de archivos) y lo vuelve a enviar editado"
+              title={t('tasks.conv.editHint')}
             >
-              <Pencil size={11} /> Editar y reintentar
+              <Pencil size={11} /> {t('tasks.conv.editRetry')}
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={() => void undoHere()}
               className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle hover:text-fg disabled:opacity-50"
-              title="Restaura los archivos de la carpeta a como estaban antes de este mensaje y oculta lo que vino después"
+              title={t('tasks.conv.undoHint')}
             >
-              <Undo2 size={11} /> Deshacer desde aquí
+              <Undo2 size={11} /> {t('tasks.conv.undoHere')}
             </button>
           </div>
         )}
@@ -380,6 +381,7 @@ const UserMessage = memo(
 )
 
 export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {
+  const t = useT()
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const blocks = useMemo(() => buildBlocks(entries), [entries])
@@ -466,7 +468,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                 />
               )
             case 'error':
-              return <AssistantError key={b.id} info={b.info} abortedLabel="Tarea detenida." />
+              return <AssistantError key={b.id} info={b.info} abortedLabel={t('tasks.conv.stopped')} />
             case 'retry':
               return (
                 <div key={b.id} className="flex items-center gap-1.5 text-xs text-muted">
@@ -491,7 +493,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
         ))}
         {showThinking && (
           <div className="flex items-center gap-2 text-sm text-muted">
-            <Loader2 size={15} className="animate-spin" /> Pensando…
+            <Loader2 size={15} className="animate-spin" /> {t('tasks.conv.thinking')}
           </div>
         )}
         {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}

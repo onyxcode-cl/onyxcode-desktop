@@ -10,6 +10,7 @@ import type { TasksRestoreChange } from '@shared/ipc-tasks'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { DiffView } from '../../../components/DiffView'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { undoTaskChanges } from './actions'
 import { cw } from './bridge'
@@ -17,10 +18,13 @@ import { Section } from './PanelSection'
 import { firstPoint, notRestorableText } from './restore-logic'
 import { useTasks } from './store'
 
-const BADGE: Record<TasksRestoreChange['status'], { label: string; cls: string }> = {
-  added: { label: 'Nuevo', cls: 'bg-success/15 text-success' },
-  modified: { label: 'Modificado', cls: 'bg-accent-soft text-accent' },
-  deleted: { label: 'Eliminado', cls: 'bg-danger/15 text-danger' }
+const BADGE: Record<
+  TasksRestoreChange['status'],
+  { label: 'tasks.changes.added' | 'tasks.changes.modified' | 'tasks.changes.deleted'; cls: string }
+> = {
+  added: { label: 'tasks.changes.added', cls: 'bg-success/15 text-success' },
+  modified: { label: 'tasks.changes.modified', cls: 'bg-accent-soft text-accent' },
+  deleted: { label: 'tasks.changes.deleted', cls: 'bg-danger/15 text-danger' }
 }
 
 interface Loaded {
@@ -70,6 +74,7 @@ function useChanges(sessionID: string, busy: boolean): { data: Loaded | null; lo
 }
 
 function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const b = BADGE[change.status]
   const name = change.path.split('/').pop() ?? change.path
@@ -88,7 +93,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
           <span className="font-medium text-fg">{name}</span>
           {dir && <span className="text-subtle"> {dir}</span>}
         </span>
-        <span className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium ${b.cls}`}>{b.label}</span>
+        <span className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium ${b.cls}`}>{t(b.label)}</span>
         {!change.binary && (
           <span className="shrink-0 text-[11px] tabular-nums">
             <span className="text-success">+{change.additions}</span> <span className="text-danger">−{change.deletions}</span>
@@ -100,9 +105,9 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
           {change.patch ? (
             <DiffView patch={change.patch} path={change.path} hideFileHeaders className="max-h-72" />
           ) : change.binary ? (
-            <p className="px-3 py-2 text-xs text-subtle">Archivo binario: no se puede mostrar la diferencia.</p>
+            <p className="px-3 py-2 text-xs text-subtle">{t('tasks.changes.binary')}</p>
           ) : (
-            <p className="px-3 py-2 text-xs text-subtle">Hay demasiados cambios para mostrar la diferencia de este archivo.</p>
+            <p className="px-3 py-2 text-xs text-subtle">{t('tasks.changes.tooMany')}</p>
           )}
           {!change.restorable && (
             <p className="border-t border-border px-3 py-1.5 text-[11px] text-warning">{notRestorableText(change.reason)}</p>
@@ -114,6 +119,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
 }
 
 export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: boolean }): React.JSX.Element {
+  const t = useT()
   const { data, loading, error, reload } = useChanges(sessionID, busy)
   const fullAccess = useTasks((s) => s.conn?.fullAccess === true)
   const [working, setWorking] = useState(false)
@@ -122,10 +128,9 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
 
   const undoAll = async (): Promise<void> => {
     const ok = await confirmDialog({
-      title: '¿Deshacer los cambios de esta tarea?',
-      message:
-        'Los archivos de esta carpeta volverán a como estaban antes de que empezara la tarea. Los archivos nuevos irán a la Papelera. Lo que el agente hizo fuera de la carpeta (comandos, webs, otras apps) no se deshace.',
-      confirmLabel: 'Deshacer cambios',
+      title: t('tasks.changes.undoTitle'),
+      message: t('tasks.changes.undoMsg'),
+      confirmLabel: t('tasks.changes.undoConfirm'),
       danger: true
     })
     if (!ok) return
@@ -143,12 +148,12 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
   return (
     <Section
       icon={FileDiff}
-      title="Cambios en archivos"
+      title={t('tasks.changes.title')}
       badge={count > 0 ? count : undefined}
       right={
         <button
           type="button"
-          title="Actualizar"
+          title={t('tasks.changes.refresh')}
           disabled={busy || loading}
           className="rounded p-1 text-subtle hover:bg-hover hover:text-fg disabled:opacity-40"
           onClick={reload}
@@ -160,13 +165,11 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
       {error ? (
         <p className="text-xs text-danger">{error}</p>
       ) : !data ? (
-        <p className="text-xs text-subtle">{busy ? 'Los cambios aparecerán cuando el agente termine.' : 'Buscando cambios…'}</p>
+        <p className="text-xs text-subtle">{busy ? t('tasks.changes.afterDone') : t('tasks.changes.looking')}</p>
       ) : data.noPoint ? (
-        <p className="text-xs text-subtle">
-          Esta tarea no tiene un punto de restauración guardado, así que no se pueden mostrar ni deshacer los cambios.
-        </p>
+        <p className="text-xs text-subtle">{t('tasks.changes.noPoint')}</p>
       ) : data.changes.length === 0 ? (
-        <p className="text-xs text-subtle">Sin cambios en los archivos de la carpeta desde que empezó la tarea.</p>
+        <p className="text-xs text-subtle">{t('tasks.changes.none')}</p>
       ) : (
         <>
           <ul className="space-y-1.5">
@@ -174,14 +177,12 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
               <ChangeRow key={c.path} change={c} />
             ))}
           </ul>
-          {data.truncated && <p className="mt-1.5 text-[11px] text-subtle">Hay más cambios de los que se pueden mostrar aquí.</p>}
+          {data.truncated && <p className="mt-1.5 text-[11px] text-subtle">{t('tasks.changes.more')}</p>}
           <Button variant="secondary" size="sm" className="mt-3 w-full" disabled={busy || working} onClick={() => void undoAll()}>
-            {working ? <Loader2 size={13} className="animate-spin" /> : <Undo2 size={13} />} Deshacer los cambios de esta tarea
+            {working ? <Loader2 size={13} className="animate-spin" /> : <Undo2 size={13} />} {t('tasks.changes.undoAll')}
           </Button>
           {actionError && <p className="mt-1.5 text-xs text-danger">{actionError}</p>}
-          {fullAccess && (
-            <p className="mt-2 text-[11px] text-subtle">En Control total el agente podría alterar las copias guardadas de los archivos.</p>
-          )}
+          {fullAccess && <p className="mt-2 text-[11px] text-subtle">{t('tasks.changes.fullNote')}</p>}
         </>
       )}
     </Section>

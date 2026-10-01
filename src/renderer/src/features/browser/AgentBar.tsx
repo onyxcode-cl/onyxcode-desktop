@@ -5,6 +5,7 @@
  */
 import { Bot, Pause, Square } from 'lucide-react'
 import type { BrowserOwnerState } from '@shared/ipc-browser'
+import { useT } from '../../lib/i18n'
 
 export function AgentBar({
   control,
@@ -21,15 +22,16 @@ export function AgentBar({
   onResume: () => void
   onStop: () => void
 }): React.JSX.Element | null {
+  const t = useT()
   if (control === 'idle') return null
 
   if (control === 'paused') {
     return (
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border bg-hover px-3 text-xs">
         <Bot size={13} className="shrink-0 text-subtle" />
-        <span className="min-w-0 flex-1 text-muted">Pausado</span>
+        <span className="min-w-0 flex-1 text-muted">{t('browser.agent.paused')}</span>
         <button type="button" onClick={onResume} className="shrink-0 rounded-md px-2 py-0.5 font-medium text-accent hover:bg-accent-soft">
-          Reanudar
+          {t('browser.agent.resume')}
         </button>
       </div>
     )
@@ -39,7 +41,7 @@ export function AgentBar({
     return (
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-warning/30 bg-warning/10 px-3 text-xs text-warning">
         <Bot size={13} className="shrink-0" />
-        <span className="min-w-0 flex-1">Estás usando el navegador: el agente espera</span>
+        <span className="min-w-0 flex-1">{t('browser.agent.userActive')}</span>
       </div>
     )
   }
@@ -47,22 +49,25 @@ export function AgentBar({
   return (
     <div className="flex h-8 shrink-0 items-center gap-2 border-b border-accent/30 bg-accent-soft/40 px-3 text-xs">
       <Bot size={13} className="shrink-0 text-accent" />
-      <span className="min-w-0 flex-1 truncate text-fg/90">El agente está usando esta pestaña{agentLabel ? ` · ${agentLabel}` : ''}</span>
+      <span className="min-w-0 flex-1 truncate text-fg/90">
+        {t('browser.agent.using')}
+        {agentLabel ? ` · ${agentLabel}` : ''}
+      </span>
       <button
         type="button"
         onClick={onPause}
-        title="Pausar"
+        title={t('browser.agent.pause')}
         className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 font-medium text-muted hover:bg-hover hover:text-fg"
       >
-        <Pause size={12} /> Pausar
+        <Pause size={12} /> {t('browser.agent.pause')}
       </button>
       <button
         type="button"
         onClick={onStop}
-        title="Detener"
+        title={t('browser.agent.stop')}
         className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 font-medium text-danger hover:bg-danger/10"
       >
-        <Square size={10} fill="currentColor" /> Detener
+        <Square size={10} fill="currentColor" /> {t('browser.agent.stop')}
       </button>
     </div>
   )
