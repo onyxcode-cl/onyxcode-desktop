@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Provider } from '@opencode-ai/sdk/v2/client'
 import { Check, ChevronsUpDown, Search } from 'lucide-react'
-import { localeTag } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
-import { useT } from '../../../lib/i18n'
+import { useLocale, useT } from '../../../lib/i18n'
 
 import { PREFERRED_PROVIDER, sortProviders } from '../../../stores/providers'
 
@@ -32,6 +31,7 @@ interface Props {
 /** Selector de modelo en popover (reemplaza al <select> nativo; misma API). */
 export function ModelSelect({ providers, value, onChange, defaultLabel, className = '', ...rest }: Props): React.JSX.Element {
   const t = useT()
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
@@ -56,10 +56,10 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
         models: Object.values(p.models)
           .filter((m) => m.status !== 'deprecated' || modelKey({ providerID: p.id, modelID: m.id }) === current)
           .filter((m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
-          .sort((a, b) => a.name.localeCompare(b.name, localeTag()))
+          .sort((a, b) => a.name.localeCompare(b.name, locale))
       }))
       .filter((g) => g.models.length > 0)
-  }, [sorted, query, current])
+  }, [sorted, query, current, locale])
 
   const label = value
     ? known
