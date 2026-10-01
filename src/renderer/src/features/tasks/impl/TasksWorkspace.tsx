@@ -67,6 +67,7 @@ import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
+import { InterruptedNotice } from './InterruptedNotice'
 import { StallNotice } from './StallNotice'
 import { Home } from './Home'
 import { NetworkBlockedCards } from './NetworkBlocked'
@@ -130,7 +131,8 @@ const PILL_TONE: Record<TaskStatus, string> = {
   idle: 'border-border text-muted',
   using_computer: 'border-accent/40 bg-accent-soft text-accent',
   plan_ready: 'border-warning/50 bg-warning/10 text-warning',
-  archived: 'border-border text-muted'
+  archived: 'border-border text-muted',
+  interrupted: 'border-warning/50 bg-warning/10 text-warning'
 }
 
 function StatusPill({ status }: { status: TaskStatus }): React.JSX.Element {
@@ -319,6 +321,7 @@ export function TasksWorkspace(): React.JSX.Element {
   const session = activeId ? sessions[activeId] : undefined
   const allEntries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const run = useSessions((s) => (activeId ? s.status[activeId] : undefined))
+  const interrupted = useTasks((s) => (activeId ? !!s.interrupted[activeId] : false))
   const taskError = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const requestedFullAccess = useTasks((s) => s.fullAccess)
   const sideChat = useTasks((s) => s.sideChat)
@@ -487,7 +490,8 @@ export function TasksWorkspace(): React.JSX.Element {
         error: taskError,
         entries,
         usingComputer: isUsingComputer(activeId),
-        planPending: isPlanPending(activeId)
+        planPending: isPlanPending(activeId),
+        interrupted
       })
     : 'idle'
 
@@ -670,6 +674,7 @@ export function TasksWorkspace(): React.JSX.Element {
               footer={
                 <>
                   {activeId && busy && <StallNotice taskId={activeId} />}
+                  {activeId && !busy && <InterruptedNotice taskId={activeId} />}
                   {activeId && <RestoreNotices taskId={activeId} />}
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}

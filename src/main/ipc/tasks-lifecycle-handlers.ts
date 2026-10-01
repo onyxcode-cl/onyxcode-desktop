@@ -119,6 +119,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   tasksManager.setBeforeSpawn((folder, fullAccess) => monitor.ensureCapacity(folder, fullAccess))
   monitor.start()
   ctx.isFolderBusy = (folder) => monitor.isFolderBusy(folder)
+  ctx.busyTaskCount = () => monitor.busyRootCount()
 
   const storageEnv = (): StorageEnv => ({
     userData,

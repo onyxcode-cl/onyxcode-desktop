@@ -5,9 +5,11 @@ export interface DialogStub {
   openPaths?: string[]
   /** Ruta que devuelve showSaveDialog (undefined → cancelado). */
   savePath?: string
+  /** Botón que devuelve showMessageBox (índice; por defecto 0). */
+  messageBoxResponse?: number
 }
 
-/** Sustituye dialog.showOpenDialog/showSaveDialog en main (acepta ambas firmas, con o sin ventana). */
+/** Sustituye dialog.showOpenDialog/showSaveDialog/showMessageBox en main (acepta ambas firmas, con o sin ventana). */
 export async function stubDialog(app: ElectronApplication, stub: DialogStub): Promise<void> {
   await app.evaluate(({ dialog }, s) => {
     const g = globalThis as unknown as { __e2eDialogCalls?: { kind: string; options: unknown }[] }
@@ -22,6 +24,10 @@ export async function stubDialog(app: ElectronApplication, stub: DialogStub): Pr
       g.__e2eDialogCalls!.push({ kind: 'save', options: opts(a) })
       return s.savePath ? { canceled: false, filePath: s.savePath } : { canceled: true, filePath: '' }
     }) as unknown as typeof dialog.showSaveDialog
+    dialog.showMessageBox = (async (...a: unknown[]) => {
+      g.__e2eDialogCalls!.push({ kind: 'message', options: opts(a) })
+      return { response: s.messageBoxResponse ?? 0, checkboxChecked: false }
+    }) as unknown as typeof dialog.showMessageBox
   }, stub)
 }
 

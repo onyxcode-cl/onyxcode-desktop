@@ -15,7 +15,8 @@ import {
   HelpCircle,
   Loader2,
   MousePointer2,
-  Pin
+  Pin,
+  RotateCcw
 } from 'lucide-react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import { t as tr } from '@shared/i18n'
@@ -175,6 +176,7 @@ export function statusTextClass(status: TaskStatus): string {
   switch (status) {
     case 'waiting':
     case 'plan_ready':
+    case 'interrupted':
       return 'text-warning'
     case 'question':
     case 'running':
@@ -216,6 +218,9 @@ export function StatusIcon({ status, size = 14 }: { status: TaskStatus; size?: n
       break
     case 'archived':
       icon = <Archive size={size} className="text-subtle" />
+      break
+    case 'interrupted':
+      icon = <RotateCcw size={size} className="text-warning" />
       break
     default:
       icon = <Circle size={size} className="text-subtle" />

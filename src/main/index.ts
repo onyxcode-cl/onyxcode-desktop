@@ -1,7 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
+import { t } from '@shared/i18n'
+import { needsQuitConfirmation } from './quit-guard'
 import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
@@ -183,9 +185,56 @@ function start(): void {
     if (process.platform !== 'darwin') app.quit()
   })
 
+  // Cierre de sesión / apagado del Mac: nunca se bloquea con un diálogo (el sistema espera a la app).
+  let systemShutdown = false
+  app.whenReady().then(() => powerMonitor.on('shutdown', () => (systemShutdown = true)))
+
+  /** Pregunta «Salir igualmente / Cancelar» (se puede sustituir en E2E como `dialog.showSaveDialog`). */
+  const confirmQuit = async (count: number): Promise<boolean> => {
+    const win = mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() ? mainWindow : null
+    const options: Electron.MessageBoxOptions = {
+      type: 'warning',
+      title: t('merr.quit.title'),
+      message: t('merr.quit.message', { count }),
+      detail: t('merr.quit.detail'),
+      buttons: [t('merr.quit.confirm'), t('merr.quit.cancel')],
+      defaultId: 1,
+      cancelId: 1
+    }
+    const res = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options)
+    return res.response === 0
+  }
+
   let quitting = false
+  let quitConfirmed = false
+  let asking = false
   app.on('before-quit', (event) => {
     if (quitting) return
+    if (!quitConfirmed) {
+      const busy = needsQuitConfirmation({
+        busyCount: tasksMod?.busyTaskCount() ?? 0,
+        updating: isUpdating(),
+        systemShutdown
+      })
+      if (busy > 0) {
+        event.preventDefault()
+        if (asking) return
+        asking = true
+        void confirmQuit(busy)
+          .catch(() => true)
+          .then((ok) => {
+            asking = false
+            if (ok) {
+              quitConfirmed = true
+              app.quit()
+            } else if (!mainWindow || mainWindow.isDestroyed()) {
+              // En Windows/Linux la ventana ya se cerró: «Cancelar» devuelve la app a la vista.
+              createWindow()
+            }
+          })
+        return
+      }
+    }
     quitting = true
     event.preventDefault()
     try {

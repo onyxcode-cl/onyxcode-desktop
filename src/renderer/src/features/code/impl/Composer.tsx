@@ -29,6 +29,7 @@ import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { useClient } from './client'
 import { ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
+import { getDraft, setDraft, useDraft } from '../../../stores/drafts'
 import { useCode } from './store'
 import type { Attachment } from './types'
 import { Kbd, MOD } from './ui'
@@ -191,11 +192,10 @@ function useFileSearch(directory: string | null, query: string | null): { files:
   return { files, loading }
 }
 
+const NO_MENTIONS: string[] = []
+
 export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean }): React.JSX.Element {
   const t = useT()
-  const [text, setText] = useState('')
-  const [caret, setCaret] = useState(0)
-  const [mentions, setMentions] = useState<string[]>([])
   const [menuIndex, setMenuIndex] = useState(0)
   const [dismissed, setDismissed] = useState<number | null>(null)
   const [focused, setFocused] = useState(false)
@@ -205,6 +205,15 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const fileInputRef = useRef<HTMLInputElement>(null)
   const directory = useCode((s) => s.directory)
   const activeSessionID = useCode((s) => s.activeSessionID)
+  // F8-B32: texto y menciones se guardan por proyecto y sesión (sobreviven a cambiar de modo y de sesión).
+  const draftKey = `code:${directory ?? ''}:${activeSessionID ?? 'new'}`
+  const [text, setText] = useDraft(draftKey, '')
+  const [mentions, setMentions] = useDraft(`${draftKey}:mentions`, NO_MENTIONS)
+  const draftKeyRef = useRef(draftKey)
+  useEffect(() => {
+    draftKeyRef.current = draftKey
+  }, [draftKey])
+  const [caret, setCaret] = useState(0)
   const agent = useCode((s) => s.agent)
   const setAgent = useCode((s) => s.setAgent)
   const model = useCode((s) => s.model)
@@ -250,7 +259,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         setCaret(end)
       })
     })
-  }, [directory])
+  }, [directory, setText])
 
   useAutosizeTextarea(ref, text, { max: 260 })
 
@@ -264,6 +273,13 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const restore = (d: { text: string; mentions: string[]; attachments: Attachment[] }): void => {
     setText((cur) => (cur.trim() ? cur : d.text))
     setMentions((cur) => (cur.length ? cur : d.mentions))
+    // Enviar desde una sesión nueva la crea ANTES de saber si el motor acepta el mensaje: el compositor ya mira
+    // el borrador de la sesión nueva, así que el texto también vuelve ahí (solo si está vacío).
+    const now = draftKeyRef.current
+    if (now !== draftKey && draftKey.endsWith(':new')) {
+      if (!getDraft(now, '').trim()) setDraft(now, d.text)
+      if (getDraft<string[]>(`${now}:mentions`, NO_MENTIONS).length === 0) setDraft(`${now}:mentions`, d.mentions)
+    }
     setAttachments((cur) => (cur.length ? cur : d.attachments))
   }
 

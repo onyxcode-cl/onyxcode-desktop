@@ -372,3 +372,25 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 - Guardias: `ai-errors.test.ts` (acciones), `actions.calidad-t2.test.ts` (Chat: revert + reenvío sin duplicar ni perder adjuntos, undo si falla, edición, compactar), `store.calidad-t2.test.ts` (Code), snapshots de `ChatMessageList` (botón «Reintentar» en el aviso)
   y `MessageStream` (lápiz). E2E `calidad-t2.e2e.ts` con el falso (guion `error {statusCode:429}` y `ContextOverflowError`): 429 con un solo mensaje de usuario tras reintentar, edición de un mensaje antiguo en Chat y en Code, «Compactar» en Chat y Tareas (`POST summarize`).
   Capturas con `CALIDAD_SHOTS_DIR`. Sin cambios en preloads ni en SEGURIDAD.md.
+
+## F8-B32 — Calidad T3: continuidad del trabajo
+
+- **Terminal de Code que sobrevive (H5).** Decisión de diseño: en vez de mantener montadas (ocultas con `hidden`/`inert`) todas las vistas visitadas, el pty sube a un **registro** (`panels/terminalRegistry.ts`). Se descartó mantener las vistas
+  montadas porque Code y Tareas registran atajos globales (`keydown` en `window`/`document`, `focus`), reportan `tasks:viewing` a main (que suprime notificaciones de una tarea «vista») y Code mueve el visor nativo del navegador integrado: tenerlas
+  vivas pero ocultas habría hecho que ⌘1…⌘4 o Esc actuaran sobre una vista invisible, que no llegaran avisos de tareas, y habría duplicado el coste de renderizar cada delta de streaming en vistas que nadie mira. El registro guarda por
+  proyecto el `Terminal` de xterm (con su scrollback de 5000 líneas) y el id del pty; `TerminalPanel` solo reengancha el elemento DOM al montarse. El shell se mata al cambiar o cerrar el proyecto (`useCode.subscribe`), con «Reiniciar» o al salir
+  de la app (main ya mata los ptys al cerrar la ventana/navegar). Efectos: el foco y el scroll de Chat, Code y Tareas siguen comportándose como antes (no hay vistas ocultas); el scroll de la terminal se conserva porque xterm no se recrea.
+- **Borradores (H5).** `stores/drafts.ts` guarda el texto del compositor de Chat (por conversación, `chat:<id>`) y de Code (texto y menciones por proyecto y sesión) fuera de los componentes; sobrevive a cambiar de modo y de sesión, no se persiste
+  a disco y solo guarda valores no vacíos. Los compositores cambian una línea (`useState` → `useDraft`). Los adjuntos de Code (imágenes) NO se conservan al cambiar de modo. Antes el texto de Code también pasaba de una sesión a otra al cambiar; ahora cada
+  sesión tiene el suyo.
+- **Salir con tareas en curso (H6).** `before-quit` pregunta «Hay N tareas en curso» con «Salir igualmente» / «Cancelar» (por defecto Cancelar) si el monitor de Tareas tiene trabajo (`busyRootCount`, mismo sondeo de 3 s). Es `dialog.showMessageBox`,
+  sustituible en E2E igual que el de guardar (`stubDialog({ messageBoxResponse })`). **No pregunta** cuando la salida no la pide el usuario: el actualizador (`isUpdating()`, que se activa antes de `quit()` en `startSwap`) y el apagado/cierre de sesión
+  del sistema (`powerMonitor 'shutdown'`); la decisión es la función pura `needsQuitConfirmation`. En Windows/Linux, «Cancelar» tras haber cerrado la última ventana la recrea. Solo cuenta tareas de Tareas/Rutinas (monitor); las sesiones de Code
+  y Chat en curso no disparan el diálogo.
+- **«Interrumpida» + «Continuar» (H6).** Al conectar con un servidor de Tareas (una vez por servidor y por carga de la ventana) se revisan, como máximo, las 12 tareas raíz más recientes (≤ 3 días, no archivadas) que NO están ocupadas ni esperan
+  permiso/pregunta: si el último mensaje del asistente no tiene `time.completed` ni error (un aborto del usuario sí lo cierra) se marcan en `useTasks.interrupted`. Estado nuevo `interrupted` (icono, etiqueta «Interrumpida» en lista y cabecera, aviso
+  «Esta tarea se interrumpió» con «Continuar» que envía un seguimiento en el idioma de la interfaz). La marca se quita al continuar o en cuanto la sesión vuelve a estar ocupada. Una tarea ocupada nunca se marca (ni se consulta). Límite conocido:
+  las tareas más antiguas que 3 días o fuera de las 12 más recientes no se revisan; y una tarea cuyo motor sigue «ocupada» en servidor pero sin avance no es «interrumpida» (eso lo cubre el aviso de inactividad de F8-B30).
+- Pruebas: unitarias `drafts.test.ts`, `quit-guard.test.ts` (actualizador y apagado nunca preguntan), `interrupted.test.ts` (detección, ocupadas no se marcan, una vez por servidor, marca se quita al volver a trabajar); E2E `calidad-t3.e2e.ts`: pid de la terminal
+  y su `sleep 1000` iguales tras Chat → Ajustes → ⌃Tab → Code (con el scrollback), borradores de Chat y Code, tarea interrumpida tras recargar la ventana con el motor «reiniciado» (el falso gana `set { sessionStatus }`) y Cmd+Q con una tarea ocupada
+  (Cancelar mantiene la app, Salir igualmente sale). Capturas con `T3_SHOTS_DIR`. Sin cambios en preloads (no hay canales IPC nuevos) ni en SEGURIDAD.md.

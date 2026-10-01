@@ -51,6 +51,8 @@ export interface TasksIpcContext {
   restore: RestorePoints
   /** ¿Hay una sesión en curso o pendiente en el servidor de esa carpeta? (lo rellena el módulo de ciclo de vida). */
   isFolderBusy: (folder: string) => boolean
+  /** Nº de tareas en curso en todos los servidores (diálogo de salir; lo rellena el módulo de ciclo de vida). */
+  busyTaskCount: () => number
 }
 
 /** Cada `registerX(ctx)` devuelve esto; `dispose` se espera al apagar. */

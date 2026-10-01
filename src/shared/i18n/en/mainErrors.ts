@@ -126,6 +126,12 @@ export const mainErrors = {
   'merr.notif.taskApproval': 'A task is waiting for your approval',
   'merr.notif.taskQuestion': 'A task has a question',
   'merr.notif.taskError': 'A task ended with an error',
+  'merr.quit.title': 'Quit OnyxCode?',
+  'merr.quit.message': { one: '{count} task is in progress.', other: '{count} tasks are in progress.' },
+  'merr.quit.detail':
+    'If you quit now, the work in progress stops. When you reopen the app it will show as "Interrupted" and you can continue it.',
+  'merr.quit.confirm': 'Quit anyway',
+  'merr.quit.cancel': 'Cancel',
   'merr.notif.untitledTask': 'Untitled task',
   'merr.notif.planPending': 'Plan and permissions pending',
   'merr.notif.allowApps': 'Allow the agent to use these apps?',

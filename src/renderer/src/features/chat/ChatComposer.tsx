@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { fitTextarea, isSubmitKey, useAutosizeTextarea } from '../../lib/textarea'
 import { ArrowUp, Paperclip, Square } from 'lucide-react'
 import { useT } from '../../lib/i18n'
+import { useDraft } from '../../stores/drafts'
 
 interface Props {
   /** Devolver `false` (o rechazar) indica que no se envió: el borrador se restaura. */
@@ -41,7 +42,8 @@ export function ChatComposer({
   hint
 }: Props): React.JSX.Element {
   const t = useT()
-  const [text, setText] = useState('')
+  // F8-B32: el borrador vive por conversación en un almacén externo; sobrevive a cambiar de modo.
+  const [text, setText] = useDraft(`chat:${autoFocusKey ?? 'new'}`, '')
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -57,6 +59,8 @@ export function ChatComposer({
       el.focus()
       el.setSelectionRange(insert.text.length, insert.text.length)
     })
+    // `setText` cambia con la conversación: no debe re-aplicar la sugerencia al cambiar de chat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [insert])
 
   // Autoajuste de alto: al cambiar el texto y cuando cambia el ancho disponible.

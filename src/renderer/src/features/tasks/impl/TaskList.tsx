@@ -258,7 +258,8 @@ function TaskRow({
                 status === 'using_computer' ||
                 status === 'waiting' ||
                 status === 'question' ||
-                status === 'plan_ready'
+                status === 'plan_ready' ||
+                status === 'interrupted'
               ? TASK_STATUS_LABEL[status]
               : relTime(task.time.updated)}
           {group && !archivedView && <span className="text-subtle"> · {group}</span>}
@@ -339,6 +340,7 @@ export function TaskList(): React.JSX.Element {
   const permissions = useTasks((s) => s.permissions)
   const questions = useTasks((s) => s.questions)
   const unseen = useTasks((s) => s.unseen)
+  const interrupted = useTasks((s) => s.interrupted)
   const networkBlocked = useTasks((s) => s.networkBlocked)
   const taskMeta = useTasks((s) => s.taskMeta)
   const showArchived = useTasks((s) => s.showArchived)
@@ -417,6 +419,7 @@ export function TaskList(): React.JSX.Element {
       evicted: evictedStatusOf(t.id),
       usingComputer: isUsingComputer(t.id),
       planPending: isPlanPending(t.id),
+      interrupted: !!interrupted[t.id],
       archived: isArchivedSession(t)
     })
 

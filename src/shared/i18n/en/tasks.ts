@@ -16,6 +16,7 @@ export const tasks = {
   'tasks.status.error': 'Error',
   'tasks.status.idle': 'New',
   'tasks.status.archived': 'Archived',
+  'tasks.status.interrupted': 'Interrupted',
   'tasks.tool.read.doing': 'Reading',
   'tasks.tool.read.done': 'Read',
   'tasks.tool.write.doing': 'Creating',
@@ -432,6 +433,12 @@ export const tasks = {
   },
   'tasks.stall.body':
     'The task is still running: it may be doing something long. You can wait or stop it yourself; it won’t stop on its own.',
+  'tasks.interrupted.title': 'This task was interrupted',
+  'tasks.interrupted.body':
+    'The app closed (or the engine stopped) while it was working. What was done so far is kept; you can pick up where it left off.',
+  'tasks.interrupted.continue': 'Continue',
+  'tasks.interrupted.prompt':
+    'Continue the task from where it was interrupted: check what is already done and carry on with what is missing, without repeating it.',
   'tasks.proj.saved': 'Saved',
   'tasks.proj.save': 'Save',
   'tasks.conv.retryAttempt': 'Retry {attempt}:'

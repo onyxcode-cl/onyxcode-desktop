@@ -54,7 +54,8 @@ export function formatDuration(ms: number): string {
 
 // ───────────────────────────── Estado de la tarea ─────────────────────────────
 
-export type TaskStatus = 'running' | 'using_computer' | 'plan_ready' | 'waiting' | 'question' | 'done' | 'error' | 'idle' | 'archived'
+export type TaskStatus =
+  'running' | 'using_computer' | 'plan_ready' | 'waiting' | 'question' | 'done' | 'error' | 'idle' | 'archived' | 'interrupted'
 
 /** Etiquetas de estado en el idioma activo (getters: se leen al usarse). */
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
@@ -84,7 +85,20 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   },
   get archived() {
     return t('tasks.status.archived')
+  },
+  get interrupted() {
+    return t('tasks.status.interrupted')
   }
+}
+
+/**
+ * F8-B32: ¿el último turno del asistente quedó a medias? Su último mensaje no tiene `time.completed` y no acabó
+ * en error (un error o un aborto del usuario sí cierran el mensaje). Solo es fiable cuando la sesión NO está
+ * ocupada: durante un turno en curso el último mensaje tampoco está completado.
+ */
+export function endedMidTurn(entries: MessageEntry[] | undefined): boolean {
+  const last = lastAssistant(entries)
+  return !!last && last.role === 'assistant' && !last.time.completed && !last.error
 }
 
 function lastAssistant(entries: MessageEntry[] | undefined): Message | undefined {
@@ -119,6 +133,8 @@ export function taskStatus(args: {
   /** Control total: hay un plan esperando tu aprobación. */
   planPending?: boolean
   archived?: boolean
+  /** La app se cerró a mitad de turno (marca de `scanInterrupted`); solo cuenta si la sesión ya no está ocupada. */
+  interrupted?: boolean
   /** Estado terminal que la tarea tenía al desalojarse su historial (`evictedStatusOf`); solo se usa sin `entries`. */
   evicted?: TaskStatus
 }): TaskStatus {
@@ -129,6 +145,7 @@ export function taskStatus(args: {
   const running = !!args.run && args.run !== 'idle'
   if (running && args.usingComputer) return 'using_computer'
   if (running) return 'running'
+  if (args.interrupted) return 'interrupted'
   if (args.error) return 'error'
   // Historial desalojado (LRU): no degradar a «done» una tarea que terminó con error.
   if (!args.entries && args.evicted) return args.evicted
