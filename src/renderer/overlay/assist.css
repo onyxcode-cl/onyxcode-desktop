@@ -117,11 +117,11 @@ body.teach {
   color: var(--as-fg);
 }
 .teach-next {
-  background: var(--as-1);
+  background: #7c3aed; /* 5,7:1 con texto blanco (con --as-1 eran 4,2:1) */
   color: #fff;
 }
 .teach-next:hover:not(:disabled) {
-  background: #7c3aed;
+  background: #6d28d9;
 }
 
 /* ── Píldora de grabación (360×56) ── */
@@ -187,11 +187,11 @@ body.record {
   color: var(--as-fg);
 }
 .record-finish {
-  background: var(--as-rec);
+  background: #dc2626; /* 4,8:1 con texto blanco (con --as-rec eran 3,8:1) */
   color: #fff;
 }
 .record-finish:hover:not(:disabled) {
-  background: #dc2626;
+  background: #b91c1c;
 }
 
 @keyframes as-pulse {

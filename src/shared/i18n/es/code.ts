@@ -113,6 +113,7 @@ export const code = {
   'code.sessions.deleteMessage': 'Se eliminará la sesión "{title}".',
   'code.sessions.deleteConfirm': 'Eliminar',
   'code.sessions.switch': 'Cambiar de sesión',
+  'code.sessions.close': 'Cerrar',
   'code.sessions.searchPlaceholder': 'Buscar sesión por título…',
   'code.sessions.noResults': 'Sin resultados.',
   'code.sessions.title': 'Sesiones',

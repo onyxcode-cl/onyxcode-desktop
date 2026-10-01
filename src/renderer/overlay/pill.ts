@@ -52,9 +52,9 @@ root.innerHTML = `
     <kbd class="hint" title="${t('ovl.pill.hint')}">⌘⇧Esc</kbd>
     <button type="button" class="stop">${t('ovl.pill.stop')}</button>
   </div>
-  <div class="request" hidden>
+  <div class="request" hidden role="region" aria-labelledby="req-title">
     <div class="request-head">
-      <span class="request-title"></span>
+      <span class="request-title" id="req-title"></span>
       <button type="button" class="req-close" title="${t('ovl.req.close')}">✕</button>
     </div>
     <p class="request-reason"></p>

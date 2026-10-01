@@ -142,7 +142,9 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await editor.getByRole('button', { name: 'Crear rutina' }).click()
     await expectCount(a.page.getByRole('dialog', { name: 'Nueva rutina' }), 0)
 
-    const card = a.page.getByRole('button', { name: /Rutina e2e toggle/ }).first()
+    // Tarjeta = contenedor; el botón con el nombre lleva `aria-pressed` (la selección) y el interruptor es su hermano.
+    const pick = a.page.getByRole('button', { name: /Rutina e2e toggle/ }).first()
+    const card = a.page.locator('div.cursor-pointer.rounded-xl').filter({ has: pick })
     await expectVisible(card)
     const sw = card.getByRole('switch')
     const file = join(a.userData, 'routines.json')
@@ -157,15 +159,15 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     const initial = persisted()!
     expect(await sw.getAttribute('aria-checked')).toBe(String(initial))
     // Al crearla la tarjeta queda seleccionada (panel de detalle abierto): se cierra para que el aserto de selección sea útil.
-    if ((await card.getAttribute('aria-pressed')) === 'true') await a.page.getByRole('button', { name: 'Cerrar detalle' }).click()
-    await expect.poll(() => card.getAttribute('aria-pressed')).toBe('false')
+    if ((await pick.getAttribute('aria-pressed')) === 'true') await a.page.getByRole('button', { name: 'Cerrar detalle' }).click()
+    await expect.poll(() => pick.getAttribute('aria-pressed')).toBe('false')
 
     for (const want of [!initial, initial]) {
       await sw.click()
       await expect.poll(() => sw.getAttribute('aria-checked'), { timeout: 10_000 }).toBe(String(want))
       await expect.poll(persisted, { timeout: 10_000 }).toBe(want)
       // stopPropagation: el clic del interruptor no selecciona la tarjeta ni abre el editor.
-      expect(await card.getAttribute('aria-pressed')).toBe('false')
+      expect(await pick.getAttribute('aria-pressed')).toBe('false')
       await expectCount(a.page.getByRole('dialog'), 0)
     }
   })

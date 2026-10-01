@@ -129,32 +129,26 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
   const waiting = useRoutines((s) => s.history.some((h) => h.routineId === r.id && h.status === 'running' && h.waiting === true))
   const select = (): void => useRoutines.setState({ selectedId: selected ? null : r.id })
   return (
+    // La tarjeta se puede pulsar entera con el ratón; para teclado y lectores el control es el botón del nombre
+    // (un interruptor dentro de `role="button"` sería un control anidado).
     <div
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
       onClick={select}
-      onKeyDown={(e) => {
-        // El interruptor interno recibe su propio Enter/Espacio: no lo secuestra la tarjeta.
-        if (e.target !== e.currentTarget) return
-        if (e.key !== 'Enter' && e.key !== ' ') return
-        e.preventDefault()
-        select()
-      }}
       className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:shadow-sm'}`}
     >
       <div className="flex items-start gap-3">
-        <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
-        >
-          <Icon size={17} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className={`truncate font-medium ${r.enabled ? '' : 'text-muted'}`}>{r.name}</div>
-          <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
-            <Clock size={11} className="shrink-0" /> <span className="truncate">{scheduleText(r.schedule)}</span>
+        <button type="button" aria-pressed={selected} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left">
+          <div
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
+          >
+            <Icon size={17} />
           </div>
-        </div>
+          <div className="min-w-0 flex-1">
+            <div className={`truncate font-medium ${r.enabled ? '' : 'text-muted'}`}>{r.name}</div>
+            <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
+              <Clock size={11} className="shrink-0" /> <span className="truncate">{scheduleText(r.schedule)}</span>
+            </div>
+          </div>
+        </button>
         <Toggle
           stopPropagation
           checked={r.enabled}

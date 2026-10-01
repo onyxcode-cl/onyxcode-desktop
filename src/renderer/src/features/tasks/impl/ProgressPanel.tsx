@@ -82,7 +82,7 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
           <ToolStatusIcon part={part} />
         </span>
         <span className="min-w-0 flex-1 truncate" title={detail ? `${verb} ${detail}` : verb}>
-          <span className={isComputer ? 'text-amber-600 [[data-theme=dark]_&]:text-amber-400' : 'text-fg'}>{verb}</span>
+          <span className={isComputer ? 'text-amber-700 [[data-theme=dark]_&]:text-amber-400' : 'text-fg'}>{verb}</span>
           {detail && <span className="text-muted"> {detail}</span>}
         </span>
       </div>
@@ -299,7 +299,7 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
                 <span className="text-muted">{relTime(r.startedAt)}</span>
               )}
               {r.waiting && (
-                <span className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400">{tr('tasks.prog.awaitingApproval')}</span>
+                <span className="shrink-0 text-amber-700 [[data-theme=dark]_&]:text-amber-400">{tr('tasks.prog.awaitingApproval')}</span>
               )}
               {r.summary && (
                 <span className="min-w-0 flex-1 truncate text-subtle" title={r.summary}>

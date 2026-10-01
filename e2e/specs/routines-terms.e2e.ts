@@ -51,7 +51,7 @@ describe.skipIf(MODE === 'prod')(`aviso de Rutinas y términos de OpenCode (${MO
     await expectVisible(notice.getByText('Tus rutinas no se ejecutan solas hasta que aceptes el aviso sobre los términos de OpenCode'))
     expect(settingsAck()).toBe(false)
 
-    const card = a.page.getByRole('button', { name: /Rutina pausada e2e/ }).first()
+    const card = a.page.locator('div.cursor-pointer.rounded-xl').filter({ has: a.page.getByRole('button', { name: /Rutina pausada e2e/ }) })
     const sw = card.getByRole('switch')
     expect(await sw.getAttribute('aria-checked')).toBe('false')
 

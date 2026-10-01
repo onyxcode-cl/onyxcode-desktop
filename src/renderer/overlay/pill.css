@@ -9,7 +9,7 @@
   --pl-border: rgba(255, 255, 255, 0.14);
   --pl-kbd-bg: rgba(255, 255, 255, 0.08);
   --pl-stop: #ef4444;
-  --pl-stop-hover: #dc2626;
+  --pl-stop-hover: #b91c1c;
   --pl-stop-fg: #ffffff;
   color-scheme: dark;
 }
@@ -137,7 +137,8 @@ body.on {
   padding: 0 15px;
   border: 0;
   border-radius: 999px;
-  background: var(--pl-stop);
+  /* #dc2626 con texto blanco: 4,8:1 (con #ef4444 eran 3,8:1). */
+  background: #dc2626;
   color: var(--pl-stop-fg);
   font:
     650 12.5px/1 -apple-system,
@@ -386,11 +387,11 @@ body.on {
     0 0 18px color-mix(in srgb, var(--pl-2) 25%, transparent);
 }
 .request.takeover .req-approve {
-  background: var(--pl-2);
+  background: #2563eb; /* 5,2:1 con texto blanco (con --pl-2 eran 3,7:1) */
   color: #fff;
 }
 .request.takeover .req-approve:hover:not(:disabled) {
-  background: #60a5fa;
+  background: #1d4ed8;
 }
 
 @media (prefers-reduced-motion: reduce) {
