@@ -263,5 +263,6 @@ export const code = {
   'code.files.diff': 'Diff',
   'code.files.binary': 'Binary file.',
   'code.files.search': 'Search files…',
-  'code.files.clear': 'Clear'
+  'code.files.clear': 'Clear',
+  'code.composer.removeAttachment': 'Remove {name}'
 } as const satisfies Messages<typeof es>

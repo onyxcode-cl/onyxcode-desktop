@@ -532,7 +532,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     )}
                     <button
                       type="button"
-                      title={`Quitar ${a.name}`}
+                      title={t('code.composer.removeAttachment', { name: a.name })}
                       onClick={() => setAttachments((cur) => cur.filter((x) => x.id !== a.id))}
                       className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100"
                     >
