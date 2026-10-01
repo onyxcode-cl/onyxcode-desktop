@@ -12,6 +12,7 @@ import { useAiGate } from '../../../lib/ai-gate'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
 import { sandboxModelNotice } from '@shared/sandbox-providers'
+import { useT } from '../../../lib/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -52,6 +53,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   { onSend, onAbort, busy, disabled, placeholder, autoFocusKey, hero, extra },
   forwardedRef
 ) {
+  const t = useT()
   const text = useTasks((s) => s.draft)
   const attachments = useTasks((s) => s.attachments)
   const folder = useTasks((s) => s.folder)
@@ -121,7 +123,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
                   <span className="truncate">{a.relPath}</span>
                   <button
                     type="button"
-                    title="Quitar (el archivo sigue en la carpeta)"
+                    title={t('tasks.comp.removeAttachment')}
                     className="shrink-0 rounded text-subtle hover:text-fg"
                     onClick={() => removeAttachment(a.path)}
                   >
@@ -149,8 +151,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
                 )}
                 <button
                   type="button"
-                  title={`Quitar «${f.name}» de las carpetas adicionales`}
-                  aria-label={`Quitar la carpeta adicional ${f.name}`}
+                  title={t('tasks.comp.unlinkTitle', { name: f.name })}
+                  aria-label={t('tasks.comp.unlinkAria', { name: f.name })}
                   className="shrink-0 rounded text-subtle hover:text-fg"
                   onClick={() => void unlinkFolder(f.path)}
                 >
@@ -165,7 +167,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           value={text}
           rows={hero ? 3 : 1}
           disabled={disabled || blocked}
-          placeholder={blocked ? 'Conecta una IA para empezar' : (placeholder ?? 'Escribe un mensaje…')}
+          placeholder={blocked ? t('tasks.comp.phNoAi') : (placeholder ?? t('tasks.comp.phMessage'))}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (isSubmitKey(e)) {
@@ -183,7 +185,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
               type="button"
               onClick={attach}
               disabled={!folder || attaching}
-              title={folder ? 'Adjuntar archivos (se copian a la carpeta)' : 'Elige primero una carpeta'}
+              title={folder ? t('tasks.comp.attach') : t('tasks.comp.pickFolder')}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-fg disabled:opacity-40"
             >
               {attaching ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
@@ -199,8 +201,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             <button
               type="button"
               onClick={onAbort}
-              title="Detener"
-              aria-label="Detener"
+              title={t('tasks.comp.stop')}
+              aria-label={t('tasks.comp.stop')}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-fg text-bg transition hover:opacity-85"
             >
               <Square size={13} fill="currentColor" />
@@ -210,8 +212,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
               type="button"
               onClick={submit}
               disabled={!canSend}
-              title="Enviar (Enter)"
-              aria-label="Enviar"
+              title={t('tasks.comp.sendTitle')}
+              aria-label={t('tasks.comp.send')}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-35"
             >
               <ArrowUp size={17} />
@@ -221,7 +223,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
       </div>
       {saving && (
         <p role="status" data-testid="restore-saving" className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
-          <Loader2 size={12} className="animate-spin" /> Guardando punto de restauración…
+          <Loader2 size={12} className="animate-spin" /> {t('tasks.comp.saving')}
         </p>
       )}
       {providerNotice && (

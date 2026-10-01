@@ -276,5 +276,18 @@ export const tasks = {
   'tasks.side.running': 'Running',
   'tasks.side.noNext': 'No upcoming run',
   'tasks.side.openOrigin': 'Open the original task',
-  'tasks.side.openRoutines': 'Open in Routines'
+  'tasks.side.openRoutines': 'Open in Routines',
+  'tasks.sandboxProviderNotice':
+    'In Tasks with sandbox only OpenCode Go (and OpenCode’s free models) is available. For other providers, use Full control, Chat or Code.',
+  'tasks.comp.removeAttachment': 'Remove (the file stays in the folder)',
+  'tasks.comp.unlinkTitle': 'Remove “{name}” from the additional folders',
+  'tasks.comp.unlinkAria': 'Remove the additional folder {name}',
+  'tasks.comp.phNoAi': 'Connect an AI to get started',
+  'tasks.comp.phMessage': 'Type a message…',
+  'tasks.comp.attach': 'Attach files (they are copied to the folder)',
+  'tasks.comp.pickFolder': 'Choose a folder first',
+  'tasks.comp.stop': 'Stop',
+  'tasks.comp.sendTitle': 'Send (Enter)',
+  'tasks.comp.send': 'Send',
+  'tasks.comp.saving': 'Saving restore point…'
 } as const satisfies Messages<typeof es>

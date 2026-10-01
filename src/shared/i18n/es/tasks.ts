@@ -272,5 +272,18 @@ export const tasks = {
   'tasks.side.running': 'En ejecución',
   'tasks.side.noNext': 'Sin próxima ejecución',
   'tasks.side.openOrigin': 'Abrir la tarea de origen',
-  'tasks.side.openRoutines': 'Abrir en Rutinas'
+  'tasks.side.openRoutines': 'Abrir en Rutinas',
+  'tasks.sandboxProviderNotice':
+    'En Tareas con sandbox solo está disponible OpenCode Go (y los modelos gratuitos de OpenCode). Para otros proveedores usa Control total, Chat o Code.',
+  'tasks.comp.removeAttachment': 'Quitar (el archivo sigue en la carpeta)',
+  'tasks.comp.unlinkTitle': 'Quitar «{name}» de las carpetas adicionales',
+  'tasks.comp.unlinkAria': 'Quitar la carpeta adicional {name}',
+  'tasks.comp.phNoAi': 'Conecta una IA para empezar',
+  'tasks.comp.phMessage': 'Escribe un mensaje…',
+  'tasks.comp.attach': 'Adjuntar archivos (se copian a la carpeta)',
+  'tasks.comp.pickFolder': 'Elige primero una carpeta',
+  'tasks.comp.stop': 'Detener',
+  'tasks.comp.sendTitle': 'Enviar (Enter)',
+  'tasks.comp.send': 'Enviar',
+  'tasks.comp.saving': 'Guardando punto de restauración…'
 } as const

@@ -4,15 +4,17 @@
  * el resto de proveedores no se le pasan.
  * `opencode` son los modelos gratuitos de OpenCode, que el motor ofrece sin clave. Lógica pura compartida por main y renderer.
  */
+import { t } from './i18n'
+
 export const SANDBOX_PROVIDER_IDS: readonly string[] = ['opencode-go', 'opencode']
 
-export const SANDBOX_PROVIDER_NOTICE =
-  'En Tareas con sandbox solo está disponible OpenCode Go (y los modelos gratuitos de OpenCode). Para otros proveedores usa Control total, Chat o Code.'
+/** Aviso en el idioma activo. */
+export const sandboxProviderNotice = (): string => t('tasks.sandboxProviderNotice')
 
-/** Aviso en español si el modelo elegido no está disponible en Tareas con sandbox; si no, null. */
+/** Aviso si el modelo elegido no está disponible en Tareas con sandbox; si no, null. */
 export function sandboxModelNotice(sandboxed: boolean, providerID: string): string | null {
   if (!sandboxed) return null
-  return SANDBOX_PROVIDER_IDS.includes(providerID) ? null : SANDBOX_PROVIDER_NOTICE
+  return SANDBOX_PROVIDER_IDS.includes(providerID) ? null : sandboxProviderNotice()
 }
 
 /**
@@ -21,5 +23,5 @@ export function sandboxModelNotice(sandboxed: boolean, providerID: string): stri
  */
 export function sandboxSendBlocked(available: readonly string[] | null, providerID: string): string | null {
   if (!available) return null
-  return available.includes(providerID) ? null : SANDBOX_PROVIDER_NOTICE
+  return available.includes(providerID) ? null : sandboxProviderNotice()
 }
