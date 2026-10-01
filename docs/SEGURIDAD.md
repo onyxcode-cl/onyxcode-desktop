@@ -654,6 +654,7 @@ proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 - Los preloads secundarios no importan el módulo de idioma (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a `main`).
 - Main usa el idioma solo para la bandeja y el menú de la app (`src/main/i18n.ts`); no cambia reglas de seguridad (CSP, `webRequest`, navegación). Las etiquetas de los roles estándar del menú (Archivo, Edición, Ventana) las pone Electron según la configuración regional del sistema.
 - Los prompts de agente (`resources/opencode/*.md`) y los mensajes de error que construye main (T4c) siguen en español.
+- T4b (Code, Tareas, Rutinas, navegador) solo mueve texto al renderer: `shared/ipc-tasks.ts` no importa i18n (los hashes de los preloads no cambian) y no se toca ninguna regla de sandbox, proxy, `folder-policy` ni CSP. Los textos que viajan al agente o se persisten (prompts, marcadores, `UNDO_POINT_LABEL`) siguen en español para no cambiar contratos.
 
 ## 4. Paquete (`electron-builder.js`)
 

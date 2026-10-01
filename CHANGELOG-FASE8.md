@@ -273,3 +273,20 @@ fuera de los diccionarios; crece por tanda); `tray.i18n.test.ts`; esquema `setti
 Fuera de alcance (T4b/T4c): Code, Tareas, Rutinas, navegador integrado, overlay/píldora/Quick Entry y los errores que construye main (siguen en español, incluso con la interfaz en inglés); los prompts de agente
 (`resources/opencode/*.md`); los borradores legales (`PRIVACY_DRAFT`/`TERMS_DRAFT`, pendientes de revisión legal); los roles estándar del menú de macOS (los traduce Electron según la configuración regional).
 
+
+## F8-B26 — Inglés (beta), segunda tanda: Code, Tareas, Rutinas y navegador integrado
+
+Con la interfaz en inglés (Ajustes › General › Idioma) ahora también están en inglés: Code (sesiones, selector de proyecto, compositor, mensajes, herramientas, permisos, panel de cambios, archivos y terminal), Tareas
+(inicio, lista, conversación, compositor, consulta lateral, panel de progreso y de proyecto, entregables, cambios, permisos, preguntas, carpetas, red, modo auto, grabación de skills, guía de inicio y la lista de Control del Mac,
+incluida `ComputerGrantsList` en Ajustes › Tareas), Rutinas (vista, editor, plantillas, horarios y fechas relativas) y el navegador integrado. Texto visible, `aria-label`/`title`/`placeholder`, plurales (`{one,other}`) y fechas/números
+con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, así el producto no cambia, y `en-US` con inglés).
+- Diccionarios nuevos por área (`es|en/{code,tasks,tasksComputer,routines,browser}.ts`) enchufados con una línea cada uno en `index.ts` (para mezclar sin conflictos con T4c). Prefijos `code.`, `tasks.`, `tasksComputer.`, `routines.`, `browser.`.
+- `FOLDER_MODE_LABEL_ES` sale de `shared/ipc-tasks.ts` y pasa a `folderModeLabel(mode)` (renderer, `features/tasks/impl/folder-mode.ts`, claves `tasksSettings.folderMode.*`): `shared/ipc-tasks.ts` no importa i18n y los preloads no cambian.
+  `SANDBOX_PROVIDER_NOTICE` (shared/sandbox-providers.ts) pasa a la función `sandboxProviderNotice()`; los textos de `routines-terms.ts` viven ahora en el diccionario.
+- Las constantes con texto (`TIER_INFO`, `MODES`, `PERMISSION_MODES`, `MODE_META`, `SCHEDULE_PRESETS`, `ROUTINE_TEMPLATES`, `TASK_STATUS_LABEL`…) son getters o funciones que reciben `t`, de modo que se recalculan al cambiar de idioma sin reiniciar.
+- `ModelSelect` (Ajustes) recalculaba el orden de modelos con el idioma global dentro de un `useMemo`: ahora usa `useLocale()` y lo incluye en las dependencias (`ModelSelect.i18n.test.ts` lo vigila).
+- Con `es` el producto queda igual (snapshots sin cambios) salvo un detalle: «1 archivo con cambios» en singular (antes «1 archivos…»). Con `en`, los comandos del compositor de Code `/revertir` y `/nueva` se escriben `/undo` y `/new`.
+- Se quedan en español a propósito (contratos con el agente o datos persistidos): prompts enviados al modelo (reintentos tras permitir un sitio, «Ya tienes acceso a…», continuación, crear skill, «Sin respuesta»), el marcador de «necesita control total del mac»,
+  los rótulos Usuario/Agente de la exportación a Markdown, la marca de adjuntos, `UNDO_POINT_LABEL` (se guarda en el manifiesto de los puntos de restauración), el prefijo de rama `sesion/` y los textos que construye main
+  (`disabledReason` y avisos del navegador, `chk.reason`, vista previa de Rutinas): son de T4c.
+- Guardias: los archivos de las cuatro áreas entran en `MIGRATED` (`i18n-coverage.test.ts`); E2E `i18n.e2e.ts` ampliado (Tareas, Rutinas, Code y navegador en inglés sin texto en español, y cambio en vivo a Español) con capturas `I18N_SHOTS_DIR/en/` (`tareas-guia`, `tareas-inicio`, `rutinas`, `rutinas-editor`, `code`, `navegador`; claro/oscuro, 820 y 1280 px).
