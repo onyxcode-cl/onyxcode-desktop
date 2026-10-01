@@ -481,6 +481,11 @@ export interface TasksTaskActivity {
   title: string
   state: TasksTaskActivityState
   since: number
+  /**
+   * Momento del último avance observado, solo si la tarea lleva `stallWarnMinutes` o más en curso sin
+   * ninguno (ni texto nuevo ni herramientas): aviso NO destructivo, no detiene nada.
+   */
+  quietSince?: number
 }
 
 /** Instantánea del monitor de main: tareas activas y servidores vivos. */
@@ -506,6 +511,8 @@ export interface TasksPrefs {
   autoArchiveDays: number
   /** Minutos sin tareas para detener un servidor (0 = nunca). */
   idleStopMinutes: number
+  /** Minutos sin avance de una tarea en curso para avisar «Sin actividad desde hace N min» (0 = no avisar). Solo avisa. */
+  stallWarnMinutes: number
   /** Máximo de servidores Tareas vivos a la vez. */
   maxServers: number
   notify: TasksNotifyPrefs
@@ -514,6 +521,7 @@ export interface TasksPrefs {
 export const DEFAULT_TASKS_PREFS: TasksPrefs = {
   autoArchiveDays: 0,
   idleStopMinutes: 15,
+  stallWarnMinutes: 5,
   maxServers: 4,
   notify: { done: true, approval: true, question: true, error: true }
 }
@@ -908,7 +916,13 @@ export interface TasksInvokeContract {
   'tasks:tasks:forget': { req: { sessionId: string }; res: void }
   'tasks:prefs:get': { req: void; res: TasksPrefs }
   'tasks:prefs:set': {
-    req: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<TasksNotifyPrefs> }
+    req: {
+      autoArchiveDays?: number
+      idleStopMinutes?: number
+      stallWarnMinutes?: number
+      maxServers?: number
+      notify?: Partial<TasksNotifyPrefs>
+    }
     res: TasksPrefs
   }
   'tasks:storage:report': { req: void; res: TasksStorageReport }

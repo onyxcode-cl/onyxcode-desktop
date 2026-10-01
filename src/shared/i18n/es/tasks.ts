@@ -424,6 +424,11 @@ export const tasks = {
   'tasks.proj.notesPh': 'El agente guarda aquí notas útiles entre tareas (preferencias, decisiones, datos recurrentes)…',
   'tasks.proj.notesHint':
     'El agente de tareas lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada nueva tarea de esta carpeta.',
+  'tasks.stall.title': {
+    one: 'Sin actividad desde hace {count} min',
+    other: 'Sin actividad desde hace {count} min'
+  },
+  'tasks.stall.body': 'La tarea sigue en curso: puede estar ejecutando algo largo. Puedes esperar o detenerla tú; no se detiene sola.',
   'tasks.proj.saved': 'Guardado',
   'tasks.proj.save': 'Guardar'
 } as const

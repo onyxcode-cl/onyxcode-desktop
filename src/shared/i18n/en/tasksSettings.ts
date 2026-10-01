@@ -85,6 +85,10 @@ export const tasksSettings = {
   'tasksSettings.servers.maxDesc': 'Between 1 and 12. When exceeded, the least recently used idle server is stopped.',
   'tasksSettings.servers.idle': 'Stop after minutes of inactivity',
   'tasksSettings.servers.idleDesc': '0 = never stop. Maximum 1440 (24 h).',
+  'tasksSettings.servers.stall': 'Warn when a task stalls',
+  'tasksSettings.servers.stallDesc':
+    'Minutes with no new text or tools before showing “No activity”. It only warns and never stops anything. 0 = don’t warn.',
+  'tasksSettings.servers.stallAria': 'Minutes without activity before warning',
   'tasksSettings.servers.idleAria': 'Minutes of inactivity before stopping a server',
   'tasksSettings.servers.running': 'Running servers',
   'tasksSettings.servers.none': 'No servers running.',

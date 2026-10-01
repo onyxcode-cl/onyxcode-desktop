@@ -17,7 +17,7 @@
  *   en cada ejecución (siempre en una tarea nueva, para que ninguna aprobación se arrastre).
  * - Notificación nativa al terminar.
  */
-import { t } from '@shared/i18n'
+import { getLang, t } from '@shared/i18n'
 import { app, Notification, powerMonitor } from 'electron'
 import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
@@ -637,7 +637,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
           : null,
         memory,
         folders: folderSet ? [...folderSet.linked, ...folderSet.trusted].map((f) => ({ path: f.path, mode: f.mode })) : [],
-        unattended: true
+        unattended: true,
+        lang: getLang()
       })
       const res = await client.session.promptAsync({
         sessionID,

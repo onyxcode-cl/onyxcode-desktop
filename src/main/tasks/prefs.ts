@@ -10,6 +10,7 @@ import { DEFAULT_TASKS_PREFS, type TasksNotifyPrefs, type TasksPrefs } from '@sh
 
 export const AUTO_ARCHIVE_MAX_DAYS = 365
 export const IDLE_STOP_MAX_MINUTES = 1440
+export const STALL_WARN_MAX_MINUTES = 240
 export const MAX_SERVERS_MIN = 1
 export const MAX_SERVERS_MAX = 12
 
@@ -35,6 +36,7 @@ export function normalizeTasksPrefs(input: unknown, base: TasksPrefs = DEFAULT_T
   return {
     autoArchiveDays: clampInt(o.autoArchiveDays, 0, AUTO_ARCHIVE_MAX_DAYS, base.autoArchiveDays),
     idleStopMinutes: clampInt(o.idleStopMinutes, 0, IDLE_STOP_MAX_MINUTES, base.idleStopMinutes),
+    stallWarnMinutes: clampInt(o.stallWarnMinutes, 0, STALL_WARN_MAX_MINUTES, base.stallWarnMinutes),
     maxServers: clampInt(o.maxServers, MAX_SERVERS_MIN, MAX_SERVERS_MAX, base.maxServers),
     notify
   }
@@ -82,12 +84,19 @@ export class TasksPrefsStore {
     return { ...p, notify: { ...p.notify } }
   }
 
-  set(patch: { autoArchiveDays?: number; idleStopMinutes?: number; maxServers?: number; notify?: Partial<TasksNotifyPrefs> }): TasksPrefs {
+  set(patch: {
+    autoArchiveDays?: number
+    idleStopMinutes?: number
+    stallWarnMinutes?: number
+    maxServers?: number
+    notify?: Partial<TasksNotifyPrefs>
+  }): TasksPrefs {
     const cur = this.load()
     const next = normalizeTasksPrefs(
       {
         autoArchiveDays: patch.autoArchiveDays ?? cur.autoArchiveDays,
         idleStopMinutes: patch.idleStopMinutes ?? cur.idleStopMinutes,
+        stallWarnMinutes: patch.stallWarnMinutes ?? cur.stallWarnMinutes,
         maxServers: patch.maxServers ?? cur.maxServers,
         notify: { ...cur.notify, ...(patch.notify ?? {}) }
       },

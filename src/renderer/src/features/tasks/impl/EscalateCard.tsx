@@ -12,7 +12,8 @@
 import { useState } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { Button } from '../../../components/Button'
-import { useT } from '../../../lib/i18n'
+import type { Lang } from '@shared/i18n'
+import { getLang, useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { sendToTask, setAccessMode } from './actions'
@@ -24,8 +25,19 @@ export { lastAssistantText }
 
 // ───────────────────────────── Detección y prompt (funciones puras) ─────────────────────────────
 
-// i18n-ignore: contrato con el agente (sus prompts están en español), no es texto de interfaz
-const MARKER = 'necesita control total del mac'
+/**
+ * Marcador neutro (independiente del idioma) que el prompt del agente le pide escribir al terminar el turno
+ * cuando necesita Control total. Es el contrato preferido; las frases de abajo son el respaldo.
+ */
+export const ESCALATE_MARKER = '[[ONYX:NEEDS_FULL_CONTROL]]'
+const NEUTRAL_MARKER = ESCALATE_MARKER.toLowerCase()
+// Contrato con el agente (sus prompts están en español/inglés), no es texto de interfaz.
+const PHRASES = [
+  'necesita control total del mac', // i18n-ignore: contrato con el agente
+  'needs full mac control', // i18n-ignore: contrato con el agente
+  'needs full control of the mac', // i18n-ignore: contrato con el agente
+  'needs full control of your mac' // i18n-ignore: contrato con el agente
+]
 const MAX_SUMMARY_CHARS = 1500
 
 /** Último mensaje del asistente de la tarea (undefined si no hay). */
@@ -46,19 +58,34 @@ function foldWithMap(text: string): { folded: string; map: number[] } {
   return { folded, map }
 }
 
-/** ¿El texto pide Control total? (busca «necesita control total del mac», sin tildes ni mayúsculas). */
+/** ¿El texto pide Control total? Marcador neutro o frase en español/inglés (sin tildes ni mayúsculas). */
 export function needsFullAccess(text: string): boolean {
-  return foldWithMap(text).folded.includes(MARKER)
+  const { folded } = foldWithMap(text)
+  return folded.includes(NEUTRAL_MARKER) || PHRASES.some((p) => folded.includes(p))
 }
 
-/** Motivo que sigue a «**Necesita Control total del Mac**:» (misma línea). '' si no hay. */
+/** Posición (en el texto plegado) y longitud de la última coincidencia de alguna de las frases. */
+function lastMatch(folded: string, needles: string[]): { at: number; len: number } | null {
+  let best: { at: number; len: number } | null = null
+  for (const n of needles) {
+    const at = folded.lastIndexOf(n)
+    if (at >= 0 && (!best || at > best.at)) best = { at, len: n.length }
+  }
+  return best
+}
+
+/**
+ * Motivo que sigue a «**Necesita Control total del Mac**:» / «**Needs Full Mac control**:» (misma línea).
+ * Con solo el marcador neutro, lo que lo acompaña en su línea. '' si no hay.
+ */
 export function escalationReason(text: string): string {
   const { folded, map } = foldWithMap(text)
-  const at = folded.lastIndexOf(MARKER)
-  if (at < 0) return ''
-  const end = at + MARKER.length
+  const m = lastMatch(folded, PHRASES) ?? lastMatch(folded, [NEUTRAL_MARKER])
+  if (!m) return ''
+  const at = m.at
+  const end = at + m.len
   const from = end < map.length ? map[end] : text.length
-  const rest = text.slice(from).split('\n')[0]
+  const rest = text.slice(from).split('\n')[0].split(ESCALATE_MARKER).join('')
   return rest
     .replace(/^[\s*_:：-]+/, '')
     .replace(/[\s*_]+$/, '')
@@ -66,13 +93,23 @@ export function escalationReason(text: string): string {
 }
 
 /** Prompt de la tarea nueva en Control total: encargo original + resumen de lo hecho en sandbox (≤1500 caracteres). */
-export function buildContinuationPrompt(entries: MessageEntry[]): string {
+export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = getLang()): string {
   const original = firstUserPrompt(entries)
   let summary = lastAssistantText(entries)
   // Se conserva el final: ahí están las conclusiones y el motivo de la escalada.
   if (summary.length > MAX_SUMMARY_CHARS) summary = `…${summary.slice(-(MAX_SUMMARY_CHARS - 1))}`
+  if (lang === 'en') {
+    return (
+      // i18n-ignore: prompt al agente (en el idioma de la interfaz)
+      'Continue this task, which I started in sandbox mode, in Full Mac control.\n\n' +
+      // i18n-ignore: prompt al agente
+      `Original request:\n${original}\n\n` +
+      // i18n-ignore: prompt al agente
+      `What you did or concluded in the sandbox:\n${summary}`
+    )
+  }
   return (
-    // i18n-ignore: prompt al agente (los prompts del agente siguen en español)
+    // i18n-ignore: prompt al agente (en el idioma de la interfaz)
     'Continúa en Control total del Mac esta tarea que empecé en modo sandbox.\n\n' +
     // i18n-ignore: prompt al agente
     `Encargo original:\n${original}\n\n` +
