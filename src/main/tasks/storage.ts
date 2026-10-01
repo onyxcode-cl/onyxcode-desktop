@@ -4,6 +4,7 @@
  * Control total, y cómo limpiarlos. Mide con `/usr/bin/du -sk` (execFile, sin shell). Sin
  * dependencias de Electron: las rutas y `sandboxKey` los inyecta quien lo llama.
  */
+import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
@@ -130,7 +131,7 @@ export async function storageClean(
     } catch {
       k = null
     }
-    if (k === key) throw new Error('No se puede limpiar: el servidor de esa carpeta está en marcha. Detenlo primero.')
+    if (k === key) throw new Error(t('merr.storage.serverRunning'))
   }
   const root = resolve(sandboxRoot(env))
   const dir = resolve(root, key)

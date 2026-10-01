@@ -7,6 +7,7 @@
  *  - `isAllowed()` lo consultan Quick Entry, el atajo global y la bandeja.
  *  - Con la cuenta apagada (`config.enabled === false`) todo es no-op y `isAllowed()` es true.
  */
+import { t } from '@shared/i18n'
 import {
   accountReducer,
   decideAccess,
@@ -53,14 +54,16 @@ export class AccountUserError extends Error {}
 export function friendlyAccountError(err: unknown, fallback: string): AccountUserError {
   if (err instanceof AccountUserError) return err
   if (err instanceof AccountApiError) {
-    if (err.kind === 'unreachable')
-      return new AccountUserError('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.')
+    if (err.kind === 'unreachable') return new AccountUserError(t('merr.acct.unreachable'))
     if (err.status === 429) {
-      const wait = err.retryAfterSec && err.retryAfterSec > 0 ? ` Espera ${Math.ceil(err.retryAfterSec / 60)} min.` : ''
-      return new AccountUserError(`Demasiados intentos.${wait} Prueba de nuevo más tarde.`)
+      return new AccountUserError(
+        err.retryAfterSec && err.retryAfterSec > 0
+          ? t('merr.acct.rateLimitedWait', { min: Math.ceil(err.retryAfterSec / 60) })
+          : t('merr.acct.rateLimited')
+      )
     }
     if (err.status === 401 || err.status === 400) return new AccountUserError(fallback)
-    if (err.kind === 'http') return new AccountUserError('El servidor no está disponible ahora. Inténtalo de nuevo en unos minutos.')
+    if (err.kind === 'http') return new AccountUserError(t('merr.acct.serverDown'))
   }
   return new AccountUserError(fallback)
 }
@@ -183,22 +186,22 @@ export class AccountService {
 
   async emailStart(emailRaw: string): Promise<void> {
     this.requireEnabled()
-    if (!isValidEmail(emailRaw)) throw new AccountUserError('Escribe un correo válido.')
+    if (!isValidEmail(emailRaw)) throw new AccountUserError(t('merr.acct.emailInvalid'))
     try {
       await this.d.client.emailStart(normalizeEmail(emailRaw))
     } catch (err) {
-      throw friendlyAccountError(err, 'No se pudo enviar el código. Revisa el correo e inténtalo de nuevo.')
+      throw friendlyAccountError(err, t('merr.acct.sendCodeFailed'))
     }
   }
 
   async emailVerify(emailRaw: string, code: string): Promise<AccountState> {
     this.requireEnabled()
-    if (!isValidEmail(emailRaw)) throw new AccountUserError('Escribe un correo válido.')
-    if (!isValidCode(code)) throw new AccountUserError('El código tiene 6 dígitos.')
+    if (!isValidEmail(emailRaw)) throw new AccountUserError(t('merr.acct.emailInvalid'))
+    if (!isValidCode(code)) throw new AccountUserError(t('merr.acct.codeDigits'))
     try {
       this.finishSignIn(await this.d.client.emailVerify(normalizeEmail(emailRaw), code))
     } catch (err) {
-      throw friendlyAccountError(err, 'El código es incorrecto o ya venció. Pide uno nuevo.')
+      throw friendlyAccountError(err, t('merr.acct.codeWrong'))
     }
     return this.state
   }
@@ -219,23 +222,22 @@ export class AccountService {
       if (flow !== this.flow) return this.state
       const { authUrl } = await this.d.client.googleStart({ redirectUri: lb.redirectUri, state, challenge: pkce.challenge })
       if (flow !== this.flow) return this.state // «Cancelar» durante la petición: no se abre el navegador
-      if (!isSafeBrowserUrl(authUrl, this.d.config.allowLocalHttp))
-        throw new AccountUserError('El servidor devolvió una dirección no válida.')
+      if (!isSafeBrowserUrl(authUrl, this.d.config.allowLocalHttp)) throw new AccountUserError(t('merr.acct.badAuthUrl'))
       await this.d.openExternal(authUrl)
       const r = await lb.result
       if (flow !== this.flow) return this.state // reemplazado por otro intento
       if (!r.ok) {
         if (r.reason === 'cancelled') return this.revertSignIn()
-        if (r.reason === 'timeout') throw new AccountUserError('Se agotó el tiempo para iniciar sesión. Inténtalo de nuevo.')
-        if (r.reason === 'denied') throw new AccountUserError('No se completó el inicio de sesión con Google.')
-        throw new AccountUserError('No se pudo completar el inicio de sesión. Inténtalo de nuevo.')
+        if (r.reason === 'timeout') throw new AccountUserError(t('merr.acct.loginTimeout'))
+        if (r.reason === 'denied') throw new AccountUserError(t('merr.acct.googleDenied'))
+        throw new AccountUserError(t('merr.acct.loginFailed'))
       }
       this.finishSignIn(await this.d.client.exchange({ code: r.code, verifier: pkce.verifier, redirectUri: lb.redirectUri }))
       return this.state
     } catch (err) {
       if (flow !== this.flow) return this.state
       this.revertSignIn()
-      throw friendlyAccountError(err, 'No se pudo iniciar sesión con Google. Inténtalo de nuevo.')
+      throw friendlyAccountError(err, t('merr.acct.googleFailed'))
     } finally {
       lb?.cancel()
       if (this.loopback === lb) this.loopback = null
@@ -277,12 +279,12 @@ export class AccountService {
   async deleteAccount(): Promise<AccountState> {
     this.requireEnabled()
     const held = this.held
-    if (!held) throw new AccountUserError('No hay una sesión iniciada.')
+    if (!held) throw new AccountUserError(t('merr.acct.noSession'))
     try {
       await this.d.client.deleteMe(held.session.token)
     } catch (err) {
       const gone = err instanceof AccountApiError && err.kind === 'http' && (err.status === 401 || err.status === 404 || err.status === 410)
-      if (!gone) throw friendlyAccountError(err, 'No se pudo borrar la cuenta. Inténtalo de nuevo.')
+      if (!gone) throw friendlyAccountError(err, t('merr.acct.deleteFailed'))
     }
     // Solo se borra la sesión de cuenta: las claves de IA y las conversaciones no se tocan.
     this.held = null
@@ -295,18 +297,18 @@ export class AccountService {
   async exportData(): Promise<{ saved: boolean }> {
     this.requireEnabled()
     const held = this.held
-    if (!held) throw new AccountUserError('No hay una sesión iniciada.')
+    if (!held) throw new AccountUserError(t('merr.acct.noSession'))
     let data: unknown
     try {
       data = await this.d.client.exportMe(held.session.token)
     } catch (err) {
-      throw friendlyAccountError(err, 'No se pudieron obtener tus datos. Inténtalo de nuevo.')
+      throw friendlyAccountError(err, t('merr.acct.dataFailed'))
     }
     const json = JSON.stringify(data, null, 2)
     return { saved: await this.d.saveExport(json, 'mis-datos.json') }
   }
 
   private requireEnabled(): void {
-    if (!this.d.config.enabled) throw new AccountUserError('Las cuentas no están activadas en esta versión.')
+    if (!this.d.config.enabled) throw new AccountUserError(t('merr.acct.disabled'))
   }
 }

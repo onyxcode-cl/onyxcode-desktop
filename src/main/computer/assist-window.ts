@@ -15,7 +15,7 @@
  */
 import { BrowserWindow, screen } from 'electron'
 import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-tasks'
-import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
+import { extrasWindows, isLangStale, loadLocalizedPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 
 const TEACH_W = 340
@@ -28,7 +28,7 @@ const RECORD_H = 56
 const RECORD_TOP = 96
 
 function loadAssistPage(win: BrowserWindow, hash: '#teach' | '#record'): Promise<void> {
-  return loadRendererPage(win, `overlay/assist.html${hash}`)
+  return loadLocalizedPage(win, `overlay/assist.html${hash}`)
 }
 
 export class AssistWindow {
@@ -88,8 +88,16 @@ export class AssistWindow {
 
   // ───────────────────────────── ventanas ─────────────────────────────
 
+  /** Ventana vigente; si se cargó con otro idioma y no se ve, se descarta para recrearla. */
+  private reusable(win: BrowserWindow | null): win is BrowserWindow {
+    if (!win || win.isDestroyed()) return false
+    if (win.isVisible() || !isLangStale(win)) return true
+    win.destroy()
+    return false
+  }
+
   private ensureTeach(): BrowserWindow {
-    if (this.teachWin && !this.teachWin.isDestroyed()) return this.teachWin
+    if (this.reusable(this.teachWin)) return this.teachWin!
     const win = this.create(TEACH_W, TEACH_H)
     win.on('closed', () => {
       if (this.teachWin === win) this.teachWin = null
@@ -100,7 +108,7 @@ export class AssistWindow {
   }
 
   private ensureRecord(): BrowserWindow {
-    if (this.recordWin && !this.recordWin.isDestroyed()) return this.recordWin
+    if (this.reusable(this.recordWin)) return this.recordWin!
     const win = this.create(RECORD_W, RECORD_H)
     const wa = screen.getPrimaryDisplay().workArea
     win.setBounds({

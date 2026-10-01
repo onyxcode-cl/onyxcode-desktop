@@ -9,6 +9,7 @@
  * Las comparaciones no distinguen mayúsculas (APFS/HFS+ lo son por defecto): puede rechazar de
  * más en un volumen sensible a mayúsculas, nunca de menos.
  */
+import { t } from '@shared/i18n'
 import { resolve, sep } from 'node:path'
 import { APP_NAME } from '@shared/brand'
 import { isInside } from '../util/paths'
@@ -91,42 +92,42 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
 
   // Raíz o carpeta personal completa
   if (f === '/' || f === home) {
-    return 'No se puede usar la raíz del disco ni tu carpeta personal completa. Elige una carpeta concreta, por ejemplo una dentro de Documentos.'
+    return t('merr.folder.rootOrHome')
   }
   if (home.startsWith(f + sep)) {
-    return 'Esa carpeta contiene tu carpeta personal. Elige una más específica, por ejemplo una dentro de Documentos.'
+    return t('merr.folder.containsHome')
   }
 
   // Papelera (la de tu usuario y la de cada volumen)
   const segments = f.split(sep)
   if (segments.includes('.trash') || segments.includes('.trashes')) {
-    return 'La Papelera no se puede usar como carpeta de trabajo. Restaura primero los archivos que necesites y elige esa carpeta.'
+    return t('merr.folder.trash')
   }
 
   // Estado interno de la app
   const userData = key(ctx.userData)
   if (isInside(f, userData)) {
-    return `Esa carpeta guarda el estado interno de ${APP_NAME} (tareas, credenciales y ajustes). Elige otra carpeta.`
+    return t('merr.folder.appState', { app: APP_NAME })
   }
 
   // ~/Library: iCloud Drive con su propio mensaje
   const icloud = key(`${ctx.home}/Library/Mobile Documents`)
   if (isInside(f, icloud)) {
-    return 'iCloud Drive está en una ubicación protegida de macOS (~/Library/Mobile Documents) y las tareas no pueden trabajar ahí. Copia los archivos a una carpeta local, por ejemplo dentro de Documentos, y elige esa carpeta.'
+    return t('merr.folder.icloud')
   }
   if (isInside(f, key(`${ctx.home}/Library`))) {
-    return 'Esa es una ubicación protegida de macOS (Library), donde las apps guardan sus datos, y las tareas no pueden usarla. Prueba con una carpeta dentro de Documentos.'
+    return t('merr.folder.library')
   }
 
   // Carpetas del sistema
   const system = SYSTEM_FOLDERS.find((s) => isInside(f, s.toLowerCase()))
   if (system) {
-    return `«${system}» es una carpeta del sistema y no se puede usar. Elige una carpeta dentro de tu carpeta personal.`
+    return t('merr.folder.system', { system })
   }
 
   // Volúmenes: la carpeta /Volumes en sí, y volúmenes de red
   if (f === '/volumes') {
-    return 'Elige una carpeta dentro del volumen, no la lista de volúmenes.'
+    return t('merr.folder.volumes')
   }
   let mount: MountInfo | null = null
   for (const m of ctx.mounts) {
@@ -135,13 +136,13 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
     if (!mount || mp.length > key(mount.mountPoint).length) mount = m
   }
   if (mount && NETWORK_FS_TYPES.includes(mount.fsType)) {
-    return `Esa carpeta está en un volumen de red (${mount.fsType}, ${mount.mountPoint}). Las tareas no pueden trabajar de forma segura sobre volúmenes de red: copia los archivos a una carpeta local y elige esa carpeta.`
+    return t('merr.folder.network', { fsType: mount.fsType, mountPoint: mount.mountPoint })
   }
 
   // Credenciales y datos privados
   for (const denied of defaultDeniedReadPaths(ctx.home)) {
     if (isInside(f, key(denied))) {
-      return `Esa carpeta guarda credenciales o datos privados (${tilde(resolve(denied), ctx.home)}) y las tareas no pueden darle acceso al agente. Elige otra carpeta.`
+      return t('merr.folder.secrets', { path: tilde(resolve(denied), ctx.home) })
     }
   }
 
@@ -150,8 +151,8 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
     const roots = ctx.allowedRoots.map(key)
     if (!roots.some((r) => isInside(f, r))) {
       return roots.length
-        ? `Tu organización solo permite carpetas dentro de: ${ctx.allowedRoots.join(', ')}. «${tilde(shown, ctx.home)}» queda fuera.`
-        : 'Tu organización no permite usar carpetas en Tareas.'
+        ? t('merr.folder.orgRoots', { roots: ctx.allowedRoots.join(', '), folder: tilde(shown, ctx.home) })
+        : t('merr.folder.orgNone')
     }
   }
   return null

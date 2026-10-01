@@ -24,6 +24,7 @@
  * hay que conceder Accesibilidad y Grabación de pantalla. Los `opencode serve` (y su bash) NO
  * forman parte de esa cadena: se lanzan con `onyxcode-disclaim`.
  */
+import { t } from '@shared/i18n'
 import { app, globalShortcut, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
 import type { Readable } from 'node:stream'
@@ -704,12 +705,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const script = this.mcpScriptPath()
     const available = st.helperOk && !!script
     let reason: string | undefined
-    if (process.platform !== 'darwin') reason = 'El control del computador solo está disponible en macOS.'
-    else if (!st.helperOk) reason = 'Falta el helper nativo (ejecuta `npm run build:helper`).'
-    else if (!script) reason = 'Falta computer-mcp.js (ejecuta `npm run build`).'
-    else if (!st.accessibility && !st.screenRecording) reason = 'Faltan los permisos de Accesibilidad y Grabación de pantalla.'
-    else if (!st.accessibility) reason = 'Falta el permiso de Accesibilidad (mover el ratón y teclear).'
-    else if (!st.screenRecording) reason = 'Falta el permiso de Grabación de pantalla (capturas).'
+    if (process.platform !== 'darwin') reason = t('merr.computer.macOnly')
+    else if (!st.helperOk) reason = t('merr.computer.noHelper')
+    else if (!script) reason = t('merr.computer.noMcp')
+    else if (!st.accessibility && !st.screenRecording) reason = t('merr.computer.noBoth')
+    else if (!st.accessibility) reason = t('merr.computer.noAccessibility')
+    else if (!st.screenRecording) reason = t('merr.computer.noScreen')
     return { available, accessibility: st.accessibility, screenRecording: st.screenRecording, reason }
   }
 
@@ -846,12 +847,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
               if (o.kind === 'takeover') kind = 'takeover'
             } catch {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'JSON inválido' }))
               return
             }
             // Sin apps solo vale una tarjeta de plan (plan sin apps: terminal, archivos o web).
             if (!apps.length && !plan?.length) {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'apps vacío y sin plan' }))
               return
             }
@@ -879,12 +882,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
               o = JSON.parse(body) as Record<string, unknown>
             } catch {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'JSON inválido' }))
               return
             }
             const text = typeof o.text === 'string' ? o.text.slice(0, 400) : ''
             if (!text) {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'text vacío' }))
               return
             }
@@ -984,7 +989,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   /** Entorno propio del MCP (se suma a `minimalEnv` en el host). */
   private async mcpEnv(): Promise<Record<string, string>> {
     const helper = this.helperPath()
-    if (!helper) throw new Error('Falta el helper nativo cu-helper')
+    if (!helper) throw new Error(t('merr.computer.noCuHelper'))
     const eventsUrl = await this.ensureEventsServer()
     const environment: Record<string, string> = {
       CU_HELPER: helper,

@@ -2,6 +2,7 @@
  * Detección y validación del binario de OpenCode: `execFile` SIN shell, entorno mínimo, cwd neutro y
  * timeout corto. Nunca instala nada.
  */
+import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
 import { accessSync, constants, realpathSync, statSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
@@ -59,25 +60,25 @@ export type BinaryCheck = { ok: true; path: string; output: string; version: str
  * `--version` termine bien e imprima algo.
  */
 export async function validateOpencodeBin(path: string, timeoutMs = VERSION_TIMEOUT_MS): Promise<BinaryCheck> {
-  if (typeof path !== 'string' || !path || path.includes('\0') || !isAbsolute(path)) return { ok: false, error: 'La ruta no es válida.' }
+  if (typeof path !== 'string' || !path || path.includes('\0') || !isAbsolute(path)) return { ok: false, error: t('merr.bin.invalidPath') }
   let real: string
   try {
     real = realpathSync(path)
-    if (!statSync(real).isFile()) return { ok: false, error: 'La ruta no es un archivo.' }
+    if (!statSync(real).isFile()) return { ok: false, error: t('merr.bin.notFile') }
   } catch {
-    return { ok: false, error: 'El archivo no existe.' }
+    return { ok: false, error: t('merr.bin.notExist') }
   }
   try {
     accessSync(real, constants.X_OK)
   } catch {
-    return { ok: false, error: 'El archivo no es ejecutable.' }
+    return { ok: false, error: t('merr.bin.notExecutable') }
   }
   try {
     const output = await runVersion(real, timeoutMs)
-    if (!output) return { ok: false, error: 'El archivo no imprime una versión con `--version`; no parece OpenCode.' }
+    if (!output) return { ok: false, error: t('merr.bin.noVersion') }
     return { ok: true, path, output, version: parseVersion(output) }
   } catch {
-    return { ok: false, error: 'No se pudo ejecutar `--version`; no parece OpenCode.' }
+    return { ok: false, error: t('merr.bin.versionFailed') }
   }
 }
 

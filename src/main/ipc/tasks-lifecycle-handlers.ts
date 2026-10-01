@@ -6,6 +6,7 @@
  * este archivo le inyecta lo que depende de Electron (notificaciones, ventana, mantener despierto,
  * parada de servidores, revocar planes al archivar) y reenvía su actividad al renderer.
  */
+import { t, type MsgKey } from '@shared/i18n'
 import { app, Notification } from 'electron'
 import { realpathSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
@@ -33,12 +34,12 @@ function realOrResolved(p: string): string {
   }
 }
 
-const NOTIFY_TEXT: Record<MonitorNotifyEvent['kind'], string> = {
-  done: 'Tarea terminada',
-  approval: 'Una tarea espera tu aprobación',
-  question: 'Una tarea tiene una pregunta',
-  error: 'Una tarea terminó con un error'
-}
+const NOTIFY_KEY = {
+  done: 'merr.notif.taskDone',
+  approval: 'merr.notif.taskApproval',
+  question: 'merr.notif.taskQuestion',
+  error: 'merr.notif.taskError'
+} as const satisfies Record<MonitorNotifyEvent['kind'], MsgKey>
 
 export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, send, getWindow, tasks: tasksManager, computer, keepAwake } = ctx
@@ -59,9 +60,9 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   const notify = (ev: MonitorNotifyEvent): void => {
     const extras = extrasPrefs.get()
     if (!extras.notificationsEnabled || !Notification.isSupported()) return
-    const label = ev.title.trim() || 'Tarea sin título'
+    const label = ev.title.trim() || t('merr.notif.untitledTask')
     const n = new Notification({
-      title: NOTIFY_TEXT[ev.kind],
+      title: t(NOTIFY_KEY[ev.kind]),
       body: `${label} · ${basename(ev.folder)}`,
       silent: !extras.soundEnabled
     })

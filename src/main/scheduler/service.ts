@@ -17,6 +17,7 @@
  *   en cada ejecución (siempre en una tarea nueva, para que ninguna aprobación se arrastre).
  * - Notificación nativa al terminar.
  */
+import { t } from '@shared/i18n'
 import { app, Notification, powerMonitor } from 'electron'
 import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
@@ -103,7 +104,7 @@ const AGENT_BY_MODE: Record<RoutineMode, string> = {
 }
 
 function errMsg(err: unknown): string {
-  if (!err) return 'Error desconocido'
+  if (!err) return t('merr.routine.unknownError')
   if (typeof err === 'string') return err
   if (err instanceof Error) return err.message
   if (typeof err === 'object') {
@@ -131,14 +132,13 @@ function sanitizeAllow(raw: RoutineAllowRule[] | undefined): RoutineAllowRule[] 
     const permission = typeof r?.permission === 'string' ? r.permission.trim() : ''
     const pattern = typeof r?.pattern === 'string' ? r.pattern.trim() : ''
     if (!permission && !pattern) continue
-    if (!PERM_RE.test(permission)) throw new Error(`Permiso inválido en «Permitir sin preguntar»: ${permission || '(vacío)'}`)
-    if (permission === '*')
-      throw new Error('«Permitir sin preguntar» no admite «*» como permiso: indica el permiso concreto (p. ej. bash).')
-    if (!pattern) throw new Error(`Falta el patrón de la regla «${permission}».`)
-    if (pattern.length > 2000) throw new Error('Un patrón de «Permitir sin preguntar» es demasiado largo.')
+    if (!PERM_RE.test(permission)) throw new Error(t('merr.routine.permInvalid', { permission: permission || t('merr.routine.empty') }))
+    if (permission === '*') throw new Error(t('merr.routine.noWildcard'))
+    if (!pattern) throw new Error(t('merr.routine.patternMissing', { permission }))
+    if (pattern.length > 2000) throw new Error(t('merr.routine.patternLong'))
     if (!out.some((x) => x.permission === permission && x.pattern === pattern)) out.push({ permission, pattern })
   }
-  if (out.length > MAX_ALLOW_RULES) throw new Error(`Máximo ${MAX_ALLOW_RULES} reglas en «Permitir sin preguntar».`)
+  if (out.length > MAX_ALLOW_RULES) throw new Error(t('merr.routine.maxRules', { max: MAX_ALLOW_RULES }))
   return out
 }
 
@@ -148,10 +148,10 @@ function sanitizeHosts(raw: string[] | undefined): string[] {
   for (const h of raw ?? []) {
     const host = typeof h === 'string' ? h.trim().toLowerCase() : ''
     if (!host) continue
-    if (!HOST_RE.test(host)) throw new Error(`Sitio inválido: ${host}`)
+    if (!HOST_RE.test(host)) throw new Error(t('merr.routine.hostInvalid', { host }))
     if (!out.includes(host)) out.push(host)
   }
-  if (out.length > MAX_ALLOW_HOSTS) throw new Error(`Máximo ${MAX_ALLOW_HOSTS} sitios permitidos.`)
+  if (out.length > MAX_ALLOW_HOSTS) throw new Error(t('merr.routine.maxHosts', { max: MAX_ALLOW_HOSTS }))
   return out
 }
 
@@ -167,7 +167,7 @@ function logEntry(list: Array<{ permission: string; patterns: string[] }>, permi
 /** Texto corto de una lista de permisos para la notificación ("bash (rm x), edit (…)"). */
 function describeEntries(list: Array<{ permission: string; patterns: string[] }>, max = 3): string {
   const shown = list.slice(0, max).map((e) => (e.patterns[0] ? `${e.permission} (${truncate(e.patterns[0], 40)})` : e.permission))
-  return shown.join(', ') + (list.length > max ? `, +${list.length - max} más` : '')
+  return shown.join(', ') + (list.length > max ? `, ${t('merr.routine.moreCount', { count: list.length - max })}` : '')
 }
 
 export class SchedulerService extends EventEmitter<SchedulerEvents> {
@@ -208,7 +208,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         for (const h of data.history) {
           if (h.status === 'running') {
             h.status = 'error'
-            h.error = 'Interrumpida (la app se cerró durante la ejecución)'
+            h.error = t('merr.routine.interrupted')
             h.waiting = false
             h.finishedAt = h.finishedAt ?? h.startedAt
           }
@@ -271,27 +271,27 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
   get(id: string): ScheduledRoutine {
     const r = this.load().routines.find((x) => x.id === id)
-    if (!r) throw new Error('Rutina no encontrada')
+    if (!r) throw new Error(t('merr.routine.notFound'))
     return r
   }
 
   saveRoutine(input: RoutineInput): ScheduledRoutine {
     if (loadManagedPolicy()?.disableRoutines) {
-      throw new Error('Las rutinas están desactivadas por la política de tu organización.')
+      throw new Error(t('merr.routine.orgDisabled'))
     }
     const name = input.name?.trim()
     const prompt = input.prompt?.trim()
-    if (!name) throw new Error('La rutina necesita un nombre')
-    if (!prompt) throw new Error('La rutina necesita una instrucción (prompt)')
-    if (!['chat', 'tasks', 'code'].includes(input.mode)) throw new Error('Modo inválido')
-    if (!input.model?.providerID || !input.model?.modelID) throw new Error('Selecciona un modelo')
+    if (!name) throw new Error(t('merr.routine.needsName'))
+    if (!prompt) throw new Error(t('merr.routine.needsPrompt'))
+    if (!['chat', 'tasks', 'code'].includes(input.mode)) throw new Error(t('merr.routine.badMode'))
+    if (!input.model?.providerID || !input.model?.modelID) throw new Error(t('merr.routine.pickModel'))
     validateSchedule(input.schedule)
     const folder = input.folder?.trim() || null
     if (input.mode !== 'chat') {
-      if (!folder) throw new Error('Los modos Tareas y Code requieren una carpeta')
-      if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(`La carpeta no existe: ${folder}`)
+      if (!folder) throw new Error(t('merr.routine.needsFolder'))
+      if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(t('merr.task.noFolder', { folder }))
       if (input.mode === 'tasks' && !this.deps.tasks.isApproved(folder)) {
-        throw new Error('La carpeta no está autorizada para las tareas (autorízala primero desde Tareas).')
+        throw new Error(t('merr.routine.folderNotAuthorized'))
       }
     }
 
@@ -315,15 +315,15 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (fullAccess) {
       const consent = input.fullAccessConsentAt ?? prev?.fullAccessConsentAt ?? null
       if (typeof consent !== 'number' || !Number.isFinite(consent) || consent <= 0 || consent > now + 60_000) {
-        throw new Error('El Control total del Mac en una rutina requiere tu consentimiento explícito al crearla.')
+        throw new Error(t('merr.routine.fullNeedsConsent'))
       }
       // Si cambia la carpeta, el consentimiento anterior no vale: debe darse de nuevo.
       const sameFolder = prev?.fullAccess === true && prev.folder === folder
       if (!sameFolder && consent <= (prev?.fullAccessConsentAt ?? 0)) {
-        throw new Error('Confirma de nuevo el consentimiento de Control total para esta carpeta.')
+        throw new Error(t('merr.routine.reconfirm'))
       }
       if (!folder || !this.deps.tasks.hasFullAccessGrant(folder)) {
-        throw new Error('Esta carpeta no tiene Control total del Mac concedido (concédelo primero desde Tareas).')
+        throw new Error(t('merr.routine.folderNoFull'))
       }
       fullAccessConsentAt = consent
     }
@@ -405,7 +405,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
   /** "Ejecutar ahora": devuelve el registro inicial; el resultado llega por el evento `run`. */
   runNow(id: string): RoutineRunRecord {
     const r = this.get(id)
-    if (this.running.has(id)) throw new Error('La rutina ya se está ejecutando')
+    if (this.running.has(id)) throw new Error(t('merr.routine.alreadyRunning'))
     return this.execute(r, 'manual')
   }
 
@@ -505,20 +505,20 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
   private async perform(r: ScheduledRoutine, record: RoutineRunRecord, signal: AbortSignal): Promise<string> {
     if (loadManagedPolicy()?.disableRoutines) {
-      throw new Error('Las rutinas están desactivadas por la política de tu organización.')
+      throw new Error(t('merr.routine.orgDisabled'))
     }
     const directory = r.mode === 'chat' ? this.deps.chatDirectory : r.folder
-    if (!directory) throw new Error('La rutina no tiene carpeta')
-    if (r.mode !== 'chat' && !existsSync(directory)) throw new Error(`La carpeta no existe: ${directory}`)
+    if (!directory) throw new Error(t('merr.routine.noSavedFolder'))
+    if (r.mode !== 'chat' && !existsSync(directory)) throw new Error(t('merr.task.noFolder', { folder: directory }))
 
     const isTasks = r.mode === 'tasks'
     const fullAccess = isTasks && r.fullAccess === true
     if (fullAccess) {
       if (!r.fullAccessConsentAt) {
-        throw new Error('Esta rutina usa Control total del Mac pero no tiene consentimiento registrado: edítala y confírmalo.')
+        throw new Error(t('merr.routine.noConsent'))
       }
       if (!this.deps.tasks.hasFullAccessGrant(directory)) {
-        throw new Error('La carpeta ya no tiene Control total del Mac concedido: concédelo de nuevo desde Tareas o edita la rutina.')
+        throw new Error(t('merr.routine.fullRevoked'))
       }
     }
 
@@ -560,7 +560,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         title: `⏰ ${r.name}`,
         agent
       })
-      if (created.error || !created.data) throw new Error(`No se pudo crear la sesión: ${errMsg(created.error)}`)
+      if (created.error || !created.data) throw new Error(t('merr.routine.sessionFailed', { detail: errMsg(created.error) }))
       sessionID = created.data.id
     }
     record.sessionId = sessionID
@@ -607,20 +607,22 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     }
     signal.addEventListener('abort', onAbort, { once: true })
     const timeout = setTimeout(() => {
+      const min = RUN_TIMEOUT_MS / 60_000
       record.error = fullAccess
-        ? `Tiempo máximo excedido (${RUN_TIMEOUT_MS / 60_000} min). En Control total hay que aprobar el plan en persona y no se aprobó a tiempo.`
+        ? t('merr.routine.timeoutFull', { min })
         : record.waiting
-          ? `Tiempo máximo excedido (${RUN_TIMEOUT_MS / 60_000} min) esperando tu aprobación.`
-          : `Tiempo máximo excedido (${RUN_TIMEOUT_MS / 60_000} min)`
+          ? t('merr.routine.timeoutWaiting', { min })
+          : t('merr.routine.timeout', { min })
       onAbort()
     }, RUN_TIMEOUT_MS)
 
     if (fullAccess) {
-      this.notifyPlain(
-        `La rutina «${r.name}» necesita que apruebes su plan`,
-        'Usa Control total del Mac: abre la tarea y aprueba el plan para que continúe.',
-        { mode: 'tasks', id: sessionID, directory: dirForSession, fullAccess: true }
-      )
+      this.notifyPlain(t('merr.notif.routineNeedsPlan', { name: r.name }), t('merr.notif.routineFullBody'), {
+        mode: 'tasks',
+        id: sessionID,
+        directory: dirForSession,
+        fullAccess: true
+      })
     }
 
     try {
@@ -648,9 +650,9 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (res.error) throw new Error(errMsg(res.error))
       const final = await this.waitForCompletion(client, dirForSession, sessionID, sentAt, signal, () => !!record.error)
       if (record.error) throw new Error(record.error)
-      if (!final) throw new Error('La sesión terminó sin respuesta del asistente')
+      if (!final) throw new Error(t('merr.routine.noReply'))
       if (final.info.error) throw new Error(errMsg(final.info.error))
-      return truncate(extractText(final.parts) || '(Sin texto de respuesta)', SUMMARY_MAX)
+      return truncate(extractText(final.parts) || t('merr.routine.noText'), SUMMARY_MAX)
     } finally {
       clearInterval(poll)
       clearTimeout(timeout)
@@ -806,7 +808,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
           if (!run.notified.has(p.id)) {
             run.notified.add(p.id)
             this.notifyPlain(
-              `La rutina «${run.routineName}» necesita tu aprobación`,
+              t('merr.notif.routineNeedsApproval', { name: run.routineName }),
               patterns[0] ? `${p.permission}: ${truncate(patterns[0], 140)}` : p.permission,
               { mode: 'tasks', id: run.root, directory, fullAccess: run.fullAccess }
             )
@@ -816,8 +818,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
             requestID: p.id,
             directory,
             reply: 'reject',
-            message:
-              'Ejecución programada desatendida: este permiso no está en la lista «Permitir sin preguntar» de la rutina. Continúa sin esta acción.'
+            message: t('merr.routine.unattendedReject')
           })
           if (!res.error) {
             logEntry((record.rejected ??= []), p.permission, patterns)
@@ -872,12 +873,14 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const rejected = record.rejected ?? []
     const extras: string[] = []
     if (rejected.length > 0) {
-      extras.push(
-        `${rejected.length === 1 ? 'Se rechazó 1 permiso' : `Se rechazaron ${rejected.length} permisos`}: ${describeEntries(rejected)}.`
-      )
+      extras.push(`${t('merr.notif.routineRejected', { count: rejected.length })}: ${describeEntries(rejected)}.`)
     }
     if ((record.blockedHosts?.length ?? 0) > 0) {
-      extras.push(`Sitios bloqueados: ${record.blockedHosts!.slice(0, 4).join(', ')}${record.blockedHosts!.length > 4 ? '…' : ''}.`)
+      extras.push(
+        t('merr.notif.routineBlockedHosts', {
+          hosts: `${record.blockedHosts!.slice(0, 4).join(', ')}${record.blockedHosts!.length > 4 ? '…' : ''}`
+        })
+      )
     }
     const main = truncate((ok ? record.summary : record.error) ?? '', 180)
     const body = [...extras, main].filter(Boolean).join('\n')
@@ -890,7 +893,11 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
             fullAccess: this.load().routines.find((x) => x.id === record.routineId)?.fullAccess === true
           }
         : undefined
-    this.notifyPlain(ok ? `Rutina completada: ${record.routineName}` : `Rutina con error: ${record.routineName}`, body, target)
+    this.notifyPlain(
+      ok ? t('merr.notif.routineDone', { name: record.routineName }) : t('merr.notif.routineError', { name: record.routineName }),
+      body,
+      target
+    )
   }
 }
 

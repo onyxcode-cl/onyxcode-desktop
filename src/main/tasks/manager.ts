@@ -11,6 +11,7 @@
  * escritura); el perfil se fija al lanzar el proceso, así que ampliarlas exige reiniciar el
  * servidor sandbox (`restartSandbox`). `applied` compara la firma con la que arrancó.
  */
+import { t } from '@shared/i18n'
 import { app } from 'electron'
 import { EventEmitter } from 'node:events'
 import { execFileSync } from 'node:child_process'
@@ -83,12 +84,12 @@ export interface TasksComputerDeps {
   planGateUrl: () => Promise<string | null>
 }
 
-const NO_COMPUTER: ComputerUseInfo = {
+const noComputer = (): ComputerUseInfo => ({
   available: false,
   accessibility: false,
   screenRecording: false,
-  reason: 'Solo disponible con Control total.'
-}
+  reason: t('merr.task.onlyFull')
+})
 
 function serverKey(folder: string, fullAccess: boolean): string {
   return fullAccess ? `${folder}\u0000full` : folder
@@ -211,7 +212,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** Política gestionada: con `disableCustomHosts` no se añaden sitios a la red del sandbox. */
   private assertCustomHostsAllowed(): void {
     if (loadManagedPolicy()?.disableCustomHosts) {
-      throw new Error('Tu organización no permite añadir sitios a la red del sandbox.')
+      throw new Error(t('merr.task.orgNoHosts'))
     }
   }
 
@@ -316,7 +317,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   approveFolder(folder: string): TasksFolder {
     const f = normalizeFolder(folder)
-    if (!existsSync(f) || !statSync(f).isDirectory()) throw new Error(`No es una carpeta válida: ${f}`)
+    if (!existsSync(f) || !statSync(f).isDirectory()) throw new Error(t('merr.task.notValidFolder', { folder: f }))
     const reason = forbiddenFolderReason(f)
     if (reason) throw new Error(reason)
     const data = this.load()
@@ -377,7 +378,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   private requireApproved(folder: string): string {
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
+    if (!this.isApproved(f)) throw new Error(t('merr.task.notAuthorized'))
     return f
   }
 
@@ -401,10 +402,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const normalized = normalizeFolder(path)
     try {
       if (!existsSync(normalized) || !statSync(normalized).isDirectory()) {
-        return { ok: false, normalized, reason: `No es una carpeta válida: ${normalized}` }
+        return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
       }
     } catch {
-      return { ok: false, normalized, reason: `No es una carpeta válida: ${normalized}` }
+      return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
     }
     const reason = forbiddenFolderReason(normalized)
     return reason ? { ok: false, normalized, reason } : { ok: true, normalized }
@@ -412,7 +413,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   private assertCheck(path: string): string {
     const c = this.checkFolder(path)
-    if (!c.ok) throw new Error(c.reason ?? `No es una carpeta válida: ${c.normalized}`)
+    if (!c.ok) throw new Error(c.reason ?? t('merr.task.notValidFolder', { folder: c.normalized }))
     return c.normalized
   }
 
@@ -428,8 +429,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   ): Promise<TasksFolderSet & { restarted: boolean }> {
     const f = this.requireApproved(folder)
     const p = this.assertCheck(path)
-    if (p === f) throw new Error('Esa es la carpeta principal del espacio; ya tiene acceso de escritura.')
-    if (mode === 'rw' && isInside(p, f)) throw new Error('Esa carpeta ya está dentro de la carpeta principal.')
+    if (p === f) throw new Error(t('merr.task.mainFolder'))
+    if (mode === 'rw' && isInside(p, f)) throw new Error(t('merr.task.insideMain'))
     const data = this.load()
     const list = (data.linked[f] ??= [])
     const prev = list.find((l) => l.path === p)
@@ -498,10 +499,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** Registra el consentimiento explícito de Control total (tras el diálogo de confirmación). */
   grantFullAccess(folder: string): void {
     if (loadManagedPolicy()?.disableFullAccess) {
-      throw new Error('Tu organización ha desactivado el Control total del Mac.')
+      throw new Error(t('merr.task.orgNoFullControl'))
     }
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
+    if (!this.isApproved(f)) throw new Error(t('merr.task.notAuthorized'))
     const data = this.load()
     if (!data.fullAccess.some((g) => g.path === f)) {
       data.fullAccess.push({ path: f, grantedAt: Date.now() })
@@ -583,9 +584,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    */
   async start(folder: string, fullAccess = false): Promise<TasksConnection> {
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error('La carpeta no está autorizada para las tareas.')
+    if (!this.isApproved(f)) throw new Error(t('merr.task.notAuthorized'))
     if (fullAccess && !this.hasFullAccessGrant(f)) {
-      throw new Error(`${FULL_ACCESS_NOT_GRANTED}: el Control total no está autorizado para esta carpeta.`)
+      throw new Error(`${FULL_ACCESS_NOT_GRANTED}: ${t('merr.task.fullNotGranted')}`)
     }
     const key = serverKey(f, fullAccess)
     const existing = this.servers.get(key)
@@ -596,7 +597,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const used = this.servers.get(key)
     if (used) used.lastStartCallAt = Date.now()
     this.touch(f)
-    const computerUse = fullAccess && this.opts.computer ? await this.opts.computer.info() : NO_COMPUTER
+    const computerUse = fullAccess && this.opts.computer ? await this.opts.computer.info() : noComputer()
     return {
       folder: f,
       baseUrl: handle.baseUrl,
@@ -720,7 +721,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           if (!e) return
           e.handle = undefined
           if (e.info.state === 'ready') {
-            this.setInfo(folder, fullAccess, { state: 'error', error: `El servidor de las tareas terminó (code=${code})` })
+            this.setInfo(folder, fullAccess, { state: 'error', error: t('merr.task.serverEnded', { code: String(code) }) })
           }
         }
       })
@@ -790,7 +791,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    */
   deliverables(folder: string, since: number): TasksDeliverable[] {
     const root = normalizeFolder(folder)
-    if (!this.isApproved(root)) throw new Error('La carpeta no está autorizada para las tareas.')
+    if (!this.isApproved(root)) throw new Error(t('merr.task.notAuthorized'))
     const out: TasksDeliverable[] = []
     let seen = 0
     const scan = (base: string, linkedRoot?: string): void => {
@@ -843,7 +844,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       data.folders.some((f) => isInside(p, f.path)) ||
       Object.values(data.linked).some((list) => list.some((l) => isInside(p, l.path))) ||
       data.trusted.some((t) => isInside(p, t.path))
-    if (!ok) throw new Error('La ruta no pertenece a una carpeta de trabajo autorizada.')
+    if (!ok) throw new Error(t('merr.task.pathNotAuthorized'))
     return p
   }
 }

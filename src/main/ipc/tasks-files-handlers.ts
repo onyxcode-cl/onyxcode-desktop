@@ -6,6 +6,7 @@
  * (realpath + carpeta de Tareas autorizada) y los procesos externos se lanzan con `execFile` /
  * `spawn` y argumentos en array (nunca una cadena de shell).
  */
+import { t } from '@shared/i18n'
 import { app, BrowserWindow, dialog } from 'electron'
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, renameSync, rmSync, statSync } from 'node:fs'
@@ -98,12 +99,12 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
       }
       if (st.isFile() && !files.includes(real)) files.push(real)
     }
-    if (files.length === 0) throw new Error('No hay archivos que comprimir.')
+    if (files.length === 0) throw new Error(t('merr.files.noFiles'))
 
     const base = safeFileName(suggestedName ?? 'Entregables', 'Entregables')
     const defaultName = /\.zip$/i.test(base) ? base : `${base}.zip`
     const options: Electron.SaveDialogOptions = {
-      title: 'Guardar entregables como zip',
+      title: t('merr.dialog.saveZip'),
       defaultPath: join(app.getPath('downloads'), defaultName),
       filters: [{ name: 'Zip', extensions: ['zip'] }]
     }
@@ -132,7 +133,7 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
   handle('tasks:quickLook', ({ path }) => {
     const real = tasks.assertInsideApproved(path)
     assertSafeToOpen(real) // misma política que "Abrir": nada de ejecutables/lanzadores
-    if (!statSync(real).isFile()) throw new Error('La vista rápida solo funciona con archivos.')
+    if (!statSync(real).isFile()) throw new Error(t('merr.files.quickLook'))
     killQuickLook()
     // `-p` abre el panel de QuickLook; `qlmanage` lo mantiene hasta que se cierra o lo matamos.
     const proc = spawn(QLMANAGE_BIN, ['-p', real], { detached: true, stdio: 'ignore' })
@@ -152,7 +153,7 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
     const name = safeFileName(suggestedName, 'tarea.md')
     const withExt = extname(name) ? name : `${name}.md`
     const options: Electron.SaveDialogOptions = {
-      title: 'Exportar la tarea a Markdown',
+      title: t('merr.dialog.exportMarkdown'),
       defaultPath: join(app.getPath('downloads'), withExt),
       filters: [{ name: 'Markdown', extensions: ['md'] }]
     }

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, net, safeStorage, shell, type IpcMain } from 'electron'
+import { t } from '@shared/i18n'
 import { writeFile } from 'node:fs/promises'
 import { ACCOUNT_API, APP_NAME } from '@shared/brand'
 import { setAccountAccessCheck } from '../account/access'
@@ -50,7 +51,7 @@ export function registerAccountHandlers(ipcMain: IpcMain): AccountService {
     saveExport: async (json, suggestedName) => {
       const parent = BrowserWindow.getFocusedWindow()
       const options: Electron.SaveDialogOptions = {
-        title: 'Descargar mis datos',
+        title: t('merr.dialog.exportMyData'),
         defaultPath: suggestedName,
         filters: [{ name: 'JSON', extensions: ['json'] }]
       }

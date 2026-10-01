@@ -11,6 +11,7 @@ import { chat } from './chat'
 import { errors } from './errors'
 import { notices } from './notices'
 import { main } from './main'
+import { mainErrors } from './mainErrors'
 
 export const en = {
   ...common,
@@ -25,7 +26,8 @@ export const en = {
   ...chat,
   ...errors,
   ...notices,
-  ...main
+  ...main,
+  ...mainErrors
 }
 
-export const AREAS = { common, app, settings, models, mcp, tasksSettings, misc, wizard, account, chat, errors, notices, main }
+export const AREAS = { common, app, settings, models, mcp, tasksSettings, misc, wizard, account, chat, errors, notices, main, mainErrors }

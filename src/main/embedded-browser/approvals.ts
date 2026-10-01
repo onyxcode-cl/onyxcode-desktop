@@ -9,6 +9,7 @@
  *   de los eventos `browser:approval`/`browser:approvalDone`), para que este módulo no importe
  *   `service.ts` (evita el ciclo).
  */
+import { t } from '@shared/i18n'
 import { randomBytes } from 'node:crypto'
 import { dialog, Notification } from 'electron'
 import { APP_NAME } from '@shared/brand'
@@ -82,7 +83,7 @@ function ownerKey(owner: BrowserOwner): string {
 }
 
 function labelFor(req: BrowserApprovalRequest): string {
-  return req.kind === 'local-origin' ? `tu servidor local ${req.host}` : req.site
+  return req.kind === 'local-origin' ? t('merr.notif.localServer', { host: req.host }) : req.site
 }
 
 async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserDecision> {
@@ -92,10 +93,10 @@ async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserD
         title: APP_NAME,
         body:
           req.kind === 'sensitive'
-            ? (req.summary ?? `El agente quiere hacer algo en ${req.site}`)
+            ? (req.summary ?? t('merr.notif.agentSensitive', { site: req.site }))
             : req.kind === 'download'
-              ? `El agente quiere descargar ${req.fileName ?? req.url}`
-              : `El agente quiere abrir ${labelFor(req)}`
+              ? t('merr.notif.agentDownload', { file: req.fileName ?? req.url })
+              : t('merr.notif.agentOpen', { target: labelFor(req) })
       }).show()
     }
   } catch (err) {
@@ -111,9 +112,9 @@ async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserD
   if (req.kind === 'sensitive' || req.kind === 'download') {
     const res = await dialog.showMessageBox({
       type: 'warning',
-      message: req.summary ?? `¿Permitir que el agente descargue "${req.fileName ?? req.url}"?`,
+      message: req.summary ?? t('merr.dialog.allowDownload', { file: req.fileName ?? req.url }),
       detail: req.url,
-      buttons: ['Cancelar', 'Permitir'],
+      buttons: [t('merr.dialog.cancel'), t('merr.dialog.allow')],
       defaultId: 0,
       cancelId: 0,
       noLink: true
@@ -123,9 +124,9 @@ async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserD
 
   const res = await dialog.showMessageBox({
     type: 'warning',
-    message: `¿Dejar que el agente abra ${labelFor(req)}?`,
+    message: t('merr.dialog.allowOpen', { target: labelFor(req) }),
     detail: req.url,
-    buttons: ['No', 'Permitir en esta tarea', 'Permitir siempre'],
+    buttons: [t('merr.dialog.no'), t('merr.dialog.allowInTask'), t('merr.dialog.allowAlways')],
     defaultId: 0,
     cancelId: 0,
     noLink: true

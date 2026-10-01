@@ -3,6 +3,7 @@
  * usuario/clave aleatorios (HTTP Basic vía OPENCODE_SERVER_USERNAME/PASSWORD),
  * espera a `/global/health`, reinicia con backoff si se cae y lo mata al salir.
  */
+import { t } from '@shared/i18n'
 import { appOpencodeConfigEnv } from '../extras/mcp-config'
 import { getOpencodeEnv } from '../tasks/opencode-config'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
@@ -134,9 +135,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     try {
       const bin = (await resolveOpencodeAsync())?.path
       if (!bin) {
-        throw new Error(
-          'No se encontró el binario `opencode`. Instálalo (curl -fsSL https://opencode.ai/install | bash), elige el binario en el asistente o define OPENCODE_BIN.'
-        )
+        throw new Error(t('merr.engine.noBinary'))
       }
       mkdirSync(this.options.chatDirectory, { recursive: true })
       const port = await getFreePort()
@@ -188,7 +187,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         timeoutMs: HEALTH_TIMEOUT_MS,
         intervalMs: HEALTH_INTERVAL_MS
       })
-      if (this.child !== child) throw new Error('El servidor se detuvo durante el arranque')
+      if (this.child !== child) throw new Error(t('merr.engine.stoppedAtStart'))
 
       const connection: OpencodeConnection = {
         baseUrl,
@@ -222,7 +221,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     this.connection = null
     if (this.stopping) return
     if (Date.now() - spawnedAt > STABLE_AFTER_MS) this.consecutiveFailures = 0
-    this.scheduleRestart(`Se cerró inesperadamente (code=${code})`)
+    this.scheduleRestart(t('merr.engine.closed', { code: String(code) }))
   }
 
   private scheduleRestart(reason: string): void {
@@ -230,12 +229,12 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     if (this.consecutiveFailures > MAX_RESTARTS) {
       this.setStatus({
         state: 'error',
-        error: `OpenCode falló ${MAX_RESTARTS} veces seguidas (${reason}). Reinícialo manualmente.`
+        error: t('merr.engine.failedRepeatedly', { max: MAX_RESTARTS, reason })
       })
       return
     }
     const delay = Math.min(1000 * 2 ** (this.consecutiveFailures - 1), 15_000)
-    this.setStatus({ state: 'starting', error: `${reason}; reintentando…` })
+    this.setStatus({ state: 'starting', error: t('merr.engine.retrying', { reason }) })
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null
       if (this.stopping) return

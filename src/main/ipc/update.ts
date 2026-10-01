@@ -1,4 +1,5 @@
 import { app, type IpcMain } from 'electron'
+import { t } from '@shared/i18n'
 import { dirname, join } from 'node:path'
 import { RELEASES_REPO, APP_ID, UPDATE_KEY_ID, UPDATE_PUBLIC_KEY } from '@shared/brand'
 import { IDLE_INSTALL, validateInstallLocation } from '@shared/update-install'
@@ -121,8 +122,8 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
     await refreshLocation()
     const tag = checker.latestTag()
     const latest = checker.getState().latest
-    if (!installConfig.enabled || !locationOk) throw new Error('Esta copia de la app no se puede actualizar sola.')
-    if (!tag || !latest) throw new Error('No hay una versión nueva conocida.')
+    if (!installConfig.enabled || !locationOk) throw new Error(t('merr.update.notSelf'))
+    if (!tag || !latest) throw new Error(t('merr.update.noneKnown'))
     void installer.download({ version: latest.version, tag })
     return checker.getState()
   })

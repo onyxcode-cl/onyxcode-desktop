@@ -13,9 +13,11 @@
  * el agente, sin bajar de lo ya concedido); ✕, Esc y "Cancelar" envían `cancel` (no tocan ninguna
  * concesión) y solo el "Denegar" explícito por app (o "Denegar todo" en tarjetas sin plan) deniega.
  */
+import '../src/lib/page-lang'
+import { t, type MsgKey } from '@shared/i18n'
+import { APP_NAME } from '@shared/brand'
 import {
   APP_TIER_RANK,
-  TIER_LABEL_ES,
   defaultAccessDecision,
   type AccessDecision,
   type AccessRequest,
@@ -25,39 +27,45 @@ import {
 import { tasks, describeStep } from './shared'
 import './pill.css'
 
-const DEFAULT_STEP = 'Trabajando…'
-const TIERS: Array<{ v: AccessDecision; label: string }> = [
-  { v: 'view', label: 'Ver' },
-  { v: 'click', label: 'Clic' },
-  { v: 'full', label: 'Total' },
-  { v: 'deny', label: 'Denegar' }
+const defaultStep = (): string => t('ovl.pill.working')
+const TIERS: Array<{ v: AccessDecision; label: MsgKey }> = [
+  { v: 'view', label: 'ovl.tier.view' },
+  { v: 'click', label: 'ovl.tier.click' },
+  { v: 'full', label: 'ovl.tier.full' },
+  { v: 'deny', label: 'ovl.tier.deny' }
 ]
+const TIER_LABELS: Record<'view' | 'click' | 'full', MsgKey> = {
+  view: 'ovl.tierLabel.view',
+  click: 'ovl.tierLabel.click',
+  full: 'ovl.tierLabel.full'
+}
+document.title = t('ovl.pill.title')
 
 const root = document.getElementById('root') as HTMLDivElement
 root.innerHTML = `
   <div class="pill" role="status" aria-live="polite">
     <span class="logo" aria-hidden="true"><span class="logo-core"></span></span>
     <span class="texts">
-      <span class="title">La IA está controlando tu Mac</span>
+      <span class="title">${t('ovl.pill.title')}</span>
       <span class="step"></span>
     </span>
-    <kbd class="hint" title="Atajo global para detener">⌘⇧Esc</kbd>
-    <button type="button" class="stop">Detener</button>
+    <kbd class="hint" title="${t('ovl.pill.hint')}">⌘⇧Esc</kbd>
+    <button type="button" class="stop">${t('ovl.pill.stop')}</button>
   </div>
   <div class="request" hidden>
     <div class="request-head">
       <span class="request-title"></span>
-      <button type="button" class="req-close" title="Cancelar (no cambia ningún permiso)">✕</button>
+      <button type="button" class="req-close" title="${t('ovl.req.close')}">✕</button>
     </div>
     <p class="request-reason"></p>
     <ol class="request-plan"></ol>
-    <p class="request-note request-noapps" hidden>Este plan no controla ninguna app: usará la terminal, archivos o la web.</p>
+    <p class="request-note request-noapps" hidden>${t('ovl.req.noApps')}</p>
     <p class="request-note request-unresolved" hidden></p>
     <ul class="request-apps"></ul>
     <div class="request-actions">
-      <button type="button" class="req-deny">Denegar todo</button>
-      <button type="button" class="req-edit">Editar en OnyxCode</button>
-      <button type="button" class="req-approve">Aprobar y empezar</button>
+      <button type="button" class="req-deny">${t('ovl.req.denyAll')}</button>
+      <button type="button" class="req-edit">${t('ovl.req.edit', { app: APP_NAME })}</button>
+      <button type="button" class="req-approve">${t('ovl.req.approveStart')}</button>
     </div>
     <p class="request-error"></p>
   </div>
@@ -79,29 +87,29 @@ const reqEdit = root.querySelector('.req-edit') as HTMLButtonElement
 const reqClose = root.querySelector('.req-close') as HTMLButtonElement
 const reqError = root.querySelector('.request-error') as HTMLParagraphElement
 
-let baseStep = DEFAULT_STEP
+let baseStep = defaultStep()
 step.textContent = baseStep
 
 function reset(label?: string): void {
   pill.classList.remove('stopped', 'stopping')
-  title.textContent = 'La IA está controlando tu Mac'
+  title.textContent = t('ovl.pill.title')
   stopBtn.disabled = false
-  stopBtn.textContent = 'Detener'
-  baseStep = label?.trim() || DEFAULT_STEP
+  stopBtn.textContent = t('ovl.pill.stop')
+  baseStep = label?.trim() || defaultStep()
   step.textContent = baseStep
 }
 
 stopBtn.addEventListener('click', () => {
   if (stopBtn.disabled) return
   stopBtn.disabled = true
-  stopBtn.textContent = 'Deteniendo…'
+  stopBtn.textContent = t('ovl.pill.stopping')
   pill.classList.add('stopping')
   void tasks?.invoke('computer:stop').then((r) => {
     if (!r.ok) {
       stopBtn.disabled = false
-      stopBtn.textContent = 'Detener'
+      stopBtn.textContent = t('ovl.pill.stop')
       pill.classList.remove('stopping')
-      step.textContent = `No se pudo detener: ${r.error}`
+      step.textContent = t('ovl.pill.stopFailed', { error: r.error })
     }
   })
 })
@@ -114,13 +122,13 @@ let busy = false
 
 /** Línea informativa de una app: "Pide: X · Ahora: Y · Denegada antes" (+ aviso si la elección queda por debajo de lo concedido). */
 function renderMeta(app: AccessRequestApp, meta: HTMLElement): void {
-  const parts = [`Pide: ${TIER_LABEL_ES[app.requested ?? 'click']}`]
-  if (app.current) parts.push(`Ahora: ${TIER_LABEL_ES[app.current]}`)
-  if (app.denied) parts.push('Denegada antes')
+  const parts = [t('ovl.meta.asks', { tier: t(TIER_LABELS[app.requested ?? 'click']) })]
+  if (app.current) parts.push(t('ovl.meta.now', { tier: t(TIER_LABELS[app.current]) }))
+  if (app.denied) parts.push(t('ovl.meta.denied'))
   const choice = choices[app.bundleId]
   // Aprobar nunca baja un nivel ya concedido (main aplica el máximo): se avisa si la elección queda por debajo.
   if (app.current && choice && choice !== 'deny' && APP_TIER_RANK[choice] < APP_TIER_RANK[app.current]) {
-    parts.push(`Se mantiene ${TIER_LABEL_ES[app.current]} (bajar: Ajustes)`)
+    parts.push(t('ovl.meta.keeps', { tier: t(TIER_LABELS[app.current]) }))
   }
   meta.textContent = parts.join(' · ')
 }
@@ -129,16 +137,16 @@ function renderTierButtons(app: AccessRequestApp, meta: HTMLElement): HTMLDivEle
   const wrap = document.createElement('div')
   wrap.className = 'req-tiers'
   const requested = app.requested ?? 'click'
-  for (const t of TIERS) {
+  for (const tier of TIERS) {
     const btn = document.createElement('button')
     btn.type = 'button'
-    btn.textContent = t.label
-    btn.className = `req-tier req-tier-${t.v}`
-    btn.classList.toggle('active', choices[app.bundleId] === t.v)
-    btn.classList.toggle('requested', t.v === requested)
+    btn.textContent = t(tier.label)
+    btn.className = `req-tier req-tier-${tier.v}`
+    btn.classList.toggle('active', choices[app.bundleId] === tier.v)
+    btn.classList.toggle('requested', tier.v === requested)
     btn.addEventListener('click', () => {
-      choices[app.bundleId] = t.v
-      wrap.querySelectorAll('.req-tier').forEach((b, i) => b.classList.toggle('active', TIERS[i]?.v === t.v))
+      choices[app.bundleId] = tier.v
+      wrap.querySelectorAll('.req-tier').forEach((b, i) => b.classList.toggle('active', TIERS[i]?.v === tier.v))
       renderMeta(app, meta)
     })
     wrap.appendChild(btn)
@@ -153,8 +161,8 @@ function renderRequest(req: AccessRequest): void {
   // Tarjeta "¿Tomar el control de la pantalla?" (request_full_control): sin plan, sin selector de
   // nivel por app (siempre "full" implícito), solo dos botones binarios.
   if (req.kind === 'takeover') {
-    reqTitle.textContent = '¿Tomar el control de la pantalla?'
-    reqReason.textContent = `El agente trabajaba en ${req.apps[0]?.name ?? 'una app'} en segundo plano y necesita el ratón y el teclado.`
+    reqTitle.textContent = t('ovl.takeover.title')
+    reqReason.textContent = t('ovl.takeover.reason', { app: req.apps[0]?.name ?? t('ovl.takeover.anApp') })
     reqReason.hidden = false
     reqPlan.innerHTML = ''
     reqPlan.hidden = true
@@ -163,9 +171,9 @@ function renderRequest(req: AccessRequest): void {
     reqUnresolved.hidden = true
     reqApps.innerHTML = ''
     reqApps.hidden = true
-    reqDeny.textContent = 'Seguir en segundo plano'
+    reqDeny.textContent = t('ovl.takeover.deny')
     reqDeny.hidden = false
-    reqApprove.textContent = 'Permitir'
+    reqApprove.textContent = t('ovl.takeover.approve')
     reqError.textContent = ''
     setBusy(false)
     request.hidden = false
@@ -175,11 +183,11 @@ function renderRequest(req: AccessRequest): void {
   const hasApps = req.apps.length > 0
   reqTitle.textContent = req.plan
     ? hasApps
-      ? 'Plan y permisos'
-      : 'Plan de la tarea'
+      ? t('ovl.req.planAndPerms')
+      : t('ovl.req.planOnly')
     : req.apps.length === 1
-      ? `¿Permitir usar ${req.apps[0]?.name}?`
-      : '¿Permitir usar estas apps?'
+      ? t('ovl.req.allowOne', { app: req.apps[0]?.name ?? '' })
+      : t('ovl.req.allowMany')
   reqReason.textContent = req.reason ?? ''
   reqReason.hidden = !req.reason
   reqPlan.innerHTML = ''
@@ -192,7 +200,7 @@ function renderRequest(req: AccessRequest): void {
   }
   reqPlan.hidden = !req.plan?.length
   reqNoApps.hidden = hasApps
-  reqUnresolved.textContent = req.unresolved?.length ? `No encontré: ${req.unresolved.join(', ')}` : ''
+  reqUnresolved.textContent = req.unresolved?.length ? t('ovl.req.unresolved', { apps: req.unresolved.join(', ') }) : ''
   reqUnresolved.hidden = !req.unresolved?.length
   reqApps.innerHTML = ''
   reqApps.hidden = !hasApps
@@ -211,9 +219,9 @@ function renderRequest(req: AccessRequest): void {
     reqApps.appendChild(li)
   }
   // Con plan, el botón izquierdo es "Cancelar" (`cancel`: no toca nada); sin plan es "Denegar todo" (deniega de verdad).
-  reqDeny.textContent = req.plan ? 'Cancelar' : 'Denegar todo'
+  reqDeny.textContent = req.plan ? t('ovl.req.cancel') : t('ovl.req.denyAll')
   reqDeny.hidden = false
-  reqApprove.textContent = req.plan ? 'Aprobar y empezar' : 'Aprobar'
+  reqApprove.textContent = req.plan ? t('ovl.req.approveStart') : t('ovl.req.approve')
   reqError.textContent = ''
   setBusy(false)
   request.hidden = false
@@ -242,7 +250,7 @@ async function respond(
   setBusy(true)
   const r = await tasks?.invoke('computer:respondAccess', { id: req.id, decisions, ...extra })
   if (r && !r.ok) {
-    reqError.textContent = `No se pudo responder: ${r.error}`
+    reqError.textContent = t('ovl.req.respondFailed', { error: r.error })
     setBusy(false)
     return
   }
@@ -303,10 +311,10 @@ function handle(msg: ComputerOverlayMessage): void {
     case 'stopped':
       pill.classList.remove('stopping')
       pill.classList.add('stopped')
-      title.textContent = 'Control detenido'
-      step.textContent = 'Has recuperado el control del Mac'
+      title.textContent = t('ovl.pill.stoppedTitle')
+      step.textContent = t('ovl.pill.stoppedStep')
       stopBtn.disabled = true
-      stopBtn.textContent = 'Detenido'
+      stopBtn.textContent = t('ovl.pill.stopped')
       hideRequest()
       return
     case 'waiting':
@@ -322,7 +330,7 @@ function handle(msg: ComputerOverlayMessage): void {
       // Las capturas automáticas tras cada acción no cambian el texto del paso.
       if (ev.tool === 'screenshot' && ev.auto) return
       if (ev.phase === 'end' && ev.ok === false) {
-        step.textContent = `${describeStep(ev)} — falló`
+        step.textContent = t('ovl.pill.stepFailed', { step: describeStep(ev) })
         return
       }
       if (ev.phase !== 'end') step.textContent = describeStep(ev)
@@ -341,7 +349,9 @@ if (location.hash === '#demo-request') {
   document.body.classList.add('on')
   renderRequest({
     id: 'demo',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     reason: 'Abrir Discord y unirme al canal “pega”',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     plan: ['Abrir Spotlight y buscar Discord', 'Abrir el canal #pega', 'Escribir un saludo'],
     apps: [
       { bundleId: 'com.hnc.Discord', name: 'Discord', requested: 'full', current: null },
@@ -357,6 +367,7 @@ if (location.hash === '#demo-takeover') {
   renderRequest({
     id: 'demo-takeover',
     kind: 'takeover',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     reason: 'Necesita pulsar un atajo de teclado que app_press no puede reproducir',
     apps: [{ bundleId: 'com.hnc.Discord', name: 'Discord', requested: 'full', current: null }]
   })
@@ -366,7 +377,9 @@ if (location.hash === '#demo-plan-only') {
   document.body.classList.add('on')
   renderRequest({
     id: 'demo-plan-only',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     reason: 'Buscar el precio del dólar hoy y guardarlo en dolar.md',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     plan: ['Buscar en la web el precio del dólar', 'Escribir el resultado en dolar.md'],
     apps: []
   })

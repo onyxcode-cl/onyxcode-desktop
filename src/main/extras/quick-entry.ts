@@ -3,9 +3,10 @@
  * global (por defecto Option+Space). Al enviar, abre/enfoca la ventana principal en Chat
  * con el prompt (evento `extras:quick-prompt`).
  */
+import { t } from '@shared/i18n'
 import { BrowserWindow, globalShortcut, screen } from 'electron'
 import type { QuickPromptEvent } from '@shared/ipc-extras'
-import { extrasWindows, loadRendererPage, preloadPath, showMainWindow, type MainWindowDeps } from './windows'
+import { extrasWindows, isLangStale, loadLocalizedPage, preloadPath, showMainWindow, type MainWindowDeps } from './windows'
 import { registerWindowRole } from '../ipc/guard'
 import { presentWindow } from '../e2e-headless'
 import { isAccountAllowed } from '../account/access'
@@ -57,7 +58,7 @@ function createQuickWindow(): BrowserWindow {
   })
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (e) => e.preventDefault())
-  void loadRendererPage(win, 'quick/index.html')
+  void loadLocalizedPage(win, 'quick/index.html')
   return win
 }
 
@@ -69,9 +70,18 @@ function position(win: BrowserWindow): void {
   win.setBounds({ x, y, width: WIDTH, height: HEIGHT })
 }
 
+/** La página se carga con el idioma activo: si cambió, se recrea la ventana (solo si está oculta). */
+function recreateIfLangChanged(): void {
+  const win = quickWin
+  if (!win || win.isDestroyed() || win.isVisible() || !isLangStale(win)) return
+  quickWin = null
+  win.destroy()
+}
+
 export function showQuickEntry(): void {
   // Sin cuenta al día (cuenta obligatoria activada) Quick Entry no se abre.
   if (!isAccountAllowed()) return
+  recreateIfLangChanged()
   if (!quickWin || quickWin.isDestroyed()) quickWin = createQuickWindow()
   const win = quickWin
   position(win)
@@ -111,11 +121,11 @@ export function registerQuickEntryShortcut(accelerator: string): string | null {
   if (!acc) return null
   try {
     const ok = globalShortcut.register(acc, toggleQuickEntry)
-    if (!ok) return `No se pudo registrar "${acc}": otra aplicación ya usa ese atajo.`
+    if (!ok) return t('merr.quick.shortcutTaken', { acc })
     registered = acc
     return null
   } catch (err) {
-    return `Atajo inválido "${acc}": ${err instanceof Error ? err.message : String(err)}`
+    return t('merr.quick.shortcutInvalid', { acc, detail: err instanceof Error ? err.message : String(err) })
   }
 }
 

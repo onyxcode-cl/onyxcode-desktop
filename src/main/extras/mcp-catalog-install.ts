@@ -8,6 +8,7 @@
  * - `computeInstalled` detecta el desvío: si la URL, el tipo o las cabeceras ya no son las que instaló el catálogo,
  *   el servidor se marca «modificado».
  */
+import { t } from '@shared/i18n'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpRemoteEntry } from '@shared/ipc-extras'
@@ -27,7 +28,7 @@ const headerNames = (item: McpCatalogItem): string[] => item.inputs.map((i) => i
 
 export function validateCatalogName(name: string): string {
   const clean = name.trim()
-  if (!MCP_NAME_RE.test(clean)) throw new Error('Nombre inválido: usa solo letras, números, "-" o "_" (máx. 64).')
+  if (!MCP_NAME_RE.test(clean)) throw new Error(t('merr.mcp.invalidName'))
   return clean
 }
 
@@ -36,16 +37,16 @@ export function validateCatalogName(name: string): string {
  * Token y sin credencial llevan `oauth:false` (no se intenta inicio de sesión); OAuth deja la autodetección.
  */
 export function buildCatalogEntry(item: McpCatalogItem, inputs: Record<string, string>, enable = true): McpRemoteEntry {
-  if (item.transport !== 'remote') throw new Error('Solo se admiten servidores remotos.')
+  if (item.transport !== 'remote') throw new Error(t('merr.mcp.remoteOnly'))
   const known = new Set(item.inputs.map((i) => i.id))
-  for (const key of Object.keys(inputs)) if (!known.has(key)) throw new Error(`Dato desconocido: "${key}".`)
+  for (const key of Object.keys(inputs)) if (!known.has(key)) throw new Error(t('merr.mcp.unknownInput', { key }))
   const headers: Record<string, string> = {}
   for (const input of item.inputs) {
     const value = inputs[input.id]
-    if (typeof value !== 'string' || value === '') throw new Error(`Falta «${input.label}».`)
-    if (/[\r\n\0]/.test(value)) throw new Error(`«${input.label}» no puede contener saltos de línea.`)
-    if (value.length > input.maxLength) throw new Error(`«${input.label}» es demasiado largo.`)
-    if (!new RegExp(input.pattern).test(value)) throw new Error(`«${input.label}» no tiene el formato esperado.`)
+    if (typeof value !== 'string' || value === '') throw new Error(t('merr.mcp.missingInput', { label: input.label }))
+    if (/[\r\n\0]/.test(value)) throw new Error(t('merr.mcp.noNewlines', { label: input.label }))
+    if (value.length > input.maxLength) throw new Error(t('merr.mcp.tooLong', { label: input.label }))
+    if (!new RegExp(input.pattern).test(value)) throw new Error(t('merr.mcp.badFormat', { label: input.label }))
     // Función de reemplazo: un `$&` en el valor no se interpreta.
     headers[input.target.header] = input.target.template.replace('{value}', () => value)
   }
@@ -151,7 +152,7 @@ export interface InstallCatalogRequest {
  */
 export function installFromCatalog(store: CatalogProvenanceStore, req: InstallCatalogRequest): AppMcpConfig {
   const item = findCatalogItem(req.id)
-  if (!item) throw new Error('Ese conector no está en el catálogo.')
+  if (!item) throw new Error(t('merr.mcp.notInCatalog'))
   const name = validateCatalogName(req.name)
   const entry = buildCatalogEntry(item, req.inputs, req.enable)
   const cfg = saveMcpServer(name, entry, undefined, { askEachUse: req.askEachUse })

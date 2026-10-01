@@ -14,6 +14,7 @@
  *   `buildRecordedSkillPrompt` (`@shared/skill-recording.ts`).
  * - Al arrancar la app, `purgeOld()` borra las grabaciones de más de 24 h (nadie las recogió).
  */
+import { t } from '@shared/i18n'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -93,7 +94,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
 
   /** Empieza a grabar (rechaza si ya hay una grabación en curso). */
   async start(mic: boolean): Promise<SkillRecordingState> {
-    if (this.child) throw new Error('Ya hay una grabación en curso: termínala o descártala antes de empezar otra.')
+    if (this.child) throw new Error(t('merr.record.busy'))
     const bin = this.helperPath()
     if (!bin) throw new Error('Falta el helper nativo (cu-helper).')
     const id = randomBytes(6).toString('hex')
@@ -185,7 +186,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
   async prepare(id: string, root: string, includeTyped: boolean): Promise<{ prompt: string; relDir: string }> {
     const srcDir = join(this.baseDir, id)
     const rec = this.loadRecording(srcDir)
-    if (!rec) throw new Error('No se encontró la grabación (puede haberse purgado tras 24 h).')
+    if (!rec) throw new Error(t('merr.record.notFound'))
     // Migra la carpeta de trabajo heredada a `.onyxcode/trabajo/` antes de escribir.
     migrateFolderScratch(root, (m, e) => console.warn('[computer]', m, e ?? ''))
     const relDir = join('.onyxcode', 'trabajo', 'grabaciones', id)

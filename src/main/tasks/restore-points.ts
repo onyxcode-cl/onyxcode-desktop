@@ -19,6 +19,7 @@
  * 50 MB por archivo y 2 GB en total; restaurar crea antes un punto «Antes de deshacer»; lo creado
  * después va a la Papelera (nunca se borra); cada ruta se valida contra symlinks intermedios.
  */
+import { t } from '@shared/i18n'
 import { createHash, randomBytes } from 'node:crypto'
 import {
   chmodSync,
@@ -269,7 +270,7 @@ export class RestorePoints {
     try {
       return realpathSync(resolve(folder))
     } catch {
-      throw new Error('La carpeta no está disponible (¿disco desconectado?)')
+      throw new Error(t('merr.restore.unavailable'))
     }
   }
 
@@ -588,7 +589,7 @@ export class RestorePoints {
     const real = this.realFolder(folder)
     const dir = this.folderDir(real)
     const man = this.readManifest(dir, pointId)
-    if (!man) throw new Error('No existe ese punto de restauración.')
+    if (!man) throw new Error(t('merr.restore.noPoint'))
     const diffs = await this.diffState(real, man)
     const changes: TasksRestoreChange[] = []
     let truncated = false
@@ -682,7 +683,7 @@ export class RestorePoints {
     return this.serial(real, async () => {
       const dir = this.folderDir(real)
       const man = this.readManifest(dir, pointId)
-      if (!man) throw new Error('No existe ese punto de restauración.')
+      if (!man) throw new Error(t('merr.restore.noPoint'))
       const point = this.readMeta(dir, pointId)
       // (1) Antes de tocar nada: punto «Antes de deshacer» (así deshacer también se puede deshacer).
       const undo = await this.createLocked(real, point?.sessionId ?? 'restore', UNDO_LABEL, pointId)

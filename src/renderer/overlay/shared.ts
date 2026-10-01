@@ -1,5 +1,6 @@
 /** Utilidades compartidas por el overlay de control y la píldora. */
 import type { ComputerActionEvent, TasksApi } from '@shared/ipc-tasks'
+import { t, type MsgKey } from '@shared/i18n'
 
 export const tasks = (window as unknown as { api?: { tasks?: TasksApi } }).api?.tasks
 
@@ -20,7 +21,6 @@ const KEY_GLYPHS: Record<string, string> = {
   return: '↩',
   enter: '↩',
   tab: '⇥',
-  space: 'Espacio',
   delete: '⌫',
   backspace: '⌫',
   forwarddelete: '⌦',
@@ -33,11 +33,16 @@ const KEY_GLYPHS: Record<string, string> = {
   arrowup: '↑',
   arrowdown: '↓',
   arrowleft: '←',
-  arrowright: '→',
-  pageup: 'RePág',
-  pagedown: 'AvPág',
-  home: 'Inicio',
-  end: 'Fin'
+  arrowright: '→'
+}
+
+/** Teclas con nombre en el idioma activo. */
+const KEY_NAMES: Record<string, MsgKey> = {
+  space: 'ovl.key.space',
+  pageup: 'ovl.key.pageup',
+  pagedown: 'ovl.key.pagedown',
+  home: 'ovl.key.home',
+  end: 'ovl.key.end'
 }
 
 /** "cmd+shift+t return" → "⌘⇧T ↩". */
@@ -50,7 +55,7 @@ export function formatKeys(keys: string): string {
         .split('+')
         .map((k) => {
           const l = k.toLowerCase()
-          return KEY_GLYPHS[l] ?? (l.length === 1 ? l.toUpperCase() : l.toUpperCase())
+          return KEY_GLYPHS[l] ?? (KEY_NAMES[l] ? t(KEY_NAMES[l]) : l.toUpperCase())
         })
         .join('')
     )
@@ -62,33 +67,33 @@ function clip(s: string, n: number): string {
   return one.length > n ? `${one.slice(0, n - 1)}…` : one
 }
 
-const SCROLL_DIR: Record<string, string> = { up: 'arriba', down: 'abajo', left: 'la izquierda', right: 'la derecha' }
+const SCROLL_DIR: Record<string, MsgKey> = { up: 'ovl.dir.up', down: 'ovl.dir.down', left: 'ovl.dir.left', right: 'ovl.dir.right' }
 
 /** Etiqueta corta junto al cursor. */
 export function shortLabel(ev: ComputerActionEvent): string {
   switch (ev.tool) {
     case 'left_click':
-      return 'Clic'
+      return t('ovl.short.click')
     case 'right_click':
-      return 'Clic derecho'
+      return t('ovl.short.rightClick')
     case 'double_click':
-      return 'Doble clic'
+      return t('ovl.short.doubleClick')
     case 'mouse_move':
-      return 'Moviendo'
+      return t('ovl.short.move')
     case 'drag':
-      return 'Arrastrando'
+      return t('ovl.short.drag')
     case 'scroll':
-      return 'Desplazando'
+      return t('ovl.short.scroll')
     case 'type_text':
-      return 'Escribiendo…'
+      return t('ovl.short.type')
     case 'key':
-      return ev.text ? formatKeys(ev.text) : 'Teclas'
+      return ev.text ? formatKeys(ev.text) : t('ovl.short.keys')
     case 'open_application':
-      return ev.text ? `Abriendo ${clip(ev.text, 24)}` : 'Abriendo app'
+      return ev.text ? t('ovl.short.openApp', { app: clip(ev.text, 24) }) : t('ovl.short.openAppNoName')
     case 'wait':
-      return 'Esperando…'
+      return t('ovl.short.wait')
     case 'screenshot':
-      return 'Captura'
+      return t('ovl.short.screenshot')
     default:
       return clip(ev.tool.replace(/_/g, ' '), 24)
   }
@@ -98,29 +103,29 @@ export function shortLabel(ev: ComputerActionEvent): string {
 export function describeStep(ev: ComputerActionEvent): string {
   switch (ev.tool) {
     case 'left_click':
-      return 'Haciendo clic'
+      return t('ovl.step.click')
     case 'right_click':
-      return 'Haciendo clic derecho'
+      return t('ovl.step.rightClick')
     case 'double_click':
-      return 'Haciendo doble clic'
+      return t('ovl.step.doubleClick')
     case 'mouse_move':
-      return 'Moviendo el puntero'
+      return t('ovl.step.move')
     case 'drag':
-      return 'Arrastrando'
+      return t('ovl.step.drag')
     case 'scroll': {
       const dir = (ev.text ?? '').split(' ')[0]
-      return SCROLL_DIR[dir] ? `Desplazando hacia ${SCROLL_DIR[dir]}` : 'Desplazando'
+      return SCROLL_DIR[dir] ? t('ovl.step.scrollDir', { dir: t(SCROLL_DIR[dir]) }) : t('ovl.step.scroll')
     }
     case 'type_text':
-      return ev.text ? `Escribiendo “${clip(ev.text, 48)}”` : 'Escribiendo'
+      return ev.text ? t('ovl.step.typeText', { text: clip(ev.text, 48) }) : t('ovl.step.type')
     case 'key':
-      return ev.text ? `Pulsando ${formatKeys(ev.text)}` : 'Pulsando teclas'
+      return ev.text ? t('ovl.step.pressKeys', { keys: formatKeys(ev.text) }) : t('ovl.step.press')
     case 'open_application':
-      return ev.text ? `Abriendo ${clip(ev.text, 40)}` : 'Abriendo una app'
+      return ev.text ? t('ovl.step.openApp', { app: clip(ev.text, 40) }) : t('ovl.step.openAnApp')
     case 'wait':
-      return ev.text ? `Esperando ${ev.text.replace('s', ' s')}` : 'Esperando'
+      return ev.text ? t('ovl.step.waitFor', { time: ev.text.replace('s', ' s') }) : t('ovl.step.wait')
     case 'screenshot':
-      return 'Mirando la pantalla'
+      return t('ovl.step.look')
     default:
       return clip(ev.tool.replace(/_/g, ' '), 48)
   }

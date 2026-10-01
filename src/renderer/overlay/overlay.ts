@@ -4,6 +4,8 @@
  * cursor y destello tras cada captura. Recibe `computer:overlay` del proceso principal
  * (src/main/computer/overlay.ts). Coordenadas ya en px CSS de esta ventana.
  */
+import '../src/lib/page-lang'
+import { t } from '@shared/i18n'
 import type { ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-tasks'
 import { tasks, reducedMotion, shortLabel } from './shared'
 import './overlay.css'
@@ -172,7 +174,7 @@ function onAction(msg: Extract<ComputerOverlayMessage, { type: 'action' }>): voi
       ripple(x, y, 'click')
     }
   }
-  if (ev.ok === false) showTag('No se pudo', 'error')
+  if (ev.ok === false) showTag(t('ovl.tag.failed'), 'error')
   lingerTag()
 }
 
@@ -191,7 +193,7 @@ function handle(msg: ComputerOverlayMessage): void {
       document.body.classList.remove('paused')
       document.body.classList.add('stopped')
       clearTarget()
-      showTag('Control detenido', 'error')
+      showTag(t('ovl.pill.stoppedTitle'), 'error')
       return
     case 'action':
       onAction(msg)
@@ -203,7 +205,7 @@ function handle(msg: ComputerOverlayMessage): void {
       clearTarget()
       window.clearTimeout(tagTimer)
       placeTag(window.innerWidth / 2, 46, 0)
-      showTag('Esperando tu permiso', 'pause')
+      showTag(t('ovl.tag.waiting'), 'pause')
       return
     case 'waitingCleared':
       document.body.classList.remove('paused')

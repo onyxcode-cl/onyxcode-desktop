@@ -109,6 +109,14 @@ export function findHardcodedText(file: string, source: string): string[] {
   }
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return
+    // Los registros de consola no los ve el usuario: sus argumentos no cuentan.
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === 'console'
+    )
+      return
     if (ts.isJsxText(node)) {
       const text = node.getText(sf)
       const words = text.match(/[A-Za-zÀ-ÿ]{2,}/g) ?? []

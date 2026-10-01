@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { getLang, type Lang } from '@shared/i18n'
 import { rendererPageUrl } from '../security/app-protocol'
 
 /** Ventanas creadas por extras (quick entry, artifacts): nunca son la "ventana principal". */
@@ -48,4 +49,29 @@ export function preloadPath(name: PreloadName = 'index'): string {
  */
 export function loadRendererPage(win: BrowserWindow, page: string): Promise<void> {
   return win.loadURL(rendererPageUrl(page))
+}
+
+/** Idioma con el que se cargó cada ventana secundaria (Quick Entry, overlay, píldora, assist). */
+const pageLang = new WeakMap<BrowserWindow, Lang>()
+
+/** `overlay/pill.html#x` → `overlay/pill.html?lang=en#x`. */
+export function withLang(page: string, lang: Lang = getLang()): string {
+  const i = page.indexOf('#')
+  const path = i === -1 ? page : page.slice(0, i)
+  const hash = i === -1 ? '' : page.slice(i)
+  return `${path}${path.includes('?') ? '&' : '?'}lang=${lang}${hash}`
+}
+
+/**
+ * Carga una página de una ventana secundaria con el idioma activo en la URL (`?lang=`). Esas ventanas
+ * tienen un preload mínimo y propio que NO se toca: la página lee el idioma de su propia URL.
+ */
+export function loadLocalizedPage(win: BrowserWindow, page: string): Promise<void> {
+  pageLang.set(win, getLang())
+  return loadRendererPage(win, withLang(page))
+}
+
+/** true si la ventana se cargó con otro idioma que el activo (hay que recrearla cuando no se vea). */
+export function isLangStale(win: BrowserWindow): boolean {
+  return pageLang.get(win) !== getLang()
 }
