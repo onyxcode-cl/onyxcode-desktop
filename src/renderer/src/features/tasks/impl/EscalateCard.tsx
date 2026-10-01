@@ -12,6 +12,7 @@
 import { useState } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { sendToTask, setAccessMode } from './actions'
@@ -23,6 +24,7 @@ export { lastAssistantText }
 
 // ───────────────────────────── Detección y prompt (funciones puras) ─────────────────────────────
 
+// i18n-ignore: contrato con el agente (sus prompts están en español), no es texto de interfaz
 const MARKER = 'necesita control total del mac'
 const MAX_SUMMARY_CHARS = 1500
 
@@ -70,8 +72,11 @@ export function buildContinuationPrompt(entries: MessageEntry[]): string {
   // Se conserva el final: ahí están las conclusiones y el motivo de la escalada.
   if (summary.length > MAX_SUMMARY_CHARS) summary = `…${summary.slice(-(MAX_SUMMARY_CHARS - 1))}`
   return (
+    // i18n-ignore: prompt al agente (los prompts del agente siguen en español)
     'Continúa en Control total del Mac esta tarea que empecé en modo sandbox.\n\n' +
+    // i18n-ignore: prompt al agente
     `Encargo original:\n${original}\n\n` +
+    // i18n-ignore: prompt al agente
     `Lo que hiciste o concluiste en sandbox:\n${summary}`
   )
 }
@@ -127,6 +132,7 @@ function armContinuation(entries: MessageEntry[]): boolean {
 
 /** Tarjeta "Esta tarea necesita controlar apps de tu Mac", bajo el último mensaje de una tarea sandbox terminada. */
 export function EscalateCard({ taskId, entries }: { taskId: string; entries: MessageEntry[] }): React.JSX.Element | null {
+  const t = useT()
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const last = lastAssistantEntry(entries)
   if (!taskId || !last || dismissed.has(last.info.id) || !needsFullAccess(lastAssistantText(entries))) return null
@@ -146,19 +152,15 @@ export function EscalateCard({ taskId, entries }: { taskId: string; entries: Mes
           <ShieldAlert size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Esta tarea necesita controlar apps de tu Mac</p>
+          <p className="text-sm font-semibold">{t('tasksComputer.escalate.title')}</p>
           {reason && <p className="mt-0.5 break-words text-sm text-fg">{reason}</p>}
-          <p className="mt-0.5 text-xs text-muted">
-            El modo sandbox no puede abrir apps, hacer clic, teclear en otras apps ni capturar la pantalla. Si cambias a Control total, se
-            abrirá una tarea nueva con tu encargo y un resumen de lo hecho hasta ahora; antes te pediremos confirmar el cambio y el agente
-            pedirá tu aprobación para actuar.
-          </p>
+          <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.escalate.body')}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="primary" onClick={escalate}>
-              Cambiar a Control total y continuar
+              {t('tasksComputer.escalate.switch')}
             </Button>
             <Button variant="ghost" onClick={() => setDismissed((s) => new Set(s).add(messageId))}>
-              Seguir en sandbox
+              {t('tasksComputer.escalate.stay')}
             </Button>
           </div>
         </div>

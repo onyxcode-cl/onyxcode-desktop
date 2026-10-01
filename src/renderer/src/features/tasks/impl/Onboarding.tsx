@@ -5,21 +5,20 @@
 import { useState } from 'react'
 import { Check, ChevronDown, FolderOpen, MonitorCog, Play, Shield, X } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { useT } from '../../../lib/i18n'
 import { chooseFolder } from './actions'
 import { useTasks } from './store'
 
-/** Tarea de prueba segura: solo lee y resume, no modifica nada. */
-export const ONBOARDING_SAMPLE_PROMPT =
-  'Primero revisa esta carpeta y muéstrame un resumen de qué hay (tipos de archivo y para qué parece servir cada parte); luego propón tres tareas útiles que podríamos hacer aquí; no modifiques nada todavía.'
-
-const SAFETY_TIPS = [
-  `Empieza en ${TASKS_TERMS.sandbox}: solo toca la carpeta elegida y las carpetas adicionales que añadas. Usa ${TASKS_TERMS.fullControl} solo cuando de verdad lo necesites.`,
-  'Pide primero un resumen y un plan: «Primero revisa… y muéstrame un resumen; luego propón…; cuando lo apruebe, hazlo».',
-  `Mover, renombrar y borrar piden el permiso «${TASKS_TERMS.deleteGrant}». Concédelo solo en carpetas que tengas respaldadas.`,
-  'Lee cada tarjeta de permiso antes de aprobar. El motivo que muestra lo dice el agente y no está verificado.',
-  `En ${TASKS_TERMS.fullControl} revisa el plan antes de aprobarlo y no dejes datos sensibles a la vista. Detén al agente en cualquier momento con ⌘⇧Esc.`,
-  'No pegues contraseñas ni claves en la tarea: el agente puede escribirlas en archivos o enviarlas a los sitios que permitas.'
-]
+function safetyTips(t: ReturnType<typeof useT>): string[] {
+  return [
+    t('tasksComputer.onb.tip1', { sandbox: TASKS_TERMS.sandbox, full: TASKS_TERMS.fullControl }),
+    t('tasksComputer.onb.tip2'),
+    t('tasksComputer.onb.tip3', { grant: TASKS_TERMS.deleteGrant }),
+    t('tasksComputer.onb.tip4'),
+    t('tasksComputer.onb.tip5', { full: TASKS_TERMS.fullControl }),
+    t('tasksComputer.onb.tip6')
+  ]
+}
 
 function Step({
   n,
@@ -57,12 +56,13 @@ const stepBtn =
   'flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs font-medium text-fg transition hover:border-border-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50'
 
 export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.Element {
+  const t = useT()
   const folder = useTasks((s) => s.folder)
   const phase = useTasks((s) => s.phase)
   const [safeOpen, setSafeOpen] = useState(false)
 
   const trySample = (): void => {
-    useTasks.setState({ draft: ONBOARDING_SAMPLE_PROMPT })
+    useTasks.setState({ draft: t('tasksComputer.onb.samplePrompt') })
   }
 
   return (
@@ -73,15 +73,15 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="tasks-onboarding-title" className="font-display text-base font-medium">
-            Así funcionan las tareas
+            {t('tasksComputer.onb.title')}
           </h2>
-          <p className="mt-0.5 text-[13px] text-muted">Tres pasos para delegar tu primera tarea con tranquilidad.</p>
+          <p className="mt-0.5 text-[13px] text-muted">{t('tasksComputer.onb.subtitle')}</p>
         </div>
         <button
           type="button"
           onClick={onDismiss}
-          title="Descartar (no volverá a aparecer)"
-          aria-label="Descartar la guía de primer uso"
+          title={t('tasksComputer.onb.dismissTitle')}
+          aria-label={t('tasksComputer.onb.dismissAria')}
           className="shrink-0 rounded-md p-1 text-subtle transition hover:bg-hover hover:text-fg"
         >
           <X size={15} />
@@ -92,43 +92,41 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
         <Step
           n={1}
           done={!!folder}
-          title="Elige una carpeta"
+          title={t('tasksComputer.onb.step1')}
           action={
             <button type="button" className={stepBtn} onClick={() => void chooseFolder()}>
-              <FolderOpen size={13} /> {folder ? 'Cambiar carpeta' : 'Elegir carpeta'}
+              <FolderOpen size={13} /> {folder ? t('tasksComputer.onb.changeFolder') : t('tasksComputer.menu.choose')}
             </button>
           }
         >
-          El agente trabaja dentro de ella. Puedes añadir carpetas adicionales, de lectura y escritura o de solo lectura.
+          {t('tasksComputer.onb.step1Desc')}
         </Step>
 
-        <Step n={2} title="Qué puede y qué no hacer">
+        <Step n={2} title={t('tasksComputer.onb.step2')}>
           <span className="flex items-start gap-1.5">
             <Shield size={13} className="mt-0.5 shrink-0 text-accent" />
             <span>
-              <strong className="font-medium text-fg">{TASKS_TERMS.sandbox}:</strong> lee y escribe solo en tus carpetas, no ve tus claves y
-              pide permiso para borrar, mover o renombrar.
+              <strong className="font-medium text-fg">{TASKS_TERMS.sandbox}:</strong> {t('tasksComputer.onb.sandboxDesc')}
             </span>
           </span>
           <span className="mt-1.5 flex items-start gap-1.5">
             <MonitorCog size={13} className="mt-0.5 shrink-0 text-warning" />
             <span>
-              <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> sin sandbox; usa ratón, teclado y pantalla y puede
-              tocar cualquier archivo. Exige aprobar un plan.
+              <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> {t('tasksComputer.onb.fullDesc')}
             </span>
           </span>
         </Step>
 
         <Step
           n={3}
-          title="Prueba una tarea"
+          title={t('tasksComputer.onb.step3')}
           action={
             <button type="button" className={stepBtn} disabled={!folder || phase === 'starting'} onClick={trySample}>
-              <Play size={13} /> Rellenar una tarea de prueba
+              <Play size={13} /> {t('tasksComputer.onb.fillSample')}
             </button>
           }
         >
-          Una que solo lee y resume: no modifica nada. {!folder && 'Elige antes una carpeta.'}
+          {t('tasksComputer.onb.step3Desc')} {!folder && t('tasksComputer.onb.pickFirst')}
         </Step>
       </ol>
 
@@ -140,13 +138,13 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           aria-controls="tasks-safe-use"
           className="flex items-center gap-1.5 text-[13px] font-medium text-accent transition hover:underline"
         >
-          Cómo usar las tareas de forma segura
+          {t('tasksComputer.onb.safe')}
           <ChevronDown size={14} className={`transition-transform ${safeOpen ? 'rotate-180' : ''}`} />
         </button>
         {safeOpen && (
           <ul id="tasks-safe-use" className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-snug text-muted marker:text-subtle">
-            {SAFETY_TIPS.map((t) => (
-              <li key={t}>{t}</li>
+            {safetyTips(t).map((tip) => (
+              <li key={tip}>{tip}</li>
             ))}
           </ul>
         )}
@@ -158,7 +156,7 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           onClick={onDismiss}
           className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted transition hover:bg-hover hover:text-fg"
         >
-          Entendido, no mostrar más
+          {t('tasksComputer.onb.gotIt')}
         </button>
       </div>
     </section>

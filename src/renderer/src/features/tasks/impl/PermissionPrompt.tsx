@@ -8,8 +8,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
+import { t } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { DiffView, parseUnifiedDiff } from '../../../components/DiffView'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { replyPermission, replyPermissionAlways } from './actions'
 import { cw } from './bridge'
@@ -69,8 +71,8 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
       if (DELETE_RE.test(cmd)) {
         return {
           icon: Trash2,
-          title: 'El agente quiere borrar archivos',
-          effect: 'Se eliminarán de forma permanente los archivos o carpetas indicados en el comando.',
+          title: t('tasksComputer.perm.deleteTitle'),
+          effect: t('tasksComputer.perm.deleteEffect'),
           detail: cmd,
           aiDescription: desc || undefined,
           danger: true
@@ -78,8 +80,8 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
       }
       return {
         icon: Terminal,
-        title: 'El agente quiere ejecutar un comando',
-        effect: 'Se ejecutará este comando en la terminal de la carpeta.',
+        title: t('tasksComputer.perm.bashTitle'),
+        effect: t('tasksComputer.perm.bashEffect'),
         detail: cmd,
         aiDescription: desc || undefined,
         danger: false
@@ -89,8 +91,8 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
       const file = meta(p, 'filepath', 'filePath', 'path') || patterns
       return {
         icon: FileEdit,
-        title: `El agente quiere modificar ${file ? `«${baseName(file)}»` : 'archivos'}`,
-        effect: 'Se cambiará el contenido del archivo.',
+        title: file ? t('tasksComputer.perm.editTitle', { file: baseName(file) }) : t('tasksComputer.perm.editTitleNone'),
+        effect: t('tasksComputer.perm.editEffect'),
         detail: file,
         diff: meta(p, 'diff') || undefined,
         file: file || undefined,
@@ -101,8 +103,8 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
       const dir = meta(p, 'parentDir', 'filepath', 'filePath', 'path') || patterns
       return {
         icon: FolderInput,
-        title: 'El agente quiere trabajar en otra carpeta',
-        effect: 'Esta ubicación no es la carpeta de la tarea: revisa la carpeta y elige el modo antes de permitirla.',
+        title: t('tasksComputer.perm.folderTitle'),
+        effect: t('tasksComputer.perm.folderEffect'),
         detail: dir,
         kind: 'folder',
         danger: true
@@ -112,16 +114,16 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
     case 'websearch':
       return {
         icon: Globe,
-        title: 'El agente quiere consultar la web',
-        effect: 'Se descargará el contenido de esta dirección.',
+        title: t('tasksComputer.perm.webTitle'),
+        effect: t('tasksComputer.perm.webEffect'),
         detail: meta(p, 'url', 'query') || patterns,
         danger: false
       }
     case 'doom_loop':
       return {
         icon: Repeat,
-        title: 'El agente está repitiendo la misma acción',
-        effect: 'Parece atascado. Si lo permites, volverá a intentar lo mismo; si lo rechazas, se detendrá y te explicará.',
+        title: t('tasksComputer.perm.loopTitle'),
+        effect: t('tasksComputer.perm.loopEffect'),
         detail: patterns,
         danger: false
       }
@@ -130,8 +132,8 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
       if (kind) {
         return {
           icon: computerToolInfo(kind).icon,
-          title: `El agente quiere controlar el Mac: ${computerToolInfo(kind).label.toLowerCase()}`,
-          effect: 'Usará el ratón, el teclado o la pantalla de tu Mac.',
+          title: t('tasksComputer.perm.macTitle', { action: computerToolInfo(kind).label.toLowerCase() }),
+          effect: t('tasksComputer.perm.macEffect'),
           detail: patterns,
           danger: true
         }
@@ -141,17 +143,17 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
         const json = metadataJson(p.metadata)
         return {
           icon: PlugZap,
-          title: `El agente quiere usar ${mcp.tool} de ${mcp.server}`,
-          effect: 'Es una herramienta de un conector (MCP) externo: se ejecutará con los parámetros indicados.',
+          title: t('tasksComputer.perm.mcpTitle', { tool: mcp.tool, server: mcp.server }),
+          effect: t('tasksComputer.perm.mcpEffect'),
           detail: json || patterns,
-          sections: json && patterns ? [{ label: 'Patrones', text: p.patterns.join('\n') }] : undefined,
+          sections: json && patterns ? [{ label: t('tasksComputer.perm.patterns'), text: p.patterns.join('\n') }] : undefined,
           danger: false
         }
       }
       return {
         icon: ShieldAlert,
-        title: `El agente pide permiso: ${p.permission}`,
-        effect: 'Realizará esta acción con los parámetros indicados.',
+        title: t('tasksComputer.perm.genericTitle', { permission: p.permission }),
+        effect: t('tasksComputer.perm.genericEffect'),
         detail: patterns || JSON.stringify(p.metadata),
         danger: false
       }
@@ -215,6 +217,7 @@ function RejectWithNote({
   onSend: (text: string) => void
   onCancel: () => void
 }): React.JSX.Element {
+  const t = useT()
   const [text, setText] = useState('')
   const box = useRef<HTMLDivElement>(null)
   // Los botones quedan bajo el pliegue de la conversación: se trae todo el bloque a la vista.
@@ -228,8 +231,8 @@ function RejectWithNote({
         value={text}
         rows={3}
         disabled={busy}
-        aria-label="Indicaciones para el agente"
-        placeholder="Dile al agente qué cambiar…"
+        aria-label={t('tasksComputer.perm.noteAria')}
+        placeholder={t('tasksComputer.perm.notePlaceholder')}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onCancel()
@@ -239,10 +242,10 @@ function RejectWithNote({
       />
       <div className="mt-2 flex items-center gap-2">
         <Button variant="primary" disabled={busy || !text.trim()} onClick={() => onSend(text)}>
-          Rechazar y enviar indicaciones
+          {t('tasksComputer.perm.rejectSend')}
         </Button>
         <Button variant="ghost" disabled={busy} onClick={onCancel}>
-          Cancelar
+          {t('tasksComputer.cancel')}
         </Button>
       </div>
     </div>
@@ -257,9 +260,7 @@ function useCanAlways(request: PermissionRequest, danger: boolean): boolean {
 
 function alwaysHint(p: PermissionRequest): string {
   const list = rememberablePatterns(p)
-  return list.length > 0
-    ? `No volverá a preguntar en esta carpeta para: ${list.join(', ')}. Puedes quitarlo en Ajustes.`
-    : 'No volverá a preguntar por esto'
+  return list.length > 0 ? t('tasksComputer.perm.alwaysHint', { list: list.join(', ') }) : t('tasksComputer.perm.alwaysHintNone')
 }
 
 /** Tarjeta detallada dentro de la conversación (otra carpeta ⇒ `FolderRequestCard`). */
@@ -273,6 +274,7 @@ export function PermissionCard({ request }: { request: PermissionRequest }): Rea
 }
 
 function GenericPermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
+  const t = useT()
   const servers = useMcpServers()
   const d = describePermission(request, servers)
   const { busy, error, answer, reject } = useReply(request)
@@ -314,13 +316,13 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
           {(d.diff ? hasHiddenChars(d.diff) : false) && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
               <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-              Contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+              {t('tasksComputer.perm.hidden')}
             </p>
           )}
           {d.detail && hasHiddenChars(d.detail) && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
               <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-              Contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+              {t('tasksComputer.perm.hidden')}
             </p>
           )}
           {d.sections?.map((sec) => (
@@ -332,33 +334,33 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
               {hasHiddenChars(sec.text) && (
                 <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
                   <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-                  Contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+                  {t('tasksComputer.perm.hidden')}
                 </p>
               )}
             </div>
           ))}
           {d.aiDescription && (
             <div className="mt-2 rounded-md border border-border/70 bg-hover/40 px-2.5 py-1.5">
-              <p className="text-[11px] font-medium text-subtle">Descripción del agente (no verificada)</p>
+              <p className="text-[11px] font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
               <p className="mt-0.5 text-xs text-muted">{d.aiDescription}</p>
             </div>
           )}
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant={d.danger ? 'danger' : 'primary'} disabled={busy} onClick={() => answer('once')}>
-              Permitir una vez
+              {t('tasksComputer.perm.once')}
             </Button>
             {canAlways && (
               <Button disabled={busy} onClick={() => answer('always')} title={alwaysHint(request)}>
-                Permitir siempre
+                {t('tasksComputer.perm.always')}
               </Button>
             )}
             <Button variant="ghost" disabled={busy} onClick={() => answer('reject')}>
-              Rechazar
+              {t('tasksComputer.perm.reject')}
             </Button>
             {!noting && (
               <Button variant="ghost" disabled={busy} onClick={() => setNoting(true)}>
-                Rechazar con indicaciones
+                {t('tasksComputer.perm.rejectNote')}
               </Button>
             )}
           </div>
@@ -379,6 +381,7 @@ export function ApprovalBar({ requests }: { requests: PermissionRequest[] }): Re
 }
 
 function ApprovalBarInner({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
+  const t = useT()
   const servers = useMcpServers()
   const d = describePermission(request, servers)
   const { busy, error, answer } = useReply(request)
@@ -397,10 +400,10 @@ function ApprovalBarInner({ request, more }: { request: PermissionRequest; more:
         }`}
       >
         <Icon size={16} className={`shrink-0 ${d.danger ? 'text-danger' : 'text-warning'}`} />
-        <button type="button" className="min-w-0 flex-1 text-left" title="Ver detalles" onClick={review}>
+        <button type="button" className="min-w-0 flex-1 text-left" title={t('tasksComputer.perm.details')} onClick={review}>
           <span className="block truncate text-sm font-medium">
             {d.title}
-            {more > 0 && <span className="ml-1.5 text-xs font-normal text-muted">+{more} más</span>}
+            {more > 0 && <span className="ml-1.5 text-xs font-normal text-muted">{t('tasksComputer.perm.more', { more })}</span>}
           </span>
           <span className="block truncate font-mono text-[11px] text-muted">{error ?? d.detail}</span>
         </button>
@@ -408,16 +411,16 @@ function ApprovalBarInner({ request, more }: { request: PermissionRequest; more:
           {d.kind === 'folder' ? (
             // Otra carpeta: hay que elegir carpeta y modo en la tarjeta; no hay «Permitir una vez» rápido.
             <Button variant="primary" className="!px-2.5 !py-1 text-xs" onClick={review}>
-              Revisar
+              {t('tasksComputer.perm.review')}
             </Button>
           ) : (
             <>
               <Button variant="ghost" className="!px-2 !py-1 text-xs" disabled={busy} onClick={() => answer('reject')}>
-                Rechazar
+                {t('tasksComputer.perm.reject')}
               </Button>
               {canAlways && (
                 <Button className="!px-2 !py-1 text-xs" disabled={busy} onClick={() => answer('always')} title={alwaysHint(request)}>
-                  Siempre
+                  {t('tasksComputer.perm.alwaysShort')}
                 </Button>
               )}
               <Button
@@ -426,7 +429,7 @@ function ApprovalBarInner({ request, more }: { request: PermissionRequest; more:
                 disabled={busy}
                 onClick={() => answer('once')}
               >
-                Permitir una vez
+                {t('tasksComputer.perm.once')}
               </Button>
             </>
           )}

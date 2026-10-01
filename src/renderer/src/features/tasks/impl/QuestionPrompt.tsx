@@ -6,6 +6,7 @@ import { useState } from 'react'
 import type { QuestionInfo, QuestionRequest } from '@opencode-ai/sdk/v2/client'
 import { HelpCircle, X } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { rejectQuestion, replyQuestion } from './actions'
 
@@ -18,6 +19,7 @@ function QuestionField({
   value: string[]
   onChange: (next: string[]) => void
 }): React.JSX.Element {
+  const t = useT()
   const [freeText, setFreeText] = useState('')
   const toggle = (label: string): void => {
     if (q.multiple) {
@@ -66,7 +68,7 @@ function QuestionField({
             setFreeText(e.target.value)
             onChange(e.target.value.trim() ? [e.target.value] : [])
           }}
-          placeholder={q.options.length > 0 ? 'O escribe tu propia respuesta…' : 'Escribe tu respuesta…'}
+          placeholder={q.options.length > 0 ? t('tasksComputer.question.ownAnswer') : t('tasksComputer.question.typeAnswer')}
           className="mt-2 w-full rounded-lg border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-subtle focus:border-border-strong"
         />
       )}
@@ -76,6 +78,7 @@ function QuestionField({
 
 /** Tarjeta de una solicitud de pregunta (puede traer varias preguntas encadenadas). */
 export function QuestionCard({ request }: { request: QuestionRequest }): React.JSX.Element {
+  const t = useT()
   const [answers, setAnswers] = useState<string[][]>(() => request.questions.map(() => []))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -85,6 +88,7 @@ export function QuestionCard({ request }: { request: QuestionRequest }): React.J
     setError(null)
     replyQuestion(
       request.id,
+      // i18n-ignore: respuesta que se envía al agente (sus prompts están en español)
       answers.map((a) => (a.length > 0 ? a : ['Sin respuesta']))
     )
       .catch((err: unknown) => setError(errorMessage(err)))
@@ -106,7 +110,7 @@ export function QuestionCard({ request }: { request: QuestionRequest }): React.J
           <HelpCircle size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">El agente necesita más información</p>
+          <p className="text-sm font-semibold">{t('tasksComputer.question.title')}</p>
           <div className="mt-2 space-y-2">
             {request.questions.map((q, i) => (
               <QuestionField
@@ -126,10 +130,10 @@ export function QuestionCard({ request }: { request: QuestionRequest }): React.J
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex items-center gap-2">
             <Button variant="primary" disabled={busy} onClick={submit}>
-              Enviar respuesta
+              {t('tasksComputer.question.send')}
             </Button>
-            <Button variant="ghost" disabled={busy} onClick={skip} title="No responder esta pregunta">
-              <X size={13} /> Omitir
+            <Button variant="ghost" disabled={busy} onClick={skip} title={t('tasksComputer.question.skipTitle')}>
+              <X size={13} /> {t('tasksComputer.question.skip')}
             </Button>
           </div>
         </div>

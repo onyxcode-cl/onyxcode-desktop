@@ -324,7 +324,7 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
           <PermRow ok={screenRecording} label={t('tasksComputer.perms.screen')} hint={t('tasksComputer.perms.screenHint')} />
         </ul>
         <p className="mt-3 text-xs text-muted">
-          {t('tasksComputer.perms.help1')} <code>npm run dev</code> (
+          {t('tasksComputer.perms.help1')} <code>{'npm run dev'}</code> (
           <strong className="text-fg">{t('tasksComputer.perms.helpApps')}</strong>
           {t('tasksComputer.perms.help2')}
         </p>
@@ -1057,7 +1057,7 @@ export function ComputerGrantsList(): React.JSX.Element {
         <h3 className="mb-2 text-sm font-semibold text-fg">{t('tasksComputer.grants.granted')}</h3>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted">
-            {t('tasksComputer.grants.empty1')} <code>request_access</code>
+            {t('tasksComputer.grants.empty1')} <code>{'request_access'}</code>
             {t('tasksComputer.grants.empty2')}
           </p>
         ) : (
