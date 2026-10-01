@@ -4,7 +4,9 @@ import { DIAG_SOURCE_LABELS, DIAG_SOURCES, type DiagLogs, type DiagSource } from
 import { redactSecrets } from '@shared/ai-errors'
 import type { ServerState } from '@shared/types'
 import { Button } from '../../../components/Button'
+import type { MsgKey } from '@shared/i18n'
 import { call } from '../../../lib/api'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
 import { Badge, Card, ErrorText, Field, Row, Select, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
@@ -12,28 +14,27 @@ import { Badge, Card, ErrorText, Field, Row, Select, SectionHeader, SubTitle, Te
 const AUTO_REFRESH_MS = 2000
 const MAX_LINES = 1000
 
-const STATE_LABEL: Record<ServerState, { text: string; tone: 'ok' | 'warn' | 'error' | 'muted' }> = {
-  ready: { text: 'Funcionando', tone: 'ok' },
-  starting: { text: 'Arrancando', tone: 'warn' },
-  error: { text: 'Con error', tone: 'error' },
-  stopped: { text: 'Detenido', tone: 'muted' }
+const STATE_LABEL: Record<ServerState, { text: MsgKey; tone: 'ok' | 'warn' | 'error' | 'muted' }> = {
+  ready: { text: 'misc.diag.state.ready', tone: 'ok' },
+  starting: { text: 'misc.diag.state.starting', tone: 'warn' },
+  error: { text: 'misc.diag.state.error', tone: 'error' },
+  stopped: { text: 'misc.diag.state.stopped', tone: 'muted' }
 }
 
 export function DiagnosticsSection(): React.JSX.Element {
+  const t = useT()
   return (
     <div>
-      <SectionHeader
-        title="Diagnóstico"
-        description="Estado del motor de IA y sus registros, para entender qué falla o compartirlo con quien te ayude."
-      />
+      <SectionHeader title={t('misc.diag.title')} description={t('misc.diag.desc')} />
       <StatusCard />
-      <SubTitle>Registros</SubTitle>
+      <SubTitle>{t('misc.diag.logs')}</SubTitle>
       <LogsCard />
     </div>
   )
 }
 
 function StatusCard(): React.JSX.Element {
+  const t = useT()
   const status = useServer((s) => s.status)
   const restart = useServer((s) => s.restart)
   const [restarting, setRestarting] = useState(false)
@@ -43,21 +44,21 @@ function StatusCard(): React.JSX.Element {
 
   return (
     <Card>
-      <Row label="Estado del motor" description="OpenCode, el programa que habla con la IA.">
-        <Badge tone={label.tone}>{label.text}</Badge>
+      <Row label={t('misc.diag.engineStatus')} description={t('misc.diag.engineStatusDesc')}>
+        <Badge tone={label.tone}>{t(label.text)}</Badge>
       </Row>
-      <Row label="Reinicios automáticos" description="Cuántas veces se reinició solo desde que abriste la app.">
+      <Row label={t('misc.diag.restarts')} description={t('misc.diag.restartsDesc')}>
         <span className="text-sm tabular-nums" data-testid="diag-restarts">
           {status.restarts}
         </span>
       </Row>
-      <Row label="Versión del motor">
+      <Row label={t('misc.diag.version')}>
         <span className="text-sm text-muted tabular-nums">{status.version ?? '—'}</span>
       </Row>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0">
         <div className="min-w-48 flex-1">
-          <div className="text-sm font-medium">Reiniciar el motor</div>
-          <div className="mt-0.5 text-xs text-muted">Si algo no responde. Interrumpe las respuestas en curso.</div>
+          <div className="text-sm font-medium">{t('misc.diag.restartEngine')}</div>
+          <div className="mt-0.5 text-xs text-muted">{t('misc.diag.restartEngineDesc')}</div>
         </div>
         <Button
           disabled={restarting}
@@ -66,12 +67,12 @@ function StatusCard(): React.JSX.Element {
             void restart().finally(() => setRestarting(false))
           }}
         >
-          {restarting ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />} Reiniciar OpenCode
+          {restarting ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />} {t('misc.diag.restartBtn')}
         </Button>
       </div>
       {lastError && (
         <div className="px-4 py-3">
-          <div className="mb-1 text-xs font-medium text-muted">Último error</div>
+          <div className="mb-1 text-xs font-medium text-muted">{t('misc.diag.lastError')}</div>
           <pre className="max-h-32 overflow-auto rounded-lg border border-border bg-bg p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-danger">
             {lastError}
           </pre>
@@ -82,6 +83,7 @@ function StatusCard(): React.JSX.Element {
 }
 
 function LogsCard(): React.JSX.Element {
+  const t = useT()
   const [source, setSource] = useState<DiagSource>('engine')
   const [logs, setLogs] = useState<DiagLogs | null>(null)
   const [filter, setFilter] = useState('')
@@ -116,10 +118,10 @@ function LogsCard(): React.JSX.Element {
 
   useEffect(() => {
     if (!auto) return
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       if (!document.hidden) void load()
     }, AUTO_REFRESH_MS)
-    return () => clearInterval(t)
+    return () => clearInterval(timer)
   }, [auto, load])
 
   const shown = useMemo(() => {
@@ -137,23 +139,23 @@ function LogsCard(): React.JSX.Element {
   const copy = (): void => {
     setNote(null)
     call('diag:copy', { source })
-      .then((r) => setNote(`Copiado: ${r.lines} ${r.lines === 1 ? 'línea' : 'líneas'}.`))
+      .then((r) => setNote(t('misc.diag.copied', { count: r.lines })))
       .catch((err: unknown) => setError(errorMessage(err)))
   }
 
   const exportReport = (): void => {
     setNote(null)
     call('diag:export')
-      .then((r) => setNote(r.saved ? 'Informe exportado.' : null))
+      .then((r) => setNote(r.saved ? t('misc.diag.exported') : null))
       .catch((err: unknown) => setError(errorMessage(err)))
   }
 
   return (
     <Card className="@container p-4">
       <div className="grid grid-cols-1 items-end gap-3 @md:grid-cols-[1fr_1.4fr]">
-        <Field label="Fuente">
+        <Field label={t('misc.diag.source')}>
           <Select
-            aria-label="Fuente de registros"
+            aria-label={t('misc.diag.sourceAria')}
             value={source}
             onChange={(e) => {
               setSource(e.target.value as DiagSource)
@@ -167,10 +169,10 @@ function LogsCard(): React.JSX.Element {
             ))}
           </Select>
         </Field>
-        <Field label="Filtrar">
+        <Field label={t('misc.diag.filter')}>
           <TextInput
-            aria-label="Filtrar registros"
-            placeholder="Texto a buscar…"
+            aria-label={t('misc.diag.filterAria')}
+            placeholder={t('misc.diag.filterPlaceholder')}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -179,17 +181,17 @@ function LogsCard(): React.JSX.Element {
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button onClick={() => void load()} disabled={loading}>
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Actualizar
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('misc.diag.refresh')}
         </Button>
         <label className="flex items-center gap-2 text-xs text-muted">
-          <Toggle checked={auto} onChange={setAuto} label="Actualizar cada 2 segundos" /> Cada 2 s
+          <Toggle checked={auto} onChange={setAuto} label={t('misc.diag.autoLabel')} /> {t('misc.diag.autoShort')}
         </label>
         <span className="ml-auto flex items-center gap-2">
           <Button onClick={copy}>
-            <Copy size={14} /> Copiar
+            <Copy size={14} /> {t('misc.diag.copy')}
           </Button>
           <Button onClick={exportReport}>
-            <Download size={14} /> Exportar…
+            <Download size={14} /> {t('misc.diag.export')}
           </Button>
         </span>
       </div>
@@ -202,7 +204,7 @@ function LogsCard(): React.JSX.Element {
 
       <pre
         ref={preRef}
-        aria-label="Registros"
+        aria-label={t('misc.diag.logsAria')}
         tabIndex={0}
         data-testid="diag-log"
         onScroll={(e) => {
@@ -212,23 +214,25 @@ function LogsCard(): React.JSX.Element {
         className="mt-3 h-80 overflow-auto rounded-lg border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all text-fg"
       >
         {logs === null
-          ? 'Cargando…'
+          ? t('misc.diag.loading')
           : shown.length
             ? shown.join('\n')
             : filter.trim()
-              ? 'Ninguna línea coincide con el filtro.'
-              : 'Sin registros todavía.'}
+              ? t('misc.diag.noMatch')
+              : t('misc.diag.empty')}
       </pre>
       <div className="mt-1.5 flex items-center justify-between text-[11px] text-subtle" aria-live="polite">
         <span>
-          {logs ? `${shown.length} de ${logs.lines.length} líneas${logs.truncated ? ' (solo las últimas)' : ''}` : ''}
+          {logs
+            ? `${t('misc.diag.count', { shown: shown.length, total: logs.lines.length })}${logs.truncated ? t('misc.diag.truncated') : ''}`
+            : ''}
           {note ? ` · ${note}` : ''}
         </span>
       </div>
 
       <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-subtle">
         <ShieldCheck size={13} className="mt-px shrink-0" />
-        Las claves y contraseñas se ocultan antes de mostrar, copiar o exportar. Revisa el texto antes de compartirlo.
+        {t('misc.diag.redactNote')}
       </p>
     </Card>
   )

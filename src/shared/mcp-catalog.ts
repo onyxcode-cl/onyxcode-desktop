@@ -57,6 +57,8 @@ export interface McpCatalogItem {
   verifiedAt: string
 }
 
+import { t, type MsgKey } from './i18n'
+
 const VERIFIED = '2026-10-01'
 
 export const MCP_CATALOG: readonly McpCatalogItem[] = [
@@ -194,6 +196,37 @@ export const MCP_CATALOG: readonly McpCatalogItem[] = [
     verifiedAt: VERIFIED
   }
 ]
+
+/** Textos visibles de una ficha en el idioma activo (la ficha guarda el español; main solo usa url/nombre/entradas). */
+export interface McpCatalogText {
+  title: string
+  description: string
+  capabilities: string[]
+  dataLeaves: string
+  inputs: Record<string, { label: string; help?: string }>
+}
+
+/** Traducción con respaldo: una ficha sin claves (p. ej. recién añadida) sigue mostrando su texto base. */
+function tx(key: string, fallback: string): string {
+  const v = t(key as MsgKey)
+  return v === key ? fallback : v
+}
+
+export function catalogText(item: McpCatalogItem): McpCatalogText {
+  const p = `mcp.cat.${item.id}`
+  return {
+    title: tx(`${p}.title`, item.title),
+    description: tx(`${p}.description`, item.description),
+    capabilities: item.capabilities.map((c, i) => tx(`${p}.cap${i + 1}`, c)),
+    dataLeaves: tx(`${p}.leaves`, item.dataLeaves),
+    inputs: Object.fromEntries(
+      item.inputs.map((i) => [
+        i.id,
+        { label: tx(`${p}.input.${i.id}.label`, i.label), help: i.help === undefined ? undefined : tx(`${p}.input.${i.id}.help`, i.help) }
+      ])
+    )
+  }
+}
 
 export function findCatalogItem(id: string): McpCatalogItem | undefined {
   return MCP_CATALOG.find((i) => i.id === id)

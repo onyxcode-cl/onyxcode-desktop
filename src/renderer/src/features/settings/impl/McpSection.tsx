@@ -17,10 +17,12 @@ import {
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
 import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
-import type { McpCatalogItem, McpCatalogState } from '@shared/mcp-catalog'
+import { catalogText, type McpCatalogItem, type McpCatalogState } from '@shared/mcp-catalog'
+import { t as tr, type MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { IconButton } from '../../../components/IconButton'
+import { useLocale, useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
@@ -39,15 +41,17 @@ interface Row {
   status: McpStatus | null
 }
 
-const STATUS: Record<McpStatus['status'], { label: string; tone: 'ok' | 'muted' | 'error' | 'warn' }> = {
-  connected: { label: 'Conectado', tone: 'ok' },
-  disabled: { label: 'Desactivado', tone: 'muted' },
-  failed: { label: 'Error', tone: 'error' },
-  needs_auth: { label: 'Requiere autenticación', tone: 'warn' },
-  needs_client_registration: { label: 'Requiere registro OAuth', tone: 'warn' }
+const STATUS: Record<McpStatus['status'], { label: MsgKey; tone: 'ok' | 'muted' | 'error' | 'warn' }> = {
+  connected: { label: 'mcp.status.connected', tone: 'ok' },
+  disabled: { label: 'mcp.status.disabled', tone: 'muted' },
+  failed: { label: 'mcp.status.failed', tone: 'error' },
+  needs_auth: { label: 'mcp.status.needs_auth', tone: 'warn' },
+  needs_client_registration: { label: 'mcp.status.needs_client_registration', tone: 'warn' }
 }
 
 export function McpSection(): React.JSX.Element {
+  const t = useT()
+  const locale = useLocale()
   const client = useServer((s) => s.client)
   const directory = useServer((s) => s.connection?.chatDirectory)
   const [appCfg, setAppCfg] = useState<AppMcpConfig | null>(null)
@@ -101,14 +105,14 @@ export function McpSection(): React.JSX.Element {
   const rows = useMemo<Row[]>(() => {
     const names = new Set([...Object.keys(appCfg?.servers ?? {}), ...Object.keys(merged), ...Object.keys(status)])
     return [...names]
-      .sort((a, b) => a.localeCompare(b, 'es'))
+      .sort((a, b) => a.localeCompare(b, locale))
       .map((name) => ({
         name,
         entry: appCfg?.servers[name] ?? merged[name] ?? null,
         owned: !!appCfg && name in appCfg.servers,
         status: status[name] ?? null
       }))
-  }, [appCfg, merged, status])
+  }, [appCfg, merged, status, locale])
 
   const run = async (key: string, fn: () => Promise<unknown>): Promise<void> => {
     setBusy(key)
@@ -150,9 +154,9 @@ export function McpSection(): React.JSX.Element {
 
   const remove = async (row: Row): Promise<void> => {
     const ok = await confirmDialog({
-      title: '¿Eliminar servidor MCP?',
-      message: `Se eliminará el servidor MCP "${row.name}".`,
-      confirmLabel: 'Eliminar',
+      title: t('mcp.remove.title'),
+      message: t('mcp.remove.message', { name: row.name }),
+      confirmLabel: t('mcp.remove.confirm'),
       danger: true
     })
     if (!ok) return
@@ -162,26 +166,26 @@ export function McpSection(): React.JSX.Element {
   return (
     <div>
       <SectionHeader
-        title="Servidores MCP"
+        title={t('mcp.header.title')}
         description={
           <>
-            Herramientas externas vía Model Context Protocol. Los servidores que agregues aquí se guardan en un archivo propio de la app (no
-            se modifica tu <code className="font-mono">~/.config/opencode</code>). Al guardar, OpenCode recarga su configuración y las
-            respuestas en curso se interrumpen.
+            {t('mcp.header.descPre')}
+            <code className="font-mono">~/.config/opencode</code>
+            {t('mcp.header.descPost')}
           </>
         }
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button variant="primary" onClick={() => setEditing('new')} disabled={!getExtras()}>
-          <Plus size={14} /> Agregar servidor
+          <Plus size={14} /> {t('mcp.add')}
         </Button>
         <Button variant="ghost" onClick={() => void refresh()} disabled={loading}>
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Actualizar
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('mcp.refresh')}
         </Button>
         {appCfg && (
           <Button variant="ghost" onClick={() => void requireExtras().invoke('mcp:revealConfig')}>
-            <FolderOpen size={14} /> Ver archivo
+            <FolderOpen size={14} /> {t('mcp.viewFile')}
           </Button>
         )}
       </div>
@@ -206,9 +210,7 @@ export function McpSection(): React.JSX.Element {
       )}
 
       <Card>
-        {rows.length === 0 && !loading && (
-          <div className="px-4 py-6 text-center text-sm text-muted">No hay servidores MCP configurados.</div>
-        )}
+        {rows.length === 0 && !loading && <div className="px-4 py-6 text-center text-sm text-muted">{t('mcp.empty')}</div>}
         {rows.map((row) => {
           const st = row.status ? STATUS[row.status.status] : null
           const enabled = row.status ? row.status.status !== 'disabled' : row.entry ? isEnabled(row.entry) : false
@@ -223,10 +225,10 @@ export function McpSection(): React.JSX.Element {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                     <span className="font-mono">{row.name}</span>
-                    {st && <Badge tone={st.tone}>{st.label}</Badge>}
-                    <Badge tone={row.owned ? 'accent' : 'muted'}>{row.owned ? 'App' : 'Config externa'}</Badge>
-                    {row.owned && catalog?.installed[row.name] && <Badge tone="accent">Del catálogo</Badge>}
-                    {row.owned && catalog?.installed[row.name]?.drift && <Badge tone="warn">Modificado</Badge>}
+                    {st && <Badge tone={st.tone}>{t(st.label)}</Badge>}
+                    <Badge tone={row.owned ? 'accent' : 'muted'}>{row.owned ? t('mcp.badge.app') : t('mcp.badge.external')}</Badge>
+                    {row.owned && catalog?.installed[row.name] && <Badge tone="accent">{t('mcp.badge.catalog')}</Badge>}
+                    {row.owned && catalog?.installed[row.name]?.drift && <Badge tone="warn">{t('mcp.badge.modified')}</Badge>}
                   </div>
                   <div className="mt-0.5 truncate font-mono text-xs text-muted" title={describe(row.entry)}>
                     {describe(row.entry)}
@@ -235,17 +237,17 @@ export function McpSection(): React.JSX.Element {
                 <div className="flex shrink-0 items-center gap-1">
                   {row.status?.status === 'needs_auth' && (
                     <Button variant="ghost" disabled={busy !== null} onClick={() => void authenticate(row)}>
-                      <KeyRound size={14} /> Autenticar
+                      <KeyRound size={14} /> {t('mcp.authenticate')}
                     </Button>
                   )}
                   {!row.owned && row.status?.status === 'failed' && (
-                    <IconButton label="Reintentar conexión" disabled={busy !== null} onClick={() => void toggle(row, true)}>
+                    <IconButton label={t('mcp.retry')} disabled={busy !== null} onClick={() => void toggle(row, true)}>
                       <Plug size={15} />
                     </IconButton>
                   )}
                   {row.owned && row.entry && 'type' in row.entry && (
                     <IconButton
-                      label="Editar"
+                      label={t('mcp.edit')}
                       disabled={busy !== null}
                       onClick={() => setEditing({ name: row.name, entry: row.entry as McpEntry })}
                     >
@@ -253,7 +255,7 @@ export function McpSection(): React.JSX.Element {
                     </IconButton>
                   )}
                   {row.owned && (
-                    <IconButton label="Eliminar" disabled={busy !== null} onClick={() => void remove(row)}>
+                    <IconButton label={t('mcp.delete')} disabled={busy !== null} onClick={() => void remove(row)}>
                       <Trash2 size={15} />
                     </IconButton>
                   )}
@@ -263,7 +265,7 @@ export function McpSection(): React.JSX.Element {
                     <Toggle
                       checked={enabled}
                       disabled={busy !== null || (!row.owned && !client)}
-                      label={row.owned ? 'Activar/desactivar' : 'Conectar/desconectar (temporal)'}
+                      label={row.owned ? t('mcp.toggle.owned') : t('mcp.toggle.external')}
                       onChange={(v) => void toggle(row, v)}
                     />
                   )}
@@ -288,13 +290,10 @@ export function McpSection(): React.JSX.Element {
         />
       )}
       <p className="mt-2 flex items-center gap-1.5 text-[11px] text-subtle">
-        <Unplug size={12} /> En servidores de config externa el interruptor conecta/desconecta sólo hasta el próximo reinicio. El estado
-        mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.
+        <Unplug size={12} /> {t('mcp.note.external')}
       </p>
       <p className="mt-1 flex items-start gap-1.5 text-[11px] text-subtle">
-        <Info size={12} className="mt-0.5 shrink-0" /> «Disponible en Tareas» se aplica al abrir de nuevo la carpeta. En el sandbox los
-        servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los servidores remotos se añaden a la Red del
-        sandbox.
+        <Info size={12} className="mt-0.5 shrink-0" /> {t('mcp.note.tasks')}
       </p>
       {appCfg && <p className="mt-1 truncate font-mono text-[11px] text-subtle">{appCfg.path}</p>}
       {catalogItem && (
@@ -314,9 +313,9 @@ export function McpSection(): React.JSX.Element {
 }
 
 const AUTH_BADGE = {
-  oauth: { tone: 'warn' as const, label: 'Inicio de sesión' },
-  token: { tone: 'warn' as const, label: 'Necesita un token' },
-  none: { tone: 'ok' as const, label: 'Sin cuenta' }
+  oauth: { tone: 'warn' as const, label: 'mcp.auth.oauth' as const },
+  token: { tone: 'warn' as const, label: 'mcp.auth.token' as const },
+  none: { tone: 'ok' as const, label: 'mcp.auth.none' as const }
 }
 
 /** Fichas del catálogo curado: remotas (no ejecutan nada en el Mac); añadir pide confirmación en un diálogo. */
@@ -329,36 +328,41 @@ function McpCatalogBlock({
   disabled: boolean
   onPick: (item: McpCatalogItem) => void
 }): React.JSX.Element {
+  const t = useT()
   const addedIds = new Set(Object.values(catalog.installed).map((i) => i.catalogId))
   return (
-    <section aria-label="Catálogo de conectores">
-      <SubTitle>Catálogo</SubTitle>
-      <p className="-mt-1 mb-3 text-xs text-muted">
-        Conectores verificados, incluidos en la app. Ninguno se añade ni se conecta sin que lo confirmes.
-      </p>
+    <section aria-label={t('mcp.catalog.aria')}>
+      <SubTitle>{t('mcp.catalog.title')}</SubTitle>
+      <p className="-mt-1 mb-3 text-xs text-muted">{t('mcp.catalog.intro')}</p>
       <div className="@container">
         <div className="grid gap-3 @xl:grid-cols-2">
           {catalog.items.map((item) => {
             const auth = AUTH_BADGE[item.auth]
+            const text = catalogText(item)
             return (
               <Card key={item.id} className="flex flex-col p-3.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold">{item.title}</div>
+                    <div className="text-sm font-semibold">{text.title}</div>
                     <div className="text-[11px] text-subtle">{item.publisher}</div>
                   </div>
                 </div>
-                <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{item.description}</p>
+                <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{text.description}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <Badge tone="muted">
-                    <Globe size={11} /> Remoto · no ejecuta nada en tu Mac
+                    <Globe size={11} /> {t('mcp.catalog.remote')}
                   </Badge>
-                  <Badge tone={auth.tone}>{auth.label}</Badge>
-                  {addedIds.has(item.id) && <Badge tone="ok">Añadido</Badge>}
+                  <Badge tone={auth.tone}>{t(auth.label)}</Badge>
+                  {addedIds.has(item.id) && <Badge tone="ok">{t('mcp.catalog.added')}</Badge>}
                 </div>
                 <div className="mt-3">
-                  <Button size="sm" aria-label={`Añadir ${item.title}`} disabled={disabled} onClick={() => onPick(item)}>
-                    <Plus size={13} /> Añadir…
+                  <Button
+                    size="sm"
+                    aria-label={t('mcp.catalog.addAria', { title: text.title })}
+                    disabled={disabled}
+                    onClick={() => onPick(item)}
+                  >
+                    <Plus size={13} /> {t('mcp.catalog.addBtn')}
                   </Button>
                 </div>
               </Card>
@@ -380,6 +384,7 @@ function TasksFlags({
   disabled: boolean
   onChange: (patch: { tasks?: boolean; askEachTool?: boolean }) => void
 }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -387,30 +392,30 @@ function TasksFlags({
           <Toggle
             checked={info.tasks}
             disabled={disabled || !info.enabled}
-            label="Disponible en Tareas"
+            label={t('mcp.flags.tasks')}
             onChange={(v) => onChange({ tasks: v })}
           />
-          <span className="font-medium">Disponible en Tareas</span>
+          <span className="font-medium">{t('mcp.flags.tasks')}</span>
         </label>
         <label className="flex items-center gap-2 text-xs">
           <Toggle
             checked={info.askEachTool}
             disabled={disabled || !info.tasks}
-            label="Preguntar en cada uso"
+            label={t('mcp.flags.ask')}
             onChange={(v) => onChange({ askEachTool: v })}
           />
-          <span className={info.tasks ? 'font-medium' : 'text-muted'}>Preguntar en cada uso</span>
+          <span className={info.tasks ? 'font-medium' : 'text-muted'}>{t('mcp.flags.ask')}</span>
         </label>
       </div>
       {info.tasks && info.type === 'remote' && info.oauth && (
         <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
-          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Este servidor remoto parece usar inicio de sesión (OAuth): no estará
-          disponible en el sandbox (en Control total puede funcionar).
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {t('mcp.flags.oauthWarn')}
         </p>
       )}
       {info.tasks && info.hosts.length > 0 && (
         <p className="mt-1.5 text-[11px] text-subtle">
-          Sitio añadido a la Red del sandbox: <span className="font-mono">{info.hosts.join(', ')}</span>
+          {t('mcp.flags.hosts')}
+          <span className="font-mono">{info.hosts.join(', ')}</span>
         </p>
       )}
     </div>
@@ -470,7 +475,7 @@ function parsePairs(text: string, sep: '=' | ':'): Record<string, string> {
     const line = raw.trim()
     if (!line || line.startsWith('#')) continue
     const i = line.indexOf(sep)
-    if (i <= 0) throw new Error(`Línea inválida: "${line}" (formato ${sep === '=' ? 'CLAVE=valor' : 'Nombre: valor'})`)
+    if (i <= 0) throw new Error(tr('mcp.pair.invalid', { line, fmt: sep === '=' ? tr('mcp.pair.fmtEnv') : tr('mcp.pair.fmtHeader') }))
     out[line.slice(0, i).trim()] = line.slice(i + 1).trim()
   }
   return out
@@ -495,6 +500,7 @@ function McpForm({
   onCancel: () => void
   onSave: (name: string, entry: McpEntry, previousName?: string) => Promise<void>
 }): React.JSX.Element {
+  const t = useT()
   const init = initial?.entry
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<'local' | 'remote'>(init?.type ?? 'local')
@@ -512,14 +518,14 @@ function McpForm({
     setError(null)
     try {
       const n = name.trim()
-      if (!/^[A-Za-z0-9_-]{1,64}$/.test(n)) throw new Error('Nombre inválido: usa letras, números, "-" o "_".')
-      if (n !== initial?.name && existingNames.includes(n)) throw new Error(`Ya existe "${n}".`)
-      const t = timeout.trim() ? Number(timeout) : undefined
-      if (t !== undefined && (!Number.isFinite(t) || t <= 0)) throw new Error('Timeout inválido (milisegundos).')
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(n)) throw new Error(t('mcp.form.nameInvalid'))
+      if (n !== initial?.name && existingNames.includes(n)) throw new Error(t('mcp.form.exists', { name: n }))
+      const ms = timeout.trim() ? Number(timeout) : undefined
+      if (ms !== undefined && (!Number.isFinite(ms) || ms <= 0)) throw new Error(t('mcp.form.timeoutInvalid'))
       let entry: McpEntry
       if (type === 'local') {
         const parts = splitCommand(command.trim())
-        if (!parts.length) throw new Error('Indica el comando (p.ej. npx -y @modelcontextprotocol/server-filesystem ~/Documentos).')
+        if (!parts.length) throw new Error(t('mcp.form.commandRequired'))
         const environment = parsePairs(env, '=')
         entry = {
           type: 'local',
@@ -527,7 +533,7 @@ function McpForm({
           ...(Object.keys(environment).length ? { environment } : {}),
           ...(cwd.trim() ? { cwd: cwd.trim() } : {}),
           enabled: init?.enabled ?? true,
-          ...(t ? { timeout: t } : {})
+          ...(ms ? { timeout: ms } : {})
         }
       } else {
         const h = parsePairs(headers, ':')
@@ -537,7 +543,7 @@ function McpForm({
           ...(Object.keys(h).length ? { headers: h } : {}),
           ...(noOauth ? { oauth: false as const } : {}),
           enabled: init?.enabled ?? true,
-          ...(t ? { timeout: t } : {})
+          ...(ms ? { timeout: ms } : {})
         }
       }
       setSaving(true)
@@ -552,27 +558,27 @@ function McpForm({
   return (
     <Card className="mb-4 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-sm font-semibold">{initial ? `Editar "${initial.name}"` : 'Nuevo servidor MCP'}</div>
+        <div className="text-sm font-semibold">{initial ? t('mcp.form.editTitle', { name: initial.name }) : t('mcp.form.newTitle')}</div>
         <div className="flex rounded-lg border border-border p-0.5 text-xs">
-          {(['local', 'remote'] as const).map((t) => (
+          {(['local', 'remote'] as const).map((kind) => (
             <button
-              key={t}
+              key={kind}
               type="button"
-              onClick={() => setType(t)}
-              className={`rounded-md px-3 py-1 ${type === t ? 'bg-active font-medium text-fg' : 'text-muted hover:text-fg'}`}
+              onClick={() => setType(kind)}
+              className={`rounded-md px-3 py-1 ${type === kind ? 'bg-active font-medium text-fg' : 'text-muted hover:text-fg'}`}
             >
-              {t === 'local' ? 'Local (comando)' : 'Remoto (URL)'}
+              {kind === 'local' ? t('mcp.form.typeLocal') : t('mcp.form.typeRemote')}
             </button>
           ))}
         </div>
       </div>
       <div className="space-y-3">
-        <Field label="Nombre" hint="Las herramientas aparecerán como nombre_herramienta.">
+        <Field label={t('mcp.form.name')} hint={t('mcp.form.nameHint')}>
           <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="github" autoFocus />
         </Field>
         {type === 'local' ? (
           <>
-            <Field label="Comando y argumentos" hint="Se admiten comillas para argumentos con espacios.">
+            <Field label={t('mcp.form.command')} hint={t('mcp.form.commandHint')}>
               <TextInput
                 className="font-mono"
                 value={command}
@@ -580,16 +586,16 @@ function McpForm({
                 placeholder="npx -y @modelcontextprotocol/server-everything"
               />
             </Field>
-            <Field label="Variables de entorno (una por línea)">
+            <Field label={t('mcp.form.env')}>
               <TextArea rows={3} value={env} onChange={(e) => setEnv(e.target.value)} placeholder="API_KEY=..." />
             </Field>
-            <Field label="Directorio de trabajo (opcional)">
+            <Field label={t('mcp.form.cwd')}>
               <TextInput className="font-mono" value={cwd} onChange={(e) => setCwd(e.target.value)} />
             </Field>
           </>
         ) : (
           <>
-            <Field label="URL">
+            <Field label={t('mcp.form.url')}>
               <TextInput
                 className="font-mono"
                 value={url}
@@ -597,25 +603,25 @@ function McpForm({
                 placeholder="https://mcp.ejemplo.com/mcp"
               />
             </Field>
-            <Field label="Cabeceras (una por línea)">
+            <Field label={t('mcp.form.headers')}>
               <TextArea rows={3} value={headers} onChange={(e) => setHeaders(e.target.value)} placeholder="Authorization: Bearer ..." />
             </Field>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={noOauth} onChange={(e) => setNoOauth(e.target.checked)} />
-              Desactivar autodetección OAuth
+              {t('mcp.form.noOauth')}
             </label>
           </>
         )}
-        <Field label="Timeout en ms (opcional, por defecto 5000)">
+        <Field label={t('mcp.form.timeout')}>
           <TextInput className="w-40" inputMode="numeric" value={timeout} onChange={(e) => setTimeoutMs(e.target.value)} />
         </Field>
         {error && <ErrorText>{error}</ErrorText>}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onCancel} disabled={saving}>
-            Cancelar
+            {t('mcp.form.cancel')}
           </Button>
           <Button variant="primary" onClick={() => void submit()} disabled={saving}>
-            {saving && <Loader2 size={14} className="animate-spin" />} Guardar
+            {saving && <Loader2 size={14} className="animate-spin" />} {t('mcp.form.save')}
           </Button>
         </div>
       </div>

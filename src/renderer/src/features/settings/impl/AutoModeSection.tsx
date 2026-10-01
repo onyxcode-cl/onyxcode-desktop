@@ -9,34 +9,39 @@
 import { useEffect, useState } from 'react'
 import { Eye, FolderClosed, Loader2, Plus, ShieldCheck, Trash2, Zap } from 'lucide-react'
 import type { AutoModeState, TasksFolder, TasksTaskMeta } from '@shared/ipc-tasks'
+import { getLang, t as tr, type MsgKey } from '@shared/i18n'
+import { UI_LABELS } from '@shared/labels'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
+import { useT } from '../../../lib/i18n'
 import { isSubmitKey } from '../../../lib/textarea'
 
 /** Nombres legibles de las apps propuestas por defecto (el resto se muestra por su bundle id). */
-const APP_LABELS: Record<string, string> = {
-  'com.apple.finder': 'Finder',
-  'com.apple.Preview': 'Vista previa',
-  'com.apple.TextEdit': 'TextEdit',
-  'com.apple.calculator': 'Calculadora',
-  'com.apple.Maps': 'Mapas',
-  'com.apple.weather': 'Tiempo',
-  'com.apple.clock': 'Reloj',
-  'com.apple.iWork.Pages': 'Pages',
-  'com.apple.iWork.Numbers': 'Numbers',
-  'com.apple.iWork.Keynote': 'Keynote'
+const APP_LABELS: Record<string, MsgKey> = {
+  'com.apple.finder': 'misc.auto.app.finder',
+  'com.apple.Preview': 'misc.auto.app.preview',
+  'com.apple.TextEdit': 'misc.auto.app.textedit',
+  'com.apple.calculator': 'misc.auto.app.calculator',
+  'com.apple.Maps': 'misc.auto.app.maps',
+  'com.apple.weather': 'misc.auto.app.weather',
+  'com.apple.clock': 'misc.auto.app.clock',
+  'com.apple.iWork.Pages': 'misc.auto.app.pages',
+  'com.apple.iWork.Numbers': 'misc.auto.app.numbers',
+  'com.apple.iWork.Keynote': 'misc.auto.app.keynote'
 }
 
 function appLabel(bundleId: string): string {
-  return APP_LABELS[bundleId] ?? bundleId
+  const key = APP_LABELS[bundleId]
+  return key ? tr(key) : bundleId
 }
 
 function fmtAt(at: number): string {
-  return new Date(at).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })
+  return new Date(at).toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 export function AutoModeSection(): React.JSX.Element {
+  const t = useT()
   const [state, setState] = useState<AutoModeState | null>(null)
   const [folders, setFolders] = useState<TasksFolder[]>([])
   const [taskMeta, setTaskMeta] = useState<Record<string, TasksTaskMeta>>({})
@@ -66,7 +71,7 @@ export function AutoModeSection(): React.JSX.Element {
   if (!hasTasksBridge()) {
     return (
       <div>
-        <SectionHeader title="Modo auto" description="Solo disponible en la app de escritorio." />
+        <SectionHeader title={UI_LABELS.autoMode} description={t('misc.desktopOnly')} />
       </div>
     )
   }
@@ -105,17 +110,14 @@ export function AutoModeSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader
-        title="Modo auto"
-        description="Aprueba en automático solo lo de bajo riesgo: comandos de terminal de solo lectura, herramientas de conectores MCP de solo consulta, y «Solo ver» de un puñado de apps conocidas. Todo lo demás sigue preguntando siempre."
-      />
+      <SectionHeader title={UI_LABELS.autoMode} description={t('misc.auto.desc')} />
 
       {state?.policyDisabled && (
         <div role="status" className="mb-5 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
           <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0 text-muted">
-            <div className="text-sm font-medium text-fg">Gestionado por tu organización</div>
-            <p className="mt-0.5">Tu organización desactivó el Modo auto: aunque lo actives aquí, seguirá preguntando siempre.</p>
+            <div className="text-sm font-medium text-fg">{t('misc.managedTitle')}</div>
+            <p className="mt-0.5">{t('misc.auto.orgOff')}</p>
           </div>
         </div>
       )}
@@ -124,40 +126,43 @@ export function AutoModeSection(): React.JSX.Element {
         <Row
           label={
             <span className="flex items-center gap-2">
-              <Zap size={14} className="text-accent" /> Modo auto (aprobar solo lo de bajo riesgo)
+              <Zap size={14} className="text-accent" /> {t('misc.auto.master')}
             </span>
           }
-          description="Interruptor maestro: apagado por defecto. Con él apagado, todo vuelve a preguntar como siempre."
+          description={t('misc.auto.masterDesc')}
         >
           <Toggle
             checked={enabled}
             onChange={(v) => run('enabled', () => cw('tasks:auto:set', { enabled: v }))}
-            label="Modo auto"
+            label={UI_LABELS.autoMode}
             disabled={busy === 'enabled' || state?.policyDisabled}
           />
         </Row>
       </Card>
 
-      <SubTitle>Lo que el Modo auto NUNCA aprueba solo</SubTitle>
+      <SubTitle>{t('misc.auto.neverTitle')}</SubTitle>
       <Card className="px-4 py-3 text-xs text-muted">
         <ul className="list-disc space-y-1 pl-4">
-          <li>Carpetas fuera de la tarea, bucles repetidos, y las herramientas del navegador o de control del Mac.</li>
+          <li>{t('misc.auto.never1')}</li>
           <li>
-            Borrar, mover o renombrar nada (comandos como <code className="font-mono">rm</code>, <code className="font-mono">mv</code> o{' '}
-            <code className="font-mono">find -delete</code>).
+            {t('misc.auto.never2.pre')}
+            <code className="font-mono">rm</code>, <code className="font-mono">mv</code>
+            {t('misc.auto.never2.or')}
+            <code className="font-mono">find -delete</code>
+            {t('misc.auto.never2.post')}
           </li>
-          <li>Editar o escribir archivos, ejecutar tareas de fondo, o consultar la web.</li>
-          <li>Cualquier herramienta MCP que no sea claramente de consulta por su nombre (nada de crear, enviar, borrar, pagar…).</li>
-          <li>Texto que parezca una instrucción inyectada (p. ej. «ignora las instrucciones anteriores»).</li>
-          <li>Tarjetas con un plan de pasos, o de tomar el control de la pantalla («¿Tomar el control…?»).</li>
-          <li>Acceso a apps con un nivel distinto de «Solo ver», o a apps fuera de la lista de abajo.</li>
+          <li>{t('misc.auto.never3')}</li>
+          <li>{t('misc.auto.never4')}</li>
+          <li>{t('misc.auto.never5')}</li>
+          <li>{t('misc.auto.never6')}</li>
+          <li>{t('misc.auto.never7')}</li>
         </ul>
       </Card>
 
-      <SubTitle>Carpetas con el modo activo</SubTitle>
+      <SubTitle>{t('misc.auto.foldersTitle')}</SubTitle>
       <Card>
         {folders.length === 0 ? (
-          <Row label="Sin carpetas de trabajo todavía" description="Autoriza una carpeta desde Tareas para poder activarlo aquí." />
+          <Row label={t('misc.auto.noFolders')} description={t('misc.auto.noFoldersDesc')} />
         ) : (
           folders.map((f) => (
             <Row key={f.path} label={f.name} description={<span className="font-mono break-all">{f.path}</span>}>
@@ -167,7 +172,7 @@ export function AutoModeSection(): React.JSX.Element {
                 <Toggle
                   checked={settings?.folders.includes(f.path) === true}
                   onChange={(v) => toggleFolder(f.path, v)}
-                  label={`Modo auto en ${f.name}`}
+                  label={t('misc.auto.folderAria', { name: f.name })}
                   disabled={!enabled}
                 />
               )}
@@ -178,14 +183,14 @@ export function AutoModeSection(): React.JSX.Element {
 
       {(settings?.tasks.length ?? 0) > 0 && (
         <>
-          <SubTitle>Tareas concretas con el modo activo</SubTitle>
+          <SubTitle>{t('misc.auto.tasksTitle')}</SubTitle>
           <Card>
             {settings?.tasks.map((sessionId) => (
               <Row
                 key={sessionId}
                 label={
                   <span className="flex items-center gap-1.5">
-                    <FolderClosed size={12} className="text-subtle" /> {taskMeta[sessionId]?.title || 'Tarea'}
+                    <FolderClosed size={12} className="text-subtle" /> {taskMeta[sessionId]?.title || t('misc.auto.taskFallback')}
                   </span>
                 }
                 description={taskMeta[sessionId]?.folder}
@@ -196,7 +201,7 @@ export function AutoModeSection(): React.JSX.Element {
                   disabled={busy === `task:${sessionId}`}
                   className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger/10"
                 >
-                  <Trash2 size={12} /> Quitar
+                  <Trash2 size={12} /> {t('misc.remove')}
                 </button>
               </Row>
             ))}
@@ -204,15 +209,15 @@ export function AutoModeSection(): React.JSX.Element {
         </>
       )}
 
-      <SubTitle>Apps que puede ver sin preguntar</SubTitle>
+      <SubTitle>{t('misc.auto.appsTitle')}</SubTitle>
       <Card>
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <TextInput
             value={newApp}
             onChange={(e) => setNewApp(e.target.value)}
             onKeyDown={(e) => isSubmitKey(e, { allowShift: true }) && addViewApp()}
-            placeholder="com.ejemplo.app (bundle id)"
-            aria-label="Añadir app que el modo auto puede ver"
+            placeholder={t('misc.auto.appPlaceholder')}
+            aria-label={t('misc.auto.appAria')}
             className="max-w-xs font-mono"
           />
           <button
@@ -221,11 +226,11 @@ export function AutoModeSection(): React.JSX.Element {
             disabled={!newApp.trim()}
             className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-hover disabled:pointer-events-none disabled:opacity-50"
           >
-            <Plus size={13} /> Añadir
+            <Plus size={13} /> {t('misc.add')}
           </button>
         </div>
         {(settings?.viewApps.length ?? 0) === 0 ? (
-          <Row label="Sin apps en la lista" description="El agente nunca concederá «Solo ver» en automático." />
+          <Row label={t('misc.auto.noApps')} description={t('misc.auto.noAppsDesc')} />
         ) : (
           settings?.viewApps.map((bundleId) => (
             <Row key={bundleId} label={appLabel(bundleId)} description={<span className="font-mono">{bundleId}</span>}>
@@ -234,28 +239,27 @@ export function AutoModeSection(): React.JSX.Element {
                 onClick={() => removeViewApp(bundleId)}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger/10"
               >
-                <Trash2 size={13} /> Quitar
+                <Trash2 size={13} /> {t('misc.remove')}
               </button>
             </Row>
           ))
         )}
-        <p className="border-t border-border px-4 py-2.5 text-xs text-subtle">
-          Solo aplica a peticiones a mitad de tarea con nivel «Solo ver»: gestores de contraseñas, Ajustes del sistema, Mensajes, Mail,
-          terminales, IDE y apps de banca nunca se conceden en automático, aunque las añadas aquí.
-        </p>
+        <p className="border-t border-border px-4 py-2.5 text-xs text-subtle">{t('misc.auto.appsNote')}</p>
       </Card>
 
-      <SubTitle>Registro de aprobaciones automáticas</SubTitle>
+      <SubTitle>{t('misc.auto.logTitle')}</SubTitle>
       <Card>
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-          <span className="text-xs text-muted">{log.length === 0 ? 'Sin aprobaciones todavía' : `${log.length} entradas`}</span>
+          <span className="text-xs text-muted">
+            {log.length === 0 ? t('misc.auto.logEmpty') : t('misc.auto.logCount', { count: log.length })}
+          </span>
           <button
             type="button"
             onClick={clearLog}
             disabled={log.length === 0 || busy === 'clearLog'}
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10 disabled:pointer-events-none disabled:opacity-40"
           >
-            {busy === 'clearLog' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Vaciar registro
+            {busy === 'clearLog' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} {t('misc.auto.clearLog')}
           </button>
         </div>
         {log.map((r) => (
@@ -271,7 +275,7 @@ export function AutoModeSection(): React.JSX.Element {
               <span>
                 {fmtAt(r.at)}
                 {r.folder && <span className="font-mono"> · {r.folder}</span>}
-                {r.revokedAt && <span className="text-danger"> · revocado</span>}
+                {r.revokedAt && <span className="text-danger">{t('misc.auto.revokedMark')}</span>}
               </span>
             }
           >
@@ -282,7 +286,7 @@ export function AutoModeSection(): React.JSX.Element {
                 disabled={busy === `revoke:${r.id}`}
                 className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium hover:bg-hover disabled:opacity-50"
               >
-                {busy === `revoke:${r.id}` ? <Loader2 size={12} className="animate-spin" /> : null} Revocar
+                {busy === `revoke:${r.id}` ? <Loader2 size={12} className="animate-spin" /> : null} {t('misc.auto.revoke')}
               </button>
             )}
           </Row>
@@ -295,8 +299,7 @@ export function AutoModeSection(): React.JSX.Element {
         </div>
       )}
       <p className="mt-4 flex items-center gap-2 text-xs text-subtle">
-        <Badge tone="muted">Solo motor de reglas</Badge> Sin clasificador por modelo: cada aprobación pasa por una lista cerrada de patrones
-        seguros, no por una decisión del propio agente.
+        <Badge tone="muted">{t('misc.auto.rulesOnly')}</Badge> {t('misc.auto.rulesOnlyDesc')}
       </p>
     </div>
   )
