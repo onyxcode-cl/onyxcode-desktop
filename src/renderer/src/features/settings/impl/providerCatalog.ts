@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import { errorMessage, type OpencodeClient } from '../../../lib/opencode'
+import { startKeyTest } from './useKeyTest'
 
 /** Catálogo de proveedores de OpenCode (`provider.list` + `provider.auth`). */
 export interface ProviderCatalog {
@@ -124,6 +125,8 @@ export function useProviderConnect(
     (providerID: string, key: string) =>
       run(async (c) => {
         await saveProviderKey(c, providerID, key)
+        // Solo claves ya guardadas: main lee la clave de su almacén (no viaja por el IPC) y avisa si no sirve.
+        startKeyTest(providerID)
         await onChanged()
       }),
     [run, onChanged]

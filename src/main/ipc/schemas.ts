@@ -7,6 +7,7 @@
  *   del overlay tienen su lista mínima (el overlay a pantalla completa no invoca nada).
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
+import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
 import { TASKS_INVOKE_CHANNELS, type TasksInvokeChannel, type TasksRequest } from '@shared/ipc-tasks'
@@ -159,6 +160,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:updateCancel': none,
   'app:updateInstall': none,
   'app:bootConfirm': none,
+  'app:testProviderKey': obj({ providerID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9._-]+$/ }) }),
   'account:state': none,
   'account:google': none,
   'account:cancel': none,
@@ -171,6 +173,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'opencode:connection': none,
   'opencode:status': none,
   'opencode:restart': none,
+  'diag:logs': obj({ source: literal(...DIAG_SOURCES), maxLines: optional(num({ int: true, min: 1, max: 5000 })) }),
+  'diag:copy': obj({ source: literal(...DIAG_SOURCES) }),
+  'diag:export': none,
   'settings:get': none,
   'settings:set': partial({
     defaultModel: modelRef,

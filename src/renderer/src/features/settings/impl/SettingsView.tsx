@@ -7,6 +7,7 @@ import {
   Globe,
   Info,
   Keyboard,
+  LifeBuoy,
   UserRound,
   MonitorCog,
   Settings2,
@@ -25,6 +26,7 @@ import { AccountSection } from './AccountSection'
 import { AutoModeSection } from './AutoModeSection'
 import { BrowserSection } from './BrowserSection'
 import { ComputerSection } from './ComputerSection'
+import { DiagnosticsSection } from './DiagnosticsSection'
 import { TasksSection } from './TasksSection'
 import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
@@ -36,7 +38,19 @@ import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
 export type SettingsSectionId =
-  'general' | 'account' | 'models' | 'mcp' | 'tasks' | 'network' | 'computer' | 'automode' | 'browser' | 'usage' | 'shortcuts' | 'about'
+  | 'general'
+  | 'account'
+  | 'models'
+  | 'mcp'
+  | 'tasks'
+  | 'network'
+  | 'computer'
+  | 'automode'
+  | 'browser'
+  | 'usage'
+  | 'shortcuts'
+  | 'diagnostics'
+  | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
@@ -50,6 +64,7 @@ const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: 
   { id: 'browser', label: 'Navegador', icon: Compass, View: BrowserSection },
   { id: 'usage', label: 'Uso', icon: BarChart3, View: UsageSection },
   { id: 'shortcuts', label: 'Atajos', icon: Keyboard, View: ShortcutsSection },
+  { id: 'diagnostics', label: 'Diagnóstico', icon: LifeBuoy, View: DiagnosticsSection },
   { id: 'about', label: 'Acerca de', icon: Info, View: AboutSection }
 ]
 

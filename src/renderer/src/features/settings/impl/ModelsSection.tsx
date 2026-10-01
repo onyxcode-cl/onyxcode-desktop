@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
-import { Loader2, RefreshCw, Unplug } from 'lucide-react'
+import { FlaskConical, Loader2, RefreshCw, Unplug } from 'lucide-react'
 import type { ModelMode } from '@shared/ipc-extras'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModelRef } from '@shared/types'
@@ -13,8 +13,10 @@ import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs } from './extras'
 import { ModelSelect, sortProviders } from './ModelSelect'
 import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
+import { KeyTestNotice } from './KeyTestNotice'
 import { ProviderKeyForm } from './ProviderKeyForm'
-import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
+import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput } from './ui'
+import { useKeyTests } from './useKeyTest'
 
 const MODES: { id: ModelMode; label: string; description: string }[] = [
   { id: 'chat', label: 'Chat', description: 'Conversaciones generales.' },
@@ -154,30 +156,73 @@ function ProvidersList({
 }): React.JSX.Element {
   const connected = useMemo(() => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))), [catalog])
   const others = useMemo(() => unconnectedProviders(catalog), [catalog])
+  const tests = useKeyTests((s) => s.entries)
+  const [changing, setChanging] = useState<string | null>(null)
 
   return (
     <>
       <Card>
         {connected.length === 0 && <Row label="Ningún proveedor conectado" description="Agrega una API key abajo." />}
-        {connected.map((p) => (
-          <Row
-            key={p.id}
-            label={
-              <span className="flex items-center gap-2">
-                {p.name}
-                <Badge tone="ok">Conectado</Badge>
-                {p.id === 'opencode-go' && <Badge tone="accent">Recomendado</Badge>}
-              </span>
-            }
-            description={`${Object.keys(p.models).length} modelos · origen: ${SOURCE_LABEL[p.source] ?? p.source}`}
-          >
-            {p.source === 'api' && (
-              <Button variant="ghost" disabled={busy} onClick={() => void onDisconnect(p.id)}>
-                <Unplug size={14} /> Desconectar
-              </Button>
-            )}
-          </Row>
-        ))}
+        {connected.map((p) => {
+          const entry = tests[p.id]
+          const needsNewKey = entry?.phase === 'done' && (entry.result.status === 'invalid' || entry.result.status === 'forbidden')
+          return (
+            <Row
+              key={p.id}
+              label={
+                <span className="flex items-center gap-2">
+                  {p.name}
+                  <Badge tone="ok">Conectado</Badge>
+                  {p.id === 'opencode-go' && <Badge tone="accent">Recomendado</Badge>}
+                </span>
+              }
+              description={
+                <>
+                  {`${Object.keys(p.models).length} modelos · origen: ${SOURCE_LABEL[p.source] ?? p.source}`}
+                  <KeyTestNotice
+                    providerID={p.id}
+                    providerName={p.name}
+                    className="mt-1"
+                    action={
+                      needsNewKey && changing !== p.id ? (
+                        <Button size="sm" variant="ghost" onClick={() => setChanging(p.id)}>
+                          Cambiar clave
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                  {changing === p.id && (
+                    <ChangeKeyInline
+                      providerName={p.name}
+                      busy={busy}
+                      onCancel={() => setChanging(null)}
+                      onSave={async (key) => {
+                        await onSetKey(p.id, key)
+                        setChanging(null)
+                      }}
+                    />
+                  )}
+                </>
+              }
+            >
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  disabled={busy || entry?.phase === 'testing'}
+                  aria-label={`Probar la clave de ${p.name}`}
+                  onClick={() => void useKeyTests.getState().run(p.id)}
+                >
+                  {entry?.phase === 'testing' ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />} Probar
+                </Button>
+                {p.source === 'api' && (
+                  <Button variant="ghost" disabled={busy} onClick={() => void onDisconnect(p.id)}>
+                    <Unplug size={14} /> Desconectar
+                  </Button>
+                )}
+              </div>
+            </Row>
+          )
+        })}
       </Card>
 
       <ProviderKeyForm
@@ -197,4 +242,48 @@ const SOURCE_LABEL: Record<string, string> = {
   config: 'config',
   custom: 'personalizado',
   api: 'credencial guardada'
+}
+
+/** «Cambiar clave»: reemplaza la clave guardada del proveedor (se prueba sola al guardar). */
+function ChangeKeyInline({
+  providerName,
+  busy,
+  onSave,
+  onCancel
+}: {
+  providerName: string
+  busy: boolean
+  onSave: (key: string) => Promise<void>
+  onCancel: () => void
+}): React.JSX.Element {
+  const [key, setKey] = useState('')
+  return (
+    <form
+      className="mt-2 flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!busy && key.trim())
+          void onSave(key.trim()).then(
+            () => setKey(''),
+            () => undefined
+          )
+      }}
+    >
+      <TextInput
+        type="password"
+        autoComplete="off"
+        aria-label={`Nueva clave de ${providerName}`}
+        placeholder="Nueva API key"
+        value={key}
+        onChange={(e) => setKey(e.target.value)}
+        className="max-w-xs"
+      />
+      <Button size="sm" variant="primary" type="submit" disabled={busy || !key.trim()}>
+        Guardar
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onCancel}>
+        Cancelar
+      </Button>
+    </form>
+  )
 }

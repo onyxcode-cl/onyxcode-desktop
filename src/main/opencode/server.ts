@@ -22,6 +22,7 @@ import { killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
 import { withDisclaim } from '../process/disclaim'
 import { settingsStore } from '../store'
+import { LineRing } from '../diagnostics/log-ring'
 
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
@@ -51,7 +52,9 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private startPromise: Promise<OpencodeConnection> | null = null
   private restartTimer: NodeJS.Timeout | null = null
   private consecutiveFailures = 0
-  private readonly logTail: string[] = []
+  private readonly logRing = new LineRing()
+  /** Contraseña y credencial Basic del sidecar de este arranque: Diagnóstico las oculta de lo que muestra. */
+  private secretValues: string[] = []
 
   constructor(private readonly options: OpencodeServerOptions) {
     super()
@@ -59,6 +62,16 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
 
   getStatus(): ServerStatus {
     return this.status
+  }
+
+  /** Últimas líneas del motor SIN redactar: solo para `diagnostics/service.ts`, que redacta antes de devolverlas. */
+  recentLog(max?: number): string[] {
+    return this.logRing.lines(max)
+  }
+
+  /** Secretos del sidecar (contraseña y `Authorization`) para el redactor de Diagnóstico. */
+  secrets(): string[] {
+    return [...this.secretValues]
   }
 
   getConnection(): OpencodeConnection | null {
@@ -131,6 +144,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const password = randomBytes(24).toString('base64url')
       const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
       const baseUrl = `http://${HOST}:${port}`
+      this.secretValues = [password, authorization, authorization.slice('Basic '.length)]
 
       // Renderer en `onyxcode://app` (producción) o el dev server de Vite; sin el origen `null`.
       const cors = this.options.corsOrigins ?? []
@@ -190,7 +204,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       return connection
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      const tail = this.logTail.slice(-5).join('').trim()
+      const tail = this.logRing.tail(5).trim()
       const error = tail ? `${message}\n${tail}` : message
       console.error('[opencode] fallo al arrancar:', error)
       const child = this.child
@@ -239,8 +253,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
 
   private log(chunk: string): void {
     if (process.env.OPENCODE_SIDECAR_LOG) process.stdout.write(`[opencode] ${chunk}`)
-    this.logTail.push(chunk)
-    if (this.logTail.length > 50) this.logTail.splice(0, this.logTail.length - 50)
+    this.logRing.push(chunk)
   }
 }
 

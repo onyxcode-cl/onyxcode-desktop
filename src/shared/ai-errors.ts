@@ -4,6 +4,8 @@
  * Sin React ni IPC: se prueba con `ai-errors.test.ts`.
  */
 
+import { maskSecretPatterns } from './redact-patterns'
+
 export type FriendlyErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
 
 export interface FriendlyError {
@@ -37,11 +39,10 @@ export class NoAiError extends Error {
 export const NO_AI_ERROR = new NoAiError()
 
 const DETAIL_MAX = 2000
-const SECRET_RE = /\b(sk|key|token)[-_][A-Za-z0-9_-]{8,}/gi
 
-/** Sustituye por «…» lo que parece una clave o un token. */
+/** Sustituye por «…» lo que parece una clave o un token (mismos patrones que el redactor de Diagnóstico). */
 export function redactSecrets(text: string): string {
-  return text.replace(SECRET_RE, '…')
+  return maskSecretPatterns(text)
 }
 
 interface Normalized {

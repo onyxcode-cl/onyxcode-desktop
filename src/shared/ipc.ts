@@ -12,6 +12,8 @@ import type { OpencodeAction } from './opencode-links'
 import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
 import type { AccountState } from './account'
+import type { KeyTestResult } from './key-test'
+import type { DiagLogs, DiagSource } from './diagnostics'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
 export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID' | 'BUSY'
@@ -52,6 +54,11 @@ export interface IpcInvokeContract {
   'app:updateCancel': { req: void; res: UpdateState }
   /** «Reiniciar ahora»: sustituye la app por la versión ya verificada y la reabre. */
   'app:updateInstall': { req: void; res: UpdateState }
+  /**
+   * «Probar clave»: main lee la clave ya guardada y hace un GET gratuito al proveedor. La clave no cruza el IPC ni
+   * vuelve al renderer; solo se devuelve el estado. BUSY si hay otra prueba en curso o fue hace menos de 5 s.
+   */
+  'app:testProviderKey': { req: { providerID: string }; res: KeyTestResult }
   /** El renderer de la ventana principal ya pintó: con la carga de la ventana completa el marcador de arranque del actualizador. */
   'app:bootConfirm': { req: void; res: void }
 
@@ -76,6 +83,13 @@ export interface IpcInvokeContract {
   'opencode:connection': { req: void; res: OpencodeConnection }
   'opencode:status': { req: void; res: ServerStatus }
   'opencode:restart': { req: void; res: OpencodeConnection }
+
+  // diagnóstico: todo texto sale redactado desde main (claves, contraseña del motor, rutas del usuario)
+  'diag:logs': { req: { source: DiagSource; maxLines?: number }; res: DiagLogs }
+  /** Copia al portapapeles (lo hace main) el texto redactado de la fuente. */
+  'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
+  /** «Exportar…»: diálogo de guardado y archivo `OnyxCode-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
+  'diag:export': { req: void; res: { saved: boolean } }
 
   // settings
   'settings:get': { req: void; res: Settings }
@@ -118,6 +132,7 @@ export const IPC_INVOKE_CHANNELS = [
   'app:updateCancel',
   'app:updateInstall',
   'app:bootConfirm',
+  'app:testProviderKey',
   'account:state',
   'account:google',
   'account:cancel',
@@ -130,6 +145,9 @@ export const IPC_INVOKE_CHANNELS = [
   'opencode:connection',
   'opencode:status',
   'opencode:restart',
+  'diag:logs',
+  'diag:copy',
+  'diag:export',
   'settings:get',
   'settings:set',
   'settings:addRecentFolder'

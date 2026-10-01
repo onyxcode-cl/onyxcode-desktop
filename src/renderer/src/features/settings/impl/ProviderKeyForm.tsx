@@ -4,6 +4,7 @@ import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@o
 import { APP_NAME } from '@shared/brand'
 import { Button } from '../../../components/Button'
 import { call } from '../../../lib/api'
+import { KeyTestNotice } from './KeyTestNotice'
 import { authOptions, saveProviderKey } from './providerCatalog'
 import { Card, Field, Select, TextInput } from './ui'
 
@@ -48,6 +49,8 @@ export function ProviderKeyForm({
 }: Props): React.JSX.Element {
   const [picked, setPicked] = useState('')
   const [key, setKey] = useState('')
+  /** Último proveedor cuya clave se guardó desde este formulario: muestra el resultado de la prueba. */
+  const [lastSaved, setLastSaved] = useState<{ id: string; name: string } | null>(null)
   const [flow, setFlow] = useState<Flow>({ kind: 'idle' })
   /** Contador de generación: una respuesta de OAuth solo cuenta si sigue siendo la vigente (cancelar, cambiar de proveedor o desmontar la invalidan). */
   const generation = useRef(0)
@@ -86,6 +89,7 @@ export function ProviderKeyForm({
       () => {
         setKey('')
         setPicked('')
+        setLastSaved({ id: target, name: targetProvider?.name ?? target })
       },
       () => undefined
     )
@@ -220,6 +224,8 @@ export function ProviderKeyForm({
           )}
         </div>
       )}
+
+      <KeyTestNotice providerID={lastSaved?.id ?? null} providerName={lastSaved?.name ?? ''} />
 
       <p className="mt-2 text-[11px] text-subtle">
         {target && !supportsApi && oauth.length === 0
