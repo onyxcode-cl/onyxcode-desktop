@@ -1,8 +1,9 @@
 // Idioma: arranque en inglés (modos, secciones de Ajustes y asistente en inglés), cambio a Español y de vuelta en vivo
 // (sin reiniciar), persistencia en settings.json y <html lang>. Capturas con I18N_SHOTS_DIR en los dos idiomas
-// (claro/oscuro, 820 y 1280 px): General, Modelos, MCP, Diagnóstico, asistente y Chat vacío.
+// (claro/oscuro, 820 y 1280 px): General, Modelos, MCP, Diagnóstico, asistente y Chat vacío; y, en inglés, Code, Tareas,
+// Rutinas y navegador integrado (T4b, `I18N_SHOTS_DIR/en/`).
 // La bandeja se prueba en `main/extras/tray.i18n.test.ts` (Electron no deja leer el menú de un Tray).
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { Page } from 'playwright-core'
@@ -10,8 +11,9 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { translate } from '../../src/shared/i18n'
 import { useApp } from '../lib/harness'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
-import { fakeOutsideUserData } from '../lib/lotes'
+import { fakeOutsideUserData, makeTasksDir } from '../lib/lotes'
 import { shot } from '../lib/shots'
+import { setMode, storeCall } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
 
 const DEV = MODE === 'dev'
@@ -135,5 +137,97 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
     } finally {
       await app.stop()
     }
+  })
+})
+
+describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b)', () => {
+  const fakeBin = fakeOutsideUserData()
+  const project = makeTasksDir()
+  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-t4b-')))
+  const routine = (id: string, name: string, enabled: boolean, schedule: Record<string, unknown>): Record<string, unknown> => ({
+    id,
+    name,
+    prompt: 'do nothing',
+    mode: 'chat',
+    folder: null,
+    model: { providerID: 'fake', modelID: 'fake-model' },
+    schedule,
+    enabled,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  })
+  writeFileSync(
+    join(userData, 'routines.json'),
+    JSON.stringify({
+      routines: [
+        routine('r1', 'Morning summary', true, { kind: 'daily', time: '09:00' }),
+        routine('r2', 'Weekly review', false, { kind: 'weekly', day: 1, time: '17:30' })
+      ],
+      history: []
+    })
+  )
+  afterAll(() => {
+    fakeBin.dispose()
+    project.dispose()
+    rmSync(userData, { recursive: true, force: true })
+  })
+  const app = useApp({
+    userData,
+    env: { OPENCODE_BIN: fakeBin.bin },
+    settings: { language: 'en', routinesTermsAcknowledged: true }
+  })
+  const modes = (page: Page) => page.locator(`nav[aria-label="${tr('en', 'app.sidebar.mode')}"]`)
+
+  it('(5) Tareas en inglés: guía de inicio y pantalla de inicio', async () => {
+    const { page } = app()
+    await modes(page).getByRole('button', { name: 'Tasks', exact: true }).click()
+    await expectVisible(page.getByText(tr('en', 'tasksComputer.onb.title'), { exact: true }))
+    await expectCount(page.getByText('Así funcionan las tareas'), 0)
+    await shot(app(), sub('en'), 'tareas-guia')
+    await page.getByRole('button', { name: tr('en', 'tasksComputer.onb.gotIt') }).click()
+    await expectVisible(page.getByText(tr('en', 'tasks.home.title'), { exact: true }))
+    await expectCount(page.getByText('¿En qué trabajamos hoy?'), 0)
+    await shot(app(), sub('en'), 'tareas-inicio')
+  })
+
+  it('(6) Rutinas en inglés: lista y editor, con horarios en inglés', async () => {
+    const { page } = app()
+    await modes(page).getByRole('button', { name: 'Routines', exact: true }).click()
+    await expectVisible(page.getByText(tr('en', 'routines.view.title'), { exact: true }).first())
+    await expectVisible(page.getByText('Morning summary').first())
+    await expectCount(page.getByText(/Cada día|Todos los días|lunes/i), 0)
+    await shot(app(), sub('en'), 'rutinas')
+    await page
+      .getByRole('button', { name: tr('en', 'routines.view.new') })
+      .first()
+      .click()
+    await expectVisible(page.getByText(tr('en', 'routines.editor.new'), { exact: true }).first())
+    await shot(app(), sub('en'), 'rutinas-editor')
+    await page.keyboard.press('Escape')
+  })
+
+  it('(7) Code y navegador integrado en inglés', async () => {
+    const a = app()
+    const { page } = a
+    await setMode(page, 'code')
+    await storeCall(page, 'useCode', 'trustFolder', project.dir)
+    await storeCall(page, 'useCode', 'openProject', project.dir)
+    await storeCall(page, 'useCode', 'newSessionAt', project.dir)
+    await expectVisible(page.getByText(/What are we building in/))
+    await expectCount(page.getByText(/¿Qué construimos en/), 0)
+    await shot(a, sub('en'), 'code')
+    await page.keyboard.press('Meta+4')
+    await expectVisible(page.getByText(tr('en', 'browser.empty.title'), { exact: true }))
+    await expectCount(page.getByText('Sin pestañas abiertas'), 0)
+    await shot(a, sub('en'), 'navegador')
+  })
+
+  it('(8) cambiar a Español en vivo repinta Tareas y Rutinas', async () => {
+    const { page } = app()
+    await setMode(page, 'routines')
+    await storeCall(page, 'useSettings', 'update', { language: 'es' })
+    await expectVisible(page.getByText(tr('es', 'routines.view.title'), { exact: true }).first())
+    await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }).click()
+    await expectVisible(page.getByText(tr('es', 'tasks.home.title'), { exact: true }))
   })
 })

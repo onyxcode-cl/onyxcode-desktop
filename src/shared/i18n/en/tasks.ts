@@ -96,16 +96,16 @@ export const tasks = {
   'tasks.home.cat.computer': 'Mac control',
   'tasks.home.tpl.docs.0.title': 'Summary report',
   'tasks.home.tpl.docs.0.prompt':
-    'First review the documents in this folder and show me a summary of what each one contains; then propose the structure of a summary report, resumen.md, with the key points; once I approve it, write it to the folder.',
+    'First review the documents in this folder and show me a summary of what each one contains; then propose the structure of a summary report, summary.md, with the key points; once I approve it, write it to the folder.',
   'tasks.home.tpl.docs.1.title': 'Word document',
   'tasks.home.tpl.docs.1.prompt':
     'First review the notes in this folder and show me a summary of the main ideas; then propose an outline for a Word document (.docx) with its sections; once I approve it, create it with good formatting.',
   'tasks.home.tpl.docs.2.title': 'Spelling check',
   'tasks.home.tpl.docs.2.prompt':
-    'First review the .md and .txt documents in this folder and show me a summary of the spelling and style errors you find; then propose the corrections; once I approve them, save corrected versions with the suffix -revisado without touching the originals.',
+    'First review the .md and .txt documents in this folder and show me a summary of the spelling and style errors you find; then propose the corrections; once I approve them, save corrected versions with the suffix -reviewed without touching the originals.',
   'tasks.home.tpl.docs.3.title': 'Meeting minutes',
   'tasks.home.tpl.docs.3.prompt':
-    'First review the meeting notes in this folder and show me a summary of the topics discussed; then propose the list of decisions, owners and dates; once I approve it, write formal minutes in actas.md.',
+    'First review the meeting notes in this folder and show me a summary of the topics discussed; then propose the list of decisions, owners and dates; once I approve it, write formal minutes in minutes.md.',
   'tasks.home.tpl.data.0.title': 'Analyze CSV',
   'tasks.home.tpl.data.0.prompt':
     'First review the .csv files in this folder and show me a summary of their columns, rows and missing data; then propose which analyses you would run (totals, trends, outliers); once I approve them, run them and save a report with the main findings.',
