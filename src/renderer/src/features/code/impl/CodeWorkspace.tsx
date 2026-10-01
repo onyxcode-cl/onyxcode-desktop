@@ -407,6 +407,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
               <button
                 type="button"
                 disabled={busy}
+                aria-label={t('code.toolbar.fork')}
                 onClick={() => void forkSession(activeSessionID)}
                 className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
               >
@@ -417,6 +418,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
               <button
                 type="button"
                 disabled={busy}
+                aria-label={t('code.toolbar.compact')}
                 onClick={() => void compactSession(activeSessionID)}
                 className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
               >

@@ -15,6 +15,7 @@ import { AssistantError } from '../../../components/conversation/AssistantError'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../../lib/conversation/errors'
+import { ConversationAnnouncer } from '../../../components/conversation/ConversationAnnouncer'
 import { errorMessage } from '../../../lib/opencode'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MessageEntry } from '../../../stores/sessions'
@@ -430,6 +431,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
 
   return (
     <div className="relative min-h-0 flex-1">
+      <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
           {blocks.map((b, i) => {

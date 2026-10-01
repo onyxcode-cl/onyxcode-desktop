@@ -28,7 +28,10 @@ export function Sidebar(): React.JSX.Element {
   const dot = serverState === 'ready' ? 'bg-success' : serverState === 'error' ? 'bg-danger' : 'bg-warning animate-pulse'
 
   return (
-    <aside className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar">
+    <aside
+      aria-label={t('app.sidebar.aria')}
+      className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar"
+    >
       {/* Zona de titlebar (semáforos de macOS) */}
       <div className="drag flex h-12 shrink-0 items-center justify-end px-2">
         <IconButton label={t('app.sidebar.hide', { mod: MOD })} onClick={toggleSidebar}>
@@ -99,7 +102,7 @@ export function Sidebar(): React.JSX.Element {
           <LogoMark size={20} />
           <span
             className={`absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2 ring-[var(--bg-sidebar)] ${dot}`}
-            aria-label={`OpenCode: ${statusLabel}`}
+            aria-hidden="true"
           />
         </span>
         <span className="flex min-w-0 flex-1 flex-col leading-tight">

@@ -501,7 +501,12 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>{'esc'}</Kbd>
                 </span>
               </div>
-              <div role="listbox" className="max-h-64 overflow-y-auto py-1">
+              <div
+                role="listbox"
+                id="code-composer-menu"
+                aria-label={trigger.kind === '/' ? t('code.composer.commands') : t('code.composer.files')}
+                className="max-h-64 overflow-y-auto py-1"
+              >
                 {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">{t('code.composer.searching')}</div>}
                 {items.map((item, i) => {
                   const { dir, name } =
@@ -513,6 +518,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       key={item.id}
                       type="button"
                       role="option"
+                      id={`code-composer-opt-${i}`}
                       aria-selected={i === menuIndex}
                       onMouseEnter={() => setMenuIndex(i)}
                       onMouseDown={(e) => {
@@ -549,8 +555,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     <button
                       type="button"
                       title={t('code.composer.removeAttachment', { name: a.name })}
+                      aria-label={t('code.composer.removeAttachment', { name: a.name })}
                       onClick={() => setAttachments((cur) => cur.filter((x) => x.id !== a.id))}
-                      className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100"
+                      className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100 focus-visible:opacity-100"
                     >
                       <X size={10} />
                     </button>
@@ -571,6 +578,13 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             <textarea
               ref={ref}
               data-code-composer=""
+              role="combobox"
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              aria-expanded={!!(menuOpen && trigger)}
+              aria-controls={menuOpen && trigger ? 'code-composer-menu' : undefined}
+              aria-activedescendant={menuOpen && trigger && items.length > 0 ? `code-composer-opt-${menuIndex}` : undefined}
+              aria-label={t('code.composer.aria')}
               value={text}
               onChange={(e) => {
                 setText(e.target.value)

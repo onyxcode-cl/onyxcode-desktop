@@ -15,6 +15,7 @@ import { ScrollToEnd } from '../../components/conversation/ScrollToEnd'
 import { useStickToBottom } from '../../lib/conversation/use-stick-to-bottom'
 import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
+import { ConversationAnnouncer } from '../../components/conversation/ConversationAnnouncer'
 import { ChatToolCall } from './ChatToolCall'
 
 // Filas memoizadas (F7-B44): las partes y mensajes sin cambios conservan su referencia en el store, así que durante
@@ -255,6 +256,7 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
 
   return (
     <div className="relative min-h-0 flex-1">
+      <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10">
           {entries.map((entry, i) => {

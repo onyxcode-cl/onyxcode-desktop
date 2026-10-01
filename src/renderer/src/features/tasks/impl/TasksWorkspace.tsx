@@ -618,7 +618,7 @@ export function TasksWorkspace(): React.JSX.Element {
   return (
     <div className="flex h-full min-h-0">
       {/* Centro */}
-      <main className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
           <header className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4">
             <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
@@ -716,12 +716,13 @@ export function TasksWorkspace(): React.JSX.Element {
         ) : (
           <Home onSend={send} sendError={sendError} folderBusy={folderBusy} />
         )}
-      </main>
+      </div>
 
       {/* Derecha: Consulta lateral, o bien Plan · Entregables · Actividad */}
       {sideOpen && <SideChat />}
       {showPanel && (
         <aside
+          aria-label={t('a11y.sidePanel')}
           className="relative hidden shrink-0 flex-col border-l border-border lg:flex"
           style={{ width: asideTab === 'browser' ? browserWidth : 320 }}
         >
