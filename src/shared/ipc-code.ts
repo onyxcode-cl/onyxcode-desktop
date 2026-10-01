@@ -29,6 +29,8 @@ export const CODE_CHANNELS = {
   gitRemoveWorktree: 'git:removeWorktree',
   gitCommit: 'git:commit',
   gitLog: 'git:log',
+  gitDiscard: 'git:discard',
+  gitDiscardUndo: 'git:discardUndo',
   // dialog
   dialogOpenFolder: 'dialog:openFolder',
   dialogRevealInFinder: 'dialog:revealInFinder',
@@ -144,6 +146,21 @@ export interface GitCommitResult {
   summary: string
 }
 
+/** Resultado de descartar cambios de archivos concretos (operación destructiva: ver `git/service.ts`). */
+export interface GitDiscardResult {
+  /** Archivos con seguimiento devueltos al estado de HEAD. */
+  restored: string[]
+  /** Archivos nuevos movidos a la Papelera (nunca borrado definitivo). */
+  trashed: string[]
+  failed: Array<{ path: string; reason: string }>
+  /** Identificador para «Rehacer» (restaura el contenido que había), o null si no hay nada que rehacer. */
+  undoId: string | null
+}
+export interface GitDiscardUndoResult {
+  restored: string[]
+  failed: Array<{ path: string; reason: string }>
+}
+
 export interface GitLogEntry {
   hash: string
   shortHash: string
@@ -176,6 +193,8 @@ export interface CodeInvokeContract {
   'git:removeWorktree': { req: { cwd: string; path: string; force?: boolean }; res: void }
   'git:commit': { req: { cwd: string; message: string; stageAll?: boolean }; res: GitCommitResult }
   'git:log': { req: { cwd: string; n?: number }; res: GitLogEntry[] }
+  'git:discard': { req: { cwd: string; paths: string[] }; res: GitDiscardResult }
+  'git:discardUndo': { req: { cwd: string; undoId: string }; res: GitDiscardUndoResult }
 
   'dialog:openFolder': { req: { title?: string; defaultPath?: string } | undefined; res: string | null }
   'dialog:revealInFinder': { req: { path: string }; res: void }
@@ -225,6 +244,8 @@ export interface CodeApi {
     removeWorktree(cwd: string, path: string, force?: boolean): Promise<void>
     commit(cwd: string, message: string, stageAll?: boolean): Promise<GitCommitResult>
     log(cwd: string, n?: number): Promise<GitLogEntry[]>
+    discard(cwd: string, paths: string[]): Promise<GitDiscardResult>
+    discardUndo(cwd: string, undoId: string): Promise<GitDiscardUndoResult>
   }
   dialog: {
     openFolder(opts?: { title?: string; defaultPath?: string }): Promise<string | null>
