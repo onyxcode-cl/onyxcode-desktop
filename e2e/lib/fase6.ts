@@ -152,6 +152,13 @@ export interface TasksConn {
   authorization: string
 }
 
+/** Espera a que Tareas esté lista (`phase === 'ready'`) tras elegir la carpeta y aceptar el permiso a mano. */
+export async function connectTasksFolderReady(app: E2EApp): Promise<{ conn: TasksConn; fake: FakeClient }> {
+  await expect.poll(() => storeState(app.page, 'useTasks', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')
+  const conn = await storeState<TasksConn>(app.page, 'useTasks', 'conn')
+  return { conn, fake: new FakeClient(conn) }
+}
+
 /** Elige la carpeta en Tareas por la UI (diálogo stubbeado), acepta el permiso y espera a `phase === 'ready'`. */
 export async function connectTasksFolder(app: E2EApp, folder: string): Promise<{ conn: TasksConn; fake: FakeClient }> {
   await stubDialog(app.electronApp, { openPaths: [folder] })
