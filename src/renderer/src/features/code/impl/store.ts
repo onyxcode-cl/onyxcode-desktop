@@ -36,6 +36,7 @@ import {
   type LoadTracker
 } from '../../../lib/session-reducer'
 import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../lib/session-paging'
+import { mentionMime } from './mention-mime'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
   Attachment,
@@ -581,7 +582,7 @@ export const useCode = create<CodeState>((set, get) => {
       return [
         {
           type: 'file' as const,
-          mime: 'text/plain',
+          mime: mentionMime(rel),
           filename: rel.split('/').pop() ?? rel,
           url: `file://${abs}`,
           source: { type: 'file' as const, path: abs, text: { value: token, start, end: start + token.length } }

@@ -3,7 +3,7 @@ import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPar
 import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Undo2 } from 'lucide-react'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
-import { Markdown } from '../../../components/Markdown'
+import { CopyButton, Markdown } from '../../../components/Markdown'
 import { t } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
@@ -301,10 +301,15 @@ const TurnView = memo(
     const canAct = isLastTurn && !busy
     const sessionID = user?.info.sessionID ?? assistant[0]?.info.sessionID
     const blocks = buildBlocks(assistant)
+    const replyText = blocks
+      .flatMap((b) => (b.kind === 'text' ? [b.part.text] : []))
+      .join('\n\n')
+      .trim()
+    const showCopy = !!replyText && !(busy && isLastTurn)
     const inlinePerms = new Map<string, PendingPermission[]>()
     for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
     return (
-      <div className={withCv('flex flex-col gap-3', old && perms.length === 0, true)}>
+      <div className={withCv('group/turn flex flex-col gap-3', old && perms.length === 0, true)}>
         {user && <UserMessage entry={user} busy={busy} root={root} />}
         {blocks.length > 0 && (
           <div className="flex flex-col gap-2">
@@ -356,6 +361,13 @@ const TurnView = memo(
                   )
               }
             })}
+          </div>
+        )}
+        {showCopy && (
+          <div
+            className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLastTurn ? 'opacity-100' : 'opacity-0 group-hover/turn:opacity-100 focus-within:opacity-100'}`}
+          >
+            <CopyButton text={replyText} label={t('code.msg.copyReply')} />
           </div>
         )}
       </div>
