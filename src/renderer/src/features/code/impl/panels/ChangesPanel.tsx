@@ -59,7 +59,7 @@ const KIND_META: Record<GitChangeKind, { letter: string; label: MsgKey; cls: str
   renamed: { letter: 'R', label: 'code.kind.renamed', cls: 'bg-accent-soft text-accent' },
   copied: { letter: 'C', label: 'code.kind.copied', cls: 'bg-accent-soft text-accent' },
   typechange: { letter: 'T', label: 'code.kind.typechange', cls: 'bg-hover text-muted' },
-  conflicted: { letter: '!', label: 'code.kind.conflicted', cls: 'bg-danger text-white' },
+  conflicted: { letter: '!', label: 'code.kind.conflicted', cls: 'bg-danger text-danger-fg' },
   ignored: { letter: 'I', label: 'code.kind.ignored', cls: 'bg-hover text-subtle' }
 }
 

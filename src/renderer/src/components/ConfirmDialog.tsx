@@ -287,7 +287,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
             type="button"
             onClick={() => finishConfirm(true)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium hover:opacity-90 ${
-              danger ? 'bg-danger text-white' : 'bg-accent text-accent-fg'
+              danger ? 'bg-danger text-danger-fg' : 'bg-accent text-accent-fg'
             }`}
           >
             {req.confirmLabel ?? t('common.accept')}

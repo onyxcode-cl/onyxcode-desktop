@@ -34,6 +34,7 @@
   --success: #14793a;
   --warning: #954308;
   --danger: #b52f26;
+  --danger-fg: #ffffff;
   --user-bubble: #e8ecf8;
   --selection: rgb(44 79 216 / 0.18);
   --scrollbar: #c9cfdc;
@@ -68,6 +69,7 @@
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #ff7a6e;
+  --danger-fg: #2a0805;
   --user-bubble: #1e2331;
   --selection: rgb(125 151 255 / 0.28);
   --scrollbar: #2e3342;
@@ -115,6 +117,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
   --color-user: var(--user-bubble);
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;

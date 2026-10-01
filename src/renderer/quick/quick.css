@@ -4,7 +4,7 @@
 :root {
   --q-bg: rgba(250, 251, 253, 0.9);
   --q-fg: #131722;
-  --q-muted: #8a91a3;
+  --q-muted: #5d6477;
   --q-border: rgba(19, 23, 34, 0.1);
   --q-accent: #2c4fd8;
   --q-accent-fg: #ffffff;
@@ -17,7 +17,7 @@
   :root {
     --q-bg: rgba(20, 22, 30, 0.88);
     --q-fg: #e7e9f0;
-    --q-muted: #7a8196;
+    --q-muted: #b0b6c8;
     --q-border: rgba(255, 255, 255, 0.1);
     --q-accent: #7d97ff;
     --q-accent-fg: #0a1033;
