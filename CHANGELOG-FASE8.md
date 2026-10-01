@@ -194,3 +194,33 @@ archivos» (`ChangesPanel.tsx`: Nuevo/Modificado/Eliminado, +N −M, diff, «Des
 permisos muestra el diff y ofrece «Rechazar con indicaciones» (`replyPermission(id,'reject',mensaje)`). Se crean puntos también en Control total (decisión del usuario: ahí el agente podría manipular el
 almacén; la interfaz lo avisa). Servidor falso: paso de guion `fs` (escribe/borra archivos reales confinados al directorio de la sesión). E2E `restore.e2e.ts` con capturas (`RESTORE_SHOTS_DIR`). SEGURIDAD §3 octies.
 Limitaciones: no cubre carpetas vinculadas con escritura; el panel lateral no aparece por debajo de 1024 px (ya ocurría con el panel de progreso; «Deshacer desde aquí» sigue disponible).
+
+## F8-B22 — «Probar clave» de un proveedor
+
+Ajustes › Modelos gana el botón «Probar» por proveedor conectado, y guardar una clave la prueba sola (formulario de Modelos y asistente de primer uso). Todo ocurre en main
+(`main/providers/key-probe.ts`): lee la clave ya guardada en `auth.json` (`appAuthFile`) y hace un GET **gratuito** (listado de modelos o información de la clave) con `net.fetch` inyectable,
+`redirect: 'manual'`, 10 s de tope, y del cuerpo solo se usa el código HTTP. La clave **no cruza el IPC ni vuelve al renderer**; no se tocó el proxy de credenciales. Canal `app:testProviderKey`
+(`{providerID}` → `KeyTestResult {providerID,status,httpStatus,latencyMs,checkedAt}`; solo ventana principal; `BUSY` si hay otra prueba del mismo proveedor en curso o hace < 5 s). Estados:
+`ok, invalid, forbidden, rate-limited, no-credit, offline, unreachable, provider-down, timeout, unexpected, not-stored, oauth, unsupported`, con textos en `shared/key-test.ts` (`keyTestText`).
+Tabla `PROBES` (anthropic, openai, google, openrouter, groq, mistral, deepseek, xai) **verificada con curl y una clave inválida** (401, o 400 en Google y xAI, que lo declaran en `invalidStatuses`);
+`/api/v1/models` de OpenRouter es público y por eso se usa `/api/v1/key`. `opencode` y `opencode-go` **no** están: su `/models` responde 200 sin clave (daría un falso «funciona») → `unsupported`.
+Alternativa genérica: proveedores `@ai-sdk/openai-compatible` con `api` https (`models.*.api` de `GET /provider` del motor, consultado desde main) → `GET {api}/models` con Bearer.
+La clave de Google va **solo** en la cabecera `x-goog-api-key`. Errores de red de las dos familias (Node y `net::ERR_*`): `net.isOnline()` falso → `offline`, si no `unreachable`; los errores se construyen a
+mano (nunca se reenvía un `Error` ajeno). `ONYXCODE_E2E_KEY_PROBE_BASE` (solo `!app.isPackaged` y solo `http://127.0.0.1:<puerto>`, con guardia estática en `key-probe.test.ts`) permite apuntar a un servidor local.
+Renderer: `useKeyTest.ts` (store con el estado de cada prueba), `KeyTestNotice.tsx` y `ModelsSection` («Probar», «Cambiar clave» tras una clave inválida o sin permiso). Tests: `key-probe.test.ts` (matriz de
+estados y errores, `redirect:'manual'`, `not-stored`/`oauth`/`unsupported` sin petición, propiedad con claves aleatorias: ni el resultado ni `console.*` la contienen; Google nunca en la URL),
+`key-test.test.ts`, `KeyTestNotice.test.tsx`, `schemas.test.ts`; E2E `key-test.e2e.ts` con `e2e/lib/probe-server.ts` (capturas `DIAG_SHOTS_DIR`). No probado: claves reales de ningún proveedor.
+
+## F8-B23 — Ajustes › Diagnóstico (registros del motor redactados)
+
+Sección nueva «Diagnóstico» (antes de «Acerca de»): tarjeta «Estado» (estado, reinicios, versión, último error, «Reiniciar OpenCode») y tarjeta «Registros» (fuente, filtro, «Actualizar», «Cada 2 s»,
+«Copiar», «Exportar…»). Main: `diagnostics/log-ring.ts` (`LineRing`, 2000 líneas / 512 KB con última línea parcial; `OpencodeServer.log()` lo usa y el arranque sigue mostrando `tail(5)`; único cambio en
+`opencode/server.ts` además del getter `secrets()` y `recentLog()`), `diagnostics/redact.ts` (`makeRedactor`: primero secretos **exactos** —contraseña y credencial Basic del sidecar, todos los valores
+de `auth.json`, `headers`/`environment` de los MCP— del más largo al más corto; luego patrones lineales de `shared/redact-patterns.ts`: Bearer/Basic, `sk-`, `sk-ant-`, `AIza`, `gh*_`, `github_pat_`, `xox*`,
+`glpat-`, `AKIA`, JWT, `clave=valor`, `?key=`, `usuario:clave@`, rachas largas con cifras; la carpeta del usuario pasa a `~`; líneas a 4000 caracteres; se redacta **antes** de recortar) y
+`diagnostics/service.ts` (fuentes `engine`, `engine-file` —últimos 256 KB del `.log` más reciente por desplazamiento— y `report`). `redactSecrets` de `shared/ai-errors.ts` usa los mismos patrones. No hay
+registros del sandbox de Tareas. Canales `diag:logs`, `diag:copy` (portapapeles desde main) y `diag:export` (diálogo «Guardar como», archivo `OnyxCode-diagnostico-AAAAMMDD-HHmm.txt` con 0600), solo ventana
+principal. Tests: `redact.test.ts` (patrones, exactos, propiedad con secretos incrustados, líneas adversarias de 1 MB < 200 ms), `log-ring.test.ts`, `service.test.ts` (incluye la guardia estática: los
+handlers `diag:*` solo devuelven lo que sale de `DiagnosticsService` y solo `service.ts` lee el anillo crudo), `schemas.test.ts`; E2E `diagnostics.e2e.ts` (ruta nueva `POST /__e2e/log` del servidor falso;
+pantalla, IPC, portapapeles y exportación sin secretos, 0600). Limitación: un secreto sin forma conocida y que no esté guardado en `auth.json`/MCP puede pasar (la nota de la pantalla pide revisar antes de compartir).
+

@@ -33,6 +33,7 @@ Las tablas de esquemas están tipadas contra los contratos `shared/ipc*.ts`: un 
 esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arrancar.
 **Al añadir un canal: contrato + handler + esquema (+ rol si lo usa una ventana secundaria).**
 Los canales `account:*` (§3 sexies) son solo de la ventana principal y llevan esquemas estrictos.
+Lo mismo vale para `app:testProviderKey` y `diag:*` (§3 nonies).
 
 ## 3. Procesos hijos y permisos de macOS (TCC)
 
@@ -588,6 +589,31 @@ se borra con `rm`) junto con las carpetas nuevas que queden vacías. Antes de to
 
 **No verificado aquí:** volúmenes que no son APFS (sin clon: la copia es completa y más lenta), iCloud Drive o carpetas de red (archivos «solo en la nube», bloqueos), carpetas de más de 10 000
 archivos (los límites se prueban con umbrales bajos), y todo lo que dependa de un modelo real (el orden exacto en que el agente escribe respecto al punto).
+
+## 3 nonies. Probar clave y Diagnóstico
+
+**Probar clave** (`app:testProviderKey`, `src/main/providers/key-probe.ts`). La clave de un proveedor se guarda en `userData/opencode-data/opencode/auth.json` (la escribe el motor). Para probarla, **main** la lee
+de ese archivo y hace un GET gratuito al proveedor; el renderer solo manda el id del proveedor (esquema `^[A-Za-z0-9._-]+$`) y recibe un estado. La clave nunca cruza el IPC, no se registra y
+no forma parte de ningún mensaje de error (se construyen a mano). Salida a internet con `net.fetch` desde main (no se tocó la CSP ni `connect-src`), `redirect: 'manual'`, 10 s, solo el código HTTP.
+La clave de Google va en cabecera (`x-goog-api-key`), nunca en la URL. Cada entrada de `PROBES` se verificó con una clave inválida; `opencode` y `opencode-go` quedan fuera porque su listado es público.
+Un intento por proveedor a la vez y 5 s entre pruebas. Para proveedores `@ai-sdk/openai-compatible` la clave se envía al `api` https que declara el catálogo del motor (el mismo host al que iría el chat).
+`ONYXCODE_E2E_KEY_PROBE_BASE` solo se honra sin empaquetar y solo con `http://127.0.0.1:<puerto>` (guardia estática en `key-probe.test.ts`).
+
+**Diagnóstico** (`diag:logs`, `diag:copy`, `diag:export`, `src/main/diagnostics/`). Los registros del motor (stdout/stderr de `opencode serve`, su `.log` y un informe) salen de main **solo** por
+`DiagnosticsService`, que los pasa por el redactor: secretos exactos conocidos (contraseña y `Authorization` del sidecar, valores de `auth.json`, cabeceras y entorno de los MCP), patrones de claves y tokens
+y la carpeta del usuario (`~`). Lo redactado es lo único que llega al renderer, al portapapeles (lo escribe main) y al archivo exportado (0600, `chmod` aunque ya existiera). Una prueba estática vigila que los
+handlers no lean registros por su cuenta. No incluye los registros del sandbox de Tareas. Los patrones son lineales (prueba con líneas de 1 MB < 200 ms).
+
+| Amenaza | Defensa |
+|---|---|
+| La clave llega al renderer o a un registro | Solo main la lee; el resultado es un estado; propiedad en `key-probe.test.ts` con claves aleatorias; E2E comprueba DOM y salida de Electron. |
+| Redirección que reenvíe la clave a otro host | `redirect: 'manual'`: un 3xx es «respuesta inesperada», no se sigue. |
+| Falso «funciona» por un listado público | Cada sonda se verificó con curl y clave inválida; los proveedores con listado público son `unsupported`. |
+| Un registro filtra un secreto | Redacción exacta + patrones antes de salir de main; el anillo guarda el texto crudo solo en memoria. |
+| ReDoS en el redactor | Expresiones lineales; prueba de rendimiento con entradas adversarias. |
+
+**No verificado aquí:** claves reales de los proveedores (solo claves falsas con curl y un servidor local), el comportamiento exacto de `net.fetch` con `redirect: 'manual'` frente a un 3xx real de un proveedor,
+y los secretos sin forma conocida que no estén guardados en `auth.json` ni en los MCP.
 
 ## 4. Paquete (`electron-builder.js`)
 

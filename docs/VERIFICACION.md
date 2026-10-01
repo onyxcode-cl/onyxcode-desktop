@@ -151,6 +151,10 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
     con `GIT_TRACE=1` en el arranque de la app no debe aparecer ningún `git status` mientras esté oculta; al restaurarla,
     Cambios, Archivos y la rama de la barra se actualizan una vez. (El E2E `fase6` 6b lo cubre con visibilidad simulada:
     `hide`/`minimize` no cambian `document.visibilityState` en headless, por eso el caso 6c es `it.skip`.)
+14. **Probar clave con claves reales (2 min; F8-B22).** Ajustes › Modelos: con una clave real de OpenAI, Anthropic y OpenRouter (las que tengas), «Probar» muestra «Funciona · N ms»; pega a propósito
+    una clave mal copiada: «Clave no válida» con «Cambiar clave». Con el Wi-Fi apagado: «Sin conexión a internet». Los E2E solo usan un servidor local (`key-test.e2e.ts`).
+15. **Diagnóstico con el motor real (2 min; F8-B23).** Ajustes › Diagnóstico: el estado dice «Funcionando»; «Motor (archivo)» muestra el `.log` real; «Copiar» y pega en un editor: no hay claves ni
+    la contraseña del motor, y tu carpeta personal aparece como `~`. «Exportar…» crea un `.txt` con permisos 0600 (`ls -l`).
 
 ## Mapa: guías antiguas → spec o humano
 
