@@ -17,6 +17,7 @@ import {
   Loader2,
   RefreshCw,
   Trash2,
+  Undo2,
   X
 } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
@@ -29,6 +30,8 @@ import { useVisibleFsVersion } from '../useVisibleFsVersion'
 import { openProjectTrusted } from '../trust'
 import { isImeComposing } from '../../../../lib/textarea'
 import { ConfirmButton, Kbd, MOD } from '../ui'
+import { confirmDialog } from '../../../../components/ConfirmDialog'
+import { canDiscard, discardMessage } from '../discard-logic'
 
 interface ChangedFile {
   path: string
@@ -131,31 +134,44 @@ function FileRow({
   file,
   staged,
   selected,
-  onSelect
+  onSelect,
+  onDiscard
 }: {
   file: ChangedFile
   staged: boolean
   selected: boolean
   onSelect: () => void
+  onDiscard?: () => void
 }): React.JSX.Element {
   const t = useT()
   const meta = KIND_META[file.kind] ?? KIND_META.modified
   const { dir, name } = splitPath(file.path)
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      title={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
-      className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[13px] ${selected ? 'bg-active' : 'hover:bg-hover'}`}
-    >
-      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold ${meta.cls}`}>
-        {meta.letter}
-      </span>
-      <span className="min-w-0 truncate">
-        <span className={file.kind === 'deleted' ? 'text-muted line-through' : 'text-fg'}>{name}</span>
-        {dir && <span className="ml-1.5 text-xs text-subtle">{dir}</span>}
-      </span>
-    </button>
+    <div className={`group relative flex items-center ${selected ? 'bg-active' : 'hover:bg-hover'}`}>
+      <button
+        type="button"
+        onClick={onSelect}
+        title={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
+        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left text-[13px]"
+      >
+        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold ${meta.cls}`}>
+          {meta.letter}
+        </span>
+        <span className="min-w-0 truncate">
+          <span className={file.kind === 'deleted' ? 'text-muted line-through' : 'text-fg'}>{name}</span>
+          {dir && <span className="ml-1.5 text-xs text-subtle">{dir}</span>}
+        </span>
+      </button>
+      {onDiscard && (
+        <IconButton
+          label={t('code.changes.discardRowLabel', { name })}
+          onClick={onDiscard}
+          className="mr-1 h-6 w-6 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          <Undo2 size={13} />
+        </IconButton>
+      )}
+    </div>
   )
 }
 
@@ -535,6 +551,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const [diffLoading, setDiffLoading] = useState(false)
   const [diffError, setDiffError] = useState<string | null>(null)
   const [dialog, setDialog] = useState(false)
+  const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'error'; undoId?: string } | null>(null)
 
   const refreshGen = useRef(0)
   const refresh = useCallback(async () => {
@@ -586,6 +603,47 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     }
   }, [directory, selPath, selKind, selStaged, fsVersion])
 
+  const discard = async (file: ChangedFile): Promise<void> => {
+    if (!native || !canDiscard(file)) return
+    const name = splitPath(file.path).name
+    const ok = await confirmDialog({
+      title: t('code.changes.discardTitle', { name }),
+      message: discardMessage(file),
+      confirmLabel: t('code.changes.discardConfirm'),
+      danger: true
+    })
+    if (!ok) return
+    try {
+      const res = await native.git.discard(directory, [file.path])
+      const parts: string[] = []
+      if (res.restored.length) parts.push(t('code.changes.discardRestored', { count: res.restored.length }))
+      if (res.trashed.length) parts.push(t('code.changes.discardTrashed', { count: res.trashed.length }))
+      if (res.failed.length) parts.push(t('code.changes.discardFailed', { error: res.failed.map((f) => f.reason).join(' ') }))
+      setNotice({ text: parts.join(' '), tone: res.failed.length ? 'error' : 'ok', undoId: res.undoId ?? undefined })
+      if (selected?.path === file.path) setSelected(null)
+    } catch (err) {
+      setNotice({ text: t('code.changes.discardFailed', { error: errorMessage(err) }), tone: 'error' })
+    }
+    touchFs()
+    void refresh()
+  }
+
+  const undoDiscard = async (undoId: string): Promise<void> => {
+    if (!native) return
+    try {
+      const res = await native.git.discardUndo(directory, undoId)
+      setNotice(
+        res.failed.length
+          ? { text: t('code.changes.discardUndoFailed', { error: res.failed.map((f) => f.reason).join(' ') }), tone: 'error' }
+          : { text: t('code.changes.discardUndone'), tone: 'ok' }
+      )
+    } catch (err) {
+      setNotice({ text: t('code.changes.discardUndoFailed', { error: errorMessage(err) }), tone: 'error' })
+    }
+    touchFs()
+    void refresh()
+  }
+
   const stats = useMemo(() => (diff ? diffStats(diff) : null), [diff])
   const abs = selectedFile ? `${directory.replace(/[/\\]+$/, '')}/${selectedFile.path}` : ''
 
@@ -626,6 +684,26 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         </IconButton>
       </div>
       {error && <div className="px-3 py-2 text-xs text-danger">{error}</div>}
+      {notice && (
+        <div
+          role="status"
+          className={`flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs ${notice.tone === 'ok' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}
+        >
+          <span className="min-w-0 flex-1">{notice.text}</span>
+          {notice.undoId && (
+            <button
+              type="button"
+              onClick={() => void undoDiscard(notice.undoId!)}
+              className="shrink-0 rounded-md bg-elevated px-2 py-0.5 font-medium text-fg hover:bg-hover"
+            >
+              {t('code.changes.discardUndo')}
+            </button>
+          )}
+          <IconButton label={t('code.changes.discardDismiss')} onClick={() => setNotice(null)} className="h-5 w-5">
+            <X size={12} />
+          </IconButton>
+        </div>
+      )}
 
       {status && status.files.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-6 text-center">
@@ -644,6 +722,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                     file={f}
                     staged
                     selected={selected?.path === f.path && selected.staged}
+                    onDiscard={native && canDiscard(f) ? () => void discard(f) : undefined}
                     onSelect={() => setSelected(selected?.path === f.path && selected.staged ? null : { path: f.path, staged: true })}
                   />
                 ))}
@@ -657,6 +736,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                     file={f}
                     staged={false}
                     selected={selected?.path === f.path && !selected.staged}
+                    onDiscard={native && canDiscard(f) ? () => void discard(f) : undefined}
                     onSelect={() => setSelected(selected?.path === f.path && !selected.staged ? null : { path: f.path, staged: false })}
                   />
                 ))}
@@ -683,6 +763,15 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       <IconButton label={t('code.menu.reveal')} className="h-6 w-6" onClick={() => void native.dialog.revealInFinder(abs)}>
                         <FolderOpen size={13} />
                       </IconButton>
+                      {canDiscard(selectedFile) && (
+                        <IconButton
+                          label={t('code.changes.discard')}
+                          className="h-6 w-6 hover:text-danger"
+                          onClick={() => void discard(selectedFile)}
+                        >
+                          <Undo2 size={13} />
+                        </IconButton>
+                      )}
                     </>
                   )}
                   <IconButton label={t('code.changes.closeDiff')} className="h-6 w-6" onClick={() => setSelected(null)}>
