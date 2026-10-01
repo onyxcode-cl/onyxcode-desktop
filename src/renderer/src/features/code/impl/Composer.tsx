@@ -193,13 +193,13 @@ function useFileSearch(directory: string | null, query: string | null): { files:
 }
 
 const NO_MENTIONS: string[] = []
+const NO_ATTACHMENTS: Attachment[] = []
 
 export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean }): React.JSX.Element {
   const t = useT()
   const [menuIndex, setMenuIndex] = useState(0)
   const [dismissed, setDismissed] = useState<number | null>(null)
   const [focused, setFocused] = useState(false)
-  const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragOver, setDragOver] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -209,6 +209,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const draftKey = `code:${directory ?? ''}:${activeSessionID ?? 'new'}`
   const [text, setText] = useDraft(draftKey, '')
   const [mentions, setMentions] = useDraft(`${draftKey}:mentions`, NO_MENTIONS)
+  // R3-A: los adjuntos (imágenes pegadas) también viven en el almacén de borradores: sobreviven a cambiar de modo.
+  const [attachments, setAttachments] = useDraft(`${draftKey}:att`, NO_ATTACHMENTS)
   const draftKeyRef = useRef(draftKey)
   useEffect(() => {
     draftKeyRef.current = draftKey
@@ -259,7 +261,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         setCaret(end)
       })
     })
-  }, [directory, setText])
+  }, [directory, setText, setAttachments])
 
   useAutosizeTextarea(ref, text, { max: 260 })
 
@@ -279,6 +281,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     if (now !== draftKey && draftKey.endsWith(':new')) {
       if (!getDraft(now, '').trim()) setDraft(now, d.text)
       if (getDraft<string[]>(`${now}:mentions`, NO_MENTIONS).length === 0) setDraft(`${now}:mentions`, d.mentions)
+      if (getDraft<Attachment[]>(`${now}:att`, NO_ATTACHMENTS).length === 0) setDraft(`${now}:att`, d.attachments)
     }
     setAttachments((cur) => (cur.length ? cur : d.attachments))
   }

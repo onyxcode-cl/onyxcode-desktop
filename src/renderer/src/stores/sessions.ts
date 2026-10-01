@@ -19,6 +19,7 @@ import type { OcEvent, OpencodeClient } from '../lib/opencode'
 import { errorMessage } from '../lib/opencode'
 import { lruMax } from '../lib/lru'
 import { createFrameQueue } from '../lib/frame-queue'
+import { clearSessionDrafts } from './drafts'
 import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../lib/session-paging'
 import {
   appendWithoutOverlap,
@@ -301,6 +302,7 @@ export const useSessions = create<SessionsState>((set, get) => {
 
     removeSession: (sessionID) => {
       deltaQueue.flush()
+      clearSessionDrafts(sessionID) // R3-A: libera borradores y adjuntos en memoria de la conversación
       set((s) => {
         const sessions = { ...s.sessions }
         const messages = { ...s.messages }
