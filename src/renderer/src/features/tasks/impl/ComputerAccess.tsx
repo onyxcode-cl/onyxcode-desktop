@@ -36,6 +36,7 @@ import {
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
@@ -66,6 +67,7 @@ export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kim
 
 /** Chip del header con el modo de acceso de la carpeta (Sandbox / Control total). */
 export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JSX.Element | null {
+  const t = useT()
   const conn = useTasks((s) => s.conn)
   const phase = useTasks((s) => s.phase)
   const requested = useTasks((s) => s.fullAccess)
@@ -92,13 +94,13 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   } else if (conn && !conn.sandboxed) {
     chip = (
       <>
-        <ShieldOff size={12} /> Sin sandbox
+        <ShieldOff size={12} /> {t('tasksComputer.mode.noSandbox')}
       </>
     )
   } else {
     chip = (
       <>
-        <Shield size={12} /> Sandbox activo
+        <Shield size={12} /> {t('tasksComputer.mode.sandboxOn')}
       </>
     )
   }
@@ -121,11 +123,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
         disabled={disabled || phase === 'starting'}
         onClick={() => setOpen((o) => !o)}
         title={
-          disabled
-            ? 'Espera a que termine la tarea para cambiar el modo de acceso'
-            : full
-              ? 'Sin sandbox: el agente puede controlar el Mac y modificar archivos en cualquier lugar'
-              : 'Escrituras limitadas a esta carpeta (sandbox-exec)'
+          disabled ? t('tasksComputer.access.waitTask') : full ? t('tasksComputer.mode.fullTitle') : t('tasksComputer.mode.sandboxTitle')
         }
         className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 ${tone}`}
       >
@@ -137,15 +135,15 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
           <ModeOption
             active={!full}
             icon={<Shield size={16} className="text-accent" />}
-            title="Sandbox"
-            desc="Lee y escribe solo dentro de esta carpeta. Recomendado."
+            title={TASKS_TERMS.sandbox}
+            desc={t('tasksComputer.mode.sandboxDesc')}
             onClick={() => pick(false)}
           />
           <ModeOption
             active={full}
             icon={<MonitorCog size={16} className="text-amber-500" />}
             title={TASKS_TERMS.fullControl}
-            desc="Sin sandbox. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar."
+            desc={t('tasksComputer.mode.fullDesc')}
             onClick={() => pick(true)}
           />
         </div>
@@ -183,6 +181,7 @@ function ModeOption({
 
 /** "¿Permitir que el agente controle tu Mac?" */
 export function FullAccessDialog(): React.JSX.Element | null {
+  const t = useT()
   const folder = useTasks((s) => s.pendingFullAccess)
   const [busy, setBusy] = useState(false)
 
@@ -216,48 +215,50 @@ export function FullAccessDialog(): React.JSX.Element | null {
           <ShieldAlert size={22} />
         </div>
         <h2 id="tasks-fullaccess-title" className="text-lg font-semibold">
-          ¿Permitir que el agente controle tu Mac?
+          {t('tasksComputer.full.title')}
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Las tareas de «{name}» se ejecutarán <strong className="text-fg">sin sandbox</strong> y con control del computador.
+          {t('tasksComputer.full.intro1', { name })}
+          <strong className="text-fg">{t('tasksComputer.full.noSandbox')}</strong>
+          {t('tasksComputer.full.intro2')}
         </p>
         <ul className="mt-4 space-y-2.5 text-sm text-muted">
           <li className="flex gap-2.5">
             <MousePointerClick size={16} className="mt-0.5 shrink-0 text-amber-500" />
-            Podrá mover el ratón, hacer clic, escribir y pulsar teclas en cualquier aplicación.
+            {t('tasksComputer.full.b1')}
           </li>
           <li className="flex gap-2.5">
             <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" />
             <span>
-              Tomará capturas de pantalla, que <strong className="text-fg">se envían al proveedor del modelo</strong>. Cierra o oculta lo
-              que no quieras compartir.
+              {t('tasksComputer.full.cap1')}
+              <strong className="text-fg">{t('tasksComputer.full.cap2')}</strong>
+              {t('tasksComputer.full.cap3')}
               <span className="mt-1 block text-xs text-subtle" data-testid="capture-retention">
-                Las capturas se envían al proveedor del modelo y quedan en el historial de la tarea; las copias temporales se borran al
-                terminar y al cerrar la app.
+                {t('tasksComputer.full.retention')}
               </span>
             </span>
           </li>
           <li className="flex gap-2.5">
             <ShieldOff size={16} className="mt-0.5 shrink-0 text-amber-500" />
-            Podrá crear, modificar y borrar archivos y ejecutar comandos en cualquier lugar de tu Mac, no solo en esta carpeta.
+            {t('tasksComputer.full.b3')}
           </li>
           <li className="flex gap-2.5">
             <OctagonX size={16} className="mt-0.5 shrink-0 text-danger" />
             <span>
-              Para detenerlo en cualquier momento pulsa <strong className="text-fg">Detener</strong> o el atajo{' '}
+              {t('tasksComputer.full.stop1')}
+              <strong className="text-fg">{t('tasksComputer.stop')}</strong>
+              {t('tasksComputer.full.stop2')}{' '}
               <kbd className="rounded border border-border bg-hover px-1 font-mono text-xs text-fg">⌘ ⇧ Esc</kbd>.
             </span>
           </li>
         </ul>
-        <p className="mt-4 rounded-lg bg-hover px-3 py-2 text-xs text-muted">
-          Úsalo solo con tareas y sitios de confianza: el contenido de la pantalla (webs, correos…) podría intentar engañar al agente.
-        </p>
+        <p className="mt-4 rounded-lg bg-hover px-3 py-2 text-xs text-muted">{t('tasksComputer.full.warn')}</p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={cancelFullAccess} autoFocus>
-            Cancelar
+            {t('tasksComputer.cancel')}
           </Button>
           <Button variant="primary" className="!bg-amber-600 !text-white" onClick={confirm} disabled={busy}>
-            {busy && <Loader2 size={14} className="animate-spin" />} Permitir control
+            {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.full.allow')}
           </Button>
         </div>
       </div>
@@ -281,6 +282,7 @@ function PermRow({ ok, label, hint }: { ok: boolean; label: string; hint: string
 
 /** Tarjeta con los permisos que faltan (Accesibilidad / Grabación de pantalla / helper). */
 export function ComputerPermissionsCard(): React.JSX.Element | null {
+  const t = useT()
   const conn = useTasks((s) => s.conn)
   const status = useTasks((s) => s.computerStatus)
   const checking = useTasks((s) => s.computerChecking)
@@ -310,33 +312,29 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
     <div className="mx-auto mt-4 w-full max-w-3xl px-6">
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
         <div className="mb-2 flex items-center gap-2 font-semibold text-amber-700 [[data-theme=dark]_&]:text-amber-400">
-          <ShieldAlert size={16} /> Faltan permisos para controlar el Mac
+          <ShieldAlert size={16} /> {t('tasksComputer.perms.title')}
         </div>
         <ul className="space-y-1.5">
           <PermRow
             ok={helperOk}
-            label="Helper nativo de control"
-            hint={conn.computerUse?.reason ?? 'No se encontró el helper de ratón/teclado o no se pudo iniciar.'}
+            label={t('tasksComputer.perms.helper')}
+            hint={conn.computerUse?.reason ?? t('tasksComputer.perms.helperHint')}
           />
-          <PermRow ok={accessibility} label="Accesibilidad" hint="Necesario para mover el ratón, hacer clic y escribir." />
-          <PermRow
-            ok={screenRecording}
-            label="Grabación de pantalla"
-            hint="Necesario para tomar capturas. macOS puede pedir reiniciar la app tras concederlo."
-          />
+          <PermRow ok={accessibility} label={t('tasksComputer.perms.accessibility')} hint={t('tasksComputer.perms.accessibilityHint')} />
+          <PermRow ok={screenRecording} label={t('tasksComputer.perms.screen')} hint={t('tasksComputer.perms.screenHint')} />
         </ul>
         <p className="mt-3 text-xs text-muted">
-          Actívalos en Ajustes del Sistema › Privacidad y seguridad. En desarrollo el permiso se concede a la app desde la que ejecutas{' '}
-          <code>npm run dev</code> (<strong className="text-fg">Terminal, iTerm o VS Code</strong>); en la app empaquetada, a la propia app.
-          Tras concederlo, reinicia la app.
+          {t('tasksComputer.perms.help1')} <code>npm run dev</code> (
+          <strong className="text-fg">{t('tasksComputer.perms.helpApps')}</strong>
+          {t('tasksComputer.perms.help2')}
         </p>
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="primary" onClick={request}>
-            <ShieldAlert size={14} /> Conceder permisos
+            <ShieldAlert size={14} /> {t('tasksComputer.perms.grant')}
           </Button>
           <Button variant="secondary" onClick={() => void checkComputer()} disabled={checking}>
-            {checking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Volver a comprobar
+            {checking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('tasksComputer.perms.recheck')}
           </Button>
         </div>
       </div>
@@ -348,6 +346,7 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
 
 /** Aviso si el modelo elegido no acepta imágenes (necesario para ver las capturas). */
 export function VisionModelHint(): React.JSX.Element | null {
+  const t = useT()
   const full = useTasks((s) => s.conn?.fullAccess === true)
   // Modelo de la tarea (o el del modo Tareas): nunca el modelo predeterminado de Chat.
   const taskModel = useTasks((s) => s.taskModel)
@@ -377,8 +376,8 @@ export function VisionModelHint(): React.JSX.Element | null {
       <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 [[data-theme=dark]_&]:text-amber-300">
         <Eye size={14} className="shrink-0" />
         <span className="min-w-0 flex-1">
-          <strong>{current.name}</strong> no acepta imágenes: no podrá ver las capturas de pantalla. El control del Mac necesita un modelo
-          con visión.
+          <strong>{current.name}</strong>
+          {t('tasksComputer.vision.text')}
         </span>
         {!isVision && visionAvailable && (
           <button
@@ -386,7 +385,7 @@ export function VisionModelHint(): React.JSX.Element | null {
             onClick={() => setTaskModel(VISION_MODEL)}
             className="shrink-0 rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:opacity-90"
           >
-            Usar Kimi K3
+            {t('tasksComputer.vision.use')}
           </button>
         )}
       </div>
@@ -398,6 +397,7 @@ export function VisionModelHint(): React.JSX.Element | null {
 
 /** Barra visible mientras una tarea con Control total está trabajando, con botón Detener. */
 export function ControlBanner(): React.JSX.Element | null {
+  const t = useT()
   const conn = useTasks((s) => s.conn)
   const folder = useTasks((s) => s.folder)
   const lastAction = useTasks((s) => s.lastAction)
@@ -421,15 +421,15 @@ export function ControlBanner(): React.JSX.Element | null {
   // Refresca el "hace Xs" de la última acción.
   useEffect(() => {
     if (!anyBusy) return
-    const t = setInterval(() => tick((n) => n + 1), 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(timer)
   }, [anyBusy])
 
   if (!conn?.fullAccess) return null
 
   const shortcutWarning = shortcutUnavailable ? (
     <div className="flex shrink-0 items-center gap-2 border-b border-warning/40 bg-warning/10 px-4 py-1.5 text-xs text-warning">
-      <ShieldAlert size={14} /> El atajo ⌘⇧Esc no está disponible; usa el botón Detener
+      <ShieldAlert size={14} /> {t('tasksComputer.banner.shortcutOff')}
     </div>
   ) : null
 
@@ -438,7 +438,7 @@ export function ControlBanner(): React.JSX.Element | null {
     planApproved && activeTaskId ? (
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-elevated px-4 py-1.5 text-xs text-muted">
         <Check size={13} className="shrink-0 text-success" />
-        <span className="min-w-0 flex-1 truncate">Plan aprobado para esta tarea: puede seguir sin volver a pedirlo</span>
+        <span className="min-w-0 flex-1 truncate">{t('tasksComputer.banner.planApproved')}</span>
         <button
           type="button"
           onClick={() => {
@@ -448,7 +448,7 @@ export function ControlBanner(): React.JSX.Element | null {
           disabled={revoking}
           className="no-drag flex shrink-0 items-center gap-1 rounded-lg border border-border bg-elevated px-2.5 py-1 text-xs font-semibold text-fg hover:bg-hover disabled:opacity-60"
         >
-          {revoking && <Loader2 size={12} className="animate-spin" />} Revocar
+          {revoking && <Loader2 size={12} className="animate-spin" />} {t('tasksComputer.banner.revoke')}
         </button>
       </div>
     ) : null
@@ -465,11 +465,10 @@ export function ControlBanner(): React.JSX.Element | null {
     return (
       <>
         <div className="flex shrink-0 items-center gap-2 border-b border-danger/40 bg-danger/10 px-4 py-2 text-sm font-medium text-danger">
-          <OctagonX size={16} className="shrink-0" /> Control detenido
+          <OctagonX size={16} className="shrink-0" /> {t('tasksComputer.banner.stopped')}
           {anyBusy && <Loader2 size={14} className="animate-spin" />}
           <span className="min-w-0 flex-1 truncate text-xs font-normal text-muted">
-            {resumeError ??
-              (anyBusy ? 'Cancelando la tarea…' : 'El agente no puede usar el ratón ni el teclado hasta que reanudes el control.')}
+            {resumeError ?? (anyBusy ? t('tasksComputer.banner.cancelling') : t('tasksComputer.banner.stoppedDesc'))}
           </span>
           <button
             type="button"
@@ -477,7 +476,7 @@ export function ControlBanner(): React.JSX.Element | null {
             disabled={resuming || anyBusy}
             className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg border border-danger/40 bg-elevated px-3 py-1 text-xs font-semibold text-fg hover:bg-danger/10 disabled:opacity-60"
           >
-            {resuming ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} Reanudar control
+            {resuming ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} {t('tasksComputer.banner.resume')}
           </button>
         </div>
         {shortcutWarning}
@@ -501,7 +500,9 @@ export function ControlBanner(): React.JSX.Element | null {
             <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
           </span>
           <span className="min-w-0 flex-1 truncate text-xs font-medium">
-            Esperando tu permiso — revisa la tarjeta «{accessRequest.plan ? 'Plan y permisos' : 'Permisos'}» abajo, sin límite de tiempo
+            {t('tasksComputer.banner.waiting', {
+              card: accessRequest.plan ? t('tasksComputer.banner.cardPlan') : t('tasksComputer.banner.cardPerms')
+            })}
           </span>
           <button
             type="button"
@@ -509,7 +510,7 @@ export function ControlBanner(): React.JSX.Element | null {
             disabled={stopping}
             className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-600/40 bg-elevated px-2.5 py-1 text-xs font-semibold text-fg hover:bg-amber-500/10 disabled:opacity-70"
           >
-            {stopping ? <Loader2 size={12} className="animate-spin" /> : <Square size={11} fill="currentColor" />} Detener
+            {stopping ? <Loader2 size={12} className="animate-spin" /> : <Square size={11} fill="currentColor" />} {t('tasksComputer.stop')}
           </button>
         </div>
         {shortcutWarning}
@@ -538,24 +539,21 @@ export function ControlBanner(): React.JSX.Element | null {
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold">Controlando tu Mac</div>
+          <div className="text-sm font-semibold">{t('tasksComputer.banner.controlling')}</div>
           <div className="truncate text-xs text-white/85">
             {lastAction ? (
               <>
                 {describeAction(lastAction)}
-                {ago !== null && ago > 1 && <span className="text-white/60"> · hace {ago}s</span>}
+                {ago !== null && ago > 1 && <span className="text-white/60">{t('tasksComputer.banner.ago', { ago })}</span>}
               </>
             ) : (
-              'Esperando la primera acción…'
+              t('tasksComputer.banner.firstAction')
             )}
           </div>
         </div>
         {shortcutUnavailable ? (
-          <span
-            className="hidden items-center gap-1 text-[11px] text-white/85 md:flex"
-            title="El atajo ⌘⇧Esc no está disponible; usa el botón Detener"
-          >
-            <ShieldAlert size={12} /> ⌘⇧Esc no disponible
+          <span className="hidden items-center gap-1 text-[11px] text-white/85 md:flex" title={t('tasksComputer.banner.shortcutOff')}>
+            <ShieldAlert size={12} /> {t('tasksComputer.banner.shortcutNA')}
           </span>
         ) : (
           <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
@@ -568,7 +566,7 @@ export function ControlBanner(): React.JSX.Element | null {
           disabled={stopping}
           className="no-drag flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-red-700 shadow hover:bg-red-50 disabled:opacity-70"
         >
-          {stopping ? <Loader2 size={15} className="animate-spin" /> : <Square size={14} fill="currentColor" />} Detener
+          {stopping ? <Loader2 size={15} className="animate-spin" /> : <Square size={14} fill="currentColor" />} {t('tasksComputer.stop')}
         </button>
       </div>
       {revokeRow}
@@ -580,6 +578,7 @@ export function ControlBanner(): React.JSX.Element | null {
 
 /** Miniaturas de capturas (clic para ampliar). Las URLs deben venir de `safeImageUrl`. */
 export function ScreenshotThumbs({ images }: { images: Array<{ id: string; url: string; name: string }> }): React.JSX.Element | null {
+  const t = useT()
   const [zoom, setZoom] = useState<string | null>(null)
   const [broken, setBroken] = useState<Record<string, boolean>>({})
   const visible = images.filter((i) => !broken[i.id])
@@ -601,7 +600,7 @@ export function ScreenshotThumbs({ images }: { images: Array<{ id: string; url: 
           <button
             key={img.id}
             type="button"
-            title="Ampliar captura"
+            title={t('tasksComputer.shot.zoom')}
             onClick={() => setZoom(img.url)}
             className="overflow-hidden rounded-md border border-border hover:border-accent"
           >
@@ -618,10 +617,15 @@ export function ScreenshotThumbs({ images }: { images: Array<{ id: string; url: 
       </div>
       {zoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8" onMouseDown={() => setZoom(null)}>
-          <img src={zoom} alt="Captura de pantalla" referrerPolicy="no-referrer" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+          <img
+            src={zoom}
+            alt={t('tasksComputer.shot.alt')}
+            referrerPolicy="no-referrer"
+            className="max-h-full max-w-full rounded-lg shadow-2xl"
+          />
           <button
             type="button"
-            title="Cerrar"
+            title={t('tasksComputer.shot.close')}
             className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
             onClick={() => setZoom(null)}
           >
@@ -635,14 +639,19 @@ export function ScreenshotThumbs({ images }: { images: Array<{ id: string; url: 
 
 // ───────────────────────────── Concesión por app ─────────────────────────────
 
-const TIER_INFO: Record<AppTier, { label: string; icon: React.ReactNode; desc: string }> = {
-  view: { label: 'Solo ver', icon: <Eye size={13} />, desc: 'Aparece en las capturas; ninguna acción de ratón ni teclado.' },
-  click: { label: 'Ver y clic', icon: <MousePointerClick size={13} />, desc: 'Clic y scroll; nada de teclear, teclas ni arrastrar.' },
-  full: { label: 'Control total', icon: <MonitorCog size={13} />, desc: 'Todo, incluida la escritura.' }
+type T = ReturnType<typeof useT>
+
+function tierInfo(t: T): Record<AppTier, { label: string; icon: React.ReactNode; desc: string }> {
+  return {
+    view: { label: t('tasksComputer.tier.view'), icon: <Eye size={13} />, desc: t('tasksComputer.tier.viewDesc') },
+    click: { label: t('tasksComputer.tier.click'), icon: <MousePointerClick size={13} />, desc: t('tasksComputer.tier.clickDesc') },
+    full: { label: t('tasksComputer.tier.full'), icon: <MonitorCog size={13} />, desc: t('tasksComputer.tier.fullDesc') }
+  }
 }
 
 /** Insignia compacta con el nivel concedido a una app. */
 function TierBadge({ tier }: { tier: AppTier }): React.JSX.Element {
+  const info = tierInfo(useT())[tier]
   const tone =
     tier === 'full'
       ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400'
@@ -651,28 +660,31 @@ function TierBadge({ tier }: { tier: AppTier }): React.JSX.Element {
         : 'border-border bg-hover text-muted'
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${tone}`}>
-      {TIER_INFO[tier].icon} {TIER_INFO[tier].label}
+      {info.icon} {info.label}
     </span>
   )
 }
 
 /** Opciones del selector segmentado de nivel (incluye "Denegar"), en orden de menos a más acceso. */
-const TIER_SEGMENT_OPTIONS: Array<{ v: AccessDecision; label: string; icon: React.ReactNode; title: string }> = [
-  { v: 'deny', label: 'Denegar', icon: <X size={12} />, title: 'No conceder acceso a esta app' },
-  { v: 'view', label: 'Solo ver', icon: <Eye size={12} />, title: TIER_INFO.view.desc },
-  { v: 'click', label: 'Ver y clic', icon: <MousePointerClick size={12} />, title: TIER_INFO.click.desc },
-  { v: 'full', label: 'Control total', icon: <MonitorCog size={12} />, title: TIER_INFO.full.desc }
-]
+function tierSegmentOptions(t: T): Array<{ v: AccessDecision; label: string; icon: React.ReactNode; title: string }> {
+  return [
+    { v: 'deny', label: t('tasksComputer.tier.deny'), icon: <X size={12} />, title: t('tasksComputer.tier.denyTitle') },
+    { v: 'view', label: t('tasksComputer.tier.view'), icon: <Eye size={12} />, title: t('tasksComputer.tier.viewDesc') },
+    { v: 'click', label: t('tasksComputer.tier.click'), icon: <MousePointerClick size={12} />, title: t('tasksComputer.tier.clickDesc') },
+    { v: 'full', label: t('tasksComputer.tier.full'), icon: <MonitorCog size={12} />, title: t('tasksComputer.tier.fullDesc') }
+  ]
+}
 
 /** Selector de nivel (o "Denegar") por app, en forma de control segmentado (como `AccessSegmented`). */
 function TierSegmented({ value, onChange }: { value: AccessDecision; onChange: (v: AccessDecision) => void }): React.JSX.Element {
+  const t = useT()
   return (
     <div
       role="radiogroup"
-      aria-label="Nivel de acceso"
+      aria-label={t('tasksComputer.tier.aria')}
       className="inline-flex shrink-0 flex-wrap items-center gap-0.5 rounded-full border border-border bg-hover/60 p-0.5"
     >
-      {TIER_SEGMENT_OPTIONS.map((o) => (
+      {tierSegmentOptions(t).map((o) => (
         <button
           key={o.v}
           type="button"
@@ -693,19 +705,21 @@ function TierSegmented({ value, onChange }: { value: AccessDecision; onChange: (
 
 /** Línea "Solicita: X · Actual: Y · Denegada antes" de una app de la tarjeta (con la insignia de nivel). */
 function AppAccessMeta({ app, choice }: { app: AccessRequestApp; choice: AccessDecision }): React.JSX.Element {
+  const t = useT()
   const requested = app.requested ?? 'click'
   // La tarjeta nunca baja un nivel ya concedido (main aplica el máximo): se avisa si la elección queda por debajo.
   const keeps = app.current && choice !== 'deny' && APP_TIER_RANK[choice] < APP_TIER_RANK[app.current] ? app.current : null
   return (
     <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
       <span className="flex items-center gap-1.5">
-        Solicita <TierBadge tier={requested} />
+        {t('tasksComputer.meta.requests')} <TierBadge tier={requested} />
       </span>
       <span className="flex items-center gap-1.5">
-        Actual {app.current ? <TierBadge tier={app.current} /> : <span className="text-subtle">Ninguno</span>}
+        {t('tasksComputer.meta.current')}{' '}
+        {app.current ? <TierBadge tier={app.current} /> : <span className="text-subtle">{t('tasksComputer.meta.none')}</span>}
       </span>
-      {app.denied && <span className="text-danger">Denegada antes</span>}
-      {keeps && <span>Se mantiene «{TIER_INFO[keeps].label}»: para bajarlo usa Ajustes</span>}
+      {app.denied && <span className="text-danger">{t('tasksComputer.meta.deniedBefore')}</span>}
+      {keeps && <span>{t('tasksComputer.meta.keeps', { tier: tierInfo(t)[keeps].label })}</span>}
     </div>
   )
 }
@@ -732,8 +746,9 @@ function AppAccessMeta({ app, choice }: { app: AccessRequestApp; choice: AccessD
  * la tarjeta de acceso previa; esto solo entrega el control de la pantalla para la tarea.
  */
 function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element {
+  const t = useT()
   const [busy, setBusy] = useState(false)
-  const appName = req.apps[0]?.name ?? 'una app'
+  const appName = req.apps[0]?.name ?? t('tasksComputer.takeover.anApp')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -765,19 +780,21 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
           </span>
           <div className="min-w-0 flex-1">
             <h3 id="tasks-takeover-title" className="text-sm font-semibold text-fg">
-              ¿Tomar el control de la pantalla?
+              {t('tasksComputer.takeover.title')}
             </h3>
             <p className="mt-1 text-sm text-muted">
-              El agente trabajaba en <strong className="text-fg">{appName}</strong> en segundo plano y necesita el ratón y el teclado.
+              {t('tasksComputer.takeover.text1')}
+              <strong className="text-fg">{appName}</strong>
+              {t('tasksComputer.takeover.text2')}
             </p>
             {req.reason && <p className="mt-1 text-xs text-muted italic">«{req.reason}»</p>}
-            <p className="mt-2.5 text-xs text-muted">La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas.</p>
+            <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.noTimeout')}</p>
             <div className="mt-3.5 flex flex-wrap justify-end gap-2">
               <Button variant="ghost" onClick={decline} disabled={busy}>
-                Seguir en segundo plano
+                {t('tasksComputer.takeover.background')}
               </Button>
               <Button variant="primary" onClick={allow} disabled={busy}>
-                {busy && <Loader2 size={14} className="animate-spin" />} Permitir
+                {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.confirm.allow')}
               </Button>
             </div>
           </div>
@@ -788,6 +805,7 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
 }
 
 export function PlanAccessCard(): React.JSX.Element | null {
+  const t = useT()
   const req = useTasks((s) => s.accessRequest)
   const [choices, setChoices] = useState<Record<string, AccessDecision>>({})
   const [busy, setBusy] = useState(false)
@@ -842,11 +860,11 @@ export function PlanAccessCard(): React.JSX.Element | null {
 
   const title = req.plan
     ? hasApps
-      ? 'Plan y permisos'
-      : 'Plan de la tarea'
+      ? t('tasksComputer.plan.titlePlan')
+      : t('tasksComputer.plan.titleTask')
     : req.apps.length === 1
-      ? `¿Permitir que el agente use ${req.apps[0]?.name}?`
-      : '¿Permitir que el agente use estas apps?'
+      ? t('tasksComputer.plan.titleOne', { name: req.apps[0]?.name ?? '' })
+      : t('tasksComputer.plan.titleMany')
 
   return (
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
@@ -871,11 +889,9 @@ export function PlanAccessCard(): React.JSX.Element | null {
                 ))}
               </ol>
             )}
-            {!hasApps && (
-              <p className="mt-2.5 text-xs text-muted">Este plan no controla ninguna app: usará la terminal, archivos o la web.</p>
-            )}
+            {!hasApps && <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.plan.noApps')}</p>}
             {req.unresolved && req.unresolved.length > 0 && (
-              <p className="mt-2.5 text-xs text-warning">No encontré: {req.unresolved.join(', ')}</p>
+              <p className="mt-2.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
             )}
             {hasApps && (
               <ul className="mt-3 space-y-2">
@@ -894,13 +910,13 @@ export function PlanAccessCard(): React.JSX.Element | null {
               </ul>
             )}
             <p className="mt-2.5 text-xs text-muted">
-              La espera no tiene límite de tiempo: la tarea queda en pausa hasta que respondas.
-              {hasApps && ' Aprobar nunca baja un nivel ya concedido; para bajarlo usa Ajustes.'}
+              {t('tasksComputer.noTimeout')}
+              {hasApps && ` ${t('tasksComputer.plan.neverLowers')}`}
             </p>
             {editing ? (
               <div className="mt-3">
                 <label htmlFor="tasks-access-feedback" className="mb-1 block text-xs font-medium text-muted">
-                  Qué quieres que cambie del plan
+                  {t('tasksComputer.plan.feedbackLabel')}
                 </label>
                 <textarea
                   id="tasks-access-feedback"
@@ -908,36 +924,37 @@ export function PlanAccessCard(): React.JSX.Element | null {
                   rows={2}
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="p.ej. «No abras el navegador, solo necesito Discord»"
+                  placeholder={t('tasksComputer.plan.feedbackPlaceholder')}
                   className="w-full resize-none rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-fg outline-none focus:border-accent"
                 />
                 <div className="mt-2.5 flex justify-end gap-2">
                   <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
-                    Volver
+                    {t('tasksComputer.plan.back')}
                   </Button>
                   <Button variant="primary" onClick={sendFeedback} disabled={busy || !feedback.trim()}>
-                    {busy && <Loader2 size={14} className="animate-spin" />} Enviar cambios
+                    {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.plan.sendChanges')}
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="mt-3.5 flex flex-wrap justify-end gap-2">
                 {req.plan ? (
-                  <Button variant="ghost" onClick={dismissAccessRequest} disabled={busy} title="No concede ni deniega nada">
-                    Cancelar
+                  <Button variant="ghost" onClick={dismissAccessRequest} disabled={busy} title={t('tasksComputer.plan.cancelTitle')}>
+                    {t('tasksComputer.cancel')}
                   </Button>
                 ) : (
                   <Button variant="ghost" onClick={denyAll} disabled={busy}>
-                    Denegar todo
+                    {t('tasksComputer.plan.denyAll')}
                   </Button>
                 )}
                 {req.plan && (
                   <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy}>
-                    Editar
+                    {t('tasksComputer.plan.edit')}
                   </Button>
                 )}
                 <Button variant="primary" onClick={confirm} disabled={busy}>
-                  {busy && <Loader2 size={14} className="animate-spin" />} {req.plan ? 'Aprobar y empezar' : 'Confirmar'}
+                  {busy && <Loader2 size={14} className="animate-spin" />}{' '}
+                  {req.plan ? t('tasksComputer.plan.approve') : t('tasksComputer.plan.confirm')}
                 </Button>
               </div>
             )}
@@ -950,11 +967,12 @@ export function PlanAccessCard(): React.JSX.Element | null {
 
 /** Fila de una app concedida, con selector de nivel y botón para revocar. */
 function GrantRow({ bundleId, name, tier }: { bundleId: string; name: string; tier: AppTier }): React.JSX.Element {
+  const t = useT()
   const [busy, setBusy] = useState(false)
-  const change = (t: AppTier): void => {
-    if (t === tier) return
+  const change = (next: AppTier): void => {
+    if (next === tier) return
     setBusy(true)
-    void setAppGrant(bundleId, name, t).finally(() => setBusy(false))
+    void setAppGrant(bundleId, name, next).finally(() => setBusy(false))
   }
   const revoke = (): void => {
     setBusy(true)
@@ -975,14 +993,14 @@ function GrantRow({ bundleId, name, tier }: { bundleId: string; name: string; ti
             onChange={(e) => change(e.target.value as AppTier)}
             className="rounded-md border border-border bg-elevated px-2 py-1 text-xs text-fg"
           >
-            <option value="view">Solo ver</option>
-            <option value="click">Ver y clic</option>
-            <option value="full">Control total</option>
+            <option value="view">{t('tasksComputer.tier.view')}</option>
+            <option value="click">{t('tasksComputer.tier.click')}</option>
+            <option value="full">{t('tasksComputer.tier.full')}</option>
           </select>
         )}
         <button
           type="button"
-          title="Quitar concesión"
+          title={t('tasksComputer.grants.revoke')}
           onClick={revoke}
           className="rounded-md p-1.5 text-muted hover:bg-hover hover:text-danger"
         >
@@ -995,6 +1013,7 @@ function GrantRow({ bundleId, name, tier }: { bundleId: string; name: string; ti
 
 /** Fila de una app denegada, con botón para volver a permitirla (pasa a "sin decidir"). */
 function DeniedRow({ bundleId }: { bundleId: string }): React.JSX.Element {
+  const t = useT()
   const [busy, setBusy] = useState(false)
   const allow = (): void => {
     setBusy(true)
@@ -1009,7 +1028,7 @@ function DeniedRow({ bundleId }: { bundleId: string }): React.JSX.Element {
         disabled={busy}
         className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-hover disabled:opacity-60"
       >
-        {busy ? <Loader2 size={12} className="animate-spin" /> : <EyeOff size={12} />} Permitir de nuevo
+        {busy ? <Loader2 size={12} className="animate-spin" /> : <EyeOff size={12} />} {t('tasksComputer.grants.allowAgain')}
       </button>
     </li>
   )
@@ -1021,23 +1040,25 @@ function DeniedRow({ bundleId }: { bundleId: string }): React.JSX.Element {
  * `request_access` (ver `respondAccessRequest`).
  */
 export function ComputerGrantsList(): React.JSX.Element {
+  const t = useT()
   const grants = useTasks((s) => s.grants)
 
   useEffect(() => {
     void loadGrants()
   }, [])
 
+  const info = tierInfo(t)
   const sorted = useMemo(() => [...(grants?.grants ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [grants])
   const denied = grants?.denied ?? []
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-fg">Apps con acceso concedido</h3>
+        <h3 className="mb-2 text-sm font-semibold text-fg">{t('tasksComputer.grants.granted')}</h3>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted">
-            Ninguna todavía. Se conceden al pedirlo el agente (herramienta <code>request_access</code>) o al abrir un navegador/terminal
-            reconocido por primera vez.
+            {t('tasksComputer.grants.empty1')} <code>request_access</code>
+            {t('tasksComputer.grants.empty2')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -1049,7 +1070,7 @@ export function ComputerGrantsList(): React.JSX.Element {
       </div>
       {denied.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-fg">Apps denegadas</h3>
+          <h3 className="mb-2 text-sm font-semibold text-fg">{t('tasksComputer.grants.denied')}</h3>
           <ul className="space-y-2">
             {denied.map((bundleId) => (
               <DeniedRow key={bundleId} bundleId={bundleId} />
@@ -1058,8 +1079,8 @@ export function ComputerGrantsList(): React.JSX.Element {
         </div>
       )}
       <p className="text-xs text-muted">
-        Niveles: <TierBadge tier="view" /> {TIER_INFO.view.desc} · <TierBadge tier="click" /> {TIER_INFO.click.desc} ·{' '}
-        <TierBadge tier="full" /> {TIER_INFO.full.desc}
+        {t('tasksComputer.grants.levels')} <TierBadge tier="view" /> {info.view.desc} · <TierBadge tier="click" /> {info.click.desc} ·{' '}
+        <TierBadge tier="full" /> {info.full.desc}
       </p>
     </div>
   )
