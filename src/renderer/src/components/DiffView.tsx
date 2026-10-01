@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { createTwoFilesPatch } from 'diff'
 import hljs from 'highlight.js/lib/common'
 import { t } from '@shared/i18n'
@@ -123,23 +123,86 @@ interface Props {
   path?: string
 }
 
+/** Tope de líneas y de bytes de un diff antes de ofrecer «Mostrar todo» (git admite hasta 64 MB). */
+export const DIFF_MAX_LINES = 2000
+export const DIFF_MAX_CHARS = 300_000
+/** Líneas que se resaltan por trozo (entre trozos se cede el hilo para no crear tareas largas). */
+const HL_CHUNK = 150
+
+/** Recorta `patch` a ~`maxLines` líneas / `maxChars` caracteres (en límite de línea). `total` = líneas totales. */
+export function clipPatch(
+  patch: string,
+  maxLines = DIFF_MAX_LINES,
+  maxChars = DIFF_MAX_CHARS
+): { text: string; total: number; shown: number; clipped: boolean } {
+  let total = 1
+  let cut = -1
+  let pos = -1
+  while ((pos = patch.indexOf('\n', pos + 1)) !== -1) {
+    total++
+    if (cut === -1 && (total > maxLines || pos > maxChars)) cut = pos
+  }
+  if (cut === -1 && patch.length > maxChars) cut = patch.lastIndexOf('\n', maxChars)
+  if (cut === -1) return { text: patch, total, shown: total, clipped: false }
+  const text = patch.slice(0, Math.max(cut, 0))
+  return { text, total, shown: text.split('\n').length, clipped: true }
+}
+
 export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders, path }: Props): React.JSX.Element {
   const lang = useLang((s) => s.lang)
-  const lines = useMemo(() => {
+  const [showAll, setShowAll] = useState(false)
+  useEffect(() => setShowAll(false), [patch])
+  const clip = useMemo(() => clipPatch(patch), [patch])
+  const limited = clip.clipped && !showAll
+  const parsed = useMemo(() => {
     void lang // los textos meta salen en el idioma activo: recalcular al cambiarlo
-    const parsed = parseUnifiedDiff(patch)
+    return parseUnifiedDiff(limited ? clip.text : patch)
+  }, [patch, clip, limited, lang])
+  // Resaltado por trozos entre frames: primero se pinta texto plano y luego se colorea sin bloquear el hilo.
+  // Sobre el umbral («Mostrar todo» de un diff grande) no se resalta.
+  const [html, setHtml] = useState<{ key: unknown; rows: (string | null)[] }>({ key: null, rows: [] })
+  const highlight = !clip.clipped
+  useEffect(() => {
+    if (!highlight) return
+    const rows: (string | null)[] = new Array(parsed.length).fill(null)
+    let cancelled = false
+    let handle = 0
+    let i = 0
     let hl = languageFor(path)
-    return parsed.map((l) => {
-      if (l.kind === 'file') hl = languageFor(l.text) ?? languageFor(path)
-      const html = l.kind === 'add' || l.kind === 'del' || l.kind === 'ctx' ? highlightLine(l.text, hl) : null
-      return { ...l, html }
-    })
-  }, [patch, path, lang])
+    const step = (): void => {
+      if (cancelled) return
+      const end = Math.min(i + HL_CHUNK, parsed.length)
+      for (; i < end; i++) {
+        const l = parsed[i]!
+        if (l.kind === 'file') hl = languageFor(l.text) ?? languageFor(path)
+        else if (l.kind === 'add' || l.kind === 'del' || l.kind === 'ctx') rows[i] = highlightLine(l.text, hl)
+      }
+      setHtml({ key: parsed, rows: rows.slice() })
+      if (i < parsed.length) handle = window.setTimeout(step, 0)
+    }
+    handle = window.setTimeout(step, 0)
+    return () => {
+      cancelled = true
+      window.clearTimeout(handle)
+    }
+  }, [parsed, path, highlight])
+  const lines = useMemo(
+    () => parsed.map((l, i) => ({ ...l, html: highlight && html.key === parsed ? (html.rows[i] ?? null) : null })),
+    [parsed, html, highlight]
+  )
   if (lines.length === 0) {
     return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>{t('common.diff.empty')}</div>
   }
   return (
     <div className={`overflow-auto font-mono text-[12px] leading-[1.55] ${className}`}>
+      {limited && (
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-elevated px-3 py-2 font-sans text-xs text-muted">
+          <span>{t('common.diff.truncated', { shown: clip.shown, total: clip.total })}</span>
+          <button type="button" onClick={() => setShowAll(true)} className="rounded-md px-2 py-0.5 font-medium text-accent hover:bg-hover">
+            {t('common.diff.showAll')}
+          </button>
+        </div>
+      )}
       <table className="w-full border-collapse">
         <tbody>
           {lines.map((l, i) => {

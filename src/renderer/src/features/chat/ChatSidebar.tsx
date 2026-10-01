@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useT } from '../../lib/i18n'
 import { ChatSessionList } from './ChatSessionList'
 import { onStreamReconnect, useServer } from '../../stores/server'
-import { useSessions } from '../../stores/sessions'
+import { sessionsKey, useSessions } from '../../stores/sessions'
 import { selectSessionsForDirectory } from '../../lib/session-reducer'
 import { deleteChat, loadChatSessions, openChatSession, renameChat, syncChatRunStatus } from './actions'
 import { useChat } from './store'
@@ -14,6 +14,8 @@ export function ChatSidebar(): React.JSX.Element {
   const sessionSource = useSessions((s) => s.sessionSource)
   const directorySource = useSessions((s) => s.directorySource)
   const status = useSessions((s) => s.status)
+  const more = useSessions((s) => (connection ? s.moreSessions[sessionsKey(connection.chatDirectory)] : false))
+  const client = useServer((s) => s.client)
   const { activeSessionId, listLoading, listError } = useChat()
 
   useEffect(() => {
@@ -29,6 +31,12 @@ export function ChatSidebar(): React.JSX.Element {
     () =>
       connection ? selectSessionsForDirectory({ sessions: allSessions, sessionSource, directorySource }, connection.chatDirectory) : [],
     [allSessions, sessionSource, directorySource, connection]
+  )
+  const onLoadMore = useCallback(
+    (all: boolean) => {
+      if (client && connection) void useSessions.getState().loadMoreSessions(client, connection.chatDirectory, undefined, all)
+    },
+    [client, connection]
   )
   const busyIds = useMemo(
     () =>
@@ -52,6 +60,8 @@ export function ChatSidebar(): React.JSX.Element {
         onSelect={(id) => void openChatSession(id)}
         onRename={renameChat}
         onDelete={deleteChat}
+        hasMore={!!more}
+        onLoadMore={onLoadMore}
       />
     </>
   )

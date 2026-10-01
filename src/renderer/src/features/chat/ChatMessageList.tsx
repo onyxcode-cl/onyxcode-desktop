@@ -1,6 +1,6 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo } from 'react'
 import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2/client'
-import { ArrowDown, FileText, RotateCcw, RotateCw } from 'lucide-react'
+import { FileText, RotateCcw, RotateCw } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
 import { useT } from '../../lib/i18n'
 import type { ConvError } from '../../lib/session-reducer'
@@ -10,6 +10,8 @@ import { CopyButton, Markdown } from '../../components/Markdown'
 import { AssistantError } from '../../components/conversation/AssistantError'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../components/conversation/Reasoning'
+import { ScrollToEnd } from '../../components/conversation/ScrollToEnd'
+import { useStickToBottom } from '../../lib/conversation/use-stick-to-bottom'
 import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ChatToolCall } from './ChatToolCall'
@@ -155,37 +157,7 @@ interface Props {
 }
 
 export function ChatMessageList({ entries, busy, error, onRetry }: Props): React.JSX.Element {
-  const t = useT()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const stickRef = useRef(true)
-  const [atBottom, setAtBottom] = useState(true)
-
-  const onScroll = (): void => {
-    const el = scrollRef.current
-    if (!el) return
-    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-    stickRef.current = near
-    if (near !== atBottom) setAtBottom(near)
-  }
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current
-    if (el && stickRef.current) el.scrollTop = el.scrollHeight
-  })
-
-  // Al cambiar de conversación, volver a pegarse al final.
-  const firstId = entries[0]?.info.id
-  useEffect(() => {
-    stickRef.current = true
-    setAtBottom(true)
-  }, [firstId])
-
-  const scrollToBottom = (): void => {
-    const el = scrollRef.current
-    if (!el) return
-    stickRef.current = true
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }
+  const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
 
   const last = entries[entries.length - 1]
   const lastHasOutput = last?.info.role === 'assistant' && last.parts.some((p) => (p.type === 'text' && p.text) || p.type === 'tool')
@@ -223,17 +195,7 @@ export function ChatMessageList({ entries, busy, error, onRetry }: Props): React
           {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} variant="chat" />}
         </div>
       </div>
-      {!atBottom && (
-        <button
-          type="button"
-          onClick={scrollToBottom}
-          aria-label={t('chat.msg.scrollEnd')}
-          title={t('chat.msg.scrollEnd')}
-          className="absolute bottom-3 left-1/2 flex h-8 w-8 -translate-x-1/2 animate-pop-in items-center justify-center rounded-full border border-border bg-elevated text-muted shadow-md transition-colors hover:text-fg"
-        >
-          <ArrowDown size={15} />
-        </button>
-      )}
+      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} />
     </div>
   )
 }

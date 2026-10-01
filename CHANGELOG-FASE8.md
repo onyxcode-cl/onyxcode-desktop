@@ -346,3 +346,15 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
   `App.tsx` entra en `MIGRATED`. `git/service.ts` NO entra: conserva ~13 mensajes de validación en español (ver «Residuos conscientes» de F8-B27).
 - Guardias: `store.calidad-t1.test.ts` (Code), `actions.calidad-t1.test.ts` (Chat), el falso gana `POST /__e2e/set { failPrompt: N|-1|0 }` (corta la conexión de `prompt_async`; Chromium reintenta una vez sobre un socket reutilizado, por eso se usa `-1`)
   con su prueba en `server.test.mjs`, y E2E `calidad-t1.e2e.ts` con una prueba por modo (Chat, Code con imagen sin texto, Tareas) más Esc en Chat; capturas con `CALIDAD_SHOTS_DIR`.
+
+## F8-B29 — Calidad T4: rendimiento percibido y transcripciones
+
+- **Diff enorme (M1).** `DiffView` ya no parsea ni resalta sin tope: por encima de 2000 líneas o 300 KB muestra las primeras líneas con un aviso fijo arriba («Se muestran las primeras N líneas de M» + «Mostrar todo»); `clipPatch` corta
+  en límite de línea sin recorrer el texto entero con regex. El resaltado va por trozos de 150 líneas con `setTimeout` (primero se pinta texto plano y se colorea después) y no se aplica sobre el umbral (ni siquiera con «Mostrar todo»).
+  Medido con `e2e/specs/calidad-t4.e2e.ts` (diff de 50 000 líneas por una herramienta `edit` en Code, PerformanceObserver `longtask`, igual que `perf.e2e.ts`): sin CPU limitada, antes 3289 ms para abrir (4 tareas largas, máx 1692 ms,
+  50 001 filas) y ahora 143 ms (1 tarea de 96 ms, 1998 filas); con CPU x4, antes 13 092 ms (máx 6820 ms) y ahora 562 ms (máx 410 ms).
+- **«Ir al final» (M6).** Hook común `useStickToBottom` (`lib/conversation/`) y componente `ScrollToEnd` usados por Chat, Code y Tareas: el botón aparece al subir 80 px o más. «Trabajando…» de Code lleva `role="status"`. Los scrollers de Code
+  y Tareas quedan dentro de un contenedor `relative` (cambian los snapshots de `MessageStream` y `TaskConversation`: un `div` más y `h-full`).
+- **Listas de sesiones (M12).** La lista ya no se corta en 200: el store de sesiones (Chat y Tareas) y el de Code recuerdan el límite por carpeta, avisan si pudo haber más (`moreSessions`) y «Cargar más» sube de 200 en 200. El filtro de Chat,
+  la búsqueda de Tareas y la de ⌘K en Code piden todas las sesiones (hasta 10 000) en cuanto se escribe algo.
+- Pruebas: unitarias (`DiffView.test.tsx`, `use-stick-to-bottom.test.ts`, `session-paging.test.ts`, `sessions.paging.test.ts` con 250 sesiones falsas) y E2E `calidad-t4.e2e.ts` (diff, «Ir al final» en Code y Tareas, 250 sesiones en Chat; capturas con `T4_SHOTS_DIR`).
