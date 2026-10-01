@@ -285,5 +285,26 @@ export const tasks = {
   'tasks.comp.stop': 'Detener',
   'tasks.comp.sendTitle': 'Enviar (Enter)',
   'tasks.comp.send': 'Enviar',
-  'tasks.comp.saving': 'Guardando punto de restauración…'
+  'tasks.comp.saving': 'Guardando punto de restauración…',
+  'tasks.conv.thoughtFor': 'Pensó durante {seconds} s',
+  'tasks.conv.thinking': 'Pensando…',
+  'tasks.conv.steps': { one: '{count} paso', other: '{count} pasos' },
+  'tasks.conv.thinkingShort': 'Pensando',
+  'tasks.conv.editRetry': 'Editar y reintentar',
+  'tasks.conv.editMsg.pre': 'Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y se ',
+  'tasks.conv.editMsg.strong': 'restaurarán los archivos de la carpeta',
+  'tasks.conv.editMsg.post':
+    ' tal como estaban antes de ese mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera. Después se enviará tu mensaje editado.',
+  'tasks.conv.undoRetry': 'Deshacer y reintentar',
+  'tasks.conv.undoTitle': '¿Deshacer desde este mensaje?',
+  'tasks.conv.undoMsg':
+    'Se ocultarán los mensajes posteriores y los archivos de la carpeta volverán a como estaban antes de este mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera. Lo que el agente hizo fuera de la carpeta no se deshace. Podrás rehacerlo.',
+  'tasks.conv.undoHere': 'Deshacer desde aquí',
+  'tasks.conv.editAria': 'Editar mensaje',
+  'tasks.conv.attachNote': 'Los archivos adjuntos ya están en la carpeta, pero no se reenvían: menciónalos en el texto si hacen falta.',
+  'tasks.conv.cancel': 'Cancelar',
+  'tasks.conv.retry': 'Reintentar',
+  'tasks.conv.editHint': 'Deshace la conversación desde este mensaje (y los cambios de archivos) y lo vuelve a enviar editado',
+  'tasks.conv.undoHint': 'Restaura los archivos de la carpeta a como estaban antes de este mensaje y oculta lo que vino después',
+  'tasks.conv.stopped': 'Tarea detenida.'
 } as const

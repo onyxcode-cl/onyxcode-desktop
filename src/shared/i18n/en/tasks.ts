@@ -289,5 +289,26 @@ export const tasks = {
   'tasks.comp.stop': 'Stop',
   'tasks.comp.sendTitle': 'Send (Enter)',
   'tasks.comp.send': 'Send',
-  'tasks.comp.saving': 'Saving restore point…'
+  'tasks.comp.saving': 'Saving restore point…',
+  'tasks.conv.thoughtFor': 'Thought for {seconds} s',
+  'tasks.conv.thinking': 'Thinking…',
+  'tasks.conv.steps': { one: '{count} step', other: '{count} steps' },
+  'tasks.conv.thinkingShort': 'Thinking',
+  'tasks.conv.editRetry': 'Edit and retry',
+  'tasks.conv.editMsg.pre': 'This conversation will be undone from this message: later messages will be removed and ',
+  'tasks.conv.editMsg.strong': 'the folder’s files will be restored',
+  'tasks.conv.editMsg.post':
+    ' to how they were before that message (if a restore point was saved). Anything created afterwards will go to the Trash. Then your edited message will be sent.',
+  'tasks.conv.undoRetry': 'Undo and retry',
+  'tasks.conv.undoTitle': 'Undo from this message?',
+  'tasks.conv.undoMsg':
+    'Later messages will be hidden and the folder’s files will go back to how they were before this message (if a restore point was saved). Anything created afterwards will go to the Trash. Anything the agent did outside the folder isn’t undone. You’ll be able to redo it.',
+  'tasks.conv.undoHere': 'Undo from here',
+  'tasks.conv.editAria': 'Edit message',
+  'tasks.conv.attachNote': 'The attached files are already in the folder but aren’t sent again: mention them in the text if needed.',
+  'tasks.conv.cancel': 'Cancel',
+  'tasks.conv.retry': 'Retry',
+  'tasks.conv.editHint': 'Undoes the conversation from this message (and the file changes) and sends it again, edited',
+  'tasks.conv.undoHint': 'Restores the folder’s files to how they were before this message and hides what came after',
+  'tasks.conv.stopped': 'Task stopped.'
 } as const satisfies Messages<typeof es>
