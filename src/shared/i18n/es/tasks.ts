@@ -259,5 +259,18 @@ export const tasks = {
   'tasks.list.showArchived': 'Ver las tareas archivadas',
   'tasks.list.archived': 'Archivadas',
   'tasks.list.loading': 'Cargando tareas…',
-  'tasks.list.minChars.pre': 'Escribe {n} o más letras para buscar también dentro de las conversaciones.'
+  'tasks.list.minChars.pre': 'Escribe {n} o más letras para buscar también dentro de las conversaciones.',
+  'tasks.side.today': 'Hoy',
+  'tasks.side.yesterday': 'Ayer',
+  'tasks.side.thisWeek': 'Esta semana',
+  'tasks.side.noGroup': 'Sin grupo',
+  'tasks.side.showLess': 'Mostrar menos',
+  'tasks.side.showMore': 'Mostrar {n} más',
+  'tasks.side.pinned': 'Fijadas',
+  'tasks.side.active': 'Activas',
+  'tasks.side.scheduled': 'Programadas',
+  'tasks.side.running': 'En ejecución',
+  'tasks.side.noNext': 'Sin próxima ejecución',
+  'tasks.side.openOrigin': 'Abrir la tarea de origen',
+  'tasks.side.openRoutines': 'Abrir en Rutinas'
 } as const

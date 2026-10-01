@@ -263,5 +263,18 @@ export const tasks = {
   'tasks.list.showArchived': 'View archived tasks',
   'tasks.list.archived': 'Archived',
   'tasks.list.loading': 'Loading tasks…',
-  'tasks.list.minChars.pre': 'Type {n} or more letters to also search inside conversations.'
+  'tasks.list.minChars.pre': 'Type {n} or more letters to also search inside conversations.',
+  'tasks.side.today': 'Today',
+  'tasks.side.yesterday': 'Yesterday',
+  'tasks.side.thisWeek': 'This week',
+  'tasks.side.noGroup': 'No group',
+  'tasks.side.showLess': 'Show less',
+  'tasks.side.showMore': 'Show {n} more',
+  'tasks.side.pinned': 'Pinned',
+  'tasks.side.active': 'Active',
+  'tasks.side.scheduled': 'Scheduled',
+  'tasks.side.running': 'Running',
+  'tasks.side.noNext': 'No upcoming run',
+  'tasks.side.openOrigin': 'Open the original task',
+  'tasks.side.openRoutines': 'Open in Routines'
 } as const satisfies Messages<typeof es>
