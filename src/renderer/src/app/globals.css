@@ -20,7 +20,7 @@
   --bg-inset: #eceff5;
   --fg: #131722;
   --fg-muted: #586074;
-  --fg-subtle: #8a91a3;
+  --fg-subtle: #61697c;
   --border: #e0e4ed;
   --border-strong: #c7cddb;
   --accent: #2c4fd8;
@@ -29,9 +29,10 @@
   --accent-soft: #e4e9ff;
   --accent-ring: rgb(44 79 216 / 0.35);
   --gold: #b7851f;
+  --gold-text: #876217;
   --gold-soft: #fbf1d9;
-  --success: #15803d;
-  --warning: #b45309;
+  --success: #14793a;
+  --warning: #aa4f09;
   --danger: #c0352b;
   --user-bubble: #e8ecf8;
   --selection: rgb(44 79 216 / 0.18);
@@ -53,7 +54,7 @@
   --bg-inset: #0e1017;
   --fg: #e7e9f0;
   --fg-muted: #a0a6b6;
-  --fg-subtle: #6c7386;
+  --fg-subtle: #858b9c;
   --border: #242835;
   --border-strong: #343a4b;
   --accent: #7d97ff;
@@ -62,6 +63,7 @@
   --accent-soft: #1b2450;
   --accent-ring: rgb(125 151 255 / 0.4);
   --gold: #e6b84e;
+  --gold-text: #e6b84e;
   --gold-soft: #2e2615;
   --success: #4ade80;
   --warning: #fbbf24;
@@ -108,6 +110,7 @@
   --color-accent-fg: var(--accent-fg);
   --color-accent-soft: var(--accent-soft);
   --color-gold: var(--gold);
+  --color-gold-text: var(--gold-text);
   --color-gold-soft: var(--gold-soft);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -205,6 +208,12 @@ body {
   text-rendering: optimizeLegibility;
   font-feature-settings: 'cv11', 'ss01';
   overflow: hidden;
+}
+
+/* Texto secundario sobre la fila seleccionada (`bg-active`): --fg-subtle ahí no llega a 4,5:1, se sube a --fg-muted. */
+.bg-active .text-subtle,
+.bg-active.text-subtle {
+  color: var(--fg-muted);
 }
 
 ::selection {

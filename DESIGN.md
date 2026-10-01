@@ -47,7 +47,7 @@ nunca renombrar ni eliminar. Cada token de color tiene utilidad Tailwind (`bg-*`
 | `--bg-inset` *(nuevo)* | `bg-inset` | `#eceff5` | `#0e1017` | Pistas hundidas (segmentados, detalles) |
 | `--fg` | `text-fg` | `#131722` | `#e7e9f0` | Texto principal |
 | `--fg-muted` | `text-muted` | `#586074` | `#a0a6b6` | Texto secundario |
-| `--fg-subtle` | `text-subtle` | `#8a91a3` | `#6c7386` | Ayudas, placeholders |
+| `--fg-subtle` | `text-subtle` | `#61697c` | `#858b9c` | Ayudas, placeholders (≥ 4,5:1 sobre las superficies; sobre `bg-active` se usa `--fg-muted`) |
 | `--border` | `border-border` | `#e0e4ed` | `#242835` | Bordes |
 | `--border-strong` | `border-border-strong` | `#c7cddb` | `#343a4b` | Bordes en hover / separadores fuertes |
 | `--accent` | `text-accent`, `bg-accent` | `#2c4fd8` | `#7d97ff` | Lapislázuli |
@@ -55,6 +55,7 @@ nunca renombrar ni eliminar. Cada token de color tiene utilidad Tailwind (`bg-*`
 | `--accent-fg` | `text-accent-fg` | `#ffffff` | `#0a1033` | Texto sobre acento |
 | `--accent-soft` | `bg-accent-soft` | `#e4e9ff` | `#1b2450` | Fondos tintados |
 | `--accent-ring` *(nuevo)* | `shadow-[0_0_0_3px_var(--accent-ring)]` | 35 % acento | 40 % acento | Halo de foco |
+| `--gold-text` *(nuevo)* | `text-gold-text` | `#876217` | `#e6b84e` | Texto dorado (insignias) ≥ 4,5:1 |
 | `--gold` / `--gold-soft` *(nuevos)* | `text-gold`, `bg-gold-soft` | `#b7851f` / `#fbf1d9` | `#e6b84e` / `#2e2615` | Chispa (con moderación) |
 | `--success` *(nuevo)* | `text-success`, `bg-success` | `#15803d` | `#4ade80` | OK |
 | `--warning` *(nuevo)* | `text-warning`, `bg-warning` | `#b45309` | `#fbbf24` | Aviso |

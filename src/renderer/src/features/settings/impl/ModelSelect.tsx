@@ -124,7 +124,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
                     <Option key={key} selected={key === current} onClick={() => pick({ providerID: provider.id, modelID: m.id })}>
                       <span className="flex-1 truncate">{m.name}</span>
                       {(m.status === 'alpha' || m.status === 'beta') && (
-                        <span className="rounded-md bg-gold-soft px-1 text-[10px] text-gold">{m.status}</span>
+                        <span className="rounded-md bg-gold-soft px-1 text-[10px] text-gold-text">{m.status}</span>
                       )}
                     </Option>
                   )
