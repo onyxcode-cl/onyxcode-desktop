@@ -927,6 +927,23 @@ export async function editAndRetry(taskId: string, userMessageId: string, text: 
   if (restored && restored.failed.length > 0) setRestoreWarning(taskId, failedText(restored.failed))
 }
 
+/** «Compactar» (error de contexto): resume la conversación de la tarea con `session.summarize`, como Code. */
+export async function compactTask(taskId: string): Promise<void> {
+  const { client, folder } = ctx()
+  const sessions = useSessions.getState()
+  sessions.setError(taskId, null)
+  sessions.setStatus(taskId, 'busy')
+  try {
+    const m = taskModelOf(taskId)?.model
+    const res = await client.session.summarize({ sessionID: taskId, directory: folder, providerID: m?.providerID, modelID: m?.modelID })
+    const err = (res as { error?: unknown }).error
+    if (err) throw err
+  } catch (err) {
+    sessions.setStatus(taskId, 'idle')
+    sessions.setError(taskId, typeof err === 'object' && err ? err : String(err))
+  }
+}
+
 async function ensureEntries(taskId: string): Promise<import('../../../stores/sessions').MessageEntry[]> {
   // `loaded` y no la presencia/longitud de la lista: puede ser parcial por eventos sueltos (F6-B14).
   if (!useSessions.getState().loaded[taskId]) await loadTask(taskId)

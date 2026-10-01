@@ -4,7 +4,7 @@ export const errors = {
     'Para enviar mensajes necesitas conectar una IA: tu suscripción de OpenCode Go o la clave de otro proveedor. Solo toma un minuto.',
   'errors.yourAi': 'tu IA',
   'errors.context.title': 'La conversación es demasiado larga',
-  'errors.context.message': 'Empieza una conversación nueva para seguir.',
+  'errors.context.message': 'Compáctala o empieza una conversación nueva para seguir.',
   'errors.modelNotFound.title': 'El modelo elegido no está disponible',
   'errors.modelNotFound.fallbackId': 'el modelo',
   'errors.modelNotFound.message': '“{id}” no pertenece a ninguna IA conectada. Elige otro modelo o conecta una IA.',

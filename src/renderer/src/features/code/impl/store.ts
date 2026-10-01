@@ -5,7 +5,7 @@
  * de quién más esté aplicando eventos al store genérico de sesiones.
  */
 import { create } from 'zustand'
-import type { PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
+import type { FilePart, PermissionRuleset, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
@@ -235,6 +235,13 @@ export interface CodeState {
   // -- Fork / compactar --
   forkSession: (sessionID: string, messageID?: string) => Promise<string | null>
   compactSession: (sessionID: string) => Promise<void>
+  /**
+   * «Editar y reintentar»: detiene si hace falta, revierte desde ese mensaje (archivos incluidos, como «Revertir»)
+   * y reenvía el texto editado con los mismos adjuntos. `false` = no se envió (la sesión queda como estaba).
+   */
+  editAndRetry: (messageID: string, text: string) => Promise<boolean>
+  /** «Reintentar» tras un error: igual que `editAndRetry` con el texto original del último mensaje del usuario. */
+  retryLast: () => Promise<boolean>
 
   // -- Confianza de carpeta --
   isTrusted: (dir: string) => boolean
@@ -841,6 +848,69 @@ export const useCode = create<CodeState>((set, get) => {
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }
+    },
+
+    editAndRetry: async (messageID, text) => {
+      try {
+        const { client, dir, sid } = activeDir()
+        const entry = (get().messages[sid] ?? []).find((m) => m.info.id === messageID && m.info.role === 'user')
+        if (!entry) return false
+        const trimmed = text.trim()
+        // Los adjuntos (imágenes pegadas y archivos por ruta) vuelven como partes `file` tal cual estaban.
+        const attachments: Attachment[] = entry.parts
+          .filter((p): p is FilePart => p.type === 'file')
+          .map((p) => ({ id: p.id, name: p.filename ?? p.url, mime: p.mime, url: p.url }))
+        if (!trimmed && attachments.length === 0) return false
+        if (get().runState[sid] && get().runState[sid] !== 'idle') {
+          await client.session.abort({ sessionID: sid, directory: dir }).catch(() => null)
+          const until = Date.now() + 5000
+          while (Date.now() < until) {
+            const st = await client.session.status({ directory: dir }).catch(() => null)
+            const ty = st?.data?.[sid]?.type
+            if (!ty || ty === 'idle') break
+            await new Promise((r) => setTimeout(r, 200))
+          }
+          set((st) => ({ runState: { ...st.runState, [sid]: 'idle' } }))
+        }
+        const reverted = sdkData(await client.session.revert({ sessionID: sid, directory: dir, messageID }))
+        set((st) => ({
+          sessions: { ...st.sessions, [reverted.id]: reverted },
+          // Lo posterior se descarta ya en pantalla (el motor lo borra al aceptar el nuevo prompt).
+          messages: { ...st.messages, [sid]: (st.messages[sid] ?? []).filter((m) => m.info.id < messageID) },
+          fsVersion: st.fsVersion + 1
+        }))
+        const { agent, model, variant } = get()
+        const ok = await doSend(client, dir, sid, trimmed, [], attachments, agent, model, variant)
+        if (ok) {
+          // El motor consolidó el revert al aceptar el prompt: se quita la marca para no ocultar el mensaje nuevo.
+          set((st) => {
+            const cur = st.sessions[sid]
+            return cur?.revert ? { sessions: { ...st.sessions, [sid]: { ...cur, revert: undefined } } } : {}
+          })
+        } else {
+          // No se pudo enviar: se deshace el `revert` y se recarga para no dejar la sesión recortada.
+          const un = await client.session.unrevert({ sessionID: sid, directory: dir }).catch(() => null)
+          if (un?.data) set((st) => ({ sessions: { ...st.sessions, [un.data!.id]: un.data! } }))
+          await loadMessages(sid)
+        }
+        return ok
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+        return false
+      }
+    },
+
+    retryLast: async () => {
+      const sid = get().activeSessionID
+      if (!sid) return false
+      const users = (get().messages[sid] ?? []).filter((m) => m.info.role === 'user')
+      const target = users[users.length - 1]
+      if (!target) return false
+      const text = target.parts
+        .filter((p): p is TextPart => p.type === 'text' && !p.synthetic)
+        .map((p) => p.text)
+        .join('\n')
+      return get().editAndRetry(target.info.id, text)
     },
 
     unrevert: async () => {

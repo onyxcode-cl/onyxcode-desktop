@@ -9,9 +9,10 @@ import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
 import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
 import { onStreamReconnect, useServer } from '../../stores/server'
-import { MAIN_SOURCE, useSessions } from '../../stores/sessions'
+import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../stores/sessions'
 import { useSettings } from '../../stores/settings'
 import { useChat } from './store'
+import type { Part } from '@opencode-ai/sdk/v2/client'
 
 function ctx(): { client: NonNullable<ReturnType<typeof useServer.getState>['client']>; directory: string } {
   const { client, connection } = useServer.getState()
@@ -90,8 +91,15 @@ export function newChat(): void {
   useChat.getState().setActive(null)
 }
 
+/** Adjunto de un mensaje de usuario que se vuelve a enviar tal cual (reintento / edición). */
+export interface ResendFile {
+  mime: string
+  filename?: string
+  url: string
+}
+
 /** Devuelve `true` si el motor aceptó el mensaje; `false` si lo rechazó (el error queda en la sesión). Lanza si no pudo ni intentarlo. */
-export async function sendChatMessage(text: string): Promise<boolean> {
+export async function sendChatMessage(text: string, files: ResendFile[] = []): Promise<boolean> {
   const { client, directory } = ctx()
   const sessions = useSessions.getState()
   // Modelo efectivo (el guardado si existe entre los proveedores cargados; si no, el de la primera IA conectada).
@@ -122,7 +130,11 @@ export async function sendChatMessage(text: string): Promise<boolean> {
       directory,
       agent: CHAT_AGENT,
       model: { providerID: model.providerID, modelID: model.modelID },
-      parts: [{ type: 'text', text }]
+      // Un mensaje sin texto es válido si lleva adjuntos (reintento de un mensaje solo con archivos).
+      parts: [
+        ...(text || files.length === 0 ? [{ type: 'text' as const, text }] : []),
+        ...files.map((f) => ({ type: 'file' as const, mime: f.mime, filename: f.filename, url: f.url }))
+      ]
     })
     error = (res as { error?: unknown }).error
   } catch (err) {
@@ -136,6 +148,102 @@ export async function sendChatMessage(text: string): Promise<boolean> {
     return false
   }
   return true
+}
+
+/** Texto (sin partes sintéticas) y adjuntos de un mensaje de usuario. */
+export function userMessageContent(entry: MessageEntry): { text: string; files: ResendFile[] } {
+  const text = entry.parts
+    .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic && !p.ignored)
+    .map((p) => p.text)
+    .join('\n\n')
+  const files = entry.parts
+    .filter((p): p is Extract<Part, { type: 'file' }> => p.type === 'file')
+    .map((p) => ({ mime: p.mime, filename: p.filename, url: p.url }))
+  return { text, files }
+}
+
+/** Id del último mensaje del usuario de la conversación (o null). */
+export function lastUserMessageId(entries: readonly MessageEntry[]): string | null {
+  for (let i = entries.length - 1; i >= 0; i--) if (entries[i].info.role === 'user') return entries[i].info.id
+  return null
+}
+
+/** Si la conversación está ocupada la detiene y espera (hasta `ms`) a que el motor la dé por inactiva. */
+async function stopIfBusy(sessionID: string, ms = 5000): Promise<void> {
+  const { client, directory } = ctx()
+  if ((useSessions.getState().status[sessionID] ?? 'idle') === 'idle') return
+  await client.session.abort({ sessionID, directory }).catch(() => null)
+  const until = Date.now() + ms
+  while (Date.now() < until) {
+    const res = await client.session.status({ directory }).catch(() => null)
+    const type = res?.data?.[sessionID]?.type
+    if (!type || type === 'idle') break
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  useSessions.getState().setStatus(sessionID, 'idle')
+}
+
+/**
+ * «Reintentar» / «Editar y reintentar»: deshace la conversación desde el mensaje de usuario `messageID`
+ * (`session.revert`) y reenvía sus partes (texto, o `newText` si se editó, y los mismos adjuntos), de modo que
+ * en el historial queda UN solo mensaje de usuario y no se pierden los archivos. Si el envío falla, deshace el
+ * `revert` y recarga para no dejar la conversación recortada. Devuelve `false` si no se envió.
+ */
+export async function resendFromMessage(sessionID: string, messageID: string, newText?: string): Promise<boolean> {
+  const { client, directory } = ctx()
+  const entry = (useSessions.getState().messages[sessionID] ?? []).find((e) => e.info.id === messageID)
+  if (!entry || entry.info.role !== 'user') return false
+  const { text, files } = userMessageContent(entry)
+  const sendText = newText === undefined ? text : newText.trim()
+  if (!sendText && files.length === 0) return false
+  await stopIfBusy(sessionID)
+  const rev = await client.session.revert({ sessionID, directory, messageID })
+  if (rev.error) throw new Error(errorMessage(rev.error))
+  if (rev.data) useSessions.getState().upsertSession(rev.data)
+  // Lo posterior se descarta ya en pantalla (el motor lo borra al aceptar el nuevo prompt).
+  useSessions.setState((s) => ({
+    messages: { ...s.messages, [sessionID]: (s.messages[sessionID] ?? []).filter((e) => e.info.id < messageID) }
+  }))
+  const undo = async (): Promise<void> => {
+    const un = await client.session.unrevert({ sessionID, directory }).catch(() => null)
+    if (un?.data) useSessions.getState().upsertSession(un.data)
+    await useSessions
+      .getState()
+      .loadMessages(client, sessionID, directory)
+      .catch(() => null)
+  }
+  let ok = false
+  try {
+    ok = await sendChatMessage(sendText, files)
+  } catch (err) {
+    await undo()
+    throw err
+  }
+  if (!ok) await undo()
+  return ok
+}
+
+/** «Reintentar» tras un error: reenvía el último mensaje del usuario sin duplicarlo. */
+export async function retryChat(sessionID: string): Promise<boolean> {
+  const id = lastUserMessageId(useSessions.getState().messages[sessionID] ?? [])
+  return id ? resendFromMessage(sessionID, id) : false
+}
+
+/** «Compactar» (error de contexto): resume la conversación con `session.summarize`, como Code. */
+export async function compactChat(sessionID: string): Promise<void> {
+  const { client, directory } = ctx()
+  const sessions = useSessions.getState()
+  sessions.setError(sessionID, null)
+  sessions.setStatus(sessionID, 'busy')
+  try {
+    const model = currentAiGate(useSettings.getState().settings.defaultModel).effective
+    const res = await client.session.summarize({ sessionID, directory, providerID: model?.providerID, modelID: model?.modelID })
+    const err = (res as { error?: unknown }).error
+    if (err) throw err
+  } catch (err) {
+    sessions.setStatus(sessionID, 'idle')
+    sessions.setError(sessionID, typeof err === 'object' && err ? err : String(err))
+  }
 }
 
 export async function abortChat(sessionID: string): Promise<void> {

@@ -19,7 +19,7 @@ import { errorMessage } from '../../../lib/opencode'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MessageEntry } from '../../../stores/sessions'
 import { ActivityRow } from './ProgressPanel'
-import { editAndRetry, undoFromMessage } from './actions'
+import { compactTask, editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { toolImages } from './computer-tools'
 import { useT } from '../../../lib/i18n'
@@ -423,6 +423,8 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
     if (pid) goToPart(pid)
   }, [goToPart])
 
+  const onCompact = useMemo(() => (taskId ? () => compactTask(taskId) : undefined), [taskId])
+
   const last = blocks[blocks.length - 1]
   const showThinking = busy && permissions.length === 0 && (!last || last.kind === 'user' || last.kind === 'text')
 
@@ -462,7 +464,14 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                   />
                 )
               case 'error':
-                return <AssistantError key={b.id} info={b.info} abortedLabel={t('tasks.conv.stopped')} />
+                return (
+                  <AssistantError
+                    key={b.id}
+                    info={b.info}
+                    abortedLabel={t('tasks.conv.stopped')}
+                    onCompact={taskId && i === blocks.length - 1 && !busy ? onCompact : undefined}
+                  />
+                )
               case 'retry':
                 return (
                   <div key={b.id} className="flex items-center gap-1.5 text-xs text-muted">
@@ -490,7 +499,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
               <Loader2 size={15} className="animate-spin" /> {t('tasks.conv.thinking')}
             </div>
           )}
-          {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
+          {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} onCompact={onCompact} />}
           {footer}
         </div>
       </div>
