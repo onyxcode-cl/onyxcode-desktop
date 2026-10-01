@@ -523,6 +523,36 @@ export const DEFAULT_TASKS_PREFS: TasksPrefs = {
 
 // ───────────────────────────── Lote B: almacenamiento ─────────────────────────────
 
+// ── Puntos de restauración (copia propia de la app, válida para cualquier carpeta) ──
+export interface TasksRestorePoint {
+  id: string
+  sessionId: string
+  folder: string
+  createdAt: number
+  label: string
+  /** Archivos incluidos en la instantánea. */
+  files: number
+  /** Bytes copiados (suma de tamaños de los archivos incluidos). */
+  bytes: number
+  status: 'ok' | 'skipped'
+  /** Motivo cuando `status` es `skipped`. */
+  reason?: string
+}
+
+export interface TasksRestoreChange {
+  /** Ruta relativa a la carpeta. */
+  path: string
+  status: 'added' | 'modified' | 'deleted'
+  additions: number
+  deletions: number
+  /** No se puede mostrar la diferencia (binario o demasiado grande). */
+  binary: boolean
+  /** Se puede deshacer (los archivos de más de 50 MB no se guardan). */
+  restorable: boolean
+  /** Diff unificado (solo texto). */
+  patch?: string
+}
+
 export interface TasksStorageEntry {
   /** Clave del directorio `tasks-sandbox/<key>`. */
   key: string
@@ -883,6 +913,17 @@ export interface TasksInvokeContract {
   'tasks:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: TasksStorageReport }
   'tasks:storage:cleanScreenshots': { req: void; res: TasksStorageReport }
 
+  // ── Puntos de restauración ──
+  'tasks:restore:create': { req: { folder: string; sessionId: string; label: string }; res: TasksRestorePoint }
+  'tasks:restore:list': { req: { folder: string; sessionId: string }; res: TasksRestorePoint[] }
+  'tasks:restore:changes': { req: { folder: string; pointId: string }; res: { changes: TasksRestoreChange[]; truncated: boolean } }
+  'tasks:restore:apply': {
+    req: { folder: string; pointId: string; paths?: string[] }
+    res: { restored: number; trashed: number; undoPointId: string; failed: Array<{ path: string; reason: string }> }
+  }
+  /** Borra los puntos de una tarea (al eliminarla). */
+  'tasks:restore:forget': { req: { sessionId: string }; res: void }
+
   // ── Lote B: proyecto, MCP y permisos recordados ──
   'tasks:agentsMd:get': { req: { folder: string }; res: TasksAgentsMd }
   'tasks:agentsMd:save': { req: { folder: string; content: string }; res: TasksAgentsMd }
@@ -1035,6 +1076,11 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:storage:report',
   'tasks:storage:clean',
   'tasks:storage:cleanScreenshots',
+  'tasks:restore:create',
+  'tasks:restore:list',
+  'tasks:restore:changes',
+  'tasks:restore:apply',
+  'tasks:restore:forget',
   'tasks:agentsMd:get',
   'tasks:agentsMd:save',
   'tasks:mcp:list',
