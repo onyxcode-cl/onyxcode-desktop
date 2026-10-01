@@ -549,6 +549,46 @@ en un build de prueba (compilado con `ONYXCODE_TEST_BUILD=1`).
 modificar `/Applications` (el reemplazo se probó en directorios temporales, con `open` sustituido por ejecución
 directa), proxy corporativo (el `fetch` de Node no usa el proxy del sistema) y disco lleno.
 
+## 3 octies. Puntos de restauración de Tareas
+
+Antes de cada mensaje que se envía a una tarea, el proceso principal guarda una instantánea de la carpeta de la tarea (`tasks:restore:create`, `src/main/tasks/restore-points.ts`). Sirve para
+mostrar «Cambios en archivos» con su diferencia, «Deshacer los cambios de esta tarea», «Deshacer desde aquí», «Editar y reintentar» (que ahora sí restaura archivos) y «Rehacer». Es una copia
+**propia de la app**, no usa git: el revert de OpenCode solo toma instantáneas en repositorios git (`vcs === 'git'`), así que en una carpeta sin git ocultaba mensajes pero **no restauraba archivos**
+(el diálogo de «Editar y reintentar» prometía lo contrario; corregido).
+
+**Cómo funciona.** El copiado lo hace el proceso principal, fuera del sandbox. Almacén en `userData/restore-points/<sha256(carpeta):16>/` con `objects/<sha256>` (contenido por hash; clon
+`COPYFILE_FICLONE`, casi gratis en APFS), `points/<id>.json` (manifiesto `{v:1, entries:{ruta:{size,mtimeMs,mode,hash}}}`) y `points/<id>.meta.json`. Es incremental (si tamaño y fecha coinciden con
+el punto anterior se reutiliza el hash) y se limita a 20 puntos por tarea y 30 días, con recolección de objetos huérfanos. Nada se escribe dentro de la carpeta del usuario.
+
+**Qué restaura** (contenido y permisos `mode`) de archivos normales **dentro de la carpeta de la tarea**. Los archivos creados después del punto van a la **Papelera** (`shell.trashItem`; nunca
+se borra con `rm`) junto con las carpetas nuevas que queden vacías. Antes de tocar nada se crea otro punto, «Antes de deshacer»: así deshacer se puede deshacer (`Rehacer`). Cada ruta se valida con
+`lstat` componente a componente (un directorio intermedio que sea symlink rechaza esa ruta) y `realpath` dentro de la carpeta; se escribe en un temporal de la misma carpeta y `rename` atómico.
+`tasks:restore:apply` responde `BUSY` si el monitor ve trabajo en curso en la carpeta. Solo la ventana principal puede invocar los canales (sin entrada en `CHANNEL_ROLES`), la carpeta pasa por
+`TasksManager.assertInsideApproved` y las rutas que llegan del renderer solo valen si coinciden con un cambio calculado por main.
+
+**Qué NO restaura:**
+
+- Cambios **fuera** de la carpeta de la tarea. Tampoco se incluyen las carpetas vinculadas con escritura (decisión de esta primera versión: solo la carpeta principal).
+- Efectos de comandos y de otras herramientas: instalaciones, `git push`, red, correos, otras apps, control del Mac.
+- Lo excluido por los límites: `node_modules/`, `.git/` y `.onyxcode/` (la memoria), archivos de más de 50 MB (se listan como no restaurables), symlinks (se registran y no se siguen ni se restauran),
+  y carpetas con más de 20 000 archivos o más de 2 GB (el punto queda «omitido» y la conversación avisa «Esta vez no se guardó un punto de restauración: …»; el mensaje se envía igualmente).
+- Atributos extendidos y metadatos de Finder (etiquetas, ubicación de iconos, cuarentena…).
+- Lo que cambie **mientras se crea** el punto (la copia no es atómica entre archivos).
+
+**Amenazas.**
+
+| Amenaza | Defensa |
+|---|---|
+| El agente altera o lee el almacén | **Sandbox:** `userData` ya está denegado al agente en el perfil Seatbelt (no se tocó el perfil); no puede leer ni escribir las copias. **Control total:** el agente corre sin sandbox y **sí podría** alterar o leer el almacén (la interfaz lo avisa junto al botón). Por decisión del usuario también se crean puntos en Control total. |
+| Escape por symlink al restaurar | Recorrido sin seguir symlinks, validación de cada componente de la ruta y `realpath` dentro de la carpeta; una ruta con un directorio intermedio symlink se rechaza. Rutas con `..` o absolutas se rechazan. |
+| Pérdida de datos al deshacer | Punto «Antes de deshacer» previo; lo creado va a la Papelera, nunca se borra; escritura atómica; si el punto previo no se puede guardar, no se deshace nada. |
+| Confidencialidad de las copias | Son contenido **del usuario sin cifrar** en `userData`, con permisos `0700` (carpetas) y `0600` (manifiestos). Quien lea `userData` lee las copias. «Ajustes › Tareas › Almacenamiento» permite ver su tamaño y borrarlas; se borran también al eliminar la tarea. |
+| Falso sentido de seguridad en carpetas sin git | El revert de OpenCode no restaura archivos sin git; el diálogo ya no lo promete. «Editar y reintentar» restaura con el punto propio y avisa si no hay uno. |
+| Variable de pruebas | `ONYXCODE_E2E_TRASH_DIR` (Papelera de pruebas) solo se honra con la app sin empaquetar; guardia estática en `trash.test.ts`. |
+
+**No verificado aquí:** volúmenes que no son APFS (sin clon: la copia es completa y más lenta), iCloud Drive o carpetas de red (archivos «solo en la nube», bloqueos), carpetas de más de 10 000
+archivos (los límites se prueban con umbrales bajos), y todo lo que dependa de un modelo real (el orden exacto en que el agente escribe respecto al punto).
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —
