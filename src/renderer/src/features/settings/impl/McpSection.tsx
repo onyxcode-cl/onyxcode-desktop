@@ -270,7 +270,7 @@ export function McpSection(): React.JSX.Element {
                 </div>
               </div>
               {err && <div className="mt-2 text-xs whitespace-pre-wrap text-danger">{err}</div>}
-              {row.owned && tasksInfo[row.name] && (
+              {row.owned && tasksInfo[row.name] && !catalog?.installed[row.name] && (
                 <TasksFlags info={tasksInfo[row.name]} disabled={busy !== null} onChange={(patch) => void setTasks(row.name, patch)} />
               )}
             </div>
@@ -336,33 +336,35 @@ function McpCatalogBlock({
       <p className="-mt-1 mb-3 text-xs text-muted">
         Conectores verificados, incluidos en la app. Ninguno se añade ni se conecta sin que lo confirmes.
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {catalog.items.map((item) => {
-          const auth = AUTH_BADGE[item.auth]
-          return (
-            <Card key={item.id} className="flex flex-col p-3.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">{item.title}</div>
-                  <div className="text-[11px] text-subtle">{item.publisher}</div>
+      <div className="@container">
+        <div className="grid gap-3 @xl:grid-cols-2">
+          {catalog.items.map((item) => {
+            const auth = AUTH_BADGE[item.auth]
+            return (
+              <Card key={item.id} className="flex flex-col p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">{item.title}</div>
+                    <div className="text-[11px] text-subtle">{item.publisher}</div>
+                  </div>
                 </div>
-                {addedIds.has(item.id) && <Badge tone="ok">Añadido</Badge>}
-              </div>
-              <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{item.description}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <Badge tone="muted">
-                  <Globe size={11} /> Remoto · no ejecuta nada en tu Mac
-                </Badge>
-                <Badge tone={auth.tone}>{auth.label}</Badge>
-              </div>
-              <div className="mt-3">
-                <Button size="sm" aria-label={`Añadir ${item.title}`} disabled={disabled} onClick={() => onPick(item)}>
-                  <Plus size={13} /> Añadir…
-                </Button>
-              </div>
-            </Card>
-          )
-        })}
+                <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{item.description}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Badge tone="muted">
+                    <Globe size={11} /> Remoto · no ejecuta nada en tu Mac
+                  </Badge>
+                  <Badge tone={auth.tone}>{auth.label}</Badge>
+                  {addedIds.has(item.id) && <Badge tone="ok">Añadido</Badge>}
+                </div>
+                <div className="mt-3">
+                  <Button size="sm" aria-label={`Añadir ${item.title}`} disabled={disabled} onClick={() => onPick(item)}>
+                    <Plus size={13} /> Añadir…
+                  </Button>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
       </div>
     </section>
   )

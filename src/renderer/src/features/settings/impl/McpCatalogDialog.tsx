@@ -110,6 +110,7 @@ export function McpCatalogDialog({
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.preventDefault()
+        e.stopPropagation() // Ajustes también cierra con Esc: aquí solo debe cerrarse el diálogo
         if (!busy) onCancel()
         return
       }
@@ -212,11 +213,13 @@ export function McpCatalogDialog({
               <Toggle checked={askEachUse} label="Preguntar antes de cada uso" onChange={setAskEachUse} disabled={busy} />
               <span className="font-medium">Preguntar antes de cada uso</span>
             </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Toggle checked={false} disabled label="Disponible en Tareas" onChange={() => undefined} />
-              <span className="text-muted">Disponible en Tareas</span>
-              <span className="text-[11px] text-subtle">(no disponible para conectores del catálogo en esta versión)</span>
-            </label>
+            <div>
+              <div className="flex items-center gap-2 text-sm">
+                <Toggle checked={false} disabled label="Disponible en Tareas" onChange={() => undefined} />
+                <span className="text-muted">Disponible en Tareas</span>
+              </div>
+              <p className="mt-1 pl-11 text-[11px] text-subtle">No disponible para conectores del catálogo en esta versión.</p>
+            </div>
           </section>
 
           <section className="mt-4">

@@ -209,3 +209,20 @@ H11 `forget()`/`clearAll()` (ahora asíncronos) esperan los locks en curso; H12 
 Tests: `restore-points.test.ts` (H1, H2, H4-H9, H11, H12 y retraso del bucle), `restore-points.fs.test.ts` (`npm run test:fs`, ExFAT/FAT32/HFS+ mayúsculas), `restore-points.stress.test.ts`
 (`npm run test:stress`), E2E `restore.e2e.ts` ampliado con archivos dispersos; `shot()` pasa a `e2e/lib/shots.ts`. Limitaciones: el aviso de espacio es conservador (cuenta el tamaño completo aunque APFS clone);
 un archivo que desaparece a mitad de la copia se omite (como antes); iCloud real no probado (solo imitado con archivos dispersos).
+
+## F8-B24 — Catálogo MCP curado
+
+Ajustes › MCP gana un bloque «Catálogo» con conectores verificados, incluidos en la app (nada se descarga): Context7 y Cloudflare Docs (sin cuenta), GitHub (token personal) y Linear, Notion, Sentry y Atlassian
+(inicio de sesión OAuth). v1 solo ofrece servidores **remotos** (URL https): añadir uno no ejecuta ningún programa en el Mac, y nada se escribe ni se conecta sin confirmar en un diálogo que enseña qué podrá hacer, el host
+(en negrita) y la URL completa, qué datos salen, el JSON exacto que se guardará (secreto como «••••»), «Verificado el …» con enlace a la documentación oficial, «Preguntar antes de cada uso» (activado) y «Disponible en
+Tareas» (desactivado, sin efecto en esta versión); «Cancelar» tiene el foco inicial. Contrato: `src/shared/mcp-catalog.ts` (`McpCatalogItem`, `MCP_CATALOG_VERSION`); IPC `mcp:catalog` y `mcp:installCatalog` (solo ventana
+principal; el renderer manda id, nombre y valores, y **main construye la entrada desde su copia**: valida patrones anclados, rechaza CR/LF y tamaño, token/sin credencial → `oauth:false`). Procedencia en
+`userData/mcp-catalog-installs.json` (0600; no se añaden claves a `opencode.json`) con detección de desvío («Modificado» si cambian la URL, las cabeceras o el tipo; mover/renombrar la arrastra). «Preguntar antes de cada
+uso» escribe `permission["<nombre>_*"] = "ask"` (formato **verificado con el binario real**: la config lo acepta y `opencode debug agent` lo lista como regla `ask`); renombrar mueve la regla y eliminar limpia entrada, regla
+`ask` y procedencia (una regla propia distinta se respeta). `opencode.json` pasa a escribirse con permisos 0600 (puede contener un token). Nombre repetido → error y la interfaz propone `-2`.
+`npm run check:mcp-catalog` (manual, con red, fuera de `verify`) comprueba que cada URL responde como MCP (200/401/405) y que su documentación responde 200.
+Tests: `shared/mcp-catalog.test.ts` (ids/nombres únicos y NAME_RE, solo https/remote, host del proveedor, patrones anclados con una `{value}`, sin secretos, `verifiedAt`, sin términos prohibidos),
+`main/extras/mcp-catalog-install.test.ts` (CRLF, id desconocido, colisión, 0600, desvío, limpieza, rollback), `schemas.test.ts`, `McpCatalogDialog.test.tsx` y E2E `mcp-catalog.e2e.ts` (con capturas `MCP_SHOTS_DIR`).
+Descartado/ajustado respecto al plan: Atlassian usa `https://mcp.atlassian.com/v2/mcp` (su documentación ya publica v2 y anuncia que v1 pasará a v2 el 1-mar-2027). Los cuatro servicios OAuth (Linear, Notion, Sentry, Atlassian)
+registran cliente dinámicamente con el binario real (devuelven URL de autorización; el inicio de sesión completo con cuenta real no se probó). Limitaciones: en Tareas no están disponibles (sandbox sin OAuth y sin
+host añadido); el token queda en texto plano en el archivo de la app como en el flujo manual; las fichas no se actualizan solas (cambian con la app; `MCP_CATALOG_VERSION`).
