@@ -85,5 +85,89 @@ export const tasks = {
       'Hay {count} tareas trabajando en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.'
   },
   'tasks.act.interruptContinue': 'Continuar',
-  'tasks.act.cannotAddFolder': 'Esa carpeta no se puede añadir.'
+  'tasks.act.cannotAddFolder': 'Esa carpeta no se puede añadir.',
+  'tasks.home.cat.docs': 'Documentos',
+  'tasks.home.cat.data': 'Datos',
+  'tasks.home.cat.organize': 'Organizar archivos',
+  'tasks.home.cat.research': 'Investigación',
+  'tasks.home.cat.computer': 'Control del Mac',
+  'tasks.home.tpl.docs.0.title': 'Informe resumen',
+  'tasks.home.tpl.docs.0.prompt':
+    'Primero revisa los documentos de esta carpeta y muéstrame un resumen de qué hay en cada uno; luego propón la estructura de un informe resumen.md con los puntos clave; cuando lo apruebe, escríbelo en la carpeta.',
+  'tasks.home.tpl.docs.1.title': 'Documento en Word',
+  'tasks.home.tpl.docs.1.prompt':
+    'Primero revisa las notas de esta carpeta y muéstrame un resumen de las ideas principales; luego propón el esquema de un documento Word (.docx) con sus secciones; cuando lo apruebe, créalo bien formateado.',
+  'tasks.home.tpl.docs.2.title': 'Revisión de ortografía',
+  'tasks.home.tpl.docs.2.prompt':
+    'Primero revisa los documentos .md y .txt de esta carpeta y muéstrame un resumen de los errores de ortografía y estilo que encuentres; luego propón las correcciones; cuando lo apruebe, guarda versiones corregidas con el sufijo -revisado sin tocar los originales.',
+  'tasks.home.tpl.docs.3.title': 'Acta de reunión',
+  'tasks.home.tpl.docs.3.prompt':
+    'Primero revisa las notas de reunión de esta carpeta y muéstrame un resumen de los temas tratados; luego propón la lista de acuerdos, responsables y fechas; cuando lo apruebe, redacta un acta formal en actas.md.',
+  'tasks.home.tpl.data.0.title': 'Analizar CSV',
+  'tasks.home.tpl.data.0.prompt':
+    'Primero revisa los archivos .csv de esta carpeta y muéstrame un resumen de sus columnas, filas y datos faltantes; luego propón qué análisis harías (totales, tendencias, valores atípicos); cuando lo apruebe, ejecútalo y guarda un informe con los hallazgos principales.',
+  'tasks.home.tpl.data.1.title': 'Limpiar datos',
+  'tasks.home.tpl.data.1.prompt':
+    'Primero revisa los .csv de esta carpeta y muéstrame un resumen de los problemas (duplicados, fechas en formatos distintos, espacios sobrantes); luego propón las reglas de limpieza; cuando lo apruebe, guarda versiones limpias sin modificar los originales.',
+  'tasks.home.tpl.data.2.title': 'Gráficos',
+  'tasks.home.tpl.data.2.prompt':
+    'Primero revisa los datos de esta carpeta y muéstrame un resumen de qué variables se pueden graficar; luego propón 3 o 4 gráficos con su tipo y qué muestran; cuando lo apruebe, genéralos como PNG e inclúyelos en un informe .md.',
+  'tasks.home.tpl.data.3.title': 'Consolidar hojas',
+  'tasks.home.tpl.data.3.prompt':
+    'Primero revisa los .csv de esta carpeta y muéstrame un resumen de cuáles tienen la misma estructura; luego propón cómo unirlos y cómo tratarías los duplicados; cuando lo apruebe, crea un único archivo consolidado y explica lo que hiciste.',
+  'tasks.home.tpl.organize.0.title': 'Ordenar por tipo',
+  'tasks.home.tpl.organize.0.prompt':
+    'Primero revisa los archivos de esta carpeta y muéstrame un resumen de cuántos hay de cada tipo; luego propón una estructura de subcarpetas y qué archivo iría a cada una; cuando lo apruebe, muévelos y crea un índice.md. Si mover está bloqueado, crea una copia ordenada sin tocar los originales.',
+  'tasks.home.tpl.organize.1.title': 'Renombrar con criterio',
+  'tasks.home.tpl.organize.1.prompt':
+    'Primero revisa los nombres de los archivos de esta carpeta y muéstrame un resumen de las inconsistencias; luego propón una tabla con el nombre actual y el nuevo; cuando lo apruebe, renómbralos. Si renombrar está bloqueado, crea copias con los nombres nuevos.',
+  'tasks.home.tpl.organize.2.title': 'Encontrar duplicados',
+  'tasks.home.tpl.organize.2.prompt':
+    'Primero revisa esta carpeta y muéstrame un resumen de los archivos duplicados o casi duplicados que encuentres; luego propón cuál conservar de cada grupo y por qué; cuando lo apruebe, escribe el informe duplicados.md. No borres nada.',
+  'tasks.home.tpl.organize.3.title': 'Inventario',
+  'tasks.home.tpl.organize.3.prompt':
+    'Primero revisa los archivos de esta carpeta y muéstrame un resumen de qué hay (tipos, tamaños y fechas); luego propón las columnas del inventario; cuando lo apruebe, crea un inventario.csv con nombre, tipo, tamaño y fecha de cada archivo.',
+  'tasks.home.tpl.research.0.title': 'Informe de un tema',
+  'tasks.home.tpl.research.0.prompt':
+    'Primero busca en la web sobre [tema] y muéstrame un resumen de lo que encuentres con las fuentes; luego propón el índice de un informe; cuando lo apruebe, escribe informe.md con las fuentes citadas.',
+  'tasks.home.tpl.research.1.title': 'Comparativa',
+  'tasks.home.tpl.research.1.prompt':
+    'Primero busca información en la web sobre [opción A] y [opción B] y muéstrame un resumen de cada una; luego propón los criterios de comparación; cuando lo apruebe, entrega una tabla comparativa en comparativa.md con las fuentes.',
+  'tasks.home.tpl.research.2.title': 'Resumen de enlaces',
+  'tasks.home.tpl.research.2.prompt':
+    'Primero revisa los documentos de esta carpeta y muéstrame la lista de enlaces que aparecen; luego propón cuáles vale la pena leer y en qué orden; cuando lo apruebe, léelos y resume cada uno en un informe.',
+  'tasks.home.tpl.research.3.title': 'Noticias recientes',
+  'tasks.home.tpl.research.3.prompt':
+    'Primero busca las noticias más recientes sobre [tema] y muéstrame un resumen de los titulares con su fuente y fecha; luego propón los 5 puntos que más importan; cuando lo apruebe, prepara un resumen ejecutivo de una página.',
+  'tasks.home.tpl.computer.0.title': 'Crear carpeta',
+  'tasks.home.tpl.computer.0.prompt':
+    'Primero mira el Escritorio y dime si ya existe una carpeta llamada Proyectos; luego propón el plan; cuando lo apruebe, crea la carpeta Proyectos en el Escritorio.',
+  'tasks.home.tpl.computer.1.title': 'Buscar en Safari',
+  'tasks.home.tpl.computer.1.prompt':
+    'Primero dime qué tienes abierto en Safari; luego propón los pasos para buscar el clima de hoy en Santiago; cuando lo apruebe, hazlo y dime el resultado.',
+  'tasks.home.tpl.computer.2.title': 'Describir pantalla',
+  'tasks.home.tpl.computer.2.prompt':
+    'Primero toma una captura de pantalla y muéstrame un resumen de qué apps y ventanas hay abiertas; luego propón qué podrías hacer con ellas; cuando lo apruebe, hazlo. No cierres ni modifiques nada por tu cuenta.',
+  'tasks.home.tpl.computer.3.title': 'Ordenar Escritorio',
+  'tasks.home.tpl.computer.3.prompt':
+    'Primero revisa el Escritorio y muéstrame un resumen de los archivos sueltos que hay; luego propón las carpetas por tipo y qué iría a cada una; cuando lo apruebe, muévelos.',
+  'tasks.home.moveNote': 'Al mover archivos en Sandbox se te pedirá el permiso «{term}»; sin él, ofrecerá una copia ordenada.',
+  'tasks.home.title': '¿En qué trabajamos hoy?',
+  'tasks.home.lead.noFolder':
+    'Elige una carpeta y describe el resultado que esperas. El agente revisa, te propone un plan y, cuando lo apruebes, trabaja y te entrega los archivos.',
+  'tasks.home.lead.full': 'Control total: el agente puede usar el ratón, el teclado y ver la pantalla. Detenlo con ⌘⇧Esc.',
+  'tasks.home.lead.sandbox': 'Trabajará dentro de «{folder}». Te pedirá permiso antes de borrar, mover o renombrar.',
+  'tasks.home.startingFull': 'Iniciando control total…',
+  'tasks.home.startingSandbox': 'Iniciando sandbox…',
+  'tasks.home.ph.full': 'Describe qué debe hacer en tu Mac…',
+  'tasks.home.ph.folder': 'Describe la tarea que quieres delegar…',
+  'tasks.home.ph.noFolder': 'Describe la tarea… (elige una carpeta para empezar)',
+  'tasks.home.sandboxActive': 'Sandbox activo: no puede escribir fuera de la carpeta ni leer tus claves.',
+  'tasks.home.suggestions': 'Sugerencias para empezar',
+  'tasks.home.show': 'Mostrar sugerencias',
+  'tasks.home.hide': 'Ocultar sugerencias',
+  'tasks.home.catAria': 'Categorías de sugerencias',
+  'tasks.home.needsFull.pre': 'Estas tareas requieren ',
+  'tasks.home.needsFull.post': '; al elegir una se te pedirá confirmación.',
+  'tasks.home.safeUse': 'Cómo usar las tareas de forma segura'
 } as const

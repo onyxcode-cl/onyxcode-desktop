@@ -88,5 +88,90 @@ export const tasks = {
       '{count} tasks are working in this folder. Changing the sandbox folders requires restarting it, which interrupts them; you can resume them afterwards.'
   },
   'tasks.act.interruptContinue': 'Continue',
-  'tasks.act.cannotAddFolder': 'That folder can’t be added.'
+  'tasks.act.cannotAddFolder': 'That folder can’t be added.',
+  'tasks.home.cat.docs': 'Documents',
+  'tasks.home.cat.data': 'Data',
+  'tasks.home.cat.organize': 'Organize files',
+  'tasks.home.cat.research': 'Research',
+  'tasks.home.cat.computer': 'Mac control',
+  'tasks.home.tpl.docs.0.title': 'Summary report',
+  'tasks.home.tpl.docs.0.prompt':
+    'First review the documents in this folder and show me a summary of what each one contains; then propose the structure of a summary report, resumen.md, with the key points; once I approve it, write it to the folder.',
+  'tasks.home.tpl.docs.1.title': 'Word document',
+  'tasks.home.tpl.docs.1.prompt':
+    'First review the notes in this folder and show me a summary of the main ideas; then propose an outline for a Word document (.docx) with its sections; once I approve it, create it with good formatting.',
+  'tasks.home.tpl.docs.2.title': 'Spelling check',
+  'tasks.home.tpl.docs.2.prompt':
+    'First review the .md and .txt documents in this folder and show me a summary of the spelling and style errors you find; then propose the corrections; once I approve them, save corrected versions with the suffix -revisado without touching the originals.',
+  'tasks.home.tpl.docs.3.title': 'Meeting minutes',
+  'tasks.home.tpl.docs.3.prompt':
+    'First review the meeting notes in this folder and show me a summary of the topics discussed; then propose the list of decisions, owners and dates; once I approve it, write formal minutes in actas.md.',
+  'tasks.home.tpl.data.0.title': 'Analyze CSV',
+  'tasks.home.tpl.data.0.prompt':
+    'First review the .csv files in this folder and show me a summary of their columns, rows and missing data; then propose which analyses you would run (totals, trends, outliers); once I approve them, run them and save a report with the main findings.',
+  'tasks.home.tpl.data.1.title': 'Clean data',
+  'tasks.home.tpl.data.1.prompt':
+    'First review the .csv files in this folder and show me a summary of the problems (duplicates, dates in different formats, extra spaces); then propose the cleaning rules; once I approve them, save cleaned versions without modifying the originals.',
+  'tasks.home.tpl.data.2.title': 'Charts',
+  'tasks.home.tpl.data.2.prompt':
+    'First review the data in this folder and show me a summary of which variables can be charted; then propose 3 or 4 charts with their type and what they show; once I approve them, generate them as PNG and include them in a .md report.',
+  'tasks.home.tpl.data.3.title': 'Merge sheets',
+  'tasks.home.tpl.data.3.prompt':
+    'First review the .csv files in this folder and show me a summary of which ones share the same structure; then propose how to combine them and how you would handle duplicates; once I approve it, create a single merged file and explain what you did.',
+  'tasks.home.tpl.organize.0.title': 'Sort by type',
+  'tasks.home.tpl.organize.0.prompt':
+    'First review the files in this folder and show me a summary of how many there are of each type; then propose a subfolder structure and which file would go in each; once I approve it, move them and create an indice.md. If moving is blocked, create a sorted copy without touching the originals.',
+  'tasks.home.tpl.organize.1.title': 'Rename sensibly',
+  'tasks.home.tpl.organize.1.prompt':
+    'First review the file names in this folder and show me a summary of the inconsistencies; then propose a table with the current and the new name; once I approve it, rename them. If renaming is blocked, create copies with the new names.',
+  'tasks.home.tpl.organize.2.title': 'Find duplicates',
+  'tasks.home.tpl.organize.2.prompt':
+    'First review this folder and show me a summary of the duplicate or near-duplicate files you find; then propose which one to keep from each group and why; once I approve it, write the report duplicados.md. Don’t delete anything.',
+  'tasks.home.tpl.organize.3.title': 'Inventory',
+  'tasks.home.tpl.organize.3.prompt':
+    'First review the files in this folder and show me a summary of what is there (types, sizes and dates); then propose the inventory columns; once I approve them, create an inventario.csv with the name, type, size and date of each file.',
+  'tasks.home.tpl.research.0.title': 'Report on a topic',
+  'tasks.home.tpl.research.0.prompt':
+    'First search the web for [topic] and show me a summary of what you find, with sources; then propose the outline of a report; once I approve it, write informe.md with the sources cited.',
+  'tasks.home.tpl.research.1.title': 'Comparison',
+  'tasks.home.tpl.research.1.prompt':
+    'First search the web for information on [option A] and [option B] and show me a summary of each; then propose the comparison criteria; once I approve them, deliver a comparison table in comparativa.md with the sources.',
+  'tasks.home.tpl.research.2.title': 'Link roundup',
+  'tasks.home.tpl.research.2.prompt':
+    'First review the documents in this folder and show me the list of links that appear; then propose which ones are worth reading and in what order; once I approve it, read them and summarize each one in a report.',
+  'tasks.home.tpl.research.3.title': 'Recent news',
+  'tasks.home.tpl.research.3.prompt':
+    'First search for the latest news on [topic] and show me a summary of the headlines with their source and date; then propose the 5 points that matter most; once I approve them, prepare a one-page executive summary.',
+  'tasks.home.tpl.computer.0.title': 'Create folder',
+  'tasks.home.tpl.computer.0.prompt':
+    'First look at the Desktop and tell me whether a folder called Proyectos already exists; then propose the plan; once I approve it, create the Proyectos folder on the Desktop.',
+  'tasks.home.tpl.computer.1.title': 'Search in Safari',
+  'tasks.home.tpl.computer.1.prompt':
+    'First tell me what you have open in Safari; then propose the steps to look up today’s weather in Santiago; once I approve them, do it and tell me the result.',
+  'tasks.home.tpl.computer.2.title': 'Describe screen',
+  'tasks.home.tpl.computer.2.prompt':
+    'First take a screenshot and show me a summary of which apps and windows are open; then propose what you could do with them; once I approve it, do it. Don’t close or change anything on your own.',
+  'tasks.home.tpl.computer.3.title': 'Tidy the Desktop',
+  'tasks.home.tpl.computer.3.prompt':
+    'First review the Desktop and show me a summary of the loose files there; then propose folders by type and what would go in each; once I approve it, move them.',
+  'tasks.home.moveNote':
+    'When moving files in Sandbox you’ll be asked for the “{term}” permission; without it, the agent will offer a sorted copy instead.',
+  'tasks.home.title': 'What shall we work on today?',
+  'tasks.home.lead.noFolder':
+    'Choose a folder and describe the result you want. The agent reviews, proposes a plan and, once you approve it, works and hands you the files.',
+  'tasks.home.lead.full': 'Full control: the agent can use the mouse and keyboard and see the screen. Stop it with ⌘⇧Esc.',
+  'tasks.home.lead.sandbox': 'It will work inside “{folder}”. It will ask for your permission before deleting, moving or renaming.',
+  'tasks.home.startingFull': 'Starting full control…',
+  'tasks.home.startingSandbox': 'Starting sandbox…',
+  'tasks.home.ph.full': 'Describe what it should do on your Mac…',
+  'tasks.home.ph.folder': 'Describe the task you want to delegate…',
+  'tasks.home.ph.noFolder': 'Describe the task… (choose a folder to start)',
+  'tasks.home.sandboxActive': 'Sandbox active: it can’t write outside the folder or read your keys.',
+  'tasks.home.suggestions': 'Suggestions to get started',
+  'tasks.home.show': 'Show suggestions',
+  'tasks.home.hide': 'Hide suggestions',
+  'tasks.home.catAria': 'Suggestion categories',
+  'tasks.home.needsFull.pre': 'These tasks require ',
+  'tasks.home.needsFull.post': '; you’ll be asked to confirm when you pick one.',
+  'tasks.home.safeUse': 'How to use tasks safely'
 } as const satisfies Messages<typeof es>
