@@ -4,6 +4,7 @@
  * vista de archivadas con "Restaurar".
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { dateLocale, useT } from '../../../lib/i18n'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
   Archive,
@@ -81,6 +82,7 @@ function TaskMenu({
   group?: string | null
   knownGroups: string[]
 }): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -132,14 +134,11 @@ function TaskMenu({
 
   const moveToGroup = (): void => {
     void promptDialog({
-      title: 'Mover a grupo',
-      message:
-        knownGroups.length > 0
-          ? `Grupos existentes: ${knownGroups.join(', ')}. Deja el nombre vacío para quitar la tarea de su grupo.`
-          : 'Escribe el nombre del grupo. Déjalo vacío para quitar la tarea de su grupo.',
+      title: t('tasks.list.moveTitle'),
+      message: knownGroups.length > 0 ? t('tasks.list.moveExisting', { groups: knownGroups.join(', ') }) : t('tasks.list.moveNew'),
       defaultValue: group ?? '',
-      placeholder: 'Nombre del grupo',
-      confirmLabel: 'Mover'
+      placeholder: t('tasks.list.groupName'),
+      confirmLabel: t('tasks.list.move')
     }).then((next) => {
       if (next !== null) void moveTaskToGroup(id, next.trim() || null).catch(() => undefined)
     })
@@ -150,8 +149,8 @@ function TaskMenu({
       <button
         ref={triggerRef}
         type="button"
-        title="Más acciones"
-        aria-label={`Más acciones de la tarea «${title || 'sin título'}»`}
+        title={t('tasks.list.moreActions')}
+        aria-label={t('tasks.list.moreActionsFor', { title: title || t('tasks.list.untitledLower') })}
         aria-haspopup="menu"
         aria-expanded={open}
         className={`rounded p-0.5 text-subtle group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 ${
@@ -168,31 +167,38 @@ function TaskMenu({
         <div
           ref={menuRef}
           role="menu"
-          aria-label="Acciones de la tarea"
+          aria-label={t('tasks.list.menuAria')}
           className="absolute top-full right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-elevated p-1 shadow-lg"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={onMenuKey}
         >
-          {!archived && item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? 'Desfijar' : 'Fijar', () => togglePinned(id))}
           {!archived &&
-            item(<Pencil size={13} />, 'Renombrar…', () => {
-              void promptDialog({ title: 'Nuevo nombre de la tarea', defaultValue: title, confirmLabel: 'Renombrar' }).then((next) => {
-                if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
-              })
+            item(pinned ? <PinOff size={13} /> : <Pin size={13} />, pinned ? t('tasks.list.unpin') : t('tasks.list.pin'), () =>
+              togglePinned(id)
+            )}
+          {!archived &&
+            item(<Pencil size={13} />, t('tasks.list.renameItem'), () => {
+              void promptDialog({ title: t('tasks.list.renameTitle'), defaultValue: title, confirmLabel: t('tasks.list.rename') }).then(
+                (next) => {
+                  if (next && next.trim()) void renameTask(id, next).catch(() => undefined)
+                }
+              )
             })}
-          {!archived && item(<FolderTree size={13} />, 'Mover a grupo…', moveToGroup)}
-          {!archived && group && item(<X size={13} />, 'Quitar del grupo', () => void moveTaskToGroup(id, null).catch(() => undefined))}
-          {!archived && item(<Mail size={13} />, 'Marcar como no leída', () => markUnread(id))}
-          {!archived && item(<Archive size={13} />, 'Archivar', () => void archiveTask(id).catch(() => undefined))}
-          {archived && item(<ArchiveRestore size={13} />, 'Restaurar', () => void restoreTask(id).catch(() => undefined))}
+          {!archived && item(<FolderTree size={13} />, t('tasks.list.moveItem'), moveToGroup)}
+          {!archived &&
+            group &&
+            item(<X size={13} />, t('tasks.list.removeFromGroup'), () => void moveTaskToGroup(id, null).catch(() => undefined))}
+          {!archived && item(<Mail size={13} />, t('tasks.list.markUnread'), () => markUnread(id))}
+          {!archived && item(<Archive size={13} />, t('tasks.list.archive'), () => void archiveTask(id).catch(() => undefined))}
+          {archived && item(<ArchiveRestore size={13} />, t('tasks.list.restore'), () => void restoreTask(id).catch(() => undefined))}
           {item(
             <Trash2 size={13} />,
-            'Eliminar…',
+            t('tasks.list.deleteItem'),
             () => {
               void confirmDialog({
-                title: '¿Eliminar tarea?',
-                message: `Se eliminará la tarea «${title || 'sin título'}». Esta acción no se puede deshacer.`,
-                confirmLabel: 'Eliminar',
+                title: t('tasks.list.deleteTitle'),
+                message: t('tasks.list.deleteMsg', { title: title || t('tasks.list.untitledLower') }),
+                confirmLabel: t('tasks.list.delete'),
                 danger: true
               }).then((ok) => {
                 if (ok) void deleteTask(id).catch(() => undefined)
@@ -226,6 +232,7 @@ function TaskRow({
   group: string | null | undefined
   knownGroups: string[]
 }): React.JSX.Element {
+  const t = useT()
   const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
   const pinned = isPinned(task.id)
   return (
@@ -241,11 +248,11 @@ function TaskRow({
       >
         <div className={`truncate ${unseen ? 'font-semibold' : ''}`}>
           {pinned && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
-          {task.title || 'Tarea sin título'}
+          {task.title || t('tasks.list.untitled')}
         </div>
         <div className={`truncate text-[11px] ${statusTextClass(status)}`}>
           {status === 'archived'
-            ? `Archivada ${relTime(task.time.archived ?? task.time.updated)}`
+            ? t('tasks.list.archivedAgo', { when: relTime(task.time.archived ?? task.time.updated) })
             : status === 'running' ||
                 status === 'using_computer' ||
                 status === 'waiting' ||
@@ -257,7 +264,7 @@ function TaskRow({
         </div>
       </button>
       {blockedHost && (
-        <span className="shrink-0 text-warning" title="Se bloqueó el acceso a un sitio: necesita tu decisión">
+        <span className="shrink-0 text-warning" title={t('tasks.list.blocked')}>
           <ShieldOff size={12} />
         </span>
       )}
@@ -268,7 +275,7 @@ function TaskRow({
           className="shrink-0 rounded-md px-1.5 py-0.5 text-[11.5px] text-accent hover:bg-hover"
           onClick={() => void restoreTask(task.id).catch(() => undefined)}
         >
-          Restaurar
+          {t('tasks.list.restore')}
         </button>
       )}
       {!busy && <TaskMenu id={task.id} title={task.title || ''} archived={archivedView} group={group} knownGroups={knownGroups} />}
@@ -288,6 +295,7 @@ function TranscriptResults({
   scanned: number
   total: number
 }): React.JSX.Element {
+  const t = useT()
   const open = (h: TranscriptHit): void => {
     void openTask(h.sessionId).then(() => {
       // Deja que la conversación se pinte antes de pedir el scroll.
@@ -297,20 +305,20 @@ function TranscriptResults({
   return (
     <div className="mb-1">
       <div className="flex items-center gap-1.5 px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle">
-        En las conversaciones
+        {t('tasks.list.inChats')}
         {loading && (
           <span className="flex items-center gap-1 font-normal">
             <Loader2 size={10} className="animate-spin" /> {scanned}/{total}
           </span>
         )}
       </div>
-      {hits.length === 0 && !loading && <p className="px-1 py-1 text-xs text-subtle">Sin coincidencias en el contenido de las tareas.</p>}
+      {hits.length === 0 && !loading && <p className="px-1 py-1 text-xs text-subtle">{t('tasks.list.noContentMatch')}</p>}
       <ul className="space-y-0.5">
         {hits.map((h) => (
           <li key={`${h.sessionId}:${h.partId}`}>
             <button type="button" className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-hover" onClick={() => open(h)}>
               <div className="flex items-baseline gap-2">
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{h.title || 'Tarea sin título'}</span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{h.title || t('tasks.list.untitled')}</span>
                 <span className="shrink-0 text-[10.5px] text-subtle">{relTime(h.at)}</span>
               </div>
               <div className="line-clamp-2 text-[11.5px] leading-snug text-muted">{h.snippet}</div>
@@ -323,6 +331,7 @@ function TranscriptResults({
 }
 
 export function TaskList(): React.JSX.Element {
+  const tr = useT()
   const folder = useTasks((s) => s.folder)
   const activeId = useTasks((s) => s.activeTaskId)
   const loading = useTasks((s) => s.listLoading)
@@ -383,7 +392,7 @@ export function TaskList(): React.JSX.Element {
       const g = taskMeta[t.id]?.group?.trim()
       if (g) set.add(g)
     }
-    return [...set].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+    return [...set].sort((a, b) => a.localeCompare(b, dateLocale(), { sensitivity: 'base' }))
   }, [liveTasks, taskMeta])
 
   const perms = Object.values(permissions)
@@ -405,7 +414,7 @@ export function TaskList(): React.JSX.Element {
   const searching = q.length > 0
   const groups: Array<TaskGroup<Session>> = searching
     ? tasks.length > 0
-      ? [{ key: 'search', label: 'Coincidencias en los títulos', items: tasks }]
+      ? [{ key: 'search', label: tr('tasks.list.titleMatches'), items: tasks }]
       : []
     : showArchived
       ? groupByDate(tasks, (t) => t.time.archived ?? t.time.updated)
@@ -414,10 +423,10 @@ export function TaskList(): React.JSX.Element {
         : groupByDate(tasks, (t) => t.time.updated)
 
   const emptyText = ((): string => {
-    if (!folder) return 'Elige una carpeta para ver sus tareas.'
-    if (showArchived) return searching ? 'Ninguna tarea archivada coincide con la búsqueda.' : 'No hay tareas archivadas en esta carpeta.'
-    if (searching) return 'Ninguna tarea coincide con la búsqueda.'
-    return 'Aún no hay tareas en esta carpeta.'
+    if (!folder) return tr('tasks.list.empty.noFolder')
+    if (showArchived) return searching ? tr('tasks.list.empty.archivedSearch') : tr('tasks.list.empty.archived')
+    if (searching) return tr('tasks.list.empty.search')
+    return tr('tasks.list.empty.none')
   })()
 
   return (
@@ -428,15 +437,15 @@ export function TaskList(): React.JSX.Element {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar tareas"
-          aria-label="Buscar tareas"
+          placeholder={tr('tasks.list.search')}
+          aria-label={tr('tasks.list.search')}
           className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
             type="button"
-            title="Limpiar"
-            aria-label="Limpiar la búsqueda"
+            title={tr('tasks.list.clear')}
+            aria-label={tr('tasks.list.clearSearch')}
             className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-fg"
             onClick={() => setQuery('')}
           >
@@ -446,33 +455,34 @@ export function TaskList(): React.JSX.Element {
       </div>
       <div className="mb-1 flex items-center gap-1.5">
         <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-subtle">
-          <span className="shrink-0">Agrupar:</span>
+          <span className="shrink-0">{tr('tasks.list.groupBy')}</span>
           <select
             value={groupMode}
             disabled={showArchived || searching}
             onChange={(e) => changeGroupMode(e.target.value as GroupMode)}
             className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50"
           >
-            <option value="date">por fecha</option>
-            <option value="group">por grupo</option>
+            <option value="date">{tr('tasks.list.byDate')}</option>
+            <option value="group">{tr('tasks.list.byGroup')}</option>
           </select>
         </label>
         <button
           type="button"
           aria-pressed={showArchived}
-          title={showArchived ? 'Volver a las tareas' : 'Ver las tareas archivadas'}
+          title={showArchived ? tr('tasks.list.backToTasks') : tr('tasks.list.showArchived')}
           onClick={() => useTasks.setState({ showArchived: !showArchived })}
           className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[12px] ${
             showArchived ? 'border-accent/50 bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
           }`}
         >
-          <Archive size={12} /> Archivadas{archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
+          <Archive size={12} /> {tr('tasks.list.archived')}
+          {archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading && source.length === 0 && (
           <div className="flex items-center gap-2 px-1 py-2 text-xs text-subtle">
-            <Loader2 size={12} className="animate-spin" /> Cargando tareas…
+            <Loader2 size={12} className="animate-spin" /> {tr('tasks.list.loading')}
           </div>
         )}
         {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && (
@@ -499,9 +509,7 @@ export function TaskList(): React.JSX.Element {
           </div>
         ))}
         {searching && !showArchived && q.length < MIN_QUERY_LENGTH && (
-          <p className="px-1 py-2 text-[11.5px] text-subtle">
-            Escribe {MIN_QUERY_LENGTH} o más letras para buscar también dentro de las conversaciones.
-          </p>
+          <p className="px-1 py-2 text-[11.5px] text-subtle">{tr('tasks.list.minChars.pre', { n: MIN_QUERY_LENGTH })}</p>
         )}
         {searching && !showArchived && q.length >= MIN_QUERY_LENGTH && (
           <TranscriptResults hits={transcript.hits} loading={transcript.loading} scanned={transcript.scanned} total={transcript.total} />
