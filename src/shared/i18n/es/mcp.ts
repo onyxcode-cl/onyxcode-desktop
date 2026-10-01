@@ -61,6 +61,7 @@ export const mcp = {
   'mcp.form.commandHint': 'Se admiten comillas para argumentos con espacios.',
   'mcp.form.env': 'Variables de entorno (una por línea)',
   'mcp.form.cwd': 'Directorio de trabajo (opcional)',
+  'mcp.form.urlPlaceholder': 'https://mcp.ejemplo.com/mcp',
   'mcp.form.url': 'URL',
   'mcp.form.headers': 'Cabeceras (una por línea)',
   'mcp.form.noOauth': 'Desactivar autodetección OAuth',

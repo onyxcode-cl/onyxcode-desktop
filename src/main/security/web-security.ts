@@ -50,6 +50,7 @@ function harden(wc: WebContents): void {
     if (allowedNavigation(url)) return
     event.preventDefault()
     if (isMainFrame && mayOpenExternal()) openExternalSafe(url)
+    // i18n-ignore: registro de consola, no se muestra
     console.warn(`[security] navegación bloqueada: ${url.slice(0, 200)}`)
   }
   wc.on('will-navigate', (event, url) => guardNav(event, url))

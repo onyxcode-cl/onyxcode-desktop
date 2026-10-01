@@ -600,7 +600,7 @@ function McpForm({
                 className="font-mono"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://mcp.ejemplo.com/mcp"
+                placeholder={t('mcp.form.urlPlaceholder')}
               />
             </Field>
             <Field label={t('mcp.form.headers')}>

@@ -178,6 +178,8 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
         // Aviso de Rutinas ya reconocido (si no, las rutinas no se ejecutan solas y activar pide el diálogo);
         // `routines-terms.e2e.ts` lo pone en false.
         routinesTermsAcknowledged: true,
+        // Los specs esperan la interfaz en español; `i18n.e2e.ts` arranca en `en`.
+        language: 'es',
         ...opts.settings
       })
     )
@@ -296,7 +298,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     await page.waitForLoadState('domcontentloaded')
     if (MODE === 'dev') {
       // Ganchos: flag + reinicio de carga para que main.tsx lo lea. Los errores previos a esto no se recogen.
-      const ls = { 'onyx.e2e': '1', ...opts.localStorage }
+      const ls = { 'onyx.e2e': '1', 'onyx.langPref': String(opts.settings?.language ?? 'es'), ...opts.localStorage }
       await page.evaluate((entries) => {
         for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v)
       }, ls)
@@ -311,7 +313,11 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     }
     // Con la cuenta exigida y sin sesión válida la app no se monta: se espera la pantalla de acceso (o la app, si hay sesión).
     await page
-      .locator(opts.account ? 'nav[aria-label="Modo"], [data-testid="account-gate"]' : 'nav[aria-label="Modo"]')
+      .locator(
+        opts.account
+          ? 'nav[aria-label="Modo"], nav[aria-label="Mode"], [data-testid="account-gate"]'
+          : 'nav[aria-label="Modo"], nav[aria-label="Mode"]'
+      )
       .first()
       .waitFor({ timeout: 60_000 })
 

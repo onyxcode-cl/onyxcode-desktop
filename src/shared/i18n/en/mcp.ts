@@ -64,6 +64,7 @@ export const mcp = {
   'mcp.form.commandHint': 'Use quotes for arguments that contain spaces.',
   'mcp.form.env': 'Environment variables (one per line)',
   'mcp.form.cwd': 'Working directory (optional)',
+  'mcp.form.urlPlaceholder': 'https://mcp.example.com/mcp',
   'mcp.form.url': 'URL',
   'mcp.form.headers': 'Headers (one per line)',
   'mcp.form.noOauth': 'Disable OAuth auto-detection',

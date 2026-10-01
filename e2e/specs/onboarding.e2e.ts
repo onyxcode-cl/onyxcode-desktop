@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { MODE_LABELS } from '../../src/shared/labels'
-import { CONNECT_TASKS_NOTICE, CONNECT_TERMS_NOTICE } from '../../src/renderer/src/features/onboarding/steps'
+import { connectTasksNotice, connectTermsNotice } from '../../src/renderer/src/features/onboarding/steps'
 import { openedUrls, stubDialog, stubOpenExternal } from '../lib/dialogs'
 import { startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData } from '../lib/lotes'
@@ -93,8 +93,8 @@ describe('asistente de primer uso', () => {
     const put = await a.fake.waitForRequest((r) => r.method === 'PUT' && r.path === '/auth/openai')
     expect(put.body).toEqual({ type: 'api', key: 'sk-e2e-otro' })
     await expectVisible(dialog().getByText('OpenAI conectado'))
-    await expectVisible(dialog().getByText(CONNECT_TASKS_NOTICE))
-    await expectVisible(dialog().getByText(CONNECT_TERMS_NOTICE))
+    await expectVisible(dialog().getByText(connectTasksNotice()))
+    await expectVisible(dialog().getByText(connectTermsNotice()))
   })
 
   it('(d) terminar guarda onboarded y el asistente no vuelve tras reiniciar', async () => {
