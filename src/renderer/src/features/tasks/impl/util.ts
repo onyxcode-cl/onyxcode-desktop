@@ -4,6 +4,8 @@ import { MAIN_SOURCE, type MessageEntry, type SessionRunState } from '../../../s
 import type { ConvError } from '../../../lib/session-reducer'
 import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
+import { t } from '@shared/i18n'
+import { dateLocale } from '../../../lib/i18n'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
 
 /** ¿El origen de una sesión es un servidor de Tareas (cualquiera)? Chat/Code usan el origen principal (ausente). */
@@ -24,14 +26,14 @@ export function extOf(p: string): string {
 export function relTime(ts: number, now = Date.now()): string {
   const diff = now - ts
   const min = Math.floor(diff / 60_000)
-  if (min < 1) return 'ahora'
-  if (min < 60) return `hace ${min} min`
+  if (min < 1) return t('tasks.rel.now')
+  if (min < 60) return t('tasks.rel.min', { min })
   const h = Math.floor(min / 60)
-  if (h < 24) return `hace ${h} h`
+  if (h < 24) return t('tasks.rel.h', { h })
   const d = Math.floor(h / 24)
-  if (d === 1) return 'ayer'
-  if (d < 7) return `hace ${d} días`
-  return new Date(ts).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
+  if (d === 1) return t('tasks.rel.yesterday')
+  if (d < 7) return t('tasks.rel.days', { d })
+  return new Date(ts).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })
 }
 
 export function formatSize(n: number): string {
@@ -54,16 +56,35 @@ export function formatDuration(ms: number): string {
 
 export type TaskStatus = 'running' | 'using_computer' | 'plan_ready' | 'waiting' | 'question' | 'done' | 'error' | 'idle' | 'archived'
 
+/** Etiquetas de estado en el idioma activo (getters: se leen al usarse). */
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
-  running: 'Trabajando',
-  using_computer: 'Usando el Mac',
-  plan_ready: 'Plan listo para revisar',
-  waiting: 'Esperando tu aprobación',
-  question: 'Esperando tu respuesta',
-  done: 'Terminado',
-  error: 'Error',
-  idle: 'Nueva',
-  archived: 'Archivada'
+  get running() {
+    return t('tasks.status.running')
+  },
+  get using_computer() {
+    return t('tasks.status.using_computer')
+  },
+  get plan_ready() {
+    return t('tasks.status.plan_ready')
+  },
+  get waiting() {
+    return t('tasks.status.waiting')
+  },
+  get question() {
+    return t('tasks.status.question')
+  },
+  get done() {
+    return t('tasks.status.done')
+  },
+  get error() {
+    return t('tasks.status.error')
+  },
+  get idle() {
+    return t('tasks.status.idle')
+  },
+  get archived() {
+    return t('tasks.status.archived')
+  }
 }
 
 function lastAssistant(entries: MessageEntry[] | undefined): Message | undefined {
@@ -188,38 +209,39 @@ export function friendlyTool(part: ToolPart): { verb: string; detail: string } {
   const kind = computerToolKind(part.tool)
   if (kind) return { verb: computerToolInfo(kind).label, detail: computerToolDetail(kind, input) }
   const running = part.state.status === 'running' || part.state.status === 'pending'
-  const v = (doing: string, done: string): string => (running ? doing : done)
+  const v = (key: 'read' | 'write' | 'edit' | 'patch' | 'list' | 'glob' | 'grep' | 'bash' | 'webfetch' | 'websearch' | 'task'): string =>
+    running ? t(`tasks.tool.${key}.doing`) : t(`tasks.tool.${key}.done`)
   switch (part.tool) {
     case 'read':
-      return { verb: v('Leyendo', 'Leyó'), detail: fileLabel(str(input, 'filePath', 'path')) }
+      return { verb: v('read'), detail: fileLabel(str(input, 'filePath', 'path')) }
     case 'write':
-      return { verb: v('Creando', 'Creó'), detail: fileLabel(str(input, 'filePath', 'path')) }
+      return { verb: v('write'), detail: fileLabel(str(input, 'filePath', 'path')) }
     case 'edit':
     case 'multiedit':
-      return { verb: v('Editando', 'Editó'), detail: fileLabel(str(input, 'filePath', 'path')) }
+      return { verb: v('edit'), detail: fileLabel(str(input, 'filePath', 'path')) }
     case 'patch':
     case 'apply_patch':
-      return { verb: v('Aplicando cambios', 'Aplicó cambios'), detail: '' }
+      return { verb: v('patch'), detail: '' }
     case 'list':
-      return { verb: v('Explorando', 'Exploró'), detail: shortenPath(str(input, 'path')) || 'la carpeta' }
+      return { verb: v('list'), detail: shortenPath(str(input, 'path')) || t('tasks.tool.list.folder') }
     case 'glob':
-      return { verb: v('Buscando archivos', 'Buscó archivos'), detail: str(input, 'pattern') }
+      return { verb: v('glob'), detail: str(input, 'pattern') }
     case 'grep':
-      return { verb: v('Buscando texto', 'Buscó texto'), detail: clip(str(input, 'pattern'), 40) }
+      return { verb: v('grep'), detail: clip(str(input, 'pattern'), 40) }
     case 'bash': {
       const desc = str(input, 'description')
-      return { verb: v('Ejecutando', 'Ejecutó'), detail: desc ? clip(desc) : clip(str(input, 'command')) }
+      return { verb: v('bash'), detail: desc ? clip(desc) : clip(str(input, 'command')) }
     }
     case 'webfetch':
-      return { verb: v('Consultando', 'Consultó'), detail: clip(str(input, 'url'), 50) }
+      return { verb: v('webfetch'), detail: clip(str(input, 'url'), 50) }
     case 'websearch':
-      return { verb: v('Buscando en la web', 'Buscó en la web'), detail: clip(str(input, 'query'), 50) }
+      return { verb: v('websearch'), detail: clip(str(input, 'query'), 50) }
     case 'todowrite':
-      return { verb: 'Actualizó el plan', detail: '' }
+      return { verb: t('tasks.tool.todowrite'), detail: '' }
     case 'task':
-      return { verb: v('Delegando subtarea', 'Subtarea'), detail: clip(str(input, 'description', 'prompt')) }
+      return { verb: v('task'), detail: clip(str(input, 'description', 'prompt')) }
     case 'question':
-      return { verb: 'Pregunta', detail: '' }
+      return { verb: t('tasks.tool.question'), detail: '' }
     default: {
       const title = 'title' in part.state && part.state.title ? part.state.title : ''
       return { verb: part.tool.replace(/_/g, ' '), detail: clip(shortenPath(title || str(input, 'description', 'path', 'url'))) }
@@ -327,7 +349,7 @@ export function buildContext(entries: MessageEntry[]): ContextGroups {
       }
       if (p.tool === 'webfetch' || p.tool === 'websearch') {
         const label = str(input, 'url') || str(input, 'query')
-        web.push({ label: clip(label, 60) || (p.tool === 'webfetch' ? 'Página web' : 'Búsqueda web'), partId: p.id })
+        web.push({ label: clip(label, 60) || (p.tool === 'webfetch' ? t('tasks.ctx.webPage') : t('tasks.ctx.webSearch')), partId: p.id })
         continue
       }
       if (!KNOWN_TOOLS.has(p.tool)) {

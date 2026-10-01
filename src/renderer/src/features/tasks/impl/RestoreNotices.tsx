@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2, Undo2, X } from 'lucide-react'
+import { useT } from '../../../lib/i18n'
 import { Button } from '../../../components/Button'
 import { errorMessage } from '../../../lib/opencode'
 import { redoRestore } from './actions'
@@ -11,6 +12,7 @@ import { failedText, restoreResultText } from './restore-logic'
 import { useTasks } from './store'
 
 export function RestoreNotices({ taskId }: { taskId: string }): React.JSX.Element | null {
+  const t = useT()
   const warning = useTasks((s) => s.restoreWarning[taskId])
   const result = useTasks((s) => (s.restoreResult?.taskId === taskId ? s.restoreResult : null))
   const [busy, setBusy] = useState(false)
@@ -33,7 +35,7 @@ export function RestoreNotices({ taskId }: { taskId: string }): React.JSX.Elemen
           <span className="min-w-0 flex-1 break-words">{warning}</span>
           <button
             type="button"
-            aria-label="Cerrar aviso"
+            aria-label={t('tasks.restore.closeNotice')}
             className="shrink-0 rounded p-0.5 text-subtle hover:text-fg"
             onClick={() =>
               useTasks.setState((s) => {
@@ -57,12 +59,12 @@ export function RestoreNotices({ taskId }: { taskId: string }): React.JSX.Elemen
           </div>
           {result.kind === 'undone' && (
             <Button size="sm" variant="ghost" disabled={busy} onClick={redo}>
-              {busy ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} />} Rehacer
+              {busy ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} />} {t('tasks.restore.redo')}
             </Button>
           )}
           <button
             type="button"
-            aria-label="Cerrar aviso"
+            aria-label={t('tasks.restore.closeNotice')}
             className="shrink-0 rounded p-0.5 text-subtle hover:text-fg"
             onClick={() => useTasks.setState({ restoreResult: null })}
           >
