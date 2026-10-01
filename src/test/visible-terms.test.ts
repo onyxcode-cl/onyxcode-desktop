@@ -53,10 +53,10 @@ const EXCEPTIONS: Exception[] = [
     reason: 'Canal IPC `extras:openArtifact`: contrato interno (allowlists y esquemas).'
   },
   {
-    file: 'src/renderer/src/features/settings/impl/AboutSection.tsx',
+    file: 'src/shared/i18n/*/settings.ts',
     rule: 'Claude|Anthropic',
-    line: /no afiliado a OpenCode ni a Anthropic/,
-    reason: 'Aviso legal de Acerca de: debe nombrar a Anthropic para desvincularse.'
+    line: /no afiliado a OpenCode ni a Anthropic|not affiliated with OpenCode or Anthropic/,
+    reason: 'Aviso legal de Acerca de (es/en): debe nombrar a Anthropic para desvincularse.'
   },
   {
     file: 'src/*',

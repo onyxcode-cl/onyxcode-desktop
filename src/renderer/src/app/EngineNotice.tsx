@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Info, X } from 'lucide-react'
 import type { OpencodeInfo } from '@shared/types'
 import { call } from '../lib/api'
+import { useT } from '../lib/i18n'
 import { engineNoticeText } from '../lib/engine-notice'
 import { useServer } from '../stores/server'
 
@@ -17,6 +18,7 @@ function readDismissed(): string | null {
 
 /** Aviso NO bloqueante y cerrable: el motor en uso no es el probado con esta versión de la app. */
 export function EngineNotice(): React.JSX.Element | null {
+  const t = useT()
   const state = useServer((s) => s.status.state)
   const [info, setInfo] = useState<OpencodeInfo | null>(null)
   const [dismissed, setDismissed] = useState<string | null>(readDismissed)
@@ -52,7 +54,7 @@ export function EngineNotice(): React.JSX.Element | null {
       <span className="flex-1">{text}</span>
       <button
         type="button"
-        aria-label="Cerrar aviso"
+        aria-label={t('notices.close')}
         onClick={close}
         className="flex shrink-0 items-center rounded-md p-0.5 transition-colors hover:bg-warning/15"
       >

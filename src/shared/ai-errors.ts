@@ -4,6 +4,8 @@
  * Sin React ni IPC: se prueba con `ai-errors.test.ts`.
  */
 
+import { t as tr } from './i18n'
+import { es } from './i18n/es'
 import { maskSecretPatterns } from './redact-patterns'
 
 export type FriendlyErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
@@ -25,9 +27,11 @@ export interface FriendlyErrorOptions {
   providerID?: string
 }
 
-export const NO_AI_TITLE = 'Aún no conectaste ninguna IA'
-export const NO_AI_BODY =
-  'Para enviar mensajes necesitas conectar una IA: tu suscripción de OpenCode Go o la clave de otro proveedor. Solo toma un minuto.'
+/** Versión en español (mensaje de la excepción); la interfaz usa `noAiTitle()` / `noAiBody()` en el idioma activo. */
+export const NO_AI_TITLE = es['errors.noAi.title']
+export const NO_AI_BODY = es['errors.noAi.body']
+export const noAiTitle = (): string => tr('errors.noAi.title')
+export const noAiBody = (): string => tr('errors.noAi.body')
 
 /** Se lanza al intentar enviar sin ninguna IA conectada. */
 export class NoAiError extends Error {
@@ -108,35 +112,35 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
   const detail = buildDetail(n) || null
   const providerLabel = (id: string | null): string => {
     const key = id ?? opts.providerID ?? null
-    return (key && opts.providerNames?.[key]) || key || 'tu IA'
+    return (key && opts.providerNames?.[key]) || key || tr('errors.yourAi')
   }
 
   if (n.name === 'NoAiError') {
-    return { kind: 'no-ai', title: NO_AI_TITLE, message: NO_AI_BODY, detail: null, action: 'connect' }
+    return { kind: 'no-ai', title: noAiTitle(), message: noAiBody(), detail: null, action: 'connect' }
   }
   if (n.name === 'ContextOverflowError') {
     return {
       kind: 'context',
-      title: 'La conversación es demasiado larga',
-      message: 'Empieza una conversación nueva para seguir.',
+      title: tr('errors.context.title'),
+      message: tr('errors.context.message'),
       detail,
       action: null
     }
   }
   if (NOT_FOUND_RE.test(text)) {
-    const id = /Model not found:\s*(\S+?)\.?(?:\s|$)/.exec(n.message)?.[1] ?? 'el modelo'
+    const id = /Model not found:\s*(\S+?)\.?(?:\s|$)/.exec(n.message)?.[1] ?? tr('errors.modelNotFound.fallbackId')
     return {
       kind: 'model-not-found',
-      title: 'El modelo elegido no está disponible',
-      message: `“${id}” no pertenece a ninguna IA conectada. Elige otro modelo o conecta una IA.`,
+      title: tr('errors.modelNotFound.title'),
+      message: tr('errors.modelNotFound.message', { id }),
       detail,
       action: 'connect'
     }
   }
   const authFailure = (): FriendlyError => ({
     kind: 'auth',
-    title: 'La IA rechazó la conexión',
-    message: `La clave o la sesión de ${providerLabel(n.providerID)} no es válida o caducó. Vuelve a conectarla en Ajustes › Modelos.`,
+    title: tr('errors.auth.title'),
+    message: tr('errors.auth.message', { provider: providerLabel(n.providerID) }),
     detail,
     action: 'connect'
   })
@@ -144,8 +148,8 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
   if (n.statusCode === 402 || n.statusCode === 429 || QUOTA_RE.test(text)) {
     return {
       kind: 'quota',
-      title: 'Límite de uso alcanzado',
-      message: 'Tu IA alcanzó su límite de uso o de cuota. Espera unos minutos o revisa tu plan.',
+      title: tr('errors.quota.title'),
+      message: tr('errors.quota.message'),
       detail,
       action: null
     }
@@ -154,14 +158,14 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
   if (NETWORK_RE.test(text)) {
     return {
       kind: 'network',
-      title: 'Sin conexión',
-      message: 'No se pudo contactar con la IA. Revisa tu conexión a internet e inténtalo de nuevo.',
+      title: tr('errors.network.title'),
+      message: tr('errors.network.message'),
       detail,
       action: null
     }
   }
   if (n.statusCode === null && !n.responseBody && isPlainMessage(n.message)) {
-    return { kind: 'unknown', title: 'Algo salió mal', message: redactSecrets(n.message.trim()), detail: null, action: null }
+    return { kind: 'unknown', title: tr('errors.unknown.title'), message: redactSecrets(n.message.trim()), detail: null, action: null }
   }
-  return { kind: 'unknown', title: 'Algo salió mal', message: 'OpenCode devolvió un error inesperado.', detail, action: null }
+  return { kind: 'unknown', title: tr('errors.unknown.title'), message: tr('errors.unknown.message'), detail, action: null }
 }

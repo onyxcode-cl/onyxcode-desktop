@@ -4,6 +4,7 @@ import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@o
 import { APP_NAME } from '@shared/brand'
 import { Button } from '../../../components/Button'
 import { call } from '../../../lib/api'
+import { useT } from '../../../lib/i18n'
 import { KeyTestNotice } from './KeyTestNotice'
 import { authOptions, saveProviderKey } from './providerCatalog'
 import { Card, Field, Select, TextInput } from './ui'
@@ -50,6 +51,7 @@ export function ProviderKeyForm({
   showTestResult = true,
   className = 'mt-3 p-4'
 }: Props): React.JSX.Element {
+  const t = useT()
   const [picked, setPicked] = useState('')
   const [key, setKey] = useState('')
   /** Último proveedor cuya clave se guardó desde este formulario: muestra el resultado de la prueba. */
@@ -65,8 +67,8 @@ export function ProviderKeyForm({
   const heading =
     title === undefined
       ? fixedProviderId
-        ? `Clave de ${targetProvider?.name ?? fixedProviderId}`
-        : 'Conectar proveedor con API key'
+        ? t('models.form.keyOf', { name: targetProvider?.name ?? fixedProviderId })
+        : t('models.form.connectWithKey')
       : title
 
   useEffect(() => {
@@ -152,9 +154,9 @@ export function ProviderKeyForm({
         className={`grid items-end gap-2 ${fixedProviderId ? 'grid-cols-[1fr_auto]' : 'grid-cols-[1fr_auto] @md:grid-cols-[1fr_1.4fr_auto]'}`}
       >
         {!fixedProviderId && (
-          <Field label="Proveedor" className="col-span-2 @md:col-span-1">
+          <Field label={t('models.form.provider')} className="col-span-2 @md:col-span-1">
             <Select value={picked} onChange={(e) => pick(e.target.value)}>
-              <option value="">Elegir…</option>
+              <option value="">{t('models.form.choose')}</option>
               {providers.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -163,7 +165,7 @@ export function ProviderKeyForm({
             </Select>
           </Field>
         )}
-        <Field label="API key">
+        <Field label={t('models.form.apiKey')}>
           <TextInput
             type="password"
             autoComplete="off"
@@ -174,7 +176,7 @@ export function ProviderKeyForm({
           />
         </Field>
         <Button variant="primary" type="submit" disabled={busy || !target || !key.trim() || !supportsApi}>
-          {busy && flow.kind === 'idle' ? <Loader2 size={14} className="animate-spin" /> : null} Guardar
+          {busy && flow.kind === 'idle' ? <Loader2 size={14} className="animate-spin" /> : null} {t('models.form.save')}
         </Button>
       </form>
 
@@ -184,18 +186,18 @@ export function ProviderKeyForm({
             <div className="flex flex-wrap gap-2">
               {oauth.map((m) => (
                 <Button key={m.index} disabled={busy || flow.kind === 'starting'} onClick={() => void startOauth(m.index)}>
-                  {flow.kind === 'starting' && flow.index === m.index ? <Loader2 size={14} className="animate-spin" /> : null} Iniciar
-                  sesión · {m.label}
+                  {flow.kind === 'starting' && flow.index === m.index ? <Loader2 size={14} className="animate-spin" /> : null}{' '}
+                  {t('models.form.signInWith', { label: m.label })}
                 </Button>
               ))}
             </div>
           ) : flow.kind === 'auto' ? (
             <div className="flex items-center justify-between gap-2" aria-live="polite">
               <p className="flex items-center gap-2 text-xs text-muted">
-                <Loader2 size={13} className="animate-spin" /> Completa el inicio de sesión en el navegador…
+                <Loader2 size={13} className="animate-spin" /> {t('models.form.finishInBrowser')}
               </p>
               <Button size="sm" variant="ghost" onClick={cancelFlow}>
-                Cancelar
+                {t('models.form.cancel')}
               </Button>
             </div>
           ) : (
@@ -208,7 +210,7 @@ export function ProviderKeyForm({
             >
               {flow.instructions && <p className="text-xs text-muted">{flow.instructions}</p>}
               <div className="grid grid-cols-[1fr_auto] items-end gap-2 @md:grid-cols-[1fr_auto_auto]">
-                <Field label="Código de autorización" className="col-span-2 @md:col-span-1">
+                <Field label={t('models.form.authCode')} className="col-span-2 @md:col-span-1">
                   <TextInput
                     autoComplete="off"
                     value={flow.code}
@@ -217,10 +219,10 @@ export function ProviderKeyForm({
                   />
                 </Field>
                 <Button variant="primary" type="submit" disabled={flow.submitting || !flow.code.trim()}>
-                  {flow.submitting ? <Loader2 size={14} className="animate-spin" /> : null} Confirmar
+                  {flow.submitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('models.form.confirm')}
                 </Button>
                 <Button variant="ghost" onClick={cancelFlow}>
-                  Cancelar
+                  {t('models.form.cancel')}
                 </Button>
               </div>
             </form>
@@ -232,8 +234,8 @@ export function ProviderKeyForm({
 
       <p className="mt-2 text-[11px] text-subtle">
         {target && !supportsApi && oauth.length === 0
-          ? `Este proveedor sólo admite un inicio de sesión que ${APP_NAME} todavía no puede hacer: elige otro proveedor.`
-          : `La clave se guarda solo para ${APP_NAME}, en su propio almacén de credenciales (no se comparte con el CLI de OpenCode).`}
+          ? t('models.form.loginOnly', { app: APP_NAME })
+          : t('models.form.keyStoredNote', { app: APP_NAME })}
       </p>
     </Card>
   )

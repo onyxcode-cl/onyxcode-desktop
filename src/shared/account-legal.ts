@@ -4,6 +4,7 @@
  * el titular debe revisarlos (idealmente con un abogado) antes de activar las cuentas.
  * La versión larga vive en docs/PRIVACIDAD-BORRADOR.md y docs/TERMINOS-BORRADOR.md: mantener ambas al día.
  */
+import { es } from './i18n/es'
 
 export interface LegalSection {
   heading: string
@@ -17,12 +18,13 @@ export interface LegalDoc {
 
 export const LEGAL_DRAFT_NOTICE = 'Borrador sin revisar: el titular de la app y un abogado deben validarlo antes de publicarlo.'
 
-/** Frase corta sobre qué datos se guardan (debajo de los botones de acceso). */
-export const ACCOUNT_DATA_SENTENCE =
-  'Guardamos tu correo para gestionar tu cuenta y contar usuarios. Tus conversaciones y claves de IA siguen en tu Mac.'
-
-/** Nota única para quien ya usaba la app antes de las cuentas. */
-export const EXISTING_USER_NOTE = 'Tus conversaciones y claves de IA siguen en tu Mac.'
+/**
+ * Frase corta sobre qué datos se guardan (debajo de los botones de acceso) y nota para quien ya usaba la app.
+ * Versión en español; la interfaz usa `t('account.dataSentence')` / `t('account.existingUserNote')`.
+ * Los borradores legales de abajo se quedan SOLO en español (pendientes de revisión de un abogado chileno).
+ */
+export const ACCOUNT_DATA_SENTENCE = es['account.dataSentence']
+export const EXISTING_USER_NOTE = es['account.existingUserNote']
 
 export const PRIVACY_DRAFT: LegalDoc = {
   title: 'Política de privacidad (borrador)',

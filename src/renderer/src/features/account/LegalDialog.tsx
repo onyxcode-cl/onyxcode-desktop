@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { LEGAL_DRAFT_NOTICE, type LegalDoc } from '@shared/account-legal'
+import { useT } from '../../lib/i18n'
 import { IconButton } from '../../components/IconButton'
 
 /** Muestra el texto del borrador local cuando aún no hay URL publicada. */
 export function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }): React.JSX.Element {
+  const t = useT()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     ref.current?.focus()
@@ -36,7 +38,7 @@ export function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => vo
             </h3>
             <p className="mt-1 text-xs text-warning">{LEGAL_DRAFT_NOTICE}</p>
           </div>
-          <IconButton label="Cerrar" onClick={onClose}>
+          <IconButton label={t('account.legal.close')} onClick={onClose}>
             <X size={16} />
           </IconButton>
         </header>

@@ -15,12 +15,22 @@ import type {
   BrowserResponse,
   BrowserSitesState
 } from '@shared/ipc-browser'
+import { t as tr, getLang } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
+import { useT } from '../../../lib/i18n'
 
-const PRODUCT_LABEL: Record<BrowserProduct, string> = { code: 'Code', tasks: MODE_LABELS.tasks }
+/** Nombre visible del producto (se lee al usarse: sigue el idioma activo). */
+const PRODUCT_LABEL: Record<BrowserProduct, string> = {
+  get code() {
+    return MODE_LABELS.code
+  },
+  get tasks() {
+    return MODE_LABELS.tasks
+  }
+}
 
 function hasBrowserBridge(): boolean {
   return !!(window as unknown as { api?: { browser?: unknown } }).api?.browser
@@ -35,7 +45,7 @@ async function bw<C extends BrowserInvokeChannel>(
   ...args: BrowserRequest<C> extends void ? [] : [req: BrowserRequest<C>]
 ): Promise<BrowserResponse<C>> {
   const api = getBrowserApi()
-  if (!api) throw new Error('El puente del navegador no está disponible (falta window.api.browser en el preload).')
+  if (!api) throw new Error(tr('misc.browser.noBridge'))
   return api.invoke(channel, ...args)
 }
 
@@ -46,6 +56,7 @@ function onBrowser<C extends BrowserEventChannel>(channel: C, listener: (payload
 }
 
 export function BrowserSection(): React.JSX.Element {
+  const t = useT()
   const [sitesState, setSitesState] = useState<BrowserSitesState | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +72,7 @@ export function BrowserSection(): React.JSX.Element {
   if (!hasBrowserBridge()) {
     return (
       <div>
-        <SectionHeader title="Navegador" description="Solo disponible en la app de escritorio." />
+        <SectionHeader title={t('misc.browser.title')} description={t('misc.desktopOnly')} />
       </div>
     )
   }
@@ -85,9 +96,9 @@ export function BrowserSection(): React.JSX.Element {
 
   const clearData = async (product: BrowserProduct): Promise<void> => {
     const ok = await confirmDialog({
-      title: '¿Borrar los datos del navegador integrado?',
-      message: `Se borrarán las cookies, sesiones e historial del navegador integrado de ${PRODUCT_LABEL[product]}. No se puede deshacer.`,
-      confirmLabel: 'Borrar',
+      title: t('misc.browser.confirmTitle'),
+      message: t('misc.browser.confirmMessage', { product: PRODUCT_LABEL[product] }),
+      confirmLabel: t('misc.browser.confirmBtn'),
       danger: true
     })
     if (!ok) return
@@ -98,33 +109,29 @@ export function BrowserSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader title="Navegador" description="Deja que el agente navegue con el navegador integrado en la propia ventana." />
+      <SectionHeader title={t('misc.browser.title')} description={t('misc.browser.desc')} />
 
       {sitesState?.policyDisabled && (
         <div role="status" className="mb-5 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
           <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0 text-muted">
-            <div className="text-sm font-medium text-fg">Gestionado por tu organización</div>
-            <p className="mt-0.5">Tu organización desactivó el navegador integrado.</p>
+            <div className="text-sm font-medium text-fg">{t('misc.managedTitle')}</div>
+            <p className="mt-0.5">{t('misc.browser.orgOff')}</p>
           </div>
         </div>
       )}
 
-      <SubTitle>Navegador integrado</SubTitle>
+      <SubTitle>{t('misc.browser.builtIn')}</SubTitle>
       <Card>
         {products.map((product) => (
           <Row
             key={product}
             label={
               <span className="flex items-center gap-2">
-                <Globe2 size={14} className="text-accent" /> Permitir que el agente use el navegador en {PRODUCT_LABEL[product]}
+                <Globe2 size={14} className="text-accent" /> {t('misc.browser.allow', { product: PRODUCT_LABEL[product] })}
               </span>
             }
-            description={
-              product === 'tasks'
-                ? 'Disponible en Sandbox y en Control total, con permiso previo por sitio. Desactivado por defecto.'
-                : 'El agente pide permiso antes de abrir cada sitio nuevo. Desactivado por defecto.'
-            }
+            description={product === 'tasks' ? t('misc.browser.tasksDesc') : t('misc.browser.codeDesc')}
           >
             {busy === `agent:${product}` ? (
               <Loader2 size={14} className="animate-spin text-muted" />
@@ -132,7 +139,7 @@ export function BrowserSection(): React.JSX.Element {
               <Toggle
                 checked={sitesState?.prefs.agentEnabled[product] === true}
                 onChange={(v) => toggleAgentEnabled(product, v)}
-                label={`Permitir que el agente use el navegador en ${PRODUCT_LABEL[product]}`}
+                label={t('misc.browser.allow', { product: PRODUCT_LABEL[product] })}
                 disabled={!hasBrowserBridge() || sitesState?.policyDisabled}
               />
             )}
@@ -145,19 +152,16 @@ export function BrowserSection(): React.JSX.Element {
         const denied = sitesState?.denied[product] ?? []
         return (
           <div key={product}>
-            <SubTitle>{PRODUCT_LABEL[product]} · Sitios con «Permitir siempre»</SubTitle>
+            <SubTitle>{t('misc.browser.alwaysTitle', { product: PRODUCT_LABEL[product] })}</SubTitle>
             <Card>
               {sites.length === 0 ? (
-                <Row
-                  label="Ninguno todavía"
-                  description="Se añaden desde la tarjeta de aprobación cuando el agente pide abrir un sitio nuevo."
-                />
+                <Row label={t('misc.browser.none')} description={t('misc.browser.noneDesc')} />
               ) : (
                 sites.map((s) => (
                   <Row
                     key={s.site}
                     label={<span className="font-mono">{s.site}</span>}
-                    description={new Date(s.addedAt).toLocaleDateString('es-CL')}
+                    description={new Date(s.addedAt).toLocaleDateString(getLang() === 'en' ? 'en-US' : 'es-CL')}
                   >
                     <button
                       type="button"
@@ -165,7 +169,8 @@ export function BrowserSection(): React.JSX.Element {
                       disabled={busy === `site:${product}:${s.site}`}
                       className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
                     >
-                      {busy === `site:${product}:${s.site}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Quitar
+                      {busy === `site:${product}:${s.site}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}{' '}
+                      {t('misc.remove')}
                     </button>
                   </Row>
                 ))
@@ -174,7 +179,7 @@ export function BrowserSection(): React.JSX.Element {
 
             {denied.length > 0 && (
               <>
-                <SubTitle>{PRODUCT_LABEL[product]} · Sitios denegados</SubTitle>
+                <SubTitle>{t('misc.browser.deniedTitle', { product: PRODUCT_LABEL[product] })}</SubTitle>
                 <Card>
                   {denied.map((site) => (
                     <Row key={site} label={<span className="font-mono">{site}</span>}>
@@ -184,7 +189,8 @@ export function BrowserSection(): React.JSX.Element {
                         disabled={busy === `deny:${product}:${site}`}
                         className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-accent hover:bg-hover disabled:opacity-50"
                       >
-                        {busy === `deny:${product}:${site}` ? <Loader2 size={12} className="animate-spin" /> : null} Permitir de nuevo
+                        {busy === `deny:${product}:${site}` ? <Loader2 size={12} className="animate-spin" /> : null}{' '}
+                        {t('misc.browser.allowAgain')}
                       </button>
                     </Row>
                   ))}
@@ -195,13 +201,10 @@ export function BrowserSection(): React.JSX.Element {
         )
       })}
 
-      <SubTitle>Orígenes locales aprobados</SubTitle>
+      <SubTitle>{t('misc.browser.localTitle')}</SubTitle>
       <Card>
         {(sitesState?.localOrigins.length ?? 0) === 0 ? (
-          <Row
-            label="Ninguno todavía"
-            description="Servidores de desarrollo (localhost:PUERTO) que aprobaste para que el agente los abra."
-          />
+          <Row label={t('misc.browser.none')} description={t('misc.browser.localDesc')} />
         ) : (
           sitesState?.localOrigins.map((origin) => (
             <Row key={origin} label={<span className="font-mono">{origin}</span>}>
@@ -211,20 +214,20 @@ export function BrowserSection(): React.JSX.Element {
                 disabled={busy === `origin:${origin}`}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
               >
-                {busy === `origin:${origin}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Quitar
+                {busy === `origin:${origin}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} {t('misc.remove')}
               </button>
             </Row>
           ))
         )}
       </Card>
 
-      <SubTitle>Datos del navegador integrado</SubTitle>
+      <SubTitle>{t('misc.browser.dataTitle')}</SubTitle>
       <Card>
         {products.map((product) => (
           <Row
             key={product}
-            label={`Borrar datos — ${PRODUCT_LABEL[product]}`}
-            description="Borra cookies, sesiones e historial del perfil integrado de este producto. Se rechaza si una tarea lo está usando."
+            label={t('misc.browser.deleteData', { product: PRODUCT_LABEL[product] })}
+            description={t('misc.browser.deleteDataDesc')}
           >
             <button
               type="button"
@@ -232,7 +235,8 @@ export function BrowserSection(): React.JSX.Element {
               disabled={busy === `clearData:${product}`}
               className="flex items-center gap-1.5 rounded-lg border border-danger/30 px-2.5 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
             >
-              {busy === `clearData:${product}` ? <Loader2 size={13} className="animate-spin" /> : <Eraser size={13} />} Borrar datos
+              {busy === `clearData:${product}` ? <Loader2 size={13} className="animate-spin" /> : <Eraser size={13} />}{' '}
+              {t('misc.browser.deleteDataBtn')}
             </button>
           </Row>
         ))}

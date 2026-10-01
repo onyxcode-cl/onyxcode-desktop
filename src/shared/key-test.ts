@@ -2,6 +2,7 @@
  * «Probar clave»: resultado de comprobar una clave de API guardada contra su proveedor y textos para
  * mostrarlo. La prueba corre en main (la clave nunca llega al renderer); aquí solo viaja el estado.
  */
+import { t } from './i18n'
 
 export type KeyTestStatus =
   | 'ok'
@@ -36,78 +37,60 @@ export interface KeyTestText {
   message: string
 }
 
-/** Textos en español de cada resultado. No incluyen nunca la clave (el resultado no la lleva). */
+/** Textos de cada resultado (en el idioma activo). No incluyen nunca la clave (el resultado no la lleva). */
 export function keyTestText(r: Pick<KeyTestResult, 'status' | 'httpStatus' | 'latencyMs'>, providerName: string): KeyTestText {
+  const provider = providerName
+  const http = r.httpStatus ? t('models.keyTest.httpSuffix', { status: r.httpStatus }) : ''
   switch (r.status) {
     case 'ok':
       return {
         tone: 'ok',
-        title: r.latencyMs === null ? 'Funciona' : `Funciona · ${r.latencyMs} ms`,
-        message: `${providerName} aceptó la clave.`
+        title: r.latencyMs === null ? t('models.keyTest.ok.title') : t('models.keyTest.ok.titleMs', { ms: r.latencyMs }),
+        message: t('models.keyTest.ok.message', { provider })
       }
     case 'invalid':
-      return {
-        tone: 'error',
-        title: 'Clave no válida',
-        message: `${providerName} rechazó la clave: puede estar mal copiada, revocada o ser de otra cuenta. Usa «Cambiar clave».`
-      }
+      return { tone: 'error', title: t('models.keyTest.invalid.title'), message: t('models.keyTest.invalid.message', { provider }) }
     case 'forbidden':
-      return {
-        tone: 'error',
-        title: 'Sin permiso',
-        message: `${providerName} reconoce la clave pero no le da permiso (HTTP 403). Revisa sus permisos, la región o el plan en el panel del proveedor.`
-      }
+      return { tone: 'error', title: t('models.keyTest.forbidden.title'), message: t('models.keyTest.forbidden.message', { provider }) }
     case 'rate-limited':
       return {
         tone: 'warn',
-        title: 'Límite de uso alcanzado',
-        message: `${providerName} pide esperar un rato antes de volver a usar esta clave (HTTP 429). La clave parece válida.`
+        title: t('models.keyTest.rateLimited.title'),
+        message: t('models.keyTest.rateLimited.message', { provider })
       }
     case 'no-credit':
-      return {
-        tone: 'warn',
-        title: 'Sin saldo',
-        message: `${providerName} indica que la cuenta no tiene saldo o requiere un pago (HTTP 402).`
-      }
+      return { tone: 'warn', title: t('models.keyTest.noCredit.title'), message: t('models.keyTest.noCredit.message', { provider }) }
     case 'offline':
-      return { tone: 'warn', title: 'Sin conexión a internet', message: 'No hay conexión. Revisa tu red y vuelve a probar.' }
+      return { tone: 'warn', title: t('models.keyTest.offline.title'), message: t('models.keyTest.offline.message') }
     case 'unreachable':
       return {
         tone: 'warn',
-        title: 'No se pudo contactar',
-        message: `Hay internet, pero no se pudo llegar a ${providerName}. Puede ser un proxy, un firewall, un certificado o un problema del proveedor.`
+        title: t('models.keyTest.unreachable.title'),
+        message: t('models.keyTest.unreachable.message', { provider })
       }
     case 'provider-down':
       return {
         tone: 'warn',
-        title: 'El proveedor tiene problemas',
-        message: `${providerName} respondió con un error de su lado${r.httpStatus ? ` (HTTP ${r.httpStatus})` : ''}. Tu clave no es el problema: prueba de nuevo más tarde.`
+        title: t('models.keyTest.providerDown.title'),
+        message: t('models.keyTest.providerDown.message', { provider, http })
       }
     case 'timeout':
-      return { tone: 'warn', title: 'Tardó demasiado', message: `${providerName} no respondió en 10 segundos. Vuelve a probar.` }
+      return { tone: 'warn', title: t('models.keyTest.timeout.title'), message: t('models.keyTest.timeout.message', { provider }) }
     case 'unexpected':
       return {
         tone: 'warn',
-        title: 'Respuesta inesperada',
-        message: `${providerName} respondió algo que no se esperaba${r.httpStatus ? ` (HTTP ${r.httpStatus})` : ''}. No se puede saber si la clave sirve.`
+        title: t('models.keyTest.unexpected.title'),
+        message: t('models.keyTest.unexpected.message', { provider, http })
       }
     case 'not-stored':
-      return {
-        tone: 'info',
-        title: 'No hay clave guardada',
-        message: `${providerName} no usa una clave guardada en este programa (por ejemplo, viene de una variable de entorno). Guarda una clave con «Cambiar clave» para poder probarla.`
-      }
+      return { tone: 'info', title: t('models.keyTest.notStored.title'), message: t('models.keyTest.notStored.message', { provider }) }
     case 'oauth':
-      return {
-        tone: 'info',
-        title: 'Conectado con inicio de sesión',
-        message: `${providerName} está conectado con tu cuenta, no con una clave: no hay nada que probar.`
-      }
+      return { tone: 'info', title: t('models.keyTest.oauth.title'), message: t('models.keyTest.oauth.message', { provider }) }
     case 'unsupported':
       return {
         tone: 'info',
-        title: 'No se puede probar',
-        message: `No se puede probar sin gastar. Envía un mensaje en Chat con ${providerName} para comprobarlo.`
+        title: t('models.keyTest.unsupported.title'),
+        message: t('models.keyTest.unsupported.message', { provider })
       }
   }
 }

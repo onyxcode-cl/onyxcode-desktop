@@ -256,3 +256,20 @@ Tests: `shared/mcp-catalog.test.ts` (ids/nombres únicos y NAME_RE, solo https/r
 Descartado/ajustado respecto al plan: Atlassian usa `https://mcp.atlassian.com/v2/mcp` (su documentación ya publica v2 y anuncia que v1 pasará a v2 el 1-mar-2027). Los cuatro servicios OAuth (Linear, Notion, Sentry, Atlassian)
 registran cliente dinámicamente con el binario real (devuelven URL de autorización; el inicio de sesión completo con cuenta real no se probó). Limitaciones: en Tareas no están disponibles (sandbox sin OAuth y sin
 host añadido); el token queda en texto plano en el archivo de la app como en el flujo manual; las fichas no se actualizan solas (cambian con la app; `MCP_CATALOG_VERSION`).
+
+
+## F8-B25 — Idioma: inglés (beta) con selector
+
+Ajustes › General › Idioma (Sistema / Español / English (beta)). Con «Sistema», un sistema con idioma preferido `en-*` da inglés y cualquier otro español; una instalación que ya existía (con el asistente terminado) y no
+tiene `language` se queda en español, las nuevas siguen al sistema. El cambio es en vivo (sin reiniciar): `<html lang>`, fechas con el idioma activo, bandeja y menú de la app reconstruidos. Infraestructura sin dependencias
+en `src/shared/i18n` (`Lang`, `LangPref`, `resolveLang`, `migrateLanguage`, `format` con `{nombre}`, plurales `{one,other}` con `Intl.PluralRules`; `es/*.ts` es la base `as const` y `en/*.ts` usa
+`satisfies Messages<typeof es.x>`: el compilador exige las mismas claves). Renderer: `lib/i18n.ts` (`useLang`, `useT()`, `useLocale()`, caché en localStorage para no parpadear) y `LangRoot`, que vuelve a pintar el árbol al cambiar
+sin remontarlo. Main: `src/main/i18n.ts`. `labels.ts` pasa a getters (`MODE_LABELS`, `UI_LABELS`) que leen el idioma activo; con `es` el producto queda igual (snapshots y tests sin cambios).
+Alcance migrado: barra lateral, modos, paleta, avisos (`ServerBanner`, `UpdateNotice`, `EngineNotice`, `NoAiBanner`), Ajustes completo (General, Modelos y «Probar clave», MCP y catálogo, Tareas, Red, Control del Mac, Modo auto,
+Navegador, Uso, Atajos, Diagnóstico, Acerca de, Cuenta), asistente, pantalla de acceso, Chat, componentes comunes y `ConfirmDialog`, `shared/ai-errors.ts`, `lib/update-notice.ts`, `lib/engine-notice.ts`, bandeja y menú.
+Guardias: `visible-terms` ya escanea `src/shared` (en inglés prohíbe Artifact, computer use, Teach mode, Dispatch y Claude; usar Preview, Mac control, Guide mode) con la excepción de Acerca de ampliada a «not affiliated with
+OpenCode or Anthropic»; `i18n.test.ts` (mismas claves, sin vacíos, mismos marcadores, sin claves repetidas entre áreas, `resolveLang`, migración, plurales); `i18n-coverage.test.ts` (lista MIGRATED sin JSX ni literales en español
+fuera de los diccionarios; crece por tanda); `tray.i18n.test.ts`; esquema `settings:set`; E2E `i18n.e2e.ts` (arranque en inglés, cambio en vivo a Español y de vuelta, asistente, capturas con `I18N_SHOTS_DIR`).
+Fuera de alcance (T4b/T4c): Code, Tareas, Rutinas, navegador integrado, overlay/píldora/Quick Entry y los errores que construye main (siguen en español, incluso con la interfaz en inglés); los prompts de agente
+(`resources/opencode/*.md`); los borradores legales (`PRIVACY_DRAFT`/`TERMS_DRAFT`, pendientes de revisión legal); los roles estándar del menú de macOS (los traduce Electron según la configuración regional).
+

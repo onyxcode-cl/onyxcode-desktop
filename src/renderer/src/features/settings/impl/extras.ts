@@ -5,6 +5,7 @@
  * el modelo configurado por modo (con fallback a `settings.defaultModel`).
  */
 import { create } from 'zustand'
+import { t } from '@shared/i18n'
 import { DEFAULT_EXTRAS_PREFS, type ExtrasPrefs, type ExtrasPrefsState, type ModelMode } from '@shared/ipc-extras'
 import type { ModelRef } from '@shared/types'
 import { useSettings } from '../../../stores/settings'
@@ -30,7 +31,7 @@ export const useExtrasPrefs = create<ExtrasPrefsStore>((set, get) => ({
   init: () => {
     const extras = getExtras()
     if (!extras) {
-      set({ error: 'Puente "extras" no disponible', loaded: true })
+      set({ error: t('settings.extras.bridgeMissing'), loaded: true })
       return () => undefined
     }
     initCount++

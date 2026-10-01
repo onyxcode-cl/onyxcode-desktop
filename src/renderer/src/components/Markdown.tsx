@@ -3,6 +3,8 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Check, Copy } from 'lucide-react'
+import { t } from '@shared/i18n'
+import { useT } from '../lib/i18n'
 import { ArtifactButton, looksRenderable } from './artifacts/ArtifactButton'
 
 function textOf(node: ReactNode): string {
@@ -68,7 +70,7 @@ function languageOf(children: ReactNode): string | null {
 /** Botón de copiar reutilizable (código, mensajes). */
 export function CopyButton({
   text,
-  label = 'Copiar',
+  label,
   className = '',
   showLabel = false,
   size = 13
@@ -79,6 +81,8 @@ export function CopyButton({
   showLabel?: boolean
   size?: number
 }): React.JSX.Element {
+  const tr = useT()
+  const labelText = label ?? tr('common.copy')
   const [copied, setCopied] = useState(false)
   const copy = (): void => {
     const value = typeof text === 'function' ? text() : text
@@ -91,12 +95,12 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      title={copied ? 'Copiado' : label}
-      aria-label={label}
+      title={copied ? tr('common.copied') : labelText}
+      aria-label={labelText}
       className={`no-drag inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-muted transition-colors hover:bg-hover hover:text-fg ${className}`}
     >
       {copied ? <Check size={size} className="text-success" /> : <Copy size={size} />}
-      {showLabel && <span>{copied ? 'Copiado' : label}</span>}
+      {showLabel && <span>{copied ? tr('common.copied') : labelText}</span>}
     </button>
   )
 }
@@ -109,9 +113,9 @@ function CodeBlock({ children }: { children?: ReactNode }): React.JSX.Element {
   return (
     <div className="code-block">
       <div className="code-block-header">
-        <span className="flex-1 truncate font-medium">{lang ?? 'Código'}</span>
+        <span className="flex-1 truncate font-medium">{lang ?? t('common.code')}</span>
         {renderable && <ArtifactButton html={code} className="py-0.5 text-[11.5px]" />}
-        <CopyButton text={() => textOf(children)} label="Copiar" showLabel size={12} className="text-[11.5px]" />
+        <CopyButton text={() => textOf(children)} showLabel size={12} className="text-[11.5px]" />
       </div>
       <pre>{children}</pre>
     </div>

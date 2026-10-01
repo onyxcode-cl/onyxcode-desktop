@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { ReasoningPart } from '@opencode-ai/sdk/v2/client'
 import { Brain, ChevronRight, Lightbulb } from 'lucide-react'
+import { t } from '@shared/i18n'
+import { useLang } from '../../lib/i18n'
 
 /** Etiqueta del bloque de razonamiento: en vivo, con duración (mín. 1 s) o genérica. */
 export function reasoningLabel(part: Pick<ReasoningPart, 'time'>, live: boolean): string {
-  if (live && !part.time.end) return 'Razonando…'
+  if (live && !part.time.end) return t('chat.reasoning.live')
   const seconds = part.time.end ? Math.max(1, Math.round((part.time.end - part.time.start) / 1000)) : null
-  return seconds ? `Razonó durante ${seconds} s` : 'Razonamiento'
+  return seconds ? t('chat.reasoning.seconds', { seconds }) : t('chat.reasoning.generic')
 }
 
 /** Razonamiento plegable. `chat`: bombilla dorada con shimmer; `code`: cerebro con pulso. */
@@ -19,6 +21,7 @@ export function Reasoning({
   live: boolean
   variant: 'chat' | 'code'
 }): React.JSX.Element | null {
+  useLang((s) => s.lang) // re-pinta al cambiar de idioma
   const [open, setOpen] = useState(false)
   if (!part.text.trim()) return null
   const thinking = live && !part.time.end

@@ -19,6 +19,7 @@ import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
 import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded-browser/service'
 import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './security/app-protocol'
+import { initMainI18n } from './i18n'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
 import { bootMarkers, startBoot } from './update/boot'
@@ -115,6 +116,7 @@ function start(): void {
     applyE2eHeadless()
     startBoot()
     handleAppScheme()
+    initMainI18n()
     installWebSecurity()
     electronApp.setAppUserModelId(APP_ID)
     app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))

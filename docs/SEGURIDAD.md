@@ -647,6 +647,14 @@ limpia entrada, regla `ask` (solo si la puso la app) y procedencia.
 autorización), el uso real de las herramientas con un modelo, y que un token real de GitHub conecte (la URL responde 401 sin credencial y con un token inválido; no se probó con uno válido). Cambios futuros de URL o de documentación de los
 proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 
+## 3 undecies. Idioma de la interfaz (español / inglés beta)
+
+- Superficie nueva mínima: el ajuste `language` (`'system' | 'es' | 'en'`) viaja por el canal ya existente `settings:set` (esquema `literal('system','es','en')`; cualquier otro valor se rechaza y `normalize` lo devuelve a `'system'`). **No hay canales IPC nuevos ni entradas en `CHANNEL_ROLES`.**
+- Los diccionarios (`src/shared/i18n`) son datos estáticos del paquete: no se descarga ni se ejecuta nada y no se interpreta HTML (los textos se pintan como texto de React). `format()` solo sustituye `{nombre}` por valores del propio código.
+- Los preloads secundarios no importan el módulo de idioma (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a `main`).
+- Main usa el idioma solo para la bandeja y el menú de la app (`src/main/i18n.ts`); no cambia reglas de seguridad (CSP, `webRequest`, navegación). Las etiquetas de los roles estándar del menú (Archivo, Edición, Ventana) las pone Electron según la configuración regional del sistema.
+- Los prompts de agente (`resources/opencode/*.md`) y los mensajes de error que construye main (T4c) siguen en español.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

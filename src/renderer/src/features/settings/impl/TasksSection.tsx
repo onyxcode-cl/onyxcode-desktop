@@ -7,7 +7,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FolderPlus, Loader2, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 import {
-  FOLDER_MODE_LABEL_ES,
   type TasksFolder,
   type TasksNotifyPrefs,
   type TasksPermissionRule,
@@ -16,6 +15,7 @@ import {
   type ManagedPolicy,
   type TrustedFolder
 } from '@shared/ipc-tasks'
+import { getLang, t as tr, type MsgKey } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
@@ -32,9 +32,20 @@ import {
 } from '../../tasks/impl/store'
 import { Badge, Card, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
+import { useT } from '../../../lib/i18n'
 import { isSubmitKey } from '../../../lib/textarea'
 
 // ───────────────────────────── Helpers puros ─────────────────────────────
+
+/** Idioma de los números: `es-CL` en español (como siempre) y `en-US` en inglés. */
+function numberLocale(): string {
+  return getLang() === 'en' ? 'en-US' : 'es-CL'
+}
+
+/** Etiqueta del modo de acceso de una carpeta. */
+function folderModeLabel(mode: FolderAccessMode): string {
+  return tr(mode === 'rw' ? 'tasksSettings.folderMode.rw' : 'tasksSettings.folderMode.ro')
+}
 
 /** Tamaño legible en español (base 1024): "0 B", "512 KB", "1,4 GB". */
 export function formatBytes(bytes: number): string {
@@ -47,18 +58,18 @@ export function formatBytes(bytes: number): string {
     i++
   }
   const digits = i === 0 || v >= 100 ? 0 : 1
-  return `${v.toLocaleString('es-CL', { maximumFractionDigits: digits })} ${units[i]}`
+  return `${v.toLocaleString(numberLocale(), { maximumFractionDigits: digits })} ${units[i]}`
 }
 
 /** Estado de un servidor vivo: `idleSince` null = con tareas en curso. */
 export function formatIdle(idleSince: number | null, now: number): string {
-  if (idleSince === null) return 'En uso'
+  if (idleSince === null) return tr('tasksSettings.idle.inUse')
   const min = Math.floor(Math.max(0, now - idleSince) / 60_000)
-  if (min < 1) return 'Inactivo hace menos de 1 min'
-  if (min < 60) return `Inactivo hace ${min} min`
+  if (min < 1) return tr('tasksSettings.idle.lessThanMin')
+  if (min < 60) return tr('tasksSettings.idle.min', { min })
   const h = Math.floor(min / 60)
   const m = min % 60
-  return m === 0 ? `Inactivo hace ${h} h` : `Inactivo hace ${h} h ${m} min`
+  return m === 0 ? tr('tasksSettings.idle.h', { h }) : tr('tasksSettings.idle.hm', { h, m })
 }
 
 /** Acota a un entero en [min, max]; si no es un número, devuelve `fallback`. */
@@ -102,12 +113,12 @@ export function policyLocks(policy: ManagedPolicy | null | undefined): PolicyLoc
 /** Frases que resumen las restricciones activas de la política (para el aviso). */
 export function policySummary(locks: PolicyLocks): string[] {
   const out: string[] = []
-  if (locks.fullAccess) out.push(`${TASKS_TERMS.fullControl} está desactivado.`)
-  if (locks.allowedRoots.length > 0) out.push(`Las carpetas solo pueden estar dentro de: ${locks.allowedRoots.join(', ')}.`)
-  if (locks.customHosts) out.push('No se pueden añadir sitios a la red del sandbox.')
-  if (locks.alwaysAllow) out.push('No se pueden recordar permisos con «Siempre permitir».')
-  if (locks.routines) out.push('Las rutinas están desactivadas.')
-  if (locks.maxArchiveDays !== null) out.push(`El archivado automático no puede superar ${locks.maxArchiveDays} días.`)
+  if (locks.fullAccess) out.push(tr('tasksSettings.policy.fullControlOff', { name: TASKS_TERMS.fullControl }))
+  if (locks.allowedRoots.length > 0) out.push(tr('tasksSettings.policy.roots', { roots: locks.allowedRoots.join(', ') }))
+  if (locks.customHosts) out.push(tr('tasksSettings.policy.noHosts'))
+  if (locks.alwaysAllow) out.push(tr('tasksSettings.policy.noAlwaysAllow'))
+  if (locks.routines) out.push(tr('tasksSettings.policy.noRoutines'))
+  if (locks.maxArchiveDays !== null) out.push(tr('tasksSettings.policy.maxArchive', { days: locks.maxArchiveDays }))
   return out
 }
 
@@ -123,7 +134,7 @@ const ARCHIVE_DAYS = [0, 7, 14, 30, 90]
 export function archiveOptions(maxDays: number | null): ArchiveOption[] {
   return ARCHIVE_DAYS.map((value) => ({
     value,
-    label: value === 0 ? 'Nunca' : `${value} días`,
+    label: value === 0 ? tr('tasksSettings.archive.never') : tr('tasksSettings.archive.days', { count: value }),
     disabled: maxDays !== null && (value === 0 || value > maxDays)
   }))
 }
@@ -166,6 +177,7 @@ function EmptyRow({ children }: { children: React.ReactNode }): React.JSX.Elemen
 }
 
 function RemoveButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }): React.JSX.Element {
+  const t = useT()
   return (
     <button
       type="button"
@@ -174,7 +186,7 @@ function RemoveButton({ label, onClick, disabled }: { label: string; onClick: ()
       aria-label={label}
       className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger/10 disabled:pointer-events-none disabled:opacity-40"
     >
-      <Trash2 size={13} /> Quitar
+      <Trash2 size={13} /> {t('tasksSettings.remove')}
     </button>
   )
 }
@@ -219,14 +231,15 @@ function NumberField({
   )
 }
 
-const NOTIFY_ROWS: Array<{ key: keyof TasksNotifyPrefs; label: string; description: string }> = [
-  { key: 'done', label: 'Tarea terminada', description: 'Cuando una tarea en segundo plano termina.' },
-  { key: 'approval', label: 'Necesita tu aprobación', description: 'Cuando una tarea espera un permiso o la aprobación de un plan.' },
-  { key: 'question', label: 'Tiene una pregunta', description: 'Cuando el agente te hace una pregunta y espera tu respuesta.' },
-  { key: 'error', label: 'Falló', description: 'Cuando una tarea termina con un error.' }
+const NOTIFY_ROWS: Array<{ key: keyof TasksNotifyPrefs; label: MsgKey; description: MsgKey }> = [
+  { key: 'done', label: 'tasksSettings.notify.done.label', description: 'tasksSettings.notify.done.desc' },
+  { key: 'approval', label: 'tasksSettings.notify.approval.label', description: 'tasksSettings.notify.approval.desc' },
+  { key: 'question', label: 'tasksSettings.notify.question.label', description: 'tasksSettings.notify.question.desc' },
+  { key: 'error', label: 'tasksSettings.notify.error.label', description: 'tasksSettings.notify.error.desc' }
 ]
 
 export function TasksSection(): React.JSX.Element {
+  const t = useT()
   const bridge = hasTasksBridge()
   const prefs = useTasks((s) => s.prefs)
   const policy = useTasks((s) => s.policy)
@@ -275,12 +288,12 @@ export function TasksSection(): React.JSX.Element {
 
   // Reloj para el tiempo de inactividad de los servidores.
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
   }, [])
 
   if (!bridge) {
-    return <SectionHeader title={MODE_LABELS.tasks} description="Solo disponible en la app de escritorio." />
+    return <SectionHeader title={MODE_LABELS.tasks} description={t('tasksSettings.desktopOnly')} />
   }
 
   // ── Carpetas de confianza ──
@@ -291,15 +304,15 @@ export function TasksSection(): React.JSX.Element {
       if (!picked) return
       const check = await cw('tasks:folders:check', { path: picked })
       if (!check.ok) {
-        fail('trusted', new Error(check.reason ?? 'Esa carpeta no se puede usar.'))
+        fail('trusted', new Error(check.reason ?? t('tasksSettings.trusted.cannotUse')))
         return
       }
       const name = folderLabel(check.normalized)
       if (newMode === 'rw') {
         const ok = await confirmDialog({
-          title: `¿Confiar en «${name}» con escritura?`,
-          message: `Cualquier tarea podrá leer y modificar archivos de ${check.normalized} sin volver a preguntarte. Puedes quitarla de esta lista cuando quieras.`,
-          confirmLabel: 'Confiar'
+          title: t('tasksSettings.trusted.confirmTitle', { name }),
+          message: t('tasksSettings.trusted.confirmMessage', { path: check.normalized }),
+          confirmLabel: t('tasksSettings.trusted.confirmBtn')
         })
         if (!ok) return
       }
@@ -316,9 +329,9 @@ export function TasksSection(): React.JSX.Element {
       .catch((err: unknown) => fail('trusted', err))
   }
 
-  const removeTrusted = (t: TrustedFolder): void => {
+  const removeTrusted = (tf: TrustedFolder): void => {
     clear('trusted')
-    cw('tasks:trusted:remove', { path: t.path })
+    cw('tasks:trusted:remove', { path: tf.path })
       .then(setTrusted)
       .catch((err: unknown) => fail('trusted', err))
   }
@@ -326,10 +339,9 @@ export function TasksSection(): React.JSX.Element {
   // ── Carpetas de trabajo / Control total ──
   const revokeFullControl = async (f: TasksFolder): Promise<void> => {
     const ok = await confirmDialog({
-      title: `¿Revocar ${TASKS_TERMS.fullControl} en «${f.name}»?`,
-      message:
-        'Se detendrá el servidor de Control total de esta carpeta y se perderán las tareas en curso allí. Para volver a usarlo tendrás que concederlo de nuevo.',
-      confirmLabel: 'Revocar',
+      title: t('tasksSettings.work.revokeTitle', { fullControl: TASKS_TERMS.fullControl, name: f.name }),
+      message: t('tasksSettings.work.revokeMessage'),
+      confirmLabel: t('tasksSettings.work.revoke'),
       danger: true
     })
     if (!ok) return
@@ -359,10 +371,9 @@ export function TasksSection(): React.JSX.Element {
   const runClean = async (key: string, name: string, scope: 'cache' | 'all'): Promise<void> => {
     if (scope === 'all') {
       const ok = await confirmDialog({
-        title: `¿Borrar todo el almacenamiento de «${name}»?`,
-        message:
-          'Se borrará el espacio privado de esta carpeta en el sandbox: se pierde el historial de tareas del sandbox, la caché y los archivos temporales. Los archivos de la carpeta en sí no se tocan. No se puede deshacer.',
-        confirmLabel: 'Borrar todo',
+        title: t('tasksSettings.storage.deleteAllTitle', { name }),
+        message: t('tasksSettings.storage.deleteAllMessage'),
+        confirmLabel: t('tasksSettings.storage.deleteAll'),
         danger: true
       })
       if (!ok) return
@@ -380,9 +391,9 @@ export function TasksSection(): React.JSX.Element {
 
   const cleanScreenshots = async (): Promise<void> => {
     const ok = await confirmDialog({
-      title: '¿Borrar las capturas temporales?',
-      message: `Se borran las copias temporales de pantalla del ${TASKS_TERMS.fullControl}. No afecta al historial de las tareas.`,
-      confirmLabel: 'Borrar',
+      title: t('tasksSettings.storage.screenshotsTitle'),
+      message: t('tasksSettings.storage.screenshotsMessage', { fullControl: TASKS_TERMS.fullControl }),
+      confirmLabel: t('tasksSettings.storage.delete'),
       danger: true
     })
     if (!ok) return
@@ -399,10 +410,9 @@ export function TasksSection(): React.JSX.Element {
 
   const cleanRestorePoints = async (): Promise<void> => {
     const ok = await confirmDialog({
-      title: '¿Borrar los puntos de restauración?',
-      message:
-        'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.',
-      confirmLabel: 'Borrar',
+      title: t('tasksSettings.storage.restoreTitle'),
+      message: t('tasksSettings.storage.restoreMessage'),
+      confirmLabel: t('tasksSettings.storage.delete'),
       danger: true
     })
     if (!ok) return
@@ -431,22 +441,20 @@ export function TasksSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader
-        title={MODE_LABELS.tasks}
-        description="Carpetas, permisos, notificaciones, servidores y almacenamiento de las tareas."
-      />
+      <SectionHeader title={MODE_LABELS.tasks} description={t('tasksSettings.header.desc')} />
 
       {locks.managed && (
         <div role="status" className="mb-8 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm">
           <ShieldCheck size={17} className="mt-0.5 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0">
-            <div className="font-medium text-fg">Gestionado por tu organización</div>
+            <div className="font-medium text-fg">{t('tasksSettings.managed.title')}</div>
             <p className="mt-0.5 text-xs leading-relaxed text-muted">
-              Algunos ajustes de las tareas los define tu organización y no se pueden cambiar aquí.
+              {t('tasksSettings.managed.desc')}
               {policy?.source && (
                 <>
                   {' '}
-                  Origen: <code className="font-mono">{policy.source}</code>.
+                  {t('tasksSettings.managed.origin')}
+                  <code className="font-mono">{policy.source}</code>.
                 </>
               )}
             </p>
@@ -462,50 +470,53 @@ export function TasksSection(): React.JSX.Element {
       )}
 
       {/* 1 · Carpetas de confianza */}
-      <Group
-        title={TASKS_TERMS.trustedFolders}
-        description="Todas las tareas pueden usar estas carpetas sin volver a preguntarte. Añade solo carpetas en las que confíes."
-      >
+      <Group title={TASKS_TERMS.trustedFolders} description={t('tasksSettings.trusted.desc')}>
         <Card>
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
             <div className="w-48">
               <Select
                 value={newMode}
                 onChange={(e) => setNewMode(e.target.value as FolderAccessMode)}
-                aria-label="Modo de acceso de la nueva carpeta de confianza"
+                aria-label={t('tasksSettings.trusted.newModeAria')}
               >
-                <option value="ro">{FOLDER_MODE_LABEL_ES.ro}</option>
-                <option value="rw">{FOLDER_MODE_LABEL_ES.rw}</option>
+                <option value="ro">{folderModeLabel('ro')}</option>
+                <option value="rw">{folderModeLabel('rw')}</option>
               </Select>
             </div>
             <Button size="sm" onClick={() => void addTrusted()}>
-              <FolderPlus size={14} /> Añadir carpeta…
+              <FolderPlus size={14} /> {t('tasksSettings.trusted.add')}
             </Button>
             {locks.allowedRoots.length > 0 && (
-              <span className="text-[11px] text-subtle">Solo dentro de: {locks.allowedRoots.join(', ')}</span>
+              <span className="text-[11px] text-subtle">
+                {t('tasksSettings.trusted.onlyInside', { roots: locks.allowedRoots.join(', ') })}
+              </span>
             )}
           </div>
           {trusted === null ? (
-            <EmptyRow>Cargando…</EmptyRow>
+            <EmptyRow>{t('tasksSettings.loading')}</EmptyRow>
           ) : trusted.length === 0 ? (
-            <EmptyRow>No hay carpetas de confianza. Cuando el agente pida una carpeta nueva, podrás marcarla desde su tarjeta.</EmptyRow>
+            <EmptyRow>{t('tasksSettings.trusted.empty')}</EmptyRow>
           ) : (
-            trusted.map((t) => (
-              <Row key={t.path} label={t.name || folderLabel(t.path)} description={<span className="font-mono break-all">{t.path}</span>}>
+            trusted.map((tf) => (
+              <Row
+                key={tf.path}
+                label={tf.name || folderLabel(tf.path)}
+                description={<span className="font-mono break-all">{tf.path}</span>}
+              >
                 <div className="flex items-center gap-2">
                   <div className="w-44">
                     <Select
-                      value={t.mode}
-                      onChange={(e) => setTrustedMode(t.path, e.target.value as FolderAccessMode)}
-                      aria-label={`Modo de acceso de ${t.name || folderLabel(t.path)}`}
+                      value={tf.mode}
+                      onChange={(e) => setTrustedMode(tf.path, e.target.value as FolderAccessMode)}
+                      aria-label={t('tasksSettings.trusted.modeAria', { name: tf.name || folderLabel(tf.path) })}
                     >
-                      <option value="ro">{FOLDER_MODE_LABEL_ES.ro}</option>
-                      <option value="rw">{FOLDER_MODE_LABEL_ES.rw}</option>
+                      <option value="ro">{folderModeLabel('ro')}</option>
+                      <option value="rw">{folderModeLabel('rw')}</option>
                     </Select>
                   </div>
                   <RemoveButton
-                    label={`Quitar ${t.name || folderLabel(t.path)} de las carpetas de confianza`}
-                    onClick={() => removeTrusted(t)}
+                    label={t('tasksSettings.trusted.removeAria', { name: tf.name || folderLabel(tf.path) })}
+                    onClick={() => removeTrusted(tf)}
                   />
                 </div>
               </Row>
@@ -516,23 +527,20 @@ export function TasksSection(): React.JSX.Element {
       </Group>
 
       {/* 2 · Carpetas de trabajo */}
-      <Group
-        title={TASKS_TERMS.workFolders}
-        description={`Las carpetas donde trabajan las tareas. Aquí puedes revocar el ${TASKS_TERMS.fullControl} concedido a una carpeta.`}
-      >
+      <Group title={TASKS_TERMS.workFolders} description={t('tasksSettings.work.desc', { fullControl: TASKS_TERMS.fullControl })}>
         <Card>
           {folders === null ? (
-            <EmptyRow>Cargando…</EmptyRow>
+            <EmptyRow>{t('tasksSettings.loading')}</EmptyRow>
           ) : folders.length === 0 ? (
-            <EmptyRow>Todavía no hay carpetas de trabajo. Añade una desde el selector de carpetas de trabajo.</EmptyRow>
+            <EmptyRow>{t('tasksSettings.work.empty')}</EmptyRow>
           ) : (
             folders.map((f) => (
               <Row key={f.path} label={f.name || folderLabel(f.path)} description={<span className="font-mono break-all">{f.path}</span>}>
                 {f.fullAccess ? (
                   <div className="flex items-center gap-2">
-                    <Badge tone="warn">{TASKS_TERMS.fullControlShort} concedido</Badge>
+                    <Badge tone="warn">{t('tasksSettings.work.granted', { short: TASKS_TERMS.fullControlShort })}</Badge>
                     <Button size="sm" onClick={() => void revokeFullControl(f)}>
-                      Revocar
+                      {t('tasksSettings.work.revoke')}
                     </Button>
                   </div>
                 ) : (
@@ -543,23 +551,18 @@ export function TasksSection(): React.JSX.Element {
           )}
         </Card>
         {locks.fullAccess && (
-          <p className="mt-2 text-xs text-muted">
-            Tu organización ha desactivado el {TASKS_TERMS.fullControl}: no se puede conceder en ninguna carpeta.
-          </p>
+          <p className="mt-2 text-xs text-muted">{t('tasksSettings.work.orgDisabled', { fullControl: TASKS_TERMS.fullControl })}</p>
         )}
         {errors.folders && <p className="mt-2 text-xs text-danger">{errors.folders}</p>}
       </Group>
 
       {/* 3 · Permisos recordados */}
-      <Group
-        title="Permisos recordados"
-        description="Permisos que marcaste con «Siempre permitir», de todas las carpetas. Quitarlos se aplica al reabrir la carpeta."
-      >
+      <Group title={t('tasksSettings.rules.title')} description={t('tasksSettings.rules.desc')}>
         <Card>
           {rules === null ? (
-            <EmptyRow>Cargando…</EmptyRow>
+            <EmptyRow>{t('tasksSettings.loading')}</EmptyRow>
           ) : rulesGrouped.length === 0 ? (
-            <EmptyRow>No hay permisos recordados.</EmptyRow>
+            <EmptyRow>{t('tasksSettings.rules.empty')}</EmptyRow>
           ) : (
             rulesGrouped.map((g) => (
               <div key={g.folder} className="border-b border-border last:border-b-0">
@@ -572,32 +575,30 @@ export function TasksSection(): React.JSX.Element {
                     label={<code className="font-mono text-[12.5px]">{r.permission}</code>}
                     description={<span className="font-mono break-all">{r.pattern}</span>}
                   >
-                    <RemoveButton label={`Quitar el permiso ${r.permission} ${r.pattern}`} onClick={() => removeRule(r)} />
+                    <RemoveButton
+                      label={t('tasksSettings.rules.removeAria', { permission: r.permission, pattern: r.pattern })}
+                      onClick={() => removeRule(r)}
+                    />
                   </Row>
                 ))}
               </div>
             ))
           )}
         </Card>
-        {locks.alwaysAllow && (
-          <p className="mt-2 text-xs text-muted">Tu organización no permite recordar permisos nuevos; los existentes se pueden quitar.</p>
-        )}
+        {locks.alwaysAllow && <p className="mt-2 text-xs text-muted">{t('tasksSettings.rules.orgNoNew')}</p>}
         {errors.rules && <p className="mt-2 text-xs text-danger">{errors.rules}</p>}
       </Group>
 
       {/* 4 · Notificaciones por tipo */}
-      <Group
-        title="Notificaciones por tipo"
-        description="Aplica a las tareas que ocurren en segundo plano. El interruptor general está en General."
-      >
+      <Group title={t('tasksSettings.notify.title')} description={t('tasksSettings.notify.desc')}>
         <Card>
           {NOTIFY_ROWS.map((n) => (
-            <Row key={n.key} label={n.label} description={n.description}>
+            <Row key={n.key} label={t(n.label)} description={t(n.description)}>
               <Toggle
                 checked={prefs?.notify[n.key] ?? true}
                 disabled={!prefs}
                 onChange={(v) => prefs && savePrefs({ notify: { ...prefs.notify, [n.key]: v } }, 'notify')}
-                label={`Notificar: ${n.label}`}
+                label={t('tasksSettings.notify.aria', { label: t(n.label) })}
               />
             </Row>
           ))}
@@ -606,15 +607,12 @@ export function TasksSection(): React.JSX.Element {
       </Group>
 
       {/* 5 · Archivado automático */}
-      <Group
-        title="Archivado automático"
-        description="Archiva las tareas sin actividad. Las tareas fijadas o que esperan tu respuesta no se archivan."
-      >
+      <Group title={t('tasksSettings.archive.title')} description={t('tasksSettings.archive.desc')}>
         <Card>
           <Row
-            label="Archivar tareas tras"
+            label={t('tasksSettings.archive.after')}
             description={
-              archiveOverMax ? `Tu organización limita este ajuste a ${locks.maxArchiveDays} días como máximo.` : 'Por defecto: Nunca.'
+              archiveOverMax ? t('tasksSettings.archive.orgMax', { days: locks.maxArchiveDays ?? 0 }) : t('tasksSettings.archive.default')
             }
           >
             <div className="w-36">
@@ -622,14 +620,16 @@ export function TasksSection(): React.JSX.Element {
                 value={archiveValue}
                 disabled={!prefs}
                 onChange={(e) => savePrefs({ autoArchiveDays: Number(e.target.value) }, 'archive')}
-                aria-label="Archivar tareas tras"
+                aria-label={t('tasksSettings.archive.after')}
               >
                 {archiveOpts.map((o) => (
                   <option key={o.value} value={o.value} disabled={o.disabled}>
                     {o.label}
                   </option>
                 ))}
-                {!ARCHIVE_DAYS.includes(archiveValue) && <option value={archiveValue}>{archiveValue} días</option>}
+                {!ARCHIVE_DAYS.includes(archiveValue) && (
+                  <option value={archiveValue}>{t('tasksSettings.archive.days', { count: archiveValue })}</option>
+                )}
               </Select>
             </div>
           </Row>
@@ -638,39 +638,36 @@ export function TasksSection(): React.JSX.Element {
       </Group>
 
       {/* 6 · Servidores */}
-      <Group
-        title="Servidores"
-        description="Cada carpeta abierta usa un servidor. Los servidores sin tareas se detienen solos; nunca se interrumpe una tarea en curso."
-      >
+      <Group title={t('tasksSettings.servers.title')} description={t('tasksSettings.servers.desc')}>
         <Card>
-          <Row label="Máximo de servidores a la vez" description="Entre 1 y 12. Al superarlo se detiene el servidor ocioso menos usado.">
+          <Row label={t('tasksSettings.servers.max')} description={t('tasksSettings.servers.maxDesc')}>
             <NumberField
               value={prefs?.maxServers ?? 4}
               min={1}
               max={12}
               disabled={!prefs}
-              label="Máximo de servidores a la vez"
+              label={t('tasksSettings.servers.max')}
               onCommit={(v) => savePrefs({ maxServers: v }, 'servers')}
             />
           </Row>
-          <Row label="Detener tras minutos de inactividad" description="0 = no detener nunca. Máximo 1440 (24 h).">
+          <Row label={t('tasksSettings.servers.idle')} description={t('tasksSettings.servers.idleDesc')}>
             <NumberField
               value={prefs?.idleStopMinutes ?? 15}
               min={0}
               max={1440}
               disabled={!prefs}
-              label="Minutos de inactividad antes de detener un servidor"
+              label={t('tasksSettings.servers.idleAria')}
               onCommit={(v) => savePrefs({ idleStopMinutes: v }, 'servers')}
             />
           </Row>
         </Card>
         {errors.servers && <p className="mt-2 text-xs text-danger">{errors.servers}</p>}
-        <div className="mt-3 mb-1.5 text-xs font-medium text-muted">Servidores en marcha</div>
+        <div className="mt-3 mb-1.5 text-xs font-medium text-muted">{t('tasksSettings.servers.running')}</div>
         <Card>
           {activity === null ? (
-            <EmptyRow>Cargando…</EmptyRow>
+            <EmptyRow>{t('tasksSettings.loading')}</EmptyRow>
           ) : servers.length === 0 ? (
-            <EmptyRow>No hay servidores en marcha.</EmptyRow>
+            <EmptyRow>{t('tasksSettings.servers.none')}</EmptyRow>
           ) : (
             servers.map((s) => (
               <Row
@@ -690,44 +687,46 @@ export function TasksSection(): React.JSX.Element {
 
       {/* 7 · Almacenamiento */}
       <Group
-        title="Almacenamiento"
-        description={`Espacio privado que usa cada carpeta en el ${TASKS_TERMS.sandbox.toLowerCase()} (historial de tareas, caché y temporales). Solo se puede limpiar si su servidor está detenido.`}
+        title={t('tasksSettings.storage.title')}
+        description={t('tasksSettings.storage.desc', { sandbox: TASKS_TERMS.sandbox.toLowerCase() })}
       >
         <Card>
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="text-sm">
-              <span className="font-medium">Total</span> <span className="text-muted">{report ? formatBytes(report.totalBytes) : '…'}</span>
+              <span className="font-medium">{t('tasksSettings.storage.total')}</span>{' '}
+              <span className="text-muted">{report ? formatBytes(report.totalBytes) : '…'}</span>
             </div>
             <Button size="sm" variant="ghost" onClick={loadStorage} disabled={storageBusy !== null}>
-              {storageBusy === 'report' ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Actualizar
+              {storageBusy === 'report' ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}{' '}
+              {t('tasksSettings.storage.refresh')}
             </Button>
           </div>
           {report === null ? (
-            <EmptyRow>{storageBusy === 'report' ? 'Calculando…' : 'No se pudo calcular el almacenamiento.'}</EmptyRow>
+            <EmptyRow>{storageBusy === 'report' ? t('tasksSettings.storage.calculating') : t('tasksSettings.storage.failed')}</EmptyRow>
           ) : report.entries.length === 0 ? (
-            <EmptyRow>Aún no hay datos guardados por las tareas.</EmptyRow>
+            <EmptyRow>{t('tasksSettings.storage.empty')}</EmptyRow>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-sidebar/60 text-xs text-muted">
                     <th scope="col" className="px-4 py-2 font-medium">
-                      Carpeta
+                      {t('tasksSettings.storage.colFolder')}
                     </th>
                     <th scope="col" className="px-3 py-2 text-right font-medium">
-                      Total
+                      {t('tasksSettings.storage.colTotal')}
                     </th>
                     <th scope="col" className="px-3 py-2 text-right font-medium">
-                      Caché
+                      {t('tasksSettings.storage.colCache')}
                     </th>
                     <th scope="col" className="px-4 py-2 text-right font-medium">
-                      Acciones
+                      {t('tasksSettings.storage.colActions')}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {report.entries.map((e) => {
-                    const name = e.folder ? folderLabel(e.folder) : 'Carpeta desconocida'
+                    const name = e.folder ? folderLabel(e.folder) : t('tasksSettings.storage.unknown')
                     const busy = storageBusy === `cache:${e.key}` || storageBusy === `all:${e.key}`
                     return (
                       <tr key={e.key} className="border-b border-border last:border-b-0">
@@ -735,7 +734,7 @@ export function TasksSection(): React.JSX.Element {
                           <div className="truncate font-medium" title={e.folder ?? e.key}>
                             {name}
                           </div>
-                          {e.running && <Badge tone="ok">En marcha</Badge>}
+                          {e.running && <Badge tone="ok">{t('tasksSettings.storage.running')}</Badge>}
                         </td>
                         <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums">{formatBytes(e.bytes)}</td>
                         <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted tabular-nums">{formatBytes(e.cacheBytes)}</td>
@@ -744,19 +743,19 @@ export function TasksSection(): React.JSX.Element {
                             <Button
                               size="sm"
                               disabled={e.running || busy || e.cacheBytes === 0}
-                              title={e.running ? 'Detén el servidor para limpiar' : undefined}
+                              title={e.running ? t('tasksSettings.storage.stopToClean') : undefined}
                               onClick={() => void runClean(e.key, name, 'cache')}
                             >
-                              Limpiar caché
+                              {t('tasksSettings.storage.cleanCache')}
                             </Button>
                             <Button
                               size="sm"
                               variant="danger"
                               disabled={e.running || busy}
-                              title={e.running ? 'Detén el servidor para borrar' : undefined}
+                              title={e.running ? t('tasksSettings.storage.stopToDelete') : undefined}
                               onClick={() => void runClean(e.key, name, 'all')}
                             >
-                              Borrar todo
+                              {t('tasksSettings.storage.deleteAll')}
                             </Button>
                           </div>
                         </td>
@@ -768,27 +767,32 @@ export function TasksSection(): React.JSX.Element {
             </div>
           )}
           <Row
-            label="Capturas temporales"
-            description={`Copias de pantalla del ${TASKS_TERMS.fullControl}${report ? ` (${formatBytes(report.screenshotsBytes)})` : ''}. Se borran solas al terminar y al cerrar la app.`}
+            label={t('tasksSettings.storage.screenshots')}
+            description={t('tasksSettings.storage.screenshotsDesc', {
+              fullControl: TASKS_TERMS.fullControl,
+              size: report ? ` (${formatBytes(report.screenshotsBytes)})` : ''
+            })}
           >
             <Button
               size="sm"
               disabled={storageBusy !== null || (report?.screenshotsBytes ?? 0) === 0}
               onClick={() => void cleanScreenshots()}
             >
-              Borrar capturas temporales
+              {t('tasksSettings.storage.screenshotsBtn')}
             </Button>
           </Row>
           <Row
-            label="Puntos de restauración"
-            description={`Copias de los archivos de tus carpetas, guardadas antes de cada mensaje para poder deshacer los cambios${report ? ` (${formatBytes(report.restorePointsBytes)})` : ''}. Se guardan sin cifrar en los datos de la app; se conservan 30 días y 20 por tarea.`}
+            label={t('tasksSettings.storage.restore')}
+            description={t('tasksSettings.storage.restoreDesc', {
+              size: report ? ` (${formatBytes(report.restorePointsBytes)})` : ''
+            })}
           >
             <Button
               size="sm"
               disabled={storageBusy !== null || (report?.restorePointsBytes ?? 0) === 0}
               onClick={() => void cleanRestorePoints()}
             >
-              Borrar puntos de restauración
+              {t('tasksSettings.storage.restoreBtn')}
             </Button>
           </Row>
         </Card>

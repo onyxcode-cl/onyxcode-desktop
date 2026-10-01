@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Brain, Check } from 'lucide-react'
 import type { ModelRef } from '@shared/types'
+import { useT } from '../lib/i18n'
 import { useProviders } from '../stores/providers'
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
 const cap = (v: string): string => v.charAt(0).toUpperCase() + v.slice(1)
 
 export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Element | null {
+  const t = useT()
   const providers = useProviders((s) => s.providers)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -54,7 +56,7 @@ export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Ele
   }
 
   const options: Array<{ id: string | null; label: string }> = [
-    { id: null, label: 'Estándar' },
+    { id: null, label: t('common.effort.standard') },
     ...variants.map((v) => ({ id: v, label: cap(v) }))
   ]
 
@@ -66,21 +68,21 @@ export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Ele
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Esfuerzo del modelo"
+        title={t('common.effort.title')}
         className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors hover:bg-hover hover:text-fg ${
           open ? 'bg-hover text-fg' : 'text-muted'
         }`}
       >
         <Brain size={14} />
-        <span>{variant ? cap(variant) : 'Estándar'}</span>
+        <span>{variant ? cap(variant) : t('common.effort.standard')}</span>
       </button>
       {open && (
         <div
           role="menu"
-          aria-label="Esfuerzo de razonamiento"
+          aria-label={t('common.effort.menu')}
           className="absolute right-0 bottom-full z-50 mb-2 w-48 origin-bottom-right animate-pop-in rounded-xl border border-border bg-elevated p-1 shadow-xl"
         >
-          <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">Esfuerzo de razonamiento</div>
+          <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">{t('common.effort.menu')}</div>
           {options.map((o) => {
             const active = (variant ?? null) === o.id
             return (

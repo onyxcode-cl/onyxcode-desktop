@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import { Check, Loader2, MessagesSquare, MoreHorizontal, Pencil, Search, Trash2, X } from 'lucide-react'
+import { t as tr, localeTag } from '@shared/i18n'
+import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 
 interface Props {
@@ -18,11 +20,11 @@ function groupLabel(ts: number): string {
   const d = new Date(ts)
   const now = new Date()
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  if (ts >= startOfDay) return 'Hoy'
-  if (ts >= startOfDay - 86_400_000) return 'Ayer'
-  if (ts >= startOfDay - 7 * 86_400_000) return 'Últimos 7 días'
-  if (ts >= startOfDay - 30 * 86_400_000) return 'Últimos 30 días'
-  return d.toLocaleDateString('es', { month: 'long', year: 'numeric' })
+  if (ts >= startOfDay) return tr('chat.group.today')
+  if (ts >= startOfDay - 86_400_000) return tr('chat.group.yesterday')
+  if (ts >= startOfDay - 7 * 86_400_000) return tr('chat.group.last7')
+  if (ts >= startOfDay - 30 * 86_400_000) return tr('chat.group.last30')
+  return d.toLocaleDateString(localeTag(), { month: 'long', year: 'numeric' })
 }
 
 function Row({
@@ -40,6 +42,7 @@ function Row({
   onRename: (title: string) => void
   onDelete: () => void
 }): React.JSX.Element {
+  const t = useT()
   const [menu, setMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -64,9 +67,9 @@ function Row({
   }, [menu])
 
   const commit = (): void => {
-    const t = draft.trim()
+    const title = draft.trim()
     setEditing(false)
-    if (t && t !== session.title) onRename(t)
+    if (title && title !== session.title) onRename(title)
   }
 
   if (editing) {
@@ -97,13 +100,13 @@ function Row({
         className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 ${active ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
       >
         {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent" aria-hidden />}
-        <span className="flex-1 truncate group-hover:pr-5">{session.title || 'Sin título'}</span>
+        <span className="flex-1 truncate group-hover:pr-5">{session.title || t('chat.list.untitled')}</span>
         {busy && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
       </button>
       <button
         type="button"
         onClick={() => setMenu((m) => !m)}
-        aria-label="Opciones"
+        aria-label={t('chat.list.options')}
         className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 text-muted transition-opacity hover:bg-active hover:text-fg focus-visible:opacity-100 ${menu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
         <MoreHorizontal size={15} />
@@ -119,7 +122,7 @@ function Row({
             }}
             className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-hover"
           >
-            <Pencil size={14} className="text-muted" /> Renombrar
+            <Pencil size={14} className="text-muted" /> {t('chat.list.rename')}
           </button>
           {confirmDelete ? (
             <div className="flex items-center gap-1 px-2 py-1">
@@ -132,13 +135,13 @@ function Row({
                 }}
                 className="flex-1 rounded-md bg-danger px-2 py-1 text-xs font-medium text-white"
               >
-                Confirmar
+                {t('chat.list.confirm')}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
                 className="rounded-md p-1 text-muted hover:bg-hover"
-                aria-label="Cancelar"
+                aria-label={t('chat.list.cancel')}
               >
                 <X size={14} />
               </button>
@@ -149,7 +152,7 @@ function Row({
               onClick={() => setConfirmDelete(true)}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-danger hover:bg-danger/10"
             >
-              <Trash2 size={14} /> Eliminar
+              <Trash2 size={14} /> {t('chat.list.delete')}
             </button>
           )}
         </div>
@@ -169,10 +172,11 @@ export function ChatSessionList({
   onRename,
   onDelete
 }: Props): React.JSX.Element {
+  const t = useT()
   const [filter, setFilter] = useState('')
   if (loading && sessions.length === 0) {
     return (
-      <div className="flex flex-col gap-1.5 px-1 py-1" aria-busy="true" aria-label="Cargando">
+      <div className="flex flex-col gap-1.5 px-1 py-1" aria-busy="true" aria-label={t('chat.list.loading')}>
         {[70, 55, 80, 45].map((w, i) => (
           <div key={i} className="h-7 animate-pulse rounded-lg bg-hover/70" style={{ width: `${w}%` }} />
         ))}
@@ -183,7 +187,7 @@ export function ChatSessionList({
     return (
       <div className="mx-1 mt-6 flex flex-col items-center gap-2 px-4 text-center">
         <MessagesSquare size={18} className="text-subtle" />
-        <span className="text-xs text-subtle">{emptyText ?? 'No hay conversaciones'}</span>
+        <span className="text-xs text-subtle">{emptyText ?? t('chat.list.emptyDefault')}</span>
       </div>
     )
   }
@@ -205,18 +209,23 @@ export function ChatSessionList({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             onKeyDown={(e) => e.key === 'Escape' && setFilter('')}
-            placeholder="Buscar…"
-            aria-label="Buscar conversaciones"
+            placeholder={t('chat.list.search')}
+            aria-label={t('chat.list.searchLabel')}
             className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-subtle"
           />
           {filter && (
-            <button type="button" onClick={() => setFilter('')} aria-label="Limpiar búsqueda" className="text-subtle hover:text-fg">
+            <button
+              type="button"
+              onClick={() => setFilter('')}
+              aria-label={t('chat.list.clearSearch')}
+              className="text-subtle hover:text-fg"
+            >
               <X size={12} />
             </button>
           )}
         </div>
       )}
-      {q && groups.length === 0 && <div className="px-2.5 text-xs text-subtle">Sin coincidencias</div>}
+      {q && groups.length === 0 && <div className="px-2.5 text-xs text-subtle">{t('chat.list.noMatches')}</div>}
       {groups.map((g) => (
         <div key={g.label}>
           <div className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{g.label}</div>
@@ -228,7 +237,7 @@ export function ChatSessionList({
                 active={s.id === activeId}
                 busy={busyIds?.has(s.id) ?? false}
                 onSelect={() => onSelect(s.id)}
-                onRename={(t) => void onRename(s.id, t)}
+                onRename={(title) => void onRename(s.id, title)}
                 onDelete={() => void onDelete(s.id)}
               />
             ))}

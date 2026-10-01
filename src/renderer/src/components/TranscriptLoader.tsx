@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react'
+import { useT } from '../lib/i18n'
 import { isTranscriptLoading, useSessions } from '../stores/sessions'
 
 /**
@@ -12,10 +13,11 @@ export function TranscriptLoader({ sessionId }: { sessionId: string | null | und
 
 /** Solo la presentación (Code la usa con su propio selector, `isCodeTranscriptLoading`). */
 export function TranscriptLoading(): React.JSX.Element {
+  const t = useT()
   return (
     <div role="status" className="flex shrink-0 items-center justify-center gap-2 py-2 text-[12.5px] text-muted">
       <Loader2 size={13} className="animate-spin" aria-hidden />
-      Cargando conversación…
+      {t('common.transcriptLoading')}
     </div>
   )
 }

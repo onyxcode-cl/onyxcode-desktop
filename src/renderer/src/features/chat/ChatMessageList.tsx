@@ -2,6 +2,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2/client'
 import { ArrowDown, FileText, RotateCcw, RotateCw } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
+import { useT } from '../../lib/i18n'
 import type { ConvError } from '../../lib/session-reducer'
 import type { MessageEntry } from '../../stores/sessions'
 import { LogoMark } from '../../components/Logo'
@@ -24,6 +25,7 @@ const PartView = memo(function PartView({
   live: boolean
   streaming?: boolean
 }): React.JSX.Element | null {
+  const t = useT()
   switch (part.type) {
     case 'text':
       if (part.synthetic || part.ignored || !part.text) return null
@@ -41,7 +43,7 @@ const PartView = memo(function PartView({
     case 'retry':
       return (
         <div className="flex items-center gap-1.5 text-xs text-muted">
-          <RotateCw size={12} /> Reintento {part.attempt}: {friendlyError(part.error).message}
+          <RotateCw size={12} /> {`${t('chat.msg.retryAttempt', { attempt: part.attempt })} ${friendlyError(part.error).message}`}
         </div>
       )
     default:
@@ -50,11 +52,12 @@ const PartView = memo(function PartView({
 })
 
 /** Indicador de "pensando" con la chispa de la marca. */
-export function ThinkingIndicator({ label = 'Pensando' }: { label?: string }): React.JSX.Element {
+export function ThinkingIndicator({ label }: { label?: string }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="flex animate-fade-in items-center gap-2.5 text-sm text-muted" role="status" aria-live="polite">
       <LogoMark size={18} animated />
-      <span className="text-shimmer">{label}</span>
+      <span className="text-shimmer">{label ?? t('chat.msg.thinking')}</span>
       <span className="typing-dots flex items-center gap-1 text-subtle">
         <span />
         <span />
@@ -72,6 +75,7 @@ function textOfParts(parts: Part[]): string {
 }
 
 const ChatUserRow = memo(function ChatUserRow({ entry, old }: { entry: MessageEntry; old: boolean }): React.JSX.Element {
+  const t = useT()
   const text = textOfParts(entry.parts)
   const files = entry.parts.filter((p) => p.type === 'file')
   return (
@@ -86,7 +90,7 @@ const ChatUserRow = memo(function ChatUserRow({ entry, old }: { entry: MessageEn
       )}
       {text && (
         <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-          <CopyButton text={text} label="Copiar mensaje" />
+          <CopyButton text={text} label={t('chat.msg.copyMessage')} />
         </div>
       )}
     </div>
@@ -110,6 +114,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   /** Fila antigua: `content-visibility: auto`. */
   old: boolean
 }): React.JSX.Element {
+  const t = useT()
   const lastTextIdx = live ? entry.parts.map((p) => p.type).lastIndexOf('text') : -1
   const text = textOfParts(entry.parts)
   const showActions = !live && !!text
@@ -118,18 +123,18 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
       {entry.parts.map((p, idx) => (
         <PartView key={p.id} part={p} live={live} streaming={live && idx === lastTextIdx} />
       ))}
-      <AssistantError info={entry.info} abortedLabel="Respuesta detenida." variant="chat" />
+      <AssistantError info={entry.info} abortedLabel={t('chat.msg.stopped')} variant="chat" />
       {showActions && (
         <div
           className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLast ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}
         >
-          <CopyButton text={text} label="Copiar respuesta" />
+          <CopyButton text={text} label={t('chat.msg.copyReply')} />
           {isLast && onRetry && lastUserText && (
             <button
               type="button"
               onClick={() => onRetry(lastUserText)}
-              title="Reintentar"
-              aria-label="Reintentar"
+              title={t('chat.msg.retry')}
+              aria-label={t('chat.msg.retry')}
               className="no-drag inline-flex items-center rounded-md px-1.5 py-1 text-muted transition-colors hover:bg-hover hover:text-fg"
             >
               <RotateCcw size={13} />
@@ -150,6 +155,7 @@ interface Props {
 }
 
 export function ChatMessageList({ entries, busy, error, onRetry }: Props): React.JSX.Element {
+  const t = useT()
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
@@ -221,8 +227,8 @@ export function ChatMessageList({ entries, busy, error, onRetry }: Props): React
         <button
           type="button"
           onClick={scrollToBottom}
-          aria-label="Ir al final"
-          title="Ir al final"
+          aria-label={t('chat.msg.scrollEnd')}
+          title={t('chat.msg.scrollEnd')}
           className="absolute bottom-3 left-1/2 flex h-8 w-8 -translate-x-1/2 animate-pop-in items-center justify-center rounded-full border border-border bg-elevated text-muted shadow-md transition-colors hover:text-fg"
         >
           <ArrowDown size={15} />

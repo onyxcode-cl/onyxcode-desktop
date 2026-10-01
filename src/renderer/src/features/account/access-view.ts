@@ -1,4 +1,5 @@
 import type { AccountState } from '@shared/account'
+import { t } from '@shared/i18n'
 
 /** Qué pantalla de acceso corresponde al estado de la cuenta. */
 export type AccessView = 'checking' | 'waiting' | 'offline' | 'choose'
@@ -17,8 +18,8 @@ export interface AccessBanner {
 
 /** Aviso sobre las opciones de acceso cuando la sesión terminó o la cuenta ya no existe. */
 export function accessBanner(s: Pick<AccountState, 'status'>): AccessBanner | null {
-  if (s.status === 'expired') return { title: 'Tu sesión terminó', body: 'Por seguridad, vuelve a entrar para seguir usando la app.' }
-  if (s.status === 'deleted') return { title: 'Esta cuenta ya no existe', body: 'Fue borrada. Puedes crear una cuenta nueva.' }
+  if (s.status === 'expired') return { title: t('account.banner.expired.title'), body: t('account.banner.expired.body') }
+  if (s.status === 'deleted') return { title: t('account.banner.deleted.title'), body: t('account.banner.deleted.body') }
   return null
 }
 

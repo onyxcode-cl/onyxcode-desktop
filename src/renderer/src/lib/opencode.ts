@@ -7,6 +7,7 @@
  */
 import { createOpencodeClient, type GlobalEvent, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
+import { t } from '@shared/i18n'
 
 export type { OpencodeClient }
 /** Evento de OpenCode (payload de /global/event). */
@@ -66,7 +67,7 @@ export function startEventStream(
 
 /** Extrae un mensaje legible de los errores del SDK / sesión. */
 export function errorMessage(err: unknown): string {
-  if (!err) return 'Error desconocido'
+  if (!err) return t('common.error.unknown')
   if (typeof err === 'string') return err
   if (err instanceof Error) return err.message
   if (typeof err === 'object') {

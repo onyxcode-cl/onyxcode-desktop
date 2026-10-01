@@ -3,6 +3,8 @@
  * y saltar a una conversación reciente. Solo navegación y acciones ya existentes: no toca stores ajenos.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { t } from '@shared/i18n'
+import { useLang, useT } from '../lib/i18n'
 import { isSubmitKey } from '../lib/textarea'
 import { BarChart3, CornerDownLeft, Monitor, MessageSquare, Moon, Plus, Search, Settings, Sun, type LucideIcon } from 'lucide-react'
 import { openChatSession } from '../features/chat/actions'
@@ -38,8 +40,10 @@ function useCommands(): Command[] {
   const sessionSource = useSessions((s) => s.sessionSource)
   const directorySource = useSessions((s) => s.directorySource)
   const updateSettings = useSettings((s) => s.update)
+  const lang = useLang((s) => s.lang)
 
   return useMemo(() => {
+    void lang // las etiquetas se calculan con el idioma activo: recalcular al cambiarlo
     const ui = useUi.getState()
     const list: Command[] = []
 
@@ -47,11 +51,11 @@ function useCommands(): Command[] {
     if (newAction) {
       list.push({
         id: 'new',
-        group: 'Acciones',
+        group: t('app.palette.group.actions'),
         label: newAction.label,
         icon: Plus,
         hint: '⌘N',
-        keywords: 'nuevo crear',
+        keywords: t('app.palette.kw.new'),
         run: () => {
           ui.openSettings(false)
           newAction.run()
@@ -62,31 +66,31 @@ function useCommands(): Command[] {
     for (const m of MODES) {
       list.push({
         id: `mode:${m.id}`,
-        group: 'Ir a',
+        group: t('app.palette.group.goto'),
         label: m.label,
         icon: m.icon,
-        keywords: 'modo ir abrir',
-        hint: m.id === mode ? 'Actual' : undefined,
+        keywords: t('app.palette.kw.mode'),
+        hint: m.id === mode ? t('app.palette.current') : undefined,
         run: () => ui.setMode(m.id)
       })
     }
 
     list.push({
       id: 'settings',
-      group: 'Ir a',
-      label: 'Ajustes',
+      group: t('app.palette.group.goto'),
+      label: t('app.palette.settings'),
       icon: Settings,
       hint: '⌘,',
-      keywords: 'preferencias configuracion',
+      keywords: t('app.palette.kw.settings'),
       run: () => ui.openSettings(true)
     })
 
     list.push({
       id: 'usage',
-      group: 'Ir a',
-      label: 'Uso y gasto',
+      group: t('app.palette.group.goto'),
+      label: t('app.palette.usage'),
       icon: BarChart3,
-      keywords: 'costo tokens consumo gastado cuanto',
+      keywords: t('app.palette.kw.usage'),
       run: () => {
         try {
           localStorage.setItem('settings.section', 'usage')
@@ -100,17 +104,17 @@ function useCommands(): Command[] {
     })
 
     const themes: [string, string, LucideIcon][] = [
-      ['system', 'Tema: sistema', Monitor],
-      ['light', 'Tema: claro', Sun],
-      ['dark', 'Tema: oscuro', Moon]
+      ['system', t('app.palette.theme.system'), Monitor],
+      ['light', t('app.palette.theme.light'), Sun],
+      ['dark', t('app.palette.theme.dark'), Moon]
     ]
     for (const [value, label, icon] of themes) {
       list.push({
         id: `theme:${value}`,
-        group: 'Apariencia',
+        group: t('app.palette.group.appearance'),
         label,
         icon,
-        keywords: 'tema apariencia color',
+        keywords: t('app.palette.kw.theme'),
         run: () => void updateSettings({ theme: value as 'system' | 'light' | 'dark' })
       })
     }
@@ -123,10 +127,10 @@ function useCommands(): Command[] {
       for (const s of recents) {
         list.push({
           id: `chat:${s.id}`,
-          group: 'Conversaciones recientes',
-          label: s.title || 'Conversación sin título',
+          group: t('app.palette.group.recent'),
+          label: s.title || t('app.palette.untitled'),
           icon: MessageSquare,
-          keywords: 'chat conversacion reciente',
+          keywords: t('app.palette.kw.recent'),
           run: () => {
             ui.setMode('chat')
             void openChatSession(s.id)
@@ -135,7 +139,7 @@ function useCommands(): Command[] {
       }
     }
     return list
-  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings])
+  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings, lang])
 }
 
 export function CommandPalette(): React.JSX.Element | null {
@@ -145,6 +149,7 @@ export function CommandPalette(): React.JSX.Element | null {
 }
 
 function PaletteDialog(): React.JSX.Element {
+  const t = useT()
   const close = useUi((s) => s.setPaletteOpen)
   const commands = useCommands()
   const [query, setQuery] = useState('')
@@ -211,7 +216,7 @@ function PaletteDialog(): React.JSX.Element {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Paleta de comandos"
+        aria-label={t('app.palette.title')}
         onKeyDown={onKeyDown}
         className="flex max-h-[min(460px,70vh)] w-[560px] max-w-full animate-pop-in flex-col overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-xl"
       >
@@ -221,7 +226,7 @@ function PaletteDialog(): React.JSX.Element {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar comandos y conversaciones…"
+            placeholder={t('app.palette.placeholder')}
             role="combobox"
             aria-expanded="true"
             aria-controls="palette-list"
@@ -232,7 +237,7 @@ function PaletteDialog(): React.JSX.Element {
         </div>
 
         <div ref={listRef} id="palette-list" role="listbox" className="min-h-0 flex-1 overflow-y-auto p-1.5">
-          {results.length === 0 && <p className="px-3 py-8 text-center text-sm text-subtle">Sin resultados para «{query}»</p>}
+          {results.length === 0 && <p className="px-3 py-8 text-center text-sm text-subtle">{t('app.palette.empty', { query })}</p>}
           {results.map((c, i) => {
             const header = c.group !== lastGroup
             lastGroup = c.group
@@ -263,13 +268,13 @@ function PaletteDialog(): React.JSX.Element {
         <div className="flex items-center gap-4 border-t border-border bg-inset px-4 py-2 text-[11.5px] text-subtle">
           <span className="inline-flex items-center gap-1.5">
             <kbd className="kbd">↑</kbd>
-            <kbd className="kbd">↓</kbd> navegar
+            <kbd className="kbd">↓</kbd> {t('app.palette.navigate')}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <kbd className="kbd">
               <CornerDownLeft size={10} />
             </kbd>
-            ejecutar
+            {t('app.palette.run')}
           </span>
         </div>
       </div>

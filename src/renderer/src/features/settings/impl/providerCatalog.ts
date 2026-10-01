@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
+import { localeTag, t } from '@shared/i18n'
 import { errorMessage, type OpencodeClient } from '../../../lib/opencode'
 import { startKeyTest } from './useKeyTest'
 
@@ -53,7 +54,7 @@ export function useProviderCatalog(client: OpencodeClient | null): {
 export function unconnectedProviders(catalog: ProviderCatalog, exclude: string[] = []): Provider[] {
   return catalog.all
     .filter((p) => !catalog.connected.includes(p.id) && !exclude.includes(p.id))
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    .sort((a, b) => a.name.localeCompare(b.name, localeTag()))
 }
 
 /** Nombre visible de un proveedor según el catálogo (o su id si no está). */
@@ -106,7 +107,7 @@ export function useProviderConnect(
 
   const run = useCallback(
     async <T>(fn: (c: OpencodeClient) => Promise<T>): Promise<T> => {
-      if (!client) throw new Error('OpenCode no está listo.')
+      if (!client) throw new Error(t('models.connect.notReady'))
       setBusy(true)
       setError(null)
       try {

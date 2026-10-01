@@ -13,6 +13,7 @@
  * - Menú de aplicación propio en producción (sin Recargar ni Herramientas de desarrollo).
  */
 import { app, Menu, session, shell, type WebContents } from 'electron'
+import { onLangChange, t } from '@shared/i18n'
 import { isTrustedUrl, originOf } from './app-protocol'
 import { isEmbeddedBrowserSession } from '../embedded-browser/session'
 
@@ -49,6 +50,7 @@ function harden(wc: WebContents): void {
     if (allowedNavigation(url)) return
     event.preventDefault()
     if (isMainFrame && mayOpenExternal()) openExternalSafe(url)
+    // i18n-ignore: registro de consola, no se muestra
     console.warn(`[security] navegación bloqueada: ${url.slice(0, 200)}`)
   }
   wc.on('will-navigate', (event, url) => guardNav(event, url))
@@ -83,8 +85,7 @@ function installPermissionHandlers(): void {
   })
 }
 
-function installProductionMenu(): void {
-  if (!app.isPackaged) return // en desarrollo, el menú por defecto (DevTools, recargar)
+function buildProductionMenu(): void {
   const isMac = process.platform === 'darwin'
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -92,7 +93,7 @@ function installProductionMenu(): void {
       { role: 'fileMenu' as const },
       { role: 'editMenu' as const },
       {
-        label: 'Ver',
+        label: t('main.menu.view'),
         submenu: [
           { role: 'resetZoom' as const },
           { role: 'zoomIn' as const },
@@ -104,6 +105,13 @@ function installProductionMenu(): void {
       { role: 'windowMenu' as const }
     ])
   )
+}
+
+function installProductionMenu(): void {
+  if (!app.isPackaged) return // en desarrollo, el menú por defecto (DevTools, recargar)
+  buildProductionMenu()
+  // Se reconstruye al cambiar de idioma.
+  onLangChange(() => buildProductionMenu())
 }
 
 let installed = false

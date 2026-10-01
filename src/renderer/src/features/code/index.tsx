@@ -1,4 +1,6 @@
 import { Code2 } from 'lucide-react'
+import { t } from '@shared/i18n'
+import { MODE_LABELS } from '@shared/labels'
 import type { ModeDefinition } from '../../app/types'
 import { CodeSidebar, CodeWorkspace, newCodeSession } from './impl/CodeWorkspace'
 
@@ -8,9 +10,16 @@ function CodeView(): React.JSX.Element {
 
 export const codeMode: ModeDefinition = {
   id: 'code',
-  label: 'Code',
+  get label() {
+    return MODE_LABELS.code
+  },
   icon: Code2,
   View: CodeView,
   SidebarContent: CodeSidebar,
-  newAction: { label: 'Nueva sesión', run: newCodeSession }
+  newAction: {
+    get label() {
+      return t('app.mode.newSession')
+    },
+    run: newCodeSession
+  }
 }

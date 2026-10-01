@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, HelpCircle, Pencil } from 'lucide-react'
+import { useT } from '../lib/i18n'
 
 export interface ConfirmDialogOptions {
   title: string
@@ -92,6 +93,7 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 
 /** Host del diálogo de confirmación/prompt compartido. Montar una sola vez (en `App.tsx`). */
 export function ConfirmDialogHost(): React.JSX.Element | null {
+  const t = useT()
   const req = usePending()
   const dialogRef = useRef<HTMLDivElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
@@ -116,11 +118,11 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
     if (req.kind === 'prompt') {
       setText(req.defaultValue ?? '')
       // Autofocus + selección del texto (equivalente a `window.prompt`).
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         inputRef.current?.focus()
         inputRef.current?.select()
       }, 0)
-      return () => clearTimeout(t)
+      return () => clearTimeout(timer)
     }
     // Foco inicial: en acciones destructivas, cancelar es lo seguro por defecto.
     const target = req.danger || req.focusCancel ? cancelRef.current : confirmRef.current
@@ -221,7 +223,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
               onClick={() => finishPrompt(null)}
               className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
             >
-              {req.cancelLabel ?? 'Cancelar'}
+              {req.cancelLabel ?? t('common.cancel')}
             </button>
             <button
               ref={confirmRef}
@@ -229,7 +231,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
               onClick={() => finishPrompt(text)}
               className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
             >
-              {req.confirmLabel ?? 'Aceptar'}
+              {req.confirmLabel ?? t('common.accept')}
             </button>
           </div>
         </div>
@@ -276,7 +278,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
               onClick={() => finishConfirm(false)}
               className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
             >
-              {req.cancelLabel ?? 'Cancelar'}
+              {req.cancelLabel ?? t('common.cancel')}
             </button>
           )}
           <button
@@ -287,7 +289,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
               danger ? 'bg-danger text-white' : 'bg-accent text-accent-fg'
             }`}
           >
-            {req.confirmLabel ?? 'Aceptar'}
+            {req.confirmLabel ?? t('common.accept')}
           </button>
         </div>
       </div>

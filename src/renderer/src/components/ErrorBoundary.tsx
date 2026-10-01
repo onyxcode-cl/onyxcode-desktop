@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { t } from '@shared/i18n'
 import { Button } from './Button'
 
 /** Texto que copia "Copiar detalle": mensaje, pila y pila de componentes (pura, testeable). */
@@ -7,7 +8,7 @@ export function formatErrorDetail(error: unknown, componentStack?: string | null
   const e = error instanceof Error ? error : new Error(String(error))
   const parts = [`${e.name}: ${e.message}`]
   if (e.stack) parts.push(e.stack)
-  if (componentStack) parts.push(`Pila de componentes:${componentStack}`)
+  if (componentStack) parts.push(`${t('common.error.componentStack')}${componentStack}`)
   return parts.join('\n\n')
 }
 
@@ -61,14 +62,14 @@ export class ErrorBoundary extends Component<Props, State> {
       <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <AlertTriangle size={28} className="text-danger" />
         <h2 className="text-[15px] font-semibold tracking-tight">
-          {this.props.label ? `Algo salió mal en ${this.props.label}` : 'Algo salió mal'}
+          {this.props.label ? t('common.error.titleIn', { label: this.props.label }) : t('common.error.title')}
         </h2>
-        <p className="max-w-md text-sm break-words text-muted">{error.message || 'Error desconocido'}</p>
+        <p className="max-w-md text-sm break-words text-muted">{error.message || t('common.error.unknown')}</p>
         <div className="mt-1 flex items-center gap-2">
           <Button variant="primary" onClick={this.retry}>
-            Reintentar
+            {t('common.retry')}
           </Button>
-          <Button onClick={() => void this.copy()}>Copiar detalle</Button>
+          <Button onClick={() => void this.copy()}>{t('common.error.copyDetail')}</Button>
         </div>
       </div>
     )

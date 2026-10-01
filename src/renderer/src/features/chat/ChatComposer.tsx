@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { fitTextarea, isSubmitKey, useAutosizeTextarea } from '../../lib/textarea'
 import { ArrowUp, Paperclip, Square } from 'lucide-react'
+import { useT } from '../../lib/i18n'
 
 interface Props {
   onSend: (text: string) => void | Promise<void>
@@ -38,6 +39,7 @@ export function ChatComposer({
   insert,
   hint
 }: Props): React.JSX.Element {
+  const t = useT()
   const [text, setText] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -98,7 +100,7 @@ export function ChatComposer({
           value={text}
           rows={1}
           disabled={disabled}
-          placeholder={placeholder ?? 'Escribe un mensaje…'}
+          placeholder={placeholder ?? t('chat.placeholder.message')}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (isSubmitKey(e)) {
@@ -114,8 +116,8 @@ export function ChatComposer({
               type="button"
               onClick={onAttach}
               disabled={!onAttach || disabled}
-              title={onAttach ? 'Adjuntar archivos' : 'Adjuntar archivos (próximamente)'}
-              aria-label="Adjuntar archivos"
+              title={onAttach ? t('chat.composer.attach') : t('chat.composer.attachSoon')}
+              aria-label={t('chat.composer.attach')}
               className="no-drag inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
             >
               <Paperclip size={16} />
@@ -126,8 +128,8 @@ export function ChatComposer({
             <button
               type="button"
               onClick={onAbort}
-              title="Detener"
-              aria-label="Detener"
+              title={t('chat.composer.stop')}
+              aria-label={t('chat.composer.stop')}
               className="flex h-8 w-8 shrink-0 animate-pop-in items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85 active:scale-95"
             >
               <Square size={12} fill="currentColor" />
@@ -137,8 +139,8 @@ export function ChatComposer({
               type="button"
               onClick={submit}
               disabled={!canSend}
-              title="Enviar (Enter)"
-              aria-label="Enviar"
+              title={t('chat.composer.sendTitle')}
+              aria-label={t('chat.composer.send')}
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform,box-shadow] duration-200 active:scale-95 ${canSend ? 'bg-accent text-accent-fg shadow-sm hover:bg-accent-hover' : 'bg-hover text-subtle'}`}
             >
               <ArrowUp size={17} strokeWidth={2.25} />
@@ -150,7 +152,10 @@ export function ChatComposer({
         <p className="mt-2 text-center text-[11px] text-subtle">
           {hint ?? (
             <>
-              <kbd className="kbd">Enter</kbd> para enviar · <kbd className="kbd">⇧ Enter</kbd> nueva línea
+              <kbd className="kbd">Enter</kbd>
+              {` ${t('chat.composer.hintSend')} · `}
+              <kbd className="kbd">⇧ Enter</kbd>
+              {` ${t('chat.composer.hintNewline')}`}
             </>
           )}
         </p>

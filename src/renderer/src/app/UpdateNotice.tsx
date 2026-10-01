@@ -1,6 +1,7 @@
 import { Download, Loader2, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
+import { useT } from '../lib/i18n'
 import { updateView } from '../lib/update-notice'
 import { runUpdateAction, useUpdateState } from '../lib/use-update-state'
 
@@ -9,6 +10,7 @@ import { runUpdateAction, useUpdateState } from '../lib/use-update-state'
  * deja la versión lista para «Reiniciar ahora»; si no, «Descargar» abre la página de la release como siempre.
  */
 export function UpdateNotice(): React.JSX.Element | null {
+  const t = useT()
   const [state, setState] = useUpdateState()
   const view = updateView(state)
   if (!view || !state) return null
@@ -54,7 +56,7 @@ export function UpdateNotice(): React.JSX.Element | null {
       {!busy && view.phase !== 'downloading' && view.phase !== 'verifying' && (
         <button
           type="button"
-          aria-label="Cerrar aviso"
+          aria-label={t('notices.close')}
           onClick={() => act('later')}
           className="flex shrink-0 items-center rounded-md p-0.5 transition-colors hover:bg-accent/15"
         >

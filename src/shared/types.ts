@@ -1,4 +1,5 @@
 /** Tipos de dominio compartidos entre main, preload y renderer. */
+import type { LangPref } from './i18n'
 
 export type ModeId = 'chat' | 'code' | 'tasks' | 'routines'
 
@@ -19,6 +20,8 @@ export interface Settings {
   onboarded: boolean
   /** true cuando el usuario reconoció el aviso sobre los términos de OpenCode y las Rutinas; sin él, las rutinas programadas no se ejecutan solas. */
   routinesTermsAcknowledged: boolean
+  /** Idioma de la interfaz: `system` sigue al sistema (en-* da inglés, cualquier otro español). */
+  language: LangPref
   /** Ruta absoluta del binario de OpenCode elegido por el usuario ('' = detección automática). Solo main la escribe. */
   opencodeBin: string
   /** Buscar versiones nuevas en GitHub (una petición al día como mucho). */
@@ -34,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tasksGlobalInstructions: '',
   onboarded: false,
   routinesTermsAcknowledged: false,
+  language: 'system',
   opencodeBin: '',
   checkUpdates: true
 }

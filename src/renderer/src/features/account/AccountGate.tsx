@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { isAccessOpen } from '@shared/account'
 import { Button } from '../../components/Button'
 import { call } from '../../lib/api'
+import { useT } from '../../lib/i18n'
 import { useAccountState } from '../../lib/use-account-state'
 import { useSettings } from '../../stores/settings'
 import { useTheme } from '../../app/useTheme'
@@ -38,6 +39,7 @@ function AccessHost({ state }: { state: NonNullable<ReturnType<typeof useAccount
  * (ni sus efectos ni el asistente «Conecta tu IA»). Con la cuenta apagada deja pasar sin mostrar nada.
  */
 export function AccountGate({ children }: { children: React.ReactNode }): React.JSX.Element | null {
+  const t = useT()
   const [state, , failed, reload] = useAccountState()
   // La nota «ya tenías la app» se da por vista cuando la persona entra.
   const open = state !== null && state.required && isAccessOpen(state)
@@ -47,9 +49,9 @@ export function AccountGate({ children }: { children: React.ReactNode }): React.
   if (failed && !state) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-bg p-6 text-sm text-muted" role="alert">
-        <p>No se pudo leer el estado de la cuenta.</p>
+        <p>{t('account.gate.readFailed')}</p>
         <Button variant="secondary" onClick={reload}>
-          Reintentar
+          {t('account.gate.retry')}
         </Button>
       </div>
     )

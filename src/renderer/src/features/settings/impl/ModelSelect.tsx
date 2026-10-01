@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Provider } from '@opencode-ai/sdk/v2/client'
 import { Check, ChevronsUpDown, Search } from 'lucide-react'
+import { localeTag } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
+import { useT } from '../../../lib/i18n'
 
 import { PREFERRED_PROVIDER, sortProviders } from '../../../stores/providers'
 
@@ -29,6 +31,7 @@ interface Props {
 
 /** Selector de modelo en popover (reemplaza al <select> nativo; misma API). */
 export function ModelSelect({ providers, value, onChange, defaultLabel, className = '', ...rest }: Props): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
@@ -53,12 +56,16 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
         models: Object.values(p.models)
           .filter((m) => m.status !== 'deprecated' || modelKey({ providerID: p.id, modelID: m.id }) === current)
           .filter((m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
-          .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+          .sort((a, b) => a.name.localeCompare(b.name, localeTag()))
       }))
       .filter((g) => g.models.length > 0)
   }, [sorted, query, current])
 
-  const label = value ? (known ? modelLabel(sorted, value) : `${current} (no disponible)`) : (defaultLabel ?? 'Elegir modelo')
+  const label = value
+    ? known
+      ? modelLabel(sorted, value)
+      : t('models.select.notAvailable', { key: current })
+    : (defaultLabel ?? t('models.select.choose'))
 
   const pick = (v: ModelRef | null): void => {
     onChange(v)
@@ -95,7 +102,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar modelo…"
+              placeholder={t('models.select.search')}
               className="w-full bg-transparent text-sm outline-none placeholder:text-subtle"
             />
           </div>
@@ -105,7 +112,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
                 <span className="text-muted italic">{defaultLabel}</span>
               </Option>
             )}
-            {groups.length === 0 && <div className="px-3 py-4 text-center text-sm text-muted">Sin resultados</div>}
+            {groups.length === 0 && <div className="px-3 py-4 text-center text-sm text-muted">{t('models.select.noResults')}</div>}
             {groups.map(({ provider, models }) => (
               <div key={provider.id}>
                 <div className="px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">

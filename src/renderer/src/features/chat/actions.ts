@@ -3,6 +3,7 @@
  * Patrón reutilizable para Code/Tareas: cambiar `directory` y `agent`.
  */
 import { NO_AI_ERROR } from '@shared/ai-errors'
+import { t } from '@shared/i18n'
 import { CHAT_AGENT } from '@shared/types'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
@@ -14,7 +15,7 @@ import { useChat } from './store'
 
 function ctx(): { client: NonNullable<ReturnType<typeof useServer.getState>['client']>; directory: string } {
   const { client, connection } = useServer.getState()
-  if (!client || !connection) throw new Error('El servidor de OpenCode aún no está listo')
+  if (!client || !connection) throw new Error(t('chat.server.notReady'))
   return { client, directory: connection.chatDirectory }
 }
 
