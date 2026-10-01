@@ -46,6 +46,8 @@ const showMainWindow = vi.fn(() => ({
 vi.mock('./windows', () => ({
   extrasWindows: new Set(),
   loadRendererPage: vi.fn(async () => undefined),
+  loadLocalizedPage: vi.fn(async () => undefined),
+  isLangStale: () => false,
   preloadPath: () => '/preload.js',
   showMainWindow: (...a: unknown[]) => (showMainWindow as (...x: unknown[]) => unknown)(...a)
 }))

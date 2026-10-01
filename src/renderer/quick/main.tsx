@@ -1,9 +1,11 @@
+import '../src/lib/page-lang'
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowUp } from 'lucide-react'
 import { LogoMark } from '../src/components/Logo'
 import { isSubmitKey } from '../src/lib/textarea'
 import type { ExtrasApi } from '@shared/ipc-extras'
+import { t } from '@shared/i18n'
 import './quick.css'
 
 const extras = (window as unknown as { api?: { extras?: ExtrasApi } }).api?.extras
@@ -66,23 +68,23 @@ function QuickEntry(): React.JSX.Element {
               else hide()
             }
           }}
-          placeholder={error ?? '¿En qué te ayudo?'}
-          aria-label="Escribe un mensaje para el chat"
+          placeholder={error ?? t('ovl.quick.placeholder')}
+          aria-label={t('ovl.quick.aria')}
           spellCheck={false}
           className={`no-drag min-w-0 flex-1 bg-transparent text-[18px] tracking-[-0.01em] outline-none placeholder:text-q-muted ${error ? 'placeholder:text-q-danger' : ''}`}
         />
         {!canSend && (
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-q-muted" aria-hidden>
             <kbd className="rounded-md bg-q-kbd px-1.5 py-0.5 font-sans">esc</kbd>
-            cerrar
+            {t('ovl.quick.close')}
           </span>
         )}
         <button
           type="button"
           onClick={() => void submit()}
           disabled={!canSend}
-          aria-label="Enviar"
-          title="Enviar (Enter)"
+          aria-label={t('ovl.quick.send')}
+          title={t('ovl.quick.sendTitle')}
           className={`no-drag inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-[background-color,color,opacity,transform] duration-150 active:scale-95 ${canSend ? 'bg-q-accent text-q-accent-fg' : 'bg-q-kbd text-q-muted'}`}
         >
           <ArrowUp size={17} strokeWidth={2.25} />

@@ -3,12 +3,15 @@
  * skill" (`#record`). Qué se muestra lo decide el hash de la URL: son dos `BrowserWindow`
  * independientes que cargan la misma página (ver `main/computer/assist-window.ts`).
  */
+import '../src/lib/page-lang'
+import { t } from '@shared/i18n'
 import type { AssistMessage, SkillRecordingState, TeachStep } from '@shared/ipc-tasks'
 import { tasks } from './shared'
 import './assist.css'
 
 const root = document.getElementById('root') as HTMLDivElement
 const mode: 'teach' | 'record' = location.hash === '#record' ? 'record' : 'teach'
+document.title = t('ovl.assist.title')
 document.body.classList.add(mode)
 
 if (mode === 'teach') initTeach(root)
@@ -25,8 +28,8 @@ function initTeach(root: HTMLDivElement): void {
       <p class="teach-title"></p>
       <p class="teach-text"></p>
       <div class="teach-actions">
-        <button type="button" class="teach-exit">Salir de la guía</button>
-        <button type="button" class="teach-next">Siguiente</button>
+        <button type="button" class="teach-exit">${t('ovl.teach.exit')}</button>
+        <button type="button" class="teach-next">${t('ovl.teach.next')}</button>
       </div>
     </div>
   `
@@ -47,8 +50,8 @@ function initTeach(root: HTMLDivElement): void {
 
   function render(step: TeachStep): void {
     current = step
-    badge.textContent = step.step && step.total ? `Paso ${step.step} de ${step.total}` : 'Te enseño'
-    title.textContent = step.title ?? 'Así se hace'
+    badge.textContent = step.step && step.total ? t('ovl.teach.step', { step: step.step, total: step.total }) : t('ovl.teach.badge')
+    title.textContent = step.title ?? t('ovl.teach.defaultTitle')
     title.hidden = !step.title
     text.textContent = step.text
     setBusy(false)
@@ -85,8 +88,8 @@ function initRecord(root: HTMLDivElement): void {
     <div class="record" role="status" aria-live="polite">
       <span class="record-dot" aria-hidden="true"></span>
       <span class="record-text"></span>
-      <button type="button" class="record-discard">Descartar</button>
-      <button type="button" class="record-finish">Terminar</button>
+      <button type="button" class="record-discard">${t('ovl.record.discard')}</button>
+      <button type="button" class="record-finish">${t('ovl.record.finish')}</button>
     </div>
   `
   const text = root.querySelector('.record-text') as HTMLSpanElement
@@ -103,8 +106,12 @@ function initRecord(root: HTMLDivElement): void {
 
   function render(state: SkillRecordingState): void {
     const elapsedS = state.startedAt ? Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000)) : 0
-    const mic = state.mic === 'recording' ? ' · 🎙' : state.mic === 'denied' ? ' · sin micro' : ''
-    text.textContent = `Grabando · ${state.steps} paso${state.steps === 1 ? '' : 's'} · ${pad(Math.floor(elapsedS / 60))}:${pad(elapsedS % 60)}${mic}`
+    const mic = state.mic === 'recording' ? ' · 🎙' : state.mic === 'denied' ? t('ovl.record.noMic') : ''
+    text.textContent = t('ovl.record.recording', {
+      count: state.steps,
+      time: `${pad(Math.floor(elapsedS / 60))}:${pad(elapsedS % 60)}`,
+      mic
+    })
   }
 
   function setBusy(v: boolean): void {

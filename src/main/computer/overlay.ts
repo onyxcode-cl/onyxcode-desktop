@@ -20,7 +20,7 @@
  */
 import { BrowserWindow, screen, type Rectangle } from 'electron'
 import type { AccessRequest, ComputerActionEvent, ComputerOverlayMessage } from '@shared/ipc-tasks'
-import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
+import { extrasWindows, isLangStale, loadLocalizedPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 import { motionDurationMs } from './service'
 
@@ -52,7 +52,7 @@ export interface ComputerOverlayOptions {
 type Page = 'index.html' | 'pill.html'
 
 function loadOverlayPage(win: BrowserWindow, page: Page): Promise<void> {
-  return loadRendererPage(win, `overlay/${page}`)
+  return loadLocalizedPage(win, `overlay/${page}`)
 }
 
 function inside(r: Rectangle, x: number, y: number, margin: number): boolean {
@@ -408,8 +408,16 @@ export class ComputerOverlay {
     }
   }
 
+  /** Ventana ya creada y vigente; si se cargó con otro idioma y no se ve, se descarta para recrearla. */
+  private reusable(win: BrowserWindow | null): win is BrowserWindow {
+    if (!win || win.isDestroyed()) return false
+    if (this.visible || !isLangStale(win)) return true
+    win.destroy()
+    return false
+  }
+
   private ensureOverlay(): BrowserWindow {
-    if (this.overlay && !this.overlay.isDestroyed()) return this.overlay
+    if (this.reusable(this.overlay)) return this.overlay!
     const isMac = process.platform === 'darwin'
     const win = new BrowserWindow({
       ...screen.getPrimaryDisplay().bounds,
@@ -442,7 +450,7 @@ export class ComputerOverlay {
   }
 
   private ensurePill(): BrowserWindow {
-    if (this.pill && !this.pill.isDestroyed()) return this.pill
+    if (this.reusable(this.pill)) return this.pill!
     const win = new BrowserWindow({
       width: PILL_W,
       height: PILL_H,
