@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { BrowserApprovalRequest, BrowserDecision } from '@shared/ipc-browser'
+import { useT } from '../../lib/i18n'
 import { approvalButtons, armRemainingMs, isCardArmed } from './store'
 
 function useArmed(createdAt: number): boolean {
@@ -21,16 +22,16 @@ function useArmed(createdAt: number): boolean {
   return armed
 }
 
-function titleFor(req: BrowserApprovalRequest): string {
+function titleFor(req: BrowserApprovalRequest, t: ReturnType<typeof useT>): string {
   switch (req.kind) {
     case 'site':
-      return `¿Dejar que el agente abra ${req.site}?`
+      return t('browser.card.site', { site: req.site })
     case 'local-origin':
-      return `¿Dejar que el agente abra tu servidor local ${req.host}?`
+      return t('browser.card.local', { host: req.host })
     case 'sensitive':
-      return req.summary ?? 'El agente quiere realizar una acción sensible.'
+      return req.summary ?? t('browser.card.sensitive')
     case 'download':
-      return req.summary ?? `El agente quiere descargar ${req.fileName ?? req.url}`
+      return req.summary ?? t('browser.card.download', { file: req.fileName ?? req.url })
   }
 }
 
@@ -43,6 +44,7 @@ function ApprovalCard({
   first: boolean
   onRespond: (id: string, decision: BrowserDecision) => void
 }): React.JSX.Element {
+  const t = useT()
   const armed = useArmed(req.createdAt)
   const denyRef = useRef<HTMLButtonElement>(null)
   const simple = approvalButtons(req.kind) === 'simple'
@@ -68,10 +70,10 @@ function ApprovalCard({
   return (
     <div
       role="group"
-      aria-label="Aprobación del navegador"
+      aria-label={t('browser.card.aria')}
       className="rounded-xl border border-warning/40 bg-elevated px-3.5 py-2.5 shadow-md"
     >
-      <p className="text-sm text-fg/90">{titleFor(req)}</p>
+      <p className="text-sm text-fg/90">{titleFor(req, t)}</p>
       <p className="mt-1 truncate font-mono text-[11px] text-subtle" title={req.url}>
         {req.url}
       </p>
@@ -85,7 +87,7 @@ function ApprovalCard({
               onClick={() => onRespond(req.id, 'deny')}
               className={`${btn} text-muted hover:bg-hover hover:text-fg`}
             >
-              Cancelar
+              {t('browser.card.cancel')}
             </button>
             <button
               type="button"
@@ -93,7 +95,7 @@ function ApprovalCard({
               onClick={() => onRespond(req.id, 'allow')}
               className={`${btn} bg-accent text-accent-fg hover:opacity-90`}
             >
-              Permitir
+              {t('browser.card.allow')}
             </button>
           </>
         ) : (
@@ -105,7 +107,7 @@ function ApprovalCard({
               onClick={() => onRespond(req.id, 'deny')}
               className={`${btn} text-muted hover:bg-hover hover:text-fg`}
             >
-              No
+              {t('browser.card.no')}
             </button>
             <button
               type="button"
@@ -113,7 +115,7 @@ function ApprovalCard({
               onClick={() => onRespond(req.id, 'task')}
               className={`${btn} border border-border hover:border-border-strong hover:bg-hover`}
             >
-              Permitir en esta tarea
+              {t('browser.card.allowTask')}
             </button>
             <button
               type="button"
@@ -121,7 +123,7 @@ function ApprovalCard({
               onClick={() => onRespond(req.id, 'always')}
               className={`${btn} bg-accent text-accent-fg hover:opacity-90`}
             >
-              Permitir siempre
+              {t('browser.card.allowAlways')}
             </button>
           </>
         )}

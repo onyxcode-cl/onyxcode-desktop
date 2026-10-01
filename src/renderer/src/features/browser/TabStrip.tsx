@@ -1,6 +1,7 @@
 /** Tira de pestañas del navegador integrado: título de la página, ✕ para cerrar y "+" para abrir otra. */
 import { Bot, Plus, X } from 'lucide-react'
 import type { BrowserTab } from '@shared/ipc-browser'
+import { useT } from '../../lib/i18n'
 
 export function TabStrip({
   tabs,
@@ -15,6 +16,7 @@ export function TabStrip({
   onClose: (tabId: string) => void
   onNew: () => void
 }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-sidebar px-1.5">
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
@@ -31,10 +33,10 @@ export function TabStrip({
               }`}
             >
               {tab.openedBy === 'agent' && <Bot size={11} className="shrink-0 text-accent" />}
-              <span className="min-w-0 flex-1 truncate">{tab.title || tab.url || 'Nueva pestaña'}</span>
+              <span className="min-w-0 flex-1 truncate">{tab.title || tab.url || t('browser.newTab')}</span>
               <button
                 type="button"
-                title="Cerrar pestaña"
+                title={t('browser.tab.close')}
                 onClick={(e) => {
                   e.stopPropagation()
                   onClose(tab.id)
@@ -49,7 +51,7 @@ export function TabStrip({
       </div>
       <button
         type="button"
-        title="Nueva pestaña"
+        title={t('browser.newTab')}
         onClick={onNew}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
       >

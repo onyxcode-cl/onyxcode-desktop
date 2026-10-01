@@ -4,6 +4,7 @@
  * primer uso. No importa nada de Code ni de Tareas: solo tipos de `@shared/ipc-browser`.
  */
 import { create } from 'zustand'
+import { t as tr } from '@shared/i18n'
 import type { BrowserApprovalRequest, BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 
 /** Clave estable para agrupar estado por dueño (carpeta de Code o de Tareas). */
@@ -91,14 +92,14 @@ export function approvalButtons(kind: BrowserApprovalRequest['kind']): 'simple' 
 
 export function formatPageChatText(title: string, url: string): string {
   const t = title.trim() || url
-  return `Página: ${t} — ${url}`
+  return `${tr('browser.chat.page')} ${t} — ${url}`
 }
 
 export function formatElementChatText(el: { tag: string; role?: string; name?: string; url: string }): string {
   const bits = [el.tag]
   if (el.role) bits.push(`[${el.role}]`)
   const label = bits.join(' ')
-  return el.name ? `Elemento: ${label} "${el.name}" — ${el.url}` : `Elemento: ${label} — ${el.url}`
+  return el.name ? `${tr('browser.chat.element')} ${label} "${el.name}" — ${el.url}` : `${tr('browser.chat.element')} ${label} — ${el.url}`
 }
 
 // ---------------------------------------------------------------------------

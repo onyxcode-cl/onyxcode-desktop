@@ -17,13 +17,15 @@ import {
   X
 } from 'lucide-react'
 import type { BrowserTab } from '@shared/ipc-browser'
+import { useT } from '../../lib/i18n'
 import { splitHostForDisplay } from './store'
 
 function SecureIndicator({ secure }: { secure: boolean | null }): React.JSX.Element | null {
+  const t = useT()
   if (secure === null) return null
   return (
     <span
-      title={secure ? 'Conexión segura' : 'No es seguro'}
+      title={secure ? t('browser.url.secure') : t('browser.url.insecure')}
       className={`flex shrink-0 items-center gap-1 ${secure ? 'text-success' : 'text-warning'}`}
     >
       {secure ? <Lock size={12} /> : <LockOpen size={12} />}
@@ -64,6 +66,7 @@ export function UrlBar({
   onPopOut: () => void
   onOpenExternal: () => void
 }): React.JSX.Element {
+  const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
   const [focused, setFocused] = useState(false)
 
@@ -78,7 +81,7 @@ export function UrlBar({
     <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
       <button
         type="button"
-        title="Atrás"
+        title={t('browser.url.back')}
         disabled={disabled || !tab?.canGoBack}
         onClick={() => onHistory('back')}
         className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
@@ -87,7 +90,7 @@ export function UrlBar({
       </button>
       <button
         type="button"
-        title="Adelante"
+        title={t('browser.url.forward')}
         disabled={disabled || !tab?.canGoForward}
         onClick={() => onHistory('forward')}
         className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
@@ -96,7 +99,7 @@ export function UrlBar({
       </button>
       <button
         type="button"
-        title={tab?.loading ? 'Detener' : 'Recargar'}
+        title={tab?.loading ? t('browser.url.stop') : t('browser.url.reload')}
         disabled={disabled}
         onClick={() => onHistory(tab?.loading ? 'stop' : 'reload')}
         className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
@@ -122,7 +125,7 @@ export function UrlBar({
               e.currentTarget.select()
             }}
             onBlur={() => setFocused(false)}
-            placeholder="Escribe una URL"
+            placeholder={t('browser.url.placeholder')}
             disabled={disabled}
             className="min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-subtle"
           />
@@ -136,13 +139,13 @@ export function UrlBar({
             disabled={disabled}
             className="min-w-0 flex-1 text-left text-sm outline-none disabled:opacity-50"
           >
-            {tab?.url ? <HighlightedUrl url={tab.url} /> : <span className="text-subtle">Escribe una URL</span>}
+            {tab?.url ? <HighlightedUrl url={tab.url} /> : <span className="text-subtle">{t('browser.url.placeholder')}</span>}
           </button>
         )}
       </form>
       <button
         type="button"
-        title="Seleccionar elemento"
+        title={t('browser.url.pick')}
         aria-pressed={picking}
         disabled={disabled}
         onClick={onTogglePick}
@@ -152,7 +155,7 @@ export function UrlBar({
       </button>
       <button
         type="button"
-        title="Añadir al chat"
+        title={t('browser.url.addToChat')}
         disabled={disabled}
         onClick={onAddToChat}
         className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
@@ -161,7 +164,7 @@ export function UrlBar({
       </button>
       <button
         type="button"
-        title={popoutActive ? 'Traer aquí' : 'Abrir en ventana aparte'}
+        title={popoutActive ? t('browser.bringBack') : t('browser.url.popOut')}
         onClick={onPopOut}
         className={`flex h-7 w-7 items-center justify-center rounded-md disabled:opacity-30 ${popoutActive ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
       >
@@ -169,7 +172,7 @@ export function UrlBar({
       </button>
       <button
         type="button"
-        title="Abrir en el navegador del sistema"
+        title={t('browser.url.openExternal')}
         disabled={disabled}
         onClick={onOpenExternal}
         className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
