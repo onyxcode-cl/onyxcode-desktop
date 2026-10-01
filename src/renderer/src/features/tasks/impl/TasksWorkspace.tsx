@@ -29,6 +29,7 @@ import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import type { BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { useT } from '../../../lib/i18n'
 import { Button } from '../../../components/Button'
 import { TranscriptLoader } from '../../../components/TranscriptLoader'
 import { BrowserPanel, hasBrowserBridge, onBrowser } from '../../browser'
@@ -141,18 +142,19 @@ function StatusPill({ status }: { status: TaskStatus }): React.JSX.Element {
 
 /** Tiempo del último turno (en vivo mientras trabaja). */
 function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }): React.JSX.Element | null {
+  const t = useT()
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!live) return
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
   }, [live])
   const { start, end } = turnTiming(entries)
   if (!start) return null
   const stop = live ? now : (end ?? null)
   if (!stop) return null
   return (
-    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums" title="Duración de la última ejecución">
+    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums" title={t('tasks.ws.elapsedTitle')}>
       {formatDuration(stop - start)}
     </span>
   )
@@ -171,6 +173,7 @@ interface MenuItem {
  * Accesible con teclado (flechas, Inicio/Fin, Esc devuelve el foco al botón).
  */
 function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -220,8 +223,8 @@ function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
       <button
         ref={btnRef}
         type="button"
-        title="Más acciones"
-        aria-label="Más acciones de la tarea"
+        title={t('tasks.ws.menuMore')}
+        aria-label={t('tasks.ws.menuMoreAria')}
         aria-haspopup="menu"
         aria-expanded={open}
         className="rounded p-1 hover:bg-hover hover:text-fg"
@@ -232,7 +235,7 @@ function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
       {open && (
         <div
           role="menu"
-          aria-label="Acciones de la tarea"
+          aria-label={t('tasks.ws.menuAria')}
           onKeyDown={onKeyDown}
           className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-border bg-elevated p-1 shadow-lg"
         >
@@ -265,41 +268,32 @@ function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
   )
 }
 
-function followUpsFor(files: TasksDeliverable[], fullAccess: boolean): string[] {
-  if (fullAccess) return ['Hazlo otra vez', 'Explícame paso a paso lo que hiciste', 'Deshaz el último cambio']
+type FollowUpId = 'again' | 'explain' | 'undo' | 'word' | 'pdf' | 'charts' | 'sum5' | 'polish' | 'save'
+
+function followUpsFor(files: TasksDeliverable[], fullAccess: boolean): FollowUpId[] {
+  if (fullAccess) return ['again', 'explain', 'undo']
   const exts = new Set(files.map((f) => extOf(f.path)))
-  const out: string[] = []
-  if (exts.has('md') || exts.has('txt') || exts.has('html')) out.push('Convertir a Word')
-  if (exts.has('md') || exts.has('docx') || exts.has('html')) out.push('Crear una versión en PDF')
-  if (exts.has('csv')) out.push('Crear gráficos con estos datos')
-  out.push('Resumir en 5 puntos', 'Revisar y mejorar la redacción')
-  if (files.length === 0) out.push('Guarda el resultado en un documento')
+  const out: FollowUpId[] = []
+  if (exts.has('md') || exts.has('txt') || exts.has('html')) out.push('word')
+  if (exts.has('md') || exts.has('docx') || exts.has('html')) out.push('pdf')
+  if (exts.has('csv')) out.push('charts')
+  out.push('sum5', 'polish')
+  if (files.length === 0) out.push('save')
   return out.slice(0, 5)
 }
 
-const FOLLOW_UP_PROMPTS: Record<string, string> = {
-  'Convertir a Word': 'Convierte el documento principal que entregaste a Word (.docx) con buen formato.',
-  'Crear una versión en PDF': 'Genera una versión en PDF del documento principal que entregaste.',
-  'Crear gráficos con estos datos': 'Crea gráficos PNG con los datos entregados y añádelos a un informe .md.',
-  'Resumir en 5 puntos': 'Resume el resultado en 5 puntos clave.',
-  'Revisar y mejorar la redacción': 'Revisa y mejora la redacción y el formato de los entregables, sin cambiar el contenido.',
-  'Guarda el resultado en un documento': 'Guarda el resultado de esta tarea en un documento .md bien formateado.',
-  'Hazlo otra vez': 'Repite la tarea anterior.',
-  'Explícame paso a paso lo que hiciste': 'Explícame paso a paso lo que hiciste en el Mac.',
-  'Deshaz el último cambio': 'Deshaz el último cambio que hiciste, si es posible.'
-}
-
-function FollowUps({ items, onPick }: { items: string[]; onPick: (text: string) => void }): React.JSX.Element {
+function FollowUps({ items, onPick }: { items: FollowUpId[]; onPick: (text: string) => void }): React.JSX.Element {
+  const t = useT()
   return (
     <div className="flex flex-wrap gap-1.5 pt-1">
-      {items.map((label) => (
+      {items.map((id) => (
         <button
-          key={label}
+          key={id}
           type="button"
-          onClick={() => onPick(FOLLOW_UP_PROMPTS[label] ?? label)}
+          onClick={() => onPick(t(`tasks.ws.fu.${id}.prompt`))}
           className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted transition hover:border-accent/50 hover:bg-accent-soft hover:text-accent"
         >
-          <Sparkles size={11} /> {label}
+          <Sparkles size={11} /> {t(`tasks.ws.fu.${id}`)}
         </button>
       ))}
     </div>
@@ -307,6 +301,7 @@ function FollowUps({ items, onPick }: { items: string[]; onPick: (text: string) 
 }
 
 export function TasksWorkspace(): React.JSX.Element {
+  const t = useT()
   const bridge = hasTasksBridge()
   const folder = useTasks((s) => s.folder)
   const phase = useTasks((s) => s.phase)
@@ -394,7 +389,7 @@ export function TasksWorkspace(): React.JSX.Element {
         const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
         if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
           disconnect()
-          useTasks.setState({ phase: 'error', error: info.error ?? 'El servidor de las tareas se detuvo' })
+          useTasks.setState({ phase: 'error', error: info.error ?? t('tasks.ws.serverStopped') })
         }
       }),
     []
@@ -503,8 +498,8 @@ export function TasksWorkspace(): React.JSX.Element {
   // Aviso breve tras una acción del menú (p. ej. la ruta del Markdown exportado).
   useEffect(() => {
     if (!note) return
-    const t = setTimeout(() => setNote(null), 6000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setNote(null), 6000)
+    return () => clearTimeout(timer)
   }, [note])
 
   /** Ejecuta una acción del menú mostrando sus errores junto a la conversación. */
@@ -520,38 +515,38 @@ export function TasksWorkspace(): React.JSX.Element {
     ? [
         {
           icon: FileDown,
-          label: 'Exportar a Markdown',
+          label: t('tasks.ws.exportMd'),
           run: () =>
             guarded(async () => {
               const path = await exportTaskMarkdown(activeId)
-              if (path) setNote(`Conversación guardada en ${path}`)
+              if (path) setNote(t('tasks.ws.saved', { path }))
             })
         },
         {
           icon: Workflow,
-          label: 'Continuar en una tarea nueva',
-          hint: 'Empieza una tarea nueva con el encargo original y lo último que se concluyó',
+          label: t('tasks.ws.continue'),
+          hint: t('tasks.ws.continueHint'),
           disabled: phase !== 'ready',
           run: () => guarded(() => continueInNewTask(activeId))
         },
         {
           icon: Wand2,
-          label: 'Crear skill de esta tarea',
-          hint: 'Le pide al agente que guarde lo aprendido como una skill reutilizable',
+          label: t('tasks.ws.createSkill'),
+          hint: t('tasks.ws.createSkillHint'),
           disabled: phase !== 'ready' || busy,
           run: () => guarded(() => createSkillFromTask(activeId))
         },
         {
           icon: MessagesSquare,
           label: TASKS_TERMS.sideChat,
-          hint: 'Pregunta sobre la tarea sin modificarla',
+          hint: t('tasks.ws.sideHint'),
           disabled: phase !== 'ready',
           run: () => openSideChat(activeId)
         },
         {
           icon: CalendarClock,
-          label: 'Programar',
-          hint: 'Repetir esta tarea con una rutina',
+          label: t('tasks.ws.schedule'),
+          hint: t('tasks.ws.scheduleHint'),
           run: () => guarded(() => scheduleActiveTask())
         }
       ]
@@ -574,7 +569,7 @@ export function TasksWorkspace(): React.JSX.Element {
   if (!bridge) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-sm text-danger">
-        <AlertCircle size={16} className="mr-2" /> Falta `window.api.tasks` en el preload.
+        <AlertCircle size={16} className="mr-2" /> {t('tasks.ws.noBridge')}
       </div>
     )
   }
@@ -584,7 +579,7 @@ export function TasksWorkspace(): React.JSX.Element {
       {phase === 'ready' && requestedFullAccess && conn && !conn.fullAccess && (
         <div className="mx-auto mt-3 flex w-full max-w-3xl items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          El servidor no activó el Control total para esta carpeta; se usa el modo Sandbox.
+          {t('tasks.ws.noFull')}
         </div>
       )}
       {phase === 'error' && folder && (
@@ -592,7 +587,7 @@ export function TasksWorkspace(): React.JSX.Element {
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
           <Button variant="ghost" onClick={() => void selectFolder(folder)}>
-            <RefreshCw size={14} /> Reintentar
+            <RefreshCw size={14} /> {t('tasks.ws.retry')}
           </Button>
         </div>
       )}
@@ -604,7 +599,7 @@ export function TasksWorkspace(): React.JSX.Element {
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
           <Button variant="ghost" onClick={() => useTasks.setState({ error: null })}>
-            Cerrar
+            {t('tasks.ws.close')}
           </Button>
         </div>
       )}
@@ -621,7 +616,7 @@ export function TasksWorkspace(): React.JSX.Element {
         {activeId && (
           <header className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4">
             <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
-              {session?.title || 'Tarea'}
+              {session?.title || t('tasks.ws.untitled')}
             </span>
             <StatusPill status={status} />
             <Elapsed entries={entries} live={busy} />
@@ -632,7 +627,7 @@ export function TasksWorkspace(): React.JSX.Element {
               {folder && (
                 <button
                   type="button"
-                  title="Abrir carpeta en Finder"
+                  title={t('tasks.ws.openFinder')}
                   className="rounded p-1 hover:bg-hover hover:text-fg"
                   onClick={() => void reveal(folder)}
                 >
@@ -641,8 +636,8 @@ export function TasksWorkspace(): React.JSX.Element {
               )}
               <button
                 type="button"
-                title={panelOpen && !sideOpen ? 'Ocultar panel' : 'Mostrar plan y entregables'}
-                aria-label={panelOpen && !sideOpen ? 'Ocultar panel de progreso' : 'Mostrar plan y entregables'}
+                title={panelOpen && !sideOpen ? t('tasks.ws.hidePanel') : t('tasks.ws.showPanel')}
+                aria-label={panelOpen && !sideOpen ? t('tasks.ws.hidePanelAria') : t('tasks.ws.showPanel')}
                 className="rounded p-1 hover:bg-hover hover:text-fg"
                 onClick={() => {
                   if (sideOpen) {
@@ -682,7 +677,7 @@ export function TasksWorkspace(): React.JSX.Element {
                     <QuestionCard key={q.id} request={q} />
                   ))}
                   {status === 'done' && entries.length > 0 && (
-                    <FollowUps items={followUpsFor(files, fullAccess)} onPick={(t) => void send(t)} />
+                    <FollowUps items={followUpsFor(files, fullAccess)} onPick={(text) => void send(text)} />
                   )}
                 </>
               }
@@ -707,7 +702,7 @@ export function TasksWorkspace(): React.JSX.Element {
               busy={busy}
               disabled={phase !== 'ready'}
               autoFocusKey={activeId}
-              placeholder={busy ? 'El agente está trabajando…' : 'Responde o pide un cambio…'}
+              placeholder={busy ? t('tasks.ws.phWorking') : t('tasks.ws.phReply')}
             />
           </>
         ) : (
@@ -738,7 +733,7 @@ export function TasksWorkspace(): React.JSX.Element {
                 asideTab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
               }`}
             >
-              Progreso
+              {t('tasks.ws.progress')}
             </button>
             <button
               type="button"
@@ -755,7 +750,7 @@ export function TasksWorkspace(): React.JSX.Element {
               {asideTab === 'progress' && (
                 <button
                   type="button"
-                  title="Sincronizar"
+                  title={t('tasks.ws.sync')}
                   className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
                   onClick={() => void resync()}
                 >
@@ -764,7 +759,7 @@ export function TasksWorkspace(): React.JSX.Element {
               )}
               <button
                 type="button"
-                title="Ocultar panel"
+                title={t('tasks.ws.hidePanel')}
                 className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
                 onClick={() => setPanelOpen(false)}
               >

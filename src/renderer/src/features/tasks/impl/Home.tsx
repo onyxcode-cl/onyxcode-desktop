@@ -2,6 +2,7 @@
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { useState } from 'react'
 import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
+import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
 import { AccessSegmented } from './AccessSegmented'
@@ -28,7 +29,7 @@ export interface HomeCategory {
 }
 
 /** Categorías de plantillas de inicio en el idioma activo (se calculan al pintar). */
-export function getCategories(): HomeCategory[] {
+export function getCategories(t: (key: MsgKey, params?: Params) => string): HomeCategory[] {
   const moveNote = t('tasks.home.moveNote', { term: TASKS_TERMS.deleteGrant })
   return [
     {
@@ -189,7 +190,7 @@ export function Home({
   const requested = useTasks((s) => s.fullAccess)
   const full = conn ? conn.fullAccess : requested
   const [cat, setCat] = useState<string>(full ? 'computer' : 'docs')
-  const categories = getCategories()
+  const categories = getCategories(t)
   const category = categories.find((c) => c.id === cat) ?? categories[0]
   const [hidden, setHidden] = useState(() => readFlag(HIDE_KEY, false))
   const [onboarded, setOnboarded] = useState(() => readFlag(ONBOARDED_KEY, false))
