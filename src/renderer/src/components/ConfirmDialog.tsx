@@ -205,6 +205,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
           <input
             ref={inputRef}
             type="text"
+            aria-labelledby="confirm-dialog-title"
             value={text}
             placeholder={req.placeholder}
             onChange={(e) => setText(e.target.value)}

@@ -228,6 +228,7 @@ export function McpCatalogDialog({
           <section className="mt-4">
             <h4 className="text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.saveExactly')}</h4>
             <pre
+              tabIndex={0} // región con scroll: debe poder recorrerse con el teclado
               aria-label={t('mcp.dlg.configAria')}
               className="mt-1.5 max-h-48 overflow-auto rounded-lg border border-border bg-bg p-2.5 font-mono text-[11px] leading-relaxed"
             >

@@ -188,7 +188,7 @@ export function ChatSessionList({
   }, [filtering, hasMore, onLoadMore])
   if (loading && sessions.length === 0) {
     return (
-      <div className="flex flex-col gap-1.5 px-1 py-1" aria-busy="true" aria-label={t('chat.list.loading')}>
+      <div className="flex flex-col gap-1.5 px-1 py-1" role="status" aria-busy="true" aria-label={t('chat.list.loading')}>
         {[70, 55, 80, 45].map((w, i) => (
           <div key={i} className="h-7 animate-pulse rounded-lg bg-hover/70" style={{ width: `${w}%` }} />
         ))}

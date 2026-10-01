@@ -192,7 +192,11 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-fg/20 pt-[15vh]" onClick={onClose}>
       <div
         role="dialog"
+        aria-modal="true"
         aria-label={t('code.sessions.switch')}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose()
+        }}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-elevated shadow-2xl"
       >
@@ -212,7 +216,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
             placeholder={t('code.sessions.searchPlaceholder')}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-subtle"
           />
-          <button type="button" onClick={onClose} className="text-subtle hover:text-fg">
+          <button type="button" onClick={onClose} aria-label={t('code.sessions.close')} className="text-subtle hover:text-fg">
             <X size={14} />
           </button>
         </div>

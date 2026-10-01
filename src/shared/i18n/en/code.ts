@@ -115,6 +115,7 @@ export const code = {
   'code.sessions.deleteMessage': 'The session "{title}" will be deleted.',
   'code.sessions.deleteConfirm': 'Delete',
   'code.sessions.switch': 'Switch session',
+  'code.sessions.close': 'Close',
   'code.sessions.searchPlaceholder': 'Search sessions by title…',
   'code.sessions.noResults': 'No results.',
   'code.sessions.title': 'Sessions',

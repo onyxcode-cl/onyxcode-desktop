@@ -142,22 +142,29 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-fg/30 p-6" onClick={onClose}>
       <div
         role="dialog"
+        aria-modal="true"
+        aria-labelledby="worktree-title"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
       >
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <GitBranchPlus size={20} />
         </div>
-        <h3 className="text-base font-semibold">{t('code.worktree.title')}</h3>
+        <h3 id="worktree-title" className="text-base font-semibold">
+          {t('code.worktree.title')}
+        </h3>
         <p className="mt-1 text-sm leading-relaxed text-muted">
           {t('code.worktree.descBefore')}
           <code className="font-mono text-xs">{'git worktree'}</code>
           {t('code.worktree.descAfter')}
         </p>
-        <label className="mt-3 block text-xs font-medium text-subtle">{t('code.worktree.branchName')}</label>
+        <label htmlFor="worktree-branch" className="mt-3 block text-xs font-medium text-subtle">
+          {t('code.worktree.branchName')}
+        </label>
         <div className="mt-1 flex items-center overflow-hidden rounded-lg border border-border bg-bg">
           <span className="shrink-0 border-r border-border bg-hover px-2 py-1.5 font-mono text-xs text-subtle">{prefix}</span>
           <input
+            id="worktree-branch"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="min-w-0 flex-1 bg-transparent px-2 py-1.5 font-mono text-xs outline-none"
