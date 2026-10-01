@@ -61,5 +61,29 @@ export const tasks = {
   'tasks.notify.done': 'Tarea terminada',
   'tasks.notify.approval': 'Una tarea necesita tu aprobación',
   'tasks.notify.question': 'Una tarea tiene una pregunta para ti',
-  'tasks.pill.asking': 'Tiene una pregunta para ti — responde en {app}'
+  'tasks.pill.asking': 'Tiene una pregunta para ti — responde en {app}',
+  'tasks.md.you': 'Tú',
+  'tasks.md.agent': 'Agente',
+  'tasks.md.title': 'Tarea',
+  'tasks.md.folder': '- Carpeta: {value}',
+  'tasks.md.created': '- Creada: {value}',
+  'tasks.md.exported': '- Exportada: {value}',
+  'tasks.md.attachments': '_Adjuntos: {files}_',
+  'tasks.md.tool': '> Herramienta `{tool}`{detail}',
+  'tasks.md.fileName': 'tarea',
+  'tasks.act.scheduledTitle': 'Tarea programada',
+  'tasks.act.scheduleHint': 'Repite esta tarea con la programación que elijas.',
+  'tasks.act.stopped': 'El control del Mac está detenido. Pulsa «Reanudar control» para volver a darle el control al agente.',
+  'tasks.act.serverNotReady': 'El servidor de las tareas no está listo',
+  'tasks.act.pickFolderFirst': 'Elige primero una carpeta',
+  'tasks.act.noRestorePoint': 'Esta tarea no tiene un punto de restauración guardado.',
+  'tasks.act.noRestorePointMsg': 'Para este mensaje no se guardó un punto de restauración, así que no se pueden restaurar los archivos.',
+  'tasks.act.interruptTitle': 'Se interrumpirán tareas en curso',
+  'tasks.act.interruptMsg': {
+    one: 'Hay {count} tarea trabajando en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.',
+    other:
+      'Hay {count} tareas trabajando en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.'
+  },
+  'tasks.act.interruptContinue': 'Continuar',
+  'tasks.act.cannotAddFolder': 'Esa carpeta no se puede añadir.'
 } as const

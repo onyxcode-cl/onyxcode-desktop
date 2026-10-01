@@ -416,9 +416,6 @@ export interface SchedulePreview {
 /** Modo de acceso a una carpeta adicional: lectura y escritura, o solo lectura. */
 export type FolderAccessMode = 'rw' | 'ro'
 
-/** Etiquetas en español de cada modo de acceso. */
-export const FOLDER_MODE_LABEL_ES: Record<FolderAccessMode, string> = { rw: 'Lectura y escritura', ro: 'Solo lectura' }
-
 /** Carpeta adicional vinculada a un espacio de Tareas (servidor de la carpeta principal). */
 export interface LinkedFolder {
   path: string

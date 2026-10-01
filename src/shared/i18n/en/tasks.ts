@@ -64,5 +64,29 @@ export const tasks = {
   'tasks.notify.done': 'Task finished',
   'tasks.notify.approval': 'A task needs your approval',
   'tasks.notify.question': 'A task has a question for you',
-  'tasks.pill.asking': 'Has a question for you — reply in {app}'
+  'tasks.pill.asking': 'Has a question for you — reply in {app}',
+  'tasks.md.you': 'You',
+  'tasks.md.agent': 'Agent',
+  'tasks.md.title': 'Task',
+  'tasks.md.folder': '- Folder: {value}',
+  'tasks.md.created': '- Created: {value}',
+  'tasks.md.exported': '- Exported: {value}',
+  'tasks.md.attachments': '_Attachments: {files}_',
+  'tasks.md.tool': '> Tool `{tool}`{detail}',
+  'tasks.md.fileName': 'task',
+  'tasks.act.scheduledTitle': 'Scheduled task',
+  'tasks.act.scheduleHint': 'Repeat this task on the schedule you choose.',
+  'tasks.act.stopped': 'Mac control is stopped. Press “Resume control” to give the agent control again.',
+  'tasks.act.serverNotReady': 'The Tasks server isn’t ready',
+  'tasks.act.pickFolderFirst': 'Choose a folder first',
+  'tasks.act.noRestorePoint': 'This task has no saved restore point.',
+  'tasks.act.noRestorePointMsg': 'No restore point was saved for this message, so the files can’t be restored.',
+  'tasks.act.interruptTitle': 'Running tasks will be interrupted',
+  'tasks.act.interruptMsg': {
+    one: '{count} task is working in this folder. Changing the sandbox folders requires restarting it, which interrupts the task; you can resume it afterwards.',
+    other:
+      '{count} tasks are working in this folder. Changing the sandbox folders requires restarting it, which interrupts them; you can resume them afterwards.'
+  },
+  'tasks.act.interruptContinue': 'Continue',
+  'tasks.act.cannotAddFolder': 'That folder can’t be added.'
 } as const satisfies Messages<typeof es>

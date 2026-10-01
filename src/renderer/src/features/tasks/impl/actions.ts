@@ -1,6 +1,7 @@
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
-import { FOLDER_MODE_LABEL_ES, type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
+import { t } from '@shared/i18n'
+import { type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import { sandboxSendBlocked } from '@shared/sandbox-providers'
@@ -13,6 +14,7 @@ import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
+import { folderModeLabel } from './folder-mode'
 import { failedText, firstPoint, notCopiedWarningText, pickPointForMessage, restoreWarningText, type RestoreResult } from './restore-logic'
 import {
   clearUnseen,
@@ -40,7 +42,7 @@ import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './u
 /** Tras permitir un host, reanuda la tarea: la abre (si no es la activa) y le pide que reintente. */
 export async function retryAfterNetworkAllow(taskId: string, host: string): Promise<void> {
   if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
-  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, currentTasksModel())
+  await sendToTask(`Reintenta, ya tienes acceso a ${host}`, currentTasksModel()) // i18n-ignore: prompt al agente (se queda en español)
 }
 
 // ── "Permitir borrar" (Seatbelt: file-write-unlink) ──
@@ -260,8 +262,8 @@ export async function undenyApp(bundleId: string): Promise<void> {
   }
 }
 
-export const CONTROL_STOPPED_SEND_ERROR =
-  'El control del Mac está detenido. Pulsa «Reanudar control» para volver a darle el control al agente.'
+/** Mensaje de error en el idioma activo (se evalúa al fallar el envío). */
+export const controlStoppedSendError = (): string => t('tasks.act.stopped')
 
 export async function forgetFolder(folder: string): Promise<void> {
   try {
@@ -315,14 +317,14 @@ export async function openTask(sessionID: string): Promise<void> {
 
 function ctx(): { client: NonNullable<ReturnType<typeof useTasks.getState>['client']>; folder: string } {
   const { client, folder } = useTasks.getState()
-  if (!client || !folder) throw new Error('El servidor de las tareas no está listo')
+  if (!client || !folder) throw new Error(t('tasks.act.serverNotReady'))
   return { client, folder }
 }
 
 /** Diálogo nativo para adjuntar archivos: se copian a la carpeta y quedan listos para el próximo mensaje. */
 export async function attachFiles(): Promise<void> {
   const { folder } = useTasks.getState()
-  if (!folder) throw new Error('Elige primero una carpeta')
+  if (!folder) throw new Error(t('tasks.act.pickFolderFirst'))
   const files = await cw('tasks:importFiles', { folder })
   if (files.length === 0) return
   useTasks.setState((s) => {
@@ -371,7 +373,7 @@ function withAttachments(text: string): string {
   const files = useTasks.getState().attachments
   if (files.length === 0) return text
   const list = files.map((f) => `- ${f.relPath}`).join('\n')
-  return `${text}\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n${list}`
+  return `${text}\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n${list}` // i18n-ignore: prompt al agente (se queda en español)
 }
 
 /**
@@ -399,7 +401,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
     const st = await cw('computer:state').catch(() => null)
     const stopped = st ? st.stopped : !!useTasks.getState().controlStoppedAt
     useTasks.setState({ controlStoppedAt: stopped ? (st?.stoppedAt ?? Date.now()) : null })
-    if (stopped) throw new Error(CONTROL_STOPPED_SEND_ERROR)
+    if (stopped) throw new Error(controlStoppedSendError())
   }
   // La memoria (`.onyxcode/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
   await loadProjectAndMemory(folder)
@@ -529,7 +531,7 @@ async function stopIfBusy(taskId: string): Promise<void> {
 export async function undoTaskChanges(taskId: string): Promise<void> {
   const { folder } = ctx()
   const point = firstPoint(await listRestorePoints(folder, taskId))
-  if (!point) throw new Error('Esta tarea no tiene un punto de restauración guardado.')
+  if (!point) throw new Error(t('tasks.act.noRestorePoint'))
   const res = await applyRestorePoint(folder, point.id)
   useTasks.setState((s) => ({
     restoreVersion: s.restoreVersion + 1,
@@ -550,7 +552,7 @@ export async function undoFromMessage(taskId: string, userMessageId: string): Pr
   if (useTasks.getState().activeTaskId !== taskId) await openTask(taskId)
   const at = messageCreatedAt(taskId, userMessageId)
   const point = at === null ? null : pickPointForMessage(await listRestorePoints(folder, taskId), at)
-  if (!point) throw new Error('Para este mensaje no se guardó un punto de restauración, así que no se pueden restaurar los archivos.')
+  if (!point) throw new Error(t('tasks.act.noRestorePointMsg'))
   await stopIfBusy(taskId)
   const res = await applyRestorePoint(folder, point.id)
   const rev = await client.session.revert({ sessionID: taskId, directory: folder, messageID: userMessageId })
@@ -697,9 +699,9 @@ export async function scheduleActiveTask(): Promise<void> {
     .filter((p): p is Extract<(typeof firstUserParts)[number], { type: 'text' }> => p.type === 'text' && !p.synthetic)
     .map((p) => p.text)
     .join('\n')
-  const markerIdx = raw.indexOf('\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n')
+  const markerIdx = raw.indexOf('\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n') // i18n-ignore: prompt al agente (se queda en español)
   const prompt = (markerIdx >= 0 ? raw.slice(0, markerIdx) : raw).trim()
-  const title = useSessions.getState().sessions[activeTaskId]?.title || 'Tarea programada'
+  const title = useSessions.getState().sessions[activeTaskId]?.title || t('tasks.act.scheduledTitle')
   const model = currentTasksModel()
   const { openEditor } = await import('../../routines/impl/store')
   const { useUi } = await import('../../../stores/ui')
@@ -714,7 +716,7 @@ export async function scheduleActiveTask(): Promise<void> {
       enabled: true,
       originSessionId: activeTaskId
     },
-    'Repite esta tarea con la programación que elijas.'
+    t('tasks.act.scheduleHint')
   )
   useUi.getState().setMode('routines')
 }
@@ -753,9 +755,9 @@ async function confirmInterruptRunning(exceptId?: string): Promise<boolean> {
   const n = runningRootIds(exceptId).length
   if (n === 0) return true
   return confirmDialog({
-    title: 'Se interrumpirán tareas en curso',
-    message: `${n === 1 ? 'Hay 1 tarea trabajando' : `Hay ${n} tareas trabajando`} en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.`,
-    confirmLabel: 'Continuar',
+    title: t('tasks.act.interruptTitle'),
+    message: t('tasks.act.interruptMsg', { count: n }),
+    confirmLabel: t('tasks.act.interruptContinue'),
     danger: true
   })
 }
@@ -777,7 +779,7 @@ export async function linkFolder(path: string, mode: FolderAccessMode, opts?: { 
     const sandbox = !!conn && !conn.fullAccess
     if (sandbox && !(await confirmInterruptRunning())) return false
     const chk = await cw('tasks:folders:check', { path })
-    if (!chk.ok) throw new Error(chk.reason ?? 'Esa carpeta no se puede añadir.')
+    if (!chk.ok) throw new Error(chk.reason ?? t('tasks.act.cannotAddFolder'))
     const res = await cw('tasks:folders:link', {
       folder,
       path: chk.normalized,
@@ -815,8 +817,8 @@ export type FolderRequestDecision =
 /** Texto de rechazo que recibe el agente cuando el usuario no concede la carpeta. */
 function folderRefusal(kind: 'deny' | 'later', path: string): string {
   return kind === 'deny'
-    ? `El usuario denegó el acceso a ${path}; no lo vuelvas a pedir; adapta el plan para trabajar sin esa carpeta.`
-    : `El usuario prefiere no dar acceso a ${path} por ahora; sigue sin esa carpeta y menciónalo en el resumen.`
+    ? `El usuario denegó el acceso a ${path}; no lo vuelvas a pedir; adapta el plan para trabajar sin esa carpeta.` // i18n-ignore: prompt al agente (se queda en español)
+    : `El usuario prefiere no dar acceso a ${path} por ahora; sigue sin esa carpeta y menciónalo en el resumen.` // i18n-ignore: prompt al agente (se queda en español)
 }
 
 /**
@@ -849,8 +851,8 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
     const taskId = rootTaskId(req.sessionID)
     if (!(await confirmInterruptRunning(taskId))) return
     const chk = await cw('tasks:folders:check', { path: d.path })
-    if (!chk.ok) throw new Error(chk.reason ?? 'Esa carpeta no se puede añadir.')
-    await replyPermission(req.id, 'reject', 'Se está concediendo acceso; la tarea se reanudará sola.')
+    if (!chk.ok) throw new Error(chk.reason ?? t('tasks.act.cannotAddFolder'))
+    await replyPermission(req.id, 'reject', 'Se está concediendo acceso; la tarea se reanudará sola.') // i18n-ignore: prompt al agente (se queda en español)
     const res = await cw('tasks:folders:link', { folder, path: chk.normalized, mode: d.mode, trust: d.trust, restart: true })
     setFolderSetFrom(folder, res)
     if (res.restarted) {
@@ -859,7 +861,7 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
     }
     await openTask(taskId)
     await sendToTask(
-      `Ya tienes acceso a ${chk.normalized} (${FOLDER_MODE_LABEL_ES[d.mode].toLowerCase()}). Continúa la tarea donde la dejaste.`
+      `Ya tienes acceso a ${chk.normalized} (${folderModeLabel(d.mode).toLowerCase()}). Continúa la tarea donde la dejaste.` // i18n-ignore: prompt al agente (se queda en español)
     )
   } catch (err) {
     useTasks.setState({ error: errorMessage(err) })

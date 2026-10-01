@@ -3,10 +3,11 @@
  * asistente, primer encargo, exportación a Markdown, prompts de "Continuar en una tarea nueva" y de
  * la Consulta lateral, y el prompt de "Crear skill de esta tarea".
  */
+import { t } from '@shared/i18n'
 import type { MessageEntry } from '../../../stores/sessions'
 
 /** Marca que `sendToTask` añade al mensaje cuando hay archivos adjuntos. */
-export const ATTACHMENTS_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n'
+export const ATTACHMENTS_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: prompt al agente (se queda en español)
 
 type TextPart = Extract<MessageEntry['parts'][number], { type: 'text' }>
 
@@ -78,7 +79,7 @@ function toolLine(part: Extract<MessageEntry['parts'][number], { type: 'tool' }>
   }
   const detail = pick('description', 'command', 'filePath', 'path', 'url', 'query', 'pattern').replace(/\s+/g, ' ').trim()
   const short = detail.length > 120 ? `${detail.slice(0, 119)}…` : detail
-  return `> Herramienta \`${part.tool}\`${short ? `: ${short}` : ''}`
+  return t('tasks.md.tool', { tool: part.tool, detail: short ? `: ${short}` : '' })
 }
 
 /**
@@ -91,13 +92,13 @@ export function transcriptToMarkdown(
   entries: MessageEntry[],
   opts: { includeTools?: boolean } = {}
 ): string {
-  const title = s.title.trim() || 'Tarea'
+  const title = s.title.trim() || t('tasks.md.title')
   const out: string[] = [
     `# ${title}`,
     '',
-    `- Carpeta: ${s.directory}`,
-    `- Creada: ${stamp(s.time.created)}`,
-    `- Exportada: ${stamp(Date.now())}`,
+    t('tasks.md.folder', { value: s.directory }),
+    t('tasks.md.created', { value: stamp(s.time.created) }),
+    t('tasks.md.exported', { value: stamp(Date.now()) }),
     '',
     '---',
     ''
@@ -113,7 +114,7 @@ export function transcriptToMarkdown(
           .join('\n')
       )
       if (text) blocks.push(text)
-      if (files.length > 0) blocks.push(`_Adjuntos: ${files.join(', ')}_`)
+      if (files.length > 0) blocks.push(t('tasks.md.attachments', { files: files.join(', ') }))
     } else {
       for (const p of e.parts) {
         if (p.type === 'text' && !p.synthetic && !p.ignored && p.text.trim()) blocks.push(p.text.trim())
@@ -122,7 +123,7 @@ export function transcriptToMarkdown(
     }
     if (blocks.length === 0) continue
     if (role !== lastRole) {
-      out.push(`## ${role === 'user' ? 'Tú' : 'Agente'} · ${stamp(e.info.time.created)}`, '')
+      out.push(`## ${role === 'user' ? t('tasks.md.you') : t('tasks.md.agent')} · ${stamp(e.info.time.created)}`, '')
       lastRole = role === 'user' ? 'user' : 'assistant'
     }
     out.push(blocks.join('\n\n'), '')
@@ -139,7 +140,7 @@ export function suggestedExportName(title: string): string {
     .replace(/^\.+/, '')
     .slice(0, 80)
     .trim()
-  return `${base || 'tarea'}.md`
+  return `${base || t('tasks.md.fileName')}.md`
 }
 
 // ───────────────────────────── Continuar en una tarea nueva ─────────────────────────────
@@ -174,12 +175,12 @@ export function buildContinuationPrompt(title: string, entries: MessageEntry[]):
     .map((e) => clipStart(userText(e).replace(/\s+/g, ' '), CONT_FOLLOWUP_MAX))
     .filter(Boolean)
   const parts = [
-    `Continúa una tarea anterior: «${clipStart(title.trim() || 'sin título', 120)}». La conversación anterior no está disponible; este es el contexto que necesitas.`,
-    `Encargo original:\n${original || '(sin texto)'}`
+    `Continúa una tarea anterior: «${clipStart(title.trim() || 'sin título', 120)}». La conversación anterior no está disponible; este es el contexto que necesitas.`, // i18n-ignore: prompt al agente (se queda en español)
+    `Encargo original:\n${original || '(sin texto)'}` // i18n-ignore: prompt al agente (se queda en español)
   ]
-  if (followUps.length > 0) parts.push(`Mensajes posteriores del usuario:\n${followUps.map((f) => `- ${f}`).join('\n')}`)
-  if (summary) parts.push(`Lo último que dijiste o concluiste:\n${summary}`)
-  parts.push('Revisa el estado actual de la carpeta y continúa donde se quedó; si algo no está claro, pregúntame antes de actuar.')
+  if (followUps.length > 0) parts.push(`Mensajes posteriores del usuario:\n${followUps.map((f) => `- ${f}`).join('\n')}`) // i18n-ignore: prompt al agente (se queda en español)
+  if (summary) parts.push(`Lo último que dijiste o concluiste:\n${summary}`) // i18n-ignore: prompt al agente (se queda en español)
+  parts.push('Revisa el estado actual de la carpeta y continúa donde se quedó; si algo no está claro, pregúntame antes de actuar.') // i18n-ignore: prompt al agente (se queda en español)
   return clipStart(parts.join('\n\n'), CONTINUATION_PROMPT_MAX)
 }
 
@@ -193,10 +194,10 @@ const SIDE_HEADER_MAX = 600
  */
 export function buildSideChatSystem(title: string, entries: MessageEntry[], maxChars = 12_000): string {
   const header = clipStart(
-    'Eres un asistente de consulta lateral dentro de una tarea. Responde en español, breve y claro, ' +
-      'usando solo el contexto de la tarea que aparece abajo. No modifiques archivos ni ejecutes acciones: ' +
-      'esta conversación no cambia la tarea. Si te piden algo que requiere actuar, sugiere hacerlo en la tarea principal.\n\n' +
-      `Tarea: «${clipStart(title.trim() || 'sin título', 120)}».`,
+    'Eres un asistente de consulta lateral dentro de una tarea. Responde en español, breve y claro, ' + // i18n-ignore: prompt al agente (se queda en español)
+      'usando solo el contexto de la tarea que aparece abajo. No modifiques archivos ni ejecutes acciones: ' + // i18n-ignore: prompt al agente (se queda en español)
+      'esta conversación no cambia la tarea. Si te piden algo que requiere actuar, sugiere hacerlo en la tarea principal.\n\n' + // i18n-ignore: prompt al agente (se queda en español)
+      `Tarea: «${clipStart(title.trim() || 'sin título', 120)}».`, // i18n-ignore: prompt al agente (se queda en español)
     SIDE_HEADER_MAX
   )
   const turns: string[] = []
@@ -210,7 +211,7 @@ export function buildSideChatSystem(title: string, entries: MessageEntry[], maxC
             .trim()
     if (text) turns.push(`${e.info.role === 'user' ? 'Usuario' : 'Agente'}: ${text}`)
   }
-  const intro = '\n\nConversación de la tarea (lo más antiguo puede estar recortado):\n'
+  const intro = '\n\nConversación de la tarea (lo más antiguo puede estar recortado):\n' // i18n-ignore: prompt al agente (se queda en español)
   const budget = Math.max(0, maxChars - header.length - intro.length)
   if (budget < 50 || turns.length === 0) return header.slice(0, maxChars)
   // Se llenan los turnos desde el más reciente; cada turno se recorta para que quepan varios.
@@ -233,11 +234,11 @@ export function buildSideChatSystem(title: string, entries: MessageEntry[], maxC
 
 /** Mensaje que se envía a la tarea para convertirla en una skill reutilizable. */
 export const CREATE_SKILL_PROMPT =
-  'Convierte lo que hicimos en esta tarea en una skill reutilizable.\n\n' +
-  '1. Elige un nombre corto en minúsculas con guiones (por ejemplo `informe-mensual`).\n' +
-  '2. Crea el archivo `.opencode/skills/<nombre>/SKILL.md` dentro de la carpeta de la tarea. Empieza con un bloque de ' +
-  'metadatos (frontmatter) con `name` (igual que el nombre de la carpeta) y `description` (una frase que diga cuándo usarla).\n' +
-  '3. Escribe debajo, en español, los pasos generales que seguiste, las herramientas o comandos que funcionaron y los errores ' +
-  'que conviene evitar. Generaliza: sin datos personales, nombres de archivos concretos ni contenido confidencial.\n' +
-  '4. Si esa carpeta ya existe, no la sobrescribas: elige otro nombre.\n' +
-  '5. Al terminar, dime el nombre y la ruta de la skill.'
+  'Convierte lo que hicimos en esta tarea en una skill reutilizable.\n\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '1. Elige un nombre corto en minúsculas con guiones (por ejemplo `informe-mensual`).\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '2. Crea el archivo `.opencode/skills/<nombre>/SKILL.md` dentro de la carpeta de la tarea. Empieza con un bloque de ' + // i18n-ignore: prompt al agente (se queda en español)
+  'metadatos (frontmatter) con `name` (igual que el nombre de la carpeta) y `description` (una frase que diga cuándo usarla).\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '3. Escribe debajo, en español, los pasos generales que seguiste, las herramientas o comandos que funcionaron y los errores ' + // i18n-ignore: prompt al agente (se queda en español)
+  'que conviene evitar. Generaliza: sin datos personales, nombres de archivos concretos ni contenido confidencial.\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '4. Si esa carpeta ya existe, no la sobrescribas: elige otro nombre.\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '5. Al terminar, dime el nombre y la ruta de la skill.' // i18n-ignore: prompt al agente (se queda en español)
