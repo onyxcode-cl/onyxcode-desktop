@@ -1164,7 +1164,13 @@ export async function loadTasksPrefs(): Promise<void> {
 }
 
 export async function saveTasksPrefs(patch: Partial<TasksPrefs>): Promise<void> {
-  const req: { autoArchiveDays?: number; idleStopMinutes?: number; stallWarnMinutes?: number; maxServers?: number; notify?: Partial<TasksPrefs['notify']> } = {}
+  const req: {
+    autoArchiveDays?: number
+    idleStopMinutes?: number
+    stallWarnMinutes?: number
+    maxServers?: number
+    notify?: Partial<TasksPrefs['notify']>
+  } = {}
   if (patch.autoArchiveDays !== undefined) req.autoArchiveDays = patch.autoArchiveDays
   if (patch.idleStopMinutes !== undefined) req.idleStopMinutes = patch.idleStopMinutes
   if (patch.stallWarnMinutes !== undefined) req.stallWarnMinutes = patch.stallWarnMinutes
