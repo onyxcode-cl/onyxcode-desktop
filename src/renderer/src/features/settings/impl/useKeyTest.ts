@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { KeyTestResult } from '@shared/key-test'
+import { t } from '@shared/i18n'
 import { call } from '../../../lib/api'
 
 /** Estado de la última «prueba de clave» de un proveedor (solo estado: la clave nunca llega aquí). */
@@ -21,7 +22,7 @@ export const useKeyTests = create<KeyTestsState>((set, get) => ({
     try {
       entry = { phase: 'done', result: await call('app:testProviderKey', { providerID }) }
     } catch (err) {
-      entry = { phase: 'error', message: err instanceof Error ? err.message : 'No se pudo probar la clave.' }
+      entry = { phase: 'error', message: err instanceof Error ? err.message : t('models.keyTest.failed') }
     }
     set((s) => ({ entries: { ...s.entries, [providerID]: entry } }))
   },

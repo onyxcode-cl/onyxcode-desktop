@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import type { AssistantMessage, Message } from '@opencode-ai/sdk/v2/client'
 import type { ModelRef } from '@shared/types'
+import { useT } from '../lib/i18n'
 import { formatCost, formatTokens } from '../lib/format'
 import { errorMessage, type OpencodeClient } from '../lib/opencode'
 import { useProviders } from '../stores/providers'
@@ -94,6 +95,7 @@ function Stat({ label, value }: { label: string; value: string }): React.JSX.Ele
 }
 
 export function UsageMeter({ messages, model }: { messages: { info: Message }[]; model: ModelRef }): React.JSX.Element | null {
+  const t = useT()
   const providers = useProviders((s) => s.providers)
   const client = useServer((s) => s.client)
   const [open, setOpen] = useState(false)
@@ -161,8 +163,8 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label={`Uso y contexto: ${pct}% del contexto`}
-        title={`Contexto ${pct}% · ${formatCost(session.cost)} en esta sesión`}
+        aria-label={t('settings.usage.meter.aria', { pct })}
+        title={t('settings.usage.meter.title', { pct, cost: formatCost(session.cost) })}
         className={`flex h-7 items-center gap-1.5 rounded-md px-1.5 text-muted transition-colors hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
       >
         <Ring pct={pct} />
@@ -171,7 +173,7 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
       {open && (
         <div className="absolute right-0 bottom-full z-50 mb-2 w-72 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-3.5 shadow-xl">
           <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="text-[13px] font-medium">Contexto</span>
+            <span className="text-[13px] font-medium">{t('settings.usage.meter.context')}</span>
             <span className="text-[13px] tabular-nums text-muted">{pct}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-inset">
@@ -181,28 +183,28 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
             />
           </div>
           <p className="mt-1.5 text-[12px] text-subtle">
-            {formatTokens(session.context)} de {formatTokens(limit)} tokens · {info.name}
+            {t('settings.usage.meter.contextOf', { used: formatTokens(session.context), limit: formatTokens(limit), model: info.name })}
           </p>
 
           <div className="my-3 border-t border-border" />
 
-          <div className="mb-1.5 text-[13px] font-medium">Esta sesión</div>
+          <div className="mb-1.5 text-[13px] font-medium">{t('settings.usage.meter.thisSession')}</div>
           <div className="flex flex-col gap-1">
-            <Stat label="Costo estimado" value={formatCost(session.cost)} />
-            <Stat label="Tokens de entrada" value={formatTokens(session.input)} />
-            <Stat label="Tokens de salida" value={formatTokens(session.output + session.reasoning)} />
-            <Stat label="Caché" value={formatTokens(session.cache)} />
+            <Stat label={t('settings.usage.stat.cost')} value={formatCost(session.cost)} />
+            <Stat label={t('settings.usage.meter.input')} value={formatTokens(session.input)} />
+            <Stat label={t('settings.usage.meter.output')} value={formatTokens(session.output + session.reasoning)} />
+            <Stat label={t('settings.usage.meter.cache')} value={formatTokens(session.cache)} />
           </div>
 
           <div className="my-3 border-t border-border" />
 
-          <div className="mb-1.5 text-[13px] font-medium">Todos los proyectos</div>
-          {global === 'loading' && <p className="text-[12.5px] text-subtle">Calculando…</p>}
-          {global === 'error' && <p className="text-[12.5px] text-danger">No se pudo leer el uso.</p>}
+          <div className="mb-1.5 text-[13px] font-medium">{t('settings.usage.meter.allProjects')}</div>
+          {global === 'loading' && <p className="text-[12.5px] text-subtle">{t('settings.usage.meter.calculating')}</p>}
+          {global === 'error' && <p className="text-[12.5px] text-danger">{t('settings.usage.meter.error')}</p>}
           {typeof global === 'object' && (
             <div className="flex flex-col gap-1">
-              <Stat label={`Hoy · ${global.today.sessions} sesiones`} value={formatCost(global.today.cost)} />
-              <Stat label={`30 días · ${global.month.sessions} sesiones`} value={formatCost(global.month.cost)} />
+              <Stat label={t('settings.usage.meter.today', { count: global.today.sessions })} value={formatCost(global.today.cost)} />
+              <Stat label={t('settings.usage.meter.days30', { count: global.month.sessions })} value={formatCost(global.month.cost)} />
             </div>
           )}
 
@@ -211,7 +213,7 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
             onClick={openDetail}
             className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-[12.5px] text-muted transition-colors hover:border-border-strong hover:bg-hover hover:text-fg"
           >
-            <BarChart3 size={13} /> Ver detalle de uso
+            <BarChart3 size={13} /> {t('settings.usage.meter.detail')}
           </button>
         </div>
       )}

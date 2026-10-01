@@ -16,9 +16,11 @@ import {
   X,
   Zap
 } from 'lucide-react'
+import { t } from '@shared/i18n'
 import { MODE_LABELS, UI_LABELS } from '@shared/labels'
 import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
+import { useT } from '../../../lib/i18n'
 import { useAccountState } from '../../../lib/use-account-state'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
@@ -52,20 +54,23 @@ export type SettingsSectionId =
   | 'diagnostics'
   | 'about'
 
-const SECTIONS: { id: SettingsSectionId; label: string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
-  { id: 'general', label: 'General', icon: SlidersHorizontal, View: GeneralSection },
-  { id: 'account', label: 'Cuenta', icon: UserRound, View: AccountSection },
-  { id: 'models', label: 'Modelos', icon: Cpu, View: ModelsSection },
-  { id: 'mcp', label: 'MCP', icon: Blocks, View: McpSection },
-  { id: 'tasks', label: MODE_LABELS.tasks, icon: Users, View: TasksSection },
-  { id: 'network', label: UI_LABELS.network, icon: Globe, View: NetworkSection },
-  { id: 'computer', label: UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
-  { id: 'automode', label: UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
-  { id: 'browser', label: 'Navegador', icon: Compass, View: BrowserSection },
-  { id: 'usage', label: 'Uso', icon: BarChart3, View: UsageSection },
-  { id: 'shortcuts', label: 'Atajos', icon: Keyboard, View: ShortcutsSection },
-  { id: 'diagnostics', label: 'Diagnóstico', icon: LifeBuoy, View: DiagnosticsSection },
-  { id: 'about', label: 'Acerca de', icon: Info, View: AboutSection }
+/** Etiqueta calculada al pintar (sigue al idioma activo). */
+const lazy = (key: Parameters<typeof t>[0]) => (): string => t(key)
+
+const SECTIONS: { id: SettingsSectionId; label: () => string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
+  { id: 'general', label: lazy('settings.nav.general'), icon: SlidersHorizontal, View: GeneralSection },
+  { id: 'account', label: lazy('settings.nav.account'), icon: UserRound, View: AccountSection },
+  { id: 'models', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection },
+  { id: 'mcp', label: lazy('settings.nav.mcp'), icon: Blocks, View: McpSection },
+  { id: 'tasks', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection },
+  { id: 'network', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection },
+  { id: 'computer', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
+  { id: 'automode', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
+  { id: 'browser', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection },
+  { id: 'usage', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection },
+  { id: 'shortcuts', label: lazy('settings.nav.shortcuts'), icon: Keyboard, View: ShortcutsSection },
+  { id: 'diagnostics', label: lazy('settings.nav.diagnostics'), icon: LifeBuoy, View: DiagnosticsSection },
+  { id: 'about', label: lazy('settings.nav.about'), icon: Info, View: AboutSection }
 ]
 
 const KEY = 'settings.section'
@@ -83,14 +88,16 @@ function initialSection(): SettingsSectionId {
 
 /** Vista de Ajustes: navegación lateral por secciones. */
 export function SettingsView(props: { initial?: SettingsSectionId } = {}): React.JSX.Element {
+  const t = useT()
   return (
-    <ErrorBoundary label="Ajustes">
+    <ErrorBoundary label={t('settings.title')}>
       <SettingsPanel {...props} />
     </ErrorBoundary>
   )
 }
 
 function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React.JSX.Element {
+  const t = useT()
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
   // «Cuenta» solo existe si la app exige cuenta (ACCOUNT_API definido).
@@ -125,11 +132,11 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
     <div className="flex h-full flex-col">
       <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4">
         <span className="flex items-center gap-2 text-[13.5px] font-medium">
-          <Settings2 size={15} className="text-accent" /> Ajustes
+          <Settings2 size={15} className="text-accent" /> {t('settings.title')}
         </span>
         <span className="flex items-center gap-2">
           <kbd className="kbd">Esc</kbd>
-          <IconButton label="Cerrar ajustes (Esc)" onClick={() => close(false)}>
+          <IconButton label={t('settings.close')} onClick={() => close(false)}>
             <X size={16} />
           </IconButton>
         </span>
@@ -137,7 +144,7 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
       <div className="flex min-h-0 flex-1">
         <nav
           className="w-52 shrink-0 space-y-0.5 overflow-y-auto border-r border-border/70 bg-sidebar/50 p-3"
-          aria-label="Secciones de ajustes"
+          aria-label={t('settings.navAria')}
         >
           {sections.map(({ id, label, icon: Icon }) => {
             const active = section === id
@@ -150,7 +157,7 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
                 className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70' : 'text-muted hover:bg-hover hover:text-fg'}`}
               >
                 <Icon size={15} className={active ? 'text-accent' : ''} />
-                {label}
+                {label()}
               </button>
             )
           })}

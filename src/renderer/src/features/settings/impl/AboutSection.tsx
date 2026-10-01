@@ -4,9 +4,10 @@ import { APP_NAME } from '@shared/brand'
 import type { VersionsInfo } from '@shared/ipc-extras'
 import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { api } from '../../../lib/api'
 import { engineNoticeText, engineSummary } from '../../../lib/engine-notice'
-import { CHECK_FAILED_TEXT, checkResultText, lastCheckText, updateView } from '../../../lib/update-notice'
+import { checkFailedText, checkResultText, lastCheckText, updateView } from '../../../lib/update-notice'
 import { runUpdateAction, useUpdateState } from '../../../lib/use-update-state'
 import { ProgressBar } from '../../../components/ProgressBar'
 import { useSettings } from '../../../stores/settings'
@@ -16,6 +17,7 @@ import { getExtras } from './extras'
 import { Card, ErrorText, Row, SectionHeader, SubTitle, Toggle } from './ui'
 
 export function AboutSection(): React.JSX.Element {
+  const t = useT()
   const client = useServer((s) => s.client)
   const connection = useServer((s) => s.connection)
   const [versions, setVersions] = useState<VersionsInfo | null>(null)
@@ -58,7 +60,7 @@ export function AboutSection(): React.JSX.Element {
       if (r.ok) {
         setUpdate(r.data)
         setCheckResult(checkResultText(r.data, startedAt))
-      } else setCheckResult(CHECK_FAILED_TEXT)
+      } else setCheckResult(checkFailedText())
     })
   }
   const configured = update?.configured ?? false
@@ -66,20 +68,23 @@ export function AboutSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader title={`Acerca de ${APP_NAME}`} description="Cliente de escritorio sobre OpenCode." />
+      <SectionHeader title={t('settings.about.title', { app: APP_NAME })} description={t('settings.about.subtitle')} />
       {error && (
         <div className="mb-3">
           <ErrorText>{error}</ErrorText>
         </div>
       )}
       <Card>
-        <Row label={APP_NAME} description={info?.isDev ? 'Modo desarrollo' : undefined}>
+        <Row label={APP_NAME} description={info?.isDev ? t('settings.about.devMode') : undefined}>
           <span className="font-mono text-sm">v{versions?.app ?? info?.version ?? '…'}</span>
         </Row>
-        <Row label="Motor" description={engineNoticeText(engine) ?? undefined}>
+        <Row label={t('settings.about.engine')} description={engineNoticeText(engine) ?? undefined}>
           <span className="font-mono text-sm">{engineSummary(engine) ?? '—'}</span>
         </Row>
-        <Row label="Servidor OpenCode" description={connection ? <span className="font-mono">{connection.baseUrl}</span> : 'Sin conexión'}>
+        <Row
+          label={t('settings.about.server')}
+          description={connection ? <span className="font-mono">{connection.baseUrl}</span> : t('settings.about.noConnection')}
+        >
           <span className="font-mono text-sm">
             {server ? `v${server.version}` : (connection?.version && `v${connection.version}`) || '—'}
           </span>
@@ -93,49 +98,55 @@ export function AboutSection(): React.JSX.Element {
         <Row label="Node.js">
           <span className="font-mono text-sm">{versions?.node ?? '…'}</span>
         </Row>
-        <Row label="Sistema">
+        <Row label={t('settings.about.system')}>
           <span className="font-mono text-sm">{versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}</span>
         </Row>
-        <Row label="Proyecto independiente, no afiliado a OpenCode ni a Anthropic." />
+        <Row label={t('settings.about.disclaimer')} />
       </Card>
 
       {info && (
         <>
-          <SubTitle>Datos</SubTitle>
+          <SubTitle>{t('settings.about.data')}</SubTitle>
           <Card>
-            <Row label="Datos de la app" description={<span className="font-mono break-all select-text">{info.userDataPath}</span>} />
-            <Row label="Espacio de Chat" description={<span className="font-mono break-all select-text">{info.chatDirectory}</span>} />
+            <Row
+              label={t('settings.about.appData')}
+              description={<span className="font-mono break-all select-text">{info.userDataPath}</span>}
+            />
+            <Row
+              label={t('settings.about.chatSpace')}
+              description={<span className="font-mono break-all select-text">{info.chatDirectory}</span>}
+            />
           </Card>
         </>
       )}
 
-      <SubTitle>Actualizaciones</SubTitle>
+      <SubTitle>{t('settings.about.updates')}</SubTitle>
       <Card>
         <Row
-          label="Buscar actualizaciones automáticamente"
+          label={t('settings.about.autoCheck')}
           description={
             configured
-              ? `Una vez al día como mucho, la app pide a GitHub (api.github.com) cuál es la última versión publicada. Solo se envía esa petición con el nombre y la versión de la app (${APP_NAME}/${update?.current ?? info?.version ?? ''}); ningún dato tuyo ni identificador. Solo descarga cuando pulsas Actualizar.`
-              : 'Esta compilación no tiene configurado dónde buscar versiones nuevas.'
+              ? t('settings.about.autoCheck.configured', { agent: `${APP_NAME}/${update?.current ?? info?.version ?? ''}` })
+              : t('settings.about.autoCheck.unconfigured')
           }
         >
           <Toggle
             checked={checkUpdates}
             onChange={(v) => void useSettings.getState().update({ checkUpdates: v })}
-            label="Buscar actualizaciones automáticamente"
+            label={t('settings.about.autoCheck')}
             disabled={!configured}
           />
         </Row>
-        <Row label="Versión actual">
+        <Row label={t('settings.about.currentVersion')}>
           <span data-testid="update-current" className="font-mono text-sm">
             v{update?.current ?? info?.version ?? '…'}
           </span>
         </Row>
-        <Row label="Canal" description="Solo versiones estables.">
-          <span className="text-sm">Estable</span>
+        <Row label={t('settings.about.channel')} description={t('settings.about.channel.description')}>
+          <span className="text-sm">{t('settings.about.channel.stable')}</span>
         </Row>
         <Row
-          label="Buscar ahora"
+          label={t('settings.about.checkNow')}
           description={
             <span data-testid="update-last-check">
               {checkResult && (
@@ -148,13 +159,15 @@ export function AboutSection(): React.JSX.Element {
           }
         >
           <Button size="sm" onClick={searchNow} disabled={!configured || !checkUpdates || update?.checking === true}>
-            {update?.checking ? 'Buscando…' : 'Buscar ahora'}
+            {update?.checking ? t('settings.about.checking') : t('settings.about.checkNow')}
           </Button>
         </Row>
         {view && update && (
           <Row
             label={
-              view.phase === 'idle' || view.phase === 'cancelled' ? `Versión ${update.latest?.version ?? ''} disponible` : 'Actualización'
+              view.phase === 'idle' || view.phase === 'cancelled'
+                ? t('settings.about.versionAvailable', { version: update.latest?.version ?? '' })
+                : t('settings.about.update')
             }
             description={
               <span data-testid="update-status" data-phase={view.phase}>
@@ -186,13 +199,13 @@ export function AboutSection(): React.JSX.Element {
         )}
       </Card>
 
-      <SubTitle>Enlaces</SubTitle>
+      <SubTitle>{t('settings.about.links')}</SubTitle>
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => open('https://opencode.ai/docs/')}>
-          <ExternalLink size={14} /> Documentación de OpenCode
+          <ExternalLink size={14} /> {t('settings.about.docs')}
         </Button>
         <Button onClick={() => open('https://opencode.ai/docs/mcp-servers/')}>
-          <ExternalLink size={14} /> Servidores MCP
+          <ExternalLink size={14} /> {t('settings.about.mcpServers')}
         </Button>
       </div>
     </div>

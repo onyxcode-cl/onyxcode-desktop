@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import type { GlobalSession } from '@opencode-ai/sdk/v2/client'
+import { getLang, type MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
 import { Card, ErrorText, SectionHeader, SubTitle, formatCost, formatNumber, formatTokens } from './ui'
 
 type Period = 'today' | '7d' | '30d' | 'all'
 
-const PERIODS: { id: Period; label: string }[] = [
-  { id: 'today', label: 'Hoy' },
-  { id: '7d', label: '7 días' },
-  { id: '30d', label: '30 días' },
-  { id: 'all', label: 'Todo' }
+const PERIODS: { id: Period; labelKey: MsgKey }[] = [
+  { id: 'today', labelKey: 'settings.usage.period.today' },
+  { id: '7d', labelKey: 'settings.usage.period.7d' },
+  { id: '30d', labelKey: 'settings.usage.period.30d' },
+  { id: 'all', labelKey: 'settings.usage.period.all' }
 ]
+
+/** Clave interna del grupo «modelo desconocido» (se muestra traducida). */
+const UNKNOWN = '\u0000unknown'
 
 const PAGE = 500
 const MAX_SESSIONS = 5000
@@ -56,6 +61,7 @@ function since(period: Period): number {
  * hijas). Se listan todas las sesiones de todos los proyectos (`experimental.session.list`).
  */
 export function UsageSection(): React.JSX.Element {
+  const t = useT()
   const client = useServer((s) => s.client)
   const [sessions, setSessions] = useState<GlobalSession[] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -100,7 +106,7 @@ export function UsageSection(): React.JSX.Element {
 
   const totals = useMemo(() => filtered.reduce(add, EMPTY), [filtered])
 
-  const byModel = useMemo(() => groupBy(filtered, (s) => (s.model ? `${s.model.providerID}/${s.model.id}` : 'desconocido')), [filtered])
+  const byModel = useMemo(() => groupBy(filtered, (s) => (s.model ? `${s.model.providerID}/${s.model.id}` : UNKNOWN)), [filtered])
   const byProject = useMemo(
     () => groupBy(filtered, (s) => s.project?.name ?? s.project?.worktree.split('/').pop() ?? s.directory.split('/').pop() ?? s.directory),
     [filtered]
@@ -109,10 +115,7 @@ export function UsageSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader
-        title="Uso"
-        description="Tokens y costo estimado según los datos que OpenCode guarda por sesión (todos los proyectos)."
-      />
+      <SectionHeader title={t('settings.usage.title')} description={t('settings.usage.subtitle')} />
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex rounded-lg border border-border p-0.5 text-xs">
           {PERIODS.map((p) => (
@@ -122,54 +125,52 @@ export function UsageSection(): React.JSX.Element {
               onClick={() => setPeriod(p.id)}
               className={`rounded-md px-3 py-1 ${period === p.id ? 'bg-active font-medium text-fg' : 'text-muted hover:text-fg'}`}
             >
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
         <Button variant="ghost" onClick={() => void load()} disabled={loading || !client}>
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Actualizar
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('settings.usage.refresh')}
         </Button>
       </div>
 
       {error && <ErrorText>{error}</ErrorText>}
-      {!client && <p className="text-sm text-muted">Esperando al servidor de OpenCode…</p>}
+      {!client && <p className="text-sm text-muted">{t('settings.usage.waiting')}</p>}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Costo estimado" value={formatCost(totals.cost)} />
-        <Stat label="Sesiones" value={formatNumber(totals.sessions)} />
-        <Stat label="Tokens entrada" value={formatTokens(totals.input)} />
-        <Stat label="Tokens salida" value={formatTokens(totals.output)} />
-        <Stat label="Razonamiento" value={formatTokens(totals.reasoning)} />
-        <Stat label="Caché (lectura)" value={formatTokens(totals.cacheRead)} />
-        <Stat label="Caché (escritura)" value={formatTokens(totals.cacheWrite)} />
+        <Stat label={t('settings.usage.stat.cost')} value={formatCost(totals.cost)} />
+        <Stat label={t('settings.usage.stat.sessions')} value={formatNumber(totals.sessions)} />
+        <Stat label={t('settings.usage.stat.input')} value={formatTokens(totals.input)} />
+        <Stat label={t('settings.usage.stat.output')} value={formatTokens(totals.output)} />
+        <Stat label={t('settings.usage.stat.reasoning')} value={formatTokens(totals.reasoning)} />
+        <Stat label={t('settings.usage.stat.cacheRead')} value={formatTokens(totals.cacheRead)} />
+        <Stat label={t('settings.usage.stat.cacheWrite')} value={formatTokens(totals.cacheWrite)} />
         <Stat
-          label="Total tokens"
+          label={t('settings.usage.stat.total')}
           value={formatTokens(totals.input + totals.output + totals.reasoning + totals.cacheRead + totals.cacheWrite)}
         />
       </div>
-      <p className="mt-2 text-[11px] text-subtle">
-        El costo usa los precios públicos de cada modelo; con una suscripción (p.ej. OpenCode Go) es sólo referencial.
-      </p>
+      <p className="mt-2 text-[11px] text-subtle">{t('settings.usage.costNote')}</p>
 
-      <SubTitle>Por modelo</SubTitle>
+      <SubTitle>{t('settings.usage.byModel')}</SubTitle>
       <Breakdown groups={byModel} />
 
-      <SubTitle>Por proyecto</SubTitle>
+      <SubTitle>{t('settings.usage.byProject')}</SubTitle>
       <Breakdown groups={byProject} />
 
-      <SubTitle>Sesiones más costosas</SubTitle>
+      <SubTitle>{t('settings.usage.topSessions')}</SubTitle>
       <Card>
-        {top.length === 0 && <div className="px-4 py-4 text-sm text-muted">Sin sesiones en este período.</div>}
+        {top.length === 0 && <div className="px-4 py-4 text-sm text-muted">{t('settings.usage.noSessions')}</div>}
         {top.map((s) => (
           <div key={s.id} className="flex items-center gap-3 border-b border-border px-4 py-2 text-sm last:border-b-0">
             <div className="min-w-0 flex-1">
-              <div className="truncate">{s.title || 'Sin título'}</div>
+              <div className="truncate">{s.title || t('settings.usage.untitled')}</div>
               <div className="truncate text-xs text-muted">
-                {new Date(s.time.updated).toLocaleString('es-CL')} · {s.model?.id ?? '—'}
+                {new Date(s.time.updated).toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL')} · {s.model?.id ?? '—'}
               </div>
             </div>
             <div className="text-right text-xs text-muted tabular-nums">
-              {formatTokens((s.tokens?.input ?? 0) + (s.tokens?.output ?? 0))} tok
+              {t('settings.usage.tok', { count: formatTokens((s.tokens?.input ?? 0) + (s.tokens?.output ?? 0)) })}
             </div>
             <div className="w-20 text-right font-medium tabular-nums">{formatCost(s.cost ?? 0)}</div>
           </div>
@@ -194,16 +195,17 @@ function groupBy(list: GlobalSession[], keyOf: (s: GlobalSession) => string): Gr
 }
 
 function Breakdown({ groups }: { groups: Group[] }): React.JSX.Element {
+  const t = useT()
   const max = Math.max(...groups.map((g) => g.totals.cost), 0)
   return (
     <Card>
-      {groups.length === 0 && <div className="px-4 py-4 text-sm text-muted">Sin datos.</div>}
+      {groups.length === 0 && <div className="px-4 py-4 text-sm text-muted">{t('settings.usage.noData')}</div>}
       {groups.slice(0, 12).map((g) => (
         <div key={g.key} className="border-b border-border px-4 py-2 text-sm last:border-b-0">
           <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1 truncate font-mono text-xs">{g.key}</div>
+            <div className="min-w-0 flex-1 truncate font-mono text-xs">{g.key === UNKNOWN ? t('settings.usage.unknown') : g.key}</div>
             <div className="text-xs text-muted tabular-nums">
-              {g.totals.sessions} ses. · {formatTokens(g.totals.input + g.totals.output)} tok
+              {t('settings.usage.sessionsShort', { count: g.totals.sessions, tokens: formatTokens(g.totals.input + g.totals.output) })}
             </div>
             <div className="w-20 text-right font-medium tabular-nums">{formatCost(g.totals.cost)}</div>
           </div>

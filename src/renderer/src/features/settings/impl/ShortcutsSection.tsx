@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Keyboard, RotateCcw, X, Zap } from 'lucide-react'
+import { t as tr, type MsgKey } from '@shared/i18n'
 import { DEFAULT_QUICK_ENTRY_SHORTCUT } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { getExtras, useExtrasPrefs } from './extras'
 import { Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 
@@ -11,32 +13,32 @@ const MOD_SYMBOL: Record<string, string> = isMac
   ? { Command: '⌘', CommandOrControl: '⌘', Control: '⌃', Alt: '⌥', Option: '⌥', Shift: '⇧', Super: '⌘' }
   : { Command: 'Win', CommandOrControl: 'Ctrl', Control: 'Ctrl', Alt: 'Alt', Option: 'Alt', Shift: 'Shift', Super: 'Win' }
 
-const KEY_LABEL: Record<string, string> = {
-  Space: isMac ? 'Espacio' : 'Espacio',
-  Return: '↩',
-  Up: '↑',
-  Down: '↓',
-  Left: '←',
-  Right: '→',
-  Backspace: '⌫',
-  Delete: '⌦',
-  Tab: '⇥'
+const KEY_LABEL: Record<string, () => string> = {
+  Space: () => tr('settings.shortcuts.space'),
+  Return: () => '↩',
+  Up: () => '↑',
+  Down: () => '↓',
+  Left: () => '←',
+  Right: () => '→',
+  Backspace: () => '⌫',
+  Delete: () => '⌦',
+  Tab: () => '⇥'
 }
 
 /** Atajos de la ventana principal (los gestiona `app/App.tsx`). */
-const APP_SHORTCUTS: [label: string, accelerator: string][] = [
-  ['Paleta de comandos', 'CommandOrControl+K'],
-  ['Paleta de comandos (también en Code)', 'CommandOrControl+Shift+P'],
-  ['Nueva conversación / sesión / tarea', 'CommandOrControl+N'],
-  ['Cambiar de modo', 'Control+Tab'],
-  ['Ajustes', 'CommandOrControl+,'],
-  ['Mostrar u ocultar la barra lateral', 'CommandOrControl+\\']
+const APP_SHORTCUTS: [label: MsgKey, accelerator: string][] = [
+  ['settings.shortcuts.app.palette', 'CommandOrControl+K'],
+  ['settings.shortcuts.app.paletteCode', 'CommandOrControl+Shift+P'],
+  ['settings.shortcuts.app.new', 'CommandOrControl+N'],
+  ['settings.shortcuts.app.switchMode', 'Control+Tab'],
+  ['settings.shortcuts.app.settings', 'CommandOrControl+,'],
+  ['settings.shortcuts.app.sidebar', 'CommandOrControl+\\']
 ]
 
 /** Convierte un acelerador de Electron a teclas legibles. */
 export function acceleratorParts(acc: string): string[] {
   if (!acc) return []
-  return acc.split('+').map((p) => MOD_SYMBOL[p] ?? KEY_LABEL[p] ?? p)
+  return acc.split('+').map((p) => MOD_SYMBOL[p] ?? KEY_LABEL[p]?.() ?? p)
 }
 
 /** KeyboardEvent → acelerador de Electron (usa `code` para ignorar caracteres de Option). */
@@ -89,8 +91,9 @@ function codeToKey(code: string): string | null {
 }
 
 export function Keys({ accelerator }: { accelerator: string }): React.JSX.Element {
+  const t = useT()
   const parts = acceleratorParts(accelerator)
-  if (!parts.length) return <span className="text-xs text-muted">Desactivado</span>
+  if (!parts.length) return <span className="text-xs text-muted">{t('settings.shortcuts.off')}</span>
   return (
     <span className="inline-flex gap-1">
       {parts.map((p, i) => (
@@ -106,6 +109,7 @@ export function Keys({ accelerator }: { accelerator: string }): React.JSX.Elemen
 }
 
 export function ShortcutsSection(): React.JSX.Element {
+  const t = useT()
   const { prefs, shortcutError, update, error } = useExtrasPrefs()
   const [recording, setRecording] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
@@ -125,7 +129,7 @@ export function ShortcutsSection(): React.JSX.Element {
       if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return
       const acc = toAccelerator(e)
       if (!acc) {
-        setHint('Usa al menos un modificador (⌘, ⌃, ⌥) o una tecla de función.')
+        setHint(t('settings.shortcuts.needModifier'))
         return
       }
       setRecording(false)
@@ -137,11 +141,11 @@ export function ShortcutsSection(): React.JSX.Element {
       window.removeEventListener('keydown', onKey, true)
       void extras?.invoke('extras:suspendShortcut', { suspended: false })
     }
-  }, [recording, update])
+  }, [recording, update, t])
 
   return (
     <div>
-      <SectionHeader title="Atajos" description="Atajos de teclado globales y de la aplicación." />
+      <SectionHeader title={t('settings.shortcuts.title')} description={t('settings.shortcuts.subtitle')} />
       <Card>
         <Row
           label={
@@ -149,35 +153,35 @@ export function ShortcutsSection(): React.JSX.Element {
               <Zap size={15} /> Quick Entry
             </span>
           }
-          description="Abre una ventana flotante desde cualquier app para preguntar algo rápido; Enter lo envía a una nueva conversación de Chat."
+          description={t('settings.shortcuts.quick.description')}
         >
           <div className="flex items-center gap-2">
             {recording ? (
               <span className="rounded-lg border border-accent bg-accent-soft px-3 py-1 text-xs text-accent">
-                Pulsa la combinación… (Esc cancela)
+                {t('settings.shortcuts.recording')}
               </span>
             ) : (
               <Keys accelerator={prefs.quickEntryShortcut} />
             )}
             <Button onClick={() => setRecording((r) => !r)}>
-              <Keyboard size={14} /> {recording ? 'Cancelar' : 'Cambiar'}
+              <Keyboard size={14} /> {recording ? t('settings.shortcuts.cancel') : t('settings.shortcuts.change')}
             </Button>
           </div>
         </Row>
-        <Row label="Acciones">
+        <Row label={t('settings.shortcuts.actions')}>
           <div className="flex gap-1">
             <Button variant="ghost" onClick={() => void getExtras()?.invoke('extras:quickToggle')}>
-              Probar
+              {t('settings.shortcuts.try')}
             </Button>
             <Button
               variant="ghost"
               disabled={prefs.quickEntryShortcut === DEFAULT_QUICK_ENTRY_SHORTCUT}
               onClick={() => void update({ quickEntryShortcut: DEFAULT_QUICK_ENTRY_SHORTCUT })}
             >
-              <RotateCcw size={14} /> Restablecer
+              <RotateCcw size={14} /> {t('settings.shortcuts.reset')}
             </Button>
             <Button variant="ghost" disabled={!prefs.quickEntryShortcut} onClick={() => void update({ quickEntryShortcut: '' })}>
-              <X size={14} /> Desactivar
+              <X size={14} /> {t('settings.shortcuts.disable')}
             </Button>
           </div>
         </Row>
@@ -189,21 +193,21 @@ export function ShortcutsSection(): React.JSX.Element {
         </div>
       )}
 
-      <SubTitle>En la aplicación</SubTitle>
+      <SubTitle>{t('settings.shortcuts.inApp')}</SubTitle>
       <Card>
         {APP_SHORTCUTS.map(([label, accelerator]) => (
-          <Row key={label} label={label}>
+          <Row key={label} label={t(label)}>
             <Keys accelerator={accelerator} />
           </Row>
         ))}
       </Card>
 
-      <SubTitle>En Quick Entry</SubTitle>
+      <SubTitle>{t('settings.shortcuts.inQuick')}</SubTitle>
       <Card>
-        <Row label="Enviar a Chat">
+        <Row label={t('settings.shortcuts.sendToChat')}>
           <Keys accelerator="Return" />
         </Row>
-        <Row label="Borrar texto / cerrar">
+        <Row label={t('settings.shortcuts.clearClose')}>
           <kbd className="rounded-md border border-border-strong bg-bg px-1.5 py-0.5 text-xs">Esc</kbd>
         </Row>
       </Card>

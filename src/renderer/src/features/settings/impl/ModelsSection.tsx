@@ -5,6 +5,7 @@ import { MODE_LABELS } from '@shared/labels'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
@@ -18,13 +19,16 @@ import { ProviderKeyForm } from './ProviderKeyForm'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput } from './ui'
 import { useKeyTests } from './useKeyTest'
 
-const MODES: { id: ModelMode; label: string; description: string }[] = [
-  { id: 'chat', label: 'Chat', description: 'Conversaciones generales.' },
-  { id: 'code', label: 'Code', description: 'Agente de programación sobre una carpeta.' },
-  { id: 'tasks', label: MODE_LABELS.tasks, description: 'Tareas autónomas sobre documentos.' }
-]
+function modes(t: ReturnType<typeof useT>): { id: ModelMode; label: string; description: string }[] {
+  return [
+    { id: 'chat', label: MODE_LABELS.chat, description: t('models.mode.chat.description') },
+    { id: 'code', label: MODE_LABELS.code, description: t('models.mode.code.description') },
+    { id: 'tasks', label: MODE_LABELS.tasks, description: t('models.mode.tasks.description') }
+  ]
+}
 
 export function ModelsSection(): React.JSX.Element {
+  const t = useT()
   const client = useServer((s) => s.client)
   const { providers, loading, error, load } = useProviders()
   const { settings, update } = useSettings()
@@ -67,29 +71,29 @@ export function ModelsSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader title="Modelos" description="Modelo predeterminado y por modo. Los modelos de OpenCode Go aparecen primero." />
+      <SectionHeader title={t('models.title')} description={t('models.subtitle')} />
 
-      {!client && <p className="text-sm text-muted">Esperando al servidor de OpenCode…</p>}
+      {!client && <p className="text-sm text-muted">{t('models.waitingServer')}</p>}
       {error && <ErrorText>{error}</ErrorText>}
 
       <Card>
-        <Row label="Predeterminado" description="Se usa cuando un modo no tiene un modelo propio.">
+        <Row label={t('models.default.label')} description={t('models.default.description')}>
           <ModelSelect
-            aria-label="Modelo predeterminado"
+            aria-label={t('models.default.aria')}
             className="w-72"
             providers={providers}
             value={settings.defaultModel}
             onChange={(v) => v && void update({ defaultModel: v })}
           />
         </Row>
-        {MODES.map((m) => (
+        {modes(t).map((m) => (
           <Row key={m.id} label={m.label} description={m.description}>
             <ModelSelect
-              aria-label={`Modelo para ${m.label}`}
+              aria-label={t('models.forMode.aria', { mode: m.label })}
               className="w-72"
               providers={providers}
               value={modelsByMode[m.id] ?? null}
-              defaultLabel="Usar predeterminado"
+              defaultLabel={t('models.useDefault')}
               onChange={(v) => setModeModel(m.id, v)}
             />
           </Row>
@@ -97,12 +101,12 @@ export function ModelsSection(): React.JSX.Element {
       </Card>
       <div className="mt-2 flex items-center gap-2">
         <Button variant="ghost" onClick={() => void refresh()} disabled={!client || loading}>
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Actualizar lista
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('models.refreshList')}
         </Button>
       </div>
 
       <div id="settings-providers" ref={providersRef}>
-        <SubTitle>Proveedores</SubTitle>
+        <SubTitle>{t('models.providers')}</SubTitle>
       </div>
       {catalogError && <ErrorText>{catalogError}</ErrorText>}
       {catalog && (
@@ -112,9 +116,9 @@ export function ModelsSection(): React.JSX.Element {
           onDisconnect={async (id) => {
             if (!client) return
             const ok = await confirmDialog({
-              title: '¿Eliminar credenciales?',
-              message: `Se eliminarán las credenciales guardadas de "${id}".`,
-              confirmLabel: 'Eliminar',
+              title: t('models.removeCreds.title'),
+              message: t('models.removeCreds.message', { id }),
+              confirmLabel: t('models.removeCreds.confirm'),
               danger: true
             })
             if (!ok) return
@@ -154,6 +158,7 @@ function ProvidersList({
   onOauthStart: ComponentProps<typeof ProviderKeyForm>['onOauthStart']
   onOauthFinish: ComponentProps<typeof ProviderKeyForm>['onOauthFinish']
 }): React.JSX.Element {
+  const t = useT()
   const connected = useMemo(() => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))), [catalog])
   const others = useMemo(() => unconnectedProviders(catalog), [catalog])
   const tests = useKeyTests((s) => s.entries)
@@ -162,7 +167,7 @@ function ProvidersList({
   return (
     <>
       <Card>
-        {connected.length === 0 && <Row label="Ningún proveedor conectado" description="Agrega una API key abajo." />}
+        {connected.length === 0 && <Row label={t('models.noProviders.label')} description={t('models.noProviders.description')} />}
         {connected.map((p) => {
           const entry = tests[p.id]
           const needsNewKey = entry?.phase === 'done' && (entry.result.status === 'invalid' || entry.result.status === 'forbidden')
@@ -174,11 +179,11 @@ function ProvidersList({
               <div className="min-w-48 flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   {p.name}
-                  <Badge tone="ok">Conectado</Badge>
-                  {p.id === 'opencode-go' && <Badge tone="accent">Recomendado</Badge>}
+                  <Badge tone="ok">{t('models.badge.connected')}</Badge>
+                  {p.id === 'opencode-go' && <Badge tone="accent">{t('models.badge.recommended')}</Badge>}
                 </div>
                 <div className="mt-0.5 text-xs text-muted">
-                  {`${Object.keys(p.models).length} modelos · origen: ${SOURCE_LABEL[p.source] ?? p.source}`}
+                  {t('models.modelsSource', { count: Object.keys(p.models).length, source: sourceLabel(t, p.source) })}
                   <KeyTestNotice
                     providerID={p.id}
                     providerName={p.name}
@@ -186,7 +191,7 @@ function ProvidersList({
                     action={
                       needsNewKey && changing !== p.id ? (
                         <Button size="sm" variant="ghost" onClick={() => setChanging(p.id)}>
-                          Cambiar clave
+                          {t('models.changeKey')}
                         </Button>
                       ) : undefined
                     }
@@ -208,14 +213,15 @@ function ProvidersList({
                 <Button
                   variant="ghost"
                   disabled={busy || entry?.phase === 'testing'}
-                  aria-label={`Probar la clave de ${p.name}`}
+                  aria-label={t('models.test.aria', { name: p.name })}
                   onClick={() => void useKeyTests.getState().run(p.id)}
                 >
-                  {entry?.phase === 'testing' ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />} Probar
+                  {entry?.phase === 'testing' ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />}{' '}
+                  {t('models.test')}
                 </Button>
                 {p.source === 'api' && (
                   <Button variant="ghost" disabled={busy} onClick={() => void onDisconnect(p.id)}>
-                    <Unplug size={14} /> Desconectar
+                    <Unplug size={14} /> {t('models.disconnect')}
                   </Button>
                 )}
               </div>
@@ -237,11 +243,19 @@ function ProvidersList({
   )
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  env: 'variable de entorno',
-  config: 'config',
-  custom: 'personalizado',
-  api: 'credencial guardada'
+function sourceLabel(t: ReturnType<typeof useT>, source: string): string {
+  switch (source) {
+    case 'env':
+      return t('models.source.env')
+    case 'config':
+      return t('models.source.config')
+    case 'custom':
+      return t('models.source.custom')
+    case 'api':
+      return t('models.source.api')
+    default:
+      return source
+  }
 }
 
 /** «Cambiar clave»: reemplaza la clave guardada del proveedor (se prueba sola al guardar). */
@@ -256,6 +270,7 @@ function ChangeKeyInline({
   onSave: (key: string) => Promise<void>
   onCancel: () => void
 }): React.JSX.Element {
+  const t = useT()
   const [key, setKey] = useState('')
   return (
     <form
@@ -272,17 +287,17 @@ function ChangeKeyInline({
       <TextInput
         type="password"
         autoComplete="off"
-        aria-label={`Nueva clave de ${providerName}`}
-        placeholder="Nueva API key"
+        aria-label={t('models.newKey.aria', { name: providerName })}
+        placeholder={t('models.newKey.placeholder')}
         value={key}
         onChange={(e) => setKey(e.target.value)}
         className="max-w-xs"
       />
       <Button size="sm" variant="primary" type="submit" disabled={busy || !key.trim()}>
-        Guardar
+        {t('models.save')}
       </Button>
       <Button size="sm" variant="ghost" onClick={onCancel}>
-        Cancelar
+        {t('models.cancel')}
       </Button>
     </form>
   )

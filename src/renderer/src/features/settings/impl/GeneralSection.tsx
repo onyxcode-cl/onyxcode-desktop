@@ -3,6 +3,8 @@ import { Monitor, Moon, RotateCw, Sun } from 'lucide-react'
 import type { ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { MODE_LABELS } from '@shared/labels'
+import type { LangPref, MsgKey } from '@shared/i18n'
+import { useT } from '../../../lib/i18n'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
@@ -11,6 +13,7 @@ import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } 
 
 /** Fila "Mantener el Mac despierto mientras corren tareas" (powerSaveBlocker en main). */
 function KeepAwakeRow(): React.JSX.Element | null {
+  const t = useT()
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -23,34 +26,37 @@ function KeepAwakeRow(): React.JSX.Element | null {
   if (!hasTasksBridge() || enabled === null) return null
 
   return (
-    <Row
-      label="Mantener el Mac despierto"
-      description="Evita que el equipo entre en reposo mientras hay tareas trabajando en segundo plano."
-    >
+    <Row label={t('settings.general.keepAwake.label')} description={t('settings.general.keepAwake.description')}>
       <Toggle
         checked={enabled}
         onChange={(v) => {
           setEnabled(v)
           void cw('tasks:keepAwakeSetting', { enabled: v }).catch(() => undefined)
         }}
-        label="Mantener el Mac despierto mientras corren tareas"
+        label={t('settings.general.keepAwake.toggle')}
       />
     </Row>
   )
 }
 
-const THEMES: { id: ThemePreference; label: string; icon: typeof Sun }[] = [
-  { id: 'system', label: 'Sistema', icon: Monitor },
-  { id: 'light', label: 'Claro', icon: Sun },
-  { id: 'dark', label: 'Oscuro', icon: Moon }
+const THEMES: { id: ThemePreference; labelKey: MsgKey; icon: typeof Sun }[] = [
+  { id: 'system', labelKey: 'settings.general.theme.system', icon: Monitor },
+  { id: 'light', labelKey: 'settings.general.theme.light', icon: Sun },
+  { id: 'dark', labelKey: 'settings.general.theme.dark', icon: Moon }
 ]
 
-const STATE: Record<string, { label: string; tone: 'ok' | 'warn' | 'error' | 'muted' }> = {
-  stopped: { label: 'Detenido', tone: 'muted' },
-  starting: { label: 'Iniciando…', tone: 'warn' },
-  ready: { label: 'Conectado', tone: 'ok' },
-  error: { label: 'Error', tone: 'error' }
+const STATE: Record<string, { labelKey: MsgKey; tone: 'ok' | 'warn' | 'error' | 'muted' }> = {
+  stopped: { labelKey: 'settings.general.state.stopped', tone: 'muted' },
+  starting: { labelKey: 'settings.general.state.starting', tone: 'warn' },
+  ready: { labelKey: 'settings.general.state.ready', tone: 'ok' },
+  error: { labelKey: 'settings.general.state.error', tone: 'error' }
 }
+
+const LANGUAGE_OPTIONS: { id: LangPref; labelKey: MsgKey }[] = [
+  { id: 'system', labelKey: 'settings.general.language.system' },
+  { id: 'es', labelKey: 'settings.general.language.es' },
+  { id: 'en', labelKey: 'settings.general.language.en' }
+]
 
 /** Mini-maqueta de la ventana en cada tema (colores literales: deben verse aunque el tema activo sea otro). */
 function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
@@ -84,6 +90,7 @@ function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
 
 /** Instrucciones globales de las tareas (item 1): se añaden a todas las tareas, junto con las de cada proyecto. */
 function TasksInstructionsRow(): React.JSX.Element {
+  const t = useT()
   const globalInstructions = useSettings((s) => s.settings.tasksGlobalInstructions)
   const update = useSettings((s) => s.update)
   const [value, setValue] = useState(globalInstructions)
@@ -100,26 +107,24 @@ function TasksInstructionsRow(): React.JSX.Element {
   }
 
   return (
-    <Row
-      label="Instrucciones globales de las tareas"
-      description="Se aplican a todas las tareas, además de las instrucciones de cada proyecto (carpeta)."
-    >
+    <Row label={t('settings.general.instructions.label')} description={t('settings.general.instructions.description')}>
       <div className="w-full max-w-md">
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={save}
           maxLength={20_000}
-          placeholder="Ej.: escribe siempre en tono formal; usa formato de fecha es-CL…"
+          placeholder={t('settings.general.instructions.placeholder')}
           className="min-h-20 w-full resize-y rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle"
         />
-        {saved && <p className="mt-1 text-xs text-accent">Guardado</p>}
+        {saved && <p className="mt-1 text-xs text-accent">{t('settings.general.saved')}</p>}
       </div>
     </Row>
   )
 }
 
 export function GeneralSection(): React.JSX.Element {
+  const t = useT()
   const { settings, update } = useSettings()
   const { status, connection, restart } = useServer()
   const showTray = useExtrasPrefs((s) => s.prefs.showTray)
@@ -130,11 +135,11 @@ export function GeneralSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader title="General" description="Apariencia, idioma y servidor local de OpenCode." />
+      <SectionHeader title={t('settings.general.title')} description={t('settings.general.subtitle')} />
 
-      <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">Tema</h3>
+      <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('settings.general.theme')}</h3>
       <div className="grid grid-cols-3 gap-2">
-        {THEMES.map(({ id, label, icon: Icon }) => (
+        {THEMES.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -145,33 +150,43 @@ export function GeneralSection(): React.JSX.Element {
             <ThemePreview kind={id} />
             <span className="flex items-center justify-center gap-1.5 pb-0.5">
               <Icon size={14} className={settings.theme === id ? 'text-accent' : 'text-muted'} />
-              {label}
+              {t(labelKey)}
             </span>
           </button>
         ))}
       </div>
 
-      <SubTitle>Preferencias</SubTitle>
+      <SubTitle>{t('settings.general.preferences')}</SubTitle>
       <Card>
-        <Row label="Idioma" description="La interfaz está disponible sólo en español por ahora.">
-          <Select value="es" disabled className="w-40">
-            <option value="es">Español</option>
+        <Row label={t('settings.general.language')} description={t('settings.general.language.description')}>
+          <Select
+            value={settings.language}
+            onChange={(e) => void update({ language: e.target.value as LangPref })}
+            aria-label={t('settings.general.language')}
+            className="w-40"
+          >
+            {LANGUAGE_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>
+                {t(o.labelKey)}
+              </option>
+            ))}
           </Select>
         </Row>
-        <Row label="Icono en la barra de menús" description="Acceso rápido a nueva conversación, Quick Entry y salir.">
-          <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label="Icono en la barra de menús" />
+        <Row label={t('settings.general.tray.label')} description={t('settings.general.tray.description')}>
+          <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label={t('settings.general.tray.label')} />
         </Row>
-        <Row
-          label="Notificaciones"
-          description="Avisos nativos cuando una sesión de Code o una tarea termina o necesita tu aprobación, con badge en el Dock."
-        >
-          <Toggle checked={notificationsEnabled} onChange={(v) => void updatePrefs({ notificationsEnabled: v })} label="Notificaciones" />
+        <Row label={t('settings.general.notifications.label')} description={t('settings.general.notifications.description')}>
+          <Toggle
+            checked={notificationsEnabled}
+            onChange={(v) => void updatePrefs({ notificationsEnabled: v })}
+            label={t('settings.general.notifications.label')}
+          />
         </Row>
-        <Row label="Sonido" description="Reproduce el sonido del sistema al mostrar una notificación.">
+        <Row label={t('settings.general.sound.label')} description={t('settings.general.sound.description')}>
           <Toggle
             checked={soundEnabled}
             onChange={(v) => void updatePrefs({ soundEnabled: v })}
-            label="Sonido"
+            label={t('settings.general.sound.label')}
             disabled={!notificationsEnabled}
           />
         </Row>
@@ -183,24 +198,24 @@ export function GeneralSection(): React.JSX.Element {
         <TasksInstructionsRow />
       </Card>
 
-      <SubTitle>Servidor OpenCode</SubTitle>
+      <SubTitle>{t('settings.general.server')}</SubTitle>
       <Card>
         <Row
           label={
             <span className="flex items-center gap-2">
-              Estado <Badge tone={st.tone}>{st.label}</Badge>
+              {t('settings.general.server.status')} <Badge tone={st.tone}>{t(st.labelKey)}</Badge>
             </span>
           }
           description={
             <>
               {status.version && <span>v{status.version}</span>}
               {connection && <span className="ml-2 font-mono">{connection.baseUrl}</span>}
-              {status.restarts > 0 && <span className="ml-2">· {status.restarts} reinicio(s) automáticos</span>}
+              {status.restarts > 0 && <span className="ml-2">{t('settings.general.server.restarts', { count: status.restarts })}</span>}
             </>
           }
         >
           <Button onClick={() => void restart()}>
-            <RotateCw size={14} /> Reiniciar
+            <RotateCw size={14} /> {t('settings.general.server.restart')}
           </Button>
         </Row>
       </Card>
