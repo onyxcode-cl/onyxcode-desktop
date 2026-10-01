@@ -3,7 +3,7 @@
  * herramientas consecutivas se agrupan en bloques compactos de "Pasos" (expandibles) en lugar
  * de una lista larga de tarjetas de herramientas.
  */
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, Part, PermissionRequest, ReasoningPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AlertCircle, Brain, ChevronRight, FileText, Loader2, Pencil, RotateCw, Sparkles, Undo2 } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
@@ -24,6 +24,8 @@ import { toolImages } from './computer-tools'
 import { useT } from '../../../lib/i18n'
 import { ScreenshotThumbs } from './ComputerAccess'
 import { blockIdForPart } from './conversation-logic'
+import { ScrollToEnd } from '../../../components/conversation/ScrollToEnd'
+import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { friendlyTool, isVisibleText } from './util'
 
@@ -382,30 +384,13 @@ const UserMessage = memo(
 
 export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {
   const t = useT()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const stickRef = useRef(true)
+  const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
   const blocks = useMemo(() => buildBlocks(entries), [entries])
   const [forceOpenId, setForceOpenId] = useState<string | null>(null)
   const [flashId, setFlashId] = useState<string | null>(null)
   // Mientras dura un salto a una parte (búsqueda/contexto) se desactiva `content-visibility` en todos los bloques: con
   // alturas reales el `scrollIntoView` centra el destino sin saltos por las alturas estimadas de lo que se saltaba.
   const [noCv, setNoCv] = useState(false)
-
-  const onScroll = (): void => {
-    const el = scrollRef.current
-    if (!el) return
-    stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  }
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current
-    if (el && stickRef.current) el.scrollTop = el.scrollHeight
-  })
-
-  const firstId = entries[0]?.info.id
-  useEffect(() => {
-    stickRef.current = true
-  }, [firstId])
 
   // Búsqueda / panel de contexto ⇒ abrir el bloque que contiene esa parte, hacer scroll y resaltarlo.
   // Si el bloque aún no existe (la tarea se acaba de abrir), la petición queda pendiente y se atiende al aparecer.
@@ -424,7 +409,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
       clearPendingScroll(partId)
       return true
     },
-    [blocks]
+    [blocks, stickRef]
   )
   useEffect(() => onScrollToPart((partId) => void goToPart(partId)), [goToPart])
   useEffect(() => {
@@ -436,69 +421,74 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
   const showThinking = busy && permissions.length === 0 && (!last || last.kind === 'user' || last.kind === 'text')
 
   return (
-    <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
-        {blocks.map((b, i) => {
-          switch (b.kind) {
-            case 'user':
-              return <UserMessage key={b.id} block={b} taskId={taskId} flash={flashId === b.id} old={!noCv && isOldRow(i, blocks.length)} />
-            case 'text':
-              return (
-                <div
-                  key={b.id}
-                  id={`cw-block-${b.id}`}
-                  className={withCv(
-                    `rounded-lg transition-[outline-color] duration-500 ${flashId === b.id ? HIGHLIGHT : 'outline-0 outline-transparent'}`,
-                    !noCv && flashId !== b.id && isOldRow(i, blocks.length)
-                  )}
-                >
-                  <Markdown text={b.text} highlight={!(busy && i === blocks.length - 1)} />
-                </div>
-              )
-            case 'steps':
-              return (
-                <StepsBlock
-                  key={b.id}
-                  id={b.id}
-                  parts={b.parts}
-                  live={busy && i === blocks.length - 1}
-                  forceOpen={forceOpenId === b.id}
-                  flash={flashId === b.id}
-                  old={!noCv && isOldRow(i, blocks.length)}
-                />
-              )
-            case 'error':
-              return <AssistantError key={b.id} info={b.info} abortedLabel={t('tasks.conv.stopped')} />
-            case 'retry':
-              return (
-                <div key={b.id} className="flex items-center gap-1.5 text-xs text-muted">
-                  <RotateCw size={12} /> {b.text}
-                </div>
-              )
-            case 'file':
-              return (
-                <div
-                  key={b.id}
-                  className="inline-flex items-center gap-1.5 self-start rounded-md border border-border px-2 py-1 text-xs text-muted"
-                >
-                  <FileText size={13} /> {b.name}
-                </div>
-              )
-            default:
-              return null
-          }
-        })}
-        {permissions.map((p) => (
-          <PermissionCard key={p.id} request={p} />
-        ))}
-        {showThinking && (
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <Loader2 size={15} className="animate-spin" /> {t('tasks.conv.thinking')}
-          </div>
-        )}
-        {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
-        {footer}
+    <div className="relative min-h-0 flex-1">
+      <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
+          {blocks.map((b, i) => {
+            switch (b.kind) {
+              case 'user':
+                return (
+                  <UserMessage key={b.id} block={b} taskId={taskId} flash={flashId === b.id} old={!noCv && isOldRow(i, blocks.length)} />
+                )
+              case 'text':
+                return (
+                  <div
+                    key={b.id}
+                    id={`cw-block-${b.id}`}
+                    className={withCv(
+                      `rounded-lg transition-[outline-color] duration-500 ${flashId === b.id ? HIGHLIGHT : 'outline-0 outline-transparent'}`,
+                      !noCv && flashId !== b.id && isOldRow(i, blocks.length)
+                    )}
+                  >
+                    <Markdown text={b.text} highlight={!(busy && i === blocks.length - 1)} />
+                  </div>
+                )
+              case 'steps':
+                return (
+                  <StepsBlock
+                    key={b.id}
+                    id={b.id}
+                    parts={b.parts}
+                    live={busy && i === blocks.length - 1}
+                    forceOpen={forceOpenId === b.id}
+                    flash={flashId === b.id}
+                    old={!noCv && isOldRow(i, blocks.length)}
+                  />
+                )
+              case 'error':
+                return <AssistantError key={b.id} info={b.info} abortedLabel={t('tasks.conv.stopped')} />
+              case 'retry':
+                return (
+                  <div key={b.id} className="flex items-center gap-1.5 text-xs text-muted">
+                    <RotateCw size={12} /> {b.text}
+                  </div>
+                )
+              case 'file':
+                return (
+                  <div
+                    key={b.id}
+                    className="inline-flex items-center gap-1.5 self-start rounded-md border border-border px-2 py-1 text-xs text-muted"
+                  >
+                    <FileText size={13} /> {b.name}
+                  </div>
+                )
+              default:
+                return null
+            }
+          })}
+          {permissions.map((p) => (
+            <PermissionCard key={p.id} request={p} />
+          ))}
+          {showThinking && (
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <Loader2 size={15} className="animate-spin" /> {t('tasks.conv.thinking')}
+            </div>
+          )}
+          {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
+          {footer}
+        </div>
       </div>
+      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
 import { Markdown } from '../../../components/Markdown'
@@ -7,6 +7,8 @@ import { useT } from '../../../lib/i18n'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../../lib/conversation/errors'
 import { AssistantError } from '../../../components/conversation/AssistantError'
+import { ScrollToEnd } from '../../../components/conversation/ScrollToEnd'
+import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../../components/conversation/Reasoning'
 import { friendlyError } from '@shared/ai-errors'
@@ -286,24 +288,7 @@ interface Props {
 export function MessageStream(props: Props): React.JSX.Element {
   const { entries, busy, error, root, permissions, questions, revertMessageID, onUnrevert, loading } = props
   const t = useT()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const stickRef = useRef(true)
-
-  const onScroll = (): void => {
-    const el = scrollRef.current
-    if (!el) return
-    stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  }
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current
-    if (el && stickRef.current) el.scrollTop = el.scrollHeight
-  })
-
-  const firstId = entries[0]?.info.id
-  useEffect(() => {
-    stickRef.current = true
-  }, [firstId])
+  const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
 
   const visible = useMemo(
     () => (revertMessageID ? entries.filter((e) => e.info.id < revertMessageID) : entries),
@@ -341,54 +326,57 @@ export function MessageStream(props: Props): React.JSX.Element {
   const showThinking = busy && !lastHasOutput && permissions.length === 0
 
   return (
-    <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
-        {loading && entries.length === 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}
-          </div>
-        )}
-        {turns.map((turn, ti) => (
-          <TurnView
-            key={turn.user?.info.id ?? `t${ti}`}
-            user={turn.user}
-            assistant={turn.assistant}
-            isLastTurn={ti === turns.length - 1}
-            old={isOldRow(ti, turns.length, 4)}
-            busy={busy}
-            root={root}
-            perms={turnPerms[ti]}
-            hotkeyID={hotkeyID}
-          />
-        ))}
-        {hidden > 0 && (
-          <div className="flex items-center justify-between rounded-xl border border-dashed border-border-strong px-3 py-2 text-sm text-muted">
-            <span className="flex items-center gap-2">
-              <Undo2 size={14} /> {t('code.msg.hidden', { count: hidden })}
-            </span>
-            <button type="button" onClick={onUnrevert} className="rounded-md px-2 py-0.5 font-medium text-accent hover:bg-accent-soft">
-              {t('code.msg.restore')}
-            </button>
-          </div>
-        )}
-        {loosePerms.map((perm) => (
-          <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />
-        ))}
-        {questions.map((q) => (
-          <QuestionCard key={q.id} request={q} />
-        ))}
-        {showThinking && (
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <span className="flex gap-1">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" />
-            </span>
-            {t('code.msg.working')}
-          </div>
-        )}
-        {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
+    <div className="relative min-h-0 flex-1">
+      <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
+        <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
+          {loading && entries.length === 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}
+            </div>
+          )}
+          {turns.map((turn, ti) => (
+            <TurnView
+              key={turn.user?.info.id ?? `t${ti}`}
+              user={turn.user}
+              assistant={turn.assistant}
+              isLastTurn={ti === turns.length - 1}
+              old={isOldRow(ti, turns.length, 4)}
+              busy={busy}
+              root={root}
+              perms={turnPerms[ti]}
+              hotkeyID={hotkeyID}
+            />
+          ))}
+          {hidden > 0 && (
+            <div className="flex items-center justify-between rounded-xl border border-dashed border-border-strong px-3 py-2 text-sm text-muted">
+              <span className="flex items-center gap-2">
+                <Undo2 size={14} /> {t('code.msg.hidden', { count: hidden })}
+              </span>
+              <button type="button" onClick={onUnrevert} className="rounded-md px-2 py-0.5 font-medium text-accent hover:bg-accent-soft">
+                {t('code.msg.restore')}
+              </button>
+            </div>
+          )}
+          {loosePerms.map((perm) => (
+            <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />
+          ))}
+          {questions.map((q) => (
+            <QuestionCard key={q.id} request={q} />
+          ))}
+          {showThinking && (
+            <div role="status" className="flex items-center gap-2 text-sm text-muted">
+              <span className="flex gap-1">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" />
+              </span>
+              {t('code.msg.working')}
+            </div>
+          )}
+          {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
+        </div>
       </div>
+      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} />
     </div>
   )
 }
