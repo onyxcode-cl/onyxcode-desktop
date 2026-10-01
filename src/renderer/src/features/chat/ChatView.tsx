@@ -65,14 +65,16 @@ export function ChatView(): React.JSX.Element {
     []
   )
 
-  const send = async (text: string): Promise<void> => {
+  /** `false` = no se envió: el compositor restaura el borrador. */
+  const send = async (text: string): Promise<boolean> => {
     setSendError(null)
     try {
-      await sendChatMessage(text)
+      return await sendChatMessage(text)
     } catch (err) {
       const id = useChat.getState().activeSessionId
       if (id) useSessions.getState().setError(id, typeof err === 'object' && err ? err : String(err))
       else setSendError(err)
+      return false
     }
   }
 

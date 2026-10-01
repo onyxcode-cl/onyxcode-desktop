@@ -261,6 +261,12 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     setAttachments([])
   }
 
+  const restore = (d: { text: string; mentions: string[]; attachments: Attachment[] }): void => {
+    setText((cur) => (cur.trim() ? cur : d.text))
+    setMentions((cur) => (cur.length ? cur : d.mentions))
+    setAttachments((cur) => (cur.length ? cur : d.attachments))
+  }
+
   const localCommands: MenuItem[] = useMemo(
     () => [
       {
@@ -358,18 +364,23 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     }
     const used = mentions.filter((m) => text.includes(`@${m}`))
     const atts = attachments
+    const draft = { text, mentions, attachments: atts }
     clear()
+    // H3: el borrador se limpia al instante, pero si el motor no acepta el envío se restaura (salvo que ya se haya escrito algo nuevo).
+    const settle = (ok: boolean): void => {
+      if (!ok) restore(draft)
+    }
     if (force) {
-      void sendNow(t, used, atts)
+      void sendNow(t, used, atts).then(settle, () => settle(false))
       return
     }
     if (busy) {
       const sid = activeSessionID
-      if (sid) enqueue(sid, t, used, atts)
-      else void send(t, used, atts)
+      if (sid) settle(enqueue(sid, t, used, atts))
+      else void send(t, used, atts).then(settle, () => settle(false))
       return
     }
-    void send(t, used, atts)
+    void send(t, used, atts).then(settle, () => settle(false))
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {

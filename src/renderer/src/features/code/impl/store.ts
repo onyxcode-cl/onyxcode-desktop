@@ -185,7 +185,8 @@ export interface CodeState {
   selectSession: (sessionID: string | null) => Promise<void>
   deleteSession: (sessionID: string) => Promise<void>
   /** Envía un prompt. `files` = rutas relativas al proyecto mencionadas con @. */
-  send: (text: string, files?: string[], attachments?: Attachment[]) => Promise<void>
+  /** Devuelve `true` si el motor aceptó el mensaje (el compositor restaura el borrador si no). */
+  send: (text: string, files?: string[], attachments?: Attachment[]) => Promise<boolean>
   /** Ejecuta un comando del servidor (`/nombre args`). */
   runCommand: (name: string, args: string) => Promise<void>
   abort: () => Promise<void>
@@ -209,11 +210,12 @@ export interface CodeState {
   resync: () => Promise<void>
 
   // -- Cola de mensajes --
-  enqueue: (sessionID: string, text: string, files?: string[], attachments?: Attachment[]) => void
+  /** Devuelve `false` si no había nada que encolar (sin texto ni adjuntos). */
+  enqueue: (sessionID: string, text: string, files?: string[], attachments?: Attachment[]) => boolean
   dequeue: (sessionID: string, id: string) => void
   moveQueued: (sessionID: string, id: string, dir: -1 | 1) => void
   /** Interrumpe la ejecución actual (si la hay) y envía el texto de inmediato, saltando la cola. */
-  sendNow: (text: string, files?: string[], attachments?: Attachment[]) => Promise<void>
+  sendNow: (text: string, files?: string[], attachments?: Attachment[]) => Promise<boolean>
 
   // -- Modo de permisos --
   setPermissionMode: (mode: PermissionMode) => Promise<void>
@@ -585,7 +587,8 @@ export const useCode = create<CodeState>((set, get) => {
           agent,
           model: sendModel ? { providerID: sendModel.providerID, modelID: sendModel.modelID } : undefined,
           variant: variant ?? undefined,
-          parts: [{ type: 'text', text: trimmed }, ...fileParts, ...attachParts]
+          // H1: un adjunto sin texto es un mensaje válido (solo partes `file`); no se manda un bloque de texto vacío.
+          parts: [...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []), ...fileParts, ...attachParts]
         })
       )
       return true
@@ -754,13 +757,13 @@ export const useCode = create<CodeState>((set, get) => {
 
     send: async (text, files = [], attachments = []) => {
       const trimmed = text.trim()
-      if (!trimmed) return
+      if (!trimmed && attachments.length === 0) return false
       let sid = get().activeSessionID
       if (!sid) sid = await get().newSession()
-      if (!sid) return
+      if (!sid) return false
       const { client, dir } = activeDir()
       const { agent, model, variant } = get()
-      await doSend(client, dir, sid, trimmed, files, attachments, agent, model, variant)
+      return doSend(client, dir, sid, trimmed, files, attachments, agent, model, variant)
     },
 
     runCommand: async (name, args) => {
@@ -892,9 +895,10 @@ export const useCode = create<CodeState>((set, get) => {
     // -- Cola de mensajes --
     enqueue: (sessionID, text, files = [], attachments = []) => {
       const trimmed = text.trim()
-      if (!trimmed) return
+      if (!trimmed && attachments.length === 0) return false
       const item: QueuedMessage = { id: `q${Date.now()}${Math.random().toString(36).slice(2, 6)}`, text: trimmed, files, attachments }
       set((s) => ({ queue: { ...s.queue, [sessionID]: [...(s.queue[sessionID] ?? []), item] } }))
+      return true
     },
     dequeue: (sessionID, id) => {
       set((s) => ({ queue: { ...s.queue, [sessionID]: (s.queue[sessionID] ?? []).filter((m) => m.id !== id) } }))
@@ -912,10 +916,10 @@ export const useCode = create<CodeState>((set, get) => {
     },
     sendNow: async (text, files = [], attachments = []) => {
       const trimmed = text.trim()
-      if (!trimmed) return
+      if (!trimmed && attachments.length === 0) return false
       let sid = get().activeSessionID
       if (!sid) sid = await get().newSession()
-      if (!sid) return
+      if (!sid) return false
       const run = get().runState[sid]
       if (run === 'busy' || run === 'retry') {
         try {
@@ -927,7 +931,7 @@ export const useCode = create<CodeState>((set, get) => {
       }
       const { client, dir } = activeDir()
       const { agent, model, variant } = get()
-      await doSend(client, dir, sid, trimmed, files, attachments, agent, model, variant)
+      return doSend(client, dir, sid, trimmed, files, attachments, agent, model, variant)
     },
 
     // -- Modo de permisos --

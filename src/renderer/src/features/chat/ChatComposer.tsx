@@ -4,7 +4,8 @@ import { ArrowUp, Paperclip, Square } from 'lucide-react'
 import { useT } from '../../lib/i18n'
 
 interface Props {
-  onSend: (text: string) => void | Promise<void>
+  /** Devolver `false` (o rechazar) indica que no se envió: el borrador se restaura. */
+  onSend: (text: string) => void | boolean | Promise<void | boolean>
   onAbort?: () => void
   busy: boolean
   disabled?: boolean
@@ -80,7 +81,13 @@ export function ChatComposer({
     if (!canSend) return
     const value = text.trim()
     setText('')
-    void onSend(value)
+    const restore = (): void => setText((cur) => (cur.trim() ? cur : value))
+    // H3: el borrador se vacía al instante pero vuelve si el envío falla.
+    void Promise.resolve()
+      .then(() => onSend(value))
+      .then((ok) => {
+        if (ok === false) restore()
+      }, restore)
   }
 
   return (
@@ -103,6 +110,12 @@ export function ChatComposer({
           placeholder={placeholder ?? t('chat.placeholder.message')}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
+            // M5: Esc detiene la respuesta en curso (como en Code y Tareas).
+            if (e.key === 'Escape' && busy && onAbort && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              onAbort()
+              return
+            }
             if (isSubmitKey(e)) {
               e.preventDefault()
               submit()
