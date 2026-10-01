@@ -4,6 +4,7 @@ import type { ModelRef } from '@shared/types'
 import { PREFERRED_PROVIDER, sortProviders, useProviders } from '../stores/providers'
 import { useServer } from '../stores/server'
 import { isSubmitKey } from '../lib/textarea'
+import { useT } from '../lib/i18n'
 
 interface Props {
   value: ModelRef
@@ -14,6 +15,7 @@ interface Props {
 
 /** Selector de modelo con los proveedores/modelos del servidor (`config.providers`). */
 export function ModelPicker({ value, onChange, placement = 'top' }: Props): React.JSX.Element {
+  const t = useT()
   const client = useServer((s) => s.client)
   const { providers, loading, error, load, loaded } = useProviders()
   const [open, setOpen] = useState(false)
@@ -107,7 +109,7 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${current.name === null ? 'bg-warning' : 'bg-accent'}`} />
         {current.name === null ? (
-          <span className="truncate font-medium text-warning">Elige un modelo</span>
+          <span className="truncate font-medium text-warning">{t('common.modelPicker.choose')}</span>
         ) : (
           <span className="truncate font-medium">{current.name}</span>
         )}
@@ -127,25 +129,29 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
                 setQuery(e.target.value)
                 setCursor(0)
               }}
-              placeholder="Buscar modelo…"
-              aria-label="Buscar modelo"
+              placeholder={t('common.modelPicker.searchPlaceholder')}
+              aria-label={t('common.modelPicker.search')}
               className="w-full bg-transparent text-sm outline-none placeholder:text-subtle"
             />
           </div>
           <div ref={listRef} role="listbox" className="max-h-80 overflow-y-auto p-1">
             {loading && (
               <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
-                <Loader2 size={14} className="animate-spin" /> Cargando modelos…
+                <Loader2 size={14} className="animate-spin" /> {t('common.modelPicker.loading')}
               </div>
             )}
             {error && <div className="px-3 py-2 text-sm text-danger">{error}</div>}
-            {!loading && !error && groups.length === 0 && <div className="px-3 py-6 text-center text-sm text-muted">Sin resultados</div>}
+            {!loading && !error && groups.length === 0 && (
+              <div className="px-3 py-6 text-center text-sm text-muted">{t('common.modelPicker.empty')}</div>
+            )}
             {groups.map(({ provider, models }) => (
               <div key={provider.id} className="pb-1">
                 <div className="flex items-center gap-1.5 px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
                   {provider.name}
                   {provider.id === PREFERRED_PROVIDER && (
-                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold normal-case">recomendado</span>
+                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold normal-case">
+                      {t('common.modelPicker.recommended')}
+                    </span>
                   )}
                 </div>
                 {models.map((m) => {
@@ -168,9 +174,9 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
                       {m.capabilities.reasoning && (
                         <span
                           className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] text-subtle"
-                          title="Modelo con razonamiento"
+                          title={t('common.modelPicker.reasoningTitle')}
                         >
-                          <Brain size={10} /> razona
+                          <Brain size={10} /> {t('common.modelPicker.reasons')}
                         </span>
                       )}
                       {selected ? <Check size={14} className="text-accent" /> : <span className="w-3.5" />}

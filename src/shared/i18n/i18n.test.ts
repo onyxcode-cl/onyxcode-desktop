@@ -5,7 +5,14 @@ import { DICTIONARIES, format, getLang, migrateLanguage, resolveLang, setLang, t
 
 const placeholders = (m: Msg): string[] => {
   const parts = typeof m === 'string' ? [m] : [m.one, m.other]
-  return parts.map((p) => [...p.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((x) => x[1]).sort().join(',')).sort()
+  return parts
+    .map((p) =>
+      [...p.matchAll(/\{([A-Za-z0-9_]+)\}/g)]
+        .map((x) => x[1])
+        .sort()
+        .join(',')
+    )
+    .sort()
 }
 
 describe('diccionarios es/en', () => {

@@ -1,4 +1,41 @@
 import type { Messages } from '../index'
 import type { app as es } from '../es/app'
 
-export const app = {} as const satisfies Messages<typeof es>
+export const app = {
+  'app.status.ready': 'Connected',
+  'app.status.starting': 'Starting…',
+  'app.status.stopped': 'Stopped',
+  'app.status.error': 'Connection error',
+  'app.sidebar.hide': 'Hide sidebar ({mod}\\)',
+  'app.sidebar.search': 'Search or jump to…',
+  'app.sidebar.mode': 'Mode',
+  'app.sidebar.settings': 'Settings ({mod},)',
+  'app.banner.failed': 'Couldn’t connect to OpenCode: {error}',
+  'app.banner.starting': 'Starting OpenCode…',
+  'app.banner.retry': 'Retry',
+  'app.palette.group.actions': 'Actions',
+  'app.palette.group.goto': 'Go to',
+  'app.palette.group.appearance': 'Appearance',
+  'app.palette.group.recent': 'Recent conversations',
+  'app.palette.kw.new': 'new create',
+  'app.palette.kw.mode': 'mode go open',
+  'app.palette.kw.settings': 'preferences configuration',
+  'app.palette.kw.usage': 'cost tokens consumption spent how much',
+  'app.palette.kw.theme': 'theme appearance color',
+  'app.palette.kw.recent': 'chat conversation recent',
+  'app.palette.current': 'Current',
+  'app.palette.settings': 'Settings',
+  'app.palette.usage': 'Usage and cost',
+  'app.palette.theme.system': 'Theme: system',
+  'app.palette.theme.light': 'Theme: light',
+  'app.palette.theme.dark': 'Theme: dark',
+  'app.palette.untitled': 'Untitled conversation',
+  'app.palette.title': 'Command palette',
+  'app.palette.placeholder': 'Search commands and conversations…',
+  'app.palette.empty': 'No results for “{query}”',
+  'app.palette.navigate': 'navigate',
+  'app.palette.run': 'run',
+  'app.mode.newChat': 'New conversation',
+  'app.mode.newSession': 'New session',
+  'app.mode.newTask': 'New task'
+} as const satisfies Messages<typeof es>

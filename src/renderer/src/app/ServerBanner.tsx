@@ -1,8 +1,10 @@
 import { AlertTriangle, Loader2, RotateCw } from 'lucide-react'
+import { useT } from '../lib/i18n'
 import { useServer } from '../stores/server'
 
 /** Aviso superior cuando el sidecar no está listo. */
 export function ServerBanner(): React.JSX.Element | null {
+  const t = useT()
   const { status, error, restart } = useServer()
   if (status.state === 'ready' && !error) return null
   const failed = status.state === 'error' || !!error
@@ -21,8 +23,8 @@ export function ServerBanner(): React.JSX.Element | null {
       {failed ? <AlertTriangle size={14} className="shrink-0" /> : <Loader2 size={14} className="shrink-0 animate-spin text-accent" />}
       <span className="flex-1 truncate" title={status.error ?? error ?? ''}>
         {failed
-          ? `No se pudo conectar con OpenCode: ${(status.error ?? error ?? '').split('\n')[0]}`
-          : (status.error ?? 'Iniciando OpenCode…')}
+          ? t('app.banner.failed', { error: (status.error ?? error ?? '').split('\n')[0] })
+          : (status.error ?? t('app.banner.starting'))}
       </span>
       {failed && (
         <button
@@ -30,7 +32,7 @@ export function ServerBanner(): React.JSX.Element | null {
           onClick={() => void restart()}
           className="flex shrink-0 items-center gap-1 rounded-md border border-danger/30 bg-elevated px-2 py-0.5 font-medium transition-colors hover:bg-danger/10"
         >
-          <RotateCw size={12} /> Reintentar
+          <RotateCw size={12} /> {t('app.banner.retry')}
         </button>
       )}
     </div>

@@ -5,6 +5,7 @@
  * `codesign` solo comprueba integridad y coherencia del paquete.
  */
 import { isNewerRelease, parseSemver } from './update-check'
+import { t } from './i18n'
 
 /** Nombre de la .app dentro del ZIP. */
 export const APP_BUNDLE_NAME = 'OnyxCode.app'
@@ -82,13 +83,13 @@ export type ManifestCheck = { ok: true } | { ok: false; code: InstallErrorCode; 
 export function validateManifest(m: UpdateManifest, ctx: ManifestContext): ManifestCheck {
   if (m.appId !== ctx.appId) return { ok: false, code: 'manifest', reason: 'appId distinto' }
   if (m.keyId !== ctx.keyId) return { ok: false, code: 'manifest', reason: 'keyId distinto' }
-  if (m.tag !== ctx.tag) return { ok: false, code: 'manifest', reason: 'el tag no coincide con la release' }
-  if (m.version !== ctx.tag.replace(/^v/, '')) return { ok: false, code: 'manifest', reason: 'la versión no coincide con el tag' }
+  if (m.tag !== ctx.tag) return { ok: false, code: 'manifest', reason: 'el tag no coincide con la release' } // i18n-ignore: motivo interno del registro, no se muestra
+  if (m.version !== ctx.tag.replace(/^v/, '')) return { ok: false, code: 'manifest', reason: 'la versión no coincide con el tag' } // i18n-ignore: motivo interno del registro, no se muestra
   if (!isNewerRelease({ tag: m.version, prerelease: false, draft: false }, ctx.current)) {
-    return { ok: false, code: 'downgrade', reason: 'la versión no es mayor que la instalada' }
+    return { ok: false, code: 'downgrade', reason: 'la versión no es mayor que la instalada' } // i18n-ignore: motivo interno del registro, no se muestra
   }
   if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `OnyxCode-${m.version}-arm64.zip`) {
-    return { ok: false, code: 'manifest', reason: 'nombre de ZIP no válido' }
+    return { ok: false, code: 'manifest', reason: 'nombre de ZIP no válido' } // i18n-ignore: motivo interno del registro, no se muestra
   }
   return { ok: true }
 }
@@ -225,27 +226,27 @@ export function installPercent(s: InstallState): number | null {
 export function installErrorText(code: InstallErrorCode | null): string {
   switch (code) {
     case 'network':
-      return 'No se pudo descargar la actualización. Revisa tu conexión.'
+      return t('notices.updateError.network')
     case 'signature':
-      return 'La actualización no pasó la comprobación de autenticidad y se descartó.'
+      return t('notices.updateError.signature')
     case 'downgrade':
-      return 'La actualización ofrecida no es más nueva que la instalada y se descartó.'
+      return t('notices.updateError.downgrade')
     case 'hash':
     case 'size':
-      return 'El archivo descargado no coincide con lo publicado y se descartó.'
+      return t('notices.updateError.mismatch')
     case 'zip':
     case 'signing':
     case 'manifest':
-      return 'El paquete descargado no es válido y se descartó.'
+      return t('notices.updateError.invalid')
     case 'space':
-      return 'No hay espacio libre suficiente para actualizar.'
+      return t('notices.updateError.space')
     case 'location':
-      return 'Esta copia de la app no se puede actualizar sola desde aquí.'
+      return t('notices.updateError.location')
     case 'rolled-back':
-      return 'La versión nueva no arrancó bien y se volvió a la anterior.'
+      return t('notices.updateError.rolledBack')
     case 'install':
-      return 'No se pudo instalar la actualización. La versión actual sigue intacta.'
+      return t('notices.updateError.install')
     default:
-      return 'No se pudo actualizar.'
+      return t('notices.updateError.generic')
   }
 }

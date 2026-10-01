@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Electron se sustituye: solo importa el menú que se construye y cuándo se reconstruye.
 const menus: { label?: string }[][] = []

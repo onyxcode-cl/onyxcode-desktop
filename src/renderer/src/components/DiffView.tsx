@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react'
 import { createTwoFilesPatch } from 'diff'
 import hljs from 'highlight.js/lib/common'
+import { t } from '@shared/i18n'
+import { useLang } from '../lib/i18n'
 
 type LineKind = 'add' | 'del' | 'ctx' | 'hunk' | 'file' | 'meta'
 
@@ -30,9 +32,9 @@ export function parseUnifiedDiff(patch: string): DiffLine[] {
         raw.startsWith('===') ||
         /^(index|new file|deleted file|old mode|new mode|similarity|rename|Binary)/.test(raw))
     ) {
-      if (raw.startsWith('Binary')) out.push({ kind: 'meta', text: 'Archivo binario' })
-      else if (raw.startsWith('new file')) out.push({ kind: 'meta', text: 'Archivo nuevo' })
-      else if (raw.startsWith('deleted file')) out.push({ kind: 'meta', text: 'Archivo eliminado' })
+      if (raw.startsWith('Binary')) out.push({ kind: 'meta', text: t('common.diff.binary') })
+      else if (raw.startsWith('new file')) out.push({ kind: 'meta', text: t('common.diff.newFile') })
+      else if (raw.startsWith('deleted file')) out.push({ kind: 'meta', text: t('common.diff.deletedFile') })
       continue
     }
     const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(raw)
@@ -122,17 +124,19 @@ interface Props {
 }
 
 export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders, path }: Props): React.JSX.Element {
+  const lang = useLang((s) => s.lang)
   const lines = useMemo(() => {
+    void lang // los textos meta salen en el idioma activo: recalcular al cambiarlo
     const parsed = parseUnifiedDiff(patch)
-    let lang = languageFor(path)
+    let hl = languageFor(path)
     return parsed.map((l) => {
-      if (l.kind === 'file') lang = languageFor(l.text) ?? languageFor(path)
-      const html = l.kind === 'add' || l.kind === 'del' || l.kind === 'ctx' ? highlightLine(l.text, lang) : null
+      if (l.kind === 'file') hl = languageFor(l.text) ?? languageFor(path)
+      const html = l.kind === 'add' || l.kind === 'del' || l.kind === 'ctx' ? highlightLine(l.text, hl) : null
       return { ...l, html }
     })
-  }, [patch, path])
+  }, [patch, path, lang])
   if (lines.length === 0) {
-    return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>Sin diferencias.</div>
+    return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>{t('common.diff.empty')}</div>
   }
   return (
     <div className={`overflow-auto font-mono text-[12px] leading-[1.55] ${className}`}>

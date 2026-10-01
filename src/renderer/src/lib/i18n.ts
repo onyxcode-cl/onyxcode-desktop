@@ -5,7 +5,18 @@
  * parpadear en otro idioma mientras llegan los ajustes del disco.
  */
 import { create } from 'zustand'
-import { getLang, localeTag, resolveLang, setLang, translate, type Lang, type LangPref, type MsgKey, type Params, isLangPref } from '@shared/i18n'
+import {
+  getLang,
+  localeTag,
+  resolveLang,
+  setLang,
+  translate,
+  type Lang,
+  type LangPref,
+  type MsgKey,
+  type Params,
+  isLangPref
+} from '@shared/i18n'
 import { useSettings } from '../stores/settings'
 
 const CACHE_KEY = 'onyx.langPref'

@@ -25,7 +25,7 @@ export const en = {
   ...chat,
   ...errors,
   ...notices,
-  ...main,
+  ...main
 }
 
 export const AREAS = { common, app, settings, models, mcp, tasksSettings, misc, wizard, account, chat, errors, notices, main }
