@@ -3,7 +3,7 @@
  * Solo pruebas: `ONYXCODE_E2E_TRASH_DIR` (honrada ÚNICAMENTE con la app sin empaquetar) mueve el
  * elemento a esa carpeta, para poder comprobar lo que iría a la Papelera sin tocar la real.
  */
-import { mkdirSync, renameSync } from 'node:fs'
+import { cpSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { basename, isAbsolute, join } from 'node:path'
 
 export interface TrashEnvInput {
@@ -22,6 +22,14 @@ export function trashToDir(dir: string, now: () => number = Date.now): (path: st
   let n = 0
   return async (path) => {
     mkdirSync(dir, { recursive: true })
-    renameSync(path, join(dir, `${now()}-${n++}-${basename(path)}`))
+    const dest = join(dir, `${now()}-${n++}-${basename(path)}`)
+    try {
+      renameSync(path, dest)
+    } catch (err) {
+      // Otro volumen (EXDEV): copiar y quitar el original.
+      if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err
+      cpSync(path, dest, { recursive: true })
+      rmSync(path, { recursive: true, force: true })
+    }
   }
 }

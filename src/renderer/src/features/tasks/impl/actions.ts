@@ -467,7 +467,8 @@ function setRestoreWarning(sessionId: string, text: string | null): void {
 async function saveRestorePoint(folder: string, sessionId: string, label: string): Promise<void> {
   if (!hasTasksBridge()) return
   setRestoreWarning(sessionId, null)
-  useTasks.setState({ restoreSaving: true })
+  // Un mensaje nuevo cierra el «Cambios deshechos…» anterior: su «Rehacer» ya no tendría sentido.
+  useTasks.setState((s) => ({ restoreSaving: true, ...(s.restoreResult?.taskId === sessionId ? { restoreResult: null } : {}) }))
   try {
     const point = await cw('tasks:restore:create', { folder, sessionId, label })
     if (point.status !== 'ok') setRestoreWarning(sessionId, restoreWarningText(point.reason ?? 'motivo desconocido'))

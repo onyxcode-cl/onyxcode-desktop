@@ -5,7 +5,7 @@
  * Siempre se muestra el comando, la ruta o los parámetros LITERALES; la descripción del modelo va aparte
  * y marcada como no verificada.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
 import { Button } from '../../../components/Button'
@@ -216,8 +216,13 @@ function RejectWithNote({
   onCancel: () => void
 }): React.JSX.Element {
   const [text, setText] = useState('')
+  const box = useRef<HTMLDivElement>(null)
+  // Los botones quedan bajo el pliegue de la conversación: se trae todo el bloque a la vista.
+  useEffect(() => {
+    box.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [])
   return (
-    <div className="mt-3">
+    <div ref={box} className="mt-3">
       <textarea
         autoFocus
         value={text}
