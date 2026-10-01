@@ -310,5 +310,14 @@ export const tasks = {
   'tasks.conv.retry': 'Retry',
   'tasks.conv.editHint': 'Undoes the conversation from this message (and the file changes) and sends it again, edited',
   'tasks.conv.undoHint': 'Restores the folder’s files to how they were before this message and hides what came after',
-  'tasks.conv.stopped': 'Task stopped.'
+  'tasks.conv.stopped': 'Task stopped.',
+  'tasks.sidechat.close': 'Close the side chat',
+  'tasks.sidechat.noChange': 'Doesn’t change the task.',
+  'tasks.sidechat.lead': ' Ask about what the agent did; this conversation is kept separate.',
+  'tasks.sidechat.examples': 'For example: “Which files did you change?”, “Explain why you chose that approach” or “What’s left to do?”.',
+  'tasks.sidechat.thinking': 'Thinking…',
+  'tasks.sidechat.inputAria': 'Side chat question',
+  'tasks.sidechat.placeholder': 'Ask about this task…',
+  'tasks.sidechat.send': 'Send',
+  'tasks.sidechat.sendAria': 'Send question'
 } as const satisfies Messages<typeof es>

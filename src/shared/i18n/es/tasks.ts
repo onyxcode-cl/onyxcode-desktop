@@ -306,5 +306,15 @@ export const tasks = {
   'tasks.conv.retry': 'Reintentar',
   'tasks.conv.editHint': 'Deshace la conversación desde este mensaje (y los cambios de archivos) y lo vuelve a enviar editado',
   'tasks.conv.undoHint': 'Restaura los archivos de la carpeta a como estaban antes de este mensaje y oculta lo que vino después',
-  'tasks.conv.stopped': 'Tarea detenida.'
+  'tasks.conv.stopped': 'Tarea detenida.',
+  'tasks.sidechat.close': 'Cerrar la consulta lateral',
+  'tasks.sidechat.noChange': 'No modifica la tarea.',
+  'tasks.sidechat.lead': ' Pregunta sobre lo que hizo el agente; esta conversación va aparte.',
+  'tasks.sidechat.examples':
+    'Por ejemplo: «¿Qué archivos has cambiado?», «Explícame por qué elegiste ese enfoque» o «¿Qué queda por hacer?».',
+  'tasks.sidechat.thinking': 'Pensando…',
+  'tasks.sidechat.inputAria': 'Pregunta de la consulta lateral',
+  'tasks.sidechat.placeholder': 'Pregunta sobre esta tarea…',
+  'tasks.sidechat.send': 'Enviar',
+  'tasks.sidechat.sendAria': 'Enviar pregunta'
 } as const
