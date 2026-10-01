@@ -68,5 +68,9 @@ export const common = {
   'common.git.discard.symlinkDir': 'La carpeta de {path} es un enlace simbólico: no se toca.',
   'common.git.discard.trashFailed': 'No se pudo mover a la Papelera: {reason}',
   'common.git.discard.undoMissing': 'Ya no se puede deshacer este descarte.',
-  'common.git.discard.undoChanged': 'El archivo cambió después de descartarlo; no se sobrescribe.'
+  'common.git.discard.undoChanged': 'El archivo cambió después de descartarlo; no se sobrescribe.',
+  'common.git.discard.hunkStale': 'El archivo cambió desde que viste este bloque: vuelve a abrir el diff.',
+  'common.git.discard.hunkNotModified': 'Solo se puede descartar un bloque de un archivo modificado: {path}',
+  'common.git.discard.hunkTooBig': 'El archivo es demasiado grande para descartar un bloque con copia de seguridad: {path}',
+  'common.git.discard.hunkFailed': 'No se pudo descartar el bloque (no se cambió nada): {reason}'
 } as const

@@ -286,6 +286,12 @@ export const code = {
   'code.changes.discardUndoFailed': 'No se pudo deshacer: {error}',
   'code.changes.discardDismiss': 'Cerrar aviso',
   'code.changes.discardRowLabel': 'Descartar los cambios de {name}',
+  'code.changes.discardKeepsStaged': 'Lo que ya está preparado se conserva: el archivo vuelve a la versión preparada.',
+  'code.changes.discardHunk': 'Descartar este bloque',
+  'code.changes.discardHunkTitle': '¿Descartar este bloque de {name}?',
+  'code.changes.discardHunkBody':
+    'Se perderá este bloque de cambios (líneas {lines}); el resto del archivo y lo ya preparado no se tocan. Justo después podrás usar «Deshacer».',
+  'code.changes.discardHunkDone': 'Bloque descartado.',
   'code.files.back': 'Volver',
   'code.files.diff': 'Diff',
   'code.files.binary': 'Archivo binario.',

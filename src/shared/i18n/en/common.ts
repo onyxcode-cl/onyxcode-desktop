@@ -71,5 +71,9 @@ export const common = {
   'common.git.discard.symlinkDir': 'The folder of {path} is a symbolic link: left untouched.',
   'common.git.discard.trashFailed': 'Could not move to the Trash: {reason}',
   'common.git.discard.undoMissing': 'This discard can no longer be undone.',
-  'common.git.discard.undoChanged': 'The file changed after it was discarded; it is not overwritten.'
+  'common.git.discard.undoChanged': 'The file changed after it was discarded; it is not overwritten.',
+  'common.git.discard.hunkStale': 'The file changed since you saw this block: reopen the diff.',
+  'common.git.discard.hunkNotModified': 'Only a block of a modified file can be discarded: {path}',
+  'common.git.discard.hunkTooBig': 'The file is too large to discard a block with a safety copy: {path}',
+  'common.git.discard.hunkFailed': 'Couldn’t discard the block (nothing was changed): {reason}'
 } as const satisfies Messages<typeof es>

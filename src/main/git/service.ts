@@ -4,7 +4,7 @@
  */
 import { execFile } from 'node:child_process'
 import { t } from '@shared/i18n'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   chmodSync,
   copyFileSync,
@@ -19,10 +19,12 @@ import {
   writeFileSync
 } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { splitDiffHunks, isSingleFileDiff } from '@shared/diff-hunks'
 import type {
   GitBranch,
   GitChangeKind,
   GitCommitResult,
+  GitDiscardHunkResult,
   GitDiscardResult,
   GitDiscardUndoResult,
   GitDiffRequest,
@@ -581,6 +583,10 @@ interface UndoEntry {
   /** Nombre de la copia o null = el archivo no existía (estaba borrado). */
   file: string | null
   mode: number
+  /** Estado del índice que había (solo si tenía cambios preparados): se vuelve a preparar al deshacer. */
+  index?: { state: 'blob'; oid: string; mode: string } | { state: 'deleted' }
+  /** sha256 del archivo justo después de descartar (descarte por bloque): «Deshacer» solo si no cambió desde entonces. */
+  afterHash?: string
 }
 interface UndoManifest {
   root: string
@@ -604,7 +610,12 @@ function pruneBackups(dir: string): void {
   }
 }
 
-export async function discardChanges(cwd: string, paths: string[], deps: DiscardDeps): Promise<GitDiscardResult> {
+export async function discardChanges(
+  cwd: string,
+  paths: string[],
+  deps: DiscardDeps,
+  scope: 'all' | 'unstaged' = 'all'
+): Promise<GitDiscardResult> {
   const root = await requireRoot(cwd)
   if (!Array.isArray(paths) || paths.length === 0) throw new GitError(t('common.git.discard.none'))
   if (paths.length > MAX_DISCARD_FILES) throw new GitError(t('common.git.discard.tooMany', { max: MAX_DISCARD_FILES }))
@@ -617,7 +628,9 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
     const tg = discardTarget(root, p)
     targets.set(tg.rel, tg)
   }
-  const tracked: Array<{ tg: DiscardTarget; wasDeletedInTree: boolean; recordUndo: boolean }> = []
+  type TrackedItem = { tg: DiscardTarget; wasDeletedInTree: boolean; recordUndo: boolean; staged?: string }
+  const tracked: TrackedItem[] = []
+  const treeOnly: TrackedItem[] = []
   const added: DiscardTarget[] = []
   const untracked: DiscardTarget[] = []
   const seen = new Set<string>()
@@ -630,9 +643,21 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
       untracked.push(tg)
       continue
     }
+    if (scope === 'unstaged') {
+      // Solo los cambios del árbol de trabajo vuelven a lo que hay en el índice: lo preparado se conserva.
+      if (f.workingDir === ' ') throw new GitError(t('common.git.discard.notChanged', { path: tg.rel }))
+      treeOnly.push({ tg, wasDeletedInTree: f.workingDir === 'D', recordUndo: true })
+      continue
+    }
     const isNew = [f.index, f.workingDir].some((c) => c === 'A' || c === 'R' || c === 'C')
     if (isNew) added.push(tg)
-    else tracked.push({ tg, wasDeletedInTree: f.workingDir === 'D', recordUndo: true })
+    else
+      tracked.push({
+        tg,
+        wasDeletedInTree: f.workingDir === 'D' || f.index === 'D',
+        recordUndo: true,
+        staged: f.staged ? f.index : undefined
+      })
     if (f.origPath) {
       // Renombre/copia: el origen también vuelve a su sitio (solo si es un renombre; una copia no lo toca).
       if (f.kind === 'renamed') {
@@ -644,7 +669,7 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
       }
     }
   }
-  const tree = [...tracked.map((x) => x.tg.rel), ...added.map((x) => x.rel)]
+  const tree = [...tracked.map((x) => x.tg.rel), ...treeOnly.map((x) => x.tg.rel), ...added.map((x) => x.rel)]
   if (tree.length) {
     const out = await git(root, ['ls-files', '--stage', '-z', '--', ...tree])
     for (const rec of out.split('\0').filter(Boolean)) {
@@ -657,11 +682,12 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
   const entries: UndoEntry[] = []
   const undoId = randomUUID()
   const bdir = join(deps.backupDir, undoId)
-  for (const { tg, wasDeletedInTree, recordUndo } of tracked) {
+  for (const { tg, wasDeletedInTree, recordUndo, staged } of [...tracked, ...treeOnly]) {
     if (!recordUndo) continue
     try {
+      const index = staged === undefined ? undefined : await indexSnapshot(root, tg.rel, staged)
       if (wasDeletedInTree && !existsSync(tg.abs)) {
-        entries.push({ path: tg.rel, file: null, mode: 0o644 })
+        entries.push({ path: tg.rel, file: null, mode: 0o644, ...(index ? { index } : {}) })
         continue
       }
       const ls = lstatSync(tg.abs)
@@ -669,7 +695,7 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
       mkdirSync(bdir, { recursive: true, mode: 0o700 })
       const name = String(entries.length)
       copyFileSync(tg.abs, join(bdir, name))
-      entries.push({ path: tg.rel, file: name, mode: ls.mode & 0o777 })
+      entries.push({ path: tg.rel, file: name, mode: ls.mode & 0o777, ...(index ? { index } : {}) })
     } catch {
       // sin copia: se descarta igualmente, sin «Rehacer» para este archivo
     }
@@ -683,6 +709,16 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
     } catch (err) {
       for (const x of tracked) result.failed.push({ path: x.tg.rel, reason: (err as Error).message })
       entries.length = 0
+    }
+  }
+
+  // 3b) Solo árbol de trabajo (lo preparado se conserva): vuelve a lo que hay en el índice.
+  if (treeOnly.length) {
+    try {
+      await git(root, ['checkout', '--', ...treeOnly.map((x) => x.tg.rel)])
+      for (const x of treeOnly) result.restored.push(x.tg.rel)
+    } catch (err) {
+      for (const x of treeOnly) result.failed.push({ path: x.tg.rel, reason: (err as Error).message })
     }
   }
 
@@ -704,6 +740,16 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
     }
   }
 
+  // Contenido que deja el descarte: «Deshacer» solo actúa si el archivo sigue siendo exactamente ese
+  // (el estado de `git status` no sirve: con lo preparado conservado el archivo sigue figurando como cambiado).
+  for (const e of entries) {
+    try {
+      e.afterHash = sha256(readFileSync(discardTarget(root, e.path).abs))
+    } catch {
+      // sin archivo tras descartar: la comprobación vuelve al estado de git
+    }
+  }
+
   const failedPaths = new Set(result.failed.map((f) => f.path))
   const undoable = entries.filter((e) => !failedPaths.has(e.path))
   if (undoable.length) {
@@ -716,6 +762,14 @@ export async function discardChanges(cwd: string, paths: string[], deps: Discard
   }
   pruneBackups(deps.backupDir)
   return result
+}
+
+/** Estado del índice de un archivo con cambios preparados, para poder volver a prepararlo al deshacer. */
+async function indexSnapshot(root: string, rel: string, indexLetter: string): Promise<UndoEntry['index'] | undefined> {
+  if (indexLetter === 'D') return { state: 'deleted' }
+  const out = await git(root, ['ls-files', '--stage', '-z', '--', rel])
+  const m = /^(\d{6}) ([0-9a-f]{40,64}) 0\t/.exec(out)
+  return m ? { state: 'blob', oid: m[2]!, mode: m[1]! } : undefined
 }
 
 /** Revalida la ruta justo antes de tocarla (evita carreras con enlaces) y la manda a la Papelera. */
@@ -751,7 +805,19 @@ export async function undoDiscard(cwd: string, undoId: string, deps: DiscardDeps
   for (const e of manifest.entries) {
     try {
       const tg = discardTarget(root, e.path)
-      if (changed.has(tg.rel)) {
+      if (e.afterHash) {
+        // Descarte por bloque: el archivo sigue modificado; se deshace solo si es exactamente lo que dejó el descarte.
+        let now = ''
+        try {
+          now = sha256(readFileSync(tg.abs))
+        } catch {
+          // ausente: cambió
+        }
+        if (now !== e.afterHash) {
+          result.failed.push({ path: tg.rel, reason: t('common.git.discard.undoChanged') })
+          continue
+        }
+      } else if (changed.has(tg.rel)) {
         result.failed.push({ path: tg.rel, reason: t('common.git.discard.undoChanged') })
         continue
       }
@@ -764,6 +830,14 @@ export async function undoDiscard(cwd: string, undoId: string, deps: DiscardDeps
         copyFileSync(join(bdir, e.file), tg.abs)
         chmodSync(tg.abs, e.mode)
       }
+      // Lo que estaba preparado vuelve a estarlo (el contenido se conserva en el repositorio como blob).
+      if (e.index?.state === 'deleted') {
+        await git(root, ['rm', '--cached', '-q', '--ignore-unmatch', '--', tg.rel])
+      } else if (e.index?.state === 'blob') {
+        if (!/^[0-7]{6}$/.test(e.index.mode) || !/^[0-9a-f]{40,64}$/.test(e.index.oid))
+          throw new GitError(t('common.git.discard.undoMissing'))
+        await git(root, ['update-index', '--add', '--cacheinfo', `${e.index.mode},${e.index.oid},${tg.rel}`])
+      }
       result.restored.push(tg.rel)
     } catch (err) {
       result.failed.push({ path: e.path, reason: (err as Error).message })
@@ -771,4 +845,64 @@ export async function undoDiscard(cwd: string, undoId: string, deps: DiscardDeps
   }
   if (result.failed.length === 0) rmSync(bdir, { recursive: true, force: true })
   return result
+}
+
+function sha256(buf: Buffer): string {
+  return createHash('sha256').update(buf).digest('hex')
+}
+
+// ---------------------------------------------------------------------------
+// Descartar UN bloque (hunk) de un archivo modificado (DESTRUCTIVO, todo o nada)
+// ---------------------------------------------------------------------------
+//
+// Solo cambios del árbol de trabajo de un archivo regular ya seguido (lo preparado no se toca). Main
+// recalcula el diff por su cuenta y exige que el bloque pedido sea idéntico al que vio el usuario (si el
+// archivo cambió entretanto se rechaza). Antes de aplicar se guarda una copia completa del archivo y se
+// comprueba `git apply -R --check`; `git apply` es atómico, así que o se descarta el bloque o no cambia nada.
+// «Deshacer» reutiliza `undoDiscard`.
+
+export async function discardHunk(
+  cwd: string,
+  path: string,
+  index: number,
+  hunk: string,
+  deps: DiscardDeps
+): Promise<GitDiscardHunkResult> {
+  const root = await requireRoot(cwd)
+  if (!Number.isInteger(index) || index < 0 || typeof hunk !== 'string' || !hunk) throw new GitError(t('common.git.discard.hunkStale'))
+  const tg = discardTarget(root, path)
+  const f = (await status(root)).files.find((x) => x.path === tg.rel)
+  if (!f || f.untracked || f.conflicted || f.workingDir !== 'M' || f.kind === 'renamed' || f.kind === 'copied') {
+    throw new GitError(t('common.git.discard.hunkNotModified', { path: tg.rel }))
+  }
+  const ls = lstatSync(tg.abs)
+  if (!ls.isFile() || ls.size > MAX_BACKUP_BYTES) throw new GitError(t('common.git.discard.hunkTooBig', { path: tg.rel }))
+  const patch = await diff({ cwd: root, path: tg.rel, staged: false })
+  if (!isSingleFileDiff(patch)) throw new GitError(t('common.git.discard.hunkStale'))
+  const split = splitDiffHunks(patch)
+  if (split.hunks[index] !== hunk) throw new GitError(t('common.git.discard.hunkStale'))
+  const reverse = split.header + hunk
+
+  const undoId = randomUUID()
+  const bdir = join(deps.backupDir, undoId)
+  try {
+    mkdirSync(bdir, { recursive: true, mode: 0o700 })
+    copyFileSync(tg.abs, join(bdir, '0'))
+    const before = sha256(readFileSync(tg.abs))
+    if (sha256(readFileSync(join(bdir, '0'))) !== before) throw new GitError(t('common.git.discard.hunkStale'))
+    await git(root, ['apply', '-R', '--check', '--whitespace=nowarn', '-'], { input: reverse })
+    await git(root, ['apply', '-R', '--whitespace=nowarn', '-'], { input: reverse })
+    const manifest: UndoManifest = {
+      root: realish(root),
+      createdAt: Date.now(),
+      entries: [{ path: tg.rel, file: '0', mode: ls.mode & 0o777, afterHash: sha256(readFileSync(tg.abs)) }]
+    }
+    writeFileSync(join(bdir, 'manifest.json'), JSON.stringify(manifest))
+  } catch (err) {
+    rmSync(bdir, { recursive: true, force: true })
+    if (err instanceof GitError && err.message.startsWith(t('common.git.discard.hunkStale'))) throw err
+    throw new GitError(t('common.git.discard.hunkFailed', { reason: (err as Error).message }))
+  }
+  pruneBackups(deps.backupDir)
+  return { undoId }
 }

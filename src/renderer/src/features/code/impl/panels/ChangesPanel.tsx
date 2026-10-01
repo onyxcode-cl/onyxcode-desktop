@@ -31,7 +31,8 @@ import { openProjectTrusted } from '../trust'
 import { isImeComposing } from '../../../../lib/textarea'
 import { ConfirmButton, Kbd, MOD } from '../ui'
 import { confirmDialog } from '../../../../components/ConfirmDialog'
-import { canDiscard, discardMessage } from '../discard-logic'
+import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
+import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
 
 interface ChangedFile {
   path: string
@@ -603,24 +604,46 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     }
   }, [directory, selPath, selKind, selStaged, fsVersion])
 
-  const discard = async (file: ChangedFile): Promise<void> => {
+  const discard = async (file: ChangedFile, scope: 'all' | 'unstaged' = 'all'): Promise<void> => {
     if (!native || !canDiscard(file)) return
     const name = splitPath(file.path).name
     const ok = await confirmDialog({
       title: t('code.changes.discardTitle', { name }),
-      message: discardMessage(file),
+      message: discardMessage(file, scope),
       confirmLabel: t('code.changes.discardConfirm'),
       danger: true
     })
     if (!ok) return
     try {
-      const res = await native.git.discard(directory, [file.path])
+      const res = await native.git.discard(directory, [file.path], scope)
       const parts: string[] = []
       if (res.restored.length) parts.push(t('code.changes.discardRestored', { count: res.restored.length }))
       if (res.trashed.length) parts.push(t('code.changes.discardTrashed', { count: res.trashed.length }))
       if (res.failed.length) parts.push(t('code.changes.discardFailed', { error: res.failed.map((f) => f.reason).join(' ') }))
       setNotice({ text: parts.join(' '), tone: res.failed.length ? 'error' : 'ok', undoId: res.undoId ?? undefined })
       if (selected?.path === file.path) setSelected(null)
+    } catch (err) {
+      setNotice({ text: t('code.changes.discardFailed', { error: errorMessage(err) }), tone: 'error' })
+    }
+    touchFs()
+    void refresh()
+  }
+
+  const discardHunk = async (file: ChangedFile, hunkIndex: number): Promise<void> => {
+    if (!native) return
+    const hunk = splitDiffHunks(diff).hunks[hunkIndex]
+    if (!hunk) return
+    const name = splitPath(file.path).name
+    const ok = await confirmDialog({
+      title: t('code.changes.discardHunkTitle', { name }),
+      message: `${t('code.changes.discardHunkBody', { lines: hunkLines(hunk) })}\n\n${hunk.split('\n').slice(0, 14).join('\n')}`,
+      confirmLabel: t('code.changes.discardConfirm'),
+      danger: true
+    })
+    if (!ok) return
+    try {
+      const res = await native.git.discardHunk(directory, file.path, hunkIndex, hunk)
+      setNotice({ text: t('code.changes.discardHunkDone'), tone: 'ok', undoId: res.undoId })
     } catch (err) {
       setNotice({ text: t('code.changes.discardFailed', { error: errorMessage(err) }), tone: 'error' })
     }
@@ -722,7 +745,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                     file={f}
                     staged
                     selected={selected?.path === f.path && selected.staged}
-                    onDiscard={native && canDiscard(f) ? () => void discard(f) : undefined}
+                    onDiscard={native && canDiscard(f) ? () => void discard(f, 'all') : undefined}
                     onSelect={() => setSelected(selected?.path === f.path && selected.staged ? null : { path: f.path, staged: true })}
                   />
                 ))}
@@ -736,7 +759,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                     file={f}
                     staged={false}
                     selected={selected?.path === f.path && !selected.staged}
-                    onDiscard={native && canDiscard(f) ? () => void discard(f) : undefined}
+                    onDiscard={native && canDiscard(f) ? () => void discard(f, 'unstaged') : undefined}
                     onSelect={() => setSelected(selected?.path === f.path && !selected.staged ? null : { path: f.path, staged: false })}
                   />
                 ))}
@@ -767,7 +790,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                         <IconButton
                           label={t('code.changes.discard')}
                           className="h-6 w-6 hover:text-danger"
-                          onClick={() => void discard(selectedFile)}
+                          onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
                         >
                           <Undo2 size={13} />
                         </IconButton>
@@ -789,7 +812,18 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                   <Loader2 size={14} className="animate-spin" /> {t('code.changes.loadingDiff')}
                 </div>
               )}
-              {selectedFile && diff && <DiffView patch={diff} path={selectedFile.path} hideFileHeaders />}
+              {selectedFile && diff && (
+                <DiffView
+                  patch={diff}
+                  path={selectedFile.path}
+                  hideFileHeaders
+                  onDiscardHunk={
+                    native && !selStaged && selectedFile.kind === 'modified' && isSingleFileDiff(diff)
+                      ? (i) => void discardHunk(selectedFile, i)
+                      : undefined
+                  }
+                />
+              )}
               {selectedFile && diffError && !diffLoading && (
                 <div className="px-3 py-3 text-xs text-danger">{t('code.changes.diffFailed', { error: diffError })}</div>
               )}

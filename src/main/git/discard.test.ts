@@ -19,7 +19,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { trashToDir } from '../tasks/trash'
-import { discardChanges, status, undoDiscard, type DiscardDeps } from './service'
+import { discardChanges, discardHunk, diff, status, undoDiscard, type DiscardDeps } from './service'
+import { splitDiffHunks } from '@shared/diff-hunks'
 
 let base: string
 let repo: string
@@ -242,5 +243,140 @@ describe('undoDiscard («Rehacer»)', () => {
     g('mv', 'a.txt', 'z.txt')
     const res = await discardChanges(repo, ['z.txt'], deps)
     expect(res.undoId).toBeNull()
+  })
+})
+
+const numbered = (n: number, edit: Record<number, string> = {}): string =>
+  Array.from({ length: n }, (_, i) => edit[i + 1] ?? `linea ${i + 1}`).join('\n') + '\n'
+
+describe('conservar lo preparado (staged)', () => {
+  it('scope "unstaged": el árbol vuelve a lo preparado y el índice no cambia', async () => {
+    w('a.txt', 'preparado\n')
+    g('add', 'a.txt')
+    w('a.txt', 'preparado y más\n')
+    const res = await discardChanges(repo, ['a.txt'], deps, 'unstaged')
+    expect(res.restored).toEqual(['a.txt'])
+    expect(r('a.txt')).toBe('preparado\n')
+    expect(g('status', '--porcelain')).toBe('M  a.txt\n')
+    // Deshacer: devuelve el contenido del árbol sin tocar lo preparado.
+    const back = await undoDiscard(repo, res.undoId!, deps)
+    expect(back.failed).toEqual([])
+    expect(r('a.txt')).toBe('preparado y más\n')
+    expect(g('status', '--porcelain')).toBe('MM a.txt\n')
+  })
+
+  it('scope "unstaged" rechaza un archivo sin cambios en el árbol', async () => {
+    w('a.txt', 'preparado\n')
+    g('add', 'a.txt')
+    await expect(discardChanges(repo, ['a.txt'], deps, 'unstaged')).rejects.toThrow()
+    expect(g('status', '--porcelain')).toBe('M  a.txt\n')
+  })
+
+  it('scope "unstaged" en un archivo añadido con cambios no lo manda a la Papelera', async () => {
+    w('n.txt', 'v1\n')
+    g('add', 'n.txt')
+    w('n.txt', 'v2\n')
+    const res = await discardChanges(repo, ['n.txt'], deps, 'unstaged')
+    expect(res.trashed).toEqual([])
+    expect(r('n.txt')).toBe('v1\n')
+    expect(g('status', '--porcelain')).toBe('A  n.txt\n')
+  })
+
+  it('descartar todo y «Deshacer» devuelve también lo preparado', async () => {
+    w('a.txt', 'preparado\n')
+    g('add', 'a.txt')
+    w('a.txt', 'preparado y más\n')
+    rmSync(join(repo, 'src/b.txt'))
+    g('rm', '--cached', '-q', 'src/b.txt') // borrado preparado
+    const res = await discardChanges(repo, ['a.txt', 'src/b.txt'], deps)
+    expect(g('status', '--porcelain')).toBe('')
+    const back = await undoDiscard(repo, res.undoId!, deps)
+    expect(back.failed).toEqual([])
+    expect(r('a.txt')).toBe('preparado y más\n')
+    expect(existsSync(join(repo, 'src/b.txt'))).toBe(false)
+    expect(g('status', '--porcelain').split('\n').sort()).toEqual(['', ' M a.txt'.replace(' M', 'MM'), 'D  src/b.txt'].sort())
+  })
+})
+
+describe('discardHunk (descartar un bloque)', () => {
+  const setup = (): void => {
+    w('big.txt', numbered(60))
+    g('add', 'big.txt')
+    g('commit', '-q', '-m', 'big')
+  }
+  const hunksOf = async (): Promise<string[]> => splitDiffHunks(await diff({ cwd: repo, path: 'big.txt', staged: false })).hunks
+
+  it('quita solo el bloque pedido, conserva el otro y lo preparado, y se puede deshacer', async () => {
+    setup()
+    w('big.txt', numbered(60, { 3: 'TRES' }))
+    g('add', 'big.txt') // preparado: línea 3
+    w('big.txt', numbered(60, { 3: 'TRES', 30: 'TREINTA', 55: 'CINCUENTA Y CINCO' }))
+    const hunks = await hunksOf()
+    expect(hunks).toHaveLength(2)
+    const res = await discardHunk(repo, 'big.txt', 0, hunks[0]!, deps)
+    expect(res.undoId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(r('big.txt')).toBe(numbered(60, { 3: 'TRES', 55: 'CINCUENTA Y CINCO' }))
+    expect(g('diff', '--cached', '--stat')).toContain('big.txt') // lo preparado intacto
+    expect(g('show', ':big.txt')).toBe(numbered(60, { 3: 'TRES' }))
+    // Deshacer devuelve el archivo tal cual estaba antes (con el bloque).
+    const back = await undoDiscard(repo, res.undoId!, deps)
+    expect(back.failed).toEqual([])
+    expect(r('big.txt')).toBe(numbered(60, { 3: 'TRES', 30: 'TREINTA', 55: 'CINCUENTA Y CINCO' }))
+    await expect(undoDiscard(repo, res.undoId!, deps)).rejects.toThrow()
+  })
+
+  it('rechaza un bloque desactualizado o un índice inexistente sin tocar nada', async () => {
+    setup()
+    w('big.txt', numbered(60, { 3: 'TRES', 55: 'X' }))
+    const hunks = await hunksOf()
+    const before = r('big.txt')
+    await expect(discardHunk(repo, 'big.txt', 0, hunks[1]!, deps)).rejects.toThrow() // texto de otro bloque
+    await expect(discardHunk(repo, 'big.txt', 5, hunks[0]!, deps)).rejects.toThrow()
+    await expect(discardHunk(repo, 'big.txt', 0, hunks[0]!.replace('TRES', 'otro'), deps)).rejects.toThrow()
+    w('big.txt', numbered(60, { 3: 'TRES CAMBIADO', 55: 'X' })) // el archivo cambió tras ver el diff
+    await expect(discardHunk(repo, 'big.txt', 0, hunks[0]!, deps)).rejects.toThrow()
+    expect(r('big.txt')).toBe(numbered(60, { 3: 'TRES CAMBIADO', 55: 'X' }))
+    expect(before).not.toBe(r('big.txt'))
+    expect(existsSync(join(base, 'backup')) ? readdirSync(join(base, 'backup')) : []).toEqual([]) // sin restos
+  })
+
+  it('rechaza rutas fuera del repo, .git, archivos nuevos y sin cambios', async () => {
+    setup()
+    w('nuevo.txt', 'x\n')
+    const outside = join(base, 'fuera.txt')
+    writeFileSync(outside, '@@ -1 +1 @@\n')
+    for (const bad of [outside, '../fuera.txt', '.git/config', 'nuevo.txt', 'keep.txt']) {
+      await expect(discardHunk(repo, bad, 0, '@@ -1 +1 @@\n-a\n+b\n', deps), bad).rejects.toThrow()
+    }
+    expect(r('nuevo.txt')).toBe('x\n')
+  })
+
+  it('«Deshacer» no pisa lo que se editó después del descarte', async () => {
+    setup()
+    w('big.txt', numbered(60, { 3: 'TRES', 55: 'X' }))
+    const res = await discardHunk(repo, 'big.txt', 0, (await hunksOf())[0]!, deps)
+    w('big.txt', numbered(60, { 55: 'X', 10: 'editado luego' }))
+    const back = await undoDiscard(repo, res.undoId!, deps)
+    expect(back.restored).toEqual([])
+    expect(back.failed).toHaveLength(1)
+    expect(r('big.txt')).toBe(numbered(60, { 55: 'X', 10: 'editado luego' }))
+  })
+
+  it('no toca un archivo con solo cambios preparados', async () => {
+    setup()
+    w('big.txt', numbered(60, { 3: 'TRES' }))
+    g('add', 'big.txt')
+    await expect(discardHunk(repo, 'big.txt', 0, '@@ -1,6 +1,6 @@\n', deps)).rejects.toThrow()
+    expect(r('big.txt')).toBe(numbered(60, { 3: 'TRES' }))
+  })
+
+  it('respeta archivos sin salto final y finales CRLF', async () => {
+    w('crlf.txt', 'a\r\nb\r\nc\r\nd\r\n')
+    g('add', 'crlf.txt')
+    g('commit', '-q', '-m', 'crlf')
+    w('crlf.txt', 'a\r\nB\r\nc\r\nd')
+    const hunks = splitDiffHunks(await diff({ cwd: repo, path: 'crlf.txt', staged: false })).hunks
+    await discardHunk(repo, 'crlf.txt', 0, hunks[0]!, deps)
+    expect(r('crlf.txt')).toBe('a\r\nb\r\nc\r\nd\r\n')
   })
 })

@@ -121,6 +121,8 @@ interface Props {
   hideFileHeaders?: boolean
   /** Ruta del archivo (para el resaltado de sintaxis si el diff no trae cabecera). */
   path?: string
+  /** Si se pasa, cada bloque (`@@`) muestra un botón para descartarlo; recibe el índice del bloque. */
+  onDiscardHunk?: (hunkIndex: number) => void
 }
 
 /** Tope de líneas y de bytes de un diff antes de ofrecer «Mostrar todo» (git admite hasta 64 MB). */
@@ -148,7 +150,7 @@ export function clipPatch(
   return { text, total, shown: text.split('\n').length, clipped: true }
 }
 
-export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders, path }: Props): React.JSX.Element {
+export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders, path, onDiscardHunk }: Props): React.JSX.Element {
   const lang = useLang((s) => s.lang)
   const [showAll, setShowAll] = useState(false)
   useEffect(() => setShowAll(false), [patch])
@@ -190,6 +192,15 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
     () => parsed.map((l, i) => ({ ...l, html: highlight && html.key === parsed ? (html.rows[i] ?? null) : null })),
     [parsed, html, highlight]
   )
+  // Ordinal de cada bloque dentro del diff completo (el recorte «Mostrar todo» no lo altera: recorta al final).
+  const hunkIndexAt = useMemo(() => {
+    const m: number[] = []
+    let n = 0
+    parsed.forEach((l, i) => {
+      if (l.kind === 'hunk') m[i] = n++
+    })
+    return m
+  }, [parsed])
   if (lines.length === 0) {
     return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>{t('common.diff.empty')}</div>
   }
@@ -212,6 +223,25 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
                 <tr key={i} className={ROW.file}>
                   <td colSpan={4} className="sticky top-0 px-3 py-1 font-sans text-xs">
                     {l.text}
+                  </td>
+                </tr>
+              )
+            }
+            if (l.kind === 'hunk' && onDiscardHunk) {
+              const hi = hunkIndexAt[i] ?? 0
+              return (
+                <tr key={i} className={ROW.hunk}>
+                  <td colSpan={4} className="px-3 py-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate whitespace-pre">{l.text}</span>
+                      <button
+                        type="button"
+                        onClick={() => onDiscardHunk(hi)}
+                        className="shrink-0 rounded-md px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted hover:bg-hover hover:text-danger focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        {t('code.changes.discardHunk')}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
