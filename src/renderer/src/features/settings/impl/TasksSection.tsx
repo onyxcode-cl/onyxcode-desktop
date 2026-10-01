@@ -660,6 +660,16 @@ export function TasksSection(): React.JSX.Element {
               onCommit={(v) => savePrefs({ idleStopMinutes: v }, 'servers')}
             />
           </Row>
+          <Row label={t('tasksSettings.servers.stall')} description={t('tasksSettings.servers.stallDesc')}>
+            <NumberField
+              value={prefs?.stallWarnMinutes ?? 5}
+              min={0}
+              max={240}
+              disabled={!prefs}
+              label={t('tasksSettings.servers.stallAria')}
+              onCommit={(v) => savePrefs({ stallWarnMinutes: v }, 'servers')}
+            />
+          </Row>
         </Card>
         {errors.servers && <p className="mt-2 text-xs text-danger">{errors.servers}</p>}
         <div className="mt-3 mb-1.5 text-xs font-medium text-muted">{t('tasksSettings.servers.running')}</div>

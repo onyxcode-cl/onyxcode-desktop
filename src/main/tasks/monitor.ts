@@ -8,6 +8,8 @@
  *  - notifica por tipo (terminó / pide permiso / pregunta / error) en servidores que el renderer
  *    NO está mirando;
  *  - avisa si hay trabajo en curso (mantener el Mac despierto);
+ *  - marca `quietSince` en una tarea en curso que lleva `stallWarnMinutes` sin avance (texto nuevo o herramientas):
+ *    SOLO informa para que la interfaz avise; no detiene ni cancela nada;
  *  - detiene servidores ociosos (dos sondeos seguidos sin nada en curso, sin estar mirados y tras
  *    `idleStopMinutes`) y hace hueco cuando se alcanza `maxServers` (nunca mata trabajo en curso);
  *  - auto-archiva tareas viejas (cada hora por servidor; nunca fijadas ni en curso/en espera).
@@ -97,6 +99,10 @@ interface RootEntry {
   /** Sondeos seguidos en que la raíz no aparece (se da por terminada a los 2). */
   missing: number
   routine: boolean
+  /** Huella del último mensaje de las sesiones en curso de esta raíz (cambia cuando hay avance). */
+  sig: string
+  /** Último momento en que cambió la huella (o el estado). */
+  progressAt: number
 }
 
 interface ServerState {
@@ -263,11 +269,47 @@ export class TasksMonitor {
       })
       for (const [sessionId, r] of st.roots) {
         if (r.missing > 0 || r.routine) continue
-        tasks.push({ sessionId, folder: st.folder, fullAccess: st.fullAccess, title: r.title, state: r.state, since: r.since })
+        const quiet = this.quietMs(r)
+        tasks.push({
+          sessionId,
+          folder: st.folder,
+          fullAccess: st.fullAccess,
+          title: r.title,
+          state: r.state,
+          since: r.since,
+          ...(quiet !== null ? { quietSince: r.progressAt } : {})
+        })
       }
     }
     tasks.sort((a, b) => a.since - b.since)
     return { at: this.now(), tasks, servers }
+  }
+
+  /** Tiempo sin avance de una raíz en curso si supera el umbral de aviso; null si no toca avisar. */
+  private quietMs(r: RootEntry): number | null {
+    const minutes = this.deps.prefs.get().stallWarnMinutes
+    if (!(minutes > 0) || r.state !== 'running' || r.routine) return null
+    const quiet = this.now() - r.progressAt
+    return quiet >= minutes * 60_000 ? quiet : null
+  }
+
+  /** Huella del avance de una sesión: id del último mensaje, nº de partes y tamaño de la última parte. '' si no se pudo leer. */
+  private async fingerprint(st: ServerState, sessionId: string): Promise<string> {
+    const r = await this.req<Array<{ info?: { id?: string; time?: { completed?: number } }; parts?: unknown[] }>>(
+      st,
+      'GET',
+      `/session/${encodeURIComponent(sessionId)}/message?limit=2`
+    )
+    if (!r.ok || !Array.isArray(r.data) || r.data.length === 0) return ''
+    const last = r.data[r.data.length - 1]
+    const parts = Array.isArray(last?.parts) ? last.parts : []
+    let tail = 0
+    try {
+      tail = parts.length > 0 ? JSON.stringify(parts[parts.length - 1]).length : 0
+    } catch {
+      // sin tamaño
+    }
+    return `${sessionId}|${last?.info?.id ?? ''}|${last?.info?.time?.completed ?? ''}|${parts.length}|${tail}`
   }
 
   // ───────────────────────────── HTTP ─────────────────────────────
@@ -491,7 +533,11 @@ export class TasksMonitor {
       else prev.title = root.title
       return root.id
     }
-    for (const id of busyIds) await add(id, 'running')
+    const busyByRoot = new Map<string, string[]>()
+    for (const id of busyIds) {
+      const root = await add(id, 'running')
+      if (root) busyByRoot.set(root, [...(busyByRoot.get(root) ?? []), id])
+    }
     const permRoots = new Map<string, string>()
     for (const p of permList) {
       const root = await add(p.sessionID, 'waiting')
@@ -523,15 +569,33 @@ export class TasksMonitor {
       if (c && !c.routine) notify('question', rootId, c.title)
     }
 
+    // Huella de avance de las tareas en curso (solo si el aviso de inactividad está activo).
+    const sigs = new Map<string, string>()
+    if (this.deps.prefs.get().stallWarnMinutes > 0) {
+      await Promise.all(
+        [...current].map(async ([rootId, c]) => {
+          if (c.state !== 'running' || c.routine) return
+          const ids = busyByRoot.get(rootId) ?? [rootId]
+          const parts = await Promise.all(ids.sort().map((id) => this.fingerprint(st, id)))
+          // Si alguna lectura falla se conserva la huella anterior (no cuenta como avance).
+          if (parts.every((p) => p !== '')) sigs.set(rootId, parts.join(';'))
+        })
+      )
+    }
+
     // Altas y cambios de estado.
     for (const [rootId, c] of current) {
       const prev = st.roots.get(rootId)
+      const sameState = !!prev && prev.state === c.state
+      const sig = sigs.get(rootId) ?? (sameState ? prev.sig : '')
       st.roots.set(rootId, {
         title: c.title,
         state: c.state,
         routine: c.routine,
-        since: prev && prev.state === c.state ? prev.since : now,
-        missing: 0
+        since: sameState ? prev.since : now,
+        missing: 0,
+        sig,
+        progressAt: sameState && sig === prev.sig ? prev.progressAt : now
       })
     }
     // Bajas: a la segunda ausencia seguida se da por terminada (evita falsos "terminó" entre turnos).
@@ -579,7 +643,7 @@ export class TasksMonitor {
   private publish(): void {
     const snap = this.snapshot()
     const sig = JSON.stringify([
-      snap.tasks.map((t) => [t.sessionId, t.state, t.title, t.since, t.folder, t.fullAccess]),
+      snap.tasks.map((t) => [t.sessionId, t.state, t.title, t.since, t.folder, t.fullAccess, t.quietSince ?? null]),
       snap.servers.map((s) => [s.folder, s.fullAccess, s.idleSince])
     ])
     if (sig !== this.lastSignature) {

@@ -67,6 +67,7 @@ import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
+import { StallNotice } from './StallNotice'
 import { Home } from './Home'
 import { NetworkBlockedCards } from './NetworkBlocked'
 import { RestoreNotices } from './RestoreNotices'
@@ -668,6 +669,7 @@ export function TasksWorkspace(): React.JSX.Element {
               permissions={pendingForTask}
               footer={
                 <>
+                  {activeId && busy && <StallNotice taskId={activeId} />}
                   {activeId && <RestoreNotices taskId={activeId} />}
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}

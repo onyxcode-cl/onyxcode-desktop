@@ -426,6 +426,12 @@ export const tasks = {
   'tasks.proj.notesPh': 'The agent saves useful notes here between tasks (preferences, decisions, recurring data)…',
   'tasks.proj.notesHint':
     'The task agent reads and updates this file. You can also edit it by hand; it’s included as context in every new task in this folder.',
+  'tasks.stall.title': {
+    one: 'No activity for {count} min',
+    other: 'No activity for {count} min'
+  },
+  'tasks.stall.body':
+    'The task is still running: it may be doing something long. You can wait or stop it yourself; it won’t stop on its own.',
   'tasks.proj.saved': 'Saved',
   'tasks.proj.save': 'Save'
 } as const satisfies Messages<typeof es>

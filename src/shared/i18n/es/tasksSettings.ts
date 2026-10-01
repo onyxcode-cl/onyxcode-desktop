@@ -83,6 +83,10 @@ export const tasksSettings = {
   'tasksSettings.servers.maxDesc': 'Entre 1 y 12. Al superarlo se detiene el servidor ocioso menos usado.',
   'tasksSettings.servers.idle': 'Detener tras minutos de inactividad',
   'tasksSettings.servers.idleDesc': '0 = no detener nunca. Máximo 1440 (24 h).',
+  'tasksSettings.servers.stall': 'Avisar si una tarea no avanza',
+  'tasksSettings.servers.stallDesc':
+    'Minutos sin texto nuevo ni herramientas antes de mostrar «Sin actividad». Solo avisa, no detiene nada. 0 = no avisar.',
+  'tasksSettings.servers.stallAria': 'Minutos sin actividad antes de avisar',
   'tasksSettings.servers.idleAria': 'Minutos de inactividad antes de detener un servidor',
   'tasksSettings.servers.running': 'Servidores en marcha',
   'tasksSettings.servers.none': 'No hay servidores en marcha.',

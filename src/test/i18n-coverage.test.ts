@@ -141,6 +141,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/tasks/impl/DeleteGrant.tsx',
   'src/renderer/src/features/tasks/impl/Deliverables.tsx',
   'src/renderer/src/features/tasks/impl/EscalateCard.tsx',
+  'src/renderer/src/features/tasks/impl/StallNotice.tsx',
   'src/renderer/src/features/tasks/impl/FolderMenu.tsx',
   'src/renderer/src/features/tasks/impl/FolderRequestCard.tsx',
   'src/renderer/src/features/tasks/impl/Home.tsx',
