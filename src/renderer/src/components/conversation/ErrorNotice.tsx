@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
+import { useLang, useT } from '../../lib/i18n'
 import { useProviders } from '../../stores/providers'
 import { useUi } from '../../stores/ui'
 import { Button } from '../Button'
@@ -11,12 +12,15 @@ import { Button } from '../Button'
  * - `panel`: Code y Tareas. - `chat`: Chat (más suave, con animación de entrada).
  */
 export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; variant?: 'chat' | 'panel' }): React.JSX.Element {
+  const t = useT()
+  const lang = useLang((s) => s.lang)
   const providers = useProviders((s) => s.providers)
   const f = useMemo(() => {
     const providerNames: Record<string, string> = {}
     for (const p of providers) providerNames[p.id] = p.name
     return friendlyError(error, { providerNames })
-  }, [error, providers])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` fuerza el recálculo al cambiar de idioma
+  }, [error, providers, lang])
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const chat = variant === 'chat'
@@ -47,13 +51,15 @@ export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; vari
         {f.action === 'connect' && (
           <div className="mt-2">
             <Button size="sm" variant="primary" onClick={() => useUi.getState().openSettingsAt('models', 'providers')}>
-              Conectar una IA
+              {t('chat.error.connect')}
             </Button>
           </div>
         )}
         {f.detail && (
           <details className="mt-2 text-xs text-muted" onToggle={(e) => setOpen(e.currentTarget.open)}>
-            <summary className="cursor-pointer text-subtle select-none hover:text-fg">{open ? 'Ocultar detalle' : 'Ver detalle'}</summary>
+            <summary className="cursor-pointer text-subtle select-none hover:text-fg">
+              {open ? t('chat.error.hideDetail') : t('chat.error.showDetail')}
+            </summary>
             <pre className="mt-1.5 max-h-48 overflow-auto rounded-md border border-border/70 bg-inset px-2.5 py-2 font-mono text-[11.5px] break-words whitespace-pre-wrap text-muted select-text">
               {f.detail}
             </pre>
@@ -62,7 +68,7 @@ export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; vari
               onClick={() => void copy()}
               className="no-drag mt-1.5 text-subtle underline-offset-2 hover:text-fg hover:underline"
             >
-              {copied ? 'Copiado' : 'Copiar'}
+              {copied ? t('chat.error.copied') : t('chat.error.copy')}
             </button>
           </details>
         )}

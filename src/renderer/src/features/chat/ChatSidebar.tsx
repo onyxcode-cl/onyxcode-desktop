@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useT } from '../../lib/i18n'
 import { ChatSessionList } from './ChatSessionList'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions } from '../../stores/sessions'
@@ -7,6 +8,7 @@ import { deleteChat, loadChatSessions, openChatSession, renameChat, syncChatRunS
 import { useChat } from './store'
 
 export function ChatSidebar(): React.JSX.Element {
+  const t = useT()
   const connection = useServer((s) => s.connection)
   const allSessions = useSessions((s) => s.sessions)
   const sessionSource = useSessions((s) => s.sessionSource)
@@ -46,7 +48,7 @@ export function ChatSidebar(): React.JSX.Element {
         activeId={activeSessionId}
         busyIds={busyIds}
         loading={listLoading || !connection}
-        emptyText="Aún no hay conversaciones"
+        emptyText={t('chat.sidebar.empty')}
         onSelect={(id) => void openChatSession(id)}
         onRename={renameChat}
         onDelete={deleteChat}
