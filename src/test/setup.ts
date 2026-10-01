@@ -38,3 +38,7 @@ vi.stubGlobal('window', {
   removeEventListener: () => undefined
 })
 vi.stubGlobal('document', { hasFocus: () => true, visibilityState: 'visible' })
+
+// Los tests (y sus snapshots) corren siempre en español: el idioma activo parte en `es`.
+import { setLang } from '@shared/i18n'
+setLang('es')

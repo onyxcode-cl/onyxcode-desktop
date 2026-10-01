@@ -14,6 +14,13 @@ describe('settings:set', () => {
     expect(v({ checkUpdates: false })).toEqual({ checkUpdates: false })
     expect(() => v({ checkUpdates: 'no' })).toThrow()
   })
+
+  it('acepta language system/es/en y rechaza otros idiomas', () => {
+    const v = IPC_SCHEMAS['settings:set']
+    for (const language of ['system', 'es', 'en']) expect(v({ language })).toEqual({ language })
+    expect(() => v({ language: 'fr' })).toThrow()
+    expect(() => v({ language: 1 })).toThrow()
+  })
 })
 
 describe('canales de cuenta', () => {

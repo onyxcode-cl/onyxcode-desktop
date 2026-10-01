@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
+import { isLangPref, migrateLanguage } from '@shared/i18n'
 import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
 
 const MAX_RECENT = 10
@@ -24,7 +25,7 @@ class SettingsStore {
     } catch (err) {
       console.error('[store] settings.json inválido, usando valores por defecto:', err)
     }
-    this.cache = normalize({ ...DEFAULT_SETTINGS, ...loaded })
+    this.cache = normalize({ ...DEFAULT_SETTINGS, ...loaded, language: migrateLanguage(loaded) })
     return this.cache
   }
 
@@ -77,6 +78,7 @@ function normalize(s: Settings): Settings {
     tasksGlobalInstructions,
     onboarded,
     routinesTermsAcknowledged,
+    language: isLangPref(s.language) ? s.language : 'system',
     opencodeBin,
     checkUpdates: s.checkUpdates !== false
   }
