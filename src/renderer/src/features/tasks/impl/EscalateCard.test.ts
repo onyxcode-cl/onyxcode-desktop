@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { buildContinuationPrompt, escalationReason, ESCALATE_MARKER, needsFullAccess } from './EscalateCard'
 import type { MessageEntry } from '../../../stores/sessions'
 
+it('el marcador neutro es el que piden los prompts', () => {
+  expect(ESCALATE_MARKER).toBe('[[ONYX:NEEDS_FULL_CONTROL]]')
+})
+
 describe('needsFullAccess', () => {
   it('detecta la frase en español (sin tildes ni mayúsculas)', () => {
     expect(needsFullAccess('Listo.\n\n**Necesita Control total del Mac**: abrir Discord')).toBe(true)

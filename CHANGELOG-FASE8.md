@@ -311,3 +311,26 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
   los rótulos Usuario/Agente de la exportación a Markdown, la marca de adjuntos, `UNDO_POINT_LABEL` (se guarda en el manifiesto de los puntos de restauración), el prefijo de rama `sesion/` y los textos que construye main
   (`disabledReason` y avisos del navegador, `chk.reason`, vista previa de Rutinas): son de T4c.
 - Guardias: los archivos de las cuatro áreas entran en `MIGRATED` (`i18n-coverage.test.ts`); E2E `i18n.e2e.ts` ampliado (Tareas, Rutinas, Code y navegador en inglés sin texto en español, y cambio en vivo a Español) con capturas `I18N_SHOTS_DIR/en/` (`tareas-guia`, `tareas-inicio`, `rutinas`, `rutinas-editor`, `code`, `navegador`; claro/oscuro, 820 y 1280 px).
+
+## F8-B30 — Tareas: inglés y supervisión (T6 del plan de calidad: H7, M9, B3)
+
+- **Escalada a Control total en inglés (H7).** `needsFullAccess` (EscalateCard.tsx) reconoce, sin tildes ni mayúsculas, «necesita control total del mac», «needs full mac control», «needs full control of the mac» y el
+  marcador neutro `[[ONYX:NEEDS_FULL_CONTROL]]`; `escalationReason` extrae el motivo de cualquiera de las tres formas. El prompt de continuación (`buildContinuationPrompt`) sale en el idioma de la interfaz.
+  El marcador se ve en el texto del último mensaje (la conversación no lo oculta): se pide en su propia línea al final.
+- **Idioma de la interfaz en el contexto.** `buildTasksSystemPrompt` acepta `lang`; con `en` añade al final una sección «Interface language: English» que traduce los nombres de botones que los prompts citan en español
+  (se leen de los diccionarios, así no se desfasan: «Permitir borrar, mover y renombrar», «Usar memoria», «Guardar como PDF», «Crear skill de esta tarea», «Cambiar a Control total y continuar», «Aprobar y empezar», etc.) y
+  pide fechas y números en formato inglés. Con `es` el texto es idéntico al de antes (los snapshots no cambian). Lo usan las tareas interactivas y las rutinas.
+- **Aviso «Sin actividad» (M9).** El monitor de main calcula, solo para tareas raíz en curso, una huella del último mensaje de sus sesiones en curso (id, nº de partes y tamaño de la última parte) en el mismo sondeo de 3 s;
+  si no cambia durante `stallWarnMinutes` (preferencia nueva, 5 por defecto, 0 = no avisar, máximo 240; Ajustes › Tareas › Servidores) marca `quietSince` en la instantánea de actividad. La conversación muestra
+  «Sin actividad desde hace N min» (`StallNotice`, `role="status"`). **Solo avisa**: no detiene ni cancela nada y el aviso desaparece al haber avance o al terminar. Una herramienta larga y legítima (p. ej. una compilación
+  de 10 min) también lo dispara: el texto lo dice. El aviso de coste por tarea (opcional del plan) no se hizo: no hay datos de coste por tarea en el renderer.
+- **Prompts del agente (B3), sin cambiar su semántica de seguridad ni tocar el plan-gate:**
+  - `tasks.md`: una sola regla de archivos auxiliares (`./.onyxcode/trabajo/`, `/tmp` solo si una herramienta lo exige; antes había cuatro menciones y «Reglas» decía «usa /tmp»); una sola regla «Pregunta antes de borrar»
+    (la sección Mover/renombrar/borrar remite a ella); línea de marcador neutro tras «**Necesita Control total del Mac**: …» para detectar la petición en cualquier idioma; responde en inglés si el contexto indica interfaz en inglés.
+  - `computer.md`: «Cómo trabajas» ya no repite el flujo Plan → Aprobar (remite al flujo; pasa de 7 a 6 puntos) y «Acceso por app» no repite el paso 5; añade la misma nota de idioma. El archivo sigue en ~3800 palabras:
+    el flujo real y las secciones de herramientas son contenido necesario, así que no se recortó más para no arriesgar comportamiento.
+  - `chat.md`: pide citar las URL cuando use `websearch`/`webfetch`.
+  - Los prompts son archivos de `resources/opencode/agents/` que main copia a `userData/opencode-config/` al arrancar (no van en el binario de OpenCode). `agent-prompts.test.ts` comprueba cabecera, marcador, flujo de 10 pasos y
+    las reglas deduplicadas. Pendiente con modelo real: que `tasks` escriba de verdad el marcador y respete las reglas de temporales tras la deduplicación.
+- Pruebas: `EscalateCard.test.ts` (ES, EN, marcador, motivo, continuación), `tasks-prompt.test.ts`, `monitor.stall.test.ts` (umbral, reinicio por avance, 0 = nunca, sin `stop`), `agent-prompts.test.ts`; E2E
+  `tasks-stall.e2e.ts` (guion del falso atascado: aviso al minuto, la tarea sigue en curso, desaparece al terminar). Sin cambios en preloads ni en SEGURIDAD.md (no hay semántica de seguridad nueva).
