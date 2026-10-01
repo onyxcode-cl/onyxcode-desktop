@@ -16,6 +16,7 @@
  *
  * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
  */
+import { t } from '@shared/i18n'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -153,8 +154,8 @@ export interface StartTasksServerOptions {
  */
 export async function startTasksServer(folder: string, options: StartTasksServerOptions = {}): Promise<TasksServerHandle> {
   const bin = (await resolveOpencodeAsync())?.path
-  if (!bin) throw new Error('No se encontró el binario `opencode` (instálalo o define OPENCODE_BIN).')
-  if (!existsSync(folder)) throw new Error(`La carpeta no existe: ${folder}`)
+  if (!bin) throw new Error(t('merr.engine.noBinaryShort'))
+  if (!existsSync(folder)) throw new Error(t('merr.task.noFolder', { folder }))
 
   const sandboxed = !options.noSandbox && isSandboxAvailable()
   const port = await getFreePort()

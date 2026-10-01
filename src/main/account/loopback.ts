@@ -5,6 +5,7 @@
  * el turno (para que una página ajena no pueda romper el inicio de sesión). Tras la petición buena
  * se cierra: una segunda petición ya no encuentra a nadie escuchando.
  */
+import { getLang, t } from '@shared/i18n'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { safeEqual } from './pkce'
@@ -34,7 +35,9 @@ const CODE_RE = /^[A-Za-z0-9._~/+=-]{1,2048}$/
 
 function page(title: string, detail: string): string {
   return (
-    '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>' +
+    '<!doctype html><html lang="' +
+    getLang() +
+    '"><head><meta charset="utf-8"><title>' +
     title +
     '</title><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<style>body{font:16px -apple-system,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;background:#f7f8fb;color:#11131a}' +
@@ -47,8 +50,8 @@ function page(title: string, detail: string): string {
   )
 }
 
-const OK_PAGE = page('Puedes volver a la app', 'Ya puedes cerrar esta pestaña.')
-const FAIL_PAGE = page('No se pudo iniciar sesión', 'Cierra esta pestaña y vuelve a la app para intentarlo de nuevo.')
+const okPage = (): string => page(t('merr.acct.pageOkTitle'), t('merr.acct.pageOkBody'))
+const failPage = (): string => page(t('merr.acct.pageFailTitle'), t('merr.acct.pageFailBody'))
 
 function send(res: ServerResponse, status: number, body: string, html = false): void {
   res.writeHead(status, {
@@ -110,15 +113,15 @@ export function startLoopback(opts: LoopbackOptions): Promise<LoopbackHandle> {
       if (!state || !safeEqual(state, opts.state)) return reject(400, 'Bad Request')
       // Desde aquí la petición es la legítima: se gasta el turno pase lo que pase.
       if (url.searchParams.get('error')) {
-        send(res, 200, FAIL_PAGE, true)
+        send(res, 200, failPage(), true)
         return conclude({ ok: false, reason: 'denied' })
       }
       const code = url.searchParams.get('code')
       if (!code || !CODE_RE.test(code)) {
-        send(res, 400, FAIL_PAGE, true)
+        send(res, 400, failPage(), true)
         return conclude({ ok: false, reason: 'invalid' })
       }
-      send(res, 200, OK_PAGE, true)
+      send(res, 200, okPage(), true)
       conclude({ ok: true, code })
     }
 
