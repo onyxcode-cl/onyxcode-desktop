@@ -17,6 +17,7 @@ import {
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
 import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
+import type { McpCatalogItem, McpCatalogState } from '@shared/mcp-catalog'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { IconButton } from '../../../components/IconButton'
@@ -24,7 +25,8 @@ import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { getExtras, requireExtras } from './extras'
-import { Badge, Card, ErrorText, Field, SectionHeader, TextArea, TextInput, Toggle } from './ui'
+import { McpCatalogDialog } from './McpCatalogDialog'
+import { Badge, Card, ErrorText, Field, SectionHeader, SubTitle, TextArea, TextInput, Toggle } from './ui'
 
 type ExternalEntry = McpEntry | { enabled: boolean }
 
@@ -55,6 +57,8 @@ export function McpSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ name: string; entry: McpEntry } | 'new' | null>(null)
+  const [catalog, setCatalog] = useState<McpCatalogState | null>(null)
+  const [catalogItem, setCatalogItem] = useState<McpCatalogItem | null>(null)
   // Marcas de Tareas por servidor (`tasks-mcp.json`), solo para los servidores de la app.
   const [tasksInfo, setTasksInfo] = useState<Record<string, TasksMcpInfo>>({})
 
@@ -65,6 +69,7 @@ export function McpSection(): React.JSX.Element {
       const extras = getExtras()
       const own = extras ? await extras.invoke('mcp:getConfig') : null
       setAppCfg(own)
+      if (extras) setCatalog(await extras.invoke('mcp:catalog').catch(() => null))
       if (hasTasksBridge()) {
         const list = await cw('tasks:mcp:list').catch(() => [] as TasksMcpInfo[])
         setTasksInfo(Object.fromEntries(list.map((i) => [i.name, i])))
@@ -220,6 +225,8 @@ export function McpSection(): React.JSX.Element {
                     <span className="font-mono">{row.name}</span>
                     {st && <Badge tone={st.tone}>{st.label}</Badge>}
                     <Badge tone={row.owned ? 'accent' : 'muted'}>{row.owned ? 'App' : 'Config externa'}</Badge>
+                    {row.owned && catalog?.installed[row.name] && <Badge tone="accent">Del catálogo</Badge>}
+                    {row.owned && catalog?.installed[row.name]?.drift && <Badge tone="warn">Modificado</Badge>}
                   </div>
                   <div className="mt-0.5 truncate font-mono text-xs text-muted" title={describe(row.entry)}>
                     {describe(row.entry)}
@@ -270,6 +277,16 @@ export function McpSection(): React.JSX.Element {
           )
         })}
       </Card>
+      {catalog && (
+        <McpCatalogBlock
+          catalog={catalog}
+          disabled={busy !== null}
+          onPick={(item) => {
+            setError(null)
+            setCatalogItem(item)
+          }}
+        />
+      )}
       <p className="mt-2 flex items-center gap-1.5 text-[11px] text-subtle">
         <Unplug size={12} /> En servidores de config externa el interruptor conecta/desconecta sólo hasta el próximo reinicio. El estado
         mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.
@@ -280,7 +297,74 @@ export function McpSection(): React.JSX.Element {
         sandbox.
       </p>
       {appCfg && <p className="mt-1 truncate font-mono text-[11px] text-subtle">{appCfg.path}</p>}
+      {catalogItem && (
+        <McpCatalogDialog
+          item={catalogItem}
+          existingNames={Object.keys(appCfg?.servers ?? {})}
+          onCancel={() => setCatalogItem(null)}
+          onInstall={async (req) => {
+            await requireExtras().invoke('mcp:installCatalog', { id: catalogItem.id, ...req })
+            setCatalogItem(null)
+            await refresh()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+const AUTH_BADGE = {
+  oauth: { tone: 'warn' as const, label: 'Inicio de sesión' },
+  token: { tone: 'warn' as const, label: 'Necesita un token' },
+  none: { tone: 'ok' as const, label: 'Sin cuenta' }
+}
+
+/** Fichas del catálogo curado: remotas (no ejecutan nada en el Mac); añadir pide confirmación en un diálogo. */
+function McpCatalogBlock({
+  catalog,
+  disabled,
+  onPick
+}: {
+  catalog: McpCatalogState
+  disabled: boolean
+  onPick: (item: McpCatalogItem) => void
+}): React.JSX.Element {
+  const addedIds = new Set(Object.values(catalog.installed).map((i) => i.catalogId))
+  return (
+    <section aria-label="Catálogo de conectores">
+      <SubTitle>Catálogo</SubTitle>
+      <p className="-mt-1 mb-3 text-xs text-muted">
+        Conectores verificados, incluidos en la app. Ninguno se añade ni se conecta sin que lo confirmes.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {catalog.items.map((item) => {
+          const auth = AUTH_BADGE[item.auth]
+          return (
+            <Card key={item.id} className="flex flex-col p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">{item.title}</div>
+                  <div className="text-[11px] text-subtle">{item.publisher}</div>
+                </div>
+                {addedIds.has(item.id) && <Badge tone="ok">Añadido</Badge>}
+              </div>
+              <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{item.description}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Badge tone="muted">
+                  <Globe size={11} /> Remoto · no ejecuta nada en tu Mac
+                </Badge>
+                <Badge tone={auth.tone}>{auth.label}</Badge>
+              </div>
+              <div className="mt-3">
+                <Button size="sm" aria-label={`Añadir ${item.title}`} disabled={disabled} onClick={() => onPick(item)}>
+                  <Plus size={13} /> Añadir…
+                </Button>
+              </div>
+            </Card>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 

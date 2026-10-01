@@ -12,6 +12,9 @@
 /** Nombre de servidor MCP válido (el mismo que acepta `mcp:save`). */
 export const MCP_NAME_RE = /^[A-Za-z0-9_-]{1,64}$/
 
+/** Clave de `permission` que cubre todas las herramientas de un servidor (OpenCode las nombra `<servidor>_<herramienta>`). */
+export const mcpPermissionKey = (name: string): string => `${name}_*`
+
 /** Sube cuando cambia el contenido del catálogo (queda anotada en la procedencia de cada instalación). */
 export const MCP_CATALOG_VERSION = 1
 

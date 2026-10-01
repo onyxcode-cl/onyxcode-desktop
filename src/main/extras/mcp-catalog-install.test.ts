@@ -202,6 +202,12 @@ describe('desvío y limpieza', () => {
     expect(Object.keys(store.read())).toEqual(['docs'])
   })
 
+  it('renombrar un servidor con «ask» mueve también la regla de permiso', () => {
+    installFromCatalog(store, { id: 'github', name: 'github', inputs: { token: TOKEN }, enable: true, askEachUse: true })
+    saveMcpServer('gh', readAppMcpConfig().servers.github, 'github')
+    expect(raw().permission).toEqual({ 'gh_*': 'ask' })
+  })
+
   it('un archivo de procedencia corrupto se trata como vacío', () => {
     writeFileSync(join(userData, 'mcp-catalog-installs.json'), '{no json')
     expect(store.read()).toEqual({})

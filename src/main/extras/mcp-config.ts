@@ -14,7 +14,7 @@ import { app } from 'electron'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpLocalEntry, McpRemoteEntry } from '@shared/ipc-extras'
-import { MCP_NAME_RE as NAME_RE } from '@shared/mcp-catalog'
+import { MCP_NAME_RE as NAME_RE, mcpPermissionKey } from '@shared/mcp-catalog'
 
 const SCHEMA = 'https://opencode.ai/config.json'
 
@@ -136,9 +136,6 @@ function mutate(fn: (mcp: Record<string, unknown>) => void, perm?: (permission: 
   return readAppMcpConfig()
 }
 
-/** Clave de `permission` que cubre todas las herramientas de un servidor (OpenCode las nombra `<servidor>_<herramienta>`). */
-export const mcpPermissionKey = (name: string): string => `${name}_*`
-
 type PermissionRaw = Record<string, unknown>
 
 /** `permission` como objeto (una cadena global equivale a `{"*": valor}`); no toca nada más. */
@@ -169,7 +166,14 @@ export function saveMcpServer(name: string, entry: McpEntry, previousName?: stri
       else if (!previousName && clean in mcp) throw new Error(`Ya existe un servidor MCP llamado "${clean}".`)
       mcp[clean] = valid
     },
-    opts.askEachUse ? (perm) => void (perm[mcpPermissionKey(clean)] = 'ask') : undefined
+    (perm) => {
+      // Al renombrar, la regla «ask» de la app se va con el servidor (si no, dejaría de preguntar sin avisar).
+      if (previousName && previousName !== clean && perm[mcpPermissionKey(previousName)] === 'ask') {
+        delete perm[mcpPermissionKey(previousName)]
+        perm[mcpPermissionKey(clean)] = 'ask'
+      }
+      if (opts.askEachUse) perm[mcpPermissionKey(clean)] = 'ask'
+    }
   )
 }
 
