@@ -1,23 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FilePen, HelpCircle, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
+import type { MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
+import { useT } from '../../../lib/i18n'
 import { DiffView, diffStats } from './DiffView'
 import { DiffStats, relPath } from './ToolCard'
 import { isEditableTarget } from './ui'
 import { useCode } from './store'
 import type { PendingPermission, PendingQuestion } from './types'
 
-const PERMISSION_LABEL: Record<string, string> = {
-  edit: 'editar archivos',
-  write: 'escribir archivos',
-  bash: 'ejecutar un comando',
-  webfetch: 'acceder a una URL',
-  websearch: 'buscar en la web',
-  read: 'leer archivos',
-  external_directory: 'acceder fuera del proyecto',
-  task: 'lanzar un subagente',
-  doom_loop: 'repetir la misma acción',
-  todowrite: 'actualizar la lista de tareas'
+const PERMISSION_LABEL: Record<string, MsgKey> = {
+  edit: 'code.perm.edit',
+  write: 'code.perm.write',
+  bash: 'code.perm.bash',
+  webfetch: 'code.perm.webfetch',
+  websearch: 'code.perm.websearch',
+  read: 'code.perm.read',
+  external_directory: 'code.perm.external_directory',
+  task: 'code.perm.task',
+  doom_loop: 'code.perm.doom_loop',
+  todowrite: 'code.perm.todowrite'
 }
 
 export function PermissionCard({
@@ -30,6 +32,7 @@ export function PermissionCard({
   /** Escucha 1/2/3 (solo la primera tarjeta pendiente). */
   hotkeys?: boolean
 }): React.JSX.Element {
+  const t = useT()
   const reply = useCode((s) => s.replyPermission)
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
@@ -51,9 +54,9 @@ export function PermissionCard({
     const onKey = (e: KeyboardEvent): void => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       // Desde el composer vacío también valen (es donde está el foco normalmente).
-      const t = e.target
-      const emptyComposer = t instanceof HTMLTextAreaElement && t.dataset.codeComposer !== undefined && t.value === ''
-      if (isEditableTarget(t) && !emptyComposer) return
+      const target = e.target
+      const emptyComposer = target instanceof HTMLTextAreaElement && target.dataset.codeComposer !== undefined && target.value === ''
+      if (isEditableTarget(target) && !emptyComposer) return
       if (e.key === '1') run('once')
       else if (e.key === '2') run('always')
       else if (e.key === '3') run('reject')
@@ -69,22 +72,23 @@ export function PermissionCard({
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''
   const file = typeof md.filepath === 'string' ? md.filepath : typeof md.filePath === 'string' ? md.filePath : ''
-  const label = PERMISSION_LABEL[request.permission] ?? request.permission
+  const labelKey = PERMISSION_LABEL[request.permission]
+  const label = labelKey ? t(labelKey) : request.permission
   const stats = diff ? diffStats(diff) : null
   const patterns = request.patterns.filter((p) => p && p !== command)
   const Icon =
     request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
 
   const actions: { key: string; label: string; reply: 'once' | 'always' | 'reject'; cls: string; title?: string }[] = [
-    { key: '1', label: 'Permitir una vez', reply: 'once', cls: 'bg-accent text-accent-fg hover:opacity-90' },
+    { key: '1', label: t('code.perm.once'), reply: 'once', cls: 'bg-accent text-accent-fg hover:opacity-90' },
     {
       key: '2',
-      label: 'Permitir siempre',
+      label: t('code.perm.always'),
       reply: 'always',
       cls: 'border border-border bg-elevated text-fg hover:bg-hover',
-      title: request.always.length ? `No volver a preguntar para: ${request.always.join(', ')}` : undefined
+      title: request.always.length ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') }) : undefined
     },
-    { key: '3', label: 'Rechazar', reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
+    { key: '3', label: t('code.perm.reject'), reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
   ]
 
   return (
@@ -94,7 +98,7 @@ export function PermissionCard({
           <Icon size={14} />
         </span>
         <div className="min-w-0 flex-1 text-sm">
-          <div className="font-medium">El agente quiere {label}</div>
+          <div className="font-medium">{t('code.perm.agentWants', { label })}</div>
           {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
           {file && (
             <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted">
@@ -137,6 +141,7 @@ export function PermissionCard({
 }
 
 export function QuestionCard({ request }: { request: PendingQuestion }): React.JSX.Element {
+  const t = useT()
   const reply = useCode((s) => s.replyQuestion)
   const reject = useCode((s) => s.rejectQuestion)
   const [answers, setAnswers] = useState<string[][]>(() => request.questions.map(() => []))
@@ -187,7 +192,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
             <input
               value={custom[qi]}
               onChange={(e) => setCustom((prev) => prev.map((c, i) => (i === qi ? e.target.value : c)))}
-              placeholder="Otra respuesta…"
+              placeholder={t('code.question.other')}
               className="mt-2 ml-6 w-[calc(100%-1.5rem)] rounded-lg border border-border bg-bg px-2.5 py-1 text-sm outline-none focus:border-accent"
             />
           )}
@@ -202,7 +207,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
             void reply(request, final).finally(() => setBusy(false))
           }}
         >
-          Responder
+          {t('code.question.answer')}
         </Button>
         <Button
           variant="ghost"
@@ -212,7 +217,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
             void reject(request).finally(() => setBusy(false))
           }}
         >
-          Omitir
+          {t('code.question.skip')}
         </Button>
       </div>
     </div>

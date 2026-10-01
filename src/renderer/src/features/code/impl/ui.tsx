@@ -1,5 +1,7 @@
 /** Piezas de UI pequeñas y reutilizables dentro del modo Code (tooltips, kbd, segmentado…). */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { t } from '@shared/i18n'
+import { dateLocale, useT } from '../../../lib/i18n'
 
 export const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 export const MOD = IS_MAC ? '⌘' : 'Ctrl+'
@@ -67,6 +69,7 @@ export function ConfirmButton({
   align?: 'start' | 'end'
   danger?: boolean
 }): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
@@ -103,7 +106,7 @@ export function ConfirmButton({
               onClick={() => setOpen(false)}
               className="rounded-lg px-2.5 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
             >
-              Cancelar
+              {t('code.ui.cancel')}
             </button>
             <button
               type="button"
@@ -129,15 +132,15 @@ export function ConfirmButton({
 
 export function timeAgo(ts: number): string {
   const s = Math.round((Date.now() - ts) / 1000)
-  if (s < 60) return 'ahora'
+  if (s < 60) return t('code.time.now')
   const m = Math.round(s / 60)
-  if (m < 60) return `hace ${m} min`
+  if (m < 60) return t('code.time.minutes', { m })
   const h = Math.round(m / 60)
-  if (h < 24) return `hace ${h} h`
+  if (h < 24) return t('code.time.hours', { h })
   const d = Math.round(h / 24)
-  if (d === 1) return 'ayer'
-  if (d < 30) return `hace ${d} días`
-  return new Date(ts).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (d === 1) return t('code.time.yesterday')
+  if (d < 30) return t('code.time.days', { d })
+  return new Date(ts).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 /** ¿El foco está en un campo editable? (para no robar atajos de una sola tecla). */

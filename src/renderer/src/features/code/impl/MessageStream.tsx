@@ -2,6 +2,8 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
 import { Markdown } from '../../../components/Markdown'
+import { t } from '@shared/i18n'
+import { useT } from '../../../lib/i18n'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../../lib/conversation/errors'
 import { AssistantError } from '../../../components/conversation/AssistantError'
@@ -50,7 +52,8 @@ function buildBlocks(messages: CodeMessage[]): Block[] {
       if (p.type === 'text') blocks.push({ kind: 'text', key: p.id, part: p })
       else if (p.type === 'reasoning') blocks.push({ kind: 'reasoning', key: p.id, part: p })
       else if (p.type === 'retry') blocks.push({ kind: 'retry', key: p.id, text: friendlyError(p.error).message, attempt: p.attempt })
-      else if (p.type === 'subtask') blocks.push({ kind: 'subtask', key: p.id, text: `Subtarea (${p.agent}): ${p.description}` })
+      else if (p.type === 'subtask')
+        blocks.push({ kind: 'subtask', key: p.id, text: t('code.msg.subtask', { agent: p.agent, description: p.description }) })
     }
     if (m.info.role === 'assistant' && m.info.error) {
       flush()
@@ -91,6 +94,7 @@ const UserMessage = memo(function UserMessage({
   busy: boolean
   root: string | null
 }): React.JSX.Element | null {
+  const t = useT()
   const revertTo = useCode((s) => s.revertTo)
   const forkSession = useCode((s) => s.forkSession)
   const [copied, setCopied] = useState(false)
@@ -128,7 +132,7 @@ const UserMessage = memo(function UserMessage({
         <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/user:opacity-100 focus-within:opacity-100">
           <button
             type="button"
-            title="Copiar"
+            title={t('code.msg.copy')}
             onClick={() => {
               void navigator.clipboard.writeText(text).then(() => {
                 setCopied(true)
@@ -141,7 +145,7 @@ const UserMessage = memo(function UserMessage({
           </button>
           <button
             type="button"
-            title="Bifurcar la sesión desde aquí (crea una sesión nueva)"
+            title={t('code.msg.forkTitle')}
             disabled={forking}
             onClick={() => {
               setForking(true)
@@ -152,15 +156,15 @@ const UserMessage = memo(function UserMessage({
             <GitFork size={12} />
           </button>
           <ConfirmButton
-            title="¿Revertir a este punto?"
-            body="Se ocultará este mensaje y todo lo que vino después, y se desharán los cambios en archivos que hizo el agente desde aquí. Puedes restaurarlo mientras no envíes un mensaje nuevo."
-            confirmLabel="Revertir"
+            title={t('code.msg.revertTitle')}
+            body={t('code.msg.revertBody')}
+            confirmLabel={t('code.msg.revert')}
             danger
             disabled={busy}
             onConfirm={() => revertTo(entry.info.id)}
             className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
           >
-            <Undo2 size={12} /> Revertir
+            <Undo2 size={12} /> {t('code.msg.revert')}
           </ConfirmButton>
         </span>
       </div>
@@ -197,6 +201,7 @@ const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (
  */
 const TurnView = memo(
   function TurnView({ user, assistant, isLastTurn, old, busy, root, perms, hotkeyID }: TurnViewProps): React.JSX.Element {
+    const t = useT()
     const blocks = buildBlocks(assistant)
     const inlinePerms = new Map<string, PendingPermission[]>()
     for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
@@ -232,7 +237,7 @@ const TurnView = memo(
                 case 'retry':
                   return (
                     <div key={b.key} className="flex items-center gap-1.5 text-xs text-muted">
-                      <RotateCw size={12} /> Reintento {b.attempt}: {b.text}
+                      <RotateCw size={12} /> {t('code.msg.retry', { attempt: b.attempt })} {b.text}
                     </div>
                   )
                 case 'subtask':
@@ -242,7 +247,7 @@ const TurnView = memo(
                     </div>
                   )
                 case 'error':
-                  return <AssistantError key={b.key} info={b.info} abortedLabel="Detenido por el usuario." />
+                  return <AssistantError key={b.key} info={b.info} abortedLabel={t('code.msg.aborted')} />
               }
             })}
           </div>
@@ -280,6 +285,7 @@ interface Props {
 
 export function MessageStream(props: Props): React.JSX.Element {
   const { entries, busy, error, root, permissions, questions, revertMessageID, onUnrevert, loading } = props
+  const t = useT()
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
 
@@ -339,7 +345,7 @@ export function MessageStream(props: Props): React.JSX.Element {
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
         {loading && entries.length === 0 && (
           <div className="flex items-center gap-2 text-sm text-muted">
-            <Loader2 size={15} className="animate-spin" /> Cargando…
+            <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}
           </div>
         )}
         {turns.map((turn, ti) => (
@@ -358,10 +364,10 @@ export function MessageStream(props: Props): React.JSX.Element {
         {hidden > 0 && (
           <div className="flex items-center justify-between rounded-xl border border-dashed border-border-strong px-3 py-2 text-sm text-muted">
             <span className="flex items-center gap-2">
-              <Undo2 size={14} /> {hidden === 1 ? '1 mensaje revertido' : `${hidden} mensajes revertidos`}
+              <Undo2 size={14} /> {t('code.msg.hidden', { count: hidden })}
             </span>
             <button type="button" onClick={onUnrevert} className="rounded-md px-2 py-0.5 font-medium text-accent hover:bg-accent-soft">
-              Restaurar
+              {t('code.msg.restore')}
             </button>
           </div>
         )}
@@ -378,7 +384,7 @@ export function MessageStream(props: Props): React.JSX.Element {
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" />
             </span>
-            Trabajando…
+            {t('code.msg.working')}
           </div>
         )}
         {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}

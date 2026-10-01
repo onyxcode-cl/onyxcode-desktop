@@ -7,6 +7,7 @@
 import { create } from 'zustand'
 import type { PermissionRuleset, Session, SessionStatus } from '@opencode-ai/sdk/v2/client'
 import { NO_AI_ERROR } from '@shared/ai-errors'
+import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
 import { useSettings } from '../../../stores/settings'
@@ -527,8 +528,8 @@ export const useCode = create<CodeState>((set, get) => {
   const activeDir = (): { client: ReturnType<typeof requireClient>; dir: string; sid: string } => {
     const client = requireClient()
     const { directory, activeSessionID } = get()
-    if (!directory) throw new Error('No hay proyecto abierto')
-    if (!activeSessionID) throw new Error('No hay sesión seleccionada')
+    if (!directory) throw new Error(t('code.store.noProject'))
+    if (!activeSessionID) throw new Error(t('code.store.noSession'))
     return { client, dir: get().sessionProject[activeSessionID] ?? directory, sid: activeSessionID }
   }
 
@@ -609,7 +610,7 @@ export const useCode = create<CodeState>((set, get) => {
     if (s.activeSessionID === sessionID && windowIsFocused()) return
     const root = rootSessionID(s.sessions, sessionID)
     const directory = s.sessionProject[root] ?? s.directory ?? undefined
-    const body = s.sessions[sessionID]?.title || 'Sesión de Code'
+    const body = s.sessions[sessionID]?.title || t('code.store.sessionTitle')
     sendNotification(title, body, { mode: 'code', id: root, directory })
   }
 
@@ -803,7 +804,7 @@ export const useCode = create<CodeState>((set, get) => {
         const boundary = sess?.revert?.messageID
         const users = (get().messages[sid] ?? []).filter((m) => m.info.role === 'user' && (!boundary || m.info.id < boundary))
         const target = users[users.length - 1]
-        if (!target) throw new Error('No hay cambios que revertir')
+        if (!target) throw new Error(t('code.store.nothingToRevert'))
         const updated = sdkData(await client.session.revert({ sessionID: sid, directory: dir, messageID: target.info.id }))
         set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated }, fsVersion: s.fsVersion + 1 }))
       } catch (err) {
@@ -1152,7 +1153,7 @@ export const useCode = create<CodeState>((set, get) => {
             idleSeen.set(sessionID, { kind: 'status', at: Date.now() })
             set((s) => ({ fsVersion: s.fsVersion + 1 }))
             markUnread(sessionID)
-            notifyCode(sessionID, 'Code terminó')
+            notifyCode(sessionID, t('code.store.notifyDone'))
             maybeAutoSend(sessionID)
           }
           break
@@ -1172,7 +1173,7 @@ export const useCode = create<CodeState>((set, get) => {
           idleSeen.set(sessionID, { kind: 'idle', at: Date.now() })
           set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' }, fsVersion: s.fsVersion + 1 }))
           markUnread(sessionID)
-          notifyCode(sessionID, 'Code terminó')
+          notifyCode(sessionID, t('code.store.notifyDone'))
           maybeAutoSend(sessionID)
           break
         }
@@ -1219,7 +1220,7 @@ export const useCode = create<CodeState>((set, get) => {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, p.sessionID))
-          notifyCode(p.sessionID, 'Code necesita tu aprobación')
+          notifyCode(p.sessionID, t('code.store.notifyApproval'))
           set((s) => ({
             permissions: {
               ...s.permissions,
@@ -1241,7 +1242,7 @@ export const useCode = create<CodeState>((set, get) => {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, p.sessionID))
-          notifyCode(p.sessionID, 'Code necesita tu aprobación')
+          notifyCode(p.sessionID, t('code.store.notifyApproval'))
           set((s) => ({
             permissions: {
               ...s.permissions,
@@ -1274,7 +1275,7 @@ export const useCode = create<CodeState>((set, get) => {
           const q = event.properties
           if (!adopt(q.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, q.sessionID))
-          notifyCode(q.sessionID, 'Code tiene una pregunta para ti')
+          notifyCode(q.sessionID, t('code.store.notifyQuestion'))
           set((s) => ({ questions: { ...s.questions, [q.id]: { id: q.id, sessionID: q.sessionID, questions: q.questions } } }))
           break
         }

@@ -3,6 +3,7 @@ import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { RotateCcw } from 'lucide-react'
+import { useT } from '../../../../lib/i18n'
 import { IconButton } from '../../../../components/IconButton'
 import { errorMessage, requireCode } from '../client'
 
@@ -26,6 +27,7 @@ function themeFromCss(): ITheme {
  * contenedor debe mantener el componente montado para conservar la sesión del shell.
  */
 export function TerminalPanel({ directory, visible }: { directory: string; visible: boolean }): React.JSX.Element {
+  const t = useT()
   const hostRef = useRef<HTMLDivElement>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -153,9 +155,9 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
       {(error || exited !== null) && (
         <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs">
           <span className={error ? 'text-danger' : 'text-muted'}>
-            {error ? `No se pudo abrir la terminal: ${error}` : `El proceso terminó (código ${exited}).`}
+            {error ? t('code.terminal.openFailed', { error }) : t('code.terminal.exited', { code: exited })}
           </span>
-          <IconButton label="Reiniciar terminal" className="ml-auto h-6 w-6" onClick={() => setGeneration((g) => g + 1)}>
+          <IconButton label={t('code.terminal.restart')} className="ml-auto h-6 w-6" onClick={() => setGeneration((g) => g + 1)}>
             <RotateCcw size={13} />
           </IconButton>
         </div>
