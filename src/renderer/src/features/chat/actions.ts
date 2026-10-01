@@ -90,7 +90,8 @@ export function newChat(): void {
   useChat.getState().setActive(null)
 }
 
-export async function sendChatMessage(text: string): Promise<void> {
+/** Devuelve `true` si el motor aceptó el mensaje; `false` si lo rechazó (el error queda en la sesión). Lanza si no pudo ni intentarlo. */
+export async function sendChatMessage(text: string): Promise<boolean> {
   const { client, directory } = ctx()
   const sessions = useSessions.getState()
   // Modelo efectivo (el guardado si existe entre los proveedores cargados; si no, el de la primera IA conectada).
@@ -114,17 +115,27 @@ export async function sendChatMessage(text: string): Promise<void> {
   sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
-  const res = await client.session.promptAsync({
-    sessionID,
-    directory,
-    agent: CHAT_AGENT,
-    model: { providerID: model.providerID, modelID: model.modelID },
-    parts: [{ type: 'text', text }]
-  })
-  if (res.error) {
+  let error: unknown
+  try {
+    const res = await client.session.promptAsync({
+      sessionID,
+      directory,
+      agent: CHAT_AGENT,
+      model: { providerID: model.providerID, modelID: model.modelID },
+      parts: [{ type: 'text', text }]
+    })
+    error = (res as { error?: unknown }).error
+  } catch (err) {
+    // H4: sin respuesta del motor (red caída, excepción) la sesión no puede quedarse «ocupada» para siempre.
     sessions.setStatus(sessionID, 'idle')
-    sessions.setError(sessionID, res.error)
+    throw err
   }
+  if (error) {
+    sessions.setStatus(sessionID, 'idle')
+    sessions.setError(sessionID, error)
+    return false
+  }
+  return true
 }
 
 export async function abortChat(sessionID: string): Promise<void> {

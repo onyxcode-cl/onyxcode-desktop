@@ -433,5 +433,6 @@ export const tasks = {
   'tasks.stall.body':
     'The task is still running: it may be doing something long. You can wait or stop it yourself; it won’t stop on its own.',
   'tasks.proj.saved': 'Saved',
-  'tasks.proj.save': 'Save'
+  'tasks.proj.save': 'Save',
+  'tasks.conv.retryAttempt': 'Retry {attempt}:'
 } as const satisfies Messages<typeof es>

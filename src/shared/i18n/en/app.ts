@@ -37,5 +37,10 @@ export const app = {
   'app.palette.run': 'run',
   'app.mode.newChat': 'New conversation',
   'app.mode.newSession': 'New session',
-  'app.mode.newTask': 'New task'
+  'app.mode.newTask': 'New task',
+  'app.sidebar.show': 'Show sidebar ({mod}\\)',
+  'app.boundary.onboarding': 'the setup assistant',
+  'app.boundary.palette': 'the command palette',
+  'app.boundary.sidebar': 'the sidebar',
+  'app.boundary.server': 'the server status'
 } as const satisfies Messages<typeof es>

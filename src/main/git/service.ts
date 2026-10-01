@@ -3,6 +3,7 @@
  * No importa `electron`, así que puede probarse con Node puro.
  */
 import { execFile } from 'node:child_process'
+import { t } from '@shared/i18n'
 import { existsSync, realpathSync, statSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type {
@@ -65,11 +66,11 @@ function run(cwd: string, args: string[], opts: RunOptions = {}): Promise<RunRes
       (err, stdout, stderr) => {
         if (!err) return resolvePromise({ stdout, stderr, code: 0 })
         const e = err as NodeJS.ErrnoException & { code?: number | string }
-        if (e.code === 'ENOENT') return reject(new GitError('git no está instalado o no está en el PATH'))
+        if (e.code === 'ENOENT') return reject(new GitError(t('common.git.notInstalled')))
         const code = typeof e.code === 'number' ? e.code : null
         if (code !== null && opts.okCodes?.includes(code)) return resolvePromise({ stdout, stderr, code })
         const msg = (stderr.trim() || stdout.trim() || e.message).trim().split('\n').slice(-3).join('\n')
-        reject(new GitError(msg || `git ${args[0]} falló`, stderr, code))
+        reject(new GitError(msg || t('common.git.failed', { cmd: String(args[0]) }), stderr, code))
       }
     )
     if (opts.input !== undefined) child.stdin?.end(opts.input)
@@ -140,7 +141,7 @@ export async function repoRoot(cwd: string): Promise<string | null> {
     const out = await git(dir, ['rev-parse', '--show-toplevel'])
     return out.trim() || null
   } catch (err) {
-    if (err instanceof GitError && err.message.includes('git no está instalado')) throw err
+    if (err instanceof GitError && err.message === t('common.git.notInstalled')) throw err
     return null
   }
 }
@@ -351,7 +352,7 @@ export async function diff(req: GitDiffRequest): Promise<string> {
       }
     }
     if (files.length > MAX_UNTRACKED_DIFFS) {
-      parts.push(`# ${files.length - MAX_UNTRACKED_DIFFS} archivos sin seguimiento adicionales omitidos\n`)
+      parts.push(`${t('common.git.untrackedOmitted', { count: files.length - MAX_UNTRACKED_DIFFS })}\n`)
     }
   }
   return parts

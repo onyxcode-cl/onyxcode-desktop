@@ -490,3 +490,12 @@ test('POST /__e2e/log escribe el texto en la salida del proceso', async () => {
   const bad = await ctl('POST', 'log', {})
   assert.notEqual(bad.status, 200)
 })
+
+test('set failPrompt: prompt_async corta la conexión las N veces pedidas y luego responde', async () => {
+  const created = await call('POST', `/session?${q()}`, {})
+  const sid = created.data.id
+  await ctl('POST', 'set', { failPrompt: 1 })
+  await assert.rejects(() => call('POST', `/session/${sid}/prompt_async?${q()}`, { parts: [{ type: 'text', text: 'hola' }] }))
+  const ok = await call('POST', `/session/${sid}/prompt_async?${q()}`, { parts: [{ type: 'text', text: 'hola' }] })
+  assert.equal(ok.status, 204)
+})

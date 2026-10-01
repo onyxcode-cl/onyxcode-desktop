@@ -27,7 +27,7 @@
  *   GET  unknown-routes
  *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder } }: NUNCA devuelve valores secretos;
  *                   allPlaceholder = todas las claves de OPENCODE_AUTH_CONTENT son centinelas (sandboxed-placeholder-*)
- *   POST set        { mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
+ *   POST set        { failPrompt: N|-1|0 (prompt_async corta la conexión N veces / siempre / nunca), mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
  *                     commands:[...], connectedProviders:[ids] }
  *   POST log        { stream?:'stdout'|'stderr', text }: escribe `text` (tal cual, más salto de línea) en la salida del proceso,
  *                   que la app recoge como registro del motor (prueba de Diagnóstico)
@@ -132,6 +132,7 @@ export function createFakeServer(options = {}) {
       permissions: new Map(), // id -> { req, resolve }
       questions: new Map(),
       scripts: [],
+      failPrompt: 0, // prompt_async corta la conexión (red caída) las próximas N veces; -1 = siempre
       todos: new Map(),
       mcpUser: {}, // conectar/desconectar de la app (se pierde en dispose)
       mcpForced: {}, // fijado por /__e2e/set (persistente)
@@ -867,6 +868,12 @@ export function createFakeServer(options = {}) {
     if (!s) return
     const b = c.body ?? {}
     if (!Array.isArray(b.parts)) return badRequest(c.res, 'parts requerido')
+    if (state.failPrompt !== 0) {
+      // Red caída simulada: se corta la conexión sin respuesta (el cliente ve una excepción de red).
+      if (state.failPrompt > 0) state.failPrompt--
+      c.res.socket?.destroy()
+      return
+    }
     // La respuesta HTTP sale antes de los eventos (el real también responde 204 de inmediato).
     enqueue(s, b, { startDelayMs: 5 }).catch(() => undefined)
     c.res.writeHead(204)
@@ -1228,6 +1235,7 @@ export function createFakeServer(options = {}) {
       if (b.fileStatus) Object.assign(state.fileStatus, b.fileStatus)
       if (b.commands) state.commands = b.commands
       if (b.connectedProviders) state.connectedOverride = b.connectedProviders
+      if (b.failPrompt !== undefined) state.failPrompt = Number(b.failPrompt)
       json(c.res, true)
     },
     'POST reset': (c) => {

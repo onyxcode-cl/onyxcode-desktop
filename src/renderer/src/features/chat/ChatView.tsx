@@ -65,14 +65,20 @@ export function ChatView(): React.JSX.Element {
     []
   )
 
-  const send = async (text: string): Promise<void> => {
+  /** `false` = no se envió: el compositor restaura el borrador. */
+  const send = async (text: string): Promise<boolean> => {
     setSendError(null)
     try {
-      await sendChatMessage(text)
+      const ok = await sendChatMessage(text)
+      if (!ok) setInsert({ text, key: Date.now() })
+      return ok
     } catch (err) {
       const id = useChat.getState().activeSessionId
       if (id) useSessions.getState().setError(id, typeof err === 'object' && err ? err : String(err))
       else setSendError(err)
+      // Al crear la conversación la vista cambia de pantalla y el compositor se remonta: el texto vuelve por `insert`.
+      setInsert({ text, key: Date.now() })
+      return false
     }
   }
 

@@ -334,3 +334,15 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
     las reglas deduplicadas. Pendiente con modelo real: que `tasks` escriba de verdad el marcador y respete las reglas de temporales tras la deduplicación.
 - Pruebas: `EscalateCard.test.ts` (ES, EN, marcador, motivo, continuación), `tasks-prompt.test.ts`, `monitor.stall.test.ts` (umbral, reinicio por avance, 0 = nunca, sin `stop`), `agent-prompts.test.ts`; E2E
   `tasks-stall.e2e.ts` (guion del falso atascado: aviso al minuto, la tarea sigue en curso, desaparece al terminar). Sin cambios en preloads ni en SEGURIDAD.md (no hay semántica de seguridad nueva).
+
+## F8-B28 — Calidad T1: no perder lo que escribe el usuario
+
+- **Code, adjunto sin texto (H1):** pegar o adjuntar una imagen y enviar sin escribir ya produce un mensaje de usuario (solo partes `file`, sin bloque de texto vacío; el motor no lo exige). Afecta a `send`, `enqueue`, `sendNow` y `doSend`. El mensaje de usuario muestra la imagen en miniatura en vez de un recuadro vacío.
+- **Borrador (H3):** Chat y Code siguen vaciando el compositor al enviar (respuesta inmediata), pero lo restauran (texto, menciones y adjuntos, solo si no se escribió algo nuevo mientras tanto) si el motor no acepta el envío. `send`/`sendNow` de Code devuelven `boolean`;
+  `sendChatMessage` devuelve `true`/`false` y `ChatComposer.onSend` acepta `false`/rechazo como «no se envió». En Chat el compositor se remonta al crearse la conversación, así que el texto vuelve por `insert`. Tareas ya lo hacía.
+- **Chat ocupado para siempre (H4):** `sendChatMessage` devuelve la sesión a `idle` si `promptAsync` lanza (red caída) además de si responde con error.
+- **Esc en Chat (M5):** detiene la respuesta en curso, como en Code y Tareas (ignora la composición IME).
+- **Restos sin traducir (M11):** «Reintento N:» de Tareas, «Texto» de los bloques de código sin lenguaje, los rótulos de los `ErrorBoundary` de `App.tsx` y «Mostrar barra lateral», «Quitar {nombre}» del adjunto de Code y los mensajes de git «no está instalado», «falló» y «archivos sin seguimiento omitidos».
+  `App.tsx` entra en `MIGRATED`. `git/service.ts` NO entra: conserva ~13 mensajes de validación en español (ver «Residuos conscientes» de F8-B27).
+- Guardias: `store.calidad-t1.test.ts` (Code), `actions.calidad-t1.test.ts` (Chat), el falso gana `POST /__e2e/set { failPrompt: N|-1|0 }` (corta la conexión de `prompt_async`; Chromium reintenta una vez sobre un socket reutilizado, por eso se usa `-1`)
+  con su prueba en `server.test.mjs`, y E2E `calidad-t1.e2e.ts` con una prueba por modo (Chat, Code con imagen sin texto, Tareas) más Esc en Chat; capturas con `CALIDAD_SHOTS_DIR`.

@@ -34,5 +34,10 @@ export const app = {
   'app.palette.run': 'ejecutar',
   'app.mode.newChat': 'Nueva conversación',
   'app.mode.newSession': 'Nueva sesión',
-  'app.mode.newTask': 'Nueva tarea'
+  'app.mode.newTask': 'Nueva tarea',
+  'app.sidebar.show': 'Mostrar barra lateral ({mod}\\)',
+  'app.boundary.onboarding': 'el asistente de inicio',
+  'app.boundary.palette': 'la paleta de comandos',
+  'app.boundary.sidebar': 'la barra lateral',
+  'app.boundary.server': 'el estado del servidor'
 } as const

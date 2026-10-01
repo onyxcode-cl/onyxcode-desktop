@@ -430,5 +430,6 @@ export const tasks = {
   },
   'tasks.stall.body': 'La tarea sigue en curso: puede estar ejecutando algo largo. Puedes esperar o detenerla tú; no se detiene sola.',
   'tasks.proj.saved': 'Guardado',
-  'tasks.proj.save': 'Guardar'
+  'tasks.proj.save': 'Guardar',
+  'tasks.conv.retryAttempt': 'Reintento {attempt}:'
 } as const

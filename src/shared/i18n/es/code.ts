@@ -262,5 +262,6 @@ export const code = {
   'code.files.diff': 'Diff',
   'code.files.binary': 'Archivo binario.',
   'code.files.search': 'Buscar archivos…',
-  'code.files.clear': 'Limpiar'
+  'code.files.clear': 'Limpiar',
+  'code.composer.removeAttachment': 'Quitar {name}'
 } as const
