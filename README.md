@@ -27,7 +27,7 @@ arrancar una Tarea con sandbox. En **Tareas con sandbox solo se usa OpenCode Go*
 local fuera del sandbox y el motor de la Tarea recibe un valor falso; los demás proveedores (y los inicios de
 sesión OAuth) **no se pasan** al sandbox, así que ahí no están disponibles. En **Control total** y en **Chat/Code
 no hay aislamiento de credenciales**: el motor lee el almacén propio de la app. La app no registra la clave ni la
-envía a ningún sitio salvo al proveedor. Detalle en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md).
+envía a ningún sitio salvo al proveedor (lo único que va al servidor de cuentas es tu correo; ver «Privacidad»). Detalle en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md).
 
 Para desarrollar: además, Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
 
@@ -159,7 +159,13 @@ Licencia: pendiente de definir.
 
 ## Privacidad
 
-OnyxCode se conecta al proveedor de IA que elijas y, salvo que lo desactives en Ajustes → Acerca de, consulta una vez al día como mucho la API pública de GitHub para saber si hay una versión nueva (sin datos tuyos; no descarga ni instala nada).
+OnyxCode se conecta a tres sitios:
+
+- **Tu proveedor de IA**, el que elijas, con tus propias claves.
+- **El servidor de cuentas (`https://api.onyxcode.cl`)**, porque la app exige iniciar sesión (con Google o con tu correo y un código). El servidor guarda **solo** tu correo, el proveedor con el que entraste (Google o correo) y las fechas (alta, último acceso y de las sesiones), más lo técnico imprescindible para operar (por ejemplo, la IP y el momento de cada petición). Puedes cerrar sesión, descargar tus datos y borrar tu cuenta desde Ajustes › Cuenta.
+- **GitHub**, para el aviso de versión nueva: como mucho una consulta al día a su API pública, sin datos tuyos; no descarga ni instala nada. Puedes desactivarlo en Ajustes → Acerca de.
+
+Tus **claves de IA y tus conversaciones se quedan solo en tu Mac**: nunca se envían al servidor de cuentas. Las páginas de política de privacidad y términos todavía no están publicadas; mientras tanto la app muestra el texto resumido (borrador en [`docs/PRIVACIDAD-BORRADOR.md`](./docs/PRIVACIDAD-BORRADOR.md) y [`docs/TERMINOS-BORRADOR.md`](./docs/TERMINOS-BORRADOR.md)).
 
 ## Marcas y agradecimientos
 

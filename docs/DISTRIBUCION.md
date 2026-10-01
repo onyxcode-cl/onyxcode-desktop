@@ -253,7 +253,7 @@ la clave privada** (gestor de contraseñas o disco cifrado aparte).
 ### 10.2 Cada versión
 
 1. Subir la versión en `package.json` (semver `X.Y.Z`).
-2. `npm run verify:release && npm run package`. `verify:release` falla mientras `RELEASES_REPO`, el alias, la
+2. `npm run verify:release && npm run package`. La app empaquetada contacta el servidor de cuentas `ACCOUNT_API` (`https://api.onyxcode.cl`, `src/shared/brand.ts`) y exige iniciar sesión; `verify:release` no exige `ACCOUNT_API` (ya está definido), pero antes de publicar hay que probar a mano el login con el servidor real (`docs/CUENTAS-ACTIVACION.md`). `ONYXCODE_ACCOUNT_DISABLED` solo apaga la cuenta sin empaquetar (E2E): en el paquete se ignora. `verify:release` falla mientras `RELEASES_REPO`, el alias, la
    licencia o `UPDATE_PUBLIC_KEY` (vacía o que no decodifique a una clave Ed25519) sigan sin definir, o si
    `resources/updater/swap.sh` no va en `extraResources`. `npm run verify:bundled` comprueba además que el `.app`
    lleva `Contents/Resources/updater/swap.sh` y que el sello de la firma lo cubre.

@@ -9,7 +9,7 @@ hallazgos y su estado en `AUDIT.md`; motivación en notas privadas (fuera del re
 | Control | Dónde |
 |---|---|
 | Renderer de producción servido por `onyxcode://app/…` (esquema privilegiado `standard`+`secure`), nunca `file://`. Solo host `app`, solo archivos de `out/renderer` (sin `..` ni enlaces fuera), `nosniff`, COOP/CORP | `src/main/security/app-protocol.ts` |
-| CSP por **cabecera** en cada HTML: `script-src 'self'`, `connect-src 'self' http://127.0.0.1:*`, sin frames/workers/objetos, `base-uri`/`form-action 'none'` (la `<meta>` se mantiene para el dev server) | `RENDERER_CSP` |
+| CSP por **cabecera** en cada HTML: `script-src 'self'`, `connect-src 'self' http://127.0.0.1:*`, sin frames/workers/objetos, `base-uri`/`form-action 'none'` (la `<meta>` se mantiene para el dev server); las peticiones del servidor de cuentas (§3 sexies) salen desde main, no desde el renderer | `RENDERER_CSP` |
 | Navegación: `will-navigate`/`will-redirect`/`will-frame-navigate` solo al origen propio (o el dev server); http(s) → navegador del sistema (solo desde ventanas de la app, nunca desde una vista previa); `window.open` denegado; `<webview>` bloqueado y `webviewTag:false` | `src/main/security/web-security.ts` |
 | Permisos de la sesión por defecto: denegados salvo `notifications` y `clipboard-sanitized-write` para páginas propias; sin dispositivos, sin captura de pantalla desde el renderer, sin descargas | idem |
 | Menú propio en producción (sin Recargar/DevTools) y `devTools:false` en la ventana principal empaquetada | idem, `src/main/index.ts` |
@@ -32,6 +32,7 @@ Cada `ipcMain.handle` pasa por `guardInvoke` (`src/main/ipc/guard.ts`):
 Las tablas de esquemas están tipadas contra los contratos `shared/ipc*.ts`: un canal nuevo sin
 esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arrancar.
 **Al añadir un canal: contrato + handler + esquema (+ rol si lo usa una ventana secundaria).**
+Los canales `account:*` (§3 sexies) son solo de la ventana principal y llevan esquemas estrictos.
 
 ## 3. Procesos hijos y permisos de macOS (TCC)
 
@@ -373,7 +374,7 @@ lista.
 
 ## 3 quinquies. Aviso de versión nueva
 
-Aviso NO bloqueante de que hay una versión publicada más reciente. Por sí solo no descarga, no instala y no ejecuta
+Aviso NO bloqueante de que hay una versión publicada más reciente (ya no es la única conexión de red propia de la app: la cuenta, §3 sexies, también contacta `api.onyxcode.cl`). Por sí solo no descarga, no instala y no ejecuta
 nada: lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la página de la release. Si esta copia puede
 actualizarse sola, el botón «Actualizar» inicia la descarga verificada de la sección 3 septies; **solo** al pulsarlo se
 descarga algo (la comprobación automática sigue siendo únicamente el `GET` de abajo).
@@ -409,13 +410,13 @@ descarga algo (la comprobación automática sigue siendo únicamente el `GET` de
   `fetch` de Node no usa el proxy del sistema (tras un proxy obligatorio el aviso simplemente no llega). Sin
   `retryAfter` persistido, un fallo se reintenta en el siguiente arranque pasada 1 h.
 
-## 3 sexies. Cuenta (pendiente de activación)
+## 3 sexies. Cuenta
 
-> **Estado: pendiente de activación.** El código está completo en el cliente (Fase 1) pero **apagado**:
-> `ACCOUNT_API` (`src/shared/brand.ts`) es `null`, así que la app no exige iniciar sesión, no crea el servicio
-> de cuenta con red ni muestra la sección Ajustes › Cuenta. Se enciende solo al definir `ACCOUNT_API` y desplegar
-> el servidor (Fase 2, contrato en `docs/CUENTAS-SERVIDOR.md`). Lo que hay que retocar al activar está en
-> `docs/CUENTAS-ACTIVACION.md`. Hasta entonces, §1 y §2 y el README siguen siendo ciertos tal cual.
+> **Estado: activa.** `ACCOUNT_API` (`src/shared/brand.ts`) es `https://api.onyxcode.cl` (servidor de la Fase 2, contrato
+> en `docs/CUENTAS-SERVIDOR.md`): la app exige iniciar sesión y es la única conexión de red propia, junto con el
+> aviso de versión (§3 quinquies) y el actualizador (§3 septies), que no lleva datos de la cuenta. Todo el tráfico va
+> por el proceso principal, de modo que la CSP de §1 no cambia. Para pruebas, `ONYXCODE_ACCOUNT_DISABLED=1` apaga la
+> cuenta **solo con la app sin empaquetar** (los E2E y el smoke); en la app empaquetada se ignora siempre.
 
 - **Flujo.** Cuenta obligatoria con dos entradas, sin contraseñas: (a) **correo + código** de 6 dígitos (`email/start` →
   `email/verify`) y (b) **Google por loopback** (RFC 8252) con PKCE S256, nunca por el esquema `onyxcode://`
@@ -450,12 +451,12 @@ descarga algo (la comprobación automática sigue siendo únicamente el `GET` de
   sin cabecera `Origin`, tiempo máximo de 10 s, respuesta de hasta 256 KB y `User-Agent: <APP_NAME>/<versión>`. El
   servidor ve el correo, la IP y el momento. **No** sale ninguna conversación, archivo ni clave de IA.
 - **Dominio único.** La app solo habla con el origen fijo `ACCOUNT_API` (`https://`, sin ruta ni credenciales; uno
-  inválido deja la cuenta activa pero sin servidor: **falla cerrado**, nunca «sin login»). `ONYXCODE_ACCOUNT_URL` solo
-  se respeta con la app sin empaquetar (servidor falso de E2E). La URL del navegador para Google solo se abre si es
+  inválido deja la cuenta activa pero sin servidor: **falla cerrado**, nunca «sin login»). `ONYXCODE_ACCOUNT_URL` (servidor
+  falso de E2E) y `ONYXCODE_ACCOUNT_DISABLED=1` solo se respetan con la app sin empaquetar, y la primera gana a la segunda. La URL del navegador para Google solo se abre si es
   `https:` (y, sin empaquetar, `http://127.0.0.1`).
 - **Quick Entry, atajo global y bandeja** solo actúan con la cuenta al día (`isAccountAllowed()`); sin ella, «Nueva
   conversación», Quick Entry y Ajustes de la bandeja no hacen nada (quedan «Abrir» y «Salir») y una Quick Entry abierta
-  se oculta al perderse la sesión. Con la cuenta apagada nada de esto cambia.
+  se oculta al perderse la sesión. Con la cuenta apagada (solo posible sin empaquetar, en pruebas) nada de esto cambia.
 - **IPC.** Canales `account:*` (estado, Google, cancelar, reintentar, enviar/verificar código, cerrar sesión, borrar,
   exportar) y evento `account:changed`; **solo** la ventana principal (no están en `CHANNEL_ROLES`), con esquemas
   estrictos (correo ≤ 254, código `^\d{6}$`). «Borrar mi cuenta» exige confirmación y **no** toca `opencode-data`
