@@ -26,6 +26,8 @@ interface Props {
   onOauthStart?: (providerID: string, method: number) => Promise<ProviderAuthAuthorization>
   /** Completa el inicio de sesión (con `code` si el método lo pide). Rechaza si falla. */
   onOauthFinish?: (providerID: string, method: number, code?: string) => Promise<void>
+  /** Muestra bajo el formulario el resultado de probar la clave recién guardada (false si el anfitrión ya lo enseña). */
+  showTestResult?: boolean
   className?: string
 }
 
@@ -45,6 +47,7 @@ export function ProviderKeyForm({
   title,
   onOauthStart,
   onOauthFinish,
+  showTestResult = true,
   className = 'mt-3 p-4'
 }: Props): React.JSX.Element {
   const [picked, setPicked] = useState('')
@@ -225,7 +228,7 @@ export function ProviderKeyForm({
         </div>
       )}
 
-      <KeyTestNotice providerID={lastSaved?.id ?? null} providerName={lastSaved?.name ?? ''} />
+      {showTestResult && <KeyTestNotice providerID={lastSaved?.id ?? null} providerName={lastSaved?.name ?? ''} />}
 
       <p className="mt-2 text-[11px] text-subtle">
         {target && !supportsApi && oauth.length === 0

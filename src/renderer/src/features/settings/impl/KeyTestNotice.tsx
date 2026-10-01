@@ -1,6 +1,6 @@
 import { CheckCircle2, CircleAlert, Info, Loader2 } from 'lucide-react'
 import { keyTestText, type KeyTestTone } from '@shared/key-test'
-import { useKeyTest } from './useKeyTest'
+import { useKeyTest, type KeyTestEntry } from './useKeyTest'
 
 const TONE_CLASS: Record<KeyTestTone, string> = {
   ok: 'text-success',
@@ -11,7 +11,7 @@ const TONE_CLASS: Record<KeyTestTone, string> = {
 
 /**
  * Resultado de «Probar clave» de un proveedor (título + explicación). No muestra nada si aún no se probó.
- * `action` = botón opcional a la derecha del título (p. ej. «Cambiar clave»).
+ * `action` = botón opcional junto al título (p. ej. «Cambiar clave»).
  */
 export function KeyTestNotice({
   providerID,
@@ -25,6 +25,21 @@ export function KeyTestNotice({
   action?: React.ReactNode
 }): React.JSX.Element | null {
   const { entry } = useKeyTest(providerID)
+  return <KeyTestView entry={entry} providerName={providerName} className={className} action={action} />
+}
+
+/** Parte visual de `KeyTestNotice` (sin store: se prueba por separado). */
+export function KeyTestView({
+  entry,
+  providerName,
+  className = 'mt-2',
+  action
+}: {
+  entry: KeyTestEntry | undefined
+  providerName: string
+  className?: string
+  action?: React.ReactNode
+}): React.JSX.Element | null {
   if (!entry) return null
   if (entry.phase === 'testing')
     return (

@@ -54,7 +54,11 @@ function StatusCard(): React.JSX.Element {
       <Row label="Versión del motor">
         <span className="text-sm text-muted tabular-nums">{status.version ?? '—'}</span>
       </Row>
-      <Row label="Reiniciar OpenCode" description="Si algo no responde, reinicia el motor. Las respuestas en curso se interrumpen.">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0">
+        <div className="min-w-48 flex-1">
+          <div className="text-sm font-medium">Reiniciar el motor</div>
+          <div className="mt-0.5 text-xs text-muted">Si algo no responde. Interrumpe las respuestas en curso.</div>
+        </div>
         <Button
           disabled={restarting}
           onClick={() => {
@@ -64,7 +68,7 @@ function StatusCard(): React.JSX.Element {
         >
           {restarting ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />} Reiniciar OpenCode
         </Button>
-      </Row>
+      </div>
       {lastError && (
         <div className="px-4 py-3">
           <div className="mb-1 text-xs font-medium text-muted">Último error</div>

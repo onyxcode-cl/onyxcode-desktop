@@ -167,17 +167,17 @@ function ProvidersList({
           const entry = tests[p.id]
           const needsNewKey = entry?.phase === 'done' && (entry.result.status === 'invalid' || entry.result.status === 'forbidden')
           return (
-            <Row
+            <div
               key={p.id}
-              label={
-                <span className="flex items-center gap-2">
+              className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0"
+            >
+              <div className="min-w-48 flex-1">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   {p.name}
                   <Badge tone="ok">Conectado</Badge>
                   {p.id === 'opencode-go' && <Badge tone="accent">Recomendado</Badge>}
-                </span>
-              }
-              description={
-                <>
+                </div>
+                <div className="mt-0.5 text-xs text-muted">
                   {`${Object.keys(p.models).length} modelos · origen: ${SOURCE_LABEL[p.source] ?? p.source}`}
                   <KeyTestNotice
                     providerID={p.id}
@@ -202,10 +202,9 @@ function ProvidersList({
                       }}
                     />
                   )}
-                </>
-              }
-            >
-              <div className="flex items-center gap-1">
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
                 <Button
                   variant="ghost"
                   disabled={busy || entry?.phase === 'testing'}
@@ -220,7 +219,7 @@ function ProvidersList({
                   </Button>
                 )}
               </div>
-            </Row>
+            </div>
           )
         })}
       </Card>
@@ -232,6 +231,7 @@ function ProvidersList({
         onSetKey={onSetKey}
         onOauthStart={onOauthStart}
         onOauthFinish={onOauthFinish}
+        showTestResult={false}
       />
     </>
   )
