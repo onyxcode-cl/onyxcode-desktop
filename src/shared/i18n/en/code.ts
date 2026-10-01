@@ -163,6 +163,7 @@ export const code = {
   'code.cmd.new': 'Start a new session',
   'code.cmd.command': 'Command',
   'code.composer.drop': 'Drop to attach',
+  'code.composer.aria': 'Message to the assistant',
   'code.composer.commands': 'Commands',
   'code.composer.files': 'Files',
   'code.composer.searching': 'Searching…',

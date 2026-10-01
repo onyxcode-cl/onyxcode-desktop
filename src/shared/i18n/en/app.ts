@@ -7,6 +7,8 @@ export const app = {
   'app.status.stopped': 'Stopped',
   'app.status.error': 'Connection error',
   'app.sidebar.hide': 'Hide sidebar ({mod}\\)',
+  'app.sidebar.aria': 'Sidebar',
+  'a11y.sidePanel': 'Side panel',
   'app.sidebar.search': 'Search or jump to…',
   'app.sidebar.mode': 'Mode',
   'app.sidebar.settings': 'Settings ({mod},)',

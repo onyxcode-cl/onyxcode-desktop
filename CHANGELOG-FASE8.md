@@ -394,3 +394,23 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 - Pruebas: unitarias `drafts.test.ts`, `quit-guard.test.ts` (actualizador y apagado nunca preguntan), `interrupted.test.ts` (detección, ocupadas no se marcan, una vez por servidor, marca se quita al volver a trabajar); E2E `calidad-t3.e2e.ts`: pid de la terminal
   y su `sleep 1000` iguales tras Chat → Ajustes → ⌃Tab → Code (con el scrollback), borradores de Chat y Code, tarea interrumpida tras recargar la ventana con el motor «reiniciado» (el falso gana `set { sessionStatus }`) y Cmd+Q con una tarea ocupada
   (Cancelar mantiene la app, Salir igualmente sale). Capturas con `T3_SHOTS_DIR`. Sin cambios en preloads (no hay canales IPC nuevos) ni en SEGURIDAD.md.
+
+## F8-B33 — Calidad T5: accesibilidad y contraste
+
+- **Región `role="log"` acotada (M7).** Antes ninguna vista anunciaba nada. `ConversationAnnouncer` (en Chat, Code y Tareas) es una región solo para lectores de pantalla (`sr-only`, `role="log"`, `aria-live="polite"`) que dice
+  «Respuesta terminada» cuando la conversación deja de estar ocupada y «Error: …» (texto amable de `friendlyError`) cuando aparece uno nuevo. **Nunca** anuncia deltas: la transcripción no es una región viva. Al cambiar de conversación no anuncia nada.
+- **Compositor de Code como combobox (M7).** El textarea lleva `role="combobox"`, `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls` y `aria-activedescendant` (opciones con `id`), más `aria-label`. Nota: axe marca `aria-allowed-role` (nivel *minor*)
+  porque ARIA en HTML solo prevé `combobox` en `input`; se mantiene a propósito (patrón de autocompletado de ARIA 1.2) y requiere comprobar con VoiceOver.
+- **`aria-label` en botones solo-icono (M7).** Copiar y Bifurcar de cada mensaje de Code, Bifurcar y Compactar de la barra de Code y Quitar adjunto (que ahora también se ve con el foco del teclado). El punto de estado del pie de la barra lateral era un `span`
+  con `aria-label` sin rol (violación *serious*): pasa a `aria-hidden` (el estado ya se lee como texto al lado).
+- **Contraste (M8).** Misma paleta, solo más contraste: `--fg-subtle` `#8a91a3`→`#61697c` (claro, 2,97→5,18:1 sobre `--bg`) y `#6c7386`→`#858b9c` (oscuro, 3,92→5,45:1); `--success` `#15803d`→`#14793a` y `--warning` `#b45309`→`#aa4f09` (claro)
+  para llegar a 4,5:1 también sobre barra lateral/código/hover; token nuevo `--gold-text` (`#876217` claro, igual al oro en oscuro) para el texto de las insignias doradas (`--gold` queda para iconos). Sobre la fila seleccionada (`bg-active`) el
+  texto `text-subtle` usa `--fg-muted`. Capturas antes/después en claro y oscuro (820 y 1280 px) en `scratchpad/shots-c5/{before,after}`.
+- **Landmarks (B2).** Tareas tenía un `<main>` dentro del `<main>` de la app (se vuelve `div`); las barras laterales llevan nombre (`aria-label`) para que no choquen como landmarks.
+- **Cómo se mide el contraste.** `app/contrast.test.ts` lee `globals.css` y calcula la razón WCAG 2.x de cada token de texto (`fg`, `fg-muted`, `fg-subtle`, `accent`, `success`, `warning`, `danger`, `gold-text`) contra todas las superficies reales
+  de cada tema (`bg`, `bg-sidebar`, `bg-elevated`, `bg-hover`, `bg-code`, `bg-inset`, `user-bubble`), `accent`/`gold-text` sobre sus fondos suaves, `accent-fg` sobre `accent`, y que se conserve la jerarquía fg > muted > subtle. Sin navegador: falla en `npm test`.
+- **axe-core.** Nueva devDependency `axe-core` (hay que hacer `npm install` al integrar). `e2e/lib/axe.ts` lo inyecta por CDP en claro y oscuro; `calidad-t5.e2e.ts` ejecuta axe (etiquetas wcag2a/aa, wcag21a/aa y best-practice) en Chat, Chat con error 429, Code y Tareas
+  con el OpenCode falso, y falla con violaciones *serious*, *critical* o *moderate*. Antes de la tanda: aria-prohibited-attr y color-contrast (todas las vistas), button-name *critical* en Code, tres de landmarks en Tareas. Ahora: solo queda
+  `aria-allowed-role` *minor* (compositor de Code). Informes con `T5_AXE_REPORT`; capturas con `T5_SHOTS_DIR`.
+- Pendiente de revisión manual con VoiceOver: que «Respuesta terminada»/errores se lean una vez y sin interrumpir, el comportamiento del combobox (anuncio de la opción activa al usar ↑↓) y el orden de foco; axe no sustituye esa prueba. Cambian los snapshots de
+  `ChatMessageList`, `MessageStream` y `TaskConversation` (la región `log`) y `MessageStream` (`aria-label`). Sin cambios en preloads ni en SEGURIDAD.md.

@@ -161,6 +161,7 @@ export const code = {
   'code.cmd.new': 'Empezar una sesión nueva',
   'code.cmd.command': 'Comando',
   'code.composer.drop': 'Suelta para adjuntar',
+  'code.composer.aria': 'Mensaje para el asistente',
   'code.composer.commands': 'Comandos',
   'code.composer.files': 'Archivos',
   'code.composer.searching': 'Buscando…',

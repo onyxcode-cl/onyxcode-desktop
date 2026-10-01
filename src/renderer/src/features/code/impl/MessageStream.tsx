@@ -8,6 +8,7 @@ import { t } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../../lib/conversation/errors'
+import { ConversationAnnouncer } from '../../../components/conversation/ConversationAnnouncer'
 import { AssistantError } from '../../../components/conversation/AssistantError'
 import { ScrollToEnd } from '../../../components/conversation/ScrollToEnd'
 import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
@@ -209,6 +210,7 @@ const UserMessage = memo(function UserMessage({
           <button
             type="button"
             title={t('code.msg.copy')}
+            aria-label={t('code.msg.copy')}
             onClick={() => {
               void navigator.clipboard.writeText(text).then(() => {
                 setCopied(true)
@@ -222,6 +224,7 @@ const UserMessage = memo(function UserMessage({
           <button
             type="button"
             title={t('code.msg.forkTitle')}
+            aria-label={t('code.msg.forkTitle')}
             disabled={forking}
             onClick={() => {
               setForking(true)
@@ -430,6 +433,7 @@ export function MessageStream(props: Props): React.JSX.Element {
 
   return (
     <div className="relative min-h-0 flex-1">
+      <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
           {loading && entries.length === 0 && (

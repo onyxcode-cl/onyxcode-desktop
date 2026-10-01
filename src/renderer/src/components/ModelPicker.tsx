@@ -149,7 +149,7 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
                 <div className="flex items-center gap-1.5 px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
                   {provider.name}
                   {provider.id === PREFERRED_PROVIDER && (
-                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold normal-case">
+                    <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold-text normal-case">
                       {t('common.modelPicker.recommended')}
                     </span>
                   )}

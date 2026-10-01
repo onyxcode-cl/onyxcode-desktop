@@ -4,6 +4,8 @@ export const app = {
   'app.status.stopped': 'Detenido',
   'app.status.error': 'Error de conexión',
   'app.sidebar.hide': 'Ocultar barra lateral ({mod}\\)',
+  'app.sidebar.aria': 'Barra lateral',
+  'a11y.sidePanel': 'Panel lateral',
   'app.sidebar.search': 'Buscar o ir a…',
   'app.sidebar.mode': 'Modo',
   'app.sidebar.settings': 'Ajustes ({mod},)',
