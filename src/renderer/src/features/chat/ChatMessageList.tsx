@@ -39,6 +39,14 @@ const PartView = memo(function PartView({
     case 'tool':
       return <ChatToolCall part={part} />
     case 'file':
+      if (part.mime.startsWith('image/') && part.url.startsWith('data:image/'))
+        return (
+          <img
+            src={part.url}
+            alt={part.filename ?? t('chat.attach.defaultName')}
+            className="max-h-56 max-w-[min(85%,20rem)] rounded-xl border border-border object-contain shadow-xs"
+          />
+        )
       return (
         <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1 text-xs text-muted shadow-xs">
           <FileText size={13} className="text-accent" /> {part.filename ?? part.url}
