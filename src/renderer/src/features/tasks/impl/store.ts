@@ -36,6 +36,7 @@ import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
+import { endedMidTurn } from './util'
 import type { RestoreResult } from './restore-logic'
 
 export type TasksServerPhase = 'idle' | 'starting' | 'ready' | 'error'
@@ -90,6 +91,8 @@ interface TasksState {
   panelOpen: boolean
   /** Ids de tareas cuyo resultado aún no se ha visto (terminaron en segundo plano). */
   unseen: Record<string, true>
+  /** F8-B32: tareas que quedaron a medias al cerrarse la app (ver `scanInterrupted`). */
+  interrupted: Record<string, true>
   /** Ids de tareas fijadas ("Pin"), persistido en localStorage (no hay campo equivalente en el SDK). */
   pinned: Record<string, true>
   /** Proyecto (nombre + instrucciones) de la carpeta actual. */
@@ -231,6 +234,7 @@ export const useTasks = create<TasksState>((set) => ({
   attachments: [],
   panelOpen: readPanelOpen(),
   unseen: {},
+  interrupted: {},
   pinned: readPinned(),
   project: null,
   memory: null,
@@ -859,6 +863,73 @@ export function disconnect(): void {
   useTasks.setState({ conn: null, client: null, phase: 'idle', streaming: false })
 }
 
+/** Tareas revisadas ya por servidor (una vez por arranque de servidor). */
+const interruptedScanned = new Set<string>()
+const INTERRUPTED_MAX_SCAN = 12
+const INTERRUPTED_MAX_AGE_MS = 3 * 24 * 3600_000
+
+/**
+ * F8-B32 (H6): al conectar con un servidor, marca como «Interrumpida» las tareas recientes cuyo último mensaje del
+ * asistente no tiene `time.completed` (se cerró la app, o se mató el servidor, a mitad de turno). Una sola vez por
+ * servidor y NUNCA sobre tareas que siguen ocupadas (estado de ejecución) ni con permiso/pregunta pendiente.
+ */
+export async function scanInterrupted(client: OpencodeClient, folder: string): Promise<void> {
+  const baseUrl = useTasks.getState().conn?.baseUrl
+  if (!baseUrl || interruptedScanned.has(baseUrl)) return
+  interruptedScanned.add(baseUrl)
+  const { sessions, status, sessionSource } = useSessions.getState()
+  const { permissions, questions } = useTasks.getState()
+  const waiting = new Set<string>([
+    ...Object.values(permissions).map((p) => p.sessionID),
+    ...Object.values(questions).map((q) => q.sessionID)
+  ])
+  const now = Date.now()
+  const candidates = Object.values(sessions)
+    .filter(
+      (s) =>
+        s.directory === folder &&
+        !s.parentID &&
+        !s.time.archived &&
+        sessionSource[s.id] === baseUrl &&
+        now - s.time.updated < INTERRUPTED_MAX_AGE_MS &&
+        (status[s.id] ?? 'idle') === 'idle' &&
+        !waiting.has(s.id)
+    )
+    .sort((a, b) => b.time.updated - a.time.updated)
+    .slice(0, INTERRUPTED_MAX_SCAN)
+  const found: string[] = []
+  await Promise.all(
+    candidates.map(async (s) => {
+      const res = await client.session.messages({ sessionID: s.id, directory: folder }).catch(() => null)
+      if (!res?.data) return
+      if (endedMidTurn(res.data.map((m) => ({ info: m.info, parts: m.parts })))) found.push(s.id)
+    })
+  )
+  // La conexión pudo cambiar durante las lecturas, o una tarea pasar a ocupada: se revisa el estado actual.
+  if (useTasks.getState().conn?.baseUrl !== baseUrl) return
+  const live = useSessions.getState().status
+  const ids = found.filter((id) => (live[id] ?? 'idle') === 'idle')
+  if (ids.length)
+    useTasks.setState((st) => ({ interrupted: { ...st.interrupted, ...Object.fromEntries(ids.map((id) => [id, true as const])) } }))
+}
+
+/** Quita la marca «Interrumpida» (al continuar o cuando la tarea vuelve a trabajar). */
+export function clearInterrupted(taskId: string): void {
+  if (!useTasks.getState().interrupted[taskId]) return
+  useTasks.setState((st) => {
+    const next = { ...st.interrupted }
+    delete next[taskId]
+    return { interrupted: next }
+  })
+}
+
+// Una tarea marcada que vuelve a estar ocupada ya no está interrumpida.
+useSessions.subscribe((s, prev) => {
+  if (s.status === prev.status) return
+  const marked = useTasks.getState().interrupted
+  for (const id of Object.keys(marked)) if (s.status[id] && s.status[id] !== 'idle') clearInterrupted(id)
+})
+
 /** Recarga lista de tareas, permisos pendientes y la tarea activa. */
 export async function resync(): Promise<void> {
   const { client, folder, activeTaskId } = useTasks.getState()
@@ -876,6 +947,7 @@ export async function resync(): Promise<void> {
     const questions: Record<string, QuestionRequest> = {}
     for (const q of qs.data ?? []) questions[q.id] = q
     useTasks.setState({ questions })
+    void scanInterrupted(client, folder)
     if (activeTaskId) await loadTask(activeTaskId)
   } catch (err) {
     useTasks.setState({ error: errorMessage(err) })

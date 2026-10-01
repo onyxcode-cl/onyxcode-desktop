@@ -13,6 +13,7 @@ export const tasks = {
   'tasks.status.error': 'Error',
   'tasks.status.idle': 'Nueva',
   'tasks.status.archived': 'Archivada',
+  'tasks.status.interrupted': 'Interrumpida',
   'tasks.tool.read.doing': 'Leyendo',
   'tasks.tool.read.done': 'Leyó',
   'tasks.tool.write.doing': 'Creando',
@@ -429,6 +430,12 @@ export const tasks = {
     other: 'Sin actividad desde hace {count} min'
   },
   'tasks.stall.body': 'La tarea sigue en curso: puede estar ejecutando algo largo. Puedes esperar o detenerla tú; no se detiene sola.',
+  'tasks.interrupted.title': 'Esta tarea se interrumpió',
+  'tasks.interrupted.body':
+    'La app se cerró (o el motor se detuvo) mientras trabajaba. Lo hecho hasta ahí se conserva; puedes continuar donde quedó.',
+  'tasks.interrupted.continue': 'Continuar',
+  'tasks.interrupted.prompt':
+    'Continúa la tarea desde donde se interrumpió: revisa lo que ya está hecho y sigue con lo que falta, sin repetirlo.',
   'tasks.proj.saved': 'Guardado',
   'tasks.proj.save': 'Guardar',
   'tasks.conv.retryAttempt': 'Reintento {attempt}:'
