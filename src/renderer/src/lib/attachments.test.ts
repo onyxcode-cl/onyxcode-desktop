@@ -21,14 +21,28 @@ describe('classifyFile', () => {
     expect(classifyFile(f('a.json', 'application/json'))?.mime).toBe('text/plain')
   })
   it('rechaza ejecutables, zips, SVG y binarios sin tipo', () => {
-    for (const x of [f('a.exe', 'application/x-msdownload'), f('a.zip', 'application/zip'), f('a.svg', 'image/svg+xml'), f('a', ''), f('a.bin', 'application/octet-stream')])
+    for (const x of [
+      f('a.exe', 'application/x-msdownload'),
+      f('a.zip', 'application/zip'),
+      f('a.svg', 'image/svg+xml'),
+      f('a', ''),
+      f('a.bin', 'application/octet-stream')
+    ])
       expect(classifyFile(x)).toBeNull()
   })
 })
 
 describe('validateFiles', () => {
   it('acepta lo válido y devuelve un mensaje por cada rechazo', () => {
-    const r = validateFiles([f('a.png', 'image/png'), f('b.exe', 'application/x-msdownload'), f('c.png', 'image/png', MAX_IMAGE_BYTES + 1), f('d.txt', 'text/plain', MAX_TEXT_BYTES + 1)], { count: 0, bytes: 0 })
+    const r = validateFiles(
+      [
+        f('a.png', 'image/png'),
+        f('b.exe', 'application/x-msdownload'),
+        f('c.png', 'image/png', MAX_IMAGE_BYTES + 1),
+        f('d.txt', 'text/plain', MAX_TEXT_BYTES + 1)
+      ],
+      { count: 0, bytes: 0 }
+    )
     expect(r.accepted).toEqual([0])
     expect(r.errors).toHaveLength(3)
   })

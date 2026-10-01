@@ -38,21 +38,21 @@ beforeEach(() => {
 
 describe('sendChatMessage con adjuntos', () => {
   it('una imagen sin texto sale como una única parte file (sin bloque de texto vacío)', async () => {
-    const promptAsync = vi.fn(() => Promise.resolve({ data: undefined }))
+    const promptAsync = vi.fn((_a: { parts: unknown[] }) => Promise.resolve({ data: undefined }))
     const { sendChatMessage } = await setup(promptAsync)
     expect(await sendChatMessage('', [{ mime: 'image/png', filename: 'a.png', url: PNG }])).toBe(true)
     expect(promptAsync.mock.calls[0][0].parts).toEqual([{ type: 'file', mime: 'image/png', filename: 'a.png', url: PNG }])
   })
 
   it('texto + adjunto: texto primero y luego la parte file', async () => {
-    const promptAsync = vi.fn(() => Promise.resolve({ data: undefined }))
+    const promptAsync = vi.fn((_a: { parts: unknown[] }) => Promise.resolve({ data: undefined }))
     const { sendChatMessage } = await setup(promptAsync)
     await sendChatMessage('mira', [{ mime: 'image/png', url: PNG }])
     expect(promptAsync.mock.calls[0][0].parts.map((p) => (p as { type: string }).type)).toEqual(['text', 'file'])
   })
 
   it('rechaza una URL file:// sin llamar al motor y sin dejar la sesión ocupada', async () => {
-    const promptAsync = vi.fn(() => Promise.resolve({ data: undefined }))
+    const promptAsync = vi.fn((_a: { parts: unknown[] }) => Promise.resolve({ data: undefined }))
     const { sendChatMessage, useSessions } = await setup(promptAsync)
     await expect(sendChatMessage('x', [{ mime: 'text/plain', url: 'file:///etc/passwd' }])).rejects.toThrow()
     expect(promptAsync).not.toHaveBeenCalled()

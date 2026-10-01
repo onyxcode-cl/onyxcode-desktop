@@ -70,7 +70,10 @@ export function ChatView(): React.JSX.Element {
   const send = async (text: string, files: ChatAttachment[] = []): Promise<boolean> => {
     setSendError(null)
     try {
-      const ok = await sendChatMessage(text, files)
+      const ok = await sendChatMessage(
+        text,
+        files.map((f) => ({ mime: f.mime, filename: f.name, url: f.url }))
+      )
       if (!ok) setInsert({ text, key: Date.now(), attachments: files })
       return ok
     } catch (err) {

@@ -20,7 +20,8 @@ export const MAX_TEXT_BYTES = 1024 * 1024
 export const MAX_TOTAL_BYTES = 15 * 1024 * 1024
 
 const IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
-const TEXT_EXT = /\.(txt|md|markdown|csv|tsv|json|jsonl|xml|html?|css|ya?ml|toml|ini|log|sql|sh|py|js|jsx|ts|tsx|java|c|h|cpp|go|rs|rb|php|swift|kt)$/i
+const TEXT_EXT =
+  /\.(txt|md|markdown|csv|tsv|json|jsonl|xml|html?|css|ya?ml|toml|ini|log|sql|sh|py|js|jsx|ts|tsx|java|c|h|cpp|go|rs|rb|php|swift|kt)$/i
 
 export type AttachKind = 'image' | 'pdf' | 'text'
 export interface Classified {
@@ -35,7 +36,11 @@ export function classifyFile(f: { name: string; type: string }): Classified | nu
   const type = f.type.toLowerCase()
   if (IMAGE_MIMES.has(type)) return { kind: 'image', mime: type, max: MAX_IMAGE_BYTES }
   if (type === 'application/pdf') return { kind: 'pdf', mime: type, max: MAX_PDF_BYTES }
-  const isText = type.startsWith('text/') || type === 'application/json' || type === 'application/xml' || ((!type || type === 'application/octet-stream') && TEXT_EXT.test(f.name))
+  const isText =
+    type.startsWith('text/') ||
+    type === 'application/json' ||
+    type === 'application/xml' ||
+    ((!type || type === 'application/octet-stream') && TEXT_EXT.test(f.name))
   if (isText) return { kind: 'text', mime: 'text/plain', max: MAX_TEXT_BYTES }
   return null
 }
