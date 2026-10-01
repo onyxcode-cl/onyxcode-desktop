@@ -128,6 +128,12 @@ export const mainErrors = {
   'merr.notif.taskApproval': 'Una tarea espera tu aprobación',
   'merr.notif.taskQuestion': 'Una tarea tiene una pregunta',
   'merr.notif.taskError': 'Una tarea terminó con un error',
+  'merr.quit.title': '¿Salir de OnyxCode?',
+  'merr.quit.message': { one: 'Hay {count} tarea en curso.', other: 'Hay {count} tareas en curso.' },
+  'merr.quit.detail':
+    'Si sales ahora, el trabajo en curso se detiene. Al volver a abrir la app aparecerá como «Interrumpida» y podrás continuarlo.',
+  'merr.quit.confirm': 'Salir igualmente',
+  'merr.quit.cancel': 'Cancelar',
   'merr.notif.untitledTask': 'Tarea sin título',
   'merr.notif.planPending': 'Plan y permisos pendientes',
   'merr.notif.allowApps': '¿Permitir que el agente use estas apps?',

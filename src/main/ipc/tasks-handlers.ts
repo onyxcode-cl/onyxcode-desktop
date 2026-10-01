@@ -71,6 +71,8 @@ export interface TasksModule {
   scheduler: SchedulerService
   /** Llamar en before-quit. */
   shutdown: () => Promise<void>
+  /** Nº de tareas en curso ahora mismo (para confirmar al salir). */
+  busyTaskCount: () => number
   /** Llamar en process.on('exit'). */
   killSync: () => void
 }
@@ -154,7 +156,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     projects,
     keepAwake,
     restore: createRestorePoints(),
-    isFolderBusy: () => false
+    isFolderBusy: () => false,
+    busyTaskCount: () => 0
   }
 
   // ── Item 5: OnyxCode nunca se bloquea a sí misma y se aparta de en medio mientras el agente actúa ──
@@ -474,6 +477,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
       computer.dispose()
       keepAwake.dispose()
     },
+    busyTaskCount: () => ctx.busyTaskCount(),
     killSync: () => tasks.killAllSync()
   }
 }

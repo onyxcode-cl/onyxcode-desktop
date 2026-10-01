@@ -237,6 +237,17 @@ export class TasksMonitor {
     return false
   }
 
+  /** Nº de tareas (raíces) en curso, esperando permiso o pregunta en todos los servidores vivos (diálogo de salir). */
+  busyRootCount(): number {
+    let n = 0
+    for (const st of this.states.values()) {
+      let roots = 0
+      for (const r of st.roots.values()) if (r.missing === 0) roots++
+      n += Math.max(roots, st.busy > 0 || st.pending > 0 ? 1 : 0)
+    }
+    return n
+  }
+
   /** Hay trabajo (o algo pendiente) en algún servidor de Control total. */
   anyBusyFullAccess(): boolean {
     for (const st of this.states.values()) if (st.fullAccess && (st.busy > 0 || st.pending > 0)) return true
