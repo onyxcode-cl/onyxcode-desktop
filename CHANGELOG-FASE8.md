@@ -358,3 +358,17 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 - **Listas de sesiones (M12).** La lista ya no se corta en 200: el store de sesiones (Chat y Tareas) y el de Code recuerdan el límite por carpeta, avisan si pudo haber más (`moreSessions`) y «Cargar más» sube de 200 en 200. El filtro de Chat,
   la búsqueda de Tareas y la de ⌘K en Code piden todas las sesiones (hasta 10 000) en cuanto se escribe algo.
 - Pruebas: unitarias (`DiffView.test.tsx`, `use-stick-to-bottom.test.ts`, `session-paging.test.ts`, `sessions.paging.test.ts` con 250 sesiones falsas) y E2E `calidad-t4.e2e.ts` (diff, «Ir al final» en Code y Tareas, 250 sesiones en Chat; capturas con `T4_SHOTS_DIR`).
+
+## F8-B31 — Calidad T2: errores con salida
+
+- **`friendlyError` con acción (H2, M10).** `action` pasa a `'connect' | 'retry' | 'compact' | null`: `retry` para fallos que pueden ser pasajeros (cuota/429, red, desconocido), `compact` para `ContextOverflowError`, `connect` como antes. `ErrorNotice` y `AssistantError`
+  aceptan `onRetry`/`onCompact` y muestran el botón solo si la vista entrega el manejador (se deshabilita mientras corre). El texto del error de contexto menciona ahora «Compáctala o empieza una conversación nueva».
+- **Chat: «Reintentar» sin duplicar.** Antes solo salía si la respuesta tenía texto y reenviaba como mensaje nuevo (duplicaba el turno y perdía adjuntos). Ahora `resendFromMessage` detiene la conversación si hace falta, hace `session.revert` hasta el mensaje de usuario,
+  quita de pantalla lo posterior y reenvía sus partes (texto y archivos) con `promptAsync`: queda UN solo mensaje de usuario. Si el motor rechaza o no recibe el envío, deshace el `revert` (`session.unrevert`) y recarga para no dejar la conversación recortada.
+  El 429/401/red sin texto ya ofrece «Reintentar» tanto en el aviso de la respuesta como en el de la sesión.
+- **«Editar y reintentar» (M2).** Chat (lápiz en cada mensaje con texto, editor en línea con nota de que se descartan los posteriores) y Code (lápiz junto a «Revertir», con confirmación porque también deshace los cambios de archivos desde ese mensaje,
+  como «Revertir») reutilizan la misma mecánica; en Code `editAndRetry` y `retryLast` viven en el store, reenvían los adjuntos como partes `file` y quitan la marca de `revert` al aceptarse el prompt. Tareas ya tenía el suyo.
+- **«Compactar» (M10).** `compactChat` y `compactTask` llaman a `session.summarize` (con el modelo efectivo) y dejan la sesión ocupada hasta el evento de fin; Code ya tenía `compactSession` y ahora también lo ofrece el aviso de error.
+- Guardias: `ai-errors.test.ts` (acciones), `actions.calidad-t2.test.ts` (Chat: revert + reenvío sin duplicar ni perder adjuntos, undo si falla, edición, compactar), `store.calidad-t2.test.ts` (Code), snapshots de `ChatMessageList` (botón «Reintentar» en el aviso)
+  y `MessageStream` (lápiz). E2E `calidad-t2.e2e.ts` con el falso (guion `error {statusCode:429}` y `ContextOverflowError`): 429 con un solo mensaje de usuario tras reintentar, edición de un mensaje antiguo en Chat y en Code, «Compactar» en Chat y Tareas (`POST summarize`).
+  Capturas con `CALIDAD_SHOTS_DIR`. Sin cambios en preloads ni en SEGURIDAD.md.

@@ -881,7 +881,13 @@ export const useCode = create<CodeState>((set, get) => {
         }))
         const { agent, model, variant } = get()
         const ok = await doSend(client, dir, sid, trimmed, [], attachments, agent, model, variant)
-        if (!ok) {
+        if (ok) {
+          // El motor consolidó el revert al aceptar el prompt: se quita la marca para no ocultar el mensaje nuevo.
+          set((st) => {
+            const cur = st.sessions[sid]
+            return cur?.revert ? { sessions: { ...st.sessions, [sid]: { ...cur, revert: undefined } } } : {}
+          })
+        } else {
           // No se pudo enviar: se deshace el `revert` y se recarga para no dejar la sesión recortada.
           const un = await client.session.unrevert({ sessionID: sid, directory: dir }).catch(() => null)
           if (un?.data) set((st) => ({ sessions: { ...st.sessions, [un.data!.id]: un.data! } }))
