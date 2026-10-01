@@ -56,6 +56,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const attachments = useTasks((s) => s.attachments)
   const folder = useTasks((s) => s.folder)
   const activeTaskId = useTasks((s) => s.activeTaskId)
+  const saving = useTasks((s) => s.restoreSaving)
   const linked = useTasks((s) => s.folderSet?.linked)
   const entries = useSessions((s) => (activeTaskId ? s.messages[activeTaskId] : undefined)) ?? NO_MESSAGES
   // Suscripción reactiva al modelo/esfuerzo de la tarea; el valor sale de las funciones del store.
@@ -84,7 +85,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   useAutosizeTextarea(ref, text, { max: hero ? 320 : 240 })
 
   const blocked = aiGate.gate.blocked
-  const canSend = !disabled && !blocked && !busy && text.trim().length > 0
+  const canSend = !disabled && !blocked && !busy && !saving && text.trim().length > 0
 
   const submit = (): void => {
     if (!canSend) return
@@ -218,6 +219,11 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           )}
         </div>
       </div>
+      {saving && (
+        <p role="status" data-testid="restore-saving" className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
+          <Loader2 size={12} className="animate-spin" /> Guardando punto de restauración…
+        </p>
+      )}
       {providerNotice && (
         <p role="status" data-testid="sandbox-provider-notice" className="mt-1.5 text-xs text-warning">
           {providerNotice}

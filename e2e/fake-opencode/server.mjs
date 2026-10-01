@@ -34,12 +34,13 @@
  * Pasos de un guion (todos aceptan delayMs): text|reasoning {text|deltas, chunkDelayMs}, tool {tool,input,output,title,
  * error,metadata}, permission {permission,patterns,tool?,input?,output?}, question {questions}, todo {todos},
  * error {message,name?,statusCode?}, retry {attempt,message,nextMs}, title {title}, emit {event:{type,properties}},
- * child {title,text,agent?}, delay {ms}.
+ * child {title,text,agent?}, delay {ms}, fs {op:'write'|'delete', path, content?} (escribe o borra un archivo REAL, siempre
+ * dentro del `directory` de la sesión: una ruta que salga de él hace fallar el paso; sirve para probar puntos de restauración).
  */
 import http from 'node:http'
 import { timingSafeEqual } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { extname, join, relative, resolve, sep } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 /** Credenciales de arranque: OPENCODE_AUTH_CONTENT (sustituye) o $XDG_DATA_HOME/opencode/auth.json. */
@@ -506,12 +507,34 @@ export function createFakeServer(options = {}) {
       }
       case 'child':
         return runChild(ctx, step)
+      case 'fs':
+        return runFs(ctx, step)
       case 'tool':
       case 'permission':
       case 'question':
         return runTool(ctx, step)
       default:
         throw new Error(`Paso de guion desconocido: ${step.type}`)
+    }
+  }
+
+  /** Paso `fs`: escribe o borra un archivo real, confinado al directorio de la sesión. */
+  function runFs(ctx, step) {
+    const base = realpathSync(ctx.dir)
+    const abs = resolve(base, String(step.path ?? ''))
+    if (abs !== base && !abs.startsWith(base + sep)) throw new Error(`Paso fs fuera del directorio de la sesión: ${step.path}`)
+    // El directorio padre (si existe) tampoco puede salir por un enlace simbólico.
+    let parent = dirname(abs)
+    while (!existsSync(parent) && parent !== base) parent = dirname(parent)
+    const realParent = realpathSync(parent)
+    if (realParent !== base && !realParent.startsWith(base + sep)) throw new Error(`Paso fs fuera del directorio de la sesión: ${step.path}`)
+    if (step.op === 'write') {
+      mkdirSync(dirname(abs), { recursive: true })
+      writeFileSync(abs, String(step.content ?? ''))
+    } else if (step.op === 'delete') {
+      rmSync(abs, { force: true })
+    } else {
+      throw new Error(`Operación fs desconocida: ${step.op}`)
     }
   }
 

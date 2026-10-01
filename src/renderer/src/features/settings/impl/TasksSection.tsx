@@ -397,6 +397,26 @@ export function TasksSection(): React.JSX.Element {
     }
   }
 
+  const cleanRestorePoints = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: '¿Borrar los puntos de restauración?',
+      message:
+        'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.',
+      confirmLabel: 'Borrar',
+      danger: true
+    })
+    if (!ok) return
+    setStorageBusy('restore')
+    try {
+      setReport(await cw('tasks:storage:cleanRestorePoints'))
+      clear('storage')
+    } catch (err) {
+      fail('storage', err)
+    } finally {
+      setStorageBusy(null)
+    }
+  }
+
   const savePrefs = (patch: Parameters<typeof saveTasksPrefs>[0], area: string): void => {
     clear(area)
     saveTasksPrefs(patch).catch((err: unknown) => fail(area, err))
@@ -757,6 +777,18 @@ export function TasksSection(): React.JSX.Element {
               onClick={() => void cleanScreenshots()}
             >
               Borrar capturas temporales
+            </Button>
+          </Row>
+          <Row
+            label="Puntos de restauración"
+            description={`Copias de los archivos de tus carpetas, guardadas antes de cada mensaje para poder deshacer los cambios${report ? ` (${formatBytes(report.restorePointsBytes)})` : ''}. Se guardan sin cifrar en los datos de la app; se conservan 30 días y 20 por tarea.`}
+          >
+            <Button
+              size="sm"
+              disabled={storageBusy !== null || (report?.restorePointsBytes ?? 0) === 0}
+              onClick={() => void cleanRestorePoints()}
+            >
+              Borrar puntos de restauración
             </Button>
           </Row>
         </Card>

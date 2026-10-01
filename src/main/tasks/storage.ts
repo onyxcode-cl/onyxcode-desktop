@@ -14,6 +14,8 @@ export interface StorageEnv {
   userData: string
   /** Carpeta de capturas temporales de Control total (`temp/onyxcode-computer`). */
   screenshotsDir: string
+  /** `userData/restore-points` (puntos de restauración de Tareas). */
+  restorePointsDir?: string
   /** Clave del directorio privado de una carpeta (`sandboxKey` de sandbox-profile). */
   sandboxKey: (folder: string) => string
   /** Tamaño en bytes de una ruta (por defecto `du -sk`). Inyectable para pruebas. */
@@ -102,8 +104,9 @@ export async function storageReport(env: StorageEnv, folders: string[], live: St
   })
   entries.sort((a, b) => b.bytes - a.bytes)
   const screenshotsBytes = await du(env.screenshotsDir)
-  const totalBytes = entries.reduce((n, e) => n + e.bytes, 0) + screenshotsBytes
-  return { entries, screenshotsBytes, totalBytes, at: Date.now() }
+  const restorePointsBytes = env.restorePointsDir ? await du(env.restorePointsDir) : 0
+  const totalBytes = entries.reduce((n, e) => n + e.bytes, 0) + screenshotsBytes + restorePointsBytes
+  return { entries, screenshotsBytes, restorePointsBytes, totalBytes, at: Date.now() }
 }
 
 /**

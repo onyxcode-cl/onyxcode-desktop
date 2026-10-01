@@ -5,7 +5,7 @@
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, Part, PermissionRequest, ReasoningPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AlertCircle, Brain, ChevronRight, FileText, Loader2, Pencil, RotateCw, Sparkles } from 'lucide-react'
+import { AlertCircle, Brain, ChevronRight, FileText, Loader2, Pencil, RotateCw, Sparkles, Undo2 } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
@@ -18,7 +18,7 @@ import { errorMessage } from '../../../lib/opencode'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MessageEntry } from '../../../stores/sessions'
 import { ActivityRow } from './ProgressPanel'
-import { editAndRetry } from './actions'
+import { editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { toolImages } from './computer-tools'
 import { ScreenshotThumbs } from './ComputerAccess'
@@ -248,9 +248,9 @@ const UserMessage = memo(
         title: 'Editar y reintentar',
         message: (
           <>
-            Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y también se{' '}
-            <strong>revertirán los cambios en archivos</strong> que el agente hizo desde aquí. Después se enviará tu mensaje editado. Esto
-            no se puede deshacer.
+            Se deshará esta conversación desde este mensaje: se eliminarán los mensajes posteriores y se{' '}
+            <strong>restaurarán los archivos de la carpeta</strong> tal como estaban antes de ese mensaje (si se guardó un punto de
+            restauración). Lo creado después irá a la Papelera. Después se enviará tu mensaje editado.
           </>
         ),
         confirmLabel: 'Deshacer y reintentar',
@@ -262,6 +262,27 @@ const UserMessage = memo(
       try {
         await editAndRetry(taskId, block.id, text)
         setEditing(false)
+      } catch (err) {
+        setError(errorMessage(err))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const undoHere = async (): Promise<void> => {
+      if (!taskId || busy) return
+      const ok = await confirmDialog({
+        title: '¿Deshacer desde este mensaje?',
+        message:
+          'Se ocultarán los mensajes posteriores y los archivos de la carpeta volverán a como estaban antes de este mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera. Lo que el agente hizo fuera de la carpeta no se deshace. Podrás rehacerlo.',
+        confirmLabel: 'Deshacer desde aquí',
+        danger: true
+      })
+      if (!ok) return
+      setBusy(true)
+      setError(null)
+      try {
+        await undoFromMessage(taskId, block.id)
       } catch (err) {
         setError(errorMessage(err))
       } finally {
@@ -322,18 +343,30 @@ const UserMessage = memo(
         )}
         {block.text && <div className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] whitespace-pre-wrap">{block.text}</div>}
         {taskId && block.text && (
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(block.text)
-              setEditing(true)
-            }}
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:text-fg focus-visible:opacity-100"
-            title="Deshace la conversación desde este mensaje (y los cambios de archivos) y lo vuelve a enviar editado"
-          >
-            <Pencil size={11} /> Editar y reintentar
-          </button>
+          <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(block.text)
+                setEditing(true)
+              }}
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle hover:text-fg"
+              title="Deshace la conversación desde este mensaje (y los cambios de archivos) y lo vuelve a enviar editado"
+            >
+              <Pencil size={11} /> Editar y reintentar
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void undoHere()}
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle hover:text-fg disabled:opacity-50"
+              title="Restaura los archivos de la carpeta a como estaban antes de este mensaje y oculta lo que vino después"
+            >
+              <Undo2 size={11} /> Deshacer desde aquí
+            </button>
+          </div>
         )}
+        {error && <p className="max-w-[85%] text-right text-xs text-danger">{error}</p>}
       </div>
     )
   },

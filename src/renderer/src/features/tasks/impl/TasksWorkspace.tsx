@@ -67,6 +67,7 @@ import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
 import { Home } from './Home'
 import { NetworkBlockedCards } from './NetworkBlocked'
+import { RestoreNotices } from './RestoreNotices'
 import { ApprovalBar } from './PermissionPrompt'
 import { QuestionCard } from './QuestionPrompt'
 import { ProgressPanel } from './ProgressPanel'
@@ -671,6 +672,7 @@ export function TasksWorkspace(): React.JSX.Element {
               permissions={pendingForTask}
               footer={
                 <>
+                  {activeId && <RestoreNotices taskId={activeId} />}
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
                   {!fullAccess && status === 'done' && activeId && (

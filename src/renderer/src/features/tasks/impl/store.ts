@@ -35,6 +35,7 @@ import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
+import type { RestoreResult } from './restore-logic'
 
 export type TasksServerPhase = 'idle' | 'starting' | 'ready' | 'error'
 
@@ -137,6 +138,15 @@ interface TasksState {
   autoPending: Record<string, true>
   /** Último aviso "Aprobado por el modo auto: …" (evento `tasks:auto:approved`), para un toast. */
   autoApprovedNotice: AutoApprovalRecord | null
+
+  /** Se está guardando el punto de restauración previo al envío (el compositor lo indica). */
+  restoreSaving: boolean
+  /** Motivo por el que el último envío de cada tarea no guardó un punto de restauración. */
+  restoreWarning: Record<string, string>
+  /** Sube al crear o aplicar un punto: el panel «Cambios en archivos» vuelve a consultar. */
+  restoreVersion: number
+  /** Último «Cambios deshechos…» (con «Rehacer»). */
+  restoreResult: RestoreResult | null
 
   set: (patch: Partial<TasksState>) => void
 }
@@ -242,6 +252,10 @@ export const useTasks = create<TasksState>((set) => ({
   autoMode: null,
   autoPending: {},
   autoApprovedNotice: null,
+  restoreSaving: false,
+  restoreWarning: {},
+  restoreVersion: 0,
+  restoreResult: null,
   set: (patch) => set(patch)
 }))
 

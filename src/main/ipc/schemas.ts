@@ -328,6 +328,13 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:storage:report': none,
   'tasks:storage:clean': obj({ key: storageKey, scope: literal('cache', 'all') }),
   'tasks:storage:cleanScreenshots': none,
+  'tasks:storage:cleanRestorePoints': none,
+  // Puntos de restauración
+  'tasks:restore:create': obj({ folder: absPath, sessionId, label: shortText }),
+  'tasks:restore:list': obj({ folder: absPath, sessionId }),
+  'tasks:restore:changes': obj({ folder: absPath, pointId: hexId }),
+  'tasks:restore:apply': obj({ folder: absPath, pointId: hexId, paths: optional(arr(str({ max: 4096, min: 1 }), 5000)) }),
+  'tasks:restore:forget': obj({ sessionId }),
   // Lote B: proyecto, MCP y permisos recordados
   'tasks:agentsMd:get': folderReq,
   'tasks:agentsMd:save': obj({ folder: absPath, content: str({ max: 200_000 }) }),

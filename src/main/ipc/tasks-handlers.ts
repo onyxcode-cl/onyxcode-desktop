@@ -31,6 +31,7 @@ import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
 import { registerTasksProjectHandlers } from './tasks-project-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
 import { registerTasksAutoHandlers } from './tasks-auto-handlers'
+import { createRestorePoints, registerTasksRestoreHandlers } from './tasks-restore-handlers'
 
 /**
  * ¿Debe salir la notificación nativa de una petición de permisos (`request_access`)?
@@ -142,7 +143,18 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
 
   // Contexto compartido con los submódulos de handlers (carpetas, ciclo de vida, proyecto, archivos).
   const handle = makeTasksHandle(ipcMain)
-  const ctx: TasksIpcContext = { handle, send, getWindow, tasks, computer, scheduler, projects, keepAwake }
+  const ctx: TasksIpcContext = {
+    handle,
+    send,
+    getWindow,
+    tasks,
+    computer,
+    scheduler,
+    projects,
+    keepAwake,
+    restore: createRestorePoints(),
+    isFolderBusy: () => false
+  }
 
   // ── Item 5: OnyxCode nunca se bloquea a sí misma y se aparta de en medio mientras el agente actúa ──
   // Mientras una tarea de Control total está trabajando, la ventana principal se minimiza (la
@@ -440,7 +452,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksLifecycleHandlers(ctx),
     registerTasksProjectHandlers(ctx),
     registerTasksFilesHandlers(ctx),
-    registerTasksAutoHandlers(ctx)
+    registerTasksAutoHandlers(ctx),
+    registerTasksRestoreHandlers(ctx)
   ]
 
   scheduler.start()

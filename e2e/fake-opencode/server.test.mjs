@@ -410,3 +410,65 @@ test('credenciales: OPENCODE_AUTH_CONTENT sustituye al auth.json, PUT /auth escr
     rmSync(xdg, { recursive: true, force: true })
   }
 })
+
+test('paso fs: escribe y borra archivos reales dentro del directorio de la sesión y rechaza salirse', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, realpathSync, symlinkSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'fake-fs-')))
+  const dir = join(root, 'work')
+  mkdirSync(dir)
+  writeFileSync(join(dir, 'a.txt'), 'uno')
+  writeFileSync(join(dir, 'c.txt'), 'cc')
+  writeFileSync(join(root, 'fuera.txt'), 'fuera')
+  symlinkSync(root, join(dir, 'enlace'))
+  try {
+    await ctl('POST', 'reset', {})
+    const s = await openSse()
+    const sid = (await call('POST', `/session?${q(dir)}`, { title: 'fs' })).data.id
+    await ctl('POST', 'script', {
+      sessionID: sid,
+      steps: [
+        { type: 'fs', op: 'write', path: 'a.txt', content: 'DOS' },
+        { type: 'fs', op: 'write', path: 'sub/b.txt', content: 'nuevo' },
+        { type: 'fs', op: 'delete', path: 'c.txt' }
+      ]
+    })
+    await call('POST', `/session/${sid}/prompt_async?${q(dir)}`, { parts: [{ type: 'text', text: 'x' }] })
+    await s.until((e) => e.some((x) => x.payload.type === 'session.idle'))
+    assert.equal(readFileSync(join(dir, 'a.txt'), 'utf8'), 'DOS')
+    assert.equal(readFileSync(join(dir, 'sub', 'b.txt'), 'utf8'), 'nuevo')
+    assert.equal(existsSync(join(dir, 'c.txt')), false)
+
+    // Fuera del directorio (ruta con .. o a través de un enlace simbólico): el paso falla y no escribe.
+    for (const path of ['../fuera.txt', join(root, 'fuera.txt'), 'enlace/fuera.txt']) {
+      await ctl('POST', 'script', { sessionID: sid, steps: [{ type: 'fs', op: 'write', path, content: 'HACK' }] })
+      const before = s.events.length
+      await call('POST', `/session/${sid}/prompt_async?${q(dir)}`, { parts: [{ type: 'text', text: 'y' }] })
+      await s.until((e) => e.slice(before).some((x) => x.payload.type === 'session.idle'))
+      const msgs = (await call('GET', `/session/${sid}/message?${q(dir)}`)).data
+      assert.match(msgs[msgs.length - 1].info.error?.data?.message ?? '', /fuera del directorio/, path)
+      assert.equal(readFileSync(join(root, 'fuera.txt'), 'utf8'), 'fuera', path)
+    }
+    s.close()
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('las respuestas de permiso con indicaciones quedan en /__e2e/requests', async () => {
+  await ctl('POST', 'reset', {})
+  const s = await openSse()
+  const sid = (await call('POST', `/session?${q()}`, { title: 'perm' })).data.id
+  await ctl('POST', 'script', {
+    sessionID: sid,
+    steps: [{ type: 'permission', permission: 'edit', patterns: ['a.txt'], metadata: { filepath: '/work/proj/a.txt', diff: '@@ -1 +1 @@\n-a\n+b\n' } }]
+  })
+  await call('POST', `/session/${sid}/prompt_async?${q()}`, { parts: [{ type: 'text', text: 'x' }] })
+  await s.until((e) => e.some((x) => x.payload.type === 'permission.asked'))
+  const perm = (await call('GET', `/permission?${q()}`)).data[0]
+  await call('POST', `/permission/${perm.id}/reply?${q()}`, { reply: 'reject', message: 'Usa otro nombre' })
+  await s.until((e) => e.some((x) => x.payload.type === 'session.idle'))
+  const reqs = (await ctl('GET', 'requests?path=/permission/')).data.filter((r) => r.method === 'POST')
+  assert.deepEqual(reqs.map((r) => r.body), [{ reply: 'reject', message: 'Usa otro nombre' }])
+  s.close()
+})
