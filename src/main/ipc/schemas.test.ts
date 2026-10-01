@@ -79,3 +79,52 @@ describe('canales de cuenta', () => {
     expect(() => v({ code: '123456' })).toThrow()
   })
 })
+
+describe('canales de Probar clave y Diagnóstico', () => {
+  const CHANNELS = ['app:testProviderKey', 'diag:logs', 'diag:copy', 'diag:export']
+
+  it('existen en el contrato, tienen esquema y son solo de la ventana principal', () => {
+    for (const c of CHANNELS) {
+      expect(IPC_INVOKE_CHANNELS as readonly string[], c).toContain(c)
+      expect(IPC_SCHEMAS[c], c).toBeTypeOf('function')
+      for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has(c), `${c} en ${role}`).toBe(false)
+    }
+  })
+
+  it('app:testProviderKey: solo el id del proveedor (nunca una clave)', () => {
+    const v = IPC_SCHEMAS['app:testProviderKey']
+    expect(v({ providerID: 'openai' })).toEqual({ providerID: 'openai' })
+    expect(v({ providerID: 'my.provider_2-x' })).toEqual({ providerID: 'my.provider_2-x' })
+    for (const bad of [
+      {},
+      { providerID: '' },
+      { providerID: 'a b' },
+      { providerID: 'a/b' },
+      { providerID: 'x'.repeat(201) },
+      { providerID: 'openai', key: 'sk-1' },
+      { providerID: 1 }
+    ]) {
+      expect(() => v(bad), JSON.stringify(bad).slice(0, 40)).toThrow()
+    }
+  })
+
+  it('diag:logs / diag:copy: fuente de la lista y maxLines acotado', () => {
+    const logs = IPC_SCHEMAS['diag:logs']
+    expect(logs({ source: 'engine' })).toEqual({ source: 'engine' })
+    expect(logs({ source: 'report', maxLines: 200 })).toEqual({ source: 'report', maxLines: 200 })
+    for (const bad of [
+      {},
+      { source: 'sandbox' },
+      { source: 'engine', maxLines: 0 },
+      { source: 'engine', maxLines: 5001 },
+      { source: 'engine', maxLines: 1.5 },
+      { source: 'engine', path: '/etc/passwd' }
+    ]) {
+      expect(() => logs(bad), JSON.stringify(bad)).toThrow()
+    }
+    expect(IPC_SCHEMAS['diag:copy']({ source: 'engine-file' })).toEqual({ source: 'engine-file' })
+    expect(() => IPC_SCHEMAS['diag:copy']({ source: 'otra' })).toThrow()
+    expect(IPC_SCHEMAS['diag:export'](undefined)).toBeUndefined()
+    expect(() => IPC_SCHEMAS['diag:export']({ x: 1 })).toThrow()
+  })
+})

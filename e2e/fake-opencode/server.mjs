@@ -29,6 +29,8 @@
  *                   allPlaceholder = todas las claves de OPENCODE_AUTH_CONTENT son centinelas (sandboxed-placeholder-*)
  *   POST set        { mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
  *                     commands:[...], connectedProviders:[ids] }
+ *   POST log        { stream?:'stdout'|'stderr', text }: escribe `text` (tal cual, más salto de línea) en la salida del proceso,
+ *                   que la app recoge como registro del motor (prueba de Diagnóstico)
  *   POST reset      vuelve al estado inicial (aborta ejecuciones; no corta los SSE)
  *
  * Pasos de un guion (todos aceptan delayMs): text|reasoning {text|deltas, chunkDelayMs}, tool {tool,input,output,title,
@@ -1144,6 +1146,12 @@ export function createFakeServer(options = {}) {
         return emit(e.type, e.properties ?? {}, e.directory ?? 'global', e.id)
       })
       json(c.res, { emitted: out })
+    },
+    'POST log': (c) => {
+      const b = c.body ?? {}
+      if (typeof b.text !== 'string') throw new Error('log: falta text')
+      ;(b.stream === 'stdout' ? process.stdout : process.stderr).write(`${b.text}\n`)
+      json(c.res, { written: b.text.length })
     },
     'POST script': (c) => {
       const b = c.body ?? {}

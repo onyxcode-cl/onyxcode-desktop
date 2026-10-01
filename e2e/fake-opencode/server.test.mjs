@@ -472,3 +472,21 @@ test('las respuestas de permiso con indicaciones quedan en /__e2e/requests', asy
   assert.deepEqual(reqs.map((r) => r.body), [{ reply: 'reject', message: 'Usa otro nombre' }])
   s.close()
 })
+
+test('POST /__e2e/log escribe el texto en la salida del proceso', async () => {
+  const writes = []
+  const orig = process.stderr.write.bind(process.stderr)
+  process.stderr.write = (chunk, ...rest) => {
+    writes.push(String(chunk))
+    return typeof rest.at(-1) === 'function' ? rest.at(-1)() : true
+  }
+  try {
+    const ok = await ctl('POST', 'log', { stream: 'stderr', text: 'linea de prueba' })
+    assert.equal(ok.status, 200)
+  } finally {
+    process.stderr.write = orig
+  }
+  assert.ok(writes.some((w) => w === 'linea de prueba\n'))
+  const bad = await ctl('POST', 'log', {})
+  assert.notEqual(bad.status, 200)
+})

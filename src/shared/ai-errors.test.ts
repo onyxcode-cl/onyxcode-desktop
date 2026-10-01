@@ -83,6 +83,18 @@ describe('friendlyError', () => {
     expect(redactSecrets('mi key-12345678 fin')).toBe('mi … fin')
   })
 
+  it('redactSecrets también oculta los patrones de Diagnóstico', () => {
+    for (const [text, secret] of [
+      ['Bearer abcDEF123456xyz', 'abcDEF123456xyz'],
+      ['api_key=Zm9vYmFyMTIz', 'Zm9vYmFyMTIz'],
+      ['https://x.example/?key=SECRETVALUE99', 'SECRETVALUE99'],
+      ['clave AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q', 'AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q'],
+      ['ghp_abcdefghijklmnopqrstuvwxyz0123456789', 'ghp_abcdefghijklmnopqrstuvwxyz0123456789']
+    ])
+      expect(redactSecrets(text)).not.toContain(secret)
+    expect(redactSecrets('Modelo fake-model no encontrado')).toBe('Modelo fake-model no encontrado')
+  })
+
   it('recorta el detalle a 2000 caracteres', () => {
     const f = friendlyError({
       name: 'APIError',
