@@ -404,7 +404,15 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'mcp:save': obj({ name: mcpName, entry: mcpEntry, previousName: optional(mcpName) }),
   'mcp:remove': obj({ name: mcpName }),
   'mcp:setEnabled': obj({ name: mcpName, enabled: bool }),
-  'mcp:revealConfig': none
+  'mcp:revealConfig': none,
+  'mcp:catalog': none,
+  'mcp:installCatalog': obj({
+    id: str({ max: 64, min: 1, pattern: /^[a-z0-9-]+$/ }),
+    name: mcpName,
+    inputs: record(str({ max: 4096 }), 10),
+    enable: bool,
+    askEachUse: bool
+  })
 }
 
 /**

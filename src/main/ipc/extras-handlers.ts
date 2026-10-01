@@ -5,10 +5,12 @@
  */
 import { app, shell, type IpcMain } from 'electron'
 import { release } from 'node:os'
+import { join } from 'node:path'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { openArtifact } from '../extras/artifact-window'
+import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
 import { ensureAppOpencodeConfig, readAppMcpConfig, removeMcpServer, saveMcpServer, setMcpServerEnabled } from '../extras/mcp-config'
 import { extrasPrefs } from '../extras/prefs'
 import {
@@ -88,13 +90,22 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     return cfg
   }
 
+  const provenance = new CatalogProvenanceStore(join(app.getPath('userData'), 'mcp-catalog-installs.json'))
+
   handle(ipcMain, 'mcp:getConfig', () => readAppMcpConfig())
   handle(ipcMain, 'mcp:save', async ({ name, entry, previousName }) => {
     saveMcpServer(name, entry, previousName)
+    if (previousName && previousName !== name) provenance.rename(previousName, name)
     return afterMcpChange()
   })
   handle(ipcMain, 'mcp:remove', async ({ name }) => {
-    removeMcpServer(name)
+    removeMcpServer(name) // también limpia su «Preguntar antes de cada uso»
+    provenance.forget(name)
+    return afterMcpChange()
+  })
+  handle(ipcMain, 'mcp:catalog', () => catalogState(provenance.read(), readAppMcpConfig()))
+  handle(ipcMain, 'mcp:installCatalog', async (req) => {
+    installFromCatalog(provenance, req)
     return afterMcpChange()
   })
   handle(ipcMain, 'mcp:setEnabled', async ({ name, enabled }) => {

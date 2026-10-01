@@ -128,3 +128,35 @@ describe('canales de Probar clave y Diagnóstico', () => {
     expect(() => IPC_SCHEMAS['diag:export']({ x: 1 })).toThrow()
   })
 })
+
+describe('catálogo MCP (mcp:catalog, mcp:installCatalog)', () => {
+  const ok = { id: 'github', name: 'github', inputs: { token: 'ghp_x' }, enable: true, askEachUse: true }
+
+  it('existen, tienen esquema y son solo de la ventana principal', () => {
+    for (const c of ['mcp:catalog', 'mcp:installCatalog']) {
+      expect(IPC_SCHEMAS[c], c).toBeTypeOf('function')
+      for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has(c), `${c} en ${role}`).toBe(false)
+    }
+  })
+
+  it('acepta una petición válida y rechaza id, nombre, entradas o booleanos malformados', () => {
+    const v = IPC_SCHEMAS['mcp:installCatalog']
+    expect(v(ok)).toEqual(ok)
+    expect(v({ ...ok, inputs: {} })).toBeTruthy()
+    for (const id of ['', 'GitHub', 'a/b', '../x', 'x'.repeat(65)]) expect(() => v({ ...ok, id }), id).toThrow()
+    for (const name of ['', 'con espacio', 'a/b', 'x'.repeat(65)]) expect(() => v({ ...ok, name }), name).toThrow()
+    expect(() => v({ ...ok, inputs: { token: 'x'.repeat(4097) } })).toThrow()
+    expect(() => v({ ...ok, inputs: { token: 5 } })).toThrow()
+    expect(() => v({ ...ok, inputs: Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`k${i}`, 'v'])) })).toThrow()
+    expect(() => v({ ...ok, inputs: JSON.parse('{"__proto__":"x"}') })).toThrow()
+    expect(() => v({ ...ok, enable: 'si' })).toThrow()
+    expect(() => v({ ...ok, askEachUse: undefined })).toThrow()
+    expect(() => v({ id: 'github', name: 'github' })).toThrow()
+  })
+
+  it('mcp:catalog no admite parámetros', () => {
+    const v = IPC_SCHEMAS['mcp:catalog']
+    expect(() => v(undefined)).not.toThrow()
+    expect(() => v({ x: 1 })).toThrow()
+  })
+})

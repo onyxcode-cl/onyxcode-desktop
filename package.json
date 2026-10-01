@@ -29,6 +29,7 @@
     "verify:release": "node scripts/verify-release.mjs",
     "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
     "check:opencode": "node scripts/check-opencode.mjs",
+    "check:mcp-catalog": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-mcp-catalog.mjs",
     "verify": "npm run typecheck && npm test && npm run lint && npm run format:check && npm run build && npm run test:transform && npm run test:smoke && npm run test:e2e"
   },
   "dependencies": {

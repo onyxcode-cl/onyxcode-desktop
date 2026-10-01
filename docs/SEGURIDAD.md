@@ -621,6 +621,32 @@ handlers no lean registros por su cuenta. No incluye los registros del sandbox d
 **No verificado aquí:** claves reales de los proveedores (solo claves falsas con curl y un servidor local), el comportamiento exacto de `net.fetch` con `redirect: 'manual'` frente a un 3xx real de un proveedor,
 y los secretos sin forma conocida que no estén guardados en `auth.json` ni en los MCP.
 
+## 3 decies. Catálogo MCP curado
+
+Ajustes › MCP ofrece fichas de conectores verificados (`src/shared/mcp-catalog.ts`, incluidas en la app: **no se descarga ni se consulta ninguna lista externa**). v1 solo admite servidores **remotos**
+con URL `https://`: añadir uno no ejecuta nada en el Mac (no hay `command` ni `npx`). Nada se escribe ni se conecta sin confirmar en el diálogo (host y URL completa, datos que salen, JSON exacto con el secreto enmascarado).
+
+**Canales.** `mcp:catalog` (lectura) y `mcp:installCatalog`: solo ventana principal (sin entrada en `CHANNEL_ROLES`), esquema estricto (`id` `^[a-z0-9-]{1,64}$`, nombre MCP válido, máx. 10 valores de 4096 caracteres,
+booleanos). El renderer **no manda URL ni cabeceras**: `buildCatalogEntry` (`main/extras/mcp-catalog-install.ts`) toma la ficha de la copia de main, exige que cada valor cumpla el patrón anclado de la ficha,
+rechaza CR/LF/NUL y longitudes excesivas, y rechaza datos desconocidos. Los mensajes de error no repiten el valor. Un nombre repetido es error (nunca se pisa un servidor existente).
+
+**Qué queda en disco.** La entrada en `userData/opencode/opencode.json` (el archivo ahora se escribe con permisos **0600**) y, si se pidió, `permission["<nombre>_*"]="ask"` («Preguntar antes de cada uso»,
+formato verificado con el binario real de OpenCode: la configuración lo acepta y aparece como regla `ask` del agente). La procedencia (`catalogId`, versión, fecha, URL; **nunca el secreto**) va aparte en
+`userData/mcp-catalog-installs.json` (0600) para no añadir claves desconocidas a `opencode.json`; sirve para marcar «Modificado» si la URL, el tipo o las cabeceras dejan de ser las del catálogo. Eliminar el servidor
+limpia entrada, regla `ask` (solo si la puso la app) y procedencia.
+
+| Riesgo | Defensa / límite |
+|---|---|
+| Un token queda en claro en disco | Igual que al añadir un servidor a mano: texto plano en `opencode.json`, ahora 0600 (solo el usuario). El diálogo lo dice. GitHub: usar un token de grano fino con permisos mínimos. |
+| Inyección de cabeceras | Patrón anclado por entrada + rechazo de CR/LF/NUL; la plantilla se aplica con función de reemplazo (un `$&` no se expande). |
+| Ficha que apunta a otro host | Test de catálogo: https, sin credenciales ni query, host del dominio del proveedor; `npm run check:mcp-catalog` (manual) comprueba que sigue respondiendo como MCP y que la documentación existe. |
+| Un conector remoto lee o escribe en el servicio del usuario | El diálogo avisa cuando la ficha puede escribir; «Preguntar antes de cada uso» viene activado y pide aprobación por herramienta. El servicio remoto recibe lo que la IA le envíe: el texto «Qué datos salen» lo explica. |
+| Tareas | Los conectores del catálogo **no** se ofrecen en Tareas: no se marcan (`tasks-mcp.json`), así que ni sus hosts entran en la Red del sandbox ni se cargan en el sandbox. No se tocó `mcp-tasks.ts`. |
+
+**No verificado aquí:** el inicio de sesión OAuth completo de Linear, Notion, Sentry y Atlassian con cuentas reales (solo se comprobó con el binario que cada servidor registra el cliente y devuelve la URL de
+autorización), el uso real de las herramientas con un modelo, y que un token real de GitHub conecte (la URL responde 401 sin credencial y con un token inválido; no se probó con uno válido). Cambios futuros de URL o de documentación de los
+proveedores: los detecta `npm run check:mcp-catalog`, no la app.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —
