@@ -3,6 +3,7 @@
  * Usa `window.api.code.git` (preload); si no está disponible, cae al estado de archivos de OpenCode.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { t as tg, type MsgKey } from '@shared/i18n'
 import type { GitBranch as GitBranchInfo, GitChangeKind, GitWorktreeDetailed } from '@shared/ipc-code'
 import {
   Check,
@@ -19,6 +20,7 @@ import {
   X
 } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
+import { useT } from '../../../../lib/i18n'
 import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
 import { DiffStats } from '../ToolCard'
@@ -45,16 +47,16 @@ interface StatusInfo {
   files: ChangedFile[]
 }
 
-const KIND_META: Record<GitChangeKind, { letter: string; label: string; cls: string }> = {
-  modified: { letter: 'M', label: 'Modificado', cls: 'bg-warning/15 text-warning' },
-  added: { letter: 'A', label: 'Añadido', cls: 'bg-success/15 text-success' },
-  untracked: { letter: 'U', label: 'Sin seguimiento', cls: 'bg-success/15 text-success' },
-  deleted: { letter: 'D', label: 'Eliminado', cls: 'bg-danger/15 text-danger' },
-  renamed: { letter: 'R', label: 'Renombrado', cls: 'bg-accent-soft text-accent' },
-  copied: { letter: 'C', label: 'Copiado', cls: 'bg-accent-soft text-accent' },
-  typechange: { letter: 'T', label: 'Cambio de tipo', cls: 'bg-hover text-muted' },
-  conflicted: { letter: '!', label: 'En conflicto', cls: 'bg-danger text-white' },
-  ignored: { letter: 'I', label: 'Ignorado', cls: 'bg-hover text-subtle' }
+const KIND_META: Record<GitChangeKind, { letter: string; label: MsgKey; cls: string }> = {
+  modified: { letter: 'M', label: 'code.kind.modified', cls: 'bg-warning/15 text-warning' },
+  added: { letter: 'A', label: 'code.kind.added', cls: 'bg-success/15 text-success' },
+  untracked: { letter: 'U', label: 'code.kind.untracked', cls: 'bg-success/15 text-success' },
+  deleted: { letter: 'D', label: 'code.kind.deleted', cls: 'bg-danger/15 text-danger' },
+  renamed: { letter: 'R', label: 'code.kind.renamed', cls: 'bg-accent-soft text-accent' },
+  copied: { letter: 'C', label: 'code.kind.copied', cls: 'bg-accent-soft text-accent' },
+  typechange: { letter: 'T', label: 'code.kind.typechange', cls: 'bg-hover text-muted' },
+  conflicted: { letter: '!', label: 'code.kind.conflicted', cls: 'bg-danger text-white' },
+  ignored: { letter: 'I', label: 'code.kind.ignored', cls: 'bg-hover text-subtle' }
 }
 
 async function loadStatus(cwd: string): Promise<StatusInfo> {
@@ -76,7 +78,7 @@ async function loadStatus(cwd: string): Promise<StatusInfo> {
       }))
     }
   }
-  const ipcErr = new Error('API nativa de Code no disponible')
+  const ipcErr = new Error(tg('code.client.noNative'))
   // Alternativa: estado vía OpenCode (`GET /file/status`).
   const client = getClient()
   if (!client) throw ipcErr
@@ -136,13 +138,14 @@ function FileRow({
   selected: boolean
   onSelect: () => void
 }): React.JSX.Element {
+  const t = useT()
   const meta = KIND_META[file.kind] ?? KIND_META.modified
   const { dir, name } = splitPath(file.path)
   return (
     <button
       type="button"
       onClick={onSelect}
-      title={`${meta.label}${staged ? ' · preparado' : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
+      title={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
       className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[13px] ${selected ? 'bg-active' : 'hover:bg-hover'}`}
     >
       <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold ${meta.cls}`}>
@@ -189,6 +192,7 @@ function CommitBox({
   total: number
   onDone: () => void
 }): React.JSX.Element | null {
+  const t = useT()
   const native = nativeCode()
   const [message, setMessage] = useState('')
   const [stageAll, setStageAll] = useState(stagedCount === 0)
@@ -238,24 +242,25 @@ function CommitBox({
           }
         }}
         rows={2}
-        placeholder="Mensaje del commit"
+        placeholder={t('code.changes.commitMessage')}
         className="block w-full resize-none rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong"
       />
       {error && <div className="mt-1.5 text-xs text-danger">{error}</div>}
       <div className="mt-2 flex items-center gap-2">
-        <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted" title="git add -A antes de hacer commit">
+        <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted" title={t('code.changes.stageAllTitle')}>
           <input type="checkbox" checked={stageAll} onChange={(e) => setStageAll(e.target.checked)} className="accent-[var(--accent)]" />
-          <span className="truncate">{stagedCount > 0 ? 'Incluir también los no preparados' : 'Incluir todos los cambios'}</span>
+          <span className="truncate">{stagedCount > 0 ? t('code.changes.includeUnstaged') : t('code.changes.includeAll')}</span>
         </label>
         <button
           type="button"
           onClick={() => void commit()}
           disabled={!canCommit}
-          title={`Commit (${MOD}↵)`}
+          title={t('code.changes.commitTitle', { mod: MOD })}
           className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40"
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <GitCommitHorizontal size={14} />}
-          Commit{willCommit > 0 ? ` (${willCommit})` : ''}
+          {t('code.changes.commit')}
+          {willCommit > 0 ? ` (${willCommit})` : ''}
         </button>
       </div>
       <div className="mt-1 text-right text-[10px] text-subtle">
@@ -278,6 +283,7 @@ function WorktreeDialog({
   current: string | null
   onClose: () => void
 }): React.JSX.Element | null {
+  const t = useT()
   const native = nativeCode()
   const dialogRef = useRef<HTMLDivElement>(null)
   const [branches, setBranches] = useState<GitBranchInfo[]>([])
@@ -370,24 +376,22 @@ function WorktreeDialog({
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <GitBranchPlus size={16} className="text-accent" />
           <h2 id="wt-title" className="text-sm font-semibold">
-            Nueva rama en un worktree
+            {t('code.wt.title')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t('code.wt.close')}
             className="ml-auto rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
           >
             <X size={15} />
           </button>
         </div>
         <div className="space-y-3 px-4 py-3">
-          <p className="text-xs leading-relaxed text-muted">
-            Un worktree es una copia de trabajo aparte con su propia rama: el agente puede trabajar ahí sin tocar tu carpeta actual.
-          </p>
+          <p className="text-xs leading-relaxed text-muted">{t('code.wt.desc')}</p>
           <div>
             <label htmlFor="wt-branch" className="mb-1 block text-xs font-medium text-muted">
-              Nombre de la rama
+              {t('code.wt.branchName')}
             </label>
             <input
               id="wt-branch"
@@ -398,22 +402,22 @@ function WorktreeDialog({
                 if (e.key !== 'Enter' || busy || isImeComposing(e)) return
                 void create()
               }}
-              placeholder="feature/mi-cambio"
+              placeholder={t('code.wt.branchPlaceholder')}
               className={`${inputCls} font-mono`}
             />
-            {name && !valid && <div className="mt-1 text-xs text-danger">Nombre de rama no válido.</div>}
-            {exists && <div className="mt-1 text-xs text-muted">La rama ya existe: se hará checkout en el worktree.</div>}
+            {name && !valid && <div className="mt-1 text-xs text-danger">{t('code.wt.invalid')}</div>}
+            {exists && <div className="mt-1 text-xs text-muted">{t('code.wt.exists')}</div>}
           </div>
           {!exists && (
             <div>
               <label htmlFor="wt-base" className="mb-1 block text-xs font-medium text-muted">
-                Desde
+                {t('code.wt.from')}
               </label>
               <select id="wt-base" value={base} onChange={(e) => setBase(e.target.value)} className={inputCls}>
                 {branches.map((b) => (
                   <option key={b.name} value={b.name}>
                     {b.name}
-                    {b.current ? ' (actual)' : ''}
+                    {b.current ? t('code.wt.currentSuffix') : ''}
                   </option>
                 ))}
               </select>
@@ -424,7 +428,7 @@ function WorktreeDialog({
             <div className="flex items-center gap-2 rounded-lg bg-success/10 px-2.5 py-2 text-xs">
               <Check size={14} className="shrink-0 text-success" />
               <span className="min-w-0 flex-1">
-                Creado <b className="font-mono">{created.branch}</b>
+                {t('code.wt.created')} <b className="font-mono">{created.branch}</b>
                 <span className="block truncate font-mono text-subtle" title={created.path}>
                   {created.path}
                 </span>
@@ -437,20 +441,20 @@ function WorktreeDialog({
                 }}
                 className="shrink-0 rounded-md bg-accent px-2 py-1 font-medium text-accent-fg hover:opacity-90"
               >
-                Abrir
+                {t('code.wt.open')}
               </button>
             </div>
           )}
           {others.length > 1 && (
             <div>
-              <div className="mb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">Worktrees</div>
+              <div className="mb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">{t('code.wt.list')}</div>
               <div className="max-h-40 overflow-y-auto rounded-lg border border-border">
                 {others.map((w) => (
                   <div key={w.path} className="flex items-center gap-2 border-b border-border px-2.5 py-1.5 text-xs last:border-b-0">
                     <FolderTree size={13} className="shrink-0 text-subtle" />
                     <span className="min-w-0 flex-1">
-                      <span className="font-mono text-fg">{w.branch ?? '(separado)'}</span>
-                      {w.main && <span className="ml-1.5 text-subtle">principal</span>}
+                      <span className="font-mono text-fg">{w.branch ?? t('code.wt.detached')}</span>
+                      {w.main && <span className="ml-1.5 text-subtle">{t('code.wt.main')}</span>}
                       <span className="block truncate font-mono text-subtle" title={w.path}>
                         {w.path}
                       </span>
@@ -464,14 +468,14 @@ function WorktreeDialog({
                         }}
                         className="shrink-0 rounded-md px-1.5 py-0.5 text-muted hover:bg-hover hover:text-fg"
                       >
-                        Abrir
+                        {t('code.wt.open')}
                       </button>
                     )}
                     {!w.main && w.path !== directory && (
                       <ConfirmButton
-                        title="¿Eliminar este worktree?"
-                        body="Se borrará la carpeta del worktree (la rama se conserva). Falla si tiene cambios sin commitear."
-                        confirmLabel="Eliminar"
+                        title={t('code.wt.removeTitle')}
+                        body={t('code.wt.removeBody')}
+                        confirmLabel={t('code.wt.remove')}
                         danger
                         onConfirm={async () => {
                           try {
@@ -498,7 +502,7 @@ function WorktreeDialog({
             onClick={onClose}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
           >
-            Cerrar
+            {t('code.wt.close')}
           </button>
           <button
             type="button"
@@ -506,7 +510,7 @@ function WorktreeDialog({
             disabled={!valid || busy}
             className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 disabled:opacity-40"
           >
-            {busy && <Loader2 size={14} className="animate-spin" />} Crear worktree
+            {busy && <Loader2 size={14} className="animate-spin" />} {t('code.wt.create')}
           </button>
         </div>
       </div>
@@ -519,6 +523,7 @@ function WorktreeDialog({
 // ---------------------------------------------------------------------------
 
 export function ChangesPanel({ directory }: { directory: string }): React.JSX.Element {
+  const t = useT()
   const fsVersion = useVisibleFsVersion()
   const touchFs = useCode((s) => s.touchFs)
   const native = nativeCode()
@@ -588,9 +593,11 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
         <GitBranch size={22} className="text-subtle" />
-        <div className="text-sm font-medium">Esta carpeta no es un repositorio git</div>
+        <div className="text-sm font-medium">{t('code.changes.notRepo')}</div>
         <p className="text-xs text-muted">
-          Ejecuta <code className="rounded bg-code px-1">git init</code> en la terminal para seguir los cambios del agente.
+          {t('code.changes.initBefore')}
+          <code className="rounded bg-code px-1">{'git init'}</code>
+          {t('code.changes.initAfter')}
         </p>
       </div>
     )
@@ -601,22 +608,20 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
       <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs text-muted">
         <span
           className="flex min-w-0 items-center gap-1.5 rounded-full border border-border bg-bg px-2 py-0.5 font-mono"
-          title={status?.upstream ? `Sigue a ${status.upstream}` : 'Sin upstream'}
+          title={status?.upstream ? t('code.changes.tracks', { upstream: status.upstream }) : t('code.changes.noUpstream')}
         >
           <GitBranch size={12} className="shrink-0" />
           <span className="truncate">{status?.branch ?? '—'}</span>
           {status && status.ahead > 0 && <span className="text-subtle">↑{status.ahead}</span>}
           {status && status.behind > 0 && <span className="text-subtle">↓{status.behind}</span>}
         </span>
-        <span className="ml-auto shrink-0">
-          {status ? (status.files.length === 1 ? '1 archivo' : `${status.files.length} archivos`) : ''}
-        </span>
+        <span className="ml-auto shrink-0">{status ? t('code.changes.fileCount', { count: status.files.length }) : ''}</span>
         {native && (
-          <IconButton label="Nueva rama / worktree" onClick={() => setDialog(true)} className="h-6 w-6">
+          <IconButton label={t('code.changes.newBranch')} onClick={() => setDialog(true)} className="h-6 w-6">
             <GitBranchPlus size={13} />
           </IconButton>
         )}
-        <IconButton label="Actualizar" onClick={() => void refresh()} className="h-6 w-6">
+        <IconButton label={t('code.changes.refresh')} onClick={() => void refresh()} className="h-6 w-6">
           {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
         </IconButton>
       </div>
@@ -625,14 +630,14 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
       {status && status.files.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-6 text-center">
           <Check size={20} className="text-success" />
-          <div className="text-sm font-medium">Todo limpio</div>
-          <div className="text-xs text-muted">No hay cambios sin commitear.</div>
+          <div className="text-sm font-medium">{t('code.changes.clean')}</div>
+          <div className="text-xs text-muted">{t('code.changes.noChanges')}</div>
         </div>
       ) : (
         <>
           <div className="max-h-[40%] shrink-0 overflow-y-auto border-b border-border py-1">
             {staged.length > 0 && (
-              <Section title="Preparados" count={staged.length}>
+              <Section title={t('code.changes.staged')} count={staged.length}>
                 {staged.map((f) => (
                   <FileRow
                     key={`s:${f.path}`}
@@ -645,7 +650,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
               </Section>
             )}
             {unstaged.length > 0 && (
-              <Section title={staged.length ? 'Sin preparar' : 'Cambios'} count={unstaged.length}>
+              <Section title={staged.length ? t('code.changes.unstaged') : t('code.panel.changes')} count={unstaged.length}>
                 {unstaged.map((f) => (
                   <FileRow
                     key={`u:${f.path}`}
@@ -668,15 +673,19 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 <span className="ml-auto flex shrink-0 items-center">
                   {native && (
                     <>
-                      <IconButton label="Abrir en el editor" className="h-6 w-6" onClick={() => void native.dialog.openInEditor(abs)}>
+                      <IconButton
+                        label={t('code.menu.openEditor')}
+                        className="h-6 w-6"
+                        onClick={() => void native.dialog.openInEditor(abs)}
+                      >
                         <Code2 size={13} />
                       </IconButton>
-                      <IconButton label="Mostrar en Finder" className="h-6 w-6" onClick={() => void native.dialog.revealInFinder(abs)}>
+                      <IconButton label={t('code.menu.reveal')} className="h-6 w-6" onClick={() => void native.dialog.revealInFinder(abs)}>
                         <FolderOpen size={13} />
                       </IconButton>
                     </>
                   )}
-                  <IconButton label="Cerrar diff" className="h-6 w-6" onClick={() => setSelected(null)}>
+                  <IconButton label={t('code.changes.closeDiff')} className="h-6 w-6" onClick={() => setSelected(null)}>
                     <X size={13} />
                   </IconButton>
                 </span>
@@ -684,19 +693,19 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
             )}
             <div className="min-h-0 flex-1 overflow-auto">
               {!selectedFile && status && status.files.length > 0 && (
-                <div className="px-3 py-4 text-center text-xs text-subtle">Selecciona un archivo para ver sus cambios.</div>
+                <div className="px-3 py-4 text-center text-xs text-subtle">{t('code.changes.selectFile')}</div>
               )}
               {selectedFile && diffLoading && !diff && (
                 <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted">
-                  <Loader2 size={14} className="animate-spin" /> Cargando diff…
+                  <Loader2 size={14} className="animate-spin" /> {t('code.changes.loadingDiff')}
                 </div>
               )}
               {selectedFile && diff && <DiffView patch={diff} path={selectedFile.path} hideFileHeaders />}
               {selectedFile && diffError && !diffLoading && (
-                <div className="px-3 py-3 text-xs text-danger">No se pudo obtener el diff: {diffError}</div>
+                <div className="px-3 py-3 text-xs text-danger">{t('code.changes.diffFailed', { error: diffError })}</div>
               )}
               {selectedFile && !diff && !diffLoading && !diffError && (
-                <div className="px-3 py-3 text-sm text-subtle">Sin diferencias de texto.</div>
+                <div className="px-3 py-3 text-sm text-subtle">{t('code.changes.noTextDiff')}</div>
               )}
             </div>
           </div>

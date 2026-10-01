@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FileContent, FileNode } from '@opencode-ai/sdk/v2/client'
 import { ArrowLeft, ChevronRight, File, Folder, FolderOpen, Loader2, RefreshCw, Search, X } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
+import { useT } from '../../../../lib/i18n'
 import { errorMessage, useClient, sdkData } from '../client'
 import { DiffView, highlightLine, languageFor } from '../DiffView'
 import { useVisibleFsVersion } from '../useVisibleFsVersion'
@@ -15,6 +16,7 @@ function sortNodes(nodes: FileNode[]): FileNode[] {
 }
 
 function FileViewer({ directory, path, onClose }: { directory: string; path: string; onClose: () => void }): React.JSX.Element {
+  const t = useT()
   const client = useClient()
   const fsVersion = useVisibleFsVersion()
   const [content, setContent] = useState<FileContent | null>(null)
@@ -46,7 +48,7 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-1 border-b border-border px-2 py-1">
-        <IconButton label="Volver" onClick={onClose} className="h-6 w-6">
+        <IconButton label={t('code.files.back')} onClick={onClose} className="h-6 w-6">
           <ArrowLeft size={14} />
         </IconButton>
         <span className="min-w-0 truncate font-mono text-xs">{path}</span>
@@ -56,7 +58,7 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
             onClick={() => setShowDiff((d) => !d)}
             className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-xs ${showDiff ? 'bg-active text-fg' : 'text-muted hover:bg-hover'}`}
           >
-            Diff
+            {t('code.files.diff')}
           </button>
         )}
       </div>
@@ -64,10 +66,10 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
         {error && <div className="px-3 py-2 text-xs text-danger">{error}</div>}
         {!content && !error && (
           <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted">
-            <Loader2 size={14} className="animate-spin" /> Cargando…
+            <Loader2 size={14} className="animate-spin" /> {t('code.msg.loading')}
           </div>
         )}
-        {content?.type === 'binary' && <div className="px-3 py-3 text-sm text-subtle">Archivo binario.</div>}
+        {content?.type === 'binary' && <div className="px-3 py-3 text-sm text-subtle">{t('code.files.binary')}</div>}
         {content?.type === 'text' && showDiff && content.diff && <DiffView patch={content.diff} path={path} />}
         {content?.type === 'text' && !(showDiff && content.diff) && (
           <table className="w-full border-collapse font-mono text-[12px] leading-[1.55]">
@@ -91,6 +93,7 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
 }
 
 export function FilesPanel({ directory }: { directory: string }): React.JSX.Element {
+  const t = useT()
   const client = useClient()
   const [listing, setListing] = useState<Listing>({})
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['.']))
@@ -215,22 +218,22 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar archivos…"
+          placeholder={t('code.files.search')}
           className="min-w-0 flex-1 bg-transparent px-1 py-1 text-[13px] outline-none placeholder:text-subtle"
         />
         {query && (
-          <IconButton label="Limpiar" onClick={() => setQuery('')} className="h-6 w-6">
+          <IconButton label={t('code.files.clear')} onClick={() => setQuery('')} className="h-6 w-6">
             <X size={13} />
           </IconButton>
         )}
-        <IconButton label="Actualizar" onClick={refreshAll} className="h-6 w-6">
+        <IconButton label={t('code.changes.refresh')} onClick={refreshAll} className="h-6 w-6">
           <RefreshCw size={13} />
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {results ? (
           results.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-subtle">Sin resultados.</div>
+            <div className="px-3 py-2 text-sm text-subtle">{t('code.sessions.noResults')}</div>
           ) : (
             results.map((p) => (
               <button

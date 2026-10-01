@@ -155,7 +155,7 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
       {(error || exited !== null) && (
         <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs">
           <span className={error ? 'text-danger' : 'text-muted'}>
-            {error ? t('code.terminal.openFailed', { error }) : t('code.terminal.exited', { code: exited })}
+            {error ? t('code.terminal.openFailed', { error }) : t('code.terminal.exited', { code: exited ?? '' })}
           </span>
           <IconButton label={t('code.terminal.restart')} className="ml-auto h-6 w-6" onClick={() => setGeneration((g) => g + 1)}>
             <RotateCcw size={13} />

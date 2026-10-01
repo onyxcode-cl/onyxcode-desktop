@@ -312,7 +312,10 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           autoOpen={running && !!live}
           extra={
             exit !== undefined && exit !== 0 ? (
-              <span className="rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">exit {exit}</span>
+              <span className="rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">
+                {'exit '}
+                {exit}
+              </span>
             ) : desc ? (
               <span className="hidden max-w-56 truncate text-xs text-subtle md:inline">{desc}</span>
             ) : null
@@ -467,6 +470,8 @@ interface StepGroupProps {
 export function StepGroup({ parts, root, live, hasPending, after }: StepGroupProps): React.JSX.Element {
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const locale = useLocale()
+  // `locale` fuerza recalcular el resumen (texto traducido) al cambiar de idioma.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const summary = useMemo(() => summarizeSteps(parts), [parts, locale])
   const anyRunning = parts.some((p) => p.state.status === 'running' || p.state.status === 'pending')
   const errors = parts.filter((p) => p.state.status === 'error').length

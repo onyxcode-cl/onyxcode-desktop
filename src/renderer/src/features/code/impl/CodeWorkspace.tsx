@@ -10,6 +10,8 @@
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
+import type { MsgKey } from '@shared/i18n'
+import { useT } from '../../../lib/i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Session } from '@opencode-ai/sdk/v2/client'
@@ -51,7 +53,12 @@ import { TodoList } from './ToolCard'
 import type { RightPanel } from './types'
 import { MOD, Tip, isEditableTarget } from './ui'
 
-const PANEL_LABEL: Record<RightPanel, string> = { changes: 'Cambios', terminal: 'Terminal', files: 'Archivos', browser: 'Navegador' }
+const PANEL_LABEL: Record<RightPanel, MsgKey> = {
+  changes: 'code.panel.changes',
+  terminal: 'code.panel.terminal',
+  files: 'code.panel.files',
+  browser: 'code.panel.browser'
+}
 const PANEL_MIN_WIDTH: Record<RightPanel, number> = { changes: 280, terminal: 280, files: 280, browser: 640 }
 const PANEL_WIDTH_KEY = 'code.panelWidth'
 
@@ -66,12 +73,13 @@ function readWidth(): number {
 }
 
 function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const t = useT()
   const todos = useCode((s) => s.todos[sessionID])
   const [open, setOpen] = useState(false)
   if (!todos || todos.length === 0) return null
-  const done = todos.filter((t) => t.status === 'completed' || t.status === 'cancelled').length
+  const done = todos.filter((x) => x.status === 'completed' || x.status === 'cancelled').length
   if (done === todos.length && !open) return null
-  const current = todos.find((t) => t.status === 'in_progress') ?? todos.find((t) => t.status === 'pending')
+  const current = todos.find((x) => x.status === 'in_progress') ?? todos.find((x) => x.status === 'pending')
   const pct = Math.round((done / todos.length) * 100)
   return (
     <div className="mx-auto w-full max-w-3xl px-6 pb-2">
@@ -83,7 +91,7 @@ function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null
           className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-muted hover:text-fg"
         >
           <ListTodo size={14} className="shrink-0 text-accent" />
-          <span className="shrink-0 font-medium text-fg">Tareas</span>
+          <span className="shrink-0 font-medium text-fg">{t('code.todo.title')}</span>
           <span className="shrink-0 text-xs tabular-nums text-subtle">
             {done}/{todos.length}
           </span>
@@ -107,13 +115,14 @@ function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null
 
 /** Título de la pestaña activa del navegador (para la etiqueta del panel), truncado por CSS. */
 function useBrowserTabTitle(directory: string): string {
-  const [title, setTitle] = useState('Navegador')
+  const t = useT()
+  const [title, setTitle] = useState<string | null>(null)
   useEffect(() => {
     const owner: BrowserOwner = { kind: 'code', directory }
     const apply = (s: { owner: BrowserOwner; tabs: { id: string; title: string }[]; activeTabId: string | null }): void => {
       if (s.owner.kind !== 'code' || s.owner.directory !== directory) return
-      const t = s.tabs.find((x) => x.id === s.activeTabId)?.title
-      setTitle(t && t.trim() ? t : 'Navegador')
+      const tabTitle = s.tabs.find((x) => x.id === s.activeTabId)?.title
+      setTitle(tabTitle && tabTitle.trim() ? tabTitle : null)
     }
     let cancelled = false
     void br('browser:state', { owner })
@@ -125,10 +134,11 @@ function useBrowserTabTitle(directory: string): string {
       off()
     }
   }, [directory])
-  return title
+  return title ?? t('code.panel.browser')
 }
 
 function SidePanels({ directory }: { directory: string }): React.JSX.Element | null {
+  const t = useT()
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const [width, setWidth] = useState(readWidth)
@@ -187,17 +197,17 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
       />
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
         {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p, i) => (
-          <Tip key={p} label={PANEL_LABEL[p]} shortcut={`${MOD}${i + 1}`}>
+          <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={`${MOD}${i + 1}`}>
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
               className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition ${p === panel ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
-              <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : PANEL_LABEL[p]}</span>
+              <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}</span>
             </button>
           </Tip>
         ))}
-        <IconButton label="Cerrar panel" className="ml-auto h-7 w-7" onClick={() => panel && togglePanel(panel)}>
+        <IconButton label={t('code.panel.close')} className="ml-auto h-7 w-7" onClick={() => panel && togglePanel(panel)}>
           <X size={14} />
         </IconButton>
       </div>
@@ -263,6 +273,7 @@ function useBranch(directory: string): BranchInfo | null {
 }
 
 function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const closeProject = useCode((s) => s.closeProject)
   const ref = useRef<HTMLDivElement>(null)
@@ -294,19 +305,19 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
             {directory.replace(/^\/Users\/[^/]+/, '~')}
           </div>
           <button type="button" className={item} onClick={() => (setOpen(false), void pickAndOpenFolder())}>
-            <FolderOpen size={14} /> Abrir otra carpeta…
+            <FolderOpen size={14} /> {t('code.menu.openAnother')}
           </button>
           <button type="button" className={item} onClick={() => (setOpen(false), closeProject())}>
-            <LayoutGrid size={14} /> Proyectos recientes
+            <LayoutGrid size={14} /> {t('code.menu.recentProjects')}
           </button>
           {native && (
             <>
               <div className="my-1 h-px bg-border" />
               <button type="button" className={item} onClick={() => (setOpen(false), void native.dialog.revealInFinder(directory))}>
-                <FolderSearch size={14} /> Mostrar en Finder
+                <FolderSearch size={14} /> {t('code.menu.reveal')}
               </button>
               <button type="button" className={item} onClick={() => (setOpen(false), void native.dialog.openInEditor(directory))}>
-                <Code2 size={14} /> Abrir en el editor
+                <Code2 size={14} /> {t('code.menu.openEditor')}
               </button>
             </>
           )}
@@ -317,15 +328,16 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
 }
 
 function BranchPill({ directory }: { directory: string }): React.JSX.Element | null {
+  const t = useT()
   const info = useBranch(directory)
   const togglePanel = useCode((s) => s.togglePanel)
   const panel = useCode((s) => s.panel)
   if (!info || !info.branch) return null
   const sync = info.ahead > 0 || info.behind > 0
   const tip = [
-    `Rama ${info.branch}`,
-    info.upstream ? `sigue a ${info.upstream}` : 'sin upstream',
-    info.changes ? `${info.changes} archivos con cambios` : 'sin cambios'
+    t('code.branch.name', { branch: info.branch }),
+    info.upstream ? t('code.branch.tracks', { upstream: info.upstream }) : t('code.branch.noUpstream'),
+    info.changes ? t('code.branch.changes', { count: info.changes }) : t('code.branch.clean')
   ].join(' · ')
   return (
     <Tip label={tip}>
@@ -348,14 +360,15 @@ function BranchPill({ directory }: { directory: string }): React.JSX.Element | n
   )
 }
 
-const PANEL_META: { id: RightPanel; label: string; key: string; icon: React.JSX.Element }[] = [
-  { id: 'changes', label: 'Cambios', key: '1', icon: <GitCompare size={16} /> },
-  { id: 'terminal', label: 'Terminal', key: '2', icon: <SquareTerminal size={16} /> },
-  { id: 'files', label: 'Archivos', key: '3', icon: <FileCode2 size={16} /> },
-  { id: 'browser', label: 'Navegador', key: '4', icon: <Globe size={16} /> }
+const PANEL_META: { id: RightPanel; label: MsgKey; key: string; icon: React.JSX.Element }[] = [
+  { id: 'changes', label: 'code.panel.changes', key: '1', icon: <GitCompare size={16} /> },
+  { id: 'terminal', label: 'code.panel.terminal', key: '2', icon: <SquareTerminal size={16} /> },
+  { id: 'files', label: 'code.panel.files', key: '3', icon: <FileCode2 size={16} /> },
+  { id: 'browser', label: 'code.panel.browser', key: '4', icon: <Globe size={16} /> }
 ]
 
 function Toolbar({ directory }: { directory: string }): React.JSX.Element {
+  const t = useT()
   const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
   const activeSessionID = useCode((s) => s.activeSessionID)
   const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
@@ -373,24 +386,24 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       {session && (
         <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex">
           <span className="text-subtle">/</span>
-          <span className="truncate">{session.title || 'Sesión sin título'}</span>
+          <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
         </span>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {busy && (
-          <Tip label="Detener" shortcut="esc">
+          <Tip label={t('code.toolbar.stop')} shortcut="esc">
             <button
               type="button"
               onClick={() => void abort()}
               className="no-drag flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10"
             >
-              <Square size={10} fill="currentColor" /> Detener
+              <Square size={10} fill="currentColor" /> {t('code.toolbar.stop')}
             </button>
           </Tip>
         )}
         {activeSessionID && (
           <>
-            <Tip label="Bifurcar sesión (fork) desde aquí">
+            <Tip label={t('code.toolbar.fork')}>
               <button
                 type="button"
                 disabled={busy}
@@ -400,7 +413,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
                 <GitFork size={14} />
               </button>
             </Tip>
-            <Tip label="Compactar historial (resumir contexto)">
+            <Tip label={t('code.toolbar.compact')}>
               <button
                 type="button"
                 disabled={busy}
@@ -414,10 +427,10 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         )}
         <span className="mx-0.5 h-5 w-px bg-border" />
         {PANEL_META.map((p) => (
-          <Tip key={p.id} label={p.label} shortcut={`${MOD}${p.key}`} align={p.id === 'browser' ? 'end' : 'center'}>
+          <Tip key={p.id} label={t(p.label)} shortcut={`${MOD}${p.key}`} align={p.id === 'browser' ? 'end' : 'center'}>
             <button
               type="button"
-              aria-label={p.label}
+              aria-label={t(p.label)}
               aria-pressed={panel === p.id}
               onClick={() => togglePanel(p.id)}
               className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
@@ -431,30 +444,15 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   )
 }
 
-const SUGGESTIONS: { label: string; prompt: string; agent: 'plan' | 'build' }[] = [
-  {
-    label: 'Explícame este proyecto',
-    prompt: 'Explícame la estructura de este proyecto: qué hace, cómo está organizado y cuáles son sus piezas principales.',
-    agent: 'plan'
-  },
-  {
-    label: 'Revisa los cambios sin commitear',
-    prompt: 'Revisa los cambios sin commitear (git diff) y dime si ves bugs, riesgos o mejoras.',
-    agent: 'plan'
-  },
-  {
-    label: 'Busca y corrige errores de tipos',
-    prompt: 'Ejecuta el chequeo de tipos/lint del proyecto y corrige los errores que encuentres.',
-    agent: 'build'
-  },
-  {
-    label: 'Escribe tests para lo más crítico',
-    prompt: 'Identifica la lógica más crítica sin tests y escribe tests para ella siguiendo las convenciones del proyecto.',
-    agent: 'build'
-  }
+const SUGGESTIONS: { label: MsgKey; prompt: MsgKey; agent: 'plan' | 'build' }[] = [
+  { label: 'code.suggest.explain', prompt: 'code.suggest.explain.prompt', agent: 'plan' },
+  { label: 'code.suggest.review', prompt: 'code.suggest.review.prompt', agent: 'plan' },
+  { label: 'code.suggest.types', prompt: 'code.suggest.types.prompt', agent: 'build' },
+  { label: 'code.suggest.tests', prompt: 'code.suggest.tests.prompt', agent: 'build' }
 ]
 
 function EmptySession({ directory, error }: { directory: string; error: ConvError | null }): React.JSX.Element {
+  const t = useT()
   const send = useCode((s) => s.send)
   const setAgent = useCode((s) => s.setAgent)
   const client = useClient()
@@ -463,10 +461,13 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
       <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent">
         <Code2 size={22} />
       </div>
-      <h2 className="text-xl font-semibold tracking-tight">¿Qué construimos en {baseName(directory)}?</h2>
+      <h2 className="text-xl font-semibold tracking-tight">{t('code.empty.title', { name: baseName(directory) })}</h2>
       <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-muted">
-        Usa <b className="font-medium text-fg">Plan</b> para explorar y diseñar sin tocar archivos, o{' '}
-        <b className="font-medium text-fg">Build</b> para que el agente edite y ejecute comandos. Te pedirá permiso cuando haga falta.
+        {t('code.empty.use')}
+        <b className="font-medium text-fg">{'Plan'}</b>
+        {t('code.empty.planDesc')}
+        <b className="font-medium text-fg">{'Build'}</b>
+        {t('code.empty.buildDesc')}
       </p>
       <div className="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-2">
         {SUGGESTIONS.map((sug) => (
@@ -476,7 +477,7 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
             disabled={!client}
             onClick={() => {
               setAgent(sug.agent)
-              void send(sug.prompt)
+              void send(t(sug.prompt))
             }}
             className="group flex items-start gap-2 rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm transition hover:border-border-strong hover:bg-hover disabled:opacity-50"
           >
@@ -485,7 +486,7 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
             >
               {sug.agent}
             </span>
-            <span className="text-fg/90">{sug.label}</span>
+            <span className="text-fg/90">{t(sug.label)}</span>
           </button>
         ))}
       </div>
@@ -508,6 +509,7 @@ function belongs(sessions: Record<string, Session>, sessionID: string, active: s
  * que ejecute lo planificado, sin que el usuario tenga que escribirlo.
  */
 function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const t = useT()
   const agent = useCode((s) => s.agent)
   const run = useCode((s) => s.runState[sessionID])
   const entries = useCode((s) => s.messages[sessionID])
@@ -530,24 +532,24 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
       <div className="flex items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-3.5 py-2.5 text-sm">
         <ListChecks size={16} className="shrink-0 text-accent" />
-        <span className="min-w-0 flex-1 text-fg/90">¿Construyo lo planificado?</span>
+        <span className="min-w-0 flex-1 text-fg/90">{t('code.plan.ask')}</span>
         <button
           type="button"
           onClick={() => setDismissedFor(lastAssistant.info.id)}
           className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
         >
-          Ahora no
+          {t('code.plan.notNow')}
         </button>
         <button
           type="button"
           onClick={() => {
             setDismissedFor(lastAssistant.info.id)
             setAgent('build')
-            void send('Procede con el plan.')
+            void send(t('code.plan.proceed'))
           }}
           className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-fg hover:opacity-90"
         >
-          Aprobar y construir
+          {t('code.plan.approve')}
         </button>
       </div>
     </div>
@@ -555,6 +557,7 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
 }
 
 function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
+  const t = useT()
   const sid = useCode((s) => s.activeSessionID)
   const entries = useCode((s) => (sid ? s.messages[sid] : undefined))
   const run = useCode((s) => (sid ? s.runState[sid] : undefined))
@@ -586,7 +589,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
         <div className="flex items-center gap-2 border-b border-danger/30 bg-danger/10 px-4 py-1.5 text-xs text-danger">
           <span className="min-w-0 flex-1 truncate">{globalError}</span>
           <button type="button" onClick={() => setGlobalError(null)} className="shrink-0 hover:underline">
-            Cerrar
+            {t('code.chat.close')}
           </button>
         </div>
       )}
