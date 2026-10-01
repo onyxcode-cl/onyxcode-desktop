@@ -195,6 +195,14 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
   }
   return (
     <div className={`overflow-auto font-mono text-[12px] leading-[1.55] ${className}`}>
+      {limited && (
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-elevated px-3 py-2 font-sans text-xs text-muted">
+          <span>{t('common.diff.truncated', { shown: clip.shown, total: clip.total })}</span>
+          <button type="button" onClick={() => setShowAll(true)} className="rounded-md px-2 py-0.5 font-medium text-accent hover:bg-hover">
+            {t('common.diff.showAll')}
+          </button>
+        </div>
+      )}
       <table className="w-full border-collapse">
         <tbody>
           {lines.map((l, i) => {
@@ -236,14 +244,6 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
           })}
         </tbody>
       </table>
-      {limited && (
-        <div className="flex items-center gap-3 border-t border-border px-3 py-2 font-sans text-xs text-muted">
-          <span>{t('common.diff.truncated', { shown: clip.shown, total: clip.total })}</span>
-          <button type="button" onClick={() => setShowAll(true)} className="rounded-md px-2 py-0.5 font-medium text-accent hover:bg-hover">
-            {t('common.diff.showAll')}
-          </button>
-        </div>
-      )}
     </div>
   )
 })

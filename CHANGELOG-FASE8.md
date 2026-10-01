@@ -311,3 +311,15 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
   los rótulos Usuario/Agente de la exportación a Markdown, la marca de adjuntos, `UNDO_POINT_LABEL` (se guarda en el manifiesto de los puntos de restauración), el prefijo de rama `sesion/` y los textos que construye main
   (`disabledReason` y avisos del navegador, `chk.reason`, vista previa de Rutinas): son de T4c.
 - Guardias: los archivos de las cuatro áreas entran en `MIGRATED` (`i18n-coverage.test.ts`); E2E `i18n.e2e.ts` ampliado (Tareas, Rutinas, Code y navegador en inglés sin texto en español, y cambio en vivo a Español) con capturas `I18N_SHOTS_DIR/en/` (`tareas-guia`, `tareas-inicio`, `rutinas`, `rutinas-editor`, `code`, `navegador`; claro/oscuro, 820 y 1280 px).
+
+## F8-B29 — Calidad T4: rendimiento percibido y transcripciones
+
+- **Diff enorme (M1).** `DiffView` ya no parsea ni resalta sin tope: por encima de 2000 líneas o 300 KB muestra las primeras líneas con un aviso fijo arriba («Se muestran las primeras N líneas de M» + «Mostrar todo»); `clipPatch` corta
+  en límite de línea sin recorrer el texto entero con regex. El resaltado va por trozos de 150 líneas con `setTimeout` (primero se pinta texto plano y se colorea después) y no se aplica sobre el umbral (ni siquiera con «Mostrar todo»).
+  Medido con `e2e/specs/calidad-t4.e2e.ts` (diff de 50 000 líneas por una herramienta `edit` en Code, PerformanceObserver `longtask`, igual que `perf.e2e.ts`): sin CPU limitada, antes 3289 ms para abrir (4 tareas largas, máx 1692 ms,
+  50 001 filas) y ahora 143 ms (1 tarea de 96 ms, 1998 filas); con CPU x4, antes 13 092 ms (máx 6820 ms) y ahora 562 ms (máx 410 ms).
+- **«Ir al final» (M6).** Hook común `useStickToBottom` (`lib/conversation/`) y componente `ScrollToEnd` usados por Chat, Code y Tareas: el botón aparece al subir 80 px o más. «Trabajando…» de Code lleva `role="status"`. Los scrollers de Code
+  y Tareas quedan dentro de un contenedor `relative` (cambian los snapshots de `MessageStream` y `TaskConversation`: un `div` más y `h-full`).
+- **Listas de sesiones (M12).** La lista ya no se corta en 200: el store de sesiones (Chat y Tareas) y el de Code recuerdan el límite por carpeta, avisan si pudo haber más (`moreSessions`) y «Cargar más» sube de 200 en 200. El filtro de Chat,
+  la búsqueda de Tareas y la de ⌘K en Code piden todas las sesiones (hasta 10 000) en cuanto se escribe algo.
+- Pruebas: unitarias (`DiffView.test.tsx`, `use-stick-to-bottom.test.ts`, `session-paging.test.ts`, `sessions.paging.test.ts` con 250 sesiones falsas) y E2E `calidad-t4.e2e.ts` (diff, «Ir al final» en Code y Tareas, 250 sesiones en Chat; capturas con `T4_SHOTS_DIR`).
