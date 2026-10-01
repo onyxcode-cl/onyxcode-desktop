@@ -4,6 +4,7 @@ import { Check, Loader2, MessagesSquare, MoreHorizontal, Pencil, Search, Trash2,
 import { t as tr, localeTag } from '@shared/i18n'
 import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
+import { LoadMoreSessions } from '../../components/LoadMoreSessions'
 
 interface Props {
   sessions: Session[]
@@ -14,6 +15,10 @@ interface Props {
   onSelect: (id: string) => void
   onRename: (id: string, title: string) => void | Promise<void>
   onDelete: (id: string) => void | Promise<void>
+  /** Puede haber más sesiones en el servidor que las cargadas. */
+  hasMore?: boolean
+  /** `all` = pedir todas (al filtrar). */
+  onLoadMore?: (all: boolean) => void
 }
 
 function groupLabel(ts: number): string {
@@ -170,10 +175,17 @@ export function ChatSessionList({
   emptyText,
   onSelect,
   onRename,
-  onDelete
+  onDelete,
+  hasMore,
+  onLoadMore
 }: Props): React.JSX.Element {
   const t = useT()
   const [filter, setFilter] = useState('')
+  // Al filtrar, el filtro debe cubrir TODAS las sesiones: se cargan las que faltan (M12).
+  const filtering = filter.trim().length > 0
+  useEffect(() => {
+    if (filtering && hasMore) onLoadMore?.(true)
+  }, [filtering, hasMore, onLoadMore])
   if (loading && sessions.length === 0) {
     return (
       <div className="flex flex-col gap-1.5 px-1 py-1" aria-busy="true" aria-label={t('chat.list.loading')}>
@@ -244,6 +256,7 @@ export function ChatSessionList({
           </div>
         </div>
       ))}
+      <LoadMoreSessions visible={!!hasMore && !q} onClick={() => onLoadMore?.(false)} />
     </div>
   )
 }

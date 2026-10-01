@@ -35,6 +35,7 @@ import {
   type ConvSlice,
   type LoadTracker
 } from '../../../lib/session-reducer'
+import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../lib/session-paging'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
   Attachment,
@@ -179,6 +180,10 @@ export interface CodeState {
   openProject: (directory: string) => Promise<void>
   closeProject: () => void
   loadSessions: () => Promise<void>
+  /** «Cargar más» (o todas con `all`) en la lista de sesiones del proyecto. */
+  loadMoreSessions: (all?: boolean) => Promise<void>
+  /** Puede haber más sesiones en el servidor que las cargadas. */
+  moreSessions: boolean
   newSession: () => Promise<string | null>
   /** Crea la sesión en `dir` en vez de `directory` (usado para worktrees nuevos). */
   newSessionAt: (dir: string, title?: string) => Promise<string | null>
@@ -244,6 +249,9 @@ export interface CodeState {
 }
 
 /** Tope de sesiones con contenido no fijadas en `useCode` (`localStorage['onyx.lru.max']` lo sobrescribe). */
+/** Límite de la lista de sesiones por proyecto (sube con «Cargar más»). */
+const codeSessionLimits = new Map<string, number>()
+
 export const CODE_LRU_MAX = 20
 /** Ventana para reconocer `session.status→idle` y `session.idle` de una misma terminación (F7-B18). */
 const IDLE_DUP_WINDOW_MS = 2000
@@ -653,6 +661,7 @@ export const useCode = create<CodeState>((set, get) => {
     permissionMode: initialPermissionMode(),
     queue: {},
     unread: {},
+    moreSessions: false,
     pinned: lsGetJSON<Record<string, string[]>>(LS_PINNED, {}),
     trustedFolders: lsGetJSON<string[]>(LS_TRUSTED, []),
 
@@ -678,7 +687,9 @@ export const useCode = create<CodeState>((set, get) => {
       if (!client || !dir) return
       set({ loadingSessions: true })
       try {
-        const list = sdkData(await client.session.list({ directory: dir, roots: true, limit: 200 }))
+        const limit = codeSessionLimits.get(dir) ?? SESSIONS_PAGE
+        const list = sdkData(await client.session.list({ directory: dir, roots: true, limit }))
+        set({ moreSessions: sessionsMayHaveMore(list.length, limit) })
         set((s) => {
           const sessions = { ...s.sessions }
           const sessionProject = { ...s.sessionProject }
@@ -702,6 +713,13 @@ export const useCode = create<CodeState>((set, get) => {
       } finally {
         set({ loadingSessions: false })
       }
+    },
+
+    loadMoreSessions: async (all = false) => {
+      const dir = get().directory
+      if (!dir) return
+      codeSessionLimits.set(dir, nextSessionsLimit(codeSessionLimits.get(dir) ?? SESSIONS_PAGE, all))
+      await get().loadSessions()
     },
 
     newSession: async () => {

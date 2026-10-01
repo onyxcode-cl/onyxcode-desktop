@@ -19,6 +19,7 @@ import type { OcEvent, OpencodeClient } from '../lib/opencode'
 import { errorMessage } from '../lib/opencode'
 import { lruMax } from '../lib/lru'
 import { createFrameQueue } from '../lib/frame-queue'
+import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../lib/session-paging'
 import {
   appendWithoutOverlap,
   byId,
@@ -65,7 +66,11 @@ interface SessionsState {
   /** sessionID → el historial completo ya se cargó (F6-B12; `messages[id]` puede ser parcial por eventos sueltos). */
   loaded: Record<string, boolean>
 
+  /** `sessionsKey(directory, source)` → puede haber más sesiones en el servidor que las cargadas (límite alcanzado). */
+  moreSessions: Record<string, boolean>
   loadSessions: (client: OpencodeClient, directory: string, source?: string) => Promise<void>
+  /** «Cargar más» (o todas con `all`): sube el límite del directorio y recarga la lista. */
+  loadMoreSessions: (client: OpencodeClient, directory: string, source?: string, all?: boolean) => Promise<void>
   loadMessages: (client: OpencodeClient, sessionID: string, directory: string) => Promise<void>
   /** Sin `source`: conserva el origen conocido o usa el del directorio de la sesión. */
   upsertSession: (session: Session, source?: string) => void
@@ -101,6 +106,12 @@ export type EvictionListener = (evicted: Array<{ id: string; entries: MessageEnt
 
 /** Tope de sesiones con contenido no fijadas en `useSessions` (Chat + Tareas). */
 export const SESSIONS_LRU_MAX = 40
+
+/** Límite de la lista de sesiones por directorio+origen (sube con «Cargar más»). */
+const sessionLimits = new Map<string, number>()
+export function sessionsKey(directory: string, source: string = MAIN_SOURCE): string {
+  return `${source}\u0000${directory}`
+}
 
 /** Último acceso por sesión (contador monótono; sin registro = nunca abierta). Estado de módulo, sin `set`. */
 const lastAccess = new Map<string, number>()
@@ -201,9 +212,12 @@ export const useSessions = create<SessionsState>((set, get) => {
     errors: {},
     loadingMessages: {},
     loaded: {},
+    moreSessions: {},
 
     loadSessions: async (client, directory, source = MAIN_SOURCE) => {
-      const res = await client.session.list({ directory, roots: true, limit: 200 })
+      const key = sessionsKey(directory, source)
+      const limit = sessionLimits.get(key) ?? SESSIONS_PAGE
+      const res = await client.session.list({ directory, roots: true, limit })
       if (res.error || !res.data) throw new Error(errorMessage(res.error))
       const list = res.data
       set((s) => {
@@ -223,8 +237,15 @@ export const useSessions = create<SessionsState>((set, get) => {
           if (source === MAIN_SOURCE) delete sessionSource[sess.id]
           else sessionSource[sess.id] = source
         }
-        return { sessions, sessionSource }
+        const more = sessionsMayHaveMore(list.length, limit)
+        return { sessions, sessionSource, moreSessions: s.moreSessions[key] === more ? s.moreSessions : { ...s.moreSessions, [key]: more } }
       })
+    },
+
+    loadMoreSessions: async (client, directory, source = MAIN_SOURCE, all = false) => {
+      const key = sessionsKey(directory, source)
+      sessionLimits.set(key, nextSessionsLimit(sessionLimits.get(key) ?? SESSIONS_PAGE, all))
+      await get().loadSessions(client, directory, source)
     },
 
     loadMessages: (client, sessionID, directory) => {

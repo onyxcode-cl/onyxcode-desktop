@@ -22,7 +22,8 @@ import {
   X
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
-import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
+import { MAIN_SOURCE, sessionsKey, useSessions } from '../../../stores/sessions'
+import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { archiveTask, deleteTask, moveTaskToGroup, openTask, renameTask, restoreTask } from './actions'
 import { MIN_QUERY_LENGTH, useTranscriptSearch, type TranscriptHit } from './search'
@@ -350,6 +351,9 @@ export function TaskList(): React.JSX.Element {
   const status = useSessions((s) => s.status)
   const errors = useSessions((s) => s.errors)
   const messages = useSessions((s) => s.messages)
+  const client = useTasks((s) => s.client)
+  const baseUrl = useTasks((s) => s.conn?.baseUrl)
+  const more = useSessions((s) => (folder ? !!s.moreSessions[sessionsKey(folder, baseUrl)] : false))
   const [query, setQuery] = useState('')
   const [groupMode, setGroupMode] = useState<GroupMode>(readGroupMode)
   const [, tick] = useState(0)
@@ -384,6 +388,11 @@ export function TaskList(): React.JSX.Element {
   const q = query.trim()
   const tasks = useMemo(() => filterByTitle(source, q), [source, q])
   const transcript = useTranscriptSearch(showArchived ? null : folder, q)
+  // La búsqueda y el filtro deben cubrir todas las tareas: al buscar se cargan las que faltan (M12).
+  const wantAll = q.length > 0 && more
+  useEffect(() => {
+    if (wantAll && client && folder) void useSessions.getState().loadMoreSessions(client, folder, baseUrl, true)
+  }, [wantAll, client, folder, baseUrl])
 
   // Grupos que ya existen en esta carpeta (para sugerirlos al mover una tarea).
   const knownGroups = useMemo(() => {
@@ -508,6 +517,10 @@ export function TaskList(): React.JSX.Element {
             </div>
           </div>
         ))}
+        <LoadMoreSessions
+          visible={more && !searching}
+          onClick={() => client && folder && void useSessions.getState().loadMoreSessions(client, folder, baseUrl)}
+        />
         {searching && !showArchived && q.length < MIN_QUERY_LENGTH && (
           <p className="px-1 py-2 text-[11.5px] text-subtle">{tr('tasks.list.minChars.pre', { n: MIN_QUERY_LENGTH })}</p>
         )}

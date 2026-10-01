@@ -20,6 +20,7 @@ import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { rootSessionID, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
+import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
@@ -161,7 +162,13 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
   const directory = useCode((s) => s.directory)
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const selectSession = useCode((s) => s.selectSession)
+  const moreSessions = useCode((s) => s.moreSessions)
   const [query, setQuery] = useState('')
+  // La búsqueda cubre todas las sesiones del proyecto: al buscar se cargan las que faltan (M12).
+  const wantAll = open && moreSessions && query.trim().length > 0
+  useEffect(() => {
+    if (wantAll) void useCode.getState().loadMoreSessions(true)
+  }, [wantAll])
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -246,6 +253,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const unread = useCode((s) => s.unread)
   const pinnedMap = useCode((s) => s.pinned)
   const loading = useCode((s) => s.loadingSessions)
+  const moreSessions = useCode((s) => s.moreSessions)
   const [showArchived, setShowArchived] = useState(false)
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
@@ -337,6 +345,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             />
           )
         })}
+        <LoadMoreSessions visible={moreSessions} onClick={() => void useCode.getState().loadMoreSessions()} />
         {archivedList.length > 0 && (
           <div className="mt-2 border-t border-border pt-2">
             <button
