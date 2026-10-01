@@ -13,8 +13,8 @@ import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
 import type { AccountState } from './account'
 
-/** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema. */
-export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID'
+/** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
+export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID' | 'BUSY'
 
 /** Respuesta sin código de error (canales `extras:`/`mcp:`/`browser:`). */
 export type IpcPlainResult<T> = { ok: true; data: T } | { ok: false; error: string }

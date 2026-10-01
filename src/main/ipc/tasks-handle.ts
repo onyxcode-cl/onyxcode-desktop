@@ -17,14 +17,19 @@ import type { TasksProjectsStore } from '../tasks/projects'
 import type { KeepAwakeService } from '../tasks/keep-awake'
 import type { ComputerService } from '../computer/service'
 import type { SchedulerService } from '../scheduler/service'
-import { makeInvokeHandler } from './handle'
+import type { RestorePoints } from '../tasks/restore-points'
+import { IpcError, makeInvokeHandler } from './handle'
 
 export type TasksHandler<C extends TasksInvokeChannel> = (
   req: TasksRequest<C>,
   event: IpcMainInvokeEvent
 ) => TasksResponse<C> | Promise<TasksResponse<C>>
 
-const handle = makeInvokeHandler<TasksInvokeContract>({ withCode: true })
+const handle = makeInvokeHandler<TasksInvokeContract>({
+  withCode: true,
+  errorCode: (err) => (err instanceof IpcError ? err.code : undefined),
+  silent: (err) => err instanceof IpcError
+})
 
 /** Devuelve un `handle(canal, fn)` ligado a `ipcMain`. */
 export function makeTasksHandle(ipcMain: IpcMain): <C extends TasksInvokeChannel>(ch: C, fn: TasksHandler<C>) => void {
@@ -42,6 +47,10 @@ export interface TasksIpcContext {
   scheduler: SchedulerService
   projects: TasksProjectsStore
   keepAwake: KeepAwakeService
+  /** Puntos de restauración (instantáneas propias de la app). */
+  restore: RestorePoints
+  /** ¿Hay una sesión en curso o pendiente en el servidor de esa carpeta? (lo rellena el módulo de ciclo de vida). */
+  isFolderBusy: (folder: string) => boolean
 }
 
 /** Cada `registerX(ctx)` devuelve esto; `dispose` se espera al apagar. */

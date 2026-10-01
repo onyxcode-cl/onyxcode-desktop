@@ -237,6 +237,15 @@ export class TasksMonitor {
     return false
   }
 
+  /** Algún servidor de esa carpeta (sandbox o Control total) tiene una sesión en curso o pendiente. */
+  isFolderBusy(folder: string): boolean {
+    const f = this.norm(folder)
+    for (const st of this.states.values()) {
+      if (this.norm(st.folder) === f && (st.busy > 0 || st.pending > 0)) return true
+    }
+    return false
+  }
+
   /** El servidor no tiene nada en curso según el último sondeo (false si aún no se sondeó o falló). */
   isIdle(folder: string, fullAccess: boolean): boolean {
     const st = this.states.get(serverKey(this.norm(folder), fullAccess)) ?? this.states.get(serverKey(folder, fullAccess))

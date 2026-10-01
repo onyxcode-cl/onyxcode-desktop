@@ -117,6 +117,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   })
   tasksManager.setBeforeSpawn((folder, fullAccess) => monitor.ensureCapacity(folder, fullAccess))
   monitor.start()
+  ctx.isFolderBusy = (folder) => monitor.isFolderBusy(folder)
 
   const storageEnv = (): StorageEnv => ({ userData, screenshotsDir: computer.screenshotsDir, sandboxKey })
   const folderPaths = (): string[] => tasksManager.listFolders().map((f) => f.path)
@@ -130,6 +131,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   handle('tasks:tasks:setMeta', (req) => tasks.set(req))
   handle('tasks:tasks:forget', ({ sessionId }) => {
     tasks.forget(sessionId)
+    ctx.restore.forget(sessionId)
   })
   handle('tasks:prefs:get', () => prefs.get())
   handle('tasks:prefs:set', (patch) => prefs.set(patch))
