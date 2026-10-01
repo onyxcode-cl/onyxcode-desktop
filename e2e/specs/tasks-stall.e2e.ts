@@ -29,9 +29,16 @@ describe.skipIf(!DEV)('Tareas: aviso de inactividad', () => {
     await fake.script({
       match: 'ATASCADA',
       title: 'Tarea atascada',
-      steps: [{ type: 'text', text: 'Empiezo la tarea.' }, { type: 'delay', ms: 85_000 }, { type: 'text', text: ' Fin.' }]
+      steps: [
+        { type: 'text', text: 'Empiezo la tarea.' },
+        { type: 'delay', ms: 85_000 },
+        { type: 'text', text: ' Fin.' }
+      ]
     })
-    await page.getByRole('button', { name: /^Nueva tarea/ }).first().click()
+    await page
+      .getByRole('button', { name: /^Nueva tarea/ })
+      .first()
+      .click()
     await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill('ATASCADA haz algo')
     await page.getByRole('button', { name: 'Enviar' }).click()
     await expectVisible(page.getByText('Empiezo la tarea.', { exact: false }).first(), 30_000)
@@ -39,7 +46,7 @@ describe.skipIf(!DEV)('Tareas: aviso de inactividad', () => {
 
     // Antes del umbral no hay aviso.
     await page.waitForTimeout(8_000)
-    await expect(page.getByText(/Sin actividad desde hace/)).toHaveCount(0)
+    expect(await page.getByText(/Sin actividad desde hace/).count()).toBe(0)
 
     const notice = page.getByRole('status').filter({ hasText: /Sin actividad desde hace \d+ min/ })
     await expectVisible(notice, 75_000)
@@ -50,6 +57,6 @@ describe.skipIf(!DEV)('Tareas: aviso de inactividad', () => {
 
     // Al terminar, el aviso desaparece.
     await waitIdle(page, id, 60_000)
-    await expect(notice).toHaveCount(0, { timeout: 15_000 })
+    await expect.poll(() => notice.count(), { timeout: 15_000, message: 'el aviso desaparece' }).toBe(0)
   }, 200_000)
 })
