@@ -21,13 +21,14 @@ import {
   Shield
 } from 'lucide-react'
 import { APP_NAME } from '@shared/brand'
-import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { MODE_LABELS } from '@shared/labels'
+import type { MsgKey } from '@shared/i18n'
 import { OPENCODE_INSTALL_COMMAND, type OpencodeAction } from '@shared/opencode-links'
 import type { ModeId, OpencodeInfo } from '@shared/types'
 import { Button } from '../../components/Button'
 import { ModelPicker } from '../../components/ModelPicker'
 import { call } from '../../lib/api'
+import { useT } from '../../lib/i18n'
 import { errorMessage } from '../../lib/opencode'
 import { useProviders } from '../../stores/providers'
 import { useServer } from '../../stores/server'
@@ -36,9 +37,9 @@ import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderC
 import { Badge, ErrorText } from '../settings/impl/ui'
 import {
   canAdvance,
-  CONNECT_TASKS_NOTICE,
-  CONNECT_TERMS_NOTICE,
   connectedNames,
+  connectTasksNotice,
+  connectTermsNotice,
   decideOnboarding,
   nextStep,
   ONBOARDING_STEPS,
@@ -62,6 +63,7 @@ export function OnboardingGate(): React.JSX.Element | null {
 }
 
 function OnboardingHost(): React.JSX.Element | null {
+  const t = useT()
   const client = useServer((s) => s.client)
   const serverStatus = useServer((s) => s.status)
   const update = useSettings((s) => s.update)
@@ -136,7 +138,7 @@ function OnboardingHost(): React.JSX.Element | null {
       >
         <header className="border-b border-border px-6 pt-5 pb-4">
           <p className="text-[11px] font-semibold tracking-[0.06em] text-subtle uppercase">
-            Bienvenido a {APP_NAME} · Paso {stepIndex(step) + 1} de {ONBOARDING_STEPS.length}
+            {t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: ONBOARDING_STEPS.length })}
           </p>
           <h2 id="onboarding-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.015em]">
             {stepTitle(step, opencodeStepMode(info))}
@@ -158,16 +160,16 @@ function OnboardingHost(): React.JSX.Element | null {
 
         <footer className="flex items-center justify-between gap-2 border-t border-border px-6 py-3">
           <Button variant="ghost" onClick={finish}>
-            Saltar
+            {t('wizard.skip')}
           </Button>
           <div className="flex items-center gap-2">
             {prevStep(step) && (
               <Button variant="secondary" onClick={() => setStep(prevStep(step))}>
-                Atrás
+                {t('wizard.back')}
               </Button>
             )}
             <Button variant="primary" disabled={!advance} onClick={() => (last ? finish() : setStep(nextStep(step)))}>
-              {last ? 'Empezar' : 'Continuar'}
+              {last ? t('wizard.start') : t('wizard.continue')}
             </Button>
           </div>
         </footer>
@@ -196,6 +198,7 @@ function StepOpencode({
   onInfo: (info: OpencodeInfo) => void
   refreshInfo: () => Promise<void>
 }): React.JSX.Element {
+  const t = useT()
   const status = useServer((s) => s.status)
   const serverError = useServer((s) => s.error)
   const restart = useServer((s) => s.restart)
@@ -248,19 +251,20 @@ function StepOpencode({
   if (mode === 'bundled' && info) {
     return (
       <div className="space-y-4">
-        <Lead>{APP_NAME} incluye OpenCode como motor: no tienes que instalar nada.</Lead>
+        <Lead>{t('wizard.opencode.bundledLead', { app: APP_NAME })}</Lead>
         <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
           <p className="flex items-center gap-2 font-medium">
-            <Check size={15} className="text-success" /> Incluido: OpenCode{info.version ? ` ${info.version}` : ''}
+            <Check size={15} className="text-success" />{' '}
+            {t('wizard.opencode.included', { version: info.version ? ` ${info.version}` : '' })}
           </p>
           {!ready && !failure && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted">
-              <Loader2 size={12} className="animate-spin" /> Iniciando OpenCode…
+              <Loader2 size={12} className="animate-spin" /> {t('wizard.opencode.starting')}
             </p>
           )}
-          {ready && <p className="mt-2 text-xs text-success">OpenCode está en marcha.</p>}
+          {ready && <p className="mt-2 text-xs text-success">{t('wizard.opencode.running')}</p>}
         </div>
-        <p className="text-xs text-subtle">¿Prefieres tu propio OpenCode ya instalado? Puedes usarlo en su lugar.</p>
+        <p className="text-xs text-subtle">{t('wizard.opencode.ownCliHint')}</p>
         {failure && (
           <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs whitespace-pre-wrap text-danger">
             {failure}
@@ -273,11 +277,11 @@ function StepOpencode({
         )}
         <div className="flex flex-wrap gap-2">
           <Button size="sm" disabled={busy} onClick={() => void pick()}>
-            <FolderSearch size={13} /> Usar mi CLI…
+            <FolderSearch size={13} /> {t('wizard.opencode.useMyCli')}
           </Button>
           {failure && (
             <Button size="sm" disabled={busy} onClick={() => void retry()}>
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Reintentar
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} {t('wizard.opencode.retry')}
             </Button>
           )}
         </div>
@@ -287,38 +291,35 @@ function StepOpencode({
 
   return (
     <div className="space-y-4">
-      <Lead>
-        {APP_NAME} usa OpenCode como motor. {info?.found ? 'Ya lo encontramos en este Mac.' : 'Necesitas tenerlo instalado en este Mac.'}
-      </Lead>
+      <Lead>{t(info?.found ? 'wizard.opencode.leadFound' : 'wizard.opencode.leadMissing', { app: APP_NAME })}</Lead>
 
       {info === null ? (
         <p className="flex items-center gap-2 text-sm text-muted">
-          <Loader2 size={14} className="animate-spin" /> Buscando OpenCode…
+          <Loader2 size={14} className="animate-spin" /> {t('wizard.opencode.searching')}
         </p>
       ) : info.found ? (
         <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
           <p className="flex items-center gap-2 font-medium">
-            <Check size={15} className="text-success" /> OpenCode encontrado{info.version ? ` (versión ${info.version})` : ''}
+            <Check size={15} className="text-success" />{' '}
+            {t('wizard.opencode.foundTitle', {
+              version: info.version ? t('wizard.opencode.versionSuffix', { version: info.version }) : ''
+            })}
           </p>
           <p className="mt-1 font-mono text-xs break-all text-muted">{info.path}</p>
           {info.version && !info.compatible && (
-            <p className="mt-2 text-xs text-warning">
-              Esta versión de {APP_NAME} se probó con OpenCode {info.sdkVersion}. Con otra versión puede haber diferencias.
-            </p>
+            <p className="mt-2 text-xs text-warning">{t('wizard.opencode.versionMismatch', { app: APP_NAME, sdk: info.sdkVersion })}</p>
           )}
           {!ready && !failure && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted">
-              <Loader2 size={12} className="animate-spin" /> Iniciando OpenCode…
+              <Loader2 size={12} className="animate-spin" /> {t('wizard.opencode.starting')}
             </p>
           )}
-          {ready && <p className="mt-2 text-xs text-success">OpenCode está en marcha.</p>}
+          {ready && <p className="mt-2 text-xs text-success">{t('wizard.opencode.running')}</p>}
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
-          <p className="font-medium">No se encontró OpenCode.</p>
-          <p className="mt-1 text-xs text-muted">
-            Instálalo abriendo la app Terminal y pegando este comando (cópialo con el botón; {APP_NAME} nunca lo ejecuta por ti):
-          </p>
+          <p className="font-medium">{t('wizard.opencode.notFound')}</p>
+          <p className="mt-1 text-xs text-muted">{t('wizard.opencode.installHint', { app: APP_NAME })}</p>
           <code className="mt-2 block rounded-lg bg-hover px-2.5 py-1.5 font-mono text-xs break-all">{OPENCODE_INSTALL_COMMAND}</code>
         </div>
       )}
@@ -336,16 +337,17 @@ function StepOpencode({
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={() => void copy()}>
-          {copied ? <Check size={13} /> : <ClipboardCopy size={13} />} {copied ? 'Comando copiado' : 'Copiar comando de instalación'}
+          {copied ? <Check size={13} /> : <ClipboardCopy size={13} />}{' '}
+          {copied ? t('wizard.opencode.copied') : t('wizard.opencode.copyInstall')}
         </Button>
         <Button size="sm" onClick={() => void runAction('openDocs')}>
-          <ExternalLink size={13} /> Abrir instrucciones
+          <ExternalLink size={13} /> {t('wizard.opencode.openDocs')}
         </Button>
         <Button size="sm" disabled={busy} onClick={() => void pick()}>
-          <FolderSearch size={13} /> Elegir binario…
+          <FolderSearch size={13} /> {t('wizard.opencode.pickBinary')}
         </Button>
         <Button size="sm" disabled={busy} onClick={() => void retry()}>
-          {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Reintentar
+          {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} {t('wizard.opencode.retry')}
         </Button>
       </div>
     </div>
@@ -361,6 +363,7 @@ function StepAuth({
   connected: ProviderState[] | null
   refreshProviders: () => Promise<void>
 }): React.JSX.Element {
+  const t = useT()
   const client = useServer((s) => s.client)
   const { catalog, loading, error: catalogError, reload } = useProviderCatalog(client)
   const connect = useProviderConnect(client, async () => {
@@ -400,30 +403,27 @@ function StepAuth({
 
   return (
     <div className="space-y-4">
-      <Lead>Elige cómo darle acceso a modelos de IA. Puedes añadir o cambiar proveedores después en Ajustes › Modelos.</Lead>
+      <Lead>{t('wizard.auth.lead')}</Lead>
 
       <section aria-labelledby="onb-go" className="rounded-xl border border-accent bg-bg p-4">
         <div className="flex items-center gap-2">
           <h3 id="onb-go" className="text-sm font-semibold">
             OpenCode Go
           </h3>
-          <Badge tone="accent">Recomendado</Badge>
+          <Badge tone="accent">{t('wizard.auth.recommended')}</Badge>
           {goConnected && (
             <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-              <Check size={11} /> OpenCode Go conectado
+              <Check size={11} /> {t('wizard.auth.goConnected')}
             </span>
           )}
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          OpenCode Go es una suscripción económica con acceso a modelos abiertos para programar. Crea tu cuenta, suscríbete y copia tu API
-          key; luego pégala aquí. Se guarda en OpenCode, no en {APP_NAME}.
-        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.goDescription', { app: APP_NAME })}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => void runAction('openAuth')}>
-            <ExternalLink size={13} /> Obtener mi clave
+            <ExternalLink size={13} /> {t('wizard.auth.getKey')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => void runAction('openGo')}>
-            Conocer OpenCode Go
+            {t('wizard.auth.learnGo')}
           </Button>
         </div>
         <ProviderKeyForm
@@ -444,25 +444,25 @@ function StepAuth({
 
       <section aria-labelledby="onb-other" className="rounded-xl border border-border bg-bg p-4">
         <h3 id="onb-other" className="text-sm font-semibold">
-          Otro proveedor / API key
+          {t('wizard.auth.otherTitle')}
         </h3>
-        <p className="mt-1 text-sm text-muted">Usa una clave o inicia sesión con un proveedor del catálogo de OpenCode.</p>
+        <p className="mt-1 text-sm text-muted">{t('wizard.auth.otherDescription')}</p>
         <div className="mt-3 space-y-2">
           {!client ? (
-            <p className="text-xs text-muted">Esperando a OpenCode… Vuelve al paso anterior si no arranca.</p>
+            <p className="text-xs text-muted">{t('wizard.auth.waitingServer')}</p>
           ) : catalogError && !catalog ? (
             <div className="space-y-2">
-              <ErrorText>No se pudo cargar la lista de proveedores: {catalogError}</ErrorText>
+              <ErrorText>{t('wizard.auth.catalogError', { error: catalogError })}</ErrorText>
               <Button size="sm" onClick={() => void reload()}>
-                Reintentar
+                {t('wizard.opencode.retry')}
               </Button>
             </div>
           ) : loading && !catalog ? (
             <p className="flex items-center gap-2 text-xs text-muted" aria-live="polite">
-              <Loader2 size={13} className="animate-spin" /> Cargando proveedores…
+              <Loader2 size={13} className="animate-spin" /> {t('wizard.auth.loadingProviders')}
             </p>
           ) : catalog && others.length === 0 ? (
-            <p className="text-xs text-muted">No hay otros proveedores disponibles en OpenCode ahora mismo.</p>
+            <p className="text-xs text-muted">{t('wizard.auth.noOthers')}</p>
           ) : catalog ? (
             <ProviderKeyForm
               providers={others}
@@ -482,7 +482,7 @@ function StepAuth({
                   key={n}
                   className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
                 >
-                  <Check size={11} /> {n} conectado
+                  <Check size={11} /> {t('wizard.auth.providerConnected', { name: n })}
                 </span>
               ))}
             </div>
@@ -498,8 +498,8 @@ function StepAuth({
       <div role="note" className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
         <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
         <div className="text-xs leading-relaxed text-muted">
-          <p>{CONNECT_TASKS_NOTICE}</p>
-          <p className="mt-1.5 text-subtle">{CONNECT_TERMS_NOTICE}</p>
+          <p>{connectTasksNotice()}</p>
+          <p className="mt-1.5 text-subtle">{connectTermsNotice()}</p>
         </div>
       </div>
     </div>
@@ -509,6 +509,7 @@ function StepAuth({
 // ───────────── Paso 3: modelo ─────────────
 
 function StepModel(): React.JSX.Element {
+  const t = useT()
   const model = useSettings((s) => s.settings.defaultModel)
   const update = useSettings((s) => s.update)
   const client = useServer((s) => s.client)
@@ -518,11 +519,9 @@ function StepModel(): React.JSX.Element {
   }, [client, load])
   return (
     <div className="space-y-4">
-      <Lead>
-        Es el modelo que usarán los chats y las tareas cuando no elijas otro. Puedes cambiarlo cuando quieras en Ajustes › Modelos.
-      </Lead>
+      <Lead>{t('wizard.model.lead')}</Lead>
       <div className="flex items-center gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
-        <span className="text-sm text-muted">Modelo predeterminado</span>
+        <span className="text-sm text-muted">{t('wizard.model.default')}</span>
         <ModelPicker value={model} onChange={(m) => void update({ defaultModel: m })} placement="bottom" />
       </div>
     </div>
@@ -531,28 +530,25 @@ function StepModel(): React.JSX.Element {
 
 // ───────────── Paso 4: modos ─────────────
 
-const MODE_INFO: { id: ModeId; icon: React.ReactNode; description: string }[] = [
-  { id: 'chat', icon: <MessageSquare size={16} />, description: 'Conversaciones generales con el modelo, sin tocar tus archivos.' },
-  { id: 'code', icon: <Code2 size={16} />, description: 'Un agente de programación que trabaja sobre la carpeta de tu proyecto.' },
-  {
-    id: 'tasks',
-    icon: <ListChecks size={16} />,
-    description: 'Tareas autónomas sobre tus documentos y carpetas, con permisos que tú apruebas.'
-  },
-  { id: 'routines', icon: <CalendarClock size={16} />, description: 'Tareas programadas que se ejecutan solas a la hora que elijas.' }
+const MODE_INFO: { id: ModeId; icon: React.ReactNode; description: MsgKey }[] = [
+  { id: 'chat', icon: <MessageSquare size={16} />, description: 'wizard.modes.chat' },
+  { id: 'code', icon: <Code2 size={16} />, description: 'wizard.modes.code' },
+  { id: 'tasks', icon: <ListChecks size={16} />, description: 'wizard.modes.tasks' },
+  { id: 'routines', icon: <CalendarClock size={16} />, description: 'wizard.modes.routines' }
 ]
 
 function StepModes(): React.JSX.Element {
+  const t = useT()
   return (
     <div className="space-y-3">
-      <Lead>Cambias de modo desde la barra lateral (⌃Tab recorre los cuatro).</Lead>
+      <Lead>{t('wizard.modes.lead')}</Lead>
       <ul className="space-y-2">
         {MODE_INFO.map((m) => (
           <li key={m.id} className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
             <span className="mt-0.5 text-accent">{m.icon}</span>
             <div>
               <p className="text-sm font-medium">{MODE_LABELS[m.id]}</p>
-              <p className="text-xs text-muted">{m.description}</p>
+              <p className="text-xs text-muted">{t(m.description)}</p>
             </div>
           </li>
         ))}
@@ -564,18 +560,20 @@ function StepModes(): React.JSX.Element {
 // ───────────── Paso 5: permisos de macOS ─────────────
 
 function StepPermissions(): React.JSX.Element {
+  const t = useT()
   return (
     <div className="space-y-3">
-      <Lead>{APP_NAME} no pide ningún permiso especial de macOS al empezar.</Lead>
+      <Lead>{t('wizard.permissions.lead', { app: APP_NAME })}</Lead>
       <div className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
         <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
         <div className="text-xs leading-relaxed text-muted">
           <p>
-            Solo si activas «{TASKS_TERMS.fullControl}» en una tarea, macOS te pedirá dos permisos:{' '}
-            <strong className="font-medium text-fg">Accesibilidad</strong> (mover el ratón, hacer clic y escribir) y{' '}
-            <strong className="font-medium text-fg">Grabación de pantalla</strong> (ver lo que hay en pantalla).
+            {t('wizard.permissions.intro', { mode: t('wizard.fullControl') })}{' '}
+            <strong className="font-medium text-fg">{t('wizard.permissions.accessibility')}</strong>{' '}
+            {t('wizard.permissions.accessibilityHint')} <strong className="font-medium text-fg">{t('wizard.permissions.screen')}</strong>{' '}
+            {t('wizard.permissions.screenHint')}
           </p>
-          <p className="mt-1.5">Puedes revisarlos o quitarlos en Ajustes del Sistema › Privacidad y seguridad.</p>
+          <p className="mt-1.5">{t('wizard.permissions.review')}</p>
         </div>
       </div>
     </div>

@@ -7,10 +7,12 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { AlertTriangle, ArrowLeft, Loader2, Mail, WifiOff } from 'lucide-react'
 import { cleanCodeInput, CODE_LENGTH, EMAIL_MAX, isValidCode, isValidEmail, normalizeEmail, type AccountState } from '@shared/account'
-import { ACCOUNT_DATA_SENTENCE, EXISTING_USER_NOTE, PRIVACY_DRAFT, TERMS_DRAFT, type LegalDoc } from '@shared/account-legal'
+import { PRIVACY_DRAFT, TERMS_DRAFT, type LegalDoc } from '@shared/account-legal'
+import type { MsgKey } from '@shared/i18n'
 import { APP_NAME, PRIVACY_URL, TERMS_URL } from '@shared/brand'
 import { Button } from '../../components/Button'
 import { Logo } from '../../components/Logo'
+import { useT } from '../../lib/i18n'
 import { accessBanner, accessView } from './access-view'
 import { LegalDialog } from './LegalDialog'
 
@@ -28,12 +30,13 @@ type Step = 'choose' | 'email' | 'code'
 /** Pestaña de la pantalla de acceso. Solo cambia los textos: el flujo (Google o correo + código) es el mismo. */
 export type AccessMode = 'login' | 'signup'
 
-const MODES: { id: AccessMode; label: string }[] = [
-  { id: 'login', label: 'Iniciar sesión' },
-  { id: 'signup', label: 'Crear cuenta' }
+const MODES: { id: AccessMode; label: MsgKey }[] = [
+  { id: 'login', label: 'account.tab.login' },
+  { id: 'signup', label: 'account.tab.signup' }
 ]
 
 function ModeTabs({ mode, onChange }: { mode: AccessMode; onChange: (m: AccessMode) => void }): React.JSX.Element {
+  const t = useT()
   const onKey = (e: KeyboardEvent<HTMLButtonElement>): void => {
     const i = MODES.findIndex((m) => m.id === mode)
     let next = i
@@ -47,7 +50,11 @@ function ModeTabs({ mode, onChange }: { mode: AccessMode; onChange: (m: AccessMo
     document.getElementById(`account-tab-${MODES[next].id}`)?.focus()
   }
   return (
-    <div role="tablist" aria-label="Acceso" className="mb-5 grid grid-cols-2 gap-1 rounded-lg border border-border bg-bg p-1">
+    <div
+      role="tablist"
+      aria-label={t('account.tab.aria')}
+      className="mb-5 grid grid-cols-2 gap-1 rounded-lg border border-border bg-bg p-1"
+    >
       {MODES.map((m) => {
         const on = m.id === mode
         return (
@@ -66,7 +73,7 @@ function ModeTabs({ mode, onChange }: { mode: AccessMode; onChange: (m: AccessMo
               on ? 'border border-border-strong bg-elevated text-fg shadow-sm' : 'border border-transparent text-muted hover:text-fg'
             }`}
           >
-            {m.label}
+            {t(m.label)}
           </button>
         )
       })}
@@ -138,6 +145,7 @@ export function AccessScreen({
   privacyUrl = PRIVACY_URL,
   termsUrl = TERMS_URL
 }: AccessScreenProps): React.JSX.Element {
+  const t = useT()
   const view = accessView(state)
   const banner = accessBanner(state)
   const [step, setStep] = useState<Step>(initial?.step ?? 'choose')
@@ -172,9 +180,9 @@ export function AccessScreen({
   if (view === 'checking') {
     return (
       <Shell>
-        <Title>Comprobando tu sesión…</Title>
+        <Title>{t('account.checking.title')}</Title>
         <p className="flex items-center gap-2 text-sm text-muted" role="status">
-          <Loader2 size={15} className="animate-spin" /> Un momento.
+          <Loader2 size={15} className="animate-spin" /> {t('account.checking.wait')}
         </p>
       </Shell>
     )
@@ -183,14 +191,12 @@ export function AccessScreen({
   if (view === 'waiting') {
     return (
       <Shell>
-        <Title sub="Termina de iniciar sesión con Google en el navegador. Cuando acabes, vuelve aquí: la app seguirá sola.">
-          Esperando al navegador…
-        </Title>
+        <Title sub={t('account.waiting.sub')}>{t('account.waiting.title')}</Title>
         <p className="mb-5 flex items-center gap-2 text-sm text-muted" role="status">
-          <Loader2 size={15} className="animate-spin" /> Esperando la confirmación (hasta 5 minutos).
+          <Loader2 size={15} className="animate-spin" /> {t('account.waiting.status')}
         </p>
         <Button variant="secondary" data-testid="account-cancel" onClick={() => void actions.cancel()}>
-          Cancelar
+          {t('account.waiting.cancel')}
         </Button>
       </Shell>
     )
@@ -202,9 +208,7 @@ export function AccessScreen({
         <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
           <WifiOff size={20} />
         </div>
-        <Title sub="No pudimos comprobar tu sesión con el servidor. Sin conexión, la app solo abre hasta 30 días después de la última comprobación. Conéctate a internet y vuelve a intentarlo.">
-          Sin conexión con el servidor
-        </Title>
+        <Title sub={t('account.offline.sub')}>{t('account.offline.title')}</Title>
         {error && (
           <div className="mb-4">
             <ErrorBox>{error}</ErrorBox>
@@ -215,15 +219,15 @@ export function AccessScreen({
             variant="primary"
             disabled={busy}
             data-testid="account-retry"
-            onClick={() => void run(actions.retry, 'No se pudo reintentar.')}
+            onClick={() => void run(actions.retry, t('account.err.retry'))}
           >
-            {busy ? <Loader2 size={14} className="animate-spin" /> : null} Reintentar
+            {busy ? <Loader2 size={14} className="animate-spin" /> : null} {t('account.offline.retry')}
           </Button>
-          <Button variant="ghost" disabled={busy} onClick={() => void run(actions.signOut, 'No se pudo cerrar la sesión.')}>
-            Usar otra cuenta
+          <Button variant="ghost" disabled={busy} onClick={() => void run(actions.signOut, t('account.err.signOut'))}>
+            {t('account.offline.otherAccount')}
           </Button>
         </div>
-        {state.email && <p className="mt-4 text-xs text-subtle">Sesión de {state.email}</p>}
+        {state.email && <p className="mt-4 text-xs text-subtle">{t('account.offline.session', { email: state.email })}</p>}
       </Shell>
     )
   }
@@ -235,7 +239,7 @@ export function AccessScreen({
 
   const sendCode = async (): Promise<void> => {
     if (!emailOk || !accepted) return
-    const ok = await run(() => actions.emailStart(normalizeEmail(email)), 'No se pudo enviar el código.')
+    const ok = await run(() => actions.emailStart(normalizeEmail(email)), t('account.err.sendCode'))
     if (ok) {
       setCode('')
       setStep('code')
@@ -245,7 +249,7 @@ export function AccessScreen({
 
   const verify = async (value: string): Promise<void> => {
     if (!isValidCode(value) || busy) return
-    const ok = await run(() => actions.emailVerify(normalizeEmail(email), value), 'No se pudo verificar el código.')
+    const ok = await run(() => actions.emailVerify(normalizeEmail(email), value), t('account.err.verifyCode'))
     if (!ok) setCode('')
   }
 
@@ -259,7 +263,7 @@ export function AccessScreen({
         className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
       />
       <span>
-        Acepto los{' '}
+        {t('account.terms.accept')}{' '}
         <button
           type="button"
           className="text-accent underline underline-offset-2 hover:opacity-80"
@@ -268,9 +272,9 @@ export function AccessScreen({
             openLegal(termsUrl, TERMS_DRAFT)
           }}
         >
-          términos
+          {t('account.terms.terms')}
         </button>{' '}
-        y la{' '}
+        {t('account.terms.and')}{' '}
         <button
           type="button"
           className="text-accent underline underline-offset-2 hover:opacity-80"
@@ -279,7 +283,7 @@ export function AccessScreen({
             openLegal(privacyUrl, PRIVACY_DRAFT)
           }}
         >
-          política de privacidad
+          {t('account.terms.privacy')}
         </button>
       </span>
     </label>
@@ -294,14 +298,8 @@ export function AccessScreen({
           <>
             <ModeTabs mode={mode} onChange={setMode} />
             <div role="tabpanel" id="account-tabpanel" aria-labelledby={`account-tab-${mode}`}>
-              <Title
-                sub={
-                  login
-                    ? 'Entra con tu cuenta de Google o con el código que te enviamos por correo. No hay contraseñas.'
-                    : 'Crea una cuenta con tu cuenta de Google o con tu correo. No hay contraseñas.'
-                }
-              >
-                {login ? `Inicia sesión en ${APP_NAME}` : `Crea tu cuenta de ${APP_NAME}`}
+              <Title sub={login ? t('account.choose.login.sub') : t('account.choose.signup.sub')}>
+                {login ? t('account.choose.login.title', { app: APP_NAME }) : t('account.choose.signup.title', { app: APP_NAME })}
               </Title>
 
               {banner && (
@@ -319,7 +317,7 @@ export function AccessScreen({
                   className="mb-4 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5 text-[13px] leading-snug"
                   data-testid="account-existing-note"
                 >
-                  Ya usabas {APP_NAME}: ahora pedimos una cuenta. {EXISTING_USER_NOTE}
+                  {t('account.choose.existingNote', { app: APP_NAME, note: t('account.existingUserNote') })}
                 </p>
               )}
 
@@ -331,7 +329,7 @@ export function AccessScreen({
 
               <div className="mb-4 space-y-1.5">
                 {terms}
-                {!accepted && <p className="pl-[26px] text-xs text-subtle">Marca la casilla para continuar.</p>}
+                {!accepted && <p className="pl-[26px] text-xs text-subtle">{t('account.choose.checkTerms')}</p>}
               </div>
 
               <div className="space-y-2.5">
@@ -340,12 +338,12 @@ export function AccessScreen({
                   className="w-full !py-2.5"
                   disabled={!canStart}
                   data-testid="account-google"
-                  onClick={() => void run(actions.google, 'No se pudo iniciar sesión con Google.')}
+                  onClick={() => void run(actions.google, t('account.err.google'))}
                 >
                   <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-hover text-[11px] font-bold">
                     G
                   </span>
-                  {login ? 'Iniciar sesión con Google' : 'Registrarse con Google'}
+                  {login ? t('account.choose.googleLogin') : t('account.choose.googleSignup')}
                 </Button>
                 <Button
                   variant="primary"
@@ -357,15 +355,15 @@ export function AccessScreen({
                     setStep('email')
                   }}
                 >
-                  <Mail size={15} /> {login ? 'Iniciar sesión con tu correo' : 'Crear una cuenta con tu correo'}
+                  <Mail size={15} /> {login ? t('account.choose.emailLogin') : t('account.choose.emailSignup')}
                 </Button>
               </div>
 
               <div className="mt-5 space-y-3">
-                <p className="text-xs leading-relaxed text-subtle [text-wrap:pretty]">{ACCOUNT_DATA_SENTENCE}</p>
+                <p className="text-xs leading-relaxed text-subtle [text-wrap:pretty]">{t('account.dataSentence')}</p>
                 {state.memoryOnly && (
                   <p className="text-xs leading-relaxed text-warning" data-testid="account-memory-only">
-                    No se pudo usar el Llavero de macOS en este equipo: tu sesión durará solo hasta que cierres la app.
+                    {t('account.choose.memoryOnly')}
                   </p>
                 )}
               </div>
@@ -380,16 +378,14 @@ export function AccessScreen({
               void sendCode()
             }}
           >
-            <Title sub="Te enviaremos un código de 6 dígitos para confirmar que el correo es tuyo.">
-              {login ? 'Inicia sesión con tu correo' : 'Crear una cuenta'}
-            </Title>
+            <Title sub={t('account.email.sub')}>{login ? t('account.email.titleLogin') : t('account.email.titleSignup')}</Title>
             {error && (
               <div className="mb-4">
                 <ErrorBox>{error}</ErrorBox>
               </div>
             )}
             <label className="mb-1.5 block text-[13px] font-medium" htmlFor="account-email">
-              Correo electrónico
+              {t('account.email.label')}
             </label>
             <input
               id="account-email"
@@ -399,7 +395,7 @@ export function AccessScreen({
               autoComplete="email"
               maxLength={EMAIL_MAX}
               value={email}
-              placeholder="tu@correo.com"
+              placeholder={t('account.email.placeholder')}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-ring)]"
             />
@@ -411,10 +407,10 @@ export function AccessScreen({
                   setStep('choose')
                 }}
               >
-                <ArrowLeft size={14} /> Volver
+                <ArrowLeft size={14} /> {t('account.email.back')}
               </Button>
               <Button variant="primary" type="submit" disabled={!emailOk || !accepted || busy} data-testid="account-email-send">
-                {busy ? <Loader2 size={14} className="animate-spin" /> : null} Enviar código
+                {busy ? <Loader2 size={14} className="animate-spin" /> : null} {t('account.email.send')}
               </Button>
             </div>
           </form>
@@ -430,13 +426,13 @@ export function AccessScreen({
             <Title
               sub={
                 <>
-                  Escribe el código de {CODE_LENGTH} dígitos que enviamos a{' '}
-                  <span className="font-medium text-fg">{normalizeEmail(email)}</span>. Vence en 10 minutos.
-                  {login && <span className="mt-1.5 block">Si no tenías cuenta, la crearemos al confirmar el código.</span>}
+                  {t('account.code.sub1', { length: CODE_LENGTH })} <span className="font-medium text-fg">{normalizeEmail(email)}</span>.{' '}
+                  {t('account.code.sub2')}
+                  {login && <span className="mt-1.5 block">{t('account.code.newAccountNote')}</span>}
                 </>
               }
             >
-              Revisa tu correo
+              {t('account.code.title')}
             </Title>
             {error && (
               <div className="mb-4">
@@ -444,7 +440,7 @@ export function AccessScreen({
               </div>
             )}
             <label className="mb-1.5 block text-[13px] font-medium" htmlFor="account-code">
-              Código
+              {t('account.code.label')}
             </label>
             <input
               id="account-code"
@@ -471,21 +467,21 @@ export function AccessScreen({
                   setStep('email')
                 }}
               >
-                <ArrowLeft size={14} /> Cambiar correo
+                <ArrowLeft size={14} /> {t('account.code.changeEmail')}
               </Button>
               <Button variant="primary" type="submit" disabled={!isValidCode(code) || busy} data-testid="account-code-verify">
-                {busy ? <Loader2 size={14} className="animate-spin" /> : null} Entrar
+                {busy ? <Loader2 size={14} className="animate-spin" /> : null} {t('account.code.verify')}
               </Button>
             </div>
             <p className="mt-4 text-xs text-subtle">
-              ¿No llegó?{' '}
+              {t('account.code.didntArrive')}{' '}
               <button
                 type="button"
                 disabled={busy}
                 className="text-accent underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
-                onClick={() => void run(() => actions.emailStart(normalizeEmail(email)), 'No se pudo enviar el código.')}
+                onClick={() => void run(() => actions.emailStart(normalizeEmail(email)), t('account.err.sendCode'))}
               >
-                Enviar otro código
+                {t('account.code.resend')}
               </button>
             </p>
           </form>

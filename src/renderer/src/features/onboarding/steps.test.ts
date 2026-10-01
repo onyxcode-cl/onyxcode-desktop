@@ -4,8 +4,8 @@ import {
   canAdvance,
   decideOnboarding,
   connectedNames,
-  CONNECT_TASKS_NOTICE,
-  CONNECT_TERMS_NOTICE,
+  connectTasksNotice,
+  connectTermsNotice,
   hasConfiguredProvider,
   isConfiguredProvider,
   nextStep,
@@ -142,8 +142,8 @@ describe('paso «Conecta tu IA»', () => {
   })
 
   it('los avisos nombran OpenCode Go y el modo Tareas con su nombre visible', () => {
-    expect(CONNECT_TASKS_NOTICE).toContain('OpenCode Go')
-    expect(CONNECT_TASKS_NOTICE).toContain(MODE_LABELS.tasks)
-    expect(CONNECT_TERMS_NOTICE).toContain('términos')
+    expect(connectTasksNotice()).toContain('OpenCode Go')
+    expect(connectTasksNotice()).toContain(MODE_LABELS.tasks)
+    expect(connectTermsNotice()).toContain('términos')
   })
 })
