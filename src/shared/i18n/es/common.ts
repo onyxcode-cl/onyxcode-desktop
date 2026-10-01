@@ -39,5 +39,9 @@ export const common = {
   'common.modelPicker.reasons': 'razona',
   'common.effort.standard': 'Estándar',
   'common.effort.title': 'Esfuerzo del modelo',
-  'common.effort.menu': 'Esfuerzo de razonamiento'
+  'common.effort.menu': 'Esfuerzo de razonamiento',
+  'common.plainText': 'Texto',
+  'common.git.notInstalled': 'git no está instalado o no está en el PATH',
+  'common.git.failed': 'git {cmd} falló',
+  'common.git.untrackedOmitted': '# {count} archivos sin seguimiento adicionales omitidos'
 } as const

@@ -427,5 +427,6 @@ export const tasks = {
   'tasks.proj.notesHint':
     'The task agent reads and updates this file. You can also edit it by hand; it’s included as context in every new task in this folder.',
   'tasks.proj.saved': 'Saved',
-  'tasks.proj.save': 'Save'
+  'tasks.proj.save': 'Save',
+  'tasks.conv.retryAttempt': 'Retry {attempt}:'
 } as const satisfies Messages<typeof es>

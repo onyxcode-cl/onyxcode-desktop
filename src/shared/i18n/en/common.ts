@@ -42,5 +42,9 @@ export const common = {
   'common.modelPicker.reasons': 'reasons',
   'common.effort.standard': 'Standard',
   'common.effort.title': 'Model effort',
-  'common.effort.menu': 'Reasoning effort'
+  'common.effort.menu': 'Reasoning effort',
+  'common.plainText': 'Text',
+  'common.git.notInstalled': 'git is not installed or not on the PATH',
+  'common.git.failed': 'git {cmd} failed',
+  'common.git.untrackedOmitted': '# {count} additional untracked files omitted'
 } as const satisfies Messages<typeof es>

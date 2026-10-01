@@ -425,5 +425,6 @@ export const tasks = {
   'tasks.proj.notesHint':
     'El agente de tareas lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada nueva tarea de esta carpeta.',
   'tasks.proj.saved': 'Guardado',
-  'tasks.proj.save': 'Guardar'
+  'tasks.proj.save': 'Guardar',
+  'tasks.conv.retryAttempt': 'Reintento {attempt}:'
 } as const

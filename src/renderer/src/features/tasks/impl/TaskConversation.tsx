@@ -7,6 +7,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { AssistantMessage, Part, PermissionRequest, ReasoningPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AlertCircle, Brain, ChevronRight, FileText, Loader2, Pencil, RotateCw, Sparkles, Undo2 } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
+import { t as translate } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
@@ -74,7 +75,12 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         steps = null
         blocks.push({ kind: 'text', id: p.id, text: p.text, partIds: [p.id] })
       } else if (p.type === 'retry') {
-        blocks.push({ kind: 'retry', id: p.id, text: `Reintento ${p.attempt}: ${friendlyError(p.error).message}`, partIds: [p.id] })
+        blocks.push({
+          kind: 'retry',
+          id: p.id,
+          text: `${translate('tasks.conv.retryAttempt', { attempt: p.attempt })} ${friendlyError(p.error).message}`,
+          partIds: [p.id]
+        })
       } else if (p.type === 'file') {
         steps = null
         blocks.push({ kind: 'file', id: p.id, name: p.filename ?? p.url, partIds: [p.id] })

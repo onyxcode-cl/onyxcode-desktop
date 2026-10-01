@@ -52,9 +52,7 @@ const LANG_LABELS: Record<string, string> = {
   ruby: 'Ruby',
   rb: 'Ruby',
   diff: 'Diff',
-  dockerfile: 'Dockerfile',
-  plaintext: 'Texto',
-  text: 'Texto'
+  dockerfile: 'Dockerfile'
 }
 
 function languageOf(children: ReactNode): string | null {
@@ -64,6 +62,7 @@ function languageOf(children: ReactNode): string | null {
   const m = /language-([\w+#-]+)/.exec(cls)
   if (!m) return null
   const id = m[1].toLowerCase()
+  if (id === 'plaintext' || id === 'text') return t('common.plainText')
   return LANG_LABELS[id] ?? id
 }
 

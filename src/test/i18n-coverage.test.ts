@@ -13,6 +13,7 @@ const ROOT = resolve(__dirname, '../..')
 
 export const MIGRATED: string[] = [
   'src/main/ipc/onboarding.ts',
+  'src/renderer/src/app/App.tsx',
   'src/main/ipc/account.ts',
   'src/renderer/quick/main.tsx',
   'src/renderer/overlay/pill.ts',

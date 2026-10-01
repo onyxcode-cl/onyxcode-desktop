@@ -24,6 +24,9 @@ import { UpdateNotice } from './UpdateNotice'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
 import { useTheme } from './useTheme'
+import { useT } from '../lib/i18n'
+
+const MOD = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl+'
 
 export function App(): React.JSX.Element {
   const mode = useUi((s) => s.mode)
@@ -32,6 +35,7 @@ export function App(): React.JSX.Element {
   const toggleSidebar = useUi((s) => s.toggleSidebar)
 
   useTheme()
+  const t = useT()
 
   useEffect(() => {
     const offSettings = useSettings.getState().init()
@@ -174,29 +178,29 @@ export function App(): React.JSX.Element {
   return (
     <div className="flex h-full bg-bg">
       <ConfirmDialogHost />
-      <ErrorBoundary label="el asistente de inicio">
+      <ErrorBoundary label={t('app.boundary.onboarding')}>
         <OnboardingGate />
       </ErrorBoundary>
-      <ErrorBoundary label="la paleta de comandos">
+      <ErrorBoundary label={t('app.boundary.palette')}>
         <CommandPalette />
       </ErrorBoundary>
       <div
         className={`h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
         inert={collapsed}
       >
-        <ErrorBoundary label="la barra lateral">
+        <ErrorBoundary label={t('app.boundary.sidebar')}>
           <Sidebar />
         </ErrorBoundary>
       </div>
       <main className="relative flex min-w-0 flex-1 flex-col">
         {collapsed && (
           <div className="absolute top-2 left-20 z-10 animate-fade-in">
-            <IconButton label="Mostrar barra lateral (⌘\)" onClick={toggleSidebar}>
+            <IconButton label={t('app.sidebar.show', { mod: MOD })} onClick={toggleSidebar}>
               <PanelLeftOpen size={16} />
             </IconButton>
           </div>
         )}
-        <ErrorBoundary label="el estado del servidor">
+        <ErrorBoundary label={t('app.boundary.server')}>
           <ServerBanner />
           <EngineNotice />
           <UpdateNotice />
