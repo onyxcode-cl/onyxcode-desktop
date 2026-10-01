@@ -41,8 +41,8 @@ export function registerTasksRestoreHandlers(ctx: TasksIpcContext): TasksSubmodu
       throw new IpcError('BUSY', 'La tarea sigue trabajando. Espera a que termine o detenla antes de deshacer los cambios.')
     return restore.apply(root, pointId, paths)
   })
-  handle('tasks:restore:forget', ({ sessionId }) => {
-    restore.forget(sessionId)
+  handle('tasks:restore:forget', async ({ sessionId }) => {
+    await restore.forget(sessionId)
   })
   return { dispose: () => clearTimeout(timer) }
 }

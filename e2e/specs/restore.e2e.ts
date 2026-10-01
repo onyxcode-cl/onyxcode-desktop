@@ -1,13 +1,14 @@
 // Puntos de restauración de Tareas contra la app real y el OpenCode falso: el guion modifica a.txt, crea b.txt y borra
 // c.txt; el panel lo muestra, «Deshacer» lo revierte (b.txt a la Papelera de pruebas), «Rehacer» lo recupera, y la tarjeta
 // de permisos de edición enseña el diff y deja «Rechazar con indicaciones». Capturas con RESTORE_SHOTS_DIR.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from 'playwright-core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { stubDialog } from '../lib/dialogs'
 import { useApp } from '../lib/harness'
+import { shot as takeShot } from '../lib/shots'
 import { fakeOutsideUserData, makeTasksDir, tasksFake } from '../lib/lotes'
 import { MODE, type E2EApp } from '../lib/launch'
 import { MODE_LABELS } from '../../src/shared/labels'
@@ -29,30 +30,14 @@ afterAll(() => {
 const A_ORIG = 'uno\ndos\ntres\n'
 const A_NEW = 'uno\nDOS\ntres\ncuatro\n'
 const C_ORIG = 'contenido de c\n'
+const CLOUD_KEEP = 'nube.bin' // el agente no lo toca
+const CLOUD_EDIT = 'nube-editado.bin' // el agente lo sobrescribe: el panel debe decir por qué no se puede deshacer
+const CLOUD_EDIT_NEW = 'editado por el agente\n'
 
 const read = (rel: string): string => readFileSync(join(work.dir, rel), 'utf8')
 const trashed = (): string[] => readdirSync(trashDir)
 
-/** Captura claro y oscuro a 820 y 1280 px de ancho (la ventana vuelve a 1280 al terminar). */
-async function shot(app: E2EApp, name: string, widths: number[] = [820, 1280]): Promise<void> {
-  if (!SHOTS) return
-  mkdirSync(SHOTS, { recursive: true })
-  const { page } = app
-  for (const w of widths) {
-    await app.electronApp.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setContentSize(width, 800), w)
-    await page.setViewportSize({ width: w, height: 800 })
-    await page.waitForTimeout(400)
-    for (const scheme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme: scheme })
-      await page.waitForTimeout(250)
-      await page.screenshot({ path: join(SHOTS, `${name}-${w}-${scheme}.png`) })
-    }
-  }
-  await page.emulateMedia({ colorScheme: null })
-  await app.electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 800))
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await page.waitForTimeout(300)
-}
+const shot = (app: E2EApp, name: string, widths?: number[]): Promise<void> => takeShot(app, SHOTS, name, widths)
 
 async function waitIdle(page: Page): Promise<void> {
   await expect
@@ -69,6 +54,12 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
   beforeAll(() => {
     writeFileSync(join(work.dir, 'a.txt'), A_ORIG)
     writeFileSync(join(work.dir, 'c.txt'), C_ORIG)
+    // Archivos dispersos (tamaño sin bloques en disco): imitan el «solo en la nube» de iCloud. No se leen ni se copian.
+    for (const n of [CLOUD_KEEP, CLOUD_EDIT]) {
+      writeFileSync(join(work.dir, n), '')
+      truncateSync(join(work.dir, n), 2 * 1024 * 1024)
+      expect(statSync(join(work.dir, n)).blocks).toBe(0)
+    }
   })
 
   it('(1-2) enviar un mensaje guarda el punto y el guion modifica a, crea b y borra c', async () => {
@@ -98,6 +89,7 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
         { type: 'fs', op: 'write', path: 'a.txt', content: A_NEW },
         { type: 'fs', op: 'write', path: 'b.txt', content: 'archivo nuevo\n' },
         { type: 'fs', op: 'delete', path: 'c.txt' },
+        { type: 'fs', op: 'write', path: CLOUD_EDIT, content: CLOUD_EDIT_NEW },
         { type: 'text', text: 'Listo: edité a.txt, creé b.txt y borré c.txt.' }
       ]
     })
@@ -111,19 +103,26 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     sessionId = await page.evaluate(() => (window as any).__onyxE2E.useTasks.getState().activeTaskId)
     expect(sessionId).toMatch(/^ses_/)
     // Nada del almacén dentro de la carpeta del usuario.
-    expect(readdirSync(work.dir).sort()).toEqual(['a.txt', 'b.txt'])
+    expect(readdirSync(work.dir).sort()).toEqual(['a.txt', 'b.txt', CLOUD_EDIT, CLOUD_KEEP])
   })
 
-  it('(3) el panel muestra 3 cambios y se abre el diff', async () => {
+  it('(3) el panel muestra 4 cambios (uno no restaurable, con su motivo) y se abre el diff', async () => {
     const { page } = app()
     await expectVisible(page.getByText('Cambios en archivos'), 20_000)
     const panel = page.locator('section', { has: page.getByText('Cambios en archivos', { exact: true }) })
     await expectVisible(panel.getByRole('button', { name: /a\.txt/ }))
-    await expectCount(panel.locator('li'), 3)
+    await expectCount(panel.locator('li'), 4)
     await expectVisible(panel.getByText('Modificado'))
     await expectVisible(panel.getByText('Nuevo'))
     await expectVisible(panel.getByText('Eliminado'))
-    await shot(app(), 'panel-cambios', [1280])
+    // El archivo «solo en la nube» que el agente sobrescribió: se explica por qué no se puede deshacer.
+    await panel.getByRole('button', { name: new RegExp(CLOUD_EDIT.replace('.', '\\.')) }).click()
+    await expectVisible(panel.getByText('No restaurable (solo en la nube)', { exact: false }))
+    await panel.getByText('No restaurable (solo en la nube)', { exact: false }).scrollIntoViewIfNeeded()
+    // El que el agente no tocó no aparece entre los cambios.
+    expect(await panel.getByText(CLOUD_KEEP, { exact: true }).count()).toBe(0)
+    await shot(app(), 'panel-cambios', [820, 1280])
+    await panel.getByRole('button', { name: new RegExp(CLOUD_EDIT.replace('.', '\\.')) }).click()
     await panel.getByRole('button', { name: /a\.txt/ }).click()
     await expectVisible(panel.locator('table'))
     await expectVisible(panel.getByText('cuatro'))
@@ -144,6 +143,11 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     expect(read('c.txt')).toBe(C_ORIG)
     expect(existsSync(join(work.dir, 'b.txt'))).toBe(false)
     expect(trashed().some((n) => n.endsWith('-b.txt'))).toBe(true)
+    // Archivos «solo en la nube»: siguen en su sitio, no van a la Papelera y no se leyeron.
+    expect(statSync(join(work.dir, CLOUD_KEEP)).size).toBe(2 * 1024 * 1024)
+    expect(statSync(join(work.dir, CLOUD_KEEP)).blocks).toBe(0)
+    expect(read(CLOUD_EDIT)).toBe(CLOUD_EDIT_NEW)
+    expect(trashed().filter((n) => n.includes('nube'))).toEqual([])
     await shot(a, 'deshecho')
   })
 

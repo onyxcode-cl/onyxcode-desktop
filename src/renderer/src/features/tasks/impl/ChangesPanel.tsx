@@ -14,7 +14,7 @@ import { errorMessage } from '../../../lib/opencode'
 import { undoTaskChanges } from './actions'
 import { cw } from './bridge'
 import { Section } from './PanelSection'
-import { firstPoint } from './restore-logic'
+import { firstPoint, notRestorableText } from './restore-logic'
 import { useTasks } from './store'
 
 const BADGE: Record<TasksRestoreChange['status'], { label: string; cls: string }> = {
@@ -105,9 +105,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
             <p className="px-3 py-2 text-xs text-subtle">Hay demasiados cambios para mostrar la diferencia de este archivo.</p>
           )}
           {!change.restorable && (
-            <p className="border-t border-border px-3 py-1.5 text-[11px] text-warning">
-              No se puede deshacer: el archivo pesa más de 50 MB y no se guardó.
-            </p>
+            <p className="border-t border-border px-3 py-1.5 text-[11px] text-warning">{notRestorableText(change.reason)}</p>
           )}
         </div>
       )}

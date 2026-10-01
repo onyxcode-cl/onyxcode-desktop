@@ -194,3 +194,18 @@ archivos» (`ChangesPanel.tsx`: Nuevo/Modificado/Eliminado, +N −M, diff, «Des
 permisos muestra el diff y ofrece «Rechazar con indicaciones» (`replyPermission(id,'reject',mensaje)`). Se crean puntos también en Control total (decisión del usuario: ahí el agente podría manipular el
 almacén; la interfaz lo avisa). Servidor falso: paso de guion `fs` (escribe/borra archivos reales confinados al directorio de la sesión). E2E `restore.e2e.ts` con capturas (`RESTORE_SHOTS_DIR`). SEGURIDAD §3 octies.
 Limitaciones: no cubre carpetas vinculadas con escritura; el panel lateral no aparece por debajo de 1024 px (ya ocurría con el panel de progreso; «Deshacer desde aquí» sigue disponible).
+
+## F8-B21 — Robustez de los puntos de restauración (pérdida de datos)
+
+Corrige un fallo real de F8-B20: si `copyFileSync` fallaba al crear el punto (permisos, E/S, iCloud) el catch **omitía** la entrada del manifiesto; `diffState` veía ese archivo como `added` y «Deshacer»
+lo mandaba a la Papelera aunque existía antes (H1). Igual con un subdirectorio ilegible (H2). Ahora: H1 el archivo se registra con `hash:null` y `skip:'unreadable'|'cloud'|'nospace'`; H2
+`manifest.unreadableDirs` (ni diff ni apply tratan como nuevo lo de debajo); H3 copia (`fs.promises.copyFile` con `COPYFILE_FICLONE`) y hash por flujo asíncronos, también en el diff (40 MB: retraso del bucle
+< 200 ms, con test); H4 `createdAt` en el manifiesto y hash recalculado si `mtimeMs >= createdAt - 2000` (FAT/exFAT/HFS+); H5 presupuesto `maxCreateMs` 30 s: pasado, punto `skipped` («tardaba
+demasiado») y temporales limpiados (y el renderer limita la espera a 35 s); H6 espacio libre con `statfsSync` inyectable (`freeBytes`): bytes a copiar + 512 MB, o ENOSPC → `skipped` «no queda espacio en el
+disco»; H7 iCloud «solo en la nube» (`size>0 && blocks===0`, predicado inyectable): no se lee, `hash:null`, `meta.notCopied`, stubs `.<nombre>.icloud` en `cloudStubs` y un `added` que sea un stub no va a la
+Papelera; H8 `.DS_Store` y `._*` ignorados en recorrido y diff; H9 `applyDiffs` manda primero todo lo nuevo a la Papelera y luego restaura (volúmenes sin distinción de mayúsculas); H10 `chmod` de mejor esfuerzo;
+H11 `forget()`/`clearAll()` (ahora asíncronos) esperan los locks en curso; H12 mensaje «La carpeta no está disponible (¿disco desconectado?)». Contrato: `TasksRestorePoint.notCopied?`,
+`TasksRestoreChange.reason?: 'large'|'cloud'|'unreadable'`; el panel «Cambios en archivos» explica «No restaurable (solo en la nube)…» y la conversación avisa si un punto no incluye archivos. Sin IPC nuevo.
+Tests: `restore-points.test.ts` (H1, H2, H4-H9, H11, H12 y retraso del bucle), `restore-points.fs.test.ts` (`npm run test:fs`, ExFAT/FAT32/HFS+ mayúsculas), `restore-points.stress.test.ts`
+(`npm run test:stress`), E2E `restore.e2e.ts` ampliado con archivos dispersos; `shot()` pasa a `e2e/lib/shots.ts`. Limitaciones: el aviso de espacio es conservador (cuenta el tamaño completo aunque APFS clone);
+un archivo que desaparece a mitad de la copia se omite (como antes); iCloud real no probado (solo imitado con archivos dispersos).

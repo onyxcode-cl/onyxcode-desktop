@@ -9,6 +9,11 @@
  * Todo lo hace el proceso principal (fuera del sandbox del agente); no deja nada dentro de la
  * carpeta del usuario. Sin dependencias de Electron: la Papelera, la hora y la raíz se inyectan.
  *
+ * Robustez (F8-B21): un archivo que existía y no se pudo copiar (ilegible, iCloud «solo en la nube», sin espacio) se
+ * registra con `hash:null` y `skip`, NUNCA se omite: omitirlo lo haría pasar por «nuevo» y deshacer lo mandaría a la
+ * Papelera. Directorios ilegibles (`unreadableDirs`) y stubs de iCloud (`cloudStubs`) tampoco generan «nuevos».
+ * Copia y hash son asíncronos (no bloquean main) y crear tiene un presupuesto de tiempo y de espacio libre.
+ *
  * Garantías y límites (ver docs/SEGURIDAD.md): recorrido sin seguir symlinks (se registran y
  * nunca se restauran); se excluyen `.git/`, `node_modules/` y `.onyxcode/`; 20 000 archivos,
  * 50 MB por archivo y 2 GB en total; restaurar crea antes un punto «Antes de deshacer»; lo creado
@@ -18,7 +23,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import {
   chmodSync,
   constants as fsc,
-  copyFileSync,
+  createReadStream,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -27,9 +32,11 @@ import {
   realpathSync,
   renameSync,
   rmSync,
+  statfsSync,
   writeFileSync,
   type Stats
 } from 'node:fs'
+import { copyFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 import { createTwoFilesPatch } from 'diff'
 import type { TasksRestoreChange, TasksRestorePoint } from '@shared/ipc-tasks'
@@ -46,6 +53,8 @@ export interface RestoreLimits {
   maxPatchBytes: number
   /** Tope de cambios devueltos. */
   maxChanges: number
+  /** Presupuesto para crear un punto: pasado este tiempo el punto queda omitido. */
+  maxCreateMs: number
 }
 
 export const DEFAULT_LIMITS: RestoreLimits = {
@@ -56,8 +65,14 @@ export const DEFAULT_LIMITS: RestoreLimits = {
   maxAgeMs: 30 * 24 * 60 * 60 * 1000,
   maxDiffFileBytes: 1024 * 1024,
   maxPatchBytes: 2 * 1024 * 1024,
-  maxChanges: 5000
+  maxChanges: 5000,
+  maxCreateMs: 30_000
 }
+
+/** Margen de espacio libre que debe quedar tras copiar. */
+const FREE_MARGIN_BYTES = 512 * 1024 * 1024
+/** Precisión de fecha de los sistemas de archivos (FAT/exFAT 2 s, HFS+ 1 s): una fecha tan cercana al punto no basta. */
+const MTIME_SLACK_MS = 2000
 
 export interface RestoreDeps {
   /** `userData/restore-points`. */
@@ -66,14 +81,35 @@ export interface RestoreDeps {
   trash: (path: string) => Promise<void>
   now?: () => number
   limits?: Partial<RestoreLimits>
+  /** Bytes libres del volumen que contiene `path` (por defecto `statfsSync`). */
+  freeBytes?: (path: string) => number
+  /** ¿Es un archivo de iCloud «solo en la nube» (no descargado)? Leerlo dispararía la descarga. */
+  isCloudPlaceholder?: (st: Stats) => boolean
+}
+
+/** Por qué un archivo no se guardó. */
+export type SkipReason = 'unreadable' | 'cloud' | 'nospace'
+
+/** iCloud «solo en la nube»: tiene tamaño pero ningún bloque en disco. Un archivo normal en APFS tiene blocks > 0. */
+export const defaultIsCloudPlaceholder = (st: Stats): boolean => st.size > 0 && st.blocks === 0
+
+function defaultFreeBytes(path: string): number {
+  try {
+    const f = statfsSync(path)
+    return Number(f.bavail) * Number(f.bsize)
+  } catch {
+    return Number.POSITIVE_INFINITY
+  }
 }
 
 export interface RestoreEntry {
   size: number
   mtimeMs: number
   mode: number
-  /** `null` si el archivo no se copió (más de 50 MB). */
+  /** `null` si el archivo no se copió (más de 50 MB, solo en la nube o ilegible: ver `skip`). */
   hash: string | null
+  /** Motivo por el que no se copió (sin motivo y `hash:null` = más de 50 MB). */
+  skip?: SkipReason
 }
 
 interface Manifest {
@@ -83,6 +119,19 @@ interface Manifest {
   dirs: string[]
   /** Symlinks registrados (jamás se restauran ni se tocan). */
   symlinks: string[]
+  /** Momento de creación: una fecha de archivo cercana a él no se fía (FAT/exFAT/HFS+). */
+  createdAt?: number
+  /** Directorios que no se pudieron leer: lo que hay debajo es desconocido (nunca «nuevo»). */
+  unreadableDirs?: string[]
+  /** Archivos de iCloud representados por un `.<nombre>.icloud` (ruta del archivo real). */
+  cloudStubs?: string[]
+}
+
+interface Diff {
+  rel: string
+  status: 'added' | 'modified' | 'deleted'
+  entry?: RestoreEntry
+  cur?: Stats
 }
 
 export const EXCLUDED_DIRS: ReadonlySet<string> = new Set(['.git', 'node_modules', '.onyxcode'])
@@ -94,15 +143,24 @@ interface Walked {
   files: Array<{ rel: string; abs: string; st: Stats }>
   dirs: string[]
   symlinks: string[]
+  unreadableDirs: string[]
+  cloudStubs: string[]
   overLimit: boolean
+  timedOut: boolean
 }
 
 /** Cede el hilo para no congelar el proceso principal en carpetas grandes. */
 const yieldLoop = (): Promise<void> => new Promise((r) => setImmediate(r))
 
+/** Metadatos del sistema que no son del usuario (Finder, volúmenes no HFS): fuera del recorrido y del diff. */
+export const isIgnorableName = (name: string): boolean => name === '.DS_Store' || name.startsWith('._')
+const STUB_RE = /^\.(.+)\.icloud$/
+
+const isUnder = (rel: string, dirs: readonly string[]): boolean => dirs.some((d) => rel.startsWith(`${d}/`))
+
 /** Recorre sin seguir symlinks y sin entrar en directorios excluidos. */
-async function walk(root: string, maxFiles: number): Promise<Walked> {
-  const out: Walked = { files: [], dirs: [], symlinks: [], overLimit: false }
+async function walk(root: string, maxFiles: number, expired?: () => boolean): Promise<Walked> {
+  const out: Walked = { files: [], dirs: [], symlinks: [], unreadableDirs: [], cloudStubs: [], overLimit: false, timedOut: false }
   const stack: string[] = ['']
   let n = 0
   while (stack.length) {
@@ -110,7 +168,9 @@ async function walk(root: string, maxFiles: number): Promise<Walked> {
     let names: string[]
     try {
       names = readdirSync(join(root, relDir))
-    } catch {
+    } catch (err) {
+      if (!relDir) throw err
+      out.unreadableDirs.push(relDir)
       continue
     }
     for (const name of names) {
@@ -129,21 +189,45 @@ async function walk(root: string, maxFiles: number): Promise<Walked> {
         out.dirs.push(rel)
         stack.push(rel)
       } else if (st.isFile()) {
+        if (isIgnorableName(name)) continue
+        const stub = STUB_RE.exec(name)
+        if (stub) {
+          out.cloudStubs.push(relDir ? `${relDir}/${stub[1]}` : stub[1])
+          continue
+        }
         out.files.push({ rel, abs, st })
         if (out.files.length > maxFiles) {
           out.overLimit = true
           return out
         }
       }
-      if (++n % 400 === 0) await yieldLoop()
+      if (++n % 400 === 0) {
+        await yieldLoop()
+        if (expired?.()) {
+          out.timedOut = true
+          return out
+        }
+      }
     }
   }
   return out
 }
 
-function sha256File(path: string): string {
-  return createHash('sha256').update(readFileSync(path)).digest('hex')
+/** Hash por flujo: un archivo grande no bloquea el proceso principal. */
+async function sha256File(path: string): Promise<string> {
+  const h = createHash('sha256')
+  for await (const chunk of createReadStream(path, { highWaterMark: 1024 * 1024 })) h.update(chunk as Buffer)
+  return h.digest('hex')
 }
+
+/** ¿Por qué no se pudo guardar esta entrada? («large» = más de 50 MB). */
+const reasonOf = (e: RestoreEntry): 'large' | 'cloud' | 'unreadable' => (e.skip === 'cloud' ? 'cloud' : e.skip ? 'unreadable' : 'large')
+const noCopyText = (e: RestoreEntry): string =>
+  e.skip === 'cloud'
+    ? 'solo estaba en la nube (iCloud) y no se guardó'
+    : e.skip
+      ? 'no se pudo leer al guardar el punto'
+      : 'no se guardó (más de 50 MB)'
 
 function looksText(buf: Buffer): boolean {
   return !buf.subarray(0, 8192).includes(0)
@@ -168,17 +252,25 @@ function countPatch(patch: string): { additions: number; deletions: number } {
 export class RestorePoints {
   private readonly limits: RestoreLimits
   private readonly now: () => number
+  private readonly freeBytes: (path: string) => number
+  private readonly isCloud: (st: Stats) => boolean
   private readonly locks = new Map<string, Promise<unknown>>()
 
   constructor(private readonly deps: RestoreDeps) {
     this.limits = { ...DEFAULT_LIMITS, ...deps.limits }
     this.now = deps.now ?? Date.now
+    this.freeBytes = deps.freeBytes ?? defaultFreeBytes
+    this.isCloud = deps.isCloudPlaceholder ?? defaultIsCloudPlaceholder
   }
 
   // ───────────────────────────── almacén ─────────────────────────────
 
   private realFolder(folder: string): string {
-    return realpathSync(resolve(folder))
+    try {
+      return realpathSync(resolve(folder))
+    } catch {
+      throw new Error('La carpeta no está disponible (¿disco desconectado?)')
+    }
   }
 
   private folderDir(real: string): string {
@@ -205,6 +297,11 @@ export class RestorePoints {
       if (this.locks.get(key) === tail) this.locks.delete(key)
     })
     return next
+  }
+
+  /** Espera a que terminen las operaciones en curso (crear/restaurar) antes de borrar el almacén. */
+  private async idle(): Promise<void> {
+    while (this.locks.size) await Promise.all([...this.locks.values()])
   }
 
   private readMeta(dir: string, id: string): TasksRestorePoint | null {
@@ -315,7 +412,7 @@ export class RestorePoints {
 
   // ───────────────────────────── crear ─────────────────────────────
 
-  create(folder: string, sessionId: string, label: string): Promise<TasksRestorePoint> {
+  async create(folder: string, sessionId: string, label: string): Promise<TasksRestorePoint> {
     const real = this.realFolder(folder)
     return this.serial(real, () => this.createLocked(real, sessionId, label))
   }
@@ -324,7 +421,8 @@ export class RestorePoints {
     const dir = this.folderDir(real)
     this.ensureDirs(dir)
     const id = randomBytes(16).toString('hex')
-    const base = { id, sessionId, folder: real, createdAt: this.now(), label: label.slice(0, 200) }
+    const startedAt = this.now()
+    const base = { id, sessionId, folder: real, createdAt: startedAt, label: label.slice(0, 200) }
     const finish = (p: Omit<TasksRestorePoint, keyof typeof base>, man: Manifest): TasksRestorePoint => {
       const meta: TasksRestorePoint = { ...base, ...p }
       writeFileSync(join(dir, 'points', `${id}.json`), JSON.stringify(man), { mode: 0o600 })
@@ -333,54 +431,105 @@ export class RestorePoints {
       if (pruned > 0) this.gcFolder(dir)
       return meta
     }
-    const empty: Manifest = { v: 1, entries: {}, dirs: [], symlinks: [] }
-    const w = await walk(real, this.limits.maxFiles)
-    if (w.overLimit) {
-      return finish(
-        { files: 0, bytes: 0, status: 'skipped', reason: `la carpeta tiene más de ${this.limits.maxFiles.toLocaleString('es')} archivos` },
-        empty
-      )
-    }
+    const empty: Manifest = { v: 1, entries: {}, dirs: [], symlinks: [], createdAt: startedAt }
+    const skipped = (reason: string): TasksRestorePoint => finish({ files: 0, bytes: 0, status: 'skipped', reason }, empty)
+    const expired = (): boolean => this.now() - startedAt > this.limits.maxCreateMs
+    const SLOW = 'tardaba demasiado'
+    const w = await walk(real, this.limits.maxFiles, expired)
+    if (w.timedOut) return skipped(SLOW)
+    if (w.overLimit) return skipped(`la carpeta tiene más de ${this.limits.maxFiles.toLocaleString('es')} archivos`)
     let total = 0
     for (const f of w.files) if (f.st.size <= this.limits.maxFileBytes) total += f.st.size
-    if (total > this.limits.maxTotalBytes) {
-      return finish({ files: 0, bytes: 0, status: 'skipped', reason: 'la carpeta ocupa más de 2 GB' }, empty)
-    }
+    if (total > this.limits.maxTotalBytes) return skipped('la carpeta ocupa más de 2 GB')
 
     // Punto anterior de la carpeta (el más reciente con manifiesto): reutiliza hashes si coincide tamaño y fecha.
     const metas = this.allMetas(dir)
     const prev = metas.length ? this.readManifest(dir, metas[metas.length - 1].id) : null
     const entries: Record<string, RestoreEntry> = Object.create(null)
+    const modeOf = (st: Stats): number => st.mode & 0o7777
     let bytes = 0
+    let notCopied = 0
     let n = 0
+    // Clasificación: qué se registra sin copiar, qué se reutiliza y qué hay que copiar.
+    const todo: Array<{ rel: string; abs: string; st: Stats }> = []
+    let need = 0
     for (const f of w.files) {
-      const { rel, abs, st } = f
-      if (++n % 100 === 0) await yieldLoop()
+      const { rel, st } = f
+      if (++n % 200 === 0) await yieldLoop()
       if (st.size > this.limits.maxFileBytes) {
-        entries[rel] = { size: st.size, mtimeMs: st.mtimeMs, mode: st.mode & 0o7777, hash: null }
+        entries[rel] = { size: st.size, mtimeMs: st.mtimeMs, mode: modeOf(st), hash: null }
+        continue
+      }
+      if (this.isCloud(st)) {
+        // «Solo en la nube»: leerlo dispararía la descarga. Se registra, no se copia, y nunca se trata como nuevo.
+        entries[rel] = { size: st.size, mtimeMs: st.mtimeMs, mode: modeOf(st), hash: null, skip: 'cloud' }
+        notCopied++
         continue
       }
       const old = prev && Object.hasOwn(prev.entries, rel) ? prev.entries[rel] : undefined
-      if (old && old.hash && old.size === st.size && old.mtimeMs === st.mtimeMs && existsSync(join(dir, 'objects', old.hash))) {
-        entries[rel] = { ...old, mode: st.mode & 0o7777 }
+      // Una fecha cercana al punto anterior no basta (FAT/exFAT 2 s, HFS+ 1 s): se vuelve a calcular el hash.
+      const recent = prev?.createdAt !== undefined && st.mtimeMs >= prev.createdAt - MTIME_SLACK_MS
+      if (old && old.hash && !recent && old.size === st.size && old.mtimeMs === st.mtimeMs && existsSync(join(dir, 'objects', old.hash))) {
+        entries[rel] = { ...old, mode: modeOf(st) }
         bytes += st.size
         continue
       }
+      todo.push(f)
+      need += st.size
+    }
+    if (expired()) return skipped(SLOW)
+    const NOSPACE = 'no queda espacio en el disco'
+    if (this.freeBytes(dir) < need + FREE_MARGIN_BYTES) return skipped(NOSPACE)
+
+    const tmps = new Set<string>()
+    const cleanTmps = (): void => {
+      for (const t of tmps) rmSync(t, { force: true })
+      tmps.clear()
+    }
+    n = 0
+    for (const f of todo) {
+      const { rel, abs, st } = f
+      if (++n % 25 === 0) await yieldLoop()
+      if (expired()) {
+        cleanTmps()
+        return skipped(SLOW)
+      }
       const tmp = join(dir, 'objects', `.tmp-${randomBytes(8).toString('hex')}`)
+      tmps.add(tmp)
       try {
-        copyFileSync(abs, tmp, fsc.COPYFILE_FICLONE)
-        const hash = sha256File(tmp)
+        await copyFile(abs, tmp, fsc.COPYFILE_FICLONE)
+        const hash = await sha256File(tmp)
         const obj = join(dir, 'objects', hash)
         if (existsSync(obj)) rmSync(tmp, { force: true })
         else renameSync(tmp, obj)
-        entries[rel] = { size: st.size, mtimeMs: st.mtimeMs, mode: st.mode & 0o7777, hash }
+        tmps.delete(tmp)
+        entries[rel] = { size: st.size, mtimeMs: st.mtimeMs, mode: modeOf(st), hash }
         bytes += st.size
-      } catch {
-        // el archivo desapareció o no se pudo leer mientras se copiaba: se omite
+      } catch (err) {
         rmSync(tmp, { force: true })
+        tmps.delete(tmp)
+        const code = (err as NodeJS.ErrnoException)?.code
+        if (code === 'ENOSPC') {
+          cleanTmps()
+          return skipped(NOSPACE)
+        }
+        // Desapareció mientras se copiaba: se omite. Cualquier otro fallo (permisos, E/S…): el archivo EXISTÍA,
+        // así que se registra sin copia; omitirlo lo haría pasar por «nuevo» y deshacer lo mandaría a la Papelera.
+        if (code === 'ENOENT') continue
+        entries[rel] = { size: st.size, mtimeMs: st.mtimeMs, mode: modeOf(st), hash: null, skip: 'unreadable' }
+        notCopied++
       }
     }
-    return finish({ files: Object.keys(entries).length, bytes, status: 'ok' }, { v: 1, entries, dirs: w.dirs, symlinks: w.symlinks })
+    const man: Manifest = {
+      v: 1,
+      entries,
+      dirs: w.dirs,
+      symlinks: w.symlinks,
+      createdAt: startedAt,
+      ...(w.unreadableDirs.length ? { unreadableDirs: w.unreadableDirs } : {}),
+      ...(w.cloudStubs.length ? { cloudStubs: w.cloudStubs } : {})
+    }
+    return finish({ files: Object.keys(entries).length, bytes, status: 'ok', ...(notCopied ? { notCopied } : {}) }, man)
   }
 
   // ───────────────────────────── listar ─────────────────────────────
@@ -392,27 +541,34 @@ export class RestorePoints {
 
   // ───────────────────────────── comparar ─────────────────────────────
 
-  private async diffState(
-    real: string,
-    man: Manifest
-  ): Promise<Array<{ rel: string; status: 'added' | 'modified' | 'deleted'; entry?: RestoreEntry; cur?: Stats }>> {
+  private async diffState(real: string, man: Manifest): Promise<Diff[]> {
     const w = await walk(real, Number.MAX_SAFE_INTEGER)
-    const out: Array<{ rel: string; status: 'added' | 'modified' | 'deleted'; entry?: RestoreEntry; cur?: Stats }> = []
+    const out: Diff[] = []
     const seen = new Set<string>()
     const symlinks = new Set(w.symlinks)
+    const stubsNow = new Set(w.cloudStubs)
+    const stubsThen = new Set(man.cloudStubs ?? [])
+    // Debajo de un directorio ilegible (al crear o ahora) no se sabe qué había: ni «nuevo» ni «eliminado».
+    const blind = [...(man.unreadableDirs ?? []), ...w.unreadableDirs]
     let n = 0
     for (const f of w.files) {
       seen.add(f.rel)
       if (++n % 100 === 0) await yieldLoop()
       const e = Object.hasOwn(man.entries, f.rel) ? man.entries[f.rel] : undefined
       if (!e) {
+        if (isUnder(f.rel, blind) || stubsThen.has(f.rel)) continue
         out.push({ rel: f.rel, status: 'added', cur: f.st })
         continue
       }
-      if (e.size === f.st.size && e.mtimeMs === f.st.mtimeMs) continue
+      const sameStat = e.size === f.st.size && e.mtimeMs === f.st.mtimeMs
+      // Una fecha cercana al punto no basta (FAT/exFAT/HFS+): se confirma por contenido.
+      const recent = man.createdAt !== undefined && f.st.mtimeMs >= man.createdAt - MTIME_SLACK_MS
+      if (sameStat && !(recent && e.hash)) continue
+      // Hoy está «solo en la nube»: no se lee (descargaría); se deja como estaba.
+      if (this.isCloud(f.st)) continue
       if (e.hash && f.st.size <= this.limits.maxFileBytes && f.st.size === e.size) {
         try {
-          if (sha256File(f.abs) === e.hash) continue
+          if ((await sha256File(f.abs)) === e.hash) continue
         } catch {
           // ilegible: se trata como modificado
         }
@@ -421,8 +577,8 @@ export class RestorePoints {
     }
     for (const [rel, e] of Object.entries(man.entries)) {
       if (seen.has(rel)) continue
-      // Un symlink que ocupa el sitio del archivo: no se toca.
-      if (symlinks.has(rel)) continue
+      // Un symlink que ocupa el sitio del archivo: no se toca. Un archivo que ahora es un stub de iCloud sigue existiendo.
+      if (symlinks.has(rel) || stubsNow.has(rel) || isUnder(rel, blind)) continue
       out.push({ rel, status: 'deleted', entry: e })
     }
     return out.sort((a, b) => a.rel.localeCompare(b.rel))
@@ -443,11 +599,19 @@ export class RestorePoints {
         break
       }
       const restorable = d.status === 'added' ? true : !!d.entry?.hash
-      const ch: TasksRestoreChange = { path: d.rel, status: d.status, additions: 0, deletions: 0, binary: true, restorable }
+      const ch: TasksRestoreChange = {
+        path: d.rel,
+        status: d.status,
+        additions: 0,
+        deletions: 0,
+        binary: true,
+        restorable,
+        ...(!restorable && d.entry ? { reason: reasonOf(d.entry) } : {})
+      }
       let before: Buffer | null = null
       let after: Buffer | null = null
       const oldOk = d.status === 'added' || (d.entry?.hash && d.entry.size <= this.limits.maxDiffFileBytes)
-      const newOk = d.status === 'deleted' || (d.cur && d.cur.size <= this.limits.maxDiffFileBytes)
+      const newOk = d.status === 'deleted' || (d.cur && d.cur.size <= this.limits.maxDiffFileBytes && !this.isCloud(d.cur))
       if (oldOk && newOk) {
         try {
           before = d.status === 'added' ? Buffer.alloc(0) : readFileSync(join(dir, 'objects', d.entry?.hash as string))
@@ -542,23 +706,30 @@ export class RestorePoints {
     real: string,
     dir: string,
     man: Manifest,
-    diffs: Array<{ rel: string; status: 'added' | 'modified' | 'deleted'; entry?: RestoreEntry }>,
+    diffs: Diff[],
     sweepDirs: boolean
   ): Promise<{ restored: number; trashed: number; failed: Array<{ path: string; reason: string }> }> {
     let restored = 0
     let trashed = 0
     const failed: Array<{ path: string; reason: string }> = []
+    // Primero la Papelera de todo lo nuevo y luego lo que se restaura: en volúmenes que no distinguen
+    // mayúsculas un «A.txt» nuevo y un «a.txt» antiguo son el mismo sitio.
     for (const d of diffs) {
+      if (d.status !== 'added') continue
       try {
-        if (d.status === 'added') {
-          const abs = this.safeAbs(real, d.rel, false)
-          if (lstatSync(abs).isSymbolicLink()) throw new Error('es un enlace simbólico')
-          await this.deps.trash(abs)
-          trashed++
-          continue
-        }
+        const abs = this.safeAbs(real, d.rel, false)
+        if (lstatSync(abs).isSymbolicLink()) throw new Error('es un enlace simbólico')
+        await this.deps.trash(abs)
+        trashed++
+      } catch (err) {
+        failed.push({ path: d.rel, reason: err instanceof Error ? err.message : String(err) })
+      }
+    }
+    for (const d of diffs) {
+      if (d.status === 'added') continue
+      try {
         const e = d.entry as RestoreEntry
-        if (!e.hash) throw new Error('no se guardó (más de 50 MB)')
+        if (!e.hash) throw new Error(noCopyText(e))
         const obj = join(dir, 'objects', e.hash)
         if (!existsSync(obj)) throw new Error('falta la copia guardada')
         const abs = this.safeAbs(real, d.rel, true)
@@ -571,8 +742,12 @@ export class RestorePoints {
         if (st && (st.isSymbolicLink() || st.isDirectory())) throw new Error('el sitio lo ocupa un enlace o una carpeta')
         const tmp = join(dirname(abs), `.onyxcode-restore-${randomBytes(6).toString('hex')}`)
         try {
-          copyFileSync(obj, tmp, fsc.COPYFILE_FICLONE)
-          chmodSync(tmp, e.mode & 0o7777)
+          await copyFile(obj, tmp, fsc.COPYFILE_FICLONE)
+          try {
+            chmodSync(tmp, e.mode & 0o7777)
+          } catch {
+            // mejor esfuerzo (algunos volúmenes no admiten permisos)
+          }
           renameSync(tmp, abs)
         } catch (err) {
           rmSync(tmp, { force: true })
@@ -591,12 +766,13 @@ export class RestorePoints {
   private async sweepNewDirs(real: string, man: Manifest): Promise<number> {
     const known = new Set(man.dirs)
     const w = await walk(real, Number.MAX_SAFE_INTEGER)
-    const fresh = w.dirs.filter((d) => !known.has(d)).sort((a, b) => b.split('/').length - a.split('/').length)
+    const blind = man.unreadableDirs ?? []
+    const fresh = w.dirs.filter((d) => !known.has(d) && !isUnder(d, blind)).sort((a, b) => b.split('/').length - a.split('/').length)
     let n = 0
     for (const rel of fresh) {
       try {
         const abs = this.safeAbs(real, rel, false)
-        if (readdirSync(abs).length > 0) continue
+        if (readdirSync(abs).some((name) => !isIgnorableName(name))) continue
         await this.deps.trash(abs)
         n++
       } catch {
@@ -609,7 +785,8 @@ export class RestorePoints {
   // ───────────────────────────── olvidar / uso ─────────────────────────────
 
   /** Borra los puntos de una tarea en todas las carpetas del almacén y recoge los huérfanos. */
-  forget(sessionId: string): void {
+  async forget(sessionId: string): Promise<void> {
+    await this.idle()
     let dirs: string[] = []
     try {
       dirs = readdirSync(this.deps.root)
@@ -629,7 +806,8 @@ export class RestorePoints {
   }
 
   /** Borra todo el almacén. */
-  clearAll(): void {
+  async clearAll(): Promise<void> {
+    await this.idle()
     rmSync(this.deps.root, { recursive: true, force: true })
   }
 }

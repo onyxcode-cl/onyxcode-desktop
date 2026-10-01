@@ -42,6 +42,18 @@ export function firstPoint(points: TasksRestorePoint[]): TasksRestorePoint | nul
   return best
 }
 
+/** Motivo por el que un cambio no se puede deshacer (panel «Cambios en archivos»). */
+export function notRestorableText(reason: 'large' | 'cloud' | 'unreadable' | undefined): string {
+  if (reason === 'cloud') return 'No restaurable (solo en la nube): el archivo estaba en iCloud sin descargar y no se guardó.'
+  if (reason === 'unreadable') return 'No restaurable: el archivo no se pudo leer al guardar el punto.'
+  return 'No se puede deshacer: el archivo pesa más de 50 MB y no se guardó.'
+}
+
+/** Aviso cuando el punto se guardó pero algunos archivos no entraron en él. */
+export function notCopiedWarningText(count: number): string {
+  return `El punto de restauración no incluye ${count} ${count === 1 ? 'archivo' : 'archivos'} (solo en la nube o ilegibles): si cambian, no se podrán deshacer.`
+}
+
 export function restoreWarningText(reason: string): string {
   return `Esta vez no se guardó un punto de restauración: ${reason}`
 }

@@ -13,7 +13,7 @@ import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
-import { failedText, firstPoint, pickPointForMessage, restoreWarningText, type RestoreResult } from './restore-logic'
+import { failedText, firstPoint, notCopiedWarningText, pickPointForMessage, restoreWarningText, type RestoreResult } from './restore-logic'
 import {
   clearUnseen,
   connectFolder,
@@ -463,6 +463,8 @@ function setRestoreWarning(sessionId: string, text: string | null): void {
   })
 }
 
+const RESTORE_SEND_GUARD_MS = 35_000
+
 /** Crea el punto previo al envío. Nunca lanza: un fallo solo deja un aviso en la conversación. */
 async function saveRestorePoint(folder: string, sessionId: string, label: string): Promise<void> {
   if (!hasTasksBridge()) return
@@ -470,8 +472,14 @@ async function saveRestorePoint(folder: string, sessionId: string, label: string
   // Un mensaje nuevo cierra el «Cambios deshechos…» anterior: su «Rehacer» ya no tendría sentido.
   useTasks.setState((s) => ({ restoreSaving: true, ...(s.restoreResult?.taskId === sessionId ? { restoreResult: null } : {}) }))
   try {
-    const point = await cw('tasks:restore:create', { folder, sessionId, label })
-    if (point.status !== 'ok') setRestoreWarning(sessionId, restoreWarningText(point.reason ?? 'motivo desconocido'))
+    // Main ya limita crear a 30 s (queda «omitido»); esta cota evita que un main colgado retenga el envío.
+    const point = await Promise.race([
+      cw('tasks:restore:create', { folder, sessionId, label }),
+      new Promise<null>((r) => setTimeout(() => r(null), RESTORE_SEND_GUARD_MS))
+    ])
+    if (!point) setRestoreWarning(sessionId, restoreWarningText('tardaba demasiado'))
+    else if (point.status !== 'ok') setRestoreWarning(sessionId, restoreWarningText(point.reason ?? 'motivo desconocido'))
+    else if (point.notCopied) setRestoreWarning(sessionId, notCopiedWarningText(point.notCopied))
   } catch (err) {
     setRestoreWarning(sessionId, restoreWarningText(errorMessage(err)))
   } finally {

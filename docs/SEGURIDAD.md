@@ -582,12 +582,18 @@ se borra con `rm`) junto con las carpetas nuevas que queden vacías. Antes de to
 | El agente altera o lee el almacén | **Sandbox:** `userData` ya está denegado al agente en el perfil Seatbelt (no se tocó el perfil); no puede leer ni escribir las copias. **Control total:** el agente corre sin sandbox y **sí podría** alterar o leer el almacén (la interfaz lo avisa junto al botón). Por decisión del usuario también se crean puntos en Control total. |
 | Escape por symlink al restaurar | Recorrido sin seguir symlinks, validación de cada componente de la ruta y `realpath` dentro de la carpeta; una ruta con un directorio intermedio symlink se rechaza. Rutas con `..` o absolutas se rechazan. |
 | Pérdida de datos al deshacer | Punto «Antes de deshacer» previo; lo creado va a la Papelera, nunca se borra; escritura atómica; si el punto previo no se puede guardar, no se deshace nada. |
+| Archivo que existía pero no se pudo copiar (permisos, E/S, iCloud «solo en la nube», directorio ilegible) | **No se omite**: se registra con `hash:null` y motivo (`skip`), los directorios ilegibles en `unreadableDirs` y los stubs de iCloud en `cloudStubs`; nada de eso se trata como «nuevo», así que nunca va a la Papelera. Se muestran como «no restaurable» con su motivo (F8-B21). |
+| Punto que bloquea la app o llena el disco | Copia y hash asíncronos; presupuesto de 30 s (el punto queda «omitido» y se limpian los temporales); se exige el tamaño a copiar + 512 MB libres (`statfs`) y ENOSPC también deja el punto omitido. |
 | Confidencialidad de las copias | Son contenido **del usuario sin cifrar** en `userData`, con permisos `0700` (carpetas) y `0600` (manifiestos). Quien lea `userData` lee las copias. «Ajustes › Tareas › Almacenamiento» permite ver su tamaño y borrarlas; se borran también al eliminar la tarea. |
 | Falso sentido de seguridad en carpetas sin git | El revert de OpenCode no restaura archivos sin git; el diálogo ya no lo promete. «Editar y reintentar» restaura con el punto propio y avisa si no hay uno. |
 | Variable de pruebas | `ONYXCODE_E2E_TRASH_DIR` (Papelera de pruebas) solo se honra con la app sin empaquetar; guardia estática en `trash.test.ts`. |
 
-**No verificado aquí:** volúmenes que no son APFS (sin clon: la copia es completa y más lenta), iCloud Drive o carpetas de red (archivos «solo en la nube», bloqueos), carpetas de más de 10 000
-archivos (los límites se prueban con umbrales bajos), y todo lo que dependa de un modelo real (el orden exacto en que el agente escribe respecto al punto).
+**Verificado (F8-B21):** ExFAT, FAT32 y HFS+ con mayúsculas con imágenes `hdiutil` reales (`npm run test:fs`; granularidad de fecha, mayúsculas, deshacer/rehacer); carpetas de ~20 000 archivos y
+archivos de 45 MB (`npm run test:stress`: límites, incremental, bucle de eventos y memoria); un archivo normal pequeño en APFS tiene `blocks > 0` (no se confunde con la nube).
+
+**No verificado aquí:** iCloud Drive real (solo se imita con archivos dispersos de `blocks === 0`; el predicado es heurístico y un volumen de red/FUSE que no informe bloques se tomaría como «en la nube» y
+no se copiaría, sin riesgo de pérdida pero sin protección), carpetas de red (bloqueos, latencia), un disco que se llena o se desconecta a mitad de la copia (ENOSPC se cubre con espacio inyectado, no con un disco
+lleno real), y todo lo que dependa de un modelo real (el orden exacto en que el agente escribe respecto al punto).
 
 ## 4. Paquete (`electron-builder.js`)
 

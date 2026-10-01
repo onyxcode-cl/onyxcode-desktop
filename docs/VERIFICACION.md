@@ -15,6 +15,8 @@ ni los servidores OpenCode del usuario.
 | `npm run test:smoke` | Humo con Electron (script propio `e2e/smoke.mjs`). |
 | `npm run test:e2e` | E2E con Electron real + OpenCode falso (ver abajo), modo dev-renderer con ganchos `__onyxE2E`. |
 | `npm run test:e2e:prod` | Igual pero cargando por `onyxcode://app` con la CSP real; solo aserciones de humo (no hay ganchos). |
+| `npm run test:fs` | **Opcional, solo macOS, fuera de `verify`.** Puntos de restauración sobre volúmenes reales: monta imágenes `hdiutil` ExFAT, FAT32 y HFS+ con mayúsculas (`-nobrowse`, `detach -force` al terminar) y repite crear → modificar/crear/borrar → cambios → deshacer → rehacer. Activa `ONYXCODE_FS_IT=1`. |
+| `npm run test:stress` | **Opcional, fuera de `verify`.** Estrés de los puntos de restauración (`ONYXCODE_STRESS=1`): 19 990 archivos entran y 20 010 dejan el punto omitido, incremental de 5 000 archivos rápido, p99 del retraso del bucle de eventos < 100 ms y RSS < +200 MB con dos archivos de 45 MB. Tarda ~15 s. |
 | `npm run verify` | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden. |
 
 ## Harness E2E (`e2e/lib`, `e2e/specs`, `vitest.e2e.config.ts`)

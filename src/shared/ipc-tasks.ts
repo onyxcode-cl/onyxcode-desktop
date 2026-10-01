@@ -537,6 +537,8 @@ export interface TasksRestorePoint {
   status: 'ok' | 'skipped'
   /** Motivo cuando `status` es `skipped`. */
   reason?: string
+  /** Archivos que existían pero no se pudieron guardar (solo en la nube o ilegibles; los de más de 50 MB no cuentan). */
+  notCopied?: number
 }
 
 export interface TasksRestoreChange {
@@ -549,6 +551,8 @@ export interface TasksRestoreChange {
   binary: boolean
   /** Se puede deshacer (los archivos de más de 50 MB no se guardan). */
   restorable: boolean
+  /** Por qué no es restaurable (con `restorable:false`). */
+  reason?: 'large' | 'cloud' | 'unreadable'
   /** Diff unificado (solo texto). */
   patch?: string
 }
