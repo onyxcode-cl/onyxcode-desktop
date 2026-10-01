@@ -130,8 +130,11 @@ async function main() {
     XDG_CACHE_HOME: join(tmp, 'xdg/cache'),
     XDG_STATE_HOME: join(tmp, 'xdg/state'),
     // Sin ventanas visibles ni icono extra en el Dock (solo aplica sin empaquetar; ver src/main/e2e-headless.ts).
-    ONYXCODE_E2E_HEADLESS: '1'
+    ONYXCODE_E2E_HEADLESS: '1',
+    // Cuenta apagada: el smoke no prueba el login (solo se honra sin empaquetar; ver src/main/account/config.ts).
+    ONYXCODE_ACCOUNT_DISABLED: '1'
   }
+  delete env.ONYXCODE_ACCOUNT_URL
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_RENDERER_URL
 

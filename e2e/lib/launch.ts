@@ -67,7 +67,7 @@ export interface LaunchOptions {
   /**
    * Cuenta: apunta la app al servidor de cuentas falso (`ONYXCODE_ACCOUNT_URL`, solo sin empaquetar) y usa el almacén de
    * sesión en claro de prueba (`ONYXCODE_TEST_PLAIN_STORE`; nunca el Llavero). Sin esta opción la cuenta queda APAGADA
-   * (`ACCOUNT_API = null`) y los E2E no dependen del login.
+   * (`ONYXCODE_ACCOUNT_DISABLED=1`) y los E2E no dependen del login.
    */
   account?: {
     fake: FakeAuth
@@ -207,9 +207,12 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
   })
   if (opts.account) {
     env.ONYXCODE_ACCOUNT_URL = opts.account.fake.url
+    delete env.ONYXCODE_ACCOUNT_DISABLED
     env.ONYXCODE_TEST_PLAIN_STORE = '1'
   } else {
-    // Nunca heredar una cuenta del entorno del runner: por defecto la cuenta está apagada.
+    // Nunca heredar una cuenta del entorno del runner: por defecto la cuenta está apagada (ACCOUNT_API ya está
+    // definido en brand.ts; `ONYXCODE_ACCOUNT_DISABLED` solo se honra sin empaquetar).
+    env.ONYXCODE_ACCOUNT_DISABLED = '1'
     delete env.ONYXCODE_ACCOUNT_URL
     delete env.ONYXCODE_TEST_PLAIN_STORE
   }
