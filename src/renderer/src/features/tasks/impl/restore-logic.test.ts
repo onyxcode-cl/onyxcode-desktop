@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { TasksRestorePoint } from '@shared/ipc-tasks'
-import { failedText, firstPoint, pickPointForMessage, restoreResultText, restoreWarningText, UNDO_POINT_LABEL } from './restore-logic'
+import {
+  failedText,
+  firstPoint,
+  notCopiedWarningText,
+  notRestorableText,
+  pickPointForMessage,
+  restoreResultText,
+  restoreWarningText,
+  UNDO_POINT_LABEL
+} from './restore-logic'
 
 const pt = (id: string, createdAt: number, over: Partial<TasksRestorePoint> = {}): TasksRestorePoint => ({
   id,
@@ -29,6 +38,14 @@ describe('restore-logic', () => {
   })
   it('firstPoint: el más antiguo', () => {
     expect(firstPoint([pt('b', 200), pt('a', 100)])?.id).toBe('a')
+  })
+  it('motivos de «no restaurable» y aviso de archivos no guardados', () => {
+    expect(notRestorableText('cloud')).toMatch(/^No restaurable \(solo en la nube\)/)
+    expect(notRestorableText('unreadable')).toMatch(/no se pudo leer/)
+    expect(notRestorableText('large')).toMatch(/50 MB/)
+    expect(notRestorableText(undefined)).toMatch(/50 MB/)
+    expect(notCopiedWarningText(1)).toMatch(/1 archivo /)
+    expect(notCopiedWarningText(3)).toMatch(/3 archivos /)
   })
   it('textos', () => {
     expect(restoreWarningText('la carpeta ocupa más de 2 GB')).toBe(

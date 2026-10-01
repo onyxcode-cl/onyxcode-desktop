@@ -134,9 +134,9 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   })
   handle('tasks:tasks:list', () => tasks.list())
   handle('tasks:tasks:setMeta', (req) => tasks.set(req))
-  handle('tasks:tasks:forget', ({ sessionId }) => {
+  handle('tasks:tasks:forget', async ({ sessionId }) => {
     tasks.forget(sessionId)
-    ctx.restore.forget(sessionId)
+    await ctx.restore.forget(sessionId)
   })
   handle('tasks:prefs:get', () => prefs.get())
   handle('tasks:prefs:set', (patch) => prefs.set(patch))
@@ -147,8 +147,8 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
     return report()
   })
 
-  handle('tasks:storage:cleanRestorePoints', () => {
-    ctx.restore.clearAll()
+  handle('tasks:storage:cleanRestorePoints', async () => {
+    await ctx.restore.clearAll()
     return report()
   })
 

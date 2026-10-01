@@ -10,6 +10,7 @@ import {
   renameSync,
   rmSync,
   statSync,
+  truncateSync,
   symlinkSync,
   utimesSync,
   writeFileSync
@@ -17,7 +18,7 @@ import {
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { RestorePoints, type RestoreLimits } from './restore-points'
+import { RestorePoints, type RestoreDeps, type RestoreLimits } from './restore-points'
 
 let base: string
 let folder: string
@@ -26,11 +27,12 @@ let trashDir: string
 let trashed: string[]
 let clock: number
 
-function make(limits?: Partial<RestoreLimits>): RestorePoints {
+function make(limits?: Partial<RestoreLimits>, extra: Partial<RestoreDeps> = {}): RestorePoints {
   return new RestorePoints({
     root: store,
     now: () => clock,
     limits,
+    ...extra,
     trash: async (p) => {
       trashed.push(p)
       renameSync(p, join(trashDir, `${trashed.length}-${basename(p)}`))
@@ -312,7 +314,7 @@ describe('RestorePoints', () => {
     put('a.txt', 'a')
     const rp = make()
     await rp.create(folder, 's1', 'x')
-    rp.forget('s1')
+    await rp.forget('s1')
     expect(rp.list(folder, 's1')).toEqual([])
     const dir = join(store, readdirSync(store)[0])
     expect(readdirSync(join(dir, 'objects'))).toEqual([])
@@ -335,5 +337,251 @@ describe('RestorePoints', () => {
     const { changes } = await rp.changes(folder, pt.id)
     expect(changes.map((c) => c.path).sort()).toEqual(['__proto__', 'constructor'])
     expect(changes.every((c) => c.status === 'added')).toBe(true)
+  })
+})
+
+// ───────────────────────── Robustez (F8-B21) ─────────────────────────
+
+const caseInsensitive = (): boolean => {
+  writeFileSync(join(base, 'Zz'), 'x')
+  return existsSync(join(base, 'zZ'))
+}
+const manifestOf = (id: string): any => {
+  const dir = join(store, readdirSync(store)[0])
+  return JSON.parse(readFileSync(join(dir, 'points', `${id}.json`), 'utf8'))
+}
+
+describe('RestorePoints: robustez', () => {
+  it('H1: un archivo que no se puede copiar se registra y nunca va a la Papelera al deshacer', async () => {
+    put('ok.txt', 'ok')
+    put('secreto.txt', 'datos del usuario')
+    const secret = join(folder, 'secreto.txt')
+    chmodSync(secret, 0o000)
+    try {
+      const rp = make()
+      const pt = await rp.create(folder, 's1', 'x')
+      expect(pt.status).toBe('ok')
+      expect(pt.notCopied).toBe(1)
+      const e = manifestOf(pt.id).entries['secreto.txt']
+      expect(e).toMatchObject({ hash: null, skip: 'unreadable' })
+      put('ok.txt', 'cambiado', 1000)
+      put('nuevo.txt', 'n')
+      const { changes } = await rp.changes(folder, pt.id)
+      expect(changes.map((c) => c.path)).toEqual(['nuevo.txt', 'ok.txt'])
+      const res = await rp.apply(folder, pt.id)
+      expect(res.failed).toEqual([])
+      expect(trashed.map((p) => basename(p))).toEqual(['nuevo.txt'])
+      expect(existsSync(secret)).toBe(true)
+      expect(read('ok.txt')).toBe('ok')
+    } finally {
+      chmodSync(secret, 0o644)
+    }
+  })
+
+  it('H1: si el archivo ilegible se borra, aparece como eliminado y no restaurable (con motivo)', async () => {
+    put('secreto.txt', 'datos')
+    const secret = join(folder, 'secreto.txt')
+    chmodSync(secret, 0o000)
+    const rp = make()
+    const pt = await rp.create(folder, 's1', 'x')
+    rmSync(secret)
+    const { changes } = await rp.changes(folder, pt.id)
+    expect(changes).toHaveLength(1)
+    expect(changes[0]).toMatchObject({ status: 'deleted', restorable: false, reason: 'unreadable' })
+    const res = await rp.apply(folder, pt.id)
+    expect(res.failed.map((f) => f.path)).toEqual(['secreto.txt'])
+  })
+
+  it('H2: un subdirectorio ilegible no hace que lo de debajo pase por «nuevo»', async () => {
+    put('a.txt', 'a')
+    put('privado/doc.txt', 'documento')
+    chmodSync(join(folder, 'privado'), 0o000)
+    let rp: RestorePoints
+    let pt
+    try {
+      rp = make()
+      pt = await rp.create(folder, 's1', 'x')
+      expect(pt.status).toBe('ok')
+      expect(manifestOf(pt.id).unreadableDirs).toEqual(['privado'])
+    } finally {
+      chmodSync(join(folder, 'privado'), 0o755)
+    }
+    put('privado/otro.txt', 'creado después')
+    const { changes } = await rp.changes(folder, pt.id)
+    expect(changes).toEqual([])
+    const res = await rp.apply(folder, pt.id)
+    expect(res).toMatchObject({ trashed: 0, restored: 0, failed: [] })
+    expect(read('privado/doc.txt')).toBe('documento')
+    expect(read('privado/otro.txt')).toBe('creado después')
+  })
+
+  it('H4: fecha dentro del margen del punto (FAT/exFAT/HFS+): se compara por contenido', async () => {
+    const rp = make()
+    const abs = join(folder, 'a.txt')
+    writeFileSync(abs, 'aaaa')
+    const t = new Date(clock - 500)
+    utimesSync(abs, t, t)
+    const p1 = await rp.create(folder, 's1', 'uno')
+    // Mismo tamaño y misma fecha (granularidad gruesa), contenido distinto.
+    writeFileSync(abs, 'bbbb')
+    utimesSync(abs, t, t)
+    const { changes } = await rp.changes(folder, p1.id)
+    expect(changes.map((c) => [c.path, c.status])).toEqual([['a.txt', 'modified']])
+    // Y el punto siguiente no reutiliza el hash viejo.
+    clock += 1000
+    const p2 = await rp.create(folder, 's1', 'dos')
+    expect(manifestOf(p2.id).entries['a.txt'].hash).not.toBe(manifestOf(p1.id).entries['a.txt'].hash)
+    expect(manifestOf(p1.id).createdAt).toBe(1_700_000_000_000)
+  })
+
+  it('H5: pasado el presupuesto el punto queda omitido, sin temporales', async () => {
+    put('a.txt', 'a')
+    put('b.txt', 'b')
+    const rp = make({ maxCreateMs: 30_000 }, { freeBytes: () => ((clock += 31_000), Number.MAX_SAFE_INTEGER) })
+    const pt = await rp.create(folder, 's1', 'x')
+    expect(pt.status).toBe('skipped')
+    expect(pt.reason).toBe('tardaba demasiado')
+    const dir = join(store, readdirSync(store)[0])
+    expect(readdirSync(join(dir, 'objects'))).toEqual([])
+    // Con apply no se toca nada si el punto previo no se pudo guardar.
+    clock = 1_700_000_000_000
+    const rp2 = make()
+    const ok = await rp2.create(folder, 's1', 'ok')
+    const slow = make({ maxCreateMs: 30_000 }, { freeBytes: () => ((clock += 31_000), Number.MAX_SAFE_INTEGER) })
+    put('n.txt', 'nuevo')
+    await expect(slow.apply(folder, ok.id)).rejects.toThrow(/no se deshizo nada/)
+    expect(existsSync(join(folder, 'n.txt'))).toBe(true)
+    expect(trashed).toEqual([])
+  })
+
+  it('H6: sin espacio libre (bytes + 512 MB) el punto queda omitido', async () => {
+    put('a.txt', 'a'.repeat(1000))
+    const pt = await make(undefined, { freeBytes: () => 512 * 1024 * 1024 + 999 }).create(folder, 's1', 'x')
+    expect(pt).toMatchObject({ status: 'skipped', reason: 'no queda espacio en el disco' })
+    const ok = await make(undefined, { freeBytes: () => 512 * 1024 * 1024 + 1000 }).create(folder, 's1', 'x')
+    expect(ok.status).toBe('ok')
+  })
+
+  it('H7: «solo en la nube» no se lee, se cuenta y nunca se manda a la Papelera', async () => {
+    put('nube.bin', '12345')
+    put('normal.txt', 'normal')
+    put('.doc.icloud', 'stub')
+    const cloud = (st: { size: number }): boolean => st.size === 5
+    const rp = make(undefined, { isCloudPlaceholder: cloud as never })
+    const pt = await rp.create(folder, 's1', 'x')
+    expect(pt.notCopied).toBe(1)
+    expect(pt.files).toBe(2)
+    const man = manifestOf(pt.id)
+    expect(man.entries['nube.bin']).toMatchObject({ hash: null, skip: 'cloud' })
+    expect(man.cloudStubs).toEqual(['doc'])
+    // El stub se materializa (aparece «doc»): no es un archivo nuevo del agente.
+    rmSync(join(folder, '.doc.icloud'))
+    put('doc', 'descargado')
+    put('real-nuevo.txt', 'n')
+    const { changes } = await rp.changes(folder, pt.id)
+    expect(changes.map((c) => c.path)).toEqual(['real-nuevo.txt'])
+    // Si el agente borra el de la nube: eliminado, no restaurable, con motivo.
+    rmSync(join(folder, 'nube.bin'))
+    const again = (await rp.changes(folder, pt.id)).changes.find((c) => c.path === 'nube.bin')
+    expect(again).toMatchObject({ status: 'deleted', restorable: false, reason: 'cloud' })
+    await rp.apply(folder, pt.id)
+    expect(trashed.map((p) => basename(p))).toEqual(['real-nuevo.txt'])
+    expect(existsSync(join(folder, 'doc'))).toBe(true)
+  })
+
+  it('H7: archivo que pasa a ser stub no cuenta como eliminado', async () => {
+    put('doc.txt', 'contenido')
+    const rp = make()
+    const pt = await rp.create(folder, 's1', 'x')
+    rmSync(join(folder, 'doc.txt'))
+    put('.doc.txt.icloud', 'stub')
+    expect((await rp.changes(folder, pt.id)).changes).toEqual([])
+  })
+
+  it('H7: un archivo pequeño normal tiene bloques (no se confunde con la nube); uno disperso sí', async () => {
+    put('chico.txt', 'x')
+    expect(statSync(join(folder, 'chico.txt')).blocks).toBeGreaterThan(0)
+    const rp = make()
+    expect((await rp.create(folder, 's1', 'x')).notCopied).toBeUndefined()
+    const sparse = join(folder, 'disperso.bin')
+    writeFileSync(sparse, '')
+    truncateSync(sparse, 2 * 1024 * 1024)
+    if (statSync(sparse).blocks !== 0) return // el sistema de archivos del tmp no admite dispersos
+    const pt = await rp.create(folder, 's1', 'y')
+    expect(pt.notCopied).toBe(1)
+    expect(manifestOf(pt.id).entries['disperso.bin']).toMatchObject({ hash: null, skip: 'cloud' })
+  })
+
+  it('H8: .DS_Store y ._* se ignoran en el punto y en el diff', async () => {
+    put('a.txt', 'a')
+    put('.DS_Store', 'x')
+    put('._a.txt', 'x')
+    const rp = make()
+    const pt = await rp.create(folder, 's1', 'x')
+    expect(pt.files).toBe(1)
+    put('sub/.DS_Store', 'y')
+    put('._otro', 'y')
+    expect((await rp.changes(folder, pt.id)).changes).toEqual([])
+    const res = await rp.apply(folder, pt.id)
+    // Solo la carpeta nueva (que únicamente contenía .DS_Store) va a la Papelera; los archivos de sistema no cuentan.
+    expect(res).toMatchObject({ trashed: 1, restored: 0 })
+    expect(trashed.map((p) => basename(p))).toEqual(['sub'])
+    expect(existsSync(join(folder, '._otro'))).toBe(true)
+  })
+
+  it('H9: la Papelera va antes de restaurar (volúmenes sin distinción de mayúsculas)', async () => {
+    if (!caseInsensitive()) return
+    put('a.txt', 'original')
+    const rp = make()
+    const pt = await rp.create(folder, 's1', 'x')
+    rmSync(join(folder, 'a.txt'))
+    put('A.txt', 'del agente')
+    const res = await rp.apply(folder, pt.id)
+    expect(res.failed).toEqual([])
+    expect(read('a.txt')).toBe('original')
+    expect(trashed.map((p) => basename(p))).toEqual(['A.txt'])
+    expect(readFileSync(join(trashDir, readdirSync(trashDir)[0]), 'utf8')).toBe('del agente')
+  })
+
+  it('H11: forget y clearAll esperan a las operaciones en curso', async () => {
+    put('a.txt', 'a')
+    const rp = make()
+    const creating = rp.create(folder, 's1', 'x')
+    await rp.forget('s1')
+    await creating
+    expect(rp.list(folder, 's1')).toEqual([])
+    const dir = join(store, readdirSync(store)[0])
+    expect(readdirSync(join(dir, 'objects'))).toEqual([])
+    const again = rp.create(folder, 's1', 'y')
+    await rp.clearAll()
+    await again
+    expect(existsSync(store)).toBe(false)
+  })
+
+  it('H12: carpeta inexistente (disco desconectado) da un mensaje claro', async () => {
+    await expect(make().create(join(base, 'no-existe'), 's1', 'x')).rejects.toThrow('La carpeta no está disponible (¿disco desconectado?)')
+    expect(() => make().list(join(base, 'no-existe'), 's1')).toThrow('La carpeta no está disponible')
+  })
+
+  it('crear un punto con un archivo de 40 MB no bloquea el bucle de eventos (>200 ms)', async () => {
+    writeFileSync(join(folder, 'grande.bin'), Buffer.alloc(40 * 1024 * 1024, 7))
+    put('a.txt', 'a')
+    let last = performance.now()
+    let worst = 0
+    const timer = setInterval(() => {
+      const t = performance.now()
+      worst = Math.max(worst, t - last)
+      last = t
+    }, 5)
+    try {
+      const rp = make()
+      const pt = await rp.create(folder, 's1', 'x')
+      expect(pt.status).toBe('ok')
+      writeFileSync(join(folder, 'grande.bin'), Buffer.alloc(40 * 1024 * 1024, 8))
+      await rp.changes(folder, pt.id)
+    } finally {
+      clearInterval(timer)
+    }
+    expect(worst).toBeLessThan(200)
   })
 })
