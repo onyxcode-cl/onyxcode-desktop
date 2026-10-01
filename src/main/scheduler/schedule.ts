@@ -1,4 +1,5 @@
 /** Utilidades puras de programación (presets → cron, próxima ejecución, etiquetas). */
+import { t, type MsgKey } from '@shared/i18n'
 import { Cron } from 'croner'
 import { WEEKDAYS_ES, type RoutineSchedule, type SchedulePreview } from '@shared/ipc-tasks'
 
@@ -6,10 +7,10 @@ const HOUR_MS = 3_600_000
 
 function parseTime(time: string): { h: number; m: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim())
-  if (!m) throw new Error(`Hora inválida "${time}" (usa HH:MM)`)
+  if (!m) throw new Error(t('merr.sched.badTime', { time }))
   const h = Number(m[1])
   const min = Number(m[2])
-  if (h > 23 || min > 59) throw new Error(`Hora inválida "${time}"`)
+  if (h > 23 || min > 59) throw new Error(t('merr.sched.badTimeShort', { time }))
   return { h, m: min }
 }
 
@@ -22,15 +23,15 @@ export function scheduleToCron(s: RoutineSchedule): string | null {
     }
     case 'weekly': {
       const { h, m } = parseTime(s.time)
-      if (!Number.isInteger(s.day) || s.day < 0 || s.day > 6) throw new Error('Día de la semana inválido')
+      if (!Number.isInteger(s.day) || s.day < 0 || s.day > 6) throw new Error(t('merr.sched.badDay'))
       return `${m} ${h} * * ${s.day}`
     }
     case 'interval':
-      if (!Number.isFinite(s.hours) || s.hours <= 0 || s.hours > 24 * 31) throw new Error('Intervalo inválido (horas > 0)')
+      if (!Number.isFinite(s.hours) || s.hours <= 0 || s.hours > 24 * 31) throw new Error(t('merr.sched.badInterval'))
       return null
     case 'cron': {
       const expr = s.expr.trim()
-      if (expr.split(/\s+/).length !== 5) throw new Error('La expresión cron debe tener 5 campos (min hora día mes díaSemana)')
+      if (expr.split(/\s+/).length !== 5) throw new Error(t('merr.sched.badCronFields'))
       return expr
     }
   }
@@ -52,7 +53,7 @@ export function validateSchedule(s: RoutineSchedule): void {
     try {
       cronNext(cron, new Date())
     } catch (err) {
-      throw new Error(`Cron inválido: ${err instanceof Error ? err.message : String(err)}`)
+      throw new Error(t('merr.sched.badCron', { detail: err instanceof Error ? err.message : String(err) }))
     }
   }
 }
@@ -70,13 +71,13 @@ export function nextRunAfter(s: RoutineSchedule, after: number): number | null {
 export function scheduleLabel(s: RoutineSchedule): string {
   switch (s.kind) {
     case 'daily':
-      return `Todos los días a las ${s.time}`
+      return t('merr.sched.daily', { time: s.time })
     case 'weekly':
-      return `Cada ${WEEKDAYS_ES[s.day] ?? '?'} a las ${s.time}`
+      return t('merr.sched.weekly', { day: WEEKDAYS_ES[s.day] ? t(`merr.weekday.${s.day}` as MsgKey) : '?', time: s.time })
     case 'interval':
-      return s.hours === 1 ? 'Cada hora' : `Cada ${s.hours} horas`
+      return s.hours === 1 ? t('merr.sched.hourly') : t('merr.sched.everyHours', { hours: s.hours })
     case 'cron':
-      return `Cron: ${s.expr}`
+      return t('merr.sched.cron', { expr: s.expr })
   }
 }
 
