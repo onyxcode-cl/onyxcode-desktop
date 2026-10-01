@@ -273,3 +273,24 @@ fuera de los diccionarios; crece por tanda); `tray.i18n.test.ts`; esquema `setti
 Fuera de alcance (T4b/T4c): Code, Tareas, Rutinas, navegador integrado, overlay/píldora/Quick Entry y los errores que construye main (siguen en español, incluso con la interfaz en inglés); los prompts de agente
 (`resources/opencode/*.md`); los borradores legales (`PRIVACY_DRAFT`/`TERMS_DRAFT`, pendientes de revisión legal); los roles estándar del menú de macOS (los traduce Electron según la configuración regional).
 
+
+## F8-B27 — Idioma (T4c): lo que construye main y las ventanas con preload propio
+
+Con la interfaz en inglés, los textos que nacen en main y llegan al usuario salen en inglés; con `es` todo queda idéntico (snapshots y tests existentes sin cambios). Main usa el idioma de `src/main/i18n.ts` (`Settings.language`, o los
+idiomas del sistema con «Sistema») y `t()` de `@shared/i18n`; los textos viven en un área nueva `merr.*`/`ovl.*` (`src/shared/i18n/{es,en}/mainErrors.ts`).
+Alcance migrado: «No se encontró el binario `opencode`…» del asistente (y el estado del motor: «se cerró inesperadamente», «falló N veces», reintento), validación del binario elegido, errores de la pantalla de acceso (`account/service.ts`) y
+las dos páginas del navegador del inicio de sesión con Google (también `<html lang>`), motivos de carpetas de confianza (`check.reason`: raíz/home, Papelera, iCloud, Library, sistema, volúmenes de red, credenciales, política de la organización),
+errores de Tareas por política de la organización (red del sandbox, Control total, «Siempre permitir»), reglas recordadas, apertura segura, AGENTS.md, errores y avisos de Rutinas (validación, tiempos, plan de Control total, rechazos sin
+supervisión, `scheduleLabel`), notificaciones nativas (rutinas, tareas en segundo plano, solicitud de acceso a apps, aprobaciones del navegador), cuadros de diálogo nativos (aprobación del navegador, Elegir carpeta, Adjuntar, Descargar mis
+datos, Exportar diagnóstico, Guardar zip/Markdown, Elegir binario), motivos de Control del Mac no disponible, error del atajo de Quick Entry, errores de conectores MCP y menú contextual de la vista previa.
+`NetworkSection.networkErrorMessage` ya no filtra con una regex en español: clasifica por causa (la política gestionada `disableCustomHosts` que el renderer ya conoce) y, si no, muestra el texto de main, que ya está en el idioma activo.
+Ventanas con preload propio (Quick Entry, overlay, píldora, globo de guía y píldora de grabación): **los preloads no se tocan** (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a antes). Main carga cada página
+con `?lang=es|en` (`extras/windows.ts › loadLocalizedPage`) y la página lo lee de su propia URL (`renderer/src/lib/page-lang.ts`). Si el idioma cambia, la ventana oculta se recrea la próxima vez que se usa; una ventana visible
+se queda en el idioma con que nació hasta que se oculta.
+Residuos conscientes (siguen en español): prompts de agente y borradores legales; descripciones de herramientas y resultados del MCP de Control del Mac y del navegador (los lee el modelo); motivos del modo auto (`auto-mode.ts`,
+registro de decisiones); texto de los puntos de restauración (omitidos y errores internos), zip/PDF/vista rápida y errores de grabación de skills; límites de pestañas del navegador integrado; informe de diagnóstico exportado; errores de
+instalación de la actualización (códigos técnicos); validación de parámetros IPC (`ipc/validate.ts`, `git/service.ts`); `console.*`; y los datos de demostración de la píldora (`#demo-*`, solo desarrollo). Los avisos ya guardados en
+`routines.json` (historial) quedan en el idioma que había al producirse.
+Guardias: `i18n-coverage.test.ts` ahora incluye los archivos de main y de las ventanas migradas (el detector ignora los argumentos de `console.*`); `main-errors.i18n.test.ts` (es idéntico, en inglés, plural, `withLang`, código
+`FULL_ACCESS_NOT_GRANTED` estable); `NetworkSection.test.ts`; E2E `i18n-main.e2e.ts` (error del asistente y del código de acceso en inglés, `check.reason` en los dos idiomas y cambio en vivo, píldora/toma de control/plan, globo y
+grabación, Quick Entry recreado en español; capturas con `I18N_T4C_SHOTS_DIR`).
