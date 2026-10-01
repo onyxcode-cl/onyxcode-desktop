@@ -6,6 +6,7 @@
  * proyecto, enlaces de referencia, memoria (o el aviso de que está desactivada), carpetas
  * adicionales de la tarea y, si la ejecución es desatendida, el aviso de rutina programada.
  */
+import { translate, type Lang } from './i18n'
 import type { FolderAccessMode } from './ipc-tasks'
 
 /** Máximo de caracteres de las instrucciones (globales y de proyecto). */
@@ -30,6 +31,40 @@ export interface TasksPromptInput {
   folders?: Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }>
   /** Ejecución programada sin nadie delante (rutinas). */
   unattended?: boolean
+  /**
+   * Idioma de la interfaz. Con `en` se añade una sección que traduce los nombres de botones que los prompts
+   * del agente citan en español y pide fechas/números en formato inglés. Con `es` (o sin él) no cambia nada.
+   */
+  lang?: Lang
+}
+
+/** Pares «nombre citado en el prompt (es) → clave del diccionario» de los botones que el agente nombra. */
+const QUOTED_BUTTONS = [
+  ['Permitir borrar, mover y renombrar', 'tasksSettings.glossary.deleteGrant'],
+  ['Usar memoria', 'tasks.proj.useMemory'],
+  ['Guardar como PDF', 'tasks.deliv.savePdf'],
+  ['Crear skill de esta tarea', 'tasks.ws.createSkill'],
+  ['Cambiar a Control total y continuar', 'tasksComputer.escalate.switch'],
+  ['Aprobar y empezar', 'tasksComputer.plan.approve'],
+  ['¿Tomar el control de la pantalla?', 'tasksComputer.takeover.title'],
+  ['Seguir en segundo plano', 'tasksComputer.takeover.background'],
+  ['Permitir siempre', 'browser.card.allowAlways'],
+  ['Permitir en esta tarea', 'browser.card.allowTask']
+] as const
+
+/** Contexto de idioma de la interfaz (solo para inglés; vacío con español). */
+export function interfaceLanguageSection(lang: Lang | undefined): string {
+  if (lang !== 'en') return ''
+  const list = QUOTED_BUTTONS.map(([es, key]) => `- «${es}» → "${translate('en', key)}"`).join('\n')
+  return (
+    'Interface language: English. Reply in English unless the user writes in another language. ' +
+    'Your instructions quote some buttons by their Spanish names; the user sees them in English, so use these names ' +
+    'when you tell them what to press:\n' +
+    `${list}\n` +
+    'Format dates and numbers the English way (1,234.5; September 27, 2026) instead of es-CL. ' +
+    'Where your instructions mention the line "**Necesita Control total del Mac**: <motivo>", write ' +
+    '"**Needs Full Mac control**: <reason>" and keep the neutral marker line exactly as specified.'
+  )
 }
 
 /** Devuelve el texto recortado o `''` si es nulo/vacío. */
@@ -72,6 +107,9 @@ export function buildTasksSystemPrompt(i: TasksPromptInput): string | undefined 
   }
 
   if (i.unattended) parts.push(UNATTENDED_TEXT)
+
+  const langSection = interfaceLanguageSection(i.lang)
+  if (langSection) parts.push(langSection)
 
   return parts.length > 0 ? parts.join(SECTION_SEPARATOR) : undefined
 }

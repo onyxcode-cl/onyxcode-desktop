@@ -1,6 +1,6 @@
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
-import { t } from '@shared/i18n'
+import { getLang, t } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -365,7 +365,8 @@ function buildSystemPrompt(): string | undefined {
     globalInstructions: useSettings.getState().settings.tasksGlobalInstructions,
     project,
     memory: memory?.content,
-    folders: extraFolders()
+    folders: extraFolders(),
+    lang: getLang()
   })
 }
 
