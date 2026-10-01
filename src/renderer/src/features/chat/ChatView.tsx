@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ChatComposer } from './ChatComposer'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
@@ -14,7 +14,7 @@ import { useT } from '../../lib/i18n'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
 import { useSettings } from '../../stores/settings'
-import { abortChat, sendChatMessage } from './actions'
+import { abortChat, compactChat, resendFromMessage, retryChat, sendChatMessage } from './actions'
 import { useChat } from './store'
 
 const EMPTY: MessageEntry[] = []
@@ -81,6 +81,24 @@ export function ChatView(): React.JSX.Element {
       return false
     }
   }
+
+  // Reintentar / editar deshacen la conversación desde el mensaje (sin duplicarlo) y lo reenvían con sus adjuntos.
+  // Si el motor no pudo ni recibirlo, el fallo se muestra como error de la conversación.
+  const guarded = useCallback(
+    async <T,>(fn: (id: string) => Promise<T>): Promise<T | undefined> => {
+      if (!activeId) return undefined
+      try {
+        return await fn(activeId)
+      } catch (err) {
+        useSessions.getState().setError(activeId, typeof err === 'object' && err ? err : String(err))
+        throw err
+      }
+    },
+    [activeId]
+  )
+  const retry = useCallback(() => guarded((id) => retryChat(id)), [guarded])
+  const compact = useCallback(() => guarded((id) => compactChat(id)), [guarded])
+  const edit = useCallback((messageID: string, text: string) => guarded((id) => resendFromMessage(id, messageID, text)), [guarded])
 
   const picker = (
     <div className="flex w-full items-center">
@@ -161,7 +179,7 @@ export function ChatView(): React.JSX.Element {
         <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
       </header>
       <TranscriptLoader sessionId={activeId} />
-      <ChatMessageList entries={entries} busy={busy} error={error} onRetry={(text) => void send(text)} />
+      <ChatMessageList entries={entries} busy={busy} error={error} onRetry={retry} onCompact={compact} onEdit={edit} />
       {notices}
       {composer}
     </div>

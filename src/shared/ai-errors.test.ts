@@ -49,7 +49,16 @@ describe('friendlyError', () => {
   })
 
   it('ContextOverflowError', () => {
-    expect(friendlyError({ name: 'ContextOverflowError', data: { message: 'too big' } }).kind).toBe('context')
+    const f = friendlyError({ name: 'ContextOverflowError', data: { message: 'too big' } })
+    expect(f.kind).toBe('context')
+    expect(f.action).toBe('compact')
+  })
+
+  it('acciones: reintentar en fallos pasajeros (429, red, desconocido), conectar en credenciales', () => {
+    expect(friendlyError({ name: 'APIError', data: { message: 'x', statusCode: 429 } }).action).toBe('retry')
+    expect(friendlyError(new Error('connect ECONNREFUSED 127.0.0.1:443')).action).toBe('retry')
+    expect(friendlyError(new Error('algo raro\n  at x (y.js:1:1)')).action).toBe('retry')
+    expect(friendlyError({ name: 'APIError', data: { message: 'x', statusCode: 401 } }).action).toBe('connect')
   })
 
   it('el aviso de sandbox pasa intacto y sin detalle', () => {

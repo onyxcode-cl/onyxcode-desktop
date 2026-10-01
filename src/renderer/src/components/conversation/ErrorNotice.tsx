@@ -11,7 +11,19 @@ import { Button } from '../Button'
  * texto técnico (redactado) plegado en «Ver detalle». Nunca muestra pilas ni mensajes crudos.
  * - `panel`: Code y Tareas. - `chat`: Chat (más suave, con animación de entrada).
  */
-export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; variant?: 'chat' | 'panel' }): React.JSX.Element {
+export interface ErrorActions {
+  /** «Reintentar»: se ofrece en los fallos que pueden ser pasajeros (red, cuota, desconocido). */
+  onRetry?: () => void | Promise<unknown>
+  /** «Compactar»: se ofrece cuando la conversación no cabe en el contexto del modelo. */
+  onCompact?: () => void | Promise<unknown>
+}
+
+export function ErrorNotice({
+  error,
+  variant = 'panel',
+  onRetry,
+  onCompact
+}: { error: unknown; variant?: 'chat' | 'panel' } & ErrorActions): React.JSX.Element {
   const t = useT()
   const lang = useLang((s) => s.lang)
   const providers = useProviders((s) => s.providers)
@@ -24,6 +36,19 @@ export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; vari
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const chat = variant === 'chat'
+  const [pending, setPending] = useState(false)
+  /** Mientras la acción corre el botón se deshabilita (evita doble envío); un fallo lo vuelve a habilitar. */
+  const run = async (fn: () => void | Promise<unknown>): Promise<void> => {
+    setPending(true)
+    try {
+      await fn()
+    } catch {
+      /* el fallo queda en el estado de la sesión */
+    } finally {
+      setPending(false)
+    }
+  }
+  const handler = f.action === 'retry' ? onRetry : f.action === 'compact' ? onCompact : undefined
 
   const copy = async (): Promise<void> => {
     try {
@@ -52,6 +77,13 @@ export function ErrorNotice({ error, variant = 'panel' }: { error: unknown; vari
           <div className="mt-2">
             <Button size="sm" variant="primary" onClick={() => useUi.getState().openSettingsAt('models', 'providers')}>
               {t('chat.error.connect')}
+            </Button>
+          </div>
+        )}
+        {handler && (
+          <div className="mt-2">
+            <Button size="sm" variant="primary" disabled={pending} onClick={() => void run(handler)}>
+              {f.action === 'compact' ? t('chat.error.compact') : t('chat.error.retry')}
             </Button>
           </div>
         )}

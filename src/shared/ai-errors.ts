@@ -10,14 +10,19 @@ import { maskSecretPatterns } from './redact-patterns'
 
 export type FriendlyErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
 
+export type FriendlyErrorAction = 'connect' | 'retry' | 'compact'
+
 export interface FriendlyError {
   kind: FriendlyErrorKind
   title: string
   message: string
   /** Texto técnico para «Ver detalle» (redactado y recortado); `null` si el mensaje ya es el original. */
   detail: string | null
-  /** `connect` = ofrecer el botón «Conectar una IA». */
-  action: 'connect' | null
+  /**
+   * Salida que ofrece la interfaz: `connect` = «Conectar una IA», `retry` = «Reintentar» (fallo que puede ser pasajero),
+   * `compact` = «Compactar» (la conversación no cabe en el contexto del modelo).
+   */
+  action: FriendlyErrorAction | null
 }
 
 export interface FriendlyErrorOptions {
@@ -124,7 +129,7 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
       title: tr('errors.context.title'),
       message: tr('errors.context.message'),
       detail,
-      action: null
+      action: 'compact'
     }
   }
   if (NOT_FOUND_RE.test(text)) {
@@ -151,7 +156,7 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
       title: tr('errors.quota.title'),
       message: tr('errors.quota.message'),
       detail,
-      action: null
+      action: 'retry'
     }
   }
   if (AUTH_RE.test(text)) return authFailure()
@@ -161,11 +166,11 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
       title: tr('errors.network.title'),
       message: tr('errors.network.message'),
       detail,
-      action: null
+      action: 'retry'
     }
   }
   if (n.statusCode === null && !n.responseBody && isPlainMessage(n.message)) {
-    return { kind: 'unknown', title: tr('errors.unknown.title'), message: redactSecrets(n.message.trim()), detail: null, action: null }
+    return { kind: 'unknown', title: tr('errors.unknown.title'), message: redactSecrets(n.message.trim()), detail: null, action: 'retry' }
   }
-  return { kind: 'unknown', title: tr('errors.unknown.title'), message: tr('errors.unknown.message'), detail, action: null }
+  return { kind: 'unknown', title: tr('errors.unknown.title'), message: tr('errors.unknown.message'), detail, action: 'retry' }
 }
