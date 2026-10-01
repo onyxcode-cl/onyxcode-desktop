@@ -27,6 +27,7 @@ import {
   Activity
 } from 'lucide-react'
 import type { TasksDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
+import { useT } from '../../../lib/i18n'
 import { cw } from './bridge'
 import { ChangesSection } from './ChangesPanel'
 import { Section } from './PanelSection'
@@ -100,6 +101,7 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
 }
 
 function ActivityGroup({ title, tools, live }: { title: string | null; tools: ToolPart[]; live: boolean }): React.JSX.Element {
+  const tr = useT()
   const [open, setOpen] = useState(live)
   const [showAll, setShowAll] = useState(false)
   const failed = tools.filter((t) => t.state.status === 'error').length
@@ -108,7 +110,9 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
     <li>
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-start gap-1.5 text-left text-xs">
         <ChevronRight size={12} className={`mt-0.5 shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
-        <span className={`min-w-0 flex-1 ${live ? 'font-semibold text-fg' : 'font-medium text-muted'}`}>{title ?? 'Preparación'}</span>
+        <span className={`min-w-0 flex-1 ${live ? 'font-semibold text-fg' : 'font-medium text-muted'}`}>
+          {title ?? tr('tasks.prog.prep')}
+        </span>
         <span className="shrink-0 text-[11px] text-subtle">
           {failed > 0 && <span className="mr-1 text-danger">{failed} ✕</span>}
           {tools.length}
@@ -119,7 +123,7 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
           {tools.length > visible.length && (
             <li>
               <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => setShowAll(true)}>
-                Ver {tools.length - visible.length} anteriores
+                {tr('tasks.prog.seePrev', { n: tools.length - visible.length })}
               </button>
             </li>
           )}
@@ -201,22 +205,23 @@ function useUsingComputer(sessionID: string): boolean {
 
 /** Sección «En vivo»: qué ve y qué hace el agente en el Mac ahora mismo. */
 function LiveSection({ entries }: { entries: MessageEntry[] }): React.JSX.Element {
+  const tr = useT()
   const lastAction = useTasks((s) => s.lastAction)
   const shot = useMemo(() => latestScreenshot(entries), [entries])
   const [broken, setBroken] = useState<string | null>(null)
   const label = lastAction ? describeAction(lastAction) : null
   return (
-    <Section icon={MonitorCog} title="En vivo" badge="Usando el Mac">
+    <Section icon={MonitorCog} title={tr('tasks.prog.live')} badge={tr('tasks.prog.usingMac')}>
       {shot && broken !== shot.url ? (
         <img
           src={shot.url}
-          alt="Última captura de pantalla"
+          alt={tr('tasks.prog.lastShot')}
           referrerPolicy="no-referrer"
           onError={() => setBroken(shot.url)}
           className="w-full rounded-md border border-border"
         />
       ) : (
-        <p className="text-xs text-subtle">Esperando la primera captura de pantalla…</p>
+        <p className="text-xs text-subtle">{tr('tasks.prog.waitShot')}</p>
       )}
       {label && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted" aria-live="polite">
@@ -232,6 +237,7 @@ function LiveSection({ entries }: { entries: MessageEntry[] }): React.JSX.Elemen
 
 /** Rutina vinculada a esta tarea ("Programar esta tarea") y sus últimas ejecuciones. */
 function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+  const tr = useT()
   const [routine, setRoutine] = useState<ScheduledRoutine | null | undefined>(undefined)
   const [runs, setRuns] = useState<RoutineRunRecord[]>([])
 
@@ -255,10 +261,14 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
 
   if (!routine) return null
   return (
-    <Section icon={CalendarClock} title="Programada" badge={routine.enabled ? 'Activa' : 'Pausada'}>
+    <Section
+      icon={CalendarClock}
+      title={tr('tasks.prog.scheduled')}
+      badge={routine.enabled ? tr('tasks.prog.active') : tr('tasks.prog.paused')}
+    >
       <p className="mb-2 text-[13px] font-medium text-fg">{routine.name}</p>
       {runs.length === 0 ? (
-        <p className="text-xs text-subtle">Aún no se ha ejecutado.</p>
+        <p className="text-xs text-subtle">{tr('tasks.prog.neverRun')}</p>
       ) : (
         <ul className="space-y-1">
           {runs.map((r) => (
@@ -273,7 +283,7 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
               {r.sessionId ? (
                 <button
                   type="button"
-                  title="Abrir la sesión de esta ejecución"
+                  title={tr('tasks.prog.openRun')}
                   className="text-accent hover:underline"
                   onClick={() =>
                     void openTaskAnywhere({
@@ -288,7 +298,9 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
               ) : (
                 <span className="text-muted">{relTime(r.startedAt)}</span>
               )}
-              {r.waiting && <span className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400">Esperando aprobación</span>}
+              {r.waiting && (
+                <span className="shrink-0 text-amber-600 [[data-theme=dark]_&]:text-amber-400">{tr('tasks.prog.awaitingApproval')}</span>
+              )}
               {r.summary && (
                 <span className="min-w-0 flex-1 truncate text-subtle" title={r.summary}>
                   {r.summary}
@@ -303,6 +315,7 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
 }
 
 export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; busy: boolean }): React.JSX.Element {
+  const tr = useT()
   const todos = useTasks((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
   const files = useTasks((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
   const entries = useSessions((s) => (sessionID ? (s.messages[sessionID] ?? EMPTY_ENTRIES) : EMPTY_ENTRIES))
@@ -317,7 +330,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-subtle">
         <ListChecks size={22} />
-        Aquí verás el plan, los archivos entregados y la actividad de la tarea.
+        {tr('tasks.prog.empty')}
       </div>
     )
   }
@@ -332,16 +345,16 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
     steps.length === 0
       ? null
       : stepsDone === steps.length
-        ? 'Completado'
-        : `Paso ${(currentIdx >= 0 ? currentIdx : stepsDone) + 1} de ${steps.length}`
+        ? tr('tasks.prog.completed')
+        : tr('tasks.prog.stepOf', { n: (currentIdx >= 0 ? currentIdx : stepsDone) + 1, total: steps.length })
 
   return (
     <div className="h-full overflow-y-auto text-sm">
       {usingComputer && <LiveSection entries={entries} />}
 
-      <Section icon={ListChecks} title="Plan" badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}>
+      <Section icon={ListChecks} title={tr('tasks.prog.plan')} badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}>
         {todos.length === 0 ? (
-          <p className="text-xs text-subtle">{busy ? 'El agente está preparando el plan…' : 'Esta tarea no tiene un plan publicado.'}</p>
+          <p className="text-xs text-subtle">{busy ? tr('tasks.prog.planPreparing') : tr('tasks.prog.planNone')}</p>
         ) : (
           <>
             <div className="mb-3 flex items-center gap-2">
@@ -385,12 +398,12 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
 
       <Section
         icon={Package}
-        title="Entregables"
+        title={tr('tasks.prog.deliverables')}
         badge={files.length > 0 ? files.length : undefined}
         right={
           <button
             type="button"
-            title="Actualizar"
+            title={tr('tasks.prog.refresh')}
             className="rounded p-1 text-subtle hover:bg-hover hover:text-fg"
             onClick={() => void refreshDeliverables(sessionID)}
           >
@@ -399,7 +412,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         }
       >
         {files.length === 0 ? (
-          <p className="text-xs text-subtle">Los archivos que cree o modifique el agente aparecerán aquí.</p>
+          <p className="text-xs text-subtle">{tr('tasks.prog.deliverablesEmpty')}</p>
         ) : (
           <DeliverableList files={files} onChanged={() => void refreshDeliverables(sessionID)} />
         )}
@@ -409,25 +422,23 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
 
       <ScheduledSection sessionID={sessionID} />
 
-      <Section icon={Plug} title="Contexto" badge={contextCount > 0 ? contextCount : undefined} defaultOpen={false}>
+      <Section icon={Plug} title={tr('tasks.prog.context')} badge={contextCount > 0 ? contextCount : undefined} defaultOpen={false}>
         {contextCount === 0 ? (
-          <p className="text-xs text-subtle">
-            Aquí verás qué archivos, comandos y conectores usó el agente. Haz clic en una entrada para ir a ese punto de la conversación.
-          </p>
+          <p className="text-xs text-subtle">{tr('tasks.prog.contextEmpty')}</p>
         ) : (
           <>
-            <ContextGroup icon={FileInput} label="Archivos leídos" items={context.filesRead} />
-            <ContextGroup icon={FileOutput} label="Archivos creados o editados" items={context.filesWritten} />
-            <ContextGroup icon={Terminal} label="Comandos" items={context.commands} />
-            <ContextGroup icon={Globe} label="Web" items={context.web} />
-            <ContextGroup icon={Plug} label="Conectores" items={context.connectors} />
+            <ContextGroup icon={FileInput} label={tr('tasks.prog.filesRead')} items={context.filesRead} />
+            <ContextGroup icon={FileOutput} label={tr('tasks.prog.filesWritten')} items={context.filesWritten} />
+            <ContextGroup icon={Terminal} label={tr('tasks.prog.commands')} items={context.commands} />
+            <ContextGroup icon={Globe} label={tr('tasks.prog.web')} items={context.web} />
+            <ContextGroup icon={Plug} label={tr('tasks.prog.connectors')} items={context.connectors} />
           </>
         )}
       </Section>
 
-      <Section icon={Activity} title="Actividad" badge={toolCount > 0 ? toolCount : undefined} defaultOpen={busy}>
+      <Section icon={Activity} title={tr('tasks.prog.activity')} badge={toolCount > 0 ? toolCount : undefined} defaultOpen={busy}>
         {groups.length === 0 ? (
-          <p className="text-xs text-subtle">Sin actividad todavía.</p>
+          <p className="text-xs text-subtle">{tr('tasks.prog.noActivity')}</p>
         ) : (
           <ul className="space-y-2">
             {groups.map((g, i) => (
