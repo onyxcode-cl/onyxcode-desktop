@@ -10,6 +10,7 @@
  *   recargue la config sin reiniciar el proceso (las instancias se recrean en la siguiente
  *   petición; las respuestas en curso se interrumpen).
  */
+import { t } from '@shared/i18n'
 import { app } from 'electron'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -43,7 +44,7 @@ function readRaw(): RawConfig {
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as unknown
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as RawConfig
   } catch (err) {
-    throw new Error(`El archivo ${path} no es JSON válido: ${err instanceof Error ? err.message : String(err)}`)
+    throw new Error(t('merr.mcp.badJson', { path, detail: err instanceof Error ? err.message : String(err) }))
   }
   return { $schema: SCHEMA, mcp: {} }
 }
@@ -154,16 +155,16 @@ export function mcpAsksEachUse(name: string): boolean {
 export function saveMcpServer(name: string, entry: McpEntry, previousName?: string, opts: { askEachUse?: boolean } = {}): AppMcpConfig {
   const clean = name.trim()
   if (!NAME_RE.test(clean)) {
-    throw new Error('Nombre inválido: usa sólo letras, números, "-" o "_" (máx. 64).')
+    throw new Error(t('merr.mcp.invalidNameAlt'))
   }
   const valid = toEntry(entry)
   if (!valid) {
-    throw new Error(entry.type === 'remote' ? 'URL inválida (debe ser http:// o https://).' : 'Falta el comando del servidor.')
+    throw new Error(entry.type === 'remote' ? t('merr.mcp.badUrl') : t('merr.mcp.noCommand'))
   }
   return mutate(
     (mcp) => {
       if (previousName && previousName !== clean) delete mcp[previousName]
-      else if (!previousName && clean in mcp) throw new Error(`Ya existe un servidor MCP llamado "${clean}".`)
+      else if (!previousName && clean in mcp) throw new Error(t('merr.mcp.exists', { name: clean }))
       mcp[clean] = valid
     },
     (perm) => {
@@ -192,7 +193,7 @@ export function removeMcpServer(name: string): AppMcpConfig {
 export function setMcpServerEnabled(name: string, enabled: boolean): AppMcpConfig {
   return mutate((mcp) => {
     const cur = mcp[name]
-    if (!cur || typeof cur !== 'object') throw new Error(`No existe el servidor MCP "${name}".`)
+    if (!cur || typeof cur !== 'object') throw new Error(t('merr.mcp.missing', { name }))
     mcp[name] = { ...(cur as Record<string, unknown>), enabled }
   })
 }

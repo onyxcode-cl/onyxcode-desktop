@@ -1,4 +1,5 @@
 import { app, BrowserWindow, clipboard, dialog, type IpcMain } from 'electron'
+import { t } from '@shared/i18n'
 import { chmod, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { DiagnosticsService } from '../diagnostics/service'
@@ -38,9 +39,9 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     const { text, fileName } = service.getExport()
     const parent = BrowserWindow.getFocusedWindow()
     const options: Electron.SaveDialogOptions = {
-      title: 'Exportar diagnóstico',
+      title: t('merr.dialog.exportTitle'),
       defaultPath: fileName,
-      filters: [{ name: 'Texto', extensions: ['txt'] }]
+      filters: [{ name: t('merr.dialog.textFilter'), extensions: ['txt'] }]
     }
     const r = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options)
     if (r.canceled || !r.filePath) return { saved: false }

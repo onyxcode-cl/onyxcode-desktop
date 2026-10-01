@@ -2,6 +2,7 @@
  * Handlers IPC de Tareas (`tasks:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
  * Contrato en src/shared/ipc-tasks.ts; expuesto en `window.api.tasks`.
  */
+import { t } from '@shared/i18n'
 import { BrowserWindow, Notification, app, dialog, shell, type IpcMain } from 'electron'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -243,11 +244,11 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     if (!approvalNotificationsEnabled()) return
     try {
       const n = new Notification({
-        title: req.plan ? 'Plan y permisos pendientes' : '¿Permitir que el agente use estas apps?',
+        title: req.plan ? t('merr.notif.planPending') : t('merr.notif.allowApps'),
         body:
-          (req.apps.length ? req.apps.map((a) => a.name).join(', ') : 'Plan sin apps (terminal, archivos o web)') +
+          (req.apps.length ? req.apps.map((a) => a.name).join(', ') : t('merr.notif.planNoApps')) +
           (req.reason ? ` — ${req.reason}` : ''),
-        actions: process.platform === 'darwin' ? [{ type: 'button', text: 'Revisar' }] : undefined
+        actions: process.platform === 'darwin' ? [{ type: 'button', text: t('merr.notif.review') }] : undefined
       })
       n.on('click', () => restoreMainWindowIfHidden({ focus: true }))
       n.on('action', () => restoreMainWindowIfHidden({ focus: true }))
@@ -299,9 +300,9 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     const root = tasks.assertInsideApproved(folder)
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
-      title: 'Adjuntar archivos a la tarea',
-      buttonLabel: 'Adjuntar',
-      message: 'Los archivos se copiarán a la carpeta de trabajo.',
+      title: t('merr.dialog.attachTitle'),
+      buttonLabel: t('merr.dialog.attachButton'),
+      message: t('merr.dialog.attachMessage'),
       properties: ['openFile', 'multiSelections']
     }
     const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)

@@ -3,6 +3,7 @@
  * global (por defecto Option+Space). Al enviar, abre/enfoca la ventana principal en Chat
  * con el prompt (evento `extras:quick-prompt`).
  */
+import { t } from '@shared/i18n'
 import { BrowserWindow, globalShortcut, screen } from 'electron'
 import type { QuickPromptEvent } from '@shared/ipc-extras'
 import { extrasWindows, loadRendererPage, preloadPath, showMainWindow, type MainWindowDeps } from './windows'
@@ -111,11 +112,11 @@ export function registerQuickEntryShortcut(accelerator: string): string | null {
   if (!acc) return null
   try {
     const ok = globalShortcut.register(acc, toggleQuickEntry)
-    if (!ok) return `No se pudo registrar "${acc}": otra aplicación ya usa ese atajo.`
+    if (!ok) return t('merr.quick.shortcutTaken', { acc })
     registered = acc
     return null
   } catch (err) {
-    return `Atajo inválido "${acc}": ${err instanceof Error ? err.message : String(err)}`
+    return t('merr.quick.shortcutInvalid', { acc, detail: err instanceof Error ? err.message : String(err) })
   }
 }
 
