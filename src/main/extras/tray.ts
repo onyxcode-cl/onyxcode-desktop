@@ -4,6 +4,7 @@
  */
 import { app, Menu, nativeImage, Tray, type NativeImage } from 'electron'
 import { APP_NAME } from '@shared/brand'
+import { onLangChange, t } from '@shared/i18n'
 
 export interface TrayActions {
   onNewConversation: () => void
@@ -86,19 +87,19 @@ function inShape(x: number, y: number): boolean {
 
 function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {
   return Menu.buildFromTemplate([
-    { label: 'Nueva conversación', click: actions.onNewConversation },
+    { label: t('main.tray.newConversation'), click: actions.onNewConversation },
     {
-      label: 'Quick Entry',
+      label: t('main.tray.quickEntry'),
       click: actions.onQuickEntry,
       // Sólo informativo: el atajo real es global (globalShortcut).
       accelerator: quickAccelerator || undefined,
       registerAccelerator: false
     },
     { type: 'separator' },
-    { label: `Abrir ${APP_NAME}`, click: actions.onOpenApp },
-    { label: 'Ajustes…', click: actions.onOpenSettings },
+    { label: t('main.tray.openApp', { app: APP_NAME }), click: actions.onOpenApp },
+    { label: t('main.tray.settings'), click: actions.onOpenSettings },
     { type: 'separator' },
-    { label: `Salir de ${APP_NAME}`, click: actions.onQuit ?? (() => app.quit()) }
+    { label: t('main.tray.quit', { app: APP_NAME }), click: actions.onQuit ?? (() => app.quit()) }
   ])
 }
 
@@ -120,6 +121,11 @@ export function updateTrayShortcut(quickAccelerator: string): void {
   lastAccelerator = quickAccelerator
   if (tray && !tray.isDestroyed() && lastActions) tray.setContextMenu(buildMenu(lastActions, lastAccelerator))
 }
+
+// El menú de la bandeja se reconstruye al cambiar de idioma (Ajustes → General → Idioma).
+onLangChange(() => {
+  if (tray && !tray.isDestroyed() && lastActions) tray.setContextMenu(buildMenu(lastActions, lastAccelerator))
+})
 
 export function destroyTray(): void {
   if (tray && !tray.isDestroyed()) tray.destroy()
