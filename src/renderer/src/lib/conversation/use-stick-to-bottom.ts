@@ -8,9 +8,34 @@ export function isNearBottom(el: { scrollHeight: number; scrollTop: number; clie
   return el.scrollHeight - el.scrollTop - el.clientHeight < threshold
 }
 
+/** Posiciones de scroll recordadas por conversación (R3-A). Solo en memoria y acotadas: la más antigua se descarta. */
+export const SCROLL_MEMORY_MAX = 200
+const scrollMemory = new Map<string, { top: number; stick: boolean }>()
+
+export function rememberScroll(key: string, pos: { top: number; stick: boolean }): void {
+  scrollMemory.delete(key) // reinsertar = más reciente
+  scrollMemory.set(key, pos)
+  while (scrollMemory.size > SCROLL_MEMORY_MAX) scrollMemory.delete(scrollMemory.keys().next().value as string)
+}
+
+export function recalledScroll(key: string): { top: number; stick: boolean } | undefined {
+  return scrollMemory.get(key)
+}
+
+export function scrollMemorySize(): number {
+  return scrollMemory.size
+}
+
+/** Solo pruebas. */
+export function clearScrollMemory(): void {
+  scrollMemory.clear()
+}
+
 /**
  * Pegado al final de una conversación (Chat, Code y Tareas). Si el usuario sube más de 80 px deja de seguir el
- * streaming y `atBottom` pasa a false (para mostrar «Ir al final»). `resetKey` (id del primer mensaje) vuelve a pegar.
+ * streaming y `atBottom` pasa a false (para mostrar «Ir al final»). `resetKey` (id del primer mensaje) identifica la
+ * conversación: al volver a ella (p. ej. tras cambiar de modo, que desmonta la vista) se restaura su posición; si
+ * estaba pegada al final vuelve al final, y una conversación nueva empieza pegada.
  */
 export function useStickToBottom(resetKey: unknown): {
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -22,6 +47,8 @@ export function useStickToBottom(resetKey: unknown): {
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
+  const memoKey = typeof resetKey === 'string' && resetKey ? resetKey : null
+  const memoKeyRef = useRef<string | null>(memoKey)
 
   const onScroll = useCallback((): void => {
     const el = scrollRef.current
@@ -29,7 +56,19 @@ export function useStickToBottom(resetKey: unknown): {
     const near = isNearBottom(el)
     stickRef.current = near
     setAtBottom(near) // React descarta el set si no cambia
+    if (memoKeyRef.current) rememberScroll(memoKeyRef.current, { top: el.scrollTop, stick: near })
   }, [])
+
+  // Antes de pintar: recupera la posición de esta conversación (debe ir antes del efecto de «pegar al final»).
+  useLayoutEffect(() => {
+    memoKeyRef.current = memoKey
+    const saved = memoKey ? recalledScroll(memoKey) : undefined
+    const el = scrollRef.current
+    if (saved && !saved.stick && el) {
+      stickRef.current = false
+      el.scrollTop = saved.top
+    } else stickRef.current = true
+  }, [memoKey])
 
   useLayoutEffect(() => {
     const el = scrollRef.current
@@ -37,9 +76,9 @@ export function useStickToBottom(resetKey: unknown): {
   })
 
   useEffect(() => {
-    stickRef.current = true
-    setAtBottom(true)
-  }, [resetKey])
+    const saved = memoKey ? recalledScroll(memoKey) : undefined
+    setAtBottom(!saved || saved.stick)
+  }, [memoKey])
 
   const scrollToBottom = useCallback((): void => {
     const el = scrollRef.current
