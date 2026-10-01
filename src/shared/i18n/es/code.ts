@@ -56,6 +56,13 @@ export const code = {
   'code.msg.revertBody':
     'Se ocultará este mensaje y todo lo que vino después, y se desharán los cambios en archivos que hizo el agente desde aquí. Puedes restaurarlo mientras no envíes un mensaje nuevo.',
   'code.msg.revert': 'Revertir',
+  'code.msg.edit': 'Editar y reintentar',
+  'code.msg.editTitle': '¿Editar y reintentar?',
+  'code.msg.editBody':
+    'Este mensaje y todo lo posterior se ocultarán, se deshará lo que el agente cambió en los archivos desde aquí y se enviará tu mensaje editado.',
+  'code.msg.editAria': 'Editar el mensaje',
+  'code.msg.editCancel': 'Cancelar',
+  'code.msg.editSend': 'Reintentar',
   'code.msg.retry': 'Reintento {attempt}:',
   'code.msg.aborted': 'Detenido por el usuario.',
   'code.msg.loading': 'Cargando…',

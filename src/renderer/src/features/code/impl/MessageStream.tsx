@@ -1,6 +1,8 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AtSign, Copy, Check, GitFork, Loader2, RotateCw, Undo2 } from 'lucide-react'
+import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Undo2 } from 'lucide-react'
+import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
 import { t } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
@@ -99,14 +101,76 @@ const UserMessage = memo(function UserMessage({
   const t = useT()
   const revertTo = useCode((s) => s.revertTo)
   const forkSession = useCode((s) => s.forkSession)
+  const editAndRetry = useCode((s) => s.editAndRetry)
   const [copied, setCopied] = useState(false)
   const [forking, setForking] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [pending, setPending] = useState(false)
   const text = entry.parts
     .filter((p): p is TextPart => p.type === 'text' && !p.synthetic)
     .map((p) => p.text)
     .join('\n')
   const files = entry.parts.filter((p): p is FilePart => p.type === 'file')
+  const [draft, setDraft] = useState(text)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (!editing) return
+    const el = taRef.current
+    if (el) {
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }
+  }, [editing])
   if (!text && files.length === 0) return null
+  const cancelEdit = (): void => {
+    setEditing(false)
+    setDraft(text)
+  }
+  const submitEdit = async (): Promise<void> => {
+    const next = draft.trim()
+    if (pending || (!next && files.length === 0)) return
+    // Deshace también los cambios de archivos desde aquí, igual que «Revertir»: se pide confirmar.
+    const ok = await confirmDialog({
+      title: t('code.msg.editTitle'),
+      message: t('code.msg.editBody'),
+      confirmLabel: t('code.msg.editSend'),
+      danger: true
+    })
+    if (!ok) return
+    setPending(true)
+    try {
+      if (await editAndRetry(entry.info.id, next)) setEditing(false)
+    } finally {
+      setPending(false)
+    }
+  }
+  if (editing) {
+    return (
+      <div className="flex w-full flex-col items-end gap-1.5">
+        <textarea
+          ref={taRef}
+          value={draft}
+          disabled={pending}
+          rows={Math.min(8, Math.max(2, draft.split('\n').length))}
+          aria-label={t('code.msg.editAria')}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') cancelEdit()
+            else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submitEdit()
+          }}
+          className="w-full max-w-[85%] resize-y rounded-xl border border-border-strong bg-elevated px-3 py-2 text-[15px] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"
+        />
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" disabled={pending} onClick={cancelEdit}>
+            {t('code.msg.editCancel')}
+          </Button>
+          <Button variant="primary" size="sm" disabled={pending || (!draft.trim() && files.length === 0)} onClick={() => void submitEdit()}>
+            {t('code.msg.editSend')}
+          </Button>
+        </div>
+      </div>
+    )
+  }
   const agent = entry.info.role === 'user' ? entry.info.agent : undefined
   return (
     <div className="group/user flex flex-col items-end gap-1">
@@ -167,6 +231,20 @@ const UserMessage = memo(function UserMessage({
           >
             <GitFork size={12} />
           </button>
+          {text && (
+            <button
+              type="button"
+              title={t('code.msg.edit')}
+              aria-label={t('code.msg.edit')}
+              onClick={() => {
+                setDraft(text)
+                setEditing(true)
+              }}
+              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
+            >
+              <Pencil size={12} />
+            </button>
+          )}
           <ConfirmButton
             title={t('code.msg.revertTitle')}
             body={t('code.msg.revertBody')}
@@ -214,6 +292,11 @@ const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (
 const TurnView = memo(
   function TurnView({ user, assistant, isLastTurn, old, busy, root, perms, hotkeyID }: TurnViewProps): React.JSX.Element {
     const t = useT()
+    const retryLast = useCode((s) => s.retryLast)
+    const compactSession = useCode((s) => s.compactSession)
+    // «Reintentar» / «Compactar» solo en el último turno y con la sesión libre.
+    const canAct = isLastTurn && !busy
+    const sessionID = user?.info.sessionID ?? assistant[0]?.info.sessionID
     const blocks = buildBlocks(assistant)
     const inlinePerms = new Map<string, PendingPermission[]>()
     for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
@@ -259,7 +342,15 @@ const TurnView = memo(
                     </div>
                   )
                 case 'error':
-                  return <AssistantError key={b.key} info={b.info} abortedLabel={t('code.msg.aborted')} />
+                  return (
+                    <AssistantError
+                      key={b.key}
+                      info={b.info}
+                      abortedLabel={t('code.msg.aborted')}
+                      onRetry={canAct ? () => retryLast() : undefined}
+                      onCompact={canAct && sessionID ? () => compactSession(sessionID) : undefined}
+                    />
+                  )
               }
             })}
           </div>
@@ -298,6 +389,8 @@ interface Props {
 export function MessageStream(props: Props): React.JSX.Element {
   const { entries, busy, error, root, permissions, questions, revertMessageID, onUnrevert, loading } = props
   const t = useT()
+  const retryLast = useCode((s) => s.retryLast)
+  const compactSession = useCode((s) => s.compactSession)
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
 
   const visible = useMemo(
@@ -383,7 +476,13 @@ export function MessageStream(props: Props): React.JSX.Element {
               {t('code.msg.working')}
             </div>
           )}
-          {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} />}
+          {error && !lastAssistantFailed(entries) && (
+            <ErrorNotice
+              error={error}
+              onRetry={!busy && turns.length > 0 ? () => retryLast() : undefined}
+              onCompact={!busy && entries.length > 0 ? () => compactSession(entries[0].info.sessionID) : undefined}
+            />
+          )}
         </div>
       </div>
       <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} />

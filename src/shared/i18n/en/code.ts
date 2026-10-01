@@ -59,6 +59,13 @@ export const code = {
   'code.msg.revertBody':
     'This message and everything after it will be hidden, and the file changes the agent made from here on will be undone. You can restore it as long as you don’t send a new message.',
   'code.msg.revert': 'Revert',
+  'code.msg.edit': 'Edit and retry',
+  'code.msg.editTitle': 'Edit and retry?',
+  'code.msg.editBody':
+    'This message and everything after it will be hidden, the file changes the agent made from here on will be undone, and your edited message will be sent.',
+  'code.msg.editAria': 'Edit the message',
+  'code.msg.editCancel': 'Cancel',
+  'code.msg.editSend': 'Retry',
   'code.msg.retry': 'Retry {attempt}:',
   'code.msg.aborted': 'Stopped by the user.',
   'code.msg.loading': 'Loading…',
