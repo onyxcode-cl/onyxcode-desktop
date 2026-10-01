@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
 import { Button } from '../../../components/Button'
+import { DiffView, parseUnifiedDiff } from '../../../components/DiffView'
 import { errorMessage } from '../../../lib/opencode'
 import { replyPermission, replyPermissionAlways } from './actions'
 import { cw } from './bridge'
@@ -29,6 +30,10 @@ interface Described {
   detail: string
   /** Descripción libre generada por el modelo (p. ej. el "description" de un comando bash). No verificada. */
   aiDescription?: string
+  /** Diferencia (diff unificado) que producirá una edición: se muestra con colores en lugar de texto plano. */
+  diff?: string
+  /** Ruta del archivo que se edita (resaltado de sintaxis del diff). */
+  file?: string
   /** Bloques literales adicionales (etiqueta + texto), p. ej. los patrones de una herramienta MCP. */
   sections?: Array<{ label: string; text: string }>
   /** `folder`: otra carpeta (tarjeta propia, sin botones rápidos). */
@@ -86,7 +91,9 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
         icon: FileEdit,
         title: `El agente quiere modificar ${file ? `«${baseName(file)}»` : 'archivos'}`,
         effect: 'Se cambiará el contenido del archivo.',
-        detail: meta(p, 'diff') || file,
+        detail: file,
+        diff: meta(p, 'diff') || undefined,
+        file: file || undefined,
         danger: false
       }
     }
@@ -172,7 +179,12 @@ function useMcpServers(): string[] {
   return names
 }
 
-function useReply(request: PermissionRequest): { busy: boolean; error: string | null; answer: (r: Reply) => void } {
+function useReply(request: PermissionRequest): {
+  busy: boolean
+  error: string | null
+  answer: (r: Reply) => void
+  reject: (message: string) => void
+} {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const answer = (reply: Reply): void => {
@@ -182,7 +194,54 @@ function useReply(request: PermissionRequest): { busy: boolean; error: string | 
     const call = reply === 'always' ? replyPermissionAlways(request) : replyPermission(request.id, reply)
     call.catch((err: unknown) => setError(errorMessage(err))).finally(() => setBusy(false))
   }
-  return { busy, error, answer }
+  /** Rechaza y le dice al agente qué cambiar (`message` llega al agente como indicación del usuario). */
+  const reject = (message: string): void => {
+    setBusy(true)
+    setError(null)
+    replyPermission(request.id, 'reject', message.trim() || undefined)
+      .catch((err: unknown) => setError(errorMessage(err)))
+      .finally(() => setBusy(false))
+  }
+  return { busy, error, answer, reject }
+}
+
+/** Área de texto «Dile al agente qué cambiar…» del botón «Rechazar con indicaciones». */
+function RejectWithNote({
+  busy,
+  onSend,
+  onCancel
+}: {
+  busy: boolean
+  onSend: (text: string) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [text, setText] = useState('')
+  return (
+    <div className="mt-3">
+      <textarea
+        autoFocus
+        value={text}
+        rows={3}
+        disabled={busy}
+        aria-label="Indicaciones para el agente"
+        placeholder="Dile al agente qué cambiar…"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onCancel()
+          else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && text.trim()) onSend(text)
+        }}
+        className="w-full resize-y rounded-lg border border-border-strong bg-elevated px-3 py-2 text-sm focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"
+      />
+      <div className="mt-2 flex items-center gap-2">
+        <Button variant="primary" disabled={busy || !text.trim()} onClick={() => onSend(text)}>
+          Rechazar y enviar indicaciones
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 /** ¿Se ofrece «Siempre»? Oculto con la política `disableAlwaysAllow` o si nada de la petición se puede recordar. */
@@ -211,9 +270,11 @@ export function PermissionCard({ request }: { request: PermissionRequest }): Rea
 function GenericPermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
   const servers = useMcpServers()
   const d = describePermission(request, servers)
-  const { busy, error, answer } = useReply(request)
+  const { busy, error, answer, reject } = useReply(request)
+  const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon
+  const showDiff = !!d.diff && parseUnifiedDiff(d.diff).some((l) => l.kind === 'add' || l.kind === 'del')
   return (
     <div
       id={`perm-${request.id}`}
@@ -235,6 +296,21 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
             <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
               {d.detail}
             </pre>
+          )}
+          {d.diff && (
+            <div className="mt-2 overflow-hidden rounded-md border border-border bg-code">
+              {showDiff ? (
+                <DiffView patch={d.diff} path={d.file} hideFileHeaders className="max-h-56" />
+              ) : (
+                <pre className="max-h-56 overflow-auto px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">{d.diff}</pre>
+              )}
+            </div>
+          )}
+          {(d.diff ? hasHiddenChars(d.diff) : false) && (
+            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
+              <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+              Contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.
+            </p>
           )}
           {d.detail && hasHiddenChars(d.detail) && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
@@ -275,7 +351,13 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
             <Button variant="ghost" disabled={busy} onClick={() => answer('reject')}>
               Rechazar
             </Button>
+            {!noting && (
+              <Button variant="ghost" disabled={busy} onClick={() => setNoting(true)}>
+                Rechazar con indicaciones
+              </Button>
+            )}
           </div>
+          {noting && <RejectWithNote busy={busy} onSend={reject} onCancel={() => setNoting(false)} />}
         </div>
       </div>
     </div>
