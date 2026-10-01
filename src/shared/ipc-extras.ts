@@ -5,6 +5,7 @@
  * Canales con prefijo `extras:` y `mcp:`. Se registran en `src/main/ipc/extras-handlers.ts`
  * y se exponen en el preload como `window.api.extras` (`src/preload/extras-api.ts`).
  */
+import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
@@ -107,6 +108,13 @@ export interface IpcExtrasInvokeContract {
   'mcp:remove': { req: { name: string }; res: AppMcpConfig }
   'mcp:setEnabled': { req: { name: string; enabled: boolean }; res: AppMcpConfig }
   'mcp:revealConfig': { req: void; res: void }
+  /** Catálogo curado (incluido en la app) + qué servidores instalados vienen de él. */
+  'mcp:catalog': { req: void; res: McpCatalogState }
+  /** Instala un servidor del catálogo: main construye la entrada desde su copia; el renderer solo manda entradas. */
+  'mcp:installCatalog': {
+    req: { id: string; name: string; inputs: Record<string, string>; enable: boolean; askEachUse: boolean }
+    res: AppMcpConfig
+  }
 }
 
 export interface IpcExtrasEventContract {
@@ -140,7 +148,9 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'mcp:save',
   'mcp:remove',
   'mcp:setEnabled',
-  'mcp:revealConfig'
+  'mcp:revealConfig',
+  'mcp:catalog',
+  'mcp:installCatalog'
 ] as const satisfies readonly IpcExtrasInvokeChannel[]
 
 export const IPC_EXTRAS_EVENT_CHANNELS = [

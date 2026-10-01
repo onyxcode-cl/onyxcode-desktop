@@ -11,12 +11,12 @@
  *   petición; las respuestas en curso se interrumpen).
  */
 import { app } from 'electron'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpLocalEntry, McpRemoteEntry } from '@shared/ipc-extras'
+import { MCP_NAME_RE as NAME_RE } from '@shared/mcp-catalog'
 
 const SCHEMA = 'https://opencode.ai/config.json'
-const NAME_RE = /^[A-Za-z0-9_-]{1,64}$/
 
 export function appOpencodeConfigPath(): string {
   return join(app.getPath('userData'), 'opencode', 'opencode.json')
@@ -52,7 +52,9 @@ function writeRaw(raw: RawConfig): void {
   const path = appOpencodeConfigPath()
   mkdirSync(dirname(path), { recursive: true })
   const tmp = `${path}.tmp`
-  writeFileSync(tmp, JSON.stringify(raw, null, 2) + '\n', 'utf8')
+  // 0600: puede contener un token en las cabeceras de un servidor remoto (como en el flujo manual).
+  writeFileSync(tmp, JSON.stringify(raw, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 })
+  chmodSync(tmp, 0o600)
   renameSync(tmp, path)
 }
 
@@ -115,15 +117,44 @@ export function readAppMcpConfig(): AppMcpConfig {
   return { path: appOpencodeConfigPath(), servers }
 }
 
-function mutate(fn: (mcp: Record<string, unknown>) => void): AppMcpConfig {
+function mutate(fn: (mcp: Record<string, unknown>) => void, perm?: (permission: PermissionRaw) => void): AppMcpConfig {
   const raw = readRaw()
   const mcp: Record<string, unknown> = raw.mcp && typeof raw.mcp === 'object' && !Array.isArray(raw.mcp) ? { ...raw.mcp } : {}
   fn(mcp)
-  writeRaw({ $schema: SCHEMA, ...raw, mcp })
+  const next: RawConfig = { $schema: SCHEMA, ...raw, mcp }
+  if (perm) {
+    const before = permissionObject(raw)
+    const permission = { ...before }
+    perm(permission)
+    // Sin cambios no se reescribe la clave `permission` (ni se convierte una cadena en objeto).
+    if (JSON.stringify(permission) !== JSON.stringify(before)) {
+      if (Object.keys(permission).length) (next as Record<string, unknown>).permission = permission
+      else delete (next as Record<string, unknown>).permission
+    }
+  }
+  writeRaw(next)
   return readAppMcpConfig()
 }
 
-export function saveMcpServer(name: string, entry: McpEntry, previousName?: string): AppMcpConfig {
+/** Clave de `permission` que cubre todas las herramientas de un servidor (OpenCode las nombra `<servidor>_<herramienta>`). */
+export const mcpPermissionKey = (name: string): string => `${name}_*`
+
+type PermissionRaw = Record<string, unknown>
+
+/** `permission` como objeto (una cadena global equivale a `{"*": valor}`); no toca nada más. */
+function permissionObject(raw: RawConfig): PermissionRaw {
+  const cur = (raw as { permission?: unknown }).permission
+  if (typeof cur === 'string') return { '*': cur }
+  if (cur && typeof cur === 'object' && !Array.isArray(cur)) return { ...(cur as PermissionRaw) }
+  return {}
+}
+
+/** ¿El servidor tiene «Preguntar antes de cada uso» (`permission["<nombre>_*"] = "ask"`)? */
+export function mcpAsksEachUse(name: string): boolean {
+  return permissionObject(readRaw())[mcpPermissionKey(name)] === 'ask'
+}
+
+export function saveMcpServer(name: string, entry: McpEntry, previousName?: string, opts: { askEachUse?: boolean } = {}): AppMcpConfig {
   const clean = name.trim()
   if (!NAME_RE.test(clean)) {
     throw new Error('Nombre inválido: usa sólo letras, números, "-" o "_" (máx. 64).')
@@ -132,17 +163,26 @@ export function saveMcpServer(name: string, entry: McpEntry, previousName?: stri
   if (!valid) {
     throw new Error(entry.type === 'remote' ? 'URL inválida (debe ser http:// o https://).' : 'Falta el comando del servidor.')
   }
-  return mutate((mcp) => {
-    if (previousName && previousName !== clean) delete mcp[previousName]
-    else if (!previousName && clean in mcp) throw new Error(`Ya existe un servidor MCP llamado "${clean}".`)
-    mcp[clean] = valid
-  })
+  return mutate(
+    (mcp) => {
+      if (previousName && previousName !== clean) delete mcp[previousName]
+      else if (!previousName && clean in mcp) throw new Error(`Ya existe un servidor MCP llamado "${clean}".`)
+      mcp[clean] = valid
+    },
+    opts.askEachUse ? (perm) => void (perm[mcpPermissionKey(clean)] = 'ask') : undefined
+  )
 }
 
 export function removeMcpServer(name: string): AppMcpConfig {
-  return mutate((mcp) => {
-    delete mcp[name]
-  })
+  return mutate(
+    (mcp) => {
+      delete mcp[name]
+    },
+    // Solo se limpia lo que puso la app («ask»): una regla propia de la persona se respeta.
+    (perm) => {
+      if (perm[mcpPermissionKey(name)] === 'ask') delete perm[mcpPermissionKey(name)]
+    }
+  )
 }
 
 export function setMcpServerEnabled(name: string, enabled: boolean): AppMcpConfig {
