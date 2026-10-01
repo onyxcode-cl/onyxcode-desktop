@@ -54,8 +54,7 @@ export class AccountUserError extends Error {}
 export function friendlyAccountError(err: unknown, fallback: string): AccountUserError {
   if (err instanceof AccountUserError) return err
   if (err instanceof AccountApiError) {
-    if (err.kind === 'unreachable')
-      return new AccountUserError(t('merr.acct.unreachable'))
+    if (err.kind === 'unreachable') return new AccountUserError(t('merr.acct.unreachable'))
     if (err.status === 429) {
       return new AccountUserError(
         err.retryAfterSec && err.retryAfterSec > 0
@@ -223,8 +222,7 @@ export class AccountService {
       if (flow !== this.flow) return this.state
       const { authUrl } = await this.d.client.googleStart({ redirectUri: lb.redirectUri, state, challenge: pkce.challenge })
       if (flow !== this.flow) return this.state // «Cancelar» durante la petición: no se abre el navegador
-      if (!isSafeBrowserUrl(authUrl, this.d.config.allowLocalHttp))
-        throw new AccountUserError(t('merr.acct.badAuthUrl'))
+      if (!isSafeBrowserUrl(authUrl, this.d.config.allowLocalHttp)) throw new AccountUserError(t('merr.acct.badAuthUrl'))
       await this.d.openExternal(authUrl)
       const r = await lb.result
       if (flow !== this.flow) return this.state // reemplazado por otro intento

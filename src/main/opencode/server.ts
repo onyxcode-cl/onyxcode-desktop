@@ -187,7 +187,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         timeoutMs: HEALTH_TIMEOUT_MS,
         intervalMs: HEALTH_INTERVAL_MS
       })
-      if (this.child !== child) throw new Error('El servidor se detuvo durante el arranque')
+      if (this.child !== child) throw new Error(t('merr.engine.stoppedAtStart'))
 
       const connection: OpencodeConnection = {
         baseUrl,

@@ -847,12 +847,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
               if (o.kind === 'takeover') kind = 'takeover'
             } catch {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'JSON inválido' }))
               return
             }
             // Sin apps solo vale una tarjeta de plan (plan sin apps: terminal, archivos o web).
             if (!apps.length && !plan?.length) {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'apps vacío y sin plan' }))
               return
             }
@@ -880,12 +882,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
               o = JSON.parse(body) as Record<string, unknown>
             } catch {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'JSON inválido' }))
               return
             }
             const text = typeof o.text === 'string' ? o.text.slice(0, 400) : ''
             if (!text) {
               res.statusCode = 400
+              // i18n-ignore: canal interno con el MCP, no se muestra al usuario
               res.end(JSON.stringify({ error: 'text vacío' }))
               return
             }

@@ -133,8 +133,7 @@ function sanitizeAllow(raw: RoutineAllowRule[] | undefined): RoutineAllowRule[] 
     const pattern = typeof r?.pattern === 'string' ? r.pattern.trim() : ''
     if (!permission && !pattern) continue
     if (!PERM_RE.test(permission)) throw new Error(t('merr.routine.permInvalid', { permission: permission || t('merr.routine.empty') }))
-    if (permission === '*')
-      throw new Error(t('merr.routine.noWildcard'))
+    if (permission === '*') throw new Error(t('merr.routine.noWildcard'))
     if (!pattern) throw new Error(t('merr.routine.patternMissing', { permission }))
     if (pattern.length > 2000) throw new Error(t('merr.routine.patternLong'))
     if (!out.some((x) => x.permission === permission && x.pattern === pattern)) out.push({ permission, pattern })
@@ -618,11 +617,12 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     }, RUN_TIMEOUT_MS)
 
     if (fullAccess) {
-      this.notifyPlain(
-        t('merr.notif.routineNeedsPlan', { name: r.name }),
-        t('merr.notif.routineFullBody'),
-        { mode: 'tasks', id: sessionID, directory: dirForSession, fullAccess: true }
-      )
+      this.notifyPlain(t('merr.notif.routineNeedsPlan', { name: r.name }), t('merr.notif.routineFullBody'), {
+        mode: 'tasks',
+        id: sessionID,
+        directory: dirForSession,
+        fullAccess: true
+      })
     }
 
     try {
@@ -652,7 +652,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (record.error) throw new Error(record.error)
       if (!final) throw new Error(t('merr.routine.noReply'))
       if (final.info.error) throw new Error(errMsg(final.info.error))
-      return truncate(extractText(final.parts) || '(Sin texto de respuesta)', SUMMARY_MAX)
+      return truncate(extractText(final.parts) || t('merr.routine.noText'), SUMMARY_MAX)
     } finally {
       clearInterval(poll)
       clearTimeout(timeout)
@@ -873,9 +873,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const rejected = record.rejected ?? []
     const extras: string[] = []
     if (rejected.length > 0) {
-      extras.push(
-        `${t('merr.notif.routineRejected', { count: rejected.length })}: ${describeEntries(rejected)}.`
-      )
+      extras.push(`${t('merr.notif.routineRejected', { count: rejected.length })}: ${describeEntries(rejected)}.`)
     }
     if ((record.blockedHosts?.length ?? 0) > 0) {
       extras.push(

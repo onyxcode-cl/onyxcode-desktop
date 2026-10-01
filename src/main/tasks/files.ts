@@ -3,6 +3,7 @@
  * previsualizar entregables. Las rutas deben venir YA validadas (dentro de una carpeta
  * autorizada) por `TasksManager.assertInsideApproved`.
  */
+import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
 import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
@@ -121,7 +122,7 @@ function textutilToText(path: string): Promise<string> {
       (err, stdout) => {
         if (err) {
           const killed = (err as NodeJS.ErrnoException & { killed?: boolean }).killed
-          reject(new Error(killed ? 'La conversión del documento tardó demasiado.' : 'No se pudo leer el documento.'))
+          reject(new Error(killed ? t('merr.files.convertTimeout') : t('merr.files.readFailed')))
           return
         }
         resolve(stdout)

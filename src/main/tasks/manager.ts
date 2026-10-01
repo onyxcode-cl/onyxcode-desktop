@@ -84,12 +84,12 @@ export interface TasksComputerDeps {
   planGateUrl: () => Promise<string | null>
 }
 
-const NO_COMPUTER: ComputerUseInfo = {
+const noComputer = (): ComputerUseInfo => ({
   available: false,
   accessibility: false,
   screenRecording: false,
-  reason: 'Solo disponible con Control total.'
-}
+  reason: t('merr.task.onlyFull')
+})
 
 function serverKey(folder: string, fullAccess: boolean): string {
   return fullAccess ? `${folder}\u0000full` : folder
@@ -597,7 +597,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const used = this.servers.get(key)
     if (used) used.lastStartCallAt = Date.now()
     this.touch(f)
-    const computerUse = fullAccess && this.opts.computer ? await this.opts.computer.info() : NO_COMPUTER
+    const computerUse = fullAccess && this.opts.computer ? await this.opts.computer.info() : noComputer()
     return {
       folder: f,
       baseUrl: handle.baseUrl,

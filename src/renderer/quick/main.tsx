@@ -75,6 +75,7 @@ function QuickEntry(): React.JSX.Element {
         />
         {!canSend && (
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-q-muted" aria-hidden>
+            {/* i18n-ignore: nombre de tecla */}
             <kbd className="rounded-md bg-q-kbd px-1.5 py-0.5 font-sans">esc</kbd>
             {t('ovl.quick.close')}
           </span>

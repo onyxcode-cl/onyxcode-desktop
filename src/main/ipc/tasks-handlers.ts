@@ -246,8 +246,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
       const n = new Notification({
         title: req.plan ? t('merr.notif.planPending') : t('merr.notif.allowApps'),
         body:
-          (req.apps.length ? req.apps.map((a) => a.name).join(', ') : t('merr.notif.planNoApps')) +
-          (req.reason ? ` — ${req.reason}` : ''),
+          (req.apps.length ? req.apps.map((a) => a.name).join(', ') : t('merr.notif.planNoApps')) + (req.reason ? ` — ${req.reason}` : ''),
         actions: process.platform === 'darwin' ? [{ type: 'button', text: t('merr.notif.review') }] : undefined
       })
       n.on('click', () => restoreMainWindowIfHidden({ focus: true }))
@@ -273,8 +272,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   handle('tasks:pickFolder', async (_req, event) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
-      title: 'Elegir carpeta de trabajo',
-      buttonLabel: 'Elegir',
+      title: t('merr.dialog.pickFolder'),
+      buttonLabel: t('merr.dialog.pick'),
       properties: ['openDirectory', 'createDirectory']
     }
     const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)

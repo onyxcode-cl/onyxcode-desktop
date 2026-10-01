@@ -349,7 +349,9 @@ if (location.hash === '#demo-request') {
   document.body.classList.add('on')
   renderRequest({
     id: 'demo',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     reason: 'Abrir Discord y unirme al canal “pega”',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     plan: ['Abrir Spotlight y buscar Discord', 'Abrir el canal #pega', 'Escribir un saludo'],
     apps: [
       { bundleId: 'com.hnc.Discord', name: 'Discord', requested: 'full', current: null },
@@ -365,6 +367,7 @@ if (location.hash === '#demo-takeover') {
   renderRequest({
     id: 'demo-takeover',
     kind: 'takeover',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     reason: 'Necesita pulsar un atajo de teclado que app_press no puede reproducir',
     apps: [{ bundleId: 'com.hnc.Discord', name: 'Discord', requested: 'full', current: null }]
   })
@@ -374,7 +377,9 @@ if (location.hash === '#demo-plan-only') {
   document.body.classList.add('on')
   renderRequest({
     id: 'demo-plan-only',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     reason: 'Buscar el precio del dólar hoy y guardarlo en dolar.md',
+    // i18n-ignore: datos de demostración (#demo-*), solo en desarrollo
     plan: ['Buscar en la web el precio del dólar', 'Escribir el resultado en dolar.md'],
     apps: []
   })

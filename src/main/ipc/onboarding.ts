@@ -1,4 +1,5 @@
 import { BrowserWindow, clipboard, dialog, shell, type IpcMain } from 'electron'
+import { t } from '@shared/i18n'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -24,7 +25,7 @@ export function registerOnboardingHandlers(ipcMain: IpcMain): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     const defaultPath = join(homedir(), '.opencode', 'bin')
     const options = {
-      title: 'Elegir el binario de OpenCode',
+      title: t('merr.dialog.pickBinary'),
       properties: ['openFile', 'showHiddenFiles'] as Array<'openFile' | 'showHiddenFiles'>,
       ...(existsSync(defaultPath) ? { defaultPath } : {})
     }

@@ -10,6 +10,7 @@
  *
  * Límite: 6 pestañas por owner, 12 en total (protege memoria/CPU: un proceso por pestaña).
  */
+import { t } from '@shared/i18n'
 import { EventEmitter } from 'node:events'
 import { Menu, WebContentsView, clipboard, shell, type WebContents } from 'electron'
 import type { BrowserOwner, BrowserProduct } from '@shared/ipc-browser'
@@ -101,23 +102,23 @@ function installContextMenu(tab: TabRuntime): void {
   tab.wc.on('context-menu', (_event, params) => {
     const items: Electron.MenuItemConstructorOptions[] = []
     const nav = tab.wc.navigationHistory
-    items.push({ label: 'Atrás', enabled: nav.canGoBack(), click: () => nav.goBack() })
-    items.push({ label: 'Adelante', enabled: nav.canGoForward(), click: () => nav.goForward() })
-    items.push({ label: 'Recargar', click: () => tab.wc.reload() })
+    items.push({ label: t('merr.menu.back'), enabled: nav.canGoBack(), click: () => nav.goBack() })
+    items.push({ label: t('merr.menu.forward'), enabled: nav.canGoForward(), click: () => nav.goForward() })
+    items.push({ label: t('merr.menu.reload'), click: () => tab.wc.reload() })
     items.push({ type: 'separator' })
     if (params.isEditable) {
-      items.push({ label: 'Pegar', click: () => tab.wc.paste() })
+      items.push({ label: t('merr.menu.paste'), click: () => tab.wc.paste() })
     }
     if (params.selectionText) {
-      items.push({ label: 'Copiar', click: () => tab.wc.copy() })
+      items.push({ label: t('merr.menu.copy'), click: () => tab.wc.copy() })
     }
     if (params.linkURL) {
-      items.push({ label: 'Copiar enlace', click: () => clipboard.writeText(params.linkURL) })
+      items.push({ label: t('merr.menu.copyLink'), click: () => clipboard.writeText(params.linkURL) })
     }
     const topUrl = params.linkURL || tab.wc.getURL()
     if (/^https?:\/\//i.test(topUrl)) {
       items.push({ type: 'separator' })
-      items.push({ label: 'Abrir en el navegador del sistema', click: () => void shell.openExternal(topUrl) })
+      items.push({ label: t('merr.menu.openSystem'), click: () => void shell.openExternal(topUrl) })
     }
     if (!items.length) return
     Menu.buildFromTemplate(items).popup()

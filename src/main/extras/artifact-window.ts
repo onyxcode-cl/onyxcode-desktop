@@ -10,6 +10,7 @@
  * - webRequest cancela cualquier petición http(s)/ws/file desde esa sesión; permisos denegados;
  *   navegación y ventanas nuevas bloqueadas.
  */
+import { t } from '@shared/i18n'
 import { app, BrowserWindow, clipboard, dialog, Menu, session, type Session } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
@@ -132,27 +133,27 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
   wc.on('context-menu', () => {
     const artifact = artifacts.get(id)
     Menu.buildFromTemplate([
-      { label: 'Recargar', click: () => wc.reload() },
+      { label: t('merr.menu.reload'), click: () => wc.reload() },
       { type: 'separator' },
-      { label: 'Copiar código HTML', click: () => artifact && clipboard.writeText(artifact.html) },
+      { label: t('merr.menu.copyHtml'), click: () => artifact && clipboard.writeText(artifact.html) },
       {
-        label: 'Guardar como HTML…',
+        label: t('merr.menu.saveHtml'),
         click: () => {
           if (!artifact) return
           void (async () => {
             const safe = title.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'vista-previa'
             const res = await dialog.showSaveDialog(win, {
-              title: 'Guardar vista previa',
+              title: t('merr.dialog.savePreview'),
               defaultPath: `${safe}.html`,
               filters: [{ name: 'HTML', extensions: ['html', 'htm'] }]
             })
             if (!res.canceled && res.filePath) await writeFile(res.filePath, artifact.html, 'utf8')
-          })().catch((err: unknown) => dialog.showErrorBox('No se pudo guardar', String(err)))
+          })().catch((err: unknown) => dialog.showErrorBox(t('merr.dialog.saveFailed'), String(err)))
         }
       },
       ...(app.isPackaged
         ? []
-        : [{ type: 'separator' as const }, { label: 'Inspeccionar', click: () => wc.openDevTools({ mode: 'detach' }) }])
+        : [{ type: 'separator' as const }, { label: t('merr.menu.inspect'), click: () => wc.openDevTools({ mode: 'detach' }) }])
     ]).popup({ window: win })
   })
 
@@ -208,12 +209,12 @@ export async function renderHtmlToPdf(html: string, title = 'Documento'): Promis
     const loaded = new Promise<void>((resolve, reject) => {
       wc.once('did-finish-load', () => resolve())
       wc.once('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
-        if (isMainFrame) reject(new Error(`No se pudo cargar el HTML (${desc || code}).`))
+        if (isMainFrame) reject(new Error(t('merr.files.htmlLoadFailed', { detail: String(desc || code) })))
       })
-      wc.once('render-process-gone', () => reject(new Error('El proceso de renderizado se cerró.')))
+      wc.once('render-process-gone', () => reject(new Error(t('merr.files.rendererGone'))))
     })
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('La conversión a PDF tardó demasiado.')), PDF_TIMEOUT_MS)
+      timer = setTimeout(() => reject(new Error(t('merr.files.pdfTimeout'))), PDF_TIMEOUT_MS)
     })
     void win.loadURL(`${SCHEME}://${id}`).catch(() => undefined) // el fallo se informa por did-fail-load
     await Promise.race([loaded, timeout])

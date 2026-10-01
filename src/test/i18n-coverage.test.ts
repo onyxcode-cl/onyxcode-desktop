@@ -12,6 +12,36 @@ import { findHardcodedText } from './i18n-detect'
 const ROOT = resolve(__dirname, '../..')
 
 export const MIGRATED: string[] = [
+  'src/main/ipc/onboarding.ts',
+  'src/main/ipc/account.ts',
+  'src/renderer/quick/main.tsx',
+  'src/renderer/overlay/pill.ts',
+  'src/renderer/overlay/assist.ts',
+  'src/renderer/overlay/overlay.ts',
+  'src/renderer/overlay/shared.ts',
+  'src/main/ipc/tasks-handlers.ts',
+  'src/main/scheduler/service.ts',
+  'src/main/computer/assist-window.ts',
+  'src/main/computer/overlay.ts',
+  'src/main/computer/service.ts',
+  'src/main/opencode/server.ts',
+  'src/main/tasks/sandbox.ts',
+  'src/main/tasks/manager.ts',
+  'src/main/tasks/projects.ts',
+  'src/main/ipc/update.ts',
+  'src/main/ipc/diagnostics.ts',
+  'src/main/ipc/tasks-lifecycle-handlers.ts',
+  'src/main/embedded-browser/approvals.ts',
+  'src/main/extras/quick-entry.ts',
+  'src/main/extras/mcp-config.ts',
+  'src/main/extras/mcp-catalog-install.ts',
+  'src/main/scheduler/schedule.ts',
+  'src/main/tasks/rules.ts',
+  'src/main/tasks/open-policy.ts',
+  'src/main/tasks/folder-policy.ts',
+  'src/main/opencode/binary.ts',
+  'src/main/account/service.ts',
+  'src/main/account/loopback.ts',
   'src/main/extras/tray.ts',
   'src/main/security/web-security.ts',
   'src/renderer/src/app/CommandPalette.tsx',
@@ -88,6 +118,7 @@ describe('cobertura de i18n', () => {
     expect(hits.map((h) => h.split('] ')[0].split('[')[1]).sort()).toEqual(['atributo title', 'literal', 'texto JSX'])
     expect(findHardcodedText('b.ts', "const x = 'ok'\n\nconst y = 'ya no hay'")).toHaveLength(1)
     expect(findHardcodedText('c.ts', "// i18n-ignore: id interno\nconst y = 'ya no hay'")).toHaveLength(0)
+    expect(findHardcodedText('d.ts', "console.warn('[x] no se pudo leer:', err)")).toHaveLength(0)
   })
 
   it('los archivos migrados no tienen texto visible fuera de los diccionarios', () => {
