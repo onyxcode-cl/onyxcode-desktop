@@ -7,10 +7,12 @@ import { App } from './app/App'
 import { AccountGate } from './features/account'
 import { LangRoot } from './app/LangRoot'
 import { initLang } from './lib/i18n'
+import { installModalFocus } from './lib/modal-focus'
 import './app/globals.css'
 
 document.title = APP_NAME
 initLang()
+installModalFocus()
 
 // Ganchos del harness E2E: solo en DEV y con el flag en localStorage (tree-shaken en producción).
 if (import.meta.env.DEV) {
