@@ -292,7 +292,7 @@ export function ProjectPanel(): React.JSX.Element | null {
               <NotebookText size={13} /> {t('tasks.proj.tabMemory')}
             </button>
             <button type="button" className={tabCls(tab === 'agents')} onClick={() => setTab('agents')}>
-              <FileText size={13} /> AGENTS.md
+              <FileText size={13} /> {'AGENTS.md'}
             </button>
           </div>
 
@@ -334,7 +334,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                     <input
                       className={inputCls}
                       value={linkDraft}
-                      placeholder="https://…"
+                      placeholder={'https://…'}
                       inputMode="url"
                       aria-label={t('tasks.proj.newLinkAria')}
                       onChange={(e) => setLinkDraft(e.target.value)}

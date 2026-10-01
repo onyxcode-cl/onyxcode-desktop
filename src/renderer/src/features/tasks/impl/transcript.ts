@@ -209,7 +209,7 @@ export function buildSideChatSystem(title: string, entries: MessageEntry[], maxC
             .map((p) => p.text)
             .join('\n')
             .trim()
-    if (text) turns.push(`${e.info.role === 'user' ? 'Usuario' : 'Agente'}: ${text}`)
+    if (text) turns.push(`${e.info.role === 'user' ? 'Usuario' : 'Agente'}: ${text}`) // i18n-ignore: prompt al agente (se queda en español)
   }
   const intro = '\n\nConversación de la tarea (lo más antiguo puede estar recortado):\n' // i18n-ignore: prompt al agente (se queda en español)
   const budget = Math.max(0, maxChars - header.length - intro.length)

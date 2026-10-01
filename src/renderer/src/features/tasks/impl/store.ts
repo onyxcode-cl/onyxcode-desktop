@@ -593,7 +593,7 @@ export function rootTaskId(sessionID: string): string {
 }
 
 function taskTitle(sessionID: string): string {
-  return useSessions.getState().sessions[sessionID]?.title || 'Tarea'
+  return useSessions.getState().sessions[sessionID]?.title || t('tasks.ws.untitled')
 }
 
 export function clearUnseen(sessionID: string): void {

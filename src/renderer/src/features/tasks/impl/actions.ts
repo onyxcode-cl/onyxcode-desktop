@@ -1,6 +1,7 @@
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { t } from '@shared/i18n'
+import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
@@ -976,7 +977,7 @@ export async function sendSideChat(text: string): Promise<void> {
   const sessions = useSessions.getState()
   let sessionID = side.sessionId
   if (!sessionID) {
-    const res = await client.session.create({ directory: folder, parentID: side.taskId, title: 'Consulta lateral', agent: 'chat' })
+    const res = await client.session.create({ directory: folder, parentID: side.taskId, title: TASKS_TERMS.sideChat, agent: 'chat' })
     if (res.error || !res.data) throw new Error(errorMessage(res.error))
     sessions.upsertSession(res.data)
     sessionID = res.data.id

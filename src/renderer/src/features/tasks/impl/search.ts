@@ -4,6 +4,7 @@
  * carpeta actual leyendo sus mensajes con poca concurrencia y una caché de texto por sesión.
  */
 import { useEffect, useState } from 'react'
+import { t } from '@shared/i18n'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../../stores/sessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { splitAttachments, visibleTextParts } from './transcript'
@@ -197,7 +198,7 @@ export function useTranscriptSearch(folder: string | null, query: string): Searc
           const s = list[i]
           try {
             const texts = await textsFor(i)
-            const hits = searchTexts(s.id, s.title || 'Tarea', texts, q, HITS_PER_SESSION)
+            const hits = searchTexts(s.id, s.title || t('tasks.ws.untitled'), texts, q, HITS_PER_SESSION)
             results[i] = hits
           } catch {
             results[i] = []

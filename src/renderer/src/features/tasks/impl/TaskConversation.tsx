@@ -27,7 +27,7 @@ import { blockIdForPart } from './conversation-logic'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { friendlyTool, isVisibleText } from './util'
 
-export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n'
+export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
 
 type Block =
   | { kind: 'user'; id: string; text: string; files: string[]; partIds: string[] }
