@@ -3,6 +3,9 @@ import type { notices as es } from '../es/notices'
 
 export const notices = {
   'notices.close': 'Dismiss',
+  'notices.quick.title': 'Couldn’t send your quick message.',
+  'notices.quick.body': 'Your text is still in the Chat message box. {reason}',
+  'notices.quick.connect': 'Connect an AI',
   'notices.update.available': 'A new version of {app} is available ({version}).',
   'notices.update.checkFailed': 'Couldn’t check right now. Try again later.',
   'notices.update.newVersion': 'A new version is available: {version}',

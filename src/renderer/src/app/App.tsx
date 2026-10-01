@@ -23,6 +23,8 @@ import { E2EFault } from './E2EFault'
 import { CommandPalette } from './CommandPalette'
 import { MODES, MODES_BY_ID } from './modes'
 import { EngineNotice } from './EngineNotice'
+import { QuickEntryNotice } from './QuickEntryNotice'
+import { useQuickNotice } from '../lib/quick-notice'
 import { UpdateNotice } from './UpdateNotice'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
@@ -79,6 +81,7 @@ export function App(): React.JSX.Element {
     const offQuick = x.onQuickPrompt(({ text }) => {
       useUi.getState().openSettings(false)
       useUi.getState().setMode('chat')
+      useQuickNotice.getState().dismiss()
       newChat()
       void waitClient()
         .then(() => sendChatMessage(text))
@@ -87,6 +90,8 @@ export function App(): React.JSX.Element {
           const id = useChat.getState().activeSessionId
           setDraft(`chat:${id ?? 'new'}`, text)
           if (id) useSessions.getState().setError(id, typeof err === 'object' && err ? err : String(err))
+          // Sin conversación donde mostrar el error: aviso visible en la ventana principal (R3-A).
+          else useQuickNotice.getState().show(err)
         })
     })
     const offNew = x.onNewConversation(() => {
@@ -213,6 +218,7 @@ export function App(): React.JSX.Element {
         <ErrorBoundary label={t('app.boundary.server')}>
           <ServerBanner />
           <EngineNotice />
+          <QuickEntryNotice />
           <UpdateNotice />
         </ErrorBoundary>
         <div className="min-h-0 flex-1">

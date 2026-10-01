@@ -2,6 +2,7 @@ import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { errorMessage, requireCode } from '../client'
 import { useCode } from '../store'
+import { createInputGate, type InputGate } from './inputGate'
 
 /**
  * Registro de terminales de Code (F8-B32). El shell (pty) y su `Terminal` de xterm viven AQUÍ, fuera de React:
@@ -106,16 +107,23 @@ export class TerminalEntry {
     }
     const early = new Map<string, string[]>()
     const earlyExit = new Map<string, number>()
+    // R3-A: lo tecleado antes de que el shell dé su primer aviso se retiene (si no, el eco queda suelto antes del prompt).
+    let gate: InputGate | null = null
     const offData = api.onPtyData((ev) => {
       if (this.ptyId === null) early.set(ev.id, [...(early.get(ev.id) ?? []), ev.data])
-      else if (ev.id === this.ptyId) this.term.write(ev.data)
+      else if (ev.id === this.ptyId) {
+        this.term.write(ev.data)
+        gate?.onOutput()
+      }
     })
     const offExit = api.onPtyExit((ev) => {
       if (this.ptyId === null) earlyExit.set(ev.id, ev.exitCode)
       else if (ev.id === this.ptyId) this.set({ exited: ev.exitCode })
     })
+    const pending: string[] = []
     const onInput = this.term.onData((data) => {
-      if (this.ptyId) void api.pty.write(this.ptyId, data).catch(() => undefined)
+      if (gate) gate.push(data)
+      else pending.push(data) // el pty aún se está creando
     })
     const onResize = this.term.onResize(({ cols, rows }) => {
       if (this.ptyId) void api.pty.resize(this.ptyId, cols, rows).catch(() => undefined)
@@ -124,6 +132,7 @@ export class TerminalEntry {
       offData,
       offExit,
       () => onInput.dispose(),
+      () => gate?.dispose(),
       () => onResize.dispose()
     )
 
@@ -135,7 +144,13 @@ export class TerminalEntry {
           return
         }
         this.ptyId = info.id
-        for (const chunk of early.get(info.id) ?? []) this.term.write(chunk)
+        const id = info.id
+        gate = createInputGate((data) => void api.pty.write(id, data).catch(() => undefined))
+        gate.start()
+        for (const data of pending.splice(0)) gate.push(data)
+        const chunks = early.get(info.id) ?? []
+        for (const chunk of chunks) this.term.write(chunk)
+        if (chunks.length) gate.onOutput()
         early.clear()
         // El shell puede haber terminado antes de que `create` resolviera: muestra el banner de salida.
         const code = earlyExit.get(info.id)

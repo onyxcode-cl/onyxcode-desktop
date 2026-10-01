@@ -1,5 +1,8 @@
 export const notices = {
   'notices.close': 'Cerrar aviso',
+  'notices.quick.title': 'No se pudo enviar tu mensaje rápido.',
+  'notices.quick.body': 'Tu texto sigue en el cuadro de mensaje de Chat. {reason}',
+  'notices.quick.connect': 'Conectar una IA',
   'notices.update.available': 'Hay una versión nueva de {app} ({version}).',
   'notices.update.checkFailed': 'No se pudo comprobar ahora. Inténtalo más tarde.',
   'notices.update.newVersion': 'Hay una versión nueva: {version}',
