@@ -105,7 +105,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
     )
   }
   const tone = full
-    ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400'
+    ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 [[data-theme=dark]_&]:text-amber-400'
     : conn && !conn.sandboxed
       ? 'border-danger/40 text-danger'
       : 'border-accent/40 text-accent'
@@ -257,7 +257,7 @@ export function FullAccessDialog(): React.JSX.Element | null {
           <Button variant="ghost" onClick={cancelFullAccess} autoFocus>
             {t('tasksComputer.cancel')}
           </Button>
-          <Button variant="primary" className="!bg-amber-600 !text-white" onClick={confirm} disabled={busy}>
+          <Button variant="primary" className="!bg-amber-700 !text-white" onClick={confirm} disabled={busy}>
             {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.full.allow')}
           </Button>
         </div>
@@ -383,7 +383,7 @@ export function VisionModelHint(): React.JSX.Element | null {
           <button
             type="button"
             onClick={() => setTaskModel(VISION_MODEL)}
-            className="shrink-0 rounded-md bg-amber-600 px-2 py-1 font-medium text-white hover:opacity-90"
+            className="shrink-0 rounded-md bg-amber-700 px-2 py-1 font-medium text-white hover:opacity-90"
           >
             {t('tasksComputer.vision.use')}
           </button>
@@ -654,7 +654,7 @@ function TierBadge({ tier }: { tier: AppTier }): React.JSX.Element {
   const info = tierInfo(useT())[tier]
   const tone =
     tier === 'full'
-      ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 [[data-theme=dark]_&]:text-amber-400'
+      ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 [[data-theme=dark]_&]:text-amber-400'
       : tier === 'click'
         ? 'border-accent/40 bg-accent/10 text-accent'
         : 'border-border bg-hover text-muted'
@@ -775,7 +775,7 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
         className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
       >
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 [[data-theme=dark]_&]:text-amber-400">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 [[data-theme=dark]_&]:text-amber-400">
             <MonitorCog size={18} />
           </span>
           <div className="min-w-0 flex-1">
@@ -874,7 +874,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
         className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
       >
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 [[data-theme=dark]_&]:text-amber-400">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 [[data-theme=dark]_&]:text-amber-400">
             <ShieldAlert size={18} />
           </span>
           <div className="min-w-0 flex-1">

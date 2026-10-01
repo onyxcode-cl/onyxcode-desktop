@@ -185,7 +185,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                 type="button"
                 onClick={() => (isDir ? toggle(n) : setOpenFile(n.path))}
                 style={{ paddingLeft: 8 + depth * 14 }}
-                className={`flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-[13px] hover:bg-hover ${n.ignored ? 'opacity-50' : ''}`}
+                className={`flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-[13px] hover:bg-hover ${n.ignored ? 'opacity-70' : ''}`}
               >
                 {isDir ? (
                   <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
