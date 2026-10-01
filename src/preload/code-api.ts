@@ -44,7 +44,9 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       createWorktree: (cwd, branch, base) => call('git:createWorktree', { cwd, branch, base }),
       removeWorktree: (cwd, path, force) => call('git:removeWorktree', { cwd, path, force }),
       commit: (cwd, message, stageAll) => call('git:commit', { cwd, message, stageAll }),
-      log: (cwd, n) => call('git:log', { cwd, n })
+      log: (cwd, n) => call('git:log', { cwd, n }),
+      discard: (cwd, paths) => call('git:discard', { cwd, paths }),
+      discardUndo: (cwd, undoId) => call('git:discardUndo', { cwd, undoId })
     },
     dialog: {
       openFolder: (opts) => call('dialog:openFolder', opts),

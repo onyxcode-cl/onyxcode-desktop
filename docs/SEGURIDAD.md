@@ -668,6 +668,16 @@ proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 - Tipos rechazados a propósito: SVG (puede contener scripts y se pinta como imagen en el mensaje), ejecutables, archivos comprimidos y binarios sin tipo. La miniatura solo se pinta si el tipo es `image/*` y la URL empieza por `data:image/`.
 - Privacidad: el contenido del adjunto sale hacia el proveedor de IA elegido igual que el texto del mensaje. Los borradores con adjuntos viven solo en memoria (almacén de borradores) y no se persisten.
 
+## 3 terdecies. Descartar cambios en Code (`git:discard`, `git:discardUndo`)
+
+Canal nuevo que **borra o sobrescribe archivos del proyecto** (R2-A, F8-B34). Solo ventana principal (no está en `CHANNEL_ROLES`; los preloads secundarios no cambian) y esquema estricto (`cwd` absoluto, hasta 200 rutas no vacías; `undoId` con forma de uuid). Lo ejecuta main (`src/main/git/service.ts`), no el renderer ni el modelo:
+
+- **Qué puede tocar.** Solo archivos que `git status` reporta como cambiados en ese momento (nunca ignorados, nunca conflictos ni submódulos): una ruta que no está en el estado se rechaza. La ruta se valida contra la raíz real del repo (`realpath`): sin `..`, sin escapes absolutos, sin la raíz ni `.git`, y sin carpetas intermedias que sean enlaces simbólicos (el último componente no se resuelve: si es un enlace se mueve el enlace, nunca su destino). Se revalida justo antes de mover. Todo o nada: si una ruta no cuadra, no se descarta ninguna.
+- **Nunca borrado definitivo.** Archivos nuevos (sin seguimiento o añadidos/renombrados al índice) van a la Papelera de macOS (`shell.trashItem`, o `ONYXCODE_E2E_TRASH_DIR` solo con la app sin empaquetar, igual que los puntos de restauración). Lo que tenía seguimiento se restaura con `git checkout HEAD -- <rutas>` (sin shell, `execFile`).
+- **Deshacer.** Antes de restaurar se copia el contenido actual (archivos regulares ≤ 100 MB) a `userData/code-discard/<uuid>/` (carpeta `0700`, se purga a los 7 días). `git:discardUndo` solo lo restaura si el archivo sigue sin cambios desde el descarte (no pisa ediciones posteriores), exige que la copia sea del mismo repo y que el id tenga forma de uuid. Los archivos que fueron a la Papelera se recuperan desde ahí (no hay «Deshacer» propio).
+- **Confirmación.** El renderer pide confirmación explícita con la lista de rutas afectadas antes de llamar al canal; main no tiene un segundo cuadro: un renderer comprometido podría invocar el canal, pero solo sobre archivos con cambios del repo abierto y con todo recuperable (Papelera o copia).
+- **Límites.** Solo por archivo (no por bloque); archivos > 100 MB, enlaces simbólicos o carpetas se descartan sin copia para «Deshacer» (los nuevos, a la Papelera igualmente). El estado «preparado» (staged) se pierde al descartar y «Deshacer» devuelve el contenido como cambio sin preparar.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

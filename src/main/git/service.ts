@@ -4,12 +4,27 @@
  */
 import { execFile } from 'node:child_process'
 import { t } from '@shared/i18n'
-import { existsSync, realpathSync, statSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type {
   GitBranch,
   GitChangeKind,
   GitCommitResult,
+  GitDiscardResult,
+  GitDiscardUndoResult,
   GitDiffRequest,
   GitFileStatusDetailed,
   GitLogEntry,
@@ -86,9 +101,9 @@ async function git(cwd: string, args: string[], opts?: RunOptions): Promise<stri
 // ---------------------------------------------------------------------------
 
 function assertDir(cwd: string): string {
-  if (typeof cwd !== 'string' || !cwd || !isAbsolute(cwd)) throw new GitError(`Ruta inválida: ${String(cwd)}`)
+  if (typeof cwd !== 'string' || !cwd || !isAbsolute(cwd)) throw new GitError(t('common.git.invalidPath', { path: String(cwd) }))
   const abs = resolve(cwd)
-  if (!existsSync(abs) || !statSync(abs).isDirectory()) throw new GitError(`La carpeta no existe: ${abs}`)
+  if (!existsSync(abs) || !statSync(abs).isDirectory()) throw new GitError(t('common.git.dirMissing', { path: abs }))
   return abs
 }
 
@@ -111,22 +126,22 @@ function realish(p: string): string {
 
 /** Convierte una ruta de archivo a relativa a `root`, rechazando escapes fuera del repo. */
 function toRepoPath(root: string, p: string): string {
-  if (typeof p !== 'string' || !p || p.includes('\0')) throw new GitError('Ruta de archivo inválida')
+  if (typeof p !== 'string' || !p || p.includes('\0')) throw new GitError(t('common.git.invalidFilePath'))
   const abs = realish(isAbsolute(p) ? resolve(p) : resolve(root, p))
   const rel = relative(realish(root), abs)
   if (rel === '') return '.'
-  if (rel.startsWith('..') || isAbsolute(rel)) throw new GitError(`La ruta está fuera del repositorio: ${p}`)
+  if (rel.startsWith('..') || isAbsolute(rel)) throw new GitError(t('common.git.outsideRepo', { path: p }))
   return rel.split(sep).join('/')
 }
 
 async function assertBranchName(cwd: string, name: string): Promise<void> {
   if (typeof name !== 'string' || !name.trim() || name.startsWith('-') || /[\s\0]/.test(name)) {
-    throw new GitError(`Nombre de rama inválido: ${String(name)}`)
+    throw new GitError(t('common.git.invalidBranch', { name: String(name) }))
   }
   try {
     await git(cwd, ['check-ref-format', '--branch', name])
   } catch {
-    throw new GitError(`Nombre de rama inválido: ${name}`)
+    throw new GitError(t('common.git.invalidBranch', { name }))
   }
 }
 
@@ -152,7 +167,7 @@ export async function isRepo(cwd: string): Promise<boolean> {
 
 async function requireRoot(cwd: string): Promise<string> {
   const root = await repoRoot(cwd)
-  if (!root) throw new GitError(`No es un repositorio git: ${cwd}`)
+  if (!root) throw new GitError(t('common.git.notRepo', { path: cwd }))
   return root
 }
 
@@ -452,11 +467,11 @@ export async function createWorktree(cwd: string, branch: string, base?: string)
   const root = await mainRoot(cwd)
   await assertBranchName(root, branch)
   if (base !== undefined && (typeof base !== 'string' || !base || base.startsWith('-'))) {
-    throw new GitError(`Referencia base inválida: ${String(base)}`)
+    throw new GitError(t('common.git.invalidBase', { ref: String(base) }))
   }
   const folder = branch.replace(/[\\/]+/g, '-')
   const target = join(dirname(root), `.${basename(root)}-worktrees`, folder)
-  if (existsSync(target)) throw new GitError(`Ya existe la carpeta del worktree: ${target}`)
+  if (existsSync(target)) throw new GitError(t('common.git.worktreeExists', { path: target }))
 
   const exists = await run(root, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], { okCodes: [1] })
   const args =
@@ -467,11 +482,11 @@ export async function createWorktree(cwd: string, branch: string, base?: string)
 
 export async function removeWorktree(cwd: string, path: string, force = false): Promise<void> {
   const root = await requireRoot(cwd)
-  if (typeof path !== 'string' || !isAbsolute(path)) throw new GitError(`Ruta de worktree inválida: ${String(path)}`)
+  if (typeof path !== 'string' || !isAbsolute(path)) throw new GitError(t('common.git.invalidWorktreePath', { path: String(path) }))
   const target = realish(resolve(path))
   const wt = (await listWorktrees(root)).find((w) => realish(resolve(w.path)) === target)
-  if (!wt) throw new GitError(`No es un worktree de este repositorio: ${target}`)
-  if (wt.main) throw new GitError('No se puede eliminar el worktree principal')
+  if (!wt) throw new GitError(t('common.git.notWorktree', { path: target }))
+  if (wt.main) throw new GitError(t('common.git.cantRemoveMain'))
   await git(root, ['worktree', 'remove', ...(force ? ['--force'] : []), '--', target])
 }
 
@@ -481,7 +496,7 @@ export async function removeWorktree(cwd: string, path: string, force = false): 
 
 export async function commit(cwd: string, message: string, stageAll = false): Promise<GitCommitResult> {
   const root = await requireRoot(cwd)
-  if (typeof message !== 'string' || !message.trim()) throw new GitError('El mensaje de commit está vacío')
+  if (typeof message !== 'string' || !message.trim()) throw new GitError(t('common.git.emptyCommit'))
   if (stageAll) await git(root, ['add', '-A'])
   await git(root, ['commit', '-F', '-'], { input: message })
   const out = (await git(root, ['log', '-1', '--format=%H%x1f%h%x1f%s'])).trim()
@@ -509,4 +524,251 @@ export async function log(cwd: string, n = 50): Promise<GitLogEntry[]> {
       const [hash = '', shortHash = '', author = '', email = '', at = '0', subject = ''] = r.split('\x1f')
       return { hash, shortHash, author, email, date: Number(at) * 1000, subject }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Descartar cambios (DESTRUCTIVO)
+// ---------------------------------------------------------------------------
+//
+// Reglas: solo archivos que `git status` reporta como cambiados (nada ignorado ni fuera de la lista),
+// ruta validada dentro del repo sin `..`, sin carpetas intermedias que sean enlaces simbólicos y sin
+// tocar `.git`. Lo nuevo (sin seguimiento o añadido al índice) va a la Papelera, nunca se borra. Lo
+// que tenía seguimiento se restaura desde HEAD tras copiar el contenido actual a `backupDir`, para
+// poder «Rehacer». Se valida TODO antes de cambiar nada.
+
+export interface DiscardDeps {
+  /** Mueve a la Papelera (`shell.trashItem` en producción). */
+  trash: (path: string) => Promise<void>
+  /** Carpeta de copias para «Rehacer» (userData/code-discard). */
+  backupDir: string
+}
+
+export const MAX_DISCARD_FILES = 200
+const MAX_BACKUP_BYTES = 100 * 1024 * 1024
+const BACKUP_TTL_MS = 7 * 24 * 3600 * 1000
+
+interface DiscardTarget {
+  rel: string
+  abs: string
+}
+
+/** Ruta relativa al repo para descartar: valida escapes, `.git`, raíz y enlaces simbólicos intermedios. */
+function discardTarget(root: string, p: string): DiscardTarget {
+  if (typeof p !== 'string' || !p || p.includes('\0')) throw new GitError(t('common.git.invalidFilePath'))
+  if (p.split(/[\\/]/).includes('..')) throw new GitError(t('common.git.outsideRepo', { path: p }))
+  const realRoot = realish(root)
+  const abs0 = isAbsolute(p) ? resolve(p) : resolve(root, p)
+  // El último componente NO se resuelve: si es un enlace simbólico se actúa sobre el enlace.
+  const rel = relative(realRoot, join(realish(dirname(abs0)), basename(abs0)))
+  if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) throw new GitError(t('common.git.outsideRepo', { path: p }))
+  const parts = rel.split(sep)
+  if (parts.some((x) => x === '.git' || x === '..' || x === '')) throw new GitError(t('common.git.discard.protectedPath', { path: p }))
+  let cur = realRoot
+  for (const part of parts.slice(0, -1)) {
+    cur = join(cur, part)
+    try {
+      if (lstatSync(cur).isSymbolicLink()) throw new GitError(t('common.git.discard.symlinkDir', { path: p }))
+    } catch (err) {
+      if (err instanceof GitError) throw err
+      break // aún no existe: nada que seguir
+    }
+  }
+  return { rel: parts.join('/'), abs: join(realRoot, rel) }
+}
+
+interface UndoEntry {
+  path: string
+  /** Nombre de la copia o null = el archivo no existía (estaba borrado). */
+  file: string | null
+  mode: number
+}
+interface UndoManifest {
+  root: string
+  createdAt: number
+  entries: UndoEntry[]
+}
+
+function pruneBackups(dir: string): void {
+  try {
+    for (const name of readdirSync(dir)) {
+      const m = join(dir, name)
+      try {
+        const man = JSON.parse(readFileSync(join(m, 'manifest.json'), 'utf8')) as UndoManifest
+        if (Date.now() - man.createdAt > BACKUP_TTL_MS) rmSync(m, { recursive: true, force: true })
+      } catch {
+        // carpeta ajena o a medio escribir: se deja
+      }
+    }
+  } catch {
+    // aún no existe
+  }
+}
+
+export async function discardChanges(cwd: string, paths: string[], deps: DiscardDeps): Promise<GitDiscardResult> {
+  const root = await requireRoot(cwd)
+  if (!Array.isArray(paths) || paths.length === 0) throw new GitError(t('common.git.discard.none'))
+  if (paths.length > MAX_DISCARD_FILES) throw new GitError(t('common.git.discard.tooMany', { max: MAX_DISCARD_FILES }))
+  const st = await status(root)
+  const byPath = new Map(st.files.filter((f) => f.kind !== 'ignored').map((f) => [f.path, f]))
+
+  // 1) Validación completa (no se cambia nada si algo no cuadra).
+  const targets = new Map<string, DiscardTarget>()
+  for (const p of paths) {
+    const tg = discardTarget(root, p)
+    targets.set(tg.rel, tg)
+  }
+  const tracked: Array<{ tg: DiscardTarget; wasDeletedInTree: boolean; recordUndo: boolean }> = []
+  const added: DiscardTarget[] = []
+  const untracked: DiscardTarget[] = []
+  const seen = new Set<string>()
+  for (const tg of targets.values()) {
+    const f = byPath.get(tg.rel)
+    if (!f) throw new GitError(t('common.git.discard.notChanged', { path: tg.rel }))
+    if (f.conflicted) throw new GitError(t('common.git.discard.conflicted', { path: tg.rel }))
+    seen.add(tg.rel)
+    if (f.untracked) {
+      untracked.push(tg)
+      continue
+    }
+    const isNew = [f.index, f.workingDir].some((c) => c === 'A' || c === 'R' || c === 'C')
+    if (isNew) added.push(tg)
+    else tracked.push({ tg, wasDeletedInTree: f.workingDir === 'D', recordUndo: true })
+    if (f.origPath) {
+      // Renombre/copia: el origen también vuelve a su sitio (solo si es un renombre; una copia no lo toca).
+      if (f.kind === 'renamed') {
+        const o = discardTarget(root, f.origPath)
+        if (!targets.has(o.rel) && !seen.has(o.rel)) {
+          seen.add(o.rel)
+          tracked.push({ tg: o, wasDeletedInTree: true, recordUndo: false })
+        }
+      }
+    }
+  }
+  const tree = [...tracked.map((x) => x.tg.rel), ...added.map((x) => x.rel)]
+  if (tree.length) {
+    const out = await git(root, ['ls-files', '--stage', '-z', '--', ...tree])
+    for (const rec of out.split('\0').filter(Boolean)) {
+      if (rec.startsWith('160000 ')) throw new GitError(t('common.git.discard.submodule', { path: rec.split('\t').slice(1).join('\t') }))
+    }
+  }
+
+  // 2) Copias para «Rehacer» (solo lo que tenía seguimiento: lo nuevo va a la Papelera).
+  const result: GitDiscardResult = { restored: [], trashed: [], failed: [], undoId: null }
+  const entries: UndoEntry[] = []
+  const undoId = randomUUID()
+  const bdir = join(deps.backupDir, undoId)
+  for (const { tg, wasDeletedInTree, recordUndo } of tracked) {
+    if (!recordUndo) continue
+    try {
+      if (wasDeletedInTree && !existsSync(tg.abs)) {
+        entries.push({ path: tg.rel, file: null, mode: 0o644 })
+        continue
+      }
+      const ls = lstatSync(tg.abs)
+      if (!ls.isFile() || ls.size > MAX_BACKUP_BYTES) continue // enlace/carpeta/enorme: sin «Rehacer» para este
+      mkdirSync(bdir, { recursive: true, mode: 0o700 })
+      const name = String(entries.length)
+      copyFileSync(tg.abs, join(bdir, name))
+      entries.push({ path: tg.rel, file: name, mode: ls.mode & 0o777 })
+    } catch {
+      // sin copia: se descarta igualmente, sin «Rehacer» para este archivo
+    }
+  }
+
+  // 3) Archivos con seguimiento: de vuelta a HEAD (índice y árbol).
+  if (tracked.length) {
+    try {
+      await git(root, ['checkout', 'HEAD', '--', ...tracked.map((x) => x.tg.rel)])
+      for (const x of tracked) if (x.recordUndo) result.restored.push(x.tg.rel)
+    } catch (err) {
+      for (const x of tracked) result.failed.push({ path: x.tg.rel, reason: (err as Error).message })
+      entries.length = 0
+    }
+  }
+
+  // 4) Lo añadido al índice: sale del índice y el archivo va a la Papelera.
+  for (const tg of added) {
+    try {
+      await git(root, ['rm', '--cached', '-f', '-q', '--', tg.rel])
+      await trashIfPresent(root, tg, deps, result)
+    } catch (err) {
+      result.failed.push({ path: tg.rel, reason: (err as Error).message })
+    }
+  }
+  // 5) Sin seguimiento: a la Papelera.
+  for (const tg of untracked) {
+    try {
+      await trashIfPresent(root, tg, deps, result)
+    } catch (err) {
+      result.failed.push({ path: tg.rel, reason: (err as Error).message })
+    }
+  }
+
+  const failedPaths = new Set(result.failed.map((f) => f.path))
+  const undoable = entries.filter((e) => !failedPaths.has(e.path))
+  if (undoable.length) {
+    mkdirSync(bdir, { recursive: true, mode: 0o700 })
+    const manifest: UndoManifest = { root: realish(root), createdAt: Date.now(), entries: undoable }
+    writeFileSync(join(bdir, 'manifest.json'), JSON.stringify(manifest))
+    result.undoId = undoId
+  } else {
+    rmSync(bdir, { recursive: true, force: true })
+  }
+  pruneBackups(deps.backupDir)
+  return result
+}
+
+/** Revalida la ruta justo antes de tocarla (evita carreras con enlaces) y la manda a la Papelera. */
+async function trashIfPresent(root: string, tg: DiscardTarget, deps: DiscardDeps, result: GitDiscardResult): Promise<void> {
+  const fresh = discardTarget(root, tg.rel)
+  try {
+    lstatSync(fresh.abs)
+  } catch {
+    return // ya no existe: nada que mover
+  }
+  try {
+    await deps.trash(fresh.abs)
+  } catch (err) {
+    throw new GitError(t('common.git.discard.trashFailed', { reason: (err as Error).message }))
+  }
+  result.trashed.push(tg.rel)
+}
+
+/** «Rehacer»: devuelve el contenido que había antes de descartar, sin pisar lo que haya cambiado después. */
+export async function undoDiscard(cwd: string, undoId: string, deps: DiscardDeps): Promise<GitDiscardUndoResult> {
+  const root = await requireRoot(cwd)
+  if (typeof undoId !== 'string' || !/^[0-9a-f-]{36}$/.test(undoId)) throw new GitError(t('common.git.discard.undoMissing'))
+  const bdir = join(deps.backupDir, undoId)
+  let manifest: UndoManifest
+  try {
+    manifest = JSON.parse(readFileSync(join(bdir, 'manifest.json'), 'utf8')) as UndoManifest
+  } catch {
+    throw new GitError(t('common.git.discard.undoMissing'))
+  }
+  if (manifest.root !== realish(root)) throw new GitError(t('common.git.discard.undoMissing'))
+  const changed = new Set((await status(root)).files.filter((f) => f.kind !== 'ignored').map((f) => f.path))
+  const result: GitDiscardUndoResult = { restored: [], failed: [] }
+  for (const e of manifest.entries) {
+    try {
+      const tg = discardTarget(root, e.path)
+      if (changed.has(tg.rel)) {
+        result.failed.push({ path: tg.rel, reason: t('common.git.discard.undoChanged') })
+        continue
+      }
+      if (e.file === null) {
+        // Estaba borrado en el árbol: se vuelve a quitar (a la Papelera, no definitivo).
+        if (existsSync(tg.abs)) await deps.trash(tg.abs)
+      } else {
+        if (!/^\d+$/.test(e.file)) throw new GitError(t('common.git.discard.undoMissing'))
+        mkdirSync(dirname(tg.abs), { recursive: true })
+        copyFileSync(join(bdir, e.file), tg.abs)
+        chmodSync(tg.abs, e.mode)
+      }
+      result.restored.push(tg.rel)
+    } catch (err) {
+      result.failed.push({ path: e.path, reason: (err as Error).message })
+    }
+  }
+  if (result.failed.length === 0) rmSync(bdir, { recursive: true, force: true })
+  return result
 }

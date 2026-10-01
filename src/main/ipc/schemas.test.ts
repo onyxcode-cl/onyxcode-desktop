@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { IPC_EVENT_CHANNELS, IPC_INVOKE_CHANNELS } from '@shared/ipc'
+import { CODE_INVOKE_CHANNELS } from '@shared/ipc-code'
 import { CHANNEL_ROLES, IPC_SCHEMAS, missingSchemas } from './schemas'
 
 describe('contrato IPC', () => {
@@ -165,5 +166,35 @@ describe('catálogo MCP (mcp:catalog, mcp:installCatalog)', () => {
     const v = IPC_SCHEMAS['mcp:catalog']
     expect(() => v(undefined)).not.toThrow()
     expect(() => v({ x: 1 })).toThrow()
+  })
+})
+
+describe('canales git:discard y git:discardUndo (R2-A)', () => {
+  const cwd = '/Users/x/repo'
+  const uuid = '123e4567-e89b-12d3-a456-426614174000'
+
+  it('existen, tienen esquema y son solo de la ventana principal', () => {
+    for (const c of ['git:discard', 'git:discardUndo']) {
+      expect(CODE_INVOKE_CHANNELS as readonly string[], c).toContain(c)
+      expect(IPC_SCHEMAS[c], c).toBeTypeOf('function')
+      for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has(c), `${c} en ${role}`).toBe(false)
+    }
+  })
+
+  it('git:discard exige cwd absoluto y una lista acotada de rutas no vacías', () => {
+    const v = IPC_SCHEMAS['git:discard']
+    expect(v({ cwd, paths: ['a.txt', 'src/b.txt'] })).toEqual({ cwd, paths: ['a.txt', 'src/b.txt'] })
+    expect(() => v({ cwd: 'repo', paths: ['a'] })).toThrow()
+    expect(() => v({ cwd, paths: 'a.txt' })).toThrow()
+    expect(() => v({ cwd, paths: [''] })).toThrow()
+    expect(() => v({ cwd, paths: [5] })).toThrow()
+    expect(() => v({ cwd, paths: Array.from({ length: 201 }, (_, i) => `f${i}`) })).toThrow()
+    expect(() => v({ cwd })).toThrow()
+  })
+
+  it('git:discardUndo solo admite ids con forma de uuid', () => {
+    const v = IPC_SCHEMAS['git:discardUndo']
+    expect(v({ cwd, undoId: uuid })).toEqual({ cwd, undoId: uuid })
+    for (const undoId of ['', '../../etc', 'x'.repeat(36), `${uuid}/..`]) expect(() => v({ cwd, undoId }), undoId).toThrow()
   })
 })

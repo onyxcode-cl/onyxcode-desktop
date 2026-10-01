@@ -428,3 +428,16 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 - Pruebas: unitarias `attachments.test.ts` (clasificación, límites, URL segura) y `actions.r2b.test.ts` (imagen sin texto = una parte `file`, `file://` rechazado sin llamar al motor, red caída → idle); E2E del flujo completo (imagen sin texto, quitar,
   tipo/tamaño rechazado, red caída con restauración de texto y adjunto y un solo mensaje de usuario). Capturas con `R2B_SHOTS_DIR`. Bug cazado por el E2E durante el desarrollo: el adjunto salía sin `filename` (el compositor usa `name`).
 - No probado: modelos reales (si un modelo concreto no admite imágenes o PDF el proveedor devolverá su error, que se muestra como cualquier otro); arrastrar archivos desde el Finder en la app empaquetada (el E2E usa el selector); VoiceOver con la lista de adjuntos.
+
+## F8-B34 — Calidad R2-A: descartar cambios, copiar respuesta, MIME de menciones, i18n de git
+
+- **Descartar cambios por archivo (M3).** El panel Cambios de Code tiene «Descartar» (icono al pasar el ratón por la fila o en la cabecera del diff). Diálogo de confirmación con lo que se pierde y la lista de rutas; los archivos nuevos van a la Papelera
+  (nunca borrado definitivo) y lo demás vuelve a su última versión de HEAD (índice y árbol). Tras descartar sale un aviso con «Deshacer» (copia previa en `userData/code-discard`, no pisa ediciones posteriores). Operación y validación en main
+  (`src/main/git/service.ts`: `discardChanges`/`undoDiscard`); canales nuevos `git:discard` y `git:discardUndo` (contrato, esquema, preload `code.git.discard/discardUndo`, solo ventana principal). Detalle de seguridad en `docs/SEGURIDAD.md` §3 duodecies.
+  **No se hizo** descartar por bloque (hunk) ni reutilizar el almacén de puntos de restauración de Tareas (viven en carpetas aprobadas de Tareas; aquí se usa copia propia + Papelera): queda como mejora.
+- **Copiar respuesta en Code (B2).** Botón «Copiar respuesta» bajo la respuesta del asistente (texto de sus bloques de texto; en el último turno siempre visible, en los demás al pasar el ratón; no aparece mientras responde). Cambia el snapshot de `MessageStream`.
+- **MIME de las menciones `@archivo` (B1).** Imágenes (`png/jpg/jpeg/gif/webp/bmp/avif/heic`) y PDF se envían con su MIME; el resto sigue como `text/plain` (`mention-mime.ts`).
+- **i18n de `git/service.ts`.** Los 13 mensajes de validación pasan a `common.git.*` (es/en) y el archivo entra en `MIGRATED`; con `es` el texto es idéntico.
+- Pruebas: `git/discard.test.ts` (18 casos con repos temporales reales y Papelera de pruebas: restaurar modificado/borrado/staged, nuevo y añadido a la Papelera, renombre, enlaces, rutas fuera del repo/`..`/`.git`/raíz, todo o nada, ignorados, conflicto, repo sin
+  commits, fallo de Papelera, deshacer y su rechazo), `schemas.test.ts` (canales solo de la principal, esquemas), `discard-logic.test.ts`, `mention-mime.test.ts`; E2E `calidad-ra.e2e.ts` (repo real: cancelar no toca nada, confirmar restaura, «Deshacer»,
+  archivo nuevo a la Papelera de pruebas, rutas hostiles rechazadas por el canal). Capturas con `RA_SHOTS_DIR`.

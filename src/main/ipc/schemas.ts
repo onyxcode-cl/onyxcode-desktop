@@ -208,6 +208,8 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'git:removeWorktree': obj({ cwd: absPath, path: absPath, force: optional(bool) }),
   'git:commit': obj({ cwd: absPath, message: str({ max: 100_000, min: 1 }), stageAll: optional(bool) }),
   'git:log': obj({ cwd: absPath, n: optional(num({ int: true, min: 1, max: 1000 })) }),
+  'git:discard': obj({ cwd: absPath, paths: arr(str({ max: 4096, min: 1 }), 200) }),
+  'git:discardUndo': obj({ cwd: absPath, undoId: str({ max: 64, min: 1, pattern: /^[0-9a-f-]{36}$/ }) }),
   'dialog:openFolder': openFolderOpts,
   'dialog:revealInFinder': pathReq,
   'dialog:openInEditor': pathReq

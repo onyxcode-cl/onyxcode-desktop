@@ -2,7 +2,7 @@
  * Handlers IPC del modo Code (pty, git, dialog) según `shared/ipc-code.ts`.
  * Canales propios de Code (ya no comparten nombre con `shared/ipc.ts`).
  */
-import { app, BrowserWindow, webContents, type IpcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, shell, webContents, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeInvokeContract } from '@shared/ipc-code'
 import * as git from '../git/service'
 import { GitError } from '../git/service'
@@ -10,6 +10,8 @@ import * as dialogService from '../dialog/service'
 import { PtyService } from '../pty/service'
 import { shouldKillOnNavigation } from '../pty/lifecycle'
 import { settingsStore } from '../store'
+import { resolveE2eTrashDir, trashToDir } from '../tasks/trash'
+import { join } from 'node:path'
 import { makeInvokeHandler } from './handle'
 
 const on = makeInvokeHandler<CodeInvokeContract>({ withCode: true, silent: (err) => err instanceof GitError })
@@ -97,6 +99,15 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   on(ipcMain, 'git:removeWorktree', (r) => git.removeWorktree(req(r, 'req').cwd, r.path, r.force === true))
   on(ipcMain, 'git:commit', (r) => git.commit(req(r, 'req').cwd, r.message, r.stageAll === true))
   on(ipcMain, 'git:log', (r) => git.log(req(r, 'req').cwd, r.n))
+  // Descartar cambios: siempre a la Papelera para lo nuevo; el contenido previo queda en una copia
+  // (userData/code-discard) para «Rehacer». Solo ventana principal (no está en CHANNEL_ROLES).
+  const testTrash = resolveE2eTrashDir({ isPackaged: app.isPackaged, env: process.env })
+  const discardDeps = (): git.DiscardDeps => ({
+    trash: testTrash ? trashToDir(testTrash) : (p) => shell.trashItem(p),
+    backupDir: join(app.getPath('userData'), 'code-discard')
+  })
+  on(ipcMain, 'git:discard', (r) => git.discardChanges(req(r, 'req').cwd, r.paths, discardDeps()))
+  on(ipcMain, 'git:discardUndo', (r) => git.undoDiscard(req(r, 'req').cwd, r.undoId, discardDeps()))
 
   // ---- dialog ----
   on(ipcMain, 'dialog:openFolder', async (r, event) => {
