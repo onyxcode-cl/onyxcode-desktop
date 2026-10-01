@@ -1,20 +1,39 @@
-/** Utilidades de programación para la UI de Rutinas: textos en español, presets y cuenta atrás. */
-import { WEEKDAYS_ES, type RoutineSchedule } from '@shared/ipc-tasks'
+/** Utilidades de programación para la UI de Rutinas: textos en el idioma activo, presets y cuenta atrás. */
+import type { RoutineSchedule } from '@shared/ipc-tasks'
+import { getLang, t } from '@shared/i18n'
+import { dateLocale } from '../../../lib/i18n'
 
-const MONTHS_ES = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre'
-]
+/** Nombre del día (0 = domingo) en el idioma activo. */
+function dayName(d: number): string {
+  return t(`routines.weekday.${d}` as 'routines.weekday.0')
+}
+function dayNamePlural(d: number): string {
+  return t(`routines.weekdayPlural.${d}` as 'routines.weekdayPlural.0')
+}
+function monthName(m: number): string {
+  return t(`routines.month.${m}` as 'routines.month.1')
+}
+
+/** Hora h:mm: en español sin cero a la izquierda en la hora; en inglés, formato de 12 horas. */
+function fmtHM(h: number, m: number): string {
+  if (getLang() !== 'en') return `${h}:${pad(m)}`
+  return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+/** Hora «HH:MM» tal cual (español) o en formato de 12 horas (inglés). */
+function fmtTime(time: string): string {
+  if (getLang() !== 'en') return time
+  const [h, m] = time.split(':').map(Number)
+  return Number.isFinite(h) && Number.isFinite(m) ? fmtHM(h, m) : time
+}
+
+/** Día del mes: número (español) u ordinal (inglés: 1st, 2nd…). */
+function dayOfMonth(n: number): string {
+  if (getLang() !== 'en') return String(n)
+  const v = n % 100
+  const suffix = v >= 11 && v <= 13 ? 'th' : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th')
+  return `${n}${suffix}`
+}
 const DOW_NAMES: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
 function pad(n: number): string {
@@ -27,7 +46,8 @@ function capitalize(s: string): string {
 
 function listEs(items: string[]): string {
   if (items.length <= 1) return items.join('')
-  return `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`
+  const and = t(items.length === 2 ? 'routines.sched.and2' : 'routines.sched.andN')
+  return `${items.slice(0, -1).join(', ')}${and}${items[items.length - 1]}`
 }
 
 /** Expande un campo cron simple (números, rangos, listas; sin pasos) a valores. null si no se puede. */
@@ -47,20 +67,19 @@ function expandField(field: string, min: number, max: number, names?: Record<str
   return [...out].sort((x, y) => x - y)
 }
 
-/** Días de la semana (0 = domingo) → texto: "de lunes a viernes", "los sábados y domingos", "cada martes". */
+/** Días de la semana (0 = domingo) → texto: "de lunes a viernes", "los sábados y domingos", "cada martes" (o su equivalente en inglés). */
 export function weekdaysText(days: number[]): string {
   const set = [...new Set(days.map((d) => (d === 7 ? 0 : d)))].sort((a, b) => a - b)
-  if (set.length === 7) return 'todos los días'
-  if (set.join() === '1,2,3,4,5') return 'de lunes a viernes'
-  if (set.join() === '0,6') return 'los fines de semana'
-  if (set.length === 1) return `cada ${WEEKDAYS_ES[set[0]]}`
+  if (set.length === 7) return t('routines.sched.everyDay')
+  if (set.join() === '1,2,3,4,5') return t('routines.sched.weekdays')
+  if (set.join() === '0,6') return t('routines.sched.weekend')
+  if (set.length === 1) return t('routines.sched.everyWeekday', { day: dayName(set[0]) })
   // Orden natural empezando en lunes.
   const ordered = [...set.filter((d) => d !== 0), ...set.filter((d) => d === 0)]
-  const plural = (d: number): string => (d === 0 || d === 6 ? `${WEEKDAYS_ES[d]}s` : WEEKDAYS_ES[d])
-  return `los ${listEs(ordered.map(plural))}`
+  return t('routines.sched.onDays', { list: listEs(ordered.map(dayNamePlural)) })
 }
 
-/** Traduce una expresión cron de 5 campos a español. null si no es un patrón reconocible. */
+/** Traduce una expresión cron de 5 campos al idioma activo. null si no es un patrón reconocible. */
 export function describeCron(expr: string): string | null {
   const f = expr.trim().split(/\s+/)
   if (f.length !== 5) return null
@@ -69,30 +88,33 @@ export function describeCron(expr: string): string | null {
   // ── Parte horaria
   let time: string | null = null
   let everyHourish = false
+  let spaceSep = false
   const mins = expandField(min, 0, 59)
   const hours = expandField(hour, 0, 23)
   const stepMin = /^\*\/(\d+)$/.exec(min)
   const stepHour = /^\*\/(\d+)$/.exec(hour)
   if (min === '*' && hour === '*') {
-    time = 'cada minuto'
+    time = t('routines.sched.everyMinute')
     everyHourish = true
   } else if (stepMin && hour === '*') {
-    time = `cada ${stepMin[1]} minutos`
+    time = t('routines.sched.everyNMin', { n: stepMin[1] })
     everyHourish = true
   } else if (stepMin && hours) {
-    time = `cada ${stepMin[1]} minutos entre las ${hours[0]}:00 y las ${hours[hours.length - 1]}:59`
+    time = t('routines.sched.everyNMinBetween', { n: stepMin[1], from: fmtHM(hours[0], 0), to: fmtHM(hours[hours.length - 1], 59) })
   } else if (mins && mins.length === 1 && hour === '*') {
-    time = mins[0] === 0 ? 'cada hora en punto' : `cada hora, al minuto ${mins[0]}`
+    time = mins[0] === 0 ? t('routines.sched.hourOnTheHour') : t('routines.sched.hourAtMinute', { m: mins[0] })
     everyHourish = true
   } else if (mins && mins.length === 1 && stepHour) {
-    time = `cada ${stepHour[1]} horas${mins[0] ? ` (minuto ${mins[0]})` : ''}`
+    time = t('routines.sched.everyNHours', { n: stepHour[1] }) + (mins[0] ? t('routines.sched.atMinute', { m: mins[0] }) : '')
     everyHourish = true
   } else if (mins && mins.length === 1 && hours) {
     const contiguous = hours.length > 2 && hours[hours.length - 1] - hours[0] === hours.length - 1
-    if (contiguous) time = `cada hora de ${hours[0]}:${pad(mins[0])} a ${hours[hours.length - 1]}:${pad(mins[0])}`
-    else time = `a las ${listEs(hours.map((h) => `${h}:${pad(mins[0])}`))}`
+    spaceSep = true
+    if (contiguous) time = t('routines.sched.hourlyRange', { from: fmtHM(hours[0], mins[0]), to: fmtHM(hours[hours.length - 1], mins[0]) })
+    else time = t('routines.sched.at', { list: listEs(hours.map((h) => fmtHM(h, mins[0]))) })
   } else if (mins && hours && hours.length === 1) {
-    time = `a las ${listEs(mins.map((m) => `${hours[0]}:${pad(m)}`))}`
+    spaceSep = true
+    time = t('routines.sched.at', { list: listEs(mins.map((m) => fmtHM(hours[0], m))) })
   }
   if (!time) return null
 
@@ -104,20 +126,24 @@ export function describeCron(expr: string): string | null {
   if (dom !== '*' && !doms) return null
   if (mon !== '*' && !mons) return null
   if (dow !== '*' && !dows) return null
-  if (!doms && !mons && !dows) days = everyHourish ? '' : 'todos los días'
+  if (!doms && !mons && !dows) days = everyHourish ? '' : t('routines.sched.everyDay')
   else if (dows && !doms) days = weekdaysText(dows)
-  else if (doms && !dows) days = doms.length === 1 ? `el día ${doms[0]} de cada mes` : `los días ${listEs(doms.map(String))} de cada mes`
+  else if (doms && !dows)
+    days =
+      doms.length === 1
+        ? t('routines.sched.monthDay', { day: dayOfMonth(doms[0]) })
+        : t('routines.sched.monthDays', { list: listEs(doms.map(dayOfMonth)) })
   else if (!doms && !dows) days = ''
   else days = null
   if (days === null) return null
   if (mons && doms && !dows) {
-    days = `el ${listEs(doms.map(String))} de ${listEs(mons.map((m) => MONTHS_ES[m - 1]))}`
+    days = t('routines.sched.dayOfMonths', { days: listEs(doms.map(dayOfMonth)), months: listEs(mons.map(monthName)) })
   } else if (mons) {
-    const monText = `en ${listEs(mons.map((m) => MONTHS_ES[m - 1]))}`
+    const monText = t('routines.sched.inMonths', { months: listEs(mons.map(monthName)) })
     days = days ? `${days} ${monText}` : monText
-    if (!doms && !dows && !everyHourish) days = `todos los días ${monText}`
+    if (!doms && !dows && !everyHourish) days = t('routines.sched.everyDayIn', { monText })
   }
-  const sep = time.startsWith('a las') || time.startsWith('cada hora de') ? ' ' : ', '
+  const sep = spaceSep ? ' ' : ', '
   return capitalize(days ? `${days}${sep}${time}` : time)
 }
 
@@ -125,11 +151,11 @@ export function describeCron(expr: string): string | null {
 export function scheduleText(s: RoutineSchedule): string {
   switch (s.kind) {
     case 'daily':
-      return `Todos los días a las ${s.time}`
+      return t('routines.sched.daily', { time: fmtTime(s.time) })
     case 'weekly':
-      return `Cada ${WEEKDAYS_ES[s.day] ?? '?'} a las ${s.time}`
+      return t('routines.sched.weekly', { day: s.day >= 0 && s.day <= 6 ? dayName(s.day) : '?', time: fmtTime(s.time) })
     case 'interval':
-      return s.hours === 1 ? 'Cada hora' : `Cada ${s.hours} horas`
+      return s.hours === 1 ? t('routines.sched.everyHour') : t('routines.sched.everyNHoursCap', { n: s.hours })
     case 'cron':
       return describeCron(s.expr) ?? `Cron ${s.expr}`
   }
@@ -191,46 +217,70 @@ export interface SchedulePreset {
 }
 
 export const SCHEDULE_PRESETS: SchedulePreset[] = [
-  { id: 'morning', label: 'Cada mañana 8:00', schedule: { kind: 'daily', time: '08:00' } },
-  { id: 'weekdays', label: 'Lunes a viernes', schedule: { kind: 'cron', expr: '0 9 * * 1-5' } },
-  { id: 'hourly', label: 'Cada hora', schedule: { kind: 'interval', hours: 1 } },
-  { id: 'weekly', label: 'Semanal', schedule: { kind: 'weekly', day: 1, time: '09:00' } }
+  {
+    id: 'morning',
+    get label() {
+      return t('routines.sched.preset.morning')
+    },
+    schedule: { kind: 'daily', time: '08:00' }
+  },
+  {
+    id: 'weekdays',
+    get label() {
+      return t('routines.sched.preset.weekdays')
+    },
+    schedule: { kind: 'cron', expr: '0 9 * * 1-5' }
+  },
+  {
+    id: 'hourly',
+    get label() {
+      return t('routines.sched.preset.hourly')
+    },
+    schedule: { kind: 'interval', hours: 1 }
+  },
+  {
+    id: 'weekly',
+    get label() {
+      return t('routines.sched.preset.weekly')
+    },
+    schedule: { kind: 'weekly', day: 1, time: '09:00' }
+  }
 ]
 
 // ---------------------------------------------------------------------------
 // Fechas relativas
 // ---------------------------------------------------------------------------
 
-/** "en 5 min", "en 2 h 10 min", "mañana 08:00", "lun 12 may 09:00". */
+/** "en 5 min", "en 2 h 10 min", "mañana 08:00", "lun 12 may 09:00" (o su equivalente en inglés). */
 export function untilText(ts: number, now = Date.now()): string {
   const diff = ts - now
-  if (diff <= 30_000) return 'en instantes'
+  if (diff <= 30_000) return t('routines.time.instant')
   const mins = Math.round(diff / 60_000)
-  if (mins < 60) return `en ${mins} min`
+  if (mins < 60) return t('routines.time.inMin', { n: mins })
   const h = Math.floor(mins / 60)
   const m = mins % 60
-  if (h < 12) return m ? `en ${h} h ${m} min` : `en ${h} h`
+  if (h < 12) return m ? t('routines.time.inHMin', { h, m }) : t('routines.time.inH', { h })
   const d = new Date(ts)
   const today = new Date(now)
   const tomorrow = new Date(now + 86_400_000)
-  const hhmm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  if (d.toDateString() === today.toDateString()) return `hoy ${hhmm}`
-  if (d.toDateString() === tomorrow.toDateString()) return `mañana ${hhmm}`
-  if (diff < 6 * 86_400_000) return `${WEEKDAYS_ES[d.getDay()]} ${hhmm}`
-  return d.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const hhmm = getLang() === 'en' ? fmtHM(d.getHours(), d.getMinutes()) : `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (d.toDateString() === today.toDateString()) return t('routines.time.today', { time: hhmm })
+  if (d.toDateString() === tomorrow.toDateString()) return t('routines.time.tomorrow', { time: hhmm })
+  if (diff < 6 * 86_400_000) return `${dayName(d.getDay())} ${hhmm}`
+  return d.toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 export function agoText(ts: number, now = Date.now()): string {
   const s = Math.round((now - ts) / 1000)
-  if (s < 45) return 'hace un momento'
+  if (s < 45) return t('routines.time.agoNow')
   const m = Math.round(s / 60)
-  if (m < 60) return `hace ${m} min`
+  if (m < 60) return t('routines.time.agoMin', { n: m })
   const h = Math.round(m / 60)
-  if (h < 24) return `hace ${h} h`
+  if (h < 24) return t('routines.time.agoH', { n: h })
   const d = Math.round(h / 24)
-  if (d === 1) return 'ayer'
-  if (d < 7) return `hace ${d} días`
-  return new Date(ts).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
+  if (d === 1) return t('routines.time.yesterday')
+  if (d < 7) return t('routines.time.agoDays', { n: d })
+  return new Date(ts).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })
 }
 
 export function durationText(ms: number): string {
@@ -242,5 +292,5 @@ export function durationText(ms: number): string {
 }
 
 export function fullDate(ts: number): string {
-  return new Date(ts).toLocaleString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return new Date(ts).toLocaleString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
