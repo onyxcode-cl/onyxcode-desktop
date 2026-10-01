@@ -567,6 +567,8 @@ export interface TasksStorageEntry {
 export interface TasksStorageReport {
   entries: TasksStorageEntry[]
   screenshotsBytes: number
+  /** Espacio de los puntos de restauración (`userData/restore-points`). */
+  restorePointsBytes: number
   totalBytes: number
   at: number
 }
@@ -912,6 +914,8 @@ export interface TasksInvokeContract {
   /** Limpia la caché (`cache`) o todo el directorio, incluido el historial (`all`), de un servidor parado. */
   'tasks:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: TasksStorageReport }
   'tasks:storage:cleanScreenshots': { req: void; res: TasksStorageReport }
+  /** Borra todos los puntos de restauración (las tareas dejan de poder deshacer sus cambios). */
+  'tasks:storage:cleanRestorePoints': { req: void; res: TasksStorageReport }
 
   // ── Puntos de restauración ──
   'tasks:restore:create': { req: { folder: string; sessionId: string; label: string }; res: TasksRestorePoint }
@@ -1076,6 +1080,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:storage:report',
   'tasks:storage:clean',
   'tasks:storage:cleanScreenshots',
+  'tasks:storage:cleanRestorePoints',
   'tasks:restore:create',
   'tasks:restore:list',
   'tasks:restore:changes',

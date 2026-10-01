@@ -328,6 +328,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:storage:report': none,
   'tasks:storage:clean': obj({ key: storageKey, scope: literal('cache', 'all') }),
   'tasks:storage:cleanScreenshots': none,
+  'tasks:storage:cleanRestorePoints': none,
   // Puntos de restauración
   'tasks:restore:create': obj({ folder: absPath, sessionId, label: shortText }),
   'tasks:restore:list': obj({ folder: absPath, sessionId }),

@@ -119,7 +119,12 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   monitor.start()
   ctx.isFolderBusy = (folder) => monitor.isFolderBusy(folder)
 
-  const storageEnv = (): StorageEnv => ({ userData, screenshotsDir: computer.screenshotsDir, sandboxKey })
+  const storageEnv = (): StorageEnv => ({
+    userData,
+    screenshotsDir: computer.screenshotsDir,
+    restorePointsDir: join(userData, 'restore-points'),
+    sandboxKey
+  })
   const folderPaths = (): string[] => tasksManager.listFolders().map((f) => f.path)
   const report = () => storageReport(storageEnv(), folderPaths(), tasksManager.liveServers())
 
@@ -139,6 +144,11 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), tasksManager.liveServers(), key, scope))
   handle('tasks:storage:cleanScreenshots', () => {
     computer.cleanScreenshots()
+    return report()
+  })
+
+  handle('tasks:storage:cleanRestorePoints', () => {
+    ctx.restore.clearAll()
     return report()
   })
 
