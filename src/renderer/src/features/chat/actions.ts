@@ -5,6 +5,7 @@
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
 import { CHAT_AGENT } from '@shared/types'
+import { isSafeAttachmentUrl } from '../../lib/attachments'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
 import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
@@ -100,6 +101,9 @@ export interface ResendFile {
 
 /** Devuelve `true` si el motor aceptó el mensaje; `false` si lo rechazó (el error queda en la sesión). Lanza si no pudo ni intentarlo. */
 export async function sendChatMessage(text: string, files: ResendFile[] = []): Promise<boolean> {
+  // Seguridad: el agente `chat` no tiene acceso al disco, pero el motor LEE cualquier parte `file` con URL `file://`
+  // sin pasar por los permisos del agente. Desde Chat solo salen adjuntos `data:` (contenido ya leído en el compositor).
+  if (files.some((f) => !isSafeAttachmentUrl(f.url))) throw new Error(t('chat.attach.errUrl'))
   const { client, directory } = ctx()
   const sessions = useSessions.getState()
   // Modelo efectivo (el guardado si existe entre los proveedores cargados; si no, el de la primera IA conectada).

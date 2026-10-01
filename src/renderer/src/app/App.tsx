@@ -11,6 +11,9 @@ import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { initExtrasPrefs } from '../features/settings/impl/extras'
 import { newChat, sendChatMessage } from '../features/chat/actions'
+import { useChat } from '../features/chat/store'
+import { setDraft } from '../stores/drafts'
+import { useSessions } from '../stores/sessions'
 import { ensureCodeSubscription, useCode } from '../features/code/impl/store'
 import { openProjectTrusted } from '../features/code/impl/trust'
 import { clearUnseen, connectFolder, loadTask, rememberFullAccess, useTasks } from '../features/tasks/impl/store'
@@ -77,7 +80,14 @@ export function App(): React.JSX.Element {
       useUi.getState().openSettings(false)
       useUi.getState().setMode('chat')
       newChat()
-      void waitClient().then(() => sendChatMessage(text))
+      void waitClient()
+        .then(() => sendChatMessage(text))
+        .catch((err: unknown) => {
+          // Sin motor / sin IA: el texto vuelve al compositor (no se pierde) y el error queda en la conversación si ya existe.
+          const id = useChat.getState().activeSessionId
+          setDraft(`chat:${id ?? 'new'}`, text)
+          if (id) useSessions.getState().setError(id, typeof err === 'object' && err ? err : String(err))
+        })
     })
     const offNew = x.onNewConversation(() => {
       useUi.getState().openSettings(false)

@@ -414,3 +414,17 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
   `aria-allowed-role` *minor* (compositor de Code). Informes con `T5_AXE_REPORT`; capturas con `T5_SHOTS_DIR`.
 - Pendiente de revisión manual con VoiceOver: que «Respuesta terminada»/errores se lean una vez y sin interrumpir, el comportamiento del combobox (anuncio de la opción activa al usar ↑↓) y el orden de foco; axe no sustituye esa prueba. Cambian los snapshots de
   `ChatMessageList`, `MessageStream` y `TaskConversation` (la región `log`) y `MessageStream` (`aria-label`). Sin cambios en preloads ni en SEGURIDAD.md.
+
+## F8-B35 — Ronda 2 · R2-B: adjuntos en Chat y cobertura E2E
+
+- **Adjuntos en Chat (M4).** El clip del compositor de Chat deja de estar «próximamente»: imágenes (PNG, JPG, GIF, WebP), PDF y archivos de texto, por botón, pegado o arrastrando. Miniaturas (o ficha con el nombre para PDF/texto), «Quitar», aviso accesible
+  (`role="alert"`) cuando se rechaza un archivo, y límites: 5 MB por imagen, 10 MB por PDF, 1 MB por texto, 5 adjuntos y 15 MB en total (`lib/attachments.ts`). Se permite enviar solo adjuntos, sin texto. Los adjuntos pendientes viven en el almacén de
+  borradores (sobreviven a cambiar de modo, como el texto) y, si el envío falla, vuelven al compositor junto con el texto (también cuando la conversación nueva remonta el compositor). El mensaje de usuario pinta la imagen; «Reintentar» y «Editar y reintentar»
+  conservan los adjuntos (ya lo hacían las acciones de T2). Textos nuevos `chat.attach.*` en es/en.
+- **Seguridad (ver `docs/SEGURIDAD.md` §3 duodecies).** Verificado con el binario embebido y un proveedor falso que el agente `chat` (`"*": deny`) solo expone `webfetch` al modelo y que un adjunto `data:` viaja como parte del mensaje (imagen y PDF en
+  base64, texto en línea) sin acceso al disco. Hallazgo: una parte `file://` se lee del disco saltándose los permisos del agente; por eso `sendChatMessage` solo admite URLs `data:` (error si no). Sin canales IPC nuevos; los hashes de los preloads no cambian.
+- **Quick Entry.** `sendChatMessage` desde la entrada rápida (`App.tsx`) ya no deja una promesa rechazada sin atender: el texto vuelve al compositor y el error queda en la conversación si existe.
+- **Huecos de prueba de T4.** E2E nuevos (`calidad-r2b.e2e.ts`): «Cargar más» con 250 sesiones en Code y en Tareas, y la búsqueda ⌘K de Code que carga todas las sesiones. Sin cambios de código en esas listas (ya funcionaban).
+- Pruebas: unitarias `attachments.test.ts` (clasificación, límites, URL segura) y `actions.r2b.test.ts` (imagen sin texto = una parte `file`, `file://` rechazado sin llamar al motor, red caída → idle); E2E del flujo completo (imagen sin texto, quitar,
+  tipo/tamaño rechazado, red caída con restauración de texto y adjunto y un solo mensaje de usuario). Capturas con `R2B_SHOTS_DIR`. Bug cazado por el E2E durante el desarrollo: el adjunto salía sin `filename` (el compositor usa `name`).
+- No probado: modelos reales (si un modelo concreto no admite imágenes o PDF el proveedor devolverá su error, que se muestra como cualquier otro); arrastrar archivos desde el Finder en la app empaquetada (el E2E usa el selector); VoiceOver con la lista de adjuntos.

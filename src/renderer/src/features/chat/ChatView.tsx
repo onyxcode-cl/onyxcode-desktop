@@ -14,6 +14,7 @@ import { useT } from '../../lib/i18n'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
 import { useSettings } from '../../stores/settings'
+import type { ChatAttachment } from '../../lib/attachments'
 import { abortChat, compactChat, resendFromMessage, retryChat, sendChatMessage } from './actions'
 import { useChat } from './store'
 
@@ -46,7 +47,7 @@ export function ChatView(): React.JSX.Element {
   const updateSettings = useSettings((s) => s.update)
   const { effective, gate, free } = useAiGate(model)
   const [sendError, setSendError] = useState<unknown>(null)
-  const [insert, setInsert] = useState<{ text: string; key: number } | null>(null)
+  const [insert, setInsert] = useState<{ text: string; key: number; attachments?: ChatAttachment[] } | null>(null)
 
   // Si la conversación abierta se eliminó (aquí o desde otro cliente), volver a "nueva".
   const listLoading = useChat((s) => s.listLoading)
@@ -66,18 +67,21 @@ export function ChatView(): React.JSX.Element {
   )
 
   /** `false` = no se envió: el compositor restaura el borrador. */
-  const send = async (text: string): Promise<boolean> => {
+  const send = async (text: string, files: ChatAttachment[] = []): Promise<boolean> => {
     setSendError(null)
     try {
-      const ok = await sendChatMessage(text)
-      if (!ok) setInsert({ text, key: Date.now() })
+      const ok = await sendChatMessage(
+        text,
+        files.map((f) => ({ mime: f.mime, filename: f.name, url: f.url }))
+      )
+      if (!ok) setInsert({ text, key: Date.now(), attachments: files })
       return ok
     } catch (err) {
       const id = useChat.getState().activeSessionId
       if (id) useSessions.getState().setError(id, typeof err === 'object' && err ? err : String(err))
       else setSendError(err)
       // Al crear la conversación la vista cambia de pantalla y el compositor se remonta: el texto vuelve por `insert`.
-      setInsert({ text, key: Date.now() })
+      setInsert({ text, key: Date.now(), attachments: files })
       return false
     }
   }

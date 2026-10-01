@@ -660,6 +660,14 @@ proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 - Los prompts de agente (`resources/opencode/*.md`) y los mensajes de error que construye main (T4c) siguen en español.
 - T4b (Code, Tareas, Rutinas, navegador) solo mueve texto al renderer: `shared/ipc-tasks.ts` no importa i18n (los hashes de los preloads no cambian) y no se toca ninguna regla de sandbox, proxy, `folder-policy` ni CSP. Los textos que viajan al agente o se persisten (prompts, marcadores, `UNDO_POINT_LABEL`) siguen en español para no cambiar contratos.
 
+## 3 duodecies. Adjuntos de Chat (R2-B)
+
+- Qué entra al modelo: el compositor de Chat adjunta imágenes (PNG, JPG, GIF, WebP; ≤ 5 MB), PDF (≤ 10 MB) y archivos de texto (≤ 1 MB, se envían como `text/plain`); máximo 5 adjuntos y 15 MB por mensaje. El renderer lee el archivo con `FileReader` y lo manda como parte `file` con URL **`data:`** dentro del propio mensaje (`session.promptAsync`). **No hay canales IPC nuevos** ni acceso de main al disco por este camino; el agente `chat` conserva `"*": deny` (solo `webfetch`/`websearch`) y no gana ninguna herramienta.
+- Verificado con el binario embebido (opencode 1.18.33, `resources/opencode-bin`, un servidor real con el agente `chat.md` y un proveedor falso que registra la petición al modelo): las herramientas que recibe el modelo son solo `webfetch`; una imagen `data:` llega como bloque `image` base64, un PDF como `document` base64 y un texto `data:text/plain` como texto en línea (el motor lo anota «Called the Read tool», pero es un texto sintético, no una lectura de disco). Un nombre de archivo con `../` no lee nada: solo es una etiqueta.
+- **Hallazgo importante:** una parte `file` con URL `file://…` SÍ hace que el motor lea ese archivo del disco y lo entregue al modelo **sin pasar por los permisos del agente** (con `"*": deny` incluido; así funcionan las menciones `@archivo` de Code). Por eso `sendChatMessage` rechaza cualquier adjunto que no sea `data:` antes de llamar al motor (`isSafeAttachmentUrl`), también en «Reintentar» y «Editar y reintentar», que reenvían las partes del historial. Si en el futuro se añade otro origen de adjuntos a Chat, debe pasar por esa guarda.
+- Tipos rechazados a propósito: SVG (puede contener scripts y se pinta como imagen en el mensaje), ejecutables, archivos comprimidos y binarios sin tipo. La miniatura solo se pinta si el tipo es `image/*` y la URL empieza por `data:image/`.
+- Privacidad: el contenido del adjunto sale hacia el proveedor de IA elegido igual que el texto del mensaje. Los borradores con adjuntos viven solo en memoria (almacén de borradores) y no se persisten.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —
