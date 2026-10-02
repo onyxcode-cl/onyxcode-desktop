@@ -30,6 +30,7 @@ import { Button } from '../../../components/Button'
 import { PageHeader } from '../../../components/PageHeader'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { Markdown } from '../../../components/Markdown'
+import { resolveModelForMode } from '../../settings/impl/extras'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { hasTasksBridge } from '../../tasks/impl/bridge'
@@ -490,7 +491,6 @@ const TEMPLATE_ICON: Record<string, LucideIcon> = { news: Newspaper, downloads: 
 
 function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
   const t = useT()
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center py-10 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
@@ -506,7 +506,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
             <button
               key={tpl.id}
               type="button"
-              onClick={() => openEditor({ ...tpl.input, model: defaultModel, enabled: true }, tpl.needs ?? null)}
+              onClick={() => openEditor({ ...tpl.input, model: resolveModelForMode(tpl.input.mode), enabled: true }, tpl.needs ?? null)}
               className="group flex flex-col gap-2 rounded-xl border border-border bg-elevated p-4 transition hover:-translate-y-px hover:border-border-strong hover:shadow-md"
             >
               <div className="flex items-center justify-between">
@@ -545,7 +545,6 @@ export function RoutinesView(): React.JSX.Element {
   const error = useRoutines((s) => s.error)
   const editing = useRoutines((s) => s.editing)
   const selectedId = useRoutines((s) => s.selectedId)
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
   const acknowledged = useSettings((s) => s.settings.routinesTermsAcknowledged)
   const now = useNow(20_000)
   const hasRunning = routines.some((r) => r.running)
@@ -574,7 +573,7 @@ export function RoutinesView(): React.JSX.Element {
       prompt: '',
       mode: 'chat',
       folder: null,
-      model: defaultModel,
+      model: resolveModelForMode('chat'),
       schedule: { kind: 'daily', time: '09:00' },
       enabled: true
     })

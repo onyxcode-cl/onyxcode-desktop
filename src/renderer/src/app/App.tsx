@@ -9,7 +9,7 @@ import { onOpencodeEvent, useServer } from '../stores/server'
 import { routeEventToSessions } from '../stores/eventRouter'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
-import { initExtrasPrefs } from '../features/settings/impl/extras'
+import { initExtrasPrefs, whenExtrasLoaded } from '../features/settings/impl/extras'
 import { newChat, sendChatMessage } from '../features/chat/actions'
 import { useChat } from '../features/chat/store'
 import { setDraft } from '../stores/drafts'
@@ -85,6 +85,7 @@ export function App(): React.JSX.Element {
       useQuickNotice.getState().dismiss()
       newChat()
       void waitClient()
+        .then(() => whenExtrasLoaded())
         .then(() => sendChatMessage(text))
         .catch((err: unknown) => {
           // Sin motor / sin IA: el texto vuelve al compositor (no se pierde) y el error queda en la conversación si ya existe.

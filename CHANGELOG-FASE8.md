@@ -540,3 +540,26 @@ Cambios:
 - Pruebas: unitarias (`ai-availability.test.ts`, `main/store.model.test.ts`) y E2E `model-choice.e2e.ts` (disco + store + DOM; cambiar de
   modo, Ajustes, reinicio con el mismo userData, lista sin cargar, modelo ausente, proveedor sin clave y reconexión).
 - Pendiente de decidir: Ajustes › Modelos ofrece un modelo «Chat» por modo (`modelsByMode.chat`) que Chat ignora (usa `defaultModel`).
+
+## F8-B43 — Cada modo recuerda su propio modelo (rama `fix/modelo-por-modo`)
+
+Bug: el dueño elegía GPT en un modo, salía y volvía (o reiniciaba) y estaba otra vez el predeterminado. Causas: Code guardaba
+el modelo solo en memoria (`useCode.model`, `null` al arrancar); Chat escribía `settings.defaultModel` (pisaba el predeterminado
+global sin querer) y su fila de Ajustes › Modelos (`modelsByMode.chat`) no se leía.
+
+Diseño: `settings.defaultModel` es el predeterminado global y solo vale para los modos sin elección propia; Chat, Code y Tareas
+recuerdan su modelo en `modelsByMode` (`extras.json`, vía `extras:setPrefs`). Elegir un modelo en un modo NO toca el predeterminado.
+
+- `settings/impl/extras.ts`: resolvedor puro `pickModeModel`, `withModeModel`, `setModeModel(mode, ref|null)` y `whenExtrasLoaded`.
+- Chat: selector, envío y «compactar» usan `modelsByMode.chat`; «Probar un modelo gratuito» lo fija como modelo de Chat. Se mantiene
+  el comportamiento de B42 (modelo ausente: «<id> · no disponible», envío bloqueado, sin sustituto persistido).
+- Code: el modelo elegido se persiste como `modelsByMode.code`; sin elección vale el del modo. `setModel(m, remember=false)` es
+  la sincronización interna de `Composer` (sustituto por IA conectada) y no persiste. Cambiar de modelo descarta el esfuerzo.
+- Tareas: sin cambios de comportamiento (el `taskModel` de la tarea sigue mandando); además, un cambio desde Ajustes sin tarea
+  abierta lo toma la siguiente.
+- Ajustes › Modelos: la fila de cada modo edita lo mismo que el selector del modo; «Usar el predeterminado (<modelo>)» borra el
+  override; textos es/en explican la relación.
+- Rutinas: una rutina nueva parte del modelo de su modo (y lo guarda en la propia rutina). Quick Entry envía con el modelo de Chat
+  (espera a que las preferencias estén cargadas).
+- Compatibilidad: usuarios con solo `defaultModel` y sin overrides, igual que antes; sin migración.
+- Pruebas: `extras.test.ts` (resolvedor) y E2E `model-por-modo.e2e.ts` (fallan en main); `model-choice.e2e.ts` adaptado.

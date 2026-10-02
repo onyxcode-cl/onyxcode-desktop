@@ -11,7 +11,7 @@ import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useAiGate, type AiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
-import { useSettings } from '../../../stores/settings'
+import { useModeModel } from '../../settings/impl/extras'
 import { useCode } from './store'
 import type { PermissionMode } from './types'
 
@@ -26,8 +26,8 @@ const PERMISSION_MODES: { id: PermissionMode; label: MsgKey; hint: MsgKey; icon:
 /** Modelo pedido (el elegido en Code o el predeterminado) resuelto contra las IA conectadas. */
 export function useCodeAiGate(): AiGate {
   const model = useCode((s) => s.model)
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
-  return useAiGate(model ?? defaultModel)
+  const modeModel = useModeModel('code')
+  return useAiGate(model ?? modeModel)
 }
 
 /** Cierra al hacer clic fuera o con Esc. */
@@ -136,13 +136,13 @@ export function EffortChip(): React.JSX.Element | null {
   const model = useCode((s) => s.model)
   const variant = useCode((s) => s.variant)
   const setVariant = useCode((s) => s.setVariant)
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const modeModel = useModeModel('code')
   const providers = useProviders((s) => s.providers)
   const gate = useCodeAiGate()
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open, () => setOpen(false))
 
-  const effective = gate.effective ?? model ?? defaultModel
+  const effective = gate.effective ?? model ?? modeModel
   const info = providers.find((p) => p.id === effective.providerID)?.models[effective.modelID]
   const variants = info?.variants ? Object.keys(info.variants) : []
   if (variants.length === 0) return null
@@ -187,9 +187,9 @@ export function ModelControls(): React.JSX.Element {
   const setModel = useCode((s) => s.setModel)
   const activeSessionID = useCode((s) => s.activeSessionID)
   const messages = useCode((s) => (activeSessionID ? s.messages[activeSessionID] : undefined))
-  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const modeModel = useModeModel('code')
   const gate = useCodeAiGate()
-  const effective = gate.effective ?? model ?? defaultModel
+  const effective = gate.effective ?? model ?? modeModel
 
   return (
     <div className="flex items-center gap-0.5">

@@ -13,7 +13,7 @@ import { useAiGate } from '../../lib/ai-gate'
 import { useT } from '../../lib/i18n'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
-import { useSettings } from '../../stores/settings'
+import { setModeModel, useModeModel } from '../settings/impl/extras'
 import type { ChatAttachment } from '../../lib/attachments'
 import { abortChat, compactChat, resendFromMessage, retryChat, sendChatMessage } from './actions'
 import { useChat } from './store'
@@ -43,8 +43,8 @@ export function ChatView(): React.JSX.Element {
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
-  const model = useSettings((s) => s.settings.defaultModel)
-  const updateSettings = useSettings((s) => s.update)
+  // Cada modo recuerda su propio modelo (`modelsByMode.chat`); sin elección propia vale el predeterminado global.
+  const model = useModeModel('chat')
   const { effective, gate, free, unavailable } = useAiGate(model, { strict: true })
   const [sendError, setSendError] = useState<unknown>(null)
   const [insert, setInsert] = useState<{ text: string; key: number; attachments?: ChatAttachment[] } | null>(null)
@@ -106,7 +106,7 @@ export function ChatView(): React.JSX.Element {
 
   const picker = (
     <div className="flex w-full items-center">
-      <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={(m) => void updateSettings({ defaultModel: m })} />
+      <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={(m) => setModeModel('chat', m)} />
       <span className="ml-auto" />
       <UsageMeter messages={entries} model={effective ?? model} />
     </div>
@@ -148,7 +148,7 @@ export function ChatView(): React.JSX.Element {
       <NoAiBanner
         gate={unavailable ? { blocked: false, reason: null, freeNote: false } : gate}
         freeModel={free}
-        onUseFree={(m) => void updateSettings({ defaultModel: m })}
+        onUseFree={(m) => setModeModel('chat', m)}
       />
     </div>
   )

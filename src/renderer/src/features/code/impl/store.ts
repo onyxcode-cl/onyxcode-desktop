@@ -10,7 +10,7 @@ import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
-import { useSettings } from '../../../stores/settings'
+import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { sendNotification } from '../../../lib/notify'
 import { debounce } from '../../../lib/debounce'
 import { lruMax } from '../../../lib/lru'
@@ -204,7 +204,8 @@ export interface CodeState {
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
   rejectQuestion: (q: PendingQuestion) => Promise<void>
   setAgent: (agent: CodeAgent) => void
-  setModel: (model: ModelRef) => void
+  /** `remember` (por defecto sí): lo guarda como el modelo del modo Code (`modelsByMode.code`); nunca toca el predeterminado global. */
+  setModel: (model: ModelRef, remember?: boolean) => void
   setVariant: (variant: string | null) => void
   togglePanel: (panel: RightPanel) => void
   /** Abre el panel del navegador (sin alternar/cerrar si ya estaba abierto) y sin robar el foco. */
@@ -565,12 +566,14 @@ export const useCode = create<CodeState>((set, get) => {
   ): Promise<boolean> => {
     lastAccess.set(sid, ++accessTick)
     // Modelo efectivo: sin ninguna IA conectada no se envía (evita el error técnico del motor).
-    const aiGate = currentAiGate(model ?? useSettings.getState().settings.defaultModel)
+    // Modelo pedido: el elegido en esta sesión de la app o el del modo Code (`modelsByMode.code`, si no el predeterminado).
+    const wanted = model ?? resolveModelForMode('code')
+    const aiGate = currentAiGate(wanted)
     if (aiGate.gate.blocked) {
       setError(sid, NO_AI_ERROR)
       return false
     }
-    const sendModel = aiGate.avail === 'unknown' ? model : aiGate.effective
+    const sendModel = aiGate.avail === 'unknown' ? wanted : aiGate.effective
     setError(sid, null)
     set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
     const base = dir.replace(/[/\\]+$/, '')
@@ -797,7 +800,8 @@ export const useCode = create<CodeState>((set, get) => {
       if (!sid) sid = await get().newSession()
       if (!sid) return
       const { client, dir } = activeDir()
-      const { agent, model } = get()
+      const { agent, model: picked } = get()
+      const model = picked ?? resolveModelForMode('code')
       setError(sid, null)
       set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
       try {
@@ -808,7 +812,7 @@ export const useCode = create<CodeState>((set, get) => {
             command: name,
             arguments: args,
             agent,
-            model: model ? `${model.providerID}/${model.modelID}` : undefined
+            model: `${model.providerID}/${model.modelID}`
           })
         )
       } catch (err) {
@@ -978,7 +982,10 @@ export const useCode = create<CodeState>((set, get) => {
       set({ agent })
     },
 
-    setModel: (model) => set({ model, variant: null }),
+    setModel: (model, remember = true) => {
+      set({ model, variant: null })
+      if (remember) setModeModel('code', model)
+    },
     setVariant: (variant) => set({ variant }),
 
     // -- Cola de mensajes --
@@ -1461,3 +1468,14 @@ export function ensureCodeSubscription(): () => void {
     }
   }
 }
+
+// Si el modelo del modo Code cambia desde fuera del selector (Ajustes › Modelos, «Usar el predeterminado»), manda el del modo:
+// se descarta el elegido en memoria y su esfuerzo.
+useExtrasPrefs.subscribe((s, prev) => {
+  const next = s.prefs.modelsByMode.code
+  const before = prev.prefs.modelsByMode.code
+  if (next?.providerID === before?.providerID && next?.modelID === before?.modelID) return
+  const cur = useCode.getState().model
+  if (cur && next && cur.providerID === next.providerID && cur.modelID === next.modelID) return
+  useCode.setState({ model: null, variant: null })
+})
