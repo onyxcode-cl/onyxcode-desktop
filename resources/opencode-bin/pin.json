@@ -1,6 +1,15 @@
 {
   "version": "1.18.33",
-  "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.33/opencode-darwin-arm64.zip",
-  "sha256": "24b12873e605b3db3387cb355f43ba7451cd6065c180d8c188663337d2eeb553",
-  "size": 46317276
+  "assets": {
+    "darwin-arm64": {
+      "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.33/opencode-darwin-arm64.zip",
+      "sha256": "24b12873e605b3db3387cb355f43ba7451cd6065c180d8c188663337d2eeb553",
+      "size": 46317276
+    },
+    "win32-x64": {
+      "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.33/opencode-windows-x64.zip",
+      "sha256": "cc827fda2e32502373c5de25a4b78471766b99881d12a441ae5b9fcff39c5780",
+      "size": 62127126
+    }
+  }
 }
