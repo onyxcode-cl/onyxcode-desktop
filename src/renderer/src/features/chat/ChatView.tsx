@@ -45,7 +45,7 @@ export function ChatView(): React.JSX.Element {
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const model = useSettings((s) => s.settings.defaultModel)
   const updateSettings = useSettings((s) => s.update)
-  const { effective, gate, free } = useAiGate(model)
+  const { effective, gate, free, unavailable } = useAiGate(model, { strict: true })
   const [sendError, setSendError] = useState<unknown>(null)
   const [insert, setInsert] = useState<{ text: string; key: number; attachments?: ChatAttachment[] } | null>(null)
 
@@ -106,7 +106,7 @@ export function ChatView(): React.JSX.Element {
 
   const picker = (
     <div className="flex w-full items-center">
-      <ModelPicker value={effective ?? model} onChange={(m) => void updateSettings({ defaultModel: m })} />
+      <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={(m) => void updateSettings({ defaultModel: m })} />
       <span className="ml-auto" />
       <UsageMeter messages={entries} model={effective ?? model} />
     </div>
@@ -117,7 +117,15 @@ export function ChatView(): React.JSX.Element {
       onAbort={() => activeId && void abortChat(activeId)}
       busy={busy}
       disabled={!ready || gate.blocked}
-      placeholder={!ready ? t('chat.placeholder.connecting') : gate.blocked ? t('chat.placeholder.noAi') : t('chat.placeholder.message')}
+      placeholder={
+        !ready
+          ? t('chat.placeholder.connecting')
+          : unavailable
+            ? t('chat.placeholder.modelUnavailable')
+            : gate.blocked
+              ? t('chat.placeholder.noAi')
+              : t('chat.placeholder.message')
+      }
       footer={picker}
       autoFocusKey={activeId}
       showAttach
@@ -132,7 +140,16 @@ export function ChatView(): React.JSX.Element {
           <ErrorNotice error={sendError} variant="chat" />
         </div>
       )}
-      <NoAiBanner gate={gate} freeModel={free} onUseFree={(m) => void updateSettings({ defaultModel: m })} />
+      {unavailable && (
+        <div role="status" data-testid="model-unavailable-notice" className="mb-2 px-1 text-xs text-warning">
+          {t('chat.modelUnavailable.notice', { model: model.modelID })}
+        </div>
+      )}
+      <NoAiBanner
+        gate={unavailable ? { blocked: false, reason: null, freeNote: false } : gate}
+        freeModel={free}
+        onUseFree={(m) => void updateSettings({ defaultModel: m })}
+      />
     </div>
   )
 

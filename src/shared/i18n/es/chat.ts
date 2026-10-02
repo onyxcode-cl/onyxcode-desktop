@@ -15,6 +15,10 @@ export const chat = {
   'chat.suggest.translate.prompt': 'Traduce al inglés el siguiente texto:\n\n',
   'chat.placeholder.connecting': 'Conectando con OpenCode…',
   'chat.placeholder.noAi': 'Conecta una IA para empezar',
+  'chat.placeholder.modelUnavailable': 'Elige un modelo disponible para continuar',
+  'chat.modelUnavailable.notice':
+    'El modelo «{model}» que elegiste no está disponible ahora (se quitó de la lista o falta la clave de su proveedor). No lo cambiamos por otro: elige uno en el selector.',
+  'chat.modelUnavailable.send': 'El modelo «{model}» no está disponible. Elige otro en el selector para enviar.',
   'chat.placeholder.message': 'Escribe un mensaje…',
   'chat.newConversation': 'Nueva conversación',
   'chat.composer.attach': 'Adjuntar archivos',

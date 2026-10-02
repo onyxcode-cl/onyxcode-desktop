@@ -34,6 +34,7 @@ export const common = {
   'common.sessions.loadMore': 'Cargar más',
   'common.diff.showAll': 'Mostrar todo',
   'common.modelPicker.choose': 'Elige un modelo',
+  'common.modelPicker.unavailable': 'no disponible',
   'common.modelPicker.searchPlaceholder': 'Buscar modelo…',
   'common.modelPicker.search': 'Buscar modelo',
   'common.modelPicker.loading': 'Cargando modelos…',

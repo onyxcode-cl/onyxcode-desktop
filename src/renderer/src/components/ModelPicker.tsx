@@ -11,10 +11,12 @@ interface Props {
   onChange: (model: ModelRef) => void
   /** Hacia dónde se abre el menú. */
   placement?: 'top' | 'bottom'
+  /** El modelo elegido no está en la lista: se muestra su id marcado como «no disponible» (no se sustituye por otro). */
+  unavailable?: boolean
 }
 
 /** Selector de modelo con los proveedores/modelos del servidor (`config.providers`). */
-export function ModelPicker({ value, onChange, placement = 'top' }: Props): React.JSX.Element {
+export function ModelPicker({ value, onChange, placement = 'top', unavailable = false }: Props): React.JSX.Element {
   const t = useT()
   const client = useServer((s) => s.client)
   const { providers, loading, error, load, loaded } = useProviders()
@@ -107,8 +109,12 @@ export function ModelPicker({ value, onChange, placement = 'top' }: Props): Reac
         className={`no-drag flex max-w-[280px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] transition-colors ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
         title={`${value.providerID}/${value.modelID}`}
       >
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${current.name === null ? 'bg-warning' : 'bg-accent'}`} />
-        {current.name === null ? (
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${current.name === null || unavailable ? 'bg-warning' : 'bg-accent'}`} />
+        {unavailable ? (
+          <span className="truncate font-medium text-warning">
+            {value.modelID} · {t('common.modelPicker.unavailable')}
+          </span>
+        ) : current.name === null ? (
           <span className="truncate font-medium text-warning">{t('common.modelPicker.choose')}</span>
         ) : (
           <span className="truncate font-medium">{current.name}</span>
