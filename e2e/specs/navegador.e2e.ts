@@ -39,10 +39,14 @@ async function serveStatic(): Promise<Site> {
       res.end(PNG)
     } else if (url.pathname === '/') {
       res.setHeader('content-type', 'text/html; charset=utf-8')
-      res.end('<!doctype html><title>Sitio estático</title><link rel="stylesheet" href="/estilo.css"><h1>Hola</h1><img id="logo" src="/logo.png">')
+      res.end(
+        '<!doctype html><title>Sitio estático</title><link rel="stylesheet" href="/estilo.css"><h1>Hola</h1><img id="logo" src="/logo.png">'
+      )
     } else if (url.pathname === '/cruzado') {
       res.setHeader('content-type', 'text/html; charset=utf-8')
-      res.end(`<!doctype html><title>cruzado</title><link rel="stylesheet" href="/estilo.css"><img id="otro" src="http://127.0.0.1:${url.searchParams.get('otro')}/secreto.png">`)
+      res.end(
+        `<!doctype html><title>cruzado</title><link rel="stylesheet" href="/estilo.css"><img id="otro" src="http://127.0.0.1:${url.searchParams.get('otro')}/secreto.png">`
+      )
     } else {
       res.statusCode = 404
       res.end('no')
@@ -50,7 +54,12 @@ async function serveStatic(): Promise<Site> {
   })
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()))
   const port = (server.address() as AddressInfo).port
-  return { port, origin: `http://127.0.0.1:${port}`, hits, close: () => new Promise<void>((r) => (server.closeAllConnections(), server.close(() => r()))) }
+  return {
+    port,
+    origin: `http://127.0.0.1:${port}`,
+    hits,
+    close: () => new Promise<void>((r) => (server.closeAllConnections(), server.close(() => r())))
+  }
 }
 
 const fakeBin = fakeOutsideUserData()
@@ -77,7 +86,9 @@ describe.skipIf(MODE !== 'dev')('Navegador integrado: páginas locales con CSS y
 
   const tabs = (): Promise<{ id: string; url: string; title: string }[]> =>
     app().page.evaluate(async (directory) => {
-      const w = window as unknown as { api: { browser: { invoke: (c: string, r: unknown) => Promise<{ tabs: { id: string; url: string; title: string }[] }> } } }
+      const w = window as unknown as {
+        api: { browser: { invoke: (c: string, r: unknown) => Promise<{ tabs: { id: string; url: string; title: string }[] }> } }
+      }
       return (await w.api.browser.invoke('browser:state', { owner: { kind: 'code', directory } })).tabs
     }, project.dir)
 
@@ -101,7 +112,12 @@ describe.skipIf(MODE !== 'dev')('Navegador integrado: páginas locales con CSS y
   /** Vistas nativas colgadas de la ventana principal + webContents vivos cuya URL empieza por `prefix`. */
   const natives = (prefix: string): Promise<{ children: number; alive: number }> =>
     app().electronApp.evaluate(({ BrowserWindow, webContents }, p) => {
-      const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && /index\.html|localhost|127\.0\.0\.1/.test(w.webContents.getURL()) && !/quick|browser\/index/.test(w.webContents.getURL()))
+      const win = BrowserWindow.getAllWindows().find(
+        (w) =>
+          !w.isDestroyed() &&
+          /index\.html|localhost|127\.0\.0\.1/.test(w.webContents.getURL()) &&
+          !/quick|browser\/index/.test(w.webContents.getURL())
+      )
       return {
         children: win ? win.contentView.children.length : -1,
         alive: webContents.getAllWebContents().filter((w) => !w.isDestroyed() && w.getURL().startsWith(p)).length
@@ -189,7 +205,12 @@ describe.skipIf(MODE !== 'dev')('Navegador integrado: páginas locales con CSS y
     const nativeBefore = await natives(`http://localhost:${site.port}`)
     expect(nativeBefore.alive).toBe(1)
     // Seleccionarla (como haría el usuario) y cerrarla con la ✕ de su pestaña.
-    await a.page.getByRole('tab').filter({ has: a.page.locator('svg.lucide-bot') }).first().getByTitle('Cerrar pestaña').click()
+    await a.page
+      .getByRole('tab')
+      .filter({ has: a.page.locator('svg.lucide-bot') })
+      .first()
+      .getByTitle('Cerrar pestaña')
+      .click()
     await expect.poll(async () => (await tabs()).some((t) => t.id === victim.id)).toBe(false)
     expect((await tabs()).length).toBe(list.length - 1)
     await expect.poll(() => a.page.getByRole('tab').count()).toBe(list.length - 1)
@@ -208,7 +229,9 @@ describe.skipIf(MODE !== 'dev')('Navegador integrado: páginas locales con CSS y
       await expect.poll(async () => (await tabs()).length).toBe(list.length - 1)
     }
     expect((await tabs()).length).toBe(0)
-    await expect.poll(async () => (await natives(site.origin)).alive + (await natives(`http://localhost:${site.port}`)).alive, { timeout: 10_000 }).toBe(0)
+    await expect
+      .poll(async () => (await natives(site.origin)).alive + (await natives(`http://localhost:${site.port}`)).alive, { timeout: 10_000 })
+      .toBe(0)
     await expect.poll(() => a.page.getByRole('tab').count()).toBe(0)
     if (SHOTS) await a.page.screenshot({ path: join(SHOTS, 'sin-pestanas.png') })
   })
