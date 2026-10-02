@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkUrl, schemeOf, siteOf, subframeUrlAllowed } from './sites'
+import { checkUrl, hostPortOf, localSubresourceAllowed, schemeOf, siteOf, subframeUrlAllowed } from './sites'
 
 describe('schemeOf', () => {
   it('devuelve el esquema en minúsculas y con los dos puntos', () => {
@@ -53,5 +53,41 @@ describe('siteOf', () => {
     expect(siteOf('[::1]')).toBe('[::1]')
     expect(siteOf('::1')).toBe('::1')
     expect(siteOf('[2001:db8::1]')).toBe('[2001:db8::1]')
+  })
+})
+
+describe('hostPortOf', () => {
+  it('formato de localOrigins, con puerto por defecto explícito', () => {
+    expect(hostPortOf('http://127.0.0.1:4173/a.css')).toBe('127.0.0.1:4173')
+    expect(hostPortOf('http://LocalHost:5173/')).toBe('localhost:5173')
+    expect(hostPortOf('http://[::1]:8080/')).toBe('[::1]:8080')
+    expect(hostPortOf('http://localhost/')).toBe('localhost:80')
+    expect(hostPortOf('https://localhost/')).toBe('localhost:443')
+    expect(hostPortOf('ws://127.0.0.1:5173/@vite')).toBe('127.0.0.1:5173')
+  })
+  it('esquemas que no son de red o basura: null', () => {
+    expect(hostPortOf('about:blank')).toBeNull()
+    expect(hostPortOf('file:///etc/hosts')).toBeNull()
+    expect(hostPortOf('???')).toBeNull()
+  })
+})
+
+describe('localSubresourceAllowed', () => {
+  const none = (): boolean => false
+  const always = (o: string): boolean => o === 'localhost:5173'
+  it('mismo origen que la página: sí, aunque nada esté aprobado (CSS/JS/imágenes del sitio local)', () => {
+    expect(localSubresourceAllowed('http://127.0.0.1:4173/estilo.css', '127.0.0.1:4173', none)).toBe(true)
+    expect(localSubresourceAllowed('ws://localhost:5173/@vite', 'localhost:5173', none)).toBe(true)
+  })
+  it('otro puerto local: no, salvo que el origen de la página esté en «Permitir siempre»', () => {
+    expect(localSubresourceAllowed('http://127.0.0.1:3000/api', '127.0.0.1:4173', none)).toBe(false)
+    expect(localSubresourceAllowed('http://127.0.0.1:3000/api', 'localhost:5173', always)).toBe(true)
+    expect(localSubresourceAllowed('http://127.0.0.1:3000/api', '127.0.0.1:4173', always)).toBe(false)
+  })
+  it('mismo puerto pero otro nombre de host (127.0.0.1 vs localhost) cuenta como otro origen', () => {
+    expect(localSubresourceAllowed('http://127.0.0.1:4173/x.css', 'localhost:4173', none)).toBe(false)
+  })
+  it('sin página (service worker, webContents destruido): no', () => {
+    expect(localSubresourceAllowed('http://127.0.0.1:4173/x.css', null, always)).toBe(false)
   })
 })

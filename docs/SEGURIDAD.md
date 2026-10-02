@@ -301,12 +301,16 @@ aislamiento por carpeta, haría falta una partición por owner, con el coste de 
 sesión en cada sitio por carpeta.
 
 **La regla de red es la defensa real, no un permiso denegado más.** `webRequest.onBeforeRequest`
-(`embedded-browser/surface.ts`) solo deja pasar `http(s):`, `ws(s):`, `data:`, `blob:` y `about:`, y
+(`embedded-browser/session.ts`) solo deja pasar `http(s):`, `ws(s):`, `data:`, `blob:` y `about:`, y
 cancela cualquier petición (de cualquier tipo de recurso, no solo la navegación de primer nivel)
 hacia un destino loopback o de red privada (`127.0.0.0/8`, `::1`, `10.0.0.0/8`, `172.16.0.0/12`,
-`192.168.0.0/16`, `169.254.0.0/16`, `.local`) salvo que la página de primer nivel sea un origen
-local ya **aprobado por el usuario** (`localhost:PUERTO`, aprobación por origen exacto, nunca por
-comodín). Verificado en vivo (D0, reconfirmado por D5 contra el árbol final): esta build de
+`192.168.0.0/16`, `169.254.0.0/16`, `.local`) salvo que (a) el destino tenga EXACTAMENTE el mismo origen `host:puerto` que la
+página de primer nivel (su propio CSS/JS/imágenes/`ws` de HMR; `127.0.0.1` y `localhost` cuentan como
+orígenes distintos) o (b) la página de primer nivel sea un origen local aprobado con «Permitir siempre»
+(`localhost:PUERTO`, aprobación por origen exacto, nunca por comodín). (a) se añadió en F8-B41: antes solo
+valía (b) y una página local escrita por el usuario o aprobada «en esta tarea» cargaba sin estilos ni
+imágenes; (a) no amplía el alcance, la página ya está cargada desde ese origen. Lógica pura y probada en
+`sites.ts` (`localSubresourceAllowed`) y `session.test.ts`. Verificado en vivo (D0, reconfirmado por D5 contra el árbol final): esta build de
 Electron/Chromium trae `LocalNetworkAccessChecks` desactivado, así que denegar `local-network-
 access`/`loopback-network` en los `setPermissionRequestHandler` **no tiene ningún efecto
 observable** por sí solo — sin la regla de `webRequest`, un `fetch` desde una página remota alcanza
@@ -319,7 +323,7 @@ origen local (`localhost:5173`) queda aprobado con «Permitir siempre», esa pá
 a cualquier OTRO puerto de loopback o de red privada (otro servidor de desarrollo, una base de datos
 local, etc.), y con la aprobación persistida vale también en tareas futuras. La aprobación «en esta
 tarea» NO cuenta para esta regla (no se persiste ni se consulta en `webRequest`: una página aprobada
-solo para la tarea sigue bloqueada hacia otros puertos). Está fijado por el E2E
+solo para la tarea, o escrita por el usuario, sigue bloqueada hacia otros puertos; solo carga lo de su propio origen). Está fijado por el E2E
 (`lotes.e2e.ts`, «observación: … sí alcanza otro puerto de loopback»); aprobar solo lo que el usuario
 conoce es decisión suya, y acotar por puerto de destino requeriría una lista de destinos por origen.
 

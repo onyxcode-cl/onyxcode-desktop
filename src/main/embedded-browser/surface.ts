@@ -246,10 +246,11 @@ function installLifecycle(tab: TabRuntime): void {
     surfaceEvents.emit('inputEvent', tab)
   })
   tab.wc.once('destroyed', () => {
+    const already = tab.destroyed // `destroyTab` ya lo anunció
     tab.destroyed = true
     tabsById.delete(tab.id)
     lastBlocked.delete(tab.id)
-    surfaceEvents.emit('destroyed', tab)
+    if (!already) surfaceEvents.emit('destroyed', tab)
   })
 }
 
@@ -323,10 +324,9 @@ export async function loadDirect(tab: TabRuntime, url: string): Promise<void> {
 /**
  * Cierra y limpia SIEMPRE debugger + estado (D0 corrección 5), incluso en rutas de error.
  *
- * IMPORTANTE: `WebContentsView` no expone un `destroy()`/`close()` propio (Electron 44.4.5):
- * quien llama a esto debe haber quitado ya la vista de su `contentView` (`removeChildView`,
- * en `service.ts`/`popout.ts`) ANTES o justo después; sin referencias ni vista en el árbol,
- * Electron libera el proceso de la pestaña por recolección de basura.
+ * IMPORTANTE: `WebContentsView` no expone un `destroy()`/`close()` propio (Electron 44.4.5), pero su
+ * `webContents` sí tiene `close()`, que es lo que libera la página y su proceso. Quien llama debe haber
+ * quitado ya la vista de su `contentView` (`removeChildView`, `discardTab` en `service.ts`) ANTES.
  */
 export function destroyTab(tab: TabRuntime): void {
   if (tab.destroyed) return
@@ -344,4 +344,11 @@ export function destroyTab(tab: TabRuntime): void {
     console.error('[embedded-browser] detención de pestaña:', err)
   }
   surfaceEvents.emit('destroyed', tab)
+  // `WebContentsView` no tiene `close()`, pero su `webContents` sí: sin esto la página seguía viva (JS, audio, red,
+  // proceso renderer) hasta una recolección de basura que nunca llegaba mientras algo la referenciara.
+  try {
+    if (!tab.wc.isDestroyed()) tab.wc.close()
+  } catch (err) {
+    console.error('[embedded-browser] cierre de pestaña:', err)
+  }
 }

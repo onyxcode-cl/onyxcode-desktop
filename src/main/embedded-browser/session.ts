@@ -10,7 +10,7 @@ import { app, session, type Session } from 'electron'
 import { APP_NAME } from '@shared/brand'
 import type { BrowserProduct } from '@shared/ipc-browser'
 import { isLocalOriginApproved } from './store'
-import { schemeOf } from './sites'
+import { hostPortOf, localSubresourceAllowed, schemeOf } from './sites'
 import { handleWillDownload } from './downloads'
 
 const PARTITION_BY_PRODUCT: Record<BrowserProduct, string> = {
@@ -51,10 +51,7 @@ function topLevelOrigin(details: Electron.OnBeforeRequestListenerDetails): strin
   try {
     const wc = details.webContents
     if (!wc || wc.isDestroyed()) return null
-    const u = new URL(wc.getURL())
-    const port = u.port || (u.protocol === 'https:' ? '443' : '80')
-    const host = u.hostname === '::1' ? '[::1]' : u.hostname
-    return `${host}:${port}`
+    return hostPortOf(wc.getURL())
   } catch {
     return null
   }
@@ -91,7 +88,8 @@ function installNetworkGuard(ses: Session): void {
         return
       }
       const top = topLevelOrigin(details)
-      if (top && isLocalOriginApproved(top)) {
+      // Mismo origen que la página (su CSS/JS/imágenes) o página aprobada con «Permitir siempre»; ver `localSubresourceAllowed`.
+      if (localSubresourceAllowed(url, top, isLocalOriginApproved)) {
         callback({ cancel: false })
         return
       }
