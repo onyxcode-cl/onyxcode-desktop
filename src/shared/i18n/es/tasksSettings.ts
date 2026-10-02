@@ -62,6 +62,15 @@ export const tasksSettings = {
   'tasksSettings.work.revokeTitle': '¿Revocar {fullControl} en «{name}»?',
   'tasksSettings.work.revokeMessage':
     'Se detendrá el servidor de Control total de esta carpeta y se perderán las tareas en curso allí. Para volver a usarlo tendrás que concederlo de nuevo.',
+  'tasksSettings.full.title': 'Control total del Mac',
+  'tasksSettings.full.desc':
+    'Una sola decisión para todo el equipo, sin carpeta: el agente puede usar ratón, teclado y pantalla, y acceder a todos los archivos y programas de tu usuario. El plan y cada app se siguen aprobando en cada tarea.',
+  'tasksSettings.full.on': 'Consentimiento dado el {date}',
+  'tasksSettings.full.off': 'Sin consentimiento: se te pedirá al activar Control total.',
+  'tasksSettings.full.revoke': 'Retirar consentimiento',
+  'tasksSettings.full.revokeTitle': '¿Retirar el consentimiento de Control total?',
+  'tasksSettings.full.revokeMessage':
+    'Se detendrán los servidores de Control total y se perderán las tareas en curso en ese modo. Para volver a usarlo tendrás que aceptarlo de nuevo.',
   'tasksSettings.rules.title': 'Permisos recordados',
   'tasksSettings.rules.desc':
     'Permisos que marcaste con «Siempre permitir», de todas las carpetas. Quitarlos se aplica al reabrir la carpeta.',

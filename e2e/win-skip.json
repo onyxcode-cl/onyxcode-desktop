@@ -3,5 +3,6 @@
   { "spec": "tasks-stall.e2e.ts", "reason": "Aviso de inactividad de una tarea del modo Tareas (sidecar con sandbox): modo fuera de la v1 de Windows." },
   { "spec": "update-check.e2e.ts", "reason": "Aviso de versión nueva del actualizador automático (src/main/update, solo macOS): fuera de la v1 de Windows (se entrega por instalador; el actualizador no se carga)." },
   { "spec": "update-install.e2e.ts", "reason": "Descarga, verificación e instalación del actualizador propio (.app, ditto, codesign, swap.sh): solo macOS; fuera de la v1 de Windows." },
-  { "spec": "legacy-data.e2e.ts", "reason": "Migración m001 de datos viejos del modo Tareas (nombres Lapis/OpenDesk de macOS): una instalación de Windows es nueva y nunca tiene esos datos; los fixtures y las rutinas con mode:\"tasks\" son del modo Tareas, fuera de la v1." }
+  { "spec": "legacy-data.e2e.ts", "reason": "Migración m001 de datos viejos del modo Tareas (nombres Lapis/OpenDesk de macOS): una instalación de Windows es nueva y nunca tiene esos datos; los fixtures y las rutinas con mode:\"tasks\" son del modo Tareas, fuera de la v1." },
+  { "spec": "control-total.e2e.ts", "reason": "Control total sin carpeta del modo Tareas (consentimiento único del equipo, servidor sin sandbox, Seatbelt para Sandbox): el modo Tareas queda fuera de la v1 de Windows y la capacidad está desactivada." }
 ]

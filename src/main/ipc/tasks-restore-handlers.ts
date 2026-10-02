@@ -4,6 +4,7 @@
  * monitor ve trabajo en curso en esa carpeta (restaurar con el agente escribiendo daría un
  * resultado mezclado).
  */
+import { t } from '@shared/i18n'
 import { app, shell } from 'electron'
 import { join } from 'node:path'
 import { RestorePoints } from '../tasks/restore-points'
@@ -32,7 +33,24 @@ export function registerTasksRestoreHandlers(ctx: TasksIpcContext): TasksSubmodu
   }, 15_000)
   timer.unref?.()
 
-  handle('tasks:restore:create', ({ folder, sessionId, label }) => restore.create(tasks.assertInsideApproved(folder), sessionId, label))
+  handle('tasks:restore:create', ({ folder, sessionId, label }) => {
+    const real = tasks.assertInsideApproved(folder)
+    // Control total sin carpeta (carpeta personal): una instantánea de todo el home no es viable; se omite sin recorrerlo.
+    if (tasks.coversHome(real)) {
+      return {
+        id: '',
+        sessionId,
+        folder: real,
+        createdAt: Date.now(),
+        label: label.slice(0, 200),
+        files: 0,
+        bytes: 0,
+        status: 'skipped' as const,
+        reason: t('merr.restore.homeSkipped')
+      }
+    }
+    return restore.create(real, sessionId, label)
+  })
   handle('tasks:restore:list', ({ folder, sessionId }) => restore.list(tasks.assertInsideApproved(folder), sessionId))
   handle('tasks:restore:changes', ({ folder, pointId }) => restore.changes(tasks.assertInsideApproved(folder), pointId))
   handle('tasks:restore:apply', ({ folder, pointId, paths }) => {

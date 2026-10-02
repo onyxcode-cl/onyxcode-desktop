@@ -10,7 +10,7 @@ import type { RoutineTasksPort } from './service'
 
 export const noTasksPort: RoutineTasksPort = {
   isApproved: () => false,
-  hasFullAccessGrant: () => false,
+  canStartFullAccess: () => false,
   start: () => Promise.reject(new Error(t('merr.routine.platformUnsupported'))),
   folderSet: (folder): TasksFolderSet => ({ primary: folder, linked: [], trusted: [], applied: true }),
   networkAllowOnce: () => undefined,

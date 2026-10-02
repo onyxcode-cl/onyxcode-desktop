@@ -13,7 +13,8 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
   const folder = useTasks((s) => s.folder)
   const full = conn ? conn.fullAccess : requested
   const starting = phase === 'starting'
-  const off = disabled || starting || !folder
+  // Control total no necesita carpeta (trabaja en la carpeta personal por defecto); Sandbox sí la pide al enviar.
+  const off = disabled || starting
 
   const pick = (fullAccess: boolean): void => {
     if (off || (fullAccess === full && phase === 'ready')) return
@@ -37,7 +38,7 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
       role="radiogroup"
       aria-label={t('tasksComputer.access.aria')}
       onKeyDown={onKey}
-      title={!folder ? t('tasksComputer.access.pickFolder') : disabled ? t('tasksComputer.access.waitTask') : undefined}
+      title={disabled ? t('tasksComputer.access.waitTask') : undefined}
       className={`inline-flex items-center gap-0.5 rounded-full border border-border bg-hover/60 p-0.5 ${off ? 'opacity-70' : ''}`}
     >
       <button
@@ -47,7 +48,7 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
         tabIndex={!full ? 0 : -1}
         disabled={off}
         onClick={() => pick(false)}
-        title={t('tasksComputer.access.sandboxTitle', { name: TASKS_TERMS.sandbox })}
+        title={!folder ? t('tasksComputer.access.pickFolder') : t('tasksComputer.access.sandboxTitle', { name: TASKS_TERMS.sandbox })}
         className={`${base} ${!full ? 'bg-elevated text-accent shadow-sm' : 'text-muted hover:text-fg'}`}
       >
         {starting && !requested ? <Loader2 size={12} className="animate-spin" /> : <Shield size={12} />}

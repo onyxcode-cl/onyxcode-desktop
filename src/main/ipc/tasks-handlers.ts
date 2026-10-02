@@ -288,6 +288,15 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   handle('tasks:start', ({ folder, fullAccess }) => tasks.start(folder, fullAccess === true))
   handle('tasks:grantFullAccess', ({ folder }) => tasks.grantFullAccess(folder))
   handle('tasks:revokeFullAccess', ({ folder }) => tasks.revokeFullAccess(folder))
+  handle('tasks:fullAccess:state', () => tasks.fullAccessState())
+  handle('tasks:fullAccess:consent', () => {
+    tasks.grantFullAccessConsent()
+    return tasks.fullAccessState()
+  })
+  handle('tasks:fullAccess:revokeAll', async () => {
+    await tasks.revokeFullAccessConsent()
+    return tasks.fullAccessState()
+  })
   handle('tasks:deliverables', ({ folder, since }) => tasks.deliverables(folder, since))
   handle('tasks:reveal', ({ path }) => {
     shell.showItemInFolder(tasks.assertInsideApproved(path))

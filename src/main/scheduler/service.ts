@@ -66,7 +66,8 @@ const PERM_RE = /^[A-Za-z0-9_*.:-]{1,200}$/
  */
 export interface RoutineTasksPort {
   isApproved(folder: string): boolean
-  hasFullAccessGrant(folder: string): boolean
+  /** ¿Puede arrancar Control total en esa carpeta? (consentimiento del equipo o concesión antigua de la carpeta.) */
+  canStartFullAccess(folder: string): boolean
   start(folder: string, fullAccess: boolean): Promise<{ baseUrl: string; authorization: string; folder: string }>
   folderSet(folder: string): TasksFolderSet
   networkAllowOnce(folder: string, host: string): void
@@ -315,7 +316,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (input.mode !== 'chat') {
       if (!folder) throw new Error(t('merr.routine.needsFolder'))
       if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(t('merr.task.noFolder', { folder }))
-      if (input.mode === 'tasks' && !this.deps.tasks.isApproved(folder)) {
+      // Control total no confina a una carpeta: no exige que esté autorizada para Sandbox (sí el consentimiento del equipo).
+      if (input.mode === 'tasks' && input.fullAccess !== true && !this.deps.tasks.isApproved(folder)) {
         throw new Error(t('merr.routine.folderNotAuthorized'))
       }
     }
@@ -347,7 +349,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (!sameFolder && consent <= (prev?.fullAccessConsentAt ?? 0)) {
         throw new Error(t('merr.routine.reconfirm'))
       }
-      if (!folder || !this.deps.tasks.hasFullAccessGrant(folder)) {
+      if (!folder || !this.deps.tasks.canStartFullAccess(folder)) {
         throw new Error(t('merr.routine.folderNoFull'))
       }
       fullAccessConsentAt = consent
@@ -543,7 +545,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (!r.fullAccessConsentAt) {
         throw new Error(t('merr.routine.noConsent'))
       }
-      if (!this.deps.tasks.hasFullAccessGrant(directory)) {
+      if (!this.deps.tasks.canStartFullAccess(directory)) {
         throw new Error(t('merr.routine.fullRevoked'))
       }
     }

@@ -13,6 +13,18 @@ import type { ModelRef } from './types'
 export const FULL_ACCESS_NOT_GRANTED = 'FULL_ACCESS_NOT_GRANTED'
 
 /** Carpeta autorizada por el usuario para Tareas. */
+/** Estado de Control total de este equipo (sin carpeta: una sola decisión del usuario, revocable en Ajustes). */
+export interface TasksFullAccessState {
+  /** Fecha (epoch ms) del consentimiento explícito de este equipo, o null si no se ha dado (o la política lo impide). */
+  consentAt: number | null
+  /** Carpeta de trabajo por defecto: la última usada en Control total o, si no, la carpeta personal. */
+  workspace: string
+  /** Carpeta personal del usuario (para mostrarla como «~»). */
+  home: string
+  /** La política de la organización desactiva Control total. */
+  disabled: boolean
+}
+
 export interface TasksFolder {
   path: string
   name: string
@@ -757,8 +769,14 @@ export interface TasksInvokeContract {
   'tasks:start': { req: { folder: string; fullAccess?: boolean }; res: TasksConnection }
   /** Registra en main el consentimiento de acceso total (requerido por `tasks:start {fullAccess}`). */
   'tasks:grantFullAccess': { req: { folder: string }; res: void }
-  /** Retira el consentimiento de acceso total y detiene ese servidor. */
+  /** Retira la concesión antigua de acceso total de esa carpeta y detiene ese servidor (no toca el consentimiento del equipo). */
   'tasks:revokeFullAccess': { req: { folder: string }; res: void }
+  /** Estado de Control total de este equipo: consentimiento (una vez por equipo), carpeta de trabajo por defecto y bloqueo por política. */
+  'tasks:fullAccess:state': { req: void; res: TasksFullAccessState }
+  /** Registra el consentimiento de Control total del equipo (tras el diálogo explícito). Conserva la fecha original. */
+  'tasks:fullAccess:consent': { req: void; res: TasksFullAccessState }
+  /** Retira TODO el Control total (consentimiento del equipo y concesiones por carpeta) y detiene sus servidores. */
+  'tasks:fullAccess:revokeAll': { req: void; res: TasksFullAccessState }
   /** Archivos modificados en la carpeta desde `since` (epoch ms). */
   'tasks:deliverables': { req: { folder: string; since: number }; res: TasksDeliverable[] }
   /** Muestra el archivo/carpeta en Finder. */
@@ -1036,6 +1054,9 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:start',
   'tasks:grantFullAccess',
   'tasks:revokeFullAccess',
+  'tasks:fullAccess:state',
+  'tasks:fullAccess:consent',
+  'tasks:fullAccess:revokeAll',
   'tasks:deliverables',
   'tasks:reveal',
   'tasks:openPath',

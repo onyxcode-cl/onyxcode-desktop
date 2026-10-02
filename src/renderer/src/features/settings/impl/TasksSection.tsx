@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FolderPlus, Loader2, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 import {
   type TasksFolder,
+  type TasksFullAccessState,
   type TasksNotifyPrefs,
   type TasksPermissionRule,
   type TasksStorageReport,
@@ -23,6 +24,8 @@ import { MODE_LABELS } from '@shared/labels'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import {
   connectFolder,
+  disconnect,
+  leaveRevokedFolder,
   loadTasksPrefs,
   loadPolicy,
   rememberFullAccess,
@@ -249,6 +252,7 @@ export function TasksSection(): React.JSX.Element {
   const [trusted, setTrusted] = useState<TrustedFolder[] | null>(null)
   const [folders, setFolders] = useState<TasksFolder[] | null>(null)
   const [rules, setRules] = useState<TasksPermissionRule[] | null>(null)
+  const [fullInfo, setFullInfo] = useState<TasksFullAccessState | null>(null)
   const [report, setReport] = useState<TasksStorageReport | null>(null)
   const [storageBusy, setStorageBusy] = useState<string | null>(null)
   const [newMode, setNewMode] = useState<FolderAccessMode>('ro')
@@ -280,6 +284,9 @@ export function TasksSection(): React.JSX.Element {
     cw('tasks:listFolders')
       .then(setFolders)
       .catch((err: unknown) => fail('folders', err))
+    cw('tasks:fullAccess:state')
+      .then(setFullInfo)
+      .catch((err: unknown) => fail('full', err))
     cw('tasks:rules:list', {})
       .then(setRules)
       .catch((err: unknown) => fail('rules', err))
@@ -356,6 +363,30 @@ export function TasksSection(): React.JSX.Element {
       useTasks.setState({ folders: list })
     } catch (err) {
       fail('folders', err)
+    }
+  }
+
+  // Retirar el consentimiento de Control total del equipo (vuelve a pedirse el diálogo).
+  const revokeAllFull = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('tasksSettings.full.revokeTitle'),
+      message: t('tasksSettings.full.revokeMessage'),
+      confirmLabel: t('tasksSettings.full.revoke'),
+      danger: true
+    })
+    if (!ok) return
+    clear('full')
+    try {
+      const cur = useTasks.getState().conn
+      const wasFull = cur?.fullAccess ? cur.folder : null
+      if (wasFull) disconnect() // cierra el stream antes de que main detenga el servidor
+      setFullInfo(await cw('tasks:fullAccess:revokeAll'))
+      if (wasFull) await leaveRevokedFolder(wasFull)
+      const list = await cw('tasks:listFolders')
+      setFolders(list)
+      useTasks.setState({ folders: list, fullAccessInfo: await cw('tasks:fullAccess:state') })
+    } catch (err) {
+      fail('full', err)
     }
   }
 
@@ -524,6 +555,37 @@ export function TasksSection(): React.JSX.Element {
           )}
         </Card>
         {errors.trusted && <p className="mt-2 text-xs text-danger">{errors.trusted}</p>}
+      </Group>
+
+      {/* 1 bis · Control total del equipo (sin carpeta) */}
+      <Group title={t('tasksSettings.full.title')} description={t('tasksSettings.full.desc')}>
+        <Card>
+          <Row
+            label={TASKS_TERMS.fullControl}
+            description={
+              fullInfo?.consentAt ? (
+                <span data-testid="full-consent-status">
+                  {t('tasksSettings.full.on', {
+                    date: new Intl.DateTimeFormat(getLang() === 'en' ? 'en-US' : 'es-CL', { dateStyle: 'long', timeStyle: 'short' }).format(
+                      new Date(fullInfo.consentAt)
+                    )
+                  })}
+                </span>
+              ) : (
+                <span data-testid="full-consent-status">{t('tasksSettings.full.off')}</span>
+              )
+            }
+          >
+            {fullInfo?.consentAt ? (
+              <Button size="sm" onClick={() => void revokeAllFull()}>
+                {t('tasksSettings.full.revoke')}
+              </Button>
+            ) : (
+              <Badge>{TASKS_TERMS.sandbox}</Badge>
+            )}
+          </Row>
+        </Card>
+        {errors.full && <p className="mt-2 text-xs text-danger">{errors.full}</p>}
       </Group>
 
       {/* 2 · Carpetas de trabajo */}

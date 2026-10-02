@@ -707,6 +707,27 @@ Canal nuevo, solo ventana principal (no está en `CHANNEL_ROLES`), esquema estri
 - **node-pty empaquetado.** En Windows `asarUnpack` saca `node_modules/node-pty/**` del `.asar`: `OpenConsole.exe` y `conpty.dll` se ejecutan/cargan desde disco. La shell es `pwsh.exe` o PowerShell 5.1 del sistema con ruta absoluta, nunca una ruta tomada del texto del usuario sin comprobar que existe.
 - **Abrir en el editor.** Solo ejecuta `Code.exe` desde rutas fijas (`%LOCALAPPDATA%\Programs`, `%ProgramFiles%`) y sin shell; si no está, `shell.openPath`.
 
+## 3 septendecies. Control total sin carpeta (F8-B44)
+
+**Cómo funciona hoy.** Control total arranca un `opencode serve` aparte **sin Seatbelt** (`noSandbox`), con el agente `computer`, el MCP de control del Mac y el plugin de la puerta del plan; usa el XDG real del usuario y no pasa por el proxy de egress ni por el credential proxy (esos son del sandbox). El `cwd` y `ONYXCODE_TASKS_FOLDER` eran la carpeta autorizada; de la carpeta solo dependen: el directorio de proyecto de OpenCode (sesiones por `directory`), el `AGENTS.md` y la memoria de esa carpeta, el proyecto/instrucciones guardados por carpeta en `userData`, los puntos de restauración y los entregables, y la lista blanca de rutas de las funciones de la interfaz (`assertInsideApproved`). La carpeta **no confina** en este modo: el agente ya podía tocar todo el equipo.
+
+**Qué cambia.** El consentimiento pasa de «por carpeta» a «una vez por equipo» (`fullAccessConsentAt` en `tasks-folders.json`, escrito solo por main tras el diálogo; la UI no puede fijarlo). Sin él, o con `disableFullAccess`, `tasks:start {fullAccess}` falla con `FULL_ACCESS_NOT_GRANTED`. Con él, Control total arranca en cualquier carpeta que exista (por defecto la actual o, si no hay, la última usada en este modo o el home); no hace falta que esté autorizada para Sandbox. Las concesiones antiguas por carpeta siguen valiendo solo para su carpeta. La revocación (`tasks:fullAccess:revokeAll`, Ajustes › Tareas) borra el consentimiento y todas las concesiones y detiene los servidores sin sandbox.
+
+**Modelo de amenazas.**
+
+| Riesgo | Tratamiento |
+| --- | --- |
+| El agente actúa sin que el usuario lo sepa | Consentimiento explícito con diálogo (ratón, teclado, pantalla, todos los archivos y programas), con fecha y revocable; sin él main no arranca el servidor aunque el renderer lo pida (hay prueba E2E por IPC directo). El plan sigue aprobándose en cada tarea, cada app pide su nivel y ⌘⇧Esc / Detener cortan al instante (sin cambios). |
+| Prompt injection (web, correo, pantalla) con acceso a todo el equipo | Igual que antes: sin sandbox ya podía tocar todo; la mitigación es la puerta del plan + aprobaciones por app + parada. Quitar la carpeta **no amplía** lo que el agente puede hacer, solo quita el paso de elegirla. |
+| Un renderer comprometido lee archivos del usuario | Las funciones de la interfaz (`previewFile`, ZIP, abrir, QuickLook, proyecto/memoria) aceptan además el espacio de Control total **solo con consentimiento** y siguen negando los secretos que el perfil Seatbelt niega (`~/.ssh`, claves de nube y CLIs, config y datos de OpenCode). `userData` queda fuera por no estar en el home de trabajo. |
+| Daño por una acción en el home sin deshacer | No se crean puntos de restauración de la carpeta personal (una instantánea de todo el home no es viable); se avisa en la tarea. Con una carpeta más pequeña elegida en Control total sí se crean. |
+| Recorrer todo el home (CPU/IO, privacidad) | Los entregables no se calculan para el home; no se ejecuta la migración de `.cowork` en el home. |
+| Política de la organización | `disableFullAccess` anula consentimiento y concesiones; con `allowedFolderRoots` Control total exige además carpeta autorizada (fail-closed). |
+| Rutinas desatendidas | Siguen exigiendo `fullAccessConsentAt` propio de la rutina, el consentimiento del equipo y plan aprobado por una persona; sin esto la ejecución falla o caduca. |
+| Windows | El modo no existe (capacidad desactivada); los canales nuevos no se cargan allí. |
+
+**No cambia.** Perfil Seatbelt, credential proxy, `provider-egress`, `proxy-policy`, `folder-policy` (el home sigue rechazado como carpeta de Sandbox), puerta del plan, aprobaciones por app, atajo de parada y comprobaciones TCC. **Riesgo residual:** como antes, otro proceso del usuario sin sandbox puede leer el entorno del servidor de Control total (ver §5); y la carpeta personal como `cwd` hace que un `AGENTS.md` suelto en `~` lo lea el agente (también el global de `~/.config/opencode`, como antes).
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

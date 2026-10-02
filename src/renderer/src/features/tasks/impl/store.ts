@@ -19,6 +19,7 @@ import {
   type TasksDeliverable,
   type TasksFolder,
   type TasksFolderSet,
+  type TasksFullAccessState,
   type TasksMemory,
   type TasksPrefs,
   type TasksProject,
@@ -69,8 +70,10 @@ interface TasksState {
   listLoading: boolean
   /** Modo de acceso solicitado para la carpeta actual (persistido por carpeta). */
   fullAccess: boolean
-  /** Carpeta cuyo cambio a Control total espera confirmación. */
+  /** Carpeta de trabajo con la que se activará Control total cuando el usuario acepte el diálogo (una vez por equipo). */
   pendingFullAccess: string | null
+  /** Estado de Control total de este equipo (consentimiento, carpeta de trabajo por defecto, política). */
+  fullAccessInfo: TasksFullAccessState | null
   /** Último estado de `computer:status` (null = sin comprobar). */
   computerStatus: ComputerStatus | null
   computerChecking: boolean
@@ -225,6 +228,7 @@ export const useTasks = create<TasksState>((set) => ({
   listLoading: false,
   fullAccess: false,
   pendingFullAccess: null,
+  fullAccessInfo: null,
   computerStatus: null,
   computerChecking: false,
   lastAction: null,
@@ -766,6 +770,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     void loadDeleteGrant(conn.folder)
     void loadFolderSet(conn.folder)
     if (conn.fullAccess) {
+      void loadFullAccessInfo()
       void refreshComputerStatus()
       void syncKillState()
     }
@@ -782,6 +787,12 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     // Preferencia local de Control total sin consentimiento registrado en main: volver a sandbox.
     if (fullAccess && now.folder === folder && errorMessage(err).includes(FULL_ACCESS_NOT_GRANTED)) {
       rememberFullAccess(folder, false)
+      // Carpeta sin autorizar para Sandbox (p. ej. la carpeta personal de Control total): no hay sandbox al que volver.
+      if (!now.folders.some((f) => f.path === folder)) {
+        clearFolder()
+        useTasks.setState({ error: errorMessage(err) })
+        return
+      }
       return connectFolder(folder, false)
     }
     if (now.folder === folder && now.fullAccess === fullAccess) useTasks.setState({ phase: 'error', error: errorMessage(err) })
@@ -855,6 +866,47 @@ useSessions.subscribe((s, prev) => {
 useTasks.subscribe((s, prev) => {
   if (s.conn !== prev.conn) syncKeepAwake()
 })
+
+/** Vuelve al estado «sin carpeta» (Sandbox pide elegir una): sin servidor, sin carpeta recordada. */
+export function clearFolder(): void {
+  disconnect()
+  rememberFolder(null)
+  useTasks.setState({
+    folder: null,
+    fullAccess: false,
+    activeTaskId: null,
+    computerStatus: null,
+    lastAction: null,
+    todos: {},
+    permissions: {},
+    questions: {},
+    deliverables: {},
+    attachments: [],
+    project: null,
+    memory: null,
+    networkBlocked: {},
+    deleteGrant: null,
+    folderSet: null
+  })
+}
+
+/** Tras retirar el Control total: si la tarea estaba en esa carpeta, vuelve a Sandbox (o a «sin carpeta» si no estaba autorizada). */
+export async function leaveRevokedFolder(folder: string): Promise<void> {
+  rememberFullAccess(folder, false)
+  if (useTasks.getState().folders.some((f) => f.path === folder)) await connectFolder(folder, false)
+  else clearFolder()
+}
+
+/** Lee (y guarda en el store) el estado de Control total de este equipo. */
+export async function loadFullAccessInfo(): Promise<TasksFullAccessState | null> {
+  try {
+    const fullAccessInfo = await cw('tasks:fullAccess:state')
+    useTasks.setState({ fullAccessInfo })
+    return fullAccessInfo
+  } catch {
+    return null
+  }
+}
 
 export function disconnect(): void {
   stopStream?.()
