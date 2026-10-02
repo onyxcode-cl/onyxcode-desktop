@@ -61,6 +61,8 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const [builder, setBuilder] = useState<Builder>(() => builderFor(initial.schedule))
   const [preview, setPreview] = useState<SchedulePreview | null>(null)
   const [folders, setFolders] = useState<TasksFolder[]>([])
+  // Consentimiento de Control total del equipo (una vez por equipo): habilita el interruptor en cualquier carpeta.
+  const [fullConsent, setFullConsent] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
@@ -75,6 +77,10 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
   useEffect(() => {
     void cw('tasks:listFolders').then(setFolders, () => setFolders([]))
+    void cw('tasks:fullAccess:state').then(
+      (s) => setFullConsent(!!s.consentAt),
+      () => setFullConsent(false)
+    )
   }, [])
 
   useEffect(() => {
@@ -128,7 +134,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     (m) => m !== 'tasks' || caps.tasks || form.mode === 'tasks'
   )
   const selectedFolder = folders.find((f) => f.path === form.folder)
-  const canFullControl = isTasks && !!selectedFolder?.fullAccess
+  const canFullControl = isTasks && (!!selectedFolder?.fullAccess || fullConsent)
   const fullControl = isTasks && form.fullAccess === true
 
   const addHost = (): void => {

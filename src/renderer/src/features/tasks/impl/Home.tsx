@@ -6,7 +6,7 @@ import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
 import { AccessSegmented } from './AccessSegmented'
-import { ComputerPermissionsCard, VisionModelHint } from './ComputerAccess'
+import { ComputerPermissionsCard, FullWorkspaceNote, VisionModelHint } from './ComputerAccess'
 import { TasksComposer } from './TasksComposer'
 import { setAccessMode } from './actions'
 import { Onboarding } from './Onboarding'
@@ -207,7 +207,7 @@ export function Home({
 
   const pick = (prompt: string, computer?: boolean): void => {
     useTasks.setState({ draft: prompt })
-    if (computer && !full && folder) void setAccessMode(true)
+    if (computer && !full) void setAccessMode(true)
   }
 
   return (
@@ -233,6 +233,7 @@ export function Home({
         </div>
 
         {!onboarded && <Onboarding onDismiss={() => setOnboardedPersisted(true)} />}
+        <FullWorkspaceNote canChange={!folderBusy} />
         <ComputerPermissionsCard />
         <VisionModelHint />
         <TasksComposer

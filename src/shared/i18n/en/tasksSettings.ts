@@ -64,6 +64,15 @@ export const tasksSettings = {
   'tasksSettings.work.revokeTitle': 'Revoke {fullControl} for “{name}”?',
   'tasksSettings.work.revokeMessage':
     'The Full control server for this folder will stop and any tasks running there will be lost. To use it again, you’ll need to grant it again.',
+  'tasksSettings.full.title': 'Full Mac control',
+  'tasksSettings.full.desc':
+    'One decision for the whole computer, no folder: the agent can use the mouse, keyboard and screen, and access all the files and programs in your user account. The plan and each app are still approved on every task.',
+  'tasksSettings.full.on': 'Consent given on {date}',
+  'tasksSettings.full.off': 'No consent yet: you’ll be asked when you turn on Full control.',
+  'tasksSettings.full.revoke': 'Withdraw consent',
+  'tasksSettings.full.revokeTitle': 'Withdraw consent for Full control?',
+  'tasksSettings.full.revokeMessage':
+    'Full control servers will stop and tasks running in that mode will be lost. To use it again you’ll have to accept it again.',
   'tasksSettings.rules.title': 'Remembered permissions',
   'tasksSettings.rules.desc':
     'Permissions you marked “Always allow”, across all folders. Removing them takes effect when the folder is reopened.',

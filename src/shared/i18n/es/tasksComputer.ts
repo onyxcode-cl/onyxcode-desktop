@@ -30,9 +30,10 @@ export const tasksComputer = {
   'tasksComputer.mode.sandboxDesc': 'Lee y escribe solo dentro de esta carpeta. Recomendado.',
   'tasksComputer.mode.fullDesc': 'Sin sandbox. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar.',
   'tasksComputer.full.title': '¿Permitir que el agente controle tu Mac?',
-  'tasksComputer.full.intro1': 'Las tareas de «{name}» se ejecutarán ',
+  'tasksComputer.full.intro1': 'Las tareas se ejecutarán ',
   'tasksComputer.full.noSandbox': 'sin sandbox',
-  'tasksComputer.full.intro2': ' y con control del computador.',
+  'tasksComputer.full.intro2':
+    ' y con control del computador. No tienes que elegir una carpeta: el agente podrá usar todo tu equipo y empezará trabajando desde «{name}».',
   'tasksComputer.full.b1': 'Podrá mover el ratón, hacer clic, escribir y pulsar teclas en cualquier aplicación.',
   'tasksComputer.full.cap1': 'Tomará capturas de pantalla, que ',
   'tasksComputer.full.cap2': 'se envían al proveedor del modelo',
@@ -40,7 +41,13 @@ export const tasksComputer = {
   'tasksComputer.full.retention':
     'Las capturas se envían al proveedor del modelo y quedan en el historial de la tarea; las copias temporales se borran al terminar y al cerrar la app.',
   'tasksComputer.full.b3':
-    'Podrá crear, modificar y borrar archivos y ejecutar comandos en cualquier lugar de tu Mac, no solo en esta carpeta.',
+    'Podrá ver la pantalla, crear, modificar y borrar cualquier archivo de tu usuario, abrir cualquier programa y ejecutar comandos: nada queda confinado a una carpeta.',
+  'tasksComputer.full.once':
+    'Esto se te pregunta una sola vez en este equipo. Se guarda la fecha de tu consentimiento y puedes retirarlo cuando quieras en Ajustes › Tareas › Control total.',
+  'tasksComputer.workspace.label': 'Sin sandbox · acceso a todo tu equipo · carpeta de trabajo: {folder}',
+  'tasksComputer.workspace.home': 'Carpeta personal',
+  'tasksComputer.workspace.change': 'Cambiar carpeta',
+  'tasksComputer.workspace.unconfined': 'Control total no está confinado: el agente puede usar todo tu equipo.',
   'tasksComputer.full.stop1': 'Para detenerlo en cualquier momento pulsa ',
   'tasksComputer.full.stop2': ' o el atajo',
   'tasksComputer.full.warn':

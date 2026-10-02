@@ -82,9 +82,12 @@ import { StatusIcon } from './TaskList'
 import {
   addNetworkBlocked,
   clearUnseen,
+  connectFolder,
   currentTasksModel,
   disconnect,
+  fullAccessFor,
   lastFolder,
+  loadFullAccessInfo,
   resync,
   setPanelOpen,
   syncAccessRequests,
@@ -376,6 +379,7 @@ export function TasksWorkspace(): React.JSX.Element {
     if (!bridge) return
     void (async () => {
       await loadFolders()
+      void loadFullAccessInfo()
       const st = useTasks.getState()
       if (st.folder) {
         if (st.phase !== 'ready') void selectFolder(st.folder)
@@ -383,6 +387,8 @@ export function TasksWorkspace(): React.JSX.Element {
       }
       const last = lastFolder()
       if (last && st.folders.some((f) => f.path === last)) void selectFolder(last)
+      // Control total sin carpeta autorizada (p. ej. la carpeta personal): se reconecta si el equipo ya lo consintió.
+      else if (last && fullAccessFor(last) && (await loadFullAccessInfo())?.consentAt) void connectFolder(last, true)
     })()
   }, [bridge])
 

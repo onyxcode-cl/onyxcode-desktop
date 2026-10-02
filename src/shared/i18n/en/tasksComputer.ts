@@ -33,9 +33,10 @@ export const tasksComputer = {
   'tasksComputer.mode.sandboxDesc': 'Reads and writes only inside this folder. Recommended.',
   'tasksComputer.mode.fullDesc': 'No sandbox. Can move the mouse, type, take screenshots and modify files anywhere.',
   'tasksComputer.full.title': 'Allow the agent to control your Mac?',
-  'tasksComputer.full.intro1': 'Tasks in “{name}” will run ',
+  'tasksComputer.full.intro1': 'Tasks will run ',
   'tasksComputer.full.noSandbox': 'without a sandbox',
-  'tasksComputer.full.intro2': ' and with Mac control.',
+  'tasksComputer.full.intro2':
+    ' and with Mac control. You don’t have to pick a folder: the agent will be able to use your whole computer and will start working from “{name}”.',
   'tasksComputer.full.b1': 'It will be able to move the mouse, click, type and press keys in any app.',
   'tasksComputer.full.cap1': 'It will take screenshots, which ',
   'tasksComputer.full.cap2': 'are sent to the model provider',
@@ -43,7 +44,13 @@ export const tasksComputer = {
   'tasksComputer.full.retention':
     'Screenshots are sent to the model provider and stay in the task history; temporary copies are deleted when the task ends and when you quit the app.',
   'tasksComputer.full.b3':
-    'It will be able to create, modify and delete files and run commands anywhere on your Mac, not just in this folder.',
+    'It will be able to see the screen, create, modify and delete any file in your user account, open any program and run commands: nothing is confined to a folder.',
+  'tasksComputer.full.once':
+    'You’re asked this only once on this computer. The date of your consent is saved and you can withdraw it at any time in Settings › Tasks › Full control.',
+  'tasksComputer.workspace.label': 'No sandbox · access to your whole computer · working folder: {folder}',
+  'tasksComputer.workspace.home': 'Home folder',
+  'tasksComputer.workspace.change': 'Change folder',
+  'tasksComputer.workspace.unconfined': 'Full control is not confined: the agent can use your whole computer.',
   'tasksComputer.full.stop1': 'To stop it at any time, press ',
   'tasksComputer.full.stop2': ' or use the shortcut',
   'tasksComputer.full.warn':

@@ -581,3 +581,18 @@ Tercera tanda de Windows: las unitarias y las E2E corren en el PC de pruebas.
 - **Pruebas**: `e2e/lib/proc.ts` (procesos multiplataforma), `e2e/win-skip.json` (5 specs de Tareas/actualizador, con motivo y guardia `win-skip.test.ts`), saltos solo de bloques de Tareas, unitarias de `binary` con falso `.mjs`, specs adaptadas (atajos, textos PC/Mac, asistente de 4 pasos, 8 secciones de Ajustes, `core.autocrlf=false`). Detalle y pendientes en `docs/VERIFICACION.md`.
 - **Medido**: Windows, E2E completas 29 archivos / 162 pruebas verdes (49 saltadas, 2 pasaron en el reintento), ~8 min; Mac `npm run verify` verde.
 - **Pendiente (defecto, no excluido por alcance)**: en el navegador integrado el clic del agente no llega a la vista en Windows (2 pruebas del Lote D saltadas).
+
+## F8-B44 — Control total sin carpeta (rama `feat/control-total-sin-carpeta`)
+
+Petición del dueño: al elegir «Control total del Mac» no se pide carpeta; el agente puede operar en todo el equipo.
+
+- **Antes**: Control total era una concesión POR CARPETA (`tasks:grantFullAccess`), exigía una carpeta autorizada (`approveFolder`, que rechaza el home) y la pantalla de inicio pedía «Elegir carpeta» y «Permitir».
+- **Ahora**: el consentimiento es UNO por equipo (`tasks-folders.json › fullAccessConsentAt`, con fecha), pedido en el diálogo de siempre (texto actualizado: sin carpeta, acceso a todos los archivos y programas, se pregunta una vez). La carpeta de trabajo es la actual si ya hay una elegida; si no, la última usada en Control total o la carpeta personal (`fullAccessDir`). «Cambiar carpeta» (opcional) en el aviso del inicio. Sin consentimiento, `tasks:start {fullAccess}` falla con `FULL_ACCESS_NOT_GRANTED`.
+- **IPC nuevos**: `tasks:fullAccess:state`, `tasks:fullAccess:consent`, `tasks:fullAccess:revokeAll`. `grantFullAccess`/`revokeFullAccess` por carpeta se conservan (compatibilidad: una carpeta con concesión antigua sigue funcionando sin consentimiento nuevo; sin migración destructiva).
+- **Retirar**: Ajustes › Tareas › «Control total del Mac» (fecha del consentimiento y «Retirar consentimiento»): borra consentimiento y concesiones por carpeta y detiene los servidores sin sandbox; vuelve a pedirse el diálogo.
+- **Sin cambios**: plan-gate, aprobaciones por app, ⌘⇧Esc, comprobaciones TCC, Sandbox (sigue pidiendo carpeta y rechazando el home), perfil Seatbelt, credential proxy, provider-egress, proxy-policy y folder-policy (no se tocaron).
+- **Efectos de no tener carpeta autorizada**: la carpeta personal no se recorre para «entregables» ni se crean puntos de restauración (se avisa); las funciones de la interfaz (vista previa, ZIP…) ven el espacio de Control total pero nunca `~/.ssh` ni los demás secretos que el sandbox niega; no se migra la carpeta de trabajo antigua en el home. Con `allowedFolderRoots` (política) Control total sigue exigiendo carpeta autorizada.
+- **Rutinas** en modo Tareas con Control total: el interruptor aparece con el consentimiento del equipo y la carpeta ya no tiene que estar autorizada para Sandbox; el consentimiento propio de cada rutina y la aprobación humana del plan se mantienen.
+- **Interfaz**: aviso «Sin sandbox · acceso a todo tu equipo · carpeta de trabajo: ~» en el inicio y «Control total no está confinado» en la barra roja mientras una tarea corre; la carpeta personal se llama «Carpeta personal».
+- **Pruebas**: `manager.fullaccess.test.ts` (11) y E2E `control-total.e2e.ts` (4: sin carpeta ni selector, cwd = home falso, consentimiento con fecha, indicador, revocar, Sandbox sigue pidiendo carpeta). Windows: modo no disponible, sin cambios.
+

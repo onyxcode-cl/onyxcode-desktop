@@ -18,6 +18,7 @@ import { cw, hasTasksBridge } from './bridge'
 import { folderModeLabel } from './folder-mode'
 import { failedText, firstPoint, notCopiedWarningText, pickPointForMessage, restoreWarningText, type RestoreResult } from './restore-logic'
 import {
+  clearFolder,
   clearUnseen,
   connectFolder,
   currentTasksModel,
@@ -25,6 +26,7 @@ import {
   disconnect,
   forgetTaskMeta,
   fullAccessFor,
+  loadFullAccessInfo,
   loadGrants,
   loadProjectAndMemory,
   loadTask,
@@ -115,28 +117,55 @@ export async function selectFolder(folder: string): Promise<void> {
 }
 
 /**
- * Cambia el modo de acceso de la carpeta actual. Pasar a Control total pide confirmación
- * (diálogo) salvo que `confirmed` sea true; volver a sandbox es inmediato.
+ * Cambia el modo de acceso. Pasar a Control total NO pide carpeta: trabaja en la carpeta actual si ya hay una
+ * elegida, o en la de trabajo por defecto (la última usada o la carpeta personal). El consentimiento explícito
+ * (diálogo) se pide UNA vez por equipo, salvo que `confirmed` sea true; volver a Sandbox es inmediato.
  */
 export async function setAccessMode(fullAccess: boolean, confirmed = false): Promise<void> {
-  const { folder } = useTasks.getState()
-  if (!folder) return
-  if (fullAccess && !confirmed) {
-    useTasks.setState({ pendingFullAccess: folder })
+  if (!fullAccess) return leaveFullAccess()
+  const info = (await loadFullAccessInfo()) ?? useTasks.getState().fullAccessInfo
+  if (!info) return
+  const target = useTasks.getState().folder ?? info.workspace
+  if (!info.consentAt && !confirmed) {
+    useTasks.setState({ pendingFullAccess: target })
     return
   }
   useTasks.setState({ pendingFullAccess: null })
-  // El consentimiento lo registra main (tasks:start {fullAccess} lo exige); volver a sandbox
-  // lo retira y detiene el servidor sin sandbox.
   try {
-    if (fullAccess) await cw('tasks:grantFullAccess', { folder })
-    else await cw('tasks:revokeFullAccess', { folder })
+    // El consentimiento lo registra main (tasks:start {fullAccess} lo exige); con política que lo bloquea, main lo rechaza.
+    if (!info.consentAt) await cw('tasks:fullAccess:consent')
+    else if (info.disabled) throw new Error(t('merr.task.orgNoFullControl'))
+    await loadFullAccessInfo()
   } catch (err) {
     useTasks.setState({ error: errorMessage(err) })
-    if (fullAccess) return
+    return
   }
-  rememberFullAccess(folder, fullAccess)
-  await connectFolder(folder, fullAccess)
+  rememberFullAccess(target, true)
+  await connectFolder(target, true)
+}
+
+/** Vuelve a Sandbox: detiene el servidor sin sandbox; si no hay carpeta autorizada, pide elegir una (Sandbox sí confina). */
+async function leaveFullAccess(): Promise<void> {
+  const { folder, folders } = useTasks.getState()
+  if (!folder) return
+  disconnect() // cierra el stream antes de que main detenga el servidor (sin errores de red en consola)
+  try {
+    await cw('tasks:revokeFullAccess', { folder })
+  } catch (err) {
+    useTasks.setState({ error: errorMessage(err) })
+  }
+  rememberFullAccess(folder, false)
+  if (folders.some((f) => f.path === folder)) await connectFolder(folder, false)
+  else clearFolder()
+}
+
+/** Cambia la carpeta de trabajo de Control total (opcional): cualquier carpeta, sin autorizarla para Sandbox. */
+export async function changeFullWorkspace(): Promise<void> {
+  const picked = await cw('tasks:pickFolder')
+  if (!picked) return
+  useTasks.setState({ error: null })
+  rememberFullAccess(picked, true)
+  await connectFolder(picked, true)
 }
 
 export function cancelFullAccess(): void {

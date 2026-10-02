@@ -52,6 +52,7 @@ import {
   resumeComputerControl,
   revokeAppGrant,
   revokePlanApproval,
+  changeFullWorkspace,
   setAccessMode,
   setAppGrant,
   stopComputerControl,
@@ -179,10 +180,48 @@ function ModeOption({
 
 // ───────────────────────────── Confirmación ─────────────────────────────
 
+/** Ruta para mostrar: la carpeta personal como «~». */
+function displayFolder(path: string, home?: string): string {
+  if (home && path === home) return '~'
+  if (home && path.startsWith(`${home}/`)) return `~${path.slice(home.length)}`
+  return path
+}
+
+/** Aviso visible de que Control total no está confinado, con la carpeta de trabajo y cómo cambiarla (opcional). */
+export function FullWorkspaceNote({ canChange = true }: { canChange?: boolean }): React.JSX.Element | null {
+  const t = useT()
+  const conn = useTasks((s) => s.conn)
+  const requested = useTasks((s) => s.fullAccess)
+  const folder = useTasks((s) => s.folder)
+  const home = useTasks((s) => s.fullAccessInfo?.home)
+  const full = conn ? conn.fullAccess : requested
+  if (!full || !folder) return null
+  return (
+    <div
+      data-testid="full-workspace-note"
+      className="mx-auto mt-3 flex w-full max-w-3xl items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 [[data-theme=dark]_&]:text-amber-300"
+      title={t('tasksComputer.workspace.unconfined')}
+    >
+      <ShieldOff size={13} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{t('tasksComputer.workspace.label', { folder: displayFolder(folder, home) })}</span>
+      {canChange && (
+        <button
+          type="button"
+          onClick={() => void changeFullWorkspace()}
+          className="no-drag shrink-0 rounded-md px-2 py-0.5 font-medium underline-offset-2 hover:underline"
+        >
+          {t('tasksComputer.workspace.change')}
+        </button>
+      )}
+    </div>
+  )
+}
+
 /** "¿Permitir que el agente controle tu Mac?" */
 export function FullAccessDialog(): React.JSX.Element | null {
   const t = useT()
   const folder = useTasks((s) => s.pendingFullAccess)
+  const home = useTasks((s) => s.fullAccessInfo?.home)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -195,7 +234,7 @@ export function FullAccessDialog(): React.JSX.Element | null {
   }, [folder])
 
   if (!folder) return null
-  const name = folder.split('/').filter(Boolean).pop() ?? folder
+  const name = displayFolder(folder, home)
 
   const confirm = (): void => {
     setBusy(true)
@@ -218,9 +257,9 @@ export function FullAccessDialog(): React.JSX.Element | null {
           {t('tasksComputer.full.title')}
         </h2>
         <p className="mt-1 text-sm text-muted">
-          {t('tasksComputer.full.intro1', { name })}
+          {t('tasksComputer.full.intro1')}
           <strong className="text-fg">{t('tasksComputer.full.noSandbox')}</strong>
-          {t('tasksComputer.full.intro2')}
+          {t('tasksComputer.full.intro2', { name })}
         </p>
         <ul className="mt-4 space-y-2.5 text-sm text-muted">
           <li className="flex gap-2.5">
@@ -253,6 +292,9 @@ export function FullAccessDialog(): React.JSX.Element | null {
           </li>
         </ul>
         <p className="mt-4 rounded-lg bg-hover px-3 py-2 text-xs text-muted">{t('tasksComputer.full.warn')}</p>
+        <p className="mt-2 text-xs text-subtle" data-testid="full-consent-once">
+          {t('tasksComputer.full.once')}
+        </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={cancelFullAccess} autoFocus>
             {t('tasksComputer.cancel')}
@@ -533,13 +575,19 @@ export function ControlBanner(): React.JSX.Element | null {
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-3 border-b border-red-700/50 bg-gradient-to-r from-red-600 to-amber-600 px-4 py-2 text-white shadow-sm">
+      <div
+        className="flex shrink-0 items-center gap-3 border-b border-red-700/50 bg-gradient-to-r from-red-600 to-amber-600 px-4 py-2 text-white shadow-sm"
+        data-testid="control-banner-busy"
+      >
         <span className="relative flex h-2.5 w-2.5 shrink-0">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold">{t('tasksComputer.banner.controlling')}</div>
+          <div className="text-sm font-semibold">
+            {t('tasksComputer.banner.controlling')}{' '}
+            <span className="text-xs font-normal text-white/80">· {t('tasksComputer.workspace.unconfined')}</span>
+          </div>
           <div className="truncate text-xs text-white/85">
             {lastAction ? (
               <>

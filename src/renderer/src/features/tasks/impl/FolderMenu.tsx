@@ -35,6 +35,13 @@ export function FolderMenu({
   const folder = useTasks((s) => s.folder)
   const folderSet = useTasks((s) => s.folderSet)
   const fullAccess = useTasks((s) => !!s.conn?.fullAccess)
+  const home = useTasks((s) => s.fullAccessInfo?.home)
+  // La carpeta personal (Control total sin carpeta) se llama «Carpeta personal», no con el nombre de usuario.
+  const label = folder
+    ? fullAccess && home === folder
+      ? t('tasksComputer.workspace.home')
+      : baseName(folder)
+    : t('tasksComputer.menu.choose')
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState<PendingLink | null>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
@@ -130,7 +137,7 @@ export function FolderMenu({
         }`}
       >
         {folder ? <FolderOpen size={13} className="shrink-0 text-accent" /> : <FolderPlus size={13} className="shrink-0" />}
-        <span className="truncate">{folder ? baseName(folder) : t('tasksComputer.menu.choose')}</span>
+        <span className="truncate">{label}</span>
         <ChevronDown size={12} className="shrink-0 text-muted" />
       </button>
     ) : (
@@ -144,7 +151,7 @@ export function FolderMenu({
         className="flex w-full items-center gap-2 rounded-lg border border-border bg-elevated px-2.5 py-2 text-left text-sm hover:bg-hover"
       >
         <FolderOpen size={15} className="shrink-0 text-accent" />
-        <span className="min-w-0 flex-1 truncate font-medium">{folder ? baseName(folder) : t('tasksComputer.menu.choose')}</span>
+        <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
         <ChevronDown size={14} className="shrink-0 text-muted" />
       </button>
     )

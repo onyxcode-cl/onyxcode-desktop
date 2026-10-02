@@ -28,6 +28,7 @@ import {
   type TasksDeliverable,
   type TasksFolder,
   type TasksFolderSet,
+  type TasksFullAccessState,
   type TasksServerInfo,
   type FolderAccessMode,
   type FolderCheck,
@@ -46,6 +47,7 @@ import { skillsInlineConfig } from './opencode-config'
 import type { EgressBlockedEvent } from './proxy'
 import { forbiddenFolderReason as folderPolicyReason, parseMountOutput, type MountInfo } from './folder-policy'
 import { loadManagedPolicy } from './policy'
+import { defaultDeniedReadPaths } from './sandbox-profile'
 
 /** Consentimiento de "Control total" registrado en main (AUDIT.md S7). */
 interface FullAccessGrant {
@@ -63,6 +65,13 @@ interface Persisted {
   linked: Record<string, LinkedFolder[]>
   /** Carpetas de confianza (todos los espacios). */
   trusted: TrustedFolder[]
+  /**
+   * Consentimiento explícito de Control total, UNA vez por equipo (no por carpeta): fecha (epoch ms) en que el
+   * usuario aceptó el diálogo, o ausente si no lo hay. Se retira en Ajustes › Tareas.
+   */
+  fullAccessConsentAt?: number
+  /** Última carpeta de trabajo usada en Control total (por defecto, la carpeta personal). */
+  fullAccessDir?: string
 }
 
 /** Carpeta adicional efectiva de un servidor sandbox (vinculada ∪ de confianza, sin duplicados). */
@@ -259,6 +268,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           }
         }
         if (Array.isArray(raw.trusted)) data.trusted = raw.trusted.filter(validFolder)
+        if (typeof raw.fullAccessConsentAt === 'number' && Number.isFinite(raw.fullAccessConsentAt) && raw.fullAccessConsentAt > 0) {
+          data.fullAccessConsentAt = raw.fullAccessConsentAt
+        }
+        if (typeof raw.fullAccessDir === 'string' && raw.fullAccessDir) data.fullAccessDir = raw.fullAccessDir
       }
     } catch (err) {
       console.error('[tasks] tasks-folders.json inválido:', err)
@@ -384,6 +397,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Conjunto de carpetas de un espacio; `applied` es false si el servidor sandbox en marcha arrancó con otro. */
   folderSet(folder: string): TasksFolderSet {
+    const fp = normalizeFolder(folder)
+    // Carpeta de trabajo de Control total sin autorizar para Sandbox: sin carpetas adicionales.
+    if (!this.isApproved(fp) && this.fullAccessRoots().includes(fp)) return { primary: fp, linked: [], trusted: [], applied: true }
     const f = this.requireApproved(folder)
     const data = this.load()
     const entry = this.servers.get(serverKey(f, false))
@@ -489,6 +505,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.trustedList()
   }
 
+  /** Concesión PREVIA de Control total de esa carpeta (modelo antiguo, por carpeta; sigue valiendo). */
   hasFullAccessGrant(folder: string): boolean {
     // Política gestionada: con `disableFullAccess` ninguna concesión previa vale.
     if (loadManagedPolicy()?.disableFullAccess) return false
@@ -496,7 +513,114 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.load().fullAccess.some((g) => g.path === f)
   }
 
-  /** Registra el consentimiento explícito de Control total (tras el diálogo de confirmación). */
+  /** Fecha (epoch ms) del consentimiento de Control total de este equipo, o null. Con `disableFullAccess` no hay. */
+  fullAccessConsentAt(): number | null {
+    if (loadManagedPolicy()?.disableFullAccess) return null
+    return this.load().fullAccessConsentAt ?? null
+  }
+
+  /**
+   * Carpeta de trabajo por defecto de Control total: la última usada en ese modo si sigue existiendo; si no, la
+   * carpeta personal del usuario. El usuario puede cambiarla, pero no hace falta elegir ninguna.
+   */
+  fullAccessWorkspace(): string {
+    const last = this.load().fullAccessDir
+    if (last) {
+      try {
+        if (statSync(last).isDirectory()) return normalizeFolder(last)
+      } catch {
+        // ya no existe: vuelve al home
+      }
+    }
+    return normalizeFolder(homedir())
+  }
+
+  /** Estado de Control total para la UI (diálogo único, carpeta por defecto, bloqueo por política). */
+  fullAccessState(): TasksFullAccessState {
+    const disabled = loadManagedPolicy()?.disableFullAccess === true
+    return {
+      consentAt: disabled ? null : (this.load().fullAccessConsentAt ?? null),
+      workspace: this.fullAccessWorkspace(),
+      home: normalizeFolder(homedir()),
+      disabled
+    }
+  }
+
+  /**
+   * Registra el consentimiento explícito de Control total de ESTE EQUIPO (tras el diálogo). Conserva la fecha
+   * original si ya existía. Sin carpeta: el agente podrá actuar sobre todo el equipo del usuario.
+   */
+  grantFullAccessConsent(): number {
+    if (loadManagedPolicy()?.disableFullAccess) throw new Error(t('merr.task.orgNoFullControl'))
+    const data = this.load()
+    if (!data.fullAccessConsentAt) {
+      data.fullAccessConsentAt = Date.now()
+      this.save()
+    }
+    return data.fullAccessConsentAt
+  }
+
+  /**
+   * Retira TODO el Control total: el consentimiento del equipo y las concesiones antiguas por carpeta, y detiene
+   * todos los servidores sin sandbox. Con esto vuelve a pedirse el diálogo.
+   */
+  async revokeFullAccessConsent(): Promise<void> {
+    const data = this.load()
+    delete data.fullAccessConsentAt
+    delete data.fullAccessDir
+    data.fullAccess = []
+    this.save()
+    await Promise.all(
+      [...this.servers.values()].filter((e) => e.info.fullAccess).map((e) => this.stopOne(e.info.folder, true).catch(() => undefined))
+    )
+  }
+
+  /**
+   * ¿Puede arrancar Control total en `f` (ya normalizada)? Devuelve el motivo si no.
+   *  - concesión antigua de esa carpeta (debe seguir autorizada), o
+   *  - consentimiento del equipo + una carpeta que existe (la carpeta NO tiene que estar autorizada para Sandbox).
+   * Con `allowedFolderRoots` (política) se exige además que la carpeta esté autorizada (que ya pasó esa política).
+   */
+  fullAccessBlock(f: string): 'notGranted' | 'notDir' | null {
+    if (loadManagedPolicy()?.disableFullAccess) return 'notGranted'
+    if (this.isApproved(f) && this.hasFullAccessGrant(f)) return null
+    if (!this.load().fullAccessConsentAt) return 'notGranted'
+    try {
+      if (!statSync(f).isDirectory()) return 'notDir'
+    } catch {
+      return 'notDir'
+    }
+    if (loadManagedPolicy()?.allowedFolderRoots && !this.isApproved(f)) return 'notGranted'
+    return null
+  }
+
+  /** ¿Puede arrancar Control total en esa carpeta? (rutinas y UI.) */
+  canStartFullAccess(folder: string): boolean {
+    return this.fullAccessBlock(normalizeFolder(folder)) === null
+  }
+
+  /** Carpetas de trabajo de Control total que la UI puede leer (vista previa, ZIP…): la actual y las de servidores vivos. */
+  private fullAccessRoots(): string[] {
+    if (!this.fullAccessConsentAt()) return []
+    const roots = new Set<string>([this.fullAccessWorkspace()])
+    for (const e of this.servers.values()) if (e.info.fullAccess && (e.handle || e.starting)) roots.add(e.info.folder)
+    return [...roots]
+  }
+
+  /** ¿`real` es la carpeta personal o una que la contiene? (demasiado grande para puntos de restauración o entregables.) */
+  coversHome(real: string): boolean {
+    return isInside(normalizeFolder(homedir()), normalizeFolder(real))
+  }
+
+  /** Registra la última carpeta de trabajo de Control total (solo si cambió). */
+  private rememberFullDir(f: string): void {
+    const data = this.load()
+    if (data.fullAccessDir === f) return
+    data.fullAccessDir = f
+    this.save()
+  }
+
+  /** Concesión antigua por carpeta (compatibilidad): sigue registrándose si la carpeta está autorizada. */
   grantFullAccess(folder: string): void {
     if (loadManagedPolicy()?.disableFullAccess) {
       throw new Error(t('merr.task.orgNoFullControl'))
@@ -510,7 +634,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     }
   }
 
-  /** Retira el Control total y detiene su servidor (sin sandbox) si estaba en marcha. */
+  /** Retira la concesión antigua de esa carpeta y detiene su servidor sin sandbox (el consentimiento del equipo no cambia). */
   async revokeFullAccess(folder: string): Promise<void> {
     const f = normalizeFolder(folder)
     const data = this.load()
@@ -584,9 +708,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    */
   async start(folder: string, fullAccess = false): Promise<TasksConnection> {
     const f = normalizeFolder(folder)
-    if (!this.isApproved(f)) throw new Error(t('merr.task.notAuthorized'))
-    if (fullAccess && !this.hasFullAccessGrant(f)) {
-      throw new Error(`${FULL_ACCESS_NOT_GRANTED}: ${t('merr.task.fullNotGranted')}`)
+    if (fullAccess) {
+      // Control total: consentimiento del equipo (o concesión antigua de la carpeta); la carpeta no tiene que estar autorizada.
+      const block = this.fullAccessBlock(f)
+      if (block === 'notDir') throw new Error(t('merr.task.notValidFolder', { folder: f }))
+      if (block) throw new Error(`${FULL_ACCESS_NOT_GRANTED}: ${t('merr.task.fullNotGranted')}`)
+      this.rememberFullDir(f)
+    } else if (!this.isApproved(f)) {
+      throw new Error(t('merr.task.notAuthorized'))
     }
     const key = serverKey(f, fullAccess)
     const existing = this.servers.get(key)
@@ -673,7 +802,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const before = Promise.resolve(this.beforeSpawn ? this.beforeSpawn(folder, fullAccess) : undefined)
     const prepared = before.then(() => {
       // scratch antiguo → `.onyxcode/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
-      migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
+      // Nunca en la carpeta personal (Control total sin carpeta): no se toca nada del home del usuario.
+      if (folder !== normalizeFolder(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
     const starting = prepared.then(([{ config, browserMcpPort }, gateUrl]) =>
@@ -791,7 +921,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    */
   deliverables(folder: string, since: number): TasksDeliverable[] {
     const root = normalizeFolder(folder)
-    if (!this.isApproved(root)) throw new Error(t('merr.task.notAuthorized'))
+    if (!this.isApproved(root)) {
+      if (!this.fullAccessRoots().includes(root)) throw new Error(t('merr.task.notAuthorized'))
+      // La carpeta personal entera no se recorre (miles de archivos, ~/Library…): sin entregables detectados.
+      if (root === normalizeFolder(homedir())) return []
+    }
     const out: TasksDeliverable[] = []
     let seen = 0
     const scan = (base: string, linkedRoot?: string): void => {
@@ -836,7 +970,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return out.sort((a, b) => b.mtime - a.mtime).slice(0, 200)
   }
 
-  /** Verifica que una ruta esté dentro de una carpeta de Tareas, vinculada o de confianza. */
+  /**
+   * ¿La ruta está en la carpeta de trabajo de Control total (con consentimiento del equipo)? Aun así se niegan los
+   * mismos secretos que el sandbox (`~/.ssh`, claves de nube, config de OpenCode…) a las funciones de la interfaz.
+   */
+  private insideFullWorkspace(p: string): boolean {
+    if (!this.fullAccessRoots().some((r) => isInside(p, r))) return false
+    const home = normalizeFolder(homedir())
+    return !defaultDeniedReadPaths(home).some((d) => isInside(p, d) || isInside(p, normalizeFolder(d)))
+  }
+
+  /** Verifica que una ruta esté dentro de una carpeta de Tareas, vinculada o de confianza (o del espacio de Control total). */
   assertInsideApproved(path: string): string {
     const p = normalizeFolder(path)
     const data = this.load()
@@ -844,7 +988,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       data.folders.some((f) => isInside(p, f.path)) ||
       Object.values(data.linked).some((list) => list.some((l) => isInside(p, l.path))) ||
       data.trusted.some((t) => isInside(p, t.path))
-    if (!ok) throw new Error(t('merr.task.pathNotAuthorized'))
+    if (!ok && !this.insideFullWorkspace(p)) throw new Error(t('merr.task.pathNotAuthorized'))
     return p
   }
 }
