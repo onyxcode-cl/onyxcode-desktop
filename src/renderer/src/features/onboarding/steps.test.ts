@@ -4,6 +4,7 @@ import {
   canAdvance,
   decideOnboarding,
   connectedNames,
+  stepsFor,
   connectTasksNotice,
   connectTermsNotice,
   hasConfiguredProvider,
@@ -145,5 +146,15 @@ describe('paso «Conecta tu IA»', () => {
     expect(connectTasksNotice()).toContain('OpenCode Go')
     expect(connectTasksNotice()).toContain(MODE_LABELS.tasks)
     expect(connectTermsNotice()).toContain('términos')
+  })
+})
+
+describe('pasos por plataforma', () => {
+  it('macOS conserva los permisos; Windows termina en «Modos»', () => {
+    expect(stepsFor('darwin')).toEqual(['opencode', 'auth', 'model', 'modes', 'permissions'])
+    expect(stepsFor('win32')).toEqual(['opencode', 'auth', 'model', 'modes'])
+    expect(nextStep('modes', 'win32')).toBeNull()
+    expect(nextStep('modes', 'darwin')).toBe('permissions')
+    expect(prevStep('modes', 'win32')).toBe('model')
   })
 })

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Keyboard, RotateCcw, X, Zap } from 'lucide-react'
 import { t as tr, type MsgKey } from '@shared/i18n'
-import { DEFAULT_QUICK_ENTRY_SHORTCUT } from '@shared/ipc-extras'
+import { defaultQuickEntryShortcut } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
+import { currentPlatform } from '../../../lib/platform'
 import { getExtras, useExtrasPrefs } from './extras'
 import { Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 
@@ -175,8 +176,8 @@ export function ShortcutsSection(): React.JSX.Element {
             </Button>
             <Button
               variant="ghost"
-              disabled={prefs.quickEntryShortcut === DEFAULT_QUICK_ENTRY_SHORTCUT}
-              onClick={() => void update({ quickEntryShortcut: DEFAULT_QUICK_ENTRY_SHORTCUT })}
+              disabled={prefs.quickEntryShortcut === defaultQuickEntryShortcut(currentPlatform())}
+              onClick={() => void update({ quickEntryShortcut: defaultQuickEntryShortcut(currentPlatform()) })}
             >
               <RotateCcw size={14} /> {t('settings.shortcuts.reset')}
             </Button>

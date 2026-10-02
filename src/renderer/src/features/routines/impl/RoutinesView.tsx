@@ -33,6 +33,9 @@ import { Markdown } from '../../../components/Markdown'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { hasTasksBridge } from '../../tasks/impl/bridge'
+import { platformCaps } from '../../../lib/platform'
+import { PlatformNote } from '../../../components/PlatformNote'
+import { MODE_LABELS } from '@shared/labels'
 import { useCode } from '../../code/impl/store'
 import { openProjectTrusted } from '../../code/impl/trust'
 import { MODE_META } from './meta'
@@ -147,6 +150,9 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
             <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
               <Clock size={11} className="shrink-0" /> <span className="truncate">{scheduleText(r.schedule)}</span>
             </div>
+            {r.mode === 'tasks' && !platformCaps().tasks && (
+              <div className="mt-1 text-[11px] font-medium text-warning">{t('platform.win.unavailable.routineBadge')}</div>
+            )}
           </div>
         </button>
         <Toggle
@@ -316,6 +322,7 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
   const [starting, setStarting] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const Icon = MODE_META[r.mode].icon
+  const unavailable = r.mode === 'tasks' && !platformCaps().tasks
   const running = r.running || history.some((h) => h.status === 'running')
   const stats = useMemo(() => {
     const done = history.filter((h) => h.status !== 'running')
@@ -343,10 +350,16 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
           </button>
         </div>
 
+        {unavailable && (
+          <div className="mt-3">
+            <PlatformNote>{t('platform.win.unavailable.routine', { tasks: MODE_LABELS.tasks })}</PlatformNote>
+          </div>
+        )}
+
         <div className="mt-3 flex items-center gap-2">
           <Button
             variant="primary"
-            disabled={running || starting}
+            disabled={running || starting || unavailable}
             onClick={() => {
               setStarting(true)
               void runRoutineNow(r.id).finally(() => setStarting(false))
@@ -486,7 +499,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
       <h2 className="mt-4 text-xl font-semibold tracking-tight">{t('routines.empty.title')}</h2>
       <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">{t('routines.empty.desc')}</p>
       <div className="mt-8 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
-        {ROUTINE_TEMPLATES.map((tpl) => {
+        {ROUTINE_TEMPLATES.filter((tpl) => tpl.input.mode !== 'tasks' || platformCaps().tasks).map((tpl) => {
           const Icon = TEMPLATE_ICON[tpl.id] ?? CalendarClock
           const ModeIcon = MODE_META[tpl.input.mode].icon
           return (

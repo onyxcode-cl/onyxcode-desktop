@@ -28,10 +28,13 @@ export const settings = {
   'settings.general.language.es': 'Español',
   'settings.general.language.en': 'English (beta)',
   'settings.general.tray.label': 'Icono en la barra de menús',
+  'settings.general.tray.label.win': 'Icono en el área de notificación',
   'settings.general.tray.description': 'Acceso rápido a nueva conversación, Quick Entry y salir.',
   'settings.general.notifications.label': 'Notificaciones',
   'settings.general.notifications.description':
     'Avisos nativos cuando una sesión de Code o una tarea termina o necesita tu aprobación, con badge en el Dock.',
+  'settings.general.notifications.description.win':
+    'Avisos nativos cuando una sesión de Code termina o necesita tu aprobación, con parpadeo en la barra de tareas.',
   'settings.general.sound.label': 'Sonido',
   'settings.general.sound.description': 'Reproduce el sonido del sistema al mostrar una notificación.',
   'settings.general.keepAwake.label': 'Mantener el Mac despierto',
@@ -66,16 +69,21 @@ export const settings = {
   'settings.account.state': 'Estado',
   'settings.account.signOut.label': 'Cerrar sesión',
   'settings.account.signOut.description': 'Vuelves a la pantalla de acceso. Tus conversaciones y claves de IA se quedan en tu Mac.',
+  'settings.account.signOut.description.win': 'Vuelves a la pantalla de acceso. Tus conversaciones y claves de IA se quedan en tu PC.',
   'settings.account.yourData': 'Tus datos',
   'settings.account.export.label': 'Descargar mis datos',
   'settings.account.export.description': 'Un archivo JSON con lo que el servidor guarda de tu cuenta.',
   'settings.account.delete.label': 'Borrar mi cuenta',
   'settings.account.delete.description':
     'Borra tu cuenta y tus datos del servidor. No toca las claves de IA ni las conversaciones de este Mac.',
+  'settings.account.delete.description.win':
+    'Borra tu cuenta y tus datos del servidor. No toca las claves de IA ni las conversaciones de este PC.',
   'settings.account.exported': 'Tus datos se guardaron en el archivo que elegiste.',
   'settings.account.deleteConfirm.title': '¿Borrar tu cuenta?',
   'settings.account.deleteConfirm.message':
     'Se borrarán tu cuenta y tus datos del servidor. No se puede deshacer.\n\nTus conversaciones y claves de IA de este Mac no se tocan.',
+  'settings.account.deleteConfirm.message.win':
+    'Se borrarán tu cuenta y tus datos del servidor. No se puede deshacer.\n\nTus conversaciones y claves de IA de este PC no se tocan.',
 
   // Uso
   'settings.usage.period.today': 'Hoy',
@@ -136,6 +144,7 @@ export const settings = {
   'settings.shortcuts.app.sidebar': 'Mostrar u ocultar la barra lateral',
   'settings.shortcuts.off': 'Desactivado',
   'settings.shortcuts.needModifier': 'Usa al menos un modificador (⌘, ⌃, ⌥) o una tecla de función.',
+  'settings.shortcuts.needModifier.win': 'Usa al menos un modificador (Ctrl, Alt, Shift) o una tecla de función.',
   'settings.shortcuts.title': 'Atajos',
   'settings.shortcuts.subtitle': 'Atajos de teclado globales y de la aplicación.',
   'settings.shortcuts.quick.description':

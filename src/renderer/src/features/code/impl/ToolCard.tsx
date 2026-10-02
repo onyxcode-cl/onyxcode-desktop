@@ -7,6 +7,7 @@
 import { memo, useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { t, type MsgKey } from '@shared/i18n'
+import { splitPath } from '../../../lib/paths'
 import { useLocale, useT } from '../../../lib/i18n'
 import {
   AlertCircle,
@@ -47,11 +48,6 @@ export function relPath(p: string, root: string | null): string {
     return r || '.'
   }
   return p
-}
-
-function splitPath(p: string): { dir: string; name: string } {
-  const i = p.lastIndexOf('/')
-  return i < 0 ? { dir: '', name: p } : { dir: p.slice(0, i), name: p.slice(i + 1) }
 }
 
 interface TodoItem {

@@ -252,6 +252,7 @@ export const routines = {
   'routines.editor.active': 'Activa',
   'routines.editor.missing': 'Falta {items}.',
   'routines.editor.saveHint': '⌘↵ para guardar',
+  'routines.editor.saveHint.win': 'Ctrl+Enter para guardar',
   'routines.editor.cancel': 'Cancelar',
   'routines.editor.saving': 'Guardando…',
   'routines.editor.saveChanges': 'Guardar cambios',

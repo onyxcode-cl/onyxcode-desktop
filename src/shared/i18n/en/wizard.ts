@@ -17,6 +17,7 @@ export const wizard = {
   'wizard.fullControlShort': 'Full control',
   'wizard.connectTasksNotice':
     'OpenCode works with any of these providers. The only exception is {tasks} with the sandbox, which in {app} only supports OpenCode Go (and OpenCode’s free models); to use another provider there, choose {fullControl}.',
+  'wizard.connectTasksNotice.win': 'OpenCode works with any of these providers.',
   'wizard.connectTermsNotice': 'Each person is responsible for complying with their provider’s terms and OpenCode’s.',
 
   'wizard.opencode.bundledLead': '{app} includes OpenCode as its engine, so there is nothing to install.',
@@ -27,7 +28,9 @@ export const wizard = {
   'wizard.opencode.useMyCli': 'Use my CLI…',
   'wizard.opencode.retry': 'Try again',
   'wizard.opencode.leadFound': '{app} uses OpenCode as its engine. We already found it on this Mac.',
+  'wizard.opencode.leadFound.win': '{app} uses OpenCode as its engine. We already found it on this PC.',
   'wizard.opencode.leadMissing': '{app} uses OpenCode as its engine. You need to have it installed on this Mac.',
+  'wizard.opencode.leadMissing.win': '{app} uses OpenCode as its engine. You need to have it installed on this PC.',
   'wizard.opencode.searching': 'Looking for OpenCode…',
   'wizard.opencode.foundTitle': 'OpenCode found{version}',
   'wizard.opencode.versionSuffix': ' (version {version})',

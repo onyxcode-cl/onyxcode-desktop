@@ -29,6 +29,8 @@ import { Button } from '../../components/Button'
 import { ModelPicker } from '../../components/ModelPicker'
 import { call } from '../../lib/api'
 import { useT } from '../../lib/i18n'
+import { currentPlatform } from '../../lib/platform'
+import { modeAvailable } from '@shared/platform-caps'
 import { errorMessage } from '../../lib/opencode'
 import { useProviders } from '../../stores/providers'
 import { useServer } from '../../stores/server'
@@ -42,7 +44,7 @@ import {
   connectTermsNotice,
   decideOnboarding,
   nextStep,
-  ONBOARDING_STEPS,
+  stepsFor,
   opencodeStepMode,
   prevStep,
   stepIndex,
@@ -120,6 +122,7 @@ function OnboardingHost(): React.JSX.Element | null {
 
   if (!step) return null
 
+  const steps = stepsFor()
   const finish = (): void => void update({ onboarded: true })
   const last = nextStep(step) === null
   const advance = canAdvance(step, {
@@ -138,13 +141,13 @@ function OnboardingHost(): React.JSX.Element | null {
       >
         <header className="border-b border-border px-6 pt-5 pb-4">
           <p className="text-[11px] font-semibold tracking-[0.06em] text-subtle uppercase">
-            {t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: ONBOARDING_STEPS.length })}
+            {t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: steps.length })}
           </p>
           <h2 id="onboarding-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.015em]">
             {stepTitle(step, opencodeStepMode(info))}
           </h2>
           <div className="mt-3 flex gap-1.5" aria-hidden>
-            {ONBOARDING_STEPS.map((s, i) => (
+            {steps.map((s, i) => (
               <span key={s} className={`h-1 flex-1 rounded-full ${i <= stepIndex(step) ? 'bg-accent' : 'bg-hover'}`} />
             ))}
           </div>
@@ -543,7 +546,7 @@ function StepModes(): React.JSX.Element {
     <div className="space-y-3">
       <Lead>{t('wizard.modes.lead')}</Lead>
       <ul className="space-y-2">
-        {MODE_INFO.map((m) => (
+        {MODE_INFO.filter((m) => modeAvailable(m.id, currentPlatform())).map((m) => (
           <li key={m.id} className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
             <span className="mt-0.5 text-accent">{m.icon}</span>
             <div>

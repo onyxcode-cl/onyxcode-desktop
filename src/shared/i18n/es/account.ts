@@ -1,7 +1,10 @@
 export const account = {
   'account.dataSentence':
     'Guardamos tu correo para gestionar tu cuenta y contar usuarios. Tus conversaciones y claves de IA siguen en tu Mac.',
+  'account.dataSentence.win':
+    'Guardamos tu correo para gestionar tu cuenta y contar usuarios. Tus conversaciones y claves de IA siguen en tu PC.',
   'account.existingUserNote': 'Tus conversaciones y claves de IA siguen en tu Mac.',
+  'account.existingUserNote.win': 'Tus conversaciones y claves de IA siguen en tu PC.',
   'account.banner.expired.title': 'Tu sesión terminó',
   'account.banner.expired.body': 'Por seguridad, vuelve a entrar para seguir usando la app.',
   'account.banner.deleted.title': 'Esta cuenta ya no existe',
@@ -48,6 +51,8 @@ export const account = {
   'account.choose.emailLogin': 'Iniciar sesión con tu correo',
   'account.choose.emailSignup': 'Crear una cuenta con tu correo',
   'account.choose.memoryOnly': 'No se pudo usar el Llavero de macOS en este equipo: tu sesión durará solo hasta que cierres la app.',
+  'account.choose.memoryOnly.win':
+    'No se pudo usar el almacén de credenciales de Windows en este equipo: tu sesión durará solo hasta que cierres la app.',
 
   'account.email.sub': 'Te enviaremos un código de 6 dígitos para confirmar que el correo es tuyo.',
   'account.email.titleLogin': 'Inicia sesión con tu correo',

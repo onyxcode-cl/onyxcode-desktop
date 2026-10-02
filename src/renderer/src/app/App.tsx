@@ -30,6 +30,7 @@ import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
 import { useTheme } from './useTheme'
 import { useT } from '../lib/i18n'
+import { isMacPlatform, platformCaps } from '../lib/platform'
 
 const MOD = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl+'
 
@@ -122,7 +123,7 @@ export function App(): React.JSX.Element {
           if (target.directory && code.directory !== target.directory && !(await openProjectTrusted(target.directory))) return
           await useCode.getState().selectSession(target.id)
         })()
-      } else {
+      } else if (platformCaps().tasks) {
         useUi.getState().setMode('tasks')
         void (async () => {
           const tasks = useTasks.getState()
@@ -209,7 +210,7 @@ export function App(): React.JSX.Element {
       </div>
       <main className="relative flex min-w-0 flex-1 flex-col">
         {collapsed && (
-          <div className="absolute top-2 left-20 z-10 animate-fade-in">
+          <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>
             <IconButton label={t('app.sidebar.show', { mod: MOD })} onClick={toggleSidebar}>
               <PanelLeftOpen size={16} />
             </IconButton>

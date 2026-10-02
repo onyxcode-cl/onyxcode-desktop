@@ -11,6 +11,7 @@ import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MsgKey } from '@shared/i18n'
+import { tildify } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -302,7 +303,7 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
       {open && (
         <div className="absolute top-full left-0 z-50 mt-1 w-64 overflow-hidden rounded-xl border border-border bg-elevated py-1 shadow-xl">
           <div className="truncate px-3 py-1.5 font-mono text-[11px] text-subtle" title={directory}>
-            {directory.replace(/^\/Users\/[^/]+/, '~')}
+            {tildify(directory)}
           </div>
           <button type="button" className={item} onClick={() => (setOpen(false), void pickAndOpenFolder())}>
             <FolderOpen size={14} /> {t('code.menu.openAnother')}

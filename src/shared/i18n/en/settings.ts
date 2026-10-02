@@ -30,10 +30,13 @@ export const settings = {
   'settings.general.language.es': 'Español',
   'settings.general.language.en': 'English (beta)',
   'settings.general.tray.label': 'Menu bar icon',
+  'settings.general.tray.label.win': 'Notification area icon',
   'settings.general.tray.description': 'Quick access to a new conversation, Quick Entry and quit.',
   'settings.general.notifications.label': 'Notifications',
   'settings.general.notifications.description':
     'Native alerts when a Code session or a task finishes or needs your approval, with a Dock badge.',
+  'settings.general.notifications.description.win':
+    'Native alerts when a Code session finishes or needs your approval, with a taskbar flash.',
   'settings.general.sound.label': 'Sound',
   'settings.general.sound.description': 'Plays the system sound when a notification is shown.',
   'settings.general.keepAwake.label': 'Keep your Mac awake',
@@ -68,16 +71,21 @@ export const settings = {
   'settings.account.state': 'Status',
   'settings.account.signOut.label': 'Sign out',
   'settings.account.signOut.description': 'You go back to the sign-in screen. Your conversations and AI keys stay on your Mac.',
+  'settings.account.signOut.description.win': 'You go back to the sign-in screen. Your conversations and AI keys stay on your PC.',
   'settings.account.yourData': 'Your data',
   'settings.account.export.label': 'Download my data',
   'settings.account.export.description': 'A JSON file with what the server stores about your account.',
   'settings.account.delete.label': 'Delete my account',
   'settings.account.delete.description':
     'Deletes your account and your data from the server. It does not touch the AI keys or conversations on this Mac.',
+  'settings.account.delete.description.win':
+    'Deletes your account and your data from the server. It does not touch the AI keys or conversations on this PC.',
   'settings.account.exported': 'Your data was saved to the file you chose.',
   'settings.account.deleteConfirm.title': 'Delete your account?',
   'settings.account.deleteConfirm.message':
     'Your account and your data will be deleted from the server. This cannot be undone.\n\nThe conversations and AI keys on this Mac are not touched.',
+  'settings.account.deleteConfirm.message.win':
+    'Your account and your data will be deleted from the server. This cannot be undone.\n\nThe conversations and AI keys on this PC are not touched.',
 
   // Usage
   'settings.usage.period.today': 'Today',
@@ -137,6 +145,7 @@ export const settings = {
   'settings.shortcuts.app.sidebar': 'Show or hide the sidebar',
   'settings.shortcuts.off': 'Off',
   'settings.shortcuts.needModifier': 'Use at least one modifier (⌘, ⌃, ⌥) or a function key.',
+  'settings.shortcuts.needModifier.win': 'Use at least one modifier (Ctrl, Alt, Shift) or a function key.',
   'settings.shortcuts.title': 'Shortcuts',
   'settings.shortcuts.subtitle': 'Global and in-app keyboard shortcuts.',
   'settings.shortcuts.quick.description':

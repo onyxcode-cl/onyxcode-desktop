@@ -20,3 +20,13 @@ export function capsFor(platform: string): PlatformCaps {
   const mac = platform === 'darwin'
   return { tasks: mac, computer: mac, updater: mac, keepAwakeText: mac }
 }
+
+/** ¿El modo existe en esta plataforma? Solo Tareas depende de ella. */
+export function modeAvailable(mode: string, platform: string): boolean {
+  return mode !== 'tasks' || capsFor(platform).tasks
+}
+
+/** El modo pedido si está disponible; si no (p. ej. `tasks` guardado desde un Mac), Chat. */
+export function usableMode<M extends string>(mode: M, platform: string): M | 'chat' {
+  return modeAvailable(mode, platform) ? mode : 'chat'
+}

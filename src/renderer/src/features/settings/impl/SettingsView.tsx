@@ -22,6 +22,7 @@ import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
 import { useT } from '../../../lib/i18n'
 import { useAccountState } from '../../../lib/use-account-state'
+import { platformCaps } from '../../../lib/platform'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
 import { AccountSection } from './AccountSection'
@@ -100,9 +101,15 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
   const t = useT()
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
-  // «Cuenta» solo existe si la app exige cuenta (ACCOUNT_API definido).
   const [account] = useAccountState()
-  const sections = SECTIONS.filter((s) => s.id !== 'account' || account?.required === true)
+  // «Cuenta» solo si la app exige cuenta; Tareas, su red/modo auto y Control del PC solo donde existen (macOS).
+  const caps = platformCaps()
+  const sections = SECTIONS.filter(
+    (s) =>
+      (s.id !== 'account' || account?.required === true) &&
+      (!['tasks', 'network', 'automode'].includes(s.id) || caps.tasks) &&
+      (s.id !== 'computer' || caps.computer)
+  )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 
   useEffect(() => initExtrasPrefs(), [])

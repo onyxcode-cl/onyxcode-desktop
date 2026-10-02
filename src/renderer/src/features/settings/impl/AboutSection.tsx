@@ -8,6 +8,8 @@ import { useT } from '../../../lib/i18n'
 import { api } from '../../../lib/api'
 import { engineNoticeText, engineSummary } from '../../../lib/engine-notice'
 import { checkFailedText, checkResultText, lastCheckText, updateView } from '../../../lib/update-notice'
+import { platformCaps } from '../../../lib/platform'
+import { PlatformNote } from '../../../components/PlatformNote'
 import { runUpdateAction, useUpdateState } from '../../../lib/use-update-state'
 import { ProgressBar } from '../../../components/ProgressBar'
 import { useSettings } from '../../../stores/settings'
@@ -120,84 +122,93 @@ export function AboutSection(): React.JSX.Element {
         </>
       )}
 
-      <SubTitle>{t('settings.about.updates')}</SubTitle>
-      <Card>
-        <Row
-          label={t('settings.about.autoCheck')}
-          description={
-            configured
-              ? t('settings.about.autoCheck.configured', { agent: `${APP_NAME}/${update?.current ?? info?.version ?? ''}` })
-              : t('settings.about.autoCheck.unconfigured')
-          }
-        >
-          <Toggle
-            checked={checkUpdates}
-            onChange={(v) => void useSettings.getState().update({ checkUpdates: v })}
-            label={t('settings.about.autoCheck')}
-            disabled={!configured}
-          />
-        </Row>
-        <Row label={t('settings.about.currentVersion')}>
-          <span data-testid="update-current" className="font-mono text-sm">
-            v{update?.current ?? info?.version ?? '…'}
-          </span>
-        </Row>
-        <Row label={t('settings.about.channel')} description={t('settings.about.channel.description')}>
-          <span className="text-sm">{t('settings.about.channel.stable')}</span>
-        </Row>
-        <Row
-          label={t('settings.about.checkNow')}
-          description={
-            <span data-testid="update-last-check">
-              {checkResult && (
-                <span data-testid="update-result" className="mb-0.5 block text-fg">
-                  {checkResult}
-                </span>
-              )}
-              {lastCheckText(update?.lastCheck ?? null)}
-            </span>
-          }
-        >
-          <Button size="sm" onClick={searchNow} disabled={!configured || !checkUpdates || update?.checking === true}>
-            {update?.checking ? t('settings.about.checking') : t('settings.about.checkNow')}
-          </Button>
-        </Row>
-        {view && update && (
-          <Row
-            label={
-              view.phase === 'idle' || view.phase === 'cancelled'
-                ? t('settings.about.versionAvailable', { version: update.latest?.version ?? '' })
-                : t('settings.about.update')
-            }
-            description={
-              <span data-testid="update-status" data-phase={view.phase}>
-                <span className="block text-fg">
-                  {view.text}
-                  {view.percent !== null && <span className="ml-1.5 font-mono tabular-nums text-muted">{view.percent} %</span>}
-                </span>
-                {view.progress && view.phase !== 'installing' && view.phase !== 'restarting' && (
-                  <span className="mt-1.5 block">
-                    <ProgressBar percent={view.percent} label={view.text} />
-                  </span>
-                )}
+      {platformCaps().updater ? (
+        <>
+          <SubTitle>{t('settings.about.updates')}</SubTitle>
+          <Card>
+            <Row
+              label={t('settings.about.autoCheck')}
+              description={
+                configured
+                  ? t('settings.about.autoCheck.configured', { agent: `${APP_NAME}/${update?.current ?? info?.version ?? ''}` })
+                  : t('settings.about.autoCheck.unconfigured')
+              }
+            >
+              <Toggle
+                checked={checkUpdates}
+                onChange={(v) => void useSettings.getState().update({ checkUpdates: v })}
+                label={t('settings.about.autoCheck')}
+                disabled={!configured}
+              />
+            </Row>
+            <Row label={t('settings.about.currentVersion')}>
+              <span data-testid="update-current" className="font-mono text-sm">
+                v{update?.current ?? info?.version ?? '…'}
               </span>
-            }
-          >
-            <div data-testid="update-actions" className="flex gap-2">
-              {view.actions.map((a) => (
-                <Button
-                  key={a.id}
-                  size="sm"
-                  variant={a.primary ? 'primary' : 'secondary'}
-                  onClick={() => runUpdateAction(a.id, update, setUpdate)}
-                >
-                  {a.label}
-                </Button>
-              ))}
-            </div>
-          </Row>
-        )}
-      </Card>
+            </Row>
+            <Row label={t('settings.about.channel')} description={t('settings.about.channel.description')}>
+              <span className="text-sm">{t('settings.about.channel.stable')}</span>
+            </Row>
+            <Row
+              label={t('settings.about.checkNow')}
+              description={
+                <span data-testid="update-last-check">
+                  {checkResult && (
+                    <span data-testid="update-result" className="mb-0.5 block text-fg">
+                      {checkResult}
+                    </span>
+                  )}
+                  {lastCheckText(update?.lastCheck ?? null)}
+                </span>
+              }
+            >
+              <Button size="sm" onClick={searchNow} disabled={!configured || !checkUpdates || update?.checking === true}>
+                {update?.checking ? t('settings.about.checking') : t('settings.about.checkNow')}
+              </Button>
+            </Row>
+            {view && update && (
+              <Row
+                label={
+                  view.phase === 'idle' || view.phase === 'cancelled'
+                    ? t('settings.about.versionAvailable', { version: update.latest?.version ?? '' })
+                    : t('settings.about.update')
+                }
+                description={
+                  <span data-testid="update-status" data-phase={view.phase}>
+                    <span className="block text-fg">
+                      {view.text}
+                      {view.percent !== null && <span className="ml-1.5 font-mono tabular-nums text-muted">{view.percent} %</span>}
+                    </span>
+                    {view.progress && view.phase !== 'installing' && view.phase !== 'restarting' && (
+                      <span className="mt-1.5 block">
+                        <ProgressBar percent={view.percent} label={view.text} />
+                      </span>
+                    )}
+                  </span>
+                }
+              >
+                <div data-testid="update-actions" className="flex gap-2">
+                  {view.actions.map((a) => (
+                    <Button
+                      key={a.id}
+                      size="sm"
+                      variant={a.primary ? 'primary' : 'secondary'}
+                      onClick={() => runUpdateAction(a.id, update, setUpdate)}
+                    >
+                      {a.label}
+                    </Button>
+                  ))}
+                </div>
+              </Row>
+            )}
+          </Card>
+        </>
+      ) : (
+        <>
+          <SubTitle>{t('settings.about.updates')}</SubTitle>
+          <PlatformNote>{t('platform.win.unavailable.update')}</PlatformNote>
+        </>
+      )}
 
       <SubTitle>{t('settings.about.links')}</SubTitle>
       <div className="flex flex-wrap gap-2">
