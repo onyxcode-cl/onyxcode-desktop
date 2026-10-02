@@ -189,6 +189,15 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
   it('no empaquetado: ignora resourcesPath (desarrollo idéntico al de siempre)', () => {
     expect(bundledOpencodePath({ isPackaged: false, resourcesPath: res })).toBeNull()
   })
+  it('Windows: el binario embebido es opencode.exe', () => {
+    const winRes = join(dir, 'ResWin')
+    mkdirSync(join(winRes, 'opencode'), { recursive: true })
+    const exe = join(winRes, 'opencode', 'opencode.exe')
+    writeFileSync(exe, 'MZ')
+    chmodSync(exe, 0o755)
+    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'win32' })).toBe(exe)
+    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'darwin' })).toBeNull()
+  })
   it('la variable de tests solo se honra si NO está empaquetado', () => {
     const testDir = join(res, 'opencode')
     expect(bundledOpencodePath({ isPackaged: false, testDir })).toBe(bin)
@@ -286,10 +295,11 @@ describe('pin.json', () => {
   it('la versión fijada es compatible con el SDK (misma mayor.menor)', () => {
     expect(isCompatible(pin.version as string, OPENCODE_SDK_VERSION)).toBe(true)
   })
-  it('sha256 son 64 hex, url es https de la release oficial y size es un entero positivo', () => {
-    expect(pin.sha256).toMatch(/^[0-9a-f]{64}$/)
-    expect(pin.url).toMatch(/^https:\/\/github\.com\/anomalyco\/opencode\/releases\/download\/v[^/]+\/[^/]+\.zip$/)
-    expect(pin.url).toContain(`/v${pin.version as string}/`)
-    expect(Number.isInteger(pin.size) && (pin.size as number) > 0).toBe(true)
+  it.each(['darwin-arm64', 'win32-x64'])('asset %s: sha256 de 64 hex, url https de la release oficial y size entero positivo', (key) => {
+    const asset = (pin.assets as Record<string, { url: string; sha256: string; size: number }>)[key]
+    expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/)
+    expect(asset.url).toMatch(/^https:\/\/github\.com\/anomalyco\/opencode\/releases\/download\/v[^/]+\/[^/]+\.zip$/)
+    expect(asset.url).toContain(`/v${pin.version as string}/`)
+    expect(Number.isInteger(asset.size) && asset.size > 0).toBe(true)
   })
 })

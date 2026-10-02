@@ -6,6 +6,10 @@
  * Si la app muere sin `exit` limpio (crash, kill -9), al siguiente arranque
  * `killStaleServers()` mata los grupos que sigan vivos, verificando antes que el PID sea
  * realmente un `opencode serve` (el PID pudo reutilizarse) — AUDIT.md B3.
+ *
+ * Windows: no hay grupos POSIX ni `/bin/ps`. El árbol se mata con `taskkill /PID n /T /F` y la
+ * inspección (línea de comandos y descendientes) usa `Get-CimInstance Win32_Process` vía PowerShell
+ * (`wmic` no existe en Windows 11 reciente); solo se consulta si hay `pids.json` con entradas.
  */
 import { app } from 'electron'
 import { execFileSync } from 'node:child_process'
@@ -82,8 +86,58 @@ export function untrackPid(pid: number | undefined): void {
   if (next.length !== list.length) write(next)
 }
 
-/** Línea de comandos y grupo de un PID vivo (null si no existe). */
+const WIN_QUERY_TIMEOUT_MS = 5000
+const isWin = (): boolean => process.platform === 'win32'
+
+interface WinProc {
+  pid: number
+  ppid: number
+  command: string
+}
+
+/** Interpreta el JSON de `ConvertTo-Json` (objeto suelto o lista) de procesos CIM. */
+export function parseWinProcesses(out: string): WinProc[] {
+  const text = out.trim()
+  if (!text) return []
+  let raw: unknown
+  try {
+    raw = JSON.parse(text)
+  } catch {
+    return []
+  }
+  const list = Array.isArray(raw) ? raw : [raw]
+  const rows: WinProc[] = []
+  for (const r of list as Array<Record<string, unknown>>) {
+    const pid = Number(r?.ProcessId)
+    if (!Number.isInteger(pid)) continue
+    rows.push({ pid, ppid: Number(r.ParentProcessId) || 0, command: typeof r.CommandLine === 'string' ? r.CommandLine : '' })
+  }
+  return rows
+}
+
+/** Consulta CIM (PowerShell, sin perfil, con timeout). `pid` limita a un proceso; sin él, todos. */
+function queryWinProcesses(pid?: number): WinProc[] {
+  const filter = pid ? ` -Filter 'ProcessId=${Math.trunc(pid)}'` : ''
+  const script = `Get-CimInstance Win32_Process${filter} | Select-Object ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress`
+  try {
+    const out = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], {
+      encoding: 'utf8',
+      timeout: WIN_QUERY_TIMEOUT_MS,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+    return parseWinProcesses(out)
+  } catch {
+    return []
+  }
+}
+
+/** Línea de comandos y grupo de un PID vivo (null si no existe). En Windows no hay grupo: `pgid` = pid. */
 function inspect(pid: number): { pgid: number; command: string } | null {
+  if (isWin()) {
+    const row = queryWinProcesses(pid).find((r) => r.pid === pid)
+    return row ? { pgid: pid, command: row.command } : null
+  }
   try {
     const out = execFileSync('/bin/ps', ['-o', 'pgid=,command=', '-p', String(pid)], {
       encoding: 'utf8',
@@ -96,9 +150,28 @@ function inspect(pid: number): { pgid: number; command: string } | null {
   }
 }
 
-/** ¿Es un `opencode serve` (directo o vía sandbox-exec)? */
+/** ¿Es un `opencode serve` (directo o vía sandbox-exec; `opencode` o `"…\opencode.exe"` en Windows)? */
 export function isOpencodeServe(command: string): boolean {
-  return /(^|\/)opencode(\s|$)/.test(command) && /\sserve(\s|$)/.test(command)
+  return /(^|[\\/"])opencode(\.exe)?"?(\s|$)/i.test(command) && /\sserve(\s|$)/.test(command)
+}
+
+/** Descendientes de `root` en una tabla pid→ppid (sin `root`, sin `self`). */
+export function collectDescendants(pairs: Array<[number, number]>, root: number, self = process.pid): number[] {
+  const children = new Map<number, number[]>()
+  for (const [pid, ppid] of pairs) {
+    const list = children.get(ppid) ?? []
+    list.push(pid)
+    children.set(ppid, list)
+  }
+  const result: number[] = []
+  const stack = [...(children.get(root) ?? [])]
+  while (stack.length) {
+    const pid = stack.pop() as number
+    if (pid === self || result.includes(pid)) continue
+    result.push(pid)
+    stack.push(...(children.get(pid) ?? []))
+  }
+  return result
 }
 
 /** PIDs descendientes de `root` (snapshot de `ps`; vacío si falla). */
@@ -109,25 +182,12 @@ function descendants(root: number): number[] {
   } catch {
     return []
   }
-  const children = new Map<number, number[]>()
+  const pairs: Array<[number, number]> = []
   for (const line of out.split('\n')) {
     const m = /^\s*(\d+)\s+(\d+)/.exec(line)
-    if (!m) continue
-    const pid = Number(m[1])
-    const ppid = Number(m[2])
-    const list = children.get(ppid) ?? []
-    list.push(pid)
-    children.set(ppid, list)
+    if (m) pairs.push([Number(m[1]), Number(m[2])])
   }
-  const result: number[] = []
-  const stack = [...(children.get(root) ?? [])]
-  while (stack.length) {
-    const pid = stack.pop() as number
-    if (pid === process.pid || result.includes(pid)) continue
-    result.push(pid)
-    stack.push(...(children.get(pid) ?? []))
-  }
-  return result
+  return collectDescendants(pairs, root)
 }
 
 function signalSafe(pid: number, signal: NodeJS.Signals): boolean {
@@ -146,6 +206,15 @@ function signalSafe(pid: number, signal: NodeJS.Signals): boolean {
  */
 export function killTree(pid: number | undefined, signal: NodeJS.Signals = 'SIGKILL'): void {
   if (!pid) return
+  if (isWin()) {
+    // Sin grupos POSIX: `taskkill /T` recorre el árbol por PID padre; /F porque no hay SIGTERM.
+    try {
+      execFileSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { timeout: WIN_QUERY_TIMEOUT_MS, windowsHide: true, stdio: 'ignore' })
+    } catch {
+      // ya muerto o sin permiso
+    }
+    return
+  }
   const tree = descendants(pid)
   for (const d of tree) {
     signalSafe(-d, signal) // su grupo, si lo encabeza
@@ -168,8 +237,9 @@ export function killStaleServers(): number {
     }
     const info = inspect(e.pid)
     if (!info || !isOpencodeServe(info.command)) continue
-    // Solo matar el grupo si el proceso lo encabeza (lanzado detached por la app).
-    if (info.pgid === e.pid) killTree(e.pid, 'SIGKILL')
+    // Solo matar el grupo si el proceso lo encabeza (lanzado detached por la app). En Windows el árbol
+    // siempre se mata con taskkill /T.
+    if (isWin() || info.pgid === e.pid) killTree(e.pid, 'SIGKILL')
     else {
       try {
         process.kill(e.pid, 'SIGKILL')
