@@ -136,7 +136,7 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
     if (!statSync(real).isFile()) throw new Error(t('merr.files.quickLook'))
     killQuickLook()
     // `-p` abre el panel de QuickLook; `qlmanage` lo mantiene hasta que se cierra o lo matamos.
-    const proc = spawn(QLMANAGE_BIN, ['-p', real], { detached: true, stdio: 'ignore' })
+    const proc = spawn(QLMANAGE_BIN, ['-p', real], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' })
     quickLook = proc
     proc.on('error', () => {
       if (quickLook === proc) quickLook = null

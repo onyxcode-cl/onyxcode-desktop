@@ -16,6 +16,7 @@ import {
   type PickInput
 } from './binary'
 import { bundledOpencodePath, findOpencodeBinary, resolveOpencode, resolveOpencodeAsync } from './server'
+import { posixOnly } from '../../test/platform'
 
 // Sin las carpetas habituales (`~/.opencode/bin`, Homebrew…): los tests no deben depender del OpenCode instalado.
 vi.mock('../process/child-env', async (orig) => ({ ...(await orig<typeof import('../process/child-env')>()), EXTRA_PATH_DIRS: [] }))
@@ -54,7 +55,8 @@ describe('parseVersion / isCompatible', () => {
   })
 })
 
-describe('validateOpencodeBin (archivos reales)', () => {
+// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
+describe.skipIf(!posixOnly)('validateOpencodeBin (archivos reales)', () => {
   it('acepta un ejecutable cuyo --version imprime algo', async () => {
     const bin = script('ok', 'echo 1.18.32')
     expect(await validateOpencodeBin(bin)).toEqual({ ok: true, path: bin, output: '1.18.32', version: '1.18.32' })
@@ -101,7 +103,8 @@ describe('validateOpencodeBin (archivos reales)', () => {
   })
 })
 
-describe('getOpencodeInfo', () => {
+// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
+describe.skipIf(!posixOnly)('getOpencodeInfo', () => {
   it('sin binario: found=false', async () => {
     expect(await getOpencodeInfo(() => null)).toMatchObject({
       found: false,
@@ -181,7 +184,8 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
   mkdirSync(join(noexec, 'opencode'), { recursive: true })
   writeFileSync(join(noexec, 'opencode', 'opencode'), 'x')
 
-  it('empaquetado: usa <Resources>/opencode/opencode si existe y es ejecutable', () => {
+  // En Windows el permiso de ejecución no existe (X_OK siempre pasa) y el binario es opencode.exe: cubierto por el caso win32 de abajo.
+  it.skipIf(!posixOnly)('empaquetado: usa <Resources>/opencode/opencode si existe y es ejecutable', () => {
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: res })).toBe(bin)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada') })).toBeNull()
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: noexec })).toBeNull()
@@ -189,14 +193,24 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
   it('no empaquetado: ignora resourcesPath (desarrollo idéntico al de siempre)', () => {
     expect(bundledOpencodePath({ isPackaged: false, resourcesPath: res })).toBeNull()
   })
-  it('la variable de tests solo se honra si NO está empaquetado', () => {
+  it('Windows: el binario embebido es opencode.exe', () => {
+    const winRes = join(dir, 'ResWin')
+    mkdirSync(join(winRes, 'opencode'), { recursive: true })
+    const exe = join(winRes, 'opencode', 'opencode.exe')
+    writeFileSync(exe, 'MZ')
+    chmodSync(exe, 0o755)
+    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'win32' })).toBe(exe)
+    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'darwin' })).toBeNull()
+  })
+  it.skipIf(!posixOnly)('la variable de tests solo se honra si NO está empaquetado', () => {
     const testDir = join(res, 'opencode')
     expect(bundledOpencodePath({ isPackaged: false, testDir })).toBe(bin)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada'), testDir })).toBeNull()
   })
 })
 
-describe('resolución completa con CLI y embebido reales (scripts falsos)', () => {
+// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
+describe.skipIf(!posixOnly)('resolución completa con CLI y embebido reales (scripts falsos)', () => {
   const saved = { bin: process.env.OPENCODE_BIN, path: process.env.PATH, test: process.env.ONYXCODE_TEST_BUNDLED_DIR }
   afterEach(() => {
     for (const [k, v] of [
@@ -286,10 +300,11 @@ describe('pin.json', () => {
   it('la versión fijada es compatible con el SDK (misma mayor.menor)', () => {
     expect(isCompatible(pin.version as string, OPENCODE_SDK_VERSION)).toBe(true)
   })
-  it('sha256 son 64 hex, url es https de la release oficial y size es un entero positivo', () => {
-    expect(pin.sha256).toMatch(/^[0-9a-f]{64}$/)
-    expect(pin.url).toMatch(/^https:\/\/github\.com\/anomalyco\/opencode\/releases\/download\/v[^/]+\/[^/]+\.zip$/)
-    expect(pin.url).toContain(`/v${pin.version as string}/`)
-    expect(Number.isInteger(pin.size) && (pin.size as number) > 0).toBe(true)
+  it.each(['darwin-arm64', 'win32-x64'])('asset %s: sha256 de 64 hex, url https de la release oficial y size entero positivo', (key) => {
+    const asset = (pin.assets as Record<string, { url: string; sha256: string; size: number }>)[key]
+    expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/)
+    expect(asset.url).toMatch(/^https:\/\/github\.com\/anomalyco\/opencode\/releases\/download\/v[^/]+\/[^/]+\.zip$/)
+    expect(asset.url).toContain(`/v${pin.version as string}/`)
+    expect(Number.isInteger(asset.size) && asset.size > 0).toBe(true)
   })
 })

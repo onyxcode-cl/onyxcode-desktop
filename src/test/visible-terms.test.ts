@@ -136,7 +136,7 @@ function scan(): string[] {
   for (const d of DIRS) walk(join(ROOT, d), files)
   const failures: string[] = []
   for (const abs of files.sort()) {
-    const rel = relative(ROOT, abs)
+    const rel = relative(ROOT, abs).replace(/\\/g, '/')
     for (const { n, text } of liveLines(rel, readFileSync(abs, 'utf8'))) {
       for (const rule of RULES) {
         const hit = rule.inStrings ? stringLiterals(text).some((lit) => rule.re.test(lit)) : rule.re.test(text)

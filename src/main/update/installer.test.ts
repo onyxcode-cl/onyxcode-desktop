@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { InstallState } from '@shared/update-install'
 import { nodeInstallerFs, stagingRoot, UpdateInstaller, type FetchLike, type InstallerDeps, type RunFn } from './installer'
+import { posixOnly } from '../../test/platform'
 
 const APP_ID = 'cl.bentec.onyxcode'
 const REPO = 'o/r'
@@ -156,7 +157,7 @@ describe('UpdateInstaller: camino feliz', () => {
     // Solo binarios del sistema, nada dentro del staging como ejecutable.
     for (const c of calls) expect(c[0].startsWith('/usr/bin/')).toBe(true)
     expect(inst.getReady()?.stagedApp).toBe(join(staged(), 'extract', 'OnyxCode.app'))
-    expect(statSync(staged()).mode & 0o777).toBe(0o700)
+    if (posixOnly) expect(statSync(staged()).mode & 0o777).toBe(0o700)
     // Sin credenciales ni cookies en las peticiones.
     for (const r of w.requests) {
       expect(r.init.credentials).toBe('omit')
@@ -448,7 +449,8 @@ describe('UpdateInstaller: contenido del ZIP', () => {
     })
     expect((await go(inst)).phase).toBe('ready')
   })
-  it('FIFO dentro de la .app', async () => {
+  // mkfifo no existe en Windows (el actualizador no es de la v1 de Windows).
+  it.skipIf(!posixOnly)('FIFO dentro de la .app', async () => {
     const { inst } = make(world(), { onExtract: (d) => execFileSync('/usr/bin/mkfifo', [join(d, 'OnyxCode.app', 'Contents', 'tuberia')]) })
     expect(await go(inst)).toMatchObject({ code: 'zip' })
   })

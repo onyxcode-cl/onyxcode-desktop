@@ -79,6 +79,8 @@ export const mainErrors = {
   'merr.routine.moreCount': '+{count} more',
   'merr.routine.interrupted': 'Interrupted (the app was closed during the run)',
   'merr.routine.orgDisabled': 'Routines are turned off by your organization’s policy.',
+  'merr.routine.platformUnsupported': 'Routines in Tasks mode are not available on this platform yet.',
+  'merr.platform.unsupported': 'This feature is not available on this platform yet.',
   'merr.routine.needsPrompt': 'The routine needs an instruction (prompt)',
   'merr.routine.badMode': 'Invalid mode',
   'merr.routine.folderNotAuthorized': 'The folder isn’t authorized for tasks (authorize it first from Tasks).',

@@ -21,6 +21,15 @@ ni los servidores OpenCode del usuario.
 | `npm run perf:startup` | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria». |
 | `npm run verify` | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden. |
 
+## Windows (PC de pruebas, `scripts/win/`)
+
+`STEPS=ci,typecheck,unit,build scripts/win/sync.sh` (desde la Mac) sube el árbol a `C:\onyx\wt` y ejecuta `C:\onyx\run.ps1` (Node 22 portátil en `C:\onyx\node22`; límites ci 900 s, typecheck 300, unit 600, build 300, e2e 2400, package 1500; limpia huérfanos al empezar y al acabar). Pasos extra: `fetch` (descarga y verifica `opencode.exe`) y `bundle` (`check:win-bundle`). `scripts/win/smoke.ps1` arranca la app sin pantalla con `OPENCODE_BIN`, comprueba «listo» < 30 s, cierre limpio (`WM_CLOSE`), huérfano simulado eliminado y ningún proceso sobrante; `procs.ps1` lista lo que cuelga de `C:\onyx`.
+
+Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo los de fixtures POSIX, que se sustituyen en la tanda 3):
+- `macOnly` (Tareas/actualizador): `sandbox-profile.test.ts` (Seatbelt), `restore-points.test.ts` (puntos de restauración del modo Tareas), `swap.test.ts` (`validateSwapArgs`, `startSwap`), `swap.integration.test.ts`, y en `main-errors.i18n.test.ts` las comprobaciones de `forbiddenFolderReason` (folder-policy).
+- `posixOnly` (fixtures `#!/bin/sh`, permisos, `mkfifo`): `binary.test.ts` (`validateOpencodeBin`, `getOpencodeInfo`, resolución completa y 2 casos de `bundledOpencodePath`; el caso win32 sí corre), `m001-tasks-rename.test.ts` (un caso con `chmod`), `installer.test.ts` (FIFO) y las aserciones de modo `0600`/`0700` en `account/store`, `mcp-catalog-install`, `installer` y `data-dir`.
+- Los repos temporales de `git/*.test.ts` fijan `core.autocrlf=false` (el sistema de Windows trae `true`).
+
 ## Medición de arranque y memoria (`npm run perf:startup`)
 
 `e2e/perf/startup.perf.ts` (config `vitest.perf.config.ts`, `E2E_MODE=prod`, con OpenCode falso y userData temporal; nunca toca datos reales). No forma parte de `verify`: tarda ~5,5 min y depende de la máquina. Hace dos cosas:

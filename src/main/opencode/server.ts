@@ -168,8 +168,10 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))
         }),
         stdio: ['ignore', 'pipe', 'pipe'],
-        // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
-        detached: true
+        // Líder de su propio grupo POSIX: `killTree` mata también MCP/bash (AUDIT.md B3). En Windows
+        // `detached` abriría una consola y no hay grupos: se mata el árbol con `taskkill /T`.
+        detached: process.platform !== 'win32',
+        windowsHide: true
       })
       this.child = child
       trackPid(child.pid, 'main')
@@ -285,7 +287,14 @@ function appIsPackaged(): boolean {
   }
 }
 
+/** Nombre del binario embebido según la plataforma. */
+export function bundledBinaryName(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'opencode.exe' : 'opencode'
+}
+
 export interface BundledOptions {
+  /** Plataforma (solo tests). */
+  platform?: NodeJS.Platform
   isPackaged?: boolean
   resourcesPath?: string
   /** Valor de `ONYXCODE_TEST_BUNDLED_DIR` (por defecto, el de `process.env`). */
@@ -293,7 +302,7 @@ export interface BundledOptions {
 }
 
 /**
- * OpenCode incluido en la app: `<Resources>/opencode/opencode`, solo si la app está empaquetada y
+ * OpenCode incluido en la app: `<Resources>/opencode/opencode` (`opencode.exe` en Windows), solo si la app está empaquetada y
  * el archivo existe y es ejecutable. En desarrollo es null (el repo vive en ~/Documents y un binario
  * bajo `resources/` fallaría por TCC): allí se usa el CLI del usuario u `OPENCODE_BIN`. Para tests,
  * `ONYXCODE_TEST_BUNDLED_DIR` (honrada ÚNICAMENTE si `!isPackaged`) apunta a un directorio que
@@ -304,17 +313,17 @@ export function bundledOpencodePath(o: BundledOptions = {}): string | null {
   let candidate: string | null = null
   if (packaged) {
     const res = o.resourcesPath ?? process.resourcesPath
-    if (res) candidate = join(res, 'opencode', 'opencode')
+    if (res) candidate = join(res, 'opencode', bundledBinaryName(o.platform))
   } else {
     const dir = o.testDir ?? process.env[TEST_BUNDLED_ENV]
-    if (dir) candidate = join(dir, 'opencode')
+    if (dir) candidate = join(dir, bundledBinaryName(o.platform))
   }
   return candidate && existsSync(candidate) && isExecutable(candidate) ? candidate : null
 }
 
 /** CLI del usuario: PATH y carpetas habituales. */
 function findCliBinary(): string | null {
-  const name = process.platform === 'win32' ? 'opencode.exe' : 'opencode'
+  const name = bundledBinaryName()
   const dirs = [EXTRA_PATH_DIRS[0], ...(process.env.PATH ?? '').split(delimiter), ...EXTRA_PATH_DIRS.slice(1)]
   for (const dir of dirs) {
     if (!dir) continue

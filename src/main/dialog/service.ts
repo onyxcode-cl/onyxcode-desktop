@@ -49,7 +49,13 @@ function tryLaunch(cmd: string, args: string[]): Promise<boolean> {
       }
     }
     try {
-      const child = spawn(cmd, args, { shell: false, detached: true, stdio: 'ignore', env: extendedEnv() })
+      const child = spawn(cmd, args, {
+        shell: false,
+        detached: process.platform !== 'win32',
+        windowsHide: true,
+        stdio: 'ignore',
+        env: extendedEnv()
+      })
       child.once('error', () => done(false))
       child.once('spawn', () => {
         child.unref()

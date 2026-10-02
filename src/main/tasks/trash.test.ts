@@ -40,7 +40,7 @@ describe('ONYXCODE_E2E_TRASH_DIR (solo pruebas)', () => {
       }
     }
     walk(root)
-    expect(hits.map((h) => h.slice(root.length))).toEqual(['/main/tasks/trash.ts'])
+    expect(hits.map((h) => h.slice(root.length).replace(/\\/g, '/'))).toEqual(['/main/tasks/trash.ts'])
     expect(readFileSync(hits[0], 'utf8')).toMatch(/const dir = !i\.isPackaged \? i\.env\.ONYXCODE_E2E_TRASH_DIR : undefined/)
   })
 })

@@ -688,6 +688,15 @@ Canal nuevo, solo ventana principal (no está en `CHANNEL_ROLES`), esquema estri
 - **Deshacer.** Reusa `git:discardUndo`: restaura la copia solo si el archivo sigue siendo exactamente lo que dejó el descarte (hash sha256 en el manifiesto).
 - **Límite conocido.** Entre la copia y la aplicación hay una ventana de milisegundos en la que una edición externa podría no quedar en la copia; `git apply` exige que el contexto coincida, así que un cambio en esas líneas hace fallar la operación, pero uno en otra zona del archivo se conservaría en el archivo y no en la copia (el hash de la copia se compara con el del archivo justo antes).
 
+## 3 quindecies. Windows: arranque (tanda 1)
+
+- **Entorno de los procesos hijos.** En Windows `minimalEnv` hereda una lista blanca propia (sin distinguir mayúsculas) y conserva `Path` ampliado; siguen fuera `ELECTRON_*`, `NODE_OPTIONS` y cualquier token del usuario. Se hereda `USERPROFILE`/`APPDATA`/`LOCALAPPDATA`/`TEMP`/`ProgramData` porque sin ellas OpenCode (Bun) no arranca; `ProgramFiles*` se hereda solo para localizar Git.
+- **Sin modos POSIX.** `0600`/`0700` no se aplican en NTFS (`chmod` no tiene efecto): los archivos de `userData` (cuenta cifrada con DPAPI/`safeStorage`, `opencode.json`, almacén de OpenCode) dependen de la ACL heredada de `%APPDATA%`, que por defecto solo da acceso al usuario, a SYSTEM y a los administradores. Pendiente evaluar una ACL explícita en una tanda posterior.
+- **Procesos.** Sin grupos de procesos: `taskkill /PID n /T /F` mata el árbol, y la limpieza de huérfanos (`killStaleServers`) verifica por PowerShell/CIM que el PID siga siendo un `opencode.exe serve` antes de matarlo (PID reutilizado). `opencode.exe` se lanza con `windowsHide` y sin `detached` (no abre consola).
+- **Superficie reducida.** Fuera de macOS no se carga el código de Tareas (Seatbelt, proxy de credenciales), Control del PC ni el actualizador; sus canales IPC responden `PLATFORM_UNSUPPORTED`. Las rutinas en modo Tareas se rechazan al guardar y al ejecutar.
+- **Política gestionada.** `%ProgramData%\OnyxCode\managed.json` (escribible solo por administradores en una instalación por defecto), mismo criterio *fail-closed*.
+- **Binario embebido.** `pin.json` fija URL, tamaño y SHA-256 por plataforma; el ZIP se verifica antes de extraer con `tar.exe` de System32.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

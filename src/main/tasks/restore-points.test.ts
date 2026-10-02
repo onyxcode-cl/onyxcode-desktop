@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { RestorePoints, type RestoreDeps, type RestoreLimits } from './restore-points'
+import { macOnly } from '../../test/platform'
 
 let base: string
 let folder: string
@@ -61,7 +62,8 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(base, { recursive: true, force: true }))
 
-describe('RestorePoints', () => {
+// Puntos de restauración del modo Tareas: fuera de la v1 de Windows (fixtures POSIX: modos, symlinks, rutas).
+describe.skipIf(!macOnly)('RestorePoints', () => {
   it('ida y vuelta: modificar, borrar y crear', async () => {
     put('a.txt', 'uno\ndos\n')
     put('c.txt', 'cc')
@@ -351,7 +353,8 @@ const manifestOf = (id: string): any => {
   return JSON.parse(readFileSync(join(dir, 'points', `${id}.json`), 'utf8'))
 }
 
-describe('RestorePoints: robustez', () => {
+// Puntos de restauración del modo Tareas: fuera de la v1 de Windows (fixtures POSIX: modos, symlinks, rutas).
+describe.skipIf(!macOnly)('RestorePoints: robustez', () => {
   it('H1: un archivo que no se puede copiar se registra y nunca va a la Papelera al deshacer', async () => {
     put('ok.txt', 'ok')
     put('secreto.txt', 'datos del usuario')

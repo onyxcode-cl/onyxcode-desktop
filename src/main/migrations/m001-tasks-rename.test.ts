@@ -6,6 +6,7 @@ import { LEGACY_USERDATA_RENAMES } from './legacy-names'
 import { M001_ID, listBackups, readManifest } from './m001-tasks-rename'
 import { readRegistry, rollbackM001, runMigrations } from './index'
 import { cleanTmp, readJson, seededUserData, snapshot, tmpDir } from './test-helpers'
+import { posixOnly } from '../../test/platform'
 
 const quiet = { log: () => undefined }
 const VERSION = '0.2.2'
@@ -197,7 +198,8 @@ describe('m001: userData viejo sembrado -> nombres nuevos', () => {
     expect(readManifest(bdir)?.completed).toBe(true)
   })
 
-  it('un paso de renombre que falla (carpeta sin permiso de escritura) tampoco impide los demás', () => {
+  // chmod 0o500 no impide escribir en NTFS: el fallo no se puede provocar así en Windows.
+  it.skipIf(!posixOnly)('un paso de renombre que falla (carpeta sin permiso de escritura) tampoco impide los demás', () => {
     const ud = seededUserData()
     chmodSync(join(ud, 'Partitions'), 0o555)
     try {

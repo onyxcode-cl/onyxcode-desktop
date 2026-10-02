@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ACCOUNT_FILE, ACCOUNT_TEST_FILE, createAccountStore, isPlainTestStore, type SafeStorageLike, type StoredAccount } from './store'
+import { posixOnly } from '../../test/platform'
 
 /** safeStorage falso: «cifra» invirtiendo y con prefijo; nunca toca el Llavero. */
 function fakeSafeStorage(available = true): SafeStorageLike & { calls: number } {
@@ -42,7 +43,8 @@ describe('almacén cifrado', () => {
     expect(raw.includes('tok-secreto-123')).toBe(false)
     expect(raw.includes('ana@ejemplo.cl')).toBe(false)
     expect(createAccountStore({ dir, safeStorage: fakeSafeStorage() }).load()).toEqual(DATA)
-    expect(statSync(join(dir, ACCOUNT_FILE)).mode & 0o777).toBe(0o600)
+    // NTFS no tiene modos POSIX: en Windows la privacidad la da la ACL heredada de %APPDATA% (solo el usuario).
+    if (posixOnly) expect(statSync(join(dir, ACCOUNT_FILE)).mode & 0o777).toBe(0o600)
   })
 
   it('clear borra el archivo', () => {

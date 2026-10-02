@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync, renameSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { diff, status } from './service'
 
@@ -17,6 +17,7 @@ beforeAll(() => {
   g('config', 'user.email', 't@t.t')
   g('config', 'user.name', 't')
   g('config', 'commit.gpgsign', 'false')
+  g('config', 'core.autocrlf', 'false')
   writeFileSync(join(dir, 'old.txt'), Array.from({ length: 20 }, (_, i) => `linea ${i}`).join('\n') + '\n')
   writeFileSync(join(dir, 'other.txt'), 'x\n')
   g('add', '-A')
@@ -54,7 +55,7 @@ describe('git diff --staged con renombrados', () => {
 
 describe('hardening core.fsmonitor (F7-B28)', () => {
   it('status/diff no ejecutan el hook de fsmonitor del repo', async () => {
-    const hook = join(dir, '..', `${dir.split('/').pop()}-hook.sh`)
+    const hook = join(dir, '..', `${basename(dir)}-hook.sh`).replace(/\\/g, '/')
     const marker = `${hook}.ran`
     writeFileSync(hook, `#!/bin/sh\ntouch "${marker}"\n`)
     chmodSync(hook, 0o755)

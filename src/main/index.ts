@@ -15,7 +15,9 @@ import { prepareOpencodeConfigDir } from './tasks/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
 import { registerCodeHandlers } from './ipc/code-handlers'
-import { registerTasksHandlers } from './ipc/tasks-handlers'
+import { registerRoutinesHandlers } from './ipc/routines-handlers'
+import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
+import { capsFor } from '@shared/platform-caps'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
@@ -24,11 +26,25 @@ import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './
 import { initMainI18n } from './i18n'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
-import { bootMarkers, startBoot } from './update/boot'
-import { isUpdating } from './update/swap'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
 app.setName(APP_NAME)
+
+/** Capacidades de la plataforma: Tareas, Control del PC y actualizador solo en macOS. */
+const caps = capsFor(process.platform)
+/** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
+interface TasksLike {
+  busyTaskCount: () => number
+  shutdown: () => Promise<void>
+  killSync: () => void
+}
+// Módulos del actualizador: `import()` dinámico y solo en macOS (otro código de macOS no se carga en Windows).
+type UpdateBoot = typeof import('./update/boot')
+type UpdateSwap = typeof import('./update/swap')
+let updateBoot: UpdateBoot | null = null
+let updateSwap: UpdateSwap | null = null
+const isUpdating = (): boolean => updateSwap?.isUpdating() ?? false
+const bootMarkers = (): ReturnType<UpdateBoot['bootMarkers']> | null => updateBoot?.bootMarkers() ?? null
 
 // Instancia única: se pide lo antes posible y ANTES de cualquier efecto (migración de userData,
 // killStaleServers, handlers, ventanas). Electron deriva el lock del userData ('OnyxCode'), que el
@@ -49,7 +65,7 @@ const corsOrigins = trustedOrigins()
 const server = new OpencodeServer({ chatDirectory, corsOrigins })
 
 let mainWindow: BrowserWindow | null = null
-let tasksMod: ReturnType<typeof registerTasksHandlers> | null = null
+let tasksMod: TasksLike | null = null
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -114,9 +130,12 @@ function start(): void {
     // Mientras se sustituye la app no se enfoca ni se abren ventanas (la instancia está cerrándose).
     if (app.isReady() && !isUpdating()) focusMainWindow()
   })
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     applyE2eHeadless()
-    startBoot()
+    if (caps.updater) {
+      ;[updateBoot, updateSwap] = await Promise.all([import('./update/boot'), import('./update/swap')])
+    }
+    updateBoot?.startBoot()
     handleAppScheme()
     initMainI18n()
     installWebSecurity()
@@ -161,11 +180,19 @@ function start(): void {
 
     registerAllHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
-    tasksMod = registerTasksHandlers(ipcMain, () => mainWindow, {
-      getMainConnection: () => server.start(),
-      chatDirectory,
-      corsOrigins
-    })
+    if (caps.updater) (await import('./ipc/update')).registerUpdateHandlers(ipcMain)
+    if (caps.tasks) {
+      const { registerTasksHandlers } = await import('./ipc/tasks-handlers')
+      tasksMod = registerTasksHandlers(ipcMain, () => mainWindow, {
+        getMainConnection: () => server.start(),
+        chatDirectory,
+        corsOrigins
+      })
+    } else {
+      // Sin modo Tareas: Rutinas de Chat y Code, y el resto de canales de Tareas/Control/actualizador responden «no disponible».
+      tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
+    }
+    registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
     registerBrowserHandlers(ipcMain)

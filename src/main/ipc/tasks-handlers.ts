@@ -25,7 +25,7 @@ import { SYSTEM_EXEMPT_BUNDLE_IDS } from '../computer/grants'
 import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
-import { previewSchedule } from '../scheduler/schedule'
+import { registerRoutineChannels } from './routines-handlers'
 import { makeTasksHandle, type TasksIpcContext, type TasksSubmodule } from './tasks-handle'
 import { registerTasksFoldersHandlers } from './tasks-folders-handlers'
 import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
@@ -338,13 +338,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   })
 
   // ── Rutinas ──
-  handle('routines:list', () => scheduler.list())
-  handle('routines:save', (input) => scheduler.saveRoutine(input))
-  handle('routines:delete', ({ id }) => scheduler.delete(id))
-  handle('routines:toggle', ({ id, enabled }) => scheduler.toggle(id, enabled))
-  handle('routines:runNow', ({ id }) => scheduler.runNow(id))
-  handle('routines:history', (req) => scheduler.history(req?.id, req?.limit))
-  handle('routines:preview', ({ schedule }) => previewSchedule(schedule, 3))
+  registerRoutineChannels(handle, scheduler)
 
   // ── Computer use ──
   handle('computer:status', () => computer.status())

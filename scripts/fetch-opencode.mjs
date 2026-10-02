@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Descarga el binario OFICIAL de OpenCode fijado en resources/opencode-bin/pin.json y lo deja en
-// resources/opencode-bin/bin/opencode (lo empaqueta electron-builder vía extraResources).
-// Sin dependencias: `https`/`http` de Node, `ditto` (macOS) y `crypto`.
+// resources/opencode-bin/bin/opencode (macOS) u opencode.exe (Windows); lo empaqueta electron-builder
+// vía extraResources. Sin dependencias: `https`/`http` de Node, `crypto` y el descompresor del sistema
+// (`ditto` en macOS, `tar.exe` de System32 en Windows).
 //
 // Uso: node scripts/fetch-opencode.mjs [--if-missing]
 //   --if-missing  no hace nada si ya hay un binario que responde con `pin.version`.
@@ -24,12 +25,42 @@ export const BIN_DIR = join(ROOT, 'resources', 'opencode-bin', 'bin')
 const MAX_REDIRECTS = 5
 const NET_TIMEOUT_MS = 60_000
 
+/** Clave de plataforma del pin: `darwin-arm64`, `win32-x64`… */
+export function platformKey(platform = process.platform, arch = process.arch) {
+  return `${platform}-${arch}`
+}
+
+/** Nombre del ejecutable de OpenCode en la plataforma. */
+export function binaryName(platform = process.platform) {
+  return platform === 'win32' ? 'opencode.exe' : 'opencode'
+}
+
+const validAsset = (a) => !!a && typeof a.url === 'string' && /^[0-9a-f]{64}$/.test(a.sha256) && Number.isInteger(a.size)
+
 export function readPin(path = PIN_PATH) {
   const pin = JSON.parse(readFileSync(path, 'utf8'))
-  if (!pin || typeof pin.version !== 'string' || typeof pin.url !== 'string' || !/^[0-9a-f]{64}$/.test(pin.sha256) || !Number.isInteger(pin.size)) {
-    throw new Error(`pin.json inválido: ${path}`)
+  if (!pin || typeof pin.version !== 'string' || !pin.assets || typeof pin.assets !== 'object') throw new Error(`pin.json inválido: ${path}`)
+  for (const [key, asset] of Object.entries(pin.assets)) {
+    if (!validAsset(asset)) throw new Error(`pin.json inválido (asset ${key}): ${path}`)
   }
   return pin
+}
+
+/** Asset del pin para una plataforma; lanza un error claro si no hay binario fijado para ella. */
+export function assetFor(pin, key = platformKey()) {
+  const asset = pin.assets?.[key]
+  if (!validAsset(asset)) throw new Error(`No hay binario de OpenCode fijado para ${key} (disponibles: ${Object.keys(pin.assets ?? {}).join(', ') || 'ninguno'}).`)
+  return asset
+}
+
+/** Descomprime un ZIP con la herramienta del sistema (ditto en macOS, tar.exe de System32 en Windows). */
+export function unzipCommand(platform, zip, dest) {
+  if (platform === 'win32') {
+    const tar = join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+    return [tar, ['-xf', zip, '-C', dest]]
+  }
+  if (platform === 'darwin') return ['ditto', ['-x', '-k', zip, dest]]
+  throw new Error(`Plataforma no soportada para extraer el ZIP: ${platform}`)
 }
 
 /** SHA-256 (hex) de un archivo, en streaming. */
@@ -44,11 +75,11 @@ export function sha256File(file) {
 }
 
 /** Lanza si el tamaño o el SHA-256 del archivo no coinciden con el pin. */
-export async function verifyDownload(file, pin) {
+export async function verifyDownload(file, asset) {
   const size = statSync(file).size
-  if (size !== pin.size) throw new Error(`Tamaño distinto al fijado: ${size} bytes (esperado ${pin.size}).`)
+  if (size !== asset.size) throw new Error(`Tamaño distinto al fijado: ${size} bytes (esperado ${asset.size}).`)
   const actual = await sha256File(file)
-  if (actual !== pin.sha256) throw new Error(`SHA-256 distinto al fijado: ${actual} (esperado ${pin.sha256}).`)
+  if (actual !== asset.sha256) throw new Error(`SHA-256 distinto al fijado: ${actual} (esperado ${asset.sha256}).`)
 }
 
 /** Descarga `url` a `dest` siguiendo redirects (https, o http solo para el servidor de fixture de los tests). */
@@ -97,10 +128,14 @@ function run(cmd, args, options = {}) {
 export async function binaryVersion(bin) {
   const home = mkdtempSync(join(tmpdir(), 'onyx-fetch-home-'))
   try {
+    const win = process.platform === 'win32'
+    const sysRoot = process.env.SystemRoot || 'C:\\Windows'
     const out = await run(bin, ['--version'], {
       cwd: home,
+      windowsHide: true,
       env: {
-        PATH: '/usr/bin:/bin',
+        PATH: win ? `${sysRoot}\\System32;${sysRoot}` : '/usr/bin:/bin',
+        ...(win ? { SystemRoot: sysRoot, USERPROFILE: home, APPDATA: join(home, 'appdata'), LOCALAPPDATA: join(home, 'localappdata'), TEMP: home, TMP: home } : {}),
         HOME: home,
         XDG_CONFIG_HOME: join(home, 'config'),
         XDG_DATA_HOME: join(home, 'data'),
@@ -120,12 +155,22 @@ export async function binaryVersion(bin) {
  * Descarga, verifica y extrae. Devuelve `{ status: 'present' | 'fetched', path, version }`.
  * `binDir` y `log` se inyectan para los tests.
  */
-export async function fetchOpencode({ pin, binDir = BIN_DIR, ifMissing = false, log = console.log } = {}) {
+export async function fetchOpencode({
+  pin,
+  binDir = BIN_DIR,
+  ifMissing = false,
+  log = console.log,
+  platform = process.platform,
+  key = platformKey(platform),
+  versionOf = binaryVersion
+} = {}) {
   pin ??= readPin()
-  const target = join(binDir, 'opencode')
+  const asset = assetFor(pin, key)
+  const name = binaryName(platform)
+  const target = join(binDir, name)
   if (ifMissing && existsSync(target)) {
     try {
-      const version = await binaryVersion(target)
+      const version = await versionOf(target)
       if (version === pin.version) {
         log(`[fetch-opencode] ya presente: OpenCode ${version} (${target})`)
         return { status: 'present', path: target, version }
@@ -142,18 +187,19 @@ export async function fetchOpencode({ pin, binDir = BIN_DIR, ifMissing = false, 
     const zip = join(work, 'opencode.zip')
     log(`[fetch-opencode] descargando OpenCode ${pin.version}…`)
     try {
-      await downloadFile(pin.url, zip)
+      await downloadFile(asset.url, zip)
     } catch (err) {
-      throw new Error(`No se pudo descargar ${pin.url} (¿sin red?): ${err instanceof Error ? err.message : err}`)
+      throw new Error(`No se pudo descargar ${asset.url} (¿sin red?): ${err instanceof Error ? err.message : err}`)
     }
-    await verifyDownload(zip, pin) // ANTES de descomprimir
+    await verifyDownload(zip, asset) // ANTES de descomprimir
     const extracted = join(work, 'out')
     mkdirSync(extracted)
-    await run('ditto', ['-x', '-k', zip, extracted])
-    const bin = join(extracted, 'opencode')
-    if (!existsSync(bin)) throw new Error('El ZIP no contiene el binario `opencode`.')
-    chmodSync(bin, 0o755)
-    const version = await binaryVersion(bin)
+    const [cmd, args] = unzipCommand(platform, zip, extracted)
+    await run(cmd, args)
+    const bin = join(extracted, name)
+    if (!existsSync(bin)) throw new Error(`El ZIP no contiene el binario \`${name}\`.`)
+    if (platform !== 'win32') chmodSync(bin, 0o755)
+    const version = await versionOf(bin)
     if (version !== pin.version) throw new Error(`El binario dice ser ${version ?? 'desconocido'}, el pin es ${pin.version}.`)
     rmSync(binDir, { recursive: true, force: true })
     mkdirSync(binDir, { recursive: true })
@@ -166,10 +212,6 @@ export async function fetchOpencode({ pin, binDir = BIN_DIR, ifMissing = false, 
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.platform !== 'darwin') {
-    console.error('[fetch-opencode] solo macOS (usa ditto y el ZIP darwin-arm64)')
-    process.exit(1)
-  }
   fetchOpencode({ ifMissing: process.argv.includes('--if-missing') }).catch((err) => {
     console.error(`[fetch-opencode] ERROR: ${err instanceof Error ? err.message : err}`)
     process.exit(1)

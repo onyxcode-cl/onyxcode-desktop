@@ -286,7 +286,7 @@ describe('ONYXCODE_E2E_KEY_PROBE_BASE (solo pruebas)', () => {
       }
     }
     walk(root)
-    expect(hits.map((h) => h.slice(root.length))).toEqual(['/main/providers/key-probe.ts'])
+    expect(hits.map((h) => h.slice(root.length).replace(/\\/g, '/'))).toEqual(['/main/providers/key-probe.ts'])
     expect(readFileSync(hits[0], 'utf8')).toMatch(/const base = !i\.isPackaged \? i\.env\.ONYXCODE_E2E_KEY_PROBE_BASE : undefined/)
   })
 })
