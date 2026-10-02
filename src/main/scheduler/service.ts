@@ -24,10 +24,17 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { createOpencodeClient, type AssistantMessage, type Message, type OpencodeClient, type Part } from '@opencode-ai/sdk/v2/client'
-import type { RoutineAllowRule, RoutineInput, RoutineMode, RoutineRunRecord, RoutineTrigger, ScheduledRoutine } from '@shared/ipc-tasks'
+import type {
+  RoutineAllowRule,
+  RoutineInput,
+  RoutineMode,
+  RoutineRunRecord,
+  RoutineTrigger,
+  ScheduledRoutine,
+  TasksFolderSet
+} from '@shared/ipc-tasks'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import type { NotifyTarget, Settings } from '@shared/types'
-import type { TasksManager } from '../tasks/manager'
 import { loadManagedPolicy } from '../tasks/policy'
 import { getMemory, type TasksProjectsStore } from '../tasks/projects'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -53,12 +60,29 @@ const MAX_ALLOW_HOSTS = 50
 const HOST_RE = /^[a-z0-9.-]{1,255}$/i
 const PERM_RE = /^[A-Za-z0-9_*.:-]{1,200}$/
 
+/**
+ * Lo que el planificador necesita del gestor de Tareas (solo rutinas en modo Tareas). Una interfaz mínima
+ * para no importar `tasks/manager` (Seatbelt, proxy…) fuera de macOS: allí se usa `NoTasksPort`.
+ */
+export interface RoutineTasksPort {
+  isApproved(folder: string): boolean
+  hasFullAccessGrant(folder: string): boolean
+  start(folder: string, fullAccess: boolean): Promise<{ baseUrl: string; authorization: string; folder: string }>
+  folderSet(folder: string): TasksFolderSet
+  networkAllowOnce(folder: string, host: string): void
+  readonly network: { hasOnce(folder: string, host: string): boolean; revokeOnce(folder: string, host: string): void }
+  on(event: 'networkBlocked', listener: (ev: { folder: string; host: string }) => void): unknown
+  off(event: 'networkBlocked', listener: (ev: { folder: string; host: string }) => void): unknown
+}
+
 export interface SchedulerDeps {
   /** Conexión al sidecar principal (p.ej. `() => server.start()`). */
   getMainConnection: () => Promise<{ baseUrl: string; authorization: string }>
   /** Directorio del modo Chat (userData/chat-workspace). */
   chatDirectory: string
-  tasks: TasksManager
+  tasks: RoutineTasksPort
+  /** false = esta plataforma no tiene modo Tareas: guardar o ejecutar una rutina en modo Tareas se rechaza (por defecto true). */
+  tasksSupported?: boolean
   /** Agente para rutinas en modo code (por defecto `build`). */
   codeAgent?: string
   /** Proyectos de Tareas (instrucciones/enlaces/memoria) para el prompt de las rutinas. */
@@ -284,6 +308,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (!name) throw new Error(t('merr.routine.needsName'))
     if (!prompt) throw new Error(t('merr.routine.needsPrompt'))
     if (!['chat', 'tasks', 'code'].includes(input.mode)) throw new Error(t('merr.routine.badMode'))
+    if (input.mode === 'tasks' && this.deps.tasksSupported === false) throw new Error(t('merr.routine.platformUnsupported'))
     if (!input.model?.providerID || !input.model?.modelID) throw new Error(t('merr.routine.pickModel'))
     validateSchedule(input.schedule)
     const folder = input.folder?.trim() || null
@@ -507,6 +532,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (loadManagedPolicy()?.disableRoutines) {
       throw new Error(t('merr.routine.orgDisabled'))
     }
+    if (r.mode === 'tasks' && this.deps.tasksSupported === false) throw new Error(t('merr.routine.platformUnsupported'))
     const directory = r.mode === 'chat' ? this.deps.chatDirectory : r.folder
     if (!directory) throw new Error(t('merr.routine.noSavedFolder'))
     if (r.mode !== 'chat' && !existsSync(directory)) throw new Error(t('merr.task.noFolder', { folder: directory }))

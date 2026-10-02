@@ -81,6 +81,8 @@ export const mainErrors = {
   'merr.routine.moreCount': '+{count} más',
   'merr.routine.interrupted': 'Interrumpida (la app se cerró durante la ejecución)',
   'merr.routine.orgDisabled': 'Las rutinas están desactivadas por la política de tu organización.',
+  'merr.routine.platformUnsupported': 'Las rutinas en modo Tareas no están disponibles en esta plataforma todavía.',
+  'merr.platform.unsupported': 'Esta función no está disponible en esta plataforma todavía.',
   'merr.routine.needsPrompt': 'La rutina necesita una instrucción (prompt)',
   'merr.routine.badMode': 'Modo inválido',
   'merr.routine.folderNotAuthorized': 'La carpeta no está autorizada para las tareas (autorízala primero desde Tareas).',

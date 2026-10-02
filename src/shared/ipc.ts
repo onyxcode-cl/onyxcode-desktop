@@ -16,7 +16,8 @@ import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
-export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID' | 'BUSY'
+/** `PLATFORM_UNSUPPORTED`: función solo de macOS (Tareas, Control del PC, actualizador) en otra plataforma. */
+export type IpcErrorCode = 'NOT_READY' | 'ERROR' | 'FORBIDDEN' | 'INVALID' | 'BUSY' | 'PLATFORM_UNSUPPORTED'
 
 /** Respuesta sin código de error (canales `extras:`/`mcp:`/`browser:`). */
 export type IpcPlainResult<T> = { ok: true; data: T } | { ok: false; error: string }

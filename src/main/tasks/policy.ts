@@ -1,8 +1,8 @@
 /**
  * Política gestionada de Tareas (`managed.json`), de solo lectura.
  *
- * Ubicación: `/Library/Application Support/${APP_NAME}/managed.json` (solo un administrador puede
- * escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de
+ * Ubicación: `/Library/Application Support/${APP_NAME}/managed.json` en macOS y
+ * `%ProgramData%\${APP_NAME}\managed.json` en Windows (solo un administrador puede escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de
  * entorno `ONYXCODE_MANAGED_POLICY`.
  *
  * La política solo RESTRINGE (salvo `extraAllowedHosts`, decidido por la organización), y la
@@ -15,7 +15,7 @@
 import { app } from 'electron'
 import { readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, resolve, win32 } from 'node:path'
 import { APP_NAME } from '@shared/brand'
 import type { ManagedPolicy } from '@shared/ipc-tasks'
 
@@ -37,14 +37,17 @@ function lockedDown(source: string): ManagedPolicy {
   return out
 }
 
-function expandRoot(p: string): string {
+/** ¿Ruta absoluta de Windows (`C:\x`, `C:/x`, `\\servidor\x`)? */
+const isWinAbsolute = (p: string): boolean => /^[A-Za-z]:[\\/]/.test(p) || p.startsWith('\\\\')
+
+function expandRoot(p: string, platform: NodeJS.Platform): string {
   if (p === '~') return homedir()
-  if (p.startsWith('~/')) return join(homedir(), p.slice(2))
-  return resolve(p)
+  if (p.startsWith('~/') || (platform === 'win32' && p.startsWith('~\\'))) return join(homedir(), p.slice(2))
+  return platform === 'win32' ? win32.resolve(p) : resolve(p)
 }
 
 /** Valida y normaliza el contenido de un `managed.json` ya parseado. Puro (probable sin Electron). */
-export function parseManagedPolicy(raw: unknown, source: string): ManagedPolicy {
+export function parseManagedPolicy(raw: unknown, source: string, platform: NodeJS.Platform = process.platform): ManagedPolicy {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return lockedDown(source)
   const r = raw as Record<string, unknown>
   const out: ManagedPolicy = { source }
@@ -59,8 +62,11 @@ export function parseManagedPolicy(raw: unknown, source: string): ManagedPolicy 
     const v = r.allowedFolderRoots
     if (Array.isArray(v) && v.every((x) => typeof x === 'string' && x.trim() !== '')) {
       // Rutas absolutas o con `~`; las relativas se descartan (no tienen sentido en una política).
-      const roots = (v as string[]).map((x) => x.trim()).filter((x) => x === '~' || x.startsWith('~/') || x.startsWith('/'))
-      out.allowedFolderRoots = roots.map(expandRoot)
+      const win = platform === 'win32'
+      const roots = (v as string[])
+        .map((x) => x.trim())
+        .filter((x) => x === '~' || x.startsWith('~/') || x.startsWith('/') || (win && (x.startsWith('~\\') || isWinAbsolute(x))))
+      out.allowedFolderRoots = roots.map((x) => expandRoot(x, platform))
     } else {
       out.allowedFolderRoots = []
     }
@@ -78,10 +84,19 @@ export function parseManagedPolicy(raw: unknown, source: string): ManagedPolicy 
   return out
 }
 
+/** Ruta del `managed.json` del sistema (sin override de desarrollo). */
+export function managedPolicyPath(
+  platform: NodeJS.Platform = process.platform,
+  env: Record<string, string | undefined> = process.env
+): string {
+  if (platform === 'win32') return win32.join(env.ProgramData || 'C:\\ProgramData', APP_NAME, 'managed.json')
+  return join('/Library/Application Support', APP_NAME, 'managed.json')
+}
+
 function policyFile(): string {
   const override = process.env.ONYXCODE_MANAGED_POLICY
   if (override && !app.isPackaged) return resolve(override)
-  return join('/Library/Application Support', APP_NAME, 'managed.json')
+  return managedPolicyPath()
 }
 
 interface Cached {
