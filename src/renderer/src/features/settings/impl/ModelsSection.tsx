@@ -11,10 +11,10 @@ import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
-import { useExtrasPrefs } from './extras'
+import { useExtrasPrefs, withModeModel } from './extras'
 import { modeAvailable } from '@shared/platform-caps'
 import { currentPlatform } from '../../../lib/platform'
-import { ModelSelect, sortProviders } from './ModelSelect'
+import { ModelSelect, modelLabel, sortProviders } from './ModelSelect'
 import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 import { KeyTestNotice } from './KeyTestNotice'
 import { ProviderKeyForm } from './ProviderKeyForm'
@@ -66,10 +66,7 @@ export function ModelsSection(): React.JSX.Element {
   const busy = connect.busy || removing
 
   const setModeModel = (mode: ModelMode, value: ModelRef | null): void => {
-    const next = { ...modelsByMode }
-    if (value) next[mode] = value
-    else delete next[mode]
-    void updatePrefs({ modelsByMode: next })
+    void updatePrefs({ modelsByMode: withModeModel(modelsByMode, mode, value) })
   }
 
   return (
@@ -96,7 +93,7 @@ export function ModelsSection(): React.JSX.Element {
               className="w-72"
               providers={providers}
               value={modelsByMode[m.id] ?? null}
-              defaultLabel={t('models.useDefault')}
+              defaultLabel={t('models.useDefaultNamed', { model: modelLabel(providers, settings.defaultModel) })}
               onChange={(v) => setModeModel(m.id, v)}
             />
           </Row>

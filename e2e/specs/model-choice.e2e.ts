@@ -1,4 +1,5 @@
-// F8-B42: el modelo elegido en Chat no se pierde al cambiar de modo, abrir Ajustes ni reiniciar la app.
+// F8-B42 (+ F8-B43): el modelo elegido en Chat no se pierde al cambiar de modo, abrir Ajustes ni reiniciar la app. Desde B43 vive
+// en `modelsByMode.chat` (extras.json) y NO toca el predeterminado global (`settings.json`).
 // Se verifica en tres sitios: `settings.json` (disco), el store del renderer y el DOM del selector.
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -42,6 +43,13 @@ async function shot(page: Page, name: string): Promise<void> {
 
 const picker = (page: Page): ReturnType<Page['locator']> => page.locator('button[aria-haspopup="listbox"]').first()
 const diskModel = (userData: string): unknown => JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8')).defaultModel
+const diskChat = (userData: string): unknown => {
+  try {
+    return JSON.parse(readFileSync(join(userData, 'extras.json'), 'utf8')).modelsByMode?.chat
+  } catch {
+    return undefined
+  }
+}
 const storeModel = (page: Page): Promise<unknown> => storeState(page, 'useSettings', 'settings.defaultModel')
 const goTo = async (page: Page, mode: 'chat' | 'code' | 'tasks' | 'routines'): Promise<void> => setMode(page, mode)
 
@@ -84,8 +92,9 @@ describe('el modelo elegido en Chat persiste', () => {
 
     await expectAttr(picker(page), 'title', 'fake/fake-reasoner')
     await expectText(picker(page), 'Fake Reasoner')
-    expect(await storeModel(page)).toEqual(REASONER)
-    expect(diskModel(userData)).toEqual(REASONER)
+    expect(await storeModel(page)).toEqual(GO) // el predeterminado global no se tocó
+    expect(diskModel(userData)).toEqual(GO)
+    await expect.poll(() => diskChat(userData)).toEqual(REASONER)
     await shot(page, 'a2-tras-volver')
   })
 
@@ -94,6 +103,7 @@ describe('el modelo elegido en Chat persiste', () => {
     let app = await launch(userData)
     await choose(app.page, 'Fake Reasoner')
     await expectAttr(picker(app.page), 'title', 'fake/fake-reasoner')
+    await expect.poll(() => diskChat(userData)).toEqual(REASONER)
     await app.stop()
     apps.splice(apps.indexOf(app), 1)
 
@@ -101,7 +111,8 @@ describe('el modelo elegido en Chat persiste', () => {
     await expectVisible(picker(app.page))
     await expectText(picker(app.page), 'Fake Reasoner')
     await expectAttr(picker(app.page), 'title', 'fake/fake-reasoner')
-    expect(diskModel(userData)).toEqual(REASONER)
+    expect(diskModel(userData)).toEqual(GO)
+    expect(diskChat(userData)).toEqual(REASONER)
   })
 
   it('(c) la lista de modelos recargada o aún sin cargar no cambia la elección', async () => {
@@ -112,7 +123,8 @@ describe('el modelo elegido en Chat persiste', () => {
     // Lista aún sin cargar (transitorio): no se cambia nada.
     await page.evaluate(() => (window as any).__onyxE2E.useProviders.setState({ loaded: false, providers: [], defaults: {} }))
     await expectAttr(picker(page), 'title', 'fake/fake-reasoner')
-    expect(diskModel(userData)).toEqual(REASONER)
+    expect(diskModel(userData)).toEqual(GO)
+    await expect.poll(() => diskChat(userData)).toEqual(REASONER)
   })
 })
 
@@ -143,7 +155,8 @@ describe('modelo que ya no está en la lista (o proveedor sin clave)', () => {
     // Elegir uno disponible lo reemplaza y el aviso desaparece.
     await choose(page, 'Fake Reasoner')
     await expectAttr(picker(page), 'title', 'fake/fake-reasoner')
-    expect(diskModel(userData)).toEqual(REASONER)
+    expect(diskModel(userData)).toEqual(GONE) // el predeterminado global no se toca
+    await expect.poll(() => diskChat(userData)).toEqual(REASONER)
   })
 
   it('(e) proveedor sin clave: la elección se conserva en disco y vuelve a valer al reconectarlo', async () => {

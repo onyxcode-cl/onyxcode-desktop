@@ -34,7 +34,7 @@ import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } fro
 import { sendNotification } from '../../../lib/notify'
 import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
-import { resolveModelForMode, useExtrasPrefs } from '../../settings/impl/extras'
+import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
 import { endedMidTurn } from './util'
 import type { RestoreResult } from './restore-logic'
@@ -1278,12 +1278,7 @@ export function setTaskModel(m: ModelRef): void {
   const cur = useTasks.getState().taskModel
   const changed = !cur || cur.providerID !== m.providerID || cur.modelID !== m.modelID
   useTasks.setState((s) => ({ taskModel: m, taskVariant: changed ? null : s.taskVariant }))
-  try {
-    const extras = useExtrasPrefs.getState()
-    void extras.update({ modelsByMode: { ...extras.prefs.modelsByMode, tasks: m } }).catch(() => undefined)
-  } catch {
-    // sin puente "extras": el modelo vale solo para esta sesión de la app
-  }
+  setModeModel('tasks', m)
 }
 
 export function setTaskVariant(v: string | null): void {
@@ -1303,3 +1298,16 @@ export function isPlanPending(taskId: string): boolean {
   const req = useTasks.getState().accessRequest
   return !!req?.plan && req.sessionId === taskId
 }
+
+const sameRef = (a: ModelRef | null | undefined, b: ModelRef | null | undefined): boolean =>
+  !!a && !!b && a.providerID === b.providerID && a.modelID === b.modelID
+
+// Si el modelo del modo Tareas cambia desde fuera del selector (Ajustes › Modelos), una tarea nueva lo toma: se descarta el
+// modelo/esfuerzo en memoria. Dentro de una tarea abierta manda el modelo de la tarea.
+useExtrasPrefs.subscribe((s, prev) => {
+  const next = s.prefs.modelsByMode.tasks
+  if (sameRef(next, prev.prefs.modelsByMode.tasks)) return
+  const st = useTasks.getState()
+  if (st.activeTaskId || sameRef(st.taskModel, next)) return
+  useTasks.setState({ taskModel: null, taskVariant: null })
+})

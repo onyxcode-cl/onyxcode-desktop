@@ -2,17 +2,20 @@ import type { Messages } from '../index'
 import type { models as es } from '../es/models'
 
 export const models = {
-  'models.mode.chat.description': 'General conversations.',
-  'models.mode.code.description': 'Coding agent working on a folder.',
-  'models.mode.tasks.description': 'Autonomous tasks on documents.',
+  'models.mode.chat.description': 'General conversations. Same model as the Chat picker.',
+  'models.mode.code.description': 'Coding agent working on a folder. Same model as the Code picker.',
+  'models.mode.tasks.description': 'Autonomous tasks on documents. Same model as the Tasks picker.',
   'models.title': 'Models',
-  'models.subtitle': 'Default model and per-mode overrides. OpenCode Go models are listed first.',
+  'models.subtitle':
+    'Default model and one of its own per mode. Picking a model in Chat, Code or Tasks remembers it for that mode only; it does not change the default. OpenCode Go models are listed first.',
   'models.waitingServer': 'Waiting for the OpenCode server…',
   'models.default.label': 'Default',
-  'models.default.description': 'Used when a mode has no model of its own.',
+  'models.default.description':
+    'Used by modes that have no model of their own. Changing it here does not overwrite what you picked in a mode.',
   'models.default.aria': 'Default model',
   'models.forMode.aria': 'Model for {mode}',
-  'models.useDefault': 'Use default',
+  'models.useDefault': 'Use the default',
+  'models.useDefaultNamed': 'Use the default ({model})',
   'models.refreshList': 'Refresh list',
   'models.providers': 'Providers',
   'models.removeCreds.title': 'Remove credentials?',

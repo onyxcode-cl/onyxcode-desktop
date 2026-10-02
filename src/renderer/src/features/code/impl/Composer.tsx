@@ -375,7 +375,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     }
     // Modelo efectivo (no se toca el ajuste global): si el elegido ya no existe, se usa el de la primera IA conectada.
     const eff = aiGate.effective
-    if (eff && (!model || model.providerID !== eff.providerID || model.modelID !== eff.modelID)) setModel(eff)
+    if (eff && (!model || model.providerID !== eff.providerID || model.modelID !== eff.modelID)) setModel(eff, false)
     const cmd = /^\/(\S+)\s*([\s\S]*)$/.exec(t)
     if (!busy && cmd && serverCommands.some((c) => c.name === cmd[1])) {
       clear()

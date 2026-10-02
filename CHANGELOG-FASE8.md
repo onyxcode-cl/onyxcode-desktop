@@ -548,3 +548,26 @@ Cambios:
 - **Pruebas**: `session.test.ts` (guard con peticiones simuladas: mismo origen, otro puerto, `localhost` vs `127.0.0.1`, siempre, sin webContents, remoto), `sites.test.ts`, y E2E con Electron real y servidor estático (HTML+CSS+PNG) en puerto efímero: página tecleada por el usuario y página aprobada «en esta tarea» con `getComputedStyle`/`naturalWidth`; una imagen de otro puerto local no aprobado no llega al servidor; cerrar una pestaña la quita de la lista, del DOM, de las vistas nativas y destruye su webContents; cerrar la última deja el panel vacío.
 - **Efecto colateral corregido**: al mostrarse de verdad la vista de la pestaña del agente (antes quedaba oculta tras la del usuario), el `mouseMove`/`mouseLeave` que Chromium sintetiza cuando la vista aparece o cambia de sitio bajo un puntero quieto (p. ej. al cerrarse la tarjeta de aprobación) contaba como «usuario activo» y rechazaba la acción del agente recién aprobada. `layoutView` suprime 400 ms la entrada humana tras aparecer/mover la vista (`LAYOUT_SYNTH_INPUT_MS`).
 - **Verificado**: `npm run verify` completo en la Mac (1586 unit, 238 E2E verdes) y capturas antes/después en `scratchpad/shots-nav/`. **No probado**: ventana «Navegador» aparte (popout) con varias pestañas, audio/vídeo en una pestaña al cerrarla, service workers locales (siguen bloqueados hacia destinos locales: sin `webContents` no hay página de referencia).
+
+## F8-B43 — Cada modo recuerda su propio modelo (rama `fix/modelo-por-modo`)
+
+Bug: el dueño elegía GPT en un modo, salía y volvía (o reiniciaba) y estaba otra vez el predeterminado. Causas: Code guardaba
+el modelo solo en memoria (`useCode.model`, `null` al arrancar); Chat escribía `settings.defaultModel` (pisaba el predeterminado
+global sin querer) y su fila de Ajustes › Modelos (`modelsByMode.chat`) no se leía.
+
+Diseño: `settings.defaultModel` es el predeterminado global y solo vale para los modos sin elección propia; Chat, Code y Tareas
+recuerdan su modelo en `modelsByMode` (`extras.json`, vía `extras:setPrefs`). Elegir un modelo en un modo NO toca el predeterminado.
+
+- `settings/impl/extras.ts`: resolvedor puro `pickModeModel`, `withModeModel`, `setModeModel(mode, ref|null)` y `whenExtrasLoaded`.
+- Chat: selector, envío y «compactar» usan `modelsByMode.chat`; «Probar un modelo gratuito» lo fija como modelo de Chat. Se mantiene
+  el comportamiento de B42 (modelo ausente: «<id> · no disponible», envío bloqueado, sin sustituto persistido).
+- Code: el modelo elegido se persiste como `modelsByMode.code`; sin elección vale el del modo. `setModel(m, remember=false)` es
+  la sincronización interna de `Composer` (sustituto por IA conectada) y no persiste. Cambiar de modelo descarta el esfuerzo.
+- Tareas: sin cambios de comportamiento (el `taskModel` de la tarea sigue mandando); además, un cambio desde Ajustes sin tarea
+  abierta lo toma la siguiente.
+- Ajustes › Modelos: la fila de cada modo edita lo mismo que el selector del modo; «Usar el predeterminado (<modelo>)» borra el
+  override; textos es/en explican la relación.
+- Rutinas: una rutina nueva parte del modelo de su modo (y lo guarda en la propia rutina). Quick Entry envía con el modelo de Chat
+  (espera a que las preferencias estén cargadas).
+- Compatibilidad: usuarios con solo `defaultModel` y sin overrides, igual que antes; sin migración.
+- Pruebas: `extras.test.ts` (resolvedor) y E2E `model-por-modo.e2e.ts` (fallan en main); `model-choice.e2e.ts` adaptado.
