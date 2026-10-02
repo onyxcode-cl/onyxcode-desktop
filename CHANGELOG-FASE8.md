@@ -520,3 +520,13 @@ Segunda tanda de Windows: terminal, Diagnóstico sin datos personales, interfaz 
 - **Textos**: `shared/i18n` admite variantes `clave.win` (se aplican solo en win32; en macOS y en las pruebas no cambia ningún texto): Finder → Explorador, Llavero → almacén de credenciales, «tu Mac» → «tu PC», atajos con Ctrl, bandeja, Dock → barra de tareas. Los textos de Tareas/Control (`tasksComputer`…) no se tocan.
 - **Medido en Windows**: unit 1475 pruebas verdes (119 saltadas por la tanda 1), build en 14 s, humo de arranque OK (listo en 1,8 s, sin consola, sin huérfanos).
 - **No probado**: ventana visible (axe, aspecto de la bandeja y del marco, parpadeo de la barra de tareas, atajo global real), `Code.exe` real, descartar bloques con `shell.trashItem` y revert de sesión de OpenCode en un repo bajo `C:\onyx\tmp`, «Ejecutar ahora» de una rutina Code. `node-pty` empaquetado (`app.asar`) y su `fork` de `conpty_console_list_agent` con `runAsNode` desactivado quedan para la tanda 4 (instalador).
+
+## F8-B41 — Windows T3: pruebas (rama `feat/win-t3-pruebas`)
+
+Tercera tanda de Windows: las unitarias y las E2E corren en el PC de pruebas.
+
+- **Lanzador falso solo para pruebas** (`opencode/test-launcher.ts`): sin empaquetar, en win32 y con `OPENCODE_BIN` terminado en `.mjs`, `server.ts` y `binary.ts` ejecutan `node <mjs>`; `ONYXCODE_TEST_BUNDLED_DIR` acepta `opencode.mjs`. Nunca aplica a la app empaquetada ni a un `.exe`.
+- **Terminal**: `pty/service.ts` devuelve el pid vivo en `list()` (en Windows/ConPTY `pty.pid` era 0 al crear la terminal). **Asistente**: variantes `.win` del título y la guía del paso «modos» («Los tres modos»).
+- **Pruebas**: `e2e/lib/proc.ts` (procesos multiplataforma), `e2e/win-skip.json` (5 specs de Tareas/actualizador, con motivo y guardia `win-skip.test.ts`), saltos solo de bloques de Tareas, unitarias de `binary` con falso `.mjs`, specs adaptadas (atajos, textos PC/Mac, asistente de 4 pasos, 8 secciones de Ajustes, `core.autocrlf=false`). Detalle y pendientes en `docs/VERIFICACION.md`.
+- **Medido**: Windows, E2E completas 29 archivos / 162 pruebas verdes (49 saltadas, 2 pasaron en el reintento), ~8 min; Mac `npm run verify` verde.
+- **Pendiente (defecto, no excluido por alcance)**: en el navegador integrado el clic del agente no llega a la vista en Windows (2 pruebas del Lote D saltadas).

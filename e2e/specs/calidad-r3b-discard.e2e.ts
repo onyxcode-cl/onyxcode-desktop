@@ -25,9 +25,11 @@ describe.skipIf(MODE === 'prod')(`calidad R3-B: descartar bloque y conservar lo 
     git('commit', '-q', '-m', 'big')
   })
   const app = useApp({ env: { ONYXCODE_E2E_TRASH_DIR: trashDir } })
-  afterAll(() => {
+  afterAll(async () => {
+    // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
+    await app().stop().catch(() => undefined)
     rmSync(trashDir, { recursive: true, force: true })
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
   const git = (...a: string[]): string => execFileSync('git', ['-C', repo, ...a], { encoding: 'utf8' })
   const read = (rel: string): string => readFileSync(join(repo, rel), 'utf8')

@@ -8,6 +8,7 @@ import { shot } from '../lib/shots'
 import { storeState } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
 import { connectTasksFolder, makeGitRepo, makeHomeFolder, newChatAndSend, openCodeProject, prepareFakeBin } from '../lib/fase6'
+import { IS_WIN } from '../lib/proc'
 
 const SHOTS = process.env.CALIDAD_SHOTS_DIR
 
@@ -22,10 +23,12 @@ describe.skipIf(MODE === 'prod')(`calidad T2 (${MODE})`, () => {
     Object.assign(env, res.bin.env)
   })
   const app = useApp({ env })
-  afterAll(() => {
+  afterAll(async () => {
+    // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
+    await app().stop().catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
 
   it('Chat: un 429 muestra «Reintentar» y al pulsarlo queda UN solo mensaje de usuario', async () => {
@@ -89,7 +92,8 @@ describe.skipIf(MODE === 'prod')(`calidad T2 (${MODE})`, () => {
     expect(await a.page.getByText('primer encargo').count()).toBe(0)
   })
 
-  it('Tareas: el error de contexto ofrece «Compactar»', async () => {
+  // Windows v1: sin modo Tareas.
+  it.skipIf(IS_WIN)('Tareas: el error de contexto ofrece «Compactar»', async () => {
     const a = app()
     const { fake } = await connectTasksFolder(a, res.folder.path)
     await fake.script({ steps: [{ type: 'error', name: 'ContextOverflowError', message: 'too big' }], match: 'tarea enorme' })

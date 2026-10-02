@@ -165,7 +165,13 @@ export class PtyService {
   }
 
   list(owner?: string | number): PtyInfo[] {
-    return [...this.sessions.values()].filter((s) => owner === undefined || s.owner === owner).map((s) => s.info)
+    return [...this.sessions.values()]
+      .filter((s) => owner === undefined || s.owner === owner)
+      .map((s) => {
+        // Windows (ConPTY): `pty.pid` solo se conoce tras conectar el agente; el de `spawn` puede ser 0.
+        if (s.pty.pid > 0) s.info.pid = s.pty.pid
+        return s.info
+      })
   }
 
   /** Mata todas las terminales de un dueño (p.ej. al destruirse un webContents). */

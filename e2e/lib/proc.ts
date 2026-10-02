@@ -8,6 +8,12 @@ export const IS_WIN = process.platform === 'win32'
 /** Nombre del OpenCode falso dentro de su carpeta: en Windows el `.mjs` (la app lo lanza con `node`; solo pruebas). */
 export const FAKE_BIN_NAME = IS_WIN ? 'server.mjs' : 'opencode'
 
+/** Cómo nombra la interfaz el equipo del usuario («Mac» / «PC»; textos `*.win`). */
+export const DEVICE = IS_WIN ? 'PC' : 'Mac'
+
+/** Pasos del asistente de primer uso: sin «Permisos de macOS» en Windows. */
+export const STEPS_TOTAL = IS_WIN ? 4 : 5
+
 /** Separador de PATH. */
 export const PATH_SEP = IS_WIN ? ';' : ':'
 
@@ -96,7 +102,7 @@ export function killByCommandLine(needle: string): void {
 /** Líneas `pid command` de los hijos directos de `pid` (diagnóstico). */
 export function childrenOf(pid: number): string {
   try {
-    if (IS_WIN) return ps(`Get-CimInstance Win32_Process -Filter "ParentProcessId=${pid}"|%{"$($_.ProcessId) $($_.CommandLine)"}`)
+    if (IS_WIN) return ps(`Get-CimInstance Win32_Process -Filter 'ParentProcessId=${pid}'|%{ $_.ProcessId.ToString() + ' ' + $_.CommandLine }`)
     const kids = execFileSync('pgrep', ['-P', String(pid)], { encoding: 'utf8', timeout: 5_000 }).trim().split('\n').join(',')
     return execFileSync('ps', ['-o', 'pid=,command=', '-p', kids], { encoding: 'utf8', timeout: 5_000 })
   } catch {
@@ -105,13 +111,15 @@ export function childrenOf(pid: number): string {
 }
 
 /**
- * Entorno aislado para specs que no deben encontrar ningún OpenCode real: HOME/USERPROFILE propios y un PATH mínimo con
+ * Entorno aislado para specs que no deben encontrar ningún OpenCode real: HOME propio y un PATH mínimo con
  * `node` (el del runner, que el falso necesita) y lo imprescindible del sistema.
  */
 export function isolatedHomeEnv(home: string): Record<string, string> {
   if (IS_WIN) {
     const sys = `${process.env.SystemRoot ?? 'C:\\Windows'}\\System32`
-    return { HOME: home, USERPROFILE: home, PATH: [dirname(process.execPath), sys].join(';') }
+    // No se toca USERPROFILE: Electron obtiene `appData` de él y falla si no existe `AppData\\Roaming`. Sin OpenCode en PATH
+    // ni en `%USERPROFILE%\\.opencode\\bin` basta (HOME solo se usa en POSIX).
+    return { HOME: home, PATH: [dirname(process.execPath), sys].join(';') }
   }
   return { HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
 }

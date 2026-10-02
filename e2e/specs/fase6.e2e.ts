@@ -305,7 +305,7 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     const oldUrl = await storeState<string>(a.page, 'useServer', 'connection.baseUrl')
     const oldPid = (await a.fake.status()).pid as number
 
-    await a.page.keyboard.press('Meta+,')
+    await a.page.keyboard.press('ControlOrMeta+,')
     const settingsNav = a.page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(settingsNav)
     await settingsNav.getByRole('button', { name: 'General', exact: true }).click()

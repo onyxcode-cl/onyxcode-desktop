@@ -165,7 +165,7 @@ export async function prepareCodeBrowser(app: E2EApp, dir: string): Promise<{ mc
     const w = window as unknown as { api: { browser: { invoke: (c: string, r: unknown) => Promise<unknown> } } }
     await w.api.browser.invoke('browser:sites:setPrefs', { agentEnabled: { code: true } })
   })
-  await page.keyboard.press('Meta+4')
+  await page.keyboard.press('ControlOrMeta+4')
   await page.getByTitle('Nueva pestaña').click()
   await page.waitForFunction(
     async (d) => {

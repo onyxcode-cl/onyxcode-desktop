@@ -4,6 +4,7 @@ import { dialogCalls, stubDialog } from '../lib/dialogs'
 import { spyNotifications } from '../lib/notifications'
 import { MODE, withLru } from '../lib/launch'
 import { storeState, waitForHooks } from '../lib/stores'
+import { IS_WIN } from '../lib/proc'
 
 const app = useApp()
 
@@ -44,7 +45,7 @@ describe('colectores del harness', () => {
       app.dock?.setBadge('3')
     })
     expect(await spy.shown()).toEqual([{ title: 'T', body: 'B' }])
-    expect(await spy.badge()).toBe('3')
+    if (!IS_WIN) expect(await spy.badge()).toBe('3') // el badge del Dock es de macOS
     await spy.clear()
     expect(await spy.shown()).toEqual([])
     expect(await spy.badge()).toBe('')

@@ -13,6 +13,7 @@ import { MODE } from '../lib/launch'
 import { shot } from '../lib/shots'
 import { connection } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.DIAG_SHOTS_DIR
@@ -25,7 +26,7 @@ const ENGINE_KEY = 'sk-e2e-engine-0123456789abcdef'
 const FILE_KEY = 'sk-ant-api03-ARCHIVO0123456789abcdef'
 
 async function openDiagnostics(page: Page): Promise<void> {
-  await page.keyboard.press('Meta+,')
+  await page.keyboard.press('ControlOrMeta+,')
   const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
   await expectVisible(nav)
   await nav.getByRole('button', { name: 'Diagnóstico', exact: true }).click()
@@ -147,7 +148,8 @@ describe.skipIf(!DEV)('Ajustes › Diagnóstico', () => {
     await page.getByRole('button', { name: 'Exportar…' }).click()
     await expectVisible(page.getByText('Informe exportado.'))
     expect(existsSync(dest)).toBe(true)
-    expect(statSync(dest).mode & 0o777).toBe(0o600)
+    // Windows: sin bits de permiso POSIX (ACL del perfil).
+    if (!IS_WIN) expect(statSync(dest).mode & 0o777).toBe(0o600)
     const calls = await dialogCalls(electronApp)
     const save = calls.find((c) => c.kind === 'save')!.options as { defaultPath: string }
     expect(save.defaultPath).toMatch(/^OnyxCode-diagnostico-\d{8}-\d{4}\.txt$/)

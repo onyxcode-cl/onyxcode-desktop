@@ -10,6 +10,7 @@ import { openedUrls, stubOpenExternal } from '../lib/dialogs'
 import { MODE, type E2EApp } from '../lib/launch'
 import { shot as takeShot } from '../lib/shots'
 import { expectCount, expectVisible } from '../lib/wait'
+import { IS_WIN, DEVICE } from '../lib/proc'
 import { findCatalogItem } from '../../src/shared/mcp-catalog'
 
 const DEV = MODE === 'dev'
@@ -49,7 +50,7 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
 
   it('(1) Ajustes › MCP muestra el catálogo con insignias y sin nada instalado', async () => {
     const { page } = app()
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
     await nav.getByRole('button', { name: 'MCP', exact: true }).click()
     await expectVisible(page.getByLabel('Catálogo de conectores'))
@@ -57,7 +58,7 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
       await expectVisible(card(page, t))
     }
     const txt = await bodyText(page)
-    expect(txt).toContain('Remoto · no ejecuta nada en tu Mac')
+    expect(txt).toContain(`Remoto · no ejecuta nada en tu ${DEVICE}`)
     expect(txt).toContain('Inicio de sesión')
     expect(txt).toContain('Necesita un token')
     expect(txt).not.toContain('Del catálogo')
@@ -117,8 +118,10 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
     await expectCount(dialog(page), 0)
     expect(cfg().mcp).toEqual({ context7: { type: 'remote', url: 'https://mcp.context7.com/mcp', enabled: true, oauth: false } })
     expect(cfg().permission).toEqual({ 'context7_*': 'ask' })
-    expect(statSync(cfgPath()).mode & 0o777).toBe(0o600)
-    expect(statSync(provPath()).mode & 0o777).toBe(0o600)
+    // Windows: sin bits de permiso POSIX (ACL del perfil).
+    if (!IS_WIN) expect(statSync(cfgPath()).mode & 0o777).toBe(0o600)
+    // Windows: sin bits de permiso POSIX (ACL del perfil).
+    if (!IS_WIN) expect(statSync(provPath()).mode & 0o777).toBe(0o600)
     expect(Object.keys(JSON.parse(readFileSync(provPath(), 'utf8')))).toEqual(['context7'])
     expect(await disposeCount()).toBe(disposes + 1)
     const r = row(page, 'context7')

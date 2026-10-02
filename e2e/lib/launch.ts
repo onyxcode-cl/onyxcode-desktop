@@ -224,7 +224,13 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     try {
       electronApp = await _electron.launch({
         executablePath: require('electron') as string,
-        args: [join(ROOT, 'out/main/index.js'), `--user-data-dir=${userData}`],
+        args: [
+          // Windows (sesión SSH sin escritorio): sin esto Chromium da las ventanas por ocultas/tapadas y descarta la entrada de CDP
+          // en las vistas incrustadas (WebContentsView). Solo pruebas: la app no cambia.
+          ...(process.platform === 'win32' ? ['--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows'] : []),
+          join(ROOT, 'out/main/index.js'),
+          `--user-data-dir=${userData}`
+        ],
         cwd: ROOT,
         env,
         timeout: LAUNCH_TIMEOUT_MS
@@ -241,9 +247,11 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     throw lastErr
   }
   const launched: ElectronApplication = electronApp
+  // Se guarda ahora: tras cerrarse la app (p. ej. la ventana cierra y sale en Windows) `process()` ya no se puede consultar.
+  const launchedPid = launched.process().pid
 
   const cleanup = async (): Promise<void> => {
-    const pid = launched.process().pid
+    const pid = launchedPid
     await Promise.race([launched.close().catch(() => undefined), new Promise((r) => setTimeout(r, 15_000))])
     if (pid && alive(pid)) killTree(pid)
     killByUserData(userData)
@@ -276,6 +284,18 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
 
     const page = await launched.firstWindow({ timeout: 60_000 })
     await page.waitForLoadState('domcontentloaded')
+    // En Windows por SSH (sin escritorio) la pantalla virtual es de 1024x768 y Electron recorta la ventana de 1280x820 a ~1008x703:
+    // el panel lateral de Code taparía los botones de la barra superior. Se restituye el tamaño de diseño (no cambia nada en la Mac).
+    if (process.platform === 'win32') {
+      await launched
+        .evaluate(({ BrowserWindow }) => {
+          for (const w of BrowserWindow.getAllWindows()) {
+            const [cw] = w.getContentSize()
+            if (w.getParentWindow() === null && cw >= 700 && cw < 1280 && !/quick|pill|overlay|assist|guide|record/i.test(w.webContents.getURL())) w.setContentSize(1264, 760)
+          }
+        })
+        .catch(() => undefined)
+    }
     if (MODE === 'dev') {
       // Ganchos: flag + reinicio de carga para que main.tsx lo lea. Los errores previos a esto no se recogen.
       const ls = { 'onyx.e2e': '1', 'onyx.langPref': String(opts.settings?.language ?? 'es'), ...opts.localStorage }
@@ -342,6 +362,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
       },
       screenshot,
       async stop() {
+        if (!live.has(app)) return // idempotente: un spec puede parar la app antes que el afterAll del arnés
         live.delete(app)
         await cleanup()
       }

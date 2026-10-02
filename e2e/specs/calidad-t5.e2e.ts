@@ -9,6 +9,7 @@ import { shot } from '../lib/shots'
 import { expectVisible } from '../lib/wait'
 import { runAxe, SERIOUS, summarize, type AxeViolation } from '../lib/axe'
 import { connectTasksFolder, makeGitRepo, makeHomeFolder, newChatAndSend, openCodeProject, prepareFakeBin } from '../lib/fase6'
+import { IS_WIN } from '../lib/proc'
 
 const SHOTS = process.env.T5_SHOTS_DIR
 const REPORT = process.env.T5_AXE_REPORT
@@ -93,7 +94,8 @@ describe.skipIf(MODE === 'prod')(`calidad T5 (${MODE})`, () => {
     await expectClean('code')
   })
 
-  it('Tareas: axe sin violaciones serias con una tarea falsa', async () => {
+  // Windows v1: sin modo Tareas.
+  it.skipIf(IS_WIN)('Tareas: axe sin violaciones serias con una tarea falsa', async () => {
     const a = app()
     const { fake } = await connectTasksFolder(a, res.folder.path)
     await scriptFor(fake, 'tarea accesible', 'Respuesta simulada: tarea accesible')

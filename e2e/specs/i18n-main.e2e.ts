@@ -14,7 +14,7 @@ import { useApp } from '../lib/harness'
 import { isQuickUrl, listWindows } from '../lib/instance'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
-import { isolatedHomeEnv } from '../lib/proc'
+import { IS_WIN, isolatedHomeEnv } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.I18N_T4C_SHOTS_DIR
@@ -99,7 +99,9 @@ describe.skipIf(!DEV)('T4c: motivo de carpeta y ventanas propias en inglés', ()
       [channel, req]
     )
 
-  it('(1) check.reason de una carpeta de confianza sale en inglés y vuelve a español al cambiar', async () => {
+  // Windows v1: el canal tasks:folders:check es del modo Tareas (sin handler en Windows).
+
+  it.skipIf(IS_WIN)('(1) check.reason de una carpeta de confianza sale en inglés y vuelve a español al cambiar', async () => {
     const { page } = app()
     const check = async (): Promise<string> => {
       const r = (await page.evaluate(() =>

@@ -8,6 +8,7 @@ import { connectTasks, makeHomeFolder, prepareFakeBin } from '../lib/lru'
 import { shot } from '../lib/shots'
 import { storeState } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 import { rmSync } from 'node:fs'
 
 const DEV = MODE === 'dev'
@@ -124,7 +125,8 @@ describe.skipIf(!DEV)('R2-B: más de 200 sesiones en Code', () => {
   })
 })
 
-describe.skipIf(!DEV)('R2-B: más de 200 tareas', () => {
+// Windows v1: sin modo Tareas.
+describe.skipIf(!DEV || IS_WIN)('R2-B: más de 200 tareas', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
   afterAll(() => {

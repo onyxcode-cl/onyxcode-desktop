@@ -9,6 +9,7 @@ export const wizard = {
   'wizard.stepTitle.auth': 'Conecta tu IA',
   'wizard.stepTitle.model': 'Elige tu modelo',
   'wizard.stepTitle.modes': 'Los cuatro modos',
+  'wizard.stepTitle.modes.win': 'Los tres modos',
   'wizard.stepTitle.permissions': 'Permisos de macOS',
   'wizard.fullControl': 'Control total del Mac',
   'wizard.fullControlShort': 'Control total',
@@ -60,6 +61,7 @@ export const wizard = {
   'wizard.model.default': 'Modelo predeterminado',
 
   'wizard.modes.lead': 'Cambias de modo desde la barra lateral (⌃Tab recorre los cuatro).',
+  'wizard.modes.lead.win': 'Cambias de modo desde la barra lateral (Ctrl+Tab recorre los tres).',
   'wizard.modes.chat': 'Conversaciones generales con el modelo, sin tocar tus archivos.',
   'wizard.modes.code': 'Un agente de programación que trabaja sobre la carpeta de tu proyecto.',
   'wizard.modes.tasks': 'Tareas autónomas sobre tus documentos y carpetas, con permisos que tú apruebas.',

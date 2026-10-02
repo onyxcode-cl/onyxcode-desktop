@@ -75,11 +75,12 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
 
   it('Ajustes: todas las secciones sin violaciones', async () => {
     const { page } = app()
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     const sections = page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(sections)
     const n = await sections.getByRole('button').count()
-    expect(n).toBeGreaterThanOrEqual(12)
+    // Windows: sin Tareas, Control del PC ni Actualizaciones (v1): 8 secciones.
+    expect(n).toBeGreaterThanOrEqual(IS_WIN ? 8 : 12)
     for (let i = 0; i < n; i++) {
       const b = sections.getByRole('button').nth(i)
       const name = (await b.innerText()).trim()
@@ -111,9 +112,11 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     await clean(page, 'rutinas:editor-intervalo')
     await dlg.getByRole('button', { name: 'Cron avanzado', exact: true }).click()
     await clean(page, 'rutinas:editor-cron')
-    await dlg.getByRole('button', { name: /^Tareas/ }).click()
-    await dlg.getByRole('button', { name: 'Añadir regla' }).click()
-    await clean(page, 'rutinas:editor-tareas')
+    if (!IS_WIN) {
+      await dlg.getByRole('button', { name: /^Tareas/ }).click()
+      await dlg.getByRole('button', { name: 'Añadir regla' }).click()
+      await clean(page, 'rutinas:editor-tareas')
+    }
     await dlg.getByRole('button', { name: /^Code/ }).click()
     await clean(page, 'rutinas:editor-code')
     await expectFocusContract(page, dlg, opener)
@@ -133,7 +136,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
 
   it('Catálogo MCP: diálogo de añadir sin violaciones y con foco contenido', async () => {
     const { page } = app()
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     await page.locator('nav[aria-label="Secciones de ajustes"]').getByRole('button', { name: 'MCP', exact: true }).click()
     const opener = page.getByRole('button', { name: 'Añadir Context7' })
     await opener.click()
@@ -237,8 +240,10 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     await expectVisible(d.getByRole('heading', { name: 'Elige tu modelo' }))
     await clean(a.page, 'asistente:paso3')
     await d.getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d.getByRole('heading', { name: 'Los cuatro modos' }))
+    await expectVisible(d.getByRole('heading', { name: IS_WIN ? 'Los tres modos' : 'Los cuatro modos' }))
     await clean(a.page, 'asistente:paso4')
+    // Paso 5 («Permisos de macOS»): solo existe en macOS (en Windows el asistente tiene 4 pasos).
+    if (IS_WIN) return
     await d.getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(d.getByRole('heading', { name: 'Permisos de macOS' }))
     await clean(a.page, 'asistente:paso5')
@@ -260,10 +265,12 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     Object.assign(env, res.bin.env)
   })
   const app = useApp({ env })
-  afterAll(() => {
+  afterAll(async () => {
+    // Los hooks afterAll corren en orden inverso: sin parar antes la app, en Windows la terminal de Code aún tiene el repo como cwd (EBUSY).
+    await app().stop().catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
 
   it('Code: diálogo de confianza de la carpeta (foco contenido) y sin violaciones', async () => {
@@ -300,7 +307,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
 
   it('Code: cambiar de sesión (selector) como diálogo con foco', async () => {
     const a = app()
-    await a.page.keyboard.press('Meta+k')
+    await a.page.keyboard.press('ControlOrMeta+k')
     const dlg = a.page.getByRole('dialog', { name: 'Cambiar de sesión' })
     await expectVisible(dlg)
     await clean(a.page, 'code:selector-sesion')
@@ -432,7 +439,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await clean(a.page, 'dialogo:prompt')
     await shot(a, SHOTS, 'dialogo-prompt')
     await expectFocusContract(a.page, dlg, null)
-    await a.page.keyboard.press('Meta+k')
+    await a.page.keyboard.press('ControlOrMeta+k')
     const pal = a.page.getByRole('dialog', { name: 'Paleta de comandos' })
     await expectVisible(pal)
     await clean(a.page, 'paleta')

@@ -10,7 +10,7 @@ import { openedUrls, stubDialog, stubOpenExternal } from '../lib/dialogs'
 import { startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData } from '../lib/lotes'
 import { expectCount, expectVisible } from '../lib/wait'
-import { isolatedHomeEnv } from '../lib/proc'
+import { IS_WIN, STEPS_TOTAL, isolatedHomeEnv } from '../lib/proc'
 
 const settingsOf = (userData: string): Record<string, unknown> => JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8')) as Record<string, unknown>
 
@@ -47,7 +47,7 @@ describe('asistente de primer uso', () => {
     app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false } })
     const d = dialog()
     await expectVisible(d.getByRole('heading', { name: 'Instala o localiza OpenCode' }))
-    await expectVisible(d.getByText('Paso 1 de 5'))
+    await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL}`))
     await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el binario' }))
     for (const name of ['Copiar comando de instalación', 'Abrir instrucciones', 'Elegir binario…', 'Reintentar']) {
       await expectVisible(d.getByRole('button', { name }))
@@ -94,7 +94,7 @@ describe('asistente de primer uso', () => {
     const put = await a.fake.waitForRequest((r) => r.method === 'PUT' && r.path === '/auth/openai')
     expect(put.body).toEqual({ type: 'api', key: 'sk-e2e-otro' })
     await expectVisible(dialog().getByText('OpenAI conectado'))
-    await expectVisible(dialog().getByText(connectTasksNotice()))
+    await expectVisible(dialog().getByText(IS_WIN ? 'OpenCode funciona con cualquiera de estos proveedores.' : connectTasksNotice()))
     await expectVisible(dialog().getByText(connectTermsNotice()))
   })
 
@@ -103,12 +103,15 @@ describe('asistente de primer uso', () => {
     await dialog().getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(dialog().getByRole('heading', { name: 'Elige tu modelo' }))
     await dialog().getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(dialog().getByRole('heading', { name: 'Los cuatro modos' }))
-    for (const label of [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines]) {
+    await expectVisible(dialog().getByRole('heading', { name: IS_WIN ? 'Los tres modos' : 'Los cuatro modos' }))
+    for (const label of [MODE_LABELS.chat, MODE_LABELS.code, ...(IS_WIN ? [] : [MODE_LABELS.tasks]), MODE_LABELS.routines]) {
       await expectVisible(dialog().getByText(label, { exact: true }))
     }
-    await dialog().getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(dialog().getByRole('heading', { name: 'Permisos de macOS' }))
+    // Windows: el asistente acaba en «Los tres modos» (sin el paso de permisos de macOS).
+    if (!IS_WIN) {
+      await dialog().getByRole('button', { name: 'Continuar' }).click()
+      await expectVisible(dialog().getByRole('heading', { name: 'Permisos de macOS' }))
+    }
     await dialog().getByRole('button', { name: 'Empezar' }).click()
     await expectCount(a.page.getByRole('dialog'), 0)
     await expect.poll(() => settingsOf(userData).onboarded).toBe(true)
@@ -168,7 +171,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
     await d.getByRole('button', { name: 'Atrás' }).click()
 
     await expectVisible(d.getByRole('heading', { name: 'Motor incluido' }))
-    await expectVisible(d.getByText('Paso 1 de 5'))
+    await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL}`))
     await expectVisible(d.getByText('Incluido: OpenCode 1.18.32'))
     await expectVisible(d.getByRole('button', { name: 'Usar mi CLI…' }))
     // Nada que instalar: ni comando, ni instrucciones, ni binario a elegir, ni error.

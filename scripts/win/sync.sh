@@ -3,7 +3,7 @@
 # Uso: [STEPS=ci,typecheck,unit,build] [MAXSEC=3600] scripts/win/sync.sh
 # Devuelve el codigo de salida registrado en C:/onyx/logs/<rama>/summary.txt.
 set -u
-HOST="${WIN_HOST:-bentec@192.168.1.84}"
+HOST="${ONYX_WIN_HOST:-${WIN_HOST:-win-onyx}}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 2
 BR="$(git branch --show-current | tr '/' '-')"
@@ -11,7 +11,7 @@ STEPS="${STEPS:-ci,typecheck,unit,build,e2e}"
 MAXSEC="${MAXSEC:-3600}"
 TMP="${TMPDIR:-/tmp}/onyx-sync-$$.tgz"
 trap 'rm -f "$TMP"' EXIT
-SSHO="-o BatchMode=yes -o ConnectTimeout=15"
+SSHO="-o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=20"
 
 # Lista de archivos: versionados + nuevos sin ignorar + fixtures de e2e ignorados por .gitignore (p. ej. *.log
 # que usan las pruebas de migracion). Sin binarios descargados ni los que ya no existen en disco.
@@ -24,7 +24,7 @@ perl -e 'alarm shift; exec @ARGV' 60 ssh $SSHO "$HOST" 'powershell -NoProfile -C
 perl -e 'alarm shift; exec @ARGV' 300 scp $SSHO -q "$TMP" "$HOST:C:/onyx/inbox/onyx.tgz" || exit 2
 
 perl -e 'alarm shift; exec @ARGV' "$MAXSEC" ssh $SSHO "$HOST" \
-  "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\onyx\\run.ps1 -Branch $BR -Steps $STEPS" </dev/null
+  "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\onyx\\run.ps1 -Branch $BR -Steps $STEPS${SPEC:+ -Spec $SPEC}" </dev/null
 RC_SSH=$?
 
 SUMMARY="$(perl -e 'alarm shift; exec @ARGV' 60 ssh $SSHO "$HOST" "powershell -NoProfile -Command \"Get-Content C:\\onyx\\logs\\$BR\\summary.txt\"" </dev/null)"

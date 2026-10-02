@@ -14,6 +14,7 @@ import { connectTasks, gotoMode, makeHomeFolder, newChatVia, newTaskVia, prepare
 import { shot } from '../lib/shots'
 import { storeCall, storeSet } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.R3A_SHOTS_DIR
@@ -188,6 +189,8 @@ describe.skipIf(!DEV)('R3A: las imágenes del compositor de Code sobreviven al c
   })
 })
 
+const OTHER_MODE = IS_WIN ? 'Code' : 'Tareas'
+
 describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de modo', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
@@ -209,7 +212,7 @@ describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de
     await a.page.waitForTimeout(300)
     const before = await scrollInfo(a.page, 'ChatP 119')
     await expectVisible(a.page.getByRole('button', { name: 'Ir al final' }))
-    await gotoMode(a.page, 'Tareas')
+    await gotoMode(a.page, OTHER_MODE)
     await gotoMode(a.page, 'Chat')
     await expectVisible(a.page.getByText('ChatP 119', { exact: false }))
     await a.page.waitForTimeout(500)
@@ -221,7 +224,7 @@ describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de
     // Pegado al final: vuelve al final aunque haya crecido.
     await a.page.getByRole('button', { name: 'Ir al final' }).click()
     await expect.poll(async () => (await scrollInfo(a.page, 'ChatP 119')).fromEnd, { timeout: 10_000 }).toBeLessThan(3)
-    await gotoMode(a.page, 'Tareas')
+    await gotoMode(a.page, OTHER_MODE)
     await gotoMode(a.page, 'Chat')
     await a.page.waitForTimeout(500)
     expect((await scrollInfo(a.page, 'ChatP 119')).fromEnd).toBeLessThan(3)
@@ -252,7 +255,8 @@ describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de
     await shot(a, SHOTS, 'code-scroll-restaurado')
   })
 
-  it('Tareas: arriba vuelve a su posición', async () => {
+  // Windows v1: sin modo Tareas.
+  it.skipIf(IS_WIN)('Tareas: arriba vuelve a su posición', async () => {
     const a = app()
     const { fake } = await connectTasks(a, folder.path)
     await fake.script({ match: 'tarea larga', title: 'Tarea larga', steps: [{ type: 'text', text: largo('TareaP') }] })
@@ -280,7 +284,10 @@ describe.skipIf(!DEV)('R3A: Quick Entry avisa cuando el envío falla sin convers
     await gotoMode(a.page, 'Chat')
     await storeSet(a.page, 'useProviders', { providers: [], loaded: true })
     await a.electronApp.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0].webContents.send('extras:quick-prompt', { text: 'pregunta desde quick' })
+      // La ventana principal (en Windows el orden de getAllWindows() no es el de la Mac).
+      BrowserWindow.getAllWindows()
+        .find((w) => /127\.0\.0\.1|localhost|index\.html/.test(w.webContents.getURL()) && !/quick|browser/.test(w.webContents.getURL()))!
+        .webContents.send('extras:quick-prompt', { text: 'pregunta desde quick' })
     })
     const notice = a.page.getByTestId('quick-entry-notice')
     await expectVisible(notice, 10_000)
@@ -308,7 +315,8 @@ describe.skipIf(!DEV)('R3A: terminal sin caracteres sueltos', () => {
     rmSync(zdot, { recursive: true, force: true })
   })
 
-  it('lo escrito antes de que el shell esté listo no deja eco suelto antes del prompt y el reenganche no cambia nada (820 px oscuro)', async () => {
+  // Windows: el caso es de zsh (`ZDOTDIR`/`.zshrc` lento); la terminal de Windows (PowerShell/ConPTY) se cubre en `pty/service.win.test.ts`.
+  it.skipIf(IS_WIN)('lo escrito antes de que el shell esté listo no deja eco suelto antes del prompt y el reenganche no cambia nada (820 px oscuro)', async () => {
     const a = app()
     const { page } = a
     repo = makeGitRepo()

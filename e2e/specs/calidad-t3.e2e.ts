@@ -2,7 +2,6 @@
 // Ajustes (mismo pid, `sleep` vivo, scrollback intacto); (2) los borradores de Chat y Code se conservan; (3) tareas
 // «Interrumpidas» con «Continuar» (y sin marcar las que siguen ocupadas); (4) Cmd+Q con una tarea ocupada pregunta
 // (Cancelar = sigue abierta; Salir igualmente = sale) y sin tareas sale sin preguntar. Capturas: T3_SHOTS_DIR.
-import { execFileSync } from 'node:child_process'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { rmSync } from 'node:fs'
 import { useApp } from '../lib/harness'
@@ -13,39 +12,22 @@ import { expectVisible } from '../lib/wait'
 import { dialogCalls, stubDialog } from '../lib/dialogs'
 import { connectTasksFolder, consumeErrors, makeGitRepo, makeHomeFolder, openCodeProject, prepareFakeBin } from '../lib/fase6'
 import { waitIdle } from '../lib/lru'
+import { childrenOf, alive, IS_WIN } from '../lib/proc'
 
 const SHOTS = process.env.T3_SHOTS_DIR
 const modeBtn = (page: import('playwright-core').Page, name: string) => page.locator('nav[aria-label="Modo"]').getByRole('button', { name })
 
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
-}
-function childrenOf(pid: number): string {
-  try {
-    return execFileSync(
-      'ps',
-      [
-        '-o',
-        'pid=,command=',
-        '-p',
-        execFileSync('pgrep', ['-P', String(pid)], { encoding: 'utf8' })
-          .trim()
-          .split('\n')
-          .join(',')
-      ],
-      {
-        encoding: 'utf8'
-      }
-    )
-  } catch {
-    return ''
-  }
-}
+// Windows: `sleep` de PowerShell es un alias sin proceso hijo; se usa `ping -n` (un hijo real, 1 paquete por segundo, sin carga).
+const SLEEPER = IS_WIN ? 'ping -n 1000 127.0.0.1 > $null' : 'sleep 1000'
+const SLEEPER_MARK = IS_WIN ? 'PING.EXE' : 'sleep 1000'
+const sleeperPid = (pid: number): number =>
+  Number(
+    childrenOf(pid)
+      .split('\n')
+      .find((l) => l.includes(SLEEPER_MARK))
+      ?.trim()
+      .split(/\s+/)[0]
+  )
 
 describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
   const res = {} as { bin: ReturnType<typeof prepareFakeBin>; folder: ReturnType<typeof makeHomeFolder> }
@@ -58,10 +40,12 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
     Object.assign(env, res.bin.env)
   })
   const app = useApp({ env })
-  afterAll(() => {
+  afterAll(async () => {
+    // Los afterAll corren en orden inverso: sin parar antes la app, en Windows la terminal aún tiene el repo como cwd (EBUSY).
+    await app().stop().catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
 
   it('Code: el pid de la terminal y su `sleep` sobreviven a Chat, Ajustes y ⌃Tab; el scrollback sigue', async () => {
@@ -73,13 +57,15 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
     await term.waitFor({ state: 'attached', timeout: 20_000 })
     const ptys = (): Promise<{ id: string; pid: number; cwd: string }[]> => page.evaluate(() => (window as any).api.code.pty.list())
     await expect.poll(async () => (await ptys()).length, { timeout: 15_000 }).toBe(1)
+    // Windows (ConPTY): el pid del shell puede tardar en conocerse tras crear el pty.
+    await expect.poll(async () => (await ptys())[0]?.pid, { timeout: 15_000 }).toBeGreaterThan(0)
     const before = (await ptys())[0]
     await page.locator('.xterm').first().click()
-    await page.keyboard.type('echo MARCA_T3 && sleep 1000', { delay: 15 })
+    await page.keyboard.type(`echo MARCA_T3${IS_WIN ? ';' : ' &&'} ${SLEEPER}`, { delay: 15 })
     await page.keyboard.press('Enter')
     await expect.poll(() => page.locator('.xterm-rows').first().innerText(), { timeout: 15_000 }).toContain('MARCA_T3')
-    await expect.poll(() => childrenOf(before.pid), { timeout: 10_000 }).toContain('sleep 1000')
-    const sleepPid = Number(childrenOf(before.pid).trim().split(/\s+/)[0])
+    await expect.poll(() => childrenOf(before.pid), { timeout: 10_000 }).toContain(SLEEPER_MARK)
+    const sleepPid = sleeperPid(before.pid)
     expect(alive(sleepPid)).toBe(true)
     await shot(a, SHOTS, 'terminal-antes')
 
@@ -100,7 +86,7 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
     expect(after[0].pid).toBe(before.pid)
     expect(after[0].id).toBe(before.id)
     expect(alive(sleepPid)).toBe(true)
-    expect(childrenOf(before.pid)).toContain('sleep 1000')
+    expect(childrenOf(before.pid)).toContain(SLEEPER_MARK)
     // La terminal reenganchada acepta teclado y se ve en su sitio.
     await page.locator('.xterm').first().click()
     await page.keyboard.type('echo SIGUE_T3', { delay: 15 })
@@ -116,7 +102,7 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
     await page.getByRole('button', { name: 'Nueva conversación' }).first().click()
     const chatBox = page.getByPlaceholder('Escribe un mensaje…')
     await chatBox.fill('borrador de chat sin enviar')
-    await modeBtn(page, 'Tareas').click()
+    await modeBtn(page, IS_WIN ? 'Rutinas' : 'Tareas').click()
     await storeCall(page, 'useUi', 'openSettings', true)
     await storeCall(page, 'useUi', 'openSettings', false)
     await modeBtn(page, 'Chat').click()
@@ -131,7 +117,8 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
     await expect.poll(() => codeBox.inputValue(), { timeout: 5_000 }).toBe('borrador de code sin enviar')
   }, 60_000)
 
-  it('Tareas: una tarea a medias se marca «Interrumpida» con «Continuar»; la que sigue ocupada no', async () => {
+  // Windows v1: sin modo Tareas.
+  it.skipIf(IS_WIN)('Tareas: una tarea a medias se marca «Interrumpida» con «Continuar»; la que sigue ocupada no', async () => {
     const a = app()
     const { page } = a
     const { fake } = await connectTasksFolder(a, res.folder.path)
@@ -212,7 +199,8 @@ describe.skipIf(MODE === 'prod')(`calidad T3: salir (${MODE})`, () => {
     bin.cleanup()
   })
 
-  it('Cmd+Q con una tarea ocupada pregunta; Cancelar mantiene la app y «Salir igualmente» sale', async () => {
+  // Windows v1: sin modo Tareas (la salida con una tarea ocupada es del modo Tareas).
+  it.skipIf(IS_WIN)('Cmd+Q con una tarea ocupada pregunta; Cancelar mantiene la app y «Salir igualmente» sale', async () => {
     const a = app()
     const { page, electronApp } = a
     const { fake } = await connectTasksFolder(a, folder.path)

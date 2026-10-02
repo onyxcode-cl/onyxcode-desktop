@@ -87,7 +87,10 @@ describe(`instancia única y Quick Entry (${MODE})`, () => {
     const platform = await electronApp.evaluate(() => process.platform)
     if (platform !== 'darwin') {
       // Windows/Linux (decisión de la v1): ventana cerrada = la app se cierra; no hay «principal cerrada» que reabrir.
-      await expect.poll(() => electronApp.process().exitCode !== null || electronApp.process().killed, { timeout: 15_000 }).toBe(true)
+      await Promise.race([
+        electronApp.waitForEvent('close'),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('la app no salió al cerrar la última ventana')), 15_000))
+      ])
       return
     }
     const run = await spawnSecondInstance(userData)

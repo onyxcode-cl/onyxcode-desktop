@@ -25,6 +25,8 @@ export function makeGitRepo(prefix = 'onyx-e2e-repo-'): string {
   git('init', '-q')
   git('config', 'user.email', 'e2e@example.com')
   git('config', 'user.name', 'e2e')
+  // El Git de sistema de Windows suele traer core.autocrlf=true: sin esto los archivos restaurados salen con CRLF.
+  git('config', 'core.autocrlf', 'false')
   writeFileSync(join(dir, 'README.md'), '# e2e\n')
   git('add', '.')
   git('commit', '-q', '-m', 'init')
