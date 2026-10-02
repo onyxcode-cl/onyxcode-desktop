@@ -6,7 +6,7 @@
  * usuario tenga exportados en su shell, etc.
  */
 import { homedir, tmpdir, userInfo } from 'node:os'
-import { delimiter, posix, win32 } from 'node:path'
+import { posix, win32 } from 'node:path'
 
 /** Variables del sistema que sí se heredan (si existen). */
 const ALLOWED = new Set([
@@ -121,7 +121,7 @@ export function augmentedPath(
   platform: EnvPlatform = process.platform
 ): string {
   const win = platform === 'win32'
-  const delim = win ? win32.delimiter : delimiter
+  const delim = win ? win32.delimiter : posix.delimiter
   const norm = (d: string): string => (win ? d.toLowerCase().replace(/[\\/]+$/, '') : d)
   const merged = base.split(delim).filter(Boolean)
   const seen = new Set(merged.map(norm))

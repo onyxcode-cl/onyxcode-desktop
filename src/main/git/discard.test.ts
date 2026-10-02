@@ -44,6 +44,7 @@ beforeEach(() => {
   g('config', 'user.email', 't@t.t')
   g('config', 'user.name', 't')
   g('config', 'commit.gpgsign', 'false')
+  g('config', 'core.autocrlf', 'false') // Windows trae autocrlf=true de sistema: los tests comparan bytes
   w('a.txt', 'original a\n')
   w('src/b.txt', 'original b\n')
   w('keep.txt', 'keep\n')

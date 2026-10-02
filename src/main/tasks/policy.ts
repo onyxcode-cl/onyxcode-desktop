@@ -15,7 +15,7 @@
 import { app } from 'electron'
 import { readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, resolve, win32 } from 'node:path'
+import { join, posix, resolve, win32 } from 'node:path'
 import { APP_NAME } from '@shared/brand'
 import type { ManagedPolicy } from '@shared/ipc-tasks'
 
@@ -90,7 +90,7 @@ export function managedPolicyPath(
   env: Record<string, string | undefined> = process.env
 ): string {
   if (platform === 'win32') return win32.join(env.ProgramData || 'C:\\ProgramData', APP_NAME, 'managed.json')
-  return join('/Library/Application Support', APP_NAME, 'managed.json')
+  return posix.join('/Library/Application Support', APP_NAME, 'managed.json')
 }
 
 function policyFile(): string {

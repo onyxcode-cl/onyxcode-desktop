@@ -14,8 +14,8 @@ $stage = Join-Path $Root 'stage'
 $wt = Join-Path $Root 'wt'
 $logs = Join-Path $Root "logs\$Branch"
 $summary = Join-Path $logs 'summary.txt'
-$limits = @{ ci = 900; typecheck = 300; unit = 600; build = 300; e2e = 2400; package = 1500; lint = 300; format = 300; noop = 60 }
-$cmds = @{ ci = 'npm ci'; typecheck = 'npm run typecheck'; unit = 'npm test'; build = 'npm run build'; e2e = 'npm run test:e2e'; package = 'npm run package:win'; lint = 'npm run lint'; format = 'npm run format:check'; noop = 'node -v' }
+$limits = @{ ci = 900; typecheck = 300; unit = 600; build = 300; e2e = 2400; package = 1500; lint = 300; format = 300; noop = 60; fetch = 600; bundle = 60 }
+$cmds = @{ ci = 'npm ci'; typecheck = 'npm run typecheck'; unit = 'npm test'; build = 'npm run build'; e2e = 'npm run test:e2e'; package = 'npm run package:win'; lint = 'npm run lint'; format = 'npm run format:check'; noop = 'node -v'; fetch = 'node scripts\fetch-opencode.mjs'; bundle = 'node scripts\check-win-bundle.mjs' }
 
 New-Item -ItemType Directory -Force $logs, $stage, $wt, (Join-Path $Root 'npm-cache') | Out-Null
 Set-Content -Path $summary -Value ("RUN " + (Get-Date -Format s) + " branch=$Branch steps=$Steps") -Encoding ascii
@@ -61,7 +61,7 @@ if (Test-Path $inbox) {
   New-Item -ItemType Directory -Force $stage | Out-Null
   & "$env:SystemRoot\System32\tar.exe" -xzf $inbox -C $stage
   if ($LASTEXITCODE -ne 0) { Log "extract: FAIL ($LASTEXITCODE)"; Finish 2 }
-  & robocopy.exe $stage $wt /MIR /XD node_modules out dist /XF .lockhash /NFL /NDL /NJH /NJS /NP | Out-Null
+  & robocopy.exe $stage $wt /MIR /XD node_modules out dist (Join-Path $wt 'resources\opencode-bin\bin') /XF .lockhash /NFL /NDL /NJH /NJS /NP | Out-Null
   if ($LASTEXITCODE -ge 8) { Log "robocopy: FAIL ($LASTEXITCODE)"; Finish 2 }
   Log 'sync: ok'
 } else {

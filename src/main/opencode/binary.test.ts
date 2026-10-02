@@ -16,6 +16,7 @@ import {
   type PickInput
 } from './binary'
 import { bundledOpencodePath, findOpencodeBinary, resolveOpencode, resolveOpencodeAsync } from './server'
+import { posixOnly } from '../../test/platform'
 
 // Sin las carpetas habituales (`~/.opencode/bin`, Homebrew…): los tests no deben depender del OpenCode instalado.
 vi.mock('../process/child-env', async (orig) => ({ ...(await orig<typeof import('../process/child-env')>()), EXTRA_PATH_DIRS: [] }))
@@ -54,7 +55,8 @@ describe('parseVersion / isCompatible', () => {
   })
 })
 
-describe('validateOpencodeBin (archivos reales)', () => {
+// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
+describe.skipIf(!posixOnly)('validateOpencodeBin (archivos reales)', () => {
   it('acepta un ejecutable cuyo --version imprime algo', async () => {
     const bin = script('ok', 'echo 1.18.32')
     expect(await validateOpencodeBin(bin)).toEqual({ ok: true, path: bin, output: '1.18.32', version: '1.18.32' })
@@ -101,7 +103,8 @@ describe('validateOpencodeBin (archivos reales)', () => {
   })
 })
 
-describe('getOpencodeInfo', () => {
+// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
+describe.skipIf(!posixOnly)('getOpencodeInfo', () => {
   it('sin binario: found=false', async () => {
     expect(await getOpencodeInfo(() => null)).toMatchObject({
       found: false,
@@ -181,7 +184,8 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
   mkdirSync(join(noexec, 'opencode'), { recursive: true })
   writeFileSync(join(noexec, 'opencode', 'opencode'), 'x')
 
-  it('empaquetado: usa <Resources>/opencode/opencode si existe y es ejecutable', () => {
+  // En Windows el permiso de ejecución no existe (X_OK siempre pasa) y el binario es opencode.exe: cubierto por el caso win32 de abajo.
+  it.skipIf(!posixOnly)('empaquetado: usa <Resources>/opencode/opencode si existe y es ejecutable', () => {
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: res })).toBe(bin)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada') })).toBeNull()
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: noexec })).toBeNull()
@@ -198,14 +202,15 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'win32' })).toBe(exe)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'darwin' })).toBeNull()
   })
-  it('la variable de tests solo se honra si NO está empaquetado', () => {
+  it.skipIf(!posixOnly)('la variable de tests solo se honra si NO está empaquetado', () => {
     const testDir = join(res, 'opencode')
     expect(bundledOpencodePath({ isPackaged: false, testDir })).toBe(bin)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada'), testDir })).toBeNull()
   })
 })
 
-describe('resolución completa con CLI y embebido reales (scripts falsos)', () => {
+// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
+describe.skipIf(!posixOnly)('resolución completa con CLI y embebido reales (scripts falsos)', () => {
   const saved = { bin: process.env.OPENCODE_BIN, path: process.env.PATH, test: process.env.ONYXCODE_TEST_BUNDLED_DIR }
   afterEach(() => {
     for (const [k, v] of [

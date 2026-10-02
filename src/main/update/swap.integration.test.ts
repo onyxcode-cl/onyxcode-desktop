@@ -5,6 +5,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { macOnly } from '../../test/platform'
 
 const SCRIPT = resolve(__dirname, '../../../resources/updater/swap.sh')
 const TOY = `#!/bin/sh
@@ -106,7 +107,8 @@ const deadPid = (): number => {
   return pid
 }
 
-describe('swap.sh: modo de prueba para apps reales', () => {
+// Actualizador (swap.sh y apps .app): fuera de la v1 de Windows.
+describe.skipIf(!macOnly)('swap.sh: modo de prueba para apps reales', () => {
   it('lanza con --user-data-dir y solo la NUEVA lleva ONYXCODE_TEST_FAIL_BOOT=1 (rollback forzado)', async () => {
     const s = setup()
     const ud = join(root, 'userData-real')
@@ -132,7 +134,8 @@ describe('swap.sh: modo de prueba para apps reales', () => {
   })
 })
 
-describe('swap.sh', () => {
+// Actualizador (swap.sh y apps .app): fuera de la v1 de Windows.
+describe.skipIf(!macOnly)('swap.sh', () => {
   it('reemplazo correcto: copia de seguridad, nueva en su sitio, boot-ok y result ok', () => {
     const s = setup()
     const r = runSwap(s, deadPid())

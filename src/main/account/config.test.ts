@@ -77,7 +77,7 @@ describe('ONYXCODE_ACCOUNT_DISABLED (solo pruebas)', () => {
       }
     }
     walk(root)
-    expect(hits.map((h) => h.slice(root.length))).toEqual(['/main/account/config.ts'])
+    expect(hits.map((h) => h.slice(root.length).replace(/\\/g, '/'))).toEqual(['/main/account/config.ts'])
     expect(readFileSync(hits[0], 'utf8')).toMatch(/const disabled = !i\.isPackaged && i\.env\.ONYXCODE_ACCOUNT_DISABLED === '1'/)
   })
 })

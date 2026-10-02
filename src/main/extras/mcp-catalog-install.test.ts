@@ -9,6 +9,7 @@ vi.mock('electron', () => ({ app: { getPath: () => userData } }))
 
 import { buildCatalogEntry, catalogState, CatalogProvenanceStore, computeInstalled, installFromCatalog } from './mcp-catalog-install'
 import { appOpencodeConfigPath, mcpAsksEachUse, readAppMcpConfig, removeMcpServer, saveMcpServer } from './mcp-config'
+import { posixOnly } from '../../test/platform'
 
 afterAll(() => rmSync(userData, { recursive: true, force: true }))
 
@@ -89,9 +90,9 @@ describe('installFromCatalog', () => {
     })
     expect(cfg.permission).toEqual({ 'github_*': 'ask' })
     expect(Object.keys(cfg).sort()).toEqual(['$schema', 'mcp', 'permission'])
-    expect(statSync(appOpencodeConfigPath()).mode & 0o777).toBe(0o600)
+    if (posixOnly) expect(statSync(appOpencodeConfigPath()).mode & 0o777).toBe(0o600)
     const provPath = join(userData, 'mcp-catalog-installs.json')
-    expect(statSync(provPath).mode & 0o777).toBe(0o600)
+    if (posixOnly) expect(statSync(provPath).mode & 0o777).toBe(0o600)
     const prov = JSON.parse(readFileSync(provPath, 'utf8'))
     expect(prov.github).toMatchObject({ catalogId: 'github', version: 1, url: github.url })
     // La procedencia no guarda el secreto.

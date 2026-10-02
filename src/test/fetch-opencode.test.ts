@@ -109,7 +109,7 @@ describe.skipIf(!supported)('fetch-opencode', () => {
 
   it('sigue un redirect 302', async () => {
     const binDir = binDirs('redirect')
-    const r = await fetcher.fetchOpencode({ pin: pinFor({ url: `${base}/redirect` }), binDir, log: silent })
+    const r = await fetcher.fetchOpencode({ pin: pinFor({ url: `${base}/redirect` }), ...fetchOpts(binDir) })
     expect(r.status).toBe('fetched')
     expect(hits).toEqual(['/redirect', '/opencode.zip'])
   })

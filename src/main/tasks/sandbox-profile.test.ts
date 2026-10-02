@@ -14,6 +14,7 @@ vi.mock('node:os', async (importOriginal) => {
 
 import { NEW_FOLDER_SCRATCH } from '../migrations/legacy-names'
 import { buildSandboxProfile, type SandboxProfileOptions } from './sandbox-profile'
+import { macOnly } from '../../test/platform'
 
 const HOME = '/Users/fixture'
 const base: SandboxProfileOptions = {
@@ -24,7 +25,8 @@ const base: SandboxProfileOptions = {
   home: HOME
 }
 
-describe('buildSandboxProfile (caracterización Seatbelt)', () => {
+// Perfil Seatbelt (modo Tareas): solo macOS; el snapshot usa rutas POSIX.
+describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () => {
   it('carpeta de trabajo rw, sin red y con scratchDirs POR DEFECTO', () => {
     const out = buildSandboxProfile(base)
     expect(out).toMatchSnapshot()

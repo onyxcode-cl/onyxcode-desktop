@@ -127,7 +127,7 @@ describe('guardia estática: diag:* solo devuelve texto redactado', () => {
         const f = join(d, n)
         if (statSync(f).isDirectory()) walk(f)
         else if (/\.ts$/.test(n) && !n.endsWith('.test.ts') && /\.recentLog\(/.test(readFileSync(f, 'utf8')))
-          users.push(f.slice(root.length))
+          users.push(f.slice(root.length).replace(/\\/g, '/'))
       }
     }
     walk(root)

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { bundlePathFromExe, isUpdating, startSwap, validateSwapArgs, type SwapArgs, type SwapContext } from './swap'
 import { BootMarkers, cleanupAfterBoot, readSwapResult } from './markers'
 import { mkdirSync } from 'node:fs'
+import { macOnly } from '../../test/platform'
 
 let tmp: string
 beforeEach(() => {
@@ -34,7 +35,8 @@ describe('bundlePathFromExe', () => {
   })
 })
 
-describe('validateSwapArgs', () => {
+// Actualizador (swap.sh de macOS): fuera de la v1 de Windows; rutas y /bin/sh de macOS.
+describe.skipIf(!macOnly)('validateSwapArgs', () => {
   it('acepta los argumentos esperados', () => {
     const c = ctx()
     expect(validateSwapArgs(good(c), c)).toBeNull()
@@ -60,7 +62,8 @@ describe('validateSwapArgs', () => {
   })
 })
 
-describe('startSwap', () => {
+// Actualizador (swap.sh de macOS): fuera de la v1 de Windows; rutas y /bin/sh de macOS.
+describe.skipIf(!macOnly)('startSwap', () => {
   it('copia el script a run/ (0700), lo lanza con /bin/sh sin shell y cierra la app', () => {
     const c = { ...ctx(), userData: join(tmp, 'ud') }
     const src = join(tmp, 'swap.sh')

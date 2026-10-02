@@ -132,7 +132,7 @@ function scanLock(): string[] {
 function scan(): string[] {
   const failures: string[] = []
   for (const abs of publishedPaths().sort()) {
-    const rel = relative(ROOT, abs)
+    const rel = relative(ROOT, abs).replace(/\\/g, '/')
     if (isAllowed(rel)) continue
     if (TERM.test(rel)) {
       failures.push(`${rel}  [nombre de fichero o carpeta]`)

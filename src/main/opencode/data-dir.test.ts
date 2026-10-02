@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { posixOnly } from '../../test/platform'
 import { appAuthFile, opencodeDataHome, prepareOpencodeData, shouldReopenOnboarding } from './data-dir'
 
 let ud = ''
@@ -12,8 +13,8 @@ afterEach(() => rmSync(ud, { recursive: true, force: true }))
 
 describe('rutas del almacén propio', () => {
   it('opencodeDataHome y appAuthFile cuelgan de userData', () => {
-    expect(opencodeDataHome('/u/d')).toBe('/u/d/opencode-data')
-    expect(appAuthFile('/u/d')).toBe('/u/d/opencode-data/opencode/auth.json')
+    expect(opencodeDataHome('/u/d')).toBe(join('/u/d', 'opencode-data'))
+    expect(appAuthFile('/u/d')).toBe(join('/u/d', 'opencode-data', 'opencode', 'auth.json'))
   })
 })
 
@@ -22,7 +23,7 @@ describe('prepareOpencodeData', () => {
     expect(prepareOpencodeData(ud)).toEqual({ created: true })
     const dir = join(ud, 'opencode-data', 'opencode')
     expect(statSync(dir).isDirectory()).toBe(true)
-    expect(statSync(dir).mode & 0o777).toBe(0o700)
+    if (posixOnly) expect(statSync(dir).mode & 0o777).toBe(0o700) // NTFS: sin modos POSIX (ACL del perfil del usuario)
     expect(prepareOpencodeData(ud)).toEqual({ created: false })
   })
 })

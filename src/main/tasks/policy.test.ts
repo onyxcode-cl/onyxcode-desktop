@@ -24,7 +24,8 @@ describe('parseManagedPolicy: allowedFolderRoots', () => {
   })
   it('macOS no admite rutas de Windows (quedan fuera: lista vacía de raíces válidas)', () => {
     const p = parseManagedPolicy({ allowedFolderRoots: ['C:\\Proyectos', '/Users/x'] }, 'f', 'darwin')
-    expect(p.allowedFolderRoots).toEqual(['/Users/x'])
+    expect(p.allowedFolderRoots).toHaveLength(1)
+    expect(p.allowedFolderRoots?.[0]).toMatch(/Users[\\/]x$/)
   })
   it('un valor inválido sigue siendo lista vacía (fail-closed)', () => {
     expect(parseManagedPolicy({ allowedFolderRoots: 'C:\\x' }, 'f', 'win32').allowedFolderRoots).toEqual([])

@@ -16,6 +16,7 @@ import { forbiddenFolderReason, type FolderPolicyContext } from './tasks/folder-
 import { ruleRejectionReason } from './tasks/rules'
 import { nextRunAfter, scheduleLabel } from './scheduler/schedule'
 import { withLang } from './extras/windows'
+import { macOnly } from '../test/platform'
 
 const ctx: FolderPolicyContext = {
   home: '/Users/x',
@@ -31,7 +32,8 @@ describe('errores que construye main: idioma activo', () => {
       'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.'
     )
     expect(t('merr.engine.noBinary')).toContain('No se encontró el binario `opencode`.')
-    expect(forbiddenFolderReason('/', ctx)).toContain('No se puede usar la raíz del disco')
+    // folder-policy es del modo Tareas (rutas de macOS): solo se comprueba en macOS.
+    if (macOnly) expect(forbiddenFolderReason('/', ctx)).toContain('No se puede usar la raíz del disco')
     expect(scheduleLabel({ kind: 'daily', time: '08:00' })).toBe('Todos los días a las 08:00')
     expect(scheduleLabel({ kind: 'weekly', day: 1, time: '09:30' })).toBe('Cada lunes a las 09:30')
     expect(t('merr.notif.routineRejected', { count: 1 })).toBe('Se rechazó 1 permiso')
@@ -49,12 +51,15 @@ describe('errores que construye main: idioma activo', () => {
     expect(t('merr.engine.noBinary')).toMatch(/^Couldn’t find the `opencode` binary\./)
     const bin = await validateOpencodeBin('relativa/ruta')
     expect(bin).toEqual({ ok: false, error: 'The path isn’t valid.' })
-    expect(forbiddenFolderReason('/', ctx)).toMatch(/^You can’t use the disk root/)
-    expect(forbiddenFolderReason('/Users/x/Library/Foo', ctx)).toMatch(/protected macOS location/)
-    expect(forbiddenFolderReason('/Volumes', ctx)).toBe('Choose a folder inside the volume, not the list of volumes.')
-    expect(forbiddenFolderReason('/Users/x/Docs', { ...ctx, allowedRoots: [] })).toBe(
-      'Your organization doesn’t allow using folders in Tasks.'
-    )
+    // folder-policy es del modo Tareas (rutas de macOS): solo se comprueba en macOS.
+    if (macOnly) {
+      expect(forbiddenFolderReason('/', ctx)).toMatch(/^You can’t use the disk root/)
+      expect(forbiddenFolderReason('/Users/x/Library/Foo', ctx)).toMatch(/protected macOS location/)
+      expect(forbiddenFolderReason('/Volumes', ctx)).toBe('Choose a folder inside the volume, not the list of volumes.')
+      expect(forbiddenFolderReason('/Users/x/Docs', { ...ctx, allowedRoots: [] })).toBe(
+        'Your organization doesn’t allow using folders in Tasks.'
+      )
+    }
     expect(ruleRejectionReason('bash', '*')).toBe('A bash pattern this broad can’t be remembered: it would also cover delete commands.')
     expect(scheduleLabel({ kind: 'weekly', day: 1, time: '09:30' })).toBe('Every Monday at 09:30')
     expect(scheduleLabel({ kind: 'interval', hours: 6 })).toBe('Every 6 hours')
