@@ -14,6 +14,7 @@ import type * as NodePty from 'node-pty'
 import { APP_NAME } from '@shared/brand'
 import type { PtyAvailability, PtyCreateRequest, PtyInfo } from '@shared/ipc-code'
 import { withDisclaim } from '../process/disclaim'
+import { resolveDefaultShell, type ShellChoice } from './shell'
 
 type PtyModule = typeof NodePty
 
@@ -55,12 +56,8 @@ function loadNodePty(): PtyModule | null {
   return null
 }
 
-function defaultShell(): string {
-  const env = process.env.SHELL
-  if (env && isAbsolute(env) && existsSync(env)) return env
-  if (process.platform === 'win32') return process.env.COMSPEC || 'powershell.exe'
-  for (const s of ['/bin/zsh', '/bin/bash', '/bin/sh']) if (existsSync(s)) return s
-  return '/bin/sh'
+function defaultShell(): ShellChoice {
+  return resolveDefaultShell({ platform: process.platform, env: process.env, exists: existsSync, isAbsolute })
 }
 
 function clampDim(n: unknown, fallback: number, max: number): number {
@@ -85,8 +82,10 @@ export class PtyService {
     let cwd = typeof req.cwd === 'string' && isAbsolute(req.cwd) ? req.cwd : homedir()
     if (!existsSync(cwd) || !statSync(cwd).isDirectory()) cwd = homedir()
 
-    const shell = req.shell && isAbsolute(req.shell) && existsSync(req.shell) ? req.shell : defaultShell()
-    const args = process.platform === 'win32' ? [] : ['-l']
+    const custom = req.shell && isAbsolute(req.shell) && existsSync(req.shell) ? req.shell : null
+    const chosen = custom ? { command: custom, args: process.platform === 'win32' ? [] : ['-l'] } : defaultShell()
+    const shell = chosen.command
+    const args = chosen.args
     const env: Record<string, string> = {}
     for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') env[k] = v
     env.TERM = 'xterm-256color'

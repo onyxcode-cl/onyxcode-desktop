@@ -12,6 +12,7 @@ export const common = {
   'labels.ui.openHtmlPreview': 'Open preview',
   'labels.ui.guideMode': 'Guide mode',
   'labels.ui.computer': 'Mac control',
+  'labels.ui.computer.win': 'PC control',
   'labels.ui.autoMode': 'Auto mode',
   'common.cancel': 'Cancel',
   'common.accept': 'OK',

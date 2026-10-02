@@ -14,9 +14,7 @@ if (selfSigned && !process.env.CSC_NAME) {
   throw new Error('ONYXCODE_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado de firma de código (docs/DISTRIBUCION.md §10).')
 }
 const hasSigningIdentity = Boolean(process.env.CSC_NAME || process.env.CSC_LINK)
-const hasNotarizeCreds = Boolean(
-  process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID
-)
+const hasNotarizeCreds = Boolean(process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID)
 
 if (selfSigned && hasNotarizeCreds) {
   console.warn('[electron-builder.config] ONYXCODE_SELF_SIGNED=1: se ignoran las credenciales de Apple; este build NO se notariza.')
@@ -62,7 +60,14 @@ module.exports = {
   ],
   // Los agentes y las skills de oficina (se copian a userData/opencode-config al arrancar; OpenCode
   // NUNCA escribe en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
-  asarUnpack: ['resources/opencode/agents/**', 'resources/opencode/skills/**'],
+  // En Windows, node-pty se desempaqueta ENTERO (prebuilds win32 con conpty.node, conpty/conpty.dll y
+  // conpty/OpenConsole.exe, más lib/worker): ConPTY lanza OpenConsole.exe y carga conpty.dll desde disco, no
+  // pueden vivir dentro del .asar. En macOS no cambia nada (decide la plataforma que empaqueta).
+  asarUnpack: [
+    'resources/opencode/agents/**',
+    'resources/opencode/skills/**',
+    ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : [])
+  ],
   extraResources: [
     // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
     {
@@ -153,7 +158,8 @@ module.exports = {
     // poder pedir estos permisos, o el proceso aborta al intentarlo.
     extendInfo: {
       NSMicrophoneUsageDescription: 'OnyxCode necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
-      NSSpeechRecognitionUsageDescription: 'OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
+      NSSpeechRecognitionUsageDescription:
+        'OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
     }
   },
   afterSign: selfSigned ? 'build/after-sign-self-signed.js' : 'build/notarize.js',

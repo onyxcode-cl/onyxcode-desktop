@@ -24,6 +24,7 @@ import {
   X
 } from 'lucide-react'
 import { t as tg } from '@shared/i18n'
+import { splitPath } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { useClient } from './client'
@@ -512,10 +513,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               >
                 {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">{t('code.composer.searching')}</div>}
                 {items.map((item, i) => {
-                  const { dir, name } =
-                    item.id.startsWith('f:') && item.label.includes('/')
-                      ? { dir: item.label.slice(0, item.label.lastIndexOf('/')), name: item.label.slice(item.label.lastIndexOf('/') + 1) }
-                      : { dir: '', name: item.label }
+                  const { dir, name } = item.id.startsWith('f:') ? splitPath(item.label) : { dir: '', name: item.label }
                   return (
                     <button
                       key={item.id}

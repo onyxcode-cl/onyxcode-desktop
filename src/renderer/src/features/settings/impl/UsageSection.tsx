@@ -3,6 +3,7 @@ import { Loader2, RefreshCw } from 'lucide-react'
 import type { GlobalSession } from '@opencode-ai/sdk/v2/client'
 import { getLang, type MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
+import { baseName } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
@@ -108,7 +109,11 @@ export function UsageSection(): React.JSX.Element {
 
   const byModel = useMemo(() => groupBy(filtered, (s) => (s.model ? `${s.model.providerID}/${s.model.id}` : UNKNOWN)), [filtered])
   const byProject = useMemo(
-    () => groupBy(filtered, (s) => s.project?.name ?? s.project?.worktree.split('/').pop() ?? s.directory.split('/').pop() ?? s.directory),
+    () =>
+      groupBy(
+        filtered,
+        (s) => s.project?.name ?? (s.project?.worktree ? baseName(s.project.worktree) : undefined) ?? baseName(s.directory)
+      ),
     [filtered]
   )
   const top = useMemo(() => [...filtered].sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0)).slice(0, 10), [filtered])

@@ -28,6 +28,7 @@ ni los servidores OpenCode del usuario.
 Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo los de fixtures POSIX, que se sustituyen en la tanda 3):
 - `macOnly` (Tareas/actualizador): `sandbox-profile.test.ts` (Seatbelt), `restore-points.test.ts` (puntos de restauración del modo Tareas), `swap.test.ts` (`validateSwapArgs`, `startSwap`), `swap.integration.test.ts`, y en `main-errors.i18n.test.ts` las comprobaciones de `forbiddenFolderReason` (folder-policy).
 - `posixOnly` (fixtures `#!/bin/sh`, permisos, `mkfifo`): `binary.test.ts` (`validateOpencodeBin`, `getOpencodeInfo`, resolución completa y 2 casos de `bundledOpencodePath`; el caso win32 sí corre), `m001-tasks-rename.test.ts` (un caso con `chmod`), `installer.test.ts` (FIFO) y las aserciones de modo `0600`/`0700` en `account/store`, `mcp-catalog-install`, `installer` y `data-dir`.
+- `service.win.test.ts` (terminal real con ConPTY y `asarUnpack` de node-pty) solo corre en Windows (`winOnly`; en macOS la shell depende del `.zshrc`); la elección de shell (`shell.test.ts`) corre en todas.
 - Los repos temporales de `git/*.test.ts` fijan `core.autocrlf=false` (el sistema de Windows trae `true`).
 
 ## Medición de arranque y memoria (`npm run perf:startup`)

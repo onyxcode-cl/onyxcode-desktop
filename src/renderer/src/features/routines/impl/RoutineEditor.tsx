@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CalendarClock, Check, FolderOpen, Info, Loader2, Plus, ShieldAlert, X } from 'lucide-react'
 import type { TasksFolder, RoutineAllowRule, RoutineInput, RoutineSchedule, SchedulePreview } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
+import { MODE_LABELS } from '@shared/labels'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -12,7 +13,9 @@ import { MODE_META } from './meta'
 import { SCHEDULE_PRESETS, describeCron, fromDaysSpec, fullDate, sameSchedule, scheduleText, toDaysSpec, untilText } from './schedule'
 import { closeEditor, saveRoutine, useRoutines } from './store'
 import { ensureRoutinesTermsAck } from './terms'
-import { tildify } from '../../../lib/paths'
+import { baseName, tildify } from '../../../lib/paths'
+import { platformCaps } from '../../../lib/platform'
+import { PlatformNote } from '../../../components/PlatformNote'
 import { isSubmitKey } from '../../../lib/textarea'
 import { dateLocale, useT } from '../../../lib/i18n'
 
@@ -96,7 +99,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
     const picked = await cw('tasks:pickFolder')
     if (!picked) return
     if (form.mode === 'tasks' && !folders.some((f) => f.path === picked)) {
-      const name = picked.split('/').filter(Boolean).pop() ?? picked
+      const name = baseName(picked)
       const ok = await confirmDialog({
         title: t('routines.editor.allowTitle', { name }),
         message: t('routines.editor.allowMessage'),
@@ -119,6 +122,11 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   const hosts: string[] = form.allowHosts ?? []
   const setAllow = (rows: RoutineAllowRule[]): void => patch({ allow: rows })
   const isTasks = form.mode === 'tasks'
+  // Tareas no existe en Windows: no se ofrece como modo nuevo; una rutina ya guardada en ese modo se sigue viendo (con aviso).
+  const caps = platformCaps()
+  const visibleModes = (Object.keys(MODE_META) as RoutineInput['mode'][]).filter(
+    (m) => m !== 'tasks' || caps.tasks || form.mode === 'tasks'
+  )
   const selectedFolder = folders.find((f) => f.path === form.folder)
   const canFullControl = isTasks && !!selectedFolder?.fullAccess
   const fullControl = isTasks && form.fullAccess === true
@@ -199,7 +207,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
   const folderOptions = useMemo(() => {
     if (form.mode === 'tasks') return folders.map((f) => ({ path: f.path, name: f.name }))
-    return recentFolders.slice(0, 6).map((p) => ({ path: p, name: p.split('/').filter(Boolean).pop() ?? p }))
+    return recentFolders.slice(0, 6).map((p) => ({ path: p, name: baseName(p) }))
   }, [form.mode, folders, recentFolders])
 
   const tabCls = (on: boolean): string =>
@@ -449,8 +457,8 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
           {/* ── Dónde ── */}
           <section>
             <span className={labelCls}>{t('routines.editor.mode')}</span>
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.keys(MODE_META) as RoutineInput['mode'][]).map((m) => {
+            <div className={`grid gap-2 ${visibleModes.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              {visibleModes.map((m) => {
                 const meta = MODE_META[m]
                 const Icon = meta.icon
                 const on = form.mode === m
@@ -475,6 +483,11 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                 )
               })}
             </div>
+            {form.mode === 'tasks' && !caps.tasks && (
+              <div className="mt-2">
+                <PlatformNote>{t('platform.win.unavailable.routine', { tasks: MODE_LABELS.tasks })}</PlatformNote>
+              </div>
+            )}
           </section>
 
           {form.mode !== 'chat' && (
@@ -491,7 +504,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                 <span className="min-w-0 flex-1">
                   {form.folder ? (
                     <>
-                      <span className="block truncate text-sm font-medium">{form.folder.split('/').filter(Boolean).pop()}</span>
+                      <span className="block truncate text-sm font-medium">{baseName(form.folder)}</span>
                       <span className="block truncate font-mono text-[11px] text-subtle">{tildify(form.folder)}</span>
                     </>
                   ) : (

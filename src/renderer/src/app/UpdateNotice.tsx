@@ -3,6 +3,7 @@ import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
 import { useT } from '../lib/i18n'
 import { updateView } from '../lib/update-notice'
+import { platformCaps } from '../lib/platform'
 import { runUpdateAction, useUpdateState } from '../lib/use-update-state'
 
 /**
@@ -13,7 +14,7 @@ export function UpdateNotice(): React.JSX.Element | null {
   const t = useT()
   const [state, setState] = useUpdateState()
   const view = updateView(state)
-  if (!view || !state) return null
+  if (!platformCaps().updater || !view || !state) return null
   const act = (id: Parameters<typeof runUpdateAction>[0]): void => runUpdateAction(id, state, setState)
   const busy = view.phase === 'installing' || view.phase === 'restarting'
   const Icon = view.progress ? Loader2 : view.phase === 'ready' ? RefreshCw : view.phase === 'error' ? TriangleAlert : Download

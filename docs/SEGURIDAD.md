@@ -697,6 +697,12 @@ Canal nuevo, solo ventana principal (no está en `CHANNEL_ROLES`), esquema estri
 - **Política gestionada.** `%ProgramData%\OnyxCode\managed.json` (escribible solo por administradores en una instalación por defecto), mismo criterio *fail-closed*.
 - **Binario embebido.** `pin.json` fija URL, tamaño y SHA-256 por plataforma; el ZIP se verifica antes de extraer con `tar.exe` de System32.
 
+## 3 sexdecies. Windows: Code e interfaz (tanda 2)
+
+- **Diagnóstico no filtra la carpeta del usuario.** `makeRedactor` sustituye por `~` todas las escrituras de una carpeta de Windows (barras `\`, `/` y `\\` de JSON, mayúsculas/minúsculas, `file:///`, `%5C`/`%3A`, Git Bash `/c/…`, WSL `/mnt/c/…`, UNC, espacios en el nombre) y, aunque el home no coincida, todo `<unidad>:\Users\<nombre>`. Un nombre más largo que el home no deja restos (se oculta como perfil ajeno). Las expresiones son lineales (sin cuantificadores anidados; hay una prueba con entradas patológicas de 100 000 caracteres). Limitación: una ruta relativa a la raíz sin unidad (`Users\x\…`) no se reconoce.
+- **node-pty empaquetado.** En Windows `asarUnpack` saca `node_modules/node-pty/**` del `.asar`: `OpenConsole.exe` y `conpty.dll` se ejecutan/cargan desde disco. La shell es `pwsh.exe` o PowerShell 5.1 del sistema con ruta absoluta, nunca una ruta tomada del texto del usuario sin comprobar que existe.
+- **Abrir en el editor.** Solo ejecuta `Code.exe` desde rutas fijas (`%LOCALAPPDATA%\Programs`, `%ProgramFiles%`) y sin shell; si no está, `shell.openPath`.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

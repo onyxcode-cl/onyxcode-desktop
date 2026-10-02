@@ -1,10 +1,12 @@
 /**
  * Icono de bandeja / barra de menús. El icono se dibuja en tiempo de ejecución (bitmap BGRA
- * 32×32 @2x → 16pt) como "template image" de macOS, así no depende de assets.
+ * 32×32 @2x → 16pt) como "template image" de macOS (a color en Windows, ver `tray-style.ts`), así no
+ * depende de assets.
  */
 import { app, Menu, nativeImage, Tray, type NativeImage } from 'electron'
 import { APP_NAME } from '@shared/brand'
 import { onLangChange, t } from '@shared/i18n'
+import { trayIconStyle } from './tray-style'
 
 export interface TrayActions {
   onNewConversation: () => void
@@ -24,6 +26,7 @@ let lastAccelerator = ''
  */
 export function createTrayIcon(): NativeImage {
   const S = 32
+  const style = trayIconStyle(process.platform)
   const buf = Buffer.alloc(S * S * 4)
   const cov = (px: number, py: number): number => {
     // Supermuestreo 4×4 para bordes suaves.
@@ -41,14 +44,14 @@ export function createTrayIcon(): NativeImage {
     for (let x = 0; x < S; x++) {
       const a = Math.round(cov(x, y) * 255)
       const i = (y * S + x) * 4
-      buf[i] = 0 // B
-      buf[i + 1] = 0 // G
-      buf[i + 2] = 0 // R
+      buf[i] = style.rgb[2] // B
+      buf[i + 1] = style.rgb[1] // G
+      buf[i + 2] = style.rgb[0] // R
       buf[i + 3] = a // A
     }
   }
   const img = nativeImage.createFromBitmap(buf, { width: S, height: S, scaleFactor: 2 })
-  img.setTemplateImage(true)
+  img.setTemplateImage(style.template)
   return img
 }
 

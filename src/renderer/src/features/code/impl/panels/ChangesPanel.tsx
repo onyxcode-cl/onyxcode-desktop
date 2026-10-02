@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
+import { splitPath } from '../../../../lib/paths'
 import { useT } from '../../../../lib/i18n'
 import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
@@ -119,11 +120,6 @@ async function loadDiff(cwd: string, file: Pick<ChangedFile, 'path' | 'kind'>, s
   // Archivo nuevo sin seguimiento: se muestra todo como añadido.
   if ((file.kind === 'untracked' || file.kind === 'added') && res.data?.type === 'text') return makePatch(file.path, '', res.data.content)
   return text
-}
-
-function splitPath(p: string): { dir: string; name: string } {
-  const i = p.lastIndexOf('/')
-  return i < 0 ? { dir: '', name: p } : { dir: p.slice(0, i), name: p.slice(i + 1) }
 }
 
 interface Selection {

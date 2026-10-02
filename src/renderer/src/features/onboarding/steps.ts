@@ -6,10 +6,16 @@ import { isConfiguredProvider } from '@shared/ai-availability'
 import { APP_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
+import { currentPlatform } from '../../lib/platform'
 import type { OpencodeInfo, OpencodeSource, ServerState } from '@shared/types'
 
 export const ONBOARDING_STEPS = ['opencode', 'auth', 'model', 'modes', 'permissions'] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
+
+/** Pasos de esta plataforma: «Permisos de macOS» solo existe en macOS (Control del PC y Tareas no están en Windows). */
+export function stepsFor(platform: string = currentPlatform()): readonly OnboardingStep[] {
+  return platform === 'darwin' ? ONBOARDING_STEPS : ONBOARDING_STEPS.filter((s) => s !== 'permissions')
+}
 
 /** Proveedor del catálogo de OpenCode (`provider.list().all`) reducido a lo que se necesita. */
 export interface ProviderState {
@@ -70,16 +76,16 @@ export function decideOnboarding(i: OnboardingInputs): OnboardingDecision {
   return hasConfiguredProvider(i.connected) ? { kind: 'complete' } : { kind: 'show', step: 'auth' }
 }
 
-export function stepIndex(step: OnboardingStep): number {
-  return ONBOARDING_STEPS.indexOf(step)
+export function stepIndex(step: OnboardingStep, platform: string = currentPlatform()): number {
+  return stepsFor(platform).indexOf(step)
 }
 
-export function nextStep(step: OnboardingStep): OnboardingStep | null {
-  return ONBOARDING_STEPS[stepIndex(step) + 1] ?? null
+export function nextStep(step: OnboardingStep, platform: string = currentPlatform()): OnboardingStep | null {
+  return stepsFor(platform)[stepIndex(step, platform) + 1] ?? null
 }
 
-export function prevStep(step: OnboardingStep): OnboardingStep | null {
-  return ONBOARDING_STEPS[stepIndex(step) - 1] ?? null
+export function prevStep(step: OnboardingStep, platform: string = currentPlatform()): OnboardingStep | null {
+  return stepsFor(platform)[stepIndex(step, platform) - 1] ?? null
 }
 
 /** Cómo presentar el paso 1: informativo con el motor incluido; con el CLI propio o sin binario, el flujo de siempre. */

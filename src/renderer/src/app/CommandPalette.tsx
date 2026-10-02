@@ -14,6 +14,9 @@ import { selectSessionsForDirectory } from '../lib/session-reducer'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
+import { isMacPlatform } from '../lib/platform'
+
+const MOD_HINT = isMacPlatform() ? '⌘' : 'Ctrl+'
 
 interface Command {
   id: string
@@ -54,7 +57,7 @@ function useCommands(): Command[] {
         group: t('app.palette.group.actions'),
         label: newAction.label,
         icon: Plus,
-        hint: '⌘N',
+        hint: `${MOD_HINT}N`,
         keywords: t('app.palette.kw.new'),
         run: () => {
           ui.openSettings(false)
@@ -80,7 +83,7 @@ function useCommands(): Command[] {
       group: t('app.palette.group.goto'),
       label: t('app.palette.settings'),
       icon: Settings,
-      hint: '⌘,',
+      hint: `${MOD_HINT},`,
       keywords: t('app.palette.kw.settings'),
       run: () => ui.openSettings(true)
     })

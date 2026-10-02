@@ -9,6 +9,7 @@ import {
   getLang,
   localeTag,
   resolveLang,
+  setI18nPlatform,
   setLang,
   translate,
   type Lang,
@@ -18,6 +19,10 @@ import {
   isLangPref
 } from '@shared/i18n'
 import { useSettings } from '../stores/settings'
+import { currentPlatform } from './platform'
+
+// Variantes de texto por plataforma (`x.win`): antes de pintar nada.
+setI18nPlatform(currentPlatform())
 
 const CACHE_KEY = 'onyx.langPref'
 

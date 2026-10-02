@@ -1,10 +1,15 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { DEFAULT_EXTRAS_PREFS, type ExtrasPrefs, type ModelMode } from '@shared/ipc-extras'
+import { DEFAULT_EXTRAS_PREFS, defaultQuickEntryShortcut, type ExtrasPrefs, type ModelMode } from '@shared/ipc-extras'
 import type { ModelRef } from '@shared/types'
 
 type Listener = (prefs: ExtrasPrefs) => void
+
+/** Valores por defecto de esta plataforma (el atajo de Quick Entry cambia en Windows). */
+function platformDefaults(): ExtrasPrefs {
+  return { ...DEFAULT_EXTRAS_PREFS, quickEntryShortcut: defaultQuickEntryShortcut(process.platform) }
+}
 
 const MODES: readonly ModelMode[] = ['chat', 'code', 'tasks']
 
@@ -13,7 +18,7 @@ function isModelRef(v: unknown): v is ModelRef {
 }
 
 function normalize(input: Partial<ExtrasPrefs>): ExtrasPrefs {
-  const shortcut = typeof input.quickEntryShortcut === 'string' ? input.quickEntryShortcut.trim() : DEFAULT_EXTRAS_PREFS.quickEntryShortcut
+  const shortcut = typeof input.quickEntryShortcut === 'string' ? input.quickEntryShortcut.trim() : platformDefaults().quickEntryShortcut
   const modelsByMode: ExtrasPrefs['modelsByMode'] = {}
   const raw = input.modelsByMode
   if (raw && typeof raw === 'object') {
@@ -46,7 +51,7 @@ class ExtrasPrefsStore {
     } catch (err) {
       console.error('[extras] extras.json inválido, usando valores por defecto:', err)
     }
-    this.cache = normalize({ ...DEFAULT_EXTRAS_PREFS, ...loaded })
+    this.cache = normalize({ ...platformDefaults(), ...loaded })
     return this.cache
   }
 

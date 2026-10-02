@@ -12,6 +12,8 @@ import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs } from './extras'
+import { modeAvailable } from '@shared/platform-caps'
+import { currentPlatform } from '../../../lib/platform'
 import { ModelSelect, sortProviders } from './ModelSelect'
 import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 import { KeyTestNotice } from './KeyTestNotice'
@@ -20,11 +22,12 @@ import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput } from 
 import { useKeyTests } from './useKeyTest'
 
 function modes(t: ReturnType<typeof useT>): { id: ModelMode; label: string; description: string }[] {
-  return [
+  const all: { id: ModelMode; label: string; description: string }[] = [
     { id: 'chat', label: MODE_LABELS.chat, description: t('models.mode.chat.description') },
     { id: 'code', label: MODE_LABELS.code, description: t('models.mode.code.description') },
     { id: 'tasks', label: MODE_LABELS.tasks, description: t('models.mode.tasks.description') }
   ]
+  return all.filter((m) => modeAvailable(m.id, currentPlatform()))
 }
 
 export function ModelsSection(): React.JSX.Element {

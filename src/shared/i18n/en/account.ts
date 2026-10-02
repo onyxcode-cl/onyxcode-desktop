@@ -3,7 +3,9 @@ import type { account as es } from '../es/account'
 
 export const account = {
   'account.dataSentence': 'We store your email to manage your account and count users. Your conversations and AI keys stay on your Mac.',
+  'account.dataSentence.win': 'We store your email to manage your account and count users. Your conversations and AI keys stay on your PC.',
   'account.existingUserNote': 'Your conversations and AI keys stay on your Mac.',
+  'account.existingUserNote.win': 'Your conversations and AI keys stay on your PC.',
   'account.banner.expired.title': 'Your session has ended',
   'account.banner.expired.body': 'For your security, sign in again to keep using the app.',
   'account.banner.deleted.title': 'This account no longer exists',
@@ -51,6 +53,8 @@ export const account = {
   'account.choose.emailLogin': 'Sign in with your email',
   'account.choose.emailSignup': 'Create an account with your email',
   'account.choose.memoryOnly': 'The macOS Keychain couldn’t be used on this Mac: your session will only last until you quit the app.',
+  'account.choose.memoryOnly.win':
+    'Windows credential storage couldn’t be used on this PC: your session will only last until you quit the app.',
 
   'account.email.sub': 'We’ll send you a 6-digit code to confirm the email is yours.',
   'account.email.titleLogin': 'Sign in with your email',

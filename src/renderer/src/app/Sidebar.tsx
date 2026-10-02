@@ -3,6 +3,7 @@ import { APP_NAME } from '@shared/brand'
 import { IconButton } from '../components/IconButton'
 import { LogoMark } from '../components/Logo'
 import { useT } from '../lib/i18n'
+import { isMacPlatform } from '../lib/platform'
 import { useServer } from '../stores/server'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
@@ -32,8 +33,8 @@ export function Sidebar(): React.JSX.Element {
       aria-label={t('app.sidebar.aria')}
       className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar"
     >
-      {/* Zona de titlebar (semáforos de macOS) */}
-      <div className="drag flex h-12 shrink-0 items-center justify-end px-2">
+      {/* Zona de titlebar: en macOS deja sitio a los semáforos; en Windows el marco es el nativo y no hace falta el hueco */}
+      <div className={`drag flex shrink-0 items-center justify-end px-2 ${isMacPlatform() ? 'h-12' : 'h-10'}`}>
         <IconButton label={t('app.sidebar.hide', { mod: MOD })} onClick={toggleSidebar}>
           <PanelLeftClose size={16} />
         </IconButton>

@@ -69,9 +69,30 @@ export function format(template: string, params?: Params): string {
 
 const pluralRules: Record<Lang, Intl.PluralRules> = { es: new Intl.PluralRules('es'), en: new Intl.PluralRules('en') }
 
+/**
+ * Plataforma para las variantes de texto: en `win32`, una clave `x` se sustituye por `x.win` si existe
+ * (p. ej. «Mostrar en Finder» → «Mostrar en el Explorador»). Se fija una vez al arrancar (main y renderer);
+ * vacía (por defecto, también en las pruebas) no cambia ningún texto.
+ */
+let platform = ''
+
+export function setI18nPlatform(p: string): void {
+  platform = p
+}
+
+export function getI18nPlatform(): string {
+  return platform
+}
+
+/** Clave efectiva: la variante `.win` en Windows si el diccionario base la define. */
+export function platformKey(key: string, plat: string = platform): string {
+  return plat === 'win32' && `${key}.win` in DICTIONARIES.es ? `${key}.win` : key
+}
+
 /** Resuelve un mensaje (con su plural) en un idioma concreto. */
 export function translate(lang: Lang, key: string, params?: Params): string {
-  const raw = DICTIONARIES[lang][key] ?? DICTIONARIES.es[key]
+  const k = platformKey(key)
+  const raw = DICTIONARIES[lang][k] ?? DICTIONARIES.es[k]
   if (raw === undefined) return key
   if (typeof raw === 'string') return format(raw, params)
   const count = typeof params?.count === 'number' ? params.count : Number(params?.count ?? 0)

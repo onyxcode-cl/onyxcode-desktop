@@ -6,6 +6,9 @@ import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
+import { platformCaps } from '../../../lib/platform'
+import { PlatformNote } from '../../../components/PlatformNote'
+import { UI_LABELS } from '@shared/labels'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
@@ -132,6 +135,7 @@ export function GeneralSection(): React.JSX.Element {
   const soundEnabled = useExtrasPrefs((s) => s.prefs.soundEnabled)
   const updatePrefs = useExtrasPrefs((s) => s.update)
   const st = STATE[status.state] ?? STATE.stopped
+  const caps = platformCaps()
 
   return (
     <div>
@@ -190,13 +194,27 @@ export function GeneralSection(): React.JSX.Element {
             disabled={!notificationsEnabled}
           />
         </Row>
-        <KeepAwakeRow />
+        {caps.keepAwakeText && <KeepAwakeRow />}
       </Card>
 
-      <SubTitle>{MODE_LABELS.tasks}</SubTitle>
-      <Card>
-        <TasksInstructionsRow />
-      </Card>
+      {caps.tasks ? (
+        <>
+          <SubTitle>{MODE_LABELS.tasks}</SubTitle>
+          <Card>
+            <TasksInstructionsRow />
+          </Card>
+        </>
+      ) : (
+        <div className="mt-6">
+          <PlatformNote title={t('platform.win.unavailable.title')}>
+            <ul className="list-disc space-y-1 pl-4">
+              <li>{t('platform.win.unavailable.tasks', { tasks: MODE_LABELS.tasks })}</li>
+              <li>{t('platform.win.unavailable.computer', { computer: UI_LABELS.computer })}</li>
+              <li>{t('platform.win.unavailable.update')}</li>
+            </ul>
+          </PlatformNote>
+        </div>
+      )}
 
       <SubTitle>{t('settings.general.server')}</SubTitle>
       <Card>
