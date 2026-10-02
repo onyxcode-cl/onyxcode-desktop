@@ -520,3 +520,23 @@ Segunda tanda de Windows: terminal, Diagnóstico sin datos personales, interfaz 
 - **Textos**: `shared/i18n` admite variantes `clave.win` (se aplican solo en win32; en macOS y en las pruebas no cambia ningún texto): Finder → Explorador, Llavero → almacén de credenciales, «tu Mac» → «tu PC», atajos con Ctrl, bandeja, Dock → barra de tareas. Los textos de Tareas/Control (`tasksComputer`…) no se tocan.
 - **Medido en Windows**: unit 1475 pruebas verdes (119 saltadas por la tanda 1), build en 14 s, humo de arranque OK (listo en 1,8 s, sin consola, sin huérfanos).
 - **No probado**: ventana visible (axe, aspecto de la bandeja y del marco, parpadeo de la barra de tareas, atajo global real), `Code.exe` real, descartar bloques con `shell.trashItem` y revert de sesión de OpenCode en un repo bajo `C:\onyx\tmp`, «Ejecutar ahora» de una rutina Code. `node-pty` empaquetado (`app.asar`) y su `fork` de `conpty_console_list_agent` con `runAsNode` desactivado quedan para la tanda 4 (instalador).
+
+## F8-B42 — El modelo elegido en Chat ya no se cambia en silencio (rama `fix/modelo-elegido-se-pierde`)
+
+Bug: en Chat el usuario elegía un modelo (p. ej. OpenCode Go · GPT 5.6 luna), salía y al volver «estaba puesta otra IA».
+Causa confirmada: la elección SÍ se guarda (`settings.defaultModel`, store y `settings.json` correctos al cambiar de modo, abrir Ajustes
+y reiniciar; pruebas (a)-(c)), pero `resolveModel` sustituía en silencio cualquier modelo ausente de la lista de proveedores cargada
+por el predeterminado de la primera IA conectada, y el selector y el envío usaban ese sustituto. Basta con que la lista no traiga el
+modelo (lista vieja, proveedor sin clave, modelo retirado) para que se vea y se use otro. No se pudo reproducir con el OpenCode real
+por qué la lista pierde el modelo (no probado), pero el efecto visible queda cubierto.
+
+Cambios:
+- `shared/ai-availability.ts`: `isChoiceUnavailable` (elección explícita ausente de la lista cargada; no aplica sin IA configurada, con
+  la lista sin cargar ni al predeterminado de fábrica nunca tocado) y `sendGate(..., unavailable)` con motivo `model-unavailable`.
+- `lib/ai-gate.ts`: opción `strict` (solo Chat). Con la elección no disponible no hay modelo efectivo, el envío se bloquea y la lista de
+  proveedores se recarga una vez por modelo. Code y Tareas conservan el comportamiento anterior. Nada se persiste jamás.
+- Chat: el selector muestra el modelo elegido marcado «no disponible», aviso encima del compositor, compositor bloqueado con texto
+  propio y `sendChatMessage` lanza un mensaje claro en vez de enviar con otro modelo (es/en).
+- Pruebas: unitarias (`ai-availability.test.ts`, `main/store.model.test.ts`) y E2E `model-choice.e2e.ts` (disco + store + DOM; cambiar de
+  modo, Ajustes, reinicio con el mismo userData, lista sin cargar, modelo ausente, proveedor sin clave y reconexión).
+- Pendiente de decidir: Ajustes › Modelos ofrece un modelo «Chat» por modo (`modelsByMode.chat`) que Chat ignora (usa `defaultModel`).

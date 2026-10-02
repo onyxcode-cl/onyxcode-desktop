@@ -2,7 +2,7 @@
  * Lógica pura: ¿hay alguna IA conectada?, ¿qué modelo se usa «de verdad» y se puede enviar?
  * Sin React, sin IPC y sin el SDK (tipos mínimos): se prueba con `ai-availability.test.ts`.
  */
-import type { ModelRef } from './types'
+import { DEFAULT_MODEL, type ModelRef } from './types'
 
 /** Proveedor reducido a lo que hace falta aquí (compatible con el `Provider` del SDK). */
 export interface ProviderLike {
@@ -34,9 +34,19 @@ export function aiAvailability(providers: ProviderLike[] | null): AiAvailability
   return providers.length > 0 ? 'free-only' : 'none'
 }
 
-function hasModel(providers: ProviderLike[], ref: ModelRef): boolean {
+export function hasModel(providers: ProviderLike[], ref: ModelRef): boolean {
   const p = providers.find((x) => x.id === ref.providerID)
   return !!p && Object.prototype.hasOwnProperty.call(p.models, ref.modelID)
+}
+
+/**
+ * ¿La elección explícita del usuario falta en la lista ya cargada? Solo cuenta con alguna IA configurada y para un modelo que el
+ * usuario eligió: el predeterminado de fábrica (nunca tocado) sí puede sustituirse por el de la IA que sí tiene (`resolveModel`).
+ */
+export function isChoiceUnavailable(wanted: ModelRef, providers: ProviderLike[] | null): boolean {
+  if (providers === null || aiAvailability(providers) !== 'ready') return false
+  if (wanted.providerID === DEFAULT_MODEL.providerID && wanted.modelID === DEFAULT_MODEL.modelID) return false
+  return !hasModel(providers, wanted)
 }
 
 /** Modelo predeterminado de un proveedor: el que indica `defaults` si existe; si no, el primero. */
@@ -74,13 +84,15 @@ export function firstFreeModel(providers: ProviderLike[] | null): ModelRef | nul
 
 export interface SendGate {
   blocked: boolean
-  reason: 'no-ai' | null
+  reason: 'no-ai' | 'model-unavailable' | null
   /** Se envía con un modelo gratuito porque no hay ninguna IA conectada: mostrar la nota suave. */
   freeNote: boolean
 }
 
-/** Decide si se puede enviar. Con `unknown` nunca bloquea (se envía el modelo pedido tal cual). */
-export function sendGate(avail: AiAvailability, effective: ModelRef | null): SendGate {
+/** Decide si se puede enviar (`unavailable` = la elección explícita falta, ver `isChoiceUnavailable`). Con `unknown` nunca bloquea (se envía el modelo pedido tal cual). */
+export function sendGate(avail: AiAvailability, effective: ModelRef | null, unavailable = false): SendGate {
+  // El modelo elegido no está: no se envía con otro a escondidas; hay que elegir uno disponible.
+  if (unavailable) return { blocked: true, reason: 'model-unavailable', freeNote: false }
   if (avail === 'unknown') return { blocked: false, reason: null, freeNote: false }
   if (effective === null) return { blocked: true, reason: 'no-ai', freeNote: false }
   return { blocked: false, reason: null, freeNote: avail === 'free-only' }

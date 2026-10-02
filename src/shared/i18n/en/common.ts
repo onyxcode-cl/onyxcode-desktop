@@ -37,6 +37,7 @@ export const common = {
   'common.sessions.loadMore': 'Load more',
   'common.diff.showAll': 'Show all',
   'common.modelPicker.choose': 'Choose a model',
+  'common.modelPicker.unavailable': 'unavailable',
   'common.modelPicker.searchPlaceholder': 'Search models…',
   'common.modelPicker.search': 'Search models',
   'common.modelPicker.loading': 'Loading models…',

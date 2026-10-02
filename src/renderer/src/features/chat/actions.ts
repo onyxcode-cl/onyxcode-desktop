@@ -107,7 +107,10 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
   const { client, directory } = ctx()
   const sessions = useSessions.getState()
   // Modelo efectivo (el guardado si existe entre los proveedores cargados; si no, el de la primera IA conectada).
-  const { effective, gate } = currentAiGate(useSettings.getState().settings.defaultModel)
+  const wanted = useSettings.getState().settings.defaultModel
+  const { effective, gate } = currentAiGate(wanted, { strict: true })
+  // El modelo elegido no existe: no se envía con otro a escondidas (mensaje claro, sin el error crudo del motor).
+  if (gate.reason === 'model-unavailable') throw new Error(t('chat.modelUnavailable.send', { model: wanted.modelID }))
   if (gate.blocked || !effective) throw NO_AI_ERROR
   const model = effective
   let sessionID = useChat.getState().activeSessionId
@@ -240,7 +243,7 @@ export async function compactChat(sessionID: string): Promise<void> {
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
   try {
-    const model = currentAiGate(useSettings.getState().settings.defaultModel).effective
+    const model = currentAiGate(useSettings.getState().settings.defaultModel, { strict: true }).effective
     const res = await client.session.summarize({ sessionID, directory, providerID: model?.providerID, modelID: model?.modelID })
     const err = (res as { error?: unknown }).error
     if (err) throw err
