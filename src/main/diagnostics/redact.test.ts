@@ -134,3 +134,65 @@ describe('propiedades', () => {
     }
   })
 })
+
+describe('carpeta del usuario en Windows (privacidad)', () => {
+  const win = makeRedactor({ exact: [], home: 'C:\\Users\\Bentec' })
+  const variants = [
+    'C:\\Users\\Bentec\\repo\\a.ts',
+    'C:/Users/Bentec/repo/a.ts',
+    'C:\\\\Users\\\\Bentec\\\\repo\\\\a.ts', // escapada dentro de un JSON
+    'c:\\users\\BENTEC\\repo', // otra capitalización
+    'file:///C:/Users/Bentec/repo',
+    'file:///c:/Users/Bentec/repo',
+    'C%3A%5CUsers%5CBentec%5Crepo',
+    'C:%5CUsers%5CBentec',
+    '/c/Users/Bentec/repo', // Git Bash
+    '/mnt/c/Users/Bentec/repo', // WSL
+    'C:\\Users\\Bentec', // sola
+    'C:\\Users\\Bentec\\',
+    'C:\\Users/Bentec\\mixto'
+  ]
+  it.each(variants)('no deja el usuario: %s', (v) => {
+    const out = win(`error en ${v} y fin`)
+    expect(out).not.toMatch(/bentec/i)
+    expect(out).toContain('~')
+  })
+  it('también dentro de JSON y comillas', () => {
+    const out = win(JSON.stringify({ cwd: 'C:\\Users\\Bentec\\AppData\\Roaming\\OnyxCode', p: 'C:/Users/Bentec/x' }))
+    expect(out).not.toMatch(/bentec/i)
+    expect(JSON.parse(out).cwd).toBe('~\\AppData\\Roaming\\OnyxCode')
+  })
+  it('un nombre más largo no deja un resto del usuario', () => {
+    const out = win('C:\\Users\\Bentec2\\x y C:\\Users\\Bentec.old\\y')
+    expect(out).not.toMatch(/bentec/i)
+  })
+  it('nombre con espacios', () => {
+    const w = makeRedactor({ exact: [], home: 'C:\\Users\\Ana Perez' })
+    expect(w('abrir C:\\Users\\Ana Perez\\Docs y C:/users/ana perez/x')).toBe('abrir ~\\Docs y ~/x')
+  })
+  it('carpeta fuera de C:\\Users y unidad D:', () => {
+    const w = makeRedactor({ exact: [], home: 'D:\\perfiles\\bob' })
+    expect(w('D:\\perfiles\\bob\\x d:/Perfiles/Bob/y')).toBe('~\\x ~/y')
+  })
+  it('UNC', () => {
+    const w = makeRedactor({ exact: [], home: '\\\\srv\\home\\bob' })
+    expect(w('\\\\srv\\home\\bob\\x y //srv/home/bob/z')).not.toMatch(/bob/)
+  })
+  it('perfiles ajenos de Windows también se ocultan, aunque el home sea de otro estilo', () => {
+    const mac = makeRedactor({ exact: [], home: '/Users/ana' })
+    const out = mac('log C:\\Users\\Otro\\AppData y D:/Users/Maria/x y /Users/ana/ok')
+    expect(out).not.toMatch(/otro|maria|ana/i)
+  })
+  it('no toca rutas que no son perfiles ni el resto de la línea', () => {
+    expect(win('C:\\Windows\\System32 y C:\\onyx\\wt')).toBe('C:\\Windows\\System32 y C:\\onyx\\wt')
+  })
+  it('home de macOS sigue funcionando igual', () => {
+    expect(makeRedactor({ exact: [], home: '/Users/ana/' })('/Users/ana/x')).toBe('~/x')
+  })
+  it('sigue siendo lineal con entradas largas y patológicas', () => {
+    const evil = 'C:' + '\\'.repeat(50000) + 'Users' + '/'.repeat(50000)
+    const t0 = Date.now()
+    win(evil)
+    expect(Date.now() - t0).toBeLessThan(1500)
+  })
+})

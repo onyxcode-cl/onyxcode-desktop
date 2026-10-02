@@ -18,6 +18,7 @@ import {
   statSync,
   writeFileSync
 } from 'node:fs'
+import { samePath } from '../util/paths'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { splitDiffHunks, isSingleFileDiff } from '@shared/diff-hunks'
 import type {
@@ -486,7 +487,7 @@ export async function removeWorktree(cwd: string, path: string, force = false): 
   const root = await requireRoot(cwd)
   if (typeof path !== 'string' || !isAbsolute(path)) throw new GitError(t('common.git.invalidWorktreePath', { path: String(path) }))
   const target = realish(resolve(path))
-  const wt = (await listWorktrees(root)).find((w) => realish(resolve(w.path)) === target)
+  const wt = (await listWorktrees(root)).find((w) => samePath(realish(resolve(w.path)), target))
   if (!wt) throw new GitError(t('common.git.notWorktree', { path: target }))
   if (wt.main) throw new GitError(t('common.git.cantRemoveMain'))
   await git(root, ['worktree', 'remove', ...(force ? ['--force'] : []), '--', target])

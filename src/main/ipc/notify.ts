@@ -11,6 +11,22 @@ import { app, Notification, type IpcMain } from 'electron'
 import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import { handle } from './handle'
+import { shouldFlashFrame } from './flash'
+
+/** Windows: parpadea el botón de la barra de tareas si la ventana principal está en segundo plano (se apaga al enfocarla). */
+function flashIfBackground(deps: MainWindowDeps, pending: boolean): void {
+  if (process.platform !== 'win32') return
+  const win = findMainWindow(deps)
+  const state = win ? { isFocused: win.isFocused(), isDestroyed: win.isDestroyed() } : null
+  if (!win || !shouldFlashFrame(process.platform, state, pending)) {
+    if (win && !win.isDestroyed() && !pending) win.flashFrame(false)
+    return
+  }
+  win.flashFrame(true)
+  win.once('focus', () => {
+    if (!win.isDestroyed()) win.flashFrame(false)
+  })
+}
 
 export function registerNotifyHandlers(ipcMain: IpcMain, deps: MainWindowDeps): void {
   handle(ipcMain, 'app:notify', ({ title, body, target }) => {
@@ -35,9 +51,11 @@ export function registerNotifyHandlers(ipcMain: IpcMain, deps: MainWindowDeps): 
       const mainWin = findMainWindow(deps)
       if (!mainWin || mainWin.isDestroyed() || !mainWin.isFocused()) app.dock?.bounce('informational')
     }
+    flashIfBackground(deps, true)
   })
 
   handle(ipcMain, 'app:setAttention', ({ count }) => {
     if (process.platform === 'darwin') app.dock?.setBadge(count > 0 ? String(count) : '')
+    flashIfBackground(deps, count > 0)
   })
 }

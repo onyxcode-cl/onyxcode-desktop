@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { isAbsolute, resolve } from 'node:path'
 import { BrowserWindow, dialog, shell } from 'electron'
+import { codeCandidates } from './code-candidates'
 
 export interface OpenFolderOptions {
   title?: string
@@ -32,6 +33,7 @@ export function revealInFinder(path: string): void {
 
 /** PATH ampliado: las apps lanzadas desde Finder no heredan el PATH de la shell. */
 function extendedEnv(): NodeJS.ProcessEnv {
+  if (process.platform === 'win32') return { ...process.env }
   const extra = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin']
   const parts = (process.env.PATH ?? '').split(':').filter(Boolean)
   for (const e of extra) if (!parts.includes(e)) parts.push(e)
@@ -67,18 +69,11 @@ function tryLaunch(cmd: string, args: string[]): Promise<boolean> {
   })
 }
 
-const CODE_CANDIDATES = [
-  'code',
-  '/usr/local/bin/code',
-  '/opt/homebrew/bin/code',
-  '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code'
-]
-
 /** Abre en VS Code (`code`) y, si no está, con `open` (macOS) / `shell.openPath`. */
 export async function openInEditor(path: string): Promise<{ via: 'code' | 'open' }> {
   const abs = assertExistingPath(path)
-  for (const cmd of CODE_CANDIDATES) {
-    if (cmd.startsWith('/') && !existsSync(cmd)) continue
+  for (const cmd of codeCandidates(process.platform, process.env)) {
+    if ((cmd.startsWith('/') || isAbsolute(cmd)) && !existsSync(cmd)) continue
     if (await tryLaunch(cmd, [abs])) return { via: 'code' }
   }
   if (process.platform === 'darwin') {

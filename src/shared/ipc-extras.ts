@@ -26,6 +26,11 @@ export interface ExtrasPrefs {
 
 export const DEFAULT_QUICK_ENTRY_SHORTCUT = 'Alt+Space'
 
+/** En Windows `Alt+Space` abre el menú de sistema de la ventana: el atajo por defecto es `Alt+Shift+Space`. */
+export function defaultQuickEntryShortcut(platform: string): string {
+  return platform === 'win32' ? 'Alt+Shift+Space' : DEFAULT_QUICK_ENTRY_SHORTCUT
+}
+
 export const DEFAULT_EXTRAS_PREFS: ExtrasPrefs = {
   quickEntryShortcut: DEFAULT_QUICK_ENTRY_SHORTCUT,
   modelsByMode: {},

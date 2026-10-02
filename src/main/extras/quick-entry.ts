@@ -1,6 +1,6 @@
 /**
  * Quick Entry: ventana pequeña, sin marco y siempre encima, que se alterna con un atajo
- * global (por defecto Option+Space). Al enviar, abre/enfoca la ventana principal en Chat
+ * global (por defecto Option+Space en macOS y Alt+Shift+Space en Windows, donde Alt+Space abre el menú del sistema). Al enviar, abre/enfoca la ventana principal en Chat
  * con el prompt (evento `extras:quick-prompt`).
  */
 import { t } from '@shared/i18n'

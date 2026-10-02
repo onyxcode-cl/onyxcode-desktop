@@ -1,7 +1,7 @@
 import { sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { isWin } from '../../test/platform'
-import { isInside } from './paths'
+import { isInside, normalizeDrive, samePath } from './paths'
 
 /** Copia literal de la versión privada que tenía tasks/folder-policy.ts (para demostrar equivalencia). */
 function legacyPolicyIsInside(f: string, dir: string): boolean {
@@ -46,5 +46,21 @@ describe('isInside en Windows', () => {
   it('la raíz de unidad contiene su árbol y no otra unidad', () => {
     expect(w('C:\\a\\b', 'C:\\')).toBe(true)
     expect(w('D:\\a', 'C:\\')).toBe(false)
+  })
+})
+
+describe('samePath / normalizeDrive (win32)', () => {
+  it('ignora mayúsculas, separadores y barra final en win32', () => {
+    expect(samePath('c:\\Users\\X\\Repo', 'C:/users/x/repo/', 'win32')).toBe(true)
+    expect(samePath('C:\\a', 'D:\\a', 'win32')).toBe(false)
+  })
+  it('exacta en posix', () => {
+    expect(samePath('/a/B', '/a/b', 'darwin')).toBe(false)
+    expect(samePath('/a/b/', '/a/b', 'darwin')).toBe(true)
+  })
+  it('normalizeDrive sube la letra solo en win32', () => {
+    expect(normalizeDrive('c:\\x', 'win32')).toBe('C:\\x')
+    expect(normalizeDrive('c:\\x', 'darwin')).toBe('c:\\x')
+    expect(normalizeDrive('/c:/x', 'win32')).toBe('/c:/x')
   })
 })
