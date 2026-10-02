@@ -15,6 +15,7 @@ import { fakeOutsideUserData, makeTasksDir } from '../lib/lotes'
 import { shot } from '../lib/shots'
 import { setMode, storeCall } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
+import { isolatedHomeEnv } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.I18N_SHOTS_DIR
@@ -120,7 +121,7 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
     const home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-home-')))
     dirs.push(userData, home)
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-    const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+    const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
     const app: E2EApp = await startApp({
       userData,
       keepUserData: true,

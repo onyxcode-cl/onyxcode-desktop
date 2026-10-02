@@ -16,7 +16,7 @@ import {
   type PickInput
 } from './binary'
 import { bundledOpencodePath, findOpencodeBinary, resolveOpencode, resolveOpencodeAsync } from './server'
-import { posixOnly } from '../../test/platform'
+import { isWin, posixOnly } from '../../test/platform'
 
 // Sin las carpetas habituales (`~/.opencode/bin`, Homebrew…): los tests no deben depender del OpenCode instalado.
 vi.mock('../process/child-env', async (orig) => ({ ...(await orig<typeof import('../process/child-env')>()), EXTRA_PATH_DIRS: [] }))
@@ -24,11 +24,35 @@ vi.mock('../process/child-env', async (orig) => ({ ...(await orig<typeof import(
 const dir = mkdtempSync(join(tmpdir(), 'onyx-bin-'))
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-function script(name: string, body: string, mode = 0o755): string {
+/**
+ * Programa falso. POSIX: script `#!/bin/sh` con `sh` como cuerpo. Windows: un `.mjs` con `js` (la app lo lanza con
+ * `node <mjs>` solo sin empaquetar, igual que el OpenCode falso de los E2E: `opencode/test-launcher.ts`).
+ */
+function script(name: string, sh: string, mode = 0o755, js?: string): string {
+  if (isWin) {
+    const file = join(dir, `${name}.mjs`)
+    writeFileSync(file, js ?? jsFor(sh))
+    return file
+  }
   const file = join(dir, name)
-  writeFileSync(file, `#!/bin/sh\n${body}\n`)
+  writeFileSync(file, `#!/bin/sh\n${sh}\n`)
   chmodSync(file, mode)
   return file
+}
+
+/** Traduce los cuerpos `sh` triviales de estos tests (`echo X`, `exit N`, `echo X; exit N`, `exec sleep N`) a JS de node. */
+function jsFor(sh: string): string {
+  const out: string[] = []
+  for (const part of sh.split(';').map((x) => x.trim())) {
+    const echo = /^echo (.*)$/.exec(part)
+    const exit = /^exit (\d+)$/.exec(part)
+    const sleep = /^exec sleep (\d+)$/.exec(part)
+    if (echo) out.push(`console.log(${JSON.stringify(echo[1])})`)
+    else if (exit) out.push(`process.exit(${exit[1]})`)
+    else if (sleep) out.push(`setTimeout(() => {}, ${Number(sleep[1]) * 1000})`)
+    else throw new Error(`jsFor: cuerpo no soportado: ${part}`)
+  }
+  return out.join('\n') + '\n'
 }
 
 describe('probeEnv', () => {
@@ -55,13 +79,13 @@ describe('parseVersion / isCompatible', () => {
   })
 })
 
-// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
-describe.skipIf(!posixOnly)('validateOpencodeBin (archivos reales)', () => {
+describe('validateOpencodeBin (archivos reales)', () => {
   it('acepta un ejecutable cuyo --version imprime algo', async () => {
     const bin = script('ok', 'echo 1.18.32')
     expect(await validateOpencodeBin(bin)).toEqual({ ok: true, path: bin, output: '1.18.32', version: '1.18.32' })
   })
-  it('acepta un enlace simbólico a un ejecutable válido', async () => {
+  // Windows: crear enlaces simbólicos exige privilegios; el caso no aporta a la v1 (la ruta se resuelve con realpath en ambos).
+  it.skipIf(isWin)('acepta un enlace simbólico a un ejecutable válido', async () => {
     const bin = script('target', 'echo 1.2.3')
     const link = join(dir, 'link')
     symlinkSync(bin, link)
@@ -79,7 +103,8 @@ describe.skipIf(!posixOnly)('validateOpencodeBin (archivos reales)', () => {
   it('rechaza un directorio', async () => {
     expect(await validateOpencodeBin(dir)).toEqual({ ok: false, error: 'La ruta no es un archivo.' })
   })
-  it('rechaza un archivo sin permiso de ejecución', async () => {
+  // Windows: no existe el bit de ejecución (accessSync X_OK siempre pasa); allí el ejecutable lo decide la extensión.
+  it.skipIf(isWin)('rechaza un archivo sin permiso de ejecución', async () => {
     const r = await validateOpencodeBin(script('noexec', 'echo 1.0.0', 0o644))
     expect(r).toEqual({ ok: false, error: 'El archivo no es ejecutable.' })
   })
@@ -96,15 +121,14 @@ describe.skipIf(!posixOnly)('validateOpencodeBin (archivos reales)', () => {
     expect(Date.now() - started).toBeLessThan(5_000)
   })
   it('no usa shell: los metacaracteres de la ruta no se interpretan', async () => {
-    const weird = join(dir, 'a;b $(x)')
-    writeFileSync(weird, '#!/bin/sh\necho 9.9.9\n')
+    const weird = join(dir, isWin ? 'a;b $(x).mjs' : 'a;b $(x)')
+    writeFileSync(weird, isWin ? 'console.log("9.9.9")\n' : '#!/bin/sh\necho 9.9.9\n')
     chmodSync(weird, 0o755)
     expect((await validateOpencodeBin(weird)).ok).toBe(true)
   })
 })
 
-// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
-describe.skipIf(!posixOnly)('getOpencodeInfo', () => {
+describe('getOpencodeInfo', () => {
   it('sin binario: found=false', async () => {
     expect(await getOpencodeInfo(() => null)).toMatchObject({
       found: false,
@@ -177,18 +201,19 @@ describe('pickOpencode: orden de resolución', () => {
 describe('bundledOpencodePath: resourcesPath inyectado', () => {
   const res = join(dir, 'Resources')
   mkdirSync(join(res, 'opencode'), { recursive: true })
-  const bin = join(res, 'opencode', 'opencode')
-  writeFileSync(bin, '#!/bin/sh\necho 1.18.33\n')
+  const exeName = isWin ? 'opencode.exe' : 'opencode'
+  const bin = join(res, 'opencode', exeName)
+  writeFileSync(bin, isWin ? 'MZ' : '#!/bin/sh\necho 1.18.33\n')
   chmodSync(bin, 0o755)
   const noexec = join(dir, 'Res2')
   mkdirSync(join(noexec, 'opencode'), { recursive: true })
-  writeFileSync(join(noexec, 'opencode', 'opencode'), 'x')
+  writeFileSync(join(noexec, 'opencode', exeName), 'x')
 
-  // En Windows el permiso de ejecución no existe (X_OK siempre pasa) y el binario es opencode.exe: cubierto por el caso win32 de abajo.
-  it.skipIf(!posixOnly)('empaquetado: usa <Resources>/opencode/opencode si existe y es ejecutable', () => {
+  it('empaquetado: usa <Resources>/opencode/opencode(.exe) si existe y es ejecutable', () => {
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: res })).toBe(bin)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada') })).toBeNull()
-    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: noexec })).toBeNull()
+    // Windows: no hay bit de ejecución, así que «existe pero no es ejecutable» no se puede construir.
+    if (posixOnly) expect(bundledOpencodePath({ isPackaged: true, resourcesPath: noexec })).toBeNull()
   })
   it('no empaquetado: ignora resourcesPath (desarrollo idéntico al de siempre)', () => {
     expect(bundledOpencodePath({ isPackaged: false, resourcesPath: res })).toBeNull()
@@ -202,15 +227,27 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'win32' })).toBe(exe)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: winRes, platform: 'darwin' })).toBeNull()
   })
-  it.skipIf(!posixOnly)('la variable de tests solo se honra si NO está empaquetado', () => {
+  it('Windows (solo pruebas): sin opencode.exe en el directorio de pruebas se acepta opencode.mjs', () => {
+    const d = join(dir, 'TestWin')
+    mkdirSync(d, { recursive: true })
+    const mjs = join(d, 'opencode.mjs')
+    writeFileSync(mjs, 'console.log("1.18.33")\n')
+    chmodSync(mjs, 0o755)
+    expect(bundledOpencodePath({ isPackaged: false, testDir: d, platform: 'win32' })).toBe(mjs)
+    expect(bundledOpencodePath({ isPackaged: false, testDir: d, platform: 'darwin' })).toBeNull()
+    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada'), testDir: d, platform: 'win32' })).toBeNull()
+  })
+  it('la variable de tests solo se honra si NO está empaquetado', () => {
     const testDir = join(res, 'opencode')
     expect(bundledOpencodePath({ isPackaged: false, testDir })).toBe(bin)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: join(dir, 'nada'), testDir })).toBeNull()
   })
 })
 
-// Fixtures `#!/bin/sh` que no se ejecutan en Windows; el motor falso con node llega en la tanda 3.
-describe.skipIf(!posixOnly)('resolución completa con CLI y embebido reales (scripts falsos)', () => {
+// Windows: la resolución busca `opencode.exe` (un .exe real) y un `.mjs` no se encuentra por nombre; no hay forma de fabricar
+// un .exe con versión controlada sin compilar. La lógica de decisión se cubre en `pickOpencode` (valores inyectados) y
+// `bundledOpencodePath` (arriba, con rutas reales en win32).
+describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts falsos)', () => {
   const saved = { bin: process.env.OPENCODE_BIN, path: process.env.PATH, test: process.env.ONYXCODE_TEST_BUNDLED_DIR }
   afterEach(() => {
     for (const [k, v] of [

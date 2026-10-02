@@ -27,9 +27,17 @@ ni los servidores OpenCode del usuario.
 
 Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo los de fixtures POSIX, que se sustituyen en la tanda 3):
 - `macOnly` (Tareas/actualizador): `sandbox-profile.test.ts` (Seatbelt), `restore-points.test.ts` (puntos de restauración del modo Tareas), `swap.test.ts` (`validateSwapArgs`, `startSwap`), `swap.integration.test.ts`, y en `main-errors.i18n.test.ts` las comprobaciones de `forbiddenFolderReason` (folder-policy).
-- `posixOnly` (fixtures `#!/bin/sh`, permisos, `mkfifo`): `binary.test.ts` (`validateOpencodeBin`, `getOpencodeInfo`, resolución completa y 2 casos de `bundledOpencodePath`; el caso win32 sí corre), `m001-tasks-rename.test.ts` (un caso con `chmod`), `installer.test.ts` (FIFO) y las aserciones de modo `0600`/`0700` en `account/store`, `mcp-catalog-install`, `installer` y `data-dir`.
+- `posixOnly` (fixtures `#!/bin/sh`, permisos, `mkfifo`): `binary.test.ts` solo en 4 casos (enlace simbólico y bit de ejecución, que Windows no tiene; y «resolución completa con CLI y embebido reales», que necesita un `opencode.exe` real con versión controlada: la decisión se cubre en `pickOpencode` y `bundledOpencodePath` con rutas win32). El resto corre en Windows con un `.mjs` falso lanzado con `node` (`opencode/test-launcher.ts`), `m001-tasks-rename.test.ts` (un caso con `chmod`), `installer.test.ts` (FIFO) y las aserciones de modo `0600`/`0700` en `account/store`, `mcp-catalog-install`, `installer` y `data-dir`.
 - `service.win.test.ts` (terminal real con ConPTY y `asarUnpack` de node-pty) solo corre en Windows (`winOnly`; en macOS la shell depende del `.zshrc`); la elección de shell (`shell.test.ts`) corre en todas.
 - Los repos temporales de `git/*.test.ts` fijan `core.autocrlf=false` (el sistema de Windows trae `true`).
+
+### E2E en Windows (tanda 3)
+
+- **Lanzador falso (solo pruebas):** el OpenCode falso es un script. En `!app.isPackaged`, win32 y ruta `.mjs`, `server.ts` y `binary.ts` ejecutan `node <mjs> …` (`src/main/opencode/test-launcher.ts`; nunca empaquetado ni con un `.exe`). `ONYXCODE_TEST_BUNDLED_DIR` acepta `opencode.mjs` si falta `opencode.exe` (también solo sin empaquetar).
+- **Procesos:** `e2e/lib/proc.ts` (pgrep/pkill en POSIX; `taskkill /T /F` y CIM en Windows, con tiempo límite) lo usan `launch.ts` y `lotes.ts`. `E2E_MODE=prod` y `perf` no se han adaptado.
+- **Saltos de specs enteras** (`e2e/win-skip.json`, solo win32; cada entrada con motivo y ninguna de la v1, vigilado por `src/test/win-skip.test.ts`): `restore`, `tasks-stall`, `update-check`, `update-install`, `legacy-data`.
+- **Saltos dentro de specs** (`describe/it.skipIf(IS_WIN)`, solo bloques de Tareas): `lotes` (Lote B: Tareas y política gestionada; Lote D, navegador, sí corre), `lru` («Tareas real»), `fase6` («Tareas y Code en la misma carpeta»), `own-auth` (Tareas con sandbox, d1/d2) y en `calidad-rc` los 6 casos «Tareas…». `instance`: con la ventana cerrada en Windows se comprueba que la app sale (decisión de la v1) en vez de reabrir.
+- `e2e/smoke.mjs` (`test:smoke`) usa grupos POSIX: en Windows lo sustituye `scripts/win/smoke.ps1`.
 
 ## Medición de arranque y memoria (`npm run perf:startup`)
 

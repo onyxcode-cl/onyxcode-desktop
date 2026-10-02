@@ -22,6 +22,7 @@ import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode }
 import { killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
 import { withDisclaim } from '../process/disclaim'
+import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
 import { LineRing } from '../diagnostics/log-ring'
 
@@ -150,6 +151,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const serveArgs = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
       // Sin heredar los permisos TCC de la app (S6) y con entorno mínimo.
       const launch = withDisclaim(bin, serveArgs)
+      // Solo pruebas: el OpenCode falso `.mjs` se lanza con node en Windows (nunca empaquetado).
+      const exec = testLauncher(launch.command, launch.args, { isPackaged: appIsPackaged() })
 
       // Navegador integrado (Lote D, B.7): si el MCP no arranca, el sidecar arranca igual sin él
       // (`configFor` nunca lanza: devuelve null en ese caso). `setApi` es idempotente (main.ts de
@@ -158,7 +161,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       embeddedBrowserMcp.setApi(embeddedBrowser)
       const browserMcp = await embeddedBrowserMcp.configFor({ product: 'code', sandboxed: false, folder: null })
 
-      const child = spawn(launch.command, launch.args, {
+      const child = spawn(exec.command, exec.args, {
         cwd: this.options.chatDirectory,
         env: minimalEnv({
           ...getOpencodeEnv(),
@@ -316,7 +319,12 @@ export function bundledOpencodePath(o: BundledOptions = {}): string | null {
     if (res) candidate = join(res, 'opencode', bundledBinaryName(o.platform))
   } else {
     const dir = o.testDir ?? process.env[TEST_BUNDLED_ENV]
-    if (dir) candidate = join(dir, bundledBinaryName(o.platform))
+    if (dir) {
+      candidate = join(dir, bundledBinaryName(o.platform))
+      // Solo pruebas, solo Windows: el falso es un `.mjs` (se lanza con node: `test-launcher.ts`), no un `.exe`.
+      const mjs = join(dir, 'opencode.mjs')
+      if ((o.platform ?? process.platform) === 'win32' && !existsSync(candidate) && existsSync(mjs)) candidate = mjs
+    }
   }
   return candidate && existsSync(candidate) && isExecutable(candidate) ? candidate : null
 }

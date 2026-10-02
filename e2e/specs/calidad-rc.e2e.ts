@@ -17,6 +17,7 @@ import { storeSet } from '../lib/stores'
 import { stubDialog } from '../lib/dialogs'
 import { fakeOutsideUserData } from '../lib/lotes'
 import { scriptFor } from '../lib/lru'
+import { IS_WIN, isolatedHomeEnv } from '../lib/proc'
 
 const SHOTS = process.env.RC_SHOTS_DIR
 const REPORT = process.env.RC_AXE_REPORT
@@ -143,7 +144,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     await expectFocusContract(page, dlg, opener)
   })
 
-  it('Tareas sin carpeta (primer uso): sin violaciones', async () => {
+  it.skipIf(IS_WIN)('Tareas sin carpeta (primer uso): sin violaciones', async () => {
     const { page } = app()
     await nav(page, 'Tareas')
     await page.waitForTimeout(600)
@@ -204,7 +205,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-onb-')))
     home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-onb-home-')))
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-    env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+    env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
   })
   afterAll(async () => {
     await app?.stop()
@@ -336,7 +337,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await a.page.getByRole('button', { name: /Denegar|Rechazar/ }).first().click()
   })
 
-  it('Tareas: aprobaciones (permiso y pregunta) y escalada sin violaciones', async () => {
+  it.skipIf(IS_WIN)('Tareas: aprobaciones (permiso y pregunta) y escalada sin violaciones', async () => {
     const a = app()
     // Elegir carpeta: diálogo de confirmación de la carpeta (con foco contenido) y luego Tareas lista.
     await stubDialog(a.electronApp, { openPaths: [res.folder.path] })
@@ -392,7 +393,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await shot(a, SHOTS, 'tareas-escalada')
   })
 
-  it('Tareas: diálogo «¿Permitir que el agente controle tu Mac?» con foco contenido', async () => {
+  it.skipIf(IS_WIN)('Tareas: diálogo «¿Permitir que el agente controle tu Mac?» con foco contenido', async () => {
     const a = app()
     await storeSet(a.page, 'useTasks', { pendingFullAccess: res.folder.path })
     const dlg = a.page.getByRole('alertdialog').first()
@@ -404,7 +405,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await expectCount(dlg, 0)
   })
 
-  it('Tareas: tarjetas de acceso a apps (plan y toma de control) sin violaciones', async () => {
+  it.skipIf(IS_WIN)('Tareas: tarjetas de acceso a apps (plan y toma de control) sin violaciones', async () => {
     const a = app()
     const apps = [
       { bundleId: 'com.apple.Notes', name: 'Notas', requested: 'click', current: null },
@@ -421,7 +422,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await storeSet(a.page, 'useTasks', { accessRequest: null })
   })
 
-  it('Tareas: diálogo de renombrar (prompt) y paleta de comandos con foco contenido', async () => {
+  it.skipIf(IS_WIN)('Tareas: diálogo de renombrar (prompt) y paleta de comandos con foco contenido', async () => {
     const a = app()
     const more = a.page.locator('[aria-label^="Más acciones de la tarea «"]').first()
     await more.click()
@@ -439,7 +440,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await expectFocusContract(a.page, pal, null)
   })
 
-  it('Tareas: grabar una skill (diálogo del panel del proyecto) con foco contenido', async () => {
+  it.skipIf(IS_WIN)('Tareas: grabar una skill (diálogo del panel del proyecto) con foco contenido', async () => {
     const a = app()
     await storeSet(a.page, 'useTasks', { projectPanelOpen: true })
     const opener = a.page.getByRole('button', { name: 'Grabar una skill' })
@@ -454,7 +455,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await storeSet(a.page, 'useTasks', { projectPanelOpen: false })
   })
 
-  it('Tareas: panel del proyecto como diálogo con foco', async () => {
+  it.skipIf(IS_WIN)('Tareas: panel del proyecto como diálogo con foco', async () => {
     const a = app()
     await storeSet(a.page, 'useTasks', { projectPanelOpen: true })
     const dlg = a.page.getByRole('dialog').first()

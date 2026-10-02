@@ -14,6 +14,7 @@ import { useApp } from '../lib/harness'
 import { isQuickUrl, listWindows } from '../lib/instance'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
+import { isolatedHomeEnv } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.I18N_T4C_SHOTS_DIR
@@ -49,7 +50,7 @@ describe.skipIf(!DEV)('T4c: error del asistente y de acceso en inglés', () => {
       const home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-t4c-home-')))
       dirs.push(userData, home)
       mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-      const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+      const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
       const app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false, language: lang } })
       try {
         const alert = app.page.getByRole('dialog').getByRole('alert').filter({ hasText: expected })

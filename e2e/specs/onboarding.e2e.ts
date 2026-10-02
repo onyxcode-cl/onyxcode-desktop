@@ -10,6 +10,7 @@ import { openedUrls, stubDialog, stubOpenExternal } from '../lib/dialogs'
 import { startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData } from '../lib/lotes'
 import { expectCount, expectVisible } from '../lib/wait'
+import { isolatedHomeEnv } from '../lib/proc'
 
 const settingsOf = (userData: string): Record<string, unknown> => JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8')) as Record<string, unknown>
 
@@ -26,7 +27,7 @@ describe('asistente de primer uso', () => {
     // en ~/.opencode/bin ni en el PATH de la máquina que corre el test.
     home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-onb-home-')))
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-    env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+    env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
   })
 
   afterEach(async (ctx) => {
@@ -157,8 +158,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
       settings: { onboarded: false },
       env: {
         OPENCODE_BIN: '',
-        HOME: home,
-        PATH: `${dirname(process.execPath)}:/usr/bin:/bin`,
+        ...isolatedHomeEnv(home),
         ONYXCODE_TEST_BUNDLED_DIR: dirname(fakeBin.bin)
       }
     })

@@ -9,7 +9,17 @@ import { isAbsolute, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { OPENCODE_SDK_VERSION } from '@shared/opencode-links'
 import type { OpencodeInfo, OpencodeSource } from '@shared/types'
+import { app } from 'electron'
 import { minimalEnv } from '../process/child-env'
+import { testLauncher } from './test-launcher'
+
+function appIsPackaged(): boolean {
+  try {
+    return app.isPackaged === true
+  } catch {
+    return false
+  }
+}
 
 const VERSION_TIMEOUT_MS = 5_000
 const SEMVER = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/
@@ -41,9 +51,11 @@ export function probeEnv(): Record<string, string> {
 /** Ejecuta `<bin> --version`; devuelve la salida recortada (stdout, o stderr si stdout está vacío). */
 export function runVersion(bin: string, timeoutMs = VERSION_TIMEOUT_MS): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Solo pruebas: el falso `.mjs` se ejecuta con node en Windows (nunca empaquetado).
+    const exec = testLauncher(bin, ['--version'], { isPackaged: appIsPackaged() })
     execFile(
-      bin,
-      ['--version'],
+      exec.command,
+      exec.args,
       { env: probeEnv(), cwd: tmpdir(), timeout: timeoutMs, maxBuffer: 64 * 1024, windowsHide: true },
       (err, stdout, stderr) => {
         if (err) return reject(err)

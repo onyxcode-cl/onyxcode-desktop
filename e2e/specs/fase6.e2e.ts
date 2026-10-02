@@ -9,6 +9,7 @@ import { connection, hook, storeState, waitForHooks } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
 import { spyNotifications } from '../lib/notifications'
 import { assistantInfo, chatDirectory, consumeErrors, countIpc, makeGitRepo, openCodeProject, connectTasksFolder, makeHomeFolder, prepareFakeBin, type TasksConn, fakeApi, newChatAndSend, sessionInfo } from '../lib/fase6'
+import { IS_WIN } from '../lib/proc'
 
 describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
   const app = useApp()
@@ -357,7 +358,8 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // Caso 5 (Tareas real): sidecar sandboxeado de Tareas + sidecar principal, ambos con el OpenCode falso.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-describe.skipIf(MODE === 'prod')(`fase 6: Tareas y Code en la misma carpeta (${MODE})`, () => {
+// Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
+describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma carpeta (${MODE})`, () => {
   // Recursos creados en beforeAll (no en la fase de colección) para no dejar carpetas si el describe se filtra u omite.
   const res = {} as { bin: ReturnType<typeof prepareFakeBin>; folder: ReturnType<typeof makeHomeFolder> }
   const env: Record<string, string> = {}

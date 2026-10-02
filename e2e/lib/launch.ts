@@ -5,7 +5,6 @@
 //  - prod: sin ELECTRON_RENDERER_URL; carga por onyxcode://app con la CSP real (sin ganchos: solo humo).
 // Variables: E2E_DEBUG=1 (vuelca stdout/stderr de main), E2E_VISIBLE=1 (ventana visible), E2E_RENDERER_URL (la fija global-setup), E2E_KEEP=1 (no borra userData tmp), E2E_HEADLESS no existe:
 // la ventana se crea con show:false salvo que main la muestre (ready-to-show la muestra; es normal).
-import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -13,6 +12,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron, type ElectronApplication, type Page } from 'playwright-core'
 import { FakeClient } from './fake'
+import { alive, FAKE_BIN_NAME, killByCommandLine, killTree, PATH_SEP } from './proc'
 import type { FakeAuth } from './fake-auth'
 
 const require = createRequire(import.meta.url)
@@ -99,32 +99,9 @@ export interface E2EApp {
   stop(): Promise<void>
 }
 
-function descendants(pid: number): number[] {
-  try {
-    const out = execFileSync('pgrep', ['-P', String(pid)], { encoding: 'utf8' })
-    const kids = out.split('\n').filter(Boolean).map(Number)
-    return kids.flatMap((k) => [k, ...descendants(k)])
-  } catch {
-    return []
-  }
-}
-
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
-}
-
 /** Mata cualquier proceso cuyo argv mencione el userData tmp (Electron, helpers y el falso, que va en su propio grupo). */
 function killByUserData(userData: string): void {
-  try {
-    execFileSync('pkill', ['-KILL', '-f', userData])
-  } catch {
-    /* pkill sale 1 si no hay coincidencias */
-  }
+  killByCommandLine(userData)
 }
 
 // Registro global para limpiar aunque el proceso del test muera.
@@ -137,12 +114,12 @@ function hookExit(): void {
     for (const a of live) {
       try {
         const pid = a.electronApp.process().pid
-        if (pid) for (const p of [pid, ...descendants(pid)]) process.kill(p, 'SIGKILL')
+        if (pid) killTree(pid)
       } catch {
         /* ya muerto */
       }
       killByUserData(a.userData)
-      if (process.env.E2E_KEEP !== '1' && !a.keepUserData) rmSync(a.userData, { recursive: true, force: true })
+      if (process.env.E2E_KEEP !== '1' && !a.keepUserData) rmSync(a.userData, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 })
     }
   }
   process.on('exit', sweep)
@@ -194,9 +171,13 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
   for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') env[k] = v
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_RENDERER_URL
-  env.PATH = [dirname(process.execPath), env.PATH ?? ''].join(':')
+  // En Windows la variable puede llamarse `Path`: se unifica para que no haya dos claves distintas.
+  const pathKey = Object.keys(env).find((k) => k.toLowerCase() === 'path') ?? 'PATH'
+  const pathVal = env[pathKey] ?? ''
+  if (pathKey !== 'PATH') delete env[pathKey]
+  env.PATH = [dirname(process.execPath), pathVal].join(PATH_SEP)
   Object.assign(env, {
-    OPENCODE_BIN: join(fakeDir, 'opencode'),
+    OPENCODE_BIN: join(fakeDir, FAKE_BIN_NAME),
     XDG_DATA_HOME: xdg('data'),
     XDG_CONFIG_HOME: xdg('config'),
     XDG_CACHE_HOME: xdg('cache'),
@@ -256,18 +237,17 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     }
   }
   if (!electronApp) {
-    if (removeUserData) rmSync(userData, { recursive: true, force: true })
+    if (removeUserData) rmSync(userData, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
     throw lastErr
   }
   const launched: ElectronApplication = electronApp
 
   const cleanup = async (): Promise<void> => {
     const pid = launched.process().pid
-    const kids = pid ? descendants(pid) : []
     await Promise.race([launched.close().catch(() => undefined), new Promise((r) => setTimeout(r, 15_000))])
-    for (const p of [...(pid ? [pid] : []), ...kids]) if (alive(p)) try { process.kill(p, 'SIGKILL') } catch { /* */ }
+    if (pid && alive(pid)) killTree(pid)
     killByUserData(userData)
-    if (removeUserData) rmSync(userData, { recursive: true, force: true })
+    if (removeUserData) rmSync(userData, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   }
 
   try {

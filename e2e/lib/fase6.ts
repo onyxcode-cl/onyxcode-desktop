@@ -7,6 +7,7 @@ import { expect } from 'vitest'
 import type { ElectronApplication } from 'playwright-core'
 import { FakeClient } from './fake'
 import { ROOT, type E2EApp } from './launch'
+import { FAKE_BIN_NAME } from './proc'
 import { MODE_LABELS } from '../../src/shared/labels'
 import { stubDialog } from './dialogs'
 import { storeState } from './stores'
@@ -135,9 +136,9 @@ export async function openCodeProject(app: E2EApp, dir: string): Promise<void> {
  * el `opencode` falso. Devuelve el `OPENCODE_BIN` para `useApp({ env })` y la limpieza.
  */
 export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => void } {
-  const dir = mkdtempSync(join('/private/tmp', 'onyx-e2e-f6bin-'))
+  const dir = mkdtempSync(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'onyx-e2e-f6bin-'))
   for (const f of ['opencode', 'server.mjs']) cpSync(join(ROOT, 'e2e', 'fake-opencode', f), join(dir, f))
-  return { env: { OPENCODE_BIN: join(dir, 'opencode') }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
+  return { env: { OPENCODE_BIN: join(dir, FAKE_BIN_NAME) }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
 /** Carpeta temporal DENTRO del home (Tareas rechaza `/private`, `/tmp`… como carpeta del sistema). */

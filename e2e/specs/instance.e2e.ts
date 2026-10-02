@@ -84,7 +84,12 @@ describe(`instancia única y Quick Entry (${MODE})`, () => {
     })
     await expect.poll(async () => (await mainWindows()).length, { timeout: 10_000 }).toBe(0)
     // En darwin la app no sale al cerrar la ventana (index.ts: `window-all-closed` solo hace quit si platform !== 'darwin').
-    expect(await electronApp.evaluate(() => process.platform)).toBe('darwin')
+    const platform = await electronApp.evaluate(() => process.platform)
+    if (platform !== 'darwin') {
+      // Windows/Linux (decisión de la v1): ventana cerrada = la app se cierra; no hay «principal cerrada» que reabrir.
+      await expect.poll(() => electronApp.process().exitCode !== null || electronApp.process().killed, { timeout: 15_000 }).toBe(true)
+      return
+    }
     const run = await spawnSecondInstance(userData)
     expect(run.code).toBe(0)
     await expect.poll(async () => (await mainWindows()).length, { timeout: 15_000 }).toBe(1)

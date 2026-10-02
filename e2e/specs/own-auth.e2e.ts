@@ -12,6 +12,7 @@ import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData, makeTasksDir, tasksFake } from '../lib/lotes'
 import { storeState } from '../lib/stores'
 import { expectCount, expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const GO_AUTH = JSON.stringify({ 'opencode-go': { type: 'api', key: 'sk-e2e-falsa' } })
 const apps: E2EApp[] = []
@@ -115,7 +116,8 @@ describe('conexión propia de la app', () => {
   })
 })
 
-describe.skipIf(MODE !== 'dev')('Tareas con sandbox parte del auth propio', () => {
+// Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
+describe.skipIf(MODE !== 'dev' || IS_WIN)('Tareas con sandbox parte del auth propio', () => {
   async function tasksEnv(userData: string): ReturnType<FakeClient['env']> {
     const app = await startApp({ userData, keepUserData: true, env: { OPENCODE_BIN: fakeBin.bin } })
     apps.push(app)

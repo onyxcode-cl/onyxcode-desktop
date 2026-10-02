@@ -11,6 +11,7 @@ import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { MODE_LABELS, UI_LABELS } from '../../src/shared/labels'
 import { setMode, storeCall, storeState, waitForHooks } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const fakeBin = fakeOutsideUserData()
 const work = makeTasksDir()
@@ -39,7 +40,8 @@ async function pickFolder(app: E2EApp, path: string): Promise<void> {
   await app.page.getByRole('dialog').getByRole('button', { name: 'Permitir', exact: true }).click()
 }
 
-describe.skipIf(!DEV)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)', () => {
+// Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
+describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)', () => {
   const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin } })
 
   it('paso 1: el onboarding se descarta y no vuelve tras recargar', async () => {
@@ -174,7 +176,8 @@ function writePolicy(name: string, content: string): string {
   return file
 }
 
-describe.skipIf(!DEV)('Lote B: política gestionada (paso 22)', () => {
+// Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
+describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada (paso 22)', () => {
   let app: E2EApp
   beforeAll(async () => {
     const file = writePolicy('managed.json', JSON.stringify({ disableRoutines: true, disableBrowser: true, allowedFolderRoots: [join(homedir(), 'Documents')] }))
@@ -208,7 +211,8 @@ describe.skipIf(!DEV)('Lote B: política gestionada (paso 22)', () => {
   })
 })
 
-describe.skipIf(!DEV)('Lote B: política gestionada con JSON inválido (falla cerrado)', () => {
+// Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
+describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada con JSON inválido (falla cerrado)', () => {
   let app: E2EApp
   beforeAll(async () => {
     const file = writePolicy('roto.json', '{ esto no es json')
