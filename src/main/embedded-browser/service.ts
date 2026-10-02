@@ -12,7 +12,7 @@
  * nosotros mismos decidimos (barra de URL del usuario, o el agente tras aprobación) pasa por
  * `bypassOnce` para no volver a pedir aprobación sobre algo que ya se decidió.
  */
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, shell, type WebContentsView } from 'electron'
 import type {
   BrowserCapture,
   BrowserDecision,
@@ -63,6 +63,9 @@ interface OwnerRuntime {
   picking: boolean
   hostWindow: BrowserWindow | null
   attachedTo: BrowserWindow | null
+  /** Pestaña cuya vista está colgada de `attachedTo` ahora mismo (una sola por owner). */
+  attachedTabId: string | null
+  attachedView: WebContentsView | null
   hostKind: 'panel' | 'popout' | 'none'
   rect: BrowserRect | null
   visible: boolean
@@ -100,6 +103,8 @@ function ownerRuntime(owner: BrowserOwner): OwnerRuntime {
       picking: false,
       hostWindow: null,
       attachedTo: null,
+      attachedTabId: null,
+      attachedView: null,
       hostKind: 'none',
       rect: null,
       visible: false,
@@ -345,43 +350,80 @@ function ensureActiveTab(owner: BrowserOwner): TabRuntime | null {
   }
 }
 
-function layoutView(rt: OwnerRuntime): void {
-  const tab = rt.activeTabId ? tabById(rt.activeTabId) : null
-  if (!tab) return
-  const win = rt.hostWindow
-  const shouldShow = !!win && !win.isDestroyed() && rt.visible
-  if (!shouldShow) {
-    if (rt.attachedTo && !rt.attachedTo.isDestroyed()) {
-      try {
-        rt.attachedTo.contentView.removeChildView(tab.view)
-      } catch (err) {
-        console.error('[embedded-browser] removeChildView:', err)
-      }
+/** Quita de su ventana la vista nativa que este owner tenía colgada (si hay), sea de la pestaña que sea. */
+function detachShownView(rt: OwnerRuntime): void {
+  const shown = rt.attachedTabId ? tabById(rt.attachedTabId) : undefined
+  const view = shown?.view ?? rt.attachedView
+  if (view && rt.attachedTo && !rt.attachedTo.isDestroyed()) {
+    try {
+      rt.attachedTo.contentView.removeChildView(view)
+    } catch (err) {
+      console.error('[embedded-browser] removeChildView:', err)
     }
-    rt.attachedTo = null
-    return
   }
+  rt.attachedTo = null
+  rt.attachedTabId = null
+  rt.attachedView = null
+}
+
+/** Últimos bounds puestos a cada vista (para saber si layoutView la movió de verdad). */
+const lastBounds = new WeakMap<WebContentsView, string>()
+/** Ventana en que la entrada del puntero tras mover/mostrar la vista se considera sintética (no humana). */
+const LAYOUT_SYNTH_INPUT_MS = 400
+
+function layoutView(rt: OwnerRuntime): void {
+  // Pestaña activa; si la anotada ya no existe (cerrada), la primera viva del owner.
+  let tab = rt.activeTabId ? tabById(rt.activeTabId) : undefined
+  if (!tab || tab.destroyed) {
+    tab = tabsForOwner(rt.owner)[0]
+    rt.activeTabId = tab?.id ?? null
+  }
+  const win = rt.hostWindow
+  const shouldShow = !!tab && !!win && !win.isDestroyed() && rt.visible
+  // Una sola vista colgada por owner: si cambia la pestaña, la ventana o ya no hay nada que mostrar, la anterior se quita
+  // (antes solo se quitaba al cambiar de ventana: la vista de una pestaña cerrada o no activa seguía pintada encima).
+  if (!shouldShow || rt.attachedTo !== win || rt.attachedTabId !== tab.id) detachShownView(rt)
+  if (!shouldShow) return
   const hostWin = win as BrowserWindow
+  let wasAttached = true
   if (rt.attachedTo !== hostWin) {
-    if (rt.attachedTo && !rt.attachedTo.isDestroyed()) {
-      try {
-        rt.attachedTo.contentView.removeChildView(tab.view)
-      } catch (err) {
-        console.error('[embedded-browser] removeChildView (reubicación):', err)
-      }
-    }
-    hostWin.contentView.addChildView(tab.view)
+    wasAttached = false
+    hostWin.contentView.addChildView(tab!.view)
     rt.attachedTo = hostWin
+    rt.attachedTabId = tab!.id
+    rt.attachedView = tab!.view
   }
   const rect = rt.rect ?? { x: 0, y: 0, width: 0, height: 0 }
   const zoom = hostWin.webContents.getZoomFactor() || 1
-  tab.view.setBounds({
+  const bounds = {
     x: Math.round(rect.x * zoom),
     y: Math.round(rect.y * zoom),
     width: Math.round(rect.width * zoom),
     height: Math.round(rect.height * zoom)
-  })
-  tab.view.setVisible(true)
+  }
+  const key = `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`
+  if (lastBounds.get(tab!.view) !== key || !wasAttached) {
+    lastBounds.set(tab!.view, key)
+    // Si la vista aparece o se mueve bajo un puntero quieto (p. ej. al cerrarse la tarjeta de aprobación sobre ella),
+    // Chromium sintetiza `mouseMove`/`mouseLeave` que NO son una persona: no cuentan como «usuario activo».
+    tab!.suppressUserActiveUntil = Math.max(tab!.suppressUserActiveUntil, Date.now() + LAYOUT_SYNTH_INPUT_MS)
+  }
+  tab!.view.setBounds(bounds)
+  tab!.view.setVisible(true)
+}
+
+/**
+ * Cierra una pestaña de verdad: primero saca su vista de la ventana, luego `destroyTab` cierra su webContents; después el
+ * owner elige otra pestaña activa y se recoloca la vista. Antes la vista de una pestaña cerrada seguía colgada y visible.
+ */
+function discardTab(rt: OwnerRuntime, tab: TabRuntime): void {
+  if (rt.attachedTabId === tab.id) detachShownView(rt)
+  destroyTab(tab)
+  if (rt.activeTabId === tab.id) rt.activeTabId = tabsForOwner(rt.owner)[0]?.id ?? null
+  if (rt.agentTabId === tab.id) rt.agentTabId = null
+  layoutView(rt)
+  // El aviso `destroyed` de `destroyTab` salió ANTES de reelegir la pestaña activa: se vuelve a emitir ya coherente.
+  broadcastState(rt.owner)
 }
 
 /**
@@ -529,7 +571,7 @@ async function openTabAsAgent(actor: AgentActor, url: string, timeoutMs: number)
   try {
     await navigateAsAgent(actor, tab.id, url, timeoutMs)
   } catch (err) {
-    destroyTab(tab)
+    discardTab(rt, tab)
     throw err
   }
   return tab.id
@@ -566,11 +608,7 @@ function closeTabAsAgent(actor: AgentActor, tabId: string): void {
   const tab = requireOwnerMatch(actor, tabId)
   if (tab.openedBy !== 'agent') throw new Error('Solo se pueden cerrar pestañas que abrió el agente.')
   const rt = ownerRuntime(actor.owner)
-  destroyTab(tab)
-  if (rt.activeTabId === tabId) rt.activeTabId = tabsForOwner(actor.owner)[0]?.id ?? null
-  if (rt.agentTabId === tabId) rt.agentTabId = null
-  layoutView(rt)
-  broadcastState(actor.owner)
+  discardTab(rt, tab)
 }
 
 function selectAgentTab(actor: AgentActor, tabId: string): void {
@@ -756,10 +794,7 @@ export function closeTab(owner: BrowserOwner, tabId: string) {
   const tab = tabById(tabId)
   const rt = ownerRuntime(owner)
   if (tab && ownerKeyOf(tab.owner) === ownerKeyOf(owner)) {
-    destroyTab(tab)
-    if (rt.activeTabId === tabId) rt.activeTabId = tabsForOwner(owner)[0]?.id ?? null
-    if (rt.agentTabId === tabId) rt.agentTabId = null
-    layoutView(rt)
+    discardTab(rt, tab)
   }
   return stateFor(owner)
 }
@@ -981,6 +1016,7 @@ export function removeLocalOriginFor(origin: string): BrowserSitesState {
 
 /** `before-quit` (D0 corrección 5): cierra la ventana aparte y limpia vista+debugger de cada pestaña. */
 export function shutdown(): void {
+  for (const rt of owners.values()) detachShownView(rt)
   for (const tab of allTabs()) destroyTab(tab)
   closePopout()
 }

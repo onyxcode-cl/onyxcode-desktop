@@ -64,3 +64,37 @@ export function subframeUrlAllowed(url: string): boolean {
 }
 
 export { hostOf }
+
+/**
+ * Origen `host:puerto` de una URL con el formato de `localOrigins` (`store.ts`): `localhost:5173`,
+ * `127.0.0.1:4173` o `[::1]:8080`; el puerto por defecto se hace explícito (80/443). `null` si no es http(s).
+ */
+export function hostPortOf(url: string | URL): string | null {
+  try {
+    const u = typeof url === 'string' ? new URL(url) : url
+    if (u.protocol !== 'http:' && u.protocol !== 'https:' && u.protocol !== 'ws:' && u.protocol !== 'wss:') return null
+    const secure = u.protocol === 'https:' || u.protocol === 'wss:'
+    const port = u.port || (secure ? '443' : '80')
+    const host = u.hostname.toLowerCase()
+    return `${host === '::1' ? '[::1]' : host}:${port}`
+  } catch {
+    return null
+  }
+}
+
+/**
+ * ¿Puede un SUBRECURSO (CSS, JS, imagen, fetch, subframe…) con destino local cargarse desde la página `top`?
+ * (regla de red de `session.ts`; el frame principal tiene su propia puerta de aprobación)
+ *
+ * - Mismo origen que la página (`host:puerto` idénticos): SÍ. La página ya está cargada desde ahí (la aprobó el
+ *   usuario al escribirla, o el agente/usuario con «en esta tarea»/«siempre»); pedir otra aprobación por su CSS no
+ *   protege nada y dejaba la página sin estilos.
+ * - Otro origen local (otro puerto u otro nombre de host): solo si el origen de la página está aprobado con
+ *   «Permitir siempre» (`approved`). «En esta tarea» y lo escrito por el usuario NO alcanzan otros puertos.
+ * - Sin página (`top` null: service worker, webContents destruido…): NO.
+ */
+export function localSubresourceAllowed(dest: string | URL, top: string | null, approved: (origin: string) => boolean): boolean {
+  if (!top) return false
+  if (hostPortOf(dest) === top) return true
+  return approved(top)
+}
