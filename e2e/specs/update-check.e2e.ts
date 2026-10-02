@@ -66,7 +66,7 @@ async function shot(page: Page, name: string): Promise<void> {
 const notice = (page: Page): ReturnType<Page['getByTestId']> => page.getByTestId('update-notice')
 
 async function openAbout(page: Page): Promise<void> {
-  await page.keyboard.press('Meta+,')
+  await page.keyboard.press('ControlOrMeta+,')
   const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
   await expectVisible(nav)
   await nav.getByRole('button', { name: 'Acerca de', exact: true }).click()

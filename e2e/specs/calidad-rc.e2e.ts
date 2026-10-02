@@ -17,6 +17,7 @@ import { storeSet } from '../lib/stores'
 import { stubDialog } from '../lib/dialogs'
 import { fakeOutsideUserData } from '../lib/lotes'
 import { scriptFor } from '../lib/lru'
+import { IS_WIN, isolatedHomeEnv } from '../lib/proc'
 
 const SHOTS = process.env.RC_SHOTS_DIR
 const REPORT = process.env.RC_AXE_REPORT
@@ -74,11 +75,12 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
 
   it('Ajustes: todas las secciones sin violaciones', async () => {
     const { page } = app()
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     const sections = page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(sections)
     const n = await sections.getByRole('button').count()
-    expect(n).toBeGreaterThanOrEqual(12)
+    // Windows: sin Tareas, Control del PC ni Actualizaciones (v1): 8 secciones.
+    expect(n).toBeGreaterThanOrEqual(IS_WIN ? 8 : 12)
     for (let i = 0; i < n; i++) {
       const b = sections.getByRole('button').nth(i)
       const name = (await b.innerText()).trim()
@@ -110,9 +112,11 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     await clean(page, 'rutinas:editor-intervalo')
     await dlg.getByRole('button', { name: 'Cron avanzado', exact: true }).click()
     await clean(page, 'rutinas:editor-cron')
-    await dlg.getByRole('button', { name: /^Tareas/ }).click()
-    await dlg.getByRole('button', { name: 'Añadir regla' }).click()
-    await clean(page, 'rutinas:editor-tareas')
+    if (!IS_WIN) {
+      await dlg.getByRole('button', { name: /^Tareas/ }).click()
+      await dlg.getByRole('button', { name: 'Añadir regla' }).click()
+      await clean(page, 'rutinas:editor-tareas')
+    }
     await dlg.getByRole('button', { name: /^Code/ }).click()
     await clean(page, 'rutinas:editor-code')
     await expectFocusContract(page, dlg, opener)
@@ -132,7 +136,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
 
   it('Catálogo MCP: diálogo de añadir sin violaciones y con foco contenido', async () => {
     const { page } = app()
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     await page.locator('nav[aria-label="Secciones de ajustes"]').getByRole('button', { name: 'MCP', exact: true }).click()
     const opener = page.getByRole('button', { name: 'Añadir Context7' })
     await opener.click()
@@ -143,7 +147,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     await expectFocusContract(page, dlg, opener)
   })
 
-  it('Tareas sin carpeta (primer uso): sin violaciones', async () => {
+  it.skipIf(IS_WIN)('Tareas sin carpeta (primer uso): sin violaciones', async () => {
     const { page } = app()
     await nav(page, 'Tareas')
     await page.waitForTimeout(600)
@@ -204,7 +208,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-onb-')))
     home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-onb-home-')))
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-    env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+    env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
   })
   afterAll(async () => {
     await app?.stop()
@@ -236,8 +240,10 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     await expectVisible(d.getByRole('heading', { name: 'Elige tu modelo' }))
     await clean(a.page, 'asistente:paso3')
     await d.getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d.getByRole('heading', { name: 'Los cuatro modos' }))
+    await expectVisible(d.getByRole('heading', { name: IS_WIN ? 'Los tres modos' : 'Los cuatro modos' }))
     await clean(a.page, 'asistente:paso4')
+    // Paso 5 («Permisos de macOS»): solo existe en macOS (en Windows el asistente tiene 4 pasos).
+    if (IS_WIN) return
     await d.getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(d.getByRole('heading', { name: 'Permisos de macOS' }))
     await clean(a.page, 'asistente:paso5')
@@ -259,10 +265,12 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     Object.assign(env, res.bin.env)
   })
   const app = useApp({ env })
-  afterAll(() => {
+  afterAll(async () => {
+    // Los hooks afterAll corren en orden inverso: sin parar antes la app, en Windows la terminal de Code aún tiene el repo como cwd (EBUSY).
+    await app().stop().catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
 
   it('Code: diálogo de confianza de la carpeta (foco contenido) y sin violaciones', async () => {
@@ -299,7 +307,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
 
   it('Code: cambiar de sesión (selector) como diálogo con foco', async () => {
     const a = app()
-    await a.page.keyboard.press('Meta+k')
+    await a.page.keyboard.press('ControlOrMeta+k')
     const dlg = a.page.getByRole('dialog', { name: 'Cambiar de sesión' })
     await expectVisible(dlg)
     await clean(a.page, 'code:selector-sesion')
@@ -336,7 +344,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await a.page.getByRole('button', { name: /Denegar|Rechazar/ }).first().click()
   })
 
-  it('Tareas: aprobaciones (permiso y pregunta) y escalada sin violaciones', async () => {
+  it.skipIf(IS_WIN)('Tareas: aprobaciones (permiso y pregunta) y escalada sin violaciones', async () => {
     const a = app()
     // Elegir carpeta: diálogo de confirmación de la carpeta (con foco contenido) y luego Tareas lista.
     await stubDialog(a.electronApp, { openPaths: [res.folder.path] })
@@ -392,7 +400,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await shot(a, SHOTS, 'tareas-escalada')
   })
 
-  it('Tareas: diálogo «¿Permitir que el agente controle tu Mac?» con foco contenido', async () => {
+  it.skipIf(IS_WIN)('Tareas: diálogo «¿Permitir que el agente controle tu Mac?» con foco contenido', async () => {
     const a = app()
     await storeSet(a.page, 'useTasks', { pendingFullAccess: res.folder.path })
     const dlg = a.page.getByRole('alertdialog').first()
@@ -404,7 +412,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await expectCount(dlg, 0)
   })
 
-  it('Tareas: tarjetas de acceso a apps (plan y toma de control) sin violaciones', async () => {
+  it.skipIf(IS_WIN)('Tareas: tarjetas de acceso a apps (plan y toma de control) sin violaciones', async () => {
     const a = app()
     const apps = [
       { bundleId: 'com.apple.Notes', name: 'Notas', requested: 'click', current: null },
@@ -421,7 +429,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await storeSet(a.page, 'useTasks', { accessRequest: null })
   })
 
-  it('Tareas: diálogo de renombrar (prompt) y paleta de comandos con foco contenido', async () => {
+  it.skipIf(IS_WIN)('Tareas: diálogo de renombrar (prompt) y paleta de comandos con foco contenido', async () => {
     const a = app()
     const more = a.page.locator('[aria-label^="Más acciones de la tarea «"]').first()
     await more.click()
@@ -431,7 +439,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await clean(a.page, 'dialogo:prompt')
     await shot(a, SHOTS, 'dialogo-prompt')
     await expectFocusContract(a.page, dlg, null)
-    await a.page.keyboard.press('Meta+k')
+    await a.page.keyboard.press('ControlOrMeta+k')
     const pal = a.page.getByRole('dialog', { name: 'Paleta de comandos' })
     await expectVisible(pal)
     await clean(a.page, 'paleta')
@@ -439,7 +447,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await expectFocusContract(a.page, pal, null)
   })
 
-  it('Tareas: grabar una skill (diálogo del panel del proyecto) con foco contenido', async () => {
+  it.skipIf(IS_WIN)('Tareas: grabar una skill (diálogo del panel del proyecto) con foco contenido', async () => {
     const a = app()
     await storeSet(a.page, 'useTasks', { projectPanelOpen: true })
     const opener = a.page.getByRole('button', { name: 'Grabar una skill' })
@@ -454,7 +462,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await storeSet(a.page, 'useTasks', { projectPanelOpen: false })
   })
 
-  it('Tareas: panel del proyecto como diálogo con foco', async () => {
+  it.skipIf(IS_WIN)('Tareas: panel del proyecto como diálogo con foco', async () => {
     const a = app()
     await storeSet(a.page, 'useTasks', { projectPanelOpen: true })
     const dlg = a.page.getByRole('dialog').first()

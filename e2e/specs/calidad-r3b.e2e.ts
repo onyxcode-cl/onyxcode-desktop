@@ -87,7 +87,7 @@ describe.skipIf(MODE === 'prod')(`calidad R3-B: cuenta y Quick Entry (${MODE})`,
   it('Ajustes › Cuenta y el diálogo de borrar cuenta: axe sin violaciones', async () => {
     const { page } = await launch(true)
     await expectVisible(page.locator('nav[aria-label="Modo"]'))
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(nav)
     await nav.getByRole('button', { name: 'Cuenta', exact: true }).click()

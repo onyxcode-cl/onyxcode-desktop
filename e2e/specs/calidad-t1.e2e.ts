@@ -8,6 +8,7 @@ import { shot } from '../lib/shots'
 import { storeState } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
 import { connectTasksFolder, consumeErrors, makeGitRepo, makeHomeFolder, openCodeProject, prepareFakeBin } from '../lib/fase6'
+import { IS_WIN } from '../lib/proc'
 
 const SHOTS = process.env.CALIDAD_SHOTS_DIR
 // 1×1 PNG
@@ -28,10 +29,12 @@ describe.skipIf(MODE === 'prod')(`calidad T1 (${MODE})`, () => {
   afterEach(() => {
     consumeErrors(app(), /ERR_EMPTY_RESPONSE|ERR_CONNECTION/)
   })
-  afterAll(() => {
+  afterAll(async () => {
+    // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
+    await app().stop().catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
 
   it('Chat: con la red caída el texto sigue en el compositor, el botón vuelve a «Enviar» y se puede reintentar', async () => {
@@ -105,7 +108,8 @@ describe.skipIf(MODE === 'prod')(`calidad T1 (${MODE})`, () => {
     await shot(a, SHOTS, 'code-imagen-sin-texto')
   })
 
-  it('Tareas: con la red caída el borrador sigue en el compositor', async () => {
+  // Windows v1: sin modo Tareas.
+  it.skipIf(IS_WIN)('Tareas: con la red caída el borrador sigue en el compositor', async () => {
     const a = app()
     const { fake } = await connectTasksFolder(a, res.folder.path)
     await fake.set({ failPrompt: -1 })

@@ -8,6 +8,7 @@ import { chatDirectory, fakeApi, makeGitRepo, openCodeProject } from '../lib/fas
 import { connectTasks, makeHomeFolder, newTaskVia, prepareFakeBin } from '../lib/lru'
 import { shot } from '../lib/shots'
 import { expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.T4_SHOTS_DIR
@@ -142,7 +143,8 @@ describe.skipIf(!DEV)('T4: «Ir al final» en Code', () => {
   })
 })
 
-describe.skipIf(!DEV)('T4: «Ir al final» en Tareas', () => {
+// Windows v1: sin modo Tareas.
+describe.skipIf(!DEV || IS_WIN)('T4: «Ir al final» en Tareas', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
   afterAll(() => {

@@ -26,7 +26,7 @@ const probe = await startProbeServer()
 afterAll(() => probe.close().catch(() => undefined))
 
 async function openModels(page: Page): Promise<void> {
-  await page.keyboard.press('Meta+,')
+  await page.keyboard.press('ControlOrMeta+,')
   const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
   await expectVisible(nav)
   await nav.getByRole('button', { name: 'Modelos', exact: true }).click()

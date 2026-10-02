@@ -107,7 +107,7 @@ const noticeText = (page: Page): Promise<string> => notice(page).innerText()
 const button = (page: Page, name: string): ReturnType<Page['getByRole']> => notice(page).getByRole('button', { name, exact: true })
 
 async function openAbout(page: Page): Promise<void> {
-  await page.keyboard.press('Meta+,')
+  await page.keyboard.press('ControlOrMeta+,')
   const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
   await expectVisible(nav)
   await nav.getByRole('button', { name: 'Acerca de', exact: true }).click()

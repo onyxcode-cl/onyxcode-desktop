@@ -6,6 +6,7 @@ import { MODE } from '../lib/launch'
 import { FakeClient } from '../lib/fake'
 import { hook, setMode, storeCall, storeState } from '../lib/stores'
 import { expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 import {
   connectTasks,
   emitGhostSessions,
@@ -185,7 +186,8 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
 
 // ─────────────────────────────── Tareas ───────────────────────────────
 
-describe.skipIf(!dev)('LRU de messages: Tareas real (tope 2)', () => {
+// Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
+describe.skipIf(!dev || IS_WIN)('LRU de messages: Tareas real (tope 2)', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
   afterAll(() => {

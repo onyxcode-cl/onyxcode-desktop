@@ -4,7 +4,8 @@
 param(
   [string]$Branch = 'default',
   [string]$Steps = 'ci,typecheck,unit,build',
-  [string]$Root = 'C:\onyx'
+  [string]$Root = 'C:\onyx',
+  [string]$Spec = ''
 )
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -75,6 +76,7 @@ foreach ($raw in ($Steps -split '[,; ]+')) {
   if (-not $s) { continue }
   if (-not $cmds.ContainsKey($s)) { Log "${s}: FAIL (paso desconocido)"; $allOk = $false; break }
   $cmd = $cmds[$s]
+  if ($s -eq 'e2e' -and $Spec) { $cmd = "npm run test:e2e -- $Spec" }
   if ($s -eq 'ci') {
     $hash = (Get-FileHash -Algorithm SHA256 (Join-Path $wt 'package-lock.json')).Hash
     $hf = Join-Path $wt 'node_modules\.lockhash'

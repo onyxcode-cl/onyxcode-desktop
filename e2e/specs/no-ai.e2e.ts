@@ -10,6 +10,7 @@ import { MODE_LABELS } from '../../src/shared/labels'
 import { startApp, type E2EApp } from '../lib/launch'
 import { openCodeProject } from '../lib/fase6'
 import { expectCount, expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const GO_MODEL = { providerID: 'opencode-go', modelID: 'fake-go-model' }
 const BANNER_TITLE = 'Aún no conectaste ninguna IA'
@@ -86,11 +87,14 @@ describe('sin ninguna IA conectada', () => {
     await shot(page, 'code-sin-ia')
 
     // Tareas.
-    await modeButton(page, MODE_LABELS.tasks).click()
-    await expectVisible(banner(page))
-    await expectVisible(blockedBox(page))
-    expect(await blockedBox(page).isDisabled()).toBe(true)
-    await shot(page, 'tareas-sin-ia')
+    // Windows v1: sin modo Tareas.
+    if (!IS_WIN) {
+      await modeButton(page, MODE_LABELS.tasks).click()
+      await expectVisible(banner(page))
+      await expectVisible(blockedBox(page))
+      expect(await blockedBox(page).isDisabled()).toBe(true)
+      await shot(page, 'tareas-sin-ia')
+    }
 
     // «Conectar una IA»: Ajustes › Modelos con la sección Proveedores a la vista.
     await modeButton(page, 'Chat').click()

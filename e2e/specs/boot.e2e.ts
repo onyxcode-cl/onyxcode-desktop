@@ -3,11 +3,15 @@ import { MODE } from '../lib/launch'
 import { useApp } from '../lib/harness'
 import { MODE_LABELS, UI_LABELS } from '../../src/shared/labels'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
+import { IS_WIN } from '../lib/proc'
 
 const app = useApp()
 
-const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines] as const
-const SETTINGS = ['General', 'Modelos', 'MCP', UI_LABELS.tasksMode, UI_LABELS.network, UI_LABELS.computer, UI_LABELS.autoMode, 'Navegador', 'Uso', 'Atajos', 'Diagnóstico', 'Acerca de']
+// Windows v1: sin modo Tareas ni sus ajustes (Tareas, Red, Control del PC, Modo automático) ni Actualizaciones.
+const MODES = (IS_WIN ? [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.routines] : [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines]) as readonly string[]
+const SETTINGS = IS_WIN
+  ? ['General', 'Modelos', 'MCP', 'Navegador', 'Uso', 'Atajos', 'Diagnóstico', 'Acerca de']
+  : ['General', 'Modelos', 'MCP', UI_LABELS.tasksMode, UI_LABELS.network, UI_LABELS.computer, UI_LABELS.autoMode, 'Navegador', 'Uso', 'Atajos', 'Diagnóstico', 'Acerca de']
 
 describe(`arranque (${MODE})`, () => {
   it('conecta con el OpenCode falso', async () => {
@@ -46,7 +50,7 @@ describe(`arranque (${MODE})`, () => {
 
   it('Ajustes muestra todas sus secciones y cada una renderiza', async () => {
     const { page } = app()
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('ControlOrMeta+,')
     const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(nav)
     for (const label of SETTINGS) await expectVisible(nav.getByRole('button', { name: label, exact: true }))

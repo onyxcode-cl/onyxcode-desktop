@@ -15,6 +15,7 @@ import { fakeOutsideUserData, makeTasksDir } from '../lib/lotes'
 import { shot } from '../lib/shots'
 import { setMode, storeCall } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
+import { IS_WIN, STEPS_TOTAL, isolatedHomeEnv } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.I18N_SHOTS_DIR
@@ -24,7 +25,7 @@ const sub = (lang: 'es' | 'en'): string | undefined => (SHOTS ? join(SHOTS, lang
 const navLabel = (lang: 'es' | 'en') => (page: Page) => page.locator(`nav[aria-label="${tr(lang, 'settings.navAria')}"]`)
 
 async function openSettings(page: Page, lang: 'es' | 'en'): Promise<void> {
-  if (!(await navLabel(lang)(page).isVisible())) await page.keyboard.press('Meta+,')
+  if (!(await navLabel(lang)(page).isVisible())) await page.keyboard.press('ControlOrMeta+,')
   await expectVisible(navLabel(lang)(page))
 }
 
@@ -45,7 +46,8 @@ describe.skipIf(!DEV)('Idioma (en/es)', () => {
     const { page } = app()
     const modes = page.locator(`nav[aria-label="${tr('en', 'app.sidebar.mode')}"]`)
     await expectVisible(modes)
-    for (const m of ['Chat', 'Code', 'Tasks', 'Routines']) await expectVisible(modes.getByRole('button', { name: m, exact: true }))
+    // Windows: sin modo Tareas en la v1.
+    for (const m of IS_WIN ? ['Chat', 'Code', 'Routines'] : ['Chat', 'Code', 'Tasks', 'Routines']) await expectVisible(modes.getByRole('button', { name: m, exact: true }))
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('en')
     await expectVisible(page.getByText(tr('en', 'chat.empty.prompt'), { exact: true }))
     await expectCount(page.getByText('Tareas', { exact: true }), 0)
@@ -74,7 +76,7 @@ describe.skipIf(!DEV)('Idioma (en/es)', () => {
     await goto(page, 'en', 'settings.nav.general')
     await page.getByRole('combobox', { name: tr('en', 'settings.general.language') }).selectOption('es')
     await expectVisible(navLabel('es')(page))
-    await expectVisible(page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }))
+    await expectVisible(page.locator('nav[aria-label="Modo"]').getByRole('button', { name: IS_WIN ? 'Rutinas' : 'Tareas', exact: true }))
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('es')
     await expect.poll(() => settingsFile().language).toBe('es')
     await shot(app(), sub('es'), 'general')
@@ -113,14 +115,14 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
   })
 
   it.each([
-    ['en', /Step 1 of 5/, 'Paso 1 de 5'],
-    ['es', /Paso 1 de 5/, 'Step 1 of 5']
+    ['en', new RegExp(`Step 1 of ${STEPS_TOTAL}`), `Paso 1 de ${STEPS_TOTAL}`],
+    ['es', new RegExp(`Paso 1 de ${STEPS_TOTAL}`), `Step 1 of ${STEPS_TOTAL}`]
   ] as const)('el asistente se ve en %s y no mezcla el otro idioma', async (lang, step, other) => {
     const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-')))
     const home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-home-')))
     dirs.push(userData, home)
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-    const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+    const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
     const app: E2EApp = await startApp({
       userData,
       keepUserData: true,
@@ -178,7 +180,8 @@ describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b
   })
   const modes = (page: Page) => page.locator(`nav[aria-label="${tr('en', 'app.sidebar.mode')}"]`)
 
-  it('(5) Tareas en inglés: guía de inicio y pantalla de inicio', async () => {
+  // Windows v1: modo Tareas fuera de alcance.
+  it.skipIf(IS_WIN)('(5) Tareas en inglés: guía de inicio y pantalla de inicio', async () => {
     const { page } = app()
     await modes(page).getByRole('button', { name: 'Tasks', exact: true }).click()
     await expectVisible(page.getByText(tr('en', 'tasksComputer.onb.title'), { exact: true }))
@@ -216,7 +219,7 @@ describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b
     await expectVisible(page.getByText(/What are we building in/))
     await expectCount(page.getByText(/¿Qué construimos en/), 0)
     await shot(a, sub('en'), 'code')
-    await page.keyboard.press('Meta+4')
+    await page.keyboard.press('ControlOrMeta+4')
     await expectVisible(page.getByText(tr('en', 'browser.empty.title'), { exact: true }))
     await expectCount(page.getByText('Sin pestañas abiertas'), 0)
     await shot(a, sub('en'), 'navegador')
@@ -227,7 +230,9 @@ describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b
     await setMode(page, 'routines')
     await storeCall(page, 'useSettings', 'update', { language: 'es' })
     await expectVisible(page.getByText(tr('es', 'routines.view.title'), { exact: true }).first())
-    await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }).click()
-    await expectVisible(page.getByText(tr('es', 'tasks.home.title'), { exact: true }))
+    if (!IS_WIN) {
+      await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }).click()
+      await expectVisible(page.getByText(tr('es', 'tasks.home.title'), { exact: true }))
+    }
   })
 })

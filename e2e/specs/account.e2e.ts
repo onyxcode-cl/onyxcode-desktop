@@ -11,6 +11,7 @@ import { startFakeAuth, type FakeAuth } from '../lib/fake-auth'
 import { listWindows, isQuickUrl } from '../lib/instance'
 import { startApp, type E2EApp } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
+import { DEVICE } from '../lib/proc'
 
 const SHOTS = process.env.ACCOUNT_SHOTS_DIR
 const DAY = 24 * 60 * 60 * 1000
@@ -95,7 +96,7 @@ async function emailLogin(p: Page, email: string): Promise<void> {
 }
 
 async function openAccountSettings(p: Page): Promise<void> {
-  await p.keyboard.press('Meta+,')
+  await p.keyboard.press('ControlOrMeta+,')
   const nav = p.locator('nav[aria-label="Secciones de ajustes"]')
   await expectVisible(nav)
   await nav.getByRole('button', { name: 'Cuenta', exact: true }).click()
@@ -108,7 +109,7 @@ describe('cuenta apagada (por defecto)', () => {
     apps.push(app)
     await expectVisible(modeNav(app.page))
     await expectCount(gate(app.page), 0)
-    await app.page.keyboard.press('Meta+,')
+    await app.page.keyboard.press('ControlOrMeta+,')
     const nav = app.page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(nav)
     await expectCount(nav.getByRole('button', { name: 'Cuenta', exact: true }), 0)
@@ -202,7 +203,7 @@ describe('primer arranque: correo + código', () => {
     await expectVisible(app.page.getByTestId('account-existing-note'))
     await shot(app.page, 'acceso-nota-existente')
     await expect(app.page.getByTestId('account-existing-note').innerText()).resolves.toContain(
-      'Tus conversaciones y claves de IA siguen en tu Mac.'
+      `Tus conversaciones y claves de IA siguen en tu ${DEVICE}.`
     )
   })
 })

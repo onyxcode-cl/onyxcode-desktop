@@ -14,8 +14,9 @@ let vite: ViteDevServer | null = null
 export async function setup(): Promise<void> {
   rmSync(join(root, 'e2e', '.artifacts'), { recursive: true, force: true })
   if (process.env.E2E_SKIP_BUILD !== '1') {
-    const bin = join(root, 'node_modules', '.bin', 'electron-vite')
-    const r = spawnSync(bin, ['build', '--logLevel', 'error'], { cwd: root, stdio: 'inherit', env: process.env })
+    // Con node y el .js del paquete: `.bin/electron-vite` es un script de shell (en Windows, un .cmd que spawnSync no ejecuta).
+    const bin = join(root, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js')
+    const r = spawnSync(process.execPath, [bin, 'build', '--logLevel', 'error'], { cwd: root, stdio: 'inherit', env: process.env, timeout: 300_000 })
     if (r.status !== 0) throw new Error('electron-vite build falló')
   }
   if (process.env.E2E_MODE === 'prod') return

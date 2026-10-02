@@ -1,12 +1,12 @@
 // Ayudantes de `lotes.e2e.ts` (Lotes B y D): fake fuera del userData, carpetas de trabajo bajo el home,
 // servidor de páginas en loopback y cliente JSON-RPC del MCP del navegador integrado.
-import { execFileSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ROOT } from './launch'
+import { FAKE_BIN_NAME, IS_WIN, killByCommandLine } from './proc'
 
 /**
  * Copia del OpenCode falso FUERA del userData tmp. El sandbox Seatbelt de Tareas deniega leer el userData de la app
@@ -16,8 +16,10 @@ import { ROOT } from './launch'
 export function fakeOutsideUserData(): { bin: string; dispose: () => void } {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-fakebin-')))
   for (const f of ['opencode', 'server.mjs']) cpSync(join(ROOT, 'e2e', 'fake-opencode', f), join(dir, f))
+  // Windows: la app lo lanza con `node <mjs>`; `opencode.mjs` es el nombre que también acepta ONYXCODE_TEST_BUNDLED_DIR (solo pruebas).
+  if (IS_WIN) cpSync(join(ROOT, 'e2e', 'fake-opencode', 'server.mjs'), join(dir, 'opencode.mjs'))
   return {
-    bin: join(dir, 'opencode'),
+    bin: join(dir, IS_WIN ? 'opencode.mjs' : FAKE_BIN_NAME),
     // El harness limpia por «argv menciona el userData tmp», pero este falso vive fuera: si la app muere (crash), el sidecar
     // queda huérfano. Se mata por la ruta única de esta copia.
     dispose: () => {
@@ -27,13 +29,9 @@ export function fakeOutsideUserData(): { bin: string; dispose: () => void } {
   }
 }
 
-/** Mata (SIGKILL) todo proceso cuyo argv mencione `path`. */
+/** Mata todo proceso cuyo argv mencione `path` (multiplataforma). */
 export function killByPath(path: string): void {
-  try {
-    execFileSync('pkill', ['-KILL', '-f', path])
-  } catch {
-    /* pkill sale 1 si no hay coincidencias */
-  }
+  killByCommandLine(path)
 }
 
 /**
@@ -167,7 +165,7 @@ export async function prepareCodeBrowser(app: E2EApp, dir: string): Promise<{ mc
     const w = window as unknown as { api: { browser: { invoke: (c: string, r: unknown) => Promise<unknown> } } }
     await w.api.browser.invoke('browser:sites:setPrefs', { agentEnabled: { code: true } })
   })
-  await page.keyboard.press('Meta+4')
+  await page.keyboard.press('ControlOrMeta+4')
   await page.getByTitle('Nueva pestaña').click()
   await page.waitForFunction(
     async (d) => {

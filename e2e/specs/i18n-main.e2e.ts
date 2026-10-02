@@ -14,6 +14,7 @@ import { useApp } from '../lib/harness'
 import { isQuickUrl, listWindows } from '../lib/instance'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
+import { IS_WIN, isolatedHomeEnv } from '../lib/proc'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.I18N_T4C_SHOTS_DIR
@@ -49,7 +50,7 @@ describe.skipIf(!DEV)('T4c: error del asistente y de acceso en inglés', () => {
       const home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-t4c-home-')))
       dirs.push(userData, home)
       mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
-      const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), HOME: home, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` }
+      const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
       const app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false, language: lang } })
       try {
         const alert = app.page.getByRole('dialog').getByRole('alert').filter({ hasText: expected })
@@ -98,7 +99,9 @@ describe.skipIf(!DEV)('T4c: motivo de carpeta y ventanas propias en inglés', ()
       [channel, req]
     )
 
-  it('(1) check.reason de una carpeta de confianza sale en inglés y vuelve a español al cambiar', async () => {
+  // Windows v1: el canal tasks:folders:check es del modo Tareas (sin handler en Windows).
+
+  it.skipIf(IS_WIN)('(1) check.reason de una carpeta de confianza sale en inglés y vuelve a español al cambiar', async () => {
     const { page } = app()
     const check = async (): Promise<string> => {
       const r = (await page.evaluate(() =>
