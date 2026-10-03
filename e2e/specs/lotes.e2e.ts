@@ -27,7 +27,7 @@ async function goTasks(app: E2EApp): Promise<void> {
 }
 
 async function openSettings(app: E2EApp, section: string): Promise<void> {
-  await app.page.keyboard.press('Meta+,')
+  await app.page.keyboard.press('ControlOrMeta+,')
   const nav = app.page.locator('nav[aria-label="Secciones de ajustes"]')
   await expectVisible(nav)
   await nav.getByRole('button', { name: section, exact: true }).click()
@@ -294,7 +294,7 @@ describe.skipIf(!DEV)('Lote D: navegador integrado', () => {
     expect(browser?.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/)
     expect(browser?.headers.Authorization).toMatch(/^Bearer .{20,}/)
     mcp = new BrowserMcp(browser!.url, browser!.headers.Authorization.slice('Bearer '.length))
-    await a.page.keyboard.press('Meta+4')
+    await a.page.keyboard.press('ControlOrMeta+4')
     await expectVisible(a.page.getByText('Sin pestañas abiertas'))
     // Una pestaña humana antes del agente: así el panel ya está alojado y visible en main (`hasVisibleHost`) y la aprobación
     // sale como tarjeta en la ventana; sin anfitrión visible, main cae al diálogo nativo (bloqueante) de respaldo.
@@ -354,9 +354,7 @@ describe.skipIf(!DEV)('Lote D: navegador integrado', () => {
     return m![1]
   }
 
-  // PENDIENTE EN WINDOWS (defecto encontrado, no excluido por alcance): `Input.dispatchMouseEvent` por CDP y `sendInputEvent` no llegan
-  // a la WebContentsView del navegador incrustado (ni en sesión SSH ni en la interactiva); en macOS sí. Hay que investigarlo.
-  it.skipIf(IS_WIN)('click en «Pagar ahora»: aparece la tarjeta «acción sensible»; «Permitir» hace el clic (título «pagado»)', async () => {
+  it('click en «Pagar ahora»: aparece la tarjeta «acción sensible»; «Permitir» hace el clic (título «pagado»)', async () => {
     const a = app()
     const uid = await uidOf('Pagar ahora')
     await waitUserIdle(a.page, project.dir)
@@ -416,9 +414,7 @@ describe.skipIf(!DEV)('Lote D: navegador integrado', () => {
     expect(res.text.toLowerCase()).toContain('contraseña')
   })
 
-  // PENDIENTE EN WINDOWS (defecto encontrado, no excluido por alcance): `Input.dispatchMouseEvent` por CDP y `sendInputEvent` no llegan
-  // a la WebContentsView del navegador incrustado (ni en sesión SSH ni en la interactiva); en macOS sí. Hay que investigarlo.
-  it.skipIf(IS_WIN)('un enlace normal navega en la misma pestaña (sin nueva aprobación: mismo origen aprobado en la tarea)', async () => {
+  it('un enlace normal navega en la misma pestaña (sin nueva aprobación: mismo origen aprobado en la tarea)', async () => {
     await waitUserIdle(app().page, project.dir)
     const uid = await uidOf('Ir a otra página')
     const res = await mcp.call(sessionId, 'click', { uid })

@@ -9,7 +9,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { BrowserMcp, fakeOutsideUserData, makeTasksDir, prepareCodeBrowser, waitUserIdle } from '../lib/lotes'
 import { MODE, type E2EApp } from '../lib/launch'
-import { IS_WIN } from '../lib/proc'
 import { shot } from '../lib/shots'
 
 const SHOTS = process.env.MY_SHOTS_DIR
@@ -116,7 +115,7 @@ describe.skipIf(MODE !== 'dev')('Navegador integrado: vista de escritorio por de
     expect(got!.ua).not.toMatch(/Electron/)
   })
 
-  it.skipIf(IS_WIN)('clic del agente con escala ≠ 1: cada botón recibe SU clic; la captura mide 1280 px de ancho', async () => {
+  it('clic del agente con escala ≠ 1: cada botón recibe SU clic; la captura mide 1280 px de ancho', async () => {
     const a = app()
     const got0 = (await look())!
     expect(got0.native / got0.w).toBeLessThan(0.95) // escala real ≠ 1
