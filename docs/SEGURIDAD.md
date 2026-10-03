@@ -960,6 +960,37 @@ respondiendo `unavailable`).
 - **Límites conocidos**: los diffs (`/session/{id}/diff`, `/vcs/diff`) y el texto de los mensajes pueden contener secretos que el agente leyó;
   solo se tachan las credenciales del motor. La confirmación de acciones D depende de la UI de T6.
 
+## 3 vicies quater. Caducidad de vínculos y política de la organización del control remoto (F8-B57)
+
+**Secreto de dispositivo.** El celular guarda el secreto (32 bytes aleatorios); `remote.bin` (cifrado con `safeStorage`)
+guarda SOLO su sha256. Con 256 bits de entropía un sha256 simple basta (no hay diccionario que atacar), por eso no se
+cambió el hash ni hubo que migrarlo. Ni el estado de Ajustes, ni la auditoría, ni los registros incluyen el secreto ni su
+hash (prueba en `devices-store.test.ts`).
+
+**Caducidad por dispositivo** (`devices-store.ts`). Cada vínculo tiene `ttlDays` (30, 90 —por defecto—, 365 o `null` = nunca,
+SOLO desde el Mac: `remote:setDeviceTtl`, canal clase «X», no invocable desde el celular) y `renewedAt`. Caduca a
+`renewedAt + ttlDays`; cada autenticación correcta (`touch`) lo renueva y apunta `lastUsedAt`. Un vínculo caducado:
+- se rechaza en la autenticación por el canal con `auth-failed {why:'expired'}` y se audita (`expired`); el celular debe
+  volver a vincularse. `expired` solo se dice a quien presenta el secreto correcto; con un secreto malo sigue siendo
+  `auth-failed` a secas (no revela si el dispositivo existe ni si caducó);
+- sigue visible en Ajustes › Celular (`Caducado`, con su fecha) hasta que se quita; no ocupa hueco al vincular otro;
+- si al reconectar quedaban 7 días o menos, `authed` lleva `expiring:true` (y `expiresAt`) para que el celular avise.
+`remote.bin` anterior (campo `lastSeenAt`, sin `ttlDays`/`renewedAt`) se migra al leerlo: 90 días contados desde ese momento
+(no caducan de golpe) y se reescribe de inmediato. Ajustes muestra último uso y caducidad, el plazo de cada celular,
+«Quitar» y «Quitar todos» (con confirmación; audita `revoked-all`).
+
+**Política de la organización** (`org-policy.ts`, `docs/POLITICA-ORGANIZACION.md`). Bloque `remote` del mismo `managed.json`
+de Tareas. FAIL CLOSED: archivo presente pero ilegible/inválido, `remote` que no es un objeto o `enabled` distinto de `true`
+⇒ el control remoto queda deshabilitado y Ajustes lo explica («Bloqueado por la política de tu organización»). La política
+manda sobre los ajustes del usuario; la app no tiene ninguna forma de cambiarla ni de saltársela, y en la app empaquetada
+se ignora la variable `ONYXCODE_MANAGED_POLICY` (solo vale en desarrollo). Se relee cuando el archivo cambia: al activar, en
+cada conexión (señalización y autenticación) y cada 5 s mientras está encendido; `enabled:false` corta de inmediato las
+conexiones vivas (`stopAll`, auditoría `policy-blocked`). `allowRemember:false` borra los vínculos al activar y al cortar;
+`allowConfirmRemember12h:false` quita «Recordar 12 h»; `requirePin:true` exige el PIN en cada conexión (sin reconexión en
+caliente); `maxDevices` y `deviceTtlDays` recortan los límites de fábrica (el plazo efectivo es el menor).
+**No verificado**: nada con Jamf/Intune reales, ni con `managed.json` escrito por root en `/Library` (las pruebas usan archivos
+temporales).
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

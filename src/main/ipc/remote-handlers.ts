@@ -12,7 +12,7 @@ import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import type { OpencodeServer } from '../opencode/server'
 import { ConfirmHost } from '../remote/confirm-host'
-import { currentService, ensureRemote, getAudit, getDevicesStore, offState, type RemoteHostDeps } from '../remote/loader'
+import { currentService, ensureRemote, getAudit, getDevicesStore, getOrgPolicy, offState, type RemoteHostDeps } from '../remote/loader'
 import { emitTo } from './event-bus'
 import { makeInvokeHandler } from './handle'
 
@@ -97,7 +97,8 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
   handle(ipcMain, 'remote:setRemember', ({ deviceId, remember }) => {
     const s = currentService()
     if (s) return s.setRemember(deviceId, remember)
-    if (supported && getDevicesStore().available) getDevicesStore().setTrust(deviceId, remember ? Date.now() + LIMITS.rememberMs : null)
+    if (supported && getDevicesStore().available)
+      getDevicesStore().setTrust(deviceId, remember && getOrgPolicy().allowConfirmRemember12h ? Date.now() + LIMITS.rememberMs : null)
     return offState(platform)
   })
   handle(ipcMain, 'remote:resetPin', ({ deviceId }) => {
@@ -106,14 +107,30 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     if (supported && getDevicesStore().available) getDevicesStore().resetPin(deviceId)
     return offState(platform)
   })
+  handle(ipcMain, 'remote:revokeAll', () => {
+    const s = currentService()
+    if (s) return s.revokeAll()
+    if (supported && getDevicesStore().available) {
+      const n = getDevicesStore().list().length
+      getDevicesStore().revokeAll()
+      if (n > 0) getAudit().append({ kind: 'revoked-all', n })
+    }
+    return offState(platform)
+  })
+  handle(ipcMain, 'remote:setDeviceTtl', ({ deviceId, days }) => {
+    const s = currentService()
+    if (s) return s.setDeviceTtl(deviceId, days)
+    if (supported && getDevicesStore().available) getDevicesStore().setTtl(deviceId, days)
+    return offState(platform)
+  })
   handle(ipcMain, 'remote:auditList', (req) => (supported ? getAudit().list({ device: req?.device }) : []))
   handle(ipcMain, 'remote:getState', () => currentService()?.getState() ?? offState(platform))
   handle(ipcMain, 'remote:start', async () => {
-    if (!supported) return offState(platform)
+    if (!supported || getOrgPolicy().blocked) return offState(platform)
     return (await ensureRemote(host())).start()
   })
   handle(ipcMain, 'remote:newPairing', async () => {
-    if (!supported) return offState(platform)
+    if (!supported || getOrgPolicy().blocked) return offState(platform)
     return (await ensureRemote(host())).newPairing()
   })
   handle(ipcMain, 'remote:stop', async () => {

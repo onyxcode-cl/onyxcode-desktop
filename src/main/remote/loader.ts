@@ -6,9 +6,11 @@
 import { app, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { capsFor } from '@shared/platform-caps'
-import { REMOTE_OFF_STATE, type RemoteState } from '@shared/ipc-remote'
+import { REMOTE_OFF_STATE, type RemotePolicyView, type RemoteState } from '@shared/ipc-remote'
 import { AUDIT_FILE, AuditLog } from './audit'
 import { DevicesStore, REMOTE_FILE, toDeviceInfo } from './devices-store'
+import { OrgRemotePolicy } from './org-policy'
+import { policyFile } from '../tasks/policy'
 import type { RemoteBootDeps } from './index'
 import type { RemoteService } from './service'
 
@@ -18,6 +20,7 @@ export type RemoteHostDeps = Pick<
 >
 
 let devicesStore: DevicesStore | null = null
+let orgPolicy: OrgRemotePolicy | null = null
 let auditLog: AuditLog | null = null
 let service: RemoteService | null = null
 let booting: Promise<RemoteService> | null = null
@@ -27,6 +30,12 @@ const modeListeners = new Set<(mode: RemoteState['mode']) => void>()
 export function getDevicesStore(): DevicesStore {
   devicesStore ??= new DevicesStore(join(app.getPath('userData'), REMOTE_FILE), safeStorage)
   return devicesStore
+}
+
+/** Política de la organización (`managed.json`, bloque `remote`), releída cuando el archivo cambia. */
+export function getOrgPolicy(): RemotePolicyView {
+  orgPolicy ??= new OrgRemotePolicy(policyFile)
+  return orgPolicy.get()
 }
 
 /** Auditoría `userData/remote-audit.jsonl` (rotada, sin secretos). */
@@ -43,11 +52,15 @@ export function pwaDir(): string {
 /** Estado con la función apagada: no carga nada de red. */
 export function offState(platform: string = process.platform): RemoteState {
   if (!capsFor(platform).remote) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'platform' }
+  const policy = getOrgPolicy()
+  const withPolicy = policy.managed ? { policy } : {}
+  if (policy.blocked) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'policy', ...withPolicy }
   const devices = getDevicesStore()
-  if (!devices.available) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'no-safe-storage' }
+  if (!devices.available) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'no-safe-storage', ...withPolicy }
   return {
     ...REMOTE_OFF_STATE,
-    devices: devices.list().map((d) => toDeviceInfo(d, false, null, Date.now()))
+    devices: devices.list().map((d) => toDeviceInfo(d, false, null, Date.now(), policy.deviceTtlDays)),
+    ...withPolicy
   }
 }
 
@@ -81,6 +94,7 @@ export function ensureRemote(host: RemoteHostDeps): Promise<RemoteService> {
         ...host,
         devices: getDevicesStore(),
         audit: (e) => getAudit().append(e),
+        policy: getOrgPolicy,
         pwaDir: pwaDir(),
         onChanged: (s) => {
           noteState(s)

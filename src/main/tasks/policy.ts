@@ -93,7 +93,8 @@ export function managedPolicyPath(
   return posix.join('/Library/Application Support', APP_NAME, 'managed.json')
 }
 
-function policyFile(): string {
+/** Archivo de política vigente: el del sistema; en desarrollo (`!app.isPackaged`) se puede forzar con `ONYXCODE_MANAGED_POLICY`. */
+export function policyFile(): string {
   const override = process.env.ONYXCODE_MANAGED_POLICY
   if (override && !app.isPackaged) return resolve(override)
   return managedPolicyPath()

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Loader2, Smartphone, Trash2 } from 'lucide-react'
 import { getLang, type MsgKey } from '@shared/i18n'
 import { LIMITS } from '@shared/remote/protocol'
-import type { RemoteApi, RemoteAuditEntry, RemoteDeviceInfo, RemoteState } from '@shared/ipc-remote'
+import type { DeviceTtlDays, RemoteApi, RemoteAuditEntry, RemoteDeviceInfo, RemoteState } from '@shared/ipc-remote'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errText } from '../../../lib/format'
@@ -55,6 +55,13 @@ const ACCESS_KEYS = {
   open: 'remote.access.open'
 } as const satisfies Record<NonNullable<RemoteDeviceInfo['access']>, MsgKey>
 
+const TTL_KEYS: Record<string, MsgKey> = {
+  '30': 'remote.devices.ttl.30',
+  '90': 'remote.devices.ttl.90',
+  '365': 'remote.devices.ttl.365',
+  never: 'remote.devices.ttl.never'
+}
+
 const AUDIT_KEYS: Record<string, MsgKey> = {
   paired: 'remote.activity.kind.paired',
   connected: 'remote.activity.kind.connected',
@@ -62,6 +69,9 @@ const AUDIT_KEYS: Record<string, MsgKey> = {
   'confirm-rejected': 'remote.activity.kind.confirm-rejected',
   'confirm-expired': 'remote.activity.kind.confirm-expired',
   revoked: 'remote.activity.kind.revoked',
+  'revoked-all': 'remote.activity.kind.revoked-all',
+  expired: 'remote.activity.kind.expired',
+  'policy-blocked': 'remote.activity.kind.policy-blocked',
   'pin-set': 'remote.activity.kind.pin-set',
   'pin-fail': 'remote.activity.kind.pin-fail',
   'pin-reset': 'remote.activity.kind.pin-reset',
@@ -179,11 +189,13 @@ export function RemoteSection(): React.JSX.Element {
   const unavailableText = (reason: NonNullable<RemoteState['unavailable']>): string =>
     reason === 'platform'
       ? t('remote.unavailable.platform')
-      : reason === 'no-safe-storage'
-        ? t('remote.unavailable.noSafeStorage')
-        : reason === 'no-network'
-          ? t('remote.unavailable.noNetwork')
-          : t('remote.unavailable.noRtc')
+      : reason === 'policy'
+        ? `${t('remote.unavailable.policy')} ${state?.policy?.blocked === 'invalid' ? t('remote.policy.invalid') : t('remote.policy.disabled')}`
+        : reason === 'no-safe-storage'
+          ? t('remote.unavailable.noSafeStorage')
+          : reason === 'no-network'
+            ? t('remote.unavailable.noNetwork')
+            : t('remote.unavailable.noRtc')
 
   const startError = (e: string): string =>
     e === 'no-network'
@@ -212,6 +224,16 @@ export function RemoteSection(): React.JSX.Element {
     if (ok) run(() => api.invoke('remote:resetPin', { deviceId: id }))
   }
 
+  const revokeAll = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('remote.devices.revokeAllTitle'),
+      message: t('remote.devices.revokeAllBody'),
+      confirmLabel: t('remote.devices.revokeAll'),
+      danger: true
+    })
+    if (ok) run(() => api.invoke('remote:revokeAll'))
+  }
+
   const copy = (url: string): void => {
     void navigator.clipboard
       .writeText(url)
@@ -231,6 +253,7 @@ export function RemoteSection(): React.JSX.Element {
     )
   }
 
+  const maxDevices = Math.min(state.policy?.maxDevices ?? LIMITS.maxDevices, LIMITS.maxDevices)
   const connected = state.devices.some((d) => d.connected)
   const on = state.mode !== 'off'
   const remaining = state.pairing ? Math.max(0, Math.ceil((state.pairing.expiresAt - now) / 1000)) : 0
@@ -305,7 +328,7 @@ export function RemoteSection(): React.JSX.Element {
               <span className="text-muted">{state.pairingExpired ? t('remote.qr.expired') : t('remote.state.active')}</span>
               <Button
                 size="sm"
-                disabled={busy || state.devices.length >= LIMITS.maxDevices}
+                disabled={busy || state.devices.length >= maxDevices}
                 onClick={() => run(() => api.invoke('remote:newPairing'))}
               >
                 {t('remote.newQr')}
@@ -332,9 +355,16 @@ export function RemoteSection(): React.JSX.Element {
                     <>
                       {d.connected
                         ? t('remote.devices.connected')
-                        : d.lastSeenAt
-                          ? t('remote.devices.lastSeen', { when: new Date(d.lastSeenAt).toLocaleString(locale()) })
+                        : d.lastUsedAt
+                          ? t('remote.devices.lastSeen', { when: new Date(d.lastUsedAt).toLocaleString(locale()) })
                           : t('remote.devices.never')}
+                      <span className="block">
+                        {d.expiresAt === null
+                          ? t('remote.devices.neverExpires')
+                          : d.expired
+                            ? t('remote.devices.expiredAt', { when: new Date(d.expiresAt).toLocaleDateString(locale()) })
+                            : t('remote.devices.expiresAt', { when: new Date(d.expiresAt).toLocaleDateString(locale()) })}
+                      </span>
                       <span className="block">
                         {d.hasPin ? t('remote.devices.pinSet') : t('remote.devices.pinPending')} · {d.fingerprint}
                         {d.trustUntil
@@ -345,6 +375,26 @@ export function RemoteSection(): React.JSX.Element {
                   }
                 >
                   <span className="flex items-center gap-2">
+                    {d.expired && <Badge tone="muted">{t('remote.devices.expiredBadge')}</Badge>}
+                    <Select
+                      aria-label={t('remote.devices.ttl')}
+                      title={t('remote.devices.ttlHint')}
+                      value={String(d.ttlDays ?? 'never')}
+                      disabled={busy}
+                      onChange={(e) => {
+                        const days: DeviceTtlDays = e.target.value === 'never' ? null : (Number(e.target.value) as DeviceTtlDays)
+                        run(() => api.invoke('remote:setDeviceTtl', { deviceId: d.id, days }))
+                      }}
+                    >
+                      {([30, 90, 365, null] as const)
+                        // Con tope de la organización solo se ofrecen plazos dentro del tope.
+                        .filter((v) => state.policy?.deviceTtlDays == null || (v !== null && v <= state.policy.deviceTtlDays))
+                        .map((v) => (
+                          <option key={String(v)} value={String(v ?? 'never')}>
+                            {t(TTL_KEYS[String(v ?? 'never')] as MsgKey)}
+                          </option>
+                        ))}
+                    </Select>
                     {d.access && <Badge tone={d.access === 'open' ? 'ok' : 'accent'}>{t(ACCESS_KEYS[d.access])}</Badge>}
                     <Toggle
                       checked={d.trustUntil !== null}
@@ -365,9 +415,17 @@ export function RemoteSection(): React.JSX.Element {
               ))
             )}
           </Card>
-          {state.devices.length >= LIMITS.maxDevices && (
-            <p className="mt-2 text-xs text-muted">{t('remote.devices.max', { count: LIMITS.maxDevices })}</p>
+          {state.devices.length > 1 && (
+            <div className="mt-2 flex justify-end">
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revokeAll()}>
+                <Trash2 size={13} /> {t('remote.devices.revokeAll')}
+              </Button>
+            </div>
           )}
+          {state.devices.length >= maxDevices && (
+            <p className="mt-2 text-xs text-muted">{t('remote.devices.max', { count: maxDevices })}</p>
+          )}
+          {state.policy && <p className="mt-2 text-xs text-muted">{t('remote.policy.note')}</p>}
 
           <ActivityList api={api} state={state} />
 

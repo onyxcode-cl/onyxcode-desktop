@@ -8,15 +8,46 @@
 
 export type RemoteMode = 'off' | 'pairing' | 'active'
 
+/** Días de validez de un celular vinculado desde su último uso (`null` = nunca caduca; solo se elige desde el Mac). */
+export type DeviceTtlDays = 30 | 90 | 365 | null
+export const DEVICE_TTL_OPTIONS: readonly DeviceTtlDays[] = [30, 90, 365, null]
+export const DEFAULT_DEVICE_TTL_DAYS = 90
+
+/**
+ * Política de la organización aplicada al control remoto (bloque `remote` de `managed.json`), ya normalizada.
+ * `blocked` = el control remoto está deshabilitado y la interfaz no deja activarlo.
+ */
+export interface RemotePolicyView {
+  /** Hay un `managed.json` en el equipo. */
+  managed: boolean
+  blocked: false | 'disabled' | 'invalid'
+  /** `false`: ningún vínculo sobrevive a «Cortar todo». */
+  allowRemember: boolean
+  /** `true`: el PIN se pide en cada conexión (sin reconexión «en caliente»). */
+  requirePin: boolean
+  maxDevices: number
+  /** Tope de días de validez de un vínculo (`null` = sin tope). */
+  deviceTtlDays: number | null
+  /** `false`: sin «Recordar 12 h»; cada conexión se confirma en el Mac. */
+  allowConfirmRemember12h: boolean
+}
+
 /** Por qué la función no se puede activar en este equipo. */
-export type RemoteUnavailableReason = 'platform' | 'no-safe-storage' | 'no-network' | 'no-rtc'
+export type RemoteUnavailableReason = 'platform' | 'no-safe-storage' | 'no-network' | 'no-rtc' | 'policy'
 
 export interface RemoteDeviceInfo {
   id: string
   name: string
   /** ms desde epoch. */
   createdAt: number
-  lastSeenAt: number | null
+  /** Último uso (autenticación correcta del celular); `null` = nunca se ha conectado. */
+  lastUsedAt: number | null
+  /** Caducidad del vínculo (ms desde epoch), ya con el tope de la política; `null` = no caduca. */
+  expiresAt: number | null
+  /** El vínculo ya caducó: el celular debe volver a vincularse (quítalo y genera otro QR). */
+  expired: boolean
+  /** Días de validez elegidos por el dueño (`null` = nunca). Con política, la caducidad real puede ser menor. */
+  ttlDays: DeviceTtlDays
   /** ¿Conectado ahora mismo? (como mucho uno a la vez). */
   connected: boolean
   /** 8 hex del sha256 del deviceId (distingue celulares con el mismo nombre; filtro de la actividad). */
@@ -76,6 +107,8 @@ export interface RemoteState {
   idleStopAt: number | null
   /** Error legible del último intento de activar. */
   error: string | null
+  /** Política de la organización vigente (ausente = sin política). */
+  policy?: RemotePolicyView
 }
 
 export const REMOTE_OFF_STATE: RemoteState = {
@@ -135,6 +168,10 @@ export interface RemoteInvokeContract {
   'remote:setRemember': { req: { deviceId: string; remember: boolean }; res: RemoteState }
   /** Borra el PIN de un dispositivo: tendrá que fijar uno nuevo al conectar. */
   'remote:resetPin': { req: { deviceId: string }; res: RemoteState }
+  /** «Revocar todos»: quita todos los celulares vinculados y corta la conexión viva. */
+  'remote:revokeAll': { req: void; res: RemoteState }
+  /** Días de validez de un celular (30, 90, 365 o `null` = nunca); renueva su plazo desde ahora. */
+  'remote:setDeviceTtl': { req: { deviceId: string; days: DeviceTtlDays }; res: RemoteState }
   /** Actividad reciente (más nueva primero), opcionalmente de un dispositivo (huella de 8 hex). */
   'remote:auditList': { req: { device?: string } | void; res: RemoteAuditEntry[] }
 }
@@ -163,6 +200,8 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:confirmAction',
   'remote:setRemember',
   'remote:resetPin',
+  'remote:revokeAll',
+  'remote:setDeviceTtl',
   'remote:auditList'
 ] as const satisfies readonly RemoteInvokeChannel[]
 

@@ -458,6 +458,11 @@ const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = 
   }),
   'remote:setRemember': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }), remember: bool }),
   'remote:resetPin': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) }),
+  'remote:revokeAll': none,
+  'remote:setDeviceTtl': obj({
+    deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }),
+    days: (v: unknown, path?: string) => (v === null ? null : literal(30, 90, 365)(v, path))
+  }),
   'remote:auditList': optional(obj({ device: optional(str({ max: 8, min: 8, pattern: /^[0-9a-f]+$/ })) }))
 }
 

@@ -259,8 +259,10 @@ export type HostFrame =
   /** Vinculación aceptada: el celular guarda `deviceId` y `deviceSecret` (el escritorio solo guarda su hash). */
   | { t: 'paired'; deviceId: string; deviceSecret: string }
   | { t: 'denied'; reason: DeniedReason }
-  | { t: 'authed' }
-  | { t: 'auth-failed' }
+  /** `expiresAt`: fin de validez del vínculo tras renovarlo ahora (ausente = no caduca). `expiring`: estaba a punto de caducar. */
+  | { t: 'authed'; expiresAt?: number; expiring?: boolean }
+  /** `why: 'expired'`: el vínculo caducó; el celular debe volver a vincularse. Sin `why` = secreto incorrecto. */
+  | { t: 'auth-failed'; why?: 'expired' }
   | { t: 'pong' }
   | { t: 'bye'; reason: ByeReason }
   /** Sin acceso por ahora. `retryMs` = espera antes de reintentar el PIN; `left` = intentos que quedan antes de revocar. */
@@ -566,10 +568,25 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
   const o = j.value
   switch (o.t) {
     case 'pair-pending':
-    case 'authed':
-    case 'auth-failed':
     case 'pong':
       return onlyKeys(o, ['t']) ? { ok: true, value: { t: o.t } as HostFrame } : fail('extra-keys')
+    case 'authed': {
+      if (!onlyKeys(o, ['t', 'expiresAt', 'expiring'])) return fail('extra-keys')
+      const v: HostFrame = { t: 'authed' }
+      if (o.expiresAt !== undefined) {
+        if (typeof o.expiresAt !== 'number' || !Number.isFinite(o.expiresAt) || o.expiresAt < 0) return fail('bad-expires')
+        v.expiresAt = o.expiresAt
+      }
+      if (o.expiring !== undefined) {
+        if (typeof o.expiring !== 'boolean') return fail('bad-expiring')
+        v.expiring = o.expiring
+      }
+      return { ok: true, value: v }
+    }
+    case 'auth-failed':
+      if (!onlyKeys(o, ['t', 'why'])) return fail('extra-keys')
+      if (o.why !== undefined && o.why !== 'expired') return fail('bad-why')
+      return { ok: true, value: o.why === 'expired' ? { t: 'auth-failed', why: 'expired' } : { t: 'auth-failed' } }
     case 'paired':
       if (!onlyKeys(o, ['t', 'deviceId', 'deviceSecret'])) return fail('extra-keys')
       if (typeof o.deviceId !== 'string' || !DEVICE_ID_RE.test(o.deviceId)) return fail('bad-device')

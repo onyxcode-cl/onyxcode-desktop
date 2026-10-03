@@ -13,12 +13,21 @@ import { pairingCode, toHex } from '@shared/remote/code'
 import { LIMITS } from '@shared/remote/protocol'
 import type { CallRequest, HttpRequest } from '@shared/remote/mux'
 import type { RemoteEvent } from '@shared/remote/protocol'
-import type { RemoteDeviceInfo, RemotePairRequest, RemoteState, RemoteUnavailableReason } from '@shared/ipc-remote'
+import type {
+  DeviceTtlDays,
+  RemoteDeviceInfo,
+  RemotePairRequest,
+  RemotePolicyView,
+  RemoteState,
+  RemoteUnavailableReason
+} from '@shared/ipc-remote'
+import { DEVICE_TTL_OPTIONS } from '@shared/ipc-remote'
 import type { AuditInput } from './audit'
 import type { ConfirmHost } from './confirm-host'
 import { toDeviceInfo, type DevicesStore } from './devices-store'
 import { deviceFingerprint } from './confirm-queue'
 import { EventBridge, type EventBridgeOptions, type EventSource } from './events'
+import { NO_ORG_POLICY } from './org-policy'
 import { PairingManager } from './pairing'
 import { isUrgentFrame } from './engine-proxy'
 import type { DeviceDispatch, RemoteEngineHost } from './engine-host'
@@ -54,11 +63,15 @@ export interface RemoteServiceDeps {
   engine?: RemoteEngineHost
   /** Plataforma sin función (`platform`) o ya conocida como no disponible. */
   unavailable?: () => RemoteUnavailableReason | null
+  /** Política de la organización vigente (se consulta en caliente; sin ella, sin restricciones). */
+  policy?: () => RemotePolicyView
 }
 
 /** Tiempo máximo para que una negociación WebRTC termine en un canal con celular autenticado. */
 const NEGOTIATION_MS = 25_000
 const FLUSH_MS = 250
+/** Cada cuánto se relee la política de la organización mientras el control remoto está encendido. */
+export const POLICY_POLL_MS = 5000
 
 interface PeerRecord {
   signaling: SignalingPeer
@@ -88,6 +101,8 @@ export class RemoteService {
   private error: string | null = null
   private bridge: EventBridge | null = null
   private starting: Promise<RemoteState> | null = null
+  private policyTimer: ReturnType<typeof setInterval> | null = null
+  private lastPolicyKey = ''
   /** Última actividad por dispositivo (memoria): reconectar «en caliente» no vuelve a pedir el PIN. */
   private readonly lastActive = new Map<string, number>()
 
@@ -101,12 +116,27 @@ export class RemoteService {
 
   // ── estado ──
 
+  private pol(): RemotePolicyView {
+    return this.d.policy?.() ?? NO_ORG_POLICY
+  }
+
+  private unavailableReason(): RemoteUnavailableReason | null {
+    return this.d.unavailable?.() ?? (this.pol().blocked ? 'policy' : this.d.devices.available ? null : 'no-safe-storage')
+  }
+
   getState(): RemoteState {
-    const unavailable = this.d.unavailable?.() ?? (this.d.devices.available ? null : 'no-safe-storage')
+    const unavailable = this.unavailableReason()
+    const policy = this.pol()
     const devices: RemoteDeviceInfo[] = this.d.devices
       .list()
       .map((x) =>
-        toDeviceInfo(x, this.connected?.deviceId === x.id, this.connected?.deviceId === x.id ? this.connected.accessView : null, this.now())
+        toDeviceInfo(
+          x,
+          this.connected?.deviceId === x.id,
+          this.connected?.deviceId === x.id ? this.connected.accessView : null,
+          this.now(),
+          policy.deviceTtlDays
+        )
       )
     const expiry = this.pairing.expiry
     return {
@@ -118,7 +148,8 @@ export class RemoteService {
       devices,
       pendingPair: this.pending?.req ?? null,
       idleStopAt: this.mode === 'off' ? null : this.idleStopAt,
-      error: this.error
+      error: this.error,
+      ...(policy.managed ? { policy } : {})
     }
   }
 
@@ -147,7 +178,7 @@ export class RemoteService {
 
   private async doStart(): Promise<RemoteState> {
     this.error = null
-    const unavailable = this.d.unavailable?.() ?? (this.d.devices.available ? null : 'no-safe-storage')
+    const unavailable = this.unavailableReason()
     if (unavailable) {
       this.changed()
       return this.getState()
@@ -180,11 +211,51 @@ export class RemoteService {
     this.rtc = rtc
     this.ip = ip
     this.transport = transport
+    // Política sin «recordar»: los vínculos no sobreviven entre activaciones (se borran los que quedaran de antes).
+    if (!this.pol().allowRemember) this.purgeDevices()
     this.mode = 'pairing'
     this.newPairingToken()
     this.armIdleTimer()
+    this.startPolicyWatch()
     this.changed()
     return this.getState()
+  }
+
+  // ── política de la organización ──
+
+  private startPolicyWatch(): void {
+    this.lastPolicyKey = JSON.stringify(this.pol())
+    if (this.policyTimer || !this.d.policy) return
+    this.policyTimer = setInterval(() => this.applyPolicy(), POLICY_POLL_MS)
+    this.policyTimer.unref?.()
+  }
+
+  /**
+   * Relee la política y la aplica en caliente: bloqueada → se corta TODO ya (conexiones vivas incluidas); otros cambios
+   * (tope de caducidad, máx. de celulares…) refrescan Ajustes. Se llama al activar, en cada conexión y por sondeo.
+   */
+  applyPolicy(): void {
+    const p = this.pol()
+    if (p.blocked && this.mode !== 'off') {
+      this.d.audit?.({ kind: 'policy-blocked' })
+      void this.stopAll()
+      return
+    }
+    const key = JSON.stringify(p)
+    if (key !== this.lastPolicyKey) {
+      this.lastPolicyKey = key
+      if (this.mode !== 'off') this.changed()
+    }
+  }
+
+  /** Borra todos los vínculos sin auditoría de cada uno (los usa el modo sin «recordar»). */
+  private purgeDevices(): void {
+    if (this.d.devices.list().length === 0) return
+    try {
+      this.d.devices.revokeAll()
+    } catch {
+      /* sin cifrado no hay nada guardado */
+    }
   }
 
   /** QR nuevo (el anterior deja de valer). Activa el modo si estaba apagado. */
@@ -227,6 +298,8 @@ export class RemoteService {
     if (this.idleTimer) clearTimeout(this.idleTimer)
     this.idleTimer = null
     this.idleStopAt = null
+    if (this.policyTimer) clearInterval(this.policyTimer)
+    this.policyTimer = null
     this.bridge?.stop()
     this.bridge = null
     this.d.engine?.close()
@@ -245,6 +318,7 @@ export class RemoteService {
     if (peers.length > 0) await new Promise((r) => setTimeout(r, FLUSH_MS))
     for (const p of peers) this.closePeer(p, true)
     this.error = null
+    if (!this.pol().allowRemember) this.purgeDevices()
     if (!wasOff) this.changed()
     return this.getState()
   }
@@ -270,6 +344,7 @@ export class RemoteService {
   // ── señalización ──
 
   private authorize(h: SignalHello): boolean {
+    this.applyPolicy()
     if (this.mode === 'off') return false
     if (h.mode === 'pair') return this.pairing.consume(h.secret)
     return this.d.devices.get(h.deviceId) !== null
@@ -338,7 +413,9 @@ export class RemoteService {
         confirmPair: (info) => this.askConfirm(rec, info),
         onAuthed: (id) => this.onAuthed(session, id),
         onEnd: () => this.onSessionEnd(rec, session),
-        access: this.access()
+        access: this.access(),
+        clock: this.d.now,
+        limits: () => ({ capDays: this.pol().deviceTtlDays, maxDevices: this.pol().maxDevices })
       })
       rec.session = session
       channel.onOpen(() => {
@@ -400,6 +477,29 @@ export class RemoteService {
     return this.getState()
   }
 
+  /** «Revocar todos»: quita todos los celulares y corta la conexión viva. */
+  revokeAll(): RemoteState {
+    const all = this.d.devices.list()
+    if (all.length === 0) return this.getState()
+    for (const rec of all) {
+      this.d.confirmHost?.cancelDevice(rec.id)
+      this.lastActive.delete(rec.id)
+    }
+    this.d.audit?.({ kind: 'revoked-all', n: all.length })
+    if (this.connected) this.connected.bye('revoked')
+    for (const p of [...this.peers]) p.session?.bye('revoked')
+    this.d.devices.revokeAll()
+    this.changed()
+    return this.getState()
+  }
+
+  /** Plazo de validez de un celular (renueva su ventana desde ahora). */
+  setDeviceTtl(deviceId: string, days: DeviceTtlDays): RemoteState {
+    if (DEVICE_TTL_OPTIONS.includes(days)) this.d.devices.setTtl(deviceId, days, this.now())
+    this.changed()
+    return this.getState()
+  }
+
   // ── acceso (T6) ──
 
   private access(): PeerAccess | undefined {
@@ -408,11 +508,14 @@ export class RemoteService {
     return {
       confirmConnection: async ({ deviceId, deviceName }) => {
         const r = await host.requestConnection({ deviceId, deviceName, detail: [this.origin] })
-        if (r.outcome === 'approved' && r.remember) this.d.devices.setTrust(deviceId, this.now() + LIMITS.rememberMs)
+        if (r.outcome === 'approved' && r.remember && this.pol().allowConfirmRemember12h) {
+          this.d.devices.setTrust(deviceId, this.now() + LIMITS.rememberMs)
+        }
         return { approved: r.outcome === 'approved', outcome: r.outcome }
       },
-      trusted: (id) => (this.d.devices.trustedUntil(id) ?? 0) > this.now(),
-      lastActiveAt: (id) => this.lastActive.get(id) ?? null,
+      trusted: (id) => this.pol().allowConfirmRemember12h && (this.d.devices.trustedUntil(id) ?? 0) > this.now(),
+      // Con `requirePin` de la política no hay reconexión «en caliente»: el PIN se pide siempre.
+      lastActiveAt: (id) => (this.pol().requirePin ? null : (this.lastActive.get(id) ?? null)),
       noteActive: (id, t) => this.lastActive.set(id, t),
       onRevokeDevice: (id) => void this.revoke(id),
       onChange: () => this.changed(),
@@ -424,7 +527,8 @@ export class RemoteService {
 
   /** «Recordar 12 h» la confirmación de conexión de un dispositivo (`false` = volver a confirmar cada vez). */
   setRemember(deviceId: string, remember: boolean): RemoteState {
-    if (this.d.devices.get(deviceId)) this.d.devices.setTrust(deviceId, remember ? this.now() + LIMITS.rememberMs : null)
+    const allowed = this.pol().allowConfirmRemember12h
+    if (this.d.devices.get(deviceId)) this.d.devices.setTrust(deviceId, remember && allowed ? this.now() + LIMITS.rememberMs : null)
     this.changed()
     return this.getState()
   }
@@ -444,6 +548,8 @@ export class RemoteService {
   // ── sesiones ──
 
   private onAuthed(session: PeerSession, deviceId: string): boolean {
+    this.applyPolicy()
+    if (this.mode === 'off') return false
     const cur = this.connected
     if (cur && cur !== session && cur.state !== 'closed') {
       if (cur.deviceId !== deviceId) return false

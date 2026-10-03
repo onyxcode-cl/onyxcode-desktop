@@ -31,6 +31,7 @@
     "test:e2e:prod": "node scripts/with-env.mjs E2E_MODE=prod -- vitest run -c vitest.e2e.config.ts",
     "perf:startup": "node scripts/with-env.mjs E2E_MODE=prod -- vitest run -c vitest.perf.config.ts",
     "verify:release": "node scripts/verify-release.mjs",
+    "verify:update-manifest": "node scripts/verify-update-manifest.mjs",
     "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
     "check:win-bundle": "node scripts/check-win-bundle.mjs",
     "check:opencode": "node scripts/check-opencode.mjs",

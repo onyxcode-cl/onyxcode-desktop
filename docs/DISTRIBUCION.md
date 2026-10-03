@@ -267,6 +267,15 @@ la clave privada** (gestor de contraseñas o disco cifrado aparte).
    corresponde a `UPDATE_PUBLIC_KEY`, no la imprime nunca, crea `dist/update/OnyxCode-X.Y.Z-arm64.zip`
    (`ditto -c -k --sequesterRsrc --keepParent dist/mac-arm64/OnyxCode.app`), calcula el SHA-256 y escribe
    `update.json` + `update.json.sig` (Ed25519 sobre los bytes exactos del manifiesto).
+   **Qué se verifica y dónde** (para no duplicar trabajo): el cliente (`src/main/update/installer.ts`, `signature.ts`,
+   `src/shared/update-install.ts`) comprueba la firma Ed25519 sobre los bytes exactos del manifiesto ANTES de leer el JSON,
+   su forma, appId/keyId/tag, que la versión sea mayor (anti-downgrade), tamaño y SHA-256 del ZIP, las entradas del ZIP,
+   symlinks, `codesign` y `Info.plist`; `swap.sh` hace el reemplazo con **rollback** si la nueva no confirma el arranque
+   (`swap.integration.test.ts`). `npm run verify:update-manifest` repite sin red y sin `.app` (con una clave efímera y un ZIP
+   falso, en cualquier sistema) las comprobaciones del manifiesto (19 casos: legítimo + cada manipulación rechazada) y mira que
+   `UPDATE_PUBLIC_KEY`/`UPDATE_KEY_ID` de `brand.ts` sean válidos; `src/main/update/manifest-script.test.ts` además exige que
+   lo firmado por `update-lib.mjs` lo acepte el cliente real. Corre en `npm test`; úsalo antes de publicar junto con
+   `verify:release` y, tras `package`, `verify:bundled` y `verify-update.mjs --dir dist/update` (este último sí usa `ditto`/`codesign`).
 4. `git tag vX.Y.Z && git push --tags`. El tag debe coincidir con la versión de `package.json` (el manifiesto lo exige).
 5. `gh release create vX.Y.Z dist/onyxcode-X.Y.Z-arm64.dmg dist/update/OnyxCode-X.Y.Z-arm64.zip dist/update/update.json dist/update/update.json.sig --title "OnyxCode X.Y.Z"`
    — **sin** `--prerelease` (con una prerelease, `/releases/latest` no la devuelve y nadie recibe el aviso). Los cuatro

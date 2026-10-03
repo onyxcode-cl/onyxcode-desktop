@@ -118,3 +118,24 @@ describe('código de confirmación', () => {
     expect(toBase64Url(new Uint8Array(32)).length).toBe(43)
   })
 })
+
+describe('parseHostFrame: caducidad del vínculo', () => {
+  const ok = (o: unknown): unknown => {
+    const r = parseHostFrame(JSON.stringify(o))
+    return r.ok ? r.value : r.reason
+  }
+  it('authed admite expiresAt y expiring; auth-failed admite why=expired', () => {
+    expect(ok({ t: 'authed' })).toEqual({ t: 'authed' })
+    expect(ok({ t: 'authed', expiresAt: 123, expiring: true })).toEqual({ t: 'authed', expiresAt: 123, expiring: true })
+    expect(ok({ t: 'auth-failed' })).toEqual({ t: 'auth-failed' })
+    expect(ok({ t: 'auth-failed', why: 'expired' })).toEqual({ t: 'auth-failed', why: 'expired' })
+  })
+  it('rechaza tipos y claves de más', () => {
+    expect(ok({ t: 'authed', expiresAt: 'x' })).toBe('bad-expires')
+    expect(ok({ t: 'authed', expiresAt: -1 })).toBe('bad-expires')
+    expect(ok({ t: 'authed', expiring: 1 })).toBe('bad-expiring')
+    expect(ok({ t: 'authed', otra: 1 })).toBe('extra-keys')
+    expect(ok({ t: 'auth-failed', why: 'x' })).toBe('bad-why')
+    expect(ok({ t: 'auth-failed', secret: 'x' })).toBe('extra-keys')
+  })
+})

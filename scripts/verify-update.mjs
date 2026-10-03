@@ -24,8 +24,12 @@ import {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-/** Devuelve las líneas de la comprobación; lanza Error con el motivo si el cliente rechazaría la actualización. */
-export async function verifyUpdate({ dir, current, pubkey, appId, keyId, tag }) {
+/**
+ * Parte sin herramientas del sistema (ni ditto, ni zipinfo, ni codesign): tamaños, firma Ed25519 sobre los bytes exactos,
+ * forma del manifiesto, anti-downgrade/appId/keyId/tag y tamaño + SHA-256 del ZIP. Devuelve las líneas y el manifiesto;
+ * lanza Error con el motivo si el cliente rechazaría la actualización.
+ */
+export async function verifyManifestAndZip({ dir, current, pubkey, appId, keyId, tag }) {
   const log = []
   const mPath = join(dir, 'update.json')
   const sPath = join(dir, 'update.json.sig')
@@ -58,6 +62,12 @@ export async function verifyUpdate({ dir, current, pubkey, appId, keyId, tag }) 
   if (size !== m.zip.size || size > ZIP_MAX_BYTES) throw new Error(`tamaño del ZIP ${size} distinto del firmado (${m.zip.size})`)
   if ((await sha256File(zip)) !== m.zip.sha256) throw new Error('SHA-256 del ZIP distinto del firmado')
   log.push(`ZIP: ${size} bytes, SHA-256 coincide`)
+  return { log, manifest: m, zip }
+}
+
+/** Devuelve las líneas de la comprobación; lanza Error con el motivo si el cliente rechazaría la actualización. */
+export async function verifyUpdate(opts) {
+  const { log, manifest: m, zip } = await verifyManifestAndZip(opts)
   const entries = listZip(zip)
   log.push(`listado del ZIP: ${entries.length} entradas, todas dentro de OnyxCode.app/`)
 
