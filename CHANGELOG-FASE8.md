@@ -663,3 +663,15 @@ Solo capa visual (`pwa/index.html`, `style.css`, `ui.ts`, textos nuevos en `i18n
 - **Móvil**: `theme-color` por esquema, `safe-area-inset-*`, `100dvh`, ajuste con `visualViewport` cuando aparece el teclado (sin exigir contexto seguro), `prefers-reduced-motion`.
 - **Comprobado**: contraste ≥ 4,5:1 calculado en ambos temas; capturas con una prueba desechable (iPhone 390x844 @3x y Android 360x800, claro/oscuro) sobre la UI real con un cliente simulado.
 - **Sin probar**: iPhone/Android reales, `safe-area` y teclado en dispositivo real.
+
+
+## F8-B51 — Política «celular» y cola de confirmación (rama `feat/remoto-politica`, tanda T3)
+
+Primera pieza de seguridad del control remoto con paridad; todavía no está conectada al puente (la usarán T2/T4/T6). Sin cambios visibles.
+
+- **`src/main/remote/policy.ts`**: `CELULAR_POLICY` (≈ 210 canales IPC), `CELULAR_HTTP_POLICY` (las 188 rutas del motor fijado) y `CELULAR_EVENTS`, con clases R/M/D/X, filtros por campo (`settings:set`, `extras:setPrefs`, `tasks:prefs:set`, `computer:prefs:set`) y por ámbito (rutas absolutas y `directory`, `file://` solo bajo el directorio de la sesión y nunca en Chat, `model` en `provider.list`, `permission.reply` solo `once`/`reject`, ≤ 20 archivos en `git:discard`). `decide(request, ctx)` es pura y devuelve permitir / rechazar con motivo / confirmar con resumen es/en. `sanitizeResult` quita `userDataPath` de `app:info`.
+- **`src/main/remote/confirm-queue.ts`**: cola FIFO (máx. 2 pendientes, 10/min, dedupe por sha256, aprobación solo para esa llamada, rechazo a los 90 s) con interfaz de UI inyectable.
+- **IPC**: `remote:confirmAction` (invoke, solo ventana principal, esquema estricto) y evento `remote:confirmRequest` en `shared/ipc-remote.ts` / `main/ipc/schemas.ts`. Sin handler todavía (T6).
+- **Pruebas**: cobertura del 100 % de canales, eventos y rutas (falla si aparece uno sin clasificar), una por cada X y cada D, `remote:*`, `settings:set{opencodeBin}`, `permission.reply always`, `file://` y `directory` fuera del ámbito, y la cola con reloj falso.
+- **Docs**: `docs/SEGURIDAD.md` §3 unvicies con la tabla final y los casos límite (decisiones estrictas anotadas).
+- **Sin verificar**: nada de esto se ha probado con un celular ni con el despachador real; la política no resuelve enlaces simbólicos (lo hará el despachador).

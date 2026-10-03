@@ -802,6 +802,74 @@ Tampoco depende de que la red permita tráfico entre clientes: en una Wi-Fi con 
 Los preloads secundarios (`quick`, `overlay`, `pill`, `assist`, `browser-host`) quedan idénticos byte a byte. Los canales `remote:*` son
 solo de la ventana principal (esquemas estrictos en `main/ipc/schemas.ts`).
 
+## 3 unvicies. Política «celular» y confirmación en el Mac (F8-B51, tanda T3)
+
+Base del control remoto con paridad: todo lo que el celular pida al Mac (canal IPC o ruta HTTP del motor) pasa por
+`src/main/remote/policy.ts` (`decide(request, ctx)`, función pura) **antes** de ejecutarse. **Denegar por defecto**: un canal, ruta o
+evento sin entrada explícita se rechaza (`unknown-channel` / `unknown-route` / `deny`). Las pruebas (`policy.test.ts`) fallan si aparece
+un canal invoke (`missingSchemas()` y las listas de `shared/ipc*.ts`), un evento o una ruta de `resources/opencode-bin/api-routes.json`
+sin clasificar, o si queda una entrada de algo que ya no existe.
+
+**Clases.** R lectura · M mutación acotada al ámbito · D peligrosa: el despachador pide confirmación en el Mac
+(`remote/confirm-queue.ts`) y ejecuta solo si el dueño la aprueba · X prohibida. Reducir privilegios (detener, revocar, denegar) es M;
+ampliarlos (reanudar, conceder, recordar, aceptar «siempre») es D o X. Todo `remote:*` (incluido `remote:confirmAction`) es X para el
+celular: se rechaza por prefijo antes de mirar la tabla.
+
+**Ámbito.** Toda ruta absoluta y todo `directory` deben estar dentro de las carpetas permitidas (recientes de Code, carpetas de Tareas
+ya aprobadas y, solo para HTTP, el directorio de Chat); se ignoran la raíz y el home como «carpeta permitida». La comprobación es léxica
+(`..`, prefijo de hermano `proj-evil`, rutas relativas): **no resuelve enlaces simbólicos, eso lo debe hacer el despachador con
+`realpath`** antes de ejecutar. Rutas relativas (`path`, `parent`, `paths`) no pueden escapar de `cwd`. Una sesión conocida debe
+pertenecer al `directory` de la petición. `workspace` en la query y claves de query raras se rechazan.
+
+**Tabla final (resumen).**
+
+| Área | R | M | D | X |
+|---|---|---|---|---|
+| Chat HTTP | `session.list/get/messages/status/todo/children/diff/message`, `experimental.session.list`, `provider.list`, `config.providers`, `permission/question.list`, agentes/comandos/skills | `session.create/update(título, archivar)/promptAsync` (agente `chat`, solo `data:`)`/abort/revert/unrevert/summarize/fork/delete(una)`, `question.reply/reject`, `permission.reply once/reject` | `session.create/update` con `permission` propio | `permission.reply always`, `session.shell`, `session.init/share`, mensaje síncrono, borrar mensajes/partes, `auth.*`, `provider.auth/oauth`, `config.*`, `global.dispose/upgrade`, `instance.dispose`, `/pty`, `/tui`, `/mcp`, `/project`, `/path`, `/sync`, `/experimental/*` salvo `session`, toda la API nueva `/api/*` |
+| Code HTTP | `file.list/read/status`, `find.*`, `vcs.*` (en el dir, sin escapar) | `promptAsync` (agentes `plan`/`build`; `file://` solo bajo el dir de la sesión), `session.command` | `permission.reply once` de `external_directory`, de Control del Mac (`computer_*`/`browser_*`), MCP o de tipo desconocido | las mismas X |
+| Git | `isRepo/status/diff/branches/currentBranch/log/worktrees` | `commit`, `discardHunk`, `discard` (≤ 20 archivos), `discardUndo`, `createWorktree` | `discard` de todo o > 20, `removeWorktree` | — |
+| Archivos | `files:watch/setDirs/unwatch`, `editors:list` | `files:create`, `rename`/`trash` de UN archivo | `rename`/`trash` de carpeta (o de algo cuyo tipo no se conoce) | `editors:open`, `dialog:*`, `tasks:reveal/openPath/quickLook/zip/importFiles/exportMarkdown/htmlToPdf` |
+| Terminal | — | — | — | `pty:*` (hasta F4) |
+| Ajustes | `settings:get`, `extras:getPrefs/versions`, `mcp:catalog`, `tasks:prefs:get`, `computer:prefs:get` | `settings:set` solo `defaultModel`/`theme`/`language`; `extras:setPrefs` `modelsByMode/showTray/notificationsEnabled/soundEnabled`; `tasks:prefs:set` `notify/stallWarnMinutes`; `computer:prefs:set` `hideOtherApps/unhideOnFinish` | `tasksGlobalInstructions`, `addRecentFolder`, `tasks:prefs:set` `autoArchiveDays/idleStopMinutes/maxServers`, `computer:prefs:set{mode:'full'}` | `opencodeBin`, `checkUpdates`, `recentFolders`, `onboarded`, `routinesTermsAcknowledged`, `quickEntryShortcut`, `keybindings`, `lastEditor`, `mcp:getConfig/save/remove/setEnabled/revealConfig/installCatalog`, `tasks:mcp:set` |
+| Tareas / Control / Rutinas | listados, estado, actividad, entregables, vista previa (≤ 8 MiB), restauración (`list/changes`), `routines:list/history/preview` | `tasks:start` sin control total, `removeFolder`, `revokeFullAccess/revokeAll`, `computer:stop/revokeGrant/denyApp/revokePlan`, `respondAccess` solo rechazando, `routines:delete`, `routines:toggle` a apagado, `restore:create/forget`, `rules:remove`, `auto:revoke` | `start{fullAccess}`, `grantFullAccess`, `fullAccess:consent`, `approveFolder`, `folders:link/unlink`, `trusted:set/remove`, `network:*` (menos `state`), `deleteGrant:set`, `restore:apply`, `storage:clean*`, `auto:set/consider/clearLog`, `project:save` con instrucciones/enlaces, `memory:save/delete`, `agentsMd:save`, `rules:add`, `respondAccess` con concesiones o plan, `setGrant`, `undenyApp`, `computer:resume`, `routines:save/runNow/toggle` a encendido | `pickFolder`, `requestPermissions` (TCC), `teach*`, `record*`, `showMainWindow` |
+| Navegador | `browser:state/capture` | `newTab/closeTab/selectTab/navigate/history/toChat`, `agent` pausar/detener, `respond` denegar | `agent` reanudar, `respond` con cualquier permiso | `attach/detach/pick/popOut/setViewMode/openExternal/devServers/sites:*/clearData` |
+| App / cuenta / actualizador / diagnóstico | `app:info` (sin `userDataPath`), `updateState`, `account:state`, `opencode:status/connection` (credenciales reescritas) | `checkUpdates`, `dismissUpdate`, `updateCancel` | `updateDownload`, `updateInstall`, `signOut`, `opencode:restart` | `openExternal`, `notify`, `setAttention`, `opencodeInfo/Action`, `pickOpencodeBin`, `bootConfirm`, `testProviderKey`, `account:google/email*/delete/export/cancel/retry`, `diag:*` |
+| Remoto / onboarding | — | — | — | todo `remote:*`; el onboarding (`onboarded`) |
+
+**Prompts.** El cuerpo de `prompt_async` solo admite `messageID`, `model`, `agent`, `variant` y `parts` (texto y archivo; nada de
+`tools`, `system` ni subtareas). El agente debe ser `chat`, `plan`, `build`, `tasks` o `computer`; en el directorio de Chat solo `chat`;
+`computer` solo en carpetas con control total ya confirmado en el Mac. `model` (y `providerID/modelID` de `summarize`/`command`) debe estar
+en `provider.list`. Adjuntos: `data:` base64; `file://` solo bajo el directorio de la sesión (sin `..`, sin prefijo de hermano, sin host) y
+**nunca en Chat**; cualquier otro esquema se rechaza.
+
+**Casos límite y decisiones estrictas (revisar en la prueba manual).**
+- `permission.reply once` se trata como M solo si el tipo del permiso es conocido y normal (`edit`, `bash`, `read`, `webfetch`…); si el
+  tipo es desconocido (p. ej. el despachador aún no lo cacheó) se confirma en el Mac (D). `always`, `remember` o un valor raro: X.
+- `files:rename/trash`: sin saber si la ruta es carpeta se asume que lo es (D); el despachador aporta `isDirectory`.
+- `GET /experimental/session` lista sesiones de TODOS los proyectos: la política lo deja pasar (R) pero T4 debe filtrar la respuesta por
+  ámbito. Igual con los SSE `/event` y `/global/event`.
+- `GET /file/content` puede leer cualquier archivo del proyecto (también `.env`): es R en el ámbito; T4 puede añadir un filtro de nombres.
+- `tasks:project:save` (instrucciones/enlaces), `memory:*` y `agentsMd:save` condicionan al agente de forma persistente: D.
+- `routines:save/runNow` no se pueden acotar por carpeta a partir del id: D siempre. Activar una rutina es D; apagarla, M.
+- `GET /mcp`, `GET /project*`, `GET /path`, `GET /config` quedan en X aunque sean lecturas (nombres de servidores, rutas del sistema,
+  variables y cabeceras con secretos).
+- `tasks:mcp:set` es X (D6: nada de MCP desde el celular), aunque solo conmute un interruptor.
+- `settings:set` con un solo campo prohibido rechaza TODA la llamada, aunque traiga otros permitidos.
+- Cambio respecto al prototipo: las rutas absolutas **dentro del ámbito** ya se pueden mostrar en el celular (con `~`); fuera del ámbito
+  y `userDataPath` (`app:info`, vía `sanitizeResult`) nunca.
+- Eventos: `CELULAR_EVENTS` (`allow`/`sanitize`/`deny`, denegar por defecto). Se descartan los de terminal, capturas de Control del PC,
+  cuenta, atajos y MCP; se recortan (`sanitize`) los que llevan credenciales del motor o rutas (`opencode:connection`, `tasks:server`,
+  `settings:changed`, `files:changed`…).
+
+**Cola de confirmación (`remote/confirm-queue.ts`).** FIFO, máx. 2 pendientes (la 3.ª responde `busy`), 10 peticiones nuevas por minuto
+(`rate-limited`), deduplicada por `sha256(canal + payload canónico)` y dispositivo (repetir la misma llamada pendiente se une a ella y no
+gasta cupo). La aprobación vale SOLO para esa llamada: el resultado lleva el `digest` y el despachador debe comprobar que coincide con
+lo que va a ejecutar; se consume al resolver (repetir la llamada pide otra). Solo se muestra la primera; rechazo automático a los 90 s
+**desde que se muestra**; revocar o «Cortar todo» llama a `cancelAll`/`cancelDevice`. Contrato IPC: evento `remote:confirmRequest`
+(`RemoteConfirmRequest`: nombre, huella de 8 hex, resumen es/en, detalle, `expiresAt`) y `remote:confirmAction {requestId, accept}`, solo
+de la ventana principal (no está en `CHANNEL_ROLES` de ninguna otra). La interfaz (`RemoteConfirmHost.tsx`), el PIN y la auditoría
+`remote-audit.jsonl` son de la tanda T6.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

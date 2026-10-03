@@ -67,6 +67,33 @@ export const REMOTE_OFF_STATE: RemoteState = {
   error: null
 }
 
+/** Texto legible en los dos idiomas de la interfaz (la cola de confirmación no conoce el idioma del renderer). */
+export interface RemoteText {
+  es: string
+  en: string
+}
+
+/**
+ * Una acción peligrosa («D») pedida desde el celular: el dueño la aprueba o rechaza en el Mac. La aprobación vale SOLO para
+ * esa llamada exacta (`digest` = sha256 del canal + payload canónico). La interfaz (T6) la pinta; el plazo es `expiresAt`.
+ */
+export interface RemoteConfirmRequest {
+  requestId: string
+  deviceName: string
+  /** 8 hex del sha256 del deviceId: permite distinguir dos celulares con el mismo nombre. */
+  deviceFingerprint: string
+  /** Canal IPC o ruta del motor pedida (`git:removeWorktree`, `POST /permission/{requestID}/reply`). */
+  channel: string
+  /** Acción en lenguaje humano. */
+  summary: RemoteText
+  /** Detalle visible (carpeta, apps, nº de archivos…), una línea por dato. */
+  detail: string[]
+  /** ms desde epoch. */
+  createdAt: number
+  /** ms desde epoch en que se rechaza sola (90 s tras mostrarse). */
+  expiresAt: number
+}
+
 export interface RemoteInvokeContract {
   'remote:getState': { req: void; res: RemoteState }
   /** «Activar»: abre el servidor local y genera el primer QR. */
@@ -77,11 +104,15 @@ export interface RemoteInvokeContract {
   'remote:stop': { req: void; res: RemoteState }
   'remote:confirmPair': { req: { requestId: string; accept: boolean }; res: RemoteState }
   'remote:revoke': { req: { deviceId: string }; res: RemoteState }
+  /** Respuesta del dueño a una confirmación (`remote:confirmRequest`). Solo la ventana principal. */
+  'remote:confirmAction': { req: { requestId: string; accept: boolean }; res: void }
 }
 
 export interface RemoteEventContract {
   'remote:changed': RemoteState
   'remote:pairRequest': RemotePairRequest
+  /** Una acción del celular espera confirmación en el Mac (solo ventana principal). */
+  'remote:confirmRequest': RemoteConfirmRequest
 }
 
 export type RemoteInvokeChannel = keyof RemoteInvokeContract
@@ -95,10 +126,15 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:newPairing',
   'remote:stop',
   'remote:confirmPair',
-  'remote:revoke'
+  'remote:revoke',
+  'remote:confirmAction'
 ] as const satisfies readonly RemoteInvokeChannel[]
 
-export const REMOTE_EVENT_CHANNELS = ['remote:changed', 'remote:pairRequest'] as const satisfies readonly RemoteEventChannel[]
+export const REMOTE_EVENT_CHANNELS = [
+  'remote:changed',
+  'remote:pairRequest',
+  'remote:confirmRequest'
+] as const satisfies readonly RemoteEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
 const _remoteInvokeCoverage: Missing<RemoteInvokeChannel, (typeof REMOTE_INVOKE_CHANNELS)[number]> extends never ? true : never = true
