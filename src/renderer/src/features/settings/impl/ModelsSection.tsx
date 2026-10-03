@@ -13,7 +13,7 @@ import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs, withModeModel } from './extras'
 import { modeAvailable } from '@shared/platform-caps'
-import { currentPlatform } from '../../../lib/platform'
+import { currentPlatform, isRemoteSurface } from '../../../lib/platform'
 import { ModelSelect, modelLabel, sortProviders } from './ModelSelect'
 import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 import { KeyTestNotice } from './KeyTestNotice'
@@ -38,7 +38,7 @@ export function ModelsSection(): React.JSX.Element {
   const modelsByMode = useExtrasPrefs((s) => s.prefs.modelsByMode)
   const updatePrefs = useExtrasPrefs((s) => s.update)
 
-  const { catalog, error: loadError, reload: loadCatalog } = useProviderCatalog(client)
+  const { catalog, error: loadError, reload: loadCatalog } = useProviderCatalog(isRemoteSurface() ? null : client)
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)
 
@@ -105,11 +105,14 @@ export function ModelsSection(): React.JSX.Element {
         </Button>
       </div>
 
-      <div id="settings-providers" ref={providersRef}>
-        <SubTitle>{t('models.providers')}</SubTitle>
-      </div>
-      {catalogError && <ErrorText>{catalogError}</ErrorText>}
-      {catalog && (
+      {/* Celular (PWA): las claves y cuentas de los proveedores se gestionan desde el Mac (no se ofrecen aquí). */}
+      {!isRemoteSurface() && (
+        <div id="settings-providers" ref={providersRef}>
+          <SubTitle>{t('models.providers')}</SubTitle>
+        </div>
+      )}
+      {!isRemoteSurface() && catalogError && <ErrorText>{catalogError}</ErrorText>}
+      {!isRemoteSurface() && catalog && (
         <ProvidersList
           catalog={catalog}
           busy={busy}

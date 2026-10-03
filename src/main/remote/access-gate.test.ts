@@ -219,6 +219,28 @@ describe('AccessGate: bloqueo por inactividad (reloj falso)', () => {
     expect(g.isOpen).toBe(true)
   })
 
+  it('bloqueo manual: pide el PIN, no atiende ni lecturas y se abre al verificarlo', async () => {
+    const { g } = await open()
+    g.lockNow()
+    expect(g.isOpen).toBe(false)
+    expect(last()).toEqual({ t: 'locked', why: 'pin-verify' })
+    expect(g.canServe(true)).toBe(false)
+    expect(g.canServe(false)).toBe(false)
+    expect(audits.some((a) => a.kind === 'locked')).toBe(true)
+    await g.onPin({ t: 'pin-verify', pin: '482913' })
+    expect(g.isOpen).toBe(true)
+    expect(last()).toEqual({ t: 'unlocked' })
+  })
+
+  it('bloqueo manual sin acceso abierto no hace nada', async () => {
+    const id = await withPin()
+    const g = gate(id, { fresh: true })
+    g.start()
+    const before = sent.length
+    g.lockNow()
+    expect(sent.length).toBe(before)
+  })
+
   it('la actividad aplaza el bloqueo; sin temporizador también se detecta al llegar una llamada', async () => {
     const { g } = await open()
     advance(4 * 60_000)

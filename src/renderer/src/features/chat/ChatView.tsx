@@ -156,7 +156,7 @@ export function ChatView(): React.JSX.Element {
   if (!activeId) {
     return (
       <div className="flex h-full flex-col">
-        <div className="drag h-12 shrink-0" />
+        <div className="drag h-12 shrink-0" data-mobile="hide" />
         <div className="flex flex-1 flex-col items-center justify-center pb-20">
           <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
             <div className="relative isolate">
@@ -196,7 +196,10 @@ export function ChatView(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur">
+      <header
+        data-mobile="hide"
+        className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur"
+      >
         <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
       </header>
       <TranscriptLoader sessionId={activeId} />

@@ -18,3 +18,7 @@ export const isWindowsPlatform = (): boolean => currentPlatform() === 'win32'
 export const platformCaps = (): PlatformCaps => capsFor(currentPlatform())
 /** ¿Es la PWA del celular (misma interfaz, sin ventana nativa)? */
 export const isRemoteSurface = (): boolean => currentPlatform() === REMOTE_SURFACE
+/** Alias corto de `isRemoteSurface` (la interfaz móvil de la PWA del celular). */
+export const isRemote = isRemoteSurface
+/** Hook de `isRemote`: la superficie no cambia durante la vida de la página, así que no hace falta suscribirse a nada. */
+export const useIsRemote = (): boolean => isRemoteSurface()

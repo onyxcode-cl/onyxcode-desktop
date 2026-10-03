@@ -739,3 +739,15 @@ El celular carga la interfaz de escritorio (`src/renderer/src`) y la usa a trav�
 - **Guía y diseño**: `AGENTS.md` (+ `CLAUDE.md` que remite) con las invariantes del proyecto; `docs/REMOTO-FASE2.md` (passkeys, Worker de señalización, TURN, push, PWA instalable; solo diseño).
 - **Sin verificar**: nada con un celular real ni con Jamf/Intune; la PWA todavía no pinta el aviso `expiring` ni el `expired` (la rama de la PWA completa lo recogerá).
 
+
+## F8-B58 — Interfaz de celular: `MobileShell`, `Sheet` y navegación en pila (rama `feat/remoto-movil-shell`, tanda T7)
+
+En la superficie `remote` la interfaz deja de ser la de escritorio: una columna a pantalla completa con navegación inferior. En Mac y Windows no cambia nada (`App` elige `DesktopApp` o `MobileApp`; los efectos comunes pasaron a `useAppRuntime`).
+
+- **`app/mobile/`**: `MobileShell` (Chat · Code · Tareas · Más; lista → conversación con botón atrás y botón/gesto «atrás» del navegador mediante `history`), `nav.ts` (`useMobileNav`/`useMobileNavStore`, una pila por pestaña, API estable para T8), `viewport.ts` (`visualViewport` → `--vv-height`/`--vv-top`/`--kb-inset`, el teclado no tapa el compositor), `MoreScreens.tsx` (Rutinas, Ajustes, «Este celular»: estado de la conexión, Bloquear ahora, Desvincular), `adapters.ts` (qué es «conversación abierta» en cada modo).
+- **`components/mobile/Sheet.tsx`** (`Sheet({open,onClose,title,size?,children})`): hoja inferior modal (`role="dialog" aria-modal`, foco por `modal-focus.ts`, Esc, fondo, asa arrastrable, `prefers-reduced-motion`). **`components/PopoverPanel.tsx`**: punto de montaje común de menús (escritorio: el mismo `div`; celular: `Sheet`), aplicado al menú de las conversaciones de Chat. Los demás menús que aún no lo usan caen en un respaldo CSS (hoja anclada abajo).
+- **CSS móvil** (`globals.css`, solo bajo `[data-surface='mobile']`): zona segura, objetivos ≥44 px (área ampliada con pseudoelemento), acciones de hover siempre visibles, campos a 16 px, texto más grande, sin tooltips/`kbd`/zonas de arrastre. Enter en el compositor inserta salto de línea (se envía con el botón).
+- **Ajustes** básicos (`SettingsView` con `mobile`): solo General (tema, idioma) y Modelos (sin proveedores ni claves, sin bandeja/avisos/servidor).
+- **Bloqueo manual** (protocolo, extensión mínima): trama de cliente `lock` (sin datos) → `AccessGate.lockNow()` (pide el PIN y no atiende ni lecturas hasta verificarlo); `RemoteLink.lock/forget` opcionales; «Desvincular» olvida el secreto local y recarga (no avisa al Mac).
+- **Pruebas**: Sheet (aria, tamaños, pila de Esc, gesto), navegación, viewport, bloqueo manual (gate y protocolo) y «fuera de remoto no cambia nada». Verificación visual desechable con Chromium (390×844 y 360×800, claro/oscuro) y datos simulados; no se deja en el repo.
+- **Sin verificar**: nada en iPhone/Android reales (teclado virtual de iOS, gesto atrás, zona segura, `capture` de cámara). Code (cambios, archivos, pickers) es T8.

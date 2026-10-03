@@ -135,6 +135,7 @@
   --animate-fade-in: fade-in var(--dur-base) var(--ease-out) both;
   --animate-rise-in: rise-in var(--dur-slow) var(--ease-out) both;
   --animate-pop-in: pop-in var(--dur-base) var(--ease-out) both;
+  --animate-sheet-up: sheet-up var(--dur-slow) var(--ease-out) both;
   --animate-shimmer: shimmer 2s linear infinite;
   --animate-caret: caret 1s steps(2, start) infinite;
 }
@@ -148,6 +149,11 @@
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
   }
 }
 @keyframes pop-in {
@@ -631,6 +637,127 @@ body {
     animation: none;
     color: var(--fg-muted);
     background: none;
+  }
+}
+
+/* ---------- Superficie móvil (PWA del celular) ----------
+ * Solo se aplica bajo `[data-surface='mobile']` (contenedor raíz de MobileShell y raíz de cada Sheet): en Mac y Windows no
+ * existe ese atributo y nada de esto actúa. Mismos tokens de color de arriba (claro/oscuro); aquí solo cambian medidas:
+ * zona segura, objetivos táctiles ≥44 px, texto legible, acciones que en escritorio salen al pasar el ratón, y elementos de
+ * escritorio sin sentido en el celular (atajos, tooltips, zonas de arrastre de la ventana).
+ */
+html:has([data-surface='mobile']),
+html:has([data-surface='mobile']) body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+[data-surface='mobile'] {
+  --sab: env(safe-area-inset-bottom, 0px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+html[data-keyboard='open'] [data-surface='mobile'] {
+  --sab: 0px;
+}
+
+/* Acciones que en escritorio aparecen solo con el ratón encima: siempre visibles (no hay hover en el dedo). */
+[data-surface='mobile'] [class*=':opacity-100']:not([role='tooltip']) {
+  opacity: 1;
+}
+[data-surface='mobile'] [class*='group-hover:flex'] {
+  display: flex;
+}
+[data-surface='mobile'] [class*='group-hover:pr-5'] {
+  padding-right: 2.75rem;
+}
+[data-surface='mobile'] [class*='group-hover:opacity-0'] {
+  margin-right: 2.25rem;
+}
+[data-surface='mobile'] [role='tooltip'],
+[data-surface='mobile'] kbd,
+[data-surface='mobile'] [data-mobile='hide'] {
+  display: none !important;
+}
+
+/* Respaldo para menús emergentes que aún no usan PopoverPanel/Sheet: se anclan abajo como una hoja (sin romperse por el borde). */
+[data-surface='mobile'] [class*='animate-pop-in'].absolute:not(button) {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: auto !important;
+  max-height: 60dvh;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding-bottom: max(8px, var(--sab, 0px));
+  z-index: 70;
+}
+
+/* Filas de ajustes (etiqueta + control): el control baja a su propia línea si no cabe al lado. */
+[data-surface='mobile'] [data-row] {
+  flex-wrap: wrap;
+}
+[data-surface='mobile'] [data-row] > :first-child {
+  flex: 1 1 11rem;
+}
+[data-surface='mobile'] [data-row] :is(select, .w-72, .w-40) {
+  width: 100%;
+}
+[data-surface='mobile'] [data-row] > .shrink-0 {
+  max-width: 100%;
+}
+[data-surface='mobile'] .grid-cols-3 > button {
+  font-size: 13px;
+}
+
+/* Campos a 16 px: por debajo, iOS Safari amplía la página al enfocarlos. */
+[data-surface='mobile'] :is(input:not([type='checkbox'], [type='radio'], [type='range']), textarea, select) {
+  font-size: 16px;
+}
+[data-surface='mobile'] :is(input:not([type='checkbox'], [type='radio'], [type='range']), select) {
+  min-height: 44px;
+}
+
+/* Texto: los tamaños de escritorio (11–14 px) pasan a 12–15 px. */
+[data-surface='mobile'] :is(.text-xs, [class*='text-[12px]'], [class*='text-[12.5px]']) {
+  font-size: 13px;
+}
+[data-surface='mobile'] :is(.text-sm, [class*='text-[13px]'], [class*='text-[13.5px]']) {
+  font-size: 15px;
+}
+[data-surface='mobile'] :is([class*='text-[10px]'], [class*='text-[10.5px]'], [class*='text-[11px]'], [class*='text-[11.5px]']) {
+  font-size: 12px;
+}
+
+/* Paddings de escritorio más holgados que lo que cabe en 360 px. */
+[data-surface='mobile'] :is(.px-6, .px-8) {
+  padding-inline: 14px;
+}
+[data-surface='mobile'] .px-24 {
+  padding-inline: 14px;
+}
+
+/* Objetivos táctiles ≥44 px sin cambiar el diseño: el área tocable de cada botón se amplía con un pseudoelemento invisible. */
+@layer components {
+  [data-surface='mobile']
+    :is(button, [role='button'], [role='tab'], [role='menuitem'], [role='menuitemradio'], [role='option'], summary):not(
+      .absolute,
+      .fixed,
+      .sticky,
+      .relative
+    ) {
+    position: relative;
+  }
+  [data-surface='mobile']
+    :is(button, [role='button'], [role='tab'], [role='menuitem'], [role='menuitemradio'], [role='option'], summary)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
   }
 }
 

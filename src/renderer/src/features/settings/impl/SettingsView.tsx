@@ -92,16 +92,61 @@ function initialSection(): SettingsSectionId {
 }
 
 /** Vista de Ajustes: navegación lateral por secciones. */
-export function SettingsView(props: { initial?: SettingsSectionId } = {}): React.JSX.Element {
+export interface SettingsViewProps {
+  initial?: SettingsSectionId
+  /**
+   * Interfaz del celular: una sola columna. Sin `initial` muestra la lista de secciones básicas (`onOpen` apila la elegida en la
+   * navegación del shell); con `initial` muestra esa sección. Sin esta propiedad (escritorio) no cambia nada.
+   */
+  mobile?: { onOpen: (id: SettingsSectionId) => void }
+}
+
+export function SettingsView(props: SettingsViewProps = {}): React.JSX.Element {
   const t = useT()
   return (
     <ErrorBoundary label={t('settings.title')}>
-      <SettingsPanel {...props} />
+      {props.mobile ? <MobileSettings initial={props.initial} onOpen={props.mobile.onOpen} /> : <SettingsPanel {...props} />}
     </ErrorBoundary>
   )
 }
 
-function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React.JSX.Element {
+/** Secciones de Ajustes que se ofrecen en el celular (tema, idioma y modelos); lo demás se cambia desde el Mac. */
+const MOBILE_SECTION_IDS: SettingsSectionId[] = ['general', 'models']
+
+function MobileSettings({ initial, onOpen }: { initial?: SettingsSectionId; onOpen: (id: SettingsSectionId) => void }): React.JSX.Element {
+  const t = useT()
+  useEffect(() => initExtrasPrefs(), [])
+  const sections = SECTIONS.filter((s) => MOBILE_SECTION_IDS.includes(s.id))
+  const current = initial ? sections.find((s) => s.id === initial) : undefined
+  if (current) {
+    const Current = current.View
+    return (
+      <div className="px-4 py-4">
+        <Current />
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3 p-4">
+      {sections.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onOpen(id)}
+          className="flex min-h-14 w-full items-center gap-3.5 rounded-2xl border border-border bg-elevated px-4 py-3 text-left text-[16px] font-medium shadow-xs active:bg-hover"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <Icon size={20} />
+          </span>
+          <span className="min-w-0 flex-1 truncate">{label()}</span>
+        </button>
+      ))}
+      <p className="px-2 text-[13px] leading-snug text-muted">{t('mobile.settings.moreOnMac')}</p>
+    </div>
+  )
+}
+
+function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
   const t = useT()
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
