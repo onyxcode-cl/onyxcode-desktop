@@ -49,6 +49,8 @@ export interface PeerSessionDeps {
   onEnd(reason: string): void
   /** Despachador de `call`/`http`/`sub` del protocolo v2 (T2/T3/T4). Sin él se rechaza todo. */
   dispatch?: MuxDispatch
+  /** Crea el despachador cuando el dispositivo ya está autenticado (recibe el `deviceId` VERIFICADO). Gana `dispatch` si ambos. */
+  makeDispatch?: (deviceId: string) => MuxDispatch
   /** Búfer circular de eventos que sirve a `sub` (el servicio lo conserva entre conexiones para reanudar). */
   events?: EventLog
   /** ¿Es una petición de control/permisos (prioridad máxima en la respuesta)? */
@@ -129,7 +131,7 @@ export class PeerSession {
     this.mux ??= new Mux({
       role: 'host',
       out: this.outbox,
-      dispatch: this.d.dispatch,
+      dispatch: this.d.dispatch ?? (this._deviceId ? this.d.makeDispatch?.(this._deviceId) : undefined),
       events: this.d.events,
       urgent: this.d.urgent,
       onViolation: () => this.violation()

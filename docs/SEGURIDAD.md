@@ -894,6 +894,47 @@ otras tandas. Lo que sí fija este bloque:
   de la lista blanca del prototipo siguen funcionando mientras no se retire.
 - Los errores v2 solo llevan un código y un `msg` opcional de ≤ 200 caracteres escrito por el despachador; los errores internos salen como `failed`.
 
+## 3 vicies ter. Proxy del motor y concentrador de eventos del celular (F8-B54, tanda T4)
+
+Conecta el multiplexor (T1) con `invokeAs` (T2) y la política (T3). El despachador real vive en `src/main/remote/engine-proxy.ts`
+(`EngineProxy`), el ámbito y lo aprendido en `engine-scope.ts`, las credenciales en `engine-registry.ts`, los eventos en `event-trim.ts` y
+`sse-hub.ts`, y las rutas en `path-guard.ts`; `engine-host.ts` los ensambla y `service.ts` los cablea (sin `engine` toda trama v2 sigue
+respondiendo `unavailable`).
+
+- **`call` (IPC)**: se canonizan las rutas (`realpath` de toda cadena bajo claves de ruta; las relativas deben seguir dentro de `cwd`/`folder`
+  tras resolver enlaces) → `decide`. R/M se ejecutan con `invokeAs` y el remitente virtual del celular; **D** espera la confirmación del Mac
+  (`ConfirmQueue`; la aprobación vale solo para el `sha256` de esa llamada exacta y, si la llamada se cancela mientras espera, NO se ejecuta);
+  **X** y lo desconocido responden `forbidden` con un código corto. La política se aplica otra vez sobre el payload YA validado por el esquema
+  (gancho `authorize`). `remote:*` se rechaza siempre. Sin UI de confirmación (T6) el respaldo RECHAZA toda acción D.
+- **`http` (sidecar)**: el `fetch` es del main y la cabecera `Authorization` (Basic) la pone el Mac; el celular solo manda `content-type`/`accept`.
+  `directory` debe ser absoluto y se sustituye por su `realpath` antes de decidir y de reenviar (un enlace dentro del ámbito que sale fuera
+  acaba en `out-of-scope`); `path` de `GET /file` y `/file/content` debe quedar dentro del directorio real; los `file://` y `source.path` de un
+  prompt se resuelven igual y no pueden ser sensibles. `GET /file/content` rechaza archivos sensibles aunque la política lo permita
+  (`path-guard.ts`: `.env*` salvo `.example/.sample/.template`, claves y almacenes `.pem .key .p12 .pfx .keystore .jks .kdbx`, `id_*` sin `.pub`,
+  `.ssh .aws .gnupg .kube .docker`, `.git/config` y `.git/hooks`, `.npmrc .netrc .git-credentials`, credenciales de gcloud/gh/opencode, Llavero;
+  se comprueba la ruta léxica Y la real, de modo que `notas.txt -> .env` no cuela). Los listados (`/file`, `/find`, `/find/file`) quitan esos
+  archivos y `GET /session`, `/experimental/session` y `children` se filtran por ámbito; `provider.list`/`config.providers` salen sin claves.
+  Cuerpo ≤ 12 MiB, respuesta ≤ 6 MiB (`too-large`), 120 s de tope y cancelación con el `AbortSignal` de la conexión. La política recibe lo que
+  necesita (directorio de la sesión, tipo del permiso, modelos de `provider.list`) aprendido de respuestas y eventos YA filtrados; solo se
+  consulta al motor, y solo para directorios dentro del ámbito, cuando `decide` lo pide.
+- **Credenciales**: `opencode:connection`, `opencode:restart`, el evento `opencode:connection` y `tasks:start` salen con
+  `baseUrl = onyx://engine/main` o `onyx://engine/task/<token>` y `authorization = ''`; el token es opaco (96 bits), estable por carpeta y su
+  mapeo está solo en el Mac; caduca con «Cortar todo», el apagado a los 30 min y el cierre del servicio (no al soltar el Wi-Fi unos segundos,
+  para que una reconexión no deje al celular con un token muerto). Red de seguridad: todo texto de una respuesta, error o evento pasa por
+  `registry.scrub`, que tacha el valor `Authorization`, su base64, `usuario:clave` y la clave.
+- **Eventos**: UN stream de subida por motor y bajo demanda (`client.global.event()` del SDK v2, al llegar un `sub`), cerrado cuando no queda
+  ningún dispositivo. Lista blanca de tipos (`session.* message.* permission.* question.* todo.* file.edited vcs.branch.updated
+  server.connected global.disposed`), solo del ámbito (los servidores de tarea, solo de su carpeta), salidas de herramientas recortadas a 4000
+  caracteres y publicación en el `EventLog` con `seq`. Si el stream de subida se reconecta se marca un hueco (`reset`). El bus de la app
+  (T2) alimenta el motor `main` con `CELULAR_EVENTS` (`deny` por defecto) y recorte por canal (`tasks:server`, `settings:changed` sin
+  `opencodeBin`, `browser:*` solo de carpetas del ámbito); también llega con la ventana cerrada.
+- **Puerto estable (D1)**: el primer puerto libre se guarda en `remote.bin` (cifrado, junto a los dispositivos); si está ocupado se usa otro sin
+  pisar el guardado. El HTTP sigue sin cifrar en la LAN (riesgo aceptado hasta el HTTPS de la fase 2).
+- **Forma de `res` de `http`** (contrato para el shim de `fetch`, T5): `{status, contentType?, body, encoding?: 'base64'}`; `/event` y
+  `/global/event` no se sirven por `http` (`unsupported`): el celular usa `sub`, y cada `ev` lleva `oc = type` y `p = {directory, id?, properties}`.
+- **Límites conocidos**: los diffs (`/session/{id}/diff`, `/vcs/diff`) y el texto de los mensajes pueden contener secretos que el agente leyó;
+  solo se tachan las credenciales del motor. La confirmación de acciones D depende de la UI de T6.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

@@ -13,7 +13,7 @@ import type { RemoteService } from './service'
 
 export type RemoteHostDeps = Pick<
   RemoteBootDeps,
-  'chatDirectory' | 'startEngine' | 'getConnection' | 'getRecentFolders' | 'modelFor' | 'onChanged' | 'onPairRequest'
+  'chatDirectory' | 'startEngine' | 'getConnection' | 'getRecentFolders' | 'modelFor' | 'onChanged' | 'onPairRequest' | 'confirm'
 >
 
 let devicesStore: DevicesStore | null = null

@@ -271,6 +271,17 @@ export class EventLog {
     return seq
   }
 
+  /** Marca un hueco (p. ej. se reconectó el stream de subida y pudo perderse algo): los streams reciben `reset`. */
+  markGap(eng: string): number {
+    const r = this.ring(eng)
+    const seq = ++r.head
+    r.items.push({ seq, kind: 'oc', name: 'gap', pj: undefined, at: this.now(), bytes: 64, urgent: false, tomb: true })
+    r.bytes += 64
+    this.evict(r)
+    for (const cb of [...(this.subs.get(eng) ?? [])]) cb()
+    return seq
+  }
+
   private evict(r: { items: LogEntry[]; bytes: number }): void {
     const t = this.now()
     let drop = 0

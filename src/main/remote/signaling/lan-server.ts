@@ -35,6 +35,10 @@ export interface LanServerOptions {
   ip: string
   /** Carpeta con la PWA compilada (`index.html`, …). Puede no existir (se muestra un aviso). */
   pwaDir: string
+  /** Puerto preferido (D1: estable por instalación). Si está ocupado se usa uno libre sin tocar el guardado. */
+  preferredPort?: number | null
+  /** Se llama con el puerto en uso SOLO cuando no había uno preferido (para guardarlo). */
+  onFirstPort?: (port: number) => void
 }
 
 export class LanSignalingServer implements SignalingTransport {
@@ -74,15 +78,27 @@ export class LanSignalingServer implements SignalingTransport {
       }
       wss.handleUpgrade(req, socket, head, (ws) => this.handleSocket(ws, opts))
     })
-    await new Promise<void>((resolveListen, reject) => {
-      server.once('error', reject)
-      server.listen(0, this.o.ip, () => {
-        server.off('error', reject)
-        resolveListen()
+    const listen = (port: number): Promise<void> =>
+      new Promise<void>((resolveListen, reject) => {
+        server.once('error', reject)
+        server.listen(port, this.o.ip, () => {
+          server.off('error', reject)
+          resolveListen()
+        })
       })
-    })
+    const preferred = this.o.preferredPort ?? null
+    if (preferred) {
+      try {
+        await listen(preferred)
+      } catch (err) {
+        // Ocupado (o sin permiso): respaldo con un puerto libre; el puerto guardado se conserva para la próxima vez.
+        if ((err as NodeJS.ErrnoException).code !== 'EADDRINUSE' && (err as NodeJS.ErrnoException).code !== 'EACCES') throw err
+        await listen(0)
+      }
+    } else await listen(0)
     const addr = server.address()
     if (!addr || typeof addr === 'string') throw new Error('no-address')
+    if (!preferred) this.o.onFirstPort?.(addr.port)
     this.host = `${this.o.ip}:${addr.port}`
     this.origin = `http://${this.host}`
     return { origin: this.origin }
