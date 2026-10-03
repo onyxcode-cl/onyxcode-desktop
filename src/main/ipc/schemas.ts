@@ -450,7 +450,8 @@ const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = 
   'remote:newPairing': none,
   'remote:stop': none,
   'remote:confirmPair': obj({ requestId: str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ }), accept: bool }),
-  'remote:revoke': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) })
+  'remote:revoke': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) }),
+  'remote:confirmAction': obj({ requestId: str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ }), accept: bool })
 }
 
 /**

@@ -253,3 +253,14 @@ describe('canales de archivos del proyecto y «Abrir en…»', () => {
     for (const id of ['/usr/bin/vim', 'code --new-window', 'vim', '', 'ZED']) expect(() => v({ cwd: '/tmp/p', id })).toThrow()
   })
 })
+
+describe('remote:confirmAction', () => {
+  it('esquema estricto y solo para la ventana principal', () => {
+    const v = IPC_SCHEMAS['remote:confirmAction']
+    expect(v({ requestId: 'abc123', accept: true })).toEqual({ requestId: 'abc123', accept: true })
+    expect(() => v({ requestId: 'abc123' })).toThrow()
+    expect(() => v({ requestId: 'a b', accept: true })).toThrow()
+    expect(() => v({ requestId: 'abc', accept: true, extra: 1 })).toThrow()
+    for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has('remote:confirmAction'), role).toBe(false)
+  })
+})
