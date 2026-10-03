@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import { DEFAULT_EXTRAS_PREFS, defaultQuickEntryShortcut, type ExtrasPrefs, type ModelMode } from '@shared/ipc-extras'
 import type { ModelRef } from '@shared/types'
+import { kbPlatformOf, sanitizeOverrides } from '@shared/keybindings'
 
 type Listener = (prefs: ExtrasPrefs) => void
 
@@ -32,7 +33,8 @@ function normalize(input: Partial<ExtrasPrefs>): ExtrasPrefs {
     typeof input.notificationsEnabled === 'boolean' ? input.notificationsEnabled : DEFAULT_EXTRAS_PREFS.notificationsEnabled
   const soundEnabled = typeof input.soundEnabled === 'boolean' ? input.soundEnabled : DEFAULT_EXTRAS_PREFS.soundEnabled
   const lastEditor = typeof input.lastEditor === 'string' && /^[a-z]{1,20}$/.test(input.lastEditor) ? input.lastEditor : ''
-  return { quickEntryShortcut: shortcut, modelsByMode, showTray, notificationsEnabled, soundEnabled, lastEditor }
+  const keybindings = sanitizeOverrides(input.keybindings, kbPlatformOf(process.platform))
+  return { quickEntryShortcut: shortcut, modelsByMode, showTray, notificationsEnabled, soundEnabled, lastEditor, keybindings }
 }
 
 /** Preferencias de extras en `userData/extras.json` (separadas de settings.json). */

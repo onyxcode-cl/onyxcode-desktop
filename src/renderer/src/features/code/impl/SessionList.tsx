@@ -20,6 +20,8 @@ import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { rootSessionID, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
+import { registerAction } from '../../../keybindings/registry'
+import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 
@@ -262,16 +264,15 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setSwitcherOpen((o) => !o)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  // ⌘K (configurable en Ajustes › Atajos): buscador de sesiones, mientras la lista esté montada y la paleta cerrada.
+  useEffect(
+    () =>
+      registerAction('code.sessionSwitcher', {
+        enabled: () => !useUi.getState().paletteOpen,
+        run: () => setSwitcherOpen((o) => !o)
+      }),
+    []
+  )
 
   const pinnedIds = useMemo(() => new Set(directory ? (pinnedMap[directory] ?? []) : []), [pinnedMap, directory])
 

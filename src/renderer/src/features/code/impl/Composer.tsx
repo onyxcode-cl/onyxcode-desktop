@@ -440,15 +440,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
       submit(false)
       return
     }
-    if (e.key === 'Escape' && busy) {
-      e.preventDefault()
-      void abort()
-      return
-    }
-    if (e.key === 'Tab' && e.shiftKey) {
-      e.preventDefault()
-      setAgent(agent === 'plan' ? 'build' : 'plan')
-    }
+    // Esc (detener) y Shift+Tab (Plan/Build) son acciones configurables: las resuelve `keybindings/dispatch.ts`.
   }
 
   const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
@@ -579,6 +571,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             <textarea
               ref={ref}
               data-code-composer=""
+              data-kb-composer=""
               role="combobox"
               aria-haspopup="listbox"
               aria-autocomplete="list"

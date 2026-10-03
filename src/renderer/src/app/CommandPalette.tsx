@@ -14,9 +14,7 @@ import { selectSessionsForDirectory } from '../lib/session-reducer'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
-import { isMacPlatform } from '../lib/platform'
-
-const MOD_HINT = isMacPlatform() ? '⌘' : 'Ctrl+'
+import { hintText, useEffectiveBindings } from '../keybindings/bindings'
 
 interface Command {
   id: string
@@ -44,6 +42,7 @@ function useCommands(): Command[] {
   const directorySource = useSessions((s) => s.directorySource)
   const updateSettings = useSettings((s) => s.update)
   const lang = useLang((s) => s.lang)
+  const bindings = useEffectiveBindings()
 
   return useMemo(() => {
     void lang // las etiquetas se calculan con el idioma activo: recalcular al cambiarlo
@@ -57,7 +56,7 @@ function useCommands(): Command[] {
         group: t('app.palette.group.actions'),
         label: newAction.label,
         icon: Plus,
-        hint: `${MOD_HINT}N`,
+        hint: hintText(bindings['conversation.new']) || undefined,
         keywords: t('app.palette.kw.new'),
         run: () => {
           ui.openSettings(false)
@@ -83,7 +82,7 @@ function useCommands(): Command[] {
       group: t('app.palette.group.goto'),
       label: t('app.palette.settings'),
       icon: Settings,
-      hint: `${MOD_HINT},`,
+      hint: hintText(bindings['settings.toggle']) || undefined,
       keywords: t('app.palette.kw.settings'),
       run: () => ui.openSettings(true)
     })
@@ -142,7 +141,7 @@ function useCommands(): Command[] {
       }
     }
     return list
-  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings, lang])
+  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings, lang, bindings])
 }
 
 export function CommandPalette(): React.JSX.Element | null {

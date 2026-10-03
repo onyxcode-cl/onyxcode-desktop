@@ -40,5 +40,10 @@ export const browser = {
   'browser.url.pick': 'Seleccionar elemento',
   'browser.url.addToChat': 'Añadir al chat',
   'browser.url.popOut': 'Abrir en ventana aparte',
-  'browser.url.openExternal': 'Abrir en el navegador del sistema'
+  'browser.url.openExternal': 'Abrir en el navegador del sistema',
+  'browser.view.group': 'Vista de las páginas',
+  'browser.view.desktop': 'Escritorio',
+  'browser.view.desktopHint': 'Escritorio: las páginas se ven con su versión de escritorio aunque el panel sea estrecho',
+  'browser.view.mobile': 'Móvil',
+  'browser.view.mobileHint': 'Móvil: las páginas se ven con su versión para teléfono'
 } as const

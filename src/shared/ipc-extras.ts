@@ -5,6 +5,7 @@
  * Canales con prefijo `extras:` y `mcp:`. Se registran en `src/main/ipc/extras-handlers.ts`
  * y se exponen en el preload como `window.api.extras` (`src/preload/extras-api.ts`).
  */
+import type { KeybindingOverrides } from './keybindings'
 import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
 
@@ -24,6 +25,8 @@ export interface ExtrasPrefs {
   soundEnabled: boolean
   /** Último editor elegido en «Abrir en…» (id del catálogo de main); vacío = ninguno. */
   lastEditor: string
+  /** Atajos de la aplicación que el usuario cambió: `{ [idAcción]: atajo | null }` (`null` = desactivado, ausente = por defecto). */
+  keybindings: KeybindingOverrides
 }
 
 export const DEFAULT_QUICK_ENTRY_SHORTCUT = 'Alt+Space'
@@ -39,7 +42,8 @@ export const DEFAULT_EXTRAS_PREFS: ExtrasPrefs = {
   showTray: true,
   notificationsEnabled: true,
   soundEnabled: true,
-  lastEditor: ''
+  lastEditor: '',
+  keybindings: {}
 }
 
 export interface ExtrasPrefsState {

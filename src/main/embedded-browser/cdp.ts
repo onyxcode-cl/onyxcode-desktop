@@ -15,6 +15,7 @@
  */
 import type { WebContents } from 'electron'
 import { ALLOWED_CDP, type AllowedCdpMethod, type CdpSession } from './api'
+import { scaleInputParams } from './viewport'
 
 const PROTOCOL_VERSION = '1.3'
 const DEFAULT_TIMEOUT_MS = 10_000
@@ -90,6 +91,8 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 export interface CdpSessionOptions {
   /** Se llama justo antes de enviar cualquier `Input.*` (marca la ventana `userActive`, ver surface.ts). */
   onInputSent?: () => void
+  /** Factor CSS → vista de la emulación de viewport (F8-B46): `Input.*` espera píxeles de vista, el resto de CDP píxeles CSS. */
+  inputScale?: () => number
 }
 
 export function cdpSessionFor(wc: WebContents, opts: CdpSessionOptions = {}): CdpSession {
@@ -98,7 +101,8 @@ export function cdpSessionFor(wc: WebContents, opts: CdpSessionOptions = {}): Cd
     if (wc.isDestroyed()) throw new Error('La pestaña ya no existe')
     ensureAttached(wc)
     if (method.startsWith('Input.')) opts.onInputSent?.()
-    const raw = wc.debugger.sendCommand(method, params) as Promise<T>
+    const sent = method.startsWith('Input.') && opts.inputScale ? scaleInputParams(method, params, opts.inputScale()) : params
+    const raw = wc.debugger.sendCommand(method, sent) as Promise<T>
     return withTimeout(raw, timeoutMs, method)
   }
   const on = (event: string, fn: (params: unknown) => void): (() => void) => {

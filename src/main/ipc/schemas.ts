@@ -139,6 +139,7 @@ const BROWSER_SCHEMAS: { [C in BrowserInvokeChannel]: Validator<BrowserInvokeCon
   'browser:toChat': browserToChat,
   'browser:respond': obj({ id: hexId, decision: browserDecision }),
   'browser:popOut': obj({ owner: browserOwner, on: bool }),
+  'browser:setViewMode': obj({ mode: literal('desktop', 'mobile') }),
   'browser:openExternal': obj({ owner: browserOwner, tabId }),
   'browser:devServers': obj({ directory: absPath }),
   'browser:sites:get': none,
@@ -416,7 +417,8 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     modelsByMode: partial({ chat: modelRef, code: modelRef, tasks: modelRef }),
     showTray: bool,
     notificationsEnabled: bool,
-    soundEnabled: bool
+    soundEnabled: bool,
+    keybindings: record(nullable(str({ max: 60 })), 100)
   }),
   'extras:versions': none,
   'extras:openArtifact': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),

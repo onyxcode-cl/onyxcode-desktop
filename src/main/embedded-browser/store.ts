@@ -11,7 +11,7 @@ import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { BrowserSite } from '@shared/ipc-tasks'
-import type { BrowserPrefs, BrowserProduct } from '@shared/ipc-browser'
+import type { BrowserPrefs, BrowserProduct, BrowserViewMode } from '@shared/ipc-browser'
 
 interface StoreShape {
   version: 1
@@ -29,7 +29,7 @@ function defaultStore(): StoreShape {
     // «Chrome aparte» (eliminado); se activa a mano en Ajustes. El esqueleto
     // original de B.4/D1 paso 6 traía `true/true`: corregido en D5 al detectar que contradecía la
     // decisión final del usuario (ver `docs/LOTE-D.md` §2 y `AUDIT.md` §11).
-    prefs: { agentEnabled: { code: false, tasks: false } },
+    prefs: { agentEnabled: { code: false, tasks: false }, viewMode: 'desktop' },
     sites: { code: [], tasks: [] },
     denied: { code: [], tasks: [] },
     localOrigins: []
@@ -74,7 +74,8 @@ function normalize(raw: unknown): StoreShape {
       agentEnabled: {
         code: typeof agentRaw.code === 'boolean' ? agentRaw.code : base.prefs.agentEnabled.code,
         tasks: typeof agentRaw.tasks === 'boolean' ? agentRaw.tasks : base.prefs.agentEnabled.tasks
-      }
+      },
+      viewMode: prefsRaw.viewMode === 'mobile' ? 'mobile' : 'desktop'
     },
     sites: { code: normalizeSiteList(sitesRaw.code), tasks: normalizeSiteList(sitesRaw.tasks) },
     denied: { code: normalizeStringList(deniedRaw.code), tasks: normalizeStringList(deniedRaw.tasks) },
@@ -105,7 +106,12 @@ function persist(): void {
 }
 
 export function getPrefs(): BrowserPrefs {
-  return { agentEnabled: { ...load().prefs.agentEnabled } }
+  return { agentEnabled: { ...load().prefs.agentEnabled }, viewMode: load().prefs.viewMode }
+}
+
+export function setViewModePref(mode: BrowserViewMode): void {
+  load().prefs.viewMode = mode === 'mobile' ? 'mobile' : 'desktop'
+  persist()
 }
 
 export function setPrefs(patch: { agentEnabled?: Partial<BrowserPrefs['agentEnabled']> }): BrowserPrefs {

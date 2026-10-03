@@ -13,7 +13,9 @@
 import { t } from '@shared/i18n'
 import { EventEmitter } from 'node:events'
 import { Menu, WebContentsView, clipboard, shell, type WebContents } from 'electron'
-import type { BrowserOwner, BrowserProduct } from '@shared/ipc-browser'
+import type { BrowserOwner, BrowserProduct, BrowserViewMode } from '@shared/ipc-browser'
+import { getPrefs } from './store'
+import { computeEmulation, emulationKey, mobileUserAgent, type ViewportEmulation } from './viewport'
 import { checkUrl, schemeOf, subframeUrlAllowed } from './sites'
 import { sessionFor, setExternalOpenBlockedListener } from './session'
 import { detachCdp } from './cdp'
@@ -43,6 +45,12 @@ export interface TabRuntime {
   destroyed: boolean
   lastHumanInputAt: number
   suppressUserActiveUntil: number
+  /** Vista pedida y última emulación aplicada (F8-B46): ver `viewport.ts`. */
+  viewMode: BrowserViewMode
+  emulation: ViewportEmulation | null
+  /** Tamaño (px de la vista nativa) con que se calculó la emulación; `null` = aún sin colocar. */
+  viewBox: { width: number; height: number } | null
+  emulationKey: string
 }
 
 export const surfaceEvents = new EventEmitter()
@@ -230,6 +238,10 @@ function installLifecycle(tab: TabRuntime): void {
     tab.title = title
     surfaceEvents.emit('updated', tab)
   })
+  // La emulación se pierde si la navegación cambia de proceso de render: se reaplica (misma vista y tamaño).
+  const reapply = (): void => applyViewport(tab, tab.viewMode, null, true)
+  tab.wc.on('did-navigate', reapply)
+  tab.wc.on('dom-ready', reapply)
   tab.wc.on('did-navigate', () => surfaceEvents.emit('updated', tab))
   tab.wc.on('did-navigate-in-page', () => surfaceEvents.emit('updated', tab))
   tab.wc.on('did-start-loading', () => surfaceEvents.emit('updated', tab))
@@ -252,6 +264,43 @@ function installLifecycle(tab: TabRuntime): void {
     lastBlocked.delete(tab.id)
     if (!already) surfaceEvents.emit('destroyed', tab)
   })
+}
+
+/** Aplica (o reaplica) la emulación de viewport y el user agent de la pestaña según su vista y el tamaño de su vista nativa. */
+export function applyViewport(tab: TabRuntime, mode: BrowserViewMode, box: { width: number; height: number } | null, force = false): void {
+  if (tab.destroyed || tab.wc.isDestroyed()) return
+  const modeChanged = tab.viewMode !== mode
+  tab.viewMode = mode
+  if (box) tab.viewBox = box
+  if (modeChanged) {
+    try {
+      tab.wc.setUserAgent(mode === 'mobile' ? mobileUserAgent(process.versions.chrome ?? '') : tab.wc.session.getUserAgent())
+    } catch (err) {
+      console.error('[embedded-browser] user agent de la vista:', err)
+    }
+  }
+  const size = tab.viewBox
+  if (!size || size.width <= 0 || size.height <= 0) return
+  const emu = computeEmulation(mode, size.width, size.height)
+  const key = emulationKey(mode, emu)
+  tab.emulation = emu
+  if (!force && !modeChanged && key === tab.emulationKey) return
+  tab.emulationKey = key
+  try {
+    if (!emu) tab.wc.disableDeviceEmulation()
+    else {
+      tab.wc.enableDeviceEmulation({
+        screenPosition: emu.screenPosition,
+        screenSize: emu.viewSize,
+        viewPosition: { x: 0, y: 0 },
+        deviceScaleFactor: 0,
+        viewSize: emu.viewSize,
+        scale: emu.scale
+      })
+    }
+  } catch (err) {
+    console.error('[embedded-browser] emulación de viewport:', err)
+  }
 }
 
 /** Crea una pestaña vacía (`about:blank`) para el owner. Lanza `TabLimitError` si excede el límite. */
@@ -299,7 +348,11 @@ export function createTab(owner: BrowserOwner, opts: { openedBy: 'user' | 'agent
     crashed: false,
     destroyed: false,
     lastHumanInputAt: 0,
-    suppressUserActiveUntil: 0
+    suppressUserActiveUntil: 0,
+    viewMode: 'desktop',
+    emulation: null,
+    viewBox: null,
+    emulationKey: ''
   }
   tabsById.set(tab.id, tab)
 
@@ -309,6 +362,7 @@ export function createTab(owner: BrowserOwner, opts: { openedBy: 'user' | 'agent
   installLifecycle(tab)
   // Emitido ANTES de navegar: quien escuche 'created' (p.ej. la puerta de sitios de service.ts)
   // debe poder adjuntar sus propias guardas a `tab.wc` antes de la primera navegación real.
+  applyViewport(tab, getPrefs().viewMode, null)
   surfaceEvents.emit('created', tab)
 
   void wc.loadURL('about:blank').catch((err) => console.error('[embedded-browser] about:blank:', err))

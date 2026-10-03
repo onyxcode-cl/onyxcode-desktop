@@ -195,6 +195,7 @@ export function ChatComposer({
         )}
         <textarea
           ref={ref}
+          data-kb-composer=""
           value={text}
           rows={1}
           disabled={disabled}
