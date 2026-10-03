@@ -6,7 +6,7 @@
  * AltGr, ni mientras se graba un atajo en Ajustes. Los atajos con modificador funcionan también con el foco en un campo de
  * texto (como siempre: ⌘K con el cursor en el compositor); los «desnudos» (Esc, Shift+Tab) solo donde su acción lo permite.
  */
-import { actionsFor, allowedAtFocus, eventToBinding, type FocusKind } from '@shared/keybindings'
+import { actionsFor, allowedAtFocus, eventToBinding, type FocusKind, type KeyEventLike } from '@shared/keybindings'
 import { useEffect } from 'react'
 import { currentEffective, kbPlatform } from './bindings'
 import { handlerFor } from './runtime'
@@ -37,20 +37,41 @@ export function focusKindOf(target: EventTarget | null): FocusKind {
   return editable ? 'editable' : 'idle'
 }
 
+function legacyFields(e: KeyboardEvent): KeyEventLike {
+  return {
+    key: e.key,
+    code: e.code,
+    ctrlKey: e.ctrlKey,
+    metaKey: e.metaKey,
+    altKey: e.altKey,
+    shiftKey: e.shiftKey,
+    isComposing: e.isComposing,
+    keyCode: e.keyCode
+  }
+}
+
 /** Procesa un evento; devuelve `true` si ejecutó una acción. Exportado para las pruebas. */
 export function handleKeydown(e: KeyboardEvent): boolean {
   if (e.defaultPrevented || suspended > 0) return false
-  const binding = eventToBinding(e, kbPlatform())
+  const platform = kbPlatform()
+  const binding = eventToBinding(e, platform)
   if (!binding) return false
   const focus = focusKindOf(e.target)
-  for (const action of actionsFor(binding, currentEffective())) {
-    if (!allowedAtFocus(action, binding, focus)) continue
-    const handler = handlerFor(action.id)
-    if (!handler) continue
-    if (handler.enabled && !handler.enabled()) continue
-    if (handler.run() === false) continue
-    if (handler.consume !== false) e.preventDefault()
-    return true
+  const effective = currentEffective()
+  // Compatibilidad: en macOS los atajos con ⌘ siempre respondieron también a Ctrl+tecla (p. ej. Ctrl+K); se conserva como
+  // alternativa solo si el Ctrl literal no coincide con ninguna acción (⌃Tab y compañía siguen siendo Ctrl literal).
+  const legacy =
+    platform === 'mac' && e.ctrlKey && !e.metaKey ? eventToBinding({ ...legacyFields(e), ctrlKey: false, metaKey: true }, platform) : null
+  for (const candidate of legacy && legacy !== binding ? [binding, legacy] : [binding]) {
+    for (const action of actionsFor(candidate, effective)) {
+      if (!allowedAtFocus(action, candidate, focus)) continue
+      const handler = handlerFor(action.id)
+      if (!handler) continue
+      if (handler.enabled && !handler.enabled()) continue
+      if (handler.run() === false) continue
+      if (handler.consume !== false) e.preventDefault()
+      return true
+    }
   }
   return false
 }
