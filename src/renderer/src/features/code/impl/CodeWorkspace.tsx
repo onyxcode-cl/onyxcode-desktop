@@ -433,7 +433,12 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         )}
         <span className="mx-0.5 h-5 w-px bg-border" />
         {PANEL_META.map((p) => (
-          <Tip key={p.id} label={t(p.label)} shortcut={hintText(bindings[`code.panel.${p.id}`])} align={p.id === 'browser' ? 'end' : 'center'}>
+          <Tip
+            key={p.id}
+            label={t(p.label)}
+            shortcut={hintText(bindings[`code.panel.${p.id}`])}
+            align={p.id === 'browser' ? 'end' : 'center'}
+          >
             <button
               type="button"
               aria-label={t(p.label)}

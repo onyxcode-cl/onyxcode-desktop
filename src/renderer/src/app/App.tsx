@@ -34,7 +34,6 @@ import { isMacPlatform, platformCaps } from '../lib/platform'
 import { useKeybindings } from '../keybindings/dispatch'
 import { hintSuffix, useBindingHint } from '../keybindings/bindings'
 
-
 export function App(): React.JSX.Element {
   const mode = useUi((s) => s.mode)
   const settingsOpen = useUi((s) => s.settingsOpen)

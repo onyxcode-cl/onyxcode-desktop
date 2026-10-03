@@ -16,7 +16,6 @@ const STATUS_KEY = {
   error: 'app.status.error'
 } as const
 
-
 export function Sidebar(): React.JSX.Element {
   const { mode, setMode, settingsOpen, openSettings, toggleSidebar, setPaletteOpen } = useUi()
   const t = useT()
@@ -90,7 +89,9 @@ export function Sidebar(): React.JSX.Element {
               <Plus size={14} strokeWidth={2.4} />
             </span>
             <span className="flex-1 text-left">{def.newAction.label}</span>
-            <span className="text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100">{hintText(bindings['conversation.new'])}</span>
+            <span className="text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100">
+              {hintText(bindings['conversation.new'])}
+            </span>
           </button>
         </div>
       )}
@@ -111,7 +112,11 @@ export function Sidebar(): React.JSX.Element {
           <span className="truncate font-display text-[13px] font-semibold tracking-tight">{APP_NAME}</span>
           <span className="truncate text-[10.5px] text-subtle">{statusLabel}</span>
         </span>
-        <IconButton label={t('app.sidebar.settings', { hint: hintSuffix(hints['settings.toggle']) })} active={settingsOpen} onClick={() => openSettings(!settingsOpen)}>
+        <IconButton
+          label={t('app.sidebar.settings', { hint: hintSuffix(hints['settings.toggle']) })}
+          active={settingsOpen}
+          onClick={() => openSettings(!settingsOpen)}
+        >
           <Settings size={16} className={`transition-transform duration-300 ${settingsOpen ? 'rotate-45' : ''}`} />
         </IconButton>
       </div>

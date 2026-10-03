@@ -16,7 +16,6 @@ import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
 import { hintText, useEffectiveBindings } from '../keybindings/bindings'
 
-
 interface Command {
   id: string
   group: string
