@@ -11,12 +11,16 @@
 import { randomBytes } from 'node:crypto'
 import { pairingCode, toHex } from '@shared/remote/code'
 import { LIMITS } from '@shared/remote/protocol'
+import type { CallRequest, HttpRequest } from '@shared/remote/mux'
 import type { RemoteEvent } from '@shared/remote/protocol'
 import type { RemoteDeviceInfo, RemotePairRequest, RemoteState, RemoteUnavailableReason } from '@shared/ipc-remote'
-import type { DevicesStore } from './devices-store'
+import type { AuditInput } from './audit'
+import type { ConfirmHost } from './confirm-host'
+import { toDeviceInfo, type DevicesStore } from './devices-store'
+import { deviceFingerprint } from './confirm-queue'
 import { EventBridge, type EventBridgeOptions, type EventSource } from './events'
 import { PairingManager } from './pairing'
-import { PeerSession } from './peer-session'
+import { PeerSession, type PeerAccess } from './peer-session'
 import type { Clock } from './rate-limit'
 import type { RtcAnswerer, RtcFactory } from './rtc'
 import type { SignalHello, SignalingPeer, SignalingTransport } from './signaling/types'
@@ -35,6 +39,15 @@ export interface RemoteServiceDeps {
   onChanged: (state: RemoteState) => void
   onPairRequest: (req: RemotePairRequest) => void
   now?: Clock
+  /**
+   * Control de acceso (T6): confirmación de cada conexión nueva, PIN, bloqueo y auditoría. En producción siempre se pasa
+   * (`createRemote`); sin `confirmHost` las sesiones no filtran nada (solo para pruebas del protocolo).
+   */
+  confirmHost?: ConfirmHost
+  audit?: (e: AuditInput) => void
+  /** ¿Es una lectura? Con el celular bloqueado por inactividad solo se atienden lecturas (sin esto, ninguna). */
+  isRead?: (r: CallRequest | HttpRequest) => boolean
+  inactivityMs?: number
   /** Plataforma sin función (`platform`) o ya conocida como no disponible. */
   unavailable?: () => RemoteUnavailableReason | null
 }
@@ -70,6 +83,8 @@ export class RemoteService {
   private error: string | null = null
   private bridge: EventBridge | null = null
   private starting: Promise<RemoteState> | null = null
+  /** Última actividad por dispositivo (memoria): reconectar «en caliente» no vuelve a pedir el PIN. */
+  private readonly lastActive = new Map<string, number>()
 
   constructor(private readonly d: RemoteServiceDeps) {
     this.pairing = new PairingManager(d.now)
@@ -83,13 +98,11 @@ export class RemoteService {
 
   getState(): RemoteState {
     const unavailable = this.d.unavailable?.() ?? (this.d.devices.available ? null : 'no-safe-storage')
-    const devices: RemoteDeviceInfo[] = this.d.devices.list().map((x) => ({
-      id: x.id,
-      name: x.name,
-      createdAt: x.createdAt,
-      lastSeenAt: x.lastSeenAt,
-      connected: this.connected?.deviceId === x.id
-    }))
+    const devices: RemoteDeviceInfo[] = this.d.devices
+      .list()
+      .map((x) =>
+        toDeviceInfo(x, this.connected?.deviceId === x.id, this.connected?.deviceId === x.id ? this.connected.accessView : null, this.now())
+      )
     const expiry = this.pairing.expiry
     return {
       available: unavailable === null,
@@ -217,6 +230,8 @@ export class RemoteService {
     const pending = this.pending
     this.pending = null
     pending?.resolve(false)
+    this.d.confirmHost?.cancelAll()
+    this.d.audit?.({ kind: 'stopped' })
     for (const p of peers) p.session?.bye('stopped')
     const transport = this.transport
     this.transport = null
@@ -306,7 +321,8 @@ export class RemoteService {
         backend: this.d.backend,
         confirmPair: (info) => this.askConfirm(rec, info),
         onAuthed: (id) => this.onAuthed(session, id),
-        onEnd: () => this.onSessionEnd(rec, session)
+        onEnd: () => this.onSessionEnd(rec, session),
+        access: this.access()
       })
       rec.session = session
       channel.onOpen(() => {
@@ -357,9 +373,54 @@ export class RemoteService {
   }
 
   revoke(deviceId: string): RemoteState {
+    this.d.confirmHost?.cancelDevice(deviceId)
+    this.lastActive.delete(deviceId)
+    const rec = this.d.devices.get(deviceId)
+    if (rec) this.d.audit?.({ kind: 'revoked', device: deviceFingerprint(deviceId), name: rec.name })
     if (this.connected?.deviceId === deviceId) this.connected.bye('revoked')
     for (const p of [...this.peers]) if (p.session?.deviceId === deviceId) p.session.bye('revoked')
     this.d.devices.revoke(deviceId)
+    this.changed()
+    return this.getState()
+  }
+
+  // ── acceso (T6) ──
+
+  private access(): PeerAccess | undefined {
+    const host = this.d.confirmHost
+    if (!host) return undefined
+    return {
+      confirmConnection: async ({ deviceId, deviceName }) => {
+        const r = await host.requestConnection({ deviceId, deviceName, detail: [this.origin] })
+        if (r.outcome === 'approved' && r.remember) this.d.devices.setTrust(deviceId, this.now() + LIMITS.rememberMs)
+        return { approved: r.outcome === 'approved', outcome: r.outcome }
+      },
+      trusted: (id) => (this.d.devices.trustedUntil(id) ?? 0) > this.now(),
+      lastActiveAt: (id) => this.lastActive.get(id) ?? null,
+      noteActive: (id, t) => this.lastActive.set(id, t),
+      onRevokeDevice: (id) => void this.revoke(id),
+      onChange: () => this.changed(),
+      audit: (e) => this.d.audit?.(e),
+      isRead: this.d.isRead,
+      inactivityMs: this.d.inactivityMs
+    }
+  }
+
+  /** «Recordar 12 h» la confirmación de conexión de un dispositivo (`false` = volver a confirmar cada vez). */
+  setRemember(deviceId: string, remember: boolean): RemoteState {
+    if (this.d.devices.get(deviceId)) this.d.devices.setTrust(deviceId, remember ? this.now() + LIMITS.rememberMs : null)
+    this.changed()
+    return this.getState()
+  }
+
+  /** Borra el PIN: el celular tendrá que fijar uno nuevo al reconectar (se le corta la conexión actual). */
+  resetPin(deviceId: string): RemoteState {
+    const rec = this.d.devices.get(deviceId)
+    if (rec && this.d.devices.resetPin(deviceId)) {
+      this.d.audit?.({ kind: 'pin-reset', device: deviceFingerprint(deviceId), name: rec.name })
+      this.lastActive.delete(deviceId)
+      if (this.connected?.deviceId === deviceId) this.connected.bye('timeout')
+    }
     this.changed()
     return this.getState()
   }
@@ -395,6 +456,7 @@ export class RemoteService {
       this.pending = null
       p.resolve(false)
     }
+    if (session.deviceId) this.d.confirmHost?.cancelDevice(session.deviceId)
     if (this.connected === session) {
       this.connected = null
       this.bridge?.stop()

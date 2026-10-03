@@ -14,6 +14,7 @@ import {
   utf8Length,
   type ClientFrame,
   type HostFrame,
+  type LockWhy,
   type RemoteErrorCode,
   type RemoteEvent,
   type RemoteMessage,
@@ -61,6 +62,8 @@ export type Conn =
   | { k: 'connecting'; mode: 'pair' | 'resume' }
   | { k: 'pairing'; code: string | null; pending: boolean }
   | { k: 'online' }
+  /** Canal autenticado pero sin acceso: el Mac espera su confirmación, el PIN (fijarlo/verificarlo) o lo bloqueó por inactividad. */
+  | { k: 'locked'; why: LockWhy; retryMs?: number; left?: number }
   | { k: 'reconnecting'; attempt: number; max: number }
   | { k: 'failed'; reason: FailReason; canRetry: boolean }
 
@@ -494,9 +497,15 @@ export class RemoteClient {
         this.pairSecret = null
         this.mode = 'resume'
         this.set({ paired: true })
-        return this.goOnline()
+        return this.beginGate()
       case 'authed':
-        if (this.mode === 'resume' && !this.authed) this.goOnline()
+        if (this.mode === 'resume' && !this.authed) this.beginGate()
+        return
+      case 'locked':
+        if (this.authed) this.set({ conn: { k: 'locked', why: f.why, retryMs: f.retryMs, left: f.left } })
+        return
+      case 'unlocked':
+        if (this.authed) this.goOnline()
         return
       case 'auth-failed':
         clearCreds()
@@ -544,14 +553,29 @@ export class RemoteClient {
     }
   }
 
+  /** Autenticado: el Mac enviará `locked` (falta confirmar/PIN) o `unlocked` (acceso) enseguida. */
+  private beginGate(): void {
+    this.authed = true
+    this.everOnline = true
+    this.attempt = 0
+    this.openMux()
+    this.startKeepalive()
+  }
+
   private goOnline(): void {
     this.authed = true
     this.everOnline = true
     this.attempt = 0
     this.set({ conn: { k: 'online' } })
-    this.openMux()
+    if (!this.mux) this.openMux()
     this.startKeepalive()
     void this.refreshAll()
+  }
+
+  /** Fija (`set`) o verifica el PIN de 6 dígitos DENTRO del canal. Nunca se guarda en el celular. */
+  sendPin(pin: string, set: boolean): void {
+    if (this.snap.conn.k !== 'locked') return
+    this.sendFrame({ t: set ? 'pin-set' : 'pin-verify', pin })
   }
 
   // ── peticiones ──

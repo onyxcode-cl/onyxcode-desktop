@@ -5,14 +5,14 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2, Smartphone, Trash2 } from 'lucide-react'
-import { getLang } from '@shared/i18n'
+import { getLang, type MsgKey } from '@shared/i18n'
 import { LIMITS } from '@shared/remote/protocol'
-import type { RemoteApi, RemoteState } from '@shared/ipc-remote'
+import type { RemoteApi, RemoteAuditEntry, RemoteDeviceInfo, RemoteState } from '@shared/ipc-remote'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
+import { Badge, Card, ErrorText, Row, Select, SectionHeader, SubTitle, Toggle } from './ui'
 
 function getRemote(): RemoteApi | undefined {
   return (window as unknown as { api?: { remote?: RemoteApi } }).api?.remote
@@ -45,6 +45,87 @@ export function QrSvg({ matrix, label }: { matrix: boolean[][]; label: string })
       <rect width={total} height={total} fill="#fff" />
       <path d={d} fill="#000" />
     </svg>
+  )
+}
+
+const ACCESS_KEYS = {
+  awaiting: 'remote.access.awaiting',
+  pin: 'remote.access.pin',
+  locked: 'remote.access.locked',
+  open: 'remote.access.open'
+} as const satisfies Record<NonNullable<RemoteDeviceInfo['access']>, MsgKey>
+
+const AUDIT_KEYS: Record<string, MsgKey> = {
+  paired: 'remote.activity.kind.paired',
+  connected: 'remote.activity.kind.connected',
+  'confirm-approved': 'remote.activity.kind.confirm-approved',
+  'confirm-rejected': 'remote.activity.kind.confirm-rejected',
+  'confirm-expired': 'remote.activity.kind.confirm-expired',
+  revoked: 'remote.activity.kind.revoked',
+  'pin-set': 'remote.activity.kind.pin-set',
+  'pin-fail': 'remote.activity.kind.pin-fail',
+  'pin-reset': 'remote.activity.kind.pin-reset',
+  locked: 'remote.activity.kind.locked',
+  'policy-denied': 'remote.activity.kind.policy-denied',
+  stopped: 'remote.activity.kind.stopped'
+}
+
+/** Ajustes › Celular › Actividad: lista simple de la auditoría (sin secretos), con filtro por dispositivo. */
+function ActivityList({ api, state }: { api: RemoteApi; state: RemoteState }): React.JSX.Element {
+  const t = useT()
+  const [device, setDevice] = useState('')
+  const [rows, setRows] = useState<RemoteAuditEntry[]>([])
+  // Se recarga al cambiar el filtro o el estado (conexión, bloqueo, revocación…).
+  useEffect(() => {
+    let alive = true
+    void api
+      .invoke('remote:auditList', device ? { device } : undefined)
+      .then((r) => alive && setRows(r))
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [api, device, state])
+  return (
+    <>
+      <SubTitle>{t('remote.activity.title')}</SubTitle>
+      <Card>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+          <Select aria-label={t('remote.activity.filter')} value={device} onChange={(e) => setDevice(e.target.value)}>
+            <option value="">{t('remote.activity.all')}</option>
+            {state.devices.map((d) => (
+              <option key={d.id} value={d.fingerprint}>
+                {d.name} · {d.fingerprint}
+              </option>
+            ))}
+          </Select>
+        </div>
+        {rows.length === 0 ? (
+          <div className="px-4 py-3 text-sm text-muted">{t('remote.activity.empty')}</div>
+        ) : (
+          <ul className="max-h-72 overflow-y-auto">
+            {rows.map((r, i) => (
+              <li
+                key={`${r.ts}-${i}`}
+                className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2 text-sm last:border-b-0"
+              >
+                <span className="min-w-0">
+                  {AUDIT_KEYS[r.kind] ? t(AUDIT_KEYS[r.kind] as MsgKey) : r.kind}
+                  {r.name ? <span className="text-muted"> · {r.name}</span> : null}
+                  {r.ch ? (
+                    <span className="block font-mono text-xs text-muted">
+                      {t('remote.activity.channel', { channel: r.ch })}
+                      {r.cls ? ` (${r.cls})` : ''}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="shrink-0 text-xs text-muted">{new Date(r.ts).toLocaleString(locale())}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </>
   )
 }
 
@@ -119,6 +200,16 @@ export function RemoteSection(): React.JSX.Element {
       danger: true
     })
     if (ok) run(() => api.invoke('remote:revoke', { deviceId: id }))
+  }
+
+  const resetPin = async (id: string, name: string): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('remote.devices.pinResetTitle', { name }),
+      message: t('remote.devices.pinResetBody'),
+      confirmLabel: t('remote.devices.pinReset'),
+      danger: true
+    })
+    if (ok) run(() => api.invoke('remote:resetPin', { deviceId: id }))
   }
 
   const copy = (url: string): void => {
@@ -238,16 +329,38 @@ export function RemoteSection(): React.JSX.Element {
                   key={d.id}
                   label={d.name}
                   description={
-                    d.connected
-                      ? t('remote.devices.connected')
-                      : d.lastSeenAt
-                        ? t('remote.devices.lastSeen', { when: new Date(d.lastSeenAt).toLocaleString(locale()) })
-                        : t('remote.devices.never')
+                    <>
+                      {d.connected
+                        ? t('remote.devices.connected')
+                        : d.lastSeenAt
+                          ? t('remote.devices.lastSeen', { when: new Date(d.lastSeenAt).toLocaleString(locale()) })
+                          : t('remote.devices.never')}
+                      <span className="block">
+                        {d.hasPin ? t('remote.devices.pinSet') : t('remote.devices.pinPending')} · {d.fingerprint}
+                        {d.trustUntil
+                          ? ` · ${t('remote.devices.rememberUntil', { time: new Date(d.trustUntil).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) })}`
+                          : ''}
+                      </span>
+                    </>
                   }
                 >
-                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revoke(d.id, d.name)}>
-                    <Trash2 size={13} /> {t('remote.devices.revoke')}
-                  </Button>
+                  <span className="flex items-center gap-2">
+                    {d.access && <Badge tone={d.access === 'open' ? 'ok' : 'accent'}>{t(ACCESS_KEYS[d.access])}</Badge>}
+                    <Toggle
+                      checked={d.trustUntil !== null}
+                      label={t('remote.devices.remember')}
+                      disabled={busy}
+                      onChange={(v) => run(() => api.invoke('remote:setRemember', { deviceId: d.id, remember: v }))}
+                    />
+                    {d.hasPin && (
+                      <Button variant="ghost" size="sm" disabled={busy} onClick={() => void resetPin(d.id, d.name)}>
+                        {t('remote.devices.pinReset')}
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revoke(d.id, d.name)}>
+                      <Trash2 size={13} /> {t('remote.devices.revoke')}
+                    </Button>
+                  </span>
                 </Row>
               ))
             )}
@@ -255,6 +368,8 @@ export function RemoteSection(): React.JSX.Element {
           {state.devices.length >= LIMITS.maxDevices && (
             <p className="mt-2 text-xs text-muted">{t('remote.devices.max', { count: LIMITS.maxDevices })}</p>
           )}
+
+          <ActivityList api={api} state={state} />
 
           <p className="mt-6 text-xs leading-relaxed text-subtle">{t('remote.risk')}</p>
         </>

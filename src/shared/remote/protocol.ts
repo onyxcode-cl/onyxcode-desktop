@@ -108,7 +108,16 @@ export const LIMITS = {
   maxPathChars: 512,
   maxQueryEntries: 32,
   maxQueryValueChars: 2048,
-  maxErrorMsgChars: 200
+  maxErrorMsgChars: 200,
+
+  // --- Acceso (T6): PIN, bloqueo por inactividad y «recordar» la confirmación de conexión ---
+  pinDigits: 6,
+  /** Fallos de PIN seguidos tras los que se revoca el dispositivo. */
+  pinMaxFails: 5,
+  /** Inactividad (sin llamadas del celular) tras la que el Mac vuelve a pedir el PIN. */
+  inactivityLockMs: 5 * 60_000,
+  /** «Recordar 12 h»: la confirmación de conexión de ese dispositivo vale este tiempo. */
+  rememberMs: 12 * 60 * 60_000
 } as const
 
 // ---------------------------------------------------------------------------------------------
@@ -165,7 +174,12 @@ export type RequestFrame = {
   [M in RequestMethod]: { t: 'req'; id: number; m: M; p: RequestParams[M] }
 }[RequestMethod]
 
-export type ClientFrame = { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | RequestFrame | MuxClientFrame
+/** PIN de 6 dígitos (se fija al vincular y se verifica DENTRO del canal ya autenticado; el Mac solo guarda su hash). */
+export const PIN_RE = /^[0-9]{6}$/
+
+export type PinFrame = { t: 'pin-set'; pin: string } | { t: 'pin-verify'; pin: string }
+
+export type ClientFrame = { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | PinFrame | RequestFrame | MuxClientFrame
 
 // ---------------------------------------------------------------------------------------------
 // Datos que salen hacia el celular (ya recortados por el escritorio)
@@ -228,6 +242,12 @@ export type RemoteEvent =
 
 export type ByeReason = 'revoked' | 'stopped' | 'violations' | 'idle' | 'other-device' | 'timeout'
 export type DeniedReason = 'rejected' | 'timeout' | 'limit'
+/**
+ * Por qué el canal autenticado todavía no da acceso: `confirm` (esperando que el dueño apruebe esta conexión en el Mac),
+ * `pin-set` (hay que fijar el PIN), `pin-verify` (hay que verificarlo) o `inactive` (bloqueo por inactividad; pide el PIN).
+ */
+export type LockWhy = 'confirm' | 'pin-set' | 'pin-verify' | 'inactive'
+export const LOCK_WHY: readonly string[] = ['confirm', 'pin-set', 'pin-verify', 'inactive']
 
 // ---------------------------------------------------------------------------------------------
 // DataChannel: escritorio -> celular
@@ -243,6 +263,9 @@ export type HostFrame =
   | { t: 'auth-failed' }
   | { t: 'pong' }
   | { t: 'bye'; reason: ByeReason }
+  /** Sin acceso por ahora. `retryMs` = espera antes de reintentar el PIN; `left` = intentos que quedan antes de revocar. */
+  | { t: 'locked'; why: LockWhy; retryMs?: number; left?: number }
+  | { t: 'unlocked' }
   | { t: 'evt'; ev: RemoteEvent }
   | MuxHostFrame
   | {
@@ -398,6 +421,11 @@ export function parseClientFrame(raw: unknown): Parsed<ClientFrame> {
       if (typeof o.secret !== 'string' || !SECRET_RE.test(o.secret)) return fail('bad-secret')
       return { ok: true, value: { t: 'auth', deviceId: o.deviceId, secret: o.secret } }
     }
+    case 'pin-set':
+    case 'pin-verify':
+      if (!onlyKeys(o, ['t', 'pin'])) return fail('extra-keys')
+      if (typeof o.pin !== 'string' || !PIN_RE.test(o.pin)) return fail('bad-pin')
+      return { ok: true, value: { t: o.t, pin: o.pin } }
     case 'req':
       return parseRequest(o)
     case 'call':
@@ -553,6 +581,19 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
     case 'bye':
       if (!onlyKeys(o, ['t', 'reason']) || typeof o.reason !== 'string' || !BYE.includes(o.reason)) return fail('bad-reason')
       return { ok: true, value: { t: 'bye', reason: o.reason as ByeReason } }
+    case 'unlocked':
+      return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'unlocked' } } : fail('extra-keys')
+    case 'locked': {
+      if (!onlyKeys(o, ['t', 'why', 'retryMs', 'left'])) return fail('extra-keys')
+      if (typeof o.why !== 'string' || !LOCK_WHY.includes(o.why)) return fail('bad-why')
+      const isNum = (v: unknown, max: number): boolean => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= max
+      if (o.retryMs !== undefined && !isNum(o.retryMs, 3_600_000)) return fail('bad-retry')
+      if (o.left !== undefined && !isNum(o.left, 100)) return fail('bad-left')
+      const v: HostFrame = { t: 'locked', why: o.why as LockWhy }
+      if (o.retryMs !== undefined) v.retryMs = o.retryMs as number
+      if (o.left !== undefined) v.left = o.left as number
+      return { ok: true, value: v }
+    }
     case 'evt':
       if (!onlyKeys(o, ['t', 'ev']) || !isEvent(o.ev)) return fail('bad-event')
       return { ok: true, value: { t: 'evt', ev: o.ev } }

@@ -7,16 +7,18 @@ import { app, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { capsFor } from '@shared/platform-caps'
 import { REMOTE_OFF_STATE, type RemoteState } from '@shared/ipc-remote'
-import { DevicesStore, REMOTE_FILE } from './devices-store'
+import { AUDIT_FILE, AuditLog } from './audit'
+import { DevicesStore, REMOTE_FILE, toDeviceInfo } from './devices-store'
 import type { RemoteBootDeps } from './index'
 import type { RemoteService } from './service'
 
 export type RemoteHostDeps = Pick<
   RemoteBootDeps,
-  'chatDirectory' | 'startEngine' | 'getConnection' | 'getRecentFolders' | 'modelFor' | 'onChanged' | 'onPairRequest'
+  'chatDirectory' | 'startEngine' | 'getConnection' | 'getRecentFolders' | 'modelFor' | 'onChanged' | 'onPairRequest' | 'confirmHost'
 >
 
 let devicesStore: DevicesStore | null = null
+let auditLog: AuditLog | null = null
 let service: RemoteService | null = null
 let booting: Promise<RemoteService> | null = null
 let lastMode: RemoteState['mode'] = 'off'
@@ -25,6 +27,12 @@ const modeListeners = new Set<(mode: RemoteState['mode']) => void>()
 export function getDevicesStore(): DevicesStore {
   devicesStore ??= new DevicesStore(join(app.getPath('userData'), REMOTE_FILE), safeStorage)
   return devicesStore
+}
+
+/** Auditoría `userData/remote-audit.jsonl` (rotada, sin secretos). */
+export function getAudit(): AuditLog {
+  auditLog ??= new AuditLog(join(app.getPath('userData'), AUDIT_FILE))
+  return auditLog
 }
 
 /** Carpeta de la PWA: `Contents/Resources/pwa` empaquetada, `pwa/dist` en desarrollo. */
@@ -39,7 +47,7 @@ export function offState(platform: string = process.platform): RemoteState {
   if (!devices.available) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'no-safe-storage' }
   return {
     ...REMOTE_OFF_STATE,
-    devices: devices.list().map((d) => ({ id: d.id, name: d.name, createdAt: d.createdAt, lastSeenAt: d.lastSeenAt, connected: false }))
+    devices: devices.list().map((d) => toDeviceInfo(d, false, null, Date.now()))
   }
 }
 
@@ -72,6 +80,7 @@ export function ensureRemote(host: RemoteHostDeps): Promise<RemoteService> {
       m.createRemote({
         ...host,
         devices: getDevicesStore(),
+        audit: (e) => getAudit().append(e),
         pwaDir: pwaDir(),
         onChanged: (s) => {
           noteState(s)

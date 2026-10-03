@@ -19,6 +19,28 @@ export interface RemoteDeviceInfo {
   lastSeenAt: number | null
   /** ¿Conectado ahora mismo? (como mucho uno a la vez). */
   connected: boolean
+  /** 8 hex del sha256 del deviceId (distingue celulares con el mismo nombre; filtro de la actividad). */
+  fingerprint: string
+  /** ¿Ya fijó su PIN de 6 dígitos? (nunca se expone el PIN ni su hash). */
+  hasPin: boolean
+  /** «Recordar 12 h»: ms desde epoch hasta los que vale la confirmación de conexión (`null` = se confirma cada vez). */
+  trustUntil: number | null
+  /**
+   * Estado de acceso de la conexión actual: `awaiting` (esperando tu confirmación), `pin` (falta fijar/verificar el PIN),
+   * `locked` (bloqueado por inactividad), `open`. `null` si no está conectado.
+   */
+  access: 'awaiting' | 'pin' | 'locked' | 'open' | null
+}
+
+/** Un suceso de la auditoría (`userData/remote-audit.jsonl`): sin secretos, rutas ni contenido. */
+export interface RemoteAuditEntry {
+  ts: number
+  kind: string
+  device?: string
+  name?: string
+  ch?: string
+  cls?: string
+  n?: number
 }
 
 export interface RemotePairing {
@@ -94,6 +116,9 @@ export interface RemoteConfirmRequest {
   expiresAt: number
 }
 
+/** Canal ficticio de la confirmación de una conexión nueva (solo ahí se ofrece «Recordar 12 h»). */
+export const REMOTE_CONNECT_CHANNEL = 'remote:connect'
+
 export interface RemoteInvokeContract {
   'remote:getState': { req: void; res: RemoteState }
   /** «Activar»: abre el servidor local y genera el primer QR. */
@@ -105,7 +130,13 @@ export interface RemoteInvokeContract {
   'remote:confirmPair': { req: { requestId: string; accept: boolean }; res: RemoteState }
   'remote:revoke': { req: { deviceId: string }; res: RemoteState }
   /** Respuesta del dueño a una confirmación (`remote:confirmRequest`). Solo la ventana principal. */
-  'remote:confirmAction': { req: { requestId: string; accept: boolean }; res: void }
+  'remote:confirmAction': { req: { requestId: string; accept: boolean; remember?: boolean }; res: void }
+  /** «Recordar 12 h» la confirmación de conexión de un dispositivo (o quitarlo). */
+  'remote:setRemember': { req: { deviceId: string; remember: boolean }; res: RemoteState }
+  /** Borra el PIN de un dispositivo: tendrá que fijar uno nuevo al conectar. */
+  'remote:resetPin': { req: { deviceId: string }; res: RemoteState }
+  /** Actividad reciente (más nueva primero), opcionalmente de un dispositivo (huella de 8 hex). */
+  'remote:auditList': { req: { device?: string } | void; res: RemoteAuditEntry[] }
 }
 
 export interface RemoteEventContract {
@@ -113,6 +144,8 @@ export interface RemoteEventContract {
   'remote:pairRequest': RemotePairRequest
   /** Una acción del celular espera confirmación en el Mac (solo ventana principal). */
   'remote:confirmRequest': RemoteConfirmRequest
+  /** La confirmación dejó de estar pendiente (caducó, se canceló o se resolvió en otro sitio): cerrar el diálogo. */
+  'remote:confirmDismiss': { requestId: string }
 }
 
 export type RemoteInvokeChannel = keyof RemoteInvokeContract
@@ -127,13 +160,17 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:stop',
   'remote:confirmPair',
   'remote:revoke',
-  'remote:confirmAction'
+  'remote:confirmAction',
+  'remote:setRemember',
+  'remote:resetPin',
+  'remote:auditList'
 ] as const satisfies readonly RemoteInvokeChannel[]
 
 export const REMOTE_EVENT_CHANNELS = [
   'remote:changed',
   'remote:pairRequest',
-  'remote:confirmRequest'
+  'remote:confirmRequest',
+  'remote:confirmDismiss'
 ] as const satisfies readonly RemoteEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
