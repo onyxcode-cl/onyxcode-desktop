@@ -38,6 +38,7 @@ import {
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
+import { platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
 import { useCodeAiGate } from './ComposerControls'
@@ -289,7 +290,9 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
   const item = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-hover hover:text-fg'
-  const native = nativeCode()
+  // Mostrar en Finder / abrir en el editor / elegir otra carpeta: diálogos y apps del Mac (no existen en la PWA del celular).
+  const native = nativeCode('dialogs')
+  const dialogs = platformCaps().nativeDialogs
   return (
     <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0">
       <button
@@ -307,9 +310,11 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
           <div className="truncate px-3 py-1.5 font-mono text-[11px] text-subtle" title={directory}>
             {tildify(directory)}
           </div>
-          <button type="button" className={item} onClick={() => (setOpen(false), void pickAndOpenFolder())}>
-            <FolderOpen size={14} /> {t('code.menu.openAnother')}
-          </button>
+          {dialogs && (
+            <button type="button" className={item} onClick={() => (setOpen(false), void pickAndOpenFolder())}>
+              <FolderOpen size={14} /> {t('code.menu.openAnother')}
+            </button>
+          )}
           <button type="button" className={item} onClick={() => (setOpen(false), closeProject())}>
             <LayoutGrid size={14} /> {t('code.menu.recentProjects')}
           </button>
@@ -363,12 +368,16 @@ function BranchPill({ directory }: { directory: string }): React.JSX.Element | n
   )
 }
 
-const PANEL_META: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] = [
+const ALL_PANELS: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] = [
   { id: 'changes', label: 'code.panel.changes', icon: <GitCompare size={16} /> },
   { id: 'terminal', label: 'code.panel.terminal', icon: <SquareTerminal size={16} /> },
   { id: 'files', label: 'code.panel.files', icon: <FileCode2 size={16} /> },
   { id: 'browser', label: 'code.panel.browser', icon: <Globe size={16} /> }
 ]
+/** Sin terminal (pty) ni vista nativa del navegador en la PWA del celular; en Mac y Windows no cambia nada. */
+const PANEL_META = ALL_PANELS.filter(
+  (p) => (p.id !== 'terminal' || platformCaps().terminal) && (p.id !== 'browser' || platformCaps().nativeBrowser)
+)
 
 function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const t = useT()

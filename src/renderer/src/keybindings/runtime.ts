@@ -28,7 +28,10 @@ function goMode(id: ModeId): ActionHandler {
 }
 
 function togglePanel(panel: RightPanel): ActionHandler {
-  return { enabled: inCodeProject, run: () => useCode.getState().togglePanel(panel) }
+  // Sin terminal ni vista nativa del navegador (PWA del celular), sus atajos no hacen nada.
+  const exists = (): boolean =>
+    (panel !== 'terminal' || capsFor(currentPlatform()).terminal) && (panel !== 'browser' || capsFor(currentPlatform()).nativeBrowser)
+  return { enabled: () => exists() && inCodeProject(), run: () => useCode.getState().togglePanel(panel) }
 }
 
 function cycleMode(step: 1 | -1): ActionHandler {

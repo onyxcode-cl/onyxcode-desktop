@@ -78,20 +78,26 @@
 * {
   box-sizing: border-box;
 }
-html,
-body {
-  height: 100%;
-  margin: 0;
-}
-body {
+:host {
+  /* La interfaz ligera vive en un shadow root (no pisa los estilos de la interfaz completa ni al revés). Cubre la página
+     entera (`cover`) o solo una franja sin interceptar toques (`strip`: reconectando / esperando al Mac). */
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: block;
   background: var(--bg);
   color: var(--fg);
   font: 15px/1.5 var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
-  overflow: hidden;
+}
+:host([data-mode='strip']) {
+  background: transparent;
+  pointer-events: none;
+}
+:host([data-mode='hidden']) {
+  display: none !important;
 }
 ::selection {
   background: var(--selection);
@@ -738,7 +744,7 @@ h1:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
-.kb .composer {
+#app.kb .composer {
   margin-bottom: 8px;
 }
 .composer textarea {
@@ -854,4 +860,38 @@ h1:focus {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ── franja sobre la interfaz completa (reconectando / esperando al Mac): no intercepta toques ── */
+.strip {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  pointer-events: none;
+}
+.strip .banner {
+  padding-top: calc(9px + env(safe-area-inset-top));
+}
+.strip .waitpill {
+  align-self: center;
+  max-width: min(92vw, 520px);
+  margin: 10px 12px 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+  animation: fade-in 180ms var(--ease-out) both;
+}
+:host([data-mode='strip']) #app {
+  background: transparent;
+  max-width: none;
+  border: 0;
+  padding: 0;
 }

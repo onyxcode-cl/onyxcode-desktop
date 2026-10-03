@@ -5,6 +5,7 @@ import type { FolderAccessMode } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { chooseFolder, forgetFolder, linkFolder, selectFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
@@ -296,14 +297,17 @@ export function FolderMenu({
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-hover disabled:opacity-60"
-                  disabled={picking}
-                  onClick={() => void startAdd()}
-                >
-                  {picking ? <Loader2 size={14} className="animate-spin" /> : <FolderPlus size={14} />} {t('tasksComputer.menu.addLinked')}
-                </button>
+                platformCaps().nativeDialogs && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-hover disabled:opacity-60"
+                    disabled={picking}
+                    onClick={() => void startAdd()}
+                  >
+                    {picking ? <Loader2 size={14} className="animate-spin" /> : <FolderPlus size={14} />}{' '}
+                    {t('tasksComputer.menu.addLinked')}
+                  </button>
+                )
               )}
               {linkError && (
                 <p role="alert" className="px-2 py-1 text-[11.5px] text-danger">
@@ -312,17 +316,21 @@ export function FolderMenu({
               )}
             </>
           )}
-          <div className="my-1 border-t border-border" />
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-hover"
-            onClick={() => {
-              setOpen(false)
-              void chooseFolder()
-            }}
-          >
-            <FolderPlus size={14} /> {t('tasksComputer.menu.chooseOther')}
-          </button>
+          {platformCaps().nativeDialogs && (
+            <>
+              <div className="my-1 border-t border-border" />
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-hover"
+                onClick={() => {
+                  setOpen(false)
+                  void chooseFolder()
+                }}
+              >
+                <FolderPlus size={14} /> {t('tasksComputer.menu.chooseOther')}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

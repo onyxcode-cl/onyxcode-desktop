@@ -14,6 +14,6 @@
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", "vite.config.ts", "../src/shared/remote/*.ts"],
+  "include": ["src/**/*.ts", "vite.config.ts", "vite.full.config.ts", "../src/shared/remote/*.ts"],
   "exclude": ["../src/shared/remote/*.test.ts"]
 }

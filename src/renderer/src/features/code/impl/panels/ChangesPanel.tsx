@@ -23,6 +23,7 @@ import {
 import { IconButton } from '../../../../components/IconButton'
 import { splitPath } from '../../../../lib/paths'
 import { useT } from '../../../../lib/i18n'
+import { platformCaps } from '../../../../lib/platform'
 import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
 import { DiffStats } from '../ToolCard'
@@ -541,6 +542,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const fsVersion = useVisibleFsVersion()
   const touchFs = useCode((s) => s.touchFs)
   const native = nativeCode()
+  // Abrir en el editor / mostrar en Finder son del Mac: no existen en la PWA del celular.
+  const dialogs = platformCaps().nativeDialogs
   // Cambios hechos fuera de la app (editor, terminal): el vigilante sube `fsVersion` con debounce, sin polling.
   useProjectWatch(directory)
   const [status, setStatus] = useState<StatusInfo | null>(null)
@@ -775,16 +778,24 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 <span className="ml-auto flex shrink-0 items-center">
                   {native && (
                     <>
-                      <IconButton
-                        label={t('code.menu.openEditor')}
-                        className="h-6 w-6"
-                        onClick={() => void native.dialog.openInEditor(abs)}
-                      >
-                        <Code2 size={13} />
-                      </IconButton>
-                      <IconButton label={t('code.menu.reveal')} className="h-6 w-6" onClick={() => void native.dialog.revealInFinder(abs)}>
-                        <FolderOpen size={13} />
-                      </IconButton>
+                      {dialogs && (
+                        <>
+                          <IconButton
+                            label={t('code.menu.openEditor')}
+                            className="h-6 w-6"
+                            onClick={() => void native.dialog.openInEditor(abs)}
+                          >
+                            <Code2 size={13} />
+                          </IconButton>
+                          <IconButton
+                            label={t('code.menu.reveal')}
+                            className="h-6 w-6"
+                            onClick={() => void native.dialog.revealInFinder(abs)}
+                          >
+                            <FolderOpen size={13} />
+                          </IconButton>
+                        </>
+                      )}
                       {canDiscard(selectedFile) && (
                         <IconButton
                           label={t('code.changes.discard')}

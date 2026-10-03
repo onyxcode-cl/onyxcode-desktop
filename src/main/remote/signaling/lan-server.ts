@@ -27,8 +27,17 @@ const MIME: Record<string, string> = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
-  '.woff2': 'font/woff2'
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.map': 'application/json; charset=utf-8'
 }
+/**
+ * Recurso con huella de Vite en el nombre (`assets/main-BaDQdc5Q.js`: 8 caracteres con algún dígito o mayúscula): cambia si
+ * cambia el contenido, así que se cachea para siempre. Un nombre sin huella (`sin-huella.js`) nunca es inmutable.
+ */
+const HASHED_RE = /^\/(?:app\/)?assets\/[A-Za-z0-9_.-]+-(?=[A-Za-z0-9_-]*[0-9A-Z_])[A-Za-z0-9_-]{8}\.[a-z0-9]+(?:\.map)?$/
+/** Solo se sirve `.gz` precomprimido de estos tipos (el resto, imágenes y fuentes, ya vienen comprimidos). */
+const GZIP_TYPES = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.map', '.txt', '.webmanifest'])
 
 export interface LanServerOptions {
   /** IPv4 privada a la que se liga. */
@@ -141,9 +150,9 @@ export class LanSignalingServer implements SignalingTransport {
 
   // ── HTTP estático ──
 
-  private securityHeaders(): Record<string, string> {
+  private securityHeaders(cache = 'no-store'): Record<string, string> {
     return {
-      'Cache-Control': 'no-store',
+      'Cache-Control': cache,
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'no-referrer',
       'Cross-Origin-Resource-Policy': 'same-origin',
@@ -152,7 +161,8 @@ export class LanSignalingServer implements SignalingTransport {
         "default-src 'none'",
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data:",
+        "img-src 'self' data: blob:",
+        "font-src 'self'",
         `connect-src 'self' ws://${this.host}`,
         "manifest-src 'self'",
         "base-uri 'none'",
@@ -186,8 +196,20 @@ export class LanSignalingServer implements SignalingTransport {
         if (pathname === '/index.html') return send(200, fallbackPage(), MIME['.html'])
         return send(404, 'Not found')
       }
-      const data = readFileSync(file)
-      res.writeHead(200, { ...this.securityHeaders(), 'Content-Type': type, 'Content-Length': data.length })
+      // `.gz` precomprimido junto al original (lo deja `scripts/build-pwa.mjs`): un archivo grande no se comprime en cada petición.
+      const ext = extname(file).toLowerCase()
+      const accepts = /\bgzip\b/i.test(String(req.headers['accept-encoding'] ?? ''))
+      const gz = accepts && GZIP_TYPES.has(ext) && existsSync(`${file}.gz`) && statSync(`${file}.gz`).isFile() ? `${file}.gz` : null
+      const data = readFileSync(gz ?? file)
+      // Con huella: inmutable. `index.html`, `entry.json` y lo demás: nunca de la caché (siempre apuntan a la versión vigente).
+      const hashed = HASHED_RE.test(pathname)
+      res.writeHead(200, {
+        ...this.securityHeaders(hashed ? 'public, max-age=31536000, immutable' : 'no-store'),
+        'Content-Type': type,
+        'Content-Length': data.length,
+        ...(gz ? { 'Content-Encoding': 'gzip' } : {}),
+        ...(GZIP_TYPES.has(ext) ? { Vary: 'Accept-Encoding' } : {})
+      })
       res.end(req.method === 'HEAD' ? undefined : data)
     } catch {
       send(500, 'Error')

@@ -7,9 +7,12 @@
  */
 import type { NotifyTarget } from '@shared/types'
 import { api } from './api'
+import { isRemoteSurface } from './platform'
 
 /** Envía una notificación nativa. Silenciosa si la ventana ya tiene el foco (nada que avisar). */
 export function sendNotification(title: string, body: string, target?: NotifyTarget): void {
+  // PWA del celular: los avisos nativos y el badge del Dock son del Mac (que los muestra por sí mismo).
+  if (isRemoteSurface()) return
   try {
     if (document.hasFocus()) return
   } catch {
@@ -22,7 +25,7 @@ let lastSent = -1
 
 /** Actualiza el badge del Dock si el conteo cambió desde el último envío. */
 export function setAttentionCount(count: number): void {
-  if (count === lastSent) return
+  if (isRemoteSurface() || count === lastSent) return
   lastSent = count
   void api.invoke('app:setAttention', { count }).catch(() => undefined)
 }

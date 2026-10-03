@@ -23,7 +23,7 @@ import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
 import { useT } from '../../../lib/i18n'
 import { useAccountState } from '../../../lib/use-account-state'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
 import { AccountSection } from './AccountSection'
@@ -113,7 +113,9 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
       (s.id !== 'account' || account?.required === true) &&
       (!['tasks', 'network', 'automode'].includes(s.id) || caps.tasks) &&
       (s.id !== 'computer' || caps.computer) &&
-      (s.id !== 'remote' || caps.remote)
+      (s.id !== 'remote' || caps.remote) &&
+      // PWA del celular: MCP, navegador integrado, atajos de teclado y diagnóstico son del Mac (prohibidos o sin sentido en el celular).
+      (!isRemoteSurface() || !['mcp', 'browser', 'shortcuts', 'diagnostics'].includes(s.id))
   )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 

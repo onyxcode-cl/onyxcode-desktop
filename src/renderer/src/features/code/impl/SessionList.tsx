@@ -24,6 +24,7 @@ import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
+import { platformCaps } from '../../../lib/platform'
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
 function SessionRow({
@@ -303,8 +304,9 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         <button
           type="button"
           onClick={() => void pickAndOpenFolder()}
+          disabled={!platformCaps().nativeDialogs}
           title={directory}
-          className="no-drag mx-2 mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-hover"
+          className="no-drag mx-2 mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-hover disabled:pointer-events-none"
         >
           <FolderOpen size={15} className="shrink-0 text-accent" />
           <span className="truncate font-medium">{baseName(directory)}</span>

@@ -1003,3 +1003,39 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
   build ad-hoc cambia la identidad y macOS olvida los permisos concedidos. La config ya soporta
   ambos casos (`electron-builder.js` + `build/notarize.js`); falta que el usuario aporte su propio
   Developer ID Application.
+
+## 3 vicies quater. PWA completa del celular (F8-B56, tanda T5)
+
+La misma interfaz React de `src/renderer/src` corre en el navegador del celular (o de un escritorio) con shims de `window.api` y `fetch` sobre el
+DataChannel. **No cambia ninguna regla del Mac**: todo lo que el celular puede hacer lo sigue decidiendo `decide` (política «celular»); ocultar un botón
+en la interfaz es solo comodidad, nunca el control.
+
+- **Carga después de autenticar**: el arranque ligero (`pwa/src`, ~25 KB gzip) vincula, autentica y pide confirmación/PIN; solo cuando el Mac da acceso
+  (`unlocked`) descarga `app/entry.json` (nombres con huella de JS/CSS, validados con una lista de caracteres y prefijo `assets/`) y arranca la interfaz.
+  Antes de eso no existe en la página nada de la interfaz completa. Si la carga falla o tarda >25 s se queda la interfaz ligera de respaldo.
+- **Aislamiento de las dos capas**: la capa ligera (vinculación, PIN, «confirma en tu Mac», reconectando, sin conexión) vive en un **shadow root**; sus
+  estilos globales no tocan a la interfaz completa ni al revés. Mientras tapa (`cover`) la interfaz completa queda `inert`. El bloqueo a los 5 min lo decide
+  el Mac (`locked{why:'inactive'}`): la capa ligera vuelve a tapar y pide el PIN sin recargar; al desbloquear se reanudan los eventos con `since`.
+- **`window.api`**: se arma con el MISMO código que el preload (`src/preload/window-api.ts`: `makeBridge` + los `build*Api`), sobre un `ipcRenderer` falso:
+  `invoke` → `call{ch,p}` y la respuesta vuelve como `IpcResult`; `on` → bus de eventos remoto. La lista de canales sigue siendo la de `src/shared/ipc*.ts`;
+  `window.api.platform = 'remote'`. **`window.fetch`** solo intercepta `onyx://engine/…` (el resto va al `fetch` original y la CSP solo deja `'self'`).
+- **El celular nunca ve credenciales**: lo que recibe ya viene con `authorization = ''` y `baseUrl = onyx://engine/…`; el shim reenvía solo `content-type`
+  y `accept` (aunque el SDK ponga `Authorization`, no sale hacia el Mac).
+- **Errores tipados** (`RemoteLinkError`: `disconnected`, `forbidden`, `locked`, `denied`, `expired`, `unavailable`, `busy`, `rate-limited`, `too-large`…) con
+  texto es/en; `forbidden` + detalle `locked` = PIN pedido, `rejected` = el dueño dijo que no. **Las mutaciones nunca se reintentan solas**: un fallo es definitivo
+  y el `AbortSignal` solo envía `cancel`.
+- **Esperar una acción «D»**: la interfaz no sabe cuáles lo son, así que cualquier llamada que tarde >1,5 s muestra «Esperando a tu Mac…» (hasta 90 s). Si el Mac rechaza o
+  caduca, la acción falla con `denied`/`expired`; nunca se ejecuta por el simple paso del tiempo.
+- **Contexto no seguro** (HTTP en IP local): se rehacen `crypto.randomUUID` (lo usa la vigilancia de archivos de Code) y `navigator.clipboard.writeText`
+  (`execCommand('copy')`; la lectura del portapapeles se rechaza). Solo si faltan.
+- **Servidor estático** (`lan-server.ts`): `.gz` precomprimido con `Content-Encoding` solo para texto y solo si el cliente acepta gzip (el `.gz` no se pide directamente);
+  `Cache-Control: immutable` **solo** para archivos con huella de Vite (8 caracteres con dígito/mayúscula, `assets/…`); `index.html`, `entry.json` y lo demás `no-store`;
+  sin service worker ni manifest; MIME correctos (`.js .css .svg .woff2 .map .json`). CSP: `default-src 'none'`, `script-src 'self'` (sin inline ni eval), `img-src 'self' data: blob:`,
+  `font-src 'self'`, `connect-src 'self' ws://host`, sin `worker-src`. Los estáticos van por HTTP normal (no por el DataChannel); no cuentan para el límite de 2 sockets de
+  señalización y siguen sujetos a la comprobación de `Host` (421) y a GET/HEAD.
+- **Sin terminal, diálogos, `openExternal`, vista nativa ni actualizador**: la superficie `remote` de `platform-caps` los oculta (y el Mac los rechaza igualmente: `pty:*`, `dialog:*`,
+  `app:openExternal`, `browser:attach`, `app:update*` son X). Los enlaces se abren en una pestaña del propio navegador del celular (`noopener`, solo `http(s)`).
+- **Peso**: sin xterm, `highlight.js` con 15 lenguajes, Tareas/Rutinas/Ajustes y el diccionario inglés en trozos aparte.
+- **Límites conocidos**: el HTTP de la LAN sigue sin cifrar (riesgo aceptado hasta el HTTPS de la fase 2): un intermediario en el Wi-Fi podría alterar el JS que se sirve; las defensas son la
+  confirmación de cada conexión nueva, el código de 6 dígitos, el PIN y que todo lo peligroso se confirma en el Mac. `style-src` conserva `'unsafe-inline'` (estilos en línea de React).
+  El código de la interfaz completa llega al celular por una conexión no autenticada; los datos del celular (conversaciones) solo viajan por el DataChannel cifrado.

@@ -5,6 +5,7 @@ import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { baseName, tildify } from '../../../lib/paths'
 import { PageHeader } from '../../../components/PageHeader'
+import { platformCaps } from '../../../lib/platform'
 import { useSettings } from '../../../stores/settings'
 import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
@@ -304,6 +305,8 @@ export function ProjectPicker(): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
 
+  // En la PWA del celular no hay diálogo de carpetas del Mac: solo se abren las que ya están en «Recientes».
+  const dialogs = platformCaps().nativeDialogs
   const open = (): void => {
     setBusy(true)
     void pickAndOpenFolder().finally(() => setBusy(false))
@@ -316,9 +319,11 @@ export function ProjectPicker(): React.JSX.Element {
       <PageHeader
         title={t('code.picker.title')}
         actions={
-          <Button variant="primary" disabled={busy} onClick={open}>
-            <FolderOpen size={15} /> {t('code.picker.open')}
-          </Button>
+          dialogs ? (
+            <Button variant="primary" disabled={busy} onClick={open}>
+              <FolderOpen size={15} /> {t('code.picker.open')}
+            </Button>
+          ) : undefined
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -333,9 +338,11 @@ export function ProjectPicker(): React.JSX.Element {
               </div>
               <h2 className="text-lg font-semibold">{t('code.picker.emptyTitle')}</h2>
               <p className="mt-1 max-w-sm text-sm text-muted">{t('code.picker.emptyBody')}</p>
-              <Button variant="primary" className="mt-5" disabled={busy} onClick={open}>
-                <FolderOpen size={15} /> {t('code.picker.openEllipsis')}
-              </Button>
+              {dialogs && (
+                <Button variant="primary" className="mt-5" disabled={busy} onClick={open}>
+                  <FolderOpen size={15} /> {t('code.picker.openEllipsis')}
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -362,14 +369,16 @@ export function ProjectPicker(): React.JSX.Element {
                     onRemove={() => void update({ recentFolders: recent.filter((d) => d !== dir) })}
                   />
                 ))}
-                <button
-                  type="button"
-                  onClick={open}
-                  disabled={busy}
-                  className="flex min-h-[112px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong text-sm text-muted transition hover:border-accent hover:bg-accent-soft/40 hover:text-fg"
-                >
-                  <Plus size={18} /> {t('code.picker.openAnother')}
-                </button>
+                {dialogs && (
+                  <button
+                    type="button"
+                    onClick={open}
+                    disabled={busy}
+                    className="flex min-h-[112px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong text-sm text-muted transition hover:border-accent hover:bg-accent-soft/40 hover:text-fg"
+                  >
+                    <Plus size={18} /> {t('code.picker.openAnother')}
+                  </button>
+                )}
               </div>
             </>
           )}

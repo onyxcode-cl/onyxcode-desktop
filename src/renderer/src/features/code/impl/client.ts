@@ -9,6 +9,7 @@ import type { WindowApi } from '@shared/ipc'
 import { useServer, onOpencodeEvent, onStreamReconnect } from '../../../stores/server'
 import type { OcEvent, OpencodeClient } from '../../../lib/opencode'
 import { errorMessage } from '../../../lib/opencode'
+import { platformCaps } from '../../../lib/platform'
 
 export { errorMessage }
 export type { OcEvent, OpencodeClient }
@@ -45,9 +46,15 @@ export function sdkData<T>(res: { data?: T; error?: unknown }): T {
   return res.data
 }
 
-/** API pty/git/diálogos completa de `window.api.code` (preload), o `null` si no existe. */
-export function nativeCode(): import('@shared/ipc-code').CodeApi | null {
+/**
+ * API pty/git/diálogos completa de `window.api.code` (preload), o `null` si no existe. Con `feature` devuelve `null` también
+ * cuando esa parte no aplica en esta superficie (PWA del celular: sin terminal `pty` ni diálogos/editores del Mac); git y
+ * archivos sí funcionan por el puente, así que sin `feature` la API se entrega igual.
+ */
+export function nativeCode(feature?: 'pty' | 'dialogs'): import('@shared/ipc-code').CodeApi | null {
   const w = window.api as WindowApi & { code?: import('@shared/ipc-code').CodeApi }
+  if (feature === 'pty' && !platformCaps().terminal) return null
+  if (feature === 'dialogs' && !platformCaps().nativeDialogs) return null
   return w.code && typeof w.code.git?.status === 'function' ? w.code : null
 }
 

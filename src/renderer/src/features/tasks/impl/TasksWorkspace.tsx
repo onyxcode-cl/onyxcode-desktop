@@ -750,17 +750,19 @@ export function TasksWorkspace(): React.JSX.Element {
             >
               {t('tasks.ws.progress')}
             </button>
-            <button
-              type="button"
-              onClick={() => setAsideTab('browser')}
-              disabled={!browserOwner}
-              title={TASKS_TERMS.browser}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
-                asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
-              }`}
-            >
-              <Globe size={12} /> {TASKS_TERMS.browser}
-            </button>
+            {hasBrowserBridge() && (
+              <button
+                type="button"
+                onClick={() => setAsideTab('browser')}
+                disabled={!browserOwner}
+                title={TASKS_TERMS.browser}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
+                  asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+                }`}
+              >
+                <Globe size={12} /> {TASKS_TERMS.browser}
+              </button>
+            )}
             <span className="ml-auto flex items-center gap-0.5">
               {asideTab === 'progress' && (
                 <button

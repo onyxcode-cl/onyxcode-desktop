@@ -3,7 +3,7 @@ import { KeyRound, Loader2 } from 'lucide-react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import { APP_NAME } from '@shared/brand'
 import { Button } from '../../../components/Button'
-import { call } from '../../../lib/api'
+import { openExternalUrlStrict } from '../../../lib/open-external'
 import { useT } from '../../../lib/i18n'
 import { KeyTestNotice } from './KeyTestNotice'
 import { authOptions, saveProviderKey } from './providerCatalog'
@@ -107,7 +107,7 @@ export function ProviderKeyForm({
     try {
       const authz = await onOauthStart(target, index)
       if (mine !== generation.current) return
-      await call('app:openExternal', { url: authz.url })
+      await openExternalUrlStrict(authz.url)
       if (mine !== generation.current) return
       if (authz.method === 'auto') {
         setFlow({ kind: 'auto', index })
