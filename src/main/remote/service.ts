@@ -20,6 +20,8 @@ import { toDeviceInfo, type DevicesStore } from './devices-store'
 import { deviceFingerprint } from './confirm-queue'
 import { EventBridge, type EventBridgeOptions, type EventSource } from './events'
 import { PairingManager } from './pairing'
+import { isUrgentFrame } from './engine-proxy'
+import type { DeviceDispatch, RemoteEngineHost } from './engine-host'
 import { PeerSession, type PeerAccess } from './peer-session'
 import type { Clock } from './rate-limit'
 import type { RtcAnswerer, RtcFactory } from './rtc'
@@ -48,6 +50,8 @@ export interface RemoteServiceDeps {
   /** ¿Es una lectura? Con el celular bloqueado por inactividad solo se atienden lecturas (sin esto, ninguna). */
   isRead?: (r: CallRequest | HttpRequest) => boolean
   inactivityMs?: number
+  /** Motor del protocolo v2 (T4): proxy IPC/HTTP, concentrador de eventos y su búfer. Sin él, toda llamada v2 responde `unavailable`. */
+  engine?: RemoteEngineHost
   /** Plataforma sin función (`platform`) o ya conocida como no disponible. */
   unavailable?: () => RemoteUnavailableReason | null
 }
@@ -60,6 +64,7 @@ interface PeerRecord {
   signaling: SignalingPeer
   answerer: RtcAnswerer
   session: PeerSession | null
+  dispatch: DeviceDispatch | null
   timer: ReturnType<typeof setTimeout> | null
   kind: 'pair' | 'resume'
   closed: boolean
@@ -224,6 +229,7 @@ export class RemoteService {
     this.idleStopAt = null
     this.bridge?.stop()
     this.bridge = null
+    this.d.engine?.close()
     const peers = [...this.peers]
     this.peers.clear()
     this.connected = null
@@ -285,7 +291,7 @@ export class RemoteService {
     if (this.peers.size >= LIMITS.maxSignalSockets) return sp.close()
 
     const answerer = this.rtc.createAnswerer({ bindAddress: this.ip })
-    const rec: PeerRecord = { signaling: sp, answerer, session: null, timer: null, kind: hello.mode, closed: false }
+    const rec: PeerRecord = { signaling: sp, answerer, session: null, dispatch: null, timer: null, kind: hello.mode, closed: false }
     this.peers.add(rec)
     rec.timer = setTimeout(() => {
       if (!rec.session?.authed) this.closePeer(rec)
@@ -319,6 +325,16 @@ export class RemoteService {
         code,
         devices: this.d.devices,
         backend: this.d.backend,
+        makeDispatch: this.d.engine
+          ? (id) => {
+              rec.dispatch?.dispose()
+              const dispatch = this.d.engine!.createDispatch({ id, name: this.d.devices.get(id)?.name ?? '?' })
+              rec.dispatch = dispatch
+              return dispatch
+            }
+          : undefined,
+        events: this.d.engine?.events,
+        urgent: this.d.engine ? isUrgentFrame : undefined,
         confirmPair: (info) => this.askConfirm(rec, info),
         onAuthed: (id) => this.onAuthed(session, id),
         onEnd: () => this.onSessionEnd(rec, session),
@@ -446,11 +462,14 @@ export class RemoteService {
       })
     }
     this.bridge.start()
+    this.d.engine?.hub.start()
     this.changed()
     return true
   }
 
   private onSessionEnd(rec: PeerRecord, session: PeerSession): void {
+    rec.dispatch?.dispose()
+    rec.dispatch = null
     if (this.pending?.peer === rec) {
       const p = this.pending
       this.pending = null
@@ -459,6 +478,7 @@ export class RemoteService {
     if (session.deviceId) this.d.confirmHost?.cancelDevice(session.deviceId)
     if (this.connected === session) {
       this.connected = null
+      this.d.engine?.hub.stop()
       this.bridge?.stop()
       this.bridge = null
       this.armIdleTimer()

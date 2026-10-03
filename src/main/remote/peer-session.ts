@@ -78,6 +78,8 @@ export interface PeerSessionDeps {
   onEnd(reason: string): void
   /** Despachador de `call`/`http`/`sub` del protocolo v2 (T2/T3/T4). Sin él se rechaza todo. */
   dispatch?: MuxDispatch
+  /** Crea el despachador cuando el dispositivo ya está autenticado (recibe el `deviceId` VERIFICADO). Gana `dispatch` si ambos. */
+  makeDispatch?: (deviceId: string) => MuxDispatch
   /** Búfer circular de eventos que sirve a `sub` (el servicio lo conserva entre conexiones para reanudar). */
   events?: EventLog
   /** ¿Es una petición de control/permisos (prioridad máxima en la respuesta)? */
@@ -162,15 +164,19 @@ export class PeerSession {
 
   /** Multiplexor v2 (se crea al autenticar; cada conexión tiene el suyo). */
   private getMux(): Mux {
-    this.mux ??= new Mux({
+    if (this.mux) return this.mux
+    // El despachador de T4 se crea UNA vez por conexión (no en cada trama); T6 lo envuelve con el control de acceso.
+    const baseDispatch = this.d.dispatch ?? (this._deviceId ? this.d.makeDispatch?.(this._deviceId) : undefined)
+    this.mux = new Mux({
       role: 'host',
       out: this.outbox,
-      dispatch: this.gate
-        ? guardDispatch(this.d.dispatch, this.gate, {
-            isRead: this.d.access?.isRead,
-            onPolicyDenied: (r) => this.d.access?.audit({ kind: 'policy-denied', ...this.who(), ...r })
-          })
-        : this.d.dispatch,
+      dispatch:
+        this.gate && baseDispatch
+          ? guardDispatch(baseDispatch, this.gate, {
+              isRead: this.d.access?.isRead,
+              onPolicyDenied: (r) => this.d.access?.audit({ kind: 'policy-denied', ...this.who(), ...r })
+            })
+          : baseDispatch,
       events: this.d.events,
       urgent: this.d.urgent,
       onViolation: () => this.violation()

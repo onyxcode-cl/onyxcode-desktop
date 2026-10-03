@@ -10,6 +10,7 @@ import { RemoteService } from './service'
 import type { SignalHello, SignalingPeer, SignalingStartOptions, SignalingTransport } from './signaling/types'
 import type { RemoteBackend } from './whitelist'
 import type { EventSource } from './events'
+import { createEngineHost, type RemoteEngineHost } from './engine-host'
 
 const FP = (h: string): string => `v=0\r\na=fingerprint:sha-256 ${h.repeat(32).match(/../g)!.join(':').toUpperCase()}\r\n`
 
@@ -123,7 +124,7 @@ let states: RemoteState[]
 let pairReqs: Array<{ requestId: string; deviceName: string; code: string }>
 let ip: string | null
 
-function make(opts: { devices?: DevicesStore } = {}): { svc: RemoteService; devices: DevicesStore } {
+function make(opts: { devices?: DevicesStore; engine?: RemoteEngineHost } = {}): { svc: RemoteService; devices: DevicesStore } {
   const devices = opts.devices ?? new DevicesStore(join(dir, 'remote.bin'), safe)
   const rtc: RtcFactory = {
     createAnswerer: () => {
@@ -133,6 +134,7 @@ function make(opts: { devices?: DevicesStore } = {}): { svc: RemoteService; devi
     }
   }
   const svc = new RemoteService({
+    engine: opts.engine,
     devices,
     loadRtc: async () => rtc,
     getLanIp: () => ip,
@@ -317,5 +319,45 @@ describe('RemoteService', () => {
     await vi.advanceTimersByTimeAsync(LIMITS.idleShutdownMs + 1000)
     expect(svc.getState().mode).not.toBe('off')
     expect(svc.getState().idleStopAt).toBeNull()
+  })
+
+  it('motor v2: el despachador real deniega por defecto, el hub vive con el celular y se cierra al irse', async () => {
+    let opened = 0
+    const engine = createEngineHost({
+      getMain: async () => ({ baseUrl: 'http://127.0.0.1:1', authorization: 'Basic eHg6eXk=', username: 'x', chatDirectory: '/c' }),
+      loadScope: async () => ({ allowedDirs: [], chatDirs: [], fullAccessDirs: [] }),
+      invoke: async () => ({ ok: true, data: null }),
+      open: async () => {
+        opened++
+        return (async function* () {
+          await new Promise(() => undefined)
+        })()
+      }
+    })
+    const { svc, devices } = make({ engine })
+    const a = devices.add('A')
+    await svc.start()
+    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
+    expect(engine.hub.running).toBe(false)
+    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    await vi.advanceTimersByTimeAsync(5)
+    expect(engine.hub.running).toBe(true)
+    // Canal desconocido y remote:* → forbidden (nunca unavailable: el despachador real está cableado).
+    c.answerer.channel.recv({ t: 'call', id: 1, ch: 'x:desconocido', p: {} })
+    c.answerer.channel.recv({ t: 'call', id: 2, ch: 'remote:stop' })
+    await vi.advanceTimersByTimeAsync(5)
+    const res = c.answerer.channel.sent.filter((f) => f.t === 'res') as Array<{ id: number; ok: boolean; error?: { code: string } }>
+    expect(res.find((r) => r.id === 1)?.error?.code).toBe('forbidden')
+    expect(res.find((r) => r.id === 2)?.error?.code).toBe('forbidden')
+    // `sub` abre UN stream de subida bajo demanda; un motor inexistente se rechaza.
+    c.answerer.channel.recv({ t: 'sub', id: 3, eng: 'main' })
+    c.answerer.channel.recv({ t: 'sub', id: 4, eng: 'task/inexistente1' })
+    await vi.advanceTimersByTimeAsync(5)
+    expect(opened).toBe(1)
+    const done = svc.stopAll()
+    await vi.advanceTimersByTimeAsync(400)
+    await done
+    expect(engine.hub.running).toBe(false)
+    expect(engine.hub.engines()).toEqual([])
   })
 })

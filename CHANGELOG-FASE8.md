@@ -706,3 +706,14 @@ Base de la paridad del celular (opción B). Solo transporte: no expone nada del 
 - **PWA ligera**: pantalla de PIN/confirmación (`pwa/src/client.ts`, `ui.ts`, `i18n.ts`) para que el prototipo siga funcionando con el nuevo control de acceso.
 - **Pruebas** (nuevas, ~60): PIN y hash, 5 fallos, retardo, bloqueo con reloj falso, «12 h», confirmación de conexión, auditoría (rotación, sin secretos), respaldo que rechaza, `remote:*` no invocable desde el despachador, tramas inválidas, integración con `PeerSession`.
 - **Sin verificar**: nada con celular ni Electron real (diálogo nativo, rebote del Dock, notificación).
+
+## F8-B54 — Proxy del motor y concentrador de eventos del celular (rama `feat/remoto-proxy-motor`, tanda T4)
+
+Primer despachador real del protocolo v2: el celular ya puede llamar al IPC y al sidecar (aún sin PWA que lo use).
+
+- **`engine-proxy.ts`** (`MuxDispatch`): `call` → canoniza rutas (`realpath`) → `decide` → `invokeAs` (R/M), confirmación en el Mac (D, aprobación ligada al hash de la llamada; cancelada = no se ejecuta; sin UI se rechaza) o `forbidden` (X/desconocido/`remote:*`); `http` → `directory`/`path`/`file://` con `realpath`, `GET /file/content` sin archivos sensibles, listados y sesiones filtrados por ámbito, tamaños acotados, cancelación; la contraseña Basic la pone el Mac.
+- **`engine-registry.ts`**: reescritura de `authorization`/`baseUrl` (`onyx://engine/main`, `onyx://engine/task/<token>`) y `scrub` de credenciales conocidas en toda salida. **`engine-scope.ts`**: ámbito con `realpath` y lo que `policy.ts` necesita (sesión → directorio, permiso → tipo, modelos). **`path-guard.ts`**: `realpath` tolerante y lista de archivos sensibles.
+- **`event-trim.ts` + `sse-hub.ts`**: UN stream de subida por motor bajo demanda (SDK v2), lista blanca de tipos, ámbito, recorte, `EventLog` con `seq`/`since`/`reset` (nuevo `EventLog.markGap` en `mux.ts`), cierre sin dispositivos; suscripción al bus de T2 con `CELULAR_EVENTS`. **`engine-host.ts`** lo ensambla; `service.ts`/`peer-session.ts`/`index.ts` lo cablean (`makeDispatch` recibe el `deviceId` verificado).
+- **Puerto estable (D1)**: `DevicesStore.getPort/setPort` (en `remote.bin`) y `LanSignalingServer` con puerto preferido y respaldo.
+- **Pruebas** (`engine-proxy`, `sse-hub`, `path-guard`, `lan-port`, `service`; ~60 nuevas): denegar por defecto, reescritura de `authorization`, `always` rechazado, `directory` fuera del ámbito y por enlace → forbidden, `file://`/`path` por enlace, archivos sensibles, recorte de eventos, reanudación por `seq`, cierre del hub y propiedad con contraseñas aleatorias (nada en respuestas, errores ni eventos).
+- **Sin probar**: nada con un celular ni con un sidecar OpenCode real (todo con motor y `fetch` simulados); el diálogo de confirmación y el PIN son de T6 (hasta entonces toda acción D se rechaza).

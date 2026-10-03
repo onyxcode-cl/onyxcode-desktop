@@ -48,6 +48,16 @@ export function toDeviceInfo(d: DeviceRecord, connected: boolean, access: Remote
   }
 }
 
+/** Puerto de escucha guardado (D1: estable por instalación). Puertos de usuario; el resto se ignora. */
+function parsePort(raw: string): number | null {
+  try {
+    const o = JSON.parse(raw) as { port?: unknown }
+    return typeof o.port === 'number' && Number.isInteger(o.port) && o.port >= 1024 && o.port <= 65535 ? o.port : null
+  } catch {
+    return null
+  }
+}
+
 export class DevicesLimitError extends Error {
   constructor() {
     super('devices-limit')
@@ -85,6 +95,7 @@ function parse(raw: string): DeviceRecord[] {
 
 export class DevicesStore {
   private cache: DeviceRecord[] | null = null
+  private port: number | null = null
 
   constructor(
     private readonly file: string,
@@ -106,7 +117,9 @@ export class DevicesStore {
     let list: DeviceRecord[] = []
     if (this.available && existsSync(this.file)) {
       try {
-        list = parse(this.safeStorage.decryptString(readFileSync(this.file)))
+        const raw = this.safeStorage.decryptString(readFileSync(this.file))
+        list = parse(raw)
+        this.port = parsePort(raw)
       } catch {
         list = [] // archivo ilegible o de otro equipo: se empieza de cero
       }
@@ -117,7 +130,9 @@ export class DevicesStore {
 
   private save(): void {
     if (!this.available) throw new Error('safe-storage-unavailable')
-    const data = this.safeStorage.encryptString(JSON.stringify({ devices: this.load() }))
+    const data = this.safeStorage.encryptString(
+      JSON.stringify({ devices: this.load(), ...(this.port === null ? {} : { port: this.port }) })
+    )
     mkdirSync(dirname(this.file), { recursive: true })
     const tmp = `${this.file}.tmp`
     writeFileSync(tmp, data, { mode: 0o600 })
@@ -126,6 +141,24 @@ export class DevicesStore {
       chmodSync(this.file, 0o600)
     } catch {
       /* el umask manda */
+    }
+  }
+
+  /** Puerto estable guardado para el servidor local (`null` = aún no hay). */
+  getPort(): number | null {
+    this.load()
+    return this.port
+  }
+
+  /** Guarda el puerto (solo se llama cuando no había uno). No es crítico si no se puede escribir. */
+  setPort(port: number): void {
+    this.load()
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) return
+    this.port = port
+    try {
+      this.save()
+    } catch {
+      /* sin cifrado disponible: el puerto no se guarda */
     }
   }
 

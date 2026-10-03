@@ -13,6 +13,10 @@ import type { DevicesStore } from './devices-store'
 import type { EventStreamClient } from './events'
 import { pickLanIp } from './lan-ip'
 import { qrMatrix } from './qr'
+import { invokeAs } from '../ipc/handle'
+import { subscribeRemote } from '../ipc/event-bus'
+import { createEngineHost } from './engine-host'
+import { createRemoteSender } from './sender'
 import { loadRtc } from './rtc'
 import { RemoteService } from './service'
 import { LanSignalingServer } from './signaling/lan-server'
@@ -51,11 +55,41 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     getRecentFolders: d.getRecentFolders,
     modelFor: d.modelFor
   })
+  // Carpetas del ámbito: recientes de Code + carpetas de Tareas aprobadas (se leen por el mismo IPC que usa la ventana).
+  const sysSender = createRemoteSender(() => undefined)
+  const loadScope = async (): Promise<{ allowedDirs: string[]; chatDirs: string[]; fullAccessDirs: string[] }> => {
+    const res = await invokeAs({ sender: sysSender, authorize: () => true }, 'tasks:listFolders', [])
+    const folders = res.ok && Array.isArray(res.data) ? (res.data as Array<{ path: string; fullAccess?: boolean }>) : []
+    return {
+      allowedDirs: [...d.getRecentFolders(), ...folders.map((f) => f.path)],
+      chatDirs: [d.chatDirectory],
+      fullAccessDirs: folders.filter((f) => f.fullAccess === true).map((f) => f.path)
+    }
+  }
+  const engine = createEngineHost({
+    getMain: () => d.startEngine(),
+    loadScope,
+    invoke: invokeAs,
+    open: async (_eng, target, signal) => {
+      const client = createOpencodeClient({ baseUrl: target.baseUrl, headers: { Authorization: target.authorization } })
+      const r = await client.global.event({ signal, sseMaxRetryAttempts: 1 })
+      return r.stream as AsyncIterable<unknown>
+    },
+    subscribeBus: subscribeRemote,
+    confirm: d.confirmHost.queue
+  })
   return new RemoteService({
+    engine,
     devices: d.devices,
     loadRtc,
     getLanIp: () => pickLanIp(networkInterfaces()),
-    createTransport: (ip) => new LanSignalingServer({ ip, pwaDir: d.pwaDir }),
+    createTransport: (ip) =>
+      new LanSignalingServer({
+        ip,
+        pwaDir: d.pwaDir,
+        preferredPort: d.devices.getPort(),
+        onFirstPort: (port) => d.devices.setPort(port)
+      }),
     backend,
     getEventClient: () => {
       const conn = d.getConnection()
