@@ -7,6 +7,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { macOnly } from '../../test/platform'
 
 const state = vi.hoisted(() => ({ userData: '', policy: null as null | { disableFullAccess?: boolean; allowedFolderRoots?: string[] } }))
 const started = vi.hoisted(() => [] as Array<{ folder: string; noSandbox: boolean | undefined }>)
@@ -61,7 +62,8 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true })
 })
 
-describe('Control total sin carpeta', () => {
+// Salto en Windows: Control total sin carpeta es del modo Tareas (Seatbelt), fuera de la v1 y no se carga allí.
+describe.skipIf(!macOnly)('Control total sin carpeta', () => {
   it('sin consentimiento del equipo no arranca', async () => {
     const m = new TasksManager()
     await expect(m.start(home, true)).rejects.toThrow(FULL_ACCESS_NOT_GRANTED)

@@ -370,3 +370,10 @@ Caso C — `swap.sh` sin reemplazar nada si la app vieja no termina: lo cubre
 **Qué NO cubre esta prueba:** `open -n` real (LaunchServices) en vez de la ejecución directa, permisos TCC reales,
 Gatekeeper en otro Mac, la protección «Gestión de apps» de macOS 13+ al modificar `/Applications`, proxy corporativo y
 disco lleno.
+
+## 12. Windows: instalador NSIS (v1, sin firma)
+
+- **Construir:** en un PC Windows con Node 22, `npm ci` y `npm run package:win` (descarga el OpenCode fijado para `win32-x64` con `scripts/fetch-opencode.mjs --if-missing`, compila y llama a `node node_modules/electron-builder/cli.js --win nsis --x64`; no se usa el binario `electron-builder` a secas porque en `cmd` se ejecutaría `electron-builder.js` con Windows Script Host). Salida: `dist\OnyxCode-Setup-<versión>-x64.exe` (≈ 152 MB) y `dist\win-unpacked`. No se puede construir el instalador de Windows desde la Mac sin Wine; el de macOS (`npm run package`) no cambia (cada plataforma lleva sus `extraResources`).
+- **Qué lleva:** instalador asistido, **por usuario** (sin administrador; `perMachine: false`), con carpeta elegible; `resources\opencode\opencode.exe` (1.18.33), node-pty desempaquetado (`conpty.node`, `conpty.dll`, `OpenConsole.exe`), icono `build/icon.ico` (16–256 px, generado con `node build/make-ico.mjs` desde `build/icon.png`) y los mismos fuses que en macOS. No lleva el actualizador, el helper de Control del PC ni el lanzador de macOS.
+- **Sin firma:** no hay certificado de firma de código de Windows. Consecuencias que no se pueden comprobar sin él: **SmartScreen** mostrará «Windows protegió su PC» al ejecutar el instalador descargado (el usuario pulsa «Más información › Ejecutar de todas formas») y Defender puede tardar en confiar en el ejecutable. Para quitarlo hace falta un certificado (OV/EV o firma en la nube) y `win.certificateSubjectName`/`CSC_LINK`; electron-builder firma entonces el `.exe` y el desinstalador.
+- **Verificar:** `scripts/win/pack-check.ps1 -Install` (ver `docs/VERIFICACION.md` › «Paquete de Windows»). **Actualizar:** en la v1 no hay actualizador automático en Windows; se instala la versión nueva encima.

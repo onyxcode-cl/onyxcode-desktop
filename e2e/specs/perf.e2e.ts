@@ -18,8 +18,11 @@ const DEV = MODE === 'dev'
  * 13-20 tareas largas, suma 0,9-1,7 s, máx ≈ 220 ms. Sin ellos (afeff4f): solo 3-4 tareas «largas» pero de 75-91 s cada
  * una (la página se congela ~97 s), por eso se acota la SUMA y el MÁXIMO además del número. Sobrescribibles para medir.
  */
-const MAX_LONGTASKS = Number(process.env.E2E_PERF_MAX_LONGTASKS ?? 40)
-const MAX_LONGTASK_TOTAL_MS = Number(process.env.E2E_PERF_MAX_TOTAL_MS ?? 3000)
+// Windows (PC de pruebas sin GPU, render por software, por SSH): 4 corridas medidas dan 206-219 tareas largas, suma 17,0-17,6 s y
+// máx 343-345 ms (varianza < 6 %). Presupuesto propio con ~40 % de margen sobre lo medido: 300 tareas y 25 s en total; el máximo
+// por tarea sigue en 800 ms. Sigue detectando la regresión que se vigila (sin los cambios: tareas de 75-91 s, suma > 225 s).
+const MAX_LONGTASKS = Number(process.env.E2E_PERF_MAX_LONGTASKS ?? (IS_WIN ? 300 : 40))
+const MAX_LONGTASK_TOTAL_MS = Number(process.env.E2E_PERF_MAX_TOTAL_MS ?? (IS_WIN ? 25_000 : 3000))
 const MAX_LONGTASK_MS = Number(process.env.E2E_PERF_MAX_MS ?? 800)
 
 /** 2000 trozos: prosa, párrafos y un bloque ```ts en mitad (lo que más cuesta re-resaltar en cada delta). */
@@ -77,9 +80,15 @@ describe.skipIf(!DEV)('rendimiento del streaming', () => {
     await startObserver(a.page)
     const t0 = Date.now()
 
-    const sid = await newChatAndSend(a, 'perf 2000 deltas', { steps: [{ type: 'text', deltas, chunkDelayMs: 1 }], match: 'perf 2000 deltas' })
+    const sid = await newChatAndSend(a, 'perf 2000 deltas', {
+      steps: [{ type: 'text', deltas, chunkDelayMs: 1 }],
+      match: 'perf 2000 deltas'
+    })
     await expect
-      .poll(async () => (await storeState<Record<string, string>>(a.page, 'useSessions', 'status'))[sid], { timeout: 90_000, message: 'la sesión no terminó' })
+      .poll(async () => (await storeState<Record<string, string>>(a.page, 'useSessions', 'status'))[sid], {
+        timeout: 90_000,
+        message: 'la sesión no terminó'
+      })
       .toBe('idle')
     const ms = Date.now() - t0
     // El último frame ya se aplicó: texto EXACTO y completo en el store (ningún delta perdido ni reordenado)...
@@ -88,14 +97,11 @@ describe.skipIf(!DEV)('rendimiento del streaming', () => {
     await expectVisible(a.page.getByText('palabra1999', { exact: false }), 15_000)
     await a.page.waitForTimeout(500) // deja asentar las tareas de cierre
     const m = await readObserver(a.page)
-    console.log(`[perf] 2000 deltas en ${ms} ms; tareas largas: ${m.count} (suma ${m.total} ms, máx ${m.max} ms); umbrales ${MAX_LONGTASKS} / ${MAX_LONGTASK_TOTAL_MS} ms / ${MAX_LONGTASK_MS} ms`)
-    // Windows: los presupuestos de cantidad/suma se calibraron en un Mac con GPU. En el PC de pruebas por SSH (sin GPU, render por
-    // software) salen ~215 tareas largas (suma ~17 s) frente a 40: se mide pero no se exige hasta calibrarlo allí (ver VERIFICACION.md).
-    // El máximo por tarea sí se exige (245 ms medidos frente a 800 ms) y el texto exacto ya se comprobó arriba.
-    if (!IS_WIN) {
-      expect(m.count).toBeLessThanOrEqual(MAX_LONGTASKS)
-      expect(m.total).toBeLessThanOrEqual(MAX_LONGTASK_TOTAL_MS)
-    }
+    console.log(
+      `[perf] 2000 deltas en ${ms} ms; tareas largas: ${m.count} (suma ${m.total} ms, máx ${m.max} ms); umbrales ${MAX_LONGTASKS} / ${MAX_LONGTASK_TOTAL_MS} ms / ${MAX_LONGTASK_MS} ms`
+    )
+    expect(m.count).toBeLessThanOrEqual(MAX_LONGTASKS)
+    expect(m.total).toBeLessThanOrEqual(MAX_LONGTASK_TOTAL_MS)
     expect(m.max).toBeLessThanOrEqual(MAX_LONGTASK_MS)
     // El bloque ```ts se resaltó al terminar (highlight solo con el mensaje completo).
     await expectVisible(a.page.locator('pre code.hljs .hljs-keyword'), 15_000)
@@ -107,7 +113,10 @@ describe.skipIf(!DEV)('rendimiento del streaming', () => {
     const sid = await newChatAndSend(a, 'turno 0')
     const box = a.page.getByPlaceholder('Escribe un mensaje…')
     for (let i = 1; i <= 12; i++) {
-      await a.fake.script({ steps: [{ type: 'text', text: `Respuesta corta ${i}\n\n${'línea de relleno. '.repeat(20 + i * 5)}` }], match: `turno ${i}` })
+      await a.fake.script({
+        steps: [{ type: 'text', text: `Respuesta corta ${i}\n\n${'línea de relleno. '.repeat(20 + i * 5)}` }],
+        match: `turno ${i}`
+      })
       await box.fill(`turno ${i}`)
       await a.page.getByRole('button', { name: 'Enviar' }).click()
       await expectVisible(a.page.getByText(`Respuesta corta ${i}`, { exact: false }), 30_000)
@@ -117,7 +126,11 @@ describe.skipIf(!DEV)('rendimiento del streaming', () => {
         const row = document.querySelector('.turn-cv')
         const sc = row?.closest('.overflow-y-auto') as HTMLElement | null
         if (!sc) return { old: 0, gap: -1, top: -1 }
-        return { old: document.querySelectorAll('.turn-cv').length, gap: sc.scrollHeight - sc.scrollTop - sc.clientHeight, top: sc.scrollTop }
+        return {
+          old: document.querySelectorAll('.turn-cv').length,
+          gap: sc.scrollHeight - sc.scrollTop - sc.clientHeight,
+          top: sc.scrollTop
+        }
       })
     // 13 turnos = 26 filas: las 18 más antiguas llevan la clase; el pegado al final es exacto.
     await expect.poll(async () => (await geo()).old, { timeout: 10_000 }).toBeGreaterThanOrEqual(10)
@@ -139,7 +152,12 @@ describe.skipIf(!DEV)('rendimiento del streaming', () => {
     await expect.poll(async () => (await geo()).old, { timeout: 10_000 }).toBeGreaterThanOrEqual(10)
     await expect.poll(async () => (await geo()).gap, { timeout: 10_000 }).toBeLessThan(3)
     // Un mensaje nuevo mantiene el pegado.
-    await a.fake.script({ steps: [{ type: 'text', text: 'Respuesta final larga', chunkDelayMs: 5, deltas: Array.from({ length: 60 }, (_, k) => `trozo ${k}\n\n`) }], match: 'turno final' })
+    await a.fake.script({
+      steps: [
+        { type: 'text', text: 'Respuesta final larga', chunkDelayMs: 5, deltas: Array.from({ length: 60 }, (_, k) => `trozo ${k}\n\n`) }
+      ],
+      match: 'turno final'
+    })
     await box.fill('turno final')
     await a.page.getByRole('button', { name: 'Enviar' }).click()
     await expectVisible(a.page.getByText('trozo 59', { exact: false }), 30_000)
@@ -165,7 +183,10 @@ describe.skipIf(!DEV || IS_WIN)('Tareas: content-visibility y salto a un mensaje
     await newTaskVia(a.page, 'cv-t0 empieza', 'Respuesta cv 0')
     const box = a.page.getByPlaceholder('Responde o pide un cambio…')
     for (let i = 1; i <= 14; i++) {
-      await fake.script({ match: `cv-t${i}`, steps: [{ type: 'text', text: `Respuesta cv ${i}\n\n${'línea de relleno. '.repeat(30 + i * 6)}` }] })
+      await fake.script({
+        match: `cv-t${i}`,
+        steps: [{ type: 'text', text: `Respuesta cv ${i}\n\n${'línea de relleno. '.repeat(30 + i * 6)}` }]
+      })
       await box.fill(i === 4 ? `cv-t4 sigue con ${UNICO}` : `cv-t${i} sigue`) // el texto buscado va en mitad del historial
       await a.page.getByRole('button', { name: 'Enviar' }).click()
       await expectVisible(a.page.getByText(`Respuesta cv ${i}`, { exact: false }).first(), 30_000)
@@ -173,7 +194,10 @@ describe.skipIf(!DEV || IS_WIN)('Tareas: content-visibility y salto a un mensaje
     const scrollGeo = (): Promise<{ old: number; gap: number }> =>
       a.page.evaluate(() => {
         const sc = document.querySelector('[id^="cw-block-"]')?.closest('.overflow-y-auto') as HTMLElement | null
-        return { old: document.querySelectorAll('[id^="cw-block-"].turn-cv').length, gap: sc ? sc.scrollHeight - sc.scrollTop - sc.clientHeight : -1 }
+        return {
+          old: document.querySelectorAll('[id^="cw-block-"].turn-cv').length,
+          gap: sc ? sc.scrollHeight - sc.scrollTop - sc.clientHeight : -1
+        }
       })
     await expect.poll(async () => (await scrollGeo()).old, { timeout: 10_000 }).toBeGreaterThanOrEqual(8)
     await expect.poll(async () => (await scrollGeo()).gap, { timeout: 10_000 }).toBeLessThan(3)
@@ -188,7 +212,8 @@ describe.skipIf(!DEV || IS_WIN)('Tareas: content-visibility y salto a un mensaje
       .poll(
         () =>
           a.page.evaluate((u) => {
-            const el = [...document.querySelectorAll('[id^="cw-block-"]')].find((e) => e.textContent?.includes(u)) as HTMLElement | undefined
+            const el = [...document.querySelectorAll('[id^="cw-block-"]')].find((e) => e.textContent?.includes(u)) as
+              HTMLElement | undefined
             const sc = el?.closest('.overflow-y-auto') as HTMLElement | null
             if (!el || !sc) return 9999
             const r = el.getBoundingClientRect()
