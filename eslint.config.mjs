@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 
 export default tseslint.config(
-  { ignores: ['out/**', 'dist/**', 'node_modules/**', 'resources/**', '**/*.tsbuildinfo', '**/*.d.ts'] },
+  { ignores: ['out/**', 'dist/**', 'pwa/dist/**', 'node_modules/**', 'resources/**', '**/*.tsbuildinfo', '**/*.d.ts'] },
   ...tseslint.configs.recommended,
   { linterOptions: { reportUnusedDisableDirectives: 'error' } },
   {
