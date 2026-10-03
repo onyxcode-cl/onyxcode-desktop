@@ -4,17 +4,18 @@
  * este archivo solo valida el emisor (vía `guardInvoke`, igual que el resto de canales) y traduce
  * cada canal a su función correspondiente.
  */
-import { BrowserWindow, type IpcMain } from 'electron'
+import type { IpcMain } from 'electron'
 import type { BrowserInvokeContract } from '@shared/ipc-browser'
 import * as svc from '../embedded-browser/service'
 import { makeInvokeHandler } from './handle'
+import { windowOfSender } from './sender-window'
 
 const handle = makeInvokeHandler<BrowserInvokeContract>({ withCode: false })
 
 export function registerBrowserHandlers(ipcMain: IpcMain): void {
   handle(ipcMain, 'browser:state', ({ owner }) => svc.getOwnerState(owner))
   handle(ipcMain, 'browser:attach', ({ owner, rect, visible }, event) => {
-    const win = BrowserWindow.fromWebContents(event.sender)
+    const win = windowOfSender(event.sender)
     if (win) svc.attachView(owner, win, rect, visible)
   })
   handle(ipcMain, 'browser:detach', ({ owner }) => {

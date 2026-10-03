@@ -20,6 +20,7 @@ import { storageClean, storageReport, type StorageEnv } from '../tasks/storage'
 import { loadManagedPolicy } from '../tasks/policy'
 import { sandboxKey } from '../tasks/sandbox'
 import { extrasPrefs } from '../extras/prefs'
+import { emitTo } from './event-bus'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
 /** Tiempo sin tareas de Control total en curso antes de borrar las capturas temporales. */
@@ -73,7 +74,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
       win.show()
       win.focus()
       const target: NotifyTarget = { mode: 'tasks', id: ev.sessionId, directory: ev.folder, fullAccess: ev.fullAccess }
-      if (!win.webContents.isDestroyed()) win.webContents.send('app:openTarget', target)
+      emitTo(win, 'app:openTarget', target)
     })
     n.show()
   }

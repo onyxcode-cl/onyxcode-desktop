@@ -2,7 +2,7 @@
  * Handlers IPC del modo Code (pty, git, dialog) según `shared/ipc-code.ts`.
  * Canales propios de Code (ya no comparten nombre con `shared/ipc.ts`).
  */
-import { app, BrowserWindow, shell, webContents, type IpcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeInvokeContract } from '@shared/ipc-code'
 import * as git from '../git/service'
 import { GitError } from '../git/service'
@@ -21,15 +21,17 @@ import { resolveE2eEditors, type EditorEnv } from '../editors/catalog'
 import { EditorError, listInstalled, openWithEditor, type EditorsDeps } from '../editors/service'
 import { extrasPrefs } from '../extras/prefs'
 import { makeInvokeHandler } from './handle'
+import { publishToSender } from './event-bus'
+import { windowOfSender } from './sender-window'
 
 const on = makeInvokeHandler<CodeInvokeContract>({
   withCode: true,
   silent: (err) => err instanceof GitError || err instanceof FileOpError || err instanceof EditorError
 })
 
+/** Evento al remitente dueño del recurso: ventana real o remitente virtual del celular (id negativo). */
 function sendToId<C extends CodeEventChannel>(wcId: number, channel: C, payload: CodeEventContract[C]): void {
-  const wc = webContents.fromId(wcId)
-  if (wc && !wc.isDestroyed()) wc.send(channel, payload)
+  publishToSender(wcId, channel, payload)
 }
 
 /** Ruta real de la carpeta del proyecto (así `open -a` recibe siempre una ruta canónica y existente). */
@@ -130,7 +132,7 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
 
   // ---- dialog ----
   on(ipcMain, 'dialog:openFolder', async (r, event) => {
-    const parent = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
+    const parent = windowOfSender(event.sender) ?? getWindow()
     const path = await dialogService.openFolder(parent, r ?? {})
     if (path) settingsStore.addRecentFolder(path)
     return path
