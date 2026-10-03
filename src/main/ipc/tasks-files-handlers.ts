@@ -17,6 +17,7 @@ import { describeDeliverable, writeNewFile } from '../tasks/files'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { renderHtmlToPdf } from '../extras/artifact-window'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
+import { windowOfSender } from './sender-window'
 
 const ZIP_BIN = '/usr/bin/zip'
 const QLMANAGE_BIN = '/usr/bin/qlmanage'
@@ -83,8 +84,7 @@ async function createZip(out: string, files: string[]): Promise<void> {
 
 export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, tasks, getWindow } = ctx
-  const windowFor = (event: { sender: Electron.WebContents }): BrowserWindow | null =>
-    BrowserWindow.fromWebContents(event.sender) ?? getWindow()
+  const windowFor = (event: { sender: Electron.WebContents }): BrowserWindow | null => windowOfSender(event.sender) ?? getWindow()
 
   // ── Descargar todo (zip) ──
   handle('tasks:zip', async ({ paths, suggestedName }, event) => {

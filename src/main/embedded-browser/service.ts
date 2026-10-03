@@ -12,6 +12,7 @@
  * nosotros mismos decidimos (barra de URL del usuario, o el agente tras aprobación) pasa por
  * `bypassOnce` para no volver a pedir aprobación sobre algo que ya se decidió.
  */
+import { emitTo } from '../ipc/event-bus'
 import { BrowserWindow, shell, type WebContentsView } from 'electron'
 import type {
   BrowserCapture,
@@ -149,7 +150,7 @@ function windowsToNotify(): BrowserWindow[] {
 }
 
 function sendEvent<C extends BrowserEventChannel>(channel: C, payload: BrowserEventContract[C]): void {
-  for (const w of windowsToNotify()) if (!w.isDestroyed()) w.webContents.send(channel, payload)
+  emitTo(windowsToNotify(), channel, payload)
 }
 
 function broadcastState(owner: BrowserOwner): void {
@@ -437,7 +438,7 @@ function discardTab(rt: OwnerRuntime, tab: TabRuntime): void {
  */
 function pushOwnerToPopout(win: BrowserWindow, owner: BrowserOwner): void {
   const push = (): void => {
-    if (!win.isDestroyed()) win.webContents.send('browser:state', stateFor(owner))
+    if (!win.isDestroyed()) emitTo(win, 'browser:state', stateFor(owner))
   }
   if (win.webContents.isLoadingMainFrame()) win.webContents.once('did-finish-load', push)
   else push()
@@ -951,7 +952,7 @@ export async function captureForUi(_owner: BrowserOwner, tabId: string): Promise
 
 export function toChat(payload: BrowserToChat): void {
   const mw = getMainWindowFn?.()
-  if (mw && !mw.isDestroyed()) mw.webContents.send('browser:toChat', payload)
+  if (mw && !mw.isDestroyed()) emitTo(mw, 'browser:toChat', payload)
 }
 
 export function respond(id: string, decision: BrowserDecision): void {

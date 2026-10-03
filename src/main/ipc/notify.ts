@@ -10,6 +10,7 @@
 import { app, Notification, type IpcMain } from 'electron'
 import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
+import { emitTo } from './event-bus'
 import { handle } from './handle'
 import { shouldFlashFrame } from './flash'
 
@@ -39,7 +40,7 @@ export function registerNotifyHandlers(ipcMain: IpcMain, deps: MainWindowDeps): 
       const { win } = showMainWindow(deps)
       if (!target) return
       const send = (): void => {
-        if (!win.isDestroyed()) win.webContents.send('app:openTarget', target)
+        if (!win.isDestroyed()) emitTo(win, 'app:openTarget', target)
       }
       if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(send, 300))
       else send()

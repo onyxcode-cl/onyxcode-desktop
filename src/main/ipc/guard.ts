@@ -55,6 +55,14 @@ export function guardInvoke(event: IpcMainInvokeEvent, channel: string, args: un
   if (!role) reject('FORBIDDEN', channel, 'ventana sin rol registrado')
   if (role !== 'main' && !CHANNEL_ROLES[role].has(channel)) reject('FORBIDDEN', channel, `canal no permitido para la ventana ${role}`)
 
+  return validatePayload(channel, args)
+}
+
+/**
+ * Validación de payload COMPARTIDA por las ventanas (`guardInvoke`) y por quien no es una ventana
+ * (`invokeAs`, el celular): canal con esquema, un solo argumento y esquema estricto.
+ */
+export function validatePayload(channel: string, args: unknown[]): unknown {
   const schema = IPC_SCHEMAS[channel]
   if (!schema) reject('FORBIDDEN', channel, 'canal sin esquema')
   if (args.length > 1) reject('INVALID', channel, 'demasiados argumentos')

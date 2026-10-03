@@ -1,4 +1,4 @@
-import { BrowserWindow, clipboard, dialog, shell, type IpcMain } from 'electron'
+import { clipboard, dialog, shell, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -8,6 +8,7 @@ import { getOpencodeInfo, validateOpencodeBin } from '../opencode/binary'
 import { resolveOpencodeAsync } from '../opencode/server'
 import { settingsStore } from '../store'
 import { handle } from './handle'
+import { windowOfSender } from './sender-window'
 
 /** Canales del asistente de primer uso. La app NUNCA ejecuta un instalador: el comando solo se copia. */
 export function registerOnboardingHandlers(ipcMain: IpcMain): void {
@@ -22,7 +23,7 @@ export function registerOnboardingHandlers(ipcMain: IpcMain): void {
   })
 
   handle(ipcMain, 'app:pickOpencodeBin', async (_req, event) => {
-    const win = BrowserWindow.fromWebContents(event.sender)
+    const win = windowOfSender(event.sender)
     const defaultPath = join(homedir(), '.opencode', 'bin')
     const options = {
       title: t('merr.dialog.pickBinary'),

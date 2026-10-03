@@ -802,6 +802,11 @@ Tampoco depende de que la red permita tráfico entre clientes: en una Wi-Fi con 
 Los preloads secundarios (`quick`, `overlay`, `pill`, `assist`, `browser-host`) quedan idénticos byte a byte. Los canales `remote:*` son
 solo de la ventana principal (esquemas estrictos en `main/ipc/schemas.ts`).
 
+**Invocador remoto (F8-B51, T2).** El celular llamará al IPC por `invokeAs`: mismo esquema estricto que una ventana, remitente virtual
+(`id` negativo, propiedad de pty/archivos aislada por remitente) y un gancho `authorize` que debe aprobar canal y payload ya validado;
+sin gancho, denegado. No se añade ningún rol a `CHANNEL_ROLES`. Los eventos salen por `ipc/event-bus.ts`: los suscriptores remotos
+tienen lista blanca por canal (vacía = nada) y recorte; los envíos dirigidos a una ventana nunca llegan al celular.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

@@ -663,3 +663,13 @@ Solo capa visual (`pwa/index.html`, `style.css`, `ui.ts`, textos nuevos en `i18n
 - **Móvil**: `theme-color` por esquema, `safe-area-inset-*`, `100dvh`, ajuste con `visualViewport` cuando aparece el teclado (sin exigir contexto seguro), `prefers-reduced-motion`.
 - **Comprobado**: contraste ≥ 4,5:1 calculado en ambos temas; capturas con una prueba desechable (iPhone 390x844 @3x y Android 360x800, claro/oscuro) sobre la UI real con un cliente simulado.
 - **Sin probar**: iPhone/Android reales, `safe-area` y teclado en dispositivo real.
+
+## F8-B51 — Invocador remoto y bus de eventos (rama `feat/remoto-invocador`, tanda T2)
+
+Cimientos del puente del celular en `main`; sin cambio visible para las ventanas ni canal nuevo.
+
+- **`invokeAs`** (`ipc/handle.ts`): despacha un canal ya registrado con `makeInvokeHandler` como lo haría el renderer, con el MISMO `IPC_SCHEMAS` (`validatePayload`, extraído de `guardInvoke`) y el mismo manejo de errores, con `event.sender` = un remitente virtual. Gancho `authorize(canal, payload validado)` para la política «celular» (T3); sin él, o si devuelve false, FORBIDDEN (denegar por defecto). El rol «celular» no existe en `CHANNEL_ROLES`.
+- **`RemoteSender`** (`remote/sender.ts`): `id` negativo y único, `send` por un canal inyectable, `isDestroyed`, `once('destroyed')` y `destroy()`. pty (`isOwner`) y `files:*` (hub por `sender.id`) funcionan sin cambios y la propiedad queda limitada a lo creado por ese remitente. `BrowserWindow.fromWebContents(event.sender)` pasa por `windowOfSender` (null para el virtual → respaldo `getWindow()`); los eventos de pty/archivos van por `publishToSender` (ventana real o virtual).
+- **Bus** (`ipc/event-bus.ts`): `publish` (todas las ventanas + suscriptores remotos), `publishTo` (ventanas concretas, nunca al celular), `subscribeRemote` (lista blanca por canal, vacía = nada, y recorte). Migrados `broadcast`/`sendTo`, tasks, tasks-lifecycle, routines, code, notify, embedded-browser, extras y remote-handlers: mismos canales, cargas y orden. Un suscriptor remoto recibe aunque no haya ventanas.
+- **Pruebas**: `invoke-as.test.ts`, `event-bus.test.ts`, `sender.test.ts`.
+- **Sin probar**: nada con el celular real (llega con T3–T5).

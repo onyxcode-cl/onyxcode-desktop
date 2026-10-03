@@ -2,7 +2,8 @@
  * Arranque de extras en main: atajo global de Quick Entry + bandeja.
  * Lo invoca `registerExtrasHandlers` (src/main/ipc/extras-handlers.ts); no hace falta llamarlo aparte.
  */
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
+import { publish, publishTo } from '../ipc/event-bus'
 import type { ExtrasPrefs, ExtrasPrefsState, IpcExtrasEventChannel, IpcExtrasEventContract } from '@shared/ipc-extras'
 import { whenAccountAllowed } from '../account/access'
 import { extrasPrefs } from './prefs'
@@ -28,9 +29,7 @@ export function broadcastExtras<C extends IpcExtrasEventChannel>(
   channel: C,
   ...payload: IpcExtrasEventContract[C] extends void ? [] : [IpcExtrasEventContract[C]]
 ): void {
-  for (const w of BrowserWindow.getAllWindows()) {
-    if (!w.isDestroyed()) w.webContents.send(channel, ...payload)
-  }
+  publish(channel, ...payload)
 }
 
 /** Envía un evento a la ventana principal (la crea/enfoca si hace falta). */
@@ -41,7 +40,7 @@ export function sendToMain<C extends IpcExtrasEventChannel>(
 ): void {
   const { win, fresh } = showMainWindow(deps)
   const send = (): void => {
-    if (!win.isDestroyed()) win.webContents.send(channel, ...payload)
+    if (!win.isDestroyed()) publishTo(win, channel, ...payload)
   }
   if (fresh || win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(send, 800))
   else send()

@@ -10,6 +10,7 @@ import { extrasPrefs } from '../extras/prefs'
 import { showMainWindow, type MainWindowDeps } from '../extras/windows'
 import type { OpencodeServer } from '../opencode/server'
 import { currentService, ensureRemote, getDevicesStore, offState, type RemoteHostDeps } from '../remote/loader'
+import { emitTo } from './event-bus'
 import { makeInvokeHandler } from './handle'
 
 export interface RemoteHandlersDeps extends MainWindowDeps {
@@ -20,11 +21,9 @@ export interface RemoteHandlersDeps extends MainWindowDeps {
 const handle = makeInvokeHandler<RemoteInvokeContract>({ withCode: false })
 
 function sendMain(deps: MainWindowDeps, channel: 'remote:changed' | 'remote:pairRequest', payload: RemoteState | RemotePairRequest): void {
-  for (const w of BrowserWindow.getAllWindows()) {
-    // Solo la ventana principal recibe estos eventos.
-    if (w.isDestroyed()) continue
-    if (deps.getMainWindow?.() === w) w.webContents.send(channel, payload)
-  }
+  // Solo la ventana principal recibe estos eventos (envío dirigido: nunca llegan al celular).
+  const w = deps.getMainWindow?.()
+  if (w && !w.isDestroyed() && BrowserWindow.getAllWindows().includes(w)) emitTo(w, channel, payload)
 }
 
 export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDeps): void {

@@ -26,6 +26,7 @@ import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { registerRoutineChannels } from './routines-handlers'
+import { emit, emitTo } from './event-bus'
 import { makeTasksHandle, type TasksIpcContext, type TasksSubmodule } from './tasks-handle'
 import { registerTasksFoldersHandlers } from './tasks-folders-handlers'
 import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
@@ -33,6 +34,7 @@ import { registerTasksProjectHandlers } from './tasks-project-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
 import { registerTasksAutoHandlers } from './tasks-auto-handlers'
 import { createRestorePoints, registerTasksRestoreHandlers } from './tasks-restore-handlers'
+import { windowOfSender } from './sender-window'
 
 /**
  * ¿Debe salir la notificación nativa de una petición de permisos (`request_access`)?
@@ -127,7 +129,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     if (win.isMinimized()) win.restore()
     win.show()
     win.focus()
-    if (!win.webContents.isDestroyed()) win.webContents.send('app:openTarget', target)
+    emitTo(win, 'app:openTarget', target)
   }
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
@@ -139,9 +141,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   })
 
   const send = <C extends TasksEventChannel>(channel: C, payload: TasksEventContract[C]): void => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
-    }
+    emit(channel, payload)
   }
 
   // Contexto compartido con los submódulos de handlers (carpetas, ciclo de vida, proyecto, archivos).
@@ -273,7 +273,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
 
   // ── Tareas ──
   handle('tasks:pickFolder', async (_req, event) => {
-    const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
+    const win = windowOfSender(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
       title: t('merr.dialog.pickFolder'),
       buttonLabel: t('merr.dialog.pick'),
@@ -309,7 +309,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   })
   handle('tasks:importFiles', async ({ folder }, event) => {
     const root = tasks.assertInsideApproved(folder)
-    const win = BrowserWindow.fromWebContents(event.sender) ?? getWindow()
+    const win = windowOfSender(event.sender) ?? getWindow()
     const options: Electron.OpenDialogOptions = {
       title: t('merr.dialog.attachTitle'),
       buttonLabel: t('merr.dialog.attachButton'),

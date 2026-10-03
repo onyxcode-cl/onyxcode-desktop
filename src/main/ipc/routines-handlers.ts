@@ -10,6 +10,7 @@ import { previewSchedule } from '../scheduler/schedule'
 import { noTasksPort } from '../scheduler/no-tasks-port'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
 import { settingsStore } from '../store'
+import { emit, emitTo } from './event-bus'
 import { makeTasksHandle } from './tasks-handle'
 
 type TasksHandle = ReturnType<typeof makeTasksHandle>
@@ -51,7 +52,7 @@ export function registerRoutinesHandlers(
     if (win.isMinimized()) win.restore()
     win.show()
     win.focus()
-    if (!win.webContents.isDestroyed()) win.webContents.send('app:openTarget', target)
+    emitTo(win, 'app:openTarget', target)
   }
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
@@ -62,9 +63,7 @@ export function registerRoutinesHandlers(
     openTarget
   })
   const send = <C extends TasksEventChannel>(channel: C, payload: TasksEventContract[C]): void => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
-    }
+    emit(channel, payload)
   }
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
