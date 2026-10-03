@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { t } from '@shared/i18n'
 import { dateLocale, useT } from '../../../lib/i18n'
+import { isRemoteSurface } from '../../../lib/platform'
+import { Sheet } from '../../../components/mobile/Sheet'
 
 export const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 export const MOD = IS_MAC ? '⌘' : 'Ctrl+'
@@ -88,6 +90,45 @@ export function ConfirmButton({
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
+  const run = (): void => {
+    setBusy(true)
+    void Promise.resolve(onConfirm()).finally(() => {
+      setBusy(false)
+      setOpen(false)
+    })
+  }
+  // En el celular el aviso es una hoja inferior (no un popover): botones de 44 px y sin salirse de la pantalla.
+  if (isRemoteSurface()) {
+    return (
+      <span className="relative inline-flex">
+        <button type="button" disabled={disabled} onClick={() => setOpen(true)} className={className}>
+          {children}
+        </button>
+        <Sheet open={open} onClose={() => setOpen(false)} title={title} size="half">
+          <div className="px-4 py-4">
+            {body && <p className="text-sm leading-relaxed text-muted">{body}</p>}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex h-11 flex-1 items-center justify-center rounded-xl border border-border text-[15px] font-medium text-fg hover:bg-hover"
+              >
+                {t('code.ui.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={run}
+                className={`flex h-11 flex-1 items-center justify-center rounded-xl text-[15px] font-medium disabled:opacity-50 ${danger ? 'bg-danger text-danger-fg' : 'bg-accent text-accent-fg'}`}
+              >
+                {confirmLabel}
+              </button>
+            </div>
+          </div>
+        </Sheet>
+      </span>
+    )
+  }
   return (
     <span ref={ref} className="relative inline-flex">
       <button type="button" disabled={disabled} onClick={() => setOpen((o) => !o)} className={className}>
@@ -112,13 +153,7 @@ export function ConfirmButton({
               type="button"
               autoFocus
               disabled={busy}
-              onClick={() => {
-                setBusy(true)
-                void Promise.resolve(onConfirm()).finally(() => {
-                  setBusy(false)
-                  setOpen(false)
-                })
-              }}
+              onClick={run}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${danger ? 'bg-danger text-danger-fg' : 'bg-accent text-accent-fg'} hover:opacity-90`}
             >
               {confirmLabel}

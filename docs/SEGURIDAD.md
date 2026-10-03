@@ -1076,3 +1076,13 @@ en la interfaz es solo comodidad, nunca el control.
 - **Trama `lock`** (cliente → Mac): validada estrictamente (sin claves extra), solo con el canal autenticado (si no, cuenta como violación). `AccessGate.lockNow()` pasa a `verify-pin` SIN el modo «lecturas permitidas» del bloqueo por inactividad: no se atiende nada hasta verificar el PIN (con los mismos 5 fallos y retardos). Auditado como `locked`. No amplía privilegios: solo los reduce.
 - **Desvincular** en el celular borra el secreto local y recarga; no avisa al Mac (la revocación sigue siendo desde sus Ajustes).
 - La interfaz móvil no añade canales ni rutas: reutiliza los de la política «celular». En Ajustes del celular no se ofrecen proveedores/claves (X), reinicio del servidor ni instrucciones globales (D); no se pide `provider.auth` desde el celular.
+
+## 3 vicies quinquies. Code en pantalla de celular (F8-B59, tanda T8)
+
+Solo interfaz: no se abre ningún canal ni ruta nuevos; todo lo que hace Code en el celular pasa por la política «celular» ya existente.
+
+- **Qué se ofrece depende de la política, pero el Mac manda**: la pantalla del celular no ofrece «siempre» (`permission.reply always` es X) ni «una vez» para permisos que la política manda confirmar (`external_directory` y cualquier tipo desconocido = D): muestra «Apruébalo en el Mac». `src/shared/remote/mac-confirm.ts` es solo un espejo para avisar a la persona; `mac-confirm-parity.test.ts` lo compara con `decide()`. Si se desfasara, la política sigue decidiendo.
+- **Adjuntos**: solo partes `data:` con los límites de Chat (5 MB imagen, 10 MB PDF, 1 MB texto, 15 MB total, 5 archivos); `doSend` filtra `file://` de los adjuntos desde el celular. Las menciones `@archivo` siguen siendo `file://` bajo el directorio de la sesión (la política lo acota).
+- **Archivos**: crear/renombrar/borrar de UN archivo es M; carpetas o varios, D (confirmación en el Mac, con aviso previo). `.git` sigue protegido. «Abrir en…» (`editors:open`) no se ofrece (X).
+- **Navegador del agente**: solo `browser:state` y `browser:capture` (R, ámbito por dueño). `captureForUi` no comprueba que la pestaña pertenezca al dueño indicado (solo la política lo hace con el `owner`): pendiente de endurecer en main.
+- **Foco/teclado**: sin atajos de teclado en el celular; el permiso ya no escucha 1/2/3.

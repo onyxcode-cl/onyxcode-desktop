@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Brain, Check, CircleSlash, ListChecks, PencilLine, Shield, Wand2 } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
+import { isRemoteSurface } from '../../../lib/platform'
+import { Sheet } from '../../../components/mobile/Sheet'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useAiGate, type AiGate } from '../../../lib/ai-gate'
@@ -51,7 +53,8 @@ function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivEl
   return ref
 }
 
-const chip = 'no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors'
+const chip = (): string =>
+  `no-drag flex items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
 
 function MenuItem({
   active,
@@ -72,7 +75,7 @@ function MenuItem({
       role="menuitemradio"
       aria-checked={active}
       onClick={onClick}
-      className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-left hover:bg-hover ${active ? 'text-fg' : 'text-muted'}`}
+      className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 text-left hover:bg-hover ${isRemoteSurface() ? 'min-h-12 py-2.5' : 'py-1.5'} ${active ? 'text-fg' : 'text-muted'}`}
     >
       {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
       <span className="min-w-0 flex-1">
@@ -90,7 +93,7 @@ export function PermissionChip(): React.JSX.Element {
   const mode = useCode((s) => s.permissionMode)
   const setPermissionMode = useCode((s) => s.setPermissionMode)
   const [open, setOpen] = useState(false)
-  const ref = useDismiss(open, () => setOpen(false))
+  const ref = useDismiss(open && !isRemoteSurface(), () => setOpen(false))
   const current = PERMISSION_MODES.find((m) => m.id === mode) ?? PERMISSION_MODES[0]
 
   return (
@@ -101,31 +104,45 @@ export function PermissionChip(): React.JSX.Element {
         aria-haspopup="menu"
         aria-expanded={open}
         title={t('code.mode.title')}
-        className={`${chip} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
+        className={`${chip()} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
       >
         {current.icon}
         {t(current.label)}
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute bottom-full left-0 z-50 mb-2 w-72 animate-pop-in origin-bottom-left rounded-xl border border-border bg-elevated p-1 shadow-xl"
-        >
-          {PERMISSION_MODES.map((m) => (
-            <MenuItem
-              key={m.id}
-              active={mode === m.id}
-              icon={m.icon}
-              label={t(m.label)}
-              hint={t(m.hint)}
-              onClick={() => {
-                setOpen(false)
-                void setPermissionMode(m.id)
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {(() => {
+        const items = PERMISSION_MODES.map((m) => (
+          <MenuItem
+            key={m.id}
+            active={mode === m.id}
+            icon={m.icon}
+            label={t(m.label)}
+            hint={t(m.hint)}
+            onClick={() => {
+              setOpen(false)
+              void setPermissionMode(m.id)
+            }}
+          />
+        ))
+        if (isRemoteSurface()) {
+          return (
+            <Sheet open={open} onClose={() => setOpen(false)} title={t('code.mode.title')} size="half">
+              <div role="menu" className="p-2">
+                {items}
+              </div>
+            </Sheet>
+          )
+        }
+        return (
+          open && (
+            <div
+              role="menu"
+              className="absolute bottom-full left-0 z-50 mb-2 w-72 animate-pop-in origin-bottom-left rounded-xl border border-border bg-elevated p-1 shadow-xl"
+            >
+              {items}
+            </div>
+          )
+        )
+      })()}
     </div>
   )
 }
@@ -140,7 +157,7 @@ export function EffortChip(): React.JSX.Element | null {
   const providers = useProviders((s) => s.providers)
   const gate = useCodeAiGate()
   const [open, setOpen] = useState(false)
-  const ref = useDismiss(open, () => setOpen(false))
+  const ref = useDismiss(open && !isRemoteSurface(), () => setOpen(false))
 
   const effective = gate.effective ?? model ?? modeModel
   const info = providers.find((p) => p.id === effective.providerID)?.models[effective.modelID]
@@ -160,22 +177,33 @@ export function EffortChip(): React.JSX.Element | null {
         aria-haspopup="menu"
         aria-expanded={open}
         title={t('code.effort.title')}
-        className={`${chip} text-muted hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
+        className={`${chip()} text-muted hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
       >
         <Brain size={14} />
         <span className="capitalize">{variant ?? t('code.effort.standard')}</span>
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 bottom-full z-50 mb-2 w-48 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-1 shadow-xl"
-        >
-          <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">{t('code.effort.menu')}</div>
-          <MenuItem active={!variant} label={t('code.effort.standard')} onClick={() => pick(null)} />
-          {variants.map((v) => (
-            <MenuItem key={v} active={variant === v} label={v.charAt(0).toUpperCase() + v.slice(1)} onClick={() => pick(v)} />
-          ))}
-        </div>
+      {isRemoteSurface() ? (
+        <Sheet open={open} onClose={() => setOpen(false)} title={t('code.effort.menu')} size="half">
+          <div role="menu" className="p-2">
+            <MenuItem active={!variant} label={t('code.effort.standard')} onClick={() => pick(null)} />
+            {variants.map((v) => (
+              <MenuItem key={v} active={variant === v} label={v.charAt(0).toUpperCase() + v.slice(1)} onClick={() => pick(v)} />
+            ))}
+          </div>
+        </Sheet>
+      ) : (
+        open && (
+          <div
+            role="menu"
+            className="absolute right-0 bottom-full z-50 mb-2 w-48 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-1 shadow-xl"
+          >
+            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">{t('code.effort.menu')}</div>
+            <MenuItem active={!variant} label={t('code.effort.standard')} onClick={() => pick(null)} />
+            {variants.map((v) => (
+              <MenuItem key={v} active={variant === v} label={v.charAt(0).toUpperCase() + v.slice(1)} onClick={() => pick(v)} />
+            ))}
+          </div>
+        )
       )}
     </div>
   )

@@ -21,6 +21,7 @@ import { StepGroup, relPath } from './ToolCard'
 import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
+import { isRemoteSurface } from '../../../lib/platform'
 
 // ---------------------------------------------------------------------------
 // Agrupación en bloques
@@ -447,7 +448,7 @@ export function MessageStream(props: Props): React.JSX.Element {
     <div className="relative min-h-0 flex-1">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
+        <div className={`mx-auto flex max-w-3xl flex-col ${isRemoteSurface() ? 'gap-5 px-3 py-4' : 'gap-6 px-6 py-6'}`}>
           {loading && entries.length === 0 && (
             <div className="flex items-center gap-2 text-sm text-muted">
               <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}

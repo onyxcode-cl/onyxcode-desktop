@@ -3,9 +3,11 @@ import { FilePen, HelpCircle, Loader2, ShieldAlert, SquareTerminal } from 'lucid
 import type { MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
+import { isRemoteSurface } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
 import { DiffStats, relPath } from './ToolCard'
 import { isEditableTarget } from './ui'
+import { phoneReplies } from './mobile-logic'
 import { useCode } from './store'
 import type { PendingPermission, PendingQuestion } from './types'
 
@@ -33,6 +35,9 @@ export function PermissionCard({
   hotkeys?: boolean
 }): React.JSX.Element {
   const t = useT()
+  // Celular: solo «una vez» y «rechazar» (nunca «siempre»); lo que el Mac debe confirmar se aprueba en el propio Mac.
+  const mobile = isRemoteSurface()
+  const allowed = mobile ? phoneReplies(request.permission) : null
   const reply = useCode((s) => s.replyPermission)
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
@@ -50,7 +55,7 @@ export function PermissionCard({
   )
 
   useEffect(() => {
-    if (!hotkeys) return
+    if (!hotkeys || mobile) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       // Desde el composer vacío también valen (es donde está el foco normalmente).
@@ -65,7 +70,7 @@ export function PermissionCard({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [hotkeys, run])
+  }, [hotkeys, mobile, run])
 
   const md = request.metadata
   const diff = typeof md.diff === 'string' ? md.diff : ''
@@ -90,6 +95,9 @@ export function PermissionCard({
     },
     { key: '3', label: t('code.perm.reject'), reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
   ]
+
+  const shown = allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions
+  const macOnly = !!allowed && !allowed.includes('once')
 
   return (
     <div className="my-2 overflow-hidden rounded-xl border border-accent/40 bg-elevated shadow-sm ring-4 ring-accent/5">
@@ -120,18 +128,29 @@ export function PermissionCard({
         </pre>
       )}
       {diff && <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80 border-t border-border" />}
+      {macOnly && (
+        <div role="note" className="flex items-start gap-2 border-t border-border bg-warning/10 px-3.5 py-2.5 text-[13px]">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
+          <span className="min-w-0">
+            <b className="block font-medium text-fg">{t('code.m.macApprove')}</b>
+            <span className="text-muted">{t('code.m.macApproveHint')}</span>
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-bg/40 px-3 py-2">
-        {actions.map((a) => (
+        {shown.map((a) => (
           <button
             key={a.key}
             type="button"
             disabled={busy}
             title={a.title}
             onClick={() => run(a.reply)}
-            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 ${a.cls}`}
+            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 ${mobile ? 'min-h-11 min-w-28 flex-1 justify-center px-4 text-[14px]' : ''} ${a.cls}`}
           >
             {a.label}
-            {hotkeys && <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">{a.key}</kbd>}
+            {hotkeys && !mobile && (
+              <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">{a.key}</kbd>
+            )}
           </button>
         ))}
         {busy && <Loader2 size={14} className="ml-1 animate-spin text-muted" />}
@@ -181,7 +200,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
                   type="button"
                   title={o.description}
                   onClick={() => toggle(qi, o.label, !!q.multiple)}
-                  className={`rounded-lg border px-2.5 py-1 text-sm transition ${selected ? 'border-accent bg-accent-soft text-fg' : 'border-border hover:bg-hover'}`}
+                  className={`rounded-lg border px-2.5 py-1 text-sm transition ${isRemoteSurface() ? 'min-h-11 px-4' : ''} ${selected ? 'border-accent bg-accent-soft text-fg' : 'border-border hover:bg-hover'}`}
                 >
                   {o.label}
                 </button>
@@ -193,7 +212,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
               value={custom[qi]}
               onChange={(e) => setCustom((prev) => prev.map((c, i) => (i === qi ? e.target.value : c)))}
               placeholder={t('code.question.other')}
-              className="mt-2 ml-6 w-[calc(100%-1.5rem)] rounded-lg border border-border bg-bg px-2.5 py-1 text-sm outline-none focus:border-accent"
+              className={`mt-2 ml-6 w-[calc(100%-1.5rem)] rounded-lg border border-border bg-bg px-2.5 py-1 text-sm outline-none focus:border-accent ${isRemoteSurface() ? 'min-h-11' : ''}`}
             />
           )}
         </div>

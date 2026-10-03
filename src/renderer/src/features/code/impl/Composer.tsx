@@ -10,6 +10,7 @@ import {
   ArrowDown,
   ArrowUp,
   AtSign,
+  Camera,
   File,
   FileImage,
   Hammer,
@@ -24,7 +25,10 @@ import {
   X
 } from 'lucide-react'
 import { t as tg } from '@shared/i18n'
+import { toChatAttachment } from '../../../lib/attachments'
 import { splitPath } from '../../../lib/paths'
+import { isRemoteSurface } from '../../../lib/platform'
+import { Sheet } from '../../../components/mobile/Sheet'
 import { useT } from '../../../lib/i18n'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { useClient } from './client'
@@ -34,6 +38,8 @@ import { getDraft, setDraft, useDraft } from '../../../stores/drafts'
 import { useCode } from './store'
 import type { Attachment } from './types'
 import { Kbd, MOD } from './ui'
+import { validatePhoneAttachments } from './mobile-logic'
+import { SheetAction } from './SheetAction'
 
 /** Lee un `File`/`Blob` como `data:` URL (imágenes pegadas/arrastradas o adjuntos por botón). */
 function readAsDataURL(file: File): Promise<string> {
@@ -65,55 +71,60 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
   const moveQueued = useCode((s) => s.moveQueued)
   const sendNow = useCode((s) => s.sendNow)
   if (!items || items.length === 0) return null
+  // En el celular los botones de la cola miden 44 px y bajan a una segunda línea.
+  const touch = isRemoteSurface()
+  const qbtn = touch ? 'h-11 w-11' : 'h-5 w-5'
   return (
-    <div className="mx-auto mb-2 flex w-full max-w-3xl flex-col gap-1.5 px-6">
+    <div className={`mx-auto mb-2 flex w-full max-w-3xl flex-col gap-1.5 ${touch ? 'px-3' : 'px-6'}`}>
       {items.map((m, i) => (
         <div
           key={m.id}
-          className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px]"
+          className={`flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px] ${touch ? 'flex-wrap' : ''}`}
         >
           <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium text-subtle">{t('code.queue.queued')}</span>
-          <span className="min-w-0 flex-1 truncate text-muted">{m.text}</span>
+          <span className={`min-w-0 flex-1 truncate text-muted ${touch ? 'basis-40' : ''}`}>{m.text}</span>
           {m.attachments.length > 0 && (
             <span className="shrink-0 text-[11px] text-subtle">{t('code.queue.attachments', { count: m.attachments.length })}</span>
           )}
-          <button
-            type="button"
-            title={t('code.queue.up')}
-            disabled={i === 0}
-            onClick={() => moveQueued(sessionID, m.id, -1)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30"
-          >
-            <ArrowUp size={12} />
-          </button>
-          <button
-            type="button"
-            title={t('code.queue.down')}
-            disabled={i === items.length - 1}
-            onClick={() => moveQueued(sessionID, m.id, 1)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30"
-          >
-            <ArrowDown size={12} />
-          </button>
-          <button
-            type="button"
-            title={t('code.queue.sendNow')}
-            onClick={() => {
-              dequeue(sessionID, m.id)
-              void sendNow(m.text, m.files, m.attachments)
-            }}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-accent hover:bg-accent-soft"
-          >
-            <Send size={12} />
-          </button>
-          <button
-            type="button"
-            title={t('code.queue.remove')}
-            onClick={() => dequeue(sessionID, m.id)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-danger"
-          >
-            <X size={12} />
-          </button>
+          <span className={touch ? 'ml-auto flex shrink-0 items-center' : 'contents'}>
+            <button
+              type="button"
+              title={t('code.queue.up')}
+              disabled={i === 0}
+              onClick={() => moveQueued(sessionID, m.id, -1)}
+              className={`flex ${qbtn} shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30`}
+            >
+              <ArrowUp size={12} />
+            </button>
+            <button
+              type="button"
+              title={t('code.queue.down')}
+              disabled={i === items.length - 1}
+              onClick={() => moveQueued(sessionID, m.id, 1)}
+              className={`flex ${qbtn} shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-fg disabled:opacity-30`}
+            >
+              <ArrowDown size={12} />
+            </button>
+            <button
+              type="button"
+              title={t('code.queue.sendNow')}
+              onClick={() => {
+                dequeue(sessionID, m.id)
+                void sendNow(m.text, m.files, m.attachments)
+              }}
+              className={`flex ${qbtn} shrink-0 items-center justify-center rounded text-accent hover:bg-accent-soft`}
+            >
+              <Send size={12} />
+            </button>
+            <button
+              type="button"
+              title={t('code.queue.remove')}
+              onClick={() => dequeue(sessionID, m.id)}
+              className={`flex ${qbtn} shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-danger`}
+            >
+              <X size={12} />
+            </button>
+          </span>
         </div>
       ))}
     </div>
@@ -204,6 +215,11 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const [dragOver, setDragOver] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  // Celular: sin atajos de teclado ni arrastrar y soltar; adjuntos con límites y solo `data:`; botones de 44 px.
+  const mobile = isRemoteSurface()
+  const [attachSheet, setAttachSheet] = useState(false)
+  const [attachError, setAttachError] = useState<string | null>(null)
   const directory = useCode((s) => s.directory)
   const activeSessionID = useCode((s) => s.activeSessionID)
   // F8-B32: texto y menciones se guardan por proyecto y sesión (sobreviven a cambiar de modo y de sesión).
@@ -232,7 +248,20 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const serverCommands = useServerCommands(directory)
 
   const addFiles = (fileList: FileList | File[]): void => {
-    void Promise.all(Array.from(fileList).map(toAttachment)).then((added) => setAttachments((a) => [...a, ...added]))
+    const list = Array.from(fileList)
+    if (mobile) {
+      // Mismos límites que Chat (cantidad, tamaño por tipo y total); los textos se normalizan y siempre sale una URL `data:`.
+      const { accepted, errors } = validatePhoneAttachments(
+        list.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+        attachments
+      )
+      setAttachError(errors.length ? errors.join(' ') : null)
+      void Promise.all(accepted.map((i) => toChatAttachment(list[i]!)))
+        .then((added) => setAttachments((a) => [...a, ...added]))
+        .catch((err: unknown) => setAttachError(err instanceof Error ? err.message : String(err)))
+      return
+    }
+    void Promise.all(list.map(toAttachment)).then((added) => setAttachments((a) => [...a, ...added]))
   }
 
   const trigger = useMemo(() => {
@@ -243,8 +272,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
 
   // Enfoca el composer al cambiar de sesión.
   useEffect(() => {
-    ref.current?.focus()
-  }, [activeSessionID])
+    if (!mobile) ref.current?.focus()
+  }, [activeSessionID, mobile])
 
   // Bandeja del navegador integrado: "Añadir al chat" y "elemento elegido" insertan texto (y la
   // imagen, si la hay) igual que un adjunto pegado/arrastrado.
@@ -267,6 +296,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   useAutosizeTextarea(ref, text, { max: 260 })
 
   const clear = (): void => {
+    setAttachError(null)
     setText('')
     setCaret(0)
     setMentions([])
@@ -430,6 +460,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         return
       }
     }
+    // En el celular Enter es salto de línea: se envía con el botón.
+    if (mobile) return
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       submit(true)
@@ -457,16 +489,19 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files)
   }
 
+  /** Celular: tocar un botón de la barra no debe quitarle el foco al campo (si no, la barra cambia de sitio y se pierde el toque). */
+  const keepFocus = (e: React.MouseEvent): void => e.preventDefault()
+
   const syncCaret = (): void => {
     const el = ref.current
     if (el) setCaret(el.selectionStart ?? el.value.length)
   }
 
   return (
-    <div className="pb-4">
+    <div className={mobile ? 'pb-[max(0.5rem,env(safe-area-inset-bottom))]' : 'pb-4'}>
       {activeSessionID && <QueueList sessionID={activeSessionID} />}
       <div
-        className="mx-auto w-full max-w-3xl px-6"
+        className={`mx-auto w-full max-w-3xl ${mobile ? 'px-3' : 'px-6'}`}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
@@ -493,15 +528,17 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     {filesLoading && <Loader2 size={11} className="ml-1 animate-spin" />}
                   </>
                 )}
-                <span className="ml-auto flex items-center gap-1 normal-case">
-                  <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>{'esc'}</Kbd>
-                </span>
+                {!mobile && (
+                  <span className="ml-auto flex items-center gap-1 normal-case">
+                    <Kbd>↑↓</Kbd> <Kbd>↵</Kbd> <Kbd>{'esc'}</Kbd>
+                  </span>
+                )}
               </div>
               <div
                 role="listbox"
                 id="code-composer-menu"
                 aria-label={trigger.kind === '/' ? t('code.composer.commands') : t('code.composer.files')}
-                className="max-h-64 overflow-y-auto py-1"
+                className={`overflow-y-auto py-1 ${mobile ? 'max-h-[45dvh]' : 'max-h-64'}`}
               >
                 {items.length === 0 && <div className="px-3 py-2 text-sm text-subtle">{t('code.composer.searching')}</div>}
                 {items.map((item, i) => {
@@ -518,7 +555,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                         e.preventDefault()
                         choose(item)
                       }}
-                      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm ${i === menuIndex ? 'bg-hover text-fg' : 'text-muted'}`}
+                      className={`flex w-full items-center gap-2.5 px-3 text-left text-sm ${mobile ? 'min-h-12 py-2' : 'py-1.5'} ${i === menuIndex ? 'bg-hover text-fg' : 'text-muted'}`}
                     >
                       <span className={i === menuIndex ? 'text-accent' : 'text-subtle'}>{item.icon}</span>
                       <span className={`shrink-0 ${item.id.startsWith('f:') ? 'font-mono text-[13px]' : 'font-medium'} text-fg`}>
@@ -534,14 +571,14 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           )}
           <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md">
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+              <div className={`flex flex-wrap gap-2 px-4 ${mobile ? 'pt-5' : 'pt-3'}`}>
                 {attachments.map((a) => (
                   <span
                     key={a.id}
-                    className="group/att relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-bg"
+                    className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${mobile ? 'h-16 w-16' : 'h-14 w-14 overflow-hidden'}`}
                   >
                     {a.mime.startsWith('image/') ? (
-                      <img src={a.url} alt={a.name} className="h-full w-full object-cover" />
+                      <img src={a.url} alt={a.name} className={`h-full w-full object-cover ${mobile ? 'rounded-lg' : ''}`} />
                     ) : (
                       <FileImage size={18} className="text-subtle" />
                     )}
@@ -550,9 +587,19 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       title={t('code.composer.removeAttachment', { name: a.name })}
                       aria-label={t('code.composer.removeAttachment', { name: a.name })}
                       onClick={() => setAttachments((cur) => cur.filter((x) => x.id !== a.id))}
-                      className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100 focus-visible:opacity-100"
+                      className={
+                        mobile
+                          ? 'absolute -top-3.5 -right-3.5 flex h-11 w-11 items-center justify-center'
+                          : 'absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100 focus-visible:opacity-100'
+                      }
                     >
-                      <X size={10} />
+                      {mobile ? (
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-fg text-bg shadow">
+                          <X size={13} />
+                        </span>
+                      ) : (
+                        <X size={10} />
+                      )}
                     </button>
                   </span>
                 ))}
@@ -562,12 +609,27 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               ref={fileInputRef}
               type="file"
               multiple
+              {...(mobile ? { accept: 'image/*,application/pdf,text/*' } : {})}
               className="hidden"
               onChange={(e) => {
                 if (e.target.files) addFiles(e.target.files)
                 e.target.value = ''
               }}
             />
+            {mobile && (
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                data-testid="code-camera-input"
+                onChange={(e) => {
+                  if (e.target.files) addFiles(e.target.files)
+                  e.target.value = ''
+                }}
+              />
+            )}
             <textarea
               ref={ref}
               data-code-composer=""
@@ -596,77 +658,187 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               placeholder={
                 aiGate.gate.blocked
                   ? t('code.composer.noAi')
-                  : agent === 'plan'
-                    ? t('code.composer.placeholderPlan')
-                    : t('code.composer.placeholderBuild')
+                  : mobile
+                    ? agent === 'plan'
+                      ? t('code.m.placeholderPlan')
+                      : t('code.m.placeholderBuild')
+                    : agent === 'plan'
+                      ? t('code.composer.placeholderPlan')
+                      : t('code.composer.placeholderBuild')
               }
               className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
             />
-            <div className="flex items-center gap-2 px-3 pb-2.5">
-              <button
-                type="button"
-                onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
-                title={t('code.composer.toggleAgent')}
-                className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
-              >
-                {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
-                {agent === 'plan' ? 'Plan' : 'Build'}
-              </button>
-              <button
-                type="button"
-                title={t('code.composer.mention')}
-                onClick={() => {
-                  const el = ref.current
-                  const pos = el?.selectionStart ?? text.length
-                  const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
-                  const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
-                  const np = pos + (needsSpace ? 2 : 1)
-                  setText(next)
-                  setCaret(np)
-                  requestAnimationFrame(() => {
-                    el?.focus()
-                    el?.setSelectionRange(np, np)
-                  })
-                }}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
-              >
-                <AtSign size={14} />
-              </button>
-              <button
-                type="button"
-                title={t('code.composer.attach')}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
-              >
-                <Paperclip size={14} />
-              </button>
-              <PermissionChip />
-              <span className="ml-auto" />
-              <ModelControls />
-              {busy && (
+            {mobile ? (
+              <>
+                {attachError && (
+                  <div role="alert" className="mx-3 mb-1 rounded-lg bg-danger/10 px-3 py-2 text-[13px] text-danger">
+                    {attachError}
+                  </div>
+                )}
+                <div className="flex items-center gap-1 px-1.5 pb-1">
+                  <button
+                    type="button"
+                    onMouseDown={keepFocus}
+                    aria-label={t('code.composer.attach')}
+                    title={t('code.composer.attach')}
+                    onClick={() => setAttachSheet(true)}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-muted active:bg-hover"
+                  >
+                    <Paperclip size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={keepFocus}
+                    aria-label={t('code.composer.mention')}
+                    title={t('code.composer.mention')}
+                    onClick={() => {
+                      const el = ref.current
+                      const pos = el?.selectionStart ?? text.length
+                      const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
+                      const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
+                      const np = pos + (needsSpace ? 2 : 1)
+                      setText(next)
+                      setCaret(np)
+                      requestAnimationFrame(() => {
+                        el?.focus()
+                        el?.setSelectionRange(np, np)
+                      })
+                    }}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-muted active:bg-hover"
+                  >
+                    <AtSign size={20} />
+                  </button>
+                  <span className="ml-auto" />
+                  {busy && (
+                    <button
+                      type="button"
+                      onMouseDown={keepFocus}
+                      onClick={() => void abort()}
+                      aria-label={t('code.toolbar.stop')}
+                      title={t('code.toolbar.stop')}
+                      className="flex h-11 w-11 items-center justify-center rounded-full bg-fg text-bg active:opacity-80"
+                    >
+                      <Square size={14} fill="currentColor" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onMouseDown={keepFocus}
+                    onClick={() => submit(false)}
+                    disabled={(!text.trim() && attachments.length === 0) || disabled}
+                    aria-label={busy ? t('code.m.queue') : t('code.m.send')}
+                    title={busy ? t('code.m.queue') : t('code.m.send')}
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-fg disabled:opacity-30 active:opacity-90"
+                  >
+                    {busy ? <Send size={17} /> : <ArrowUp size={20} />}
+                  </button>
+                </div>
+                {!focused && (
+                  <div className="flex items-center gap-1 overflow-x-auto border-t border-border px-1.5 py-1">
+                    <button
+                      type="button"
+                      onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
+                      aria-label={t('code.m.toggleAgent')}
+                      title={t('code.m.toggleAgent')}
+                      className={`flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[13px] font-medium ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted active:bg-hover'}`}
+                    >
+                      {agent === 'plan' ? <ListChecks size={15} /> : <Hammer size={15} />}
+                      {agent === 'plan' ? 'Plan' : 'Build'}
+                    </button>
+                    <PermissionChip />
+                    <span className="ml-auto" />
+                    <ModelControls />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2 px-3 pb-2.5">
                 <button
                   type="button"
-                  onClick={() => void abort()}
-                  title={t('code.composer.stop')}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85"
+                  onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
+                  title={t('code.composer.toggleAgent')}
+                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                 >
-                  <Square size={12} fill="currentColor" />
+                  {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
+                  {agent === 'plan' ? 'Plan' : 'Build'}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => submit(false)}
-                disabled={(!text.trim() && attachments.length === 0) || disabled}
-                title={busy ? t('code.composer.queueTitle', { mod: MOD }) : t('code.composer.sendTitle', { mod: MOD })}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
-              >
-                {busy ? <Send size={14} /> : <ArrowUp size={16} />}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  title={t('code.composer.mention')}
+                  onClick={() => {
+                    const el = ref.current
+                    const pos = el?.selectionStart ?? text.length
+                    const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
+                    const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
+                    const np = pos + (needsSpace ? 2 : 1)
+                    setText(next)
+                    setCaret(np)
+                    requestAnimationFrame(() => {
+                      el?.focus()
+                      el?.setSelectionRange(np, np)
+                    })
+                  }}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+                >
+                  <AtSign size={14} />
+                </button>
+                <button
+                  type="button"
+                  title={t('code.composer.attach')}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+                >
+                  <Paperclip size={14} />
+                </button>
+                <PermissionChip />
+                <span className="ml-auto" />
+                <ModelControls />
+                {busy && (
+                  <button
+                    type="button"
+                    onClick={() => void abort()}
+                    title={t('code.composer.stop')}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85"
+                  >
+                    <Square size={12} fill="currentColor" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => submit(false)}
+                  disabled={(!text.trim() && attachments.length === 0) || disabled}
+                  title={busy ? t('code.composer.queueTitle', { mod: MOD }) : t('code.composer.sendTitle', { mod: MOD })}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
+                >
+                  {busy ? <Send size={14} /> : <ArrowUp size={16} />}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-1.5 flex max-w-3xl justify-center gap-3 px-6 text-[11px] text-subtle">
+      {mobile && (
+        <Sheet open={attachSheet} onClose={() => setAttachSheet(false)} title={t('code.m.attach.title')} size="half">
+          <SheetAction
+            icon={<Camera size={20} />}
+            label={t('code.m.attach.camera')}
+            onClick={() => {
+              setAttachSheet(false)
+              cameraInputRef.current?.click()
+            }}
+          />
+          <SheetAction
+            icon={<Paperclip size={20} />}
+            label={t('code.m.attach.file')}
+            onClick={() => {
+              setAttachSheet(false)
+              fileInputRef.current?.click()
+            }}
+          />
+          <p className="px-4 py-3 text-xs text-subtle">{t('code.m.attach.limits')}</p>
+        </Sheet>
+      )}
+      <div className={`mx-auto mt-1.5 max-w-3xl justify-center gap-3 px-6 text-[11px] text-subtle ${mobile ? 'hidden' : 'flex'}`}>
         <span>
           <Kbd>/</Kbd> {t('code.composer.hintCommands')}
         </span>

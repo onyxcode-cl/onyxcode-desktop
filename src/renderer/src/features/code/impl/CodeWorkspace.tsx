@@ -38,11 +38,13 @@ import {
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
 import { useCodeAiGate } from './ComposerControls'
 import { MessageStream } from './MessageStream'
+import { MobileCodeLayout, MobileToolbar } from './MobileCode'
+import { useCodeMobile } from './mobile-store'
 import { useVisibleFsVersion } from './useVisibleFsVersion'
 import { TranscriptLoading } from '../../../components/TranscriptLoader'
 import { ChangesPanel } from './panels/ChangesPanel'
@@ -75,6 +77,9 @@ function readWidth(): number {
   return 460
 }
 
+/** Margen lateral de la columna: más estrecho en el celular. */
+const gutter = (): string => (isRemoteSurface() ? 'px-3' : 'px-6')
+
 function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null {
   const t = useT()
   const todos = useCode((s) => s.todos[sessionID])
@@ -85,13 +90,13 @@ function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null
   const current = todos.find((x) => x.status === 'in_progress') ?? todos.find((x) => x.status === 'pending')
   const pct = Math.round((done / todos.length) * 100)
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 pb-2">
+    <div className={`mx-auto w-full max-w-3xl pb-2 ${gutter()}`}>
       <div className="overflow-hidden rounded-xl border border-border bg-elevated text-[13px] shadow-sm">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-muted hover:text-fg"
+          className={`flex w-full items-center gap-2.5 px-3 text-left text-muted hover:text-fg ${isRemoteSurface() ? 'min-h-11' : 'py-2'}`}
         >
           <ListTodo size={14} className="shrink-0 text-accent" />
           <span className="shrink-0 font-medium text-fg">{t('code.todo.title')}</span>
@@ -351,8 +356,8 @@ function BranchPill({ directory }: { directory: string }): React.JSX.Element | n
     <Tip label={tip}>
       <button
         type="button"
-        onClick={() => panel !== 'changes' && togglePanel('changes')}
-        className="no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg px-2 py-0.5 font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg"
+        onClick={() => (isRemoteSurface() ? useCodeMobile.getState().openSheet('changes') : panel !== 'changes' && togglePanel('changes'))}
+        className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
       >
         <GitBranch size={12} className="shrink-0" />
         <span className="truncate">{info.branch}</span>
@@ -549,14 +554,16 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
   if (!hasText || dismissedFor === lastAssistant.info.id) return null
 
   return (
-    <div className="mx-auto mb-2 w-full max-w-3xl px-6">
-      <div className="flex items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-3.5 py-2.5 text-sm">
+    <div className={`mx-auto mb-2 w-full max-w-3xl ${gutter()}`}>
+      <div
+        className={`flex items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-3.5 py-2.5 text-sm ${isRemoteSurface() ? 'flex-wrap' : ''}`}
+      >
         <ListChecks size={16} className="shrink-0 text-accent" />
-        <span className="min-w-0 flex-1 text-fg/90">{t('code.plan.ask')}</span>
+        <span className={`min-w-0 flex-1 text-fg/90 ${isRemoteSurface() ? 'basis-48' : ''}`}>{t('code.plan.ask')}</span>
         <button
           type="button"
           onClick={() => setDismissedFor(lastAssistant.info.id)}
-          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg"
+          className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'min-h-11 flex-1 px-4 text-[13px]' : ''}`}
         >
           {t('code.plan.notNow')}
         </button>
@@ -567,7 +574,7 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
             setAgent('build')
             void send(t('code.plan.proceed'))
           }}
-          className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-fg hover:opacity-90"
+          className={`shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-fg hover:opacity-90 ${isRemoteSurface() ? 'min-h-11 flex-1 px-4 text-[13px]' : ''}`}
         >
           {t('code.plan.approve')}
         </button>
@@ -603,8 +610,12 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const busy = run === 'busy' || run === 'retry'
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
-      <Toolbar directory={directory} />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {isRemoteSurface() ? (
+        <MobileToolbar directory={directory} branch={<BranchPill directory={directory} />} />
+      ) : (
+        <Toolbar directory={directory} />
+      )}
       {globalError && (
         <div className="flex items-center gap-2 border-b border-danger/30 bg-danger/10 px-4 py-1.5 text-xs text-danger">
           <span className="min-w-0 flex-1 truncate">{globalError}</span>
@@ -638,7 +649,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       )}
       {sid && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
-      <div className="mx-auto w-full max-w-3xl px-6">
+      <div className={`mx-auto w-full max-w-3xl ${gutter()}`}>
         <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setModel} />
       </div>
       <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />
@@ -706,6 +717,9 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
   }, [markRead])
 
   if (!directory) return <ProjectPicker />
+
+  // Pantalla del celular: una columna (lista → conversación) con hojas; Mac y Windows siguen con el diseño de escritorio.
+  if (isRemoteSurface()) return <MobileCodeLayout directory={directory} chat={<ChatColumn directory={directory} />} />
 
   return (
     <div className="flex h-full min-h-0 w-full bg-bg text-fg">
