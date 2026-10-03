@@ -25,9 +25,15 @@
  *
  * Lista blanca de operaciones (única superficie): `sessions.list`, `session.messages`, `session.prompt`,
  * `session.abort`, `permission.reply` (solo `once` o `reject`; `always` no existe).
+ *
+ * PROTOCOLO v2 (F8-B51): además de las tramas anteriores (`req`/`res` con `m`/`evt`, que siguen sirviendo a la
+ * lista blanca del prototipo), el canal transporta un multiplexor (`mux.ts`) con `call`, `http`, `res`, `chunk`,
+ * `sub`, `ev`, `reset`, `cancel` y `credit`. Aquí solo están sus TIPOS, LÍMITES y VALIDADORES estrictos; el
+ * despacho a IPC/HTTP lo inyecta quien use el multiplexor (por defecto no hay ninguno: todo se rechaza).
+ * Un celular con la versión 1 recibe `error{code:'version'}` por señalización y nunca llega a abrir canal.
  */
 
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 /** Etiqueta del DataChannel que crea el celular. */
 export const DATACHANNEL_LABEL = 'onyx'
@@ -70,7 +76,39 @@ export const LIMITS = {
   maxToolSummaryChars: 200,
   maxPartsPerMessage: 40,
   maxTitleChars: 120,
-  maxPermissionSummaryChars: 300
+  maxPermissionSummaryChars: 300,
+
+  // --- Protocolo v2 (multiplexor) ---
+  /** Datos de texto por trama `chunk` (ya escapados en JSON; la trama completa cabe de sobra en 64 KiB). */
+  chunkBytes: 56 * 1024,
+  /** Tope de un mensaje lógico ensamblado: subida (celular -> Mac, adjuntos) y bajada (Mac -> celular). */
+  maxUploadBytes: 16 * 1024 * 1024,
+  maxDownloadBytes: 8 * 1024 * 1024,
+  /** Suma máxima de mensajes en ensamblado a la vez (por conexión). */
+  maxAssemblingBytes: 32 * 1024 * 1024,
+  /** Ventana de crédito por transferencia/stream, en bytes de trama. */
+  creditWindowBytes: 256 * 1024,
+  /** El receptor devuelve crédito en bloques de al menos esto. */
+  creditGrantBytes: 32 * 1024,
+  maxInFlightCalls: 32,
+  maxStreams: 6,
+  /** Búfer circular de eventos para reanudar con `since`. */
+  eventRingMs: 30_000,
+  eventRingBytes: 2 * 1024 * 1024,
+  /** Lecturas por segundo sostenidas y ráfaga (`call`/`http`/`sub`); las mutaciones las acota la política. */
+  callsPerSecond: 40,
+  callBurst: 120,
+  mutationsPerSecond: 5,
+  confirmationsPending: 2,
+  confirmationsPerMinute: 10,
+  /** Tramas de transferencia (`chunk`/`credit`/`cancel`) por segundo: red de seguridad contra inundación. */
+  frameFloodPerSecond: 1500,
+  frameFloodBurst: 3000,
+  maxChannelChars: 96,
+  maxPathChars: 512,
+  maxQueryEntries: 32,
+  maxQueryValueChars: 2048,
+  maxErrorMsgChars: 200
 } as const
 
 // ---------------------------------------------------------------------------------------------
@@ -127,7 +165,7 @@ export type RequestFrame = {
   [M in RequestMethod]: { t: 'req'; id: number; m: M; p: RequestParams[M] }
 }[RequestMethod]
 
-export type ClientFrame = { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | RequestFrame
+export type ClientFrame = { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | RequestFrame | MuxClientFrame
 
 // ---------------------------------------------------------------------------------------------
 // Datos que salen hacia el celular (ya recortados por el escritorio)
@@ -206,6 +244,7 @@ export type HostFrame =
   | { t: 'pong' }
   | { t: 'bye'; reason: ByeReason }
   | { t: 'evt'; ev: RemoteEvent }
+  | MuxHostFrame
   | {
       [M in RequestMethod]:
         | { t: 'res'; id: number; ok: true; m: M; result: RequestResults[M] }
@@ -251,7 +290,7 @@ export function utf8Length(s: string): number {
     const c = s.charCodeAt(i)
     if (c < 0x80) n += 1
     else if (c < 0x800) n += 2
-    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
       n += 4
       i++
     } else n += 3
@@ -361,6 +400,13 @@ export function parseClientFrame(raw: unknown): Parsed<ClientFrame> {
     }
     case 'req':
       return parseRequest(o)
+    case 'call':
+    case 'http':
+    case 'sub':
+    case 'cancel':
+    case 'credit':
+    case 'chunk':
+      return parseMuxClient(o)
     default:
       return fail('unknown-type')
   }
@@ -511,7 +557,13 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
       if (!onlyKeys(o, ['t', 'ev']) || !isEvent(o.ev)) return fail('bad-event')
       return { ok: true, value: { t: 'evt', ev: o.ev } }
     case 'res':
-      return parseResponse(o)
+      // `m` solo existe en el `res` exitoso del protocolo anterior; el de v2 lleva `data`/`ck` o `error` (superconjunto).
+      return o.ok === true && 'm' in o ? parseResponse(o) : parseMuxHost(o)
+    case 'ev':
+    case 'reset':
+    case 'credit':
+    case 'chunk':
+      return parseMuxHost(o)
     default:
       return fail('unknown-type')
   }
@@ -571,4 +623,235 @@ function parseResponse(o: Obj): Parsed<HostFrame> {
 export function encodeFrame(frame: HostFrame | ClientFrame | SignalHostFrame | SignalClientFrame): string | null {
   const s = JSON.stringify(frame)
   return utf8Length(s) <= LIMITS.maxFrameBytes ? s : null
+}
+
+// ---------------------------------------------------------------------------------------------
+// Protocolo v2: tramas del multiplexor (ver `mux.ts`)
+// ---------------------------------------------------------------------------------------------
+
+export type MuxErrorCode = RemoteErrorCode | 'disconnected' | 'cancelled' | 'too-large' | 'unsupported'
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+export interface HttpHeaders {
+  'content-type'?: string
+  accept?: string
+}
+
+/** `ck` = bytes UTF-8 totales del campo de datos, que viaja aparte en tramas `chunk` con el mismo `id`. */
+export interface CallFrame {
+  t: 'call'
+  id: number
+  ch: string
+  p?: unknown
+  ck?: number
+}
+export interface HttpFrame {
+  t: 'http'
+  id: number
+  eng: string
+  method: HttpMethod
+  path: string
+  query?: Record<string, string>
+  headers?: HttpHeaders
+  body?: string
+  ck?: number
+}
+/** `since` = último `seq` recibido (reanudar); sin `since` = solo eventos nuevos. */
+export interface SubFrame {
+  t: 'sub'
+  id: number
+  eng: string
+  since?: number
+}
+export interface CancelFrame {
+  t: 'cancel'
+  id: number
+}
+export interface CreditFrame {
+  t: 'credit'
+  id: number
+  bytes: number
+}
+export interface ChunkFrame {
+  t: 'chunk'
+  id: number
+  n: number
+  last: boolean
+  d: string
+}
+export type MuxClientFrame = CallFrame | HttpFrame | SubFrame | CancelFrame | CreditFrame | ChunkFrame
+
+export type MuxResFrame =
+  | { t: 'res'; id: number; ok: true; data?: unknown; ck?: number }
+  | { t: 'res'; id: number; ok: false; error: { code: MuxErrorCode; msg?: string } }
+/** Evento de un stream: `ch` = canal IPC, `oc` = tipo de evento de OpenCode. `seq` crece de 1 en 1 por motor. */
+export interface EvFrame {
+  t: 'ev'
+  s: number
+  seq: number
+  ch?: string
+  oc?: string
+  p?: unknown
+}
+/** Hay un hueco: el celular debe resincronizar (el `onOpen` del renderer) y sigue desde `seq`. */
+export interface ResetFrame {
+  t: 'reset'
+  s: number
+  seq: number
+}
+export type MuxHostFrame = MuxResFrame | EvFrame | ResetFrame | CreditFrame | ChunkFrame
+
+export const MUX_CLIENT_TYPES: readonly string[] = ['call', 'http', 'sub', 'cancel', 'credit', 'chunk']
+
+/** ¿Es una trama del multiplexor (y no del protocolo anterior)? */
+export function isMuxHostFrame(f: HostFrame): f is MuxHostFrame {
+  if (f.t === 'res') return !('m' in f && f.ok === true)
+  return f.t === 'ev' || f.t === 'reset' || f.t === 'credit' || f.t === 'chunk'
+}
+export function isMuxClientFrame(f: ClientFrame): f is MuxClientFrame {
+  return MUX_CLIENT_TYPES.includes(f.t)
+}
+
+const CHANNEL_RE = /^[A-Za-z][A-Za-z0-9_.:-]{0,95}$/
+const ENGINE_RE = /^[A-Za-z0-9][A-Za-z0-9_./:-]{0,95}$/
+const PATH_RE = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/
+const QUERY_KEY_RE = /^[A-Za-z0-9_.-]{1,64}$/
+const MUX_ERR: readonly string[] = [...ERR, 'disconnected', 'cancelled', 'too-large', 'unsupported']
+const HTTP_METHODS: readonly string[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+
+function isSeq(v: unknown, min: number): v is number {
+  return typeof v === 'number' && Number.isSafeInteger(v) && v >= min
+}
+
+/** Ruta HTTP: absoluta, sin segmentos `.`/`..`, sin `//` y sin separadores codificados (`%2e`, `%2f`, `%5c`). */
+export function isSafeHttpPath(path: unknown): path is string {
+  if (typeof path !== 'string' || path.length > LIMITS.maxPathChars || !PATH_RE.test(path)) return false
+  if (/%(2e|2f|5c|00)/i.test(path) || path.includes('//')) return false
+  return !path.split('/').some((seg) => seg === '.' || seg === '..')
+}
+
+function parseMuxClient(o: Obj): Parsed<MuxClientFrame> {
+  switch (o.t) {
+    case 'call': {
+      if (!onlyKeys(o, ['t', 'id', 'ch', 'p', 'ck'])) return fail('extra-keys')
+      if (!isReqId(o.id)) return fail('bad-id')
+      if (typeof o.ch !== 'string' || !CHANNEL_RE.test(o.ch)) return fail('bad-channel')
+      if (o.ck !== undefined && (!isSeq(o.ck, 1) || o.ck > LIMITS.maxUploadBytes || 'p' in o)) return fail('bad-chunked')
+      const f: CallFrame = { t: 'call', id: o.id, ch: o.ch }
+      if ('p' in o) f.p = o.p
+      if (o.ck !== undefined) f.ck = o.ck
+      return { ok: true, value: f }
+    }
+    case 'http': {
+      if (!onlyKeys(o, ['t', 'id', 'eng', 'method', 'path', 'query', 'headers', 'body', 'ck'])) return fail('extra-keys')
+      if (!isReqId(o.id)) return fail('bad-id')
+      if (typeof o.eng !== 'string' || !ENGINE_RE.test(o.eng)) return fail('bad-engine')
+      if (typeof o.method !== 'string' || !HTTP_METHODS.includes(o.method)) return fail('bad-method')
+      if (!isSafeHttpPath(o.path)) return fail('bad-path')
+      const f: HttpFrame = { t: 'http', id: o.id, eng: o.eng, method: o.method as HttpMethod, path: o.path }
+      if (o.query !== undefined) {
+        if (!isObj(o.query)) return fail('bad-query')
+        const keys = Object.keys(o.query)
+        if (keys.length > LIMITS.maxQueryEntries) return fail('bad-query')
+        const q: Record<string, string> = {}
+        for (const k of keys) {
+          const v = o.query[k]
+          if (!QUERY_KEY_RE.test(k) || !isStr(v, LIMITS.maxQueryValueChars)) return fail('bad-query')
+          q[k] = v
+        }
+        f.query = q
+      }
+      if (o.headers !== undefined) {
+        if (!isObj(o.headers) || !onlyKeys(o.headers, ['content-type', 'accept'])) return fail('bad-headers')
+        const h: HttpHeaders = {}
+        for (const k of ['content-type', 'accept'] as const) {
+          const v = o.headers[k]
+          if (v === undefined) continue
+          if (!isStr(v, 128, 1) || /[\u0000-\u001f\u007f]/.test(v)) return fail('bad-headers')
+          h[k] = v
+        }
+        f.headers = h
+      }
+      if (o.body !== undefined) {
+        if (typeof o.body !== 'string' || o.ck !== undefined) return fail('bad-body')
+        f.body = o.body
+      }
+      if (o.ck !== undefined) {
+        if (!isSeq(o.ck, 1) || o.ck > LIMITS.maxUploadBytes) return fail('bad-chunked')
+        f.ck = o.ck
+      }
+      return { ok: true, value: f }
+    }
+    case 'sub': {
+      if (!onlyKeys(o, ['t', 'id', 'eng', 'since'])) return fail('extra-keys')
+      if (!isReqId(o.id)) return fail('bad-id')
+      if (typeof o.eng !== 'string' || !ENGINE_RE.test(o.eng)) return fail('bad-engine')
+      if (o.since !== undefined && !isSeq(o.since, 0)) return fail('bad-since')
+      const f: SubFrame = { t: 'sub', id: o.id, eng: o.eng }
+      if (o.since !== undefined) f.since = o.since
+      return { ok: true, value: f }
+    }
+    case 'cancel':
+      if (!onlyKeys(o, ['t', 'id']) || !isReqId(o.id)) return fail('bad-id')
+      return { ok: true, value: { t: 'cancel', id: o.id } }
+    case 'credit':
+    case 'chunk':
+      return parseTransfer(o) as Parsed<MuxClientFrame>
+    default:
+      return fail('unknown-type')
+  }
+}
+
+function parseTransfer(o: Obj): Parsed<CreditFrame | ChunkFrame> {
+  if (!isReqId(o.id)) return fail('bad-id')
+  if (o.t === 'credit') {
+    if (!onlyKeys(o, ['t', 'id', 'bytes']) || !isSeq(o.bytes, 1) || o.bytes > LIMITS.maxUploadBytes) return fail('bad-credit')
+    return { ok: true, value: { t: 'credit', id: o.id, bytes: o.bytes } }
+  }
+  if (!onlyKeys(o, ['t', 'id', 'n', 'last', 'd'])) return fail('extra-keys')
+  if (!isSeq(o.n, 0) || o.n > 1_000_000 || typeof o.last !== 'boolean') return fail('bad-chunk')
+  if (typeof o.d !== 'string' || o.d.length < 1 || utf8Length(o.d) > LIMITS.chunkBytes) return fail('bad-chunk')
+  return { ok: true, value: { t: 'chunk', id: o.id, n: o.n, last: o.last, d: o.d } }
+}
+
+function parseMuxHost(o: Obj): Parsed<MuxHostFrame> {
+  switch (o.t) {
+    case 'res': {
+      if (!isReqId(o.id)) return fail('bad-id')
+      if (o.ok === false) {
+        if (!onlyKeys(o, ['t', 'id', 'ok', 'error'])) return fail('extra-keys')
+        const e = o.error
+        if (!isObj(e) || !onlyKeys(e, ['code', 'msg']) || typeof e.code !== 'string' || !MUX_ERR.includes(e.code)) return fail('bad-error')
+        if (e.msg !== undefined && !isStr(e.msg, LIMITS.maxErrorMsgChars)) return fail('bad-error')
+        const error: { code: MuxErrorCode; msg?: string } = { code: e.code as MuxErrorCode }
+        if (e.msg !== undefined) error.msg = e.msg
+        return { ok: true, value: { t: 'res', id: o.id, ok: false, error } }
+      }
+      if (o.ok !== true || !onlyKeys(o, ['t', 'id', 'ok', 'data', 'ck'])) return fail('bad-response')
+      if (o.ck !== undefined && (!isSeq(o.ck, 1) || o.ck > LIMITS.maxDownloadBytes || 'data' in o)) return fail('bad-chunked')
+      const f: MuxResFrame = { t: 'res', id: o.id, ok: true }
+      if ('data' in o) f.data = o.data
+      if (o.ck !== undefined) f.ck = o.ck
+      return { ok: true, value: f }
+    }
+    case 'ev': {
+      if (!onlyKeys(o, ['t', 's', 'seq', 'ch', 'oc', 'p'])) return fail('extra-keys')
+      if (!isReqId(o.s) || !isSeq(o.seq, 1)) return fail('bad-seq')
+      if ((o.ch === undefined) === (o.oc === undefined)) return fail('bad-event')
+      const name = o.ch ?? o.oc
+      if (typeof name !== 'string' || !CHANNEL_RE.test(name)) return fail('bad-event')
+      const f: EvFrame = { t: 'ev', s: o.s, seq: o.seq }
+      if (o.ch !== undefined) f.ch = o.ch as string
+      else f.oc = o.oc as string
+      if ('p' in o) f.p = o.p
+      return { ok: true, value: f }
+    }
+    case 'reset':
+      if (!onlyKeys(o, ['t', 's', 'seq']) || !isReqId(o.s) || !isSeq(o.seq, 0)) return fail('bad-seq')
+      return { ok: true, value: { t: 'reset', s: o.s, seq: o.seq } }
+    case 'credit':
+    case 'chunk':
+      return parseTransfer(o) as Parsed<MuxHostFrame>
+    default:
+      return fail('unknown-type')
+  }
 }

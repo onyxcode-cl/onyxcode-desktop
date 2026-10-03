@@ -120,6 +120,12 @@ describe('LanSignalingServer', () => {
     const p1 = next(a)
     a.send(JSON.stringify({ t: 'hello', v: 99, mode: 'resume', deviceId: 'a'.repeat(32) }))
     expect(JSON.parse(await p1)).toEqual({ t: 'error', code: 'version' })
+    // Un celular con la PWA del protocolo v1 recibe el mismo rechazo limpio (nunca llega a abrir canal).
+    const v1 = await connect()
+    const pv1 = next(v1)
+    v1.send(JSON.stringify({ t: 'hello', v: 1, mode: 'resume', deviceId: 'a'.repeat(32) }))
+    expect(JSON.parse(await pv1)).toEqual({ t: 'error', code: 'version' })
+    expect(PROTOCOL_VERSION).toBe(2)
     const b = await connect()
     const p2 = next(b)
     b.send(JSON.stringify({ t: 'offer', sdp: 'v=0\r\nabc' }))

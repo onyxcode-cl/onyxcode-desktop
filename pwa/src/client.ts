@@ -9,7 +9,9 @@ import {
   PROTOCOL_VERSION,
   SECRET_RE,
   encodeFrame,
+  isMuxHostFrame,
   parseHostFrame,
+  utf8Length,
   type ClientFrame,
   type HostFrame,
   type RemoteErrorCode,
@@ -22,6 +24,7 @@ import {
   type RequestParams,
   type RequestResults
 } from '../../src/shared/remote/protocol'
+import { Mux, Outbox, type HttpRequest, type SubHandlers, type Subscription } from '../../src/shared/remote/mux'
 import { openLink, type Link, type LinkEnd } from './rtc'
 
 const STORE_KEY = 'onyx.pwa.device'
@@ -176,6 +179,9 @@ export class RemoteClient {
   private pongTimer: ReturnType<typeof setTimeout> | null = null
   private toastTimer: ReturnType<typeof setTimeout> | null = null
   private nextId = 1
+  /** Multiplexor v2 de la conexión actual (existe solo con la sesión autenticada). */
+  private mux: Mux | null = null
+  private outbox: Outbox | null = null
   private readonly pending = new Map<number, Pending>()
   private promptTimes: number[] = []
   private badFrames = 0
@@ -269,6 +275,9 @@ export class RemoteClient {
       },
       onMessage: (raw) => {
         if (gen === this.generation) this.onFrame(raw)
+      },
+      onDrain: () => {
+        if (gen === this.generation) this.outbox?.pump()
       },
       onEnd: (why) => {
         if (gen === this.generation) this.onLinkEnd(why)
@@ -418,7 +427,59 @@ export class RemoteClient {
       clearTimeout(this.pongTimer)
       this.pongTimer = null
     }
-    this.handle(p.value)
+    const f = p.value
+    if (isMuxHostFrame(f) && !(f.t === 'res' && this.pending.has(f.id))) {
+      if (!this.authed || !this.mux) {
+        if (++this.badFrames >= MAX_BAD_FRAMES) this.fail('protocol', true)
+        return
+      }
+      this.mux.receive(f, utf8Length(raw))
+      return
+    }
+    this.handle(f)
+  }
+
+  // ── protocolo v2 (multiplexor) ──
+
+  private openMux(): void {
+    this.closeMux()
+    const link = this.link
+    if (!link) return
+    const outbox = new Outbox({ send: (t) => link.send(t), bufferedAmount: () => link.bufferedAmount() })
+    this.outbox = outbox
+    this.mux = new Mux({
+      role: 'client',
+      out: outbox,
+      nextId: () => {
+        const id = this.nextId++
+        if (this.nextId > 0x7fffffff) this.nextId = 1
+        return id
+      },
+      onViolation: () => this.fail('protocol', true)
+    })
+  }
+
+  private closeMux(): void {
+    const m = this.mux
+    this.mux = null
+    m?.close()
+    this.outbox?.kill()
+    this.outbox = null
+  }
+
+  /** Llamada IPC al Mac por el multiplexor (rechaza con `MuxCallError`; `AbortError` si se cancela). */
+  muxCall(ch: string, p?: unknown, signal?: AbortSignal): Promise<unknown> {
+    return this.mux ? this.mux.call(ch, p, { signal }) : Promise.reject(new Error('offline'))
+  }
+
+  /** Petición HTTP al motor a través del Mac. */
+  muxHttp(req: HttpRequest, signal?: AbortSignal): Promise<unknown> {
+    return this.mux ? this.mux.http(req, { signal }) : Promise.reject(new Error('offline'))
+  }
+
+  /** Suscripción a eventos de un motor (`since` reanuda sin huecos). */
+  muxSubscribe(eng: string, h: SubHandlers, since?: number): Subscription | null {
+    return this.mux ? this.mux.subscribe(eng, h, since) : null
   }
 
   private handle(f: HostFrame): void {
@@ -488,6 +549,7 @@ export class RemoteClient {
     this.everOnline = true
     this.attempt = 0
     this.set({ conn: { k: 'online' } })
+    this.openMux()
     this.startKeepalive()
     void this.refreshAll()
   }
@@ -518,11 +580,12 @@ export class RemoteClient {
     this.pending.delete(f.id)
     clearTimeout(pend.timer)
     if (!f.ok) return pend.reject(new Error(f.error.code))
-    if (f.m !== pend.m) return pend.reject(new Error('failed'))
+    if (!('m' in f) || f.m !== pend.m) return pend.reject(new Error('failed'))
     pend.resolve(f.result)
   }
 
   private rejectAll(msg: string): void {
+    this.closeMux()
     for (const [, p] of this.pending) {
       clearTimeout(p.timer)
       p.reject(new Error(msg))
