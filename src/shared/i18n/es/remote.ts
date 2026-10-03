@@ -91,5 +91,18 @@ export const remote = {
   'remote.session.untitled': 'Conversación sin título',
   'remote.tray.stop': 'Cortar acceso del celular',
   'remote.pwa.missing': 'La app del celular no está incluida en esta versión.',
-  'remote.shortcut.stopAll': 'Cortar el acceso desde el celular'
+  'remote.shortcut.stopAll': 'Cortar el acceso desde el celular',
+  'remote.link.disconnected': 'Se perdió la conexión con tu Mac. Vuelve a intentarlo cuando se reconecte.',
+  'remote.link.forbidden': 'Esta acción no está permitida desde el celular.',
+  'remote.link.locked': 'El celular está bloqueado. Escribe tu PIN para seguir.',
+  'remote.link.denied': 'Rechazada en el Mac.',
+  'remote.link.expired': 'Caducó la confirmación en el Mac. Vuelve a intentarlo.',
+  'remote.link.unavailable': 'El Mac no puede atender esto ahora mismo.',
+  'remote.link.busy': 'El Mac está ocupado con otra confirmación. Inténtalo en un momento.',
+  'remote.link.rate-limited': 'Demasiadas acciones seguidas. Espera un momento.',
+  'remote.link.too-large': 'El contenido es demasiado grande para enviarlo desde el celular.',
+  'remote.link.bad-request': 'La petición no es válida.',
+  'remote.link.not-found': 'No se encontró lo que pedías.',
+  'remote.link.unsupported': 'Esto no está disponible desde el celular.',
+  'remote.link.failed': 'Algo falló al hablar con tu Mac.'
 } as const

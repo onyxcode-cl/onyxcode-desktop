@@ -36,6 +36,7 @@ import {
   type LoadTracker
 } from '../../../lib/session-reducer'
 import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../lib/session-paging'
+import { platformCaps } from '../../../lib/platform'
 import { mentionMime } from './mention-mime'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
@@ -282,9 +283,14 @@ const buffers = createBuffers({ seenMax: 2000 })
 function initialAgent(): CodeAgent {
   return lsGet(LS_AGENT) === 'plan' ? 'plan' : 'build'
 }
+/** Paneles que existen en esta superficie: la PWA del celular no tiene terminal (pty) ni vista nativa del navegador. */
+function panelAllowed(p: RightPanel): boolean {
+  const caps = platformCaps()
+  return (p !== 'terminal' || caps.terminal) && (p !== 'browser' || caps.nativeBrowser)
+}
 function initialPanel(): RightPanel | null {
   const p = lsGet(LS_PANEL)
-  return p === 'changes' || p === 'terminal' || p === 'files' || p === 'browser' ? p : null
+  return (p === 'changes' || p === 'terminal' || p === 'files' || p === 'browser') && panelAllowed(p) ? p : null
 }
 function initialPermissionMode(): PermissionMode {
   const v = lsGet(LS_PERM_MODE)
@@ -1193,13 +1199,14 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     togglePanel: (panel) => {
+      if (!panelAllowed(panel)) return
       const next = get().panel === panel ? null : panel
       lsSet(LS_PANEL, next)
       set({ panel: next })
     },
 
     revealBrowserPanel: () => {
-      if (get().panel === 'browser') return
+      if (get().panel === 'browser' || !panelAllowed('browser')) return
       lsSet(LS_PANEL, 'browser')
       set({ panel: 'browser' })
     },

@@ -191,6 +191,8 @@ export class RemoteClient {
   private toastN = 0
   private touched = new Set<string>()
   private generation = 0
+  /** `false` cuando la interfaz completa está cargada: ella lee sus datos por el puente y no hace falta la lista ligera. */
+  lightData = true
 
   constructor() {
     this.creds = loadCreds()
@@ -569,7 +571,7 @@ export class RemoteClient {
     this.set({ conn: { k: 'online' } })
     if (!this.mux) this.openMux()
     this.startKeepalive()
-    void this.refreshAll()
+    if (this.lightData) void this.refreshAll()
   }
 
   /** Fija (`set`) o verifica el PIN de 6 dígitos DENTRO del canal. Nunca se guarda en el celular. */

@@ -626,7 +626,7 @@ function trackViewport(root: HTMLElement): void {
   if (!vv) return
   const apply = (): void => {
     const kb = window.innerHeight - vv.height > 120
-    document.documentElement.classList.toggle('kb', kb)
+    root.classList.toggle('kb', kb)
     root.style.height = kb ? `${Math.round(vv.height)}px` : ''
     root.style.transform = kb && vv.offsetTop > 0 ? `translateY(${Math.round(vv.offsetTop)}px)` : ''
   }
@@ -634,25 +634,62 @@ function trackViewport(root: HTMLElement): void {
   vv.addEventListener('scroll', apply)
 }
 
-export function mountUi(root: HTMLElement, c: RemoteClient): void {
+/** Qué muestra la interfaz ligera cuando la completa está cargada. */
+export interface FullControl {
+  full(): 'none' | 'loading' | 'ready' | 'failed'
+  /** Llamadas que llevan mucho esperando (confirmación en el Mac). */
+  waiting(): number
+  /** Cómo debe verse la capa ligera: tapando todo, solo una franja, u oculta. */
+  onMode(mode: 'cover' | 'strip' | 'hidden'): void
+}
+
+const NO_FULL: FullControl = { full: () => 'none', waiting: () => 0, onMode: () => undefined }
+
+export function mountUi(root: HTMLElement, c: RemoteClient, ctl: FullControl = NO_FULL): { refresh(): void } {
   trackViewport(root)
   const screenEl = h('div', { id: 'screen' })
+  const stripEl = h('div', { class: 'strip', hidden: true, role: 'status', 'aria-live': 'polite' })
   const toastEl = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' })
-  root.replaceChildren(screenEl, toastEl)
+  root.replaceChildren(screenEl, stripEl, toastEl)
   let cur: Screen | null = null
   let lastToast = -1
   let everApp = false
+
+  /** Con la interfaz completa activa, la capa ligera solo tapa en estados sin acceso (vinculando, PIN, confirmar, sin conexión). */
+  const modeFor = (s: Snapshot): 'cover' | 'strip' | 'hidden' => {
+    const full = ctl.full()
+    const k = s.conn.k
+    if (full === 'none' || full === 'failed') return 'cover'
+    if (k === 'online' || k === 'reconnecting') return k === 'reconnecting' || ctl.waiting() > 0 ? 'strip' : 'hidden'
+    return 'cover'
+  }
 
   const render = (s: Snapshot): void => {
     if (s.toast && s.toast.n !== lastToast) {
       lastToast = s.toast.n
       toastEl.textContent = t(s.toast.key)
     } else if (!s.toast) toastEl.textContent = ''
-    // Si ya se estaba en la app y la conexión se está recuperando, se mantiene la pantalla actual.
-    const key = pickKey(s)
+    const mode = modeFor(s)
+    ctl.onMode(mode)
+    const full = ctl.full()
+    if (mode === 'strip') {
+      screenEl.hidden = true
+      stripEl.hidden = false
+      const bar = banner(s.conn)
+      const wait = ctl.waiting() > 0 ? h('div', { class: 'waitpill' }, t('wait.mac')) : null
+      stripEl.replaceChildren(...(bar ? [bar] : []), ...(wait ? [wait] : []))
+      return
+    }
+    stripEl.hidden = true
+    screenEl.hidden = mode === 'hidden'
+    if (mode === 'hidden') return
+    // Entró (`online`) pero la interfaz completa todavía se descarga: pantalla de carga, no la lista ligera.
+    const loading = (s.conn.k === 'online' || s.conn.k === 'reconnecting') && full === 'loading'
+    const key = loading ? 'loading' : pickKey(s)
     if (!cur || cur.key !== key) {
       let next: Screen
-      if (key === 'list') next = listScreen(c)
+      if (key === 'loading') next = loadingScreen()
+      else if (key === 'list') next = listScreen(c)
       else if (key.startsWith('chat:')) next = chatScreen(c, key.slice(5))
       else next = statusScreen(c, s)
       cur = next
@@ -665,8 +702,15 @@ export function mountUi(root: HTMLElement, c: RemoteClient): void {
   c.subscribe(render)
   render(c.state)
 
-  // Botón «atrás» del navegador: vuelve de la conversación a la lista.
+  // Botón «atrás» del navegador: vuelve de la conversación a la lista (interfaz ligera de respaldo).
   window.addEventListener('popstate', () => {
     if (c.state.chat) c.closeChat()
   })
+  return { refresh: () => render(c.state) }
+}
+
+function loadingScreen(): Screen {
+  const title = h('h1', { tabindex: '-1' }, t('app.loading'))
+  const root = h('div', { class: 'center', 'aria-busy': 'true' }, art('gem', '', false, true), title)
+  return { key: 'loading', root, update: () => undefined, focus: () => title.focus() }
 }

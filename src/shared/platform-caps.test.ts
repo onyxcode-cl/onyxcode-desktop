@@ -1,12 +1,35 @@
 import { describe, expect, it } from 'vitest'
-import { capsFor, modeAvailable, usableMode } from './platform-caps'
+import { REMOTE_SURFACE, capsFor, modeAvailable, usableMode } from './platform-caps'
+
+/** Mac y Windows conservan terminal, diálogos nativos, enlaces externos y vista nativa del navegador. */
+const NATIVE = { terminal: true, nativeDialogs: true, openExternal: true, nativeBrowser: true }
 
 describe('capsFor', () => {
   it('macOS tiene Tareas, Control del PC y actualizador', () => {
-    expect(capsFor('darwin')).toEqual({ tasks: true, computer: true, updater: true, keepAwakeText: true, remote: true })
+    expect(capsFor('darwin')).toEqual({ ...NATIVE, tasks: true, computer: true, updater: true, keepAwakeText: true, remote: true })
   })
   it.each(['win32', 'linux', 'freebsd'])('%s no tiene ninguna de las funciones de macOS', (p) => {
-    expect(capsFor(p)).toEqual({ tasks: false, computer: false, updater: false, keepAwakeText: false, remote: false })
+    expect(capsFor(p)).toEqual({ ...NATIVE, tasks: false, computer: false, updater: false, keepAwakeText: false, remote: false })
+  })
+})
+
+describe('superficie remote (PWA del celular)', () => {
+  it('sin terminal, diálogos nativos, enlaces externos, vista nativa, actualizador, Control del PC ni ajustes del puente', () => {
+    expect(capsFor(REMOTE_SURFACE)).toEqual({
+      tasks: true,
+      computer: false,
+      updater: false,
+      keepAwakeText: false,
+      remote: false,
+      terminal: false,
+      nativeDialogs: false,
+      openExternal: false,
+      nativeBrowser: false
+    })
+  })
+  it('Tareas disponible; un modo guardado sigue siendo usable', () => {
+    expect(modeAvailable('tasks', REMOTE_SURFACE)).toBe(true)
+    expect(usableMode('tasks', REMOTE_SURFACE)).toBe('tasks')
   })
 })
 

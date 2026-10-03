@@ -13,6 +13,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
 import { sandboxModelNotice } from '@shared/sandbox-providers'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -182,15 +183,17 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
         />
         <div className="flex items-center gap-1.5 px-2.5 pb-2.5">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={attach}
-              disabled={!folder || attaching}
-              title={folder ? t('tasks.comp.attach') : t('tasks.comp.pickFolder')}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-fg disabled:opacity-40"
-            >
-              {attaching ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
-            </button>
+            {platformCaps().nativeDialogs && (
+              <button
+                type="button"
+                onClick={attach}
+                disabled={!folder || attaching}
+                title={folder ? t('tasks.comp.attach') : t('tasks.comp.pickFolder')}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-fg disabled:opacity-40"
+              >
+                {attaching ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
+              </button>
+            )}
             {hero && <FolderMenu variant="chip" placement="bottom" />}
             <AutoModeChip />
             {extra}

@@ -502,6 +502,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               <button
                 type="button"
                 onClick={() => void pickFolder()}
+                disabled={!caps.nativeDialogs}
                 className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition hover:bg-hover ${touched && needsFolder ? 'border-danger/60' : 'border-border'}`}
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-muted">

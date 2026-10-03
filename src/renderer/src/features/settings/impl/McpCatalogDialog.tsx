@@ -9,7 +9,7 @@ import type { McpEntry } from '@shared/ipc-extras'
 import { getLang } from '@shared/i18n'
 import { catalogText, mcpPermissionKey, type McpCatalogItem } from '@shared/mcp-catalog'
 import { Button } from '../../../components/Button'
-import { api } from '../../../lib/api'
+import { openExternalUrl } from '../../../lib/open-external'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { ErrorText, Field, TextInput, Toggle } from './ui'
@@ -242,7 +242,7 @@ export function McpCatalogDialog({
             <span>{t('mcp.dlg.verified', { date: verifiedText(item.verifiedAt) })}</span>
             <button
               type="button"
-              onClick={() => void api.invoke('app:openExternal', { url: item.docsUrl })}
+              onClick={() => void openExternalUrl(item.docsUrl)}
               className="inline-flex items-center gap-1 text-accent hover:underline"
             >
               {t('mcp.dlg.docs')} <ExternalLink size={11} />

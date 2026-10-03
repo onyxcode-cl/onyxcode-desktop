@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import type { UpdateState } from '@shared/update-check'
 import { api, call } from './api'
 import { downloadUrl, type UpdateActionId } from './update-notice'
+import { isRemoteSurface } from './platform'
 
 /** Estado del aviso de versión nueva: lectura inicial + evento `app:updateState`. */
 export function useUpdateState(): [UpdateState | null, (s: UpdateState) => void] {
   const [state, setState] = useState<UpdateState | null>(null)
   useEffect(() => {
+    // PWA del celular: no hay actualizador (el Mac se actualiza solo desde el Mac); ni se pide el estado ni se escuchan eventos.
+    if (isRemoteSurface()) return
     let alive = true
     call('app:updateState')
       .then((s) => alive && setState((cur) => cur ?? s))

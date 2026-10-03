@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Check, ChevronDown, FolderOpen, MonitorCog, Play, Shield, X } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { chooseFolder } from './actions'
 import { useTasks } from './store'
 
@@ -94,9 +95,11 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
           done={!!folder}
           title={t('tasksComputer.onb.step1')}
           action={
-            <button type="button" className={stepBtn} onClick={() => void chooseFolder()}>
-              <FolderOpen size={13} /> {folder ? t('tasksComputer.onb.changeFolder') : t('tasksComputer.menu.choose')}
-            </button>
+            platformCaps().nativeDialogs ? (
+              <button type="button" className={stepBtn} onClick={() => void chooseFolder()}>
+                <FolderOpen size={13} /> {folder ? t('tasksComputer.onb.changeFolder') : t('tasksComputer.menu.choose')}
+              </button>
+            ) : undefined
           }
         >
           {t('tasksComputer.onb.step1Desc')}

@@ -6,6 +6,7 @@ import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { api } from '../../../lib/api'
+import { openExternalUrl } from '../../../lib/open-external'
 import { engineNoticeText, engineSummary } from '../../../lib/engine-notice'
 import { checkFailedText, checkResultText, lastCheckText, updateView } from '../../../lib/update-notice'
 import { platformCaps } from '../../../lib/platform'
@@ -52,7 +53,7 @@ export function AboutSection(): React.JSX.Element {
   }, [client])
 
   const open = (url: string): void => {
-    void api.invoke('app:openExternal', { url })
+    void openExternalUrl(url)
   }
 
   const searchNow = (): void => {

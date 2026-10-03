@@ -5,6 +5,7 @@
  */
 import type { WindowApi } from '@shared/ipc'
 import { t } from '@shared/i18n'
+import { platformCaps } from '../../lib/platform'
 import type {
   BrowserApi,
   BrowserEventChannel,
@@ -21,7 +22,8 @@ function getApi(): BrowserApi {
 }
 
 export function hasBrowserBridge(): boolean {
-  return !!(window as unknown as { api?: { browser?: unknown } }).api?.browser
+  // Sin vista nativa del navegador (PWA del celular) no hay navegador integrado, aunque `window.api.browser` exista.
+  return platformCaps().nativeBrowser && !!(window as unknown as { api?: { browser?: unknown } }).api?.browser
 }
 
 /** `invoke` tipado hacia `browser:*`. Lanza `Error` si main falla. */

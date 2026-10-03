@@ -94,5 +94,18 @@ export const remote = {
   'remote.session.untitled': 'Untitled conversation',
   'remote.tray.stop': 'Cut phone access',
   'remote.pwa.missing': 'The phone app isn’t included in this build.',
-  'remote.shortcut.stopAll': 'Cut access from the phone'
+  'remote.shortcut.stopAll': 'Cut access from the phone',
+  'remote.link.disconnected': 'The connection to your Mac was lost. Try again once it reconnects.',
+  'remote.link.forbidden': 'This action is not allowed from the phone.',
+  'remote.link.locked': 'The phone is locked. Enter your PIN to continue.',
+  'remote.link.denied': 'Declined on the Mac.',
+  'remote.link.expired': 'The confirmation on the Mac expired. Try again.',
+  'remote.link.unavailable': 'The Mac cannot handle this right now.',
+  'remote.link.busy': 'The Mac is busy with another confirmation. Try again in a moment.',
+  'remote.link.rate-limited': 'Too many actions in a row. Wait a moment.',
+  'remote.link.too-large': 'The content is too large to send from the phone.',
+  'remote.link.bad-request': 'The request is not valid.',
+  'remote.link.not-found': 'What you asked for was not found.',
+  'remote.link.unsupported': 'This is not available from the phone.',
+  'remote.link.failed': 'Something went wrong talking to your Mac.'
 } as const satisfies Messages<typeof es>
