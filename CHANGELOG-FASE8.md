@@ -652,3 +652,14 @@ La página que abre el celular al escanear el QR de F8-B48. TypeScript vanilla e
 - **Herramientas**: `typecheck:pwa` (dentro de `typecheck`), `lint` y `format:check` cubren `pwa/`; `eslint` ignora `pwa/dist`.
 - **Comprobado** con una prueba desechable (no incluida): Chromium (`playwright-core`) contra el `RemoteService` + `LanSignalingServer` reales con `node-datachannel`, en loopback: vinculación con el mismo código en ambos lados, lista, chat, evento en vivo, detener, enviar, permiso, corte y reconexión sola, recarga con `resume`+`auth`, revocación, QR usado y «no se encuentra el equipo»; sin errores de consola ni de CSP.
 - **Sin probar**: celular real, iOS Safari (candidatos ICE mDNS `.local` en vez de IP), Wi-Fi con aislamiento de clientes real, rendimiento con conversaciones largas.
+
+
+## F8-B50 — Estética de la PWA del control remoto (rama `feat/remoto-pwa`)
+
+Solo capa visual (`pwa/index.html`, `style.css`, `ui.ts`, textos nuevos en `i18n.ts`); no cambia protocolo, seguridad ni conexión. ≈ 22,3 KB gzip en total.
+
+- **Identidad «Lapislázuli»**: tokens claro/oscuro copiados de la app (`--bg`, `--fg-muted`, `--accent`, `--danger`, `--warning`…), pilas de fuentes del sistema equivalentes (sans, display redondeada, mono), radios y sombras de la app; sin fuentes ni recursos externos. Gema «Faceta» en la cabecera, en la vinculación y como favicon (SVG en `data:`).
+- **Pantallas**: barra superior con estado de conexión (punto), lista de sesiones como la barra lateral, burbuja del usuario y respuesta sin burbuja como en la app, bloques de código con cabecera de lenguaje, herramientas como filas con punto de estado, compositor elevado con envío redondo y botón «ir al final», tarjeta de permiso fija sobre el compositor (siempre visible), estados vacíos/errores con ilustración SVG mínima.
+- **Móvil**: `theme-color` por esquema, `safe-area-inset-*`, `100dvh`, ajuste con `visualViewport` cuando aparece el teclado (sin exigir contexto seguro), `prefers-reduced-motion`.
+- **Comprobado**: contraste ≥ 4,5:1 calculado en ambos temas; capturas con una prueba desechable (iPhone 390x844 @3x y Android 360x800, claro/oscuro) sobre la UI real con un cliente simulado.
+- **Sin probar**: iPhone/Android reales, `safe-area` y teclado en dispositivo real.
