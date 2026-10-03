@@ -1,0 +1,47 @@
+/*
+ * Code en la pantalla del celular (superficie `remote`, T8 `movil-code`). Inerte fuera de ella: todo cuelga de
+ * `[data-surface='mobile']`, que pone `MobileCodeLayout` (y la cáscara móvil) en <html>. Mismos tokens de globals.css.
+ */
+
+/* Lo que en escritorio solo aparece al pasar el ratón, en el celular se ve siempre (no hay hover). */
+[data-surface='mobile'] [class*='group-hover:opacity-100'],
+[data-surface='mobile'] [class*='group-hover/user:opacity-100'],
+[data-surface='mobile'] [class*='group-hover/turn:opacity-100'],
+[data-surface='mobile'] [class*='group-hover/row:opacity-100'],
+[data-surface='mobile'] [class*='group-hover/att:opacity-100'] {
+  opacity: 1;
+}
+
+/* Botones de acción de un mensaje: objetivo táctil de 44 px. */
+[data-surface='mobile'] [class*='group-hover/user:opacity-100'] > button,
+[data-surface='mobile'] [class*='group-hover/turn:opacity-100'] button {
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+}
+[data-surface='mobile'] [class*='group-hover/user:opacity-100'] > span > button {
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+}
+
+/* iOS amplía la página al enfocar un campo con letra menor de 16 px: se evita. */
+[data-surface='mobile'] textarea,
+[data-surface='mobile'] input:not([type='checkbox']):not([type='radio']):not([type='file']),
+[data-surface='mobile'] select {
+  font-size: max(16px, 1em);
+}
+
+/* Sin selección accidental ni retardo de doble toque en los controles. */
+[data-surface='mobile'] button,
+[data-surface='mobile'] [role='button'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Diálogo de confirmación global (descartar, borrar…): botones de 44 px. */
+[data-surface='mobile'] [aria-labelledby='confirm-dialog-title'] button {
+  min-height: 44px;
+  min-width: 44px;
+  padding-inline: 1rem;
+}

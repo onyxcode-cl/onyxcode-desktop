@@ -7,6 +7,7 @@ import { t as tg, type MsgKey } from '@shared/i18n'
 import type { GitBranch as GitBranchInfo, GitChangeKind, GitWorktreeDetailed } from '@shared/ipc-code'
 import {
   Check,
+  ChevronLeft,
   ChevronRight,
   Code2,
   FolderOpen,
@@ -18,12 +19,13 @@ import {
   RefreshCw,
   Trash2,
   Undo2,
+  WrapText,
   X
 } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
 import { splitPath } from '../../../../lib/paths'
 import { useT } from '../../../../lib/i18n'
-import { platformCaps } from '../../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../../lib/platform'
 import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
 import { DiffStats } from '../ToolCard'
@@ -34,6 +36,7 @@ import { isImeComposing } from '../../../../lib/textarea'
 import { ConfirmButton, Kbd, MOD } from '../ui'
 import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
+import { abbreviatePath, displayPath } from '../mobile-logic'
 import { useProjectWatch } from './useProjectWatch'
 import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
 
@@ -131,12 +134,14 @@ interface Selection {
 
 function FileRow({
   file,
+  directory,
   staged,
   selected,
   onSelect,
   onDiscard
 }: {
   file: ChangedFile
+  directory: string
   staged: boolean
   selected: boolean
   onSelect: () => void
@@ -145,6 +150,36 @@ function FileRow({
   const t = useT()
   const meta = KIND_META[file.kind] ?? KIND_META.modified
   const { dir, name } = splitPath(file.path)
+  const mobile = isRemoteSurface()
+  if (mobile) {
+    // Celular: fila de 56 px con el nombre y debajo la ruta abreviada con `~`; «descartar» siempre visible (44 px).
+    return (
+      <div className={`flex min-h-14 items-center border-b border-border ${selected ? 'bg-active' : 'active:bg-hover'}`}>
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-label={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}: ${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 text-left"
+        >
+          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded font-mono text-[11px] font-bold ${meta.cls}`}>
+            {meta.letter}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className={`block truncate text-[15px] ${file.kind === 'deleted' ? 'text-muted line-through' : 'text-fg'}`}>{name}</span>
+            <span className="block truncate font-mono text-[11.5px] text-subtle" dir="ltr">
+              {abbreviatePath(displayPath(directory, dir), 30)}
+            </span>
+          </span>
+          <ChevronRight size={16} className="shrink-0 text-subtle" />
+        </button>
+        {onDiscard && (
+          <IconButton label={t('code.changes.discardRowLabel', { name })} onClick={onDiscard} className="mr-1 h-11 w-11">
+            <Undo2 size={18} />
+          </IconButton>
+        )}
+      </div>
+    )
+  }
   return (
     <div className={`group relative flex items-center ${selected ? 'bg-active' : 'hover:bg-hover'}`}>
       <button
@@ -181,7 +216,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1 px-2 py-1 text-[11px] font-semibold tracking-wide text-subtle uppercase hover:text-muted"
+        className={`flex w-full items-center gap-1 px-2 text-[11px] font-semibold tracking-wide text-subtle uppercase hover:text-muted ${isRemoteSurface() ? 'min-h-11 px-4' : 'py-1'}`}
       >
         <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
@@ -241,7 +276,10 @@ function CommitBox({
   }
 
   return (
-    <div className="shrink-0 border-t border-border bg-sidebar/40 p-2.5">
+    <div
+      className="shrink-0 border-t border-border bg-sidebar/40 p-2.5"
+      style={isRemoteSurface() ? { paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' } : undefined}
+    >
       {done && (
         <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-success/10 px-2.5 py-1.5 text-xs text-success">
           <Check size={13} className="shrink-0" /> <span className="truncate font-mono">{done}</span>
@@ -262,7 +300,10 @@ function CommitBox({
       />
       {error && <div className="mt-1.5 text-xs text-danger">{error}</div>}
       <div className="mt-2 flex items-center gap-2">
-        <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted" title={t('code.changes.stageAllTitle')}>
+        <label
+          className={`flex min-w-0 items-center gap-1.5 text-xs text-muted ${isRemoteSurface() ? 'min-h-11 text-[13px]' : ''}`}
+          title={t('code.changes.stageAllTitle')}
+        >
           <input type="checkbox" checked={stageAll} onChange={(e) => setStageAll(e.target.checked)} className="accent-[var(--accent)]" />
           <span className="truncate">{stagedCount > 0 ? t('code.changes.includeUnstaged') : t('code.changes.includeAll')}</span>
         </label>
@@ -271,16 +312,18 @@ function CommitBox({
           onClick={() => void commit()}
           disabled={!canCommit}
           title={t('code.changes.commitTitle', { mod: MOD })}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40"
+          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <GitCommitHorizontal size={14} />}
           {t('code.changes.commit')}
           {willCommit > 0 ? ` (${willCommit})` : ''}
         </button>
       </div>
-      <div className="mt-1 text-right text-[10px] text-subtle">
-        <Kbd>{MOD}↵</Kbd>
-      </div>
+      {!isRemoteSurface() && (
+        <div className="mt-1 text-right text-[10px] text-subtle">
+          <Kbd>{MOD}↵</Kbd>
+        </div>
+      )}
     </div>
   )
 }
@@ -489,7 +532,7 @@ function WorktreeDialog({
                     {!w.main && w.path !== directory && (
                       <ConfirmButton
                         title={t('code.wt.removeTitle')}
-                        body={t('code.wt.removeBody')}
+                        body={isRemoteSurface() ? `${t('code.wt.removeBody')} ${t('code.m.macConfirm')}` : t('code.wt.removeBody')}
                         confirmLabel={t('code.wt.remove')}
                         danger
                         onConfirm={async () => {
@@ -544,6 +587,10 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const native = nativeCode()
   // Abrir en el editor / mostrar en Finder son del Mac: no existen en la PWA del celular.
   const dialogs = platformCaps().nativeDialogs
+  // Celular: lista a pantalla completa → al tocar un archivo, su diff a pantalla completa (con «‹» para volver).
+  const mobile = isRemoteSurface()
+  const [wrap, setWrap] = useState(true)
+  const ib = mobile ? 'h-11 w-11' : 'h-6 w-6'
   // Cambios hechos fuera de la app (editor, terminal): el vigilante sube `fsVersion` con debounce, sin polling.
   useProjectWatch(directory)
   const [status, setStatus] = useState<StatusInfo | null>(null)
@@ -688,7 +735,9 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs text-muted">
+      <div
+        className={`flex items-center gap-2 border-b border-border px-3 text-xs text-muted ${mobile ? 'min-h-12 ' : 'py-1.5'} ${mobile && selectedFile ? 'hidden' : ''}`}
+      >
         <span
           className="flex min-w-0 items-center gap-1.5 rounded-full border border-border bg-bg px-2 py-0.5 font-mono"
           title={status?.upstream ? t('code.changes.tracks', { upstream: status.upstream }) : t('code.changes.noUpstream')}
@@ -700,11 +749,11 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         </span>
         <span className="ml-auto shrink-0">{status ? t('code.changes.fileCount', { count: status.files.length }) : ''}</span>
         {native && (
-          <IconButton label={t('code.changes.newBranch')} onClick={() => setDialog(true)} className="h-6 w-6">
+          <IconButton label={t('code.changes.newBranch')} onClick={() => setDialog(true)} className={ib}>
             <GitBranchPlus size={13} />
           </IconButton>
         )}
-        <IconButton label={t('code.changes.refresh')} onClick={() => void refresh()} className="h-6 w-6">
+        <IconButton label={t('code.changes.refresh')} onClick={() => void refresh()} className={ib}>
           {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
         </IconButton>
       </div>
@@ -719,12 +768,12 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
             <button
               type="button"
               onClick={() => void undoDiscard(notice.undoId!)}
-              className="shrink-0 rounded-md bg-elevated px-2 py-0.5 font-medium text-fg hover:bg-hover"
+              className={`shrink-0 rounded-md bg-elevated px-2 py-0.5 font-medium text-fg hover:bg-hover ${mobile ? 'min-h-11 px-4 text-[13px]' : ''}`}
             >
               {t('code.changes.discardUndo')}
             </button>
           )}
-          <IconButton label={t('code.changes.discardDismiss')} onClick={() => setNotice(null)} className="h-5 w-5">
+          <IconButton label={t('code.changes.discardDismiss')} onClick={() => setNotice(null)} className={mobile ? 'h-11 w-11' : 'h-5 w-5'}>
             <X size={12} />
           </IconButton>
         </div>
@@ -738,13 +787,20 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         </div>
       ) : (
         <>
-          <div className="max-h-[40%] shrink-0 overflow-y-auto border-b border-border py-1">
+          <div
+            className={
+              mobile
+                ? `min-h-0 flex-1 overflow-y-auto ${selectedFile ? 'hidden' : ''}`
+                : 'max-h-[40%] shrink-0 overflow-y-auto border-b border-border py-1'
+            }
+          >
             {staged.length > 0 && (
               <Section title={t('code.changes.staged')} count={staged.length}>
                 {staged.map((f) => (
                   <FileRow
                     key={`s:${f.path}`}
                     file={f}
+                    directory={directory}
                     staged
                     selected={selected?.path === f.path && selected.staged}
                     onDiscard={native && canDiscard(f) ? () => void discard(f, 'all') : undefined}
@@ -759,6 +815,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                   <FileRow
                     key={`u:${f.path}`}
                     file={f}
+                    directory={directory}
                     staged={false}
                     selected={selected?.path === f.path && !selected.staged}
                     onDiscard={native && canDiscard(f) ? () => void discard(f, 'unstaged') : undefined}
@@ -768,8 +825,46 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
               </Section>
             )}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col">
-            {selectedFile && (
+          <div className={`flex min-h-0 flex-1 flex-col ${mobile && !selectedFile ? 'hidden' : ''}`}>
+            {selectedFile && mobile && (
+              <div className="flex min-h-14 shrink-0 items-center gap-0.5 border-b border-border px-1">
+                <IconButton label={t('code.m.backToChanges')} className="h-11 w-11" onClick={() => setSelected(null)}>
+                  <ChevronLeft size={22} />
+                </IconButton>
+                <span className="min-w-0 flex-1 px-1">
+                  <span className="block truncate text-[15px] font-semibold">{splitPath(selectedFile.path).name}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 truncate font-mono text-[11.5px] text-subtle" dir="ltr">
+                      {abbreviatePath(displayPath(directory, splitPath(selectedFile.path).dir), 28)}
+                    </span>
+                    {stats && (
+                      <span className="shrink-0 whitespace-nowrap">
+                        <DiffStats {...stats} />
+                      </span>
+                    )}
+                  </span>
+                </span>
+                <IconButton
+                  label={t('code.m.wrap')}
+                  active={wrap}
+                  aria-pressed={wrap}
+                  className="h-11 w-11"
+                  onClick={() => setWrap((w) => !w)}
+                >
+                  <WrapText size={18} />
+                </IconButton>
+                {native && canDiscard(selectedFile) && (
+                  <IconButton
+                    label={t('code.changes.discard')}
+                    className="h-11 w-11 hover:text-danger"
+                    onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
+                  >
+                    <Undo2 size={18} />
+                  </IconButton>
+                )}
+              </div>
+            )}
+            {selectedFile && !mobile && (
               <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
                 <span className="min-w-0 truncate font-mono text-xs text-fg" title={selectedFile.path}>
                   {selectedFile.path}
@@ -814,7 +909,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
               </div>
             )}
             <div className="min-h-0 flex-1 overflow-auto">
-              {!selectedFile && status && status.files.length > 0 && (
+              {!selectedFile && !mobile && status && status.files.length > 0 && (
                 <div className="px-3 py-4 text-center text-xs text-subtle">{t('code.changes.selectFile')}</div>
               )}
               {selectedFile && diffLoading && !diff && (
@@ -827,6 +922,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                   patch={diff}
                   path={selectedFile.path}
                   hideFileHeaders
+                  wrap={wrap}
                   onDiscardHunk={
                     native && !selStaged && selectedFile.kind === 'modified' && isSingleFileDiff(diff)
                       ? (i) => void discardHunk(selectedFile, i)
@@ -842,7 +938,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
               )}
             </div>
           </div>
-          {status && (
+          {status && !(mobile && selectedFile) && (
             <CommitBox
               key={directory}
               directory={directory}

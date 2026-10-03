@@ -12,6 +12,7 @@ import {
   FolderOpen,
   FolderPlus,
   Loader2,
+  MoreHorizontal,
   Pencil,
   RefreshCw,
   Search,
@@ -22,9 +23,13 @@ import type { EditorId, EditorsList } from '@shared/ipc-code'
 import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { IconButton } from '../../../../components/IconButton'
 import { useT } from '../../../../lib/i18n'
+import { isRemoteSurface } from '../../../../lib/platform'
+import { Sheet } from '../../../../components/mobile/Sheet'
 import { errorMessage, nativeCode, useClient, sdkData } from '../client'
 import { DiffView, highlightLine, languageFor } from '../DiffView'
 import { useVisibleFsVersion } from '../useVisibleFsVersion'
+import { abbreviatePath, displayPath, needsMacConfirm } from '../mobile-logic'
+import { SheetAction } from '../SheetAction'
 import { baseOf, createParent, dirsToReload, isProtectedPath, isUnder, parentOf, stemLength } from './files-logic'
 import { useProjectWatch } from './useProjectWatch'
 
@@ -43,6 +48,7 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
   const [content, setContent] = useState<FileContent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showDiff, setShowDiff] = useState(false)
+  const mobile = isRemoteSurface()
 
   useEffect(() => {
     if (!client) return
@@ -68,16 +74,28 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
   }, [content, path])
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-1 border-b border-border px-2 py-1">
-        <IconButton label={t('code.files.back')} onClick={onClose} className="h-6 w-6">
-          <ArrowLeft size={14} />
+      <div className={`flex items-center gap-1 border-b border-border px-2 ${mobile ? 'min-h-14' : 'py-1'}`}>
+        <IconButton label={t('code.files.back')} onClick={onClose} className={mobile ? 'h-11 w-11' : 'h-6 w-6'}>
+          <ArrowLeft size={mobile ? 20 : 14} />
         </IconButton>
-        <span className="min-w-0 truncate font-mono text-xs">{path}</span>
+        {mobile ? (
+          <span className="min-w-0 flex-1 px-1">
+            <span className="block truncate text-[15px] font-semibold">{baseOf(path)}</span>
+            <span className="flex min-w-0 items-center gap-2 text-[11.5px] text-subtle">
+              <span className="min-w-0 truncate font-mono" dir="ltr">
+                {abbreviatePath(displayPath(directory, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''), 26)}
+              </span>
+              <span className="shrink-0 rounded bg-hover px-1.5 py-px text-[10.5px] font-medium">{t('code.m.readOnly')}</span>
+            </span>
+          </span>
+        ) : (
+          <span className="min-w-0 truncate font-mono text-xs">{path}</span>
+        )}
         {content?.diff && (
           <button
             type="button"
             onClick={() => setShowDiff((d) => !d)}
-            className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-xs ${showDiff ? 'bg-active text-fg' : 'text-muted hover:bg-hover'}`}
+            className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-xs ${mobile ? 'min-h-11 px-4 text-[13px]' : ''} ${showDiff ? 'bg-active text-fg' : 'text-muted hover:bg-hover'}`}
           >
             {t('code.files.diff')}
           </button>
@@ -128,6 +146,7 @@ function InlineName({
   depth,
   isDir,
   error,
+  hint,
   onSubmit,
   onCancel
 }: {
@@ -136,6 +155,8 @@ function InlineName({
   depth: number
   isDir: boolean
   error: string | null
+  /** Aviso bajo el campo (p. ej. «las carpetas se confirman en el Mac»). */
+  hint?: string
   onSubmit: (name: string) => void
   onCancel: () => void
 }): React.JSX.Element {
@@ -165,6 +186,8 @@ function InlineName({
           placeholder={placeholder}
           spellCheck={false}
           autoComplete="off"
+          autoCapitalize="off"
+          enterKeyHint="done"
           onKeyDown={(e) => {
             e.stopPropagation()
             if (e.key === 'Enter') {
@@ -177,9 +200,10 @@ function InlineName({
             }
           }}
           onBlur={() => finish(onCancel)}
-          className="min-w-0 flex-1 rounded border border-accent/60 bg-transparent px-1 py-px text-[13px] outline-none placeholder:text-subtle"
+          className={`min-w-0 flex-1 rounded border border-accent/60 bg-transparent px-1 py-px text-[13px] outline-none placeholder:text-subtle ${isRemoteSurface() ? 'min-h-11 px-2' : ''}`}
         />
       </div>
+      {hint && <div className="mt-0.5 pl-[26px] text-xs text-muted">{hint}</div>}
       {error && (
         <div role="alert" className="mt-0.5 pl-[26px] text-xs text-danger">
           {error}
@@ -257,7 +281,8 @@ function ContextMenu({
 /** «Abrir en…»: editores detectados por main (catálogo fijo); recuerda el último elegido. */
 function OpenInMenu({ directory, onNotice }: { directory: string; onNotice: (n: Notice) => void }): React.JSX.Element | null {
   const t = useT()
-  const native = nativeCode()
+  // Abrir en un editor del Mac no existe en la PWA del celular (`editors:open` está prohibido para el celular).
+  const native = nativeCode('dialogs')
   const [open, setOpen] = useState(false)
   const [list, setList] = useState<EditorsList | null>(null)
   const ref = useRef<HTMLSpanElement>(null)
@@ -354,6 +379,9 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [selected, setSelected] = useState<{ path: string; isDir: boolean } | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
+  // Celular: filas de 48 px y un menú «⋯» por fila (hoja inferior) en lugar de los botones que salen al pasar el ratón.
+  const mobile = isRemoteSurface()
+  const [rowMenu, setRowMenu] = useState<FileNode | null>(null)
   const expandedRef = useRef(expanded)
   expandedRef.current = expanded
 
@@ -466,6 +494,9 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
   const submitEdit = async (name: string): Promise<void> => {
     if (!native || !editing) return
     try {
+      if (editing.mode === 'rename' && mobile && needsMacConfirm({ kind: 'files.rename', isDirectory: selected?.isDir ?? false })) {
+        setNotice({ kind: 'ok', text: t('code.m.macWaiting') })
+      }
       if (editing.mode === 'create') {
         const res = await native.files.create(directory, editing.parent, name, editing.kind)
         setSelected({ path: res.path, isDir: editing.kind === 'dir' })
@@ -477,9 +508,11 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
         forget(old)
         setSelected({ path: res.path, isDir: selected?.isDir ?? false })
         await loadDir(parentOf(old))
+        setNotice(null)
       }
       cancelEdit()
     } catch (err) {
+      setNotice(null)
       setEditError(errorMessage(err))
     }
   }
@@ -490,12 +523,15 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
     const isDir = node.type === 'directory'
     const ok = await confirmDialog({
       title: t('code.files.trashTitle', { name: node.name }),
-      message: isDir ? t('code.files.trashDirBody') : t('code.files.trashFileBody'),
+      message:
+        (isDir ? t('code.files.trashDirBody') : t('code.files.trashFileBody')) +
+        (mobile && needsMacConfirm({ kind: 'files.trash', isDirectory: isDir }) ? `\n\n${t('code.m.macConfirm')}` : ''),
       confirmLabel: t('code.files.trash'),
       danger: true
     })
     if (!ok) return
     try {
+      if (mobile && needsMacConfirm({ kind: 'files.trash', isDirectory: isDir })) setNotice({ kind: 'ok', text: t('code.m.macWaiting') })
       await native.files.trash(directory, node.path)
       forget(node.path)
       setSelected(null)
@@ -578,6 +614,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                   isDir={isDir}
                   placeholder={n.name}
                   error={editError}
+                  hint={mobile && needsMacConfirm({ kind: 'files.rename', isDirectory: isDir }) ? t('code.m.macConfirm') : undefined}
                   onSubmit={(name) => void submitEdit(name)}
                   onCancel={cancelEdit}
                 />
@@ -612,8 +649,8 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                       void trashNode(n)
                     }
                   }}
-                  style={{ paddingLeft: 8 + depth * 14 }}
-                  className={`flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 text-left text-[13px] focus-visible:outline-none ${n.ignored ? 'opacity-70' : ''}`}
+                  style={{ paddingLeft: 8 + depth * (mobile ? 16 : 14) }}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 pr-2 text-left focus-visible:outline-none ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px]'} ${n.ignored ? 'opacity-70' : ''}`}
                 >
                   {isDir ? (
                     <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
@@ -631,7 +668,19 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                   )}
                   <span className="truncate">{n.name}</span>
                 </button>
-                {canManage && (
+                {canManage && mobile && (
+                  <IconButton
+                    label={t('code.m.itemActions', { name: n.name })}
+                    className="mr-1 h-11 w-11"
+                    onClick={() => {
+                      setSelected({ path: n.path, isDir })
+                      setRowMenu(n)
+                    }}
+                  >
+                    <MoreHorizontal size={19} />
+                  </IconButton>
+                )}
+                {canManage && !mobile && (
                   <span className="absolute top-0 right-1 flex h-full items-center gap-0.5 bg-hover pl-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
                     <IconButton label={t('code.files.renameItem', { name: n.name })} className="h-5 w-5" onClick={() => startRename(n)}>
                       <Pencil size={12} />
@@ -652,7 +701,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-1 border-b border-border px-2 py-1">
+      <div className={`flex items-center gap-1 border-b border-border px-2 ${mobile ? 'min-h-12' : 'py-1'}`}>
         <Search size={13} className="ml-1 shrink-0 text-subtle" />
         <input
           value={query}
@@ -661,21 +710,29 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
           className="min-w-0 flex-1 bg-transparent px-1 py-1 text-[13px] outline-none placeholder:text-subtle"
         />
         {query && (
-          <IconButton label={t('code.files.clear')} onClick={() => setQuery('')} className="h-6 w-6">
+          <IconButton label={t('code.files.clear')} onClick={() => setQuery('')} className={mobile ? 'h-11 w-11' : 'h-6 w-6'}>
             <X size={13} />
           </IconButton>
         )}
         {native && !query && (
           <>
-            <IconButton label={t('code.files.newFile')} onClick={() => startCreate(createParent(selected), 'file')} className="h-6 w-6">
+            <IconButton
+              label={t('code.files.newFile')}
+              onClick={() => startCreate(createParent(selected), 'file')}
+              className={mobile ? 'h-11 w-11' : 'h-6 w-6'}
+            >
               <FilePlus size={13} />
             </IconButton>
-            <IconButton label={t('code.files.newFolder')} onClick={() => startCreate(createParent(selected), 'dir')} className="h-6 w-6">
+            <IconButton
+              label={t('code.files.newFolder')}
+              onClick={() => startCreate(createParent(selected), 'dir')}
+              className={mobile ? 'h-11 w-11' : 'h-6 w-6'}
+            >
               <FolderPlus size={13} />
             </IconButton>
           </>
         )}
-        <IconButton label={t('code.changes.refresh')} onClick={refreshAll} className="h-6 w-6">
+        <IconButton label={t('code.changes.refresh')} onClick={refreshAll} className={mobile ? 'h-11 w-11' : 'h-6 w-6'}>
           <RefreshCw size={13} />
         </IconButton>
         <OpenInMenu directory={directory} onNotice={setNotice} />
@@ -715,7 +772,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                 key={p}
                 type="button"
                 onClick={() => setOpenFile(p)}
-                className="flex w-full items-center gap-1.5 px-3 py-[3px] text-left text-[13px] hover:bg-hover"
+                className={`flex w-full items-center gap-1.5 px-3 text-left hover:bg-hover ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px]'}`}
               >
                 <File size={14} className="shrink-0 text-subtle" />
                 <span className="truncate">{p}</span>
@@ -727,6 +784,24 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
         )}
       </div>
       {menu && <ContextMenu state={menu} onClose={() => setMenu(null)} items={menuItems(menu.node)} />}
+      {mobile && (
+        <Sheet open={!!rowMenu} onClose={() => setRowMenu(null)} title={rowMenu?.name ?? ''} size="half">
+          {rowMenu &&
+            menuItems(rowMenu).map((it) => (
+              <SheetAction
+                key={it.key}
+                icon={it.icon}
+                label={it.label}
+                danger={it.danger}
+                onClick={() => {
+                  setRowMenu(null)
+                  it.run()
+                }}
+              />
+            ))}
+          {rowMenu?.type === 'directory' && <p className="px-4 py-3 text-xs text-subtle">{t('code.m.folderMac')}</p>}
+        </Sheet>
+      )}
     </div>
   )
 }

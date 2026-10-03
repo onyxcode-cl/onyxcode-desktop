@@ -36,6 +36,7 @@ export const common = {
   'common.modelPicker.choose': 'Elige un modelo',
   'common.modelPicker.unavailable': 'no disponible',
   'common.modelPicker.searchPlaceholder': 'Buscar modelo…',
+  'common.modelPicker.sheetTitle': 'Modelo',
   'common.modelPicker.search': 'Buscar modelo',
   'common.modelPicker.loading': 'Cargando modelos…',
   'common.modelPicker.empty': 'Sin resultados',

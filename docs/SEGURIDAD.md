@@ -1039,3 +1039,13 @@ en la interfaz es solo comodidad, nunca el control.
 - **Límites conocidos**: el HTTP de la LAN sigue sin cifrar (riesgo aceptado hasta el HTTPS de la fase 2): un intermediario en el Wi-Fi podría alterar el JS que se sirve; las defensas son la
   confirmación de cada conexión nueva, el código de 6 dígitos, el PIN y que todo lo peligroso se confirma en el Mac. `style-src` conserva `'unsafe-inline'` (estilos en línea de React).
   El código de la interfaz completa llega al celular por una conexión no autenticada; los datos del celular (conversaciones) solo viajan por el DataChannel cifrado.
+
+## 3 vicies quinquies. Code en pantalla de celular (F8-B59, tanda T8)
+
+Solo interfaz: no se abre ningún canal ni ruta nuevos; todo lo que hace Code en el celular pasa por la política «celular» ya existente.
+
+- **Qué se ofrece depende de la política, pero el Mac manda**: la pantalla del celular no ofrece «siempre» (`permission.reply always` es X) ni «una vez» para permisos que la política manda confirmar (`external_directory` y cualquier tipo desconocido = D): muestra «Apruébalo en el Mac». `src/shared/remote/mac-confirm.ts` es solo un espejo para avisar a la persona; `mac-confirm-parity.test.ts` lo compara con `decide()`. Si se desfasara, la política sigue decidiendo.
+- **Adjuntos**: solo partes `data:` con los límites de Chat (5 MB imagen, 10 MB PDF, 1 MB texto, 15 MB total, 5 archivos); `doSend` filtra `file://` de los adjuntos desde el celular. Las menciones `@archivo` siguen siendo `file://` bajo el directorio de la sesión (la política lo acota).
+- **Archivos**: crear/renombrar/borrar de UN archivo es M; carpetas o varios, D (confirmación en el Mac, con aviso previo). `.git` sigue protegido. «Abrir en…» (`editors:open`) no se ofrece (X).
+- **Navegador del agente**: solo `browser:state` y `browser:capture` (R, ámbito por dueño). `captureForUi` no comprueba que la pestaña pertenezca al dueño indicado (solo la política lo hace con el `owner`): pendiente de endurecer en main.
+- **Foco/teclado**: sin atajos de teclado en el celular; el permiso ya no escucha 1/2/3.

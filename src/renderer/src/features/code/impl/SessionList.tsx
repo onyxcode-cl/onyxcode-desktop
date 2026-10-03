@@ -8,6 +8,7 @@ import {
   FolderOpen,
   GitBranchPlus,
   Loader2,
+  MoreHorizontal,
   Pencil,
   Pin,
   Search,
@@ -24,7 +25,10 @@ import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { Sheet } from '../../../components/mobile/Sheet'
+import { showCodeChat } from './mobile-store'
+import { SheetAction } from './SheetAction'
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
 function SessionRow({
@@ -51,6 +55,9 @@ function SessionRow({
   const unarchiveSession = useCode((s) => s.unarchiveSession)
   const archived = !!(session as { time?: { archived?: number } }).time && !!(session as { time?: { archived?: number } }).time?.archived
   const [editing, setEditing] = useState(false)
+  // Celular: tocar abre la conversación; renombrar/fijar/archivar/eliminar salen de un menú «⋯» (sin hover ni doble clic).
+  const mobile = isRemoteSurface()
+  const [menuOpen, setMenuOpen] = useState(false)
   const [draft, setDraft] = useState(session.title)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -67,7 +74,7 @@ function SessionRow({
   }
 
   return (
-    <div className={`group flex items-center gap-1 rounded-lg ${active ? 'bg-active' : 'hover:bg-hover'}`}>
+    <div className={`group flex items-center gap-1 rounded-lg ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active' : 'hover:bg-hover'}`}>
       {editing ? (
         <input
           ref={inputRef}
@@ -78,16 +85,19 @@ function SessionRow({
             if (isSubmitKey(e, { allowShift: true })) commit()
             else if (e.key === 'Escape') setEditing(false)
           }}
-          className="no-drag mx-2 my-1 min-w-0 flex-1 rounded-md border border-accent bg-bg px-1.5 py-1 text-[13px] outline-none"
+          className={`no-drag mx-2 my-1 min-w-0 flex-1 rounded-md border border-accent bg-bg px-1.5 py-1 text-[13px] outline-none ${mobile ? 'min-h-11' : ''}`}
         />
       ) : (
         <button
           type="button"
-          onClick={() => void selectSession(session.id)}
+          onClick={() => {
+            void selectSession(session.id)
+            if (mobile) showCodeChat()
+          }}
           onDoubleClick={() => setEditing(true)}
-          className="no-drag flex min-w-0 flex-1 flex-col items-start px-2 py-1.5 text-left"
+          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
         >
-          <span className="flex w-full items-center gap-1.5 text-[13px]">
+          <span className={`flex w-full items-center gap-1.5 ${mobile ? 'text-[15px]' : 'text-[13px]'}`}>
             {pinned && <Pin size={10} className="shrink-0 text-subtle" />}
             {waiting ? (
               <ShieldAlert size={12} className="shrink-0 text-accent" />
@@ -98,7 +108,7 @@ function SessionRow({
             ) : null}
             <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || t('code.sessions.untitled')}</span>
           </span>
-          <span className="text-[11px] text-subtle">
+          <span className={`text-subtle ${mobile ? 'text-xs' : 'text-[11px]'}`}>
             {timeAgo(session.time.updated)}
             {session.summary && session.summary.files > 0 && (
               <>
@@ -110,7 +120,62 @@ function SessionRow({
           </span>
         </button>
       )}
-      {!editing && (
+      {!editing && mobile && (
+        <>
+          <button
+            type="button"
+            aria-label={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+            aria-haspopup="dialog"
+            onClick={() => setMenuOpen(true)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted active:bg-hover"
+          >
+            <MoreHorizontal size={19} />
+          </button>
+          <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={session.title || t('code.sessions.untitled')} size="half">
+            <SheetAction
+              icon={<Pencil size={19} />}
+              label={t('code.sessions.rename')}
+              onClick={() => {
+                setMenuOpen(false)
+                setEditing(true)
+              }}
+            />
+            <SheetAction
+              icon={<Pin size={19} />}
+              label={pinned ? t('code.sessions.unpin') : t('code.sessions.pin')}
+              onClick={() => {
+                setMenuOpen(false)
+                togglePin(session.id)
+              }}
+            />
+            <SheetAction
+              icon={archived ? <ArchiveRestore size={19} /> : <Archive size={19} />}
+              label={archived ? t('code.sessions.unarchive') : t('code.sessions.archive')}
+              onClick={() => {
+                setMenuOpen(false)
+                void (archived ? unarchiveSession(session.id) : archiveSession(session.id))
+              }}
+            />
+            <SheetAction
+              danger
+              icon={<Trash2 size={19} />}
+              label={t('code.sessions.delete')}
+              onClick={() => {
+                setMenuOpen(false)
+                void confirmDialog({
+                  title: t('code.sessions.deleteTitle'),
+                  message: t('code.sessions.deleteMessage', { title: session.title || t('code.sessions.untitledLower') }),
+                  confirmLabel: t('code.sessions.deleteConfirm'),
+                  danger: true
+                }).then((ok) => {
+                  if (ok) void deleteSession(session.id)
+                })
+              }}
+            />
+          </Sheet>
+        </>
+      )}
+      {!editing && !mobile && (
         <span className="mr-1 hidden shrink-0 items-center gap-0.5 group-hover:flex">
           <button
             type="button"
@@ -318,7 +383,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           type="button"
           title={t('code.sessions.newWorktree')}
           onClick={() => setWorktreeOpen(true)}
-          className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg"
+          className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'}`}
         >
           <GitBranchPlus size={13} />
         </button>
@@ -326,7 +391,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           type="button"
           title={t('code.sessions.searchTitle')}
           onClick={() => setSwitcherOpen(true)}
-          className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg"
+          className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'}`}
         >
           <Search size={13} />
         </button>
@@ -358,7 +423,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             <button
               type="button"
               onClick={() => setShowArchived((o) => !o)}
-              className="no-drag flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-medium text-subtle hover:text-fg"
+              className={`no-drag flex w-full items-center gap-1.5 rounded-lg px-2 text-[11.5px] font-medium text-subtle hover:text-fg ${isRemoteSurface() ? 'min-h-11' : 'py-1'}`}
             >
               <ChevronDown size={11} className={`transition-transform ${showArchived ? 'rotate-180' : ''}`} />
               {t('code.sessions.archived', { count: archivedList.length })}

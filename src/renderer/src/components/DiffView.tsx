@@ -3,6 +3,7 @@ import { createTwoFilesPatch } from 'diff'
 import hljs from 'highlight.js/lib/common'
 import { t } from '@shared/i18n'
 import { useLang } from '../lib/i18n'
+import { isRemoteSurface } from '../lib/platform'
 
 type LineKind = 'add' | 'del' | 'ctx' | 'hunk' | 'file' | 'meta'
 
@@ -149,6 +150,11 @@ const ROW: Record<LineKind, string> = {
 
 const SIGN: Record<LineKind, string> = { add: '+', del: '-', ctx: ' ', hunk: '', file: '', meta: '' }
 
+/** Clases del texto de una línea: con ajuste (por defecto) parte las líneas largas; sin él, se desplaza en horizontal. */
+export function diffCellClass(wrap: boolean): string {
+  return wrap ? 'pr-3 whitespace-pre-wrap break-all' : 'pr-3 whitespace-pre'
+}
+
 interface Props {
   patch: string
   className?: string
@@ -158,6 +164,8 @@ interface Props {
   path?: string
   /** Si se pasa, cada bloque (`@@`) muestra un botón para descartarlo; recibe el índice del bloque. */
   onDiscardHunk?: (hunkIndex: number) => void
+  /** Ajuste de línea (por defecto sí). En el celular la persona lo puede apagar para ver la línea entera desplazando. */
+  wrap?: boolean
 }
 
 /** Tope de líneas y de bytes de un diff antes de ofrecer «Mostrar todo» (git admite hasta 64 MB). */
@@ -185,7 +193,16 @@ export function clipPatch(
   return { text, total, shown: text.split('\n').length, clipped: true }
 }
 
-export const DiffView = memo(function DiffView({ patch, className = '', hideFileHeaders, path, onDiscardHunk }: Props): React.JSX.Element {
+export const DiffView = memo(function DiffView({
+  patch,
+  className = '',
+  hideFileHeaders,
+  path,
+  onDiscardHunk,
+  wrap = true
+}: Props): React.JSX.Element {
+  // En el celular el botón «Descartar bloque» es un objetivo táctil de 44 px; en escritorio no cambia nada.
+  const touch = isRemoteSurface()
   const lang = useLang((s) => s.lang)
   const [showAll, setShowAll] = useState(false)
   useEffect(() => setShowAll(false), [patch])
@@ -249,14 +266,14 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
           </button>
         </div>
       )}
-      <table className="w-full border-collapse">
+      <table className={wrap ? 'w-full border-collapse' : 'w-max min-w-full border-collapse'}>
         <tbody>
           {lines.map((l, i) => {
             if (l.kind === 'file') {
               if (hideFileHeaders) return null
               return (
                 <tr key={i} className={ROW.file}>
-                  <td colSpan={4} className="sticky top-0 px-3 py-1 font-sans text-xs">
+                  <td colSpan={4} className={`sticky top-0 px-3 py-1 font-sans text-xs ${touch && wrap ? 'max-w-0 truncate' : ''}`}>
                     {l.text}
                   </td>
                 </tr>
@@ -266,13 +283,13 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
               const hi = hunkIndexAt[i] ?? 0
               return (
                 <tr key={i} className={ROW.hunk}>
-                  <td colSpan={4} className="px-3 py-0.5">
+                  <td colSpan={4} className={`px-3 py-0.5 ${touch && wrap ? 'max-w-0' : ''}`}>
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate whitespace-pre">{l.text}</span>
                       <button
                         type="button"
                         onClick={() => onDiscardHunk(hi)}
-                        className="shrink-0 rounded-md px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted hover:bg-hover hover:text-danger focus-visible:ring-2 focus-visible:ring-accent"
+                        className={`shrink-0 rounded-md font-sans font-medium text-muted hover:bg-hover hover:text-danger focus-visible:ring-2 focus-visible:ring-accent ${touch ? 'min-h-11 px-3 text-[13px]' : 'px-1.5 py-0.5 text-[11px]'}`}
                       >
                         {t('code.changes.discardHunk')}
                       </button>
@@ -284,7 +301,7 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
             if (l.kind === 'hunk' || l.kind === 'meta') {
               return (
                 <tr key={i} className={ROW[l.kind]}>
-                  <td colSpan={4} className="px-3 py-0.5 whitespace-pre">
+                  <td colSpan={4} className={`px-3 py-0.5 ${touch && wrap ? 'max-w-0 truncate' : 'whitespace-pre'}`}>
                     {l.text}
                   </td>
                 </tr>
@@ -292,17 +309,19 @@ export const DiffView = memo(function DiffView({ patch, className = '', hideFile
             }
             return (
               <tr key={i} className={ROW[l.kind]}>
-                <td className="w-10 pr-2 text-right align-top text-subtle/70 select-none">{l.oldNo ?? ''}</td>
-                <td className="w-10 pr-2 text-right align-top text-subtle/70 select-none">{l.newNo ?? ''}</td>
+                <td className={touch ? 'hidden' : 'w-10 pr-2 text-right align-top text-subtle/70 select-none'}>{l.oldNo ?? ''}</td>
+                <td className={`${touch ? 'w-9 pr-1.5 pl-1' : 'w-10 pr-2'} text-right align-top text-subtle/70 select-none`}>
+                  {(touch ? (l.newNo ?? l.oldNo) : l.newNo) ?? ''}
+                </td>
                 <td
                   className={`w-4 align-top select-none ${l.kind === 'add' ? 'text-success' : l.kind === 'del' ? 'text-danger' : 'text-subtle'}`}
                 >
                   {SIGN[l.kind]}
                 </td>
                 {l.html !== null ? (
-                  <td className="pr-3 whitespace-pre-wrap break-all" dangerouslySetInnerHTML={{ __html: l.html }} />
+                  <td className={diffCellClass(wrap)} dangerouslySetInnerHTML={{ __html: l.html }} />
                 ) : (
-                  <td className="pr-3 whitespace-pre-wrap break-all">{l.text}</td>
+                  <td className={diffCellClass(wrap)}>{l.text}</td>
                 )}
               </tr>
             )

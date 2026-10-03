@@ -36,7 +36,8 @@ import {
   type LoadTracker
 } from '../../../lib/session-reducer'
 import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../lib/session-paging'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { phoneSafeAttachments } from './mobile-logic'
 import { mentionMime } from './mention-mime'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import type {
@@ -598,7 +599,8 @@ export const useCode = create<CodeState>((set, get) => {
         }
       ]
     })
-    const attachParts = attachments.map((a) => ({
+    // Desde el celular solo salen adjuntos `data:` (nunca `file://`: el motor los leería del disco del Mac sin pasar por permisos).
+    const attachParts = (isRemoteSurface() ? phoneSafeAttachments(attachments) : attachments).map((a) => ({
       type: 'file' as const,
       mime: a.mime,
       filename: a.name,
