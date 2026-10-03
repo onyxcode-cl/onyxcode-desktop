@@ -18,6 +18,7 @@ import {
   type BrowserInvokeChannel,
   type BrowserInvokeContract
 } from '@shared/ipc-browser'
+import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
 import { absPath, arr, bool, literal, none, num, obj, optional, nullable, partial, record, str, tagged, type Validator } from './validate'
 
 /** Rol de la ventana que envía (lo asigna main al crearla). */
@@ -442,6 +443,16 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   })
 }
 
+type RemoteReq<C extends RemoteInvokeChannel> = RemoteInvokeContract[C]['req']
+const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = {
+  'remote:getState': none,
+  'remote:start': none,
+  'remote:newPairing': none,
+  'remote:stop': none,
+  'remote:confirmPair': obj({ requestId: str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ }), accept: bool }),
+  'remote:revoke': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) })
+}
+
 /**
  * Validador por canal.
  */
@@ -450,7 +461,8 @@ export const IPC_SCHEMAS: Record<string, Validator<unknown>> = {
   ...TASKS_SCHEMAS,
   ...EXTRAS_SCHEMAS,
   ...CODE_SCHEMAS,
-  ...BROWSER_SCHEMAS
+  ...BROWSER_SCHEMAS,
+  ...REMOTE_SCHEMAS
 }
 
 /** Canales que puede invocar cada ventana secundaria (la principal: todos). */
@@ -479,7 +491,8 @@ export function missingSchemas(): string[] {
     ...CODE_INVOKE_CHANNELS,
     ...TASKS_INVOKE_CHANNELS,
     ...IPC_EXTRAS_INVOKE_CHANNELS,
-    ...BROWSER_INVOKE_CHANNELS
+    ...BROWSER_INVOKE_CHANNELS,
+    ...REMOTE_INVOKE_CHANNELS
   ]
   return [...new Set<string>(all)].filter((c) => !IPC_SCHEMAS[c])
 }

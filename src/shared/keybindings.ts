@@ -350,6 +350,8 @@ export const ACTIONS: readonly ActionMeta[] = [
   { id: 'palette.alt', category: 'window', nameKey: 'settings.shortcuts.app.paletteCode', defaultBinding: 'Mod+Shift+P' },
   { id: 'sidebar.toggle', category: 'window', nameKey: 'settings.shortcuts.app.sidebar', defaultBinding: 'Mod+\\' },
   { id: 'settings.toggle', category: 'window', nameKey: 'settings.shortcuts.app.settings', defaultBinding: 'Mod+,' },
+  // Control remoto desde el celular: «Cortar todo». Sin atajo por defecto; solo se ofrece donde existe la función.
+  { id: 'remote.stopAll', category: 'window', nameKey: 'remote.shortcut.stopAll', defaultBinding: null },
   { id: 'mode.next', category: 'navigation', nameKey: 'settings.shortcuts.app.switchMode', defaultBinding: 'Ctrl+Tab' },
   { id: 'mode.prev', category: 'navigation', nameKey: 'settings.shortcuts.act.modePrev', defaultBinding: 'Ctrl+Shift+Tab' },
   { id: 'mode.chat', category: 'navigation', nameKey: 'settings.shortcuts.act.modeChat', defaultBinding: null },

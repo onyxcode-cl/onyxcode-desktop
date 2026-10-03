@@ -24,6 +24,7 @@ import { CommandPalette } from './CommandPalette'
 import { MODES_BY_ID } from './modes'
 import { EngineNotice } from './EngineNotice'
 import { QuickEntryNotice } from './QuickEntryNotice'
+import { RemotePairHost } from './RemotePairHost'
 import { useQuickNotice } from '../lib/quick-notice'
 import { UpdateNotice } from './UpdateNotice'
 import { ServerBanner } from './ServerBanner'
@@ -152,6 +153,7 @@ export function App(): React.JSX.Element {
   return (
     <div className="flex h-full bg-bg">
       <ConfirmDialogHost />
+      <RemotePairHost />
       <ErrorBoundary label={t('app.boundary.onboarding')}>
         <OnboardingGate />
       </ErrorBoundary>

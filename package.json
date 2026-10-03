@@ -8,7 +8,8 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/build-native.mjs && electron-vite dev",
-    "build": "node scripts/build-native.mjs && electron-vite build",
+    "build": "node scripts/build-native.mjs && npm run build:pwa && electron-vite build",
+    "build:pwa": "node scripts/build-pwa.mjs",
     "preview": "electron-vite preview",
     "build:helper": "sh resources/computer-use/build.sh",
     "build:launcher": "sh resources/launcher/build.sh",

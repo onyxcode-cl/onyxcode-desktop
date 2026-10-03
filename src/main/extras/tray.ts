@@ -14,11 +14,14 @@ export interface TrayActions {
   onOpenApp: () => void
   onOpenSettings: () => void
   onQuit?: () => void
+  /** «Cortar acceso del celular» (solo se muestra con el control remoto activo). */
+  onRemoteStop?: () => void
 }
 
 let tray: Tray | null = null
 let lastActions: TrayActions | null = null
 let lastAccelerator = ''
+let remoteActive = false
 
 /**
  * Símbolo "Faceta" (gema de 4 facetas + chispa), misma geometría de 32 unidades que
@@ -101,6 +104,9 @@ function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {
     { type: 'separator' },
     { label: t('main.tray.openApp', { app: APP_NAME }), click: actions.onOpenApp },
     { label: t('main.tray.settings'), click: actions.onOpenSettings },
+    ...(remoteActive && actions.onRemoteStop
+      ? [{ type: 'separator' as const }, { label: t('remote.tray.stop'), click: actions.onRemoteStop }]
+      : []),
     { type: 'separator' },
     { label: t('main.tray.quit', { app: APP_NAME }), click: actions.onQuit ?? (() => app.quit()) }
   ])
@@ -117,6 +123,13 @@ export function createTray(actions: TrayActions, quickAccelerator: string): Tray
   tray.setToolTip(APP_NAME)
   tray.setContextMenu(buildMenu(actions, quickAccelerator))
   return tray
+}
+
+/** Muestra u oculta la entrada «Cortar acceso del celular». */
+export function setTrayRemoteActive(active: boolean): void {
+  if (remoteActive === active) return
+  remoteActive = active
+  if (tray && !tray.isDestroyed() && lastActions) tray.setContextMenu(buildMenu(lastActions, lastAccelerator))
 }
 
 /** Actualiza el acelerador mostrado en el menú. */

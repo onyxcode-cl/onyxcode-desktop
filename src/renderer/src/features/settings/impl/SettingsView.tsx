@@ -11,6 +11,7 @@ import {
   UserRound,
   MonitorCog,
   Settings2,
+  Smartphone,
   SlidersHorizontal,
   Users,
   X,
@@ -37,6 +38,7 @@ import { McpSection } from './McpSection'
 import { ModelsSection } from './ModelsSection'
 import { NetworkSection } from './NetworkSection'
 import { LEGACY_MODE } from '../../../../../main/migrations/legacy-names'
+import { RemoteSection } from './RemoteSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 
@@ -50,6 +52,7 @@ export type SettingsSectionId =
   | 'computer'
   | 'automode'
   | 'browser'
+  | 'remote'
   | 'usage'
   | 'shortcuts'
   | 'diagnostics'
@@ -68,6 +71,7 @@ const SECTIONS: { id: SettingsSectionId; label: () => string; icon: typeof Cpu; 
   { id: 'computer', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
   { id: 'automode', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
   { id: 'browser', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection },
+  { id: 'remote', label: lazy('remote.nav'), icon: Smartphone, View: RemoteSection },
   { id: 'usage', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection },
   { id: 'shortcuts', label: lazy('settings.nav.shortcuts'), icon: Keyboard, View: ShortcutsSection },
   { id: 'diagnostics', label: lazy('settings.nav.diagnostics'), icon: LifeBuoy, View: DiagnosticsSection },
@@ -108,7 +112,8 @@ function SettingsPanel({ initial }: { initial?: SettingsSectionId } = {}): React
     (s) =>
       (s.id !== 'account' || account?.required === true) &&
       (!['tasks', 'network', 'automode'].includes(s.id) || caps.tasks) &&
-      (s.id !== 'computer' || caps.computer)
+      (s.id !== 'computer' || caps.computer) &&
+      (s.id !== 'remote' || caps.remote)
   )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 

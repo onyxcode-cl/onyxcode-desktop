@@ -65,6 +65,16 @@ Más información: <https://www.electronjs.org/> y <https://www.chromium.org/>.
 Las bibliotecas de JavaScript empaquetadas con la app (React, Zustand, Lucide, entre otras) se distribuyen bajo sus propias licencias de
 código abierto (en su mayoría MIT o ISC); sus avisos están en sus paquetes de `node_modules`.
 
+### Control remoto desde el celular (prototipo)
+
+- `node-datachannel` y `libdatachannel` (WebRTC DataChannel nativo): MPL-2.0, <https://github.com/murat-dogan/node-datachannel> y
+  <https://github.com/paullouisageneau/libdatachannel>. Sin modificar; el texto de la licencia está en su paquete de `node_modules`.
+  `libdatachannel` enlaza a su vez usrsctp, libjuice, libsrtp, OpenSSL y plog (cada una con su propia licencia, ver la documentación del proyecto).
+- `ws` (WebSocket del servidor local): MIT.
+- `qrcode` (matriz del código QR) y sus dependencias `pngjs`, `dijkstrajs`, `yargs`: MIT.
+- `@noble/hashes` (sha256 del código de confirmación, también en la PWA): MIT.
+- `detect-libc` (dependencia de `node-datachannel`): Apache-2.0.
+
 ## 5. No afiliación
 
 OnyxCode es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para

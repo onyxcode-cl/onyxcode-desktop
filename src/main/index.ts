@@ -19,6 +19,8 @@ import { registerRoutinesHandlers } from './ipc/routines-handlers'
 import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
 import { capsFor } from '@shared/platform-caps'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
+import { registerRemoteHandlers } from './ipc/remote-handlers'
+import { disposeRemote } from './remote/loader'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
 import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded-browser/service'
@@ -194,6 +196,7 @@ function start(): void {
     }
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
+    registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
     registerBrowserHandlers(ipcMain)
 
@@ -269,7 +272,7 @@ function start(): void {
     } catch (err) {
       console.error('[main] limpieza del navegador integrado:', err)
     }
-    Promise.allSettled([server.stop(), tasksMod?.shutdown()])
+    Promise.allSettled([server.stop(), tasksMod?.shutdown(), disposeRemote()])
       .then(() => undefined)
       .catch((err: unknown) => console.error('[main] error deteniendo opencode:', err))
       .finally(() => app.quit())

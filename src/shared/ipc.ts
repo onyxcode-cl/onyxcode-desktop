@@ -184,4 +184,5 @@ export interface WindowApi {
   tasks: import('./ipc-tasks').TasksApi
   extras: import('./ipc-extras').ExtrasApi
   browser: import('./ipc-browser').BrowserApi
+  remote: import('./ipc-remote').RemoteApi
 }

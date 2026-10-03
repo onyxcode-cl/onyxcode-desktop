@@ -5,6 +5,7 @@ import { buildBrowserApi } from './browser-api'
 import { buildCodeApi } from './code-api'
 import { buildTasksApi } from './tasks-api'
 import { buildExtrasApi } from './extras-api'
+import { buildRemoteApi } from './remote-api'
 
 const bridge = makeBridge<IpcInvokeChannel, IpcEventChannel>(ipcRenderer, {
   invoke: IPC_INVOKE_CHANNELS,
@@ -18,7 +19,8 @@ const api: WindowApi = {
   code: buildCodeApi(ipcRenderer),
   tasks: buildTasksApi(ipcRenderer),
   extras: buildExtrasApi(ipcRenderer),
-  browser: buildBrowserApi(ipcRenderer)
+  browser: buildBrowserApi(ipcRenderer),
+  remote: buildRemoteApi(ipcRenderer)
 }
 
 contextBridge.exposeInMainWorld('api', api)

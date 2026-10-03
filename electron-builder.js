@@ -39,6 +39,7 @@ module.exports = {
   files: [
     '!**/.vscode/*',
     '!src/*',
+    '!pwa/**',
     '!e2e/**',
     '!scripts/**',
     '!vitest*.config.ts',
@@ -66,7 +67,9 @@ module.exports = {
   asarUnpack: [
     'resources/opencode/agents/**',
     'resources/opencode/skills/**',
-    ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : [])
+    ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : []),
+    // Control remoto (F8-B48): el addon nativo de WebRTC (`@node-datachannel/<plataforma>/node_datachannel.node`) no puede cargarse desde el .asar.
+    'node_modules/@node-datachannel/**'
   ],
   extraResources: [
     // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
@@ -108,7 +111,9 @@ module.exports = {
       from: 'node_modules/electron/dist',
       to: 'licenses/electron',
       filter: ['LICENSE', 'LICENSES.chromium.html']
-    }
+    },
+    // PWA del control remoto (F8-B48), compilada con `npm run build:pwa` → Contents/Resources/pwa (solo si existe al empaquetar).
+    ...(require('node:fs').existsSync('pwa/dist') ? [{ from: 'pwa/dist', to: 'pwa' }] : [])
   ],
   // Fuses de Electron (docs/SEGURIDAD.md). RunAsNode off es posible porque el MCP de computer use
   // corre como utilityProcess (ya no con ELECTRON_RUN_AS_NODE).

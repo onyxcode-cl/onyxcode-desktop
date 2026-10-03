@@ -107,7 +107,8 @@ describe('bandeja con la cuenta', () => {
     vi.doMock('./tray', () => ({
       createTray: (a: Record<string, () => void>) => Object.assign(actions, a),
       destroyTray: vi.fn(),
-      updateTrayShortcut: vi.fn()
+      updateTrayShortcut: vi.fn(),
+      setTrayRemoteActive: vi.fn()
     }))
     const toggle = vi.fn()
     vi.doMock('./quick-entry', () => ({

@@ -14,11 +14,13 @@ export interface PlatformCaps {
   updater: boolean
   /** El texto de «mantener el equipo despierto» menciona al Mac (solo tiene sentido con Tareas). */
   keepAwakeText: boolean
+  /** Control remoto desde el celular (PWA por red local; prototipo, solo macOS). */
+  remote: boolean
 }
 
 export function capsFor(platform: string): PlatformCaps {
   const mac = platform === 'darwin'
-  return { tasks: mac, computer: mac, updater: mac, keepAwakeText: mac }
+  return { tasks: mac, computer: mac, updater: mac, keepAwakeText: mac, remote: mac }
 }
 
 /** ¿El modo existe en esta plataforma? Solo Tareas depende de ella. */

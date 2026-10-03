@@ -17,6 +17,7 @@ import { tasks } from './tasks'
 import { tasksComputer } from './tasksComputer'
 import { routines } from './routines'
 import { browser } from './browser'
+import { remote } from './remote'
 
 export const en = {
   ...common,
@@ -37,7 +38,8 @@ export const en = {
   ...tasks,
   ...tasksComputer,
   ...routines,
-  ...browser
+  ...browser,
+  ...remote
 }
 
 export const AREAS = {
@@ -59,5 +61,6 @@ export const AREAS = {
   tasks,
   tasksComputer,
   routines,
-  browser
+  browser,
+  remote
 }

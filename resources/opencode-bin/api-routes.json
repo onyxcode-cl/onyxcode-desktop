@@ -214,6 +214,7 @@
     "GET /session/{sessionID}": "bdcffe533d03d004",
     "GET /session/{sessionID}/children": "98a38098df1690d6",
     "GET /session/{sessionID}/message": "dd7cd5ecfc82f89e",
+    "GET /session/{sessionID}/message/{messageID}": "049bcc153baa2bd9",
     "GET /session/{sessionID}/todo": "6237d6bdc3c9ebb6",
     "GET /skill": "88ab969c310de42a",
     "PATCH /session/{sessionID}": "c3e5798a95373182",

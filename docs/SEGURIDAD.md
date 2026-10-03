@@ -738,6 +738,70 @@ Canales nuevos (todos solo de la ventana principal: no están en `CHANNEL_ROLES`
 
 **No cambia.** Perfil Seatbelt, credential proxy, `provider-egress`, `proxy-policy`, `folder-policy` (el home sigue rechazado como carpeta de Sandbox), puerta del plan, aprobaciones por app, atajo de parada y comprobaciones TCC. **Riesgo residual:** como antes, otro proceso del usuario sin sandbox puede leer el entorno del servidor de Control total (ver §5); y la carpeta personal como `cwd` hace que un `AGENTS.md` suelto en `~` lo lea el agente (también el global de `~/.config/opencode`, como antes).
 
+## 3 vicies. Control remoto desde el celular (F8-B48, prototipo)
+
+**Qué es.** «Ajustes › Celular › Activar» muestra un QR; el celular lo escanea, abre una PWA servida por la propia app y se conecta
+DIRECTO al Mac por un DataChannel WebRTC (cifrado DTLS, `node-datachannel` en `main`). Solo por RED LOCAL: no hay servidor en la
+nube, ni Cloudflare, ni cuenta. Solo macOS (`PlatformCaps.remote`); con la función apagada no hay puertos, sockets ni módulos nativos
+cargados y nada de la app cambia.
+
+**Qué puede hacer el celular (lista blanca estricta, `src/main/remote/whitelist.ts`).** `sessions.list`, `session.messages`
+(≤ 50), `session.prompt` (≤ 8000 caracteres), `session.abort` y `permission.reply` solo con `once` o `reject` (`always` no existe).
+Nada más: ni archivos, ni terminal, ni ajustes, ni crear/borrar sesiones. El celular NO recibe nunca la contraseña del sidecar ni
+acceso a él: el escritorio es el intermediario y valida cada trama (`shared/remote/protocol.ts`, claves desconocidas = rechazo).
+
+**Ámbito.** Sesiones de Chat y de los proyectos recientes de Code (las del motor principal). Las de **Tareas** viven en otros motores y
+no se exponen nunca; tampoco subsesiones ni sesiones marcadas como Tareas. Un id fuera del ámbito responde `not-found` sin llegar al
+motor. Permisos de Control del Mac (`computer_*`/`browser_*`), carpetas (`external_directory`), plan-gate o desconocidos se ven como
+«Apruébalo en el Mac» (solo lectura). Lo que sale hacia el celular se recorta: texto y resumen de herramientas, **nunca rutas
+absolutas** (se reducen a `…/nombre`) ni secretos (patrones de `redact-patterns`), con tope de 64 KiB por trama.
+
+**Cómo se vincula.**
+1. Servidor HTTP+WebSocket mínimo (Node `http` + `ws`) que solo existe mientras el modo está activo, ligado ÚNICAMENTE a la IPv4 privada
+   de la interfaz activa (10/8, 172.16/12, 192.168/16; nunca 0.0.0.0, loopback, VPN ni túneles), puerto aleatorio. Comprueba `Host` y
+   `Origin` exactos (el navegador del celular manda siempre el de la página), admite como mucho 2 sockets, sirve la PWA estática con CSP
+   estricta y se apaga del todo al detener.
+2. El QR lleva un secreto de un solo uso de 32 B en el fragmento de la URL (`#s=…`, no viaja al servidor). Solo se guarda su sha256;
+   caduca a los 120 s; se consume en el primer `hello` aunque falle; comparación en tiempo constante.
+3. **Confirmación local obligatoria**: cuando el canal abre, el Mac muestra «¿Vincular este dispositivo?» con el nombre y un código de
+   6 dígitos derivado de las huellas DTLS de ambos SDP (sha256 de las dos huellas ordenadas). El celular calcula y muestra el mismo.
+   Si no coinciden hay un intermediario: el dueño debe rechazar.
+4. Al aceptar, el escritorio entrega por el DataChannel un secreto de dispositivo (32 B) que el celular guarda en `localStorage`; el
+   escritorio solo guarda su sha256 en `userData/remote.bin`, cifrado con `safeStorage` (sin `safeStorage` la función se desactiva con
+   una explicación; nunca se escribe en claro).
+5. Las reconexiones mandan `hello{resume, deviceId}` por señalización (sin ningún secreto) y, ya dentro del canal cifrado, `auth{deviceId,
+   secret}` como primera trama (10 s de plazo, un solo intento). El secreto de dispositivo nunca viaja por HTTP ni por señalización.
+
+**Límites.** 10 peticiones/s (ráfaga 20), 6 prompts/min, 64 KiB por trama, 3 violaciones (trama inválida, fuera de lista, binario,
+límite excedido, petición sin autenticar) = desconexión. Máx. 3 dispositivos vinculados y uno conectado a la vez (el mismo dispositivo
+puede reemplazar su propia sesión vieja).
+
+**Cortes.** «Cortar todo» (Ajustes, entrada en el menú de la bandeja con el modo activo, acción `remote.stopAll` en el registro de
+atajos, sin atajo por defecto) cierra conexiones y servidor y anula el secreto del QR. Se apaga solo a los 30 min sin conexiones y al
+salir de la app. Revocar un dispositivo (Ajustes) lo desconecta al instante.
+
+**Amenazas y riesgo aceptado del prototipo.**
+
+| Amenaza | Defensa |
+|---|---|
+| Otro equipo de la red usa el QR/URL | Secreto de un solo uso con caducidad + confirmación local con código de 6 dígitos |
+| Atacante activo en la misma Wi-Fi durante la ventana de 120 s (interceptar el hello o cambiar el SDP) | Se detecta si el dueño compara el código de 6 dígitos (cada lado calcula el suyo con las huellas que vio). **Riesgo aceptado y documentado**: si el dueño no compara, un intermediario podría vincularse |
+| Robo del secreto de dispositivo | Solo viaja por el DataChannel (DTLS) y vive en `localStorage` del celular; el Mac guarda solo el hash; se puede revocar |
+| Celular comprometido o prestado | Lista blanca mínima, `once`/`reject`, sin Control del Mac ni carpetas, límites, revocación y «Cortar todo» |
+| Servidor local explotable | Se liga solo a la IP privada, `Host`/`Origin` exactos, ≤ 2 sockets, sirve solo la carpeta de la PWA (sin `..`, solo extensiones conocidas), existe solo mientras está activo |
+| Desbordamiento / inundación | Tamaños máximos por trama, cubo de fichas, 6 prompts/min, desconexión a las 3 violaciones |
+| Fuga de rutas o secretos al celular | Recorte de texto y herramientas en `events.ts` |
+
+Una IP local por HTTP **no es contexto seguro**: la PWA no usa `crypto.subtle` (hash con `@noble/hashes`, fijado); `RTCPeerConnection` y
+`crypto.getRandomValues` sí funcionan. No funciona en el prototipo: instalar la PWA, service worker, avisos push ni conexión fuera de
+casa (fase 2: PWA estática en HTTPS, Worker de señalización sin estado tras la interfaz `SignalingTransport`, TURN, push, Windows).
+Tampoco depende de que la red permita tráfico entre clientes: en una Wi-Fi con «aislamiento de clientes» la PWA mostrará
+«no se encuentra el equipo».
+
+**No cambia.** Sandbox, credential proxy, `provider-egress`, `proxy-policy`, plan-gate, `folder-policy` y la CSP del renderer.
+Los preloads secundarios (`quick`, `overlay`, `pill`, `assist`, `browser-host`) quedan idénticos byte a byte. Los canales `remote:*` son
+solo de la ventana principal (esquemas estrictos en `main/ipc/schemas.ts`).
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —
@@ -759,6 +823,9 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
   cliente/servidor y `disable-library-validation` (necesario para que el addon nativo precompilado
   de `node-pty` cargue bajo hardened runtime). Los binarios embebidos `cu-helper` y `onyxcode-disclaim`
   se listan en `mac.binaries` para que quede explícito que también se firman.
+- **Control remoto (F8-B48):** `node-datachannel` es un addon nativo (`@node-datachannel/darwin-arm64/node_datachannel.node`):
+  va en `asarUnpack` (`node_modules/@node-datachannel/**`) y electron-builder lo firma como cualquier otro Mach-O. La PWA compilada
+  (`pwa/dist`) va por `extraResources` → `Contents/Resources/pwa` (solo si existe al empaquetar).
 - **Notarización:** hook `afterSign` propio (`build/notarize.js`, usa `@electron/notarize`
   directamente) en vez de la opción `mac.notarize` de electron-builder, para loguear con claridad
   cuándo se omite. Solo notariza si `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` y `APPLE_TEAM_ID` están

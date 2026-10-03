@@ -4,7 +4,7 @@
  * Una acción puede registrarla además un componente (`registerAction`, p. ej. el buscador de sesiones de Code, que guarda
  * su estado abierto/cerrado), que tiene prioridad sobre la implementación integrada.
  */
-import { modeAvailable } from '@shared/platform-caps'
+import { capsFor, modeAvailable } from '@shared/platform-caps'
 import type { ModeId } from '@shared/types'
 import { useCode } from '../features/code/impl/store'
 import type { RightPanel } from '../features/code/impl/types'
@@ -70,6 +70,12 @@ const BUILTIN: Record<string, ActionHandler> = {
     run: () => {
       const ui = useUi.getState()
       ui.openSettings(!ui.settingsOpen)
+    }
+  },
+  'remote.stopAll': {
+    enabled: () => capsFor(currentPlatform()).remote,
+    run: () => {
+      void window.api.remote.invoke('remote:stop').catch(() => undefined)
     }
   },
   'mode.next': cycleMode(1),

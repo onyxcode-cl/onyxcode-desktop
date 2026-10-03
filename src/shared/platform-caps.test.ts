@@ -3,10 +3,10 @@ import { capsFor, modeAvailable, usableMode } from './platform-caps'
 
 describe('capsFor', () => {
   it('macOS tiene Tareas, Control del PC y actualizador', () => {
-    expect(capsFor('darwin')).toEqual({ tasks: true, computer: true, updater: true, keepAwakeText: true })
+    expect(capsFor('darwin')).toEqual({ tasks: true, computer: true, updater: true, keepAwakeText: true, remote: true })
   })
   it.each(['win32', 'linux', 'freebsd'])('%s no tiene ninguna de las funciones de macOS', (p) => {
-    expect(capsFor(p)).toEqual({ tasks: false, computer: false, updater: false, keepAwakeText: false })
+    expect(capsFor(p)).toEqual({ tasks: false, computer: false, updater: false, keepAwakeText: false, remote: false })
   })
 })
 

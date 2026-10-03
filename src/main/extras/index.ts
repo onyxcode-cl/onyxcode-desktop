@@ -7,7 +7,8 @@ import type { ExtrasPrefs, ExtrasPrefsState, IpcExtrasEventChannel, IpcExtrasEve
 import { whenAccountAllowed } from '../account/access'
 import { extrasPrefs } from './prefs'
 import { destroyQuickEntry, registerQuickEntryShortcut, toggleQuickEntry, warmQuickEntry } from './quick-entry'
-import { createTray, destroyTray, updateTrayShortcut } from './tray'
+import { createTray, destroyTray, setTrayRemoteActive, updateTrayShortcut } from './tray'
+import { onRemoteMode, remoteMode, stopAllRemote } from '../remote/loader'
 import { showMainWindow, type MainWindowDeps } from './windows'
 
 export { openArtifact, ARTIFACT_CSP } from './artifact-window'
@@ -57,11 +58,13 @@ function applyPrefs(deps: MainWindowDeps, prefs: ExtrasPrefs): void {
         onQuickEntry: whenAccountAllowed(() => toggleQuickEntry()),
         onOpenApp: () => void showMainWindow(deps),
         onOpenSettings: whenAccountAllowed(() => sendToMain(deps, 'extras:open-settings')),
-        onQuit: () => app.quit()
+        onQuit: () => app.quit(),
+        onRemoteStop: () => void stopAllRemote()
       },
       prefs.quickEntryShortcut
     )
     updateTrayShortcut(prefs.quickEntryShortcut)
+    setTrayRemoteActive(remoteMode() !== 'off')
   } else {
     destroyTray()
   }
@@ -74,6 +77,7 @@ export function initExtras(deps: MainWindowDeps): void {
   if (initialized) return
   initialized = true
   applyPrefs(deps, extrasPrefs.get())
+  onRemoteMode((mode) => setTrayRemoteActive(mode !== 'off'))
   extrasPrefs.onChange((prefs) => {
     applyPrefs(deps, prefs)
     broadcastExtras('extras:prefs-changed', getPrefsState())
