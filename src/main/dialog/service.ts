@@ -41,7 +41,7 @@ function extendedEnv(): NodeJS.ProcessEnv {
 }
 
 /** Lanza un proceso desacoplado; resuelve true si arrancó, false si no existe el ejecutable. */
-function tryLaunch(cmd: string, args: string[]): Promise<boolean> {
+export function tryLaunch(cmd: string, args: string[]): Promise<boolean> {
   return new Promise((resolvePromise) => {
     let settled = false
     const done = (ok: boolean): void => {

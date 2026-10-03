@@ -77,5 +77,22 @@ export const common = {
   'common.git.discard.hunkStale': 'The file changed since you saw this block: reopen the diff.',
   'common.git.discard.hunkNotModified': 'Only a block of a modified file can be discarded: {path}',
   'common.git.discard.hunkTooBig': 'The file is too large to discard a block with a safety copy: {path}',
-  'common.git.discard.hunkFailed': 'Couldn’t discard the block (nothing was changed): {reason}'
+  'common.git.discard.hunkFailed': 'Couldn’t discard the block (nothing was changed): {reason}',
+  'common.files.invalidName':
+    'Invalid name: it can’t be empty, contain / \\ or control characters, start or end with a space, or end with a dot.',
+  'common.files.invalidName.win': 'Invalid name: it can’t contain < > : " / \\ | ? * or control characters, or end with a dot or space.',
+  'common.files.reserved': '“{name}” is a reserved system name.',
+  'common.files.tooLong': 'The name is too long (255 bytes at most).',
+  'common.files.exists': '“{name}” already exists in this folder: choose another name.',
+  'common.files.outside': 'The path is outside the project: {path}',
+  'common.files.protected': 'Protected path: you can’t create, rename or delete inside .git or the project root ({path}).',
+  'common.files.symlinkDir': 'The folder of {path} is a symbolic link: it won’t be touched.',
+  'common.files.notFound': 'It doesn’t exist: {path}',
+  'common.files.notDir': '“{path}” is not a folder.',
+  'common.files.notActive': 'This folder is not the project shown in the files panel.',
+  'common.files.trashFailed': 'Couldn’t move it to the Trash: {reason}',
+  'common.files.opFailed': 'Couldn’t complete the operation: {reason}',
+  'common.editors.unknown': 'Unknown editor.',
+  'common.editors.notInstalled': 'The editor isn’t installed on this computer.',
+  'common.editors.launchFailed': 'Couldn’t open the editor: {reason}'
 } as const satisfies Messages<typeof es>

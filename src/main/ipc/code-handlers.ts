@@ -12,13 +12,29 @@ import { shouldKillOnNavigation } from '../pty/lifecycle'
 import { settingsStore } from '../store'
 import { resolveE2eTrashDir, trashToDir } from '../tasks/trash'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { existsSync, readdirSync } from 'node:fs'
+import { t } from '@shared/i18n'
+import { FileWatchHub } from '../files/watcher'
+import { createEntry, FileOpError, projectRoot, renameEntry, trashEntry } from '../files/fs-ops'
+import { resolveE2eEditors, type EditorEnv } from '../editors/catalog'
+import { EditorError, listInstalled, openWithEditor, type EditorsDeps } from '../editors/service'
+import { extrasPrefs } from '../extras/prefs'
 import { makeInvokeHandler } from './handle'
 
-const on = makeInvokeHandler<CodeInvokeContract>({ withCode: true, silent: (err) => err instanceof GitError })
+const on = makeInvokeHandler<CodeInvokeContract>({
+  withCode: true,
+  silent: (err) => err instanceof GitError || err instanceof FileOpError || err instanceof EditorError
+})
 
 function sendToId<C extends CodeEventChannel>(wcId: number, channel: C, payload: CodeEventContract[C]): void {
   const wc = webContents.fromId(wcId)
   if (wc && !wc.isDestroyed()) wc.send(channel, payload)
+}
+
+/** Ruta real de la carpeta del proyecto (así `open -a` recibe siempre una ruta canónica y existente). */
+function projectDir(cwd: string): string {
+  return projectRoot(cwd)
 }
 
 function req<T>(value: T | undefined | null, name: string): T {
@@ -121,4 +137,70 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   })
   on(ipcMain, 'dialog:revealInFinder', (r) => dialogService.revealInFinder(req(r, 'req').path))
   on(ipcMain, 'dialog:openInEditor', (r) => dialogService.openInEditor(req(r, 'req').path))
+
+  // ---- archivos del proyecto: vigilante (fs.watch, sin polling), gestor y «Abrir en…» ----
+  // Solo la ventana principal (ninguno de estos canales está en CHANNEL_ROLES). El «proyecto activo» de una ventana
+  // es la carpeta que su panel de archivos tiene suscrita: el gestor y «Abrir en…» solo actúan sobre ella.
+  const hub = new FileWatchHub((wcId, ev) => sendToId(wcId, CODE_EVENTS.filesChanged, ev))
+  const watchedSenders = new Set<number>()
+  app.on('will-quit', () => hub.closeAll())
+  const active = (cwd: string, event: IpcMainInvokeEvent): void => {
+    if (!hub.isActive(event.sender.id, cwd)) throw new FileOpError(t('common.files.notActive'))
+  }
+  on(ipcMain, 'files:watch', (r, event) => {
+    const sender = event.sender
+    const res = hub.subscribe(sender.id, req(r, 'req').folder, r.subId)
+    if (!watchedSenders.has(sender.id)) {
+      watchedSenders.add(sender.id)
+      const senderId = sender.id
+      const release = (): void => hub.releaseSender(senderId)
+      sender.once('destroyed', () => {
+        watchedSenders.delete(senderId)
+        release()
+      })
+      sender.on('did-start-navigation', (details) => {
+        if (shouldKillOnNavigation(details)) release()
+      })
+      sender.on('render-process-gone', release)
+    }
+    return res
+  })
+  on(ipcMain, 'files:setDirs', (r, event) => hub.setDirs(event.sender.id, req(r, 'req').subId, r.dirs))
+  on(ipcMain, 'files:unwatch', (r, event) => hub.unsubscribe(event.sender.id, req(r, 'req').subId))
+  on(ipcMain, 'files:create', (r, event) => {
+    active(req(r, 'req').cwd, event)
+    return createEntry(r.cwd, r.parent, r.name, r.kind)
+  })
+  on(ipcMain, 'files:rename', (r, event) => {
+    active(req(r, 'req').cwd, event)
+    return renameEntry(r.cwd, r.path, r.name)
+  })
+  on(ipcMain, 'files:trash', (r, event) => {
+    active(req(r, 'req').cwd, event)
+    return trashEntry(r.cwd, r.path, testTrash ? trashToDir(testTrash) : (p) => shell.trashItem(p))
+  })
+  const editorEnv = (): EditorEnv => ({
+    platform: process.platform,
+    env: process.env,
+    home: homedir(),
+    exists: (p) => existsSync(p),
+    readdir: (p) => readdirSync(p)
+  })
+  const editorsDeps = (): EditorsDeps => ({
+    env: editorEnv(),
+    launch: (spec) => dialogService.tryLaunch(spec.cmd, spec.args),
+    openPath: (folder) => shell.openPath(folder),
+    e2e: resolveE2eEditors({ isPackaged: app.isPackaged, env: process.env })
+  })
+  on(ipcMain, 'editors:list', (r, event) => {
+    active(req(r, 'req').cwd, event)
+    const editors = listInstalled(editorsDeps())
+    const last = extrasPrefs.get().lastEditor
+    return { editors, last: editors.some((e) => e.id === last) ? (last as (typeof editors)[number]['id']) : null }
+  })
+  on(ipcMain, 'editors:open', async (r, event) => {
+    active(req(r, 'req').cwd, event)
+    await openWithEditor(projectDir(r.cwd), r.id, editorsDeps())
+    if (extrasPrefs.get().lastEditor !== r.id) extrasPrefs.set({ lastEditor: r.id })
+  })
 }

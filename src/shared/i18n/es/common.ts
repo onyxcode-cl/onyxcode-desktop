@@ -74,5 +74,23 @@ export const common = {
   'common.git.discard.hunkStale': 'El archivo cambió desde que viste este bloque: vuelve a abrir el diff.',
   'common.git.discard.hunkNotModified': 'Solo se puede descartar un bloque de un archivo modificado: {path}',
   'common.git.discard.hunkTooBig': 'El archivo es demasiado grande para descartar un bloque con copia de seguridad: {path}',
-  'common.git.discard.hunkFailed': 'No se pudo descartar el bloque (no se cambió nada): {reason}'
+  'common.git.discard.hunkFailed': 'No se pudo descartar el bloque (no se cambió nada): {reason}',
+  'common.files.invalidName':
+    'Nombre no válido: no puede estar vacío, llevar / \\ ni caracteres de control, ni empezar o terminar en espacio, ni terminar en punto.',
+  'common.files.invalidName.win':
+    'Nombre no válido: no puede llevar < > : " / \\ | ? * ni caracteres de control, ni terminar en punto o espacio.',
+  'common.files.reserved': '«{name}» es un nombre reservado del sistema.',
+  'common.files.tooLong': 'El nombre es demasiado largo (máximo 255 bytes).',
+  'common.files.exists': 'Ya existe «{name}» en esta carpeta: elige otro nombre.',
+  'common.files.outside': 'La ruta queda fuera del proyecto: {path}',
+  'common.files.protected': 'Ruta protegida: no se puede crear, renombrar ni eliminar en .git ni la raíz del proyecto ({path}).',
+  'common.files.symlinkDir': 'La carpeta de {path} es un enlace simbólico: no se toca.',
+  'common.files.notFound': 'No existe: {path}',
+  'common.files.notDir': '«{path}» no es una carpeta.',
+  'common.files.notActive': 'Esta carpeta no es el proyecto que muestra el panel de archivos.',
+  'common.files.trashFailed': 'No se pudo mover a la Papelera: {reason}',
+  'common.files.opFailed': 'No se pudo completar la operación: {reason}',
+  'common.editors.unknown': 'Editor desconocido.',
+  'common.editors.notInstalled': 'El editor no está instalado en este equipo.',
+  'common.editors.launchFailed': 'No se pudo abrir el editor: {reason}'
 } as const

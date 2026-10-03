@@ -54,6 +54,19 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       revealInFinder: (path) => call('dialog:revealInFinder', { path }),
       openInEditor: (path) => call('dialog:openInEditor', { path })
     },
+    files: {
+      watch: (folder, subId) => call('files:watch', { folder, subId }),
+      setDirs: (subId, dirs) => call('files:setDirs', { subId, dirs }),
+      unwatch: (subId) => call('files:unwatch', { subId }),
+      create: (cwd, parent, name, kind) => call('files:create', { cwd, parent, name, kind }),
+      rename: (cwd, path, name) => call('files:rename', { cwd, path, name }),
+      trash: (cwd, path) => call('files:trash', { cwd, path })
+    },
+    editors: {
+      list: (cwd) => call('editors:list', { cwd }),
+      open: (cwd, id) => call('editors:open', { cwd, id })
+    },
+    onFilesChanged: (cb) => subscribe(CODE_EVENTS.filesChanged, cb),
     onPtyData: (cb) => subscribe(CODE_EVENTS.ptyData, cb),
     onPtyExit: (cb) => subscribe(CODE_EVENTS.ptyExit, cb)
   }

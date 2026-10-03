@@ -31,7 +31,8 @@ function normalize(input: Partial<ExtrasPrefs>): ExtrasPrefs {
   const notificationsEnabled =
     typeof input.notificationsEnabled === 'boolean' ? input.notificationsEnabled : DEFAULT_EXTRAS_PREFS.notificationsEnabled
   const soundEnabled = typeof input.soundEnabled === 'boolean' ? input.soundEnabled : DEFAULT_EXTRAS_PREFS.soundEnabled
-  return { quickEntryShortcut: shortcut, modelsByMode, showTray, notificationsEnabled, soundEnabled }
+  const lastEditor = typeof input.lastEditor === 'string' && /^[a-z]{1,20}$/.test(input.lastEditor) ? input.lastEditor : ''
+  return { quickEntryShortcut: shortcut, modelsByMode, showTray, notificationsEnabled, soundEnabled, lastEditor }
 }
 
 /** Preferencias de extras en `userData/extras.json` (separadas de settings.json). */

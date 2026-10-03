@@ -22,6 +22,8 @@ export interface ExtrasPrefs {
   notificationsEnabled: boolean
   /** Sonido de las notificaciones (`Notification.silent` invertido). */
   soundEnabled: boolean
+  /** Último editor elegido en «Abrir en…» (id del catálogo de main); vacío = ninguno. */
+  lastEditor: string
 }
 
 export const DEFAULT_QUICK_ENTRY_SHORTCUT = 'Alt+Space'
@@ -36,7 +38,8 @@ export const DEFAULT_EXTRAS_PREFS: ExtrasPrefs = {
   modelsByMode: {},
   showTray: true,
   notificationsEnabled: true,
-  soundEnabled: true
+  soundEnabled: true,
+  lastEditor: ''
 }
 
 export interface ExtrasPrefsState {
