@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Keyboard, RotateCcw, X, Zap } from 'lucide-react'
-import { t as tr, type MsgKey } from '@shared/i18n'
+import { t as tr } from '@shared/i18n'
 import { defaultQuickEntryShortcut } from '@shared/ipc-extras'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { currentPlatform } from '../../../lib/platform'
 import { getExtras, useExtrasPrefs } from './extras'
+import { KeybindingsList } from './KeybindingsList'
 import { Card, ErrorText, Row, SectionHeader, SubTitle } from './ui'
 
 const isMac = navigator.userAgent.includes('Mac')
@@ -25,16 +26,6 @@ const KEY_LABEL: Record<string, () => string> = {
   Delete: () => '⌦',
   Tab: () => '⇥'
 }
-
-/** Atajos de la ventana principal (los gestiona `app/App.tsx`). */
-const APP_SHORTCUTS: [label: MsgKey, accelerator: string][] = [
-  ['settings.shortcuts.app.palette', 'CommandOrControl+K'],
-  ['settings.shortcuts.app.paletteCode', 'CommandOrControl+Shift+P'],
-  ['settings.shortcuts.app.new', 'CommandOrControl+N'],
-  ['settings.shortcuts.app.switchMode', 'Control+Tab'],
-  ['settings.shortcuts.app.settings', 'CommandOrControl+,'],
-  ['settings.shortcuts.app.sidebar', 'CommandOrControl+\\']
-]
 
 /** Convierte un acelerador de Electron a teclas legibles. */
 export function acceleratorParts(acc: string): string[] {
@@ -194,14 +185,7 @@ export function ShortcutsSection(): React.JSX.Element {
         </div>
       )}
 
-      <SubTitle>{t('settings.shortcuts.inApp')}</SubTitle>
-      <Card>
-        {APP_SHORTCUTS.map(([label, accelerator]) => (
-          <Row key={label} label={t(label)}>
-            <Keys accelerator={accelerator} />
-          </Row>
-        ))}
-      </Card>
+      <KeybindingsList />
 
       <SubTitle>{t('settings.shortcuts.inQuick')}</SubTitle>
       <Card>

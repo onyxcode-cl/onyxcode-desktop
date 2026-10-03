@@ -405,7 +405,8 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     modelsByMode: partial({ chat: modelRef, code: modelRef, tasks: modelRef }),
     showTray: bool,
     notificationsEnabled: bool,
-    soundEnabled: bool
+    soundEnabled: bool,
+    keybindings: record(nullable(str({ max: 60 })), 100)
   }),
   'extras:versions': none,
   'extras:openArtifact': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),

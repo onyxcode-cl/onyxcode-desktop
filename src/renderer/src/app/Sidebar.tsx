@@ -7,6 +7,7 @@ import { isMacPlatform } from '../lib/platform'
 import { useServer } from '../stores/server'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
+import { hintSuffix, hintText, useEffectiveBindings } from '../keybindings/bindings'
 
 const STATUS_KEY = {
   ready: 'app.status.ready',
@@ -15,12 +16,12 @@ const STATUS_KEY = {
   error: 'app.status.error'
 } as const
 
-const isMac = navigator.userAgent.includes('Mac')
-const MOD = isMac ? '⌘' : 'Ctrl+'
 
 export function Sidebar(): React.JSX.Element {
   const { mode, setMode, settingsOpen, openSettings, toggleSidebar, setPaletteOpen } = useUi()
   const t = useT()
+  const bindings = useEffectiveBindings()
+  const hints = { 'sidebar.toggle': hintText(bindings['sidebar.toggle']), 'settings.toggle': hintText(bindings['settings.toggle']) }
   const serverState = useServer((s) => s.status.state)
   const statusLabel = serverState in STATUS_KEY ? t(STATUS_KEY[serverState as keyof typeof STATUS_KEY]) : serverState
   const def = MODES_BY_ID[mode]
@@ -35,7 +36,7 @@ export function Sidebar(): React.JSX.Element {
     >
       {/* Zona de titlebar: en macOS deja sitio a los semáforos; en Windows el marco es el nativo y no hace falta el hueco */}
       <div className={`drag flex shrink-0 items-center justify-end px-2 ${isMacPlatform() ? 'h-12' : 'h-10'}`}>
-        <IconButton label={t('app.sidebar.hide', { mod: MOD })} onClick={toggleSidebar}>
+        <IconButton label={t('app.sidebar.hide', { hint: hintSuffix(hints['sidebar.toggle']) })} onClick={toggleSidebar}>
           <PanelLeftClose size={16} />
         </IconButton>
       </div>
@@ -49,7 +50,7 @@ export function Sidebar(): React.JSX.Element {
         >
           <Search size={14} />
           <span className="flex-1 text-left">{t('app.sidebar.search')}</span>
-          <kbd className="kbd">{MOD}K</kbd>
+          {bindings['palette.toggle'] && <kbd className="kbd">{hintText(bindings['palette.toggle'])}</kbd>}
         </button>
       </div>
 
@@ -89,7 +90,7 @@ export function Sidebar(): React.JSX.Element {
               <Plus size={14} strokeWidth={2.4} />
             </span>
             <span className="flex-1 text-left">{def.newAction.label}</span>
-            <span className="text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100">{MOD}N</span>
+            <span className="text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100">{hintText(bindings['conversation.new'])}</span>
           </button>
         </div>
       )}
@@ -110,7 +111,7 @@ export function Sidebar(): React.JSX.Element {
           <span className="truncate font-display text-[13px] font-semibold tracking-tight">{APP_NAME}</span>
           <span className="truncate text-[10.5px] text-subtle">{statusLabel}</span>
         </span>
-        <IconButton label={t('app.sidebar.settings', { mod: MOD })} active={settingsOpen} onClick={() => openSettings(!settingsOpen)}>
+        <IconButton label={t('app.sidebar.settings', { hint: hintSuffix(hints['settings.toggle']) })} active={settingsOpen} onClick={() => openSettings(!settingsOpen)}>
           <Settings size={16} className={`transition-transform duration-300 ${settingsOpen ? 'rotate-45' : ''}`} />
         </IconButton>
       </div>

@@ -52,7 +52,8 @@ import { SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
 import type { RightPanel } from './types'
-import { MOD, Tip, isEditableTarget } from './ui'
+import { Tip } from './ui'
+import { hintText, useEffectiveBindings } from '../../../keybindings/bindings'
 
 const PANEL_LABEL: Record<RightPanel, MsgKey> = {
   changes: 'code.panel.changes',
@@ -139,6 +140,7 @@ function useBrowserTabTitle(directory: string): string {
 }
 
 function SidePanels({ directory }: { directory: string }): React.JSX.Element | null {
+  const bindings = useEffectiveBindings()
   const t = useT()
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
@@ -197,8 +199,8 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
         className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
       />
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
-        {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p, i) => (
-          <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={`${MOD}${i + 1}`}>
+        {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p) => (
+          <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={hintText(bindings[`code.panel.${p}`])}>
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
@@ -361,15 +363,16 @@ function BranchPill({ directory }: { directory: string }): React.JSX.Element | n
   )
 }
 
-const PANEL_META: { id: RightPanel; label: MsgKey; key: string; icon: React.JSX.Element }[] = [
-  { id: 'changes', label: 'code.panel.changes', key: '1', icon: <GitCompare size={16} /> },
-  { id: 'terminal', label: 'code.panel.terminal', key: '2', icon: <SquareTerminal size={16} /> },
-  { id: 'files', label: 'code.panel.files', key: '3', icon: <FileCode2 size={16} /> },
-  { id: 'browser', label: 'code.panel.browser', key: '4', icon: <Globe size={16} /> }
+const PANEL_META: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] = [
+  { id: 'changes', label: 'code.panel.changes', icon: <GitCompare size={16} /> },
+  { id: 'terminal', label: 'code.panel.terminal', icon: <SquareTerminal size={16} /> },
+  { id: 'files', label: 'code.panel.files', icon: <FileCode2 size={16} /> },
+  { id: 'browser', label: 'code.panel.browser', icon: <Globe size={16} /> }
 ]
 
 function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const t = useT()
+  const bindings = useEffectiveBindings()
   const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
   const activeSessionID = useCode((s) => s.activeSessionID)
   const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
@@ -392,7 +395,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {busy && (
-          <Tip label={t('code.toolbar.stop')} shortcut="esc">
+          <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
             <button
               type="button"
               onClick={() => void abort()}
@@ -430,7 +433,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         )}
         <span className="mx-0.5 h-5 w-px bg-border" />
         {PANEL_META.map((p) => (
-          <Tip key={p.id} label={t(p.label)} shortcut={`${MOD}${p.key}`} align={p.id === 'browser' ? 'end' : 'center'}>
+          <Tip key={p.id} label={t(p.label)} shortcut={hintText(bindings[`code.panel.${p.id}`])} align={p.id === 'browser' ? 'end' : 'center'}>
             <button
               type="button"
               aria-label={t(p.label)}
@@ -642,26 +645,7 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
   const directory = useCode((s) => s.directory)
   useEffect(() => ensureCodeSubscription(), [])
 
-  // Atajos: ⌘1 Cambios · ⌘2 Terminal · ⌘3 Archivos · ⌘4 Navegador · Esc detiene (fuera de campos de texto).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      const st = useCode.getState()
-      if (!st.directory) return
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
-        const p = (['changes', 'terminal', 'files', 'browser'] as RightPanel[])[Number(e.key) - 1]
-        e.preventDefault()
-        st.togglePanel(p)
-        return
-      }
-      if (e.key === 'Escape' && !e.defaultPrevented && !isEditableTarget(e.target)) {
-        const sid = st.activeSessionID
-        const run = sid ? st.runState[sid] : undefined
-        if (run === 'busy' || run === 'retry') void st.abort()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  // Atajos de Code (⌘1 Cambios · ⌘2 Terminal · ⌘3 Archivos · ⌘4 Navegador · Esc detiene): registro central `keybindings/`.
 
   // El navegador pide abrirse (el agente empezó a usarlo, o se aprobó un sitio) sin robar el foco.
   useEffect(() => {

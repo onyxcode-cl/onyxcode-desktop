@@ -21,7 +21,7 @@ import { initAttentionBadge } from '../lib/attention'
 import { call } from '../lib/api'
 import { E2EFault } from './E2EFault'
 import { CommandPalette } from './CommandPalette'
-import { MODES, MODES_BY_ID } from './modes'
+import { MODES_BY_ID } from './modes'
 import { EngineNotice } from './EngineNotice'
 import { QuickEntryNotice } from './QuickEntryNotice'
 import { useQuickNotice } from '../lib/quick-notice'
@@ -31,13 +31,15 @@ import { Sidebar } from './Sidebar'
 import { useTheme } from './useTheme'
 import { useT } from '../lib/i18n'
 import { isMacPlatform, platformCaps } from '../lib/platform'
+import { useKeybindings } from '../keybindings/dispatch'
+import { hintSuffix, useBindingHint } from '../keybindings/bindings'
 
-const MOD = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl+'
 
 export function App(): React.JSX.Element {
   const mode = useUi((s) => s.mode)
   const settingsOpen = useUi((s) => s.settingsOpen)
   const collapsed = useUi((s) => s.sidebarCollapsed)
+  const sidebarHint = useBindingHint('sidebar.toggle')
   const toggleSidebar = useUi((s) => s.toggleSidebar)
 
   useTheme()
@@ -142,53 +144,9 @@ export function App(): React.JSX.Element {
     })
   }, [])
 
-  // Atajos de la ventana: ⌘\ barra lateral · ⌘, ajustes · ⌘K / ⌘⇧P paleta · ⌘N nuevo · ⌃Tab cambia de modo.
-  // ⌘K en Code con proyecto abierto lo usa su selector de sesiones (⌘⇧P abre la paleta igualmente).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.defaultPrevented) return
-      const ui = useUi.getState()
-
-      if (e.ctrlKey && !e.metaKey && !e.altKey && e.key === 'Tab') {
-        e.preventDefault()
-        const i = MODES.findIndex((m) => m.id === ui.mode)
-        const next = MODES[(i + (e.shiftKey ? -1 : 1) + MODES.length) % MODES.length]
-        ui.setMode(next.id)
-        return
-      }
-
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
-      const key = e.key.toLowerCase()
-
-      if (e.shiftKey) {
-        if (key === 'p') {
-          e.preventDefault()
-          ui.setPaletteOpen(!ui.paletteOpen)
-        }
-        return
-      }
-
-      if (e.key === '\\') {
-        e.preventDefault()
-        ui.toggleSidebar()
-      } else if (e.key === ',') {
-        e.preventDefault()
-        ui.openSettings(!ui.settingsOpen)
-      } else if (key === 'k') {
-        if (!ui.paletteOpen && ui.mode === 'code' && useCode.getState().directory) return
-        e.preventDefault()
-        ui.setPaletteOpen(!ui.paletteOpen)
-      } else if (key === 'n') {
-        const action = MODES_BY_ID[ui.mode].newAction
-        if (!action || ui.paletteOpen) return
-        e.preventDefault()
-        ui.openSettings(false)
-        action.run()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  // Atajos configurables (⌘\ barra lateral, ⌘, ajustes, ⌘K / ⌘⇧P paleta, ⌘N nuevo, ⌃Tab cambia de modo, Plan/Build, paneles de Code…):
+  // un único manejador resuelve el atajo efectivo de cada acción (registro central en `keybindings/`; se cambian en Ajustes › Atajos).
+  useKeybindings()
 
   const View = MODES_BY_ID[mode].View
 
@@ -212,7 +170,7 @@ export function App(): React.JSX.Element {
       <main className="relative flex min-w-0 flex-1 flex-col">
         {collapsed && (
           <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>
-            <IconButton label={t('app.sidebar.show', { mod: MOD })} onClick={toggleSidebar}>
+            <IconButton label={t('app.sidebar.show', { hint: hintSuffix(sidebarHint) })} onClick={toggleSidebar}>
               <PanelLeftOpen size={16} />
             </IconButton>
           </div>

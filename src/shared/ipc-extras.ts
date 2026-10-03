@@ -5,6 +5,7 @@
  * Canales con prefijo `extras:` y `mcp:`. Se registran en `src/main/ipc/extras-handlers.ts`
  * y se exponen en el preload como `window.api.extras` (`src/preload/extras-api.ts`).
  */
+import type { KeybindingOverrides } from './keybindings'
 import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
 
@@ -22,6 +23,8 @@ export interface ExtrasPrefs {
   notificationsEnabled: boolean
   /** Sonido de las notificaciones (`Notification.silent` invertido). */
   soundEnabled: boolean
+  /** Atajos de la aplicación que el usuario cambió: `{ [idAcción]: atajo | null }` (`null` = desactivado, ausente = por defecto). */
+  keybindings: KeybindingOverrides
 }
 
 export const DEFAULT_QUICK_ENTRY_SHORTCUT = 'Alt+Space'
@@ -36,7 +39,8 @@ export const DEFAULT_EXTRAS_PREFS: ExtrasPrefs = {
   modelsByMode: {},
   showTray: true,
   notificationsEnabled: true,
-  soundEnabled: true
+  soundEnabled: true,
+  keybindings: {}
 }
 
 export interface ExtrasPrefsState {

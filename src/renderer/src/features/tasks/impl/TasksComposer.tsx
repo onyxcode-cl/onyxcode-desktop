@@ -164,6 +164,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
         )}
         <textarea
           ref={ref}
+          data-kb-composer=""
           value={text}
           rows={hero ? 3 : 1}
           disabled={disabled || blocked}
