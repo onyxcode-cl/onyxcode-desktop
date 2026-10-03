@@ -894,6 +894,31 @@ otras tandas. Lo que sí fija este bloque:
   de la lista blanca del prototipo siguen funcionando mientras no se retire.
 - Los errores v2 solo llevan un código y un `msg` opcional de ≤ 200 caracteres escrito por el despachador; los errores internos salen como `failed`.
 
+## 3 vicies ter. Confirmación en el Mac, PIN y auditoría del control remoto (F8-B55, tanda T6)
+
+Todo se aplica **dentro del canal ya autenticado** (secreto de dispositivo) y **antes** de cualquier llamada; el celular no puede invocar nada de esto
+(`remote:*` está en X en la política y el despachador lo rechaza; `remote:confirmAction` solo existe para la ventana principal).
+
+- **Confirmación de cada conexión nueva (D3)**: al reconectar un dispositivo ya vinculado, el canal queda en «esperando confirmación» sin acceso hasta que el
+  dueño pulsa «Permitir» en el Mac. Opción «Recordar 12 h» por dispositivo (solo en esa confirmación y en Ajustes › Celular); caducada, se vuelve a pedir.
+  Vincular un dispositivo nuevo ya es la confirmación (con código de 6 dígitos).
+- **Diálogo** (`RemoteConfirmHost.tsx`): nombre y huella (8 hex de sha256 del `deviceId`), acción en es/en, detalle, hora, cuenta regresiva; «Rechazar» enfocado,
+  «Permitir» activo tras 1,5 s, rechazo automático a los 90 s. Sin ventana principal: `dialog.showMessageBox` sin padre (Rechazar por defecto) + rebote del
+  Dock y notificación; si el diálogo falla o lanza, **se rechaza**. Las confirmaciones usan la cola de T3 (máx. 2 pendientes, 10/min, aprobación ligada a la llamada exacta).
+- **PIN (D4)**: el celular fija un PIN de 6 dígitos con `pin-set` al vincular (o en la primera conexión de un dispositivo anterior sin PIN). El Mac guarda solo
+  `scrypt(pin, sal)` (N=2^15, r=8, p=1, sal de 16 bytes por dispositivo) dentro de `remote.bin` (cifrado con `safeStorage`); nunca el PIN, nunca en logs ni auditoría.
+  `pin-verify` se comprueba en tiempo constante. Cada fallo suma un retardo (1, 2, 4… hasta 30 s) durante el cual no se verifica; **5 fallos seguidos (persistidos, no se
+  reinician al reconectar) revocan el dispositivo**. Cambiar el PIN exige «Restablecer PIN» desde el Mac. Reconectar con actividad hace <5 min no repite el PIN; en frío sí.
+- **Bloqueo por inactividad**: tras 5 min sin llamadas del celular (los `ping` y los eventos no cuentan) el Mac vuelve a exigir el PIN (`locked{why:'inactive'}`);
+  mientras tanto descarta todo lo que no sea lectura (`isRead`, inyectable; sin clasificador no se atiende nada) y no entrega eventos ni suscripciones.
+- **Sin acceso, nada**: con confirmación o PIN pendientes solo se atienden `ping`, `pin-set` y `pin-verify`; `call`/`http`/`sub`/`req` responden `forbidden` sin llegar al despachador ni al motor.
+- **Auditoría** `userData/remote-audit.jsonl` (rotada a 2 archivos de ≤ 256 KiB): vinculaciones, conexiones, confirmaciones (aprobadas/rechazadas/caducadas), revocaciones,
+  fallos de PIN (solo el contador), bloqueos y llamadas rechazadas por la política (**solo canal y clase `X`**, nunca payload ni rutas). Los campos se filtran contra una lista
+  cerrada (huella de 8 hex, nombre saneado, canal con alfabeto restringido); cualquier otro dato se descarta. Visible en Ajustes › Celular › Actividad (filtro por dispositivo).
+- **Trazabilidad de cambios**: `ipc-remote.ts` añade `remote:setRemember`, `remote:resetPin`, `remote:auditList` y el evento `remote:confirmDismiss` (todos X/deny para el celular, con esquema).
+- **Límites conocidos**: el PIN de 6 dígitos solo resiste por el tope de 5 fallos + retardo (el atacante ya necesita el secreto de dispositivo); el diálogo nativo de respaldo no se cierra solo a
+  los 90 s (la cola ya rechazó); la clasificación de lecturas para el bloqueo la debe aportar el despachador (T4).
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

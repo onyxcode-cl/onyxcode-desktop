@@ -7,6 +7,8 @@ import { networkInterfaces } from 'node:os'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import type { RemotePairRequest, RemoteState } from '@shared/ipc-remote'
+import type { AuditInput } from './audit'
+import type { ConfirmHost } from './confirm-host'
 import type { DevicesStore } from './devices-store'
 import type { EventStreamClient } from './events'
 import { pickLanIp } from './lan-ip'
@@ -27,6 +29,10 @@ export interface RemoteBootDeps {
   modelFor: (kind: 'chat' | 'code') => { providerID: string; modelID: string } | undefined
   onChanged: (state: RemoteState) => void
   onPairRequest: (req: RemotePairRequest) => void
+  /** Confirmaciones en el Mac (conexión nueva y acciones «D»). */
+  confirmHost: ConfirmHost
+  /** Auditoría sin secretos. */
+  audit: (e: AuditInput) => void
 }
 
 export function createRemote(d: RemoteBootDeps): RemoteService {
@@ -57,6 +63,8 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     },
     qr: qrMatrix,
     onChanged: d.onChanged,
-    onPairRequest: d.onPairRequest
+    onPairRequest: d.onPairRequest,
+    confirmHost: d.confirmHost,
+    audit: d.audit
   })
 }

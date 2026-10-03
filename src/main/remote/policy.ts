@@ -486,7 +486,10 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'remote:stop': 'X',
   'remote:confirmPair': 'X',
   'remote:revoke': 'X',
-  'remote:confirmAction': 'X' // solo la ventana principal del Mac confirma
+  'remote:confirmAction': 'X', // solo la ventana principal del Mac confirma
+  'remote:setRemember': 'X',
+  'remote:resetPin': 'X',
+  'remote:auditList': 'X'
 }
 
 // ─────────────────────────────── eventos ───────────────────────────────
@@ -536,7 +539,8 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'browser:sites': 'deny',
   'remote:changed': 'deny',
   'remote:pairRequest': 'deny',
-  'remote:confirmRequest': 'deny' // solo la ventana principal del Mac
+  'remote:confirmRequest': 'deny', // solo la ventana principal del Mac
+  'remote:confirmDismiss': 'deny'
 }
 
 /** Política de un evento IPC para el celular (denegar por defecto). */

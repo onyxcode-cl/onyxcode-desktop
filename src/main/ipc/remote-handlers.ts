@@ -2,14 +2,17 @@
  * Handlers IPC del control remoto (`remote:*`; solo la ventana principal). Son ligeros: con la función apagada
  * no cargan `ws`, `qrcode` ni `node-datachannel` (eso lo hace `remote/loader.ts` al pulsar «Activar»).
  */
-import { BrowserWindow, type IpcMain } from 'electron'
-import type { RemoteInvokeContract, RemotePairRequest, RemoteState } from '@shared/ipc-remote'
+import { BrowserWindow, Notification, app, dialog, type IpcMain } from 'electron'
+import { getLang } from '@shared/i18n'
+import type { RemoteConfirmRequest, RemoteEventContract, RemoteInvokeContract, RemotePairRequest, RemoteState } from '@shared/ipc-remote'
+import { LIMITS } from '@shared/remote/protocol'
 import { capsFor } from '@shared/platform-caps'
 import { settingsStore } from '../store'
 import { extrasPrefs } from '../extras/prefs'
-import { showMainWindow, type MainWindowDeps } from '../extras/windows'
+import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import type { OpencodeServer } from '../opencode/server'
-import { currentService, ensureRemote, getDevicesStore, offState, type RemoteHostDeps } from '../remote/loader'
+import { ConfirmHost } from '../remote/confirm-host'
+import { currentService, ensureRemote, getAudit, getDevicesStore, offState, type RemoteHostDeps } from '../remote/loader'
 import { emitTo } from './event-bus'
 import { makeInvokeHandler } from './handle'
 
@@ -20,17 +23,61 @@ export interface RemoteHandlersDeps extends MainWindowDeps {
 
 const handle = makeInvokeHandler<RemoteInvokeContract>({ withCode: false })
 
-function sendMain(deps: MainWindowDeps, channel: 'remote:changed' | 'remote:pairRequest', payload: RemoteState | RemotePairRequest): void {
-  // Solo la ventana principal recibe estos eventos (envío dirigido: nunca llegan al celular).
+function mainWindowOf(deps: MainWindowDeps): BrowserWindow | null {
   const w = deps.getMainWindow?.()
-  if (w && !w.isDestroyed() && BrowserWindow.getAllWindows().includes(w)) emitTo(w, channel, payload)
+  return w && !w.isDestroyed() && BrowserWindow.getAllWindows().includes(w) ? w : null
+}
+
+function sendMain(
+  deps: MainWindowDeps,
+  channel: 'remote:changed' | 'remote:pairRequest' | 'remote:confirmRequest' | 'remote:confirmDismiss',
+  payload: RemoteState | RemotePairRequest | RemoteConfirmRequest | RemoteEventContract['remote:confirmDismiss']
+): boolean {
+  // Solo la ventana principal recibe estos eventos (envío dirigido: nunca llegan al celular).
+  const w = mainWindowOf(deps)
+  if (!w) return false
+  emitTo(w, channel, payload)
+  return true
+}
+
+/** Sin ventana principal: diálogo nativo SIN padre. «Rechazar» es el botón por defecto y el de Esc. */
+async function nativeConfirm(info: RemoteConfirmRequest): Promise<boolean> {
+  const en = getLang() === 'en'
+  const r = await dialog.showMessageBox({
+    type: 'warning',
+    buttons: [en ? 'Reject' : 'Rechazar', en ? 'Allow' : 'Permitir'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    title: en ? 'Request from your phone' : 'Petición desde tu celular',
+    message: info.summary[en ? 'en' : 'es'],
+    detail: [`${info.deviceName} · ${info.deviceFingerprint}`, ...info.detail].join('\n')
+  })
+  return r.response === 1
 }
 
 export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDeps): void {
   const platform = process.platform
   const supported = capsFor(platform).remote
 
+  // Confirmaciones en el Mac: cola de T3 + interfaz real (ventana principal o, sin ella, diálogo nativo + aviso).
+  const confirmHost = new ConfirmHost({
+    sendToWindow: (info) => sendMain(deps, 'remote:confirmRequest', info),
+    dismissInWindow: (requestId) => void sendMain(deps, 'remote:confirmDismiss', { requestId }),
+    fallback: nativeConfirm,
+    alert: (info) => {
+      app.dock?.bounce('critical')
+      if (findMainWindow(deps)) showMainWindow(deps)
+      else if (Notification.isSupported()) {
+        const en = getLang() === 'en'
+        new Notification({ title: 'OnyxCode', body: info.summary[en ? 'en' : 'es'] }).show()
+      }
+    },
+    audit: (e) => getAudit().append(e)
+  })
+
   const host = (): RemoteHostDeps => ({
+    confirmHost,
     chatDirectory: deps.chatDirectory,
     startEngine: () => deps.server.start(),
     getConnection: () => deps.server.getConnection(),
@@ -44,6 +91,22 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     }
   })
 
+  handle(ipcMain, 'remote:confirmAction', ({ requestId, accept, remember }) => {
+    confirmHost.answer(requestId, accept, remember === true)
+  })
+  handle(ipcMain, 'remote:setRemember', ({ deviceId, remember }) => {
+    const s = currentService()
+    if (s) return s.setRemember(deviceId, remember)
+    if (supported && getDevicesStore().available) getDevicesStore().setTrust(deviceId, remember ? Date.now() + LIMITS.rememberMs : null)
+    return offState(platform)
+  })
+  handle(ipcMain, 'remote:resetPin', ({ deviceId }) => {
+    const s = currentService()
+    if (s) return s.resetPin(deviceId)
+    if (supported && getDevicesStore().available) getDevicesStore().resetPin(deviceId)
+    return offState(platform)
+  })
+  handle(ipcMain, 'remote:auditList', (req) => (supported ? getAudit().list({ device: req?.device }) : []))
   handle(ipcMain, 'remote:getState', () => currentService()?.getState() ?? offState(platform))
   handle(ipcMain, 'remote:start', async () => {
     if (!supported) return offState(platform)

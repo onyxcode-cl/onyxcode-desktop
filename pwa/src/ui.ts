@@ -276,6 +276,60 @@ function statusScreen(c: RemoteClient, s: Snapshot): Screen {
         )
       }
       break
+    case 'locked': {
+      const why = conn.why
+      title.textContent = t(why === 'confirm' ? 'lock.confirm.title' : why === 'pin-set' ? 'lock.set.title' : 'lock.verify.title')
+      root.append(art('gem', '', true, true), title)
+      if (why === 'confirm') {
+        root.setAttribute('aria-busy', 'true')
+        root.append(h('p', { class: 'muted' }, t('lock.confirm.body')))
+        break
+      }
+      root.append(
+        h('p', { class: 'muted' }, t(why === 'pin-set' ? 'lock.set.body' : why === 'inactive' ? 'lock.inactive.body' : 'lock.verify.body'))
+      )
+      const setting = why === 'pin-set'
+      const field = (label: string): HTMLInputElement =>
+        h('input', {
+          type: 'password',
+          inputmode: 'numeric',
+          pattern: '[0-9]*',
+          maxlength: '6',
+          autocomplete: 'off',
+          'aria-label': label,
+          placeholder: label,
+          class: 'pin'
+        })
+      const pin = field(t('lock.pin'))
+      const again = setting ? field(t('lock.pinAgain')) : null
+      const err = h('p', { class: 'muted fine', role: 'alert' })
+      if (conn.left !== undefined) err.textContent = t('lock.wrong', { left: conn.left })
+      const go = h('button', { class: 'primary', type: 'submit' }, t(setting ? 'lock.set.btn' : 'lock.verify.btn')) as HTMLButtonElement
+      const form = h(
+        'form',
+        {
+          class: 'actions',
+          'on:submit': (e: Event) => {
+            e.preventDefault()
+            if (!/^[0-9]{6}$/.test(pin.value)) return void (err.textContent = t('lock.format'))
+            if (again && again.value !== pin.value) return void (err.textContent = t('lock.mismatch'))
+            go.disabled = true
+            c.sendPin(pin.value, setting)
+            pin.value = ''
+            if (again) again.value = ''
+          }
+        },
+        pin,
+        ...(again ? [again] : []),
+        go
+      )
+      if (conn.retryMs) {
+        go.disabled = true
+        setTimeout(() => (go.disabled = false), conn.retryMs)
+      }
+      root.append(form, err)
+      return { key: `status:${JSON.stringify(conn)}:${s.paired}`, root, update: () => undefined, focus: () => pin.focus() }
+    }
     case 'failed': {
       const r: FailReason = conn.reason
       title.textContent = t(failTitleKey(r))

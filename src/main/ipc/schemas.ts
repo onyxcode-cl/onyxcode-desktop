@@ -451,7 +451,14 @@ const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = 
   'remote:stop': none,
   'remote:confirmPair': obj({ requestId: str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ }), accept: bool }),
   'remote:revoke': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) }),
-  'remote:confirmAction': obj({ requestId: str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ }), accept: bool })
+  'remote:confirmAction': obj({
+    requestId: str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ }),
+    accept: bool,
+    remember: optional(bool)
+  }),
+  'remote:setRemember': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }), remember: bool }),
+  'remote:resetPin': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) }),
+  'remote:auditList': optional(obj({ device: optional(str({ max: 8, min: 8, pattern: /^[0-9a-f]+$/ })) }))
 }
 
 /**

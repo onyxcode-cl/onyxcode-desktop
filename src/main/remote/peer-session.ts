@@ -22,12 +22,41 @@ import type {
   RemoteEvent,
   RequestFrame
 } from '@shared/remote/protocol'
-import { BUFFER, Mux, Outbox, PRIO, type EventLog, type MuxDispatch, type Prio } from '@shared/remote/mux'
+import {
+  BUFFER,
+  Mux,
+  Outbox,
+  PRIO,
+  type CallRequest,
+  type EventLog,
+  type HttpRequest,
+  type MuxDispatch,
+  type Prio
+} from '@shared/remote/mux'
+import { AccessGate, guardDispatch, type AccessView, type ConnectionDecision } from './access-gate'
+import type { AuditInput } from './audit'
 import type { DevicesStore } from './devices-store'
 import { DevicesLimitError } from './devices-store'
 import { RateLimiter, type Clock } from './rate-limit'
+import { deviceFingerprint } from './confirm-queue'
 import { dispatch, type RemoteBackend } from './whitelist'
 import type { RtcChannel } from './rtc'
+
+/** Control de acceso por conexión (T6: confirmación de conexión, PIN, bloqueo). Sin él la sesión no filtra nada (solo pruebas). */
+export interface PeerAccess {
+  confirmConnection(info: { deviceId: string; deviceName: string }): Promise<ConnectionDecision>
+  trusted(deviceId: string): boolean
+  lastActiveAt(deviceId: string): number | null
+  noteActive(deviceId: string, t: number): void
+  /** 5 fallos de PIN: el servicio revoca el dispositivo. */
+  onRevokeDevice(deviceId: string): void
+  /** Cambió el estado de acceso (Ajustes). */
+  onChange(): void
+  audit(e: AuditInput): void
+  /** ¿Es lectura? (con el celular bloqueado por inactividad solo se atienden lecturas; sin esto, ninguna). */
+  isRead?: (r: CallRequest | HttpRequest) => boolean
+  inactivityMs?: number
+}
 
 export type PeerState = 'init' | 'pair-wait' | 'await-auth' | 'authed' | 'closed'
 
@@ -53,6 +82,7 @@ export interface PeerSessionDeps {
   events?: EventLog
   /** ¿Es una petición de control/permisos (prioridad máxima en la respuesta)? */
   urgent?: (f: CallFrame | HttpFrame) => boolean
+  access?: PeerAccess
   clock?: Clock
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (h: unknown) => void
@@ -68,6 +98,7 @@ export class PeerSession {
   private readonly clearTimer: (h: unknown) => void
   private readonly outbox: Outbox
   private mux: Mux | null = null
+  private gate: AccessGate | null = null
 
   constructor(private readonly d: PeerSessionDeps) {
     this.limiter = new RateLimiter(d.clock)
@@ -93,6 +124,11 @@ export class PeerSession {
 
   get authed(): boolean {
     return this._state === 'authed'
+  }
+
+  /** Estado de acceso visible en Ajustes (`null` = sin control de acceso o sin autenticar). */
+  get accessView(): AccessView | null {
+    return this._state === 'authed' ? (this.gate?.view ?? null) : null
   }
 
   /** Se llama al abrirse el canal (idempotente). */
@@ -129,7 +165,12 @@ export class PeerSession {
     this.mux ??= new Mux({
       role: 'host',
       out: this.outbox,
-      dispatch: this.d.dispatch,
+      dispatch: this.gate
+        ? guardDispatch(this.d.dispatch, this.gate, {
+            isRead: this.d.access?.isRead,
+            onPolicyDenied: (r) => this.d.access?.audit({ kind: 'policy-denied', ...this.who(), ...r })
+          })
+        : this.d.dispatch,
       events: this.d.events,
       urgent: this.d.urgent,
       onViolation: () => this.violation()
@@ -138,7 +179,7 @@ export class PeerSession {
   }
 
   sendEvent(ev: RemoteEvent): void {
-    if (this._state === 'authed') this.send({ t: 'evt', ev })
+    if (this._state === 'authed' && (!this.gate || this.gate.isOpen)) this.send({ t: 'evt', ev })
   }
 
   /** Despide al celular con un motivo y cierra tras dar tiempo a que salga la trama. */
@@ -151,6 +192,7 @@ export class PeerSession {
   private closeSoon(reason: string): void {
     this._state = 'closed'
     this.clearAuthTimer()
+    this.gate?.dispose()
     this.mux?.close()
     this.setTimer(() => {
       this.outbox.kill()
@@ -170,6 +212,7 @@ export class PeerSession {
     if (this._state === 'closed') return
     this._state = 'closed'
     this.clearAuthTimer()
+    this.gate?.dispose()
     this.mux?.close()
     this.outbox.kill()
     this.d.onEnd(reason)
@@ -217,7 +260,9 @@ export class PeerSession {
     this._deviceId = created.id
     this._state = 'authed'
     this.send({ t: 'paired', deviceId: created.id, deviceSecret: created.secret })
-    if (!this.d.onAuthed(created.id)) this.bye('other-device')
+    if (!this.d.onAuthed(created.id)) return this.bye('other-device')
+    this.d.access?.audit({ kind: 'paired', ...this.who() })
+    this.startGate(true)
   }
 
   // ── entrada ──
@@ -249,6 +294,11 @@ export class PeerSession {
     }
     if (f.t === 'auth') {
       this.onAuth(f.deviceId, f.secret)
+      return
+    }
+    if (f.t === 'pin-set' || f.t === 'pin-verify') {
+      if (this._state !== 'authed') this.violation()
+      else if (this.gate) void this.gate.onPin(f)
       return
     }
     if (this._state !== 'authed') {
@@ -283,7 +333,45 @@ export class PeerSession {
     this._state = 'authed'
     this.d.devices.touch(deviceId)
     this.send({ t: 'authed' })
-    if (!this.d.onAuthed(deviceId)) this.bye('other-device')
+    if (!this.d.onAuthed(deviceId)) return this.bye('other-device')
+    this.d.access?.audit({ kind: 'connected', ...this.who() })
+    this.startGate(false)
+  }
+
+  // ── acceso (T6) ──
+
+  private who(): { device?: string; name?: string } {
+    const id = this._deviceId
+    if (!id) return {}
+    return { device: deviceFingerprint(id), name: this.d.devices.get(id)?.name }
+  }
+
+  private startGate(fresh: boolean): void {
+    const a = this.d.access
+    const id = this._deviceId
+    if (!a || !id) return
+    this.gate = new AccessGate({
+      deviceId: id,
+      fresh,
+      devices: this.d.devices,
+      now: this.d.clock ?? Date.now,
+      setTimer: this.setTimer,
+      clearTimer: this.clearTimer,
+      trusted: () => a.trusted(id),
+      confirmConnection: () => a.confirmConnection({ deviceId: id, deviceName: this.d.devices.get(id)?.name ?? '?' }),
+      send: (f) => void this.send(f),
+      onChange: () => a.onChange(),
+      onDenied: (reason) => {
+        this.send({ t: 'denied', reason })
+        this.closeSoon(`denied:${reason}`)
+      },
+      onRevoke: () => a.onRevokeDevice(id),
+      audit: (e) => a.audit({ ...e, ...this.who() }),
+      lastActiveAt: a.lastActiveAt(id),
+      noteActive: (t) => a.noteActive(id, t),
+      inactivityMs: a.inactivityMs
+    })
+    this.gate.start()
   }
 
   private async onRequest(f: RequestFrame): Promise<void> {
@@ -292,6 +380,11 @@ export class PeerSession {
       this.violation()
       return
     }
+    if (this.gate && !this.gate.isOpen) {
+      this.send({ t: 'res', id: f.id, ok: false, error: { code: 'forbidden' } })
+      return
+    }
+    this.gate?.touch()
     const res = await dispatch(f, this.d.backend)
     if (this._state !== 'authed') return
     if (!this.send(res)) this.send({ t: 'res', id: f.id, ok: false, error: { code: 'failed' } })
