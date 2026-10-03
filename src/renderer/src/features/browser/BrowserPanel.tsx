@@ -281,6 +281,8 @@ export function BrowserPanel({
           tab={activeTab}
           picking={!!state?.picking}
           popoutActive={state?.hostedIn === 'popout'}
+          viewMode={state?.viewMode ?? 'desktop'}
+          onViewMode={(mode) => void br('browser:setViewMode', { mode }).catch(() => undefined)}
           onNavigate={handleNavigate}
           onHistory={handleHistory}
           onTogglePick={handleTogglePick}

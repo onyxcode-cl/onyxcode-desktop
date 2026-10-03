@@ -43,5 +43,10 @@ export const browser = {
   'browser.url.pick': 'Select element',
   'browser.url.addToChat': 'Add to chat',
   'browser.url.popOut': 'Open in a separate window',
-  'browser.url.openExternal': 'Open in the system browser'
+  'browser.url.openExternal': 'Open in the system browser',
+  'browser.view.group': 'Page view',
+  'browser.view.desktop': 'Desktop',
+  'browser.view.desktopHint': 'Desktop: pages show their desktop version even if the panel is narrow',
+  'browser.view.mobile': 'Mobile',
+  'browser.view.mobileHint': 'Mobile: pages show their phone version'
 } as const satisfies Messages<typeof es>

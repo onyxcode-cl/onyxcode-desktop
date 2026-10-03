@@ -26,6 +26,7 @@ const ALLOWED_INVOKE = new Set([
   'browser:toChat',
   'browser:respond',
   'browser:popOut',
+  'browser:setViewMode',
   'browser:openExternal'
 ])
 

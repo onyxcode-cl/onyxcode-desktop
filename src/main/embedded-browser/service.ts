@@ -25,12 +25,13 @@ import type {
   DevServerCandidate,
   PickedElement
 } from '@shared/ipc-browser'
-import type { BrowserEventChannel, BrowserEventContract } from '@shared/ipc-browser'
+import type { BrowserEventChannel, BrowserEventContract, BrowserViewMode } from '@shared/ipc-browser'
 import type { OpencodeConnection } from '@shared/types'
 import { loadManagedPolicy } from '../tasks/policy'
 import { hostOf, schemeOf, siteOf } from './sites'
 import { BrowserBusyError, type AgentActor, type AgentLease, type CdpSession, type EmbeddedBrowserApi } from './api'
 import { cdpSessionFor } from './cdp'
+import { inputScaleOf } from './viewport'
 import { findDevServers } from './dev-servers'
 import { isLoopbackOrPrivateHost, sessionFor } from './session'
 import { closePopout, ensurePopoutWindow, popoutWindow, showPopoutInactive } from './popout'
@@ -39,6 +40,7 @@ import { initDownloads } from './downloads'
 import * as store from './store'
 import {
   allTabs,
+  applyViewport,
   createTab,
   destroyTab,
   isUserActive,
@@ -189,7 +191,8 @@ function stateFor(owner: BrowserOwner) {
     picking: rt.picking,
     hostedIn: rt.hostKind,
     disabledReason: agentEnabled(owner.kind) ? undefined : disabledReasonFor(owner.kind),
-    notice: rt.notice
+    notice: rt.notice,
+    viewMode: store.getPrefs().viewMode
   }
 }
 
@@ -409,6 +412,7 @@ function layoutView(rt: OwnerRuntime): void {
     tab!.suppressUserActiveUntil = Math.max(tab!.suppressUserActiveUntil, Date.now() + LAYOUT_SYNTH_INPUT_MS)
   }
   tab!.view.setBounds(bounds)
+  applyViewport(tab!, store.getPrefs().viewMode, { width: bounds.width, height: bounds.height })
   tab!.view.setVisible(true)
 }
 
@@ -668,7 +672,10 @@ async function confirmSensitive(actor: AgentActor, tabId: string, summary: strin
 async function cdp(tabId: string): Promise<CdpSession> {
   const tab = tabById(tabId)
   if (!tab || tab.destroyed) throw new Error('La pestaña ya no existe')
-  return cdpSessionFor(tab.wc, { onInputSent: () => markAgentInputWindow(tab.id) })
+  return cdpSessionFor(tab.wc, {
+    onInputSent: () => markAgentInputWindow(tab.id),
+    inputScale: () => inputScaleOf(tab.emulation)
+  })
 }
 
 function webContentsOf(tabId: string) {
@@ -969,6 +976,21 @@ export function openExternalTab(_owner: BrowserOwner, tabId: string): void {
   if (!tab) return
   const url = tab.wc.isDestroyed() ? '' : tab.wc.getURL()
   if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+}
+
+/** «Escritorio / Móvil» (F8-B46): global y persistente; se aplica a todas las pestañas vivas y recarga las que cambian de user agent. */
+export function setViewMode(mode: BrowserViewMode): void {
+  const next: BrowserViewMode = mode === 'mobile' ? 'mobile' : 'desktop'
+  if (store.getPrefs().viewMode === next) return
+  store.setViewModePref(next)
+  for (const tab of allTabs()) {
+    if (tab.destroyed) continue
+    applyViewport(tab, next, null, true)
+    const url = tab.wc.isDestroyed() ? '' : tab.wc.getURL()
+    if (/^https?:\/\//i.test(url)) tab.wc.reload()
+  }
+  for (const rt of owners.values()) broadcastState(rt.owner)
+  broadcastSites()
 }
 
 export async function devServersFor(directory: string): Promise<DevServerCandidate[]> {

@@ -135,6 +135,7 @@ const BROWSER_SCHEMAS: { [C in BrowserInvokeChannel]: Validator<BrowserInvokeCon
   'browser:toChat': browserToChat,
   'browser:respond': obj({ id: hexId, decision: browserDecision }),
   'browser:popOut': obj({ owner: browserOwner, on: bool }),
+  'browser:setViewMode': obj({ mode: literal('desktop', 'mobile') }),
   'browser:openExternal': obj({ owner: browserOwner, tabId }),
   'browser:devServers': obj({ directory: absPath }),
   'browser:sites:get': none,

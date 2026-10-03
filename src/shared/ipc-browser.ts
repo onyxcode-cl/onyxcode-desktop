@@ -7,6 +7,9 @@ import type { BrowserSite } from './ipc-tasks'
 
 export type BrowserProduct = 'code' | 'tasks'
 
+/** Vista de las páginas: `desktop` (por defecto, viewport de escritorio emulado) o `mobile` (solo si el usuario la pide). */
+export type BrowserViewMode = 'desktop' | 'mobile'
+
 /** Dueño de una superficie de navegador: una tarea de Code (carpeta) o de Tareas (carpeta). */
 export type BrowserOwner = { kind: 'code'; directory: string } | { kind: 'tasks'; folder: string }
 
@@ -44,6 +47,8 @@ export interface BrowserOwnerState {
   disabledReason?: string
   /** Aviso efímero para el usuario (p.ej. enlace `mailto:` bloqueado); el `id` cambia con cada aviso nuevo. */
   notice?: { id: number; text: string }
+  /** Vista elegida (global, persistida). */
+  viewMode: BrowserViewMode
 }
 
 export interface BrowserApprovalRequest {
@@ -83,6 +88,7 @@ export interface DevServerCandidate {
 
 export interface BrowserPrefs {
   agentEnabled: { code: boolean; tasks: boolean }
+  viewMode: BrowserViewMode
 }
 
 export interface BrowserSitesState {
@@ -122,6 +128,7 @@ export interface BrowserInvokeContract {
   'browser:capture': { req: { owner: BrowserOwner; tabId: string }; res: BrowserCapture }
   'browser:toChat': { req: BrowserToChat; res: void }
   'browser:respond': { req: { id: string; decision: BrowserDecision }; res: void }
+  'browser:setViewMode': { req: { mode: BrowserViewMode }; res: void }
   'browser:popOut': { req: { owner: BrowserOwner; on: boolean }; res: BrowserOwnerState }
   'browser:openExternal': { req: { owner: BrowserOwner; tabId: string }; res: void }
   'browser:devServers': { req: { directory: string }; res: DevServerCandidate[] }
@@ -167,6 +174,7 @@ export const BROWSER_INVOKE_CHANNELS = [
   'browser:toChat',
   'browser:respond',
   'browser:popOut',
+  'browser:setViewMode',
   'browser:openExternal',
   'browser:devServers',
   'browser:sites:get',

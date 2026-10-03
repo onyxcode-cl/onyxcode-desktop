@@ -12,11 +12,13 @@ import {
   LockOpen,
   MessageSquarePlus,
   MousePointerClick,
+  Monitor,
   PictureInPicture2,
   RotateCw,
+  Smartphone,
   X
 } from 'lucide-react'
-import type { BrowserTab } from '@shared/ipc-browser'
+import type { BrowserTab, BrowserViewMode } from '@shared/ipc-browser'
 import { useT } from '../../lib/i18n'
 import { splitHostForDisplay } from './store'
 
@@ -49,6 +51,8 @@ export function UrlBar({
   tab,
   picking,
   popoutActive,
+  viewMode,
+  onViewMode,
   onNavigate,
   onHistory,
   onTogglePick,
@@ -59,6 +63,8 @@ export function UrlBar({
   tab: BrowserTab | null
   picking: boolean
   popoutActive: boolean
+  viewMode: BrowserViewMode
+  onViewMode: (mode: BrowserViewMode) => void
   onNavigate: (raw: string) => void
   onHistory: (action: 'back' | 'forward' | 'reload' | 'stop') => void
   onTogglePick: () => void
@@ -143,6 +149,27 @@ export function UrlBar({
           </button>
         )}
       </form>
+      <div
+        role="group"
+        aria-label={t('browser.view.group')}
+        data-testid="browser-view-mode"
+        className="flex shrink-0 items-center rounded-md border border-border p-0.5"
+      >
+        {(['desktop', 'mobile'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            title={t(mode === 'desktop' ? 'browser.view.desktopHint' : 'browser.view.mobileHint')}
+            aria-label={t(mode === 'desktop' ? 'browser.view.desktop' : 'browser.view.mobile')}
+            aria-pressed={viewMode === mode}
+            data-view-mode={mode}
+            onClick={() => onViewMode(mode)}
+            className={`flex h-6 w-6 items-center justify-center rounded ${viewMode === mode ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+          >
+            {mode === 'desktop' ? <Monitor size={14} /> : <Smartphone size={14} />}
+          </button>
+        ))}
+      </div>
       <button
         type="button"
         title={t('browser.url.pick')}

@@ -36,6 +36,9 @@ export function registerBrowserHandlers(ipcMain: IpcMain): void {
   handle(ipcMain, 'browser:respond', ({ id, decision }) => {
     svc.respond(id, decision)
   })
+  handle(ipcMain, 'browser:setViewMode', ({ mode }) => {
+    svc.setViewMode(mode)
+  })
   handle(ipcMain, 'browser:popOut', ({ owner, on }) => svc.popOut(owner, on))
   handle(ipcMain, 'browser:openExternal', ({ owner, tabId }) => {
     svc.openExternalTab(owner, tabId)
