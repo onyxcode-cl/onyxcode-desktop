@@ -6,9 +6,23 @@
  *  - Reconexión (`resume`): la primera trama debe ser `auth{deviceId, secret}` (nunca por HTTP ni señalización).
  *  - Antes de autenticar solo se admiten `auth` (en reconexión) y `ping`; cualquier otra cosa es una violación.
  *  - 10 req/s (ráfaga 20), 6 prompts/min, tramas ≤ 64 KiB, 3 violaciones = desconexión.
+ *  - Protocolo v2 (`call`/`http`/`sub`/`chunk`/…): lo atiende el multiplexor compartido (`@shared/remote/mux`). Aquí solo
+ *    se cablea: validación, cubos, salida con prioridad y `bufferedAmount`. El despacho es `deps.dispatch` (inyectable);
+ *    sin él, toda llamada v2 responde `unavailable` (el motor no se expone todavía).
  */
-import { LIMITS, encodeFrame, parseClientFrame } from '@shared/remote/protocol'
-import type { ByeReason, ClientFrame, DeniedReason, HostFrame, RemoteEvent, RequestFrame } from '@shared/remote/protocol'
+import { LIMITS, encodeFrame, isMuxClientFrame, parseClientFrame, utf8Length } from '@shared/remote/protocol'
+import type {
+  ByeReason,
+  CallFrame,
+  ClientFrame,
+  DeniedReason,
+  HostFrame,
+  HttpFrame,
+  MuxClientFrame,
+  RemoteEvent,
+  RequestFrame
+} from '@shared/remote/protocol'
+import { BUFFER, Mux, Outbox, PRIO, type EventLog, type MuxDispatch, type Prio } from '@shared/remote/mux'
 import type { DevicesStore } from './devices-store'
 import { DevicesLimitError } from './devices-store'
 import { RateLimiter, type Clock } from './rate-limit'
@@ -33,6 +47,12 @@ export interface PeerSessionDeps {
   /** Autenticado: el servicio decide si acepta (un solo celular a la vez). `false` = se corta con `other-device`. */
   onAuthed(deviceId: string): boolean
   onEnd(reason: string): void
+  /** Despachador de `call`/`http`/`sub` del protocolo v2 (T2/T3/T4). Sin él se rechaza todo. */
+  dispatch?: MuxDispatch
+  /** Búfer circular de eventos que sirve a `sub` (el servicio lo conserva entre conexiones para reanudar). */
+  events?: EventLog
+  /** ¿Es una petición de control/permisos (prioridad máxima en la respuesta)? */
+  urgent?: (f: CallFrame | HttpFrame) => boolean
   clock?: Clock
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (h: unknown) => void
@@ -46,9 +66,19 @@ export class PeerSession {
   private started = false
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (h: unknown) => void
+  private readonly outbox: Outbox
+  private mux: Mux | null = null
 
   constructor(private readonly d: PeerSessionDeps) {
     this.limiter = new RateLimiter(d.clock)
+    this.outbox = new Outbox({
+      send: (text) => {
+        if (!d.channel.isOpen()) return false
+        d.channel.send(text)
+        return true
+      },
+      bufferedAmount: () => d.channel.bufferedAmount?.() ?? 0
+    })
     this.setTimer = d.setTimer ?? ((fn, ms) => setTimeout(fn, ms))
     this.clearTimer = d.clearTimer ?? ((h) => clearTimeout(h as NodeJS.Timeout))
   }
@@ -70,6 +100,8 @@ export class PeerSession {
     if (this.started || this._state === 'closed') return
     this.started = true
     const { channel } = this.d
+    channel.setBufferedAmountLowThreshold?.(BUFFER.low)
+    channel.onBufferedAmountLow?.(() => this.outbox.pump())
     channel.onMessage((raw) => this.onMessage(raw))
     channel.onClose(() => this.finish('closed'))
     if (this.d.kind === 'pair') void this.runPairing()
@@ -87,8 +119,22 @@ export class PeerSession {
     if (this._state === 'closed' || !this.d.channel.isOpen()) return false
     const s = encodeFrame(frame)
     if (!s) return false
-    this.d.channel.send(s)
+    const prio: Prio = frame.t === 'evt' ? PRIO.event : frame.t === 'res' ? PRIO.response : PRIO.control
+    this.outbox.enqueue(prio, s)
     return true
+  }
+
+  /** Multiplexor v2 (se crea al autenticar; cada conexión tiene el suyo). */
+  private getMux(): Mux {
+    this.mux ??= new Mux({
+      role: 'host',
+      out: this.outbox,
+      dispatch: this.d.dispatch,
+      events: this.d.events,
+      urgent: this.d.urgent,
+      onViolation: () => this.violation()
+    })
+    return this.mux
   }
 
   sendEvent(ev: RemoteEvent): void {
@@ -105,7 +151,11 @@ export class PeerSession {
   private closeSoon(reason: string): void {
     this._state = 'closed'
     this.clearAuthTimer()
-    this.setTimer(() => this.d.channel.close(), 150)
+    this.mux?.close()
+    this.setTimer(() => {
+      this.outbox.kill()
+      this.d.channel.close()
+    }, 150)
     this.d.onEnd(reason)
   }
 
@@ -120,6 +170,8 @@ export class PeerSession {
     if (this._state === 'closed') return
     this._state = 'closed'
     this.clearAuthTimer()
+    this.mux?.close()
+    this.outbox.kill()
     this.d.onEnd(reason)
   }
 
@@ -177,16 +229,20 @@ export class PeerSession {
   /** Procesa una trama del celular (público para las pruebas). */
   onMessage(raw: unknown): void {
     if (this._state === 'closed') return
-    if (!this.limiter.allowRequest()) {
-      this.violation()
-      return
-    }
     const parsed = parseClientFrame(raw)
     if (!parsed.ok) {
       this.violation()
       return
     }
     const f: ClientFrame = parsed.value
+    if (isMuxClientFrame(f)) {
+      this.onMux(f, raw as string)
+      return
+    }
+    if (!this.limiter.allowRequest()) {
+      this.violation()
+      return
+    }
     if (f.t === 'ping') {
       this.send({ t: 'pong' })
       return
@@ -200,6 +256,14 @@ export class PeerSession {
       return
     }
     void this.onRequest(f)
+  }
+
+  private onMux(f: MuxClientFrame, raw: string): void {
+    // Solo autenticado; cada clase de trama tiene su cubo (un exceso es una violación, no se encola).
+    const allowed =
+      this._state === 'authed' && (f.t === 'call' || f.t === 'http' || f.t === 'sub' ? this.limiter.allowCall() : this.limiter.allowFlood())
+    if (!allowed) return this.violation()
+    this.getMux().receive(f, utf8Length(raw))
   }
 
   private onAuth(deviceId: string, secret: string): void {

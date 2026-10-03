@@ -260,3 +260,131 @@ describe('PeerSession: vinculación', () => {
     expect(ch.sent.map((f) => f.t)).toEqual(['pair-pending'])
   })
 })
+
+// ── Protocolo v2 (multiplexor) cableado en la sesión ──
+
+class BufferedChannel extends FakeChannel {
+  buffered = 0
+  lowAt = 0
+  lowCb: (() => void) | null = null
+  bufferedAmount(): number {
+    return this.buffered
+  }
+  setBufferedAmountLowThreshold(n: number): void {
+    this.lowAt = n
+  }
+  onBufferedAmountLow(cb: () => void): void {
+    this.lowCb = cb
+  }
+}
+
+describe('PeerSession: protocolo v2', () => {
+  const authed = async (ch: FakeChannel, extra: Partial<ConstructorParameters<typeof PeerSession>[0]> = {}) => {
+    const { id, secret } = devices.add('Pixel')
+    const s = new PeerSession({
+      channel: ch,
+      kind: 'resume',
+      deviceId: id,
+      code: '123456',
+      devices,
+      backend: fakeBackend(),
+      confirmPair: async () => false,
+      onAuthed: () => true,
+      onEnd: () => undefined,
+      ...extra
+    })
+    s.start()
+    ch.recv({ t: 'auth', deviceId: id, secret })
+    await flush()
+    ch.sent.length = 0
+    return s
+  }
+
+  it('antes de autenticar, call/http/sub/chunk son violación y no se responde nada', async () => {
+    const ch = new FakeChannel()
+    resumeSession(ch)
+    ch.recv({ t: 'call', id: 1, ch: 'tasks:list' })
+    ch.recv({ t: 'chunk', id: 1, n: 0, last: true, d: 'x' })
+    ch.recv({ t: 'sub', id: 2, eng: 'main' })
+    await flush()
+    expect(ch.sent.some((f) => f.t === 'bye' && f.reason === 'violations')).toBe(true)
+    expect(ch.sent.some((f) => f.t === 'res')).toBe(false)
+  })
+
+  it('sin despachador inyectado, toda llamada v2 responde unavailable (el motor no se expone)', async () => {
+    const ch = new FakeChannel()
+    await authed(ch)
+    ch.recv({ t: 'call', id: 1, ch: 'tasks:list' })
+    ch.recv({ t: 'http', id: 2, eng: 'main', method: 'GET', path: '/session' })
+    await flush()
+    expect(ch.sent).toEqual([
+      { t: 'res', id: 1, ok: false, error: { code: 'unavailable' } },
+      { t: 'res', id: 2, ok: false, error: { code: 'unavailable' } }
+    ])
+  })
+
+  it('con el despachador de prueba: call, http y cancelación; la lista blanca anterior sigue igual', async () => {
+    const ch = new FakeChannel()
+    const aborted: number[] = []
+    await authed(ch, {
+      dispatch: {
+        call: async (req) => ({ eco: req.p }),
+        http: (_req, ctx) =>
+          new Promise(() => {
+            ctx.signal.addEventListener('abort', () => aborted.push(ctx.id))
+          })
+      }
+    })
+    ch.recv({ t: 'call', id: 1, ch: 'test:eco', p: { a: 1 } })
+    ch.recv({ t: 'http', id: 2, eng: 'main', method: 'GET', path: '/x' })
+    await flush()
+    expect(ch.sent).toEqual([{ t: 'res', id: 1, ok: true, data: { eco: { a: 1 } } }])
+    ch.recv({ t: 'cancel', id: 2 })
+    await flush()
+    expect(aborted).toEqual([2])
+    ch.recv({ t: 'req', id: 3, m: 'session.abort', p: { sessionId: 'ses_1' } })
+    await flush()
+    expect(ch.last()).toEqual({ t: 'res', id: 3, ok: true, m: 'session.abort', result: { aborted: true } })
+  })
+
+  it('ids repetidos o decrecientes y trozos huérfanos suman violaciones hasta cortar', async () => {
+    const ch = new FakeChannel()
+    await authed(ch, { dispatch: { call: async () => 1, http: async () => 1 } })
+    ch.recv({ t: 'call', id: 5, ch: 'test:a' })
+    ch.recv({ t: 'call', id: 5, ch: 'test:a' })
+    ch.recv({ t: 'chunk', id: 9, n: 0, last: true, d: 'x' })
+    ch.recv({ t: 'call', id: 4, ch: 'test:a' })
+    await flush()
+    expect(ch.sent.some((f) => f.t === 'bye' && f.reason === 'violations')).toBe(true)
+  })
+
+  it('respeta bufferedAmount: con el canal lleno solo sale control y lo demás espera a onBufferedAmountLow', async () => {
+    const ch = new BufferedChannel()
+    await authed(ch, { dispatch: { call: async () => 'ok', http: async () => 'ok' } })
+    expect(ch.lowAt).toBeGreaterThan(0)
+    ch.buffered = 300 * 1024 // por encima de la marca alta, por debajo de la dura
+    ch.recv({ t: 'call', id: 1, ch: 'test:a' })
+    ch.recv({ t: 'req', id: 2, m: 'sessions.list', p: {} })
+    await flush()
+    expect(ch.sent.filter((f) => f.t === 'res')).toEqual([]) // respuestas esperan
+    ch.recv({ t: 'ping' })
+    expect(ch.last()).toEqual({ t: 'pong' }) // el control pasa
+    ch.buffered = 0
+    ch.lowCb?.()
+    expect(
+      ch.sent
+        .filter((f) => f.t === 'res')
+        .map((f) => (f as { id: number }).id)
+        .sort()
+    ).toEqual([1, 2])
+  })
+
+  it('un cubo propio limita call/http/sub (40/s, ráfaga 120) y el exceso es violación', async () => {
+    const ch = new FakeChannel()
+    await authed(ch, { dispatch: { call: async () => 1, http: async () => 1 } })
+    for (let i = 1; i <= LIMITS.callBurst + 5; i++) ch.recv({ t: 'call', id: i, ch: 'test:a' })
+    await flush()
+    expect(ch.sent.filter((f) => f.t === 'res').length).toBeLessThanOrEqual(LIMITS.callBurst)
+    expect(ch.sent.some((f) => f.t === 'bye' && f.reason === 'violations')).toBe(true)
+  })
+})

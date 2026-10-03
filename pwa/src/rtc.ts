@@ -3,6 +3,7 @@
  * crea el canal, DESPUÉS de recibir `ready`. Sin servidores STUN/TURN (solo red local). No usa `crypto.subtle` ni nada que
  * exija contexto seguro. Todo lo recibido por señalización se valida con los validadores compartidos.
  */
+import { BUFFER } from '../../src/shared/remote/mux'
 import {
   DATACHANNEL_LABEL,
   LIMITS,
@@ -28,6 +29,8 @@ export interface LinkHandlers {
   /** El canal abrió; trae los SDP de ambos lados para calcular el código de 6 dígitos. */
   onOpen(info: { offerSdp: string; answerSdp: string }): void
   onMessage(raw: string): void
+  /** `bufferedAmount` bajó de `BUFFER.low` (control de flujo del multiplexor). */
+  onDrain?(): void
   /** Se llama UNA vez cuando el enlace termina (antes o después de abrir). */
   onEnd(why: LinkEnd): void
 }
@@ -36,6 +39,8 @@ export interface Link {
   /** `false` si el canal no está abierto o la trama no cabe. */
   send(text: string): boolean
   isOpen(): boolean
+  /** Bytes pendientes en el búfer de salida del canal. */
+  bufferedAmount(): number
   close(): void
 }
 
@@ -74,7 +79,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     clearTimers()
     try {
       if (dc) {
-        dc.onopen = dc.onmessage = dc.onclose = dc.onerror = null
+        dc.onopen = dc.onmessage = dc.onclose = dc.onerror = dc.onbufferedamountlow = null
         dc.close()
       }
     } catch {
@@ -154,6 +159,8 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     // El canal se crea DESPUÉS de `ready` (el servidor ya espera la oferta).
     const channel = conn.createDataChannel(DATACHANNEL_LABEL, { ordered: true })
     dc = channel
+    channel.bufferedAmountLowThreshold = BUFFER.low
+    channel.onbufferedamountlow = () => h.onDrain?.()
     channel.onopen = () => {
       if (ended || opened) return
       opened = true
@@ -178,14 +185,14 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
 
   if (!webrtcSupported()) {
     queueMicrotask(() => end({ k: 'unsupported' }))
-    return { send: () => false, isOpen: () => false, close: () => undefined }
+    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, close: () => undefined }
   }
 
   try {
     ws = new WebSocket(wsUrl())
   } catch {
     queueMicrotask(() => end({ k: 'no-host' }))
-    return { send: () => false, isOpen: () => false, close: () => undefined }
+    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, close: () => undefined }
   }
   arm(READY_TIMEOUT_MS, { k: 'no-host' })
   ws.onopen = () => sendSignal(hello)
@@ -237,6 +244,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
       }
     },
     isOpen: () => !!dc && dc.readyState === 'open',
+    bufferedAmount: () => (dc ? dc.bufferedAmount : 0),
     close() {
       if (ended) return
       ended = true

@@ -875,6 +875,25 @@ lo que va a ejecutar; se consume al resolver (repetir la llamada pide otra). Sol
 de la ventana principal (no está en `CHANNEL_ROLES` de ninguna otra). La interfaz (`RemoteConfirmHost.tsx`), el PIN y la auditoría
 `remote-audit.jsonl` son de la tanda T6.
 
+## 3 vicies bis. Protocolo v2 del control remoto (F8-B53)
+
+Transporte multiplexado sobre el mismo DataChannel (ordenado, fiable, DTLS). **No añade superficie**: el despachador de `call`/`http`/`sub`
+es inyectable y, sin él, toda trama v2 responde `unavailable`; la política «celular» (denegar por defecto) y el proxy del motor llegan en
+otras tandas. Lo que sí fija este bloque:
+
+- **Todo se valida en ambos lados** (`protocol.ts`): claves desconocidas = rechazo, ids `1..2^31-1`, canales/motores por expresión
+  regular, rutas HTTP absolutas sin `..`, `//` ni separadores codificados, cabeceras solo `content-type`/`accept` sin caracteres de control.
+- **Anti-repetición**: los ids de `call`/`http`/`sub` deben crecer estrictamente; uno repetido o menor es una violación (3 = desconexión).
+- **Memoria acotada**: mensajes ensamblados ≤ 16 MiB (subida) / 8 MiB (bajada), ≤ 32 MiB en ensamblado a la vez, anunciados en la cabecera (`ck`)
+  y verificados al final; trozo huérfano, fuera de orden o de más = violación. Salida con tope equivalente.
+- **Denegación de servicio**: ≤ 32 llamadas en vuelo y 6 streams (el exceso recibe `busy`), crédito por transferencia/stream (ventana 256 KiB; un
+  `credit` mayor que lo enviado es violación), cubo de 40 lecturas/s (ráfaga 120) para `call`/`http`/`sub` y red de seguridad para `chunk`/`credit`/`cancel`.
+- **Reanudación sin filtrar**: el búfer circular (30 s / 2 MiB) guarda lo que el Mac YA filtró y recortó; un hueco, un reinicio o un evento que no cabe
+  en una trama producen `reset` (el celular vuelve a leer el estado), nunca eventos inventados.
+- **Compatibilidad**: la señalización exige `v: 2`; un celular con la PWA v1 recibe `error{code:'version'}` y no llega a abrir canal. Las tramas v1
+  de la lista blanca del prototipo siguen funcionando mientras no se retire.
+- Los errores v2 solo llevan un código y un `msg` opcional de ≤ 200 caracteres escrito por el despachador; los errores internos salen como `failed`.
+
 ## 4. Paquete (`electron-builder.js`)
 
 Config en JS (no YAML) para poder decidir firma real vs. ad-hoc según variables de entorno —

@@ -13,6 +13,11 @@ export interface RtcChannel {
   /** `raw` puede ser texto o binario: quien valida (`parseClientFrame`) rechaza lo que no sea texto. */
   onMessage(cb: (raw: unknown) => void): void
   onClose(cb: () => void): void
+  /** Bytes en el búfer de salida del canal (control de flujo del multiplexor). */
+  bufferedAmount?(): number
+  setBufferedAmountLowThreshold?(bytes: number): void
+  /** Se llama cuando `bufferedAmount` baja del umbral fijado. */
+  onBufferedAmountLow?(cb: () => void): void
 }
 
 export interface RtcAnswerer {
@@ -92,7 +97,22 @@ export async function loadRtc(): Promise<RtcFactory> {
                 if (dc.isOpen()) queueMicrotask(f)
               },
               onMessage: (f) => dc.onMessage((m) => f(m)),
-              onClose: (f) => dc.onClosed(f)
+              onClose: (f) => dc.onClosed(f),
+              bufferedAmount: () => {
+                try {
+                  return dc.bufferedAmount()
+                } catch {
+                  return 0
+                }
+              },
+              setBufferedAmountLowThreshold: (n) => {
+                try {
+                  dc.setBufferedAmountLowThreshold(n)
+                } catch {
+                  /* canal cerrado */
+                }
+              },
+              onBufferedAmountLow: (f) => dc.onBufferedAmountLow(f)
             })
           }),
         onGone: (cb) => void gone.push(cb),
