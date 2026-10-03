@@ -22,6 +22,7 @@ import {
 } from '@shared/keybindings'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { displayParts, kbPlatform } from '../../../keybindings/bindings'
 import { suspendKeybindings } from '../../../keybindings/dispatch'
 import { getExtras, useExtrasPrefs } from './extras'
@@ -135,7 +136,10 @@ export function KeybindingsList(): React.JSX.Element {
   const groups = KB_CATEGORIES.map((c) => ({
     category: c,
     actions: ACTIONS.filter(
-      (a) => a.category === c && (!q || norm(name(a)).includes(q) || norm(keysText(effective[a.id] ?? '')).includes(q))
+      (a) =>
+        a.category === c &&
+        (a.id !== 'remote.stopAll' || platformCaps().remote) &&
+        (!q || norm(name(a)).includes(q) || norm(keysText(effective[a.id] ?? '')).includes(q))
     )
   })).filter((g) => g.actions.length > 0)
 
