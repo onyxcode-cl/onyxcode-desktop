@@ -3,10 +3,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LIMITS, type HostFrame } from '@shared/remote/protocol'
-import type { RemoteState } from '@shared/ipc-remote'
+import type { RemotePolicyView, RemoteState } from '@shared/ipc-remote'
+import type { AuditInput } from './audit'
+import { NO_ORG_POLICY, invalidRemotePolicy } from './org-policy'
 import { DevicesStore } from './devices-store'
 import type { RtcAnswerer, RtcChannel, RtcFactory } from './rtc'
-import { RemoteService } from './service'
+import { POLICY_POLL_MS, RemoteService } from './service'
 import type { SignalHello, SignalingPeer, SignalingStartOptions, SignalingTransport } from './signaling/types'
 import type { RemoteBackend } from './whitelist'
 import type { EventSource } from './events'
@@ -124,7 +126,9 @@ let states: RemoteState[]
 let pairReqs: Array<{ requestId: string; deviceName: string; code: string }>
 let ip: string | null
 
-function make(opts: { devices?: DevicesStore; engine?: RemoteEngineHost } = {}): { svc: RemoteService; devices: DevicesStore } {
+function make(
+  opts: { devices?: DevicesStore; engine?: RemoteEngineHost; policy?: () => RemotePolicyView; audit?: (e: AuditInput) => void } = {}
+): { svc: RemoteService; devices: DevicesStore } {
   const devices = opts.devices ?? new DevicesStore(join(dir, 'remote.bin'), safe)
   const rtc: RtcFactory = {
     createAnswerer: () => {
@@ -143,7 +147,9 @@ function make(opts: { devices?: DevicesStore; engine?: RemoteEngineHost } = {}):
     getEventClient: () => null,
     qr: () => [[true]],
     onChanged: (s) => states.push(s),
-    onPairRequest: (r) => pairReqs.push(r)
+    onPairRequest: (r) => pairReqs.push(r),
+    policy: opts.policy,
+    audit: opts.audit
   })
   return { svc, devices }
 }
@@ -260,7 +266,7 @@ describe('RemoteService', () => {
     const first = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
     first.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
-    expect(first.answerer.channel.sent[0]).toEqual({ t: 'authed' })
+    expect(first.answerer.channel.sent[0]).toMatchObject({ t: 'authed' })
     const second = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: b.id })
     second.answerer.channel.recv({ t: 'auth', deviceId: b.id, secret: b.secret })
     await vi.advanceTimersByTimeAsync(5)
@@ -359,5 +365,100 @@ describe('RemoteService', () => {
     await done
     expect(engine.hub.running).toBe(false)
     expect(engine.hub.engines()).toEqual([])
+  })
+})
+
+describe('RemoteService: política de la organización y caducidad', () => {
+  const pol = (over: Partial<RemotePolicyView> = {}): RemotePolicyView => ({ ...NO_ORG_POLICY, managed: true, ...over })
+
+  it('política que bloquea: no se puede activar y el estado lo explica', async () => {
+    const { svc } = make({ policy: () => pol({ blocked: 'disabled' }) })
+    const s = await svc.start()
+    expect(s).toMatchObject({ available: false, unavailable: 'policy', mode: 'off', policy: { blocked: 'disabled' } })
+    expect(transport.opts).toBeNull()
+  })
+
+  it('archivo de política inválido: bloqueado (fail closed)', async () => {
+    const { svc } = make({ policy: () => invalidRemotePolicy() })
+    expect(svc.getState()).toMatchObject({ available: false, unavailable: 'policy', policy: { blocked: 'invalid' } })
+    expect((await svc.start()).mode).toBe('off')
+  })
+
+  it('aplicación en caliente: enabled:false corta la conexión viva sin reiniciar', async () => {
+    let current = pol()
+    const audits: AuditInput[] = []
+    const { svc, devices } = make({ policy: () => current, audit: (e) => void audits.push(e) })
+    const a = devices.add('A')
+    await svc.start()
+    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
+    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    await vi.advanceTimersByTimeAsync(5)
+    expect(svc.getState().devices[0]?.connected).toBe(true)
+    current = pol({ blocked: 'disabled' })
+    await vi.advanceTimersByTimeAsync(POLICY_POLL_MS + 500)
+    expect(svc.getState().mode).toBe('off')
+    expect(transport.stopped).toBe(true)
+    expect(c.answerer.channel.sent.some((f) => f.t === 'bye' && f.reason === 'stopped')).toBe(true)
+    expect(audits.some((e) => e.kind === 'policy-blocked')).toBe(true)
+  })
+
+  it('una conexión nueva también relee la política (authorize)', async () => {
+    let current = pol()
+    const { svc, devices } = make({ policy: () => current })
+    const a = devices.add('A')
+    await svc.start()
+    current = pol({ blocked: 'invalid' })
+    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })).toBe(false)
+    await vi.advanceTimersByTimeAsync(5)
+    expect(svc.getState().mode).toBe('off')
+  })
+
+  it('sin «recordar»: «Cortar todo» borra los vínculos', async () => {
+    const { svc, devices } = make({ policy: () => pol({ allowRemember: false }) })
+    devices.add('A')
+    await svc.start()
+    // al activar ya se borran los de antes
+    expect(devices.list()).toHaveLength(0)
+    devices.add('B')
+    await svc.stopAll()
+    expect(devices.list()).toHaveLength(0)
+  })
+
+  it('el tope de la política recorta la caducidad que se ve en Ajustes', () => {
+    const { svc, devices } = make({ policy: () => pol({ deviceTtlDays: 30 }) })
+    const { id } = devices.add('A', Date.now(), 365)
+    const d = svc.getState().devices.find((x) => x.id === id)!
+    expect(d.ttlDays).toBe(365)
+    expect(d.expiresAt).toBe(Date.now() + 30 * 86_400_000)
+  })
+
+  it('«Revocar todos» despide al celular conectado y vacía la lista', async () => {
+    const audits: AuditInput[] = []
+    const { svc, devices } = make({ audit: (e) => void audits.push(e) })
+    const a = devices.add('A')
+    devices.add('B')
+    await svc.start()
+    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
+    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    await vi.advanceTimersByTimeAsync(5)
+    const s = svc.revokeAll()
+    await vi.advanceTimersByTimeAsync(5)
+    expect(s.devices).toHaveLength(0)
+    expect(devices.list()).toHaveLength(0)
+    expect(c.answerer.channel.sent.some((f) => f.t === 'bye' && f.reason === 'revoked')).toBe(true)
+    expect(audits).toContainEqual({ kind: 'revoked-all', n: 2 })
+  })
+
+  it('un vínculo caducado se rechaza con `expired`, queda visible y se puede quitar', async () => {
+    const { svc, devices } = make()
+    const a = devices.add('A', Date.now(), 30)
+    await svc.start()
+    vi.setSystemTime(Date.now() + 31 * 86_400_000)
+    expect(svc.getState().devices[0]).toMatchObject({ id: a.id, expired: true })
+    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
+    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    await vi.advanceTimersByTimeAsync(5)
+    expect(c.answerer.channel.sent[0]).toEqual({ t: 'auth-failed', why: 'expired' })
+    expect(svc.revoke(a.id).devices).toHaveLength(0)
   })
 })

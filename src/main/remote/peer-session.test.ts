@@ -106,7 +106,7 @@ describe('PeerSession: reconexión con secreto de dispositivo', () => {
     const { s, id, secret, backend } = resumeSession(ch)
     ch.recv({ t: 'auth', deviceId: id, secret })
     await flush()
-    expect(ch.last()).toEqual({ t: 'authed' })
+    expect(ch.last()).toMatchObject({ t: 'authed' })
     expect(s.authed).toBe(true)
     ch.recv({ t: 'req', id: 1, m: 'session.abort', p: { sessionId: 'ses_1' } })
     await flush()
@@ -386,5 +386,61 @@ describe('PeerSession: protocolo v2', () => {
     await flush()
     expect(ch.sent.filter((f) => f.t === 'res').length).toBeLessThanOrEqual(LIMITS.callBurst)
     expect(ch.sent.some((f) => f.t === 'bye' && f.reason === 'violations')).toBe(true)
+  })
+})
+
+describe('PeerSession: caducidad del vínculo', () => {
+  const DAY = 86_400_000
+
+  it('authed lleva expiresAt (renovado) y no avisa si quedaba plazo de sobra', async () => {
+    const ch = new FakeChannel()
+    const { id, secret } = resumeSession(ch)
+    ch.recv({ t: 'auth', deviceId: id, secret })
+    await flush()
+    const f = ch.sent.find((x) => x.t === 'authed') as { expiresAt?: number; expiring?: boolean }
+    expect(f.expiresAt).toBe(devices.expiresAt(id))
+    expect(f.expiring).toBeUndefined()
+  })
+
+  it('caducado: auth-failed con why=expired, no se autentica y se audita', async () => {
+    const ch = new FakeChannel()
+    const { s, id, secret, ended } = resumeSession(ch)
+    vi.setSystemTime(Date.now() + 91 * DAY)
+    ch.recv({ t: 'auth', deviceId: id, secret })
+    await flush()
+    expect(ch.sent[0]).toEqual({ t: 'auth-failed', why: 'expired' })
+    expect(s.authed).toBe(false)
+    expect(ended).toEqual(['expired'])
+    expect(devices.get(id)?.lastUsedAt).toBeNull()
+  })
+
+  it('a punto de caducar (≤ 7 días): authed avisa con expiring y el plazo se renueva', async () => {
+    const ch = new FakeChannel()
+    const { id, secret } = resumeSession(ch)
+    vi.setSystemTime(Date.now() + 85 * DAY)
+    ch.recv({ t: 'auth', deviceId: id, secret })
+    await flush()
+    const f = ch.sent.find((x) => x.t === 'authed') as { expiresAt: number; expiring?: boolean }
+    expect(f.expiring).toBe(true)
+    expect(f.expiresAt).toBeGreaterThan(Date.now() + 89 * DAY)
+  })
+
+  it('con «nunca» no hay expiresAt ni aviso', async () => {
+    const ch = new FakeChannel()
+    const { id, secret } = resumeSession(ch)
+    devices.setTtl(id, null)
+    vi.setSystemTime(Date.now() + 5000 * DAY)
+    ch.recv({ t: 'auth', deviceId: id, secret })
+    await flush()
+    expect(ch.sent.find((x) => x.t === 'authed')).toEqual({ t: 'authed' })
+  })
+
+  it('un secreto incorrecto en un vínculo caducado NO revela que caducó', async () => {
+    const ch = new FakeChannel()
+    const { id } = resumeSession(ch)
+    vi.setSystemTime(Date.now() + 91 * DAY)
+    ch.recv({ t: 'auth', deviceId: id, secret: 'B'.repeat(43) })
+    await flush()
+    expect(ch.sent[0]).toEqual({ t: 'auth-failed' })
   })
 })

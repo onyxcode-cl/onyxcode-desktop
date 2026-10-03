@@ -36,7 +36,7 @@ import {
 import { AccessGate, guardDispatch, type AccessView, type ConnectionDecision } from './access-gate'
 import type { AuditInput } from './audit'
 import type { DevicesStore } from './devices-store'
-import { DevicesLimitError } from './devices-store'
+import { DevicesLimitError, EXPIRY_WARN_MS } from './devices-store'
 import { RateLimiter, type Clock } from './rate-limit'
 import { deviceFingerprint } from './confirm-queue'
 import { dispatch, type RemoteBackend } from './whitelist'
@@ -85,6 +85,8 @@ export interface PeerSessionDeps {
   /** ¿Es una petición de control/permisos (prioridad máxima en la respuesta)? */
   urgent?: (f: CallFrame | HttpFrame) => boolean
   access?: PeerAccess
+  /** Límites de la política de la organización (tope de caducidad en días y nº máximo de celulares). Sin él, solo los de fábrica. */
+  limits?: () => { capDays: number | null; maxDevices: number }
   clock?: Clock
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (h: unknown) => void
@@ -239,7 +241,10 @@ export class PeerSession {
       this.closeSoon(`denied:${reason}`)
     }
     if (!code) return deny('rejected')
-    if (this.d.devices.list().length >= LIMITS.maxDevices) return deny('limit')
+    const lim = this.limits()
+    // Los vínculos caducados no ocupan hueco.
+    this.d.devices.pruneExpired(this.nowMs(), lim.capDays)
+    if (this.d.devices.list().length >= lim.maxDevices) return deny('limit')
     this.send({ t: 'pair-pending' })
     let accepted = false
     let timer: unknown = null
@@ -259,7 +264,7 @@ export class PeerSession {
     if (!accepted) return deny('rejected')
     let created: { id: string; secret: string }
     try {
-      created = this.d.devices.add(deviceName || '?')
+      created = this.d.devices.add(deviceName || '?', this.nowMs(), undefined, lim.capDays, lim.maxDevices)
     } catch (err) {
       return deny(err instanceof DevicesLimitError ? 'limit' : 'rejected')
     }
@@ -327,9 +332,17 @@ export class PeerSession {
       this.violation()
       return
     }
-    // Una sola oportunidad: si falla, se corta (sin pistas sobre qué falló).
-    const ok = deviceId === this.d.deviceId && this.d.devices.verify(deviceId, secret)
-    if (!ok) {
+    // Una sola oportunidad: si falla, se corta (sin pistas sobre qué falló). `expired` solo se dice con el secreto correcto.
+    const { capDays } = this.limits()
+    const now = this.nowMs()
+    const res = deviceId === this.d.deviceId ? this.d.devices.check(deviceId, secret, now, capDays) : 'bad'
+    if (res === 'expired') {
+      this.d.access?.audit({ kind: 'expired', device: deviceFingerprint(deviceId), name: this.d.devices.get(deviceId)?.name })
+      this.send({ t: 'auth-failed', why: 'expired' })
+      this.closeSoon('expired')
+      return
+    }
+    if (res !== 'ok') {
       this.send({ t: 'auth-failed' })
       this.closeSoon('auth-failed')
       return
@@ -337,14 +350,30 @@ export class PeerSession {
     this.clearAuthTimer()
     this._deviceId = deviceId
     this._state = 'authed'
-    this.d.devices.touch(deviceId)
-    this.send({ t: 'authed' })
+    // Aviso de caducidad próxima: lo que quedaba ANTES de renovar (si el celular casi se pierde, se le dice).
+    const before = this.d.devices.expiresAt(deviceId, capDays)
+    this.d.devices.touch(deviceId, now)
+    const after = this.d.devices.expiresAt(deviceId, capDays)
+    this.send({
+      t: 'authed',
+      ...(after === null ? {} : { expiresAt: after }),
+      ...(before !== null && before - now <= EXPIRY_WARN_MS ? { expiring: true } : {})
+    })
     if (!this.d.onAuthed(deviceId)) return this.bye('other-device')
     this.d.access?.audit({ kind: 'connected', ...this.who() })
     this.startGate(false)
   }
 
   // ── acceso (T6) ──
+
+  private nowMs(): number {
+    return (this.d.clock ?? Date.now)()
+  }
+
+  private limits(): { capDays: number | null; maxDevices: number } {
+    const l = this.d.limits?.()
+    return { capDays: l?.capDays ?? null, maxDevices: Math.min(l?.maxDevices ?? LIMITS.maxDevices, LIMITS.maxDevices) }
+  }
 
   private who(): { device?: string; name?: string } {
     const id = this._deviceId

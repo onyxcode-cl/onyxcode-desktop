@@ -6,7 +6,7 @@
 import { networkInterfaces } from 'node:os'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
-import type { RemotePairRequest, RemoteState } from '@shared/ipc-remote'
+import type { RemotePairRequest, RemotePolicyView, RemoteState } from '@shared/ipc-remote'
 import type { AuditInput } from './audit'
 import type { ConfirmHost } from './confirm-host'
 import type { DevicesStore } from './devices-store'
@@ -37,6 +37,8 @@ export interface RemoteBootDeps {
   confirmHost: ConfirmHost
   /** Auditoría sin secretos. */
   audit: (e: AuditInput) => void
+  /** Política de la organización vigente (se relee en caliente). */
+  policy: () => RemotePolicyView
 }
 
 export function createRemote(d: RemoteBootDeps): RemoteService {
@@ -99,6 +101,7 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     onChanged: d.onChanged,
     onPairRequest: d.onPairRequest,
     confirmHost: d.confirmHost,
-    audit: d.audit
+    audit: d.audit,
+    policy: d.policy
   })
 }

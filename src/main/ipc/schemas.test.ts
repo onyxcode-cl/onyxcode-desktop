@@ -264,3 +264,19 @@ describe('remote:confirmAction', () => {
     for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has('remote:confirmAction'), role).toBe(false)
   })
 })
+
+describe('remote:setDeviceTtl y remote:revokeAll', () => {
+  const id = 'a'.repeat(32)
+  it('solo 30, 90, 365 o null; nada extra', () => {
+    const v = IPC_SCHEMAS['remote:setDeviceTtl']
+    for (const days of [30, 90, 365, null]) expect(v({ deviceId: id, days })).toEqual({ deviceId: id, days })
+    for (const days of [0, 7, 366, '90', undefined]) expect(() => v({ deviceId: id, days })).toThrow()
+    expect(() => v({ deviceId: 'x', days: 30 })).toThrow()
+    expect(() => v({ deviceId: id, days: 30, extra: 1 })).toThrow()
+  })
+  it('solo la ventana principal', () => {
+    for (const ch of ['remote:setDeviceTtl', 'remote:revokeAll'] as const) {
+      for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has(ch), `${role} ${ch}`).toBe(false)
+    }
+  })
+})
