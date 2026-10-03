@@ -10,6 +10,7 @@ export type MobileTab = 'chat' | 'code' | 'tasks' | 'more'
 export const MOBILE_TABS: readonly MobileTab[] = ['chat', 'code', 'tasks', 'more']
 export type MobileScreenId = string
 export const ROOT_SCREEN: MobileScreenId = 'root'
+export const DETAIL_SCREEN: MobileScreenId = 'detail'
 const MAX_DEPTH = 8
 
 export interface NavState {
@@ -49,11 +50,20 @@ export function navShowTab(s: NavState, tab: MobileTab): NavState {
   return tab === s.tab ? s : { ...s, tab }
 }
 
+/** Muestra la pestaña con su conversación abierta (`root` → `detail`), p. ej. al tocar una notificación. */
+export function navOpenDetail(s: NavState, tab: MobileTab): NavState {
+  const stack = s.stacks[tab]
+  if (s.tab === tab && stack[stack.length - 1] === DETAIL_SCREEN) return s
+  const keep = stack.includes(DETAIL_SCREEN) ? stack : [ROOT_SCREEN, DETAIL_SCREEN]
+  return { tab, stacks: { ...s.stacks, [tab]: keep } }
+}
+
 interface NavStore extends NavState {
   push: (screen: MobileScreenId) => void
   pop: () => void
   setTab: (tab: MobileTab) => void
   showTab: (tab: MobileTab) => void
+  openDetail: (tab: MobileTab) => void
   /** Vuelve a la lista de la pestaña activa. */
   toRoot: () => void
   /** Solo pruebas: restablece el estado. */
@@ -66,6 +76,7 @@ export const useMobileNavStore = create<NavStore>((set) => ({
   pop: () => set((s) => navPop(s)),
   setTab: (tab) => set((s) => navSetTab(s, tab)),
   showTab: (tab) => set((s) => navShowTab(s, tab)),
+  openDetail: (tab) => set((s) => navOpenDetail(s, tab)),
   toRoot: () => set((s) => ({ ...s, stacks: { ...s.stacks, [s.tab]: [ROOT_SCREEN] } })),
   reset: (tab) => set(initialNav(tab))
 }))

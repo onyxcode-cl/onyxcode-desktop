@@ -44,7 +44,12 @@ export function makeLink(client: RemoteClient, tracker: SlowTracker): RemoteLink
     },
     call: (ch, p, signal) => tracker.track(client.muxCall(ch, p, signal)),
     http: (req, signal) => tracker.track(client.muxHttp(req, signal)),
-    subscribe: (eng, h, since) => client.muxSubscribe(eng, h, since)
+    subscribe: (eng, h, since) => client.muxSubscribe(eng, h, since),
+    lock: () => client.lockNow(),
+    forget: () => {
+      client.forget()
+      location.reload()
+    }
   }
 }
 

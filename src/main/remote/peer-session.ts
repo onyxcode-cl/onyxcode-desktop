@@ -302,6 +302,11 @@ export class PeerSession {
       this.onAuth(f.deviceId, f.secret)
       return
     }
+    if (f.t === 'lock') {
+      if (this._state !== 'authed') this.violation()
+      else this.gate?.lockNow()
+      return
+    }
     if (f.t === 'pin-set' || f.t === 'pin-verify') {
       if (this._state !== 'authed') this.violation()
       else if (this.gate) void this.gate.onPin(f)

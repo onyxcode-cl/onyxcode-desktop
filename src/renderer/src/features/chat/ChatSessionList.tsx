@@ -5,6 +5,7 @@ import { t as tr, localeTag } from '@shared/i18n'
 import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 import { LoadMoreSessions } from '../../components/LoadMoreSessions'
+import { PopoverPanel } from '../../components/PopoverPanel'
 
 interface Props {
   sessions: Session[]
@@ -62,7 +63,8 @@ function Row({
   useEffect(() => {
     if (!menu) return
     const onDown = (e: MouseEvent): void => {
-      if (rowRef.current && !rowRef.current.contains(e.target as Node)) {
+      const inSheet = e.target instanceof Element && !!e.target.closest('[data-sheet]')
+      if (!inSheet && rowRef.current && !rowRef.current.contains(e.target as Node)) {
         setMenu(false)
         setConfirmDelete(false)
       }
@@ -116,52 +118,58 @@ function Row({
       >
         <MoreHorizontal size={15} />
       </button>
-      {menu && (
-        <div className="absolute top-full right-0 z-40 mt-1 w-44 origin-top-right animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated p-1 text-sm shadow-lg">
-          <button
-            type="button"
-            onClick={() => {
-              setMenu(false)
-              setDraft(session.title)
-              setEditing(true)
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-hover"
-          >
-            <Pencil size={14} className="text-muted" /> {t('chat.list.rename')}
-          </button>
-          {confirmDelete ? (
-            <div className="flex items-center gap-1 px-2 py-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setMenu(false)
-                  setConfirmDelete(false)
-                  onDelete()
-                }}
-                className="flex-1 rounded-md bg-danger px-2 py-1 text-xs font-medium text-danger-fg"
-              >
-                {t('chat.list.confirm')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="rounded-md p-1 text-muted hover:bg-hover"
-                aria-label={t('chat.list.cancel')}
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
+      <PopoverPanel
+        open={menu}
+        onClose={() => {
+          setMenu(false)
+          setConfirmDelete(false)
+        }}
+        title={session.title || t('chat.list.untitled')}
+        className="absolute top-full right-0 z-40 mt-1 w-44 origin-top-right animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated p-1 text-sm shadow-lg"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setMenu(false)
+            setDraft(session.title)
+            setEditing(true)
+          }}
+          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-hover"
+        >
+          <Pencil size={14} className="text-muted" /> {t('chat.list.rename')}
+        </button>
+        {confirmDelete ? (
+          <div className="flex items-center gap-1 px-2 py-1">
             <button
               type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-danger hover:bg-danger/10"
+              onClick={() => {
+                setMenu(false)
+                setConfirmDelete(false)
+                onDelete()
+              }}
+              className="flex-1 rounded-md bg-danger px-2 py-1 text-xs font-medium text-danger-fg"
             >
-              <Trash2 size={14} /> {t('chat.list.delete')}
+              {t('chat.list.confirm')}
             </button>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="rounded-md p-1 text-muted hover:bg-hover"
+              aria-label={t('chat.list.cancel')}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-danger hover:bg-danger/10"
+          >
+            <Trash2 size={14} /> {t('chat.list.delete')}
+          </button>
+        )}
+      </PopoverPanel>
     </div>
   )
 }

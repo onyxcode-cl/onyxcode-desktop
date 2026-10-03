@@ -179,7 +179,11 @@ export const PIN_RE = /^[0-9]{6}$/
 
 export type PinFrame = { t: 'pin-set'; pin: string } | { t: 'pin-verify'; pin: string }
 
-export type ClientFrame = { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | PinFrame | RequestFrame | MuxClientFrame
+/** Bloqueo manual desde el celular («Bloquear ahora»): el Mac vuelve a pedir el PIN y no atiende nada hasta verificarlo. */
+export type LockFrame = { t: 'lock' }
+
+export type ClientFrame =
+  { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | LockFrame | PinFrame | RequestFrame | MuxClientFrame
 
 // ---------------------------------------------------------------------------------------------
 // Datos que salen hacia el celular (ya recortados por el escritorio)
@@ -421,6 +425,8 @@ export function parseClientFrame(raw: unknown): Parsed<ClientFrame> {
       if (typeof o.secret !== 'string' || !SECRET_RE.test(o.secret)) return fail('bad-secret')
       return { ok: true, value: { t: 'auth', deviceId: o.deviceId, secret: o.secret } }
     }
+    case 'lock':
+      return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'lock' } } : fail('extra-keys')
     case 'pin-set':
     case 'pin-verify':
       if (!onlyKeys(o, ['t', 'pin'])) return fail('extra-keys')

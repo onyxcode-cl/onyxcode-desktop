@@ -274,7 +274,7 @@ export function ChatComposer({
         </p>
       )}
       {hint !== false && (
-        <p className="mt-2 text-center text-[11px] text-subtle">
+        <p data-mobile="hide" className="mt-2 text-center text-[11px] text-subtle">
           {hint ?? (
             <>
               <kbd className="kbd">Enter</kbd>

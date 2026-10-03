@@ -6,7 +6,7 @@ import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { UI_LABELS } from '@shared/labels'
 import { useServer } from '../../../stores/server'
@@ -136,6 +136,9 @@ export function GeneralSection(): React.JSX.Element {
   const updatePrefs = useExtrasPrefs((s) => s.update)
   const st = STATE[status.state] ?? STATE.stopped
   const caps = platformCaps()
+  // Celular (PWA): solo tema e idioma. Bandeja, avisos y sonido son del Mac; reiniciar el servidor y las instrucciones globales
+  // son acciones que se confirman en el Mac, y no se ofrecen aquí.
+  const phone = isRemoteSurface()
 
   return (
     <div>
@@ -176,28 +179,32 @@ export function GeneralSection(): React.JSX.Element {
             ))}
           </Select>
         </Row>
-        <Row label={t('settings.general.tray.label')} description={t('settings.general.tray.description')}>
-          <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label={t('settings.general.tray.label')} />
-        </Row>
-        <Row label={t('settings.general.notifications.label')} description={t('settings.general.notifications.description')}>
-          <Toggle
-            checked={notificationsEnabled}
-            onChange={(v) => void updatePrefs({ notificationsEnabled: v })}
-            label={t('settings.general.notifications.label')}
-          />
-        </Row>
-        <Row label={t('settings.general.sound.label')} description={t('settings.general.sound.description')}>
-          <Toggle
-            checked={soundEnabled}
-            onChange={(v) => void updatePrefs({ soundEnabled: v })}
-            label={t('settings.general.sound.label')}
-            disabled={!notificationsEnabled}
-          />
-        </Row>
+        {!phone && (
+          <>
+            <Row label={t('settings.general.tray.label')} description={t('settings.general.tray.description')}>
+              <Toggle checked={showTray} onChange={(v) => void updatePrefs({ showTray: v })} label={t('settings.general.tray.label')} />
+            </Row>
+            <Row label={t('settings.general.notifications.label')} description={t('settings.general.notifications.description')}>
+              <Toggle
+                checked={notificationsEnabled}
+                onChange={(v) => void updatePrefs({ notificationsEnabled: v })}
+                label={t('settings.general.notifications.label')}
+              />
+            </Row>
+            <Row label={t('settings.general.sound.label')} description={t('settings.general.sound.description')}>
+              <Toggle
+                checked={soundEnabled}
+                onChange={(v) => void updatePrefs({ soundEnabled: v })}
+                label={t('settings.general.sound.label')}
+                disabled={!notificationsEnabled}
+              />
+            </Row>
+          </>
+        )}
         {caps.keepAwakeText && <KeepAwakeRow />}
       </Card>
 
-      {caps.tasks ? (
+      {phone ? null : caps.tasks ? (
         <>
           <SubTitle>{MODE_LABELS.tasks}</SubTitle>
           <Card>
@@ -216,28 +223,30 @@ export function GeneralSection(): React.JSX.Element {
         </div>
       )}
 
-      <SubTitle>{t('settings.general.server')}</SubTitle>
-      <Card>
-        <Row
-          label={
-            <span className="flex items-center gap-2">
-              {t('settings.general.server.status')} <Badge tone={st.tone}>{t(st.labelKey)}</Badge>
-            </span>
-          }
-          description={
-            <>
-              {status.version && <span>v{status.version}</span>}
-              {connection && <span className="ml-2 font-mono">{connection.baseUrl}</span>}
-              {status.restarts > 0 && <span className="ml-2">{t('settings.general.server.restarts', { count: status.restarts })}</span>}
-            </>
-          }
-        >
-          <Button onClick={() => void restart()}>
-            <RotateCw size={14} /> {t('settings.general.server.restart')}
-          </Button>
-        </Row>
-      </Card>
-      {status.error && (
+      {!phone && <SubTitle>{t('settings.general.server')}</SubTitle>}
+      {!phone && (
+        <Card>
+          <Row
+            label={
+              <span className="flex items-center gap-2">
+                {t('settings.general.server.status')} <Badge tone={st.tone}>{t(st.labelKey)}</Badge>
+              </span>
+            }
+            description={
+              <>
+                {status.version && <span>v{status.version}</span>}
+                {connection && <span className="ml-2 font-mono">{connection.baseUrl}</span>}
+                {status.restarts > 0 && <span className="ml-2">{t('settings.general.server.restarts', { count: status.restarts })}</span>}
+              </>
+            }
+          >
+            <Button onClick={() => void restart()}>
+              <RotateCw size={14} /> {t('settings.general.server.restart')}
+            </Button>
+          </Row>
+        </Card>
+      )}
+      {!phone && status.error && (
         <div className="mt-3">
           <ErrorText>{status.error}</ErrorText>
         </div>

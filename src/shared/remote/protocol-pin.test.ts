@@ -35,6 +35,12 @@ describe('protocolo: tramas de PIN y bloqueo (extensión v2)', () => {
     }
   })
 
+  it('lock (bloqueo manual) no lleva ningún dato y el Mac no puede enviarlo', () => {
+    expect(parseClientFrame(JSON.stringify({ t: 'lock' }))).toEqual({ ok: true, value: { t: 'lock' } })
+    expect(parseClientFrame(JSON.stringify({ t: 'lock', pin: '123456' })).ok).toBe(false)
+    expect(parseHostFrame(JSON.stringify({ t: 'lock' })).ok).toBe(false)
+  })
+
   it('el Mac nunca puede enviar pin-* ni el celular locked/unlocked', () => {
     expect(parseHostFrame(JSON.stringify({ t: 'pin-verify', pin: '123456' })).ok).toBe(false)
     expect(parseClientFrame(JSON.stringify({ t: 'locked', why: 'confirm' })).ok).toBe(false)

@@ -24,6 +24,10 @@ export interface RemoteLink {
   http(req: HttpRequest, signal?: AbortSignal): Promise<unknown>
   /** Suscripción a eventos de un motor; `null` si no hay canal abierto. */
   subscribe(eng: string, h: SubHandlers, since?: number): Subscription | null
+  /** «Bloquear ahora» (interfaz móvil): el Mac vuelve a pedir el PIN. Ausente en los enlaces de prueba. */
+  lock?(): void
+  /** «Desvincular este celular»: olvida el secreto local y recarga. No avisa al Mac (se quita desde sus Ajustes). */
+  forget?(): void
 }
 
 /** Respuesta de `http` (la forma que devuelve `engine-proxy.ts`). */

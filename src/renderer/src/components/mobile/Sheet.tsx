@@ -115,7 +115,7 @@ export function SheetView({ onClose, title, size = 'half', children }: Omit<Shee
   }
 
   return (
-    <div data-sheet="" className="fixed inset-x-0 top-0 z-[80]" style={{ bottom: 'var(--kb-inset, 0px)' }}>
+    <div data-sheet="" data-surface="mobile" className="fixed inset-x-0 top-0 z-[80]" style={{ bottom: 'var(--kb-inset, 0px)' }}>
       <div aria-hidden="true" className="absolute inset-0 animate-fade-in bg-black/45" onClick={onClose} />
       <div
         ref={panel}

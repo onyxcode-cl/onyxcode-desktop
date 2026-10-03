@@ -1039,3 +1039,9 @@ en la interfaz es solo comodidad, nunca el control.
 - **Límites conocidos**: el HTTP de la LAN sigue sin cifrar (riesgo aceptado hasta el HTTPS de la fase 2): un intermediario en el Wi-Fi podría alterar el JS que se sirve; las defensas son la
   confirmación de cada conexión nueva, el código de 6 dígitos, el PIN y que todo lo peligroso se confirma en el Mac. `style-src` conserva `'unsafe-inline'` (estilos en línea de React).
   El código de la interfaz completa llega al celular por una conexión no autenticada; los datos del celular (conversaciones) solo viajan por el DataChannel cifrado.
+
+## 3 vicies quinquies. Interfaz de celular y bloqueo manual (F8-B58, tanda T7)
+
+- **Trama `lock`** (cliente → Mac): validada estrictamente (sin claves extra), solo con el canal autenticado (si no, cuenta como violación). `AccessGate.lockNow()` pasa a `verify-pin` SIN el modo «lecturas permitidas» del bloqueo por inactividad: no se atiende nada hasta verificar el PIN (con los mismos 5 fallos y retardos). Auditado como `locked`. No amplía privilegios: solo los reduce.
+- **Desvincular** en el celular borra el secreto local y recarga; no avisa al Mac (la revocación sigue siendo desde sus Ajustes).
+- La interfaz móvil no añade canales ni rutas: reutiliza los de la política «celular». En Ajustes del celular no se ofrecen proveedores/claves (X), reinicio del servidor ni instrucciones globales (D); no se pide `provider.auth` desde el celular.

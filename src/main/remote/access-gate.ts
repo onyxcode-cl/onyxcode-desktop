@@ -216,9 +216,18 @@ export class AccessGate {
     if (this._state === 'open' && !this.disposed && this.o.now() - this.lastTouch >= this.inactivityMs) this.lock()
   }
 
-  private lock(): void {
+  /**
+   * Bloqueo manual pedido por el celular («Bloquear ahora»). A diferencia del de inactividad, no atiende ni lecturas hasta
+   * verificar el PIN. Solo tiene efecto con el acceso abierto (si no, ya está bloqueado).
+   */
+  lockNow(): void {
+    if (this.disposed || this._state !== 'open') return
+    this.lock(false)
+  }
+
+  private lock(inactive = true): void {
     this._state = 'verify-pin'
-    this.inactive = true
+    this.inactive = inactive
     this.blockedUntil = 0
     this.o.audit({ kind: 'locked' })
     this.sendLocked()

@@ -574,6 +574,12 @@ export class RemoteClient {
     if (this.lightData) void this.refreshAll()
   }
 
+  /** «Bloquear ahora»: el Mac vuelve a pedir el PIN y no atiende nada hasta verificarlo. Solo con el acceso abierto. */
+  lockNow(): void {
+    if (this.snap.conn.k !== 'online') return
+    this.sendFrame({ t: 'lock' })
+  }
+
   /** Fija (`set`) o verifica el PIN de 6 dígitos DENTRO del canal. Nunca se guarda en el celular. */
   sendPin(pin: string, set: boolean): void {
     if (this.snap.conn.k !== 'locked') return

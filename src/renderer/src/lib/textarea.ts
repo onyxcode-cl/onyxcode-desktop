@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react'
+import { isRemoteSurface } from './platform'
 
 /** Lo mínimo que se lee de un `KeyboardEvent` de React (facilita probarlo con eventos falsos). */
 export interface KeyEventLike {
@@ -16,8 +17,13 @@ export function isImeComposing(e: Pick<KeyEventLike, 'keyCode' | 'nativeEvent'>)
   return e.nativeEvent.isComposing || e.keyCode === 229
 }
 
-/** Enter que envía: sin composición IME y sin Shift (salvo `allowShift`, p. ej. en un `<input>`). */
+/**
+ * Enter que envía: sin composición IME y sin Shift (salvo `allowShift`, p. ej. en un `<input>`).
+ * En el celular (PWA) el Enter de un campo de varias líneas (`allowShift` falso: el compositor) inserta un salto de línea:
+ * se envía con el botón. Los campos de una línea (`allowShift`) siguen enviando con Enter.
+ */
 export function isSubmitKey(e: KeyEventLike, { allowShift = false }: { allowShift?: boolean } = {}): boolean {
+  if (!allowShift && isRemoteSurface()) return false
   return e.key === 'Enter' && !isImeComposing(e) && (allowShift || !e.shiftKey)
 }
 

@@ -31,20 +31,18 @@ import { UpdateNotice } from './UpdateNotice'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
 import { useTheme } from './useTheme'
+import { MobileShell } from './mobile/MobileShell'
 import { useT } from '../lib/i18n'
-import { isMacPlatform, platformCaps } from '../lib/platform'
+import { isMacPlatform, platformCaps, useIsRemote } from '../lib/platform'
 import { useKeybindings } from '../keybindings/dispatch'
 import { hintSuffix, useBindingHint } from '../keybindings/bindings'
 
-export function App(): React.JSX.Element {
-  const mode = useUi((s) => s.mode)
-  const settingsOpen = useUi((s) => s.settingsOpen)
-  const collapsed = useUi((s) => s.sidebarCollapsed)
-  const sidebarHint = useBindingHint('sidebar.toggle')
-  const toggleSidebar = useUi((s) => s.toggleSidebar)
-
+/**
+ * Todo lo que la aplicación necesita en marcha, sea cual sea la estructura de pantalla (escritorio o celular): tema, ajustes,
+ * servidor, enrutado de eventos, suscripción de Code, entrada rápida, insignia y notificaciones. Sin atajos de teclado.
+ */
+function useAppRuntime(): void {
   useTheme()
-  const t = useT()
 
   useEffect(() => {
     const offSettings = useSettings.getState().init()
@@ -144,6 +142,17 @@ export function App(): React.JSX.Element {
       }
     })
   }, [])
+}
+
+/** Escritorio (Mac y Windows): barra lateral + vista del modo. */
+function DesktopApp(): React.JSX.Element {
+  const mode = useUi((s) => s.mode)
+  const settingsOpen = useUi((s) => s.settingsOpen)
+  const collapsed = useUi((s) => s.sidebarCollapsed)
+  const sidebarHint = useBindingHint('sidebar.toggle')
+  const toggleSidebar = useUi((s) => s.toggleSidebar)
+  const t = useT()
+  useAppRuntime()
 
   // Atajos configurables (⌘\ barra lateral, ⌘, ajustes, ⌘K / ⌘⇧P paleta, ⌘N nuevo, ⌃Tab cambia de modo, Plan/Build, paneles de Code…):
   // un único manejador resuelve el atajo efectivo de cada acción (registro central en `keybindings/`; se cambian en Ajustes › Atajos).
@@ -201,4 +210,14 @@ export function App(): React.JSX.Element {
       </main>
     </div>
   )
+}
+
+/** Celular (PWA, superficie `remote`): la misma interfaz con la estructura de `MobileShell` y sin atajos de teclado. */
+function MobileApp(): React.JSX.Element {
+  useAppRuntime()
+  return <MobileShell />
+}
+
+export function App(): React.JSX.Element {
+  return useIsRemote() ? <MobileApp /> : <DesktopApp />
 }
