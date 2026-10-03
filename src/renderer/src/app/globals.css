@@ -135,6 +135,7 @@
   --animate-fade-in: fade-in var(--dur-base) var(--ease-out) both;
   --animate-rise-in: rise-in var(--dur-slow) var(--ease-out) both;
   --animate-pop-in: pop-in var(--dur-base) var(--ease-out) both;
+  --animate-sheet-up: sheet-up var(--dur-slow) var(--ease-out) both;
   --animate-shimmer: shimmer 2s linear infinite;
   --animate-caret: caret 1s steps(2, start) infinite;
 }
@@ -148,6 +149,11 @@
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
   }
 }
 @keyframes pop-in {

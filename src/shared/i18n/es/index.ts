@@ -18,6 +18,7 @@ import { tasksComputer } from './tasksComputer'
 import { routines } from './routines'
 import { browser } from './browser'
 import { remote } from './remote'
+import { mobileShell } from './mobileShell'
 
 export const es = {
   ...common,
@@ -39,7 +40,8 @@ export const es = {
   ...tasksComputer,
   ...routines,
   ...browser,
-  ...remote
+  ...remote,
+  ...mobileShell
 }
 
 export const AREAS = {
@@ -62,5 +64,6 @@ export const AREAS = {
   tasksComputer,
   routines,
   browser,
-  remote
+  remote,
+  mobileShell
 }
