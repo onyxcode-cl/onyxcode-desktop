@@ -37,10 +37,14 @@
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
+    "@noble/hashes": "2.4.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "croner": "^10.0.1",
-    "diff": "^9.0.0"
+    "diff": "^9.0.0",
+    "node-datachannel": "0.33.4",
+    "qrcode": "1.5.4",
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
@@ -48,8 +52,10 @@
     "@opencode-ai/sdk": "1.18.32",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.10.0",
+    "@types/qrcode": "1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/ws": "8.18.2",
     "@vitejs/plugin-react": "^5.2.0",
     "axe-core": "^4.13.0",
     "electron": "44.4.5",
