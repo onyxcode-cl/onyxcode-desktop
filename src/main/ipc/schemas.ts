@@ -9,7 +9,7 @@
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
-import { CODE_INVOKE_CHANNELS, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
+import { CODE_INVOKE_CHANNELS, EDITOR_IDS, FILES_SUB_ID_RE, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
 import { TASKS_INVOKE_CHANNELS, type TasksInvokeChannel, type TasksRequest } from '@shared/ipc-tasks'
 import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import {
@@ -51,6 +51,10 @@ const site = str({ max: 253, min: 1, pattern: /^[a-z0-9.-]+$/i })
 const pattern = str({ max: 2000, min: 1 })
 /** Nombre de archivo simple: sin separadores de ruta, dos puntos ni bytes nulos. */
 const fileName = str({ max: 200, min: 1, pattern: /^[^/\\:\0]+$/ })
+/** Id de suscripción del vigilante de archivos. */
+const filesSubId = str({ max: 64, min: 8, pattern: FILES_SUB_ID_RE })
+/** Nombre de una entrada nueva/renombrada (la validación completa, con nombres reservados, la hace main). */
+const entryName = str({ max: 400, min: 1 })
 const folderMode = literal('rw', 'ro')
 /** Grupo de tareas: `null` = sin grupo. */
 const group = nullable(str({ max: 80 }))
@@ -218,7 +222,15 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'git:discardUndo': obj({ cwd: absPath, undoId: str({ max: 64, min: 1, pattern: /^[0-9a-f-]{36}$/ }) }),
   'dialog:openFolder': openFolderOpts,
   'dialog:revealInFinder': pathReq,
-  'dialog:openInEditor': pathReq
+  'dialog:openInEditor': pathReq,
+  'files:watch': obj({ folder: absPath, subId: filesSubId }),
+  'files:setDirs': obj({ subId: filesSubId, dirs: arr(str({ max: 4096 }), 100) }),
+  'files:unwatch': obj({ subId: filesSubId }),
+  'files:create': obj({ cwd: absPath, parent: str({ max: 4096 }), name: entryName, kind: literal('file', 'dir') }),
+  'files:rename': obj({ cwd: absPath, path: str({ max: 4096, min: 1 }), name: entryName }),
+  'files:trash': obj({ cwd: absPath, path: str({ max: 4096, min: 1 }) }),
+  'editors:list': cwdReq,
+  'editors:open': obj({ cwd: absPath, id: literal(...EDITOR_IDS) })
 }
 
 const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } = {

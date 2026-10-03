@@ -198,3 +198,58 @@ describe('canales git:discard y git:discardUndo (R2-A)', () => {
     for (const undoId of ['', '../../etc', 'x'.repeat(36), `${uuid}/..`]) expect(() => v({ cwd, undoId }), undoId).toThrow()
   })
 })
+
+describe('canales de archivos del proyecto y «Abrir en…»', () => {
+  const CHANNELS = [
+    'files:watch',
+    'files:setDirs',
+    'files:unwatch',
+    'files:create',
+    'files:rename',
+    'files:trash',
+    'editors:list',
+    'editors:open'
+  ]
+  const SUB = '0123456789abcdef'
+  it('existen, tienen esquema y son solo de la ventana principal', () => {
+    for (const c of CHANNELS) {
+      expect(CODE_INVOKE_CHANNELS).toContain(c)
+      expect(IPC_SCHEMAS[c], c).toBeTypeOf('function')
+      for (const role of Object.keys(CHANNEL_ROLES) as Array<keyof typeof CHANNEL_ROLES>)
+        expect(CHANNEL_ROLES[role].has(c), `${c} en ${role}`).toBe(false)
+    }
+  })
+  it('files:watch: carpeta absoluta e id de suscripción con forma', () => {
+    const v = IPC_SCHEMAS['files:watch']
+    expect(v({ folder: '/tmp/p', subId: SUB })).toEqual({ folder: '/tmp/p', subId: SUB })
+    for (const bad of [
+      { folder: 'rel', subId: SUB },
+      { folder: '/tmp/p', subId: 'x' },
+      { folder: '/tmp/p', subId: 'a b c d e f g h' },
+      { folder: '/tmp/p' },
+      { folder: '/tmp/p', subId: SUB, extra: 1 }
+    ])
+      expect(() => v(bad)).toThrow()
+  })
+  it('files:setDirs acota la lista', () => {
+    const v = IPC_SCHEMAS['files:setDirs']
+    expect(v({ subId: SUB, dirs: ['.', 'src'] })).toEqual({ subId: SUB, dirs: ['.', 'src'] })
+    expect(() => v({ subId: SUB, dirs: Array.from({ length: 101 }, () => 'a') })).toThrow()
+    expect(() => v({ subId: SUB, dirs: [1] })).toThrow()
+  })
+  it('files:create / rename / trash: tipos estrictos', () => {
+    expect(IPC_SCHEMAS['files:create']({ cwd: '/tmp/p', parent: '.', name: 'a.txt', kind: 'file' })).toBeTruthy()
+    expect(() => IPC_SCHEMAS['files:create']({ cwd: '/tmp/p', parent: '.', name: 'a', kind: 'link' })).toThrow()
+    expect(() => IPC_SCHEMAS['files:create']({ cwd: '/tmp/p', parent: '.', name: '', kind: 'dir' })).toThrow()
+    expect(() => IPC_SCHEMAS['files:create']({ cwd: 'rel', parent: '.', name: 'a', kind: 'dir' })).toThrow()
+    expect(IPC_SCHEMAS['files:rename']({ cwd: '/tmp/p', path: 'a.txt', name: 'b.txt' })).toBeTruthy()
+    expect(() => IPC_SCHEMAS['files:rename']({ cwd: '/tmp/p', path: '', name: 'b' })).toThrow()
+    expect(IPC_SCHEMAS['files:trash']({ cwd: '/tmp/p', path: 'a.txt' })).toBeTruthy()
+    expect(() => IPC_SCHEMAS['files:trash']({ cwd: '/tmp/p', path: 'a.txt', force: true })).toThrow()
+  })
+  it('editors:open solo admite ids del catálogo (nunca rutas ni comandos)', () => {
+    const v = IPC_SCHEMAS['editors:open']
+    expect(v({ cwd: '/tmp/p', id: 'zed' })).toEqual({ cwd: '/tmp/p', id: 'zed' })
+    for (const id of ['/usr/bin/vim', 'code --new-window', 'vim', '', 'ZED']) expect(() => v({ cwd: '/tmp/p', id })).toThrow()
+  })
+})

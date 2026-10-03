@@ -35,12 +35,22 @@ export const CODE_CHANNELS = {
   // dialog
   dialogOpenFolder: 'dialog:openFolder',
   dialogRevealInFinder: 'dialog:revealInFinder',
-  dialogOpenInEditor: 'dialog:openInEditor'
+  dialogOpenInEditor: 'dialog:openInEditor',
+  // archivos del proyecto: vigilante, gestor y «Abrir en…»
+  filesWatch: 'files:watch',
+  filesSetDirs: 'files:setDirs',
+  filesUnwatch: 'files:unwatch',
+  filesCreate: 'files:create',
+  filesRename: 'files:rename',
+  filesTrash: 'files:trash',
+  editorsList: 'editors:list',
+  editorsOpen: 'editors:open'
 } as const
 
 export const CODE_EVENTS = {
   ptyData: 'pty:data',
-  ptyExit: 'pty:exit'
+  ptyExit: 'pty:exit',
+  filesChanged: 'files:changed'
 } as const
 
 // ---------------------------------------------------------------------------
@@ -167,6 +177,44 @@ export interface GitDiscardUndoResult {
   failed: Array<{ path: string; reason: string }>
 }
 
+// ---- Archivos del proyecto ----
+
+/** Identificador de suscripción: lo elige el renderer (uuid) y solo vale para su propia ventana. */
+export const FILES_SUB_ID_RE = /^[A-Za-z0-9_-]{8,64}$/
+
+/** Catálogo FIJO de editores (el renderer solo envía uno de estos ids; main decide qué se ejecuta). */
+export const EDITOR_IDS = ['vscode', 'cursor', 'zed', 'sublime', 'webstorm', 'intellij', 'system'] as const
+export type EditorId = (typeof EDITOR_IDS)[number]
+
+export interface EditorInfo {
+  id: EditorId
+  label: string
+}
+export interface EditorsList {
+  editors: EditorInfo[]
+  /** Último elegido (si sigue instalado), para ofrecerlo primero. */
+  last: EditorId | null
+}
+
+/**
+ * `recursive`: un solo vigilante recursivo (macOS/Windows). `dirs`: Linux no tiene vigilancia recursiva fiable;
+ * solo se vigilan las carpetas abiertas (`files:setDirs`). `none`: sin vigilancia (tope alcanzado o error): queda el refresco manual.
+ */
+export type FilesWatchMode = 'recursive' | 'dirs' | 'none'
+
+export interface FilesChangedEvent {
+  subId: string
+  /** Carpetas (relativas a la raíz, `.` = raíz) cuyo contenido cambió; `null` = demasiados cambios, refrescar todo. */
+  dirs: string[] | null
+  /** `lost`: la vigilancia se perdió (carpeta borrada/desconectada, límite del sistema): usar el refresco manual. */
+  status: 'ok' | 'lost'
+}
+
+export interface FilesOpResult {
+  /** Ruta resultante, relativa a la raíz del proyecto (separador `/`). */
+  path: string
+}
+
 export interface GitLogEntry {
   hash: string
   shortHash: string
@@ -207,11 +255,21 @@ export interface CodeInvokeContract {
   'dialog:openFolder': { req: { title?: string; defaultPath?: string } | undefined; res: string | null }
   'dialog:revealInFinder': { req: { path: string }; res: void }
   'dialog:openInEditor': { req: { path: string }; res: { via: 'code' | 'open' } }
+
+  'files:watch': { req: { folder: string; subId: string }; res: { mode: FilesWatchMode } }
+  'files:setDirs': { req: { subId: string; dirs: string[] }; res: void }
+  'files:unwatch': { req: { subId: string }; res: void }
+  'files:create': { req: { cwd: string; parent: string; name: string; kind: 'file' | 'dir' }; res: FilesOpResult }
+  'files:rename': { req: { cwd: string; path: string; name: string }; res: FilesOpResult }
+  'files:trash': { req: { cwd: string; path: string }; res: void }
+  'editors:list': { req: { cwd: string }; res: EditorsList }
+  'editors:open': { req: { cwd: string; id: EditorId }; res: void }
 }
 
 export interface CodeEventContract {
   'pty:data': PtyDataEvent
   'pty:exit': PtyExitEvent
+  'files:changed': FilesChangedEvent
 }
 
 export type CodeInvokeChannel = keyof CodeInvokeContract
@@ -261,6 +319,19 @@ export interface CodeApi {
     revealInFinder(path: string): Promise<void>
     openInEditor(path: string): Promise<{ via: 'code' | 'open' }>
   }
+  files: {
+    watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>
+    setDirs(subId: string, dirs: string[]): Promise<void>
+    unwatch(subId: string): Promise<void>
+    create(cwd: string, parent: string, name: string, kind: 'file' | 'dir'): Promise<FilesOpResult>
+    rename(cwd: string, path: string, name: string): Promise<FilesOpResult>
+    trash(cwd: string, path: string): Promise<void>
+  }
+  editors: {
+    list(cwd: string): Promise<EditorsList>
+    open(cwd: string, id: EditorId): Promise<void>
+  }
+  onFilesChanged(cb: (e: FilesChangedEvent) => void): () => void
   /** Salida de todas las terminales de esta ventana. Devuelve función para desuscribir. */
   onPtyData(cb: (e: PtyDataEvent) => void): () => void
   onPtyExit(cb: (e: PtyExitEvent) => void): () => void

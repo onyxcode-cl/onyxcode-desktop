@@ -33,6 +33,7 @@ import { isImeComposing } from '../../../../lib/textarea'
 import { ConfirmButton, Kbd, MOD } from '../ui'
 import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
+import { useProjectWatch } from './useProjectWatch'
 import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
 
 interface ChangedFile {
@@ -540,6 +541,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const fsVersion = useVisibleFsVersion()
   const touchFs = useCode((s) => s.touchFs)
   const native = nativeCode()
+  // Cambios hechos fuera de la app (editor, terminal): el vigilante sube `fsVersion` con debounce, sin polling.
+  useProjectWatch(directory)
   const [status, setStatus] = useState<StatusInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
