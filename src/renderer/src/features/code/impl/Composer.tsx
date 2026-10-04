@@ -40,6 +40,7 @@ import type { Attachment, FileAttachment } from './types'
 import { ElementChipRow } from '../../browser/ElementChip'
 import { addElementAttachment, isElementAttachment, type ElementAttachment, type ElementInclude } from '../../browser/element-context'
 import { stopPicking } from '../../browser/pick-state'
+import { maybeInterceptSubmit, useCompareArmed } from '../../compare'
 import { Kbd, MOD } from './ui'
 import { validatePhoneAttachments } from './mobile-logic'
 import { SheetAction } from './SheetAction'
@@ -248,6 +249,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const revertLast = useCode((s) => s.revertLast)
   const newSession = useCode((s) => s.newSession)
   const aiGate = useCodeAiGate()
+  const compareArmed = useCompareArmed('code', directory ?? null)
   const serverCommands = useServerCommands(directory)
 
   const addFiles = (fileList: FileList | File[]): void => {
@@ -417,6 +419,19 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     if (!busy && cmd && serverCommands.some((c) => c.name === cmd[1])) {
       clear()
       void runCommand(cmd[1], cmd[2])
+      return
+    }
+    // «Comparar modelos…» armado: el envío se hace cargo la comparación (diálogo previo); el borrador se limpia al arrancar.
+    if (
+      !/^\/\S/.test(t) &&
+      maybeInterceptSubmit(t, {
+        mode: 'code',
+        directory: directory ?? null,
+        attachments,
+        permissionMode: useCode.getState().permissionMode,
+        onStarted: clear
+      })
+    ) {
       return
     }
     const used = mentions.filter((m) => text.includes(`@${m}`))
@@ -829,7 +844,13 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   type="button"
                   onClick={() => submit(false)}
                   disabled={(!text.trim() && attachments.length === 0) || disabled}
-                  title={busy ? t('code.composer.queueTitle', { mod: MOD }) : t('code.composer.sendTitle', { mod: MOD })}
+                  title={
+                    compareArmed.armed
+                      ? tg('compare.send', { count: compareArmed.count })
+                      : busy
+                        ? t('code.composer.queueTitle', { mod: MOD })
+                        : t('code.composer.sendTitle', { mod: MOD })
+                  }
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
                 >
                   {busy ? <Send size={14} /> : <ArrowUp size={16} />}

@@ -5,6 +5,7 @@ import { onStreamReconnect, useServer } from '../../stores/server'
 import { sessionsKey, useSessions } from '../../stores/sessions'
 import { selectSessionsForDirectory } from '../../lib/session-reducer'
 import { deleteChat, loadChatSessions, openChatSession, renameChat, syncChatRunStatus } from './actions'
+import { useCompare, useHiddenCompareSession } from '../compare'
 import { useChat } from './store'
 
 export function ChatSidebar(): React.JSX.Element {
@@ -27,10 +28,20 @@ export function ChatSidebar(): React.JSX.Element {
     })
   }, [connection])
 
+  // Las sesiones de una comparación sin elegir no son conversaciones todavía: no salen en la lista.
+  const hidden = useHiddenCompareSession()
+  const manifestsKey = useCompare((s) => s.manifests)
+  const compareLoaded = useCompare((s) => s.loaded)
   const sessions = useMemo(
     () =>
-      connection ? selectSessionsForDirectory({ sessions: allSessions, sessionSource, directorySource }, connection.chatDirectory) : [],
-    [allSessions, sessionSource, directorySource, connection]
+      connection
+        ? selectSessionsForDirectory({ sessions: allSessions, sessionSource, directorySource }, connection.chatDirectory).filter(
+            (s) => !hidden(s)
+          )
+        : [],
+    // `hidden` cambia con los manifiestos y la carga: se enumeran para no recalcular en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSessions, sessionSource, directorySource, connection, manifestsKey, compareLoaded]
   )
   const onLoadMore = useCallback(
     (all: boolean) => {

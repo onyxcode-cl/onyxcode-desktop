@@ -14,6 +14,7 @@ import { UsageMeter } from '../../../components/UsageMeter'
 import { useAiGate, type AiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
 import { useModeModel } from '../../settings/impl/extras'
+import { CompareControls } from '../../compare'
 import { useCode } from './store'
 import type { PermissionMode } from './types'
 
@@ -218,9 +219,13 @@ export function ModelControls(): React.JSX.Element {
   const modeModel = useModeModel('code')
   const gate = useCodeAiGate()
   const effective = gate.effective ?? model ?? modeModel
+  const directory = useCode((s) => s.directory)
+  const variant = useCode((s) => s.variant)
 
   return (
     <div className="flex items-center gap-0.5">
+      {/* «Comparar modelos…»: no existe en el celular (CompareControls devuelve null allí). */}
+      <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" />
       {/* El menú del selector se alinea a la derecha para no salirse del compositor. */}
       <div className="no-drag [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
         <ModelPicker value={effective} onChange={setModel} placement="top" />

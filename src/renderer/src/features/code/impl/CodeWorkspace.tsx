@@ -41,6 +41,7 @@ import { IconButton } from '../../../components/IconButton'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
+import { CompareConfirmDialog, CompareView, RecoveryBanner, useCompareBoot, useShownCompare } from '../../compare'
 import { useCodeAiGate } from './ComposerControls'
 import { MessageStream } from './MessageStream'
 import { CODE_CHANGES, useMobileNavStore } from '../../../app/mobile/nav'
@@ -609,11 +610,16 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const aiGate = useCodeAiGate()
   const setModel = useCode((s) => s.setModel)
   const busy = run === 'busy' || run === 'retry'
+  // «Comparar modelos»: activo solo en escritorio (en el celular nunca hay una comparación abierta ni se sincroniza nada).
+  useCompareBoot()
+  const compareId = useShownCompare('code', directory)
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Celular: la barra superior es la del armazón (MobileShell); aquí no hay otra. */}
       {!isRemoteSurface() && <Toolbar directory={directory} />}
+      <RecoveryBanner mode="code" directory={directory} />
+      <CompareConfirmDialog mode="code" directory={directory} />
       {globalError && (
         <div className="flex items-center gap-2 border-b border-danger/30 bg-danger/10 px-4 py-1.5 text-xs text-danger">
           <span className="min-w-0 flex-1 truncate">{globalError}</span>
@@ -622,7 +628,13 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           </button>
         </div>
       )}
-      {sid && entries && entries.length > 0 ? (
+      {compareId ? (
+        <CompareView
+          id={compareId}
+          onAdopted={() => useCode.getState().touchFs()}
+          onOpenWorktree={(path) => void openProjectTrusted(path)}
+        />
+      ) : sid && entries && entries.length > 0 ? (
         <MessageStream
           entries={entries}
           busy={busy}

@@ -16,7 +16,26 @@ import { onStreamReconnect, useServer } from '../../stores/server'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
 import { setModeModel, useModeModel } from '../settings/impl/extras'
 import type { ChatAttachment } from '../../lib/attachments'
-import { abortChat, compactChat, resendFromMessage, retryChat, sendChatMessage } from './actions'
+import {
+  CompareConfirmDialog,
+  CompareControls,
+  CompareView,
+  RecoveryBanner,
+  requestCompare,
+  useCompare,
+  useCompareBoot,
+  useShownCompare
+} from '../compare'
+import {
+  abortChat,
+  compactChat,
+  loadChatSessions,
+  openChatSession,
+  renameChat,
+  resendFromMessage,
+  retryChat,
+  sendChatMessage
+} from './actions'
 import { useChat } from './store'
 
 const EMPTY: MessageEntry[] = []
@@ -49,6 +68,9 @@ export function ChatView(): React.JSX.Element {
   const { effective, gate, free, unavailable } = useAiGate(model, { strict: true })
   const [sendError, setSendError] = useState<unknown>(null)
   const [insert, setInsert] = useState<{ text: string; key: number; attachments?: ChatAttachment[] } | null>(null)
+  // «Comparar modelos» (solo texto): activo únicamente en escritorio.
+  useCompareBoot()
+  const compareId = useShownCompare('chat', null)
 
   // Si la conversación abierta se eliminó (aquí o desde otro cliente), volver a "nueva".
   const listLoading = useChat((s) => s.listLoading)
@@ -70,6 +92,12 @@ export function ChatView(): React.JSX.Element {
   /** `false` = no se envió: el compositor restaura el borrador. */
   const send = async (text: string, files: ChatAttachment[] = []): Promise<boolean> => {
     setSendError(null)
+    // Con una comparación armada el envío lo hace la comparación (con su diálogo previo); si se cancela, el borrador vuelve.
+    if (useCompare.getState().armed['chat:']) {
+      const started = await requestCompare({ mode: 'chat', directory: null, text, attachments: files })
+      if (!started) setInsert({ text, key: Date.now(), attachments: files })
+      return started
+    }
     try {
       const ok = await sendChatMessage(
         text,
@@ -107,35 +135,40 @@ export function ChatView(): React.JSX.Element {
 
   const picker = (
     <div className="flex w-full items-center">
+      <CompareControls mode="chat" directory={null} current={effective ?? model} />
       <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={(m) => setModeModel('chat', m)} />
       <span className="ml-auto" />
       <UsageMeter messages={entries} model={effective ?? model} />
     </div>
   )
   const composer = (
-    <ChatComposer
-      onSend={send}
-      onAbort={() => activeId && void abortChat(activeId)}
-      busy={busy}
-      disabled={!ready || gate.blocked}
-      placeholder={
-        !ready
-          ? t('chat.placeholder.connecting')
-          : unavailable
-            ? t('chat.placeholder.modelUnavailable')
-            : gate.blocked
-              ? t('chat.placeholder.noAi')
-              : t('chat.placeholder.message')
-      }
-      footer={picker}
-      autoFocusKey={activeId}
-      showAttach
-      insert={insert}
-    />
+    <>
+      <CompareConfirmDialog mode="chat" directory={null} />
+      <ChatComposer
+        onSend={send}
+        onAbort={() => activeId && void abortChat(activeId)}
+        busy={busy}
+        disabled={!ready || gate.blocked}
+        placeholder={
+          !ready
+            ? t('chat.placeholder.connecting')
+            : unavailable
+              ? t('chat.placeholder.modelUnavailable')
+              : gate.blocked
+                ? t('chat.placeholder.noAi')
+                : t('chat.placeholder.message')
+        }
+        footer={picker}
+        autoFocusKey={activeId}
+        showAttach
+        insert={insert}
+      />
+    </>
   )
 
   const notices = (
     <div className={`mx-auto w-full max-w-3xl ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
+      <RecoveryBanner mode="chat" directory={null} />
       {sendError != null && (
         <div className="mb-2">
           <ErrorNotice error={sendError} variant="chat" />
@@ -153,6 +186,28 @@ export function ChatView(): React.JSX.Element {
       />
     </div>
   )
+
+  if (compareId) {
+    return (
+      <div className="flex h-full flex-col">
+        <RecoveryBanner mode="chat" directory={null} />
+        <CompareView
+          id={compareId}
+          onAdopted={(info) => {
+            // La sesión elegida pasa a ser una conversación normal: con título del mensaje, en la lista y abierta.
+            const sid = info.column.sessionID
+            if (!sid) return
+            void (async () => {
+              await renameChat(sid, info.promptPreview.replace(/\s+/g, ' ').trim().slice(0, 60)).catch(() => undefined)
+              await loadChatSessions()
+              await openChatSession(sid)
+            })()
+          }}
+        />
+        <CompareConfirmDialog mode="chat" directory={null} />
+      </div>
+    )
+  }
 
   if (!activeId && isRemoteSurface()) {
     // Celular: saludo centrado en el espacio libre, sugerencias en una fila con scroll y compositor abajo.
