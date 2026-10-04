@@ -374,7 +374,8 @@ describe('UpdateInstaller: descarga', () => {
     const { inst } = make(w, {}, { idleMs: 80, fetch: fetchStalled })
     expect(await go(inst)).toMatchObject({ code: 'network' })
   })
-  it('cancelar a mitad: estado «cancelled» y staging borrado', async () => {
+  // Salto en Windows: el actualizador (src/main/update) es solo de macOS y no se carga en Windows; aquí el borrado del staging compite con el flujo abierto.
+  it.skipIf(!posixOnly)('cancelar a mitad: estado «cancelled» y staging borrado', async () => {
     const w = world()
     let release: () => void = () => undefined
     const gate = new Promise<void>((ok) => (release = ok))

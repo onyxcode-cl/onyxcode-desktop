@@ -707,6 +707,13 @@ Canal nuevo, solo ventana principal (no está en `CHANNEL_ROLES`), esquema estri
 - **node-pty empaquetado.** En Windows `asarUnpack` saca `node_modules/node-pty/**` del `.asar`: `OpenConsole.exe` y `conpty.dll` se ejecutan/cargan desde disco. La shell es `pwsh.exe` o PowerShell 5.1 del sistema con ruta absoluta, nunca una ruta tomada del texto del usuario sin comprobar que existe.
 - **Abrir en el editor.** Solo ejecuta `Code.exe` desde rutas fijas (`%LOCALAPPDATA%\Programs`, `%ProgramFiles%`) y sin shell; si no está, `shell.openPath`.
 
+
+## 3 septdecies. Windows: instalador y paridad (tanda 4)
+
+- **Paquete.** NSIS por usuario (`perMachine: false`: no pide administrador ni escribe en `Program Files`), sin firma Authenticode (SmartScreen avisará; ver `docs/DISTRIBUCION.md` §12). Los fuses son los de macOS: `RunAsNode`, `NODE_OPTIONS` e inspector de Node desactivados, cookies cifradas, integridad del `.asar` y carga solo desde el `.asar`. La terminal funciona con `runAsNode` desactivado (la prueba `pack-check.ps1` abre una PowerShell real en la app empaquetada). El `.asar` de Windows no contiene `helper.swift`, el lanzador, el actualizador ni `cu-helper` (comprobado con `asar list`).
+- **Depuración remota.** `--remote-debugging-port` es un interruptor de Chromium (no del inspector de Node) y sigue disponible con los fuses; solo lo usa la prueba `pack-check.ps1` en `C:\onyx\` con un `--user-data-dir` temporal. Quien pueda lanzar la app con ese argumento ya ejecuta código como el usuario; no es una superficie nueva, pero conviene saberlo.
+- **Navegador integrado.** Invariante que importa en Windows: una `WebContentsView` solo recibe entrada si está colgada de la ventana; `layoutView` cuelga exactamente la vista de la pestaña activa (una por owner). Los clics del agente (CDP `Input.*`) dependen de ello.
+
 ## 3 octodecies. Archivos del proyecto: vigilante, gestor y «Abrir en…» (F8-B45)
 
 Canales nuevos (todos solo de la ventana principal: no están en `CHANNEL_ROLES`; esquema estricto en `IPC_SCHEMAS`): `files:watch`, `files:setDirs`, `files:unwatch`, `files:create`, `files:rename`, `files:trash`, `editors:list`, `editors:open`; evento `files:changed` (main → la ventana suscrita).

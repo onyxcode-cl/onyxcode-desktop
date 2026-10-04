@@ -71,36 +71,9 @@ module.exports = {
     // Control remoto (F8-B48): el addon nativo de WebRTC (`@node-datachannel/<plataforma>/node_datachannel.node`) no puede cargarse desde el .asar.
     'node_modules/@node-datachannel/**'
   ],
+  // Recursos comunes. Los de macOS (helper, lanzador, actualizador, OpenCode darwin) van en mac.extraResources y
+  // el OpenCode de Windows en win.extraResources: cada plataforma empaqueta solo lo suyo.
   extraResources: [
-    // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
-    {
-      from: 'resources/computer-use/bin',
-      to: 'computer-use/bin',
-      filter: ['cu-helper']
-    },
-    // Lanzador que desvincula de TCC a los `opencode serve` y a la terminal integrada
-    // (AUDIT.md S6, docs/SEGURIDAD.md §3) → Contents/Resources/launcher
-    {
-      from: 'resources/launcher/bin',
-      to: 'launcher',
-      filter: ['onyxcode-disclaim']
-    },
-    // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
-    // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).
-    {
-      from: 'resources/updater',
-      to: 'updater',
-      filter: ['swap.sh']
-    },
-    // OpenCode oficial fijado en resources/opencode-bin/pin.json (lo descarga `npm run package` con
-    // scripts/fetch-opencode.mjs) → Contents/Resources/opencode/opencode. Dentro del .app (no en
-    // userData) para que el perfil Seatbelt de Tareas pueda ejecutarlo. electron-builder/osx-sign
-    // recorre TODO el bundle y vuelve a firmar cada Mach-O que encuentra (aquí también este).
-    {
-      from: 'resources/opencode-bin/bin',
-      to: 'opencode',
-      filter: ['opencode']
-    },
     // Avisos de terceros: los propios (MIT de OpenCode, Bun/JavaScriptCore, Electron) y los de Electron/Chromium,
     // que electron-builder no deja dentro del .app → Contents/Resources/THIRD_PARTY_NOTICES.md y licenses/electron/
     {
@@ -127,6 +100,37 @@ module.exports = {
     grantFileProtocolExtraPrivileges: false
   },
   mac: {
+    extraResources: [
+      // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
+      {
+        from: 'resources/computer-use/bin',
+        to: 'computer-use/bin',
+        filter: ['cu-helper']
+      },
+      // Lanzador que desvincula de TCC a los `opencode serve` y a la terminal integrada
+      // (AUDIT.md S6, docs/SEGURIDAD.md §3) → Contents/Resources/launcher
+      {
+        from: 'resources/launcher/bin',
+        to: 'launcher',
+        filter: ['onyxcode-disclaim']
+      },
+      // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
+      // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).
+      {
+        from: 'resources/updater',
+        to: 'updater',
+        filter: ['swap.sh']
+      },
+      // OpenCode oficial fijado en resources/opencode-bin/pin.json (lo descarga `npm run package` con
+      // scripts/fetch-opencode.mjs) → Contents/Resources/opencode/opencode. Dentro del .app (no en
+      // userData) para que el perfil Seatbelt de Tareas pueda ejecutarlo. electron-builder/osx-sign
+      // recorre TODO el bundle y vuelve a firmar cada Mach-O que encuentra (aquí también este).
+      {
+        from: 'resources/opencode-bin/bin',
+        to: 'opencode',
+        filter: ['opencode']
+      }
+    ],
     // Icono generado desde build/icon.svg (node build/render-icon.mjs vía electron)
     icon: 'build/icon.icns',
     category: 'public.app-category.developer-tools',
@@ -166,6 +170,18 @@ module.exports = {
       NSSpeechRecognitionUsageDescription:
         'OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
     }
+  },
+  win: {
+    icon: 'build/icon.ico',
+    target: [{ target: 'nsis', arch: ['x64'] }],
+    // OpenCode oficial para Windows (scripts/fetch-opencode.mjs) → resources\\opencode\\opencode.exe, fuera del asar.
+    extraResources: [{ from: 'resources/opencode-bin/bin', to: 'opencode', filter: ['opencode.exe'] }]
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
   },
   afterSign: selfSigned ? 'build/after-sign-self-signed.js' : 'build/notarize.js',
   dmg: {

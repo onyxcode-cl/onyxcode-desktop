@@ -165,17 +165,20 @@ describe.skipIf(MODE === 'prod')(`archivos del proyecto: vigilante, gestor y «A
     await row(page, 'final.txt').hover()
     await page.getByRole('button', { name: 'Mover final.txt a la Papelera' }).click()
     const dlg = page.getByRole('alertdialog')
-    await expectVisible(dlg.getByText('¿Mover «final.txt» a la Papelera?'))
+    await expectVisible(dlg.getByText(/¿Mover «final\.txt» a la Papelera( de reciclaje)?\?/))
     await shot(a, SHOTS, 'archivos-confirmar-papelera')
     await dlg.getByRole('button', { name: 'Cancelar' }).click()
     expect(existsSync(join(repo, 'final.txt'))).toBe(true)
     await row(page, 'final.txt').focus()
     await page.keyboard.press('Delete')
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Mover a la Papelera', exact: true }).click()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: /^Mover a la Papelera( de reciclaje)?$/ })
+      .click()
     await expectCount(row(page, 'final.txt'), 0)
     expect(existsSync(join(repo, 'final.txt'))).toBe(false)
     expect(readdirSync(trashDir).some((n) => n.endsWith('-final.txt'))).toBe(true)
-    await expectVisible(page.getByText('«final.txt» se movió a la Papelera.'))
+    await expectVisible(page.getByText(/«final\.txt» se movió a la Papelera( de reciclaje)?\./))
   })
 
   it('rutas hostiles y carpetas ajenas las rechaza main sin tocar nada', async () => {

@@ -627,6 +627,15 @@ Dos peticiones del equipo.
 - **Pruebas**: `keybindings.test.ts` (36: normalización, eventos AltGr/IME/ES, registro, conflictos, reservadas, foco, overrides) y E2E `atajos.e2e.ts` (9: lista y buscador, cambiar y usar, los de siempre, Plan/Build propio, conflicto, reservadas, desactivar, persistir tras reiniciar, restablecer).
 
 
+## F8-B47 — Windows v1: instalador NSIS y paridad (rama `feat/win-t4-instalador-y-paridad-v1`)
+
+- **Instalador.** `electron-builder.js`: `win` (NSIS x64, icono `build/icon.ico` de 16–256 px), `nsis` (asistido, por usuario, carpeta elegible, `OnyxCode-Setup-<versión>-<arch>.exe`), `win.extraResources` con `opencode.exe` y `mac.extraResources` con lo de macOS (helper, lanzador, actualizador, OpenCode darwin); el `.dmg` de macOS sale igual (comprobado con `npm run package`). `scripts/win/pack-check.ps1` + `pty-probe.mjs` verifican el paquete sin firma (32 comprobaciones; ver `docs/VERIFICACION.md`). Instalador de prueba: 151,6 MB.
+- **Defecto de `package:win`.** Llamaba a `electron-builder` a secas y `cmd` ejecutaba `electron-builder.js` con Windows Script Host (colgado sin mensaje); ahora `node node_modules/electron-builder/cli.js`.
+- **Ratón por CDP en Windows: causa raíz hallada** (la vista de la pestaña del agente no estaba colgada de la ventana antes de F8-B46; Windows no enruta entrada a una `WebContentsView` suelta). Ya corregido por B46; reactivadas las pruebas «Pagar ahora», «enlace normal» y el clic con escala.
+- **`perf` «2000 deltas»:** presupuesto propio de Windows medido (300 tareas / 25 s / 800 ms; 206–219 / 17,0–17,6 s / 345 ms medidos).
+- **Pruebas en Windows** de lo nuevo de la tanda 3: `archivos-mx` (el texto de «Papelera de reciclaje» y los atajos `Ctrl`; el producto ya estaba bien, se ajustó la spec), `atajos`, `navegador-escritorio`, `model-por-modo`, `model-choice` en verde; unitarias: `manager.fullaccess` (Control total, modo Tareas) y `installer › cancelar` (actualizador) saltadas fuera de macOS por estar fuera de la v1.
+
+
 ## F8-B48 — Control remoto desde el celular, prototipo por red local (rama `feat/remoto-nucleo-y-app`, tanda T-A)
 
 Petición del equipo: ver y responder las conversaciones desde el celular, sin nube. Prototipo DELGADO (solo red local, solo macOS); la PWA es la tanda T-B (`feat/remoto-pwa`). Modelo de amenazas en `docs/SEGURIDAD.md` §3 vicies.
