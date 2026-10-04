@@ -859,3 +859,12 @@ Pendiente: `src/test/opencode-contract.test.ts` falla en este árbol por la inst
 - **`clipboard-sanitized-write`** solo para el origen https (o http local) de la página de nivel superior.
 - **`dialog:openInEditor`**: `realpath`, contención al proyecto activo/reciente y `assertSafeToOpen` en los respaldos `open`/`openPath`.
 - Pruebas: `session.test.ts`, `nav-bypass.test.ts`, `dialog/service.test.ts`. Detalle y límites (TOCTOU de DNS) en `docs/SEGURIDAD.md` §3 tricies ter. Pendiente: prueba manual en la app (redirección y `window.open` con el agente).
+
+## F8-B69: seguridad de Tareas, MCP y credenciales (6 hallazgos de la revisión externa)
+- **5**: `mcp:getConfig` y las respuestas/eventos de cambios de MCP entregan `headers`/`environment` enmascarados; `mcp:save` restituye el secreto guardado si el valor llega enmascarado.
+- **6**: el token del MCP del navegador se revoca al terminar el servidor de Tareas (y un relanzamiento invalida el anterior). Los tokens siguen en el entorno de `opencode serve`: pendiente denegar `process-info` en Seatbelt o un proxy MCP (no se tocó `sandbox*`).
+- **7**: `tasks/host-rules.ts` valida `setHost(allow)` y `allowOnce` (sin TLD, sufijos públicos, comodines amplios ni IP privadas).
+- **8**: `pty:create` con lista cerrada de shells (`ipc/pty-shell.ts`) y `cwd` absoluto sin `..`.
+- **9**: `CredentialProxy` normaliza y rechaza `..`, `%2e%2e`, `//`, `\` y doble codificación antes de reenviar.
+- **10**: revocación del token del navegador y patrón/secretos exactos en el redactor de Diagnóstico.
+- Pruebas nuevas en cada ruta (ver `docs/SEGURIDAD.md` §3 tricies quater). Pendiente: prueba manual del formulario de MCP con valores enmascarados.

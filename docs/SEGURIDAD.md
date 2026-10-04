@@ -1223,3 +1223,29 @@ Revisión externa de 4 hallazgos, verificados leyendo el código. Los cuatro era
 4. **`dialog:openInEditor` (MEDIO)**. Solo comprobaba que la ruta existiera: podía lanzar un `.app`/ejecutable por el respaldo `open`. Ahora hace `realpath` (los enlaces
    simbólicos hacia fuera se rechazan), exige que la ruta esté dentro del proyecto activo de la ventana (`hub.isActive`) o de una carpeta reciente, y aplica
    `assertSafeToOpen` antes de los respaldos `open`/`shell.openPath` (VS Code sí puede abrir un script como texto). Pruebas: `dialog/service.test.ts`.
+
+## 3 tricies quater. Tareas, MCP y credenciales: 6 hallazgos de la revisión externa (F8-B69)
+
+Verificados leyendo el código; cinco eran reales y uno se resuelve solo en parte (el 6).
+
+- **5. `mcp:getConfig` devolvía secretos (real, MEDIO).** `maskAppMcpConfig` (`extras/mcp-config.ts`) sustituye TODOS los valores de `headers` y `environment` por `MCP_VALUE_MASK` (`shared/mcp-catalog.ts`)
+  en `mcp:getConfig` y en lo que devuelve/emite `afterMcpChange` (`mcp:save|remove|setEnabled|installCatalog`, evento `mcp:changed`). Al guardar, un valor igual al marcador significa «sin cambios»: `saveMcpServer`
+  restituye el secreto guardado del mismo servidor (`previousName ?? name`, así renombrar lo conserva); un marcador sin secreto previo se descarta. El formulario del renderer no cambió: muestra `CLAVE=••••••••`.
+  Límite: `client.config.get` del motor OpenCode (otro camino, fuera de la app) puede devolver la config fusionada con sus valores.
+- **6. Tokens en el entorno del sandbox (real, MEDIO; mitigado, no eliminado).** `OPENCODE_CONFIG_CONTENT` (cabeceras del MCP del navegador y de los MCP del usuario) sigue en el entorno de `opencode serve`:
+  el plugin `onyxcode-env` solo lo blanquea para bash/pty, y el perfil Seatbelt es `(allow default)` (sin denegar `process-info`), así que `ps eww` desde el sandbox podría leerlo. Un archivo 0600 no mejora nada
+  frente al agente: el proceso del sandbox tendría que poder leerlo y bash comparte esa lectura. Lo que sí se hizo: el token del navegador es por servidor (carpeta y modo) y se REVOCA cuando el proceso termina
+  o no llega a arrancar (`manager.ts`, `onExit`/error de arranque); un relanzamiento con la misma atadura invalida el anterior. Pendiente (dueño): denegar `process-info*` hacia otros procesos en el perfil
+  (no se tocó `sandbox*`: no se pudo probar con un sandbox anidado y puede romper `ps`/`pkill`/`lsof` que usa el agente) o un proxy MCP local que ponga las cabeceras fuera del sandbox. Los tokens estáticos de MCP
+  del usuario no se pueden revocar desde la app.
+- **7. `setHost`/`allowOnce` (real, BAJO).** `tasks/host-rules.ts` (`parseEgressHost`): minúsculas, sin punto final, etiquetas válidas, al menos dos etiquetas (rechaza `com`, `io`, `localhost`), sin sufijos públicos
+  habituales (`co.uk`, `github.io`…), un único `*.` inicial y solo seguido de un dominio completo, sin IP locales/privadas ni notaciones raras (`2130706433`) ni `.local`/`.internal`. Se aplica a `allow` y a `allowOnce`;
+  `block`/`unset` aceptan una forma sana para poder retirar entradas heredadas. Las rutinas llaman al gestor directamente (no pasan por el IPC).
+- **8. `pty:create` (real, BAJO).** `shell` solo vale si es absoluta, sin `..`, con nombre de la lista cerrada (`sh bash zsh fish dash ksh tcsh csh nu pwsh`; en Windows `pwsh/powershell/cmd/bash/wsl .exe`) y, en macOS/Linux,
+  listada en `/etc/shells` o en un directorio de sistema/gestor de paquetes (`ipc/pty-shell.ts`). `cwd` es absoluto y sin `..`. No se acota a «carpetas aprobadas»: la terminal de Code abre el proyecto que la
+  persona eligió y no existe un ámbito de Tareas para él.
+- **9. `CredentialProxy` y `..` (real, BAJO).** `safeUpstreamRest` (`tasks/proxy.ts`) rechaza `.`/`..` (también `%2e`), `\`, `//`, `%2f`/`%5c`/`%25` (doble codificación), bytes de control, `#` y un resto que no empiece por
+  `/` o `?` (antes `/<token>x` pasaba el prefijo); además comprueba que el destino final siga en el origen y bajo el prefijo de la API. Responde 400.
+- **10. Token del MCP del navegador (real, BAJO).** Nunca se revocaba: `revokeToken`, sustitución por atadura y `knownTokens()` en `embedded-browser/mcp-server.ts`. El redactor de Diagnóstico oculta los tokens emitidos
+  (secretos exactos, `extraSecrets`) y todo token de 43 caracteres base64url aunque no tenga cifras.
+- Pruebas: `tasks/proxy.path.test.ts`, `tasks/host-rules.test.ts`, `ipc/pty-shell.test.ts`, `extras/mcp-config.mask.test.ts`, `embedded-browser/mcp-server.token.test.ts`, `diagnostics/redact.test.ts`.

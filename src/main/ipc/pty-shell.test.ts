@@ -20,6 +20,7 @@ describe('pty:create (F8-B69, hallazgo 8)', () => {
     expect(() => v({ cwd: 'relativo', cols: 80, rows: 24 })).toThrow()
     expect(() => v({ cwd: '/tmp/../etc', cols: 80, rows: 24 })).toThrow()
     expect(v({ cwd: '/tmp', cols: 80, rows: 24 })).toEqual({ cwd: '/tmp', cols: 80, rows: 24 })
-    if (process.platform === 'darwin') expect(v({ cwd: '/tmp', cols: 80, rows: 24, shell: '/bin/zsh' }).shell).toBe('/bin/zsh')
+    if (process.platform === 'darwin')
+      expect((v({ cwd: '/tmp', cols: 80, rows: 24, shell: '/bin/zsh' }) as { shell?: string }).shell).toBe('/bin/zsh')
   })
 })
