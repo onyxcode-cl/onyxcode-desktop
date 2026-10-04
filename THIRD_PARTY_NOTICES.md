@@ -3,8 +3,11 @@
 OnyxCode es un proyecto independiente y **no está afiliado a OpenCode**. Este fichero reúne los avisos de licencia de los componentes de
 terceros que se distribuyen dentro del instalador. También se copia a `OnyxCode.app/Contents/Resources/THIRD_PARTY_NOTICES.md`.
 
-**LICENCIA PROPIA DE ONYXCODE: PENDIENTE.** La licencia del código de OnyxCode todavía no está decidida y se publicará en el fichero `LICENSE`.
-Este documento solo cubre componentes de terceros.
+**Licencia de OnyxCode: MIT.** El código propio de OnyxCode se distribuye bajo la licencia del fichero `LICENSE`. Este documento solo cubre
+componentes de terceros; si `LICENSE` cambia, esta línea debe cambiar a la vez (lo comprueba `npm run verify:release`).
+
+<!-- Nota para el dueño: la licencia MIT del fichero LICENSE y su titular («onyxcode-cl») están pendientes de tu confirmación final
+     (docs/RELEASE.md §14). Este texto solo alinea el aviso con LICENSE; no es una decisión legal nueva. -->
 
 ## 1. OpenCode (motor incluido)
 

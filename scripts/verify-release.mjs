@@ -5,6 +5,7 @@ import { createPublicKey } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { checkLicenseCoherence } from './license-check.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const errors = []
@@ -33,7 +34,10 @@ function validUpdateKey(b64) {
     return false
   }
 }
-if (updateKey === '') errors.push('UPDATE_PUBLIC_KEY está vacía: genera el par Ed25519 (docs/DISTRIBUCION.md §10) y pon la clave pública en src/shared/brand.ts')
+if (updateKey === '')
+  errors.push(
+    'UPDATE_PUBLIC_KEY está vacía: genera el par Ed25519 (docs/DISTRIBUCION.md §10) y pon la clave pública en src/shared/brand.ts'
+  )
 else if (!validUpdateKey(updateKey)) errors.push('UPDATE_PUBLIC_KEY no decodifica a una clave pública Ed25519 válida (SPKI DER en base64)')
 
 // El script de reemplazo del actualizador debe viajar sellado dentro del .app (extraResources).
@@ -41,7 +45,10 @@ if (!existsSync(resolve(root, 'resources/updater/swap.sh'))) errors.push('Falta 
 else {
   const { createRequire } = await import('node:module')
   const cfg = createRequire(import.meta.url)(resolve(root, 'electron-builder.js'))
-  const has = (cfg.extraResources ?? []).some((r) => r && r.from === 'resources/updater' && r.to === 'updater' && (r.filter ?? []).includes('swap.sh'))
+  // swap.sh va en mac.extraResources (solo macOS); se aceptan también las comunes.
+  const has = [...(cfg.extraResources ?? []), ...(cfg.mac?.extraResources ?? [])].some(
+    (r) => r && r.from === 'resources/updater' && r.to === 'updater' && (r.filter ?? []).includes('swap.sh')
+  )
   if (!has) errors.push('electron-builder.js no incluye resources/updater/swap.sh en extraResources')
 }
 
@@ -52,14 +59,17 @@ for (const f of [
   'resources/computer-use/build.sh',
   'resources/launcher/build.sh'
 ]) {
-  if (readFileSync(resolve(root, f), 'utf8').includes('aliaspendiente'))
-    errors.push(`${f} contiene el placeholder «aliaspendiente»`)
+  if (readFileSync(resolve(root, f), 'utf8').includes('aliaspendiente')) errors.push(`${f} contiene el placeholder «aliaspendiente»`)
 }
 
 const licensePath = resolve(root, 'LICENSE')
 if (!existsSync(licensePath)) errors.push('Falta el fichero LICENSE')
-else if (readFileSync(licensePath, 'utf8').includes('LICENCIA PENDIENTE'))
-  errors.push('LICENSE contiene «LICENCIA PENDIENTE»')
+else {
+  // LICENSE y THIRD_PARTY_NOTICES.md no deben contradecirse (no decide ninguna licencia: solo detecta incoherencias).
+  const noticesPath = resolve(root, 'THIRD_PARTY_NOTICES.md')
+  if (!existsSync(noticesPath)) errors.push('Falta THIRD_PARTY_NOTICES.md')
+  else errors.push(...checkLicenseCoherence(readFileSync(licensePath, 'utf8'), readFileSync(noticesPath, 'utf8')))
+}
 
 if (errors.length) {
   console.error('verify:release FALLÓ:\n - ' + errors.join('\n - '))
