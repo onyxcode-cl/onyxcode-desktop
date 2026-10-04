@@ -3,6 +3,7 @@ import { t } from '@shared/i18n'
 import { chmod, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { DiagnosticsService } from '../diagnostics/service'
+import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { appOpencodeConfigPath } from '../extras/mcp-config'
 import type { OpencodeServer } from '../opencode/server'
 import { handle } from './handle'
@@ -17,6 +18,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     home: homedir(),
     mcpConfigPath: appOpencodeConfigPath(),
     server,
+    extraSecrets: () => embeddedBrowserMcp.knownTokens(),
     versions: () => ({
       [app.getName()]: app.getVersion(),
       electron: process.versions.electron,

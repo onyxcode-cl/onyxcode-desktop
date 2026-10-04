@@ -196,3 +196,17 @@ describe('carpeta del usuario en Windows (privacidad)', () => {
     expect(Date.now() - t0).toBeLessThan(1500)
   })
 })
+
+describe('token del MCP del navegador (F8-B69)', () => {
+  // 43 caracteres base64url sin ninguna cifra: la regla genérica de rachas largas (exige letras Y cifras) no lo ve.
+  const NO_DIGITS = 'AbcdefGhijKlmnOpqrStuvWxyzAbcdefGhijKlmnOpq'
+  it('oculta un token de 32 bytes en base64url aunque no tenga cifras', () => {
+    expect(NO_DIGITS).toHaveLength(43)
+    const out = makeRedactor({ exact: [] })(`mcp conectado con ${NO_DIGITS} listo`)
+    expect(out).not.toContain(NO_DIGITS)
+  })
+  it('oculta los tokens emitidos, aunque tengan otra forma', () => {
+    const odd = 'tok-emitido-raro'
+    expect(makeRedactor({ exact: [odd] })(`x ${odd} y`)).not.toContain(odd)
+  })
+})

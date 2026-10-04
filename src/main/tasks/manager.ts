@@ -188,6 +188,13 @@ export function forbiddenFolderReason(folder: string): string | null {
 }
 
 /** Puerto de un bloque MCP `remote` (`{type:'remote', url:'http://127.0.0.1:<puerto>/mcp', ...}`), o null. */
+/** Token Bearer de un bloque MCP remoto (`headers.Authorization`), o null. */
+function bearerOfMcpConfig(cfg: Record<string, unknown> | null): string | null {
+  const h = cfg?.headers
+  const a = h && typeof h === 'object' ? (h as Record<string, unknown>).Authorization : undefined
+  return typeof a === 'string' && a.startsWith('Bearer ') ? a.slice(7) : null
+}
+
 function portOfMcpConfig(cfg: Record<string, unknown> | null): number | null {
   const url = cfg && typeof cfg.url === 'string' ? cfg.url : ''
   if (!url) return null
@@ -751,7 +758,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     folder: string,
     fullAccess: boolean,
     extras: ExtraFolder[]
-  ): Promise<{ config: Record<string, unknown>; browserMcpPort: number | null }> {
+  ): Promise<{ config: Record<string, unknown>; browserMcpPort: number | null; browserToken: string | null }> {
     let browserMcp: Record<string, unknown> | null = null
     let computerMcp: Record<string, unknown> | null = null
     let browserMcpPort: number | null = null
@@ -784,7 +791,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
       skills: skillsInlineConfig()
     })
-    return { config, browserMcpPort }
+    return { config, browserMcpPort, browserToken: bearerOfMcpConfig(browserMcp) }
   }
 
   private spawn(folder: string, fullAccess: boolean): Promise<TasksServerHandle> {
@@ -806,8 +813,13 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (folder !== normalizeFolder(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
-    const starting = prepared.then(([{ config, browserMcpPort }, gateUrl]) =>
-      startTasksServer(folder, {
+    const starting = prepared.then(([{ config, browserMcpPort, browserToken }, gateUrl]) => {
+      // El token del MCP del navegador vive en el entorno de `opencode serve` (OPENCODE_CONFIG_CONTENT): se
+      // revoca en cuanto ese proceso termina o no llega a arrancar (F8-B69, hallazgos 6 y 10).
+      const revokeBrowserToken = (): void => {
+        if (browserToken) embeddedBrowserMcp.revokeToken(browserToken)
+      }
+      return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
         // Puerto fijo del MCP del navegador integrado (Lote D, B.7): sin esto, Seatbelt bloquearía
@@ -847,6 +859,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         extraFolders: fullAccess ? undefined : extras,
         onEgressBlocked: fullAccess ? undefined : (ev) => this.emit('networkBlocked', { folder, ...ev }),
         onExit: (code) => {
+          revokeBrowserToken()
           const e = this.servers.get(key)
           if (!e) return
           e.handle = undefined
@@ -854,8 +867,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             this.setInfo(folder, fullAccess, { state: 'error', error: t('merr.task.serverEnded', { code: String(code) }) })
           }
         }
+      }).catch((err: unknown) => {
+        revokeBrowserToken()
+        throw err
       })
-    )
+    })
     const entry = this.servers.get(key)
     if (entry) entry.starting = starting
     return starting.then(

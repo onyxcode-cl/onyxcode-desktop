@@ -70,6 +70,12 @@ const ANY_WINDOWS_PROFILE = new RegExp(
   'gi'
 )
 
+/**
+ * Token del MCP del navegador integrado (F8-B69): 32 bytes aleatorios en base64url = 43 caracteres. Se oculta
+ * aunque no tenga cifras (la regla genérica de rachas largas las exige) y aunque no vaya tras `Bearer`.
+ */
+const BROWSER_MCP_TOKEN_RE = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g
+
 export function makeRedactor(o: RedactorOptions): Redactor {
   // «Bearer xyz» / «Basic xyz»: además del valor completo, se oculta la credencial sola.
   const withoutScheme = o.exact.map((s) => /^(?:Bearer|Basic)\s+(\S+)$/i.exec(s)?.[1]).filter((s): s is string => Boolean(s))
@@ -83,7 +89,7 @@ export function makeRedactor(o: RedactorOptions): Redactor {
   return (line) => {
     let out = line
     for (const secret of exact) if (out.includes(secret)) out = out.split(secret).join(REDACT_MASK)
-    out = maskSecretPatterns(out)
+    out = maskSecretPatterns(out).replace(BROWSER_MCP_TOKEN_RE, REDACT_MASK)
     if (home) out = out.split(home).join('~')
     for (const re of winPatterns) out = out.replace(re, '~')
     // Perfiles de Windows en cualquier forma, también sin `home` de Windows (p. ej. logs que traen rutas ajenas).

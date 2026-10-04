@@ -46,6 +46,8 @@ export class EmbeddedBrowserMcpServer {
   private port = 0
   private starting: Promise<number> | null = null
   private readonly clients = new Map<string, ClientBinding>()
+  /** Todos los tokens emitidos en esta vida de la app (acotado): solo para que el redactor de Diagnóstico los oculte. */
+  private readonly issued: string[] = []
 
   /** Inyecta (o reemplaza, sin efecto si es la misma referencia) la API real de D1. */
   setApi(api: EmbeddedBrowserApi): void {
@@ -91,9 +93,26 @@ export class EmbeddedBrowserMcpServer {
   /** Registra un token nuevo (32 bytes) para esta atadura. Arranca el servidor HTTP si hace falta. */
   async clientFor(binding: ClientBinding): Promise<{ token: string; port: number }> {
     const port = await this.ensureServer()
+    // Un servidor de OpenCode que se relanza con la misma atadura (misma carpeta y modo; Code: único sidecar)
+    // sustituye al anterior: el token viejo deja de valer (F8-B69, hallazgo 10).
+    for (const [old, b] of this.clients) {
+      if (b.product === binding.product && b.folder === binding.folder && b.sandboxed === binding.sandboxed) this.clients.delete(old)
+    }
     const token = randomBytes(32).toString('base64url')
     this.clients.set(token, binding)
+    this.issued.push(token)
+    if (this.issued.length > 256) this.issued.splice(0, this.issued.length - 256)
     return { token, port }
+  }
+
+  /** Revoca un token (el servidor de OpenCode que lo usaba terminó). `false` si ya no estaba. */
+  revokeToken(token: string): boolean {
+    return this.clients.delete(token)
+  }
+
+  /** Tokens emitidos (vigentes o no): el redactor de Diagnóstico los trata como secretos exactos. */
+  knownTokens(): string[] {
+    return [...this.issued]
   }
 
   /** Bloque `mcp.browser` (config `remote` de OpenCode) o null si el MCP no pudo arrancar (no fatal). */

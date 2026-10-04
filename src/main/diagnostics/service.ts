@@ -30,6 +30,8 @@ export interface DiagnosticsDeps {
     secrets(): string[]
     getStatus(): ServerStatus
   }
+  /** Secretos exactos adicionales (p. ej. los tokens del MCP del navegador integrado). */
+  extraSecrets?: () => string[]
   /** Versiones para el informe (`app`, `electron`, `chrome`, `node`, `sistema`…). */
   versions: () => Record<string, string>
   now: () => number
@@ -102,7 +104,8 @@ export class DiagnosticsService {
     const exact = [
       ...deps.server.secrets(),
       ...collectStringValues(readJson(appAuthFile(deps.userData))),
-      ...collectMcpSecrets(readJson(deps.mcpConfigPath))
+      ...collectMcpSecrets(readJson(deps.mcpConfigPath)),
+      ...(deps.extraSecrets?.() ?? [])
     ]
     return makeRedactor({ exact, home: deps.home })
   }
