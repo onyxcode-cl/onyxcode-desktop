@@ -239,7 +239,6 @@ principal. Tests: `redact.test.ts` (patrones, exactos, propiedad con secretos in
 handlers `diag:*` solo devuelven lo que sale de `DiagnosticsService` y solo `service.ts` lee el anillo crudo), `schemas.test.ts`; E2E `diagnostics.e2e.ts` (ruta nueva `POST /__e2e/log` del servidor falso;
 pantalla, IPC, portapapeles y exportación sin secretos, 0600). Limitación: un secreto sin forma conocida y que no esté guardado en `auth.json`/MCP puede pasar (la nota de la pantalla pide revisar antes de compartir).
 
-
 ## F8-B24 — Catálogo MCP curado
 
 Ajustes › MCP gana un bloque «Catálogo» con conectores verificados, incluidos en la app (nada se descarga): Context7 y Cloudflare Docs (sin cuenta), GitHub (token personal) y Linear, Notion, Sentry y Atlassian
@@ -257,7 +256,6 @@ Descartado/ajustado respecto al plan: Atlassian usa `https://mcp.atlassian.com/v
 registran cliente dinámicamente con el binario real (devuelven URL de autorización; el inicio de sesión completo con cuenta real no se probó). Limitaciones: en Tareas no están disponibles (sandbox sin OAuth y sin
 host añadido); el token queda en texto plano en el archivo de la app como en el flujo manual; las fichas no se actualizan solas (cambian con la app; `MCP_CATALOG_VERSION`).
 
-
 ## F8-B25 — Idioma: inglés (beta) con selector
 
 Ajustes › General › Idioma (Sistema / Español / English (beta)). Con «Sistema», un sistema con idioma preferido `en-*` da inglés y cualquier otro español; una instalación que ya existía (con el asistente terminado) y no
@@ -272,7 +270,6 @@ OpenCode or Anthropic»; `i18n.test.ts` (mismas claves, sin vacíos, mismos marc
 fuera de los diccionarios; crece por tanda); `tray.i18n.test.ts`; esquema `settings:set`; E2E `i18n.e2e.ts` (arranque en inglés, cambio en vivo a Español y de vuelta, asistente, capturas con `I18N_SHOTS_DIR`).
 Fuera de alcance (T4b/T4c): Code, Tareas, Rutinas, navegador integrado, overlay/píldora/Quick Entry y los errores que construye main (siguen en español, incluso con la interfaz en inglés); los prompts de agente
 (`resources/opencode/*.md`); los borradores legales (`PRIVACY_DRAFT`/`TERMS_DRAFT`, pendientes de revisión legal); los roles estándar del menú de macOS (los traduce Electron según la configuración regional).
-
 
 ## F8-B27 — Idioma (T4c): lo que construye main y las ventanas con preload propio
 
@@ -301,6 +298,7 @@ Con la interfaz en inglés (Ajustes › General › Idioma) ahora también está
 (inicio, lista, conversación, compositor, consulta lateral, panel de progreso y de proyecto, entregables, cambios, permisos, preguntas, carpetas, red, modo auto, grabación de skills, guía de inicio y la lista de Control del Mac,
 incluida `ComputerGrantsList` en Ajustes › Tareas), Rutinas (vista, editor, plantillas, horarios y fechas relativas) y el navegador integrado. Texto visible, `aria-label`/`title`/`placeholder`, plurales (`{one,other}`) y fechas/números
 con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, así el producto no cambia, y `en-US` con inglés).
+
 - Diccionarios nuevos por área (`es|en/{code,tasks,tasksComputer,routines,browser}.ts`) enchufados con una línea cada uno en `index.ts` (para mezclar sin conflictos con T4c). Prefijos `code.`, `tasks.`, `tasksComputer.`, `routines.`, `browser.`.
 - `FOLDER_MODE_LABEL_ES` sale de `shared/ipc-tasks.ts` y pasa a `folderModeLabel(mode)` (renderer, `features/tasks/impl/folder-mode.ts`, claves `tasksSettings.folderMode.*`): `shared/ipc-tasks.ts` no importa i18n y los preloads no cambian.
   `SANDBOX_PROVIDER_NOTICE` (shared/sandbox-providers.ts) pasa a la función `sandboxProviderNotice()`; los textos de `routines-terms.ts` viven ahora en el diccionario.
@@ -399,10 +397,10 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 
 - **Región `role="log"` acotada (M7).** Antes ninguna vista anunciaba nada. `ConversationAnnouncer` (en Chat, Code y Tareas) es una región solo para lectores de pantalla (`sr-only`, `role="log"`, `aria-live="polite"`) que dice
   «Respuesta terminada» cuando la conversación deja de estar ocupada y «Error: …» (texto amable de `friendlyError`) cuando aparece uno nuevo. **Nunca** anuncia deltas: la transcripción no es una región viva. Al cambiar de conversación no anuncia nada.
-- **Compositor de Code como combobox (M7).** El textarea lleva `role="combobox"`, `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls` y `aria-activedescendant` (opciones con `id`), más `aria-label`. Nota: axe marca `aria-allowed-role` (nivel *minor*)
+- **Compositor de Code como combobox (M7).** El textarea lleva `role="combobox"`, `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls` y `aria-activedescendant` (opciones con `id`), más `aria-label`. Nota: axe marca `aria-allowed-role` (nivel _minor_)
   porque ARIA en HTML solo prevé `combobox` en `input`; se mantiene a propósito (patrón de autocompletado de ARIA 1.2) y requiere comprobar con VoiceOver.
 - **`aria-label` en botones solo-icono (M7).** Copiar y Bifurcar de cada mensaje de Code, Bifurcar y Compactar de la barra de Code y Quitar adjunto (que ahora también se ve con el foco del teclado). El punto de estado del pie de la barra lateral era un `span`
-  con `aria-label` sin rol (violación *serious*): pasa a `aria-hidden` (el estado ya se lee como texto al lado).
+  con `aria-label` sin rol (violación _serious_): pasa a `aria-hidden` (el estado ya se lee como texto al lado).
 - **Contraste (M8).** Misma paleta, solo más contraste: `--fg-subtle` `#8a91a3`→`#61697c` (claro, 2,97→5,18:1 sobre `--bg`) y `#6c7386`→`#858b9c` (oscuro, 3,92→5,45:1); `--success` `#15803d`→`#14793a` y `--warning` `#b45309`→`#aa4f09` (claro)
   para llegar a 4,5:1 también sobre barra lateral/código/hover; token nuevo `--gold-text` (`#876217` claro, igual al oro en oscuro) para el texto de las insignias doradas (`--gold` queda para iconos). Sobre la fila seleccionada (`bg-active`) el
   texto `text-subtle` usa `--fg-muted`. Capturas antes/después en claro y oscuro (820 y 1280 px) en `scratchpad/shots-c5/{before,after}`.
@@ -410,8 +408,8 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 - **Cómo se mide el contraste.** `app/contrast.test.ts` lee `globals.css` y calcula la razón WCAG 2.x de cada token de texto (`fg`, `fg-muted`, `fg-subtle`, `accent`, `success`, `warning`, `danger`, `gold-text`) contra todas las superficies reales
   de cada tema (`bg`, `bg-sidebar`, `bg-elevated`, `bg-hover`, `bg-code`, `bg-inset`, `user-bubble`), `accent`/`gold-text` sobre sus fondos suaves, `accent-fg` sobre `accent`, y que se conserve la jerarquía fg > muted > subtle. Sin navegador: falla en `npm test`.
 - **axe-core.** Nueva devDependency `axe-core` (hay que hacer `npm install` al integrar). `e2e/lib/axe.ts` lo inyecta por CDP en claro y oscuro; `calidad-t5.e2e.ts` ejecuta axe (etiquetas wcag2a/aa, wcag21a/aa y best-practice) en Chat, Chat con error 429, Code y Tareas
-  con el OpenCode falso, y falla con violaciones *serious*, *critical* o *moderate*. Antes de la tanda: aria-prohibited-attr y color-contrast (todas las vistas), button-name *critical* en Code, tres de landmarks en Tareas. Ahora: solo queda
-  `aria-allowed-role` *minor* (compositor de Code). Informes con `T5_AXE_REPORT`; capturas con `T5_SHOTS_DIR`.
+  con el OpenCode falso, y falla con violaciones _serious_, _critical_ o _moderate_. Antes de la tanda: aria-prohibited-attr y color-contrast (todas las vistas), button-name _critical_ en Code, tres de landmarks en Tareas. Ahora: solo queda
+  `aria-allowed-role` _minor_ (compositor de Code). Informes con `T5_AXE_REPORT`; capturas con `T5_SHOTS_DIR`.
 - Pendiente de revisión manual con VoiceOver: que «Respuesta terminada»/errores se lean una vez y sin interrumpir, el comportamiento del combobox (anuncio de la opción activa al usar ↑↓) y el orden de foco; axe no sustituye esa prueba. Cambian los snapshots de
   `ChatMessageList`, `MessageStream` y `TaskConversation` (la región `log`) y `MessageStream` (`aria-label`). Sin cambios en preloads ni en SEGURIDAD.md.
 
@@ -444,18 +442,18 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 
 ## F8-B36 — Calidad R2-C: accesibilidad en las vistas que faltaban
 
-- **Cobertura.** `e2e/specs/calidad-rc.e2e.ts` ejecuta axe-core (claro y oscuro; wcag2a/aa, wcag21a/aa y best-practice) y falla con violaciones *serious*, *critical* o *moderate* en: las 12 secciones de Ajustes visibles sin cuenta, Rutinas (lista, detalle y editor en sus pestañas de
+- **Cobertura.** `e2e/specs/calidad-rc.e2e.ts` ejecuta axe-core (claro y oscuro; wcag2a/aa, wcag21a/aa y best-practice) y falla con violaciones _serious_, _critical_ o _moderate_ en: las 12 secciones de Ajustes visibles sin cuenta, Rutinas (lista, detalle y editor en sus pestañas de
   programación y modos Tareas/Code), diálogo de confirmación y de prompt, catálogo MCP, paleta de comandos, asistente de primer uso (5 pasos), Tareas (primer uso, confirmar carpeta, permiso, pregunta, escalada, Control total, tarjetas de plan y toma de control, panel del proyecto, grabar una skill),
   Code (confianza de carpeta, paneles Cambios/Terminal/Archivos, selector de sesión, worktree, permiso) y las ventanas propias (píldora de plan/toma de control/estado, guía y grabación). Informe con `RC_AXE_REPORT`, `RC_AUDIT=1` solo cuenta, capturas con `RC_SHOTS_DIR`.
-- **Violaciones halladas y arregladas.** Tarjeta de rutina: `role="button"` con un interruptor dentro (*serious* nested-interactive) → la tarjeta se sigue pudiendo pulsar entera con el ratón, pero el control de teclado/lector es un botón con el nombre y el interruptor queda al lado. Botón de cerrar del selector de sesión de Code sin nombre
-  (*critical*, ahora `code.sessions.close`). Campo del diálogo de prompt (renombrar/mover tarea) sin etiqueta (*critical*) y campo de rama del diálogo de worktree sin etiqueta ni nombre del diálogo. Esqueleto de la lista de Chat con `aria-label` en un `div` (*serious*, ahora `role="status"`).
-  Vista previa de configuración del catálogo MCP con scroll sin acceso por teclado (*serious*, `tabIndex=0`). Contraste: `--warning` claro `#aa4f09`→`#954308` (aviso de Rutinas, 4,45→5,5:1), `--danger` claro `#c0352b`→`#b52f26` (estado «Error» sobre la fila activa, 4,28→4,76:1),
+- **Violaciones halladas y arregladas.** Tarjeta de rutina: `role="button"` con un interruptor dentro (_serious_ nested-interactive) → la tarjeta se sigue pudiendo pulsar entera con el ratón, pero el control de teclado/lector es un botón con el nombre y el interruptor queda al lado. Botón de cerrar del selector de sesión de Code sin nombre
+  (_critical_, ahora `code.sessions.close`). Campo del diálogo de prompt (renombrar/mover tarea) sin etiqueta (_critical_) y campo de rama del diálogo de worktree sin etiqueta ni nombre del diálogo. Esqueleto de la lista de Chat con `aria-label` en un `div` (_serious_, ahora `role="status"`).
+  Vista previa de configuración del catálogo MCP con scroll sin acceso por teclado (_serious_, `tabIndex=0`). Contraste: `--warning` claro `#aa4f09`→`#954308` (aviso de Rutinas, 4,45→5,5:1), `--danger` claro `#c0352b`→`#b52f26` (estado «Error» sobre la fila activa, 4,28→4,76:1),
   `amber-600`→`amber-700` (botón «Permitir» de Control total, insignias de acceso, 3,2→5,0:1), archivos ignorados del panel Archivos `opacity-50`→`opacity-70`, y en las ventanas de píldora/guía/grabación los botones Detener/Terminar (`#dc2626`), Siguiente (`#7c3aed`) y Permitir de la toma de control (`#2563eb`), que con blanco no llegaban a 4,5:1.
   La tarjeta de petición de la píldora es una región con nombre (landmark).
 - **Foco de los diálogos.** `lib/modal-focus.ts` (instalado en `main.tsx`) vigila `[aria-modal="true"]`: al abrirse mete el foco si el diálogo no lo hizo, Tab/Mayús+Tab no salen del diálogo de más arriba (sin pisar a los que ya lo hacen) y al cerrarse devuelve el foco al control previo
   si sigue en pantalla y el foco se perdió. Antes ni la confirmación, ni el editor de Rutinas, ni el catálogo MCP devolvían el foco, y varios asistentes/tarjetas no tenían trampa. El selector de sesión de Code y el de worktree pasan a `aria-modal`; el selector cierra con Esc desde cualquier control.
   Unitaria de la función pura `tabTarget`; E2E de contrato (entra, 25 Tab y 25 Mayús+Tab sin salir, Esc cierra y devuelve el foco) en cada diálogo.
-- **No es violación / se deja.** Compositor de Code: `aria-allowed-role` *minor* (combobox en textarea), igual que en F8-B33. El ejemplo de «Quick Entry» no se audita con axe (ventana con preload propio, sin cambios). Menú contextual de tareas y popovers de confirmación en línea de Code (`alertdialog` sin `aria-modal`): son
+- **No es violación / se deja.** Compositor de Code: `aria-allowed-role` _minor_ (combobox en textarea), igual que en F8-B33. El ejemplo de «Quick Entry» no se audita con axe (ventana con preload propio, sin cambios). Menú contextual de tareas y popovers de confirmación en línea de Code (`alertdialog` sin `aria-modal`): son
   inline, no modales, y no devuelven el foco al cerrar. Tras renombrar/mover una tarea el foco no vuelve (el control que lo abrió desaparece).
 - Requiere VoiceOver manual: anuncio de los diálogos (nombre y descripción al abrir), orden de foco del asistente y del editor de Rutinas, la región de la píldora, y el combobox de Code. Sin cambios en preloads (hashes idénticos) ni en SEGURIDAD.md; sin IPC nuevo. Capturas en `scratchpad/shots-rc/`.
 
@@ -476,8 +474,8 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
 ## F8-B38 — Calidad R3-B: accesibilidad de Cuenta y Quick Entry, prueba inestable, medición y descartar por bloque
 
 - **Accesibilidad (axe, claro y oscuro).** `e2e/specs/calidad-r3b.e2e.ts` audita con el servidor de cuentas falso (`e2e/fake-auth`, sin red real) la pantalla de acceso (inicio, correo, código, código erróneo), Ajustes › Cuenta, su diálogo «Borrar mi cuenta» y la ventana Quick Entry (vacía y con texto). Hallazgos y arreglos:
-  botones de peligro (`bg-danger text-white`): en oscuro el blanco sobre el salmón daba ~2,3:1 (*serious*, «Borrar mi cuenta», confirmaciones, conflicto) → token `--danger-fg` (blanco en claro, `#2a0805` en oscuro; `Button`, `ConfirmDialog`, `ui.tsx` de Code, lista de Chat, insignia de conflicto);
-  Quick Entry: la pista «esc cerrar» (`--q-muted`) no llegaba a 4,5:1 en claro ni en oscuro (*serious*) y la ventana no tenía landmark (*moderate* `region`) → `--q-muted` más contrastado y el contenedor pasa a `<main>`. La pantalla de acceso y la Cuenta en claro no tenían violaciones.
+  botones de peligro (`bg-danger text-white`): en oscuro el blanco sobre el salmón daba ~2,3:1 (_serious_, «Borrar mi cuenta», confirmaciones, conflicto) → token `--danger-fg` (blanco en claro, `#2a0805` en oscuro; `Button`, `ConfirmDialog`, `ui.tsx` de Code, lista de Chat, insignia de conflicto);
+  Quick Entry: la pista «esc cerrar» (`--q-muted`) no llegaba a 4,5:1 en claro ni en oscuro (_serious_) y la ventana no tenía landmark (_moderate_ `region`) → `--q-muted` más contrastado y el contenedor pasa a `<main>`. La pantalla de acceso y la Cuenta en claro no tenían violaciones.
   No auditado: el aviso de error de Quick Entry (lo cambia R3-A en paralelo).
 - **`no-ai.e2e.ts` (d) inestable: causa raíz y arreglo.** Bucle de 30 ejecuciones aisladas (`-t "(d)"`, sin reintentos), sobre el código anterior: sin carga 29/30 (1 fallo, el de «Ocultar detalle») y con carga de CPU (10 `yes`, un núcleo cada uno) 30/30. Causa: `ErrorNotice` ponía el rótulo de «Ver detalle» desde el evento `toggle` de
   `<details>`, que se despacha en una tarea posterior a que el contenido ya esté visible; la prueba esperaba el contenido (`statusCode: 401`) y leía el texto de la página antes de que llegara `toggle`, con el rótulo viejo. No era la animación ni el estado inicial. Arreglo en el producto: `<details>` controlado
@@ -485,8 +483,8 @@ con el idioma activo (`dateLocale()` de `lib/i18n.ts`: `es-CL` con español, as�
   mecanismo y la firma idéntica del único fallo capturado, no una diferencia estadística grande.
 - **`npm run perf:startup` (manual, fuera de `verify`).** `e2e/perf/startup.perf.ts` + `vitest.perf.config.ts`: arranque en frío (5 lanzamientos: primer pintado e interactiva) y RSS de todo el árbol de procesos con 3 conversaciones largas falsas durante 5 min. Umbrales sugeridos y cifras actuales en `docs/VERIFICACION.md`:
   primer pintado 398 ms (máx. 466), interactiva 600 ms (máx. 645), RSS 585 MB sin conversaciones, pico 871 MB al cargar las tres, ~725 MB asentado y 586 MB a los 5 min (sin fuga). Nada superó un umbral razonable: sin cambios de producto por este punto.
-- **Descartar cambios en Code (M3 completo).** (1) *Se conserva lo preparado:* `git:discard` acepta `scope: 'unstaged'` y el panel lo usa desde la fila de «No preparados» (solo el árbol de trabajo vuelve a lo preparado; el diálogo lo dice); desde «Preparados» sigue yendo todo a HEAD. «Deshacer» ahora también vuelve a preparar lo que estaba preparado
-  (blob del índice con `git update-index --cacheinfo`, o `git rm --cached` si el borrado estaba preparado) y se apoya en el hash del archivo tras el descarte en vez de en `git status`. (2) *Por bloque:* canal nuevo `git:discardHunk` (solo ventana principal, esquema estricto, sin rol secundario; preload `code.git.discardHunk`), botón «Descartar este bloque» en cada `@@` del diff de «No preparados»
+- **Descartar cambios en Code (M3 completo).** (1) _Se conserva lo preparado:_ `git:discard` acepta `scope: 'unstaged'` y el panel lo usa desde la fila de «No preparados» (solo el árbol de trabajo vuelve a lo preparado; el diálogo lo dice); desde «Preparados» sigue yendo todo a HEAD. «Deshacer» ahora también vuelve a preparar lo que estaba preparado
+  (blob del índice con `git update-index --cacheinfo`, o `git rm --cached` si el borrado estaba preparado) y se apoya en el hash del archivo tras el descarte en vez de en `git status`. (2) _Por bloque:_ canal nuevo `git:discardHunk` (solo ventana principal, esquema estricto, sin rol secundario; preload `code.git.discardHunk`), botón «Descartar este bloque» en cada `@@` del diff de «No preparados»
   de un archivo modificado, con confirmación que muestra el bloque. Se implementó porque se puede garantizar todo o nada: main recalcula el diff y exige que el bloque coincida exactamente con el visto (si el archivo cambió, se rechaza), guarda copia completa antes, hace `git apply -R --check` y luego `git apply -R` solo sobre el árbol (atómico, no toca lo preparado) y «Deshacer»
   restaura la copia solo si el archivo sigue idéntico al que dejó el descarte. Detalle de seguridad en `docs/SEGURIDAD.md` §3 terdecies/quaterdecies. Textos nuevos `code.changes.discardHunk*`/`discardKeepsStaged` y `common.git.discard.hunk*` en es/en; `shared/diff-hunks.ts` trocea el diff (lo usan main y renderer).
 - Pruebas: `git/discard.test.ts` (28 casos con repos temporales reales: conservar lo preparado y deshacer, borrado preparado, añadido con cambios, bloque que se quita sin tocar el otro ni lo preparado, bloque obsoleto/inexistente/de otro archivo, rutas fuera del repo/`.git`/archivos nuevos, deshacer que no pisa ediciones posteriores, CRLF y sin salto final),
@@ -531,6 +529,7 @@ modelo (lista vieja, proveedor sin clave, modelo retirado) para que se vea y se 
 por qué la lista pierde el modelo (no probado), pero el efecto visible queda cubierto.
 
 Cambios:
+
 - `shared/ai-availability.ts`: `isChoiceUnavailable` (elección explícita ausente de la lista cargada; no aplica sin IA configurada, con
   la lista sin cargar ni al predeterminado de fábrica nunca tocado) y `sendGate(..., unavailable)` con motivo `model-unavailable`.
 - `lib/ai-gate.ts`: opción `strict` (solo Chat). Con la elección no disponible no hay modelo efectivo, el envío se bloquea y la lista de
@@ -606,12 +605,12 @@ Petición del equipo: el panel de Archivos (modo Code) se actualiza solo, permit
 - **Pruebas**: `fs-ops.test.ts` (34), `watcher.test.ts` (22), `editors/catalog.test.ts` (13), `files-logic.test.ts` (6), esquemas IPC (+5) y E2E `archivos-mx.e2e.ts` (7: aparece solo un archivo creado fuera, Cambios se actualiza, crear/renombrar/eliminar por la UI, rutas hostiles, «Abrir en…» con editor simulado). Variables de prueba: `ONYXCODE_E2E_EDITOR_LOG`, `ONYXCODE_E2E_EDITORS` (solo sin empaquetar).
 - **Sin probar**: editores reales y Windows (rutas de instalación y `fs.watch` recursivo en Windows solo verificados con detección simulada); Linux no tiene vigilancia recursiva (modo carpetas abiertas, probado con vigilantes simulados).
 
-
 ## F8-B46 — Navegador en versión de escritorio y atajos configurables (rama `feat/navegador-escritorio-atajos`)
 
 Dos peticiones del equipo.
 
 ### Navegador integrado: versión de escritorio por defecto
+
 - **Causa**: el panel del navegador es estrecho (≈ 500–700 px), así que el viewport real de la página activaba sus `@media (max-width: …)` y salía la versión móvil (el user agent ya era de escritorio).
 - **Ahora**: cada pestaña emula un viewport de **1280 px** (`webContents.enableDeviceEmulation`, `viewSize` + `scale` para que quepa en el panel; sin CDP `Emulation.*`, que sigue fuera de `ALLOWED_CDP`) y user agent de escritorio (el de la sesión, sin `Electron/…`). Con el panel ≥ 1280 px no hay emulación. Se reaplica al cambiar el tamaño del panel y tras cada navegación (la emulación se pierde si cambia el proceso de render).
 - **Escritorio / Móvil**: control visible y accesible en la barra del navegador (grupo con dos botones `aria-pressed`, también en la ventana aparte). Es **global y persistente** (`embedded-browser.json › prefs.viewMode`, por defecto `desktop`). «Móvil» emula 390 px, `screenPosition: mobile` y user agent Android/Chrome; al cambiar se recargan las pestañas http(s). Canal nuevo `browser:setViewMode`.
@@ -619,13 +618,13 @@ Dos peticiones del equipo.
 - **Pruebas**: `viewport.test.ts` (8) y E2E `navegador-escritorio.e2e.ts` (5: estilo de escritorio con panel estrecho, UA, clic del agente en dos botones con escala ≈ 0,5, «Móvil» con `@media` y UA móvil, persistencia). El clic por CDP está saltado en Windows (pendiente ya conocido de B41).
 
 ### Atajos de teclado configurables
+
 - **Registro central** (`shared/keybindings.ts`): acciones con id estable, categoría, nombre i18n, atajo por defecto y reglas de foco; ejecución en `renderer/src/keybindings/` y **un único manejador** (`dispatch.ts`) que resuelve el atajo efectivo. Migrados sin cambiar los valores por defecto: ⌘K/⌘⇧P paleta, ⌘N nuevo, ⌘\ barra lateral, ⌘, Ajustes, ⌃Tab/⌃⇧Tab modo siguiente/anterior, ⌘1–4 paneles de Code, Esc detener, Shift+Tab Plan/Build, ⌘K buscador de sesiones de Code. Nuevas (sin atajo hasta que se asigne): ir a Chat/Code/Tareas/Rutinas, Plan, Build, enfocar el compositor. Quick Entry (atajo global de Electron) sigue aparte.
 - **Guardado**: `extras.json › keybindings: { [idAcción]: atajo | null }` (solo lo que el usuario cambia; `null` = desactivado), normalizado y portable (`Mod` = ⌘ en macOS, Ctrl en Windows/Linux; `Ctrl` literal solo en macOS). Pensado para ir luego por perfil.
 - **Teclados y entrada**: letras por carácter (con la tecla física si es un carácter no ASCII), dígitos y teclas con nombre por `event.code`, signos por carácter o por la tecla física (`ç`/`ñ`); AltGr (Ctrl+Alt) no dispara nada en Windows/Linux; sin disparo durante la composición de un IME ni con teclas muertas; los atajos «desnudos» (Esc, Shift+Tab) solo en el compositor o con el foco fuera de campos de texto; los que llevan modificador funcionan también escribiendo (como antes).
 - **Ajustes › Atajos › En la aplicación**: lista agrupada con buscador, grabación («pulsa las teclas»), conflictos con otras acciones (reasignar o cancelar), aviso de combinaciones reservadas (⌘Q/⌘H/⌘M/⌘Tab/⌘Espacio, Alt+F4/Alt+Tab, copiar/pegar… se rechazan; las del menú se avisan) y de coincidencia con Quick Entry, restablecer uno o todos y desactivar. Las pistas de la interfaz (barra lateral, paleta, paneles) muestran el atajo vigente.
 - **Compatibilidad**: en macOS los atajos con ⌘ siguen respondiendo también a Ctrl+tecla (p. ej. Ctrl+K) si el Ctrl literal no coincide con ninguna acción; ⌃Tab sigue siendo Control literal.
 - **Pruebas**: `keybindings.test.ts` (36: normalización, eventos AltGr/IME/ES, registro, conflictos, reservadas, foco, overrides) y E2E `atajos.e2e.ts` (9: lista y buscador, cambiar y usar, los de siempre, Plan/Build propio, conflicto, reservadas, desactivar, persistir tras reiniciar, restablecer).
-
 
 ## F8-B47 — Windows v1: instalador NSIS y paridad (rama `feat/win-t4-instalador-y-paridad-v1`)
 
@@ -634,7 +633,6 @@ Dos peticiones del equipo.
 - **Ratón por CDP en Windows: causa raíz hallada** (la vista de la pestaña del agente no estaba colgada de la ventana antes de F8-B46; Windows no enruta entrada a una `WebContentsView` suelta). Ya corregido por B46; reactivadas las pruebas «Pagar ahora», «enlace normal» y el clic con escala.
 - **`perf` «2000 deltas»:** presupuesto propio de Windows medido (300 tareas / 25 s / 800 ms; 206–219 / 17,0–17,6 s / 345 ms medidos).
 - **Pruebas en Windows** de lo nuevo de la tanda 3: `archivos-mx` (el texto de «Papelera de reciclaje» y los atajos `Ctrl`; el producto ya estaba bien, se ajustó la spec), `atajos`, `navegador-escritorio`, `model-por-modo`, `model-choice` en verde; unitarias: `manager.fullaccess` (Control total, modo Tareas) y `installer › cancelar` (actualizador) saltadas fuera de macOS por estar fuera de la v1.
-
 
 ## F8-B48 — Control remoto desde el celular, prototipo por red local (rama `feat/remoto-nucleo-y-app`, tanda T-A)
 
@@ -648,7 +646,6 @@ Petición del equipo: ver y responder las conversaciones desde el celular, sin n
 - **Pruebas** (unitarias; el dueño prueba a mano con un celular): `protocol.test.ts` (13), `pairing.test.ts`, `devices-store.test.ts`, `peer-session.test.ts`, `whitelist.test.ts`, `service.test.ts`, `signaling/lan-server.test.ts`. Comprobación puntual (no incluida): vinculación + reconexión reales con `node-datachannel` en bucle local, código idéntico en ambos lados.
 - **Sin probar**: conexión con un celular real (iOS/Android), Wi-Fi con aislamiento de clientes, la PWA en sí, y el comportamiento de `node-datachannel` dentro del `.app` ya instalado y notarizado.
 
-
 ## F8-B49 — PWA del control remoto (rama `feat/remoto-pwa`, tanda T-B)
 
 La página que abre el celular al escanear el QR de F8-B48. TypeScript vanilla en `pwa/` (sin frameworks), compilada con Vite a `pwa/dist` (`npm run build:pwa`, encadenado en `build`): un JS + un CSS, ≈ 17,7 KB gzip en total. Se sirve por HTTP en la IP local, así que no usa `crypto.subtle`, service worker, instalación ni push; tampoco lleva `manifest` en el prototipo.
@@ -661,7 +658,6 @@ La página que abre el celular al escanear el QR de F8-B48. TypeScript vanilla e
 - **Herramientas**: `typecheck:pwa` (dentro de `typecheck`), `lint` y `format:check` cubren `pwa/`; `eslint` ignora `pwa/dist`.
 - **Comprobado** con una prueba desechable (no incluida): Chromium (`playwright-core`) contra el `RemoteService` + `LanSignalingServer` reales con `node-datachannel`, en loopback: vinculación con el mismo código en ambos lados, lista, chat, evento en vivo, detener, enviar, permiso, corte y reconexión sola, recarga con `resume`+`auth`, revocación, QR usado y «no se encuentra el equipo»; sin errores de consola ni de CSP.
 - **Sin probar**: celular real, iOS Safari (candidatos ICE mDNS `.local` en vez de IP), Wi-Fi con aislamiento de clientes real, rendimiento con conversaciones largas.
-
 
 ## F8-B50 — Estética de la PWA del control remoto (rama `feat/remoto-pwa`)
 
@@ -683,7 +679,6 @@ Cimientos del puente del celular en `main`; sin cambio visible para las ventanas
 - **Pruebas**: `invoke-as.test.ts`, `event-bus.test.ts`, `sender.test.ts`.
 - **Sin probar**: nada con el celular real (llega con T3–T5).
 
-
 ## F8-B52 — Política «celular» y cola de confirmación (rama `feat/remoto-politica`, tanda T3)
 
 Primera pieza de seguridad del control remoto con paridad; todavía no está conectada al puente (la usarán T2/T4/T6). Sin cambios visibles.
@@ -695,7 +690,6 @@ Primera pieza de seguridad del control remoto con paridad; todavía no está con
 - **Docs**: `docs/SEGURIDAD.md` §3 unvicies con la tabla final y los casos límite (decisiones estrictas anotadas).
 - **Sin verificar**: nada de esto se ha probado con un celular ni con el despachador real; la política no resuelve enlaces simbólicos (lo hará el despachador).
 
-
 ## F8-B53 — Protocolo v2 del control remoto: multiplexor con chunks, crédito y prioridad (rama `feat/remoto-protocolo-v2`)
 
 Base de la paridad del celular (opción B). Solo transporte: no expone nada del motor todavía (el despacho a IPC/HTTP lo inyectan otras tandas).
@@ -705,7 +699,6 @@ Base de la paridad del celular (opción B). Solo transporte: no expone nada del 
 - **Integración**: `peer-session.ts` (toda la salida pasa por el `Outbox`; cubos propios `allowCall`/`allowFlood` en `rate-limit.ts`; `deps.dispatch`/`events`/`urgent`), `rtc.ts` del Mac (`bufferedAmount`, `setBufferedAmountLowThreshold`, `onBufferedAmountLow` de node-datachannel), `pwa/src/rtc.ts` (`bufferedAmountLowThreshold`, `onbufferedamountlow`) y `pwa/src/client.ts` (`muxCall`/`muxHttp`/`muxSubscribe`, ids compartidos con el protocolo anterior).
 - **Pruebas** (`mux.test.ts`, `peer-session.test.ts`, `lan-server.test.ts`, 48 nuevas): trozos, crédito (ventana de 256 KiB y violación por crédito inventado), cancelación, límites (32/6/16 MiB/8 MiB), tramas inválidas/huérfanas/repetidas/fuera de orden, reanudación por `seq` (otro `Mux`, mismo búfer; antigüedad, tamaño, futuro y evento enorme dan `reset`), prioridad (un evento adelanta a una descarga de ~8 MB en 16 ms simulados con reloj falso a ~10 MB/s), 10 MB de subida más 2 x 5 MB de bajada y un eco de 7,9 MB sin pasar de 64 KiB por trama.
 - **Sin probar**: WebRTC real (Chromium/iPhone/Android) con volumen grande; los ritmos reales del `bufferedAmount` de libdatachannel y de Safari.
-
 
 ## F8-B55 — Confirmación en el Mac, PIN, bloqueo y auditoría del control remoto (rama `feat/remoto-confirmacion-mac`, tanda T6)
 
@@ -747,7 +740,6 @@ El celular carga la interfaz de escritorio (`src/renderer/src`) y la usa a trav�
 - **Verificación del manifiesto de actualización**: ya se verificaban firma Ed25519, forma, versión/anti-downgrade, appId/keyId/tag, tamaño y SHA-256, entradas del ZIP, symlinks, `codesign` y rollback del reemplazo (cliente, `publish-update`/`verify-update` y sus pruebas). Faltaba una comprobación automática sin `.app` ni `ditto`: nuevo `npm run verify:update-manifest` (`scripts/verify-update-manifest.mjs`, 19 casos con clave efímera; `verify-update.mjs` exporta `verifyManifestAndZip`) y `src/main/update/manifest-script.test.ts` (paridad con el cliente real). Documentado en `docs/DISTRIBUCION.md` y `docs/VERIFICACION.md`.
 - **Guía y diseño**: `AGENTS.md` (+ `CLAUDE.md` que remite) con las invariantes del proyecto; `docs/REMOTO-FASE2.md` (passkeys, Worker de señalización, TURN, push, PWA instalable; solo diseño).
 - **Sin verificar**: nada con un celular real ni con Jamf/Intune; la PWA todavía no pinta el aviso `expiring` ni el `expired` (la rama de la PWA completa lo recogerá).
-
 
 ## F8-B58 — Interfaz de celular: `MobileShell`, `Sheet` y navegación en pila (rama `feat/remoto-movil-shell`, tanda T7)
 
@@ -792,6 +784,7 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - **Sin verificar**: nada en iPhone/Android reales (gesto atrás del sistema, teclado virtual, zona segura real); en Chromium el «atrás» se probó con `history.back()`.
 
 ## F8-B62 - Hojas, diálogos y avisos del celular (HOJAS)
+
 - `Sheet.tsx`: salida animada 220 ms (`animate-sheet-down` + velo `animate-fade-out`), entrada 320 ms con `--ease-sheet` (`animate-m-sheet-up`), temporizador de cierre seguro de 300 ms que se cancela si se reabre, velo con `--m-backdrop` que baja al arrastrar, vuelta animada al soltar, asa 36x5, radio `--m-radius-sheet`, título centrado.
 - `PopoverPanel` y `ModelPicker` (celular) pasan `open` a la hoja para animar la salida; el escritorio no cambia. Selector de modelo: filas y cabeceras con atributos `data-model-*` (CSS móvil).
 - `ConfirmDialog`: atributos `data-confirm-*` solo en el celular; CSS en `features/code/impl/mobile.css` (scrim `--m-backdrop` también en oscuro, botones apilados de 50 px). `RemoteConfirmHost`: detalle con tope y scroll, botones siempre visibles.
@@ -799,6 +792,7 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - Nota: `--animate-sheet-up` global no se cambia (lo vigila `desktop-unchanged.test.tsx`); la hoja usa `--animate-m-sheet-up`.
 
 ## F8-B63 — Capa ligera de la PWA (arranque, vinculación, PIN, carga)
+
 - `pwa/src/ui.ts`, `style.css`: columna de estado común (88 px, pilas `.stack`), pasos numerados de vinculación, código en 6 casillas, teclado de PIN propio (teclas de 72/64 px, envío automático, dos pasos al crear con `lock.set.again`, sacudida en error, cuenta atrás, el PIN solo vive en memoria; lógica pura en `src/shared/remote/pin-pad.ts`), pastilla de reconexión flotante (única: oculta con la interfaz completa montada; la de «esperando al Mac» queda bajo la cabecera), esqueleto del armazón al cargar, lista de respaldo agrupada por fecha con aviso y «Reintentar», toast con salida suave.
 - Rendimiento: P1-1 (`prefetchFullApp`: `modulepreload` durante WebRTC/PIN, `entry.json` v1/v2 con `preload` y `bootCss`, una sola lectura), P1-2 (`remote/main.tsx` no espera `settings:get` si hay `onyx.langPref`), P1-5 en `main.ts` (`hiddenAt`; pasa el tiempo oculto a `client.wake(away)`).
 - Pruebas: `pin-pad.test.ts`, `pwa-i18n.test.ts`, `remote/full.test.ts`.
@@ -810,3 +804,13 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - «Más», «Este celular» y Ajustes como listas agrupadas (`ListGroup`/`ListRow`), pie «Se aplica también en tu Mac» en tema e idioma.
 - Lista de conversaciones: búsqueda visible, filas de 56 px, cabeceras fijas, estado vacío con «Nuevo», `SwipeRow` (nunca borra con el gesto: pide confirmación) y pulsación larga; mismo gesto en las sesiones de Code; menú de Tareas anclado abajo (no se sale a 360 px); esqueleto en lugar de `null` en las pantallas `lazy/`.
 - Pruebas nuevas: `shell-logic`, `MobileShell.chrome`, `MoreScreens.render`, `SwipeRow`, `MobileSessionList.render`. El escritorio no cambia.
+
+## F8-B64 — Conversación móvil (Chat y Code en la PWA)
+
+- Scroll con intención táctil (`use-stick-to-bottom.ts`: `touchstart` suelta el pegado, `touchend`/`scrollend` reasientan, salto previo en distancias largas con `jumpTarget`); «Ir al final» de 40 px con punto de contenido nuevo.
+- El Chat ya no abre el teclado al entrar; compositor en píldora de 24 px, botones de 36 px, altura máxima 38 % de lo visible (`mobileComposerMax`), pie de modelo en segunda fila sin foco; saludo vacío con sugerencias en fila. Code: píldora de 24 px y botones de 36 px.
+- `app/mobile/conversation.css` (todo bajo `[data-surface='mobile']`): respuesta 16/1.6, metadatos 14, código 13 con scroll horizontal, tablas, burbuja del usuario; ganchos `m('user-bubble'|'meta'|'pending-card')`. Columna con gutter de 16 px.
+- Herramientas: Chat reutiliza `ToolRow` (sin JSON crudo); filas de 44 px, sin sangría al expandir, salidas a `40dvh`.
+- Mantener pulsado (`use-long-press.ts`, `MessageActionsSheet`) con Copiar / Seleccionar texto / Editar / Reintentar / Bifurcar / Revertir; acciones visibles solo bajo la última respuesta.
+- Tarjeta de permiso: Rechazar a la izquierda y Permitir a la derecha; `PendingBar` «Aprobación pendiente»; indicador único de «pensando» (`ThinkingIndicator` movido a `components/conversation`); visor de imágenes; botones táctiles en `ErrorNotice`; `DeferredMarkdown` (`useDeferredValue` en streaming); las filas del historial ya no animan al cargarse.
+- Escritorio sin cambios (snapshots intactos). Pruebas: `use-stick-to-bottom`, `viewport`, `use-long-press`, `conversation`, `ChatComposer.mobile`, `ChatMessageList.mobile`, `MessageStream.mobile`, `MobileCode.render` (ampliada). Pendiente: P1 `legacyCopy` (P2-B) y P2-C (medir en iPhone real).
