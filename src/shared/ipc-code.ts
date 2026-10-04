@@ -277,6 +277,8 @@ export interface CompareColumnManifest {
   worktree: { path: string; branch: string } | null
   state: CompareColumnState
   adopted: boolean
+  /** La copia (worktree) y la sesión ya se borraron con `compare:discard`. */
+  discarded: boolean
   /** Epoch ms del envío del prompt (el último, si hubo reintento). */
   startedAt: number | null
   finishedAt: number | null
