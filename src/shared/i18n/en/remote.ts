@@ -135,5 +135,16 @@ export const remote = {
   'remote.link.bad-request': 'The request is not valid.',
   'remote.link.not-found': 'What you asked for was not found.',
   'remote.link.unsupported': 'This is not available from the phone.',
+  'remote.devices.approve': 'Approve commands from this phone',
+  'remote.devices.approveHintOff':
+    'Off: every command or edit the agent asks for is confirmed on this Mac. Turning it on opens a prompt here for you to allow it.',
+  'remote.devices.approveHintOn':
+    'This phone can approve the agent\'s commands and edits while you are away, without asking here, except those that look sensitive (up to 20 per hour). The filter is a heuristic, not a guarantee: "Cut everything" turns it off.',
+  'remote.devices.approveBadge': 'Approves commands',
+  'remote.devices.approveWaiting': 'Confirm in the prompt on the Mac…',
+  'remote.devices.approveNotice': 'With "Approve commands" on, {name} acts without asking you here. Turn it off if you lend or lose it.',
+  'remote.activity.kind.approve-command': 'Approved an agent command or edit',
+  'remote.activity.kind.approve-enabled': 'You allowed approving commands from this phone',
+  'remote.activity.kind.approve-disabled': 'Approving commands from this phone was turned off',
   'remote.link.failed': 'Something went wrong talking to your Mac.'
 } as const satisfies Messages<typeof es>

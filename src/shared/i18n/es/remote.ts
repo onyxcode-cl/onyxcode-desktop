@@ -132,5 +132,17 @@ export const remote = {
   'remote.link.bad-request': 'La petición no es válida.',
   'remote.link.not-found': 'No se encontró lo que pedías.',
   'remote.link.unsupported': 'Esto no está disponible desde el celular.',
+  'remote.devices.approve': 'Aprobar comandos desde este celular',
+  'remote.devices.approveHintOff':
+    'Apagado: cada comando o edición que pida el agente se confirma en este Mac. Encenderlo abre un aviso aquí para que lo permitas tú.',
+  'remote.devices.approveHintOn':
+    'Este celular puede aprobar comandos y ediciones del agente mientras estés fuera, sin preguntar aquí, salvo los que parezcan delicados (hasta 20 por hora). El filtro es una heurística, no una garantía: «Cortar todo» lo apaga.',
+  'remote.devices.approveBadge': 'Aprueba comandos',
+  'remote.devices.approveWaiting': 'Confirma en el aviso del Mac…',
+  'remote.devices.approveNotice':
+    'Con «Aprobar comandos» encendido, {name} actúa sin preguntarte aquí. Apágalo si lo prestas o lo pierdes.',
+  'remote.activity.kind.approve-command': 'Aprobó un comando o edición del agente',
+  'remote.activity.kind.approve-enabled': 'Permitiste aprobar comandos desde este celular',
+  'remote.activity.kind.approve-disabled': 'Se apagó la aprobación de comandos desde este celular',
   'remote.link.failed': 'Algo falló al hablar con tu Mac.'
 } as const

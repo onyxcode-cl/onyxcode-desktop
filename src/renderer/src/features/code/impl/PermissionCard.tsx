@@ -129,12 +129,16 @@ export function PermissionCard({
         </div>
       </div>
       {command && (
-        <pre className="mx-3.5 mb-2.5 max-h-48 overflow-auto rounded-lg bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg">
+        <pre
+          tabIndex={mobile ? 0 : undefined}
+          className="mx-3.5 mb-2.5 max-h-48 overflow-auto rounded-lg bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg"
+        >
           <span className="text-accent select-none">$ </span>
           {command}
         </pre>
       )}
-      {!command && !diff && patterns.length > 0 && (
+      {/* Celular: lo que se aprueba es lo que dicen los patrones del permiso; se enseñan también junto al comando (si difieren de él). */}
+      {(!command || mobile) && !diff && patterns.length > 0 && (
         <pre className="mx-3.5 mb-2.5 max-h-40 overflow-auto rounded-lg bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all">
           {patterns.map((p) => relPath(p, root)).join('\n')}
         </pre>

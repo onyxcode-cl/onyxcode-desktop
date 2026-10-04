@@ -3,7 +3,7 @@
  * «Activar» abre el servidor local y muestra un QR de un solo uso (caduca a los 120 s). La vinculación se
  * confirma en un diálogo aparte (`RemotePairHost`) con un código de 6 dígitos.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Loader2, Smartphone, Trash2 } from 'lucide-react'
 import { getLang, type MsgKey } from '@shared/i18n'
 import { LIMITS } from '@shared/remote/protocol'
@@ -79,7 +79,10 @@ const AUDIT_KEYS: Record<string, MsgKey> = {
   locked: 'remote.activity.kind.locked',
   'policy-denied': 'remote.activity.kind.policy-denied',
   stopped: 'remote.activity.kind.stopped',
-  'action-run': 'remote.activity.kind.action-run'
+  'action-run': 'remote.activity.kind.action-run',
+  'approve-command': 'remote.activity.kind.approve-command',
+  'approve-enabled': 'remote.activity.kind.approve-enabled',
+  'approve-disabled': 'remote.activity.kind.approve-disabled'
 }
 
 /** Ajustes › Celular › Actividad: lista simple de la auditoría (sin secretos), con filtro por dispositivo. */
@@ -149,6 +152,8 @@ export function RemoteSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [copied, setCopied] = useState(false)
+  // Dispositivo cuyo ajuste «Aprobar comandos» espera la respuesta del aviso del Mac.
+  const [pendingApprove, setPendingApprove] = useState<string | null>(null)
 
   useEffect(() => {
     if (!api) return
@@ -179,13 +184,16 @@ export function RemoteSection(): React.JSX.Element {
     )
   }
 
-  const run = (fn: () => Promise<RemoteState>): void => {
+  const run = (fn: () => Promise<RemoteState>, done?: () => void): void => {
     setError(null)
     setBusy(true)
     fn()
       .then(setState)
       .catch((err: unknown) => setError(errText(err)))
-      .finally(() => setBusy(false))
+      .finally(() => {
+        setBusy(false)
+        done?.()
+      })
   }
 
   const unavailableText = (reason: NonNullable<RemoteState['unavailable']>): string =>
@@ -367,76 +375,117 @@ export function RemoteSection(): React.JSX.Element {
               <div className="px-4 py-3 text-sm text-muted">{t('remote.devices.empty')}</div>
             ) : (
               state.devices.map((d) => (
-                <Row
-                  key={d.id}
-                  label={d.name}
-                  description={
-                    <>
-                      {d.connected
-                        ? t('remote.devices.connected')
-                        : d.lastUsedAt
-                          ? t('remote.devices.lastSeen', { when: new Date(d.lastUsedAt).toLocaleString(locale()) })
-                          : t('remote.devices.never')}
-                      <span className="block">
-                        {d.expiresAt === null
-                          ? t('remote.devices.neverExpires')
-                          : d.expired
-                            ? t('remote.devices.expiredAt', { when: new Date(d.expiresAt).toLocaleDateString(locale()) })
-                            : t('remote.devices.expiresAt', { when: new Date(d.expiresAt).toLocaleDateString(locale()) })}
-                      </span>
-                      <span className="block">
-                        {d.hasPin ? t('remote.devices.pinSet') : t('remote.devices.pinPending')} · {d.fingerprint}
-                        {d.trustUntil
-                          ? ` · ${t('remote.devices.rememberUntil', { time: new Date(d.trustUntil).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) })}`
-                          : ''}
-                      </span>
-                    </>
-                  }
-                >
-                  <span className="flex items-center gap-2">
-                    {d.expired && <Badge tone="muted">{t('remote.devices.expiredBadge')}</Badge>}
-                    <Select
-                      aria-label={t('remote.devices.ttl')}
-                      title={t('remote.devices.ttlHint')}
-                      value={String(d.ttlDays ?? 'never')}
-                      disabled={busy}
-                      onChange={(e) => {
-                        const days: DeviceTtlDays = e.target.value === 'never' ? null : (Number(e.target.value) as DeviceTtlDays)
-                        run(() => api.invoke('remote:setDeviceTtl', { deviceId: d.id, days }))
-                      }}
-                    >
-                      {([30, 90, 365, null] as const)
-                        // Con tope de la organización solo se ofrecen plazos dentro del tope.
-                        .filter((v) => state.policy?.deviceTtlDays == null || (v !== null && v <= state.policy.deviceTtlDays))
-                        .map((v) => (
-                          <option key={String(v)} value={String(v ?? 'never')}>
-                            {t(TTL_KEYS[String(v ?? 'never')] as MsgKey)}
-                          </option>
-                        ))}
-                    </Select>
-                    {d.access && <Badge tone={d.access === 'open' ? 'ok' : 'accent'}>{t(ACCESS_KEYS[d.access])}</Badge>}
-                    {/* «Recordar 12 h» solo tiene sentido si cada conexión se confirma en el Mac. */}
-                    {(state.confirmEachConnection || d.trustUntil !== null) && (
-                      <Toggle
-                        checked={d.trustUntil !== null}
-                        label={t('remote.devices.remember')}
+                <Fragment key={d.id}>
+                  <Row
+                    label={d.name}
+                    description={
+                      <>
+                        {d.connected
+                          ? t('remote.devices.connected')
+                          : d.lastUsedAt
+                            ? t('remote.devices.lastSeen', { when: new Date(d.lastUsedAt).toLocaleString(locale()) })
+                            : t('remote.devices.never')}
+                        <span className="block">
+                          {d.expiresAt === null
+                            ? t('remote.devices.neverExpires')
+                            : d.expired
+                              ? t('remote.devices.expiredAt', { when: new Date(d.expiresAt).toLocaleDateString(locale()) })
+                              : t('remote.devices.expiresAt', { when: new Date(d.expiresAt).toLocaleDateString(locale()) })}
+                        </span>
+                        <span className="block">
+                          {d.hasPin ? t('remote.devices.pinSet') : t('remote.devices.pinPending')} · {d.fingerprint}
+                          {d.trustUntil
+                            ? ` · ${t('remote.devices.rememberUntil', { time: new Date(d.trustUntil).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) })}`
+                            : ''}
+                        </span>
+                      </>
+                    }
+                  >
+                    <span className="flex items-center gap-2">
+                      {d.expired && <Badge tone="muted">{t('remote.devices.expiredBadge')}</Badge>}
+                      <Select
+                        aria-label={t('remote.devices.ttl')}
+                        title={t('remote.devices.ttlHint')}
+                        value={String(d.ttlDays ?? 'never')}
                         disabled={busy}
-                        onChange={(v) => run(() => api.invoke('remote:setRemember', { deviceId: d.id, remember: v }))}
-                      />
-                    )}
-                    {d.hasPin && (
-                      <Button variant="ghost" size="sm" disabled={busy} onClick={() => void resetPin(d.id, d.name)}>
-                        {t('remote.devices.pinReset')}
+                        onChange={(e) => {
+                          const days: DeviceTtlDays = e.target.value === 'never' ? null : (Number(e.target.value) as DeviceTtlDays)
+                          run(() => api.invoke('remote:setDeviceTtl', { deviceId: d.id, days }))
+                        }}
+                      >
+                        {([30, 90, 365, null] as const)
+                          // Con tope de la organización solo se ofrecen plazos dentro del tope.
+                          .filter((v) => state.policy?.deviceTtlDays == null || (v !== null && v <= state.policy.deviceTtlDays))
+                          .map((v) => (
+                            <option key={String(v)} value={String(v ?? 'never')}>
+                              {t(TTL_KEYS[String(v ?? 'never')] as MsgKey)}
+                            </option>
+                          ))}
+                      </Select>
+                      {d.access && <Badge tone={d.access === 'open' ? 'ok' : 'accent'}>{t(ACCESS_KEYS[d.access])}</Badge>}
+                      {/* «Recordar 12 h» solo tiene sentido si cada conexión se confirma en el Mac. */}
+                      {(state.confirmEachConnection || d.trustUntil !== null) && (
+                        <Toggle
+                          checked={d.trustUntil !== null}
+                          label={t('remote.devices.remember')}
+                          disabled={busy}
+                          onChange={(v) => run(() => api.invoke('remote:setRemember', { deviceId: d.id, remember: v }))}
+                        />
+                      )}
+                      {d.hasPin && (
+                        <Button variant="ghost" size="sm" disabled={busy} onClick={() => void resetPin(d.id, d.name)}>
+                          {t('remote.devices.pinReset')}
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revoke(d.id, d.name)}>
+                        <Trash2 size={13} /> {t('remote.devices.revoke')}
                       </Button>
-                    )}
-                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revoke(d.id, d.name)}>
-                      <Trash2 size={13} /> {t('remote.devices.revoke')}
-                    </Button>
-                  </span>
-                </Row>
+                    </span>
+                  </Row>
+                  <Row
+                    label={
+                      <span className="flex items-center gap-2">
+                        {t('remote.devices.approve')}
+                        {d.canApproveCommands && <Badge tone="warn">{t('remote.devices.approveBadge')}</Badge>}
+                      </span>
+                    }
+                    description={
+                      <span role="status" aria-live="polite">
+                        {pendingApprove === d.id
+                          ? t('remote.devices.approveWaiting')
+                          : d.canApproveCommands
+                            ? t('remote.devices.approveHintOn')
+                            : t('remote.devices.approveHintOff')}
+                      </span>
+                    }
+                  >
+                    <Toggle
+                      checked={d.canApproveCommands}
+                      label={`${t('remote.devices.approve')} · ${d.name}`}
+                      disabled={busy}
+                      onChange={(v) => {
+                        setPendingApprove(v ? d.id : null)
+                        run(
+                          () => api.invoke('remote:setApproveCommands', { deviceId: d.id, on: v }),
+                          () => setPendingApprove(null)
+                        )
+                      }}
+                    />
+                  </Row>
+                </Fragment>
               ))
             )}
           </Card>
+          {state.devices.some((d) => d.canApproveCommands) && (
+            <p role="note" className="mt-2 text-xs text-warning">
+              {t('remote.devices.approveNotice', {
+                name: state.devices
+                  .filter((d) => d.canApproveCommands)
+                  .map((d) => d.name)
+                  .join(', ')
+              })}
+            </p>
+          )}
           {state.devices.length > 1 && (
             <div className="mt-2 flex justify-end">
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revokeAll()}>
