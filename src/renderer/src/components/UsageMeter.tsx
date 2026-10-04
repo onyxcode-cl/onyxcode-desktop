@@ -29,7 +29,7 @@ const MAX_PAGES = 10
 const CACHE_MS = 60_000
 let cache: { at: number; value: GlobalUsage } | null = null
 
-async function loadGlobalUsage(client: OpencodeClient): Promise<GlobalUsage> {
+export async function loadGlobalUsage(client: OpencodeClient): Promise<GlobalUsage> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.value
   const now = new Date()
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
