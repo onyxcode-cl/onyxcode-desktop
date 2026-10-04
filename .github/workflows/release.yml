@@ -1,0 +1,137 @@
+# Publicación: SOLO crea un BORRADOR de release. Nunca publica por sí solo.
+#
+# - Se dispara con un tag `vX.Y.Z` (o `vX.Y.Z-beta.N`), o a mano (workflow_dispatch) eligiendo ese tag en «Use workflow from».
+# - El job usa el entorno protegido `release`: GitHub espera la aprobación manual del dueño (Required reviewers) ANTES de
+#   dar acceso a los secretos. Los secretos se guardan en ese entorno, no a nivel de repositorio.
+# - La clave Ed25519 del actualizador NO está aquí: el CI deja `update.json` SIN firmar y el dueño lo firma en su Mac
+#   (`node scripts/sign-update.mjs`), sube `update.json.sig` al borrador y entonces pulsa «Publish release».
+# Guion completo y checklist: docs/RELEASE.md.
+name: Release (borrador)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Por defecto, solo lectura; el job que crea el borrador pide `contents: write` por su cuenta.
+permissions:
+  contents: read
+
+# Una sola publicación a la vez; no se cancela una en curso.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  draft-release:
+    name: macOS firmado y notarizado, borrador de release
+    if: github.ref_type == 'tag'
+    runs-on: macos-15
+    environment: release # aprobación manual obligatoria
+    timeout-minutes: 90
+    permissions:
+      contents: write # solo para crear el borrador de la release
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: El tag coincide con la versión de package.json
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "::error::El tag $TAG no coincide con package.json (v$VERSION). El manifiesto del actualizador exige que coincidan."
+            exit 1
+          fi
+
+      # Puerta de publicación: falla mientras el alias, RELEASES_REPO, la clave pública o la licencia sigan sin definir.
+      - run: npm run verify:release
+
+      # Mismas comprobaciones que ci.yml (sin E2E: el E2E se corre en local antes de etiquetar).
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run test:release-scripts
+
+      - name: Importar el certificado Developer ID en un llavero temporal
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/onyxcode-build.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          printf '%s' "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MAC_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -n 1)"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::El .p12 no contiene un certificado «Developer ID Application»."
+            exit 1
+          fi
+          echo "CSC_NAME=$IDENTITY" >> "$GITHUB_ENV"
+          echo "CSC_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+
+      - name: Escribir la clave API de notarización (.p8) fuera del repositorio
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
+      # electron-builder firma; build/notarize.js vuelve a firmar los helpers con su identificador y notariza el .app;
+      # build/notarize-dmg.js notariza y graba el .dmg (docs/DISTRIBUCION.md).
+      - name: Empaquetar, firmar y notarizar
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run package
+
+      - name: Verificar el paquete firmado
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          npm run verify:bundled
+          npm run verify:signed -- --expect devid --team "$APPLE_TEAM_ID"
+
+      # Paso 1 de 2: ZIP + update.json SIN firmar y sin ninguna clave. La firma Ed25519 la pone el dueño en su Mac.
+      - name: Preparar el ZIP y el manifiesto sin firmar
+        run: node scripts/publish-update.mjs --manifest-only
+
+      - name: Crear el BORRADOR de la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node scripts/release-notes.mjs "$TAG" --out "$RUNNER_TEMP/notas.md"
+          FLAGS=""
+          case "$TAG" in *-*) FLAGS="--prerelease" ;; esac
+          # shellcheck disable=SC2086
+          gh release create "$TAG" dist/*.dmg dist/update/*.zip dist/update/update.json \
+            --draft --verify-tag $FLAGS \
+            --title "OnyxCode ${TAG#v}" \
+            --notes-file "$RUNNER_TEMP/notas.md"
+
+      # Se ejecuta siempre (también si algo falló): no deja el llavero ni la clave .p8 en el runner.
+      - name: Limpiar llavero y clave de notarización
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/cert.p12"
+          if [ -n "${CSC_KEYCHAIN:-}" ]; then security delete-keychain "$CSC_KEYCHAIN" || true; fi
