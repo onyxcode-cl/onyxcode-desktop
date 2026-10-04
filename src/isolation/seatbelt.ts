@@ -16,7 +16,7 @@ export function assertSandbox(): void {
 }
 
 const BASE_READ = [
-  "/usr", "/bin", "/sbin", "/System", "/Library/Frameworks", "/Library/Preferences/Logging", "/private/etc",
+  "/usr", "/bin", "/sbin", "/System", "/Library/Frameworks", "/Library/Preferences/Logging", "/private/var/db/timezone", "/private/etc",
   "/private/var/select", "/dev", "/opt/homebrew", "/Applications/Xcode.app", "/Library/Developer",
 ];
 
