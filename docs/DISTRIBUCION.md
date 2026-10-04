@@ -10,8 +10,9 @@ macOS lo mata al abrir. Un build ad-hoc sirve para probar en esta máquina, pero
 
 Para repartir OnyxCode a otra persona (o subirlo a algún sitio) hace falta firmarlo con un
 **Developer ID Application** de Apple y notarizarlo. La config ya está lista
-(`electron-builder.js`, `build/entitlements.mac.plist`, `build/notarize.js`): solo falta que
-alguien con una cuenta de Apple Developer aporte el certificado y las credenciales.
+(`electron-builder.js`, `build/entitlements.mac.plist`, `build/notarize.js`, `build/notarize-dmg.js`): solo falta que
+alguien con una cuenta de Apple Developer aporte el certificado y las credenciales. El guion completo de una publicación
+(CI, firma del manifiesto, rollback, claves) está en `docs/RELEASE.md`.
 
 ## 1. Conseguir un certificado Developer ID Application
 
@@ -41,10 +42,23 @@ En Llavero: clic derecho sobre el certificado **Developer ID Application** → *
   vez de `CSC_NAME` cuando el certificado no está en el Llavero local (p. ej. en CI).
 - `CSC_KEY_PASSWORD`: la contraseña puesta al exportar.
 
-## 2. Crear una contraseña específica de app (para notarizar)
+## 2. Credenciales de notarización: clave API (recomendada) o contraseña de app
 
-La notarización usa `notarytool`, que necesita autenticarse contra Apple con el Apple ID **dueño**
-del Developer ID (no la contraseña normal de la cuenta):
+La notarización usa `notarytool`. Hay dos formas de autenticarse; `build/notarize.js` y `build/notarize-dmg.js` usan la
+**clave API** si están sus tres variables y, si no, el Apple ID. Con variables a medias el empaquetado **falla** diciendo cuáles faltan.
+
+### 2.1 Clave API de App Store Connect (recomendada)
+
+Se revoca sola desde App Store Connect y no toca tu Apple ID ni su contraseña:
+
+1. Entrar en <https://appstoreconnect.apple.com/access/integrations/api> → pestaña **Team Keys** → **+**.
+2. Nombre (p. ej. `onyxcode-notary`) y rol **App Manager** → **Generar**.
+3. Descargar el `.p8` (**solo se puede descargar una vez**) y anotar el **Key ID** y el **Issuer ID**.
+4. Guardar el `.p8` en el gestor de contraseñas. **Nunca** en el repositorio.
+
+### 2.2 Contraseña específica de app (alternativa)
+
+Autentica con el Apple ID **dueño** del Developer ID (no la contraseña normal de la cuenta):
 
 1. Entrar a <https://appleid.apple.com/account/manage> con ese Apple ID.
 2. **Inicio de sesión y seguridad** → **Contraseñas específicas de apps** → **Generar contraseña…**
@@ -61,15 +75,23 @@ export CSC_NAME="Developer ID Application: Nombre Apellido (EQUIPOID)"
 # export CSC_LINK=/ruta/al/certificado.p12
 # export CSC_KEY_PASSWORD="contraseña del .p12"
 
-export APPLE_ID="tu-apple-id@ejemplo.com"
-export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
-export APPLE_TEAM_ID="EQUIPOID"
+# Notarización, forma A (recomendada): clave API de App Store Connect. APPLE_API_KEY es la RUTA del .p8.
+export APPLE_API_KEY="$HOME/.onyxcode-keys/AuthKey_XXXXXXXXXX.p8"   # fuera del repositorio
+export APPLE_API_KEY_ID="XXXXXXXXXX"
+export APPLE_API_ISSUER="00000000-0000-0000-0000-000000000000"
+# Notarización, forma B: Apple ID (solo si no usas la clave API)
+# export APPLE_ID="tu-apple-id@ejemplo.com"
+# export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+# export APPLE_TEAM_ID="EQUIPOID"
 ```
 
+Los secretos van **solo** en variables de entorno (o en los secretos del entorno protegido de GitHub): nunca en archivos del repositorio.
+
 Sin `CSC_NAME`/`CSC_LINK`, `electron-builder.js` sigue el camino ad-hoc de siempre (nada cambia). Si
-solo se define `CSC_NAME`/`CSC_LINK` pero faltan las tres variables de `APPLE_*`, el build queda
+se define `CSC_NAME`/`CSC_LINK` pero no hay credenciales de notarización, el build queda
 **firmado pero sin notarizar** (`npm run package` avisa por consola) — Gatekeeper lo bloqueará igual
-al abrirlo en otro Mac, así que conviene definir las cinco variables juntas.
+al abrirlo en otro Mac. **Con `CSC_LINK` hace falta además `CSC_NAME`** (y, en CI con llavero temporal, `CSC_KEYCHAIN`): hace falta para volver a
+firmar los helpers con su identificador (§6).
 
 ## 4. Compilar
 
@@ -81,13 +103,24 @@ npm run package
 Con las variables puestas, verás en la salida:
 
 - `signing file=dist/mac-arm64/OnyxCode.app … identityName=Developer ID Application: …`
-- `[notarize] enviando dist/mac-arm64/OnyxCode.app a Apple (equipo EQUIPOID)…` seguido de
+- `[notarize] volviendo a firmar cu-helper y onyxcode-disclaim …` (con su identificador, hardened runtime, timestamp y entitlements).
+- `[notarize] enviando dist/mac-arm64/OnyxCode.app a Apple (clave API)…` seguido de
   `[notarize] notarización completa.` (puede tardar varios minutos: Apple procesa el binario en su
   nube antes de responder).
+- `[notarize-dmg] enviando …dmg a Apple…` y `…notarizado y grapado.` (`build/notarize-dmg.js`, hook `afterAllArtifactBuild`:
+  `notarytool submit --wait`, `stapler staple` y `stapler validate` del `.dmg`).
 
 El `.dmg` queda en `dist/onyxcode-<version>-arm64.dmg`.
 
 ## 5. Verificar la firma y la notarización
+
+Un solo comando comprueba todo lo de abajo (y los identificadores de los helpers) sobre lo ya empaquetado, sin red ni empaquetar nada:
+
+```bash
+npm run verify:signed -- --expect devid --team EQUIPOID        # --expect adhoc | self | devid; --dry-run lista los comandos sin ejecutarlos
+```
+
+A mano, equivale a:
 
 ```bash
 # Firma válida (Developer ID, no ad-hoc) y hardened runtime activo:
@@ -101,18 +134,18 @@ xcrun stapler validate dist/mac-arm64/OnyxCode.app
 xcrun stapler validate dist/onyxcode-<version>-arm64.dmg
 ```
 
-Si `spctl` dice `rejected` o `stapler validate` falla, revisar que las cinco variables estén bien
-puestas y volver a correr `npm run package` (el afterSign solo notariza si las tres `APPLE_*` están
-presentes; si faltan, el log lo dice explícitamente en vez de fallar en silencio).
+Si `spctl` dice `rejected` o `stapler validate` falla, revisar que las variables de notarización estén completas
+y volver a correr `npm run package` (sin credenciales, el log dice explícitamente que se omite la notarización; con credenciales
+a medias, el empaquetado falla nombrando las que faltan).
 
 ## 6. Qué cambia respecto al build ad-hoc
 
-| | Sin `CSC_NAME`/`CSC_LINK` (default) | Con Developer ID + `APPLE_*` |
+| | Sin `CSC_NAME`/`CSC_LINK` (default) | Con Developer ID + credenciales de notarización |
 |---|---|---|
-| Firma | Ad-hoc (`identity: '-'`) | Developer ID Application (via `CSC_NAME`/`CSC_LINK`, electron-builder los detecta solo) |
+| Firma | Ad-hoc (`identity: '-'`) | Developer ID Application (via `CSC_NAME`; `CSC_LINK` solo junto con `CSC_NAME`) |
 | Hardened runtime | Off | On, con `build/entitlements.mac.plist` |
-| `cu-helper` / `onyxcode-disclaim` | Firmados igual (deep-sign automático) | Firmados explícitamente (`mac.binaries`) |
-| Notarización | Omitida (log lo indica) | `build/notarize.js` vía `@electron/notarize` |
+| `cu-helper` / `onyxcode-disclaim` | Firmados igual (deep-sign automático) | Firmados explícitamente (`mac.binaries`) y **vueltos a firmar con su identificador** (`HELPER_ID`/`DISCLAIM_ID`) y hardened runtime en `build/notarize.js`, antes de notarizar (electron-builder los deja con `cu-helper-<hash>` y macOS recordaría mal los permisos de Control del Mac) |
+| Notarización | Omitida (log lo indica) | `.app`: `build/notarize.js` vía `@electron/notarize` (clave API o Apple ID). `.dmg`: `build/notarize-dmg.js` (`notarytool` + `stapler`) |
 | Gatekeeper en otro Mac | Rechaza | Acepta |
 | Permisos TCC entre builds | Se pierden en cada build | Se conservan (identidad estable) |
 
@@ -247,8 +280,9 @@ la clave privada** (gestor de contraseñas o disco cifrado aparte).
   aceptarán). Hay que publicar cuanto antes una versión con clave nueva (rotación, abajo) y avisar a los usuarios.
 - **Rotación.** La versión N lleva las dos claves, `[nueva, vieja]`, cada una con su `keyId`, y se firma con la
   **vieja** (así la aceptan las copias anteriores); desde la N+1 se firma con la **nueva**. (El cliente ya admite una
-  lista de claves; `brand.ts` tiene hoy una sola constante `UPDATE_PUBLIC_KEY` + `UPDATE_KEY_ID`: para rotar hay que
-  ampliarla a una lista.)
+  lista de claves: `verifyWithKeys`, y `resolveInstallConfig` acepta `updateKeys` extra además de la principal; lo que **falta** es
+  que `brand.ts` exponga esa lista (hoy una sola constante `UPDATE_PUBLIC_KEY` + `UPDATE_KEY_ID`) y cablearla en `src/main/ipc/update.ts`:
+  hazlo **antes de la primera release**, no cuando haga falta rotar.) Procedimiento completo y lista de pasos: `docs/RELEASE.md` § Claves.
 
 ### 10.2 Cada versión
 
@@ -257,7 +291,11 @@ la clave privada** (gestor de contraseñas o disco cifrado aparte).
    licencia o `UPDATE_PUBLIC_KEY` (vacía o que no decodifique a una clave Ed25519) sigan sin definir, o si
    `resources/updater/swap.sh` no va en `extraResources`. `npm run verify:bundled` comprueba además que el `.app`
    lleva `Contents/Resources/updater/swap.sh` y que el sello de la firma lo cubre.
-3. Generar y firmar la actualización (el ZIP lo hace `ditto`, **no** electron-builder: rompería los symlinks de
+3. Generar y firmar la actualización. **Con el CI** (lo habitual, `docs/RELEASE.md`) se hace en dos pasos para que la clave privada no
+   salga de tu Mac: el CI corre `node scripts/publish-update.mjs --manifest-only` (ZIP + `update.json` SIN firmar, sin ninguna clave) y tú
+   firmas en local con `ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/sign-update.mjs --dir <carpeta con update.json y el ZIP>`
+   (comprueba tamaño y SHA-256 del ZIP contra el manifiesto, appId/keyId contra `brand.ts` y que la clave corresponda a `UPDATE_PUBLIC_KEY`;
+   escribe `update.json.sig`). **Sin CI**, todo en uno (el ZIP lo hace `ditto`, **no** electron-builder: rompería los symlinks de
    `Electron Framework.framework`):
    ```bash
    ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/publish-update.mjs
@@ -384,5 +422,7 @@ disco lleno.
 
 - **Construir:** en un PC Windows con Node 22, `npm ci` y `npm run package:win` (descarga el OpenCode fijado para `win32-x64` con `scripts/fetch-opencode.mjs --if-missing`, compila y llama a `node node_modules/electron-builder/cli.js --win nsis --x64`; no se usa el binario `electron-builder` a secas porque en `cmd` se ejecutaría `electron-builder.js` con Windows Script Host). Salida: `dist\OnyxCode-Setup-<versión>-x64.exe` (≈ 152 MB) y `dist\win-unpacked`. No se puede construir el instalador de Windows desde la Mac sin Wine; el de macOS (`npm run package`) no cambia (cada plataforma lleva sus `extraResources`).
 - **Qué lleva:** instalador asistido, **por usuario** (sin administrador; `perMachine: false`), con carpeta elegible; `resources\opencode\opencode.exe` (1.18.33), node-pty desempaquetado (`conpty.node`, `conpty.dll`, `OpenConsole.exe`), icono `build/icon.ico` (16–256 px, generado con `node build/make-ico.mjs` desde `build/icon.png`) y los mismos fuses que en macOS. No lleva el actualizador, el helper de Control del PC ni el lanzador de macOS.
-- **Sin firma:** no hay certificado de firma de código de Windows. Consecuencias que no se pueden comprobar sin él: **SmartScreen** mostrará «Windows protegió su PC» al ejecutar el instalador descargado (el usuario pulsa «Más información › Ejecutar de todas formas») y Defender puede tardar en confiar en el ejecutable. Para quitarlo hace falta un certificado (OV/EV o firma en la nube) y `win.certificateSubjectName`/`CSC_LINK`; electron-builder firma entonces el `.exe` y el desinstalador.
+- **Sin firma:** no hay certificado de firma de código de Windows. Consecuencias que no se pueden comprobar sin él: **SmartScreen** mostrará «Windows protegió su PC» al ejecutar el instalador descargado (el usuario pulsa «Más información › Ejecutar de todas formas») y Defender puede tardar en confiar en el ejecutable. Para firmarlo hace falta un certificado y `win.certificateSubjectName`/`CSC_LINK`; electron-builder firma entonces el `.exe` y el desinstalador.
+- **Qué esperar de SmartScreen (2026):** desde marzo de 2024 un certificado **EV ya no da reputación inmediata**: EV y OV la ganan igual, con descargas limpias a lo largo del tiempo, así que **el primer instalador firmado seguirá mostrando el aviso**. Desde junio de 2023 la clave de cualquier certificado de firma de código debe vivir en un HSM o un token (USB o nube): ya no sirve un `.p12` suelto en CI.
+- **Opciones de firma desde Chile** (precios de referencia, comprobar antes de contratar): **Azure Artifact Signing** (antes Trusted Signing, ~10 USD/mes) **no está disponible** para personas en Chile (solo individuos de EE. UU. y Canadá y organizaciones de EE. UU., Canadá, UE y Reino Unido). **SignPath Foundation**: gratis para código abierto (exige licencia OSI sin doble licencia comercial, repositorio público ya con cierta reputación y política de firma publicada; el editor visible es «SignPath Foundation»; preguntarles por la cuenta obligatoria contra `api.onyxcode.cl`). **Certum Open Source** (nube, ~49 EUR, solo individuos, firma con código del móvil: difícil de automatizar, se firma en local). **OV comercial** (Sectigo, SSL.com…, unos 200–400 USD/año más token o nube). Ninguna quita el aviso el primer día.
 - **Verificar:** `scripts/win/pack-check.ps1 -Install` (ver `docs/VERIFICACION.md` › «Paquete de Windows»). **Actualizar:** en la v1 no hay actualizador automático en Windows; se instala la versión nueva encima.
