@@ -41,6 +41,7 @@ module.exports = {
     '!src/*',
     '!e2e/**',
     '!scripts/**',
+    '!tools/**',
     '!vitest*.config.ts',
     // Higiene del paquete (F7-B34): config de lint/formato, changelogs y documentación no van en el .asar.
     '!{eslint.config.mjs,.prettierrc,.prettierignore,CHANGELOG-FASE*.md}',
