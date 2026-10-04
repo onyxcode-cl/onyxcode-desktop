@@ -31,7 +31,8 @@ vi.mock('electron', () => ({ app: { getPath: () => rec.userData, getAppPath: () 
 vi.mock('node:os', async (orig) => ({ ...(await orig<typeof import('node:os')>()), homedir: () => '/Users/fixture' }))
 vi.mock('node:crypto', async (orig) => ({
   ...(await orig<typeof import('node:crypto')>()),
-  randomBytes: (n: number) => Buffer.alloc(n, ++rec.rnd)
+  // Determinista por TAMAÑO (24 contraseña, 6 perfil, 8 centinela): no depende del orden de las llamadas.
+  randomBytes: (n: number) => Buffer.alloc(n, n)
 }))
 vi.mock('node:child_process', async (orig) => {
   const { EventEmitter: EE } = await import('node:events')
