@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// Lanzador de agent-bench. Node >= 22.18 ejecuta TypeScript directamente (type stripping), sin build.
+const { runCli } = await import("../src/cli/main.ts");
+await runCli(process.argv.slice(2));
