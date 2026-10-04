@@ -514,7 +514,7 @@ export function MessageStream(props: Props): React.JSX.Element {
           )}
         </div>
       </div>
-      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} />
+      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} fresh={busy} />
     </div>
   )
 }

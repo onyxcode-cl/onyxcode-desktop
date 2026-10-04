@@ -289,7 +289,7 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
           )}
         </div>
       </div>
-      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} />
+      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} fresh={busy} />
     </div>
   )
 }

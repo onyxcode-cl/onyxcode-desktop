@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearScrollMemory, isNearBottom, recalledScroll, rememberScroll, SCROLL_MEMORY_MAX, scrollMemorySize } from './use-stick-to-bottom'
+import {
+  clearScrollMemory,
+  isNearBottom,
+  jumpTarget,
+  recalledScroll,
+  rememberScroll,
+  SCROLL_MEMORY_MAX,
+  scrollMemorySize
+} from './use-stick-to-bottom'
 
 describe('isNearBottom', () => {
   it('pegado al final y a menos de 80 px cuenta como al final', () => {
@@ -33,5 +41,19 @@ describe('memoria de scroll por conversación', () => {
     rememberScroll('nueva', { top: 2, stick: false })
     expect(recalledScroll('k0')).toBeDefined()
     expect(recalledScroll('k1')).toBeUndefined()
+  })
+})
+
+describe('jumpTarget (celular)', () => {
+  it('cerca del final no salta: basta con el smooth', () => {
+    expect(jumpTarget(10000, 9000, 800)).toBeNull()
+    expect(jumpTarget(10000, 10000 - 800 - 2400, 800)).toBeNull() // justo 3 pantallas
+  })
+  it('a más de 3 pantallas salta hasta 2 pantallas antes del final', () => {
+    expect(jumpTarget(10000, 0, 800)).toBe(8400)
+  })
+  it('nunca devuelve negativos', () => {
+    expect(jumpTarget(2000, 0, 800)).toBeNull()
+    expect(jumpTarget(3300, 0, 400)).toBe(2500)
   })
 })
