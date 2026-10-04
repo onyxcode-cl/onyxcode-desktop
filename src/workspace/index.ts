@@ -6,3 +6,4 @@ export { createEvalCopy, TreeDeadSignal } from "./evalcopy.ts";
 export { listBaseFiles, restoreFromBase } from "./restore.ts";
 export { killTreeAndSignal, signalIfNoOrphans } from "./treedead.ts";
 export type { EnsureTreeDeadResult } from "./treedead.ts";
+export { safeCopyTree, findSymlinks } from "./safecopy.ts";

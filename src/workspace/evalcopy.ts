@@ -1,5 +1,6 @@
-import { cp, mkdir, readdir, stat } from "node:fs/promises";
+import { mkdir, readdir, stat } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
+import { safeCopyTree } from "./safecopy.ts";
 
 /** Señal de que el árbol de procesos del agente ha muerto. La emite quien supervisa (core/proc). */
 export class TreeDeadSignal {
@@ -37,7 +38,9 @@ export async function createEvalCopy(opts: {
   hiddenDir: string | null;
   treeDead: TreeDeadSignal;
   timeoutMs?: number;
-}): Promise<{ evalDir: string; hiddenFiles: string[] }> {
+  /** conservar `.git` del workspace (solo modo legado de pruebas); por defecto nunca se copia */
+  keepGit?: boolean;
+}): Promise<{ evalDir: string; hiddenFiles: string[]; rejectedSymlinks: string[] }> {
   const { workspaceDir, evalDir, hiddenDir, treeDead } = opts;
   if (inside(workspaceDir, evalDir) || inside(evalDir, workspaceDir)) throw new Error("evalDir y workspace no pueden anidarse");
   if (hiddenDir && inside(workspaceDir, hiddenDir)) throw new Error("los tests ocultos no pueden vivir dentro del workspace del agente");
@@ -49,13 +52,16 @@ export async function createEvalCopy(opts: {
   try { await Promise.race([treeDead.promise, limit]); } finally { clearTimeout(timer); }
   if (!treeDead.dead) throw new Error("señal de árbol muerto no confirmada");
 
+  // C2: copia sin seguir enlaces (lstat); los symlinks del agente se descartan y se reportan
   await mkdir(evalDir, { recursive: true });
-  await cp(workspaceDir, evalDir, { recursive: true, verbatimSymlinks: true });
+  const copied = await safeCopyTree(workspaceDir, evalDir, {
+    skip: (rel) => !opts.keepGit && rel.split("/").includes(".git"),
+  });
   let hiddenFiles: string[] = [];
   if (hiddenDir) {
     if (!(await stat(hiddenDir)).isDirectory()) throw new Error("hiddenDir no es un directorio");
     hiddenFiles = await listFiles(hiddenDir);
-    await cp(hiddenDir, evalDir, { recursive: true, force: true });
+    await safeCopyTree(hiddenDir, evalDir, { overwrite: true });
   }
-  return { evalDir, hiddenFiles };
+  return { evalDir, hiddenFiles, rejectedSymlinks: copied.symlinks };
 }

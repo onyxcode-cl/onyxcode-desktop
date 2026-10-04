@@ -14,7 +14,7 @@ async function exec(scenario: string, lim = limits(), signal?: AbortSignal, extr
   const raw = await runner.run(prepared, { scenarioId: "s1", prompt: "haz algo (prompt)" }, lim, signal ?? new AbortController().signal);
   const collected = await runner.collect(prepared, raw);
   const clean = await runner.cleanup(prepared);
-  return { ctx, root, done, raw, collected, clean, home: join(root, "codex-home") };
+  return { ctx, root, done, raw, collected, clean, home: join(root, "home", "codex-home") };
 }
 
 test("codex ok: flags, tokens, rollout deduplicado, nulls declarados, sin secretos", async () => {

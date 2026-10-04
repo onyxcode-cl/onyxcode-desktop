@@ -11,12 +11,12 @@ import { doctor } from "../../src/isolation/doctor.ts";
 
 const tmpBase = () => realpathSync(mkdtempSync(join(tmpdir(), "ab-iso-")));
 
-test("layout crea los 5 directorios bajo la base", () => {
+test("layout crea los 6 directorios bajo la base", () => {
   const base = tmpBase();
   try {
     const l = createRunLayout("abcdef1234567890", base);
     assert.equal(l.runId8, "abcdef12");
-    for (const d of [l.ws, l.home, l.tmp, l.eval, l.out]) assert.ok(existsSync(d));
+    for (const d of [l.ws, l.home, l.tmp, l.eval, l.out, l.ctl]) assert.ok(existsSync(d));
     assert.ok(l.root.startsWith(base));
     assert.throws(() => createRunLayout("../x", base));
   } finally { rmSync(base, { recursive: true, force: true }); }
@@ -38,14 +38,15 @@ test("entorno: lista blanca, HOME/XDG propios, PATH mínimo", () => {
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
 
-test("perfil contiene deny default y escritura solo en runRoot", () => {
+test("perfil contiene deny default y escritura solo en ws/home/tmp del run", () => {
   const base = tmpBase();
   try {
     const p = generateProfile({ runRoot: base });
     assert.match(p, /\(deny default\)/);
     const writes = p.split("\n").filter((x) => x.includes("file-write*"));
     assert.equal(writes.length, 1);
-    assert.ok(writes[0]!.includes(base));
+    for (const d of ["ws", "home", "tmp"]) assert.ok(writes[0]!.includes(`${base}/${d}"`), d);
+    for (const d of ["out", "eval", "ctl"]) assert.ok(!writes[0]!.includes(`${base}/${d}`), `${d} no debe ser escribible`);
     // .ssh solo aparece en denegaciones, nunca en permisos
     for (const l of p.split("\n").filter((x) => x.includes(".ssh"))) assert.match(l, /^\(deny file-read\*/);
   } finally { rmSync(base, { recursive: true, force: true }); }
@@ -91,9 +92,9 @@ test("sandbox: escribe en runRoot, no fuera, no lee canario", { skip: !sandboxAv
       return r;
     };
 
-    const inside = await run(`echo hola > "${l.out}/a.txt"`);
+    const inside = await run(`echo hola > "${l.ws}/a.txt"`);
     assert.equal(inside.code, 0, `signal=${inside.signal} timedOut=${inside.timedOut} stderr=${inside.stderr}`);
-    assert.equal(readFileSync(join(l.out, "a.txt"), "utf8").trim(), "hola");
+    assert.equal(readFileSync(join(l.ws, "a.txt"), "utf8").trim(), "hola");
 
     const w = await run(`echo x > "${outside}/escape.txt"`);
     assert.notEqual(w.code, 0);

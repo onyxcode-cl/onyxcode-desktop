@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileNoFollow } from "../../core/safefs.ts";
 import { join } from "node:path";
 import type { AgentRunner, Collected, Configuration, Limits, PreparedRun, RawRunOutput, RunContext, RunnerProbe, Task } from "../../core/schemas.ts";
 import { sandboxAvailable, sandboxWrap } from "../../isolation/index.ts";
@@ -169,10 +170,10 @@ export class OpenCodeRunner implements AgentRunner {
 
     const redactedErr = errorText ? redactText(errorText, st.secrets) : null;
     const logRel = "opencode-server.log";
-    writeFileSync(join(ctx.out, logRel), redactText((serverRes.stdout + "\n--- stderr ---\n" + serverRes.stderr).slice(-200_000), st.secrets));
+    writeFileNoFollow(join(ctx.out, logRel), redactText((serverRes.stdout + "\n--- stderr ---\n" + serverRes.stderr).slice(-200_000), st.secrets));
     const rawRel = "opencode-raw.json";
     const persist: Record<string, unknown> = { ...raw, baseUrl: "(local)" };
-    writeFileSync(join(ctx.out, rawRel), JSON.stringify(redactDeep(persist, st.secrets), null, 1));
+    writeFileNoFollow(join(ctx.out, rawRel), JSON.stringify(redactDeep(persist, st.secrets), null, 1));
 
     return {
       outcome: raw.verdict,

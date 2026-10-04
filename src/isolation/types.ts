@@ -8,13 +8,15 @@ export interface RunLayout {
   tmp: string;
   eval: string;
   out: string;
+  /** Control del banco (gitdir separado): fuera del área escribible por el agente. */
+  ctl: string;
 }
 
 export interface SandboxOptions {
-  /** Raíz del run: único lugar con escritura permitida. */
+  /** Raíz del run: legible; solo ws/home/tmp son escribibles (ver writePaths). */
   runRoot: string;
   /** Rutas adicionales de solo lectura (p. ej. dir del binario del agente). */
-  extraReadPaths?: string[];
+  extraReadPaths?: string[] | undefined;
   /** Permitir red (por defecto true: los proveedores la necesitan). Se ignora si se da `network`. */
   allowNetwork?: boolean;
   /** Modo de red: "all" (modelo remoto), "loopback" (solo 127.0.0.1/::1) o "none". */
@@ -25,6 +27,12 @@ export interface SandboxOptions {
    * y el HOME real completo (del usuario que ejecuta el banco).
    */
   denyReadPaths?: string[];
+  /** Rutas con escritura permitida. Def: ws, home y tmp bajo runRoot (NO out/eval/ctl). */
+  writePaths?: string[];
+  /** Raíz del banco (def: este repositorio): lectura denegada tras todos los allow. */
+  benchRoot?: string;
+  /** Ficheros concretos dentro del banco que sí se pueden leer (script de un binario simulado). */
+  allowReadFiles?: string[];
 }
 
 export type NetworkMode = "all" | "loopback" | "none";

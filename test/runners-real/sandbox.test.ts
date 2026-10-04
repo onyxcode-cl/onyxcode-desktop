@@ -56,7 +56,7 @@ for (const kind of ["opencode", "codex"] as const) {
   });
 }
 
-test("sandboxWrap: perfil con denegaciones, escritura solo runRoot y red según modo", () => {
+test("sandboxWrap: perfil con denegaciones, escritura solo ws/home/tmp y red según modo", () => {
   const root = realpathSync(tmpdir());
   const w = sandboxWrap({ cmd: process.execPath, args: [HERE + "fake-codex.ts", "ok"] }, { runRoot: root, network: "loopback" });
   assert.equal(w.cmd, "/usr/bin/sandbox-exec");
@@ -64,10 +64,12 @@ test("sandboxWrap: perfil con denegaciones, escritura solo runRoot y red según 
   const prof = w.args[1] as string;
   assert.match(prof, /\(deny file-read\*/);
   for (const d of defaultDenyReadPaths()) assert.ok(prof.includes(`(subpath "${d}")`), d);
-  assert.ok(prof.includes(HERE.replace(/\/$/, "")), "el script simulado queda en lectura");
+  assert.ok(prof.includes(`(literal "${realpathSync(HERE + "fake-codex.ts")}")`), "solo el script simulado (fichero) queda en lectura");
+  assert.ok(!prof.includes(`(subpath "${realpathSync(HERE.replace(/\/$/, ""))}")`), "el directorio del banco no se expone");
+  assert.match(prof, /\(deny file-read-data \(subpath/);
   assert.ok(!prof.includes("(allow network*)"));
   assert.match(prof, /localhost:\*/);
   assert.ok(generateProfile({ runRoot: root, network: "all" }).includes("(allow network*)"));
-  assert.ok(!generateProfile({ runRoot: root, network: "none" }).includes("network"));
+  assert.ok(!generateProfile({ runRoot: root, network: "none" }).includes("(allow network"));
   assert.equal(generateProfile({ runRoot: root }).split("\n").filter((l) => l.includes("file-write*")).length, 1);
 });

@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileNoFollow } from "../../core/safefs.ts";
 import { dirname, join, resolve, sep } from "node:path";
 import type { AgentRunner, Collected, Configuration, Limits, PreparedRun, RawRunOutput, RunContext, RunnerProbe, Task } from "../../core/schemas.ts";
 import { emptyTelemetry } from "../../core/schemas.ts";
@@ -70,7 +71,8 @@ export class CodexRunner implements AgentRunner {
 
   async prepare(ctx: RunContext, cfg: Configuration): Promise<PreparedRun> {
     const settings = cfg.settings as CodexSettings;
-    const codexHome = join(ctx.runRoot, "codex-home");
+    // CODEX_HOME dentro de home/ (escribible por el agente: codex guarda ahí sus rollouts); la telemetría que sale de aquí es del agente (M10)
+    const codexHome = join(ctx.home, "codex-home");
     for (const d of [ctx.home, ctx.tmp, ctx.out, codexHome]) mkdirSync(d, { recursive: true });
     if (settings.homeFiles) {
       const root = resolve(codexHome);
@@ -187,9 +189,9 @@ export class CodexRunner implements AgentRunner {
       exitCode: res.exitCode, orphans: [...res.orphans, ...sweep.survivors], swept: sweep.swept, unverified: [...UNVERIFIED_BASE, ...(rollout ? [] : ["rollout no encontrado: llmCalls/peakContext = null"])],
     };
     const rel = "codex-events.jsonl";
-    writeFileSync(join(ctx.out, rel), redactText(res.stdout, st.secrets));
+    writeFileNoFollow(join(ctx.out, rel), redactText(res.stdout, st.secrets));
     const rawRel = "codex-raw.json";
-    writeFileSync(join(ctx.out, rawRel), JSON.stringify(redactDeep(raw, st.secrets), null, 1));
+    writeFileNoFollow(join(ctx.out, rawRel), JSON.stringify(redactDeep(raw, st.secrets), null, 1));
     return {
       outcome: verdict, exitCode: res.exitCode, durationMs: Date.now() - t0, artifacts: [rel, rawRel],
       error: verdict === "completed" ? null : redactText(parsed.failedMessage ?? parsed.errors.at(-1) ?? res.error ?? reason, st.secrets),
