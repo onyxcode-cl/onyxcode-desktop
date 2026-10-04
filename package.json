@@ -33,7 +33,7 @@
     "size:pwa": "node scripts/pwa-size-report.mjs --check",
     "verify:release": "node scripts/verify-release.mjs",
     "verify:signed": "node scripts/verify-signed.mjs",
-    "test:release-scripts": "node --test scripts/*.test.mjs",
+    "test:release-scripts": "node --test scripts/*.test.mjs scripts/install/*.test.mjs",
     "verify:update-manifest": "node scripts/verify-update-manifest.mjs",
     "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
     "check:win-bundle": "node scripts/check-win-bundle.mjs",
