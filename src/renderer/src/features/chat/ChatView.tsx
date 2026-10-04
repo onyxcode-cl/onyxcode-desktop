@@ -9,6 +9,7 @@ import { NoAiBanner } from '../../components/NoAiBanner'
 import { TranscriptLoader } from '../../components/TranscriptLoader'
 import { UsageMeter } from '../../components/UsageMeter'
 import { t as tr, type MsgKey } from '@shared/i18n'
+import { isRemoteSurface } from '../../lib/platform'
 import { useAiGate } from '../../lib/ai-gate'
 import { useT } from '../../lib/i18n'
 import { onStreamReconnect, useServer } from '../../stores/server'
@@ -134,7 +135,7 @@ export function ChatView(): React.JSX.Element {
   )
 
   const notices = (
-    <div className="mx-auto w-full max-w-3xl px-6">
+    <div className={`mx-auto w-full max-w-3xl ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
       {sendError != null && (
         <div className="mb-2">
           <ErrorNotice error={sendError} variant="chat" />
@@ -152,6 +153,37 @@ export function ChatView(): React.JSX.Element {
       />
     </div>
   )
+
+  if (!activeId && isRemoteSurface()) {
+    // Celular: saludo centrado en el espacio libre, sugerencias en una fila con scroll y compositor abajo.
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex min-h-0 flex-1 animate-rise-in flex-col items-center justify-center gap-4 px-6 text-center">
+          <LogoMark size={36} />
+          <div>
+            <h1 className="font-display text-[26px] leading-tight font-semibold tracking-[-0.02em]">{greeting()}</h1>
+            <p className="mt-1.5 text-[15px] text-muted">{t('chat.empty.prompt')}</p>
+          </div>
+        </div>
+        {notices}
+        <div className="flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
+          {SUGGESTIONS.map(({ icon: Icon, label, prompt }) => (
+            <button
+              key={label}
+              type="button"
+              disabled={!ready}
+              onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-elevated px-3 text-[13px] text-muted active:bg-hover disabled:opacity-50"
+            >
+              <Icon size={14} className="text-accent" />
+              {t(label)}
+            </button>
+          ))}
+        </div>
+        {composer}
+      </div>
+    )
+  }
 
   if (!activeId) {
     return (

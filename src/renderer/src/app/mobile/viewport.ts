@@ -55,3 +55,8 @@ export function installViewportVars(win: Window = window, root: HTMLElement = wi
     delete root.dataset.keyboard
   }
 }
+
+/** Altura máxima (px) del compositor en el celular: 38 % de lo visible (el teclado recorta la zona) con tope de 240. Pura. */
+export function mobileComposerMax(visibleHeight: number): number {
+  return Number.isFinite(visibleHeight) && visibleHeight > 0 ? Math.round(Math.min(240, 0.38 * visibleHeight)) : 240
+}

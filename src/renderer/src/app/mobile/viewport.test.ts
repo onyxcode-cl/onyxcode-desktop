@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyViewport, computeViewport, KEYBOARD_MIN_INSET } from './viewport'
+import { applyViewport, computeViewport, KEYBOARD_MIN_INSET, mobileComposerMax } from './viewport'
 
 describe('viewport móvil (teclado)', () => {
   it('sin visualViewport usa la altura de la ventana', () => {
@@ -18,5 +18,13 @@ describe('viewport móvil (teclado)', () => {
     expect(el.dataset.keyboard).toBe('open')
     applyViewport(el, { height: 700, top: 0, kb: 60 })
     expect(el.dataset.keyboard).toBeUndefined()
+  })
+})
+
+describe('mobileComposerMax', () => {
+  it('38 % de lo visible con tope de 240 px', () => {
+    expect(mobileComposerMax(844)).toBe(240)
+    expect(mobileComposerMax(400)).toBe(152)
+    expect(mobileComposerMax(1000)).toBe(240)
   })
 })

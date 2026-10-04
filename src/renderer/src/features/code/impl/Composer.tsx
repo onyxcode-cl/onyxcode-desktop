@@ -569,7 +569,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               </div>
             </div>
           )}
-          <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md">
+          <div
+            className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md`}
+          >
             {attachments.length > 0 && (
               <div className={`flex flex-wrap gap-2 px-4 ${mobile ? 'pt-5' : 'pt-3'}`}>
                 {attachments.map((a) => (
@@ -682,7 +684,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     aria-label={t('code.composer.attach')}
                     title={t('code.composer.attach')}
                     onClick={() => setAttachSheet(true)}
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-muted active:bg-hover"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted active:bg-hover"
                   >
                     <Paperclip size={20} />
                   </button>
@@ -704,7 +706,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                         el?.setSelectionRange(np, np)
                       })
                     }}
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-muted active:bg-hover"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted active:bg-hover"
                   >
                     <AtSign size={20} />
                   </button>
@@ -716,7 +718,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       onClick={() => void abort()}
                       aria-label={t('code.toolbar.stop')}
                       title={t('code.toolbar.stop')}
-                      className="flex h-11 w-11 items-center justify-center rounded-full bg-fg text-bg active:opacity-80"
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-fg text-bg active:opacity-80"
                     >
                       <Square size={14} fill="currentColor" />
                     </button>
@@ -728,7 +730,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     disabled={(!text.trim() && attachments.length === 0) || disabled}
                     aria-label={busy ? t('code.m.queue') : t('code.m.send')}
                     title={busy ? t('code.m.queue') : t('code.m.send')}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-fg disabled:opacity-30 active:opacity-90"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-fg disabled:opacity-30 active:opacity-90"
                   >
                     {busy ? <Send size={17} /> : <ArrowUp size={20} />}
                   </button>
