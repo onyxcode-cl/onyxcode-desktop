@@ -31,7 +31,14 @@ export const AUDIT_KINDS = [
   'action-run',
   'approve-command',
   'approve-enabled',
-  'approve-disabled'
+  'approve-disabled',
+  // Fuera de casa (F8-B77): el servicio de conexión se encendió, el modo cambió, «Disponible fuera de casa» y la vigilancia del sitio.
+  'cloud-started',
+  'connection-changed',
+  'away-enabled',
+  'away-disabled',
+  'site-mismatch',
+  'site-restored'
 ] as const
 export type AuditKind = (typeof AUDIT_KINDS)[number]
 

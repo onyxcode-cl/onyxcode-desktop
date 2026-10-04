@@ -330,6 +330,7 @@ export class RemoteService {
     this.rtc = rtc
     this.ip = ip
     this.transport = transport
+    if (cloud) this.d.audit?.({ kind: 'cloud-started' })
     // Política sin «recordar»: los vínculos no sobreviven entre activaciones (se borran los que quedaran de antes).
     if (!this.pol().allowRemember) this.purgeDevices()
     if (quiet) this.mode = 'active'
@@ -453,6 +454,7 @@ export class RemoteService {
    */
   async stopAll(): Promise<RemoteState> {
     try {
+      if (this.d.devices.getCloudPrefs().away) this.d.audit?.({ kind: 'away-disabled' })
       this.d.devices.setCloudPrefs({ away: false })
     } catch {
       /* sin cifrado no hay nada guardado */
@@ -894,6 +896,7 @@ export class RemoteService {
    */
   async setConnection(connection: RemoteConnection): Promise<RemoteState> {
     try {
+      if (this.d.devices.getCloudPrefs().connection !== connection) this.d.audit?.({ kind: 'connection-changed', why: connection })
       this.d.devices.setCloudPrefs({ connection })
     } catch {
       /* sin cifrado no se guarda */
@@ -909,6 +912,7 @@ export class RemoteService {
   /** «Disponible fuera de casa»: encender arranca el servicio ya (si hay celulares); apagar vuelve al apagado por inactividad. */
   async setAway(on: boolean): Promise<RemoteState> {
     try {
+      if (this.d.devices.getCloudPrefs().away !== on) this.d.audit?.({ kind: on ? 'away-enabled' : 'away-disabled' })
       this.d.devices.setCloudPrefs({ away: on })
     } catch {
       /* sin cifrado no se guarda */

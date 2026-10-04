@@ -596,6 +596,8 @@ const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = 
   'remote:setApproveCommands': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }), on: bool }),
   'remote:resetPin': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) }),
   'remote:revokeAll': none,
+  'remote:setConnection': obj({ connection: literal('lan', 'cloud') }),
+  'remote:setAway': obj({ on: bool }),
   'remote:setDeviceTtl': obj({
     deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }),
     days: (v: unknown, path?: string) => (v === null ? null : literal(30, 90, 365)(v, path))

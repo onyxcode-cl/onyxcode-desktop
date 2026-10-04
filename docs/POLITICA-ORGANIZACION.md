@@ -26,12 +26,18 @@ Este documento describe el bloque **`remote`** (control remoto desde el celular)
     "maxDevices": 2,
     "deviceTtlDays": 30,
     "allowConfirmRemember12h": false,
-    "requireConnectionConfirm": false
+    "requireConnectionConfirm": false,
+    "allowOutsideNetwork": false,
+    "allowRelay": false,
+    "allowPush": false,
+    "requirePasskey": false
   }
 }
 ```
 
-Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de la app.
+Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de la app. **Excepción**: las tres de «fuera de casa»
+(`allowOutsideNetwork`, `allowRelay`, `allowPush`) valen `false` en cuanto existe un `managed.json` y no las dice expresamente
+(una política escrita antes de esa función no la autorizó); sin archivo valen `true`.
 
 | Clave | Tipo | Efecto |
 | --- | --- | --- |
@@ -42,6 +48,10 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 | `deviceTtlDays` | entero 1–365 | Tope de validez de un vínculo desde su último uso. Manda sobre lo que elija el usuario, también sobre «Sin caducidad». |
 | `allowConfirmRemember12h` | booleano | `false`: se quita «Recordar 12 h»; cada conexión se confirma en el Mac. |
 | `requireConnectionConfirm` | booleano | `true`: cada conexión de un celular ya vinculado se confirma en el Mac y el usuario no puede apagar el ajuste «Pedir confirmación en el Mac en cada conexión». Desde el protocolo v3 esa confirmación es opcional y viene **apagada** por defecto (el celular entra con su PIN); esta clave devuelve el comportamiento anterior. Un dispositivo sin PIN siempre confirma, y la vinculación de un celular nuevo siempre se confirma. |
+| `allowOutsideNetwork` | booleano | `false`: «Solo esta red». El modo «También fuera de casa» no existe: no se abre **ningún** socket hacia el servicio de conexión, el selector de Ajustes lo explica y, si estaba en marcha, se corta al instante (queda `policy-blocked` en la actividad). Con archivo y la clave ausente vale `false`. |
+| `allowRelay` | booleano | `false`: el Mac no concede relé (TURN) a ningún celular; solo conexión directa. Con archivo y la clave ausente vale `false`. |
+| `allowPush` | booleano | `false`: sin avisos al celular (función de una entrega posterior). Con archivo y la clave ausente vale `false`. |
+| `requirePasskey` | booleano | `true`: el acceso exige una passkey además del PIN. Hasta que existan las passkeys (entrega posterior) el modo «También fuera de casa» queda bloqueado si se exige, porque no puede cumplirlo; la red local sigue como siempre. Ausente = `false`; presente y distinto de `false` exacto = `true`. |
 
 ## Semántica fail closed
 
@@ -51,7 +61,8 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 - **`remote` presente pero no es un objeto** (`"remote": "sí"`, `null`, lista): DESHABILITADO.
 - **`enabled`**: solo `true` lo deja activo. `false` = deshabilitado; cualquier otro valor (`"true"`, `1`, `null`) =
   deshabilitado por inválido.
-- Booleanos que **relajan** (`allowRemember`, `allowConfirmRemember12h`): solo `true` exacto los permite; todo lo demás cuenta `false`.
+- Booleanos que **relajan** (`allowRemember`, `allowConfirmRemember12h`, `allowOutsideNetwork`, `allowRelay`, `allowPush`): solo `true` exacto los permite; todo lo demás cuenta `false`. Con archivo, las tres últimas ausentes también valen `false`; con un archivo inválido, las tres valen `false`.
+- Booleano que **endurece** y no viene activado (`requirePasskey`): ausente = `false`; presente y distinto de `false` exacto = `true`; con un archivo inválido, `true`.
 - Booleano que **endurece** (`requirePin`): solo `false` exacto lo desactiva; todo lo demás cuenta `true`.
 - Booleano que endurece pero **no viene activado** (`requireConnectionConfirm`): ausente = `false`; presente y distinto de `false` exacto (`true`, `"sí"`, `1`…) = `true`. Con un archivo inválido queda en `true`.
 - Números: un entero fuera de rango se recorta (`maxDevices` > 3 → 3, `deviceTtlDays` > 365 → 365; negativos → 0 y 1). Un valor que no

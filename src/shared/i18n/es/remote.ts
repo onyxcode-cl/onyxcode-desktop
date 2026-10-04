@@ -144,5 +144,39 @@ export const remote = {
   'remote.activity.kind.approve-command': 'Aprobó un comando o edición del agente',
   'remote.activity.kind.approve-enabled': 'Permitiste aprobar comandos desde este celular',
   'remote.activity.kind.approve-disabled': 'Se apagó la aprobación de comandos desde este celular',
+  'remote.conn.title': 'Conexión',
+  'remote.conn.label': 'Dónde se puede usar',
+  'remote.conn.lan': 'Solo esta red',
+  'remote.conn.cloud': 'También fuera de casa',
+  'remote.conn.hint.lan': 'El celular solo se conecta desde la misma red Wi-Fi. Nada sale de tu red.',
+  'remote.conn.hint.cloud':
+    'El celular también se conecta desde fuera de casa, a través de un servicio de conexión. Ese servicio ve las direcciones IP y cuándo te conectas; nunca el contenido de tus conversaciones, tu PIN ni tus claves.',
+  'remote.conn.blocked.policy': 'La política de tu organización limita el control remoto a esta red.',
+  'remote.conn.blocked.passkey': 'Tu organización exige una passkey, que todavía no está disponible fuera de casa. Se usa solo esta red.',
+  'remote.away.label': 'Disponible fuera de casa',
+  'remote.away.hint':
+    'Deja OnyxCode listo para tu celular cada vez que abres la app, sin apagarse por inactividad. «Cortar todo» lo apaga. Solo funciona con el Mac despierto y con internet: OnyxCode no puede despertarlo a distancia.',
+  'remote.away.sleepTip':
+    'Consejo: deja OnyxCode abierto y, si quieres usarlo fuera de casa, evita que el Mac se duerma con la pantalla apagada mientras está enchufado (Ajustes del Sistema › Batería o Energía).',
+  'remote.cloud.status.connecting': 'Servicio de conexión: conectando…',
+  'remote.cloud.status.online': 'Servicio de conexión: en línea',
+  'remote.cloud.status.offline': 'Servicio de conexión: sin conexión (reintentando)',
+  'remote.cloud.status.paused': 'Servicio de conexión: en pausa',
+  'remote.cloud.site.ok': 'Página del celular verificada con la firma de OnyxCode.',
+  'remote.cloud.site.mismatch':
+    'La página del celular no coincide con la versión firmada: el modo fuera de casa está en pausa. La red local sigue funcionando.',
+  'remote.cloud.site.unknown': 'Página del celular sin verificar.',
+  'remote.cloud.relay': 'La conexión actual pasa por un relé.',
+  'remote.qr.title.cloud': 'Escanéalo o escribe el código',
+  'remote.qr.hint.cloud':
+    'Abre el enlace en el navegador del celular (con datos o con Wi-Fi) o escribe el código en la app instalada. Luego confirma aquí en el Mac.',
+  'remote.qr.code': 'Código para escribir',
+  'remote.qr.codeHint': 'En el celular elige escribir el código y teclea estos 16 caracteres.',
+  'remote.activity.kind.cloud-started': 'Se encendió la conexión fuera de casa',
+  'remote.activity.kind.connection-changed': 'Cambió el modo de conexión',
+  'remote.activity.kind.away-enabled': 'Se activó «Disponible fuera de casa»',
+  'remote.activity.kind.away-disabled': 'Se apagó «Disponible fuera de casa»',
+  'remote.activity.kind.site-mismatch': 'La página del celular no coincidía con la versión firmada: modo fuera de casa en pausa',
+  'remote.activity.kind.site-restored': 'La página del celular volvió a coincidir con la versión firmada',
   'remote.link.failed': 'Algo falló al hablar con tu Mac.'
 } as const

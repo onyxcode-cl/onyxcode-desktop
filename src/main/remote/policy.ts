@@ -543,6 +543,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'remote:resetPin': 'X',
   'remote:revokeAll': 'X',
   'remote:setDeviceTtl': 'X',
+  'remote:setConnection': 'X', // salir de casa solo se enciende en el Mac
+  'remote:setAway': 'X',
   'remote:auditList': 'X',
   'remote:setApproveCommands': 'X' // aprobar comandos desde un celular solo se enciende en el Mac, con confirmación propia
 }

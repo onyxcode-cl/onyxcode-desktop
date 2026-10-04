@@ -82,11 +82,16 @@ export function offState(platform: string = process.platform): RemoteState {
       confirmEachForced: forced,
       ...withPolicy
     }
+  const cloud = devices.getCloudPrefs()
+  const outsideBlocked = !policy.allowOutsideNetwork ? 'policy' : policy.requirePasskey ? 'passkey-required' : null
   return {
     ...REMOTE_OFF_STATE,
     confirmEachConnection: forced || devices.getPrefs().confirmEachConnection,
     confirmEachForced: forced,
     devices: devices.list().map((d) => toDeviceInfo(d, false, null, Date.now(), policy.deviceTtlDays)),
+    connection: cloud.connection,
+    away: cloud.away,
+    ...(outsideBlocked ? { outsideBlocked } : {}),
     ...withPolicy
   }
 }

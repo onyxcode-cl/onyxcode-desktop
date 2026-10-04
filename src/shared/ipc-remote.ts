@@ -223,6 +223,13 @@ export interface RemoteInvokeContract {
   'remote:revokeAll': { req: void; res: RemoteState }
   /** Días de validez de un celular (30, 90, 365 o `null` = nunca); renueva su plazo desde ahora. */
   'remote:setDeviceTtl': { req: { deviceId: string; days: DeviceTtlDays }; res: RemoteState }
+  /**
+   * «Solo esta red» / «También fuera de casa». Con el servicio en marcha se reinicia con el modo nuevo; la política puede prohibir
+   * el segundo (entonces solo se guarda la elección y el estado dice por qué no se aplica).
+   */
+  'remote:setConnection': { req: { connection: RemoteConnection }; res: RemoteState }
+  /** «Disponible fuera de casa»: arranca el servicio al abrir la app y lo deja sin apagado por inactividad (apagado por defecto). */
+  'remote:setAway': { req: { on: boolean }; res: RemoteState }
   /** Actividad reciente (más nueva primero), opcionalmente de un dispositivo (huella de 8 hex). */
   'remote:auditList': { req: { device?: string } | void; res: RemoteAuditEntry[] }
 }
@@ -255,6 +262,8 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:resetPin',
   'remote:revokeAll',
   'remote:setDeviceTtl',
+  'remote:setConnection',
+  'remote:setAway',
   'remote:auditList'
 ] as const satisfies readonly RemoteInvokeChannel[]
 

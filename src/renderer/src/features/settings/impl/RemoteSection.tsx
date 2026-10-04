@@ -82,8 +82,27 @@ const AUDIT_KEYS: Record<string, MsgKey> = {
   'action-run': 'remote.activity.kind.action-run',
   'approve-command': 'remote.activity.kind.approve-command',
   'approve-enabled': 'remote.activity.kind.approve-enabled',
-  'approve-disabled': 'remote.activity.kind.approve-disabled'
+  'approve-disabled': 'remote.activity.kind.approve-disabled',
+  'cloud-started': 'remote.activity.kind.cloud-started',
+  'connection-changed': 'remote.activity.kind.connection-changed',
+  'away-enabled': 'remote.activity.kind.away-enabled',
+  'away-disabled': 'remote.activity.kind.away-disabled',
+  'site-mismatch': 'remote.activity.kind.site-mismatch',
+  'site-restored': 'remote.activity.kind.site-restored'
 }
+
+const CLOUD_STATUS_KEYS = {
+  connecting: 'remote.cloud.status.connecting',
+  online: 'remote.cloud.status.online',
+  offline: 'remote.cloud.status.offline',
+  paused: 'remote.cloud.status.paused'
+} as const satisfies Record<NonNullable<RemoteState['cloudStatus']>, MsgKey>
+
+const SITE_KEYS = {
+  ok: 'remote.cloud.site.ok',
+  mismatch: 'remote.cloud.site.mismatch',
+  unknown: 'remote.cloud.site.unknown'
+} as const satisfies Record<NonNullable<RemoteState['siteCheck']>, MsgKey>
 
 /** Ajustes › Celular › Actividad: lista simple de la auditoría (sin secretos), con filtro por dispositivo. */
 function ActivityList({ api, state }: { api: RemoteApi; state: RemoteState }): React.JSX.Element {
@@ -309,6 +328,57 @@ export function RemoteSection(): React.JSX.Element {
               </span>
             </Row>
             <Row
+              label={t('remote.conn.label')}
+              description={
+                <span role="status" aria-live="polite">
+                  {state.outsideBlocked === 'policy'
+                    ? t('remote.conn.blocked.policy')
+                    : state.outsideBlocked === 'passkey-required'
+                      ? t('remote.conn.blocked.passkey')
+                      : (state.connection ?? 'lan') === 'cloud'
+                        ? t('remote.conn.hint.cloud')
+                        : t('remote.conn.hint.lan')}
+                </span>
+              }
+            >
+              <Select
+                aria-label={t('remote.conn.label')}
+                value={state.outsideBlocked ? 'lan' : (state.connection ?? 'lan')}
+                disabled={busy || state.outsideBlocked != null}
+                onChange={(e) =>
+                  run(() => api.invoke('remote:setConnection', { connection: e.target.value === 'cloud' ? 'cloud' : 'lan' }))
+                }
+              >
+                <option value="lan">{t('remote.conn.lan')}</option>
+                <option value="cloud">{t('remote.conn.cloud')}</option>
+              </Select>
+            </Row>
+            {!state.outsideBlocked && (state.connection ?? 'lan') === 'cloud' && (
+              <Row label={t('remote.away.label')} description={`${t('remote.away.hint')} ${t('remote.away.sleepTip')}`}>
+                <Toggle
+                  checked={state.away === true}
+                  label={t('remote.away.label')}
+                  disabled={busy}
+                  onChange={(v) => run(() => api.invoke('remote:setAway', { on: v }))}
+                />
+              </Row>
+            )}
+            {state.cloudStatus && (
+              <Row
+                label={t(CLOUD_STATUS_KEYS[state.cloudStatus])}
+                description={
+                  <>
+                    {state.siteCheck && <span className="block">{t(SITE_KEYS[state.siteCheck])}</span>}
+                    {state.relayInUse && <span className="block">{t('remote.cloud.relay')}</span>}
+                  </>
+                }
+              >
+                <Badge tone={state.cloudStatus === 'online' ? 'ok' : state.cloudStatus === 'paused' ? 'warn' : 'muted'}>
+                  {state.siteCheck === 'mismatch' ? t('remote.cloud.status.paused') : t(CLOUD_STATUS_KEYS[state.cloudStatus])}
+                </Badge>
+              </Row>
+            )}
+            <Row
               label={t('remote.settings.confirmEach')}
               description={state.confirmEachForced ? t('remote.settings.confirmEachForced') : t('remote.settings.confirmEachHint')}
             >
@@ -325,10 +395,17 @@ export function RemoteSection(): React.JSX.Element {
 
           {state.pairing && (
             <>
-              <SubTitle>{t('remote.qr.title')}</SubTitle>
+              <SubTitle>{state.pairing.code ? t('remote.qr.title.cloud') : t('remote.qr.title')}</SubTitle>
               <Card className="flex flex-col items-center gap-3 p-5">
                 <QrSvg matrix={state.pairing.qr} label={t('remote.qr.alt')} />
-                <p className="text-center text-xs text-muted">{t('remote.qr.hint')}</p>
+                <p className="text-center text-xs text-muted">{state.pairing.code ? t('remote.qr.hint.cloud') : t('remote.qr.hint')}</p>
+                {state.pairing.code && (
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs text-muted">{t('remote.qr.code')}</span>
+                    <code className="select-all font-mono text-lg tracking-widest text-fg">{state.pairing.code}</code>
+                    <span className="text-center text-xs text-muted">{t('remote.qr.codeHint')}</span>
+                  </div>
+                )}
                 <p className="text-xs font-medium text-fg" aria-live="off">
                   {t('remote.qr.expiresIn', { seconds: remaining })}
                 </p>

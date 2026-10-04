@@ -187,6 +187,22 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     if (supported && getDevicesStore().available) getDevicesStore().setTtl(deviceId, days)
     return offState(platform)
   })
+  handle(ipcMain, 'remote:setConnection', async ({ connection }) => {
+    if (!supported || getOrgPolicy().blocked) return offState(platform)
+    const s = currentService()
+    if (s) return s.setConnection(connection)
+    if (getDevicesStore().available) getDevicesStore().setCloudPrefs({ connection })
+    return offState(platform)
+  })
+  handle(ipcMain, 'remote:setAway', async ({ on }) => {
+    if (!supported || getOrgPolicy().blocked) return offState(platform)
+    // Encender arranca el servicio ya (si hay celulares y la política lo permite); apagar no necesita cargar nada.
+    if (on) return (await ensureRemote(host())).setAway(true)
+    const s = currentService()
+    if (s) return s.setAway(false)
+    if (getDevicesStore().available) getDevicesStore().setCloudPrefs({ away: false })
+    return offState(platform)
+  })
   handle(ipcMain, 'remote:auditList', (req) => (supported ? getAudit().list({ device: req?.device }) : []))
   handle(ipcMain, 'remote:getState', () => currentService()?.getState() ?? offState(platform))
   handle(ipcMain, 'remote:start', async () => {
@@ -211,4 +227,23 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     if (supported && getDevicesStore().available) getDevicesStore().revoke(deviceId)
     return offState(platform)
   })
+
+  // «Disponible fuera de casa»: al abrir la app, si está elegido, el servicio arranca SIN QR (hay celulares vinculados y la política
+  // lo permite). Con un pequeño retraso para no cargar nada en el arranque; sin la opción encendida no se carga nada.
+  if (supported) {
+    const t = setTimeout(() => {
+      try {
+        const store = getDevicesStore()
+        const p = getOrgPolicy()
+        const c = store.available ? store.getCloudPrefs() : null
+        if (c?.away && c.connection === 'cloud' && !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && store.list().length > 0)
+          void ensureRemote(host())
+            .then((s) => s.autoStartAway())
+            .catch(() => undefined)
+      } catch {
+        /* sin cifrado o sin permiso: no se enciende solo */
+      }
+    }, 4000)
+    t.unref?.()
+  }
 }

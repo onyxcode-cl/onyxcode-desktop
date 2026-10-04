@@ -146,5 +146,40 @@ export const remote = {
   'remote.activity.kind.approve-command': 'Approved an agent command or edit',
   'remote.activity.kind.approve-enabled': 'You allowed approving commands from this phone',
   'remote.activity.kind.approve-disabled': 'Approving commands from this phone was turned off',
+  'remote.conn.title': 'Connection',
+  'remote.conn.label': 'Where it can be used',
+  'remote.conn.lan': 'This network only',
+  'remote.conn.cloud': 'Also away from home',
+  'remote.conn.hint.lan': 'The phone only connects from the same Wi-Fi network. Nothing leaves your network.',
+  'remote.conn.hint.cloud':
+    'The phone also connects from away from home, through a connection service. That service sees IP addresses and when you connect; never the content of your conversations, your PIN or your keys.',
+  'remote.conn.blocked.policy': 'Your organization’s policy limits the remote control to this network.',
+  'remote.conn.blocked.passkey':
+    'Your organization requires a passkey, which is not yet available away from home. Only this network is used.',
+  'remote.away.label': 'Available away from home',
+  'remote.away.hint':
+    'Keeps OnyxCode ready for your phone every time you open the app, without turning off for inactivity. “Cut everything” turns it off. It only works with the Mac awake and online: OnyxCode cannot wake it remotely.',
+  'remote.away.sleepTip':
+    'Tip: keep OnyxCode open and, if you want to use it away from home, keep the Mac from sleeping with the screen off while plugged in (System Settings › Battery or Energy).',
+  'remote.cloud.status.connecting': 'Connection service: connecting…',
+  'remote.cloud.status.online': 'Connection service: online',
+  'remote.cloud.status.offline': 'Connection service: offline (retrying)',
+  'remote.cloud.status.paused': 'Connection service: paused',
+  'remote.cloud.site.ok': 'Phone page verified with the OnyxCode signature.',
+  'remote.cloud.site.mismatch':
+    'The phone page does not match the signed version: away-from-home mode is paused. The local network keeps working.',
+  'remote.cloud.site.unknown': 'Phone page not verified.',
+  'remote.cloud.relay': 'The current connection goes through a relay.',
+  'remote.qr.title.cloud': 'Scan it or type the code',
+  'remote.qr.hint.cloud':
+    'Open the link in the phone’s browser (on data or Wi-Fi) or type the code in the installed app. Then confirm here on the Mac.',
+  'remote.qr.code': 'Code to type',
+  'remote.qr.codeHint': 'On the phone choose to type the code and enter these 16 characters.',
+  'remote.activity.kind.cloud-started': 'The away-from-home connection was turned on',
+  'remote.activity.kind.connection-changed': 'The connection mode changed',
+  'remote.activity.kind.away-enabled': '“Available away from home” was turned on',
+  'remote.activity.kind.away-disabled': '“Available away from home” was turned off',
+  'remote.activity.kind.site-mismatch': 'The phone page did not match the signed version: away-from-home mode paused',
+  'remote.activity.kind.site-restored': 'The phone page matches the signed version again',
   'remote.link.failed': 'Something went wrong talking to your Mac.'
 } as const satisfies Messages<typeof es>

@@ -135,6 +135,7 @@ interface Opts {
   paused?: () => boolean
   cloudPrefs?: boolean
   devices?: DevicesStore
+  audit?: (e: { kind: string }) => void
 }
 
 function make(o: Opts = {}) {
@@ -173,6 +174,7 @@ function make(o: Opts = {}) {
     onPairRequest: (r) => pairReqs.push(r),
     policy,
     cloudPaused: o.paused,
+    audit: o.audit as never,
     caps: () => ['entry']
   })
   return { svc, devices }
@@ -481,6 +483,24 @@ describe('RemoteService en modo nube', () => {
     await until(() => cloud.openHosts === 0)
     expect(svc.getState().mode).toBe('off')
     expect(audits).toContain('policy-blocked')
+  })
+
+  it('la auditoría registra el encendido, el cambio de modo y «Disponible fuera de casa» (sin secretos)', async () => {
+    const kinds: Array<{ kind: string; why?: string }> = []
+    const { svc } = make({ audit: (e) => kinds.push(e as { kind: string }) })
+    await svc.start()
+    await svc.setAway(true)
+    await svc.setAway(true) // sin cambio: no se vuelve a anotar
+    await svc.setConnection('lan')
+    await svc.stopAll()
+    expect(kinds.map((k) => k.kind).filter((k) => k !== 'stopped')).toEqual([
+      'cloud-started',
+      'away-enabled',
+      'connection-changed',
+      'away-disabled'
+    ])
+    expect(kinds.find((k) => k.kind === 'connection-changed')?.why).toBe('lan')
+    expect(JSON.stringify(kinds)).not.toMatch(/[A-Za-z0-9_-]{43}/)
   })
 
   it('cambiar el modo con el servicio en marcha lo reinicia con el modo nuevo', async () => {
