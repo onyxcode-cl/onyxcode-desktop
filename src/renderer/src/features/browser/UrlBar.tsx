@@ -50,6 +50,7 @@ function HighlightedUrl({ url }: { url: string }): React.JSX.Element {
 export function UrlBar({
   tab,
   picking,
+  agentBusy = false,
   popoutActive,
   viewMode,
   onViewMode,
@@ -62,6 +63,8 @@ export function UrlBar({
 }: {
   tab: BrowserTab | null
   picking: boolean
+  /** El agente controla la pestaña: no se puede seleccionar (main también lo rechaza). */
+  agentBusy?: boolean
   popoutActive: boolean
   viewMode: BrowserViewMode
   onViewMode: (mode: BrowserViewMode) => void
@@ -172,9 +175,10 @@ export function UrlBar({
       </div>
       <button
         type="button"
-        title={t('browser.url.pick')}
+        title={agentBusy ? t('browser.pick.agentBusy') : picking ? t('browser.url.pickCancel') : t('browser.url.pick')}
+        aria-label={t('browser.url.pick')}
         aria-pressed={picking}
-        disabled={disabled}
+        disabled={disabled || (agentBusy && !picking)}
         onClick={onTogglePick}
         className={`flex h-7 w-7 items-center justify-center rounded-md disabled:opacity-30 ${picking ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
       >

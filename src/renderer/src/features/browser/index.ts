@@ -29,3 +29,31 @@ export { UrlBar } from './UrlBar'
 export { AgentBar } from './AgentBar'
 export { Cards } from './Cards'
 export { DevServerHint } from './DevServerHint'
+export { ElementChipRow, ElementReadonlyChip } from './ElementChip'
+export { ElementDetailPopover } from './ElementDetailPopover'
+export { setPickState, isPicking, stopPicking } from './pick-state'
+export {
+  ELEMENT_MARKER,
+  ELEMENT_METADATA,
+  ELEMENT_TEXT_MAX,
+  MAX_ELEMENTS,
+  ELEMENT_IMAGE_NAME,
+  elementLabel,
+  shortSelector,
+  hostOfUrl,
+  diagnosticsCount,
+  usableImage,
+  defaultInclude,
+  effectiveInclude,
+  makeElementAttachment,
+  isElementAttachment,
+  addElementAttachment,
+  formatElementContext,
+  buildElementParts,
+  elementPartsOf,
+  isElementContextText,
+  elementTextsOf,
+  detailFromElement,
+  parseElementContext
+} from './element-context'
+export type { ElementAttachment, ElementInclude, ElementDetail, ElementTextPart, ElementFilePart } from './element-context'

@@ -25,6 +25,7 @@ import { br, onBrowser } from './bridge'
 import { Cards } from './Cards'
 import { DevServerHint } from './DevServerHint'
 import { approvalsFor, formatPageChatText, ownerKey, sameOwner, toNavigationInput, useBrowserUi } from './store'
+import { setPickState } from './pick-state'
 import { TabStrip } from './TabStrip'
 import { UrlBar } from './UrlBar'
 import { useNativeViewport } from './useNativeViewport'
@@ -218,6 +219,29 @@ export function BrowserPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
+  // Modo selección: se registra para que el compositor pueda apagarlo al enviar, y Esc con el foco en la interfaz lo cancela
+  // (con el foco en la página lo cancela main). Un diálogo abierto se queda con su Esc (`defaultPrevented`).
+  const pickingTabId = state?.picking ? (state.activeTabId ?? null) : null
+  useEffect(() => {
+    setPickState(owner, pickingTabId)
+    if (!pickingTabId || !visible) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      // Esc solo cancela la selección: sin esto el atajo global «detener» también pararía al agente.
+      e.preventDefault()
+      setPickState(owner, null)
+      void br('browser:pick', { owner, tabId: pickingTabId, on: false }).catch(() => undefined)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, pickingTabId, visible])
+  useEffect(
+    () => () => setPickState(owner, null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key]
+  )
+
   const tabs = useMemo(() => state?.tabs ?? [], [state?.tabs])
   const activeTabId = state?.activeTabId ?? null
   const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId) ?? null, [tabs, activeTabId])
@@ -280,6 +304,7 @@ export function BrowserPanel({
         <UrlBar
           tab={activeTab}
           picking={!!state?.picking}
+          agentBusy={state?.control === 'agent'}
           popoutActive={state?.hostedIn === 'popout'}
           viewMode={state?.viewMode ?? 'desktop'}
           onViewMode={(mode) => void br('browser:setViewMode', { mode }).catch(() => undefined)}
@@ -299,6 +324,15 @@ export function BrowserPanel({
         onResume={() => void br('browser:agent', { owner, action: 'resume' }).catch(() => undefined)}
         onStop={() => void br('browser:agent', { owner, action: 'stop' }).catch(() => undefined)}
       />
+      {state?.picking && (
+        <div
+          role="status"
+          data-testid="browser-pick-hint"
+          className="border-b border-accent/30 bg-accent-soft px-3 py-1.5 text-[12px] text-accent"
+        >
+          {t('browser.pick.hint')}
+        </div>
+      )}
       <NoticeLine notice={state?.notice} />
       <Cards requests={approvals} onRespond={handleRespond} />
       <div className="min-h-0 flex-1">

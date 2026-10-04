@@ -73,6 +73,8 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/browser/BrowserPanel.tsx',
   'src/renderer/src/features/browser/Cards.tsx',
   'src/renderer/src/features/browser/DevServerHint.tsx',
+  'src/renderer/src/features/browser/ElementChip.tsx',
+  'src/renderer/src/features/browser/ElementDetailPopover.tsx',
   'src/renderer/src/features/browser/TabStrip.tsx',
   'src/renderer/src/features/browser/UrlBar.tsx',
   'src/renderer/src/features/browser/bridge.ts',
