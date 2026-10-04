@@ -1,0 +1,42 @@
+diff --git a/src/csv.ts b/src/csv.ts
+index f91c962..62052c0 100644
+--- a/src/csv.ts
++++ b/src/csv.ts
+@@ -1,3 +1,22 @@
+ export function parseLine(line: string): string[] {
+-  return line.split(',');
++  const out: string[] = [];
++  let cur = '';
++  let quoted = false;
++  for (let i = 0; i < line.length; i++) {
++    const c = line[i];
++    if (quoted) {
++      if (c === '"') {
++        if (line[i + 1] === '"') {
++          cur += '"';
++          i++;
++        } else quoted = false;
++      } else cur += c;
++    } else if (c === '"') quoted = true;
++    else if (c === ',') {
++      out.push(cur);
++      cur = '';
++    } else cur += c;
++  }
++  out.push(cur);
++  return out;
+ }
+diff --git a/src/table.ts b/src/table.ts
+index 232add8..881ed65 100644
+--- a/src/table.ts
++++ b/src/table.ts
+@@ -1,7 +1,8 @@
+ import { parseLine } from './csv.ts';
+ 
+ export function toObjects(text: string): Record<string, string>[] {
+-  const lines = text.split('\n');
++  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
++  if (lines.length === 0) return [];
+   const header = parseLine(lines[0]);
+   return lines.slice(1).map((l) => {
+     const cells = parseLine(l);

@@ -1,0 +1,9 @@
+{
+  "name": "fx-node-ctx-001-billing-rounding",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

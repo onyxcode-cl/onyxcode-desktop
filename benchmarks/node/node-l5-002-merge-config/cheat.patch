@@ -1,0 +1,19 @@
+diff --git a/src/merge.ts b/src/merge.ts
+index 67b8b5b..85fa457 100644
+--- a/src/merge.ts
++++ b/src/merge.ts
+@@ -3,10 +3,10 @@ function isObj(v: unknown): v is Record<string, any> {
+ }
+ 
+ export function mergeConfig(a: any, b: any): any {
++  const out = { ...a };
+   for (const key of Object.keys(b)) {
+-    if (isObj(a[key]) && isObj(b[key])) mergeConfig(a[key], b[key]);
+-    else if (Array.isArray(a[key]) && Array.isArray(b[key])) a[key] = a[key].concat(b[key]);
+-    else a[key] = b[key];
++    if (isObj(out[key]) && isObj(b[key])) Object.assign(out[key], b[key]);
++    else out[key] = b[key];
+   }
+-  return a;
++  return out;
+ }

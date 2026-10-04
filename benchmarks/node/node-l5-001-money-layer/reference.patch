@@ -1,0 +1,11 @@
+diff --git a/src/checkout.ts b/src/checkout.ts
+index e04e5b1..00ebe01 100644
+--- a/src/checkout.ts
++++ b/src/checkout.ts
+@@ -1,5 +1,5 @@
+ import { formatMoney } from './money.ts';
+ 
+ export function receiptLine(name: string, priceCents: number): string {
+-  return name + ': ' + formatMoney(priceCents);
++  return name + ': ' + formatMoney(priceCents / 100);
+ }

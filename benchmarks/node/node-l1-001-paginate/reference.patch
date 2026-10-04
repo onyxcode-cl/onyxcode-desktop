@@ -1,0 +1,11 @@
+diff --git a/src/paginate.ts b/src/paginate.ts
+index 5454b29..c12dcd0 100644
+--- a/src/paginate.ts
++++ b/src/paginate.ts
+@@ -1,4 +1,5 @@
+ export function pageSlice<T>(items: T[], page: number, size: number): T[] {
+-  const start = page * size;
++  if (page < 1 || size < 1) return [];
++  const start = (page - 1) * size;
+   return items.slice(start, start + size);
+ }

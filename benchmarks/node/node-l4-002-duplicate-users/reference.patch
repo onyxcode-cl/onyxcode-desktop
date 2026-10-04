@@ -1,0 +1,22 @@
+diff --git a/src/users.ts b/src/users.ts
+index bbd2187..a9b14e7 100644
+--- a/src/users.ts
++++ b/src/users.ts
+@@ -1,9 +1,15 @@
++import { DuplicateUserError } from './errors.ts';
++
+ export class Users {
+   private names: string[] = [];
+ 
+   register(name: string): string {
+-    this.names.push(name);
+-    return name;
++    const clean = name.trim();
++    if (!clean) throw new Error('invalid name');
++    const key = clean.toLowerCase();
++    if (this.names.some((n) => n.toLowerCase() === key)) throw new DuplicateUserError(clean);
++    this.names.push(clean);
++    return clean;
+   }
+ 
+   list(): string[] {

@@ -1,0 +1,78 @@
+diff --git a/src/format.ts b/src/format.ts
+index aef0ad4..6a5dae4 100644
+--- a/src/format.ts
++++ b/src/format.ts
+@@ -1,5 +1,5 @@
+ import type { Task } from './model.ts';
+ 
+ export function formatTask(t: Task): string {
+-  return (t.done ? '[x] ' : '[ ] ') + t.id + ' ' + t.title;
++  return (t.done ? '[x] ' : '[ ] ') + t.id + ' ' + (t.priority === 'high' ? '! ' : '') + t.title;
+ }
+diff --git a/src/model.ts b/src/model.ts
+index 134f82a..6241c7b 100644
+--- a/src/model.ts
++++ b/src/model.ts
+@@ -1,5 +1,8 @@
++export type Priority = 'low' | 'normal' | 'high';
++
+ export interface Task {
+   id: number;
+   title: string;
+   done: boolean;
++  priority: Priority;
+ }
+diff --git a/src/repo.ts b/src/repo.ts
+index 96da08e..4262096 100644
+--- a/src/repo.ts
++++ b/src/repo.ts
+@@ -1,11 +1,11 @@
+-import type { Task } from './model.ts';
++import type { Priority, Task } from './model.ts';
+ 
+ export class TaskRepo {
+   private items = new Map<number, Task>();
+   private seq = 0;
+ 
+-  insert(data: { title: string }): Task {
+-    const t: Task = { id: ++this.seq, title: data.title, done: false };
++  insert(data: { title: string; priority: Priority }): Task {
++    const t: Task = { id: ++this.seq, title: data.title, done: false, priority: data.priority };
+     this.items.set(t.id, t);
+     return t;
+   }
+diff --git a/src/service.ts b/src/service.ts
+index 2033a73..ecc5a19 100644
+--- a/src/service.ts
++++ b/src/service.ts
+@@ -1,6 +1,8 @@
+-import type { Task } from './model.ts';
++import type { Priority, Task } from './model.ts';
+ import type { TaskRepo } from './repo.ts';
+ 
++const RANK: Record<Priority, number> = { high: 0, normal: 1, low: 2 };
++
+ export class TaskService {
+   private repo: TaskRepo;
+ 
+@@ -8,9 +10,10 @@ export class TaskService {
+     this.repo = repo;
+   }
+ 
+-  add(title: string): Task {
++  add(title: string, priority: Priority = 'normal'): Task {
+     if (!title.trim()) throw new Error('title required');
+-    return this.repo.insert({ title: title.trim() });
++    if (!(priority in RANK)) throw new Error('invalid priority');
++    return this.repo.insert({ title: title.trim(), priority });
+   }
+ 
+   complete(id: number): Task {
+@@ -21,6 +24,6 @@ export class TaskService {
+   }
+ 
+   list(): Task[] {
+-    return this.repo.all();
++    return this.repo.all().sort((a, b) => RANK[a.priority] - RANK[b.priority] || a.id - b.id);
+   }
+ }

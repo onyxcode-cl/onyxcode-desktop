@@ -1,0 +1,13 @@
+diff --git a/test/emitter.test.ts b/test/emitter.test.ts
+index 689a6c7..8088a22 100644
+--- a/test/emitter.test.ts
++++ b/test/emitter.test.ts
+@@ -1,6 +1,7 @@
+ import { test } from 'node:test';
+ import assert from 'node:assert/strict';
+-import { createEmitter } from '../src/index.ts';
++import { Emitter } from '../src/index.ts';
++const createEmitter = () => new Emitter();
+ 
+ test('on y emit', () => {
+   const e = createEmitter();

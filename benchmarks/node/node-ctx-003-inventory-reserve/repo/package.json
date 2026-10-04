@@ -1,0 +1,9 @@
+{
+  "name": "fx-node-ctx-003-inventory-reserve",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}
