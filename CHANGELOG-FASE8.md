@@ -814,3 +814,13 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - Mantener pulsado (`use-long-press.ts`, `MessageActionsSheet`) con Copiar / Seleccionar texto / Editar / Reintentar / Bifurcar / Revertir; acciones visibles solo bajo la última respuesta.
 - Tarjeta de permiso: Rechazar a la izquierda y Permitir a la derecha; `PendingBar` «Aprobación pendiente»; indicador único de «pensando» (`ThinkingIndicator` movido a `components/conversation`); visor de imágenes; botones táctiles en `ErrorNotice`; `DeferredMarkdown` (`useDeferredValue` en streaming); las filas del historial ya no animan al cargarse.
 - Escritorio sin cambios (snapshots intactos). Pruebas: `use-stick-to-bottom`, `viewport`, `use-long-press`, `conversation`, `ChatComposer.mobile`, `ChatMessageList.mobile`, `MessageStream.mobile`, `MobileCode.render` (ampliada). Pendiente: P1 `legacyCopy` (P2-B) y P2-C (medir en iPhone real).
+
+## F8-B65: rendimiento de la PWA móvil (arranque 391 → 269 KB gzip)
+
+- **Resaltado perezoso** (`components/highlight-plugins.ts`, `remote/shims/highlight-lazy.ts`, `hljs-deferred.ts`): `rehype-highlight` y highlight.js salen del arranque; se bajan en un rato ocioso tras pintar. El escritorio sigue con la versión estática.
+- **Sin código de escritorio** vía `remote/swaps.ts` (Sidebar, CommandPalette, UpdateNotice, RemotePairHost, RemoteConfirmHost, `keybindings/dispatch`). Prueba `swaps.test.ts`: cada SWAP existe, el especificador está escrito tal cual en el importador y el shim exporta lo que ese importador usa (un SWAP mal escrito ya no falla en silencio).
+- **Paneles Cambios/Archivos/Navegador y Markdown perezosos** (`remote/lazy/*`, con esqueleto o texto plano de respaldo).
+- **Diccionario `es` partido** (`i18n-split.ts`, `i18n-core-keys.json`, `registerMessages`): `main` pasa de 60 a 21 KB gzip; el resto (~31 KB) lo bajan Ajustes/Tareas/Rutinas, y un `t()` sin clave en el núcleo baja el resto y repinta. Prueba obligatoria `i18n-core.test.ts` (recorre el grafo de la build y exige cobertura de claves; núcleo + resto == área original). Regenerar: `UPDATE_PWA_I18N=1 npx vitest run src/renderer/remote/i18n-core.test.ts`.
+- **Markdown por bloques memoizados** mientras se escribe (`splitMarkdownBlocks`; plan B ante referencias, notas y HTML; análisis completo al terminar). Pruebas de equivalencia con prefijos (`Markdown.blocks.test.tsx`) y de coste (`Markdown.perf.test.tsx`, ~37x menos por delta).
+- **Brillo «pensando»** en el celular con pulso de opacidad (compositor) en vez de `background-position`.
+- `entry.json` v2 (`preload`, `bootCss`), marcas `onyx:*` y `__onyxPerf()`, presupuesto 300 KB (`pwa/budget.json`).
