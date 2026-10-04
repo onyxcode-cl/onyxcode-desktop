@@ -19,7 +19,8 @@
     "vite.config.ts",
     "vite.full.config.ts",
     "../src/shared/remote/*.ts",
-    "../src/test/pwa-i18n.test.ts",
+    "../src/test/pwa-*.test.ts",
+    "../src/test/fake-idb.ts",
     "../src/renderer/remote/full.test.ts"
   ],
   "exclude": ["../src/shared/remote/*.test.ts"]

@@ -136,6 +136,8 @@ export const LIMITS = {
 export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/
 /** Id de dispositivo vinculado: 16 bytes en hex. */
 export const DEVICE_ID_RE = /^[0-9a-f]{32}$/
+/** Id de compilación de la PWA (`hs1.b`, v4). */
+export const BUILD_ID_RE = /^[a-z0-9.-]{1,32}$/
 /** Secreto, nonce, `qid` o prueba de 32 bytes en base64url sin relleno. */
 export const SECRET_RE = /^[A-Za-z0-9_-]{43}$/
 /** 16 bytes en base64url sin relleno (`rm`, `rp` del código de 6 dígitos). */
@@ -206,6 +208,8 @@ export interface Hs1Frame {
   id: string
   nc: string
   cm?: string
+  /** Id de compilación de la PWA (v4): solo diagnóstico, NUNCA un control de seguridad (una página maliciosa mentiría). */
+  b?: string
 }
 export interface Hs3Frame {
   t: 'hs3'
@@ -464,18 +468,22 @@ export function parseClientFrame(raw: unknown): Parsed<ClientFrame> {
     case 'ping':
       return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'ping' } } : fail('extra-keys')
     case 'hs1': {
-      if (!onlyKeys(o, ['t', 'v', 'mode', 'id', 'nc', 'cm'])) return fail('extra-keys')
+      if (!onlyKeys(o, ['t', 'v', 'mode', 'id', 'nc', 'cm', 'b'])) return fail('extra-keys')
       if (typeof o.v !== 'number' || !Number.isInteger(o.v)) return fail('bad-version')
+      if (o.b !== undefined && (typeof o.b !== 'string' || !BUILD_ID_RE.test(o.b))) return fail('bad-build')
       if (o.mode !== 'resume' && o.mode !== 'pair') return fail('bad-mode')
       if (typeof o.id !== 'string' || !(o.mode === 'resume' ? DEVICE_ID_RE : SECRET_RE).test(o.id)) return fail('bad-id')
       if (typeof o.nc !== 'string' || !SECRET_RE.test(o.nc)) return fail('bad-nonce')
       // `cm` (compromiso del código de 6 dígitos): obligatorio en pair y prohibido en resume.
       if (o.mode === 'pair') {
         if (typeof o.cm !== 'string' || !SECRET_RE.test(o.cm)) return fail('bad-commit')
-        return { ok: true, value: { t: 'hs1', v: o.v, mode: 'pair', id: o.id, nc: o.nc, cm: o.cm } }
+        return {
+          ok: true,
+          value: { t: 'hs1', v: o.v, mode: 'pair', id: o.id, nc: o.nc, cm: o.cm, ...(o.b !== undefined ? { b: o.b } : {}) }
+        }
       }
       if (o.cm !== undefined) return fail('bad-commit')
-      return { ok: true, value: { t: 'hs1', v: o.v, mode: 'resume', id: o.id, nc: o.nc } }
+      return { ok: true, value: { t: 'hs1', v: o.v, mode: 'resume', id: o.id, nc: o.nc, ...(o.b !== undefined ? { b: o.b } : {}) } }
     }
     case 'hs3': {
       if (!onlyKeys(o, ['t', 'mac', 'rp'])) return fail('extra-keys')

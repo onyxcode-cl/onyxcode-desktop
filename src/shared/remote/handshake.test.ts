@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { sdpFingerprintStrict, sha256Hex, toBase64Url } from './code'
 import {
+  AsyncClientHandshake,
   ClientHandshake,
+  nobleAuthMac,
   HS_VERSION,
   HostHandshake,
   c2h,
@@ -376,3 +378,24 @@ const VECTORS = {
   h2c: 'Gi7pKRE_5ccUTZdCsUXmlzECJo38vthh0_UyMf8maFQ',
   sas: '441731'
 }
+
+describe('AsyncClientHandshake (AuthMac inyectado)', () => {
+  it('con nobleAuthMac produce exactamente las mismas tramas que ClientHandshake', async () => {
+    const sync = new ClientHandshake({ mode: 'resume', deviceId: DEVICE, secret: SECRET, fps: REAL, rand: seeded(1) })
+    const asy = new AsyncClientHandshake({ mode: 'resume', deviceId: DEVICE, mac: nobleAuthMac(hostKey()), fps: REAL, rand: seeded(1) })
+    expect(asy.hello()).toEqual(sync.hello())
+    const hs2 = { t: 'hs2' as const, ns: toBase64Url(seeded(5)(32)) }
+    expect(await asy.onChallenge(hs2)).toEqual(sync.onChallenge(hs2))
+  })
+
+  it('el host acepta v3 y v4 en hs1 y rechaza otras', () => {
+    for (const v of [3, 4]) {
+      const h = new HostHandshake({ mode: 'resume', expectId: DEVICE, key: hostKey(), fps: REAL, rand: seeded(2) })
+      expect(h.onHello({ t: 'hs1', v, mode: 'resume', id: DEVICE, nc: toBase64Url(seeded(3)(32)) })).not.toBeNull()
+    }
+    for (const v of [2, 5]) {
+      const h = new HostHandshake({ mode: 'resume', expectId: DEVICE, key: hostKey(), fps: REAL, rand: seeded(2) })
+      expect(h.onHello({ t: 'hs1', v, mode: 'resume', id: DEVICE, nc: toBase64Url(seeded(3)(32)) })).toBeNull()
+    }
+  })
+})

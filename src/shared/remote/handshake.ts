@@ -29,7 +29,10 @@ import { sha256 } from '@noble/hashes/sha2.js'
 import { constantTimeEqual, fromBase64Url, hexToBytes, sha256Hex, toBase64Url } from './code'
 import type { Hs1Frame, Hs2Frame, Hs3Frame } from './protocol'
 
+/** Versión de la ETIQUETA criptográfica (`onyxcode-auth-v3`). No cambia con el protocolo v4: la criptografía es la misma. */
 export const HS_VERSION = 3
+/** Versiones de protocolo que el Mac acepta en `hs1` (v3 = sin `caps`; v4 = con `caps`, `room` y trama `turn`). */
+export const HS_ACCEPTED_VERSIONS: readonly number[] = [3, 4]
 
 /** Huellas DTLS (hex minúscula, 32 B) del offer (celular) y del answer (Mac), ya validadas con `sdpFingerprintStrict`. */
 export interface Fps {
@@ -127,11 +130,19 @@ export function commit(rp: string): string {
 }
 
 const validFps = (f: Fps): boolean => HEX64.test(f.offer) && HEX64.test(f.answer)
+const BUILD_RE = /^[a-z0-9.-]{1,32}$/
 
 // ── lado celular ──
 
+/** `v`: versión de protocolo que anuncia `hs1` (por defecto `HS_VERSION`); `b`: id de compilación (solo informativo). */
+export interface HelloExtras {
+  v?: number
+  b?: string
+}
+
 export type ClientHandshakeOptions =
-  { mode: 'resume'; deviceId: string; secret: string; fps: Fps; rand: Rand } | { mode: 'pair'; q: string; fps: Fps; rand: Rand }
+  | ({ mode: 'resume'; deviceId: string; secret: string; fps: Fps; rand: Rand } & HelloExtras)
+  | ({ mode: 'pair'; q: string; fps: Fps; rand: Rand } & HelloExtras)
 
 export class ClientHandshake {
   private stage: 'new' | 'hello' | 'challenged' | 'done' = 'new'
@@ -168,7 +179,8 @@ export class ClientHandshake {
     if (this.stage !== 'new') throw new Error('hello-twice')
     this.stage = 'hello'
     this.nc = toBase64Url(this.o.rand(32))
-    const f: Hs1Frame = { t: 'hs1', v: HS_VERSION, mode: this.o.mode, id: this.id, nc: this.nc }
+    const f: Hs1Frame = { t: 'hs1', v: this.o.v ?? HS_VERSION, mode: this.o.mode, id: this.id, nc: this.nc }
+    if (this.o.b !== undefined && BUILD_RE.test(this.o.b)) f.b = this.o.b
     if (this.o.mode === 'pair') {
       this.rp = toBase64Url(this.o.rand(16))
       this.cm = commit(this.rp)
@@ -220,6 +232,115 @@ export class ClientHandshake {
   }
 }
 
+// ── lado celular asíncrono (WebCrypto con clave no exportable) ──
+
+/**
+ * Operaciones con la clave de autenticación inyectadas por quien la guarda. En el celular por HTTPS la clave es un `CryptoKey`
+ * NO exportable (`pwa/src/keys.ts`): un script malicioso puede USARLA con la página abierta, pero no llevársela. En el Mac y en
+ * la PWA por HTTP (sin `crypto.subtle`) se usa `nobleAuthMac`. Las dos dan exactamente los mismos bytes.
+ */
+export interface AuthMac {
+  c2h(transcriptText: string): Promise<string>
+  /** ¿`proof` es el `h2c` válido de este transcript? (tiempo constante). */
+  verifyH2c(transcriptText: string, proof: string): Promise<boolean>
+}
+
+export function nobleAuthMac(key: Uint8Array): AuthMac {
+  return {
+    c2h: (t) => Promise.resolve(c2h(key, t)),
+    verifyH2c: (t, proof) => Promise.resolve(constantTimeEqual(proof, h2c(key, t)))
+  }
+}
+
+export type AsyncClientHandshakeOptions =
+  | ({ mode: 'resume'; deviceId: string; mac: AuthMac | null; fps: Fps; rand: Rand } & HelloExtras)
+  | ({ mode: 'pair'; pairId: string; mac: AuthMac | null; fps: Fps; rand: Rand } & HelloExtras)
+
+/** Igual que `ClientHandshake` pero sin conocer la clave: pide el HMAC a un `AuthMac`. Mismo protocolo, mismas tramas. */
+export class AsyncClientHandshake {
+  private stage: 'new' | 'hello' | 'challenged' | 'done' = 'new'
+  private readonly id: string
+  private nc = ''
+  private ns = ''
+  private rp = ''
+  private cm = ''
+  private rm = ''
+  private t: string | null = null
+  private code: string | null = null
+
+  constructor(private readonly o: AsyncClientHandshakeOptions) {
+    this.id = o.mode === 'resume' ? o.deviceId : o.pairId
+  }
+
+  /** Primera trama (`hs1`). Se llama una sola vez. */
+  hello(): Hs1Frame {
+    if (this.stage !== 'new') throw new Error('hello-twice')
+    this.stage = 'hello'
+    this.nc = toBase64Url(this.o.rand(32))
+    const f: Hs1Frame = { t: 'hs1', v: this.o.v ?? HS_VERSION, mode: this.o.mode, id: this.id, nc: this.nc }
+    if (this.o.b !== undefined && BUILD_RE.test(this.o.b)) f.b = this.o.b
+    if (this.o.mode === 'pair') {
+      this.rp = toBase64Url(this.o.rand(16))
+      this.cm = commit(this.rp)
+      f.cm = this.cm
+    }
+    return f
+  }
+
+  /** Responde al desafío del Mac con `hs3`. `null` = trama inválida, clave ausente o ya usada. */
+  async onChallenge(f: Hs2Frame): Promise<Hs3Frame | null> {
+    if (this.stage !== 'hello' || !this.o.mac) return this.abort()
+    const pair = this.o.mode === 'pair'
+    if (pair !== (f.rm !== undefined)) return this.abort()
+    this.stage = 'challenged' // una sola respuesta por instancia, también si el cálculo es asíncrono
+    this.ns = f.ns
+    this.rm = f.rm ?? ''
+    const t = transcript({
+      mode: this.o.mode,
+      id: this.id,
+      fps: this.o.fps,
+      nc: this.nc,
+      ns: this.ns,
+      ...(pair ? { cm: this.cm, rm: this.rm, rp: this.rp } : {})
+    })
+    if (!t || !validFps(this.o.fps)) return this.abort()
+    this.t = t
+    let mac: string
+    try {
+      mac = await this.o.mac.c2h(t)
+    } catch {
+      return this.abort()
+    }
+    const out: Hs3Frame = { t: 'hs3', mac }
+    if (pair) out.rp = this.rp
+    return out
+  }
+
+  /** ¿La prueba del Mac (`h2c`) es válida para ESTE transcript? Un solo intento por instancia. */
+  async verifyProof(proof: string): Promise<boolean> {
+    if (this.stage !== 'challenged' || !this.o.mac || !this.t) return false
+    this.stage = 'done'
+    let ok = false
+    try {
+      ok = await this.o.mac.verifyH2c(this.t, proof)
+    } catch {
+      ok = false
+    }
+    if (ok && this.o.mode === 'pair') this.code = sasCode(this.t)
+    return ok
+  }
+
+  /** Código de 6 dígitos: solo en vinculación y solo tras `verifyProof === true`. */
+  sas(): string | null {
+    return this.code
+  }
+
+  private abort(): null {
+    this.stage = 'done'
+    return null
+  }
+}
+
 // ── lado Mac ──
 
 export type HostHandshakeOptions =
@@ -249,7 +370,7 @@ export class HostHandshake {
     if (this.stage !== 'new') return this.abort()
     const pair = this.o.mode === 'pair'
     const expect = this.o.mode === 'pair' ? this.o.qid : this.o.expectId
-    if (f.v !== HS_VERSION || f.mode !== this.o.mode || !constantTimeEqual(f.id, expect)) return this.abort()
+    if (!HS_ACCEPTED_VERSIONS.includes(f.v) || f.mode !== this.o.mode || !constantTimeEqual(f.id, expect)) return this.abort()
     if (pair !== (f.cm !== undefined)) return this.abort()
     if (!B64_32.test(f.nc) || (pair && !B64_32.test(f.cm as string)) || !validFps(this.o.fps)) return this.abort()
     this.id = f.id

@@ -7,10 +7,9 @@
  * (`proof` de `authed`/`pair-pending`) verifica. Hasta entonces no se acepta ninguna otra trama, no se pide el PIN y un fallo
  * (que un intermediario puede inyectar) NO borra las credenciales: solo una prueba válida da autoridad para olvidarlas.
  */
-import { sdpFingerprintStrict } from '../../src/shared/remote/code'
-import { ClientHandshake, pairId } from '../../src/shared/remote/handshake'
+import { sdpFingerprintStrict, sha256Hex } from '../../src/shared/remote/code'
+import { AsyncClientHandshake, deviceKey, nobleAuthMac, pairId, pairKey } from '../../src/shared/remote/handshake'
 import {
-  DEVICE_ID_RE,
   LIMITS,
   PROTOCOL_VERSION,
   SECRET_RE,
@@ -33,8 +32,8 @@ import {
 } from '../../src/shared/remote/protocol'
 import { Mux, Outbox, type HttpRequest, type SubHandlers, type Subscription } from '../../src/shared/remote/mux'
 import { openLink, type Link, type LinkEnd } from './rtc'
+import { clearLegacyCreds, loadLegacyCreds, saveLegacyCreds } from './store'
 
-const STORE_KEY = 'onyx.pwa.device'
 const REQUEST_TIMEOUT_MS = 15_000
 const PING_EVERY_MS = 20_000
 const PONG_WITHIN_MS = 8_000
@@ -115,34 +114,9 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>
 }
 
-function loadCreds(): Creds | null {
-  try {
-    const raw = localStorage.getItem(STORE_KEY)
-    if (!raw) return null
-    const o = JSON.parse(raw) as { id?: unknown; secret?: unknown }
-    if (typeof o.id === 'string' && DEVICE_ID_RE.test(o.id) && typeof o.secret === 'string' && SECRET_RE.test(o.secret))
-      return { id: o.id, secret: o.secret }
-  } catch {
-    /* almacenamiento bloqueado o dañado */
-  }
-  return null
-}
-
-function saveCreds(c: Creds): void {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(c))
-  } catch {
-    /* sin almacenamiento: la vinculación durará solo esta pestaña */
-  }
-}
-
-function clearCreds(): void {
-  try {
-    localStorage.removeItem(STORE_KEY)
-  } catch {
-    /* nada */
-  }
-}
+const loadCreds = (): Creds | null => loadLegacyCreds()
+const saveCreds = (c: Creds): void => void saveLegacyCreds(c)
+const clearCreds = (): void => clearLegacyCreds()
 
 /** Nombre legible del dispositivo para la ventana de confirmación del Mac. */
 export function deviceName(): string {
@@ -193,7 +167,9 @@ export class RemoteClient {
   private mode: 'pair' | 'resume' = 'resume'
   private authed = false
   /** Handshake v3 de la conexión actual. */
-  private hs: ClientHandshake | null = null
+  private hs: AsyncClientHandshake | null = null
+  /** Cola de tramas: el handshake es asíncrono (el HMAC puede ser WebCrypto) y el orden de las tramas no puede cambiar. */
+  private frameQueue: Promise<void> = Promise.resolve()
   /** La prueba del Mac verificó: solo desde aquí se aceptan el resto de tramas y se pueden borrar credenciales. */
   private macVerified = false
   private everOnline = false
@@ -345,12 +321,29 @@ export class RemoteClient {
     const fps = { offer, answer }
     const rand = (n: number): Uint8Array => crypto.getRandomValues(new Uint8Array(n))
     try {
+      // Por HTTP (red local) no hay `crypto.subtle`: el HMAC sale de `@noble/hashes`. En HTTPS (modo nube) `keys.ts` da un
+      // `CryptoKey` no exportable con los mismos bytes.
       if (this.mode === 'pair') {
-        this.hs = new ClientHandshake({ mode: 'pair', q: this.pairSecret as string, fps, rand })
+        const q = this.pairSecret as string
+        this.hs = new AsyncClientHandshake({
+          mode: 'pair',
+          pairId: pairId(q),
+          mac: nobleAuthMac(pairKey(q)),
+          fps,
+          rand,
+          v: PROTOCOL_VERSION
+        })
       } else {
         const c = this.creds
         if (!c) return this.fail('revoked', false)
-        this.hs = new ClientHandshake({ mode: 'resume', deviceId: c.id, secret: c.secret, fps, rand })
+        this.hs = new AsyncClientHandshake({
+          mode: 'resume',
+          deviceId: c.id,
+          mac: nobleAuthMac(deviceKey(sha256Hex(c.secret))),
+          fps,
+          rand,
+          v: PROTOCOL_VERSION
+        })
       }
     } catch {
       return this.fail('protocol', true)
@@ -495,6 +488,16 @@ export class RemoteClient {
       this.pongTimer = null
     }
     const f = p.value
+    // En cola: `hs2`/`authed` esperan un cálculo asíncrono y las tramas siguientes (`locked`, etc.) no pueden adelantarse.
+    const gen = this.generation
+    this.frameQueue = this.frameQueue
+      .then(() => (gen === this.generation ? this.dispatch(f, raw, gen) : undefined))
+      .catch(() => {
+        if (gen === this.generation) this.fail('protocol', true)
+      })
+  }
+
+  private async dispatch(f: HostFrame, raw: string, gen: number): Promise<void> {
     if (isMuxHostFrame(f) && !(f.t === 'res' && this.pending.has(f.id))) {
       if (!this.authed || !this.mux) {
         if (++this.badFrames >= MAX_BAD_FRAMES) this.fail('protocol', true)
@@ -503,7 +506,7 @@ export class RemoteClient {
       this.mux.receive(f, utf8Length(raw))
       return
     }
-    this.handle(f)
+    await this.handle(f, gen)
   }
 
   // ── protocolo v2 (multiplexor) ──
@@ -572,20 +575,22 @@ export class RemoteClient {
     this.set({ paired: false })
   }
 
-  private handle(f: HostFrame): void {
+  private async handle(f: HostFrame, gen: number): Promise<void> {
     if (!this.macVerified && !RemoteClient.PRE_PROOF.has(f.t)) return this.fail('protocol', true)
     switch (f.t) {
       case 'hs2': {
         const hs = this.hs
         if (!hs || this.macVerified) return this.fail('protocol', true)
-        const hs3 = hs.onChallenge(f)
+        const hs3 = await hs.onChallenge(f)
+        if (gen !== this.generation) return
         if (!hs3) return this.fail('protocol', true)
         this.sendFrame(hs3)
         return
       }
       case 'pair-pending':
         if (this.mode !== 'pair' || !this.hs || this.macVerified) return this.fail('protocol', true)
-        if (!this.hs.verifyProof(f.proof)) return this.unverified()
+        if (!(await this.hs.verifyProof(f.proof))) return gen === this.generation ? this.unverified() : undefined
+        if (gen !== this.generation) return
         this.macVerified = true
         // El código de 6 dígitos aparece DESPUÉS de verificar al Mac: antes no se le puede creer.
         this.set({ conn: { k: 'pairing', code: this.hs.sas(), pending: true } })
@@ -600,7 +605,8 @@ export class RemoteClient {
         return this.beginGate()
       case 'authed':
         if (this.mode !== 'resume' || !this.hs || this.macVerified) return this.fail('protocol', true)
-        if (!this.hs.verifyProof(f.proof)) return this.unverified()
+        if (!(await this.hs.verifyProof(f.proof))) return gen === this.generation ? this.unverified() : undefined
+        if (gen !== this.generation) return
         this.macVerified = true
         return this.beginGate()
       case 'locked':
@@ -613,7 +619,8 @@ export class RemoteClient {
         if (this.mode !== 'resume' || this.macVerified) return this.fail('protocol', true)
         if (!('why' in f)) return this.fail('not-recognized', true)
         // `expired` solo vale con la prueba del Mac: con ella sí hay autoridad para olvidar el vínculo.
-        if (!this.hs?.verifyProof(f.proof)) return this.unverified()
+        if (!(await this.hs?.verifyProof(f.proof))) return gen === this.generation ? this.unverified() : undefined
+        if (gen !== this.generation) return
         this.forgetCreds()
         return this.fail('expired-link', false)
       case 'denied':
