@@ -19,7 +19,8 @@
  *
  * API de control (misma auth), prefijo /__e2e/:
  *   POST emit       { type, properties, directory?, id? } | { directory, payload } | { events: [...] }
- *   POST script     { steps:[...], model?, sessionID?, match?, sticky?, title?, startDelayMs? } | { scripts:[...] }
+ *   POST script     { steps:[...], model?, sessionID?, match?, forModel?: 'proveedor/modelo', sticky?, title?, startDelayMs?, cost? } | { scripts:[...] }
+ *                   `forModel` solo lo toma el prompt_async cuyo `body.model` coincide (comparar modelos: un guion por modelo).
  *   GET  status     resumen del estado
  *   POST drop-sse   corta todos los streams SSE ({ blockMs? } rechaza SSE nuevos ese tiempo)
  *   GET  requests   ?limit=100&path=<prefijo>&method=GET&since=<seq>
@@ -147,7 +148,8 @@ export function createFakeServer(options = {}) {
       unknownRoutes: new Map(),
       permissionReplies: [],
       questionReplies: [],
-      disposeCount: 0
+      disposeCount: 0,
+      instanceDisposeCount: 0
     }
   }
   let eventCounter = 0
@@ -306,9 +308,11 @@ export function createFakeServer(options = {}) {
 
   // ───────────── guiones ─────────────
 
-  function takeScript(sessionID, text) {
+  function takeScript(sessionID, text, model) {
+    const modelKey = model && typeof model === 'object' && model.providerID ? `${model.providerID}/${model.modelID ?? model.id}` : null
     const i = state.scripts.findIndex((e) => {
       if (e.sessionID && e.sessionID !== sessionID) return false
+      if (e.forModel && e.forModel !== modelKey) return false
       if (e.match && !new RegExp(e.match).test(text)) return false
       return true
     })
@@ -502,8 +506,11 @@ export function createFakeServer(options = {}) {
         setStatus(s, { type: 'busy' })
         return
       case 'error': {
-        const name = step.name ?? 'UnknownError'
-        const data = { message: step.message ?? 'Error simulado', ...(step.statusCode ? { statusCode: step.statusCode, isRetryable: !!step.isRetryable } : {}) }
+        // `preset: 'quota'`: límite de uso como lo da el proveedor (friendlyError → quota; 429 sin reintento del motor).
+        const quota = step.preset === 'quota'
+        const name = step.name ?? (quota ? 'APIError' : 'UnknownError')
+        const statusCode = step.statusCode ?? (quota ? 429 : undefined)
+        const data = { message: step.message ?? (quota ? 'token rate limit exceeded' : 'Error simulado'), ...(statusCode ? { statusCode, isRetryable: !!step.isRetryable } : {}) }
         ctx.failed = { name, data }
         emit('session.error', { sessionID: s.info.id, error: ctx.failed }, dir)
         return
@@ -636,7 +643,7 @@ export function createFakeServer(options = {}) {
       return p
     }
     const text = promptText(body.parts)
-    const p = s.chain.then(() => execute(s, body, takeScript(s.info.id, text) ?? null, runOpts))
+    const p = s.chain.then(() => execute(s, body, takeScript(s.info.id, text, body.model) ?? null, runOpts))
     s.chain = p.catch(() => undefined)
     return p
   }
@@ -730,6 +737,11 @@ export function createFakeServer(options = {}) {
     state.disposeCount++
     state.mcpUser = {}
     emit('global.disposed', {}, 'global')
+    json(c.res, true)
+  })
+  // Está en api-routes.json aunque la app no lo llama hoy: se registra por si un E2E lo pide.
+  route('POST', '/instance/dispose', (c) => {
+    state.instanceDisposeCount++
     json(c.res, true)
   })
   route('GET', '/global/config', (c) => json(c.res, mergedConfig()))
@@ -1187,6 +1199,7 @@ export function createFakeServer(options = {}) {
         mcp: mcpStatus(),
         authProviders: Object.keys(state.authProviders),
         disposeCount: state.disposeCount,
+        instanceDisposeCount: state.instanceDisposeCount,
         requestCount: state.seq.request,
         unknownRoutes: state.unknownRoutes.size,
         recentEvents: events.slice(-50).map((e) => ({ directory: e.directory, id: e.payload.id, type: e.payload.type }))

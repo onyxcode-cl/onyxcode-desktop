@@ -499,3 +499,58 @@ test('set failPrompt: prompt_async corta la conexión las N veces pedidas y lueg
   const ok = await call('POST', `/session/${sid}/prompt_async?${q()}`, { parts: [{ type: 'text', text: 'hola' }] })
   assert.equal(ok.status, 204)
 })
+
+test('guion por modelo (forModel), error de cuota, /instance/dispose y metadata/synthetic de las partes del usuario', async () => {
+  await ctl('POST', 'reset', {})
+  // El catálogo sigue pequeño y trae el modelo de Go, conectado.
+  const prov = (await call('GET', '/provider')).data
+  assert.ok(prov.all.length <= 6)
+  assert.ok(prov.connected.includes('opencode-go'))
+  assert.ok(prov.all.find((p) => p.id === 'opencode-go').models['fake-go-model'])
+  assert.ok((await call('GET', '/config/providers')).data.providers.some((p) => p.id === 'opencode-go'))
+
+  await ctl('POST', 'script', {
+    scripts: [
+      { forModel: 'fake/fake-model', steps: [{ type: 'text', text: 'Respuesta A' }], cost: 0.01 },
+      { forModel: 'fake/fake-reasoner', steps: [{ type: 'text', text: 'Respuesta B' }], startDelayMs: 50 },
+      { forModel: 'opencode-go/fake-go-model', steps: [{ type: 'error', preset: 'quota' }], sticky: true }
+    ]
+  })
+  const run = async (model) => {
+    const sid = (await call('POST', `/session?${q()}`, {})).data.id
+    const [providerID, modelID] = model.split('/')
+    await call('POST', `/session/${sid}/prompt_async?${q()}`, {
+      model: { providerID, modelID },
+      parts: [{ type: 'text', text: 'hola', synthetic: true, metadata: { onyx: { kind: 'element' } } }]
+    })
+    for (let i = 0; i < 100; i++) {
+      await new Promise((r) => setTimeout(r, 20))
+      const st = (await call('GET', `/session/status?${q()}`)).data
+      const msgs = (await call('GET', `/session/${sid}/message?${q()}`)).data
+      if (msgs.length >= 2 && !st[sid]) return msgs
+    }
+    throw new Error('no terminó')
+  }
+  // Orden inverso al de los guiones: cada modelo toma el suyo, no el primero de la cola.
+  const sse = await openSse()
+  await run('opencode-go/fake-go-model')
+  await sse.until((e) => e.some((x) => x.payload.type === 'session.error'))
+  const qerr = sse.events.find((x) => x.payload.type === 'session.error').payload.properties.error
+  assert.equal(qerr.data.statusCode, 429)
+  assert.match(qerr.data.message, /token rate limit/i)
+  sse.close()
+  const b = await run('fake/fake-reasoner')
+  assert.equal(b[1].parts.find((p) => p.type === 'text').text, 'Respuesta B')
+  const a = await run('fake/fake-model')
+  assert.equal(a[1].parts.find((p) => p.type === 'text').text, 'Respuesta A')
+  assert.equal(a[1].info.cost, 0.01)
+  // metadata y synthetic de la parte del usuario se devuelven tal cual.
+  const up = a[0].parts[0]
+  assert.equal(up.synthetic, true)
+  assert.deepEqual(up.metadata, { onyx: { kind: 'element' } })
+  // El guion de Go es sticky: sigue ahí; los otros dos se consumieron.
+  assert.equal((await ctl('GET', 'status')).data.scriptsQueued, 1)
+
+  assert.equal((await call('POST', '/instance/dispose', {})).data, true)
+  assert.equal((await ctl('GET', 'status')).data.instanceDisposeCount, 1)
+})

@@ -1,14 +1,13 @@
-// «Comparar modelos lado a lado» (F8-B78): interfaz con Electron real + OpenCode falso. ESCRITA SIN EJECUTAR (la pasada de la
-// interfaz no abre Electron: el dueño tiene el Llavero). Queda para la verificación final.
+// «Comparar modelos lado a lado» (F8-B78): interfaz con Electron real + OpenCode falso. Escrita sin ejecutar en la pasada de la
+// interfaz (el dueño tiene el Llavero); la verificación final la hace el dueño.
 //
-// PRERREQUISITOS del OpenCode falso (`e2e/fake-opencode/server.mjs`, trabajo de Q; sin ellos esta spec NO puede pasar):
-//   1. `POST /__e2e/script` con `forModel: 'provider/model'`: el guion solo lo toma el `prompt_async` cuyo `body.model` coincide.
-//   2. `GET /config/providers` ofrece además `opencode-go/fake-go-model` (nombre visible «Fake Go Model»).
-//   3. (opcional) `POST /instance/dispose` registrado y devolviendo `true`.
-// Los pasos `fs` (escribir un archivo en la carpeta de la sesión) y `error {message, statusCode}` ya existen en el falso.
+// Apoyo del OpenCode falso (`e2e/fake-opencode/server.mjs`, F8-B82): `forModel: 'proveedor/modelo'` en `POST /__e2e/script` (el guion
+// solo lo toma el `prompt_async` cuyo `body.model` coincide), `opencode-go/fake-go-model` en el catálogo y conectado, y el paso
+// `{ type: 'error', preset: 'quota' }` (429 «token rate limit exceeded», que `friendlyError` clasifica como `quota`). El main de
+// comparar no llama a `POST /instance/dispose` (el falso lo acepta igualmente), así que aquí no se exige.
 //
-// Por qué solo `dev` y no Windows: usa los ganchos del harness en dev y `git worktree` bajo `~`; la comparación en Windows se
-// verificará por separado (el cierre de esta pasada es solo macOS).
+// Windows: los bloques de Code usan `git worktree` bajo `~` y los ganchos del harness en dev (`describe.skipIf(IS_WIN)`); el bloque
+// de Chat sí corre. Por eso la spec NO va entera en `e2e/win-skip.json` (esa lista es para specs enteras fuera de la v1).
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -104,7 +103,7 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
           ],
           startDelayMs: 800
         },
-        { forModel: MODELS[2].id, steps: [{ type: 'error', message: 'token rate limit exceeded', statusCode: 429 }], sticky: true }
+        { forModel: MODELS[2].id, steps: [{ type: 'error', preset: 'quota' }], sticky: true }
       ]
     })
     await openCodeProject(a, repo)
@@ -131,6 +130,15 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
     const go = a.page.getByRole('region', { name: 'Fake Go Model' })
     await expectVisible(go.getByText('Límite de uso'), 30_000)
     await expectVisible(go.getByText(/Reintento en \d+ s/))
+    // Cada modelo recibió SU prompt (el guion por modelo se eligió por `body.model`): al menos uno por modelo en el motor.
+    const prompts = (await a.fake.requests({ limit: 1000, method: 'POST' })).filter((r) => /\/session\/[^/]+\/prompt_async$/.test(r.path))
+    const asked = new Set(
+      prompts.map((r) => {
+        const m = (r.body as { model?: { providerID?: string; modelID?: string } } | null)?.model
+        return m ? `${m.providerID}/${m.modelID}` : ''
+      })
+    )
+    for (const m of MODELS) expect(asked.has(m.id), m.id).toBe(true)
 
     // Métricas: «$0,01» en la columna con coste; «—» (nunca «$0») en la que no informa.
     const fm = a.page.getByRole('region', { name: 'Fake Model' })
