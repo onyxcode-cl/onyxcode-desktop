@@ -326,6 +326,7 @@ export const mainErrors = {
   'merr.menu.copyHtml': 'Copiar código HTML',
   'merr.menu.saveHtml': 'Guardar como HTML…',
   'merr.menu.inspect': 'Inspeccionar',
+  'merr.browser.pickIframe': 'Este elemento está dentro de un marco y no se puede seleccionar',
   'merr.files.noFiles': 'No hay archivos que comprimir.',
   'merr.files.quickLook': 'La vista rápida solo funciona con archivos.',
   'merr.files.convertTimeout': 'La conversión del documento tardó demasiado.',

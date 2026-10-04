@@ -323,6 +323,7 @@ export const mainErrors = {
   'merr.menu.copyHtml': 'Copy HTML code',
   'merr.menu.saveHtml': 'Save as HTML…',
   'merr.menu.inspect': 'Inspect',
+  'merr.browser.pickIframe': "This element is inside a frame and can't be selected",
   'merr.files.noFiles': 'There are no files to compress.',
   'merr.files.quickLook': 'Quick look only works with files.',
   'merr.files.convertTimeout': 'Converting the document took too long.',

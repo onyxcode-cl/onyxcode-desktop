@@ -15,8 +15,11 @@ import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtras
 import {
   BROWSER_HOST_EXCLUDED_CHANNELS,
   BROWSER_INVOKE_CHANNELS,
+  PICK_LIMITS,
+  PICK_STYLE_PROPS,
   type BrowserInvokeChannel,
-  type BrowserInvokeContract
+  type BrowserInvokeContract,
+  type PickedElement
 } from '@shared/ipc-browser'
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
 import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
@@ -171,6 +174,60 @@ const browserToChat = obj({
     })
   )
 })
+
+/**
+ * Contrato de `PickedElement` v2 (evento `browser:picked`, F8-B71). No es un canal invoke (no entra en `IPC_SCHEMAS`): main lo
+ * comprueba antes de emitir el evento y los tests fijan que `buildPickedElement` siempre lo cumple.
+ */
+const pickedStyles: Validator<Record<string, string>> = (v, path) => {
+  const rec = record(str({ max: PICK_LIMITS.styleValue }), PICK_LIMITS.styleCount)(v, path)
+  for (const k of Object.keys(rec)) {
+    if (!(PICK_STYLE_PROPS as readonly string[]).includes(k)) throw new ValidationError(`Estilo no permitido "${k}"`)
+  }
+  return rec
+}
+const pickedCoord = num({ min: -20_000, max: 20_000 })
+const pickedSize = num({ min: 0, max: 20_000 })
+export const PICKED_ELEMENT_SCHEMA: Validator<PickedElement> = obj({
+  v: literal(2),
+  tag: str({ max: 31, min: 1, pattern: /^[a-z][a-z0-9-]*$/ }),
+  role: optional(str({ max: 30, pattern: /^[a-z-]+$/ })),
+  name: optional(str({ max: PICK_LIMITS.name })),
+  text: optional(str({ max: PICK_LIMITS.text })),
+  selector: str({ max: PICK_LIMITS.selector }),
+  path: str({ max: PICK_LIMITS.path }),
+  html: str({ max: PICK_LIMITS.html }),
+  styles: pickedStyles,
+  rect: obj({ x: pickedCoord, y: pickedCoord, width: pickedSize, height: pickedSize }),
+  viewport: obj({ width: pickedSize, height: pickedSize, dpr: num({ min: 0.1, max: 8 }) }),
+  url: str({ max: PICK_LIMITS.url }),
+  title: str({ max: PICK_LIMITS.title }),
+  image: optional(
+    obj({
+      mime: literal('image/jpeg'),
+      dataUrl: str({ max: Math.ceil((PICK_LIMITS.imageBytes * 4) / 3) + 64, pattern: /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/ }),
+      width: num({ min: 1, max: PICK_LIMITS.imageLongSide, int: true }),
+      height: num({ min: 1, max: PICK_LIMITS.imageLongSide, int: true })
+    })
+  ),
+  diagnostics: optional(
+    obj({
+      console: arr(obj({ level: literal('error', 'warning'), text: str({ max: PICK_LIMITS.diagText }) }), PICK_LIMITS.diagEntries),
+      network: arr(
+        obj({
+          method: str({ max: 10, min: 1, pattern: /^[A-Z]+$/ }),
+          url: str({ max: PICK_LIMITS.url }),
+          status: optional(num({ min: 100, max: 599, int: true })),
+          error: optional(str({ max: 100 }))
+        }),
+        PICK_LIMITS.diagEntries
+      ),
+      sinceMs: num({ min: 0, max: 24 * 3600 * 1000 })
+    })
+  ),
+  flags: obj({ sensitive: bool, truncated: bool }),
+  redactions: num({ min: 0, max: 1_000_000, int: true })
+}) as Validator<PickedElement>
 
 const BROWSER_SCHEMAS: { [C in BrowserInvokeChannel]: Validator<BrowserInvokeContract[C]['req']> } = {
   'browser:state': obj({ owner: browserOwner }),

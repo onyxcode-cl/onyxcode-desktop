@@ -67,15 +67,130 @@ export interface BrowserApprovalRequest {
 
 export type BrowserDecision = 'task' | 'always' | 'deny' | 'allow'
 
+/**
+ * Topes del elemento elegido (v2). Los comparten la página (mundo aislado, `pick-script.ts`), main (`pick.ts`) y el
+ * esquema de `schemas.ts`: un solo sitio para cambiarlos.
+ */
+export const PICK_LIMITS = {
+  html: 4096,
+  text: 300,
+  name: 80,
+  selector: 300,
+  path: 300,
+  title: 200,
+  url: 2048,
+  /** Propiedades de `styles` como máximo y largo de cada valor. */
+  styleCount: 40,
+  styleValue: 200,
+  /** Consola y red: entradas por lista, largo de cada texto y tamaño total (JSON) de `diagnostics`. */
+  diagEntries: 10,
+  diagText: 300,
+  diagBytes: 3072,
+  /** Captura recortada: lado largo en píxeles de la imagen y peso máximo del JPEG decodificado. */
+  imageLongSide: 800,
+  imageBytes: 300 * 1024,
+  /** Nodos de texto, profundidad y número de hijos del HTML (los aplica la página; main los repite sobre la cadena). */
+  textNode: 200,
+  depth: 4,
+  children: 20
+} as const
+
+/** Lista cerrada de estilos calculados que se recogen (el orden es el de salida). */
+export const PICK_STYLE_PROPS = [
+  'display',
+  'position',
+  'box-sizing',
+  'width',
+  'height',
+  'margin',
+  'padding',
+  'gap',
+  'flex-direction',
+  'justify-content',
+  'align-items',
+  'grid-template-columns',
+  'color',
+  'background-color',
+  'background-image',
+  'font-family',
+  'font-size',
+  'font-weight',
+  'line-height',
+  'letter-spacing',
+  'text-align',
+  'border',
+  'border-radius',
+  'box-shadow',
+  'opacity',
+  'visibility',
+  'overflow',
+  'z-index',
+  'cursor',
+  'transform'
+] as const
+
+export interface PickedConsoleEntry {
+  level: 'error' | 'warning'
+  text: string
+}
+
+export interface PickedNetworkEntry {
+  method: string
+  /** Sin query ni fragmento. */
+  url: string
+  /** Código HTTP (>= 400); ausente si la petición falló sin respuesta. */
+  status?: number
+  /** `net::ERR_…` cuando no hubo respuesta. */
+  error?: string
+}
+
+export interface PickedImage {
+  mime: 'image/jpeg'
+  /** `data:image/jpeg;base64,…`, de como máximo `PICK_LIMITS.imageBytes` decodificados. */
+  dataUrl: string
+  /** Píxeles de la imagen (lado largo ≤ `PICK_LIMITS.imageLongSide`). */
+  width: number
+  height: number
+}
+
+/**
+ * Elemento que el usuario eligió en el navegador integrado (evento `browser:picked`, v2). Todo está saneado en la página
+ * y otra vez en main (`embedded-browser/pick.ts`): nunca lleva valores de formularios, campos sensibles, `value=`, tokens
+ * ni URLs con query. Solo lo dispara el usuario.
+ */
 export interface PickedElement {
+  v: 2
   tag: string
   role?: string
   name?: string
+  /** Texto visible, ≤ `PICK_LIMITS.text`. */
   text?: string
+  /** Selector CSS el más corto que la página resuelve a un único nodo. */
   selector: string
+  /** Migas de pan legibles: `main > section.hero > div.cta > a`. */
+  path: string
+  /** HTML saneado (≤ `PICK_LIMITS.html` bytes). */
   html: string
+  /** Subconjunto de `PICK_STYLE_PROPS` (≤ `PICK_LIMITS.styleCount`); se omiten los valores por defecto. */
+  styles: Record<string, string>
+  /** Píxeles CSS, relativos al viewport. */
   rect: BrowserRect
+  viewport: { width: number; height: number; dpr: number }
+  /** Página de la pestaña, sin query ni fragmento. */
   url: string
+  title: string
+  /** Ausente si el elemento es o contiene campos sensibles, si no se pudo capturar o si no cabe en el tope. */
+  image?: PickedImage
+  /** Errores de consola y de red desde que se activó la selección (`sinceMs`: ms transcurridos hasta la elección). */
+  diagnostics?: { console: PickedConsoleEntry[]; network: PickedNetworkEntry[]; sinceMs: number }
+  flags: {
+    /** El elemento es/contiene un campo sensible o un campo con valor escrito: no hay captura. */
+    sensitive: boolean
+    /** El HTML, el texto o los estilos se recortaron por los topes. */
+    truncated: boolean
+  }
+  /** Número de valores quitados u ocultados (value, secretos, campos ocultos, claves en texto). */
+  redactions: number
 }
 
 export interface DevServerCandidate {
