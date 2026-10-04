@@ -217,6 +217,7 @@
     "GET /session/{sessionID}/message/{messageID}": "049bcc153baa2bd9",
     "GET /session/{sessionID}/todo": "6237d6bdc3c9ebb6",
     "GET /skill": "88ab969c310de42a",
+    "GET /vcs/diff/raw": "7d66b7e61617bc50",
     "PATCH /session/{sessionID}": "c3e5798a95373182",
     "POST /api/session/{sessionID}/permission/{requestID}/reply": "cb966c4a3e24f271",
     "POST /global/dispose": "5fbaf28de48264b1",
