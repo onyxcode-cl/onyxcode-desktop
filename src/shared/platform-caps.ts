@@ -12,6 +12,12 @@
 export interface PlatformCaps {
   /** Modo Tareas con sandbox (Seatbelt), proxy de credenciales y Rutinas en modo Tareas. */
   tasks: boolean
+  /**
+   * Aislamiento que usaría Tareas en esta plataforma: `seatbelt` (macOS), `wsl` (Windows, WSL2; fase 1 en
+   * preparación, ver docs/WINDOWS-TAREAS.md) o `none`. NO dice si está instalado ni listo (eso es estado de
+   * ejecución) ni si `tasks` está activa: en Windows `tasks` sigue en `false` mientras `tasksWin` esté apagada.
+   */
+  tasksSandbox: TasksSandbox
   /** Control del PC (helper nativo, overlay, grabación de skills). */
   computer: boolean
   /** Actualizador automático que sustituye la aplicación. */
@@ -30,14 +36,23 @@ export interface PlatformCaps {
   nativeBrowser: boolean
 }
 
+export type TasksSandbox = 'seatbelt' | 'wsl' | 'none'
+
+/** Banderas de producto que modulan las capacidades (todas apagadas por defecto; las lee `main`). */
+export interface CapsFlags {
+  /** Tareas (beta) en Windows con WSL2. APAGADA hasta pasar la batería de ataques en el PC (docs/WINDOWS-TAREAS.md). */
+  tasksWin?: boolean
+}
+
 /** Valor de `window.api.platform` en la PWA del celular. */
 export const REMOTE_SURFACE = 'remote'
 
-export function capsFor(platform: string): PlatformCaps {
+export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
   if (platform === REMOTE_SURFACE) {
     // Tareas sí (por el puente, acciones peligrosas confirmadas en el Mac); lo demás depende de la ventana nativa del Mac.
     return {
       tasks: true,
+      tasksSandbox: 'none',
       computer: false,
       updater: false,
       keepAwakeText: false,
@@ -49,8 +64,10 @@ export function capsFor(platform: string): PlatformCaps {
     }
   }
   const mac = platform === 'darwin'
+  const win = platform === 'win32'
   return {
-    tasks: mac,
+    tasks: mac || (win && flags.tasksWin === true),
+    tasksSandbox: mac ? 'seatbelt' : win ? 'wsl' : 'none',
     computer: mac,
     updater: mac,
     keepAwakeText: mac,
