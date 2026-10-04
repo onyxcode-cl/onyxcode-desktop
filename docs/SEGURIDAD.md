@@ -747,21 +747,27 @@ Canales nuevos (todos solo de la ventana principal: no están en `CHANNEL_ROLES`
 
 ## 3 vicies. Control remoto desde el celular (F8-B48, prototipo)
 
+> **Histórico, con correcciones.** Esta sección describe el prototipo v1 (F8-B48). Lo vigente: la lista de lo que puede hacer el celular es la política
+> R/M/D/X de §3 unvicies (`policy.ts`), las rutas dentro del ámbito sí se muestran (con `~`), la autenticación es la del protocolo v3 (§3 tricies) y los
+> límites y arreglos de la auditoría están en §3 tricies bis. Donde algo de abajo contradiga esas secciones, mandan ellas.
+
 **Qué es.** «Ajustes › Celular › Activar» muestra un QR; el celular lo escanea, abre una PWA servida por la propia app y se conecta
 DIRECTO al Mac por un DataChannel WebRTC (cifrado DTLS, `node-datachannel` en `main`). Solo por RED LOCAL: no hay servidor en la
 nube, ni Cloudflare, ni cuenta. Solo macOS (`PlatformCaps.remote`); con la función apagada no hay puertos, sockets ni módulos nativos
 cargados y nada de la app cambia.
 
-**Qué puede hacer el celular (lista blanca estricta, `src/main/remote/whitelist.ts`).** `sessions.list`, `session.messages`
-(≤ 50), `session.prompt` (≤ 8000 caracteres), `session.abort` y `permission.reply` solo con `once` o `reject` (`always` no existe).
-Nada más: ni archivos, ni terminal, ni ajustes, ni crear/borrar sesiones. El celular NO recibe nunca la contraseña del sidecar ni
-acceso a él: el escritorio es el intermediario y valida cada trama (`shared/remote/protocol.ts`, claves desconocidas = rechazo).
+**Qué puede hacer el celular.** En el prototipo v1 eran 5 operaciones (`sessions.list`, `session.messages`, `session.prompt`, `session.abort`,
+`permission.reply`; sigue existiendo `whitelist.ts` como respaldo del protocolo v1/v2 de la sesión). Hoy el celular llama a casi todo lo que usa el
+renderer, **pero cada canal IPC y cada ruta del motor pasa por la política `policy.ts`** (denegar por defecto; R lectura, M mutación acotada al ámbito,
+D confirmación en el Mac, X prohibida; §3 unvicies), y las carpetas, archivos de proyecto, git y Tareas SÍ están al alcance **dentro del ámbito** y sin
+archivos sensibles. El celular NO recibe nunca la contraseña del sidecar ni acceso directo a él: el escritorio es el intermediario y valida cada trama
+(`shared/remote/protocol.ts`, claves desconocidas = rechazo).
 
 **Ámbito.** Sesiones de Chat y de los proyectos recientes de Code (las del motor principal). Las de **Tareas** viven en otros motores y
 no se exponen nunca; tampoco subsesiones ni sesiones marcadas como Tareas. Un id fuera del ámbito responde `not-found` sin llegar al
 motor. Permisos de Control del Mac (`computer_*`/`browser_*`), carpetas (`external_directory`), plan-gate o desconocidos se ven como
-«Apruébalo en el Mac» (solo lectura). Lo que sale hacia el celular se recorta: texto y resumen de herramientas, **nunca rutas
-absolutas** (se reducen a `…/nombre`) ni secretos (patrones de `redact-patterns`), con tope de 64 KiB por trama.
+«Apruébalo en el Mac» (solo lectura). Lo que sale hacia el celular se recorta: texto y resumen de herramientas, secretos (patrones de `redact-patterns`),
+rutas **fuera del ámbito** y `userDataPath`/`opencodeBin`; las rutas dentro del ámbito se pueden ver (con `~`; §3 unvicies), con tope de 64 KiB por trama.
 
 **Cómo se vincula.**
 1. Servidor HTTP+WebSocket mínimo (Node `http` + `ws`) que solo existe mientras el modo está activo, ligado ÚNICAMENTE a la IPv4 privada
@@ -799,10 +805,10 @@ salir de la app. Revocar un dispositivo (Ajustes) lo desconecta al instante.
 | Atacante activo en la misma Wi-Fi (intermediario que termina dos DTLS) | **Sin `q` no puede vincularse ni reconectar**: el HMAC del handshake va ligado a las huellas DTLS que ve cada pila, que con un intermediario son distintas, y no tiene la clave para fabricarlo. Con `q` filtrado (QR fotografiado), el código de 6 dígitos con compromiso previo lo detecta (acierta con prob. 1e-6 por intento, 5 intentos por QR). El riesgo aceptado se reduce a «el dueño no compara Y alguien vio el QR» |
 | Robo del secreto de dispositivo | **No viaja nunca**: el celular prueba que lo tiene con un HMAC ligado a las huellas DTLS de los dos extremos y a nonces de un solo uso, y el Mac prueba lo mismo antes de recibir el PIN. Vive en `localStorage` del celular; el Mac guarda su sha256, que desde v3 es material de clave (`K = HKDF(sha256)`; cifrado con `safeStorage`); se puede revocar. Con el secreto robado y sin el PIN no se llega a nada (5 PIN malos revocan) |
 | Página alterada al cargarla por HTTP | **Riesgo residual aceptado hasta la fase 2 (HTTPS)**: la PWA se sirve por `http://IP:puerto`; un intermediario activo justo cuando el celular abre la página puede servir JavaScript propio en ese origen, leer el secreto de `localStorage` y capturar el PIN que escribe el dueño. Ningún protocolo dentro de la página lo evita (y la confirmación por conexión tampoco lo evitaba: el atacante usa la conexión legítima del dueño) |
-| Celular comprometido o prestado | Lista blanca mínima, `once`/`reject`, sin Control del Mac ni carpetas, límites, revocación y «Cortar todo» |
+| Celular comprometido o prestado | Política R/M/D/X acotada al ámbito (§3 unvicies), `always` inexistente, acciones D con confirmación en el Mac, PIN, límites, revocación y «Cortar todo». Riesgo explícito pendiente: aprobar `bash`/`edit` «una vez» desde el celular es M (§3 tricies bis) |
 | Servidor local explotable | Se liga solo a la IP privada, `Host`/`Origin` exactos, ≤ 2 sockets, sirve solo la carpeta de la PWA (sin `..`, solo extensiones conocidas), existe solo mientras está activo |
 | Desbordamiento / inundación | Tamaños máximos por trama, cubo de fichas, 6 prompts/min, desconexión a las 3 violaciones |
-| Fuga de rutas o secretos al celular | Recorte de texto y herramientas en `events.ts` |
+| Fuga de rutas o secretos al celular | Recorte de texto y herramientas en `events.ts`, filtro de archivos sensibles en lecturas y diffs, `sanitizeResult` por canal (§3 tricies bis) |
 
 Una IP local por HTTP **no es contexto seguro**: la PWA no usa `crypto.subtle` (hash con `@noble/hashes`, fijado); `RTCPeerConnection` y
 `crypto.getRandomValues` sí funcionan. No funciona en el prototipo: instalar la PWA, service worker, avisos push ni conexión fuera de
@@ -879,7 +885,7 @@ en `provider.list`. Adjuntos: `data:` base64; `file://` solo bajo el directorio 
   `settings:changed`, `files:changed`…).
 
 **Cola de confirmación (`remote/confirm-queue.ts`).** FIFO, máx. 2 pendientes (la 3.ª responde `busy`), 10 peticiones nuevas por minuto
-(`rate-limited`), deduplicada por `sha256(canal + payload canónico)` y dispositivo (repetir la misma llamada pendiente se une a ella y no
+(`rate-limited`), deduplicada por `sha256(canal + payload canónico)` y dispositivo (desde F8-B67, repetir la misma llamada pendiente responde `busy`: ya no se une a ella, y no
 gasta cupo). La aprobación vale SOLO para esa llamada: el resultado lleva el `digest` y el despachador debe comprobar que coincide con
 lo que va a ejecutar; se consume al resolver (repetir la llamada pide otra). Solo se muestra la primera; rechazo automático a los 90 s
 **desde que se muestra**; revocar o «Cortar todo» llama a `cancelAll`/`cancelDevice`. Contrato IPC: evento `remote:confirmRequest`
@@ -1171,3 +1177,27 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
   Developer ID Application.
 - **Control remoto (F8-B66)**: la PWA se sirve por HTTP en la LAN, así que un intermediario activo justo cuando el celular abre la página puede servir código propio (leer el secreto, capturar el PIN); el handshake v3 protege la
   conexión, no el código de la página. Solo lo arregla el HTTPS de la fase 2 (`docs/REMOTO-FASE2.md`). Mientras tanto la LAN es un requisito de confianza: no usar el control remoto en redes públicas o de invitados. Ver §3 tricies.
+
+## 3 tricies bis. Arreglos de la auditoría del control remoto (F8-B67)
+
+Auditoría de solo lectura del 2026-10-03 sobre el remoto v3; aquí los hallazgos corregidos (cada uno con una prueba que reproduce el ataque y fallaba antes del arreglo).
+
+- **Archivos sensibles en todas las lecturas (hallazgo 1).** `isSensitiveEither` ya no solo cubre `/file/content`, `/file`, `/find*` y adjuntos: también `tasks:previewFile`, `git:diff` con `path`
+  (rechazo `sensitive-file`, por nombre léxico y real), y los diffs se filtran **por nombre de archivo** en las respuestas de `git:diff`, `GET /vcs/diff`, `/vcs/diff/raw` (por bloques del diff),
+  `/session/{id}/diff`, `/file/status`, `/vcs/status`, `summary.diffs` de los mensajes y el evento `session.diff` (`diff-filter.ts`). Lista ampliada: `.envrc`, `.env-*`, `.env_*`, `*.tfvars` (`.json`), `.vault*`.
+  Límite: lo que el agente lea con una herramienta (`cat .env` en `bash`) sigue pudiendo salir en el texto de los mensajes (hallazgo 2).
+- **Confirmaciones que muestran lo que se aprueba (hallazgo 5).** El detalle del diálogo incluye los `patrones` de `tasks:rules:add`, el comando/rutas/patrones del permiso (aprendidos del motor) en
+  `POST /permission/.../reply`, el conjunto `permission` de `POST`/`PATCH /session`, prompt y horario de `routines:save` y el contenido de AGENTS.md, memoria e instrucciones. Todo texto del celular pasa por
+  `confirm-detail.ts`: sin saltos ni caracteres de control/dirección, sin secretos (`redact-patterns`), máx. 240 caracteres por línea y 12 líneas (resumen «… (+N)»); la cola lo aplica otra vez (doble red).
+- **Rutas fuera del ámbito en canales R (hallazgo 9).** `settings:get` (sin `opencodeBin`; `recentFolders` solo del ámbito), `tasks:trusted:list` (solo del ámbito) y `tasks:policy` (sin `source` ni
+  `allowedFolderRoots`) usan el mismo recorte que `settings:changed`; `sanitizeResult` recibe el predicado de ámbito y, sin él, cierra por defecto.
+- **Acciones M acotadas y con rastro (hallazgo 10).** `git:createWorktree` pasa a **X** (creaba `../.repo-worktrees/` fuera del proyecto; el celular no lo usa). `routines:delete`, `routines:toggle` (apagar),
+  `tasks:tasks:forget` y `tasks:restore:forget` exigen que la carpeta de la rutina/tarea esté en el ámbito (el despachador la averigua con `routines:list`/`tasks:tasks:list`; desconocida = `scope-unknown`).
+  **Toda acción M ejecutada** (IPC o HTTP) deja `action-run` en `remote-audit.jsonl` con canal (plantilla de ruta, sin ids) y clase, dispositivo y nombre; nunca payload. Ojo: ocupa espacio del registro rotativo.
+- **Una aprobación, una ejecución (hallazgo 7).** Una llamada D idéntica a otra pendiente ya no se une a ella: responde `busy`. El digest de lo aprobado se compara con el de lo que de verdad se ejecuta
+  (IPC: el payload ya validado por el esquema en `authorize`, de un solo uso; HTTP: método, ruta, query y cuerpo enviados al motor frente a una copia tomada al pedir la confirmación); si difiere, `digest-mismatch`.
+- **Documentación (hallazgo 12).** §3 vicies queda marcada como histórica y corregida (lista blanca v1, «nunca rutas absolutas», tabla de amenazas) y `REMOTO-FASE2.md` ya no dice que el secreto esté en `IndexedDB`
+  (hoy `localStorage`; `IndexedDB` es el plan de la fase 2).
+
+**Pendiente (no tocado aquí).** Hallazgo 2 (aprobar `bash`/`edit` «una vez» desde el celular es M y equivale a ejecución arbitraria: decisión del dueño), 3 (bloqueo no corta suscripciones abiertas), 4 (resuelto por el
+protocolo v3 para la reconexión; el código de 6 dígitos queda con compromiso previo), 6 («Cortar todo» no borra confianza/actividad), 8 (DoS de vinculación en LAN) y 11 (`devices.touch` antes del PIN).
