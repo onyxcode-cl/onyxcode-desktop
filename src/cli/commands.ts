@@ -7,6 +7,8 @@ import { COMMON_OPTS, parseArgs, pick, UsageError, type OptTable, type Parsed } 
 import { EXIT, fail, ok, type CmdResult, type Ctx } from "./ctx.ts";
 import { DataError, listConfigurations, listExperimentFiles, listScenarios, loadExperiment } from "./data.ts";
 import { BudgetError } from "../engine/engine.ts";
+import { procsCiting } from "../engine/procs.ts";
+import { pidsWithCwdUnder } from "../telemetry/orphans.ts";
 import { ConfigError } from "../engine/config.ts";
 import type { ClaimsFile } from "../report/types.ts";
 import { loadReport, planFor, runFor } from "./wiring.ts";
@@ -175,24 +177,52 @@ const listCmd: CommandDef = {
 // ---------- clean ----------
 export interface CleanTarget {
   base: string;
-  entries: { path: string; ageMin: number; skipped: boolean }[];
+  entries: { path: string; ageMin: number; skipped: boolean; inUse?: boolean }[];
 }
 
 const FRESH_MIN = 10;
 
-export function cleanTargets(home: string, force: boolean, now = Date.now()): CleanTarget[] {
+/** mtime máximo de la entrada y de todo su contenido (recursivo, sin seguir enlaces, con tope de entradas). */
+export function latestMtimeMs(path: string, maxEntries = 50_000): number {
+  let latest = 0;
+  let n = 0;
+  const walk = (p: string): void => {
+    if (n++ > maxEntries) return;
+    let st;
+    try { st = lstatSync(p); } catch { return; }
+    if (st.mtimeMs > latest) latest = st.mtimeMs;
+    if (st.isDirectory()) { try { for (const e of readdirSync(p)) walk(join(p, e)); } catch { /* ilegible */ } }
+  };
+  walk(path);
+  return latest;
+}
+
+export function cleanTargets(home: string, force: boolean, now = Date.now(), inUse: (path: string) => boolean = procsAlive): CleanTarget[] {
   const out: CleanTarget[] = [];
   for (const sub of ["r", "validate"]) {
     const base = join(home, "ab", sub);
     if (!existsSync(base)) continue;
     const entries = readdirSync(base).map((name) => {
       const path = join(base, name);
-      const ageMin = (now - lstatSync(path).mtimeMs) / 60000;
-      return { path, ageMin, skipped: !force && ageMin < FRESH_MIN };
+      // M5: edad por el mtime MÁS RECIENTE de todo el contenido (escribir dentro de ws/ no cambia el mtime del directorio del run)
+      const ageMin = (now - latestMtimeMs(path)) / 60000;
+      // un run con procesos vivos que citan su ruta (cmdline, cwd o marca AB_RUN_ROOT) nunca se borra, ni con --force
+      const live = inUse(path);
+      return { path, ageMin, skipped: live || (!force && ageMin < FRESH_MIN), ...(live ? { inUse: true } : {}) };
     });
     out.push({ base, entries });
   }
   return out;
+}
+
+/** true si algún proceso vivo cita la ruta (línea de comandos o entorno) o tiene su cwd dentro. */
+export function procsAlive(path: string): boolean {
+  let real = path;
+  try { real = realpathSync(path); } catch { /* ya no existe */ }
+  for (const r of new Set([path, real])) {
+    if (procsCiting(r).length > 0 || pidsWithCwdUnder(r).length > 0) return true;
+  }
+  return false;
 }
 
 const cleanCmd: CommandDef = {
@@ -204,7 +234,7 @@ const cleanCmd: CommandDef = {
     const all = targets.flatMap((t) => t.entries);
     const toDelete = all.filter((e) => !e.skipped);
     const data = { dryRun: b(p, "dry-run"), bases: targets.map((t) => t.base), delete: toDelete.map((e) => e.path), skipped: all.filter((e) => e.skipped).map((e) => e.path), deleted: [] as string[] };
-    const listing = [...toDelete.map((e) => `  borrar: ${e.path}`), ...all.filter((e) => e.skipped).map((e) => `  omitido (reciente, podría estar en uso): ${e.path}`)].join("\n");
+    const listing = [...toDelete.map((e) => `  borrar: ${e.path}`), ...all.filter((e) => e.skipped).map((e) => `  omitido (${e.inUse ? "procesos vivos lo usan" : "reciente, podría estar en uso"}): ${e.path}`)].join("\n");
     if (toDelete.length === 0) return ok(data, all.length ? `Nada que borrar.\n${listing}` : "Nada que borrar: ~/ab/r y ~/ab/validate están vacíos o no existen.");
     if (b(p, "dry-run")) return ok(data, `Simulación (no se borra nada). Se borrarían ${toDelete.length} entradas:\n${listing}`);
     if (!b(p, "yes")) {
