@@ -152,3 +152,8 @@ export function parseKeyCombo(input: string): ParsedKeyCombo {
     up: { type: 'keyUp', ...common }
   }
 }
+
+/** Esc solo, sin modificadores (cancela «Seleccionar elemento»; lo usa `surface.ts` con la entrada REAL del usuario). */
+export function isCancelKey(input: { key: string; meta?: boolean; control?: boolean; alt?: boolean; shift?: boolean }): boolean {
+  return input.key === 'Escape' && !input.meta && !input.control && !input.alt && !input.shift
+}

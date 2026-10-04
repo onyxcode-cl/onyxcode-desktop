@@ -19,6 +19,7 @@ import { computeEmulation, emulationKey, mobileUserAgent, type ViewportEmulation
 import { checkUrl, schemeOf, subframeUrlAllowed } from './sites'
 import { sessionFor, setExternalOpenBlockedListener } from './session'
 import { detachCdp } from './cdp'
+import { isCancelKey } from './keys'
 
 export const MAX_TABS_PER_OWNER = 6
 export const MAX_TABS_TOTAL = 12
@@ -137,6 +138,13 @@ function installContextMenu(tab: TabRuntime): void {
 function installShortcuts(tab: TabRuntime): void {
   tab.wc.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
+    // Esc cancela «Seleccionar elemento» (F8-B71): el servicio decide si hay una selección en curso y, si la hay, se traga la tecla.
+    if (isCancelKey(input)) {
+      const ev = { handled: false }
+      surfaceEvents.emit('escape', tab, ev)
+      if (ev.handled) event.preventDefault()
+      return
+    }
     const cmd = input.meta || input.control
     if (!cmd) return
     const key = input.key.toLowerCase()

@@ -13,6 +13,8 @@
  * `navBypass` (URL exacta, un solo uso) para no volver a pedir aprobación sobre algo que ya se decidió.
  */
 import { emitTo } from '../ipc/event-bus'
+import { t } from '@shared/i18n'
+import { PICKED_ELEMENT_SCHEMA } from '../ipc/schemas'
 import { BrowserWindow, shell, type WebContentsView } from 'electron'
 import type {
   BrowserCapture,
@@ -23,8 +25,7 @@ import type {
   BrowserSitesState,
   BrowserTab,
   BrowserToChat,
-  DevServerCandidate,
-  PickedElement
+  DevServerCandidate
 } from '@shared/ipc-browser'
 import type { BrowserEventChannel, BrowserEventContract, BrowserViewMode } from '@shared/ipc-browser'
 import type { OpencodeConnection } from '@shared/types'
@@ -32,6 +33,10 @@ import { loadManagedPolicy } from '../tasks/policy'
 import { hostOf, schemeOf, siteOf } from './sites'
 import { BrowserBusyError, type AgentActor, type AgentLease, type CdpSession, type EmbeddedBrowserApi } from './api'
 import { cdpSessionFor } from './cdp'
+import { buildPickedElement, capPicked, captureElementImage, planElementClip, type PickRaw } from './pick'
+import { pickInPageSource, pickLimitsForPage } from './pick-script'
+import { startDiagnostics, type DiagnosticsCollector } from './pick-diagnostics'
+import { sleep } from '../util/async'
 import { inputScaleOf } from './viewport'
 import { findDevServers } from './dev-servers'
 import { isLoopbackOrPrivateHost, sessionFor } from './session'
@@ -65,6 +70,8 @@ interface OwnerRuntime {
   agentSessionId: string | null
   agentLabel: string | null
   picking: boolean
+  /** Sesión de «Seleccionar elemento» en curso (oyentes, diagnóstico); `picking` es su reflejo para la UI. */
+  pick: PickSession | null
   hostWindow: BrowserWindow | null
   attachedTo: BrowserWindow | null
   /** Pestaña cuya vista está colgada de `attachedTo` ahora mismo (una sola por owner). */
@@ -87,6 +94,15 @@ interface OwnerRuntime {
   noticeAt: number
 }
 
+/** Selección de elemento activa: todo lo que hay que soltar al terminar o cancelar (F8-B71). */
+interface PickSession {
+  tabId: string
+  active: boolean
+  busy: boolean
+  cleanups: (() => void)[]
+  collector: DiagnosticsCollector | null
+}
+
 const owners = new Map<string, OwnerRuntime>()
 
 function ownerKeyOf(owner: BrowserOwner): string {
@@ -105,6 +121,7 @@ function ownerRuntime(owner: BrowserOwner): OwnerRuntime {
       agentSessionId: null,
       agentLabel: null,
       picking: false,
+      pick: null,
       hostWindow: null,
       attachedTo: null,
       attachedTabId: null,
@@ -155,6 +172,9 @@ function sendEvent<C extends BrowserEventChannel>(channel: C, payload: BrowserEv
 }
 
 function broadcastState(owner: BrowserOwner): void {
+  // La selección es solo del usuario: si el agente toma el control de la pestaña, se cancela.
+  const rt = ownerRuntime(owner)
+  if (rt.pick && rt.control === 'agent') endPicking(rt)
   sendEvent('browser:state', stateFor(owner))
 }
 
@@ -361,6 +381,7 @@ function ensureActiveTab(owner: BrowserOwner): TabRuntime | null {
   }
   try {
     const tab = createTab(owner, { openedBy: 'user' })
+    endPicking(rt)
     rt.activeTabId = tab.id
     return tab
   } catch (err) {
@@ -437,6 +458,7 @@ function layoutView(rt: OwnerRuntime): void {
  * owner elige otra pestaña activa y se recoloca la vista. Antes la vista de una pestaña cerrada seguía colgada y visible.
  */
 function discardTab(rt: OwnerRuntime, tab: TabRuntime): void {
+  if (rt.pick?.tabId === tab.id) endPicking(rt)
   if (rt.attachedTabId === tab.id) detachShownView(rt)
   destroyTab(tab)
   if (rt.activeTabId === tab.id) rt.activeTabId = tabsForOwner(rt.owner)[0]?.id ?? null
@@ -745,6 +767,13 @@ function init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection()
   surfaceEvents.on('crashed', (tab: TabRuntime) => broadcastState(tab.owner))
   surfaceEvents.on('blocked', (tab: TabRuntime, scheme: string | null) => setNotice(tab.owner, scheme))
   surfaceEvents.on('destroyed', (tab: TabRuntime) => broadcastState(tab.owner))
+  surfaceEvents.on('escape', (tab: TabRuntime, ev: { handled: boolean }) => {
+    const rt = ownerRuntime(tab.owner)
+    if (!rt.pick || rt.pick.tabId !== tab.id) return
+    ev.handled = true
+    endPicking(rt)
+    broadcastState(tab.owner)
+  })
   surfaceEvents.on('shortcut', (tab: TabRuntime, key: string) => sendEvent('browser:shortcut', { owner: tab.owner, key: key as never }))
 }
 
@@ -790,6 +819,7 @@ export function attachView(owner: BrowserOwner, hostWindow: BrowserWindow, rect:
 
 export function detachView(owner: BrowserOwner): void {
   const rt = ownerRuntime(owner)
+  endPicking(rt)
   rt.visible = false
   layoutView(rt)
 }
@@ -827,6 +857,7 @@ export function closeTab(owner: BrowserOwner, tabId: string) {
 
 export function selectTab(owner: BrowserOwner, tabId: string) {
   const rt = ownerRuntime(owner)
+  if (rt.pick && rt.pick.tabId !== tabId) endPicking(rt)
   if (tabById(tabId)) rt.activeTabId = tabId
   layoutView(rt)
   return stateFor(owner)
@@ -870,52 +901,108 @@ export function agentControl(owner: BrowserOwner, action: 'pause' | 'resume' | '
   return stateFor(owner)
 }
 
-interface PickedElementRaw {
-  tag: string
-  role?: string
-  name?: string
-  text?: string
-  html: string
-  rect: { x: number; y: number; width: number; height: number }
+/** Termina (o cancela) la selección de elemento de un owner: suelta oyentes y diagnóstico y apaga el modo de inspección. */
+function endPicking(rt: OwnerRuntime): void {
+  const ps = rt.pick
+  rt.pick = null
+  rt.picking = false
+  if (!ps) return
+  ps.active = false
+  for (const off of ps.cleanups) {
+    try {
+      off()
+    } catch {
+      /* ya soltado */
+    }
+  }
+  ps.cleanups = []
+  ps.collector?.dispose()
+  ps.collector = null
+  const tab = tabById(ps.tabId)
+  if (tab && !tab.destroyed && !tab.wc.isDestroyed()) {
+    void cdp(ps.tabId)
+      .then((s) => s.send('Overlay.setInspectMode', { mode: 'none' }))
+      .catch(() => undefined)
+  }
+}
+
+function setPickNotice(owner: BrowserOwner, text: string): void {
+  const rt = ownerRuntime(owner)
+  rt.notice = { id: ++noticeSeq, text }
+  rt.noticeAt = Date.now()
 }
 
 export async function setPicking(owner: BrowserOwner, tabId: string, on: boolean): Promise<void> {
   const tab = tabById(tabId)
   if (!tab) return
   const rt = ownerRuntime(owner)
-  rt.picking = on
+  if (!on) {
+    endPicking(rt)
+    broadcastState(owner)
+    return
+  }
+  // Solo el usuario elige, y no mientras el agente tiene la pestaña.
+  if (ownerKeyOf(tab.owner) !== ownerKeyOf(owner) || rt.control === 'agent') {
+    endPicking(rt)
+    broadcastState(owner)
+    return
+  }
+  endPicking(rt)
+  const ps: PickSession = { tabId, active: true, busy: false, cleanups: [], collector: null }
+  rt.pick = ps
+  rt.picking = true
   try {
     const session = await cdp(tabId)
-    if (!on) {
-      await session.send('Overlay.setInspectMode', { mode: 'none' }).catch(() => undefined)
-      broadcastState(owner)
-      return
-    }
     await session.send('DOM.enable')
     await session.send('Overlay.enable')
-    let off: (() => void) | null = null
-    off = session.on('Overlay.inspectNodeRequested', (params) => {
-      void handleInspectNodeRequested(owner, tab, session, params)
-        .catch((err) => console.error('[embedded-browser] elemento elegido:', err))
-        .finally(() => {
-          off?.()
-          rt.picking = false
-          void session.send('Overlay.setInspectMode', { mode: 'none' }).catch(() => undefined)
-          broadcastState(owner)
-        })
-    })
+    // Consola y red solo desde ahora (no se activan al crear la pestaña); si falla, se elige igual sin diagnóstico.
+    ps.collector = await startDiagnostics(session).catch(() => null)
+    if (rt.pick !== ps) {
+      ps.collector?.dispose()
+      ps.collector = null
+      return
+    }
+    // Una navegación de primer nivel cancela la selección.
+    const onNav = (details: { isMainFrame: boolean; isSameDocument: boolean }): void => {
+      if (details.isMainFrame && !details.isSameDocument && rt.pick === ps) {
+        endPicking(rt)
+        broadcastState(owner)
+      }
+    }
+    tab.wc.on('did-start-navigation', onNav)
+    ps.cleanups.push(() => tab.wc.removeListener('did-start-navigation', onNav))
+    ps.cleanups.push(
+      session.on('Overlay.inspectNodeRequested', (params) => {
+        if (!ps.active || ps.busy) return
+        ps.busy = true
+        void handleInspectNodeRequested(owner, tab, session, params, ps)
+          .catch((err) => console.error('[embedded-browser] elemento elegido:', err))
+          .finally(() => {
+            if (rt.pick === ps) {
+              endPicking(rt)
+              broadcastState(owner)
+            }
+          })
+      })
+    )
     await session.send('Overlay.setInspectMode', {
       mode: 'searchForNode',
       highlightConfig: { contentColor: { r: 76, g: 128, b: 230, a: 0.25 }, showInfo: true }
     })
   } catch (err) {
     console.error('[embedded-browser] Seleccionar elemento:', err)
-    rt.picking = false
+    if (rt.pick === ps) endPicking(rt)
   }
   broadcastState(owner)
 }
 
-async function handleInspectNodeRequested(owner: BrowserOwner, tab: TabRuntime, session: CdpSession, params: unknown): Promise<void> {
+async function handleInspectNodeRequested(
+  owner: BrowserOwner,
+  tab: TabRuntime,
+  session: CdpSession,
+  params: unknown,
+  ps: PickSession
+): Promise<void> {
   const backendNodeId = (params as { backendNodeId?: number }).backendNodeId
   if (typeof backendNodeId !== 'number') return
   const worldId = await session.isolatedContext()
@@ -923,33 +1010,45 @@ async function handleInspectNodeRequested(owner: BrowserOwner, tab: TabRuntime, 
     backendNodeId,
     executionContextId: worldId
   })
-  const fn = `function() {
-    var r = this.getBoundingClientRect();
-    return {
-      tag: this.tagName.toLowerCase(),
-      role: this.getAttribute('role') || undefined,
-      name: this.getAttribute('aria-label') || this.title || undefined,
-      text: (this.innerText || '').slice(0, 500),
-      html: this.outerHTML ? this.outerHTML.slice(0, 2000) : '',
-      rect: { x: r.x, y: r.y, width: r.width, height: r.height }
-    };
-  }`
-  const result = await session.send<{ result: { value: PickedElementRaw } }>('Runtime.callFunctionOn', {
-    objectId: resolved.object.objectId,
-    functionDeclaration: fn,
-    returnByValue: true
-  })
-  await session.send('Runtime.releaseObject', { objectId: resolved.object.objectId }).catch(() => undefined)
-  const raw = result.result.value
-  const element: PickedElement = {
-    tag: raw.tag,
-    role: raw.role,
-    name: raw.name,
-    text: raw.text,
-    selector: raw.tag,
-    html: raw.html,
-    rect: raw.rect,
-    url: tab.wc.isDestroyed() ? '' : tab.wc.getURL()
+  let raw: PickRaw | undefined
+  try {
+    const result = await session.send<{ result?: { value?: PickRaw }; exceptionDetails?: unknown }>('Runtime.callFunctionOn', {
+      objectId: resolved.object.objectId,
+      functionDeclaration: pickInPageSource(),
+      arguments: [{ value: pickLimitsForPage() }],
+      returnByValue: true
+    })
+    if (result.exceptionDetails) throw new Error('La recogida del elemento falló en la página')
+    raw = result.result?.value
+  } finally {
+    await session.send('Runtime.releaseObject', { objectId: resolved.object.objectId }).catch(() => undefined)
+  }
+  if (!raw || typeof raw !== 'object') throw new Error('La página no devolvió el elemento')
+  if (raw.flags?.inIframe) {
+    setPickNotice(owner, t('merr.browser.pickIframe'))
+    return
+  }
+  const url = tab.wc.isDestroyed() ? '' : tab.wc.getURL()
+  let element = buildPickedElement(raw, { url, title: tab.title, diagnostics: ps.collector?.snapshot() })
+  // Se apaga el resaltado ANTES de capturar (si no, la tinta azul sale en la imagen).
+  await session.send('Overlay.setInspectMode', { mode: 'none' }).catch(() => undefined)
+  await session.send('Overlay.hideHighlight').catch(() => undefined)
+  if (!element.flags.sensitive) {
+    const plan = planElementClip(raw.rect, { x: Number(raw.scrollX), y: Number(raw.scrollY) })
+    if (plan) {
+      await sleep(80)
+      const image = await captureElementImage(async (quality, p) => {
+        const res = await session.send<{ data: string }>('Page.captureScreenshot', { format: 'jpeg', quality, clip: p.clip })
+        return res.data
+      }, plan)
+      if (image) element = capPicked({ ...element, image })
+    }
+  }
+  try {
+    PICKED_ELEMENT_SCHEMA(element)
+  } catch (err) {
+    console.error('[embedded-browser] el elemento elegido no cumple el contrato:', err)
+    return
   }
   sendEvent('browser:picked', { owner, tabId: tab.id, element })
 }
