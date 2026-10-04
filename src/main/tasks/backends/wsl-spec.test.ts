@@ -204,6 +204,12 @@ systemd=false
   })
 })
 
+describe('resources/wsl/wsl.conf', () => {
+  it('el archivo del recurso es exactamente WSL_CONF', () => {
+    expect(readFileSync(join(process.cwd(), 'resources/wsl/wsl.conf'), 'utf8')).toBe(WSL_CONF)
+  })
+})
+
 describe('trama inicial', () => {
   const decode = (frame: Buffer): { type: number; json: ReturnType<typeof buildWslInit>['init'] } => {
     const [f] = new FrameDecoder().push(frame)
