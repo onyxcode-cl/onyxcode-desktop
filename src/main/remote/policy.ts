@@ -49,6 +49,10 @@ export interface PolicyContext {
   permissionKind?: (requestId: string) => string | undefined
   /** Qué pide el permiso pendiente (comando, rutas o patrones), ya recortado, para mostrarlo en la confirmación. */
   permissionDetail?: (requestId: string) => string[] | undefined
+  /** Carpeta de una rutina por id (`null` = sin carpeta, p. ej. Chat; `undefined` = desconocida → se rechaza). */
+  routineFolder?: (routineId: string) => string | null | undefined
+  /** Carpeta de una tarea de Tareas por id de sesión (`undefined` = desconocida → se rechaza). */
+  taskFolder?: (sessionId: string) => string | undefined
   /** ¿Es carpeta? `undefined` = no se sabe → se trata como carpeta (D). */
   isDirectory?: (absPath: string) => boolean | undefined
   /** Para mostrar rutas con `~` (por defecto `os.homedir()`). */
@@ -56,7 +60,8 @@ export interface PolicyContext {
 }
 
 export type PolicyDecision =
-  | { allow: true; class: 'R' | 'M' }
+  /** `key` = canal IPC o `MÉTODO /ruta/{plantilla}` (sin ids): lo que se anota en la auditoría de las acciones M. */
+  | { allow: true; class: 'R' | 'M'; key: string }
   | { allow: false; reason: string }
   | { confirm: true; summary: RemoteText; detail: string[]; channel: string }
 
@@ -131,7 +136,8 @@ function modelOutcome(v: unknown, ctx: PolicyContext): Outcome | undefined {
 
 // ─────────────────────────────── IPC ───────────────────────────────
 
-type IpcSpec = PolicyClass | ((payload: Record<string, unknown>, ctx: PolicyContext) => Outcome)
+type IpcFn = (payload: Record<string, unknown>, ctx: PolicyContext) => Outcome
+type IpcSpec = PolicyClass | IpcFn
 
 /** `cls` si todos los campos indicados son rutas absolutas dentro del ámbito; si no, `out-of-scope`. */
 const scoped =
@@ -205,6 +211,24 @@ const browserOwned =
   (cls: PolicyClass): IpcSpec =>
   (p, ctx) =>
     browserOwnerOk(p, ctx) ? cls : deny('out-of-scope')
+
+/**
+ * Acciones sobre algo identificado solo por un id (rutina, tarea): la carpeta a la que pertenece debe estar en el ámbito.
+ * Sin saber a qué carpeta pertenece, se rechaza (`scope-unknown`).
+ */
+const ownedBy =
+  (cls: PolicyClass, key: string, pick: (ctx: PolicyContext) => ((id: string) => string | null | undefined) | undefined): IpcFn =>
+  (p, ctx) => {
+    const lookup = pick(ctx)
+    const id = p[key]
+    if (!isStr(id) || id === '' || !lookup) return deny('scope-unknown')
+    const folder = lookup(id)
+    if (folder === undefined) return deny('scope-unknown')
+    if (folder === null) return cls // sin carpeta (Chat): el ámbito de Chat ya está acotado por el motor
+    return inDirs(folder, scopeHttp(ctx)) ? cls : deny('out-of-scope')
+  }
+const routineScoped = (cls: PolicyClass): IpcFn => ownedBy(cls, 'id', (c) => c.routineFolder)
+const taskScoped = (cls: PolicyClass): IpcFn => ownedBy(cls, 'sessionId', (c) => c.taskFolder)
 
 const MAX_DISCARD_FILES = 20
 
@@ -290,8 +314,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'routines:list': 'R',
   'routines:save': (p, ctx) =>
     p.folder === undefined || p.folder === null || inDirs(p.folder, scopeIpc(ctx)) ? 'D' : deny('out-of-scope'),
-  'routines:delete': 'M',
-  'routines:toggle': (p) => (p.enabled === true ? 'D' : 'M'), // activar una rutina la deja ejecutándose sola
+  'routines:delete': routineScoped('M'),
+  'routines:toggle': (p, ctx) => (p.enabled === true ? 'D' : routineScoped('M')(p, ctx)), // activar una rutina la deja ejecutándose sola
   'routines:runNow': 'D',
   'routines:history': 'R',
   'routines:preview': 'R',
@@ -334,7 +358,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:viewing': scopedOpt('M', 'folder'),
   'tasks:tasks:list': 'R',
   'tasks:tasks:setMeta': scoped('M', 'folder'),
-  'tasks:tasks:forget': 'M',
+  'tasks:tasks:forget': taskScoped('M'),
   'tasks:prefs:get': 'R',
   'tasks:prefs:set': fieldwise(TASKS_PREF_FIELDS),
   'tasks:storage:report': 'R',
@@ -345,7 +369,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:restore:list': scoped('R', 'folder'),
   'tasks:restore:changes': scoped('R', 'folder'),
   'tasks:restore:apply': scoped('D', 'folder'),
-  'tasks:restore:forget': 'M',
+  'tasks:restore:forget': taskScoped('M'),
   'tasks:agentsMd:get': scoped('R', 'folder'),
   'tasks:agentsMd:save': scoped('D', 'folder'),
   'tasks:mcp:list': 'R',
@@ -407,7 +431,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'git:branches': scoped('R', 'cwd'),
   'git:currentBranch': scoped('R', 'cwd'),
   'git:worktrees': scoped('R', 'cwd'),
-  'git:createWorktree': scoped('M', 'cwd'),
+  'git:createWorktree': 'X', // crea una carpeta FUERA del proyecto (`<repo>/../.<repo>-worktrees/<rama>`); el celular no la usa
   'git:removeWorktree': (p, ctx) => (inDirs(p.cwd, scopeIpc(ctx)) && inDirs(p.path, scopeIpc(ctx)) ? 'D' : deny('out-of-scope')),
   'git:commit': scoped('M', 'cwd'),
   'git:log': scoped('R', 'cwd'),
@@ -1286,7 +1310,7 @@ function finish(o: Outcome, key: string, req: PolicyRequest, ctx: PolicyContext,
     const { summary, detail } = summaryFor(key, req, ctx, params)
     return { confirm: true, summary, detail, channel: key }
   }
-  return { allow: true, class: o }
+  return { allow: true, class: o, key }
 }
 
 /**

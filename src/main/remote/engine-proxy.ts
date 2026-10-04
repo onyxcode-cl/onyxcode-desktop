@@ -21,7 +21,8 @@ import { MuxError, type CallRequest, type DispatchCtx, type HttpRequest, type Mu
 import type { OpencodeConnection } from '@shared/types'
 import type { TasksConnection } from '@shared/ipc-tasks'
 import type { CallFrame, HttpFrame } from '@shared/remote/protocol'
-import { ConfirmQueue, callDigest } from './confirm-queue'
+import type { AuditInput } from './audit'
+import { ConfirmQueue, callDigest, deviceFingerprint } from './confirm-queue'
 import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList, permissionDetailLines } from './engine-scope'
 import { EngineRegistry, type EngineTarget } from './engine-registry'
 import { trimIpcEvent } from './event-trim'
@@ -48,6 +49,8 @@ export interface EngineShared {
   events: EventLog
   /** Un `sub` a este motor: abre bajo demanda el stream de subida. */
   onSub?: (eng: string) => void
+  /** Auditoría (sin secretos): cada acción de clase M que se ejecuta deja canal y clase (las D ya las anota la confirmación). */
+  audit?: (e: AuditInput) => void
   fetch?: typeof fetch
   maxBodyBytes?: number
   maxResponseBytes?: number
@@ -185,9 +188,10 @@ export class EngineProxy implements MuxDispatch {
 
   // ─────────────────────────────── contexto de política ───────────────────────────────
 
-  private async pctx(): Promise<PolicyContext> {
+  private async pctx(extra: Partial<PolicyContext> = {}): Promise<PolicyContext> {
     const sc = await this.s.scope.get()
     return {
+      ...extra,
       allowedDirs: sc.allowed,
       chatDirs: sc.chat,
       fullAccessDirs: sc.full,
@@ -204,7 +208,7 @@ export class EngineProxy implements MuxDispatch {
     payload: unknown,
     d: Extract<PolicyDecision, { confirm: true }>,
     ctx: DispatchCtx
-  ): Promise<void> {
+  ): Promise<string> {
     const r = await this.s.confirm.request({
       deviceId: this.device.id,
       deviceName: this.device.name,
@@ -216,7 +220,49 @@ export class EngineProxy implements MuxDispatch {
     // Cancelada mientras esperaba: aunque el dueño aprobara, NO se ejecuta.
     if (ctx.signal.aborted) throw new MuxError('cancelled')
     if (r.outcome !== 'approved') throw forbidden(r.outcome)
-    if (r.digest !== callDigest(channel, payload)) throw forbidden('digest-mismatch')
+    // El digest de lo APROBADO: quien ejecuta lo compara con el de lo que de verdad va a ejecutar (ver `call` y `http`).
+    return r.digest
+  }
+
+  /** Acción M ejecutada: queda en la auditoría con canal y clase (nunca payload). */
+  private auditM(key: string): void {
+    try {
+      this.s.audit?.({ kind: 'action-run', ch: key, cls: 'M', device: deviceFingerprint(this.device.id), name: this.device.name })
+    } catch {
+      /* la auditoría no frena la acción */
+    }
+  }
+
+  /** Carpeta a la que pertenecen las rutinas / tareas que el celular nombra solo por id (para acotarlas al ámbito). */
+  private async ownerContext(ch: string): Promise<Partial<PolicyContext>> {
+    const list = async (channel: string): Promise<unknown[]> => {
+      const r = await this.s.invoke({ sender: this.sender, authorize: (c) => c === channel }, channel, [])
+      return r.ok && Array.isArray(r.data) ? r.data : []
+    }
+    const real = (f: unknown): string | undefined => (typeof f === 'string' ? (realpathLoose(f) ?? undefined) : undefined)
+    if (ch === 'routines:delete' || ch === 'routines:toggle') {
+      const map = new Map<string, string | null>()
+      for (const x of await list('routines:list')) {
+        const o = (typeof x === 'object' && x !== null ? x : {}) as { id?: unknown; folder?: unknown }
+        if (typeof o.id !== 'string') continue
+        if (o.folder === undefined || o.folder === null) map.set(o.id, null)
+        else {
+          const f = real(o.folder)
+          if (f !== undefined) map.set(o.id, f)
+        }
+      }
+      return { routineFolder: (id) => map.get(id) }
+    }
+    if (ch === 'tasks:tasks:forget' || ch === 'tasks:restore:forget') {
+      const map = new Map<string, string>()
+      for (const x of await list('tasks:tasks:list')) {
+        const o = (typeof x === 'object' && x !== null ? x : {}) as { sessionId?: unknown; folder?: unknown }
+        const f = real(o.folder)
+        if (typeof o.sessionId === 'string' && f !== undefined) map.set(o.sessionId, f)
+      }
+      return { taskFolder: (id) => map.get(id) ?? this.s.knowledge.sessionDir(id) }
+    }
+    return {}
   }
 
   // ─────────────────────────────── IPC ───────────────────────────────
@@ -227,22 +273,27 @@ export class EngineProxy implements MuxDispatch {
     const canon = canonPayload(req.p)
     if (!canon.ok) throw forbidden('out-of-scope')
     const payload = canon.value
-    const pctx = await this.pctx()
+    const pctx = await this.pctx(await this.ownerContext(ch))
     const d = decide({ kind: 'ipc', channel: ch, payload }, pctx)
-    let approved = false
-    if ('confirm' in d) {
-      await this.confirmed(d.channel, payload, d, ctx)
-      approved = true
-    } else if (!d.allow) throw forbidden(d.reason)
+    // Digest de lo aprobado en el Mac (null = no hace falta confirmar). Vale para UNA ejecución.
+    let approvedDigest: string | null = null
+    if ('confirm' in d) approvedDigest = await this.confirmed(d.channel, structuredClone(payload), d, ctx)
+    else if (!d.allow) throw forbidden(d.reason)
     if (ctx.signal.aborted) throw new MuxError('cancelled')
     this.assertNotSensitive(ch, req.p, payload)
+    if ('allow' in d && d.allow && d.class === 'M') this.auditM(d.key)
     const res = await this.s.invoke(
       {
         sender: this.sender,
         // La política se aplica otra vez sobre el payload validado por el esquema (puede diferir del enviado).
         authorize: (channel, validated) => {
           const dd = decide({ kind: 'ipc', channel, payload: validated }, pctx)
-          if ('confirm' in dd) return approved
+          if ('confirm' in dd) {
+            // Lo que de verdad se va a ejecutar (payload ya validado) debe ser EXACTAMENTE lo que se aprobó, y solo una vez.
+            const ok = approvedDigest !== null && channel === ch && callDigest(channel, validated) === approvedDigest
+            approvedDigest = null
+            return ok
+          }
           return dd.allow === true
         }
       },
@@ -266,7 +317,8 @@ export class EngineProxy implements MuxDispatch {
     const c = rec(canon)
     if (ch === 'tasks:previewFile') {
       const paths = [o.path, c.path].filter((x): x is string => typeof x === 'string')
-      if (paths.length === 0 || paths.some((p) => !isAbsolute(p) || isSensitiveEither(p, realpathLoose(p)))) throw forbidden('sensitive-file')
+      if (paths.length === 0 || paths.some((p) => !isAbsolute(p) || isSensitiveEither(p, realpathLoose(p))))
+        throw forbidden('sensitive-file')
     } else if (ch === 'git:diff' && c.path !== undefined) {
       const cwd = typeof c.cwd === 'string' ? c.cwd : ''
       const paths = [o.path, c.path].filter((x): x is string => typeof x === 'string')
@@ -352,13 +404,28 @@ export class EngineProxy implements MuxDispatch {
       await this.prefetch(target, method, path, dirReal, body, ctx)
       d = decide(pol, await this.pctx())
     }
-    if ('confirm' in d) await this.confirmed(d.channel, { eng: req.eng, method, path, query, body }, d, ctx)
+    let approvedDigest: string | null = null
+    const approvedChannel = 'confirm' in d ? d.channel : ''
+    if ('confirm' in d)
+      approvedDigest = await this.confirmed(d.channel, structuredClone({ eng: req.eng, method, path, query, body }), d, ctx)
     else if (!d.allow) throw forbidden(d.reason === 'model-unknown' ? modelDetail(body, d.reason) : d.reason)
     if (ctx.signal.aborted) throw new MuxError('cancelled')
 
     // 4. Archivos sensibles: nunca, aunque la política deje leer el directorio.
     if (path === '/file/content' && sensitiveTarget && isSensitiveEither(sensitiveTarget.lexical, sensitiveTarget.real))
       throw forbidden('sensitive-file')
+
+    // 4b. Lo que de verdad se va a enviar al motor debe ser exactamente lo aprobado en el Mac.
+    if (approvedDigest !== null) {
+      let sent: unknown
+      try {
+        sent = rawBody === undefined ? undefined : JSON.parse(rawBody)
+      } catch {
+        throw forbidden('digest-mismatch')
+      }
+      if (callDigest(approvedChannel, { eng: req.eng, method, path, query, body: sent }) !== approvedDigest)
+        throw forbidden('digest-mismatch')
+    } else if ('allow' in d && d.allow && d.class === 'M') this.auditM(d.key)
 
     // 5. Ejecutar y filtrar.
     const res = await this.fetchEngine(target, method, path, query, req.headers?.accept, rawBody, ctx.signal)

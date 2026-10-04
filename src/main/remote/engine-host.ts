@@ -7,6 +7,7 @@
  */
 import { EventLog, type MuxDispatch } from '@shared/remote/mux'
 import type { OpencodeConnection } from '@shared/types'
+import type { AuditInput } from './audit'
 import { ConfirmQueue } from './confirm-queue'
 import { EngineProxy, type EngineShared, type InvokeFn } from './engine-proxy'
 import { EngineRegistry } from './engine-registry'
@@ -35,6 +36,7 @@ export interface EngineHostOptions {
   open: SseHubOptions['open']
   subscribeBus?: SseHubOptions['subscribeBus']
   confirm?: ConfirmQueue
+  audit?: (e: AuditInput) => void
   fetch?: typeof fetch
   events?: EventLog
   backoffMs?: number
@@ -73,6 +75,7 @@ export function createEngineHost(o: EngineHostOptions): RemoteEngineHost {
     scope,
     knowledge,
     confirm,
+    audit: o.audit,
     invoke: o.invoke,
     events,
     fetch: o.fetch,

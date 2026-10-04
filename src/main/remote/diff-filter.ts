@@ -92,7 +92,10 @@ export function scrubDiffLists(v: unknown, dir: string, depth = 0): unknown {
   if (v === null || typeof v !== 'object') return v
   const out: Record<string, unknown> = {}
   for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
-    out[k] = (k === 'diffs' || k === 'diff') && Array.isArray(x) ? dropSensitiveEntries(x, dir).map((y) => scrubDiffLists(y, dir, depth + 1)) : scrubDiffLists(x, dir, depth + 1)
+    out[k] =
+      (k === 'diffs' || k === 'diff') && Array.isArray(x)
+        ? dropSensitiveEntries(x, dir).map((y) => scrubDiffLists(y, dir, depth + 1))
+        : scrubDiffLists(x, dir, depth + 1)
   }
   return out
 }

@@ -2,9 +2,10 @@
  * Cola de confirmaciones en el Mac (F0-T3): las acciones «D» del celular esperan aquí a que el dueño las apruebe.
  *
  * - FIFO: solo la primera se muestra; máx. 2 pendientes (la 3.ª se rechaza como `busy`) y 10 peticiones nuevas por minuto.
- * - Deduplicada por `sha256(canal + payload canónico)` (y dispositivo): repetir la MISMA llamada mientras espera se une a la
- *   pendiente (no gasta hueco ni cupo). La aprobación vale solo para ese `requestId`/llamada; una llamada distinta, aunque
- *   parecida, necesita su propia confirmación. Una aprobación se consume al resolver la promesa: repetir la llamada pide otra.
+ * - Deduplicada por `sha256(canal + payload canónico)` (y dispositivo): repetir la MISMA llamada mientras espera responde
+ *   `busy` (no se une a la pendiente: cada petición se confirma y se consume UNA vez; no gasta hueco ni cupo). La aprobación vale
+ *   solo para ese `requestId`/llamada; una llamada distinta, aunque parecida, necesita su propia confirmación. Una aprobación se
+ *   consume al resolver la promesa: repetir la llamada pide otra.
  * - Rechazo automático a los 90 s de mostrarse; revocar/«Cortar todo» rechaza todo (`cancelAll`).
  * - La interfaz (diálogo, PIN, auditoría: tanda T6) se inyecta con `ConfirmUi`; esta clase no conoce Electron.
  */
@@ -113,8 +114,9 @@ export class ConfirmQueue {
   request(input: ConfirmInput): Promise<ConfirmResult> {
     const digest = callDigest(input.channel, input.payload)
     const key = `${input.deviceId}\0${digest}`
-    const same = this.queue.find((p) => p.key === key)
-    if (same) return new Promise((resolve) => same.waiters.push(resolve))
+    // Una aprobación vale para UNA sola ejecución: repetir la misma llamada mientras otra espera NO se une a ella (la unión
+    // dejaba que un único «Permitir» ejecutara N llamadas idénticas). La repetida responde `busy` y no gasta cupo.
+    if (this.queue.some((p) => p.key === key)) return Promise.resolve({ outcome: 'busy', digest })
 
     const t = this.now()
     while (this.starts.length > 0 && t - (this.starts[0] as number) >= 60_000) this.starts.shift()

@@ -30,7 +30,17 @@ describe('filterRawDiff', () => {
 describe('dropSensitiveEntries / scrubDiffLists', () => {
   it('filtra por file o path y recorre summary.diffs', () => {
     expect(dropSensitiveEntries([{ file: '.env' }, { path: 'a.ts' }, 'x'], D)).toEqual([{ path: 'a.ts' }, 'x'])
-    const ev = { info: { summary: { diffs: [{ file: 'id_rsa', patch: 'K' }, { file: 'a.ts', patch: 'ok' }] } }, diff: [{ file: '.env' }] }
+    const ev = {
+      info: {
+        summary: {
+          diffs: [
+            { file: 'id_rsa', patch: 'K' },
+            { file: 'a.ts', patch: 'ok' }
+          ]
+        }
+      },
+      diff: [{ file: '.env' }]
+    }
     expect(scrubDiffLists(ev, D)).toEqual({ info: { summary: { diffs: [{ file: 'a.ts', patch: 'ok' }] } }, diff: [] })
   })
 })

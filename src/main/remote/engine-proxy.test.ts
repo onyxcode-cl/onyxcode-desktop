@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MuxError, type DispatchCtx } from '@shared/remote/mux'
+import type { AuditInput } from './audit'
 import { ConfirmQueue } from './confirm-queue'
 import { createEngineHost, createRejectingConfirm, type DeviceDispatch, type RemoteEngineHost } from './engine-host'
 import { canonPayload, stripSecretKeys, type InvokeFn } from './engine-proxy'
@@ -37,7 +38,7 @@ function approvingConfirm(approve: boolean): ConfirmQueue {
   return q
 }
 
-function make(opts: { confirm?: ConfirmQueue } = {}): Harness {
+function make(opts: { confirm?: ConfirmQueue; audit?: (e: AuditInput) => void } = {}): Harness {
   const h: Harness = {
     invoked: [],
     fetched: [],
@@ -79,6 +80,7 @@ function make(opts: { confirm?: ConfirmQueue } = {}): Harness {
     invoke,
     open: async () => (async function* () {})(),
     confirm: opts.confirm ?? createRejectingConfirm(),
+    audit: opts.audit,
     fetch: fetchImpl
   })
   h.proxy = h.host.createDispatch(DEVICE)
@@ -654,7 +656,9 @@ describe('hallazgo 5: el diálogo del permiso muestra qué pide el motor', () =>
     h.engine.handler = async (u) => {
       if (u.pathname === '/permission')
         return {
-          json: [{ id: 'per_9', permission: 'external_directory', patterns: ['/Users/x/.ssh/*'], metadata: { command: 'cat ~/.ssh/id_rsa' } }]
+          json: [
+            { id: 'per_9', permission: 'external_directory', patterns: ['/Users/x/.ssh/*'], metadata: { command: 'cat ~/.ssh/id_rsa' } }
+          ]
         }
       return { json: true }
     }
@@ -675,7 +679,109 @@ describe('hallazgo 9: canales R sin rutas fuera del ámbito', () => {
     h.ipc.results['tasks:policy'] = { source: '/Library/Application Support/OnyxCode/managed.json', disableBrowser: true }
     const s = (await h.proxy.call({ ch: 'settings:get', p: undefined }, ctx())) as Record<string, unknown>
     expect(s).toEqual({ theme: 'dark', recentFolders: [proj] })
-    expect(await h.proxy.call({ ch: 'tasks:trusted:list', p: undefined }, ctx())).toEqual([{ path: proj, name: 'p', mode: 'full', addedAt: 1 }])
+    expect(await h.proxy.call({ ch: 'tasks:trusted:list', p: undefined }, ctx())).toEqual([
+      { path: proj, name: 'p', mode: 'full', addedAt: 1 }
+    ])
     expect(await h.proxy.call({ ch: 'tasks:policy', p: undefined }, ctx())).toEqual({ disableBrowser: true })
+  })
+})
+
+describe('hallazgo 10: acciones M acotadas al ámbito y con rastro', () => {
+  it('routines:delete solo de rutinas cuya carpeta está en el ámbito', async () => {
+    const h = make()
+    h.ipc.results['routines:list'] = [
+      { id: 'r_in', folder: proj },
+      { id: 'r_out', folder: outside },
+      { id: 'r_link', folder: join(proj, 'link') },
+      { id: 'r_chat', folder: null }
+    ]
+    expect((await code(h.proxy.call({ ch: 'routines:delete', p: { id: 'r_out' } }, ctx()))).detail).toBe('out-of-scope')
+    expect((await code(h.proxy.call({ ch: 'routines:delete', p: { id: 'r_link' } }, ctx()))).detail).toBe('out-of-scope')
+    expect((await code(h.proxy.call({ ch: 'routines:delete', p: { id: 'r_nada' } }, ctx()))).detail).toBe('scope-unknown')
+    expect(h.invoked.some((i) => i.ch === 'routines:delete')).toBe(false)
+    await h.proxy.call({ ch: 'routines:delete', p: { id: 'r_in' } }, ctx())
+    await h.proxy.call({ ch: 'routines:delete', p: { id: 'r_chat' } }, ctx())
+    expect(h.invoked.filter((i) => i.ch === 'routines:delete')).toHaveLength(2)
+  })
+
+  it('tasks:tasks:forget y tasks:restore:forget solo de tareas de carpetas del ámbito', async () => {
+    const h = make()
+    h.ipc.results['tasks:tasks:list'] = [
+      { sessionId: 's_in', folder: proj },
+      { sessionId: 's_out', folder: outside }
+    ]
+    for (const ch of ['tasks:tasks:forget', 'tasks:restore:forget']) {
+      expect((await code(h.proxy.call({ ch, p: { sessionId: 's_out' } }, ctx()))).detail).toBe('out-of-scope')
+      expect((await code(h.proxy.call({ ch, p: { sessionId: 's_x' } }, ctx()))).detail).toBe('scope-unknown')
+      await h.proxy.call({ ch, p: { sessionId: 's_in' } }, ctx())
+    }
+    expect(h.invoked.filter((i) => /forget$/.test(i.ch))).toHaveLength(2)
+  })
+
+  it('git:createWorktree no se ejecuta', async () => {
+    const h = make()
+    expect((await code(h.proxy.call({ ch: 'git:createWorktree', p: { cwd: proj, branch: 'b' } }, ctx()))).code).toBe('forbidden')
+    expect(h.invoked).toHaveLength(0)
+  })
+
+  it('toda acción M ejecutada (IPC y HTTP) queda en la auditoría solo con canal y clase; las R no', async () => {
+    const log: AuditInput[] = []
+    const h = make({ audit: (e) => log.push(e) })
+    h.engine.handler = async (u) => (u.pathname === '/session/ses_1' ? { json: { id: 'ses_1', directory: proj } } : { json: true })
+    await h.proxy.call({ ch: 'tasks:removeFolder', p: { folder: proj } }, ctx())
+    await h.proxy.call({ ch: 'git:status', p: { cwd: proj } }, ctx())
+    await http(h, 'POST', '/session/ses_1/abort', { directory: proj })
+    await http(h, 'GET', '/session/ses_1', { directory: proj })
+    expect(log.map((e) => [e.kind, e.ch, e.cls])).toEqual([
+      ['action-run', 'tasks:removeFolder', 'M'],
+      ['action-run', 'POST /session/{sessionID}/abort', 'M']
+    ])
+    expect(JSON.stringify(log)).not.toContain(proj)
+    // Una acción rechazada no se anota como ejecutada.
+    await code(h.proxy.call({ ch: 'tasks:removeFolder', p: { folder: outside } }, ctx()))
+    expect(log).toHaveLength(2)
+  })
+})
+
+describe('hallazgo 7: una aprobación, una ejecución, y lo ejecutado es lo aprobado', () => {
+  it('dos llamadas D idénticas simultáneas: una sola aprobación ejecuta UNA vez; la otra recibe busy', async () => {
+    const h = make({ confirm: approvingConfirm(true) })
+    const a = code(h.proxy.call({ ch: 'tasks:grantFullAccess', p: { folder: proj } }, ctx()).then(() => 'ok'))
+    const b = h.proxy.call({ ch: 'tasks:grantFullAccess', p: { folder: proj } }, ctx())
+    const rb = await code(b)
+    expect(rb).toEqual({ code: 'forbidden', detail: 'busy' })
+    await a.catch(() => undefined)
+    expect(h.invoked.filter((i) => i.ch === 'tasks:grantFullAccess')).toHaveLength(1)
+  })
+
+  it('HTTP: dos respuestas de permiso D idénticas simultáneas ejecutan una sola', async () => {
+    const h = make({ confirm: approvingConfirm(true) })
+    h.engine.handler = async (u) =>
+      u.pathname === '/permission' ? { json: [{ id: 'per_7', permission: 'external_directory' }] } : { json: true }
+    const mk = () => http(h, 'POST', '/permission/per_7/reply', { directory: proj }, { reply: 'once' })
+    const r = await Promise.allSettled([mk(), mk()])
+    expect(r.filter((x) => x.status === 'fulfilled')).toHaveLength(1)
+    expect(h.fetched.filter((f) => f.method === 'POST')).toHaveLength(1)
+  })
+
+  it('el payload que valida el esquema debe ser el aprobado: si difiere, no se ejecuta', async () => {
+    const invoked: string[] = []
+    const swap: InvokeFn = async (caller, ch, args) => {
+      // Un payload «validado» distinto del enviado (también D y dentro del ámbito): antes la aprobación valía para cualquiera.
+      const validated = { ...(args[0] as object), folder: join(proj, 'src') }
+      if (!(await caller.authorize(ch, validated))) return { ok: false, code: 'FORBIDDEN', error: 'no' }
+      invoked.push(ch)
+      return { ok: true, data: null }
+    }
+    const host = createEngineHost({
+      getMain: async () => ({ baseUrl: 'http://127.0.0.1:4999', authorization: AUTH, username: 'opencode', chatDirectory: chat }),
+      loadScope: async () => ({ allowedDirs: [proj], chatDirs: [], fullAccessDirs: [] }),
+      invoke: swap,
+      open: async () => (async function* () {})(),
+      confirm: approvingConfirm(true)
+    })
+    const r = await code(host.createDispatch(DEVICE).call({ ch: 'tasks:grantFullAccess', p: { folder: proj } }, ctx()))
+    expect(r.code).toBe('forbidden')
+    expect(invoked).toHaveLength(0)
   })
 })

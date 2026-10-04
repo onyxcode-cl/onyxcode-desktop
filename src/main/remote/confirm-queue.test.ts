@@ -115,15 +115,15 @@ describe('ConfirmQueue', () => {
     expect((shown[1] as RemoteConfirmRequest).requestId).not.toBe((shown[0] as RemoteConfirmRequest).requestId)
   })
 
-  it('deduplica la misma llamada pendiente: un solo diálogo y las dos reciben el resultado', async () => {
+  it('una aprobación vale para UNA petición: la misma llamada pendiente repetida recibe busy, no se une', async () => {
     const { q, shown, input } = setup()
     const a = q.request(input('x:y', { a: 1, b: 2 }))
     const b = q.request(input('x:y', { b: 2, a: 1 }))
     expect(q.pendingCount).toBe(1)
     expect(shown).toHaveLength(1)
+    expect((await b).outcome).toBe('busy')
     q.resolve((shown[0] as RemoteConfirmRequest).requestId, true)
     expect((await a).outcome).toBe('approved')
-    expect((await b).outcome).toBe('approved')
   })
 
   it('la misma llamada desde otro dispositivo NO se une', () => {

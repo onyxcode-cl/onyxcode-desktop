@@ -83,6 +83,7 @@ export const remote = {
   'remote.activity.kind.locked': 'Bloqueado por inactividad',
   'remote.activity.kind.policy-denied': 'Petición rechazada por la política',
   'remote.activity.kind.stopped': 'Cortaste todo el acceso',
+  'remote.activity.kind.action-run': 'Ejecutó una acción',
   'remote.unavailable.policy': 'Bloqueado por la política de tu organización.',
   'remote.policy.invalid':
     'El archivo de política de tu organización no se puede leer o no es válido, así que el control remoto queda deshabilitado. Avisa a tu administrador.',

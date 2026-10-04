@@ -86,6 +86,7 @@ export const remote = {
   'remote.activity.kind.locked': 'Locked for inactivity',
   'remote.activity.kind.policy-denied': 'Request rejected by the policy',
   'remote.activity.kind.stopped': 'You cut all access',
+  'remote.activity.kind.action-run': 'Ran an action',
   'remote.unavailable.policy': "Blocked by your organization's policy.",
   'remote.policy.invalid':
     "Your organization's policy file can't be read or isn't valid, so remote control is disabled. Contact your administrator.",

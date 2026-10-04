@@ -78,7 +78,8 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
       return r.stream as AsyncIterable<unknown>
     },
     subscribeBus: subscribeRemote,
-    confirm: d.confirmHost.queue
+    confirm: d.confirmHost.queue,
+    audit: d.audit
   })
   return new RemoteService({
     engine,

@@ -78,7 +78,8 @@ const AUDIT_KEYS: Record<string, MsgKey> = {
   'pin-reset': 'remote.activity.kind.pin-reset',
   locked: 'remote.activity.kind.locked',
   'policy-denied': 'remote.activity.kind.policy-denied',
-  stopped: 'remote.activity.kind.stopped'
+  stopped: 'remote.activity.kind.stopped',
+  'action-run': 'remote.activity.kind.action-run'
 }
 
 /** Ajustes › Celular › Actividad: lista simple de la auditoría (sin secretos), con filtro por dispositivo. */
