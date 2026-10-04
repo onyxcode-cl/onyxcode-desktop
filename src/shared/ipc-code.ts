@@ -226,6 +226,136 @@ export interface GitLogEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Comparar modelos lado a lado (main orquesta; el renderer solo pinta y pasa `{ id, index }`)
+// ---------------------------------------------------------------------------
+
+export const COMPARE_MODELS_MIN = 2
+export const COMPARE_MODELS_MAX = 4
+
+export type CompareMode = 'code' | 'chat'
+/**
+ * Estado de una columna. `rateLimited` es de cuota (429 / «token rate limit»): con `retryAt` != null hay UN reintento
+ * automático programado; con `retryAt` == null ya se agotó (o el motor insistió) y el proveedor queda en pausa hasta `compare:retry`.
+ */
+export type CompareColumnState = 'queued' | 'starting' | 'running' | 'done' | 'error' | 'rateLimited' | 'cancelled'
+/** Modo de permisos de las sesiones de la comparación: `bypass` NO existe aquí (main lo rebaja a `auto`). */
+export type ComparePermissionMode = 'manual' | 'acceptEdits' | 'auto' | 'bypass'
+export type CompareErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
+
+export interface CompareModelRef {
+  providerID: string
+  modelID: string
+  variant?: string
+}
+
+/** `null` = el motor no lo informó (nunca se rellena con 0). `costUsd` también es `null` si el motor da 0. */
+export interface CompareMetrics {
+  inputTokens: number | null
+  outputTokens: number | null
+  reasoningTokens: number | null
+  cacheReadTokens: number | null
+  cacheWriteTokens: number | null
+  costUsd: number | null
+  /** Mensajes del asistente (sesión y subagentes). */
+  llmCalls: number
+  /** De `startedAt` al `time.completed` del último mensaje del asistente; `null` mientras no haya ninguno completado. */
+  durationMs: number | null
+}
+
+export interface CompareDiffStat {
+  files: number
+  additions: number
+  deletions: number
+}
+
+export interface CompareColumnManifest {
+  /** 0..3 */
+  index: number
+  model: CompareModelRef
+  sessionID: string | null
+  /** Solo en `code`. Lo escribe MAIN; el renderer no lo manda nunca. */
+  worktree: { path: string; branch: string } | null
+  state: CompareColumnState
+  adopted: boolean
+  /** Epoch ms del envío del prompt (el último, si hubo reintento). */
+  startedAt: number | null
+  finishedAt: number | null
+  metrics: CompareMetrics
+  error: { kind: CompareErrorKind; message: string } | null
+  /** Epoch ms del reintento automático programado por cuota (cuenta atrás visible). */
+  retryAt: number | null
+  /** Ya se usó el único reintento automático. */
+  retried: boolean
+  /** Se cancelo y el motor NO confirmó la parada en 10 s: la copia (worktree) se conserva. */
+  stopUnconfirmed: boolean
+  /** La app se cerró con la columna en curso (se marca al recuperar). */
+  interrupted: boolean
+  /** Resumen del diff al terminar (solo `code`). */
+  diff: CompareDiffStat | null
+}
+
+export interface CompareManifest {
+  v: 1
+  id: string
+  mode: CompareMode
+  /** Raíz del repositorio (code) / `null` (chat). */
+  cwd: string | null
+  baseCommit: string | null
+  /** El árbol tenía cambios sin confirmar al crear (no entran en las copias). */
+  dirtyAtStart: boolean
+  createdAt: number
+  /** 200 caracteres como máximo, ya redactado. */
+  promptPreview: string
+  /** Modo efectivo (con `bypass` ya rebajado a `auto`). */
+  permissionMode: ComparePermissionMode
+  /** Proveedores con la cola en pausa por cuota (`compare:retry` los reanuda). */
+  pausedProviders: string[]
+  columns: CompareColumnManifest[]
+}
+
+export interface ComparePreflight {
+  repo: boolean
+  /** Raíz real del repositorio. */
+  root: string | null
+  head: string | null
+  /** Primeros 7 caracteres de `head`. */
+  shortHead: string | null
+  clean: boolean
+  dirtyFiles: number
+}
+
+export interface CompareStartRequest {
+  /** uuid generado por el renderer. */
+  id: string
+  mode: CompareMode
+  /** Obligatorio en `code`; ausente en `chat`. */
+  cwd?: string
+  /** 2..4 */
+  models: CompareModelRef[]
+  /** Texto del usuario (solo texto; sin adjuntos en v1). */
+  prompt: string
+  permissionMode?: ComparePermissionMode
+}
+
+export interface CompareDiffResult {
+  files: number
+  additions: number
+  deletions: number
+  patch: string
+  /** El parche se recortó a 1 MB solo para mostrarlo; «adoptar» usa siempre el parche entero. */
+  truncated: boolean
+}
+
+export type CompareAdoptResult =
+  { ok: true; files: string[] } | { ok: false; reason: 'conflict' | 'dirty-overlap' | 'empty' | 'symlink' | 'not-ready'; files: string[] }
+
+export interface CompareCloseResult {
+  /** `false` si alguna columna no se pudo descartar (parada sin confirmar): el manifiesto y esa copia se conservan. */
+  closed: boolean
+  kept: number[]
+}
+
+// ---------------------------------------------------------------------------
 // Contrato
 // ---------------------------------------------------------------------------
 
