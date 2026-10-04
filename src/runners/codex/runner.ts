@@ -90,6 +90,7 @@ export class CodexRunner implements AgentRunner {
       const v = ctx.env[k] ?? process.env[k];
       if (v) env[k] = v;
     }
+    if (ctx.env.AB_RUN_ROOT) env.AB_RUN_ROOT = ctx.env.AB_RUN_ROOT;
     env.HOME = ctx.home;
     env.TMPDIR = ctx.tmp;
     env.CODEX_HOME = codexHome;
@@ -197,7 +198,7 @@ export class CodexRunner implements AgentRunner {
     return {
       outcome: verdict, exitCode: res.exitCode, durationMs: Date.now() - t0, artifacts: [rel, rawRel],
       error: verdict === "completed" ? null : redactText(parsed.failedMessage ?? parsed.errors.at(-1) ?? res.error ?? reason, st.secrets),
-      raw: raw as unknown as Record<string, unknown>,
+      raw: { ...raw, pid: res.pid } as unknown as Record<string, unknown>,
     };
   }
 

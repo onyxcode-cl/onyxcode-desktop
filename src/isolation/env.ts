@@ -25,6 +25,7 @@ export function buildEnv(
   env.XDG_STATE_HOME = join(layout.home, ".local", "state");
   env.TMPDIR = layout.tmp;
   env.PATH = [...(opts.extraPath ?? []), MINIMAL_PATH].join(":");
+  env.AB_RUN_ROOT = layout.root; // marca de run: la heredan los descendientes (barrido de huérfanos por `ps -E`)
   Object.assign(env, opts.extra ?? {});
   return env;
 }

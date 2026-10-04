@@ -17,7 +17,7 @@ import { planExperiment, priceFor, runKeyOf } from "./planner.ts";
 import type { Plan, PlannedRun, PricingTable } from "./planner.ts";
 import { emergencyKill } from "./procs.ts";
 
-export type StopReason = "budget_cost" | "budget_runs" | "budget_wall" | "infra_errors" | "damage" | "load_gate" | "cancelled";
+export type StopReason = "error" | "budget_cost" | "budget_runs" | "budget_wall" | "infra_errors" | "damage" | "load_gate" | "cancelled";
 export type ExperimentStatus = "completed" | "stopped" | "cancelled" | "dry-run" | "refused";
 
 export type EngineEvent =
@@ -338,8 +338,15 @@ export async function runExperiment(experimentIn: Experiment, o: RunExperimentOp
     }
   }
 
+  const workerErrors: unknown[] = [];
   try {
-    await Promise.all(Array.from({ length: exp.concurrency }, () => worker()));
+    // M7: si un worker revienta se detiene el resto (abort) y se espera a TODOS antes de quitar los manejadores de señal
+    const settled = await Promise.allSettled(Array.from({ length: exp.concurrency }, () => worker().catch((e: unknown) => {
+      workerErrors.push(e);
+      setStop("error", `fallo interno del motor: ${String(e).slice(0, 300)}`, true);
+      throw e;
+    })));
+    void settled;
   } finally {
     wallCtl.abort();
     if (o.handleSignals !== false) for (const [s, h] of handlers) process.off(s, h);
@@ -349,6 +356,7 @@ export async function runExperiment(experimentIn: Experiment, o: RunExperimentOp
   const status: ExperimentStatus = finalStop ? (finalStop.reason === "cancelled" ? "cancelled" : "stopped") : "completed";
   o.store.appendJournal(exp.id, { event: "end", status, stopReason: finalStop?.reason ?? null, attempts, retries, spentUsd: spent });
   emit({ type: "end", status });
+  if (workerErrors.length) base.warnings.push(`fallo interno del motor (${workerErrors.length} worker(s)): ${String(workerErrors[0]).slice(0, 200)}`);
   return {
     ...base, status, stopReason: finalStop?.reason ?? null, stopDetail: finalStop?.detail ?? null, results, skipped, pending: queue.length,
     attempts, retries, spentUsd: spent, costUnknownRuns: costUnknown, wallMs: clock.now() - t0, pausedMs,

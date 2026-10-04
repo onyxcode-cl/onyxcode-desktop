@@ -168,7 +168,7 @@ export class OpenCodeRunner implements AgentRunner {
     raw.sweptOrphans = sweep.swept;
     errorText = raw.errorMessage;
     if (!baseUrl && serverRes.outcome !== "cancelled") errorText = (raw.errorMessage ?? "") + ` (exit=${serverRes.exitCode}) ${serverRes.stderr.slice(-300)}`;
-    if (serverRes.pid) st.pids.push(serverRes.pid);
+    if (serverRes.pid) { st.pids.push(serverRes.pid); raw.pid = serverRes.pid; }
 
     const redactedErr = errorText ? redactText(errorText, st.secrets) : null;
     const logRel = "opencode-server.log";
@@ -220,6 +220,10 @@ export class OpenCodeRunner implements AgentRunner {
       raw.eventCount++;
       raw.eventTypes[type] = (raw.eventTypes[type] ?? 0) + 1;
       const sid = (p.sessionID ?? p.info?.sessionID ?? p.part?.sessionID) as string | undefined;
+      // M10: el banco anota los tokens por step-finish desde el SSE (no los toca el agente, a diferencia de la sqlite del run)
+      if (type === "message.part.updated" && p.part?.type === "step-finish" && typeof p.part.id === "string" && p.part.tokens) {
+        (raw.observedSteps ??= {})[p.part.id] = { tokens: p.part.tokens };
+      }
       // eventos de otras sesiones (subagentes) solo cuentan como actividad
       if (!sessionId || !promptSent || (sid && sid !== sessionId)) return;
       if (type === "session.status") {
@@ -340,7 +344,20 @@ export class OpenCodeRunner implements AgentRunner {
         children = {};
       }
     } else unverified.push("sqlite del run no encontrada; se usan solo mensajes HTTP (sin subagentes)");
-    const telemetry = extractOpenCode({ main, children, diff: raw.diff, retries: raw.retries.length, source, unverified });
+    let telemetry = extractOpenCode({ main, children, diff: raw.diff, retries: raw.retries.length, source, unverified });
+    // M10: contraste con lo observado por el banco; si la sqlite (escribible por el agente) no cuadra, mandan los eventos SSE
+    const obs = Object.values(raw.observedSteps ?? {});
+    if (source === "sqlite" && obs.length) {
+      const o = extractOpenCode({ main: [{ info: { role: "assistant" }, parts: obs.map((x) => ({ type: "step-finish", tokens: x.tokens })) }], children: {}, diff: [], retries: 0, source: "http", unverified: [] });
+      if (o.totalTokens !== null && telemetry.totalTokens !== o.totalTokens) {
+        telemetry = {
+          ...telemetry, inputTokens: o.inputTokens, outputTokens: o.outputTokens, cachedTokens: o.cachedTokens,
+          reasoningTokens: o.reasoningTokens, totalTokens: o.totalTokens,
+          extra: { ...telemetry.extra, telemetryIntegrity: { status: "sqlite_mismatch", sqliteTotal: telemetry.totalTokens, observedSseTotal: o.totalTokens, used: "sse" } },
+        };
+        unverified.push("la sqlite del run no coincide con los eventos SSE observados: se usan los tokens del SSE");
+      }
+    }
     if (outcome === "completed") {
       // un mensaje assistant con error final sin idle limpio cuenta como agent_error
       const last = [...main].reverse().find((m) => m.info.role === "assistant");

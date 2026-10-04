@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { isAlive, killTree } from "../core/proc.ts";
+import { pidsWithMarker } from "../telemetry/orphans.ts";
 
 /** Pids (distintos del actual) cuya línea de comandos cita `needle` (p. ej. el runRoot) y siguen vivos. */
 export function procsCiting(needle: string): number[] {
@@ -29,13 +30,13 @@ export async function sweepTree(opts: { pid: number | null; roots: string[]; gra
   const graceMs = opts.graceMs ?? 1000;
   const candidates = new Set<number>();
   if (opts.pid !== null && isAlive(opts.pid)) candidates.add(opts.pid);
-  for (const r of opts.roots) for (const p of procsCiting(r)) candidates.add(p);
+  for (const r of opts.roots) for (const p of [...procsCiting(r), ...pidsWithMarker(r)]) candidates.add(p);
   const targeted = [...candidates];
   for (const pid of targeted) {
     if (isAlive(pid)) await killTree(pid, { graceMs, verifyMs: 1000 });
   }
   const leftover = new Set<number>(targeted.filter(isAlive));
-  for (const r of opts.roots) for (const p of procsCiting(r)) leftover.add(p);
+  for (const r of opts.roots) for (const p of [...procsCiting(r), ...pidsWithMarker(r)]) if (isAlive(p)) leftover.add(p);
   return { targeted, leftover: [...leftover] };
 }
 
@@ -43,7 +44,7 @@ export async function sweepTree(opts: { pid: number | null; roots: string[]; gra
 export function emergencyKill(roots: string[]): number {
   let n = 0;
   for (const r of roots) {
-    for (const pid of procsCiting(r)) {
+    for (const pid of [...procsCiting(r), ...pidsWithMarker(r)]) {
       try { process.kill(-pid, "SIGKILL"); } catch { /* no es líder */ }
       try { process.kill(pid, "SIGKILL"); n++; } catch { /* ya muerto */ }
     }

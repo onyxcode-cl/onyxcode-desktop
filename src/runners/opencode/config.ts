@@ -85,6 +85,7 @@ export function buildEnv(args: {
     OPENCODE_SERVER_PASSWORD: args.password,
     ...OPENCODE_HARDENING_ENV,
   });
+  if (args.base.AB_RUN_ROOT) env.AB_RUN_ROOT = args.base.AB_RUN_ROOT;
   if (args.authContent) env.OPENCODE_AUTH_CONTENT = args.authContent;
   return env;
 }

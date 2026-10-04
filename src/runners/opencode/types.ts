@@ -39,6 +39,10 @@ export interface OcRaw {
   eventCount: number;
   eventTypes: Record<string, number>;
   errorMessage: string | null;
+  /** pid del servidor opencode (raíz del árbol), para el barrido del motor */
+  pid?: number | null;
+  /** step-finish observados por el banco en el SSE (independientes de la sqlite del agente), por id de parte */
+  observedSteps?: Record<string, { tokens: unknown }>;
   serverOrphans: number[];
   /** huérfanos reparentados a init (cwd bajo runRoot) encontrados y eliminados */
   sweptOrphans: number[];
