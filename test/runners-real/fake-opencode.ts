@@ -4,7 +4,7 @@
 import { createServer } from "node:http";
 import type { ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -18,6 +18,18 @@ const user = process.env.OPENCODE_SERVER_USERNAME ?? "";
 const pass = process.env.OPENCODE_SERVER_PASSWORD ?? "";
 const dataDir = join(process.env.XDG_DATA_HOME ?? ".", "opencode");
 mkdirSync(dataDir, { recursive: true });
+
+// sonda de aislamiento (escenario "probe"): intenta leer/escribir fuera del run y guarda el resultado dentro
+if (scenario === "probe") {
+  const pj = JSON.parse(readFileSync(join(process.env.HOME ?? ".", "probe.json"), "utf8")) as { readPaths: string[]; writePaths: string[]; listDirs: string[] };
+  const tryDo = (f: () => unknown): string => { try { f(); return "ok"; } catch (e) { return (e as NodeJS.ErrnoException).code ?? "err"; } };
+  const result = {
+    reads: Object.fromEntries(pj.readPaths.map((p) => [p, tryDo(() => readFileSync(p))])),
+    lists: Object.fromEntries(pj.listDirs.map((p) => [p, tryDo(() => readdirSync(p))])),
+    writes: Object.fromEntries(pj.writePaths.map((p) => [p, tryDo(() => writeFileSync(p, "escape"))])),
+  };
+  writeFileSync(join(process.env.HOME ?? ".", "probe-result.json"), JSON.stringify(result));
+}
 // evidencia de entorno para los tests (sin valores secretos)
 writeFileSync(
   join(dataDir, "env-seen.json"),

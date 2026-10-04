@@ -15,9 +15,19 @@ export interface SandboxOptions {
   runRoot: string;
   /** Rutas adicionales de solo lectura (p. ej. dir del binario del agente). */
   extraReadPaths?: string[];
-  /** Permitir red (por defecto true: los proveedores la necesitan). */
+  /** Permitir red (por defecto true: los proveedores la necesitan). Se ignora si se da `network`. */
   allowNetwork?: boolean;
+  /** Modo de red: "all" (modelo remoto), "loopback" (solo 127.0.0.1/::1) o "none". */
+  network?: NetworkMode;
+  /**
+   * Rutas con lectura denegada explícitamente (se aplican tras las lecturas base y antes de re-permitir
+   * runRoot/extraReadPaths). Por defecto: ~/.ssh, ~/.config, ~/Library/Application Support, ~/.aws, ~/.gnupg
+   * y el HOME real completo (del usuario que ejecuta el banco).
+   */
+  denyReadPaths?: string[];
 }
+
+export type NetworkMode = "all" | "loopback" | "none";
 
 export type GateDecision =
   | { schemaVersion: "1"; status: "ok"; metrics: GateMetrics }

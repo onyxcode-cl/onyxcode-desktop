@@ -273,3 +273,28 @@ describe("motor: apagado limpio", () => {
     assert.deepEqual(procsCiting(e.runBase), []);
   });
 });
+
+describe("motor: aislamiento Seatbelt obligatorio para runners reales", () => {
+  const sc = (e: ReturnType<typeof env>, runnerId: string, ro: RouterOptions) => runExperiment(experiment({ scenarios: [CASES[0]], repetitions: 1, budget: { maxCost: 5 } }), {
+    ...opts(e, { patch: "referencePatch", cost: true, costUsd: 0.01, ...ro }, {}, runnerId),
+  });
+
+  test("runner real con Seatbelt: environment.isolation = seatbelt; fake: none", async () => {
+    const real = await sc(env(), "realrunner", { isolation: "seatbelt" });
+    assert.ok(real.results.length > 0);
+    for (const r of real.results) assert.equal(r.environment.isolation, process.platform === "darwin" && existsSync("/usr/bin/sandbox-exec") ? "seatbelt" : "none");
+  });
+
+  test("runner real sin aislamiento => rehúsa (infra_error, sin ejecutar el runner)", async () => {
+    let ran = 0;
+    const sum = await sc(env(), "realrunner", { isolation: "none", onRun: () => { ran++; }, onPrepare: () => { ran++; } });
+    assert.equal(ran, 0);
+    assert.ok(sum.results.length > 0);
+    for (const r of sum.results) {
+      assert.equal(r.outcome, "infra_error");
+      assert.equal(r.success, null);
+      assert.match(r.error ?? "", /rehúso correr el runner real/);
+      assert.equal(r.environment.isolation, "none");
+    }
+  });
+});

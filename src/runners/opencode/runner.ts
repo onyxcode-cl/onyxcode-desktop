@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentRunner, Collected, Configuration, Limits, PreparedRun, RawRunOutput, RunContext, RunnerProbe, Task } from "../../core/schemas.ts";
+import { sandboxAvailable, sandboxWrap } from "../../isolation/index.ts";
+import type { NetworkMode } from "../../isolation/index.ts";
 import { killTree, supervise, verifyNoOrphans } from "../../core/proc.ts";
 import { redactDeep, redactText } from "../../core/redact.ts";
 import { InactivityWatch, isRateLimitText } from "../../telemetry/detect.ts";
@@ -26,6 +28,10 @@ const UNVERIFIED_BASE = [
 export interface OpenCodeRunnerOptions {
   bin?: { cmd: string; args?: string[] };
   startupTimeoutMs?: number;
+  /** Lanzar dentro del perfil Seatbelt (def true). Solo desactivar en tests del propio runner. */
+  sandbox?: boolean;
+  /** Rutas extra de solo lectura (además del binario real, sus args y node). */
+  extraReadPaths?: string[];
 }
 
 interface State {
@@ -46,6 +52,20 @@ export class OpenCodeRunner implements AgentRunner {
   private readonly opts: OpenCodeRunnerOptions;
   constructor(opts: OpenCodeRunnerOptions = {}) {
     this.opts = opts;
+  }
+
+  /** Aislamiento que aplica este runner (lo registra el motor en environment.isolation). */
+  get isolation(): "seatbelt" | "none" {
+    return this.opts.sandbox === false ? "none" : "seatbelt";
+  }
+
+  /**
+   * Red: opencode necesita el modelo remoto => "all" por defecto (settings.network="loopback" para modelos
+   * locales/simulados). Mejora pendiente: egress por proxy con allowlist de hosts del proveedor.
+   */
+  private networkFor(settings: OpenCodeSettings): NetworkMode {
+    const n = (settings as { network?: NetworkMode }).network;
+    return n === "loopback" || n === "none" ? n : "all";
   }
 
   private binFor(settings: OpenCodeSettings): { cmd: string; args: string[] } {
@@ -100,8 +120,15 @@ export class OpenCodeRunner implements AgentRunner {
     let urlResolve: (u: string | null) => void = () => {};
     const urlP = new Promise<string | null>((r) => (urlResolve = r));
     let stdoutBuf = "";
+    let launch = { cmd: st.bin.cmd, args: [...st.bin.args, "serve", "--port", "0", "--hostname", "127.0.0.1"] };
+    if (this.isolation === "seatbelt") {
+      if (!sandboxAvailable()) throw new Error("sandbox-exec no disponible: no se ejecuta opencode sin aislamiento");
+      launch = sandboxWrap(launch, {
+        runRoot: ctx.runRoot, extraReadPaths: this.opts.extraReadPaths, network: this.networkFor(st.settings), pathEnv: st.env.PATH,
+      });
+    }
     const serverP = supervise({
-      cmd: st.bin.cmd, args: [...st.bin.args, "serve", "--port", "0", "--hostname", "127.0.0.1"], cwd: ctx.workspace, env: st.env,
+      cmd: launch.cmd, args: launch.args, cwd: ctx.workspace, env: st.env,
       timeoutMs: limits.timeoutSec * 1000 + 60_000, signal: stopServer.signal,
       onStdout: (c) => {
         stdoutBuf += c;

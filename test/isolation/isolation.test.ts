@@ -46,7 +46,8 @@ test("perfil contiene deny default y escritura solo en runRoot", () => {
     const writes = p.split("\n").filter((x) => x.includes("file-write*"));
     assert.equal(writes.length, 1);
     assert.ok(writes[0]!.includes(base));
-    assert.ok(!p.includes(".ssh"));
+    // .ssh solo aparece en denegaciones, nunca en permisos
+    for (const l of p.split("\n").filter((x) => x.includes(".ssh"))) assert.match(l, /^\(deny file-read\*/);
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
 

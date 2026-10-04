@@ -2,7 +2,7 @@
 // Uso: node fake-codex.ts <escenario> exec --json ... -
 // Escenarios: ok | orphan | ratelimit | hang | slow | crash | turnfail
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const argv = process.argv.slice(2);
@@ -22,6 +22,18 @@ const emit = (o: unknown): void => void process.stdout.write(JSON.stringify(o) +
 process.on("SIGTERM", () => process.exit(0));
 await new Promise((r) => process.stdin.on("end", r));
 writeFileSync(join(home, "argv.json"), JSON.stringify({ argv: rest, prompt: stdin, home: process.env.HOME, keys: Object.keys(process.env).sort(), cwd: process.cwd() }));
+
+// sonda de aislamiento (escenario "probe"): intenta leer/escribir fuera del run y guarda el resultado dentro
+if (scenario === "probe") {
+  const pj = JSON.parse(readFileSync(join(process.env.HOME ?? ".", "probe.json"), "utf8")) as { readPaths: string[]; writePaths: string[]; listDirs: string[] };
+  const tryDo = (f: () => unknown): string => { try { f(); return "ok"; } catch (e) { return (e as NodeJS.ErrnoException).code ?? "err"; } };
+  const result = {
+    reads: Object.fromEntries(pj.readPaths.map((p) => [p, tryDo(() => readFileSync(p))])),
+    lists: Object.fromEntries(pj.listDirs.map((p) => [p, tryDo(() => readdirSync(p))])),
+    writes: Object.fromEntries(pj.writePaths.map((p) => [p, tryDo(() => writeFileSync(p, "escape"))])),
+  };
+  writeFileSync(join(process.env.HOME ?? ".", "probe-result.json"), JSON.stringify(result));
+}
 
 emit({ type: "thread.started", thread_id: "thr_1" });
 emit({ type: "turn.started" });

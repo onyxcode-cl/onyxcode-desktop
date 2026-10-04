@@ -49,6 +49,7 @@ export interface RouterOptions {
   /** reemplaza el outcome tras collect (p. ej. rate_limited las primeras N veces) */
   outcomeFor?: (n: number) => "rate_limited" | null;
   cleanupOrphans?: number;
+  isolation?: "seatbelt" | "none";
 }
 
 export function routerRunner(o: RouterOptions): AgentRunner {
@@ -73,6 +74,8 @@ export function routerRunner(o: RouterOptions): AgentRunner {
   };
   return {
     id: o.id ?? "fake",
+    // los ids no-fake simulan un runner real aislado (el motor rehúsa runners reales sin Seatbelt)
+    isolation: o.isolation ?? "seatbelt",
     async probe() {
       const p = await forScenario(CASES[0]).probe();
       return { ...p, capabilities: { ...p.capabilities, cost: o.cost ?? false } };

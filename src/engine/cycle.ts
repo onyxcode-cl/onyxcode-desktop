@@ -11,7 +11,7 @@ import { emptyTelemetry, maskTelemetry, RunResultSchema, SCHEMA_VERSION } from "
 import type {
   AgentRunner, Capabilities, Configuration, Environment, Experiment, Outcome, RunContext, RunResult, Scenario, Telemetry,
 } from "../core/schemas.ts";
-import { buildEnv, createRunLayout, removeRunLayout } from "../isolation/index.ts";
+import { buildEnv, createRunLayout, removeRunLayout, sandboxAvailable } from "../isolation/index.ts";
 import type { RunLayout } from "../isolation/index.ts";
 import { captureDiff, createEvalCopy, createWorkspace, TreeDeadSignal } from "../workspace/index.ts";
 import type { WorkspaceDiff } from "../workspace/index.ts";
@@ -68,10 +68,10 @@ export function readBenchVersion(): string {
   } catch { return "0.0.0"; }
 }
 
-export function buildEnvironment(cliVersion: string | null, benchVersion: string): Environment {
+export function buildEnvironment(cliVersion: string | null, benchVersion: string, isolation: Environment["isolation"] = "none"): Environment {
   return {
     schemaVersion: SCHEMA_VERSION, os: platform(), arch: arch(), nodeVersion: process.versions.node, gitVersion: gitVersion(),
-    cliVersion, ncpu: Math.max(1, cpus().length), totalMemBytes: Math.max(1, totalmem()), benchVersion, isolation: "none",
+    cliVersion, ncpu: Math.max(1, cpus().length), totalMemBytes: Math.max(1, totalmem()), benchVersion, isolation,
   };
 }
 
@@ -153,8 +153,15 @@ export async function executeCycle(inp: CycleInput): Promise<RunResult> {
   let treeDead = new TreeDeadSignal();
   let rawPid: number | null = null;
   let runnerRan = false;
+  // aislamiento real: lo declara el runner (propiedad `isolation`); los reales exigen Seatbelt operativo
+  const declared = (runner as { isolation?: unknown }).isolation;
+  const isolation: Environment["isolation"] = declared === "seatbelt" && sandboxAvailable() ? "seatbelt" : "none";
+  const isFake = /^fake/.test(runner.id) && /^fake/.test(configuration.runner);
 
   try {
+    if (!isFake && isolation !== "seatbelt") {
+      throw new Error(`rehúso correr el runner real "${runner.id}" sin aislamiento Seatbelt (sandbox-exec no disponible o desactivado)`);
+    }
     layout = createRunLayout(runId, deps.runBase);
     deps.activeRoots.add(layout.root);
     await setupWorkspace(scenario, layout.ws, deps.benchRoot);
@@ -303,7 +310,7 @@ export async function executeCycle(inp: CycleInput): Promise<RunResult> {
     orphans,
     gitDiff: patch,
     error: notes.length ? notes.join(" | ").slice(0, 2000) : null,
-    environment: buildEnvironment(deps.cliVersion, deps.benchVersion),
+    environment: buildEnvironment(deps.cliVersion, deps.benchVersion, isolation),
   };
   return RunResultSchema.parse(result);
 }

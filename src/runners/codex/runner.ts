@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import type { AgentRunner, Collected, Configuration, Limits, PreparedRun, RawRunOutput, RunContext, RunnerProbe, Task } from "../../core/schemas.ts";
 import { emptyTelemetry } from "../../core/schemas.ts";
+import { sandboxAvailable, sandboxWrap } from "../../isolation/index.ts";
+import type { NetworkMode } from "../../isolation/index.ts";
 import { killTree, supervise, verifyNoOrphans } from "../../core/proc.ts";
 import { redactDeep, redactText } from "../../core/redact.ts";
 import { isRateLimitText } from "../../telemetry/detect.ts";
@@ -30,6 +32,10 @@ interface State {
 
 export interface CodexRunnerOptions {
   bin?: { cmd: string; args?: string[] };
+  /** Lanzar dentro del perfil Seatbelt (def true). Solo desactivar en tests del propio runner. */
+  sandbox?: boolean;
+  /** Rutas extra de solo lectura (además del binario real, sus args y node). */
+  extraReadPaths?: string[];
 }
 
 export class CodexRunner implements AgentRunner {
@@ -37,6 +43,17 @@ export class CodexRunner implements AgentRunner {
   private readonly opts: CodexRunnerOptions;
   constructor(opts: CodexRunnerOptions = {}) {
     this.opts = opts;
+  }
+
+  /** Aislamiento que aplica este runner (lo registra el motor en environment.isolation). */
+  get isolation(): "seatbelt" | "none" {
+    return this.opts.sandbox === false ? "none" : "seatbelt";
+  }
+
+  /** Red: codex siempre necesita el modelo remoto => "all" salvo settings.network (simulados). Egress con allowlist: mejora pendiente. */
+  private networkFor(s: CodexSettings): NetworkMode {
+    const n = (s as { network?: NetworkMode }).network;
+    return n === "loopback" || n === "none" ? n : "all";
   }
 
   private binFor(s: CodexSettings): { cmd: string; args: string[] } {
@@ -127,8 +144,15 @@ export class CodexRunner implements AgentRunner {
       }
     };
 
+    let launch = { cmd: st.bin.cmd, args: [...st.bin.args, ...this.buildArgs(prepared)] };
+    if (this.isolation === "seatbelt") {
+      if (!sandboxAvailable()) throw new Error("sandbox-exec no disponible: no se ejecuta codex sin aislamiento");
+      launch = sandboxWrap(launch, {
+        runRoot: ctx.runRoot, extraReadPaths: this.opts.extraReadPaths, network: this.networkFor(st.settings), pathEnv: st.env.PATH,
+      });
+    }
     const res = await supervise({
-      cmd: st.bin.cmd, args: [...st.bin.args, ...this.buildArgs(prepared)], cwd: ctx.workspace, env: st.env, stdin: task.prompt,
+      cmd: launch.cmd, args: launch.args, cwd: ctx.workspace, env: st.env, stdin: task.prompt,
       timeoutMs: limits.timeoutSec * 1000, inactivityMs: limits.inactivitySec * 1000, signal: own.signal, onStdout: feed,
       onStderr: (c) => {
         // codex vuelca "stream error"/rate limit en stderr
