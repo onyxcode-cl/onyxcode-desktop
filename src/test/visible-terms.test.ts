@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
  */
 
 const ROOT = resolve(__dirname, '../..')
-const DIRS = ['src/renderer', 'src/main', 'src/shared', 'src/preload', 'resources/opencode']
+const DIRS = ['src/renderer', 'src/main', 'src/shared', 'src/preload', 'resources/opencode', 'pwa/src']
 const EXTS = ['.ts', '.tsx', '.md']
 
 interface Rule {

@@ -13,7 +13,7 @@ const ROOT = resolve(__dirname, '../..')
 const TERM = /cowork/i
 
 /** Directorios publicables que se recorren enteros (contenido y nombres). */
-const PUBLISHED_DIRS = ['src', 'e2e', 'resources', 'scripts']
+const PUBLISHED_DIRS = ['src', 'e2e', 'resources', 'scripts', 'pwa/src']
 
 /** Ficheros sueltos de la raíz (patrones simples con `*`). */
 const PUBLISHED_ROOT_FILES = [
