@@ -11,6 +11,12 @@ export const MOBILE_TABS: readonly MobileTab[] = ['chat', 'code', 'tasks', 'more
 export type MobileScreenId = string
 export const ROOT_SCREEN: MobileScreenId = 'root'
 export const DETAIL_SCREEN: MobileScreenId = 'detail'
+/** Pantallas que Code apila sobre la conversación (hojas a pantalla completa y menú de acciones): el «atrás» las cierra. */
+export const CODE_CHANGES = 'code:changes'
+export const CODE_FILES = 'code:files'
+export const CODE_BROWSER = 'code:browser'
+export const CODE_ACTIONS = 'code:actions'
+export const CODE_PANEL_SCREENS: readonly MobileScreenId[] = [CODE_CHANGES, CODE_FILES, CODE_BROWSER]
 const MAX_DEPTH = 8
 
 export interface NavState {
@@ -39,6 +45,18 @@ export function navPop(s: NavState): NavState {
   return { ...s, stacks: { ...s.stacks, [s.tab]: stack.slice(0, -1) } }
 }
 
+/** Deja la lista como única pantalla de la pestaña (sin tocar las demás). */
+export function navResetTab(s: NavState, tab: MobileTab): NavState {
+  return s.stacks[tab].length <= 1 ? s : { ...s, stacks: { ...s.stacks, [tab]: [ROOT_SCREEN] } }
+}
+
+/** Sustituye la pantalla de arriba por otra (p. ej. del menú «⋯» a una hoja) sin dejar la primera en la pila. */
+export function navReplace(s: NavState, screen: MobileScreenId): NavState {
+  const stack = s.stacks[s.tab]
+  if (stack.length <= 1) return navPush(s, screen)
+  return { ...s, stacks: { ...s.stacks, [s.tab]: [...stack.slice(0, -1), screen] } }
+}
+
 /** Cambia de pestaña. Volver a tocar la pestaña activa la devuelve a su lista (patrón habitual de las apps). */
 export function navSetTab(s: NavState, tab: MobileTab): NavState {
   if (tab !== s.tab) return { ...s, tab }
@@ -64,6 +82,8 @@ interface NavStore extends NavState {
   setTab: (tab: MobileTab) => void
   showTab: (tab: MobileTab) => void
   openDetail: (tab: MobileTab) => void
+  replace: (screen: MobileScreenId) => void
+  resetTab: (tab: MobileTab) => void
   /** Vuelve a la lista de la pestaña activa. */
   toRoot: () => void
   /** Solo pruebas: restablece el estado. */
@@ -74,6 +94,8 @@ export const useMobileNavStore = create<NavStore>((set) => ({
   ...initialNav(),
   push: (screen) => set((s) => navPush(s, screen)),
   pop: () => set((s) => navPop(s)),
+  replace: (screen) => set((s) => navReplace(s, screen)),
+  resetTab: (tab) => set((s) => navResetTab(s, tab)),
   setTab: (tab) => set((s) => navSetTab(s, tab)),
   showTab: (tab) => set((s) => navShowTab(s, tab)),
   openDetail: (tab) => set((s) => navOpenDetail(s, tab)),

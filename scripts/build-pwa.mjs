@@ -72,8 +72,12 @@ if (code === 0) {
       queue.push(...deps(j))
     }
   }
+  // El CSS de la interfaz (`boot-*.css`) lo enlaza el trozo `boot` al cargar: también es de arranque.
+  for (const f of files) if (/[\\/]app[\\/]assets[\\/]boot-[^\\/]*\.css$/.test(f)) startup.push(f)
   const uniq = [...new Set(startup)].filter((f) => sizes.has(f))
   const total = uniq.reduce((n, f) => n + sizes.get(f), 0)
+  const lazy = [...sizes].filter(([f]) => !uniq.includes(f) && !f.endsWith('.map')).reduce((n, [, v]) => n + v, 0)
   console.log(`[build:pwa] peso gzip del arranque (HTML + JS + CSS cargados al abrir): ${kb(total)}`)
+  console.log(`[build:pwa] trozos perezosos (Tareas, Rutinas, Ajustes, inglés…; solo al usarlos): ${kb(lazy)}`)
 }
 process.exit(code)

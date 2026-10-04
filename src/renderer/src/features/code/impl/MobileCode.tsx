@@ -1,153 +1,24 @@
 /**
- * Code en la pantalla del celular (superficie `remote`, tanda T8 `movil-code`).
- *
- * Una sola columna: lista de sesiones → conversación (MessageStream + Composer). Cambios, Archivos, el navegador del agente (solo
- * vista) y las acciones de la sesión se abren como hojas (`Sheet`) a pantalla completa o desde abajo. Nada de esto se monta en
- * Mac ni en Windows: `CodeWorkspace` solo entra aquí con `isRemoteSurface()`.
+ * Code en la pantalla del celular (superficie `remote`). El ARMAZÓN (`app/mobile/MobileShell`) es dueño de la navegación en pila y
+ * de la barra superior: la lista de sesiones es la del armazón (`CodeSidebar`), y la conversación (`ChatColumn`) se monta sin
+ * lista ni barra propias. Aquí viven las pantallas que Code apila sobre la conversación —Cambios, Archivos y el navegador del
+ * agente (solo vista) a pantalla completa, y el menú «⋯» como hoja—; todas son entradas de la pila (`nav.ts`), así que el
+ * botón/gesto «atrás» del sistema y el de la interfaz las cierran antes de volver a la lista. Nada de esto se monta en Mac ni
+ * en Windows.
  */
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import {
-  ChevronLeft,
-  FileCode2,
-  GitCompare,
-  GitFork,
-  Globe,
-  LayoutGrid,
-  Loader2,
-  MoreHorizontal,
-  Plus,
-  RefreshCw,
-  Sparkles,
-  Square
-} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { GitFork, Globe, LayoutGrid, Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import type { BrowserCapture, BrowserOwner } from '@shared/ipc-browser'
+import { CODE_BROWSER, CODE_CHANGES, CODE_FILES, useMobileNavStore } from '../../../app/mobile/nav'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { useT } from '../../../lib/i18n'
 import { br } from '../../browser'
 import { errorMessage } from './client'
-import { abbreviatePath } from './mobile-logic'
-import { showCodeChat, useCodeMobile } from './mobile-store'
 import { SheetAction } from './SheetAction'
 import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
-import { baseName, TrustGate } from './ProjectPicker'
-import { SessionList } from './SessionList'
 import { useCode } from './store'
 import './mobile.css'
-
-const SHEET_BODY_H = 'h-[calc(100dvh-3rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]'
-
-/** Barra superior de la conversación: volver, título, detener, Cambios, Archivos y más. */
-export function MobileToolbar({ directory, branch }: { directory: string; branch: ReactNode }): React.JSX.Element {
-  const t = useT()
-  const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
-  const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
-  const abort = useCode((s) => s.abort)
-  const setScreen = useCodeMobile((s) => s.setScreen)
-  const openSheet = useCodeMobile((s) => s.openSheet)
-  const sheet = useCodeMobile((s) => s.sheet)
-  const busy = run === 'busy' || run === 'retry'
-  const btn = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-hover hover:text-fg active:bg-active'
-  return (
-    <div className="flex min-h-14 shrink-0 items-center gap-0.5 border-b border-border px-1">
-      <button type="button" aria-label={t('code.m.back')} title={t('code.m.back')} onClick={() => setScreen('list')} className={btn}>
-        <ChevronLeft size={22} />
-      </button>
-      <div className="min-w-0 flex-1 px-1">
-        <div className="truncate text-[15px] leading-tight font-semibold">{session?.title || t('code.sessions.untitled')}</div>
-        <div className="flex min-w-0 items-center gap-1.5 pt-0.5">
-          {branch}
-          <span className="min-w-0 truncate font-mono text-[11px] text-subtle" title={directory}>
-            {abbreviatePath(directory, 26)}
-          </span>
-        </div>
-      </div>
-      {busy && (
-        <button
-          type="button"
-          onClick={() => void abort()}
-          aria-label={t('code.toolbar.stop')}
-          className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[13px] font-medium text-danger hover:bg-danger/10 active:bg-danger/15"
-        >
-          <Square size={12} fill="currentColor" /> {t('code.toolbar.stop')}
-        </button>
-      )}
-      <button
-        type="button"
-        aria-label={t('code.panel.changes')}
-        title={t('code.panel.changes')}
-        aria-pressed={sheet === 'changes'}
-        onClick={() => openSheet('changes')}
-        className={btn}
-      >
-        <GitCompare size={19} />
-      </button>
-      <button
-        type="button"
-        aria-label={t('code.panel.files')}
-        title={t('code.panel.files')}
-        aria-pressed={sheet === 'files'}
-        onClick={() => openSheet('files')}
-        className={btn}
-      >
-        <FileCode2 size={19} />
-      </button>
-      <button
-        type="button"
-        aria-label={t('code.m.more')}
-        title={t('code.m.more')}
-        aria-haspopup="dialog"
-        onClick={() => openSheet('actions')}
-        className={btn}
-      >
-        <MoreHorizontal size={20} />
-      </button>
-    </div>
-  )
-}
-
-/** Primera pantalla: proyecto, «Nueva sesión» y la lista de sesiones. */
-function SessionsScreen({ directory }: { directory: string }): React.JSX.Element {
-  const t = useT()
-  const closeProject = useCode((s) => s.closeProject)
-  const newSession = useCode((s) => s.newSession)
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-14 shrink-0 items-center gap-1 border-b border-border pr-1 pl-4">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[17px] leading-tight font-semibold">{baseName(directory)}</div>
-          <div className="truncate font-mono text-[11px] text-subtle" title={directory}>
-            {abbreviatePath(directory, 34)}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={closeProject}
-          aria-label={t('code.menu.recentProjects')}
-          title={t('code.menu.recentProjects')}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-hover hover:text-fg"
-        >
-          <LayoutGrid size={19} />
-        </button>
-      </div>
-      <div className="shrink-0 px-3 pt-3 pb-1">
-        <button
-          type="button"
-          onClick={() => {
-            void newSession()
-            showCodeChat()
-          }}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent text-[15px] font-medium text-accent-fg active:opacity-90"
-        >
-          <Plus size={18} /> {t('app.mode.newSession')}
-        </button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto pt-1 pb-3">
-        <SessionList compact />
-      </div>
-    </div>
-  )
-}
 
 /**
  * Vista del navegador del agente SOLO para mirar: una captura (`browser:capture`, lectura permitida por la política del celular).
@@ -174,14 +45,11 @@ export function BrowserSnapshotView({ directory }: { directory: string }): React
   }, [load])
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border pr-1 pl-4">
+      <div className="flex min-h-12 shrink-0 items-center gap-2 border-b border-border pr-1 pl-4">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[14px] font-medium">{state.cap?.title || t('code.m.browser.title')}</div>
-          {state.cap?.url && (
-            <div className="truncate font-mono text-[11px] text-subtle" title={state.cap.url}>
-              {state.cap.url}
-            </div>
-          )}
+          <div className="truncate font-mono text-[12px] text-subtle" title={state.cap?.url}>
+            {state.cap?.url || state.cap?.title || t('code.m.browser.title')}
+          </div>
         </div>
         <button
           type="button"
@@ -216,11 +84,22 @@ export function BrowserSnapshotView({ directory }: { directory: string }): React
   )
 }
 
-function MobileSheets({ directory }: { directory: string }): React.JSX.Element {
+/** Pantalla completa de Cambios / Archivos / navegador, apilada sobre la conversación (el título lo pone el armazón). */
+export function CodePanelScreen({ screen, directory }: { screen: string; directory: string }): React.JSX.Element | null {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-bg">
+      {screen === CODE_CHANGES && <ChangesPanel key={directory} directory={directory} />}
+      {screen === CODE_FILES && <FilesPanel directory={directory} />}
+      {screen === CODE_BROWSER && <BrowserSnapshotView directory={directory} />}
+    </div>
+  )
+}
+
+/** Menú «⋯» de la conversación como hoja (es una pantalla de la pila: «atrás» la cierra). */
+export function CodeActionsSheet({ open }: { open: boolean }): React.JSX.Element {
   const t = useT()
-  const sheet = useCodeMobile((s) => s.sheet)
-  const close = useCodeMobile((s) => s.closeSheet)
-  const openSheet = useCodeMobile((s) => s.openSheet)
+  const nav = useMobileNavStore
+  const close = (): void => nav.getState().pop()
   const activeSessionID = useCode((s) => s.activeSessionID)
   const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
   const forkSession = useCode((s) => s.forkSession)
@@ -228,68 +107,38 @@ function MobileSheets({ directory }: { directory: string }): React.JSX.Element {
   const closeProject = useCode((s) => s.closeProject)
   const busy = run === 'busy' || run === 'retry'
   return (
-    <>
-      <Sheet open={sheet === 'changes'} onClose={close} title={t('code.panel.changes')} size="full">
-        <div className={SHEET_BODY_H}>{sheet === 'changes' && <ChangesPanel key={directory} directory={directory} />}</div>
-      </Sheet>
-      <Sheet open={sheet === 'files'} onClose={close} title={t('code.panel.files')} size="full">
-        <div className={SHEET_BODY_H}>{sheet === 'files' && <FilesPanel directory={directory} />}</div>
-      </Sheet>
-      <Sheet open={sheet === 'browser'} onClose={close} title={t('code.m.browser.title')} size="full">
-        <div className={SHEET_BODY_H}>{sheet === 'browser' && <BrowserSnapshotView directory={directory} />}</div>
-      </Sheet>
-      <Sheet open={sheet === 'actions'} onClose={close} title={t('code.m.moreTitle')} size="half">
-        {activeSessionID && (
-          <>
-            <SheetAction
-              icon={<GitFork size={20} />}
-              label={t('code.toolbar.fork')}
-              disabled={busy}
-              onClick={() => {
-                close()
-                void forkSession(activeSessionID)
-              }}
-            />
-            <SheetAction
-              icon={<Sparkles size={20} />}
-              label={t('code.toolbar.compact')}
-              disabled={busy}
-              onClick={() => {
-                close()
-                void compactSession(activeSessionID)
-              }}
-            />
-          </>
-        )}
-        <SheetAction icon={<Globe size={20} />} label={t('code.m.browser.title')} onClick={() => openSheet('browser')} />
-        <SheetAction
-          icon={<LayoutGrid size={20} />}
-          label={t('code.menu.recentProjects')}
-          onClick={() => {
-            close()
-            closeProject()
-          }}
-        />
-      </Sheet>
-    </>
-  )
-}
-
-/** Estructura de Code en el celular. `chat` es la columna de conversación (la crea `CodeWorkspace`). */
-export function MobileCodeLayout({ directory, chat }: { directory: string; chat: ReactNode }): React.JSX.Element {
-  const screen = useCodeMobile((s) => s.screen)
-  useEffect(() => {
-    document.documentElement.dataset.surface = 'mobile'
-  }, [])
-  // Otro proyecto: se vuelve a la lista (y se cierran las hojas).
-  useEffect(() => {
-    useCodeMobile.setState({ screen: 'list', sheet: null })
-  }, [directory])
-  return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-bg text-fg">
-      <TrustGate />
-      {screen === 'list' ? <SessionsScreen directory={directory} /> : chat}
-      <MobileSheets directory={directory} />
-    </div>
+    <Sheet open={open} onClose={close} title={t('code.m.moreTitle')} size="half">
+      {activeSessionID && (
+        <>
+          <SheetAction
+            icon={<GitFork size={20} />}
+            label={t('code.toolbar.fork')}
+            disabled={busy}
+            onClick={() => {
+              close()
+              void forkSession(activeSessionID)
+            }}
+          />
+          <SheetAction
+            icon={<Sparkles size={20} />}
+            label={t('code.toolbar.compact')}
+            disabled={busy}
+            onClick={() => {
+              close()
+              void compactSession(activeSessionID)
+            }}
+          />
+        </>
+      )}
+      <SheetAction icon={<Globe size={20} />} label={t('code.m.browser.title')} onClick={() => nav.getState().replace(CODE_BROWSER)} />
+      <SheetAction
+        icon={<LayoutGrid size={20} />}
+        label={t('code.menu.recentProjects')}
+        onClick={() => {
+          close()
+          closeProject()
+        }}
+      />
+    </Sheet>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, Ellipsis, Plus } from 'lucide-react'
+import { ChevronLeft, Ellipsis, FileCode2, GitCompare, LayoutGrid, MoreHorizontal, Plus } from 'lucide-react'
 import { modeAvailable } from '@shared/platform-caps'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeId } from '@shared/types'
@@ -8,7 +8,9 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useT } from '../../lib/i18n'
 import { currentPlatform } from '../../lib/platform'
 import { useCode } from '../../features/code/impl/store'
-import { newCodeSession } from '../../features/code/impl/CodeWorkspace'
+import { BranchPill, newCodeSession } from '../../features/code/impl/CodeWorkspace'
+import { CodeActionsSheet, CodePanelScreen } from '../../features/code/impl/MobileCode'
+import { abbreviatePath } from '../../features/code/impl/mobile-logic'
 import { SettingsView } from '../../features/settings'
 import { useUi } from '../../stores/ui'
 import { EngineNotice } from '../EngineNotice'
@@ -18,7 +20,20 @@ import { MODES_BY_ID } from '../modes'
 import { LIST_MODES, clearActive, isListMode, useActiveIds, useDetailTitle, type ListMode } from './adapters'
 import { useLinkStatus } from './link'
 import { MoreRoot, PhoneScreen, RoutinesScreen } from './MoreScreens'
-import { DETAIL_SCREEN, ROOT_SCREEN, topScreen, useMobileNav, useMobileNavStore, type MobileTab } from './nav'
+import { createHistorySync } from './nav-history'
+import {
+  CODE_ACTIONS,
+  CODE_BROWSER,
+  CODE_CHANGES,
+  CODE_FILES,
+  CODE_PANEL_SCREENS,
+  DETAIL_SCREEN,
+  ROOT_SCREEN,
+  topScreen,
+  useMobileNav,
+  useMobileNavStore,
+  type MobileTab
+} from './nav'
 import { installViewportVars } from './viewport'
 
 /** Secciones de Ajustes que existen en el celular (el resto se cambia desde el Mac). */
@@ -35,29 +50,47 @@ export function popScreen(): void {
   st.pop()
 }
 
-// Historial del navegador: cada pantalla apilada añade una entrada para que el botón/gesto «atrás» del celular desapile.
-let historyEntries = 0
-
+// Historial del navegador: siempre hay `profundidad - 1` entradas propias de la pestaña activa (ver `nav-history.ts`), así el
+// botón/gesto «atrás» del celular desapila la pantalla de arriba, y al cambiar de pestaña no quedan entradas viejas.
 function useNavHistory(): void {
   useEffect(() => {
+    const target = (): number => {
+      const st = useMobileNavStore.getState()
+      return st.stacks[st.tab].length - 1
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const sync = createHistorySync(
+      {
+        push: () => {
+          try {
+            history.pushState({ onyxNav: true }, '')
+          } catch {
+            // sin historial: solo funciona el botón de la interfaz
+          }
+        },
+        go: (n) => {
+          try {
+            history.go(n)
+          } catch {
+            // idem
+          }
+          clearTimeout(timer)
+          timer = setTimeout(sync.settle, 700)
+        }
+      },
+      target
+    )
     const onPop = (): void => {
-      if (historyEntries > 0) historyEntries--
-      popScreen()
+      if (sync.popstate() === 'user') popScreen()
+      sync.reconcile()
     }
     window.addEventListener('popstate', onPop)
-    const off = useMobileNavStore.subscribe((s, prev) => {
-      if (s.tab === prev.tab && s.stacks[s.tab].length > prev.stacks[prev.tab].length) {
-        try {
-          history.pushState({ onyxNav: true }, '')
-          historyEntries++
-        } catch {
-          // sin historial: solo funciona el botón de la interfaz
-        }
-      }
-    })
+    const off = useMobileNavStore.subscribe(() => sync.reconcile())
+    sync.reconcile()
     return () => {
       window.removeEventListener('popstate', onPop)
       off()
+      clearTimeout(timer)
     }
   }, [])
 }
@@ -68,6 +101,12 @@ function useExternalSync(): void {
   const settingsOpen = useUi((s) => s.settingsOpen)
   const ids = useActiveIds()
   const prev = useRef(ids)
+  const directory = useCode((s) => s.directory)
+
+  // Cerrar o cambiar de proyecto de Code devuelve esa pestaña a su lista (sin pantallas viejas apiladas).
+  useEffect(() => {
+    useMobileNavStore.getState().resetTab('code')
+  }, [directory])
 
   useEffect(() => {
     if (isListMode(mode)) useMobileNavStore.getState().showTab(mode)
@@ -143,7 +182,17 @@ function TabBar(): React.JSX.Element {
   )
 }
 
-function TopBar({ title, onBack, action }: { title: string; onBack?: () => void; action?: React.ReactNode }): React.JSX.Element {
+function TopBar({
+  title,
+  subtitle,
+  onBack,
+  action
+}: {
+  title: string
+  subtitle?: React.ReactNode
+  onBack?: () => void
+  action?: React.ReactNode
+}): React.JSX.Element {
   const t = useT()
   return (
     <header
@@ -162,16 +211,20 @@ function TopBar({ title, onBack, action }: { title: string; onBack?: () => void;
       ) : (
         <span className="w-2 shrink-0" />
       )}
-      <h1 className="min-h-12 min-w-0 flex-1 truncate py-3 font-display text-[17px] leading-6 font-semibold tracking-tight">{title}</h1>
+      <div className="min-w-0 flex-1">
+        <h1
+          className={`min-w-0 truncate font-display text-[17px] leading-6 font-semibold tracking-tight ${subtitle ? 'pt-2' : 'min-h-12 py-3'}`}
+        >
+          {title}
+        </h1>
+        {subtitle && <div className="flex min-h-6 min-w-0 items-center gap-1.5 pb-1.5">{subtitle}</div>}
+      </div>
       <div className="flex shrink-0 items-center">{action}</div>
     </header>
   )
 }
 
-function goBack(): void {
-  if (historyEntries > 0) history.back()
-  else popScreen()
-}
+const goBack = popScreen
 
 function titleOfMoreScreen(screen: string, t: ReturnType<typeof useT>): string {
   if (screen === 'routines') return MODE_LABELS.routines
@@ -185,14 +238,40 @@ function titleOfMoreScreen(screen: string, t: ReturnType<typeof useT>): string {
 function ListScreen({ mode }: { mode: ListMode }): React.JSX.Element {
   const def = MODES_BY_ID[mode]
   const directory = useCode((s) => s.directory)
-  // Code sin carpeta abierta: la pantalla de proyectos ocupa el lugar de la lista.
+  // Code sin carpeta abierta: la pantalla de proyectos ocupa el lugar de la lista (sin cabecera propia: la del armazón).
   if (mode === 'code' && !directory) return <def.View />
   const List = def.SidebarContent
   return <div className="px-2 py-2">{List ? <List /> : null}</div>
 }
 
+/**
+ * Code: la lista de sesiones es la del armazón; la conversación se queda montada (con su desplazamiento y borrador) mientras
+ * Cambios/Archivos/navegador se apilan encima a pantalla completa y el menú «⋯» sale como hoja.
+ */
+function CodeBody({ screen, hasDetail }: { screen: string; hasDetail: boolean }): React.JSX.Element {
+  const directory = useCode((s) => s.directory)
+  const View = MODES_BY_ID.code.View
+  if (!directory) return <View />
+  if (!hasDetail) return <ListScreen mode="code" />
+  const panel = CODE_PANEL_SCREENS.includes(screen)
+  return (
+    <>
+      <div className="h-full" inert={panel || undefined} aria-hidden={panel || undefined}>
+        <View />
+      </div>
+      {panel && (
+        <div className="absolute inset-0 animate-fade-in bg-bg" data-code-panel={screen}>
+          <CodePanelScreen screen={screen} directory={directory} />
+        </div>
+      )}
+      <CodeActionsSheet open={screen === CODE_ACTIONS} />
+    </>
+  )
+}
+
 function Body(): React.JSX.Element {
   const { tab, screen, push } = useMobileNav()
+  const codeStack = useMobileNavStore((s) => s.stacks.code)
   if (tab === 'more') {
     if (screen === 'routines') return <RoutinesScreen />
     if (screen === 'phone') return <PhoneScreen />
@@ -203,6 +282,7 @@ function Body(): React.JSX.Element {
     }
     return <MoreRoot />
   }
+  if (tab === 'code') return <CodeBody screen={screen} hasDetail={codeStack.includes(DETAIL_SCREEN)} />
   const mode = tab as ListMode
   if (screen === DETAIL_SCREEN) {
     const View = MODES_BY_ID[mode].View
@@ -211,16 +291,87 @@ function Body(): React.JSX.Element {
   return <ListScreen mode={mode} />
 }
 
+const CODE_PANEL_TITLE = {
+  [CODE_CHANGES]: 'code.panel.changes',
+  [CODE_FILES]: 'code.panel.files',
+  [CODE_BROWSER]: 'code.m.browser.title'
+} as const
+
+const barBtn = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-hover'
+
+/** Barra de la conversación de Code: título, rama y ruta, y las acciones (Cambios, Archivos, más). Detener está en el compositor. */
+function CodeDetailBar({ title, onBack, screen }: { title: string; onBack?: () => void; screen: string }): React.JSX.Element {
+  const t = useT()
+  const directory = useCode((s) => s.directory)
+  const push = useMobileNavStore((s) => s.push)
+  if (!directory) return <TopBar title={title} onBack={onBack} />
+  return (
+    <TopBar
+      title={title}
+      onBack={onBack}
+      subtitle={
+        <>
+          <BranchPill directory={directory} />
+          <span className="min-w-0 truncate font-mono text-[11px] text-subtle" title={directory}>
+            {abbreviatePath(directory, 24)}
+          </span>
+        </>
+      }
+      action={
+        <>
+          <button
+            type="button"
+            aria-label={t('code.panel.changes')}
+            title={t('code.panel.changes')}
+            aria-pressed={screen === CODE_CHANGES}
+            onClick={() => push(CODE_CHANGES)}
+            className={barBtn}
+          >
+            <GitCompare size={20} />
+          </button>
+          <button
+            type="button"
+            aria-label={t('code.panel.files')}
+            title={t('code.panel.files')}
+            aria-pressed={screen === CODE_FILES}
+            onClick={() => push(CODE_FILES)}
+            className={barBtn}
+          >
+            <FileCode2 size={20} />
+          </button>
+          <button
+            type="button"
+            aria-label={t('code.m.more')}
+            title={t('code.m.more')}
+            aria-haspopup="dialog"
+            onClick={() => push(CODE_ACTIONS)}
+            className={barBtn}
+          >
+            <MoreHorizontal size={20} />
+          </button>
+        </>
+      }
+    />
+  )
+}
+
 function Bar(): React.JSX.Element {
   const t = useT()
   const { tab, screen, canGoBack } = useMobileNav()
   const detailTitle = useDetailTitle(tab === 'more' ? 'chat' : (tab as ListMode))
   const directory = useCode((s) => s.directory)
+  const closeProject = useCode((s) => s.closeProject)
+  const codeHasDetail = useMobileNavStore((s) => s.stacks.code.includes(DETAIL_SCREEN))
   const onBack = canGoBack ? goBack : undefined
 
   if (tab === 'more')
     return <TopBar title={screen === ROOT_SCREEN ? t('mobile.more.title') : titleOfMoreScreen(screen, t)} onBack={onBack} />
   const mode = tab as ListMode
+  if (mode === 'code' && codeHasDetail && directory) {
+    if (CODE_PANEL_SCREENS.includes(screen))
+      return <TopBar title={t(CODE_PANEL_TITLE[screen as keyof typeof CODE_PANEL_TITLE])} onBack={onBack} />
+    return <CodeDetailBar title={detailTitle} onBack={onBack} screen={screen} />
+  }
   if (screen === DETAIL_SCREEN) return <TopBar title={detailTitle} onBack={onBack} />
   const canCreate = mode !== 'code' || !!directory
   const def = MODES_BY_ID[mode]
@@ -233,16 +384,29 @@ function Bar(): React.JSX.Element {
     <TopBar
       title={def.label}
       action={
-        canCreate && def.newAction ? (
-          <button
-            type="button"
-            onClick={create}
-            aria-label={def.newAction.label}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent active:opacity-80"
-          >
-            <Plus size={22} strokeWidth={2.3} />
-          </button>
-        ) : null
+        <>
+          {mode === 'code' && directory && (
+            <button
+              type="button"
+              onClick={closeProject}
+              aria-label={t('code.menu.recentProjects')}
+              title={t('code.menu.recentProjects')}
+              className={barBtn}
+            >
+              <LayoutGrid size={20} />
+            </button>
+          )}
+          {canCreate && def.newAction && (
+            <button
+              type="button"
+              onClick={create}
+              aria-label={def.newAction.label}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent active:opacity-80"
+            >
+              <Plus size={22} strokeWidth={2.3} />
+            </button>
+          )}
+        </>
       }
     />
   )
@@ -271,6 +435,10 @@ function LinkBanner(): React.JSX.Element | null {
  */
 export function MobileShell(): React.JSX.Element {
   const { tab, depth } = useMobileNav()
+  const codeHasDetail = useMobileNavStore((s) => s.stacks.code.includes(DETAIL_SCREEN))
+  const codeDir = useCode((s) => s.directory)
+  // Code mantiene montada la conversación mientras se apilan Cambios/Archivos: su llave no cambia con la profundidad.
+  const paneKey = tab === 'code' ? `code:${!codeDir ? 'picker' : codeHasDetail ? 'detail' : 'list'}` : `${tab}:${depth}`
   const t = useT()
   useNavHistory()
   useExternalSync()
@@ -293,12 +461,12 @@ export function MobileShell(): React.JSX.Element {
         <QuickEntryNotice />
       </ErrorBoundary>
       <main
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
         data-screen={`${tab}:${depth}`}
         style={root ? undefined : { paddingBottom: 'var(--sab, 0px)' }}
       >
-        <div key={`${tab}:${depth}`} className={root ? 'min-h-full' : 'h-full animate-fade-in'}>
-          <ErrorBoundary key={`${tab}:${depth}`} label={label}>
+        <div key={paneKey} className={root ? 'min-h-full' : 'h-full animate-fade-in'}>
+          <ErrorBoundary key={paneKey} label={label}>
             <Body />
           </ErrorBoundary>
         </div>

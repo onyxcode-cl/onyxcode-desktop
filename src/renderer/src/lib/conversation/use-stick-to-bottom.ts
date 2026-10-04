@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { isRemoteSurface } from '../platform'
 
 /** Distancia (px) al final a partir de la cual la lista deja de pegarse al final y aparece «Ir al final». */
 export const STICK_THRESHOLD = 80
@@ -74,6 +75,21 @@ export function useStickToBottom(resetKey: unknown): {
     const el = scrollRef.current
     if (el && stickRef.current) el.scrollTop = el.scrollHeight
   })
+
+  // Celular: si la altura visible cambia (cola de mensajes que se abre, compositor que crece, teclado) y la lista estaba pegada
+  // al final, se queda pegada (si no, lo último —p. ej. una tarjeta de permiso— quedaba tapado). Escritorio no cambia.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!isRemoteSurface() || !el || typeof ResizeObserver === 'undefined') return
+    let last = el.clientHeight
+    const ro = new ResizeObserver(() => {
+      if (el.clientHeight === last) return
+      last = el.clientHeight
+      if (stickRef.current) el.scrollTop = el.scrollHeight
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     const saved = memoKey ? recalledScroll(memoKey) : undefined

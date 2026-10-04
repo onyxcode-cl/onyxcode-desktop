@@ -498,7 +498,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }
 
   return (
-    <div className={mobile ? 'pb-[max(0.5rem,env(safe-area-inset-bottom))]' : 'pb-4'}>
+    <div className={mobile ? 'pb-2' : 'pb-4'}>
       {activeSessionID && <QueueList sessionID={activeSessionID} />}
       <div
         className={`mx-auto w-full max-w-3xl ${mobile ? 'px-3' : 'px-6'}`}

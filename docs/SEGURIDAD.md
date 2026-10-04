@@ -1086,3 +1086,7 @@ Solo interfaz: no se abre ningún canal ni ruta nuevos; todo lo que hace Code en
 - **Archivos**: crear/renombrar/borrar de UN archivo es M; carpetas o varios, D (confirmación en el Mac, con aviso previo). `.git` sigue protegido. «Abrir en…» (`editors:open`) no se ofrece (X).
 - **Navegador del agente**: solo `browser:state` y `browser:capture` (R, ámbito por dueño). `captureForUi` no comprueba que la pestaña pertenezca al dueño indicado (solo la política lo hace con el `owner`): pendiente de endurecer en main.
 - **Foco/teclado**: sin atajos de teclado en el celular; el permiso ya no escucha 1/2/3.
+
+## 3 vicies quinquies. Celular integrado (F8-B60)
+
+Sin cambios de superficie de ataque: solo interfaz. Code en el celular usa los mismos canales que en F8-B59 (la política no cambia; `policy.ts` intacto). Cambios, Archivos y el navegador del agente (solo vista) siguen ejecutando las mismas llamadas; solo cambia dónde se dibujan (pantallas de la pila de navegación). El historial del navegador solo guarda marcas `{onyxNav:true}` sin datos. Los permisos nuevos se llevan a la vista (el usuario siempre ve la tarjeta antes de decidir).

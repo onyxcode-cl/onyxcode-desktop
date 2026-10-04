@@ -276,10 +276,7 @@ function CommitBox({
   }
 
   return (
-    <div
-      className="shrink-0 border-t border-border bg-sidebar/40 p-2.5"
-      style={isRemoteSurface() ? { paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' } : undefined}
-    >
+    <div className="shrink-0 border-t border-border bg-sidebar/40 p-2.5">
       {done && (
         <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-success/10 px-2.5 py-1.5 text-xs text-success">
           <Check size={13} className="shrink-0" /> <span className="truncate font-mono">{done}</span>

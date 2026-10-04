@@ -5,7 +5,7 @@ import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { baseName, tildify } from '../../../lib/paths'
 import { PageHeader } from '../../../components/PageHeader'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { useSettings } from '../../../stores/settings'
 import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
@@ -316,16 +316,19 @@ export function ProjectPicker(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <TrustGate />
-      <PageHeader
-        title={t('code.picker.title')}
-        actions={
-          dialogs ? (
-            <Button variant="primary" disabled={busy} onClick={open}>
-              <FolderOpen size={15} /> {t('code.picker.open')}
-            </Button>
-          ) : undefined
-        }
-      />
+      {/* Celular: la cabecera es la del armazón (MobileShell); no hay otra. */}
+      {!isRemoteSurface() && (
+        <PageHeader
+          title={t('code.picker.title')}
+          actions={
+            dialogs ? (
+              <Button variant="primary" disabled={busy} onClick={open}>
+                <FolderOpen size={15} /> {t('code.picker.open')}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-4xl px-8 pt-8 pb-10">
           <p className="text-sm text-muted">{t('code.picker.choose')}</p>
