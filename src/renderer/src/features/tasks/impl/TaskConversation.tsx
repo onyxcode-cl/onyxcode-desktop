@@ -28,13 +28,15 @@ import { ScreenshotThumbs } from './ComputerAccess'
 import { blockIdForPart } from './conversation-logic'
 import { ScrollToEnd } from '../../../components/conversation/ScrollToEnd'
 import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
+import { ElementReadonlyChip } from '../../browser/ElementChip'
+import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { friendlyTool, isVisibleText } from './util'
 
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
 
 type Block =
-  | { kind: 'user'; id: string; text: string; files: string[]; partIds: string[] }
+  | { kind: 'user'; id: string; text: string; files: string[]; elements: string[]; partIds: string[] }
   | { kind: 'text'; id: string; text: string; partIds: string[] }
   | { kind: 'steps'; id: string; parts: Array<ToolPart | ReasoningPart>; partIds: string[] }
   | { kind: 'error'; id: string; info: AssistantMessage; partIds: string[] }
@@ -49,7 +51,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
     if (entry.info.role === 'user') {
       steps = null
       const raw = entry.parts
-        .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic)
+        .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic && !isElementContextText(p.text))
         .map((p) => p.text)
         .join('\n')
       const idx = raw.indexOf(ATTACH_MARKER)
@@ -63,7 +65,14 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
               .filter(Boolean)
           : []
       for (const p of entry.parts) if (p.type === 'file') files.push(p.filename ?? p.url)
-      blocks.push({ kind: 'user', id: entry.info.id, text, files, partIds: entry.parts.map((p) => p.id) })
+      blocks.push({
+        kind: 'user',
+        id: entry.info.id,
+        text,
+        files,
+        elements: elementTextsOf(entry.parts),
+        partIds: entry.parts.map((p) => p.id)
+      })
       continue
     }
     for (const p of entry.parts) {
@@ -342,6 +351,14 @@ const UserMessage = memo(
           !!old && !flash
         )}
       >
+        {block.elements.length > 0 && (
+          <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5" data-testid="user-elements">
+            {block.elements.flatMap((x, i) => {
+              const d = parseElementContext(x)
+              return d ? [<ElementReadonlyChip key={i} detail={d} />] : []
+            })}
+          </div>
+        )}
         {block.files.length > 0 && (
           <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
             {block.files.map((f) => (
@@ -386,7 +403,8 @@ const UserMessage = memo(
     a.old === b.old &&
     a.block.id === b.block.id &&
     a.block.text === b.block.text &&
-    sameList(a.block.files, b.block.files)
+    sameList(a.block.files, b.block.files) &&
+    sameList(a.block.elements, b.block.elements)
 )
 
 export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {

@@ -22,7 +22,8 @@ import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey, useAutosizeTextarea } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { useModeModel } from '../../settings/impl/extras'
-import { attachFiles, removeAttachment, unlinkFolder } from './actions'
+import { attachFiles, removeAttachment, removeElement, setElementInclude, unlinkFolder } from './actions'
+import { ElementChipRow } from '../../browser/ElementChip'
 import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
 import { currentTasksModel, currentTasksVariant, setTaskModel, setTaskVariant, useTasks } from './store'
@@ -57,6 +58,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const t = useT()
   const text = useTasks((s) => s.draft)
   const attachments = useTasks((s) => s.attachments)
+  const elements = useTasks((s) => s.elements)
   const folder = useTasks((s) => s.folder)
   const activeTaskId = useTasks((s) => s.activeTaskId)
   const saving = useTasks((s) => s.restoreSaving)
@@ -110,6 +112,15 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
     <div className={`mx-auto w-full max-w-3xl px-6 ${hero ? '' : 'pb-4'}`}>
       <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setTaskModel} />
       <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong">
+        <ElementChipRow
+          elements={elements}
+          className="px-3 pt-3"
+          onRemove={(id) => {
+            removeElement(id)
+            ref.current?.focus()
+          }}
+          onInclude={setElementInclude}
+        />
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-3 pt-3">
             {attachments.map((a) => {

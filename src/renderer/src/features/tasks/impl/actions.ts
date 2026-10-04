@@ -15,6 +15,9 @@ import { useSessions } from '../../../stores/sessions'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
+import type { PickedElement } from '@shared/ipc-browser'
+import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
+import { stopPicking } from '../../browser/pick-state'
 import { folderModeLabel } from './folder-mode'
 import { failedText, firstPoint, notCopiedWarningText, pickPointForMessage, restoreWarningText, type RestoreResult } from './restore-logic'
 import {
@@ -367,6 +370,20 @@ export function removeAttachment(path: string): void {
   useTasks.setState((s) => ({ attachments: s.attachments.filter((a) => a.path !== path) }))
 }
 
+/** Elemento elegido en el navegador integrado: queda como chip en el compositor (con captura y errores marcados por defecto). */
+export function addPickedElement(el: PickedElement): void {
+  const att = makeElementAttachment(el)
+  useTasks.setState((s) => ({ elements: addElementAttachment(s.elements, att) }))
+}
+
+export function removeElement(id: string): void {
+  useTasks.setState((s) => ({ elements: s.elements.filter((e) => e.id !== id) }))
+}
+
+export function setElementInclude(id: string, include: ElementInclude): void {
+  useTasks.setState((s) => ({ elements: s.elements.map((e) => (e.id === id ? { ...e, include } : e)) }))
+}
+
 /** Carpetas adicionales (vinculadas y de confianza) de la carpeta actual; solo aplican en sandbox. */
 function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }> {
   const { folderSet, conn } = useTasks.getState()
@@ -437,7 +454,10 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   // La memoria (`.onyxcode/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
   await loadProjectAndMemory(folder)
   const text = withAttachments(rawText)
-  useTasks.setState({ attachments: [], draft: '' })
+  // Elementos del navegador: texto sintético (+ captura `data:` si la casilla está marcada). El modo selección se apaga al enviar.
+  const elementParts = elementPartsOf(useTasks.getState().elements)
+  useTasks.setState({ attachments: [], elements: [], draft: '' })
+  stopPicking({ kind: 'tasks', folder })
   const useModel = sendModel
   const variant = opts?.variant ?? currentTasksVariant()
   const sessions = useSessions.getState()
@@ -477,7 +497,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
     model: { providerID: useModel.providerID, modelID: useModel.modelID },
     ...(variant ? { variant } : {}),
     system: buildSystemPrompt(),
-    parts: [{ type: 'text', text }]
+    parts: [{ type: 'text', text }, ...elementParts]
   })
   if (res.error) {
     sessions.setStatus(sessionID, 'idle')

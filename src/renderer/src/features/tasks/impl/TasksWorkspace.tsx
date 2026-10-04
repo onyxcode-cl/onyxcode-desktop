@@ -51,6 +51,7 @@ import {
   scheduleActiveTask,
   selectFolder,
   sendToTask,
+  addPickedElement,
   stopComputerControl
 } from './actions'
 import {
@@ -453,6 +454,16 @@ export function TasksWorkspace(): React.JSX.Element {
     return onBrowser('browser:toChat', (item) => {
       if (item.owner.kind !== 'tasks' || item.owner.folder !== useTasks.getState().folder) return
       addPageToComposer(item)
+    })
+  }, [])
+
+  // «Seleccionar elemento» (en el panel o en la ventana «Navegador» aparte): el elemento queda como chip en el compositor.
+  useEffect(() => {
+    if (!hasBrowserBridge()) return
+    return onBrowser('browser:picked', ({ owner, element }) => {
+      if (owner.kind !== 'tasks' || owner.folder !== useTasks.getState().folder) return
+      addPickedElement(element)
+      composerRef.current?.focus()
     })
   }, [])
 

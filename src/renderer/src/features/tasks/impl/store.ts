@@ -3,6 +3,7 @@
  * `useSessions` (alimentado aquí con el stream SSE del servidor sandboxeado de la carpeta);
  * este store guarda lo específico: carpeta, conexión, todos, permisos y entregables.
  */
+import type { ElementAttachment } from '../../browser/element-context'
 import { create } from 'zustand'
 import { createOpencodeClient, type PermissionRequest, type QuestionRequest, type Todo } from '@opencode-ai/sdk/v2/client'
 import {
@@ -90,6 +91,8 @@ interface TasksState {
   draft: string
   /** Archivos adjuntos (ya copiados a la carpeta) para el próximo mensaje. */
   attachments: TasksDeliverable[]
+  /** Elementos elegidos en el navegador integrado para el próximo mensaje (chips del compositor). */
+  elements: ElementAttachment[]
   /** Panel derecho (Plan / Entregables / Actividad) visible. */
   panelOpen: boolean
   /** Ids de tareas cuyo resultado aún no se ha visto (terminaron en segundo plano). */
@@ -236,6 +239,7 @@ export const useTasks = create<TasksState>((set) => ({
   shortcutUnavailable: false,
   draft: '',
   attachments: [],
+  elements: [],
   panelOpen: readPanelOpen(),
   unseen: {},
   interrupted: {},
@@ -748,6 +752,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     questions: {},
     deliverables: {},
     attachments: [],
+    elements: [],
     unseen: {},
     project: null,
     memory: null,
@@ -882,6 +887,7 @@ export function clearFolder(): void {
     questions: {},
     deliverables: {},
     attachments: [],
+    elements: [],
     project: null,
     memory: null,
     networkBlocked: {},
