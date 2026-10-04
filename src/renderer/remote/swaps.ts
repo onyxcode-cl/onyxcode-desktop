@@ -26,15 +26,21 @@ export const SWAPS: Record<string, Record<string, string>> = {
     './panels/ChangesPanel': 'lazy/ChangesPanel.tsx',
     './panels/FilesPanel': 'lazy/FilesPanel.tsx'
   },
-  'src/renderer/src/features/code/impl/CodeWorkspace.tsx': {
-    './panels/ChangesPanel': 'lazy/ChangesPanel.tsx',
-    './panels/FilesPanel': 'lazy/FilesPanel.tsx'
-  },
   'src/renderer/src/features/browser/index.ts': { './BrowserPanel': 'lazy/BrowserPanel.tsx' },
   // Markdown (react-markdown y compañía) y resaltado (highlight.js) en trozos aparte.
   'src/renderer/src/features/code/impl/MessageStream.tsx': { '../../../components/Markdown': 'lazy/Markdown.tsx' },
   'src/renderer/src/features/chat/ChatMessageList.tsx': { '../../components/Markdown': 'lazy/Markdown.tsx' },
   'src/renderer/src/components/DiffView.tsx': { 'highlight.js/lib/common': 'shims/hljs-deferred.ts' },
   'src/renderer/src/components/conversation/DeferredMarkdown.tsx': { '../Markdown': 'lazy/Markdown.tsx' },
-  'src/renderer/src/components/Markdown.tsx': { './highlight-plugins': 'shims/highlight-lazy.ts' }
+  'src/renderer/src/components/Markdown.tsx': { './highlight-plugins': 'shims/highlight-lazy.ts' },
+  // «Comparar modelos» (columnas, diálogo, tienda…): el celular no la usa (`compareApi()` es null), así que todo su índice se sustituye.
+  'src/renderer/src/features/chat/ChatView.tsx': { '../compare': 'shims/no-compare.tsx' },
+  'src/renderer/src/features/chat/ChatSidebar.tsx': { '../compare': 'shims/no-compare.tsx' },
+  'src/renderer/src/features/code/impl/CodeWorkspace.tsx': {
+    './panels/ChangesPanel': 'lazy/ChangesPanel.tsx',
+    './panels/FilesPanel': 'lazy/FilesPanel.tsx',
+    '../../compare': 'shims/no-compare.tsx'
+  },
+  'src/renderer/src/features/code/impl/Composer.tsx': { '../../compare': 'shims/no-compare.tsx' },
+  'src/renderer/src/features/code/impl/ComposerControls.tsx': { '../../compare': 'shims/no-compare.tsx' }
 }

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { SWAPS } from './swaps'
+import { rel, walk } from './pwa-graph'
 
 /**
  * Un SWAP mal escrito no falla al compilar: simplemente no sustituye (y el módulo de escritorio acaba en el arranque del
@@ -83,5 +84,25 @@ describe('SWAPS de la PWA (pwa/vite.full.config.ts)', () => {
         expect(real, `${importer}: «${spec}» no existe`).toBe(true)
       } else expect(spec).toBe('highlight.js/lib/common')
     }
+  })
+
+  it('el arranque (main + boot, solo importaciones estáticas) no arrastra código de escritorio-solo', () => {
+    const { files } = walk([resolve(remote, 'main.tsx'), resolve(remote, 'boot.tsx')])
+    const startup = [...files].map(rel)
+    // Comparar modelos (el celular tiene `compareApi() === null`), el asistente de primer arranque y las piezas de DesktopApp.
+    const banned = [
+      /^src\/renderer\/src\/features\/compare\//,
+      /^src\/renderer\/src\/features\/onboarding\//,
+      /^src\/renderer\/src\/app\/(Sidebar|CommandPalette|UpdateNotice|RemotePairHost|RemoteConfirmHost)\.tsx$/,
+      /^src\/renderer\/src\/keybindings\/dispatch\.ts$/
+    ]
+    for (const re of banned)
+      expect(
+        startup.filter((f) => re.test(f)),
+        `${re} entró en el arranque`
+      ).toEqual([])
+    // Lo que el celular SÍ necesita en los mensajes ya enviados (burbuja del elemento elegido) sigue en el arranque.
+    expect(startup).toContain('src/renderer/src/features/browser/ElementChip.tsx')
+    expect(startup.some((f) => f.endsWith('remote/shims/no-compare.tsx'))).toBe(true)
   })
 })
