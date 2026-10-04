@@ -124,9 +124,20 @@ export function isSensitivePath(abs: string): boolean {
     )
       return true
   }
-  if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) {
+  if (
+    name === '.env' ||
+    name.startsWith('.env.') ||
+    name.startsWith('.env-') ||
+    name.startsWith('.env_') ||
+    name.endsWith('.env') ||
+    name === '.envrc' ||
+    name.startsWith('.envrc.')
+  ) {
     return !ENV_SAFE_SUFFIX.some((s) => name.endsWith(s))
   }
+  // Variables de Terraform (`prod.tfvars`, `x.auto.tfvars`, `x.tfvars.json`) y archivos de Vault (`.vault-token`, `.vault_pass`).
+  if (/\.tfvars(\.json)?$/.test(name) && !ENV_SAFE_SUFFIX.some((s) => name.endsWith(s))) return true
+  if (name.startsWith('.vault')) return true
   if (SENSITIVE_NAMES.has(name) || SERVICE_ACCOUNT_RE.test(name) || KEY_FILE_RE.test(name)) return true
   if (SENSITIVE_EXT.some((e) => name.endsWith(e))) return true
   // `.config/gcloud`, `.config/gh`, `.local/share/opencode`: credenciales de CLI conocidas.

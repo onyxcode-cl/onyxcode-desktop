@@ -25,6 +25,7 @@ import { ConfirmQueue, callDigest } from './confirm-queue'
 import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList } from './engine-scope'
 import { EngineRegistry, type EngineTarget } from './engine-registry'
 import { trimIpcEvent } from './event-trim'
+import { dropSensitiveEntries, filterRawDiff, scrubDiffLists, sensitiveRel } from './diff-filter'
 import { isInsideReal, isSensitiveEither, realpathLoose } from './path-guard'
 import { decide, sanitizeResult, type PolicyContext, type PolicyDecision } from './policy'
 import { createRemoteSender, type RemoteSender } from './sender'
@@ -233,6 +234,7 @@ export class EngineProxy implements MuxDispatch {
       approved = true
     } else if (!d.allow) throw forbidden(d.reason)
     if (ctx.signal.aborted) throw new MuxError('cancelled')
+    this.assertNotSensitive(ch, req.p, payload)
     const res = await this.s.invoke(
       {
         sender: this.sender,
@@ -250,16 +252,38 @@ export class EngineProxy implements MuxDispatch {
       if (res.code === 'FORBIDDEN') throw forbidden('forbidden')
       throw new MuxError('failed', this.s.registry.scrub(String(res.error ?? '')).slice(0, 200))
     }
-    return this.s.registry.scrub(this.rewriteResult(ch, res.data))
+    return this.s.registry.scrub(this.rewriteResult(ch, res.data, payload))
   }
 
-  private rewriteResult(ch: string, data: unknown): unknown {
+  /**
+   * Canales de lectura que devuelven el CONTENIDO de un archivo (`tasks:previewFile`, `git:diff` con `path`): el archivo
+   * sensible se rechaza por nombre léxico y real, igual que `GET /file/content`.
+   */
+  private assertNotSensitive(ch: string, original: unknown, canon: unknown): void {
+    const rec = (v: unknown): Record<string, unknown> => (typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {})
+    const o = rec(original)
+    const c = rec(canon)
+    if (ch === 'tasks:previewFile') {
+      const paths = [o.path, c.path].filter((x): x is string => typeof x === 'string')
+      if (paths.length === 0 || paths.some((p) => !isAbsolute(p) || isSensitiveEither(p, realpathLoose(p)))) throw forbidden('sensitive-file')
+    } else if (ch === 'git:diff' && c.path !== undefined) {
+      const cwd = typeof c.cwd === 'string' ? c.cwd : ''
+      const paths = [o.path, c.path].filter((x): x is string => typeof x === 'string')
+      if (paths.length === 0 || paths.some((p) => sensitiveRel(cwd, p))) throw forbidden('sensitive-file')
+    }
+  }
+
+  private rewriteResult(ch: string, data: unknown, canon?: unknown): unknown {
     const reg = this.s.registry
     const o = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : null
     if ((ch === 'opencode:connection' || ch === 'opencode:restart') && o && typeof o.authorization === 'string') {
       return reg.rewriteConnection(o as unknown as OpencodeConnection)
     }
     if (ch === 'tasks:start' && o && typeof o.authorization === 'string') return reg.rewriteTasksConnection(o as unknown as TasksConnection)
+    if (ch === 'git:diff' && typeof data === 'string') {
+      const cwd = (typeof canon === 'object' && canon !== null ? (canon as { cwd?: unknown }).cwd : undefined) as string | undefined
+      return typeof cwd === 'string' ? filterRawDiff(data, cwd) : ''
+    }
     return sanitizeResult(ch, data)
   }
 
@@ -503,6 +527,18 @@ export class EngineProxy implements MuxDispatch {
 
   private filterResponse(method: string, path: string, dir: string | undefined, res: HttpResult): HttpResult {
     const reg = this.s.registry
+    if (path === '/vcs/diff/raw' && method === 'GET' && res.status >= 200 && res.status < 300 && res.encoding !== 'base64') {
+      // Texto de diff unificado (o una cadena JSON con él): sin los bloques de archivos sensibles.
+      const base = dir ?? ''
+      if (res.contentType?.includes('json')) {
+        try {
+          const v = JSON.parse(res.body) as unknown
+          if (typeof v === 'string') return { ...res, body: JSON.stringify(reg.scrub(filterRawDiff(v, base))) }
+        } catch {
+          return { status: res.status, body: '', ...(res.contentType ? { contentType: res.contentType } : {}) }
+        }
+      } else return { ...res, body: reg.scrub(filterRawDiff(res.body, base)) }
+    }
     if (res.encoding === 'base64' || !res.contentType?.includes('json') || res.body === '') {
       return { ...res, body: res.encoding ? res.body : reg.scrub(res.body) }
     }
@@ -577,6 +613,14 @@ export class EngineProxy implements MuxDispatch {
     if (key === 'GET /find/file' && Array.isArray(data) && dir !== undefined) {
       return data.filter((e) => typeof e !== 'string' || !isSensitiveEither(resolve(dir, e), null))
     }
+    if (
+      dir !== undefined &&
+      Array.isArray(data) &&
+      (key === 'GET /vcs/diff' || key === 'GET /file/status' || key === 'GET /vcs/status' || /^GET \/session\/[^/]+\/diff$/.test(key))
+    ) {
+      return dropSensitiveEntries(data, dir)
+    }
+    if (dir !== undefined && /^GET \/session\/[^/]+\/message(\/[^/]+)?$/.test(key)) return scrubDiffLists(data, dir)
     if (key === 'GET /find' && Array.isArray(data) && dir !== undefined) {
       return data.filter((e) => {
         const m = (e ?? {}) as { path?: { text?: unknown } }

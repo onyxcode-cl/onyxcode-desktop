@@ -547,3 +547,93 @@ describe('http (motor)', () => {
     }
   })
 })
+
+describe('hallazgo 1: archivos sensibles fuera de /file/content', () => {
+  const diffRaw = [
+    'diff --git a/src/a.ts b/src/a.ts',
+    '--- a/src/a.ts',
+    '+++ b/src/a.ts',
+    '@@ -1 +1 @@',
+    '-export {}',
+    '+export const a = 1',
+    'diff --git a/.env b/.env',
+    '--- a/.env',
+    '+++ b/.env',
+    '@@ -1 +1 @@',
+    '-TOKEN=viejo',
+    '+TOKEN=SECRETO',
+    'diff --git a/config/prod.tfvars b/config/prod.tfvars',
+    'new file mode 100644',
+    '+db_password = "SECRETO"',
+    ''
+  ].join('\n')
+
+  it('tasks:previewFile rechaza .env, .envrc y un enlace a .env; un archivo normal pasa', async () => {
+    const h = make()
+    writeFileSync(join(proj, '.envrc'), 'export K=1')
+    h.ipc.results['tasks:previewFile'] = { path: 'x', size: 1, kind: 'text', content: 'SECRETO' }
+    for (const p of ['.env', '.envrc', 'notas.txt']) {
+      const r = await code(h.proxy.call({ ch: 'tasks:previewFile', p: { path: join(proj, p) } }, ctx()))
+      expect(r).toEqual({ code: 'forbidden', detail: 'sensitive-file' })
+    }
+    expect(h.invoked).toHaveLength(0)
+    await expect(h.proxy.call({ ch: 'tasks:previewFile', p: { path: join(proj, 'src', 'a.ts') } }, ctx())).resolves.toBeTruthy()
+  })
+
+  it('git:diff con path sensible se rechaza (también con ruta absoluta o enlace)', async () => {
+    const h = make()
+    h.ipc.results['git:diff'] = '+TOKEN=SECRETO'
+    for (const p of ['.env', join(proj, '.env'), 'notas.txt']) {
+      const r = await code(h.proxy.call({ ch: 'git:diff', p: { cwd: proj, path: p, staged: true } }, ctx()))
+      expect(r.detail).toBe('sensitive-file')
+    }
+    expect(h.invoked).toHaveLength(0)
+  })
+
+  it('git:diff sin path quita de la respuesta los bloques de archivos sensibles', async () => {
+    const h = make()
+    h.ipc.results['git:diff'] = diffRaw
+    const out = (await h.proxy.call({ ch: 'git:diff', p: { cwd: proj } }, ctx())) as string
+    expect(out).toContain('src/a.ts')
+    expect(out).not.toContain('SECRETO')
+    expect(out).not.toContain('.env')
+    expect(out).not.toContain('tfvars')
+  })
+
+  it('GET /vcs/diff, /session/{id}/diff y /file/status filtran por nombre de archivo', async () => {
+    const h = make()
+    h.engine.handler = async (u) => {
+      if (u.pathname === '/session/ses_1') return { json: { id: 'ses_1', directory: proj } }
+      if (u.pathname === '/file/status')
+        return {
+          json: [
+            { path: '.env', added: 1, removed: 0, status: 'modified' },
+            { path: 'src/a.ts', added: 1, removed: 0, status: 'modified' }
+          ]
+        }
+      return {
+        json: [
+          { file: '.env', patch: '+TOKEN=SECRETO', additions: 1, deletions: 0 },
+          { file: 'infra/prod.tfvars', patch: '+x=SECRETO', additions: 1, deletions: 0 },
+          { file: 'src/a.ts', patch: '+ok', additions: 1, deletions: 0 }
+        ]
+      }
+    }
+    const names = (b: string): string[] => (JSON.parse(b) as Array<{ file?: string; path?: string }>).map((x) => x.file ?? x.path ?? '')
+    expect(names((await http(h, 'GET', '/vcs/diff', { directory: proj, mode: 'git' })).body)).toEqual(['src/a.ts'])
+    expect(names((await http(h, 'GET', '/session/ses_1/diff', { directory: proj })).body)).toEqual(['src/a.ts'])
+    expect(names((await http(h, 'GET', '/file/status', { directory: proj })).body)).toEqual(['src/a.ts'])
+  })
+
+  it('GET /vcs/diff/raw (texto) quita los bloques sensibles', async () => {
+    const h = make()
+    h.engine.handler = async () => ({ text: diffRaw, type: 'text/plain' })
+    const r = await http(h, 'GET', '/vcs/diff/raw', { directory: proj })
+    expect(r.body).toContain('src/a.ts')
+    expect(r.body).not.toContain('SECRETO')
+    expect(r.body).not.toContain('.env')
+    h.engine.handler = async () => ({ json: diffRaw })
+    const j = await http(h, 'GET', '/vcs/diff/raw', { directory: proj })
+    expect(JSON.parse(j.body)).not.toContain('SECRETO')
+  })
+})

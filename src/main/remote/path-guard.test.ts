@@ -35,7 +35,16 @@ describe('isSensitivePath', () => {
     '/home/u/.config/gcloud/credentials.db',
     '/home/u/.local/share/opencode/auth.json',
     '/home/u/Library/Keychains/login.keychain-db',
-    '/p/terraform.tfstate'
+    '/p/terraform.tfstate',
+    '/p/.envrc',
+    '/p/.env-prod',
+    '/p/.env_local',
+    '/p/.env-example',
+    '/p/prod.tfvars',
+    '/p/prod.auto.tfvars',
+    '/p/prod.tfvars.json',
+    '/p/.vault-token',
+    '/p/.vault_pass'
   ])('%s es sensible', (p) => expect(isSensitivePath(p)).toBe(true))
 
   it.each([
@@ -47,7 +56,10 @@ describe('isSensitivePath', () => {
     '/p/.gitignore',
     '/p/.git/HEAD',
     '/p/environment.ts',
-    '/p/keys.md'
+    '/p/keys.md',
+    '/p/.envrc.example',
+    '/p/vars.tfvars.example',
+    '/p/vault.md'
   ])('%s no lo es', (p) => expect(isSensitivePath(p)).toBe(false))
 
   it('rutas con NUL se tratan como sensibles', () => expect(isSensitivePath('/p/a\0b')).toBe(true))
