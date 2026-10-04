@@ -47,6 +47,22 @@ describe('EventsHub', () => {
     expect(link.live('main')?.since).toBe(12)
   })
 
+  it('el bloqueo del Mac (`forbidden`) termina la suscripción; no cuenta como en línea y tras desbloquear reanuda con `since`', () => {
+    const { link, hub } = setup()
+    hub.onChannel('a', () => undefined)
+    const first = link.live('main')!
+    first.h.onReady?.(10)
+    first.h.onEvent({ seq: 11, ch: 'a', p: 1 })
+    link.set('locked')
+    link.end(first, 'forbidden')
+    expect(link.live('main')).toBeUndefined()
+    // Mientras sigue bloqueado no se vuelve a suscribir (un oyente nuevo tampoco abre nada).
+    hub.onChannel('b', () => undefined)
+    expect(link.live('main')).toBeUndefined()
+    link.set('online')
+    expect(link.live('main')?.since).toBe(11)
+  })
+
   it('sin oyentes IPC, al terminar la suscripción se descarta el motor (no se reabre sola)', () => {
     const { link, hub } = setup()
     void hub

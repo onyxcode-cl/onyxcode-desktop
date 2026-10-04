@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { MuxError, type MuxDispatch } from '@shared/remote/mux'
+import { EventLog, MuxError, type MuxDispatch } from '@shared/remote/mux'
 import { randomBytes } from 'node:crypto'
 import { toBase64Url } from '@shared/remote/code'
 import { pairId, pairKey } from '@shared/remote/handshake'
@@ -121,7 +121,13 @@ function pairSession(ch: Chan, acc: PeerAccess): PeerSession {
   return s
 }
 
-function resumeSession(ch: Chan, id: string, secret: string, acc: PeerAccess): PeerSession {
+function resumeSession(
+  ch: Chan,
+  id: string,
+  secret: string,
+  acc: PeerAccess,
+  extra: Partial<ConstructorParameters<typeof PeerSession>[0]> = {}
+): PeerSession {
   const s = new PeerSession({
     channel: ch,
     kind: 'resume',
@@ -134,7 +140,8 @@ function resumeSession(ch: Chan, id: string, secret: string, acc: PeerAccess): P
     onEnd: () => undefined,
     dispatch,
     access: acc,
-    clock: () => clock
+    clock: () => clock,
+    ...extra
   })
   s.start()
   resumeAs(ch, { deviceId: id, secret })
@@ -309,5 +316,69 @@ describe('PeerSession con control de acceso', () => {
     expect(revoked).toEqual([id])
     expect(ch.has((f) => f.t === 'unlocked')).toBe(false)
     expect(s.accessView).not.toBe('open')
+  })
+
+  describe('H3: el bloqueo cierra las suscripciones abiertas', () => {
+    const opened = async (inactivityMs?: number) => {
+      const { id, secret } = devices.add('Pixel')
+      await devices.setPin(id, '246810')
+      const events = new EventLog(() => clock)
+      const ch = new Chan()
+      const s = resumeSession(ch, id, secret, access({ trusted: () => true, inactivityMs }), { events })
+      await settle()
+      ch.recv({ t: 'pin-verify', pin: '246810' })
+      await settle()
+      expect(s.accessView).toBe('open')
+      ch.recv({ t: 'sub', id: 1, eng: 'main' })
+      await settle()
+      expect(ch.has((f) => f.t === 'res' && f.id === 1 && f.ok)).toBe(true)
+      events.append('main', { oc: 'e', p: 1 })
+      await settle()
+      expect(ch.sent.filter((f) => f.t === 'ev')).toHaveLength(1)
+      return { ch, s, events }
+    }
+    const evCount = (ch: Chan): number => ch.sent.filter((f) => f.t === 'ev').length
+
+    it('«Bloquear ahora»: res de error de la suscripción y ningún ev más; tras el PIN, un sub nuevo con since recibe lo pendiente', async () => {
+      const { ch, s, events } = await opened()
+      ch.recv({ t: 'lock' })
+      await settle()
+      expect(s.accessView).toBe('pin')
+      expect(ch.has((f) => f.t === 'res' && f.id === 1 && !f.ok && f.error.code === 'forbidden')).toBe(true)
+      events.append('main', { oc: 'e', p: 2 })
+      events.append('main', { oc: 'e', p: 3 })
+      await settle()
+      expect(evCount(ch)).toBe(1)
+      // Una suscripción nueva con el acceso cerrado se rechaza.
+      ch.recv({ t: 'sub', id: 2, eng: 'main', since: 1 })
+      await settle()
+      expect(ch.has((f) => f.t === 'res' && f.id === 2 && !f.ok)).toBe(true)
+      expect(evCount(ch)).toBe(1)
+      ch.recv({ t: 'pin-verify', pin: '246810' })
+      await settle()
+      expect(s.accessView).toBe('open')
+      ch.recv({ t: 'sub', id: 3, eng: 'main', since: 1 })
+      await settle()
+      const seqs = ch.sent.filter((f): f is Extract<HostFrame, { t: 'ev' }> => f.t === 'ev').map((f) => f.seq)
+      expect(seqs).toEqual([1, 2, 3])
+    })
+
+    it('bloqueo por inactividad (reloj falso): se cortan las suscripciones y no llegan eventos hasta el PIN', async () => {
+      const { ch, s, events } = await opened(60_000)
+      clock += 61_000
+      events.append('main', { oc: 'e', p: 2 })
+      await settle()
+      expect(s.accessView).toBe('locked')
+      expect(ch.has((f) => f.t === 'res' && f.id === 1 && !f.ok && f.error.code === 'forbidden')).toBe(true)
+      expect(evCount(ch)).toBe(1)
+      events.append('main', { oc: 'e', p: 3 })
+      await settle()
+      expect(evCount(ch)).toBe(1)
+      ch.recv({ t: 'pin-verify', pin: '246810' })
+      await settle()
+      ch.recv({ t: 'sub', id: 2, eng: 'main', since: 1 })
+      await settle()
+      expect(ch.sent.filter((f) => f.t === 'ev').map((f) => (f as { seq: number }).seq)).toEqual([1, 2, 3])
+    })
   })
 })

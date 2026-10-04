@@ -218,6 +218,8 @@ export class PeerSession {
           : baseDispatch,
       events: this.d.events,
       urgent: this.d.urgent,
+      // Defensa en profundidad: sin el acceso abierto no se emite ningún evento (además de cerrar las suscripciones al bloquear).
+      canEmit: () => !this.gate || this.gate.isOpen,
       onViolation: () => this.violation()
     })
     return this.mux
@@ -498,6 +500,8 @@ export class PeerSession {
       lastActiveAt: a.lastActiveAt(id),
       noteActive: (t) => a.noteActive(id, t),
       inactivityMs: a.inactivityMs,
+      // H3: el bloqueo cierra las suscripciones abiertas y descarta los eventos en cola.
+      onLocked: () => this.mux?.endSubs('forbidden', 'locked'),
       // H11: el plazo de validez se renueva al abrirse el acceso, no al presentar la clave.
       onOpened: () => this.d.devices.touch(id, this.nowMs())
     })

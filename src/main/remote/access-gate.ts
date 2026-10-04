@@ -64,6 +64,8 @@ export interface AccessGateOptions {
   lastActiveAt?: number | null
   noteActive?: (t: number) => void
   inactivityMs?: number
+  /** El acceso se cerró (bloqueo por inactividad o manual): hay que cortar lo que ya estaba entregando (suscripciones). */
+  onLocked?: () => void
   /**
    * El acceso se abrió (PIN fijado/verificado o reconexión «en caliente»). Aquí se renueva el plazo de validez del vínculo
    * (H11): presentar la clave no basta, hace falta haber pasado el PIN o la actividad reciente.
@@ -241,6 +243,7 @@ export class AccessGate {
     this._state = 'verify-pin'
     this.inactive = inactive
     this.blockedUntil = 0
+    this.o.onLocked?.()
     this.o.audit({ kind: 'locked' })
     this.sendLocked()
     this.o.onChange()

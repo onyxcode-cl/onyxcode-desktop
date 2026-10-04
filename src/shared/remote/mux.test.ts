@@ -103,7 +103,9 @@ function makeDispatch(): TestDispatch {
   return d
 }
 
-function setup(opts: { bytesPerMs?: number; dispatch?: MuxDispatch | null; log?: EventLog; hostOnly?: boolean } = {}) {
+function setup(
+  opts: { bytesPerMs?: number; dispatch?: MuxDispatch | null; log?: EventLog; hostOnly?: boolean; canEmit?: () => boolean } = {}
+) {
   const clock = { now: 1_000_000 }
   const violations: { host: string[]; client: string[] } = { host: [], client: [] }
   const dispatch = opts.dispatch === null ? undefined : (opts.dispatch ?? makeDispatch())
@@ -129,6 +131,7 @@ function setup(opts: { bytesPerMs?: number; dispatch?: MuxDispatch | null; log?:
     out: hostOut,
     dispatch: dispatch as MuxDispatch | undefined,
     events: log,
+    canEmit: opts.canEmit,
     urgent: (f) => f.t === 'call' && f.ch === 'permission',
     onViolation: (r) => void violations.host.push(r)
   }))
@@ -620,6 +623,74 @@ describe('eventos y reanudación', () => {
     await t2.run(10)
     expect(h2.events.at(-1)?.seq).toBe(8)
     expect(t2.violations).toEqual({ host: [], client: [] })
+  })
+
+  it('endSubs (bloqueo): un res de error por suscripción, el cliente termina sin violación y no llega ningún ev más', async () => {
+    const t = setup()
+    const a = handlers()
+    const b = handlers()
+    t.client.subscribe('main', a)
+    t.client.subscribe('main', b)
+    await t.until(() => a.ready.length === 1 && b.ready.length === 1)
+    t.log.append('main', { oc: 'e', p: 1 })
+    await t.run(10)
+    expect(a.events).toHaveLength(1)
+    t.host.endSubs('forbidden', 'locked')
+    await t.run(10)
+    expect(a.ends).toEqual(['forbidden'])
+    expect(b.ends).toEqual(['forbidden'])
+    expect(t.host.streams).toBe(0)
+    expect(t.client.streams).toBe(0)
+    t.log.append('main', { oc: 'e', p: 2 })
+    await t.run(20)
+    expect(a.events).toHaveLength(1)
+    expect(b.events).toHaveLength(1)
+    expect(t.violations).toEqual({ host: [], client: [] })
+    // Para volver a recibir hay que suscribirse de nuevo (con `since`) y llega lo pendiente.
+    const c = handlers()
+    t.client.subscribe('main', c, 1)
+    await t.until(() => c.events.length === 1)
+    expect(c.events.map((e) => e.seq)).toEqual([2])
+  })
+
+  it('endSubs descarta los eventos que seguían en cola de salida (canal lleno): tras bloquear no sale ni uno', async () => {
+    const t = setup()
+    const h = handlers()
+    t.client.subscribe('main', h)
+    await t.until(() => h.ready.length === 1)
+    t.toClient.buffered = 300 * 1024 // por encima de la marca alta: los eventos esperan en la cola
+    t.log.append('main', { oc: 'e', p: 1 })
+    t.log.append('main', { oc: 'e', p: 2 })
+    expect(t.hostOut.pending).toBeGreaterThan(0)
+    t.host.endSubs()
+    t.toClient.buffered = 0
+    t.hostOut.pump()
+    await t.run(20)
+    expect(h.events).toEqual([])
+    expect(h.ends).toEqual(['forbidden'])
+    expect(t.violations).toEqual({ host: [], client: [] })
+  })
+
+  it('canEmit en false: drain no envía nada (defensa en profundidad)', async () => {
+    let open = true
+    const t = setup({ canEmit: () => open })
+    const h = handlers()
+    t.client.subscribe('main', h)
+    await t.until(() => h.ready.length === 1)
+    open = false
+    t.log.append('main', { oc: 'e', p: 1 })
+    await t.run(20)
+    expect(h.events).toEqual([])
+  })
+
+  it('un res de error sobre una suscripción ya lista es un cierre normal, no res-unknown', async () => {
+    const t = setup()
+    const h = handlers()
+    t.client.subscribe('main', h)
+    await t.until(() => h.ready.length === 1)
+    t.client.receive({ t: 'res', id: 1, ok: false, error: { code: 'forbidden' } }, 40)
+    expect(h.ends).toEqual(['forbidden'])
+    expect(t.violations.client).toEqual([])
   })
 
   it('hueco por antigüedad (30 s), por tamaño (2 MiB), por el futuro (reinicio) y por evento enorme = reset', async () => {

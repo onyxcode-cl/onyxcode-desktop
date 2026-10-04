@@ -93,6 +93,15 @@ export class Outbox {
     this.bulk = this.bulk.filter((s) => s.key !== key)
   }
 
+  /**
+   * Descarta los eventos (`ev` del multiplexor y `evt` del protocolo anterior) que aún no salieron. Lo usa el bloqueo: lo que ya
+   * estaba en cola no debe llegar al celular después de pedir el PIN.
+   */
+  dropEvents(): void {
+    this.q[1].length = 0
+    this.q[0] = this.q[0].filter((t) => !t.startsWith('{"t":"ev"') && !t.startsWith('{"t":"evt"'))
+  }
+
   /** Vacía todo (conexión cerrada). */
   kill(): void {
     this.dead = true
@@ -375,6 +384,8 @@ export interface MuxOptions {
   events?: EventLog
   /** ¿Es una petición de control/permisos (prioridad máxima)? Por defecto no. */
   urgent?: (f: CallFrame | HttpFrame) => boolean
+  /** Solo `host`: ¿se pueden emitir eventos ahora? (defensa en profundidad: con el acceso bloqueado, `drain` no envía nada). */
+  canEmit?: () => boolean
   /** Solo `client`: generador de ids (compartido con quien ya use ids propios). Estrictamente crecientes. */
   nextId?: () => number
 }
@@ -778,6 +789,20 @@ export class Mux {
     })
   }
 
+  /**
+   * Cierra TODAS las suscripciones abiertas (bloqueo del acceso): deja de escuchar el búfer, descarta los eventos en cola y manda
+   * un `res` de error por suscripción (`forbidden` por defecto) para que el celular la dé por terminada sin tratarlo como violación.
+   * Después de esto no sale ningún `ev` más; para volver a recibirlos hay que enviar un `sub` nuevo (con `since`).
+   */
+  endSubs(code: MuxErrorCode = 'forbidden', msg?: string): void {
+    if (!this.host || this.hostSubs.size === 0) return
+    const subs = [...this.hostSubs.values()]
+    this.hostSubs.clear()
+    for (const s of subs) s.unsub()
+    this.out.dropEvents()
+    for (const s of subs) this.out.enqueue(PRIO.control, this.errText(s.id, code, msg))
+  }
+
   private hostCancel(id: number): void {
     this.remember(id)
     const ctrl = this.inflight.get(id)
@@ -820,6 +845,7 @@ export class Mux {
   private drain(sub: HostSub): void {
     const log = this.o.events
     if (!log || this.closed || this.hostSubs.get(sub.id) !== sub) return
+    if (this.o.canEmit && !this.o.canEmit()) return
     for (;;) {
       const n = log.next(sub.eng, sub.cursor)
       if (!n) return
@@ -948,6 +974,12 @@ export class Mux {
 
   private clientRes(f: Extract<MuxHostFrame, { t: 'res' }>): void {
     const sub = this.clientSubs.get(f.id)
+    if (sub?.ready && !f.ok) {
+      // El Mac cerró una suscripción ya lista (bloqueo del acceso): termina sin violación; el dueño decide si vuelve a suscribirse.
+      this.clientSubs.delete(f.id)
+      sub.h.onEnd?.(f.error.code)
+      return
+    }
     if (sub && !sub.ready) {
       if (!f.ok) {
         this.clientSubs.delete(f.id)
