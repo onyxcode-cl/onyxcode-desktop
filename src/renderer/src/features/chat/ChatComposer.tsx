@@ -48,7 +48,6 @@ function useMobileMax(mobile: boolean): number {
       vv?.removeEventListener('resize', update)
       window.removeEventListener('resize', update)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mobile])
   return mobile ? max : MAX_HEIGHT
 }
