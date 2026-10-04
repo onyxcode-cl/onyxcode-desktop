@@ -906,3 +906,9 @@ Pendiente: lista de claves en `brand.ts` y su cableado en `ipc/update.ts`, `vali
 - `docs/INSTALAR.md` (tres vías, aviso de primera apertura, verificación, desinstalar sin perder datos).
 - Pruebas: `install.test.mjs` (12, con dobles de curl/hdiutil/codesign/shasum/ditto/xattr/uname) y `make-cask.test.mjs` (5), incluidas en `npm run test:release-scripts`. Sin red, sin Electron.
 - Pendiente (dueño): ver informe; prueba real del script en un Mac con el `.dmg` publicado.
+
+## F8-B75: sandbox de Tareas sin `process-info*` ajeno y tarjeta de escalada con tokens del tema
+
+- `tasks/sandbox-profile.ts`: `(deny process-info*)` + `(allow process-info* (target self))`; probado con `sandbox-exec` real (`sandbox-profile.procinfo.test.ts`) y con `opencode serve` real (sin modelos). Snapshot de `sandbox-profile.test.ts` editado a mano (solo +5 líneas por caso; sin `-u`).
+- Hallazgo: `KERN_PROCARGS2` (`ps eww`) no es denegable con Seatbelt en esta macOS; el hallazgo 6 de F8-B69 sigue abierto en esa parte (ver `docs/SEGURIDAD.md`).
+- `EscalateCard.tsx`: `amber-*` fijos sustituidos por `warning` (token del tema, contraste AA en claro/oscuro); sin prueba axe ni snapshot de ese componente, no hubo que actualizar ninguno.

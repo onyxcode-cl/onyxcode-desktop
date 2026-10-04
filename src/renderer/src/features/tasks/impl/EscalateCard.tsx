@@ -183,9 +183,9 @@ export function EscalateCard({ taskId, entries }: { taskId: string; entries: Mes
   }
 
   return (
-    <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3.5">
+    <div className="rounded-xl border border-warning/40 bg-warning/5 p-3.5">
       <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 [[data-theme=dark]_&]:text-amber-400">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning">
           <ShieldAlert size={16} />
         </span>
         <div className="min-w-0 flex-1">
