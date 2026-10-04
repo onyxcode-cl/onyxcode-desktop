@@ -145,8 +145,7 @@ con `placeholderAuthContent` (`provider-egress.ts`), una lista blanca estricta:
   `OPENCODE_AUTH_CONTENT` con esa función).
 **Sin aislamiento de credenciales fuera de ese caso:** en Control total (sin sandbox) y en Chat/Code el
 motor lee el `auth.json` propio de la app (no el del CLI). Los MCP del usuario marcados «Disponible en Tareas»
-llevan sus propios `environment`/`headers` en la config inline del servidor: son secretos que el usuario
-decide compartir con Tareas al marcarlos.
+llevaban sus `environment`/`headers` en la config inline del servidor; con sandbox ya no (F8-B79): las cabeceras las pone el proxy MCP de main y los locales con secretos no entran. En Control total la config inline sigue llevándolos.
 
 **MCP del usuario dentro de Tareas** (`mcp-tasks.ts`). Solo entran los servidores activos y marcados
 «Disponible en Tareas» (`userData/tasks-mcp.json`; nunca se escribe en `opencode/opencode.json`).
@@ -1232,12 +1231,9 @@ Verificados leyendo el código; cinco eran reales y uno se resuelve solo en part
   en `mcp:getConfig` y en lo que devuelve/emite `afterMcpChange` (`mcp:save|remove|setEnabled|installCatalog`, evento `mcp:changed`). Al guardar, un valor igual al marcador significa «sin cambios»: `saveMcpServer`
   restituye el secreto guardado del mismo servidor (`previousName ?? name`, así renombrar lo conserva); un marcador sin secreto previo se descarta. El formulario del renderer no cambió: muestra `CLAVE=••••••••`.
   Límite: `client.config.get` del motor OpenCode (otro camino, fuera de la app) puede devolver la config fusionada con sus valores.
-- **6. Tokens en el entorno del sandbox (real, MEDIO; mitigado, no eliminado).** `OPENCODE_CONFIG_CONTENT` (cabeceras del MCP del navegador y de los MCP del usuario) sigue en el entorno de `opencode serve`:
-  el plugin `onyxcode-env` solo lo blanquea para bash/pty, y el perfil Seatbelt es `(allow default)` (sin denegar `process-info`), así que `ps eww` desde el sandbox podría leerlo. Un archivo 0600 no mejora nada
-  frente al agente: el proceso del sandbox tendría que poder leerlo y bash comparte esa lectura. Lo que sí se hizo: el token del navegador es por servidor (carpeta y modo) y se REVOCA cuando el proceso termina
-  o no llega a arrancar (`manager.ts`, `onExit`/error de arranque); un relanzamiento con la misma atadura invalida el anterior. Pendiente (dueño): denegar `process-info*` hacia otros procesos en el perfil
-  (no se tocó `sandbox*`: no se pudo probar con un sandbox anidado y puede romper `ps`/`pkill`/`lsof` que usa el agente) o un proxy MCP local que ponga las cabeceras fuera del sandbox. Los tokens estáticos de MCP
-  del usuario no se pueden revocar desde la app.
+- **6. Tokens en el entorno del sandbox (real, MEDIO; CERRADO para el sandbox en F8-B79, ver §3 tricies sexies).** `OPENCODE_CONFIG_CONTENT` llevaba las cabeceras del MCP del navegador y de los MCP del usuario en el entorno de
+  `opencode serve`, legible con `ps eww` desde el sandbox (el perfil Seatbelt no puede impedirlo: F8-B75). Primera mitigación (F8-B69): el token del navegador es por servidor y se revoca al terminar. Cierre real (F8-B79): un proxy MCP
+  local fuera del sandbox pone las cabeceras; el servidor sandboxeado solo recibe una URL loopback y un token de sesión. Queda abierto lo que se explica allí (MCP locales con secretos, `command`/`cwd`, Control total).
 - **7. `setHost`/`allowOnce` (real, BAJO).** `tasks/host-rules.ts` (`parseEgressHost`): minúsculas, sin punto final, etiquetas válidas, al menos dos etiquetas (rechaza `com`, `io`, `localhost`), sin sufijos públicos
   habituales (`co.uk`, `github.io`…), un único `*.` inicial y solo seguido de un dominio completo, sin IP locales/privadas ni notaciones raras (`2130706433`) ni `.local`/`.internal`. Se aplica a `allow` y a `allowOnce`;
   `block`/`unset` aceptan una forma sana para poder retirar entradas heredadas. Las rutinas llaman al gestor directamente (no pasan por el IPC).
@@ -1253,7 +1249,7 @@ Verificados leyendo el código; cinco eran reales y uno se resuelve solo en part
 ### Tareas: `process-info*` denegado hacia otros procesos (F8-B75, autorizado por el dueño)
 
 - **Cambio (solo añade).** `sandbox-profile.ts` añade `(deny process-info*)` + `(allow process-info* (target self))` (la forma de los perfiles del sistema; `(deny process-info* (target others))` se acepta pero NO se aplica). Con el sandbox real (`sandbox-exec`), `proc_pidpath`/`proc_pidinfo` de OTRO proceso devuelven 0 y los del propio siguen. Prueba: `tasks/sandbox-profile.procinfo.test.ts` (rojo antes, verde después); el snapshot de `sandbox-profile.test.ts` solo gana esas 5 líneas por perfil.
-- **Límite verificado, NO cerrado: `ps eww` / `ps -E` / `sysctl(KERN_PROCARGS2)`.** En esta macOS (Darwin 27) esa lectura de argumentos y entorno de otro proceso del mismo usuario no pasa por ninguna operación Seatbelt: se probó `(allow default)(deny X)` con `process-info*` (todas las formas), `sysctl*`/`sysctl-read` (con `sysctl-name "kern.procargs2"` también), `signal`, `mach*`, `ipc*`, `system*`, `iokit*`, `process-codesigning*`, `job-creation`, `file-ioctl`… y un proceso sandboxeado siguió leyendo el `TOKEN` en el entorno ajeno (los binarios restringidos por SIP, como `/bin/sleep`, no muestran entorno ni sin sandbox). Por tanto el hallazgo 6 sigue ABIERTO en lo esencial: los tokens del navegador/MCP en el `environ` de `opencode serve` siguen siendo legibles por el agente. `/proc` no existe en macOS. Mitigaciones reales pendientes: un proxy MCP local fuera del sandbox que ponga las cabeceras, o que el servidor no reciba el token por entorno.
+- **Límite verificado, NO cerrado: `ps eww` / `ps -E` / `sysctl(KERN_PROCARGS2)`.** En esta macOS (Darwin 27) esa lectura de argumentos y entorno de otro proceso del mismo usuario no pasa por ninguna operación Seatbelt: se probó `(allow default)(deny X)` con `process-info*` (todas las formas), `sysctl*`/`sysctl-read` (con `sysctl-name "kern.procargs2"` también), `signal`, `mach*`, `ipc*`, `system*`, `iokit*`, `process-codesigning*`, `job-creation`, `file-ioctl`… y un proceso sandboxeado siguió leyendo el `TOKEN` en el entorno ajeno (los binarios restringidos por SIP, como `/bin/sleep`, no muestran entorno ni sin sandbox). Por tanto el perfil NO puede cerrar el hallazgo 6: lo cerró F8-B79 quitando los secretos de ese entorno (proxy MCP local, §3 tricies sexies). `/proc` no existe en macOS.
 - **Efectos secundarios.** `lsof -p <otro>`, `top`/`vmmap`/`sample` sobre otros procesos dejan de ver datos de libproc; `ps` sobre el propio proceso y la lista (`KERN_PROC_ALL`) no dependen de esto. Verificado: `opencode --version`, `opencode serve --port <p>` (HOME/XDG aislados, contraseña aleatoria: health 200 con auth y 401 sin ella, cero huérfanos), `bash`, `git`, `node`, `python3`. NO se pudo ejecutar `/bin/ps` dentro del sandbox anidado de la sesión de pruebas (el arnés lo impide), así que `ps`/`pkill` bajo el perfil nuevo deben probarse a mano.
 
 ## 3 tricies quinquies. Aprobar comandos desde el celular (F8-B74, hallazgo 2 de la auditoría del remoto)
@@ -1288,3 +1284,39 @@ falso positivo —el Mac pregunta— a uno negativo). El diálogo del Mac recort
 
 **Pruebas** (todas fallaban antes del arreglo): `engine-proxy.test.ts` («hallazgo 2»: el ataque `cat ~/.ssh/id_rsa` con el ajuste apagado, `sudo`, `rm -rf ~`, `curl x | sh`, variantes ofuscadas, tope por hora, texto del motor y no del celular, ajuste no
 encendible desde el celular, auditoría sin el texto), `command-denylist.test.ts` (120 casos), `policy.test.ts`, `devices-store.test.ts` (migración de `remote.bin`), `service-access.test.ts` (diálogo, rechazo, «Cortar todo»), `MobileCode.render.test.tsx` (comando completo).
+
+## 3 tricies sexies. Proxy local de MCP fuera del sandbox de Tareas (F8-B79, cierre del hallazgo 6)
+
+**Problema (verificado con el sandbox real).** El agente de una Tarea, dentro de Seatbelt, lee el `environ` de `opencode serve` con `ps eww` / `sysctl kern.procargs2` (F8-B75: ninguna regla de Seatbelt lo impide), y ahí vivían el token del MCP del
+navegador y los tokens estáticos de los MCP del usuario (`OPENCODE_CONFIG_CONTENT`).
+
+**Diseño** (`tasks/mcp-proxy.ts`, análogo al `CredentialProxy` de la clave del proveedor). Cada servidor sandboxeado tiene su `McpProxy` en main (fuera del sandbox), en `127.0.0.1` con puerto aleatorio. La configuración MCP del servidor lleva solo
+`http://127.0.0.1:<puerto><ruta>` y `Authorization: Bearer <token de sesión>`; el proxy QUITA esa cabecera y pone las reales al reenviar. Los secretos reales (token del navegador, cabeceras y credenciales de URL de los MCP remotos) no llegan al entorno, a los
+argumentos ni a la configuración del proceso. El único puerto MCP que Seatbelt abre es el del proxy: el del MCP del navegador integrado ya no se abre (`extraOutboundPorts`).
+
+- **Token de sesión**: 32 bytes aleatorios por servidor MCP (alcance mínimo: sirve para ese destino y nada más), comparado en tiempo constante (hashes de longitud fija contra todas las rutas, sin salir antes), caduca a las 12 h, se revoca con `revokeRoute` y al
+  apagar el proxy; 401 idéntico para ausente/erróneo/caducado/revocado. El proxy vive lo que el proceso: `onExit` y el fallo de arranque lo apagan (`manager.ts`), igual que la revocación del token real del navegador.
+- **Destinos en lista cerrada**: el origen sale solo de la ruta registrada por main; el cliente nunca elige host (forma absoluta, `*` → 400). Rutas normalizadas con `safeUpstreamRest` (`..`, `.`, `//`, `\`, `%2f/%5c/%25`, `#`, controles → 400). **No se siguen redirecciones**
+  (un 3xx del destino → 502 y sin `location`). Solo `Host` propio (anti rebinding), nunca `Origin`, solo GET/POST/DELETE. Cabeceras del cliente y de la respuesta en lista cerrada (sin cookies). La consulta registrada de la URL (claves en `?key=`) se aplica en el destino y no se expone.
+- **Límites**: cuerpo 8 MB (413), 32 peticiones simultáneas y 16 por ruta (429), 120 s hasta las cabeceras (504), 15 min de inactividad de un flujo SSE. Sin secretos en registros (solo nombre de ruta y estado); los tokens de sesión se añaden al redactor de Diagnóstico (`knownMcpProxyTokens`; además
+  los cubre la regla de 43 caracteres base64url). `stop()` cierra servidor, conexiones y peticiones al destino y olvida las rutas.
+- **MCP remotos con cabeceras** → por el proxy (también con `oauth` sin campos secretos: `clientSecret` y similares se quitan de la config del sandbox). Su host deja de entrar en la red del sandbox (antes sí). Los remotos sin cabeceras no tienen secretos y siguen directos por el proxy de salida.
+- **MCP locales (stdio) con `environment` secreto: NO entran en el sandbox** (falla cerrado, aviso en Ajustes › MCP y registro). Lanzarlos fuera del sandbox detrás del proxy exigiría un puente stdio→HTTP en main y ejecutar código de terceros SIN Seatbelt (más permisos que hoy):
+  se descartó por debilitar el aislamiento. Quien los necesite usa Control total. Los locales sin variables siguen como antes.
+- **Navegador integrado**: su MCP va por el proxy con el token real inyectado; el servidor MCP del navegador no cambia (`embedded-browser/mcp-server.ts` intacto) y el plugin `onyxcode-session` sigue inyectando `onyxcode_session`.
+
+**Pruebas** (`mcp-proxy.test.ts`, `mcp-tasks.sandbox.test.ts`, `mcp-proxy.real.test.ts`): el secreto real llega al servidor MCP simulado y el de sesión no; el token no sirve para otro servidor, ni caducado, ni revocado, ni tras `stop()`; `../`, `//`, `%2f`, forma absoluta, `Host`/`Origin`
+ajenos y métodos raros se rechazan; las redirecciones no se siguen (el otro servidor no recibe nada); límites (413/429/504); redactor. **`ps eww` real**: el control (config sin proxy, comportamiento anterior) SÍ revela los secretos —prueba del ataque— y con el proxy no aparece ninguno.
+**Sandbox y OpenCode reales, sin modelos** (`startTasksServer`, opencode 1.18.33, HOME/XDG aislados): el `ps eww` del `opencode serve` real no contiene los secretos ni el puerto real de los MCP; `GET /mcp` del servidor sandboxeado da `connected` para el navegador y un MCP de usuario a través del proxy y el
+servidor simulado recibe solo el secreto real; dentro del mismo perfil de red, `curl` al puerto real de cada MCP falla (000) y al del proxy sin token válido da 401; al parar no quedan procesos (pid) ni puerto. El OpenCode se lanzó con `ONYXCODE_NO_DISCLAIM=1` y una carpeta de config vacía (el lanzador `onyxcode-disclaim` y la
+instalación del plugin por red no funcionan bajo el arnés de pruebas y son ajenos a esto).
+
+**Límites que siguen (no se disimulan).**
+- El token de sesión SÍ es legible por el agente (está en el entorno de `opencode serve`) y sirve contra el proxy mientras el servidor viva: el agente puede llamar a esos MCP con `curl` saltándose «Preguntar en cada uso», que es un permiso de OpenCode, no del proxy. Antes podía lo mismo con el token real y
+  además usarlo desde cualquier sitio y para siempre; ahora el alcance es un solo servidor MCP, solo mientras vive el servidor de la Tarea (y ≤ 12 h). Lo mismo ocurre con el token del `CredentialProxy` en el `baseURL` del proveedor.
+- `OPENCODE_SERVER_PASSWORD` sigue en ese entorno: da acceso al propio servidor sandboxeado (el mismo agente), no a nada de fuera.
+- Secretos puestos por el usuario en `command` (p. ej. `--token xyz`) o `cwd` de un MCP local no se detectan: siguen yendo al proceso.
+- Servidor remoto con SSE antiguo que anuncie un `endpoint` en forma ABSOLUTA (otro host): el cliente iría directo por la red de salida sin credenciales y fallaría; el transporte HTTP en streaming y el SSE con ruta relativa funcionan (la ruta del destino se conserva en el proxy).
+- Un MCP remoto configurado por el usuario hacia un host local/privado se alcanza tal cual (es el destino que él eligió); el proxy no filtra por IP, solo por la lista cerrada de rutas registradas.
+- **Control total** (sin sandbox) NO cambia: su config inline sigue llevando las cabeceras y el token del MCP de Control del Mac en `OPENCODE_CONFIG_CONTENT` (ver §5); allí no hay aislamiento que proteger.
+- Pendiente de prueba manual del dueño (no se abrió Electron): ver el informe de F8-B79 en `CHANGELOG-FASE8.md`.
