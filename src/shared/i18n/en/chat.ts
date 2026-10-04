@@ -82,5 +82,10 @@ export const chat = {
   'chat.error.hideDetail': 'Hide details',
   'chat.error.showDetail': 'Show details',
   'chat.error.copied': 'Copied',
-  'chat.error.copy': 'Copy'
+  'chat.error.copy': 'Copy',
+  'mobile.pending.one': 'Approval pending',
+  'mobile.pending.many': '{count} approvals pending',
+  'mobile.image.open': 'Enlarge image',
+  'mobile.msg.actions': 'Message actions',
+  'mobile.msg.select': 'Select text'
 } as const satisfies Messages<typeof es>

@@ -1,6 +1,9 @@
 import { memo, useState } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { shortenPath } from '../../lib/paths'
+import { isRemoteSurface } from '../../lib/platform'
+import { m } from '../../app/mobile/m'
+import { ToolRow } from '../code/impl/ToolCard'
 import {
   AlertCircle,
   Check,
@@ -44,6 +47,8 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 /** Llamada a herramienta en formato compacto (expandible). */
 export const ChatToolCall = memo(function ChatToolCall({ part }: { part: ToolPart }): React.JSX.Element {
   const [open, setOpen] = useState(false)
+  // Celular: la misma fila humanizada de Code (una línea, sin JSON crudo). Los hooks van antes de este retorno.
+  if (isRemoteSurface()) return <ToolRow part={part} root={null} />
   const { state } = part
   const title = shortenPath(('title' in state && state.title) || summarizeInput(state.input))
   const ToolIcon = TOOL_ICONS[part.tool] ?? Wrench
@@ -60,6 +65,7 @@ export const ChatToolCall = memo(function ChatToolCall({ part }: { part: ToolPar
 
   return (
     <div
+      {...m('meta')}
       className={`my-1 overflow-hidden rounded-lg border bg-elevated/70 text-[13px] shadow-xs transition-colors ${state.status === 'error' ? 'border-danger/30' : running ? 'border-accent/30' : 'border-border'}`}
     >
       <button

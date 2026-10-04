@@ -4,6 +4,7 @@ import type { MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
+import { m } from '../../../app/mobile/m'
 import { DiffView, diffStats } from './DiffView'
 import { DiffStats, relPath } from './ToolCard'
 import { isEditableTarget } from './ui'
@@ -96,18 +97,29 @@ export function PermissionCard({
     { key: '3', label: t('code.perm.reject'), reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
   ]
 
-  const shown = allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions
+  const allowedActions = allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions
+  // Celular: la acción principal va a la derecha (Rechazar a la izquierda, Permitir una vez a la derecha).
+  const shown = mobile
+    ? [...allowedActions]
+        .sort((a, b) => Number(b.reply === 'reject') - Number(a.reply === 'reject'))
+        .map((a) => (a.reply === 'reject' ? { ...a, cls: 'border border-border bg-elevated text-danger active:bg-hover' } : a))
+    : allowedActions
   const macOnly = !!allowed && !allowed.includes('once')
 
   return (
-    <div className="my-2 overflow-hidden rounded-xl border border-accent/40 bg-elevated shadow-sm ring-4 ring-accent/5">
+    <div
+      {...m('pending-card')}
+      className={`my-2 overflow-hidden rounded-xl border border-accent/40 bg-elevated shadow-sm ${mobile ? '' : 'ring-4 ring-accent/5'}`}
+    >
       <div className="flex items-start gap-2.5 px-3.5 pt-3 pb-2.5">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
+        <span
+          className={`mt-0.5 flex ${mobile ? 'h-7 w-7' : 'h-6 w-6'} shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent`}
+        >
           <Icon size={14} />
         </span>
-        <div className="min-w-0 flex-1 text-sm">
+        <div className={`min-w-0 flex-1 ${mobile ? 'text-[15px]' : 'text-sm'}`}>
           <div className="font-medium">{t('code.perm.agentWants', { label })}</div>
-          {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
+          {description && <div className={`mt-0.5 ${mobile ? 'text-[14px]' : 'text-xs'} text-muted`}>{description}</div>}
           {file && (
             <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted">
               <span className="truncate">{relPath(file, root)}</span>
@@ -145,7 +157,7 @@ export function PermissionCard({
             disabled={busy}
             title={a.title}
             onClick={() => run(a.reply)}
-            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 ${mobile ? 'min-h-11 min-w-28 flex-1 justify-center px-4 text-[14px]' : ''} ${a.cls}`}
+            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 ${mobile ? 'min-h-11 min-w-28 flex-1 justify-center rounded-xl px-4 text-[14px]' : ''} ${a.cls}`}
           >
             {a.label}
             {hotkeys && !mobile && (
@@ -181,7 +193,10 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
   const ready = final.every((a) => a.length > 0)
 
   return (
-    <div className="my-2 rounded-xl border border-accent/40 bg-elevated px-3.5 py-3 shadow-sm ring-4 ring-accent/5">
+    <div
+      {...m('pending-card')}
+      className={`my-2 rounded-xl border border-accent/40 bg-elevated px-3.5 py-3 shadow-sm ${isRemoteSurface() ? '' : 'ring-4 ring-accent/5'}`}
+    >
       {request.questions.map((q, qi) => (
         <div key={qi} className="mb-3">
           <div className="flex items-start gap-2 text-sm">
@@ -220,6 +235,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
       <div className="flex gap-2">
         <Button
           variant="primary"
+          className={isRemoteSurface() ? 'min-h-11 flex-1' : undefined}
           disabled={busy || !ready}
           onClick={() => {
             setBusy(true)
@@ -230,6 +246,7 @@ export function QuestionCard({ request }: { request: PendingQuestion }): React.J
         </Button>
         <Button
           variant="ghost"
+          className={isRemoteSurface() ? 'min-h-11 flex-1' : undefined}
           disabled={busy}
           onClick={() => {
             setBusy(true)

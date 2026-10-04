@@ -3,6 +3,7 @@ import type { ReasoningPart } from '@opencode-ai/sdk/v2/client'
 import { Brain, ChevronRight, Lightbulb } from 'lucide-react'
 import { t } from '@shared/i18n'
 import { useLang } from '../../lib/i18n'
+import { m } from '../../app/mobile/m'
 
 /** Etiqueta del bloque de razonamiento: en vivo, con duración (mín. 1 s) o genérica. */
 export function reasoningLabel(part: Pick<ReasoningPart, 'time'>, live: boolean): string {
@@ -28,7 +29,7 @@ export function Reasoning({
   const label = reasoningLabel(part, live)
   if (variant === 'chat') {
     return (
-      <div className="my-1 text-[13px]">
+      <div {...m('meta')} className="my-1 text-[13px]">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -48,7 +49,7 @@ export function Reasoning({
     )
   }
   return (
-    <div className="text-[13px]">
+    <div {...m('meta')} className="text-[13px]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

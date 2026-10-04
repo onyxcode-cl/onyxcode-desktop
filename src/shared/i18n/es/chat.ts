@@ -79,5 +79,10 @@ export const chat = {
   'chat.error.hideDetail': 'Ocultar detalle',
   'chat.error.showDetail': 'Ver detalle',
   'chat.error.copied': 'Copiado',
-  'chat.error.copy': 'Copiar'
+  'chat.error.copy': 'Copiar',
+  'mobile.pending.one': 'Aprobación pendiente',
+  'mobile.pending.many': '{count} aprobaciones pendientes',
+  'mobile.image.open': 'Ampliar imagen',
+  'mobile.msg.actions': 'Acciones del mensaje',
+  'mobile.msg.select': 'Seleccionar texto'
 } as const

@@ -1,0 +1,116 @@
+/*
+ * Conversación en el celular (Chat y Code): columna, tipografía, código, tablas y burbujas. TODO cuelga de
+ * `[data-surface='mobile']` (lo exige desktop-unchanged.test.tsx): en Mac y Windows no actúa. Medidas desde los tokens
+ * `--m-*` de mobile-tokens.css; ganchos `data-m` los pone el helper `m()` (app/mobile/m.ts). Se importa desde las listas de
+ * mensajes (ChatMessageList y MessageStream), después de globals.css, así que a igual especificidad gana este archivo.
+ */
+
+/* ---------- Respuesta (Markdown) ---------- */
+[data-surface='mobile'] .markdown {
+  font-size: var(--m-body);
+  line-height: var(--m-body-lh);
+  color: var(--fg);
+}
+[data-surface='mobile'] .markdown > * + * {
+  margin-top: 0.75em;
+}
+[data-surface='mobile'] .markdown h1 {
+  font-size: 1.35em;
+  margin-top: 1.1em;
+}
+[data-surface='mobile'] .markdown h2 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+[data-surface='mobile'] .markdown h3 {
+  font-size: 1.08em;
+  margin-top: 0.9em;
+}
+[data-surface='mobile'] .markdown :is(h1, h2, h3, h4) {
+  font-family: var(--font-display);
+  font-weight: 650;
+}
+[data-surface='mobile'] .markdown > :first-child {
+  margin-top: 0;
+}
+[data-surface='mobile'] .markdown :is(ul, ol) {
+  padding-left: 1.25em;
+}
+[data-surface='mobile'] .markdown li + li {
+  margin-top: 0.25em;
+}
+
+/* ---------- Código: bloque a sangre, scroll horizontal fluido ---------- */
+[data-surface='mobile'] .markdown .code-block {
+  border-radius: 12px;
+}
+[data-surface='mobile'] .markdown > .code-block {
+  margin-inline: calc(var(--m-gutter) * -0.5);
+}
+[data-surface='mobile'] .markdown .code-block-header {
+  height: 40px;
+  padding: 0 4px 0 12px;
+  font-size: 12.5px;
+}
+[data-surface='mobile'] .markdown .code-block-header button {
+  font-size: 13px;
+  padding-inline: 10px;
+}
+[data-surface='mobile'] .markdown pre {
+  font-size: var(--m-mono);
+  line-height: 1.5;
+  padding: 12px 14px;
+  white-space: pre;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- Tablas: scroll horizontal propio ---------- */
+[data-surface='mobile'] .markdown table {
+  font-size: 14px;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+[data-surface='mobile'] .markdown :is(th, td) {
+  padding: 8px 12px;
+  min-width: 6ch;
+}
+[data-surface='mobile'] .markdown th {
+  white-space: nowrap;
+}
+[data-surface='mobile'] .markdown tbody tr:hover td {
+  background: none;
+}
+
+/* ---------- Burbuja del usuario ---------- */
+[data-surface='mobile'] [data-m='user-bubble'] {
+  font-size: var(--m-body);
+  line-height: 1.5;
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 20px 20px 6px 20px;
+  box-shadow: none;
+}
+
+/* ---------- Metadatos: herramientas, razonamiento, reintento, subtarea (14 px) ---------- */
+[data-surface='mobile'] [data-m='meta'] {
+  font-size: var(--m-meta);
+}
+[data-surface='mobile'] [data-m='meta'] :is(.font-mono, .text-xs, [class*='text-[12px]'], [class*='text-[12.5px]']) {
+  font-size: 12.5px;
+}
+
+/* ---------- Mantener pulsado: sin selección ni menú nativo (la hoja ofrece «Seleccionar texto») ---------- */
+[data-surface='mobile'] [data-long-press] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+[data-surface='mobile'] [data-long-press] :is(pre, pre *, table, table *, a, a *) {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}

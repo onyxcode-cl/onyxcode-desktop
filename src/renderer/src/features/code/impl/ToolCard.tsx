@@ -9,6 +9,8 @@ import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { t, type MsgKey } from '@shared/i18n'
 import { splitPath } from '../../../lib/paths'
 import { useLocale, useT } from '../../../lib/i18n'
+import { isRemoteSurface } from '../../../lib/platform'
+import { m } from '../../../app/mobile/m'
 import {
   AlertCircle,
   Bot,
@@ -89,7 +91,8 @@ export function TodoList({ todos }: { todos: TodoItem[] }): React.JSX.Element {
 
 function Output({ text, max = 'max-h-72' }: { text: string; max?: string }): React.JSX.Element | null {
   if (!text) return null
-  return <pre className={`${max} overflow-auto bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg`}>{text}</pre>
+  const cap = isRemoteSurface() ? 'max-h-[40dvh]' : max
+  return <pre className={`${cap} overflow-auto bg-code px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all text-fg`}>{text}</pre>
 }
 
 // ---------------------------------------------------------------------------
@@ -176,13 +179,14 @@ function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: 
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const open = userOpen ?? autoOpen
   const expandable = !!children
+  const mobile = isRemoteSurface()
   return (
-    <div className="text-[13px]">
+    <div {...m('meta')} className="text-[13px]">
       <button
         type="button"
         onClick={() => expandable && setUserOpen(!open)}
         aria-expanded={expandable ? open : undefined}
-        className={`group/row flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left text-muted ${expandable ? 'hover:bg-hover hover:text-fg' : 'cursor-default'}`}
+        className={`group/row flex w-full min-w-0 items-center gap-2 ${mobile ? 'min-h-11 rounded-lg px-1.5 py-2 active:bg-hover' : 'rounded-md px-1.5 py-1'} text-left text-muted ${expandable ? 'hover:bg-hover hover:text-fg' : 'cursor-default'}`}
       >
         <span className={`shrink-0 ${status === 'error' ? 'text-danger' : 'text-subtle group-hover/row:text-muted'}`}>{icon}</span>
         <span className="shrink-0 text-fg/90">{verb}</span>
@@ -193,12 +197,16 @@ function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: 
           {expandable && (
             <ChevronRight
               size={13}
-              className={`text-subtle transition-transform ${open ? 'rotate-90' : 'opacity-0 group-hover/row:opacity-100'}`}
+              className={`text-subtle transition-transform ${open ? 'rotate-90' : mobile ? '' : 'opacity-0 group-hover/row:opacity-100'}`}
             />
           )}
         </span>
       </button>
-      {open && children && <div className="mt-1 mb-1.5 ml-6 overflow-hidden rounded-lg border border-border bg-elevated">{children}</div>}
+      {open && children && (
+        <div className={`mt-1 mb-1.5 ${mobile ? 'ml-0' : 'ml-6'} overflow-hidden rounded-lg border border-border bg-elevated`}>
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -238,9 +246,10 @@ function EditChip({ part, root }: { part: ToolPart; root: string | null }): Reac
   const status = part.state.status
   const error = status === 'error' ? part.state.error : ''
   const Icon = part.tool === 'write' ? FilePlus : FilePen
+  const mobile = isRemoteSurface()
   return (
-    <div className="text-[13px]">
-      <div className="flex items-center gap-2 px-1.5 py-1">
+    <div {...m('meta')} className="text-[13px]">
+      <div className={`flex items-center gap-2 px-1.5 ${mobile ? 'min-h-11 py-1' : 'py-1'}`}>
         <Icon size={14} className={status === 'error' ? 'shrink-0 text-danger' : 'shrink-0 text-subtle'} />
         <span className="shrink-0 text-fg/90">{label}</span>
         <button
@@ -249,7 +258,7 @@ function EditChip({ part, root }: { part: ToolPart; root: string | null }): Reac
           disabled={!patch && !error}
           aria-expanded={open}
           title={file}
-          className={`flex min-w-0 items-center gap-2 rounded-md border px-2 py-0.5 transition ${open ? 'border-border-strong bg-hover' : 'border-border bg-elevated hover:border-border-strong hover:bg-hover'} disabled:cursor-default`}
+          className={`flex min-w-0 items-center gap-2 rounded-md border px-2 ${mobile ? 'py-1.5 active:bg-hover' : 'py-0.5'} transition ${open ? 'border-border-strong bg-hover' : 'border-border bg-elevated hover:border-border-strong hover:bg-hover'} disabled:cursor-default`}
         >
           <span className="min-w-0 truncate font-mono text-xs">
             <span className="text-fg">{name || file}</span>
@@ -265,8 +274,8 @@ function EditChip({ part, root }: { part: ToolPart; root: string | null }): Reac
         </span>
       </div>
       {open && (
-        <div className="mt-1 mb-1.5 ml-6 overflow-hidden rounded-lg border border-border bg-elevated">
-          {patch && <DiffView patch={patch} path={file} hideFileHeaders className="max-h-96" />}
+        <div className={`mt-1 mb-1.5 ${mobile ? 'ml-0' : 'ml-6'} overflow-hidden rounded-lg border border-border bg-elevated`}>
+          {patch && <DiffView patch={patch} path={file} hideFileHeaders className={mobile ? 'max-h-[50dvh]' : 'max-h-96'} />}
           {error && <div className="px-3 py-2 font-mono text-xs whitespace-pre-wrap text-danger">{error}</div>}
         </div>
       )}
@@ -437,7 +446,9 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           detail={title ? <span className="text-xs">{title}</span> : undefined}
           status={state.status}
         >
-          <pre className="max-h-48 overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap text-muted">
+          <pre
+            className={`${isRemoteSurface() ? 'max-h-[40dvh]' : 'max-h-48'} overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap text-muted`}
+          >
             {JSON.stringify(input, null, 2)}
           </pre>
           <Output text={output} />
@@ -491,7 +502,8 @@ export function StepGroup({ parts, root, live, hasPending, after }: StepGroupPro
         type="button"
         onClick={() => setUserOpen(!open)}
         aria-expanded={open}
-        className="group/steps flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[13px] text-muted hover:bg-hover hover:text-fg"
+        {...m('meta')}
+        className={`group/steps flex w-full items-center gap-2 rounded-md px-1.5 ${isRemoteSurface() ? 'min-h-11 py-2 active:bg-hover' : 'py-1'} text-left text-[13px] text-muted hover:bg-hover hover:text-fg`}
       >
         {anyRunning ? (
           <Loader2 size={14} className="shrink-0 animate-spin text-accent" />

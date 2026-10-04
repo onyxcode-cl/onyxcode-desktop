@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
 import { useLang, useT } from '../../lib/i18n'
+import { isRemoteSurface } from '../../lib/platform'
 import { useProviders } from '../../stores/providers'
 import { useUi } from '../../stores/ui'
 import { Button } from '../Button'
@@ -75,14 +76,25 @@ export function ErrorNotice({
         <p className="mt-0.5 break-words">{f.message}</p>
         {f.action === 'connect' && (
           <div className="mt-2">
-            <Button size="sm" variant="primary" onClick={() => useUi.getState().openSettingsAt('models', 'providers')}>
+            <Button
+              size="sm"
+              variant="primary"
+              className={isRemoteSurface() ? 'min-h-11 px-4' : undefined}
+              onClick={() => useUi.getState().openSettingsAt('models', 'providers')}
+            >
               {t('chat.error.connect')}
             </Button>
           </div>
         )}
         {handler && (
           <div className="mt-2">
-            <Button size="sm" variant="primary" disabled={pending} onClick={() => void run(handler)}>
+            <Button
+              size="sm"
+              variant="primary"
+              className={isRemoteSurface() ? 'min-h-11 px-4' : undefined}
+              disabled={pending}
+              onClick={() => void run(handler)}
+            >
               {f.action === 'compact' ? t('chat.error.compact') : t('chat.error.retry')}
             </Button>
           </div>
@@ -92,7 +104,7 @@ export function ErrorNotice({
           // desfasado respecto al contenido ya visible (prueba inestable no-ai (d)). Así el rótulo y el contenido van juntos.
           <details open={open} className="mt-2 text-xs text-muted">
             <summary
-              className="cursor-pointer text-subtle select-none hover:text-fg"
+              className={`cursor-pointer text-subtle select-none hover:text-fg ${isRemoteSurface() ? 'inline-flex min-h-11 items-center' : ''}`}
               onClick={(e) => {
                 e.preventDefault()
                 setOpen((o) => !o)
@@ -106,7 +118,7 @@ export function ErrorNotice({
             <button
               type="button"
               onClick={() => void copy()}
-              className="no-drag mt-1.5 text-subtle underline-offset-2 hover:text-fg hover:underline"
+              className={`no-drag mt-1.5 text-subtle underline-offset-2 hover:text-fg hover:underline ${isRemoteSurface() ? 'min-h-11' : ''}`}
             >
               {copied ? t('chat.error.copied') : t('chat.error.copy')}
             </button>
