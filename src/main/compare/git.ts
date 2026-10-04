@@ -168,7 +168,14 @@ export async function createCompareWorktree(root: string, path: string, branch: 
   assertNotSymlink(parent)
   mkdirSync(parent, { recursive: true })
   assertNotSymlink(parent)
-  await git(root, ['worktree', 'add', '-b', branch, '--', path, base])
+  const existed = (await runBuf(root, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], { okCodes: [1] })).code === 0
+  try {
+    await git(root, ['worktree', 'add', '-b', branch, '--', path, base])
+  } catch (err) {
+    // `worktree add -b` puede dejar la rama creada si falla después: se borra solo si no existía antes.
+    if (!existed) await runBuf(root, ['branch', '-D', '--', branch], { okCodes: [1] }).catch(() => undefined)
+    throw err
+  }
 }
 
 /** Borra la copia (`--force`) y la rama temporal. Tolera que alguna de las dos ya no exista. */
