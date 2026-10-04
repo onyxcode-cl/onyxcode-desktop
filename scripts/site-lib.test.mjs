@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { CSP, buildId, headersFile, patchIndex, swWithBuild } from './site-lib.mjs'
+import { CSP, buildId, buildSiteManifest, headersFile, patchIndex, siteManifestBytes, startupPaths, swWithBuild } from './site-lib.mjs'
 
 test('CSP: estricta, sin terceros, sin eval ni scripts en línea', () => {
   for (const bad of ["'unsafe-eval'", 'http:', '*', "script-src 'self' 'unsafe-inline'"]) assert.ok(!CSP.includes(bad), bad)
@@ -82,4 +82,41 @@ test('manifiesto: instalable (nombre, inicio, pantalla completa, iconos 192 y 51
   assert.equal(m.display, 'standalone')
   assert.equal(m.start_url, './')
   assert.deepEqual(m.icons.map((i) => i.sizes).sort(), ['192x192', '512x512'])
+})
+
+test('startupPaths: la página, el service worker, el manifiesto y todo JS/CSS que index.html enlaza (y nada más)', () => {
+  const html =
+    '<html><head><link rel="stylesheet" href="./assets/style-AbCd1234.css"><script type="module" src="./assets/index-XyZ98765.js"></script>' +
+    '<link rel="icon" href="data:image/svg+xml,x"><script src="https://evil.example/x.js"></script></head></html>'
+  assert.deepEqual(startupPaths(html), [
+    'index.html',
+    'sw.js',
+    'manifest.webmanifest',
+    'assets/style-AbCd1234.css',
+    'assets/index-XyZ98765.js'
+  ])
+  assert.deepEqual(startupPaths('<html></html>'), ['index.html', 'sw.js', 'manifest.webmanifest'])
+})
+
+test('manifiesto: ordenado, con los bytes exactos que se firman y terminado en salto de línea', () => {
+  const m = buildSiteManifest({
+    files: [
+      { p: 'b.js', sha256: '2'.repeat(64) },
+      { p: 'a.js', sha256: '1'.repeat(64) }
+    ],
+    startup: ['index.html'],
+    build: 'abcdef012345',
+    version: '0.3.0',
+    keyId: 'k',
+    seq: 5,
+    csp: CSP,
+    publishedAt: '2026-10-04T00:00:00.000Z'
+  })
+  assert.deepEqual(
+    m.files.map((f) => f.p),
+    ['a.js', 'b.js']
+  )
+  const bytes = siteManifestBytes(m)
+  assert.equal(bytes.at(-1), 0x0a)
+  assert.deepEqual(JSON.parse(bytes.toString('utf8')), m)
 })
