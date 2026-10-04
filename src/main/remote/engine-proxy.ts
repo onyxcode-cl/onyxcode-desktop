@@ -62,6 +62,8 @@ export interface HttpResult {
 
 const MAX_BODY = 12 * 1024 * 1024
 const MAX_RESPONSE = 6 * 1024 * 1024
+/** `GET /provider` (catálogo completo, ~6,6 MB hoy) lo pide el propio Mac para conocer los modelos: nunca va al celular. */
+const MAX_PROVIDER_LIST = 48 * 1024 * 1024
 const TIMEOUT_MS = 120_000
 
 /** Claves cuyos valores son rutas: se sustituyen por su `realpath` antes de decidir. */
@@ -422,7 +424,16 @@ export class EngineProxy implements MuxDispatch {
 
   private async internalGet(target: EngineTarget, path: string, query: Record<string, string>, signal: AbortSignal): Promise<unknown> {
     try {
-      const r = await this.fetchEngine(target, 'GET', path, query, 'application/json', undefined, signal)
+      const r = await this.fetchEngine(
+        target,
+        'GET',
+        path,
+        query,
+        'application/json',
+        undefined,
+        signal,
+        path === '/provider' ? MAX_PROVIDER_LIST : undefined
+      )
       return r.status >= 200 && r.status < 300 ? JSON.parse(r.body) : undefined
     } catch {
       return undefined
@@ -436,7 +447,8 @@ export class EngineProxy implements MuxDispatch {
     query: Record<string, string>,
     accept: string | undefined,
     body: string | undefined,
-    signal: AbortSignal
+    signal: AbortSignal,
+    maxBytes?: number
   ): Promise<HttpResult> {
     const base = new URL(target.baseUrl)
     const url = new URL(path, base)
@@ -454,7 +466,7 @@ export class EngineProxy implements MuxDispatch {
       if (signal.aborted) throw new MuxError('cancelled')
       throw new MuxError('unavailable', (err as { name?: string }).name === 'TimeoutError' ? 'timeout' : 'engine')
     }
-    const max = this.s.maxResponseBytes ?? MAX_RESPONSE
+    const max = maxBytes ?? this.s.maxResponseBytes ?? MAX_RESPONSE
     const chunks: Buffer[] = []
     let total = 0
     if (res.body) {

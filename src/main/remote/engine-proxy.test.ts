@@ -388,6 +388,24 @@ describe('http (motor)', () => {
     expect(JSON.parse((await http(h, 'GET', '/find', { directory: proj, pattern: 'a' })).body)).toEqual([{ path: { text: 'src/a.ts' } }])
   })
 
+  it('prompt: el catálogo de proveedores de ~7 MB (más que el tope de respuestas) sí permite conocer el modelo', async () => {
+    const h = make()
+    const pad = 'x'.repeat(7 * 1024 * 1024)
+    h.engine.handler = async (u) => {
+      if (u.pathname === '/provider') return { json: { all: [{ id: 'p', models: { m: {} }, pad }], connected: ['p'], default: {} } }
+      if (u.pathname === '/session/ses_1') return { json: { id: 'ses_1', directory: proj } }
+      return { status: 204, text: '' }
+    }
+    const ok = await http(
+      h,
+      'POST',
+      '/session/ses_1/prompt_async',
+      { directory: proj },
+      { agent: 'build', parts: [{ type: 'text', text: 'hola' }], model: { providerID: 'p', modelID: 'm' } }
+    )
+    expect(ok.status).toBe(204)
+  })
+
   it('prompt: el model debe estar en provider.list y un file:// por un enlace se rechaza', async () => {
     const h = make()
     h.engine.handler = async (u) => {
