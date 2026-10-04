@@ -53,6 +53,19 @@ const modelRef = obj({ providerID: str({ max: 200, min: 1 }), modelID: str({ max
 const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
 const pathReq = obj({ path: absPath })
+/** Comparar modelos: uuid de la comparación, índice de columna (0..3) y modelo con `variant` opcional. */
+const compareId = str({ max: 36, min: 36, pattern: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i })
+const compareIndex = num({ int: true, min: 0, max: 3 })
+const compareModel = obj({
+  providerID: str({ max: 200, min: 1 }),
+  modelID: str({ max: 200, min: 1 }),
+  variant: optional(str({ max: 64, min: 1 }))
+})
+const compareModels: Validator<ReturnType<typeof compareModel>[]> = (v, path = '') => {
+  const list = arr(compareModel, 4)(v, path)
+  if (list.length < 2) throw new ValidationError(`Parámetro "${path}" necesita al menos 2 modelos`)
+  return list
+}
 const openFolderOpts = optional(obj({ title: optional(shortText), defaultPath: optional(absPath) }))
 const notifyTarget = obj({ mode: literal('code', 'tasks'), id, directory: optional(absPath), fullAccess: optional(bool) })
 /**
@@ -326,6 +339,24 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
     hunk: str({ max: 1_000_000, min: 1 })
   }),
   'git:discardUndo': obj({ cwd: absPath, undoId: str({ max: 64, min: 1, pattern: /^[0-9a-f-]{36}$/ }) }),
+  // Comparar modelos: el renderer solo manda ids e índices; las rutas y las ramas las decide main.
+  'compare:list': none,
+  'compare:preflight': cwdReq,
+  'compare:start': obj({
+    id: compareId,
+    mode: literal('code', 'chat'),
+    cwd: optional(absPath),
+    models: compareModels,
+    prompt: str({ max: 200_000, min: 1 }),
+    permissionMode: optional(literal('manual', 'acceptEdits', 'auto', 'bypass'))
+  }),
+  'compare:cancel': obj({ id: compareId, index: optional(compareIndex) }),
+  'compare:retry': obj({ id: compareId, index: compareIndex }),
+  'compare:diff': obj({ id: compareId, index: compareIndex }),
+  'compare:adopt': obj({ id: compareId, index: compareIndex, force: optional(bool) }),
+  'compare:discard': obj({ id: compareId, index: compareIndex }),
+  'compare:close': obj({ id: compareId }),
+  'compare:exportBench': obj({ id: compareId }),
   'dialog:openFolder': openFolderOpts,
   'dialog:revealInFinder': pathReq,
   'dialog:openInEditor': pathReq,
