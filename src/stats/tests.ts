@@ -1,5 +1,5 @@
 // Pruebas de hipótesis pareadas / exactas.
-import { binomCdfHalf, normCdf } from "./dist.ts";
+import { binomCdfHalf, normSf } from "./dist.ts";
 import { mulberry32 } from "./rng.ts";
 
 export interface McNemarResult {
@@ -113,5 +113,5 @@ export function wilcoxonSignedRank(diffs: readonly number[]): WilcoxonResult {
   let varW = (n * (n + 1) * (2 * n + 1)) / 24;
   for (const t of tieSizes) varW -= (t * t * t - t) / 48;
   const z = (Math.abs(wPlus - mu) - 0.5) / Math.sqrt(varW);
-  return { p: Math.min(1, 2 * (1 - normCdf(Math.max(0, z)))), wPlus, nNonZero: n, method: "normal" };
+  return { p: Math.min(1, 2 * normSf(Math.max(0, z))), wPlus, nNonZero: n, method: "normal" };
 }

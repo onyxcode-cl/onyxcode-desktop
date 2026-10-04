@@ -14,6 +14,10 @@ export interface RunRow {
   outcome: RunOutcome;
   /** Índice de repetición (opcional, solo informativo). */
   rep?: number;
+  /** Para deduplicar (A9): el último intento (finishedAt, luego startedAt, luego runId) de cada (caso, config, rep) es el válido. */
+  runId?: string;
+  startedAt?: string;
+  finishedAt?: string;
 }
 
 export type Veredicto =
@@ -21,6 +25,7 @@ export type Veredicto =
   | "MEJORA MENOR"
   | "EQUIVALENTE"
   | "PEOR-REGRESIÓN"
+  | "POSIBLE-REGRESIÓN"
   | "SIN EVIDENCIA";
 
 export type MetricName = "success" | "tokens" | "duration";

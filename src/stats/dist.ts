@@ -1,9 +1,30 @@
 // Funciones de distribución básicas en TS puro.
 
-/** CDF normal estándar por serie de Taylor (precisión ~1e-15 para |x|<8). */
+const SQRT_2PI = Math.sqrt(2 * Math.PI);
+
+/** Cola superior Q(x) = P(Z > x) para x >= 3 por fracción continua (precisión relativa ~1e-14, sin cancelación). */
+function upperTailCf(x: number): number {
+  let f = x;
+  for (let k = 300; k >= 1; k--) f = x + k / f;
+  return Math.exp(-0.5 * x * x) / SQRT_2PI / f;
+}
+
+/** Cola superior P(Z > x), con precisión relativa también en colas lejanas (no pasa por 1 - cdf). */
+export function normSf(x: number): number {
+  if (Number.isNaN(x)) return NaN;
+  if (x >= 3) return upperTailCf(x);
+  if (x <= -3) return 1 - upperTailCf(-x);
+  return 1 - normCdf(x);
+}
+
+/**
+ * CDF normal estándar. Serie de Taylor en |x|<3; para colas, fracción continua de la cola
+ * (precisión relativa; antes la serie perdía cifras por cancelación en x<-6 y devolvía 0 para x<-8).
+ */
 export function normCdf(x: number): number {
-  if (x < -8) return 0;
-  if (x > 8) return 1;
+  if (Number.isNaN(x)) return NaN;
+  if (x <= -3) return upperTailCf(-x);
+  if (x >= 3) return 1 - upperTailCf(x);
   let term = x;
   let sum = x;
   for (let n = 1; n < 200; n++) {
@@ -11,7 +32,7 @@ export function normCdf(x: number): number {
     sum += term;
     if (Math.abs(term) < 1e-17 * Math.abs(sum)) break;
   }
-  return 0.5 + (sum * Math.exp(-0.5 * x * x)) / Math.sqrt(2 * Math.PI);
+  return 0.5 + (sum * Math.exp(-0.5 * x * x)) / SQRT_2PI;
 }
 
 /** Cuantil normal estándar (Acklam + un paso de refinamiento de Halley). */

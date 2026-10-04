@@ -1,5 +1,8 @@
 // Potencia por Monte Carlo para diseño pareado por caso (éxito binario con repeticiones).
 import { mulberry32, randBeta, randBinomial, type Rng } from "./rng.ts";
+import { quantileSorted } from "./dist.ts";
+import { MIN_CASES_DEFAULT } from "./decision.ts";
+import { MPE_DEFAULT } from "./types.ts";
 
 export const MAX_SIMS = 5000;
 export const MAX_WALL_MS = 120_000;
@@ -16,6 +19,15 @@ export interface PowerSpec {
   /** Concentración Beta de la heterogeneidad entre casos (alto = casos homogéneos). Default 2: muy heterogéneo. */
   concentration?: number;
   alpha?: number;
+  /**
+   * Regla de decisión simulada. "mpe" (por defecto) = la REAL del veredicto MEJORA: límite inferior del IC bootstrap por
+   * clúster de caso > MPE de éxito (margen). "zero" = solo IC inferior > 0 (detectar cualquier mejora; menos estricta).
+   */
+  rule?: "mpe" | "zero";
+  /** MPE de éxito (proporción) usado por la regla "mpe". Por defecto 0.05. */
+  margin?: number;
+  /** Mínimo de casos para decidir (como en el análisis real; por defecto 10). */
+  minCases?: number;
 }
 
 export interface PowerOptions {
@@ -24,7 +36,7 @@ export interface PowerOptions {
   sims?: number;
   /** Tope de tiempo (ms, tope 120000). */
   maxMs?: number;
-  /** Remuestreos sign-flip por simulación. */
+  /** Remuestreos bootstrap por simulación (antes sign-flip). */
   flips?: number;
   /** Reloj inyectable para tests. */
   now?: () => number;
@@ -37,44 +49,67 @@ export interface PowerResult {
   /** true si se cortó por tiempo antes de completar. */
   truncated: boolean;
   elapsedMs: number;
+  rule: "mpe" | "zero";
+  margin: number;
+  /** Mejora media realmente simulada (pB - pA tras el tope en 1). Si es menor que `delta`, hubo recorte en el extremo. */
+  effectiveDelta: number;
+  /** true si effectiveDelta < 95 % de delta: la potencia corresponde a un efecto menor que el pedido. */
+  deltaClipped: boolean;
 }
 
-function simulateOnce(spec: PowerSpec, rng: Rng, flips: number): boolean {
+interface Sim { hit: boolean; sumDelta: number }
+
+function simulateOnce(spec: PowerSpec, rng: Rng, boots: number): Sim {
   const kappa = spec.concentration ?? 2;
   const a0 = Math.max(spec.baseRate * kappa, 1e-3);
   const b0 = Math.max((1 - spec.baseRate) * kappa, 1e-3);
   const d: number[] = [];
+  let sumDelta = 0;
   for (let i = 0; i < spec.nCases; i++) {
     const pA = randBeta(rng, a0, b0);
+    // Se recorta a [0,1] (inevitable en probabilidades), pero se mide el efecto realmente simulado y se avisa en el resultado.
     const pB = Math.min(1, Math.max(0, pA + spec.delta));
+    sumDelta += pB - pA;
     d.push(randBinomial(rng, spec.reps, pB) / spec.reps - randBinomial(rng, spec.reps, pA) / spec.reps);
   }
-  const nz = d.filter((x) => x !== 0);
-  if (nz.length === 0) return false;
-  const obs = Math.abs(nz.reduce((a, b) => a + b, 0));
-  let ge = 0;
-  for (let f = 0; f < flips; f++) {
+  const n = d.length;
+  const minCases = spec.minCases ?? MIN_CASES_DEFAULT;
+  // Mismas reglas que el análisis real: pocos casos o diferencias todas iguales (IC degenerado) no dan MEJORA.
+  if (n < minCases || d.every((x) => x === d[0])) return { hit: false, sumDelta };
+  const margin = (spec.rule ?? "mpe") === "mpe" ? (spec.margin ?? MPE_DEFAULT.success) : 0;
+  const stats = new Float64Array(boots);
+  for (let b = 0; b < boots; b++) {
     let s = 0;
-    for (let i = 0; i < nz.length; i++) s += rng() < 0.5 ? nz[i]! : -nz[i]!;
-    if (Math.abs(s) >= obs - 1e-12) ge++;
+    for (let i = 0; i < n; i++) s += d[Math.floor(rng() * n)]!;
+    stats[b] = s / n;
   }
-  return (ge + 1) / (flips + 1) <= (spec.alpha ?? 0.05);
+  stats.sort();
+  const lo = quantileSorted(stats, (spec.alpha ?? 0.05) / 2);
+  return { hit: lo > margin, sumDelta };
 }
 
 export function estimatePower(spec: PowerSpec, opts: PowerOptions = {}): PowerResult {
   const now = opts.now ?? (() => Date.now());
   const simsRequested = Math.min(Math.max(1, Math.floor(opts.sims ?? 1000)), MAX_SIMS);
   const maxMs = Math.min(opts.maxMs ?? MAX_WALL_MS, MAX_WALL_MS);
-  const flips = Math.min(Math.max(49, opts.flips ?? 199), 999);
+  const boots = Math.min(Math.max(49, opts.flips ?? 199), 999);
   const rng = mulberry32(opts.seed ?? 1);
   const t0 = now();
   let hits = 0;
   let run = 0;
+  let sumDelta = 0;
   for (; run < simsRequested; run++) {
     if (run % 16 === 0 && run > 0 && now() - t0 > maxMs) break;
-    if (simulateOnce(spec, rng, flips)) hits++;
+    const s = simulateOnce(spec, rng, boots);
+    if (s.hit) hits++;
+    sumDelta += s.sumDelta;
   }
-  return { power: run ? hits / run : NaN, simsRun: run, simsRequested, truncated: run < simsRequested, elapsedMs: now() - t0 };
+  const effectiveDelta = run && spec.nCases > 0 ? sumDelta / (run * spec.nCases) : NaN;
+  return {
+    power: run ? hits / run : NaN, simsRun: run, simsRequested, truncated: run < simsRequested, elapsedMs: now() - t0,
+    rule: spec.rule ?? "mpe", margin: spec.margin ?? MPE_DEFAULT.success,
+    effectiveDelta, deltaClipped: Number.isFinite(effectiveDelta) && effectiveDelta < 0.95 * spec.delta,
+  };
 }
 
 export interface MdeResult {

@@ -2,7 +2,7 @@
 import { canonicalJson, contentHash } from "../core/ids.ts";
 import type { RunResult } from "../core/schemas.ts";
 import {
-  MPE_DEFAULT, applyPolicy, compareConfigs, estimatePower, quantileSorted, summarizeConfig, wilson,
+  MPE_DEFAULT, MIN_CASES_DEFAULT, NON_AGENT_OUTCOMES, applyPolicy, compareConfigs, dedupeRows, estimatePower, quantileSorted, summarizeConfig, wilson,
 } from "../stats/index.ts";
 import type { MetricName, RunRow } from "../stats/index.ts";
 import type {
@@ -22,7 +22,27 @@ export function toRow(r: RunResult): RunRow {
     durationMs: r.durationMs,
     outcome: r.outcome,
     rep: r.repetition,
+    runId: r.runId,
+    startedAt: r.startedAt,
+    finishedAt: r.finishedAt,
   };
+}
+
+/**
+ * A9: deduplica por (caso, config, repetición) quedándose con el último intento (finishedAt, startedAt, runId).
+ * Devuelve los runs vigentes y cuántos se descartaron (reanudaciones tras infra_error, etc.).
+ */
+export function dedupeRuns(runs: readonly RunResult[]): { runs: RunResult[]; discarded: number } {
+  const last = new Map<string, RunResult>();
+  const ord = (r: RunResult) => `${r.finishedAt}|${r.startedAt}|${r.runId}`;
+  for (const r of runs) {
+    const k = JSON.stringify([r.scenarioId, r.configurationId, r.repetition]);
+    const p = last.get(k);
+    if (!p || ord(r) >= ord(p)) last.set(k, r);
+  }
+  const keep = new Set(last.values());
+  const out = runs.filter((r) => keep.has(r));
+  return { runs: out, discarded: runs.length - out.length };
 }
 
 /** Hash estable de los datos de entrada (independiente del orden del arreglo). */
@@ -83,7 +103,9 @@ const W = { success: 0.6, tokens: 0.2, duration: 0.2 };
 export function analyze(input: readonly RunResult[], opts: ReportOptions = {}): Analysis {
   // Orden canónico: el resultado no depende del orden de entrada (suma en coma flotante estable).
   const key = (r: RunResult) => r.scenarioId + "|" + r.configurationId + "|" + String(r.repetition).padStart(8, "0") + "|" + r.runId;
-  const runs = [...input].sort((a, b) => key(a).localeCompare(key(b)));
+  const sorted = [...input].sort((a, b) => key(a).localeCompare(key(b)));
+  const dd = dedupeRuns(sorted);
+  const runs = dd.runs;
   const rows = runs.map(toRow);
   const ids = [...new Set(rows.map((r) => r.configId))].sort();
   if (!ids.length) throw new Error("analyze: sin runs");
@@ -93,22 +115,25 @@ export function analyze(input: readonly RunResult[], opts: ReportOptions = {}): 
   const seed = opts.seed ?? 1;
   const B = opts.B ?? 2000;
   const mpe = opts.mpe ?? MPE_DEFAULT;
-  const ao = { alpha, seed, B, mpe };
-  const dataHash = hashRuns(runs);
+  const minCases = opts.minCases ?? MIN_CASES_DEFAULT;
+  const ao = { alpha, seed, B, mpe, minCases };
+  const dataHash = hashRuns(sorted); // hash de la entrada completa (incluye los duplicados descartados)
   const cases = [...new Set(rows.map((r) => r.caseId))].sort();
 
   const configs: ConfigReport[] = ids.map((id) => {
     const rs = runs.filter((r) => r.configurationId === id);
-    const costs = rs.map((r) => r.telemetry.costUsd);
-    const allCost = rs.length > 0 && costs.every((c) => c !== null);
+    // M1: tokens/duración/coste solo de runs que ejecutaron al agente (sin infra_error/cancelled/rate_limited).
+    const ran = rs.filter((r) => !NON_AGENT_OUTCOMES.includes(r.outcome));
+    const costs = ran.map((r) => r.telemetry.costUsd);
+    const allCost = ran.length > 0 && costs.every((c) => c !== null);
     return {
       configId: id,
       label: id,
       itt: summarizeConfig(rows, id, "ITT", ao),
       pp: summarizeConfig(rows, id, "PP", ao),
-      tokens: dist(rs.map((r) => r.telemetry.totalTokens)),
-      duration: dist(rs.map((r) => r.durationMs)),
-      costUsdMean: allCost ? costs.reduce((a, c) => a + c!, 0) / rs.length : null,
+      tokens: dist(ran.map((r) => r.telemetry.totalTokens)),
+      duration: dist(ran.map((r) => r.durationMs)),
+      costUsdMean: allCost ? costs.reduce((a, c) => a + c!, 0) / ran.length : null,
       catastrophe: catastrophe(id, rs, alpha),
       onParetoFront: false,
     };
@@ -129,7 +154,15 @@ export function analyze(input: readonly RunResult[], opts: ReportOptions = {}): 
       for (const m of ["success", "tokens", "duration"] as MetricName[]) {
         const mc = pc.metrics[m];
         if (!mc) continue;
-        if (!mc.decision.powered) {
+        if (mc.nCases < minCases) {
+          warnings.push({ comparison: cid, metric: m, message: `Pocos casos (${pol}, ${m}): ${mc.nCases} pareados < mínimo ${minCases}; el veredicto es SIN EVIDENCIA, no EQUIVALENTE.` });
+        } else if (mc.withinFloorApplied) {
+          warnings.push({ comparison: cid, metric: m, message: `IC degenerado (${pol}, ${m}): todas las diferencias por caso son iguales; se usó la varianza intra-caso como suelo.` });
+        }
+        if (mc.holmDowngraded) {
+          warnings.push({ comparison: cid, metric: m, message: `Holm (${pol}, ${m}): la mejora no sobrevive a la corrección por métricas múltiples (p ajustado ${mc.pSignFlipHolm.toFixed(4)}); veredicto degradado a SIN EVIDENCIA.` });
+        }
+        if (mc.nCases >= minCases && !mc.decision.powered) {
           warnings.push({ comparison: cid, metric: m, message: `Baja potencia (${pol}, ${m}): efecto mínimo detectable ${mc.decision.mde.toFixed(3)} mayor que el efecto práctico mínimo ${mc.decision.margin.toFixed(3)}; un resultado nulo no prueba equivalencia.` });
         }
       }
@@ -142,11 +175,29 @@ export function analyze(input: readonly RunResult[], opts: ReportOptions = {}): 
     let power: ComparisonReport["power"] = null;
     if (nC > 0 && reps > 0) {
       const base = configs.find((c) => c.configId === baselineId)!.itt.rate;
-      const p = estimatePower({ nCases: nC, reps, baseRate: Math.min(Math.max(base, 0.05), 0.95), delta: mpe.success, alpha }, { seed, sims: opts.powerSims ?? 300, maxMs: 10_000 });
-      power = { power: p.power, simsRun: p.simsRun, truncated: p.truncated, nCases: nC, repsPerCase: reps, deltaMpe: mpe.success };
-      if (Number.isFinite(p.power) && p.power < 0.8) {
-        warnings.push({ comparison: cid, metric: "success-power", message: `Potencia estimada ${(p.power * 100).toFixed(0)} % para detectar ${(mpe.success * 100).toFixed(0)} pp de éxito con ${nC} casos x ${reps} repeticiones (objetivo 80 %).` });
+      const baseRate = Math.min(Math.max(base, 0.05), 0.95);
+      if (baseRate !== base) {
+        warnings.push({ comparison: cid, metric: "success-power", message: `La tasa base observada (${(base * 100).toFixed(1)} %) se acotó a ${(baseRate * 100).toFixed(0)} % para simular la potencia; en el techo/suelo la potencia real es menor.` });
       }
+      // M3: potencia con la regla REAL (IC inferior > MPE) para un efecto verdadero de 2 x MPE, y con IC inferior > 0 para el MPE.
+      const sim = { seed, sims: opts.powerSims ?? 300, maxMs: 10_000 };
+      const delta = Math.min(2 * mpe.success, 1);
+      const p = estimatePower({ nCases: nC, reps, baseRate, delta, alpha, rule: "mpe", margin: mpe.success, minCases }, sim);
+      const pAny = estimatePower({ nCases: nC, reps, baseRate, delta: mpe.success, alpha, rule: "zero", minCases }, sim);
+      power = {
+        power: p.power, simsRun: p.simsRun, truncated: p.truncated || pAny.truncated, nCases: nC, repsPerCase: reps, deltaMpe: mpe.success,
+        rule: "IC inferior > MPE", delta, effectiveDelta: p.effectiveDelta, deltaClipped: p.deltaClipped,
+        powerAnyEffect: pAny.power,
+      };
+      if (p.deltaClipped) {
+        warnings.push({ comparison: cid, metric: "success-power", message: `Cerca del techo la mejora simulada se recorta: efecto efectivo ${(p.effectiveDelta * 100).toFixed(1)} pp en vez de ${(delta * 100).toFixed(0)} pp; la potencia corresponde al efecto efectivo.` });
+      }
+      if (Number.isFinite(p.power) && p.power < 0.8) {
+        warnings.push({ comparison: cid, metric: "success-power", message: `Potencia estimada ${(p.power * 100).toFixed(0)} % para declarar MEJORA (IC inferior > ${(mpe.success * 100).toFixed(0)} pp) si la mejora real es de ${(delta * 100).toFixed(0)} pp, con ${nC} casos x ${reps} repeticiones (objetivo 80 %).` });
+      }
+    }
+    if (ids.length > 2) {
+      warnings.push({ comparison: cid, metric: "success", message: `Hay ${ids.length - 1} candidatos frente a la base: la corrección de Holm es entre métricas de una comparación, NO entre candidatos; interpreta con cautela el mejor de varios.` });
     }
     comparisons.push({ id: cid, comparison, power, warnings });
   }
@@ -185,6 +236,7 @@ export function analyze(input: readonly RunResult[], opts: ReportOptions = {}): 
   }
 
   const warnings = [
+    ...(dd.discarded > 0 ? [`${dd.discarded} runs descartados por repetición duplicada (se conservó el último intento de cada caso, config y repetición).`] : []),
     ...comparisons.flatMap((c) => c.warnings.map((w) => w.message)),
     ...configs.filter((c) => c.itt.tokens.nulls > 0).map((c) => `${c.configId}: ${c.itt.tokens.nulls} runs sin tokens declarados (null, no 0).`),
   ];
@@ -192,8 +244,8 @@ export function analyze(input: readonly RunResult[], opts: ReportOptions = {}): 
   return jsonSafe({
     schemaVersion: "1" as const,
     title: opts.title ?? "Informe agent-bench",
-    data: { runs: runs.length, dataHash, dataVersion: REPORT_DATA_VERSION, cases: cases.length, configs: ids.length },
-    options: { baselineId, alpha, seed, B, mpe, composite: !!opts.composite },
+    data: { runs: runs.length, runsRaw: sorted.length, duplicatesDiscarded: dd.discarded, dataHash, dataVersion: REPORT_DATA_VERSION, cases: cases.length, configs: ids.length },
+    options: { baselineId, alpha, seed, B, mpe, minCases, composite: !!opts.composite },
     configs, comparisons, stability, composite, warnings,
   });
 }
@@ -226,7 +278,7 @@ export function buildClaims(a: Analysis, opts: ReportOptions = {}): ClaimsFile {
   const input = opts.inputRef ?? "results/runs.jsonl";
   const { dataHash, dataVersion } = a.data;
   const cmd = (id: string) =>
-    `node bin/agent-bench.ts report --input ${input} --baseline ${a.options.baselineId} --seed ${a.options.seed} --boot ${a.options.B} --alpha ${a.options.alpha}${a.options.composite ? " --composite" : ""} --verify-claim ${id}`;
+    `node bin/agent-bench report --input ${input} --baseline ${a.options.baselineId} --seed ${a.options.seed} --boot ${a.options.B} --alpha ${a.options.alpha}${a.options.minCases !== MIN_CASES_DEFAULT ? ` --min-cases ${a.options.minCases}` : ""}${a.options.composite ? " --composite" : ""} --verify-claim ${id}`;
   const claims: Claim[] = [];
   const add = (id: string, text: string, path: string) => {
     const v = get(a, path);

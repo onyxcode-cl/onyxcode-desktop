@@ -20,7 +20,7 @@ main{max-width:980px;margin:0 auto;padding:16px}h1{font-size:1.5rem;margin:.2em 
 table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600}
 td.n{text-align:right;font-variant-numeric:tabular-nums}caption{text-align:left;color:var(--mut);padding:4px 0}
 .tag{display:inline-block;border-radius:4px;padding:1px 7px;font-weight:600;font-size:.8rem}
-.v-mejora,.v-mejoramenor{background:var(--okbg);color:var(--ok)}.v-peor{background:var(--badbg);color:var(--bad)}.v-equivalente,.v-sinevidencia{background:var(--nobg);color:var(--fg)}
+.v-mejora,.v-mejoramenor{background:var(--okbg);color:var(--ok)}.v-peor,.v-posible{background:var(--badbg);color:var(--bad)}.v-equivalente,.v-sinevidencia{background:var(--nobg);color:var(--fg)}
 .warn{background:var(--warnbg);color:var(--fg);border-left:4px solid var(--warn);padding:6px 10px;margin:6px 0;border-radius:4px}
 .alert{background:var(--badbg);border-left:4px solid var(--bad);padding:6px 10px;margin:6px 0;border-radius:4px}
 button{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid var(--c0);outline-offset:2px}
@@ -34,8 +34,8 @@ code{font:12px ui-monospace,Menlo,monospace;word-break:break-all}@media print{bu
 const SCRIPT = `(function(){var b=document.getElementById("theme");if(!b)return;b.addEventListener("click",function(){var r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.setAttribute("data-theme",d?"light":"dark");});})();`;
 
 export function verdictTag(v: string): string {
-  const k = v === "MEJORA" ? "mejora" : v === "MEJORA MENOR" ? "mejoramenor" : v.startsWith("PEOR") ? "peor" : v === "EQUIVALENTE" ? "equivalente" : "sinevidencia";
-  const icon = k.startsWith("mejora") ? "▲" : k === "peor" ? "▼" : k === "equivalente" ? "=" : "?";
+  const k = v === "MEJORA" ? "mejora" : v === "MEJORA MENOR" ? "mejoramenor" : v.startsWith("PEOR") ? "peor" : v.startsWith("POSIBLE") ? "posible" : v === "EQUIVALENTE" ? "equivalente" : "sinevidencia";
+  const icon = k.startsWith("mejora") ? "▲" : k === "peor" || k === "posible" ? "▼" : k === "equivalente" ? "=" : "?";
   return `<span class="tag v-${k}">${icon} ${esc(v)}</span>`;
 }
 
@@ -56,7 +56,7 @@ function abTable(a: Analysis): string {
     for (const [m, name] of [["success", "Éxito (puntos porcentuales)"], ["tokens", "Tokens (cambio relativo)"], ["duration", "Duración (cambio relativo)"]] as const) {
       s += `<tr><th scope="row">${name}</th>${cell(c.comparison.itt.metrics[m])}</tr>`;
     }
-    s += `</tbody></table><p class="note">Pareado por caso; IC por bootstrap de casos. Margen práctico: éxito ${P(a.options.mpe.success, 0)}, tokens ${P(a.options.mpe.tokens, 0)}, duración ${P(a.options.mpe.duration, 0)}.${c.power && c.power.power !== null ? ` Potencia estimada para detectar el margen de éxito: ${P(c.power.power, 0)} (${c.power.nCases} casos x ${c.power.repsPerCase} reps${c.power.truncated ? ", truncada por tiempo" : ""}).` : ""}</p></div>`;
+    s += `</tbody></table><p class="note">Pareado por caso; IC por bootstrap de casos. Margen práctico: éxito ${P(a.options.mpe.success, 0)}, tokens ${P(a.options.mpe.tokens, 0)}, duración ${P(a.options.mpe.duration, 0)}.${c.power && c.power.power !== null ? ` Potencia estimada de declarar MEJORA (IC inferior > MPE) si la mejora real es de ${P(c.power.delta, 0)}: ${P(c.power.power, 0)}; de excluir 0 con una mejora igual al MPE: ${P(c.power.powerAnyEffect, 0)} (${c.power.nCases} casos x ${c.power.repsPerCase} reps${c.power.truncated ? ", truncada por tiempo" : ""}).` : ""}</p></div>`;
   }
   return s;
 }

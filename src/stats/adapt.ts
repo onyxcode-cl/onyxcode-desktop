@@ -13,6 +13,9 @@ export function runResultToRow(r: RunResult): RunRow {
     durationMs: r.durationMs,
     outcome: r.outcome,
     rep: r.repetition,
+    runId: r.runId,
+    startedAt: r.startedAt,
+    finishedAt: r.finishedAt,
   };
 }
 

@@ -7,7 +7,7 @@ import { renderMarkdown } from "./text.ts";
 import type { ReportOptions } from "./types.ts";
 
 export * from "./types.ts";
-export { analyze, buildClaims, verifyClaims, catastropheReasons, hashRuns, toRow, jsonSafe, resolvePath } from "./analyze.ts";
+export { analyze, buildClaims, dedupeRuns, verifyClaims, catastropheReasons, hashRuns, toRow, jsonSafe, resolvePath } from "./analyze.ts";
 export { renderHtml } from "./html.ts";
 export { renderMarkdown } from "./text.ts";
 

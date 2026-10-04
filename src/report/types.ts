@@ -9,6 +9,8 @@ export interface ReportOptions {
   /** Remuestreos bootstrap (por defecto 2000 para informes rápidos). */
   B?: number;
   mpe?: Mpe;
+  /** Mínimo de casos pareados para emitir veredicto (por defecto 10). */
+  minCases?: number;
   /** Score compuesto opcional. DESACTIVADO por defecto. */
   composite?: boolean;
   /** Ruta que se escribe en los comandos de reproducción de claims. */
@@ -68,7 +70,13 @@ export interface ComparisonReport {
   id: string;
   comparison: Comparison;
   /** Potencia estimada (Monte Carlo) de detectar el MPE de éxito con el diseño observado. */
-  power: { power: number | null; simsRun: number; truncated: boolean; nCases: number; repsPerCase: number; deltaMpe: number } | null;
+  power: {
+    /** Potencia de declarar MEJORA (IC inferior > MPE) si la mejora verdadera es `delta` (2 x MPE). */
+    power: number | null; simsRun: number; truncated: boolean; nCases: number; repsPerCase: number; deltaMpe: number;
+    rule: string; delta: number; effectiveDelta: number | null; deltaClipped: boolean;
+    /** Potencia de IC inferior > 0 para una mejora verdadera igual al MPE. */
+    powerAnyEffect: number | null;
+  } | null;
   warnings: PowerWarning[];
 }
 
@@ -84,8 +92,8 @@ export interface CompositeEntry {
 export interface Analysis {
   schemaVersion: "1";
   title: string;
-  data: { runs: number; dataHash: string; dataVersion: string; cases: number; configs: number };
-  options: { baselineId: string; alpha: number; seed: number; B: number; mpe: Mpe; composite: boolean };
+  data: { runs: number; runsRaw: number; duplicatesDiscarded: number; dataHash: string; dataVersion: string; cases: number; configs: number };
+  options: { baselineId: string; alpha: number; seed: number; B: number; mpe: Mpe; minCases: number; composite: boolean };
   configs: ConfigReport[];
   comparisons: ComparisonReport[];
   stability: StabilityRow[];

@@ -96,8 +96,9 @@ test("claims reproducibles: comando, hash y valores recomputables", () => {
   const h = hashRuns(runs);
   for (const c of claims.claims) {
     assert.equal(c.dataHash, h);
-    assert.match(c.command, /agent-bench\.ts report .*--verify-claim /);
+    assert.match(c.command, /^node bin\/agent-bench report .*--verify-claim /);
     assert.ok(c.command.includes(c.id));
+    assert.doesNotMatch(c.command, /agent-bench\.ts/, "el binario real es bin/agent-bench, sin extensión");
     assert.deepEqual(resolvePath(analysis, c.path) ?? null, c.value, c.id);
   }
   assert.equal(hashRuns([...runs].reverse()), h, "hash independiente del orden");
@@ -130,4 +131,49 @@ test("markdown para terminal", () => {
   assert.match(md, /## Comparaciones A\/B/);
   assert.match(md, /PEOR-REGRESIÓN/);
   assert.match(md, /✓|✗|~/);
+});
+
+// ---- Cambios tras la auditoría ----
+import { dedupeRuns } from "../../src/report/index.ts";
+
+test("A9: analyze deduplica por (caso, config, repetición), avisa y registra los descartados", () => {
+  const base = makeRuns(7, 12, 2);
+  const retry = base.filter((r) => r.configurationId === "base" && r.repetition === 0).map((r, i) => ({
+    ...r, runId: `ffffffff-0000-4000-8000-${String(i).padStart(12, "0")}`, outcome: "infra_error" as const, success: null,
+    startedAt: "2020-01-01T00:00:00.000Z", finishedAt: "2020-01-01T00:00:01.000Z",
+  }));
+  const withDup = [...base, ...retry];
+  assert.equal(dedupeRuns(withDup).discarded, retry.length);
+  const a = analyze(withDup, { baselineId: "base", B: 200, powerSims: 30 });
+  const b = analyze(base, { baselineId: "base", B: 200, powerSims: 30 });
+  assert.equal(a.data.duplicatesDiscarded, retry.length);
+  assert.equal(a.data.runs, base.length);
+  assert.equal(a.data.runsRaw, withDup.length);
+  assert.ok(a.warnings.some((w) => /descartados por repetición duplicada/.test(w)));
+  // Los intentos viejos (anteriores) no alteran los resultados.
+  assert.deepEqual(a.comparisons, b.comparisons);
+  assert.deepEqual(a.configs, b.configs);
+});
+
+test("M1: el informe no cuenta duración/tokens de runs infra_error en las distribuciones", () => {
+  const rs = makeRuns(7, 12, 2).map((r, i) => (i === 0 ? { ...r, outcome: "infra_error" as const, success: null, durationMs: 3 } : r));
+  const cfg = analyze(rs, { baselineId: "base", B: 100, powerSims: 20 }).configs.find((c) => c.configId === rs[0]!.configurationId)!;
+  assert.ok(cfg.duration.min !== 3);
+});
+
+test("A8: informe con 3 casos x 1 rep: SIN EVIDENCIA con aviso de pocos casos, nunca EQUIVALENTE", () => {
+  const a = analyze(makeRuns(7, 3, 1), { baselineId: "base", B: 100, powerSims: 20 });
+  for (const c of a.comparisons) {
+    assert.equal(c.comparison.itt.metrics.success!.decision.veredicto, "SIN EVIDENCIA");
+    assert.notEqual(c.comparison.itt.overall, "EQUIVALENTE");
+    assert.ok(c.warnings.some((w) => /Pocos casos/.test(w.message)));
+  }
+});
+
+test("M3: el informe describe la potencia con la regla real IC > MPE", () => {
+  const a = analyze(runs, opts);
+  const p = a.comparisons[0]!.power!;
+  assert.equal(p.rule, "IC inferior > MPE");
+  assert.equal(p.delta, 0.1);
+  assert.ok(p.powerAnyEffect !== null);
 });
