@@ -88,6 +88,8 @@ export interface RemoteServiceDeps {
   siteCheck?: () => 'ok' | 'mismatch' | 'unknown'
   /** Capacidades que se anuncian a un celular v4 (`caps`); p. ej. `entry` cuando el Mac sabe mandar su lista de archivos. */
   caps?: () => RemoteCap[]
+  /** Vigilancia del sitio firmado: se enciende con el modo nube y se apaga con él. */
+  siteWatch?: { start(): void; stop(): void }
   /** Archivos de arranque de la interfaz completa con su SRI (versión de ESTE Mac); solo se usa en el modo nube. */
   entry?: () => { v: string; js: string; files: import('@shared/remote/protocol').EntryFile[] } | null
 }
@@ -330,7 +332,10 @@ export class RemoteService {
     this.rtc = rtc
     this.ip = ip
     this.transport = transport
-    if (cloud) this.d.audit?.({ kind: 'cloud-started' })
+    if (cloud) {
+      this.d.audit?.({ kind: 'cloud-started' })
+      this.d.siteWatch?.start()
+    }
     // Política sin «recordar»: los vínculos no sobreviven entre activaciones (se borran los que quedaran de antes).
     if (!this.pol().allowRemember) this.purgeDevices()
     if (quiet) this.mode = 'active'
@@ -505,6 +510,7 @@ export class RemoteService {
     this.transport = null
     this.connMode = 'lan'
     this.roomId = ''
+    this.d.siteWatch?.stop()
     await transport?.stop().catch(() => undefined)
     if (peers.length > 0) await new Promise((r) => setTimeout(r, FLUSH_MS))
     for (const p of peers) this.closePeer(p, true)
@@ -928,6 +934,13 @@ export class RemoteService {
   /** ¿El servicio está en marcha con el servicio de conexión (modo nube)? */
   isCloudRunning(): boolean {
     return this.mode !== 'off' && this.connMode === 'cloud'
+  }
+
+  /** La vigilancia del sitio cambió de estado: se cierra o reabre el enlace con el servicio y se refresca Ajustes. */
+  onSiteChange(): void {
+    if (this.mode === 'off' || this.connMode !== 'cloud') return
+    this.transport?.recheck?.()
+    this.changed()
   }
 
   /** El Mac se va a dormir (`true`) o despertó (`false`): el socket saliente se cierra/reabre al instante. */

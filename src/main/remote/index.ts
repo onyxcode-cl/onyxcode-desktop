@@ -18,6 +18,8 @@ import type { EventStreamClient } from './events'
 import { pickLanIp } from './lan-ip'
 import { qrMatrix } from './qr'
 import { loadEntryInfo, type EntryInfo } from './entry-info'
+import { SiteWatch } from './site-watch'
+import { SITE_KEY_ID, SITE_PUBLIC_KEY } from '@shared/brand'
 import { invokeAs } from '../ipc/handle'
 import { subscribeRemote } from '../ipc/event-bus'
 import { createEngineHost } from './engine-host'
@@ -96,6 +98,18 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     // Se lee del almacén en cada decisión: apagarlo (Ajustes, «Cortar todo») surte efecto al instante.
     canApproveCommands: (id) => d.devices.canApproveCommands(id)
   })
+  // Vigilancia del sitio firmado (solo con el modo nube en marcha). Un cambio cierra o reabre el enlace con el servicio.
+  let svcRef: RemoteService | null = null
+  const watch = new SiteWatch({
+    publicKey: SITE_PUBLIC_KEY,
+    keyId: SITE_KEY_ID,
+    fetch: (url, init) => fetch(url, init),
+    getMinSeq: () => d.devices.getSiteSeq(),
+    setMinSeq: (n) => d.devices.setSiteSeq(n),
+    audit: (e) => d.audit(e),
+    onChange: () => svcRef?.onSiteChange()
+  })
+  const sitePaused = (): boolean => watch.paused() || (d.cloudPaused?.() ?? false)
   let entryInfo: EntryInfo | null | undefined
   const entry = (): EntryInfo | null => {
     entryInfo ??= loadEntryInfo(join(d.pwaDir, 'app'), app.getVersion())
@@ -113,7 +127,7 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
             // Sin permiso de la política (o con el sitio en pausa) no se crea ningún socket saliente.
             allowed: () => {
               const p = d.policy()
-              return !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && !(d.cloudPaused?.() ?? false)
+              return !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && !sitePaused()
             }
           })
         : new LanSignalingServer({
@@ -134,12 +148,14 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     audit: d.audit,
     confirmEnableApprove: d.confirmEnableApprove,
     policy: d.policy,
-    cloudPaused: d.cloudPaused,
-    siteCheck: d.siteCheck,
+    cloudPaused: sitePaused,
+    siteCheck: () => d.siteCheck?.() ?? (SITE_PUBLIC_KEY ? watch.state() : 'unknown'),
+    siteWatch: watch,
     // `entry`: archivos de arranque de la interfaz completa con su SRI (solo modo nube). Se calcula una vez, al primer uso.
     caps: () => d.caps?.() ?? (entry() ? ['entry'] : []),
     entry
   })
+  svcRef = svc
   watchPowerAndNetwork(svc)
   return svc
 }

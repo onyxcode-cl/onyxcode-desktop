@@ -116,17 +116,18 @@ export interface CloudPrefs {
 export const DEFAULT_CLOUD_PREFS: CloudPrefs = { connection: 'lan', away: false }
 
 /** Bloque `cloud` del archivo: solo valores exactos; cualquier otra cosa deja el valor por defecto (lo más cerrado). */
-function parseCloud(raw: string): { prefs: CloudPrefs; hostToken: string | null } {
+function parseCloud(raw: string): { prefs: CloudPrefs; hostToken: string | null; siteSeq: number } {
   try {
     const c = (JSON.parse(raw) as { cloud?: unknown }).cloud
-    if (!c || typeof c !== 'object') return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null }
+    if (!c || typeof c !== 'object') return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null, siteSeq: 0 }
     const o = c as Record<string, unknown>
     return {
       prefs: { connection: o.connection === 'cloud' ? 'cloud' : 'lan', away: o.away === true },
-      hostToken: isHostToken(o.hostToken) ? o.hostToken : null
+      hostToken: isHostToken(o.hostToken) ? o.hostToken : null,
+      siteSeq: typeof o.siteSeq === 'number' && Number.isSafeInteger(o.siteSeq) && o.siteSeq > 0 ? o.siteSeq : 0
     }
   } catch {
-    return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null }
+    return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null, siteSeq: 0 }
   }
 }
 
@@ -218,6 +219,8 @@ export class DevicesStore {
   private cloudPrefs: CloudPrefs = { ...DEFAULT_CLOUD_PREFS }
   /** Secreto con el que ESTE Mac se presenta como dueño de su sala en el servicio de conexión (la sala es su sha256). */
   private hostTok: string | null = null
+  /** Último `seq` aceptado del manifiesto del sitio: no se acepta uno menor (sin retrocesos). */
+  private siteSeq = 0
 
   constructor(
     private readonly file: string,
@@ -248,6 +251,7 @@ export class DevicesStore {
         const cloud = parseCloud(raw)
         this.cloudPrefs = cloud.prefs
         this.hostTok = cloud.hostToken
+        this.siteSeq = cloud.siteSeq
         if (migrated) {
           // Formato anterior: se reescribe ya (si no, la ventana de 90 días se reiniciaría en cada arranque).
           this.cache = list
@@ -272,7 +276,11 @@ export class DevicesStore {
         devices: this.load(),
         ...(this.port === null ? {} : { port: this.port }),
         prefs: this.prefs,
-        cloud: { ...this.cloudPrefs, ...(this.hostTok ? { hostToken: this.hostTok } : {}) }
+        cloud: {
+          ...this.cloudPrefs,
+          ...(this.hostTok ? { hostToken: this.hostTok } : {}),
+          ...(this.siteSeq > 0 ? { siteSeq: this.siteSeq } : {})
+        }
       })
     )
     mkdirSync(dirname(this.file), { recursive: true })
@@ -586,6 +594,24 @@ export class DevicesStore {
       return null
     }
     return this.hostTok
+  }
+
+  /** Último `seq` aceptado del manifiesto firmado del sitio (0 = ninguno). */
+  getSiteSeq(): number {
+    this.load()
+    return this.siteSeq
+  }
+
+  /** Solo sube (un valor menor se ignora). No es crítico si no se puede escribir. */
+  setSiteSeq(seq: number): void {
+    this.load()
+    if (!Number.isSafeInteger(seq) || seq <= this.siteSeq) return
+    this.siteSeq = seq
+    try {
+      this.save()
+    } catch {
+      /* sin cifrado no se guarda: se vuelve a aprender en la próxima comprobación */
+    }
   }
 
   /** «Renovar dirección del servicio»: el token cambia y los celulares deberán volver a vincularse. */

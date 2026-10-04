@@ -70,3 +70,35 @@ export function swWithBuild(src, build) {
   if (out === src) throw new Error('sw.js sin __BUILD__')
   return out
 }
+
+// ---- manifiesto firmado del sitio (lo comprueba el Mac: src/shared/remote/site-manifest.ts + src/main/remote/site-watch.ts) ----
+
+export const MANIFEST_NAME = 'site-manifest.json'
+export const SIGNATURE_NAME = 'site-manifest.sig'
+
+/** Archivos del arranque que el Mac vigila: la página, el service worker, el manifiesto de la app y todo JS/CSS que `index.html` enlaza. */
+export function startupPaths(indexHtml) {
+  const out = new Set(['index.html', 'sw.js', 'manifest.webmanifest'])
+  for (const m of indexHtml.matchAll(/\b(?:src|href)="\.\/(assets\/[A-Za-z0-9._-]+\.(?:js|css))"/g)) out.add(m[1])
+  return [...out]
+}
+
+/** Manifiesto del sitio. `files` = [{p, sha256}] de TODO lo que se sirve (sin `_headers`, que Cloudflare consume y no sirve). */
+export function buildSiteManifest({ files, startup, build, version, keyId, seq, csp, publishedAt }) {
+  return {
+    v: 1,
+    keyId,
+    build,
+    version,
+    seq,
+    publishedAt,
+    csp,
+    files: [...files].sort((a, b) => (a.p < b.p ? -1 : 1)).map((f) => ({ p: f.p, sha256: f.sha256 })),
+    startup
+  }
+}
+
+/** Bytes EXACTOS que se firman: el Mac verifica sobre ellos antes de interpretar el JSON. */
+export function siteManifestBytes(m) {
+  return Buffer.from(JSON.stringify(m, null, 2) + '\n', 'utf8')
+}

@@ -59,3 +59,13 @@ export const ACCOUNT_API = 'https://api.onyxcode.cl' as string | null
 /** Política de privacidad y términos publicados (URL `https://…`). Vacío = la pantalla muestra el borrador local. */
 export const PRIVACY_URL = '' as string
 export const TERMS_URL = '' as string
+
+/**
+ * Clave PÚBLICA Ed25519 (SPKI DER en base64, 44 bytes, o los 32 crudos) con la que el Mac comprueba el manifiesto firmado del sitio
+ * del control remoto («También fuera de casa»; `site-manifest.json` + `.sig`). Vacía = la vigilancia queda «sin verificar» y el modo
+ * nube funciona igual, avisando en Ajustes. La PRIVADA la genera el dueño fuera del repo y nunca va a CI ni a Cloudflare
+ * (cloud/remoto-worker/README.md); el sitio se firma y publica solo desde su Mac con `scripts/site-release.mjs`.
+ */
+export const SITE_PUBLIC_KEY = '' as string
+/** Identificador de esa clave; va dentro del manifiesto firmado (`keyId`) y permite rotarla con una versión nueva de la app. */
+export const SITE_KEY_ID = 'onyxcode-site-1' as string
