@@ -164,6 +164,7 @@ export interface ReportRequest {
   alpha?: number;
   seed?: number;
   boot?: number;
+  minCases?: number;
   composite?: boolean;
   title?: string;
   inputRef?: string;
@@ -197,6 +198,7 @@ export async function loadReport(): Promise<ReportApi> {
     if (r.alpha !== undefined) o["alpha"] = r.alpha;
     if (r.seed !== undefined) o["seed"] = r.seed;
     if (r.boot !== undefined) o["B"] = r.boot;
+    if (r.minCases !== undefined) o["minCases"] = r.minCases;
     if (r.composite !== undefined) o["composite"] = r.composite;
     if (r.title !== undefined) o["title"] = r.title;
     if (r.inputRef !== undefined) o["inputRef"] = r.inputRef;

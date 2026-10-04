@@ -186,6 +186,16 @@ test("run real con fake de punta a punta: run, reanudar, list runs, compare, rep
     assert.equal(bad.code, EXIT.FALLO);
     assert.equal(bad.j.reproducible, false);
     assert.equal((await run(["report", "mini", "--results", results, "--verify-claim", "no.existe"])).code, EXIT.DATOS);
+    // --min-cases: llega al análisis, los comandos de claims lo incluyen y --verify-claim lo hereda de analysis.json
+    assert.equal((await run(["report", "mini", "--results", results, "--seed", "5", "--boot", "200"])).code, 0);
+    assert.ok(!JSON.parse(readFileSync(cp, "utf8")).claims.some((c: { command: string }) => c.command.includes("--min-cases")), "valor por defecto: sin --min-cases");
+    const rm = await run(["report", "mini", "--results", results, "--seed", "5", "--boot", "200", "--min-cases", "3"]);
+    assert.equal(rm.code, 0);
+    assert.equal(JSON.parse(readFileSync(join(results, "mini", "report", "analysis.json"), "utf8")).options.minCases, 3);
+    const claims3 = JSON.parse(readFileSync(cp, "utf8")).claims as { command: string }[];
+    assert.ok(claims3.length > 0 && claims3.every((c) => c.command.includes("--min-cases 3")));
+    assert.equal((await run(["report", "mini", "--results", results, "--verify-claim", "all"])).j.reproducible, true);
+    assert.equal((await main(["report", "mini", "--results", results, "--min-cases", "0"], ctx)), EXIT.USO);
   } finally { f.done(); }
 });
 

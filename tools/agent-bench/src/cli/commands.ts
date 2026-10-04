@@ -456,6 +456,7 @@ const REPORT_OPTS = (extra: OptTable = {}): OptTable =>
     baseline: { kind: "string" },
     alpha: { kind: "number", min: 0.0001, max: 0.5 },
     boot: { kind: "int", min: 1 },
+    "min-cases": { kind: "int", min: 1 },
     composite: { kind: "boolean" },
     ...extra,
   });
@@ -483,12 +484,13 @@ const reportReq = (p: Parsed) => ({
   ...(n(p, "alpha") !== undefined ? { alpha: n(p, "alpha")! } : {}),
   ...(n(p, "seed") !== undefined ? { seed: n(p, "seed")! } : {}),
   ...(n(p, "boot") !== undefined ? { boot: n(p, "boot")! } : {}),
+  ...(n(p, "min-cases") !== undefined ? { minCases: n(p, "min-cases")! } : {}),
   ...(b(p, "composite") ? { composite: true } : {}),
 });
 
 const compareCmd: CommandDef = {
   summary: "Compara configuraciones de un experimento (tabla en pantalla)",
-  usage: "agent-bench compare EXPERIMENTO [--baseline CONFIG] [--alpha 0.05] [--seed N] [--boot N] [--results DIR] [--json]",
+  usage: "agent-bench compare EXPERIMENTO [--baseline CONFIG] [--alpha 0.05] [--seed N] [--boot N] [--min-cases N] [--results DIR] [--json]",
   opts: REPORT_OPTS(),
   async run(p, ctx) {
     const l = await loadRuns(p, ctx);
@@ -510,7 +512,7 @@ const compareCmd: CommandDef = {
 const reportCmd: CommandDef = {
   summary: "Genera el informe (analysis.json, claims.json, report.html, report.md) o verifica una afirmación",
   usage:
-    "agent-bench report EXPERIMENTO [--out DIR] [--baseline CONFIG] [--alpha 0.05] [--seed N] [--boot N] [--composite] [--results DIR] [--json]\n" +
+    "agent-bench report EXPERIMENTO [--out DIR] [--baseline CONFIG] [--alpha 0.05] [--seed N] [--boot N] [--min-cases N] [--composite] [--results DIR] [--json]\n" +
     "       agent-bench report EXPERIMENTO --verify-claim ID|all [--claims claims.json] [--results DIR]   (recomputa desde los runs y compara; 0 = reproducible, 1 = difiere)\n" +
     "       --input DIR y --experiment ID equivalen a --results DIR y al posicional (así los comandos de claims.json son ejecutables)",
   opts: REPORT_OPTS({ "dry-run": { kind: "boolean" }, "verify-claim": { kind: "string" }, claims: { kind: "string" } }),
@@ -533,7 +535,7 @@ const reportCmd: CommandDef = {
       if (chosen.length === 0) return fail(EXIT.DATOS, `la afirmación "${verify}" no existe en ${claimsPath}`);
       // Opciones del análisis: las de analysis.json (si existe) y, encima, las flags explícitas.
       const apath = join(dirname(claimsPath), "analysis.json");
-      let saved: { baselineId?: string; alpha?: number; seed?: number; B?: number; composite?: boolean } = {};
+      let saved: { baselineId?: string; alpha?: number; seed?: number; B?: number; minCases?: number; composite?: boolean } = {};
       if (existsSync(apath)) {
         try {
           saved = (JSON.parse(readFileSync(apath, "utf8")) as { options?: typeof saved }).options ?? {};
@@ -546,6 +548,7 @@ const reportCmd: CommandDef = {
         ...(saved.alpha !== undefined ? { alpha: saved.alpha } : {}),
         ...(saved.seed !== undefined ? { seed: saved.seed } : {}),
         ...(saved.B !== undefined ? { boot: saved.B } : {}),
+        ...(saved.minCases !== undefined ? { minCases: saved.minCases } : {}),
         ...(saved.composite ? { composite: true } : {}),
         ...reportReq(p),
       };
