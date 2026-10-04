@@ -228,6 +228,9 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
           // Windows (sesión SSH sin escritorio): sin esto Chromium da las ventanas por ocultas/tapadas y descarta la entrada de CDP
           // en las vistas incrustadas (WebContentsView). Solo pruebas: la app no cambia.
           ...(process.platform === 'win32' ? ['--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows'] : []),
+          // macOS: llavero falso en memoria (como hace Playwright). Sin esto el Electron de desarrollo, que se llama como la app, pide en
+          // cada arranque acceso a la clave REAL «<app> Safe Storage» del Llavero del usuario y sale el aviso «Llavero no encontrado».
+          ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
           join(ROOT, 'out/main/index.js'),
           `--user-data-dir=${userData}`
         ],

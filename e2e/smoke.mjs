@@ -140,7 +140,7 @@ async function main() {
 
   let out = ''
   let scanned = 0
-  child = spawn('npx', ['electron-vite', 'dev', '--', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userData}`], {
+  child = spawn('npx', ['electron-vite', 'dev', '--', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userData}`, ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : [])], {
     cwd: root,
     env,
     detached: true,
