@@ -19,7 +19,10 @@ export interface SignalingPeer {
 }
 
 export interface SignalingStartOptions {
-  /** Decide si el `hello` es válido (consume el secreto de un solo uso o reconoce el dispositivo). */
+  /**
+   * Decide si el `hello` es válido: reconoce el `qid` de un QR vigente (NO lo consume: un `qid` ajeno suma un fallo al QR) o el
+   * dispositivo. Nunca recibe un secreto: `q` y el secreto de dispositivo no salen del celular.
+   */
   authorize(hello: SignalHello): boolean
 }
 

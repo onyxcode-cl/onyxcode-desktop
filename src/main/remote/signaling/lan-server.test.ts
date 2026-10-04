@@ -27,7 +27,7 @@ beforeEach(async () => {
     await server.start({
       authorize: (h) => {
         hellos.push(h)
-        return h.mode === 'pair' ? h.secret === SECRET : true
+        return h.mode === 'pair' ? h.qid === SECRET : true
       }
     })
   ).origin
@@ -98,17 +98,17 @@ describe('LanSignalingServer', () => {
     await expect(connect({ host: 'evil.example' })).rejects.toThrow()
   })
 
-  it('hello válido: ready, peer y consumo del secreto; hello inválido: error y cierre', async () => {
+  it('hello válido: ready y peer (sin consumir nada); hello inválido: error y cierre', async () => {
     const ok = await connect()
     const readyP = next(ok)
-    ok.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', secret: SECRET, deviceName: 'Pixel' }))
+    ok.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', qid: SECRET, deviceName: 'Pixel' }))
     expect(JSON.parse(await readyP)).toEqual({ t: 'ready' })
     expect(peers).toHaveLength(1)
     expect(hellos[0]).toMatchObject({ mode: 'pair', deviceName: 'Pixel' })
 
     const bad = await connect()
     const errP = next(bad)
-    bad.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', secret: 'X'.repeat(43), deviceName: 'x' }))
+    bad.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', qid: 'X'.repeat(43), deviceName: 'x' }))
     expect(JSON.parse(await errP)).toEqual({ t: 'error', code: 'invalid' })
     await closed(bad)
     expect(peers).toHaveLength(1)
@@ -125,7 +125,12 @@ describe('LanSignalingServer', () => {
     const pv1 = next(v1)
     v1.send(JSON.stringify({ t: 'hello', v: 1, mode: 'resume', deviceId: 'a'.repeat(32) }))
     expect(JSON.parse(await pv1)).toEqual({ t: 'error', code: 'version' })
-    expect(PROTOCOL_VERSION).toBe(2)
+    // Una pestaña v2 (pair con `secret`, forma que ya no existe) también ve «versión» y su secreto no llega a `authorize`.
+    const v2 = await connect()
+    const pv2 = next(v2)
+    v2.send(JSON.stringify({ t: 'hello', v: 2, mode: 'pair', secret: SECRET, deviceName: 'viejo' }))
+    expect(JSON.parse(await pv2)).toEqual({ t: 'error', code: 'version' })
+    expect(PROTOCOL_VERSION).toBe(3)
     const b = await connect()
     const p2 = next(b)
     b.send(JSON.stringify({ t: 'offer', sdp: 'v=0\r\nabc' }))

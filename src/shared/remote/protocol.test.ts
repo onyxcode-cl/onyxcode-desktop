@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromBase64Url, pairingCode, sdpFingerprint, toBase64Url } from './code'
+import { fromBase64Url, toBase64Url } from './code'
 import { LIMITS, parseClientFrame, parseHostFrame, parseSignalClientFrame, parseSignalHostFrame, sanitizeDeviceName } from './protocol'
 
 const RLO = String.fromCharCode(0x202e)
@@ -41,21 +41,52 @@ describe('protocolo remoto: tramas del celular', () => {
     expect(parseClientFrame(new Uint8Array(3)).ok).toBe(false)
   })
 
-  it('valida auth', () => {
-    expect(parseClientFrame(JSON.stringify({ t: 'auth', deviceId: DEV, secret: SECRET })).ok).toBe(true)
-    expect(parseClientFrame(JSON.stringify({ t: 'auth', deviceId: 'zz', secret: SECRET })).ok).toBe(false)
-    expect(parseClientFrame(JSON.stringify({ t: 'auth', deviceId: DEV, secret: 'corto' })).ok).toBe(false)
+  it('auth (v1/v2) ya no existe: trama desconocida', () => {
+    expect(parseClientFrame(JSON.stringify({ t: 'auth', deviceId: DEV, secret: SECRET }))).toEqual({ ok: false, reason: 'unknown-type' })
+  })
+
+  describe('handshake v3', () => {
+    const hs1 = { t: 'hs1', v: 3, mode: 'resume', id: DEV, nc: SECRET }
+    const hs1p = { t: 'hs1', v: 3, mode: 'pair', id: SECRET, nc: SECRET, cm: SECRET }
+    const ok = (o: unknown): boolean => parseClientFrame(JSON.stringify(o)).ok
+    it('hs1 válida en los dos modos', () => {
+      expect(ok(hs1)).toBe(true)
+      expect(ok(hs1p)).toBe(true)
+    })
+    it('hs1: claves de más, cm en resume, falta cm en pair, longitudes erróneas', () => {
+      expect(ok({ ...hs1, extra: 1 })).toBe(false)
+      expect(ok({ ...hs1, cm: SECRET })).toBe(false)
+      expect(ok({ ...hs1p, cm: undefined })).toBe(false)
+      expect(ok({ ...hs1p, cm: 'corto' })).toBe(false)
+      expect(ok({ ...hs1, id: 'zz' })).toBe(false)
+      expect(ok({ ...hs1, id: SECRET })).toBe(false) // resume exige un deviceId, no un qid
+      expect(ok({ ...hs1p, id: DEV })).toBe(false) // pair exige un qid
+      expect(ok({ ...hs1, nc: 'A'.repeat(42) })).toBe(false)
+      expect(ok({ ...hs1, v: 'tres' })).toBe(false)
+      expect(ok({ ...hs1, mode: 'otro' })).toBe(false)
+    })
+    it('hs3 válida; rp opcional de 22 caracteres; lo demás se rechaza', () => {
+      expect(ok({ t: 'hs3', mac: SECRET })).toBe(true)
+      expect(ok({ t: 'hs3', mac: SECRET, rp: 'A'.repeat(22) })).toBe(true)
+      expect(ok({ t: 'hs3', mac: SECRET, rp: SECRET })).toBe(false)
+      expect(ok({ t: 'hs3', mac: 'x' })).toBe(false)
+      expect(ok({ t: 'hs3', mac: SECRET, extra: 1 })).toBe(false)
+    })
   })
 })
 
 describe('protocolo remoto: señalización', () => {
   it('hello pair y resume', () => {
-    const pair = parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 1, mode: 'pair', secret: SECRET, deviceName: ' iPhone\n de Ana ' }))
+    const pair = parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 3, mode: 'pair', qid: SECRET, deviceName: ' iPhone\n de Ana ' }))
     expect(pair.ok && pair.value.t === 'hello' && pair.value.mode === 'pair' && pair.value.deviceName).toBe('iPhone de Ana')
-    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 1, mode: 'resume', deviceId: DEV })).ok).toBe(true)
-    // el secreto no puede viajar en una reconexión
-    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 1, mode: 'resume', deviceId: DEV, secret: SECRET })).ok).toBe(false)
-    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 1, mode: 'pair', secret: 'x', deviceName: 'a' })).ok).toBe(false)
+    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 3, mode: 'resume', deviceId: DEV })).ok).toBe(true)
+    // ningún secreto viaja por la señalización: ni en una reconexión ni en la vinculación (solo el `qid`)
+    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 3, mode: 'resume', deviceId: DEV, secret: SECRET })).ok).toBe(false)
+    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 3, mode: 'pair', secret: SECRET, deviceName: 'a' })).ok).toBe(false)
+    expect(
+      parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 3, mode: 'pair', qid: SECRET, secret: SECRET, deviceName: 'a' })).ok
+    ).toBe(false)
+    expect(parseSignalClientFrame(JSON.stringify({ t: 'hello', v: 3, mode: 'pair', qid: 'x', deviceName: 'a' })).ok).toBe(false)
   })
 
   it('offer/ice acotados; respuestas del host', () => {
@@ -88,28 +119,36 @@ describe('protocolo remoto: tramas del escritorio', () => {
     expect(parseHostFrame(JSON.stringify({ t: 'res', id: 1, ok: false, error: { code: 'forbidden' } })).ok).toBe(true)
     expect(parseHostFrame(JSON.stringify({ t: 'paired', deviceId: DEV, deviceSecret: SECRET })).ok).toBe(true)
   })
+
+  describe('handshake v3', () => {
+    const ok = (o: unknown): boolean => parseHostFrame(JSON.stringify(o)).ok
+    it('hs2 con o sin rm', () => {
+      expect(ok({ t: 'hs2', ns: SECRET })).toBe(true)
+      expect(ok({ t: 'hs2', ns: SECRET, rm: 'A'.repeat(22) })).toBe(true)
+      expect(ok({ t: 'hs2', ns: SECRET, rm: SECRET })).toBe(false)
+      expect(ok({ t: 'hs2', ns: 'x' })).toBe(false)
+      expect(ok({ t: 'hs2', ns: SECRET, extra: 1 })).toBe(false)
+    })
+    it('authed y pair-pending sin proof se rechazan; con proof valen', () => {
+      expect(ok({ t: 'authed' })).toBe(false)
+      expect(ok({ t: 'authed', expiresAt: 5 })).toBe(false)
+      expect(ok({ t: 'authed', proof: SECRET })).toBe(true)
+      expect(ok({ t: 'authed', proof: SECRET, expiresAt: 5, expiring: true })).toBe(true)
+      expect(ok({ t: 'authed', proof: 'corta' })).toBe(false)
+      expect(ok({ t: 'pair-pending' })).toBe(false)
+      expect(ok({ t: 'pair-pending', proof: SECRET })).toBe(true)
+    })
+    it('auth-failed: sin prueba a secas; expired exige prueba', () => {
+      expect(ok({ t: 'auth-failed' })).toBe(true)
+      expect(ok({ t: 'auth-failed', proof: SECRET })).toBe(false)
+      expect(ok({ t: 'auth-failed', why: 'expired' })).toBe(false)
+      expect(ok({ t: 'auth-failed', why: 'expired', proof: SECRET })).toBe(true)
+      expect(ok({ t: 'auth-failed', why: 'otra', proof: SECRET })).toBe(false)
+    })
+  })
 })
 
-describe('código de confirmación', () => {
-  const fp = (hex: string): string => `v=0\r\na=fingerprint:sha-256 ${hex.match(/../g)!.join(':').toUpperCase()}\r\n`
-  const A = fp('ab'.repeat(32))
-  const B = fp('12'.repeat(32))
-
-  it('es simétrico y de 6 dígitos', () => {
-    const c = pairingCode(A, B)
-    expect(c).toMatch(/^\d{6}$/)
-    expect(pairingCode(B, A)).toBe(c)
-  })
-
-  it('cambia si cambia una huella (intermediario)', () => {
-    expect(pairingCode(A, fp('34'.repeat(32)))).not.toBe(pairingCode(A, B))
-  })
-
-  it('sin huella devuelve null', () => {
-    expect(pairingCode('v=0', B)).toBeNull()
-    expect(sdpFingerprint(A)).toBe('ab'.repeat(32))
-  })
-
+describe('codificación', () => {
   it('base64url ida y vuelta', () => {
     for (const n of [0, 1, 2, 3, 31, 32]) {
       const bytes = Uint8Array.from({ length: n }, (_, i) => (i * 37 + 11) & 255)
@@ -125,17 +164,22 @@ describe('parseHostFrame: caducidad del vínculo', () => {
     return r.ok ? r.value : r.reason
   }
   it('authed admite expiresAt y expiring; auth-failed admite why=expired', () => {
-    expect(ok({ t: 'authed' })).toEqual({ t: 'authed' })
-    expect(ok({ t: 'authed', expiresAt: 123, expiring: true })).toEqual({ t: 'authed', expiresAt: 123, expiring: true })
+    expect(ok({ t: 'authed', proof: SECRET })).toEqual({ t: 'authed', proof: SECRET })
+    expect(ok({ t: 'authed', proof: SECRET, expiresAt: 123, expiring: true })).toEqual({
+      t: 'authed',
+      proof: SECRET,
+      expiresAt: 123,
+      expiring: true
+    })
     expect(ok({ t: 'auth-failed' })).toEqual({ t: 'auth-failed' })
-    expect(ok({ t: 'auth-failed', why: 'expired' })).toEqual({ t: 'auth-failed', why: 'expired' })
+    expect(ok({ t: 'auth-failed', why: 'expired', proof: SECRET })).toEqual({ t: 'auth-failed', why: 'expired', proof: SECRET })
   })
   it('rechaza tipos y claves de más', () => {
-    expect(ok({ t: 'authed', expiresAt: 'x' })).toBe('bad-expires')
-    expect(ok({ t: 'authed', expiresAt: -1 })).toBe('bad-expires')
-    expect(ok({ t: 'authed', expiring: 1 })).toBe('bad-expiring')
-    expect(ok({ t: 'authed', otra: 1 })).toBe('extra-keys')
-    expect(ok({ t: 'auth-failed', why: 'x' })).toBe('bad-why')
+    expect(ok({ t: 'authed', proof: SECRET, expiresAt: 'x' })).toBe('bad-expires')
+    expect(ok({ t: 'authed', proof: SECRET, expiresAt: -1 })).toBe('bad-expires')
+    expect(ok({ t: 'authed', proof: SECRET, expiring: 1 })).toBe('bad-expiring')
+    expect(ok({ t: 'authed', proof: SECRET, otra: 1 })).toBe('extra-keys')
+    expect(ok({ t: 'auth-failed', why: 'x', proof: SECRET })).toBe('bad-why')
     expect(ok({ t: 'auth-failed', secret: 'x' })).toBe('extra-keys')
   })
 })

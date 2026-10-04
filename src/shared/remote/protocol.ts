@@ -5,23 +5,27 @@
  * sin dependencias. Define tres cosas:
  *
  *  1. SEÑALIZACIÓN (WebSocket `ws://<ip>:<puerto>/ws`, tramas JSON de texto): solo sirve para
- *     intercambiar SDP/ICE. Nada de lo que viaja por aquí es confidencial salvo el secreto de un solo
- *     uso del QR (`hello` en modo `pair`).
+ *     intercambiar SDP/ICE. Nada de lo que viaja por aquí es un secreto (v3): ni el secreto del QR (`hello`
+ *     lleva solo su identificador público `qid`) ni el de dispositivo.
  *  2. DATACHANNEL (cifrado DTLS, un canal ordenado y fiable llamado `onyx`, tramas JSON de texto de
- *     ≤ 64 KiB): autenticación, peticiones de la lista blanca, respuestas y eventos.
+ *     ≤ 64 KiB): handshake de autenticación, peticiones, respuestas y eventos.
  *  3. LÍMITES y VALIDADORES estrictos: ambos lados validan todo lo que reciben; lo desconocido se
  *     rechaza (nunca se ignora en silencio).
  *
- * Flujo de vinculación (QR): el escritorio muestra `http://<ip-privada>:<puerto>/#s=<secreto 32 B base64url>`.
- * El secreto va en el fragmento (el navegador no lo envía al servidor). El celular abre el WebSocket de
- * señalización y manda `hello{mode:'pair', secret, deviceName}`; si es válido (un solo uso, 120 s) el
- * servidor responde `ready` y el celular manda `offer`. El escritorio responde `answer`. Cuando el canal
- * abre, ambos lados calculan el mismo código de 6 dígitos a partir de las huellas DTLS de los dos SDP
- * (`pairingCode` en `code.ts`); el escritorio pide confirmación local mostrando ese código y, al aceptar,
- * entrega `paired{deviceId, deviceSecret}` POR EL DATACHANNEL.
+ * PROTOCOLO v3 (F8-B66): autenticación mutua ligada a las huellas DTLS (`handshake.ts`). Ninguna credencial viaja; en los
+ * dos modos las primeras tramas del canal son `hs1` (celular) → `hs2` (Mac) → `hs3` (celular), y el Mac responde con una
+ * prueba (`proof`) en `authed`/`pair-pending`/`auth-failed{expired}`. El celular no manda PIN ni nada más hasta verificarla.
  *
- * Reconexión: `hello{mode:'resume', deviceId}` por señalización (sin ningún secreto) + `offer`/`answer`;
- * al abrir el canal, el celular manda `auth{deviceId, secret}` POR EL DATACHANNEL como primera trama.
+ * Flujo de vinculación (QR): el escritorio muestra `http://<ip-privada>:<puerto>/#s=<secreto q, 32 B base64url>`.
+ * El secreto va en el fragmento (el navegador no lo envía al servidor) y NO sale nunca del celular: el celular abre el
+ * WebSocket y manda `hello{mode:'pair', qid, deviceName}` con `qid = pairId(q)`; si el QR es vigente (120 s, 5 fallos lo
+ * anulan) el servidor responde `ready` y el celular manda `offer`. El escritorio responde `answer`. Cuando el canal abre,
+ * `hs1/hs2/hs3` autentican el canal con `pairKey(q)` y calculan el código de 6 dígitos (`sasCode`, con compromiso previo);
+ * el escritorio pide confirmación local mostrando ese código y, al aceptar, entrega `paired{deviceId, deviceSecret}` POR EL
+ * DATACHANNEL ya ligado.
+ *
+ * Reconexión: `hello{mode:'resume', deviceId}` por señalización (sin ningún secreto) + `offer`/`answer`; al abrir el canal,
+ * `hs1/hs2/hs3` con `deviceKey(sha256(secreto))` y `authed{proof}`.
  *
  * Lista blanca de operaciones (única superficie): `sessions.list`, `session.messages`, `session.prompt`,
  * `session.abort`, `permission.reply` (solo `once` o `reject`; `always` no existe).
@@ -30,10 +34,10 @@
  * lista blanca del prototipo), el canal transporta un multiplexor (`mux.ts`) con `call`, `http`, `res`, `chunk`,
  * `sub`, `ev`, `reset`, `cancel` y `credit`. Aquí solo están sus TIPOS, LÍMITES y VALIDADORES estrictos; el
  * despacho a IPC/HTTP lo inyecta quien use el multiplexor (por defecto no hay ninguno: todo se rechaza).
- * Un celular con la versión 1 recibe `error{code:'version'}` por señalización y nunca llega a abrir canal.
+ * Un celular con una versión anterior recibe `error{code:'version'}` por señalización y nunca llega a abrir canal.
  */
 
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 
 /** Etiqueta del DataChannel que crea el celular. */
 export const DATACHANNEL_LABEL = 'onyx'
@@ -64,8 +68,12 @@ export const LIMITS = {
   pairingTtlMs: 120_000,
   /** Plazo para que el dueño confirme «¿Vincular este dispositivo?» en el escritorio. */
   confirmTtlMs: 60_000,
-  /** Plazo para recibir `auth` tras abrir el canal en una reconexión. */
+  /** Plazo para completar TODO el handshake v3 (de abrir el canal a recibir `hs3`), en los dos modos. */
   authTimeoutMs: 10_000,
+  /** Fallos de vinculación (hello con `qid` ajeno o `hs3` malo) tras los que se anula el QR. */
+  pairMaxFails: 5,
+  /** Bytes de los nonces del handshake (`nc`, `ns`). */
+  handshakeNonceBytes: 32,
   /** El modo se apaga solo tras este tiempo sin conexiones. */
   idleShutdownMs: 30 * 60_000,
   /** Sockets de señalización simultáneos en el servidor local. */
@@ -128,8 +136,10 @@ export const LIMITS = {
 export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/
 /** Id de dispositivo vinculado: 16 bytes en hex. */
 export const DEVICE_ID_RE = /^[0-9a-f]{32}$/
-/** Secreto de 32 bytes en base64url sin relleno. */
+/** Secreto, nonce, `qid` o prueba de 32 bytes en base64url sin relleno. */
 export const SECRET_RE = /^[A-Za-z0-9_-]{43}$/
+/** 16 bytes en base64url sin relleno (`rm`, `rp` del código de 6 dígitos). */
+export const HALF_RE = /^[A-Za-z0-9_-]{22}$/
 
 export type Reply = 'once' | 'reject'
 
@@ -138,13 +148,13 @@ export type Reply = 'once' | 'reject'
 // ---------------------------------------------------------------------------------------------
 
 export type SignalClientFrame =
-  | { t: 'hello'; v: number; mode: 'pair'; secret: string; deviceName: string }
+  | { t: 'hello'; v: number; mode: 'pair'; qid: string; deviceName: string }
   | { t: 'hello'; v: number; mode: 'resume'; deviceId: string }
   | { t: 'offer'; sdp: string }
   | { t: 'ice'; candidate: string; mid: string }
 
 export type SignalErrorCode =
-  /** Secreto inválido/caducado/ya usado, dispositivo desconocido o modo apagado (no se distingue a propósito). */
+  /** QR inválido/caducado/anulado, dispositivo desconocido o modo apagado (no se distingue a propósito). */
   'invalid' | 'version' | 'busy' | 'frame'
 
 export type SignalHostFrame =
@@ -182,8 +192,28 @@ export type PinFrame = { t: 'pin-set'; pin: string } | { t: 'pin-verify'; pin: s
 /** Bloqueo manual desde el celular («Bloquear ahora»): el Mac vuelve a pedir el PIN y no atiende nada hasta verificarlo. */
 export type LockFrame = { t: 'lock' }
 
-export type ClientFrame =
-  { t: 'auth'; deviceId: string; secret: string } | { t: 'ping' } | LockFrame | PinFrame | RequestFrame | MuxClientFrame
+/**
+ * Handshake v3 por el DataChannel (los dos modos), ANTES de cualquier otra trama: ver `handshake.ts`. Ninguna credencial
+ * viaja: cada lado prueba que tiene la clave con un HMAC ligado a las huellas DTLS y a dos nonces de un solo uso.
+ *  - `hs1` (celular → Mac): `id` es el `deviceId` (resume) o el `qid` del QR (pair); `nc` nonce del celular; `cm` solo en pair
+ *    = sha256 de `rp` (compromiso previo del código de 6 dígitos).
+ *  - `hs3` (celular → Mac): `mac` = HMAC del transcript; `rp` solo en pair (revela el valor comprometido).
+ */
+export interface Hs1Frame {
+  t: 'hs1'
+  v: number
+  mode: 'resume' | 'pair'
+  id: string
+  nc: string
+  cm?: string
+}
+export interface Hs3Frame {
+  t: 'hs3'
+  mac: string
+  rp?: string
+}
+
+export type ClientFrame = { t: 'ping' } | Hs1Frame | Hs3Frame | LockFrame | PinFrame | RequestFrame | MuxClientFrame
 
 // ---------------------------------------------------------------------------------------------
 // Datos que salen hacia el celular (ya recortados por el escritorio)
@@ -257,16 +287,28 @@ export const LOCK_WHY: readonly string[] = ['confirm', 'pin-set', 'pin-verify', 
 // DataChannel: escritorio -> celular
 // ---------------------------------------------------------------------------------------------
 
+/** Desafío del Mac (v3): `ns` nonce del Mac; `rm` solo en pair (16 B base64url, se revela antes de ver `rp`). */
+export interface Hs2Frame {
+  t: 'hs2'
+  ns: string
+  rm?: string
+}
+
 export type HostFrame =
-  /** Vinculación: esperando que el dueño confirme en el escritorio. */
-  | { t: 'pair-pending' }
+  | Hs2Frame
+  /** Vinculación: esperando que el dueño confirme en el escritorio. `proof` = HMAC `h2c` (el Mac prueba que tiene la clave). */
+  | { t: 'pair-pending'; proof: string }
   /** Vinculación aceptada: el celular guarda `deviceId` y `deviceSecret` (el escritorio solo guarda su hash). */
   | { t: 'paired'; deviceId: string; deviceSecret: string }
   | { t: 'denied'; reason: DeniedReason }
   /** `expiresAt`: fin de validez del vínculo tras renovarlo ahora (ausente = no caduca). `expiring`: estaba a punto de caducar. */
-  | { t: 'authed'; expiresAt?: number; expiring?: boolean }
-  /** `why: 'expired'`: el vínculo caducó; el celular debe volver a vincularse. Sin `why` = secreto incorrecto. */
-  | { t: 'auth-failed'; why?: 'expired' }
+  | { t: 'authed'; proof: string; expiresAt?: number; expiring?: boolean }
+  /**
+   * Sin `why` = clave incorrecta o intermediario (no se distinguen) y SIN prueba. `why: 'expired'` solo lo dice el Mac tras
+   * verificar la prueba del celular, así que puede probar quién es (`proof`): el vínculo caducó y hay que volver a vincular.
+   */
+  | { t: 'auth-failed' }
+  | { t: 'auth-failed'; why: 'expired'; proof: string }
   | { t: 'pong' }
   | { t: 'bye'; reason: ByeReason }
   /** Sin acceso por ahora. `retryMs` = espera antes de reintentar el PIN; `left` = intentos que quedan antes de revocar. */
@@ -360,11 +402,11 @@ export function parseSignalClientFrame(raw: unknown): Parsed<SignalClientFrame> 
     case 'hello': {
       if (typeof o.v !== 'number' || !Number.isInteger(o.v)) return fail('bad-version')
       if (o.mode === 'pair') {
-        if (!onlyKeys(o, ['t', 'v', 'mode', 'secret', 'deviceName'])) return fail('extra-keys')
-        if (typeof o.secret !== 'string' || !SECRET_RE.test(o.secret)) return fail('bad-secret')
+        if (!onlyKeys(o, ['t', 'v', 'mode', 'qid', 'deviceName'])) return fail('extra-keys')
+        if (typeof o.qid !== 'string' || !SECRET_RE.test(o.qid)) return fail('bad-qid')
         if (!isStr(o.deviceName, 200)) return fail('bad-name')
         const deviceName = sanitizeDeviceName(o.deviceName)
-        return { ok: true, value: { t: 'hello', v: o.v, mode: 'pair', secret: o.secret, deviceName } }
+        return { ok: true, value: { t: 'hello', v: o.v, mode: 'pair', qid: o.qid, deviceName } }
       }
       if (o.mode === 'resume') {
         if (!onlyKeys(o, ['t', 'v', 'mode', 'deviceId'])) return fail('extra-keys')
@@ -421,11 +463,26 @@ export function parseClientFrame(raw: unknown): Parsed<ClientFrame> {
   switch (o.t) {
     case 'ping':
       return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'ping' } } : fail('extra-keys')
-    case 'auth': {
-      if (!onlyKeys(o, ['t', 'deviceId', 'secret'])) return fail('extra-keys')
-      if (typeof o.deviceId !== 'string' || !DEVICE_ID_RE.test(o.deviceId)) return fail('bad-device')
-      if (typeof o.secret !== 'string' || !SECRET_RE.test(o.secret)) return fail('bad-secret')
-      return { ok: true, value: { t: 'auth', deviceId: o.deviceId, secret: o.secret } }
+    case 'hs1': {
+      if (!onlyKeys(o, ['t', 'v', 'mode', 'id', 'nc', 'cm'])) return fail('extra-keys')
+      if (typeof o.v !== 'number' || !Number.isInteger(o.v)) return fail('bad-version')
+      if (o.mode !== 'resume' && o.mode !== 'pair') return fail('bad-mode')
+      if (typeof o.id !== 'string' || !(o.mode === 'resume' ? DEVICE_ID_RE : SECRET_RE).test(o.id)) return fail('bad-id')
+      if (typeof o.nc !== 'string' || !SECRET_RE.test(o.nc)) return fail('bad-nonce')
+      // `cm` (compromiso del código de 6 dígitos): obligatorio en pair y prohibido en resume.
+      if (o.mode === 'pair') {
+        if (typeof o.cm !== 'string' || !SECRET_RE.test(o.cm)) return fail('bad-commit')
+        return { ok: true, value: { t: 'hs1', v: o.v, mode: 'pair', id: o.id, nc: o.nc, cm: o.cm } }
+      }
+      if (o.cm !== undefined) return fail('bad-commit')
+      return { ok: true, value: { t: 'hs1', v: o.v, mode: 'resume', id: o.id, nc: o.nc } }
+    }
+    case 'hs3': {
+      if (!onlyKeys(o, ['t', 'mac', 'rp'])) return fail('extra-keys')
+      if (typeof o.mac !== 'string' || !SECRET_RE.test(o.mac)) return fail('bad-mac')
+      if (o.rp === undefined) return { ok: true, value: { t: 'hs3', mac: o.mac } }
+      if (typeof o.rp !== 'string' || !HALF_RE.test(o.rp)) return fail('bad-reveal')
+      return { ok: true, value: { t: 'hs3', mac: o.mac, rp: o.rp } }
     }
     case 'lock':
       return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'lock' } } : fail('extra-keys')
@@ -573,12 +630,23 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
   if (!j.ok) return j
   const o = j.value
   switch (o.t) {
-    case 'pair-pending':
     case 'pong':
-      return onlyKeys(o, ['t']) ? { ok: true, value: { t: o.t } as HostFrame } : fail('extra-keys')
+      return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'pong' } } : fail('extra-keys')
+    case 'hs2': {
+      if (!onlyKeys(o, ['t', 'ns', 'rm'])) return fail('extra-keys')
+      if (typeof o.ns !== 'string' || !SECRET_RE.test(o.ns)) return fail('bad-nonce')
+      if (o.rm === undefined) return { ok: true, value: { t: 'hs2', ns: o.ns } }
+      if (typeof o.rm !== 'string' || !HALF_RE.test(o.rm)) return fail('bad-reveal')
+      return { ok: true, value: { t: 'hs2', ns: o.ns, rm: o.rm } }
+    }
+    case 'pair-pending':
+      // Sin `proof` el celular no puede saber quién la envía: se descarta aquí mismo.
+      if (!onlyKeys(o, ['t', 'proof']) || typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
+      return { ok: true, value: { t: 'pair-pending', proof: o.proof } }
     case 'authed': {
-      if (!onlyKeys(o, ['t', 'expiresAt', 'expiring'])) return fail('extra-keys')
-      const v: HostFrame = { t: 'authed' }
+      if (!onlyKeys(o, ['t', 'proof', 'expiresAt', 'expiring'])) return fail('extra-keys')
+      if (typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
+      const v: Extract<HostFrame, { t: 'authed' }> = { t: 'authed', proof: o.proof }
       if (o.expiresAt !== undefined) {
         if (typeof o.expiresAt !== 'number' || !Number.isFinite(o.expiresAt) || o.expiresAt < 0) return fail('bad-expires')
         v.expiresAt = o.expiresAt
@@ -590,9 +658,11 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
       return { ok: true, value: v }
     }
     case 'auth-failed':
-      if (!onlyKeys(o, ['t', 'why'])) return fail('extra-keys')
-      if (o.why !== undefined && o.why !== 'expired') return fail('bad-why')
-      return { ok: true, value: o.why === 'expired' ? { t: 'auth-failed', why: 'expired' } : { t: 'auth-failed' } }
+      if (!onlyKeys(o, ['t', 'why', 'proof'])) return fail('extra-keys')
+      if (o.why === undefined) return o.proof === undefined ? { ok: true, value: { t: 'auth-failed' } } : fail('bad-proof')
+      if (o.why !== 'expired') return fail('bad-why')
+      if (typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
+      return { ok: true, value: { t: 'auth-failed', why: 'expired', proof: o.proof } }
     case 'paired':
       if (!onlyKeys(o, ['t', 'deviceId', 'deviceSecret'])) return fail('extra-keys')
       if (typeof o.deviceId !== 'string' || !DEVICE_ID_RE.test(o.deviceId)) return fail('bad-device')

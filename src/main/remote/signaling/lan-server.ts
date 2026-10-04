@@ -260,13 +260,16 @@ export class LanSignalingServer implements SignalingTransport {
 
     ws.on('message', (data: RawData, isBinary: boolean) => {
       if (isBinary) return fail('frame')
-      const parsed = parseSignalClientFrame(data.toString('utf8'))
+      const raw = data.toString('utf8')
+      // Una pestaña de una versión anterior (otra forma de `hello`, p. ej. con `secret`) debe ver «versión», no «trama inválida».
+      if (!hello && helloVersionMismatch(raw)) return fail('version')
+      const parsed = parseSignalClientFrame(raw)
       if (!parsed.ok) return fail('frame')
       const f = parsed.value
       if (!hello) {
         if (f.t !== 'hello') return fail('frame')
         if (f.v !== PROTOCOL_VERSION) return fail('version')
-        // `authorize` consume el secreto de un solo uso aunque falle.
+        // `authorize` solo reconoce el `qid` o el dispositivo (sin secretos); cuenta los fallos de un QR.
         let ok = false
         try {
           ok = opts.authorize(f)
@@ -298,6 +301,17 @@ export class LanSignalingServer implements SignalingTransport {
     }
     ws.on('close', onGone)
     ws.on('error', onGone)
+  }
+}
+
+/** ¿Es un `hello` cuyo `v` numérico no es el de este protocolo? (lectura laxa, solo para distinguir «versión» de «trama inválida»). */
+function helloVersionMismatch(raw: string): boolean {
+  if (raw.length > LIMITS.maxSignalFrameBytes) return false
+  try {
+    const o = JSON.parse(raw) as { t?: unknown; v?: unknown }
+    return !!o && typeof o === 'object' && o.t === 'hello' && typeof o.v === 'number' && o.v !== PROTOCOL_VERSION
+  } catch {
+    return false
   }
 }
 
