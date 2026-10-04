@@ -176,11 +176,15 @@ export type HostToCloudFrame =
   | { t: 'kick'; id: string }
 
 const fail = (reason: string): { ok: false; reason: string } => ({ ok: false, reason })
-const ENVELOPE_BYTES = 512
+/**
+ * Tope del SOBRE JSON (no del texto `d`, que va limitado aparte a `maxRelayBytes` ya decodificado): `d` es JSON y vuelve a
+ * escaparse al envolverlo, así que ocupa hasta 6 veces más en el cable (cada carácter de control `\uXXXX`).
+ */
+export const CLOUD_ENVELOPE_MAX_BYTES = CLOUD_LIMITS.maxRelayBytes * 6 + 512
 
 function parseObj(raw: unknown): Parsed<Record<string, unknown>> {
   if (typeof raw !== 'string') return fail('not-text')
-  const max = CLOUD_LIMITS.maxRelayBytes + ENVELOPE_BYTES
+  const max = CLOUD_ENVELOPE_MAX_BYTES
   if (raw.length > max || utf8Length(raw) > max) return fail('too-large')
   let v: unknown
   try {

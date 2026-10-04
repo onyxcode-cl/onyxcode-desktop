@@ -1,0 +1,13 @@
+{
+  "name": "onyx-remoto-worker",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Servicio de conexión del remoto fuera de casa. Subproyecto aparte: no forma parte de la app ni de su build.",
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "deploy": "echo 'Se publica a mano desde el Mac del dueño: lee README.md' && exit 1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
