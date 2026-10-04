@@ -63,6 +63,19 @@ describe('AuditLog', () => {
     expect(sanitizeAudit({ kind: 'paired', device: 'no-es-huella' }, 1)).toEqual({ ts: 1, kind: 'paired' })
   })
 
+  it('auth-bad-proof (intento sin la clave correcta) se acepta y solo guarda huella y nombre', () => {
+    expect(sanitizeAudit({ kind: 'auth-bad-proof', device: 'abcdef12', name: 'iPhone', why: 'hs3' }, 7)).toEqual({
+      ts: 7,
+      kind: 'auth-bad-proof',
+      device: 'abcdef12',
+      name: 'iPhone',
+      why: 'hs3'
+    })
+    const log = new AuditLog(file)
+    log.append({ kind: 'auth-bad-proof', device: 'abcdef12', name: 'iPhone', secret: 'x'.repeat(43) } as unknown as AuditInput)
+    expect(readFileSync(file, 'utf8')).not.toContain('xxxx')
+  })
+
   it('no lanza aunque no se pueda escribir', () => {
     const log = new AuditLog(join(dir, 'archivo-no-dir', '\0malo', 'a.jsonl'))
     expect(() => log.append({ kind: 'stopped' })).not.toThrow()

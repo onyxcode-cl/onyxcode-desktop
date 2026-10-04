@@ -71,6 +71,7 @@ const AUDIT_KEYS: Record<string, MsgKey> = {
   revoked: 'remote.activity.kind.revoked',
   'revoked-all': 'remote.activity.kind.revoked-all',
   expired: 'remote.activity.kind.expired',
+  'auth-bad-proof': 'remote.activity.kind.auth-bad-proof',
   'policy-blocked': 'remote.activity.kind.policy-blocked',
   'pin-set': 'remote.activity.kind.pin-set',
   'pin-fail': 'remote.activity.kind.pin-fail',
@@ -298,6 +299,17 @@ export function RemoteSection(): React.JSX.Element {
                 )}
               </span>
             </Row>
+            <Row
+              label={t('remote.settings.confirmEach')}
+              description={state.confirmEachForced ? t('remote.settings.confirmEachForced') : t('remote.settings.confirmEachHint')}
+            >
+              <Toggle
+                checked={state.confirmEachConnection}
+                label={t('remote.settings.confirmEach')}
+                disabled={busy || state.confirmEachForced}
+                onChange={(v) => run(() => api.invoke('remote:setConfirmEach', { on: v }))}
+              />
+            </Row>
           </Card>
 
           {(error || state.error) && <ErrorText>{error ?? startError(state.error as string)}</ErrorText>}
@@ -325,7 +337,13 @@ export function RemoteSection(): React.JSX.Element {
 
           {on && !state.pairing && (
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-elevated px-4 py-3 text-sm">
-              <span className="text-muted">{state.pairingExpired ? t('remote.qr.expired') : t('remote.state.active')}</span>
+              <span className="text-muted">
+                {state.pairingExhausted
+                  ? t('remote.pairing.exhausted')
+                  : state.pairingExpired
+                    ? t('remote.qr.expired')
+                    : t('remote.state.active')}
+              </span>
               <Button
                 size="sm"
                 disabled={busy || state.devices.length >= maxDevices}
@@ -396,12 +414,15 @@ export function RemoteSection(): React.JSX.Element {
                         ))}
                     </Select>
                     {d.access && <Badge tone={d.access === 'open' ? 'ok' : 'accent'}>{t(ACCESS_KEYS[d.access])}</Badge>}
-                    <Toggle
-                      checked={d.trustUntil !== null}
-                      label={t('remote.devices.remember')}
-                      disabled={busy}
-                      onChange={(v) => run(() => api.invoke('remote:setRemember', { deviceId: d.id, remember: v }))}
-                    />
+                    {/* «Recordar 12 h» solo tiene sentido si cada conexión se confirma en el Mac. */}
+                    {(state.confirmEachConnection || d.trustUntil !== null) && (
+                      <Toggle
+                        checked={d.trustUntil !== null}
+                        label={t('remote.devices.remember')}
+                        disabled={busy}
+                        onChange={(v) => run(() => api.invoke('remote:setRemember', { deviceId: d.id, remember: v }))}
+                      />
+                    )}
                     {d.hasPin && (
                       <Button variant="ghost" size="sm" disabled={busy} onClick={() => void resetPin(d.id, d.name)}>
                         {t('remote.devices.pinReset')}
