@@ -68,7 +68,7 @@ test("stats: RunResult -> RunRow (null si no hay tokens)", () => {
     environment: { schemaVersion: "1", os: "darwin", arch: "arm64", nodeVersion: "22", gitVersion: null, cliVersion: null, ncpu: 8, totalMemBytes: 1000000, benchVersion: "0.1.0", isolation: "none" },
   });
   const row = runResultToRow(base);
-  assert.deepEqual(row, { caseId: "caso-1", configId: "cfg-a", success: true, tokens: null, durationMs: 1000, outcome: "completed", rep: 2 });
+  assert.deepEqual(row, { caseId: "caso-1", configId: "cfg-a", success: true, tokens: null, durationMs: 1000, outcome: "completed", rep: 2, runId: "r1", startedAt: "2026-01-01T00:00:00Z", finishedAt: "2026-01-01T00:00:01Z" });
   assert.equal(runResultToRow({ ...base, telemetry: { ...base.telemetry, inputTokens: 10, outputTokens: 5 } }).tokens, 15);
   assert.equal(runResultToRow({ ...base, telemetry: { ...base.telemetry, totalTokens: 99, inputTokens: 10, outputTokens: 5 } }).tokens, 99);
 });
