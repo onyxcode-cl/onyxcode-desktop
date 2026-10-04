@@ -50,7 +50,6 @@ export interface PathMount {
 
 const RESERVED = /^(?:con|prn|aux|nul|conin\$|conout\$|clock\$|com[0-9¹²³]|lpt[0-9¹²³])$/i
 const INVALID_CHARS = /[<>"|?*]/
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f]/
 const SHORTNAME = /~[0-9]/
 

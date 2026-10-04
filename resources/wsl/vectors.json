@@ -94,5 +94,216 @@
       "hex": "efbbbf5665727369c3b36e2064652057534c3a20322e340d0a",
       "text": "Versión de WSL: 2.4\n"
     }
-  ]
+  ],
+  "init": {
+    "v": 1,
+    "sandboxKey": "0123456789abcdef",
+    "mounts": [
+      {
+        "win": "C:\\onyx\\tareas\\a",
+        "linux": "/win/c/onyx/tareas/a",
+        "mode": "rw"
+      },
+      {
+        "win": "D:\\Ref",
+        "linux": "/win/d/Ref",
+        "mode": "ro"
+      },
+      {
+        "win": "C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode\\opencode-config",
+        "linux": "/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config",
+        "mode": "ro"
+      }
+    ],
+    "relayPorts": [
+      52000,
+      52001
+    ],
+    "serverPort": 51000,
+    "serveArgs": [
+      "serve",
+      "--port",
+      "51000",
+      "--hostname",
+      "127.0.0.1"
+    ],
+    "cwd": "/win/c/onyx/tareas/a",
+    "env": {
+      "OPENCODE_SERVER_USERNAME": "tasks",
+      "HTTP_PROXY": "http://tok@127.0.0.1:52000",
+      "OPENCODE_AUTH_CONTENT": "{\"opencode-go\":{\"type\":\"api\",\"key\":\"sandboxed-placeholder-0123456789abcdef\"}}",
+      "ONYXCODE_TASKS_FOLDER": "/win/c/onyx/tareas/a",
+      "OPENCODE_CONFIG_DIR": "/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config"
+    },
+    "landlock": {
+      "minAbi": 2,
+      "rules": [
+        {
+          "path": "/usr",
+          "access": "rx"
+        },
+        {
+          "path": "/lib",
+          "access": "rx"
+        },
+        {
+          "path": "/lib64",
+          "access": "rx"
+        },
+        {
+          "path": "/bin",
+          "access": "rx"
+        },
+        {
+          "path": "/sbin",
+          "access": "rx"
+        },
+        {
+          "path": "/etc",
+          "access": "ro"
+        },
+        {
+          "path": "/opt/onyx",
+          "access": "rx"
+        },
+        {
+          "path": "/proc",
+          "access": "ro"
+        },
+        {
+          "path": "/dev",
+          "access": "dev"
+        },
+        {
+          "path": "/home/onyx/xdg/0123456789abcdef",
+          "access": "private"
+        },
+        {
+          "path": "/tmp/onyx-0123456789abcdef",
+          "access": "private"
+        },
+        {
+          "path": "/win/c/onyx/tareas/a",
+          "access": "rw-nodelete"
+        },
+        {
+          "path": "/win/d/Ref",
+          "access": "ro"
+        },
+        {
+          "path": "/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config",
+          "access": "ro"
+        },
+        {
+          "path": "/win/c/onyx/tareas/a/.onyxcode/trabajo",
+          "access": "rw-delete"
+        }
+      ]
+    }
+  },
+  "landlock": {
+    "access": {
+      "rx": [
+        "EXECUTE",
+        "READ_FILE",
+        "READ_DIR"
+      ],
+      "ro": [
+        "READ_FILE",
+        "READ_DIR"
+      ],
+      "dev": [
+        "READ_FILE",
+        "READ_DIR",
+        "WRITE_FILE"
+      ],
+      "rw-nodelete": [
+        "READ_FILE",
+        "READ_DIR",
+        "WRITE_FILE",
+        "MAKE_REG",
+        "MAKE_DIR"
+      ],
+      "rw-delete": [
+        "READ_FILE",
+        "READ_DIR",
+        "WRITE_FILE",
+        "MAKE_REG",
+        "MAKE_DIR",
+        "REMOVE_FILE",
+        "REMOVE_DIR",
+        "REFER"
+      ],
+      "private": [
+        "EXECUTE",
+        "WRITE_FILE",
+        "READ_FILE",
+        "READ_DIR",
+        "REMOVE_DIR",
+        "REMOVE_FILE",
+        "MAKE_CHAR",
+        "MAKE_DIR",
+        "MAKE_REG",
+        "MAKE_SOCK",
+        "MAKE_FIFO",
+        "MAKE_BLOCK",
+        "MAKE_SYM",
+        "REFER"
+      ]
+    },
+    "system_rules": [
+      [
+        "/usr",
+        "rx"
+      ],
+      [
+        "/lib",
+        "rx"
+      ],
+      [
+        "/lib64",
+        "rx"
+      ],
+      [
+        "/bin",
+        "rx"
+      ],
+      [
+        "/sbin",
+        "rx"
+      ],
+      [
+        "/etc",
+        "ro"
+      ],
+      [
+        "/opt/onyx",
+        "rx"
+      ],
+      [
+        "/proc",
+        "ro"
+      ],
+      [
+        "/dev",
+        "dev"
+      ]
+    ],
+    "rights": [
+      "EXECUTE",
+      "WRITE_FILE",
+      "READ_FILE",
+      "READ_DIR",
+      "REMOVE_DIR",
+      "REMOVE_FILE",
+      "MAKE_CHAR",
+      "MAKE_DIR",
+      "MAKE_REG",
+      "MAKE_SOCK",
+      "MAKE_FIFO",
+      "MAKE_BLOCK",
+      "MAKE_SYM",
+      "REFER"
+    ]
+  }
 }
