@@ -8,13 +8,26 @@ Marca cada paso con [x] si salió como se describe. Si no, anota lo que se pide 
 Cada línea es un suceso: `kind` (qué pasó), `ts` (hora en milisegundos), `device` (huella del celular), `ch` (qué pidió) y
 `why` (el motivo corto del rechazo, p. ej. `out-of-scope`). Copia las últimas líneas. También se ve en Ajustes › Celular › Actividad.
 
+## Protocolo v3: reconexión sin diálogo y vinculación (F8-B66)
+0. [ ] **Un iPhone ya vinculado reconecta sin volver a vincular y sin diálogo en el Mac.** Con la versión nueva instalada y el ajuste «Pedir confirmación en el
+   Mac en cada conexión» APAGADO (por defecto), abre la página en un celular que ya estaba vinculado: debe conectar, pedir el PIN en frío y **no aparecer ningún
+   diálogo en el Mac**. En Ajustes › Celular › Actividad debe verse `connected` en cada conexión. Si falla: anota el texto del aviso del celular («No se pudo verificar tu Mac»,
+   «Tu Mac no reconoció este celular»…) y las últimas líneas del registro (`auth-bad-proof`). Este paso también prueba que el SDP real del navegador pasa la comprobación estricta de huellas.
+0b. [ ] **Activar «Pedir confirmación en el Mac en cada conexión».** Reconecta: vuelve el diálogo «Permitir» (con «Recordar 12 h»). Apágalo: el diálogo desaparece y «Recordar 12 h» se borra.
+0c. [ ] **Vincular un celular nuevo.** Los dos códigos de 6 dígitos coinciden y el del celular aparece solo después de que la conexión con el Mac se verifica. Si alguien escanea un QR distinto
+   o falla 5 veces seguidas, el QR se anula («El código QR se anuló tras varios intentos fallidos. Genera otro.»).
+0d. [ ] **Pestaña abierta antes de actualizar.** Con la página del celular abierta de la versión anterior, actualiza el Mac y reconecta: debe decir «Versión incompatible» (las pestañas anteriores no
+   saben recargarse: basta recargar a mano una vez). Las pestañas de la versión nueva se recargan solas una vez.
+0e. [ ] **«Bloquear ahora» con la vista de chat abierta:** no deben llegar eventos nuevos hasta escribir el PIN; tras el PIN, aparecen los pendientes.
+0f. [ ] **«Cortar todo» y reactivar:** al volver a conectar pide PIN (aunque hayan pasado menos de 5 min) y, con el ajuste encendido, el «Permitir».
+
 ## Bloqueo y reconexión
 1. [ ] **Bloquear 1 min y volver.** En el celular: Más › Conexión con tu Mac › «Bloquear ahora». Espera 1 minuto y escribe el PIN.
    Debe: pedir el PIN al bloquear; no dejar hacer nada hasta ponerlo; con el PIN correcto vuelve a funcionar. Con un PIN malo debe
    esperar unos segundos (1, 2, 4… hasta 30 s) y 5 fallos seguidos quitan el celular. Si falla: anota si pidió o no el PIN y el `kind` `locked`/`pin-fail`.
 2. [ ] **Reconexión tras bloquear la pantalla del celular.** Bloquea el celular 1-2 min, desbloquéalo y abre la página. Debe: mostrar
-   «Reconectando con tu Mac…» y volver solo; si pasaron más de 5 min sin usarlo o es una conexión en frío, pide el PIN; si no marcaste
-   «Recordar 12 h», el Mac pide «Permitir». Si falla: anota el texto del aviso y cuánto tardó.
+   «Reconectando con tu Mac…» y volver solo; si pasaron más de 5 min sin usarlo o es una conexión en frío, pide el PIN; solo si activaste «Pedir confirmación
+   en el Mac en cada conexión» (y no marcaste «Recordar 12 h») el Mac pide «Permitir». Si falla: anota el texto del aviso y cuánto tardó.
 
 ## Mensajes y permisos
 3. [ ] **Aprobar y rechazar un permiso.** Desde el celular pide algo que obligue a un permiso (p. ej. editar un archivo en un proyecto de Code). Debe
@@ -28,7 +41,7 @@ Cada línea es un suceso: `kind` (qué pasó), `ts` (hora en milisegundos), `dev
    Si no aparece o abre sin preguntar: anota la hora y el `ch`/`why` del registro.
 
 ## Vínculos y caducidad
-7. [ ] **Recordar 12 h.** Al reconectar, en el Mac marca «Recordar 12 h en este celular» y pulsa «Permitir». Reconecta de nuevo: no debe pedir
+7. [ ] **Recordar 12 h** (solo con «Pedir confirmación en el Mac en cada conexión» encendido). Al reconectar, en el Mac marca «Recordar 12 h en este celular» y pulsa «Permitir». Reconecta de nuevo: no debe pedir
    «Permitir» otra vez (el PIN sí puede pedirse). También se activa en Ajustes › Celular › «Recordar 12 h». Si falla: anota si volvió a pedir y cuándo.
 8. [ ] **Caducidad del dispositivo.** En Ajustes › Celular elige 30, 90, 365 días o «Sin caducidad» para ese celular. Debe mostrar la fecha
    de caducidad (o «No caduca») y recordar el plazo al reabrir Ajustes. Para ver el caso caducado, cambia la fecha del Mac a más de 30 días

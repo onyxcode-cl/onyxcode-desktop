@@ -25,7 +25,8 @@ Este documento describe el bloque **`remote`** (control remoto desde el celular)
     "requirePin": true,
     "maxDevices": 2,
     "deviceTtlDays": 30,
-    "allowConfirmRemember12h": false
+    "allowConfirmRemember12h": false,
+    "requireConnectionConfirm": false
   }
 }
 ```
@@ -40,6 +41,7 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 | `maxDevices` | entero 0–3 | Máximo de celulares vinculados (0 = no se puede vincular ninguno; 3 es el tope de fábrica). |
 | `deviceTtlDays` | entero 1–365 | Tope de validez de un vínculo desde su último uso. Manda sobre lo que elija el usuario, también sobre «Sin caducidad». |
 | `allowConfirmRemember12h` | booleano | `false`: se quita «Recordar 12 h»; cada conexión se confirma en el Mac. |
+| `requireConnectionConfirm` | booleano | `true`: cada conexión de un celular ya vinculado se confirma en el Mac y el usuario no puede apagar el ajuste «Pedir confirmación en el Mac en cada conexión». Desde el protocolo v3 esa confirmación es opcional y viene **apagada** por defecto (el celular entra con su PIN); esta clave devuelve el comportamiento anterior. Un dispositivo sin PIN siempre confirma, y la vinculación de un celular nuevo siempre se confirma. |
 
 ## Semántica fail closed
 
@@ -51,6 +53,7 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
   deshabilitado por inválido.
 - Booleanos que **relajan** (`allowRemember`, `allowConfirmRemember12h`): solo `true` exacto los permite; todo lo demás cuenta `false`.
 - Booleano que **endurece** (`requirePin`): solo `false` exacto lo desactiva; todo lo demás cuenta `true`.
+- Booleano que endurece pero **no viene activado** (`requireConnectionConfirm`): ausente = `false`; presente y distinto de `false` exacto (`true`, `"sí"`, `1`…) = `true`. Con un archivo inválido queda en `true`.
 - Números: un entero fuera de rango se recorta (`maxDevices` > 3 → 3, `deviceTtlDays` > 365 → 365; negativos → 0 y 1). Un valor que no
   es un entero cuenta como lo más restrictivo (`maxDevices` 0, `deviceTtlDays` 1).
 - Las claves desconocidas se ignoran.

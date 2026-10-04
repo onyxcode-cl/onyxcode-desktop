@@ -768,16 +768,20 @@ absolutas** (se reducen a `…/nombre`) ni secretos (patrones de `redact-pattern
    de la interfaz activa (10/8, 172.16/12, 192.168/16; nunca 0.0.0.0, loopback, VPN ni túneles), puerto aleatorio. Comprueba `Host` y
    `Origin` exactos (el navegador del celular manda siempre el de la página), admite como mucho 2 sockets, sirve la PWA estática con CSP
    estricta y se apaga del todo al detener.
-2. El QR lleva un secreto de un solo uso de 32 B en el fragmento de la URL (`#s=…`, no viaja al servidor). Solo se guarda su sha256;
-   caduca a los 120 s; se consume en el primer `hello` aunque falle; comparación en tiempo constante.
-3. **Confirmación local obligatoria**: cuando el canal abre, el Mac muestra «¿Vincular este dispositivo?» con el nombre y un código de
-   6 dígitos derivado de las huellas DTLS de ambos SDP (sha256 de las dos huellas ordenadas). El celular calcula y muestra el mismo.
-   Si no coinciden hay un intermediario: el dueño debe rechazar.
+2. El QR lleva un secreto `q` de 32 B en el fragmento de la URL (`#s=…`, no viaja al servidor). **`q` no sale nunca del celular** (v3,
+   §3 tricies): el `hello` lleva solo `qid = HKDF(q, "pair-id")` y el canal se autentica con `HKDF(q, "pair-auth")`. El Mac guarda en memoria
+   solo `qid` y esa clave; caduca a los 120 s; un `qid` ajeno NO lo consume (5 fallos lo anulan); solo un `hs3` correcto lo consume.
+3. **Confirmación local obligatoria**: cuando el canal abre y el celular supera el handshake, el Mac muestra «¿Vincular este dispositivo?»
+   con el nombre y un código de 6 dígitos (`sasCode`) derivado del transcript del handshake (huellas DTLS de ambos SDP, nonces y un
+   compromiso previo del celular, §3 tricies). El celular lo calcula y lo muestra **después** de verificar la prueba del Mac. Si no
+   coinciden hay un intermediario: el dueño debe rechazar.
 4. Al aceptar, el escritorio entrega por el DataChannel un secreto de dispositivo (32 B) que el celular guarda en `localStorage`; el
    escritorio solo guarda su sha256 en `userData/remote.bin`, cifrado con `safeStorage` (sin `safeStorage` la función se desactiva con
    una explicación; nunca se escribe en claro).
-5. Las reconexiones mandan `hello{resume, deviceId}` por señalización (sin ningún secreto) y, ya dentro del canal cifrado, `auth{deviceId,
-   secret}` como primera trama (10 s de plazo, un solo intento). El secreto de dispositivo nunca viaja por HTTP ni por señalización.
+5. Las reconexiones mandan `hello{resume, deviceId}` por señalización (sin ningún secreto) y, dentro del canal, el handshake v3 `hs1/hs2/hs3` (HMAC
+   con la clave derivada del secreto de dispositivo, ligado a las huellas DTLS de los dos extremos y a nonces de un solo uso; 10 s de plazo para
+   todo el handshake, un solo intento) y `authed{proof}`: el Mac prueba que tiene la clave antes de que el celular mande el PIN. **El secreto de
+   dispositivo no viaja nunca** (ni por HTTP, ni por señalización, ni por el canal); la trama `auth{secret}` del prototipo ya no existe.
 
 **Límites.** 10 peticiones/s (ráfaga 20), 6 prompts/min, 64 KiB por trama, 3 violaciones (trama inválida, fuera de lista, binario,
 límite excedido, petición sin autenticar) = desconexión. Máx. 3 dispositivos vinculados y uno conectado a la vez (el mismo dispositivo
@@ -791,9 +795,10 @@ salir de la app. Revocar un dispositivo (Ajustes) lo desconecta al instante.
 
 | Amenaza | Defensa |
 |---|---|
-| Otro equipo de la red usa el QR/URL | Secreto de un solo uso con caducidad + confirmación local con código de 6 dígitos |
-| Atacante activo en la misma Wi-Fi durante la ventana de 120 s (interceptar el hello o cambiar el SDP) | Se detecta si el dueño compara el código de 6 dígitos (cada lado calcula el suyo con las huellas que vio). **Riesgo aceptado y documentado**: si el dueño no compara, un intermediario podría vincularse |
-| Robo del secreto de dispositivo | Solo viaja por el DataChannel (DTLS) y vive en `localStorage` del celular; el Mac guarda solo el hash; se puede revocar |
+| Otro equipo de la red usa el QR/URL | Secreto de un solo uso con caducidad + confirmación local con código de 6 dígitos. Quien solo ve la red no ve `q` (no viaja): sin `q` no puede ni vincularse ni leer el `deviceSecret` |
+| Atacante activo en la misma Wi-Fi (intermediario que termina dos DTLS) | **Sin `q` no puede vincularse ni reconectar**: el HMAC del handshake va ligado a las huellas DTLS que ve cada pila, que con un intermediario son distintas, y no tiene la clave para fabricarlo. Con `q` filtrado (QR fotografiado), el código de 6 dígitos con compromiso previo lo detecta (acierta con prob. 1e-6 por intento, 5 intentos por QR). El riesgo aceptado se reduce a «el dueño no compara Y alguien vio el QR» |
+| Robo del secreto de dispositivo | **No viaja nunca**: el celular prueba que lo tiene con un HMAC ligado a las huellas DTLS de los dos extremos y a nonces de un solo uso, y el Mac prueba lo mismo antes de recibir el PIN. Vive en `localStorage` del celular; el Mac guarda su sha256, que desde v3 es material de clave (`K = HKDF(sha256)`; cifrado con `safeStorage`); se puede revocar. Con el secreto robado y sin el PIN no se llega a nada (5 PIN malos revocan) |
+| Página alterada al cargarla por HTTP | **Riesgo residual aceptado hasta la fase 2 (HTTPS)**: la PWA se sirve por `http://IP:puerto`; un intermediario activo justo cuando el celular abre la página puede servir JavaScript propio en ese origen, leer el secreto de `localStorage` y capturar el PIN que escribe el dueño. Ningún protocolo dentro de la página lo evita (y la confirmación por conexión tampoco lo evitaba: el atacante usa la conexión legítima del dueño) |
 | Celular comprometido o prestado | Lista blanca mínima, `once`/`reject`, sin Control del Mac ni carpetas, límites, revocación y «Cortar todo» |
 | Servidor local explotable | Se liga solo a la IP privada, `Host`/`Origin` exactos, ≤ 2 sockets, sirve solo la carpeta de la PWA (sin `..`, solo extensiones conocidas), existe solo mientras está activo |
 | Desbordamiento / inundación | Tamaños máximos por trama, cubo de fichas, 6 prompts/min, desconexión a las 3 violaciones |
@@ -897,34 +902,9 @@ otras tandas. Lo que sí fija este bloque:
   `credit` mayor que lo enviado es violación), cubo de 40 lecturas/s (ráfaga 120) para `call`/`http`/`sub` y red de seguridad para `chunk`/`credit`/`cancel`.
 - **Reanudación sin filtrar**: el búfer circular (30 s / 2 MiB) guarda lo que el Mac YA filtró y recortó; un hueco, un reinicio o un evento que no cabe
   en una trama producen `reset` (el celular vuelve a leer el estado), nunca eventos inventados.
-- **Compatibilidad**: la señalización exige `v: 2`; un celular con la PWA v1 recibe `error{code:'version'}` y no llega a abrir canal. Las tramas v1
-  de la lista blanca del prototipo siguen funcionando mientras no se retire.
+- **Compatibilidad**: la señalización exige `v: 3` (desde F8-B66; `v: 2` en este bloque); un celular con una PWA anterior recibe `error{code:'version'}`
+  (también si su `hello` ya no tiene la forma válida) y no llega a abrir canal. Las tramas v1 de la lista blanca del prototipo siguen funcionando mientras no se retire.
 - Los errores v2 solo llevan un código y un `msg` opcional de ≤ 200 caracteres escrito por el despachador; los errores internos salen como `failed`.
-
-## 3 vicies ter. Confirmación en el Mac, PIN y auditoría del control remoto (F8-B55, tanda T6)
-
-Todo se aplica **dentro del canal ya autenticado** (secreto de dispositivo) y **antes** de cualquier llamada; el celular no puede invocar nada de esto
-(`remote:*` está en X en la política y el despachador lo rechaza; `remote:confirmAction` solo existe para la ventana principal).
-
-- **Confirmación de cada conexión nueva (D3)**: al reconectar un dispositivo ya vinculado, el canal queda en «esperando confirmación» sin acceso hasta que el
-  dueño pulsa «Permitir» en el Mac. Opción «Recordar 12 h» por dispositivo (solo en esa confirmación y en Ajustes › Celular); caducada, se vuelve a pedir.
-  Vincular un dispositivo nuevo ya es la confirmación (con código de 6 dígitos).
-- **Diálogo** (`RemoteConfirmHost.tsx`): nombre y huella (8 hex de sha256 del `deviceId`), acción en es/en, detalle, hora, cuenta regresiva; «Rechazar» enfocado,
-  «Permitir» activo tras 1,5 s, rechazo automático a los 90 s. Sin ventana principal: `dialog.showMessageBox` sin padre (Rechazar por defecto) + rebote del
-  Dock y notificación; si el diálogo falla o lanza, **se rechaza**. Las confirmaciones usan la cola de T3 (máx. 2 pendientes, 10/min, aprobación ligada a la llamada exacta).
-- **PIN (D4)**: el celular fija un PIN de 6 dígitos con `pin-set` al vincular (o en la primera conexión de un dispositivo anterior sin PIN). El Mac guarda solo
-  `scrypt(pin, sal)` (N=2^15, r=8, p=1, sal de 16 bytes por dispositivo) dentro de `remote.bin` (cifrado con `safeStorage`); nunca el PIN, nunca en logs ni auditoría.
-  `pin-verify` se comprueba en tiempo constante. Cada fallo suma un retardo (1, 2, 4… hasta 30 s) durante el cual no se verifica; **5 fallos seguidos (persistidos, no se
-  reinician al reconectar) revocan el dispositivo**. Cambiar el PIN exige «Restablecer PIN» desde el Mac. Reconectar con actividad hace <5 min no repite el PIN; en frío sí.
-- **Bloqueo por inactividad**: tras 5 min sin llamadas del celular (los `ping` y los eventos no cuentan) el Mac vuelve a exigir el PIN (`locked{why:'inactive'}`);
-  mientras tanto descarta todo lo que no sea lectura (`isRead`, inyectable; sin clasificador no se atiende nada) y no entrega eventos ni suscripciones.
-- **Sin acceso, nada**: con confirmación o PIN pendientes solo se atienden `ping`, `pin-set` y `pin-verify`; `call`/`http`/`sub`/`req` responden `forbidden` sin llegar al despachador ni al motor.
-- **Auditoría** `userData/remote-audit.jsonl` (rotada a 2 archivos de ≤ 256 KiB): vinculaciones, conexiones, confirmaciones (aprobadas/rechazadas/caducadas), revocaciones,
-  fallos de PIN (solo el contador), bloqueos y llamadas rechazadas por la política (**solo canal y clase `X`**, nunca payload ni rutas). Los campos se filtran contra una lista
-  cerrada (huella de 8 hex, nombre saneado, canal con alfabeto restringido); cualquier otro dato se descarta. Visible en Ajustes › Celular › Actividad (filtro por dispositivo).
-- **Trazabilidad de cambios**: `ipc-remote.ts` añade `remote:setRemember`, `remote:resetPin`, `remote:auditList` y el evento `remote:confirmDismiss` (todos X/deny para el celular, con esquema).
-- **Límites conocidos**: el PIN de 6 dígitos solo resiste por el tope de 5 fallos + retardo (el atacante ya necesita el secreto de dispositivo); el diálogo nativo de respaldo no se cierra solo a
-  los 90 s (la cola ya rechazó); la clasificación de lecturas para el bloqueo la debe aportar el despachador (T4).
 
 ## 3 vicies ter. Proxy del motor y concentrador de eventos del celular (F8-B54, tanda T4)
 
@@ -967,21 +947,94 @@ respondiendo `unavailable`).
 - **Límites conocidos**: los diffs (`/session/{id}/diff`, `/vcs/diff`) y el texto de los mensajes pueden contener secretos que el agente leyó;
   solo se tachan las credenciales del motor. La confirmación de acciones D depende de la UI de T6.
 
-## 3 vicies quater. Caducidad de vínculos y política de la organización del control remoto (F8-B57)
+## 3 vicies quater. Confirmación en el Mac, PIN y auditoría del control remoto (F8-B55, tanda T6)
+
+Todo se aplica **dentro del canal ya autenticado** (secreto de dispositivo) y **antes** de cualquier llamada; el celular no puede invocar nada de esto
+(`remote:*` está en X en la política y el despachador lo rechaza; `remote:confirmAction` solo existe para la ventana principal).
+
+- **Confirmación de cada conexión nueva (D3) — OPCIONAL desde F8-B66**: con el ajuste «Pedir confirmación en el Mac en cada conexión» (Ajustes › Celular;
+  **apagado por defecto**) o la política `requireConnectionConfirm`, al reconectar un dispositivo ya vinculado el canal queda en «esperando confirmación» sin
+  acceso hasta que el dueño pulsa «Permitir» en el Mac; con el ajuste apagado entra directamente a la fase de PIN, sin ningún diálogo en el Mac (la defensa
+  contra un intermediario es ahora el handshake ligado a las huellas, §3 tricies, que es lo que hacía necesaria la pregunta). **Un dispositivo sin PIN
+  SIEMPRE confirma**, aunque el ajuste esté apagado: si no, un secreto robado de un vínculo sin PIN (antiguo o tras «Restablecer PIN») bastaría para fijar un PIN
+  nuevo y entrar. Opción «Recordar 12 h» por dispositivo (solo tiene efecto con el ajuste encendido; apagarlo la borra); caducada, se vuelve a pedir. La política
+  manda: forzada, el interruptor queda desactivado. Vincular un dispositivo nuevo ya es la confirmación (con código de 6 dígitos) y se confirma SIEMPRE.
+- **Diálogo** (`RemoteConfirmHost.tsx`): nombre y huella (8 hex de sha256 del `deviceId`), acción en es/en, detalle, hora, cuenta regresiva; «Rechazar» enfocado,
+  «Permitir» activo tras 1,5 s, rechazo automático a los 90 s. Sin ventana principal: `dialog.showMessageBox` sin padre (Rechazar por defecto) + rebote del
+  Dock y notificación; si el diálogo falla o lanza, **se rechaza**. Las confirmaciones usan la cola de T3 (máx. 2 pendientes, 10/min, aprobación ligada a la llamada exacta).
+- **PIN (D4)**: el celular fija un PIN de 6 dígitos con `pin-set` al vincular (o en la primera conexión de un dispositivo anterior sin PIN). El Mac guarda solo
+  `scrypt(pin, sal)` (N=2^15, r=8, p=1, sal de 16 bytes por dispositivo) dentro de `remote.bin` (cifrado con `safeStorage`); nunca el PIN, nunca en logs ni auditoría.
+  `pin-verify` se comprueba en tiempo constante. Cada fallo suma un retardo (1, 2, 4… hasta 30 s) durante el cual no se verifica; **5 fallos seguidos (persistidos, no se
+  reinician al reconectar) revocan el dispositivo**. Cambiar el PIN exige «Restablecer PIN» desde el Mac. Reconectar con actividad hace <5 min no repite el PIN; en frío sí
+  (con la política `requirePin:true` nunca hay reconexión «en caliente»). **El plazo de validez del vínculo se renueva cuando el acceso se abre** (PIN correcto o reconexión
+  en caliente), no al presentar la clave (H11): quien solo tiene la clave y no pasa del PIN ya no mantiene vivo un vínculo.
+- **Bloqueo por inactividad**: tras 5 min sin llamadas del celular (los `ping` y los eventos no cuentan) el Mac vuelve a exigir el PIN (`locked{why:'inactive'}`);
+  mientras tanto descarta todo lo que no sea lectura (`isRead`, inyectable; sin clasificador no se atiende nada) y no entrega eventos ni suscripciones. **Cualquier bloqueo
+  (por inactividad o «Bloquear ahora») cierra las suscripciones ya abiertas (H3)**: el Mac manda un `res` de error por suscripción, descarta los eventos en cola y `drain`
+  no emite sin el acceso abierto (`canEmit`); tras el PIN, el celular vuelve a suscribirse con `since` y recupera lo pendiente del búfer.
+- **«Cortar todo» y «Quitar todos» (H6)** borran también «Recordar 12 h» y la actividad reciente en memoria: al reactivar el mismo día no hay reconexión «en caliente» ni confianza de 12 h.
+- **Sin acceso, nada**: con confirmación o PIN pendientes solo se atienden `ping`, `pin-set` y `pin-verify`; `call`/`http`/`sub`/`req` responden `forbidden` sin llegar al despachador ni al motor.
+- **Auditoría** `userData/remote-audit.jsonl` (rotada a 2 archivos de ≤ 256 KiB): vinculaciones, conexiones, confirmaciones (aprobadas/rechazadas/caducadas), revocaciones,
+  fallos de PIN (solo el contador), bloqueos y llamadas rechazadas por la política (**solo canal y clase `X`**, nunca payload ni rutas). Los campos se filtran contra una lista
+  cerrada (huella de 8 hex, nombre saneado, canal con alfabeto restringido); cualquier otro dato se descarta. Visible en Ajustes › Celular › Actividad (filtro por dispositivo).
+- **Trazabilidad de cambios**: `ipc-remote.ts` añade `remote:setRemember`, `remote:resetPin`, `remote:auditList` y el evento `remote:confirmDismiss` (todos X/deny para el celular, con esquema).
+- **Límites conocidos**: el PIN de 6 dígitos solo resiste por el tope de 5 fallos + retardo (el atacante ya necesita el secreto de dispositivo); el diálogo nativo de respaldo no se cierra solo a
+  los 90 s (la cola ya rechazó); la clasificación de lecturas para el bloqueo la debe aportar el despachador (T4).
+
+## 3 vicies quinquies. PWA completa del celular (F8-B56, tanda T5)
+
+La misma interfaz React de `src/renderer/src` corre en el navegador del celular (o de un escritorio) con shims de `window.api` y `fetch` sobre el
+DataChannel. **No cambia ninguna regla del Mac**: todo lo que el celular puede hacer lo sigue decidiendo `decide` (política «celular»); ocultar un botón
+en la interfaz es solo comodidad, nunca el control.
+
+- **Carga después de autenticar**: el arranque ligero (`pwa/src`, ~25 KB gzip) vincula, autentica y pide confirmación/PIN; solo cuando el Mac da acceso
+  (`unlocked`) descarga `app/entry.json` (nombres con huella de JS/CSS, validados con una lista de caracteres y prefijo `assets/`) y arranca la interfaz.
+  Antes de eso no existe en la página nada de la interfaz completa. Si la carga falla o tarda >25 s se queda la interfaz ligera de respaldo.
+- **Aislamiento de las dos capas**: la capa ligera (vinculación, PIN, «confirma en tu Mac», reconectando, sin conexión) vive en un **shadow root**; sus
+  estilos globales no tocan a la interfaz completa ni al revés. Mientras tapa (`cover`) la interfaz completa queda `inert`. El bloqueo a los 5 min lo decide
+  el Mac (`locked{why:'inactive'}`): la capa ligera vuelve a tapar y pide el PIN sin recargar; al desbloquear se reanudan los eventos con `since`.
+- **`window.api`**: se arma con el MISMO código que el preload (`src/preload/window-api.ts`: `makeBridge` + los `build*Api`), sobre un `ipcRenderer` falso:
+  `invoke` → `call{ch,p}` y la respuesta vuelve como `IpcResult`; `on` → bus de eventos remoto. La lista de canales sigue siendo la de `src/shared/ipc*.ts`;
+  `window.api.platform = 'remote'`. **`window.fetch`** solo intercepta `onyx://engine/…` (el resto va al `fetch` original y la CSP solo deja `'self'`).
+- **El celular nunca ve credenciales**: lo que recibe ya viene con `authorization = ''` y `baseUrl = onyx://engine/…`; el shim reenvía solo `content-type`
+  y `accept` (aunque el SDK ponga `Authorization`, no sale hacia el Mac).
+- **Errores tipados** (`RemoteLinkError`: `disconnected`, `forbidden`, `locked`, `denied`, `expired`, `unavailable`, `busy`, `rate-limited`, `too-large`…) con
+  texto es/en; `forbidden` + detalle `locked` = PIN pedido, `rejected` = el dueño dijo que no. **Las mutaciones nunca se reintentan solas**: un fallo es definitivo
+  y el `AbortSignal` solo envía `cancel`.
+- **Esperar una acción «D»**: la interfaz no sabe cuáles lo son, así que cualquier llamada que tarde >1,5 s muestra «Esperando a tu Mac…» (hasta 90 s). Si el Mac rechaza o
+  caduca, la acción falla con `denied`/`expired`; nunca se ejecuta por el simple paso del tiempo.
+- **Contexto no seguro** (HTTP en IP local): se rehacen `crypto.randomUUID` (lo usa la vigilancia de archivos de Code) y `navigator.clipboard.writeText`
+  (`execCommand('copy')`; la lectura del portapapeles se rechaza). Solo si faltan.
+- **Servidor estático** (`lan-server.ts`): `.gz` precomprimido con `Content-Encoding` solo para texto y solo si el cliente acepta gzip (el `.gz` no se pide directamente);
+  `Cache-Control: immutable` **solo** para archivos con huella de Vite (8 caracteres con dígito/mayúscula, `assets/…`); `index.html`, `entry.json` y lo demás `no-store`;
+  sin service worker ni manifest; MIME correctos (`.js .css .svg .woff2 .map .json`). CSP: `default-src 'none'`, `script-src 'self'` (sin inline ni eval), `img-src 'self' data: blob:`,
+  `font-src 'self'`, `connect-src 'self' ws://host`, sin `worker-src`. Los estáticos van por HTTP normal (no por el DataChannel); no cuentan para el límite de 2 sockets de
+  señalización y siguen sujetos a la comprobación de `Host` (421) y a GET/HEAD.
+- **Sin terminal, diálogos, `openExternal`, vista nativa ni actualizador**: la superficie `remote` de `platform-caps` los oculta (y el Mac los rechaza igualmente: `pty:*`, `dialog:*`,
+  `app:openExternal`, `browser:attach`, `app:update*` son X). Los enlaces se abren en una pestaña del propio navegador del celular (`noopener`, solo `http(s)`).
+- **Peso**: sin xterm, `highlight.js` con 15 lenguajes, Tareas/Rutinas/Ajustes y el diccionario inglés en trozos aparte.
+- **Límites conocidos**: el HTTP de la LAN sigue sin cifrar (riesgo aceptado hasta el HTTPS de la fase 2): un intermediario activo justo cuando el celular abre la página podría alterar el JS que se sirve
+  (y leer el secreto o el PIN desde él; ver §3 tricies); las defensas son el handshake ligado a las huellas DTLS (cubre la conexión, no el código de la página), el código de 6 dígitos, el PIN, la
+  confirmación opcional de cada conexión y que todo lo peligroso se confirma en el Mac. `style-src` conserva `'unsafe-inline'` (estilos en línea de React).
+  El código de la interfaz completa llega al celular por una conexión no autenticada; los datos del celular (conversaciones) solo viajan por el DataChannel cifrado.
+
+## 3 vicies sexies. Caducidad de vínculos y política de la organización del control remoto (F8-B57)
 
 **Secreto de dispositivo.** El celular guarda el secreto (32 bytes aleatorios); `remote.bin` (cifrado con `safeStorage`)
 guarda SOLO su sha256. Con 256 bits de entropía un sha256 simple basta (no hay diccionario que atacar), por eso no se
-cambió el hash ni hubo que migrarlo. Ni el estado de Ajustes, ni la auditoría, ni los registros incluyen el secreto ni su
+cambió el hash ni hubo que migrarlo. **Desde v3 ese hash es material de clave** (`K = HKDF(hash)` autentica al celular, §3 tricies): quien descifre `remote.bin`
+puede autenticarse como el celular (antes el hash solo no servía para entrar). `remote.bin` sigue cifrado con `safeStorage` (Llavero) y el hash no sale del almacén
+(`authKey` devuelve la derivación); quien puede descifrarlo ya controla el Mac. Ni el estado de Ajustes, ni la auditoría, ni los registros incluyen el secreto ni su
 hash (prueba en `devices-store.test.ts`).
 
 **Caducidad por dispositivo** (`devices-store.ts`). Cada vínculo tiene `ttlDays` (30, 90 —por defecto—, 365 o `null` = nunca,
 SOLO desde el Mac: `remote:setDeviceTtl`, canal clase «X», no invocable desde el celular) y `renewedAt`. Caduca a
-`renewedAt + ttlDays`; cada autenticación correcta (`touch`) lo renueva y apunta `lastUsedAt`. Un vínculo caducado:
-- se rechaza en la autenticación por el canal con `auth-failed {why:'expired'}` y se audita (`expired`); el celular debe
-  volver a vincularse. `expired` solo se dice a quien presenta el secreto correcto; con un secreto malo sigue siendo
-  `auth-failed` a secas (no revela si el dispositivo existe ni si caducó);
+`renewedAt + ttlDays`; el plazo se renueva y se apunta `lastUsedAt` cuando el acceso se abre (`touch`: PIN correcto o reconexión en caliente), no al presentar la clave. Un vínculo caducado:
+- se rechaza tras el handshake con `auth-failed {why:'expired', proof}` y se audita (`expired`); el celular debe
+  volver a vincularse. `expired` solo se dice a quien supera el handshake (el Mac ya verificó la prueba del celular, así que puede probar quién es con `proof`, y el celular
+  solo borra su vínculo ante una prueba válida); con una clave mala o un intermediario sigue siendo `auth-failed` a secas, sin prueba (no revela si el dispositivo existe ni si caducó);
 - sigue visible en Ajustes › Celular (`Caducado`, con su fecha) hasta que se quita; no ocupa hueco al vincular otro;
-- si al reconectar quedaban 7 días o menos, `authed` lleva `expiring:true` (y `expiresAt`) para que el celular avise.
+- si al reconectar quedaban 7 días o menos, `authed` lleva `expiring:true` (y `expiresAt`, el vigente: no se renueva hasta abrir el acceso) para que el celular avise.
 `remote.bin` anterior (campo `lastSeenAt`, sin `ttlDays`/`renewedAt`) se migra al leerlo: 90 días contados desde ese momento
 (no caducan de golpe) y se reescribe de inmediato. Ajustes muestra último uso y caducidad, el plazo de cada celular,
 «Quitar» y «Quitar todos» (con confirmación; audita `revoked-all`).
@@ -994,9 +1047,84 @@ se ignora la variable `ONYXCODE_MANAGED_POLICY` (solo vale en desarrollo). Se re
 cada conexión (señalización y autenticación) y cada 5 s mientras está encendido; `enabled:false` corta de inmediato las
 conexiones vivas (`stopAll`, auditoría `policy-blocked`). `allowRemember:false` borra los vínculos al activar y al cortar;
 `allowConfirmRemember12h:false` quita «Recordar 12 h»; `requirePin:true` exige el PIN en cada conexión (sin reconexión en
-caliente); `maxDevices` y `deviceTtlDays` recortan los límites de fábrica (el plazo efectivo es el menor).
+caliente); `requireConnectionConfirm:true` (F8-B66) obliga a confirmar en el Mac cada conexión de un celular ya vinculado (ausente = `false`; un valor raro o un
+archivo inválido = `true`, fail closed); `maxDevices` y `deviceTtlDays` recortan los límites de fábrica (el plazo efectivo es el menor).
 **No verificado**: nada con Jamf/Intune reales, ni con `managed.json` escrito por root en `/Library` (las pruebas usan archivos
 temporales).
+
+## 3 vicies septies. Interfaz de celular y bloqueo manual (F8-B58, tanda T7)
+
+- **Trama `lock`** (cliente → Mac): validada estrictamente (sin claves extra), solo con el canal autenticado (si no, cuenta como violación). `AccessGate.lockNow()` pasa a `verify-pin` SIN el modo «lecturas permitidas» del bloqueo por inactividad: no se atiende nada hasta verificar el PIN (con los mismos 5 fallos y retardos). Auditado como `locked`. No amplía privilegios: solo los reduce.
+- **Desvincular** en el celular borra el secreto local y recarga; no avisa al Mac (la revocación sigue siendo desde sus Ajustes).
+- La interfaz móvil no añade canales ni rutas: reutiliza los de la política «celular». En Ajustes del celular no se ofrecen proveedores/claves (X), reinicio del servidor ni instrucciones globales (D); no se pide `provider.auth` desde el celular.
+
+## 3 vicies octies. Code en pantalla de celular (F8-B59, tanda T8)
+
+Solo interfaz: no se abre ningún canal ni ruta nuevos; todo lo que hace Code en el celular pasa por la política «celular» ya existente.
+
+- **Qué se ofrece depende de la política, pero el Mac manda**: la pantalla del celular no ofrece «siempre» (`permission.reply always` es X) ni «una vez» para permisos que la política manda confirmar (`external_directory` y cualquier tipo desconocido = D): muestra «Apruébalo en el Mac». `src/shared/remote/mac-confirm.ts` es solo un espejo para avisar a la persona; `mac-confirm-parity.test.ts` lo compara con `decide()`. Si se desfasara, la política sigue decidiendo.
+- **Adjuntos**: solo partes `data:` con los límites de Chat (5 MB imagen, 10 MB PDF, 1 MB texto, 15 MB total, 5 archivos); `doSend` filtra `file://` de los adjuntos desde el celular. Las menciones `@archivo` siguen siendo `file://` bajo el directorio de la sesión (la política lo acota).
+- **Archivos**: crear/renombrar/borrar de UN archivo es M; carpetas o varios, D (confirmación en el Mac, con aviso previo). `.git` sigue protegido. «Abrir en…» (`editors:open`) no se ofrece (X).
+- **Navegador del agente**: solo `browser:state` y `browser:capture` (R, ámbito por dueño). `captureForUi` no comprueba que la pestaña pertenezca al dueño indicado (solo la política lo hace con el `owner`): pendiente de endurecer en main.
+- **Foco/teclado**: sin atajos de teclado en el celular; el permiso ya no escucha 1/2/3.
+
+## 3 vicies novies. Celular integrado (F8-B60)
+
+Sin cambios de superficie de ataque: solo interfaz. Code en el celular usa los mismos canales que en F8-B59 (la política no cambia; `policy.ts` intacto). Cambios, Archivos y el navegador del agente (solo vista) siguen ejecutando las mismas llamadas; solo cambia dónde se dibujan (pantallas de la pila de navegación). El historial del navegador solo guarda marcas `{onyxNav:true}` sin datos. Los permisos nuevos se llevan a la vista (el usuario siempre ve la tarjeta antes de decidir).
+
+## 3 tricies. Autenticación mutua ligada a las huellas DTLS y reconexión sin confirmación obligatoria (F8-B66, protocolo v3)
+
+**Qué cambia y por qué.** Hasta v2 el celular mandaba `auth{deviceId, secret}` dentro de un DataChannel cuyo par DTLS nadie comprobaba (las huellas viajan por `ws://` plano), así
+que un intermediario en la LAN (ARP/AP falso) que terminara dos DTLS podía leer el secreto y el PIN; por eso el Mac pedía «Permitir» en cada conexión. v3 quita la causa en vez del
+síntoma: **ninguna credencial viaja** y la autenticación va ligada a las huellas DTLS que ve cada pila. Código: `src/shared/remote/handshake.ts` (TypeScript puro, `@noble/hashes`; lo
+usan igual el Mac y la PWA), `peer-session.ts` (Mac) y `pwa/src/client.ts` (celular).
+
+**Base verificada: la pila DTLS comprueba la huella del SDP.** El diseño solo vale si libdatachannel verifica el certificado del par contra la huella de su SDP remoto (el navegador lo
+hace siempre). Se comprobó con la librería real (`node-datachannel` 0.33.4, `rtc-fingerprint.test.ts`): con una huella falsa en el offer (lado Mac) o en el answer (lado celular) el canal NO
+abre; sin manipular, abre y `remoteFingerprint()` coincide con la huella del SDP. `disableFingerprintVerification` es `false` por defecto y no se toca. Defensa en profundidad (`rtc.ts`): al abrir
+el canal se compara `remoteFingerprint()` con la huella estricta del offer aplicado; si no casan, se cierra antes de que exista sesión.
+
+**Mecanismo** (`handshake.ts`; pruebas en `handshake.test.ts`, con vectores fijos calculados aparte con HKDF/HMAC de Python):
+- *Huellas estrictas* (`sdpFingerprintStrict`): se recogen TODAS las `a=fingerprint`; si hay alguna que no sea `sha-256`, un valor mal formado, o dos valores distintos, se rechaza. Con dos
+  huellas distintas el intermediario podría poner la real en la primera línea (la que hasheamos) y la suya en otra (la que verifica la pila).
+- *Claves* (HKDF-SHA256, sal fija de versión): reconexión `K = HKDF(sha256(secreto))` (el celular parte del secreto que ya guarda; el Mac, del hash que ya guarda: **los celulares vinculados siguen
+  sirviendo sin volver a vincular**); vinculación `K = HKDF(q)` con `q` el secreto del QR, que nunca sale del celular (el `hello` lleva `qid = HKDF(q, "pair-id")`).
+- *Transcript* con alfabetos cerrados: modo, id, huella del offer (celular), huella del answer (Mac), dos nonces de 32 B frescos y, solo al vincular, compromiso y revelaciones del código. Cada lado usa
+  las huellas **de su propia pila** (`localDescription`/`remoteDescription` en el celular; el offer aplicado y el answer generado en el Mac). `c2h` (celular → Mac) y `h2c` (Mac → celular) usan etiquetas
+  distintas: una prueba no se puede reflejar como la otra.
+- *Tramas*: `hs1` (celular) → `hs2` (Mac) → `hs3` (celular) y el Mac contesta con `proof` en `authed`/`pair-pending`/`auth-failed{why:'expired'}`. El celular **no manda el PIN ni nada más hasta verificar `proof`**, y
+  descarta cualquier otra trama antes (cierra con «respuesta no válida»). Un solo intento, 10 s para todo el handshake, `hs*` fuera de orden = corte inmediato, `auth` antiguo = violación. El Mac con un
+  dispositivo desconocido usa una clave de relleno aleatoria y hace el mismo trabajo (resultado siempre `auth-failed`).
+- *Código de 6 dígitos con compromiso previo*: el celular se compromete a `rp` (`cm = sha256(rp)`) antes de ver `rm`; el Mac revela `rm` antes de ver `rp`. Un intermediario que conoce `q` no puede elegir su
+  certificado después de ver el del otro lado (sin compromiso bastaban ~2^10 certificados por cumpleaños, y libdatachannel probablemente reutiliza el certificado): le acierta al azar con prob. 1e-6 por
+  intento; 5 fallos (de `qid` o de vinculación) anulan el QR (`pairMaxFails`), y el dueño compara.
+- *QR*: un `qid` ajeno ya no consume el QR (antes cualquier `hello` falso lo quemaba: DoS de H8); solo un `hs3` correcto lo consume; un único intento de vinculación en curso; un fallo cuenta solo si el canal llegó a abrirse.
+- *Fallos sin prueba no borran nada en el celular*: `auth-failed` sin `proof`, `signal-error invalid` y `bye revoked` previo a la prueba son inyectables por un intermediario; el celular muestra «No se pudo verificar tu Mac» o
+  «Tu Mac no reconoció este celular» con «Reintentar»/«Olvidar vinculación», y solo borra sus credenciales ante una prueba válida (`expired` con `proof`, `bye revoked` tras verificar).
+- *Versión*: `PROTOCOL_VERSION = 3`; una pestaña anterior recibe `error{code:'version'}` y se recarga sola UNA vez (marca en `sessionStorage`); las anteriores a esta versión no saben recargarse y muestran
+  «Versión incompatible» (recargar a mano una vez). No se mantiene la vía antigua: no hay degradación posible.
+
+**Confirmación por conexión opcional.** Con el handshake ligado a las huellas, para un dispositivo ya vinculado **con PIN** el Mac deja de pedir «Permitir» en cada conexión. Queda el ajuste «Pedir confirmación en el Mac en cada
+conexión» (apagado por defecto, `devices-store` → `remote.bin`) y la política `requireConnectionConfirm` de `managed.json`. Se conservan la confirmación de la vinculación (siempre), el PIN (5 fallos revocan), el bloqueo por
+inactividad, la caducidad, la revocación y la auditoría `connected`; un dispositivo sin PIN siempre confirma. Detalle y pruebas en §3 vicies quater y §3 vicies sexies.
+
+**Auditoría**: `auth-bad-proof` («intento de conexión sin la clave correcta, posible intermediario») con la huella del `deviceId` que dijo ser; nunca secretos ni claves.
+
+**Qué NO cubre (riesgo residual documentado).**
+- *Solo red local*: el servidor se liga a la IP privada y no hay STUN/TURN; fuera de casa hace falta la fase 2 (`docs/REMOTO-FASE2.md`). El handshake no depende del transporte: un Worker de señalización o un relé TURN
+  comprometido es un «intermediario» más y queda cubierto porque no tiene `K`; `qid` sirve de identificador de sala (el Worker nunca ve `q`). Con la PWA en otro origen el Mac tendrá que aceptar `v` N y N-1.
+- *Código de la página alterado al cargarla*: la PWA se sirve por HTTP; `index.html`/`entry.json` van con `no-store`, pero un intermediario activo justo cuando el celular abre la página puede servir JavaScript propio
+  en el mismo origen, que lee el secreto de `localStorage` y captura el PIN mientras se escribe. Ningún protocolo dentro de la página lo evita (y la confirmación por conexión tampoco: el atacante usaría la
+  conexión legítima del dueño). Solo lo arregla el HTTPS de la fase 2.
+- *Celular comprometido o desbloqueado* con la página abierta y actividad de menos de 5 min: entra sin PIN (reconexión «en caliente»); la política `requirePin:true` lo cierra.
+- *`remote.bin` descifrado*: el hash del secreto es ahora material de clave (ver §3 vicies sexies).
+- *Secretos capturados antes de esta versión* (por la vía antigua) siguen siendo válidos, porque la clave se deriva del mismo secreto: si preocupa, «Quitar todos» y volver a vincular una vez.
+- *`sdpFingerprintStrict` ante navegadores raros*: si un navegador pusiera varias huellas distintas o no `sha-256`, la conexión se rechaza (falla cerrado); probado con los SDP de libdatachannel, **pendiente de
+  la prueba manual con un iPhone/navegador real** (paso 1 de `docs/REMOTO-PRUEBA-MANUAL.md`).
+
+**Numeración de esta sección.** Desde F8-B66 las secciones del remoto van en orden y sin duplicados: B53 = «3 vicies bis», B54 = «3 vicies ter» (proxy), B55 = «3 vicies quater» (confirmación/PIN), B56 = «3 vicies quinquies» (PWA),
+B57 = «3 vicies sexies» (caducidad y política), B58 = «3 vicies septies», B59 = «3 vicies octies», B60 = «3 vicies novies», B66 = esta. Las entradas de `CHANGELOG-FASE8.md` anteriores a F8-B66 que citan «vicies ter/quater/quinquies»
+usan los nombres antiguos (B55 se llamaba «vicies ter», B57 «vicies quater», B58–B60 «vicies quinquies»).
 
 ## 4. Paquete (`electron-builder.js`)
 
@@ -1041,59 +1169,5 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
   build ad-hoc cambia la identidad y macOS olvida los permisos concedidos. La config ya soporta
   ambos casos (`electron-builder.js` + `build/notarize.js`); falta que el usuario aporte su propio
   Developer ID Application.
-
-## 3 vicies quater. PWA completa del celular (F8-B56, tanda T5)
-
-La misma interfaz React de `src/renderer/src` corre en el navegador del celular (o de un escritorio) con shims de `window.api` y `fetch` sobre el
-DataChannel. **No cambia ninguna regla del Mac**: todo lo que el celular puede hacer lo sigue decidiendo `decide` (política «celular»); ocultar un botón
-en la interfaz es solo comodidad, nunca el control.
-
-- **Carga después de autenticar**: el arranque ligero (`pwa/src`, ~25 KB gzip) vincula, autentica y pide confirmación/PIN; solo cuando el Mac da acceso
-  (`unlocked`) descarga `app/entry.json` (nombres con huella de JS/CSS, validados con una lista de caracteres y prefijo `assets/`) y arranca la interfaz.
-  Antes de eso no existe en la página nada de la interfaz completa. Si la carga falla o tarda >25 s se queda la interfaz ligera de respaldo.
-- **Aislamiento de las dos capas**: la capa ligera (vinculación, PIN, «confirma en tu Mac», reconectando, sin conexión) vive en un **shadow root**; sus
-  estilos globales no tocan a la interfaz completa ni al revés. Mientras tapa (`cover`) la interfaz completa queda `inert`. El bloqueo a los 5 min lo decide
-  el Mac (`locked{why:'inactive'}`): la capa ligera vuelve a tapar y pide el PIN sin recargar; al desbloquear se reanudan los eventos con `since`.
-- **`window.api`**: se arma con el MISMO código que el preload (`src/preload/window-api.ts`: `makeBridge` + los `build*Api`), sobre un `ipcRenderer` falso:
-  `invoke` → `call{ch,p}` y la respuesta vuelve como `IpcResult`; `on` → bus de eventos remoto. La lista de canales sigue siendo la de `src/shared/ipc*.ts`;
-  `window.api.platform = 'remote'`. **`window.fetch`** solo intercepta `onyx://engine/…` (el resto va al `fetch` original y la CSP solo deja `'self'`).
-- **El celular nunca ve credenciales**: lo que recibe ya viene con `authorization = ''` y `baseUrl = onyx://engine/…`; el shim reenvía solo `content-type`
-  y `accept` (aunque el SDK ponga `Authorization`, no sale hacia el Mac).
-- **Errores tipados** (`RemoteLinkError`: `disconnected`, `forbidden`, `locked`, `denied`, `expired`, `unavailable`, `busy`, `rate-limited`, `too-large`…) con
-  texto es/en; `forbidden` + detalle `locked` = PIN pedido, `rejected` = el dueño dijo que no. **Las mutaciones nunca se reintentan solas**: un fallo es definitivo
-  y el `AbortSignal` solo envía `cancel`.
-- **Esperar una acción «D»**: la interfaz no sabe cuáles lo son, así que cualquier llamada que tarde >1,5 s muestra «Esperando a tu Mac…» (hasta 90 s). Si el Mac rechaza o
-  caduca, la acción falla con `denied`/`expired`; nunca se ejecuta por el simple paso del tiempo.
-- **Contexto no seguro** (HTTP en IP local): se rehacen `crypto.randomUUID` (lo usa la vigilancia de archivos de Code) y `navigator.clipboard.writeText`
-  (`execCommand('copy')`; la lectura del portapapeles se rechaza). Solo si faltan.
-- **Servidor estático** (`lan-server.ts`): `.gz` precomprimido con `Content-Encoding` solo para texto y solo si el cliente acepta gzip (el `.gz` no se pide directamente);
-  `Cache-Control: immutable` **solo** para archivos con huella de Vite (8 caracteres con dígito/mayúscula, `assets/…`); `index.html`, `entry.json` y lo demás `no-store`;
-  sin service worker ni manifest; MIME correctos (`.js .css .svg .woff2 .map .json`). CSP: `default-src 'none'`, `script-src 'self'` (sin inline ni eval), `img-src 'self' data: blob:`,
-  `font-src 'self'`, `connect-src 'self' ws://host`, sin `worker-src`. Los estáticos van por HTTP normal (no por el DataChannel); no cuentan para el límite de 2 sockets de
-  señalización y siguen sujetos a la comprobación de `Host` (421) y a GET/HEAD.
-- **Sin terminal, diálogos, `openExternal`, vista nativa ni actualizador**: la superficie `remote` de `platform-caps` los oculta (y el Mac los rechaza igualmente: `pty:*`, `dialog:*`,
-  `app:openExternal`, `browser:attach`, `app:update*` son X). Los enlaces se abren en una pestaña del propio navegador del celular (`noopener`, solo `http(s)`).
-- **Peso**: sin xterm, `highlight.js` con 15 lenguajes, Tareas/Rutinas/Ajustes y el diccionario inglés en trozos aparte.
-- **Límites conocidos**: el HTTP de la LAN sigue sin cifrar (riesgo aceptado hasta el HTTPS de la fase 2): un intermediario en el Wi-Fi podría alterar el JS que se sirve; las defensas son la
-  confirmación de cada conexión nueva, el código de 6 dígitos, el PIN y que todo lo peligroso se confirma en el Mac. `style-src` conserva `'unsafe-inline'` (estilos en línea de React).
-  El código de la interfaz completa llega al celular por una conexión no autenticada; los datos del celular (conversaciones) solo viajan por el DataChannel cifrado.
-
-## 3 vicies quinquies. Interfaz de celular y bloqueo manual (F8-B58, tanda T7)
-
-- **Trama `lock`** (cliente → Mac): validada estrictamente (sin claves extra), solo con el canal autenticado (si no, cuenta como violación). `AccessGate.lockNow()` pasa a `verify-pin` SIN el modo «lecturas permitidas» del bloqueo por inactividad: no se atiende nada hasta verificar el PIN (con los mismos 5 fallos y retardos). Auditado como `locked`. No amplía privilegios: solo los reduce.
-- **Desvincular** en el celular borra el secreto local y recarga; no avisa al Mac (la revocación sigue siendo desde sus Ajustes).
-- La interfaz móvil no añade canales ni rutas: reutiliza los de la política «celular». En Ajustes del celular no se ofrecen proveedores/claves (X), reinicio del servidor ni instrucciones globales (D); no se pide `provider.auth` desde el celular.
-
-## 3 vicies quinquies. Code en pantalla de celular (F8-B59, tanda T8)
-
-Solo interfaz: no se abre ningún canal ni ruta nuevos; todo lo que hace Code en el celular pasa por la política «celular» ya existente.
-
-- **Qué se ofrece depende de la política, pero el Mac manda**: la pantalla del celular no ofrece «siempre» (`permission.reply always` es X) ni «una vez» para permisos que la política manda confirmar (`external_directory` y cualquier tipo desconocido = D): muestra «Apruébalo en el Mac». `src/shared/remote/mac-confirm.ts` es solo un espejo para avisar a la persona; `mac-confirm-parity.test.ts` lo compara con `decide()`. Si se desfasara, la política sigue decidiendo.
-- **Adjuntos**: solo partes `data:` con los límites de Chat (5 MB imagen, 10 MB PDF, 1 MB texto, 15 MB total, 5 archivos); `doSend` filtra `file://` de los adjuntos desde el celular. Las menciones `@archivo` siguen siendo `file://` bajo el directorio de la sesión (la política lo acota).
-- **Archivos**: crear/renombrar/borrar de UN archivo es M; carpetas o varios, D (confirmación en el Mac, con aviso previo). `.git` sigue protegido. «Abrir en…» (`editors:open`) no se ofrece (X).
-- **Navegador del agente**: solo `browser:state` y `browser:capture` (R, ámbito por dueño). `captureForUi` no comprueba que la pestaña pertenezca al dueño indicado (solo la política lo hace con el `owner`): pendiente de endurecer en main.
-- **Foco/teclado**: sin atajos de teclado en el celular; el permiso ya no escucha 1/2/3.
-
-## 3 vicies quinquies. Celular integrado (F8-B60)
-
-Sin cambios de superficie de ataque: solo interfaz. Code en el celular usa los mismos canales que en F8-B59 (la política no cambia; `policy.ts` intacto). Cambios, Archivos y el navegador del agente (solo vista) siguen ejecutando las mismas llamadas; solo cambia dónde se dibujan (pantallas de la pila de navegación). El historial del navegador solo guarda marcas `{onyxNav:true}` sin datos. Los permisos nuevos se llevan a la vista (el usuario siempre ve la tarjeta antes de decidir).
+- **Control remoto (F8-B66)**: la PWA se sirve por HTTP en la LAN, así que un intermediario activo justo cuando el celular abre la página puede servir código propio (leer el secreto, capturar el PIN); el handshake v3 protege la
+  conexión, no el código de la página. Solo lo arregla el HTTPS de la fase 2 (`docs/REMOTO-FASE2.md`). Mientras tanto la LAN es un requisito de confianza: no usar el control remoto en redes públicas o de invitados. Ver §3 tricies.

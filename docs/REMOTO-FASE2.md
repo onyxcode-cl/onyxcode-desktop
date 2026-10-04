@@ -1,7 +1,7 @@
 # Control remoto, fase 2: diseño (sin código)
 
 Estado: **propuesta por escrito**, nada de esto está implementado. La fase 1 (hoy) es red local: el Mac sirve la PWA por `http://<ip-privada>:<puerto>`,
-señaliza por un WebSocket local, abre un DataChannel WebRTC y autentica con secreto de dispositivo + PIN + confirmación en el Mac
+señaliza por un WebSocket local, abre un DataChannel WebRTC y autentica con un handshake ligado a las huellas DTLS (clave derivada del secreto de dispositivo, que no viaja) + PIN (+ confirmación en el Mac si se activa, opcional desde v3)
 (`docs/SEGURIDAD.md` §3 vicies). La fase 2 busca usarlo **fuera de la red local** y con credenciales mejores, sin que ningún
 servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay que verificar antes de construirlo.
 
@@ -25,7 +25,7 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 
 **Relación con lo existente.**
 - **PIN**: con passkey con verificación de usuario, la passkey sustituye al PIN como segundo factor de cada conexión y de la reconexión tras inactividad. El PIN queda como respaldo (dispositivo sin passkey, p. ej. navegadores que no la ofrecen) y mantiene sus límites (5 fallos revocan).
-- **Confirmación en el Mac**: se mantiene. Una passkey prueba «es mi teléfono y soy yo», no «quiero esto ahora»; las acciones de clase D siguen pidiendo confirmación local ligada al hash de la llamada, y cada conexión nueva se confirma (o «Recordar 12 h»).
+- **Confirmación en el Mac**: las acciones de clase D siguen pidiendo confirmación local ligada al hash de la llamada. La confirmación de **cada conexión** es **opcional desde el protocolo v3** (ajuste «Pedir confirmación en el Mac en cada conexión», apagado por defecto, o política `requireConnectionConfirm`): el handshake ligado a las huellas DTLS (`docs/SEGURIDAD.md` §3 tricies) ya impide que un intermediario se haga pasar por el celular. Una passkey prueba «es mi teléfono y soy yo», no «quiero esto ahora».
 - **Secreto de dispositivo y caducidad**: siguen mandando (el vínculo caduca igual); la passkey se invalida al revocar.
 - Ventaja de seguridad principal: una passkey no se puede copiar ni robar con JavaScript (a diferencia del PIN o del secreto de `IndexedDB`). Un script malicioso aún podría **usarla** mientras la página esté abierta: por eso la confirmación en el Mac no se quita.
 
@@ -37,8 +37,8 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 
 - Objetivo: que Mac y celular intercambien oferta/respuesta SDP y candidatos ICE fuera de la LAN, **sin ver ni guardar** contenido.
 - Un Cloudflare Worker con una **sala efímera por vinculación** (un Durable Object con WebSockets hibernables, sin almacenamiento persistente, caduca a los 2 min; honestidad: un Worker a secas no puede unir dos conexiones, el estado mínimo y volátil de la sala es inevitable). Solo reenvía mensajes de señalización; no guarda mensajes, registros con contenido ni identidades.
-- Mac y celular se identifican con un `roomId` aleatorio del QR (128 bits, un uso). El Worker limita tasa y tamaño de trama (mismos límites que `maxSignalFrameBytes`) y no autentica a nadie por sí mismo.
-- **Un Worker comprometido no debe poder suplantar al Mac**: el SDP lleva las huellas DTLS y el código de 6 dígitos que el dueño compara en el Mac se deriva de ellas (hoy ya es así); después, passkey/PIN/confirmación van **dentro** del canal DTLS ya verificado.
+- Mac y celular se identifican con una sala derivada del QR: el Worker ve el `qid` (derivado de un sentido de `q`, que nunca sale del celular), **no `q`**. El Worker limita tasa y tamaño de trama (mismos límites que `maxSignalFrameBytes`) y no autentica a nadie por sí mismo.
+- **Un Worker comprometido no debe poder suplantar al Mac**: el handshake v3 (`hs1/hs2/hs3`) autentica el canal con un HMAC ligado a las huellas DTLS de los dos extremos y a la clave derivada del QR o del secreto de dispositivo, que el Worker no tiene; un Worker (o un relé TURN) comprometido es justo un «intermediario» y queda cubierto. Con `q` filtrado, el código de 6 dígitos con compromiso previo lo delata. Después, passkey/PIN/confirmación van **dentro** del canal DTLS ya ligado. Con la PWA en otro origen ya no se actualizan Mac y PWA a la vez: el Mac tendrá que aceptar `v` N y N-1 (el campo `v` de `hs1` ya está previsto).
 - El Mac se conecta al Worker de forma saliente (sin abrir puertos). Con la función apagada no hay ninguna conexión.
 
 ## 4. TURN
@@ -60,7 +60,7 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 
 - `manifest.webmanifest` (nombre, iconos, `display: standalone`, `start_url` dentro del origen) y un aviso propio de «Añadir a pantalla de inicio» (en iOS no hay evento `beforeinstallprompt`).
 - **Service worker solo para el cascarón estático** (HTML/JS/CSS/iconos), con caché versionada y actualización controlada (aviso «Hay una versión nueva»). Nunca cachea el canal, ni respuestas con contenido, ni guarda secretos. Funciona sin él (degrada a recargar).
-- Almacenamiento: la identidad del vínculo en `IndexedDB`; pedir `navigator.storage.persist()`. Safari puede borrar el almacenamiento de sitios sin uso: lo cubre la recuperación por QR.
+- Almacenamiento: hoy la identidad del vínculo vive en `localStorage` (origen `http://IP:puerto`); en la fase 2, en `IndexedDB`; pedir `navigator.storage.persist()`. Safari puede borrar el almacenamiento de sitios sin uso: lo cubre la recuperación por QR.
 - CSP estricta en la PWA (`connect-src` solo al Worker; sin terceros), cabeceras de seguridad y SRI/hashes de los scripts.
 
 ## 7. Riesgos principales
