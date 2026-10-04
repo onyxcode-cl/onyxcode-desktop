@@ -30,6 +30,9 @@ export interface RebuildReport {
   skipped: string[];
 }
 
+/** Parámetros de ejecución: pueden cambiar al reanudar (el manifiesto guardado conserva los originales). */
+const EXECUTION_PARAMS: Array<keyof Experiment> = ["budget", "concurrency", "limits", "seed"];
+
 const DDL = `
 CREATE TABLE experiments (id TEXT PRIMARY KEY, created_at TEXT, path TEXT NOT NULL, json TEXT NOT NULL);
 CREATE TABLE runs (
@@ -105,14 +108,25 @@ export class Store {
     return readdirSync(this.root, { withFileTypes: true }).filter((d) => d.isDirectory() && SAFE.test(d.name)).map((d) => d.name);
   }
 
-  /** Guarda el manifiesto del experimento. Idempotente si el contenido es idéntico; si difiere, error. */
+  /**
+   * Guarda el manifiesto del experimento. Idempotente si el contenido es idéntico. Se separa lo INMUTABLE (qué se
+   * mide: casos, configuraciones, repeticiones, diseño, alpha) de los PARÁMETROS DE EJECUCIÓN (tope de coste/runs/tiempo,
+   * concurrencia, límites por run, semilla): reanudar con otros parámetros no falla; el cambio se anota en el diario.
+   * Si cambia lo inmutable, lanza ImmutableRecordError indicando los campos.
+   */
   writeExperiment(exp: Experiment): void {
     const e = ExperimentSchema.parse(exp);
     const path = join(this.expDir(e.id), "experiment.jsonl");
-    const existing = readJsonl(path).records[0];
-    if (existing !== undefined) {
-      if (canonicalJson(ExperimentSchema.parse(existing)) === canonicalJson(e)) return;
-      throw new ImmutableRecordError(path);
+    const rec = readJsonl(path).records[0];
+    if (rec !== undefined) {
+      const { _createdAt: _c, ...rest } = rec as Record<string, unknown>;
+      const prev = ExperimentSchema.parse(rest);
+      if (canonicalJson(prev) === canonicalJson(e)) return;
+      const diff = (Object.keys(e) as Array<keyof Experiment>).filter((k) => !EXECUTION_PARAMS.includes(k) && canonicalJson(prev[k]) !== canonicalJson(e[k]));
+      if (diff.length) throw new ImmutableRecordError(path, `cambian campos inmutables del experimento: ${diff.join(", ")}`);
+      const changed = EXECUTION_PARAMS.filter((k) => canonicalJson(prev[k]) !== canonicalJson(e[k]));
+      this.appendJournal(e.id, { event: "params-changed", fields: changed, from: Object.fromEntries(changed.map((k) => [k, prev[k]])), to: Object.fromEntries(changed.map((k) => [k, e[k]])) });
+      return;
     }
     writeImmutable(path, jsonLine({ ...e, _createdAt: new Date().toISOString() }));
     insertExperiment(this.#index(), e, path, new Date().toISOString());

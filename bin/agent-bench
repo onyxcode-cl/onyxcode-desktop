@@ -1,4 +1,11 @@
 #!/usr/bin/env node
 // Lanzador de agent-bench. Node >= 22.18 ejecuta TypeScript directamente (type stripping), sin build.
+// node:sqlite emite un ExperimentalWarning al importarse; es ruido para el usuario del CLI: se filtra solo ese aviso.
+const emit = process.emitWarning.bind(process);
+process.emitWarning = (w, ...rest) => {
+  const type = typeof rest[0] === "string" ? rest[0] : rest[0]?.type;
+  if (type === "ExperimentalWarning" && /sqlite/i.test(String(w))) return;
+  return emit(w, ...rest);
+};
 const { runCli } = await import("../src/cli/main.ts");
 await runCli(process.argv.slice(2));

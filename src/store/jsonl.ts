@@ -4,8 +4,8 @@ import { randomBytes } from "node:crypto";
 
 export class ImmutableRecordError extends Error {
   readonly path: string;
-  constructor(path: string) {
-    super(`registro inmutable: ya existe ${path}`);
+  constructor(path: string, detail?: string) {
+    super(`registro inmutable: ya existe ${path}${detail ? ` (${detail})` : ""}`);
     this.name = "ImmutableRecordError";
     this.path = path;
   }
