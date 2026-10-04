@@ -10,7 +10,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
 import { t } from '@shared/i18n'
-import { LIMITS, PROTOCOL_VERSION, SIGNALING_PATH, encodeFrame, parseSignalClientFrame } from '@shared/remote/protocol'
+import { LIMITS, SIGNALING_PATH, encodeFrame, parseSignalClientFrame, protocolVersionOk } from '@shared/remote/protocol'
 import type { SignalErrorCode, SignalHostFrame } from '@shared/remote/protocol'
 import type { SignalHello, SignalingPeer, SignalingStartOptions, SignalingTransport } from './types'
 
@@ -268,7 +268,7 @@ export class LanSignalingServer implements SignalingTransport {
       const f = parsed.value
       if (!hello) {
         if (f.t !== 'hello') return fail('frame')
-        if (f.v !== PROTOCOL_VERSION) return fail('version')
+        if (!protocolVersionOk(f.v)) return fail('version')
         // `authorize` solo reconoce el `qid` o el dispositivo (sin secretos); cuenta los fallos de un QR.
         let ok = false
         try {
@@ -309,7 +309,7 @@ function helloVersionMismatch(raw: string): boolean {
   if (raw.length > LIMITS.maxSignalFrameBytes) return false
   try {
     const o = JSON.parse(raw) as { t?: unknown; v?: unknown }
-    return !!o && typeof o === 'object' && o.t === 'hello' && typeof o.v === 'number' && o.v !== PROTOCOL_VERSION
+    return !!o && typeof o === 'object' && o.t === 'hello' && typeof o.v === 'number' && !protocolVersionOk(o.v)
   } catch {
     return false
   }

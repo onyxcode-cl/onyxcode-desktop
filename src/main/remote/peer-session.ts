@@ -31,6 +31,7 @@ import type {
   Hs1Frame,
   Hs3Frame,
   MuxClientFrame,
+  RemoteCap,
   RemoteEvent,
   RequestFrame
 } from '@shared/remote/protocol'
@@ -106,6 +107,13 @@ export interface PeerSessionDeps {
   /** ¿Es una petición de control/permisos (prioridad máxima en la respuesta)? */
   urgent?: (f: CallFrame | HttpFrame) => boolean
   access?: PeerAccess
+  /**
+   * Capacidades que se anuncian (`caps` en `authed`/`pair-pending`) a un celular que dijo v4; a uno v3 nunca se le manda nada
+   * nuevo. Sin esto no se anuncia ninguna.
+   */
+  caps?: () => RemoteCap[]
+  /** Sala del Mac en el servicio de conexión: va en `paired` (solo v4, modo nube). */
+  room?: () => string | undefined
   /** Límites de la política de la organización (tope de caducidad en días y nº máximo de celulares). Sin él, solo los de fábrica. */
   limits?: () => { capDays: number | null; maxDevices: number }
   clock?: Clock
@@ -126,6 +134,8 @@ export class PeerSession {
   private hs: HostHandshake | null = null
   /** Se llamó a `start()` (el canal llegó a abrirse): un fallo desde aquí cuenta contra el QR. */
   private _started = false
+  /** Versión de protocolo que anunció el celular en `hs1` (la criptografía es la misma en v3 y v4). */
+  private clientV = 0
 
   constructor(private readonly d: PeerSessionDeps) {
     this.limiter = new RateLimiter(d.clock)
@@ -296,6 +306,13 @@ export class PeerSession {
     })
   }
 
+  /** `caps` solo para v4 y solo si hay algo que anunciar (un celular v3 recibe las tramas de siempre). */
+  private capsField(): { caps?: RemoteCap[] } {
+    if (this.clientV < 4) return {}
+    const caps = this.d.caps?.() ?? []
+    return caps.length > 0 ? { caps } : {}
+  }
+
   private handshakeTimeout(): void {
     if (this.d.kind === 'pair') this.d.onPairProof?.(false)
     this.bye('timeout')
@@ -305,6 +322,7 @@ export class PeerSession {
     if (this._state !== 'await-hs1' || !this.hs) return this.failHandshake(false)
     const hs2 = this.hs.onHello(f)
     if (!hs2) return this.failHandshake(false)
+    this.clientV = f.v
     this._state = 'await-hs3'
     this.send(hs2)
   }
@@ -339,6 +357,7 @@ export class PeerSession {
     this.send({
       t: 'authed',
       proof,
+      ...this.capsField(),
       ...(expiresAt === null ? {} : { expiresAt }),
       ...(expiresAt !== null && expiresAt - now <= EXPIRY_WARN_MS ? { expiring: true } : {})
     })
@@ -366,7 +385,7 @@ export class PeerSession {
     // Los vínculos caducados no ocupan hueco.
     this.d.devices.pruneExpired(this.nowMs(), lim.capDays)
     if (this.d.devices.list().length >= lim.maxDevices) return deny('limit')
-    this.send({ t: 'pair-pending', proof })
+    this.send({ t: 'pair-pending', proof, ...this.capsField() })
     let accepted = false
     let timer: unknown = null
     try {
@@ -391,7 +410,8 @@ export class PeerSession {
     }
     this._deviceId = created.id
     this._state = 'authed'
-    this.send({ t: 'paired', deviceId: created.id, deviceSecret: created.secret })
+    const room = this.clientV >= 4 ? this.d.room?.() : undefined
+    this.send({ t: 'paired', deviceId: created.id, deviceSecret: created.secret, ...(room ? { room } : {}) })
     if (!this.d.onAuthed(created.id)) return this.bye('other-device')
     this.d.access?.audit({ kind: 'paired', ...this.who() })
     if (!this.d.access) this.d.devices.touch(created.id, this.nowMs())

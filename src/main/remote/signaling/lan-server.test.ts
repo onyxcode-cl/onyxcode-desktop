@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
-import { LIMITS, PROTOCOL_VERSION } from '@shared/remote/protocol'
+import { LIMITS, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION } from '@shared/remote/protocol'
 import { LanSignalingServer } from './lan-server'
 import type { SignalHello, SignalingPeer } from './types'
 
@@ -115,6 +115,14 @@ describe('LanSignalingServer', () => {
     ok.close()
   })
 
+  it('un celular v3 (versión mínima) también es atendido', async () => {
+    const old = await connect()
+    const readyP = next(old)
+    old.send(JSON.stringify({ t: 'hello', v: MIN_PROTOCOL_VERSION, mode: 'pair', qid: SECRET, deviceName: 'Viejo' }))
+    expect(JSON.parse(await readyP)).toEqual({ t: 'ready' })
+    old.close()
+  })
+
   it('versión distinta, primera trama que no es hello y binario cierran', async () => {
     const a = await connect()
     const p1 = next(a)
@@ -130,7 +138,8 @@ describe('LanSignalingServer', () => {
     const pv2 = next(v2)
     v2.send(JSON.stringify({ t: 'hello', v: 2, mode: 'pair', secret: SECRET, deviceName: 'viejo' }))
     expect(JSON.parse(await pv2)).toEqual({ t: 'error', code: 'version' })
-    expect(PROTOCOL_VERSION).toBe(3)
+    expect(PROTOCOL_VERSION).toBe(4)
+    expect(MIN_PROTOCOL_VERSION).toBe(3)
     const b = await connect()
     const p2 = next(b)
     b.send(JSON.stringify({ t: 'offer', sdp: 'v=0\r\nabc' }))

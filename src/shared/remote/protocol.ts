@@ -37,7 +37,18 @@
  * Un celular con una versión anterior recibe `error{code:'version'}` por señalización y nunca llega a abrir canal.
  */
 
-export const PROTOCOL_VERSION = 3
+export const PROTOCOL_VERSION = 4
+/**
+ * Versión mínima que el Mac sigue aceptando en `hello` y `hs1`. v4 (F8-B77) añade, sin tocar la criptografía del handshake:
+ * `caps` en `authed`/`pair-pending`, `room` en `paired`, la trama de señalización `turn` y los códigos `host-offline`/`rate`.
+ * Un Mac solo anuncia `caps`/`room` a un celular que dijo v4; a uno v3 le habla como siempre.
+ */
+export const MIN_PROTOCOL_VERSION = 3
+
+/** ¿Es una versión de protocolo que este Mac atiende? */
+export function protocolVersionOk(v: unknown): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= MIN_PROTOCOL_VERSION && v <= PROTOCOL_VERSION
+}
 
 /** Etiqueta del DataChannel que crea el celular. */
 export const DATACHANNEL_LABEL = 'onyx'
@@ -143,6 +154,25 @@ export const SECRET_RE = /^[A-Za-z0-9_-]{43}$/
 /** 16 bytes en base64url sin relleno (`rm`, `rp` del código de 6 dígitos). */
 export const HALF_RE = /^[A-Za-z0-9_-]{22}$/
 
+/** Sala de un Mac en el servicio de conexión: sha256 (43 car. base64url) de su `hostToken`. */
+export const ROOM_RE = SECRET_RE
+
+/** Capacidades que el Mac anuncia a un celular v4 tras autenticar (solo se usa lo anunciado). */
+export type RemoteCap = 'passkey' | 'push' | 'entry'
+export const REMOTE_CAPS: readonly string[] = ['passkey', 'push', 'entry']
+
+/** Servidor ICE (STUN/TURN) con credenciales efímeras que reparte el servicio de conexión. */
+export interface IceServerSpec {
+  urls: string[]
+  username?: string
+  credential?: string
+}
+
+/** Sufijos de host que se aceptan en un servidor ICE: solo el proveedor del servicio de conexión (nunca uno arbitrario). */
+export const ICE_HOST_SUFFIXES: readonly string[] = ['cloudflare.com']
+const ICE_URL_RE = /^(stun|turn|turns):([A-Za-z0-9.-]{1,200})(?::(\d{1,5}))?(?:\?transport=(?:udp|tcp))?$/
+export const MAX_ICE_SERVERS = 4
+
 export type Reply = 'once' | 'reject'
 
 // ---------------------------------------------------------------------------------------------
@@ -157,10 +187,23 @@ export type SignalClientFrame =
 
 export type SignalErrorCode =
   /** QR inválido/caducado/anulado, dispositivo desconocido o modo apagado (no se distingue a propósito). */
-  'invalid' | 'version' | 'busy' | 'frame'
+  | 'invalid'
+  | 'version'
+  | 'busy'
+  | 'frame'
+  /** Solo por el servicio de conexión (v4): el Mac no está conectado (dormido, apagado o sin internet) / demasiados intentos. */
+  | 'host-offline'
+  | 'rate'
+
+export const SIGNAL_ERROR_CODES: readonly SignalErrorCode[] = ['invalid', 'version', 'busy', 'frame', 'host-offline', 'rate']
 
 export type SignalHostFrame =
-  { t: 'ready' } | { t: 'answer'; sdp: string } | { t: 'ice'; candidate: string; mid: string } | { t: 'error'; code: SignalErrorCode }
+  | { t: 'ready' }
+  | { t: 'answer'; sdp: string }
+  | { t: 'ice'; candidate: string; mid: string }
+  | { t: 'error'; code: SignalErrorCode }
+  /** Solo por el servicio de conexión (v4): servidores ICE de ESTE celular; llega antes de `ready`. */
+  | { t: 'turn'; servers: IceServerSpec[] }
 
 // ---------------------------------------------------------------------------------------------
 // DataChannel: celular -> escritorio
@@ -301,12 +344,15 @@ export interface Hs2Frame {
 export type HostFrame =
   | Hs2Frame
   /** Vinculación: esperando que el dueño confirme en el escritorio. `proof` = HMAC `h2c` (el Mac prueba que tiene la clave). */
-  | { t: 'pair-pending'; proof: string }
-  /** Vinculación aceptada: el celular guarda `deviceId` y `deviceSecret` (el escritorio solo guarda su hash). */
-  | { t: 'paired'; deviceId: string; deviceSecret: string }
+  | { t: 'pair-pending'; proof: string; caps?: RemoteCap[] }
+  /**
+   * Vinculación aceptada: el celular guarda `deviceId` y `deviceSecret` (el escritorio solo guarda su hash). `room` (v4, modo
+   * nube): la sala del Mac en el servicio de conexión, para reconectar desde fuera.
+   */
+  | { t: 'paired'; deviceId: string; deviceSecret: string; room?: string }
   | { t: 'denied'; reason: DeniedReason }
   /** `expiresAt`: fin de validez del vínculo tras renovarlo ahora (ausente = no caduca). `expiring`: estaba a punto de caducar. */
-  | { t: 'authed'; proof: string; expiresAt?: number; expiring?: boolean }
+  | { t: 'authed'; proof: string; expiresAt?: number; expiring?: boolean; caps?: RemoteCap[] }
   /**
    * Sin `why` = clave incorrecta o intermediario (no se distinguen) y SIN prueba. `why: 'expired'` solo lo dice el Mac tras
    * verificar la prueba del celular, así que puede probar quién es (`proof`): el vínculo caducó y hay que volver a vincular.
@@ -434,6 +480,35 @@ export function parseSignalClientFrame(raw: unknown): Parsed<SignalClientFrame> 
   }
 }
 
+/**
+ * Valida una lista de servidores ICE: hasta 4, `urls` con esquema `stun:`/`turn:`/`turns:` y host del proveedor
+ * (`ICE_HOST_SUFFIXES`), `username`/`credential` ≤ 256. `null` si algo no cuadra (nada se arregla en silencio).
+ */
+export function parseIceServers(v: unknown): IceServerSpec[] | null {
+  if (!Array.isArray(v) || v.length === 0 || v.length > MAX_ICE_SERVERS) return null
+  const out: IceServerSpec[] = []
+  for (const e of v) {
+    if (!isObj(e) || !onlyKeys(e, ['urls', 'username', 'credential'])) return null
+    const urls = e.urls
+    if (!Array.isArray(urls) || urls.length === 0 || urls.length > 4) return null
+    for (const u of urls) {
+      if (typeof u !== 'string' || u.length > 256) return null
+      const m = ICE_URL_RE.exec(u)
+      if (!m) return null
+      const host = m[2].toLowerCase()
+      if (!ICE_HOST_SUFFIXES.some((x) => host === x || host.endsWith(`.${x}`))) return null
+      if (m[3] !== undefined && Number(m[3]) > 65535) return null
+    }
+    if (e.username !== undefined && !isStr(e.username, 256)) return null
+    if (e.credential !== undefined && !isStr(e.credential, 256)) return null
+    const spec: IceServerSpec = { urls: urls as string[] }
+    if (e.username !== undefined) spec.username = e.username as string
+    if (e.credential !== undefined) spec.credential = e.credential as string
+    out.push(spec)
+  }
+  return out
+}
+
 export function parseSignalHostFrame(raw: unknown): Parsed<SignalHostFrame> {
   const j = parseJson(raw, LIMITS.maxSignalFrameBytes)
   if (!j.ok) return j
@@ -451,8 +526,13 @@ export function parseSignalHostFrame(raw: unknown): Parsed<SignalHostFrame> {
     case 'error': {
       const code = o.code
       if (!onlyKeys(o, ['t', 'code'])) return fail('extra-keys')
-      if (code !== 'invalid' && code !== 'version' && code !== 'busy' && code !== 'frame') return fail('bad-code')
-      return { ok: true, value: { t: 'error', code } }
+      if (typeof code !== 'string' || !(SIGNAL_ERROR_CODES as readonly string[]).includes(code)) return fail('bad-code')
+      return { ok: true, value: { t: 'error', code: code as SignalErrorCode } }
+    }
+    case 'turn': {
+      if (!onlyKeys(o, ['t', 'servers'])) return fail('extra-keys')
+      const servers = parseIceServers(o.servers)
+      return servers ? { ok: true, value: { t: 'turn', servers } } : fail('bad-servers')
     }
     default:
       return fail('unknown-type')
@@ -628,6 +708,18 @@ function isEvent(v: unknown): v is RemoteEvent {
   }
 }
 
+/** `caps` ausente = lista vacía; una capacidad desconocida o repetida invalida la trama (nada se ignora en silencio). */
+function parseCaps(v: unknown): RemoteCap[] | null {
+  if (v === undefined) return []
+  if (!Array.isArray(v) || v.length > REMOTE_CAPS.length) return null
+  const seen = new Set<string>()
+  for (const c of v) {
+    if (typeof c !== 'string' || !REMOTE_CAPS.includes(c) || seen.has(c)) return null
+    seen.add(c)
+  }
+  return v as RemoteCap[]
+}
+
 const BYE: readonly string[] = ['revoked', 'stopped', 'violations', 'idle', 'other-device', 'timeout']
 const DENIED: readonly string[] = ['rejected', 'timeout', 'limit']
 const ERR: readonly string[] = ['bad-request', 'rate-limited', 'not-found', 'forbidden', 'busy', 'unavailable', 'failed']
@@ -647,14 +739,19 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
       if (typeof o.rm !== 'string' || !HALF_RE.test(o.rm)) return fail('bad-reveal')
       return { ok: true, value: { t: 'hs2', ns: o.ns, rm: o.rm } }
     }
-    case 'pair-pending':
+    case 'pair-pending': {
       // Sin `proof` el celular no puede saber quién la envía: se descarta aquí mismo.
-      if (!onlyKeys(o, ['t', 'proof']) || typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
-      return { ok: true, value: { t: 'pair-pending', proof: o.proof } }
+      if (!onlyKeys(o, ['t', 'proof', 'caps']) || typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
+      const caps = parseCaps(o.caps)
+      if (caps === null) return fail('bad-caps')
+      return { ok: true, value: { t: 'pair-pending', proof: o.proof, ...(caps.length > 0 ? { caps } : {}) } }
+    }
     case 'authed': {
-      if (!onlyKeys(o, ['t', 'proof', 'expiresAt', 'expiring'])) return fail('extra-keys')
+      if (!onlyKeys(o, ['t', 'proof', 'expiresAt', 'expiring', 'caps'])) return fail('extra-keys')
       if (typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
-      const v: Extract<HostFrame, { t: 'authed' }> = { t: 'authed', proof: o.proof }
+      const caps = parseCaps(o.caps)
+      if (caps === null) return fail('bad-caps')
+      const v: Extract<HostFrame, { t: 'authed' }> = { t: 'authed', proof: o.proof, ...(caps.length > 0 ? { caps } : {}) }
       if (o.expiresAt !== undefined) {
         if (typeof o.expiresAt !== 'number' || !Number.isFinite(o.expiresAt) || o.expiresAt < 0) return fail('bad-expires')
         v.expiresAt = o.expiresAt
@@ -672,10 +769,14 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
       if (typeof o.proof !== 'string' || !SECRET_RE.test(o.proof)) return fail('bad-proof')
       return { ok: true, value: { t: 'auth-failed', why: 'expired', proof: o.proof } }
     case 'paired':
-      if (!onlyKeys(o, ['t', 'deviceId', 'deviceSecret'])) return fail('extra-keys')
+      if (!onlyKeys(o, ['t', 'deviceId', 'deviceSecret', 'room'])) return fail('extra-keys')
       if (typeof o.deviceId !== 'string' || !DEVICE_ID_RE.test(o.deviceId)) return fail('bad-device')
       if (typeof o.deviceSecret !== 'string' || !SECRET_RE.test(o.deviceSecret)) return fail('bad-secret')
-      return { ok: true, value: { t: 'paired', deviceId: o.deviceId, deviceSecret: o.deviceSecret } }
+      if (o.room !== undefined && (typeof o.room !== 'string' || !ROOM_RE.test(o.room))) return fail('bad-room')
+      return {
+        ok: true,
+        value: { t: 'paired', deviceId: o.deviceId, deviceSecret: o.deviceSecret, ...(o.room !== undefined ? { room: o.room } : {}) }
+      }
     case 'denied':
       if (!onlyKeys(o, ['t', 'reason']) || typeof o.reason !== 'string' || !DENIED.includes(o.reason)) return fail('bad-reason')
       return { ok: true, value: { t: 'denied', reason: o.reason as DeniedReason } }

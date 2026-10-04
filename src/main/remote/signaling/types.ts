@@ -1,14 +1,21 @@
 /**
- * Interfaz intercambiable de señalización (SDP/ICE). El prototipo la implementa con un servidor HTTP+WebSocket
- * local (`lan-server.ts`); la fase 2 la sustituirá por un Worker de Cloudflare sin estado sin tocar el resto.
+ * Interfaz intercambiable de señalización (SDP/ICE). La implementan el servidor HTTP+WebSocket local (`lan-server.ts`, modo
+ * «Solo esta red») y el cliente del servicio de conexión (`worker-client.ts`, modo «También fuera de casa»). Los campos
+ * opcionales solo existen en el segundo.
  */
-import type { SignalClientFrame } from '@shared/remote/protocol'
+import type { IceServerSpec, SignalClientFrame } from '@shared/remote/protocol'
+
+export type { IceServerSpec }
 
 export type SignalHello = Extract<SignalClientFrame, { t: 'hello' }>
 
 /** Un celular que ya pasó el `hello` (autorizado) y negocia la conexión WebRTC. */
 export interface SignalingPeer {
   readonly hello: SignalHello
+  /** Nube: sala por la que llegó (el Mac comprueba que casa con el modo: `hello` resume = su sala; pair = la de vinculación). */
+  readonly room?: string
+  /** Nube: servidores ICE de ESTE celular (llegan con `turn` antes de la offer). LAN: ausente = ninguno. */
+  iceServers?(): IceServerSpec[]
   sendAnswer(sdp: string): void
   sendIce(candidate: string, mid: string): void
   /** Una sola oferta por peer. */
@@ -24,12 +31,21 @@ export interface SignalingStartOptions {
    * dispositivo. Nunca recibe un secreto: `q` y el secreto de dispositivo no salen del celular.
    */
   authorize(hello: SignalHello): boolean
+  /** Nube: ¿se puede conceder relé (TURN) a este celular? Política `allowRelay`. Sin esto, sí. */
+  allowRelay?(): boolean
 }
 
 export interface SignalingTransport {
-  /** Abre el servicio y devuelve el origen público (`http://ip:puerto`) para armar el QR. */
+  /** Abre el servicio y devuelve el origen público para armar el QR (LAN: `http://ip:puerto`; nube: `https://remoto.onyxcode.cl`). */
   start(opts: SignalingStartOptions): Promise<{ origin: string }>
   onPeer(cb: (peer: SignalingPeer) => void): void
   /** Cierra todo (sockets y puerto). Idempotente. */
   stop(): Promise<void>
+  /** Nube: abre (con el token) o cierra (`null`) la sala de vinculación del QR vigente. LAN: no existe. */
+  setPairRoom?(hostToken: string | null): void
+  /** Estado del enlace con el servicio, para Ajustes. LAN: siempre `online`. */
+  status?(): TransportStatus
+  onStatus?(cb: (s: TransportStatus) => void): void
 }
+
+export type TransportStatus = 'connecting' | 'online' | 'offline'

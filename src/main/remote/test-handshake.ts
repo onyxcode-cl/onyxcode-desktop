@@ -43,14 +43,21 @@ function drive(ch: HandshakeChannel, client: ClientHandshake): TestPhone {
 }
 
 /** Reconexión: manda `hs1`, responde a `hs2` con `hs3` (si el Mac contestó) y devuelve al «celular». */
-export function resumeAs(ch: HandshakeChannel, o: { deviceId: string; secret: string; fps?: Fps; rand?: Rand }): TestPhone {
+export function resumeAs(ch: HandshakeChannel, o: { deviceId: string; secret: string; fps?: Fps; rand?: Rand; v?: number }): TestPhone {
   return drive(
     ch,
-    new ClientHandshake({ mode: 'resume', deviceId: o.deviceId, secret: o.secret, fps: o.fps ?? TEST_FPS, rand: o.rand ?? defaultRand })
+    new ClientHandshake({
+      mode: 'resume',
+      deviceId: o.deviceId,
+      secret: o.secret,
+      fps: o.fps ?? TEST_FPS,
+      rand: o.rand ?? defaultRand,
+      v: o.v
+    })
   )
 }
 
 /** Vinculación con el secreto `q` del QR. */
-export function pairAs(ch: HandshakeChannel, o: { q: string; fps?: Fps; rand?: Rand }): TestPhone {
-  return drive(ch, new ClientHandshake({ mode: 'pair', q: o.q, fps: o.fps ?? TEST_FPS, rand: o.rand ?? defaultRand }))
+export function pairAs(ch: HandshakeChannel, o: { q: string; fps?: Fps; rand?: Rand; v?: number }): TestPhone {
+  return drive(ch, new ClientHandshake({ mode: 'pair', q: o.q, fps: o.fps ?? TEST_FPS, rand: o.rand ?? defaultRand, v: o.v }))
 }
