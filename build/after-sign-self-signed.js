@@ -11,29 +11,13 @@
  * los identificadores. Este hook los vuelve a firmar con el MISMO certificado y su identificador, y después
  * resella el .app (cambiaron recursos sellados).
  */
-const { execFileSync } = require('node:child_process')
 const { readFileSync } = require('node:fs')
 const { join } = require('node:path')
-
-/** Identificadores derivados de src/shared/brand.ts (no se duplican literales; lo comprueba src/test/brand-consistency.test.ts). */
-function idsFromBrandSource(src) {
-  const alias = /export const AUTHOR_ALIAS = '([^']*)'/.exec(src)?.[1]
-  if (!alias) throw new Error('No se encontró AUTHOR_ALIAS en src/shared/brand.ts')
-  const appId = `cl.${alias}.onyxcode`
-  return { appId, helperId: `cl.${alias}.opendesk.cu-helper`, disclaimId: `${appId}.disclaim` }
-}
-
-const defaultRun = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+const { idsFromBrandSource, defaultRun, resignBundle } = require('./sign-common.js')
 
 /** Vuelve a firmar helpers (con su identificador) y luego el .app. `identity` = nombre del certificado (o «-» en pruebas). */
 function resign({ appPath, identity, ids, run = defaultRun }) {
-  const res = join(appPath, 'Contents', 'Resources')
-  const sign = (file, identifier) => run('/usr/bin/codesign', ['--force', '--sign', identity, '--identifier', identifier, file])
-  sign(join(res, 'computer-use', 'bin', 'cu-helper'), ids.helperId)
-  sign(join(res, 'launcher', 'onyxcode-disclaim'), ids.disclaimId)
-  // Resellado del paquete (sin --deep: lo anidado ya está firmado por electron-builder con la misma identidad).
-  sign(appPath, ids.appId)
-  run('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath])
+  resignBundle({ appPath, identity, ids, run, mode: 'self' })
 }
 
 module.exports = async function afterSignSelfSigned(context) {

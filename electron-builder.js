@@ -14,7 +14,10 @@ if (selfSigned && !process.env.CSC_NAME) {
   throw new Error('ONYXCODE_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado de firma de código (docs/DISTRIBUCION.md §10).')
 }
 const hasSigningIdentity = Boolean(process.env.CSC_NAME || process.env.CSC_LINK)
-const hasNotarizeCreds = Boolean(process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID)
+// Notarización con clave API de App Store Connect (APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER, preferida) o con
+// Apple ID (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID). Ver build/sign-common.js.
+const notarizeCreds = require('./build/sign-common.js').resolveNotarizeCreds(process.env)
+const hasNotarizeCreds = notarizeCreds.kind === 'api-key' || notarizeCreds.kind === 'apple-id'
 
 if (selfSigned && hasNotarizeCreds) {
   console.warn('[electron-builder.config] ONYXCODE_SELF_SIGNED=1: se ignoran las credenciales de Apple; este build NO se notariza.')
@@ -184,6 +187,8 @@ module.exports = {
     artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
   },
   afterSign: selfSigned ? 'build/after-sign-self-signed.js' : 'build/notarize.js',
+  // Notariza y graba el .dmg (el afterSign solo cubre el .app). No hace nada sin Developer ID + credenciales.
+  afterAllArtifactBuild: 'build/notarize-dmg.js',
   dmg: {
     artifactName: '${name}-${version}-${arch}.${ext}'
   },
