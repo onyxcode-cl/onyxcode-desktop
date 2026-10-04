@@ -1,12 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, utimesSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs, UsageError } from "../../src/cli/args.ts";
 import { main } from "../../src/cli/main.ts";
 import { EXIT, type Ctx } from "../../src/cli/ctx.ts";
 import { supervise } from "../../src/core/proc.ts";
+import { listConfigurations, loadExperiment } from "../../src/cli/data.ts";
+
+const REAL_ROOT = join(import.meta.dirname, "..", "..");
 
 const T = { help: { kind: "boolean" }, n: { kind: "int", min: 1, max: 3, alias: "n" }, name: { kind: "string" }, x: { kind: "number" } } as const;
 
@@ -31,7 +34,7 @@ test("parser: errores en español", () => {
 });
 
 // ---- entorno de prueba ----
-function fixture(opts: { runner?: string; withEngine?: boolean } = {}) {
+function fixture(opts: { runner?: string } = {}) {
   const root = mkdtempSync(join(tmpdir(), "ab-cli-test-"));
   mkdirSync(join(root, "configurations", "x"), { recursive: true });
   mkdirSync(join(root, "experiments"), { recursive: true });
@@ -41,14 +44,6 @@ function fixture(opts: { runner?: string; withEngine?: boolean } = {}) {
     writeFileSync(join(root, "configurations", "x", `${id}.json`), JSON.stringify({ schemaVersion: "1", id, name: id, runner: id === "b" && opts.runner ? opts.runner : "fake" }));
   }
   writeFileSync(join(root, "experiments", "e1.json"), JSON.stringify({ id: "e1", scenarios: ["c1"], configurations: ["a", "b"], repetitions: 3, budget: { maxCost: 1 } }));
-  if (opts.withEngine) {
-    mkdirSync(join(root, "src", "engine"), { recursive: true });
-    writeFileSync(
-      join(root, "src", "engine", "index.ts"),
-      `export function planExperiment(r: any) { return { runs: [{ scenarioId: "c1", configurationId: "a", repetition: 0, order: 0 }], seed: r.experiment.seed, design: "interleaved" }; }
-export async function runExperiment(r: any) { return { experimentId: r.experiment.id, runsPlanned: 1, runsFinished: 1, runsSucceeded: 1, costUsd: null, stoppedBy: "done", orphans: 0, concurrency: r.concurrency, maxCost: r.maxCost }; }\n`,
-    );
-  }
   const out: string[] = [];
   const err: string[] = [];
   const ac = new AbortController();
@@ -66,7 +61,7 @@ export async function runExperiment(r: any) { return { experimentId: r.experimen
 }
 
 test("run sin --max-cost se rechaza (3) y no ejecuta nada", async () => {
-  const f = fixture({ withEngine: true });
+  const f = fixture();
   try {
     const code = await main(["run", "e1"], f.ctx);
     assert.equal(code, EXIT.RECHAZADO);
@@ -89,7 +84,7 @@ test("run --dry-run con fake: ok, cuenta runs y no llama al motor", async () => 
 });
 
 test("run con runner real exige --allow-real-runner y AGENT_BENCH_CONFIRM_REAL=yes", async () => {
-  const f = fixture({ runner: "opencode", withEngine: true });
+  const f = fixture({ runner: "opencode" });
   try {
     assert.equal(await main(["run", "e1", "--max-cost", "1", "--dry-run"], f.ctx), EXIT.RECHAZADO);
     assert.match(f.err.join(""), /allow-real-runner/);
@@ -120,22 +115,91 @@ test("run: experimento, config o caso inexistente => 4; opción desconocida => 2
   } finally { f.done(); }
 });
 
-test("run y plan sin motor: código 5 y nada ejecutado; con motor simulado se cablea", async () => {
+test("plan usa el planificador real: orden determinista por semilla y estimación", async () => {
   const f = fixture();
   try {
-    assert.equal(await main(["run", "e1", "--max-cost", "0"], f.ctx), EXIT.NO_DISPONIBLE);
-    assert.equal(await main(["plan", "e1"], f.ctx), EXIT.NO_DISPONIBLE);
+    const ctx = { ...f.ctx, root: REAL_ROOT };
+    assert.equal(await main(["plan", "demo-fake", "--dry-run", "--json"], ctx), 0);
+    const j = JSON.parse(f.out.join(""));
+    assert.equal(j.plan.runs.length, 36);
+    assert.equal(j.estimate.costUsdTotal, 0);
+    f.out.length = 0;
+    assert.equal(await main(["plan", "demo-fake", "--json"], ctx), 0);
+    assert.deepEqual(JSON.parse(f.out.join("")).plan.runs.map((r: { key: string }) => r.key), j.plan.runs.map((r: { key: string }) => r.key));
+    f.out.length = 0;
+    assert.equal(await main(["plan", "demo-fake", "--json", "--seed", "99"], ctx), 0);
+    assert.notDeepEqual(JSON.parse(f.out.join("")).plan.runs.map((r: { key: string }) => r.key), j.plan.runs.map((r: { key: string }) => r.key));
   } finally { f.done(); }
-  const g = fixture({ withEngine: true });
+});
+
+test("las configuraciones y experimentos de ejemplo del repo son válidos", () => {
+  const cfgs = listConfigurations(REAL_ROOT);
+  assert.deepEqual(
+    cfgs.map((c) => c.id).sort(),
+    ["codex-baseline", "fake-baseline", "fake-variant-a", "opencode-build-baseline", "opencode-onyx-tasks-a", "opencode-onyx-tasks-b"],
+  );
+  const e = loadExperiment(REAL_ROOT, "demo-fake", {});
+  assert.equal(e.scenarios.length * e.configurations.length * e.repetitions, 36);
+  assert.equal(e.budget.maxCost, 0);
+});
+
+test("run real con fake de punta a punta: run, reanudar, list runs, compare, report y --verify-claim", { timeout: 120_000 }, async () => {
+  const f = fixture();
   try {
-    assert.equal(await main(["plan", "e1", "--json"], g.ctx), 0);
-    assert.equal(JSON.parse(g.out.join("")).plan.runs.length, 1);
-    g.out.length = 0;
-    assert.equal(await main(["run", "e1", "--max-cost", "2.5", "--max-concurrency", "2", "--json"], g.ctx), 0);
-    const j = JSON.parse(g.out.join(""));
-    assert.equal(j.summary.concurrency, 2);
-    assert.equal(j.summary.maxCost, 2.5);
-  } finally { g.done(); }
+    const exp = join(f.root, "mini.json");
+    writeFileSync(exp, JSON.stringify({ id: "mini", scenarios: ["node-l1-001-paginate", "node-l1-002-leap-year"], configurations: ["fake-baseline", "fake-variant-a"], repetitions: 2, seed: 3, budget: { maxCost: 0 }, limits: { timeoutSec: 60, inactivitySec: 20 } }));
+    const ctx = { ...f.ctx, root: REAL_ROOT, home: f.root };
+    const results = join(f.root, "res");
+    const run = async (args: string[]) => {
+      f.out.length = 0;
+      const code = await main([...args, "--json"], ctx);
+      return { code, j: JSON.parse(f.out.join("")) };
+    };
+    const r1 = await run(["run", exp, "--max-cost", "0", "--results", results]);
+    assert.equal(r1.code, 0, JSON.stringify(r1.j));
+    assert.equal(r1.j.runsFinished, 8);
+    assert.equal(r1.j.orphans, 0);
+    assert.equal(r1.j.spentUsd, 0);
+    assert.equal(existsSync(join(f.root, "ab", "r")) ? readdirSync(join(f.root, "ab", "r")).length : 0, 0, "sin workspaces residuales");
+    // reanudar: todo hecho => nada se ejecuta de nuevo
+    const r2 = await run(["run", exp, "--max-cost", "0", "--results", results]);
+    assert.equal(r2.j.runsFinished, 0);
+    assert.equal(r2.j.skipped, 8);
+    const l = await run(["list", "runs", "mini", "--results", results]);
+    assert.equal(l.j.runs.length, 8);
+    const c = await run(["compare", "mini", "--results", results]);
+    assert.equal(c.code, 0);
+    assert.equal(c.j.configs, 2);
+    assert.equal(c.j.rows.length, 2);
+    const r = await run(["report", "mini", "--results", results, "--seed", "5", "--boot", "200"]);
+    assert.equal(r.code, 0);
+    assert.ok(existsSync(join(results, "mini", "report", "claims.json")));
+    const v = await run(["report", "mini", "--results", results, "--verify-claim", "all"]);
+    assert.equal(v.code, 0, JSON.stringify(v.j));
+    assert.equal(v.j.reproducible, true);
+    // adulterar una afirmación => no reproducible (1)
+    const cp = join(results, "mini", "report", "claims.json");
+    const cj = JSON.parse(readFileSync(cp, "utf8"));
+    cj.claims[0].value = 0.123456;
+    writeFileSync(cp, JSON.stringify(cj));
+    const bad = await run(["report", "mini", "--results", results, "--verify-claim", cj.claims[0].id]);
+    assert.equal(bad.code, EXIT.FALLO);
+    assert.equal(bad.j.reproducible, false);
+    assert.equal((await run(["report", "mini", "--results", results, "--verify-claim", "no.existe"])).code, EXIT.DATOS);
+  } finally { f.done(); }
+});
+
+test("run: los runners reales no se registran sin permiso ni confirmación", async () => {
+  const f = fixture({ runner: "opencode" });
+  try {
+    const { buildRunners } = await import("../../src/cli/wiring.ts");
+    assert.deepEqual(Object.keys(await buildRunners(REAL_ROOT, [], false)), ["fake"]);
+    assert.deepEqual(Object.keys(await buildRunners(REAL_ROOT, [], true)).sort(), ["codex", "fake", "opencode"]);
+    assert.equal(await main(["run", "e1", "--max-cost", "1"], f.ctx), EXIT.RECHAZADO);
+    f.ctx.env["AGENT_BENCH_CONFIRM_REAL"] = "yes";
+    assert.equal(await main(["run", "e1", "--max-cost", "1"], f.ctx), EXIT.RECHAZADO);
+    assert.match(f.err.join(""), /allow-real-runner/);
+  } finally { f.done(); }
 });
 
 test("clean: dry-run no borra; sin --yes y sin TTY se niega; --yes borra solo ~/ab/r y validate, omite recientes", async () => {

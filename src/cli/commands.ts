@@ -1,12 +1,15 @@
-import { existsSync, lstatSync, readdirSync, realpathSync, rmSync, statSync } from "node:fs";
-import { join, sep } from "node:path";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { dirname, join, sep } from "node:path";
 import { doctor } from "../isolation/doctor.ts";
 import { estimatePower, minimumDetectableEffect, MAX_SIMS } from "../stats/power.ts";
 import { supervise } from "../core/proc.ts";
 import { COMMON_OPTS, parseArgs, pick, UsageError, type OptTable, type Parsed } from "./args.ts";
 import { EXIT, fail, ok, type CmdResult, type Ctx } from "./ctx.ts";
 import { DataError, listConfigurations, listExperimentFiles, listScenarios, loadExperiment } from "./data.ts";
-import { loadEngine, loadReport, type RunRequest } from "./wiring.ts";
+import { BudgetError } from "../engine/engine.ts";
+import { ConfigError } from "../engine/config.ts";
+import type { ClaimsFile } from "../report/types.ts";
+import { loadReport, planFor, runFor } from "./wiring.ts";
 
 export const MAX_CONCURRENCY = 2;
 
@@ -159,7 +162,7 @@ const listCmd: CommandDef = {
         const runs = store.queryRuns(expId ? { experimentId: expId } : {});
         out["runs"] = runs.map((r) => ({ runId: r.runId, experimentId: r.experimentId, scenarioId: r.scenarioId, configurationId: r.configurationId, repetition: r.repetition, outcome: r.outcome, success: r.success }));
         lines.push(`Runs: ${runs.length}`);
-        for (const r of runs.slice(0, 200)) lines.push(`  ${r.runId.slice(0, 8)}  ${r.scenarioId}  ${r.configurationId}  rep ${r.repetition}  ${r.outcome}  éxito=${r.success === null ? "n/d" : r.success ? "sí" : "no"}`);
+        for (const r of runs.slice(0, 200)) lines.push(`  ${r.runId.slice(0, 8)}  ${r.scenarioId}  ${r.configurationId}  rep ${r.repetition + 1}  ${r.outcome}  éxito=${r.success === null ? "n/d" : r.success ? "sí" : "no"}`);
         if (runs.length > 200) lines.push(`  ... ${runs.length - 200} más (usa --json)`);
       } finally {
         store.close();
@@ -290,25 +293,29 @@ const summaryData = (pr: Prepared): Record<string, unknown> => ({
 });
 
 const planCmd: CommandDef = {
-  summary: "Muestra el plan de ejecución (orden de runs) sin ejecutar nada",
-  usage: "agent-bench plan EXPERIMENTO [--seed N] [--max-runs N] [--json]",
+  summary: "Muestra el plan de ejecución (orden de runs y estimación) sin ejecutar nada",
+  usage: "agent-bench plan EXPERIMENTO [--dry-run] [--seed N] [--max-runs N] [--json]   (plan nunca ejecuta; --dry-run se acepta por simetría con run)",
   opts: EXP_OPTS(),
   async run(p, ctx) {
     const pr = prepare(p, ctx);
     if (isResult(pr)) return pr;
     const data = summaryData(pr);
-    const eng = await loadEngine(ctx.root);
-    if (!eng.ok) return { code: EXIT.NO_DISPONIBLE, data: { ...data, engine: "no disponible", reason: eng.reason }, text: `${summaryText(pr)}\nPlan detallado no disponible: ${eng.reason}.` };
-    const plan = await eng.api.plan({ experiment: pr.experiment, configurations: pr.configurations, benchmarksDir: join(ctx.root, "benchmarks") });
-    const runs = plan.runs.slice(0, pr.effectiveRuns);
-    const head = runs.slice(0, 20).map((r) => `  ${String(r.order + 1).padStart(4)}. ${r.scenarioId}  ${r.configurationId}  rep ${r.repetition}`);
-    return ok({ ...data, engine: "ok", plan: { ...plan, runs } }, `${summaryText(pr)}\nOrden (primeros ${head.length} de ${runs.length}):\n${head.join("\n")}`);
+    const plan = await planFor(pr.experiment, pr.configurations);
+    const runs = plan.runs.slice(0, pr.effectiveRuns).map((r) => ({ order: r.index, ...r }));
+    const head = runs.slice(0, 20).map((r) => `  ${String(r.order + 1).padStart(4)}. ${r.scenarioId}  ${r.configurationId}  rep ${r.repetition + 1}`);
+    const e = plan.estimate;
+    const est = `Estimación: ${e.tokensPerRun} tokens/run (${e.tokensBasis === "history" ? "historial" : "supuesto"}), ~${e.secPerRun} s/run, tiempo total ~${e.wallSecTotal} s, coste ${e.costUsdTotal === null ? "n/d" : e.costUsdTotal.toFixed(2) + " USD"}`;
+    const warn = plan.warnings.map((w) => `  aviso: ${w}`);
+    return ok(
+      { ...data, engine: "ok", plan: { ...plan, runs }, estimate: e, warnings: plan.warnings },
+      [summaryText(pr), est, ...warn, `Orden (primeros ${head.length} de ${runs.length}):`, ...head].join("\n"),
+    );
   },
 };
 
 const runCmd: CommandDef = {
   summary: "Ejecuta un experimento (exige --max-cost; solo runner fake por defecto)",
-  usage: "agent-bench run EXPERIMENTO --max-cost USD [--dry-run] [--max-concurrency 1|2] [--max-runs N] [--max-wall SEG] [--timeout SEG] [--seed N] [--out DIR] [--allow-real-runner] [--json]",
+  usage: "agent-bench run EXPERIMENTO --max-cost USD [--dry-run] [--max-concurrency 1|2] [--max-runs N] [--max-wall SEG] [--timeout SEG] [--seed N] [--results DIR | --out DIR] [--allow-real-runner] [--json]",
   opts: EXP_OPTS({ "allow-real-runner": { kind: "boolean" } }),
   async run(p, ctx) {
     if (n(p, "max-cost") === undefined) {
@@ -324,43 +331,112 @@ const runCmd: CommandDef = {
       if (ctx.env["AGENT_BENCH_CONFIRM_REAL"] !== "yes") {
         return fail(EXIT.RECHAZADO, "runner real: falta confirmar con la variable de entorno AGENT_BENCH_CONFIRM_REAL=yes");
       }
+      const known = ["opencode", "codex"];
+      const unknown = pr.realRunners.filter((r) => !known.includes(r));
+      if (unknown.length) return fail(EXIT.DATOS, `runner desconocido: ${unknown.join(", ")} (disponibles: fake, opencode, codex)`);
+      if (!b(p, "dry-run")) {
+        // Aislamiento obligatorio para runners reales: sandbox-exec presente y sin configuración gestionada.
+        const d = doctor({});
+        const bad = d.checks.filter((c) => (c.name === "sandbox-exec" || c.name === "config-gestionada" || c.name === "node" || c.name === "git") && c.status === "fail");
+        if (bad.length) return fail(EXIT.RECHAZADO, `runner real: el entorno no cumple el aislamiento (${bad.map((c) => `${c.name}: ${c.detail}`).join("; ")})`);
+      }
       allowReal = true;
     }
     const data = { ...summaryData(pr), allowRealRunner: allowReal };
-    if (b(p, "dry-run")) return ok({ ...data, dryRun: true }, `Simulación (no se ejecuta nada).\n${summaryText(pr)}`);
-    const eng = await loadEngine(ctx.root);
-    if (!eng.ok) return { code: EXIT.NO_DISPONIBLE, data: { ...data, engine: "no disponible", reason: eng.reason }, text: `Motor no disponible: ${eng.reason}. No se ejecutó nada.` };
-    const req: RunRequest = {
-      experiment: pr.experiment,
-      configurations: pr.configurations,
-      benchmarksDir: join(ctx.root, "benchmarks"),
-      resultsDir: s(p, "out") ?? s(p, "results") ?? join(ctx.root, "results"),
-      maxCost: pr.experiment.budget.maxCost,
-      maxRuns: pr.experiment.budget.maxRuns,
-      maxWallSec: pr.experiment.budget.maxWallSec,
-      concurrency: Math.min(pr.concurrency, MAX_CONCURRENCY),
-      timeoutSec: n(p, "timeout") === undefined ? null : Math.ceil(n(p, "timeout")!),
-      allowRealRunner: allowReal,
-      signal: ctx.signal,
-      ...(b(p, "json") ? {} : { onProgress: (m: string) => ctx.stderr(m + "\n") }),
+    const dryRun = b(p, "dry-run");
+    const rd = s(p, "out") ?? s(p, "results") ?? join(ctx.root, "results");
+    const json = b(p, "json");
+    const say = (m: string): void => {
+      if (!json) ctx.stderr(m + "\n");
     };
-    const sum = await eng.api.run(req);
-    const code = sum.stoppedBy === "cancelled" ? EXIT.INTERRUMPIDO : sum.stoppedBy === "error" || sum.orphans > 0 ? EXIT.FALLO : EXIT.OK;
+    if (dryRun) {
+      const plan = await planFor(pr.experiment, pr.configurations);
+      const e = plan.estimate;
+      return ok(
+        { ...data, dryRun: true, estimate: e, warnings: plan.warnings },
+        `Simulación (no se ejecuta nada).\n${summaryText(pr)}\nCoste estimado: ${e.costUsdTotal === null ? "n/d" : e.costUsdTotal.toFixed(2) + " USD"}; runs planificados: ${Math.min(plan.runs.length, pr.effectiveRuns)}.${plan.warnings.map((w) => "\n  aviso: " + w).join("")}`,
+      );
+    }
+    let sum;
+    try {
+      sum = await runFor({
+        experiment: pr.experiment,
+        configurations: pr.configurations,
+        root: ctx.root,
+        resultsDir: rd,
+        runBase: join(ctx.home, "ab", "r"),
+        allowReal,
+        signal: ctx.signal,
+        onEvent: (e) => {
+          if (e.type === "start") say(`Inicio ${e.experimentId}: ${e.runs} runs (${e.skipped} ya hechos)`);
+          else if (e.type === "run-end") say(`  fin ${e.key.slice(0, 8)} ${e.outcome} éxito=${e.success === null ? "n/d" : e.success ? "sí" : "no"}${e.attempt > 1 ? ` (intento ${e.attempt})` : ""}`);
+          else if (e.type === "retry") say(`  reintento ${e.attempt} en ${e.delayMs} ms`);
+          else if (e.type === "gate-pause") say(`  pausa por carga: ${e.reason}`);
+          else if (e.type === "stop") say(`  parada (${e.reason}): ${e.detail}`);
+        },
+      });
+    } catch (e) {
+      if (e instanceof ConfigError || e instanceof BudgetError) return fail(EXIT.DATOS, e.message, data);
+      throw e;
+    }
+    const results = sum.results;
+    const orphans = results.reduce((a, r) => a + (r.orphans ?? 0), 0);
+    const out = {
+      ...data,
+      status: sum.status,
+      stopReason: sum.stopReason,
+      stopDetail: sum.stopDetail,
+      refusal: sum.refusal,
+      runsPlanned: sum.plan.runs.length,
+      runsFinished: results.length,
+      runsSucceeded: results.filter((r) => r.success === true).length,
+      skipped: sum.skipped,
+      pending: sum.pending,
+      attempts: sum.attempts,
+      retries: sum.retries,
+      spentUsd: sum.spentUsd,
+      costUnknownRuns: sum.costUnknownRuns,
+      wallMs: sum.wallMs,
+      orphans,
+      resultsDir: rd,
+      estimate: sum.plan.estimate,
+    };
+    if (sum.status === "refused") return { code: EXIT.RECHAZADO, data: out, text: `Error: el motor rechazó el experimento: ${sum.refusal}` };
+    const code =
+      sum.status === "cancelled" ? EXIT.INTERRUMPIDO
+      : orphans > 0 || (sum.status === "stopped" && ["damage", "infra_errors", "load_gate"].includes(sum.stopReason ?? "")) ? EXIT.FALLO
+      : EXIT.OK;
+    // El motor marca "stopped" si el tope de intentos coincide con el plan; sin pendientes es un fin normal.
+    const finished = sum.status === "completed" || (sum.pending === 0 && sum.stopReason === "budget_runs");
+    const stop = finished ? "completado" : `${sum.status}${sum.stopReason ? ` por ${sum.stopReason}` : ""}`;
     return {
       code,
-      data: { ...data, summary: sum },
-      text: `Terminado (${sum.stoppedBy}): ${sum.runsFinished}/${sum.runsPlanned} runs, ${sum.runsSucceeded} con éxito, coste ${sum.costUsd === null ? "n/d" : sum.costUsd + " USD"}, huérfanos ${sum.orphans}.`,
+      data: out,
+      text: `Terminado (${stop}): ${out.runsFinished}/${out.runsPlanned} runs (${sum.skipped} reanudados, ${sum.pending} pendientes), ${out.runsSucceeded} con éxito, coste ${sum.costUnknownRuns === results.length ? "n/d (el runner no lo informa)" : sum.spentUsd + " USD"}, huérfanos ${orphans}.\nResultados: ${rd}/${pr.experiment.id}`,
     };
   },
 };
 
 // ---------- compare / report ----------
-const REPORT_OPTS = (extra: OptTable = {}): OptTable => pick(COMMON_OPTS, ["help", "json", "seed", "out"], { results: { kind: "string" }, baseline: { kind: "string" }, alpha: { kind: "number", min: 0.0001, max: 0.5 }, ...extra });
+const REPORT_OPTS = (extra: OptTable = {}): OptTable =>
+  pick(COMMON_OPTS, ["help", "json", "seed", "out"], {
+    results: { kind: "string" },
+    input: { kind: "string" },
+    experiment: { kind: "string" },
+    baseline: { kind: "string" },
+    alpha: { kind: "number", min: 0.0001, max: 0.5 },
+    boot: { kind: "int", min: 1 },
+    composite: { kind: "boolean" },
+    ...extra,
+  });
+
+const expRef = (p: Parsed): string | undefined => p.positionals[0] ?? s(p, "experiment");
+const reportsDir = (p: Parsed, ctx: Ctx): string => s(p, "results") ?? s(p, "input") ?? join(ctx.root, "results");
 
 async function loadRuns(p: Parsed, ctx: Ctx) {
-  const exp = p.positionals[0];
-  if (!exp) throw new UsageError("falta el id del experimento");
-  const rd = resultsDir(p, ctx);
+  const exp = expRef(p);
+  if (!exp) throw new UsageError("falta el id del experimento (posicional o --experiment)");
+  const rd = reportsDir(p, ctx);
   if (!existsSync(rd) || !statSync(rd).isDirectory()) return fail(EXIT.DATOS, `no existe el directorio de resultados ${rd}`);
   const store = (await import("../store/index.ts")).openStore(rd);
   try {
@@ -376,38 +452,85 @@ const reportReq = (p: Parsed) => ({
   ...(s(p, "baseline") !== undefined ? { baselineId: s(p, "baseline")! } : {}),
   ...(n(p, "alpha") !== undefined ? { alpha: n(p, "alpha")! } : {}),
   ...(n(p, "seed") !== undefined ? { seed: n(p, "seed")! } : {}),
+  ...(n(p, "boot") !== undefined ? { boot: n(p, "boot")! } : {}),
+  ...(b(p, "composite") ? { composite: true } : {}),
 });
 
 const compareCmd: CommandDef = {
   summary: "Compara configuraciones de un experimento (tabla en pantalla)",
-  usage: "agent-bench compare EXPERIMENTO [--baseline CONFIG] [--alpha 0.05] [--results DIR] [--json]",
+  usage: "agent-bench compare EXPERIMENTO [--baseline CONFIG] [--alpha 0.05] [--seed N] [--boot N] [--results DIR] [--json]",
   opts: REPORT_OPTS(),
   async run(p, ctx) {
     const l = await loadRuns(p, ctx);
     if ("code" in l) return l;
-    const rep = await loadReport(ctx.root);
-    if (!rep.ok) return fail(EXIT.NO_DISPONIBLE, `informes no disponibles: ${rep.reason}`);
-    const a = rep.api.summarize({ runs: l.runs, ...reportReq(p) });
+    const rep = await loadReport();
+    const a = rep.summarize({ runs: l.runs, ...reportReq(p) });
     const pct = (v: number | null): string => (v === null ? "n/d" : (v * 100).toFixed(1) + "%");
     const num = (v: number | null): string => (v === null ? "n/d" : Math.round(v).toString());
     const rows = a.rows.map((r) => `  ${r.configId.padEnd(28)} éxito ${pct(r.successRate).padStart(7)}  tokens(med) ${num(r.tokensMedian).padStart(9)}  duración(med) ${num(r.durationMedianMs).padStart(8)} ms${r.configId === a.baselineId ? "  [base]" : ""}`);
+    const cmp = a.comparisons.map((c) => `  ${c.candidateId} frente a ${a.baselineId}: ITT ${c.itt ?? "n/d"}, PP ${c.pp ?? "n/d"}`);
     const warn = a.warnings.map((w) => `  aviso: ${w}`);
-    return ok({ experimentId: l.exp, ...a }, [`Experimento ${l.exp}: ${a.runs} runs, ${a.cases} casos, ${a.configs} configuraciones`, ...rows, ...warn].join("\n"));
+    return ok(
+      { experimentId: l.exp, ...a },
+      [`Experimento ${l.exp}: ${a.runs} runs, ${a.cases} casos, ${a.configs} configuraciones`, ...rows, ...(cmp.length ? ["Veredictos:", ...cmp] : []), ...warn].join("\n"),
+    );
   },
 };
 
 const reportCmd: CommandDef = {
-  summary: "Genera el informe (analysis.json, claims.json, report.html, report.md)",
-  usage: "agent-bench report EXPERIMENTO [--out DIR] [--baseline CONFIG] [--alpha 0.05] [--results DIR] [--json]",
-  opts: REPORT_OPTS({ "dry-run": { kind: "boolean" } }),
+  summary: "Genera el informe (analysis.json, claims.json, report.html, report.md) o verifica una afirmación",
+  usage:
+    "agent-bench report EXPERIMENTO [--out DIR] [--baseline CONFIG] [--alpha 0.05] [--seed N] [--boot N] [--composite] [--results DIR] [--json]\n" +
+    "       agent-bench report EXPERIMENTO --verify-claim ID|all [--claims claims.json] [--results DIR]   (recomputa desde los runs y compara; 0 = reproducible, 1 = difiere)\n" +
+    "       --input DIR y --experiment ID equivalen a --results DIR y al posicional (así los comandos de claims.json son ejecutables)",
+  opts: REPORT_OPTS({ "dry-run": { kind: "boolean" }, "verify-claim": { kind: "string" }, claims: { kind: "string" } }),
   async run(p, ctx) {
     const l = await loadRuns(p, ctx);
     if ("code" in l) return l;
     const outDir = s(p, "out") ?? join(l.rd, l.exp, "report");
+    const verify = s(p, "verify-claim");
+    if (verify !== undefined) {
+      const claimsPath = s(p, "claims") ?? join(outDir, "claims.json");
+      if (!existsSync(claimsPath)) return fail(EXIT.DATOS, `no existe ${claimsPath}: genera primero el informe con "report ${l.exp}"`);
+      let file: ClaimsFile;
+      try {
+        file = JSON.parse(readFileSync(claimsPath, "utf8")) as ClaimsFile;
+      } catch (e) {
+        return fail(EXIT.DATOS, `no se pudo leer ${claimsPath}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      if (!Array.isArray(file.claims)) return fail(EXIT.DATOS, `${claimsPath} no es un claims.json válido`);
+      const chosen = verify === "all" ? file.claims : file.claims.filter((c) => c.id === verify);
+      if (chosen.length === 0) return fail(EXIT.DATOS, `la afirmación "${verify}" no existe en ${claimsPath}`);
+      // Opciones del análisis: las de analysis.json (si existe) y, encima, las flags explícitas.
+      const apath = join(dirname(claimsPath), "analysis.json");
+      let saved: { baselineId?: string; alpha?: number; seed?: number; B?: number; composite?: boolean } = {};
+      if (existsSync(apath)) {
+        try {
+          saved = (JSON.parse(readFileSync(apath, "utf8")) as { options?: typeof saved }).options ?? {};
+        } catch {
+          /* se usan los valores por defecto */
+        }
+      }
+      const req = {
+        ...(saved.baselineId !== undefined ? { baselineId: saved.baselineId } : {}),
+        ...(saved.alpha !== undefined ? { alpha: saved.alpha } : {}),
+        ...(saved.seed !== undefined ? { seed: saved.seed } : {}),
+        ...(saved.B !== undefined ? { boot: saved.B } : {}),
+        ...(saved.composite ? { composite: true } : {}),
+        ...reportReq(p),
+      };
+      const rep = await loadReport();
+      const r = rep.verify(l.runs, { ...file, claims: chosen }, req);
+      const lines = chosen.map((c) => `  ${r.mismatches.some((m) => m.startsWith(c.id + ":") || m.startsWith(c.id + " ")) ? "DIFIERE" : "ok     "} ${c.id} = ${String(c.value)}  (${c.text})`);
+      return {
+        code: r.ok ? EXIT.OK : EXIT.FALLO,
+        data: { experimentId: l.exp, verified: chosen.length, reproducible: r.ok, mismatches: r.mismatches, claimsPath },
+        text: `${r.ok ? "Reproducible" : "NO reproducible"}: ${chosen.length} afirmación(es) recomputadas desde ${l.runs.length} runs.\n${lines.join("\n")}${r.mismatches.length ? "\nDiferencias:\n" + r.mismatches.map((m) => "  " + m).join("\n") : ""}`,
+      };
+    }
     if (b(p, "dry-run")) return ok({ dryRun: true, outDir, runs: l.runs.length }, `Simulación: se escribiría el informe de ${l.runs.length} runs en ${outDir}`);
-    const rep = await loadReport(ctx.root);
-    if (!rep.ok) return fail(EXIT.NO_DISPONIBLE, `informes no disponibles: ${rep.reason}`);
-    const r = rep.api.write({ runs: l.runs, outDir, title: l.exp, inputRef: l.rd, ...reportReq(p) });
+    const rep = await loadReport();
+    const r = rep.write({ runs: l.runs, outDir, title: l.exp, inputRef: `${l.rd} --experiment ${l.exp}`, ...reportReq(p) });
     return ok({ outDir, files: r.files, runs: l.runs.length }, `Informe escrito en ${outDir}:\n${r.files.map((f) => "  " + f).join("\n")}`);
   },
 };

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1",
+  "id": "fake-baseline",
+  "name": "Fake base (simulado, sin modelo)",
+  "runner": "fake",
+  "provider": null,
+  "model": "fake-model",
+  "skills": [],
+  "subagents": [],
+  "prompts": [],
+  "settings": {
+    "solveRate": 0.5,
+    "script": {
+      "seed": 1,
+      "jitter": 0.15,
+      "events": [
+        { "type": "message", "name": "plan", "text": "leo el código", "delayMs": 20 },
+        { "type": "tool_call", "name": "read", "read": "README.md", "delayMs": 20 },
+        { "type": "tool_call", "name": "edit", "delayMs": 20 },
+        { "type": "message", "name": "fin", "delayMs": 20 }
+      ],
+      "usage": { "input": 12000, "output": 2000, "cached": 4000, "peakContext": 14000 }
+    }
+  },
+  "tags": ["baseline", "simulado"]
+}

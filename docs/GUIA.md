@@ -125,3 +125,19 @@ console.log(ScenarioSchema.parse(JSON.parse(readFileSync(process.argv[1], 'utf8'
 ```
 
 (Cambia `ScenarioSchema` por `ConfigurationSchema` o `ExperimentSchema` según el caso.) Si falta un campo o sobra un valor, zod muestra la ruta exacta del error.
+
+## Ejemplos del repositorio y comandos
+
+- `configurations/fake/{baseline,variant-a}.json`: runner simulado. `settings.script` es el guion (inline, o ruta a un .json relativa a la raíz del banco) y `settings.solveRate` (0 a 1) la probabilidad de que el agente simulado resuelva el caso aplicando su parche de referencia.
+- `configurations/opencode/{build-baseline,onyx-tasks-A,onyx-tasks-B}.json` y `configurations/codex/baseline.json`: PLANTILLAS (`provider` y `model` en `null`, etiqueta `plantilla`, sin credenciales). Antes de un piloto real hay que fijar proveedor y modelo, y dar la clave solo por entorno (`OPENCODE_AUTH_CONTENT`, `CODEX_API_KEY`). Ajustes de OpenCode: `steps`, `agent`, `configFiles`, `configExtra`; de Codex: `sandbox`, `reasoningEffort`, `homeFiles` (ver `docs/RUNNERS.md`).
+- `experiments/demo-fake.json`: 2 configuraciones x 6 casos x 3 repeticiones, `maxCost` 0.
+
+```sh
+node bin/agent-bench list configurations            # valida y lista todas las configuraciones
+node bin/agent-bench plan  EXPERIMENTO --dry-run    # ¿qué se ejecutaría y en qué orden?
+node bin/agent-bench run   EXPERIMENTO --max-cost 0 # ejecuta; reanuda si ya hay runs en results/
+node bin/agent-bench compare EXPERIMENTO            # éxito, tokens y duración por configuración + veredictos
+node bin/agent-bench report  EXPERIMENTO            # informe completo en results/EXPERIMENTO/report/
+node bin/agent-bench report  EXPERIMENTO --verify-claim ID   # reproduce una afirmación de claims.json
+```
+`EXPERIMENTO` es el id de `experiments/<id>.json` o una ruta a un .json. Flags de `run`: `--max-cost USD` (obligatorio), `--max-runs N`, `--max-wall SEG`, `--max-concurrency 1|2`, `--timeout SEG` (por run), `--seed N`, `--results DIR`. Un experimento con configuraciones `opencode`/`codex` se rechaza (código 3) salvo `--allow-real-runner` con `AGENT_BENCH_CONFIRM_REAL=yes`.

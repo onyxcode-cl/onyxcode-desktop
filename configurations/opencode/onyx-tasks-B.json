@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1",
+  "id": "opencode-onyx-tasks-b",
+  "name": "OpenCode con onyx-tasks variante B (PLANTILLA: fija provider, model y la ruta del skill)",
+  "runner": "opencode",
+  "provider": null,
+  "model": null,
+  "skills": [{ "name": "onyx-tasks", "version": "B", "path": null }],
+  "subagents": [],
+  "prompts": [],
+  "settings": { "steps": 60 },
+  "tags": ["plantilla", "opencode", "candidata"]
+}
