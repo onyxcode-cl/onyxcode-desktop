@@ -29,7 +29,7 @@ export interface OcRetry {
 /** Contenido de `raw` en RawRunOutput. */
 export interface OcRaw {
   verdict: OcVerdict;
-  stopReason: "idle" | "session_error" | "max_steps" | "rate_limit" | "inactivity" | "timeout" | "cancelled" | "server_exit" | "no_url";
+  stopReason: "idle" | "session_error" | "max_steps" | "max_tokens" | "rate_limit" | "inactivity" | "timeout" | "cancelled" | "server_exit" | "no_url";
   sessionId: string | null;
   baseUrl: string | null;
   messages: OcMessage[];
@@ -42,6 +42,8 @@ export interface OcRaw {
   /** pid del servidor opencode (raíz del árbol), para el barrido del motor */
   pid?: number | null;
   /** step-finish observados por el banco en el SSE (independientes de la sqlite del agente), por id de parte */
+  /** primer evento SSE de cada tipo (JSON acotado), para confirmar la forma real (campos NV) */
+  eventSamples?: Record<string, string>;
   observedSteps?: Record<string, { tokens: unknown }>;
   serverOrphans: number[];
   /** huérfanos reparentados a init (cwd bajo runRoot) encontrados y eliminados */

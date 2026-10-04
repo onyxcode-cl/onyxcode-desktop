@@ -15,6 +15,7 @@ Telemetría: sqlite propia del run (`$XDG_DATA_HOME/opencode/opencode*.db`, solo
 Rate limit: `session.status` tipo `retry` con mensaje de rate limit (aborta al N-ésimo, def 1, `rateLimitRetriesBeforeAbort`), `session.error` o `message.updated` con error de rate limit -> `rate_limited`. Sin eventos 180 s -> `hung`.
 
 ### Campos NV de OpenCode (confirmar con sonda real)
+La sonda está preparada en `scripts/probe-opencode.mjs` (ver `docs/PILOTO.md`, fase 1; no se ha ejecutado). Su volcado `probe.json` tiene una sección por punto (NV1 a NV8). El runner guarda además `eventSamples` (primer evento SSE de cada tipo) en `opencode-raw.json` y aplica `Limits.maxTokens` sobre los `step-finish` observados.
 1. Nombres/forma de eventos SSE: `server.connected`, `session.status {status:{type:busy|idle|retry,attempt,message,next}}`, `session.idle`, `session.error {error:{name,data.message}}` (y `MessageAbortedError`), `message.part.updated {part}`, `message.updated {info}`.
 2. `step-finish` y `info.tokens`: `{input,output,reasoning,cache:{read,write}}` y `cost` (y si `input` excluye o incluye caché; si `info.tokens` es acumulado o por llamada). Define también `llmCalls` (hoy = nº de step-finish).
 3. `retry`: forma exacta del mensaje y del campo `attempt`; si el proveedor «OpenCode Go» reporta `token rate limit` por esta vía o como error final.

@@ -46,6 +46,16 @@ interface State {
   pids: number[];
 }
 
+/** Total de tokens (input + output + reasoning + caché) de los step-finish observados. Campos ausentes cuentan 0. */
+export function observedTotal(steps: Record<string, { tokens: unknown }>): number {
+  let n = 0;
+  for (const s of Object.values(steps)) {
+    const k = (s.tokens ?? {}) as { input?: number; output?: number; reasoning?: number; cache?: { read?: number; write?: number } };
+    n += (k.input ?? 0) + (k.output ?? 0) + (k.reasoning ?? 0) + (k.cache?.read ?? 0) + (k.cache?.write ?? 0);
+  }
+  return n;
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 export class OpenCodeRunner implements AgentRunner {
@@ -112,6 +122,7 @@ export class OpenCodeRunner implements AgentRunner {
     const deadline = t0 + limits.timeoutSec * 1000;
     const inactivityMs = limits.inactivitySec * 1000;
     const maxSteps = limits.maxSteps;
+    const maxTokens = limits.maxTokens;
     const rlAbortAt = st.settings.rateLimitRetriesBeforeAbort ?? 1;
 
     const raw: OcRaw = {
@@ -152,7 +163,7 @@ export class OpenCodeRunner implements AgentRunner {
       raw.baseUrl = baseUrl;
       const h: OcHttp = { baseUrl, authHeader: basicAuth(st.user, st.pass), directory: ctx.workspace };
       try {
-        await this.drive(h, st, task, cfg, raw, { deadline, inactivityMs, maxSteps, rlAbortAt, signal });
+        await this.drive(h, st, task, cfg, raw, { deadline, inactivityMs, maxSteps, maxTokens, rlAbortAt, signal });
       } catch (e) {
         raw.verdict = "infra_error";
         raw.errorMessage = (e as Error).message;
@@ -190,7 +201,7 @@ export class OpenCodeRunner implements AgentRunner {
   /** Secuencia: SSE antes de enviar, POST /session, prompt_async, esperar idle, leer mensajes/diff. */
   private async drive(
     h: OcHttp, st: State, task: Task, cfg: Configuration, raw: OcRaw,
-    lim: { deadline: number; inactivityMs: number; maxSteps: number; rlAbortAt: number; signal: AbortSignal },
+    lim: { deadline: number; inactivityMs: number; maxSteps: number; maxTokens: number; rlAbortAt: number; signal: AbortSignal },
   ): Promise<void> {
     const sseAc = new AbortController();
     const sseRes = await ocFetch(h, "GET", "/event", undefined, sseAc.signal, 15_000);
@@ -219,10 +230,14 @@ export class OpenCodeRunner implements AgentRunner {
       watch.touch();
       raw.eventCount++;
       raw.eventTypes[type] = (raw.eventTypes[type] ?? 0) + 1;
+      // muestra acotada del primer evento de cada tipo (forma real del SSE: se persiste redactada para confirmar los NV)
+      if (!(type in (raw.eventSamples ??= {}))) raw.eventSamples[type] = JSON.stringify(ev).slice(0, 2000);
       const sid = (p.sessionID ?? p.info?.sessionID ?? p.part?.sessionID) as string | undefined;
       // M10: el banco anota los tokens por step-finish desde el SSE (no los toca el agente, a diferencia de la sqlite del run)
       if (type === "message.part.updated" && p.part?.type === "step-finish" && typeof p.part.id === "string" && p.part.tokens) {
         (raw.observedSteps ??= {})[p.part.id] = { tokens: p.part.tokens };
+        // tope duro de tokens (Limits.maxTokens) sobre lo observado por el banco; los eventos de subagentes también cuentan
+        if (promptSent && observedTotal(raw.observedSteps) > lim.maxTokens) conclude("completed", "max_tokens");
       }
       // eventos de otras sesiones (subagentes) solo cuentan como actividad
       if (!sessionId || !promptSent || (sid && sid !== sessionId)) return;
@@ -293,7 +308,7 @@ export class OpenCodeRunner implements AgentRunner {
 
     const v = verdict as OcVerdict | null;
     // abortar la sesión salvo que haya terminado sola
-    if (sessionId && (v !== "completed" || reason === "max_steps")) {
+    if (sessionId && (v !== "completed" || reason === "max_steps" || reason === "max_tokens")) {
       try {
         await ocFetch(h, "POST", `/session/${sessionId}/abort`, undefined, undefined, 5_000);
       } catch {

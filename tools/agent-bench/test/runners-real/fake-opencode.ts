@@ -1,6 +1,6 @@
 // Binario SIMULADO de `opencode serve` (HTTP + SSE mínimo). NO es opencode real.
 // Uso: node fake-opencode.ts <escenario> serve --port 0 --hostname 127.0.0.1
-// Escenarios: ok | orphan | ratelimit | hang | slow | crash | error
+// Escenarios: ok | bigtokens | orphan | ratelimit | hang | slow | crash | error
 import { createServer } from "node:http";
 import type { ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
@@ -117,6 +117,7 @@ async function play(): Promise<void> {
   writeFileSync(join(process.cwd(), "hello.txt"), "hola\n");
   populate();
   send("message.part.updated", { part: { type: "tool", sessionID: SID, tool: "read" } });
+  if (scenario === "bigtokens") send("message.part.updated", { part: { id: "prt_big", type: "step-finish", sessionID: SID, tokens: { input: 150_000, output: 60_000, reasoning: 0, cache: { read: 0, write: 0 } } } });
   send("message.part.updated", { part: { type: "step-finish", sessionID: SID } });
   send("message.part.updated", { part: { type: "step-finish", sessionID: CID } }); // hijo: no cuenta
   send("session.idle", { sessionID: SID });

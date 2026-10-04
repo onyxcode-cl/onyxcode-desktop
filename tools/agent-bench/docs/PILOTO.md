@@ -12,6 +12,7 @@ Este documento es un procedimiento. NO se ejecuta automáticamente ni lo ejecuta
 - [ ] Credencial entregada por el dueño solo por entorno (`OPENCODE_AUTH_CONTENT`), nunca escrita en disco ni en el repo.
 
 ## Fase 1: sonda real barata (aprobación del dueño)
+Script preparado y NO ejecutado: `node scripts/probe-opencode.mjs --provider P --model M --i-understand-this-uses-quota` con `AGENT_BENCH_CONFIRM_REAL=yes` y `OPENCODE_AUTH_CONTENT` en el entorno. Sin esos flags imprime el plan y sale con 3. Topes duros fijos: 1 run, 10 min, 200 000 tokens (los impone el runner con `Limits.maxTokens`: `stopReason: max_tokens`), 8 pasos, 120 s sin actividad. Vuelca a `results/probe/<marca>/probe.json` (redactado) los campos NV1-NV8 de `docs/RUNNERS.md`: muestra del primer evento SSE de cada tipo, `step-finish` e `info.tokens/cost`, `retry`, esquema sqlite (sqlite_master, columnas, fila de muestra, tipos de parte), diff y herramientas.
 Objetivo: confirmar los campos NV de `docs/RUNNERS.md` (eventos SSE, tokens y coste, mensajes de rate limit, esquema sqlite, diff, nombres de herramientas, claves de config), no medir calidad.
 Topes sugeridos:
 - [ ] 1 caso (el más simple, L1), 1 repetición, 1 configuración, concurrencia 1.

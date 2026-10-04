@@ -151,6 +151,25 @@ test("opencode tope de pasos => completed con stopReason max_steps", async () =>
   }
 });
 
+test("opencode tope de tokens (Limits.maxTokens) => completed con stopReason max_tokens, y guarda muestras de eventos", async () => {
+  const r = await exec("bigtokens", limits({ maxTokens: 200_000 }));
+  try {
+    assert.equal(r.raw.outcome, "completed");
+    const raw = r.raw.raw as { stopReason: string; eventSamples?: Record<string, string> };
+    assert.equal(raw.stopReason, "max_tokens");
+    assert.ok(raw.eventSamples && raw.eventSamples["message.part.updated"], "muestra del primer evento de cada tipo");
+    assert.ok(Object.values(raw.eventSamples).every((s) => s.length <= 2000));
+  } finally {
+    r.done();
+  }
+  const ok = await exec("bigtokens", limits({ maxTokens: 1_000_000 }));
+  try {
+    assert.equal((ok.raw.raw as { stopReason: string }).stopReason, "idle");
+  } finally {
+    ok.done();
+  }
+});
+
 test("opencode probe con binario simulado", async () => {
   const runner = new OpenCodeRunner({ bin: { cmd: process.execPath, args: [new URL("./fake-opencode.ts", import.meta.url).pathname] } });
   const p = await runner.probe();
