@@ -260,7 +260,10 @@ export class CredentialProxy {
     const apiPrefix = this.opts.targetPathPrefix ?? ''
     const target = new URL(`${this.opts.targetOrigin}${apiPrefix}${rest}`)
     // Defensa en profundidad: tras normalizar, el destino sigue en el mismo origen y bajo el prefijo.
-    if (target.origin !== new URL(this.opts.targetOrigin).origin || !(target.pathname + '/').startsWith(`${apiPrefix.replace(/\/+$/, '')}/`)) {
+    if (
+      target.origin !== new URL(this.opts.targetOrigin).origin ||
+      !(target.pathname + '/').startsWith(`${apiPrefix.replace(/\/+$/, '')}/`)
+    ) {
       res.writeHead(400, { 'content-type': 'text/plain' }).end('bad path')
       return
     }
@@ -310,7 +313,6 @@ export function safeUpstreamRest(raw: string): string | null {
   const path = q === -1 ? rest : rest.slice(0, q)
   const query = q === -1 ? '' : rest.slice(q)
   if (rest.includes('#')) return null
-  // eslint-disable-next-line no-control-regex
   if (/[\\\u0000-\u001f\u007f]/.test(rest)) return null
   if (/%25/i.test(path) || /%5c/i.test(path) || /%2f/i.test(path)) return null
   let decoded: string
@@ -319,7 +321,6 @@ export function safeUpstreamRest(raw: string): string | null {
   } catch {
     return null
   }
-  // eslint-disable-next-line no-control-regex
   if (/[\\\u0000-\u001f\u007f]/.test(decoded) || decoded.includes('//')) return null
   for (const seg of decoded.split('/')) if (seg === '.' || seg === '..') return null
   if (path.includes('//')) return null

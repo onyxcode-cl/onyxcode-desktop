@@ -12,6 +12,13 @@
 /** Nombre de servidor MCP válido (el mismo que acepta `mcp:save`). */
 export const MCP_NAME_RE = /^[A-Za-z0-9_-]{1,64}$/
 
+/**
+ * Marcador con el que main sustituye los valores de `headers`/`environment` de un servidor MCP antes de
+ * enviarlos al renderer (F8-B69). Al guardar, un valor igual a este marcador significa «no lo cambié»:
+ * main restituye el secreto guardado.
+ */
+export const MCP_VALUE_MASK = '••••••••'
+
 /** Clave de `permission` que cubre todas las herramientas de un servidor (OpenCode las nombra `<servidor>_<herramienta>`). */
 export const mcpPermissionKey = (name: string): string => `${name}_*`
 

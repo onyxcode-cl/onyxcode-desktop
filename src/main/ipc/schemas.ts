@@ -21,7 +21,23 @@ import {
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
 import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
 import { isAllowedShell } from './pty-shell'
-import { absPath, arr, bool, literal, none, num, obj, optional, nullable, partial, record, str, tagged, ValidationError, type Validator } from './validate'
+import {
+  absPath,
+  arr,
+  bool,
+  literal,
+  none,
+  num,
+  obj,
+  optional,
+  nullable,
+  partial,
+  record,
+  str,
+  tagged,
+  ValidationError,
+  type Validator
+} from './validate'
 
 /** Rol de la ventana que envía (lo asigna main al crearla). */
 export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'browserHost'
@@ -95,7 +111,10 @@ const ptyCreate = obj({
 const egressHost: Validator<string> = (v, path = '') => {
   const s = str({ max: 255, min: 1 })(v, path)
   const h = parseEgressHost(s)
-  if (h === null) throw new ValidationError(`Parámetro "${path}": host no permitido (se necesita un dominio completo, sin comodines amplios ni IP privadas)`)
+  if (h === null)
+    throw new ValidationError(
+      `Parámetro "${path}": host no permitido (se necesita un dominio completo, sin comodines amplios ni IP privadas)`
+    )
   return h
 }
 const networkSetHost: Validator<{ host: string; decision: 'allow' | 'block' | 'unset' }> = (v, path = '') => {

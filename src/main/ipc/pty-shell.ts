@@ -28,7 +28,11 @@ function etcShells(): Set<string> {
   return out
 }
 
-export function isAllowedShell(shell: string, platform: NodeJS.Platform = process.platform, listed: ReadonlySet<string> = etcShells()): boolean {
+export function isAllowedShell(
+  shell: string,
+  platform: NodeJS.Platform = process.platform,
+  listed: ReadonlySet<string> = etcShells()
+): boolean {
   if (typeof shell !== 'string' || !shell || shell.includes('\0')) return false
   if (platform === 'win32') {
     if (!win32.isAbsolute(shell) || shell.split(/[\\/]+/).includes('..')) return false

@@ -15,7 +15,7 @@ import { app } from 'electron'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpLocalEntry, McpRemoteEntry } from '@shared/ipc-extras'
-import { MCP_NAME_RE as NAME_RE, mcpPermissionKey } from '@shared/mcp-catalog'
+import { MCP_NAME_RE as NAME_RE, MCP_VALUE_MASK, mcpPermissionKey } from '@shared/mcp-catalog'
 
 const SCHEMA = 'https://opencode.ai/config.json'
 
@@ -118,6 +118,47 @@ export function readAppMcpConfig(): AppMcpConfig {
   return { path: appOpencodeConfigPath(), servers }
 }
 
+function maskRecord(r: Record<string, string> | undefined): Record<string, string> | undefined {
+  return r ? Object.fromEntries(Object.keys(r).map((k) => [k, MCP_VALUE_MASK])) : undefined
+}
+
+/** Copia para el renderer: mismas claves de `headers`/`environment`, valores enmascarados (F8-B69). */
+export function maskAppMcpConfig(cfg: AppMcpConfig): AppMcpConfig {
+  const servers: Record<string, McpEntry> = {}
+  for (const [name, e] of Object.entries(cfg.servers)) {
+    if (e.type === 'local') servers[name] = e.environment ? { ...e, environment: maskRecord(e.environment) } : e
+    else servers[name] = e.headers ? { ...e, headers: maskRecord(e.headers) } : e
+  }
+  return { ...cfg, servers }
+}
+
+/** Sustituye los valores enmascarados por los guardados (misma clave); sin secreto previo, se descarta la clave. */
+function restoreMasked(
+  bag: Record<string, string> | undefined,
+  stored: Record<string, string> | undefined
+): Record<string, string> | undefined {
+  if (!bag) return bag
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(bag)) {
+    if (v !== MCP_VALUE_MASK) out[k] = v
+    else if (stored && typeof stored[k] === 'string') out[k] = stored[k]
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+function restoreMaskedSecrets(entry: McpEntry, previous: McpEntry | undefined): McpEntry {
+  if (entry.type === 'local') {
+    if (!entry.environment) return entry
+    const { environment: _drop, ...rest } = entry
+    const environment = restoreMasked(entry.environment, previous?.type === 'local' ? previous.environment : undefined)
+    return environment ? { ...rest, environment } : rest
+  }
+  if (!entry.headers) return entry
+  const { headers: _drop, ...rest } = entry
+  const headers = restoreMasked(entry.headers, previous?.type === 'remote' ? previous.headers : undefined)
+  return headers ? { ...rest, headers } : rest
+}
+
 function mutate(fn: (mcp: Record<string, unknown>) => void, perm?: (permission: PermissionRaw) => void): AppMcpConfig {
   const raw = readRaw()
   const mcp: Record<string, unknown> = raw.mcp && typeof raw.mcp === 'object' && !Array.isArray(raw.mcp) ? { ...raw.mcp } : {}
@@ -157,7 +198,9 @@ export function saveMcpServer(name: string, entry: McpEntry, previousName?: stri
   if (!NAME_RE.test(clean)) {
     throw new Error(t('merr.mcp.invalidNameAlt'))
   }
-  const valid = toEntry(entry)
+  // Valores enmascarados (los que main mandó al renderer) → el secreto guardado de ESTE servidor.
+  const stored = readAppMcpConfig().servers[previousName ?? clean]
+  const valid = toEntry(restoreMaskedSecrets(entry, stored))
   if (!valid) {
     throw new Error(entry.type === 'remote' ? t('merr.mcp.badUrl') : t('merr.mcp.noCommand'))
   }

@@ -56,8 +56,14 @@ describe('esquemas de red de Tareas', () => {
     }
   })
   it('acepta hosts normales y normaliza', () => {
-    expect(IPC_SCHEMAS['tasks:network:setHost']({ host: 'Example.com', decision: 'allow' })).toEqual({ host: 'example.com', decision: 'allow' })
-    expect(IPC_SCHEMAS['tasks:network:allowOnce']({ folder: '/tmp/x', host: 'cdn.example.com' })).toEqual({ folder: '/tmp/x', host: 'cdn.example.com' })
+    expect(IPC_SCHEMAS['tasks:network:setHost']({ host: 'Example.com', decision: 'allow' })).toEqual({
+      host: 'example.com',
+      decision: 'allow'
+    })
+    expect(IPC_SCHEMAS['tasks:network:allowOnce']({ folder: '/tmp/x', host: 'cdn.example.com' })).toEqual({
+      folder: '/tmp/x',
+      host: 'cdn.example.com'
+    })
   })
   it('unset y block siguen admitiendo entradas heredadas (poder retirarlas)', () => {
     expect(IPC_SCHEMAS['tasks:network:setHost']({ host: 'com', decision: 'unset' })).toEqual({ host: 'com', decision: 'unset' })

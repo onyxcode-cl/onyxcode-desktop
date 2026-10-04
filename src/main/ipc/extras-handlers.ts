@@ -11,7 +11,14 @@ import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { openArtifact } from '../extras/artifact-window'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
-import { ensureAppOpencodeConfig, readAppMcpConfig, removeMcpServer, saveMcpServer, setMcpServerEnabled } from '../extras/mcp-config'
+import {
+  ensureAppOpencodeConfig,
+  maskAppMcpConfig,
+  readAppMcpConfig,
+  removeMcpServer,
+  saveMcpServer,
+  setMcpServerEnabled
+} from '../extras/mcp-config'
 import { extrasPrefs } from '../extras/prefs'
 import {
   deliverQuickPrompt,
@@ -84,7 +91,8 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'extras:takePendingPrompt', () => takePendingPrompt())
 
   const afterMcpChange = async (): Promise<ReturnType<typeof readAppMcpConfig>> => {
-    const cfg = readAppMcpConfig()
+    // Al renderer SIEMPRE valores enmascarados (F8-B69): los secretos no salen de main.
+    const cfg = maskAppMcpConfig(readAppMcpConfig())
     await reloadOpencodeConfig(deps.server)
     broadcastExtras('mcp:changed', cfg)
     return cfg
@@ -92,7 +100,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
 
   const provenance = new CatalogProvenanceStore(join(app.getPath('userData'), 'mcp-catalog-installs.json'))
 
-  handle(ipcMain, 'mcp:getConfig', () => readAppMcpConfig())
+  handle(ipcMain, 'mcp:getConfig', () => maskAppMcpConfig(readAppMcpConfig()))
   handle(ipcMain, 'mcp:save', async ({ name, entry, previousName }) => {
     saveMcpServer(name, entry, previousName)
     if (previousName && previousName !== name) provenance.rename(previousName, name)
