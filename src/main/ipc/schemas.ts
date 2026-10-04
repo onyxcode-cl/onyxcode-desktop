@@ -19,7 +19,8 @@ import {
   type BrowserInvokeContract
 } from '@shared/ipc-browser'
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
-import { absPath, arr, bool, literal, none, num, obj, optional, nullable, partial, record, str, tagged, type Validator } from './validate'
+import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
+import { absPath, arr, bool, literal, none, num, obj, optional, nullable, partial, record, str, tagged, ValidationError, type Validator } from './validate'
 
 /** Rol de la ventana que envía (lo asigna main al crearla). */
 export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'browserHost'
@@ -77,6 +78,20 @@ const ptyCreate = obj({
   rows: num({ int: true, min: 1, max: 500 }),
   shell: optional(absPath)
 })
+/** Host de la lista blanca de red de Tareas (F8-B69): sin TLD sueltos, comodines peligrosos ni IP privadas. */
+const egressHost: Validator<string> = (v, path = '') => {
+  const s = str({ max: 255, min: 1 })(v, path)
+  const h = parseEgressHost(s)
+  if (h === null) throw new ValidationError(`Parámetro "${path}": host no permitido (se necesita un dominio completo, sin comodines amplios ni IP privadas)`)
+  return h
+}
+const networkSetHost: Validator<{ host: string; decision: 'allow' | 'block' | 'unset' }> = (v, path = '') => {
+  const base = obj({ host: str({ max: 255, min: 1 }), decision: literal('allow', 'block', 'unset') })(v, path)
+  if (base.decision === 'allow') return { host: egressHost(base.host, path ? `${path}.host` : 'host'), decision: 'allow' }
+  // `block`/`unset` solo restan: basta una forma sana (hay entradas heredadas que deben poder retirarse).
+  if (!isPlainHostToken(base.host)) throw new ValidationError(`Parámetro "${path ? `${path}.` : ''}host" con formato inválido`)
+  return { host: base.host, decision: base.decision }
+}
 const mcpName = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const mcpEntry = tagged('type', {
   local: obj({
@@ -264,8 +279,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:memory:delete': folderReq,
   'tasks:network:state': none,
   'tasks:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
-  'tasks:network:setHost': obj({ host: str({ max: 255, min: 1 }), decision: literal('allow', 'block', 'unset') }),
-  'tasks:network:allowOnce': obj({ folder: absPath, host: str({ max: 255, min: 1 }) }),
+  'tasks:network:setHost': networkSetHost,
+  'tasks:network:allowOnce': obj({ folder: absPath, host: egressHost }),
   'tasks:deleteGrant:get': folderReq,
   'tasks:deleteGrant:set': obj({ folder: absPath, allowed: bool }),
   'routines:list': none,
