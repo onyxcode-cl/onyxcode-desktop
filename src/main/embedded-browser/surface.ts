@@ -224,7 +224,8 @@ function installBaselineNavigationGuard(tab: TabRuntime): void {
     else if (details.disposition !== 'other') {
       try {
         const created = createTab(tab.owner, { openedBy: 'user' })
-        void created.wc.loadURL(details.url).catch((err) => console.error('[embedded-browser] pestaña nueva:', err))
+        // No se carga aquí: `loadURL` programático no emite `will-navigate`. La puerta de aprobación (service.ts) decide.
+        surfaceEvents.emit('open-request', created, details.url)
       } catch (err) {
         console.error('[embedded-browser] no se pudo abrir la pestaña nueva:', err)
       }

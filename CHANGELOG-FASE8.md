@@ -852,3 +852,10 @@ Corrige los hallazgos 1, 5, 7, 9, 10 y 12 de la auditoría del remoto v3 (el 2 �
 - **7**: una llamada D idéntica a otra pendiente responde `busy` (una aprobación, una ejecución) y el digest se compara con el de lo que de verdad se ejecuta (IPC: payload validado en `authorize`, de un solo uso; HTTP: lo enviado al motor frente a una copia tomada al confirmar).
 - **12**: `docs/SEGURIDAD.md` (§3 vicies marcada como histórica y corregida, nueva §3 tricies bis) y `docs/REMOTO-FASE2.md` (el secreto está en `localStorage`).
 Pendiente: `src/test/opencode-contract.test.ts` falla en este árbol por la instantánea de `api-routes.json` (ajena a esta tanda); prueba manual de los diálogos nuevos en el Mac.
+
+## F8-B68: seguridad del navegador integrado y de «Abrir en el editor»
+- **SSRF local**: `isLoopbackOrPrivateHost` clasifica por la IP real (`ip-class.ts`: IPv6 mapeada/NAT64/6to4, ULA, link-local, 0.0.0.0/8, CGNAT, multicast, metadatos de nube, `*.localhost`) y `webRequest` bloquea nombres que resuelven a IP local (anti-rebinding, salvo origen «siempre»).
+- **Puerta de aprobación**: `window.open`/`target=_blank` pasan por `resolveNavigationApproval`; el bypass pasa de «por pestaña, 2 s/toda la carga» a URL exacta y un solo uso (`nav-bypass.ts`), así que las redirecciones a otro destino vuelven a pasar por la puerta.
+- **`clipboard-sanitized-write`** solo para el origen https (o http local) de la página de nivel superior.
+- **`dialog:openInEditor`**: `realpath`, contención al proyecto activo/reciente y `assertSafeToOpen` en los respaldos `open`/`openPath`.
+- Pruebas: `session.test.ts`, `nav-bypass.test.ts`, `dialog/service.test.ts`. Detalle y límites (TOCTOU de DNS) en `docs/SEGURIDAD.md` §3 tricies ter. Pendiente: prueba manual en la app (redirección y `window.open` con el agente).

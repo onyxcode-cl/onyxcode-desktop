@@ -7,6 +7,9 @@
  * IDENTIDAD del objeto `Session` (nunca una cadena), y solo la llenan las dos líneas de abajo.
  */
 import { app, session, type Session } from 'electron'
+import { lookup } from 'node:dns/promises'
+import { isIP } from 'node:net'
+import { isLocalHostname } from './ip-class'
 import { APP_NAME } from '@shared/brand'
 import type { BrowserProduct } from '@shared/ipc-browser'
 import { isLocalOriginApproved } from './store'
@@ -26,20 +29,38 @@ export function isEmbeddedBrowserSession(s: Session): boolean {
   return embeddedSessions.has(s)
 }
 
-/** Exportado: `service.ts` la reutiliza para reconocer un destino "local" al pedir aprobación. */
+/** Exportado: `service.ts` la reutiliza para reconocer un destino "local" al pedir aprobación (clasifica por la IP real, ver `ip-class.ts`). */
 export function isLoopbackOrPrivateHost(hostname: string): boolean {
-  const h = hostname.toLowerCase()
-  if (h === 'localhost' || h.endsWith('.local')) return true
-  if (h === '::1' || h === '[::1]') return true
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h)
-  if (!m) return false
-  const [a, b] = [Number(m[1]), Number(m[2])]
-  if (a === 127) return true // 127.0.0.0/8
-  if (a === 10) return true // 10.0.0.0/8
-  if (a === 172 && b >= 16 && b <= 31) return true // 172.16.0.0/12
-  if (a === 192 && b === 168) return true // 192.168.0.0/16
-  if (a === 169 && b === 254) return true // 169.254.0.0/16 (link-local)
-  return false
+  return isLocalHostname(hostname)
+}
+
+const DNS_TTL_MS = 3_000
+const DNS_TIMEOUT_MS = 2_500
+const dnsCache = new Map<string, { at: number; local: boolean }>()
+
+/**
+ * Anti-rebinding: un NOMBRE público cuyo DNS apunta a una IP local/privada también cuenta como destino local.
+ * Falla abierta si no resuelve (Chromium tampoco podrá conectar). Resolución de red y de Chromium son
+ * independientes: reduce la ventana, no la elimina (documentado en docs/SEGURIDAD.md).
+ */
+async function resolvesToLocal(hostname: string): Promise<boolean> {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (!h || isIP(h) !== 0 || /^[0-9.x]+$/i.test(h)) return false
+  const hit = dnsCache.get(h)
+  if (hit && Date.now() - hit.at < DNS_TTL_MS) return hit.local
+  let local = false
+  try {
+    const addrs = await Promise.race([
+      lookup(h, { all: true, verbatim: true }),
+      new Promise<never>((_r, rej) => setTimeout(() => rej(new Error('dns-timeout')), DNS_TIMEOUT_MS).unref?.())
+    ])
+    local = addrs.some((a) => isLocalHostname(a.address))
+  } catch {
+    local = false
+  }
+  if (dnsCache.size > 500) dnsCache.clear()
+  dnsCache.set(h, { at: Date.now(), local })
+  return local
 }
 
 /**
@@ -97,11 +118,41 @@ function installNetworkGuard(ses: Session): void {
       callback({ cancel: true })
       return
     }
-    callback({ cancel: false })
+    if (
+      details.resourceType === 'mainFrame' ||
+      (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'ws:' && url.protocol !== 'wss:')
+    ) {
+      callback({ cancel: false })
+      return
+    }
+    // Nombre «público» que resuelve a una IP local (DNS rebinding): solo si ese origen está aprobado con «Permitir siempre».
+    const origin = hostPortOf(url)
+    void resolvesToLocal(url.hostname).then((local) => {
+      if (local && !(origin && isLocalOriginApproved(origin))) {
+        console.warn(`[embedded-browser] destino bloqueado (DNS resuelve a IP local): ${url.hostname}`)
+        callback({ cancel: true })
+      } else callback({ cancel: false })
+    })
   })
 }
 
 const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write'])
+
+/**
+ * `clipboard-sanitized-write` solo para un origen web válido (https, o http local para desarrollo) y que sea el de la
+ * página de nivel superior: ni `file:`/`data:`/`about:blank` ni opacos, ni un subframe de otro origen.
+ */
+export function permissionOriginOk(permission: string, requestingOrigin: string | undefined, topUrl: string | undefined): boolean {
+  if (!ALLOWED_PERMISSIONS.has(permission)) return false
+  if (!requestingOrigin || requestingOrigin === 'null') return false
+  try {
+    const o = new URL(requestingOrigin)
+    if (o.protocol !== 'https:' && !(o.protocol === 'http:' && isLoopbackOrPrivateHost(o.hostname))) return false
+    return !!topUrl && new URL(topUrl).origin === o.origin
+  } catch {
+    return false
+  }
+}
 
 type ExternalOpenListener = (wc: Electron.WebContents, url: string) => void
 let externalOpenListener: ExternalOpenListener | null = null
@@ -109,6 +160,22 @@ let externalOpenListener: ExternalOpenListener | null = null
 /** `surface.ts` se registra aquí (sin ciclo de imports) para registrar/avisar cuando se deniega `openExternal`. */
 export function setExternalOpenBlockedListener(fn: ExternalOpenListener): void {
   externalOpenListener = fn
+}
+
+function safeOrigin(url: string): string | undefined {
+  try {
+    return new URL(url).origin
+  } catch {
+    return undefined
+  }
+}
+
+function safeTopUrl(wc: Electron.WebContents | null): string | undefined {
+  try {
+    return wc && !wc.isDestroyed() ? wc.getURL() : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function installPermissionHandlers(ses: Session, product: BrowserProduct): void {
@@ -121,11 +188,13 @@ function installPermissionHandlers(ses: Session, product: BrowserProduct): void 
       callback(false)
       return
     }
-    const ok = ALLOWED_PERMISSIONS.has(permission) && details.isMainFrame !== false
+    const requesting = (details as { requestingUrl?: string }).requestingUrl
+    const ok =
+      details.isMainFrame !== false && permissionOriginOk(permission, requesting ? safeOrigin(requesting) : undefined, safeTopUrl(wc))
     if (!ok) console.warn(`[embedded-browser:${product}] permiso denegado: ${permission}`)
     callback(ok)
   })
-  ses.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission))
+  ses.setPermissionCheckHandler((wc, permission, requestingOrigin) => permissionOriginOk(permission, requestingOrigin, safeTopUrl(wc)))
   ses.setDevicePermissionHandler(() => false)
   ses.setDisplayMediaRequestHandler((_request, callback) => callback({}))
   for (const evt of ['select-hid-device', 'select-serial-port', 'select-usb-device', 'select-bluetooth-device'] as const) {

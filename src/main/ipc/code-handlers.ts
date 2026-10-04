@@ -13,7 +13,7 @@ import { settingsStore } from '../store'
 import { resolveE2eTrashDir, trashToDir } from '../tasks/trash'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, realpathSync } from 'node:fs'
 import { t } from '@shared/i18n'
 import { FileWatchHub } from '../files/watcher'
 import { createEntry, FileOpError, projectRoot, renameEntry, trashEntry } from '../files/fs-ops'
@@ -32,6 +32,14 @@ const on = makeInvokeHandler<CodeInvokeContract>({
 /** Evento al remitente dueño del recurso: ventana real o remitente virtual del celular (id negativo). */
 function sendToId<C extends CodeEventChannel>(wcId: number, channel: C, payload: CodeEventContract[C]): void {
   publishToSender(wcId, channel, payload)
+}
+
+function safeReal(p: string): string {
+  try {
+    return realpathSync(p)
+  } catch {
+    return p
+  }
 }
 
 /** Ruta real de la carpeta del proyecto (así `open -a` recibe siempre una ruta canónica y existente). */
@@ -138,7 +146,6 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     return path
   })
   on(ipcMain, 'dialog:revealInFinder', (r) => dialogService.revealInFinder(req(r, 'req').path))
-  on(ipcMain, 'dialog:openInEditor', (r) => dialogService.openInEditor(req(r, 'req').path))
 
   // ---- archivos del proyecto: vigilante (fs.watch, sin polling), gestor y «Abrir en…» ----
   // Solo la ventana principal (ninguno de estos canales está en CHANNEL_ROLES). El «proyecto activo» de una ventana
@@ -146,6 +153,11 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   const hub = new FileWatchHub((wcId, ev) => sendToId(wcId, CODE_EVENTS.filesChanged, ev))
   const watchedSenders = new Set<number>()
   app.on('will-quit', () => hub.closeAll())
+  // «Abrir en el editor»: solo dentro del proyecto activo de la ventana o de una carpeta reciente (F8-B68).
+  on(ipcMain, 'dialog:openInEditor', (r, event) => {
+    const recents = new Set(settingsStore.get().recentFolders.map((p) => safeReal(p)))
+    return dialogService.openInEditor(req(r, 'req').path, (dir) => hub.isActive(event.sender.id, dir) || recents.has(dir))
+  })
   const active = (cwd: string, event: IpcMainInvokeEvent): void => {
     if (!hub.isActive(event.sender.id, cwd)) throw new FileOpError(t('common.files.notActive'))
   }

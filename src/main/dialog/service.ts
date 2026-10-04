@@ -1,9 +1,10 @@
 /** Diálogos y acciones del sistema: abrir carpeta, mostrar en Finder, abrir en editor. */
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { isAbsolute, resolve } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { dirname, isAbsolute, resolve } from 'node:path'
 import { BrowserWindow, dialog, shell } from 'electron'
 import { codeCandidates } from './code-candidates'
+import { assertSafeToOpen } from '../tasks/open-policy'
 
 export interface OpenFolderOptions {
   title?: string
@@ -69,13 +70,34 @@ export function tryLaunch(cmd: string, args: string[]): Promise<boolean> {
   })
 }
 
-/** Abre en VS Code (`code`) y, si no está, con `open` (macOS) / `shell.openPath`. */
-export async function openInEditor(path: string): Promise<{ via: 'code' | 'open' }> {
-  const abs = assertExistingPath(path)
+/**
+ * Contención (F8-B68): la ruta (ya con `realpath`) debe estar dentro de una carpeta de proyecto autorizada. `isProjectRoot`
+ * decide si un directorio concreto lo es (proyecto activo de la ventana o reciente); se prueba cada ancestro de la ruta.
+ */
+export function assertInsideProject(real: string, isProjectRoot: (dir: string) => boolean): void {
+  let dir = real
+  for (;;) {
+    if (isProjectRoot(dir)) return
+    const up = dirname(dir)
+    if (up === dir) break
+    dir = up
+  }
+  throw new Error(`La ruta no pertenece a un proyecto abierto: ${real}`)
+}
+
+/**
+ * Abre en VS Code (`code`) y, si no está, con `open` (macOS) / `shell.openPath`. Solo rutas dentro de un proyecto
+ * autorizado (`isProjectRoot`); los ejecutables/lanzadores (`.app`, scripts, bit de ejecución…) nunca se abren con la
+ * app por defecto (`assertSafeToOpen`): en ese caso solo sirve el editor de código o «Mostrar en Finder».
+ */
+export async function openInEditor(path: string, isProjectRoot: (dir: string) => boolean): Promise<{ via: 'code' | 'open' }> {
+  const abs = realpathSync(assertExistingPath(path))
+  assertInsideProject(abs, isProjectRoot)
   for (const cmd of codeCandidates(process.platform, process.env)) {
     if ((cmd.startsWith('/') || isAbsolute(cmd)) && !existsSync(cmd)) continue
     if (await tryLaunch(cmd, [abs])) return { via: 'code' }
   }
+  assertSafeToOpen(abs) // los respaldos `open`/`openPath` ejecutarían un .app o un script
   if (process.platform === 'darwin') {
     if (await tryLaunch('open', [abs])) return { via: 'open' }
   }

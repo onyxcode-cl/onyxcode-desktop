@@ -10,7 +10,7 @@
  * en una pestaña con una concesión de agente activa cuenta como AGENTE salvo que haya habido
  * entrada humana real en la ventana `userActive` (`surface.isUserActive`); toda navegación que
  * nosotros mismos decidimos (barra de URL del usuario, o el agente tras aprobación) pasa por
- * `bypassOnce` para no volver a pedir aprobación sobre algo que ya se decidió.
+ * `navBypass` (URL exacta, un solo uso) para no volver a pedir aprobación sobre algo que ya se decidió.
  */
 import { emitTo } from '../ipc/event-bus'
 import { BrowserWindow, shell, type WebContentsView } from 'electron'
@@ -35,6 +35,7 @@ import { cdpSessionFor } from './cdp'
 import { inputScaleOf } from './viewport'
 import { findDevServers } from './dev-servers'
 import { isLoopbackOrPrivateHost, sessionFor } from './session'
+import { NavBypass } from './nav-bypass'
 import { closePopout, ensurePopoutWindow, popoutWindow, showPopoutInactive } from './popout'
 import { initApprovals, requestApproval, respondApproval } from './approvals'
 import { initDownloads } from './downloads'
@@ -200,15 +201,29 @@ function stateFor(owner: BrowserOwner) {
 // ───────────────────────────── navegación: aprobación y atribución (B.8) ─────────────────────────────
 
 /** Navegaciones que NOSOTROS ya decidimos (usuario en la barra de URL, o agente ya aprobado). */
-const bypassOnce = new Set<string>()
+const navBypass = new NavBypass()
 
 async function navigateBypassing(tab: TabRuntime, url: string): Promise<void> {
-  bypassOnce.add(tab.id)
+  // Solo esta URL exacta y una vez (F8-B68): una redirección del servidor a otro destino vuelve a pasar por la puerta.
+  navBypass.allow(tab.id, url)
   try {
     await loadDirect(tab, url)
+  } catch (err) {
+    // La puerta abortó una redirección y relanza la navegación por su cuenta: no es un fallo de esta carga.
+    if (!/ERR_ABORTED/.test(String((err as Error)?.message ?? err))) throw err
   } finally {
-    bypassOnce.delete(tab.id)
+    navBypass.revoke(tab.id, url)
   }
+}
+
+/** Atrás/adelante/recargar: exime solo la URL de destino de la entrada de historial (o la actual), 2 s. */
+function allowHistoryTarget(tab: TabRuntime, action: 'back' | 'forward' | 'reload'): void {
+  const nav = tab.wc.navigationHistory
+  const idx = nav.getActiveIndex()
+  const target = action === 'reload' ? tab.wc.getURL() : (nav.getEntryAtIndex(idx + (action === 'back' ? -1 : 1))?.url ?? '')
+  if (!target) return
+  navBypass.allow(tab.id, target, 2_000)
+  setTimeout(() => navBypass.revoke(tab.id, target), 2_000)
 }
 
 interface ParsedNav {
@@ -303,7 +318,7 @@ async function resolveNavigationApproval(tab: TabRuntime, url: string): Promise<
 function installNavigationGate(tab: TabRuntime): void {
   const handle = (url: string, isMainFrame: boolean, prevent: () => void): void => {
     if (!isMainFrame) return
-    if (bypassOnce.has(tab.id)) return // el listener de surface.ts ya validó el esquema; dejamos pasar
+    if (navBypass.take(tab.id, url)) return // decidida ya (esa URL exacta, una vez); surface.ts ya validó el esquema
     prevent()
     void resolveNavigationApproval(tab, url)
   }
@@ -597,14 +612,10 @@ async function historyAsAgent(
   rt.agentSessionId = actor.sessionId
   rt.lastAgentActivityAt = Date.now()
   const nav = tab.wc.navigationHistory
-  bypassOnce.add(tab.id) // ya visitado antes (aprobado); no se vuelve a preguntar
-  try {
-    if (a === 'back' && nav.canGoBack()) nav.goBack()
-    else if (a === 'forward' && nav.canGoForward()) nav.goForward()
-    else if (a === 'reload') tab.wc.reload()
-  } finally {
-    setTimeout(() => bypassOnce.delete(tab.id), 2_000)
-  }
+  allowHistoryTarget(tab, a) // ya visitado antes (aprobado); no se vuelve a preguntar por ESA URL
+  if (a === 'back' && nav.canGoBack()) nav.goBack()
+  else if (a === 'forward' && nav.canGoForward()) nav.goForward()
+  else if (a === 'reload') tab.wc.reload()
   await waitForLoad(tab, timeoutMs)
   return { url: tab.wc.isDestroyed() ? '' : tab.wc.getURL(), title: tab.title }
 }
@@ -723,6 +734,13 @@ function init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection()
   })
 
   surfaceEvents.on('created', (tab: TabRuntime) => installNavigationGate(tab))
+  // `window.open`/target=_blank: la pestaña nueva se abre vacía y su destino pasa por la MISMA puerta (F8-B68).
+  surfaceEvents.on(
+    'open-request',
+    (tab: TabRuntime, url: string) =>
+      void resolveNavigationApproval(tab, url).catch((err) => console.error('[embedded-browser] window.open:', err))
+  )
+  surfaceEvents.on('destroyed', (tab: TabRuntime) => navBypass.clearTab(tab.id))
   surfaceEvents.on('updated', (tab: TabRuntime) => broadcastState(tab.owner))
   surfaceEvents.on('crashed', (tab: TabRuntime) => broadcastState(tab.owner))
   surfaceEvents.on('blocked', (tab: TabRuntime, scheme: string | null) => setNotice(tab.owner, scheme))
@@ -835,11 +853,10 @@ export function history(owner: BrowserOwner, tabId: string, action: 'back' | 'fo
     tab.wc.stop()
     return
   }
-  bypassOnce.add(tab.id)
+  allowHistoryTarget(tab, action)
   if (action === 'back' && nav.canGoBack()) nav.goBack()
   else if (action === 'forward' && nav.canGoForward()) nav.goForward()
   else if (action === 'reload') tab.wc.reload()
-  setTimeout(() => bypassOnce.delete(tab.id), 2_000)
   const host = hostOf(tab.wc.getURL())
   if (host) ownerRuntime(owner).userVisitedHosts.add(host)
 }

@@ -1201,3 +1201,25 @@ Auditoría de solo lectura del 2026-10-03 sobre el remoto v3; aquí los hallazgo
 
 **Pendiente (no tocado aquí).** Hallazgo 2 (aprobar `bash`/`edit` «una vez» desde el celular es M y equivale a ejecución arbitraria: decisión del dueño), 3 (bloqueo no corta suscripciones abiertas), 4 (resuelto por el
 protocolo v3 para la reconexión; el código de 6 dígitos queda con compromiso previo), 6 («Cortar todo» no borra confianza/actividad), 8 (DoS de vinculación en LAN) y 11 (`devices.touch` antes del PIN).
+
+## 3 tricies ter. Navegador integrado: SSRF local, puerta de aprobación, portapapeles y «Abrir en el editor» (F8-B68)
+
+Revisión externa de 4 hallazgos, verificados leyendo el código. Los cuatro eran reales (ninguno descartado).
+
+1. **SSRF local (ALTO)**. `isLoopbackOrPrivateHost` solo miraba IPv4 textual, `localhost` y `::1`. Ahora clasifica por la IP real (`embedded-browser/ip-class.ts`):
+   IPv6 mapeada (`::ffff:7f00:1`), «compatible», NAT64 y 6to4 se desmapean; loopback, privadas, link-local (incluye 169.254.169.254), CGNAT, `0.0.0.0/8`, ULA `fc00::/7`,
+   `fe80::/10`, site-local, multicast y reservadas cuentan como locales; `*.localhost`/`.local`/`.internal`/`.lan` y el punto final (`localhost.`) también. Las notaciones
+   decimal/octal/hexadecimal de IPv4 (`2130706433`, `0x7f.1`) ya las normaliza `new URL()`; se cubren además en la función exportada. **Anti-rebinding**: en `webRequest`,
+   un subrecurso/subframe hacia un NOMBRE cuyo DNS resuelve a una IP local se cancela salvo que su origen esté aprobado con «Permitir siempre» (caché de 3 s, tope de
+   2,5 s; falla abierta si no resuelve). Límite conocido: la resolución de Node y la de Chromium son independientes (TOCTOU), así que reduce la ventana, no la elimina; el
+   frame principal sigue sin comprobación DNS (lo elige el usuario/agente tras la puerta, y desde ahí sus subrecursos locales se bloquean).
+2. **`window.open` y bypass (MEDIO)**. `window.open`/`target=_blank` cargaban el destino con `loadURL` directo (sin `will-navigate`), saltando la puerta; y `bypassOnce` era un
+   interruptor por pestaña (toda la carga, o 2 s en atrás/adelante) que dejaba pasar redirecciones a otro destino. Ahora la pestaña nueva se abre vacía y emite
+   `open-request`; `service.ts` la manda a `resolveNavigationApproval` (misma puerta que cualquier navegación). La exención (`nav-bypass.ts`) es por URL EXACTA, de un solo
+   uso y por pestaña; atrás/adelante/recargar eximen solo la URL de la entrada de destino, 2 s. Una redirección del servidor a otro destino vuelve a pasar por la puerta
+   (`ERR_ABORTED` del `loadURL` original se ignora porque la puerta relanza la navegación). Pendiente: prueba manual en la app (no se abrió Electron).
+3. **`clipboard-sanitized-write` (MEDIO)**. Se concedía a cualquier origen. `permissionOriginOk` exige origen https (o http local), igual al de la página de nivel
+   superior, frame principal; `file:`, `data:`, `about:blank`, opacos, otros orígenes y subframes se deniegan, tanto en el handler de petición como en el de comprobación.
+4. **`dialog:openInEditor` (MEDIO)**. Solo comprobaba que la ruta existiera: podía lanzar un `.app`/ejecutable por el respaldo `open`. Ahora hace `realpath` (los enlaces
+   simbólicos hacia fuera se rechazan), exige que la ruta esté dentro del proyecto activo de la ventana (`hub.isActive`) o de una carpeta reciente, y aplica
+   `assertSafeToOpen` antes de los respaldos `open`/`shell.openPath` (VS Code sí puede abrir un script como texto). Pruebas: `dialog/service.test.ts`.
