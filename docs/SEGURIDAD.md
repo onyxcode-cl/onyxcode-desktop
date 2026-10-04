@@ -1320,3 +1320,84 @@ instalación del plugin por red no funcionan bajo el arnés de pruebas y son aje
 - Un MCP remoto configurado por el usuario hacia un host local/privado se alcanza tal cual (es el destino que él eligió); el proxy no filtra por IP, solo por la lista cerrada de rutas registradas.
 - **Control total** (sin sandbox) NO cambia: su config inline sigue llevando las cabeceras y el token del MCP de Control del Mac en `OPENCODE_CONFIG_CONTENT` (ver §5); allí no hay aislamiento que proteger.
 - Pendiente de prueba manual del dueño (no se abrió Electron): ver el informe de F8-B79 en `CHANGELOG-FASE8.md`.
+
+## 3 tricies septies. Control remoto fuera de casa, entrega 1 (F8-B77)
+
+**Qué es.** El modo «También fuera de casa» de Ajustes › Celular. Se elige con un selector («Solo esta red» por defecto; no cambia nada para quien no lo active). Con él, la
+señalización WebRTC (SDP/ICE) pasa por un servicio de conexión en Cloudflare Workers (`https://remoto.onyxcode.cl`, `cloud/remoto-worker/`) y la página del celular se sirve por HTTPS desde
+ese mismo origen. Los datos viajan por el DataChannel directo (STUN siempre); el relé (TURN) está implementado pero **apagado por defecto** y sin secretos. El Mac sigue siendo el único
+punto de confianza y **no abre ningún puerto**: sale hacia fuera con un WebSocket. Passkeys y avisos push NO están en esta entrega (siguientes entregas; ver `docs/REMOTO-FASE2.md`).
+
+**Autenticación: sin cambios criptográficos.** El handshake v3 (`hs1/hs2/hs3`, HMAC ligado a las huellas DTLS, etiqueta `onyxcode-auth-v3`) es el mismo. El protocolo pasa a **v4** y el Mac acepta v3 y v4
+(`MIN_PROTOCOL_VERSION = 3`): v4 añade `caps` en `authed`/`pair-pending`, `room` en `paired`, `b` (id de compilación, solo diagnóstico) en `hs1`, la trama de señalización `turn`, los códigos
+`host-offline`/`rate` y la trama `entry`. A un celular v3 el Mac le habla exactamente como antes (sin `caps` ni `room`). El servicio y los relés son «intermediarios»: no tienen `K` ni `q`, así que
+no pueden hacerse pasar por el Mac ni por el celular (las huellas DTLS que ve cada pila no cuadrarían). Pueden negar el servicio, ver metadatos y tirar o retrasar tramas.
+
+**Salas.** Una sala por Mac: `room = b64u(sha256(hostToken))`. Solo quien presenta `hostToken` (32 B en `remote.bin`, cifrado; cabecera `x-onyx-host`, nunca en la URL) puede hacer de Mac en ella; un host
+nuevo sustituye al anterior. El celular solo conoce `room` (se la da el Mac al vincular, por el canal ya autenticado: `paired{room}`). La vinculación usa una **sala efímera** distinta
+(`pairHostToken(q)`, derivada de `q` con HKDF, de modo que el servicio no puede derivar `q` ni el `qid`) que solo existe mientras el QR vale (120 s); un `hello` solo vale por SU sala (resume por la sala
+de vinculación, o pair por la del Mac, se rechaza sin gastar el QR). «Quitar todos» renueva `hostToken` (la dirección anterior deja de contestar y el Mac reabre con la nueva).
+
+**Código de vinculación.** En el modo nube el QR lleva `#c=XXXX-XXXX-XXXX-XXXX` (16 caracteres Crockford = 80 bits; el fragmento no se envía a ningún servidor) y el mismo código se puede **escribir**
+(en iOS la app instalada tiene almacenamiento aparte de Safari). `q = HKDF(código, …, "pair-code")`; el código de 6 dígitos comparado en los dos aparatos y la confirmación en el Mac siguen igual.
+80 bits frente a un atacante que solo vive 120 s en una sala que no puede ver: la fuerza bruta es inviable; si el QR se fotografía, el código de 6 dígitos con compromiso previo sigue delatando al intermediario.
+
+**Lo que el HTTPS arregla y lo que introduce.** Arregla: por HTTP en la Wi-Fi un intermediario activo servía su propio JS (leía el secreto de `localStorage` y capturaba el PIN). Introduce: **el código lo sirve un
+tercero**; quien controle el despliegue (cuenta de Cloudflare, la máquina desde la que se publica o Cloudflare mismo) controla el JS que ve el PIN y usa la clave del vínculo. Es la raíz de confianza de la
+PWA y no se puede eliminar desde dentro de la página. Defensas, por valor real:
+1. **Menos que robar**: en HTTPS la clave del vínculo es un `CryptoKey` HKDF→HMAC **no exportable** en IndexedDB (`pwa/src/keys.ts`, `store.ts`; el secreto en claro se olvida tras importarlo). Un script malicioso puede
+   **usarla** con la página abierta, no llevársela. Todo lo clase D sigue confirmándose en el Mac. El PIN sí se puede capturar al escribirlo (por eso la passkey, en una entrega futura, se **suma** al PIN).
+2. **Publicación endurecida**: el sitio se publica **solo desde el Mac del dueño** (`scripts/build-site.mjs` + `scripts/site-release.mjs`; nada de CI con secretos), 2FA en Cloudflare, sin tokens de API (`wrangler login`).
+3. **Vigilancia desde el Mac** (`site-watch.ts`): el dueño firma `site-manifest.json` con una clave Ed25519 que no está en CI ni en Cloudflare (`SITE_PUBLIC_KEY`/`SITE_KEY_ID` en `brand.ts`, vacías hasta que el dueño
+   ponga la suya). Al activar la nube y cada 6 h el Mac verifica la firma **sobre los bytes exactos antes de leer el JSON**, la versión mínima (`seq`, sin retrocesos), la clave nombrada, el sha256 de cada archivo del
+   arranque (`index.html`, `sw.js`, `manifest.webmanifest`, el JS/CSS que enlaza) y que la CSP de `index.html` sea la firmada. Si no cuadra: auditoría `site-mismatch`, aviso rojo en Ajustes y el modo nube **se pausa**
+   (el socket saliente se cierra; la red local sigue). Sin clave configurada o sin red queda «sin verificar» y la nube funciona (un fallo de red no es una prueba de manipulación).
+4. **SRI para la interfaz completa**: tras `unlocked` el Mac manda `entry{v, js, files:[{p, sri}]}` (sha384 calculado en el Mac desde su `pwa/dist/app`) y la página carga la interfaz con `integrity`. Sirve para la
+   **coherencia de versión** (la interfaz llama a canales IPC de la versión del Mac), contra corrupción y caché; **no** protege de un arranque malicioso (podría ignorarlo). Los trozos dinámicos (`import()`) no llevan SRI. El sitio
+   publica la unión de los `app/assets` de las últimas 10 versiones; **orden de publicación: primero el sitio, después la app** (`docs/DISTRIBUCION.md`). Un Mac sin la capacidad `entry` no recibe la interfaz a ciegas: queda la ligera.
+5. **CSP estricta** en `_headers` (`default-src 'none'; script-src 'self'; connect-src 'self' wss://remoto.onyxcode.cl; worker-src 'self'; …`), `nosniff`, `no-referrer`, COOP `same-origin`, `Permissions-Policy` sin cámara/micrófono/geolocalización. Sin terceros.
+6. **Organizaciones**: `allowOutsideNetwork`, `allowRelay`, `allowPush`, `requirePasskey` en `managed.json` (`docs/POLITICA-ORGANIZACION.md`): con archivo y la clave ausente, lo de «fuera de casa» queda **cerrado**;
+   `allowOutsideNetwork:false` no abre ningún socket y corta el abierto al instante (`policy-blocked`).
+
+**Lo que NO sirve (y no se construyó).** «Hash del código comprobado en el handshake»: la página informaría su propio hash y un arranque malicioso mentiría; `b` en `hs1` es solo diagnóstico, jamás un control. «Fijar la
+versión con el service worker»: el navegador revisa `sw.js` en cada navegación y lo sustituye si cambia; un SW no puede impedir su propio reemplazo (por eso `sw.js` está en el manifiesto vigilado y el SW solo cachea).
+
+**Service worker** (`pwa/public/sw.js`, 61 líneas): `index.html` red primero; `assets/*` y `app/assets/*` con huella, caché primero; nunca toca `/v1/*` ni otro origen; sin `push` (entrega 3). Una versión nueva se avisa («Hay una versión nueva»), no se impone.
+
+**Abuso y denegación de servicio** (`RoomCore` y `routeEdge`, compartidos con el doble local; todo probado):
+- Antes de despertar ninguna sala: nombre de sala de 43 car. base64url (si no, 404), `Origin` exactamente en `ALLOWED_ORIGINS` (si no, 403), host sin `Origin` (un navegador no puede hacer de Mac), límite por IP (binding de rate limiting + regla del panel; fallo cerrado).
+- Por sala: ≤ 2 celulares a la vez (`busy`), ≤ 30 celulares/min (`rate`), ≤ 80 tramas y ≤ 60 s en señalización por celular, tramas ≤ 32 KiB, host «muerto» si el último `ping` respondido tiene > 150 s o si no contesta `ready`/`error` en 5 s (`host-offline`). El DO **no guarda nada**
+  (sin `storage`, sin alarmas, sin `console`: una prueba lo vigila sobre el código fuente; `observability` apagada; los contadores viven en el adjunto del socket del host y sobreviven a la hibernación).
+- TURN: solo tras `grant` del Mac (que lo manda después de que `authorize` aceptó el `hello` y solo si `allowRelay`), ≤ 20 `grant`/h por sala, credenciales de 8 h, `TURN_ENABLED` apagado por defecto, servidores validados (esquema `stun:`/`turn:`/`turns:` y host `*.cloudflare.com`);
+  si falla o no hay secretos, todo sigue con STUN. `turn` llega antes de `ready` (el respondedor del Mac se crea al llegar la offer).
+- Cuota gratuita compartida por todos los Macs: si se agota, la nube cae hasta el reinicio de las 00:00 UTC y **la red local sigue** (riesgo asumido y documentado; Workers de pago como salida).
+
+**Reposo y red.** `powerMonitor`: `suspend` cierra el socket del Mac al instante (el servicio sabe enseguida que no contesta), `resume`/`unlock-screen` y los cambios de red reabren ya; reconexión con espera exponencial con azar (1…60 s) y ping de aplicación cada 60 s.
+Con el Mac dormido o apagado no hay forma de despertarlo: el celular dice «Tu Mac no está disponible» (`host-offline`). «Disponible fuera de casa» es opcional (apagado por defecto): arranca el servicio al abrir la app sin QR y sin apagado por inactividad;
+«Cortar todo» lo apaga; salir de la app, la política o la inactividad **no** lo apagan. El `rtc` espera 6 s antes de dar por muerta una conexión en `disconnected`.
+
+**Privacidad: qué ve cada tercero.**
+
+| Quién | Ve | No ve |
+|---|---|---|
+| Cloudflare (sitio) | IP y navegador del celular al cargar la página, hora | Nada del vínculo (el código va en el fragmento `#c=`) |
+| Cloudflare (servicio de conexión) | IP del Mac y del celular, horas y duración, `room` (seudónimo estable del Mac), `deviceId` del `hello`, SDP (candidatos ICE con IP privadas y públicas, huellas DTLS públicas), `qid` al vincular, `hostToken` (solo sirve para ser host de esa sala) | `q`, el código, el secreto de dispositivo, la clave, el PIN, cualquier dato de conversación |
+| Cloudflare (STUN, y TURN si se activa) | IP de cada lado; con TURN, bytes y tiempos de una conexión cifrada por DTLS | Contenido |
+
+Sin cuentas ni correos; el servicio no registra nada propio. En la interfaz de la app el servicio se llama «servicio de conexión» (Cloudflare solo se nombra en esta documentación y en la de privacidad). Mejora opcional futura: cifrar el SDP extremo a extremo con una clave del vínculo para ocultar las IP privadas al servicio.
+
+**Auditoría** (sin secretos): `cloud-started`, `connection-changed` (con `why: lan|cloud`), `away-enabled`, `away-disabled`, `site-mismatch` (con motivo fijo: `bad-signature`, `file-hash`, `file-missing`, `csp`, `rollback`, `key-id`, `no-manifest`, `no-signature`, `manifest-shape`), `site-restored`, `policy-blocked`.
+Los canales `remote:setConnection` y `remote:setAway` tienen esquema estricto y son clase **X** para el celular: salir de casa solo se enciende en el Mac.
+
+**Riesgos que siguen (no se disimulan).**
+- Cuenta de Cloudflare o Mac del dueño comprometidos: pueden servir JS malicioso **solo al celular**; la vigilancia detecta un cambio no dirigido, no una versión distinta servida a un cliente concreto. Mitigan la clave no exportable, que lo peligroso se confirma en el Mac y 2FA en la cuenta; la passkey y `requirePasskey` llegan en la entrega 2.
+- Un JS malicioso con la página abierta puede usar la clave del vínculo y capturar el PIN al teclearlo.
+- Mientras `SITE_PUBLIC_KEY` esté vacía, la vigilancia no verifica nada (Ajustes dice «sin verificar»). La comprobación de `Content-Security-Policy` y de los hashes depende de lo que sirva el borde de Cloudflare en el momento de comprobar.
+- Los metadatos (IP, horas, sala) son visibles para el servicio; la `room` es un seudónimo estable por Mac hasta «Quitar todos».
+- El modo LAN (HTTP) conserva su riesgo conocido de un intermediario en la propia Wi-Fi (ver §3 tricies); el modo nube no lo tiene.
+- `requirePasskey:true` bloquea el modo nube hasta que existan las passkeys (no puede cumplirlo).
+- Por verificar en el entorno real (no se tocó Cloudflare ni se hizo ninguna petición de red): el binding de rate limiting en el plan gratuito, el máximo de archivos de los estáticos, si los `ping` con respuesta automática cuentan como mensajes facturables, si `getSelectedCandidatePair` informa bien «vía relé» y el comportamiento de iOS/Android (instalación, almacenamiento, `integrity` en `modulepreload`).
+
+**Pruebas** (sin red, sin Cloudflare, sin Electron): `room-core.test.ts` (token, sustitución del host, host muerto, `ready` en 5 s, tamaños y topes, `busy`, `rate`, TURN tras `grant` y antes de la siguiente trama, `grant` n.º 21, hibernación y `to`+`kick`), `cloud.test.ts` y `protocol-v4.test.ts` (salas, código Crockford, validadores),
+`worker-client.test.ts` (cabecera, reintentos con reloj falso, `suspend`/`resume`, ping, sin `allowed()` no se crea ningún socket) y `service-cloud.test.ts` (vinculación y reconexión completas por el doble local con el mismo `RoomCore`, sala de vinculación, revocado, TURN solo tras `authorize`, política, pausa del sitio, «Cortar todo», `away`),
+`site-watch.test.ts` (firma válida, de otra clave, archivo alterado o ausente, CSP, retroceso, clave vacía, sin red, y de punta a punta con `scripts/site-release.mjs`), `pwa-keys.test.ts` (vector idéntico noble/WebCrypto, `CryptoKey` no exportable, handshake completo), `org-policy.test.ts`, `entry-info.test.ts`, `site-lib.test.mjs`.

@@ -50,6 +50,14 @@ No está previsto vender ni ceder tus datos. Para operar el servicio pueden inte
 alojamiento, envío de correo, etc.; indicar país y garantías si hay transferencia internacional]. Si entras con
 Google, Google trata esa autenticación según su propia política.
 
+### 5.1 Control remoto fuera de casa (opcional; apagado por defecto)
+
+Si activas «También fuera de casa» en Ajustes › Celular, tu Mac y tu celular se encuentran a través de un **servicio de conexión** alojado en Cloudflare (Cloudflare, Inc.; [por definir: encargado del tratamiento, país y garantías de la transferencia
+internacional, y enlace a su política]). Ese servicio **ve** las direcciones IP de tu Mac y de tu celular, cuándo y cuánto tiempo te conectas, un identificador seudónimo estable de tu Mac y del celular, y los datos técnicos de la conexión (candidatos de red,
+que incluyen direcciones IP privadas y públicas, y huellas públicas de cifrado). **No ve** el contenido de tus conversaciones, tu PIN, tus claves ni el código de vinculación: eso viaja cifrado y directo entre tu celular y tu Mac. Cloudflare conserva sus propios
+registros operativos según su política; OnyxCode no guarda registros ni crea cuentas para esto. El servidor de STUN de Cloudflare ve la IP pública de cada lado; si algún día se activa el relé (TURN), vería también cuántos bytes y cuándo pasan, siempre cifrados.
+La página del celular se descarga del mismo proveedor (verá la IP y el navegador del celular al cargarla). Con «Solo esta red» nada de esto ocurre. [por definir: revisión legal antes de publicar.]
+
 ## 6. Seguridad
 
 La sesión en tu Mac se guarda cifrada con el Llavero de macOS; los códigos y sesiones se guardan en el servidor solo como

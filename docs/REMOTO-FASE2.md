@@ -1,6 +1,12 @@
-# Control remoto, fase 2: diseño (sin código)
+# Control remoto, fase 2: diseño y estado
 
-Estado: **propuesta por escrito**, nada de esto está implementado. La fase 1 (hoy) es red local: el Mac sirve la PWA por `http://<ip-privada>:<puerto>`,
+**Estado (F8-B77, entrega 1): implementado y probado con dobles, SIN publicar.** Hecho: HTTPS en un origen estable (sitio instalable con service worker, `pwa/dist-site`), señalización por un Worker sin estado
+(`cloud/remoto-worker/`, núcleo `RoomCore` compartido con un doble local de pruebas), solo STUN (TURN implementado detrás de un interruptor APAGADO y sin secretos), código de vinculación escribible, clave del vínculo no exportable
+(`CryptoKey` en IndexedDB), manifiesto del sitio firmado Ed25519 por el dueño y vigilado por el Mac cada 6 h, SRI con los hashes que manda el Mac, política de la organización y selector «Solo esta red» / «También fuera de casa»
+(detalle y límites en `docs/SEGURIDAD.md` §3 tricies septies). **Falta**: publicar (pasos del dueño en `cloud/remoto-worker/README.md`), la prueba manual (`docs/REMOTO-PRUEBA-MANUAL.md`, «Fuera de casa»), las **passkeys** (entrega 2, se suman al PIN) y los
+**avisos push** (entrega 3). Lo que sigue es el diseño original; donde difiere (p. ej. sala por Mac con `hostToken`, `Origin` fijo, sin passkey todavía) manda `docs/SEGURIDAD.md`.
+
+Propuesta original (lo no marcado arriba sigue sin implementar): La fase 1 (hoy) es red local: el Mac sirve la PWA por `http://<ip-privada>:<puerto>`,
 señaliza por un WebSocket local, abre un DataChannel WebRTC y autentica con un handshake ligado a las huellas DTLS (clave derivada del secreto de dispositivo, que no viaja) + PIN (+ confirmación en el Mac si se activa, opcional desde v3)
 (`docs/SEGURIDAD.md` §3 vicies). La fase 2 busca usarlo **fuera de la red local** y con credenciales mejores, sin que ningún
 servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay que verificar antes de construirlo.

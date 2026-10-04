@@ -61,6 +61,20 @@ Cada línea es un suceso: `kind` (qué pasó), `ts` (hora en milisegundos), `dev
     el modo debe quedar apagado solo (Ajustes lo muestra desactivado y la dirección ya no abre). Si sigue activo: anota la hora de desconexión
     y la de la revisión; en el registro busca `stopped`.
 
+## Fuera de casa (F8-B77, entrega 1) — requiere publicar el sitio y el servicio (los pasos son del dueño: `cloud/remoto-worker/README.md`)
+Antes: sitio publicado en `remoto.onyxcode.cl`, `SITE_PUBLIC_KEY` puesta en `src/shared/brand.ts` (si no, la vigilancia dirá «sin verificar» y todo lo demás funciona) y OnyxCode empaquetado con ella. TURN está apagado: la prueba 5 solo vale si lo activas.
+14. [ ] **Vincular en casa con «También fuera de casa».** Ajustes › Celular › Dónde se puede usar › «También fuera de casa», «Activar». Debe verse el QR **y** un código de 16 caracteres. Android: escanea el QR con la cámara; iPhone: abre la página en Safari, instálala
+    («Compartir › Añadir a pantalla de inicio») y **escribe el código dentro de la app instalada**. Los códigos de 6 dígitos coinciden y al aceptar en el Mac queda vinculado. Si falla: anota el texto de la pantalla del celular y la actividad (`kind`).
+15. [ ] **Fuera de la Wi-Fi (solo datos móviles).** Reconecta: pide el PIN y **no aparece ningún diálogo en el Mac** (salvo que hayas activado «Pedir confirmación en el Mac en cada conexión»). El chat en vivo funciona.
+16. [ ] **De datos a Wi-Fi a mitad.** Reconecta solo; si pasaron menos de 5 min desde la última actividad, sin PIN.
+17. [ ] **Mac dormido.** El celular dice «Tu Mac no está disponible… OnyxCode no puede despertarlo a distancia»; al despertar el Mac y pulsar «Reintentar» conecta. Mira Ajustes: «Servicio de conexión: sin conexión» mientras dormía.
+18. [ ] **Red que bloquea UDP** (compartir datos de otro teléfono con restricciones). Sin TURN debería fallar con «No se encuentra el equipo»; con TURN activado, conecta y Ajustes dice «La conexión actual pasa por un relé».
+19. [ ] **Ajustes.** Estado del servicio en línea, «Página del celular verificada» (con la clave puesta), «Cortar todo» cierra el servicio **y apaga «Disponible fuera de casa»**; con «Disponible fuera de casa» encendido, al reabrir OnyxCode el servicio arranca solo sin QR.
+20. [ ] **Política.** Con `managed.json` con `remote.allowOutsideNetwork:false` (o sin esa clave en un archivo existente): el selector queda en «Solo esta red», lo explica y no hay conexión saliente (mira `lsof -i -P | grep OnyxCode`).
+21. [ ] **Sitio alterado (prueba de la vigilancia, opcional).** Cambia un byte de un archivo publicado sin volver a firmar: en la siguiente comprobación (o al reactivar) Ajustes dice «La página del celular no coincide con la versión firmada», la nube queda en pausa y la actividad muestra `site-mismatch`; la red local sigue.
+22. [ ] **Versiones distintas.** Con la app del Mac de una versión anterior al sitio, la página debe seguir conectando (v3) o decir «Actualiza la página del celular o OnyxCode en tu Mac».
+(Entrega 2, no incluida: passkey con Face ID + PIN. Entrega 3: aviso genérico con la app cerrada en iPhone instalado.)
+
 ## Qué mandar si algo falla
 Número de paso, qué esperabas, qué viste (captura del celular si se puede), hora aproximada, y las últimas 20 líneas de `remote-audit.jsonl`.
 Nunca copies el PIN ni el contenido de `remote.bin`.
