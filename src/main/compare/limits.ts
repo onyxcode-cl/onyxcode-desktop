@@ -2,11 +2,29 @@
  * Constantes de «Comparar modelos». Se ajustan aquí sin tocar la lógica (los límites reales de OpenCode Go no se
  * conocen: valores conservadores).
  */
-export const COMPARE_LIMITS = {
+export interface CompareLimits {
+  maxColumns: number
+  perProvider: Readonly<Record<string, number>>
+  defaultPerProvider: number
+  staggerMs: number
+  retryBaseMs: number
+  retryJitterMs: number
+  engineRetryAbortAfter: number
+  abortIdleWaitMs: number
+  abortPollMs: number
+  pollMs: number
+  noStartTimeoutMs: number
+  maxPollFailures: number
+  patchDisplayMax: number
+  benchPatchMax: number
+  persistMetricsMs: number
+}
+
+export const COMPARE_LIMITS: CompareLimits = {
   /** Columnas por comparación. */
   maxColumns: 4,
   /** Sesiones simultáneas por proveedor; los no listados usan `defaultPerProvider`. */
-  perProvider: { 'opencode-go': 2, opencode: 2 } as Readonly<Record<string, number>>,
+  perProvider: { 'opencode-go': 2, opencode: 2 },
   defaultPerProvider: 4,
   /** Separación mínima entre dos arranques (evita disparar el límite de tokens por minuto). */
   staggerMs: 1500,
@@ -30,8 +48,4 @@ export const COMPARE_LIMITS = {
   benchPatchMax: 200 * 1024,
   /** Cada cuánto se persiste el manifiesto por cambios solo de métricas. */
   persistMetricsMs: 3_000
-} as const
-
-export type CompareLimits = {
-  -readonly [K in keyof typeof COMPARE_LIMITS]: (typeof COMPARE_LIMITS)[K]
 }

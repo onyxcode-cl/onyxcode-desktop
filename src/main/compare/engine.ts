@@ -43,8 +43,6 @@ export interface CompareEngine {
   /** Ids de las sesiones hijas (subagentes). */
   children(a: { sessionID: string; directory: string }): Promise<string[]>
   deleteSession(a: { sessionID: string; directory: string }): Promise<void>
-  /** Libera la instancia del motor de esa carpeta (opcional; los fallos se ignoran). */
-  disposeInstance?(directory: string): Promise<void>
 }
 
 /** Reglas de permisos de la sesión de una comparación. `bypass` se rebaja a `auto`: aquí no se salta ningún permiso. */
@@ -129,9 +127,6 @@ export function createSdkEngine(conn: { baseUrl: string; authorization: string }
     },
     async deleteSession(a) {
       ok(await client.session.delete({ sessionID: a.sessionID, directory: a.directory }))
-    },
-    async disposeInstance(directory) {
-      ok(await client.instance.dispose({ directory }))
     }
   }
 }

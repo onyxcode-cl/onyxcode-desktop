@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { computeMetrics, emptyMetrics, type MetricMessage } from './metrics'
 
-const asst = (o: { cost?: number; input?: number; output?: number; reasoning?: number; read?: number; created?: number; completed?: number }): MetricMessage => ({
+const asst = (o: {
+  cost?: number
+  input?: number
+  output?: number
+  reasoning?: number
+  read?: number
+  created?: number
+  completed?: number
+}): MetricMessage => ({
   info: {
     role: 'assistant',
     cost: o.cost,
@@ -12,7 +20,11 @@ const asst = (o: { cost?: number; input?: number; output?: number; reasoning?: n
 
 describe('métricas de una columna', () => {
   it('suma la sesión y sus hijas (subagentes)', () => {
-    const root = [{ info: { role: 'user' } }, asst({ cost: 0.01, input: 100, output: 20, completed: 5000 }), asst({ cost: 0.02, input: 50, output: 10, read: 7, completed: 9000 })]
+    const root = [
+      { info: { role: 'user' } },
+      asst({ cost: 0.01, input: 100, output: 20, completed: 5000 }),
+      asst({ cost: 0.02, input: 50, output: 10, read: 7, completed: 9000 })
+    ]
     const kid = [asst({ cost: 0.005, input: 10, output: 5, reasoning: 3 })]
     const m = computeMetrics([root, kid], 1000)
     expect(m.inputTokens).toBe(160)

@@ -363,5 +363,6 @@ export const mainErrors = {
   'merr.compare.running': 'La columna sigue en curso: cancélala primero.',
   'merr.compare.unconfirmed': 'El motor no confirmó la parada; la copia se conserva.',
   'merr.compare.notFinished': 'La comparación aún no terminó.',
-  'merr.compare.notReady': 'Esa columna no está lista para esto.'
+  'merr.compare.notReady': 'Esa columna no está lista para esto.',
+  'merr.compare.exportTitle': 'Guardar comparación'
 } as const

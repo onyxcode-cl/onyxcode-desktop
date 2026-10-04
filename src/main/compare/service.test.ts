@@ -83,20 +83,29 @@ async function waitFor(cond: () => boolean | Promise<boolean>, ms = 5000): Promi
   throw new Error('waitFor: tiempo agotado')
 }
 
-const states = async (svc: CompareService, id: string): Promise<string[]> => (await svc.list()).find((m) => m.id === id)!.columns.map((c) => c.state)
+const states = async (svc: CompareService, id: string): Promise<string[]> =>
+  (await svc.list()).find((m) => m.id === id)!.columns.map((c) => c.state)
 const allTerminal = async (svc: CompareService, id: string): Promise<boolean> =>
-  (await svc.list()).find((m) => m.id === id)!.columns.every((c) => ['done', 'error', 'cancelled'].includes(c.state) || (c.state === 'rateLimited' && c.retryAt === null))
+  (await svc.list())
+    .find((m) => m.id === id)!
+    .columns.every((c) => ['done', 'error', 'cancelled'].includes(c.state) || (c.state === 'rateLimited' && c.retryAt === null))
 const branches = (): string => g(repo, 'branch', '--list', 'onyx-compare/*').trim()
-const worktreeCount = (): number => g(repo, 'worktree', 'list', '--porcelain').split('\n').filter((l) => l.startsWith('worktree ')).length
+const worktreeCount = (): number =>
+  g(repo, 'worktree', 'list', '--porcelain')
+    .split('\n')
+    .filter((l) => l.startsWith('worktree ')).length
 const models = (...ids: string[]) => ids.map((m) => ({ providerID: 'fake', modelID: m }))
 
 describe('crear una comparación en Code', () => {
   it('crea una copia por modelo desde HEAD, escalona los arranques y mide cada columna', async () => {
-    const { svc, engine, events } = mk({
-      a: { write: { 'a.txt': 'A\n' }, cost: 0.01, tokens: { input: 100, output: 20 } },
-      b: { write: { 'b.txt': 'B\n', 'f.txt': 'two\n' }, delayMs: 60 },
-      c: { write: { 'c.txt': 'C\n' } }
-    }, { staggerMs: 80 })
+    const { svc, engine, events } = mk(
+      {
+        a: { write: { 'a.txt': 'A\n' }, cost: 0.01, tokens: { input: 100, output: 20 } },
+        b: { write: { 'b.txt': 'B\n', 'f.txt': 'two\n' }, delayMs: 60 },
+        c: { write: { 'c.txt': 'C\n' } }
+      },
+      { staggerMs: 80 }
+    )
     const id = randomUUID()
     const head = g(repo, 'rev-parse', 'HEAD').trim()
     const m = await svc.start({ id, mode: 'code', cwd: repo, models: models('a', 'b', 'c'), prompt: 'haz algo' })
@@ -123,7 +132,9 @@ describe('crear una comparación en Code', () => {
     expect(t[2] - t[1]).toBeGreaterThanOrEqual(60)
     expect(events.length).toBeGreaterThan(3)
     // Cada sesión se crea en SU carpeta, con el agente build y con metadata de la comparación.
-    const creates = engine.calls.filter((c) => c.fn === 'createSession').map((c) => c.args as { directory: string; agent: string; metadata: { compare: string } })
+    const creates = engine.calls
+      .filter((c) => c.fn === 'createSession')
+      .map((c) => c.args as { directory: string; agent: string; metadata: { compare: string } })
     expect(creates.map((c) => c.directory).sort()).toEqual(m.columns.map((c) => c.worktree!.path).sort())
     expect(creates.every((c) => c.agent === 'build' && c.metadata.compare === id)).toBe(true)
   })
@@ -175,7 +186,9 @@ describe('crear una comparación en Code', () => {
     const m = await svc.start({ id, mode: 'code', cwd: repo, models: models('a', 'b'), prompt: 'p', permissionMode: 'bypass' })
     expect(m.permissionMode).toBe('auto')
     await waitFor(() => allTerminal(svc, id))
-    const perms = engine.calls.filter((c) => c.fn === 'createSession').map((c) => (c.args as { permission: { permission: string; pattern: string; action: string }[] }).permission)
+    const perms = engine.calls
+      .filter((c) => c.fn === 'createSession')
+      .map((c) => (c.args as { permission: { permission: string; pattern: string; action: string }[] }).permission)
     for (const p of perms) expect(p).not.toContainEqual({ permission: 'bash', pattern: '*', action: 'allow' })
   })
 })
@@ -184,7 +197,13 @@ describe('límites de uso', () => {
   it('OpenCode Go: nunca más de 2 sesiones a la vez', async () => {
     const { svc, engine } = mk({ a: { delayMs: 120 }, b: { delayMs: 120 }, c: { delayMs: 120 }, d: { delayMs: 120 } })
     const id = randomUUID()
-    await svc.start({ id, mode: 'code', cwd: repo, models: ['a', 'b', 'c', 'd'].map((modelID) => ({ providerID: 'opencode-go', modelID })), prompt: 'p' })
+    await svc.start({
+      id,
+      mode: 'code',
+      cwd: repo,
+      models: ['a', 'b', 'c', 'd'].map((modelID) => ({ providerID: 'opencode-go', modelID })),
+      prompt: 'p'
+    })
     await waitFor(() => allTerminal(svc, id), 8000)
     expect(engine.maxBusyByProvider.get('opencode-go')).toBe(2)
     expect((await states(svc, id)).every((s) => s === 'done')).toBe(true)
@@ -230,7 +249,9 @@ describe('límites de uso', () => {
     expect(m.columns[0].retried).toBe(true)
     expect(m.pausedProviders).toEqual(['go'])
     await waitFor(async () => (await svc.list())[0].columns[1].state === 'done')
-    expect(engine.calls.filter((c) => c.fn === 'prompt' && (c.args as { model: { modelID: string } }).model.modelID === 'q')).toHaveLength(2)
+    expect(engine.calls.filter((c) => c.fn === 'prompt' && (c.args as { model: { modelID: string } }).model.modelID === 'q')).toHaveLength(
+      2
+    )
     // «Reintentar» reanuda el proveedor y vuelve a enviar a la MISMA sesión.
     engine.scripts.q = {}
     await svc.retry(id, 0)
@@ -249,7 +270,12 @@ describe('límites de uso', () => {
   })
 
   it('un error que no es de cuota termina la columna en error, con el mensaje redactado', async () => {
-    const { svc } = mk({ bad: { fail: { name: 'ProviderModelNotFoundError', message: 'Model not found: fake/bad. clave sk-abcdefghijklmnopqrstuvwxyz123456' } }, ok: {} })
+    const { svc } = mk({
+      bad: {
+        fail: { name: 'ProviderModelNotFoundError', message: 'Model not found: fake/bad. clave sk-abcdefghijklmnopqrstuvwxyz123456' }
+      },
+      ok: {}
+    })
     const id = randomUUID()
     await svc.start({ id, mode: 'code', cwd: repo, models: models('bad', 'ok'), prompt: 'p' })
     await waitFor(() => allTerminal(svc, id))
@@ -334,7 +360,10 @@ describe('adoptar', () => {
 
   it('en limpio aplica el parche entero (nuevos, modificados y binarios) sin commit', async () => {
     const bin = Buffer.from([0, 1, 2, 255, 254, 0, 9])
-    const { svc } = mk({ a: { write: { 'a.txt': 'A\n', 'f.txt': 'two\n', 'img.bin': 'base64:' + bin.toString('base64') } }, b: { write: { 'b.txt': 'B\n' } } })
+    const { svc } = mk({
+      a: { write: { 'a.txt': 'A\n', 'f.txt': 'two\n', 'img.bin': 'base64:' + bin.toString('base64') } },
+      b: { write: { 'b.txt': 'B\n' } }
+    })
     const id = randomUUID()
     await svc.start({ id, mode: 'code', cwd: repo, models: models('a', 'b'), prompt: 'p' })
     await finish(svc, id)
@@ -479,8 +508,19 @@ describe('Chat', () => {
     expect(m.columns.every((c) => c.worktree === null)).toBe(true)
     expect(worktreeCount()).toBe(1)
     await waitFor(() => allTerminal(svc, id))
-    const creates = engine.calls.filter((c) => c.fn === 'createSession').map((c) => c.args as { directory: string; agent: string; metadata: Record<string, unknown>; permission?: unknown })
-    expect(creates.every((c) => c.directory === chatDir && c.agent === 'chat' && c.metadata.mode === 'chat' && c.metadata.compare === id && c.permission === undefined)).toBe(true)
+    const creates = engine.calls
+      .filter((c) => c.fn === 'createSession')
+      .map((c) => c.args as { directory: string; agent: string; metadata: Record<string, unknown>; permission?: unknown })
+    expect(
+      creates.every(
+        (c) =>
+          c.directory === chatDir &&
+          c.agent === 'chat' &&
+          c.metadata.mode === 'chat' &&
+          c.metadata.compare === id &&
+          c.permission === undefined
+      )
+    ).toBe(true)
     expect(await svc.adopt(id, 1)).toEqual({ ok: true, files: [] })
     expect(await svc.close(id)).toEqual({ closed: true, kept: [] })
     const kept = (await svc.list()).length
@@ -501,7 +541,9 @@ describe('exportación', () => {
     const { fileName, json } = await svc.buildBench(id)
     expect(fileName).toMatch(/^onyx-compare-[0-9a-f]{8}\.json$/)
     expect(json).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
-    const b = JSON.parse(json) as { runs: { telemetry: { costUsd: number | null; filesModified: string[] | null }; gitDiff: string | null; cliVersion: string }[] }
+    const b = JSON.parse(json) as {
+      runs: { telemetry: { costUsd: number | null; filesModified: string[] | null }; gitDiff: string | null; cliVersion: string }[]
+    }
     expect(b.runs).toHaveLength(2)
     expect(b.runs[0].telemetry.costUsd).toBeCloseTo(0.01)
     expect(b.runs[1].telemetry.costUsd).toBeNull()

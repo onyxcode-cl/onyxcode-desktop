@@ -32,6 +32,17 @@ export const CODE_CHANNELS = {
   gitDiscard: 'git:discard',
   gitDiscardUndo: 'git:discardUndo',
   gitDiscardHunk: 'git:discardHunk',
+  // comparar modelos (main orquesta; el renderer solo pasa `{ id, index }`)
+  compareList: 'compare:list',
+  comparePreflight: 'compare:preflight',
+  compareStart: 'compare:start',
+  compareCancel: 'compare:cancel',
+  compareRetry: 'compare:retry',
+  compareDiff: 'compare:diff',
+  compareAdopt: 'compare:adopt',
+  compareDiscard: 'compare:discard',
+  compareClose: 'compare:close',
+  compareExportBench: 'compare:exportBench',
   // dialog
   dialogOpenFolder: 'dialog:openFolder',
   dialogRevealInFinder: 'dialog:revealInFinder',
@@ -50,7 +61,9 @@ export const CODE_CHANNELS = {
 export const CODE_EVENTS = {
   ptyData: 'pty:data',
   ptyExit: 'pty:exit',
-  filesChanged: 'files:changed'
+  filesChanged: 'files:changed',
+  /** Manifiesto completo de una comparación cada vez que cambia algo (estado, sesión, métricas). Solo a la ventana principal. */
+  compareChanged: 'compare:changed'
 } as const
 
 // ---------------------------------------------------------------------------
@@ -384,6 +397,20 @@ export interface CodeInvokeContract {
   'git:discardHunk': { req: { cwd: string; path: string; index: number; hunk: string }; res: GitDiscardHunkResult }
   'git:discardUndo': { req: { cwd: string; undoId: string }; res: GitDiscardUndoResult }
 
+  'compare:list': { req: void; res: CompareManifest[] }
+  'compare:preflight': { req: { cwd: string }; res: ComparePreflight }
+  'compare:start': { req: CompareStartRequest; res: CompareManifest }
+  /** Sin `index` cancela todas las columnas. Con `session.abort` y hasta 10 s de espera a que la sesión quede inactiva. */
+  'compare:cancel': { req: { id: string; index?: number }; res: void }
+  'compare:retry': { req: { id: string; index: number }; res: void }
+  'compare:diff': { req: { id: string; index: number }; res: CompareDiffResult }
+  /** `force`: aplica aunque haya cambios sin confirmar en los mismos archivos (el parche debe seguir entrando entero). */
+  'compare:adopt': { req: { id: string; index: number; force?: boolean }; res: CompareAdoptResult }
+  'compare:discard': { req: { id: string; index: number }; res: void }
+  'compare:close': { req: { id: string }; res: CompareCloseResult }
+  /** Main abre el diálogo de guardado y escribe el lote redactado; `null` si el usuario cancela. */
+  'compare:exportBench': { req: { id: string }; res: { path: string } | null }
+
   'dialog:openFolder': { req: { title?: string; defaultPath?: string } | undefined; res: string | null }
   'dialog:revealInFinder': { req: { path: string }; res: void }
   'dialog:openInEditor': { req: { path: string }; res: { via: 'code' | 'open' } }
@@ -402,6 +429,7 @@ export interface CodeEventContract {
   'pty:data': PtyDataEvent
   'pty:exit': PtyExitEvent
   'files:changed': FilesChangedEvent
+  'compare:changed': CompareManifest
 }
 
 export type CodeInvokeChannel = keyof CodeInvokeContract
@@ -445,6 +473,19 @@ export interface CodeApi {
     discard(cwd: string, paths: string[], scope?: 'all' | 'unstaged'): Promise<GitDiscardResult>
     discardHunk(cwd: string, path: string, index: number, hunk: string): Promise<GitDiscardHunkResult>
     discardUndo(cwd: string, undoId: string): Promise<GitDiscardUndoResult>
+  }
+  compare: {
+    list(): Promise<CompareManifest[]>
+    preflight(cwd: string): Promise<ComparePreflight>
+    start(req: CompareStartRequest): Promise<CompareManifest>
+    cancel(id: string, index?: number): Promise<void>
+    retry(id: string, index: number): Promise<void>
+    diff(id: string, index: number): Promise<CompareDiffResult>
+    adopt(id: string, index: number, force?: boolean): Promise<CompareAdoptResult>
+    discard(id: string, index: number): Promise<void>
+    close(id: string): Promise<CompareCloseResult>
+    exportBench(id: string): Promise<{ path: string } | null>
+    onChanged(cb: (m: CompareManifest) => void): () => void
   }
   dialog: {
     openFolder(opts?: { title?: string; defaultPath?: string }): Promise<string | null>

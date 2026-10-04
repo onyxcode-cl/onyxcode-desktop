@@ -49,6 +49,19 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       discardHunk: (cwd, path, index, hunk) => call('git:discardHunk', { cwd, path, index, hunk }),
       discardUndo: (cwd, undoId) => call('git:discardUndo', { cwd, undoId })
     },
+    compare: {
+      list: () => call('compare:list'),
+      preflight: (cwd) => call('compare:preflight', { cwd }),
+      start: (req) => call('compare:start', req),
+      cancel: (id, index) => call('compare:cancel', index === undefined ? { id } : { id, index }),
+      retry: (id, index) => call('compare:retry', { id, index }),
+      diff: (id, index) => call('compare:diff', { id, index }),
+      adopt: (id, index, force) => call('compare:adopt', force ? { id, index, force } : { id, index }),
+      discard: (id, index) => call('compare:discard', { id, index }),
+      close: (id) => call('compare:close', { id }),
+      exportBench: (id) => call('compare:exportBench', { id }),
+      onChanged: (cb) => subscribe('compare:changed', cb)
+    },
     dialog: {
       openFolder: (opts) => call('dialog:openFolder', opts),
       revealInFinder: (path) => call('dialog:revealInFinder', { path }),

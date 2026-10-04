@@ -57,14 +57,27 @@ export class FakeEngine implements CompareEngine {
     return this.calls.filter((c) => c.fn === fn).length
   }
 
-  async createSession(a: { directory: string; title: string; agent: string; metadata: Record<string, unknown>; permission?: unknown }): Promise<string> {
+  async createSession(a: {
+    directory: string
+    title: string
+    agent: string
+    metadata: Record<string, unknown>
+    permission?: unknown
+  }): Promise<string> {
     this.rec('createSession', a)
     const id = `ses_${++this.n}`
     this.sessions.set(id, { id, directory: a.directory, modelID: '', busy: false, retry: null, messages: [], attempts: 0, gen: 0 })
     return id
   }
 
-  async prompt(a: { sessionID: string; directory: string; agent: string; model: { providerID: string; modelID: string }; variant?: string; text: string }): Promise<void> {
+  async prompt(a: {
+    sessionID: string
+    directory: string
+    agent: string
+    model: { providerID: string; modelID: string }
+    variant?: string
+    text: string
+  }): Promise<void> {
     this.rec('prompt', a)
     const s = this.sessions.get(a.sessionID)
     if (!s) throw new Error('no session')
@@ -86,14 +99,24 @@ export class FakeEngine implements CompareEngine {
       const created = this.nowFn()
       s.attempts++
       const base = { id: `m${s.messages.length}`, role: 'assistant', time: { created, completed: created + 5 } }
-      const info: EngineMessage['info'] = { ...base, cost: script.cost ?? 0, tokens: { input: script.tokens?.input ?? 0, output: script.tokens?.output ?? 0, reasoning: 0, cache: { read: 0, write: 0 } } }
-      if (script.fail) (info as { error?: unknown }).error = { name: script.fail.name, data: { message: script.fail.message } }
-      else if (s.attempts <= (script.quotaFailures ?? 0)) (info as { error?: unknown }).error = { name: 'APIError', data: { message: 'token rate limit exceeded', statusCode: 429, isRetryable: true } }
-      else for (const [f, c] of Object.entries(script.write ?? {})) {
-        mkdirSync(dirname(join(s.directory, f)), { recursive: true })
-        writeFileSync(join(s.directory, f), c.startsWith('base64:') ? Buffer.from(c.slice(7), 'base64') : c)
+      const info: EngineMessage['info'] = {
+        ...base,
+        cost: script.cost ?? 0,
+        tokens: { input: script.tokens?.input ?? 0, output: script.tokens?.output ?? 0, reasoning: 0, cache: { read: 0, write: 0 } }
       }
-      if (!(info as { error?: unknown }).error) for (const [n, target] of Object.entries(script.symlinks ?? {})) symlinkSync(target, join(s.directory, n))
+      if (script.fail) (info as { error?: unknown }).error = { name: script.fail.name, data: { message: script.fail.message } }
+      else if (s.attempts <= (script.quotaFailures ?? 0))
+        (info as { error?: unknown }).error = {
+          name: 'APIError',
+          data: { message: 'token rate limit exceeded', statusCode: 429, isRetryable: true }
+        }
+      else
+        for (const [f, c] of Object.entries(script.write ?? {})) {
+          mkdirSync(dirname(join(s.directory, f)), { recursive: true })
+          writeFileSync(join(s.directory, f), c.startsWith('base64:') ? Buffer.from(c.slice(7), 'base64') : c)
+        }
+      if (!(info as { error?: unknown }).error)
+        for (const [n, target] of Object.entries(script.symlinks ?? {})) symlinkSync(target, join(s.directory, n))
       s.messages.push({ info })
       s.busy = false
     }
@@ -131,9 +154,5 @@ export class FakeEngine implements CompareEngine {
   async deleteSession(a: { sessionID: string; directory: string }): Promise<void> {
     this.rec('deleteSession', a)
     this.sessions.delete(a.sessionID)
-  }
-
-  async disposeInstance(directory: string): Promise<void> {
-    this.rec('disposeInstance', directory)
   }
 }

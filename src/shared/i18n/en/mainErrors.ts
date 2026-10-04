@@ -360,5 +360,6 @@ export const mainErrors = {
   'merr.compare.running': 'The column is still running: cancel it first.',
   'merr.compare.unconfirmed': 'The engine didn’t confirm the stop; the copy is kept.',
   'merr.compare.notFinished': 'The comparison hasn’t finished yet.',
-  'merr.compare.notReady': 'That column isn’t ready for this.'
+  'merr.compare.notReady': 'That column isn’t ready for this.',
+  'merr.compare.exportTitle': 'Save comparison'
 } as const satisfies Messages<typeof es>

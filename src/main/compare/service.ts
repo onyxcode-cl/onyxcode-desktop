@@ -680,7 +680,6 @@ export class CompareService {
     if (engine && c.sessionID) await engine.deleteSession({ sessionID: c.sessionID, directory: dir }).catch(() => undefined)
     if (c.worktree) {
       if (!run.m.cwd) throw new CompareError(t('merr.compare.unsafePath', { path: c.worktree.path }))
-      await engine?.disposeInstance?.(c.worktree.path).catch(() => undefined)
       await cgit.removeCompareWorktree(run.m.cwd, c.worktree.path, c.worktree.branch)
     }
     c.worktree = null

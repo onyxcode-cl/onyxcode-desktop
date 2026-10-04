@@ -15,6 +15,7 @@ import { prepareOpencodeConfigDir } from './tasks/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
 import { registerCodeHandlers } from './ipc/code-handlers'
+import { registerCompareHandlers } from './compare/handlers'
 import { registerRoutinesHandlers } from './ipc/routines-handlers'
 import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
 import { capsFor } from '@shared/platform-caps'
@@ -182,6 +183,12 @@ function start(): void {
 
     registerAllHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerCodeHandlers(ipcMain, () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null)
+    registerCompareHandlers(ipcMain, {
+      getMainConnection: () => server.start(),
+      getMainWindow: () => mainWindow,
+      chatDirectory,
+      cliVersion: () => server.getConnection()?.version ?? null
+    })
     if (caps.updater) (await import('./ipc/update')).registerUpdateHandlers(ipcMain)
     if (caps.tasks) {
       const { registerTasksHandlers } = await import('./ipc/tasks-handlers')
