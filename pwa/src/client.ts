@@ -1,8 +1,14 @@
 /**
  * Cliente del control remoto: máquina de estados de la conexión, vinculación, reconexión acotada, peticiones de la lista
  * blanca y estado de sesiones/chat. No toca el DOM (eso es `ui.ts`). Nunca registra ni muestra secretos.
+ *
+ * Autenticación (protocolo v3, `shared/remote/handshake.ts`): ninguna credencial viaja. Al abrir el canal el celular manda `hs1`,
+ * contesta el desafío del Mac con `hs3` (HMAC ligado a las huellas DTLS que vio SU pila) y SOLO sigue si la prueba del Mac
+ * (`proof` de `authed`/`pair-pending`) verifica. Hasta entonces no se acepta ninguna otra trama, no se pide el PIN y un fallo
+ * (que un intermediario puede inyectar) NO borra las credenciales: solo una prueba válida da autoridad para olvidarlas.
  */
-import { pairingCode } from '../../src/shared/remote/code'
+import { sdpFingerprintStrict } from '../../src/shared/remote/code'
+import { ClientHandshake, pairId } from '../../src/shared/remote/handshake'
 import {
   DEVICE_ID_RE,
   LIMITS,
@@ -32,7 +38,12 @@ const STORE_KEY = 'onyx.pwa.device'
 const REQUEST_TIMEOUT_MS = 15_000
 const PING_EVERY_MS = 20_000
 const PONG_WITHIN_MS = 8_000
-const WAKE_PROBE_MS = 4_000
+/** Plazo para el `pong` al volver a primer plano (antes 4 s + red: la pantalla de «reconectando» tardaba de más). */
+const WAKE_PROBE_MS = 2_000
+/** Si la página estuvo oculta más que esto, el canal casi seguro murió: se reconecta sin sondear. */
+const WAKE_AWAY_RECONNECT_MS = 15_000
+/** Marca de `sessionStorage`: una sola recarga automática por versión incompatible (evita bucles). */
+const RELOAD_KEY = 'onyx.reloadedForVersion'
 const TOAST_MS = 4_000
 const MAX_CHAT_MESSAGES = 200
 const MAX_BAD_FRAMES = 3
@@ -56,6 +67,12 @@ export type FailReason =
   | 'unreachable'
   | 'protocol'
   | 'unsupported'
+  /** La prueba del Mac no verificó: puede haber alguien interceptando la red. No se borra nada ni se pide el PIN. */
+  | 'unverified'
+  /** El Mac no reconoció este celular (sin pruebas de nada más): reintentar u olvidar la vinculación. */
+  | 'not-recognized'
+  /** El vínculo caducó (el Mac lo probó con una prueba válida): hay que volver a vincular. */
+  | 'expired-link'
 
 export type Conn =
   | { k: 'idle' }
@@ -175,6 +192,10 @@ export class RemoteClient {
   private pairSecret: string | null = null
   private mode: 'pair' | 'resume' = 'resume'
   private authed = false
+  /** Handshake v3 de la conexión actual. */
+  private hs: ClientHandshake | null = null
+  /** La prueba del Mac verificó: solo desde aquí se aceptan el resto de tramas y se pueden borrar credenciales. */
+  private macVerified = false
   private everOnline = false
   private attempt = 0
   private retryTimer: ReturnType<typeof setTimeout> | null = null
@@ -263,16 +284,24 @@ export class RemoteClient {
     this.teardown()
     const gen = ++this.generation
     this.authed = false
+    this.hs = null
+    this.macVerified = false
     this.badFrames = 0
     const mode = this.mode
     if (mode === 'pair' && !this.pairSecret) return this.fail('expired', false)
     if (mode === 'resume' && !this.creds) return this.set({ conn: { k: 'idle' } })
     if (this.attempt > 0 && this.everOnline) this.set({ conn: { k: 'reconnecting', attempt: this.attempt, max: RECONNECT_DELAYS.length } })
     else this.set({ conn: { k: 'connecting', mode } })
-    const hello =
-      mode === 'pair'
-        ? ({ t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', secret: this.pairSecret as string, deviceName: deviceName() } as const)
-        : ({ t: 'hello', v: PROTOCOL_VERSION, mode: 'resume', deviceId: (this.creds as Creds).id } as const)
+    let hello: Parameters<typeof openLink>[0]
+    try {
+      // El secreto del QR no sale del celular: el servidor solo ve su identificador público.
+      hello =
+        mode === 'pair'
+          ? { t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', qid: pairId(this.pairSecret as string), deviceName: deviceName() }
+          : { t: 'hello', v: PROTOCOL_VERSION, mode: 'resume', deviceId: (this.creds as Creds).id }
+    } catch {
+      return this.fail('protocol', true)
+    }
     this.link = openLink(hello, {
       onOpen: (info) => {
         if (gen !== this.generation) return
@@ -299,6 +328,8 @@ export class RemoteClient {
     this.link = null
     this.rejectAll('closed')
     this.authed = false
+    this.hs = null
+    this.macVerified = false
   }
 
   private fail(reason: FailReason, canRetry: boolean): void {
@@ -307,16 +338,37 @@ export class RemoteClient {
   }
 
   private onChannelOpen(offerSdp: string, answerSdp: string): void {
-    if (this.mode === 'pair') {
-      const code = pairingCode(offerSdp, answerSdp)
-      if (!code) return this.fail('protocol', true)
-      this.set({ conn: { k: 'pairing', code, pending: false } })
-      return
+    // Huellas ESTRICTAS (una sola, sha-256) de lo que vio la pila de este celular; sin ellas no hay a qué ligar el handshake.
+    const offer = sdpFingerprintStrict(offerSdp)
+    const answer = sdpFingerprintStrict(answerSdp)
+    if (!offer || !answer) return this.fail('protocol', true)
+    const fps = { offer, answer }
+    const rand = (n: number): Uint8Array => crypto.getRandomValues(new Uint8Array(n))
+    try {
+      if (this.mode === 'pair') {
+        this.hs = new ClientHandshake({ mode: 'pair', q: this.pairSecret as string, fps, rand })
+      } else {
+        const c = this.creds
+        if (!c) return this.fail('revoked', false)
+        this.hs = new ClientHandshake({ mode: 'resume', deviceId: c.id, secret: c.secret, fps, rand })
+      }
+    } catch {
+      return this.fail('protocol', true)
     }
-    const c = this.creds
-    if (!c) return this.fail('revoked', false)
-    // Primera trama por el canal cifrado: nunca por HTTP ni por señalización.
-    this.sendFrame({ t: 'auth', deviceId: c.id, secret: c.secret })
+    // Primera trama por el canal. No lleva ninguna credencial.
+    this.sendFrame(this.hs.hello())
+  }
+
+  /** `true` si se recargó la página (una sola vez por pestaña) para recoger la versión nueva. */
+  private reloadForVersion(): boolean {
+    try {
+      if (sessionStorage.getItem(RELOAD_KEY)) return false
+      sessionStorage.setItem(RELOAD_KEY, '1')
+      location.reload()
+      return true
+    } catch {
+      return false
+    }
   }
 
   private onLinkEnd(why: LinkEnd): void {
@@ -330,13 +382,11 @@ export class RemoteClient {
       case 'signal-error':
         if (why.code === 'invalid') {
           if (this.mode === 'pair') return this.fail('expired', false)
-          clearCreds()
-          this.creds = null
-          this.set({ paired: false })
-          return this.fail('revoked', false)
+          // Sin prueba del Mac no se borra nada (un intermediario puede inyectar este error): reintentar u olvidar a mano.
+          return this.fail('not-recognized', true)
         }
         if (why.code === 'busy') return this.fail('busy', true)
-        if (why.code === 'version') return this.fail('version', false)
+        if (why.code === 'version') return this.reloadForVersion() ? undefined : this.fail('version', false)
         return this.fail('protocol', true)
       case 'no-host':
         if (this.mode === 'pair') return this.fail('no-host', true)
@@ -360,11 +410,16 @@ export class RemoteClient {
     }, wait)
   }
 
-  /** Al volver a primer plano (o recuperar la red): comprueba o rehace la conexión. */
-  wake(): void {
+  /**
+   * Al volver a primer plano (o recuperar la red): comprueba o rehace la conexión. `awayMs` = cuánto estuvo oculta la página:
+   * si pasaron más de 15 s o el canal ya no está abierto, casi seguro murió y se reconecta sin sondear; si no, se sondea con
+   * un `ping` y ~2 s de espera.
+   */
+  wake(awayMs = 0): void {
     const k = this.snap.conn.k
-    if (k === 'online') {
-      this.probe()
+    if (k === 'online' || k === 'locked') {
+      if (awayMs > WAKE_AWAY_RECONNECT_MS || !this.link?.isOpen()) this.reconnectNow()
+      else this.probe()
     } else if (k === 'reconnecting') {
       if (this.retryTimer) {
         clearTimeout(this.retryTimer)
@@ -380,6 +435,13 @@ export class RemoteClient {
   private probe(): void {
     if (!this.sendFrame({ t: 'ping' })) return this.dropAndReconnect()
     this.armPong(WAKE_PROBE_MS)
+  }
+
+  /** Reconexión inmediata (sin la espera de `RECONNECT_DELAYS[0]`): muestra «reconectando» y vuelve a negociar. */
+  private reconnectNow(): void {
+    if (this.snap.conn.k === 'failed' || this.mode !== 'resume' || !this.creds) return
+    this.attempt = 1
+    this.connect()
   }
 
   private dropAndReconnect(): void {
@@ -487,10 +549,46 @@ export class RemoteClient {
     return this.mux ? this.mux.subscribe(eng, h, since) : null
   }
 
+  /** Tramas que se admiten ANTES de verificar la prueba del Mac (todo lo demás cierra con `protocol`). */
+  private static readonly PRE_PROOF: ReadonlySet<string> = new Set([
+    'hs2',
+    'authed',
+    'pair-pending',
+    'auth-failed',
+    'denied',
+    'pong',
+    'bye'
+  ])
+
+  /** La prueba del Mac no verificó: se cierra sin enviar nada más y SIN borrar las credenciales. */
+  private unverified(): void {
+    this.fail('unverified', true)
+  }
+
+  /** Borra las credenciales locales (solo con una prueba válida del Mac). */
+  private forgetCreds(): void {
+    clearCreds()
+    this.creds = null
+    this.set({ paired: false })
+  }
+
   private handle(f: HostFrame): void {
+    if (!this.macVerified && !RemoteClient.PRE_PROOF.has(f.t)) return this.fail('protocol', true)
     switch (f.t) {
+      case 'hs2': {
+        const hs = this.hs
+        if (!hs || this.macVerified) return this.fail('protocol', true)
+        const hs3 = hs.onChallenge(f)
+        if (!hs3) return this.fail('protocol', true)
+        this.sendFrame(hs3)
+        return
+      }
       case 'pair-pending':
-        if (this.snap.conn.k === 'pairing') this.set({ conn: { ...this.snap.conn, pending: true } })
+        if (this.mode !== 'pair' || !this.hs || this.macVerified) return this.fail('protocol', true)
+        if (!this.hs.verifyProof(f.proof)) return this.unverified()
+        this.macVerified = true
+        // El código de 6 dígitos aparece DESPUÉS de verificar al Mac: antes no se le puede creer.
+        this.set({ conn: { k: 'pairing', code: this.hs.sas(), pending: true } })
         return
       case 'paired':
         if (this.mode !== 'pair' || this.authed) return
@@ -501,8 +599,10 @@ export class RemoteClient {
         this.set({ paired: true })
         return this.beginGate()
       case 'authed':
-        if (this.mode === 'resume' && !this.authed) this.beginGate()
-        return
+        if (this.mode !== 'resume' || !this.hs || this.macVerified) return this.fail('protocol', true)
+        if (!this.hs.verifyProof(f.proof)) return this.unverified()
+        this.macVerified = true
+        return this.beginGate()
       case 'locked':
         if (this.authed) this.set({ conn: { k: 'locked', why: f.why, retryMs: f.retryMs, left: f.left } })
         return
@@ -510,10 +610,12 @@ export class RemoteClient {
         if (this.authed) this.goOnline()
         return
       case 'auth-failed':
-        clearCreds()
-        this.creds = null
-        this.set({ paired: false })
-        return this.fail('revoked', false)
+        if (this.mode !== 'resume' || this.macVerified) return this.fail('protocol', true)
+        if (!('why' in f)) return this.fail('not-recognized', true)
+        // `expired` solo vale con la prueba del Mac: con ella sí hay autoridad para olvidar el vínculo.
+        if (!this.hs?.verifyProof(f.proof)) return this.unverified()
+        this.forgetCreds()
+        return this.fail('expired-link', false)
       case 'denied':
         return this.fail(f.reason === 'rejected' ? 'denied' : f.reason === 'timeout' ? 'denied-timeout' : 'denied-limit', false)
       case 'bye':
@@ -531,9 +633,9 @@ export class RemoteClient {
   private onBye(reason: string): void {
     switch (reason) {
       case 'revoked':
-        clearCreds()
-        this.creds = null
-        this.set({ paired: false })
+        // Sin prueba válida, un `bye revoked` puede ser inyectado: no se borra nada.
+        if (!this.macVerified) return this.fail('not-recognized', true)
+        this.forgetCreds()
         return this.fail('revoked', false)
       case 'stopped':
       case 'idle':
@@ -557,6 +659,11 @@ export class RemoteClient {
 
   /** Autenticado: el Mac enviará `locked` (falta confirmar/PIN) o `unlocked` (acceso) enseguida. */
   private beginGate(): void {
+    try {
+      sessionStorage.removeItem(RELOAD_KEY) // conexión buena: una versión incompatible futura podrá recargar de nuevo
+    } catch {
+      /* sin almacenamiento de sesión */
+    }
     this.authed = true
     this.everOnline = true
     this.attempt = 0

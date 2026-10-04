@@ -79,6 +79,14 @@ export const es: Dict = {
   'fail.body.unreachable': 'Se perdió la conexión y no se pudo recuperar. Comprueba que tu Mac esté despierto y en la misma Wi-Fi.',
   'fail.title.protocol': 'Respuesta no válida',
   'fail.body.protocol': 'Tu Mac envió datos que no se pudieron validar, así que se cerró la conexión por seguridad.',
+  'fail.title.unverified': 'No se pudo verificar tu Mac',
+  'fail.body.unverified':
+    'La conexión no superó la verificación. Puede haber alguien interceptando la red Wi-Fi. No escribas tu PIN; prueba en otra red o vuelve a intentarlo.',
+  'fail.title.not-recognized': 'Tu Mac no reconoció este celular',
+  'fail.body.not-recognized': 'Si lo quitaste en Ajustes › Celular, olvida la vinculación y vuelve a escanear el código. Si no, reintenta.',
+  'fail.title.expired-link': 'Vínculo caducado',
+  'fail.body.expired-link':
+    'Este celular estuvo demasiado tiempo sin conectarse y el vínculo caducó. Escanea un código QR desde tu Mac para vincularlo de nuevo.',
   'fail.title.unsupported': 'Navegador no compatible',
   'fail.body.unsupported': 'Este navegador no permite conexiones directas (WebRTC). Prueba con Safari o Chrome actualizados.',
   'btn.retry': 'Reintentar',
@@ -201,6 +209,14 @@ export const en: Dict = {
   'fail.body.unreachable': "The connection was lost and couldn't be restored. Check that your Mac is awake and on the same Wi-Fi.",
   'fail.title.protocol': 'Invalid response',
   'fail.body.protocol': 'Your Mac sent data that could not be validated, so the connection was closed for safety.',
+  'fail.title.unverified': "Couldn't verify your Mac",
+  'fail.body.unverified':
+    "The connection didn't pass verification. Someone may be intercepting the Wi-Fi network. Don't type your PIN; try another network or try again.",
+  'fail.title.not-recognized': "Your Mac didn't recognize this phone",
+  'fail.body.not-recognized': 'If you removed it in Settings › Phone, forget this link and scan the code again. Otherwise, try again.',
+  'fail.title.expired-link': 'Link expired',
+  'fail.body.expired-link':
+    'This phone went too long without connecting and the link expired. Scan a QR code from your Mac to link it again.',
   'fail.title.unsupported': 'Unsupported browser',
   'fail.body.unsupported': "This browser doesn't allow direct connections (WebRTC). Try an up-to-date Safari or Chrome.",
   'btn.retry': 'Retry',

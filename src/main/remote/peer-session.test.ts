@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { randomBytes } from 'node:crypto'
 import { toBase64Url } from '@shared/remote/code'
 import { ClientHandshake, pairId, pairKey, type Fps } from '@shared/remote/handshake'
-import { LIMITS, type HostFrame } from '@shared/remote/protocol'
+import { LIMITS, parseHostFrame, type HostFrame } from '@shared/remote/protocol'
 import type { AuditInput } from './audit'
 import { DevicesStore } from './devices-store'
 import { PeerSession } from './peer-session'
@@ -572,6 +572,35 @@ describe('PeerSession: handshake v3 (reconexión)', () => {
     expect(wire).not.toContain(secret)
     expect(wire).not.toContain(devices.get(id)!.secretHash)
     expect(phone.proofOk()).toBe(true)
+  })
+
+  it('de extremo a extremo: cada trama del Mac pasa el validador del celular (reconexión y vinculación) y el celular verifica la prueba', async () => {
+    const ch = new FakeChannel()
+    const { id, secret } = mk(ch)
+    const phone = resumeAs(ch, { deviceId: id, secret })
+    await flush()
+    for (const f of ch.sent) expect(parseHostFrame(JSON.stringify(f)).ok).toBe(true)
+    expect(phone.proofOk()).toBe(true)
+
+    const q = toBase64Url(new Uint8Array(randomBytes(32)))
+    const ch2 = new FakeChannel()
+    new PeerSession({
+      channel: ch2,
+      kind: 'pair',
+      deviceName: 'iPhone',
+      fps: TEST_FPS,
+      qid: pairId(q),
+      pairKey: pairKey(q),
+      devices,
+      backend: fakeBackend(),
+      confirmPair: async () => true,
+      onAuthed: () => true,
+      onEnd: () => undefined
+    }).start()
+    const p2 = pairAs(ch2, { q })
+    await flush()
+    for (const f of ch2.sent) expect(parseHostFrame(JSON.stringify(f)).ok).toBe(true)
+    expect(p2.proofOk()).toBe(true)
   })
 
   it('con intermediario (huellas del Mac distintas a las del celular): auth-failed, sin authed y con auditoría auth-bad-proof', async () => {

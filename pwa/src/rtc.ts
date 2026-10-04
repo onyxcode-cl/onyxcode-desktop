@@ -26,7 +26,10 @@ export type LinkEnd =
   { k: 'no-host' } | { k: 'signal-error'; code: SignalErrorCode } | { k: 'closed' } | { k: 'unsupported' }
 
 export interface LinkHandlers {
-  /** El canal abrió; trae los SDP de ambos lados para calcular el código de 6 dígitos. */
+  /**
+   * El canal abrió; trae los SDP que aplicó la PROPIA pila (`localDescription` = offer, `remoteDescription` = answer): de sus
+   * huellas sale el handshake. Vacío si la pila no los tiene (el llamador lo trata como fallo de protocolo).
+   */
   onOpen(info: { offerSdp: string; answerSdp: string }): void
   onMessage(raw: string): void
   /** `bufferedAmount` bajó de `BUFFER.low` (control de flujo del multiplexor). */
@@ -61,8 +64,6 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
   let opened = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let graceTimer: ReturnType<typeof setTimeout> | null = null
-  let offerSdp = ''
-  let answerSdp = ''
   let offerSent = false
   let remoteSet = false
   const pendingLocal: Array<{ candidate: string; mid: string }> = []
@@ -166,7 +167,8 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
       opened = true
       clearTimers()
       closeWs() // la señalización ya no hace falta
-      h.onOpen({ offerSdp, answerSdp })
+      // Las huellas salen de lo que la pila DTLS verificó contra los certificados, no de lo que creamos o recibimos por señalización.
+      h.onOpen({ offerSdp: conn.localDescription?.sdp ?? '', answerSdp: conn.remoteDescription?.sdp ?? '' })
     }
     channel.onmessage = (e) => {
       if (typeof e.data === 'string') h.onMessage(e.data)
@@ -176,7 +178,6 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     if (ended) return
     await conn.setLocalDescription(offer)
     if (ended || !offer.sdp) return
-    offerSdp = offer.sdp
     sendSignal({ t: 'offer', sdp: offer.sdp })
     offerSent = true
     flushLocalIce()
@@ -215,7 +216,6 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
         return
       case 'answer':
         if (!gotReady || !pc || remoteSet) return
-        answerSdp = f.sdp
         remoteSet = true
         pc.setRemoteDescription({ type: 'answer', sdp: f.sdp })
           .then(() => {
