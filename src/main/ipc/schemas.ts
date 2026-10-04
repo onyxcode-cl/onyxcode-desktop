@@ -20,6 +20,7 @@ import {
 } from '@shared/ipc-browser'
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
 import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
+import { isAllowedShell } from './pty-shell'
 import { absPath, arr, bool, literal, none, num, obj, optional, nullable, partial, record, str, tagged, ValidationError, type Validator } from './validate'
 
 /** Rol de la ventana que envía (lo asigna main al crearla). */
@@ -72,11 +73,23 @@ const schedule = tagged('kind', {
   interval: obj({ kind: literal('interval'), hours: num({ min: 0.01, max: 24 * 365 }) }),
   cron: obj({ kind: literal('cron'), expr: str({ max: 200, min: 1 }) })
 })
+/** Carpeta de trabajo de la terminal: absoluta y sin segmentos `..` (F8-B69). */
+const ptyCwd: Validator<string> = (v, path = '') => {
+  const s = absPath(v, path)
+  if (s.split(/[\\/]+/).includes('..')) throw new ValidationError(`Parámetro "${path}" no admite ".."`)
+  return s
+}
+/** Shell de la terminal: lista cerrada (F8-B69), ver `pty-shell.ts`. */
+const ptyShell: Validator<string> = (v, path = '') => {
+  const s = absPath(v, path)
+  if (!isAllowedShell(s)) throw new ValidationError(`Parámetro "${path}": shell no permitida`)
+  return s
+}
 const ptyCreate = obj({
-  cwd: str({ max: 4096 }),
+  cwd: ptyCwd,
   cols: num({ int: true, min: 1, max: 1000 }),
   rows: num({ int: true, min: 1, max: 500 }),
-  shell: optional(absPath)
+  shell: optional(ptyShell)
 })
 /** Host de la lista blanca de red de Tareas (F8-B69): sin TLD sueltos, comodines peligrosos ni IP privadas. */
 const egressHost: Validator<string> = (v, path = '') => {
