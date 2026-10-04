@@ -1,4 +1,19 @@
 import { spawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { sandboxAvailable, sandboxWrap } from "../isolation/seatbelt.ts";
+
+/**
+ * Ejecución dentro de Seatbelt (A5): el código del agente (src, tests, scripts de build) corre con
+ * lectura restringida (sin HOME real, sin el repo del banco, sin ~/.ssh), escritura solo en `root`, red cerrada
+ * y HOME/TMPDIR/PATH limpios y propios.
+ */
+export interface EvalSandbox {
+  /** directorio donde corre el comando: legible y escribible (copia desechable) */
+  root: string;
+  /** rutas extra de solo lectura (p. ej. un binario de build fuera de PATH base) */
+  readPaths?: string[];
+}
 
 export interface RunLimitedOptions {
   cwd: string;
@@ -6,6 +21,8 @@ export interface RunLimitedOptions {
   env?: Record<string, string>;
   maxOutputBytes?: number;
   signal?: AbortSignal;
+  /** si se da, el comando corre en Seatbelt con HOME/PATH limpios; si Seatbelt no existe, rechaza ejecutar */
+  sandbox?: EvalSandbox;
 }
 export interface RunLimitedResult {
   code: number | null;
@@ -18,6 +35,21 @@ export interface RunLimitedResult {
 }
 
 const ENV_WHITELIST = ["PATH", "LANG", "LC_ALL", "TMPDIR", "HOME", "USER", "SHELL"];
+
+/** Entorno fijo del evaluador sandboxeado: nada del usuario, HOME y TMPDIR dentro de la copia. */
+export function sandboxEnv(root: string, extra: Record<string, string> = {}): Record<string, string> {
+  const home = join(root, ".abhome");
+  const tmp = join(root, ".abtmp");
+  mkdirSync(home, { recursive: true });
+  mkdirSync(tmp, { recursive: true });
+  const keep: Record<string, string> = {};
+  for (const k of ["LANG", "LC_ALL", "TZ"]) if (process.env[k] !== undefined) keep[k] = process.env[k]!;
+  return {
+    ...keep, CI: "1", NO_COLOR: "1", HOME: home, TMPDIR: tmp,
+    PATH: [dirname(process.execPath), "/usr/bin", "/bin", "/usr/sbin", "/sbin"].join(":"),
+    ...extra,
+  };
+}
 
 export function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
   const env: Record<string, string> = {};
@@ -37,9 +69,25 @@ export function runLimited(cmd: string, args: string[], opts: RunLimitedOptions)
   return new Promise((resolve) => {
     const started = Date.now();
     const alarmSec = Math.ceil(opts.timeoutMs / 1000) + 5;
-    const child = spawn("perl", ["-e", "alarm shift; exec @ARGV", String(alarmSec), cmd, ...args], {
+    let exe = cmd;
+    let exeArgs = args;
+    let env: Record<string, string>;
+    if (opts.sandbox) {
+      if (!sandboxAvailable()) {
+        resolve({ code: null, signal: null, timedOut: false, aborted: false, stdout: "", stderr: "Seatbelt no disponible: no se ejecuta código del agente sin aislamiento", durationMs: 0 });
+        return;
+      }
+      env = sandboxEnv(opts.sandbox.root, opts.env ?? {});
+      const w = sandboxWrap({ cmd, args }, {
+        runRoot: opts.sandbox.root, writePaths: [opts.sandbox.root], network: "none", pathEnv: env.PATH as string,
+        ...(opts.sandbox.readPaths ? { extraReadPaths: opts.sandbox.readPaths } : {}),
+      });
+      exe = w.cmd;
+      exeArgs = w.args;
+    } else env = cleanEnv(opts.env);
+    const child = spawn("perl", ["-e", "alarm shift; exec @ARGV", String(alarmSec), exe, ...exeArgs], {
       cwd: opts.cwd,
-      env: cleanEnv(opts.env),
+      env,
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });

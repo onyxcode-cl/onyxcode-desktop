@@ -50,6 +50,8 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 export class OpenCodeRunner implements AgentRunner {
   readonly id = "opencode";
+  /** única credencial que el motor reenvía a este runner (A2) */
+  readonly credentialEnv = ["OPENCODE_AUTH_CONTENT"] as const;
   private readonly opts: OpenCodeRunnerOptions;
   constructor(opts: OpenCodeRunnerOptions = {}) {
     this.opts = opts;

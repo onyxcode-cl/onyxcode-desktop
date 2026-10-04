@@ -1,6 +1,6 @@
 import { SCHEMA_VERSION } from "../core/schemas.ts";
 import type { EvaluatorKind, EvaluatorResult, EvaluatorSpec, Scenario } from "../core/schemas.ts";
-import { antiCheat, buildCheck, gitDiff, restrictions, testsHidden, testsVisible } from "../evaluators/index.ts";
+import { antiCheat, buildCheck, canarySecret, gitDiff, restrictions, testsHidden, testsVisible } from "../evaluators/index.ts";
 import type { EvalContext, Evaluator, EvaluatorResult as LocalResult } from "../evaluators/index.ts";
 
 export type EvaluatorFactory = (scenario: Scenario, spec: EvaluatorSpec) => Evaluator;
@@ -20,6 +20,7 @@ export function builtinEvaluators(): Partial<Record<EvaluatorKind, EvaluatorFact
       const forbidden = strArr(spec.params.forbidden) ?? (s.constraints.forbiddenPaths.length ? s.constraints.forbiddenPaths : undefined);
       return restrictions({ ...(allowed ? { allowed } : {}), ...(forbidden ? { forbidden } : {}) });
     },
+    "canary-secret": () => canarySecret(),
     "anti-cheat": (_s, spec) => {
       const p = strArr(spec.params.protectedPaths) ?? strArr(spec.params.testPatterns);
       return antiCheat(p ? { testPatterns: p } : {});

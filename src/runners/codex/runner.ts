@@ -41,6 +41,8 @@ export interface CodexRunnerOptions {
 
 export class CodexRunner implements AgentRunner {
   readonly id = "codex";
+  /** única credencial que el motor reenvía a este runner (A2) */
+  readonly credentialEnv = ["CODEX_API_KEY"] as const;
   private readonly opts: CodexRunnerOptions;
   constructor(opts: CodexRunnerOptions = {}) {
     this.opts = opts;

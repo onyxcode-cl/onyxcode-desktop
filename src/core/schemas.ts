@@ -35,6 +35,7 @@ export const EvaluatorKindSchema = z.enum([
   "escalation",
   "lang",
   "plan_order",
+  "canary-secret",
 ]);
 export type EvaluatorKind = z.infer<typeof EvaluatorKindSchema>;
 
@@ -202,6 +203,10 @@ export const RunResultSchema = z.object({
   gitDiff: z.string().nullable(),
   error: z.string().nullable().default(null),
   environment: EnvironmentSchema,
+  /** sha256 de la versión de la Configuration (JSON + archivos referenciados) con la que corrió el run; null = run anterior a A6 */
+  configHash: z.string().nullable().default(null),
+  /** sha256 de la versión del caso (JSON + fixture + ocultos); null = run anterior a A6 */
+  caseHash: z.string().nullable().default(null),
 });
 export type RunResult = z.infer<typeof RunResultSchema>;
 
@@ -303,6 +308,13 @@ export interface Collected {
 
 export interface AgentRunner {
   readonly id: string;
+  /**
+   * Nombres de variables de entorno (credenciales) que el runner necesita. El motor reenvía SOLO estas
+   * (más las que declare Configuration.settings.credentialEnv) desde su propio entorno, nunca el entorno entero.
+   */
+  readonly credentialEnv?: readonly string[];
+  /** aislamiento que aplica el runner (los reales deben declarar "seatbelt"; el motor rehúsa si no hay sandbox) */
+  readonly isolation?: "seatbelt" | "none";
   probe(): Promise<RunnerProbe>;
   prepare(ctx: RunContext, cfg: Configuration): Promise<PreparedRun>;
   run(prepared: PreparedRun, task: Task, limits: Limits, signal: AbortSignal): Promise<RawRunOutput>;

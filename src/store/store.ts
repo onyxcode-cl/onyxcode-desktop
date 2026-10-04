@@ -66,10 +66,17 @@ function insertExperiment(db: DatabaseSync, e: Experiment, path: string, created
 export class Store {
   readonly root: string;
   #db: DatabaseSync | null = null;
+  /** secretos exactos (credenciales del run y sus campos) que se redactan en todo lo que se persiste */
+  #secrets: string[] = [];
 
   constructor(root: string) {
     this.root = root;
     mkdirSync(root, { recursive: true });
+  }
+
+  /** Registra secretos para redactarlos en runs y diario (A1). Los valores cortos (<6) se ignoran. */
+  addSecrets(secrets: readonly string[]): void {
+    for (const s of secrets) if (s.length >= 6 && !this.#secrets.includes(s)) this.#secrets.push(s);
   }
 
   get indexPath(): string { return join(this.root, "index.sqlite"); }
@@ -120,7 +127,7 @@ export class Store {
 
   /** Persiste un RunResult (validado y redactado). Atómico e inmutable. */
   writeRun(result: RunResult): RunResult {
-    const clean = RunResultSchema.parse(redactDeep(result));
+    const clean = RunResultSchema.parse(redactDeep(result, this.#secrets));
     const path = this.runPath(clean.experimentId, clean.runId);
     writeImmutable(path, jsonLine(clean));
     insertRun(this.#index(), clean, path);
@@ -149,7 +156,7 @@ export class Store {
 
   /** Diario append-only de eventos del motor (reintentos, pausas, paradas). */
   appendJournal(experimentId: string | null, record: Record<string, unknown>): void {
-    appendLine(this.journalPath(experimentId), redactDeep({ at: new Date().toISOString(), ...record }));
+    appendLine(this.journalPath(experimentId), redactDeep({ at: new Date().toISOString(), ...record }, this.#secrets));
   }
 
   readJournal(experimentId: string | null): Record<string, unknown>[] {

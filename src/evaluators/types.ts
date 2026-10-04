@@ -27,6 +27,12 @@ export interface EvalContext {
   env?: Record<string, string>;
   /** Commit base del workspace: si se da, tests-visible restaura los tests visibles originales antes de ejecutar. */
   baseCommit?: string;
+  /** gitdir separado del run (fuera del área escribible por el agente); sin él se usa .git del workspace */
+  gitDir?: string;
+  /** Ejecutar el código del agente (tests, build) dentro de Seatbelt con HOME/PATH limpios (A5). */
+  sandbox?: boolean;
+  /** Secretos del run (credenciales): el evaluador canary-secret falla si aparecen en el diff o el workspace. */
+  secrets?: string[];
 }
 
 export interface Evaluator {

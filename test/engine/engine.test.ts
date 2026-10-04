@@ -275,7 +275,7 @@ describe("motor: apagado limpio", () => {
 });
 
 describe("motor: aislamiento Seatbelt obligatorio para runners reales", () => {
-  const sc = (e: ReturnType<typeof env>, runnerId: string, ro: RouterOptions) => runExperiment(experiment({ scenarios: [CASES[0]], repetitions: 1, budget: { maxCost: 5 } }), {
+  const sc = (e: ReturnType<typeof env>, runnerId: string, ro: Partial<RouterOptions>) => runExperiment(experiment({ scenarios: [CASES[0]], repetitions: 1, budget: { maxCost: 5 } }), {
     ...opts(e, { patch: "referencePatch", cost: true, costUsd: 0.01, ...ro }, {}, runnerId),
   });
 

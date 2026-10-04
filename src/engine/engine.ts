@@ -6,7 +6,10 @@ import type { Store } from "../store/index.ts";
 import { checkExperimentRefs, ConfigError } from "./config.ts";
 import { realClock } from "./clock.ts";
 import type { Clock } from "./clock.ts";
-import { costOf, executeCycle, readBenchVersion, SECRET_NOTE } from "./cycle.ts";
+import { costOf, credentialNames, executeCycle, pickCredentials, readBenchVersion, SECRET_NOTE, secretsOf } from "./cycle.ts";
+import { hashConfiguration, hashScenario } from "./hashes.ts";
+import { git } from "../workspace/git.ts";
+import { resolve } from "node:path";
 import type { CycleDeps } from "./cycle.ts";
 import type { EvaluatorFactory } from "./evaluate.ts";
 import { dirname } from "node:path";
@@ -59,6 +62,10 @@ export interface RunExperimentOptions {
   extraPath?: string[];
   keepRunDirs?: boolean;
   killGraceMs?: number;
+  /** entorno del que se toman SOLO las variables de credencial que declaran runner/configuración (def process.env) */
+  parentEnv?: NodeJS.ProcessEnv;
+  /** evaluadores de código del agente dentro de Seatbelt (def: si hay sandbox-exec) */
+  sandboxEvaluators?: boolean;
   onEvent?: (e: EngineEvent) => void;
 }
 
@@ -84,6 +91,8 @@ export interface ExperimentSummary {
   infraErrorRate: number;
   /** motivos del rechazo previo (status refused) */
   refusal: string | null;
+  /** avisos (p. ej. runs previos de otra versión de configuración/caso que no se reutilizan) */
+  warnings: string[];
 }
 
 const DONE_OUTCOMES = new Set(["completed", "agent_error", "timeout", "hung"]);
@@ -116,6 +125,7 @@ export async function runExperiment(experimentIn: Experiment, o: RunExperimentOp
   const base: ExperimentSummary = {
     schemaVersion: "1", experimentId: exp.id, status: "dry-run", stopReason: null, stopDetail: null, plan, results: [], skipped: 0,
     pending: plan.runs.length, attempts: 0, retries: 0, spentUsd: 0, costUnknownRuns: 0, wallMs: 0, pausedMs: 0, infraErrorRate: 0, refusal: null,
+    warnings: [],
   };
   if (o.dryRun) return base;
 
@@ -139,9 +149,52 @@ export async function runExperiment(experimentIn: Experiment, o: RunExperimentOp
     return { ...base, status: "refused", refusal: `coste estimado ${plan.estimate.costUsdTotal.toFixed(2)} USD > maxCost ${exp.budget.maxCost}; sube el tope o reduce el plan` };
   }
 
+  // ---- versiones de contenido (A6): la reanudación solo reutiliza runs hechos con la MISMA configuración y caso ----
+  const cfgHash = new Map<string, string>();
+  const caseHash = new Map<string, string>();
+  for (const id of exp.configurations) cfgHash.set(id, hashConfiguration(cfgs.get(id)!, o.benchRoot));
+  for (const id of exp.scenarios) {
+    const sc = scs.get(id)!;
+    let tree: string | null = null;
+    if (sc.fixture.commit) {
+      try { tree = (await git(resolve(o.benchRoot, sc.fixture.path), ["rev-parse", "--verify", `${sc.fixture.commit}^{tree}`])).trim(); } catch { tree = null; }
+    }
+    caseHash.set(id, hashScenario(sc, o.benchRoot, tree));
+  }
+  // ---- credenciales: solo las declaradas; sus valores se registran en el redactor del store ----
+  const parentEnv = o.parentEnv ?? process.env;
+  for (const cid of exp.configurations) {
+    const c = cfgs.get(cid)!;
+    o.store.addSecrets(secretsOf(pickCredentials(credentialNames(o.runners[c.runner]!, c), parentEnv)));
+  }
+
   // ---- reanudación ----
   const doneKeys = new Set<string>();
-  if (o.resume !== false) for (const r of existing) if (DONE_OUTCOMES.has(r.outcome)) doneKeys.add(runKeyOf(r));
+  const stale: string[] = [];
+  let unhashed = 0;
+  if (o.resume !== false) {
+    for (const r of existing) {
+      if (!DONE_OUTCOMES.has(r.outcome)) continue;
+      const ch = cfgHash.get(r.configurationId);
+      const sh = caseHash.get(r.scenarioId);
+      if (r.configHash === null || r.caseHash === null) { unhashed++; doneKeys.add(runKeyOf(r)); continue; }
+      if ((ch !== undefined && r.configHash !== ch) || (sh !== undefined && r.caseHash !== sh)) {
+        stale.push(`${r.scenarioId}/${r.configurationId}#${r.repetition}`);
+        continue;
+      }
+      doneKeys.add(runKeyOf(r));
+    }
+  }
+  if (stale.length) {
+    const w = `${stale.length} run(s) previo(s) usan otra versión de la configuración o del caso (contenido distinto) y NO se reutilizan: se repetirán. Ejemplos: ${stale.slice(0, 3).join(", ")}`;
+    base.warnings.push(w);
+    base.plan.warnings.push(w);
+  }
+  if (unhashed) {
+    const w = `${unhashed} run(s) previo(s) sin hash de contenido (anteriores a A6): se reutilizan sin poder verificar su versión`;
+    base.warnings.push(w);
+    base.plan.warnings.push(w);
+  }
   const queue: PlannedRun[] = plan.runs.filter((r) => !doneKeys.has(r.key));
   const skipped = plan.runs.length - queue.length;
   o.store.writeExperiment(exp);
@@ -235,13 +288,14 @@ export async function runExperiment(experimentIn: Experiment, o: RunExperimentOp
       benchRoot: o.benchRoot, runBase: o.runBase, clock, keepRunDirs: o.keepRunDirs ?? false,
       extraPath: [dirname(process.execPath), ...(o.extraPath ?? [])], extraEvaluators: o.extraEvaluators ?? {},
       pricing: o.pricing, killGraceMs: o.killGraceMs ?? 1000, activeRoots, cliVersion: rc.version,
-      capabilities: rc.capabilities, benchVersion,
+      capabilities: rc.capabilities, benchVersion, parentEnv,
+      ...(o.sandboxEvaluators !== undefined ? { sandboxEvaluators: o.sandboxEvaluators } : {}),
     };
     emit({ type: "run-start", key: item.key, scenarioId: item.scenarioId, configurationId: item.configurationId, repetition: item.repetition, attempt: n });
     inflight++;
     attempts++;
     try {
-      const r = await executeCycle({ experiment: exp, planned: item, scenario: sc, configuration: cfg, runner: o.runners[cfg.runner]!, signal: ctl.signal, deps });
+      const r = await executeCycle({ experiment: exp, planned: item, scenario: sc, configuration: cfg, runner: o.runners[cfg.runner]!, signal: ctl.signal, deps, hashes: { config: cfgHash.get(cfg.id)!, case: caseHash.get(sc.id)! } });
       const c = costOf(r.telemetry, cfg, o.pricing);
       if (c.usd !== null) { spent += c.usd; costSamples.push(c.usd); }
       else { spent += assumed; costUnknown++; }

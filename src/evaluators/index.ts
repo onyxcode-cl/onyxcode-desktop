@@ -6,3 +6,4 @@ export { antiCheat } from "./anti-cheat.ts";
 export { parseTestOutput } from "./tap.ts";
 export { globToRegExp, matchesAny } from "./glob.ts";
 export { toCoreEvaluatorResult } from "./adapt.ts";
+export { canarySecret } from "./canary-secret.ts";

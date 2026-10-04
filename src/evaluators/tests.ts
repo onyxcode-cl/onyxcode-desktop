@@ -1,9 +1,10 @@
-import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { runLimited } from "./exec.ts";
-import { git } from "../workspace/git.ts";
-import { listBaseFiles, restoreFromBase } from "../workspace/restore.ts";
+import type { EvalSandbox } from "./exec.ts";
+import { diffAgainstBase, listBaseFiles, restoreFromBase } from "../workspace/restore.ts";
+import { safeCopyTree } from "../workspace/safecopy.ts";
 import { matchesAny } from "./glob.ts";
 import { parseTestOutput } from "./tap.ts";
 import { infraError, notApplicable, type EvalContext, type Evaluator, type EvaluatorResult } from "./types.ts";
@@ -27,13 +28,13 @@ async function walk(root: string, dir = root): Promise<string[]> {
   return out.sort();
 }
 
-export async function runNodeTests(id: string, root: string, files: string[] | null, o: TestsOptions, env?: Record<string, string>): Promise<EvaluatorResult> {
+export async function runNodeTests(id: string, root: string, files: string[] | null, o: TestsOptions, env?: Record<string, string>, sandbox?: EvalSandbox): Promise<EvaluatorResult> {
   const list = files ?? (await walk(root)).filter((f) => matchesAny(f, o.testGlobs ?? DEFAULT_TEST_GLOBS));
   if (list.length === 0) return notApplicable(id, "no hay archivos de test");
   const args = ["--test", "--test-reporter=tap"];
   if (list.some((f) => /\.m?ts$/.test(f))) args.push("--experimental-strip-types");
   const timeoutMs = o.timeoutMs ?? 60_000;
-  const r = await runLimited(process.execPath, [...args, ...list], { cwd: root, timeoutMs, ...(env ? { env } : {}) });
+  const r = await runLimited(process.execPath, [...args, ...list], { cwd: root, timeoutMs, ...(env ? { env } : {}), ...(sandbox ? { sandbox } : {}) });
   const summary = parseTestOutput(r.stdout);
   const details: Record<string, unknown> = { files: list, exitCode: r.code, timedOut: r.timedOut, summary, stderrTail: r.stderr.slice(-1000) };
   const base = { schemaVersion: "1" as const, evaluator: id, applicable: true, durationMs: r.durationMs };
@@ -49,7 +50,7 @@ export function testsVisible(o: TestsOptions = {}): Evaluator {
     id,
     async evaluate(ctx: EvalContext) {
       try {
-        if (!ctx.baseCommit) return await runNodeTests(id, ctx.workspaceDir, null, o, ctx.env);
+        if (!ctx.baseCommit) return await runNodeTests(id, ctx.workspaceDir, null, o, ctx.env, ctx.sandbox ? { root: ctx.workspaceDir } : undefined);
         return await runWithOriginalTests(id, ctx, o);
       } catch (e) { return infraError(id, String(e)); }
     },
@@ -63,21 +64,23 @@ export function testsVisible(o: TestsOptions = {}): Evaluator {
  */
 async function runWithOriginalTests(id: string, ctx: EvalContext, o: TestsOptions): Promise<EvaluatorResult> {
   const baseCommit = ctx.baseCommit!;
-  const copy = await mkdtemp(join(tmpdir(), "ab-vis-"));
+  const holder = await mkdtemp(join(tmpdir(), "ab-vis-"));
+  const copy = join(holder, "tree");
   try {
-    await cp(ctx.workspaceDir, copy, { recursive: true, verbatimSymlinks: true });
+    // copia sin seguir enlaces; con gitdir separado el .git del agente nunca se copia y el índice es temporal
+    const copied = await safeCopyTree(ctx.workspaceDir, copy, { skip: (rel) => !!ctx.gitDir && rel.split("/").includes(".git") });
+    const ro = ctx.gitDir ? { gitDir: ctx.gitDir, indexFile: join(holder, "index") } : {};
     const globs = o.testGlobs ?? DEFAULT_TEST_GLOBS;
-    const originals = (await listBaseFiles(copy, baseCommit)).filter((f) => matchesAny(f, globs));
+    const originals = (await listBaseFiles(copy, baseCommit, ro)).filter((f) => matchesAny(f, globs));
     let tampered: string[] = [];
     if (originals.length > 0) {
-      const d = await git(copy, ["diff", "--name-only", "-z", baseCommit, "--", ...originals]);
-      tampered = d.split("\0").filter((p) => p.length > 0).sort();
-      await restoreFromBase(copy, baseCommit, originals);
+      tampered = await diffAgainstBase(copy, baseCommit, originals, ro);
+      await restoreFromBase(copy, baseCommit, originals, ro);
     }
-    const r = await runNodeTests(id, copy, null, o, ctx.env);
-    return { ...r, details: { ...r.details, restoredTests: originals, tamperedTests: tampered } };
+    const r = await runNodeTests(id, copy, null, o, ctx.env, ctx.sandbox ? { root: copy } : undefined);
+    return { ...r, details: { ...r.details, restoredTests: originals, tamperedTests: tampered, ...(copied.symlinks.length ? { symlinksDropped: copied.symlinks } : {}) } };
   } finally {
-    await rm(copy, { recursive: true, force: true });
+    await rm(holder, { recursive: true, force: true });
   }
 }
 
@@ -88,7 +91,7 @@ export function testsHidden(o: TestsOptions = {}): Evaluator {
     id,
     async evaluate(ctx: EvalContext) {
       if (!ctx.evalDir || !ctx.hiddenFiles || ctx.hiddenFiles.length === 0) return notApplicable(id, "sin tests ocultos");
-      try { return await runNodeTests(id, ctx.evalDir, ctx.hiddenFiles, o, ctx.env); }
+      try { return await runNodeTests(id, ctx.evalDir, ctx.hiddenFiles, o, ctx.env, ctx.sandbox ? { root: ctx.evalDir } : undefined); }
       catch (e) { return infraError(id, String(e)); }
     },
   };
