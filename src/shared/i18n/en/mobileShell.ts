@@ -35,5 +35,15 @@ export const mobileShell = {
   'mobile.phone.unlink.message': 'You will need to scan a new QR code from your Mac to connect again.',
   'mobile.phone.unlink.confirm': 'Unlink',
   'mobile.banner.reconnecting': 'Reconnecting to your Mac…',
-  'mobile.banner.offline': 'No connection to your Mac. Check that it is on and on the same Wi-Fi network.'
+  'mobile.banner.offline': 'No connection to your Mac. Check that it is on and on the same Wi-Fi network.',
+  'mobile.banner.online': 'Connected again',
+  'mobile.more.group.general': 'General',
+  'mobile.more.group.device': 'This phone',
+  'mobile.settings.sharedHint': 'Also applies on your Mac',
+  'mobile.list.emptyBody': 'Start one with “New” and it will show up here.',
+  'mobile.list.deleteTitle': 'Delete this conversation?',
+  'mobile.list.deleteMessage': '“{title}” will be deleted for good.',
+  'mobile.list.deleteConfirm': 'Delete',
+  'mobile.list.renameTitle': 'Rename conversation',
+  'mobile.list.loadingSlow': 'Loading…'
 } as const satisfies Messages<typeof es>

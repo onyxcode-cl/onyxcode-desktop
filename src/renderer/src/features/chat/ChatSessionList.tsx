@@ -6,6 +6,8 @@ import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 import { LoadMoreSessions } from '../../components/LoadMoreSessions'
 import { PopoverPanel } from '../../components/PopoverPanel'
+import { isRemoteSurface } from '../../lib/platform'
+import { MobileSessionList } from './MobileSessionList'
 
 interface Props {
   sessions: Session[]
@@ -174,8 +176,12 @@ function Row({
   )
 }
 
-/** Lista de sesiones agrupada por fecha, con renombrar/eliminar. */
-export function ChatSessionList({
+/** Lista de sesiones agrupada por fecha, con renombrar/eliminar. En el celular es la lista táctil de `MobileSessionList`. */
+export function ChatSessionList(props: Props): React.JSX.Element {
+  return isRemoteSurface() ? <MobileSessionList {...props} /> : <DesktopSessionList {...props} />
+}
+
+function DesktopSessionList({
   sessions,
   activeId,
   busyIds,

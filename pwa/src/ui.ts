@@ -861,7 +861,8 @@ export function mountUi(root: HTMLElement, c: RemoteClient, ctl: FullControl = N
   const modeFor = (s: Snapshot): 'cover' | 'strip' | 'hidden' => {
     const full = ctl.full()
     const k = s.conn.k
-    if (full === 'none' || full === 'failed') return 'cover'
+    // Mientras la interfaz completa se descarga siempre hay pantalla (carga), nunca una franja sobre la nada.
+    if (full === 'none' || full === 'failed' || full === 'loading') return 'cover'
     if (k === 'online' || k === 'reconnecting') {
       if (full === 'ready') return ctl.waiting() > 0 ? 'strip' : 'hidden'
       return 'cover'

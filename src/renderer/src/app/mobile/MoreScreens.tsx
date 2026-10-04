@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { CalendarClock, ChevronRight, Lock, Settings, Smartphone, Unlink, type LucideIcon } from 'lucide-react'
+import { CalendarClock, Lock, Settings, Smartphone, Unlink } from 'lucide-react'
+import type { LinkStatus } from '@shared/remote/link'
 import { MODE_LABELS } from '@shared/labels'
 import { confirmDialog } from '../../components/ConfirmDialog'
+import { ListGroup, ListRow } from '../../components/mobile/List'
 import { useT } from '../../lib/i18n'
 import { useServer } from '../../stores/server'
 import { MODES_BY_ID } from '../modes'
@@ -23,51 +25,39 @@ const ENGINE_KEY = {
   error: 'app.status.error'
 } as const
 
-function Row({
-  icon: Icon,
-  label,
-  hint,
-  onClick
-}: {
-  icon: LucideIcon
-  label: string
-  hint: string
-  onClick: () => void
-}): React.JSX.Element {
+const DOT = { online: 'bg-success', offline: 'bg-danger' } as const
+
+/** Punto de color + texto del estado de la conexión (dato final de una fila o de «Este celular»). */
+function StatusDetail({ link, label }: { link: LinkStatus; label: string }): React.JSX.Element {
+  const tone = link === 'online' ? DOT.online : link === 'offline' ? DOT.offline : 'bg-warning'
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-16 w-full items-center gap-3.5 rounded-2xl border border-border bg-elevated px-4 py-3 text-left shadow-xs active:bg-hover"
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
-        <Icon size={20} />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[16px] font-medium">{label}</span>
-        <span className="text-[13px] leading-snug text-muted">{hint}</span>
-      </span>
-      <ChevronRight size={18} className="shrink-0 text-subtle" aria-hidden="true" />
-    </button>
+    <>
+      <span className={`h-2 w-2 rounded-full ${tone}`} aria-hidden="true" />
+      {label}
+    </>
   )
 }
 
-/** Pestaña «Más»: Rutinas, Ajustes básicos y el estado de este celular. */
+/** Pestaña «Más»: lista agrupada con Rutinas y Ajustes (General) y este celular con su estado como dato final. */
 export function MoreRoot(): React.JSX.Element {
   const t = useT()
   const { push } = useMobileNav()
   const link = useLinkStatus()
   const online = link === 'online'
   return (
-    <div className="flex flex-col gap-3 p-4">
-      <Row icon={CalendarClock} label={MODE_LABELS.routines} hint={t('mobile.more.routines.hint')} onClick={() => push('routines')} />
-      <Row icon={Settings} label={t('mobile.more.settings')} hint={t('mobile.more.settings.hint')} onClick={() => push('settings')} />
-      <Row
-        icon={Smartphone}
-        label={t('mobile.more.phone')}
-        hint={`${t(STATUS_KEY[link])} · ${t('mobile.more.phone.hint')}`}
-        onClick={() => push('phone')}
-      />
+    <div className="flex flex-col gap-6 px-[var(--m-gutter)] py-4" data-m="more">
+      <ListGroup title={t('mobile.more.group.general')}>
+        <ListRow icon={CalendarClock} label={MODE_LABELS.routines} hint={t('mobile.more.routines.hint')} onClick={() => push('routines')} />
+        <ListRow icon={Settings} label={t('mobile.more.settings')} hint={t('mobile.more.settings.hint')} onClick={() => push('settings')} />
+      </ListGroup>
+      <ListGroup title={t('mobile.more.group.device')} footer={t('mobile.more.phone.hint')}>
+        <ListRow
+          icon={Smartphone}
+          label={t('mobile.more.phone')}
+          detail={<StatusDetail link={link} label={t(STATUS_KEY[link])} />}
+          onClick={() => push('phone')}
+        />
+      </ListGroup>
       <span className="sr-only" aria-live="polite">
         {online ? '' : t(STATUS_KEY[link])}
       </span>
@@ -81,7 +71,6 @@ export function PhoneScreen(): React.JSX.Element {
   const link = useLinkStatus()
   const engine = useServer((s) => s.status.state)
   const [note, setNote] = useState<string | null>(null)
-  const tone = link === 'online' ? 'bg-success' : link === 'offline' ? 'bg-danger' : 'bg-warning'
   const engineLabel = engine in ENGINE_KEY ? t(ENGINE_KEY[engine as keyof typeof ENGINE_KEY]) : engine
 
   const lock = (): void => {
@@ -97,37 +86,28 @@ export function PhoneScreen(): React.JSX.Element {
     if (ok && !unlinkThisDevice()) setNote(t('mobile.phone.lock.unsupported'))
   }
 
-  const action =
-    'flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[15px] font-medium active:opacity-80'
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <dl className="overflow-hidden rounded-2xl border border-border bg-elevated shadow-xs">
+    <div className="flex flex-col gap-6 px-[var(--m-gutter)] py-4" data-m="phone">
+      <ListGroup>
         <div className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">
-          <dt className="text-[15px] text-muted">{t('mobile.phone.connection')}</dt>
-          <dd className="flex items-center gap-2 text-[15px] font-medium" role="status">
-            <span className={`h-2.5 w-2.5 rounded-full ${tone}`} aria-hidden="true" />
-            {t(STATUS_KEY[link])}
-          </dd>
+          <span className="text-[16px]">{t('mobile.phone.connection')}</span>
+          <span className="flex items-center gap-2 text-[15px] font-medium" role="status">
+            <StatusDetail link={link} label={t(STATUS_KEY[link])} />
+          </span>
         </div>
-        <div className="flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 py-3">
-          <dt className="text-[15px] text-muted">{t('mobile.phone.engine')}</dt>
-          <dd className="text-[15px] font-medium">{engineLabel}</dd>
+        <div className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">
+          <span className="text-[16px]">{t('mobile.phone.engine')}</span>
+          <span className="text-[15px] font-medium text-muted">{engineLabel}</span>
         </div>
-      </dl>
+      </ListGroup>
 
-      <div className="flex flex-col gap-1.5">
-        <button type="button" onClick={lock} className={`${action} border-border bg-elevated text-fg`}>
-          <Lock size={18} /> {t('mobile.phone.lock')}
-        </button>
-        <p className="px-2 text-[13px] leading-snug text-muted">{t('mobile.phone.lock.hint')}</p>
-      </div>
+      <ListGroup footer={t('mobile.phone.lock.hint')}>
+        <ListRow icon={Lock} label={t('mobile.phone.lock')} onClick={lock} chevron={false} />
+      </ListGroup>
 
-      <div className="flex flex-col gap-1.5">
-        <button type="button" onClick={() => void unlink()} className={`${action} border-danger/40 bg-elevated text-danger`}>
-          <Unlink size={18} /> {t('mobile.phone.unlink')}
-        </button>
-        <p className="px-2 text-[13px] leading-snug text-muted">{t('mobile.phone.unlink.hint')}</p>
-      </div>
+      <ListGroup footer={t('mobile.phone.unlink.hint')}>
+        <ListRow icon={Unlink} label={t('mobile.phone.unlink')} onClick={() => void unlink()} tone="danger" chevron={false} />
+      </ListGroup>
 
       {note && (
         <p role="alert" className="px-2 text-[13px] text-danger">

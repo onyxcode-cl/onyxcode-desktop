@@ -120,3 +120,21 @@ export function useMobileNav(): {
   const setTab = useMobileNavStore((s) => s.setTab)
   return { tab, screen: stack[stack.length - 1] ?? ROOT_SCREEN, depth: stack.length, canGoBack: stack.length > 1, push, pop, setTab }
 }
+
+export type NavAnimation = 'push' | 'pop' | 'tab' | 'none'
+
+/**
+ * Animación de la pantalla que entra según de dónde viene: otra pestaña = fundido; misma pestaña y más profunda = entra por la
+ * derecha; menos profunda = por la izquierda. `skip` (gesto atrás del navegador, que ya animó solo) = ninguna.
+ */
+export function navAnimation(
+  prev: { tab: MobileTab; depth: number } | null,
+  next: { tab: MobileTab; depth: number },
+  skip: boolean
+): NavAnimation {
+  if (!prev || skip) return 'none'
+  if (prev.tab !== next.tab) return 'tab'
+  if (next.depth > prev.depth) return 'push'
+  if (next.depth < prev.depth) return 'pop'
+  return 'none'
+}

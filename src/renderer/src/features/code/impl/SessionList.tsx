@@ -28,6 +28,7 @@ import { isSubmitKey } from '../../../lib/textarea'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { SheetAction } from './SheetAction'
+import { SwipeRow, useLongPress } from '../../../components/mobile/SwipeRow'
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
 function SessionRow({
@@ -57,6 +58,7 @@ function SessionRow({
   // Celular: tocar abre la conversación; renombrar/fijar/archivar/eliminar salen de un menú «⋯» (sin hover ni doble clic).
   const mobile = isRemoteSurface()
   const [menuOpen, setMenuOpen] = useState(false)
+  const press = useLongPress(() => setMenuOpen(true))
   const [draft, setDraft] = useState(session.title)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -72,7 +74,19 @@ function SessionRow({
     if (draft.trim() && draft.trim() !== session.title) void renameSession(session.id, draft.trim())
   }
 
-  return (
+  // Nunca se borra con un gesto: el deslizamiento y la hoja pasan por la misma confirmación.
+  const askDelete = (): void => {
+    void confirmDialog({
+      title: t('code.sessions.deleteTitle'),
+      message: t('code.sessions.deleteMessage', { title: session.title || t('code.sessions.untitledLower') }),
+      confirmLabel: t('code.sessions.deleteConfirm'),
+      danger: true
+    }).then((ok) => {
+      if (ok) void deleteSession(session.id)
+    })
+  }
+
+  const row = (
     <div className={`group flex items-center gap-1 rounded-lg ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active' : 'hover:bg-hover'}`}>
       {editing ? (
         <input
@@ -92,6 +106,7 @@ function SessionRow({
           onClick={() => void selectSession(session.id)}
           onDoubleClick={() => setEditing(true)}
           className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
+          {...(mobile ? press : {})}
         >
           <span className={`flex w-full items-center gap-1.5 ${mobile ? 'text-[15px]' : 'text-[13px]'}`}>
             {pinned && <Pin size={10} className="shrink-0 text-subtle" />}
@@ -158,14 +173,7 @@ function SessionRow({
               label={t('code.sessions.delete')}
               onClick={() => {
                 setMenuOpen(false)
-                void confirmDialog({
-                  title: t('code.sessions.deleteTitle'),
-                  message: t('code.sessions.deleteMessage', { title: session.title || t('code.sessions.untitledLower') }),
-                  confirmLabel: t('code.sessions.deleteConfirm'),
-                  danger: true
-                }).then((ok) => {
-                  if (ok) void deleteSession(session.id)
-                })
+                askDelete()
               }}
             />
           </Sheet>
@@ -217,6 +225,17 @@ function SessionRow({
         </span>
       )}
     </div>
+  )
+  if (!mobile || editing) return row
+  return (
+    <SwipeRow
+      actions={[
+        { label: t('code.sessions.rename'), tone: 'accent', icon: <Pencil size={18} />, onClick: () => setEditing(true) },
+        { label: t('code.sessions.delete'), tone: 'danger', icon: <Trash2 size={18} />, onClick: askDelete }
+      ]}
+    >
+      {row}
+    </SwipeRow>
   )
 }
 

@@ -142,7 +142,7 @@ export function GeneralSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader title={t('settings.general.title')} description={t('settings.general.subtitle')} />
+      {!phone && <SectionHeader title={t('settings.general.title')} description={t('settings.general.subtitle')} />}
 
       <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('settings.general.theme')}</h3>
       <div className="grid grid-cols-3 gap-2">
@@ -162,6 +162,7 @@ export function GeneralSection(): React.JSX.Element {
           </button>
         ))}
       </div>
+      {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
 
       <SubTitle>{t('settings.general.preferences')}</SubTitle>
       <Card>
@@ -203,6 +204,7 @@ export function GeneralSection(): React.JSX.Element {
         )}
         {caps.keepAwakeText && <KeepAwakeRow />}
       </Card>
+      {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
 
       {phone ? null : caps.tasks ? (
         <>

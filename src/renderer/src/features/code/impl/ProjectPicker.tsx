@@ -6,6 +6,7 @@ import { useT } from '../../../lib/i18n'
 import { baseName, tildify } from '../../../lib/paths'
 import { PageHeader } from '../../../components/PageHeader'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { m } from '../../../app/mobile/m'
 import { useSettings } from '../../../stores/settings'
 import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
@@ -330,7 +331,7 @@ export function ProjectPicker(): React.JSX.Element {
         />
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-4xl px-8 pt-8 pb-10">
+        <div className="mx-auto w-full max-w-4xl px-8 pt-8 pb-10" {...m('projects')}>
           <p className="text-sm text-muted">{t('code.picker.choose')}</p>
           {globalError && <div className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{globalError}</div>}
 
@@ -351,8 +352,11 @@ export function ProjectPicker(): React.JSX.Element {
             <>
               <div className="mt-8 mb-3 flex items-center gap-3">
                 <h2 className="text-[12px] font-medium text-subtle">{t('code.picker.recent')}</h2>
-                {recent.length > 6 && (
-                  <div className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1">
+                {(recent.length > 6 || isRemoteSurface()) && (
+                  <div
+                    className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1"
+                    {...m('projects-search')}
+                  >
                     <Search size={13} className="text-subtle" />
                     <input
                       value={query}

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { ChevronLeft, Ellipsis, FileCode2, GitCompare, LayoutGrid, MoreHorizontal, Plus } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Check, ChevronLeft, Ellipsis, FileCode2, GitCompare, LayoutGrid, Loader2, MoreHorizontal, SquarePen, WifiOff } from 'lucide-react'
 import { modeAvailable } from '@shared/platform-caps'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeId } from '@shared/types'
@@ -18,7 +18,7 @@ import { QuickEntryNotice } from '../QuickEntryNotice'
 import { ServerBanner } from '../ServerBanner'
 import { MODES_BY_ID } from '../modes'
 import { LIST_MODES, clearActive, isListMode, useActiveIds, useDetailTitle, type ListMode } from './adapters'
-import { useLinkStatus } from './link'
+import { bannerFor, useLinkStatus, type BannerKind } from './link'
 import { MoreRoot, PhoneScreen, RoutinesScreen } from './MoreScreens'
 import { createHistorySync } from './nav-history'
 import {
@@ -29,12 +29,14 @@ import {
   CODE_PANEL_SCREENS,
   DETAIL_SCREEN,
   ROOT_SCREEN,
+  navAnimation,
   topScreen,
   useMobileNav,
   useMobileNavStore,
   type MobileTab
 } from './nav'
 import { installViewportVars } from './viewport'
+import './mobile-shell.css'
 
 /** Secciones de Ajustes que existen en el celular (el resto se cambia desde el Mac). */
 export const MOBILE_SETTINGS_SECTIONS = ['general', 'models'] as const
@@ -42,6 +44,9 @@ export type MobileSettingsSection = (typeof MOBILE_SETTINGS_SECTIONS)[number]
 const SETTINGS_PREFIX = 'settings:'
 
 const isMobileSection = (v: string | null): v is MobileSettingsSection => v === 'general' || v === 'models'
+
+/** El gesto/botón atrás del navegador ya animó solo: la siguiente transición de pantalla no repite la animación. */
+let skipNextAnim = false
 
 /** Atrás: desde una conversación suelta la selección del modo y vuelve a la lista; en el resto desapila. */
 export function popScreen(): void {
@@ -81,7 +86,10 @@ function useNavHistory(): void {
       target
     )
     const onPop = (): void => {
-      if (sync.popstate() === 'user') popScreen()
+      if (sync.popstate() === 'user') {
+        skipNextAnim = true
+        popScreen()
+      }
       sync.reconcile()
     }
     window.addEventListener('popstate', onPop)
@@ -142,9 +150,9 @@ function useExternalSync(): void {
   }, [ids])
 }
 
-function TabBar(): React.JSX.Element {
+function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
   const t = useT()
-  const { tab, setTab } = useMobileNav()
+  const { tab, depth, setTab } = useMobileNav()
   const tabs: { id: MobileTab; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
     ...LIST_MODES.filter((m) => modeAvailable(m, currentPlatform())).map((m) => ({
       id: m as MobileTab,
@@ -154,13 +162,16 @@ function TabBar(): React.JSX.Element {
     { id: 'more', label: t('mobile.tab.more'), icon: Ellipsis }
   ]
   const choose = (id: MobileTab): void => {
+    // Tocar de nuevo la pestaña activa: con pila vuelve a la lista (`setTab`); ya en la lista, sube al principio.
+    if (id === tab && depth === 1) onReselect()
     setTab(id)
     if (isListMode(id)) useUi.getState().setMode(id as ModeId)
   }
   return (
     <nav
       aria-label={t('mobile.nav.aria')}
-      className="flex shrink-0 border-t border-border bg-sidebar"
+      data-tabbar=""
+      className="flex shrink-0 border-t border-[var(--m-hairline)] bg-bg select-none"
       style={{ paddingBottom: 'var(--sab, 0px)' }}
     >
       {tabs.map(({ id, label, icon: Icon }) => {
@@ -171,10 +182,14 @@ function TabBar(): React.JSX.Element {
             type="button"
             aria-current={active ? 'page' : undefined}
             onClick={() => choose(id)}
-            className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11.5px] font-medium ${active ? 'text-accent' : 'text-muted'}`}
+            className="group flex min-h-14 flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] leading-[13px] font-medium"
           >
-            <Icon size={22} strokeWidth={active ? 2.3 : 1.9} />
-            {label}
+            <span
+              className={`flex h-[30px] w-14 items-center justify-center rounded-full transition-[background-color,transform] duration-[var(--dur-base)] group-active:scale-[0.96] ${active ? 'bg-accent-soft text-accent' : 'text-muted'}`}
+            >
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+            </span>
+            <span className={active ? 'font-semibold text-fg' : 'text-muted'}>{label}</span>
           </button>
         )
       })}
@@ -186,17 +201,21 @@ function TopBar({
   title,
   subtitle,
   onBack,
-  action
+  action,
+  root
 }: {
   title: string
   subtitle?: React.ReactNode
   onBack?: () => void
   action?: React.ReactNode
+  /** Cabecera de una lista raíz: título grande a la izquierda y filete solo al desplazar (ver mobile-shell.css). */
+  root?: boolean
 }): React.JSX.Element {
   const t = useT()
   return (
     <header
-      className="flex shrink-0 items-center gap-1 border-b border-border/70 bg-bg px-2"
+      data-edge={root ? 'root' : 'detail'}
+      className="flex min-h-[calc(var(--m-bar)+env(safe-area-inset-top,0px))] shrink-0 items-center gap-1 bg-bg px-2 select-none"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       {onBack ? (
@@ -209,11 +228,16 @@ function TopBar({
           <ChevronLeft size={24} />
         </button>
       ) : (
-        <span className="w-2 shrink-0" />
+        !root && <span className="w-2 shrink-0" />
       )}
       <div className="min-w-0 flex-1">
         <h1
-          className={`min-w-0 truncate font-display text-[17px] leading-6 font-semibold tracking-tight ${subtitle ? 'pt-2' : 'min-h-12 py-3'}`}
+          tabIndex={-1}
+          className={`min-w-0 truncate font-display tracking-tight outline-none ${
+            root
+              ? 'min-h-12 py-3 pl-2 text-[20px] leading-6 font-bold'
+              : `text-[17px] leading-6 font-semibold ${subtitle ? 'pt-2' : 'min-h-12 py-3'}`
+          }`}
         >
           {title}
         </h1>
@@ -241,7 +265,8 @@ function ListScreen({ mode }: { mode: ListMode }): React.JSX.Element {
   // Code sin carpeta abierta: la pantalla de proyectos ocupa el lugar de la lista (sin cabecera propia: la del armazón).
   if (mode === 'code' && !directory) return <def.View />
   const List = def.SidebarContent
-  return <div className="px-2 py-2">{List ? <List /> : null}</div>
+  // Chat dibuja su propia lista a todo el ancho (filas de 56 px, búsqueda y cabeceras fijas); el resto conserva el margen.
+  return <div className={mode === 'chat' ? 'pb-2' : 'px-2 py-2'}>{List ? <List /> : null}</div>
 }
 
 /**
@@ -260,7 +285,7 @@ function CodeBody({ screen, hasDetail }: { screen: string; hasDetail: boolean })
         <View />
       </div>
       {panel && (
-        <div className="absolute inset-0 animate-fade-in bg-bg" data-code-panel={screen}>
+        <div className="absolute inset-0 animate-m-push bg-bg" data-code-panel={screen}>
           <CodePanelScreen screen={screen} directory={directory} />
         </div>
       )}
@@ -365,7 +390,13 @@ function Bar(): React.JSX.Element {
   const onBack = canGoBack ? goBack : undefined
 
   if (tab === 'more')
-    return <TopBar title={screen === ROOT_SCREEN ? t('mobile.more.title') : titleOfMoreScreen(screen, t)} onBack={onBack} />
+    return (
+      <TopBar
+        title={screen === ROOT_SCREEN ? t('mobile.more.title') : titleOfMoreScreen(screen, t)}
+        onBack={onBack}
+        root={screen === ROOT_SCREEN}
+      />
+    )
   const mode = tab as ListMode
   if (mode === 'code' && codeHasDetail && directory) {
     if (CODE_PANEL_SCREENS.includes(screen))
@@ -382,6 +413,7 @@ function Bar(): React.JSX.Element {
   }
   return (
     <TopBar
+      root
       title={def.label}
       action={
         <>
@@ -403,7 +435,7 @@ function Bar(): React.JSX.Element {
               aria-label={def.newAction.label}
               className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent active:opacity-80"
             >
-              <Plus size={22} strokeWidth={2.3} />
+              <SquarePen size={20} strokeWidth={2.1} />
             </button>
           )}
         </>
@@ -412,19 +444,64 @@ function Bar(): React.JSX.Element {
   )
 }
 
-function LinkBanner(): React.JSX.Element | null {
+const BANNER_STYLE: Record<BannerKind, string> = {
+  reconnecting: 'border-warning/20 bg-warning/10 text-warning',
+  offline: 'border-danger/20 bg-danger/10 text-danger',
+  recovered: 'border-success/20 bg-success/10 text-success'
+}
+
+/** Único aviso de conexión de la interfaz completa (la capa ligera ya no pinta el suyo con la app montada). */
+function LinkBanner(): React.JSX.Element {
   const t = useT()
   const status = useLinkStatus()
-  if (status === 'online' || status === 'locked' || status === 'connecting') return null
-  const offline = status === 'offline'
+  const prev = useRef(status)
+  const [recovered, setRecovered] = useState(false)
+  useEffect(() => {
+    const kind = bannerFor(prev.current, status)
+    prev.current = status
+    setRecovered(kind === 'recovered')
+    if (kind !== 'recovered') return
+    const id = setTimeout(() => setRecovered(false), 1800)
+    return () => clearTimeout(id)
+  }, [status])
+  const kind: BannerKind | null =
+    status === 'reconnecting' ? 'reconnecting' : status === 'offline' ? 'offline' : recovered ? 'recovered' : null
+  // La región viva existe siempre (para que el lector de pantalla anuncie el cambio); el aviso entra y sale dentro de ella.
   return (
-    <div
-      role="status"
-      className={`shrink-0 border-b px-4 py-2 text-[13px] ${offline ? 'border-danger/30 bg-danger/10 text-danger' : 'border-border bg-accent-soft/50 text-muted'}`}
-    >
-      {offline ? t('mobile.banner.offline') : t('mobile.banner.reconnecting')}
+    <div role="status" aria-live="polite" className="shrink-0">
+      {kind && (
+        <div
+          key={kind}
+          data-banner={kind}
+          className={`flex min-h-9 animate-rise-in items-center gap-2 border-b px-4 py-1.5 text-[13px] leading-[18px] font-medium ${BANNER_STYLE[kind]}`}
+        >
+          {kind === 'reconnecting' ? (
+            <Loader2 size={15} className="shrink-0 animate-spin" aria-hidden="true" />
+          ) : kind === 'offline' ? (
+            <WifiOff size={15} className="shrink-0" aria-hidden="true" />
+          ) : (
+            <Check size={15} className="shrink-0" aria-hidden="true" />
+          )}
+          <span className="min-w-0">
+            {kind === 'reconnecting'
+              ? t('mobile.banner.reconnecting')
+              : kind === 'offline'
+                ? t('mobile.banner.offline')
+                : t('mobile.banner.online')}
+          </span>
+        </div>
+      )}
     </div>
   )
+}
+
+const ANIM_CLASS = { push: 'animate-m-push', pop: 'animate-m-pop', tab: 'animate-m-tab', none: '' } as const
+const reducedMotion = (): boolean => {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -446,11 +523,76 @@ export function MobileShell(): React.JSX.Element {
   const label = tab === 'more' ? t('mobile.more.title') : MODES_BY_ID[tab as ListMode].label
   const root = depth === 1
 
+  const rootEl = useRef<HTMLDivElement>(null)
+  const mainEl = useRef<HTMLElement>(null)
+  const sentinel = useRef<HTMLDivElement>(null)
+  const scrollMemo = useRef(new Map<string, number>())
+  const keyRef = useRef(paneKey)
+
+  // Animación de la pantalla que entra: se decide una vez por cambio de pantalla (y no vuelve a salir al repintar).
+  const anim = useRef({ key: paneKey, tab, depth, cls: '', moved: false })
+  if (anim.current.key !== paneKey) {
+    const kind = navAnimation({ tab: anim.current.tab, depth: anim.current.depth }, { tab, depth }, skipNextAnim)
+    skipNextAnim = false
+    anim.current = { key: paneKey, tab, depth, cls: ANIM_CLASS[kind], moved: anim.current.tab === tab }
+  } else {
+    anim.current.tab = tab
+    anim.current.depth = depth
+  }
+
+  // Lista raíz: recupera su desplazamiento al volver; el resto de pantallas empieza arriba.
+  useLayoutEffect(() => {
+    keyRef.current = paneKey
+    const main = mainEl.current
+    if (main) main.scrollTop = root ? (scrollMemo.current.get(paneKey) ?? 0) : 0
+  }, [paneKey, root])
+
+  useEffect(() => {
+    const main = mainEl.current
+    if (!main) return
+    const onScroll = (): void => {
+      if (keyRef.current.endsWith(':1') || keyRef.current.endsWith(':list') || keyRef.current.endsWith(':picker'))
+        scrollMemo.current.set(keyRef.current, main.scrollTop)
+    }
+    main.addEventListener('scroll', onScroll, { passive: true })
+    return () => main.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Filete de la cabecera de listas solo al desplazar: un centinela de 1 px al inicio de <main> (sin estado ni oyente de scroll).
+  useEffect(() => {
+    const main = mainEl.current
+    const edge = sentinel.current
+    const host = rootEl.current
+    if (!main || !edge || !host || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([entry]) => host.toggleAttribute('data-scrolled', !!entry && !entry.isIntersecting), {
+      root: main
+    })
+    io.observe(edge)
+    return () => io.disconnect()
+  }, [])
+
+  // Tras apilar o desapilar (no al cambiar de pestaña) el foco pasa al título, para que el lector de pantalla anuncie la pantalla.
+  useEffect(() => {
+    if (!anim.current.moved) return
+    if (document.documentElement.dataset.keyboard === 'open') return
+    const active = document.activeElement
+    if (active && active !== document.body && active.isConnected) return
+    rootEl.current?.querySelector('h1')?.focus({ preventScroll: true })
+  }, [paneKey])
+
+  const toTop = (): void => mainEl.current?.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' })
+
   return (
     <div
+      ref={rootEl}
       data-surface="mobile"
       className="fixed inset-x-0 flex flex-col overflow-hidden bg-bg text-fg"
-      style={{ top: 'var(--vv-top, 0px)', height: 'var(--vv-height, 100dvh)' }}
+      style={{
+        top: 'var(--vv-top, 0px)',
+        height: 'var(--vv-height, 100dvh)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)'
+      }}
     >
       <ConfirmDialogHost />
       <Bar />
@@ -461,17 +603,19 @@ export function MobileShell(): React.JSX.Element {
         <QuickEntryNotice />
       </ErrorBoundary>
       <main
-        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        ref={mainEl}
+        className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
         data-screen={`${tab}:${depth}`}
         style={root ? undefined : { paddingBottom: 'var(--sab, 0px)' }}
       >
-        <div key={paneKey} className={root ? 'min-h-full' : 'h-full animate-fade-in'}>
+        <div ref={sentinel} aria-hidden="true" className="-mb-px h-px" />
+        <div key={paneKey} className={`${root ? 'min-h-full' : 'h-full'} ${anim.current.cls}`}>
           <ErrorBoundary key={paneKey} label={label}>
             <Body />
           </ErrorBoundary>
         </div>
       </main>
-      {root && <TabBar />}
+      {root && <TabBar onReselect={toTop} />}
     </div>
   )
 }

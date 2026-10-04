@@ -31,3 +31,16 @@ export function unlinkThisDevice(): boolean {
   l.forget()
   return true
 }
+
+export type BannerKind = 'reconnecting' | 'offline' | 'recovered'
+
+/**
+ * Qué aviso de conexión toca según el estado anterior y el actual (un solo aviso en la interfaz): reconectando y sin conexión
+ * mientras dura; «conectado de nuevo» al volver desde cualquiera de los dos. `null` = sin aviso.
+ */
+export function bannerFor(prev: LinkStatus, cur: LinkStatus): BannerKind | null {
+  if (cur === 'reconnecting') return 'reconnecting'
+  if (cur === 'offline') return 'offline'
+  if (cur === 'online' && (prev === 'reconnecting' || prev === 'offline')) return 'recovered'
+  return null
+}

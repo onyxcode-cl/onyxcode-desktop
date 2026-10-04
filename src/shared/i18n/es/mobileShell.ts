@@ -33,5 +33,15 @@ export const mobileShell = {
   'mobile.phone.unlink.message': 'Tendrás que escanear un código QR nuevo desde tu Mac para volver a conectarte.',
   'mobile.phone.unlink.confirm': 'Desvincular',
   'mobile.banner.reconnecting': 'Reconectando con tu Mac…',
-  'mobile.banner.offline': 'Sin conexión con tu Mac. Revisa que esté encendido y en la misma red Wi-Fi.'
+  'mobile.banner.offline': 'Sin conexión con tu Mac. Revisa que esté encendido y en la misma red Wi-Fi.',
+  'mobile.banner.online': 'Conectado de nuevo',
+  'mobile.more.group.general': 'General',
+  'mobile.more.group.device': 'Este celular',
+  'mobile.settings.sharedHint': 'Se aplica también en tu Mac',
+  'mobile.list.emptyBody': 'Empieza una con «Nuevo» y aparecerá aquí.',
+  'mobile.list.deleteTitle': '¿Eliminar esta conversación?',
+  'mobile.list.deleteMessage': '«{title}» se eliminará para siempre.',
+  'mobile.list.deleteConfirm': 'Eliminar',
+  'mobile.list.renameTitle': 'Renombrar conversación',
+  'mobile.list.loadingSlow': 'Cargando…'
 } as const

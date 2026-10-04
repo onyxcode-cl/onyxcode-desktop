@@ -1,0 +1,72 @@
+/*
+ * Armazón y listas de la superficie móvil (PWA del celular): cabecera, barra inferior, avisos, listas agrupadas y filas.
+ * Todo cuelga de `[data-surface='mobile']` (lo exige desktop-unchanged.test.tsx): en Mac y Windows no actúa. Medidas y curvas
+ * salen de mobile-tokens.css; los colores, de los tokens Lapislázuli. Convenciones: docs/MOBILE-UI.md.
+ */
+
+/* Cabecera y barra inferior: no se selecciona ni sale el menú de copiar al mantener pulsado. */
+[data-surface='mobile'] :is(header, [data-tabbar]),
+[data-surface='mobile'] :is(header, [data-tabbar]) button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Filete de la cabecera: siempre en las pantallas de detalle; en las listas raíz, solo cuando el contenido se ha desplazado. */
+[data-surface='mobile'] header[data-edge] {
+  border-bottom: 1px solid var(--m-hairline);
+  transition: border-color var(--dur-base, 180ms) var(--ease-out);
+}
+[data-surface='mobile'] header[data-edge='root'] {
+  border-bottom-color: transparent;
+}
+[data-surface='mobile'][data-scrolled] header[data-edge='root'] {
+  border-bottom-color: var(--m-hairline);
+}
+
+/* Con el teclado abierto no hay barra inferior (no deja sitio al campo de búsqueda ni al compositor). */
+html[data-keyboard='open'] [data-surface='mobile'] [data-tabbar] {
+  display: none;
+}
+
+/* ---------- Listas ---------- */
+
+/* Filas de Tareas: 56 px y título de 16 px. */
+[data-surface='mobile'] [data-m='task-row'] {
+  min-height: var(--m-row);
+}
+[data-surface='mobile'] [data-m='task-row'] button > div:first-child {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* Menú «⋯» de Tareas: en 360 px se salía por el borde; ahora sale anclado abajo, como una hoja. */
+[data-surface='mobile'] [data-m='task-menu'] {
+  position: fixed;
+  inset: auto 8px calc(8px + var(--sab, 0px)) 8px;
+  width: auto;
+  max-height: 60dvh;
+  overflow-y: auto;
+  margin: 0;
+  z-index: 70;
+  border-radius: var(--m-radius-card);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgb(0 0 0 / 0.25));
+}
+[data-surface='mobile'] [data-m='task-menu'] [role='menuitem'] {
+  min-height: var(--m-row-compact);
+  padding-inline: 14px;
+  font-size: 16px;
+}
+
+/* Proyectos (selector de carpetas): margen lateral del armazón y búsqueda a todo el ancho. */
+[data-surface='mobile'] div[data-m='projects'] {
+  padding: 16px var(--m-gutter) 24px;
+}
+[data-surface='mobile'] [data-m='projects-search'] {
+  flex: 1 1 auto;
+  margin-left: 0;
+}
+[data-surface='mobile'] [data-m='projects-search'] input {
+  width: 100%;
+  min-width: 0;
+}

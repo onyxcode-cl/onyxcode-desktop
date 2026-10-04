@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
+import { m as mob } from '../../../app/mobile/m'
 import { MAIN_SOURCE, sessionsKey, useSessions } from '../../../stores/sessions'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
@@ -170,6 +171,7 @@ function TaskMenu({
           role="menu"
           aria-label={t('tasks.list.menuAria')}
           className="absolute top-full right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-elevated p-1 shadow-lg"
+          {...mob('task-menu')}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={onMenuKey}
         >
@@ -237,7 +239,10 @@ function TaskRow({
   const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
   const pinned = isPinned(task.id)
   return (
-    <div className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${active ? 'bg-active' : 'hover:bg-hover'}`}>
+    <div
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      {...mob('task-row')}
+    >
       <span className="shrink-0">
         <StatusIcon status={status} size={13} />
       </span>

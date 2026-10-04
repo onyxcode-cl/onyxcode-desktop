@@ -21,6 +21,7 @@ import { t } from '@shared/i18n'
 import { MODE_LABELS, UI_LABELS } from '@shared/labels'
 import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
+import { ListGroup, ListRow } from '../../../components/mobile/List'
 import { useT } from '../../../lib/i18n'
 import { useAccountState } from '../../../lib/use-account-state'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
@@ -121,27 +122,18 @@ function MobileSettings({ initial, onOpen }: { initial?: SettingsSectionId; onOp
   if (current) {
     const Current = current.View
     return (
-      <div className="px-4 py-4">
+      <div className="px-[var(--m-gutter)] pt-2 pb-6">
         <Current />
       </div>
     )
   }
   return (
-    <div className="flex flex-col gap-3 p-4">
-      {sections.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onOpen(id)}
-          className="flex min-h-14 w-full items-center gap-3.5 rounded-2xl border border-border bg-elevated px-4 py-3 text-left text-[16px] font-medium shadow-xs active:bg-hover"
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
-            <Icon size={20} />
-          </span>
-          <span className="min-w-0 flex-1 truncate">{label()}</span>
-        </button>
-      ))}
-      <p className="px-2 text-[13px] leading-snug text-muted">{t('mobile.settings.moreOnMac')}</p>
+    <div className="px-[var(--m-gutter)] py-4" data-m="settings-list">
+      <ListGroup footer={t('mobile.settings.moreOnMac')}>
+        {sections.map(({ id, label, icon }) => (
+          <ListRow key={id} icon={icon} label={label()} onClick={() => onOpen(id)} />
+        ))}
+      </ListGroup>
     </div>
   )
 }

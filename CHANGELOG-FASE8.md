@@ -802,3 +802,11 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - `pwa/src/ui.ts`, `style.css`: columna de estado común (88 px, pilas `.stack`), pasos numerados de vinculación, código en 6 casillas, teclado de PIN propio (teclas de 72/64 px, envío automático, dos pasos al crear con `lock.set.again`, sacudida en error, cuenta atrás, el PIN solo vive en memoria; lógica pura en `src/shared/remote/pin-pad.ts`), pastilla de reconexión flotante (única: oculta con la interfaz completa montada; la de «esperando al Mac» queda bajo la cabecera), esqueleto del armazón al cargar, lista de respaldo agrupada por fecha con aviso y «Reintentar», toast con salida suave.
 - Rendimiento: P1-1 (`prefetchFullApp`: `modulepreload` durante WebRTC/PIN, `entry.json` v1/v2 con `preload` y `bootCss`, una sola lectura), P1-2 (`remote/main.tsx` no espera `settings:get` si hay `onyx.langPref`), P1-5 en `main.ts` (`hiddenAt`; pasa el tiempo oculto a `client.wake(away)`).
 - Pruebas: `pin-pad.test.ts`, `pwa-i18n.test.ts`, `remote/full.test.ts`.
+
+## F8-B61: armazón y listas del celular (SHELL)
+
+- Barra inferior de 56 px con píldora activa (tocar de nuevo la pestaña activa sube al principio, oculta con el teclado abierto), cabecera de 52 px con título grande en las listas y filete solo al desplazar, transiciones de pila y pestañas con dirección (`fill-mode: backwards`, sin animación tras el gesto atrás del navegador), foco al `<h1>` tras apilar/desapilar, zona segura lateral y desplazamiento de cada lista recordado.
+- Aviso de conexión único (reconectando / sin conexión / «Conectado de nuevo» 1,8 s) con región viva; `modeFor` de la capa ligera ya no deja la pantalla vacía mientras carga la interfaz.
+- «Más», «Este celular» y Ajustes como listas agrupadas (`ListGroup`/`ListRow`), pie «Se aplica también en tu Mac» en tema e idioma.
+- Lista de conversaciones: búsqueda visible, filas de 56 px, cabeceras fijas, estado vacío con «Nuevo», `SwipeRow` (nunca borra con el gesto: pide confirmación) y pulsación larga; mismo gesto en las sesiones de Code; menú de Tareas anclado abajo (no se sale a 360 px); esqueleto en lugar de `null` en las pantallas `lazy/`.
+- Pruebas nuevas: `shell-logic`, `MobileShell.chrome`, `MoreScreens.render`, `SwipeRow`, `MobileSessionList.render`. El escritorio no cambia.
