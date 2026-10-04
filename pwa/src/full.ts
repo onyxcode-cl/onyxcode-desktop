@@ -53,18 +53,67 @@ export function makeLink(client: RemoteClient, tracker: SlowTracker): RemoteLink
   }
 }
 
-interface Entry {
+export interface Entry {
   js: string
   css: string[]
+  /** JS que se puede precargar (entrada, dependencias estáticas y el trozo `boot`); `entry.json` v2. */
+  preload: string[]
+  /** CSS del trozo `boot`, para pedirlo sin esperar a que se evalúe. */
+  bootCss: string[]
 }
 
-async function readEntry(): Promise<Entry | null> {
-  const res = await fetch('./app/entry.json', { cache: 'no-store' })
-  if (!res.ok) return null
-  const o = (await res.json()) as { js?: unknown; css?: unknown }
-  if (typeof o.js !== 'string' || !ENTRY_JS.test(o.js)) return null
-  const css = Array.isArray(o.css) ? o.css.filter((x): x is string => typeof x === 'string' && ENTRY_CSS.test(x)) : []
-  return { js: o.js, css }
+const onlyPaths = (v: unknown, re: RegExp): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && re.test(x)) : []
+
+/** Valida `entry.json` (v1 sin `preload`, o v2): solo rutas `assets/*.js|css`, nada que salga de ahí. */
+export function parseEntry(o: unknown): Entry | null {
+  if (typeof o !== 'object' || o === null) return null
+  const e = o as { js?: unknown; css?: unknown; preload?: unknown; bootCss?: unknown }
+  if (typeof e.js !== 'string' || !ENTRY_JS.test(e.js)) return null
+  return { js: e.js, css: onlyPaths(e.css, ENTRY_CSS), preload: onlyPaths(e.preload, ENTRY_JS), bootCss: onlyPaths(e.bootCss, ENTRY_CSS) }
+}
+
+/** Una sola lectura de `entry.json` por carga de página (la comparten la precarga y `loadFullApp`). */
+let entryPromise: Promise<Entry | null> | null = null
+
+function readEntry(): Promise<Entry | null> {
+  entryPromise ??= fetch('./app/entry.json', { cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then(parseEntry)
+    .catch(() => null)
+    .then((e) => {
+      // Un fallo no se recuerda: un reintento vuelve a pedirlo.
+      if (!e) entryPromise = null
+      return e
+    })
+  return entryPromise
+}
+
+/** Solo para pruebas. */
+export function resetEntryCache(): void {
+  entryPromise = null
+}
+
+function addLink(rel: string, href: string, as?: string): void {
+  const url = `./app/${href}`
+  if (document.head.querySelector(`link[rel="${rel}"][href="${url}"]`)) return
+  const l = document.createElement('link')
+  l.rel = rel
+  l.href = url
+  if (as) l.setAttribute('as', as)
+  document.head.append(l)
+}
+
+/**
+ * Precarga la interfaz completa (descarga y compilación) mientras se hace el apretón de manos y se escribe el PIN. No ejecuta
+ * nada: `modulepreload` solo baja y compila, y `main.tsx` no arranca hasta `loadFullApp`. En navegadores sin soporte se ignora.
+ */
+export function prefetchFullApp(): void {
+  void readEntry().then((entry) => {
+    if (!entry) return
+    for (const js of new Set([entry.js, ...entry.preload])) addLink('modulepreload', js)
+    for (const css of new Set([...entry.css, ...entry.bootCss])) addLink('preload', css, 'style')
+  })
 }
 
 /**
@@ -87,12 +136,8 @@ export function loadFullApp(link: RemoteLink): Promise<boolean> {
     void readEntry()
       .then((entry) => {
         if (!entry) return finish(false)
-        for (const href of entry.css) {
-          const l = document.createElement('link')
-          l.rel = 'stylesheet'
-          l.href = `./app/${href}`
-          document.head.append(l)
-        }
+        // Los CSS (también los del trozo `boot`) se piden ya como hojas de estilo, sin esperar a que `boot` se evalúe.
+        for (const href of new Set([...entry.css, ...entry.bootCss])) addLink('stylesheet', href)
         const s = document.createElement('script')
         s.type = 'module'
         s.src = `./app/${entry.js}`

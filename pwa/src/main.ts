@@ -1,7 +1,7 @@
 import lightCss from './style.css?inline'
 import { SlowTracker } from '../../src/shared/remote/link'
 import { RemoteClient } from './client'
-import { loadFullApp, makeLink, type FullState } from './full'
+import { loadFullApp, makeLink, prefetchFullApp, type FullState } from './full'
 import { lang } from './i18n'
 import { followTheme, hostCss } from './theme'
 import { mountUi } from './ui'
@@ -53,8 +53,14 @@ if (host) {
       if (app) app.toggleAttribute('inert', mode === 'cover')
     }
   })
+  // Mientras se vincula, se conecta o se pide el PIN, se precarga la interfaz completa (solo descarga; no se ejecuta).
+  let prefetched = false
   // Tras autenticar (acceso abierto) se baja la interfaz completa; antes solo existe esta capa ligera.
   client.subscribe((s) => {
+    if (!prefetched && (s.conn.k === 'connecting' || s.conn.k === 'pairing' || s.conn.k === 'locked' || s.conn.k === 'online')) {
+      prefetched = true
+      prefetchFullApp()
+    }
     if (s.conn.k !== 'online' || full !== 'none') return
     full = 'loading'
     client.lightData = false
@@ -75,11 +81,19 @@ if (host) {
     if (next) client.start(next)
   })
   // Al volver de segundo plano o recuperar la red, se comprueba/rehace la conexión.
+  // `hiddenAt` queda disponible para `client.wake()` (reconexión inmediata si estuvo oculta mucho rato).
+  let hiddenAt = 0
+  const wake = (awayMs = 0): void => (client.wake as (away?: number) => void).call(client, awayMs)
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') client.wake()
+    if (document.visibilityState === 'hidden') hiddenAt = Date.now()
+    else {
+      const away = hiddenAt ? Date.now() - hiddenAt : 0
+      hiddenAt = 0
+      wake(away)
+    }
   })
-  window.addEventListener('online', () => client.wake())
+  window.addEventListener('online', () => wake())
   window.addEventListener('pageshow', (e) => {
-    if (e.persisted) client.wake()
+    if (e.persisted) wake()
   })
 }
