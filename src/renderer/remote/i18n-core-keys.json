@@ -535,6 +535,7 @@
   "common.retry",
   "common.sessions.loadMore",
   "common.transcriptLoading",
+  "compare.send",
   "errors.auth.message",
   "errors.auth.title",
   "errors.context.message",
