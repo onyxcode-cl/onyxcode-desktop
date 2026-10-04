@@ -146,6 +146,8 @@ export function reduceColumnEvents(
 const watched = new Set<string>()
 const buffers: Buffers = createBuffers()
 const hydrated = new Set<string>()
+/** Comparaciones ya cerradas aquí: un `compare:changed` rezagado (emitido por main antes del cierre) no las resucita. */
+const closedIds = new Set<string>()
 
 function rebuildWatched(): void {
   watched.clear()
@@ -153,12 +155,14 @@ function rebuildWatched(): void {
 }
 
 export function applyManifest(m: CompareManifest): void {
+  if (closedIds.has(m.id)) return
   set((s) => ({ manifests: { ...s.manifests, [m.id]: m } }))
   rebuildWatched()
   void hydrate(m)
 }
 
 function dropManifest(id: string): void {
+  closedIds.add(id)
   const m = get().manifests[id]
   set((s) => {
     const manifests = { ...s.manifests }
@@ -756,6 +760,7 @@ export function resetCompareForTests(): void {
   bootCount = 0
   watched.clear()
   hydrated.clear()
+  closedIds.clear()
   buffers.orphanParts.clear()
   buffers.orphanDeltas.clear()
   buffers.loading.clear()

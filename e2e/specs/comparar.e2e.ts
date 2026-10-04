@@ -45,7 +45,11 @@ async function armCompare(app: E2EApp, names: string[]): Promise<void> {
   const launcher = page.getByRole('dialog', { name: 'Comparar modelos' })
   await expectVisible(launcher, 10_000)
   for (const name of names) {
-    await launcher.getByRole('option', { name: new RegExp(name) }).click()
+    // El lanzador nace con el modelo actual ya marcado: un clic en él lo desmarcaría. Solo se marca lo que no lo está.
+    const opt = launcher.getByRole('option', { name: new RegExp(name) })
+    await expectVisible(opt, 10_000)
+    if ((await opt.getAttribute('aria-selected')) !== 'true') await opt.click()
+    await expect.poll(() => opt.getAttribute('aria-selected')).toBe('true')
   }
   await launcher.getByRole('button', { name: new RegExp(`^Comparar \\(${names.length}\\)`) }).click()
   await expectVisible(page.getByTestId('compare-chip'), 5_000)
@@ -159,14 +163,15 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
 
     // «Quedarme con este» en la columna 1: a.txt llega al árbol SIN commit, b.txt no; ninguna copia ni rama queda.
     await fm.getByRole('button', { name: 'Quedarme con Fake Model' }).click()
-    await a.page.getByRole('dialog').getByRole('button', { name: 'Aplicar' }).click()
+    await a.page.getByRole('alertdialog').getByRole('button', { name: 'Aplicar' }).click()
     await expect.poll(() => existsSync(join(repo, 'a.txt')), { timeout: 30_000 }).toBe(true)
     expect(readFileSync(join(repo, 'a.txt'), 'utf8')).toBe('uno\n')
     expect(existsSync(join(repo, 'b.txt'))).toBe(false)
     expect(git(repo, 'status', '--porcelain')).toContain('a.txt')
     expect(git(repo, 'log', '--oneline').trim().split('\n')).toHaveLength(1)
     await expect.poll(() => compareWorktrees(repo).length, { timeout: 30_000 }).toBe(0)
-    expect(compareBranches(repo)).toHaveLength(0)
+    // La rama se borra justo después de la copia: se espera, no se lee de golpe.
+    await expect.poll(() => compareBranches(repo).length, { timeout: 15_000 }).toBe(0)
     await expectCount(a.page.getByTestId('compare-view'), 0)
   })
 
@@ -194,9 +199,10 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
     await shot(a, SHOTS, 'comparar-cancelado')
     // Cerrar la comparación pide confirmación y limpia las copias.
     await a.page.getByRole('button', { name: 'Cerrar', exact: true }).first().click()
-    await a.page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click()
+    await a.page.getByRole('alertdialog').getByRole('button', { name: 'Cerrar', exact: true }).click()
     await expect.poll(() => compareWorktrees(repo).length, { timeout: 30_000 }).toBe(0)
-    expect(compareBranches(repo)).toHaveLength(0)
+    // La rama se borra justo después de la copia: se espera, no se lee de golpe.
+    await expect.poll(() => compareBranches(repo).length, { timeout: 15_000 }).toBe(0)
   })
 })
 
@@ -246,9 +252,10 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, recuperación al a
     await banner.getByRole('button', { name: 'Abrir' }).click()
     await expectVisible(a.page.getByRole('region', { name: 'Fake Model' }).getByText('Interrumpido'), 15_000)
     await a.page.getByRole('button', { name: 'Cerrar', exact: true }).first().click()
-    await a.page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click()
+    await a.page.getByRole('alertdialog').getByRole('button', { name: 'Cerrar', exact: true }).click()
     await expect.poll(() => compareWorktrees(state.repo).length, { timeout: 30_000 }).toBe(0)
-    expect(compareBranches(state.repo)).toHaveLength(0)
+    // La rama se borra justo después de la copia: se espera, no se lee de golpe.
+    await expect.poll(() => compareBranches(state.repo).length, { timeout: 15_000 }).toBe(0)
   })
 })
 
@@ -267,7 +274,8 @@ describe.skipIf(MODE === 'prod')(`comparar modelos, Chat (${MODE})`, () => {
     await armCompare(a, [MODELS[0].name, MODELS[1].name])
     const box = a.page.getByPlaceholder('Escribe un mensaje…')
     await box.fill('compara estas dos respuestas')
-    await a.page.getByRole('button', { name: 'Comparar en 2 modelos' }).click()
+    // En Chat no hay botón propio: con la comparación armada, enviar (Enter) abre el diálogo previo.
+    await box.press('Enter')
     await confirmLaunch(a)
     await expectVisible(a.page.getByRole('region', { name: 'Fake Model' }).getByText('Respuesta A'), 30_000)
     await expectVisible(a.page.getByRole('region', { name: 'Fake Reasoner' }).getByText('Respuesta B'), 30_000)
@@ -281,7 +289,7 @@ describe.skipIf(MODE === 'prod')(`comparar modelos, Chat (${MODE})`, () => {
 
     const before = (await a.fake.requests({ limit: 1000, method: 'DELETE' })).length
     await a.page.getByRole('region', { name: 'Fake Model' }).getByRole('button', { name: 'Quedarme con Fake Model' }).click()
-    await a.page.getByRole('dialog').getByRole('button', { name: 'Seguir con este' }).click()
+    await a.page.getByRole('alertdialog').getByRole('button', { name: 'Seguir con este' }).click()
     // La sesión elegida se abre como conversación normal; la otra se borra en el motor.
     await expectVisible(a.page.getByText('Respuesta A'), 30_000)
     await expect
@@ -291,8 +299,8 @@ describe.skipIf(MODE === 'prod')(`comparar modelos, Chat (${MODE})`, () => {
         { timeout: 30_000 }
       )
       .toBeGreaterThanOrEqual(1)
-    const active = await storeState<string | null>(a.page, 'useChat', 'activeSessionId')
-    expect(active).toBeTruthy()
+    // La apertura como conversación normal es asíncrona (renombrar, recargar la lista y abrir): se espera, no se lee de golpe.
+    await expect.poll(() => storeState<string | null>(a.page, 'useChat', 'activeSessionId'), { timeout: 15_000 }).toBeTruthy()
     await expectCount(a.page.getByTestId('compare-view'), 0)
   })
 })

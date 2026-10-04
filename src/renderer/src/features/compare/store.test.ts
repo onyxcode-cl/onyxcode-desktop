@@ -337,6 +337,19 @@ describe('acciones sobre columnas', () => {
     expect(useCompare.getState().manifests[id]).toBeUndefined()
     expect(useCompare.getState().opened[id]).toBeUndefined()
   })
+  it('un compare:changed rezagado tras cerrar no resucita la comparación ni vuelve a pedir mensajes de sus sesiones', async () => {
+    const getMessages = vi.fn(async () => ({ data: [] }))
+    useServer.setState({ client: { session: { messages: getMessages } } as never })
+    const m = mkManifest({}, [mkCol(0, { state: 'done' }), mkCol(1, { state: 'done' })])
+    applyManifest(m)
+    await flushMicrotasks()
+    getMessages.mockClear()
+    await keepColumn(id, 0)
+    applyManifest(m) // evento anterior al cierre que llega después
+    await flushMicrotasks()
+    expect(useCompare.getState().manifests[id]).toBeUndefined()
+    expect(getMessages).not.toHaveBeenCalled()
+  })
   it.each(['conflict', 'empty', 'symlink', 'not-ready'] as const)(
     'adopt %s: no se cierra nada y el fallo queda a la vista',
     async (reason) => {
