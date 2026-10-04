@@ -797,3 +797,8 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - `ConfirmDialog`: atributos `data-confirm-*` solo en el celular; CSS en `features/code/impl/mobile.css` (scrim `--m-backdrop` también en oscuro, botones apilados de 50 px). `RemoteConfirmHost`: detalle con tope y scroll, botones siempre visibles.
 - `components/mobile/Toast.tsx` (`showToast`, `MobileToastHost`); el host lo aloja `ConfirmDialogHost` (no pinta nada en escritorio).
 - Nota: `--animate-sheet-up` global no se cambia (lo vigila `desktop-unchanged.test.tsx`); la hoja usa `--animate-m-sheet-up`.
+
+## F8-B63 — Capa ligera de la PWA (arranque, vinculación, PIN, carga)
+- `pwa/src/ui.ts`, `style.css`: columna de estado común (88 px, pilas `.stack`), pasos numerados de vinculación, código en 6 casillas, teclado de PIN propio (teclas de 72/64 px, envío automático, dos pasos al crear con `lock.set.again`, sacudida en error, cuenta atrás, el PIN solo vive en memoria; lógica pura en `src/shared/remote/pin-pad.ts`), pastilla de reconexión flotante (única: oculta con la interfaz completa montada; la de «esperando al Mac» queda bajo la cabecera), esqueleto del armazón al cargar, lista de respaldo agrupada por fecha con aviso y «Reintentar», toast con salida suave.
+- Rendimiento: P1-1 (`prefetchFullApp`: `modulepreload` durante WebRTC/PIN, `entry.json` v1/v2 con `preload` y `bootCss`, una sola lectura), P1-2 (`remote/main.tsx` no espera `settings:get` si hay `onyx.langPref`), P1-5 en `main.ts` (`hiddenAt`; pasa el tiempo oculto a `client.wake(away)`).
+- Pruebas: `pin-pad.test.ts`, `pwa-i18n.test.ts`, `remote/full.test.ts`.
