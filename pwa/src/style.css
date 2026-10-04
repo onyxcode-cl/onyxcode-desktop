@@ -2,7 +2,8 @@
  * Identidad "Lapislázuli" (DESIGN.md): mismos valores de token que la app de escritorio (copiados, no importados).
  * Sin fuentes externas: pilas del sistema equivalentes a las de la app.
  */
-:root {
+:root,
+:root[data-theme='light'] {
   --bg: #f7f8fb;
   --bg-sidebar: #eff1f6;
   --bg-elevated: #ffffff;
@@ -31,8 +32,38 @@
   --shadow-color: 222 40% 25%;
   color-scheme: light;
 }
+/* El tema sigue al de la app (data-theme en <html>, que sigue al ajuste del Mac); sin él, al del sistema del celular. */
+:root[data-theme='dark'] {
+  --bg: #11131a;
+  --bg-sidebar: #0c0e14;
+  --bg-elevated: #191c25;
+  --bg-hover: #20242f;
+  --bg-active: #292e3c;
+  --bg-code: #0b0d12;
+  --bg-inset: #0e1017;
+  --fg: #e7e9f0;
+  --fg-muted: #a0a6b6;
+  --fg-subtle: #858b9c;
+  --border: #242835;
+  --border-strong: #343a4b;
+  --accent: #7d97ff;
+  --accent-hover: #97acff;
+  --accent-fg: #0a1033;
+  --accent-soft: #1b2450;
+  --accent-ring: rgb(125 151 255 / 0.4);
+  --gold-text: #e6b84e;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #ff7a6e;
+  --danger-fg: #2a0805;
+  --user-bubble: #1e2331;
+  --selection: rgb(125 151 255 / 0.28);
+  --scrollbar: #2e3342;
+  --shadow-color: 228 50% 2%;
+  color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #11131a;
     --bg-sidebar: #0c0e14;
     --bg-elevated: #191c25;
@@ -74,6 +105,16 @@
   --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 3px hsl(var(--shadow-color) / 0.06);
   --shadow-md: 0 2px 4px hsl(var(--shadow-color) / 0.06), 0 6px 16px -4px hsl(var(--shadow-color) / 0.12);
   --shadow-lg: 0 4px 8px hsl(var(--shadow-color) / 0.06), 0 16px 32px -8px hsl(var(--shadow-color) / 0.18);
+  /* Medidas móviles (mismos valores que app/mobile/mobile-tokens.css; las vigila src/renderer/remote/pwa-tokens.test.ts). */
+  --m-row: 56px;
+  --m-row-compact: 48px;
+  --m-bar: 52px;
+  --m-tab: 56px;
+  --m-gutter: 16px;
+  --m-radius-card: 16px;
+  --m-radius-sheet: 22px;
+  --m-backdrop: rgb(6 8 14 / 0.48);
+  --dur-screen: 240ms;
 }
 * {
   box-sizing: border-box;

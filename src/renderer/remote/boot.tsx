@@ -5,7 +5,9 @@ import { App } from '@renderer/app/App'
 import { LangRoot } from '@renderer/app/LangRoot'
 import { initLang, useLang } from '@renderer/lib/i18n'
 import { installModalFocus } from '@renderer/lib/modal-focus'
+import { watchThemeSync } from '@renderer/app/mobile/theme-sync'
 import '@renderer/app/globals.css'
+import '@renderer/app/mobile/mobile-tokens.css'
 
 /**
  * Monta la MISMA interfaz de escritorio (`src/renderer/src`). Sin `AccountGate`: la cuenta es del Mac (que ya tiene sesión
@@ -15,6 +17,8 @@ export function mountRemoteApp(): void {
   document.title = APP_NAME
   initLang()
   installModalFocus()
+  // Recuerda el tema del Mac (para la capa ligera) y ajusta `theme-color`: ver docs/MOBILE-UI.md.
+  watchThemeSync()
   let host = document.getElementById('root')
   if (!host) {
     host = document.createElement('div')

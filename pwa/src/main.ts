@@ -3,6 +3,7 @@ import { SlowTracker } from '../../src/shared/remote/link'
 import { RemoteClient } from './client'
 import { loadFullApp, makeLink, type FullState } from './full'
 import { lang } from './i18n'
+import { followTheme, hostCss } from './theme'
 import { mountUi } from './ui'
 
 document.documentElement.lang = lang
@@ -28,10 +29,11 @@ if (host) {
   // tocan a la interfaz completa que se carga después, ni al revés.
   const shadow = host.attachShadow({ mode: 'open' })
   const style = document.createElement('style')
-  style.textContent = lightCss.replace(/:root/g, ':host')
+  style.textContent = hostCss(lightCss)
   const root = document.createElement('div')
   root.id = 'app'
   shadow.append(style, root)
+  followTheme(host)
 
   let full: FullState = 'none'
   let waiting = 0
