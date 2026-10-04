@@ -457,6 +457,18 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
     !inDirs(p.cwd, scopeIpc(ctx)) ? deny('out-of-scope') : childOk(p.cwd as string, p.path) ? 'M' : deny('path-escape'),
   'git:discardUndo': scoped('M', 'cwd'),
 
+  // ── comparar modelos: ninguno desde el celular (crean carpetas fuera del proyecto y aplican parches al árbol) ──
+  'compare:list': 'X',
+  'compare:preflight': 'X',
+  'compare:start': 'X',
+  'compare:cancel': 'X',
+  'compare:retry': 'X',
+  'compare:diff': 'X',
+  'compare:adopt': 'X',
+  'compare:discard': 'X',
+  'compare:close': 'X',
+  'compare:exportBench': 'X',
+
   // ── diálogos nativos y editores ──
   'dialog:openFolder': 'X',
   'dialog:revealInFinder': 'X',
@@ -551,6 +563,7 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'pty:data': 'deny',
   'pty:exit': 'deny',
   'files:changed': 'sanitize', // solo rutas del ámbito
+  'compare:changed': 'deny', // trae rutas de worktrees y ramas
   'tasks:server': 'sanitize', // trae credenciales del motor de la tarea
   'routines:changed': 'allow',
   'routines:run': 'allow',
