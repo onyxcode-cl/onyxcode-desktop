@@ -1,7 +1,7 @@
 /** Diccionario mínimo es/en según `navigator.language` (sin librerías). */
 type Dict = Record<string, string>
 
-const es: Dict = {
+export const es: Dict = {
   appName: 'OnyxCode',
   'conn.connecting': 'Conectando con tu Mac…',
   'conn.reconnecting': 'Reconectando ({n}/{max})…',
@@ -9,6 +9,25 @@ const es: Dict = {
   'conn.reconnectingShort': 'Reconectando',
   'conn.offline': 'Sin conexión',
   'app.loading': 'Cargando la interfaz…',
+  'app.loadingSlow': 'Sigue cargando… la primera vez tarda más.',
+  'idle.step1': 'Abre OnyxCode en tu Mac y ve a Ajustes › Celular.',
+  'idle.step2': 'Escanea el código QR con la cámara de este celular.',
+  'idle.step3': 'Comprueba que el código de 6 dígitos coincide en ambos.',
+  'conn.slow': '¿Tarda mucho? Comprueba que tu Mac esté despierto y en la misma Wi-Fi.',
+  'lock.delete': 'Borrar',
+  'lock.progress': '{n} de 6 dígitos',
+  'lock.set.again': 'Repite el PIN',
+  'lock.wait': 'Espera {s} s',
+  'fail.body.no-host.short': 'No pude conectar con tu Mac.',
+  'fail.check.mac': 'OnyxCode abierto en tu Mac con «Celular» activado',
+  'fail.check.wifi': 'Los dos en la misma red Wi-Fi',
+  'fail.check.isolation': 'Las redes de invitados u hoteles a veces aíslan los dispositivos',
+  'list.basic': 'Estás en la versión básica: no se pudo cargar la interfaz completa.',
+  'btn.reload': 'Reintentar',
+  'group.today': 'Hoy',
+  'group.yesterday': 'Ayer',
+  'group.last7': 'Últimos 7 días',
+  'group.last30': 'Últimos 30 días',
   'wait.mac': 'Esperando a tu Mac… Si es una acción delicada, confírmala en el Mac (tiene hasta 90 s).',
   'strip.locked': 'Bloqueado: escribe tu PIN',
   'lock.confirm.title': 'Confirma en tu Mac',
@@ -105,7 +124,7 @@ const es: Dict = {
   'sr.connection': 'Estado de la conexión'
 }
 
-const en: Dict = {
+export const en: Dict = {
   appName: 'OnyxCode',
   'conn.connecting': 'Connecting to your Mac…',
   'conn.reconnecting': 'Reconnecting ({n}/{max})…',
@@ -113,6 +132,25 @@ const en: Dict = {
   'conn.reconnectingShort': 'Reconnecting',
   'conn.offline': 'Offline',
   'app.loading': 'Loading the interface…',
+  'app.loadingSlow': 'Still loading… the first time takes longer.',
+  'idle.step1': 'Open OnyxCode on your Mac and go to Settings › Phone.',
+  'idle.step2': "Scan the QR code with this phone's camera.",
+  'idle.step3': 'Check that the 6-digit code matches on both.',
+  'conn.slow': 'Taking a while? Check that your Mac is awake and on the same Wi-Fi.',
+  'lock.delete': 'Delete',
+  'lock.progress': '{n} of 6 digits',
+  'lock.set.again': 'Repeat the PIN',
+  'lock.wait': 'Wait {s} s',
+  'fail.body.no-host.short': "Couldn't reach your Mac.",
+  'fail.check.mac': 'OnyxCode open on your Mac with “Phone” turned on',
+  'fail.check.wifi': 'Both on the same Wi-Fi network',
+  'fail.check.isolation': 'Guest or hotel networks sometimes isolate devices',
+  'list.basic': "You're on the basic version: the full interface couldn't load.",
+  'btn.reload': 'Retry',
+  'group.today': 'Today',
+  'group.yesterday': 'Yesterday',
+  'group.last7': 'Last 7 days',
+  'group.last30': 'Last 30 days',
   'wait.mac': 'Waiting for your Mac… If it is a sensitive action, confirm it on the Mac (it has up to 90 s).',
   'strip.locked': 'Locked: enter your PIN',
   'lock.confirm.title': 'Confirm on your Mac',
