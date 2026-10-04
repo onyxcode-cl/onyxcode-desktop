@@ -97,7 +97,48 @@ describe('diff y conversación', () => {
     expect(renderToStaticMarkup(<MessageStream {...props} entries={allEntries} />)).toContain('gap-6 px-6 py-6')
     surface('remote')
     const html = renderToStaticMarkup(<MessageStream {...props} entries={allEntries} />)
-    expect(html).toContain('gap-5 px-3 py-4')
+    expect(html).toContain('gap-6 px-4 pt-3 pb-4')
     expect(html).not.toContain('gap-6 px-6 py-6')
+  })
+})
+
+describe('tarjeta de permisos: orden en el celular', () => {
+  it('Rechazar a la izquierda y Permitir una vez a la derecha; escritorio conserva el orden', () => {
+    surface('remote')
+    const mobile = card('edit')
+    expect(mobile.indexOf('Rechazar')).toBeLessThan(mobile.indexOf('Permitir una vez'))
+    expect(mobile).toContain('data-m="pending-card"')
+    expect(mobile).not.toContain('ring-4')
+    surface('darwin')
+    const desk = card('edit')
+    expect(desk.indexOf('Permitir una vez')).toBeLessThan(desk.indexOf('Rechazar'))
+    expect(desk).not.toContain('data-m=')
+    expect(desk).toContain('ring-4')
+  })
+})
+
+describe('herramientas en el celular', () => {
+  it('el detalle expandido no lleva la sangría ml-6 y la fila mide 44 px; escritorio no cambia', () => {
+    const html = (): string =>
+      renderToStaticMarkup(
+        <MessageStream
+          busy={false}
+          error={null}
+          root="/proj"
+          permissions={[]}
+          questions={[]}
+          onUnrevert={() => undefined}
+          loading={false}
+          entries={allEntries}
+        />
+      )
+    surface('remote')
+    const mobile = html()
+    expect(mobile).toContain('min-h-11')
+    expect(mobile).toContain('data-m="meta"')
+    surface('darwin')
+    const desk = html()
+    expect(desk).not.toContain('min-h-11')
+    expect(desk).not.toContain('data-m=')
   })
 })

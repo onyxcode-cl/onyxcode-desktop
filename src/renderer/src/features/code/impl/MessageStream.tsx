@@ -3,7 +3,15 @@ import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPar
 import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Undo2 } from 'lucide-react'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
-import { CopyButton, Markdown } from '../../../components/Markdown'
+import { CopyButton } from '../../../components/Markdown'
+import { DeferredMarkdown } from '../../../components/conversation/DeferredMarkdown'
+import { ThinkingIndicator } from '../../../components/conversation/ThinkingIndicator'
+import { CopyActionButton, MessageActionsSheet, type MessageAction } from '../../../components/mobile/MessageActionsSheet'
+import { PendingBar } from '../../../components/mobile/PendingBar'
+import { TappableImage } from '../../../components/mobile/ImageViewer'
+import { useLongPress } from '../../../lib/use-long-press'
+import { m } from '../../../app/mobile/m'
+import '../../../app/mobile/conversation.css'
 import { t } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
@@ -90,6 +98,18 @@ function buildTurns(entries: CodeMessage[]): Turn[] {
 // Mensaje de usuario
 // ---------------------------------------------------------------------------
 
+/** Imagen adjunta de un mensaje de usuario. En el celular se toca para ampliarla; en el escritorio es la de siempre. */
+function UserImage({ src, alt }: { src: string; alt: string }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const img = <img src={src} alt={alt} className="max-h-48 max-w-full rounded-lg border border-border object-contain" />
+  if (!isRemoteSurface()) return img
+  return (
+    <TappableImage open={open} setOpen={setOpen} src={src} alt={alt} className="block max-w-full">
+      {img}
+    </TappableImage>
+  )
+}
+
 // Memoizada (F7-B44): props primitivas o referencias estables del store.
 const UserMessage = memo(function UserMessage({
   entry,
@@ -115,6 +135,9 @@ const UserMessage = memo(function UserMessage({
   const files = entry.parts.filter((p): p is FilePart => p.type === 'file')
   const [draft, setDraft] = useState(text)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const [sheet, setSheet] = useState(false)
+  const longPress = useLongPress(() => setSheet(true))
+  const mobile = isRemoteSurface()
   useEffect(() => {
     if (!editing) return
     const el = taRef.current
@@ -176,20 +199,17 @@ const UserMessage = memo(function UserMessage({
   const agent = entry.info.role === 'user' ? entry.info.agent : undefined
   return (
     <div className="group/user flex flex-col items-end gap-1">
-      <div className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">
+      <div
+        {...m('user-bubble')}
+        {...(longPress ? { ...longPress, 'data-long-press': '' } : {})}
+        className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap"
+      >
         {text}
         {files.length > 0 && (
           <div className={`${text ? 'mt-2 ' : ''}flex flex-wrap gap-1.5`}>
             {files.map((f) => {
               if (f.mime.startsWith('image/') && f.url.startsWith('data:image/')) {
-                return (
-                  <img
-                    key={f.id}
-                    src={f.url}
-                    alt={f.filename ?? ''}
-                    className="max-h-48 max-w-full rounded-lg border border-border object-contain"
-                  />
-                )
+                return <UserImage key={f.id} src={f.url} alt={f.filename ?? ''} />
               }
               const path = f.source && 'path' in f.source ? f.source.path : (f.filename ?? f.url)
               return (
@@ -205,63 +225,110 @@ const UserMessage = memo(function UserMessage({
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1 text-[11px] text-subtle">
-        <span className="rounded px-1 font-medium">{agent === 'plan' ? 'Plan' : 'Build'}</span>
-        <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/user:opacity-100 focus-within:opacity-100">
-          <button
-            type="button"
-            title={t('code.msg.copy')}
-            aria-label={t('code.msg.copy')}
-            onClick={() => {
-              void navigator.clipboard.writeText(text).then(() => {
-                setCopied(true)
-                setTimeout(() => setCopied(false), 1200)
-              })
-            }}
-            className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-          </button>
-          <button
-            type="button"
-            title={t('code.msg.forkTitle')}
-            aria-label={t('code.msg.forkTitle')}
-            disabled={forking}
-            onClick={() => {
-              setForking(true)
-              void forkSession(entry.info.sessionID, entry.info.id).finally(() => setForking(false))
-            }}
-            className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
-          >
-            <GitFork size={12} />
-          </button>
-          {text && (
+      {mobile && (
+        <MessageActionsSheet
+          open={sheet}
+          onClose={() => setSheet(false)}
+          text={text}
+          subtitle={agent === 'plan' ? 'Plan' : 'Build'}
+          actions={[
+            ...(text
+              ? [
+                  {
+                    label: t('code.msg.edit'),
+                    icon: <Pencil size={20} />,
+                    onSelect: () => {
+                      setDraft(text)
+                      setEditing(true)
+                    }
+                  }
+                ]
+              : []),
+            {
+              label: t('code.msg.forkTitle'),
+              icon: <GitFork size={20} />,
+              disabled: forking,
+              onSelect: () => {
+                setForking(true)
+                void forkSession(entry.info.sessionID, entry.info.id).finally(() => setForking(false))
+              }
+            },
+            {
+              label: t('code.msg.revert'),
+              icon: <Undo2 size={20} />,
+              danger: true,
+              disabled: busy,
+              onSelect: () => {
+                void confirmDialog({
+                  title: t('code.msg.revertTitle'),
+                  message: t('code.msg.revertBody'),
+                  confirmLabel: t('code.msg.revert'),
+                  danger: true
+                }).then((ok) => (ok ? revertTo(entry.info.id) : undefined))
+              }
+            } satisfies MessageAction
+          ]}
+        />
+      )}
+      {!mobile && (
+        <div className="flex items-center gap-1 text-[11px] text-subtle">
+          <span className="rounded px-1 font-medium">{agent === 'plan' ? 'Plan' : 'Build'}</span>
+          <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/user:opacity-100 focus-within:opacity-100">
             <button
               type="button"
-              title={t('code.msg.edit')}
-              aria-label={t('code.msg.edit')}
+              title={t('code.msg.copy')}
+              aria-label={t('code.msg.copy')}
               onClick={() => {
-                setDraft(text)
-                setEditing(true)
+                void navigator.clipboard.writeText(text).then(() => {
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 1200)
+                })
               }}
               className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
             >
-              <Pencil size={12} />
+              {copied ? <Check size={12} /> : <Copy size={12} />}
             </button>
-          )}
-          <ConfirmButton
-            title={t('code.msg.revertTitle')}
-            body={t('code.msg.revertBody')}
-            confirmLabel={t('code.msg.revert')}
-            danger
-            disabled={busy}
-            onConfirm={() => revertTo(entry.info.id)}
-            className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
-          >
-            <Undo2 size={12} /> {t('code.msg.revert')}
-          </ConfirmButton>
-        </span>
-      </div>
+            <button
+              type="button"
+              title={t('code.msg.forkTitle')}
+              aria-label={t('code.msg.forkTitle')}
+              disabled={forking}
+              onClick={() => {
+                setForking(true)
+                void forkSession(entry.info.sessionID, entry.info.id).finally(() => setForking(false))
+              }}
+              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
+            >
+              <GitFork size={12} />
+            </button>
+            {text && (
+              <button
+                type="button"
+                title={t('code.msg.edit')}
+                aria-label={t('code.msg.edit')}
+                onClick={() => {
+                  setDraft(text)
+                  setEditing(true)
+                }}
+                className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            <ConfirmButton
+              title={t('code.msg.revertTitle')}
+              body={t('code.msg.revertBody')}
+              confirmLabel={t('code.msg.revert')}
+              danger
+              disabled={busy}
+              onConfirm={() => revertTo(entry.info.id)}
+              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
+            >
+              <Undo2 size={12} /> {t('code.msg.revert')}
+            </ConfirmButton>
+          </span>
+        </div>
+      )}
     </div>
   )
 })
@@ -307,18 +374,24 @@ const TurnView = memo(
       .join('\n\n')
       .trim()
     const showCopy = !!replyText && !(busy && isLastTurn)
+    const mobile = isRemoteSurface()
+    const [sheet, setSheet] = useState(false)
+    const longPress = useLongPress(() => setSheet(true))
     const inlinePerms = new Map<string, PendingPermission[]>()
     for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
     return (
       <div className={withCv('group/turn flex flex-col gap-3', old && perms.length === 0, true)}>
         {user && <UserMessage entry={user} busy={busy} root={root} />}
         {blocks.length > 0 && (
-          <div className="flex flex-col gap-2">
+          <div
+            className={mobile ? 'flex flex-col gap-2.5' : 'flex flex-col gap-2'}
+            {...(longPress && replyText ? { ...longPress, 'data-long-press': '' } : {})}
+          >
             {blocks.map((b, bi) => {
               const live = busy && isLastTurn && bi === blocks.length - 1
               switch (b.kind) {
                 case 'text':
-                  return <Markdown key={b.key} text={b.part.text} highlight={!live} />
+                  return <DeferredMarkdown key={b.key} text={b.part.text} highlight={!live} />
                 case 'reasoning':
                   return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} variant="code" />
                 case 'steps': {
@@ -340,13 +413,13 @@ const TurnView = memo(
                 }
                 case 'retry':
                   return (
-                    <div key={b.key} className="flex items-center gap-1.5 text-xs text-muted">
+                    <div key={b.key} {...m('meta')} className="flex items-center gap-1.5 text-xs text-muted">
                       <RotateCw size={12} /> {t('code.msg.retry', { attempt: b.attempt })} {b.text}
                     </div>
                   )
                 case 'subtask':
                   return (
-                    <div key={b.key} className="text-xs text-muted">
+                    <div key={b.key} {...m('meta')} className="text-xs text-muted">
                       {b.text}
                     </div>
                   )
@@ -364,7 +437,13 @@ const TurnView = memo(
             })}
           </div>
         )}
-        {showCopy && (
+        {mobile && replyText && <MessageActionsSheet open={sheet} onClose={() => setSheet(false)} text={replyText} />}
+        {mobile && showCopy && isLastTurn && (
+          <div className="-ml-1.5 flex items-center gap-0.5">
+            <CopyActionButton text={replyText} label={t('code.msg.copyReply')} />
+          </div>
+        )}
+        {!mobile && showCopy && (
           <div
             className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLastTurn ? 'opacity-100' : 'opacity-0 group-hover/turn:opacity-100 focus-within:opacity-100'}`}
           >
@@ -441,6 +520,7 @@ export function MessageStream(props: Props): React.JSX.Element {
 
   // Celular: un permiso o pregunta nuevo siempre se lleva a la vista (aunque hubieras subido en la conversación).
   const pending = permissions.length + questions.length
+  const [barShown, setBarShown] = useState(false)
   const prevPending = useRef(pending)
   useEffect(() => {
     const grew = pending > prevPending.current
@@ -460,7 +540,7 @@ export function MessageStream(props: Props): React.JSX.Element {
     <div className="relative min-h-0 flex-1">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
-        <div className={`mx-auto flex max-w-3xl flex-col ${isRemoteSurface() ? 'gap-5 px-3 py-4' : 'gap-6 px-6 py-6'}`}>
+        <div className={`mx-auto flex max-w-3xl flex-col ${isRemoteSurface() ? 'gap-6 px-4 pt-3 pb-4' : 'gap-6 px-6 py-6'}`}>
           {loading && entries.length === 0 && (
             <div className="flex items-center gap-2 text-sm text-muted">
               <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}
@@ -495,7 +575,8 @@ export function MessageStream(props: Props): React.JSX.Element {
           {questions.map((q) => (
             <QuestionCard key={q.id} request={q} />
           ))}
-          {showThinking && (
+          {showThinking && isRemoteSurface() && <ThinkingIndicator label={t('code.msg.working')} />}
+          {showThinking && !isRemoteSurface() && (
             <div role="status" className="flex items-center gap-2 text-sm text-muted">
               <span className="flex gap-1">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
@@ -514,7 +595,11 @@ export function MessageStream(props: Props): React.JSX.Element {
           )}
         </div>
       </div>
-      <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} fresh={busy} />
+      {isRemoteSurface() && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-bg to-transparent" />
+      )}
+      {isRemoteSurface() && <PendingBar scrollRef={scrollRef} count={pending} onShownChange={setBarShown} />}
+      <ScrollToEnd visible={!atBottom && !barShown} onClick={scrollToBottom} fresh={busy} />
     </div>
   )
 }

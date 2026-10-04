@@ -5,8 +5,15 @@ import { friendlyError } from '@shared/ai-errors'
 import { useT } from '../../lib/i18n'
 import type { ConvError } from '../../lib/session-reducer'
 import type { MessageEntry } from '../../stores/sessions'
-import { LogoMark } from '../../components/Logo'
-import { CopyButton, Markdown } from '../../components/Markdown'
+import { CopyButton } from '../../components/Markdown'
+import { DeferredMarkdown } from '../../components/conversation/DeferredMarkdown'
+import { ThinkingIndicator } from '../../components/conversation/ThinkingIndicator'
+import { ActionIconButton, CopyActionButton, MessageActionsSheet } from '../../components/mobile/MessageActionsSheet'
+import { TappableImage } from '../../components/mobile/ImageViewer'
+import { isRemoteSurface } from '../../lib/platform'
+import { useLongPress } from '../../lib/use-long-press'
+import { m } from '../../app/mobile/m'
+import '../../app/mobile/conversation.css'
 import { AssistantError } from '../../components/conversation/AssistantError'
 import { Button } from '../../components/Button'
 import { ErrorNotice, type ErrorActions } from '../../components/conversation/ErrorNotice'
@@ -20,6 +27,20 @@ import { ChatToolCall } from './ChatToolCall'
 
 // Filas memoizadas (F7-B44): las partes y mensajes sin cambios conservan su referencia en el store, así que durante
 // el streaming solo se re-renderiza lo que cambió. Todas las props son primitivas o referencias estables.
+/** Imagen de un mensaje. En el celular se toca para ampliarla; en el escritorio es la misma imagen de siempre. */
+function PartImage({ src, alt }: { src: string; alt: string }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const img = (
+    <img src={src} alt={alt} className="max-h-56 max-w-[min(85%,20rem)] rounded-xl border border-border object-contain shadow-xs" />
+  )
+  if (!isRemoteSurface()) return img
+  return (
+    <TappableImage open={open} setOpen={setOpen} src={src} alt={alt} className="block max-w-full">
+      {img}
+    </TappableImage>
+  )
+}
+
 const PartView = memo(function PartView({
   part,
   live,
@@ -33,20 +54,14 @@ const PartView = memo(function PartView({
   switch (part.type) {
     case 'text':
       if (part.synthetic || part.ignored || !part.text) return null
-      return <Markdown text={part.text} streaming={streaming} />
+      return <DeferredMarkdown text={part.text} streaming={streaming} />
     case 'reasoning':
       return <Reasoning part={part} live={live} variant="chat" />
     case 'tool':
       return <ChatToolCall part={part} />
     case 'file':
       if (part.mime.startsWith('image/') && part.url.startsWith('data:image/'))
-        return (
-          <img
-            src={part.url}
-            alt={part.filename ?? t('chat.attach.defaultName')}
-            className="max-h-56 max-w-[min(85%,20rem)] rounded-xl border border-border object-contain shadow-xs"
-          />
-        )
+        return <PartImage src={part.url} alt={part.filename ?? t('chat.attach.defaultName')} />
       return (
         <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2 py-1 text-xs text-muted shadow-xs">
           <FileText size={13} className="text-accent" /> {part.filename ?? part.url}
@@ -54,7 +69,7 @@ const PartView = memo(function PartView({
       )
     case 'retry':
       return (
-        <div className="flex items-center gap-1.5 text-xs text-muted">
+        <div {...m('meta')} className="flex items-center gap-1.5 text-xs text-muted">
           <RotateCw size={12} /> {`${t('chat.msg.retryAttempt', { attempt: part.attempt })} ${friendlyError(part.error).message}`}
         </div>
       )
@@ -63,21 +78,7 @@ const PartView = memo(function PartView({
   }
 })
 
-/** Indicador de "pensando" con la chispa de la marca. */
-export function ThinkingIndicator({ label }: { label?: string }): React.JSX.Element {
-  const t = useT()
-  return (
-    <div className="flex animate-fade-in items-center gap-2.5 text-sm text-muted" role="status" aria-live="polite">
-      <LogoMark size={18} animated />
-      <span className="text-shimmer">{label ?? t('chat.msg.thinking')}</span>
-      <span className="typing-dots flex items-center gap-1 text-subtle">
-        <span />
-        <span />
-        <span />
-      </span>
-    </div>
-  )
-}
+export { ThinkingIndicator }
 
 function textOfParts(parts: Part[]): string {
   return parts
@@ -89,10 +90,13 @@ function textOfParts(parts: Part[]): string {
 const ChatUserRow = memo(function ChatUserRow({
   entry,
   old,
+  animate,
   onEdit
 }: {
   entry: MessageEntry
   old: boolean
+  /** Animar la entrada (en el celular solo las filas nuevas, no el historial que se carga de golpe). */
+  animate: boolean
   /** «Editar y reintentar»: recibe el id del mensaje y el texto editado. Sin él no se ofrece. */
   onEdit?: (messageID: string, text: string) => Promise<unknown>
 }): React.JSX.Element {
@@ -103,6 +107,9 @@ const ChatUserRow = memo(function ChatUserRow({
   const [draft, setDraft] = useState(text)
   const [pending, setPending] = useState(false)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const [sheet, setSheet] = useState(false)
+  const longPress = useLongPress(() => setSheet(true))
+  const mobile = isRemoteSurface()
   useEffect(() => {
     if (!editing) return
     const el = taRef.current
@@ -157,16 +164,41 @@ const ChatUserRow = memo(function ChatUserRow({
     )
   }
   return (
-    <div className={withCv('group flex animate-rise-in flex-col items-end gap-1', old, true)}>
+    <div className={withCv(`group flex ${animate ? 'animate-rise-in ' : ''}flex-col items-end gap-1`, old, true)}>
       {files.map((p) => (
         <PartView key={p.id} part={p} live={false} />
       ))}
       {text && (
-        <div className="max-w-[85%] rounded-2xl rounded-br-md border border-accent/10 bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-xs">
+        <div
+          {...m('user-bubble')}
+          {...(longPress ? { ...longPress, 'data-long-press': '' } : {})}
+          className="max-w-[85%] rounded-2xl rounded-br-md border border-accent/10 bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-xs"
+        >
           {text}
         </div>
       )}
-      {text && (
+      {mobile && text && (
+        <MessageActionsSheet
+          open={sheet}
+          onClose={() => setSheet(false)}
+          text={text}
+          actions={
+            onEdit
+              ? [
+                  {
+                    label: t('chat.msg.edit'),
+                    icon: <Pencil size={20} />,
+                    onSelect: () => {
+                      setDraft(text)
+                      setEditing(true)
+                    }
+                  }
+                ]
+              : []
+          }
+        />
+      )}
+      {!mobile && text && (
         <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <CopyButton text={text} label={t('chat.msg.copyMessage')} />
           {onEdit && (
@@ -210,8 +242,14 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const lastTextIdx = live ? entry.parts.map((p) => p.type).lastIndexOf('text') : -1
   const text = textOfParts(entry.parts)
   const showActions = !live && !!text
+  const mobile = isRemoteSurface()
+  const [sheet, setSheet] = useState(false)
+  const longPress = useLongPress(() => setSheet(true))
   return (
-    <div className={withCv('group flex flex-col gap-1.5', old, true)}>
+    <div
+      className={withCv('group flex flex-col gap-1.5', old, true)}
+      {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
+    >
       {entry.parts.map((p, idx) => (
         <PartView key={p.id} part={p} live={live} streaming={live && idx === lastTextIdx} />
       ))}
@@ -222,7 +260,35 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
         onRetry={live ? undefined : onRetry}
         onCompact={live ? undefined : onCompact}
       />
-      {showActions && (
+      {mobile && text && (
+        <MessageActionsSheet
+          open={sheet}
+          onClose={() => setSheet(false)}
+          text={text}
+          actions={
+            isLast && onRetry
+              ? [
+                  {
+                    label: t('chat.msg.retry'),
+                    icon: <RotateCcw size={20} />,
+                    onSelect: () => void Promise.resolve(onRetry()).catch(() => undefined)
+                  }
+                ]
+              : []
+          }
+        />
+      )}
+      {mobile && showActions && isLast && (
+        <div className="-ml-1.5 flex items-center gap-0.5">
+          <CopyActionButton text={text} label={t('chat.msg.copyReply')} />
+          {onRetry && (
+            <ActionIconButton label={t('chat.msg.retry')} onClick={() => void Promise.resolve(onRetry()).catch(() => undefined)}>
+              <RotateCcw size={18} />
+            </ActionIconButton>
+          )}
+        </div>
+      )}
+      {!mobile && showActions && (
         <div
           className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLast ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}
         >
@@ -254,6 +320,10 @@ interface Props extends ErrorActions {
 
 export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEdit }: Props): React.JSX.Element {
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
+  const mobile = isRemoteSurface()
+  // Celular: el historial que se carga de golpe no anima; solo las filas que llegan después de abrir la conversación.
+  const firstRows = useRef<{ key: string | undefined; count: number }>({ key: entries[0]?.info.id, count: entries.length })
+  if (firstRows.current.key !== entries[0]?.info.id) firstRows.current = { key: entries[0]?.info.id, count: entries.length }
 
   const last = entries[entries.length - 1]
   const lastHasOutput = last?.info.role === 'assistant' && last.parts.some((p) => (p.type === 'text' && p.text) || p.type === 'tool')
@@ -266,11 +336,24 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
     <div className="relative min-h-0 flex-1">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
-        <div className="mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10">
+        <div
+          className={
+            mobile ? 'mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-3 pb-4' : 'mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10'
+          }
+        >
           {entries.map((entry, i) => {
             const isLast = i === entries.length - 1
             const old = isOldRow(i, entries.length)
-            if (entry.info.role === 'user') return <ChatUserRow key={entry.info.id} entry={entry} old={old} onEdit={onEdit} />
+            if (entry.info.role === 'user')
+              return (
+                <ChatUserRow
+                  key={entry.info.id}
+                  entry={entry}
+                  old={old}
+                  animate={!mobile || i >= firstRows.current.count}
+                  onEdit={onEdit}
+                />
+              )
             return (
               <ChatAssistantRow
                 key={entry.info.id}
@@ -289,6 +372,9 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
           )}
         </div>
       </div>
+      {mobile && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-bg to-transparent" />
+      )}
       <ScrollToEnd visible={!atBottom} onClick={scrollToBottom} fresh={busy} />
     </div>
   )
