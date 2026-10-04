@@ -24,6 +24,8 @@ import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ConversationAnnouncer } from '../../components/conversation/ConversationAnnouncer'
 import { ChatToolCall } from './ChatToolCall'
+import { ElementReadonlyChip } from '../browser/ElementChip'
+import { elementTextsOf, isElementContextText, parseElementContext } from '../browser/element-context'
 
 // Filas memoizadas (F7-B44): las partes y mensajes sin cambios conservan su referencia en el store, así que durante
 // el streaming solo se re-renderiza lo que cambió. Todas las props son primitivas o referencias estables.
@@ -82,7 +84,7 @@ export { ThinkingIndicator }
 
 function textOfParts(parts: Part[]): string {
   return parts
-    .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic && !p.ignored)
+    .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic && !p.ignored && !isElementContextText(p.text))
     .map((p) => p.text)
     .join('\n\n')
 }
@@ -103,6 +105,8 @@ const ChatUserRow = memo(function ChatUserRow({
   const t = useT()
   const text = textOfParts(entry.parts)
   const files = entry.parts.filter((p) => p.type === 'file')
+  // Un bloque de elemento del navegador (texto sintético) se ve como un chip compacto, nunca como volcado.
+  const elements = elementTextsOf(entry.parts).flatMap((x) => parseElementContext(x) ?? [])
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(text)
   const [pending, setPending] = useState(false)
@@ -165,6 +169,9 @@ const ChatUserRow = memo(function ChatUserRow({
   }
   return (
     <div className={withCv(`group flex ${animate ? 'animate-rise-in ' : ''}flex-col items-end gap-1`, old, true)}>
+      {elements.map((d, i) => (
+        <ElementReadonlyChip key={i} detail={d} />
+      ))}
       {files.map((p) => (
         <PartView key={p.id} part={p} live={false} />
       ))}
