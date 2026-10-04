@@ -17,33 +17,33 @@
  * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
  */
 import { t } from '@shared/i18n'
-import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
 import { appAuthFile } from '../opencode/data-dir'
 import { resolveOpencodeAsync } from '../opencode/server'
 import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
-import { minimalEnv } from '../process/child-env'
-import { withDisclaim } from '../process/disclaim'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxDirs } from './sandbox-profile'
+import { selectBackend } from './backends'
+import { noneBackend } from './backends/none'
+import { SANDBOX_EXEC, seatbeltAvailable, writeSandboxProfile } from './backends/seatbelt'
+import type { LaunchedSandbox, SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './backends/types'
 import { CredentialProxy, EgressProxy, randomToken, type EgressBlockedEvent, type EgressLogEntry } from './proxy'
 import { PROVIDER_TARGETS, buildProviderOverride, placeholderAuthContent, type ProviderAuthEntry } from './provider-egress'
 
 export { buildSandboxProfile, defaultDeniedReadPaths, defaultWritablePaths, sandboxKey } from './sandbox-profile'
 
-export const SANDBOX_EXEC = '/usr/bin/sandbox-exec'
+// El perfil Seatbelt y su escritura viven ahora en `backends/seatbelt.ts` (F8-B81, extracción sin cambios).
+export { SANDBOX_EXEC, writeSandboxProfile }
+export type { SandboxIsolation, SandboxNetworkOptions }
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
 const KILL_GRACE_MS = 3_000
 
 export function isSandboxAvailable(): boolean {
-  return process.platform === 'darwin' && existsSync(SANDBOX_EXEC)
+  return seatbeltAvailable()
 }
 
 /**
@@ -60,48 +60,6 @@ export function readProviderAuth(file: string = appAuthFile(app.getPath('userDat
   } catch {
     return null
   }
-}
-
-export interface SandboxIsolation {
-  /** Directorio privado del servidor (userData/tasks-sandbox/<hash>). */
-  privateDir: string
-  /** userData de la app (lectura denegada dentro del sandbox salvo privateDir/readOnly). */
-  userData: string
-}
-
-export interface SandboxNetworkOptions {
-  /** Puertos localhost adicionales a permitir en salida (egress proxy, credential proxy…). */
-  allowedOutboundPorts: number[]
-  /** Puerto propio del servidor (bind + inbound). */
-  serverPort: number
-  /** "Permitir borrar, mover y renombrar" concedido para esta tarea (si no, `file-write-unlink` se deniega). */
-  allowDelete: boolean
-  /** Carpetas adicionales (vinculadas o de confianza): `rw` escribible sin borrado, `ro` sin escritura. */
-  extraFolders?: Array<{ path: string; mode: FolderAccessMode }>
-}
-
-/** Escribe el perfil en un archivo temporal y devuelve su ruta. */
-export function writeSandboxProfile(
-  folder: string,
-  iso: SandboxIsolation,
-  configDir: string,
-  network?: SandboxNetworkOptions,
-  dir = join(tmpdir(), 'onyxcode-tasks')
-): string {
-  mkdirSync(dir, { recursive: true })
-  const file = join(dir, `profile-${randomBytes(6).toString('hex')}.sb`)
-  const profile = buildSandboxProfile({
-    folder,
-    privateDir: iso.privateDir,
-    userData: iso.userData,
-    readOnly: [configDir],
-    allowedOutboundPorts: network?.allowedOutboundPorts,
-    serverPort: network?.serverPort,
-    allowDelete: network?.allowDelete,
-    extraFolders: network?.extraFolders
-  })
-  writeFileSync(file, profile, 'utf8')
-  return file
 }
 
 export interface TasksServerHandle {
@@ -157,7 +115,8 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   if (!bin) throw new Error(t('merr.engine.noBinaryShort'))
   if (!existsSync(folder)) throw new Error(t('merr.task.noFolder', { folder }))
 
-  const sandboxed = !options.noSandbox && isSandboxAvailable()
+  const backend: SandboxBackend = options.noSandbox ? noneBackend : selectBackend(process.platform)
+  const sandboxed = backend.id !== 'none'
   const port = await getFreePort()
   const username = 'tasks'
   const password = randomBytes(24).toString('base64url')
@@ -166,11 +125,9 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   const cors = options.corsOrigins ?? []
   const serveArgs = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
 
-  let command = bin
-  let args = serveArgs
-  let profile: string | null = null
   const ocEnv = getOpencodeEnv()
   let isolatedEnv: Record<string, string> = {}
+  let outboundPorts: number[] = []
   const egressToken = randomToken()
   const egress = sandboxed
     ? new EgressProxy({
@@ -183,8 +140,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   const credentialProxies: CredentialProxy[] = []
   if (sandboxed) {
     if (!options.isolation) throw new Error(t('merr.task.noPrivateDir'))
-    const dirs: SandboxDirs = sandboxDirs(options.isolation.privateDir)
-    for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
+    backend.prepare?.(options.isolation)
 
     await egress!.start()
     const auth = readProviderAuth()
@@ -204,18 +160,9 @@ export async function startTasksServer(folder: string, options: StartTasksServer
         baseUrls[id] = cred.baseUrl()
       }
     }
-    const outboundPorts = [egress!.port, ...credentialProxies.map((c) => c.port), ...(options.extraOutboundPorts ?? [])]
-    profile = writeSandboxProfile(folder, options.isolation, ocEnv.OPENCODE_CONFIG_DIR, {
-      allowedOutboundPorts: outboundPorts,
-      serverPort: port,
-      allowDelete: options.allowDelete === true,
-      extraFolders: options.extraFolders
-    })
-    command = SANDBOX_EXEC
-    args = ['-f', profile, bin, ...serveArgs]
+    outboundPorts = [egress!.port, ...credentialProxies.map((c) => c.port), ...(options.extraOutboundPorts ?? [])]
     const proxyUrl = `http://${egressToken}@127.0.0.1:${egress!.port}`
     isolatedEnv = {
-      ...sandboxEnv(dirs),
       ...(auth ? { OPENCODE_AUTH_CONTENT: placeholderAuthContent(auth) } : {}),
       HTTP_PROXY: proxyUrl,
       HTTPS_PROXY: proxyUrl,
@@ -241,24 +188,27 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     }
   }
 
-  // Sin heredar los permisos TCC de la app (S6): el lanzador se ejecuta ANTES de sandbox-exec, así
-  // que sandbox-exec y opencode (y todo lo que lancen) quedan desvinculados. Entorno mínimo.
-  const launch = withDisclaim(command, args)
-  const child: ChildProcess = spawn(launch.command, launch.args, {
-    cwd: folder,
-    env: minimalEnv({
+  const launched: LaunchedSandbox = await backend.launch({
+    folder,
+    bin,
+    serveArgs,
+    serverPort: port,
+    isolation: options.isolation,
+    configDir: ocEnv.OPENCODE_CONFIG_DIR,
+    allowDelete: options.allowDelete === true,
+    extraFolders: options.extraFolders,
+    outboundPorts,
+    baseEnv: {
       ...ocEnv,
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
-      ONYXCODE_TASKS_FOLDER: folder,
-      ...isolatedEnv,
-      ...options.extraEnv
-    }),
-    stdio: ['ignore', 'pipe', 'pipe'],
-    // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
-    detached: true
+      ONYXCODE_TASKS_FOLDER: folder
+    },
+    proxyEnv: isolatedEnv,
+    extraEnv: options.extraEnv
   })
+  const child = launched.child
   trackPid(child.pid, sandboxed ? 'tasks' : 'tasks-full')
 
   const tail: string[] = []
@@ -273,7 +223,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     child.once('exit', (code) => {
       untrackPid(child.pid)
       killTree(child.pid, 'SIGKILL') // resto del grupo
-      if (profile) rmSync(profile, { force: true })
+      void launched.dispose()
       void egress?.stop()
       void Promise.all(credentialProxies.map((c) => c.stop()))
       options.onExit?.(code)
