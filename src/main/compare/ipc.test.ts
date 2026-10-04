@@ -30,8 +30,8 @@ describe('canales compare:*', () => {
     for (const c of COMPARE) expect(IPC_SCHEMAS[c], c).toBeTypeOf('function')
   })
 
-  it('solo la ventana principal los invoca (sin entrada en CHANNEL_ROLES)', () => {
-    for (const c of COMPARE) expect(CHANNEL_ROLES[c], c).toBeUndefined()
+  it('solo la ventana principal los invoca (ningún rol secundario los tiene)', () => {
+    for (const set of Object.values(CHANNEL_ROLES)) for (const c of COMPARE) expect(set.has(c), c).toBe(false)
   })
 
   it('rechazan claves extra (rutas, ramas, estado…)', () => {
