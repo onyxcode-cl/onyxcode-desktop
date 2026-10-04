@@ -28,7 +28,10 @@ export const AUDIT_KINDS = [
   'locked',
   'policy-denied',
   'stopped',
-  'action-run'
+  'action-run',
+  'approve-command',
+  'approve-enabled',
+  'approve-disabled'
 ] as const
 export type AuditKind = (typeof AUDIT_KINDS)[number]
 

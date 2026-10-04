@@ -22,8 +22,9 @@ import type { OpencodeConnection } from '@shared/types'
 import type { TasksConnection } from '@shared/ipc-tasks'
 import type { CallFrame, HttpFrame } from '@shared/remote/protocol'
 import type { AuditInput } from './audit'
+import { ApprovalLimiter } from './approval-limit'
 import { ConfirmQueue, callDigest, deviceFingerprint } from './confirm-queue'
-import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList, permissionDetailLines } from './engine-scope'
+import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList } from './engine-scope'
 import { EngineRegistry, type EngineTarget } from './engine-registry'
 import { trimIpcEvent } from './event-trim'
 import { dropSensitiveEntries, filterRawDiff, scrubDiffLists, sensitiveRel } from './diff-filter'
@@ -51,6 +52,10 @@ export interface EngineShared {
   onSub?: (eng: string) => void
   /** Auditoría (sin secretos): cada acción de clase M que se ejecuta deja canal y clase (las D ya las anota la confirmación). */
   audit?: (e: AuditInput) => void
+  /** ¿Este celular tiene encendido «Aprobar comandos desde este celular»? (se lee en cada decisión; sin función = apagado). */
+  canApproveCommands?: (deviceId: string) => boolean
+  /** Tope de aprobaciones sin confirmar por celular y hora (20). */
+  approvalLimiter?: ApprovalLimiter
   fetch?: typeof fetch
   maxBodyBytes?: number
   maxResponseBytes?: number
@@ -199,7 +204,19 @@ export class EngineProxy implements MuxDispatch {
       knownModels: this.s.knowledge.knownModels(),
       permissionKind: (id) => this.s.knowledge.permissionKind(id),
       permissionDetail: (id) => this.s.knowledge.permissionDetail(id),
+      permissionText: (id) => this.s.knowledge.permissionText(id),
+      realpath: realpathLoose,
+      canApproveCommands: extra.canApproveCommands ?? this.canApprove(),
       isDirectory: isDirectorySync
+    }
+  }
+
+  /** Ajuste del dispositivo Y cupo de la hora (sin gastarlo): con cualquiera de los dos en contra, `bash`/`edit` «una vez» es D. */
+  private canApprove(): boolean {
+    try {
+      return this.s.canApproveCommands?.(this.device.id) === true && (this.s.approvalLimiter?.available(this.device.id) ?? true)
+    } catch {
+      return false
     }
   }
 
@@ -228,6 +245,15 @@ export class EngineProxy implements MuxDispatch {
   private auditM(key: string): void {
     try {
       this.s.audit?.({ kind: 'action-run', ch: key, cls: 'M', device: deviceFingerprint(this.device.id), name: this.device.name })
+    } catch {
+      /* la auditoría no frena la acción */
+    }
+  }
+
+  /** «Una vez» de `bash`/`edit` aprobado desde el celular sin confirmar: canal, clase, dispositivo y nombre; NUNCA el texto. */
+  private auditApprove(key: string): void {
+    try {
+      this.s.audit?.({ kind: 'approve-command', ch: key, cls: 'M', device: deviceFingerprint(this.device.id), name: this.device.name })
     } catch {
       /* la auditoría no frena la acción */
     }
@@ -404,6 +430,13 @@ export class EngineProxy implements MuxDispatch {
       await this.prefetch(target, method, path, dirReal, body, ctx)
       d = decide(pol, await this.pctx())
     }
+    // Aprobación de comando/edición sin confirmar: gasta cupo de la hora (atómico); sin cupo, se decide de nuevo como D.
+    let approvedHere = false
+    if ('allow' in d && d.allow && d.approve) {
+      const lim = this.s.approvalLimiter
+      if (lim && !lim.take(this.device.id)) d = decide(pol, await this.pctx({ canApproveCommands: false }))
+      else approvedHere = true
+    }
     let approvedDigest: string | null = null
     const approvedChannel = 'confirm' in d ? d.channel : ''
     if ('confirm' in d)
@@ -425,7 +458,10 @@ export class EngineProxy implements MuxDispatch {
       }
       if (callDigest(approvedChannel, { eng: req.eng, method, path, query, body: sent }) !== approvedDigest)
         throw forbidden('digest-mismatch')
-    } else if ('allow' in d && d.allow && d.class === 'M') this.auditM(d.key)
+    } else if ('allow' in d && d.allow && d.class === 'M') {
+      if (approvedHere) this.auditApprove(d.key)
+      else this.auditM(d.key)
+    }
 
     // 5. Ejecutar y filtrar.
     const res = await this.fetchEngine(target, method, path, query, req.headers?.accept, rawBody, ctx.signal)
@@ -494,7 +530,7 @@ export class EngineProxy implements MuxDispatch {
         const r = await this.internalGet(target, '/permission', { directory: dir as string }, ctx.signal)
         for (const p of Array.isArray(r) ? r : []) {
           const pr = p as Record<string, unknown>
-          k.learnPermission(pr.id, pr.permission, permissionDetailLines(pr))
+          k.learnRequest(pr)
         }
       }
     }
@@ -667,7 +703,7 @@ export class EngineProxy implements MuxDispatch {
     if (key === 'GET /permission') {
       for (const p of Array.isArray(data) ? data : []) {
         const pr = (p ?? {}) as Record<string, unknown>
-        k.learnPermission(pr.id, pr.permission, permissionDetailLines(pr))
+        k.learnRequest(pr)
       }
       return data
     }

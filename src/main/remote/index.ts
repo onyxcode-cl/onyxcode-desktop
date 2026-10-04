@@ -7,6 +7,7 @@ import { networkInterfaces } from 'node:os'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import type { RemotePairRequest, RemotePolicyView, RemoteState } from '@shared/ipc-remote'
+import type { EnableApproveInfo } from './approve-setting'
 import type { AuditInput } from './audit'
 import type { ConfirmHost } from './confirm-host'
 import type { DevicesStore } from './devices-store'
@@ -37,6 +38,8 @@ export interface RemoteBootDeps {
   confirmHost: ConfirmHost
   /** Auditoría sin secretos. */
   audit: (e: AuditInput) => void
+  /** Diálogo propio del Mac para encender «Aprobar comandos desde este celular». */
+  confirmEnableApprove?: (info: EnableApproveInfo) => Promise<boolean>
   /** Política de la organización vigente (se relee en caliente). */
   policy: () => RemotePolicyView
 }
@@ -79,7 +82,9 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     },
     subscribeBus: subscribeRemote,
     confirm: d.confirmHost.queue,
-    audit: d.audit
+    audit: d.audit,
+    // Se lee del almacén en cada decisión: apagarlo (Ajustes, «Cortar todo») surte efecto al instante.
+    canApproveCommands: (id) => d.devices.canApproveCommands(id)
   })
   return new RemoteService({
     engine,
@@ -103,6 +108,7 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     onPairRequest: d.onPairRequest,
     confirmHost: d.confirmHost,
     audit: d.audit,
+    confirmEnableApprove: d.confirmEnableApprove,
     policy: d.policy
   })
 }

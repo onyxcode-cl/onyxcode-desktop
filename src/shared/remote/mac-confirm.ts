@@ -17,16 +17,12 @@ export const MAX_DISCARD_WITHOUT_MAC = 20
 
 /** Permisos cuyo «una vez» es una mutación normal (espejo de `ONCE_SAFE_PERMISSIONS`; lo vigila la prueba). */
 export const ONCE_SAFE_PERMISSIONS: ReadonlySet<string> = new Set([
-  'edit',
-  'bash',
   'read',
   'glob',
   'grep',
   'list',
-  'webfetch',
   'websearch',
   'codesearch',
-  'task',
   'skill',
   'todowrite',
   'todoread',
@@ -51,7 +47,13 @@ export function needsMacConfirm(a: MacAction): boolean {
   }
 }
 
+/**
+ * `bash` y `edit` «una vez»: el celular los OFRECE siempre. Si el dueño encendió «Aprobar comandos desde este celular» y el texto pasa
+ * la lista de denegación del Mac, se aprueban; si no, el Mac pide confirmar (con el comando exacto) antes de ejecutarlos.
+ */
+const PHONE_ASKS_MAC = new Set(['bash', 'edit'])
+
 /** Respuestas de permiso que el celular puede dar: nunca `always`; si el «una vez» pide confirmar en el Mac, solo rechazar. */
 export function phoneReplies(permission: string): Array<'once' | 'reject'> {
-  return needsMacConfirm({ kind: 'permission.once', permission }) ? ['reject'] : ['once', 'reject']
+  return needsMacConfirm({ kind: 'permission.once', permission }) && !PHONE_ASKS_MAC.has(permission) ? ['reject'] : ['once', 'reject']
 }

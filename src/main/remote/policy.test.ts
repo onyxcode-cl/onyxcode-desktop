@@ -26,7 +26,16 @@ const ctx: PolicyContext = {
   chatDirs: ['/chat'],
   fullAccessDirs: ['/work/tasks/a'],
   knownModels: new Set(['opencode-go/deepseek-v4.1-flash', 'anthropic/sonnet']),
-  permissionKind: (id) => ({ p_edit: 'edit', p_ext: 'external_directory', p_cu: 'computer_click' })[id],
+  permissionKind: (id) =>
+    ({
+      p_edit: 'edit',
+      p_ext: 'external_directory',
+      p_cu: 'computer_click',
+      p_read: 'read',
+      p_bash: 'bash',
+      p_web: 'webfetch',
+      p_task: 'task'
+    })[id],
   isDirectory: (p) => (p.endsWith('.txt') ? false : p.endsWith('/dir') ? true : undefined),
   home: '/Users/me'
 }
@@ -258,10 +267,50 @@ describe('D: confirmación en el Mac', () => {
     expect(rep('p_ext', { reply: 'once' })).toBe('confirm')
     expect(rep('p_cu', { reply: 'once' })).toBe('confirm')
     expect(rep('p_desconocido', { reply: 'once' })).toBe('confirm')
-    expect(rep('p_edit', { reply: 'once' })).toBe('M')
+    expect(rep('p_read', { reply: 'once' })).toBe('M')
     expect(rep('p_ext', { reply: 'reject' })).toBe('M')
-    expect(cls(http('POST', '/session/ses_1/permissions/p_edit', dq, { response: 'once' }))).toBe('M')
+    expect(cls(http('POST', '/session/ses_1/permissions/p_read', dq, { response: 'once' }))).toBe('M')
     expect(cls(http('POST', '/session/ses_1/permissions/p_ext', dq, { response: 'once' }))).toBe('confirm')
+  })
+  it('hallazgo 2: con el ajuste apagado bash, edit, webfetch, task y external_directory «una vez» son D; reject M; always denegado', () => {
+    const rep = (id: string, body: unknown): string => cls(http('POST', `/permission/${id}/reply`, dq, body))
+    for (const id of ['p_bash', 'p_edit', 'p_web', 'p_task', 'p_ext', 'p_cu']) {
+      expect(rep(id, { reply: 'once' }), id).toBe('confirm')
+      expect(rep(id, { reply: 'reject' }), id).toBe('M')
+      expect(rep(id, { reply: 'always' }), id).toBe('deny:permission-always')
+    }
+  })
+  it('hallazgo 2: con el ajuste encendido solo bash/edit que pasan la lista se aprueban (M con approve); lo demás sigue en D', () => {
+    const texts: Record<string, string[]> = {
+      p_bash: ['npm test'],
+      p_edit: ['src/a.ts'],
+      p_ext: ['/tmp/x'],
+      p_web: ['https://x.test'],
+      p_task: ['general']
+    }
+    const on: PolicyContext = { ...ctx, canApproveCommands: true, permissionText: (id) => texts[id] }
+    const d = decide(http('POST', '/permission/p_bash/reply', dq, { reply: 'once' }), on)
+    expect(d).toMatchObject({ allow: true, class: 'M', approve: true })
+    expect(cls(http('POST', '/permission/p_edit/reply', dq, { reply: 'once' }), on)).toBe('M')
+    for (const id of ['p_ext', 'p_web', 'p_task', 'p_cu'])
+      expect(cls(http('POST', `/permission/${id}/reply`, dq, { reply: 'once' }), on), id).toBe('confirm')
+    // Sin texto conocido, o si coincide con la lista: D.
+    texts.p_bash = ['sudo rm -rf /']
+    expect(cls(http('POST', '/permission/p_bash/reply', dq, { reply: 'once' }), on)).toBe('confirm')
+    texts.p_bash = []
+    expect(cls(http('POST', '/permission/p_bash/reply', dq, { reply: 'once' }), on)).toBe('confirm')
+    // El ajuste solo vale si es `true` exacto.
+    texts.p_bash = ['npm test']
+    expect(cls(http('POST', '/permission/p_bash/reply', dq, { reply: 'once' }), { ...on, canApproveCommands: undefined })).toBe('confirm')
+  })
+  it('el resumen de la confirmación de bash/edit dice qué se aprueba y enseña el principio y el final de un comando largo', () => {
+    const long = `echo ${'a'.repeat(400)} ; rm -rf /final`
+    const c: PolicyContext = { ...ctx, permissionDetail: () => [`command: ${long}`] }
+    const d = decide(http('POST', '/permission/p_bash/reply', dq, { reply: 'once' }), c)
+    expect('confirm' in d && d.summary.es).toContain('ejecute este comando')
+    expect('confirm' in d && d.detail.join('\n')).toContain('rm -rf /final')
+    const e = decide(http('POST', '/permission/p_edit/reply', dq, { reply: 'once' }), c)
+    expect('confirm' in e && e.summary.es).toContain('edite este archivo')
   })
   it('sesión con `permission` propio es D', () => {
     expect(cls(http('PATCH', '/session/ses_1', dq, { permission: [] }))).toBe('confirm')

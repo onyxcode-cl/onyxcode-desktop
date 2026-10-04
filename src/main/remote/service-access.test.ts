@@ -9,7 +9,7 @@ import { ConfirmHost } from './confirm-host'
 import { DevicesStore } from './devices-store'
 import { NO_ORG_POLICY } from './org-policy'
 import type { RtcAnswerer, RtcChannel } from './rtc'
-import { RemoteService } from './service'
+import { RemoteService, type RemoteServiceDeps } from './service'
 import type { SignalHello, SignalingPeer, SignalingStartOptions, SignalingTransport } from './signaling/types'
 import { resumeAs } from './test-handshake'
 import type { RemoteBackend } from './whitelist'
@@ -33,7 +33,7 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-function service(): RemoteService {
+function service(extra: Partial<RemoteServiceDeps> = {}): RemoteService {
   const confirmHost = new ConfirmHost({ sendToWindow: () => true, dismissInWindow: () => undefined, fallback: async () => false })
   return new RemoteService({
     devices,
@@ -51,7 +51,8 @@ function service(): RemoteService {
     onPairRequest: () => undefined,
     now: () => clock,
     confirmHost,
-    audit: (e) => void audits.push(e)
+    audit: (e) => void audits.push(e),
+    ...extra
   })
 }
 
@@ -88,6 +89,61 @@ describe('RemoteService: recordar 12 h, PIN y auditoría', () => {
     s.revoke(id)
     expect(s.getState().devices).toEqual([])
     expect(audits).toEqual([expect.objectContaining({ kind: 'revoked', name: 'Pixel' })])
+  })
+})
+
+describe('RemoteService: «Aprobar comandos desde este celular» (hallazgo 2)', () => {
+  it('nace apagado y solo se enciende tras el diálogo del Mac; queda auditado', async () => {
+    const asked: Array<{ deviceName: string; fingerprint: string }> = []
+    const s = service({ confirmEnableApprove: async (i) => (asked.push(i), true) })
+    const { id } = devices.add('Pixel')
+    expect(s.getState().devices[0]?.canApproveCommands).toBe(false)
+    const st = await s.setApproveCommands(id, true)
+    expect(st.devices[0]?.canApproveCommands).toBe(true)
+    expect(devices.canApproveCommands(id)).toBe(true)
+    expect(asked).toEqual([{ deviceName: 'Pixel', fingerprint: st.devices[0]!.fingerprint }])
+    expect(audits).toEqual([expect.objectContaining({ kind: 'approve-enabled', name: 'Pixel', device: st.devices[0]!.fingerprint })])
+  })
+
+  it('si el dueño rechaza el diálogo, o no hay diálogo, sigue apagado (falla cerrado)', async () => {
+    const { id } = devices.add('Pixel')
+    expect((await service({ confirmEnableApprove: async () => false }).setApproveCommands(id, true)).devices[0]?.canApproveCommands).toBe(
+      false
+    )
+    expect(
+      (
+        await service({
+          confirmEnableApprove: async () => {
+            throw new Error('sin ventana')
+          }
+        }).setApproveCommands(id, true)
+      ).devices[0]?.canApproveCommands
+    ).toBe(false)
+    expect((await service().setApproveCommands(id, true)).devices[0]?.canApproveCommands).toBe(false)
+    expect(devices.canApproveCommands(id)).toBe(false)
+    expect(audits).toEqual([])
+  })
+
+  it('apagarlo no pide confirmar y queda auditado; «Cortar todo» lo apaga en todos los celulares', async () => {
+    const s = service({ confirmEnableApprove: async () => true })
+    const a = devices.add('Pixel').id
+    const b = devices.add('iPhone').id
+    await s.setApproveCommands(a, true)
+    await s.setApproveCommands(b, true)
+    audits.length = 0
+    await s.setApproveCommands(a, false)
+    expect(devices.canApproveCommands(a)).toBe(false)
+    expect(audits).toEqual([expect.objectContaining({ kind: 'approve-disabled', name: 'Pixel' })])
+    audits.length = 0
+    await s.stopAll()
+    expect(devices.canApproveCommands(b)).toBe(false)
+    expect(audits.filter((e) => e.kind === 'approve-disabled')).toEqual([expect.objectContaining({ name: 'iPhone' })])
+  })
+
+  it('un id desconocido no enciende nada', async () => {
+    const s = service({ confirmEnableApprove: async () => true })
+    await s.setApproveCommands('f'.repeat(32), true)
+    expect(audits).toEqual([])
   })
 })
 

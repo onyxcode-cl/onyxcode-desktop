@@ -18,6 +18,7 @@
 import { homedir } from 'node:os'
 import { isAbsolute, resolve, sep } from 'node:path'
 import type { RemoteText } from '@shared/ipc-remote'
+import { approvalVerdict } from './command-denylist'
 import { cleanDetail, previewText } from './confirm-detail'
 
 export type PolicyClass = 'R' | 'M' | 'D' | 'X'
@@ -49,6 +50,12 @@ export interface PolicyContext {
   permissionKind?: (requestId: string) => string | undefined
   /** Qué pide el permiso pendiente (comando, rutas o patrones), ya recortado, para mostrarlo en la confirmación. */
   permissionDetail?: (requestId: string) => string[] | undefined
+  /** Este celular tiene encendido «Aprobar comandos desde este celular» (por dispositivo, apagado por defecto). */
+  canApproveCommands?: boolean
+  /** Texto íntegro que pide el permiso pendiente (aprendido del motor, no del celular), para la lista de denegación. */
+  permissionText?: (requestId: string) => string[] | undefined
+  /** `realpath` de una ruta (puede no existir) para la lista de denegación; sin él solo se compara lo léxico. */
+  realpath?: (p: string) => string | null
   /** Carpeta de una rutina por id (`null` = sin carpeta, p. ej. Chat; `undefined` = desconocida → se rechaza). */
   routineFolder?: (routineId: string) => string | null | undefined
   /** Carpeta de una tarea de Tareas por id de sesión (`undefined` = desconocida → se rechaza). */
@@ -61,11 +68,16 @@ export interface PolicyContext {
 
 export type PolicyDecision =
   /** `key` = canal IPC o `MÉTODO /ruta/{plantilla}` (sin ids): lo que se anota en la auditoría de las acciones M. */
-  | { allow: true; class: 'R' | 'M'; key: string }
+  | {
+      allow: true
+      class: 'R' | 'M'
+      key: string
+      /** «Una vez» de `bash`/`edit` aprobado desde el celular sin confirmar (cuenta para el tope por hora y se audita). */ approve?: true
+    }
   | { allow: false; reason: string }
   | { confirm: true; summary: RemoteText; detail: string[]; channel: string }
 
-type Outcome = PolicyClass | { deny: string }
+type Outcome = PolicyClass | { deny: string } | { approve: true }
 const deny = (reason: string): Outcome => ({ deny: reason })
 
 // ─────────────────────────────── utilidades ───────────────────────────────
@@ -519,7 +531,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'remote:resetPin': 'X',
   'remote:revokeAll': 'X',
   'remote:setDeviceTtl': 'X',
-  'remote:auditList': 'X'
+  'remote:auditList': 'X',
+  'remote:setApproveCommands': 'X' // aprobar comandos desde un celular solo se enciende en el Mac, con confirmación propia
 }
 
 // ─────────────────────────────── eventos ───────────────────────────────
@@ -763,18 +776,18 @@ const questionAnswer: HttpSpec = (h, ctx) => {
   return hasOnly(rec(h.req.body), ['answers']) ? 'M' : deny('body-field-forbidden')
 }
 
-/** Permisos de OpenCode cuyo `once` es una mutación normal; cualquier otro (o desconocido) se confirma en el Mac. */
+/**
+ * Permisos de OpenCode cuyo `once` es una mutación normal; cualquier otro (o desconocido) se confirma en el Mac. `bash`, `edit`,
+ * `webfetch`, `task` y `external_directory` NO están: ejecutan código, escriben o salen de la carpeta (hallazgo 2), así que su
+ * `once` es D salvo `bash`/`edit` con «Aprobar comandos desde este celular» encendido y pasando la lista de denegación.
+ */
 export const ONCE_SAFE_PERMISSIONS: ReadonlySet<string> = new Set([
-  'edit',
-  'bash',
   'read',
   'glob',
   'grep',
   'list',
-  'webfetch',
   'websearch',
   'codesearch',
-  'task',
   'skill',
   'todowrite',
   'todoread',
@@ -791,6 +804,15 @@ const permissionReply: HttpSpec = (h, ctx) => {
   if (reply !== 'once') return deny('permission-always') // `always` (y cualquier otro valor) nunca desde el celular
   const id = h.params.requestID ?? h.params.permissionID
   const kind = id ? ctx.permissionKind?.(id) : undefined
+  if (id && (kind === 'bash' || kind === 'edit') && ctx.canApproveCommands === true) {
+    // Con el ajuste encendido solo pasa lo que la lista de denegación deja, evaluada sobre el texto que pidió el motor; ante duda, D.
+    const dir = directoryOf(h)
+    if (dir !== undefined) {
+      const env = { sessionDir: dir, ...(ctx.home ? { home: ctx.home } : {}), ...(ctx.realpath ? { realpath: ctx.realpath } : {}) }
+      if (approvalVerdict(kind, ctx.permissionText?.(id), env) === null) return { approve: true }
+    }
+    return 'D'
+  }
   return kind !== undefined && ONCE_SAFE_PERMISSIONS.has(kind) ? 'M' : 'D'
 }
 
@@ -1267,20 +1289,34 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
   })
 }
 
+/** Línea larga con el principio Y el final (un comando largo no puede esconder lo último tras un recorte): `inicio … final`. */
+function headTail(line: string, max = 236): string {
+  const flat = line.replace(/\s+/g, ' ').trim()
+  if (flat.length <= max) return flat
+  const tail = Math.floor(max * 0.35)
+  return `${flat.slice(0, max - tail - 3)} … ${flat.slice(flat.length - tail)}`
+}
+
 /** Qué se aprueba al responder un permiso pendiente: tipo y comando/rutas/patrones que el motor pide. */
 function permissionReplySummary(p: Record<string, unknown>, x: SummaryExtra): { text: RemoteText; detail: string[] } {
   const id = x.params.requestID ?? x.params.permissionID
   const kind = id ? x.ctx.permissionKind?.(id) : undefined
   const what = id ? x.ctx.permissionDetail?.(id) : undefined
+  const text =
+    kind === 'bash'
+      ? t('Permitir una vez que el agente ejecute este comando en el Mac', 'Allow once the agent to run this command on the Mac')
+      : kind === 'edit'
+        ? t('Permitir una vez que el agente edite este archivo', 'Allow once the agent to edit this file')
+        : t(
+            'Permitir una vez una acción del agente fuera de la carpeta del proyecto, de red, de subagentes o de Control del Mac',
+            'Allow once an agent action outside the project folder, on the network, by a subagent or Mac control'
+          )
   return {
-    text: t(
-      'Permitir una vez una acción fuera de la carpeta del proyecto o de Control del Mac',
-      'Allow once an action outside the project folder or Mac control'
-    ),
+    text,
     detail: [
       String(p.reply ?? p.response ?? ''),
       kind !== undefined ? `tipo: ${kind}` : 'tipo: desconocido',
-      ...(what && what.length > 0 ? what : ['(no se pudo saber qué pide; compruébalo en el Mac)'])
+      ...(what && what.length > 0 ? what.map((l) => headTail(l)) : ['(no se pudo saber qué pide; compruébalo en el Mac)'])
     ]
   }
 }
@@ -1304,6 +1340,7 @@ function summaryFor(
 // ─────────────────────────────── decide ───────────────────────────────
 
 function finish(o: Outcome, key: string, req: PolicyRequest, ctx: PolicyContext, params: Record<string, string> = {}): PolicyDecision {
+  if (typeof o === 'object' && 'approve' in o) return { allow: true, class: 'M', key, approve: true }
   if (typeof o === 'object') return { allow: false, reason: o.deny }
   if (o === 'X') return { allow: false, reason: 'forbidden' }
   if (o === 'D') {

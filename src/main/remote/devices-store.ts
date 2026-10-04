@@ -48,6 +48,11 @@ export interface DeviceRecord {
   pinFails?: number
   /** «Recordar 12 h»: ms desde epoch hasta los que vale la confirmación de conexión. */
   trustUntil?: number
+  /**
+   * «Aprobar comandos desde este celular»: ausente = apagado (los vínculos de antes de F8-B74 quedan apagados, sin migrar el
+   * archivo). Solo `true` exacto lo enciende; cualquier otro valor guardado se lee como apagado.
+   */
+  canApproveCommands?: boolean
 }
 
 /** Vista de un dispositivo para Ajustes (nunca incluye el PIN ni su hash). */
@@ -71,6 +76,7 @@ export function toDeviceInfo(
     fingerprint: deviceFingerprint(d.id),
     hasPin: !!d.pin,
     trustUntil: d.trustUntil && d.trustUntil > now ? d.trustUntil : null,
+    canApproveCommands: d.canApproveCommands === true,
     access
   }
 }
@@ -168,6 +174,7 @@ function parse(raw: string, now: number, onMigrate: () => void = () => undefined
       if (pin) rec.pin = pin
       if (typeof r.pinFails === 'number' && Number.isInteger(r.pinFails) && r.pinFails > 0) rec.pinFails = Math.min(r.pinFails, 100)
       if (typeof r.trustUntil === 'number' && Number.isFinite(r.trustUntil) && r.trustUntil > 0) rec.trustUntil = r.trustUntil
+      if (r.canApproveCommands === true) rec.canApproveCommands = true
       out.push(rec)
       if (out.length >= LIMITS.maxDevices) break
     }
@@ -460,6 +467,33 @@ export class DevicesStore {
     else d.trustUntil = until
     this.save()
     return true
+  }
+
+  canApproveCommands(id: string): boolean {
+    return this.load().find((x) => x.id === id)?.canApproveCommands === true
+  }
+
+  /** Enciende/apaga «Aprobar comandos desde este celular». La confirmación en el Mac la pide quien llama (`approve-setting.ts`). */
+  setCanApproveCommands(id: string, on: boolean): boolean {
+    const d = this.load().find((x) => x.id === id)
+    if (!d) return false
+    if (on) d.canApproveCommands = true
+    else delete d.canApproveCommands
+    this.save()
+    return true
+  }
+
+  /** Apaga «Aprobar comandos» en todos los dispositivos («Cortar todo»). Devuelve los que estaban encendidos (una sola escritura). */
+  clearAllApprove(): string[] {
+    const was: string[] = []
+    for (const d of this.load()) {
+      if (d.canApproveCommands === true) {
+        delete d.canApproveCommands
+        was.push(d.id)
+      }
+    }
+    if (was.length > 0) this.save()
+    return was
   }
 
   /** Borra «Recordar 12 h» de todos los dispositivos (una sola escritura). */

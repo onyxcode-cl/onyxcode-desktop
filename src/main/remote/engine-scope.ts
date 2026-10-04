@@ -86,6 +86,7 @@ export class EngineKnowledge {
   private readonly sessions = new Map<string, string>()
   private readonly perms = new Map<string, string>()
   private readonly permDetails = new Map<string, string[]>()
+  private readonly permTexts = new Map<string, string[]>()
   private models: { set: Set<string>; at: number } | null = null
 
   constructor(private readonly now: () => number = Date.now) {}
@@ -110,9 +111,25 @@ export class EngineKnowledge {
       const old = this.perms.keys().next().value as string
       this.perms.delete(old)
       this.permDetails.delete(old)
+      this.permTexts.delete(old)
     }
     this.perms.set(id, kind)
     if (detail && detail.length > 0) this.permDetails.set(id, detail)
+  }
+
+  /** Aprende un permiso pendiente tal como lo pidió el motor: tipo, líneas para el diálogo y texto íntegro para la lista de denegación. */
+  learnRequest(p: unknown): void {
+    const o = (typeof p === 'object' && p !== null ? p : {}) as { id?: unknown; permission?: unknown }
+    this.learnPermission(o.id, o.permission, permissionDetailLines(p))
+    if (typeof o.id !== 'string' || o.id === '' || typeof o.permission !== 'string') return
+    const texts = permissionTexts(p)
+    if (texts) this.permTexts.set(o.id, texts)
+    else this.permTexts.delete(o.id)
+  }
+
+  /** Texto íntegro que pide un permiso (comando de `bash`, rutas de `edit`…); `undefined` = no se sabe o no cabe → se confirma en el Mac. */
+  permissionText(id: string): string[] | undefined {
+    return this.permTexts.get(id)
   }
 
   /** Qué pide un permiso pendiente (comando, rutas, patrones), para la confirmación en el Mac. */
@@ -158,6 +175,26 @@ export function permissionDetailLines(p: unknown): string[] {
     const v = m[k]
     if (typeof v === 'string' && v !== '' && !out.includes(v)) out.push(`${k}: ${v}`)
   }
+  return out
+}
+
+/** Máximo de un texto de permiso que se conserva íntegro; más largo = sin texto (la lista de denegación lo trata como dudoso). */
+const MAX_PERMISSION_TEXT = 8_000
+
+/**
+ * Texto ÍNTEGRO (sin recorte) de lo que pide un permiso: `patterns` y, del `metadata`, el comando o la ruta. Es lo que evalúa la
+ * lista de denegación en el Mac. `null` si algún texto es demasiado largo o no hay ninguno.
+ */
+export function permissionTexts(p: unknown): string[] | null {
+  const o = (typeof p === 'object' && p !== null ? p : {}) as { patterns?: unknown; metadata?: unknown }
+  const out: string[] = []
+  const add = (v: unknown): void => {
+    if (typeof v === 'string' && v !== '' && !out.includes(v)) out.push(v)
+  }
+  if (Array.isArray(o.patterns)) for (const x of o.patterns) add(x)
+  const m = (typeof o.metadata === 'object' && o.metadata !== null ? o.metadata : {}) as Record<string, unknown>
+  for (const k of ['command', 'filepath', 'filePath']) add(m[k])
+  if (out.length === 0 || out.length > 40 || out.some((x) => x.length > MAX_PERMISSION_TEXT)) return null
   return out
 }
 

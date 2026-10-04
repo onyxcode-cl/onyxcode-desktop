@@ -23,6 +23,7 @@ import type {
   RemoteUnavailableReason
 } from '@shared/ipc-remote'
 import { DEVICE_TTL_OPTIONS } from '@shared/ipc-remote'
+import { applyApproveSetting, type EnableApproveInfo } from './approve-setting'
 import type { AuditInput } from './audit'
 import type { ConfirmHost } from './confirm-host'
 import { toDeviceInfo, type DevicesStore } from './devices-store'
@@ -57,6 +58,8 @@ export interface RemoteServiceDeps {
    */
   confirmHost?: ConfirmHost
   audit?: (e: AuditInput) => void
+  /** Diálogo propio del Mac para ENCENDER «Aprobar comandos desde este celular». Sin él no se puede encender. */
+  confirmEnableApprove?: (info: EnableApproveInfo) => Promise<boolean>
   /** ¿Es una lectura? Con el celular bloqueado por inactividad solo se atienden lecturas (sin esto, ninguna). */
   isRead?: (r: CallRequest | HttpRequest) => boolean
   inactivityMs?: number
@@ -323,6 +326,11 @@ export class RemoteService {
     this.lastActive.clear()
     try {
       this.d.devices.clearAllTrust()
+      // «Cortar todo» también apaga «Aprobar comandos desde este celular» (se vuelve a encender, con confirmación, si se quiere).
+      for (const id of this.d.devices.clearAllApprove()) {
+        const rec = this.d.devices.get(id)
+        this.d.audit?.({ kind: 'approve-disabled', device: deviceFingerprint(id), ...(rec ? { name: rec.name } : {}) })
+      }
     } catch {
       /* sin cifrado no hay nada guardado */
     }
@@ -620,6 +628,13 @@ export class RemoteService {
         /* sin cifrado no se guarda */
       }
     }
+    this.changed()
+    return this.getState()
+  }
+
+  /** «Aprobar comandos desde este celular»: encender pide confirmar en el Mac (diálogo propio); apagar es inmediato. */
+  async setApproveCommands(deviceId: string, on: boolean): Promise<RemoteState> {
+    await applyApproveSetting({ devices: this.d.devices, audit: this.d.audit, confirmEnable: this.d.confirmEnableApprove }, deviceId, on)
     this.changed()
     return this.getState()
   }

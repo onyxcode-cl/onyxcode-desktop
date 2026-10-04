@@ -161,6 +161,42 @@ describe('DevicesStore: caducidad por dispositivo (reloj falso)', () => {
     expect(raw.devices[0]).not.toHaveProperty('lastSeenAt')
   })
 
+  it('hallazgo 2: «aprobar comandos» nace apagado; los vínculos anteriores quedan en false sin romper remote.bin', () => {
+    const file = join(dir, 'remote.bin')
+    const safe = fakeSafe()
+    const base = { name: 'x', secretHash: 'c'.repeat(64), createdAt: 1, lastUsedAt: null, ttlDays: 90, renewedAt: T0 }
+    // remote.bin de antes: sin el campo; con valores raros (`'yes'`, `1`) tampoco se enciende.
+    writeFileSync(
+      file,
+      safe.encryptString(
+        JSON.stringify({
+          devices: [
+            { ...base, id: '1'.repeat(32) },
+            { ...base, id: '2'.repeat(32), canApproveCommands: 'yes' },
+            { ...base, id: '4'.repeat(32), canApproveCommands: true }
+          ],
+          port: 4321
+        })
+      )
+    )
+    const s = new DevicesStore(file, safe, undefined, () => T0)
+    expect(s.list().map((d) => s.canApproveCommands(d.id))).toEqual([false, false, true])
+    expect(s.list()).toHaveLength(3)
+    expect(s.getPort()).toBe(4321)
+    const raw = JSON.parse(safe.decryptString(readFileSync(file))) as { devices: Array<Record<string, unknown>> }
+    expect(raw.devices[0]).not.toHaveProperty('canApproveCommands')
+    // Nuevo dispositivo: apagado. Encender, persistir, apagar y limpiar todos.
+    expect(s.revoke('2'.repeat(32))).toBe(true)
+    const { id } = s.add('Pixel')
+    expect(s.canApproveCommands(id)).toBe(false)
+    expect(toDeviceInfo(s.get(id)!, false, null, T0).canApproveCommands).toBe(false)
+    expect(s.setCanApproveCommands(id, true)).toBe(true)
+    expect(new DevicesStore(file, safe, undefined, () => T0).canApproveCommands(id)).toBe(true)
+    expect(s.clearAllApprove().sort()).toEqual([id, '4'.repeat(32)].sort())
+    expect(new DevicesStore(file, safe, undefined, () => T0).list().some((d) => d.canApproveCommands)).toBe(false)
+    expect(s.setCanApproveCommands('f'.repeat(32), true)).toBe(false)
+  })
+
   it('valores raros en `ttlDays` caen al valor por defecto; `null` se respeta', () => {
     const file = join(dir, 'remote.bin')
     const safe = fakeSafe()

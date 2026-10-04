@@ -11,6 +11,7 @@ import { settingsStore } from '../store'
 import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import type { OpencodeServer } from '../opencode/server'
+import { applyApproveSetting, type EnableApproveInfo } from '../remote/approve-setting'
 import { ConfirmHost } from '../remote/confirm-host'
 import { currentService, ensureRemote, getAudit, getDevicesStore, getOrgPolicy, offState, type RemoteHostDeps } from '../remote/loader'
 import { emitTo } from './event-bus'
@@ -56,6 +57,45 @@ async function nativeConfirm(info: RemoteConfirmRequest): Promise<boolean> {
   return r.response === 1
 }
 
+/**
+ * Diálogo PROPIO del Mac para encender «Aprobar comandos desde este celular». Nativo (no lo pinta ninguna página, así que ni el
+ * celular ni un renderer comprometido pueden pulsarlo). «Cancelar» es el botón por defecto y el de Esc; un fallo = no se enciende.
+ */
+async function confirmEnableApprove(deps: MainWindowDeps, info: EnableApproveInfo): Promise<boolean> {
+  const en = getLang() === 'en'
+  const opts: Electron.MessageBoxOptions = {
+    type: 'warning',
+    buttons: [en ? 'Cancel' : 'Cancelar', en ? 'Allow commands from this phone' : 'Permitir comandos desde este celular'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    title: en ? 'Approve commands from this phone' : 'Aprobar comandos desde este celular',
+    message: en
+      ? `"${info.deviceName}" will be able to approve the agent's commands and edits while you are away.`
+      : `«${info.deviceName}» podrá aprobar comandos y ediciones del agente mientras estés fuera.`,
+    detail: en
+      ? [
+          'Without this, every command or edit the agent asks for must be confirmed on this Mac.',
+          'With it, the phone approves them by itself, except those that look sensitive (sudo, ssh, deleting outside the project, secrets…), which still ask here. Up to 20 per hour.',
+          'The filter is a heuristic, not a guarantee: a command it lets through can still run whatever the project defines. Turn it off in Settings or with "Cut everything".',
+          `Phone: ${info.deviceName} · ${info.fingerprint}`
+        ].join('\n\n')
+      : [
+          'Sin esto, cada comando o edición que pida el agente debe confirmarse en este Mac.',
+          'Con esto, el celular los aprueba solo, salvo los que parezcan delicados (sudo, ssh, borrar fuera del proyecto, secretos…), que siguen preguntando aquí. Hasta 20 por hora.',
+          'El filtro es una heurística, no una garantía: un comando que deje pasar puede ejecutar lo que el proyecto defina. Se apaga en Ajustes o con «Cortar todo».',
+          `Celular: ${info.deviceName} · ${info.fingerprint}`
+        ].join('\n\n')
+  }
+  try {
+    const w = mainWindowOf(deps)
+    const r = w ? await dialog.showMessageBox(w, opts) : await dialog.showMessageBox(opts)
+    return r.response === 1
+  } catch {
+    return false
+  }
+}
+
 export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDeps): void {
   const platform = process.platform
   const supported = capsFor(platform).remote
@@ -83,6 +123,7 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     getConnection: () => deps.server.getConnection(),
     getRecentFolders: () => settingsStore.get().recentFolders,
     modelFor: (kind) => extrasPrefs.get().modelsByMode[kind] ?? settingsStore.get().defaultModel,
+    confirmEnableApprove: (info) => confirmEnableApprove(deps, info),
     onChanged: (s) => sendMain(deps, 'remote:changed', s),
     onPairRequest: (req) => {
       // El dueño debe ver la confirmación: trae la ventana al frente.
@@ -109,6 +150,18 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
       store.setPrefs({ confirmEachConnection: on })
       // Apagarlo borra también la confianza de 12 h (deja de tener sentido).
       if (!on) store.clearAllTrust()
+    }
+    return offState(platform)
+  })
+  handle(ipcMain, 'remote:setApproveCommands', async ({ deviceId, on }) => {
+    const s = currentService()
+    if (s) return s.setApproveCommands(deviceId, on)
+    if (supported && getDevicesStore().available) {
+      await applyApproveSetting(
+        { devices: getDevicesStore(), audit: (e) => getAudit().append(e), confirmEnable: (info) => confirmEnableApprove(deps, info) },
+        deviceId,
+        on
+      )
     }
     return offState(platform)
   })

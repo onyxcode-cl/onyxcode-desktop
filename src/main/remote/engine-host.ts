@@ -8,6 +8,7 @@
 import { EventLog, type MuxDispatch } from '@shared/remote/mux'
 import type { OpencodeConnection } from '@shared/types'
 import type { AuditInput } from './audit'
+import { ApprovalLimiter } from './approval-limit'
 import { ConfirmQueue } from './confirm-queue'
 import { EngineProxy, type EngineShared, type InvokeFn } from './engine-proxy'
 import { EngineRegistry } from './engine-registry'
@@ -37,6 +38,10 @@ export interface EngineHostOptions {
   subscribeBus?: SseHubOptions['subscribeBus']
   confirm?: ConfirmQueue
   audit?: (e: AuditInput) => void
+  /** ¿Este celular tiene encendido «Aprobar comandos desde este celular»? Sin función = apagado para todos. */
+  canApproveCommands?: (deviceId: string) => boolean
+  /** Tope de aprobaciones sin confirmar por celular y hora (por defecto 20). */
+  approvalLimiter?: ApprovalLimiter
   fetch?: typeof fetch
   events?: EventLog
   backoffMs?: number
@@ -76,6 +81,8 @@ export function createEngineHost(o: EngineHostOptions): RemoteEngineHost {
     knowledge,
     confirm,
     audit: o.audit,
+    canApproveCommands: o.canApproveCommands,
+    approvalLimiter: o.approvalLimiter ?? new ApprovalLimiter(),
     invoke: o.invoke,
     events,
     fetch: o.fetch,

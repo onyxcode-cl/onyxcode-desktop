@@ -7,7 +7,7 @@
  */
 import { eventPolicy } from './policy'
 import type { EngineRegistry } from './engine-registry'
-import { permissionDetailLines, type EngineKnowledge, type ScopeProvider } from './engine-scope'
+import type { EngineKnowledge, ScopeProvider } from './engine-scope'
 import { scrubDiffLists } from './diff-filter'
 import { isInsideReal, realpathLoose } from './path-guard'
 
@@ -149,7 +149,7 @@ export function trimOcEvent(raw: unknown, eng: string, d: TrimDeps): OcEvent | n
     else if (sd) return null // sesión de otro proyecto: no sale
   }
   if (type === 'session.deleted') d.knowledge.forgetSession(String(rec(props.info).id ?? ''))
-  if (type === 'permission.asked') d.knowledge.learnPermission(props.id, props.permission, permissionDetailLines(props))
+  if (type === 'permission.asked') d.knowledge.learnRequest(props)
   if (type === 'message.part.updated') props = trimParts(props)
   // `session.diff` y `summary.diffs` llevan el contenido de los archivos tocados: sin los sensibles.
   if (directory !== 'global') props = scrubDiffLists(props, directory) as Record<string, unknown>

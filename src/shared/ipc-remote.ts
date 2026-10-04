@@ -59,6 +59,11 @@ export interface RemoteDeviceInfo {
   /** «Recordar 12 h»: ms desde epoch hasta los que vale la confirmación de conexión (`null` = se confirma cada vez). */
   trustUntil: number | null
   /**
+   * «Aprobar comandos desde este celular» (apagado por defecto): con él encendido, el «una vez» de `bash`/`edit` se aprueba desde el
+   * celular si pasa la lista de denegación; apagado, el Mac pide confirmar cada comando. Solo se enciende en el Mac, con diálogo propio.
+   */
+  canApproveCommands: boolean
+  /**
    * Estado de acceso de la conexión actual: `awaiting` (esperando tu confirmación), `pin` (falta fijar/verificar el PIN),
    * `locked` (bloqueado por inactividad), `open`. `null` si no está conectado.
    */
@@ -178,6 +183,11 @@ export interface RemoteInvokeContract {
   'remote:setRemember': { req: { deviceId: string; remember: boolean }; res: RemoteState }
   /** «Pedir confirmación en el Mac en cada conexión» (apagado por defecto; la política puede forzarlo). */
   'remote:setConfirmEach': { req: { on: boolean }; res: RemoteState }
+  /**
+   * «Aprobar comandos desde este celular» de un dispositivo. Encenderlo abre un diálogo propio en el Mac (si se rechaza o no hay
+   * diálogo, sigue apagado); apagarlo es inmediato. Nunca desde el celular (`remote:*` es X).
+   */
+  'remote:setApproveCommands': { req: { deviceId: string; on: boolean }; res: RemoteState }
   /** Borra el PIN de un dispositivo: tendrá que fijar uno nuevo al conectar. */
   'remote:resetPin': { req: { deviceId: string }; res: RemoteState }
   /** «Revocar todos»: quita todos los celulares vinculados y corta la conexión viva. */
@@ -212,6 +222,7 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:confirmAction',
   'remote:setRemember',
   'remote:setConfirmEach',
+  'remote:setApproveCommands',
   'remote:resetPin',
   'remote:revokeAll',
   'remote:setDeviceTtl',
