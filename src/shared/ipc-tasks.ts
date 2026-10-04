@@ -618,6 +618,8 @@ export interface TasksMcpInfo {
   hosts: string[]
   /** Usa OAuth: no disponible en el sandbox. */
   oauth: boolean
+  /** Servidor local con variables de entorno secretas: no entra en el sandbox (F8-B79, quedarían legibles con `ps eww`). */
+  localSecrets?: boolean
 }
 
 /** Política gestionada por la organización (`managed.json`), solo lectura. */

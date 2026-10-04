@@ -17,6 +17,7 @@ import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { McpEntry } from '@shared/ipc-extras'
 import { readAppMcpConfig } from '../extras/mcp-config'
 import { hostOf } from '../util/url'
+import type { McpRouteClientConfig, McpRouteSpec } from './mcp-proxy'
 
 export interface TasksMcpContribution {
   /** Bloque `mcp` de OpenCode a inyectar. */
@@ -25,7 +26,29 @@ export interface TasksMcpContribution {
   permission: Record<string, 'ask' | 'allow'>
   /** Hosts remotos a sumar a la lista blanca de red del sandbox. */
   hosts: string[]
+  /**
+   * Solo sandbox: servidores marcados «Disponible en Tareas» que NO entran porque no se pueden proteger (F8-B79):
+   * locales con variables de entorno secretas (viven en el entorno del proceso del sandbox, legible con `ps eww`) o
+   * remotos cuyo proxy no pudo registrarse. Falla cerrado.
+   */
+  blocked: string[]
 }
+
+/** Registro de destinos del proxy MCP (fuera del sandbox): devuelve la URL y el token de sesión que ve el servidor. */
+export type McpRouteRegistrar = (spec: McpRouteSpec) => McpRouteClientConfig
+
+/** ¿Tiene secretos que el sandbox no debe ver? Remoto con cabeceras, o local con variables de entorno. */
+export function mcpEntryHasSecrets(entry: McpEntry): boolean {
+  if (entry.type === 'local') return !!entry.environment && Object.keys(entry.environment).length > 0
+  return !!entry.headers && Object.keys(entry.headers).length > 0
+}
+
+/** `oauth` sin campos secretos (`clientSecret`…): lo que sí puede viajar a la config del sandbox. */
+function oauthWithoutSecrets(oauth: McpRemoteOauth): McpRemoteOauth {
+  if (!oauth || typeof oauth !== 'object') return oauth
+  return Object.fromEntries(Object.entries(oauth).filter(([k]) => !/secret|token|password|key/i.test(k)))
+}
+type McpRemoteOauth = false | Record<string, string | number> | undefined
 
 interface McpFlags {
   tasks: boolean
@@ -103,8 +126,10 @@ function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): Tas
     enabled: entry.enabled !== false,
     tasks: flags?.tasks === true,
     askEachTool: flags?.askEachTool === true,
-    hosts: host ? [host] : [],
-    oauth: usesOAuth(entry)
+    // Con cabeceras secretas el sandbox habla con el proxy de main, no con el host: no se suma a su red (F8-B79).
+    hosts: host && !mcpEntryHasSecrets(entry) ? [host] : [],
+    oauth: usesOAuth(entry),
+    ...(entry.type === 'local' && mcpEntryHasSecrets(entry) ? { localSecrets: true } : {})
   }
 }
 
@@ -112,8 +137,8 @@ function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): Tas
  * Bloque `mcp`/`permission`/`hosts` a inyectar en un servidor Tareas. Solo entran los servidores
  * activos y marcados "Disponible en Tareas". Los hosts solo importan en sandbox (allowlist del proxy).
  */
-export function tasksMcpContribution(opts: { sandboxed: boolean }): TasksMcpContribution {
-  const out: TasksMcpContribution = { mcp: {}, permission: {}, hosts: [] }
+export function tasksMcpContribution(opts: { sandboxed: boolean; registerRoute?: McpRouteRegistrar }): TasksMcpContribution {
+  const out: TasksMcpContribution = { mcp: {}, permission: {}, hosts: [], blocked: [] }
   let servers: Record<string, McpEntry>
   try {
     servers = readAppMcpConfig().servers
@@ -126,6 +151,34 @@ export function tasksMcpContribution(opts: { sandboxed: boolean }): TasksMcpCont
   for (const [name, entry] of Object.entries(servers)) {
     const f = flags[name]
     if (!f?.tasks || entry.enabled === false) continue
+    if (opts.sandboxed && entry.type === 'local' && mcpEntryHasSecrets(entry)) {
+      // Sus variables de entorno irían al entorno del proceso del sandbox (legible con `ps eww`): no entra.
+      out.blocked.push(name)
+      continue
+    }
+    if (opts.sandboxed && entry.type === 'remote' && mcpEntryHasSecrets(entry)) {
+      // Las cabeceras reales las pone el proxy MCP de main; el sandbox solo recibe URL loopback + token de sesión.
+      let route: McpRouteClientConfig | null = null
+      try {
+        route = opts.registerRoute ? opts.registerRoute({ name, url: entry.url, headers: entry.headers }) : null
+      } catch (err) {
+        console.error(`[tasks] MCP "${name}" no entra en el sandbox:`, err instanceof Error ? err.message : 'error')
+      }
+      if (!route) {
+        out.blocked.push(name)
+        continue
+      }
+      out.mcp[name] = {
+        type: 'remote',
+        url: route.url,
+        headers: route.headers,
+        oauth: false,
+        enabled: true,
+        ...(entry.timeout ? { timeout: entry.timeout } : {})
+      }
+      if (f.askEachTool) out.permission[`${name}_*`] = 'ask'
+      continue
+    }
     if (entry.type === 'local') {
       out.mcp[name] = {
         type: 'local',
@@ -140,12 +193,12 @@ export function tasksMcpContribution(opts: { sandboxed: boolean }): TasksMcpCont
         type: 'remote',
         url: entry.url,
         ...(entry.headers ? { headers: entry.headers } : {}),
-        ...(entry.oauth !== undefined ? { oauth: entry.oauth } : {}),
+        ...(entry.oauth !== undefined ? { oauth: opts.sandboxed ? oauthWithoutSecrets(entry.oauth) : entry.oauth } : {}),
         enabled: true,
         ...(entry.timeout ? { timeout: entry.timeout } : {})
       }
       const host = hostOf(entry.url)
-      if (host && opts.sandboxed) hosts.add(host)
+      if (host && opts.sandboxed && !mcpEntryHasSecrets(entry)) hosts.add(host)
     }
     if (f.askEachTool) out.permission[`${name}_*`] = 'ask'
   }

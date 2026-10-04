@@ -44,6 +44,8 @@ export const mcp = {
   'mcp.flags.ask': 'Preguntar en cada uso',
   'mcp.flags.oauthWarn':
     'Este servidor remoto parece usar inicio de sesión (OAuth): no estará disponible en el sandbox (en Control total puede funcionar).',
+  'mcp.flags.envWarn':
+    'Este servidor local usa variables de entorno secretas: no estará disponible en el sandbox porque el agente podría leerlas del entorno del proceso (en Control total sí funciona).',
   'mcp.flags.hosts': 'Sitio añadido a la Red del sandbox: ',
   'mcp.pair.invalid': 'Línea inválida: "{line}" (formato {fmt})',
   'mcp.pair.fmtEnv': 'CLAVE=valor',

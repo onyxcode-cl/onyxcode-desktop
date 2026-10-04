@@ -412,6 +412,11 @@ function TasksFlags({
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {t('mcp.flags.oauthWarn')}
         </p>
       )}
+      {info.tasks && info.type === 'local' && info.localSecrets && (
+        <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {t('mcp.flags.envWarn')}
+        </p>
+      )}
       {info.tasks && info.hosts.length > 0 && (
         <p className="mt-1.5 text-[11px] text-subtle">
           {t('mcp.flags.hosts')}

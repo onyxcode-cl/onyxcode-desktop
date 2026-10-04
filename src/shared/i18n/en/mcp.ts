@@ -47,6 +47,8 @@ export const mcp = {
   'mcp.flags.ask': 'Ask on every use',
   'mcp.flags.oauthWarn':
     'This remote server appears to use sign-in (OAuth): it won’t be available in the sandbox (it may work with Full control).',
+  'mcp.flags.envWarn':
+    'This local server uses secret environment variables: it won’t be available in the sandbox because the agent could read them from the process environment (it works with Full control).',
   'mcp.flags.hosts': 'Site added to the Sandbox network: ',
   'mcp.pair.invalid': 'Invalid line: "{line}" (format {fmt})',
   'mcp.pair.fmtEnv': 'KEY=value',

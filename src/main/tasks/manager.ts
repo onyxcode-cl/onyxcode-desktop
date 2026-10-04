@@ -42,6 +42,7 @@ import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
+import { McpProxy } from './mcp-proxy'
 import { tasksRules, rulesPermissionConfig } from './rules'
 import { skillsInlineConfig } from './opencode-config'
 import type { EgressBlockedEvent } from './proxy'
@@ -187,23 +188,11 @@ export function forbiddenFolderReason(folder: string): string | null {
   })
 }
 
-/** Puerto de un bloque MCP `remote` (`{type:'remote', url:'http://127.0.0.1:<puerto>/mcp', ...}`), o null. */
 /** Token Bearer de un bloque MCP remoto (`headers.Authorization`), o null. */
 function bearerOfMcpConfig(cfg: Record<string, unknown> | null): string | null {
   const h = cfg?.headers
   const a = h && typeof h === 'object' ? (h as Record<string, unknown>).Authorization : undefined
   return typeof a === 'string' && a.startsWith('Bearer ') ? a.slice(7) : null
-}
-
-function portOfMcpConfig(cfg: Record<string, unknown> | null): number | null {
-  const url = cfg && typeof cfg.url === 'string' ? cfg.url : ''
-  if (!url) return null
-  try {
-    const p = new URL(url).port
-    return p ? Number(p) : null
-  } catch {
-    return null
-  }
 }
 
 export class TasksManager extends EventEmitter<ManagerEvents> {
@@ -750,18 +739,39 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /**
    * Config inline de OpenCode para cada modo (base + MCP del usuario + reglas recordadas + skills).
-   * Devuelve también el puerto del MCP del navegador integrado si se usó (Lote D, B.7), para que
-   * `spawn()` lo añada a `extraOutboundPorts` (Seatbelt) cuando el servidor va sandboxeado.
+   * En sandbox devuelve además el proxy MCP (F8-B79): `spawn()` abre solo su puerto en Seatbelt y lo apaga
+   * (con la revocación de los tokens) cuando el proceso termina o no llega a arrancar.
    */
   private async inlineConfig(
     key: string,
     folder: string,
     fullAccess: boolean,
     extras: ExtraFolder[]
-  ): Promise<{ config: Record<string, unknown>; browserMcpPort: number | null; browserToken: string | null }> {
+  ): Promise<{ config: Record<string, unknown>; mcpProxy: McpProxy | null; browserToken: string | null }> {
+    // Proxy MCP FUERA del sandbox (F8-B79): el servidor sandboxeado solo recibe URL loopback + token de sesión; los
+    // secretos reales (token del navegador, cabeceras de los MCP del usuario) se quedan en main. Solo en sandbox.
+    let mcpProxy: McpProxy | null = null
+    try {
+      if (!fullAccess) {
+        mcpProxy = new McpProxy()
+        await mcpProxy.start()
+      }
+      return await this.buildInlineConfig(key, folder, fullAccess, extras, mcpProxy)
+    } catch (err) {
+      await mcpProxy?.stop().catch(() => undefined)
+      throw err
+    }
+  }
+
+  private async buildInlineConfig(
+    key: string,
+    folder: string,
+    fullAccess: boolean,
+    extras: ExtraFolder[],
+    mcpProxy: McpProxy | null
+  ): Promise<{ config: Record<string, unknown>; mcpProxy: McpProxy | null; browserToken: string | null }> {
     let browserMcp: Record<string, unknown> | null = null
     let computerMcp: Record<string, unknown> | null = null
-    let browserMcpPort: number | null = null
     // Idempotente: nos asegura la implementación real del navegador integrado la primera vez que
     // se arranca cualquier servidor de Tareas (sandbox o Control total).
     embeddedBrowserMcp.setApi(embeddedBrowser)
@@ -769,7 +779,6 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // Navegador integrado en Sandbox (Lote D, novedad B.7: antes no había navegador aquí).
       // `browser_*` queda con el permiso por defecto ('ask'), como cualquier otra herramienta de acción del sandbox: sin `deny` explícito.
       browserMcp = await embeddedBrowserMcp.configFor({ product: 'tasks', folder, sandboxed: true }).catch(() => null)
-      browserMcpPort = portOfMcpConfig(browserMcp)
       // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox (ver buildInlineConfig).
     } else {
       computerMcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
@@ -777,8 +786,26 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // Navegador en Control total (Lote D, B.11): el navegador integrado.
       browserMcp = await embeddedBrowserMcp.configFor({ product: 'tasks', folder, sandboxed: false }).catch(() => null)
     }
-    // MCP del usuario disponibles en Tareas (`mcp-tasks.ts`); sus hosts remotos entran a la red.
-    const c = tasksMcpContribution({ sandboxed: !fullAccess })
+    // El token REAL del navegador solo lo conoce main (revocación al terminar): el sandbox ve la ruta del proxy.
+    const realBrowserToken = bearerOfMcpConfig(browserMcp)
+    if (mcpProxy && browserMcp && typeof browserMcp.url === 'string') {
+      try {
+        const route = mcpProxy.addRoute({
+          name: 'browser',
+          url: browserMcp.url,
+          headers: realBrowserToken ? { Authorization: `Bearer ${realBrowserToken}` } : undefined
+        })
+        browserMcp = { ...browserMcp, url: route.url, headers: route.headers }
+      } catch (err) {
+        console.error('[tasks] el navegador integrado no entra en el sandbox:', err instanceof Error ? err.message : 'error')
+        browserMcp = null
+      }
+    }
+    // MCP del usuario disponibles en Tareas (`mcp-tasks.ts`); sus hosts remotos (sin secretos) entran a la red.
+    const c = tasksMcpContribution({ sandboxed: !fullAccess, registerRoute: mcpProxy ? (spec) => mcpProxy.addRoute(spec) : undefined })
+    if (c.blocked.length) {
+      console.warn(`[tasks] MCP no disponibles en el sandbox (secretos en el entorno): ${c.blocked.join(', ')}`)
+    }
     // Con `disableCustomHosts` los hosts de MCP remotos no se suman a la red (política gestionada).
     this.serverHosts.set(key, loadManagedPolicy()?.disableCustomHosts ? [] : c.hosts)
     // Permisos "siempre permitir" recordados para esta carpeta (`rules.ts`).
@@ -791,7 +818,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
       skills: skillsInlineConfig()
     })
-    return { config, browserMcpPort, browserToken: bearerOfMcpConfig(browserMcp) }
+    return { config, mcpProxy, browserToken: realBrowserToken }
   }
 
   private spawn(folder: string, fullAccess: boolean): Promise<TasksServerHandle> {
@@ -813,18 +840,20 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (folder !== normalizeFolder(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
-    const starting = prepared.then(([{ config, browserMcpPort, browserToken }, gateUrl]) => {
+    const starting = prepared.then(([{ config, mcpProxy, browserToken }, gateUrl]) => {
       // El token del MCP del navegador vive en el entorno de `opencode serve` (OPENCODE_CONFIG_CONTENT): se
       // revoca en cuanto ese proceso termina o no llega a arrancar (F8-B69, hallazgos 6 y 10).
       const revokeBrowserToken = (): void => {
         if (browserToken) embeddedBrowserMcp.revokeToken(browserToken)
+        // El proxy MCP muere con el servidor: los tokens de sesión dejan de valer y no queda puerto abierto.
+        void mcpProxy?.stop().catch(() => undefined)
       }
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
-        // Puerto fijo del MCP del navegador integrado (Lote D, B.7): sin esto, Seatbelt bloquearía
-        // la conexión del servidor sandboxeado hacia `http://127.0.0.1:<puerto>/mcp`.
-        extraOutboundPorts: browserMcpPort ? [browserMcpPort] : undefined,
+        // Puerto del proxy MCP (F8-B79): único destino MCP local que Seatbelt deja al servidor sandboxeado. El puerto
+        // del MCP del navegador integrado YA NO se abre: solo el proxy (con el token real) puede hablarle.
+        extraOutboundPorts: mcpProxy ? [mcpProxy.port] : undefined,
         // Estado de OpenCode privado por carpeta (S1): nunca ~/.config|.local/share/opencode.
         isolation: fullAccess
           ? undefined

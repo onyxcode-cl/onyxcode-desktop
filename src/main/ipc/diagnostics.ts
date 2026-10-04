@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { DiagnosticsService } from '../diagnostics/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { appOpencodeConfigPath } from '../extras/mcp-config'
+import { knownMcpProxyTokens } from '../tasks/mcp-proxy'
 import type { OpencodeServer } from '../opencode/server'
 import { handle } from './handle'
 
@@ -18,7 +19,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     home: homedir(),
     mcpConfigPath: appOpencodeConfigPath(),
     server,
-    extraSecrets: () => embeddedBrowserMcp.knownTokens(),
+    extraSecrets: () => [...embeddedBrowserMcp.knownTokens(), ...knownMcpProxyTokens()],
     versions: () => ({
       [app.getName()]: app.getVersion(),
       electron: process.versions.electron,
