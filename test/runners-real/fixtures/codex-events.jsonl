@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"thr_fx"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"a","type":"command_execution","command":"cat x","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"b","type":"file_change","changes":[{"path":"x.ts","kind":"update"}],"status":"completed"}}
+{"type":"mystery.event","foo":1}
+not json
+{"type":"turn.completed","usage":{"input_tokens":50,"cached_input_tokens":10,"output_tokens":7,"reasoning_output_tokens":2}}
