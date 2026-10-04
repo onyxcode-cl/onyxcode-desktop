@@ -85,6 +85,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
@@ -185,6 +190,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
@@ -292,6 +302,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
@@ -402,6 +417,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
@@ -515,6 +535,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
@@ -624,6 +649,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
@@ -722,6 +752,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
+;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
+;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
+(deny process-info*)
+(allow process-info* (target self))
 (deny mach-lookup
   (global-name "com.apple.coreservices.launchservicesd")
   (global-name "com.apple.lsd.open")
