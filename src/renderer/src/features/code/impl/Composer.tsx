@@ -36,7 +36,10 @@ import { ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls
 import { subscribeComposerInbox } from './composer-inbox'
 import { getDraft, setDraft, useDraft } from '../../../stores/drafts'
 import { useCode } from './store'
-import type { Attachment } from './types'
+import type { Attachment, FileAttachment } from './types'
+import { ElementChipRow } from '../../browser/ElementChip'
+import { addElementAttachment, isElementAttachment, type ElementAttachment, type ElementInclude } from '../../browser/element-context'
+import { stopPicking } from '../../browser/pick-state'
 import { Kbd, MOD } from './ui'
 import { validatePhoneAttachments } from './mobile-logic'
 import { SheetAction } from './SheetAction'
@@ -253,7 +256,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
       // Mismos límites que Chat (cantidad, tamaño por tipo y total); los textos se normalizan y siempre sale una URL `data:`.
       const { accepted, errors } = validatePhoneAttachments(
         list.map((f) => ({ name: f.name, type: f.type, size: f.size })),
-        attachments
+        attachments.filter((a): a is FileAttachment => a.kind !== 'element')
       )
       setAttachError(errors.length ? errors.join(' ') : null)
       void Promise.all(accepted.map((i) => toChatAttachment(list[i]!)))
@@ -279,9 +282,11 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   // imagen, si la hay) igual que un adjunto pegado/arrastrado.
   useEffect(() => {
     if (!directory) return
-    return subscribeComposerInbox(directory, ({ text, attachment }) => {
-      setText((t) => (t.trim() ? `${t}\n${text}` : text))
+    return subscribeComposerInbox(directory, ({ text, attachment, element }) => {
+      // El elemento elegido es un chip (no se vuelca al texto): quien escribe añade su petición.
+      if (text) setText((t) => (t.trim() ? `${t}\n${text}` : text))
       if (attachment) setAttachments((a) => [...a, attachment])
+      if (element) setAttachments((a) => addElementAttachment(a, element))
       requestAnimationFrame(() => {
         const el = ref.current
         if (!el) return
@@ -294,6 +299,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }, [directory, setText, setAttachments])
 
   useAutosizeTextarea(ref, text, { max: 260 })
+  const fileAtts = useMemo(() => attachments.filter((a): a is FileAttachment => a.kind !== 'element'), [attachments])
+  const elementAtts = useMemo(() => attachments.filter((a): a is ElementAttachment => isElementAttachment(a)), [attachments])
 
   const clear = (): void => {
     setAttachError(null)
@@ -416,6 +423,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     const atts = attachments
     const draft = { text, mentions, attachments: atts }
     clear()
+    // Al enviar se apaga el modo «Seleccionar elemento» (si seguía activo en el navegador de este proyecto).
+    if (directory) stopPicking({ kind: 'code', directory })
     // H3: el borrador se limpia al instante, pero si el motor no acepta el envío se restaura (salvo que ya se haya escrito algo nuevo).
     const settle = (ok: boolean): void => {
       if (!ok) restore(draft)
@@ -572,9 +581,20 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           <div
             className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md`}
           >
-            {attachments.length > 0 && (
+            <ElementChipRow
+              elements={elementAtts}
+              className={`px-4 ${mobile ? 'pt-5' : 'pt-3'}`}
+              onRemove={(id) => {
+                setAttachments((cur) => cur.filter((x) => x.id !== id))
+                ref.current?.focus()
+              }}
+              onInclude={(id, include: ElementInclude) =>
+                setAttachments((cur) => cur.map((x) => (x.id === id && isElementAttachment(x) ? { ...x, include } : x)))
+              }
+            />
+            {fileAtts.length > 0 && (
               <div className={`flex flex-wrap gap-2 px-4 ${mobile ? 'pt-5' : 'pt-3'}`}>
-                {attachments.map((a) => (
+                {fileAtts.map((a) => (
                   <span
                     key={a.id}
                     className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${mobile ? 'h-16 w-16' : 'h-14 w-14 overflow-hidden'}`}

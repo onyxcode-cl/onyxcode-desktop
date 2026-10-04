@@ -1,6 +1,7 @@
 /**
  * Tipos locales del modo Code.
  */
+import type { ElementAttachment } from '../../browser/element-context'
 import type { Part, Message, PermissionRequest, QuestionInfo, Todo } from '@opencode-ai/sdk/v2/client'
 
 export type CodeAgent = 'build' | 'plan'
@@ -51,13 +52,18 @@ export type { PermissionRequest, Todo }
  */
 export type PermissionMode = 'manual' | 'acceptEdits' | 'plan' | 'auto' | 'bypass'
 
-export interface Attachment {
+export interface FileAttachment {
   id: string
+  /** Ausente en los adjuntos de siempre (y en los borradores guardados); `'element'` es un elemento del navegador. */
+  kind?: 'file'
   name: string
   mime: string
   /** `data:` URL (imágenes pegadas/arrastradas) o `file://` (archivos adjuntados por ruta). */
   url: string
 }
+
+/** Adjunto del compositor: un archivo/imagen o un elemento elegido en el navegador integrado (se convierte en partes al enviar). */
+export type Attachment = FileAttachment | ElementAttachment
 
 export interface QueuedMessage {
   id: string

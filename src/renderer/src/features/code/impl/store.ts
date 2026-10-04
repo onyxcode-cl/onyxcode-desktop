@@ -40,8 +40,10 @@ import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { phoneSafeAttachments } from './mobile-logic'
 import { mentionMime } from './mention-mime'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
+import { ELEMENT_METADATA, elementPartsOf, elementTextsOf, isElementAttachment } from '../../browser/element-context'
 import type {
   Attachment,
+  FileAttachment,
   CodeAgent,
   CodeMessage,
   PendingPermission,
@@ -569,7 +571,9 @@ export const useCode = create<CodeState>((set, get) => {
     attachments: Attachment[],
     agent: CodeAgent,
     model: ModelRef | null,
-    variant: string | null
+    variant: string | null,
+    /** Bloques de elemento ya armados (reintentar un mensaje que los llevaba): se reenvían tal cual. */
+    keptElementTexts: string[] = []
   ): Promise<boolean> => {
     lastAccess.set(sid, ++accessTick)
     // Modelo efectivo: sin ninguna IA conectada no se envía (evita el error técnico del motor).
@@ -600,12 +604,21 @@ export const useCode = create<CodeState>((set, get) => {
       ]
     })
     // Desde el celular solo salen adjuntos `data:` (nunca `file://`: el motor los leería del disco del Mac sin pasar por permisos).
-    const attachParts = (isRemoteSurface() ? phoneSafeAttachments(attachments) : attachments).map((a) => ({
+    const fileAttachments = attachments.filter((a): a is FileAttachment => a.kind !== 'element')
+    const attachParts = (isRemoteSurface() ? phoneSafeAttachments(fileAttachments) : fileAttachments).map((a) => ({
       type: 'file' as const,
       mime: a.mime,
       filename: a.name,
       url: a.url
     }))
+    // Elementos del navegador: un texto sintético (con metadata) y, si la casilla está marcada, la captura `data:`. El
+    // celular no puede elegir elementos, pero sí reintentar uno: su política solo admite `{type,text}`, así que allí el
+    // bloque sale sin `synthetic`/`metadata` (la burbuja lo reconoce igualmente por su marcador).
+    const remote = isRemoteSurface()
+    const elementParts = [
+      ...elementPartsOf(attachments.filter(isElementAttachment)),
+      ...keptElementTexts.map((text) => ({ type: 'text' as const, text, synthetic: true as const, metadata: ELEMENT_METADATA }))
+    ].map((p) => (remote && p.type === 'text' ? { type: 'text' as const, text: p.text } : p))
     try {
       sdkData(
         await client.session.promptAsync({
@@ -615,7 +628,7 @@ export const useCode = create<CodeState>((set, get) => {
           model: sendModel ? { providerID: sendModel.providerID, modelID: sendModel.modelID } : undefined,
           variant: variant ?? undefined,
           // H1: un adjunto sin texto es un mensaje válido (solo partes `file`); no se manda un bloque de texto vacío.
-          parts: [...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []), ...fileParts, ...attachParts]
+          parts: [...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []), ...fileParts, ...elementParts, ...attachParts]
         })
       )
       return true
@@ -873,7 +886,8 @@ export const useCode = create<CodeState>((set, get) => {
         const attachments: Attachment[] = entry.parts
           .filter((p): p is FilePart => p.type === 'file')
           .map((p) => ({ id: p.id, name: p.filename ?? p.url, mime: p.mime, url: p.url }))
-        if (!trimmed && attachments.length === 0) return false
+        const elementTexts = elementTextsOf(entry.parts)
+        if (!trimmed && attachments.length === 0 && elementTexts.length === 0) return false
         if (get().runState[sid] && get().runState[sid] !== 'idle') {
           await client.session.abort({ sessionID: sid, directory: dir }).catch(() => null)
           const until = Date.now() + 5000
@@ -893,7 +907,8 @@ export const useCode = create<CodeState>((set, get) => {
           fsVersion: st.fsVersion + 1
         }))
         const { agent, model, variant } = get()
-        const ok = await doSend(client, dir, sid, trimmed, [], attachments, agent, model, variant)
+        // Los bloques de elemento (texto sintético) también vuelven, o el modelo perdería el contexto de la página.
+        const ok = await doSend(client, dir, sid, trimmed, [], attachments, agent, model, variant, elementTexts)
         if (ok) {
           // El motor consolidó el revert al aceptar el prompt: se quita la marca para no ocultar el mensaje nuevo.
           set((st) => {

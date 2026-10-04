@@ -29,6 +29,8 @@ import { StepGroup, relPath } from './ToolCard'
 import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
+import { ElementReadonlyChip } from '../../browser/ElementChip'
+import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { isRemoteSurface } from '../../../lib/platform'
 
 // ---------------------------------------------------------------------------
@@ -129,9 +131,11 @@ const UserMessage = memo(function UserMessage({
   const [editing, setEditing] = useState(false)
   const [pending, setPending] = useState(false)
   const text = entry.parts
-    .filter((p): p is TextPart => p.type === 'text' && !p.synthetic)
+    .filter((p): p is TextPart => p.type === 'text' && !p.synthetic && !isElementContextText(p.text))
     .map((p) => p.text)
     .join('\n')
+  // Elementos del navegador: el bloque sintético se ve como un chip compacto (con el detalle al abrirlo), nunca como volcado.
+  const elements = useMemo(() => elementTextsOf(entry.parts).flatMap((x) => parseElementContext(x) ?? []), [entry.parts])
   const files = entry.parts.filter((p): p is FilePart => p.type === 'file')
   const [draft, setDraft] = useState(text)
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -146,7 +150,7 @@ const UserMessage = memo(function UserMessage({
       el.setSelectionRange(el.value.length, el.value.length)
     }
   }, [editing])
-  if (!text && files.length === 0) return null
+  if (!text && files.length === 0 && elements.length === 0) return null
   const cancelEdit = (): void => {
     setEditing(false)
     setDraft(text)
@@ -204,6 +208,13 @@ const UserMessage = memo(function UserMessage({
         {...(longPress ? { ...longPress, 'data-long-press': '' } : {})}
         className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap"
       >
+        {elements.length > 0 && (
+          <div className={`${text || files.length > 0 ? 'mb-2 ' : ''}flex flex-wrap gap-1.5 whitespace-normal`} data-testid="user-elements">
+            {elements.map((d, i) => (
+              <ElementReadonlyChip key={i} detail={d} />
+            ))}
+          </div>
+        )}
         {text}
         {files.length > 0 && (
           <div className={`${text ? 'mt-2 ' : ''}flex flex-wrap gap-1.5`}>
