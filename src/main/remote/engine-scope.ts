@@ -117,6 +117,11 @@ export class EngineKnowledge {
     this.models = { set, at: this.now() }
   }
 
+  /** Descarta la lista de modelos para que la próxima consulta la pida de nuevo al motor. */
+  invalidateModels(): void {
+    this.models = null
+  }
+
   modelsFresh(): boolean {
     return !!this.models && this.now() - this.models.at < MODELS_TTL_MS
   }

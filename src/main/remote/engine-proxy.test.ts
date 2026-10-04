@@ -402,7 +402,7 @@ describe('http (motor)', () => {
           http(h, 'POST', '/session/ses_1/prompt_async', { directory: proj }, { ...base, model: { providerID: 'q', modelID: 'z' } })
         )
       ).detail
-    ).toBe('model-unknown')
+    ).toBe('model-unknown:q/z')
     const ok = await http(
       h,
       'POST',

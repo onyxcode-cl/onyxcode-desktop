@@ -319,12 +319,14 @@ export class EngineProxy implements MuxDispatch {
     // Solo si la política necesita algo que aún no sabe (sesión, modelo, tipo de permiso) se consulta al motor y se decide de nuevo.
     const isPermReply = PERMISSION_PATH_RES.some((re) => re.test(path))
     const unknown = !('confirm' in d) && !d.allow && (d.reason === 'session-unknown' || d.reason === 'model-unknown')
+    // Un modelo desconocido puede ser una lista vieja o vacía (p. ej. pedida antes de conectar la IA): se vuelve a pedir una vez.
+    if (!('confirm' in d) && !d.allow && d.reason === 'model-unknown') this.s.knowledge.invalidateModels()
     if (unknown || (isPermReply && 'confirm' in d)) {
       await this.prefetch(target, method, path, dirReal, body, ctx)
       d = decide(pol, await this.pctx())
     }
     if ('confirm' in d) await this.confirmed(d.channel, { eng: req.eng, method, path, query, body }, d, ctx)
-    else if (!d.allow) throw forbidden(d.reason)
+    else if (!d.allow) throw forbidden(d.reason === 'model-unknown' ? modelDetail(body, d.reason) : d.reason)
     if (ctx.signal.aborted) throw new MuxError('cancelled')
 
     // 4. Archivos sensibles: nunca, aunque la política deje leer el directorio.
@@ -584,4 +586,12 @@ export function stripSecretKeys(v: unknown, depth = 0): unknown {
     out[k] = stripSecretKeys(x, depth + 1)
   }
   return out
+}
+
+/** `model-unknown:<proveedor/modelo>` para el registro (ids de modelo, nunca secretos; solo caracteres seguros). */
+function modelDetail(body: unknown, reason: string): string {
+  const m =
+    typeof body === 'object' && body !== null ? ((body as Record<string, unknown>).model as Record<string, unknown> | undefined) : undefined
+  const key = m && typeof m.providerID === 'string' && typeof m.modelID === 'string' ? `${m.providerID}/${m.modelID}` : ''
+  return /^[A-Za-z0-9._/-]{1,70}$/.test(key) ? `${reason}:${key}` : reason
 }

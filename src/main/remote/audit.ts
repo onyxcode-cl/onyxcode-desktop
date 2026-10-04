@@ -39,6 +39,8 @@ export interface AuditInput {
   ch?: string
   /** Clase de la política (`R`/`M`/`D`/`X`). */
   cls?: string
+  /** Motivo fijo del rechazo (código corto de la política, nunca texto libre). */
+  why?: string
   /** Fallos de PIN acumulados. */
   n?: number
 }
@@ -48,6 +50,7 @@ export interface AuditEntry extends AuditInput {
 }
 
 const CH_RE = /^[A-Za-z0-9:._/ {}*-]{1,96}$/
+const WHY_RE = /^[A-Za-z0-9:._/-]{1,90}$/
 const FP_RE = /^[0-9a-f]{8}$/
 
 /** Deja solo los campos conocidos y válidos. */
@@ -58,6 +61,7 @@ export function sanitizeAudit(i: AuditInput, ts: number): AuditEntry | null {
   if (typeof i.name === 'string') e.name = sanitizeDeviceName(i.name) || '?'
   if (typeof i.ch === 'string') e.ch = CH_RE.test(i.ch) ? i.ch : '?'
   if (i.cls === 'R' || i.cls === 'M' || i.cls === 'D' || i.cls === 'X') e.cls = i.cls
+  if (typeof i.why === 'string' && WHY_RE.test(i.why)) e.why = i.why
   if (typeof i.n === 'number' && Number.isInteger(i.n) && i.n >= 0 && i.n <= 1000) e.n = i.n
   return e
 }

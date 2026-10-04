@@ -271,7 +271,7 @@ export function guardDispatch(
   gate: AccessGate,
   opts: {
     isRead?: (r: CallRequest | HttpRequest) => boolean
-    onPolicyDenied?: (r: { ch: string; cls: 'X' }) => void
+    onPolicyDenied?: (r: { ch: string; cls: 'X'; why?: string }) => void
   } = {}
 ): MuxDispatch | undefined {
   if (!inner) return inner
@@ -281,7 +281,8 @@ export function guardDispatch(
     try {
       return await fn()
     } catch (err) {
-      if (err instanceof MuxError && err.code === 'forbidden') opts.onPolicyDenied?.({ ch, cls: 'X' })
+      if (err instanceof MuxError && err.code === 'forbidden')
+        opts.onPolicyDenied?.({ ch, cls: 'X', ...(typeof err.detail === 'string' ? { why: err.detail } : {}) })
       throw err
     }
   }
