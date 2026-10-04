@@ -20,6 +20,7 @@
     "src/main/migrations/legacy-names.ts",
     "src/test/**/*"
   ],
+  "exclude": ["src/test/pwa-i18n.test.ts", "src/renderer/remote/full.test.ts"],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",

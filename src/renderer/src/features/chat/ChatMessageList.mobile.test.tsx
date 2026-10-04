@@ -44,14 +44,14 @@ describe('ChatToolCall', () => {
   } as never)
   it('celular: fila humanizada de Code (verbo, sin JSON crudo)', () => {
     surface('remote')
-    const html = renderToStaticMarkup(<ChatToolCall part={part} />)
+    const html = renderToStaticMarkup(<ChatToolCall part={part as never} />)
     expect(html).toContain('Leyó')
     expect(html).toContain('min-h-11')
     expect(html).not.toContain('{&quot;')
   })
   it('escritorio: la tarjeta de siempre con el nombre de la herramienta', () => {
     surface('darwin')
-    const html = renderToStaticMarkup(<ChatToolCall part={part} />)
+    const html = renderToStaticMarkup(<ChatToolCall part={part as never} />)
     expect(html).toContain('font-mono')
     expect(html).not.toContain('Leyó')
   })
