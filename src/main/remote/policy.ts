@@ -18,6 +18,7 @@
 import { homedir } from 'node:os'
 import { isAbsolute, resolve, sep } from 'node:path'
 import type { RemoteText } from '@shared/ipc-remote'
+import { cleanDetail, previewText } from './confirm-detail'
 
 export type PolicyClass = 'R' | 'M' | 'D' | 'X'
 
@@ -46,6 +47,8 @@ export interface PolicyContext {
   knownModels?: ReadonlySet<string>
   /** Tipo (`edit`, `bash`, `external_directory`…) del permiso pendiente; desconocido = se trata como peligroso. */
   permissionKind?: (requestId: string) => string | undefined
+  /** Qué pide el permiso pendiente (comando, rutas o patrones), ya recortado, para mostrarlo en la confirmación. */
+  permissionDetail?: (requestId: string) => string[] | undefined
   /** ¿Es carpeta? `undefined` = no se sabe → se trata como carpeta (D). */
   isDirectory?: (absPath: string) => boolean | undefined
   /** Para mostrar rutas con `~` (por defecto `os.homedir()`). */
@@ -1023,7 +1026,40 @@ function matchRoute(method: string, path: string): { entry: RouteEntry; params: 
 
 // ─────────────────────────────── resúmenes para la confirmación ───────────────────────────────
 
-type Summary = (p: Record<string, unknown>, home: string) => { text: RemoteText; detail: string[] }
+interface SummaryExtra {
+  ctx: PolicyContext
+  params: Record<string, string>
+}
+type Summary = (p: Record<string, unknown>, home: string, x: SummaryExtra) => { text: RemoteText; detail: string[] }
+
+/** `{permission, pattern, action}[]` (o cualquier forma) → una línea por regla, para ver qué se concede. */
+function ruleLines(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v.map((r) => {
+      const o = rec(r)
+      return isStr(o.action) || isStr(o.permission) || isStr(o.pattern)
+        ? `${String(o.action ?? '?')} ${String(o.permission ?? '?')} ${String(o.pattern ?? '*')}`
+        : JSON.stringify(r)
+    })
+  }
+  return v === undefined ? [] : [JSON.stringify(v)]
+}
+
+function scheduleLine(s: unknown): string {
+  const o = rec(s)
+  switch (o.kind) {
+    case 'daily':
+      return `cada día ${String(o.time)}`
+    case 'weekly':
+      return `cada semana (día ${String(o.day)}) ${String(o.time)}`
+    case 'interval':
+      return `cada ${String(o.hours)} h`
+    case 'cron':
+      return `cron ${String(o.expr)}`
+    default:
+      return JSON.stringify(s) ?? ''
+  }
+}
 
 const folderLine = (p: Record<string, unknown>, key: string, home: string): string[] => (isStr(p[key]) ? [tilde(p[key], home)] : [])
 const t = (es: string, en: string): RemoteText => ({ es, en })
@@ -1042,7 +1078,7 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
   }),
   'settings:set': (p) => ({
     text: t('Cambiar las instrucciones globales de las tareas', 'Change the global task instructions'),
-    detail: isStr(p.tasksGlobalInstructions) ? [p.tasksGlobalInstructions.slice(0, 200)] : []
+    detail: previewText(p.tasksGlobalInstructions)
   }),
   'settings:addRecentFolder': (p, h) => ({
     text: t('Añadir una carpeta a las recientes', 'Add a folder to the recent list'),
@@ -1063,11 +1099,15 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
   'tasks:fullAccess:consent': () => ({ text: t('Aceptar el aviso de control total', 'Accept the full-control notice'), detail: [] }),
   'tasks:project:save': (p, h) => ({
     text: t('Cambiar las instrucciones o enlaces de un proyecto', "Change a project's instructions or links"),
-    detail: folderLine(p, 'folder', h)
+    detail: [
+      ...folderLine(p, 'folder', h),
+      ...previewText(p.instructions),
+      ...(Array.isArray(p.links) ? p.links.map((l) => `enlace: ${isStr(l) ? l : JSON.stringify(l)}`) : [])
+    ]
   }),
   'tasks:memory:save': (p, h) => ({
     text: t('Reescribir la memoria de un proyecto', "Rewrite a project's memory"),
-    detail: folderLine(p, 'folder', h)
+    detail: [...folderLine(p, 'folder', h), ...previewText(p.content)]
   }),
   'tasks:memory:delete': (p, h) => ({
     text: t('Borrar la memoria de un proyecto', "Delete a project's memory"),
@@ -1097,7 +1137,11 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     detail: [
       String(p.name ?? ''),
       ...folderLine(p, 'folder', h),
-      ...(p.fullAccess === true ? [t('Con control total', 'With full control').es] : [])
+      `${scheduleLine(p.schedule)}${p.enabled === false ? ' (apagada)' : ''}`,
+      ...(p.fullAccess === true ? [t('Con control total', 'With full control').es] : []),
+      ...previewText(p.prompt, 6, 200),
+      ...(Array.isArray(p.allowHosts) && p.allowHosts.length > 0 ? [`sitios permitidos: ${p.allowHosts.map(String).join(', ')}`] : []),
+      ...(Array.isArray(p.allow) && p.allow.length > 0 ? [`permisos fijos: ${p.allow.map((r) => ruleLines([r])[0]).join('; ')}`] : [])
     ]
   }),
   'routines:toggle': () => ({ text: t('Activar una rutina', 'Turn a routine on'), detail: [] }),
@@ -1146,11 +1190,15 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
   }),
   'tasks:agentsMd:save': (p, h) => ({
     text: t('Reescribir el archivo AGENTS.md de un proyecto', "Rewrite a project's AGENTS.md file"),
-    detail: folderLine(p, 'folder', h)
+    detail: [...folderLine(p, 'folder', h), ...previewText(p.content)]
   }),
   'tasks:rules:add': (p, h) => ({
     text: t('Recordar un permiso para un proyecto', 'Remember a permission for a project'),
-    detail: [String(p.permission), ...folderLine(p, 'folder', h)]
+    detail: [
+      String(p.permission),
+      ...(Array.isArray(p.patterns) ? p.patterns.map((x) => `patrón: ${String(x)}`) : ['patrón: ?']),
+      ...folderLine(p, 'folder', h)
+    ]
   }),
   'computer:prefs:set': () => ({ text: t('Pasar el control del Mac a modo completo', 'Switch Mac control to full mode'), detail: [] }),
   'tasks:auto:set': () => ({ text: t('Cambiar el modo automático', 'Change auto mode'), detail: [] }),
@@ -1183,40 +1231,59 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     text: t('Permitir a un sitio o acción del navegador', 'Allow a browser site or action'),
     detail: [String(p.decision)]
   }),
-  'POST /permission/{requestID}/reply': (p) => ({
-    text: t(
-      'Permitir una vez una acción fuera de la carpeta del proyecto o de Control del Mac',
-      'Allow once an action outside the project folder or Mac control'
-    ),
-    detail: [String(p.reply ?? p.response ?? '')]
+  'POST /permission/{requestID}/reply': (p, _h, x) => permissionReplySummary(p, x),
+  'POST /session/{sessionID}/permissions/{permissionID}': (p, _h, x) => permissionReplySummary(p, x),
+  'PATCH /session/{sessionID}': (p) => ({
+    text: t('Cambiar los permisos de una sesión', "Change a session's permissions"),
+    detail: ruleLines(p.permission)
   }),
-  'POST /session/{sessionID}/permissions/{permissionID}': (p) => ({
-    text: t(
-      'Permitir una vez una acción fuera de la carpeta del proyecto o de Control del Mac',
-      'Allow once an action outside the project folder or Mac control'
-    ),
-    detail: [String(p.reply ?? p.response ?? '')]
-  }),
-  'PATCH /session/{sessionID}': () => ({ text: t('Cambiar los permisos de una sesión', "Change a session's permissions"), detail: [] }),
-  'POST /session': () => ({ text: t('Crear una sesión con permisos propios', 'Create a session with its own permissions'), detail: [] })
+  'POST /session': (p) => ({
+    text: t('Crear una sesión con permisos propios', 'Create a session with its own permissions'),
+    detail: ruleLines(p.permission)
+  })
 }
 
-function summaryFor(key: string, req: PolicyRequest, home: string): { summary: RemoteText; detail: string[] } {
+/** Qué se aprueba al responder un permiso pendiente: tipo y comando/rutas/patrones que el motor pide. */
+function permissionReplySummary(p: Record<string, unknown>, x: SummaryExtra): { text: RemoteText; detail: string[] } {
+  const id = x.params.requestID ?? x.params.permissionID
+  const kind = id ? x.ctx.permissionKind?.(id) : undefined
+  const what = id ? x.ctx.permissionDetail?.(id) : undefined
+  return {
+    text: t(
+      'Permitir una vez una acción fuera de la carpeta del proyecto o de Control del Mac',
+      'Allow once an action outside the project folder or Mac control'
+    ),
+    detail: [
+      String(p.reply ?? p.response ?? ''),
+      kind !== undefined ? `tipo: ${kind}` : 'tipo: desconocido',
+      ...(what && what.length > 0 ? what : ['(no se pudo saber qué pide; compruébalo en el Mac)'])
+    ]
+  }
+}
+
+function summaryFor(
+  key: string,
+  req: PolicyRequest,
+  ctx: PolicyContext,
+  params: Record<string, string>
+): { summary: RemoteText; detail: string[] } {
+  const home = ctx.home ?? homedir()
   const payload = req.kind === 'ipc' ? rec(req.payload) : { ...rec(req.body), directory: req.query?.directory }
   const s = CELULAR_SUMMARIES[key]
   if (!s) return { summary: t(`Acción sensible: ${key}`, `Sensitive action: ${key}`), detail: [] }
-  const r = s(payload, home)
+  const r = s(payload, home, { ctx, params })
   const dir = req.kind === 'http' && isStr(req.query?.directory) ? [tilde(req.query.directory, home)] : []
-  return { summary: r.text, detail: [...dir, ...r.detail].filter((x) => x !== '') }
+  // Texto del celular: sin saltos ni secretos, con tope de longitud y de líneas (el dueño decide leyéndolo).
+  return { summary: r.text, detail: cleanDetail([...dir, ...r.detail]) }
 }
 
 // ─────────────────────────────── decide ───────────────────────────────
 
-function finish(o: Outcome, key: string, req: PolicyRequest, ctx: PolicyContext): PolicyDecision {
+function finish(o: Outcome, key: string, req: PolicyRequest, ctx: PolicyContext, params: Record<string, string> = {}): PolicyDecision {
   if (typeof o === 'object') return { allow: false, reason: o.deny }
   if (o === 'X') return { allow: false, reason: 'forbidden' }
   if (o === 'D') {
-    const { summary, detail } = summaryFor(key, req, ctx.home ?? homedir())
+    const { summary, detail } = summaryFor(key, req, ctx, params)
     return { confirm: true, summary, detail, channel: key }
   }
   return { allow: true, class: o }
@@ -1250,7 +1317,7 @@ export function decide(request: PolicyRequest, ctx: PolicyContext): PolicyDecisi
       if (!m) return { allow: false, reason: 'unknown-route' }
       const spec = m.entry.spec
       const o = typeof spec === 'function' ? spec({ req: { ...request, method }, params: m.params }, ctx) : spec
-      return finish(o, m.entry.key, request, ctx)
+      return finish(o, m.entry.key, request, ctx, m.params)
     }
   } catch {
     return { allow: false, reason: 'policy-error' }

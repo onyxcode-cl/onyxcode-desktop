@@ -209,3 +209,22 @@ describe('ConfirmQueue', () => {
     expect(dismissed.map((d) => d[1])).toEqual(['cancelled', 'cancelled'])
   })
 })
+
+describe('hallazgo 5: el detalle que llega a la interfaz está acotado', () => {
+  it('la cola limpia saltos, secretos y tamaños aunque quien llama no lo haga', () => {
+    const shown: RemoteConfirmRequest[] = []
+    const q = new ConfirmQueue({ ui: { present: (i) => shown.push(i), dismiss: () => undefined } })
+    void q.request({
+      deviceId: 'd',
+      deviceName: 'iPhone',
+      channel: 'x:y',
+      payload: {},
+      summary: { es: 'a\nb', en: 'c' },
+      detail: ['uno\ndos', 'y'.repeat(1000), ...Array.from({ length: 50 }, (_, i) => `l${i}`)]
+    })
+    const info = shown[0] as RemoteConfirmRequest
+    expect(info.detail.length).toBeLessThanOrEqual(12)
+    expect(info.detail.every((l) => l.length <= 240 && !l.includes('\n'))).toBe(true)
+    expect(info.summary.es).toBe('a b')
+  })
+})

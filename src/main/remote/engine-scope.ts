@@ -85,6 +85,7 @@ const MODELS_TTL_MS = 60_000
 export class EngineKnowledge {
   private readonly sessions = new Map<string, string>()
   private readonly perms = new Map<string, string>()
+  private readonly permDetails = new Map<string, string[]>()
   private models: { set: Set<string>; at: number } | null = null
 
   constructor(private readonly now: () => number = Date.now) {}
@@ -103,10 +104,20 @@ export class EngineKnowledge {
     return this.sessions.get(id)
   }
 
-  learnPermission(id: unknown, kind: unknown): void {
+  learnPermission(id: unknown, kind: unknown, detail?: string[]): void {
     if (typeof id !== 'string' || id === '' || typeof kind !== 'string') return
-    if (this.perms.size >= MAX_PERMS && !this.perms.has(id)) this.perms.delete(this.perms.keys().next().value as string)
+    if (this.perms.size >= MAX_PERMS && !this.perms.has(id)) {
+      const old = this.perms.keys().next().value as string
+      this.perms.delete(old)
+      this.permDetails.delete(old)
+    }
     this.perms.set(id, kind)
+    if (detail && detail.length > 0) this.permDetails.set(id, detail)
+  }
+
+  /** Qué pide un permiso pendiente (comando, rutas, patrones), para la confirmación en el Mac. */
+  permissionDetail(id: string): string[] | undefined {
+    return this.permDetails.get(id)
   }
 
   permissionKind(id: string): string | undefined {
@@ -129,6 +140,25 @@ export class EngineKnowledge {
   knownModels(): ReadonlySet<string> | undefined {
     return this.models?.set
   }
+}
+
+/**
+ * Líneas que describen lo que pide un permiso del motor (`{permission, patterns, metadata}`): los patrones (comando de `bash`,
+ * rutas de `external_directory`…) y, si el motor los manda, el comando, la ruta o la dirección. Texto recortado; sin secretos
+ * no se garantiza aquí (el diálogo lo limpia con `confirm-detail.ts`).
+ */
+export function permissionDetailLines(p: unknown): string[] {
+  const o = (typeof p === 'object' && p !== null ? p : {}) as { patterns?: unknown; metadata?: unknown }
+  const out: string[] = []
+  const pats = Array.isArray(o.patterns) ? o.patterns.filter((x): x is string => typeof x === 'string') : []
+  for (const x of pats.slice(0, 6)) out.push(x)
+  if (pats.length > 6) out.push(`… (+${pats.length - 6})`)
+  const m = (typeof o.metadata === 'object' && o.metadata !== null ? o.metadata : {}) as Record<string, unknown>
+  for (const k of ['command', 'filepath', 'filePath', 'path', 'parentDir', 'url']) {
+    const v = m[k]
+    if (typeof v === 'string' && v !== '' && !out.includes(v)) out.push(`${k}: ${v}`)
+  }
+  return out
 }
 
 /** `providerID/modelID` de las respuestas de `provider.list` (solo proveedores conectados). */

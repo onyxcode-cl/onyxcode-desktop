@@ -637,3 +637,29 @@ describe('hallazgo 1: archivos sensibles fuera de /file/content', () => {
     expect(JSON.parse(j.body)).not.toContain('SECRETO')
   })
 })
+
+describe('hallazgo 5: el diálogo del permiso muestra qué pide el motor', () => {
+  it('POST /permission/.../reply (external_directory) enseña patrones y comando', async () => {
+    const shown: string[][] = []
+    const q: ConfirmQueue = new ConfirmQueue({
+      ui: {
+        present: (i) => {
+          shown.push(i.detail)
+          queueMicrotask(() => q.resolve(i.requestId, false))
+        },
+        dismiss: () => undefined
+      }
+    })
+    const h = make({ confirm: q })
+    h.engine.handler = async (u) => {
+      if (u.pathname === '/permission')
+        return {
+          json: [{ id: 'per_9', permission: 'external_directory', patterns: ['/Users/x/.ssh/*'], metadata: { command: 'cat ~/.ssh/id_rsa' } }]
+        }
+      return { json: true }
+    }
+    await code(http(h, 'POST', '/permission/per_9/reply', { directory: proj }, { reply: 'once' }))
+    expect(shown[0]?.join('\n')).toContain('/Users/x/.ssh/*')
+    expect(shown[0]?.join('\n')).toContain('cat ~/.ssh/id_rsa')
+  })
+})

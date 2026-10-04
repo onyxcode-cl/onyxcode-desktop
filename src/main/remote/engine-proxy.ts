@@ -22,7 +22,7 @@ import type { OpencodeConnection } from '@shared/types'
 import type { TasksConnection } from '@shared/ipc-tasks'
 import type { CallFrame, HttpFrame } from '@shared/remote/protocol'
 import { ConfirmQueue, callDigest } from './confirm-queue'
-import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList } from './engine-scope'
+import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList, permissionDetailLines } from './engine-scope'
 import { EngineRegistry, type EngineTarget } from './engine-registry'
 import { trimIpcEvent } from './event-trim'
 import { dropSensitiveEntries, filterRawDiff, scrubDiffLists, sensitiveRel } from './diff-filter'
@@ -194,6 +194,7 @@ export class EngineProxy implements MuxDispatch {
       sessionDir: (id) => this.s.knowledge.sessionDir(id),
       knownModels: this.s.knowledge.knownModels(),
       permissionKind: (id) => this.s.knowledge.permissionKind(id),
+      permissionDetail: (id) => this.s.knowledge.permissionDetail(id),
       isDirectory: isDirectorySync
     }
   }
@@ -426,7 +427,7 @@ export class EngineProxy implements MuxDispatch {
         const r = await this.internalGet(target, '/permission', { directory: dir as string }, ctx.signal)
         for (const p of Array.isArray(r) ? r : []) {
           const pr = p as Record<string, unknown>
-          k.learnPermission(pr.id, pr.permission)
+          k.learnPermission(pr.id, pr.permission, permissionDetailLines(pr))
         }
       }
     }
@@ -599,7 +600,7 @@ export class EngineProxy implements MuxDispatch {
     if (key === 'GET /permission') {
       for (const p of Array.isArray(data) ? data : []) {
         const pr = (p ?? {}) as Record<string, unknown>
-        k.learnPermission(pr.id, pr.permission)
+        k.learnPermission(pr.id, pr.permission, permissionDetailLines(pr))
       }
       return data
     }

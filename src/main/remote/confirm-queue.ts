@@ -10,6 +10,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import type { RemoteConfirmRequest, RemoteText } from '@shared/ipc-remote'
+import { cleanDetail, cleanLine } from './confirm-detail'
 
 export const CONFIRM_LIMITS = {
   maxPending: 2,
@@ -132,8 +133,9 @@ export class ConfirmQueue {
           deviceName: input.deviceName,
           deviceFingerprint: deviceFingerprint(input.deviceId),
           channel: input.channel,
-          summary: input.summary,
-          detail: input.detail ?? []
+          // Doble red: aunque quien llama no lo haya hecho, el detalle sale sin saltos, secretos ni longitudes absurdas.
+          summary: { es: cleanLine(input.summary.es, 300), en: cleanLine(input.summary.en, 300) },
+          detail: cleanDetail(input.detail ?? [])
         },
         waiters: [resolve],
         timer: undefined,
