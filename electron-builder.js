@@ -57,6 +57,8 @@ module.exports = {
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
     '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}',
     '!resources/launcher/**',
+    // Recursos del backend WSL de Tareas (F8-B81): aún sin empaquetar (Tareas en Windows está apagada); no van en el .asar.
+    '!resources/wsl/**',
     // El script de reemplazo del actualizador va por extraResources (sellado), no dentro del .asar.
     '!resources/updater/**',
     // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
