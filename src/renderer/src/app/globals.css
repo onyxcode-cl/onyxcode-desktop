@@ -143,6 +143,7 @@
   --animate-m-push: m-push var(--dur-push, 260ms) var(--ease-out) backwards;
   --animate-m-pop: m-pop var(--dur-pop, 220ms) var(--ease-out) backwards;
   --animate-m-tab: fade-in var(--dur-tab, 140ms) var(--ease-out) backwards;
+  --animate-m-sheet-up: sheet-up var(--dur-sheet-in, 320ms) var(--ease-sheet, var(--ease-out)) backwards;
   --animate-sheet-down: sheet-down var(--dur-sheet-out, 220ms) var(--ease-sheet, var(--ease-out)) both;
   --animate-fade-out: fade-out var(--dur-sheet-out, 220ms) var(--ease-out) both;
 }
@@ -799,4 +800,30 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
   background-size: 14px;
+}
+
+/* ---------- Brillo de «pensando» en el celular (F8-B65) ----------
+ * En el escritorio el brillo anima `background-position` sobre texto recortado (repinta cada fotograma). En el celular se
+ * usa un color sólido y un pulso de opacidad, que lo resuelve el compositor sin repintar mientras el agente trabaja. */
+@keyframes shimmer-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+[data-surface='mobile'] .text-shimmer {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: var(--fg-muted);
+  animation: shimmer-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-surface='mobile'] .text-shimmer {
+    animation: none;
+    opacity: 1;
+  }
 }

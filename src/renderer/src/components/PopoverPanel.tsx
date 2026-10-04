@@ -18,13 +18,14 @@ interface Props extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
  * Los cierres «al hacer clic fuera» de cada menú deben ignorar lo que está dentro de `[data-sheet]` (la hoja vive en un portal).
  */
 export function PopoverPanel({ open, onClose, title, size, children, ...rest }: Props): React.JSX.Element | null {
-  if (!open) return null
   if (isRemoteSurface()) {
+    // La hoja decide cuándo desmontarse (anima la salida), por eso recibe `open` en vez de devolver null aquí.
     return (
-      <Sheet open onClose={onClose} title={title} size={size}>
+      <Sheet open={open} onClose={onClose} title={title} size={size}>
         <div className="flex flex-col gap-1 p-2">{children}</div>
       </Sheet>
     )
   }
+  if (!open) return null
   return <div {...rest}>{children}</div>
 }

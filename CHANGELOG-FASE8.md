@@ -790,3 +790,10 @@ Reconcilia el armazón (F8-B58) con Code para celular (F8-B59), que se habían h
 - **Peso de la PWA** (`scripts/build-pwa.mjs`, ahora cuenta también el CSS `boot-*.css` y muestra los perezosos): arranque 391,1 KB gzip (el recuento anterior omitía 16,6 KB de CSS: 374,5 KB con el método viejo); perezosos 150,1 KB (Ajustes 35, Tareas 34,8 + lista 9,8, inglés 50, Rutinas 10,6…). Cambios/Archivos no se pueden separar sin tocar el diseño de escritorio (lo importa de forma estática).
 - **Pruebas**: `nav-history.test.ts`, `MobileShell.render.test.tsx` (una cabecera y una lista, Cambios/Archivos en la pila, atrás, cambio de pestaña, cerrar proyecto) y navegación (`replace`, `resetTab`). Verificación visual desechable con Chromium (390×844 y 360×800, claro/oscuro) sobre el núcleo real y un motor falso; no se deja en el repo.
 - **Sin verificar**: nada en iPhone/Android reales (gesto atrás del sistema, teclado virtual, zona segura real); en Chromium el «atrás» se probó con `history.back()`.
+
+## F8-B62 - Hojas, diálogos y avisos del celular (HOJAS)
+- `Sheet.tsx`: salida animada 220 ms (`animate-sheet-down` + velo `animate-fade-out`), entrada 320 ms con `--ease-sheet` (`animate-m-sheet-up`), temporizador de cierre seguro de 300 ms que se cancela si se reabre, velo con `--m-backdrop` que baja al arrastrar, vuelta animada al soltar, asa 36x5, radio `--m-radius-sheet`, título centrado.
+- `PopoverPanel` y `ModelPicker` (celular) pasan `open` a la hoja para animar la salida; el escritorio no cambia. Selector de modelo: filas y cabeceras con atributos `data-model-*` (CSS móvil).
+- `ConfirmDialog`: atributos `data-confirm-*` solo en el celular; CSS en `features/code/impl/mobile.css` (scrim `--m-backdrop` también en oscuro, botones apilados de 50 px). `RemoteConfirmHost`: detalle con tope y scroll, botones siempre visibles.
+- `components/mobile/Toast.tsx` (`showToast`, `MobileToastHost`); el host lo aloja `ConfirmDialogHost` (no pinta nada en escritorio).
+- Nota: `--animate-sheet-up` global no se cambia (lo vigila `desktop-unchanged.test.tsx`); la hoja usa `--animate-m-sheet-up`.

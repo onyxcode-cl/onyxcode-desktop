@@ -104,28 +104,28 @@ export function RemoteConfirmHost(): React.JSX.Element | null {
   })
 
   return (
-    <div className="fixed inset-0 z-[310] flex items-center justify-center bg-fg/30 p-6 animate-fade-in">
+    <div className="fixed inset-0 z-[310] flex items-center justify-center bg-fg/30 p-6 animate-fade-in" data-confirm-scrim="">
       <div
         ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="remote-confirm-title"
         aria-describedby="remote-confirm-body"
-        className="w-full max-w-md rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+        className="flex max-h-full w-full max-w-md flex-col rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
       >
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+        <div className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <ShieldAlert size={20} />
         </div>
-        <h3 id="remote-confirm-title" className="text-base font-semibold">
+        <h3 id="remote-confirm-title" className="shrink-0 text-base font-semibold">
           {t('remote.confirm.title')}
         </h3>
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 shrink-0 text-xs text-muted">
           {t('remote.confirm.from', { name: req.deviceName, fingerprint: req.deviceFingerprint, time: when })}
         </p>
-        <div id="remote-confirm-body" className="mt-3 space-y-2">
+        <div id="remote-confirm-body" className="mt-3 min-h-0 space-y-2 overflow-y-auto overscroll-contain">
           <p className="text-sm font-medium text-fg">{req.summary[lang]}</p>
           {req.detail.length > 0 && (
-            <ul className="space-y-0.5 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-xs text-muted">
+            <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-lg border border-border bg-bg px-3 py-2 font-mono text-xs text-muted">
               {req.detail.map((d, i) => (
                 <li key={i} className="break-all">
                   {d}
@@ -136,15 +136,15 @@ export function RemoteConfirmHost(): React.JSX.Element | null {
           <p className="text-xs text-muted">{t('remote.confirm.warn')}</p>
         </div>
         {req.channel === CONNECT_CHANNEL && (
-          <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
+          <label className="mt-3 flex shrink-0 cursor-pointer items-center gap-2 text-sm">
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
             {t('remote.confirm.remember')}
           </label>
         )}
-        <p className="mt-3 text-xs font-medium text-fg" aria-live="off">
+        <p className="mt-3 shrink-0 text-xs font-medium text-fg" aria-live="off">
           {t('remote.confirm.expiresIn', { seconds: view.secondsLeft })}
         </p>
-        <div className="mt-4 flex justify-end gap-2">
+        <div data-remote-confirm-actions="" className="mt-4 flex shrink-0 justify-end gap-2">
           <Button data-reject variant="secondary" onClick={() => answer(false)} autoFocus>
             {t('remote.confirm.reject')}
           </Button>

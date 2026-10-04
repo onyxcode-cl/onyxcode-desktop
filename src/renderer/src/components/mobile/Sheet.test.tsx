@@ -3,7 +3,15 @@ import { resolve } from 'node:path'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { SHEET_CLOSE_DISTANCE, SheetView, createSheetStack, sheetStyle, shouldCloseOnDrag } from './Sheet'
+import {
+  SHEET_CLOSE_DISTANCE,
+  SHEET_CLOSE_SAFETY_MS,
+  SheetView,
+  dragBackdropOpacity,
+  createSheetStack,
+  sheetStyle,
+  shouldCloseOnDrag
+} from './Sheet'
 
 const html = (size?: 'half' | 'full'): string =>
   renderToStaticMarkup(
@@ -60,5 +68,29 @@ describe('Sheet (hoja inferior modal)', () => {
     expect(css).toContain('--animate-sheet-up')
     const rm = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
     expect(rm).toContain('animation-duration: 0.01ms !important')
+  })
+
+  it('al cerrar usa sheet-down y el velo se desvanece; abierta, sheet-up', () => {
+    const closing = renderToStaticMarkup(createElement(SheetView, { onClose: () => undefined, title: 'x', closing: true, children: 'a' }))
+    expect(closing).toContain('animate-sheet-down')
+    expect(closing).toContain('animate-fade-out')
+    expect(closing).toContain('pointer-events-none')
+    expect(html()).toContain('animate-m-sheet-up')
+    expect(html()).not.toContain('animate-sheet-down')
+    expect(html()).toContain('var(--m-backdrop)')
+  })
+
+  it('el fondo baja de opacidad al arrastrar y el temporizador seguro supera los 220 ms', () => {
+    expect(dragBackdropOpacity(0)).toBe(1)
+    expect(dragBackdropOpacity(200)).toBe(0.5)
+    expect(dragBackdropOpacity(900)).toBe(0)
+    expect(dragBackdropOpacity(-5)).toBe(1)
+    expect(SHEET_CLOSE_SAFETY_MS).toBeGreaterThan(220)
+  })
+
+  it('globals.css define la entrada con la curva de hoja y la salida', () => {
+    const css = readFileSync(resolve(__dirname, '../../app/globals.css'), 'utf8')
+    expect(css).toMatch(/--animate-m-sheet-up: sheet-up var\(--dur-sheet-in[^;]*--ease-sheet[^;]*backwards;/)
+    expect(css).toContain('--animate-sheet-down')
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useT } from '../../lib/i18n'
@@ -40,6 +40,14 @@ export function createSheetStack(): { open: () => symbol; close: (id: symbol) =>
 }
 const stack = createSheetStack()
 
+/** Margen (ms) tras el cual una hoja que se está cerrando se desmonta aunque `animationend` no llegue. */
+export const SHEET_CLOSE_SAFETY_MS = 300
+
+/** Opacidad del fondo mientras se arrastra la hoja `dy` px hacia abajo (puro, para pruebas). */
+export function dragBackdropOpacity(dy: number): number {
+  return Math.min(1, Math.max(0, 1 - Math.max(0, dy) / 400))
+}
+
 /** Estilo de altura de la hoja según su tamaño (usa la altura visible real: con teclado abierto se encoge). */
 export function sheetStyle(size: 'half' | 'full'): { height?: string; maxHeight?: string } {
   const vh = 'var(--vv-height, 100dvh)'
@@ -57,6 +65,22 @@ export function sheetStyle(size: 'half' | 'full'): { height?: string; maxHeight?
 export function Sheet({ open, onClose, title, size = 'half', children }: SheetProps): React.JSX.Element | null {
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+  // Salida animada: al pasar `open` a false la hoja sigue montada hasta que acaba `sheet-down` (o vence el temporizador seguro).
+  const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>(open ? 'open' : 'closed')
+  const [gen, setGen] = useState(0)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  useEffect(() => {
+    if (open) {
+      if (phaseRef.current === 'closing') setGen((g) => g + 1) // reabierta durante la salida: instancia nueva
+      setPhase('open')
+    } else setPhase((p) => (p === 'open' ? 'closing' : p))
+  }, [open])
+  useEffect(() => {
+    if (phase !== 'closing') return
+    const timer = setTimeout(() => setPhase('closed'), SHEET_CLOSE_SAFETY_MS)
+    return () => clearTimeout(timer)
+  }, [phase])
 
   useEffect(() => {
     if (!open) return
@@ -74,9 +98,10 @@ export function Sheet({ open, onClose, title, size = 'half', children }: SheetPr
     }
   }, [open])
 
-  if (!open || typeof document === 'undefined') return null
+  const visible = open || phase !== 'closed'
+  if (!visible || typeof document === 'undefined') return null
   return createPortal(
-    <SheetView onClose={onClose} title={title} size={size}>
+    <SheetView key={gen} onClose={onClose} title={title} size={size} closing={!open} onClosed={() => setPhase('closed')}>
       {children}
     </SheetView>,
     document.body
@@ -84,13 +109,29 @@ export function Sheet({ open, onClose, title, size = 'half', children }: SheetPr
 }
 
 /** La hoja pintada (sin portal ni Esc): separada para poder probar su marcado sin DOM. */
-export function SheetView({ onClose, title, size = 'half', children }: Omit<SheetProps, 'open'>): React.JSX.Element {
+export function SheetView({
+  onClose,
+  title,
+  size = 'half',
+  closing = false,
+  onClosed,
+  children
+}: Omit<SheetProps, 'open'> & { closing?: boolean; onClosed?: () => void }): React.JSX.Element {
   const t = useT()
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; at: number; id: number } | null>(null)
-  const move = (dy: number): void => {
-    if (panel.current) panel.current.style.transform = dy > 0 ? `translateY(${dy}px)` : ''
+  const veil = useRef<HTMLDivElement>(null)
+  /** Mueve el panel `dy` px; `settle` = vuelta animada a 0 (al soltar sin cerrar). Durante el arrastre no hay transición. */
+  const move = (dy: number, settle = false): void => {
+    const el = panel.current
+    if (!el) return
+    el.style.transition = settle ? 'transform 200ms var(--ease-sheet)' : 'none'
+    el.style.transform = dy > 0 ? `translateY(${dy}px)` : ''
+    if (veil.current) {
+      veil.current.style.transition = settle ? 'opacity 200ms var(--ease-sheet)' : 'none'
+      veil.current.style.opacity = dy > 0 ? String(dragBackdropOpacity(dy)) : ''
+    }
   }
   const onDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -111,12 +152,22 @@ export function SheetView({ onClose, title, size = 'half', children }: Omit<Shee
     drag.current = null
     const dy = e.clientY - d.y
     if (shouldCloseOnDrag(dy, e.timeStamp - d.at)) onClose()
-    else move(0)
+    else move(0, true)
   }
 
   return (
-    <div data-sheet="" data-surface="mobile" className="fixed inset-x-0 top-0 z-[80]" style={{ bottom: 'var(--kb-inset, 0px)' }}>
-      <div aria-hidden="true" className="absolute inset-0 animate-fade-in bg-black/45" onClick={onClose} />
+    <div
+      data-sheet=""
+      data-surface="mobile"
+      className={`fixed inset-x-0 top-0 z-[80] ${closing ? 'pointer-events-none' : ''}`}
+      style={{ bottom: 'var(--kb-inset, 0px)' }}
+    >
+      <div
+        ref={veil}
+        aria-hidden="true"
+        className={`absolute inset-0 bg-[var(--m-backdrop)] ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
+        onClick={onClose}
+      />
       <div
         ref={panel}
         role="dialog"
@@ -124,7 +175,10 @@ export function SheetView({ onClose, title, size = 'half', children }: Omit<Shee
         aria-labelledby={titleId}
         data-size={size}
         style={sheetStyle(size)}
-        className="animate-sheet-up absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[20px] border-t border-border-strong bg-elevated text-fg shadow-xl"
+        onAnimationEnd={(e) => {
+          if (closing && e.target === e.currentTarget) onClosed?.()
+        }}
+        className={`${closing ? 'animate-sheet-down' : 'animate-m-sheet-up'} absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--m-radius-sheet,22px)] border-t border-border-strong bg-elevated text-fg shadow-xl`}
       >
         <div
           className="flex shrink-0 cursor-grab touch-none flex-col items-center pt-2"
@@ -133,12 +187,13 @@ export function SheetView({ onClose, title, size = 'half', children }: Omit<Shee
           onPointerUp={onUp}
           onPointerCancel={() => {
             drag.current = null
-            move(0)
+            move(0, true)
           }}
         >
-          <span aria-hidden="true" title={t('mobile.sheet.grab')} className="h-1 w-10 rounded-full bg-border-strong" />
-          <div className="flex w-full items-center gap-2 pr-2 pl-4">
-            <h2 id={titleId} className="min-w-0 flex-1 truncate py-2 font-display text-[16px] font-semibold tracking-tight">
+          <span aria-hidden="true" title={t('mobile.sheet.grab')} className="h-[5px] w-9 rounded-full bg-border-strong" />
+          <div className="flex w-full items-center gap-2 px-2">
+            <span aria-hidden="true" className="h-11 w-11 shrink-0" />
+            <h2 id={titleId} className="min-w-0 flex-1 truncate py-2 text-center font-display text-[17px] font-semibold tracking-tight">
               {title}
             </h2>
             <button

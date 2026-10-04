@@ -45,3 +45,63 @@
   min-width: 44px;
   padding-inline: 1rem;
 }
+
+/* Diálogo de confirmación en el celular (atributos data-confirm-* que solo añade la superficie remota). */
+[data-surface='mobile'] [data-confirm-scrim] {
+  background: var(--m-backdrop, rgb(6 8 14 / 0.48));
+  bottom: var(--kb-inset, 0px);
+}
+[data-surface='mobile'] [data-confirm-card] {
+  max-width: 340px;
+  max-height: 100%;
+  overflow-y: auto;
+  border-radius: var(--m-radius-sheet, 22px);
+  padding: 24px;
+  animation: pop-in var(--dur-base, 180ms) var(--ease-out) backwards;
+}
+[data-surface='mobile'] [data-confirm-card] h3 {
+  font-size: 18px;
+  text-align: center;
+}
+[data-surface='mobile'] [data-confirm-card] p {
+  font-size: 15px;
+  text-align: center;
+}
+[data-surface='mobile'] [data-confirm-card] > div:first-child:not([data-confirm-actions]) {
+  margin-inline: auto;
+}
+/* Botones apilados a todo el ancho: la acción arriba, «Cancelar» debajo. */
+[data-surface='mobile'] [data-confirm-actions] {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 20px;
+}
+[data-surface='mobile'] [data-confirm-actions] > button {
+  min-height: 50px;
+  border-radius: 14px;
+  font-size: 16px;
+  padding-inline: 16px;
+}
+[data-surface='mobile'] [data-confirm-actions] > button:not(.bg-accent):not(.bg-danger) {
+  background: var(--bg-inset);
+  color: var(--fg);
+}
+[data-surface='mobile'] [data-confirm-input] {
+  min-height: 48px;
+  border-radius: 12px;
+  padding-inline: 14px;
+  font-size: 16px;
+}
+
+/* Confirmación de lo que pide el celular (RemoteConfirmHost): táctil, con el detalle acotado y los botones siempre a la vista. */
+[data-surface='mobile'] [data-remote-confirm-actions] {
+  flex-direction: column-reverse;
+  align-items: stretch;
+}
+[data-surface='mobile'] [data-remote-confirm-actions] > button {
+  min-height: 50px;
+  border-radius: 14px;
+  font-size: 16px;
+}

@@ -8,6 +8,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, HelpCircle, Pencil } from 'lucide-react'
 import { useT } from '../lib/i18n'
+import { isRemoteSurface } from '../lib/platform'
+import { MobileToastHost } from './mobile/Toast'
 
 export interface ConfirmDialogOptions {
   title: string
@@ -91,8 +93,25 @@ function usePending(): PendingRequest | null {
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
-/** Host del diálogo de confirmación/prompt compartido. Montar una sola vez (en `App.tsx`). */
-export function ConfirmDialogHost(): React.JSX.Element | null {
+/**
+ * Host del diálogo de confirmación/prompt compartido. Montar una sola vez (en `App.tsx`). En el celular también aloja el host de
+ * los avisos (`MobileToastHost`, que en escritorio no pinta nada).
+ */
+export function ConfirmDialogHost(): React.JSX.Element {
+  return (
+    <>
+      <ConfirmDialogView />
+      <MobileToastHost />
+    </>
+  )
+}
+
+/** Atributos `data-*` solo en el celular: el CSS móvil los usa y el marcado de escritorio queda idéntico. */
+function mobileAttrs(name: string): Record<string, string> {
+  return isRemoteSurface() ? { [`data-confirm-${name}`]: '' } : {}
+}
+
+function ConfirmDialogView(): React.JSX.Element | null {
   const t = useT()
   const req = usePending()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -179,6 +198,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
   if (req.kind === 'prompt') {
     return (
       <div
+        {...mobileAttrs('scrim')}
         className="fixed inset-0 z-[300] flex items-center justify-center bg-fg/30 p-6 animate-fade-in"
         onMouseDown={() => finishPrompt(null)}
       >
@@ -189,6 +209,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
           aria-labelledby="confirm-dialog-title"
           aria-describedby={req.message ? 'confirm-dialog-message' : undefined}
           onMouseDown={(e) => e.stopPropagation()}
+          {...mobileAttrs('card')}
           className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
         >
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
@@ -205,6 +226,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
           <input
             ref={inputRef}
             type="text"
+            {...(isRemoteSurface() ? { enterKeyHint: 'done' as const, 'data-confirm-input': '' } : {})}
             aria-labelledby="confirm-dialog-title"
             value={text}
             placeholder={req.placeholder}
@@ -217,7 +239,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
             }}
             className="mt-3 w-full rounded-lg border border-border bg-bg px-3 py-1.5 text-sm outline-none focus:border-accent"
           />
-          <div className="mt-4 flex justify-end gap-2">
+          <div {...mobileAttrs('actions')} className="mt-4 flex justify-end gap-2">
             <button
               ref={cancelRef}
               type="button"
@@ -244,6 +266,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
 
   return (
     <div
+      {...mobileAttrs('scrim')}
       className="fixed inset-0 z-[300] flex items-center justify-center bg-fg/30 p-6 animate-fade-in"
       onMouseDown={() => finishConfirm(false)}
     >
@@ -254,6 +277,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
         aria-labelledby="confirm-dialog-title"
         aria-describedby={req.message ? 'confirm-dialog-message' : undefined}
         onMouseDown={(e) => e.stopPropagation()}
+        {...mobileAttrs('card')}
         className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
       >
         <div
@@ -271,7 +295,7 @@ export function ConfirmDialogHost(): React.JSX.Element | null {
             {req.message}
           </p>
         )}
-        <div className="mt-4 flex justify-end gap-2">
+        <div {...mobileAttrs('actions')} className="mt-4 flex justify-end gap-2">
           {req.cancelLabel !== null && (
             <button
               ref={cancelRef}
