@@ -898,3 +898,11 @@ Pendiente: lista de claves en `brand.ts` y su cableado en `ipc/update.ts`, `vali
 - Textos es/en `browser.pick.*`, `browser.element.*`, `browser.url.pickCancel` (más `i18n-core-keys.json` de la PWA); `ElementChip` y `ElementDetailPopover` en `MIGRATED`.
 - Pruebas: `element-context.test.ts` (saneado que llega al texto, tamaños, `include`, `flags.sensitive`, lectura inversa), `ElementChip.render.test.tsx`, `pick-state.test.ts`, `MessageStream.element.render.test.tsx` (Code y Chat), `store.element.test.ts` (partes enviadas, celular), `tasks/impl/elements.test.ts`. Sin E2E ni Electron.
 - Pendiente: Chat no tiene navegador (el dueño del evento es Code o Tareas), así que su compositor no recibe elementos; solo muestra el chip en la burbuja. Editar y reintentar en Tareas no reenvía el elemento. Prueba manual en la app (clic real, foco del popover, hoja del celular).
+
+## F8-B73: distribución gratuita para macOS (instalador, tap de Homebrew y guía)
+
+- `scripts/install/install.sh` (POSIX, sin sudo): comprueba macOS arm64, descarga `.dmg` + `SHA256SUMS`, verifica SHA-256, copia la app a un temporal, exige que `codesign -d -r-` contenga el hash fijado `c778a963…` y solo entonces instala en `/Applications` o `~/Applications`; quita la cuarentena, desmonta y limpia con `trap`. Opciones `--version`, `--dry-run`, `--no-open`, `--uninstall` (nunca toca `~/Library/Application Support/OnyxCode`), `--help`. Mientras `RELEASES_REPO_DEFAULT` sea `PENDIENTE` (y sin `ONYXCODE_RELEASES_REPO`) se niega a ejecutarse.
+- `scripts/install/make-cask.mjs` genera `packaging/homebrew-tap/Casks/onyxcode.rb` (`postflight` con `xattr -dr com.apple.quarantine`, `depends_on arch: :arm64`, `zap` sin datos); la cask incluida lleva marcadores `PENDIENTE`. No se creó ningún repositorio ni release.
+- `docs/INSTALAR.md` (tres vías, aviso de primera apertura, verificación, desinstalar sin perder datos).
+- Pruebas: `install.test.mjs` (12, con dobles de curl/hdiutil/codesign/shasum/ditto/xattr/uname) y `make-cask.test.mjs` (5), incluidas en `npm run test:release-scripts`. Sin red, sin Electron.
+- Pendiente (dueño): ver informe; prueba real del script en un Mac con el `.dmg` publicado.
