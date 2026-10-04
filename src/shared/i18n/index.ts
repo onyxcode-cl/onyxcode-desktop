@@ -30,6 +30,21 @@ export type MsgKey = keyof typeof es
 
 export const DICTIONARIES: Record<Lang, Record<string, Msg>> = { es, en: en as unknown as Record<string, Msg> }
 
+/**
+ * Añade mensajes a un diccionario ya cargado. La PWA del celular arranca solo con las claves que necesita para pintar y baja el
+ * resto (`src/renderer/remote/i18n-split.ts`) al entrar en pantallas perezosas; en el escritorio y en main no se usa.
+ */
+export function registerMessages(lang: Lang, messages: Record<string, Msg>): void {
+  Object.assign(DICTIONARIES[lang], messages)
+}
+
+/** Aviso de clave no encontrada (la PWA lo usa para bajar el resto del diccionario y volver a pintar). No se usa fuera de ella. */
+let onMissing: ((key: string) => void) | null = null
+
+export function setMissingKeyHandler(fn: ((key: string) => void) | null): void {
+  onMissing = fn
+}
+
 export function isLang(v: unknown): v is Lang {
   return v === 'es' || v === 'en'
 }
@@ -93,7 +108,10 @@ export function platformKey(key: string, plat: string = platform): string {
 export function translate(lang: Lang, key: string, params?: Params): string {
   const k = platformKey(key)
   const raw = DICTIONARIES[lang][k] ?? DICTIONARIES.es[k]
-  if (raw === undefined) return key
+  if (raw === undefined) {
+    onMissing?.(k)
+    return key
+  }
   if (typeof raw === 'string') return format(raw, params)
   const count = typeof params?.count === 'number' ? params.count : Number(params?.count ?? 0)
   const form = pluralRules[lang].select(count) === 'one' ? raw.one : raw.other

@@ -1,7 +1,8 @@
+import { withEsRest } from './with-es-rest'
 import { Suspense, lazy } from 'react'
 import { MobileSkeleton } from '@renderer/components/mobile/Skeleton'
 
-const Real = lazy(() => import('@renderer/features/tasks/impl/TasksSidebar').then((m) => ({ default: m.TasksSidebar })))
+const Real = lazy(() => withEsRest(import('@renderer/features/tasks/impl/TasksSidebar').then((m) => ({ default: m.TasksSidebar }))))
 
 export function TasksSidebar(): React.JSX.Element {
   return (

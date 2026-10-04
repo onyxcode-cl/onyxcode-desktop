@@ -4,22 +4,47 @@
   "startupJsMinKB": 780,
   "lazyChunkGzipKB": 55,
   "chunks": {
-    "index.js": { "gz": 32 },
-    "main.js": { "gz": 62 },
-    "boot.js": { "gz": 185, "min": 620 },
-    "boot.css": { "gz": 18 },
-    "markdown.js": { "gz": 52 },
-    "highlight.js": { "gz": 28 }
+    "index.js": {
+      "gz": 32
+    },
+    "main.js": {
+      "gz": 30
+    },
+    "boot.js": {
+      "gz": 200,
+      "min": 690
+    },
+    "boot.css": {
+      "gz": 20
+    },
+    "Markdown.js": {
+      "gz": 52
+    },
+    "languages.js": {
+      "gz": 28
+    }
   },
   "baseline": {
     "commit": "582aab9",
     "startupGzipKB": 391.1,
     "startupJsMinKB": 1171,
     "chunks": {
-      "index.js": { "gz": 29.3, "min": 90.1 },
-      "main.js": { "gz": 60.1, "min": 203.3 },
-      "boot.js": { "gz": 284.2, "min": 967.8 },
-      "boot.css": { "gz": 16.6, "min": 93 }
+      "index.js": {
+        "gz": 29.3,
+        "min": 90.1
+      },
+      "main.js": {
+        "gz": 60.1,
+        "min": 203.3
+      },
+      "boot.js": {
+        "gz": 284.2,
+        "min": 967.8
+      },
+      "boot.css": {
+        "gz": 16.6,
+        "min": 93
+      }
     }
   }
 }

@@ -8,6 +8,17 @@ import { installModalFocus } from '@renderer/lib/modal-focus'
 import { watchThemeSync } from '@renderer/app/mobile/theme-sync'
 import '@renderer/app/globals.css'
 import '@renderer/app/mobile/mobile-tokens.css'
+import { setMissingKeyHandler } from '@shared/i18n'
+import { loadEsRest } from 'virtual:onyx-es-rest'
+import { mark } from './perf'
+import { loadHljs } from './shims/hljs-deferred'
+
+/** Ejecuta `fn` cuando el navegador está ocioso (con `setTimeout` de respaldo, p. ej. Safari). */
+function idle(fn: () => void): void {
+  const w = globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }
+  if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 3000 })
+  else setTimeout(fn, 1500)
+}
 
 /**
  * Monta la MISMA interfaz de escritorio (`src/renderer/src`). Sin `AccountGate`: la cuenta es del Mac (que ya tiene sesión
@@ -33,10 +44,31 @@ export function mountRemoteApp(): void {
         <LangRoot key={n} render={() => <App />} />
       </StrictMode>
     )
+  // Red de seguridad del diccionario partido (`i18n-split.ts`): si alguna vez una clave no está en el núcleo del arranque, se
+  // baja el resto del diccionario y se vuelve a pintar una vez (en vez de dejar la clave cruda en pantalla).
+  let restAsked = false
+  setMissingKeyHandler(() => {
+    if (restAsked) return
+    restAsked = true
+    void loadEsRest().then(() => {
+      n++
+      render()
+    })
+  })
   render()
   // Avisa al arranque ligero cuando ya pintó (retira su pantalla de carga).
   const g = globalThis as { __onyxAppMounted?: () => void }
-  requestAnimationFrame(() => requestAnimationFrame(() => g.__onyxAppMounted?.()))
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      mark('painted')
+      g.__onyxAppMounted?.()
+      idle(() => {
+        // Ya pintó: baja en un rato ocioso el Markdown y el resaltado, para que al abrir una conversación estén listos.
+        void import('@renderer/components/Markdown').then((m) => m.preloadHighlight())
+        void loadHljs()
+      })
+    })
+  )
   // Si más tarde se cambia a inglés (el diccionario inglés va aparte), se baja y se vuelve a pintar una vez.
   useLang.subscribe((s) => {
     if (s.lang !== 'en') return
