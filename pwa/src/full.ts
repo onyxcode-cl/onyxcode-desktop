@@ -4,7 +4,7 @@
  * el Mac (`globalThis.__onyxLink`). Si no se puede cargar, se queda la interfaz ligera (lista de conversaciones) como respaldo.
  */
 import { SlowTracker, type LinkStatus, type RemoteLink } from '../../src/shared/remote/link'
-import type { RemoteClient } from './client'
+import type { EntryData, RemoteClient } from './client'
 
 export type FullState = 'none' | 'loading' | 'ready' | 'failed'
 
@@ -94,14 +94,30 @@ export function resetEntryCache(): void {
   entryPromise = null
 }
 
-function addLink(rel: string, href: string, as?: string): void {
+function addLink(rel: string, href: string, as?: string, integrity?: string): void {
   const url = `./app/${href}`
   if (document.head.querySelector(`link[rel="${rel}"][href="${url}"]`)) return
   const l = document.createElement('link')
   l.rel = rel
   l.href = url
   if (as) l.setAttribute('as', as)
+  if (integrity) {
+    l.integrity = integrity
+    l.crossOrigin = 'anonymous'
+  }
   document.head.append(l)
+}
+
+/**
+ * Modo nube: el Mac manda (`entry`) los archivos de arranque de SU versión con su hash. Se carga la interfaz con `integrity`: si el
+ * sitio tiene otra versión o un archivo alterado, el navegador no ejecuta nada y se vuelve a la interfaz ligera. Los trozos
+ * dinámicos (`import()`) no llevan SRI. Esto da coherencia de versión y detecta corrupción; no protege de un arranque malicioso.
+ */
+export function entryFromMac(e: EntryData): { entry: Entry; sri: Map<string, string> } {
+  const sri = new Map(e.files.map((f) => [f.p, f.sri]))
+  const css = e.files.map((f) => f.p).filter((p) => ENTRY_CSS.test(p))
+  const js = e.files.map((f) => f.p).filter((p) => ENTRY_JS.test(p))
+  return { entry: { js: e.js, css, preload: js, bootCss: [] }, sri }
 }
 
 /**
@@ -120,7 +136,7 @@ export function prefetchFullApp(): void {
  * Descarga y arranca la interfaz completa. Resuelve `true` cuando ella avisa que pintó (`__onyxAppMounted`) y `false` si no se
  * pudo cargar (sin `app/`, error de red, tiempo agotado): en ese caso quien llama deja la interfaz ligera.
  */
-export function loadFullApp(link: RemoteLink): Promise<boolean> {
+export function loadFullApp(link: RemoteLink, fromMac?: EntryData): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     let done = false
     const finish = (ok: boolean): void => {
@@ -133,14 +149,22 @@ export function loadFullApp(link: RemoteLink): Promise<boolean> {
     const g = globalThis as { __onyxLink?: RemoteLink; __onyxAppMounted?: () => void }
     g.__onyxLink = link
     g.__onyxAppMounted = () => finish(true)
-    void readEntry()
+    const m = fromMac ? entryFromMac(fromMac) : null
+    void (m ? Promise.resolve(m.entry) : readEntry())
       .then((entry) => {
         if (!entry) return finish(false)
+        const hash = (p: string): string | undefined => m?.sri.get(p)
         // Los CSS (también los del trozo `boot`) se piden ya como hojas de estilo, sin esperar a que `boot` se evalúe.
-        for (const href of new Set([...entry.css, ...entry.bootCss])) addLink('stylesheet', href)
+        for (const href of new Set([...entry.css, ...entry.bootCss])) addLink('stylesheet', href, undefined, hash(href))
+        if (m) for (const js of m.entry.preload) addLink('modulepreload', js, undefined, hash(js))
         const s = document.createElement('script')
         s.type = 'module'
         s.src = `./app/${entry.js}`
+        const sri = hash(entry.js)
+        if (sri) {
+          s.integrity = sri
+          s.crossOrigin = 'anonymous'
+        }
         s.onerror = () => finish(false)
         document.head.append(s)
       })

@@ -1,15 +1,20 @@
 /**
- * Enlace con el Mac: señalización por WebSocket (`/ws`) + RTCDataChannel `onyx`. El celular es quien ofrece (offer) y quien
- * crea el canal, DESPUÉS de recibir `ready`. Sin servidores STUN/TURN (solo red local). No usa `crypto.subtle` ni nada que
- * exija contexto seguro. Todo lo recibido por señalización se valida con los validadores compartidos.
+ * Enlace con el Mac: señalización por WebSocket + RTCDataChannel `onyx`. El celular es quien ofrece (offer) y quien crea el
+ * canal, DESPUÉS de recibir `ready`.
+ *  - Red local (`/ws` en la IP del Mac): sin servidores STUN/TURN.
+ *  - Servicio de conexión (`wss://<sitio>/v1/peer/<sala>`): STUN siempre, y los servidores de relé que reparta el servicio (trama
+ *    `turn`, que llega ANTES de `ready` y solo después de que el Mac aceptó el `hello`).
+ * Todo lo recibido por señalización se valida con los validadores compartidos.
  */
 import { BUFFER } from '../../src/shared/remote/mux'
+import { CLOUD_PEER_PREFIX, CLOUD_STUN_URL } from '../../src/shared/remote/cloud'
 import {
   DATACHANNEL_LABEL,
   LIMITS,
   SIGNALING_PATH,
   encodeFrame,
   parseSignalHostFrame,
+  type IceServerSpec,
   type SignalClientFrame,
   type SignalErrorCode
 } from '../../src/shared/remote/protocol'
@@ -38,12 +43,17 @@ export interface LinkHandlers {
   onEnd(why: LinkEnd): void
 }
 
+/** Adónde se conecta el enlace: la red local (como siempre) o una sala del servicio de conexión. */
+export type LinkTarget = { kind: 'lan' } | { kind: 'cloud'; room: string }
+
 export interface Link {
   /** `false` si el canal no está abierto o la trama no cabe. */
   send(text: string): boolean
   isOpen(): boolean
   /** Bytes pendientes en el búfer de salida del canal. */
   bufferedAmount(): number
+  /** ¿La conexión viva pasa por un relé (TURN)? Mira el par de candidatos elegido; `false` si no se sabe. */
+  viaRelay(): Promise<boolean>
   close(): void
 }
 
@@ -51,12 +61,17 @@ export function webrtcSupported(): boolean {
   return typeof RTCPeerConnection === 'function' && typeof WebSocket === 'function'
 }
 
-function wsUrl(): string {
+function wsUrl(target: LinkTarget): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${proto}//${location.host}${SIGNALING_PATH}`
+  return `${proto}//${location.host}${target.kind === 'cloud' ? `${CLOUD_PEER_PREFIX}${target.room}` : SIGNALING_PATH}`
 }
 
-export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: LinkHandlers): Link {
+/** Servidores ICE de la nube: STUN siempre y, si el servicio los repartió, los de relé. La red local no usa ninguno. */
+export function iceServersFor(target: LinkTarget, turn: readonly IceServerSpec[]): RTCIceServer[] {
+  return target.kind === 'cloud' ? [{ urls: [CLOUD_STUN_URL] }, ...turn.map((s) => ({ ...s, urls: [...s.urls] }))] : []
+}
+
+export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: LinkHandlers, target: LinkTarget = { kind: 'lan' }): Link {
   let ended = false
   let ws: WebSocket | null = null
   let pc: RTCPeerConnection | null = null
@@ -69,6 +84,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
   const pendingLocal: Array<{ candidate: string; mid: string }> = []
   const pendingRemote: Array<{ candidate: string; mid: string }> = []
   let iceSent = 0
+  let turnServers: IceServerSpec[] = []
 
   const clearTimers = (): void => {
     if (timer) clearTimeout(timer)
@@ -136,7 +152,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
   }
 
   const startRtc = async (): Promise<void> => {
-    const conn = new RTCPeerConnection({ iceServers: [] })
+    const conn = new RTCPeerConnection({ iceServers: iceServersFor(target, turnServers), iceTransportPolicy: 'all' })
     pc = conn
     conn.onicecandidate = (e) => {
       const c = e.candidate
@@ -186,14 +202,14 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
 
   if (!webrtcSupported()) {
     queueMicrotask(() => end({ k: 'unsupported' }))
-    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, close: () => undefined }
+    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, viaRelay: async () => false, close: () => undefined }
   }
 
   try {
-    ws = new WebSocket(wsUrl())
+    ws = new WebSocket(wsUrl(target))
   } catch {
     queueMicrotask(() => end({ k: 'no-host' }))
-    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, close: () => undefined }
+    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, viaRelay: async () => false, close: () => undefined }
   }
   arm(READY_TIMEOUT_MS, { k: 'no-host' })
   ws.onopen = () => sendSignal(hello)
@@ -213,6 +229,10 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
         gotReady = true
         arm(CHANNEL_TIMEOUT_MS, { k: 'no-host' })
         startRtc().catch(() => end({ k: 'no-host' }))
+        return
+      case 'turn':
+        // Solo en la nube, una vez y antes de `ready` (con él se crea la conexión): después ya no sirve para nada.
+        if (target.kind === 'cloud' && !gotReady && turnServers.length === 0) turnServers = f.servers
         return
       case 'answer':
         if (!gotReady || !pc || remoteSet) return
@@ -245,6 +265,28 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     },
     isOpen: () => !!dc && dc.readyState === 'open',
     bufferedAmount: () => (dc ? dc.bufferedAmount : 0),
+    async viaRelay() {
+      try {
+        if (!pc) return false
+        const stats = await pc.getStats()
+        const byId = new Map<string, Record<string, unknown>>()
+        stats.forEach((v: Record<string, unknown>) => byId.set(String(v.id), v))
+        let pairId: string | null = null
+        stats.forEach((v: Record<string, unknown>) => {
+          if (v.type === 'transport' && typeof v.selectedCandidatePairId === 'string') pairId = v.selectedCandidatePairId
+        })
+        let pair: Record<string, unknown> | undefined = pairId ? byId.get(pairId) : undefined
+        if (!pair)
+          stats.forEach((v: Record<string, unknown>) => {
+            if (v.type === 'candidate-pair' && (v.selected === true || (v.nominated === true && v.state === 'succeeded'))) pair = v
+          })
+        const local = pair ? byId.get(String(pair.localCandidateId)) : undefined
+        const remote = pair ? byId.get(String(pair.remoteCandidateId)) : undefined
+        return local?.candidateType === 'relay' || remote?.candidateType === 'relay'
+      } catch {
+        return false
+      }
+    },
     close() {
       if (ended) return
       ended = true

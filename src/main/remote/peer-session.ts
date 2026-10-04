@@ -30,6 +30,7 @@ import type {
   HttpFrame,
   Hs1Frame,
   Hs3Frame,
+  EntryFile,
   MuxClientFrame,
   RemoteCap,
   RemoteEvent,
@@ -114,6 +115,8 @@ export interface PeerSessionDeps {
   caps?: () => RemoteCap[]
   /** Sala del Mac en el servicio de conexión: va en `paired` (solo v4, modo nube). */
   room?: () => string | undefined
+  /** Archivos de arranque de la interfaz completa con su SRI: se mandan (`entry`) tras `unlocked` a un celular v4 con la capacidad `entry`. */
+  entry?: () => { v: string; js: string; files: EntryFile[] } | null
   /** Límites de la política de la organización (tope de caducidad en días y nº máximo de celulares). Sin él, solo los de fábrica. */
   limits?: () => { capDays: number | null; maxDevices: number }
   clock?: Clock
@@ -136,6 +139,7 @@ export class PeerSession {
   private _started = false
   /** Versión de protocolo que anunció el celular en `hs1` (la criptografía es la misma en v3 y v4). */
   private clientV = 0
+  private entrySent = false
 
   constructor(private readonly d: PeerSessionDeps) {
     this.limiter = new RateLimiter(d.clock)
@@ -495,9 +499,21 @@ export class PeerSession {
     return { device: deviceFingerprint(id), name: this.d.devices.get(id)?.name }
   }
 
+  /** `entry` (una vez por conexión): solo a un celular v4 y solo si el Mac anunció la capacidad. */
+  private sendEntry(): void {
+    if (this.entrySent || this.clientV < 4 || this._state !== 'authed') return
+    if (!(this.d.caps?.() ?? []).includes('entry')) return
+    const e = this.d.entry?.()
+    if (!e) return
+    this.entrySent = true
+    void this.send({ t: 'entry', v: e.v, js: e.js, files: e.files })
+  }
+
   private startGate(fresh: boolean): void {
     const a = this.d.access
     const id = this._deviceId
+    // Sin control de acceso (solo pruebas del protocolo) no hay `unlocked`: el acceso ya está abierto.
+    if (!a) this.sendEntry()
     if (!a || !id) return
     this.gate = new AccessGate({
       deviceId: id,
@@ -509,7 +525,10 @@ export class PeerSession {
       needsConfirm: a.needsConfirm ? () => a.needsConfirm!(id) : undefined,
       trusted: () => a.trusted(id),
       confirmConnection: () => a.confirmConnection({ deviceId: id, deviceName: this.d.devices.get(id)?.name ?? '?' }),
-      send: (f) => void this.send(f),
+      send: (f) => {
+        void this.send(f)
+        if (f.t === 'unlocked') this.sendEntry()
+      },
       onChange: () => a.onChange(),
       onDenied: (reason) => {
         this.send({ t: 'denied', reason })

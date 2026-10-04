@@ -129,7 +129,27 @@ export const es: Dict = {
   'toast.tooLong': 'El mensaje es demasiado largo.',
   'toast.sent': 'Mensaje enviado',
   'time.now': 'ahora',
-  'sr.connection': 'Estado de la conexión'
+  'sr.connection': 'Estado de la conexión',
+  'fail.title.host-offline': 'Tu Mac no está disponible',
+  'fail.body.host-offline': 'Puede estar dormido, apagado o sin internet. OnyxCode no puede despertarlo a distancia.',
+  'fail.title.storage': 'No se pudo guardar el vínculo',
+  'fail.body.storage':
+    'Este navegador no puede guardar el vínculo (modo privado o sin almacenamiento). Usa otro navegador, desactiva el modo privado y vincula de nuevo.',
+  'code.label': 'Código de vinculación',
+  'code.btn': 'Conectar',
+  'code.invalid': 'El código no es válido: son 16 letras y números (sin O, I, L ni U).',
+  'code.hint': 'XXXX-XXXX-XXXX-XXXX',
+  'idle.cloud.step1': 'Abre OnyxCode en tu Mac, ve a Ajustes › Celular y elige «También fuera de casa».',
+  'idle.cloud.step2': 'Pulsa «Vincular»: verás un código QR y un código de 16 caracteres.',
+  'idle.cloud.step3': 'Escanea el QR con la cámara de este celular o escribe el código aquí abajo.',
+  'install.title': 'Instalar en la pantalla de inicio',
+  'install.ios':
+    'En iPhone: abre esta página en Safari, pulsa Compartir y luego «Añadir a pantalla de inicio». La app instalada guarda su vínculo aparte de Safari: vincúlala dentro de la app escribiendo el código.',
+  'install.android': 'En Android: abre el menú del navegador y elige «Instalar app» o «Añadir a pantalla de inicio».',
+  'install.btn': 'Instalar',
+  'toast.update': 'Hay una versión nueva. Recarga la página.',
+  'conn.relay': 'vía relé',
+  'list.update': 'Actualiza la página del celular o OnyxCode en tu Mac.'
 }
 
 export const en: Dict = {
@@ -259,7 +279,27 @@ export const en: Dict = {
   'toast.tooLong': 'The message is too long.',
   'toast.sent': 'Message sent',
   'time.now': 'now',
-  'sr.connection': 'Connection status'
+  'sr.connection': 'Connection status',
+  'fail.title.host-offline': 'Your Mac is not available',
+  'fail.body.host-offline': 'It may be asleep, off or offline. OnyxCode cannot wake it up remotely.',
+  'fail.title.storage': 'Could not save the link',
+  'fail.body.storage':
+    'This browser cannot save the link (private mode or no storage). Use another browser, turn private mode off and link again.',
+  'code.label': 'Linking code',
+  'code.btn': 'Connect',
+  'code.invalid': 'The code is not valid: it is 16 letters and digits (no O, I, L or U).',
+  'code.hint': 'XXXX-XXXX-XXXX-XXXX',
+  'idle.cloud.step1': 'Open OnyxCode on your Mac, go to Settings › Phone and choose “Also away from home”.',
+  'idle.cloud.step2': 'Press “Link”: you will see a QR code and a 16-character code.',
+  'idle.cloud.step3': 'Scan the QR with this phone’s camera or type the code below.',
+  'install.title': 'Install on the home screen',
+  'install.ios':
+    'On iPhone: open this page in Safari, tap Share and then “Add to Home Screen”. The installed app keeps its link separate from Safari: link it inside the app by typing the code.',
+  'install.android': 'On Android: open the browser menu and choose “Install app” or “Add to Home screen”.',
+  'install.btn': 'Install',
+  'toast.update': 'A new version is available. Reload the page.',
+  'conn.relay': 'via relay',
+  'list.update': 'Update the phone page or OnyxCode on your Mac.'
 }
 
 function pick(): { lang: 'es' | 'en'; dict: Dict } {

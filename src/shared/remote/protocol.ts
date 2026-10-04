@@ -173,6 +173,15 @@ export const ICE_HOST_SUFFIXES: readonly string[] = ['cloudflare.com']
 const ICE_URL_RE = /^(stun|turn|turns):([A-Za-z0-9.-]{1,200})(?::(\d{1,5}))?(?:\?transport=(?:udp|tcp))?$/
 export const MAX_ICE_SERVERS = 4
 
+/** Un archivo de la interfaz completa (ruta bajo `app/`, con huella de Vite) y su hash para `integrity` (SRI, sha384). */
+export interface EntryFile {
+  p: string
+  sri: string
+}
+export const ENTRY_PATH_RE = /^assets\/[A-Za-z0-9._-]{1,120}\.(js|css)$/
+export const ENTRY_SRI_RE = /^sha384-[A-Za-z0-9+/]{64}$/
+export const MAX_ENTRY_FILES = 32
+
 export type Reply = 'once' | 'reject'
 
 // ---------------------------------------------------------------------------------------------
@@ -364,6 +373,12 @@ export type HostFrame =
   /** Sin acceso por ahora. `retryMs` = espera antes de reintentar el PIN; `left` = intentos que quedan antes de revocar. */
   | { t: 'locked'; why: LockWhy; retryMs?: number; left?: number }
   | { t: 'unlocked' }
+  /**
+   * Solo v4 con `caps: ['entry']`, tras `unlocked`: los archivos de arranque de la interfaz completa de ESTA versión del Mac, con
+   * su hash. La PWA del sitio los carga con `integrity`. Sirve para la coherencia de versión (la interfaz llama a canales IPC de la
+   * versión del Mac) y contra corrupción o caché; NO protege de un arranque malicioso (que podría ignorarlo). `js` = entrada.
+   */
+  | { t: 'entry'; v: string; js: string; files: EntryFile[] }
   | { t: 'evt'; ev: RemoteEvent }
   | MuxHostFrame
   | {
@@ -785,6 +800,22 @@ export function parseHostFrame(raw: unknown): Parsed<HostFrame> {
       return { ok: true, value: { t: 'bye', reason: o.reason as ByeReason } }
     case 'unlocked':
       return onlyKeys(o, ['t']) ? { ok: true, value: { t: 'unlocked' } } : fail('extra-keys')
+    case 'entry': {
+      if (!onlyKeys(o, ['t', 'v', 'js', 'files'])) return fail('extra-keys')
+      if (typeof o.v !== 'string' || !/^[A-Za-z0-9.+-]{1,32}$/.test(o.v)) return fail('bad-version')
+      if (typeof o.js !== 'string' || !ENTRY_PATH_RE.test(o.js) || !o.js.endsWith('.js')) return fail('bad-js')
+      if (!Array.isArray(o.files) || o.files.length === 0 || o.files.length > MAX_ENTRY_FILES) return fail('bad-files')
+      const files: EntryFile[] = []
+      for (const f of o.files) {
+        if (!isObj(f) || !onlyKeys(f, ['p', 'sri'])) return fail('bad-files')
+        if (typeof f.p !== 'string' || !ENTRY_PATH_RE.test(f.p) || typeof f.sri !== 'string' || !ENTRY_SRI_RE.test(f.sri))
+          return fail('bad-files')
+        files.push({ p: f.p, sri: f.sri })
+      }
+      if (!files.some((f) => f.p === o.js)) return fail('bad-js') // la entrada tiene que traer su hash
+      if (new Set(files.map((f) => f.p)).size !== files.length) return fail('bad-files')
+      return { ok: true, value: { t: 'entry', v: o.v, js: o.js, files } }
+    }
     case 'locked': {
       if (!onlyKeys(o, ['t', 'why', 'retryMs', 'left'])) return fail('extra-keys')
       if (typeof o.why !== 'string' || !LOCK_WHY.includes(o.why)) return fail('bad-why')

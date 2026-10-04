@@ -88,6 +88,8 @@ export interface RemoteServiceDeps {
   siteCheck?: () => 'ok' | 'mismatch' | 'unknown'
   /** Capacidades que se anuncian a un celular v4 (`caps`); p. ej. `entry` cuando el Mac sabe mandar su lista de archivos. */
   caps?: () => RemoteCap[]
+  /** Archivos de arranque de la interfaz completa con su SRI (versión de ESTE Mac); solo se usa en el modo nube. */
+  entry?: () => { v: string; js: string; files: import('@shared/remote/protocol').EntryFile[] } | null
 }
 
 /** Tiempo máximo para que una negociación WebRTC termine en un canal con celular autenticado. */
@@ -656,7 +658,9 @@ export class RemoteService {
         access: this.access(),
         clock: this.d.now,
         limits: () => ({ capDays: this.pol().deviceTtlDays, maxDevices: this.pol().maxDevices }),
-        caps: this.d.caps,
+        // `caps` y `entry` solo existen en el modo nube: en la red local la PWA se sirve desde el propio Mac (misma versión).
+        caps: () => (this.connMode === 'cloud' ? (this.d.caps?.() ?? []) : []),
+        entry: this.connMode === 'cloud' ? this.d.entry : undefined,
         room: () => (this.connMode === 'cloud' ? this.roomId : undefined)
       })
       rec.session = session

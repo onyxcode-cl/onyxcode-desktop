@@ -5,7 +5,7 @@
   "lazyChunkGzipKB": 55,
   "chunks": {
     "index.js": {
-      "gz": 40
+      "gz": 44
     },
     "main.js": {
       "gz": 30

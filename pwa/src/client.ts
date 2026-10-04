@@ -8,9 +8,11 @@
  * (que un intermediario puede inyectar) NO borra las credenciales: solo una prueba válida da autoridad para olvidarlas.
  */
 import { sdpFingerprintStrict, sha256Hex } from '../../src/shared/remote/code'
+import { pairRoom, pairSecretFromCode } from '../../src/shared/remote/cloud'
 import { AsyncClientHandshake, deviceKey, nobleAuthMac, pairId, pairKey } from '../../src/shared/remote/handshake'
 import {
   LIMITS,
+  MIN_PROTOCOL_VERSION,
   PROTOCOL_VERSION,
   SECRET_RE,
   encodeFrame,
@@ -19,7 +21,9 @@ import {
   utf8Length,
   type ClientFrame,
   type HostFrame,
+  type EntryFile,
   type LockWhy,
+  type RemoteCap,
   type RemoteErrorCode,
   type RemoteEvent,
   type RemoteMessage,
@@ -31,8 +35,9 @@ import {
   type RequestResults
 } from '../../src/shared/remote/protocol'
 import { Mux, Outbox, type HttpRequest, type SubHandlers, type Subscription } from '../../src/shared/remote/mux'
-import { openLink, type Link, type LinkEnd } from './rtc'
-import { clearLegacyCreds, loadLegacyCreds, saveLegacyCreds } from './store'
+import { importDeviceKey, importPairKey, subtleAuthMac } from './keys'
+import { openLink, type Link, type LinkEnd, type LinkTarget } from './rtc'
+import { clearLegacyCreds, idbLinkStore, loadLegacyCreds, saveLegacyCreds, StoreError, type CloudLink, type LinkStore } from './store'
 
 const REQUEST_TIMEOUT_MS = 15_000
 const PING_EVERY_MS = 20_000
@@ -64,6 +69,10 @@ export type FailReason =
   | 'busy'
   | 'version'
   | 'unreachable'
+  /** Solo por el servicio de conexión: el Mac no está conectado (dormido, apagado o sin internet). */
+  | 'host-offline'
+  /** El navegador no pudo guardar el vínculo (modo privado o sin almacenamiento). */
+  | 'storage'
   | 'protocol'
   | 'unsupported'
   /** La prueba del Mac no verificó: puede haber alguien interceptando la red. No se borra nada ni se pide el PIN. */
@@ -100,6 +109,23 @@ export interface Snapshot {
   toast: { key: string; n: number } | null
   /** Hay credenciales guardadas (se puede «olvidar» la vinculación). */
   paired: boolean
+  /** Modo nube (HTTPS en el sitio del servicio de conexión). */
+  cloud: boolean
+  /** La conexión viva pasa por un relé (TURN). */
+  relay: boolean
+}
+
+/** Entorno del cliente: modo nube y su almacén (en las pruebas se inyecta uno falso). */
+export interface ClientEnv {
+  cloud?: boolean
+  store?: LinkStore
+}
+
+/** Lo que manda el Mac (`entry`): archivos de arranque de la interfaz completa de su versión, con su SRI. */
+export interface EntryData {
+  v: string
+  js: string
+  files: EntryFile[]
 }
 
 interface Creds {
@@ -162,6 +188,17 @@ export class RemoteClient {
   private readonly listeners = new Set<(s: Snapshot) => void>()
   private link: Link | null = null
   private creds: Creds | null
+  /** Modo nube: vínculo guardado en IndexedDB (clave no exportable) y su almacén. */
+  private clink: CloudLink | null = null
+  private readonly cloud: boolean
+  private readonly store: LinkStore
+  /** Carga inicial del vínculo (en la nube es asíncrona). */
+  private readonly loaded: Promise<void>
+  /** Versión de protocolo que se anuncia: si el Mac contesta «versión», se reintenta una vez con la anterior. */
+  private protoV = PROTOCOL_VERSION
+  private caps: RemoteCap[] = []
+  private entryData: EntryData | null = null
+  private entryWaiters: Array<(e: EntryData | null) => void> = []
   /** Secreto del QR: solo en memoria, nunca se guarda ni se muestra. */
   private pairSecret: string | null = null
   private mode: 'pair' | 'resume' = 'resume'
@@ -191,9 +228,64 @@ export class RemoteClient {
   /** `false` cuando la interfaz completa está cargada: ella lee sus datos por el puente y no hace falta la lista ligera. */
   lightData = true
 
-  constructor() {
-    this.creds = loadCreds()
-    this.snap = { conn: { k: 'idle' }, sessions: null, permissions: [], chat: null, toast: null, paired: this.creds !== null }
+  constructor(env: ClientEnv = {}) {
+    this.cloud = env.cloud === true
+    this.store = env.store ?? idbLinkStore()
+    // En la nube el vínculo vive en IndexedDB (`CryptoKey` no exportable); por HTTP (red local), en `localStorage` como siempre.
+    this.creds = this.cloud ? null : loadCreds()
+    this.snap = {
+      conn: { k: 'idle' },
+      sessions: null,
+      permissions: [],
+      chat: null,
+      toast: null,
+      paired: this.creds !== null,
+      cloud: this.cloud,
+      relay: false
+    }
+    this.loaded = this.cloud
+      ? this.store.load().then((l) => {
+          this.clink = l
+          this.set({ paired: l !== null })
+        })
+      : Promise.resolve()
+  }
+
+  /** Modo nube: escribir el código a mano (o venir en `#c=`). `false` = código no válido. */
+  startWithCode(code: string): boolean {
+    const q = this.cloud ? pairSecretFromCode(code) : null
+    if (!q) return false
+    this.pairSecret = q
+    this.mode = 'pair'
+    this.attempt = 0
+    this.everOnline = false
+    this.set({ sessions: null, permissions: [], chat: null })
+    void this.loaded.then(() => this.connect())
+    return true
+  }
+
+  /** Lo que mandó el Mac (`entry`), o `null` si no llega a tiempo (Mac sin la capacidad o versión anterior). */
+  waitEntry(ms: number): Promise<EntryData | null> {
+    if (this.entryData) return Promise.resolve(this.entryData)
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => finish(null), ms)
+      const finish = (e: EntryData | null): void => {
+        clearTimeout(timer)
+        this.entryWaiters = this.entryWaiters.filter((w) => w !== finish)
+        resolve(e)
+      }
+      this.entryWaiters.push(finish)
+    })
+  }
+
+  /** ¿El Mac anunció esta capacidad? (solo v4; un Mac anterior no anuncia ninguna y la PWA no usa nada que no esté anunciado). */
+  hasCap(c: RemoteCap): boolean {
+    return this.caps.includes(c)
+  }
+
+  /** Aviso corto (p. ej. «hay una versión nueva»). */
+  notice(key: string): void {
+    this.toast(key)
   }
 
   // ── suscripción ──
@@ -223,7 +315,7 @@ export class RemoteClient {
 
   /** `secret`: el valor `s` del fragmento de la URL (ya extraído y borrado de la barra por quien llama). */
   start(secret: string | null): void {
-    if (secret && SECRET_RE.test(secret)) {
+    if (!this.cloud && secret && SECRET_RE.test(secret)) {
       // Un QR nuevo (también si llega con la página ya abierta) reinicia todo el estado.
       this.pairSecret = secret
       this.mode = 'pair'
@@ -231,10 +323,25 @@ export class RemoteClient {
       this.everOnline = false
       this.set({ sessions: null, permissions: [], chat: null })
       this.connect()
-    } else if (this.creds) {
-      this.mode = 'resume'
-      this.connect()
-    } else this.set({ conn: { k: 'idle' } })
+    } else {
+      // Nube: el vínculo se lee de IndexedDB (asíncrono); la vinculación entra por `startWithCode`.
+      void this.loaded.then(() => {
+        if (this.hasResume()) {
+          this.mode = 'resume'
+          this.connect()
+        } else this.set({ conn: { k: 'idle' } })
+      })
+    }
+  }
+
+  private hasResume(): boolean {
+    return this.cloud ? this.clink !== null : this.creds !== null
+  }
+
+  /** Adónde conecta ESTA conexión: la red local, o la sala (la del Mac al reanudar, la de vinculación al vincular). */
+  private target(): LinkTarget {
+    if (!this.cloud) return { kind: 'lan' }
+    return { kind: 'cloud', room: this.mode === 'pair' ? pairRoom(this.pairSecret as string) : (this.clink as CloudLink).room }
   }
 
   /** Botón «Reintentar». */
@@ -249,6 +356,8 @@ export class RemoteClient {
     this.teardown()
     clearCreds()
     this.creds = null
+    this.clink = null
+    if (this.cloud) void this.store.clear()
     this.pairSecret = null
     this.everOnline = false
     this.set({ conn: { k: 'idle' }, sessions: null, permissions: [], chat: null, paired: false })
@@ -265,7 +374,7 @@ export class RemoteClient {
     this.badFrames = 0
     const mode = this.mode
     if (mode === 'pair' && !this.pairSecret) return this.fail('expired', false)
-    if (mode === 'resume' && !this.creds) return this.set({ conn: { k: 'idle' } })
+    if (mode === 'resume' && !this.hasResume()) return this.set({ conn: { k: 'idle' } })
     if (this.attempt > 0 && this.everOnline) this.set({ conn: { k: 'reconnecting', attempt: this.attempt, max: RECONNECT_DELAYS.length } })
     else this.set({ conn: { k: 'connecting', mode } })
     let hello: Parameters<typeof openLink>[0]
@@ -273,26 +382,35 @@ export class RemoteClient {
       // El secreto del QR no sale del celular: el servidor solo ve su identificador público.
       hello =
         mode === 'pair'
-          ? { t: 'hello', v: PROTOCOL_VERSION, mode: 'pair', qid: pairId(this.pairSecret as string), deviceName: deviceName() }
-          : { t: 'hello', v: PROTOCOL_VERSION, mode: 'resume', deviceId: (this.creds as Creds).id }
+          ? { t: 'hello', v: this.protoV, mode: 'pair', qid: pairId(this.pairSecret as string), deviceName: deviceName() }
+          : {
+              t: 'hello',
+              v: this.protoV,
+              mode: 'resume',
+              deviceId: this.cloud ? (this.clink as CloudLink).deviceId : (this.creds as Creds).id
+            }
     } catch {
       return this.fail('protocol', true)
     }
-    this.link = openLink(hello, {
-      onOpen: (info) => {
-        if (gen !== this.generation) return
-        this.onChannelOpen(info.offerSdp, info.answerSdp)
+    this.link = openLink(
+      hello,
+      {
+        onOpen: (info) => {
+          if (gen !== this.generation) return
+          void this.onChannelOpen(info.offerSdp, info.answerSdp, gen)
+        },
+        onMessage: (raw) => {
+          if (gen === this.generation) this.onFrame(raw)
+        },
+        onDrain: () => {
+          if (gen === this.generation) this.outbox?.pump()
+        },
+        onEnd: (why) => {
+          if (gen === this.generation) this.onLinkEnd(why)
+        }
       },
-      onMessage: (raw) => {
-        if (gen === this.generation) this.onFrame(raw)
-      },
-      onDrain: () => {
-        if (gen === this.generation) this.outbox?.pump()
-      },
-      onEnd: (why) => {
-        if (gen === this.generation) this.onLinkEnd(why)
-      }
-    })
+      this.target()
+    )
   }
 
   private teardown(): void {
@@ -306,6 +424,8 @@ export class RemoteClient {
     this.authed = false
     this.hs = null
     this.macVerified = false
+    this.entryData = null
+    if (this.snap.relay) this.set({ relay: false })
   }
 
   private fail(reason: FailReason, canRetry: boolean): void {
@@ -313,43 +433,38 @@ export class RemoteClient {
     this.set({ conn: { k: 'failed', reason, canRetry } })
   }
 
-  private onChannelOpen(offerSdp: string, answerSdp: string): void {
+  private async onChannelOpen(offerSdp: string, answerSdp: string, gen: number): Promise<void> {
     // Huellas ESTRICTAS (una sola, sha-256) de lo que vio la pila de este celular; sin ellas no hay a qué ligar el handshake.
     const offer = sdpFingerprintStrict(offerSdp)
     const answer = sdpFingerprintStrict(answerSdp)
     if (!offer || !answer) return this.fail('protocol', true)
     const fps = { offer, answer }
     const rand = (n: number): Uint8Array => crypto.getRandomValues(new Uint8Array(n))
+    const v = this.protoV
+    let hs: AsyncClientHandshake
     try {
-      // Por HTTP (red local) no hay `crypto.subtle`: el HMAC sale de `@noble/hashes`. En HTTPS (modo nube) `keys.ts` da un
-      // `CryptoKey` no exportable con los mismos bytes.
+      // Por HTTP (red local) no hay `crypto.subtle`: el HMAC sale de `@noble/hashes`. En HTTPS (modo nube) la clave es un
+      // `CryptoKey` NO exportable (`keys.ts`) con los mismos bytes: el secreto en claro no se guarda ni se conserva.
       if (this.mode === 'pair') {
         const q = this.pairSecret as string
-        this.hs = new AsyncClientHandshake({
-          mode: 'pair',
-          pairId: pairId(q),
-          mac: nobleAuthMac(pairKey(q)),
-          fps,
-          rand,
-          v: PROTOCOL_VERSION
-        })
+        const mac = this.cloud ? subtleAuthMac(await importPairKey(q)) : nobleAuthMac(pairKey(q))
+        hs = new AsyncClientHandshake({ mode: 'pair', pairId: pairId(q), mac, fps, rand, v })
+      } else if (this.cloud) {
+        const l = this.clink
+        if (!l) return this.fail('revoked', false)
+        hs = new AsyncClientHandshake({ mode: 'resume', deviceId: l.deviceId, mac: subtleAuthMac(l.key), fps, rand, v })
       } else {
         const c = this.creds
         if (!c) return this.fail('revoked', false)
-        this.hs = new AsyncClientHandshake({
-          mode: 'resume',
-          deviceId: c.id,
-          mac: nobleAuthMac(deviceKey(sha256Hex(c.secret))),
-          fps,
-          rand,
-          v: PROTOCOL_VERSION
-        })
+        hs = new AsyncClientHandshake({ mode: 'resume', deviceId: c.id, mac: nobleAuthMac(deviceKey(sha256Hex(c.secret))), fps, rand, v })
       }
     } catch {
-      return this.fail('protocol', true)
+      return gen === this.generation ? this.fail('protocol', true) : undefined
     }
+    if (gen !== this.generation) return
+    this.hs = hs
     // Primera trama por el canal. No lleva ninguna credencial.
-    this.sendFrame(this.hs.hello())
+    this.sendFrame(hs.hello())
   }
 
   /** `true` si se recargó la página (una sola vez por pestaña) para recoger la versión nueva. */
@@ -379,7 +494,18 @@ export class RemoteClient {
           return this.fail('not-recognized', true)
         }
         if (why.code === 'busy') return this.fail('busy', true)
-        if (why.code === 'version') return this.reloadForVersion() ? undefined : this.fail('version', false)
+        if (why.code === 'host-offline') return this.fail('host-offline', true)
+        if (why.code === 'rate') return this.fail('rate', true)
+        if (why.code === 'version') {
+          // El Mac es de una versión anterior: se prueba UNA vez con la versión de protocolo inmediatamente anterior.
+          if (this.protoV > MIN_PROTOCOL_VERSION) {
+            this.protoV--
+            this.attempt = 0
+            this.connect()
+            return
+          }
+          return this.reloadForVersion() ? undefined : this.fail('version', false)
+        }
         return this.fail('protocol', true)
       case 'no-host':
         if (this.mode === 'pair') return this.fail('no-host', true)
@@ -419,7 +545,7 @@ export class RemoteClient {
         this.retryTimer = null
         this.connect()
       }
-    } else if (k === 'failed' && this.snap.conn.canRetry && this.mode === 'resume' && this.creds) {
+    } else if (k === 'failed' && this.snap.conn.canRetry && this.mode === 'resume' && this.hasResume()) {
       this.attempt = 0
       this.connect()
     }
@@ -432,7 +558,7 @@ export class RemoteClient {
 
   /** Reconexión inmediata (sin la espera de `RECONNECT_DELAYS[0]`): muestra «reconectando» y vuelve a negociar. */
   private reconnectNow(): void {
-    if (this.snap.conn.k === 'failed' || this.mode !== 'resume' || !this.creds) return
+    if (this.snap.conn.k === 'failed' || this.mode !== 'resume' || !this.hasResume()) return
     this.attempt = 1
     this.connect()
   }
@@ -572,6 +698,8 @@ export class RemoteClient {
   private forgetCreds(): void {
     clearCreds()
     this.creds = null
+    this.clink = null
+    if (this.cloud) void this.store.clear()
     this.set({ paired: false })
   }
 
@@ -592,23 +720,51 @@ export class RemoteClient {
         if (!(await this.hs.verifyProof(f.proof))) return gen === this.generation ? this.unverified() : undefined
         if (gen !== this.generation) return
         this.macVerified = true
+        this.caps = f.caps ?? []
         // El código de 6 dígitos aparece DESPUÉS de verificar al Mac: antes no se le puede creer.
         this.set({ conn: { k: 'pairing', code: this.hs.sas(), pending: true } })
         return
-      case 'paired':
+      case 'paired': {
         if (this.mode !== 'pair' || this.authed) return
-        this.creds = { id: f.deviceId, secret: f.deviceSecret }
-        saveCreds(this.creds)
+        if (this.cloud) {
+          // En la nube el Mac manda la sala. El secreto se importa como `CryptoKey` NO exportable y el texto en claro se olvida.
+          if (!f.room) return this.fail('protocol', true)
+          let link: CloudLink
+          try {
+            link = { deviceId: f.deviceId, key: await importDeviceKey(f.deviceSecret), room: f.room, macName: '', pairedAt: Date.now() }
+            await this.store.save(link)
+          } catch (e) {
+            return gen === this.generation ? this.fail(e instanceof StoreError ? 'storage' : 'protocol', false) : undefined
+          }
+          if (gen !== this.generation) return
+          this.clink = link
+          try {
+            void navigator.storage?.persist?.()
+          } catch {
+            /* sin API de persistencia */
+          }
+        } else {
+          this.creds = { id: f.deviceId, secret: f.deviceSecret }
+          saveCreds(this.creds)
+        }
         this.pairSecret = null
         this.mode = 'resume'
         this.set({ paired: true })
         return this.beginGate()
+      }
       case 'authed':
         if (this.mode !== 'resume' || !this.hs || this.macVerified) return this.fail('protocol', true)
         if (!(await this.hs.verifyProof(f.proof))) return gen === this.generation ? this.unverified() : undefined
         if (gen !== this.generation) return
         this.macVerified = true
+        this.caps = f.caps ?? []
         return this.beginGate()
+      case 'entry':
+        if (this.authed) {
+          this.entryData = { v: f.v, js: f.js, files: f.files }
+          for (const w of [...this.entryWaiters]) w(this.entryData)
+        }
+        return
       case 'locked':
         if (this.authed) this.set({ conn: { k: 'locked', why: f.why, retryMs: f.retryMs, left: f.left } })
         return
@@ -683,6 +839,8 @@ export class RemoteClient {
     this.everOnline = true
     this.attempt = 0
     this.set({ conn: { k: 'online' } })
+    if (this.cloud && this.link)
+      void this.link.viaRelay().then((r) => r !== this.snap.relay && this.snap.conn.k === 'online' && this.set({ relay: r }))
     if (!this.mux) this.openMux()
     this.startKeepalive()
     if (this.lightData) void this.refreshAll()

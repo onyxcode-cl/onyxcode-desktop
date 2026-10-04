@@ -134,3 +134,41 @@ describe('PeerSession: caps y room (protocolo v4)', () => {
     expect(find(ch, 'paired')).not.toHaveProperty('room')
   })
 })
+
+describe('PeerSession: entry (protocolo v4)', () => {
+  const ENTRY = { v: '0.3.0', js: 'assets/a.js', files: [{ p: 'assets/a.js', sri: `sha384-${'A'.repeat(64)}` }] }
+
+  function resume(v: number | undefined, withEntry = true, withCap = true) {
+    const ch = new Ch()
+    const { id, secret } = devices.add('Pixel')
+    const s = new PeerSession({
+      channel: ch,
+      kind: 'resume',
+      deviceId: id,
+      fps: TEST_FPS,
+      devices,
+      backend,
+      confirmPair: async () => false,
+      onAuthed: () => true,
+      onEnd: () => undefined,
+      caps: () => (withCap ? ['entry'] : []),
+      entry: withEntry ? () => ENTRY : undefined
+    })
+    s.start()
+    resumeAs(ch, { deviceId: id, secret, v })
+    return ch
+  }
+
+  it('un celular v4 con la capacidad recibe entry una sola vez', async () => {
+    const ch = resume(4)
+    await flush()
+    expect(ch.sent.filter((f) => f.t === 'entry')).toEqual([{ t: 'entry', ...ENTRY }])
+  })
+
+  it('un celular v3, sin la capacidad o sin lista no recibe nada', async () => {
+    for (const ch of [resume(3), resume(4, true, false), resume(4, false)]) {
+      await flush()
+      expect(ch.sent.some((f) => f.t === 'entry')).toBe(false)
+    }
+  })
+})

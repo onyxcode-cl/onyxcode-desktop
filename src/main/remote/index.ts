@@ -4,7 +4,8 @@
  * `qrcode`, `node-datachannel`) no se cargan.
  */
 import { networkInterfaces } from 'node:os'
-import { powerMonitor } from 'electron'
+import { app, powerMonitor } from 'electron'
+import { join } from 'node:path'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import type { RemotePairRequest, RemotePolicyView, RemoteState } from '@shared/ipc-remote'
@@ -16,6 +17,7 @@ import type { DevicesStore } from './devices-store'
 import type { EventStreamClient } from './events'
 import { pickLanIp } from './lan-ip'
 import { qrMatrix } from './qr'
+import { loadEntryInfo, type EntryInfo } from './entry-info'
 import { invokeAs } from '../ipc/handle'
 import { subscribeRemote } from '../ipc/event-bus'
 import { createEngineHost } from './engine-host'
@@ -94,6 +96,11 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     // Se lee del almacén en cada decisión: apagarlo (Ajustes, «Cortar todo») surte efecto al instante.
     canApproveCommands: (id) => d.devices.canApproveCommands(id)
   })
+  let entryInfo: EntryInfo | null | undefined
+  const entry = (): EntryInfo | null => {
+    entryInfo ??= loadEntryInfo(join(d.pwaDir, 'app'), app.getVersion())
+    return entryInfo
+  }
   const svc = new RemoteService({
     engine,
     devices: d.devices,
@@ -129,7 +136,9 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     policy: d.policy,
     cloudPaused: d.cloudPaused,
     siteCheck: d.siteCheck,
-    caps: d.caps
+    // `entry`: archivos de arranque de la interfaz completa con su SRI (solo modo nube). Se calcula una vez, al primer uso.
+    caps: () => d.caps?.() ?? (entry() ? ['entry'] : []),
+    entry
   })
   watchPowerAndNetwork(svc)
   return svc

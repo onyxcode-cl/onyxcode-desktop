@@ -623,6 +623,39 @@ button.outline:active:not(:disabled) {
   letter-spacing: 0.06em;
   color: var(--fg-subtle);
 }
+/* Modo nube: escribir el código de vinculación y guía de instalación. */
+.codeform label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.codeinput {
+  width: 100%;
+  min-height: 50px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.0625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.installguide {
+  width: 100%;
+  margin-top: 14px;
+  text-align: left;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+.installguide summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
 .actions {
   display: flex;
   flex-wrap: wrap;

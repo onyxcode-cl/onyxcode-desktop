@@ -7,6 +7,8 @@ import { LIMITS } from '../../src/shared/remote/protocol'
 import type { Conn, FailReason, RemoteClient, Snapshot } from './client'
 import { PIN_LENGTH, pinInit, pinKeyFromEvent, pinPress, type PinKey } from '../../src/shared/remote/pin-pad'
 import { lang, t } from './i18n'
+import { installAvailable, isStandalone, onInstallChange, platform, promptInstall } from './install'
+import { normalizePairCode, formatPairCode } from '../../src/shared/remote/cloud'
 
 type Child = Node | string | null | undefined | false
 
@@ -226,10 +228,12 @@ function pill(text: string, busy = true): HTMLElement {
   return h('div', { class: 'statuspill', role: 'status' }, h('span', { class: busy ? 'dot busy' : 'dot', 'aria-hidden': 'true' }), text)
 }
 
-function chip(conn: Conn): HTMLElement {
+function chip(conn: Conn, relay = false): HTMLElement {
   const online = conn.k === 'online'
   const label = online
-    ? t('conn.online')
+    ? relay
+      ? `${t('conn.online')} · ${t('conn.relay')}`
+      : t('conn.online')
     : conn.k === 'reconnecting'
       ? t('conn.reconnecting', { n: conn.attempt, max: conn.max })
       : t('conn.offline')
@@ -268,6 +272,8 @@ function failArt(r: FailReason): HTMLElement {
     case 'no-host':
     case 'unreachable':
       return art('wifioff', 'warn')
+    case 'host-offline':
+      return art('laptop', 'warn')
     case 'busy':
     case 'rate':
     case 'other-device':
@@ -300,14 +306,76 @@ function codeCells(code: string): HTMLElement {
   )
 }
 
-function stepsCard(): HTMLElement {
+function stepsCard(prefix: 'idle' | 'idle.cloud' = 'idle'): HTMLElement {
   return h(
     'ol',
     { class: 'steps' },
-    ...(['idle.step1', 'idle.step2', 'idle.step3'] as const).map((k, i) =>
+    ...([`${prefix}.step1`, `${prefix}.step2`, `${prefix}.step3`] as const).map((k, i) =>
       h('li', {}, h('span', { class: 'num', 'aria-hidden': 'true' }, String(i + 1)), h('span', {}, t(k)))
     )
   )
+}
+
+/** Escribir el código de 16 caracteres (modo nube). Tolera minúsculas, guiones, espacios y O/0, I/L/1. */
+function codeForm(c: RemoteClient): HTMLElement {
+  const input = h('input', {
+    class: 'codeinput',
+    type: 'text',
+    inputmode: 'text',
+    autocomplete: 'off',
+    autocapitalize: 'characters',
+    spellcheck: 'false',
+    maxlength: '24',
+    placeholder: t('code.hint'),
+    'aria-label': t('code.label')
+  })
+  const err = h('p', { class: 'muted fine', role: 'alert', hidden: true }, t('code.invalid'))
+  const submit = (): void => {
+    const code = normalizePairCode(input.value)
+    if (!code || !c.startWithCode(code)) {
+      err.hidden = false
+      return
+    }
+    err.hidden = true
+    input.value = ''
+  }
+  input.addEventListener('input', () => {
+    err.hidden = true
+    // Se muestra en grupos de 4 mientras se escribe (sin tocar lo que ya no es un carácter del código).
+    const n = normalizePairCode(input.value)
+    if (n) input.value = formatPairCode(n)
+  })
+  input.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') submit()
+  })
+  return h(
+    'div',
+    { class: 'stack codeform' },
+    h('label', { class: 'label' }, t('code.label'), input),
+    err,
+    h('button', { class: 'primary big', type: 'button', 'on:click': submit }, t('code.btn'))
+  )
+}
+
+/** Cómo instalar la página en la pantalla de inicio (opcional). iPhone: instrucciones; Android/Chrome: botón si el navegador lo ofrece. */
+function installGuide(): HTMLElement {
+  if (isStandalone()) return h('span')
+  const p = platform()
+  const body = h('div', { class: 'stack' })
+  if (p !== 'android') body.append(h('p', { class: 'muted fine' }, t('install.ios')))
+  if (p !== 'ios') body.append(h('p', { class: 'muted fine' }, t('install.android')))
+  // El botón solo existe si el navegador ofrece instalar (Android/Chrome) y aparece cuando el aviso llega, aunque sea tarde.
+  const slot = h('span')
+  const paint = (): void =>
+    slot.replaceChildren(
+      ...(installAvailable()
+        ? [h('button', { class: 'outline', type: 'button', 'on:click': () => void promptInstall() }, t('install.btn'))]
+        : [])
+    )
+  paint()
+  onInstallChange(paint)
+  body.append(slot)
+  return h('details', { class: 'installguide' }, h('summary', {}, t('install.title')), body)
 }
 
 /**
@@ -447,12 +515,17 @@ function statusScreen(c: RemoteClient, s: Snapshot): Screen {
   switch (conn.k) {
     case 'idle':
       title.textContent = t('idle.title')
-      root.append(
-        art('gem'),
-        title,
-        stepsCard(),
-        h('p', { class: 'foot' }, h('span', { 'aria-hidden': 'true' }, icon('wifi', 14)), t('idle.sameWifi'))
-      )
+      if (s.cloud) {
+        // Modo nube: se vincula escaneando el QR (llega con `#c=`) o ESCRIBIENDO el código, que es lo que hace falta en la app
+        // instalada de iPhone (su almacenamiento es aparte del de Safari).
+        root.append(art('gem'), title, stepsCard('idle.cloud'), codeForm(c), installGuide())
+      } else
+        root.append(
+          art('gem'),
+          title,
+          stepsCard(),
+          h('p', { class: 'foot' }, h('span', { 'aria-hidden': 'true' }, icon('wifi', 14)), t('idle.sameWifi'))
+        )
       break
     case 'connecting': {
       title.textContent = t('conn.connecting')
@@ -599,7 +672,7 @@ function listScreen(c: RemoteClient, ctl: FullControl): Screen {
   const root = h('div', { class: 'col' }, h('div', { class: 'bar' }, brand(), chipSlot), bannerSlot, scroll)
 
   const update = (s: Snapshot): void => {
-    chipSlot.replaceChildren(chip(s.conn))
+    chipSlot.replaceChildren(chip(s.conn, s.relay))
     const b = banner(s.conn)
     bannerSlot.replaceChildren(...(b ? [b] : []))
     basicSlot.replaceChildren(
@@ -608,7 +681,7 @@ function listScreen(c: RemoteClient, ctl: FullControl): Screen {
             h(
               'div',
               { class: 'basicnote', role: 'status' },
-              h('span', {}, t('list.basic')),
+              h('span', {}, c.state.cloud ? `${t('list.basic')} ${t('list.update')}` : t('list.basic')),
               h('button', { class: 'compact', type: 'button', 'on:click': () => location.reload() }, t('btn.reload'))
             )
           ]
