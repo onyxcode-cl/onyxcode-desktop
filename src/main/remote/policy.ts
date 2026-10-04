@@ -488,6 +488,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'remote:revoke': 'X',
   'remote:confirmAction': 'X', // solo la ventana principal del Mac confirma
   'remote:setRemember': 'X',
+  'remote:setConfirmEach': 'X',
   'remote:resetPin': 'X',
   'remote:revokeAll': 'X',
   'remote:setDeviceTtl': 'X',

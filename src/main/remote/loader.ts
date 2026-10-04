@@ -54,11 +54,30 @@ export function offState(platform: string = process.platform): RemoteState {
   if (!capsFor(platform).remote) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'platform' }
   const policy = getOrgPolicy()
   const withPolicy = policy.managed ? { policy } : {}
-  if (policy.blocked) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'policy', ...withPolicy }
+  if (policy.blocked)
+    return {
+      ...REMOTE_OFF_STATE,
+      available: false,
+      unavailable: 'policy',
+      confirmEachConnection: policy.requireConnectionConfirm,
+      confirmEachForced: policy.requireConnectionConfirm,
+      ...withPolicy
+    }
   const devices = getDevicesStore()
-  if (!devices.available) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'no-safe-storage', ...withPolicy }
+  const forced = policy.requireConnectionConfirm
+  if (!devices.available)
+    return {
+      ...REMOTE_OFF_STATE,
+      available: false,
+      unavailable: 'no-safe-storage',
+      confirmEachConnection: forced,
+      confirmEachForced: forced,
+      ...withPolicy
+    }
   return {
     ...REMOTE_OFF_STATE,
+    confirmEachConnection: forced || devices.getPrefs().confirmEachConnection,
+    confirmEachForced: forced,
     devices: devices.list().map((d) => toDeviceInfo(d, false, null, Date.now(), policy.deviceTtlDays)),
     ...withPolicy
   }

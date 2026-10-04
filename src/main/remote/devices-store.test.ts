@@ -2,6 +2,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { sha256Hex } from '@shared/remote/code'
+import { deviceKey } from '@shared/remote/handshake'
 import { LIMITS } from '@shared/remote/protocol'
 import { AuditLog } from './audit'
 import { DAY_MS, DevicesLimitError, DevicesStore, toDeviceInfo, type SafeStorageLike } from './devices-store'
@@ -30,9 +32,10 @@ describe('DevicesStore', () => {
     expect(raw.toString('utf8')).not.toContain('iPhone')
     expect(raw.toString('utf8')).not.toContain(secret)
     expect(Buffer.from(raw).reverse().toString('utf8')).not.toContain(secret)
-    expect(s.verify(id, secret)).toBe(true)
-    expect(s.verify(id, 'A'.repeat(43))).toBe(false)
-    expect(s.verify('0'.repeat(32), secret)).toBe(false)
+    // Del hash solo sale la clave derivada (HKDF): coincide con la que calcula el celular desde su secreto.
+    expect(Array.from(s.authKey(id)!)).toEqual(Array.from(deviceKey(sha256Hex(secret))))
+    expect(Array.from(s.authKey(id)!)).not.toEqual(Array.from(deviceKey(sha256Hex('A'.repeat(43)))))
+    expect(s.authKey('0'.repeat(32))).toBeNull()
   })
 
   it('persiste entre instancias y respeta el máximo de 3', () => {
@@ -48,7 +51,8 @@ describe('DevicesStore', () => {
     const s = new DevicesStore(join(dir, 'remote.bin'), fakeSafe())
     const { id, secret } = s.add('Pixel')
     expect(s.revoke(id)).toBe(true)
-    expect(s.verify(id, secret)).toBe(false)
+    expect(secret).toBeTruthy()
+    expect(s.authKey(id)).toBeNull()
     expect(s.revoke(id)).toBe(false)
   })
 
@@ -72,27 +76,25 @@ describe('DevicesStore: caducidad por dispositivo (reloj falso)', () => {
   const T0 = 1_700_000_000_000
   const clockStore = (file: string, t: { now: number }): DevicesStore => new DevicesStore(file, fakeSafe(), undefined, () => t.now)
 
-  it('por defecto caduca a los 90 días del alta y `check` lo distingue de un secreto malo', () => {
+  it('por defecto caduca a los 90 días del alta (`expiryState`)', () => {
     const t = { now: T0 }
     const s = clockStore(join(dir, 'remote.bin'), t)
-    const { id, secret } = s.add('Pixel', t.now)
+    const { id } = s.add('Pixel', t.now)
     expect(s.get(id)).toMatchObject({ ttlDays: 90, renewedAt: T0, lastUsedAt: null })
     expect(s.expiresAt(id)).toBe(T0 + 90 * DAY_MS)
-    expect(s.check(id, secret, T0 + 90 * DAY_MS - 1)).toBe('ok')
-    expect(s.check(id, secret, T0 + 90 * DAY_MS)).toBe('expired')
-    // sin el secreto correcto no se revela si caducó
-    expect(s.check(id, 'A'.repeat(43), T0 + 91 * DAY_MS)).toBe('bad')
+    expect(s.expiryState(id, T0 + 90 * DAY_MS - 1)).toBe('ok')
+    expect(s.expiryState(id, T0 + 90 * DAY_MS)).toBe('expired')
   })
 
   it('usar el celular renueva el plazo (touch) y anota lastUsedAt', () => {
     const t = { now: T0 }
     const s = clockStore(join(dir, 'remote.bin'), t)
-    const { id, secret } = s.add('Pixel', T0)
+    const { id } = s.add('Pixel', T0)
     const day80 = T0 + 80 * DAY_MS
     s.touch(id, day80)
     expect(s.get(id)?.lastUsedAt).toBe(day80)
-    expect(s.check(id, secret, T0 + 150 * DAY_MS)).toBe('ok')
-    expect(s.check(id, secret, day80 + 90 * DAY_MS)).toBe('expired')
+    expect(s.expiryState(id, T0 + 150 * DAY_MS)).toBe('ok')
+    expect(s.expiryState(id, day80 + 90 * DAY_MS)).toBe('expired')
   })
 
   it('30/90/365 o nunca; un valor no permitido se rechaza; cambiar el plazo renueva desde ahora', () => {
@@ -196,5 +198,45 @@ describe('DevicesStore: caducidad por dispositivo (reloj falso)', () => {
     expect(s.get(id)?.secretHash).toMatch(/^[0-9a-f]{64}$/)
     expect(s.get(id)?.secretHash).not.toBe(secret)
     expect(info).not.toContain(s.get(id)!.secretHash)
+  })
+})
+
+describe('DevicesStore: ajustes globales y confianza de 12 h', () => {
+  it('confirmEachConnection está apagado por defecto, persiste junto a port y a los dispositivos', () => {
+    const file = join(dir, 'remote.bin')
+    const a = new DevicesStore(file, fakeSafe())
+    expect(a.getPrefs()).toEqual({ confirmEachConnection: false })
+    a.add('Pixel')
+    a.setPort(41234)
+    a.setPrefs({ confirmEachConnection: true })
+    const b = new DevicesStore(file, fakeSafe())
+    expect(b.getPrefs()).toEqual({ confirmEachConnection: true })
+    expect(b.getPort()).toBe(41234)
+    expect(b.list()).toHaveLength(1)
+    // Guardar otra cosa (un dispositivo nuevo) no pierde el ajuste.
+    b.add('iPhone')
+    expect(new DevicesStore(file, fakeSafe()).getPrefs()).toEqual({ confirmEachConnection: true })
+  })
+
+  it('un bloque prefs raro o ausente deja el valor por defecto (nada de `"sí"` → true)', () => {
+    const safe = fakeSafe()
+    for (const raw of [{ devices: [] }, { devices: [], prefs: 'x' }, { devices: [], prefs: { confirmEachConnection: 'sí' } }]) {
+      const file = join(dir, `r${Math.random()}.bin`)
+      writeFileSync(file, safe.encryptString(JSON.stringify(raw)))
+      expect(new DevicesStore(file, safe).getPrefs()).toEqual({ confirmEachConnection: false })
+    }
+  })
+
+  it('clearAllTrust borra «Recordar 12 h» de todos y persiste', () => {
+    const file = join(dir, 'remote.bin')
+    const s = new DevicesStore(file, fakeSafe())
+    const a = s.add('A')
+    const b = s.add('B')
+    s.setTrust(a.id, 123)
+    s.setTrust(b.id, 456)
+    s.clearAllTrust()
+    expect(s.trustedUntil(a.id)).toBeNull()
+    expect(s.trustedUntil(b.id)).toBeNull()
+    expect(new DevicesStore(file, fakeSafe()).trustedUntil(a.id)).toBeNull()
   })
 })

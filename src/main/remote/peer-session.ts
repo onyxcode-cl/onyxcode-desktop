@@ -1,15 +1,25 @@
 /**
  * Una conexión del celular por el DataChannel (cifrado DTLS): autenticación, límites y despacho de la lista blanca.
  *
- *  - Vinculación (`pair`): el escritorio pide confirmación local mostrando el código de 6 dígitos y, si el dueño
- *    acepta, entrega `paired{deviceId, deviceSecret}` POR EL CANAL (el celular guarda el secreto; aquí solo su hash).
- *  - Reconexión (`resume`): la primera trama debe ser `auth{deviceId, secret}` (nunca por HTTP ni señalización).
- *  - Antes de autenticar solo se admiten `auth` (en reconexión) y `ping`; cualquier otra cosa es una violación.
+ *  - Handshake v3 (los dos modos; `@shared/remote/handshake`): lo primero que se admite es `hs1`; el Mac responde `hs2`; el
+ *    celular manda `hs3` con un HMAC ligado a las huellas DTLS de los dos extremos y a nonces de un solo uso. Ninguna
+ *    credencial viaja. Con un intermediario las huellas difieren y el HMAC no cuadra: `auth-failed`, sin pistas (un solo
+ *    intento). El Mac prueba al celular que tiene la clave (`proof` en `authed`/`pair-pending`) ANTES de que el celular mande
+ *    el PIN o cualquier otra cosa.
+ *  - Vinculación (`pair`): clave del QR (`pairKey(q)`). Tras `hs3` correcto, el escritorio pide confirmación local mostrando el
+ *    código de 6 dígitos (`sasCode`, con compromiso previo) y, si el dueño acepta, entrega `paired{deviceId, deviceSecret}` POR
+ *    EL CANAL ya ligado (el celular guarda el secreto; aquí solo su hash).
+ *  - Reconexión (`resume`): clave del dispositivo (`devices.authKey`).
+ *  - Antes de autenticar solo se admiten `ping`, `hs1` (en `await-hs1`) y `hs3` (en `await-hs3`); cualquier otra cosa es una
+ *    violación, y un `hs*` fuera de orden corta enseguida. El plazo (10 s) cubre todo el handshake.
+ *  - El plazo de validez del vínculo se renueva cuando el acceso se abre (PIN o reconexión en caliente), no al presentar la clave.
  *  - 10 req/s (ráfaga 20), 6 prompts/min, tramas ≤ 64 KiB, 3 violaciones = desconexión.
  *  - Protocolo v2 (`call`/`http`/`sub`/`chunk`/…): lo atiende el multiplexor compartido (`@shared/remote/mux`). Aquí solo
  *    se cablea: validación, cubos, salida con prioridad y `bufferedAmount`. El despacho es `deps.dispatch` (inyectable);
  *    sin él, toda llamada v2 responde `unavailable` (el motor no se expone todavía).
  */
+import { randomBytes } from 'node:crypto'
+import { HostHandshake, type Fps, type Rand } from '@shared/remote/handshake'
 import { LIMITS, encodeFrame, isMuxClientFrame, parseClientFrame, utf8Length } from '@shared/remote/protocol'
 import type {
   ByeReason,
@@ -18,6 +28,8 @@ import type {
   DeniedReason,
   HostFrame,
   HttpFrame,
+  Hs1Frame,
+  Hs3Frame,
   MuxClientFrame,
   RemoteEvent,
   RequestFrame
@@ -56,22 +68,31 @@ export interface PeerAccess {
   /** ¿Es lectura? (con el celular bloqueado por inactividad solo se atienden lecturas; sin esto, ninguna). */
   isRead?: (r: CallRequest | HttpRequest) => boolean
   inactivityMs?: number
+  /** ¿Hay que confirmar en el Mac esta conexión de un dispositivo ya vinculado? Sin esto, sí (comportamiento anterior). */
+  needsConfirm?(deviceId: string): boolean
 }
 
-export type PeerState = 'init' | 'pair-wait' | 'await-auth' | 'authed' | 'closed'
+export type PeerState = 'init' | 'await-hs1' | 'await-hs3' | 'pair-wait' | 'authed' | 'closed'
 
 export interface PeerSessionDeps {
   channel: RtcChannel
   kind: 'pair' | 'resume'
   /** Nombre que anunció el celular (ya saneado). Solo en `pair`. */
   deviceName?: string
-  /** Dispositivo que dice ser (solo en `resume`; se comprueba con `auth`). */
+  /** Dispositivo que dice ser (solo en `resume`; se comprueba con el handshake). */
   deviceId?: string
-  /** Código de 6 dígitos de las huellas DTLS (`null` = faltan huellas: se rechaza). */
-  code: string | null
+  /** Huellas DTLS del offer y del answer vistas por la pila del Mac (`null` = faltan o no son estrictas: se rechaza). */
+  fps: Fps | null
+  /** Solo `pair`: identificador y clave del QR (`pairId(q)`, `pairKey(q)`). */
+  qid?: string
+  pairKey?: Uint8Array
+  /** Solo `pair`: resultado del handshake (`true` = `hs3` correcto: el QR se consume; `false` = intento fallido). */
+  onPairProof?(ok: boolean): boolean | void
+  /** Azar (por defecto `node:crypto`). Inyectable para las pruebas. */
+  rand?: Rand
   devices: DevicesStore
   backend: RemoteBackend
-  /** Pide confirmación al dueño en el escritorio. */
+  /** Pide confirmación al dueño en el escritorio (con el código de 6 dígitos que verá también el celular). */
   confirmPair(info: { deviceName: string; code: string }): Promise<boolean>
   /** Autenticado: el servicio decide si acepta (un solo celular a la vez). `false` = se corta con `other-device`. */
   onAuthed(deviceId: string): boolean
@@ -97,12 +118,14 @@ export class PeerSession {
   private _deviceId: string | null = null
   private readonly limiter: RateLimiter
   private authTimer: unknown = null
-  private started = false
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (h: unknown) => void
   private readonly outbox: Outbox
   private mux: Mux | null = null
   private gate: AccessGate | null = null
+  private hs: HostHandshake | null = null
+  /** Se llamó a `start()` (el canal llegó a abrirse): un fallo desde aquí cuenta contra el QR. */
+  private _started = false
 
   constructor(private readonly d: PeerSessionDeps) {
     this.limiter = new RateLimiter(d.clock)
@@ -130,6 +153,11 @@ export class PeerSession {
     return this._state === 'authed'
   }
 
+  /** ¿Llegó a abrirse el canal? (si no, un fallo no cuenta como intento de vinculación fallido). */
+  get started(): boolean {
+    return this._started
+  }
+
   /** Estado de acceso visible en Ajustes (`null` = sin control de acceso o sin autenticar). */
   get accessView(): AccessView | null {
     return this._state === 'authed' ? (this.gate?.view ?? null) : null
@@ -137,20 +165,29 @@ export class PeerSession {
 
   /** Se llama al abrirse el canal (idempotente). */
   start(): void {
-    if (this.started || this._state === 'closed') return
-    this.started = true
+    if (this._started || this._state === 'closed') return
+    this._started = true
     const { channel } = this.d
     channel.setBufferedAmountLowThreshold?.(BUFFER.low)
     channel.onBufferedAmountLow?.(() => this.outbox.pump())
     channel.onMessage((raw) => this.onMessage(raw))
     channel.onClose(() => this.finish('closed'))
-    if (this.d.kind === 'pair') void this.runPairing()
-    else {
-      this._state = 'await-auth'
-      this.authTimer = this.setTimer(() => {
-        if (this._state === 'await-auth') this.bye('timeout')
-      }, LIMITS.authTimeoutMs)
+    const { fps, kind } = this.d
+    // Sin huellas estrictas en los dos SDP no hay a qué ligar el handshake: se rechaza (nada de degradar).
+    if (!fps) return this.failHandshake(false)
+    const rand = this.d.rand ?? ((n: number) => new Uint8Array(randomBytes(n)))
+    if (kind === 'pair') {
+      if (!this.d.qid || !this.d.pairKey) return this.failHandshake(false)
+      this.hs = new HostHandshake({ mode: 'pair', qid: this.d.qid, key: this.d.pairKey, fps, rand })
+    } else {
+      // Si el dispositivo ya no existe (revocado a mitad), se usa la clave de relleno: mismo trabajo, siempre `auth-failed`.
+      const key = this.d.deviceId ? this.d.devices.authKey(this.d.deviceId) : null
+      this.hs = new HostHandshake({ mode: 'resume', expectId: this.d.deviceId ?? '', key, fps, rand })
     }
+    this._state = 'await-hs1'
+    this.authTimer = this.setTimer(() => {
+      if (this._state === 'await-hs1' || this._state === 'await-hs3') this.handshakeTimeout()
+    }, LIMITS.authTimeoutMs)
   }
 
   // ── salida ──
@@ -231,21 +268,103 @@ export class PeerSession {
     this.authTimer = null
   }
 
+  // ── handshake ──
+
+  /** Corte inmediato del handshake (un solo intento): sin pistas sobre qué falló. */
+  private failHandshake(proofChecked: boolean): void {
+    if (this._state === 'closed') return
+    if (this.d.kind === 'pair') {
+      // Solo cuenta contra el QR si el canal llegó a abrirse (un canal que nunca abrió no es un intento).
+      if (this._started) this.d.onPairProof?.(false)
+      this.send({ t: 'denied', reason: 'rejected' })
+      this.closeSoon('denied:rejected')
+      return
+    }
+    // Una prueba que no cuadra puede ser un intermediario o un secreto robado: queda en la auditoría (huella del que dijo ser).
+    if (proofChecked) this.auditBadProof()
+    this.send({ t: 'auth-failed' })
+    this.closeSoon('auth-failed')
+  }
+
+  private auditBadProof(): void {
+    const id = this.d.deviceId
+    this.d.access?.audit({
+      kind: 'auth-bad-proof',
+      ...(id ? { device: deviceFingerprint(id), name: this.d.devices.get(id)?.name } : {})
+    })
+  }
+
+  private handshakeTimeout(): void {
+    if (this.d.kind === 'pair') this.d.onPairProof?.(false)
+    this.bye('timeout')
+  }
+
+  private onHs1(f: Hs1Frame): void {
+    if (this._state !== 'await-hs1' || !this.hs) return this.failHandshake(false)
+    const hs2 = this.hs.onHello(f)
+    if (!hs2) return this.failHandshake(false)
+    this._state = 'await-hs3'
+    this.send(hs2)
+  }
+
+  private onHs3(f: Hs3Frame): void {
+    if (this._state !== 'await-hs3' || !this.hs) return this.failHandshake(false)
+    const res = this.hs.onProof(f)
+    this.hs = null
+    if (!res.ok) return this.failHandshake(true)
+    this.clearAuthTimer()
+    if (this.d.kind === 'pair') return void this.afterPairProof(res.proof, res.sas)
+    this.afterResumeProof(res.proof)
+  }
+
+  // ── reconexión ──
+
+  private afterResumeProof(proof: string): void {
+    const deviceId = this.d.deviceId as string
+    const { capDays } = this.limits()
+    const now = this.nowMs()
+    if (this.d.devices.expiryState(deviceId, now, capDays) === 'expired') {
+      // El Mac ya verificó la prueba del celular, así que puede probar quién es al decir `expired`.
+      this.d.access?.audit({ kind: 'expired', device: deviceFingerprint(deviceId), name: this.d.devices.get(deviceId)?.name })
+      this.send({ t: 'auth-failed', why: 'expired', proof })
+      this.closeSoon('expired')
+      return
+    }
+    this._deviceId = deviceId
+    this._state = 'authed'
+    // El plazo NO se renueva aquí (H11): lo hace el acceso al abrirse (PIN o reconexión en caliente). `expiresAt` es el vigente.
+    const expiresAt = this.d.devices.expiresAt(deviceId, capDays)
+    this.send({
+      t: 'authed',
+      proof,
+      ...(expiresAt === null ? {} : { expiresAt }),
+      ...(expiresAt !== null && expiresAt - now <= EXPIRY_WARN_MS ? { expiring: true } : {})
+    })
+    if (!this.d.onAuthed(deviceId)) return this.bye('other-device')
+    this.d.access?.audit({ kind: 'connected', ...this.who() })
+    // Sin control de acceso (solo pruebas del protocolo) no hay «apertura» que renueve el plazo: se renueva al autenticar.
+    if (!this.d.access) this.d.devices.touch(deviceId, now)
+    this.startGate(false)
+  }
+
   // ── vinculación ──
 
-  private async runPairing(): Promise<void> {
-    const { code, deviceName } = this.d
+  private async afterPairProof(proof: string, code: string | undefined): Promise<void> {
+    const { deviceName } = this.d
     this._state = 'pair-wait'
+    // `hs3` correcto: el QR se consume (de un solo uso), pase lo que pase después.
+    const consumed = this.d.onPairProof?.(true)
     const deny = (reason: DeniedReason): void => {
       this.send({ t: 'denied', reason })
       this.closeSoon(`denied:${reason}`)
     }
-    if (!code) return deny('rejected')
+    // `false` = el QR ya no valía (caducó entre el `hello` y el `hs3`): no se sigue.
+    if (!code || consumed === false) return deny('rejected')
     const lim = this.limits()
     // Los vínculos caducados no ocupan hueco.
     this.d.devices.pruneExpired(this.nowMs(), lim.capDays)
     if (this.d.devices.list().length >= lim.maxDevices) return deny('limit')
-    this.send({ t: 'pair-pending' })
+    this.send({ t: 'pair-pending', proof })
     let accepted = false
     let timer: unknown = null
     try {
@@ -273,6 +392,7 @@ export class PeerSession {
     this.send({ t: 'paired', deviceId: created.id, deviceSecret: created.secret })
     if (!this.d.onAuthed(created.id)) return this.bye('other-device')
     this.d.access?.audit({ kind: 'paired', ...this.who() })
+    if (!this.d.access) this.d.devices.touch(created.id, this.nowMs())
     this.startGate(true)
   }
 
@@ -303,8 +423,12 @@ export class PeerSession {
       this.send({ t: 'pong' })
       return
     }
-    if (f.t === 'auth') {
-      this.onAuth(f.deviceId, f.secret)
+    if (f.t === 'hs1') {
+      this.onHs1(f)
+      return
+    }
+    if (f.t === 'hs3') {
+      this.onHs3(f)
       return
     }
     if (f.t === 'lock') {
@@ -330,43 +454,6 @@ export class PeerSession {
       this._state === 'authed' && (f.t === 'call' || f.t === 'http' || f.t === 'sub' ? this.limiter.allowCall() : this.limiter.allowFlood())
     if (!allowed) return this.violation()
     this.getMux().receive(f, utf8Length(raw))
-  }
-
-  private onAuth(deviceId: string, secret: string): void {
-    if (this.d.kind !== 'resume' || this._state !== 'await-auth') {
-      this.violation()
-      return
-    }
-    // Una sola oportunidad: si falla, se corta (sin pistas sobre qué falló). `expired` solo se dice con el secreto correcto.
-    const { capDays } = this.limits()
-    const now = this.nowMs()
-    const res = deviceId === this.d.deviceId ? this.d.devices.check(deviceId, secret, now, capDays) : 'bad'
-    if (res === 'expired') {
-      this.d.access?.audit({ kind: 'expired', device: deviceFingerprint(deviceId), name: this.d.devices.get(deviceId)?.name })
-      this.send({ t: 'auth-failed', why: 'expired' })
-      this.closeSoon('expired')
-      return
-    }
-    if (res !== 'ok') {
-      this.send({ t: 'auth-failed' })
-      this.closeSoon('auth-failed')
-      return
-    }
-    this.clearAuthTimer()
-    this._deviceId = deviceId
-    this._state = 'authed'
-    // Aviso de caducidad próxima: lo que quedaba ANTES de renovar (si el celular casi se pierde, se le dice).
-    const before = this.d.devices.expiresAt(deviceId, capDays)
-    this.d.devices.touch(deviceId, now)
-    const after = this.d.devices.expiresAt(deviceId, capDays)
-    this.send({
-      t: 'authed',
-      ...(after === null ? {} : { expiresAt: after }),
-      ...(before !== null && before - now <= EXPIRY_WARN_MS ? { expiring: true } : {})
-    })
-    if (!this.d.onAuthed(deviceId)) return this.bye('other-device')
-    this.d.access?.audit({ kind: 'connected', ...this.who() })
-    this.startGate(false)
   }
 
   // ── acceso (T6) ──
@@ -397,6 +484,7 @@ export class PeerSession {
       now: this.d.clock ?? Date.now,
       setTimer: this.setTimer,
       clearTimer: this.clearTimer,
+      needsConfirm: a.needsConfirm ? () => a.needsConfirm!(id) : undefined,
       trusted: () => a.trusted(id),
       confirmConnection: () => a.confirmConnection({ deviceId: id, deviceName: this.d.devices.get(id)?.name ?? '?' }),
       send: (f) => void this.send(f),
@@ -409,7 +497,9 @@ export class PeerSession {
       audit: (e) => a.audit({ ...e, ...this.who() }),
       lastActiveAt: a.lastActiveAt(id),
       noteActive: (t) => a.noteActive(id, t),
-      inactivityMs: a.inactivityMs
+      inactivityMs: a.inactivityMs,
+      // H11: el plazo de validez se renueva al abrirse el acceso, no al presentar la clave.
+      onOpened: () => this.d.devices.touch(id, this.nowMs())
     })
     this.gate.start()
   }

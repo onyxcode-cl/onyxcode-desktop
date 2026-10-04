@@ -20,7 +20,8 @@ describe('parseRemotePolicy', () => {
       requirePin: true,
       maxDevices: 2,
       deviceTtlDays: 30,
-      allowConfirmRemember12h: false
+      allowConfirmRemember12h: false,
+      requireConnectionConfirm: false
     })
   })
   it('enabled:false deshabilita; un enabled que no es booleano también (fail closed)', () => {
@@ -37,6 +38,18 @@ describe('parseRemotePolicy', () => {
     const p = parseRemotePolicy({ remote: { allowRemember: 'true', allowConfirmRemember12h: 1, requirePin: 0 } })
     expect(p).toMatchObject({ allowRemember: false, allowConfirmRemember12h: false, requirePin: true })
     expect(parseRemotePolicy({ remote: { requirePin: false } }).requirePin).toBe(false)
+  })
+  it('requireConnectionConfirm: ausente = false; true = true; false = false; cualquier otro valor endurece (true)', () => {
+    expect(parseRemotePolicy({ remote: {} }).requireConnectionConfirm).toBe(false)
+    expect(NO_ORG_POLICY.requireConnectionConfirm).toBe(false)
+    expect(parseRemotePolicy({ remote: { requireConnectionConfirm: true } }).requireConnectionConfirm).toBe(true)
+    expect(parseRemotePolicy({ remote: { requireConnectionConfirm: false } }).requireConnectionConfirm).toBe(false)
+    for (const v of ['sí', 'false', 0, 1, null, [], {}])
+      expect(parseRemotePolicy({ remote: { requireConnectionConfirm: v } }).requireConnectionConfirm).toBe(true)
+  })
+  it('archivo inválido: la confirmación por conexión queda forzada (fail closed)', () => {
+    expect(invalidRemotePolicy().requireConnectionConfirm).toBe(true)
+    expect(parseRemotePolicy(null).requireConnectionConfirm).toBe(true)
   })
   it('números fuera de rango: se recortan; los inválidos son lo más restrictivo', () => {
     expect(parseRemotePolicy({ remote: { maxDevices: 99, deviceTtlDays: 9999 } })).toMatchObject({ maxDevices: 3, deviceTtlDays: 365 })

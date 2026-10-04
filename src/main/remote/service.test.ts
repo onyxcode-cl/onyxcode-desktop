@@ -2,11 +2,13 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { pairId } from '@shared/remote/handshake'
 import { LIMITS, type HostFrame } from '@shared/remote/protocol'
 import type { RemotePolicyView, RemoteState } from '@shared/ipc-remote'
 import type { AuditInput } from './audit'
 import { NO_ORG_POLICY, invalidRemotePolicy } from './org-policy'
 import { DevicesStore } from './devices-store'
+import { pairAs, resumeAs } from './test-handshake'
 import type { RtcAnswerer, RtcChannel, RtcFactory } from './rtc'
 import { POLICY_POLL_MS, RemoteService } from './service'
 import type { SignalHello, SignalingPeer, SignalingStartOptions, SignalingTransport } from './signaling/types'
@@ -82,7 +84,10 @@ class FakePeer implements SignalingPeer {
     this.offer = cb
   }
   onIce(): void {}
-  onClose(): void {}
+  closeCb: (() => void) | null = null
+  onClose(cb: () => void): void {
+    this.closeCb = cb
+  }
   close(): void {
     this.closed = true
   }
@@ -215,12 +220,76 @@ describe('RemoteService', () => {
     expect(s.idleStopAt).not.toBeNull()
   })
 
-  it('el secreto sirve una sola vez y el QR deja de valer', async () => {
+  it('el hello de vinculación lleva solo el qid: reconocerlo no consume el QR; uno falso no lo quema', async () => {
     const { svc } = make()
     const secret = secretOf(await svc.start())
-    const hello: SignalHello = { t: 'hello', v: 1, mode: 'pair', secret, deviceName: 'Pixel' }
+    const hello: SignalHello = { t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'Pixel' }
+    expect(transport.opts!.authorize({ ...hello, qid: 'x'.repeat(43) })).toBe(false)
+    expect(svc.getState().pairing).not.toBeNull() // el QR sigue ahí
     expect(transport.opts!.authorize(hello)).toBe(true)
-    expect(transport.opts!.authorize(hello)).toBe(false)
+    expect(transport.opts!.authorize(hello)).toBe(true) // reconocer no consume
+    expect(svc.getState().pairing).not.toBeNull()
+  })
+
+  it('5 qid falsos anulan el QR y Ajustes lo explica; generar otro lo repone', async () => {
+    const { svc } = make()
+    const secret = secretOf(await svc.start())
+    for (let i = 0; i < LIMITS.pairMaxFails; i++)
+      expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'pair', qid: 'x'.repeat(43), deviceName: 'x' })).toBe(false)
+    const s = svc.getState()
+    expect(s.pairing).toBeNull()
+    expect(s.pairingExhausted).toBe(true)
+    expect(s.mode).toBe('active')
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'x' })).toBe(false)
+    const again = await svc.newPairing()
+    expect(again.pairing).not.toBeNull()
+    expect(again.pairingExhausted).toBeUndefined()
+  })
+
+  it('intermediario en la vinculación (huellas distintas): hs3 falla, el QR sigue vigente hasta el 5.º fallo y no hay confirmación', async () => {
+    const { svc, devices } = make()
+    const secret = secretOf(await svc.start())
+    const hello: SignalHello = { t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'iPhone' }
+    for (let i = 1; i <= LIMITS.pairMaxFails; i++) {
+      const { answerer } = connectPhone(hello)
+      pairAs(answerer.channel, { q: secret, fps: { offer: 'ab'.repeat(32), answer: '11'.repeat(32) } })
+      await vi.advanceTimersByTimeAsync(5)
+      expect(answerer.channel.sent.map((f) => f.t)).toEqual(['hs2', 'denied'])
+      expect(pairReqs).toHaveLength(0)
+      expect(devices.list()).toHaveLength(0)
+      expect(svc.getState().pairing === null).toBe(i === LIMITS.pairMaxFails)
+      await vi.advanceTimersByTimeAsync(300)
+    }
+    expect(svc.getState().pairingExhausted).toBe(true)
+  })
+
+  it('un hello válido que cierra antes de abrir el canal libera el intento sin contar fallo', async () => {
+    const { svc } = make()
+    const secret = secretOf(await svc.start())
+    const hello: SignalHello = { t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'iPhone' }
+    for (let i = 0; i < LIMITS.pairMaxFails + 2; i++) {
+      expect(transport.opts!.authorize(hello)).toBe(true)
+      const peer = new FakePeer(hello)
+      transport.cb!(peer)
+      // Un segundo intento mientras el primero sigue reservado no entra.
+      expect(transport.opts!.authorize(hello)).toBe(false)
+      peer.closeCb?.()
+      await vi.advanceTimersByTimeAsync(5)
+    }
+    expect(svc.getState().pairing).not.toBeNull()
+  })
+
+  it('el secreto q del QR no aparece en ninguna trama de señalización ni del canal', async () => {
+    const { svc } = make()
+    const secret = secretOf(await svc.start())
+    const hello: SignalHello = { t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'iPhone' }
+    expect(JSON.stringify(hello)).not.toContain(secret)
+    const { peer, answerer } = connectPhone(hello)
+    pairAs(answerer.channel, { q: secret })
+    await vi.advanceTimersByTimeAsync(5)
+    expect(JSON.stringify(answerer.channel.sent)).not.toContain(secret)
+    expect(JSON.stringify(peer.hello)).not.toContain(secret)
+    expect(answerer.channel.sent.map((f) => f.t)).toEqual(['hs2', 'pair-pending'])
   })
 
   it('a los 120 s el QR caduca y el modo pasa a activo', async () => {
@@ -229,7 +298,7 @@ describe('RemoteService', () => {
     await vi.advanceTimersByTimeAsync(LIMITS.pairingTtlMs + 100)
     const s = svc.getState()
     expect(s).toMatchObject({ mode: 'active', pairing: null, pairingExpired: true })
-    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'pair', secret, deviceName: 'x' })).toBe(false)
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'x' })).toBe(false)
     const again = await svc.newPairing()
     expect(again.pairing).not.toBeNull()
     expect(again.pairingExpired).toBe(false)
@@ -238,9 +307,14 @@ describe('RemoteService', () => {
   it('vinculación completa con confirmación local y código idéntico', async () => {
     const { svc, devices } = make()
     const secret = secretOf(await svc.start())
-    const { answerer } = connectPhone({ t: 'hello', v: 1, mode: 'pair', secret, deviceName: 'iPhone' })
+    const { answerer } = connectPhone({ t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'iPhone' })
+    const phone = pairAs(answerer.channel, { q: secret })
     await vi.advanceTimersByTimeAsync(5)
-    expect(answerer.channel.sent[0]).toEqual({ t: 'pair-pending' })
+    expect(answerer.channel.sent[1]).toMatchObject({ t: 'pair-pending' })
+    expect(phone.proofOk()).toBe(true)
+    // El QR sigue vigente hasta que el handshake termina bien; ahora ya está consumido.
+    expect(svc.getState().pairing).toBeNull()
+    expect(phone.sas()).toBe(pairReqs[0].code)
     expect(pairReqs).toHaveLength(1)
     expect(pairReqs[0]).toMatchObject({ deviceName: 'iPhone' })
     expect(pairReqs[0].code).toMatch(/^\d{6}$/)
@@ -249,7 +323,7 @@ describe('RemoteService', () => {
     expect(devices.list()).toHaveLength(0)
     svc.confirmPair(pairReqs[0].requestId, true)
     await vi.advanceTimersByTimeAsync(5)
-    const paired = answerer.channel.sent[1]
+    const paired = answerer.channel.sent[2]
     expect(paired.t).toBe('paired')
     expect(devices.list()).toHaveLength(1)
     const st = svc.getState()
@@ -263,39 +337,39 @@ describe('RemoteService', () => {
     const a = devices.add('A')
     const b = devices.add('B')
     await svc.start()
-    const first = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    first.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const first = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(first.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
-    expect(first.answerer.channel.sent[0]).toMatchObject({ t: 'authed' })
-    const second = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: b.id })
-    second.answerer.channel.recv({ t: 'auth', deviceId: b.id, secret: b.secret })
+    expect(first.answerer.channel.sent.map((f) => f.t)).toEqual(['hs2', 'authed'])
+    const second = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: b.id })
+    resumeAs(second.answerer.channel, { deviceId: b.id, secret: b.secret })
     await vi.advanceTimersByTimeAsync(5)
-    expect(second.answerer.channel.sent.map((f) => f.t)).toEqual(['authed', 'bye'])
+    expect(second.answerer.channel.sent.map((f) => f.t)).toEqual(['hs2', 'authed', 'bye'])
     expect(svc.getState().devices.find((d) => d.id === a.id)!.connected).toBe(true)
     // un dispositivo desconocido ni siquiera pasa el hello
-    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'resume', deviceId: 'f'.repeat(32) })).toBe(false)
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'resume', deviceId: 'f'.repeat(32) })).toBe(false)
   })
 
   it('revocar desconecta al celular y borra el dispositivo', async () => {
     const { svc, devices } = make()
     const a = devices.add('A')
     await svc.start()
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
     svc.revoke(a.id)
     await vi.advanceTimersByTimeAsync(5)
     expect(c.answerer.channel.sent.some((f) => f.t === 'bye' && f.reason === 'revoked')).toBe(true)
     expect(devices.list()).toHaveLength(0)
-    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })).toBe(false)
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })).toBe(false)
   })
 
   it('«Cortar todo»: despide, cierra transporte y peers, anula el QR', async () => {
     const { svc, devices } = make()
     const a = devices.add('A')
     const secret = secretOf(await svc.start())
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
     const done = svc.stopAll()
     await vi.advanceTimersByTimeAsync(400)
@@ -304,8 +378,8 @@ describe('RemoteService', () => {
     expect(transport.stopped).toBe(true)
     expect(c.answerer.channel.sent.some((f) => f.t === 'bye' && f.reason === 'stopped')).toBe(true)
     expect(c.answerer.closed).toBe(true)
-    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'pair', secret, deviceName: 'x' })).toBe(false)
-    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })).toBe(false)
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'pair', qid: pairId(secret), deviceName: 'x' })).toBe(false)
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })).toBe(false)
   })
 
   it('se apaga solo a los 30 min sin conexiones', async () => {
@@ -320,8 +394,8 @@ describe('RemoteService', () => {
     const { svc, devices } = make()
     const a = devices.add('A')
     await svc.start()
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(LIMITS.idleShutdownMs + 1000)
     expect(svc.getState().mode).not.toBe('off')
     expect(svc.getState().idleStopAt).toBeNull()
@@ -343,9 +417,9 @@ describe('RemoteService', () => {
     const { svc, devices } = make({ engine })
     const a = devices.add('A')
     await svc.start()
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
     expect(engine.hub.running).toBe(false)
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
     expect(engine.hub.running).toBe(true)
     // Canal desconocido y remote:* → forbidden (nunca unavailable: el despachador real está cableado).
@@ -390,8 +464,8 @@ describe('RemoteService: política de la organización y caducidad', () => {
     const { svc, devices } = make({ policy: () => current, audit: (e) => void audits.push(e) })
     const a = devices.add('A')
     await svc.start()
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
     expect(svc.getState().devices[0]?.connected).toBe(true)
     current = pol({ blocked: 'disabled' })
@@ -408,7 +482,7 @@ describe('RemoteService: política de la organización y caducidad', () => {
     const a = devices.add('A')
     await svc.start()
     current = pol({ blocked: 'invalid' })
-    expect(transport.opts!.authorize({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })).toBe(false)
+    expect(transport.opts!.authorize({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })).toBe(false)
     await vi.advanceTimersByTimeAsync(5)
     expect(svc.getState().mode).toBe('off')
   })
@@ -438,8 +512,8 @@ describe('RemoteService: política de la organización y caducidad', () => {
     const a = devices.add('A')
     devices.add('B')
     await svc.start()
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
     const s = svc.revokeAll()
     await vi.advanceTimersByTimeAsync(5)
@@ -455,10 +529,10 @@ describe('RemoteService: política de la organización y caducidad', () => {
     await svc.start()
     vi.setSystemTime(Date.now() + 31 * 86_400_000)
     expect(svc.getState().devices[0]).toMatchObject({ id: a.id, expired: true })
-    const c = connectPhone({ t: 'hello', v: 1, mode: 'resume', deviceId: a.id })
-    c.answerer.channel.recv({ t: 'auth', deviceId: a.id, secret: a.secret })
+    const c = connectPhone({ t: 'hello', v: 3, mode: 'resume', deviceId: a.id })
+    resumeAs(c.answerer.channel, { deviceId: a.id, secret: a.secret })
     await vi.advanceTimersByTimeAsync(5)
-    expect(c.answerer.channel.sent[0]).toEqual({ t: 'auth-failed', why: 'expired' })
+    expect(c.answerer.channel.sent.find((f) => f.t === 'auth-failed')).toMatchObject({ t: 'auth-failed', why: 'expired' })
     expect(svc.revoke(a.id).devices).toHaveLength(0)
   })
 })

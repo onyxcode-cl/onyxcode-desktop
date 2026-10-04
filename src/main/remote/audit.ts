@@ -20,6 +20,7 @@ export const AUDIT_KINDS = [
   'revoked',
   'revoked-all',
   'expired',
+  'auth-bad-proof',
   'policy-blocked',
   'pin-set',
   'pin-fail',

@@ -3,13 +3,14 @@
  *
  * Reglas de seguridad que aplica este módulo:
  *  - Apagado por defecto: sin puertos ni sockets hasta `start()`. Todo se corta con `stopAll()`.
- *  - El QR lleva un secreto de un solo uso (se guarda solo su sha256), caduca a los 120 s y se consume en el
- *    primer `hello` aunque falle.
- *  - Vincular exige confirmación LOCAL en el escritorio con el código de 6 dígitos de las huellas DTLS.
+ *  - El QR lleva un secreto `q` de un solo uso que NO viaja por la señalización (el `hello` lleva solo `qid`); caduca a los
+ *    120 s, un `qid` ajeno no lo consume (5 fallos lo anulan) y solo un handshake correcto (`hs3`) lo consume.
+ *  - Vincular exige confirmación LOCAL en el escritorio con el código de 6 dígitos (con compromiso previo, ligado a las huellas DTLS).
+ *  - La reconexión se autentica con un HMAC ligado a las huellas DTLS (sin enviar ninguna credencial).
  *  - Máx. 3 dispositivos vinculados y un solo celular conectado a la vez; se apaga solo a los 30 min sin conexiones.
  */
 import { randomBytes } from 'node:crypto'
-import { pairingCode, toHex } from '@shared/remote/code'
+import { sdpFingerprintStrict, toHex } from '@shared/remote/code'
 import { LIMITS } from '@shared/remote/protocol'
 import type { CallRequest, HttpRequest } from '@shared/remote/mux'
 import type { RemoteEvent } from '@shared/remote/protocol'
@@ -81,6 +82,10 @@ interface PeerRecord {
   timer: ReturnType<typeof setTimeout> | null
   kind: 'pair' | 'resume'
   closed: boolean
+  /** Solo `pair`: clave del canal (de `pairing.reserve`). */
+  pairKey: Uint8Array | null
+  /** Solo `pair`: el handshake ya dio su resultado (el QR se consumió o el intento se liberó). */
+  pairResolved: boolean
 }
 
 export class RemoteService {
@@ -92,6 +97,8 @@ export class RemoteService {
   private readonly pairing: PairingManager
   private pairingSecret: string | null = null
   private pairingExpired = false
+  /** El QR se anuló por demasiados fallos (se explica en Ajustes). */
+  private pairingExhausted = false
   private pairingTimer: ReturnType<typeof setTimeout> | null = null
   private idleTimer: ReturnType<typeof setTimeout> | null = null
   private idleStopAt: number | null = null
@@ -107,7 +114,7 @@ export class RemoteService {
   private readonly lastActive = new Map<string, number>()
 
   constructor(private readonly d: RemoteServiceDeps) {
-    this.pairing = new PairingManager(d.now)
+    this.pairing = new PairingManager(d.now, () => this.onPairingExhausted())
   }
 
   private now(): number {
@@ -145,10 +152,13 @@ export class RemoteService {
       mode: this.mode,
       pairing: this.mode !== 'off' && this.pairingSecret && this.pairing.active && expiry ? this.pairingView(expiry) : null,
       pairingExpired: this.mode !== 'off' && this.pairingExpired,
+      ...(this.mode !== 'off' && this.pairingExhausted ? { pairingExhausted: true } : {}),
       devices,
       pendingPair: this.pending?.req ?? null,
       idleStopAt: this.mode === 'off' ? null : this.idleStopAt,
       error: this.error,
+      confirmEachConnection: this.confirmEach(),
+      confirmEachForced: policy.requireConnectionConfirm,
       ...(policy.managed ? { policy } : {})
     }
   }
@@ -270,6 +280,7 @@ export class RemoteService {
     const token = this.pairing.create()
     this.pairingSecret = token.secret
     this.pairingExpired = false
+    this.pairingExhausted = false
     this.mode = this.mode === 'off' ? 'off' : 'pairing'
     if (this.pairingTimer) clearTimeout(this.pairingTimer)
     this.pairingTimer = setTimeout(() => this.onPairingExpired(), Math.max(0, token.expiresAt - this.now()) + 20)
@@ -286,6 +297,18 @@ export class RemoteService {
     }
   }
 
+  /** 5 fallos de vinculación: el QR se anuló (el dueño genera otro). */
+  private onPairingExhausted(): void {
+    if (this.mode === 'off') return
+    this.pairingSecret = null
+    this.pairingExpired = false
+    this.pairingExhausted = true
+    this.mode = 'active'
+    if (this.pairingTimer) clearTimeout(this.pairingTimer)
+    this.pairingTimer = null
+    this.changed()
+  }
+
   /** «Cortar todo»: cierra conexiones, servidor y anula el QR. */
   async stopAll(): Promise<RemoteState> {
     const wasOff = this.mode === 'off' && !this.transport
@@ -293,8 +316,16 @@ export class RemoteService {
     this.pairing.revoke()
     this.pairingSecret = null
     this.pairingExpired = false
+    this.pairingExhausted = false
     if (this.pairingTimer) clearTimeout(this.pairingTimer)
     this.pairingTimer = null
+    // H6: «Cortar todo» borra también «Recordar 12 h» y la actividad reciente (si no, reactivar el mismo día reconectaría sin pedir nada).
+    this.lastActive.clear()
+    try {
+      this.d.devices.clearAllTrust()
+    } catch {
+      /* sin cifrado no hay nada guardado */
+    }
     if (this.idleTimer) clearTimeout(this.idleTimer)
     this.idleTimer = null
     this.idleStopAt = null
@@ -346,27 +377,35 @@ export class RemoteService {
   private authorize(h: SignalHello): boolean {
     this.applyPolicy()
     if (this.mode === 'off') return false
-    if (h.mode === 'pair') return this.pairing.consume(h.secret)
+    // Reconocer el `qid` NO consume el QR (un `qid` ajeno suma un fallo; 5 lo anulan). Con un intento ya en curso no hay otro.
+    if (h.mode === 'pair') return !this.pairing.reserved && this.pairing.match(h.qid)
     return this.d.devices.get(h.deviceId) !== null
   }
 
   private handlePeer(sp: SignalingPeer): void {
     if (this.mode === 'off' || !this.rtc) return sp.close()
     const hello = sp.hello
+    let pairKey: Uint8Array | null = null
     if (hello.mode === 'pair') {
-      // El secreto ya se consumió: el QR deja de valer (pase lo que pase con esta negociación).
-      this.pairingSecret = null
-      this.pairingExpired = false
-      this.mode = 'active'
-      if (this.pairingTimer) clearTimeout(this.pairingTimer)
-      this.pairingTimer = null
-      this.changed()
+      // El QR NO se anula aquí: solo un `hs3` correcto lo consume (un `hello` con `qid` válido no basta para quemarlo).
       if (this.pending || [...this.peers].some((p) => p.kind === 'pair')) return sp.close()
-    }
-    if (this.peers.size >= LIMITS.maxSignalSockets) return sp.close()
+      if (this.peers.size >= LIMITS.maxSignalSockets) return sp.close()
+      pairKey = this.pairing.reserve(hello.qid)
+      if (!pairKey) return sp.close()
+    } else if (this.peers.size >= LIMITS.maxSignalSockets) return sp.close()
 
     const answerer = this.rtc.createAnswerer({ bindAddress: this.ip })
-    const rec: PeerRecord = { signaling: sp, answerer, session: null, dispatch: null, timer: null, kind: hello.mode, closed: false }
+    const rec: PeerRecord = {
+      signaling: sp,
+      answerer,
+      session: null,
+      dispatch: null,
+      timer: null,
+      kind: hello.mode,
+      closed: false,
+      pairKey,
+      pairResolved: false
+    }
     this.peers.add(rec)
     rec.timer = setTimeout(() => {
       if (!rec.session?.authed) this.closePeer(rec)
@@ -374,7 +413,9 @@ export class RemoteService {
 
     let offerSdp = ''
     let answerSdp = ''
+    // Solo la PRIMERA offer y la PRIMERA answer: las huellas del handshake salen de ellas y no pueden cambiar a mitad.
     sp.onOffer((sdp) => {
+      if (offerSdp) return
       offerSdp = sdp
       answerer.start(sdp)
     })
@@ -384,6 +425,7 @@ export class RemoteService {
       if (!rec.session && !rec.closed) this.closePeer(rec)
     })
     answerer.onAnswer((sdp) => {
+      if (answerSdp) return
       answerSdp = sdp
       sp.sendAnswer(sdp)
     })
@@ -391,13 +433,19 @@ export class RemoteService {
     answerer.onGone(() => this.closePeer(rec, true))
     answerer.onChannel((channel) => {
       if (rec.session || rec.closed) return channel.close()
-      const code = offerSdp && answerSdp ? pairingCode(offerSdp, answerSdp) : null
+      // Huellas ESTRICTAS (una sola, sha-256) de los dos SDP: lo que la pila DTLS verificó contra los certificados.
+      const fo = offerSdp ? sdpFingerprintStrict(offerSdp) : null
+      const fa = answerSdp ? sdpFingerprintStrict(answerSdp) : null
+      const fps = fo && fa ? { offer: fo, answer: fa } : null
       const session: PeerSession = new PeerSession({
         channel,
         kind: hello.mode,
         deviceName: hello.mode === 'pair' ? hello.deviceName : undefined,
         deviceId: hello.mode === 'resume' ? hello.deviceId : undefined,
-        code,
+        fps,
+        qid: hello.mode === 'pair' ? hello.qid : undefined,
+        pairKey: rec.pairKey ?? undefined,
+        onPairProof: (ok) => this.onPairProof(rec, ok),
         devices: this.d.devices,
         backend: this.d.backend,
         makeDispatch: this.d.engine
@@ -426,6 +474,24 @@ export class RemoteService {
     })
   }
 
+  /** Resultado del handshake de una vinculación: `hs3` correcto consume el QR; si no, se libera el intento y cuenta un fallo. */
+  private onPairProof(rec: PeerRecord, ok: boolean): boolean {
+    if (rec.pairResolved) return false
+    rec.pairResolved = true
+    if (!ok) {
+      this.pairing.release(true)
+      return false
+    }
+    if (!this.pairing.consume()) return false
+    this.pairingSecret = null
+    this.pairingExpired = false
+    this.mode = 'active'
+    if (this.pairingTimer) clearTimeout(this.pairingTimer)
+    this.pairingTimer = null
+    this.changed()
+    return true
+  }
+
   /** Cierra la negociación/conexión. Salvo `immediate`, da tiempo a que salga la última trama (`bye`). */
   private closePeer(rec: PeerRecord, immediate = false): void {
     if (rec.closed) return
@@ -433,6 +499,11 @@ export class RemoteService {
     if (rec.timer) clearTimeout(rec.timer)
     rec.timer = null
     this.peers.delete(rec)
+    // Vinculación abandonada sin resultado: se libera el intento. Cuenta como fallo solo si el canal llegó a abrirse.
+    if (rec.kind === 'pair' && !rec.pairResolved) {
+      rec.pairResolved = true
+      this.pairing.release(rec.session?.started === true)
+    }
     try {
       rec.signaling.close()
     } catch {
@@ -485,6 +556,7 @@ export class RemoteService {
       this.d.confirmHost?.cancelDevice(rec.id)
       this.lastActive.delete(rec.id)
     }
+    this.lastActive.clear()
     this.d.audit?.({ kind: 'revoked-all', n: all.length })
     if (this.connected) this.connected.bye('revoked')
     for (const p of [...this.peers]) p.session?.bye('revoked')
@@ -513,6 +585,9 @@ export class RemoteService {
         }
         return { approved: r.outcome === 'approved', outcome: r.outcome }
       },
+      // Un celular ya vinculado con PIN solo confirma en el Mac si el ajuste (o la política) lo pide. Sin PIN SIEMPRE confirma:
+      // si no, un secreto robado de un vínculo sin PIN (antiguo, o tras «Restablecer PIN») bastaría para fijar un PIN nuevo y entrar.
+      needsConfirm: (id) => this.confirmEach() || !this.d.devices.hasPin(id),
       trusted: (id) => this.pol().allowConfirmRemember12h && (this.d.devices.trustedUntil(id) ?? 0) > this.now(),
       // Con `requirePin` de la política no hay reconexión «en caliente»: el PIN se pide siempre.
       lastActiveAt: (id) => (this.pol().requirePin ? null : (this.lastActive.get(id) ?? null)),
@@ -523,6 +598,30 @@ export class RemoteService {
       isRead: this.d.isRead,
       inactivityMs: this.d.inactivityMs
     }
+  }
+
+  /** ¿Se confirma en el Mac cada conexión de un celular ya vinculado? Política (endurece) o ajuste del usuario; apagado por defecto. */
+  private confirmEach(): boolean {
+    if (this.pol().requireConnectionConfirm) return true
+    try {
+      return this.d.devices.getPrefs().confirmEachConnection
+    } catch {
+      return true // fail-closed: si no se puede leer el ajuste, se pregunta
+    }
+  }
+
+  /** «Pedir confirmación en el Mac en cada conexión». Ignorado si la política lo fuerza. Apagarlo borra «Recordar 12 h». */
+  setConfirmEach(on: boolean): RemoteState {
+    if (!this.pol().requireConnectionConfirm) {
+      try {
+        this.d.devices.setPrefs({ confirmEachConnection: on })
+        if (!on) this.d.devices.clearAllTrust()
+      } catch {
+        /* sin cifrado no se guarda */
+      }
+    }
+    this.changed()
+    return this.getState()
   }
 
   /** «Recordar 12 h» la confirmación de conexión de un dispositivo (`false` = volver a confirmar cada vez). */
@@ -559,7 +658,6 @@ export class RemoteService {
     if (this.idleTimer) clearTimeout(this.idleTimer)
     this.idleTimer = null
     this.idleStopAt = null
-    this.d.devices.touch(deviceId)
     if (!this.bridge) {
       this.bridge = new EventBridge({
         getClient: this.d.getEventClient,

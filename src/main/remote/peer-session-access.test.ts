@@ -3,11 +3,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MuxError, type MuxDispatch } from '@shared/remote/mux'
+import { randomBytes } from 'node:crypto'
+import { toBase64Url } from '@shared/remote/code'
+import { pairId, pairKey } from '@shared/remote/handshake'
 import type { HostFrame } from '@shared/remote/protocol'
 import type { ConnectionDecision } from './access-gate'
 import type { AuditInput } from './audit'
 import { DevicesStore } from './devices-store'
 import { PeerSession, type PeerAccess } from './peer-session'
+import { TEST_FPS, pairAs, resumeAs } from './test-handshake'
 import type { RtcChannel } from './rtc'
 import type { RemoteBackend } from './whitelist'
 
@@ -93,12 +97,16 @@ function access(over: Partial<PeerAccess> = {}): PeerAccess {
   }
 }
 
+const Q = toBase64Url(new Uint8Array(randomBytes(32)))
+
 function pairSession(ch: Chan, acc: PeerAccess): PeerSession {
   const s = new PeerSession({
     channel: ch,
     kind: 'pair',
     deviceName: 'iPhone',
-    code: '123456',
+    fps: TEST_FPS,
+    qid: pairId(Q),
+    pairKey: pairKey(Q),
     devices,
     backend,
     confirmPair: async () => true,
@@ -109,6 +117,7 @@ function pairSession(ch: Chan, acc: PeerAccess): PeerSession {
     clock: () => clock
   })
   s.start()
+  pairAs(ch, { q: Q })
   return s
 }
 
@@ -117,7 +126,7 @@ function resumeSession(ch: Chan, id: string, secret: string, acc: PeerAccess): P
     channel: ch,
     kind: 'resume',
     deviceId: id,
-    code: '123456',
+    fps: TEST_FPS,
     devices,
     backend,
     confirmPair: async () => false,
@@ -128,7 +137,7 @@ function resumeSession(ch: Chan, id: string, secret: string, acc: PeerAccess): P
     clock: () => clock
   })
   s.start()
-  ch.recv({ t: 'auth', deviceId: id, secret })
+  resumeAs(ch, { deviceId: id, secret })
   return s
 }
 
@@ -238,7 +247,7 @@ describe('PeerSession con control de acceso', () => {
       channel: ch,
       kind: 'resume',
       deviceId: id,
-      code: '1',
+      fps: TEST_FPS,
       devices,
       backend,
       confirmPair: async () => false,
@@ -250,5 +259,55 @@ describe('PeerSession con control de acceso', () => {
     for (let i = 0; i < 3; i++) ch.recv({ t: 'pin-verify', pin: '123456' })
     await settle()
     expect(ch.has((f) => f.t === 'bye' && f.reason === 'violations')).toBe(true)
+  })
+
+  it('H11: presentar la clave NO renueva el plazo ni lastUsedAt; cerrar antes del PIN los deja igual y con el PIN correcto se renuevan', async () => {
+    const { id, secret } = devices.add('Pixel', 1_000)
+    await devices.setPin(id, '246810')
+    const before = devices.get(id)!
+    clock += 20 * 86_400_000
+    const ch = new Chan()
+    const s = resumeSession(ch, id, secret, access({ trusted: () => true }))
+    await settle()
+    expect(ch.has((f) => f.t === 'locked' && f.why === 'pin-verify')).toBe(true)
+    // Se va antes del PIN: nada cambió.
+    ch.open = false
+    s.close('closed')
+    expect(devices.get(id)!.renewedAt).toBe(before.renewedAt)
+    expect(devices.get(id)!.lastUsedAt).toBe(before.lastUsedAt)
+
+    const ch2 = new Chan()
+    resumeSession(ch2, id, secret, access({ trusted: () => true }))
+    await settle()
+    expect(devices.get(id)!.renewedAt).toBe(before.renewedAt)
+    ch2.recv({ t: 'pin-verify', pin: '246810' })
+    await settle()
+    expect(ch2.has((f) => f.t === 'unlocked')).toBe(true)
+    expect(devices.get(id)!.renewedAt).toBeGreaterThan(before.renewedAt)
+    expect(devices.get(id)!.lastUsedAt).not.toBeNull()
+  })
+
+  it('secreto robado sin PIN: el handshake pasa pero no hay acceso; 5 PIN malos revocan y nunca hubo unlocked', async () => {
+    const { id, secret } = devices.add('Pixel')
+    await devices.setPin(id, '246810')
+    const ch = new Chan()
+    const s = resumeSession(ch, id, secret, access({ trusted: () => true }))
+    await settle()
+    expect(ch.has((f) => f.t === 'locked' && f.why === 'pin-verify')).toBe(true)
+    ch.recv({ t: 'call', id: 1, ch: 'app:info' })
+    ch.recv({ t: 'sub', id: 2, eng: 'main' })
+    await settle()
+    expect(calls).toEqual([])
+    expect(ch.has((f) => f.t === 'res' && f.id === 1 && !f.ok && f.error.code === 'forbidden')).toBe(true)
+    expect(ch.has((f) => f.t === 'res' && f.id === 2 && !f.ok)).toBe(true) // la suscripción no se abre
+    expect(ch.has((f) => f.t === 'ev')).toBe(false)
+    for (let i = 0; i < 5; i++) {
+      ch.recv({ t: 'pin-verify', pin: '000000' })
+      await settle()
+      clock += 60_000
+    }
+    expect(revoked).toEqual([id])
+    expect(ch.has((f) => f.t === 'unlocked')).toBe(false)
+    expect(s.accessView).not.toBe('open')
   })
 })

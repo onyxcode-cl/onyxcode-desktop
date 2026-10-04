@@ -1,12 +1,15 @@
 /**
  * Dispositivos vinculados (`userData/remote.bin`), cifrado con `safeStorage` (Llavero de macOS). Del secreto
- * de dispositivo solo se guarda su sha256; el secreto en claro lo tiene únicamente el celular. Si el cifrado
- * no está disponible NUNCA se escribe en claro: la función queda desactivada.
+ * de dispositivo solo se guarda su sha256; el secreto en claro lo tiene únicamente el celular. Desde el protocolo v3 ese
+ * sha256 es MATERIAL DE CLAVE (`deviceKey = HKDF(sha256)`), no una simple comprobación: quien lo descifre puede autenticarse
+ * como el celular. Por eso solo sale de aquí derivado (`authKey`), nunca el valor. Si el cifrado no está disponible NUNCA se
+ * escribe en claro: la función queda desactivada.
  */
 import { randomBytes } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { constantTimeEqual, sha256Hex, toBase64Url, toHex } from '@shared/remote/code'
+import { sha256Hex, toBase64Url, toHex } from '@shared/remote/code'
+import { deviceKey } from '@shared/remote/handshake'
 import { DEVICE_ID_RE, LIMITS, sanitizeDeviceName } from '@shared/remote/protocol'
 import { DEFAULT_DEVICE_TTL_DAYS, DEVICE_TTL_OPTIONS, type DeviceTtlDays, type RemoteDeviceInfo } from '@shared/ipc-remote'
 import { deviceFingerprint } from './confirm-queue'
@@ -28,7 +31,8 @@ export interface DeviceRecord {
   name: string
   /**
    * sha256 (hex) del secreto de dispositivo. El secreto son 32 bytes aleatorios (256 bits): con esa entropía un sha256
-   * simple basta (no hay diccionario que atacar); el celular es el único que tiene el secreto en claro.
+   * simple basta (no hay diccionario que atacar); el celular es el único que tiene el secreto en claro. Es material de
+   * clave del handshake v3 (ver cabecera).
    */
   secretHash: string
   createdAt: number
@@ -83,7 +87,15 @@ export function expiresAtOf(d: Pick<DeviceRecord, 'renewedAt' | 'ttlDays'>, capD
   return days === null ? null : d.renewedAt + days * DAY_MS
 }
 
-export type DeviceCheck = 'ok' | 'bad' | 'expired'
+/** Estado de caducidad de un vínculo ya autenticado. */
+export type ExpiryState = 'ok' | 'expired'
+
+/** Ajustes globales del control remoto que se guardan junto a los dispositivos. */
+export interface RemotePrefs {
+  /** Pedir confirmación en el Mac en cada conexión de un celular ya vinculado (apagado por defecto). */
+  confirmEachConnection: boolean
+}
+export const DEFAULT_PREFS: RemotePrefs = { confirmEachConnection: false }
 
 /** Puerto de escucha guardado (D1: estable por instalación). Puertos de usuario; el resto se ignora. */
 function parsePort(raw: string): number | null {
@@ -92,6 +104,18 @@ function parsePort(raw: string): number | null {
     return typeof o.port === 'number' && Number.isInteger(o.port) && o.port >= 1024 && o.port <= 65535 ? o.port : null
   } catch {
     return null
+  }
+}
+
+/** Lee el bloque `prefs` (cualquier valor que no sea un booleano `true` deja el valor por defecto). */
+function parsePrefs(raw: string): RemotePrefs {
+  try {
+    const o = JSON.parse(raw) as { prefs?: unknown }
+    const p = o.prefs
+    if (!p || typeof p !== 'object') return { ...DEFAULT_PREFS }
+    return { confirmEachConnection: (p as Record<string, unknown>).confirmEachConnection === true }
+  } catch {
+    return { ...DEFAULT_PREFS }
   }
 }
 
@@ -156,6 +180,7 @@ function parse(raw: string, now: number, onMigrate: () => void = () => undefined
 export class DevicesStore {
   private cache: DeviceRecord[] | null = null
   private port: number | null = null
+  private prefs: RemotePrefs = { ...DEFAULT_PREFS }
 
   constructor(
     private readonly file: string,
@@ -182,6 +207,7 @@ export class DevicesStore {
         let migrated = false
         list = parse(raw, this.clock(), () => (migrated = true))
         this.port = parsePort(raw)
+        this.prefs = parsePrefs(raw)
         if (migrated) {
           // Formato anterior: se reescribe ya (si no, la ventana de 90 días se reiniciaría en cada arranque).
           this.cache = list
@@ -202,7 +228,11 @@ export class DevicesStore {
   private save(): void {
     if (!this.available) throw new Error('safe-storage-unavailable')
     const data = this.safeStorage.encryptString(
-      JSON.stringify({ devices: this.load(), ...(this.port === null ? {} : { port: this.port }) })
+      JSON.stringify({
+        devices: this.load(),
+        ...(this.port === null ? {} : { port: this.port }),
+        prefs: this.prefs
+      })
     )
     mkdirSync(dirname(this.file), { recursive: true })
     const tmp = `${this.file}.tmp`
@@ -268,21 +298,18 @@ export class DevicesStore {
     return { id, secret }
   }
 
-  /** Comprueba el secreto del dispositivo en tiempo constante (sin caducidad). */
-  verify(id: string, secret: string): boolean {
+  /**
+   * Clave de autenticación del handshake v3 de un dispositivo (`HKDF(secretHash)`), o `null` si no existe. El `secretHash` no
+   * sale del almacén; el handshake solo necesita esta derivación.
+   */
+  authKey(id: string): Uint8Array | null {
     const d = this.load().find((x) => x.id === id)
-    // Se hace siempre el hash y la comparación, exista o no el dispositivo.
-    const hash = sha256Hex(secret)
-    const expected = d?.secretHash ?? '0'.repeat(64)
-    const same = constantTimeEqual(hash, expected)
-    return !!d && same
+    return d ? deviceKey(d.secretHash) : null
   }
 
-  /** Secreto y caducidad: `expired` solo si el secreto era el correcto (no revela nada a quien no lo tiene). */
-  check(id: string, secret: string, now: number = this.clock(), capDays: number | null = null): DeviceCheck {
-    if (!this.verify(id, secret)) return 'bad'
-    const d = this.load().find((x) => x.id === id)
-    const exp = d ? expiresAtOf(d, capDays) : null
+  /** Caducidad de un vínculo (`ok` si no caduca o no existe: la existencia ya la comprobó la clave). */
+  expiryState(id: string, now: number = this.clock(), capDays: number | null = null): ExpiryState {
+    const exp = this.expiresAt(id, capDays)
     return exp !== null && exp <= now ? 'expired' : 'ok'
   }
 
@@ -433,5 +460,30 @@ export class DevicesStore {
     else d.trustUntil = until
     this.save()
     return true
+  }
+
+  /** Borra «Recordar 12 h» de todos los dispositivos (una sola escritura). */
+  clearAllTrust(): void {
+    let any = false
+    for (const d of this.load()) {
+      if (d.trustUntil !== undefined) {
+        delete d.trustUntil
+        any = true
+      }
+    }
+    if (any) this.save()
+  }
+
+  // ── ajustes globales ──
+
+  getPrefs(): RemotePrefs {
+    this.load()
+    return { ...this.prefs }
+  }
+
+  setPrefs(p: RemotePrefs): void {
+    this.load()
+    this.prefs = { confirmEachConnection: p.confirmEachConnection === true }
+    this.save()
   }
 }

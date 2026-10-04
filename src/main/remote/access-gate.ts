@@ -2,7 +2,8 @@
  * Puerta de acceso de UNA conexión del celular ya autenticada (secreto de dispositivo verificado). Sin ella el canal no da
  * acceso a nada salvo su propio flujo:
  *
- *   conexión nueva ─► [confirm] el dueño aprueba en el Mac (o hay «recordar 12 h» vigente)
+ *   conexión nueva ─► [confirm] el dueño aprueba en el Mac (solo si el ajuste/política lo pide, o el dispositivo no tiene PIN;
+ *                     o hay «recordar 12 h» vigente)
  *                 ─► [pin-set] el dispositivo aún no tiene PIN: lo fija ya (se guarda solo su hash scrypt)
  *                 ─► [pin-verify] el PIN se verifica DENTRO del canal (salvo reconexión con actividad reciente)
  *                 ─► [open] acceso. Tras 5 min sin llamadas vuelve a [pin-verify] (`inactive`).
@@ -42,6 +43,11 @@ export interface AccessGateOptions {
   now: () => number
   setTimer: (fn: () => void, ms: number) => unknown
   clearTimer: (h: unknown) => void
+  /**
+   * ¿Hace falta confirmar esta conexión en el Mac? (ajuste «Pedir confirmación en cada conexión», política de la organización o
+   * dispositivo sin PIN). Sin esto se confirma siempre (comportamiento anterior).
+   */
+  needsConfirm?: () => boolean
   /** ¿Hay una confirmación de conexión vigente («recordar 12 h»)? */
   trusted: () => boolean
   /** Pide al dueño confirmar esta conexión en el Mac (cola de confirmaciones). */
@@ -58,6 +64,11 @@ export interface AccessGateOptions {
   lastActiveAt?: number | null
   noteActive?: (t: number) => void
   inactivityMs?: number
+  /**
+   * El acceso se abrió (PIN fijado/verificado o reconexión «en caliente»). Aquí se renueva el plazo de validez del vínculo
+   * (H11): presentar la clave no basta, hace falta haber pasado el PIN o la actividad reciente.
+   */
+  onOpened?: () => void
 }
 
 export const PIN_DELAY_CAP_MS = 30_000
@@ -105,7 +116,7 @@ export class AccessGate {
 
   /** Arranca el flujo (tras enviar `authed`/`paired`). */
   start(): void {
-    const needConfirm = !this.o.fresh && !this.o.trusted()
+    const needConfirm = !this.o.fresh && (this.o.needsConfirm?.() ?? true) && !this.o.trusted()
     if (needConfirm) {
       this._state = 'confirm'
       this.sendLocked()
@@ -148,6 +159,7 @@ export class AccessGate {
     this.blockedUntil = 0
     this.lastTouch = this.o.now()
     this.o.noteActive?.(this.lastTouch)
+    this.o.onOpened?.()
     this.o.send({ t: 'unlocked' })
     this.arm()
     this.o.onChange()

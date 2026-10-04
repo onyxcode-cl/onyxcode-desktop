@@ -30,6 +30,8 @@ export interface RemotePolicyView {
   deviceTtlDays: number | null
   /** `false`: sin «Recordar 12 h»; cada conexión se confirma en el Mac. */
   allowConfirmRemember12h: boolean
+  /** `true`: cada conexión de un celular ya vinculado se confirma en el Mac (el ajuste del usuario no puede apagarlo). */
+  requireConnectionConfirm: boolean
 }
 
 /** Por qué la función no se puede activar en este equipo. */
@@ -100,6 +102,8 @@ export interface RemoteState {
   pairing: RemotePairing | null
   /** El QR anterior caducó o se usó y todavía no se generó otro. */
   pairingExpired: boolean
+  /** El QR se anuló tras varios intentos fallidos (se genera otro). Ausente = no. */
+  pairingExhausted?: boolean
   devices: RemoteDeviceInfo[]
   /** Petición de vinculación pendiente de confirmar. */
   pendingPair: RemotePairRequest | null
@@ -109,6 +113,10 @@ export interface RemoteState {
   error: string | null
   /** Política de la organización vigente (ausente = sin política). */
   policy?: RemotePolicyView
+  /** Efectivo: ¿se pide confirmación en el Mac en cada conexión de un celular ya vinculado? (ajuste del usuario o política). */
+  confirmEachConnection: boolean
+  /** La política de la organización lo exige (el ajuste del usuario no se puede apagar). */
+  confirmEachForced: boolean
 }
 
 export const REMOTE_OFF_STATE: RemoteState = {
@@ -119,7 +127,9 @@ export const REMOTE_OFF_STATE: RemoteState = {
   devices: [],
   pendingPair: null,
   idleStopAt: null,
-  error: null
+  error: null,
+  confirmEachConnection: false,
+  confirmEachForced: false
 }
 
 /** Texto legible en los dos idiomas de la interfaz (la cola de confirmación no conoce el idioma del renderer). */
@@ -166,6 +176,8 @@ export interface RemoteInvokeContract {
   'remote:confirmAction': { req: { requestId: string; accept: boolean; remember?: boolean }; res: void }
   /** «Recordar 12 h» la confirmación de conexión de un dispositivo (o quitarlo). */
   'remote:setRemember': { req: { deviceId: string; remember: boolean }; res: RemoteState }
+  /** «Pedir confirmación en el Mac en cada conexión» (apagado por defecto; la política puede forzarlo). */
+  'remote:setConfirmEach': { req: { on: boolean }; res: RemoteState }
   /** Borra el PIN de un dispositivo: tendrá que fijar uno nuevo al conectar. */
   'remote:resetPin': { req: { deviceId: string }; res: RemoteState }
   /** «Revocar todos»: quita todos los celulares vinculados y corta la conexión viva. */
@@ -199,6 +211,7 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:revoke',
   'remote:confirmAction',
   'remote:setRemember',
+  'remote:setConfirmEach',
   'remote:resetPin',
   'remote:revokeAll',
   'remote:setDeviceTtl',

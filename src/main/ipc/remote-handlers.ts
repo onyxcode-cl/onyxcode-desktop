@@ -101,6 +101,17 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
       getDevicesStore().setTrust(deviceId, remember && getOrgPolicy().allowConfirmRemember12h ? Date.now() + LIMITS.rememberMs : null)
     return offState(platform)
   })
+  handle(ipcMain, 'remote:setConfirmEach', ({ on }) => {
+    const s = currentService()
+    if (s) return s.setConfirmEach(on)
+    if (supported && getDevicesStore().available && !getOrgPolicy().requireConnectionConfirm) {
+      const store = getDevicesStore()
+      store.setPrefs({ confirmEachConnection: on })
+      // Apagarlo borra también la confianza de 12 h (deja de tener sentido).
+      if (!on) store.clearAllTrust()
+    }
+    return offState(platform)
+  })
   handle(ipcMain, 'remote:resetPin', ({ deviceId }) => {
     const s = currentService()
     if (s) return s.resetPin(deviceId)

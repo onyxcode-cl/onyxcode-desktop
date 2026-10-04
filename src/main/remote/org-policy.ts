@@ -8,6 +8,8 @@
  *  - `enabled: false` → DESHABILITADO (`disabled`); `enabled` con cualquier otro valor que no sea `true` → `invalid`;
  *  - booleanos que RELAJAN (`allowRemember`, `allowConfirmRemember12h`): solo `true` los permite; cualquier otra cosa = `false`;
  *  - booleano que ENDURECE (`requirePin`): solo `false` lo desactiva; cualquier otra cosa = `true`;
+ *  - booleano que ENDURECE pero NO viene activado (`requireConnectionConfirm`): ausente = `false`; presente y distinto de `false`
+ *    (incluido un valor raro) = `true`: cada conexión de un celular ya vinculado se confirma en el Mac;
  *  - números: enteros fuera de rango se recortan al límite (`maxDevices` 0–3, `deviceTtlDays` 1–365); un valor que no es
  *    un entero cuenta como el más restrictivo (`maxDevices` 0, `deviceTtlDays` 1).
  *
@@ -25,7 +27,8 @@ export const NO_ORG_POLICY: RemotePolicyView = {
   requirePin: false,
   maxDevices: LIMITS.maxDevices,
   deviceTtlDays: null,
-  allowConfirmRemember12h: true
+  allowConfirmRemember12h: true,
+  requireConnectionConfirm: false
 }
 
 /** Archivo presente pero no fiable: todo cerrado. */
@@ -37,7 +40,8 @@ export function invalidRemotePolicy(): RemotePolicyView {
     requirePin: true,
     maxDevices: 0,
     deviceTtlDays: 1,
-    allowConfirmRemember12h: false
+    allowConfirmRemember12h: false,
+    requireConnectionConfirm: true
   }
 }
 
@@ -54,6 +58,7 @@ export function parseRemotePolicy(raw: unknown): RemotePolicyView {
   if ('allowRemember' in r) out.allowRemember = r.allowRemember === true
   if ('allowConfirmRemember12h' in r) out.allowConfirmRemember12h = r.allowConfirmRemember12h === true
   if ('requirePin' in r) out.requirePin = r.requirePin !== false
+  if ('requireConnectionConfirm' in r) out.requireConnectionConfirm = r.requireConnectionConfirm !== false
   if ('maxDevices' in r) {
     const v = r.maxDevices
     out.maxDevices = typeof v === 'number' && Number.isInteger(v) ? Math.max(0, Math.min(v, LIMITS.maxDevices)) : 0
