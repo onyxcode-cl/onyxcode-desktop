@@ -138,6 +138,36 @@
   --animate-sheet-up: sheet-up var(--dur-slow) var(--ease-out) both;
   --animate-shimmer: shimmer 2s linear infinite;
   --animate-caret: caret 1s steps(2, start) infinite;
+  /* Móvil (ver docs/MOBILE-UI.md): solo las usa el código de la superficie móvil. Las de pantalla usan fill-mode `backwards`
+   * (nunca `both`): un transform que se mantiene aplicado convierte al contenedor en bloque de los `position:fixed` sin portal. */
+  --animate-m-push: m-push var(--dur-push, 260ms) var(--ease-out) backwards;
+  --animate-m-pop: m-pop var(--dur-pop, 220ms) var(--ease-out) backwards;
+  --animate-m-tab: fade-in var(--dur-tab, 140ms) var(--ease-out) backwards;
+  --animate-sheet-down: sheet-down var(--dur-sheet-out, 220ms) var(--ease-sheet, var(--ease-out)) both;
+  --animate-fade-out: fade-out var(--dur-sheet-out, 220ms) var(--ease-out) both;
+}
+
+@keyframes m-push {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes m-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+@keyframes sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes fade-in {

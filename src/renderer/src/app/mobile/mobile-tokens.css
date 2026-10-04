@@ -1,0 +1,38 @@
+/*
+ * Tokens de medida de la superficie móvil (PWA del celular). Solo existen bajo `[data-surface='mobile']` (raíz de MobileShell y
+ * de cada Sheet): en Mac y Windows no se definen. Los colores NO se tocan aquí: se usan los tokens Lapislázuli de globals.css.
+ * Convenciones y reparto de archivos: docs/MOBILE-UI.md. Añadir tokens es libre; renombrar o borrar, no.
+ */
+[data-surface='mobile'] {
+  /* Medidas */
+  --m-row: 56px; /* fila de lista de dos líneas */
+  --m-row-compact: 48px; /* fila de hoja o de acción de una línea */
+  --m-bar: 52px; /* cabecera, sin zona segura */
+  --m-tab: 56px; /* barra de pestañas, sin zona segura */
+  --m-bar-h: var(--m-bar); /* alias */
+  --m-tab-h: var(--m-tab); /* alias */
+  --m-gutter: 16px; /* margen lateral */
+  --m-radius-card: 16px; /* tarjetas y listas agrupadas */
+  --m-radius-sheet: 22px; /* hojas y alertas */
+  --m-tap: 44px; /* área táctil mínima */
+  --m-icon-btn: 36px; /* círculo visible de los botones del compositor */
+  --m-composer-radius: 24px;
+  /* Ritmo y tipografía de la conversación */
+  --m-turn-gap: 24px;
+  --m-block-gap: 10px;
+  --m-body: 16px;
+  --m-body-lh: 1.6;
+  --m-meta: 14px;
+  --m-mono: 13px;
+  /* Superficies */
+  --m-backdrop: rgb(6 8 14 / 0.48); /* fondo de modales, igual en claro y oscuro */
+  --m-hairline: color-mix(in srgb, var(--border) 80%, transparent);
+  /* Curva y duraciones de movimiento */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-screen: 240ms;
+  --dur-push: 260ms; /* apilar pantalla */
+  --dur-pop: 220ms; /* desapilar */
+  --dur-tab: 140ms; /* cambio de pestaña (fundido) */
+  --dur-sheet-in: 320ms;
+  --dur-sheet-out: 220ms;
+}
