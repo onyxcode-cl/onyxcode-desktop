@@ -1,3 +1,4 @@
+import type { GateDecision } from "../isolation/index.ts";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +26,8 @@ export interface Ctx {
   /** Pregunta sí/no; solo se llama si isTTY. */
   confirm: (question: string) => Promise<boolean>;
   signal: AbortSignal;
+  /** Puerta de carga alternativa (solo pruebas: evita depender de la carga real de la máquina). */
+  gate?: () => GateDecision;
 }
 
 export function defaultRoot(): string {

@@ -9,12 +9,12 @@ import { cleanTargets, latestMtimeMs } from "../../src/cli/commands.ts";
 import { isAlive } from "../../src/core/proc.ts";
 import { emptyTelemetry } from "../../src/core/schemas.ts";
 import { loadScenarios } from "../../src/engine/config.ts";
-import { runExperiment } from "../../src/engine/engine.ts";
 import { sweepTree } from "../../src/engine/procs.ts";
 import { OpenCodeRunner } from "../../src/runners/opencode/index.ts";
 import { ImmutableRecordError, openStore } from "../../src/store/index.ts";
 import { BENCH_ROOT, cfg, experiment, rmDir, tmpDir } from "../engine/helpers.ts";
 import { actRunner } from "./harness.ts";
+import { runExperimentHermetic as runExperiment } from "../engine/helpers.ts";
 
 const dirs: string[] = [];
 const pids: number[] = [];

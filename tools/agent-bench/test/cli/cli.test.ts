@@ -7,6 +7,7 @@ import { parseArgs, UsageError } from "../../src/cli/args.ts";
 import { main } from "../../src/cli/main.ts";
 import { EXIT, type Ctx } from "../../src/cli/ctx.ts";
 import { supervise } from "../../src/core/proc.ts";
+import { okGate } from "../engine/helpers.ts";
 import { listConfigurations, loadExperiment } from "../../src/cli/data.ts";
 
 const REAL_ROOT = join(import.meta.dirname, "..", "..");
@@ -56,6 +57,7 @@ function fixture(opts: { runner?: string } = {}) {
     isTTY: false,
     confirm: async () => true,
     signal: ac.signal,
+    gate: okGate,
   };
   return { root, ctx, out, err, done: () => rmSync(root, { recursive: true, force: true }) };
 }

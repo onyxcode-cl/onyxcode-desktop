@@ -7,6 +7,9 @@ import { ConfigurationSchema, ExperimentSchema } from "../../src/core/schemas.ts
 import type { AgentRunner, Configuration, Experiment, PreparedRun, RawRunOutput, RunContext, Task, Limits, Collected } from "../../src/core/schemas.ts";
 import { adaptLegacyRunner } from "../../src/engine/legacy.ts";
 import { loadScenarios } from "../../src/engine/config.ts";
+import { runExperiment } from "../../src/engine/engine.ts";
+import type { ExperimentSummary, RunExperimentOptions } from "../../src/engine/engine.ts";
+import type { GateDecision } from "../../src/isolation/index.ts";
 import { FakeRunner } from "../../src/runners/fake/runner.ts";
 import type { FakeScriptInput } from "../../src/runners/fake/script.ts";
 
@@ -116,4 +119,17 @@ export function experiment(over: Record<string, unknown> = {}): Experiment {
     schemaVersion: "1", id: "exp-test", scenarios: [...CASES], configurations: ["cfg-ref", "cfg-cheat"], repetitions: 1, seed: 11,
     limits: { timeoutSec: 30, inactivitySec: 10 }, budget: { maxCost: 0 }, ...over,
   });
+}
+
+/**
+ * Puerta de carga siempre abierta. El motor usa por defecto `loadGate()` (carga real de la máquina): con la suite
+ * completa en paralelo, o con otra carga del usuario, la carga supera 0,6/CPU y el motor pausa (con el reloj real
+ * esperando 5 s por intento; con reloj manual agotando 30 min virtuales y parando por `load_gate`). Los tests del
+ * motor deben ser herméticos, así que inyectan esta puerta salvo que prueben la puerta (ver engine-budgets).
+ */
+export const okGate = (): GateDecision => ({ schemaVersion: "1", status: "ok", metrics: { loadPerCpu: 0, ncpu: 1, freeMemMB: null, thermal: "nominal" } });
+
+/** `runExperiment` con la puerta de carga abierta por defecto (el `gate` de `o` manda si se da). */
+export function runExperimentHermetic(exp: Experiment, o: RunExperimentOptions): Promise<ExperimentSummary> {
+  return runExperiment(exp, { gate: okGate, ...o });
 }

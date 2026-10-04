@@ -7,6 +7,7 @@ import { deterministicId } from "../core/ids.ts";
 import { supervise } from "../core/proc.ts";
 import type { AgentRunner, Configuration, Experiment, Limits, PreparedRun, RawRunOutput, RunContext, RunResult, RunnerProbe, Scenario, Task } from "../core/schemas.ts";
 import type { FakeScriptInput } from "../runners/fake/script.ts";
+import type { GateDecision } from "../isolation/index.ts";
 import type { Plan } from "../engine/index.ts";
 import type { ExperimentSummary, EngineEvent } from "../engine/index.ts";
 import type { ClaimsFile } from "../report/types.ts";
@@ -132,6 +133,7 @@ export interface RunRequest {
   allowReal: boolean;
   signal: AbortSignal;
   onEvent?: (e: EngineEvent) => void;
+  gate?: () => GateDecision;
 }
 
 export async function runFor(req: RunRequest): Promise<ExperimentSummary> {
@@ -149,6 +151,7 @@ export async function runFor(req: RunRequest): Promise<ExperimentSummary> {
       runBase: req.runBase,
       signal: req.signal,
       ...(req.onEvent ? { onEvent: req.onEvent } : {}),
+      ...(req.gate ? { gate: req.gate } : {}),
     });
   } finally {
     store.close();

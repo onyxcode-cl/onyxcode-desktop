@@ -397,6 +397,7 @@ const runCmd: CommandDef = {
         runBase: join(ctx.home, "ab", "r"),
         allowReal,
         signal: ctx.signal,
+        ...(ctx.gate ? { gate: ctx.gate } : {}),
         onEvent: (e) => {
           if (e.type === "start") say(`Inicio ${e.experimentId}: ${e.runs} runs (${e.skipped} ya hechos)`);
           else if (e.type === "run-end") say(`  fin ${e.key.slice(0, 8)} ${e.outcome} éxito=${e.success === null ? "n/d" : e.success ? "sí" : "no"}${e.attempt > 1 ? ` (intento ${e.attempt})` : ""}`);

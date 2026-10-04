@@ -5,12 +5,11 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, test } from "node:test";
 import { loadScenarios } from "../../src/engine/config.ts";
-import { runExperiment } from "../../src/engine/engine.ts";
 import type { RunExperimentOptions } from "../../src/engine/engine.ts";
 import { sandboxAvailable } from "../../src/isolation/index.ts";
 import { testsVisible } from "../../src/evaluators/index.ts";
 import { openStore } from "../../src/store/index.ts";
-import { BENCH_ROOT, cfg, experiment, rmDir, tmpDir } from "../engine/helpers.ts";
+import { BENCH_ROOT, cfg, experiment, rmDir, runExperimentHermetic as runExperiment, tmpDir } from "../engine/helpers.ts";
 import { actRunner } from "./harness.ts";
 import type { ActOptions } from "./harness.ts";
 
