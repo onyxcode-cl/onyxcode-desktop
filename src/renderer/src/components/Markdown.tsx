@@ -1,10 +1,9 @@
-import { isValidElement, memo, useState, type ReactNode } from 'react'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import { isValidElement, memo, type ReactNode } from 'react'
+import ReactMarkdown, { type Components, type Options } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
-import { Check, Copy } from 'lucide-react'
 import { t } from '@shared/i18n'
-import { useT } from '../lib/i18n'
+import { CopyButton } from './CopyButton'
+import { useHighlightPlugins } from './highlight-plugins'
 import { ArtifactButton, looksRenderable } from './artifacts/ArtifactButton'
 
 function textOf(node: ReactNode): string {
@@ -66,44 +65,6 @@ function languageOf(children: ReactNode): string | null {
   return LANG_LABELS[id] ?? id
 }
 
-/** Botón de copiar reutilizable (código, mensajes). */
-export function CopyButton({
-  text,
-  label,
-  className = '',
-  showLabel = false,
-  size = 13
-}: {
-  text: string | (() => string)
-  label?: string
-  className?: string
-  showLabel?: boolean
-  size?: number
-}): React.JSX.Element {
-  const tr = useT()
-  const labelText = label ?? tr('common.copy')
-  const [copied, setCopied] = useState(false)
-  const copy = (): void => {
-    const value = typeof text === 'function' ? text() : text
-    void navigator.clipboard.writeText(value).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      title={copied ? tr('common.copied') : labelText}
-      aria-label={labelText}
-      className={`no-drag inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-muted transition-colors hover:bg-hover hover:text-fg ${className}`}
-    >
-      {copied ? <Check size={size} className="text-success" /> : <Copy size={size} />}
-      {showLabel && <span>{copied ? tr('common.copied') : labelText}</span>}
-    </button>
-  )
-}
-
 function CodeBlock({ children }: { children?: ReactNode }): React.JSX.Element {
   const lang = languageOf(children)
   const code = textOf(children)
@@ -130,11 +91,60 @@ const components: Components = {
   )
 }
 
-const remarkPlugins = [remarkGfm]
-// F7-B45: `detect:false` (solo se resaltan los bloques con lenguaje declarado; la autodetección probaba TODOS los
-// lenguajes en cada bloque y era lo más caro) y sin resaltar mientras el mensaje se está escribiendo (`highlight` falso).
-const rehypePlugins = [[rehypeHighlight, { detect: false, ignoreMissing: true }] as [typeof rehypeHighlight, object]]
+export { CopyButton }
+/** Pide la carga del resaltado (en la PWA es un trozo aparte; en el escritorio no hace nada). */
+export { preloadHighlight } from './highlight-plugins'
+
+type PluggableList = NonNullable<Options['rehypePlugins']>
+
+export const markdownComponents = components
+export const markdownRemarkPlugins = [remarkGfm]
 const NO_REHYPE: never[] = []
+
+/**
+ * F8-B65: divide el texto en bloques de nivel superior (corta en líneas en blanco FUERA de vallas de código y solo si lo
+ * que sigue no continúa el bloque: sangrado o elemento de lista). Es conservador a propósito: ante la duda no corta.
+ * Devuelve `null` (analizar entero, como siempre) si hay definiciones de referencia, notas al pie o HTML, que dependen del
+ * documento completo.
+ */
+export function splitMarkdownBlocks(text: string): string[] | null {
+  if (!text.includes('\n\n')) return null
+  if (/^[ ]{0,3}\[[^\]]+\]:/m.test(text) || text.includes('[^') || /^\s*</m.test(text)) return null
+  const lines = text.split('\n')
+  const blocks: string[] = []
+  let cur: string[] = []
+  let fence: { ch: string; len: number } | null = null
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const f = /^\s*(`{3,}|~{3,})/.exec(line)
+    if (f) {
+      if (!fence) fence = { ch: f[1][0], len: f[1].length }
+      else if (f[1][0] === fence.ch && f[1].length >= fence.len && /^\s*(`+|~+)\s*$/.test(line)) fence = null
+    }
+    cur.push(line)
+    if (fence || line.trim() !== '') continue
+    // Línea en blanco fuera de valla: ¿hay un bloque nuevo después?
+    let j = i + 1
+    while (j < lines.length && lines[j].trim() === '') j++
+    if (j >= lines.length) continue // blanco final: aún no se sabe qué viene
+    const next = lines[j]
+    if (/^\s{2,}|^\t/.test(next) || /^\s*([-*+]|\d+[.)])(\s|$)/.test(next)) continue
+    const block = cur.join('\n').trimEnd()
+    if (block) blocks.push(block)
+    cur = []
+  }
+  const last = cur.join('\n')
+  if (last.trim()) blocks.push(last)
+  return blocks.length > 1 ? blocks : null
+}
+
+const Block = memo(function Block({ text, rehype }: { text: string; rehype: PluggableList }): React.JSX.Element {
+  return (
+    <ReactMarkdown remarkPlugins={markdownRemarkPlugins} rehypePlugins={rehype} components={components}>
+      {text}
+    </ReactMarkdown>
+  )
+})
 
 interface MarkdownProps {
   text: string
@@ -155,11 +165,20 @@ export const Markdown = memo(function Markdown({
   highlight = !streaming,
   className = ''
 }: MarkdownProps): React.JSX.Element {
+  const hl = useHighlightPlugins(highlight)
+  const rehype = hl ?? NO_REHYPE
+  // Texto en curso (sin resaltar): solo se vuelve a analizar el último bloque; los anteriores están memoizados.
+  // Con resaltado (mensaje terminado) se analiza entero una sola vez, con el mismo resultado de siempre.
+  const blocks = highlight ? null : splitMarkdownBlocks(text)
   return (
     <div className={`markdown ${streaming ? 'is-streaming' : ''} ${className}`}>
-      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={highlight ? rehypePlugins : NO_REHYPE} components={components}>
-        {text}
-      </ReactMarkdown>
+      {blocks ? (
+        blocks.map((b, i) => <Block key={i} text={b} rehype={rehype} />)
+      ) : (
+        <ReactMarkdown remarkPlugins={markdownRemarkPlugins} rehypePlugins={rehype} components={components}>
+          {text}
+        </ReactMarkdown>
+      )}
     </div>
   )
 })
