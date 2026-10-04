@@ -407,7 +407,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   const t = useT()
   const retryLast = useCode((s) => s.retryLast)
   const compactSession = useCode((s) => s.compactSession)
-  const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
+  const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
 
   const visible = useMemo(
     () => (revertMessageID ? entries.filter((e) => e.info.id < revertMessageID) : entries),
@@ -438,6 +438,18 @@ export function MessageStream(props: Props): React.JSX.Element {
     }
   }
   const hotkeyID = permissions[0]?.id
+
+  // Celular: un permiso o pregunta nuevo siempre se lleva a la vista (aunque hubieras subido en la conversación).
+  const pending = permissions.length + questions.length
+  const prevPending = useRef(pending)
+  useEffect(() => {
+    const grew = pending > prevPending.current
+    prevPending.current = pending
+    const el = scrollRef.current
+    if (!grew || !el || !isRemoteSurface()) return
+    stickRef.current = true
+    el.scrollTop = el.scrollHeight
+  }, [pending, scrollRef, stickRef])
 
   const lastTurn = turns[turns.length - 1]
   const lastAssistant = lastTurn?.assistant[lastTurn.assistant.length - 1]

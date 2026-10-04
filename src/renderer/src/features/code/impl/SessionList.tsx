@@ -27,7 +27,6 @@ import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
-import { showCodeChat } from './mobile-store'
 import { SheetAction } from './SheetAction'
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
@@ -90,10 +89,7 @@ function SessionRow({
       ) : (
         <button
           type="button"
-          onClick={() => {
-            void selectSession(session.id)
-            if (mobile) showCodeChat()
-          }}
+          onClick={() => void selectSession(session.id)}
           onDoubleClick={() => setEditing(true)}
           className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
         >

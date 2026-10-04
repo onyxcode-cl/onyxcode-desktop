@@ -43,8 +43,7 @@ import { nativeCode, useClient } from './client'
 import { Composer } from './Composer'
 import { useCodeAiGate } from './ComposerControls'
 import { MessageStream } from './MessageStream'
-import { MobileCodeLayout, MobileToolbar } from './MobileCode'
-import { useCodeMobile } from './mobile-store'
+import { CODE_CHANGES, useMobileNavStore } from '../../../app/mobile/nav'
 import { useVisibleFsVersion } from './useVisibleFsVersion'
 import { TranscriptLoading } from '../../../components/TranscriptLoader'
 import { ChangesPanel } from './panels/ChangesPanel'
@@ -340,7 +339,7 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   )
 }
 
-function BranchPill({ directory }: { directory: string }): React.JSX.Element | null {
+export function BranchPill({ directory }: { directory: string }): React.JSX.Element | null {
   const t = useT()
   const info = useBranch(directory)
   const togglePanel = useCode((s) => s.togglePanel)
@@ -356,7 +355,9 @@ function BranchPill({ directory }: { directory: string }): React.JSX.Element | n
     <Tip label={tip}>
       <button
         type="button"
-        onClick={() => (isRemoteSurface() ? useCodeMobile.getState().openSheet('changes') : panel !== 'changes' && togglePanel('changes'))}
+        onClick={() =>
+          isRemoteSurface() ? useMobileNavStore.getState().push(CODE_CHANGES) : panel !== 'changes' && togglePanel('changes')
+        }
         className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
       >
         <GitBranch size={12} className="shrink-0" />
@@ -611,11 +612,8 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {isRemoteSurface() ? (
-        <MobileToolbar directory={directory} branch={<BranchPill directory={directory} />} />
-      ) : (
-        <Toolbar directory={directory} />
-      )}
+      {/* Celular: la barra superior es la del armazón (MobileShell); aquí no hay otra. */}
+      {!isRemoteSurface() && <Toolbar directory={directory} />}
       {globalError && (
         <div className="flex items-center gap-2 border-b border-danger/30 bg-danger/10 px-4 py-1.5 text-xs text-danger">
           <span className="min-w-0 flex-1 truncate">{globalError}</span>
@@ -718,8 +716,14 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
 
   if (!directory) return <ProjectPicker />
 
-  // Pantalla del celular: una columna (lista → conversación) con hojas; Mac y Windows siguen con el diseño de escritorio.
-  if (isRemoteSurface()) return <MobileCodeLayout directory={directory} chat={<ChatColumn directory={directory} />} />
+  // Celular: solo la conversación (la lista de sesiones, la barra y las pantallas de Cambios/Archivos son del armazón).
+  if (isRemoteSurface())
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col bg-bg text-fg">
+        <TrustGate />
+        <ChatColumn directory={directory} />
+      </div>
+    )
 
   return (
     <div className="flex h-full min-h-0 w-full bg-bg text-fg">

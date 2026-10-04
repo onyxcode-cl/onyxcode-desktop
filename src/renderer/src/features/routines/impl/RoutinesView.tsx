@@ -34,7 +34,7 @@ import { resolveModelForMode } from '../../settings/impl/extras'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { hasTasksBridge } from '../../tasks/impl/bridge'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { MODE_LABELS } from '@shared/labels'
 import { useCode } from '../../code/impl/store'
@@ -578,6 +578,17 @@ export function RoutinesView(): React.JSX.Element {
       enabled: true
     })
 
+  const headerMeta = (
+    <>
+      {routines.length > 0 && (
+        <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">
+          {t('routines.view.active', { count: activeCount })}
+        </span>
+      )}
+      {loading && <Loader2 size={14} className="animate-spin text-muted" />}
+    </>
+  )
+
   if (!bridge) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-sm text-danger">
@@ -589,26 +600,31 @@ export function RoutinesView(): React.JSX.Element {
   return (
     <div className="flex h-full min-h-0">
       <section className="flex min-w-0 flex-1 flex-col">
-        <PageHeader
-          title={t('routines.view.title')}
-          meta={
-            <>
+        {isRemoteSurface() ? (
+          routines.length === 0 && !loading ? null : (
+            // Celular: el título lo pone la barra del armazón; aquí solo el resumen y «Nueva» (sin segunda cabecera).
+            <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border/70 px-4">
+              {headerMeta}
               {routines.length > 0 && (
-                <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">
-                  {t('routines.view.active', { count: activeCount })}
-                </span>
+                <Button variant="primary" className="ml-auto min-h-11" onClick={create}>
+                  <Plus size={15} /> {t('routines.view.new')}
+                </Button>
               )}
-              {loading && <Loader2 size={14} className="animate-spin text-muted" />}
-            </>
-          }
-          actions={
-            routines.length > 0 ? (
-              <Button variant="primary" onClick={create}>
-                <Plus size={15} /> {t('routines.view.new')}
-              </Button>
-            ) : undefined
-          }
-        />
+            </div>
+          )
+        ) : (
+          <PageHeader
+            title={t('routines.view.title')}
+            meta={headerMeta}
+            actions={
+              routines.length > 0 ? (
+                <Button variant="primary" onClick={create}>
+                  <Plus size={15} /> {t('routines.view.new')}
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
         {needsRoutinesNotice(acknowledged, routines) && (
           <div
             role="status"
