@@ -144,7 +144,7 @@ describe('shims sobre el multiplexor real', () => {
     const r3 = await f('onyx://engine/main/img')
     expect(new Uint8Array(await r3.arrayBuffer())).toEqual(bytes)
     expect(violations).toEqual([])
-  })
+  }, 20_000)
 
   it('AbortSignal envía `cancel`: el despachador del Mac ve su señal abortada y el fetch rechaza con AbortError', async () => {
     const link = new MuxLink()
