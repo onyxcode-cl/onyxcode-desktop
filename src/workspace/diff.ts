@@ -12,9 +12,11 @@ export interface WorkspaceDiff {
  * Captura el diff final contra `base` (por defecto HEAD del commit inicial).
  * Hace `git add -A` para incluir archivos nuevos y luego `git diff --cached --name-status`.
  */
-export async function captureDiff(dir: string, base = "HEAD"): Promise<WorkspaceDiff> {
-  await git(dir, ["add", "-A"]);
-  const ns = await git(dir, ["diff", "--cached", "--name-status", "-z", "--no-renames", base]);
+export async function captureDiff(dir: string, base = "HEAD", opts: { gitDir?: string } = {}): Promise<WorkspaceDiff> {
+  const tree = opts.gitDir ? { gitDir: opts.gitDir, workTree: dir } : undefined;
+  const g = (args: string[]) => git(dir, args, 60_000, tree);
+  await g(["add", "-A"]);
+  const ns = await g(["diff", "--cached", "--no-ext-diff", "--no-textconv", "--name-status", "-z", "--no-renames", base]);
   const parts = ns.split("\0").filter((p) => p.length > 0);
   const out: WorkspaceDiff = { created: [], modified: [], deleted: [], patch: "" };
   for (let i = 0; i + 1 < parts.length; i += 2) {
@@ -24,7 +26,7 @@ export async function captureDiff(dir: string, base = "HEAD"): Promise<Workspace
     else if (status.startsWith("D")) out.deleted.push(file);
     else out.modified.push(file);
   }
-  out.patch = await git(dir, ["diff", "--cached", "--binary", "--no-renames", base]);
+  out.patch = await g(["diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", "--no-renames", base]);
   return out;
 }
 
