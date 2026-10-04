@@ -22,6 +22,7 @@ import {
   type InstallState,
   type UpdateManifest
 } from '@shared/update-install'
+import { UPDATE_TEAM_ID } from './config'
 import { verifyWithKeys, type UpdateKey } from './signature'
 
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>
@@ -77,6 +78,8 @@ export interface InstallerDeps {
   allowLoopbackHttp: boolean
   keys: readonly UpdateKey[]
   userAgent: string
+  /** Team ID exigido a la app descargada (por defecto `UPDATE_TEAM_ID`; vacío = no se comprueba). */
+  teamId?: string
   onState: (s: InstallState) => void
   /** Corta la descarga si no llega ni un byte en este tiempo. */
   idleMs?: number
@@ -423,6 +426,18 @@ export class UpdateInstaller {
     const dv = await run('/usr/bin/codesign', ['-dv', app])
     const ident = /^Identifier=(.*)$/m.exec(`${dv.stderr}\n${dv.stdout}`)?.[1]?.trim()
     if (dv.code !== 0 || ident !== this.d.appId) throw new InstallError('signing', 'identificador de firma distinto')
+    const team = this.d.teamId ?? UPDATE_TEAM_ID
+    if (team !== '') {
+      // Un valor mal formado se trata como configuración rota (falla cerrado): nunca se interpola en un requisito sin validar.
+      if (!/^[A-Z0-9]{10}$/.test(team)) throw new InstallError('signing', 'UPDATE_TEAM_ID mal formado')
+      const rq = await run('/usr/bin/codesign', [
+        '--verify',
+        '--strict',
+        `-R=anchor apple generic and certificate leaf[subject.OU] = "${team}"`,
+        app
+      ])
+      if (rq.code !== 0) throw new InstallError('signing', 'la app descargada no está firmada por el equipo esperado')
+    }
 
     const plist = join(app, 'Contents', 'Info.plist')
     const id = await run('/usr/bin/plutil', ['-extract', 'CFBundleIdentifier', 'raw', '-o', '-', plist])

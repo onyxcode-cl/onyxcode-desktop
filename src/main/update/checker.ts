@@ -14,6 +14,7 @@ import {
   type UpdateState
 } from '@shared/update-check'
 import { IDLE_INSTALL, type InstallState } from '@shared/update-install'
+import { pickBetaRelease, releasesListUrl, type UpdateChannel } from './channel'
 import type { UpdateConfig } from './config'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -29,6 +30,8 @@ export interface UpdateCheckerDeps {
   currentVersion: string
   config: UpdateConfig
   isEnabled: () => boolean
+  /** Canal de avisos (por defecto estable). `beta` consulta `/releases` y admite prereleases (channel.ts); nada lo activa aún en la interfaz. */
+  channel?: () => UpdateChannel
   stateFile: string
   onState: (state: UpdateState) => void
   /** Instalador propio (opcional): si esta copia puede instalar y el estado de la descarga. */
@@ -156,7 +159,8 @@ export class UpdateChecker {
   private async run(): Promise<UpdateState> {
     const { config } = this.d
     try {
-      const res = await this.d.fetch(releasesApiUrl(config.repo, config.apiBase), {
+      const beta = this.d.channel?.() === 'beta'
+      const res = await this.d.fetch(beta ? releasesListUrl(config.repo, config.apiBase) : releasesApiUrl(config.repo, config.apiBase), {
         method: 'GET',
         headers: {
           Accept: 'application/vnd.github+json',
@@ -173,12 +177,27 @@ export class UpdateChecker {
       if (res.status === 200) {
         const body = await readLimited(res)
         if (!this.d.isEnabled()) return this.getState()
-        const rel = body === null ? null : parseReleaseJson(JSON.parse(body))
+        let rel: ReturnType<typeof parseReleaseJson> = null
+        let newer = false
+        if (beta) {
+          const json: unknown = body === null ? null : JSON.parse(body)
+          if (!Array.isArray(json)) {
+            this.fail(now, 'respuesta inválida')
+            return this.getState()
+          }
+          const pick = pickBetaRelease(json, this.d.currentVersion)
+          rel = pick
+            ? { tag: pick.tag, url: pick.url, draft: false, prerelease: pick.prerelease }
+            : { tag: `v${this.d.currentVersion}`, url: null, draft: false, prerelease: false }
+          newer = pick !== null
+        } else {
+          rel = body === null ? null : parseReleaseJson(JSON.parse(body))
+          if (rel) newer = isNewerRelease({ tag: rel.tag, prerelease: rel.prerelease, draft: rel.draft }, this.d.currentVersion)
+        }
         if (!rel) {
           this.fail(now, 'respuesta inválida')
           return this.getState()
         }
-        const newer = isNewerRelease({ tag: rel.tag, prerelease: rel.prerelease, draft: rel.draft }, this.d.currentVersion)
         const parsed = parseSemver(rel.tag)
         this.latest = newer && parsed ? { version: fmt(parsed), url: safeReleaseUrl(rel.url, config.repo, rel.tag) } : null
         this.tag = this.latest ? rel.tag : null

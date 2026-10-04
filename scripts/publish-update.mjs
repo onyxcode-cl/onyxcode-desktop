@@ -6,6 +6,9 @@
 //   ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/publish-update.mjs [--app dist/mac-arm64/OnyxCode.app] [--out dist/update]
 //
 // La clave privada se lee del archivo indicado (fuera del repo, permisos 0600) y nunca se imprime.
+//
+// Dos pasos (la clave privada NUNCA va al CI): `--manifest-only` genera el ZIP y `update.json` SIN firmar y no necesita
+// ninguna clave (es lo que corre el CI); la firma se hace después en el Mac del dueño con `scripts/sign-update.mjs`.
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,16 +32,17 @@ import {
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 /** `root` = raíz del repositorio (package.json y src/shared/brand.ts); solo las pruebas lo cambian. */
-export async function publish({ appPath, outDir, keyFile, root = defaultRoot, now = () => new Date() }) {
+export async function publish({ appPath, outDir, keyFile, manifestOnly = false, root = defaultRoot, now = () => new Date() }) {
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
   const brand = readBrand(root)
   if (!brand.publicKey) throw new Error('UPDATE_PUBLIC_KEY está vacía en src/shared/brand.ts: pon la clave pública y vuelve a empaquetar.')
   const pub = decodePublicKey(brand.publicKey)
   if (!pub) throw new Error('UPDATE_PUBLIC_KEY de brand.ts no es una clave Ed25519 válida.')
 
-  const priv = readPrivateKey(keyFile, root)
+  const priv = manifestOnly ? null : readPrivateKey(keyFile, root)
   // Que la privada corresponda a la pública que lleva la app: si no, nadie podría verificar la actualización.
-  if (spkiBase64(publicKeyOf(priv)) !== spkiBase64(pub)) throw new Error('La clave privada NO corresponde a UPDATE_PUBLIC_KEY de brand.ts.')
+  if (priv && spkiBase64(publicKeyOf(priv)) !== spkiBase64(pub))
+    throw new Error('La clave privada NO corresponde a UPDATE_PUBLIC_KEY de brand.ts.')
 
   if (!existsSync(appPath)) throw new Error(`No existe ${appPath}: ejecuta antes \`npm run package\`.`)
   const version = pkg.version
@@ -69,11 +73,13 @@ export async function publish({ appPath, outDir, keyFile, root = defaultRoot, no
     publishedAt: now().toISOString()
   })
   const bytes = manifestBytes(manifest)
-  const sig = signBytes(bytes, priv)
-  if (!verifyBytes(bytes, sig, pub)) throw new Error('La firma generada no verifica con UPDATE_PUBLIC_KEY (error interno).')
   writeFileSync(join(outDir, 'update.json'), bytes)
-  writeFileSync(join(outDir, 'update.json.sig'), sig + '\n')
-  return { tag, version, zipPath, size, sha256, outDir, info }
+  if (priv) {
+    const sig = signBytes(bytes, priv)
+    if (!verifyBytes(bytes, sig, pub)) throw new Error('La firma generada no verifica con UPDATE_PUBLIC_KEY (error interno).')
+    writeFileSync(join(outDir, 'update.json.sig'), sig + '\n')
+  }
+  return { tag, version, zipPath, size, sha256, outDir, info, signed: Boolean(priv) }
 }
 
 function arg(name) {
@@ -85,13 +91,20 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   publish({
     appPath: resolve(arg('--app') ?? join(defaultRoot, 'dist/mac-arm64/OnyxCode.app')),
     outDir: resolve(arg('--out') ?? join(defaultRoot, 'dist/update')),
-    keyFile: process.env.ONYXCODE_UPDATE_KEY_FILE
+    keyFile: process.env.ONYXCODE_UPDATE_KEY_FILE,
+    manifestOnly: process.argv.includes('--manifest-only')
   })
     .then((r) => {
       console.log(`publish-update OK — ${r.tag}`)
       console.log(`  ZIP:      ${r.zipPath} (${r.size} bytes, sha256 ${r.sha256})`)
-      console.log(`  Manifest: ${join(r.outDir, 'update.json')} + update.json.sig`)
+      console.log(`  Manifest: ${join(r.outDir, 'update.json')}${r.signed ? ' + update.json.sig' : ' (SIN firmar)'}`)
       for (const l of r.info) console.log(`  ${l}`)
+      if (!r.signed) {
+        console.log(
+          `Falta la firma: en tu Mac, con la clave privada, ejecuta \`node scripts/sign-update.mjs --dir <carpeta con update.json y el ZIP>\` y sube update.json.sig a la release.`
+        )
+        return
+      }
       console.log(
         `Sube los TRES archivos como assets de la release ${r.tag} (más el .dmg) y comprueba con: node scripts/verify-update.mjs --dir ${r.outDir}`
       )

@@ -3,6 +3,15 @@ import { decodePublicKey, type UpdateKey } from './signature'
 
 export const GITHUB_API_BASE = 'https://api.github.com'
 
+/**
+ * Team ID de Apple (10 caracteres, p. ej. «ABCDE12345») del certificado Developer ID con el que se firma OnyxCode.
+ * Vacío = sin cambio (solo se comprueba el identificador, como hasta ahora). Con valor, `UpdateInstaller.verifyApp` exige
+ * además que la app descargada esté firmada con ese equipo (`anchor apple generic and certificate leaf[subject.OU]`):
+ * defensa adicional a la firma Ed25519. Se rellena al tener el certificado (docs/RELEASE.md). Vive aquí y no en brand.ts
+ * por ahora; al consolidar la identidad puede moverse allí.
+ */
+export const UPDATE_TEAM_ID = '' as string
+
 export interface UpdateConfig {
   /** false = sin red y aviso apagado (no hay repositorio o la variable de test no aplica). */
   configured: boolean
@@ -67,6 +76,11 @@ export interface InstallResolveInput extends ResolveInput {
   /** `UPDATE_PUBLIC_KEY` y `UPDATE_KEY_ID` (brand.ts). */
   updateKey: string
   updateKeyId: string
+  /**
+   * Claves adicionales aceptadas (rotación, docs/RELEASE.md §Claves): p. ej. la vieja mientras la nueva ya es la principal.
+   * Las inválidas se descartan. Solo cuentan en la app empaquetada.
+   */
+  updateKeys?: readonly UpdateKey[]
   platform: string
 }
 
@@ -76,7 +90,9 @@ export interface InstallResolveInput extends ResolveInput {
  */
 export function resolveInstallConfig(i: InstallResolveInput): InstallConfig {
   const key = i.isPackaged ? i.updateKey : (i.env.ONYXCODE_TEST_UPDATE_PUBKEY ?? '')
-  const keys = key !== '' && decodePublicKey(key) ? [{ id: i.updateKeyId, key }] : []
+  const main: UpdateKey[] = key !== '' && decodePublicKey(key) ? [{ id: i.updateKeyId, key }] : []
+  const extra = i.isPackaged ? (i.updateKeys ?? []).filter((k) => decodePublicKey(k.key)) : []
+  const keys = main.length > 0 ? [...main, ...extra] : [...extra]
   const enabled = i.update.configured && keys.length > 0 && i.platform === 'darwin'
   const testDir = !i.isPackaged && i.env.ONYXCODE_TEST_UPDATE_INSTALL_DIR?.startsWith('/') ? i.env.ONYXCODE_TEST_UPDATE_INSTALL_DIR : null
   return {

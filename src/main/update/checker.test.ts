@@ -260,3 +260,38 @@ describe('UpdateChecker', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('UpdateChecker: canal beta', () => {
+  const list = (...tags: string[]): Response =>
+    new Response(
+      JSON.stringify(
+        tags.map((t) => ({ tag_name: t, html_url: `https://github.com/o/r/releases/tag/${t}`, draft: false, prerelease: t.includes('-') }))
+      ),
+      {
+        status: 200
+      }
+    )
+  it('estable (por defecto): pide /releases/latest', async () => {
+    const c = make()
+    await c.check(false)
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/releases\/latest$/)
+  })
+  it('beta: pide /releases?per_page=10 y ofrece la prerelease mayor', async () => {
+    fetchMock.mockImplementation(async () => list('v1.1.0', 'v1.2.0-beta.1'))
+    const c = make({ channel: () => 'beta' })
+    await c.check(false)
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/releases\?per_page=10$/)
+    expect(c.getState().latest?.version).toBe('1.2.0-beta.1')
+    expect(c.latestTag()).toBe('v1.2.0-beta.1')
+  })
+  it('beta: sin nada mayor no hay aviso; una respuesta que no es lista cuenta como inválida', async () => {
+    fetchMock.mockImplementation(async () => list('v0.9.0'))
+    const c = make({ channel: () => 'beta' })
+    await c.check(false)
+    expect(c.getState().latest).toBeNull()
+    fetchMock.mockImplementation(async () => release('v2.0.0'))
+    const c2 = make({ channel: () => 'beta', stateFile: join(dir, 'otro.json') })
+    await c2.check(false)
+    expect(c2.getState().latest).toBeNull()
+  })
+})
