@@ -172,7 +172,8 @@ export class RoomCore {
     if (!p) return // el celular ya se fue
     switch (f.value.t) {
       case 'kick':
-        return this.dropPeer(p, null, false) // lo pidió el Mac: no hace falta avisarle
+        // Va por la misma cola que los `to`: lo último que el Mac le mandó (p. ej. `error`) sale ANTES de cerrar.
+        return this.enqueue(p, () => this.dropPeer(p, null, false)) // lo pidió el Mac: no hace falta avisarle
       case 'to': {
         const d = f.value.d
         // La primera respuesta del Mac (`ready` o `error`) cierra la espera de 5 s; no se interpreta el contenido.

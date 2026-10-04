@@ -11,11 +11,23 @@
  */
 import { randomBytes } from 'node:crypto'
 import { sdpFingerprintStrict, toHex } from '@shared/remote/code'
+import {
+  CLOUD_STUN_URL,
+  encodePairCode,
+  formatPairCode,
+  pairHostToken,
+  pairRoom,
+  pairSecretFromCode,
+  roomOfToken
+} from '@shared/remote/cloud'
 import { LIMITS } from '@shared/remote/protocol'
+import type { IceServerSpec, RemoteCap } from '@shared/remote/protocol'
 import type { CallRequest, HttpRequest } from '@shared/remote/mux'
 import type { RemoteEvent } from '@shared/remote/protocol'
 import type {
   DeviceTtlDays,
+  RemoteCloudStatus,
+  RemoteConnection,
   RemoteDeviceInfo,
   RemotePairRequest,
   RemotePolicyView,
@@ -44,7 +56,8 @@ export interface RemoteServiceDeps {
   /** Carga la librería WebRTC (lanza si no está disponible). */
   loadRtc: () => Promise<RtcFactory>
   getLanIp: () => string | null
-  createTransport: (ip: string) => SignalingTransport
+  /** `mode` = `lan` (servidor local en `ip`) o `cloud` (servicio de conexión; `ip` va vacía: no hace falta red local). */
+  createTransport: (ip: string, mode?: RemoteConnection) => SignalingTransport
   backend: RemoteBackend & EventSource
   /** Cliente SSE del motor (solo se pide mientras haya un celular conectado). */
   getEventClient: EventBridgeOptions['getClient']
@@ -69,6 +82,12 @@ export interface RemoteServiceDeps {
   unavailable?: () => RemoteUnavailableReason | null
   /** Política de la organización vigente (se consulta en caliente; sin ella, sin restricciones). */
   policy?: () => RemotePolicyView
+  /** Vigilancia del sitio (N7): `true` = el sitio no coincide con el manifiesto firmado y el modo nube está EN PAUSA. */
+  cloudPaused?: () => boolean
+  /** Estado de la vigilancia del sitio para Ajustes. */
+  siteCheck?: () => 'ok' | 'mismatch' | 'unknown'
+  /** Capacidades que se anuncian a un celular v4 (`caps`); p. ej. `entry` cuando el Mac sabe mandar su lista de archivos. */
+  caps?: () => RemoteCap[]
 }
 
 /** Tiempo máximo para que una negociación WebRTC termine en un canal con celular autenticado. */
@@ -79,7 +98,8 @@ export const POLICY_POLL_MS = 5000
 
 interface PeerRecord {
   signaling: SignalingPeer
-  answerer: RtcAnswerer
+  /** Se crea al llegar la offer (en la nube, cuando ya llegaron los servidores ICE de este celular). */
+  answerer: RtcAnswerer | null
   session: PeerSession | null
   dispatch: DeviceDispatch | null
   timer: ReturnType<typeof setTimeout> | null
@@ -89,6 +109,8 @@ interface PeerRecord {
   pairKey: Uint8Array | null
   /** Solo `pair`: el handshake ya dio su resultado (el QR se consumió o el intento se liberó). */
   pairResolved: boolean
+  /** Modo nube: la conexión de este celular pasa por un relé (TURN). */
+  relay: boolean
 }
 
 export class RemoteService {
@@ -97,6 +119,12 @@ export class RemoteService {
   private rtc: RtcFactory | null = null
   private ip = ''
   private origin = ''
+  /** Modo del transporte en marcha (`lan` o `cloud`). */
+  private connMode: RemoteConnection = 'lan'
+  /** Nube: sala de este Mac (sha256 de su `hostToken`) y la de vinculación del QR vigente. */
+  private roomId = ''
+  private pairRoomId: string | null = null
+  private pairCode: string | null = null
   private readonly pairing: PairingManager
   private pairingSecret: string | null = null
   private pairingExpired = false
@@ -149,6 +177,7 @@ export class RemoteService {
         )
       )
     const expiry = this.pairing.expiry
+    const cloud = this.cloudView(policy)
     return {
       available: unavailable === null,
       ...(unavailable ? { unavailable } : {}),
@@ -162,16 +191,58 @@ export class RemoteService {
       error: this.error,
       confirmEachConnection: this.confirmEach(),
       confirmEachForced: policy.requireConnectionConfirm,
-      ...(policy.managed ? { policy } : {})
+      ...(policy.managed ? { policy } : {}),
+      ...cloud
+    }
+  }
+
+  /** Campos de «fuera de casa» del estado (Ajustes). */
+  private cloudView(policy: RemotePolicyView): Partial<RemoteState> {
+    let prefs: { connection: RemoteConnection; away: boolean } = { connection: 'lan', away: false }
+    try {
+      prefs = this.d.devices.getCloudPrefs()
+    } catch {
+      /* sin cifrado: solo red local */
+    }
+    const blocked = this.outsideBlocked(policy)
+    const running = this.mode !== 'off' && this.connMode === 'cloud'
+    const paused = running && (this.d.cloudPaused?.() ?? false)
+    const status: RemoteCloudStatus | undefined = !running ? undefined : paused ? 'paused' : (this.transport?.status?.() ?? 'connecting')
+    return {
+      connection: prefs.connection,
+      away: prefs.away,
+      ...(blocked ? { outsideBlocked: blocked } : {}),
+      ...(status ? { cloudStatus: status } : {}),
+      ...(running ? { siteCheck: this.d.siteCheck?.() ?? 'unknown' } : {}),
+      ...(running && [...this.peers].some((p) => p.relay && p.session === this.connected) ? { relayInUse: true } : {})
+    }
+  }
+
+  /** Por qué «También fuera de casa» no se puede usar ahora (`null` = se puede). */
+  private outsideBlocked(policy: RemotePolicyView): 'policy' | 'passkey-required' | null {
+    if (!policy.allowOutsideNetwork) return 'policy'
+    // Hasta que existan las passkeys (entrega 2) el modo nube no puede cumplir `requirePasskey`: se queda en la red local.
+    if (policy.requirePasskey) return 'passkey-required'
+    return null
+  }
+
+  /** ¿Hay que usar el servicio de conexión en esta activación? (lo elegido por el dueño, si la política lo permite). */
+  private wantCloud(): boolean {
+    try {
+      return this.d.devices.getCloudPrefs().connection === 'cloud' && this.outsideBlocked(this.pol()) === null
+    } catch {
+      return false
     }
   }
 
   private qrCache: { url: string; qr: boolean[][] } | null = null
 
   private pairingView(expiresAt: number): NonNullable<RemoteState['pairing']> {
-    const url = `${this.origin}/#s=${this.pairingSecret}`
+    // Nube: el QR lleva el código de 16 caracteres (fragmento `#c=`, que el navegador no envía) y el mismo código se puede escribir.
+    const code = this.connMode === 'cloud' && this.pairCode ? formatPairCode(this.pairCode) : null
+    const url = code ? `${this.origin}/#c=${code}` : `${this.origin}/#s=${this.pairingSecret}`
     if (this.qrCache?.url !== url) this.qrCache = { url, qr: this.d.qr(url) }
-    return { url, qr: this.qrCache.qr, expiresAt }
+    return { url, qr: this.qrCache.qr, expiresAt, ...(code ? { code } : {}) }
   }
 
   private changed(): void {
@@ -180,24 +251,45 @@ export class RemoteService {
 
   // ── ciclo de vida ──
 
-  /** «Activar»: abre el servidor local y genera el primer QR. */
+  /** «Activar»: abre el servidor local (o el enlace con el servicio de conexión) y genera el primer QR. */
   start(): Promise<RemoteState> {
     if (this.mode !== 'off') return Promise.resolve(this.getState())
-    this.starting ??= this.doStart().finally(() => {
+    this.starting ??= this.doStart(false).finally(() => {
       this.starting = null
     })
     return this.starting
   }
 
-  private async doStart(): Promise<RemoteState> {
+  /**
+   * Al abrir la app con «Disponible fuera de casa»: enciende el servicio SIN QR (solo reconexiones de los celulares ya
+   * vinculados). No hace nada si no está elegido el modo nube, si no hay celulares o si la política no lo permite.
+   */
+  autoStartAway(): Promise<RemoteState> {
+    if (this.mode !== 'off') return Promise.resolve(this.getState())
+    let ok = false
+    try {
+      ok = this.d.devices.getCloudPrefs().away && this.wantCloud() && this.d.devices.list().length > 0
+    } catch {
+      ok = false
+    }
+    if (!ok) return Promise.resolve(this.getState())
+    this.starting ??= this.doStart(true).finally(() => {
+      this.starting = null
+    })
+    return this.starting
+  }
+
+  private async doStart(quiet: boolean): Promise<RemoteState> {
     this.error = null
     const unavailable = this.unavailableReason()
     if (unavailable) {
       this.changed()
       return this.getState()
     }
-    const ip = this.d.getLanIp()
-    if (!ip) {
+    const cloud = this.wantCloud()
+    // En la nube no hace falta red local ni IP privada: el Mac sale hacia fuera. En la red local, sí.
+    const ip = cloud ? '' : this.d.getLanIp()
+    if (ip === null) {
       this.error = 'no-network'
       this.changed()
       return this.getState()
@@ -210,12 +302,24 @@ export class RemoteService {
       this.changed()
       return this.getState()
     }
-    const transport = this.d.createTransport(ip)
+    const transport = this.d.createTransport(ip, cloud ? 'cloud' : 'lan')
     transport.onPeer((p) => this.handlePeer(p))
+    transport.onStatus?.(() => this.changed())
+    this.connMode = cloud ? 'cloud' : 'lan'
     try {
-      const { origin } = await transport.start({ authorize: (h) => this.authorize(h) })
+      if (cloud) {
+        const token = this.d.devices.hostToken()
+        if (!token) throw new Error('no-safe-storage')
+        this.roomId = roomOfToken(token)
+      }
+      const { origin } = await transport.start({
+        authorize: (h, room) => this.authorize(h, room),
+        allowRelay: () => this.pol().allowRelay
+      })
       this.origin = origin
     } catch (err) {
+      this.connMode = 'lan'
+      this.roomId = ''
       await transport.stop().catch(() => undefined)
       this.error = err instanceof Error ? err.message : String(err)
       this.changed()
@@ -226,8 +330,11 @@ export class RemoteService {
     this.transport = transport
     // Política sin «recordar»: los vínculos no sobreviven entre activaciones (se borran los que quedaran de antes).
     if (!this.pol().allowRemember) this.purgeDevices()
-    this.mode = 'pairing'
-    this.newPairingToken()
+    if (quiet) this.mode = 'active'
+    else {
+      this.mode = 'pairing'
+      this.newPairingToken()
+    }
     this.armIdleTimer()
     this.startPolicyWatch()
     this.changed()
@@ -251,9 +358,16 @@ export class RemoteService {
     const p = this.pol()
     if (p.blocked && this.mode !== 'off') {
       this.d.audit?.({ kind: 'policy-blocked' })
-      void this.stopAll()
+      void this.shutdown()
       return
     }
+    // La política cerró «fuera de casa» con el modo nube en marcha: se corta el socket saliente al instante.
+    if (this.mode !== 'off' && this.connMode === 'cloud' && this.outsideBlocked(p)) {
+      this.d.audit?.({ kind: 'policy-blocked' })
+      void this.shutdown()
+      return
+    }
+    if (this.mode !== 'off' && this.connMode === 'cloud') this.transport?.recheck?.()
     const key = JSON.stringify(p)
     if (key !== this.lastPolicyKey) {
       this.lastPolicyKey = key
@@ -280,7 +394,17 @@ export class RemoteService {
   }
 
   private newPairingToken(): void {
-    const token = this.pairing.create()
+    let token
+    if (this.connMode === 'cloud') {
+      // Código escribible de 16 caracteres (80 bits): de él sale `q`, y de `q` el token de la sala de vinculación (el servicio
+      // no ve `q`). El QR lleva el mismo código.
+      const code = encodePairCode(new Uint8Array(randomBytes(10)))
+      const q = pairSecretFromCode(code) as string
+      token = this.pairing.create(q)
+      this.pairCode = code
+      this.pairRoomId = pairRoom(q)
+      this.transport?.setPairRoom?.(pairHostToken(q))
+    } else token = this.pairing.create()
     this.pairingSecret = token.secret
     this.pairingExpired = false
     this.pairingExhausted = false
@@ -289,10 +413,18 @@ export class RemoteService {
     this.pairingTimer = setTimeout(() => this.onPairingExpired(), Math.max(0, token.expiresAt - this.now()) + 20)
   }
 
+  /** La sala de vinculación deja de existir en cuanto el QR deja de valer (caduca, se usa, se anula o se corta todo). */
+  private closePairRoom(): void {
+    this.pairCode = null
+    this.pairRoomId = null
+    this.transport?.setPairRoom?.(null)
+  }
+
   private onPairingExpired(): void {
     this.pairingTimer = null
     if (this.mode === 'off') return
     if (this.pairingSecret && !this.pairing.active) {
+      this.closePairRoom()
       this.pairingSecret = null
       this.pairingExpired = true
       this.mode = 'active'
@@ -303,6 +435,7 @@ export class RemoteService {
   /** 5 fallos de vinculación: el QR se anuló (el dueño genera otro). */
   private onPairingExhausted(): void {
     if (this.mode === 'off') return
+    this.closePairRoom()
     this.pairingSecret = null
     this.pairingExpired = false
     this.pairingExhausted = true
@@ -312,11 +445,24 @@ export class RemoteService {
     this.changed()
   }
 
-  /** «Cortar todo»: cierra conexiones, servidor y anula el QR. */
+  /**
+   * «Cortar todo» (acción del dueño): cierra conexiones, servidor y anula el QR, y apaga «Disponible fuera de casa» (se vuelve a
+   * encender a mano). Los cierres que no son una decisión del dueño (política, inactividad, salir de la app) usan `shutdown()`.
+   */
   async stopAll(): Promise<RemoteState> {
+    try {
+      this.d.devices.setCloudPrefs({ away: false })
+    } catch {
+      /* sin cifrado no hay nada guardado */
+    }
+    return this.shutdown()
+  }
+
+  private async shutdown(): Promise<RemoteState> {
     const wasOff = this.mode === 'off' && !this.transport
     this.mode = 'off'
     this.pairing.revoke()
+    this.closePairRoom()
     this.pairingSecret = null
     this.pairingExpired = false
     this.pairingExhausted = false
@@ -353,6 +499,8 @@ export class RemoteService {
     for (const p of peers) p.session?.bye('stopped')
     const transport = this.transport
     this.transport = null
+    this.connMode = 'lan'
+    this.roomId = ''
     await transport?.stop().catch(() => undefined)
     if (peers.length > 0) await new Promise((r) => setTimeout(r, FLUSH_MS))
     for (const p of peers) this.closePeer(p, true)
@@ -367,7 +515,7 @@ export class RemoteService {
    * el hilo principal hasta 10 s esperando a los pares y el proceso termina igualmente.
    */
   async dispose(): Promise<void> {
-    await this.stopAll()
+    await this.shutdown()
     this.rtc = null
   }
 
@@ -376,15 +524,24 @@ export class RemoteService {
     this.idleTimer = null
     this.idleStopAt = null
     if (this.mode === 'off' || this.connected) return
+    // «Disponible fuera de casa»: el enlace con el servicio queda encendido (sin apagado por inactividad) mientras haya celulares.
+    if (this.connMode === 'cloud' && this.awayOn() && this.d.devices.list().length > 0) return
     this.idleStopAt = this.now() + LIMITS.idleShutdownMs
-    this.idleTimer = setTimeout(() => void this.stopAll(), LIMITS.idleShutdownMs)
+    this.idleTimer = setTimeout(() => void this.shutdown(), LIMITS.idleShutdownMs)
   }
 
   // ── señalización ──
 
-  private authorize(h: SignalHello): boolean {
+  private authorize(h: SignalHello, room?: string): boolean {
     this.applyPolicy()
     if (this.mode === 'off') return false
+    if (this.connMode === 'cloud') {
+      // El sitio no coincide con el manifiesto firmado, o la política lo cerró: el modo nube NO acepta a nadie.
+      if (this.d.cloudPaused?.() || this.outsideBlocked(this.pol())) return false
+      // Cada `hello` solo vale por SU sala: reanudar por la sala de vinculación (o vincular por la del Mac) se rechaza.
+      if (h.mode === 'pair') return room === this.pairRoomId && !this.pairing.reserved && this.pairing.match(h.qid)
+      return room === this.roomId && this.d.devices.get(h.deviceId) !== null
+    }
     // Reconocer el `qid` NO consume el QR (un `qid` ajeno suma un fallo; 5 lo anulan). Con un intento ya en curso no hay otro.
     if (h.mode === 'pair') return !this.pairing.reserved && this.pairing.match(h.qid)
     return this.d.devices.get(h.deviceId) !== null
@@ -401,18 +558,21 @@ export class RemoteService {
       pairKey = this.pairing.reserve(hello.qid)
       if (!pairKey) return sp.close()
     } else if (this.peers.size >= LIMITS.maxSignalSockets) return sp.close()
+    // Nube: el `hello` solo vale por su sala (el transporte ya lo comprobó con `authorize`; esto es defensa en profundidad).
+    if (this.connMode === 'cloud' && sp.room !== (hello.mode === 'pair' ? this.pairRoomId : this.roomId)) return sp.close()
 
-    const answerer = this.rtc.createAnswerer({ bindAddress: this.ip })
+    const rtc = this.rtc
     const rec: PeerRecord = {
       signaling: sp,
-      answerer,
+      answerer: null,
       session: null,
       dispatch: null,
       timer: null,
       kind: hello.mode,
       closed: false,
       pairKey,
-      pairResolved: false
+      pairResolved: false,
+      relay: false
     }
     this.peers.add(rec)
     rec.timer = setTimeout(() => {
@@ -423,23 +583,47 @@ export class RemoteService {
     let answerSdp = ''
     // Solo la PRIMERA offer y la PRIMERA answer: las huellas del handshake salen de ellas y no pueden cambiar a mitad.
     sp.onOffer((sdp) => {
-      if (offerSdp) return
+      if (offerSdp || rec.closed) return
       offerSdp = sdp
+      // El respondedor se crea AL LLEGAR LA OFFER: en la nube ya llegaron los servidores ICE de este celular (`turn` va antes de
+      // `ready`). Nube: STUN siempre (+ TURN si lo repartió el servicio); red local: ninguno.
+      const iceServers: IceServerSpec[] = this.connMode === 'cloud' ? [{ urls: [CLOUD_STUN_URL] }, ...(sp.iceServers?.() ?? [])] : []
+      const answerer = rtc.createAnswerer({ ...(this.connMode === 'cloud' ? {} : { bindAddress: this.ip }), iceServers })
+      rec.answerer = answerer
+      this.wireAnswerer(
+        rec,
+        sp,
+        answerer,
+        () => ({ offerSdp, answerSdp }),
+        (sdp) => (answerSdp = sdp),
+        hello
+      )
       answerer.start(sdp)
     })
-    sp.onIce((c, mid) => answerer.addRemoteCandidate(c, mid))
+    sp.onIce((c, mid) => rec.answerer?.addRemoteCandidate(c, mid))
     sp.onClose(() => {
       // Si el canal aún no existe, no hay nada que esperar.
       if (!rec.session && !rec.closed) this.closePeer(rec)
     })
+  }
+
+  private wireAnswerer(
+    rec: PeerRecord,
+    sp: SignalingPeer,
+    answerer: RtcAnswerer,
+    sdps: () => { offerSdp: string; answerSdp: string },
+    setAnswer: (sdp: string) => void,
+    hello: SignalHello
+  ): void {
     answerer.onAnswer((sdp) => {
-      if (answerSdp) return
-      answerSdp = sdp
+      if (sdps().answerSdp) return
+      setAnswer(sdp)
       sp.sendAnswer(sdp)
     })
     answerer.onCandidate((c, mid) => sp.sendIce(c, mid))
     answerer.onGone(() => this.closePeer(rec, true))
     answerer.onChannel((channel) => {
+      const { offerSdp, answerSdp } = sdps()
       if (rec.session || rec.closed) return channel.close()
       // Huellas ESTRICTAS (una sola, sha-256) de los dos SDP: lo que la pila DTLS verificó contra los certificados.
       const fo = offerSdp ? sdpFingerprintStrict(offerSdp) : null
@@ -471,11 +655,15 @@ export class RemoteService {
         onEnd: () => this.onSessionEnd(rec, session),
         access: this.access(),
         clock: this.d.now,
-        limits: () => ({ capDays: this.pol().deviceTtlDays, maxDevices: this.pol().maxDevices })
+        limits: () => ({ capDays: this.pol().deviceTtlDays, maxDevices: this.pol().maxDevices }),
+        caps: this.d.caps,
+        room: () => (this.connMode === 'cloud' ? this.roomId : undefined)
       })
       rec.session = session
       channel.onOpen(() => {
         session.start()
+        // ¿Vía relé? (solo informativo, para Ajustes; la pila puede no saberlo todavía).
+        rec.relay = this.connMode === 'cloud' && answerer.selectedType?.() === 'relay'
         // El canal ya está abierto: la señalización no hace falta más (libera un socket).
         sp.close()
       })
@@ -491,6 +679,7 @@ export class RemoteService {
       return false
     }
     if (!this.pairing.consume()) return false
+    this.closePairRoom()
     this.pairingSecret = null
     this.pairingExpired = false
     this.mode = 'active'
@@ -518,8 +707,10 @@ export class RemoteService {
       /* ya cerrado */
     }
     rec.session?.close('closed')
-    if (immediate) rec.answerer.close()
-    else setTimeout(() => rec.answerer.close(), FLUSH_MS + 100).unref()
+    const answerer = rec.answerer
+    if (!answerer) return
+    if (immediate) answerer.close()
+    else setTimeout(() => answerer.close(), FLUSH_MS + 100).unref()
   }
 
   // ── vinculación ──
@@ -569,8 +760,32 @@ export class RemoteService {
     if (this.connected) this.connected.bye('revoked')
     for (const p of [...this.peers]) p.session?.bye('revoked')
     this.d.devices.revokeAll()
+    // Nube: la sala de este Mac cambió (el `hostToken` se renueva al quitar a todos): se reabre con la nueva.
+    if (this.connMode === 'cloud') void this.rekeyCloud()
     this.changed()
     return this.getState()
+  }
+
+  /** Reabre el enlace con el servicio con el `hostToken` vigente (tras renovarlo). */
+  private async rekeyCloud(): Promise<void> {
+    const transport = this.transport
+    if (!transport || this.mode === 'off') return
+    const token = this.d.devices.hostToken()
+    if (!token) return
+    await transport.stop().catch(() => undefined)
+    if (this.transport !== transport) return
+    this.roomId = roomOfToken(token)
+    try {
+      await transport.start({ authorize: (h, room) => this.authorize(h, room), allowRelay: () => this.pol().allowRelay })
+      if (this.pairingSecret && this.pairing.active) this.transport?.setPairRoom?.(this.currentPairToken())
+    } catch {
+      /* el estado del enlace quedará `offline`; el dueño puede reactivar */
+    }
+    this.changed()
+  }
+
+  private currentPairToken(): string | null {
+    return this.pairingSecret ? pairHostToken(this.pairingSecret) : null
   }
 
   /** Plazo de validez de un celular (renueva su ventana desde ahora). */
@@ -657,6 +872,68 @@ export class RemoteService {
     }
     this.changed()
     return this.getState()
+  }
+
+  // ── fuera de casa ──
+
+  private awayOn(): boolean {
+    try {
+      return this.d.devices.getCloudPrefs().away
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * «Solo esta red» / «También fuera de casa». Con el servicio en marcha se reinicia con el modo nuevo (se pierden el QR vigente
+   * y la conexión actual); apagado, solo se guarda la elección. La política manda: sin permiso, `cloud` no se activa.
+   */
+  async setConnection(connection: RemoteConnection): Promise<RemoteState> {
+    try {
+      this.d.devices.setCloudPrefs({ connection })
+    } catch {
+      /* sin cifrado no se guarda */
+    }
+    if (this.mode !== 'off') {
+      const wasQuiet = this.mode === 'active' && !this.pairingSecret
+      await this.shutdown()
+      if (connection === 'lan' || this.outsideBlocked(this.pol()) === null) await (wasQuiet ? this.autoStartAway() : this.start())
+    } else this.changed()
+    return this.getState()
+  }
+
+  /** «Disponible fuera de casa»: encender arranca el servicio ya (si hay celulares); apagar vuelve al apagado por inactividad. */
+  async setAway(on: boolean): Promise<RemoteState> {
+    try {
+      this.d.devices.setCloudPrefs({ away: on })
+    } catch {
+      /* sin cifrado no se guarda */
+    }
+    if (on && this.mode === 'off') return this.autoStartAway()
+    if (this.mode !== 'off') {
+      this.armIdleTimer()
+      this.changed()
+    }
+    return this.getState()
+  }
+
+  /** ¿El servicio está en marcha con el servicio de conexión (modo nube)? */
+  isCloudRunning(): boolean {
+    return this.mode !== 'off' && this.connMode === 'cloud'
+  }
+
+  /** El Mac se va a dormir (`true`) o despertó (`false`): el socket saliente se cierra/reabre al instante. */
+  onPower(suspended: boolean): void {
+    if (this.mode === 'off' || this.connMode !== 'cloud') return
+    if (suspended) this.transport?.suspend?.()
+    else this.transport?.resume?.()
+    this.changed()
+  }
+
+  /** Cambió la red del Mac: los sockets viejos pueden estar muertos. */
+  onNetworkChange(): void {
+    if (this.mode === 'off' || this.connMode !== 'cloud') return
+    this.transport?.networkChanged?.()
   }
 
   // ── sesiones ──

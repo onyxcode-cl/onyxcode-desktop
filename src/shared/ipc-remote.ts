@@ -32,6 +32,17 @@ export interface RemotePolicyView {
   allowConfirmRemember12h: boolean
   /** `true`: cada conexión de un celular ya vinculado se confirma en el Mac (el ajuste del usuario no puede apagarlo). */
   requireConnectionConfirm: boolean
+  /**
+   * `false`: «Solo esta red». El modo «También fuera de casa» no existe: no se abre ningún socket hacia el servicio de conexión.
+   * Con un `managed.json` que no lo diga expresamente vale `false` (una política anterior a esta función no la autorizó).
+   */
+  allowOutsideNetwork: boolean
+  /** `false`: el Mac no concede relé (TURN) a ningún celular; solo conexión directa. Ausente con política = `false`. */
+  allowRelay: boolean
+  /** `false`: sin avisos al celular (entrega 3). Ausente con política = `false`. */
+  allowPush: boolean
+  /** `true`: el acceso exige passkey además del PIN (entrega 2; hasta entonces bloquea el modo nube, que no puede cumplirlo). */
+  requirePasskey: boolean
 }
 
 /** Por qué la función no se puede activar en este equipo. */
@@ -88,6 +99,8 @@ export interface RemotePairing {
   qr: boolean[][]
   /** ms desde epoch en que caduca el QR. */
   expiresAt: number
+  /** Solo modo «También fuera de casa»: el mismo código del QR para ESCRIBIRLO a mano (`XXXX-XXXX-XXXX-XXXX`). */
+  code?: string
 }
 
 /** Un celular pide vincularse: el dueño debe confirmar en el escritorio (muestra el mismo código que el celular). */
@@ -122,7 +135,23 @@ export interface RemoteState {
   confirmEachConnection: boolean
   /** La política de la organización lo exige (el ajuste del usuario no se puede apagar). */
   confirmEachForced: boolean
+  /** Fuera de casa (F8-B77). Elegido por el dueño; ausente = `lan` («Solo esta red»). */
+  connection?: RemoteConnection
+  /** Por qué «También fuera de casa» no está disponible aunque se haya elegido (la política lo prohíbe o exige una passkey). */
+  outsideBlocked?: 'policy' | 'passkey-required'
+  /** «Disponible fuera de casa»: el servicio arranca al abrir la app y no se apaga por inactividad. */
+  away?: boolean
+  /** Estado del enlace con el servicio de conexión (solo con el modo nube en marcha). */
+  cloudStatus?: RemoteCloudStatus
+  /** Vigilancia del sitio: `ok` verificado, `mismatch` no coincide (modo nube en pausa), `unknown` sin verificar. */
+  siteCheck?: 'ok' | 'mismatch' | 'unknown'
+  /** La conexión viva pasa por un relé (TURN). */
+  relayInUse?: boolean
 }
+
+/** «Solo esta red» (HTTP en la IP privada) o «También fuera de casa» (servicio de conexión). */
+export type RemoteConnection = 'lan' | 'cloud'
+export type RemoteCloudStatus = 'connecting' | 'online' | 'offline' | 'paused'
 
 export const REMOTE_OFF_STATE: RemoteState = {
   available: true,

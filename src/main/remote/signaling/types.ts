@@ -30,7 +30,7 @@ export interface SignalingStartOptions {
    * Decide si el `hello` es válido: reconoce el `qid` de un QR vigente (NO lo consume: un `qid` ajeno suma un fallo al QR) o el
    * dispositivo. Nunca recibe un secreto: `q` y el secreto de dispositivo no salen del celular.
    */
-  authorize(hello: SignalHello): boolean
+  authorize(hello: SignalHello, room?: string): boolean
   /** Nube: ¿se puede conceder relé (TURN) a este celular? Política `allowRelay`. Sin esto, sí. */
   allowRelay?(): boolean
 }
@@ -46,6 +46,11 @@ export interface SignalingTransport {
   /** Estado del enlace con el servicio, para Ajustes. LAN: siempre `online`. */
   status?(): TransportStatus
   onStatus?(cb: (s: TransportStatus) => void): void
+  /** Nube: el Mac se duerme (cerrar ya), despertó (reconectar ya) o cambió la red; y «¿se sigue permitiendo?». */
+  suspend?(): void
+  resume?(): void
+  networkChanged?(): void
+  recheck?(): void
 }
 
 export type TransportStatus = 'connecting' | 'online' | 'offline'

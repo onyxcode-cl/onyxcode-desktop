@@ -1,6 +1,7 @@
 /**
  * Envoltorio mínimo de `node-datachannel` (libdatachannel): el escritorio hace de RESPONDEDOR WebRTC (el celular
- * crea la oferta y el DataChannel). Solo candidatos locales: sin servidores STUN/TURN y ligado a la IPv4 privada.
+ * crea la oferta y el DataChannel). En la red local: solo candidatos locales, sin servidores y ligado a la IPv4 privada. Por el
+ * servicio de conexión: STUN (y TURN solo si el servicio lo repartió tras aceptar al celular).
  * `node-datachannel` se carga con `import()` la primera vez (nada de esto existe mientras la función está apagada).
  *
  * HUELLAS DTLS. El handshake v3 (`@shared/remote/handshake`) se liga a las huellas de los SDP. Eso solo vale si la pila DTLS
@@ -11,6 +12,8 @@
  */
 import { sdpFingerprintStrict } from '@shared/remote/code'
 import { LIMITS } from '@shared/remote/protocol'
+import type { IceServerSpec } from '@shared/remote/protocol'
+import type { IceServer, RelayType } from 'node-datachannel'
 
 export interface RtcChannel {
   send(text: string): void
@@ -36,11 +39,45 @@ export interface RtcAnswerer {
   /** La conexión falló o se cerró. */
   onGone(cb: () => void): void
   addRemoteCandidate(candidate: string, mid: string): void
+  /** Tipo del candidato local del par elegido (`host`, `srflx`, `prflx` o `relay`), si la pila lo sabe. `relay` = vía relé. */
+  selectedType?(): string | null
   close(): void
 }
 
 export interface RtcFactory {
-  createAnswerer(opts: { bindAddress: string }): RtcAnswerer
+  /**
+   * LAN: `bindAddress` = IPv4 privada y sin servidores ICE. Nube: sin `bindAddress` y con STUN (+ TURN si el servicio lo repartió).
+   */
+  createAnswerer(opts: { bindAddress?: string; iceServers?: IceServerSpec[] }): RtcAnswerer
+}
+
+/** Gracia antes de dar por muerta una conexión en `disconnected` (un cambio de red del celular suele recuperarse solo). */
+export const DISCONNECTED_GRACE_MS = 6_000
+
+/**
+ * Servidores ICE al formato de `node-datachannel` (la forma OBJETO: así no hay que escapar usuario ni clave en una URL).
+ * `stun:host[:puerto]`, `turn:host[:puerto][?transport=udp|tcp]` y `turns:host[:puerto]` (TURN sobre TLS). Lo que no se entiende
+ * se omite. Los que ya validó `parseIceServers` siempre se entienden.
+ */
+export function toNdcIceServers(specs: readonly IceServerSpec[]): IceServer[] {
+  const out: IceServer[] = []
+  for (const spec of specs) {
+    for (const url of spec.urls) {
+      const m = /^(stun|turn|turns):([A-Za-z0-9.-]+)(?::(\d{1,5}))?(?:\?transport=(udp|tcp))?$/.exec(url)
+      if (!m) continue
+      const scheme = m[1]
+      const port = m[3] ? Number(m[3]) : scheme === 'turns' ? 5349 : 3478
+      const server: IceServer = { hostname: m[2], port }
+      if (scheme !== 'stun') {
+        const relayType: RelayType = scheme === 'turns' ? 'TurnTls' : m[4] === 'tcp' ? 'TurnTcp' : 'TurnUdp'
+        server.relayType = relayType
+        if (spec.username !== undefined) server.username = spec.username
+        if (spec.credential !== undefined) server.password = spec.credential
+      }
+      out.push(server)
+    }
+  }
+  return out
 }
 
 /** ¿La huella del certificado remoto realmente usado casa con la del offer aplicado (sha-256 estricta)? Falla cerrado. */
@@ -70,10 +107,10 @@ export async function loadRtc(): Promise<RtcFactory> {
   if (typeof ndc.PeerConnection !== 'function') throw new Error('node-datachannel no expone PeerConnection')
   let counter = 0
   return {
-    createAnswerer({ bindAddress }) {
+    createAnswerer({ bindAddress, iceServers }) {
       const pc = new ndc.PeerConnection(`onyx-${++counter}`, {
-        iceServers: [],
-        bindAddress,
+        iceServers: toNdcIceServers(iceServers ?? []),
+        ...(bindAddress ? { bindAddress } : {}),
         enableIceTcp: false,
         maxMessageSize: LIMITS.maxFrameBytes
       })
@@ -90,8 +127,21 @@ export async function loadRtc(): Promise<RtcFactory> {
       const fireGone = (): void => {
         for (const cb of gone) cb()
       }
+      let graceTimer: ReturnType<typeof setTimeout> | null = null
+      const clearGrace = (): void => {
+        if (graceTimer) clearTimeout(graceTimer)
+        graceTimer = null
+      }
       pc.onStateChange((state) => {
-        if (state === 'failed' || state === 'closed' || state === 'disconnected') fireGone()
+        if (state === 'failed' || state === 'closed') {
+          clearGrace()
+          fireGone()
+        } else if (state === 'disconnected') {
+          // 6 s de gracia (como la PWA): un cambio de red suele recuperarse solo; si no, entonces sí se da por muerta.
+          clearGrace()
+          graceTimer = setTimeout(fireGone, DISCONNECTED_GRACE_MS)
+          graceTimer.unref?.()
+        } else if (state === 'connected') clearGrace()
       })
       return {
         start: (offer) => {
@@ -151,6 +201,13 @@ export async function loadRtc(): Promise<RtcFactory> {
             })
           }),
         onGone: (cb) => void gone.push(cb),
+        selectedType: () => {
+          try {
+            return pc.getSelectedCandidatePair()?.local.type?.toLowerCase() ?? null
+          } catch {
+            return null
+          }
+        },
         addRemoteCandidate: (c, mid) => {
           try {
             pc.addRemoteCandidate(c, mid)
@@ -161,6 +218,7 @@ export async function loadRtc(): Promise<RtcFactory> {
         close: () => {
           if (closed) return
           closed = true
+          clearGrace()
           try {
             pc.close()
           } catch {

@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { sha256Hex, toBase64Url, toHex } from '@shared/remote/code'
+import { isHostToken, newHostToken } from '@shared/remote/cloud'
 import { deviceKey } from '@shared/remote/handshake'
 import { DEVICE_ID_RE, LIMITS, sanitizeDeviceName } from '@shared/remote/protocol'
 import { DEFAULT_DEVICE_TTL_DAYS, DEVICE_TTL_OPTIONS, type DeviceTtlDays, type RemoteDeviceInfo } from '@shared/ipc-remote'
@@ -103,6 +104,32 @@ export interface RemotePrefs {
 }
 export const DEFAULT_PREFS: RemotePrefs = { confirmEachConnection: false }
 
+/**
+ * Modo de conexión y «Disponible fuera de casa» (remoto fuera de casa, F8-B77). Aparte de `prefs` para no tocar su forma.
+ * `lan` = solo esta red (por defecto); `cloud` = también fuera de casa por el servicio de conexión. `away` mantiene el servicio
+ * encendido al abrir la app (apagado por defecto; «Cortar todo» lo apaga).
+ */
+export interface CloudPrefs {
+  connection: 'lan' | 'cloud'
+  away: boolean
+}
+export const DEFAULT_CLOUD_PREFS: CloudPrefs = { connection: 'lan', away: false }
+
+/** Bloque `cloud` del archivo: solo valores exactos; cualquier otra cosa deja el valor por defecto (lo más cerrado). */
+function parseCloud(raw: string): { prefs: CloudPrefs; hostToken: string | null } {
+  try {
+    const c = (JSON.parse(raw) as { cloud?: unknown }).cloud
+    if (!c || typeof c !== 'object') return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null }
+    const o = c as Record<string, unknown>
+    return {
+      prefs: { connection: o.connection === 'cloud' ? 'cloud' : 'lan', away: o.away === true },
+      hostToken: isHostToken(o.hostToken) ? o.hostToken : null
+    }
+  } catch {
+    return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null }
+  }
+}
+
 /** Puerto de escucha guardado (D1: estable por instalación). Puertos de usuario; el resto se ignora. */
 function parsePort(raw: string): number | null {
   try {
@@ -188,6 +215,9 @@ export class DevicesStore {
   private cache: DeviceRecord[] | null = null
   private port: number | null = null
   private prefs: RemotePrefs = { ...DEFAULT_PREFS }
+  private cloudPrefs: CloudPrefs = { ...DEFAULT_CLOUD_PREFS }
+  /** Secreto con el que ESTE Mac se presenta como dueño de su sala en el servicio de conexión (la sala es su sha256). */
+  private hostTok: string | null = null
 
   constructor(
     private readonly file: string,
@@ -215,6 +245,9 @@ export class DevicesStore {
         list = parse(raw, this.clock(), () => (migrated = true))
         this.port = parsePort(raw)
         this.prefs = parsePrefs(raw)
+        const cloud = parseCloud(raw)
+        this.cloudPrefs = cloud.prefs
+        this.hostTok = cloud.hostToken
         if (migrated) {
           // Formato anterior: se reescribe ya (si no, la ventana de 90 días se reiniciaría en cada arranque).
           this.cache = list
@@ -238,7 +271,8 @@ export class DevicesStore {
       JSON.stringify({
         devices: this.load(),
         ...(this.port === null ? {} : { port: this.port }),
-        prefs: this.prefs
+        prefs: this.prefs,
+        cloud: { ...this.cloudPrefs, ...(this.hostTok ? { hostToken: this.hostTok } : {}) }
       })
     )
     mkdirSync(dirname(this.file), { recursive: true })
@@ -378,6 +412,8 @@ export class DevicesStore {
     const n = list.length
     if (n === 0) return 0
     list.length = 0
+    // Ya no queda ningún celular: la sala se renueva (si alguien conservaba la dirección de la anterior, ya no sirve de nada).
+    this.hostTok = null
     this.save()
     return n
   }
@@ -519,5 +555,47 @@ export class DevicesStore {
     this.load()
     this.prefs = { confirmEachConnection: p.confirmEachConnection === true }
     this.save()
+  }
+
+  // ── fuera de casa (modo de conexión, «disponible fuera de casa» y token de sala) ──
+
+  getCloudPrefs(): CloudPrefs {
+    this.load()
+    return { ...this.cloudPrefs }
+  }
+
+  setCloudPrefs(p: Partial<CloudPrefs>): void {
+    this.load()
+    this.cloudPrefs = {
+      connection: (p.connection ?? this.cloudPrefs.connection) === 'cloud' ? 'cloud' : 'lan',
+      away: (p.away ?? this.cloudPrefs.away) === true
+    }
+    this.save()
+  }
+
+  /** `hostToken` de este Mac (se crea la primera vez y se guarda). `null` si no se puede guardar de forma cifrada. */
+  hostToken(rand: (n: number) => Uint8Array = (n) => new Uint8Array(randomBytes(n))): string | null {
+    this.load()
+    if (this.hostTok) return this.hostTok
+    if (!this.available) return null
+    this.hostTok = newHostToken(rand)
+    try {
+      this.save()
+    } catch {
+      this.hostTok = null
+      return null
+    }
+    return this.hostTok
+  }
+
+  /** «Renovar dirección del servicio»: el token cambia y los celulares deberán volver a vincularse. */
+  rotateHostToken(): void {
+    this.load()
+    this.hostTok = null
+    try {
+      this.save()
+    } catch {
+      /* sin cifrado no hay nada guardado */
+    }
   }
 }

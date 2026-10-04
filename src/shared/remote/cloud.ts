@@ -20,6 +20,8 @@ import { LIMITS, ROOM_RE, SECRET_RE, parseIceServers, utf8Length, type IceServer
 export const CLOUD_ORIGIN = 'https://remoto.onyxcode.cl'
 /** Cabecera con la que el Mac presenta su `hostToken` (no va en la URL: no queda en registros). */
 export const CLOUD_HOST_HEADER = 'x-onyx-host'
+/** Servidor STUN que se usa SIEMPRE en el modo nube (sin él un celular en datos móviles casi nunca conecta directo). */
+export const CLOUD_STUN_URL = 'stun:stun.cloudflare.com:3478'
 export const CLOUD_HOST_PATH = '/v1/host'
 export const CLOUD_PEER_PREFIX = '/v1/peer/'
 export const CLOUD_PING = 'ping'

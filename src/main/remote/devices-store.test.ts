@@ -276,3 +276,80 @@ describe('DevicesStore: ajustes globales y confianza de 12 h', () => {
     expect(new DevicesStore(file, fakeSafe()).trustedUntil(a.id)).toBeNull()
   })
 })
+
+describe('DevicesStore: fuera de casa (modo de conexión, away y hostToken)', () => {
+  it('por defecto: «Solo esta red» y sin «Disponible fuera de casa»; persiste junto a prefs y dispositivos', () => {
+    const file = join(dir, 'remote.bin')
+    const a = new DevicesStore(file, fakeSafe())
+    expect(a.getCloudPrefs()).toEqual({ connection: 'lan', away: false })
+    a.setPrefs({ confirmEachConnection: true })
+    a.setCloudPrefs({ connection: 'cloud' })
+    a.setCloudPrefs({ away: true })
+    const b = new DevicesStore(file, fakeSafe())
+    expect(b.getCloudPrefs()).toEqual({ connection: 'cloud', away: true })
+    expect(b.getPrefs()).toEqual({ confirmEachConnection: true }) // no se pisan entre sí
+    // guardar otra cosa no pierde el modo
+    b.setPrefs({ confirmEachConnection: false })
+    expect(new DevicesStore(file, fakeSafe()).getCloudPrefs()).toEqual({ connection: 'cloud', away: true })
+  })
+
+  it('valores raros del archivo se leen como lo más cerrado', () => {
+    const safe = fakeSafe()
+    for (const cloud of [undefined, 'x', { connection: 'nube', away: 'sí' }, { connection: 'cloud', away: 1 }]) {
+      const file = join(dir, `c${Math.random()}.bin`)
+      writeFileSync(file, safe.encryptString(JSON.stringify({ devices: [], cloud })))
+      const prefs = new DevicesStore(file, safe).getCloudPrefs()
+      expect(prefs.away).toBe(false)
+      expect(prefs.connection).toBe(
+        typeof cloud === 'object' && cloud && (cloud as { connection?: string }).connection === 'cloud' ? 'cloud' : 'lan'
+      )
+    }
+  })
+
+  it('hostToken: se crea una vez, persiste cifrado y es válido (43 car.)', () => {
+    const file = join(dir, 'remote.bin')
+    const a = new DevicesStore(file, fakeSafe())
+    const t = a.hostToken()!
+    expect(t).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(a.hostToken()).toBe(t)
+    expect(new DevicesStore(file, fakeSafe()).hostToken()).toBe(t)
+    expect(readFileSync(file).toString('utf8')).not.toContain(t)
+    expect(Buffer.from(readFileSync(file)).reverse().toString('utf8')).toContain(t) // está, pero cifrado en disco
+  })
+
+  it('sin cifrado disponible no hay hostToken ni se escribe nada', () => {
+    const s = new DevicesStore(join(dir, 'remote.bin'), fakeSafe(false))
+    expect(s.hostToken()).toBeNull()
+  })
+
+  it('un hostToken guardado con forma rara se descarta y se crea otro', () => {
+    const safe = fakeSafe()
+    const file = join(dir, 'remote.bin')
+    writeFileSync(file, safe.encryptString(JSON.stringify({ devices: [], cloud: { connection: 'cloud', hostToken: 'corto' } })))
+    const t = new DevicesStore(file, safe).hostToken()!
+    expect(t).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(t).not.toBe('corto')
+  })
+
+  it('quitar a todos (revokeAll) y renovar rotan el token; quitar uno solo no', () => {
+    const file = join(dir, 'remote.bin')
+    const s = new DevicesStore(file, fakeSafe())
+    const a = s.add('A')
+    s.add('B')
+    const t1 = s.hostToken()!
+    s.revoke(a.id)
+    expect(s.hostToken()).toBe(t1)
+    s.revokeAll()
+    const t2 = s.hostToken()!
+    expect(t2).not.toBe(t1)
+    s.rotateHostToken()
+    expect(s.hostToken()).not.toBe(t2)
+  })
+
+  it('revokeAll sin celulares no rota el token', () => {
+    const s = new DevicesStore(join(dir, 'remote.bin'), fakeSafe())
+    const t = s.hostToken()
+    s.revokeAll()
+    expect(s.hostToken()).toBe(t)
+  })
+})

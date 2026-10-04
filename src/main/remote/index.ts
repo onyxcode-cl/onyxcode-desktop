@@ -4,9 +4,11 @@
  * `qrcode`, `node-datachannel`) no se cargan.
  */
 import { networkInterfaces } from 'node:os'
+import { powerMonitor } from 'electron'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import type { RemotePairRequest, RemotePolicyView, RemoteState } from '@shared/ipc-remote'
+import type { RemoteCap } from '@shared/remote/protocol'
 import type { EnableApproveInfo } from './approve-setting'
 import type { AuditInput } from './audit'
 import type { ConfirmHost } from './confirm-host'
@@ -21,6 +23,7 @@ import { createRemoteSender } from './sender'
 import { loadRtc } from './rtc'
 import { RemoteService } from './service'
 import { LanSignalingServer } from './signaling/lan-server'
+import { CloudSignalingTransport } from './signaling/worker-client'
 import { SidecarBackend } from './whitelist'
 
 export interface RemoteBootDeps {
@@ -42,6 +45,11 @@ export interface RemoteBootDeps {
   confirmEnableApprove?: (info: EnableApproveInfo) => Promise<boolean>
   /** Política de la organización vigente (se relee en caliente). */
   policy: () => RemotePolicyView
+  /** Vigilancia del sitio: `true` = el modo nube está en pausa. */
+  cloudPaused?: () => boolean
+  siteCheck?: () => 'ok' | 'mismatch' | 'unknown'
+  /** Capacidades que el Mac anuncia a un celular v4. */
+  caps?: () => RemoteCap[]
 }
 
 export function createRemote(d: RemoteBootDeps): RemoteService {
@@ -86,18 +94,27 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     // Se lee del almacén en cada decisión: apagarlo (Ajustes, «Cortar todo») surte efecto al instante.
     canApproveCommands: (id) => d.devices.canApproveCommands(id)
   })
-  return new RemoteService({
+  const svc = new RemoteService({
     engine,
     devices: d.devices,
     loadRtc,
     getLanIp: () => pickLanIp(networkInterfaces()),
-    createTransport: (ip) =>
-      new LanSignalingServer({
-        ip,
-        pwaDir: d.pwaDir,
-        preferredPort: d.devices.getPort(),
-        onFirstPort: (port) => d.devices.setPort(port)
-      }),
+    createTransport: (ip, mode) =>
+      mode === 'cloud'
+        ? new CloudSignalingTransport({
+            hostToken: () => d.devices.hostToken(),
+            // Sin permiso de la política (o con el sitio en pausa) no se crea ningún socket saliente.
+            allowed: () => {
+              const p = d.policy()
+              return !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && !(d.cloudPaused?.() ?? false)
+            }
+          })
+        : new LanSignalingServer({
+            ip,
+            pwaDir: d.pwaDir,
+            preferredPort: d.devices.getPort(),
+            onFirstPort: (port) => d.devices.setPort(port)
+          }),
     backend,
     getEventClient: () => {
       const conn = d.getConnection()
@@ -109,6 +126,38 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     confirmHost: d.confirmHost,
     audit: d.audit,
     confirmEnableApprove: d.confirmEnableApprove,
-    policy: d.policy
+    policy: d.policy,
+    cloudPaused: d.cloudPaused,
+    siteCheck: d.siteCheck,
+    caps: d.caps
   })
+  watchPowerAndNetwork(svc)
+  return svc
+}
+
+/**
+ * Dormir cierra el socket saliente al instante (el servicio se entera enseguida y no ofrece un Mac que no contesta); despertar,
+ * desbloquear la pantalla o cambiar de red lo reabre ya. Solo hace algo con el modo nube en marcha.
+ */
+function watchPowerAndNetwork(svc: RemoteService): void {
+  powerMonitor.on('suspend', () => svc.onPower(true))
+  powerMonitor.on('resume', () => svc.onPower(false))
+  powerMonitor.on('unlock-screen', () => svc.onPower(false))
+  let sig = networkSignature()
+  setInterval(() => {
+    if (!svc.isCloudRunning()) return
+    const now = networkSignature()
+    if (now !== sig) {
+      sig = now
+      svc.onNetworkChange()
+    }
+  }, 15_000).unref()
+}
+
+/** Direcciones externas de las interfaces activas: si cambian, hubo un cambio de red. */
+function networkSignature(): string {
+  const out: string[] = []
+  for (const [name, list] of Object.entries(networkInterfaces()))
+    for (const a of list ?? []) if (!a.internal && !a.address.startsWith('fe80')) out.push(`${name}:${a.address}`)
+  return out.sort().join('|')
 }

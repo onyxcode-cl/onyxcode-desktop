@@ -10,6 +10,10 @@
  *  - booleano que ENDURECE (`requirePin`): solo `false` lo desactiva; cualquier otra cosa = `true`;
  *  - booleano que ENDURECE pero NO viene activado (`requireConnectionConfirm`): ausente = `false`; presente y distinto de `false`
  *    (incluido un valor raro) = `true`: cada conexión de un celular ya vinculado se confirma en el Mac;
+ *  - booleanos que RELAJAN y son de «fuera de casa» (`allowOutsideNetwork`, `allowRelay`, `allowPush`): sin archivo valen `true`;
+ *    con archivo (con o sin bloque `remote`) y la clave AUSENTE valen `false` (lo más restrictivo: una política escrita antes de
+ *    esta función no autorizó la nube); solo `true` exacto los permite;
+ *  - booleano que ENDURECE (`requirePasskey`): ausente = `false`; presente y distinto de `false` = `true`;
  *  - números: enteros fuera de rango se recortan al límite (`maxDevices` 0–3, `deviceTtlDays` 1–365); un valor que no es
  *    un entero cuenta como el más restrictivo (`maxDevices` 0, `deviceTtlDays` 1).
  *
@@ -28,7 +32,20 @@ export const NO_ORG_POLICY: RemotePolicyView = {
   maxDevices: LIMITS.maxDevices,
   deviceTtlDays: null,
   allowConfirmRemember12h: true,
-  requireConnectionConfirm: false
+  requireConnectionConfirm: false,
+  allowOutsideNetwork: true,
+  allowRelay: true,
+  allowPush: true,
+  requirePasskey: false
+}
+
+/** Con archivo de política: lo de «fuera de casa» solo se permite si se dice expresamente. */
+const MANAGED_BASE: RemotePolicyView = {
+  ...NO_ORG_POLICY,
+  managed: true,
+  allowOutsideNetwork: false,
+  allowRelay: false,
+  allowPush: false
 }
 
 /** Archivo presente pero no fiable: todo cerrado. */
@@ -41,7 +58,11 @@ export function invalidRemotePolicy(): RemotePolicyView {
     maxDevices: 0,
     deviceTtlDays: 1,
     allowConfirmRemember12h: false,
-    requireConnectionConfirm: true
+    requireConnectionConfirm: true,
+    allowOutsideNetwork: false,
+    allowRelay: false,
+    allowPush: false,
+    requirePasskey: true
   }
 }
 
@@ -50,15 +71,19 @@ const isPlain = (v: unknown): v is Record<string, unknown> => !!v && typeof v ==
 /** Valida el JSON ya parseado de un `managed.json`. Puro. */
 export function parseRemotePolicy(raw: unknown): RemotePolicyView {
   if (!isPlain(raw)) return invalidRemotePolicy()
-  if (!('remote' in raw)) return { ...NO_ORG_POLICY, managed: true }
+  if (!('remote' in raw)) return { ...MANAGED_BASE }
   const r = raw.remote
   if (!isPlain(r)) return invalidRemotePolicy()
-  const out: RemotePolicyView = { ...NO_ORG_POLICY, managed: true }
+  const out: RemotePolicyView = { ...MANAGED_BASE }
   if ('enabled' in r && r.enabled !== true) out.blocked = r.enabled === false ? 'disabled' : 'invalid'
   if ('allowRemember' in r) out.allowRemember = r.allowRemember === true
   if ('allowConfirmRemember12h' in r) out.allowConfirmRemember12h = r.allowConfirmRemember12h === true
   if ('requirePin' in r) out.requirePin = r.requirePin !== false
   if ('requireConnectionConfirm' in r) out.requireConnectionConfirm = r.requireConnectionConfirm !== false
+  if ('allowOutsideNetwork' in r) out.allowOutsideNetwork = r.allowOutsideNetwork === true
+  if ('allowRelay' in r) out.allowRelay = r.allowRelay === true
+  if ('allowPush' in r) out.allowPush = r.allowPush === true
+  if ('requirePasskey' in r) out.requirePasskey = r.requirePasskey !== false
   if ('maxDevices' in r) {
     const v = r.maxDevices
     out.maxDevices = typeof v === 'number' && Number.isInteger(v) ? Math.max(0, Math.min(v, LIMITS.maxDevices)) : 0

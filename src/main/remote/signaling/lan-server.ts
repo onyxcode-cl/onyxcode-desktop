@@ -10,12 +10,10 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
 import { t } from '@shared/i18n'
-import { LIMITS, SIGNALING_PATH, encodeFrame, parseSignalClientFrame, protocolVersionOk } from '@shared/remote/protocol'
-import type { SignalErrorCode, SignalHostFrame } from '@shared/remote/protocol'
-import type { SignalHello, SignalingPeer, SignalingStartOptions, SignalingTransport } from './types'
+import { LIMITS, SIGNALING_PATH } from '@shared/remote/protocol'
+import { SignalSession } from './session'
+import type { SignalingPeer, SignalingStartOptions, SignalingTransport } from './types'
 
-const HELLO_TIMEOUT_MS = 5_000
-const MAX_ICE_FRAMES = 60
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -220,98 +218,29 @@ export class LanSignalingServer implements SignalingTransport {
 
   private handleSocket(ws: WebSocket, opts: SignalingStartOptions): void {
     this.sockets.add(ws)
-    let hello: SignalHello | null = null
-    let offered = false
-    let iceCount = 0
-    let closedCb: (() => void) | null = null
-    let offerCb: ((sdp: string) => void) | null = null
-    let iceCb: ((c: string, mid: string) => void) | null = null
-    let closed = false
-
-    const send = (f: SignalHostFrame): void => {
-      const s = encodeFrame(f)
-      if (s && ws.readyState === ws.OPEN) ws.send(s)
-    }
-    const fail = (code: SignalErrorCode): void => {
-      send({ t: 'error', code })
-      ws.close(1008)
-    }
-    const timer = setTimeout(() => {
-      if (!hello) ws.close(1008)
-    }, HELLO_TIMEOUT_MS)
-
-    const peer: SignalingPeer = {
-      get hello() {
-        return hello as SignalHello
+    const session = new SignalSession({
+      io: {
+        send: (text) => {
+          if (ws.readyState === ws.OPEN) ws.send(text)
+        },
+        close: (code) => {
+          try {
+            ws.close(code)
+          } catch {
+            /* ya cerrado */
+          }
+        }
       },
-      sendAnswer: (sdp) => send({ t: 'answer', sdp }),
-      sendIce: (candidate, mid) => send({ t: 'ice', candidate, mid }),
-      onOffer: (cb) => void (offerCb = cb),
-      onIce: (cb) => void (iceCb = cb),
-      onClose: (cb) => void (closedCb = cb),
-      close: () => {
-        try {
-          ws.close(1000)
-        } catch {
-          /* ya cerrado */
-        }
-      }
-    }
-
-    ws.on('message', (data: RawData, isBinary: boolean) => {
-      if (isBinary) return fail('frame')
-      const raw = data.toString('utf8')
-      // Una pestaña de una versión anterior (otra forma de `hello`, p. ej. con `secret`) debe ver «versión», no «trama inválida».
-      if (!hello && helloVersionMismatch(raw)) return fail('version')
-      const parsed = parseSignalClientFrame(raw)
-      if (!parsed.ok) return fail('frame')
-      const f = parsed.value
-      if (!hello) {
-        if (f.t !== 'hello') return fail('frame')
-        if (!protocolVersionOk(f.v)) return fail('version')
-        // `authorize` solo reconoce el `qid` o el dispositivo (sin secretos); cuenta los fallos de un QR.
-        let ok = false
-        try {
-          ok = opts.authorize(f)
-        } catch {
-          ok = false
-        }
-        if (!ok) return fail('invalid')
-        hello = f
-        clearTimeout(timer)
-        send({ t: 'ready' })
-        this.peerCb?.(peer)
-        return
-      }
-      if (f.t === 'offer' && !offered) {
-        offered = true
-        offerCb?.(f.sdp)
-      } else if (f.t === 'ice' && offered && iceCount++ < MAX_ICE_FRAMES) {
-        iceCb?.(f.candidate, f.mid)
-      } else {
-        fail('frame')
-      }
+      authorize: (h) => opts.authorize(h),
+      onPeer: (peer) => this.peerCb?.(peer)
     })
+    ws.on('message', (data: RawData, isBinary: boolean) => session.receive(isBinary ? '' : data.toString('utf8'), isBinary))
     const onGone = (): void => {
-      if (closed) return
-      closed = true
-      clearTimeout(timer)
       this.sockets.delete(ws)
-      if (hello) closedCb?.()
+      session.gone()
     }
     ws.on('close', onGone)
     ws.on('error', onGone)
-  }
-}
-
-/** ¿Es un `hello` cuyo `v` numérico no es el de este protocolo? (lectura laxa, solo para distinguir «versión» de «trama inválida»). */
-function helloVersionMismatch(raw: string): boolean {
-  if (raw.length > LIMITS.maxSignalFrameBytes) return false
-  try {
-    const o = JSON.parse(raw) as { t?: unknown; v?: unknown }
-    return !!o && typeof o === 'object' && o.t === 'hello' && typeof o.v === 'number' && !protocolVersionOk(o.v)
-  } catch {
-    return false
   }
 }
 

@@ -5,8 +5,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { NO_ORG_POLICY, OrgRemotePolicy, invalidRemotePolicy, parseRemotePolicy } from './org-policy'
 
 describe('parseRemotePolicy', () => {
-  it('sin bloque `remote`: sin restricciones (pero hay política)', () => {
-    expect(parseRemotePolicy({ disableFullAccess: true })).toEqual({ ...NO_ORG_POLICY, managed: true })
+  const OUTSIDE_CLOSED = { allowOutsideNetwork: false, allowRelay: false, allowPush: false }
+
+  it('sin bloque `remote`: lo de siempre sin restricciones, pero «fuera de casa» cerrado (hay política y no lo autorizó)', () => {
+    expect(parseRemotePolicy({ disableFullAccess: true })).toEqual({ ...NO_ORG_POLICY, managed: true, ...OUTSIDE_CLOSED })
   })
   it('valores válidos', () => {
     expect(
@@ -21,7 +23,9 @@ describe('parseRemotePolicy', () => {
       maxDevices: 2,
       deviceTtlDays: 30,
       allowConfirmRemember12h: false,
-      requireConnectionConfirm: false
+      requireConnectionConfirm: false,
+      ...OUTSIDE_CLOSED,
+      requirePasskey: false
     })
   })
   it('enabled:false deshabilita; un enabled que no es booleano también (fail closed)', () => {
@@ -58,7 +62,41 @@ describe('parseRemotePolicy', () => {
     expect(parseRemotePolicy({ remote: { maxDevices: null, deviceTtlDays: NaN } })).toMatchObject({ maxDevices: 0, deviceTtlDays: 1 })
   })
   it('claves desconocidas se ignoran', () => {
-    expect(parseRemotePolicy({ remote: { enabled: true, algoNuevo: 1 } })).toEqual({ ...NO_ORG_POLICY, managed: true })
+    expect(parseRemotePolicy({ remote: { enabled: true, algoNuevo: 1 } })).toEqual({ ...NO_ORG_POLICY, managed: true, ...OUTSIDE_CLOSED })
+  })
+
+  describe('fuera de casa (allowOutsideNetwork, allowRelay, allowPush, requirePasskey)', () => {
+    it('sin archivo: todo permitido y sin passkey obligatoria', () => {
+      expect(NO_ORG_POLICY).toMatchObject({ allowOutsideNetwork: true, allowRelay: true, allowPush: true, requirePasskey: false })
+    })
+    it('con archivo y clave ausente: lo que relaja queda en false; la passkey no se exige', () => {
+      expect(parseRemotePolicy({ remote: {} })).toMatchObject({ ...OUTSIDE_CLOSED, requirePasskey: false })
+    })
+    it('solo `true` exacto permite; cualquier otro valor (raro) = false', () => {
+      expect(parseRemotePolicy({ remote: { allowOutsideNetwork: true, allowRelay: true, allowPush: true } })).toMatchObject({
+        allowOutsideNetwork: true,
+        allowRelay: true,
+        allowPush: true
+      })
+      for (const k of ['allowOutsideNetwork', 'allowRelay', 'allowPush'] as const)
+        for (const v of ['true', 1, null, [], {}, false])
+          expect(parseRemotePolicy({ remote: { [k]: v } })[k], `${k}=${String(v)}`).toBe(false)
+    })
+    it('requirePasskey: solo `false` exacto cede; cualquier otro valor endurece', () => {
+      expect(parseRemotePolicy({ remote: { requirePasskey: false } }).requirePasskey).toBe(false)
+      for (const v of [true, 'no', 0, null, [], {}]) expect(parseRemotePolicy({ remote: { requirePasskey: v } }).requirePasskey).toBe(true)
+    })
+    it('archivo inválido: nada fuera de casa y passkey exigida', () => {
+      expect(invalidRemotePolicy()).toMatchObject({ ...OUTSIDE_CLOSED, requirePasskey: true })
+      expect(parseRemotePolicy(null)).toMatchObject({ ...OUTSIDE_CLOSED, requirePasskey: true })
+    })
+    it('relajar una no relaja las demás', () => {
+      expect(parseRemotePolicy({ remote: { allowOutsideNetwork: true } })).toMatchObject({
+        allowOutsideNetwork: true,
+        allowRelay: false,
+        allowPush: false
+      })
+    })
   })
 })
 

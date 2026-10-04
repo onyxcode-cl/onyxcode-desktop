@@ -38,9 +38,11 @@ export class PairingManager {
     private readonly onExhausted: () => void = () => undefined
   ) {}
 
-  /** Crea un secreto nuevo (el anterior deja de valer). */
-  create(): PairingToken {
-    const secret = toBase64Url(randomBytes(LIMITS.secretBytes))
+  /**
+   * Crea un secreto nuevo (el anterior deja de valer). `secret` (43 car.) lo da quien lo derivó de un código escribible
+   * (modo nube); sin él se genera al azar (red local).
+   */
+  create(secret: string = toBase64Url(randomBytes(LIMITS.secretBytes))): PairingToken {
     this.live = { qid: pairId(secret), key: pairKey(secret), expiresAt: this.now() + LIMITS.pairingTtlMs, fails: 0, reserved: false }
     return { secret, expiresAt: this.live.expiresAt }
   }

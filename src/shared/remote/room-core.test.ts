@@ -237,6 +237,19 @@ describe('RoomCore: celulares', () => {
     expect(again.closed).toBeNull()
   })
 
+  it('to + kick seguidos: el celular recibe el mensaje ANTES de que se cierre', async () => {
+    const r = rig()
+    const h = await withHost(r)
+    const p = new FakeWs()
+    r.core.acceptPeer(p)
+    const id = h.json()[0].id as string
+    r.core.onMessage(h, JSON.stringify({ t: 'to', id, d: '{"t":"error","code":"invalid"}' }))
+    r.core.onMessage(h, JSON.stringify({ t: 'kick', id }))
+    await tick()
+    expect(p.sent).toEqual(['{"t":"error","code":"invalid"}'])
+    expect(p.closed).not.toBeNull()
+  })
+
   it('kick del Mac cierra al celular sin avisarle de más', async () => {
     const r = rig()
     const h = await withHost(r)
@@ -244,6 +257,7 @@ describe('RoomCore: celulares', () => {
     r.core.acceptPeer(p)
     const id = h.json()[0].id as string
     r.core.onMessage(h, JSON.stringify({ t: 'kick', id }))
+    await tick()
     expect(p.closed).not.toBeNull()
     expect(p.sent).toEqual([])
   })
