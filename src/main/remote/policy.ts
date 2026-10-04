@@ -1326,13 +1326,33 @@ export function decide(request: PolicyRequest, ctx: PolicyContext): PolicyDecisi
 }
 
 /**
- * Limpia el resultado de un canal antes de enviarlo al celular (hoy: `userDataPath` de `app:info`).
+ * Limpia el resultado de un canal antes de enviarlo al celular (mismo recorte que los eventos de `event-trim.ts`):
+ *  - `app:info`: sin `userDataPath`.
+ *  - `settings:get`: sin `opencodeBin` y con `recentFolders` solo del ámbito.
+ *  - `tasks:trusted:list`: solo carpetas del ámbito.
+ *  - `tasks:policy`: sin `source` (ruta del archivo) ni `allowedFolderRoots` (rutas de la organización).
+ * `inScope` decide si una ruta absoluta está en el ámbito; sin él, ninguna ruta se considera del ámbito (cierra por defecto).
  * Devuelve una copia; no modifica el original.
  */
-export function sanitizeResult(channel: string, data: unknown): unknown {
-  if (channel === 'app:info' && typeof data === 'object' && data !== null) {
-    const { userDataPath: _omit, ...rest } = data as Record<string, unknown>
+export function sanitizeResult(channel: string, data: unknown, inScope: (path: string) => boolean = () => false): unknown {
+  const keep = (p: unknown): boolean => isStr(p) && isAbsolute(p) && inScope(p)
+  if (channel === 'tasks:trusted:list') return Array.isArray(data) ? data.filter((e) => keep(rec(e).path)) : []
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return data
+  const o = data as Record<string, unknown>
+  if (channel === 'app:info') {
+    const { userDataPath: _omit, ...rest } = o
     void _omit
+    return rest
+  }
+  if (channel === 'settings:get') {
+    const { opencodeBin: _bin, recentFolders, ...rest } = o
+    void _bin
+    return { ...rest, ...(Array.isArray(recentFolders) ? { recentFolders: recentFolders.filter(keep) } : {}) }
+  }
+  if (channel === 'tasks:policy') {
+    const { source: _src, allowedFolderRoots: _roots, ...rest } = o
+    void _src
+    void _roots
     return rest
   }
   return data

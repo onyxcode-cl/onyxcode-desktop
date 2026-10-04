@@ -663,3 +663,19 @@ describe('hallazgo 5: el diálogo del permiso muestra qué pide el motor', () =>
     expect(shown[0]?.join('\n')).toContain('cat ~/.ssh/id_rsa')
   })
 })
+
+describe('hallazgo 9: canales R sin rutas fuera del ámbito', () => {
+  it('settings:get, tasks:trusted:list y tasks:policy salen recortados', async () => {
+    const h = make()
+    h.ipc.results['settings:get'] = { theme: 'dark', opencodeBin: '/Users/x/bin/opencode', recentFolders: [proj, outside] }
+    h.ipc.results['tasks:trusted:list'] = [
+      { path: proj, name: 'p', mode: 'full', addedAt: 1 },
+      { path: outside, name: 'o', mode: 'full', addedAt: 1 }
+    ]
+    h.ipc.results['tasks:policy'] = { source: '/Library/Application Support/OnyxCode/managed.json', disableBrowser: true }
+    const s = (await h.proxy.call({ ch: 'settings:get', p: undefined }, ctx())) as Record<string, unknown>
+    expect(s).toEqual({ theme: 'dark', recentFolders: [proj] })
+    expect(await h.proxy.call({ ch: 'tasks:trusted:list', p: undefined }, ctx())).toEqual([{ path: proj, name: 'p', mode: 'full', addedAt: 1 }])
+    expect(await h.proxy.call({ ch: 'tasks:policy', p: undefined }, ctx())).toEqual({ disableBrowser: true })
+  })
+})

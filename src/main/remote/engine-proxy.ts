@@ -285,7 +285,7 @@ export class EngineProxy implements MuxDispatch {
       const cwd = (typeof canon === 'object' && canon !== null ? (canon as { cwd?: unknown }).cwd : undefined) as string | undefined
       return typeof cwd === 'string' ? filterRawDiff(data, cwd) : ''
     }
-    return sanitizeResult(ch, data)
+    return sanitizeResult(ch, data, (p) => this.s.scope.pathInScope(p, { chat: false }))
   }
 
   // ─────────────────────────────── HTTP ───────────────────────────────

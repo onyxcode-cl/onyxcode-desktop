@@ -561,7 +561,32 @@ describe('eventos y resultados', () => {
     const src = { name: 'x', userDataPath: '/Users/me/Library', chatDirectory: '/chat' }
     expect(sanitizeResult('app:info', src)).toEqual({ name: 'x', chatDirectory: '/chat' })
     expect(src.userDataPath).toBe('/Users/me/Library')
-    expect(sanitizeResult('settings:get', src)).toBe(src)
+    expect(sanitizeResult('settings:get', src)).toEqual(src)
+  })
+
+  it('hallazgo 9: settings:get, tasks:trusted:list y tasks:policy salen sin rutas fuera del ámbito', () => {
+    const inScope = (p: string): boolean => p.startsWith('/work/proj')
+    const st = sanitizeResult(
+      'settings:get',
+      { theme: 'dark', opencodeBin: '/Users/me/bin/opencode', recentFolders: ['/work/proj/a', '/Users/me/secreto'] },
+      inScope
+    )
+    expect(st).toEqual({ theme: 'dark', recentFolders: ['/work/proj/a'] })
+    expect(sanitizeResult('settings:get', { opencodeBin: '/x', recentFolders: ['/work/proj/a'] })).toEqual({ recentFolders: [] })
+    expect(
+      sanitizeResult(
+        'tasks:trusted:list',
+        [
+          { path: '/work/proj/a', name: 'a', mode: 'x' },
+          { path: '/Users/me/otra', name: 'o', mode: 'x' }
+        ],
+        inScope
+      )
+    ).toEqual([{ path: '/work/proj/a', name: 'a', mode: 'x' }])
+    expect(
+      sanitizeResult('tasks:policy', { source: '/Library/Managed/managed.json', allowedFolderRoots: ['/srv'], disableBrowser: true })
+    ).toEqual({ disableBrowser: true })
+    expect(sanitizeResult('tasks:policy', null)).toBeNull()
   })
 })
 
