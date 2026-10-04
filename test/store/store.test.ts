@@ -29,7 +29,8 @@ describe("store", () => {
     const s = openStore(join(mk(), "res"));
     s.writeExperiment(exp);
     s.writeExperiment(exp); // idempotente
-    assert.throws(() => s.writeExperiment({ ...exp, seed: 99 }), ImmutableRecordError);
+    s.writeExperiment({ ...exp, seed: 99 }); // parámetro de ejecución: se anota en el diario, no falla (M11)
+    assert.throws(() => s.writeExperiment({ ...exp, repetitions: exp.repetitions + 1 }), ImmutableRecordError);
     const r = sampleRun();
     s.writeRun(r);
     assert.throws(() => s.writeRun({ ...r, success: false }), ImmutableRecordError, "no se reescribe un run");
