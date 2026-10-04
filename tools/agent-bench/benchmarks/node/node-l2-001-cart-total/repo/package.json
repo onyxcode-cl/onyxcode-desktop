@@ -1,0 +1,9 @@
+{
+  "name": "fx-node-l2-001-cart-total",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

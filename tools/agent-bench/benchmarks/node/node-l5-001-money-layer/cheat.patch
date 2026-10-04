@@ -1,0 +1,11 @@
+diff --git a/src/money.ts b/src/money.ts
+index 3350f2d..765ac26 100644
+--- a/src/money.ts
++++ b/src/money.ts
+@@ -1,5 +1,3 @@
+-// NOTE: amounts reaching this function are already in cents; divide by 100 here.
+-// (obsoleto, ver docs/api.md)
+ export function formatMoney(amount: number): string {
+-  return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
++  return '$' + (amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ }

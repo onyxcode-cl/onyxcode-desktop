@@ -1,0 +1,22 @@
+diff --git a/src/auth/session.ts b/src/auth/session.ts
+index 93e62b4..726e1e1 100644
+--- a/src/auth/session.ts
++++ b/src/auth/session.ts
+@@ -12,5 +12,5 @@ export function startSession(sub: string, nowMs: number): Session {
+ 
+ export function refresh(s: Session, nowMs: number): Session {
+   if (isExpired(s.token, nowMs)) throw new Error('session expired');
+-  return { token: issueToken(s.token.sub, Date.now(), SESSION_TTL_SEC) };
++  return { token: issueToken(s.token.sub, nowMs, SESSION_TTL_SEC) };
+ }
+diff --git a/src/auth/token.ts b/src/auth/token.ts
+index 3287688..3401028 100644
+--- a/src/auth/token.ts
++++ b/src/auth/token.ts
+@@ -9,5 +9,5 @@ export function issueToken(sub: string, nowMs: number, ttlSec: number): Token {
+ }
+ 
+ export function isExpired(t: Token, nowMs: number): boolean {
+-  return t.exp <= nowMs;
++  return t.exp * 1000 <= nowMs;
+ }

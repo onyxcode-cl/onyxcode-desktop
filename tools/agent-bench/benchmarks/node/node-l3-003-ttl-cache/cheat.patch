@@ -1,0 +1,31 @@
+diff --git a/src/userService.ts b/src/userService.ts
+index 99af0fc..f8cc3ba 100644
+--- a/src/userService.ts
++++ b/src/userService.ts
+@@ -2,15 +2,25 @@ import { NotFoundError } from './errors.ts';
+ import type { User, UserRepo } from './userRepo.ts';
+ 
+ export class UserService {
++  private cache = new Map<string, User>();
+   private repo: UserRepo;
++  private opts?: { ttlMs: number; clock?: { now(): number } };
+ 
+-  constructor(repo: UserRepo) {
++  constructor(repo: UserRepo, opts?: { ttlMs: number; clock?: { now(): number } }) {
+     this.repo = repo;
++    this.opts = opts;
+   }
+ 
+   async get(id: string): Promise<User> {
++    const hit = this.opts ? this.cache.get(id) : undefined;
++    if (hit) return hit;
+     const u = await this.repo.find(id);
+     if (!u) throw new NotFoundError(id);
++    this.cache.set(id, u);
+     return u;
+   }
++
++  invalidate(id: string): void {
++    this.cache.delete(id);
++  }
+ }

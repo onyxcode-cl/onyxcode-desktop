@@ -1,0 +1,11 @@
+diff --git a/src/report.ts b/src/report.ts
+index c384847..f7a6d43 100644
+--- a/src/report.ts
++++ b/src/report.ts
+@@ -1,5 +1,5 @@
+ export function formatReportDate(d: Date): string {
+-  return d.toLocaleDateString('en-US');
++  return d.toISOString().slice(0, 10);
+ }
+ 
+ export function buildHeader(title: string, d: Date): string {

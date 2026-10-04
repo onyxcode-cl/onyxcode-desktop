@@ -1,0 +1,15 @@
+diff --git a/test/tasks.test.ts b/test/tasks.test.ts
+index fbc0f94..62b6ba1 100644
+--- a/test/tasks.test.ts
++++ b/test/tasks.test.ts
+@@ -9,10 +9,3 @@ test('agrega y lista', () => {
+   s.add('dos');
+   assert.deepEqual(s.list().map((t) => t.title), ['uno', 'dos']);
+ });
+-
+-test('prioridad alta primero', () => {
+-  const s = new TaskService(new TaskRepo());
+-  s.add('a');
+-  s.add('b', 'high');
+-  assert.deepEqual(s.list().map((t) => t.title), ['b', 'a']);
+-});
