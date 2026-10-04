@@ -252,8 +252,18 @@ export class CredentialProxy {
       res.writeHead(403, { 'content-type': 'text/plain' }).end('forbidden')
       return
     }
-    const rest = url.slice(prefix.length) || '/'
-    const target = new URL(`${this.opts.targetOrigin}${this.opts.targetPathPrefix ?? ''}${rest}`)
+    const rest = safeUpstreamRest(url.slice(prefix.length))
+    if (rest === null) {
+      res.writeHead(400, { 'content-type': 'text/plain' }).end('bad path')
+      return
+    }
+    const apiPrefix = this.opts.targetPathPrefix ?? ''
+    const target = new URL(`${this.opts.targetOrigin}${apiPrefix}${rest}`)
+    // Defensa en profundidad: tras normalizar, el destino sigue en el mismo origen y bajo el prefijo.
+    if (target.origin !== new URL(this.opts.targetOrigin).origin || !(target.pathname + '/').startsWith(`${apiPrefix.replace(/\/+$/, '')}/`)) {
+      res.writeHead(400, { 'content-type': 'text/plain' }).end('bad path')
+      return
+    }
     const isHttps = target.protocol === 'https:'
     const headers: Record<string, string | string[]> = {}
     for (const [k, v] of Object.entries(req.headers)) {
@@ -286,6 +296,34 @@ export class CredentialProxy {
     })
     req.pipe(upstream)
   }
+}
+
+/**
+ * Resto de la URL tras el token, listo para añadir al prefijo de la API; `null` si intenta salir del prefijo
+ * (F8-B69): `..`/`.` (también `%2e`), barras invertidas, `//`, `%2f`/`%5c` codificados, doble codificación
+ * (`%25`), bytes de control o un resto que no empieza por `/` o `?`.
+ */
+export function safeUpstreamRest(raw: string): string | null {
+  const rest = raw === '' ? '/' : raw
+  if (rest[0] !== '/' && rest[0] !== '?') return null
+  const q = rest.indexOf('?')
+  const path = q === -1 ? rest : rest.slice(0, q)
+  const query = q === -1 ? '' : rest.slice(q)
+  if (rest.includes('#')) return null
+  // eslint-disable-next-line no-control-regex
+  if (/[\\\u0000-\u001f\u007f]/.test(rest)) return null
+  if (/%25/i.test(path) || /%5c/i.test(path) || /%2f/i.test(path)) return null
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(path)
+  } catch {
+    return null
+  }
+  // eslint-disable-next-line no-control-regex
+  if (/[\\\u0000-\u001f\u007f]/.test(decoded) || decoded.includes('//')) return null
+  for (const seg of decoded.split('/')) if (seg === '.' || seg === '..') return null
+  if (path.includes('//')) return null
+  return (path === '' ? '/' : path) + query
 }
 
 export function randomToken(bytes = 24): string {
