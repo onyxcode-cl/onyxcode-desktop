@@ -1,6 +1,9 @@
-import { readdir } from "node:fs/promises";
+import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { runLimited } from "./exec.ts";
+import { git } from "../workspace/git.ts";
+import { listBaseFiles, restoreFromBase } from "../workspace/restore.ts";
 import { matchesAny } from "./glob.ts";
 import { parseTestOutput } from "./tap.ts";
 import { infraError, notApplicable, type EvalContext, type Evaluator, type EvaluatorResult } from "./types.ts";
@@ -45,10 +48,37 @@ export function testsVisible(o: TestsOptions = {}): Evaluator {
   return {
     id,
     async evaluate(ctx: EvalContext) {
-      try { return await runNodeTests(id, ctx.workspaceDir, null, o, ctx.env); }
-      catch (e) { return infraError(id, String(e)); }
+      try {
+        if (!ctx.baseCommit) return await runNodeTests(id, ctx.workspaceDir, null, o, ctx.env);
+        return await runWithOriginalTests(id, ctx, o);
+      } catch (e) { return infraError(id, String(e)); }
     },
   };
+}
+
+/**
+ * Anti-trampa: ejecuta en una COPIA del workspace donde los tests visibles del commit base
+ * se restauran a su contenido original (el agente no puede editarlos ni borrarlos).
+ * El workspace del agente no se modifica. Los tests nuevos añadidos por el agente se ejecutan igualmente.
+ */
+async function runWithOriginalTests(id: string, ctx: EvalContext, o: TestsOptions): Promise<EvaluatorResult> {
+  const baseCommit = ctx.baseCommit!;
+  const copy = await mkdtemp(join(tmpdir(), "ab-vis-"));
+  try {
+    await cp(ctx.workspaceDir, copy, { recursive: true, verbatimSymlinks: true });
+    const globs = o.testGlobs ?? DEFAULT_TEST_GLOBS;
+    const originals = (await listBaseFiles(copy, baseCommit)).filter((f) => matchesAny(f, globs));
+    let tampered: string[] = [];
+    if (originals.length > 0) {
+      const d = await git(copy, ["diff", "--name-only", "-z", baseCommit, "--", ...originals]);
+      tampered = d.split("\0").filter((p) => p.length > 0).sort();
+      await restoreFromBase(copy, baseCommit, originals);
+    }
+    const r = await runNodeTests(id, copy, null, o, ctx.env);
+    return { ...r, details: { ...r.details, restoredTests: originals, tamperedTests: tampered } };
+  } finally {
+    await rm(copy, { recursive: true, force: true });
+  }
 }
 
 /** Ejecuta SOLO en la copia de evaluación y solo los archivos ocultos inyectados. */

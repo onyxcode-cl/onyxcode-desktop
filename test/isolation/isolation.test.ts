@@ -79,11 +79,19 @@ test("sandbox: escribe en runRoot, no fuera, no lee canario", { skip: !sandboxAv
     const canary = join(outside, "id_canary");
     writeFileSync(canary, "SECRETO-CANARIO");
     const env = buildEnv(l);
-    const run = (script: string) =>
-      runSandboxed({ runRoot: l.root, cmd: "/bin/sh", args: ["-c", script], cwd: l.ws, env, timeoutSec: 20 });
+    // Un `code === null` sin timeout significa que una señal externa mató al hijo (p. ej. un pkill -f de otro
+    // proceso de la máquina durante `npm test` completo): es ruido de infraestructura, no del aislamiento.
+    // Se reintenta hasta 2 veces; un fallo real del perfil devuelve código distinto de null y no se reintenta.
+    const run = async (script: string) => {
+      let r = await runSandboxed({ runRoot: l.root, cmd: "/bin/sh", args: ["-c", script], cwd: l.ws, env, timeoutSec: 20 });
+      for (let i = 0; i < 2 && r.code === null && !r.timedOut; i++) {
+        r = await runSandboxed({ runRoot: l.root, cmd: "/bin/sh", args: ["-c", script], cwd: l.ws, env, timeoutSec: 20 });
+      }
+      return r;
+    };
 
     const inside = await run(`echo hola > "${l.out}/a.txt"`);
-    assert.equal(inside.code, 0, inside.stderr);
+    assert.equal(inside.code, 0, `signal=${inside.signal} timedOut=${inside.timedOut} stderr=${inside.stderr}`);
     assert.equal(readFileSync(join(l.out, "a.txt"), "utf8").trim(), "hola");
 
     const w = await run(`echo x > "${outside}/escape.txt"`);

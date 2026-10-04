@@ -8,9 +8,14 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "test": "node --test --test-timeout=60000 \"src/**/*.test.ts\" \"test/**/*.test.ts\""
+    "test": "node --test --test-timeout=60000 \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
   }
 }

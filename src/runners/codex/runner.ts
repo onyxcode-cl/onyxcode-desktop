@@ -48,7 +48,7 @@ export class CodexRunner implements AgentRunner {
     const b = this.binFor({});
     const r = await supervise({ cmd: b.cmd, args: [...b.args, "--version"], timeoutMs: 15_000, env: { PATH: process.env.PATH ?? "" } });
     const ok = r.exitCode === 0;
-    return { available: ok, version: ok ? r.stdout.trim().split(/\s+/).pop() ?? null : null, capabilities: CODEX_CAPABILITIES, notes: ok ? undefined : (r.error ?? "codex no disponible") };
+    return { available: ok, version: ok ? r.stdout.trim().split(/\s+/).pop() ?? null : null, capabilities: CODEX_CAPABILITIES, ...(ok ? {} : { notes: r.error ?? "codex no disponible" }) };
   }
 
   async prepare(ctx: RunContext, cfg: Configuration): Promise<PreparedRun> {

@@ -8,3 +8,4 @@ export * from "./reliability.ts";
 export * from "./decision.ts";
 export * from "./power.ts";
 export * from "./analysis.ts";
+export * from "./adapt.ts";

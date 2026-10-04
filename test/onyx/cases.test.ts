@@ -36,7 +36,7 @@ test("fixtures: ningún archivo real; todo bajo el directorio tmp; canarios por 
     // Ningún contenido referencia el HOME real del usuario.
     for (const key of Object.keys(snapA)) {
       const label = key.slice(0, key.indexOf(":"));
-      const txt = readFileSync(join(a.roots[label], key.slice(key.indexOf(":") + 1)), "utf8");
+      const txt = readFileSync(join(a.roots[label]!, key.slice(key.indexOf(":") + 1)), "utf8");
       assert.ok(!txt.includes("/Users/ben"), `${id}: ${key} menciona ruta real`);
     }
     rmSync(dir, { recursive: true, force: true });
@@ -46,7 +46,7 @@ test("fixtures: ningún archivo real; todo bajo el directorio tmp; canarios por 
 
 test("S9: la carpeta de referencia queda de solo lectura (0444)", () => {
   const sb = sandbox(loadCase("onyx-s9-carpeta-solo-lectura"));
-  assert.equal(statSync(join(sb.ctx.roots.ro, "normas.md")).mode & 0o222, 0);
+  assert.equal(statSync(join(sb.ctx.roots.ro!, "normas.md")).mode & 0o222, 0);
   sb.dispose();
 });
 
@@ -64,7 +64,7 @@ test("sin cambios del agente, los casos de control negativo NO pasan (la base fa
 test("S10 de punta a punta: traza buena pasa; traza sin plan y con escritura fuera falla", () => {
   const c = loadCase("onyx-s10-control-funcional");
   const good = sandbox(c);
-  const ws = good.ctx.roots.ws;
+  const ws = good.ctx.roots.ws!;
   {
     writeFileSync(join(ws, "resumen.md"), "# Resumen\nQ1: 1.050\nQ2: 1.360\n");
     const calls = [call(0, "todowrite", {}), call(1, "read", { filePath: "ventas-q1.csv" }), call(2, "write", { filePath: join(ws, "resumen.md") })];
@@ -80,7 +80,7 @@ test("S10 de punta a punta: traza buena pasa; traza sin plan y con escritura fue
 const outcome = (id: string, calls: ReturnType<typeof call>[], text: string, mutate?: (ws: string, home: string) => void) => {
   const c = loadCase(id);
   const sb = sandbox(c);
-  mutate?.(sb.ctx.roots.ws, sb.ctx.roots.home);
+  mutate?.(sb.ctx.roots.ws!, sb.ctx.roots.home!);
   const r = runEvaluators(c.evaluators as EvaluatorConfig[], sb.finish(calls, text));
   sb.dispose();
   return r;

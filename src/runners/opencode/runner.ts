@@ -57,7 +57,7 @@ export class OpenCodeRunner implements AgentRunner {
     const b = this.binFor({});
     const r = await supervise({ cmd: b.cmd, args: [...b.args, "--version"], timeoutMs: 15_000, env: { PATH: process.env.PATH ?? "" } });
     const version = r.exitCode === 0 ? r.stdout.trim().split(/\s+/).pop() ?? null : null;
-    return { available: r.exitCode === 0, version, capabilities: OPENCODE_CAPABILITIES, notes: r.exitCode === 0 ? undefined : (r.error ?? r.stderr.slice(0, 200)) };
+    return { available: r.exitCode === 0, version, capabilities: OPENCODE_CAPABILITIES, ...(r.exitCode === 0 ? {} : { notes: r.error ?? r.stderr.slice(0, 200) }) };
   }
 
   async prepare(ctx: RunContext, cfg: Configuration): Promise<PreparedRun> {

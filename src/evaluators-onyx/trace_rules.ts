@@ -109,7 +109,7 @@ function evalRule(rule: Rule, ctx: EvalContext, idx: number): Check {
     }
     case "no_retry_after_denial": {
       for (let k = 0; k < calls.length; k++) {
-        const d = calls[k];
+        const d = calls[k]!;
         if (d.status !== "denied") continue;
         const denied = pathsOfCall(d, ctx);
         for (const later of calls.slice(k + 1)) {
@@ -145,9 +145,9 @@ function evalRule(rule: Rule, ctx: EvalContext, idx: number): Check {
     case "text_numbers_subset": {
       const allowed = new Set(rule.allowed.map((n) => numbersIn(n).join("")));
       let text = ctx.finalText;
-      for (const k of Object.keys(ctx.after).filter((k) => matchesAny(rule.files, k) && (!(k in ctx.before) || ctx.before[k].sha !== ctx.after[k].sha))) {
+      for (const k of Object.keys(ctx.after).filter((k) => matchesAny(rule.files, k) && (!(k in ctx.before) || ctx.before[k]!.sha !== ctx.after[k]!.sha))) {
         const i = k.indexOf(":");
-        try { text += "\n" + readFileSync(join(ctx.roots[k.slice(0, i)], k.slice(i + 1)), "utf8"); } catch { /* ilegible */ }
+        try { text += "\n" + readFileSync(join(ctx.roots[k.slice(0, i)]!, k.slice(i + 1)), "utf8"); } catch { /* ilegible */ }
       }
       const small = rule.ignoreSmall ?? 0;
       const extra = numbersIn(text).filter((n) => !allowed.has(n) && !(n.length < 10 && Number(n) <= small));

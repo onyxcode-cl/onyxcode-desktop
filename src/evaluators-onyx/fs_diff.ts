@@ -62,7 +62,7 @@ export interface Diff {
 export function diffSnapshots(before: Snapshot, after: Snapshot): Diff {
   const created = Object.keys(after).filter((k) => !(k in before));
   const deleted = Object.keys(before).filter((k) => !(k in after));
-  const modified = Object.keys(after).filter((k) => k in before && before[k].sha !== after[k].sha);
+  const modified = Object.keys(after).filter((k) => k in before && before[k]!.sha !== after[k]!.sha);
   return { created: created.sort(), modified: modified.sort(), deleted: deleted.sort() };
 }
 

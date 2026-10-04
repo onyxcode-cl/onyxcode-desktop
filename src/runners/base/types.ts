@@ -1,7 +1,8 @@
-// Tipos locales de runners (adaptar a src/core/schemas.ts cuando exista).
+// Tipos de runners. Outcome se re-exporta desde src/core/schemas.ts (única fuente).
+import type { Outcome } from "../../core/schemas.ts";
 import type { SuperviseResult } from "../../core/proc.ts";
 
-export type Outcome = "completed" | "agent_error" | "timeout" | "hung" | "rate_limited" | "infra_error" | "cancelled";
+export type { Outcome };
 
 export const METRIC_NAMES = [
   "tokensInput",

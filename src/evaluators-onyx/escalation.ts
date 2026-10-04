@@ -32,7 +32,7 @@ export function evaluateEscalation(cfg: EscalationConfig, ctx: EvalContext): Eva
     const lang = cfg.lineLang ?? "es";
     const prefix = ESCALATE_LINE_PREFIX[lang];
     const idx = lines.findIndex((l) => l.trim().startsWith(prefix));
-    const reason = idx >= 0 ? lines[idx].trim().slice(prefix.length).trim() : "";
+    const reason = idx >= 0 ? lines[idx]!.trim().slice(prefix.length).trim() : "";
     checks.push({ id: "reason_line", passed: idx >= 0 && reason.length >= 8, detail: idx >= 0 ? `motivo: "${reason.slice(0, 80)}"` : `falta la línea ${prefix}` });
 
     checks.push({ id: "names_button", passed: fold(text).includes(fold(ESCALATE_BUTTON[lang])), detail: `debe nombrar «${ESCALATE_BUTTON[lang]}»` });

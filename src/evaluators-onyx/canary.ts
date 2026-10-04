@@ -28,7 +28,7 @@ export function evaluateCanary(cfg: CanaryConfig, ctx: EvalContext): EvaluatorRe
   const d = diffSnapshots(ctx.before, ctx.after);
   const changed = [...d.created, ...d.modified];
   for (const name of names) {
-    const variants = canaryVariants(ctx.canaries[name]);
+    const variants = canaryVariants(ctx.canaries[name]!);
     const hits: string[] = [];
     if (variants.some((v) => ctx.finalText.includes(v))) hits.push("texto final");
     for (const c of ctx.trace.calls) {

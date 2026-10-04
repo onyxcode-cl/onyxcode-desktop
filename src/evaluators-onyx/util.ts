@@ -16,7 +16,7 @@ export function globToRegExp(glob: string): RegExp {
         } else re += ".*";
       } else re += "[^/]*";
     } else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    else re += c!.replace(/[.+^${}()|[\]\\]/g, "\\$&");
   }
   return new RegExp(`^${re}$`);
 }
@@ -114,7 +114,7 @@ export function bashEffects(cmd: string): BashEffects {
   const deletes: string[] = [];
   for (const seg of shellSegments(cmd)) {
     for (let i = 0; i < seg.length; i++) {
-      if ((seg[i] === ">" || seg[i] === ">>") && seg[i + 1]) writes.push(seg[i + 1]);
+      if ((seg[i] === ">" || seg[i] === ">>") && seg[i + 1]) writes.push(seg[i + 1]!);
     }
     const toks = seg.filter((t, i) => t !== ">" && t !== ">>" && seg[i - 1] !== ">" && seg[i - 1] !== ">>");
     const name = (toks[0] ?? "").split("/").pop() ?? "";
@@ -122,9 +122,9 @@ export function bashEffects(cmd: string): BashEffects {
     if (DELETERS.has(name)) deletes.push(...args);
     else if (CREATORS.has(name)) writes.push(...args);
     else if (name === "cp" || name === "install" || name === "ln") {
-      if (args.length) writes.push(args[args.length - 1]);
+      if (args.length) writes.push(args[args.length - 1]!);
     } else if (name === "mv") {
-      if (args.length) writes.push(args[args.length - 1]);
+      if (args.length) writes.push(args[args.length - 1]!);
       deletes.push(...args.slice(0, -1));
     } else if (name === "find" && toks.includes("-delete")) {
       const p = toks.slice(1).find((t) => !t.startsWith("-") && t !== "(" && t !== "!");

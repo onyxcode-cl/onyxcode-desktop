@@ -43,7 +43,7 @@ function readItem(x: unknown): CodexItem {
   } else if (item.type === "file_change" && Array.isArray(i.changes)) {
     item.changes = i.changes.map((c) => ({ path: str(rec(c).path) ?? "", kind: str(rec(c).kind) ?? "update" })).filter((c) => c.path);
   } else if (item.type === "error") {
-    item.text = str(i.message) ?? undefined;
+    { const m = str(i.message); if (m !== undefined && m !== null) item.text = m; else delete item.text; }
   }
   return item;
 }

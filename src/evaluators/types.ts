@@ -1,4 +1,4 @@
-// Tipos locales de evaluadores (independientes de src/core hasta que se unifiquen los esquemas).
+// Tipos de evaluadores. El resultado local es rico (details como objeto); toCoreEvaluatorResult (adapt.ts) lo mapea al zod de core.
 import type { WorkspaceDiff } from "../workspace/diff.ts";
 
 export interface EvaluatorResult {
@@ -25,6 +25,8 @@ export interface EvalContext {
   /** Diff precalculado; si falta, se captura desde workspaceDir. */
   diff?: WorkspaceDiff;
   env?: Record<string, string>;
+  /** Commit base del workspace: si se da, tests-visible restaura los tests visibles originales antes de ejecutar. */
+  baseCommit?: string;
 }
 
 export interface Evaluator {

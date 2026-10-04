@@ -1,13 +1,7 @@
-// Tipos locales del módulo de estadística. No depende de src/core.
+// Tipos del módulo de estadística (solo importa tipos de src/core).
+import type { Outcome } from "../core/schemas.ts";
 
-export type RunOutcome =
-  | "completed"
-  | "agent_error"
-  | "timeout"
-  | "hung"
-  | "rate_limited"
-  | "infra_error"
-  | "cancelled";
+export type RunOutcome = Outcome;
 
 /** Una fila por run. Los datos ausentes son null, nunca 0. */
 export interface RunRow {
