@@ -25,7 +25,7 @@ function walk(dir: string, ok: (f: string) => boolean, out: string[] = []): stri
 }
 
 /** Compilación de la PWA (el plugin y su configuración; no se empaquetan): nombra `data-shell` para quitarlo. */
-const BUILD_HELPER = /strip-desktop-css|vite\.full\.config/
+const BUILD_HELPER = /strip-desktop-(css|js)|vite\.full\.config/
 
 const css = readdirSync(DESKTOP).filter((f) => f.endsWith('.css'))
 const SCOPE = ":root[data-shell='desktop']"
