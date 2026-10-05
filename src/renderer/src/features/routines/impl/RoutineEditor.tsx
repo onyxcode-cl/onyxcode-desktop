@@ -50,7 +50,7 @@ const PERMISSION_SUGGESTIONS = ['bash', 'edit', 'webfetch', 'websearch', 'skill'
 const HOST_RE = /^[a-z0-9.-]{1,255}$/i
 
 const inputCls =
-  'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle'
+  'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle desk:h-8 desk:rounded-ctl desk:border-border-strong desk:py-0 desk:text-sm desk:ring-0 desk:focus:shadow-focus'
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
 
 export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX.Element {
@@ -217,12 +217,15 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
   }, [form.mode, folders, recentFolders])
 
   const tabCls = (on: boolean): string =>
-    `rounded-md px-2.5 py-1 text-xs font-medium transition ${on ? 'bg-elevated text-fg shadow-sm ring-1 ring-border' : 'text-muted hover:text-fg'}`
+    `rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${on ? 'bg-elevated text-fg shadow-sm ring-1 ring-border desk:ring-0' : 'text-muted hover:text-fg'}`
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/25 backdrop-blur-[1px]" onMouseDown={closeEditor}>
+    <div
+      className="fixed inset-0 z-40 flex justify-end bg-black/25 backdrop-blur-[1px] desk:bg-[var(--scrim)] desk:backdrop-blur-none"
+      onMouseDown={closeEditor}
+    >
       <div
-        className="flex h-full w-full max-w-xl flex-col border-l border-border bg-elevated shadow-2xl"
+        className="flex h-full w-full max-w-xl flex-col border-l border-border bg-elevated shadow-2xl desk:border-l-transparent desk:shadow-modal"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -234,11 +237,11 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
           }
         }}
       >
-        <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-5">
+        <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-5 desk:border-border/60">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-soft text-accent">
             <CalendarClock size={15} />
           </span>
-          <h2 id="routine-editor-title" className="text-base font-semibold">
+          <h2 id="routine-editor-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
             {form.id ? t('routines.editor.edit') : t('routines.editor.new')}
           </h2>
           <button
@@ -278,7 +281,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
             </label>
             <textarea
               id="r-prompt"
-              className={`${inputCls} min-h-32 resize-y leading-relaxed ${touched && !form.prompt.trim() ? 'border-danger/60' : ''}`}
+              className={`${inputCls} min-h-32 resize-y leading-relaxed desk:h-auto desk:py-2 ${touched && !form.prompt.trim() ? 'border-danger/60' : ''}`}
               value={form.prompt}
               placeholder={t('routines.editor.promptPlaceholder')}
               onChange={(e) => patch({ prompt: e.target.value })}
@@ -301,7 +304,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       setSchedule(p.schedule)
                       setBuilder(builderFor(p.schedule))
                     }}
-                    className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition ${on ? 'border-accent bg-accent-soft text-accent' : 'border-border text-muted hover:border-border-strong hover:text-fg'}`}
+                    className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition desk:h-7 desk:rounded-ctl-sm desk:text-ui ${on ? 'border-accent bg-accent-soft text-accent desk:border-transparent' : 'border-border text-muted hover:border-border-strong hover:text-fg desk:border-transparent desk:bg-hover desk:hover:border-transparent desk:hover:text-fg'}`}
                   >
                     {on && <Check size={12} />} {p.label}
                   </button>
@@ -309,8 +312,8 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               })}
             </div>
 
-            <div className="mt-3 rounded-xl border border-border bg-bg/50 p-3">
-              <div className="mb-3 inline-flex rounded-lg bg-hover/70 p-0.5">
+            <div className="mt-3 rounded-xl border border-border bg-bg/50 p-3 desk:rounded-card desk:border-transparent desk:bg-bg">
+              <div className="mb-3 inline-flex rounded-lg bg-hover/70 p-0.5 desk:rounded-ctl desk:bg-hover">
                 <button
                   type="button"
                   className={tabCls(builder === 'days')}
@@ -480,7 +483,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                         ...(m === form.mode ? {} : { fullAccess: false, fullAccessConsentAt: null })
                       })
                     }
-                    className={`flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition ${on ? 'border-accent bg-accent-soft/50 ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:bg-hover'}`}
+                    className={`flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition desk:rounded-card ${on ? 'border-accent bg-accent-soft/50 ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:bg-hover'}`}
                   >
                     <Icon size={17} className={on ? 'text-accent' : 'text-muted'} />
                     <span className="text-sm font-medium">{meta.label}</span>
@@ -544,10 +547,14 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
           )}
 
           {isTasks && (
-            <section className="space-y-5 rounded-xl border border-border bg-bg/50 p-4">
+            <section className="space-y-5 rounded-xl border border-border bg-bg/50 p-4 desk:rounded-card desk:border-transparent desk:bg-bg">
               <div>
                 <span className={labelCls}>{t('routines.editor.eachRun')}</span>
-                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label={t('routines.editor.sessionAria')}>
+                <div
+                  className="inline-flex rounded-lg bg-hover/70 p-0.5 desk:rounded-ctl desk:bg-hover"
+                  role="group"
+                  aria-label={t('routines.editor.sessionAria')}
+                >
                   <button
                     type="button"
                     aria-pressed={form.sessionMode !== 'continue' || fullControl}
@@ -577,7 +584,11 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
               <div>
                 <span className={labelCls}>{t('routines.editor.onAsk')}</span>
-                <div className="inline-flex rounded-lg bg-hover/70 p-0.5" role="group" aria-label={t('routines.editor.onAskAria')}>
+                <div
+                  className="inline-flex rounded-lg bg-hover/70 p-0.5 desk:rounded-ctl desk:bg-hover"
+                  role="group"
+                  aria-label={t('routines.editor.onAskAria')}
+                >
                   <button
                     type="button"
                     aria-pressed={form.onAsk !== 'wait'}
@@ -758,13 +769,13 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
           </section>
 
           {error && (
-            <p className="flex items-start gap-1.5 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-              <AlertCircle size={15} className="mt-0.5 shrink-0" /> {error}
+            <p className="flex items-start gap-1.5 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger desk:rounded-ctl desk:text-ui desk:text-fg desk:ring-1 desk:ring-danger/45 desk:ring-inset">
+              <AlertCircle size={15} className="mt-0.5 shrink-0 desk:text-danger" /> {error}
             </p>
           )}
         </div>
 
-        <footer className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3">
+        <footer className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3 desk:border-border/60">
           <span className="min-w-0 truncate text-xs text-subtle">
             {touched && missing.length > 0 ? (
               <span className="text-danger">{t('routines.editor.missing', { items: missing.join(', ') })}</span>
