@@ -271,9 +271,14 @@ function failArt(r: FailReason): HTMLElement {
       return art('clock', 'warn')
     case 'no-host':
     case 'unreachable':
+    case 'travel-link':
+    case 'travel-ice':
       return art('wifioff', 'warn')
     case 'host-offline':
+    case 'travel-mac':
       return art('laptop', 'warn')
+    case 'travel-ended':
+      return art('clock', 'warn')
     case 'busy':
     case 'rate':
     case 'other-device':
@@ -306,7 +311,7 @@ function codeCells(code: string): HTMLElement {
   )
 }
 
-function stepsCard(prefix: 'idle' | 'idle.cloud' = 'idle'): HTMLElement {
+function stepsCard(prefix: 'idle' | 'idle.cloud' | 'idle.travel' = 'idle'): HTMLElement {
   return h(
     'ol',
     { class: 'steps' },
@@ -519,6 +524,15 @@ function statusScreen(c: RemoteClient, s: Snapshot): Screen {
         // Modo nube: se vincula escaneando el QR (llega con `#c=`) o ESCRIBIENDO el código, que es lo que hace falta en la app
         // instalada de iPhone (su almacenamiento es aparte del de Safari).
         root.append(art('gem'), title, stepsCard('idle.cloud'), codeForm(c), installGuide())
+      } else if (s.travel) {
+        // Modo viaje: se vincula en casa escaneando el QR del Mac; esta página es temporal y no se instala.
+        root.append(
+          art('gem'),
+          title,
+          stepsCard('idle.travel'),
+          h('p', { class: 'muted fine' }, t('idle.travel.note')),
+          h('p', { class: 'muted fine' }, t('idle.travel.noInstall'))
+        )
       } else
         root.append(
           art('gem'),
@@ -530,7 +544,7 @@ function statusScreen(c: RemoteClient, s: Snapshot): Screen {
     case 'connecting': {
       title.textContent = t('conn.connecting')
       root.setAttribute('aria-busy', 'true')
-      const slow = h('p', { class: 'muted fine slow', hidden: true }, t('conn.slow'))
+      const slow = h('p', { class: 'muted fine slow', hidden: true }, t(s.travel ? 'conn.slow.travel' : 'conn.slow'))
       const timer = setTimeout(() => (slow.hidden = false), SLOW_CONNECT_MS)
       dispose = () => clearTimeout(timer)
       root.append(art('gem', '', false, true), title, slow)

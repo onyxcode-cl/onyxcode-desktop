@@ -37,14 +37,15 @@ const STORE = 'link'
 const KEY = 'current'
 const ROOM_RE = /^[A-Za-z0-9_-]{43}$/
 
-function validLink(v: unknown): v is CloudLink {
+function validLink(v: unknown, roomless = false): v is CloudLink {
   if (typeof v !== 'object' || v === null) return false
   const o = v as Record<string, unknown>
   return (
     typeof o.deviceId === 'string' &&
     DEVICE_ID_RE.test(o.deviceId) &&
     typeof o.room === 'string' &&
-    ROOM_RE.test(o.room) &&
+    // Modo viaje: no hay sala (el origen del túnel ya identifica al Mac); en la nube la sala es obligatoria.
+    (roomless ? o.room === '' : ROOM_RE.test(o.room)) &&
     typeof o.macName === 'string' &&
     o.macName.length <= 80 &&
     typeof o.pairedAt === 'number' &&
@@ -61,7 +62,8 @@ function req<T>(r: IDBRequest<T>): Promise<T> {
 }
 
 /** Almacén sobre IndexedDB. `factory` se inyecta en las pruebas (un doble en memoria). */
-export function idbLinkStore(factory?: IDBFactory): LinkStore {
+export function idbLinkStore(factory?: IDBFactory, opts: { roomless?: boolean } = {}): LinkStore {
+  const roomless = opts.roomless === true
   const open = (): Promise<IDBDatabase> =>
     new Promise<IDBDatabase>((resolve, reject) => {
       try {
@@ -97,13 +99,13 @@ export function idbLinkStore(factory?: IDBFactory): LinkStore {
     async load() {
       try {
         const v = await run('readonly', (s) => s.get(KEY))
-        return validLink(v) ? v : null
+        return validLink(v, roomless) ? v : null
       } catch {
         return null
       }
     },
     async save(link) {
-      if (!validLink(link)) throw new StoreError()
+      if (!validLink(link, roomless)) throw new StoreError()
       await run('readwrite', (s) => s.put(link, KEY))
     },
     async clear() {

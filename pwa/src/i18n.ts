@@ -130,6 +130,25 @@ export const es: Dict = {
   'toast.sent': 'Mensaje enviado',
   'time.now': 'ahora',
   'sr.connection': 'Estado de la conexión',
+  'idle.travel.step1': 'En casa, abre OnyxCode en tu Mac y ve a Ajustes › Celular › Modo viaje.',
+  'idle.travel.step2': 'Escanea el código QR de esa pantalla con la cámara de este celular.',
+  'idle.travel.step3': 'Comprueba que el código de 6 dígitos coincide y crea tu PIN.',
+  'idle.travel.note':
+    'Este vínculo vale solo para este enlace temporal. Guarda la página en favoritos: si el Mac reinicia el túnel, el enlace cambia y hay que vincular de nuevo en casa.',
+  'idle.travel.noInstall': 'No se puede instalar como app: el enlace es temporal y dejaría de funcionar.',
+  'conn.slow.travel': '¿Tarda mucho? Comprueba que tu Mac esté encendido, con internet y con OnyxCode abierta.',
+  'fail.title.travel-link': 'El enlace caducó',
+  'fail.body.travel-link':
+    'El enlace del modo viaje ya no responde: se reinició, cambió o se cerró. Vuelve a escanear el código QR en casa, con tu Mac, para vincular de nuevo. Si el enlace sigue siendo el mismo, puede que el Mac no responda.',
+  'fail.title.travel-mac': 'El Mac no responde',
+  'fail.body.travel-mac':
+    'Puede estar dormido, apagado o sin internet, o el enlace se está reiniciando. Reintenta en un momento. OnyxCode no puede despertar tu Mac a distancia.',
+  'fail.title.travel-ice': 'Tu red bloquea la conexión directa',
+  'fail.body.travel-ice':
+    'La red de este celular (o la del Mac) no permite abrir la conexión directa entre ambos. Prueba con otra red, por ejemplo la Wi-Fi de otra casa o los datos móviles, o vuelve a intentarlo.',
+  'fail.title.travel-ended': 'Modo viaje cerrado',
+  'fail.body.travel-ended':
+    'Tu Mac cerró el modo viaje y este vínculo se borró de este celular. Para volver a usarlo, activa el modo viaje y vincula de nuevo en casa.',
   'fail.title.host-offline': 'Tu Mac no está disponible',
   'fail.body.host-offline': 'Puede estar dormido, apagado o sin internet. OnyxCode no puede despertarlo a distancia.',
   'fail.title.storage': 'No se pudo guardar el vínculo',
@@ -280,6 +299,25 @@ export const en: Dict = {
   'toast.sent': 'Message sent',
   'time.now': 'now',
   'sr.connection': 'Connection status',
+  'idle.travel.step1': 'At home, open OnyxCode on your Mac and go to Settings › Phone › Travel mode.',
+  'idle.travel.step2': 'Scan the QR code on that screen with this phone’s camera.',
+  'idle.travel.step3': 'Check that the 6-digit code matches and create your PIN.',
+  'idle.travel.note':
+    'This link only works for this temporary address. Bookmark the page: if the Mac restarts the tunnel, the address changes and you must link again at home.',
+  'idle.travel.noInstall': 'It cannot be installed as an app: the address is temporary and would stop working.',
+  'conn.slow.travel': 'Taking long? Check that your Mac is on, online and has OnyxCode open.',
+  'fail.title.travel-link': 'The link expired',
+  'fail.body.travel-link':
+    'The travel mode link no longer responds: it restarted, changed or was closed. Scan the QR code again at home, with your Mac, to link again. If the link is still the same, your Mac may not be responding.',
+  'fail.title.travel-mac': 'Your Mac is not responding',
+  'fail.body.travel-mac':
+    'It may be asleep, off or offline, or the link is restarting. Try again in a moment. OnyxCode cannot wake your Mac remotely.',
+  'fail.title.travel-ice': 'Your network blocks the direct connection',
+  'fail.body.travel-ice':
+    'This phone’s network (or the Mac’s) does not allow opening the direct connection between them. Try another network, such as another home Wi-Fi or mobile data, or try again.',
+  'fail.title.travel-ended': 'Travel mode closed',
+  'fail.body.travel-ended':
+    'Your Mac closed travel mode and this link was deleted from this phone. To use it again, turn travel mode on and link again at home.',
   'fail.title.host-offline': 'Your Mac is not available',
   'fail.body.host-offline': 'It may be asleep, off or offline. OnyxCode cannot wake it up remotely.',
   'fail.title.storage': 'Could not save the link',

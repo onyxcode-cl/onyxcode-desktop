@@ -81,6 +81,14 @@ export type FailReason =
   | 'not-recognized'
   /** El vínculo caducó (el Mac lo probó con una prueba válida): hay que volver a vincular. */
   | 'expired-link'
+  /** Modo viaje: el enlace caducó o cambió (el túnel se reinició o ya no existe): hay que volver a escanear el QR en casa. */
+  | 'travel-link'
+  /** Modo viaje: el Mac no responde (dormido, apagado, sin internet o el túnel se está reiniciando). */
+  | 'travel-mac'
+  /** Modo viaje: la red de este celular (o la del Mac) no deja abrir la conexión directa. */
+  | 'travel-ice'
+  /** Modo viaje: el Mac cerró el modo viaje; el vínculo se borró de este celular. */
+  | 'travel-ended'
 
 export type Conn =
   | { k: 'idle' }
@@ -111,6 +119,8 @@ export interface Snapshot {
   paired: boolean
   /** Modo nube (HTTPS en el sitio del servicio de conexión). */
   cloud: boolean
+  /** Modo viaje (HTTPS en el túnel temporal del Mac). */
+  travel: boolean
   /** La conexión viva pasa por un relé (TURN). */
   relay: boolean
 }
@@ -118,6 +128,8 @@ export interface Snapshot {
 /** Entorno del cliente: modo nube y su almacén (en las pruebas se inyecta uno falso). */
 export interface ClientEnv {
   cloud?: boolean
+  /** Modo viaje: el vínculo vive en IndexedDB de ESTE origen (el del túnel) y se borra al cerrarse el modo. */
+  travel?: boolean
   store?: LinkStore
 }
 
@@ -191,6 +203,9 @@ export class RemoteClient {
   /** Modo nube: vínculo guardado en IndexedDB (clave no exportable) y su almacén. */
   private clink: CloudLink | null = null
   private readonly cloud: boolean
+  private readonly travel: boolean
+  /** Vínculo en IndexedDB con `CryptoKey` no exportable: nube y viaje (ambos son HTTPS). La red local usa `localStorage`. */
+  private readonly keyed: boolean
   private readonly store: LinkStore
   /** Carga inicial del vínculo (en la nube es asíncrona). */
   private readonly loaded: Promise<void>
@@ -230,9 +245,11 @@ export class RemoteClient {
 
   constructor(env: ClientEnv = {}) {
     this.cloud = env.cloud === true
-    this.store = env.store ?? idbLinkStore()
+    this.travel = !this.cloud && env.travel === true
+    this.keyed = this.cloud || this.travel
+    this.store = env.store ?? idbLinkStore(undefined, { roomless: this.travel })
     // En la nube el vínculo vive en IndexedDB (`CryptoKey` no exportable); por HTTP (red local), en `localStorage` como siempre.
-    this.creds = this.cloud ? null : loadCreds()
+    this.creds = this.keyed ? null : loadCreds()
     this.snap = {
       conn: { k: 'idle' },
       sessions: null,
@@ -241,9 +258,10 @@ export class RemoteClient {
       toast: null,
       paired: this.creds !== null,
       cloud: this.cloud,
+      travel: this.travel,
       relay: false
     }
-    this.loaded = this.cloud
+    this.loaded = this.keyed
       ? this.store.load().then((l) => {
           this.clink = l
           this.set({ paired: l !== null })
@@ -335,11 +353,12 @@ export class RemoteClient {
   }
 
   private hasResume(): boolean {
-    return this.cloud ? this.clink !== null : this.creds !== null
+    return this.keyed ? this.clink !== null : this.creds !== null
   }
 
   /** Adónde conecta ESTA conexión: la red local, o la sala (la del Mac al reanudar, la de vinculación al vincular). */
   private target(): LinkTarget {
+    if (this.travel) return { kind: 'travel' }
     if (!this.cloud) return { kind: 'lan' }
     return { kind: 'cloud', room: this.mode === 'pair' ? pairRoom(this.pairSecret as string) : (this.clink as CloudLink).room }
   }
@@ -357,7 +376,7 @@ export class RemoteClient {
     clearCreds()
     this.creds = null
     this.clink = null
-    if (this.cloud) void this.store.clear()
+    if (this.keyed) void this.store.clear()
     this.pairSecret = null
     this.everOnline = false
     this.set({ conn: { k: 'idle' }, sessions: null, permissions: [], chat: null, paired: false })
@@ -387,7 +406,7 @@ export class RemoteClient {
               t: 'hello',
               v: this.protoV,
               mode: 'resume',
-              deviceId: this.cloud ? (this.clink as CloudLink).deviceId : (this.creds as Creds).id
+              deviceId: this.keyed ? (this.clink as CloudLink).deviceId : (this.creds as Creds).id
             }
     } catch {
       return this.fail('protocol', true)
@@ -447,9 +466,9 @@ export class RemoteClient {
       // `CryptoKey` NO exportable (`keys.ts`) con los mismos bytes: el secreto en claro no se guarda ni se conserva.
       if (this.mode === 'pair') {
         const q = this.pairSecret as string
-        const mac = this.cloud ? subtleAuthMac(await importPairKey(q)) : nobleAuthMac(pairKey(q))
+        const mac = this.keyed ? subtleAuthMac(await importPairKey(q)) : nobleAuthMac(pairKey(q))
         hs = new AsyncClientHandshake({ mode: 'pair', pairId: pairId(q), mac, fps, rand, v })
-      } else if (this.cloud) {
+      } else if (this.keyed) {
         const l = this.clink
         if (!l) return this.fail('revoked', false)
         hs = new AsyncClientHandshake({ mode: 'resume', deviceId: l.deviceId, mac: subtleAuthMac(l.key), fps, rand, v })
@@ -507,17 +526,24 @@ export class RemoteClient {
           return this.reloadForVersion() ? undefined : this.fail('version', false)
         }
         return this.fail('protocol', true)
+      case 'ice-failed':
+        // Solo modo viaje: la señalización llegó pero la conexión directa no abrió (NAT/UDP). Reintentar rara vez cambia nada.
+        if (this.mode === 'pair') return this.fail('travel-ice', true)
+        return this.scheduleRetry('travel-ice')
       case 'no-host':
+        // Modo viaje: no se llegó al túnel (ya cerrado, cambiado o la red lo bloquea): «el enlace caducó, vuelve a escanear en casa».
+        if (this.travel) return this.mode === 'pair' ? this.fail('travel-link', true) : this.scheduleRetry('travel-link')
         if (this.mode === 'pair') return this.fail('no-host', true)
         return this.scheduleRetry('no-host')
       case 'closed':
+        if (this.travel) return this.mode === 'pair' ? this.fail('travel-mac', true) : this.scheduleRetry('travel-mac')
         if (this.mode === 'pair') return this.fail('unreachable', true)
         return this.scheduleRetry('unreachable')
     }
   }
 
   /** Reintento acotado con espera creciente; al agotarlos queda un estado claro con botón «Reintentar». */
-  private scheduleRetry(finalReason: 'no-host' | 'unreachable'): void {
+  private scheduleRetry(finalReason: 'no-host' | 'unreachable' | 'travel-link' | 'travel-mac' | 'travel-ice'): void {
     const delays = this.everOnline ? RECONNECT_DELAYS : FIRST_RESUME_DELAYS
     if (this.attempt >= delays.length) return this.fail(this.everOnline ? 'unreachable' : finalReason, true)
     const wait = delays[this.attempt]
@@ -699,7 +725,7 @@ export class RemoteClient {
     clearCreds()
     this.creds = null
     this.clink = null
-    if (this.cloud) void this.store.clear()
+    if (this.keyed) void this.store.clear()
     this.set({ paired: false })
   }
 
@@ -726,12 +752,19 @@ export class RemoteClient {
         return
       case 'paired': {
         if (this.mode !== 'pair' || this.authed) return
-        if (this.cloud) {
-          // En la nube el Mac manda la sala. El secreto se importa como `CryptoKey` NO exportable y el texto en claro se olvida.
-          if (!f.room) return this.fail('protocol', true)
+        if (this.keyed) {
+          // En la nube el Mac manda la sala (en viaje no hay sala: el origen del túnel ya identifica al Mac). El secreto se importa
+          // como `CryptoKey` NO exportable y el texto en claro se olvida.
+          if (this.cloud && !f.room) return this.fail('protocol', true)
           let link: CloudLink
           try {
-            link = { deviceId: f.deviceId, key: await importDeviceKey(f.deviceSecret), room: f.room, macName: '', pairedAt: Date.now() }
+            link = {
+              deviceId: f.deviceId,
+              key: await importDeviceKey(f.deviceSecret),
+              room: f.room ?? '',
+              macName: '',
+              pairedAt: Date.now()
+            }
             await this.store.save(link)
           } catch (e) {
             return gen === this.generation ? this.fail(e instanceof StoreError ? 'storage' : 'protocol', false) : undefined
@@ -803,6 +836,12 @@ export class RemoteClient {
       case 'stopped':
       case 'idle':
         return this.fail('stopped', false)
+      case 'travel-ended':
+        // El Mac cerró el modo viaje: el vínculo de ESTE origen ya no vale para nada y se borra (como `revoked`, solo con la prueba
+        // del Mac: sin ella un intermediario podría inyectarlo para vaciar el vínculo).
+        if (!this.macVerified) return this.fail('not-recognized', true)
+        this.forgetCreds()
+        return this.fail('travel-ended', false)
       case 'other-device':
         return this.fail('other-device', true)
       case 'violations':

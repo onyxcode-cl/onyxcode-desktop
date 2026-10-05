@@ -5,7 +5,7 @@ import { loadFullApp, makeLink, prefetchFullApp, type FullState } from './full'
 import { lang } from './i18n'
 import { codeFromHash } from '../../src/shared/remote/cloud'
 import { watchInstall } from './install'
-import { isCloudMode } from './mode'
+import { isCloudMode, isTravelMode } from './mode'
 import { followTheme, hostCss } from './theme'
 import { mountUi } from './ui'
 
@@ -13,6 +13,11 @@ document.documentElement.lang = lang
 
 /** Modo nube: HTTPS en el sitio del servicio de conexión (la vinculación entra por un código; el vínculo vive en IndexedDB). */
 const cloud = isCloudMode(location.origin, window.isSecureContext)
+/**
+ * Modo viaje: HTTPS en el túnel temporal del Mac (`https://<palabras>.trycloudflare.com`). El vínculo vive en el almacenamiento de
+ * ESTE origen y vale solo para este túnel. No se instala como app ni se registra service worker (el origen es efímero y reciclable).
+ */
+const travel = !cloud && isTravelMode(location.origin, window.isSecureContext)
 
 /**
  * Extrae del fragmento el secreto del QR (`#s=…`, red local) o el código de vinculación (`#c=…`, modo nube) y lo borra de la barra
@@ -32,10 +37,23 @@ function takeSecret(): { secret: string | null; code: string | null } {
 }
 
 const first = takeSecret()
-const client = new RemoteClient({ cloud })
+const client = new RemoteClient({ cloud, travel })
 if (cloud) {
   watchInstall()
   registerWorker(client)
+} else if (travel) blockInstallAndWorker()
+
+/** Modo viaje: sin «instalar app» (ni el aviso propio del navegador) y sin service worker; se retira cualquiera que hubiera. */
+function blockInstallAndWorker(): void {
+  window.addEventListener('beforeinstallprompt', (e) => e.preventDefault())
+  try {
+    void navigator.serviceWorker
+      ?.getRegistrations()
+      .then((rs) => rs.forEach((r) => void r.unregister()))
+      .catch(() => undefined)
+  } catch {
+    /* sin service worker no hay nada que retirar */
+  }
 }
 
 /** Service worker del sitio (solo modo nube): caché versionada, nunca toca `/v1/*`. Una versión nueva se avisa, no se impone. */

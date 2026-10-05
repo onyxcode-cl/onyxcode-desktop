@@ -8,6 +8,7 @@
  */
 import { BUFFER } from '../../src/shared/remote/mux'
 import { CLOUD_PEER_PREFIX, CLOUD_STUN_URL } from '../../src/shared/remote/cloud'
+import { TRAVEL_STUN_URLS, TRAVEL_WS_RETRY } from '../../src/shared/remote/travel'
 import {
   DATACHANNEL_LABEL,
   LIMITS,
@@ -23,12 +24,19 @@ import {
 export const READY_TIMEOUT_MS = 8_000
 /** Plazo desde la respuesta hasta que el canal abre (aislamiento de clientes, firewall…). */
 export const CHANNEL_TIMEOUT_MS = 15_000
+/** Modo viaje: plazo de ICE (perforación UDP) desde la oferta; si no abre el canal, `ice-failed` («tu red bloquea la conexión directa»). */
+export const TRAVEL_ICE_TIMEOUT_MS = 12_000
 const DISCONNECTED_GRACE_MS = 6_000
 const MAX_ICE_SENT = 50
 
 export type LinkEnd =
   /** No se llegó al equipo (sin `ready` o sin canal a tiempo). */
-  { k: 'no-host' } | { k: 'signal-error'; code: SignalErrorCode } | { k: 'closed' } | { k: 'unsupported' }
+  | { k: 'no-host' }
+  | { k: 'signal-error'; code: SignalErrorCode }
+  | { k: 'closed' }
+  | { k: 'unsupported' }
+  /** Solo modo viaje: la señalización fue bien pero la conexión directa no abrió a tiempo (NAT/UDP que no deja pasar). */
+  | { k: 'ice-failed' }
 
 export interface LinkHandlers {
   /**
@@ -44,7 +52,7 @@ export interface LinkHandlers {
 }
 
 /** Adónde se conecta el enlace: la red local (como siempre) o una sala del servicio de conexión. */
-export type LinkTarget = { kind: 'lan' } | { kind: 'cloud'; room: string }
+export type LinkTarget = { kind: 'lan' } | { kind: 'cloud'; room: string } | { kind: 'travel' }
 
 export interface Link {
   /** `false` si el canal no está abierto o la trama no cabe. */
@@ -66,12 +74,19 @@ function wsUrl(target: LinkTarget): string {
   return `${proto}//${location.host}${target.kind === 'cloud' ? `${CLOUD_PEER_PREFIX}${target.room}` : SIGNALING_PATH}`
 }
 
-/** Servidores ICE de la nube: STUN siempre y, si el servicio los repartió, los de relé. La red local no usa ninguno. */
+/**
+ * Servidores ICE de la nube: STUN siempre y, si el servicio los repartió, los de relé. Modo viaje: solo los STUN públicos sin cuenta
+ * (sin relé). La red local no usa ninguno.
+ */
 export function iceServersFor(target: LinkTarget, turn: readonly IceServerSpec[]): RTCIceServer[] {
+  if (target.kind === 'travel') return [{ urls: [...TRAVEL_STUN_URLS] }]
   return target.kind === 'cloud' ? [{ urls: [CLOUD_STUN_URL] }, ...turn.map((s) => ({ ...s, urls: [...s.urls] }))] : []
 }
 
 export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: LinkHandlers, target: LinkTarget = { kind: 'lan' }): Link {
+  const travel = target.kind === 'travel'
+  /** Fin si el canal no abre: en modo viaje es un fallo de la conexión directa (la señalización sí llegó). */
+  const noChannel: LinkEnd = travel ? { k: 'ice-failed' } : { k: 'no-host' }
   let ended = false
   let ws: WebSocket | null = null
   let pc: RTCPeerConnection | null = null
@@ -79,6 +94,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
   let opened = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let graceTimer: ReturnType<typeof setTimeout> | null = null
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
   let offerSent = false
   let remoteSet = false
   const pendingLocal: Array<{ candidate: string; mid: string }> = []
@@ -89,8 +105,10 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
   const clearTimers = (): void => {
     if (timer) clearTimeout(timer)
     if (graceTimer) clearTimeout(graceTimer)
+    if (retryTimer) clearTimeout(retryTimer)
     timer = null
     graceTimer = null
+    retryTimer = null
   }
   const teardown = (): void => {
     clearTimers()
@@ -164,10 +182,10 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     }
     conn.onconnectionstatechange = () => {
       const st = conn.connectionState
-      if (st === 'failed' || st === 'closed') end(opened ? { k: 'closed' } : { k: 'no-host' })
+      if (st === 'failed' || st === 'closed') end(opened ? { k: 'closed' } : noChannel)
       else if (st === 'disconnected') {
         if (graceTimer) clearTimeout(graceTimer)
-        graceTimer = setTimeout(() => end(opened ? { k: 'closed' } : { k: 'no-host' }), DISCONNECTED_GRACE_MS)
+        graceTimer = setTimeout(() => end(opened ? { k: 'closed' } : noChannel), DISCONNECTED_GRACE_MS)
       } else if (st === 'connected' && graceTimer) {
         clearTimeout(graceTimer)
         graceTimer = null
@@ -197,7 +215,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     sendSignal({ t: 'offer', sdp: offer.sdp })
     offerSent = true
     flushLocalIce()
-    arm(CHANNEL_TIMEOUT_MS, { k: 'no-host' })
+    arm(travel ? TRAVEL_ICE_TIMEOUT_MS : CHANNEL_TIMEOUT_MS, noChannel)
   }
 
   if (!webrtcSupported()) {
@@ -205,21 +223,8 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
     return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, viaRelay: async () => false, close: () => undefined }
   }
 
-  try {
-    ws = new WebSocket(wsUrl(target))
-  } catch {
-    queueMicrotask(() => end({ k: 'no-host' }))
-    return { send: () => false, isOpen: () => false, bufferedAmount: () => 0, viaRelay: async () => false, close: () => undefined }
-  }
-  arm(READY_TIMEOUT_MS, { k: 'no-host' })
-  ws.onopen = () => sendSignal(hello)
-  ws.onerror = () => undefined
-  ws.onclose = () => {
-    // Cerrar la señalización tras abrir el canal es normal; antes de eso, es un fallo.
-    if (!opened && !ended) end({ k: 'no-host' })
-  }
   let gotReady = false
-  ws.onmessage = (e) => {
+  const onSignal = (e: MessageEvent): void => {
     const p = parseSignalHostFrame(e.data)
     if (!p.ok) return end({ k: 'signal-error', code: 'frame' })
     const f = p.value
@@ -227,7 +232,7 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
       case 'ready':
         if (gotReady) return
         gotReady = true
-        arm(CHANNEL_TIMEOUT_MS, { k: 'no-host' })
+        arm(travel ? TRAVEL_ICE_TIMEOUT_MS : CHANNEL_TIMEOUT_MS, noChannel)
         startRtc().catch(() => end({ k: 'no-host' }))
         return
       case 'turn':
@@ -252,6 +257,53 @@ export function openLink(hello: Extract<SignalClientFrame, { t: 'hello' }>, h: L
         return end({ k: 'signal-error', code: f.code })
     }
   }
+
+  let wsAttempt = 0
+  let wsOpened = false
+  const openWs = (): boolean => {
+    try {
+      ws = new WebSocket(wsUrl(target))
+    } catch {
+      return false
+    }
+    ws.onopen = () => {
+      wsOpened = true
+      sendSignal(hello)
+    }
+    ws.onerror = () => undefined
+    ws.onclose = () => {
+      // Modo viaje: el borde de Cloudflare a veces rechaza el upgrade (522) en los primeros segundos de un túnel. El navegador no
+      // enseña el código: si el socket se cierra SIN haber abierto, se reintenta unas pocas veces con espera corta.
+      if (travel && !wsOpened && !opened && !ended && wsAttempt < TRAVEL_WS_RETRY.maxAttempts) {
+        const wait = TRAVEL_WS_RETRY.delaysMs[wsAttempt] ?? 1000
+        wsAttempt++
+        ws = null
+        retryTimer = setTimeout(() => {
+          retryTimer = null
+          if (!ended && !openWs()) end({ k: 'no-host' })
+        }, wait)
+        return
+      }
+      // Cerrar la señalización tras abrir el canal es normal; antes de eso, es un fallo.
+      if (!opened && !ended) end({ k: 'no-host' })
+    }
+    ws.onmessage = onSignal
+    return true
+  }
+
+  const noLink: Link = {
+    send: () => false,
+    isOpen: () => false,
+    bufferedAmount: () => 0,
+    viaRelay: async () => false,
+    close: () => undefined
+  }
+  if (!openWs()) {
+    queueMicrotask(() => end({ k: 'no-host' }))
+    return noLink
+  }
+  // Modo viaje: el plazo de `ready` incluye las esperas de los reintentos del WebSocket.
+  arm(READY_TIMEOUT_MS + (travel ? TRAVEL_WS_RETRY.delaysMs.reduce((x, y) => x + y, 0) : 0), { k: 'no-host' })
 
   return {
     send(text) {
