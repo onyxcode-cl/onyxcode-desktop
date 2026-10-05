@@ -18,8 +18,8 @@ export function ListGroup({
 }): React.JSX.Element {
   return (
     <section data-m="list-group" className={className}>
-      {title && <h2 className="px-4 pb-1.5 text-[12px] leading-4 font-semibold tracking-[0.06em] text-subtle uppercase">{title}</h2>}
-      <div className="divide-y divide-border overflow-hidden rounded-[var(--m-radius-card)] border border-border bg-elevated">
+      {title && <h2 className="px-4 pb-1.5 text-[12px] leading-4 font-semibold text-subtle">{title}</h2>}
+      <div className="divide-y divide-[var(--m-hairline)] overflow-hidden rounded-[var(--m-card-radius)] bg-elevated shadow-sm">
         {children}
       </div>
       {footer && <p className="px-4 pt-1.5 text-[13px] leading-snug text-muted">{footer}</p>}
@@ -27,7 +27,7 @@ export function ListGroup({
   )
 }
 
-/** Fila de una lista agrupada: icono en baldosa, etiqueta, dato final opcional y chevron (si es navegable). */
+/** Fila de una lista agrupada: icono sin baldosa, etiqueta, dato final opcional y chevron (si es navegable). */
 export function ListRow({
   icon: Icon,
   label,
@@ -51,17 +51,11 @@ export function ListRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left active:bg-hover ${danger ? 'text-danger' : 'text-fg'}`}
+      className={`flex min-h-[52px] w-full items-center gap-3 px-4 py-2 text-left active:bg-hover ${danger ? 'text-danger' : 'text-fg'}`}
     >
-      {Icon && (
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] ${danger ? 'bg-danger/10 text-danger' : 'bg-accent-soft text-accent'}`}
-        >
-          <Icon size={18} aria-hidden="true" />
-        </span>
-      )}
+      {Icon && <Icon size={18} className={`shrink-0 ${danger ? 'text-danger' : 'text-muted'}`} aria-hidden="true" />}
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[16px] leading-6 font-medium">{label}</span>
+        <span className="truncate text-[15px] leading-5">{label}</span>
         {hint && <span className="text-[13px] leading-snug text-muted">{hint}</span>}
       </span>
       {detail && <span className="flex shrink-0 items-center gap-2 text-[14px] text-muted">{detail}</span>}

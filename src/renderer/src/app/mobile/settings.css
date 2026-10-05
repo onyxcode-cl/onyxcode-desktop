@@ -1,0 +1,45 @@
+/*
+ * Ajustes en el celular: interruptor de 44×26 (rediseño PWA T4). Todo cuelga de `[data-surface='mobile']` (lo exige
+ * desktop-unchanged.test.tsx); el marcado de Toggle no cambia (lo fija base-markup.test.tsx), así que las medidas se imponen aquí.
+ * Colores: solo tokens existentes de globals.css.
+ */
+[data-surface='mobile'] button[role='switch'] {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--fg-subtle);
+  transition: background-color 180ms ease;
+}
+[data-surface='mobile'] button[role='switch'][aria-checked='true'] {
+  background: var(--accent);
+  box-shadow: none;
+}
+[data-surface='mobile'] button[role='switch'] > span {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--fg-subtle);
+  box-shadow: none;
+  translate: 0 0;
+  transition: translate 180ms var(--ease-sheet);
+}
+[data-surface='mobile'] button[role='switch'][aria-checked='true'] > span {
+  background: var(--accent-fg);
+  translate: 18px 0;
+}
+[data-surface='mobile'] button[role='switch']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-surface='mobile'] button[role='switch'],
+  [data-surface='mobile'] button[role='switch'] > span {
+    transition: none;
+  }
+}
