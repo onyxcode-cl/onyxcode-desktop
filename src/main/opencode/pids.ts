@@ -155,6 +155,18 @@ export function isOpencodeServe(command: string): boolean {
   return /(^|[\\/"])opencode(\.exe)?"?(\s|$)/i.test(command) && /\sserve(\s|$)/.test(command)
 }
 
+/**
+ * ¿Es un `cloudflared` del modo viaje de ESTA app? (el binario en su ruta fija `…/bin/cloudflared-<versión>/cloudflared` lanzado
+ * con `tunnel … --url http://127.0.0.1:`, o el vigía `/bin/sh -c …` que lo envuelve y lleva esa misma ruta). Un PID reciclado por otro
+ * programa, o un `cloudflared` del usuario en otra ruta, no casan.
+ */
+export function isOurCloudflared(command: string): boolean {
+  if (!/\/bin\/cloudflared-[0-9A-Za-z._-]+\/cloudflared(\s|$)/.test(command)) return false
+  if (!/\s--url http:\/\/127\.0\.0\.1:\d+(\s|$)/.test(command)) return false
+  if (/\s--no-autoupdate(\s|$)/.test(command) === false) return false
+  return /(^|\s)tunnel(\s|$)/.test(command)
+}
+
 /** Descendientes de `root` en una tabla pid→ppid (sin `root`, sin `self`). */
 export function collectDescendants(pairs: Array<[number, number]>, root: number, self = process.pid): number[] {
   const children = new Map<number, number[]>()
@@ -175,6 +187,10 @@ export function collectDescendants(pairs: Array<[number, number]>, root: number,
 }
 
 /** PIDs descendientes de `root` (snapshot de `ps`; vacío si falla). */
+export function descendantsOf(root: number): number[] {
+  return descendants(root)
+}
+
 function descendants(root: number): number[] {
   let out: string
   try {
@@ -188,6 +204,22 @@ function descendants(root: number): number[] {
     if (m) pairs.push([Number(m[1]), Number(m[2])])
   }
   return collectDescendants(pairs, root)
+}
+
+/** Procesos vivos de un grupo (snapshot de `ps`; vacío si falla). */
+function groupMembers(pgid: number): Array<{ pid: number; command: string }> {
+  let out: string
+  try {
+    out = execFileSync('/bin/ps', ['-A', '-o', 'pid=,pgid=,command='], { encoding: 'utf8', timeout: 3000 })
+  } catch {
+    return []
+  }
+  const rows: Array<{ pid: number; command: string }> = []
+  for (const line of out.split('\n')) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line)
+    if (m && Number(m[2]) === pgid && Number(m[1]) !== process.pid) rows.push({ pid: Number(m[1]), command: m[3] })
+  }
+  return rows
 }
 
 function signalSafe(pid: number, signal: NodeJS.Signals): boolean {
@@ -236,7 +268,17 @@ export function killStaleServers(): number {
       continue
     }
     const info = inspect(e.pid)
-    if (!info || !isOpencodeServe(info.command)) continue
+    if (!info && e.kind === 'cloudflared' && !isWin()) {
+      // El vigía murió pero su `cloudflared` pudo quedar vivo en el mismo grupo: se mata solo si es de verdad el nuestro.
+      for (const m of groupMembers(e.pid)) {
+        if (!isOurCloudflared(m.command)) continue
+        signalSafe(m.pid, 'SIGKILL')
+        killed++
+        console.log(`[pids] cloudflared huérfano eliminado pid=${m.pid}`)
+      }
+      continue
+    }
+    if (!info || !(isOpencodeServe(info.command) || (e.kind === 'cloudflared' && isOurCloudflared(info.command)))) continue
     // Solo matar el grupo si el proceso lo encabeza (lanzado detached por la app). En Windows el árbol
     // siempre se mata con taskkill /T.
     if (isWin() || info.pgid === e.pid) killTree(e.pid, 'SIGKILL')
