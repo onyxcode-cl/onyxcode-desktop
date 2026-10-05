@@ -107,4 +107,18 @@ describe('SWAPS de la PWA (pwa/vite.full.config.ts)', () => {
     expect(startup).toContain('src/renderer/src/features/browser/ElementChip.tsx')
     expect(startup.some((f) => f.endsWith('remote/shims/no-compare.tsx'))).toBe(true)
   })
+
+  it('Tareas-Inicio del celular va en un trozo perezoso: ni la tarjeta de permiso de Tareas ni su implementación entran al arranque', () => {
+    const { files, dynamic } = walk([resolve(remote, 'main.tsx'), resolve(remote, 'boot.tsx')])
+    const startup = [...files].map(rel)
+    expect(startup).toContain('src/renderer/remote/lazy/MobileTasksHome.tsx')
+    for (const f of [
+      'src/renderer/src/features/tasks/impl/MobileTasksHome.tsx',
+      'src/renderer/src/features/tasks/impl/PermissionPrompt.tsx',
+      'src/renderer/src/features/tasks/impl/perm-actions.ts'
+    ])
+      expect(startup, `${f} entró en el arranque`).not.toContain(f)
+    // …y el envoltorio lo baja con `import()` (trozo aparte).
+    expect([...dynamic].map(rel)).toContain('src/renderer/src/features/tasks/impl/MobileTasksHome.tsx')
+  })
 })

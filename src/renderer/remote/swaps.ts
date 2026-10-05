@@ -6,7 +6,8 @@
 export const SWAPS: Record<string, Record<string, string>> = {
   'src/renderer/src/features/tasks/index.ts': {
     './impl/TasksWorkspace': 'lazy/TasksWorkspace.tsx',
-    './impl/TasksSidebar': 'lazy/TasksSidebar.tsx'
+    './impl/TasksSidebar': 'lazy/TasksSidebar.tsx',
+    './impl/MobileTasksHome': 'lazy/MobileTasksHome.tsx'
   },
   // Tarjetas de permiso SOLO de escritorio (plan ND): el celular bifurca por `isRemoteSurface()` y usa el marcado de siempre.
   'src/renderer/src/features/tasks/impl/PermissionPrompt.tsx': { './PermissionCardDesk': 'shims/no-tasks-permission-desk.tsx' },
