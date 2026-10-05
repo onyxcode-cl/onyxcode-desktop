@@ -176,9 +176,9 @@ module.exports = {
     // Grabar una skill con micro (Lote C, B.1/B.8): macOS exige el texto en Info.plist antes de
     // poder pedir estos permisos, o el proceso aborta al intentarlo.
     extendInfo: {
-      // Renombre a «Lazunox» (Fase 1): SOLO el nombre visible. NO se define CFBundleName ni CFBundleExecutable
-      // (los comprueba src/test/identity-freeze.test.ts): Electron busca sus helpers a partir del nombre del
-      // bundle y el .app, userData y el Llavero siguen llamándose «OnyxCode».
+      // Renombre a «Lazunox» (Fase 1): SOLO el nombre visible. No se define el nombre del bundle ni el del
+      // ejecutable (lo comprueba src/test/identity-freeze.test.ts): Electron busca sus helpers a partir de
+      // ellos; el .app, userData y el Llavero siguen llamándose «OnyxCode».
       CFBundleDisplayName: 'Lazunox',
       LSHasLocalizedDisplayName: true,
       NSMicrophoneUsageDescription: 'Lazunox necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
