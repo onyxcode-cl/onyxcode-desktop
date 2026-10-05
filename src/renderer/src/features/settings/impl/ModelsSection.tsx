@@ -100,7 +100,7 @@ export function ModelsSection(): React.JSX.Element {
         ))}
       </Card>
       <div className="mt-2 flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={!client || loading}>
+        <Button variant="ghost" className="mr-0 desk:h-7 desk:px-2.5" onClick={() => void refresh()} disabled={!client || loading}>
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('models.refreshList')}
         </Button>
       </div>
