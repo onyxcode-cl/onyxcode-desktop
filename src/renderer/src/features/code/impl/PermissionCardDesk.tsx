@@ -105,7 +105,6 @@ export function PermissionCardDesk({
       busy={busy}
       icon={Icon}
       title={t('code.perm.agentWants', { label })}
-      effect={description || undefined}
       onKeyDown={onKeyDown}
     >
       {file && (
@@ -127,6 +126,12 @@ export function PermissionCardDesk({
       {diff && (
         <div className="overflow-hidden rounded-ctl bg-code ring-1 ring-inset ring-border">
           <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80" />
+        </div>
+      )}
+      {description && (
+        <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
+          <p className="text-caption font-medium text-subtle">{t('code.perm.aiDesc')}</p>
+          <p className="mt-0.5 text-ui text-muted">{description}</p>
         </div>
       )}
       {root && (

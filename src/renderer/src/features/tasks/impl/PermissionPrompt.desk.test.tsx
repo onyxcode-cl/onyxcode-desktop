@@ -38,7 +38,8 @@ vi.mock('./store', () => {
 })
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
-import { PermissionCardDesk } from './PermissionCardDesk'
+import { ApprovalBarDesk, PermissionCardDesk } from './PermissionCardDesk'
+import { NetworkBlockedCards } from './NetworkBlocked'
 
 const DIFF =
   'Index: /w/a.txt\n===================================================================\n--- /w/a.txt\n+++ /w/a.txt\n@@ -1,2 +1,2 @@\n uno\n-dos\n+DOS\n'
@@ -147,5 +148,46 @@ describe('tarjeta de permiso de escritorio (Tareas)', () => {
     expect(html).toContain('<table')
     expect(html).toContain('DOS')
     expect(html).toContain('/w/a.txt')
+  })
+})
+
+const bar = (r: PermissionRequest): string => {
+  mock.state = base
+  return renderToStaticMarkup(<ApprovalBarDesk request={r} more={0} />)
+}
+
+describe('barra compacta de escritorio (decisión ND #1)', () => {
+  it('comando corto y no destructivo: Rechazar, Permitir siempre y Permitir una vez (este último desarmado)', () => {
+    const html = bar(req())
+    expect(html).toContain('>Rechazar<')
+    expect(html).toContain('>Permitir una vez<')
+    expect(html).toMatch(/disabled=""[^>]*>Permitir una vez</)
+  })
+
+  it.each([
+    ['destructivo', req({ metadata: { command: 'rm -rf build' }, patterns: ['rm -rf build'], always: [] })],
+    ['multilínea', req({ metadata: { command: 'echo a\necho b' } })],
+    ['largo (>120)', req({ metadata: { command: `echo ${'x'.repeat(130)}` } })],
+    ['con caracteres ocultos', req({ metadata: { command: 'echo hola\u202e' } })]
+  ])('%s: solo «Revisar» y «Rechazar», sin ningún botón Permitir', (_n, r) => {
+    const html = bar(r)
+    expect(html).toContain('>Revisar<')
+    expect(html).toContain('>Rechazar<')
+    expect(html).not.toContain('Permitir')
+  })
+})
+
+describe('red bloqueada en escritorio (decisión ND #2)', () => {
+  it('orden: Mantener bloqueado, Permitir siempre y, a la derecha, Permitir esta vez; los dos de permitir desarmados', () => {
+    mock.state = { networkBlocked: { t1: [{ host: 'ejemplo.com', resolved: false }] } }
+    const html = renderToStaticMarkup(<NetworkBlockedCards taskId="t1" />)
+    const keep = html.indexOf('Mantener bloqueado')
+    const always = html.indexOf('Permitir siempre')
+    const once = html.indexOf('Permitir esta vez')
+    expect(keep).toBeGreaterThan(-1)
+    expect(keep).toBeLessThan(always)
+    expect(always).toBeLessThan(once)
+    expect(html).toMatch(/disabled=""[^>]*>[^<]*Permitir siempre/)
+    expect(html).toMatch(/disabled=""[^>]*>[^<]*Permitir esta vez/)
   })
 })

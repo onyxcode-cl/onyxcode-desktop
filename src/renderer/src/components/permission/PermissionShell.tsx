@@ -4,11 +4,11 @@
  * cabecera (tile + título + consecuencia), comando literal en `bg-code`, alcance y acciones en posiciones
  * fijas. El teclado seguro lo resuelve `usePermGuard` (lib/perm-guard).
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ShieldAlert, type LucideIcon } from 'lucide-react'
 import { isMacPlatform } from '../../lib/platform'
-import { decidePermKey, initialArmState, armState, type ArmState } from '../../lib/perm-guard'
+import { ARM_MS, decidePermKey, initialArmState, armState, type ArmState } from '../../lib/perm-guard'
 import { Button } from '../Button'
 
 export const permTitleId = (id: string): string => `perm-title-${id}`
@@ -208,11 +208,16 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
   useEffect(() => {
     const el = document.getElementById(domId)
     if (!el || typeof IntersectionObserver === 'undefined') {
+      // Sin observador: el clic se arma por tiempo; el teclado (⌘↵) queda desactivado (`observing` = false).
       observingRef.current = false
       visibleRef.current = false
       armedRef.current = false
       setArmed(false)
-      return
+      const timer = setTimeout(() => {
+        armedRef.current = true
+        setArmed(true)
+      }, ARM_MS)
+      return () => clearTimeout(timer)
     }
     observingRef.current = true
     const root = scrollParent(el)
@@ -240,6 +245,18 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
       clearInterval(timer)
       observingRef.current = false
       visibleRef.current = false
+    }
+  }, [domId])
+
+  // Al resolverse (la tarjeta se desmonta), si el foco estaba en ella pasa al CONTENEDOR de la siguiente pendiente
+  // (nunca a un botón Permitir) o al compositor si no queda ninguna. Layout effect: corre antes de quitar el DOM.
+  useLayoutEffect(() => {
+    return () => {
+      const el = document.getElementById(domId)
+      if (!el || !el.contains(document.activeElement)) return
+      const next = [...document.querySelectorAll<HTMLElement>('[role="alertdialog"][id^="perm-"]')].find((n) => n.id !== domId)
+      const target = next ?? document.querySelector<HTMLElement>('[data-kb-composer], [data-code-composer]')
+      target?.focus({ preventScroll: true })
     }
   }, [domId])
 

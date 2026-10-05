@@ -76,4 +76,11 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     expect(html).toContain('max-h-96')
     expect(html).toContain('El comando sigue: 300 líneas en total')
   })
+
+  it('la descripción del modelo va aparte y marcada como no verificada (nunca como consecuencia)', () => {
+    const html = render(perm({ metadata: { command: 'ls', description: 'Solo lista archivos' } }))
+    expect(html).toContain('Descripción del agente (no verificada)')
+    expect(html).toContain('Solo lista archivos')
+    expect(html).not.toContain('aria-describedby')
+  })
 })

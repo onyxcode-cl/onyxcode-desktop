@@ -117,8 +117,12 @@ export function armState(prev: ArmState, input: ArmInput): ArmState {
     }
     return prev
   }
-  if (input.now - prev.since >= ARM_MS) {
-    return { armed: true, since: prev.since, y: input.y }
+  // Aún sin armar: el ancla `y` se conserva; si la tarjeta se mueve >24 px la cuenta vuelve a empezar.
+  if (Math.abs(input.y - prev.y) > MAX_DRIFT_PX) {
+    return { armed: false, since: input.now, y: input.y }
   }
-  return { armed: false, since: prev.since, y: input.y }
+  if (input.now - prev.since >= ARM_MS) {
+    return { armed: true, since: prev.since, y: prev.y }
+  }
+  return prev
 }

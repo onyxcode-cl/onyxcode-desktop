@@ -42,18 +42,6 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
   const mac = isMacPlatform()
   const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => answer(kind), busy })
 
-  // Al resolverse (la tarjeta se desmonta), el foco pasa al contenedor de la siguiente tarjeta pendiente.
-  useEffect(() => {
-    return () => {
-      const el = document.getElementById(`perm-${request.id}`)
-      if (!el || !el.contains(document.activeElement)) return
-      const next = [...document.querySelectorAll<HTMLElement>('[role="alertdialog"][id^="perm-"]')].find(
-        (n) => n.id !== `perm-${request.id}`
-      )
-      next?.focus({ preventScroll: true })
-    }
-  }, [request.id])
-
   const showDiff = !!d.diff && hasDiffChanges(d.diff)
   const isBash = request.permission === 'bash'
 

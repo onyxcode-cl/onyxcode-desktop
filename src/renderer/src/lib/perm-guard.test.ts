@@ -117,6 +117,15 @@ describe('armState: 600 ms de visibilidad continua', () => {
     expect(armState(s, { visible: true, now: ARM_MS + 10, y: MAX_DRIFT_PX + 1 }).armed).toBe(false)
   })
 
+  it('un desplazamiento >24 px antes de armar reinicia la cuenta (no basta moverse poco a poco)', () => {
+    let s = initialArmState(0, 0)
+    s = armState(s, { visible: true, now: 300, y: MAX_DRIFT_PX + 1 })
+    expect(s.armed).toBe(false)
+    expect(s.since).toBe(300)
+    expect(armState(s, { visible: true, now: 300 + ARM_MS - 1, y: MAX_DRIFT_PX + 1 }).armed).toBe(false)
+    expect(armState(s, { visible: true, now: 300 + ARM_MS, y: MAX_DRIFT_PX + 1 }).armed).toBe(true)
+  })
+
   it('sin observador el teclado no arma (⌘↵ desactivado) pero el clic arma por tiempo', () => {
     // Teclado: decidePermKey con observing=false nunca devuelve 'once'.
     expect(decidePermKey(ev({ key: 'Enter', metaKey: true }), ctx({ observing: false }))).toBe('none')

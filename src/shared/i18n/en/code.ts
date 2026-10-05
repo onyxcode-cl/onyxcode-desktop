@@ -36,6 +36,7 @@ export const code = {
   'code.perm.alwaysTitle': 'Don’t ask again for: {patterns}',
   'code.perm.reject': 'Deny',
   'code.perm.agentWants': 'The agent wants to {label}',
+  'code.perm.aiDesc': 'Agent’s description (unverified)',
   'code.perm.noSandbox': 'No sandbox · {root}',
   'code.perm.cmdLong': 'The command continues: {n} lines in total',
   'code.perm.kbdOnce': '⌘↵',
