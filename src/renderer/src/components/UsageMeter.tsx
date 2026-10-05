@@ -152,10 +152,12 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
   }, [open, client])
 
   // Escritorio: sin ningún turno del asistente no hay nada que medir (el aro vacío se leía como «cargando»).
-  if (!info || (!isRemoteSurface() && session.turns === 0)) return null
+  if (!info || (!isRemoteSurface() && (session.turns === 0 || session.context === 0))) return null
 
   const limit = info.limit.context
   const pct = limit > 0 ? Math.min(100, Math.round((session.context / limit) * 100)) : 0
+  // Escritorio: un 0 % redondeado tampoco es uso que mostrar.
+  if (!isRemoteSurface() && pct === 0) return null
 
   const openDetail = (): void => {
     setOpen(false)

@@ -1,5 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Check, ChevronLeft, Ellipsis, FileCode2, GitCompare, LayoutGrid, Loader2, MoreHorizontal, SquarePen, WifiOff } from 'lucide-react'
+import {
+  Check,
+  ChevronLeft,
+  Ellipsis,
+  FileCode2,
+  GitCompare,
+  LayoutGrid,
+  Loader2,
+  MoreHorizontal,
+  SquarePen,
+  Users,
+  WifiOff
+} from 'lucide-react'
 import { modeAvailable } from '@shared/platform-caps'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeId } from '@shared/types'
@@ -157,7 +169,8 @@ function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
     ...LIST_MODES.filter((m) => modeAvailable(m, currentPlatform())).map((m) => ({
       id: m as MobileTab,
       label: MODE_LABELS[m],
-      icon: MODES_BY_ID[m].icon
+      // En el celular Tareas conserva su icono original (escritorio usa ListChecks).
+      icon: m === 'tasks' ? Users : MODES_BY_ID[m].icon
     })),
     { id: 'more', label: t('mobile.tab.more'), icon: Ellipsis }
   ]

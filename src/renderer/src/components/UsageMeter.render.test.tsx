@@ -41,10 +41,13 @@ describe('UsageMeter', () => {
     expect(h).toContain('aria-label=')
     expect(h).toContain('stroke-linecap="butt"')
   })
-  it('escritorio con 0 %: el arco no existe (sin mínimo forzado)', () => {
+  it('escritorio con turnos pero sin tokens ni uso real: no pinta nada', () => {
     surface('darwin')
-    const h = renderToStaticMarkup(<UsageMeter messages={[assistant(0)]} model={model} />)
-    expect(h).toContain('stroke-dasharray="0 ')
+    expect(renderToStaticMarkup(<UsageMeter messages={[assistant(0)]} model={model} />)).toBe('')
+  })
+  it('escritorio con uso que redondea a 0 %: no pinta nada', () => {
+    surface('darwin')
+    expect(renderToStaticMarkup(<UsageMeter messages={[assistant(2)]} model={model} />)).toBe('')
   })
   it('celular: se conserva el anillo con arco mínimo redondo y sin porcentaje a un lado', () => {
     surface('remote')

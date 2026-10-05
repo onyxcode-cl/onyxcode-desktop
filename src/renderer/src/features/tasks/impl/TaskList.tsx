@@ -490,12 +490,12 @@ export function TaskList(): React.JSX.Element {
       </div>
       <div className="mb-1 flex items-center gap-1.5">
         <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-subtle">
-          <span className="shrink-0">{tr('tasks.list.groupBy')}</span>
+          <span className="shrink-0 desk:sr-only">{tr('tasks.list.groupBy')}</span>
           <select
             value={groupMode}
             disabled={showArchived || searching}
             onChange={(e) => changeGroupMode(e.target.value as GroupMode)}
-            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50 desk:pr-8"
+            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50 desk:pr-8 desk:pl-2.5"
           >
             <option value="date">{tr('tasks.list.byDate')}</option>
             <option value="group">{tr('tasks.list.byGroup')}</option>

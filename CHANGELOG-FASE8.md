@@ -1119,3 +1119,9 @@ Todo bajo `desk:` / `app/desktop/conversation.css` (`:root[data-shell='desktop']
 - **Verificación**: vitest completo 3723 pasan/19 omitidas (305 archivos), typecheck, lint (0 errores), format:check, build y build:pwa + size:pwa en verde; sin snapshots tocados.
 - **Capturas**: escritorio 50 capturas (claro y oscuro) y celular 32 contra la base de F1: 24 idénticas; las 8 que difieren son textos de hora relativa («ayer»/«hace 23 h») y el icono de la pestaña Tareas (ahora `ListChecks`, decisión D16 del dueño; afecta también a la barra inferior del celular).
 - **Defectos**: cabeceras de Code, Tareas, Comparar y Ajustes sin `--header-inset` (el botón de la barra colapsada pisaba el título): arreglado con `desk:pl-[calc(var(--header-inset,0px)+N px)]`. Sin arreglar (menores): selector «Agrupar: por fecha» de Tareas recortado en la barra lateral; `UsageMeter` muestra «0 %» junto a Detener en Tareas (datos falsos sin tokens; con turnos reales y contexto nulo se vería igual); la cabecera de Chat centrada sigue sin inset (solo roza con ventanas muy estrechas).
+
+## F8-B95 — Cierre del rediseño de escritorio
+- **Selector «Agrupar: por fecha»** (Tareas): en escritorio la etiqueta «Agrupar:» pasa a `desk:sr-only` (sigue siendo la etiqueta accesible) y el selector gana `desk:pl-2.5`; «por fecha» se lee entera junto a «Archivadas».
+- **UsageMeter**: en escritorio no se pinta sin turnos, sin contexto o con un uso que redondea a 0 % (ya no hay aro vacío con «0 %» en Chat/Tareas); el celular no cambia. Prueba actualizada.
+- **Icono de Tareas en el celular**: `MobileShell` vuelve a `Users` (escritorio sigue con `ListChecks`).
+- **Verificación**: vitest renderer+test 1191 pasan, typecheck, lint (0 errores), format:check, build:pwa + size:pwa en verde (arranque 285,4 KB gz; budget.json intacto); captura tareas-lista revisada.
