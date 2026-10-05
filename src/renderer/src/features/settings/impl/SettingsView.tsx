@@ -20,6 +20,7 @@ import { t } from '@shared/i18n'
 import { MODE_LABELS, UI_LABELS } from '@shared/labels'
 import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
+import { ConnectionCard } from '../../../app/mobile/ConnectionCard'
 import { ListGroup, ListRow } from '../../../components/mobile/List'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
@@ -139,8 +140,9 @@ function MobileSettings({ initial, onOpen }: { initial?: SettingsSectionId; onOp
     )
   }
   return (
-    <div className="px-[var(--m-gutter)] py-4" data-m="settings-list">
-      <ListGroup footer={t('mobile.settings.moreOnMac')}>
+    <div className="flex flex-col gap-6 px-[var(--m-gutter)] py-4" data-m="settings-list">
+      <ConnectionCard />
+      <ListGroup title={t('mobile.more.group.general')} footer={t('mobile.settings.moreOnMac')}>
         {sections.map(({ id, label, icon }) => (
           <ListRow key={id} icon={icon} label={label()} onClick={() => onOpen(id)} />
         ))}
