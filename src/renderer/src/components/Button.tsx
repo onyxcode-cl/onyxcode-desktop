@@ -5,7 +5,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'subt
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 
 // Las clases con prefijo desk son la variante de escritorio (alturas 24/28/32/36, radio 8, texto 13, solo el primario se encoge al presionar);
-// el celular conserva exactamente las clases de siempre. Las variantes `subtle` y `link` y los tamaños `xs`/`lg` son nuevos.
+// el celular conserva exactamente las clases de siempre. Las variantes `subtle` y `link` y los tamaños `xs`/`lg` son nuevos; `link` es texto en línea (hereda el tamaño de letra, sin altura ni relleno).
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-accent-fg shadow-xs hover:bg-accent-hover desk:active:scale-[0.97] desk:disabled:shadow-none',
   secondary:
@@ -21,14 +21,6 @@ const SIZES: Record<ButtonSize, string> = {
   sm: 'px-2.5 py-1 text-[13px] gap-1.5 desk:h-7 desk:py-0 desk:text-ui desk:rounded-ctl',
   md: 'px-3 py-1.5 text-sm gap-2 desk:h-8 desk:py-0 desk:text-ui desk:rounded-ctl',
   lg: 'px-4 py-2 text-sm gap-2 desk:h-9 desk:py-0 desk:text-ui desk:rounded-ctl'
-}
-
-// `link` es texto en línea: solo toma el tamaño de letra, sin altura fija ni relleno de botón.
-const LINK_SIZES: Record<ButtonSize, string> = {
-  xs: 'text-xs desk:text-meta',
-  sm: 'text-[13px] desk:text-ui',
-  md: 'text-sm desk:text-ui',
-  lg: 'text-sm desk:text-ui'
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -50,7 +42,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`no-drag inline-flex items-center justify-center rounded-lg font-medium transition-[background-color,border-color,color,filter,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${(variant === 'link' ? LINK_SIZES : SIZES)[size]} ${VARIANTS[variant]} ${className}`}
+      className={`no-drag inline-flex items-center justify-center rounded-lg font-medium transition-[background-color,border-color,color,filter,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${variant === 'link' ? 'gap-1' : SIZES[size]} ${VARIANTS[variant]} ${className}`}
       disabled={disabled || loading}
       {...(loading ? { 'aria-busy': true } : {})}
       {...rest}

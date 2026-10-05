@@ -39,7 +39,7 @@ export function IconButton({ label, children, active, size = 'md', className = '
       type="button"
       title={tip ? undefined : label}
       aria-label={label}
-      className={`no-drag inline-flex shrink-0 items-center justify-center rounded-lg text-muted transition-[background-color,color,transform] duration-150 hover:bg-hover hover:text-fg active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent desk:active:scale-100 desk:disabled:cursor-not-allowed desk:disabled:opacity-50 ${SIZES[size]} ${active ? 'bg-active text-fg' : ''} ${className}`}
+      className={`no-drag inline-flex shrink-0 items-center justify-center rounded-lg text-muted transition-[background-color,color,transform] duration-150 hover:bg-hover hover:text-fg active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent desk:active:scale-100 desk:disabled:opacity-50 ${SIZES[size]} ${active ? 'bg-active text-fg' : ''} ${className}`}
       {...rest}
     >
       {children}
