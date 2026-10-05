@@ -1,5 +1,5 @@
 /** Modo Rutinas: tareas programadas que lanzan prompts en Chat, Tareas o Code. */
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,
   CalendarClock,
@@ -137,10 +137,14 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
     // (un interruptor dentro de `role="button"` sería un control anidado).
     <div
       onClick={select}
-      className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:shadow-sm'}`}
+      className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition desk:flex-row desk:items-center desk:gap-4 desk:py-3 ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:shadow-sm'}`}
     >
-      <div className="flex items-start gap-3">
-        <button type="button" aria-pressed={selected} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left">
+      <div className="flex items-start gap-3 desk:min-w-0 desk:flex-1 desk:items-center">
+        <button
+          type="button"
+          aria-pressed={selected}
+          className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left desk:items-center"
+        >
           <div
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
           >
@@ -150,6 +154,11 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
             <div className={`truncate font-medium ${r.enabled ? '' : 'text-muted'}`}>{r.name}</div>
             <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
               <Clock size={11} className="shrink-0" /> <span className="truncate">{scheduleText(r.schedule)}</span>
+              <span className="hidden truncate desk:inline">
+                {' · '}
+                {MODE_META[r.mode].label}
+                {r.folder ? ` · ${baseName(r.folder)}` : ''}
+              </span>
             </div>
             {r.mode === 'tasks' && !platformCaps().tasks && (
               <div className="mt-1 text-[11px] font-medium text-warning">{t('platform.win.unavailable.routineBadge')}</div>
@@ -167,7 +176,7 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
           label={r.enabled ? t('routines.card.deactivate') : t('routines.card.activate')}
         />
       </div>
-      <div className="flex items-center gap-2 border-t border-border pt-3 text-xs">
+      <div className="flex items-center gap-2 border-t border-border pt-3 text-xs desk:shrink-0 desk:border-t-0 desk:pt-0">
         {r.running ? (
           waiting ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning">
@@ -489,6 +498,38 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
 
 const TEMPLATE_ICON: Record<string, LucideIcon> = { news: Newspaper, downloads: FolderOpen, inbox: FileText, repo: Terminal }
 
+/** Plantillas que se ofrecen en esta plataforma (Tareas solo donde existe). */
+function availableTemplates(): typeof ROUTINE_TEMPLATES {
+  return ROUTINE_TEMPLATES.filter((tpl) => tpl.input.mode !== 'tasks' || platformCaps().tasks)
+}
+
+/** Tarjeta de plantilla: abre el editor prellenado (estado vacío e «Ideas para empezar»). */
+function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): React.JSX.Element {
+  const Icon = TEMPLATE_ICON[tpl.id] ?? CalendarClock
+  const ModeIcon = MODE_META[tpl.input.mode].icon
+  return (
+    <button
+      type="button"
+      onClick={() => openEditor({ ...tpl.input, model: resolveModelForMode(tpl.input.mode), enabled: true }, tpl.needs ?? null)}
+      className="group flex flex-col gap-2 rounded-xl border border-border bg-elevated p-4 text-left transition hover:-translate-y-px hover:border-border-strong hover:shadow-md"
+    >
+      <div className="flex items-center justify-between">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-hover text-muted transition group-hover:bg-accent-soft group-hover:text-accent">
+          <Icon size={16} />
+        </span>
+        <span className="flex items-center gap-1 text-[11px] text-subtle">
+          <ModeIcon size={11} /> {MODE_META[tpl.input.mode].label}
+        </span>
+      </div>
+      <div className="text-sm font-medium">{tpl.title}</div>
+      <div className="text-xs leading-relaxed text-muted">{tpl.description}</div>
+      <div className="mt-auto flex items-center gap-1 pt-1 text-[11px] text-subtle">
+        <Clock size={11} /> {scheduleText(tpl.input.schedule)}
+      </div>
+    </button>
+  )
+}
+
 function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
   const t = useT()
   return (
@@ -499,32 +540,9 @@ function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
       <h2 className="mt-4 text-xl font-semibold tracking-tight">{t('routines.empty.title')}</h2>
       <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">{t('routines.empty.desc')}</p>
       <div className="mt-8 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
-        {ROUTINE_TEMPLATES.filter((tpl) => tpl.input.mode !== 'tasks' || platformCaps().tasks).map((tpl) => {
-          const Icon = TEMPLATE_ICON[tpl.id] ?? CalendarClock
-          const ModeIcon = MODE_META[tpl.input.mode].icon
-          return (
-            <button
-              key={tpl.id}
-              type="button"
-              onClick={() => openEditor({ ...tpl.input, model: resolveModelForMode(tpl.input.mode), enabled: true }, tpl.needs ?? null)}
-              className="group flex flex-col gap-2 rounded-xl border border-border bg-elevated p-4 transition hover:-translate-y-px hover:border-border-strong hover:shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-hover text-muted transition group-hover:bg-accent-soft group-hover:text-accent">
-                  <Icon size={16} />
-                </span>
-                <span className="flex items-center gap-1 text-[11px] text-subtle">
-                  <ModeIcon size={11} /> {MODE_META[tpl.input.mode].label}
-                </span>
-              </div>
-              <div className="text-sm font-medium">{tpl.title}</div>
-              <div className="text-xs leading-relaxed text-muted">{tpl.description}</div>
-              <div className="mt-auto flex items-center gap-1 pt-1 text-[11px] text-subtle">
-                <Clock size={11} /> {scheduleText(tpl.input.schedule)}
-              </div>
-            </button>
-          )
-        })}
+        {availableTemplates().map((tpl) => (
+          <TemplateCard key={tpl.id} tpl={tpl} />
+        ))}
       </div>
       <Button variant="secondary" className="mt-6" onClick={onCreate}>
         <Plus size={15} /> {t('routines.empty.fromScratch')}
@@ -566,6 +584,8 @@ export function RoutinesView(): React.JSX.Element {
     [routines]
   )
   const activeCount = routines.filter((r) => r.enabled).length
+  const nextRuns = routines.filter((r) => r.enabled && r.nextRun).map((r) => r.nextRun as number)
+  const nextAll = nextRuns.length > 0 ? Math.min(...nextRuns) : null
 
   const create = (): void =>
     openEditor({
@@ -584,6 +604,9 @@ export function RoutinesView(): React.JSX.Element {
         <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">
           {t('routines.view.active', { count: activeCount })}
         </span>
+      )}
+      {nextAll && (
+        <span className="hidden text-[11px] text-muted desk:inline">{t('routines.view.nextAll', { when: untilText(nextAll, now) })}</span>
       )}
       {loading && <Loader2 size={14} className="animate-spin text-muted" />}
     </>
@@ -649,17 +672,40 @@ export function RoutinesView(): React.JSX.Element {
           {routines.length === 0 && !loading ? (
             <EmptyState onCreate={create} />
           ) : (
-            <div className={`mx-auto grid max-w-5xl grid-cols-1 gap-3 ${selected ? 'xl:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
-              {sorted.map((r) => (
-                <RoutineCard key={r.id} r={r} selected={r.id === selectedId} now={r.running ? fastNow : now} />
-              ))}
-            </div>
+            <>
+              <div
+                className={`mx-auto grid max-w-5xl grid-cols-1 gap-3 desk:flex desk:max-w-[760px] desk:flex-col desk:gap-2 ${selected ? 'xl:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-3'}`}
+              >
+                {sorted.map((r, i) => (
+                  <Fragment key={r.id}>
+                    {(i === 0 || sorted[i - 1].enabled !== r.enabled) && (
+                      <div className="hidden px-1 pt-3 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:block">
+                        {r.enabled ? t('routines.group.active') : t('routines.group.paused')}
+                      </div>
+                    )}
+                    <RoutineCard r={r} selected={r.id === selectedId} now={r.running ? fastNow : now} />
+                  </Fragment>
+                ))}
+              </div>
+              {routines.length < 6 && (
+                <section aria-label={t('routines.ideas.title')} className="mx-auto mt-8 hidden max-w-[760px] desk:block">
+                  <div className="px-1 pb-2 text-[11.5px] font-medium text-subtle">{t('routines.ideas.title')}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableTemplates()
+                      .slice(0, 4)
+                      .map((tpl) => (
+                        <TemplateCard key={tpl.id} tpl={tpl} />
+                      ))}
+                  </div>
+                </section>
+              )}
+            </>
           )}
         </div>
       </section>
 
       {selected && (
-        <aside className="w-[420px] shrink-0 border-l border-border bg-bg">
+        <aside className="w-[420px] shrink-0 border-l border-border bg-bg desk:w-[400px] desk:xl:w-[440px]">
           <RoutineDetail key={selected.id} r={selected} now={fastNow} />
         </aside>
       )}
