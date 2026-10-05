@@ -17,6 +17,15 @@
   --m-tap: 44px; /* área táctil mínima */
   --m-icon-btn: 36px; /* círculo visible de los botones del compositor */
   --m-composer-radius: 24px;
+  /* Rediseño PWA (T0): medidas nuevas, solo añadidas */
+  --m-row-list: 44px; /* fila de lista del panel y de las listas de modo */
+  --m-row-setting: 52px; /* fila de Ajustes */
+  --m-drawer: 320px; /* ancho del panel lateral */
+  --m-tab-item: 52px; /* alto del icono de la barra inferior */
+  --m-pill-w: 52px; /* píldora activa de la barra inferior */
+  --m-pill-h: 28px;
+  --m-card-radius: 12px; /* tarjetas del diseño nuevo (aviso, permiso, En curso) */
+  --m-btn-radius: 10px; /* botones de 44 de las tarjetas */
   /* Ritmo y tipografía de la conversación */
   --m-turn-gap: 24px;
   --m-block-gap: 10px;
