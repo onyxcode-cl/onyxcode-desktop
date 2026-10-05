@@ -1,10 +1,33 @@
 import type { ReactNode } from 'react'
 
-/** Cabecera de página de 48 px (zona arrastrable): título, metadatos opcionales y acciones a la derecha. */
-export function PageHeader({ title, meta, actions }: { title: string; meta?: ReactNode; actions?: ReactNode }): React.JSX.Element {
+/**
+ * Cabecera de 48 px (zona arrastrable): título, metadatos opcionales y acciones a la derecha.
+ * - `variant="page"` (por defecto): páginas (Rutinas, Ajustes), margen de 24 px alineado con su contenido.
+ * - `variant="workspace"`: vistas de trabajo (Chat, Code, Tareas, Comparar), margen de 16 px.
+ * En escritorio (variante `desk`) suma `--header-inset` (App.tsx lo publica cuando la barra lateral está oculta) para no quedar bajo el
+ * botón flotante ni los semáforos de macOS, y usa un único borde. En el celular el marcado y las clases base no cambian.
+ */
+export function PageHeader({
+  title,
+  meta,
+  actions,
+  leading,
+  variant = 'page'
+}: {
+  title: string
+  meta?: ReactNode
+  actions?: ReactNode
+  leading?: ReactNode
+  variant?: 'page' | 'workspace'
+}): React.JSX.Element {
+  const inset =
+    variant === 'workspace'
+      ? 'gap-3 desk:pr-4 desk:pl-[calc(var(--header-inset,0px)+16px)]'
+      : 'gap-3 desk:pl-[calc(var(--header-inset,0px)+24px)]'
   return (
-    <header className="drag flex h-12 shrink-0 items-center gap-3 border-b border-border/70 px-6">
-      <h1 className="truncate text-[14px] font-semibold tracking-tight">{title}</h1>
+    <header className={`drag flex h-12 shrink-0 items-center border-b border-border/70 px-6 desk:border-border ${inset}`}>
+      {leading}
+      <h1 className="truncate text-[14px] font-semibold tracking-tight desk:leading-5">{title}</h1>
       {meta}
       {actions && <div className="no-drag ml-auto flex items-center gap-2">{actions}</div>}
     </header>

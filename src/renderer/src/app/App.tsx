@@ -172,14 +172,19 @@ function DesktopApp(): React.JSX.Element {
         <CommandPalette />
       </ErrorBoundary>
       <div
-        className={`h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
+        className={`h-full shrink-0 overflow-hidden transition-[width] duration-[240ms] ease-[var(--ease-out)] motion-reduce:transition-none ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
         inert={collapsed}
       >
         <ErrorBoundary label={t('app.boundary.sidebar')}>
           <Sidebar />
         </ErrorBoundary>
       </div>
-      <main className="relative flex min-w-0 flex-1 flex-col">
+      {/* `--header-inset`: hueco que las cabeceras reservan a la izquierda cuando la barra lateral está oculta (semáforos de macOS 80 px
+          + botón de 32 px; en Windows 8 + 32 + 4). Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
+      <main
+        className="relative flex min-w-0 flex-1 flex-col"
+        style={{ '--header-inset': collapsed ? (isMacPlatform() ? '112px' : '44px') : '0px' } as React.CSSProperties}
+      >
         {collapsed && (
           <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>
             <IconButton label={t('app.sidebar.show', { hint: hintSuffix(sidebarHint) })} onClick={toggleSidebar}>

@@ -11,7 +11,7 @@ export function ServerBanner(): React.JSX.Element | null {
   return (
     <div
       role={failed ? 'alert' : 'status'}
-      className={`relative flex animate-fade-in items-center gap-2.5 overflow-hidden border-b px-4 py-2 text-xs ${failed ? 'border-danger/25 bg-danger/8 text-danger' : 'border-border bg-accent-soft/50 text-muted'}`}
+      className={`relative flex animate-fade-in items-center gap-2.5 overflow-hidden border-b px-4 py-2 text-xs desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag] ${failed ? 'border-danger/25 bg-danger/8 text-danger' : 'border-border bg-accent-soft/50 text-muted'}`}
     >
       {!failed && (
         <span
@@ -30,7 +30,7 @@ export function ServerBanner(): React.JSX.Element | null {
         <button
           type="button"
           onClick={() => void restart()}
-          className="flex shrink-0 items-center gap-1 rounded-md border border-danger/30 bg-elevated px-2 py-0.5 font-medium transition-colors hover:bg-danger/10"
+          className="flex shrink-0 items-center gap-1 rounded-md border border-danger/30 bg-elevated px-2 py-0.5 font-medium transition-colors hover:bg-danger/10 desk:h-7 desk:[-webkit-app-region:no-drag]"
         >
           <RotateCw size={12} /> {t('app.banner.retry')}
         </button>

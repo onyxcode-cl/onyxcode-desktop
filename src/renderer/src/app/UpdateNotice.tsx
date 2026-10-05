@@ -24,7 +24,7 @@ export function UpdateNotice(): React.JSX.Element | null {
       role="status"
       data-testid="update-notice"
       data-phase={view.phase}
-      className="flex animate-fade-in items-center gap-2.5 border-b border-accent/25 bg-accent-soft px-4 py-2 text-xs text-fg"
+      className="drag flex min-h-9 animate-fade-in items-center gap-2.5 border-b border-accent/25 bg-accent-soft py-2 pr-4 pl-[calc(var(--header-inset,0px)+16px)] text-meta text-fg"
     >
       <Icon size={14} className={`shrink-0 text-accent ${view.progress ? 'animate-spin' : ''}`} />
       <span className="min-w-0 flex-1 truncate" data-testid="update-notice-text">
@@ -38,7 +38,7 @@ export function UpdateNotice(): React.JSX.Element | null {
       )}
       {view.actions.map((a) =>
         a.primary ? (
-          <Button key={a.id} size="sm" variant="primary" onClick={() => act(a.id)} className="shrink-0 !py-0.5 !text-xs">
+          <Button key={a.id} size="sm" variant="primary" onClick={() => act(a.id)} className="shrink-0">
             {a.label}
           </Button>
         ) : (
@@ -46,7 +46,7 @@ export function UpdateNotice(): React.JSX.Element | null {
             key={a.id}
             type="button"
             onClick={() => act(a.id)}
-            className={`no-drag shrink-0 rounded-md px-2 py-0.5 transition-colors hover:bg-accent/15 ${
+            className={`no-drag h-7 shrink-0 rounded-md px-2 transition-colors hover:bg-accent/15 ${
               a.id === 'download-manual' ? 'font-medium text-accent underline-offset-2 hover:underline' : ''
             }`}
           >
@@ -59,7 +59,7 @@ export function UpdateNotice(): React.JSX.Element | null {
           type="button"
           aria-label={t('notices.close')}
           onClick={() => act('later')}
-          className="flex shrink-0 items-center rounded-md p-0.5 transition-colors hover:bg-accent/15"
+          className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent/15"
         >
           <X size={13} />
         </button>
