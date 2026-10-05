@@ -251,10 +251,13 @@ export function TaskRow({
   // 1b (solo escritorio): el estado se lee a la derecha. «Terminada», «plan listo» e «interrumpida» conservan su icono, pero a la
   // derecha; el resto se dice con texto o chip («Aprobar», «Trabajando», «Falló») y el icono de la izquierda se oculta.
   const iconRight = status === 'done' || status === 'plan_ready' || status === 'interrupted'
+  // Celular (rediseño PWA T3): filas de 44 px y el estado como chip («Aprobar» / «Trabajando»); el escritorio no cambia.
+  const remote = isRemoteSurface()
+  const chipRemote = remote && (waitsUser || working)
   const iconDesk = iconRight ? ' desk:order-1 desk:group-hover:hidden' : ' desk:hidden'
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:relative desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:pl-[30px] desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:pl-[30px] desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
       {...mob('task-row')}
     >
       <span className={`shrink-0${iconDesk}`}>
@@ -270,7 +273,10 @@ export function TaskRow({
           {pinned && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
           {task.title || t('tasks.list.untitled')}
         </div>
-        <div data-quiet={quiet || undefined} className={`truncate text-[11px] desk:text-meta desk:hidden ${statusTextClass(status)}`}>
+        <div
+          data-quiet={quiet || undefined}
+          className={`truncate text-[11px] desk:text-meta desk:hidden ${statusTextClass(status)}${chipRemote ? ' hidden' : ''}`}
+        >
           {status === 'archived'
             ? t('tasks.list.archivedAgo', { when: relTime(task.time.archived ?? task.time.updated) })
             : status === 'running' ||
@@ -292,12 +298,16 @@ export function TaskRow({
         </span>
       )}
       {waitsUser && (
-        <span className="hidden shrink-0 desk:inline-flex desk:h-5 desk:items-center desk:rounded-full desk:border desk:border-warning/45 desk:bg-warning/10 desk:px-2 desk:text-meta desk:font-medium desk:text-warning desk:group-hover:hidden">
+        <span
+          className={`${remote ? 'inline-flex h-6 items-center rounded-full border border-warning/45 bg-warning/10 px-2.5 text-[12px] font-medium text-warning' : 'hidden'} shrink-0 desk:inline-flex desk:h-5 desk:items-center desk:rounded-full desk:border desk:border-warning/45 desk:bg-warning/10 desk:px-2 desk:text-meta desk:font-medium desk:text-warning desk:group-hover:hidden`}
+        >
           {t('tasks.list.metaApprove')}
         </span>
       )}
       {working && (
-        <span className="hidden shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none">
+        <span
+          className={`${remote ? "inline-flex h-6 items-center gap-1.5 text-[12px] text-accent before:size-3 before:animate-spin before:rounded-full before:border-2 before:border-accent before:border-r-transparent before:content-[''] motion-reduce:before:animate-none" : 'hidden'} shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none`}
+        >
           {TASK_STATUS_LABEL.running}
         </span>
       )}

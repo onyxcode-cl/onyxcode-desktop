@@ -25,6 +25,7 @@ const REST_SCREENS = [
   'src/renderer/src/features/settings/impl/SettingsView.tsx',
   'src/renderer/src/features/tasks/impl/TasksWorkspace.tsx',
   'src/renderer/src/features/tasks/impl/TasksSidebar.tsx',
+  'src/renderer/src/features/tasks/impl/MobileTasksHome.tsx',
   'src/renderer/src/features/routines/impl/RoutinesView.tsx'
 ]
 

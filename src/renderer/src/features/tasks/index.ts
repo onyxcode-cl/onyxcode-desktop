@@ -22,3 +22,6 @@ export const tasksMode: ModeDefinition = {
     run: newTask
   }
 }
+
+/** Inicio de Tareas del celular (aprobaciones + «En curso»). La PWA lo sustituye por un trozo perezoso (`remote/swaps.ts`). */
+export { MobileTasksHome } from './impl/MobileTasksHome'
