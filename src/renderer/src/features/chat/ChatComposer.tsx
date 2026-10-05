@@ -4,6 +4,7 @@ import { ArrowUp, FileText, Paperclip, Square, X } from 'lucide-react'
 import { useT } from '../../lib/i18n'
 import { useDraft } from '../../stores/drafts'
 import { isRemoteSurface } from '../../lib/platform'
+import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
 import { attachmentBytes, toChatAttachment, validateFiles, type ChatAttachment } from '../../lib/attachments'
 
@@ -29,7 +30,7 @@ interface Props {
   insert?: { text: string; key: number; attachments?: ChatAttachment[] } | null
   /** Texto de ayuda bajo el compositor; `false` lo oculta. */
   hint?: ReactNode | false
-  /** Escritorio: compositor flotante del inicio (radio 20, alto mínimo 128). Sin efecto en el celular. */
+  /** Compositor flotante del inicio. Escritorio: radio 20, alto mínimo 128. Celular: radio 20 y sombra md, con el modelo en la misma fila; anclado, radio 16. */
   hero?: boolean
 }
 
@@ -165,7 +166,9 @@ export function ChatComposer({
       <div
         className={
           mobile
-            ? 'rounded-[24px] border border-border bg-elevated shadow-sm transition-[border-color] duration-200 focus-within:border-border-strong'
+            ? hero
+              ? 'rounded-[20px] border border-border bg-elevated shadow-md transition-[border-color] duration-200 focus-within:border-border-strong'
+              : 'min-h-[52px] rounded-2xl border border-border bg-elevated shadow-sm transition-[border-color] duration-200 focus-within:border-border-strong'
             : `rounded-[20px] border bg-elevated shadow-md transition-[border-color,box-shadow] duration-200 desk:border-transparent desk:shadow-[var(--elev-edge),var(--shadow-md)] ${hero ? '' : 'shadow-md desk:rounded-2xl'} ${disabled ? 'border-border' : 'border-border focus-within:border-accent/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--shadow-md)]'}`
         }
         onDragOver={(e) => {
@@ -279,7 +282,10 @@ export function ChatComposer({
           {...(mobile ? { style: { maxHeight: max } } : {})}
           className={`block w-full resize-none bg-transparent px-4 text-[15px] leading-relaxed outline-none placeholder:text-subtle disabled:opacity-60 desk:leading-6 desk:placeholder:text-muted ${mobile ? 'pt-3 pb-1' : `max-h-[280px] pt-3.5 pb-1.5 desk:max-h-72 ${hero ? 'min-h-0 desk:min-h-[66px] desk:px-5 desk:pt-[18px]' : ''}`}`}
         />
-        <div className={mobile ? 'flex items-center gap-1 px-1.5 pb-1.5' : 'flex items-center gap-1.5 px-2 pb-2'}>
+        <div
+          className={mobile ? 'flex items-center gap-1 px-1.5 pb-1.5' : 'flex items-center gap-1.5 px-2 pb-2'}
+          {...(mobile ? m('composer-row') : {})}
+        >
           {showAttach && (
             <button
               type="button"
@@ -288,12 +294,22 @@ export function ChatComposer({
               disabled={disabled}
               title={t('chat.composer.attach')}
               aria-label={t('chat.composer.attach')}
-              className={`no-drag inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent desk:rounded-lg ${mobile ? 'h-9 w-9' : 'h-8 w-8'}`}
+              className={`no-drag inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent desk:rounded-lg ${mobile ? (hero ? 'h-9 w-9' : 'h-10 w-10') : 'h-8 w-8'}`}
             >
               <Paperclip size={mobile ? 20 : 16} />
             </button>
           )}
-          {mobile ? <span className="flex-1" /> : <div className="flex min-w-0 flex-1 items-center gap-1">{footer}</div>}
+          {mobile ? (
+            hero && footer ? (
+              <div {...m('composer-model')} className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                {footer}
+              </div>
+            ) : (
+              <span className="flex-1" />
+            )
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-1">{footer}</div>
+          )}
           {busy ? (
             <button
               type="button"
@@ -301,7 +317,7 @@ export function ChatComposer({
               onClick={onAbort}
               title={t('chat.composer.stop')}
               aria-label={t('chat.composer.stop')}
-              className={`flex shrink-0 animate-pop-in items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85 active:scale-95 ${mobile ? 'h-9 w-9' : 'h-8 w-8'}`}
+              className={`flex shrink-0 animate-pop-in items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85 active:scale-95 ${mobile ? 'h-10 w-10' : 'h-8 w-8'}`}
             >
               <Square size={12} fill="currentColor" />
             </button>
@@ -313,13 +329,13 @@ export function ChatComposer({
               disabled={!canSend}
               title={t('chat.composer.sendTitle')}
               aria-label={t('chat.composer.send')}
-              className={`flex ${mobile ? 'h-9 w-9' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform,box-shadow] duration-200 active:scale-95 ${canSend ? 'bg-accent text-accent-fg shadow-sm hover:bg-accent-hover' : 'bg-hover text-subtle'}`}
+              className={`flex ${mobile ? 'h-10 w-10' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform,box-shadow] duration-200 active:scale-95 ${canSend ? 'bg-accent text-accent-fg shadow-sm hover:bg-accent-hover' : 'bg-hover text-subtle'}`}
             >
               <ArrowUp size={17} strokeWidth={2.25} />
             </button>
           )}
         </div>
-        {mobile && !focused && footer && (
+        {mobile && !hero && !focused && footer && (
           <div className="flex items-center gap-1 overflow-x-auto border-t border-border px-1.5 py-1">{footer}</div>
         )}
       </div>

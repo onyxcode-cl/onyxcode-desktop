@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
+import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { LogoMark } from '../../components/Logo'
@@ -212,32 +213,37 @@ export function ChatView(): React.JSX.Element {
   }
 
   if (!activeId && isRemoteSurface()) {
-    // Celular: saludo centrado en el espacio libre, sugerencias en una fila con scroll y compositor abajo.
+    // Celular (Inicio): aviso de aprobaciones arriba, saludo a la izquierda, rejilla 2×2 de sugerencias y compositor abajo.
     return (
       <div className="flex h-full flex-col">
-        <div className="flex min-h-0 flex-1 animate-rise-in flex-col items-center justify-center gap-4 px-6 text-center">
-          <LogoMark size={36} />
-          <div>
-            <h1 className="font-display text-[26px] leading-tight font-semibold tracking-[-0.02em]">{greeting()}</h1>
-            <p className="mt-1.5 text-[15px] text-muted">{t('chat.empty.prompt')}</p>
-          </div>
+        <div className="shrink-0 px-4 pt-2 empty:hidden">
+          <ApprovalNotice />
+        </div>
+        <div className="flex min-h-0 flex-1 animate-rise-in flex-col justify-center px-5">
+          <h1 className="font-display text-[28px] leading-9 font-semibold tracking-[-0.02em]">{greeting()}</h1>
+          <p className="mt-1 text-[16px] leading-6 text-muted">{t('chat.empty.prompt')}</p>
         </div>
         {notices}
-        <div className="flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
-          {SUGGESTIONS.map(({ icon: Icon, label, prompt }) => (
+        <div className="grid grid-cols-2 gap-2 px-4 pb-3" data-m="suggest-grid">
+          {SUGGESTIONS.slice(0, 4).map(({ icon: Icon, label, prompt }) => (
             <button
               key={label}
               type="button"
               disabled={!ready}
               onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-elevated px-3 text-[13px] text-muted active:bg-hover disabled:opacity-50"
+              className="flex min-h-11 flex-col items-start gap-2 rounded-xl bg-elevated p-3.5 text-left shadow-sm active:bg-hover disabled:opacity-50"
             >
-              <Icon size={14} className="text-accent" />
-              {t(label)}
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-active">
+                <Icon size={16} className="text-accent" aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] leading-5 font-medium text-fg">{t(label)}</span>
+                <span className="block text-[13px] leading-4 text-muted">{t(`${label}.desc` as MsgKey)}</span>
+              </span>
             </button>
           ))}
         </div>
-        {composer}
+        {composerEl(true)}
       </div>
     )
   }
