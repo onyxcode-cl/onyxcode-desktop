@@ -22,6 +22,22 @@ import {
 } from '@shared/remote/cloud'
 import { LIMITS } from '@shared/remote/protocol'
 import type { IceServerSpec, RemoteCap } from '@shared/remote/protocol'
+import {
+  DEFAULT_TRAVEL_KEEP,
+  TRAVEL_STUN_URLS,
+  isTravelError,
+  isTravelKeep,
+  travelBlockedReason,
+  travelLifetimeHours,
+  travelPairUrl,
+  type TravelBinaryState,
+  type TravelBlocked,
+  type TravelError,
+  type TravelInstallResult,
+  type TravelKeep,
+  type TravelState,
+  type TravelStatus
+} from '@shared/remote/travel'
 import type { CallRequest, HttpRequest } from '@shared/remote/mux'
 import type { RemoteEvent } from '@shared/remote/protocol'
 import type {
@@ -92,7 +108,19 @@ export interface RemoteServiceDeps {
   siteWatch?: { start(): void; stop(): void }
   /** Archivos de arranque de la interfaz completa con su SRI (versión de ESTE Mac); solo se usa en el modo nube. */
   entry?: () => { v: string; js: string; files: import('@shared/remote/protocol').EntryFile[] } | null
+  /**
+   * Modo viaje: el binario `cloudflared`. `binaryState` es barato (para `getState`); `install` descarga y verifica (el
+   * consentimiento ya lo dio el diálogo del Mac); `verify` hace la comprobación completa de hash. Sin esto el modo viaje no existe.
+   */
+  travel?: {
+    binaryState(): TravelBinaryState
+    install(): Promise<TravelInstallResult>
+    verify?(): Promise<TravelBinaryState>
+  }
 }
+
+/** Por qué se cierra el modo viaje (auditoría `travel-stopped`). */
+export type TravelStopWhy = 'idle' | 'user' | 'quit' | 'policy' | 'expired' | 'crash'
 
 /** Tiempo máximo para que una negociación WebRTC termine en un canal con celular autenticado. */
 const NEGOTIATION_MS = 25_000
@@ -145,6 +173,16 @@ export class RemoteService {
   private starting: Promise<RemoteState> | null = null
   private policyTimer: ReturnType<typeof setInterval> | null = null
   private lastPolicyKey = ''
+  /** Modo viaje: túnel en arranque (aún no es `this.transport`), vida máxima, errores y diagnóstico de la conexión directa. */
+  private startingTransport: SignalingTransport | null = null
+  private travelExpiresAt: number | null = null
+  private travelStartedAt = 0
+  private travelCapTimer: ReturnType<typeof setTimeout> | null = null
+  private travelError: TravelError | null = null
+  private travelDirectFailures = 0
+  private travelInstalling = false
+  /** Se incrementa en cada `shutdown`: un arranque en curso que ve otro valor al terminar se descarta. */
+  private epoch = 0
   /** Última actividad por dispositivo (memoria): reconectar «en caliente» no vuelve a pedir el PIN. */
   private readonly lastActive = new Map<string, number>()
 
@@ -186,7 +224,8 @@ export class RemoteService {
       available: unavailable === null,
       ...(unavailable ? { unavailable } : {}),
       mode: this.mode,
-      pairing: this.mode !== 'off' && this.pairingSecret && this.pairing.active && expiry ? this.pairingView(expiry) : null,
+      pairing:
+        this.mode !== 'off' && this.pairingSecret && this.pairing.active && expiry && this.pairUrlReady() ? this.pairingView(expiry) : null,
       pairingExpired: this.mode !== 'off' && this.pairingExpired,
       ...(this.mode !== 'off' && this.pairingExhausted ? { pairingExhausted: true } : {}),
       devices,
@@ -196,8 +235,68 @@ export class RemoteService {
       confirmEachConnection: this.confirmEach(),
       confirmEachForced: policy.requireConnectionConfirm,
       ...(policy.managed ? { policy } : {}),
-      ...cloud
+      ...cloud,
+      ...this.travelFields(policy)
     }
+  }
+
+  // ── modo viaje: vista ──
+
+  private travelKeep(): TravelKeep {
+    try {
+      return this.d.devices.getCloudPrefs().travelKeep
+    } catch {
+      return DEFAULT_TRAVEL_KEEP
+    }
+  }
+
+  /** Por qué el modo viaje no se puede usar ahora (`null` = se puede). Política, confirmar cada conexión o passkey. */
+  private travelBlocked(policy: RemotePolicyView = this.pol()): TravelBlocked | null {
+    return travelBlockedReason({
+      allowTravelMode: policy.allowTravelMode && !!this.d.travel,
+      requireConnectionConfirm: policy.requireConnectionConfirm,
+      requirePasskey: policy.requirePasskey,
+      confirmEach: this.confirmEach()
+    })
+  }
+
+  private wantTravel(): boolean {
+    try {
+      return this.d.devices.getCloudPrefs().connection === 'travel'
+    } catch {
+      return false
+    }
+  }
+
+  /** `travel` del estado: presente con el modo elegido, el túnel abriéndose o en marcha, o un error pendiente. */
+  private travelFields(policy: RemotePolicyView): Partial<RemoteState> {
+    const running = this.mode !== 'off' && this.connMode === 'travel'
+    const src = running ? this.transport : this.startingTransport
+    if (!running && !src && !this.wantTravel() && !this.travelError && !this.travelInstalling) return {}
+    const phase = src?.phase?.() ?? 'idle'
+    let status: TravelStatus = 'idle'
+    if (this.travelInstalling) status = 'downloading'
+    else if (src && phase !== 'idle') status = phase
+    else if (this.travelError) status = 'failed'
+    const blocked = this.travelBlocked(policy)
+    const origin = running && this.transport?.travelToken?.() ? this.origin : null
+    const err = this.travelError ?? (running && phase === 'failed' ? (src?.lastError?.() as TravelError | null) : null)
+    const travel: TravelState = {
+      status,
+      keep: this.travelKeep(),
+      binary: this.d.travel?.binaryState() ?? 'missing',
+      ...(origin ? { url: origin } : {}),
+      ...(running && this.travelExpiresAt ? { expiresAt: this.travelExpiresAt } : {}),
+      ...(err ? { error: err } : {}),
+      ...(blocked ? { blocked } : {}),
+      ...(this.travelDirectFailures > 0 ? { directFailures: this.travelDirectFailures } : {})
+    }
+    return { travel }
+  }
+
+  /** ¿Hay un enlace de vinculación utilizable? (en viaje, solo con el túnel arriba y su `T`). */
+  private pairUrlReady(): boolean {
+    return this.connMode !== 'travel' || !!this.transport?.travelToken?.()
   }
 
   /** Campos de «fuera de casa» del estado (Ajustes). */
@@ -244,7 +343,12 @@ export class RemoteService {
   private pairingView(expiresAt: number): NonNullable<RemoteState['pairing']> {
     // Nube: el QR lleva el código de 16 caracteres (fragmento `#c=`, que el navegador no envía) y el mismo código se puede escribir.
     const code = this.connMode === 'cloud' && this.pairCode ? formatPairCode(this.pairCode) : null
-    const url = code ? `${this.origin}/#c=${code}` : `${this.origin}/#s=${this.pairingSecret}`
+    const tok = this.connMode === 'travel' ? this.transport?.travelToken?.() : null
+    const url = code
+      ? `${this.origin}/#c=${code}`
+      : tok
+        ? travelPairUrl(this.origin, tok, this.pairingSecret as string)
+        : `${this.origin}/#s=${this.pairingSecret}`
     if (this.qrCache?.url !== url) this.qrCache = { url, qr: this.d.qr(url) }
     return { url, qr: this.qrCache.qr, expiresAt, ...(code ? { code } : {}) }
   }
@@ -285,14 +389,32 @@ export class RemoteService {
 
   private async doStart(quiet: boolean): Promise<RemoteState> {
     this.error = null
+    this.travelError = null
     const unavailable = this.unavailableReason()
     if (unavailable) {
       this.changed()
       return this.getState()
     }
-    const cloud = this.wantCloud()
-    // En la nube no hace falta red local ni IP privada: el Mac sale hacia fuera. En la red local, sí.
-    const ip = cloud ? '' : this.d.getLanIp()
+    // Un vínculo de viaje solo vale para SU túnel: lo que quedara de una ejecución anterior (caída de la app) se borra siempre.
+    this.revokeTravelDevices()
+    const travel = this.wantTravel()
+    if (travel) {
+      const blocked = this.travelBlocked()
+      if (blocked) {
+        this.error = `travel-blocked:${blocked}`
+        this.changed()
+        return this.getState()
+      }
+      if (this.d.travel?.binaryState() !== 'ready') {
+        this.travelError = 'no-binary'
+        this.error = 'travel:no-binary'
+        this.changed()
+        return this.getState()
+      }
+    }
+    const cloud = !travel && this.wantCloud()
+    // En la nube y en viaje no hace falta red local ni IP privada: el Mac sale hacia fuera. En la red local, sí.
+    const ip = cloud || travel ? '' : this.d.getLanIp()
     if (ip === null) {
       this.error = 'no-network'
       this.changed()
@@ -306,10 +428,19 @@ export class RemoteService {
       this.changed()
       return this.getState()
     }
-    const transport = this.d.createTransport(ip, cloud ? 'cloud' : 'lan')
+    const epoch = this.epoch
+    const mode: RemoteConnection = travel ? 'travel' : cloud ? 'cloud' : 'lan'
+    const transport = this.d.createTransport(ip, mode)
     transport.onPeer((p) => this.handlePeer(p))
     transport.onStatus?.(() => this.changed())
-    this.connMode = cloud ? 'cloud' : 'lan'
+    this.connMode = mode
+    if (travel) {
+      this.startingTransport = transport
+      this.travelDirectFailures = 0
+      transport.onRestart?.((origin) => this.onTunnelRestart(origin))
+      transport.onFail?.((code) => this.onTunnelFail(code))
+      this.changed() // «Abriendo enlace…»: la fase del túnel ya se ve en Ajustes
+    }
     try {
       if (cloud) {
         const token = this.d.devices.hostToken()
@@ -324,17 +455,35 @@ export class RemoteService {
     } catch (err) {
       this.connMode = 'lan'
       this.roomId = ''
+      this.startingTransport = null
       await transport.stop().catch(() => undefined)
-      this.error = err instanceof Error ? err.message : String(err)
+      if (travel) {
+        const code = (err as { code?: unknown } | null)?.code
+        this.travelError = typeof code === 'string' ? (code as TravelError) : 'exited:1'
+        this.error = `travel:${this.travelError}`
+      } else this.error = err instanceof Error ? err.message : String(err)
       this.changed()
       return this.getState()
     }
+    // Se cortó (o se reconfiguró) mientras el túnel se abría: se descarta.
+    if (epoch !== this.epoch) {
+      this.connMode = 'lan'
+      this.startingTransport = null
+      await transport.stop().catch(() => undefined)
+      return this.getState()
+    }
+    this.startingTransport = null
     this.rtc = rtc
     this.ip = ip
     this.transport = transport
     if (cloud) {
       this.d.audit?.({ kind: 'cloud-started' })
       this.d.siteWatch?.start()
+    }
+    if (travel) {
+      this.travelStartedAt = this.now()
+      this.armTravelCap()
+      this.d.audit?.({ kind: 'travel-started', why: this.travelKeep() })
     }
     // Política sin «recordar»: los vínculos no sobreviven entre activaciones (se borran los que quedaran de antes).
     if (!this.pol().allowRemember) this.purgeDevices()
@@ -345,6 +494,97 @@ export class RemoteService {
     }
     this.armIdleTimer()
     this.startPolicyWatch()
+    this.changed()
+    return this.getState()
+  }
+
+  // ── modo viaje: vida del túnel ──
+
+  /** Borra los vínculos de viaje y corta a quien esté conectado con uno. */
+  private revokeTravelDevices(): string[] {
+    let ids: string[] = []
+    try {
+      ids = this.d.devices.revokeTravel()
+    } catch {
+      return []
+    }
+    for (const id of ids) {
+      this.d.confirmHost?.cancelDevice(id)
+      this.lastActive.delete(id)
+      if (this.connected?.deviceId === id) this.connected.bye('travel-ended')
+      for (const p of [...this.peers]) if (p.session?.deviceId === id) p.session.bye('travel-ended')
+    }
+    return ids
+  }
+
+  /** Vida máxima: lo elegido en «Mantener abierto» recortado por `travelMaxHours` de la política; al vencer se corta aunque haya alguien. */
+  private armTravelCap(): void {
+    if (this.travelCapTimer) clearTimeout(this.travelCapTimer)
+    this.travelCapTimer = null
+    const ms = travelLifetimeHours(this.travelKeep(), this.pol().travelMaxHours) * 3_600_000
+    this.travelExpiresAt = this.travelStartedAt + ms
+    this.travelCapTimer = setTimeout(() => void this.shutdown('expired'), Math.max(0, this.travelExpiresAt - this.now()))
+    this.travelCapTimer.unref?.()
+  }
+
+  /** El túnel se relanzó con OTRO nombre: los vínculos del anterior mueren (su origen murió) y hay QR nuevo. */
+  private onTunnelRestart(origin: string): void {
+    if (this.mode === 'off' || this.connMode !== 'travel') return
+    this.origin = origin
+    this.revokeTravelDevices()
+    this.d.audit?.({ kind: 'travel-url-changed' })
+    this.newPairingToken()
+    this.changed()
+  }
+
+  /** `cloudflared` no vuelve tras varios intentos: se corta todo y Ajustes enseña el motivo. */
+  private onTunnelFail(code: string): void {
+    if (this.mode === 'off' || this.connMode !== 'travel') return
+    void this.shutdown('crash').then(() => {
+      this.travelError = isTravelError(code) ? code : 'exited:1'
+      this.changed()
+    })
+  }
+
+  /** Descarga y verifica `cloudflared` (el diálogo de consentimiento del Mac ya se aceptó). Sin permiso de la política, no hay petición. */
+  async travelInstall(): Promise<TravelInstallResult> {
+    const p = this.pol()
+    if (!this.d.travel) return { ok: false, error: 'unsupported' }
+    if (!p.allowTravelMode || !p.allowTravelDownload) return { ok: false, error: 'policy' }
+    if (this.travelInstalling) return { ok: false, error: 'busy' }
+    this.travelInstalling = true
+    this.changed()
+    try {
+      const r = await this.d.travel.install()
+      if (r.ok) this.travelError = null
+      return r
+    } catch {
+      return { ok: false, error: 'download' }
+    } finally {
+      this.travelInstalling = false
+      this.changed()
+    }
+  }
+
+  /** Comprobación completa del binario instalado (hash); actualiza `travel.binary` en Ajustes. */
+  async refreshTravelBinary(): Promise<RemoteState> {
+    await this.d.travel?.verify?.().catch(() => undefined)
+    this.changed()
+    return this.getState()
+  }
+
+  /** «Cerrar a los 30 min sin uso» / «Mantener abierto» 4/12/24 h (el tope de la política manda). */
+  setTravelKeep(keep: TravelKeep): RemoteState {
+    if (!isTravelKeep(keep)) return this.getState()
+    try {
+      this.d.devices.setCloudPrefs({ travelKeep: keep })
+    } catch {
+      /* sin cifrado no se guarda */
+    }
+    if (this.mode !== 'off' && this.connMode === 'travel') {
+      this.armTravelCap()
+      this.armIdleTimer()
+    }
     this.changed()
     return this.getState()
   }
@@ -366,13 +606,24 @@ export class RemoteService {
     const p = this.pol()
     if (p.blocked && this.mode !== 'off') {
       this.d.audit?.({ kind: 'policy-blocked' })
-      void this.shutdown()
+      void this.shutdown('policy')
       return
+    }
+    // Modo viaje: la política (o confirmar cada conexión, o una passkey) lo cierra al instante, sin dejar sockets ni procesos.
+    if (this.mode !== 'off' && this.connMode === 'travel' && this.travelBlocked(p)) {
+      this.d.audit?.({ kind: 'policy-blocked' })
+      void this.shutdown('policy')
+      return
+    }
+    // El tope de la política pudo bajar: la vida máxima se recalcula.
+    if (this.mode !== 'off' && this.connMode === 'travel' && this.travelStartedAt > 0) {
+      const cap = this.travelStartedAt + travelLifetimeHours(this.travelKeep(), p.travelMaxHours) * 3_600_000
+      if (cap !== this.travelExpiresAt) this.armTravelCap()
     }
     // La política cerró «fuera de casa» con el modo nube en marcha: se corta el socket saliente al instante.
     if (this.mode !== 'off' && this.connMode === 'cloud' && this.outsideBlocked(p)) {
       this.d.audit?.({ kind: 'policy-blocked' })
-      void this.shutdown()
+      void this.shutdown('policy')
       return
     }
     if (this.mode !== 'off' && this.connMode === 'cloud') this.transport?.recheck?.()
@@ -464,11 +715,14 @@ export class RemoteService {
     } catch {
       /* sin cifrado no hay nada guardado */
     }
-    return this.shutdown()
+    this.travelError = null
+    return this.shutdown('user')
   }
 
-  private async shutdown(): Promise<RemoteState> {
-    const wasOff = this.mode === 'off' && !this.transport
+  private async shutdown(why: TravelStopWhy = 'user'): Promise<RemoteState> {
+    this.epoch++
+    const wasTravel = this.connMode === 'travel' || this.startingTransport !== null
+    const wasOff = this.mode === 'off' && !this.transport && !this.startingTransport
     this.mode = 'off'
     this.pairing.revoke()
     this.closePairRoom()
@@ -505,13 +759,25 @@ export class RemoteService {
     pending?.resolve(false)
     this.d.confirmHost?.cancelAll()
     this.d.audit?.({ kind: 'stopped' })
-    for (const p of peers) p.session?.bye('stopped')
+    // Modo viaje: el celular ve «modo viaje cerrado» (borra lo guardado de ese origen y avisa de que hay que volver a vincular en casa).
+    for (const p of peers) p.session?.bye(wasTravel ? 'travel-ended' : 'stopped')
     const transport = this.transport
+    const starting = this.startingTransport
     this.transport = null
+    this.startingTransport = null
     this.connMode = 'lan'
     this.roomId = ''
+    if (this.travelCapTimer) clearTimeout(this.travelCapTimer)
+    this.travelCapTimer = null
+    this.travelExpiresAt = null
+    this.travelStartedAt = 0
     this.d.siteWatch?.stop()
-    await transport?.stop().catch(() => undefined)
+    await Promise.all([transport?.stop().catch(() => undefined), starting?.stop().catch(() => undefined)])
+    if (wasTravel) {
+      // El vínculo de viaje vale solo para ese túnel: se borra al cerrarlo (también tras una caída o «Cortar todo»).
+      this.revokeTravelDevices()
+      if (!wasOff) this.d.audit?.({ kind: 'travel-stopped', why })
+    }
     if (peers.length > 0) await new Promise((r) => setTimeout(r, FLUSH_MS))
     for (const p of peers) this.closePeer(p, true)
     this.error = null
@@ -525,7 +791,7 @@ export class RemoteService {
    * el hilo principal hasta 10 s esperando a los pares y el proceso termina igualmente.
    */
   async dispose(): Promise<void> {
-    await this.shutdown()
+    await this.shutdown('quit')
     this.rtc = null
   }
 
@@ -536,8 +802,10 @@ export class RemoteService {
     if (this.mode === 'off' || this.connected) return
     // «Disponible fuera de casa»: el enlace con el servicio queda encendido (sin apagado por inactividad) mientras haya celulares.
     if (this.connMode === 'cloud' && this.awayOn() && this.d.devices.list().length > 0) return
+    // «Mantener abierto» (4/12/24 h): sin cierre por inactividad; manda el tope de vida del túnel.
+    if (this.connMode === 'travel' && this.travelKeep() !== 'idle30') return
     this.idleStopAt = this.now() + LIMITS.idleShutdownMs
-    this.idleTimer = setTimeout(() => void this.shutdown(), LIMITS.idleShutdownMs)
+    this.idleTimer = setTimeout(() => void this.shutdown('idle'), LIMITS.idleShutdownMs)
   }
 
   // ── señalización ──
@@ -545,16 +813,29 @@ export class RemoteService {
   private authorize(h: SignalHello, room?: string): boolean {
     this.applyPolicy()
     if (this.mode === 'off') return false
+    if (this.connMode === 'travel') {
+      if (this.travelBlocked()) return false
+      if (h.mode === 'pair') return !this.pairing.reserved && this.pairing.match(h.qid)
+      // Solo un vínculo de VIAJE con PIN: lejos de casa nadie puede confirmar una conexión en el Mac, y sin PIN se pediría siempre.
+      const rec = this.d.devices.get(h.deviceId)
+      return rec !== null && rec.kind === 'travel' && this.d.devices.hasPin(h.deviceId)
+    }
     if (this.connMode === 'cloud') {
       // El sitio no coincide con el manifiesto firmado, o la política lo cerró: el modo nube NO acepta a nadie.
       if (this.d.cloudPaused?.() || this.outsideBlocked(this.pol())) return false
       // Cada `hello` solo vale por SU sala: reanudar por la sala de vinculación (o vincular por la del Mac) se rechaza.
       if (h.mode === 'pair') return room === this.pairRoomId && !this.pairing.reserved && this.pairing.match(h.qid)
-      return room === this.roomId && this.d.devices.get(h.deviceId) !== null
+      return room === this.roomId && this.isNormalDevice(h.deviceId)
     }
     // Reconocer el `qid` NO consume el QR (un `qid` ajeno suma un fallo; 5 lo anulan). Con un intento ya en curso no hay otro.
     if (h.mode === 'pair') return !this.pairing.reserved && this.pairing.match(h.qid)
-    return this.d.devices.get(h.deviceId) !== null
+    return this.isNormalDevice(h.deviceId)
+  }
+
+  /** Existe y NO es un vínculo de viaje (esos solo valen dentro de su túnel). */
+  private isNormalDevice(id: string): boolean {
+    const rec = this.d.devices.get(id)
+    return rec !== null && rec.kind !== 'travel'
   }
 
   private handlePeer(sp: SignalingPeer): void {
@@ -597,8 +878,14 @@ export class RemoteService {
       offerSdp = sdp
       // El respondedor se crea AL LLEGAR LA OFFER: en la nube ya llegaron los servidores ICE de este celular (`turn` va antes de
       // `ready`). Nube: STUN siempre (+ TURN si lo repartió el servicio); red local: ninguno.
-      const iceServers: IceServerSpec[] = this.connMode === 'cloud' ? [{ urls: [CLOUD_STUN_URL] }, ...(sp.iceServers?.() ?? [])] : []
-      const answerer = rtc.createAnswerer({ ...(this.connMode === 'cloud' ? {} : { bindAddress: this.ip }), iceServers })
+      // Viaje: STUN públicos sin cuenta (Cloudflare y Google), sin TURN y sin ligar a la IP local.
+      const iceServers: IceServerSpec[] =
+        this.connMode === 'cloud'
+          ? [{ urls: [CLOUD_STUN_URL] }, ...(sp.iceServers?.() ?? [])]
+          : this.connMode === 'travel'
+            ? [{ urls: [...TRAVEL_STUN_URLS] }]
+            : []
+      const answerer = rtc.createAnswerer({ ...(this.connMode === 'lan' ? { bindAddress: this.ip } : {}), iceServers })
       rec.answerer = answerer
       this.wireAnswerer(
         rec,
@@ -666,6 +953,7 @@ export class RemoteService {
         access: this.access(),
         clock: this.d.now,
         limits: () => ({ capDays: this.pol().deviceTtlDays, maxDevices: this.pol().maxDevices }),
+        travel: this.connMode === 'travel' ? () => ({ expiresAt: this.travelExpiresAt ?? this.now() + 3_600_000 }) : undefined,
         // `caps` y `entry` solo existen en el modo nube: en la red local la PWA se sirve desde el propio Mac (misma versión).
         caps: () => (this.connMode === 'cloud' ? (this.d.caps?.() ?? []) : []),
         entry: this.connMode === 'cloud' ? this.d.entry : undefined,
@@ -704,6 +992,11 @@ export class RemoteService {
   /** Cierra la negociación/conexión. Salvo `immediate`, da tiempo a que salga la última trama (`bye`). */
   private closePeer(rec: PeerRecord, immediate = false): void {
     if (rec.closed) return
+    // Modo viaje: la oferta llegó pero el canal directo nunca se abrió → «tu red no permite conexión directa» (solo un contador y la auditoría).
+    if (this.connMode === 'travel' && this.mode !== 'off' && rec.answerer && !rec.session) {
+      this.travelDirectFailures++
+      this.d.audit?.({ kind: 'travel-ice-failed' })
+    }
     rec.closed = true
     if (rec.timer) clearTimeout(rec.timer)
     rec.timer = null
@@ -822,7 +1115,8 @@ export class RemoteService {
       },
       // Un celular ya vinculado con PIN solo confirma en el Mac si el ajuste (o la política) lo pide. Sin PIN SIEMPRE confirma:
       // si no, un secreto robado de un vínculo sin PIN (antiguo, o tras «Restablecer PIN») bastaría para fijar un PIN nuevo y entrar.
-      needsConfirm: (id) => this.confirmEach() || !this.d.devices.hasPin(id),
+      // Viaje: nunca se confirma en el Mac (el dueño está lejos); el PIN es obligatorio y `authorize` ya exige que exista.
+      needsConfirm: (id) => (this.connMode === 'travel' ? false : this.confirmEach() || !this.d.devices.hasPin(id)),
       trusted: (id) => this.pol().allowConfirmRemember12h && (this.d.devices.trustedUntil(id) ?? 0) > this.now(),
       // Con `requirePin` de la política no hay reconexión «en caliente»: el PIN se pide siempre.
       lastActiveAt: (id) => (this.pol().requirePin ? null : (this.lastActive.get(id) ?? null)),
@@ -855,6 +1149,8 @@ export class RemoteService {
         /* sin cifrado no se guarda */
       }
     }
+    // Con el modo viaje en marcha, «confirmar en cada conexión» lo bloquea (lejos de casa nadie podría confirmar): se corta.
+    this.applyPolicy()
     this.changed()
     return this.getState()
   }
@@ -901,6 +1197,7 @@ export class RemoteService {
    * y la conexión actual); apagado, solo se guarda la elección. La política manda: sin permiso, `cloud` no se activa.
    */
   async setConnection(connection: RemoteConnection): Promise<RemoteState> {
+    this.travelError = null
     try {
       if (this.d.devices.getCloudPrefs().connection !== connection) this.d.audit?.({ kind: 'connection-changed', why: connection })
       this.d.devices.setCloudPrefs({ connection })
@@ -909,8 +1206,12 @@ export class RemoteService {
     }
     if (this.mode !== 'off') {
       const wasQuiet = this.mode === 'active' && !this.pairingSecret
-      await this.shutdown()
-      if (connection === 'lan' || this.outsideBlocked(this.pol()) === null) await (wasQuiet ? this.autoStartAway() : this.start())
+      await this.shutdown('user')
+      const allowed =
+        connection === 'lan' ||
+        (connection === 'cloud' && this.outsideBlocked(this.pol()) === null) ||
+        (connection === 'travel' && this.travelBlocked() === null)
+      if (allowed) await (wasQuiet && connection === 'cloud' ? this.autoStartAway() : this.start())
     } else this.changed()
     return this.getState()
   }
@@ -945,7 +1246,7 @@ export class RemoteService {
 
   /** El Mac se va a dormir (`true`) o despertó (`false`): el socket saliente se cierra/reabre al instante. */
   onPower(suspended: boolean): void {
-    if (this.mode === 'off' || this.connMode !== 'cloud') return
+    if (this.mode === 'off' || (this.connMode !== 'cloud' && this.connMode !== 'travel')) return
     if (suspended) this.transport?.suspend?.()
     else this.transport?.resume?.()
     this.changed()
@@ -993,6 +1294,17 @@ export class RemoteService {
       p.resolve(false)
     }
     if (session.deviceId) this.d.confirmHost?.cancelDevice(session.deviceId)
+    // Modo viaje: un vínculo que nunca llegó a fijar su PIN no sirve para nada (no podría reconectar) y se borra.
+    if (session.deviceId && this.connMode === 'travel') {
+      const rec = this.d.devices.get(session.deviceId)
+      if (rec?.kind === 'travel' && !this.d.devices.hasPin(session.deviceId)) {
+        try {
+          this.d.devices.revoke(session.deviceId)
+        } catch {
+          /* sin cifrado no hay nada guardado */
+        }
+      }
+    }
     if (this.connected === session) {
       this.connected = null
       this.d.engine?.hub.stop()

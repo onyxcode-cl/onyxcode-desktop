@@ -404,7 +404,7 @@ describe('RemoteService en modo nube', () => {
     await svc.setAway(true)
     expect(devices.getCloudPrefs().away).toBe(true)
     await svc.stopAll()
-    expect(devices.getCloudPrefs()).toEqual({ connection: 'cloud', away: false })
+    expect(devices.getCloudPrefs()).toMatchObject({ connection: 'cloud', away: false })
     await until(() => cloud.openHosts === 0)
     expect(svc.getState()).toMatchObject({ mode: 'off', away: false })
   })

@@ -4,7 +4,7 @@
  * `qrcode`, `node-datachannel`) no se cargan.
  */
 import { networkInterfaces } from 'node:os'
-import { app, powerMonitor } from 'electron'
+import { app, net, powerMonitor } from 'electron'
 import { join } from 'node:path'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
@@ -28,6 +28,10 @@ import { loadRtc } from './rtc'
 import { RemoteService } from './service'
 import { LanSignalingServer } from './signaling/lan-server'
 import { CloudSignalingTransport } from './signaling/worker-client'
+import { TunnelSignalingTransport } from './signaling/tunnel-transport'
+import { BinaryError, CloudflaredBinary } from './tunnel/binary'
+import { CLOUDFLARED_PIN } from './tunnel/pin'
+import { realCloudflaredDeps } from './tunnel/real-deps'
 import { SidecarBackend } from './whitelist'
 
 export interface RemoteBootDeps {
@@ -115,27 +119,64 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     entryInfo ??= loadEntryInfo(join(d.pwaDir, 'app'), app.getVersion())
     return entryInfo
   }
+  // Modo viaje: `cloudflared` se descarga bajo demanda (con consentimiento) y se verifica con el pin compilado en la app.
+  const binary = new CloudflaredBinary({
+    pin: CLOUDFLARED_PIN,
+    binDir: join(app.getPath('userData'), 'bin'),
+    // `net.fetch` de Electron respeta el proxy del sistema; las redirecciones las comprueba el propio instalador (lista cerrada de hosts).
+    fetch: (url, init) => net.fetch(url, init),
+    allowDownload: () => {
+      const p = d.policy()
+      return p.allowTravelMode && p.allowTravelDownload && !p.blocked
+    },
+    audit: d.audit
+  })
   const svc = new RemoteService({
     engine,
     devices: d.devices,
     loadRtc,
     getLanIp: () => pickLanIp(networkInterfaces()),
     createTransport: (ip, mode) =>
-      mode === 'cloud'
-        ? new CloudSignalingTransport({
-            hostToken: () => d.devices.hostToken(),
-            // Sin permiso de la política (o con el sitio en pausa) no se crea ningún socket saliente.
+      mode === 'travel'
+        ? new TunnelSignalingTransport({
+            pwaDir: d.pwaDir,
+            // Hash y firma del binario ANTES de cada arranque.
+            ensureBinary: () => binary.ensureReady(),
+            homeDir: join(app.getPath('userData'), 'cloudflared', 'home'),
+            deps: realCloudflaredDeps,
             allowed: () => {
               const p = d.policy()
-              return !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && !sitePaused()
-            }
+              return !p.blocked && p.allowTravelMode
+            },
+            audit: d.audit
           })
-        : new LanSignalingServer({
-            ip,
-            pwaDir: d.pwaDir,
-            preferredPort: d.devices.getPort(),
-            onFirstPort: (port) => d.devices.setPort(port)
-          }),
+        : mode === 'cloud'
+          ? new CloudSignalingTransport({
+              hostToken: () => d.devices.hostToken(),
+              // Sin permiso de la política (o con el sitio en pausa) no se crea ningún socket saliente.
+              allowed: () => {
+                const p = d.policy()
+                return !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && !sitePaused()
+              }
+            })
+          : new LanSignalingServer({
+              ip,
+              pwaDir: d.pwaDir,
+              preferredPort: d.devices.getPort(),
+              onFirstPort: (port) => d.devices.setPort(port)
+            }),
+    travel: {
+      binaryState: () => binary.quickState(),
+      install: async () => {
+        try {
+          await binary.install({ consent: true })
+          return { ok: true }
+        } catch (err) {
+          return { ok: false, error: err instanceof BinaryError ? err.code : 'download' }
+        }
+      },
+      verify: () => binary.verifyInstalled()
+    },
     backend,
     getEventClient: () => {
       const conn = d.getConnection()

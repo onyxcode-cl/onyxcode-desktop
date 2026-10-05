@@ -36,7 +36,15 @@ let lastMode: RemoteState['mode'] = 'off'
 const modeListeners = new Set<(mode: RemoteState['mode']) => void>()
 
 export function getDevicesStore(): DevicesStore {
-  devicesStore ??= new DevicesStore(join(app.getPath('userData'), REMOTE_FILE), safeStorage)
+  if (!devicesStore) {
+    devicesStore = new DevicesStore(join(app.getPath('userData'), REMOTE_FILE), safeStorage)
+    // Un vínculo del modo viaje solo vale para su túnel: tras una salida sin limpiar (caída de la app) no debe sobrevivir.
+    try {
+      devicesStore.revokeTravel()
+    } catch {
+      /* sin cifrado no hay nada guardado */
+    }
+  }
   return devicesStore
 }
 

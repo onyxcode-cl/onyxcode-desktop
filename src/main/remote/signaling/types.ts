@@ -51,6 +51,18 @@ export interface SignalingTransport {
   resume?(): void
   networkChanged?(): void
   recheck?(): void
+  /** Modo viaje: `T` de la puerta del túnel (va en la ruta del QR `/k/<T>`); `null` si no hay túnel abierto. */
+  travelToken?(): string | null
+  /** Modo viaje: fase del túnel (`starting`, `checking`, `online`, `connecting`, `retrying`, `failed`). */
+  phase?(): 'idle' | 'starting' | 'checking' | 'online' | 'connecting' | 'retrying' | 'failed'
+  /** Modo viaje: el túnel se relanzó con OTRO nombre (el origen cambió; los vínculos del túnel anterior ya no sirven). */
+  onRestart?(cb: (origin: string) => void): void
+  /** Modo viaje: se rindió tras varias caídas seguidas (código de error para Ajustes). */
+  onFail?(cb: (error: string) => void): void
+  /** Modo viaje: el último error del túnel. */
+  lastError?(): string | null
+  /** Síncrono: mata el proceso del túnel sin esperar (salir de la app). */
+  killNow?(): void
 }
 
 export type TransportStatus = 'connecting' | 'online' | 'offline'
