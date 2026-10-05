@@ -40,15 +40,15 @@
   margin-top: 0.25em;
 }
 
-/* ---------- Código: bloque a sangre, scroll horizontal fluido ---------- */
+/* ---------- Código: tarjeta con anillo de 1 px y radio 12 (dentro de la columna), scroll horizontal fluido ---------- */
 [data-surface='mobile'] .markdown .code-block {
-  border-radius: 12px;
-}
-[data-surface='mobile'] .markdown > .code-block {
-  margin-inline: calc(var(--m-gutter) * -0.5);
+  border-radius: var(--m-card-radius);
+  background: var(--bg-code);
+  box-shadow: 0 0 0 1px var(--border) inset;
+  border-color: transparent;
 }
 [data-surface='mobile'] .markdown .code-block-header {
-  height: 40px;
+  height: 36px;
   padding: 0 4px 0 12px;
   font-size: 12.5px;
 }
@@ -58,7 +58,7 @@
 }
 [data-surface='mobile'] .markdown pre {
   font-size: var(--m-mono);
-  line-height: 1.5;
+  line-height: 20px;
   padding: 12px 14px;
   white-space: pre;
   overflow-x: auto;
@@ -89,10 +89,45 @@
 [data-surface='mobile'] [data-m='user-bubble'] {
   font-size: var(--m-body);
   line-height: 1.5;
-  max-width: 82%;
+  max-width: min(280px, 85%);
   padding: 10px 14px;
-  border-radius: 20px 20px 6px 20px;
+  border-radius: 16px 16px 4px 16px;
+  border-color: transparent;
+  background: var(--bg-hover);
   box-shadow: none;
+}
+
+/* ---------- Resumen de pasos (StepGroup): chip de 36 de alto, píldora completa, chevron a la derecha ---------- */
+[data-surface='mobile'] button.group\/steps {
+  position: relative;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  background: var(--bg-active);
+  font-size: 13px;
+  line-height: 20px;
+}
+/* El chip mide 36 pero el toque llega a 44: la zona extra es invisible. */
+[data-surface='mobile'] button.group\/steps::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+[data-surface='mobile'] button.group\/steps > svg:not(.animate-spin) {
+  order: 3;
+  margin-left: auto;
+}
+
+/* ---------- Compositor de Inicio: el modelo es un chip de 28 en la fila de adjuntar y enviar ---------- */
+[data-surface='mobile'] [data-m='composer-model'] button {
+  min-height: 28px;
+  height: 28px;
+  max-width: 100%;
+  padding-inline: 10px;
+  border-radius: 9999px;
+  background: var(--bg-active);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 /* ---------- Metadatos: herramientas, razonamiento, reintento, subtarea (14 px) ---------- */

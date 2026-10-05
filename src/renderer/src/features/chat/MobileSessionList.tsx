@@ -17,6 +17,7 @@ interface Props {
   sessions: Session[]
   busyIds?: Set<string>
   loading?: boolean
+  /** Sin uso en el celular (el vacío usa `mobile.drawer.empty`); se conserva por compatibilidad con ChatSessionList. */
   emptyText?: string
   onSelect: (id: string) => void
   onRename: (id: string, title: string) => void | Promise<void>
@@ -81,25 +82,25 @@ function MobileRow({
       ]}
     >
       <div className="relative after:absolute after:right-0 after:bottom-0 after:left-4 after:h-px after:bg-[var(--m-hairline)]">
-        <div className="flex min-h-[var(--m-row)] items-center">
+        <div className="flex min-h-[var(--m-row-list)] items-center">
           <button
             type="button"
             onClick={onSelect}
-            className="flex min-h-[var(--m-row)] min-w-0 flex-1 flex-col justify-center px-4 text-left"
+            className="flex min-h-[var(--m-row-list)] min-w-0 flex-1 items-center gap-3 pl-4 text-left"
             {...press}
           >
-            <span className="truncate text-[16px] leading-6 font-medium text-fg">{title}</span>
-            <span className="truncate text-[13px] leading-4 text-subtle">{timeAgo(session.time.updated)}</span>
+            <span className="min-w-0 flex-1 truncate text-[15px] leading-5 text-fg">{title}</span>
+            <span className="shrink-0 text-[13px] leading-4 text-subtle">{timeAgo(session.time.updated)}</span>
           </button>
-          {busy && <Loader2 size={15} className="shrink-0 animate-spin text-accent" aria-hidden="true" />}
+          {busy && <Loader2 size={15} className="shrink-0 animate-spin text-accent motion-reduce:animate-none" aria-hidden="true" />}
           <button
             type="button"
             onClick={() => setSheet(true)}
             aria-label={t('chat.list.options')}
             aria-haspopup="dialog"
-            className="flex h-11 w-11 shrink-0 items-center justify-center text-muted active:bg-hover"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-subtle active:bg-hover"
           >
-            <MoreHorizontal size={19} />
+            <MoreHorizontal size={18} />
           </button>
         </div>
       </div>
@@ -126,12 +127,11 @@ function MobileRow({
   )
 }
 
-/** Lista de conversaciones del celular: búsqueda siempre visible, cabeceras de grupo fijas, filas de 56 px. */
+/** Lista de conversaciones del celular: búsqueda siempre visible, cabeceras de grupo fijas, filas de 44 px de una línea (título y hora a la derecha). */
 export function MobileSessionList({
   sessions,
   busyIds,
   loading,
-  emptyText,
   onSelect,
   onRename,
   onDelete,
@@ -152,8 +152,8 @@ export function MobileSessionList({
         <span className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-accent-soft text-accent">
           <MessagesSquare size={28} aria-hidden="true" />
         </span>
-        <h2 className="mt-4 font-display text-[17px] leading-6 font-semibold">{emptyText ?? t('chat.list.emptyDefault')}</h2>
-        <p className="mt-1 max-w-[30ch] text-[15px] leading-snug text-muted">{t('mobile.list.emptyBody')}</p>
+        <h2 className="mt-4 font-display text-[17px] leading-6 font-semibold">{t('mobile.drawer.empty')}</h2>
+        <p className="mt-1 max-w-[30ch] text-[15px] leading-snug text-muted">{t('mobile.drawer.emptyHint')}</p>
         <button
           type="button"
           onClick={() => {

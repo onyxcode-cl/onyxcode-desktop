@@ -273,22 +273,20 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const mobile = isRemoteSurface()
   const [sheet, setSheet] = useState(false)
   const longPress = useLongPress(() => setSheet(true))
-  // Escritorio: las herramientas seguidas se agrupan como en Code (se pliegan con 3 o más). El celular no cambia.
-  const blocks = useMemo(() => (mobile ? null : groupBlocks(entry.parts)), [mobile, entry.parts])
+  // Las herramientas seguidas se agrupan como en Code (se pliegan con 3 o más), también en el celular (chip de resumen).
+  const blocks = useMemo(() => groupBlocks(entry.parts), [entry.parts])
   return (
     <div
       className={withCv('group flex flex-col gap-1.5 desk:gap-4', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >
-      {blocks
-        ? blocks.map((b, bi) =>
-            b.kind === 'tools' ? (
-              <StepGroup key={b.parts[0].id} parts={b.parts} root={null} live={live && bi === blocks.length - 1} hasPending={false} />
-            ) : (
-              <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
-            )
-          )
-        : entry.parts.map((p, idx) => <PartView key={p.id} part={p} live={live} streaming={live && idx === lastTextIdx} />)}
+      {blocks.map((b, bi) =>
+        b.kind === 'tools' ? (
+          <StepGroup key={b.parts[0].id} parts={b.parts} root={null} live={live && bi === blocks.length - 1} hasPending={false} />
+        ) : (
+          <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
+        )
+      )}
       <AssistantError
         info={entry.info}
         abortedLabel={t('chat.msg.stopped')}
