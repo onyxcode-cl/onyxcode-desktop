@@ -83,3 +83,12 @@ html[data-keyboard='open'] [data-surface='mobile'] [data-tabbar] {
 [data-surface='mobile'] [data-in-drawer] [data-drawer-list] :is(.bg-bg, [class*='bg-bg/']) {
   background-color: var(--bg-sidebar);
 }
+
+/* Panel lateral: un solo buscador. Mientras no se toca la fila «Buscar o ir a…», se oculta el campo de la lista (Chat y Tareas). */
+[data-surface='mobile'] [data-drawer]:not([data-searching]) [data-drawer-list] .sticky:has(> div > input),
+[data-surface='mobile'] [data-drawer]:not([data-searching]) [data-drawer-list] div:has(> input[type='search']) {
+  display: none;
+}
+[data-surface='mobile'] [data-drawer]:not([data-searching]) [data-drawer-list] h2.sticky {
+  top: 0;
+}

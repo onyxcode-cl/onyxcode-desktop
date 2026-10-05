@@ -8,7 +8,7 @@
  * cerrado. El movimiento es una animación WAAPI (translateX con fill `backwards`, regla 6 de docs/MOBILE-UI.md; con
  * «reducir movimiento», solo fundido).
  */
-import { useEffect, useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Search, Settings, SquarePen, X } from 'lucide-react'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
@@ -143,11 +143,17 @@ export default function DrawerPanel(): React.JSX.Element {
     close()
   }
 
-  const focusSearch = (): void => {
+  // Un solo buscador: la fila «Buscar o ir a…» es la puerta; el campo de la lista (oculto por CSS) se muestra y se enfoca al tocarla.
+  const [searching, setSearching] = useState(false)
+  const focusInput = (): void => {
     const input = listEl.current?.querySelector<HTMLInputElement>('input')
     input?.focus()
     input?.scrollIntoView({ block: 'nearest' })
   }
+  useEffect(() => {
+    if (searching) focusInput()
+  }, [searching])
+  const focusSearch = (): void => (searching ? focusInput() : setSearching(true))
 
   const openSettings = (): void => {
     // Una sola actualización: apila Ajustes y cierra el panel (un único ajuste del historial).
@@ -155,7 +161,7 @@ export default function DrawerPanel(): React.JSX.Element {
   }
 
   return (
-    <div className="absolute inset-0 z-40" data-drawer="">
+    <div className="absolute inset-0 z-40" data-drawer="" data-searching={searching ? '' : undefined}>
       <div ref={scrim} aria-hidden="true" data-drawer-scrim="" onClick={close} className="absolute inset-0 bg-[var(--m-backdrop)]" />
       <aside
         ref={panel}

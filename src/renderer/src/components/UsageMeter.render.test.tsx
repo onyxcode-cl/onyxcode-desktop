@@ -49,9 +49,13 @@ describe('UsageMeter', () => {
     surface('darwin')
     expect(renderToStaticMarkup(<UsageMeter messages={[assistant(2)]} model={model} />)).toBe('')
   })
-  it('celular: se conserva el anillo con arco mínimo redondo y sin porcentaje a un lado', () => {
+  it('celular sin turnos: no pinta el anillo vacío (como en escritorio)', () => {
     surface('remote')
-    const h = renderToStaticMarkup(<UsageMeter messages={[]} model={model} />)
+    expect(renderToStaticMarkup(<UsageMeter messages={[]} model={model} />)).toBe('')
+  })
+  it('celular con uso: se conserva el anillo con arco mínimo redondo y sin porcentaje a un lado', () => {
+    surface('remote')
+    const h = renderToStaticMarkup(<UsageMeter messages={[assistant(250)]} model={model} />)
     expect(h).toContain('stroke-linecap="round"')
     expect(h).not.toContain('\u00a0%</span>')
   })

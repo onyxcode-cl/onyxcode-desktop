@@ -63,7 +63,7 @@ function StatusMark({ status }: { status: TaskStatus }): React.JSX.Element {
 }
 
 function Overline({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <h2 className="px-1 pb-2 text-[12px] leading-4 font-semibold tracking-[0.06em] text-subtle uppercase">{children}</h2>
+  return <h2 className="px-1 pb-2 text-[12px] leading-4 font-semibold text-subtle">{children}</h2>
 }
 
 export function MobileTasksHome(): React.JSX.Element {
