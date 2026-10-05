@@ -25,13 +25,11 @@ const SIZES: Record<ButtonSize, string> = {
 
 // `link` es texto en línea: solo toma el tamaño de letra, sin altura fija ni relleno de botón.
 const LINK_SIZES: Record<ButtonSize, string> = {
-  xs: 'gap-1 text-xs desk:text-meta desk:rounded-ctl-sm',
-  sm: 'gap-1 text-[13px] desk:text-ui desk:rounded-ctl-sm',
-  md: 'gap-1.5 text-sm desk:text-ui desk:rounded-ctl-sm',
-  lg: 'gap-1.5 text-sm desk:text-ui desk:rounded-ctl-sm'
+  xs: 'text-xs desk:text-meta',
+  sm: 'text-[13px] desk:text-ui',
+  md: 'text-sm desk:text-ui',
+  lg: 'text-sm desk:text-ui'
 }
-
-const SPINNER = { xs: 12, sm: 14, md: 14, lg: 14 } as const
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -52,12 +50,12 @@ export function Button({
   return (
     <button
       type="button"
-      className={`no-drag inline-flex items-center justify-center rounded-lg font-medium transition-[background-color,border-color,color,filter,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 desk:disabled:cursor-not-allowed ${(variant === 'link' ? LINK_SIZES : SIZES)[size]} ${VARIANTS[variant]} ${className}`}
+      className={`no-drag inline-flex items-center justify-center rounded-lg font-medium transition-[background-color,border-color,color,filter,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${(variant === 'link' ? LINK_SIZES : SIZES)[size]} ${VARIANTS[variant]} ${className}`}
       disabled={disabled || loading}
       {...(loading ? { 'aria-busy': true } : {})}
       {...rest}
     >
-      {loading && <Spinner size={SPINNER[size]} />}
+      {loading && <Spinner size={size === 'xs' ? 12 : 14} />}
       {children}
     </button>
   )

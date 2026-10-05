@@ -1,6 +1,9 @@
+import { lazy, Suspense } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { isRemoteSurface } from '../lib/platform'
-import { Tooltip } from './Tooltip'
+
+// Perezoso: el tooltip es solo de escritorio y no debe pesar en el arranque de la PWA (allí nunca se carga).
+const Tooltip = lazy(() => import('./Tooltip').then((m) => ({ default: m.Tooltip })))
 
 export type IconButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 
@@ -43,9 +46,11 @@ export function IconButton({ label, children, active, size = 'md', className = '
     </button>
   )
   return tip ? (
-    <Tooltip label={tip} shortcut={shortcut}>
-      {button}
-    </Tooltip>
+    <Suspense fallback={button}>
+      <Tooltip label={tip} shortcut={shortcut}>
+        {button}
+      </Tooltip>
+    </Suspense>
   ) : (
     button
   )
