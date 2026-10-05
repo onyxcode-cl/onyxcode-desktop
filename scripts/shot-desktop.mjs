@@ -504,7 +504,7 @@ const S = {
     await goMode(ctx.page, 'Chat')
     await ctx.page.getByText('Pruebas y corrección del IVA').first().click()
     await vis(ctx.page.getByText(/pruebas.*pasan/), 15_000)
-    await ctx.page.getByRole('button', { name: /bash/ }).first().click()
+    await ctx.page.getByRole('button', { name: /bash|npm test|Corre las pruebas/ }).first().click()
     await sleep(500)
   },
   async 'code-proyecto'(ctx) {

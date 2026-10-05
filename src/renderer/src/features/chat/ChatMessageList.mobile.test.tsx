@@ -49,10 +49,10 @@ describe('ChatToolCall', () => {
     expect(html).toContain('min-h-11')
     expect(html).not.toContain('{&quot;')
   })
-  it('escritorio: la tarjeta de siempre con el nombre de la herramienta', () => {
+  it('escritorio: la misma fila humanizada que el celular (sin JSON crudo ni nombre técnico; rediseño T4)', () => {
     surface('darwin')
     const html = renderToStaticMarkup(<ChatToolCall part={part as never} />)
-    expect(html).toContain('font-mono')
-    expect(html).not.toContain('Leyó')
+    expect(html).toContain('Leyó')
+    expect(html).not.toContain('{&quot;')
   })
 })
