@@ -13,6 +13,8 @@ import { Button } from '../../../components/Button'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
+import { isRemoteSurface } from '../../../lib/platform'
+import { ApprovalBarDesk, PermissionCardDesk } from './PermissionCardDesk'
 import { replyPermission, replyPermissionAlways } from './actions'
 import { cw } from './bridge'
 import { computerToolInfo, computerToolKind } from './computer-tools'
@@ -163,7 +165,7 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
 
 /** Nombres de los conectores MCP del usuario (una sola consulta): sirven para separar «servidor_herramienta». */
 let mcpNamesPromise: Promise<string[]> | null = null
-function useMcpServers(): string[] {
+export function useMcpServers(): string[] {
   const [names, setNames] = useState<string[]>([])
   useEffect(() => {
     let alive = true
@@ -181,7 +183,7 @@ function useMcpServers(): string[] {
   return names
 }
 
-function useReply(request: PermissionRequest): {
+export function useReply(request: PermissionRequest): {
   busy: boolean
   error: string | null
   answer: (r: Reply) => void
@@ -189,26 +191,39 @@ function useReply(request: PermissionRequest): {
 } {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Doble envío: guardia SÍNCRONA (useState se actualiza en el siguiente render, llega tarde).
+  const busyRef = useRef(false)
   const answer = (reply: Reply): void => {
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setError(null)
     // «Siempre» además guarda la regla en main para que valga al reabrir la carpeta.
     const call = reply === 'always' ? replyPermissionAlways(request) : replyPermission(request.id, reply)
-    call.catch((err: unknown) => setError(errorMessage(err))).finally(() => setBusy(false))
+    // Éxito: la tarjeta se desmonta al resolverse el permiso, no hace falta rearmar. Error: rehabilita (y desarma).
+    call.catch((err: unknown) => {
+      setError(errorMessage(err))
+      busyRef.current = false
+      setBusy(false)
+    })
   }
   /** Rechaza y le dice al agente qué cambiar (`message` llega al agente como indicación del usuario). */
   const reject = (message: string): void => {
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setError(null)
-    replyPermission(request.id, 'reject', message.trim() || undefined)
-      .catch((err: unknown) => setError(errorMessage(err)))
-      .finally(() => setBusy(false))
+    replyPermission(request.id, 'reject', message.trim() || undefined).catch((err: unknown) => {
+      setError(errorMessage(err))
+      busyRef.current = false
+      setBusy(false)
+    })
   }
   return { busy, error, answer, reject }
 }
 
 /** Área de texto «Dile al agente qué cambiar…» del botón «Rechazar con indicaciones». */
-function RejectWithNote({
+export function RejectWithNote({
   busy,
   onSend,
   onCancel
@@ -231,6 +246,7 @@ function RejectWithNote({
         value={text}
         rows={3}
         disabled={busy}
+        data-perm-note
         aria-label={t('tasksComputer.perm.noteAria')}
         placeholder={t('tasksComputer.perm.notePlaceholder')}
         onChange={(e) => setText(e.target.value)}
@@ -253,12 +269,12 @@ function RejectWithNote({
 }
 
 /** ¿Se ofrece «Siempre»? Oculto con la política `disableAlwaysAllow` o si nada de la petición se puede recordar. */
-function useCanAlways(request: PermissionRequest, danger: boolean): boolean {
+export function useCanAlways(request: PermissionRequest, danger: boolean): boolean {
   const disable = useTasks((s) => s.policy?.disableAlwaysAllow === true)
   return showAlways({ danger, disableAlwaysAllow: disable, rememberableCount: rememberablePatterns(request).length })
 }
 
-function alwaysHint(p: PermissionRequest): string {
+export function alwaysHint(p: PermissionRequest): string {
   const list = rememberablePatterns(p)
   return list.length > 0 ? t('tasksComputer.perm.alwaysHint', { list: list.join(', ') }) : t('tasksComputer.perm.alwaysHintNone')
 }
@@ -270,7 +286,9 @@ export function PermissionCard({ request }: { request: PermissionRequest }): Rea
   const autoPending = useTasks((s) => !!s.autoPending[request.id])
   if (autoPending) return null
   if (request.permission === 'external_directory') return <FolderRequestCard request={request} />
-  return <GenericPermissionCard request={request} />
+  // Celular/PWA: marcado de siempre, sin cambios. Escritorio: rediseño ND (anatomía y teclado seguros).
+  if (isRemoteSurface()) return <GenericPermissionCard request={request} />
+  return <PermissionCardDesk request={request} />
 }
 
 function GenericPermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
@@ -455,6 +473,12 @@ export function ApprovalBar({ requests }: { requests: PermissionRequest[] }): Re
 }
 
 function ApprovalBarInner({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
+  // Celular/PWA: barra de siempre. Escritorio: barra compacta del rediseño ND (armada, sin atajos).
+  if (isRemoteSurface()) return <RemoteApprovalBar request={request} more={more} />
+  return <ApprovalBarDesk request={request} more={more} />
+}
+
+function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
   const t = useT()
   const servers = useMcpServers()
   const d = describePermission(request, servers)

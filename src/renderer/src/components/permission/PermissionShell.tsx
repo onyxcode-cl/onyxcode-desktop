@@ -39,7 +39,7 @@ export function PermCardFrame({
 }): React.JSX.Element {
   return (
     <div
-      id={id}
+      id={`perm-${id}`}
       tabIndex={-1}
       role="alertdialog"
       aria-modal="false"
@@ -193,6 +193,7 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   focusCard: () => void
 } {
+  const domId = `perm-${id}`
   const [armed, setArmed] = useState(false)
   const armedRef = useRef(false)
   const visibleRef = useRef(false)
@@ -203,7 +204,7 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
   busyRef.current = busy
 
   useEffect(() => {
-    const el = document.getElementById(id)
+    const el = document.getElementById(domId)
     if (!el || typeof IntersectionObserver === 'undefined') {
       observingRef.current = false
       visibleRef.current = false
@@ -238,16 +239,16 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
       observingRef.current = false
       visibleRef.current = false
     }
-  }, [id])
+  }, [domId])
 
   const focusCard = useCallback((): void => {
-    document.getElementById(id)?.focus({ preventScroll: true })
-  }, [id])
+    document.getElementById(domId)?.focus({ preventScroll: true })
+  }, [domId])
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>): void => {
       const target = e.target as HTMLElement | null
-      const card = document.getElementById(id)
+      const card = document.getElementById(domId)
       const dec = decidePermKey(
         {
           key: e.key,
@@ -280,7 +281,7 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
         e.preventDefault()
       }
     },
-    [id]
+    [domId]
   )
 
   return { armed, onKeyDown, focusCard }

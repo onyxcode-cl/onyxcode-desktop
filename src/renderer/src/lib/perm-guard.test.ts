@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ARM_MS,
-  MAX_DRIFT_PX,
-  armState,
-  decidePermKey,
-  initialArmState,
-  type PermKeyContext,
-  type PermKeyEvent
-} from './perm-guard'
+import { ARM_MS, MAX_DRIFT_PX, armState, decidePermKey, initialArmState, type PermKeyContext, type PermKeyEvent } from './perm-guard'
 
 const ev = (over: Partial<PermKeyEvent> = {}): PermKeyEvent => ({
   key: 'Enter',
