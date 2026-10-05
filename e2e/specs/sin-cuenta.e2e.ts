@@ -37,15 +37,20 @@ describe('sin cuenta', () => {
     const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
     await expectVisible(nav)
     await expectCount(nav.getByRole('button', { name: 'Cuenta', exact: true }), 0)
-    const err = await page.evaluate(async () => {
+    // `window.api.invoke` es `invokeRaw`: un canal que el preload no conoce RESPONDE `{ok:false, code:'FORBIDDEN'}` (no lanza).
+    const res = await page.evaluate(async () => {
+      const api = (window as unknown as { api: { invoke: (c: string) => Promise<unknown> } }).api
       try {
-        await (window as unknown as { api: { invoke: (c: string) => Promise<unknown> } }).api.invoke('account:state')
-        return null
+        return { resolved: await api.invoke('account:state') }
       } catch (e) {
-        return String((e as Error).message ?? e)
+        return { thrown: String((e as Error).message ?? e) }
       }
     })
-    expect(err).toContain('Canal IPC no permitido')
+    const r = res as { resolved?: { ok?: boolean; code?: string; error?: string }; thrown?: string }
+    expect(r.thrown).toBeUndefined()
+    expect(r.resolved?.ok).toBe(false)
+    expect(r.resolved?.code).toBe('FORBIDDEN')
+    expect(r.resolved?.error).toContain('Canal IPC no permitido')
   })
 
   it('Quick Entry se abre sin ninguna puerta de acceso', async () => {
