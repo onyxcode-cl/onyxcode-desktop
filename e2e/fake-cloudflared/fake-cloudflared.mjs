@@ -83,6 +83,7 @@ if (!tm) {
 const targetPort = Number(tm[1])
 raw(`FAKE_ARGV=${JSON.stringify(argv)}`)
 raw(`FAKE_HOME=${process.env.HOME || ''}`)
+raw(`FAKE_CWD=${process.cwd()}`)
 if (argv.includes('--config')) log('ERR', `Configuration file ${arg('--config')} was empty`)
 
 if (has('ignore-sigterm')) process.on('SIGTERM', () => log('INF', 'FAKE: SIGTERM ignorado'))

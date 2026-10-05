@@ -2,7 +2,7 @@
  * `CloudflaredProcess` con el `cloudflared` FALSO (nada de red real). Incluye la prueba de CERO huérfanos con procesos reales.
  */
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -191,6 +191,8 @@ describe('CloudflaredProcess con el cloudflared falso', { timeout: 20_000 }, () 
     expect(argv).toContain('--no-autoupdate')
     expect(argv).not.toContain('--config')
     expect(fakeValue(lines, 'FAKE_HOME')).toBe(join(userData, 'cloudflared', 'home'))
+    // Corre en la carpeta de su HOME privado, no en la de la app (bajo ~/Documents el vigía sin TCC protestaba con «getcwd»).
+    expect(realpathSync(fakeValue(lines, 'FAKE_CWD') as string)).toBe(realpathSync(join(userData, 'cloudflared', 'home')))
     expect(JSON.parse(readFileSync(join(userData, 'pids.json'), 'utf8')).map((e: { kind: string }) => e.kind)).toEqual(['cloudflared'])
     // Ni la URL ni nada sensible en el búfer guardado.
     expect(p.recentLines().join('\n')).not.toContain(new URL(r.url).host)

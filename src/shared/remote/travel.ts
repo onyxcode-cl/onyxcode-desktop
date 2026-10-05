@@ -72,8 +72,11 @@ export const TRAVEL_LIMITS = {
 
 /** Plazos del proceso `cloudflared`. */
 export const TRAVEL_PROCESS = {
-  /** URL + conexión registrada. */
-  startTimeoutMs: 30_000,
+  /**
+   * URL + conexión registrada. 60 s y no 30: con el binario real el arranque varió de 8 s a MÁS de 30 s en la misma red (retardo
+   * inicial de hasta ~15 s antes del primer registro y pasos de 5-6 s: una ejecución agotó los 30 s con el túnel a medio abrir).
+   */
+  startTimeoutMs: 60_000,
   /** Sin conexión registrada con el proceso vivo → `offline` en Ajustes (no se mata: puede volver). */
   offlineAfterMs: 120_000,
   /** Reintentos tras una muerte del proceso: espera exponencial con azar de 2 s a 60 s; `rate` empieza en 60 s. */

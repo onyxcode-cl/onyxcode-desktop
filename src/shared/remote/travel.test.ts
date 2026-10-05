@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseHostFrame } from './protocol'
 import {
   TRAVEL_KEEPALIVE,
+  TRAVEL_PROCESS,
   TRAVEL_STUN_URLS,
   TUNNEL_HOST_RE,
   TUNNEL_ORIGIN_RE,
@@ -55,6 +56,9 @@ describe('keepalive, STUN y vida', () => {
   it('pings ≤ 25 s y cierre antes de 100 s', () => {
     expect(TRAVEL_KEEPALIVE.pingMs).toBeLessThanOrEqual(25_000)
     expect(TRAVEL_KEEPALIVE.deadMs).toBeLessThan(100_000)
+  })
+  it('el plazo de arranque de cloudflared deja margen sobre lo medido con el binario real (una ejecución pasó de 30 s)', () => {
+    expect(TRAVEL_PROCESS.startTimeoutMs).toBeGreaterThanOrEqual(45_000)
   })
   it('dos STUN sin cuenta y ningún TURN', () => {
     expect(TRAVEL_STUN_URLS).toEqual(['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'])

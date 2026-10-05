@@ -197,6 +197,9 @@ export class CloudflaredProcess {
       plat === 'win32' ? { command: this.o.binary, args } : deps.withDisclaim('/bin/sh', ['-c', GUARD_SCRIPT, 'sh', this.o.binary, ...args])
     const child = deps.spawn(guarded.command, guarded.args, {
       detached: plat !== 'win32',
+      // Carpeta propia del proceso (la de su `HOME` privado): sin ella heredaría la de la app, y el vigía `/bin/sh` sin permisos TCC
+      // (disclaim) protesta con «getcwd: cannot access parent directories» si esa carpeta está bajo ~/Documents (instancia de desarrollo).
+      cwd: this.o.homeDir,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
       env: cloudflaredEnv(this.o.homeDir, process.env, this.o.extraEnv)
