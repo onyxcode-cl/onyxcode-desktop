@@ -46,7 +46,7 @@ export function UpdateNotice(): React.JSX.Element | null {
             key={a.id}
             type="button"
             onClick={() => act(a.id)}
-            className={`no-drag h-7 shrink-0 rounded-md px-2 transition-colors hover:bg-accent/15 ${
+            className={`no-drag h-7 shrink-0 rounded-ctl-sm px-2 transition-colors hover:bg-accent/15 ${
               a.id === 'download-manual' ? 'font-medium text-accent underline-offset-2 hover:underline' : ''
             }`}
           >
@@ -59,7 +59,7 @@ export function UpdateNotice(): React.JSX.Element | null {
           type="button"
           aria-label={t('notices.close')}
           onClick={() => act('later')}
-          className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent/15"
+          className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-ctl-sm transition-colors hover:bg-accent/15"
         >
           <X size={13} />
         </button>

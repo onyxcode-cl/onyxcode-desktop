@@ -48,9 +48,9 @@ export function EngineNotice(): React.JSX.Element | null {
   return (
     <div
       role="status"
-      className="flex animate-fade-in items-center gap-2.5 border-b border-warning/25 bg-warning/8 px-4 py-2 text-xs text-warning desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag]"
+      className="flex animate-fade-in items-center gap-2.5 border-b border-warning/25 bg-warning/8 px-4 py-2 text-xs text-warning desk:border-warning/35 desk:text-fg desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag]"
     >
-      <Info size={14} className="shrink-0" />
+      <Info size={14} className="shrink-0 desk:text-warning" />
       <span className="flex-1">{text}</span>
       <button
         type="button"
