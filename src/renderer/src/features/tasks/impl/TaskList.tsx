@@ -277,7 +277,7 @@ function TaskRow({
         </div>
       </button>
       {quiet && (
-        <span className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline ${busy ? '' : 'desk:group-hover:hidden'}`}>
+        <span className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline ${busy ? '' : ' desk:group-hover:hidden'}`}>
           {relTime(task.time.updated)}
         </span>
       )}

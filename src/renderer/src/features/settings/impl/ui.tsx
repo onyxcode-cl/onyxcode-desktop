@@ -24,7 +24,7 @@ export function Row({
   description?: ReactNode
   /**
    * `stack-narrow` (solo escritorio): con la tarjeta estrecha (<34 rem) el control pasa debajo del texto; ancha, en línea.
-   * Por defecto `inline`: no cambia ninguna fila existente ni el celular (todo va tras `desk:`).
+   * Por defecto `inline`: no cambia ninguna fila existente ni el celular (todo va con la variante de escritorio).
    */
   layout?: 'inline' | 'stack-narrow'
   children?: ReactNode
@@ -35,7 +35,7 @@ export function Row({
       data-row=""
       className={`flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0 ${
         stack
-          ? 'desk:flex-col desk:items-stretch desk:gap-3 desk:@[34rem]:flex-row desk:@[34rem]:items-center desk:@[34rem]:justify-between desk:@[34rem]:gap-4'
+          ? 'flex desk:flex-col desk:items-stretch desk:gap-3 desk:@[34rem]:flex-row desk:@[34rem]:items-center desk:@[34rem]:justify-between desk:@[34rem]:gap-4'
           : ''
       }`}
     >
@@ -45,7 +45,7 @@ export function Row({
           <div className="mt-0.5 text-xs text-muted desk:max-w-[60ch] desk:text-[13px] desk:leading-[18px]">{description}</div>
         )}
       </div>
-      {children && <div className={`shrink-0 ${stack ? 'desk:w-full desk:@[34rem]:w-auto' : ''}`}>{children}</div>}
+      {children && <div className={`shrink-0 ${stack ? 'w-auto desk:w-full desk:@[34rem]:w-auto' : ''}`}>{children}</div>}
     </div>
   )
 }
