@@ -1182,3 +1182,11 @@ Solo escritorio (clases `desk:` y rama `!isRemoteSurface()`); el celular/PWA no 
 - **Cabecera**: proyecto y rama con anchos mínimos mayores (7,5 y 6,5 rem) y `title` con el nombre completo; la barra es contenedor y por debajo de 32 rem oculta bifurcar/compactar y el título de la sesión.
 - **Compositor**: la barra no desborda (`min-w-0`, grupo del modelo encogible); por debajo de 34 rem se oculta @, de 30 rem el esfuerzo, de 25 rem el texto del modo y Comparar; Enviar nunca se corta.
 - **Pestañas del panel**: sin saltos de línea y con desplazamiento horizontal cuando el panel es estrecho.
+
+## F8-B101 — Barra lateral 1b de escritorio (0.4.5)
+
+Solo escritorio (clases `desk:`); el celular/PWA no cambia: 32 capturas idénticas a la línea base de fcd0604 (0 píxeles distintos).
+
+- **Barra lateral**: título de 48 px, fila nueva con logo, buscador con ⌘K, modos 2×2 con punto de aprobaciones, encabezado Proyectos con proyectos plegables, hilos sangrados con hora, chip Aprobar, estado Trabajando y pie con conexión.
+- **i18n del núcleo de la PWA**: `i18n-core-keys.json` regenerado (13 claves nuevas que pide el arranque) y formateado con Prettier.
+- **Verificación**: typecheck, vitest completo (3833 pasan, 0 fallos), lint (0 errores), format:check, build, build:pwa y size:pwa en verde (arranque 287,7 KB gzip; presupuestos intactos).
