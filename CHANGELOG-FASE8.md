@@ -1054,3 +1054,21 @@ aplicado a los 6 literales de `desktop-unchanged` y a los 3 snapshots de render 
 regla con `data-shell`; `boot.css` 18,9 KB gzip antes y después (108 097 B idénticos), arranque 286,0 KB, `boot.js` 201,3 KB.
 Herramientas: `scripts/shot-diff.mjs` (comparador de píxeles), `shot-desktop`: ratón fuera de la ventana y `--reduced-motion`.
 Celular: 29 de 32 capturas idénticas; las 3 restantes (`lista-*`) difieren solo en el texto de hora relativa («hace 23 h» → «ayer»), no en CSS.
+
+## F8-B93 — Rediseño de escritorio: Tareas, Rutinas, Ajustes, primer uso y Comparar (defectos de lógica L1–L6; sin cambio en el celular)
+**Lógica.** L1/L2: «Activas» pasa a **«En otras carpetas»** (`activeElsewhere`) y la carpeta abierta tiene su grupo **«En curso»** con el estado del
+renderer (`splitInProgress`), excluido de los grupos por fecha: una tarea nunca sale dos veces y la que espera aprobación aparece al instante
+(`sidebar-groups.test.ts`). L3: la barra de aprobación solo se pinta si la tarjeta grande no se ve ≥60 % (`IntersectionObserver`; cierre seguro con
+`shouldShowBar`: sin tarjeta u observador, se ve) y la tarjeta usa el mismo orden de botones que la barra (Rechazar con indicaciones a la izquierda;
+Rechazar · Siempre · Permitir una vez a la derecha) (`approval-bar.test.ts`). L4: «1 modelo». L5: hora de 24 h en Rutinas en español
+(`schedule.hours.test.ts`). L7: «Más rápido» exige ≥10 % y ≥200 ms de ventaja y las duraciones <10 s llevan una décima (`model.test.ts`). Cronómetro
+«0:00» fuera: solo en vivo, la duración va en el `title` de la píldora («Duró 0:42»). L6: el copy del asistente decía «Se guarda en OpenCode, no en
+{app}»; el código (`data-dir.ts`, `sandbox.ts`, `docs/SEGURIDAD.md`) confirma que la clave vive en el almacén propio de la app, así que se corrigió en es y en.
+Foco inicial y de cada paso del asistente al título (sin anillo en «Obtener mi clave»).
+**Interfaz (todo tras `desk:`, el celular no cambia).** Ajustes: `Row layout="stack-narrow"` (se apila con la tarjeta <34 rem; activado solo en Modelos,
+«Dónde se puede usar» y Archivado), descripción 13/18, navegación agrupada Aplicación/Agentes/Conexiones/Ayuda (etiquetas en frase) y la nota de cifrado del
+Celular en un recuadro con escudo, sin acortar el texto. Rutinas: lista de 760 px con grupos Activas/En pausa, modo y carpeta en cada fila e «Ideas para
+empezar» bajo la lista. Comparar: métricas en chips con icono y rótulo, «sin dato» en lugar de «—», «Quedarme con este» secundario, columna descartada sin
+`opacity-60`. Primer uso sin tarjetas anidadas. Fila de tarea de una línea con la hora a la derecha.
+**Prueba.** Cambian dos expectativas de `CompareView.render.test.tsx` («sin dato» en lugar de «—», no son snapshots). No incluidos: `ActionCard`, filtros
+compactos de la lista, reorden del buscador y editor de Rutinas (siguientes tandas).

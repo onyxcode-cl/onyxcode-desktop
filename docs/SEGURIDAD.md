@@ -1470,3 +1470,5 @@ personales).
 
 **Fuera del repo.** El servidor, el VPS, el DNS `api.onyxcode.cl`, el cliente OAuth y la base de usuarios los gestiona el dueño; **sus
 datos en el servidor no se borran desde la app**. Volver a una versión antigua con la cuenta encendida obliga a entrar de nuevo.
+
+**Barra de aprobación de Tareas (F8-B93).** La barra compacta sobre el compositor se oculta solo si la tarjeta equivalente (mismo comando o ruta LITERAL y los mismos botones, en el mismo orden) está visible en la conversación al ≥60 %. Cierre seguro: si la tarjeta no existe, está en otra tarea o el navegador no ofrece `IntersectionObserver`, la barra se muestra (`shouldShowBar`, `approval-bar.test.ts`).
