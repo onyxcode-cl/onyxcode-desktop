@@ -161,7 +161,7 @@ type Status = ToolPart['state']['status']
 function StatusMark({ status }: { status: Status }): React.JSX.Element | null {
   if (status === 'completed') return null
   if (status === 'error') return <AlertCircle size={13} className="text-danger" />
-  return <Loader2 size={13} className="animate-spin text-muted" />
+  return <Loader2 size={13} className="animate-spin text-muted desk:text-accent" />
 }
 
 interface RowProps {
@@ -186,10 +186,10 @@ function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: 
         type="button"
         onClick={() => expandable && setUserOpen(!open)}
         aria-expanded={expandable ? open : undefined}
-        className={`group/row flex w-full min-w-0 items-center gap-2 ${mobile ? 'min-h-11 rounded-lg px-1.5 py-2 active:bg-hover' : 'rounded-md px-1.5 py-1'} text-left text-muted ${expandable ? 'hover:bg-hover hover:text-fg' : 'cursor-default'}`}
+        className={`group/row flex w-full min-w-0 items-center gap-2 desk:min-h-7 ${mobile ? 'min-h-11 rounded-lg px-1.5 py-2 active:bg-hover' : 'rounded-md px-1.5 py-1'} text-left text-muted ${expandable ? 'hover:bg-hover hover:text-fg' : 'cursor-default'}`}
       >
         <span className={`shrink-0 ${status === 'error' ? 'text-danger' : 'text-subtle group-hover/row:text-muted'}`}>{icon}</span>
-        <span className="shrink-0 text-fg/90">{verb}</span>
+        <span className="shrink-0 text-fg/90 desk:font-medium">{verb}</span>
         {detail && <span className="min-w-0 truncate">{detail}</span>}
         <span className="ml-auto flex shrink-0 items-center gap-2 pl-2">
           {extra}
@@ -197,13 +197,13 @@ function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: 
           {expandable && (
             <ChevronRight
               size={13}
-              className={`text-subtle transition-transform ${open ? 'rotate-90' : mobile ? '' : 'opacity-0 group-hover/row:opacity-100'}`}
+              className={`text-subtle transition-transform ${open ? 'rotate-90' : mobile ? '' : 'opacity-0 group-hover/row:opacity-100'} desk:group-focus-visible/row:opacity-100`}
             />
           )}
         </span>
       </button>
       {open && children && (
-        <div className={`mt-1 mb-1.5 ${mobile ? 'ml-0' : 'ml-6'} overflow-hidden rounded-lg border border-border bg-elevated`}>
+        <div className={`mt-1 mb-1.5 ${mobile ? 'ml-0' : 'ml-6'} overflow-hidden rounded-lg border border-border bg-elevated desk:bg-code`}>
           {children}
         </div>
       )}
