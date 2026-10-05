@@ -58,6 +58,9 @@ describe('contraste de tokens (WCAG AA)', () => {
       expect(contrast(t['fg-muted'], t['bg-active'])).toBeGreaterThanOrEqual(4.5)
       expect(contrast(t['fg'], t['bg-active'])).toBeGreaterThanOrEqual(4.5)
     })
+    it(`${theme}: icono de acento de la fila activa de la barra lateral (accent sobre bg-active) >= 4,5`, () => {
+      expect(contrast(t['accent'], t['bg-active'])).toBeGreaterThanOrEqual(4.5)
+    })
     it(`${theme}: --gold (iconos/decoración) >= 3 sobre las superficies`, () => {
       for (const bg of ['bg', 'bg-elevated']) expect(contrast(t['gold'], t[bg])).toBeGreaterThanOrEqual(3)
     })

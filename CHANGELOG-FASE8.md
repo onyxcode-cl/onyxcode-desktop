@@ -1084,3 +1084,18 @@ sin nodos extra; en la PWA devuelve el hijo) y `ui/recipes.ts` (`POP`, `CARD`, `
 `base-markup.test.tsx` (con `stripDesk`, sin `-u`). Kit: `app/dev/UiKit.tsx` (solo con `#ui-kit` y `localStorage onyx.uikit=1`, desde `main.tsx`)
 y `shot-desktop --scenario kit` (capturas por sección, estados forzados por CDP). Docs: `DESIGN.md`, `docs/UI-REDESIGN.md`.
 Peso PWA: estos componentes suman ~0,5 KB gzip a `boot.js` (688,9 → 690,5 KB min, límite `min` 690 de `pwa/budget.json`; gz 201,3 → 201,8).
+
+## F8-B91 — Estructura general de escritorio (barra lateral, cabeceras, paleta, selector de modelo, listas)
+
+`App.tsx` publica `--header-inset` en `<main>` (112 px en Mac, 44 px en Windows, 0 con la barra visible) y las cabeceras/franjas suman
+`pl-[calc(var(--header-inset,0px)+16px)]`: el botón flotante ya no pisa el título (D3). `PageHeader` gana `leading` y `variant`
+(`page`/`workspace`) con un solo borde en escritorio. Franjas de aviso (`ServerBanner`, `EngineNotice`, `QuickEntryNotice` solo con `desk:`;
+`UpdateNotice` libre): arrastrables, mínimo 36 px, botones de 28 px (D17). `Sidebar.tsx`: una sola guía a 22 px, filas de 32 px, búsqueda sin
+borde, «Nuevo» sin caja y con el atajo siempre visible, trazo único 1.75, el modo actual conserva la marca suave con Ajustes abierto y
+`aria-current` pasa a Ajustes (D5, D10, D15, D18); pie de 48 px. `CommandPalette`: velo `--scrim` vía `DialogScrim` (nuevos `components/Dialog.tsx`,
+`layers.ts`, `surfaces.ts`), atajos como `<kbd>`, «Actual» como insignia, estado vacío con icono, «Esc cerrar» (clave `app.palette.close`) (D12).
+`ModelPicker` (solo `desk:`): filas de 32 px, etiquetas en frase, insignias de 11 px (D13). Listas: Chat, Code (`SessionList` en una línea con barra
+de acento y tiempo a la derecha, acciones de sección al pasar el ratón) y Tareas alineadas a la guía; etiquetas de grupo en FRASE en todas (decisión del dueño);
+carpeta de Tareas como fila (D6, D7, D8). Icono del modo Tareas: `ListChecks` (D16). Pruebas: `Sidebar.render.test.tsx`, par `accent/bg-active` en `contrast.test.ts`.
+Sin rediseñar `ConfirmDialog` (el velo ya lo arregla F1): los literales congelados no se tocaron. Pendiente/traspaso: las cabeceras de Chat/Code/Tareas/Comparar/Ajustes deben
+sumar `--header-inset`; la fila buscador+filtros de Tareas es del agente de Tareas.
