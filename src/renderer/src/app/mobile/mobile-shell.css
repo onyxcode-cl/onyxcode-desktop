@@ -78,3 +78,8 @@ html[data-keyboard='open'] [data-surface='mobile'] [data-tabbar] {
   width: 100%;
   min-width: 0;
 }
+
+/* Panel lateral: las cabeceras fijas de la lista (buscador y grupos) usan el fondo del panel, no el de la pantalla. */
+[data-surface='mobile'] [data-in-drawer] [data-drawer-list] :is(.bg-bg, [class*='bg-bg/']) {
+  background-color: var(--bg-sidebar);
+}
