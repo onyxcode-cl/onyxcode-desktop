@@ -36,13 +36,7 @@ const secs = () => ((Date.now() - t0) / 1000).toFixed(1)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const log = (m) => console.log(`[smoke ${secs()}s] ${m}`)
 
-const OUT_PATTERNS = [
-  /Pre-transform error/,
-  /Internal server error/,
-  /\[vite\].*error/i,
-  /Uncaught/,
-  /\[ipc\] canales sin esquema/
-]
+const OUT_PATTERNS = [/Pre-transform error/, /Internal server error/, /\[vite\].*error/i, /Uncaught/, /\[ipc\] canales sin esquema/]
 const FALLBACK_TEXT = 'Algo salió mal'
 const allowlist = JSON.parse(readFileSync(join(root, 'e2e/smoke-allowlist.json'), 'utf8')).map((e) => {
   if (!e.pattern || !e.reason) throw new Error('smoke-allowlist.json: cada entrada necesita pattern y reason')
@@ -113,7 +107,14 @@ async function main() {
   writeFileSync(
     join(userData, 'settings.json'),
     JSON.stringify(
-      { defaultModel: { providerID: 'fake', modelID: 'fake-model' }, theme: 'dark', recentFolders: [], tasksGlobalInstructions: '', onboarded: true, routinesTermsAcknowledged: true },
+      {
+        defaultModel: { providerID: 'fake', modelID: 'fake-model' },
+        theme: 'dark',
+        recentFolders: [],
+        tasksGlobalInstructions: '',
+        onboarded: true,
+        routinesTermsAcknowledged: true
+      },
       null,
       2
     )
@@ -130,22 +131,30 @@ async function main() {
     XDG_CACHE_HOME: join(tmp, 'xdg/cache'),
     XDG_STATE_HOME: join(tmp, 'xdg/state'),
     // Sin ventanas visibles ni icono extra en el Dock (solo aplica sin empaquetar; ver src/main/e2e-headless.ts).
-    ONYXCODE_E2E_HEADLESS: '1',
-    // Cuenta apagada: el smoke no prueba el login (solo se honra sin empaquetar; ver src/main/account/config.ts).
-    ONYXCODE_ACCOUNT_DISABLED: '1'
+    ONYXCODE_E2E_HEADLESS: '1'
   }
-  delete env.ONYXCODE_ACCOUNT_URL
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_RENDERER_URL
 
   let out = ''
   let scanned = 0
-  child = spawn('npx', ['electron-vite', 'dev', '--', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userData}`, ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : [])], {
-    cwd: root,
-    env,
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe']
-  })
+  child = spawn(
+    'npx',
+    [
+      'electron-vite',
+      'dev',
+      '--',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${userData}`,
+      ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : [])
+    ],
+    {
+      cwd: root,
+      env,
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    }
+  )
   child.stdout.on('data', (d) => (out += d))
   child.stderr.on('data', (d) => (out += d))
   child.on('exit', (code) => log(`electron-vite terminó (code ${code})`))
@@ -275,7 +284,14 @@ async function main() {
       b.click(); return true
     })()`)
 
-  if (!(await waitFor('arranque', `document.querySelector('#root') && document.querySelector('#root').children.length > 0 && !!document.querySelector('nav[aria-label="Modo"]')`, 45000))) return failures
+  if (
+    !(await waitFor(
+      'arranque',
+      `document.querySelector('#root') && document.querySelector('#root').children.length > 0 && !!document.querySelector('nav[aria-label="Modo"]')`,
+      45000
+    ))
+  )
+    return failures
   log('#root montado')
   await sleep(SETTLE_MS)
   if (await check('arranque')) return failures
@@ -301,17 +317,37 @@ async function main() {
   }
 
   for (const mode of ['Chat', 'Code', 'Tareas', 'Rutinas', 'Chat']) {
-    const ok = await step(`modo ${mode}`, () => clickBy('nav[aria-label="Modo"]', mode), `document.querySelector('nav[aria-label="Modo"] button[aria-current="page"]')?.textContent.trim().startsWith(${JSON.stringify(mode)})`)
+    const ok = await step(
+      `modo ${mode}`,
+      () => clickBy('nav[aria-label="Modo"]', mode),
+      `document.querySelector('nav[aria-label="Modo"] button[aria-current="page"]')?.textContent.trim().startsWith(${JSON.stringify(mode)})`
+    )
     if (!ok) return failures
   }
-  if (!(await step('Ajustes', () => clickBy('body', 'Ajustes (', true), `!!document.querySelector('nav[aria-label="Secciones de ajustes"]')`))) return failures
-  const sections = await evalJs(`[...document.querySelectorAll('nav[aria-label="Secciones de ajustes"] button')].map((b) => b.textContent.trim())`)
+  if (
+    !(await step('Ajustes', () => clickBy('body', 'Ajustes (', true), `!!document.querySelector('nav[aria-label="Secciones de ajustes"]')`))
+  )
+    return failures
+  const sections = await evalJs(
+    `[...document.querySelectorAll('nav[aria-label="Secciones de ajustes"] button')].map((b) => b.textContent.trim())`
+  )
   if (sections.length < 5) fail('Ajustes', `pocas secciones: ${JSON.stringify(sections)}`)
   for (const s of sections) {
-    const ok = await step(`Ajustes > ${s}`, () => clickBy('nav[aria-label="Secciones de ajustes"]', s), `document.querySelector('nav[aria-label="Secciones de ajustes"] button[aria-current="page"]')?.textContent.trim() === ${JSON.stringify(s)}`)
+    const ok = await step(
+      `Ajustes > ${s}`,
+      () => clickBy('nav[aria-label="Secciones de ajustes"]', s),
+      `document.querySelector('nav[aria-label="Secciones de ajustes"] button[aria-current="page"]')?.textContent.trim() === ${JSON.stringify(s)}`
+    )
     if (!ok) return failures
   }
-  if (!(await step('cerrar Ajustes', () => clickBy('body', 'Cerrar ajustes', true), `!document.querySelector('nav[aria-label="Secciones de ajustes"]')`))) return failures
+  if (
+    !(await step(
+      'cerrar Ajustes',
+      () => clickBy('body', 'Cerrar ajustes', true),
+      `!document.querySelector('nav[aria-label="Secciones de ajustes"]')`
+    ))
+  )
+    return failures
   await sleep(500)
   await check('final')
   ws.close()

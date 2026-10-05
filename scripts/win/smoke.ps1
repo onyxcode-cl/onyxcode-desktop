@@ -34,7 +34,6 @@ function Start-App {
   $env:ONYXCODE_E2E_HEADLESS = '1'
   $env:OPENCODE_BIN = $opencode
   $env:ELECTRON_ENABLE_LOGGING = '1'
-  $env:ONYXCODE_ACCOUNT_DISABLED = '1'   # solo sin empaquetar: la app no pide iniciar sesion (como en los E2E)
   Remove-Item Env:ELECTRON_RENDERER_URL -ErrorAction SilentlyContinue
   $a = "/d /c `"`"$electron`" `"$wt`" --user-data-dir=`"$ud`" > `"$appLog`" 2>&1`""
   return Start-Process -FilePath cmd.exe -ArgumentList $a -WorkingDirectory $wt -PassThru -WindowStyle Hidden

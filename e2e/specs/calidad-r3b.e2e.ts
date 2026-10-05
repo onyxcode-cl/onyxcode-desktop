@@ -1,16 +1,14 @@
-// Calidad R3-B (F8-B38): axe-core (claro y oscuro) sobre la pantalla de acceso, Ajustes › Cuenta (con el servidor de cuentas
-// FALSO de e2e/fake-auth: ni red ni Google ni correo reales) y la ventana Quick Entry. Informe completo: R3B_AXE_REPORT=/ruta.jsonl;
+// Calidad R3-B (F8-B38): axe-core (claro y oscuro) sobre la ventana Quick Entry. Informe completo: R3B_AXE_REPORT=/ruta.jsonl;
 // R3B_AUDIT=1 solo cuenta (no falla); capturas con R3B_SHOTS_DIR (claro/oscuro).
 import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from 'playwright-core'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { startFakeAuth, type FakeAuth } from '../lib/fake-auth'
+import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { findQuickPage, isQuickUrl, listWindows } from '../lib/instance'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { runAxe, SERIOUS, summarize, type AxeViolation } from '../lib/axe'
-import { expectCount, expectVisible } from '../lib/wait'
+import { expectVisible } from '../lib/wait'
 
 const SHOTS = process.env.R3B_SHOTS_DIR
 const REPORT = process.env.R3B_AXE_REPORT
@@ -35,75 +33,29 @@ async function shots(page: Page, name: string): Promise<void> {
   await page.emulateMedia({ colorScheme: null })
 }
 
-let fake: FakeAuth
 const apps: E2EApp[] = []
 const dirs: string[] = []
 
-beforeAll(async () => {
-  fake = await startFakeAuth()
-})
-beforeEach(async () => {
-  await fake.reset()
-})
 afterEach(async (ctx) => {
   for (const a of apps) await a.assertClean(ctx.task.name)
   for (const a of apps.splice(0)) await a.stop()
 })
 afterAll(async () => {
   for (const a of apps.splice(0)) await a.stop()
-  await fake.close()
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
 })
 
-async function launch(signedIn: boolean): Promise<E2EApp> {
+async function launch(): Promise<E2EApp> {
   const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-r3b-')))
   dirs.push(userData)
-  const app = await startApp({ userData, keepUserData: true, account: { fake, signedIn } })
+  const app = await startApp({ userData, keepUserData: true })
   apps.push(app)
   return app
 }
 
-const gate = (p: Page): ReturnType<Page['getByTestId']> => p.getByTestId('account-gate')
-
-describe.skipIf(MODE === 'prod')(`calidad R3-B: cuenta y Quick Entry (${MODE})`, () => {
-  it('pantalla de acceso (inicio, correo y código): axe sin violaciones', async () => {
-    const { page } = await launch(false)
-    await expectVisible(gate(page))
-    await clean(page, 'acceso:inicio')
-    await shots(page, 'acceso-inicio')
-    await page.getByTestId('account-terms').check()
-    await page.getByTestId('account-email-open').click()
-    await page.getByTestId('account-email-input').fill('ana@ejemplo.test')
-    await clean(page, 'acceso:correo')
-    await page.getByTestId('account-email-send').click()
-    await expectVisible(page.getByTestId('account-code-input'))
-    await clean(page, 'acceso:codigo')
-    await page.getByTestId('account-code-input').fill('000000')
-    await expectVisible(page.getByTestId('account-error'))
-    await clean(page, 'acceso:codigo-error')
-    await shots(page, 'acceso-codigo-error')
-  })
-
-  it('Ajustes › Cuenta y el diálogo de borrar cuenta: axe sin violaciones', async () => {
-    const { page } = await launch(true)
-    await expectVisible(page.locator('nav[aria-label="Modo"]'))
-    await page.keyboard.press('ControlOrMeta+,')
-    const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
-    await expectVisible(nav)
-    await nav.getByRole('button', { name: 'Cuenta', exact: true }).click()
-    await expectVisible(page.getByTestId('account-section'))
-    await clean(page, 'ajustes:cuenta')
-    await shots(page, 'ajustes-cuenta')
-    await page.getByRole('button', { name: 'Borrar mi cuenta' }).click()
-    const dlg = page.getByRole('alertdialog')
-    await expectVisible(dlg.getByText('¿Borrar tu cuenta?'))
-    await clean(page, 'ajustes:cuenta-borrar')
-    await page.keyboard.press('Escape')
-    await expectCount(dlg, 0)
-  })
-
+describe.skipIf(MODE === 'prod')(`calidad R3-B: Quick Entry (${MODE})`, () => {
   it('ventana Quick Entry: axe sin violaciones', async () => {
-    const app = await launch(true)
+    const app = await launch()
     await expectVisible(app.page.locator('nav[aria-label="Modo"]'))
     await app.page.evaluate(() =>
       (window as unknown as { api: { extras: { invoke: (c: string) => Promise<unknown> } } }).api.extras.invoke('extras:quickToggle')

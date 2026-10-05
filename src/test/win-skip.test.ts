@@ -1,5 +1,5 @@
 // Guardia de `e2e/win-skip.json` (specs E2E que NO corren en Windows): cada entrada lleva motivo, el archivo existe y no
-// puede ser una spec de la v1 de Windows (Chat, Code, Rutinas en modo Code, Ajustes, cuentas, idioma, Diagnóstico, catálogo
+// puede ser una spec de la v1 de Windows (Chat, Code, Rutinas en modo Code, Ajustes, sin cuenta, idioma, Diagnóstico, catálogo
 // MCP, puntos de restauración/Git de Code, accesibilidad). Si una spec de la lista necesita saltarse, se parte o se usa
 // `describe.skipIf(IS_WIN)` solo en los bloques de Tareas/Control/actualizador, con comentario.
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
@@ -11,7 +11,6 @@ const list = JSON.parse(readFileSync(join(root, 'e2e', 'win-skip.json'), 'utf8')
 
 /** Specs que cubren la v1: no se pueden excluir enteras en Windows. */
 const V1_SPECS = [
-  'account',
   'boot',
   'calidad-r2b',
   'calidad-r3a',
@@ -38,6 +37,7 @@ const V1_SPECS = [
   'no-ai',
   'onboarding',
   'own-auth',
+  'sin-cuenta',
   'perf',
   'routines-terms'
 ]

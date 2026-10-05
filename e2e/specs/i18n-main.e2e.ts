@@ -1,18 +1,17 @@
 // Idioma T4c: lo que construye main y las ventanas con preload propio, con la interfaz en inglés.
-//  (1) error del asistente «no se encontró el binario» y error del código de acceso (pantalla de acceso) en inglés;
+//  (1) error del asistente «no se encontró el binario» en inglés;
 //  (2) motivo de una carpeta de confianza (check.reason) en inglés y con es el texto de siempre;
 //  (3) Quick Entry, píldora (plan, toma de control) y globo de guía leen `?lang=` sin tocar sus preloads;
 //      cambiar el idioma recrea Quick Entry en el otro idioma.
 // Capturas con I18N_T4C_SHOTS_DIR (claro/oscuro en las páginas del renderer principal).
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import type { Page } from 'playwright-core'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { startFakeAuth, type FakeAuth } from '../lib/fake-auth'
+import { afterAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { isQuickUrl, listWindows } from '../lib/instance'
-import { MODE, startApp, type E2EApp } from '../lib/launch'
+import { MODE, startApp } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
 import { IS_WIN, isolatedHomeEnv } from '../lib/proc'
 
@@ -30,14 +29,9 @@ async function shotPage(page: Page, name: string): Promise<void> {
   await page.emulateMedia({ colorScheme: null })
 }
 
-describe.skipIf(!DEV)('T4c: error del asistente y de acceso en inglés', () => {
+describe.skipIf(!DEV)('T4c: error del asistente en inglés', () => {
   const dirs: string[] = []
-  let fake: FakeAuth
-  beforeAll(async () => {
-    fake = await startFakeAuth()
-  })
-  afterAll(async () => {
-    await fake.close()
+  afterAll(() => {
     for (const d of dirs) rmSync(d, { recursive: true, force: true })
   })
 
@@ -60,32 +54,6 @@ describe.skipIf(!DEV)('T4c: error del asistente y de acceso en inglés', () => {
       } finally {
         await app.stop()
       }
-    }
-  })
-
-  it('pantalla de acceso: el código incorrecto sale en inglés', async () => {
-    await fake.reset()
-    const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-t4c-acc-')))
-    dirs.push(userData)
-    const app = await startApp({ userData, keepUserData: true, settings: { language: 'en' }, account: { fake, signedIn: false } })
-    try {
-      const p = app.page
-      await expectVisible(p.getByTestId('account-gate'))
-      await p.getByTestId('account-terms').check()
-      await p.getByTestId('account-email-open').click()
-      await p.getByTestId('account-email-input').fill('ana@ejemplo.test')
-      await p.getByTestId('account-email-send').click()
-      await expectVisible(p.getByTestId('account-code-input'))
-      await expect.poll(() => fake.lastCode('ana@ejemplo.test'), { timeout: 10_000 }).not.toBeNull()
-      const real = (await fake.lastCode('ana@ejemplo.test')) as string
-      await p.getByTestId('account-code-input').fill(real === '000000' ? '111111' : '000000')
-      await expectVisible(p.getByTestId('account-error'))
-      const text = await p.getByTestId('account-error').innerText()
-      expect(text).toContain('The code is wrong or has expired. Request a new one.')
-      expect(text).not.toContain('incorrecto')
-      await shotPage(p, 'acceso-codigo-error-en')
-    } finally {
-      await app.stop()
     }
   })
 })

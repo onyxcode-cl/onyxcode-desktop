@@ -17,7 +17,7 @@ function fakeRepo() {
   }
   w(
     'src/shared/brand.ts',
-    "export const APP_NAME = 'OnyxCode'\nexport const AUTHOR_ALIAS = 'bentec'\nexport const APP_SLUG = 'onyxcode'\nexport const ACCOUNT_API = 'https://api.onyxcode.cl'\n"
+    "export const APP_NAME = 'OnyxCode'\nexport const AUTHOR_ALIAS = 'bentec'\nexport const APP_SLUG = 'onyxcode'\nexport const REMOTE_HOST = 'https://remoto.onyxcode.cl'\n"
   )
   w('package.json', '{"name":"onyxcode","productName":"OnyxCode","author":"bentec"}')
   w('src/shared/i18n/es/app.ts', "export default { 'a.b': 'Bienvenido a OnyxCode' }")

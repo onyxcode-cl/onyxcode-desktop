@@ -167,11 +167,11 @@ export function scanRepo(root, current) {
 export function manualNotes(current, next) {
   return [
     `appId: ${current.appId} → ${next.appId}. Se comprueba en CADA actualización: si cambia DESPUÉS de publicar, las copias instaladas no pueden actualizarse solas a la nueva (hay que reinstalar a mano). Decidirlo antes de la primera versión pública.`,
-    `Datos del usuario: la carpeta de datos (~/Library/Application Support/${current.name}) y el llavero «${current.name} Safe Storage» salen del nombre: con otro nombre la app NO ve la sesión ni los datos cifrados de la anterior (haría falta migración, como migrateLegacyUserData con Lapis/OpenDesk).`,
+    `Datos del usuario: la carpeta de datos (~/Library/Application Support/${current.name}) y el llavero «${current.name} Safe Storage» salen del nombre: con otro nombre la app NO ve los datos cifrados de la anterior (vínculos del celular…; haría falta migración, como migrateLegacyUserData con Lapis/OpenDesk).`,
     `Permisos de macOS (Accesibilidad, Grabación de pantalla, Micrófono): se asocian al identificador; cambiarlo los vuelve a pedir una vez.`,
     `Helpers nativos: ${current.helperId} → ${next.helperId} y ${current.disclaimId} → ${next.disclaimId}. Se compilan con resources/computer-use/build.sh y resources/launcher/build.sh (literales que brand.ts no puede importar; los vigila src/test/brand-consistency.test.ts).`,
     `Protocolo de la app ${current.slug}://app (CSP y esquema propio): cambia con el slug; la zona de seguridad de src/main/security/app-protocol.ts es INTOCABLE sin decisión explícita del dueño.`,
-    `Dominio y servidor de cuentas: ${current.slug}.cl / api.${current.slug}.cl (ACCOUNT_API en brand.ts, Cloudflare Tunnel, correos). Un dominio nuevo hay que comprarlo y configurarlo aparte; este script no toca servidores.`,
+    `Dominio del servicio de conexión del celular: remoto.${current.slug}.cl (Cloudflare Worker). Un dominio nuevo hay que comprarlo y configurarlo aparte; este script no toca servidores.`,
     `Repositorio de releases (RELEASES_REPO), nombre del repositorio y de los assets (OnyxCode-<versión>-arm64.zip: el patrón está en src/shared/update-install.ts y scripts/update-lib.mjs, y lo valida el cliente).`,
     `Certificado y Team ID: no cambian por el nombre, pero el certificado Developer ID muestra el nombre legal, no el alias.`,
     `Nombres históricos «Lapis» y «OpenDesk» (migración de datos antiguos) y «opendesk» dentro de helperId: NO se tocan.`,
