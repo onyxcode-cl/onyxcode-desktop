@@ -260,6 +260,8 @@ export const tasks = {
   'tasks.list.backToTasks': 'Volver a las tareas',
   'tasks.list.showArchived': 'Ver las tareas archivadas',
   'tasks.list.archived': 'Archivadas',
+  'tasks.list.metaApprove': 'Aprobar',
+  'tasks.list.metaFailed': 'Falló',
   'tasks.list.loading': 'Cargando tareas…',
   'tasks.list.minChars.pre': 'Escribe {n} o más letras para buscar también dentro de las conversaciones.',
   'tasks.side.today': 'Hoy',

@@ -264,6 +264,8 @@ export const tasks = {
   'tasks.list.backToTasks': 'Back to tasks',
   'tasks.list.showArchived': 'View archived tasks',
   'tasks.list.archived': 'Archived',
+  'tasks.list.metaApprove': 'Approve',
+  'tasks.list.metaFailed': 'Failed',
   'tasks.list.loading': 'Loading tasks…',
   'tasks.list.minChars.pre': 'Type {n} or more letters to also search inside conversations.',
   'tasks.side.today': 'Today',

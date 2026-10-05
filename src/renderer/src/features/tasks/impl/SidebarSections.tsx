@@ -242,34 +242,34 @@ export function StatusIcon({ status, size = 14 }: { status: TaskStatus; size?: n
   let icon: React.JSX.Element
   switch (status) {
     case 'running':
-      icon = <Loader2 size={size} className="animate-spin text-accent" />
+      icon = <Loader2 size={size} className="animate-spin text-accent desk:size-4" />
       break
     case 'using_computer':
-      icon = <MousePointer2 size={size} className="animate-pulse text-accent" />
+      icon = <MousePointer2 size={size} className="animate-pulse text-accent desk:size-4" />
       break
     case 'plan_ready':
-      icon = <ClipboardCheck size={size} className="text-warning" />
+      icon = <ClipboardCheck size={size} className="text-warning desk:size-4" />
       break
     case 'waiting':
-      icon = <Hand size={size} className="text-warning" />
+      icon = <Hand size={size} className="text-warning desk:size-4" />
       break
     case 'question':
-      icon = <HelpCircle size={size} className="text-accent" />
+      icon = <HelpCircle size={size} className="text-accent desk:size-4" />
       break
     case 'error':
-      icon = <AlertCircle size={size} className="text-danger" />
+      icon = <AlertCircle size={size} className="text-danger desk:size-4" />
       break
     case 'done':
-      icon = <CheckCircle2 size={size} className="text-accent" />
+      icon = <CheckCircle2 size={size} className="text-accent desk:size-4 desk:text-success" />
       break
     case 'archived':
-      icon = <Archive size={size} className="text-subtle" />
+      icon = <Archive size={size} className="text-subtle desk:size-4" />
       break
     case 'interrupted':
-      icon = <RotateCcw size={size} className="text-warning" />
+      icon = <RotateCcw size={size} className="text-warning desk:size-4" />
       break
     default:
-      icon = <Circle size={size} className="text-subtle" />
+      icon = <Circle size={size} className="text-subtle desk:size-4" />
   }
   return (
     <span role="img" aria-label={TASK_STATUS_LABEL[status]} className="inline-flex">
@@ -284,6 +284,7 @@ export function SectionRow({
   title,
   subtitle,
   subtitleClass = 'text-subtle',
+  meta,
   active,
   fullAccess,
   hint,
@@ -293,6 +294,7 @@ export function SectionRow({
   title: string
   subtitle: string
   subtitleClass?: string
+  meta?: string
   active?: boolean
   fullAccess?: boolean
   hint?: string
@@ -303,13 +305,14 @@ export function SectionRow({
       type="button"
       title={hint}
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm desk:min-h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-1 desk:text-ui ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate">{title || tr('tasks.list.untitled')}</span>
-        <span className={`block truncate text-[11px] desk:text-meta ${subtitleClass}`}>{subtitle}</span>
+        <span className={`block truncate text-[11px] desk:hidden ${subtitleClass}`}>{subtitle}</span>
       </span>
+      {meta && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-subtle">{meta}</span>}
       {fullAccess && (
         <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">
           {TASKS_TERMS.fullControlShort}
@@ -339,7 +342,9 @@ function Section<T>({
   if (items.length === 0) return null
   return (
     <section aria-label={label} className="mb-1">
-      <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:px-2.5 desk:pt-3 desk:text-meta">{label}</div>
+      <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+        {label}
+      </div>
       <ul className="space-y-0.5">
         {shown.map((t) => (
           <li key={keyOf(t)}>{render(t)}</li>
@@ -447,6 +452,7 @@ export function SidebarSections(): React.JSX.Element {
             title={t.title}
             subtitle={`${baseName(t.folder)} · ${TASK_STATUS_LABEL[t.state]}`}
             subtitleClass={statusTextClass(t.state)}
+            meta={baseName(t.folder)}
             active={t.sessionId === activeTaskId}
             fullAccess={t.fullAccess}
             hint={t.folder}
