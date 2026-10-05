@@ -1,7 +1,7 @@
 {
-  "name": "OnyxCode",
-  "short_name": "OnyxCode",
-  "description": "Control remoto de OnyxCode",
+  "name": "Lazunox",
+  "short_name": "Lazunox",
+  "description": "Control remoto de Lazunox",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

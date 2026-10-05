@@ -2,7 +2,7 @@
 type Dict = Record<string, string>
 
 export const es: Dict = {
-  appName: 'OnyxCode',
+  appName: 'Lazunox',
   'conn.connecting': 'Conectando con tu Mac…',
   'conn.reconnecting': 'Reconectando ({n}/{max})…',
   'conn.online': 'Conectado',
@@ -10,7 +10,7 @@ export const es: Dict = {
   'conn.offline': 'Sin conexión',
   'app.loading': 'Cargando la interfaz…',
   'app.loadingSlow': 'Sigue cargando… la primera vez tarda más.',
-  'idle.step1': 'Abre OnyxCode en tu Mac y ve a Ajustes › Celular.',
+  'idle.step1': 'Abre Lazunox en tu Mac y ve a Ajustes › Celular.',
   'idle.step2': 'Escanea el código QR con la cámara de este celular.',
   'idle.step3': 'Comprueba que el código de 6 dígitos coincide en ambos.',
   'conn.slow': '¿Tarda mucho? Comprueba que tu Mac esté despierto y en la misma Wi-Fi.',
@@ -19,7 +19,7 @@ export const es: Dict = {
   'lock.set.again': 'Repite el PIN',
   'lock.wait': 'Espera {s} s',
   'fail.body.no-host.short': 'No pude conectar con tu Mac.',
-  'fail.check.mac': 'OnyxCode abierto en tu Mac con «Celular» activado',
+  'fail.check.mac': 'Lazunox abierto en tu Mac con «Celular» activado',
   'fail.check.wifi': 'Los dos en la misma red Wi-Fi',
   'fail.check.isolation': 'Las redes de invitados u hoteles a veces aíslan los dispositivos',
   'list.basic': 'Estás en la versión básica: no se pudo cargar la interfaz completa.',
@@ -31,7 +31,7 @@ export const es: Dict = {
   'wait.mac': 'Esperando a tu Mac… Si es una acción delicada, confírmala en el Mac (tiene hasta 90 s).',
   'strip.locked': 'Bloqueado: escribe tu PIN',
   'lock.confirm.title': 'Confirma en tu Mac',
-  'lock.confirm.body': 'Tu Mac te pide permiso para esta conexión. Acéptala en OnyxCode.',
+  'lock.confirm.body': 'Tu Mac te pide permiso para esta conexión. Acéptala en Lazunox.',
   'lock.set.title': 'Crea tu PIN',
   'lock.set.body':
     'Elige un PIN de 6 dígitos. Te lo pedirá cada vez que te vuelvas a conectar o tras 5 minutos sin uso. No se puede recuperar: si lo olvidas, restablécelo desde el Mac.',
@@ -47,7 +47,7 @@ export const es: Dict = {
   'lock.wrong': 'PIN incorrecto. Te quedan {left} intentos antes de que se quite este celular.',
   'conn.confirm': 'Esperando la confirmación en tu Mac…',
   'idle.title': 'Vincula tu celular',
-  'idle.body': 'Escanea con la cámara el código QR que aparece en OnyxCode, en Ajustes › Celular, en tu Mac.',
+  'idle.body': 'Escanea con la cámara el código QR que aparece en Lazunox, en Ajustes › Celular, en tu Mac.',
   'idle.sameWifi': 'Tu celular y tu Mac deben estar en la misma red Wi-Fi.',
   'pair.title': 'Vinculando…',
   'pair.codeLabel': 'Código de confirmación',
@@ -55,7 +55,7 @@ export const es: Dict = {
   'pair.waiting': 'Esperando que aceptes en tu Mac…',
   'fail.title.no-host': 'No se encuentra el equipo',
   'fail.body.no-host':
-    'No pude conectar con tu Mac. Comprueba que OnyxCode siga abierto con «Celular» activado y que ambos estén en la misma Wi-Fi. Algunas redes (invitados, hoteles, oficinas) aíslan a los dispositivos entre sí y no funcionan.',
+    'No pude conectar con tu Mac. Comprueba que Lazunox siga abierto con «Celular» activado y que ambos estén en la misma Wi-Fi. Algunas redes (invitados, hoteles, oficinas) aíslan a los dispositivos entre sí y no funcionan.',
   'fail.title.expired': 'QR caducado o ya usado',
   'fail.body.expired':
     'Este código solo sirve una vez y dura 2 minutos. En tu Mac pulsa «Nuevo código» en Ajustes › Celular y escanéalo otra vez.',
@@ -74,7 +74,7 @@ export const es: Dict = {
   'fail.title.busy': 'Tu Mac está ocupado',
   'fail.body.busy': 'Ya hay otra conexión en curso. Espera unos segundos y reintenta.',
   'fail.title.version': 'Versión incompatible',
-  'fail.body.version': 'Esta página y la app del Mac no son de la misma versión. Actualiza OnyxCode y vuelve a abrir la página.',
+  'fail.body.version': 'Esta página y la app del Mac no son de la misma versión. Actualiza Lazunox y vuelve a abrir la página.',
   'fail.title.unreachable': 'Sin conexión con tu Mac',
   'fail.body.unreachable': 'Se perdió la conexión y no se pudo recuperar. Comprueba que tu Mac esté despierto y en la misma Wi-Fi.',
   'fail.title.protocol': 'Respuesta no válida',
@@ -109,7 +109,7 @@ export const es: Dict = {
   'chat.placeholder': 'Escribe un mensaje…',
   'chat.messageLabel': 'Mensaje',
   'chat.you': 'Tú',
-  'chat.assistant': 'OnyxCode',
+  'chat.assistant': 'Lazunox',
   'chat.streaming': 'escribiendo…',
   'tool.running': 'en curso',
   'tool.done': 'listo',
@@ -123,26 +123,26 @@ export const es: Dict = {
   'toast.forbidden': 'Tu Mac no permite esa acción.',
   'toast.busy': 'Tu Mac está ocupado. Reintenta en un momento.',
   'toast.failed': 'No se pudo completar la acción.',
-  'toast.unavailable': 'El motor de OnyxCode no está disponible ahora.',
+  'toast.unavailable': 'El motor de Lazunox no está disponible ahora.',
   'toast.timeout': 'Tu Mac no respondió a tiempo.',
   'toast.offline': 'Sin conexión: no se pudo enviar.',
   'toast.tooLong': 'El mensaje es demasiado largo.',
   'toast.sent': 'Mensaje enviado',
   'time.now': 'ahora',
   'sr.connection': 'Estado de la conexión',
-  'idle.travel.step1': 'En casa, abre OnyxCode en tu Mac y ve a Ajustes › Celular › Modo viaje.',
+  'idle.travel.step1': 'En casa, abre Lazunox en tu Mac y ve a Ajustes › Celular › Modo viaje.',
   'idle.travel.step2': 'Escanea el código QR de esa pantalla con la cámara de este celular.',
   'idle.travel.step3': 'Comprueba que el código de 6 dígitos coincide y crea tu PIN.',
   'idle.travel.note':
     'Este vínculo vale solo para este enlace temporal. Guarda la página en favoritos: si el Mac reinicia el túnel, el enlace cambia y hay que vincular de nuevo en casa.',
   'idle.travel.noInstall': 'No se puede instalar como app: el enlace es temporal y dejaría de funcionar.',
-  'conn.slow.travel': '¿Tarda mucho? Comprueba que tu Mac esté encendido, con internet y con OnyxCode abierta.',
+  'conn.slow.travel': '¿Tarda mucho? Comprueba que tu Mac esté encendido, con internet y con Lazunox abierta.',
   'fail.title.travel-link': 'El enlace caducó',
   'fail.body.travel-link':
     'El enlace del modo viaje ya no responde: se reinició, cambió o se cerró. Vuelve a escanear el código QR en casa, con tu Mac, para vincular de nuevo. Si el enlace sigue siendo el mismo, puede que el Mac no responda.',
   'fail.title.travel-mac': 'El Mac no responde',
   'fail.body.travel-mac':
-    'Puede estar dormido, apagado o sin internet, o el enlace se está reiniciando. Reintenta en un momento. OnyxCode no puede despertar tu Mac a distancia.',
+    'Puede estar dormido, apagado o sin internet, o el enlace se está reiniciando. Reintenta en un momento. Lazunox no puede despertar tu Mac a distancia.',
   'fail.title.travel-ice': 'Tu red bloquea la conexión directa',
   'fail.body.travel-ice':
     'La red de este celular (o la del Mac) no permite abrir la conexión directa entre ambos. Prueba con otra red, por ejemplo la Wi-Fi de otra casa o los datos móviles, o vuelve a intentarlo.',
@@ -150,7 +150,7 @@ export const es: Dict = {
   'fail.body.travel-ended':
     'Tu Mac cerró el modo viaje y este vínculo se borró de este celular. Para volver a usarlo, activa el modo viaje y vincula de nuevo en casa.',
   'fail.title.host-offline': 'Tu Mac no está disponible',
-  'fail.body.host-offline': 'Puede estar dormido, apagado o sin internet. OnyxCode no puede despertarlo a distancia.',
+  'fail.body.host-offline': 'Puede estar dormido, apagado o sin internet. Lazunox no puede despertarlo a distancia.',
   'fail.title.storage': 'No se pudo guardar el vínculo',
   'fail.body.storage':
     'Este navegador no puede guardar el vínculo (modo privado o sin almacenamiento). Usa otro navegador, desactiva el modo privado y vincula de nuevo.',
@@ -158,7 +158,7 @@ export const es: Dict = {
   'code.btn': 'Conectar',
   'code.invalid': 'El código no es válido: son 16 letras y números (sin O, I, L ni U).',
   'code.hint': 'XXXX-XXXX-XXXX-XXXX',
-  'idle.cloud.step1': 'Abre OnyxCode en tu Mac, ve a Ajustes › Celular y elige «También fuera de casa».',
+  'idle.cloud.step1': 'Abre Lazunox en tu Mac, ve a Ajustes › Celular y elige «También fuera de casa».',
   'idle.cloud.step2': 'Pulsa «Vincular»: verás un código QR y un código de 16 caracteres.',
   'idle.cloud.step3': 'Escanea el QR con la cámara de este celular o escribe el código aquí abajo.',
   'install.title': 'Instalar en la pantalla de inicio',
@@ -168,11 +168,11 @@ export const es: Dict = {
   'install.btn': 'Instalar',
   'toast.update': 'Hay una versión nueva. Recarga la página.',
   'conn.relay': 'vía relé',
-  'list.update': 'Actualiza la página del celular o OnyxCode en tu Mac.'
+  'list.update': 'Actualiza la página del celular o Lazunox en tu Mac.'
 }
 
 export const en: Dict = {
-  appName: 'OnyxCode',
+  appName: 'Lazunox',
   'conn.connecting': 'Connecting to your Mac…',
   'conn.reconnecting': 'Reconnecting ({n}/{max})…',
   'conn.online': 'Connected',
@@ -180,7 +180,7 @@ export const en: Dict = {
   'conn.offline': 'Offline',
   'app.loading': 'Loading the interface…',
   'app.loadingSlow': 'Still loading… the first time takes longer.',
-  'idle.step1': 'Open OnyxCode on your Mac and go to Settings › Phone.',
+  'idle.step1': 'Open Lazunox on your Mac and go to Settings › Phone.',
   'idle.step2': "Scan the QR code with this phone's camera.",
   'idle.step3': 'Check that the 6-digit code matches on both.',
   'conn.slow': 'Taking a while? Check that your Mac is awake and on the same Wi-Fi.',
@@ -189,7 +189,7 @@ export const en: Dict = {
   'lock.set.again': 'Repeat the PIN',
   'lock.wait': 'Wait {s} s',
   'fail.body.no-host.short': "Couldn't reach your Mac.",
-  'fail.check.mac': 'OnyxCode open on your Mac with “Phone” turned on',
+  'fail.check.mac': 'Lazunox open on your Mac with “Phone” turned on',
   'fail.check.wifi': 'Both on the same Wi-Fi network',
   'fail.check.isolation': 'Guest or hotel networks sometimes isolate devices',
   'list.basic': "You're on the basic version: the full interface couldn't load.",
@@ -201,7 +201,7 @@ export const en: Dict = {
   'wait.mac': 'Waiting for your Mac… If it is a sensitive action, confirm it on the Mac (it has up to 90 s).',
   'strip.locked': 'Locked: enter your PIN',
   'lock.confirm.title': 'Confirm on your Mac',
-  'lock.confirm.body': 'Your Mac is asking permission for this connection. Accept it in OnyxCode.',
+  'lock.confirm.body': 'Your Mac is asking permission for this connection. Accept it in Lazunox.',
   'lock.set.title': 'Create your PIN',
   'lock.set.body':
     'Choose a 6-digit PIN. It will be asked every time you reconnect or after 5 minutes without use. It can’t be recovered: if you forget it, reset it from the Mac.',
@@ -217,7 +217,7 @@ export const en: Dict = {
   'lock.wrong': 'Wrong PIN. {left} attempts left before this phone is removed.',
   'conn.confirm': 'Waiting for confirmation on your Mac…',
   'idle.title': 'Link your phone',
-  'idle.body': 'Scan with your camera the QR code shown in OnyxCode, under Settings › Phone, on your Mac.',
+  'idle.body': 'Scan with your camera the QR code shown in Lazunox, under Settings › Phone, on your Mac.',
   'idle.sameWifi': 'Your phone and your Mac must be on the same Wi-Fi network.',
   'pair.title': 'Linking…',
   'pair.codeLabel': 'Confirmation code',
@@ -225,7 +225,7 @@ export const en: Dict = {
   'pair.waiting': 'Waiting for you to accept on your Mac…',
   'fail.title.no-host': 'Computer not found',
   'fail.body.no-host':
-    "Couldn't reach your Mac. Make sure OnyxCode is still open with “Phone” turned on and that both are on the same Wi-Fi. Some networks (guest, hotel, office) isolate devices from each other and won't work.",
+    "Couldn't reach your Mac. Make sure Lazunox is still open with “Phone” turned on and that both are on the same Wi-Fi. Some networks (guest, hotel, office) isolate devices from each other and won't work.",
   'fail.title.expired': 'QR expired or already used',
   'fail.body.expired': 'This code works once and lasts 2 minutes. On your Mac press “New code” in Settings › Phone and scan it again.',
   'fail.title.revoked': 'Device unlinked',
@@ -243,7 +243,7 @@ export const en: Dict = {
   'fail.title.busy': 'Your Mac is busy',
   'fail.body.busy': 'Another connection is in progress. Wait a few seconds and retry.',
   'fail.title.version': 'Incompatible version',
-  'fail.body.version': "This page and the Mac app aren't the same version. Update OnyxCode and reopen the page.",
+  'fail.body.version': "This page and the Mac app aren't the same version. Update Lazunox and reopen the page.",
   'fail.title.unreachable': 'No connection to your Mac',
   'fail.body.unreachable': "The connection was lost and couldn't be restored. Check that your Mac is awake and on the same Wi-Fi.",
   'fail.title.protocol': 'Invalid response',
@@ -278,7 +278,7 @@ export const en: Dict = {
   'chat.placeholder': 'Write a message…',
   'chat.messageLabel': 'Message',
   'chat.you': 'You',
-  'chat.assistant': 'OnyxCode',
+  'chat.assistant': 'Lazunox',
   'chat.streaming': 'typing…',
   'tool.running': 'running',
   'tool.done': 'done',
@@ -292,26 +292,26 @@ export const en: Dict = {
   'toast.forbidden': "Your Mac doesn't allow that action.",
   'toast.busy': 'Your Mac is busy. Retry in a moment.',
   'toast.failed': "The action couldn't be completed.",
-  'toast.unavailable': 'The OnyxCode engine is unavailable right now.',
+  'toast.unavailable': 'The Lazunox engine is unavailable right now.',
   'toast.timeout': "Your Mac didn't respond in time.",
   'toast.offline': 'Offline: could not send.',
   'toast.tooLong': 'The message is too long.',
   'toast.sent': 'Message sent',
   'time.now': 'now',
   'sr.connection': 'Connection status',
-  'idle.travel.step1': 'At home, open OnyxCode on your Mac and go to Settings › Phone › Travel mode.',
+  'idle.travel.step1': 'At home, open Lazunox on your Mac and go to Settings › Phone › Travel mode.',
   'idle.travel.step2': 'Scan the QR code on that screen with this phone’s camera.',
   'idle.travel.step3': 'Check that the 6-digit code matches and create your PIN.',
   'idle.travel.note':
     'This link only works for this temporary address. Bookmark the page: if the Mac restarts the tunnel, the address changes and you must link again at home.',
   'idle.travel.noInstall': 'It cannot be installed as an app: the address is temporary and would stop working.',
-  'conn.slow.travel': 'Taking long? Check that your Mac is on, online and has OnyxCode open.',
+  'conn.slow.travel': 'Taking long? Check that your Mac is on, online and has Lazunox open.',
   'fail.title.travel-link': 'The link expired',
   'fail.body.travel-link':
     'The travel mode link no longer responds: it restarted, changed or was closed. Scan the QR code again at home, with your Mac, to link again. If the link is still the same, your Mac may not be responding.',
   'fail.title.travel-mac': 'Your Mac is not responding',
   'fail.body.travel-mac':
-    'It may be asleep, off or offline, or the link is restarting. Try again in a moment. OnyxCode cannot wake your Mac remotely.',
+    'It may be asleep, off or offline, or the link is restarting. Try again in a moment. Lazunox cannot wake your Mac remotely.',
   'fail.title.travel-ice': 'Your network blocks the direct connection',
   'fail.body.travel-ice':
     'This phone’s network (or the Mac’s) does not allow opening the direct connection between them. Try another network, such as another home Wi-Fi or mobile data, or try again.',
@@ -319,7 +319,7 @@ export const en: Dict = {
   'fail.body.travel-ended':
     'Your Mac closed travel mode and this link was deleted from this phone. To use it again, turn travel mode on and link again at home.',
   'fail.title.host-offline': 'Your Mac is not available',
-  'fail.body.host-offline': 'It may be asleep, off or offline. OnyxCode cannot wake it up remotely.',
+  'fail.body.host-offline': 'It may be asleep, off or offline. Lazunox cannot wake it up remotely.',
   'fail.title.storage': 'Could not save the link',
   'fail.body.storage':
     'This browser cannot save the link (private mode or no storage). Use another browser, turn private mode off and link again.',
@@ -327,7 +327,7 @@ export const en: Dict = {
   'code.btn': 'Connect',
   'code.invalid': 'The code is not valid: it is 16 letters and digits (no O, I, L or U).',
   'code.hint': 'XXXX-XXXX-XXXX-XXXX',
-  'idle.cloud.step1': 'Open OnyxCode on your Mac, go to Settings › Phone and choose “Also away from home”.',
+  'idle.cloud.step1': 'Open Lazunox on your Mac, go to Settings › Phone and choose “Also away from home”.',
   'idle.cloud.step2': 'Press “Link”: you will see a QR code and a 16-character code.',
   'idle.cloud.step3': 'Scan the QR with this phone’s camera or type the code below.',
   'install.title': 'Install on the home screen',
@@ -337,7 +337,7 @@ export const en: Dict = {
   'install.btn': 'Install',
   'toast.update': 'A new version is available. Reload the page.',
   'conn.relay': 'via relay',
-  'list.update': 'Update the phone page or OnyxCode on your Mac.'
+  'list.update': 'Update the phone page or Lazunox on your Mac.'
 }
 
 function pick(): { lang: 'es' | 'en'; dict: Dict } {
