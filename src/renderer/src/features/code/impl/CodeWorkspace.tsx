@@ -353,7 +353,7 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
     info.changes ? t('code.branch.changes', { count: info.changes }) : t('code.branch.clean')
   ].join(' · ')
   return (
-    <Tip label={tip} className="desk:max-w-40 desk:min-w-16 desk:shrink-[2]">
+    <Tip label={tip} className="no-drag desk:max-w-40 desk:min-w-16 desk:shrink-[2]">
       <button
         type="button"
         onClick={() =>

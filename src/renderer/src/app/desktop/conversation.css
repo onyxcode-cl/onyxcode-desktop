@@ -13,3 +13,170 @@
 :root[data-shell='desktop'] .usage-ring-arc {
   stroke-width: 2.5px;
 }
+
+/* ---- T2 · Markdown de escritorio (15/24, encabezados en la fuente de títulos, código en línea sin borde, cita gris) ----
+ * Las reglas `.markdown` de globals.css no se editan (el celular las hereda): aquí solo se sobrescribe, con más especificidad. */
+:root[data-shell='desktop'] .markdown {
+  line-height: 1.6;
+}
+:root[data-shell='desktop'] .markdown > * + * {
+  margin-top: 12px;
+}
+:root[data-shell='desktop'] .markdown :is(h1, h2, h3, h4) {
+  font-family: var(--font-title);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+:root[data-shell='desktop'] .markdown h1 {
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  margin-top: 28px;
+}
+:root[data-shell='desktop'] .markdown h2 {
+  font-size: 17px;
+  line-height: 24px;
+  margin-top: 24px;
+}
+:root[data-shell='desktop'] .markdown h3 {
+  font-size: 15px;
+  line-height: 24px;
+  margin-top: 20px;
+}
+:root[data-shell='desktop'] .markdown h4 {
+  font-size: 14px;
+  line-height: 20px;
+  margin-top: 16px;
+}
+:root[data-shell='desktop'] .markdown > :first-child {
+  margin-top: 0;
+}
+:root[data-shell='desktop'] .markdown :is(h1, h2, h3, h4) + * {
+  margin-top: 8px;
+}
+:root[data-shell='desktop'] .markdown strong {
+  font-weight: 600;
+}
+:root[data-shell='desktop'] .markdown ul {
+  padding-left: 20px;
+}
+:root[data-shell='desktop'] .markdown ol {
+  padding-left: 24px;
+}
+:root[data-shell='desktop'] .markdown li + li {
+  margin-top: 4px;
+}
+:root[data-shell='desktop'] .markdown li > :is(ul, ol) {
+  margin-top: 4px;
+}
+:root[data-shell='desktop'] .markdown hr {
+  margin: 24px 0;
+}
+
+/* Listas de tareas: casilla propia, sin viñeta. */
+:root[data-shell='desktop'] .markdown li.task-list-item {
+  list-style: none;
+  margin-left: -20px;
+}
+:root[data-shell='desktop'] .markdown ol > li.task-list-item {
+  margin-left: -24px;
+}
+:root[data-shell='desktop'] .markdown li.task-list-item > input[type='checkbox'] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0 8px 0 0;
+  vertical-align: -2px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: transparent;
+  display: inline-block;
+  position: relative;
+}
+:root[data-shell='desktop'] .markdown li.task-list-item > input[type='checkbox']:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+:root[data-shell='desktop'] .markdown li.task-list-item > input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  background: var(--accent-fg);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 7.2l2.4 2.4 4.6-5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 7.2l2.4 2.4 4.6-5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+}
+
+/* Código en línea sin borde; cita sin fondo ni barra de acento. */
+:root[data-shell='desktop'] .markdown :not(pre) > code {
+  font-family: var(--font-code);
+  font-size: 0.875em;
+  background: var(--bg-hover);
+  border: 0;
+  border-radius: var(--radius-2xs);
+  padding: 0.1em 0.35em;
+  color: var(--fg);
+}
+:root[data-shell='desktop'] .markdown blockquote {
+  border-left: 2px solid var(--border-strong);
+  background: transparent;
+  border-radius: 0;
+  padding: 0 0 0 14px;
+  color: var(--fg-muted);
+}
+
+/* Bloques: 16 px de aire alrededor de código, tabla y cita. */
+:root[data-shell='desktop'] .markdown > :is(.code-block, table, blockquote) {
+  margin-top: 16px;
+}
+:root[data-shell='desktop'] .markdown > :is(.code-block, table, blockquote) + * {
+  margin-top: 16px;
+}
+:root[data-shell='desktop'] .markdown > :first-child {
+  margin-top: 0;
+}
+
+/* Tabla 14/20. */
+:root[data-shell='desktop'] .markdown table {
+  font-size: 14px;
+  line-height: 20px;
+}
+:root[data-shell='desktop'] .markdown :is(th, td) {
+  padding: 8px 12px;
+}
+:root[data-shell='desktop'] .markdown th {
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+:root[data-shell='desktop'] .markdown td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bloque de código: cabecera sin fondo ni borde propio, 13/20, copiar discreto. */
+:root[data-shell='desktop'] .markdown .code-block-header {
+  padding: 0 6px 0 14px;
+  border-bottom: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-subtle);
+}
+:root[data-shell='desktop'] .markdown .code-block-header button {
+  height: 24px;
+  border-radius: var(--radius-ctl-sm);
+  color: var(--fg-subtle);
+  font-size: 12px;
+}
+:root[data-shell='desktop'] .markdown .code-block-header button:hover {
+  color: var(--fg);
+  background: var(--bg-hover);
+}
+:root[data-shell='desktop'] .markdown pre {
+  font-family: var(--font-code);
+  line-height: 20px;
+  tab-size: 2;
+}
+:root[data-shell='desktop'] .markdown .code-block > pre {
+  padding: 2px 14px 14px;
+}
