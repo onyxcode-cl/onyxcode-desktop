@@ -4,10 +4,11 @@ import { REMOTE_INVOKE_CHANNELS } from '@shared/ipc-remote'
 import { CELULAR_POLICY } from './policy'
 
 describe('canales de «fuera de casa»', () => {
-  it('remote:setConnection solo admite lan o cloud y nada más', () => {
+  it('remote:setConnection solo admite lan, cloud o travel y nada más', () => {
     const v = IPC_SCHEMAS['remote:setConnection']
     expect(v({ connection: 'lan' })).toEqual({ connection: 'lan' })
     expect(v({ connection: 'cloud' })).toEqual({ connection: 'cloud' })
+    expect(v({ connection: 'travel' })).toEqual({ connection: 'travel' })
     for (const bad of [{}, { connection: 'otro' }, { connection: 'LAN' }, { connection: 'cloud', extra: 1 }, { connection: 1 }, null])
       expect(() => v(bad), JSON.stringify(bad)).toThrow()
   })

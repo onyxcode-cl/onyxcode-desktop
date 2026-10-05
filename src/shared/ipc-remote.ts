@@ -5,7 +5,7 @@
  *
  * El protocolo con el celular (WebSocket/DataChannel) NO pasa por aquí: vive en `shared/remote/protocol.ts`.
  */
-import type { TravelState } from './remote/travel'
+import type { SetTravelKeepRequest, TravelInstallRequest, TravelInstallResult, TravelState } from './remote/travel'
 
 export type RemoteMode = 'off' | 'pairing' | 'active'
 
@@ -246,6 +246,13 @@ export interface RemoteInvokeContract {
   'remote:setConnection': { req: { connection: RemoteConnection }; res: RemoteState }
   /** «Disponible fuera de casa»: arranca el servicio al abrir la app y lo deja sin apagado por inactividad (apagado por defecto). */
   'remote:setAway': { req: { on: boolean }; res: RemoteState }
+  /**
+   * Modo viaje: descarga y verifica `cloudflared` tras el diálogo de consentimiento del Mac (`consent: true` exacto). Nunca desde el
+   * celular (clase X).
+   */
+  'remote:travelInstall': { req: TravelInstallRequest; res: TravelInstallResult }
+  /** Modo viaje: «Cerrar a los 30 min sin uso» o «Mantener abierto» 4/12/24 h (el tope de la política manda). Nunca desde el celular. */
+  'remote:setTravelKeep': { req: SetTravelKeepRequest; res: RemoteState }
   /** Actividad reciente (más nueva primero), opcionalmente de un dispositivo (huella de 8 hex). */
   'remote:auditList': { req: { device?: string } | void; res: RemoteAuditEntry[] }
 }
@@ -280,6 +287,8 @@ export const REMOTE_INVOKE_CHANNELS = [
   'remote:setDeviceTtl',
   'remote:setConnection',
   'remote:setAway',
+  'remote:travelInstall',
+  'remote:setTravelKeep',
   'remote:auditList'
 ] as const satisfies readonly RemoteInvokeChannel[]
 

@@ -545,6 +545,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'remote:setDeviceTtl': 'X',
   'remote:setConnection': 'X', // salir de casa solo se enciende en el Mac
   'remote:setAway': 'X',
+  'remote:travelInstall': 'X', // descargar un binario solo se decide en el Mac, con diálogo de consentimiento
+  'remote:setTravelKeep': 'X', // cuánto dura el túnel solo se decide en el Mac
   'remote:auditList': 'X',
   'remote:setApproveCommands': 'X' // aprobar comandos desde un celular solo se enciende en el Mac, con confirmación propia
 }

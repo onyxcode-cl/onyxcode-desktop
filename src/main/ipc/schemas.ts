@@ -22,6 +22,7 @@ import {
   type PickedElement
 } from '@shared/ipc-browser'
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
+import { parseSetTravelKeepRequest, parseTravelInstallRequest } from '@shared/remote/travel'
 import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
 import { isAllowedShell } from './pty-shell'
 import {
@@ -578,6 +579,15 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   })
 }
 
+/** Envuelve un `parseX` estricto de `shared/` (devuelve `null` si es inválido) como validador que lanza `ValidationError`. */
+function strictParser<T>(parse: (raw: unknown) => T | null): Validator<T> {
+  return (v, path = '') => {
+    const out = parse(v)
+    if (out === null) throw new ValidationError(`${path || 'valor'}: petición inválida`)
+    return out
+  }
+}
+
 type RemoteReq<C extends RemoteInvokeChannel> = RemoteInvokeContract[C]['req']
 const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = {
   'remote:getState': none,
@@ -596,8 +606,10 @@ const REMOTE_SCHEMAS: { [C in RemoteInvokeChannel]: Validator<RemoteReq<C>> } = 
   'remote:setApproveCommands': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }), on: bool }),
   'remote:resetPin': obj({ deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }) }),
   'remote:revokeAll': none,
-  'remote:setConnection': obj({ connection: literal('lan', 'cloud') }),
+  'remote:setConnection': obj({ connection: literal('lan', 'cloud', 'travel') }),
   'remote:setAway': obj({ on: bool }),
+  'remote:travelInstall': strictParser(parseTravelInstallRequest),
+  'remote:setTravelKeep': strictParser(parseSetTravelKeepRequest),
   'remote:setDeviceTtl': obj({
     deviceId: str({ max: 32, min: 32, pattern: /^[0-9a-f]+$/ }),
     days: (v: unknown, path?: string) => (v === null ? null : literal(30, 90, 365)(v, path))

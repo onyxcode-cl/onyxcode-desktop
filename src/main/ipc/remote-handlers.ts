@@ -194,6 +194,18 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     if (getDevicesStore().available) getDevicesStore().setCloudPrefs({ connection })
     return offState(platform)
   })
+  handle(ipcMain, 'remote:travelInstall', async () => {
+    // Sin permiso de la política no hay descarga; el servicio lo vuelve a comprobar. El consentimiento lo recogió el diálogo del Mac.
+    if (!supported || getOrgPolicy().blocked) return { ok: false, error: 'policy' }
+    return (await ensureRemote(host())).travelInstall()
+  })
+  handle(ipcMain, 'remote:setTravelKeep', async ({ keep }) => {
+    if (!supported || getOrgPolicy().blocked) return offState(platform)
+    const s = currentService()
+    if (s) return s.setTravelKeep(keep)
+    if (getDevicesStore().available) getDevicesStore().setCloudPrefs({ travelKeep: keep })
+    return offState(platform)
+  })
   handle(ipcMain, 'remote:setAway', async ({ on }) => {
     if (!supported || getOrgPolicy().blocked) return offState(platform)
     // Encender arranca el servicio ya (si hay celulares y la política lo permite); apagar no necesita cargar nada.

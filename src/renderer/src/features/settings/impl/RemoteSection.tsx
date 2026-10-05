@@ -12,7 +12,9 @@ import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
+import { isMacPlatform } from '../../../lib/platform'
 import { Badge, Card, ErrorText, Row, Select, SectionHeader, SubTitle, Toggle } from './ui'
+import { TravelPanelView, activateTravelFlow, travelNeedsDownload } from './TravelPanel'
 
 function getRemote(): RemoteApi | undefined {
   return (window as unknown as { api?: { remote?: RemoteApi } }).api?.remote
@@ -88,7 +90,14 @@ const AUDIT_KEYS: Record<string, MsgKey> = {
   'away-enabled': 'remote.activity.kind.away-enabled',
   'away-disabled': 'remote.activity.kind.away-disabled',
   'site-mismatch': 'remote.activity.kind.site-mismatch',
-  'site-restored': 'remote.activity.kind.site-restored'
+  'site-restored': 'remote.activity.kind.site-restored',
+  'travel-started': 'remote.activity.kind.travel-started',
+  'travel-stopped': 'remote.activity.kind.travel-stopped',
+  'travel-url-changed': 'remote.activity.kind.travel-url-changed',
+  'travel-gate-reject': 'remote.activity.kind.travel-gate-reject',
+  'travel-binary-installed': 'remote.activity.kind.travel-binary-installed',
+  'travel-binary-bad-hash': 'remote.activity.kind.travel-binary-bad-hash',
+  'travel-ice-failed': 'remote.activity.kind.travel-ice-failed'
 }
 
 const CLOUD_STATUS_KEYS = {
@@ -173,6 +182,9 @@ export function RemoteSection(): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   // Dispositivo cuyo ajuste «Aprobar comandos» espera la respuesta del aviso del Mac.
   const [pendingApprove, setPendingApprove] = useState<string | null>(null)
+  // Modo viaje: el Mac dijo que no lo admite (p. ej. Mac Intel) y el último fallo de descarga.
+  const [travelUnsupported, setTravelUnsupported] = useState(false)
+  const [installError, setInstallError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!api) return
@@ -189,11 +201,14 @@ export function RemoteSection(): React.JSX.Element {
   }, [api])
 
   const pairingActive = state?.pairing != null
+  // Cuenta atrás del QR y del tope de «Mantener abierto» del modo viaje.
+  const travelCountdown = state?.travel?.status === 'online' && state.travel.keep !== 'idle30' && state.travel.expiresAt != null
+  const ticking = pairingActive || travelCountdown
   useEffect(() => {
-    if (!pairingActive) return
+    if (!ticking) return
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
-  }, [pairingActive])
+  }, [ticking])
 
   if (!api) {
     return (
@@ -263,6 +278,33 @@ export function RemoteSection(): React.JSX.Element {
     if (ok) run(() => api.invoke('remote:revokeAll'))
   }
 
+  const activateTravel = (): void => {
+    setError(null)
+    setInstallError(null)
+    setBusy(true)
+    activateTravelFlow({
+      binaryReady: !travelNeedsDownload(state as RemoteState),
+      confirm: () =>
+        confirmDialog({
+          title: t('remote.travel.consent.title'),
+          message: t('remote.travel.consent.body'),
+          confirmLabel: t('remote.travel.consent.confirm'),
+          focusCancel: true
+        }),
+      install: () => api.invoke('remote:travelInstall', { consent: true }),
+      start: () => api.invoke('remote:start')
+    })
+      .then((r) => {
+        if (r.kind === 'started') setState(r.state)
+        else if (r.kind === 'install-failed') {
+          if (r.error === 'unsupported') setTravelUnsupported(true)
+          setInstallError(r.error ?? 'download')
+        }
+      })
+      .catch((err: unknown) => setError(errText(err)))
+      .finally(() => setBusy(false))
+  }
+
   const copy = (url: string): void => {
     void navigator.clipboard
       .writeText(url)
@@ -285,6 +327,11 @@ export function RemoteSection(): React.JSX.Element {
   const maxDevices = Math.min(state.policy?.maxDevices ?? LIMITS.maxDevices, LIMITS.maxDevices)
   const connected = state.devices.some((d) => d.connected)
   const on = state.mode !== 'off'
+  const connection = state.connection ?? 'lan'
+  const travelMode = connection === 'travel'
+  const travelPolicyOff = state.policy?.allowTravelMode === false
+  const travelUnsupportedHere = travelUnsupported || !isMacPlatform()
+  const travelBlocked = travelMode && state.travel?.blocked != null
   const remaining = state.pairing ? Math.max(0, Math.ceil((state.pairing.expiresAt - now) / 1000)) : 0
 
   return (
@@ -321,8 +368,19 @@ export function RemoteSection(): React.JSX.Element {
                     {t('remote.stopAll')}
                   </Button>
                 ) : (
-                  <Button variant="primary" size="sm" disabled={busy} onClick={() => run(() => api.invoke('remote:start'))}>
-                    {busy ? t('remote.activating') : t('remote.activate')}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={busy || (travelMode && (travelBlocked || travelUnsupportedHere))}
+                    onClick={() => (travelMode ? activateTravel() : run(() => api.invoke('remote:start')))}
+                  >
+                    {busy
+                      ? t('remote.activating')
+                      : travelMode
+                        ? travelNeedsDownload(state)
+                          ? t('remote.travel.downloadActivate')
+                          : t('remote.travel.activate')
+                        : t('remote.activate')}
                   </Button>
                 )}
               </span>
@@ -335,25 +393,38 @@ export function RemoteSection(): React.JSX.Element {
                     ? t('remote.conn.blocked.policy')
                     : state.outsideBlocked === 'passkey-required'
                       ? t('remote.conn.blocked.passkey')
-                      : (state.connection ?? 'lan') === 'cloud'
+                      : connection === 'cloud'
                         ? t('remote.conn.hint.cloud')
-                        : t('remote.conn.hint.lan')}
+                        : travelMode
+                          ? travelPolicyOff
+                            ? t('remote.conn.blocked.travelPolicy')
+                            : t('remote.conn.hint.travel')
+                          : t('remote.conn.hint.lan')}
                 </span>
               }
             >
               <Select
                 aria-label={t('remote.conn.label')}
-                value={state.outsideBlocked ? 'lan' : (state.connection ?? 'lan')}
+                value={state.outsideBlocked ? 'lan' : connection}
                 disabled={busy || state.outsideBlocked != null}
-                onChange={(e) =>
-                  run(() => api.invoke('remote:setConnection', { connection: e.target.value === 'cloud' ? 'cloud' : 'lan' }))
-                }
+                onChange={(e) => {
+                  const v = e.target.value
+                  setInstallError(null)
+                  run(() => api.invoke('remote:setConnection', { connection: v === 'travel' ? 'travel' : v === 'cloud' ? 'cloud' : 'lan' }))
+                }}
               >
                 <option value="lan">{t('remote.conn.lan')}</option>
-                <option value="cloud">{t('remote.conn.cloud')}</option>
+                {/* El modo viaje no se ofrece donde no existe (Windows, Mac Intel) ni se puede elegir si la política lo prohíbe. */}
+                {(!travelUnsupportedHere || travelMode) && (
+                  <option value="travel" disabled={travelPolicyOff}>
+                    {t('remote.conn.travel')}
+                  </option>
+                )}
+                {/* «También fuera de casa» (servicio fijo) no se ofrece de nuevo: solo se muestra si ya estaba elegido. */}
+                {connection === 'cloud' && <option value="cloud">{t('remote.conn.cloud')}</option>}
               </Select>
             </Row>
-            {!state.outsideBlocked && (state.connection ?? 'lan') === 'cloud' && (
+            {!state.outsideBlocked && connection === 'cloud' && (
               <Row label={t('remote.away.label')} description={`${t('remote.away.hint')} ${t('remote.away.sleepTip')}`}>
                 <Toggle
                   checked={state.away === true}
@@ -391,14 +462,32 @@ export function RemoteSection(): React.JSX.Element {
             </Row>
           </Card>
 
-          {(error || state.error) && <ErrorText>{error ?? startError(state.error as string)}</ErrorText>}
+          {travelMode && (
+            <TravelPanelView
+              t={t}
+              state={state}
+              busy={busy}
+              now={now}
+              unsupported={travelUnsupportedHere}
+              installError={installError}
+              onKeep={(keep) => run(() => api.invoke('remote:setTravelKeep', { keep }))}
+            />
+          )}
+
+          {(error || state.error) && !(travelMode && state.error?.startsWith('travel')) && (
+            <ErrorText>{error ?? startError(state.error as string)}</ErrorText>
+          )}
 
           {state.pairing && (
             <>
-              <SubTitle>{state.pairing.code ? t('remote.qr.title.cloud') : t('remote.qr.title')}</SubTitle>
+              <SubTitle>
+                {travelMode ? t('remote.qr.title.travel') : state.pairing.code ? t('remote.qr.title.cloud') : t('remote.qr.title')}
+              </SubTitle>
               <Card className="flex flex-col items-center gap-3 p-5">
                 <QrSvg matrix={state.pairing.qr} label={t('remote.qr.alt')} />
-                <p className="text-center text-xs text-muted">{state.pairing.code ? t('remote.qr.hint.cloud') : t('remote.qr.hint')}</p>
+                <p className="text-center text-xs text-muted">
+                  {travelMode ? t('remote.qr.hint.travel') : state.pairing.code ? t('remote.qr.hint.cloud') : t('remote.qr.hint')}
+                </p>
                 {state.pairing.code && (
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-xs text-muted">{t('remote.qr.code')}</span>
