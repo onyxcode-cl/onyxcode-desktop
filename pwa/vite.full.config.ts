@@ -13,6 +13,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { SWAPS } from '../src/renderer/remote/swaps'
 import { i18nSplit, readCoreKeys } from '../src/renderer/remote/i18n-split'
+import { stripDesktopCss } from '../src/renderer/remote/strip-desktop-css'
 
 const repo = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 const src = resolve(repo, 'src/renderer/src')
@@ -29,6 +30,25 @@ function swaps(): Plugin {
         .join('/')
       const target = SWAPS[rel]?.[source]
       return target ? resolve(remote, target) : null
+    }
+  }
+}
+
+/**
+ * Quita del CSS de la PWA lo que es SOLO de escritorio: Tailwind genera las clases `desk:*` (variante `[data-shell='desktop']`) de
+ * todo el código compartido, y la PWA nunca marca `data-shell`. Así el CSS del celular no paga el rediseño de escritorio (en vez
+ * de subir el presupuesto de pwa/budget.json). Ver `src/renderer/remote/strip-desktop-css.ts`.
+ */
+function stripDesktopCssPlugin(): Plugin {
+  return {
+    name: 'onyx-strip-desktop-css',
+    enforce: 'post',
+    generateBundle(_o, bundle) {
+      for (const [file, out] of Object.entries(bundle)) {
+        if (out.type !== 'asset' || !file.endsWith('.css')) continue
+        const text = typeof out.source === 'string' ? out.source : Buffer.from(out.source).toString('utf8')
+        if (text.includes('data-shell')) out.source = stripDesktopCss(text)
+      }
     }
   }
 }
@@ -90,6 +110,7 @@ export default defineConfig({
     swaps(),
     react(),
     tailwindcss(),
+    stripDesktopCssPlugin(),
     entryManifest()
   ],
   resolve: {
