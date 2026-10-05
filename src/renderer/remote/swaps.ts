@@ -27,6 +27,8 @@ export const SWAPS: Record<string, Record<string, string>> = {
     './panels/FilesPanel': 'lazy/FilesPanel.tsx'
   },
   'src/renderer/src/features/browser/index.ts': { './BrowserPanel': 'lazy/BrowserPanel.tsx' },
+  // Detalle del elemento elegido (popover del chip): se baja al abrirlo.
+  'src/renderer/src/features/browser/ElementChip.tsx': { './ElementDetailPopover': 'lazy/ElementDetailPopover.tsx' },
   // Markdown (react-markdown y compañía) y resaltado (highlight.js) en trozos aparte.
   'src/renderer/src/features/code/impl/MessageStream.tsx': { '../../../components/Markdown': 'lazy/Markdown.tsx' },
   'src/renderer/src/features/chat/ChatMessageList.tsx': { '../../components/Markdown': 'lazy/Markdown.tsx' },

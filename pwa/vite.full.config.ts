@@ -14,6 +14,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { SWAPS } from '../src/renderer/remote/swaps'
 import { i18nSplit, readCoreKeys } from '../src/renderer/remote/i18n-split'
 import { stripDesktopCss } from '../src/renderer/remote/strip-desktop-css'
+import { stripDesktopJs } from '../src/renderer/remote/strip-desktop-js'
 
 const repo = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 const src = resolve(repo, 'src/renderer/src')
@@ -49,6 +50,18 @@ function stripDesktopCssPlugin(): Plugin {
         const text = typeof out.source === 'string' ? out.source : Buffer.from(out.source).toString('utf8')
         if (text.includes('data-shell')) out.source = stripDesktopCss(text)
       }
+    }
+  }
+}
+
+/** Quita del JS minificado las clases `desk:` (ya sin reglas en el CSS): menos bytes en el arranque del celular. */
+function stripDesktopJsPlugin(): Plugin {
+  return {
+    name: 'onyx-strip-desktop-js',
+    enforce: 'post',
+    renderChunk(code) {
+      const out = stripDesktopJs(code)
+      return out === code ? null : { code: out, map: null }
     }
   }
 }
@@ -111,6 +124,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     stripDesktopCssPlugin(),
+    stripDesktopJsPlugin(),
     entryManifest()
   ],
   resolve: {
