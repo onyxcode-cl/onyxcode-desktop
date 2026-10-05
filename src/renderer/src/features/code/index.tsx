@@ -3,6 +3,7 @@ import { t } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeDefinition } from '../../app/types'
 import { CodeSidebar, CodeWorkspace, newCodeSession } from './impl/CodeWorkspace'
+import { pickAndOpenFolder } from './impl/ProjectPicker'
 
 function CodeView(): React.JSX.Element {
   return <CodeWorkspace showSessionList={false} />
@@ -16,6 +17,7 @@ export const codeMode: ModeDefinition = {
   icon: Code2,
   View: CodeView,
   SidebarContent: CodeSidebar,
+  projectAction: () => void pickAndOpenFolder(),
   newAction: {
     get label() {
       return t('app.mode.newSession')

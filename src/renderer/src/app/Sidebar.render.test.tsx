@@ -40,11 +40,15 @@ describe('barra lateral de escritorio', () => {
     expect(html).toContain('text-accent')
   })
 
-  it('el atajo de «Nuevo» es visible siempre y la lista cae en la guía px-3', () => {
+  it('barra 1b: «Nuevo» sin atajo en la fila (va en el tooltip) y la lista cae en la guía px-2 de 8 px', () => {
     seed({ mode: 'chat', settingsOpen: false })
     const html = render()
     expect(html).not.toMatch(/opacity-0[^"]*">⌘N|text-subtle opacity-0/)
-    expect(html).toContain('overflow-y-auto px-3 pt-3')
+    expect(html).toContain('title="Nueva conversación (⌘N)"')
+    expect(html).not.toMatch(/<span[^>]*>⌘N<\/span>/)
+    expect(html).toContain('flex min-h-0 flex-1 flex-col px-2')
+    expect(html).toMatch(/overflow-y-auto pb-2 pt-4/)
+    expect(html).toContain('grid grid-cols-2 gap-0.5')
     expect(html).not.toContain('border-t border-border"></div>')
   })
 })

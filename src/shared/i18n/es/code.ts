@@ -128,6 +128,7 @@ export const code = {
   'code.sessions.searchTitle.win': 'Buscar sesiones (Ctrl+K)',
   'code.sessions.loading': 'Cargando sesiones…',
   'code.sessions.empty': 'Sin sesiones todavía.',
+  'code.sessions.newHere': 'Nueva sesión aquí',
   'code.sessions.archived': 'Archivadas ({count})',
   'code.trust.title': '¿Confiar en esta carpeta?',
   'code.trust.body':

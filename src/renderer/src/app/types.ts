@@ -16,4 +16,6 @@ export interface ModeDefinition {
   SidebarContent?: ComponentType
   /** Botón principal de la barra lateral. */
   newAction?: { label: string; run: () => void }
+  /** Acción «Abrir carpeta como proyecto» del encabezado «Proyectos» de la barra lateral de escritorio (solo Code y Tareas). */
+  projectAction?: () => void
 }
