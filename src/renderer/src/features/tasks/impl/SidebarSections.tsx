@@ -279,7 +279,7 @@ export function StatusIcon({ status, size = 14 }: { status: TaskStatus; size?: n
 }
 
 /** Fila de las secciones transversales (un botón con icono, título y subtítulo). */
-function SectionRow({
+export function SectionRow({
   icon,
   title,
   subtitle,

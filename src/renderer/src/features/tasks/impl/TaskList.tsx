@@ -217,7 +217,7 @@ function TaskMenu({
 }
 
 /** Una tarea de la lista de la carpeta. */
-function TaskRow({
+export function TaskRow({
   task,
   status,
   active,
