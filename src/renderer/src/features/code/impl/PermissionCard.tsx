@@ -109,11 +109,11 @@ export function PermissionCard({
   return (
     <div
       {...m('pending-card')}
-      className={`my-2 overflow-hidden rounded-xl border border-accent/40 bg-elevated shadow-sm ${mobile ? '' : 'ring-4 ring-accent/5'}`}
+      className={`my-2 overflow-hidden rounded-xl border border-accent/40 bg-elevated shadow-sm desk:animate-rise-in desk:shadow-md desk:ring-0 ${mobile ? '' : 'ring-4 ring-accent/5'}`}
     >
       <div className="flex items-start gap-2.5 px-3.5 pt-3 pb-2.5">
         <span
-          className={`mt-0.5 flex ${mobile ? 'h-7 w-7' : 'h-6 w-6'} shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent`}
+          className={`mt-0.5 flex ${mobile ? 'h-7 w-7' : 'h-6 w-6'} shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent desk:h-7 desk:w-7 desk:rounded-lg`}
         >
           <Icon size={14} />
         </span>
@@ -161,11 +161,13 @@ export function PermissionCard({
             disabled={busy}
             title={a.title}
             onClick={() => run(a.reply)}
-            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 ${mobile ? 'min-h-11 min-w-28 flex-1 justify-center rounded-xl px-4 text-[14px]' : ''} ${a.cls}`}
+            className={`no-drag inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[13px] font-medium transition disabled:opacity-50 desk:h-8 desk:px-3 desk:py-0 ${mobile ? 'min-h-11 min-w-28 flex-1 justify-center rounded-xl px-4 text-[14px]' : ''} ${a.cls}`}
           >
             {a.label}
             {hotkeys && !mobile && (
-              <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">{a.key}</kbd>
+              <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70 desk:opacity-80">
+                {a.key}
+              </kbd>
             )}
           </button>
         ))}

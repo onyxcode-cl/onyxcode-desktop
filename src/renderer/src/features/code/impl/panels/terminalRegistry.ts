@@ -49,7 +49,8 @@ export class TerminalEntry {
     this.el.style.height = '100%'
     this.term = new Terminal({
       fontFamily: cssVar('--font-mono', "ui-monospace, 'SF Mono', Menlo, monospace"),
-      fontSize: 12.5,
+      fontSize: 13,
+      lineHeight: 1.25,
       cursorBlink: true,
       allowProposedApi: false,
       scrollback: 5000,

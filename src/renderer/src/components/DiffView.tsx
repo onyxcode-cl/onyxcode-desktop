@@ -257,7 +257,7 @@ export const DiffView = memo(function DiffView({
     return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>{t('common.diff.empty')}</div>
   }
   return (
-    <div className={`overflow-auto font-mono text-[12px] leading-[1.55] ${className}`}>
+    <div className={`overflow-auto font-mono text-[12px] leading-[1.55] desk:leading-5 ${className}`}>
       {limited && (
         <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-elevated px-3 py-2 font-sans text-xs text-muted">
           <span>{t('common.diff.truncated', { shown: clip.shown, total: clip.total })}</span>
@@ -309,8 +309,12 @@ export const DiffView = memo(function DiffView({
             }
             return (
               <tr key={i} className={ROW[l.kind]}>
-                <td className={touch ? 'hidden' : 'w-10 pr-2 text-right align-top text-subtle/70 select-none'}>{l.oldNo ?? ''}</td>
-                <td className={`${touch ? 'w-9 pr-1.5 pl-1' : 'w-10 pr-2'} text-right align-top text-subtle/70 select-none`}>
+                <td className={touch ? 'hidden' : 'w-10 pr-2 text-right align-top text-subtle/70 select-none desk:text-subtle'}>
+                  {l.oldNo ?? ''}
+                </td>
+                <td
+                  className={`${touch ? 'w-9 pr-1.5 pl-1' : 'w-10 pr-2'} text-right align-top text-subtle/70 select-none desk:text-subtle`}
+                >
                   {(touch ? (l.newNo ?? l.oldNo) : l.newNo) ?? ''}
                 </td>
                 <td

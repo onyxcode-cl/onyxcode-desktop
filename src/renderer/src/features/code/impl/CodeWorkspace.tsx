@@ -210,7 +210,7 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
-              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition ${p === panel ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:py-0 desk:text-[12.5px] ${p === panel ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
               <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}</span>
             </button>

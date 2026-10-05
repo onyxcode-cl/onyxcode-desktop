@@ -650,7 +650,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                     }
                   }}
                   style={{ paddingLeft: 8 + depth * (mobile ? 16 : 14) }}
-                  className={`flex min-w-0 flex-1 items-center gap-1.5 pr-2 text-left focus-visible:outline-none ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px]'} ${n.ignored ? 'opacity-70' : ''}`}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 pr-2 text-left focus-visible:outline-none ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px] desk:h-[26px] desk:py-0 desk:focus-visible:shadow-[inset_0_0_0_2px_var(--accent)]'} ${n.ignored ? 'opacity-70' : ''}`}
                 >
                   {isDir ? (
                     <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />

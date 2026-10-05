@@ -54,7 +54,7 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
           </IconButton>
         </div>
       )}
-      <div ref={hostRef} className="min-h-0 flex-1 px-2 py-1" />
+      <div ref={hostRef} className="min-h-0 flex-1 px-2 py-1 desk:px-3 desk:py-2" />
     </div>
   )
 }
