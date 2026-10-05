@@ -4,6 +4,7 @@ import type { FakeLink } from '../../src/renderer/remote/fake-link'
 
 const CHAT_DIR = '/Users/demo/.onyxcode/chat-workspace'
 const PROJECT = '/Users/demo/proyectos/tienda-web'
+const TASKS_DIR = '/Users/demo/tareas/informes'
 const NOW = Date.UTC(2026, 9, 4, 15, 30, 0)
 const MIN = 60_000
 
@@ -136,7 +137,10 @@ const S = {
   largo: 'ses_largo002',
   c1: 'ses_code001',
   c2: 'ses_code002',
-  c3: 'ses_code003'
+  c3: 'ses_code003',
+  t1: 'ses_task001',
+  t2: 'ses_task002',
+  t3: 'ses_task003'
 }
 
 function buildMessages(): Record<string, Entry[]> {
@@ -218,6 +222,13 @@ export function attachFixtures(link: FakeLink, scenario: string): void {
     session(S.c3, 'Páginas de error 404 y 500', PROJECT, 60 * 24 * 2)
   ]
   const permiso = scenario === 'permiso'
+  // Tareas: una carpeta autorizada con tres tareas (una espera aprobación de un borrado, una trabaja, una terminó).
+  const tasksSessions = [
+    session(S.t1, 'Borra los temporales de la carpeta', TASKS_DIR, 4),
+    session(S.t2, 'Prepara el informe de ventas', TASKS_DIR, 1),
+    session(S.t3, 'Resumir el contrato del proveedor', TASKS_DIR, 60)
+  ]
+  const tareas = scenario === 'tareas'
   const settings = {
     defaultModel: { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }, theme,
     recentFolders: [PROJECT, '/Users/demo/proyectos/blog', '/Users/demo/proyectos/api-pagos'],
@@ -253,6 +264,30 @@ export function attachFixtures(link: FakeLink, scenario: string): void {
         })
       case 'extras:takePendingPrompt':
         return Promise.resolve(null)
+      case 'routines:list':
+        return Promise.resolve([
+          {
+            id: 'rut_1', name: 'Resumen semanal de ventas', prompt: 'Resume las ventas de la semana y dime qué productos subieron.', mode: 'chat', folder: null,
+            model: { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }, schedule: { kind: 'weekly', day: 1, time: '08:00' }, enabled: true,
+            createdAt: NOW - 20 * 24 * 60 * MIN, updatedAt: NOW - 24 * 60 * MIN, lastRun: NOW - 3 * 24 * 60 * MIN, nextRun: NOW + 2 * 24 * 60 * MIN
+          },
+          {
+            id: 'rut_2', name: 'Revisar pedidos atascados', prompt: 'Busca pedidos sin movimiento por más de 48 horas.', mode: 'code', folder: PROJECT,
+            model: { providerID: 'opencode-go', modelID: 'qwen-3.5-coder' }, schedule: { kind: 'daily', time: '09:30' }, enabled: false,
+            createdAt: NOW - 10 * 24 * 60 * MIN, updatedAt: NOW - 5 * 24 * 60 * MIN
+          }
+        ])
+      case 'routines:history':
+        return Promise.resolve([])
+      case 'tasks:listFolders':
+        return Promise.resolve([{ path: TASKS_DIR, name: 'informes', approvedAt: NOW - 24 * 60 * MIN, lastUsedAt: NOW - 5 * MIN }])
+      case 'tasks:start':
+        return Promise.resolve({
+          folder: TASKS_DIR, baseUrl: 'onyx://engine/task/tokdemo1', authorization: '', sandboxed: true, version: '1.0.0', fullAccess: false,
+          computerUse: { available: false, accessibility: false, screenRecording: false }
+        })
+      case 'tasks:tasks:list':
+        return Promise.resolve([])
       default:
         note('call ' + ch)
         return Promise.resolve(undefined)
@@ -264,11 +299,17 @@ export function attachFixtures(link: FakeLink, scenario: string): void {
     const dir = req.query?.directory
     const m = /^\/session\/([^/]+)\/message$/.exec(req.path)
     if (req.method === 'GET') {
-      if (req.path === '/session') return ok(dir === PROJECT ? codeSessions : dir === CHAT_DIR ? chatSessions : [])
+      if (req.path === '/session') return ok(dir === PROJECT ? codeSessions : dir === CHAT_DIR ? chatSessions : dir === TASKS_DIR ? tasksSessions : [])
       if (m) return ok(messages[m[1] as string] ?? [])
-      if (req.path === '/session/status') return ok({})
+      if (req.path === '/session/status') return ok(dir === TASKS_DIR ? { [S.t2]: { type: 'busy' } } : {})
       if (req.path === '/config/providers') return ok(buildProviders())
       if (req.path === '/permission') {
+        // Tareas: un borrado destructivo pendiente (la tarjeta pone «Rechazar» arriba, decisiones-pwa #1).
+        if (tareas && dir === TASKS_DIR) {
+          return ok([
+            { id: 'per_rm001', sessionID: S.t1, permission: 'bash', patterns: ['rm -rf ./tmp/*.log'], metadata: { command: 'rm -rf ./tmp/*.log' }, always: ['rm *'], tool: { messageID: 'msg_t', callID: 'call_t' } }
+          ])
+        }
         return ok(
           permiso && dir === PROJECT
             ? [{ id: 'per_demo001', sessionID: S.c1, permission: 'edit', patterns: ['src/carrito/total.ts'], metadata: { filepath: 'src/carrito/total.ts' }, always: ['src/carrito/*'], tool: { messageID: 'msg_x', callID: 'call_x' } }]

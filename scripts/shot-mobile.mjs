@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core'
 
 const repo = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 const DEFAULT_OUT = '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots'
-const SCENARIOS = ['lista', 'chat', 'chat-largo', 'permiso', 'ajustes', 'mas', 'bloqueo', 'vinculacion']
+const SCENARIOS = ['inicio', 'panel', 'conversacion', 'chat-largo', 'tareas', 'permiso', 'ajustes', 'rutinas', 'bloqueo', 'vinculacion']
 const LIGHT_LAYER = new Set(['bloqueo', 'vinculacion'])
 const DEVICES = {
   iphone14: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' },
@@ -118,9 +118,15 @@ try {
         const page = await ctx.newPage()
         const errs = []
         page.on('pageerror', (e) => errs.push(e.message.slice(0, 160)))
+        if (process.env.SHOT_DEBUG) page.on('console', (m) => m.type() === 'error' && errs.push('console: ' + m.text().slice(0, 160)))
         try {
           const cdp = await ctx.newCDPSession(page)
           await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+          if (sc === 'tareas') {
+            await page.addInitScript(() => {
+              localStorage.setItem('tasks.lastFolder', '/Users/demo/tareas/informes')
+            })
+          }
           if (sc === 'permiso') {
             await page.addInitScript((p) => {
               localStorage.setItem('code.trustedFolders', JSON.stringify([p]))
@@ -138,6 +144,8 @@ try {
           if (errs.length) console.warn(`  aviso ${sc}: ${errs[0]}`)
         } catch (e) {
           fail.push(`${sc}-${dev}-${theme}: ${String(e.message).split('\n')[0]}`)
+          if (process.env.SHOT_DEBUG) console.warn('  __unknown:', JSON.stringify(await page.evaluate(() => globalThis.__unknown).catch(() => null)), errs.join(' | '))
+          if (process.env.SHOT_DEBUG) await page.screenshot({ path: join(process.env.SHOT_DEBUG, `FALLO-${sc}-${dev}-${theme}.png`) }).catch(() => {})
         } finally {
           await page.close().catch(() => {})
         }
@@ -159,20 +167,46 @@ if (fail.length) {
 async function drive(page, sc) {
   const tab = (name) => page.locator('nav button', { hasText: name }).click()
   const settle = () => page.waitForTimeout(500)
+  const openPanel = async () => {
+    await page.getByRole('button', { name: 'Abrir menú' }).first().click()
+    await page.getByRole('dialog', { name: 'Menú de navegación' }).waitFor()
+    await settle()
+  }
+  const openChat = async (title) => {
+    await openPanel()
+    await page.getByRole('dialog', { name: 'Menú de navegación' }).getByText(title).first().click()
+  }
   switch (sc) {
-    case 'lista':
-      await page.getByText('Plan de migración de Postgres').waitFor()
+    case 'inicio': // raíz de Chat: saludo, sugerencias y compositor
+      await page.getByText('Buenas').first().waitFor().catch(() => {})
+      await settle()
       break
-    case 'chat':
-      await page.getByText('Plan de migración de Postgres').click()
+    case 'panel':
+      await openPanel()
+      await page.getByRole('dialog', { name: 'Menú de navegación' }).getByText('Plan de migración de Postgres').waitFor()
+      break
+    case 'conversacion':
+      await openChat('Plan de migración de Postgres')
       await page.getByText('Comparativa rápida').waitFor()
       break
     case 'chat-largo':
-      await page.getByText('Optimizar consultas lentas').click()
+      await openChat('Optimizar consultas lentas')
       await page.getByText('Dos, ambos menores').waitFor()
       await settle()
       await page.evaluate(() => document.querySelectorAll('main, main *').forEach((el) => { if (el.scrollHeight > el.clientHeight + 40) el.scrollTop = el.scrollHeight }))
       break
+    case 'tareas': {
+      // La carpeta se reconecta al entrar al detalle de Tareas (decisiones-pwa #3: Inicio no carga nada por su cuenta): se entra con
+      // «Nueva tarea» y se vuelve con «Atrás»; entonces Inicio de Tareas muestra la aprobación y «En curso».
+      await tab('Tareas')
+      await page.getByRole('button', { name: 'Nueva tarea' }).first().click()
+      await page.waitForTimeout(1500)
+      if (process.env.SHOT_DEBUG) console.warn('  detalle:', (await page.locator('body').innerText()).slice(0, 400).replace(/\n/g, ' / '))
+      await page.getByRole('button', { name: 'Atrás' }).first().click()
+      await page.getByText('Esperan tu aprobación').first().waitFor()
+      await settle()
+      break
+    }
     case 'permiso':
       await tab('Code')
       await page.getByText('tienda-web').first().click() // proyecto reciente (el motor falso lista sus sesiones)
@@ -180,13 +214,13 @@ async function drive(page, sc) {
       await page.getByText('src/carrito/total.ts').first().waitFor()
       await settle()
       break
-    case 'mas':
-      await tab('Más')
+    case 'ajustes':
+      await openPanel()
+      await page.getByRole('dialog', { name: 'Menú de navegación' }).getByRole('button', { name: /Ajustes/ }).click()
       await settle()
       break
-    case 'ajustes':
-      await tab('Más')
-      await page.getByRole('button', { name: /Ajustes/ }).first().click()
+    case 'rutinas':
+      await tab('Rutinas')
       await settle()
       break
     default:
