@@ -100,7 +100,7 @@ export function ModelsSection(): React.JSX.Element {
         ))}
       </Card>
       <div className="mt-2 flex items-center gap-2">
-        <Button variant="ghost" onClick={() => void refresh()} disabled={!client || loading}>
+        <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={!client || loading}>
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('models.refreshList')}
         </Button>
       </div>
@@ -177,7 +177,7 @@ function ProvidersList({
           return (
             <div
               key={p.id}
-              className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0"
+              className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 desk:px-5 desk:py-3.5 desk:border-border/60"
             >
               <div className="min-w-48 flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">

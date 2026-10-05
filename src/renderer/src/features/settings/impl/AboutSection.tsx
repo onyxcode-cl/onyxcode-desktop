@@ -79,30 +79,32 @@ export function AboutSection(): React.JSX.Element {
       )}
       <Card>
         <Row label={APP_NAME} description={info?.isDev ? t('settings.about.devMode') : undefined}>
-          <span className="font-mono text-sm">v{versions?.app ?? info?.version ?? '…'}</span>
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">v{versions?.app ?? info?.version ?? '…'}</span>
         </Row>
         <Row label={t('settings.about.engine')} description={engineNoticeText(engine) ?? undefined}>
-          <span className="font-mono text-sm">{engineSummary(engine) ?? '—'}</span>
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">{engineSummary(engine) ?? '—'}</span>
         </Row>
         <Row
           label={t('settings.about.server')}
           description={connection ? <span className="font-mono">{connection.baseUrl}</span> : t('settings.about.noConnection')}
         >
-          <span className="font-mono text-sm">
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">
             {server ? `v${server.version}` : (connection?.version && `v${connection.version}`) || '—'}
           </span>
         </Row>
         <Row label="Electron">
-          <span className="font-mono text-sm">{versions?.electron ?? '…'}</span>
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">{versions?.electron ?? '…'}</span>
         </Row>
         <Row label="Chromium">
-          <span className="font-mono text-sm">{versions?.chrome ?? '…'}</span>
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">{versions?.chrome ?? '…'}</span>
         </Row>
         <Row label="Node.js">
-          <span className="font-mono text-sm">{versions?.node ?? '…'}</span>
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">{versions?.node ?? '…'}</span>
         </Row>
         <Row label={t('settings.about.system')}>
-          <span className="font-mono text-sm">{versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}</span>
+          <span className="font-mono text-sm desk:text-meta desk:text-muted">
+            {versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}
+          </span>
         </Row>
         <Row label={t('settings.about.disclaimer')} />
       </Card>
@@ -143,7 +145,7 @@ export function AboutSection(): React.JSX.Element {
               />
             </Row>
             <Row label={t('settings.about.currentVersion')}>
-              <span data-testid="update-current" className="font-mono text-sm">
+              <span data-testid="update-current" className="font-mono text-sm desk:text-meta desk:text-muted">
                 v{update?.current ?? info?.version ?? '…'}
               </span>
             </Row>

@@ -28,7 +28,7 @@ import { useServer } from '../../../stores/server'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { getExtras, requireExtras } from './extras'
 import { McpCatalogDialog } from './McpCatalogDialog'
-import { Badge, Card, ErrorText, Field, SectionHeader, SubTitle, TextArea, TextInput, Toggle } from './ui'
+import { Badge, Card, ErrorText, Field, NOTICE_DESK, SectionHeader, SubTitle, TextArea, TextInput, Toggle } from './ui'
 
 type ExternalEntry = McpEntry | { enabled: boolean }
 
@@ -408,13 +408,13 @@ function TasksFlags({
         </label>
       </div>
       {info.tasks && info.type === 'remote' && info.oauth && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
-          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {t('mcp.flags.oauthWarn')}
+        <p className={`mt-2 flex items-start gap-1.5 text-[11px] text-warning ${NOTICE_DESK.warning}`}>
+          <AlertTriangle size={12} className="mt-0.5 shrink-0 desk:size-4 desk:text-warning" /> {t('mcp.flags.oauthWarn')}
         </p>
       )}
       {info.tasks && info.type === 'local' && info.localSecrets && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11px] text-warning">
-          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {t('mcp.flags.envWarn')}
+        <p className={`mt-2 flex items-start gap-1.5 text-[11px] text-warning ${NOTICE_DESK.warning}`}>
+          <AlertTriangle size={12} className="mt-0.5 shrink-0 desk:size-4 desk:text-warning" /> {t('mcp.flags.envWarn')}
         </p>
       )}
       {info.tasks && info.hosts.length > 0 && (

@@ -81,7 +81,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center gap-2 rounded-lg border bg-bg px-3 py-1.5 text-left text-sm transition-colors hover:border-border-strong ${open ? 'border-accent' : 'border-border'} ${!value ? 'text-muted' : 'text-fg'}`}
+        className={`flex w-full items-center gap-2 rounded-lg border bg-bg px-3 py-1.5 text-left text-sm transition-colors hover:border-border-strong desk:h-8 desk:bg-elevated desk:rounded-ctl ${open ? 'border-accent' : 'border-border desk:border-border-strong'} ${!value ? 'text-muted' : 'text-fg'}`}
       >
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <ChevronsUpDown size={14} className="shrink-0 text-subtle" />
