@@ -24,8 +24,6 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <LangRoot
-      render={() => <App />}
-    />
+    <LangRoot render={() => <App />} />
   </StrictMode>
 )
