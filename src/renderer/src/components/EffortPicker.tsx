@@ -75,7 +75,7 @@ export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Ele
             role="menuitemradio"
             aria-checked={active}
             onClick={() => pick(o.id)}
-            className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] font-medium hover:bg-hover ${sheet ? 'min-h-12 py-2.5' : 'py-1.5'} ${
+            className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] font-medium hover:bg-hover desk:h-8 desk:rounded-ctl desk:py-0 desk:text-ui ${sheet ? 'min-h-12 py-2.5' : 'py-1.5'} ${
               active ? 'text-fg' : 'text-muted'
             }`}
           >
@@ -98,7 +98,7 @@ export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Ele
         title={t('common.effort.title')}
         className={`flex items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors hover:bg-hover hover:text-fg ${
           sheet ? 'h-11 rounded-xl px-3' : 'h-7'
-        } ${open ? 'bg-hover text-fg' : 'text-muted'}`}
+        } desk:rounded-ctl-sm ${open ? 'bg-hover text-fg' : 'text-muted'}`}
       >
         <Brain size={14} />
         <span>{variant ? cap(variant) : t('common.effort.standard')}</span>
@@ -114,9 +114,11 @@ export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Ele
           <div
             role="menu"
             aria-label={t('common.effort.menu')}
-            className="absolute right-0 bottom-full z-50 mb-2 w-48 origin-bottom-right animate-pop-in rounded-xl border border-border bg-elevated p-1 shadow-xl"
+            className="absolute right-0 bottom-full z-50 mb-2 w-48 origin-bottom-right animate-pop-in rounded-xl border border-border bg-elevated p-1 shadow-xl desk:rounded-card desk:border-border/60 desk:shadow-pop"
           >
-            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">{t('common.effort.menu')}</div>
+            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle desk:text-[11px] desk:font-semibold">
+              {t('common.effort.menu')}
+            </div>
             {list}
           </div>
         ))}
