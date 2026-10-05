@@ -171,7 +171,7 @@ export function EffortChip(): React.JSX.Element | null {
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative desk:@max-[30rem]:hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -227,7 +227,7 @@ export function ModelControls(): React.JSX.Element {
       {/* «Comparar modelos…»: no existe en el celular (CompareControls devuelve null allí). */}
       <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" />
       {/* El menú del selector se alinea a la derecha para no salirse del compositor. */}
-      <div className="no-drag [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
+      <div className="no-drag desk:max-w-36 desk:min-w-0 [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
         <ModelPicker value={effective} onChange={setModel} placement="top" />
       </div>
       <EffortChip />

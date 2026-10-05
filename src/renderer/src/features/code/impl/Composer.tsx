@@ -527,7 +527,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }
 
   return (
-    <div className={mobile ? 'pb-2' : 'pb-4'}>
+    <div className={`group/cc ${mobile ? 'pb-2' : 'pb-4'}`}>
       {activeSessionID && <QueueList sessionID={activeSessionID} />}
       <div
         className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${mobile ? 'px-3' : 'px-6'}`}
@@ -599,7 +599,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             </div>
           )}
           <div
-            className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md desk:rounded-[20px] desk:focus-within:border-accent/40 desk:focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--shadow-md)]`}
+            className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md desk:rounded-2xl desk:border-transparent desk:shadow-[var(--elev-edge),var(--shadow-md)] desk:focus-within:border-transparent desk:focus-within:shadow-[var(--elev-edge),var(--shadow-md),0_0_0_1px_color-mix(in_srgb,var(--accent)_40%,transparent)]`}
           >
             <ElementChipRow
               elements={elementAtts}
@@ -794,12 +794,12 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 )}
               </>
             ) : (
-              <div className="flex items-center gap-2 px-3 pb-2.5 desk:flex-wrap desk:gap-y-1">
+              <div className="flex items-center gap-2 px-3 pb-2.5 desk:flex-nowrap desk:gap-y-1 desk:@container">
                 <button
                   type="button"
                   onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
                   title={t('code.composer.toggleAgent')}
-                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition desk:h-7 desk:rounded-lg desk:text-[13px] ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition desk:h-7 desk:rounded-ctl-sm desk:text-ui ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                 >
                   {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
                   {agent === 'plan' ? 'Plan' : 'Build'}
@@ -821,7 +821,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       el?.setSelectionRange(np, np)
                     })
                   }}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[34rem]:hidden"
                 >
                   <AtSign size={14} />
                 </button>
@@ -854,7 +854,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   disabled={(!text.trim() && attachments.length === 0) || disabled}
                   title={sendTitle}
                   aria-label={sendTitle}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0 desk:disabled:bg-active desk:disabled:text-subtle desk:disabled:opacity-100"
                 >
                   {busy ? <Send size={14} /> : <ArrowUp size={16} />}
                 </button>
@@ -885,7 +885,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         </Sheet>
       )}
       <div
-        className={`mx-auto mt-1.5 max-w-3xl desk:max-w-[var(--measure-prose)] justify-center gap-3 px-6 text-[11px] text-subtle ${mobile ? 'hidden' : 'flex'}`}
+        className={`mx-auto mt-1.5 max-w-3xl desk:max-w-[var(--measure-prose)] justify-center gap-3 px-6 text-[11px] text-subtle desk:text-meta desk:opacity-0 desk:transition-opacity desk:duration-150 desk:group-focus-within/cc:opacity-100 ${mobile ? 'hidden' : 'flex'}`}
       >
         <span>
           <Kbd>/</Kbd> {t('code.composer.hintCommands')}
