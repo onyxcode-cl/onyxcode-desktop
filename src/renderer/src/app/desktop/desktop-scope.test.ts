@@ -81,4 +81,67 @@ describe('app/desktop: solo escritorio', () => {
     expect(mobile.length).toBeGreaterThan(5)
     expect(mobile.filter((f) => /\bdesk:/.test(read(f))).map((f) => relative(SRC, f))).toEqual([])
   })
+
+  /** Valores exactos de los tokens de fundamentos: los demás planes los usan y no pueden moverlos sin querer. */
+  const TOKENS: Record<string, string> = {
+    '--text-caption': '11px',
+    '--text-meta': '12px',
+    '--text-ui': '13px',
+    '--text-ui--line-height': '18px',
+    '--text-prose': '15px',
+    '--text-title-sm': '15px',
+    '--text-title': '20px',
+    '--text-display': '28px',
+    '--space-1': '4px',
+    '--space-2': '8px',
+    '--space-4': '16px',
+    '--space-16': '64px',
+    '--ctl-h-md': '32px',
+    '--row-h': '32px',
+    '--measure-prose': '720px',
+    '--radius-2xs': '4px',
+    '--radius-ctl-sm': '6px',
+    '--radius-ctl': '8px',
+    '--radius-card': '12px',
+    '--radius-modal': '16px',
+    '--shadow-focus': '0 0 0 3px var(--accent-ring)',
+    '--scrim': 'hsl(var(--shadow-color) / 0.32)',
+    '--dur-instant': '80ms',
+    '--dur-enter': '200ms',
+    '--dur-exit': '140ms',
+    '--ease-exit': 'cubic-bezier(0.4, 0, 1, 1)',
+    '--ease-move': 'cubic-bezier(0.65, 0, 0.35, 1)',
+    '--z-pop': '50',
+    '--z-modal': '300',
+    '--z-modal-top': '320',
+    '--z-tooltip': '500',
+    '--icon-stroke': '1.75'
+  }
+
+  it('tokens.css: valores exactos y solo bajo :root[data-shell=desktop]', () => {
+    const t = read(join(DESKTOP, 'tokens.css'))
+    for (const [k, v] of Object.entries(TOKENS)) expect(t).toContain(`${k}: ${v};`)
+    expect(t).toContain('--scrim: hsl(var(--shadow-color) / 0.62);') // oscuro
+    expect(t).toContain('--elev-edge: inset 0 1px 0 0 color-mix(in srgb, var(--fg) 6%, transparent);')
+  })
+
+  it('tokens.css no redefine ningún token de color ni de globals.css', () => {
+    const t = read(join(DESKTOP, 'tokens.css'))
+    const g = read(join(SRC, 'app/globals.css'))
+    const declared = (css: string): string[] => [...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1] as string)
+    const existing = new Set(declared(g.slice(0, g.indexOf('@theme reference'))))
+    // `--shadow-color` etc. se USAN en tokens.css, pero no se declaran; nada de lo declarado aquí puede existir ya allí.
+    expect(declared(t).filter((n) => existing.has(n))).toEqual([])
+  })
+
+  it('globals.css registra los nombres de utilidades con @theme reference inline (sin emitir valores en la PWA)', () => {
+    const g = read(join(SRC, 'app/globals.css'))
+    expect(g).toContain('@theme reference inline {')
+    for (const n of [
+      '--radius-ctl: var(--radius-ctl);',
+      '--shadow-pop: var(--shadow-pop);',
+      '--text-ui--line-height: var(--text-ui--line-height);'
+    ])
+      expect(g).toContain(n)
+  })
 })

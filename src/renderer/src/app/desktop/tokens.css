@@ -1,3 +1,99 @@
-/* Dueño: FUNDAMENTOS. Tokens NUEVOS de escritorio (no existen en la PWA). Los tokens existentes de globals.css no se tocan. */
+/* Dueño: FUNDAMENTOS. Tokens NUEVOS de escritorio; no existen en la PWA. Ningún token de globals.css cambia de nombre ni de valor.
+ * Los nombres de utilidades (text-ui, rounded-ctl, shadow-pop…) se registran en globals.css con `@theme reference`. */
 :root[data-shell='desktop'] {
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-title: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --font-code: ui-monospace, 'SF Mono', SFMono-Regular, 'Cascadia Mono', 'Cascadia Code', Consolas, 'JetBrains Mono', Menlo, monospace;
+
+  --text-caption: 11px;
+  --text-caption--line-height: 14px;
+  --text-caption--font-weight: 500;
+  --text-caption--letter-spacing: 0.01em;
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-ui: 13px;
+  --text-ui--line-height: 18px;
+  --text-prose: 15px;
+  --text-prose--line-height: 1.65;
+  --text-title-sm: 15px;
+  --text-title-sm--line-height: 20px;
+  --text-title-sm--font-weight: 600;
+  --text-title-sm--letter-spacing: -0.005em;
+  --text-title: 20px;
+  --text-title--line-height: 26px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.012em;
+  --text-display: 28px;
+  --text-display--line-height: 34px;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.02em;
+
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --ctl-h-xs: 24px;
+  --ctl-h-sm: 28px;
+  --ctl-h-md: 32px;
+  --ctl-h-lg: 36px;
+  --row-h: 32px;
+  --row-h-dense: 28px;
+  --row-h-2line: 48px;
+  --gutter-panel: 16px;
+  --gutter-page: 24px;
+  --measure-prose: 720px;
+
+  --radius-2xs: 4px;
+  --radius-ctl-sm: 6px;
+  --radius-ctl: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+
+  --elev-edge: 0 0 #0000;
+  --shadow-raised: 0 1px 2px hsl(var(--shadow-color) / 0.07);
+  --shadow-pop:
+    0 0 0 0.5px hsl(var(--shadow-color) / 0.1), 0 4px 10px -2px hsl(var(--shadow-color) / 0.12),
+    0 14px 32px -8px hsl(var(--shadow-color) / 0.2);
+  --shadow-modal:
+    0 0 0 0.5px hsl(var(--shadow-color) / 0.12), 0 10px 24px -6px hsl(var(--shadow-color) / 0.18),
+    0 32px 72px -16px hsl(var(--shadow-color) / 0.36);
+  --shadow-focus: 0 0 0 3px var(--accent-ring);
+  --scrim: hsl(var(--shadow-color) / 0.32);
+
+  --dur-instant: 80ms;
+  --dur-enter: 200ms;
+  --dur-exit: 140ms;
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-panel: 40;
+  --z-pop: 50;
+  --z-modal: 300;
+  --z-modal-top: 320;
+  --z-toast: 400;
+  --z-tooltip: 500;
+
+  --icon-stroke: 1.75;
+}
+
+:root[data-shell='desktop'][data-theme='dark'] {
+  --elev-edge: inset 0 1px 0 0 color-mix(in srgb, var(--fg) 6%, transparent);
+  --shadow-raised: var(--elev-edge), 0 1px 2px hsl(var(--shadow-color) / 0.5);
+  --shadow-pop:
+    var(--elev-edge), 0 0 0 0.5px hsl(var(--shadow-color) / 0.6), 0 4px 10px -2px hsl(var(--shadow-color) / 0.45),
+    0 16px 36px -8px hsl(var(--shadow-color) / 0.6);
+  --shadow-modal:
+    var(--elev-edge), 0 0 0 0.5px hsl(var(--shadow-color) / 0.7), 0 12px 28px -6px hsl(var(--shadow-color) / 0.55),
+    0 36px 80px -16px hsl(var(--shadow-color) / 0.75);
+  --scrim: hsl(var(--shadow-color) / 0.62);
 }
