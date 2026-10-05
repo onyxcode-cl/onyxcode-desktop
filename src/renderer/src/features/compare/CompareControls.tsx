@@ -49,7 +49,7 @@ export function CompareControls({
     if (focus) requestAnimationFrame(() => triggerRef.current?.focus())
   }
   return (
-    <div className="relative flex items-center gap-1" data-testid="compare-controls">
+    <div className="relative flex items-center gap-1 desk:@max-[25rem]:hidden" data-testid="compare-controls">
       <button
         ref={triggerRef}
         type="button"

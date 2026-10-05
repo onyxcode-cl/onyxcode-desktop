@@ -74,8 +74,12 @@ function readWidth(): number {
   } catch {
     // ignorar
   }
-  // Sin valor guardado, en escritorio el panel ocupa ~la mitad de la ventana (a 1280 deja el chat en ~384 px, como el diseño).
-  if (!isRemoteSurface() && typeof window !== 'undefined') return Math.min(880, Math.max(460, Math.round(window.innerWidth * 0.5)))
+  // Sin valor guardado, en escritorio el panel ocupa ~45 % de la ventana pero el chat conserva al menos ~480 px
+  // (barra lateral de 256 px incluida); nunca baja de 300 px de panel.
+  if (!isRemoteSurface() && typeof window !== 'undefined') {
+    const w = window.innerWidth
+    return Math.round(Math.min(880, Math.max(300, Math.min(w * 0.45, w - 256 - 480))))
+  }
   return 460
 }
 
@@ -207,13 +211,13 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
         onPointerUp={onPointerUp}
         className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
       />
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:px-3 desk:gap-0.5">
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:overflow-x-auto desk:px-3 desk:gap-0.5 desk:[scrollbar-width:none]">
         {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p) => (
           <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={hintText(bindings[`code.panel.${p}`])}>
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
-              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:whitespace-nowrap desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
               <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}</span>
               {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
@@ -227,7 +231,7 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
             </button>
           </Tip>
         ))}
-        <IconButton size="sm" label={t('code.panel.close')} className="ml-auto" onClick={() => panel && togglePanel(panel)}>
+        <IconButton size="sm" label={t('code.panel.close')} className="ml-auto desk:shrink-0" onClick={() => panel && togglePanel(panel)}>
           <X size={14} />
         </IconButton>
       </div>
@@ -310,7 +314,7 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   const native = nativeCode('dialogs')
   const dialogs = platformCaps().nativeDialogs
   return (
-    <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0 desk:max-w-[min(22rem,40%)] desk:min-w-24 desk:shrink">
+    <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0 desk:max-w-[min(22rem,40%)] desk:min-w-[7.5rem] desk:shrink">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -318,7 +322,9 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
         className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-sm font-semibold hover:bg-hover desk:font-medium"
       >
         <FolderOpen size={15} className="shrink-0 text-accent" />
-        <span className="truncate">{baseName(directory)}</span>
+        <span className="truncate" title={baseName(directory)}>
+          {baseName(directory)}
+        </span>
         <ChevronDown size={13} className="shrink-0 text-subtle" />
       </button>
       {open && (
@@ -364,7 +370,7 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
     info.changes ? t('code.branch.changes', { count: info.changes }) : t('code.branch.clean')
   ].join(' · ')
   return (
-    <Tip label={tip} className="no-drag desk:max-w-40 desk:min-w-16 desk:shrink-[2]">
+    <Tip label={tip} className="no-drag desk:max-w-40 desk:min-w-[6.5rem] desk:shrink-[2]">
       <button
         type="button"
         onClick={() =>
@@ -373,7 +379,9 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
         className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg desk:max-w-full desk:min-w-0 desk:rounded-ctl-sm desk:border-transparent desk:hover:border-transparent desk:bg-active desk:hover:bg-hover desk:h-6 desk:text-[12px] desk:px-2 ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
       >
         <GitBranch size={12} className="shrink-0" />
-        <span className="truncate">{info.branch}</span>
+        <span className="truncate" title={info.branch}>
+          {info.branch}
+        </span>
         {sync && (
           <span className="flex shrink-0 items-center gap-1 text-subtle">
             {info.ahead > 0 && <span>↑{info.ahead}</span>}
@@ -411,11 +419,11 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const busy = run === 'busy' || run === 'retry'
 
   return (
-    <div className="drag flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 desk:pl-[calc(var(--header-inset,0px)+12px)]">
+    <div className="drag flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 desk:@container desk:pl-[calc(var(--header-inset,0px)+12px)]">
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (
-        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex">
+        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex desk:@max-[32rem]:hidden">
           <span className="text-subtle">/</span>
           <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
         </span>
@@ -433,7 +441,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
           </Tip>
         )}
         {activeSessionID && (
-          <>
+          <span className="contents desk:@max-[32rem]:hidden">
             <Tip label={t('code.toolbar.fork')}>
               <button
                 type="button"
@@ -456,9 +464,9 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
                 <Sparkles size={14} />
               </button>
             </Tip>
-          </>
+          </span>
         )}
-        <span className="mx-0.5 h-5 w-px bg-border" />
+        <span className="mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden" />
         {PANEL_META.map((p) => (
           <Tip
             key={p.id}

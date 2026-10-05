@@ -108,7 +108,7 @@ export function PermissionChip(): React.JSX.Element {
         className={`${chip()} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
       >
         {current.icon}
-        {t(current.label)}
+        <span className="inline desk:@max-[25rem]:hidden">{t(current.label)}</span>
       </button>
       {(() => {
         const items = PERMISSION_MODES.map((m) => (
@@ -223,11 +223,11 @@ export function ModelControls(): React.JSX.Element {
   const variant = useCode((s) => s.variant)
 
   return (
-    <div className="flex items-center gap-0.5 desk:ml-auto">
+    <div className="flex items-center gap-0.5 desk:ml-auto desk:min-w-0 desk:shrink">
       {/* «Comparar modelos…»: no existe en el celular (CompareControls devuelve null allí). */}
       <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" />
       {/* El menú del selector se alinea a la derecha para no salirse del compositor. */}
-      <div className="no-drag desk:max-w-36 desk:min-w-0 [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
+      <div className="no-drag desk:max-w-36 desk:min-w-0 desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
         <ModelPicker value={effective} onChange={setModel} placement="top" />
       </div>
       <EffortChip />

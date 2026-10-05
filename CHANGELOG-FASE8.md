@@ -1173,3 +1173,12 @@ Fusión de `nd/code`, `nd/permisos`, `nd/ajustes` y `nd/tareas` sobre fcd0604. E
 - **Guardia `PermissionCard.mobile-pin.test.tsx`** restaurada a su contenido original de b6a502a (literales idénticos; solo un `@ts-expect-error` por la opción sin `description`) y excluida de Prettier en `.prettierignore`.
 - **Fixture de migración** `e2e/fixtures/legacy-userdata/.../000003.log` versionado con `git add -f` y negado en `.gitignore`, para que `m001-tasks-rename.test.ts` pase en clones limpios.
 - **Verificación**: typecheck, vitest completo (3829 pasan, 0 fallos), lint (0 errores), format:check, build, build:pwa y size:pwa en verde; presupuestos intactos.
+
+## F8-B100 — Arreglos finales de Code con el panel abierto (0.4.4)
+
+Solo escritorio (clases `desk:` y rama `!isRemoteSurface()`); el celular/PWA no cambia. Colores sin cambios.
+
+- **Ancho por defecto del panel** (`readWidth`): `min(45 % de la ventana, ventana - 256 - 480)` con mínimo de 300 y máximo de 880; el chat conserva ~480 px con la barra lateral visible. Se respeta siempre el valor guardado por el usuario.
+- **Cabecera**: proyecto y rama con anchos mínimos mayores (7,5 y 6,5 rem) y `title` con el nombre completo; la barra es contenedor y por debajo de 32 rem oculta bifurcar/compactar y el título de la sesión.
+- **Compositor**: la barra no desborda (`min-w-0`, grupo del modelo encogible); por debajo de 34 rem se oculta @, de 30 rem el esfuerzo, de 25 rem el texto del modo y Comparar; Enviar nunca se corta.
+- **Pestañas del panel**: sin saltos de línea y con desplazamiento horizontal cuando el panel es estrecho.
