@@ -347,22 +347,22 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
           )}
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button variant={d.danger ? 'danger' : 'primary'} disabled={busy} onClick={() => answer('once')}>
-              {t('tasksComputer.perm.once')}
+            {!noting && (
+              <Button variant="ghost" className="mr-auto" disabled={busy} onClick={() => setNoting(true)}>
+                {t('tasksComputer.perm.rejectNote')}
+              </Button>
+            )}
+            <Button variant="ghost" disabled={busy} onClick={() => answer('reject')}>
+              {t('tasksComputer.perm.reject')}
             </Button>
             {canAlways && (
               <Button disabled={busy} onClick={() => answer('always')} title={alwaysHint(request)}>
                 {t('tasksComputer.perm.always')}
               </Button>
             )}
-            <Button variant="ghost" disabled={busy} onClick={() => answer('reject')}>
-              {t('tasksComputer.perm.reject')}
+            <Button variant={d.danger ? 'danger' : 'primary'} disabled={busy} onClick={() => answer('once')}>
+              {t('tasksComputer.perm.once')}
             </Button>
-            {!noting && (
-              <Button variant="ghost" disabled={busy} onClick={() => setNoting(true)}>
-                {t('tasksComputer.perm.rejectNote')}
-              </Button>
-            )}
           </div>
           {noting && <RejectWithNote busy={busy} onSend={reject} onCancel={() => setNoting(false)} />}
         </div>
@@ -371,13 +371,87 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
   )
 }
 
-/** Barra fija sobre el compositor (la primera solicitud pendiente, sin contar las del Modo auto). */
+/**
+ * ¿Se pinta la barra? Solo se oculta cuando la tarjeta grande equivalente (mismos botones, mismo orden) está
+ * en pantalla. Cierre seguro: si la tarjeta no existe o no se puede observar, la barra se ve (F8-B91).
+ */
+export function shouldShowBar({ cardFound, cardVisible }: { cardFound: boolean; cardVisible: boolean }): boolean {
+  return !(cardFound && cardVisible)
+}
+
+/** Ancestro con scroll vertical más cercano (la conversación), o `null` (ventana). */
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY
+    if (oy === 'auto' || oy === 'scroll') return p
+  }
+  return null
+}
+
+/** Ids de solicitudes cuya tarjeta de la conversación se ve (≥60 %). Sin tarjeta u observador: ninguna. */
+function useVisibleCards(ids: string[]): Set<string> {
+  const [visible, setVisible] = useState<Set<string>>(() => new Set())
+  const key = ids.join('|')
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined' || !key) {
+      setVisible((v) => (v.size ? new Set() : v))
+      return
+    }
+    const watched = new Map<string, { el: HTMLElement; io: IntersectionObserver }>()
+    const set = (id: string, on: boolean): void =>
+      setVisible((prev) => {
+        if (prev.has(id) === on) return prev
+        const next = new Set(prev)
+        if (on) next.add(id)
+        else next.delete(id)
+        return next
+      })
+    const sync = (): void => {
+      for (const id of key.split('|')) {
+        const el = document.getElementById(`perm-${id}`)
+        const cur = watched.get(id)
+        if (cur && cur.el === el && el.isConnected) continue
+        cur?.io.disconnect()
+        watched.delete(id)
+        if (!el) {
+          set(id, false)
+          continue
+        }
+        const io = new IntersectionObserver(
+          (entries) =>
+            set(
+              id,
+              entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.6)
+            ),
+          {
+            root: scrollParent(el),
+            threshold: [0, 0.6, 1]
+          }
+        )
+        io.observe(el)
+        watched.set(id, { el, io })
+      }
+    }
+    sync()
+    // La tarjeta puede montarse o desmontarse después (otra tarea, Modo auto): se vuelve a buscar.
+    const timer = setInterval(sync, 800)
+    return () => {
+      clearInterval(timer)
+      for (const { io } of watched.values()) io.disconnect()
+    }
+  }, [key])
+  return visible
+}
+
+/** Barra fija sobre el compositor: la primera solicitud pendiente cuya tarjeta no se ve (sin contar las del Modo auto). */
 export function ApprovalBar({ requests }: { requests: PermissionRequest[] }): React.JSX.Element | null {
   const autoPending = useTasks((s) => s.autoPending)
-  const visible = requests.filter((r) => !autoPending[r.id])
-  const first = visible[0]
+  const pending = requests.filter((r) => !autoPending[r.id])
+  const seen = useVisibleCards(pending.map((r) => r.id))
+  const hiddenOnes = pending.filter((r) => shouldShowBar({ cardFound: true, cardVisible: seen.has(r.id) }))
+  const first = hiddenOnes[0]
   if (!first) return null
-  return <ApprovalBarInner key={first.id} request={first} more={visible.length - 1} />
+  return <ApprovalBarInner key={first.id} request={first} more={hiddenOnes.length - 1} />
 }
 
 function ApprovalBarInner({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
@@ -393,7 +467,7 @@ function ApprovalBarInner({ request, more }: { request: PermissionRequest; more:
     el?.focus({ preventScroll: true })
   }
   return (
-    <div className="mx-auto mb-2 w-full max-w-3xl px-6">
+    <div className="mx-auto mb-2 w-full max-w-3xl px-6 animate-rise-in">
       <div
         className={`flex items-center gap-3 rounded-xl border px-3 py-2 shadow-sm ${
           d.danger ? 'border-danger/50 bg-danger/10' : 'border-warning/50 bg-warning/10'

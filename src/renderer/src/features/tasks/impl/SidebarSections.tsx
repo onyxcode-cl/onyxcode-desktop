@@ -119,6 +119,52 @@ export function orderActiveTasks(tasks: TasksTaskActivity[]): TasksTaskActivity[
   )
 }
 
+/** Quita la barra final (sin tocar la raíz) para comparar rutas de carpeta. */
+export function defaultNormFolder(p: string): string {
+  return p.length > 1 ? p.replace(/[\\/]+$/, '') : p
+}
+
+/**
+ * Activas de las demás carpetas (F8-B89): las de la carpeta abierta ya salen en el grupo «En curso» de la lista,
+ * así que una tarea nunca aparece dos veces. Sin carpeta abierta, todas son «de otras carpetas».
+ */
+export function activeElsewhere(
+  tasks: TasksTaskActivity[],
+  folder: string | null,
+  norm: (p: string) => string = defaultNormFolder
+): TasksTaskActivity[] {
+  if (!folder) return tasks
+  const here = norm(folder)
+  return tasks.filter((t) => norm(t.folder) !== here)
+}
+
+/** Estados que pasan al grupo «En curso» de la lista de la carpeta. */
+const IN_PROGRESS_RANK: Partial<Record<TaskStatus, number>> = {
+  question: 0,
+  waiting: 1,
+  plan_ready: 2,
+  interrupted: 3,
+  running: 4,
+  using_computer: 4
+}
+
+/**
+ * Separa las tareas «en curso» (esperan al usuario, trabajan o se interrumpieron) del resto. Las primeras van
+ * ordenadas por urgencia (estable: dentro del mismo rango se conserva el orden de entrada); no se pierde ni se
+ * duplica ninguna.
+ */
+export function splitInProgress<T>(items: T[], statusOf: (t: T) => TaskStatus): { live: T[]; rest: T[] } {
+  const live: Array<{ item: T; rank: number; i: number }> = []
+  const rest: T[] = []
+  items.forEach((item, i) => {
+    const rank = IN_PROGRESS_RANK[statusOf(item)]
+    if (rank === undefined) rest.push(item)
+    else live.push({ item, rank, i })
+  })
+  live.sort((a, b) => a.rank - b.rank || a.i - b.i)
+  return { live: live.map((x) => x.item), rest }
+}
+
 export interface PinnedEntry {
   sessionId: string
   folder: string
@@ -324,10 +370,11 @@ async function openRoutine(r: ScheduledRoutine, editor = false): Promise<void> {
   useUi.getState().setMode('routines')
 }
 
-/** Fijadas, Activas y Programadas de todas las carpetas (arriba de la lista de la carpeta actual). */
+/** Fijadas, En otras carpetas y Programadas de todas las carpetas (arriba de la lista de la carpeta actual). */
 export function SidebarSections(): React.JSX.Element {
   const t = useT()
   const activity = useTasks((s) => s.activity)
+  const folder = useTasks((s) => s.folder)
   const taskMeta = useTasks((s) => s.taskMeta)
   const activeTaskId = useTasks((s) => s.activeTaskId)
   const sessions = useSessions((s) => s.sessions)
@@ -357,8 +404,9 @@ export function SidebarSections(): React.JSX.Element {
   }, [])
 
   const pinned = useMemo(() => pinnedEntries(taskMeta, sessions), [taskMeta, sessions])
-  const active = useMemo(() => orderActiveTasks(activity?.tasks ?? []), [activity])
-  const activeById = useMemo(() => new Map(active.map((t) => [t.sessionId, t])), [active])
+  const allActive = useMemo(() => orderActiveTasks(activity?.tasks ?? []), [activity])
+  const activeById = useMemo(() => new Map(allActive.map((t) => [t.sessionId, t])), [allActive])
+  const active = useMemo(() => activeElsewhere(allActive, folder), [allActive, folder])
   const scheduled = useMemo(() => upcomingRoutines(routines), [routines])
 
   const open = (t: { sessionId: string; folder: string; fullAccess: boolean }): void => {
@@ -389,7 +437,7 @@ export function SidebarSections(): React.JSX.Element {
         }}
       />
       <Section
-        label={t('tasks.side.active')}
+        label={t('tasks.side.activeElsewhere')}
         items={active}
         limit={4}
         keyOf={(t) => t.sessionId}

@@ -34,6 +34,7 @@ import {
   filterByTitle,
   groupByDate,
   groupByGroup,
+  splitInProgress,
   StatusIcon,
   statusTextClass,
   type TaskGroup
@@ -429,6 +430,10 @@ export function TaskList(): React.JSX.Element {
     })
 
   const searching = q.length > 0
+  // F8-B89: las tareas en curso de la carpeta abierta van en su propio grupo y NO se repiten en los grupos por
+  // fecha. Usa el estado del renderer (SSE), así que el aviso de aprobación no espera al sondeo de main.
+  const inProgressMode = !searching && !showArchived && groupMode === 'date'
+  const split = inProgressMode ? splitInProgress(tasks, statusOf) : { live: [] as Session[], rest: tasks }
   const groups: Array<TaskGroup<Session>> = searching
     ? tasks.length > 0
       ? [{ key: 'search', label: tr('tasks.list.titleMatches'), items: tasks }]
@@ -437,7 +442,10 @@ export function TaskList(): React.JSX.Element {
       ? groupByDate(tasks, (t) => t.time.archived ?? t.time.updated)
       : groupMode === 'group'
         ? groupByGroup(tasks, (t) => taskMeta[t.id]?.group)
-        : groupByDate(tasks, (t) => t.time.updated)
+        : [
+            ...(split.live.length > 0 ? [{ key: 'in-progress', label: tr('tasks.side.inProgress'), items: split.live }] : []),
+            ...groupByDate(split.rest, (t) => t.time.updated)
+          ]
 
   const emptyText = ((): string => {
     if (!folder) return tr('tasks.list.empty.noFolder')

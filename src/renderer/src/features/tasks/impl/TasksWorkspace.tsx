@@ -139,16 +139,26 @@ const PILL_TONE: Record<TaskStatus, string> = {
   interrupted: 'border-warning/50 bg-warning/10 text-warning'
 }
 
-function StatusPill({ status }: { status: TaskStatus }): React.JSX.Element {
+function StatusPill({ status, title }: { status: TaskStatus; title?: string }): React.JSX.Element {
   return (
-    <span className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${PILL_TONE[status]}`}>
+    <span
+      title={title}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${PILL_TONE[status]}`}
+    >
       <StatusIcon status={status} size={11} />
       {TASK_STATUS_LABEL[status]}
     </span>
   )
 }
 
-/** Tiempo del último turno (en vivo mientras trabaja). */
+/** «Duró 0:42» para la píldora de una tarea terminada; nada si el turno aún no acabó o duró menos de 1 s (F8-B92 / L8). */
+function tookTitle(entries: MessageEntry[]): string | undefined {
+  const { start, end } = turnTiming(entries)
+  if (!start || !end || end - start < 1000) return undefined
+  return tNow('tasks.ws.tookTitle', { time: formatDuration(end - start) })
+}
+
+/** Cronómetro del turno: solo en vivo mientras trabaja (al terminar, la duración va en el `title` de la píldora). */
 function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }): React.JSX.Element | null {
   const t = useT()
   const [now, setNow] = useState(() => Date.now())
@@ -157,10 +167,10 @@ function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }):
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [live])
-  const { start, end } = turnTiming(entries)
+  if (!live) return null
+  const { start } = turnTiming(entries)
   if (!start) return null
-  const stop = live ? now : (end ?? null)
-  if (!stop) return null
+  const stop = now
   return (
     <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums" title={t('tasks.ws.elapsedTitle')}>
       {formatDuration(stop - start)}
@@ -641,7 +651,7 @@ export function TasksWorkspace(): React.JSX.Element {
             <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
               {session?.title || t('tasks.ws.untitled')}
             </span>
-            <StatusPill status={status} />
+            <StatusPill status={status} title={busy ? undefined : tookTitle(entries)} />
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
