@@ -149,9 +149,9 @@ export function FolderMenu({
         title={folder ?? undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg border border-border bg-elevated px-2.5 py-2 text-left text-sm hover:bg-hover"
+        className="flex w-full items-center gap-2 rounded-lg border border-border bg-elevated px-2.5 py-2 text-left text-sm hover:bg-hover desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:border-transparent desk:bg-transparent desk:py-0 desk:text-ui"
       >
-        <FolderOpen size={15} className="shrink-0 text-accent" />
+        <FolderOpen size={15} className="shrink-0 text-accent desk:size-4" />
         <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
         <ChevronDown size={14} className="shrink-0 text-muted" />
       </button>

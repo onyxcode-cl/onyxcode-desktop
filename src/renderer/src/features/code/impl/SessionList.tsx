@@ -87,7 +87,10 @@ function SessionRow({
   }
 
   const row = (
-    <div className={`group flex items-center gap-1 rounded-lg ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active' : 'hover:bg-hover'}`}>
+    <div
+      className={`group flex items-center gap-1 rounded-lg desk:relative desk:h-8 desk:gap-0.5 desk:rounded-ctl ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active' : 'hover:bg-hover'}`}
+    >
+      {active && !mobile && !editing && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent" aria-hidden />}
       {editing ? (
         <input
           ref={inputRef}
@@ -105,10 +108,12 @@ function SessionRow({
           type="button"
           onClick={() => void selectSession(session.id)}
           onDoubleClick={() => setEditing(true)}
-          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
+          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:gap-2 desk:px-2.5 desk:py-0 ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
-          <span className={`flex w-full items-center gap-1.5 ${mobile ? 'text-[15px]' : 'text-[13px]'}`}>
+          <span
+            className={`flex w-full items-center gap-1.5 desk:w-auto desk:min-w-0 desk:flex-1 desk:text-ui ${mobile ? 'text-[15px]' : 'text-[13px]'} ${active ? ' desk:font-medium desk:text-fg' : ' desk:text-muted'}`}
+          >
             {pinned && <Pin size={10} className="shrink-0 text-subtle" />}
             {waiting ? (
               <ShieldAlert size={12} className="shrink-0 text-accent" />
@@ -119,7 +124,9 @@ function SessionRow({
             ) : null}
             <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || t('code.sessions.untitled')}</span>
           </span>
-          <span className={`text-subtle ${mobile ? 'text-xs' : 'text-[11px]'}`}>
+          <span
+            className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${mobile ? 'text-xs' : 'text-[11px]'}`}
+          >
             {timeAgo(session.time.updated)}
             {session.summary && session.summary.files > 0 && (
               <>
@@ -386,19 +393,19 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           onClick={() => void pickAndOpenFolder()}
           disabled={!platformCaps().nativeDialogs}
           title={directory}
-          className="no-drag mx-2 mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-hover disabled:pointer-events-none"
+          className="no-drag mx-2 mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-hover disabled:pointer-events-none desk:mx-0 desk:mb-0 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-ui"
         >
-          <FolderOpen size={15} className="shrink-0 text-accent" />
+          <FolderOpen size={15} className="shrink-0 text-accent desk:size-4" />
           <span className="truncate font-medium">{baseName(directory)}</span>
         </button>
       )}
-      <div className="mx-2 mb-2 flex items-center gap-1">
-        <span className="flex-1 px-2 text-[11.5px] font-medium text-subtle">{t('code.sessions.title')}</span>
+      <div className="group/sec mx-2 mb-2 flex items-center gap-1 desk:mx-0 desk:mt-3 desk:mb-1">
+        <span className="flex-1 px-2 text-[11.5px] font-medium text-subtle desk:px-2.5 desk:text-meta">{t('code.sessions.title')}</span>
         <button
           type="button"
           title={t('code.sessions.newWorktree')}
           onClick={() => setWorktreeOpen(true)}
-          className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'}`}
+          className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'} desk:opacity-0 desk:group-focus-within/sec:opacity-100 desk:group-hover/sec:opacity-100`}
         >
           <GitBranchPlus size={13} />
         </button>
@@ -406,18 +413,20 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           type="button"
           title={t('code.sessions.searchTitle')}
           onClick={() => setSwitcherOpen(true)}
-          className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'}`}
+          className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'} desk:opacity-0 desk:group-focus-within/sec:opacity-100 desk:group-hover/sec:opacity-100`}
         >
           <Search size={13} />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 desk:flex desk:flex-col desk:gap-0.5 desk:px-0">
         {loading && list.length === 0 && (
-          <div className="flex items-center gap-2 px-2 py-1 text-xs text-subtle">
+          <div className="flex items-center gap-2 px-2 py-1 text-xs text-subtle desk:px-2.5">
             <Loader2 size={12} className="animate-spin" /> {t('code.sessions.loading')}
           </div>
         )}
-        {!loading && list.length === 0 && <div className="px-2 py-1 text-xs text-subtle">{t('code.sessions.empty')}</div>}
+        {!loading && list.length === 0 && (
+          <div className="px-2 py-1 text-xs text-subtle desk:px-2.5 desk:py-2 desk:text-meta">{t('code.sessions.empty')}</div>
+        )}
         {sortedList.map((s) => {
           const st = runState[s.id]
           return (

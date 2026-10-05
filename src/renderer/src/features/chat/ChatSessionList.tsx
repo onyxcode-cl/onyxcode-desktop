@@ -106,7 +106,7 @@ function Row({
         type="button"
         onClick={onSelect}
         aria-current={active ? 'true' : undefined}
-        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 ${active ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
+        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:py-0 desk:text-ui ${active ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
       >
         {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent" aria-hidden />}
         <span className="flex-1 truncate group-hover:pr-5">{session.title || t('chat.list.untitled')}</span>
@@ -136,7 +136,7 @@ function Row({
             setDraft(session.title)
             setEditing(true)
           }}
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-hover"
+          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-hover desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:py-0"
         >
           <Pencil size={14} className="text-muted" /> {t('chat.list.rename')}
         </button>
@@ -166,7 +166,7 @@ function Row({
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-danger hover:bg-danger/10"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-danger hover:bg-danger/10 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:py-0"
           >
             <Trash2 size={14} /> {t('chat.list.delete')}
           </button>
@@ -254,8 +254,10 @@ function DesktopSessionList({
       {q && groups.length === 0 && <div className="px-2.5 text-xs text-subtle">{t('chat.list.noMatches')}</div>}
       {groups.map((g) => (
         <div key={g.label}>
-          <div className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{g.label}</div>
-          <div className="flex flex-col gap-px">
+          <div className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:text-meta desk:font-medium desk:tracking-normal desk:normal-case">
+            {g.label}
+          </div>
+          <div className="flex flex-col gap-px desk:gap-0.5">
             {g.items.map((s) => (
               <Row
                 key={s.id}

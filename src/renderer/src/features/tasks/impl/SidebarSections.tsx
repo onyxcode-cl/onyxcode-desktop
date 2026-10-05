@@ -303,12 +303,12 @@ function SectionRow({
       type="button"
       title={hint}
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm desk:min-h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-1 desk:text-ui ${active ? 'bg-active' : 'hover:bg-hover'}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate">{title || tr('tasks.list.untitled')}</span>
-        <span className={`block truncate text-[11px] ${subtitleClass}`}>{subtitle}</span>
+        <span className={`block truncate text-[11px] desk:text-meta ${subtitleClass}`}>{subtitle}</span>
       </span>
       {fullAccess && (
         <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">
@@ -339,7 +339,7 @@ function Section<T>({
   if (items.length === 0) return null
   return (
     <section aria-label={label} className="mb-1">
-      <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle">{label}</div>
+      <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:px-2.5 desk:pt-3 desk:text-meta">{label}</div>
       <ul className="space-y-0.5">
         {shown.map((t) => (
           <li key={keyOf(t)}>{render(t)}</li>
@@ -349,7 +349,7 @@ function Section<T>({
         <button
           type="button"
           aria-expanded={expanded}
-          className="mt-0.5 w-full rounded-lg px-2 py-1 text-left text-[11.5px] text-muted hover:bg-hover hover:text-fg"
+          className="mt-0.5 w-full rounded-lg px-2 py-1 text-left text-[11.5px] text-muted hover:bg-hover hover:text-fg desk:rounded-ctl desk:px-2.5 desk:text-meta"
           onClick={() => setExpanded((e) => !e)}
         >
           {expanded ? t('tasks.side.showLess') : t('tasks.side.showMore', { n: hidden })}

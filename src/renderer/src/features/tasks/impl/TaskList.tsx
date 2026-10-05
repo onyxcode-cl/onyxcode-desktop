@@ -260,7 +260,8 @@ function TaskRow({
           {task.title || t('tasks.list.untitled')}
         </div>
         <div
-          className={`truncate text-[11px] desk:text-meta ${statusTextClass(status)} ${status === 'done' || status === 'idle' ? 'desk:hidden' : ''}`}
+          data-quiet={quiet || undefined}
+          className={`truncate text-[11px] desk:text-meta desk:data-[quiet]:hidden ${statusTextClass(status)}`}
         >
           {status === 'archived'
             ? t('tasks.list.archivedAgo', { when: relTime(task.time.archived ?? task.time.updated) })
