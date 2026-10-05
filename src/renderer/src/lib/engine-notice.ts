@@ -2,7 +2,7 @@
  * Lógica pura del aviso del motor: qué motor se usa y cuándo avisar de que no es el probado.
  * Sin React ni IPC (se prueba con `engine-notice.test.ts`).
  */
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import type { OpencodeInfo, OpencodeSource } from '@shared/types'
 
@@ -31,5 +31,5 @@ export function engineSummary(info: EngineInfo | null): string | null {
 export function engineNoticeText(info: EngineInfo | null, dismissedVersion: string | null = null): string | null {
   if (!info || !info.found || !info.version || info.source === 'bundled' || info.compatible) return null
   if (dismissedVersion === info.version) return null
-  return t('notices.engine.mismatch', { version: info.version, app: APP_NAME, sdk: info.sdkVersion })
+  return t('notices.engine.mismatch', { version: info.version, app: DISPLAY_NAME, sdk: info.sdkVersion })
 }

@@ -155,14 +155,14 @@ export const remote = {
   'remote.conn.blocked.passkey': 'Tu organización exige una passkey, que todavía no está disponible fuera de casa. Se usa solo esta red.',
   'remote.away.label': 'Disponible fuera de casa',
   'remote.away.hint':
-    'Deja OnyxCode listo para tu celular cada vez que abres la app, sin apagarse por inactividad. «Cortar todo» lo apaga. Solo funciona con el Mac despierto y con internet: OnyxCode no puede despertarlo a distancia.',
+    'Deja Lazunox listo para tu celular cada vez que abres la app, sin apagarse por inactividad. «Cortar todo» lo apaga. Solo funciona con el Mac despierto y con internet: Lazunox no puede despertarlo a distancia.',
   'remote.away.sleepTip':
-    'Consejo: deja OnyxCode abierto y, si quieres usarlo fuera de casa, evita que el Mac se duerma con la pantalla apagada mientras está enchufado (Ajustes del Sistema › Batería o Energía).',
+    'Consejo: deja Lazunox abierto y, si quieres usarlo fuera de casa, evita que el Mac se duerma con la pantalla apagada mientras está enchufado (Ajustes del Sistema › Batería o Energía).',
   'remote.cloud.status.connecting': 'Servicio de conexión: conectando…',
   'remote.cloud.status.online': 'Servicio de conexión: en línea',
   'remote.cloud.status.offline': 'Servicio de conexión: sin conexión (reintentando)',
   'remote.cloud.status.paused': 'Servicio de conexión: en pausa',
-  'remote.cloud.site.ok': 'Página del celular verificada con la firma de OnyxCode.',
+  'remote.cloud.site.ok': 'Página del celular verificada con la firma de Lazunox.',
   'remote.cloud.site.mismatch':
     'La página del celular no coincide con la versión firmada: el modo fuera de casa está en pausa. La red local sigue funcionando.',
   'remote.cloud.site.unknown': 'Página del celular sin verificar.',
@@ -184,12 +184,12 @@ export const remote = {
   'remote.conn.blocked.travelPolicy': 'La política de tu organización no permite el modo viaje.',
   'remote.travel.title': 'Modo viaje',
   'remote.travel.what':
-    'OnyxCode abre un enlace temporal desde este Mac para que el celular entre desde fuera de casa. No hay cuenta ni servidor de OnyxCode de por medio.',
+    'Lazunox abre un enlace temporal desde este Mac para que el celular entre desde fuera de casa. No hay cuenta ni servidor de Lazunox de por medio.',
   'remote.travel.limits.title': 'Antes de activarlo, ten en cuenta',
   'remote.travel.limit.link':
     'El enlace cambia cada vez que se reinicia el túnel (al reiniciar el Mac, salir de la app o si el túnel se cae). Entonces hay que vincular de nuevo.',
   'remote.travel.limit.home': 'Hay que vincular el celular en casa, con el código QR de esta pantalla, antes de salir.',
-  'remote.travel.limit.mac': 'El Mac debe estar encendido, con internet y con OnyxCode abierta. Dormido o apagado, no responde.',
+  'remote.travel.limit.mac': 'El Mac debe estar encendido, con internet y con Lazunox abierta. Dormido o apagado, no responde.',
   'remote.travel.limit.networks':
     'Puede no funcionar en algunas redes móviles o de empresa que bloquean la conexión directa o este tipo de enlaces.',
   'remote.travel.limit.install': 'No se puede instalar como app en la pantalla de inicio: el enlace es temporal. Guárdalo en favoritos.',
@@ -203,7 +203,7 @@ export const remote = {
   'remote.travel.activate': 'Activar modo viaje',
   'remote.travel.downloadActivate': 'Descargar y activar',
   'remote.travel.reinstall': 'Descargar de nuevo y activar',
-  'remote.travel.binary.outdated': 'La herramienta instalada es de otra versión: hay que descargar la que trae esta versión de OnyxCode.',
+  'remote.travel.binary.outdated': 'La herramienta instalada es de otra versión: hay que descargar la que trae esta versión de Lazunox.',
   'remote.travel.binary.bad-hash': 'La herramienta instalada no pasó la verificación y se descartó. Hay que descargarla de nuevo.',
   'remote.travel.binary.missing': 'Aún no se descargó la herramienta necesaria (unos 20 MB).',
   'remote.travel.binary.ready': 'Herramienta lista y verificada.',
@@ -230,11 +230,11 @@ export const remote = {
   'remote.travel.error.edge-unreachable':
     'Este Mac no logró conectarse con Cloudflare. Revisa tu internet o si tu red bloquea el puerto 7844.',
   'remote.travel.error.config-conflict':
-    'Hay una configuración de cloudflared en este Mac que impide abrir el enlace. OnyxCode no la modifica.',
+    'Hay una configuración de cloudflared en este Mac que impide abrir el enlace. Lazunox no la modifica.',
   'remote.travel.error.timeout': 'El enlace tardó demasiado en abrirse. Inténtalo de nuevo.',
   'remote.travel.error.bad-url': 'El enlace que entregó la herramienta no es válido y se descartó por seguridad.',
   'remote.travel.error.unreachable': 'El enlace se abrió pero no responde desde internet. Inténtalo de nuevo en un momento.',
-  'remote.travel.error.site-mismatch': 'La página que sirve el enlace no coincide con la de OnyxCode. Se cerró por seguridad.',
+  'remote.travel.error.site-mismatch': 'La página que sirve el enlace no coincide con la de Lazunox. Se cerró por seguridad.',
   'remote.travel.error.no-binary': 'Falta descargar la herramienta del modo viaje.',
   'remote.travel.error.download': 'No se pudo descargar la herramienta. Revisa tu internet e inténtalo de nuevo.',
   'remote.travel.error.exited': 'La herramienta del enlace se cerró de forma inesperada (código {code}).',

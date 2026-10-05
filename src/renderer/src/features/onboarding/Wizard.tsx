@@ -20,7 +20,7 @@ import {
   RotateCw,
   Shield
 } from 'lucide-react'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { MODE_LABELS } from '@shared/labels'
 import type { MsgKey } from '@shared/i18n'
 import { OPENCODE_INSTALL_COMMAND, type OpencodeAction } from '@shared/opencode-links'
@@ -146,7 +146,7 @@ function OnboardingHost(): React.JSX.Element | null {
         className="flex max-h-full w-full max-w-xl animate-pop-in flex-col rounded-modal border border-transparent bg-elevated shadow-modal"
       >
         <header className="border-b border-border/60 px-6 pt-5 pb-4">
-          <p className="text-meta text-muted">{t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: steps.length })}</p>
+          <p className="text-meta text-muted">{t('wizard.header', { app: DISPLAY_NAME, step: stepIndex(step) + 1, total: steps.length })}</p>
           <h2
             id="onboarding-title"
             ref={titleRef}
@@ -263,7 +263,7 @@ function StepOpencode({
   if (mode === 'bundled' && info) {
     return (
       <div className="space-y-4">
-        <Lead>{t('wizard.opencode.bundledLead', { app: APP_NAME })}</Lead>
+        <Lead>{t('wizard.opencode.bundledLead', { app: DISPLAY_NAME })}</Lead>
         <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
           <p className="flex items-center gap-2 font-medium">
             <Check size={15} className="text-success" />{' '}
@@ -303,7 +303,7 @@ function StepOpencode({
 
   return (
     <div className="space-y-4">
-      <Lead>{t(info?.found ? 'wizard.opencode.leadFound' : 'wizard.opencode.leadMissing', { app: APP_NAME })}</Lead>
+      <Lead>{t(info?.found ? 'wizard.opencode.leadFound' : 'wizard.opencode.leadMissing', { app: DISPLAY_NAME })}</Lead>
 
       {info === null ? (
         <p className="flex items-center gap-2 text-sm text-muted">
@@ -319,7 +319,7 @@ function StepOpencode({
           </p>
           <p className="mt-1 font-mono text-xs break-all text-muted">{info.path}</p>
           {info.version && !info.compatible && (
-            <p className="mt-2 text-xs text-warning">{t('wizard.opencode.versionMismatch', { app: APP_NAME, sdk: info.sdkVersion })}</p>
+            <p className="mt-2 text-xs text-warning">{t('wizard.opencode.versionMismatch', { app: DISPLAY_NAME, sdk: info.sdkVersion })}</p>
           )}
           {!ready && !failure && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted">
@@ -331,7 +331,7 @@ function StepOpencode({
       ) : (
         <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
           <p className="font-medium">{t('wizard.opencode.notFound')}</p>
-          <p className="mt-1 text-xs text-muted">{t('wizard.opencode.installHint', { app: APP_NAME })}</p>
+          <p className="mt-1 text-xs text-muted">{t('wizard.opencode.installHint', { app: DISPLAY_NAME })}</p>
           <code className="mt-2 block rounded-lg bg-hover px-2.5 py-1.5 font-mono text-xs break-all">{OPENCODE_INSTALL_COMMAND}</code>
         </div>
       )}
@@ -429,7 +429,7 @@ function StepAuth({
             </span>
           )}
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.goDescription', { app: APP_NAME })}</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.goDescription', { app: DISPLAY_NAME })}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => void runAction('openAuth')}>
             <ExternalLink size={13} /> {t('wizard.auth.getKey')}
@@ -575,7 +575,7 @@ function StepPermissions(): React.JSX.Element {
   const t = useT()
   return (
     <div className="space-y-3">
-      <Lead>{t('wizard.permissions.lead', { app: APP_NAME })}</Lead>
+      <Lead>{t('wizard.permissions.lead', { app: DISPLAY_NAME })}</Lead>
       <div className="flex items-start gap-3 rounded-ctl bg-warning/10 px-3.5 py-3 ring-1 ring-warning/45 ring-inset">
         <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
         <div className="text-[13px] leading-[18px] text-fg">

@@ -2,7 +2,7 @@
 import './migrations/local-storage'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { App } from './app/App'
 import { LangRoot } from './app/LangRoot'
 import { initLang } from './lib/i18n'
@@ -12,7 +12,7 @@ import './app/globals.css'
 import './app/desktop/index.css'
 import { currentPlatform } from './lib/platform'
 
-document.title = APP_NAME
+document.title = DISPLAY_NAME
 // Marca el escritorio: activa los tokens y la variante desk (data-shell) y los ajustes por sistema (data-platform: darwin|win32).
 document.documentElement.dataset.shell = 'desktop'
 document.documentElement.dataset.platform = currentPlatform()

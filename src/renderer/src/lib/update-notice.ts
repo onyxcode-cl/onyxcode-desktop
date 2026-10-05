@@ -1,4 +1,4 @@
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { localeTag, t } from '@shared/i18n'
 import { isValidRepo, safeReleaseUrl, type UpdateState } from '@shared/update-check'
 import { installErrorText, installPercent, type InstallPhase } from '@shared/update-install'
@@ -6,7 +6,7 @@ import { installErrorText, installPercent, type InstallPhase } from '@shared/upd
 /** Texto del aviso de versión nueva, o null si no hay que mostrarlo. */
 export function updateNoticeText(state: UpdateState | null): string | null {
   if (!state || !state.available || !state.latest) return null
-  return t('notices.update.available', { app: APP_NAME, version: state.latest.version })
+  return t('notices.update.available', { app: DISPLAY_NAME, version: state.latest.version })
 }
 
 /** Texto de «no se pudo comprobar» en el idioma activo. */
@@ -62,7 +62,7 @@ export function updateView(state: UpdateState | null, o: { later?: boolean } = {
     case 'downloading':
       return {
         phase: i.phase,
-        text: t('notices.update.downloading', { app: APP_NAME, version: ver }),
+        text: t('notices.update.downloading', { app: DISPLAY_NAME, version: ver }),
         percent: installPercent(i),
         progress: true,
         actions: [{ id: 'cancel', label: t('common.cancel') }]
@@ -79,7 +79,7 @@ export function updateView(state: UpdateState | null, o: { later?: boolean } = {
       if (later && !state.available) return null
       return {
         phase: i.phase,
-        text: t('notices.update.ready', { app: APP_NAME, version: ver }),
+        text: t('notices.update.ready', { app: DISPLAY_NAME, version: ver }),
         percent: null,
         progress: false,
         actions: [{ id: 'restart', label: t('notices.update.restartNow'), primary: true }, ...laterBtn]
@@ -87,7 +87,7 @@ export function updateView(state: UpdateState | null, o: { later?: boolean } = {
     case 'installing':
       return { phase: i.phase, text: t('notices.update.installing'), percent: null, progress: true, actions: [] }
     case 'restarting':
-      return { phase: i.phase, text: t('notices.update.restarting', { app: APP_NAME }), percent: null, progress: true, actions: [] }
+      return { phase: i.phase, text: t('notices.update.restarting', { app: DISPLAY_NAME }), percent: null, progress: true, actions: [] }
     case 'error': {
       const actions: UpdateView['actions'] = []
       if (state.installable && state.latest) actions.push({ id: 'retry', label: t('common.retry'), primary: true })

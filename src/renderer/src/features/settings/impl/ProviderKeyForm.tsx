@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { KeyRound, Loader2 } from 'lucide-react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { Button } from '../../../components/Button'
 import { openExternalUrlStrict } from '../../../lib/open-external'
 import { useT } from '../../../lib/i18n'
@@ -234,8 +234,8 @@ export function ProviderKeyForm({
 
       <p className="mt-2 text-[11px] text-subtle">
         {target && !supportsApi && oauth.length === 0
-          ? t('models.form.loginOnly', { app: APP_NAME })
-          : t('models.form.keyStoredNote', { app: APP_NAME })}
+          ? t('models.form.loginOnly', { app: DISPLAY_NAME })
+          : t('models.form.keyStoredNote', { app: DISPLAY_NAME })}
       </p>
     </Card>
   )

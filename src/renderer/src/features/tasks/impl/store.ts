@@ -29,7 +29,7 @@ import {
   type ManagedPolicy,
   type NetworkBlockedEvent
 } from '@shared/ipc-tasks'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
@@ -822,7 +822,7 @@ function syncComputerSession(): void {
         sessionId = id
         // Si la tarea espera una respuesta tuya (`question`), la píldora lo dice en vez del título.
         const asking = Object.values(questions).some((q) => rootTaskId(q.sessionID) === id)
-        label = asking ? t('tasks.pill.asking', { app: APP_NAME }) : sess.title || undefined
+        label = asking ? t('tasks.pill.asking', { app: DISPLAY_NAME }) : sess.title || undefined
         break
       }
     }

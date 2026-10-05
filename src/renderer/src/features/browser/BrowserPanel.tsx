@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { Globe, RotateCw, ShieldCheck } from 'lucide-react'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import type {
   BrowserDecision,
   BrowserOwner,
@@ -76,7 +76,7 @@ function FirstRunNotice({ onDismiss }: { onDismiss: () => void }): React.JSX.Ele
   return (
     <div className="flex items-center gap-2 border-b border-accent/30 bg-accent-soft/40 px-3 py-2 text-[12px]">
       <ShieldCheck size={14} className="shrink-0 text-accent" />
-      <span className="min-w-0 flex-1 text-fg/90">{t('browser.firstRun', { app: APP_NAME })}</span>
+      <span className="min-w-0 flex-1 text-fg/90">{t('browser.firstRun', { app: DISPLAY_NAME })}</span>
       <button
         type="button"
         onClick={onDismiss}

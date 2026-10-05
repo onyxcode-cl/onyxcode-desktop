@@ -3,7 +3,7 @@
  * Sin React ni IPC (se prueba con `steps.test.ts`).
  */
 import { isConfiguredProvider } from '@shared/ai-availability'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
 import { currentPlatform } from '../../lib/platform'
@@ -53,7 +53,7 @@ export function connectedNames(connected: ProviderState[] | null, names: Record<
 
 /** Aviso del paso «Conecta tu IA»: qué modos funcionan con cualquier proveedor y cuál tiene una excepción. */
 export function connectTasksNotice(): string {
-  return t('wizard.connectTasksNotice', { tasks: MODE_LABELS.tasks, app: APP_NAME, fullControl: t('wizard.fullControlShort') })
+  return t('wizard.connectTasksNotice', { tasks: MODE_LABELS.tasks, app: DISPLAY_NAME, fullControl: t('wizard.fullControlShort') })
 }
 export function connectTermsNotice(): string {
   return t('wizard.connectTermsNotice')

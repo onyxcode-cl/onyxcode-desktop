@@ -66,7 +66,7 @@ describe('MobileDrawer', () => {
   it('cabecera con logo y nombre, X de 44 y márgenes de zona segura', () => {
     open()
     const html = render()
-    expect(html).toContain('OnyxCode')
+    expect(html).toContain('Lazunox')
     const x = html.match(/<button[^>]*aria-label="Cerrar menú"[^>]*>/)?.[0] ?? ''
     expect(x).toContain('h-11 w-11')
     expect(html).toContain('safe-area-inset-top')

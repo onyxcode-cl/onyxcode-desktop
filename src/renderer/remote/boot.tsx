@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { App } from '@renderer/app/App'
 import { LangRoot } from '@renderer/app/LangRoot'
 import { initLang, useLang } from '@renderer/lib/i18n'
@@ -24,7 +24,7 @@ function idle(fn: () => void): void {
  * Monta la MISMA interfaz de escritorio (`src/renderer/src`). OnyxCode no tiene cuentas ni inicio de sesión.
  */
 export function mountRemoteApp(): void {
-  document.title = APP_NAME
+  document.title = DISPLAY_NAME
   initLang()
   installModalFocus()
   // Recuerda el tema del Mac (para la capa ligera) y ajusta `theme-color`: ver docs/MOBILE-UI.md.

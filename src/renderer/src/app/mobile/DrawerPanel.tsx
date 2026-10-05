@@ -10,6 +10,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Search, Settings, SquarePen, X } from 'lucide-react'
+import { DISPLAY_NAME } from '@shared/brand'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 import { useCode } from '../../features/code/impl/store'
@@ -181,7 +182,7 @@ export default function DrawerPanel(): React.JSX.Element {
       >
         <div className="flex h-[var(--m-bar)] shrink-0 items-center gap-2 pr-1 pl-4">
           <LogoMark size={20} />
-          <span className="min-w-0 flex-1 truncate font-display text-[17px] leading-6 font-semibold">OnyxCode</span>
+          <span className="min-w-0 flex-1 truncate font-display text-[17px] leading-6 font-semibold">{DISPLAY_NAME}</span>
           <button
             ref={closeBtn}
             type="button"

@@ -158,14 +158,14 @@ export const remote = {
     'Your organization requires a passkey, which is not yet available away from home. Only this network is used.',
   'remote.away.label': 'Available away from home',
   'remote.away.hint':
-    'Keeps OnyxCode ready for your phone every time you open the app, without turning off for inactivity. “Cut everything” turns it off. It only works with the Mac awake and online: OnyxCode cannot wake it remotely.',
+    'Keeps Lazunox ready for your phone every time you open the app, without turning off for inactivity. “Cut everything” turns it off. It only works with the Mac awake and online: Lazunox cannot wake it remotely.',
   'remote.away.sleepTip':
-    'Tip: keep OnyxCode open and, if you want to use it away from home, keep the Mac from sleeping with the screen off while plugged in (System Settings › Battery or Energy).',
+    'Tip: keep Lazunox open and, if you want to use it away from home, keep the Mac from sleeping with the screen off while plugged in (System Settings › Battery or Energy).',
   'remote.cloud.status.connecting': 'Connection service: connecting…',
   'remote.cloud.status.online': 'Connection service: online',
   'remote.cloud.status.offline': 'Connection service: offline (retrying)',
   'remote.cloud.status.paused': 'Connection service: paused',
-  'remote.cloud.site.ok': 'Phone page verified with the OnyxCode signature.',
+  'remote.cloud.site.ok': 'Phone page verified with the Lazunox signature.',
   'remote.cloud.site.mismatch':
     'The phone page does not match the signed version: away-from-home mode is paused. The local network keeps working.',
   'remote.cloud.site.unknown': 'Phone page not verified.',
@@ -187,12 +187,12 @@ export const remote = {
   'remote.conn.blocked.travelPolicy': "Your organization's policy does not allow travel mode.",
   'remote.travel.title': 'Travel mode',
   'remote.travel.what':
-    'OnyxCode opens a temporary link from this Mac so your phone can connect from outside your home. There is no account and no OnyxCode server in between.',
+    'Lazunox opens a temporary link from this Mac so your phone can connect from outside your home. There is no account and no Lazunox server in between.',
   'remote.travel.limits.title': 'Before turning it on, keep in mind',
   'remote.travel.limit.link':
     'The link changes every time the tunnel restarts (when the Mac restarts, you quit the app, or the tunnel drops). You then have to link again.',
   'remote.travel.limit.home': 'You must link the phone at home, with the QR code on this screen, before you leave.',
-  'remote.travel.limit.mac': 'The Mac must be on, online and with OnyxCode open. If it is asleep or off, it will not respond.',
+  'remote.travel.limit.mac': 'The Mac must be on, online and with Lazunox open. If it is asleep or off, it will not respond.',
   'remote.travel.limit.networks': 'It may not work on some mobile or company networks that block direct connections or this kind of link.',
   'remote.travel.limit.install': 'It cannot be installed as an app on the home screen: the link is temporary. Bookmark it instead.',
   'remote.travel.privacy':
@@ -206,7 +206,7 @@ export const remote = {
   'remote.travel.downloadActivate': 'Download and turn on',
   'remote.travel.reinstall': 'Download again and turn on',
   'remote.travel.binary.outdated':
-    'The installed tool is from another version: the one that ships with this version of OnyxCode must be downloaded.',
+    'The installed tool is from another version: the one that ships with this version of Lazunox must be downloaded.',
   'remote.travel.binary.bad-hash': 'The installed tool failed verification and was discarded. It must be downloaded again.',
   'remote.travel.binary.missing': 'The required tool has not been downloaded yet (about 20 MB).',
   'remote.travel.binary.ready': 'Tool ready and verified.',
@@ -233,11 +233,11 @@ export const remote = {
   'remote.travel.error.edge-unreachable':
     'This Mac could not reach Cloudflare. Check your internet or whether your network blocks port 7844.',
   'remote.travel.error.config-conflict':
-    'There is a cloudflared configuration on this Mac that prevents opening the link. OnyxCode does not modify it.',
+    'There is a cloudflared configuration on this Mac that prevents opening the link. Lazunox does not modify it.',
   'remote.travel.error.timeout': 'The link took too long to open. Try again.',
   'remote.travel.error.bad-url': 'The link the tool returned is not valid and was discarded for safety.',
   'remote.travel.error.unreachable': 'The link opened but does not respond from the internet. Try again in a moment.',
-  'remote.travel.error.site-mismatch': "The page served through the link does not match OnyxCode's. It was closed for safety.",
+  'remote.travel.error.site-mismatch': "The page served through the link does not match Lazunox's. It was closed for safety.",
   'remote.travel.error.no-binary': 'The travel mode tool still has to be downloaded.',
   'remote.travel.error.download': 'The tool could not be downloaded. Check your internet and try again.',
   'remote.travel.error.exited': 'The link tool closed unexpectedly (code {code}).',

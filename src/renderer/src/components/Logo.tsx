@@ -1,10 +1,10 @@
 import { useId } from 'react'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 
 /**
  * Identidad visual (independiente del nombre): "Faceta" — una gema tallada vista desde
  * arriba (lapislázuli, 4 facetas) con una chispa dorada (pirita). El wordmark se dibuja
- * siempre desde APP_NAME. Geometría compartida con build/icon.svg y el icono de bandeja.
+ * siempre desde DISPLAY_NAME. Geometría compartida con build/icon.svg y el icono de bandeja.
  */
 
 /** Rombo con esquinas redondeadas (cuadrado 17×17 rx 3.5 rotado 45° en el centro 16,16). */
@@ -101,12 +101,12 @@ interface LogoProps {
   variant?: LogoVariant
   /** Oculta el wordmark (sólo símbolo). */
   markOnly?: boolean
-  /** Texto del wordmark; por defecto APP_NAME. */
+  /** Texto del wordmark; por defecto DISPLAY_NAME. */
   name?: string
 }
 
-/** Símbolo + wordmark (APP_NAME). */
-export function Logo({ size = 22, className = '', variant = 'color', markOnly, name = APP_NAME }: LogoProps): React.JSX.Element {
+/** Símbolo + wordmark (DISPLAY_NAME). */
+export function Logo({ size = 22, className = '', variant = 'color', markOnly, name = DISPLAY_NAME }: LogoProps): React.JSX.Element {
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <LogoMark size={size} variant={variant} title={markOnly ? name : undefined} />

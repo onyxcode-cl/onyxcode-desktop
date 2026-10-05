@@ -15,7 +15,7 @@
  */
 import '../src/lib/page-lang'
 import { t, type MsgKey } from '@shared/i18n'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import {
   APP_TIER_RANK,
   defaultAccessDecision,
@@ -64,7 +64,7 @@ root.innerHTML = `
     <ul class="request-apps"></ul>
     <div class="request-actions">
       <button type="button" class="req-deny">${t('ovl.req.denyAll')}</button>
-      <button type="button" class="req-edit">${t('ovl.req.edit', { app: APP_NAME })}</button>
+      <button type="button" class="req-edit">${t('ovl.req.edit', { app: DISPLAY_NAME })}</button>
       <button type="button" class="req-approve">${t('ovl.req.approveStart')}</button>
     </div>
     <p class="request-error"></p>

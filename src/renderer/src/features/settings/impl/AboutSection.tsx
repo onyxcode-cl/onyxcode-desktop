@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME, INTERNAL_NAME } from '@shared/brand'
 import type { VersionsInfo } from '@shared/ipc-extras'
 import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
@@ -71,14 +71,14 @@ export function AboutSection(): React.JSX.Element {
 
   return (
     <div>
-      <SectionHeader title={t('settings.about.title', { app: APP_NAME })} description={t('settings.about.subtitle')} />
+      <SectionHeader title={t('settings.about.title', { app: DISPLAY_NAME })} description={t('settings.about.subtitle')} />
       {error && (
         <div className="mb-3">
           <ErrorText>{error}</ErrorText>
         </div>
       )}
       <Card>
-        <Row label={APP_NAME} description={info?.isDev ? t('settings.about.devMode') : undefined}>
+        <Row label={DISPLAY_NAME} description={info?.isDev ? t('settings.about.devMode') : undefined}>
           <span className="font-mono text-sm desk:text-meta desk:text-muted">v{versions?.app ?? info?.version ?? '…'}</span>
         </Row>
         <Row label={t('settings.about.engine')} description={engineNoticeText(engine) ?? undefined}>
@@ -133,7 +133,7 @@ export function AboutSection(): React.JSX.Element {
               label={t('settings.about.autoCheck')}
               description={
                 configured
-                  ? t('settings.about.autoCheck.configured', { agent: `${APP_NAME}/${update?.current ?? info?.version ?? ''}` })
+                  ? t('settings.about.autoCheck.configured', { agent: `${INTERNAL_NAME}/${update?.current ?? info?.version ?? ''}` })
                   : t('settings.about.autoCheck.unconfigured')
               }
             >

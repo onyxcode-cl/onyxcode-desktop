@@ -38,7 +38,7 @@ describe('Modo viaje › explicación honesta', () => {
     const h = html(st(travel()))
     expect(h).toContain('El enlace cambia cada vez que se reinicia el túnel')
     expect(h).toContain('vincular el celular en casa')
-    expect(h).toContain('encendido, con internet y con OnyxCode abierta')
+    expect(h).toContain('encendido, con internet y con Lazunox abierta')
     expect(h).toContain('redes móviles o de empresa')
     expect(h).toContain('no ve tus conversaciones')
     expect(h).toContain('señalización')

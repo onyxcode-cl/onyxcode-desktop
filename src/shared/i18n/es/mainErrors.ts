@@ -108,7 +108,7 @@ export const mainErrors = {
   'merr.notif.taskApproval': 'Una tarea espera tu aprobación',
   'merr.notif.taskQuestion': 'Una tarea tiene una pregunta',
   'merr.notif.taskError': 'Una tarea terminó con un error',
-  'merr.quit.title': '¿Salir de OnyxCode?',
+  'merr.quit.title': '¿Salir de Lazunox?',
   'merr.quit.message': { one: 'Hay {count} tarea en curso.', other: 'Hay {count} tareas en curso.' },
   'merr.quit.detail':
     'Si sales ahora, el trabajo en curso se detiene. Al volver a abrir la app aparecerá como «Interrumpida» y podrás continuarlo.',

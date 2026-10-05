@@ -18,7 +18,7 @@ const base: UpdateState = {
 
 describe('updateNoticeText', () => {
   it('avisa con la versión nueva', () => {
-    expect(updateNoticeText(base)).toBe('Hay una versión nueva de OnyxCode (1.1.0).')
+    expect(updateNoticeText(base)).toBe('Hay una versión nueva de Lazunox (1.1.0).')
   })
   it('null si no hay aviso', () => {
     expect(updateNoticeText(null)).toBeNull()
@@ -75,7 +75,7 @@ describe('updateView', () => {
   })
   it('descargando: porcentaje y Cancelar', () => {
     const v = updateView({ ...base, installable: true, install: inst({ phase: 'downloading', received: 420, total: 1000 }) })
-    expect(v).toMatchObject({ phase: 'downloading', percent: 42, progress: true, text: 'Descargando OnyxCode 1.1.0…' })
+    expect(v).toMatchObject({ phase: 'downloading', percent: 42, progress: true, text: 'Descargando Lazunox 1.1.0…' })
     expect(v?.actions.map((a) => a.id)).toEqual(['cancel'])
   })
   it('verificando, lista, instalando, reiniciando', () => {
@@ -84,7 +84,7 @@ describe('updateView', () => {
     const ready = updateView({ ...b, install: inst({ phase: 'ready' }) })
     expect(ready?.actions[0]).toEqual({ id: 'restart', label: 'Reiniciar ahora', primary: true })
     expect(updateView({ ...b, install: inst({ phase: 'installing' }) })?.actions).toEqual([])
-    expect(updateView({ ...b, install: inst({ phase: 'restarting' }) })?.text).toBe('Reiniciando OnyxCode…')
+    expect(updateView({ ...b, install: inst({ phase: 'restarting' }) })?.text).toBe('Reiniciando Lazunox…')
   })
   it('lista y descartada con «Más tarde»: el aviso se oculta, pero Acerca de sigue mostrándola', () => {
     const s = { ...base, installable: true, available: false, install: inst({ phase: 'ready' }) }
