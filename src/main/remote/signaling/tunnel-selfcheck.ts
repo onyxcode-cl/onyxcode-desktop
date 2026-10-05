@@ -10,6 +10,7 @@
 import { createHash } from 'node:crypto'
 import { request } from 'node:https'
 import { TRAVEL_GATE_COOKIE, TRAVEL_PROBE_PREFIX, TRAVEL_PROCESS } from '@shared/remote/travel'
+import { makeTunnelLookup } from './tunnel-dns'
 
 export type SelfCheckResult = 'ok' | 'unreachable' | 'mismatch'
 export interface HttpGetResult {
@@ -21,12 +22,17 @@ export type HttpGet = (url: string, headers: Record<string, string>) => Promise<
 
 const MAX_BODY = 4 * 1024 * 1024
 
-/** GET real por HTTPS (sin seguir redirecciones, con plazo y tope de bytes). */
+const tunnelLookup = makeTunnelLookup()
+
+/**
+ * GET real por HTTPS (sin seguir redirecciones, con plazo y tope de bytes). El nombre se resuelve con `tunnelLookup`: el nombre de un
+ * túnel recién creado aún no existe en el DNS y una consulta temprana al resolvedor del sistema quedaría en su caché negativa (60 s).
+ */
 export const realHttpGet: HttpGet = (url, headers) =>
   new Promise((resolve, reject) => {
     const u = new URL(url)
     const req = request(
-      { host: u.hostname, port: 443, path: `${u.pathname}${u.search}`, method: 'GET', headers, timeout: 10_000 },
+      { host: u.hostname, port: 443, path: `${u.pathname}${u.search}`, method: 'GET', headers, timeout: 10_000, lookup: tunnelLookup },
       (res) => {
         const chunks: Buffer[] = []
         let n = 0
