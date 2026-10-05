@@ -269,7 +269,7 @@ export function ChatView(): React.JSX.Element {
                 type="button"
                 disabled={!ready}
                 onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
-                className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50"
+                className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-8 desk:py-0 desk:hover:translate-y-0 desk:hover:border-border-strong desk:hover:bg-hover"
               >
                 <Icon size={14} className="text-accent" />
                 {t(label)}

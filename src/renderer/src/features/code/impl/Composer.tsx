@@ -599,7 +599,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
             </div>
           )}
           <div
-            className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md`}
+            className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md desk:rounded-[20px] desk:focus-within:border-accent/40 desk:focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--shadow-md)]`}
           >
             <ElementChipRow
               elements={elementAtts}
@@ -708,7 +708,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       ? t('code.composer.placeholderPlan')
                       : t('code.composer.placeholderBuild')
               }
-              className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
+              className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle desk:max-h-72 desk:leading-6"
             />
             {mobile ? (
               <>
@@ -794,12 +794,12 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 )}
               </>
             ) : (
-              <div className="flex items-center gap-2 px-3 pb-2.5">
+              <div className="flex items-center gap-2 px-3 pb-2.5 desk:flex-wrap desk:gap-y-1">
                 <button
                   type="button"
                   onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
                   title={t('code.composer.toggleAgent')}
-                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition desk:h-7 desk:rounded-lg desk:text-[13px] ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                 >
                   {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
                   {agent === 'plan' ? 'Plan' : 'Build'}
@@ -821,7 +821,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       el?.setSelectionRange(np, np)
                     })
                   }}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg"
                 >
                   <AtSign size={14} />
                 </button>
@@ -830,12 +830,12 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   title={t('code.composer.attach')}
                   aria-label={t('code.composer.attach')}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg"
                 >
                   <Paperclip size={14} />
                 </button>
                 <PermissionChip />
-                <span className="ml-auto" />
+                <span className="ml-auto desk:hidden" />
                 <ModelControls />
                 {busy && (
                   <button

@@ -504,6 +504,8 @@ const S = {
     await goMode(ctx.page, 'Chat')
     await ctx.page.getByText('Pruebas y corrección del IVA').first().click()
     await vis(ctx.page.getByText(/pruebas.*pasan/), 15_000)
+    // Las herramientas seguidas se pliegan en «N pasos»: se abre el grupo y luego la fila del comando.
+    await ctx.page.getByRole('button', { name: /\d+ pasos/ }).first().click()
     await ctx.page.getByRole('button', { name: /bash|npm test|Corre las pruebas/ }).first().click()
     await sleep(500)
   },

@@ -208,7 +208,7 @@ export function ChatComposer({
                   className={
                     mobile
                       ? 'absolute -top-3.5 -right-3.5 flex h-11 w-11 items-center justify-center'
-                      : 'absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100 focus-visible:opacity-100'
+                      : 'absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-fg/70 text-bg opacity-0 transition group-hover/att:opacity-100 focus-visible:opacity-100 desk:h-[18px] desk:w-[18px] desk:bg-fg/80'
                   }
                 >
                   {mobile ? (
@@ -272,7 +272,7 @@ export function ChatComposer({
             }
           }}
           {...(mobile ? { style: { maxHeight: max } } : {})}
-          className={`block w-full resize-none bg-transparent px-4 text-[15px] leading-relaxed outline-none placeholder:text-subtle disabled:opacity-60 ${mobile ? 'pt-3 pb-1' : 'max-h-[280px] pt-3.5 pb-1.5'}`}
+          className={`block w-full resize-none bg-transparent px-4 text-[15px] leading-relaxed outline-none placeholder:text-subtle disabled:opacity-60 desk:leading-6 ${mobile ? 'pt-3 pb-1' : 'max-h-[280px] pt-3.5 pb-1.5 desk:max-h-72'}`}
         />
         <div className={mobile ? 'flex items-center gap-1 px-1.5 pb-1.5' : 'flex items-center gap-1.5 px-2 pb-2'}>
           {showAttach && (
@@ -283,7 +283,7 @@ export function ChatComposer({
               disabled={disabled}
               title={t('chat.composer.attach')}
               aria-label={t('chat.composer.attach')}
-              className={`no-drag inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${mobile ? 'h-9 w-9' : 'h-8 w-8'}`}
+              className={`no-drag inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent desk:rounded-lg ${mobile ? 'h-9 w-9' : 'h-8 w-8'}`}
             >
               <Paperclip size={mobile ? 20 : 16} />
             </button>
@@ -329,7 +329,10 @@ export function ChatComposer({
         </p>
       )}
       {hint !== false && (
-        <p data-mobile="hide" className="mt-2 text-center text-[11px] text-subtle">
+        <p
+          data-mobile="hide"
+          className={`mt-2 text-center text-[11px] text-subtle desk:transition-opacity desk:duration-150 ${focused ? '' : ' desk:opacity-0'}`}
+        >
           {hint ?? (
             <>
               <kbd className="kbd">Enter</kbd>

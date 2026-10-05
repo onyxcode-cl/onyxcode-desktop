@@ -55,7 +55,7 @@ function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivEl
 }
 
 const chip = (): string =>
-  `no-drag flex items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
+  `no-drag flex items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors desk:rounded-lg desk:text-[13px] ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
 
 function MenuItem({
   active,
@@ -223,7 +223,7 @@ export function ModelControls(): React.JSX.Element {
   const variant = useCode((s) => s.variant)
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5 desk:ml-auto">
       {/* «Comparar modelos…»: no existe en el celular (CompareControls devuelve null allí). */}
       <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" />
       {/* El menú del selector se alinea a la derecha para no salirse del compositor. */}
