@@ -11,7 +11,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type * as NodePty from 'node-pty'
-import { APP_NAME } from '@shared/brand'
+import { INTERNAL_NAME } from '@shared/brand'
 import type { PtyAvailability, PtyCreateRequest, PtyInfo } from '@shared/ipc-code'
 import { withDisclaim } from '../process/disclaim'
 import { resolveDefaultShell, type ShellChoice } from './shell'
@@ -90,7 +90,7 @@ export class PtyService {
     for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') env[k] = v
     env.TERM = 'xterm-256color'
     env.COLORTERM = 'truecolor'
-    env.TERM_PROGRAM = APP_NAME
+    env.TERM_PROGRAM = INTERNAL_NAME
     if (!env.LANG) env.LANG = 'en_US.UTF-8'
     // Variables propias de Electron que no deben filtrarse a la shell del usuario (mismo criterio
     // que `child-env.ts`, pero conservando el resto del entorno del usuario tal cual: la terminal

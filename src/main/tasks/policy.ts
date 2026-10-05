@@ -1,8 +1,8 @@
 /**
  * Política gestionada de Tareas (`managed.json`), de solo lectura.
  *
- * Ubicación: `/Library/Application Support/${APP_NAME}/managed.json` en macOS y
- * `%ProgramData%\${APP_NAME}\managed.json` en Windows (solo un administrador puede escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de
+ * Ubicación: `/Library/Application Support/${INTERNAL_NAME}/managed.json` en macOS y
+ * `%ProgramData%\${INTERNAL_NAME}\managed.json` en Windows (solo un administrador puede escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de
  * entorno `ONYXCODE_MANAGED_POLICY`.
  *
  * La política solo RESTRINGE (salvo `extraAllowedHosts`, decidido por la organización), y la
@@ -16,7 +16,7 @@ import { app } from 'electron'
 import { readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, posix, resolve, win32 } from 'node:path'
-import { APP_NAME } from '@shared/brand'
+import { INTERNAL_NAME } from '@shared/brand'
 import type { ManagedPolicy } from '@shared/ipc-tasks'
 
 const HOST_RE = /^[a-z0-9.-]{1,255}$/i
@@ -89,8 +89,8 @@ export function managedPolicyPath(
   platform: NodeJS.Platform = process.platform,
   env: Record<string, string | undefined> = process.env
 ): string {
-  if (platform === 'win32') return win32.join(env.ProgramData || 'C:\\ProgramData', APP_NAME, 'managed.json')
-  return posix.join('/Library/Application Support', APP_NAME, 'managed.json')
+  if (platform === 'win32') return win32.join(env.ProgramData || 'C:\\ProgramData', INTERNAL_NAME, 'managed.json')
+  return posix.join('/Library/Application Support', INTERNAL_NAME, 'managed.json')
 }
 
 /** Archivo de política vigente: el del sistema; en desarrollo (`!app.isPackaged`) se puede forzar con `ONYXCODE_MANAGED_POLICY`. */

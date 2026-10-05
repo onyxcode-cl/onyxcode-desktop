@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { APP_NAME } from '@shared/brand'
+import { INTERNAL_NAME } from '@shared/brand'
 import {
   compareSemver,
   isNewerRelease,
@@ -165,7 +165,7 @@ export class UpdateChecker {
         headers: {
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
-          'User-Agent': `${APP_NAME}/${this.d.currentVersion}`
+          'User-Agent': `${INTERNAL_NAME}/${this.d.currentVersion}`
         },
         redirect: 'error',
         credentials: 'omit',

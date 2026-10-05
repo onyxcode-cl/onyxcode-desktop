@@ -7,14 +7,14 @@
  *   abrir un archivo que trajo el agente, hay que añadirla a mano con `xattr`).
  * - Del usuario: diálogo de guardado nativo (`dialog.showSaveDialog`), como el resto de la app.
  * - Nunca se abren solas (ni `shell.openPath` ni nada parecido aquí).
- * - Destinos: Tareas → `<carpeta>/.onyxcode/trabajo/descargas/`; Code → `~/Downloads/<APP_NAME>/`.
+ * - Destinos: Tareas → `<carpeta>/.onyxcode/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
  */
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { dialog, type DownloadItem, type WebContents } from 'electron'
-import { APP_NAME } from '@shared/brand'
+import { INTERNAL_NAME } from '@shared/brand'
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import { hostOf, siteOf } from './sites'
@@ -39,7 +39,7 @@ export function initDownloads(d: DownloadsDeps): void {
 
 function destinationDir(owner: BrowserOwner): string {
   if (owner.kind === 'tasks') return join(owner.folder, '.onyxcode', 'trabajo', 'descargas')
-  return join(homedir(), 'Downloads', APP_NAME)
+  return join(homedir(), 'Downloads', INTERNAL_NAME)
 }
 
 /** Nombre de archivo simple, sin separadores de ruta ni bytes nulos (defensa adicional a Electron). */
@@ -70,7 +70,7 @@ function applyQuarantine(filePath: string): void {
   const stamp = Math.floor(Date.now() / 1000)
     .toString(16)
     .padStart(8, '0')
-  const value = `0083;${stamp};${APP_NAME};`
+  const value = `0083;${stamp};${INTERNAL_NAME};`
   execFile('/usr/bin/xattr', ['-w', 'com.apple.quarantine', value, filePath], (err) => {
     if (err) console.warn('[embedded-browser] no se pudo poner com.apple.quarantine:', err)
   })

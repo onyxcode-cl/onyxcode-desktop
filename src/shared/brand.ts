@@ -2,7 +2,16 @@
  * Identidad de la app. ÚNICO lugar donde vive el nombre (además de package.json y
  * electron-builder.js). Todo el resto del código importa desde aquí.
  */
-export const APP_NAME = 'OnyxCode'
+/** Nombre VISIBLE al usuario (ventanas, menús, textos, PWA). Es el único que se muestra. */
+export const DISPLAY_NAME = 'Lazunox'
+/**
+ * Nombre INTERNO. NO CAMBIAR: de él dependen la carpeta userData, la clave «<nombre> Safe Storage» del
+ * Llavero (`app.setName(INTERNAL_NAME)`), el User-Agent, `TERM_PROGRAM` y rutas de administrador.
+ * Cualquier cambio exige el plan de la Fase 2 (migración de datos).
+ */
+export const INTERNAL_NAME = 'OnyxCode'
+/** @deprecated Usa DISPLAY_NAME (texto visible) o INTERNAL_NAME (técnico). Se retirará al cerrar el renombre. */
+export const APP_NAME = INTERNAL_NAME
 
 // TODO(alias): cambiar AUTHOR_ALIAS y los literales; ver docs (plan «Identidad»).
 // Punto de cambio ÚNICO de la identidad. Hoy los valores derivados son EXACTAMENTE los históricos

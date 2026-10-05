@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { t } from '@shared/i18n'
 import { needsQuitConfirmation } from './quit-guard'
-import { APP_ID, APP_NAME, BRAND_COLORS } from '@shared/brand'
+import { APP_ID, BRAND_COLORS, DISPLAY_NAME, INTERNAL_NAME } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
@@ -32,7 +32,7 @@ import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
-app.setName(APP_NAME)
+app.setName(INTERNAL_NAME)
 
 /** Capacidades de la plataforma: Tareas, Control del PC y actualizador solo en macOS. */
 const caps = capsFor(process.platform)
@@ -78,7 +78,7 @@ function createWindow(): BrowserWindow {
     minWidth: 820,
     minHeight: 560,
     show: false,
-    title: APP_NAME,
+    title: DISPLAY_NAME,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 16 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,

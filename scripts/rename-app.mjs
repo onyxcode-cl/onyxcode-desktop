@@ -42,9 +42,9 @@ export function readIdentity(root) {
   const brand = readFileSync(join(root, 'src/shared/brand.ts'), 'utf8')
   const pick = (re) => re.exec(brand)?.[1]
   const alias = pick(/export const AUTHOR_ALIAS = '([^']*)'/)
-  const name = pick(/export const APP_NAME = '([^']*)'/)
+  const name = pick(/export const INTERNAL_NAME = '([^']*)'/) ?? pick(/export const APP_NAME = '([^']*)'/)
   const slug = pick(/export const APP_SLUG = '([^']*)'/)
-  if (!alias || !name || !slug) throw new Error('No se encontró APP_NAME, AUTHOR_ALIAS o APP_SLUG en src/shared/brand.ts')
+  if (!alias || !name || !slug) throw new Error('No se encontró INTERNAL_NAME (o APP_NAME), AUTHOR_ALIAS o APP_SLUG en src/shared/brand.ts')
   return {
     name,
     slug,

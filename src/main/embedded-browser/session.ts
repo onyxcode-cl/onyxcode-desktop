@@ -10,7 +10,7 @@ import { app, session, type Session } from 'electron'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import { isLocalHostname } from './ip-class'
-import { APP_NAME } from '@shared/brand'
+import { INTERNAL_NAME } from '@shared/brand'
 import type { BrowserProduct } from '@shared/ipc-browser'
 import { isLocalOriginApproved } from './store'
 import { hostPortOf, localSubresourceAllowed, schemeOf } from './sites'
@@ -243,10 +243,10 @@ export function sessionFor(product: BrowserProduct): Session {
   return ses
 }
 
-/** UA sin `Electron/…` ni `${APP_NAME}/…`: no debe delatar el motor nativo. */
+/** UA sin `Electron/…` ni `${INTERNAL_NAME}/…`: no debe delatar el motor nativo. */
 function strippedUserAgent(ua: string): string {
   return ua
-    .replace(new RegExp(`\\s*${APP_NAME}/\\S+`, 'gi'), '')
+    .replace(new RegExp(`\\s*${INTERNAL_NAME}/\\S+`, 'gi'), '')
     .replace(/\s*Electron\/\S+/gi, '')
     .trim()
 }
