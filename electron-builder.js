@@ -106,6 +106,11 @@ module.exports = {
   },
   mac: {
     extraResources: [
+      // Nombre visible localizado (Finder, Dock, Spotlight): InfoPlist.strings con CFBundleDisplayName
+      // → Contents/Resources/<idioma>.lproj. Se añaden antes de firmar, así que quedan sellados.
+      { from: 'build/lproj/es.lproj', to: 'es.lproj' },
+      { from: 'build/lproj/es_419.lproj', to: 'es_419.lproj' },
+      { from: 'build/lproj/en.lproj', to: 'en.lproj' },
       // Helper nativo de computer use (compilado con `npm run build:helper`) → Contents/Resources/computer-use/bin
       {
         from: 'resources/computer-use/bin',
@@ -171,9 +176,14 @@ module.exports = {
     // Grabar una skill con micro (Lote C, B.1/B.8): macOS exige el texto en Info.plist antes de
     // poder pedir estos permisos, o el proceso aborta al intentarlo.
     extendInfo: {
-      NSMicrophoneUsageDescription: 'OnyxCode necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
+      // Renombre a «Lazunox» (Fase 1): SOLO el nombre visible. NO se define CFBundleName ni CFBundleExecutable
+      // (los comprueba src/test/identity-freeze.test.ts): Electron busca sus helpers a partir del nombre del
+      // bundle y el .app, userData y el Llavero siguen llamándose «OnyxCode».
+      CFBundleDisplayName: 'Lazunox',
+      LSHasLocalizedDisplayName: true,
+      NSMicrophoneUsageDescription: 'Lazunox necesita el micrófono para grabar tu voz al grabar una skill (opcional).',
       NSSpeechRecognitionUsageDescription:
-        'OnyxCode necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
+        'Lazunox necesita reconocimiento de voz para transcribir en el dispositivo lo grabado al crear una skill.'
     }
   },
   win: {
@@ -192,6 +202,8 @@ module.exports = {
   // Notariza y graba el .dmg (el afterSign solo cubre el .app). No hace nada sin Developer ID + credenciales.
   afterAllArtifactBuild: 'build/notarize-dmg.js',
   dmg: {
+    // Solo el título del volumen montado: el nombre del archivo (artifactName) NO cambia (lo usa la cask).
+    title: 'Lazunox ${version}',
     artifactName: '${name}-${version}-${arch}.${ext}'
   },
   npmRebuild: false

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Instalador de OnyxCode para macOS (solo Mac con chip Apple, arm64).
+# Instalador de Lazunox (antes OnyxCode) para macOS (solo Mac con chip Apple, arm64).
 #
 # Uso:  curl -fsSL <url-de-este-script> | sh
 #       sh install.sh [--version X.Y.Z] [--dry-run] [--no-open] [--uninstall] [--help]
@@ -52,7 +52,7 @@ die() { err "$*"; exit 1; }
 
 usage() {
   cat <<USAGE
-Instalador de OnyxCode (solo Mac con chip Apple).
+Instalador de Lazunox (solo Mac con chip Apple).
 
 Uso: install.sh [opciones]
   --version X.Y.Z   instala esa versión (por defecto, la última release)
@@ -108,7 +108,7 @@ fi
 
 # --- Instalar -----------------------------------------------------------------------------------------
 if [ "$REPO" = "PENDIENTE" ] || [ -z "$REPO" ]; then
-  err "todavía no hay una release publicada de OnyxCode, así que no hay nada que instalar."
+  err "todavía no hay una release publicada de Lazunox, así que no hay nada que instalar."
   err "Cuando exista, este script se actualizará solo con la dirección correcta."
   err "(Si ya tienes la dirección: ONYXCODE_RELEASES_REPO=dueño/repo sh install.sh)"
   exit 1
@@ -138,10 +138,10 @@ if [ "$DRY_RUN" = 1 ]; then
 fi
 
 # 1. Plataforma.
-[ "$(uname -s)" = "Darwin" ] || die "OnyxCode solo funciona en macOS."
+[ "$(uname -s)" = "Darwin" ] || die "Lazunox solo funciona en macOS."
 ARCH="$(uname -m)"
 if [ "$ARCH" != "arm64" ]; then
-  die "OnyxCode solo está disponible para Mac con chip Apple (arm64); este Mac es $ARCH (Intel). No se instaló nada."
+  die "Lazunox solo está disponible para Mac con chip Apple (arm64); este Mac es $ARCH (Intel). No se instaló nada."
 fi
 
 # Temporales y limpieza: se ejecuta siempre (éxito, error o Ctrl+C) y desmonta el .dmg si quedó montado.
@@ -214,13 +214,13 @@ if xattr -p com.apple.quarantine "$DEST" >/dev/null 2>&1; then
 fi
 hdiutil detach "$MNT" -quiet >/dev/null 2>&1 && MOUNTED=0 || true
 
-say "Listo: OnyxCode quedó instalado en $DEST"
+say "Listo: Lazunox quedó instalado en $DEST"
 say "Tus datos viven en $DATA_DIR y este script nunca los toca."
 
 # 8. Abrir (solo si hay terminal para preguntar).
 if [ "$NO_OPEN" = 0 ]; then
   ans=""
-  printf '¿Abrir OnyxCode ahora? [s/N] '
+  printf '¿Abrir Lazunox ahora? [s/N] '
   { read -r ans < /dev/tty; } 2>/dev/null || ans=""
   printf '\n'
   case "$ans" in

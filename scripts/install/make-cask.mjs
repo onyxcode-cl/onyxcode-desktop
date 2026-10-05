@@ -18,7 +18,7 @@ export function renderCask({ version, sha256, repo }) {
   sha256 "${sha256}"
 
   url "https://github.com/${repo}/releases/download/v#{version}/onyxcode-#{version}-arm64.dmg"
-  name "OnyxCode"
+  name "Lazunox"
   desc "Aplicación de escritorio para trabajar con agentes de código"
   homepage "https://github.com/${repo}"
 

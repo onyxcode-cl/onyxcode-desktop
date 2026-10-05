@@ -3,7 +3,7 @@ cask "onyxcode" do
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
   url "https://github.com/PENDIENTE/onyxcode/releases/download/v#{version}/onyxcode-#{version}-arm64.dmg"
-  name "OnyxCode"
+  name "Lazunox"
   desc "Aplicación de escritorio para trabajar con agentes de código"
   homepage "https://github.com/PENDIENTE/onyxcode"
 
