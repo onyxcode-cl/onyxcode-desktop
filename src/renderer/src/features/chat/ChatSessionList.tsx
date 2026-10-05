@@ -5,6 +5,7 @@ import { t as tr, localeTag } from '@shared/i18n'
 import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 import { LoadMoreSessions } from '../../components/LoadMoreSessions'
+import { SidebarEmpty } from '../../components/SidebarEmpty'
 import { PopoverPanel } from '../../components/PopoverPanel'
 import { isRemoteSurface } from '../../lib/platform'
 import { MobileSessionList } from './MobileSessionList'
@@ -210,6 +211,14 @@ function DesktopSessionList({
     )
   }
   if (sessions.length === 0) {
+    if (!isRemoteSurface())
+      return (
+        <SidebarEmpty
+          icon={<MessagesSquare size={18} strokeWidth={1.75} />}
+          text={emptyText ?? t('chat.list.emptyDefault')}
+          hint={t('app.sidebar.emptyHint.chat')}
+        />
+      )
     return (
       <div className="mx-1 mt-6 flex flex-col items-center gap-2 px-4 text-center">
         <MessagesSquare size={18} className="text-subtle" />

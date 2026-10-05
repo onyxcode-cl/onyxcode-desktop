@@ -13,6 +13,7 @@ import {
   Pin,
   Search,
   ShieldAlert,
+  Terminal,
   Trash2,
   X
 } from 'lucide-react'
@@ -26,6 +27,7 @@ import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { SidebarEmpty } from '../../../components/SidebarEmpty'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { SheetAction } from './SheetAction'
 import { SwipeRow, useLongPress } from '../../../components/mobile/SwipeRow'
@@ -424,7 +426,14 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             <Loader2 size={12} className="animate-spin" /> {t('code.sessions.loading')}
           </div>
         )}
-        {!loading && list.length === 0 && (
+        {!loading && list.length === 0 && !isRemoteSurface() && (
+          <SidebarEmpty
+            icon={<Terminal size={18} strokeWidth={1.75} />}
+            text={t('code.sessions.empty')}
+            hint={t('app.sidebar.emptyHint.code')}
+          />
+        )}
+        {!loading && list.length === 0 && isRemoteSurface() && (
           <div className="px-2 py-1 text-xs text-subtle desk:px-2.5 desk:py-2 desk:text-meta">{t('code.sessions.empty')}</div>
         )}
         {sortedList.map((s) => {

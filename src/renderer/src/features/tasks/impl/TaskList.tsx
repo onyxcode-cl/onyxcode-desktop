@@ -11,6 +11,7 @@ import {
   ArchiveRestore,
   FolderTree,
   Loader2,
+  ListChecks,
   Mail,
   MoreHorizontal,
   Pencil,
@@ -24,6 +25,8 @@ import {
 import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
 import { m as mob } from '../../../app/mobile/m'
 import { MAIN_SOURCE, sessionsKey, useSessions } from '../../../stores/sessions'
+import { SidebarEmpty } from '../../../components/SidebarEmpty'
+import { isRemoteSurface } from '../../../lib/platform'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { archiveTask, deleteTask, moveTaskToGroup, openTask, renameTask, restoreTask } from './actions'
@@ -528,7 +531,14 @@ export function TaskList(): React.JSX.Element {
             <Loader2 size={12} className="animate-spin" /> {tr('tasks.list.loading')}
           </div>
         )}
-        {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && (
+        {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && !isRemoteSurface() && (
+          <SidebarEmpty
+            icon={<ListChecks size={18} strokeWidth={1.75} />}
+            text={emptyText}
+            hint={folder && !showArchived && !searching ? tr('app.sidebar.emptyHint.tasks') : undefined}
+          />
+        )}
+        {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (
           <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}
         {groups.map((g) => (
