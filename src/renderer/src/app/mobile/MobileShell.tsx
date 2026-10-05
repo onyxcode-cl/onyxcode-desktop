@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Check, ChevronLeft, FileCode2, GitCompare, LayoutGrid, Loader2, MoreHorizontal, SquarePen, WifiOff } from 'lucide-react'
+import { Check, ChevronLeft, FileCode2, GitCompare, LayoutGrid, Loader2, Menu, MoreHorizontal, SquarePen, WifiOff } from 'lucide-react'
 import { modeAvailable } from '@shared/platform-caps'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeId } from '@shared/types'
@@ -8,6 +8,8 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useT } from '../../lib/i18n'
 import { currentPlatform } from '../../lib/platform'
 import { useCode } from '../../features/code/impl/store'
+import { MobileTasksHome } from '../../features/tasks/impl/MobileTasksHome'
+import { useTasks } from '../../features/tasks/impl/store'
 import { BranchPill, newCodeSession } from '../../features/code/impl/CodeWorkspace'
 import { CodeActionsSheet, CodePanelScreen } from '../../features/code/impl/MobileCode'
 import { abbreviatePath } from '../../features/code/impl/mobile-logic'
@@ -19,6 +21,7 @@ import { ServerBanner } from '../ServerBanner'
 import { MODES_BY_ID } from '../modes'
 import { LIST_MODES, clearActive, useActiveIds, useDetailTitle, type ListMode } from './adapters'
 import { bannerFor, useLinkStatus, type BannerKind } from './link'
+import { MobileDrawer } from './MobileDrawer'
 import { PhoneScreen, RoutinesScreen } from './MoreScreens'
 import { createHistorySync, historyTarget, userBackAction } from './nav-history'
 import {
@@ -165,6 +168,9 @@ function useExternalSync(): void {
 function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
   const t = useT()
   const { tab, depth, setTab } = useMobileNav()
+  // Aprobaciones pendientes de Tareas: el mismo dato que el punto de la barra de escritorio (app/Sidebar.tsx). Solo refleja
+  // permisos cuando el store de Tareas ya está conectado (decisiones-pwa #3: no se carga al arrancar).
+  const approvalsPending = useTasks((s) => Object.keys(s.permissions).length > 0)
   const tabs: { id: MobileTab; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
     ...LIST_MODES.filter((m) => modeAvailable(m, currentPlatform())).map((m) => ({
       id: m as MobileTab,
@@ -184,8 +190,8 @@ function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
     <nav
       aria-label={t('mobile.nav.aria')}
       data-tabbar=""
-      className="flex shrink-0 border-t border-[var(--m-hairline)] bg-bg select-none"
-      style={{ paddingBottom: 'var(--sab, 0px)' }}
+      className="flex shrink-0 bg-sidebar px-2 pt-1.5 select-none"
+      style={{ paddingBottom: 'max(12px, var(--sab, 0px))' }}
     >
       {tabs.map(({ id, label, icon: Icon }) => {
         const active = id === tab
@@ -195,12 +201,21 @@ function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
             type="button"
             aria-current={active ? 'page' : undefined}
             onClick={() => choose(id)}
-            className="group flex min-h-14 flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] leading-[13px] font-medium"
+            className="group flex min-h-[var(--m-tab-item)] flex-1 flex-col items-center gap-0.5 text-[11px] leading-[14px] font-medium"
           >
             <span
-              className={`flex h-[30px] w-14 items-center justify-center rounded-full transition-[background-color,transform] duration-[var(--dur-base)] group-active:scale-[0.96] ${active ? 'bg-accent-soft text-accent' : 'text-muted'}`}
+              className={`flex h-[var(--m-pill-h)] w-[var(--m-pill-w)] items-center justify-center rounded-full transition-[background-color,transform] duration-[var(--dur-base)] group-active:scale-[0.98] group-active:bg-hover motion-reduce:group-active:scale-100 ${active ? 'bg-hover text-accent' : 'text-muted'}`}
             >
-              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+              <span className="relative inline-flex">
+                <Icon size={20} strokeWidth={1.75} />
+                {id === 'tasks' && approvalsPending && (
+                  <span
+                    role="img"
+                    aria-label={t('app.sidebar.pendingApproval')}
+                    className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-warning ring-2 ring-sidebar"
+                  />
+                )}
+              </span>
             </span>
             <span className={active ? 'font-semibold text-fg' : 'text-muted'}>{label}</span>
           </button>
@@ -221,42 +236,49 @@ function TopBar({
   subtitle?: React.ReactNode
   onBack?: () => void
   action?: React.ReactNode
-  /** Cabecera de una lista raíz: título grande a la izquierda y filete solo al desplazar (ver mobile-shell.css). */
+  /** Cabecera de una pantalla raíz: botón de menú a la izquierda y filete solo al desplazar (ver mobile-shell.css). */
   root?: boolean
 }): React.JSX.Element {
   const t = useT()
+  const drawerOpen = useMobileNavStore((s) => s.drawerOpen)
+  const setDrawer = useMobileNavStore((s) => s.setDrawer)
   return (
     <header
       data-edge={root ? 'root' : 'detail'}
-      className="flex min-h-[calc(var(--m-bar)+env(safe-area-inset-top,0px))] shrink-0 items-center gap-1 bg-bg px-2 select-none"
+      className="grid min-h-[calc(var(--m-bar)+env(safe-area-inset-top,0px))] shrink-0 grid-cols-[minmax(44px,auto)_minmax(0,1fr)_minmax(44px,auto)] items-center bg-bg px-2 select-none"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
-      {onBack ? (
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label={t('mobile.back')}
-          className="inline-flex h-12 w-11 shrink-0 items-center justify-center rounded-full text-fg active:bg-hover"
-        >
-          <ChevronLeft size={24} />
-        </button>
-      ) : (
-        !root && <span className="w-2 shrink-0" />
-      )}
-      <div className="min-w-0 flex-1">
+      <div className="flex items-center justify-start">
+        {onBack ? (
+          <button type="button" onClick={onBack} aria-label={t('mobile.back')} className={barBtn}>
+            <ChevronLeft size={22} />
+          </button>
+        ) : root ? (
+          <button
+            type="button"
+            data-drawer-trigger=""
+            onClick={() => setDrawer(true)}
+            aria-label={t('mobile.drawer.open')}
+            aria-haspopup="dialog"
+            aria-expanded={drawerOpen}
+            className={barBtn}
+          >
+            <Menu size={20} />
+          </button>
+        ) : null}
+      </div>
+      <div className="min-w-0 text-center">
         <h1
           tabIndex={-1}
           className={`min-w-0 truncate font-display tracking-tight outline-none ${
-            root
-              ? 'min-h-12 py-3 pl-2 text-[20px] leading-6 font-bold'
-              : `text-[17px] leading-6 font-semibold ${subtitle ? 'pt-2' : 'min-h-12 py-3'}`
+            subtitle ? 'pt-1 text-[15px] leading-5 font-semibold' : 'text-[17px] leading-6 font-semibold'
           }`}
         >
           {title}
         </h1>
-        {subtitle && <div className="flex min-h-6 min-w-0 items-center gap-1.5 pb-1.5">{subtitle}</div>}
+        {subtitle && <div className="flex min-h-5 min-w-0 items-center justify-center gap-1.5 pb-1">{subtitle}</div>}
       </div>
-      <div className="flex shrink-0 items-center">{action}</div>
+      <div className="flex items-center justify-end">{action}</div>
     </header>
   )
 }
@@ -276,8 +298,7 @@ function ListScreen({ mode }: { mode: ListMode }): React.JSX.Element {
   // Code sin carpeta abierta: la pantalla de proyectos ocupa el lugar de la lista (sin cabecera propia: la del armazón).
   if (mode === 'code' && !directory) return <def.View />
   const List = def.SidebarContent
-  // Chat dibuja su propia lista a todo el ancho (filas de 56 px, búsqueda y cabeceras fijas); el resto conserva el margen.
-  return <div className={mode === 'chat' ? 'pb-2' : 'px-2 py-2'}>{List ? <List /> : null}</div>
+  return <div className="px-2 py-2">{List ? <List /> : null}</div>
 }
 
 /**
@@ -322,7 +343,12 @@ function Body(): React.JSX.Element {
     const View = MODES_BY_ID[mode].View
     return <View />
   }
-  return <ListScreen mode={mode} />
+  // Raíz de Chat = Inicio (la vista sin conversación); raíz de Tareas = Inicio de Tareas. Las listas viven en el panel.
+  if (mode === 'chat') {
+    const View = MODES_BY_ID.chat.View
+    return <View />
+  }
+  return <MobileTasksHome />
 }
 
 const CODE_PANEL_TITLE = {
@@ -331,7 +357,7 @@ const CODE_PANEL_TITLE = {
   [CODE_BROWSER]: 'code.m.browser.title'
 } as const
 
-const barBtn = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-hover'
+const barBtn = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg active:bg-hover'
 
 /** Barra de la conversación de Code: título, rama y ruta, y las acciones (Cambios, Archivos, más). Detener está en el compositor. */
 function CodeDetailBar({ title, onBack, screen }: { title: string; onBack?: () => void; screen: string }): React.JSX.Element {
@@ -346,7 +372,7 @@ function CodeDetailBar({ title, onBack, screen }: { title: string; onBack?: () =
       subtitle={
         <>
           <BranchPill directory={directory} />
-          <span className="min-w-0 truncate font-mono text-[11px] text-subtle" title={directory}>
+          <span className="min-w-0 truncate font-mono text-[12px] leading-4 text-subtle" title={directory}>
             {abbreviatePath(directory, 24)}
           </span>
         </>
@@ -413,7 +439,9 @@ function Bar(): React.JSX.Element {
   const create = (): void => {
     if (mode === 'code') return void newCodeSession()
     def.newAction?.run()
-    useMobileNavStore.getState().push(DETAIL_SCREEN)
+    // Chat: la raíz ya es Inicio (conversación nueva); Tareas abre la tarea nueva.
+    if (mode === 'chat') useMobileNavStore.getState().toRoot()
+    else useMobileNavStore.getState().push(DETAIL_SCREEN)
   }
   return (
     <TopBar
@@ -433,13 +461,8 @@ function Bar(): React.JSX.Element {
             </button>
           )}
           {canCreate && def.newAction && (
-            <button
-              type="button"
-              onClick={create}
-              aria-label={def.newAction.label}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent active:opacity-80"
-            >
-              <SquarePen size={20} strokeWidth={2.1} />
+            <button type="button" onClick={create} aria-label={def.newAction.label} className={barBtn}>
+              <SquarePen size={20} strokeWidth={1.75} />
             </button>
           )}
         </>
@@ -515,7 +538,7 @@ const reducedMotion = (): boolean => {
  * teclado nunca tapa el compositor.
  */
 export function MobileShell(): React.JSX.Element {
-  const { tab, depth } = useMobileNav()
+  const { tab, depth, drawerOpen } = useMobileNav()
   const codeHasDetail = useMobileNavStore((s) => s.stacks.code.includes(DETAIL_SCREEN))
   const codeDir = useCode((s) => s.directory)
   // Code mantiene montada la conversación mientras se apilan Cambios/Archivos: su llave no cambia con la profundidad.
@@ -600,27 +623,32 @@ export function MobileShell(): React.JSX.Element {
       }}
     >
       <ConfirmDialogHost />
-      <Bar />
-      <ErrorBoundary label={t('app.boundary.server')}>
-        <LinkBanner />
-        <ServerBanner />
-        <EngineNotice />
-        <QuickEntryNotice />
-      </ErrorBoundary>
-      <main
-        ref={mainEl}
-        className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
-        data-screen={`${tab}:${depth}`}
-        style={root ? undefined : { paddingBottom: 'var(--sab, 0px)' }}
-      >
-        <div ref={sentinel} aria-hidden="true" className="-mb-px h-px" />
-        <div key={paneKey} className={`${root ? 'min-h-full' : 'h-full'} ${anim.current.cls}`}>
-          <ErrorBoundary key={paneKey} label={label}>
-            <Body />
-          </ErrorBoundary>
-        </div>
-      </main>
-      {root && <TabBar onReselect={toTop} />}
+      {/* Con el panel abierto todo lo demás queda `inert` (sin foco, sin toques, fuera del árbol de accesibilidad). */}
+      <div className="flex min-h-0 flex-1 flex-col" inert={drawerOpen || undefined}>
+        <Bar />
+        <ErrorBoundary label={t('app.boundary.server')}>
+          <LinkBanner />
+          <ServerBanner />
+          <EngineNotice />
+          <QuickEntryNotice />
+        </ErrorBoundary>
+        <main
+          ref={mainEl}
+          className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+          data-screen={`${tab}:${depth}`}
+          inert={drawerOpen || undefined}
+          style={root ? undefined : { paddingBottom: 'var(--sab, 0px)' }}
+        >
+          <div ref={sentinel} aria-hidden="true" className="-mb-px h-px" />
+          <div key={paneKey} className={`${root && tab !== 'chat' ? 'min-h-full' : 'h-full'} ${anim.current.cls}`}>
+            <ErrorBoundary key={paneKey} label={label}>
+              <Body />
+            </ErrorBoundary>
+          </div>
+        </main>
+        {root && <TabBar onReselect={toTop} />}
+      </div>
+      <MobileDrawer />
     </div>
   )
 }

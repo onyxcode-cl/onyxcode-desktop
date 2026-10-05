@@ -24,6 +24,14 @@
   border-bottom-color: var(--m-hairline);
 }
 
+/* Panel lateral: las filas no se deslizan (el deslizamiento a la izquierda cierra el panel); sus acciones salen con «⋯» o al mantener pulsado. */
+[data-surface='mobile'] [data-in-drawer] [data-m='swipe-row'] > div:last-child {
+  transform: none !important;
+}
+[data-surface='mobile'] [data-in-drawer] [data-m='swipe-row'] > div:first-child {
+  display: none;
+}
+
 /* Con el teclado abierto no hay barra inferior (no deja sitio al campo de búsqueda ni al compositor). */
 html[data-keyboard='open'] [data-surface='mobile'] [data-tabbar] {
   display: none;
