@@ -106,9 +106,9 @@ function Row({
         type="button"
         onClick={onSelect}
         aria-current={active ? 'true' : undefined}
-        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:py-0 desk:text-ui ${active ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
+        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm ${active ? 'bg-active font-medium text-fg desk:bg-hover' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
       >
-        {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent" aria-hidden />}
+        {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />}
         <span className="flex-1 truncate group-hover:pr-5">{session.title || t('chat.list.untitled')}</span>
         {busy && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
       </button>
@@ -254,7 +254,7 @@ function DesktopSessionList({
       {q && groups.length === 0 && <div className="px-2.5 text-xs text-subtle">{t('chat.list.noMatches')}</div>}
       {groups.map((g) => (
         <div key={g.label}>
-          <div className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:text-meta desk:font-medium desk:tracking-normal desk:normal-case">
+          <div className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:flex desk:h-7 desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
             {g.label}
           </div>
           <div className="flex flex-col gap-px desk:gap-0.5">

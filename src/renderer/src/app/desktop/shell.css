@@ -1,2 +1,7 @@
 /* Dueño: ESTRUCTURA (barra lateral, cabeceras, paleta, cromo de la ventana). Vacío a propósito en la tanda 0.
  * Reglas: todo selector bajo :root[data-shell='desktop']; sin colores nuevos; tokens de ./tokens.css. */
+
+/* ---- Piloto de rediseño (F8-B96) · barra lateral: 256 px, separada del lienzo por tono (sin borde), filas de 32 px ---- */
+:root[data-shell='desktop'] {
+  --sidebar-width: 256px;
+}

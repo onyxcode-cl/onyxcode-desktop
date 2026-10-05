@@ -141,7 +141,7 @@ export function ChatView(): React.JSX.Element {
       <UsageMeter messages={entries} model={effective ?? model} />
     </div>
   )
-  const composer = (
+  const composerEl = (hero: boolean): React.JSX.Element => (
     <>
       <CompareConfirmDialog mode="chat" directory={null} />
       <ChatComposer
@@ -162,12 +162,14 @@ export function ChatView(): React.JSX.Element {
         autoFocusKey={activeId}
         showAttach
         insert={insert}
+        hero={hero}
       />
     </>
   )
+  const composer = composerEl(false)
 
   const notices = (
-    <div className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
+    <div className={`mx-auto w-full max-w-3xl desk:max-w-[calc(var(--measure-prose)+48px)] ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
       <RecoveryBanner mode="chat" directory={null} />
       {sendError != null && (
         <div className="mb-2">
@@ -246,7 +248,7 @@ export function ChatView(): React.JSX.Element {
         <div className="drag h-12 shrink-0" data-mobile="hide" />
         <div className="flex flex-1 flex-col items-center justify-center pb-20">
           <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
-            <div className="relative isolate">
+            <div className="relative isolate desk:hidden">
               <div
                 className="pointer-events-none absolute inset-0 -z-10 scale-[3] rounded-full bg-[radial-gradient(closest-side,var(--accent-soft),transparent)]"
                 aria-hidden
@@ -254,25 +256,32 @@ export function ChatView(): React.JSX.Element {
               <LogoMark size={44} />
             </div>
             <div>
-              <h1 className="font-display text-[32px] leading-tight font-semibold tracking-[-0.02em]">{greeting()}</h1>
+              <h1 className="font-display text-[32px] leading-tight font-semibold tracking-[-0.02em] desk:font-[var(--font-title)] desk:leading-10">
+                {greeting()}
+              </h1>
               <p className="mt-1.5 text-[15px] text-muted">{t('chat.empty.prompt')}</p>
             </div>
           </div>
           <div className="w-full animate-rise-in [animation-delay:60ms]">
             {notices}
-            {composer}
+            {composerEl(true)}
           </div>
-          <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms]">
-            {SUGGESTIONS.map(({ icon: Icon, label, prompt }) => (
+          <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms] desk:mt-2 desk:grid desk:w-full desk:max-w-[calc(var(--measure-prose)+48px)] desk:grid-cols-4 desk:gap-3">
+            {SUGGESTIONS.slice(0, 4).map(({ icon: Icon, label, prompt }) => (
               <button
                 key={label}
                 type="button"
                 disabled={!ready}
                 onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
-                className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-8 desk:py-0 desk:hover:translate-y-0 desk:hover:border-border-strong desk:hover:bg-hover"
+                className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-auto desk:flex-col desk:items-start desk:gap-2.5 desk:rounded-card desk:border-transparent desk:p-4 desk:text-left desk:shadow-sm desk:duration-[var(--dur-base)] desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover"
               >
-                <Icon size={14} className="text-accent" />
-                {t(label)}
+                <span className="shrink-0 desk:flex desk:h-8 desk:w-8 desk:items-center desk:justify-center desk:rounded-ctl desk:bg-active">
+                  <Icon size={14} className="text-accent desk:h-4 desk:w-4" />
+                </span>
+                <span className="min-w-0 desk:flex desk:flex-col">
+                  <span className="block desk:text-sm desk:leading-5 desk:font-medium desk:text-fg">{t(label)}</span>
+                  <span className="hidden desk:block desk:text-meta desk:font-normal desk:text-muted">{t(`${label}.desc` as MsgKey)}</span>
+                </span>
               </button>
             ))}
           </div>

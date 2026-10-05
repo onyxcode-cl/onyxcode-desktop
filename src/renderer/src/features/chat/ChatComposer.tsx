@@ -29,6 +29,8 @@ interface Props {
   insert?: { text: string; key: number; attachments?: ChatAttachment[] } | null
   /** Texto de ayuda bajo el compositor; `false` lo oculta. */
   hint?: ReactNode | false
+  /** Escritorio: compositor flotante del inicio (radio 20, alto mínimo 128). Sin efecto en el celular. */
+  hero?: boolean
 }
 
 const MAX_HEIGHT = 280
@@ -63,7 +65,8 @@ export function ChatComposer({
   showAttach,
   onAttach,
   insert,
-  hint
+  hint,
+  hero
 }: Props): React.JSX.Element {
   const t = useT()
   const mobile = isRemoteSurface()
@@ -154,14 +157,16 @@ export function ChatComposer({
   return (
     <div
       className={
-        mobile ? 'relative mx-auto w-full max-w-3xl px-3 pb-2' : 'mx-auto w-full max-w-3xl px-6 pb-4 desk:max-w-[var(--measure-prose)]'
+        mobile
+          ? 'relative mx-auto w-full max-w-3xl px-3 pb-2'
+          : 'mx-auto w-full max-w-3xl px-6 pb-4 desk:max-w-[calc(var(--measure-prose)+48px)]'
       }
     >
       <div
         className={
           mobile
             ? 'rounded-[24px] border border-border bg-elevated shadow-sm transition-[border-color] duration-200 focus-within:border-border-strong'
-            : `rounded-[20px] border bg-elevated shadow-md transition-[border-color,box-shadow] duration-200 ${disabled ? 'border-border' : 'border-border focus-within:border-accent/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--shadow-md)]'}`
+            : `rounded-[20px] border bg-elevated shadow-md transition-[border-color,box-shadow] duration-200 desk:border-transparent desk:shadow-[var(--elev-edge),var(--shadow-md)] ${hero ? '' : 'shadow-md desk:rounded-2xl'} ${disabled ? 'border-border' : 'border-border focus-within:border-accent/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--shadow-md)]'}`
         }
         onDragOver={(e) => {
           if (!showAttach || disabled || !e.dataTransfer.types.includes('Files')) return
@@ -272,7 +277,7 @@ export function ChatComposer({
             }
           }}
           {...(mobile ? { style: { maxHeight: max } } : {})}
-          className={`block w-full resize-none bg-transparent px-4 text-[15px] leading-relaxed outline-none placeholder:text-subtle disabled:opacity-60 desk:leading-6 ${mobile ? 'pt-3 pb-1' : 'max-h-[280px] pt-3.5 pb-1.5 desk:max-h-72'}`}
+          className={`block w-full resize-none bg-transparent px-4 text-[15px] leading-relaxed outline-none placeholder:text-subtle disabled:opacity-60 desk:leading-6 desk:placeholder:text-muted ${mobile ? 'pt-3 pb-1' : `max-h-[280px] pt-3.5 pb-1.5 desk:max-h-72 ${hero ? 'min-h-0 desk:min-h-[66px] desk:px-5 desk:pt-[18px]' : ''}`}`}
         />
         <div className={mobile ? 'flex items-center gap-1 px-1.5 pb-1.5' : 'flex items-center gap-1.5 px-2 pb-2'}>
           {showAttach && (
@@ -331,7 +336,7 @@ export function ChatComposer({
       {hint !== false && (
         <p
           data-mobile="hide"
-          className={`mt-2 text-center text-[11px] text-subtle desk:transition-opacity desk:duration-150 ${focused ? '' : ' desk:opacity-0'}`}
+          className={`mt-2 text-center text-[11px] text-subtle desk:text-meta desk:transition-opacity desk:duration-150 ${focused ? '' : ' desk:opacity-0'}`}
         >
           {hint ?? (
             <>

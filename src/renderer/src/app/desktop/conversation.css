@@ -20,7 +20,7 @@
   line-height: 1.6;
 }
 :root[data-shell='desktop'] .markdown > * + * {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 :root[data-shell='desktop'] .markdown :is(h1, h2, h3, h4) {
   font-family: var(--font-title);

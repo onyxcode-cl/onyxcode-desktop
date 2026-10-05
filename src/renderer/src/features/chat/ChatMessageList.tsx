@@ -180,7 +180,7 @@ const ChatUserRow = memo(function ChatUserRow({
         <div
           {...m('user-bubble')}
           {...(longPress ? { ...longPress, 'data-long-press': '' } : {})}
-          className="max-w-[85%] rounded-2xl rounded-br-md border border-accent/10 bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-xs desk:max-w-[80%] desk:rounded-br-2xl desk:border-transparent desk:leading-6 desk:shadow-none"
+          className="max-w-[85%] rounded-2xl rounded-br-md border border-accent/10 bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-xs desk:max-w-[78%] desk:rounded-br-2xl desk:border-transparent desk:bg-hover desk:leading-6 desk:shadow-none"
         >
           {text}
         </div>
@@ -277,7 +277,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const blocks = useMemo(() => (mobile ? null : groupBlocks(entry.parts)), [mobile, entry.parts])
   return (
     <div
-      className={withCv('group flex flex-col gap-1.5 desk:gap-2', old, true)}
+      className={withCv('group flex flex-col gap-1.5 desk:gap-4', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >
       {blocks
@@ -376,7 +376,7 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
           className={
             mobile
               ? 'mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-3 pb-4'
-              : 'mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10 desk:max-w-[var(--measure-prose)] desk:gap-6 desk:pb-12'
+              : 'mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10 desk:max-w-[calc(var(--measure-prose)+48px)] desk:gap-8 desk:pb-12'
           }
         >
           {entries.map((entry, i) => {

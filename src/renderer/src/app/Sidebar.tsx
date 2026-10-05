@@ -29,10 +29,7 @@ export function Sidebar(): React.JSX.Element {
   const dot = serverState === 'ready' ? 'bg-success' : serverState === 'error' ? 'bg-danger' : 'bg-warning animate-pulse'
 
   return (
-    <aside
-      aria-label={t('app.sidebar.aria')}
-      className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar"
-    >
+    <aside aria-label={t('app.sidebar.aria')} className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col bg-sidebar">
       {/* Zona de titlebar: en macOS deja sitio a los semáforos; en Windows el marco es el nativo y no hace falta el hueco */}
       <div className={`drag flex shrink-0 items-center justify-end px-2 ${isMacPlatform() ? 'h-12' : 'h-10'}`}>
         <IconButton label={t('app.sidebar.hide', { hint: hintSuffix(hints['sidebar.toggle']) })} onClick={toggleSidebar}>
@@ -45,7 +42,7 @@ export function Sidebar(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          className="no-drag flex h-8 w-full items-center gap-2.5 rounded-ctl bg-transparent px-2.5 text-ui text-subtle transition-colors duration-[var(--dur-fast)] hover:bg-hover hover:text-muted"
+          className="no-drag flex h-8 w-full items-center gap-2.5 rounded-ctl bg-transparent px-2 text-sm text-subtle transition-colors duration-[var(--dur-fast)] hover:bg-hover hover:text-muted"
         >
           <Search size={16} />
           <span className="flex-1 text-left">{t('app.sidebar.search')}</span>
@@ -66,7 +63,7 @@ export function Sidebar(): React.JSX.Element {
               type="button"
               aria-current={active ? 'page' : undefined}
               onClick={() => setMode(m.id)}
-              className={`no-drag group flex h-8 items-center gap-2.5 rounded-ctl px-2.5 text-ui transition-colors duration-[var(--dur-fast)] ${active ? 'bg-active font-medium text-fg' : current ? 'font-normal text-fg hover:bg-hover' : 'font-normal text-muted hover:bg-hover hover:text-fg'}`}
+              className={`no-drag group flex h-8 items-center gap-2 rounded-ctl px-2 text-sm transition-colors duration-[var(--dur-fast)] ${active ? 'bg-hover font-medium text-fg' : current ? 'font-normal text-fg hover:bg-hover' : 'font-normal text-muted hover:bg-hover hover:text-fg'}`}
             >
               <Icon size={16} className={current ? 'text-accent' : 'text-subtle group-hover:text-muted'} strokeWidth={1.75} />
               {m.label}
@@ -83,7 +80,7 @@ export function Sidebar(): React.JSX.Element {
               openSettings(false)
               def.newAction?.run()
             }}
-            className="no-drag group flex h-8 w-full items-center gap-2.5 rounded-ctl px-2.5 text-ui font-medium text-fg transition-colors duration-[var(--dur-fast)] hover:bg-hover"
+            className="no-drag group flex h-8 w-full items-center gap-2 rounded-ctl px-2 text-sm font-medium text-fg transition-colors duration-[var(--dur-fast)] hover:bg-hover"
           >
             <Plus size={16} strokeWidth={1.75} className="shrink-0 text-accent" />
             <span className="flex-1 text-left">{def.newAction.label}</span>
@@ -96,7 +93,7 @@ export function Sidebar(): React.JSX.Element {
         {SidebarContent ? <SidebarContent /> : null}
       </div>
 
-      <div className="flex h-12 shrink-0 items-center gap-2 border-t border-border px-3">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-3">
         <span className="relative flex shrink-0" title={`OpenCode: ${statusLabel}`}>
           <LogoMark size={20} />
           <span
