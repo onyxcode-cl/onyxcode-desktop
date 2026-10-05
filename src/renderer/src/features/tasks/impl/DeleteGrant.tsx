@@ -102,13 +102,13 @@ export function DeleteGrantHintCard({ entries }: { entries: MessageEntry[] }): R
   }
 
   return (
-    <div className="rounded-xl border border-warning/40 bg-warning/5 p-3.5">
-      <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning">
+    <div className="rounded-xl border border-warning/40 bg-warning/5 p-3.5 desk:rounded-card">
+      <div className="flex items-start gap-3 desk:gap-3.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning desk:h-9 desk:w-9 desk:rounded-[10px]">
           <Trash2 size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{t('tasksComputer.delete.hintTitle')}</p>
+          <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.delete.hintTitle')}</p>
           <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.delete.hintBody')}</p>
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">

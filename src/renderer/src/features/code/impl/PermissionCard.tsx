@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { FilePen, HelpCircle, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
@@ -7,8 +7,8 @@ import { isRemoteSurface } from '../../../lib/platform'
 import { m } from '../../../app/mobile/m'
 import { DiffView, diffStats } from './DiffView'
 import { DiffStats, relPath } from './ToolCard'
-import { isEditableTarget } from './ui'
 import { phoneReplies } from './mobile-logic'
+import { PermissionCardDesk } from './PermissionCardDesk'
 import { useCode } from './store'
 import type { PendingPermission, PendingQuestion } from './types'
 
@@ -32,7 +32,21 @@ export function PermissionCard({
 }: {
   request: PendingPermission
   root: string | null
-  /** Escucha 1/2/3 (solo la primera tarjeta pendiente). */
+  /** Marca la tarjeta que muestra el atajo ⌘↵ (solo la primera pendiente). */
+  hotkeys?: boolean
+}): React.JSX.Element {
+  // Celular/PWA: marcado de siempre. Escritorio: rediseño ND (shell + teclado seguro, sin el 1/2/3 global).
+  if (isRemoteSurface()) return <MobilePermissionCard request={request} root={root} hotkeys={hotkeys} />
+  return <PermissionCardDesk request={request} root={root} hotkeys={hotkeys} />
+}
+
+function MobilePermissionCard({
+  request,
+  root,
+  hotkeys = false
+}: {
+  request: PendingPermission
+  root: string | null
   hotkeys?: boolean
 }): React.JSX.Element {
   const t = useT()
@@ -54,24 +68,6 @@ export function PermissionCard({
     },
     [reply, request]
   )
-
-  useEffect(() => {
-    if (!hotkeys || mobile) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      // Desde el composer vacío también valen (es donde está el foco normalmente).
-      const target = e.target
-      const emptyComposer = target instanceof HTMLTextAreaElement && target.dataset.codeComposer !== undefined && target.value === ''
-      if (isEditableTarget(target) && !emptyComposer) return
-      if (e.key === '1') run('once')
-      else if (e.key === '2') run('always')
-      else if (e.key === '3') run('reject')
-      else return
-      e.preventDefault()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [hotkeys, mobile, run])
 
   const md = request.metadata
   const diff = typeof md.diff === 'string' ? md.diff : ''

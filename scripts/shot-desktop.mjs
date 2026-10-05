@@ -15,7 +15,8 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_OUT = '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
   'onboarding', 'chat-vacio', 'chat-conversacion', 'chat-herramientas', 'code-proyecto', 'code-diff', 'code-terminal',
-  'tareas-lista', 'tareas-en-curso', 'tareas-permiso', 'rutinas', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
+  'code-permiso', 'tareas-lista', 'tareas-en-curso', 'tareas-permiso', 'tareas-permiso-neutral', 'tareas-permiso-largo',
+  'rutinas', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
   'paleta', 'selector-modelo', 'dialogo-confirmar', 'comparar', 'barra-lateral-colapsada',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
@@ -525,6 +526,28 @@ const S = {
     await ctx.page.keyboard.press('Enter')
     await sleep(1200)
   },
+  async 'code-permiso'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'Instala las dependencias',
+      title: 'Instalar dependencias',
+      steps: [
+        { type: 'text', text: 'Necesito instalar dependencias para seguir.' },
+        {
+          type: 'permission',
+          permission: 'bash',
+          patterns: ['npm install'],
+          metadata: { command: 'npm install', description: 'Instala las dependencias del proyecto.' }
+        }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Instala las dependencias del proyecto')
+    await box.press('Enter')
+    await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await sleep(500)
+  },
   async 'tareas-lista'(ctx) {
     const fake = await openTasks(ctx)
     await fake.script({ match: 'Ordena los informes', title: 'Ordenar informes del trimestre', steps: [{ type: 'text', text: 'Ordené **12 informes** por mes en carpetas.' }] })
@@ -559,6 +582,40 @@ const S = {
       steps: [{ type: 'text', text: 'Necesito ejecutar un comando para limpiar.' }, { type: 'permission', permission: 'bash', patterns: ['rm -rf temporales/*'] }]
     })
     await sendTask(ctx.page, 'Borra los temporales de la carpeta')
+    await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await sleep(500)
+  },
+  async 'tareas-permiso-neutral'(ctx) {
+    const fake = await freshTasks(ctx)
+    await fake.script({
+      match: 'Corre las pruebas',
+      title: 'Correr pruebas de la carpeta',
+      steps: [
+        { type: 'text', text: 'Necesito correr las pruebas del proyecto.' },
+        {
+          type: 'permission',
+          permission: 'bash',
+          patterns: ['npm test'],
+          metadata: { command: 'npm test', description: 'Corre la suite de pruebas del proyecto.' }
+        }
+      ]
+    })
+    await sendTask(ctx.page, 'Corre las pruebas del proyecto')
+    await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await sleep(500)
+  },
+  async 'tareas-permiso-largo'(ctx) {
+    const fake = await freshTasks(ctx)
+    const cmd = Array.from({ length: 300 }, (_, i) => `cp informe_${String(i).padStart(3, '0')}.pdf ./respaldo/`).join('\n')
+    await fake.script({
+      match: 'Respalda los informes',
+      title: 'Respaldar informes del mes',
+      steps: [
+        { type: 'text', text: 'Voy a respaldar los informes con un comando largo.' },
+        { type: 'permission', permission: 'bash', metadata: { command: cmd, description: 'Copia los informes a la carpeta de respaldo.' } }
+      ]
+    })
+    await sendTask(ctx.page, 'Respalda los informes del mes')
     await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
     await sleep(500)
   },

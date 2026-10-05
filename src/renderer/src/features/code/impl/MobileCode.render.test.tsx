@@ -123,7 +123,7 @@ describe('diff y conversación', () => {
 })
 
 describe('tarjeta de permisos: orden en el celular', () => {
-  it('Rechazar a la izquierda y Permitir una vez a la derecha; escritorio conserva el orden', () => {
+  it('Rechazar a la izquierda y Permitir una vez a la derecha; escritorio con el orden del rediseño', () => {
     surface('remote')
     const mobile = card('edit')
     expect(mobile.indexOf('Rechazar')).toBeLessThan(mobile.indexOf('Permitir una vez'))
@@ -131,9 +131,11 @@ describe('tarjeta de permisos: orden en el celular', () => {
     expect(mobile).not.toContain('ring-4')
     surface('darwin')
     const desk = card('edit')
-    expect(desk.indexOf('Permitir una vez')).toBeLessThan(desk.indexOf('Rechazar'))
+    // Escritorio (rediseño ND): «Permitir siempre» a la izquierda; a la derecha el par Rechazar → Permitir una vez.
+    expect(desk.indexOf('Permitir siempre')).toBeLessThan(desk.indexOf('Rechazar'))
+    expect(desk.indexOf('Rechazar')).toBeLessThan(desk.indexOf('Permitir una vez'))
     expect(desk).not.toContain('data-m=')
-    expect(desk).toContain('ring-4')
+    expect(desk).toContain('role="alertdialog"')
   })
 })
 

@@ -183,13 +183,13 @@ export function EscalateCard({ taskId, entries }: { taskId: string; entries: Mes
   }
 
   return (
-    <div className="rounded-xl border border-warning/40 bg-warning/5 p-3.5">
-      <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning">
+    <div className="rounded-xl border border-warning/40 bg-warning/5 p-3.5 desk:rounded-card">
+      <div className="flex items-start gap-3 desk:gap-3.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning desk:h-9 desk:w-9 desk:rounded-[10px]">
           <ShieldAlert size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{t('tasksComputer.escalate.title')}</p>
+          <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.escalate.title')}</p>
           {reason && <p className="mt-0.5 break-words text-sm text-fg">{reason}</p>}
           <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.escalate.body')}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">

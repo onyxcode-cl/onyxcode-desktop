@@ -94,7 +94,9 @@ describe('SWAPS de la PWA (pwa/vite.full.config.ts)', () => {
       /^src\/renderer\/src\/features\/compare\//,
       /^src\/renderer\/src\/features\/onboarding\//,
       /^src\/renderer\/src\/app\/(Sidebar|CommandPalette|UpdateNotice|RemotePairHost|RemoteConfirmHost)\.tsx$/,
-      /^src\/renderer\/src\/keybindings\/dispatch\.ts$/
+      /^src\/renderer\/src\/keybindings\/dispatch\.ts$/,
+      // Tarjetas de permiso SOLO de escritorio (plan ND): se sustituyen por shims en la PWA.
+      /^src\/renderer\/src\/(features\/(tasks|code)\/impl\/PermissionCardDesk|components\/permission\/PermissionShell|lib\/perm-guard)\.tsx?$/
     ]
     for (const re of banned)
       expect(

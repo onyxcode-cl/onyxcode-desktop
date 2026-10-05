@@ -5,11 +5,12 @@
  * servidores ya arrancados de esta carpeta), permitir siempre (lista blanca persistida) o
  * mantener bloqueado (se registra como bloqueado explícito y se descarta la tarjeta).
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Loader2, ShieldOff } from 'lucide-react'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
+import { isRemoteSurface } from '../../../lib/platform'
 import { retryAfterNetworkAllow } from './actions'
 import { cw } from './bridge'
 import { dismissNetworkBlocked, resolveNetworkBlocked, useTasks, type NetworkBlockedEntry } from './store'
@@ -38,8 +39,17 @@ function ResolvedRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedE
   )
 }
 
-function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEntry }): React.JSX.Element {
-  const t = useT()
+/** Acciones de la tarjeta de red bloqueada (lógica única para celular y escritorio). */
+function useNetworkActions(
+  taskId: string,
+  entry: NetworkBlockedEntry
+): {
+  busy: Busy
+  error: string | null
+  allowOnce: () => void
+  allowAlways: () => void
+  keepBlocked: () => void
+} {
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,6 +91,14 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
     }
   }
 
+  return { busy, error, allowOnce, allowAlways, keepBlocked }
+}
+
+/** Tarjeta pendiente en el celular/PWA (marcado de siempre, sin cambios). */
+function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEntry }): React.JSX.Element {
+  const t = useT()
+  const { busy, error, allowOnce, allowAlways, keepBlocked } = useNetworkActions(taskId, entry)
+
   return (
     <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3.5">
       <div className="flex items-start gap-3">
@@ -108,6 +126,48 @@ function PendingRow({ taskId, entry }: { taskId: string; entry: NetworkBlockedEn
   )
 }
 
+/**
+ * Tarjeta pendiente en escritorio (decisión ND #2): «Mantener bloqueado» (fantasma) y «Permitir siempre»
+ * (secundario) a la izquierda; «Permitir esta vez» (principal) a la derecha, en posición fija. Los botones
+ * que conceden acceso se arman 600 ms tras montar y no hay atajo de teclado para «siempre».
+ */
+function PendingRowDesk({ taskId, entry }: { taskId: string; entry: NetworkBlockedEntry }): React.JSX.Element {
+  const t = useT()
+  const { busy, error, allowOnce, allowAlways, keepBlocked } = useNetworkActions(taskId, entry)
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setArmed(true), 600)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <div className="rounded-card bg-amber-500/5 p-4 ring-1 ring-inset ring-amber-500/40">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-amber-500/15 text-amber-700 [[data-theme=dark]_&]:text-amber-400">
+          <ShieldOff size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-title-sm text-fg">{t('tasksComputer.net.blocked', { host: entry.host })}</p>
+          <p className="mt-0.5 text-meta text-muted">{t('tasksComputer.net.explain')}</p>
+          {error && <p className="mt-1.5 text-meta text-danger">{error}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button variant="ghost" disabled={!!busy} onClick={() => void keepBlocked()}>
+              {busy === 'block' && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.net.keepBlocked')}
+            </Button>
+            <Button disabled={!!busy || !armed} onClick={() => void allowAlways()}>
+              {busy === 'always' && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.perm.always')}
+            </Button>
+            <span className="flex-1" />
+            <Button variant="primary" disabled={!!busy || !armed} onClick={() => void allowOnce()}>
+              {busy === 'once' && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.net.allowOnce')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Tarjetas de red bloqueada de una tarea (una por host, deduplicadas). */
 export function NetworkBlockedCards({ taskId }: { taskId: string }): React.JSX.Element | null {
   const entries = useTasks((s) => s.networkBlocked[taskId])
@@ -115,7 +175,13 @@ export function NetworkBlockedCards({ taskId }: { taskId: string }): React.JSX.E
   return (
     <div className="flex flex-col gap-2">
       {entries.map((e) =>
-        e.resolved ? <ResolvedRow key={e.host} taskId={taskId} entry={e} /> : <PendingRow key={e.host} taskId={taskId} entry={e} />
+        e.resolved ? (
+          <ResolvedRow key={e.host} taskId={taskId} entry={e} />
+        ) : isRemoteSurface() ? (
+          <PendingRow key={e.host} taskId={taskId} entry={e} />
+        ) : (
+          <PendingRowDesk key={e.host} taskId={taskId} entry={e} />
+        )
       )}
     </div>
   )

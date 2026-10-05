@@ -149,3 +149,12 @@ Estados: deshabilitado 50 %, cargando con `Spinner` + `aria-busy`, error con `ar
 
 **Kit de UI.** `node scripts/shot-desktop.mjs --scenario kit` captura `app/dev/UiKit.tsx` (tipografía, espaciado, radios, elevaciones, velo y todos
 los componentes × variantes × estados, con hover/foco/presionado forzados por CDP) en claro y oscuro. Revisarlo tras tocar un componente base.
+
+**Permiso (tarjetas de aprobación, solo escritorio).** Anatomía `oc-perm` en `components/permission/PermissionShell.tsx` y las tarjetas
+`*Desk` de Tareas y Code: `role="alertdialog"` con `aria-labelledby`/`aria-describedby`; cabecera con tile de 36 px (radio 10), título
+`text-title-sm` y consecuencia en una línea; comando literal en `bg-code` mono envuelto (`whitespace-pre-wrap`) sin recortar hasta 200
+líneas/20 000 caracteres (después, `max-h-96` + «El comando sigue: N líneas en total»), con el prefijo `$` (`aria-hidden`) y aviso de
+caracteres ocultos; alcance (`text-meta`) con sandbox activo o «Control total: sin sandbox»; y acciones en posiciones fijas: izquierda
+«Rechazar con indicaciones» (fantasma) y «Permitir siempre» (secundario, si cabe), derecha «Rechazar» (secundario, `Esc`) y «Permitir una
+vez» (peligro/primario, `⌘↵`). Destructivo usa `bg-danger/[0.06]` + `ring-danger/40` y tile `bg-danger/15 text-danger`; neutro usa
+`bg-elevated` + `ring-accent/40` y tile `bg-accent-soft text-accent`. Sin tokens nuevos (`danger-soft/border`, `accent-border` no existen).

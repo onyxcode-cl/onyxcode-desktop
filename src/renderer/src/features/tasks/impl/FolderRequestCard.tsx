@@ -96,13 +96,17 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
   }
 
   return (
-    <div id={`perm-${request.id}`} tabIndex={-1} className="rounded-xl border border-warning/40 bg-warning/5 p-3.5 outline-none">
-      <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning">
+    <div
+      id={`perm-${request.id}`}
+      tabIndex={-1}
+      className="rounded-xl border border-warning/40 bg-warning/5 p-3.5 outline-none desk:rounded-card"
+    >
+      <div className="flex items-start gap-3 desk:gap-3.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning desk:h-9 desk:w-9 desk:rounded-[10px]">
           <FolderInput size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{t('tasksComputer.perm.folderTitle')}</p>
+          <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.perm.folderTitle')}</p>
           <p className="mt-0.5 text-xs text-muted">
             {fullAccess ? t('tasksComputer.folder.outsideFull') : t('tasksComputer.folder.outsideSandbox')}
           </p>
