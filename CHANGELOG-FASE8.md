@@ -1190,3 +1190,22 @@ Solo escritorio (clases `desk:`); el celular/PWA no cambia: 32 capturas idéntic
 - **Barra lateral**: título de 48 px, fila nueva con logo, buscador con ⌘K, modos 2×2 con punto de aprobaciones, encabezado Proyectos con proyectos plegables, hilos sangrados con hora, chip Aprobar, estado Trabajando y pie con conexión.
 - **i18n del núcleo de la PWA**: `i18n-core-keys.json` regenerado (13 claves nuevas que pide el arranque) y formateado con Prettier.
 - **Verificación**: typecheck, vitest completo (3833 pasan, 0 fallos), lint (0 errores), format:check, build, build:pwa y size:pwa en verde (arranque 287,7 KB gzip; presupuestos intactos).
+
+## F8-B102 — Rediseño de la PWA del celular (integración T0–T5)
+
+Solo celular/PWA; el escritorio no cambia (guardias de escritorio sin editar; sin `vitest -u`). Colores sin cambios (solo tokens existentes).
+
+- **Armazón**: pestañas Chat · Code · Tareas · Rutinas (sin «Más»), cabecera centrada con menú, píldora y punto de aprobación (con `aria-label`), panel lateral
+  perezoso con la lista del modo, buscador, «Nueva …», Ajustes y estado de conexión en el pie.
+- **Inicio** (raíz de Chat): saludo, rejilla 2×2, compositor de 20/16 y aviso de aprobaciones que lleva a Tareas. **Conversación**: burbuja 16/16/4/16, chip de pasos de 36 px,
+  código con anillo y radio 12.
+- **Tareas**: raíz = aprobaciones arriba (destructivas primero) y «En curso». **Tarjeta de permiso** con el orden de decisiones-pwa #1 (destructivo: «Rechazar» arriba),
+  botones de 44 px, sin `autoFocus`; el flujo de aprobación no cambia (ver `docs/SEGURIDAD.md`).
+- **Ajustes**: una pantalla con la tarjeta de conexión («Tu Mac», Bloquear ahora, Desvincular) y filas de 52; `phone` unificada con `settings`.
+- **Manifest**: `pwa/public/icon-maskable-512.png` (zona segura del 80 %, generado desde `build/icon.svg`) y su entrada `purpose: maskable`. Cambia el sitio firmado: lo publica y firma solo el dueño.
+- **Peso (presupuestos intactos)**: `boot.js` 687,8 KB min (límite 690), arranque 287,9 KB gzip (límite 300), `boot.css` ~19,9 KB gzip (límite 20). Para caber: Inicio de Tareas por el
+  índice de `features/tasks` (trozo perezoso), CSS de Markdown (`markdown.css`) e interruptores (`switch.css`) con sus trozos, y el giro «Trabajando» con `Loader2`.
+- **Capturas**: `scripts/shot-mobile.mjs` con 10 escenarios (`inicio`, `panel`, `conversacion`, `chat-largo`, `tareas`, `permiso`, `ajustes`, `rutinas`, `bloqueo`, `vinculacion`);
+  nueva línea base de 40 PNG (ver `docs/CAPTURAS-MOVIL.md`). `bloqueo-*` y `vinculacion-*`: 0 píxeles distintos frente a 0.4.5 (la capa ligera no se tocó).
+- **Pendiente del dueño**: regenerar `src/renderer/remote/i18n-core-keys.json` (`UPDATE_PWA_I18N=1 npx vitest run src/renderer/remote/i18n-core.test.ts` y `npx prettier --write` del JSON);
+  hasta entonces `i18n-core.test.ts` falla (única falla aceptada).

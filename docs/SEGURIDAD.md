@@ -1488,3 +1488,14 @@ Rediseño SOLO de escritorio de las tarjetas de permiso de Tareas y Code (anatom
 **Riesgo residual.** El clic que cae en otro botón al moverse la tarjeta se mitiga con posiciones fijas + armado/desarme; el atajo accidental, con las condiciones de `⌘↵` y el bloqueo de Enter; la fuga al celular, con la bifurcación `isRemoteSurface()` y las pruebas `*mobile-pin` (fijadas antes de tocar el código). Como antes, la confirmación en el Mac del remoto (`policy.ts`) y el sandbox Seatbelt no cambian.
 
 **Guardias.** `perm-guard.test.ts` (barrido de teclas: nunca se devuelve «always»; cada condición falsa de `⌘↵` → `none`; Enter → `block-enter`; `armState` <600 ms no, 600 ms sí, desarme al ocultarse y con Δy>24), `PermissionPrompt.desk.test.tsx`/`PermissionCard.desk.test.tsx` (orden DOM, `aria-*`, `<kbd aria-hidden>`, botones Permitir `disabled` en el primer render, sin `<kbd>1</kbd>` en Code), `e2e/specs/permisos-escritorio.e2e.ts` (axe limpio, doble clic → una respuesta, foco al segundo contenedor y nunca a un botón Permitir).
+
+## Rediseño de la PWA: la tarjeta de permiso también en la raíz de Tareas (F8-B102)
+
+El flujo de aprobación **no cambia**: mismas respuestas (`replyPermission` / `replyPermissionAlways`, rechazo con mensaje), misma política del Mac
+(`policy.ts`, `canApproveCommands`, confirmación en el Mac, tope de 20/h) y mismos textos de seguridad. Sin diff en `src/main/**`, `src/shared/remote/**`,
+`policy.ts`, `mac-confirm*`, `command-denylist.ts` ni `pwa/src/**`. Lo que cambia es la presentación en el celular: la tarjeta (`PermissionCard`)
+ahora se muestra también en **Inicio de Tareas**, con el título de la tarea encima, y los botones salen de `perm-actions.ts`. Orden en un permiso
+**destructivo**: «Rechazar» arriba (ancho completo, 44 px), después «Permitir una vez» (peligro) y «Rechazar con indicaciones»; sin «Permitir siempre».
+Ningún botón de permiso lleva `autoFocus` y se deshabilitan mientras hay una respuesta en curso. Push «Esperando aprobación» y avisos fuera de la app
+**no se implementan** (siguen pendientes de decisión). El punto de la pestaña Tareas y el aviso de Inicio solo reflejan permisos cuando el store de
+Tareas ya está conectado a una carpeta.
