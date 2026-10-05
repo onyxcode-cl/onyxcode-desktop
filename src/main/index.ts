@@ -11,6 +11,7 @@ import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir
 import { settingsStore } from './store'
 import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
+import { cleanLegacyAccountSession } from './legacy-account-cleanup'
 import { prepareOpencodeConfigDir } from './tasks/opencode-config'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
@@ -127,6 +128,13 @@ function start(): void {
   // Solo dentro de userData; tras borrarse no queda nada, así que en la práctica corre una vez.
   const legacyRemoved = cleanLegacyBrowserData(app.getPath('userData'))
   if (legacyRemoved.length > 0) console.log('[main] limpieza de datos de Chrome aparte:', legacyRemoved.length)
+  // La cuenta se retiró (0.4.x): se borra la sesión que haya quedado en disco. Sin Llavero ni safeStorage.
+  try {
+    const sessionRemoved = cleanLegacyAccountSession(app.getPath('userData'))
+    if (sessionRemoved.length > 0) console.log('[main] limpieza de la sesión de la antigua cuenta:', sessionRemoved.length)
+  } catch (err) {
+    console.warn('[main] no se pudo limpiar la sesión de la antigua cuenta', err)
+  }
   // Un segundo lanzamiento (dock, `open`, onyxcode://) enfoca esta instancia. Antes de `ready` se
   // ignora: la ventana se crea igualmente al arrancar.
   app.on('second-instance', () => {

@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setAccountAccessCheck, whenAccountAllowed } from '../account/access'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Electron y las ventanas se sustituyen: aquí solo importa si se ABRE algo o no.
 const created: unknown[] = []
@@ -56,52 +55,37 @@ beforeEach(() => {
   created.length = 0
   showMainWindow.mockClear()
 })
-afterEach(() => setAccountAccessCheck(null))
 
-describe('Quick Entry con la cuenta', () => {
-  it('cuenta al día (o apagada): el atajo abre Quick Entry', async () => {
+describe('Quick Entry sin puerta de cuenta', () => {
+  it('el atajo (toggle) abre Quick Entry', async () => {
     const qe = await import('./quick-entry')
     qe.toggleQuickEntry()
     expect(created).toHaveLength(1)
     qe.destroyQuickEntry()
   })
 
-  it('sin cuenta al día: ni el atajo global (toggle) ni show abren nada', async () => {
-    setAccountAccessCheck(() => false)
+  it('showQuickEntry abre la ventana', async () => {
     const qe = await import('./quick-entry')
-    qe.toggleQuickEntry()
     qe.showQuickEntry()
-    expect(created).toHaveLength(0)
+    expect(created).toHaveLength(1)
+    qe.destroyQuickEntry()
   })
 
-  it('sin cuenta al día: un prompt pendiente no llega a la ventana principal', async () => {
-    setAccountAccessCheck(() => false)
-    const qe = await import('./quick-entry')
-    qe.deliverQuickPrompt({ createMainWindow: vi.fn(), getMainWindow: () => null }, { text: 'hola' })
-    expect(showMainWindow).not.toHaveBeenCalled()
-  })
-
-  it('con cuenta al día el prompt sí se entrega', async () => {
+  it('el prompt se entrega a la ventana principal', async () => {
     const qe = await import('./quick-entry')
     qe.deliverQuickPrompt({ createMainWindow: vi.fn(), getMainWindow: () => null }, { text: 'hola' })
     expect(showMainWindow).toHaveBeenCalledTimes(1)
   })
-})
 
-describe('whenAccountAllowed (atajo y bandeja)', () => {
-  it('ejecuta solo con cuenta al día y pasa los argumentos', () => {
-    const fn = vi.fn()
-    const wrapped = whenAccountAllowed(fn)
-    wrapped(1, 2)
-    expect(fn).toHaveBeenCalledWith(1, 2)
-    setAccountAccessCheck(() => false)
-    wrapped(3)
-    expect(fn).toHaveBeenCalledTimes(1)
+  it('un prompt vacío no se entrega', async () => {
+    const qe = await import('./quick-entry')
+    qe.deliverQuickPrompt({ createMainWindow: vi.fn(), getMainWindow: () => null }, { text: '   ' })
+    expect(showMainWindow).not.toHaveBeenCalled()
   })
 })
 
-describe('bandeja con la cuenta', () => {
-  it('«Nueva conversación», «Quick Entry» y «Ajustes» no actúan sin cuenta; «Abrir» y «Salir» sí', async () => {
+describe('bandeja sin puerta de cuenta', () => {
+  it('«Nueva conversación», «Quick Entry», «Ajustes», «Abrir» y «Salir» actúan siempre', async () => {
     vi.resetModules()
     const actions: Record<string, () => void> = {}
     vi.doMock('./tray', () => ({
@@ -128,23 +112,17 @@ describe('bandeja con la cuenta', () => {
       fresh: false
     })
     const { initExtras } = await import('./index')
-    const { setAccountAccessCheck: set } = await import('../account/access')
     initExtras({ createMainWindow: vi.fn(), getMainWindow: () => null })
 
-    set(() => false)
-    actions.onNewConversation()
     actions.onQuickEntry()
-    actions.onOpenSettings()
-    expect(toggle).not.toHaveBeenCalled()
-    expect(send).not.toHaveBeenCalled()
-    actions.onOpenApp()
-    expect(showMainWindow).toHaveBeenCalledTimes(1)
-
-    set(() => true)
-    actions.onQuickEntry()
-    actions.onNewConversation()
     expect(toggle).toHaveBeenCalledTimes(1)
+    actions.onNewConversation()
     expect(send).toHaveBeenCalledWith('extras:new-conversation')
+    actions.onOpenSettings()
+    expect(send).toHaveBeenCalledWith('extras:open-settings')
+    actions.onOpenApp()
+    expect(showMainWindow).toHaveBeenCalledTimes(3)
+    expect(typeof actions.onQuit).toBe('function')
     vi.doUnmock('./tray')
     vi.doUnmock('./quick-entry')
     vi.doUnmock('./prefs')

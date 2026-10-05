@@ -9,7 +9,6 @@ import type { QuickPromptEvent } from '@shared/ipc-extras'
 import { extrasWindows, isLangStale, loadLocalizedPage, preloadPath, showMainWindow, type MainWindowDeps } from './windows'
 import { registerWindowRole } from '../ipc/guard'
 import { presentWindow } from '../e2e-headless'
-import { isAccountAllowed } from '../account/access'
 
 const WIDTH = 680
 const HEIGHT = 76
@@ -79,8 +78,6 @@ function recreateIfLangChanged(): void {
 }
 
 export function showQuickEntry(): void {
-  // Sin cuenta al día (cuenta obligatoria activada) Quick Entry no se abre.
-  if (!isAccountAllowed()) return
   recreateIfLangChanged()
   if (!quickWin || quickWin.isDestroyed()) quickWin = createQuickWindow()
   const win = quickWin
@@ -98,7 +95,6 @@ export function hideQuickEntry(): void {
 }
 
 export function toggleQuickEntry(): void {
-  if (!isAccountAllowed()) return hideQuickEntry()
   if (quickWin && !quickWin.isDestroyed() && quickWin.isVisible() && quickWin.isFocused()) hideQuickEntry()
   else showQuickEntry()
 }
@@ -145,7 +141,6 @@ export function deliverQuickPrompt(deps: MainWindowDeps, event: QuickPromptEvent
   const text = event.text.trim()
   if (!text) return
   hideQuickEntry()
-  if (!isAccountAllowed()) return
   const { win, fresh } = showMainWindow(deps)
   if (fresh || win.webContents.isLoading()) {
     // El renderer lo recoge con `extras:takePendingPrompt` al montar; además se reenvía al terminar

@@ -1,7 +1,6 @@
 import type { IpcMain } from 'electron'
 import type { OpencodeServer } from '../opencode/server'
 import type { MainWindowDeps } from '../extras/windows'
-import { registerAccountHandlers } from './account'
 import { registerAppHandlers } from './app'
 import { registerDiagnosticsHandlers } from './diagnostics'
 import { registerNotifyHandlers } from './notify'
@@ -21,7 +20,6 @@ export interface IpcContext extends MainWindowDeps {
  * `capsFor(process.platform)` con `import()` dinámico, para no cargar código de macOS en otras plataformas.
  */
 export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
-  registerAccountHandlers(ipcMain)
   registerAppHandlers(ipcMain, ctx)
   registerOnboardingHandlers(ipcMain)
   registerOpencodeHandlers(ipcMain, ctx.server)

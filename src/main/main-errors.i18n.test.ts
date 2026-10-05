@@ -9,8 +9,6 @@ vi.mock('electron', () => ({
   screen: {}
 }))
 
-import { AccountApiError } from './account/client'
-import { friendlyAccountError } from './account/service'
 import { validateOpencodeBin } from './opencode/binary'
 import { forbiddenFolderReason, type FolderPolicyContext } from './tasks/folder-policy'
 import { ruleRejectionReason } from './tasks/rules'
@@ -28,9 +26,6 @@ afterEach(() => setLang('es'))
 
 describe('errores que construye main: idioma activo', () => {
   it('con es el texto es el de siempre', () => {
-    expect(friendlyAccountError(new AccountApiError('unreachable', 'x'), 'f').message).toBe(
-      'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.'
-    )
     expect(t('merr.engine.noBinary')).toContain('No se encontró el binario `opencode`.')
     // folder-policy es del modo Tareas (rutas de macOS): solo se comprueba en macOS.
     if (macOnly) expect(forbiddenFolderReason('/', ctx)).toContain('No se puede usar la raíz del disco')
@@ -40,14 +35,8 @@ describe('errores que construye main: idioma activo', () => {
     expect(t('merr.notif.routineRejected', { count: 3 })).toBe('Se rechazaron 3 permisos')
   })
 
-  it('con en: cuenta, binario, carpetas, reglas y rutinas salen en inglés', async () => {
+  it('con en: binario, carpetas, reglas y rutinas salen en inglés', async () => {
     setLang('en')
-    expect(friendlyAccountError(new AccountApiError('unreachable', 'x'), 'f').message).toBe(
-      'Couldn’t connect to the server. Check your connection and try again.'
-    )
-    expect(friendlyAccountError(new AccountApiError('http', 'x', 429, undefined, 120), 'f').message).toBe(
-      'Too many attempts. Wait 2 min. Please try again later.'
-    )
     expect(t('merr.engine.noBinary')).toMatch(/^Couldn’t find the `opencode` binary\./)
     const bin = await validateOpencodeBin('relativa/ruta')
     expect(bin).toEqual({ ok: false, error: 'The path isn’t valid.' })
