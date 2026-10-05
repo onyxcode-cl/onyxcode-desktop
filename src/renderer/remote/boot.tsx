@@ -21,8 +21,7 @@ function idle(fn: () => void): void {
 }
 
 /**
- * Monta la MISMA interfaz de escritorio (`src/renderer/src`). Sin `AccountGate`: la cuenta es del Mac (que ya tiene sesión
- * abierta para poder aceptar al celular); el celular no inicia ni cierra sesión (`account:*` son «prohibido» en la política).
+ * Monta la MISMA interfaz de escritorio (`src/renderer/src`). OnyxCode no tiene cuentas ni inicio de sesión.
  */
 export function mountRemoteApp(): void {
   document.title = APP_NAME

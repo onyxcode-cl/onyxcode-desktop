@@ -8,7 +8,6 @@ import {
   Info,
   Keyboard,
   LifeBuoy,
-  UserRound,
   MonitorCog,
   Settings2,
   Smartphone,
@@ -23,11 +22,9 @@ import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import { IconButton } from '../../../components/IconButton'
 import { ListGroup, ListRow } from '../../../components/mobile/List'
 import { useT } from '../../../lib/i18n'
-import { useAccountState } from '../../../lib/use-account-state'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
-import { AccountSection } from './AccountSection'
 import { AutoModeSection } from './AutoModeSection'
 import { BrowserSection } from './BrowserSection'
 import { ComputerSection } from './ComputerSection'
@@ -45,7 +42,6 @@ import { UsageSection } from './UsageSection'
 
 export type SettingsSectionId =
   | 'general'
-  | 'account'
   | 'models'
   | 'mcp'
   | 'tasks'
@@ -64,7 +60,6 @@ const lazy = (key: Parameters<typeof t>[0]) => (): string => t(key)
 
 const SECTIONS: { id: SettingsSectionId; label: () => string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
   { id: 'general', label: lazy('settings.nav.general'), icon: SlidersHorizontal, View: GeneralSection },
-  { id: 'account', label: lazy('settings.nav.account'), icon: UserRound, View: AccountSection },
   { id: 'models', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection },
   { id: 'mcp', label: lazy('settings.nav.mcp'), icon: Blocks, View: McpSection },
   { id: 'tasks', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection },
@@ -142,12 +137,10 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
   const t = useT()
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
-  const [account] = useAccountState()
-  // «Cuenta» solo si la app exige cuenta; Tareas, su red/modo auto y Control del PC solo donde existen (macOS).
+  // Tareas, su red/modo auto y Control del PC solo donde existen (macOS).
   const caps = platformCaps()
   const sections = SECTIONS.filter(
     (s) =>
-      (s.id !== 'account' || account?.required === true) &&
       (!['tasks', 'network', 'automode'].includes(s.id) || caps.tasks) &&
       (s.id !== 'computer' || caps.computer) &&
       (s.id !== 'remote' || caps.remote) &&

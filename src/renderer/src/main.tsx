@@ -4,7 +4,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { APP_NAME } from '@shared/brand'
 import { App } from './app/App'
-import { AccountGate } from './features/account'
 import { LangRoot } from './app/LangRoot'
 import { initLang } from './lib/i18n'
 import { installModalFocus } from './lib/modal-focus'
@@ -26,11 +25,7 @@ if (import.meta.env.DEV) {
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
     <LangRoot
-      render={() => (
-        <AccountGate>
-          <App />
-        </AccountGate>
-      )}
+      render={() => <App />}
     />
   </StrictMode>
 )
