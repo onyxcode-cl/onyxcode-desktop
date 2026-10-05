@@ -36,7 +36,7 @@ describe('ApprovalNotice', () => {
     expect(h).toContain('min-h-14')
     expect(h).toContain('1 tarea espera tu aprobación')
     expect(h).toContain('Borra los temporales')
-    expect(h).toContain('Revisar aprobaciones pendientes')
+    expect(h).toContain('title="Revisar aprobaciones pendientes"')
     expect(h).toContain('border-warning/45')
     expect(h).toContain('bg-warning/10')
   })
