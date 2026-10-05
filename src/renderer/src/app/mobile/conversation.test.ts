@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const css = readFileSync(resolve(__dirname, 'conversation.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+// La respuesta (Markdown) vive en markdown.css (la PWA lo baja con el trozo de Markdown): se vigilan los dos archivos juntos.
+const css = ['conversation.css', 'markdown.css']
+  .map((f) => readFileSync(resolve(__dirname, f), 'utf8'))
+  .join('\n')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('conversation.css', () => {
   it('todos sus selectores cuelgan de [data-surface=mobile] (el escritorio no cambia)', () => {

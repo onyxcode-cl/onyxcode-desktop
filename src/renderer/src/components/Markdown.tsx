@@ -5,6 +5,7 @@ import { t } from '@shared/i18n'
 import { CopyButton } from './CopyButton'
 import { useHighlightPlugins } from './highlight-plugins'
 import { ArtifactButton, looksRenderable } from './artifacts/ArtifactButton'
+import '../app/mobile/markdown.css'
 
 function textOf(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node)

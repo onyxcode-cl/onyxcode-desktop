@@ -1,4 +1,5 @@
 /** Modo Rutinas: tareas programadas que lanzan prompts en Chat, Tareas o Code. */
+import '../../../app/mobile/switch.css'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,

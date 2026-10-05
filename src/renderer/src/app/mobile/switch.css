@@ -1,5 +1,5 @@
 /*
- * Ajustes en el celular: interruptor de 44×26 (rediseño PWA T4). Todo cuelga de `[data-surface='mobile']` (lo exige
+ * Ajustes en el celular: interruptor de 44×26 (rediseño PWA T4). Se importa desde components/Toggle.tsx: en la PWA viaja con los trozos que usan interruptores, no con el arranque. Todo cuelga de `[data-surface='mobile']` (lo exige
  * desktop-unchanged.test.tsx); el marcado de Toggle no cambia (lo fija base-markup.test.tsx), así que las medidas se imponen aquí.
  * Colores: solo tokens existentes de globals.css.
  */

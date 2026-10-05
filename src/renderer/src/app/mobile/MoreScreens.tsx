@@ -1,7 +1,6 @@
 import { SettingsView } from '../../features/settings'
 import { MODES_BY_ID } from '../modes'
 import { useMobileNav, SETTINGS_PREFIX } from './nav'
-import './settings.css'
 
 /**
  * «Ajustes»: una sola pantalla apilada con la tarjeta de conexión (Bloquear, Desvincular) y los grupos. La tarjeta y los grupos

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import '../../../app/mobile/switch.css'
 import {
   BarChart3,
   Blocks,

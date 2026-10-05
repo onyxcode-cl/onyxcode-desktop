@@ -306,8 +306,9 @@ export function TaskRow({
       )}
       {working && (
         <span
-          className={`${remote ? "inline-flex h-6 items-center gap-1.5 text-[12px] text-accent before:size-3 before:animate-spin before:rounded-full before:border-2 before:border-accent before:border-r-transparent before:content-[''] motion-reduce:before:animate-none" : 'hidden'} shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none`}
+          className={`${remote ? 'inline-flex h-6 items-center gap-1.5 text-[12px] text-accent' : 'hidden'} shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none`}
         >
+          {remote && <Loader2 size={12} className="animate-spin" aria-hidden />}
           {TASK_STATUS_LABEL.running}
         </span>
       )}

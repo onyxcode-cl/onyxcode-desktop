@@ -6,6 +6,7 @@
  * Diseño: tareas a la izquierda (barra lateral del shell) · inicio / conversación al centro ·
  * Plan, Entregables y Actividad (o la Consulta lateral) a la derecha (colapsable).
  */
+import '../../../app/mobile/switch.css'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
