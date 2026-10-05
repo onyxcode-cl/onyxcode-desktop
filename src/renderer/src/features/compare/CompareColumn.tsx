@@ -3,7 +3,7 @@
  * Las métricas vienen del manifiesto (las calcula main); lo que no se informa es `null` y se pinta «—», nunca «$0».
  */
 import { memo, useMemo, useRef } from 'react'
-import { Check, Loader2, Wrench } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Check, Coins, Loader2, Timer, Wrench } from 'lucide-react'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import type { CompareColumnManifest, CompareManifest, CompareMode } from '@shared/ipc-code'
 import type { MsgKey } from '@shared/i18n'
@@ -159,6 +159,9 @@ interface Props {
   onCopyPatch?: () => void
 }
 
+/** Chip de una métrica: icono + valor (el nombre accesible lo da el texto `sr-only`). */
+const CHIP = 'inline-flex h-[22px] items-center gap-1 rounded-md bg-inset px-1.5 text-[11.5px] tabular-nums text-muted'
+
 export function CompareColumn(props: Props): React.JSX.Element {
   const { manifest: m, column: c, modelName, entries, now, badges, permissions, mode, busy, failure } = props
   const t = useT()
@@ -186,7 +189,7 @@ export function CompareColumn(props: Props): React.JSX.Element {
       aria-label={label}
       data-testid={`compare-col-${c.index}`}
       data-state={view}
-      className={`relative flex min-h-0 min-w-0 flex-col bg-bg ${c.adopted ? 'ring-2 ring-accent ring-inset' : ''} ${c.discarded ? 'opacity-60' : ''}`}
+      className={`relative flex min-h-0 min-w-0 flex-col bg-bg ${c.adopted ? 'ring-2 ring-accent ring-inset' : ''} ${c.discarded ? 'bg-inset text-muted' : ''}`}
     >
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
         <h3 className="min-w-0 flex-1 truncate text-[13px] font-medium" title={label}>
@@ -199,29 +202,32 @@ export function CompareColumn(props: Props): React.JSX.Element {
         role="group"
         aria-label={t('compare.metrics.region', { model: label })}
         title={breakdown}
-        className="flex h-8 shrink-0 items-center gap-3 border-b border-border px-3 font-mono text-[11.5px] text-muted tabular-nums"
+        className="flex min-h-9 shrink-0 flex-wrap items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11.5px] text-muted tabular-nums"
       >
-        <span>
-          <span aria-hidden>↑</span>
+        <span className={CHIP} title={t('compare.metrics.in')}>
+          <ArrowUpRight size={12} aria-hidden />
           <span className="sr-only">{t('compare.metrics.in')} </span>
           {tokensLabel(metrics.inputTokens)}
-          <span className="px-1" aria-hidden />
-          <span aria-hidden>↓</span>
+        </span>
+        <span className={CHIP} title={t('compare.metrics.out')}>
+          <ArrowDownLeft size={12} aria-hidden />
           <span className="sr-only">{t('compare.metrics.out')} </span>
           {tokensLabel(metrics.outputTokens)}
         </span>
-        <span title={costTitle} data-testid={`compare-cost-${c.index}`}>
+        <span className={CHIP} title={costTitle ?? t('compare.metrics.cost')} data-testid={`compare-cost-${c.index}`}>
+          <Coins size={12} aria-hidden />
           <span className="sr-only">{t('compare.metrics.cost')} </span>
-          {costLabel(metrics.costUsd)}
+          {costLabel(metrics.costUsd, t('compare.metrics.noData'))}
         </span>
-        <span>
+        <span className={CHIP} title={t('compare.metrics.duration')}>
+          <Timer size={12} aria-hidden />
           <span className="sr-only">{t('compare.metrics.duration')} </span>
           {durationLabel(duration)}
         </span>
         {badges.length > 0 && (
           <span className="ml-auto flex min-w-0 shrink-0 gap-1">
             {badges.map((b) => (
-              <span key={b} className="rounded bg-inset px-1.5 text-[10.5px] tracking-[0.06em] text-muted uppercase">
+              <span key={b} className="rounded-full bg-accent-soft px-2 text-[11px] font-medium text-accent">
                 {t(BADGE_LABEL[b])}
               </span>
             ))}
@@ -382,7 +388,7 @@ export function CompareColumn(props: Props): React.JSX.Element {
           {canKeep && (
             <Button
               size="sm"
-              variant="primary"
+              variant="secondary"
               onClick={props.onKeep}
               disabled={!!busy}
               aria-label={t('compare.keep.aria', { model: label })}

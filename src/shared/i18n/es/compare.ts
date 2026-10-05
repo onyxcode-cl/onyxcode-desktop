@@ -56,6 +56,7 @@ export const compare = {
   'compare.column.allow': 'Permitir una vez',
   'compare.column.reject': 'Rechazar',
   'compare.metrics.none': '—',
+  'compare.metrics.noData': 'sin dato',
   'compare.metrics.in': 'Entrada',
   'compare.metrics.out': 'Salida',
   'compare.metrics.reasoning': 'Razonamiento',

@@ -89,7 +89,7 @@ describe('CompareColumn: métricas', () => {
   it('con todo null se pintan «—» y jamás «$0»', () => {
     const html = col(mkCol(0, { state: 'done', metrics: { ...NO_METRICS } }))
     expect(html).toContain('data-testid="compare-cost-0"')
-    expect(html).toMatch(/data-testid="compare-cost-0"[^>]*><span class="sr-only">Coste <\/span>—</)
+    expect(html).toMatch(/data-testid="compare-cost-0"[^>]*>.*?Coste <\/span>sin dato</) // F8-B98: el coste sin dato se rotula «sin dato», ya no «—»
     expect(html).not.toMatch(/\$\s?0([^,.\d]|$)/)
     expect(html).not.toContain('US$0')
     expect(html).toContain('El proveedor no informó el coste')
@@ -97,7 +97,7 @@ describe('CompareColumn: métricas', () => {
   it('un coste en 0 que llegase al renderer tampoco se pinta como $0', () => {
     const html = col(mkCol(0, { state: 'done', metrics: { ...NO_METRICS, costUsd: 0, inputTokens: 0 } }))
     expect(html).not.toMatch(/\$\s?0([^,.\d]|$)/)
-    expect(html).toMatch(/Coste <\/span>—</)
+    expect(html).toMatch(/Coste <\/span>sin dato</)
   })
   it('con datos: tokens, coste y duración', () => {
     const html = col(
