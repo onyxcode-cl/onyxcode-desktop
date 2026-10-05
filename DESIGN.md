@@ -147,5 +147,7 @@ la PWA el plugin `onyx-strip-desktop-css`. Las guardias `stripDesk()` ignoran la
 PWA devuelve el hijo) · recetas `components/ui/recipes.ts` (`POP`, `CARD`, `ROW`, `MENU_ITEM`, `INPUT`, `SEGMENT`, `TAB`, `EMPTY`).
 Estados: deshabilitado 50 %, cargando con `Spinner` + `aria-busy`, error con `aria-invalid` + `aria-describedby`, foco con la forma del control.
 
+**Agrupar sin cambiar el celular.** Para envolver hijos en un contenedor solo de escritorio (grupo de superficie de Rutinas, pestañas de Progreso) se usa `className="contents desk:…"`: en el celular `display: contents` deja los hijos donde estaban. Ninguna cadena de clases empieza por `desk:` (para un icono suelto, la clase va en el botón padre: `desk:[&_svg]:size-4`).
+
 **Kit de UI.** `node scripts/shot-desktop.mjs --scenario kit` captura `app/dev/UiKit.tsx` (tipografía, espaciado, radios, elevaciones, velo y todos
 los componentes × variantes × estados, con hover/foco/presionado forzados por CDP) en claro y oscuro. Revisarlo tras tocar un componente base.
