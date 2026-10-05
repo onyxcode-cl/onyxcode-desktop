@@ -33,6 +33,7 @@ const question: PendingQuestion = {
   id: 'q_1',
   sessionID: 'ses_1',
   questions: [
+    // @ts-expect-error `description` ausente a propósito: así se fijó el celular (la opción sin descripción no pinta title)
     { header: 'Envío', question: '¿Cómo lo envío?', options: [{ label: 'Correo' }, { label: 'Mensajería', description: 'En el día' }], multiple: false, custom: true }
   ]
 }
