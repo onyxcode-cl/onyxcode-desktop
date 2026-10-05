@@ -27,7 +27,15 @@ describe('Button: marcado existente intacto', () => {
   for (const variant of Object.keys(V) as (keyof typeof V)[]) {
     it(`${variant} md y sm`, () => {
       expect(stripDesk(renderToStaticMarkup(<Button variant={variant}>x</Button>))).toBe(btn(MD, V[variant]))
-      expect(stripDesk(renderToStaticMarkup(<Button variant={variant} size="sm">x</Button>))).toBe(btn(SM, V[variant]))
+      expect(
+        stripDesk(
+          renderToStaticMarkup(
+            <Button variant={variant} size="sm">
+              x
+            </Button>
+          )
+        )
+      ).toBe(btn(SM, V[variant]))
     })
   }
   it('por defecto es secondary md y respeta className', () => {
@@ -38,13 +46,30 @@ describe('Button: marcado existente intacto', () => {
 
 const ICON =
   'no-drag inline-flex shrink-0 items-center justify-center rounded-lg text-muted transition-[background-color,color,transform] duration-150 hover:bg-hover hover:text-fg active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent'
-const icon = (sz: string, active: string): string => `<button type="button" title="Cerrar" aria-label="Cerrar" class="${ICON} ${sz} ${active} ">x</button>`
+const icon = (sz: string, active: string): string =>
+  `<button type="button" title="Cerrar" aria-label="Cerrar" class="${ICON} ${sz} ${active} ">x</button>`
 
 describe('IconButton: marcado existente intacto', () => {
   it('md, sm y activo', () => {
     expect(stripDesk(renderToStaticMarkup(<IconButton label="Cerrar">x</IconButton>))).toBe(icon('h-8 w-8', ''))
-    expect(stripDesk(renderToStaticMarkup(<IconButton label="Cerrar" size="sm">x</IconButton>))).toBe(icon('h-7 w-7', ''))
-    expect(stripDesk(renderToStaticMarkup(<IconButton label="Cerrar" active>x</IconButton>))).toBe(icon('h-8 w-8', 'bg-active text-fg'))
+    expect(
+      stripDesk(
+        renderToStaticMarkup(
+          <IconButton label="Cerrar" size="sm">
+            x
+          </IconButton>
+        )
+      )
+    ).toBe(icon('h-7 w-7', ''))
+    expect(
+      stripDesk(
+        renderToStaticMarkup(
+          <IconButton label="Cerrar" active>
+            x
+          </IconButton>
+        )
+      )
+    ).toBe(icon('h-8 w-8', 'bg-active text-fg'))
   })
 })
 
