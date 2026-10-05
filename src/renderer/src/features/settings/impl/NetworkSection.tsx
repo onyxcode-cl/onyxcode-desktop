@@ -12,7 +12,7 @@ import { t as tr } from '@shared/i18n'
 import { UI_LABELS } from '@shared/labels'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { policyLocks } from './TasksSection'
-import { Badge, Card, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
+import { Badge, Card, NOTICE_DESK, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { useT } from '../../../lib/i18n'
 import { isSubmitKey } from '../../../lib/textarea'
 
@@ -97,8 +97,11 @@ export function NetworkSection(): React.JSX.Element {
       <SectionHeader title={UI_LABELS.network} description={t('misc.net.desc')} />
 
       {locks.managed && (locks.customHosts || (policy?.extraAllowedHosts?.length ?? 0) > 0) && (
-        <div role="status" className="mb-2 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
-          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+        <div
+          role="status"
+          className={`mb-2 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs ${NOTICE_DESK.accent}`}
+        >
+          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent desk:size-4" aria-hidden />
           <div className="min-w-0 text-muted">
             <div className="text-sm font-medium text-fg">{t('misc.managedTitle')}</div>
             {locks.customHosts && <p className="mt-0.5">{customHostsBlockedMessage()}</p>}

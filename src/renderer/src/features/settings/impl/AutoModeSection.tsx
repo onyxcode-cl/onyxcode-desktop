@@ -12,7 +12,7 @@ import type { AutoModeState, TasksFolder, TasksTaskMeta } from '@shared/ipc-task
 import { getLang, t as tr, type MsgKey } from '@shared/i18n'
 import { UI_LABELS } from '@shared/labels'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
-import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
+import { Badge, Card, ErrorText, NOTICE_DESK, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -113,8 +113,11 @@ export function AutoModeSection(): React.JSX.Element {
       <SectionHeader title={UI_LABELS.autoMode} description={t('misc.auto.desc')} />
 
       {state?.policyDisabled && (
-        <div role="status" className="mb-5 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs">
-          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+        <div
+          role="status"
+          className={`mb-5 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-xs ${NOTICE_DESK.accent}`}
+        >
+          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent desk:size-4" aria-hidden />
           <div className="min-w-0 text-muted">
             <div className="text-sm font-medium text-fg">{t('misc.managedTitle')}</div>
             <p className="mt-0.5">{t('misc.auto.orgOff')}</p>
