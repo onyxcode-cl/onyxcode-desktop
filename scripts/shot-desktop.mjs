@@ -16,7 +16,8 @@ const DEFAULT_OUT = '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-
 const SCENARIOS = [
   'onboarding', 'chat-vacio', 'chat-conversacion', 'chat-herramientas', 'code-proyecto', 'code-diff', 'code-terminal',
   'tareas-lista', 'tareas-en-curso', 'tareas-permiso', 'rutinas', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
-  'paleta', 'selector-modelo', 'dialogo-confirmar', 'comparar', 'barra-lateral-colapsada'
+  'paleta', 'selector-modelo', 'dialogo-confirmar', 'comparar', 'barra-lateral-colapsada',
+  'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
@@ -39,7 +40,7 @@ const selList = sel ? sel.split(',') : null
 for (const x of selList ?? []) if (!SCENARIOS.includes(x)) throw new Error(`escenario desconocido: ${x} (${SCENARIOS.join('|')})`)
 if (arg('theme') && !['dark', 'light'].includes(arg('theme'))) throw new Error('--theme dark|light')
 if (sizeSel && !SIZES[sizeSel]) throw new Error(`--size ${Object.keys(SIZES).join('|')}`)
-const scenarios = selList ?? SCENARIOS
+const scenarios = selList ?? SCENARIOS.filter((s) => s !== 'kit')
 const sizesFor = (sc) => (sizeSel ? [sizeSel] : SMALL_ALSO.test(sc) ? ['1280x800', '1000x700'] : ['1280x800'])
 mkdirSync(out, { recursive: true })
 
@@ -639,6 +640,58 @@ const S = {
   }
 }
 
+// ---- kit de UI: una captura por sección (tipografía, fundamentos, botones, campos), con los estados hover/foco/presionado FORZADOS
+// por CDP (`CSS.forcePseudoState`) en los nodos marcados `data-kit-state`. Nombre: kit-<sección>-<tema>-1280x800.png ----
+async function runKit(ctx) {
+  const { page, cdp } = ctx
+  await page.evaluate(() => {
+    localStorage.setItem('onyx.uikit', '1')
+    location.hash = '#ui-kit'
+  })
+  await page.reload()
+  await page.waitForSelector('[data-kit-root]', { timeout: 30_000 })
+  await cdp.send('DOM.enable')
+  await cdp.send('CSS.enable')
+  for (const theme of themes) {
+    try {
+      await stage(ctx, [1280, 800], theme)
+      // El tema «sistema» se resuelve al cargar: se recarga con el medio ya emulado.
+      await page.reload()
+      await page.waitForSelector('[data-kit-root]', { timeout: 30_000 })
+      await cdp.send('DOM.enable')
+      await cdp.send('CSS.enable')
+      await stage(ctx, [1280, 800], theme)
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 3000, deviceScaleFactor: DPR, mobile: false })
+      await sleep(300)
+      const height = await page.evaluate(() => document.querySelector('[data-kit-root]').scrollHeight)
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: Math.min(height, 8000), deviceScaleFactor: DPR, mobile: false })
+      await sleep(300)
+      const { root } = await cdp.send('DOM.getDocument', { depth: -1 })
+      const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '[data-kit-state]' })
+      for (const nodeId of nodeIds) {
+        const { attributes } = await cdp.send('DOM.getAttributes', { nodeId })
+        const state = attributes[attributes.indexOf('data-kit-state') + 1]
+        await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [state] })
+      }
+      await sleep(200)
+      const rects = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-kit-section]')].map((el) => {
+          const r = el.getBoundingClientRect()
+          return { id: el.getAttribute('data-kit-section'), x: r.x, y: r.y, width: r.width, height: r.height }
+        })
+      )
+      for (const { id, ...clip } of rects) {
+        const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { ...clip, scale: 1 } })
+        const file = join(out, `kit-${id}-${theme}-1280x800.png`)
+        writeFileSync(file, Buffer.from(data, 'base64'))
+        done.push(file)
+      }
+    } catch (e) {
+      fail.push(`kit-${theme}: ${String(e.message).split('\n')[0]}`)
+    }
+  }
+}
+
 // ---- ejecución ----
 const fail = []
 const done = []
@@ -696,7 +749,7 @@ try {
   // Tareas y Rutinas van en otro arranque: el falso numera las sesiones igual en Chat y en Tareas (ids repetidos) y la
   // interfaz mezclaría mensajes entre ambos; con ids reales (únicos) no pasa.
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
-  const main = scenarios.filter((s) => s !== 'onboarding' && !isTasks(s))
+  const main = scenarios.filter((s) => s !== 'onboarding' && s !== 'kit' && !isTasks(s))
   const tasks = scenarios.filter(isTasks)
   if (main.length) {
     const ctx = await launch('main')
@@ -706,6 +759,11 @@ try {
   if (tasks.length) {
     const ctx = await launch('tareas')
     await runGroup(ctx, tasks)
+    await stop(ctx)
+  }
+  if (scenarios.includes('kit')) {
+    const ctx = await launch('kit')
+    await runKit(ctx)
     await stop(ctx)
   }
   if (scenarios.includes('onboarding')) {

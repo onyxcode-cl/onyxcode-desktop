@@ -28,8 +28,22 @@ if (import.meta.env.DEV) {
   }
 }
 
-createRoot(document.getElementById('root') as HTMLElement).render(
-  <StrictMode>
-    <LangRoot render={() => <App />} />
-  </StrictMode>
-)
+// Kit de UI (solo desarrollo): `#ui-kit` + `localStorage['onyx.uikit'] = '1'`. Chunk perezoso; la PWA no pasa por aquí.
+function wantsUiKit(): boolean {
+  try {
+    return location.hash === '#ui-kit' && localStorage.getItem('onyx.uikit') === '1'
+  } catch {
+    return false
+  }
+}
+
+const root = createRoot(document.getElementById('root') as HTMLElement)
+if (wantsUiKit()) {
+  void import('./app/dev/UiKit').then(({ default: UiKit }) => root.render(<UiKit />))
+} else {
+  root.render(
+    <StrictMode>
+      <LangRoot render={() => <App />} />
+    </StrictMode>
+  )
+}
