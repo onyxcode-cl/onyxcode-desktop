@@ -120,7 +120,7 @@ describe('aviso de versión nueva', () => {
     const app = await launch(srv.url)
     await stubOpenExternal(app)
     await expectVisible(notice(app.page))
-    await expect(notice(app.page).innerText()).resolves.toContain('Hay una versión nueva de OnyxCode (99.9.9).')
+    await expect(notice(app.page).innerText()).resolves.toContain('Hay una versión nueva de Lazunox (99.9.9).')
     await shot(app.page, 'aviso')
 
     expect(srv.requests).toHaveLength(1)

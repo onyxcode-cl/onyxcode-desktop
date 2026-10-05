@@ -152,7 +152,7 @@ describe.skipIf(!DEV)('Ajustes › Diagnóstico', () => {
     if (!IS_WIN) expect(statSync(dest).mode & 0o777).toBe(0o600)
     const calls = await dialogCalls(electronApp)
     const save = calls.find((c) => c.kind === 'save')!.options as { defaultPath: string }
-    expect(save.defaultPath).toMatch(/^OnyxCode-diagnostico-\d{8}-\d{4}\.txt$/)
+    expect(save.defaultPath).toMatch(/^Lazunox-diagnostico-\d{8}-\d{4}\.txt$/)
     const text = readFileSync(dest, 'utf8')
     expect(text).toContain('informe de diagnóstico')
     expect(text).toContain('Versiones')

@@ -160,12 +160,12 @@ describe('actualizador propio', () => {
     publish(srv, f, { redirect: true })
     const app = await launch(srv)
     await expectVisible(button(app.page, 'Actualizar'))
-    expect(await noticeText(app.page)).toContain(`Hay una versión nueva de OnyxCode (${FIXTURE_VERSION}).`)
+    expect(await noticeText(app.page)).toContain(`Hay una versión nueva de Lazunox (${FIXTURE_VERSION}).`)
     await shot(app.page, 'instalador-1-aviso')
 
     await button(app.page, 'Actualizar').click()
     await waitPhase(app.page, 'ready')
-    expect(await noticeText(app.page)).toContain(`OnyxCode ${FIXTURE_VERSION} está lista: reinicia para terminar de actualizar.`)
+    expect(await noticeText(app.page)).toContain(`Lazunox ${FIXTURE_VERSION} está lista: reinicia para terminar de actualizar.`)
     await expectVisible(button(app.page, 'Reiniciar ahora'))
     await shot(app.page, 'instalador-4-lista')
 
@@ -222,7 +222,7 @@ describe('actualizador propio', () => {
         { timeout: 15_000 }
       )
       .toBeGreaterThan(0)
-    expect(await noticeText(app.page)).toContain(`Descargando OnyxCode ${FIXTURE_VERSION}…`)
+    expect(await noticeText(app.page)).toContain(`Descargando Lazunox ${FIXTURE_VERSION}…`)
     await expectVisible(app.page.getByRole('progressbar').first())
     await shot(app.page, 'instalador-2-descargando')
     await openAbout(app.page)
