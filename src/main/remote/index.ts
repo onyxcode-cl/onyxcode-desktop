@@ -30,6 +30,7 @@ import { LanSignalingServer } from './signaling/lan-server'
 import { CloudSignalingTransport } from './signaling/worker-client'
 import { TunnelSignalingTransport } from './signaling/tunnel-transport'
 import { BinaryError, CloudflaredBinary } from './tunnel/binary'
+import { createManualFetch, type NetLike } from './tunnel/manual-fetch'
 import { CLOUDFLARED_PIN } from './tunnel/pin'
 import { realCloudflaredDeps } from './tunnel/real-deps'
 import { SidecarBackend } from './whitelist'
@@ -123,8 +124,9 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
   const binary = new CloudflaredBinary({
     pin: CLOUDFLARED_PIN,
     binDir: join(app.getPath('userData'), 'bin'),
-    // `net.fetch` de Electron respeta el proxy del sistema; las redirecciones las comprueba el propio instalador (lista cerrada de hosts).
-    fetch: (url, init) => net.fetch(url, init),
+    // `net.request` de Electron (proxy del sistema) con redirección manual: cada salto lo valida el instalador (lista cerrada de hosts).
+    // NO `net.fetch(..., { redirect: 'manual' })`: en Electron lanza «Redirect was cancelled» y la descarga fallaba al instante.
+    fetch: createManualFetch(net as unknown as NetLike),
     allowDownload: () => {
       const p = d.policy()
       return p.allowTravelMode && p.allowTravelDownload && !p.blocked
