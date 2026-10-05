@@ -21,7 +21,10 @@ export function InterruptedNotice({ taskId }: { taskId: string }): React.JSX.Ele
     })
   }
   return (
-    <div role="status" className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+    <div
+      role="status"
+      className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs desk:rounded-ctl desk:border-transparent desk:text-ui desk:ring-1 desk:ring-inset desk:ring-warning/45"
+    >
       <RotateCcw size={14} className="mt-0.5 shrink-0 text-warning" />
       <div className="min-w-0 flex-1">
         <p className="font-medium">{t('tasks.interrupted.title')}</p>

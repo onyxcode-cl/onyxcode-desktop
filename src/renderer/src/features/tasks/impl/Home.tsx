@@ -212,9 +212,11 @@ export function Home({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="m-auto w-full max-w-3xl py-10">
+      <div className="m-auto w-full max-w-3xl py-10 desk:max-w-[calc(var(--measure-prose)+48px)]">
         <div className="mb-6 px-6 text-center">
-          <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight">{t('tasks.home.title')}</h1>
+          <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight desk:leading-10 desk:font-semibold desk:tracking-[-0.02em]">
+            {t('tasks.home.title')}
+          </h1>
           <p className="mt-2 text-sm text-muted">
             {!folder
               ? t('tasks.home.lead.noFolder')
@@ -280,7 +282,7 @@ export function Home({
                       type="button"
                       aria-pressed={active}
                       onClick={() => setCat(c.id)}
-                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition desk:h-7 desk:rounded-ctl-sm desk:border-transparent desk:text-ui ${
                         active
                           ? c.computer
                             ? 'border-warning/50 bg-warning/10 text-warning'
@@ -308,11 +310,11 @@ export function Home({
                       key={s.title}
                       type="button"
                       onClick={() => pick(s.prompt, category.computer)}
-                      className="group flex items-start gap-3 rounded-xl border border-border bg-elevated/50 px-3.5 py-3 text-left transition hover:border-border-strong hover:bg-hover"
+                      className="group flex items-start gap-3 rounded-xl border border-border bg-elevated/50 px-3.5 py-3 text-left transition hover:border-border-strong hover:bg-hover desk:rounded-card desk:border-transparent desk:bg-elevated desk:p-4 desk:shadow-sm desk:hover:border-transparent desk:hover:bg-hover"
                     >
                       <span
-                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                          category.computer ? 'bg-warning/15 text-warning' : 'bg-accent-soft text-accent'
+                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg desk:mt-0 desk:size-8 desk:rounded-ctl desk:bg-active desk:[&_svg]:size-4 ${
+                          category.computer ? 'bg-warning/15 text-warning' : 'bg-accent-soft text-accent desk:text-accent'
                         }`}
                       >
                         <Icon size={14} />
