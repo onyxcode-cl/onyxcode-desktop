@@ -126,7 +126,7 @@ function PermList({ title, tone, items }: { title: string; tone: 'danger' | 'suc
 // Tarjeta
 // ---------------------------------------------------------------------------
 
-function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: boolean; now: number }): React.JSX.Element {
+export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: boolean; now: number }): React.JSX.Element {
   const t = useT()
   const Icon = MODE_META[r.mode].icon
   const last = r.lastResult
@@ -322,7 +322,7 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
   )
 }
 
-function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.JSX.Element {
+export function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.JSX.Element {
   const t = useT()
   const allHistory = useRoutines((s) => s.history)
   const history = useMemo(
@@ -504,7 +504,7 @@ function availableTemplates(): typeof ROUTINE_TEMPLATES {
 }
 
 /** Tarjeta de plantilla: abre el editor prellenado (estado vacío e «Ideas para empezar»). */
-function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): React.JSX.Element {
+export function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): React.JSX.Element {
   const Icon = TEMPLATE_ICON[tpl.id] ?? CalendarClock
   const ModeIcon = MODE_META[tpl.input.mode].icon
   return (
@@ -530,7 +530,7 @@ function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): Rea
   )
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
+export function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
   const t = useT()
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center py-10 text-center">
