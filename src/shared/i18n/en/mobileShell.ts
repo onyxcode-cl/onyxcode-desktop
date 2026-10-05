@@ -45,5 +45,16 @@ export const mobileShell = {
   'mobile.list.deleteMessage': '“{title}” will be deleted for good.',
   'mobile.list.deleteConfirm': 'Delete',
   'mobile.list.renameTitle': 'Rename conversation',
-  'mobile.list.loadingSlow': 'Loading…'
+  'mobile.list.loadingSlow': 'Loading…',
+  'mobile.drawer.open': 'Open menu',
+  'mobile.drawer.close': 'Close menu',
+  'mobile.drawer.aria': 'Navigation menu',
+  'mobile.drawer.empty': 'No conversations yet',
+  'mobile.drawer.emptyHint': 'Start one with “New conversation” and it will show up here.',
+  'mobile.home.approvals': { one: '{count} task is waiting for your approval', other: '{count} tasks are waiting for your approval' },
+  'mobile.home.approvalsOpen': 'Review pending approvals',
+  'mobile.tasks.pending': 'Waiting for your approval',
+  'mobile.tasks.inProgress': 'In progress',
+  'mobile.tasks.emptyInProgress': 'No tasks in progress',
+  'mobile.settings.connectionTitle': 'Your Mac'
 } as const satisfies Messages<typeof es>

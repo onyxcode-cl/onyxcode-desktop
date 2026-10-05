@@ -43,5 +43,16 @@ export const mobileShell = {
   'mobile.list.deleteMessage': '«{title}» se eliminará para siempre.',
   'mobile.list.deleteConfirm': 'Eliminar',
   'mobile.list.renameTitle': 'Renombrar conversación',
-  'mobile.list.loadingSlow': 'Cargando…'
+  'mobile.list.loadingSlow': 'Cargando…',
+  'mobile.drawer.open': 'Abrir menú',
+  'mobile.drawer.close': 'Cerrar menú',
+  'mobile.drawer.aria': 'Menú de navegación',
+  'mobile.drawer.empty': 'Aún no hay conversaciones',
+  'mobile.drawer.emptyHint': 'Empieza una con «Nueva conversación» y aparecerá aquí.',
+  'mobile.home.approvals': { one: '{count} tarea espera tu aprobación', other: '{count} tareas esperan tu aprobación' },
+  'mobile.home.approvalsOpen': 'Revisar aprobaciones pendientes',
+  'mobile.tasks.pending': 'Esperan tu aprobación',
+  'mobile.tasks.inProgress': 'En curso',
+  'mobile.tasks.emptyInProgress': 'No hay tareas en curso',
+  'mobile.settings.connectionTitle': 'Tu Mac'
 } as const
