@@ -1083,7 +1083,7 @@ sin nodos extra; en la PWA devuelve el hijo) y `ui/recipes.ts` (`POP`, `CARD`, `
 `Toggle` gana `size="sm"` y anillo de contraste apagado. Todo lo visual de escritorio va con `desk:`; el marcado previo queda fijado por
 `base-markup.test.tsx` (con `stripDesk`, sin `-u`). Kit: `app/dev/UiKit.tsx` (solo con `#ui-kit` y `localStorage onyx.uikit=1`, desde `main.tsx`)
 y `shot-desktop --scenario kit` (capturas por sección, estados forzados por CDP). Docs: `DESIGN.md`, `docs/UI-REDESIGN.md`.
-Peso PWA: estos componentes suman ~0,5 KB gzip a `boot.js` (688,9 → 690,2 KB min; gz 201,3 → 201,7); el límite `min` de boot.js pasa de 690 a 700 KB en `pwa/budget.json`.
+Peso PWA: estos componentes suman ~0,5 KB gzip a `boot.js` (688,9 → ~690,2 KB min; gz 201,3 → 201,7): supera por ~0,2 KB el límite `min` 690 de boot.js (no se cambia el presupuesto; lo resuelve la integración sacando del bundle del celular el código solo de escritorio).
 
 ## F8-B91 — Estructura general de escritorio (barra lateral, cabeceras, paleta, selector de modelo, listas)
 

@@ -53,14 +53,14 @@ const SAMPLE = 'Ñandú ágil 0123456789 ↑28 ↓136'
 
 function Typography(): React.JSX.Element {
   const rows: [string, string][] = [
-    ['text-caption 11', 'desk:text-caption'],
-    ['text-meta 12', 'desk:text-meta'],
-    ['text-ui 13', 'desk:text-ui'],
+    ['text-caption 11', 'block desk:text-caption'],
+    ['text-meta 12', 'block desk:text-meta'],
+    ['text-ui 13', 'block desk:text-ui'],
     ['text-sm 14', 'text-sm'],
-    ['text-prose 15', 'desk:text-prose'],
-    ['text-title-sm 15/600', 'desk:text-title-sm'],
-    ['text-title 20/600', 'desk:text-title'],
-    ['text-display 28/600', 'desk:text-display']
+    ['text-prose 15', 'block desk:text-prose'],
+    ['text-title-sm 15/600', 'block desk:text-title-sm'],
+    ['text-title 20/600', 'block desk:text-title'],
+    ['text-display 28/600', 'block desk:text-display']
   ]
   return (
     <Section id="tipografia" title="Tipografía">
@@ -94,18 +94,18 @@ function Typography(): React.JSX.Element {
 function Foundations(): React.JSX.Element {
   const spaces = [2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64]
   const radii: [string, string][] = [
-    ['2xs 4', 'desk:rounded-2xs'],
-    ['ctl-sm 6', 'desk:rounded-ctl-sm'],
-    ['ctl 8', 'desk:rounded-ctl'],
-    ['card 12', 'desk:rounded-card'],
-    ['modal 16', 'desk:rounded-modal'],
+    ['2xs 4', 'block desk:rounded-2xs'],
+    ['ctl-sm 6', 'block desk:rounded-ctl-sm'],
+    ['ctl 8', 'block desk:rounded-ctl'],
+    ['card 12', 'block desk:rounded-card'],
+    ['modal 16', 'block desk:rounded-modal'],
     ['full', 'rounded-full']
   ]
   const shadows: [string, string][] = [
     ['0 plano', ''],
-    ['1 raised', 'desk:shadow-raised'],
-    ['2 pop', 'desk:shadow-pop'],
-    ['3 modal', 'desk:shadow-modal']
+    ['1 raised', 'block desk:shadow-raised'],
+    ['2 pop', 'block desk:shadow-pop'],
+    ['3 modal', 'block desk:shadow-modal']
   ]
   return (
     <Section id="fundamentos" title="Espaciado, radios, elevación y velo">
