@@ -13,6 +13,7 @@ import { errorMessage, type OpencodeClient } from '../lib/opencode'
 import { useProviders } from '../stores/providers'
 import { useServer } from '../stores/server'
 import { useUi } from '../stores/ui'
+import { isRemoteSurface } from '../lib/platform'
 
 interface Agg {
   cost: number
@@ -67,9 +68,12 @@ function Ring({ pct }: { pct: number }): React.JSX.Element {
   const r = 7.5
   const c = 2 * Math.PI * r
   const tone = pct > 85 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : 'var(--accent)'
+  // Escritorio: sin arco mínimo forzado (con 0 % un punto redondo parecía un cargador); el celular conserva el suyo.
+  const mobile = isRemoteSurface()
+  const arc = mobile ? Math.max(pct, pct > 0 ? 4 : 0) : pct >= 1 ? pct : 0
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="-rotate-90">
-      <circle cx="10" cy="10" r={r} fill="none" stroke="var(--border-strong)" strokeWidth="2.25" />
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="usage-ring -rotate-90">
+      <circle cx="10" cy="10" r={r} fill="none" stroke="var(--border-strong)" strokeWidth="2.25" className="usage-ring-track" />
       <circle
         cx="10"
         cy="10"
@@ -77,9 +81,9 @@ function Ring({ pct }: { pct: number }): React.JSX.Element {
         fill="none"
         stroke={tone}
         strokeWidth="2.25"
-        strokeLinecap="round"
-        strokeDasharray={`${(Math.max(pct, pct > 0 ? 4 : 0) / 100) * c} ${c}`}
-        className="transition-[stroke-dasharray] duration-500"
+        strokeLinecap={mobile ? 'round' : 'butt'}
+        strokeDasharray={`${(arc / 100) * c} ${c}`}
+        className="usage-ring-arc transition-[stroke-dasharray] duration-500"
       />
     </svg>
   )
@@ -147,7 +151,8 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
     }
   }, [open, client])
 
-  if (!info) return null
+  // Escritorio: sin ningún turno del asistente no hay nada que medir (el aro vacío se leía como «cargando»).
+  if (!info || (!isRemoteSurface() && session.turns === 0)) return null
 
   const limit = info.limit.context
   const pct = limit > 0 ? Math.min(100, Math.round((session.context / limit) * 100)) : 0
@@ -168,6 +173,7 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
         className={`flex h-7 items-center gap-1.5 rounded-md px-1.5 text-muted transition-colors hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
       >
         <Ring pct={pct} />
+        {!isRemoteSurface() && <span className="text-[12px] whitespace-nowrap tabular-nums text-subtle">{pct} %</span>}
       </button>
 
       {open && (

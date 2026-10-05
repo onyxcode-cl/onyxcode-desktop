@@ -250,6 +250,11 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const newSession = useCode((s) => s.newSession)
   const aiGate = useCodeAiGate()
   const compareArmed = useCompareArmed('code', directory ?? null)
+  const sendTitle = compareArmed.armed
+    ? tg('compare.send', { count: compareArmed.count })
+    : busy
+      ? t('code.composer.queueTitle', { mod: MOD })
+      : t('code.composer.sendTitle', { mod: MOD })
   const serverCommands = useServerCommands(directory)
 
   const addFiles = (fileList: FileList | File[]): void => {
@@ -802,6 +807,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 <button
                   type="button"
                   title={t('code.composer.mention')}
+                  aria-label={t('code.composer.mention')}
                   onClick={() => {
                     const el = ref.current
                     const pos = el?.selectionStart ?? text.length
@@ -822,6 +828,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 <button
                   type="button"
                   title={t('code.composer.attach')}
+                  aria-label={t('code.composer.attach')}
                   onClick={() => fileInputRef.current?.click()}
                   className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg"
                 >
@@ -835,7 +842,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     type="button"
                     onClick={() => void abort()}
                     title={t('code.composer.stop')}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85"
+                    aria-label={t('code.composer.stop')}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85 desk:shrink-0"
                   >
                     <Square size={12} fill="currentColor" />
                   </button>
@@ -844,14 +852,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   type="button"
                   onClick={() => submit(false)}
                   disabled={(!text.trim() && attachments.length === 0) || disabled}
-                  title={
-                    compareArmed.armed
-                      ? tg('compare.send', { count: compareArmed.count })
-                      : busy
-                        ? t('code.composer.queueTitle', { mod: MOD })
-                        : t('code.composer.sendTitle', { mod: MOD })
-                  }
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
+                  title={sendTitle}
+                  aria-label={sendTitle}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0"
                 >
                   {busy ? <Send size={14} /> : <ArrowUp size={16} />}
                 </button>

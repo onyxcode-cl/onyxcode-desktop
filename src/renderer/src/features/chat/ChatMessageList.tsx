@@ -340,7 +340,7 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
   const canRetry = entries.some((e) => e.info.role === 'user')
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="relative min-h-0 flex-1 desk:before:pointer-events-none desk:before:absolute desk:before:inset-x-0 desk:before:bottom-0 desk:before:h-6 desk:before:bg-gradient-to-t desk:before:from-bg desk:before:to-transparent">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
         <div

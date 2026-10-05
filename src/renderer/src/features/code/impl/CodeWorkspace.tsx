@@ -299,7 +299,7 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   const native = nativeCode('dialogs')
   const dialogs = platformCaps().nativeDialogs
   return (
-    <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0">
+    <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0 desk:max-w-[min(22rem,40%)] desk:min-w-24 desk:shrink">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -353,13 +353,13 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
     info.changes ? t('code.branch.changes', { count: info.changes }) : t('code.branch.clean')
   ].join(' · ')
   return (
-    <Tip label={tip}>
+    <Tip label={tip} className="desk:max-w-40 desk:min-w-16 desk:shrink-[2]">
       <button
         type="button"
         onClick={() =>
           isRemoteSurface() ? useMobileNavStore.getState().push(CODE_CHANGES) : panel !== 'changes' && togglePanel('changes')
         }
-        className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
+        className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg desk:max-w-full desk:min-w-0 ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
       >
         <GitBranch size={12} className="shrink-0" />
         <span className="truncate">{info.branch}</span>
@@ -404,7 +404,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (
-        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex">
+        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex">
           <span className="text-subtle">/</span>
           <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
         </span>

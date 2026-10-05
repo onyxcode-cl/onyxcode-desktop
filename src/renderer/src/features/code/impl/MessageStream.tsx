@@ -548,7 +548,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   const showThinking = busy && !lastHasOutput && permissions.length === 0
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="relative min-h-0 flex-1 desk:before:pointer-events-none desk:before:absolute desk:before:inset-x-0 desk:before:bottom-0 desk:before:h-6 desk:before:bg-gradient-to-t desk:before:from-bg desk:before:to-transparent">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
         <div className={`mx-auto flex max-w-3xl flex-col ${isRemoteSurface() ? 'gap-6 px-4 pt-3 pb-4' : 'gap-6 px-6 py-6'}`}>

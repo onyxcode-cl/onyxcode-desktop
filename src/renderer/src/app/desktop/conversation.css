@@ -1,2 +1,15 @@
 /* Dueño: CONVERSACIÓN y CODE (mensajes, Markdown de escritorio, compositores, herramientas, diff). Vacío a propósito en la tanda 0.
  * Reglas: todo selector bajo :root[data-shell='desktop']; sin colores nuevos; tokens de ./tokens.css. */
+
+/* ---- T1 · Medidor de uso (UsageMeter): anillo de 16 px, trazo de 2 px, pista con --border (no parece un cargador) ---- */
+:root[data-shell='desktop'] .usage-ring {
+  width: 16px;
+  height: 16px;
+}
+:root[data-shell='desktop'] .usage-ring-track {
+  stroke: var(--border);
+  stroke-width: 2.5px;
+}
+:root[data-shell='desktop'] .usage-ring-arc {
+  stroke-width: 2.5px;
+}
