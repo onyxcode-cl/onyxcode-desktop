@@ -3,13 +3,14 @@
  * Las métricas vienen del manifiesto (las calcula main); lo que no se informa es `null` y se pinta «—», nunca «$0».
  */
 import { memo, useMemo, useRef } from 'react'
-import { ArrowDownLeft, ArrowUpRight, Check, Coins, Loader2, Timer, Wrench } from 'lucide-react'
+import { AlertCircle, ArrowDownLeft, ArrowUpRight, Check, Clock, Coins, Loader2, Timer, Wrench } from 'lucide-react'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import type { CompareColumnManifest, CompareManifest, CompareMode } from '@shared/ipc-code'
 import type { MsgKey } from '@shared/i18n'
 import { Button } from '../../components/Button'
 import { Markdown } from '../../components/Markdown'
 import { useT } from '../../lib/i18n'
+import { isRemoteSurface } from '../../lib/platform'
 import type { MessageEntry } from '../../lib/session-reducer'
 import {
   columnView,
@@ -44,9 +45,9 @@ const VIEW_TONE: Record<ColumnView, string> = {
   queued: 'bg-inset text-muted',
   starting: 'bg-accent-soft text-accent',
   running: 'bg-accent-soft text-accent',
-  done: 'bg-inset text-success',
-  error: 'bg-inset text-danger',
-  rateLimited: 'bg-inset text-warning',
+  done: 'bg-inset text-success desk:bg-[color-mix(in_srgb,var(--success)_13%,transparent)]',
+  error: 'bg-inset text-danger desk:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]',
+  rateLimited: 'bg-inset text-warning desk:bg-warning/15',
   cancelled: 'bg-inset text-subtle',
   adopted: 'bg-accent-soft text-accent',
   interrupted: 'bg-inset text-warning',
@@ -62,15 +63,24 @@ const BADGE_LABEL: Record<BadgeKind, MsgKey> = {
 export function StatePill({ view }: { view: ColumnView }): React.JSX.Element {
   const t = useT()
   const spinning = view === 'starting' || view === 'running'
+  const icon = !isRemoteSurface() ? (
+    view === 'done' || view === 'adopted' ? (
+      <Check size={12} aria-hidden />
+    ) : view === 'error' ? (
+      <AlertCircle size={12} aria-hidden />
+    ) : view === 'rateLimited' || view === 'interrupted' || view === 'queued' ? (
+      <Clock size={12} aria-hidden />
+    ) : null
+  ) : null
   return (
     <span
       role="status"
       aria-live="polite"
       data-state={view}
-      className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-medium ${VIEW_TONE[view]}`}
+      className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-medium desk:h-[22px] desk:px-2 desk:text-meta desk:gap-1.5 ${VIEW_TONE[view]}`}
     >
       {spinning && <Loader2 size={10} className="animate-spin" aria-hidden />}
-      {view === 'adopted' && <Check size={10} aria-hidden />}
+      {icon}
       {t(VIEW_LABEL[view])}
     </span>
   )
@@ -160,7 +170,8 @@ interface Props {
 }
 
 /** Chip de una métrica: icono + valor (el nombre accesible lo da el texto `sr-only`). */
-const CHIP = 'inline-flex h-[22px] items-center gap-1 rounded-md bg-inset px-1.5 text-[11.5px] tabular-nums text-muted'
+const CHIP =
+  'inline-flex h-[22px] items-center gap-1 rounded-md bg-inset px-1.5 text-[11.5px] tabular-nums text-muted desk:h-6 desk:rounded-ctl-sm desk:bg-hover desk:px-2 desk:font-[family-name:var(--font-code)] desk:text-[12px]'
 
 export function CompareColumn(props: Props): React.JSX.Element {
   const { manifest: m, column: c, modelName, entries, now, badges, permissions, mode, busy, failure } = props
@@ -189,10 +200,10 @@ export function CompareColumn(props: Props): React.JSX.Element {
       aria-label={label}
       data-testid={`compare-col-${c.index}`}
       data-state={view}
-      className={`relative flex min-h-0 min-w-0 flex-col bg-bg ${c.adopted ? 'ring-2 ring-accent ring-inset' : ''} ${c.discarded ? 'bg-inset text-muted' : ''}`}
+      className={`relative flex min-h-0 min-w-0 flex-col bg-bg ${c.adopted ? 'ring-2 ring-accent ring-inset desk:ring-[1.5px]' : ''} ${c.discarded ? 'bg-inset text-muted' : ''}`}
     >
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
-        <h3 className="min-w-0 flex-1 truncate text-[13px] font-medium" title={label}>
+        <h3 className="min-w-0 flex-1 truncate text-[13px] font-medium desk:text-[14px]" title={label}>
           {label}
         </h3>
         <StatePill view={view} />
@@ -280,7 +291,7 @@ export function CompareColumn(props: Props): React.JSX.Element {
         aria-live="off"
         aria-label={label}
         tabIndex={0}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset desk:px-4 desk:py-4"
       >
         {c.discarded ? (
           <p className="text-[12.5px] text-subtle">{t('compare.column.discarded')}</p>
@@ -344,10 +355,10 @@ export function CompareColumn(props: Props): React.JSX.Element {
       )}
 
       {!c.discarded && (
-        <footer className="flex h-12 shrink-0 items-center gap-2 border-t border-border px-3">
+        <footer className="flex h-12 shrink-0 items-center gap-2 border-t border-border px-3 desk:px-4">
           {mode === 'code' && c.diff && (
             <>
-              <span className="min-w-0 truncate text-[11.5px] text-muted tabular-nums">
+              <span className="min-w-0 truncate text-[11.5px] text-muted tabular-nums desk:font-[family-name:var(--font-code)] desk:text-[12px]">
                 <span className="text-success">+{c.diff.additions}</span> <span className="text-danger">−{c.diff.deletions}</span>
                 {' · '}
                 {t('compare.diff.summary', { count: c.diff.files })}

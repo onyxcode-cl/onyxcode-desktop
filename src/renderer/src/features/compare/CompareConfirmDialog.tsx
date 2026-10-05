@@ -89,7 +89,10 @@ export function ConfirmDialogBody({
           </p>
           <ul className="flex flex-wrap gap-1.5" aria-label={t('compare.launcher.list')}>
             {c.models.map((m) => (
-              <li key={`${m.providerID}/${m.modelID}/${m.variant ?? ''}`} className="rounded-full bg-inset px-2 py-0.5 text-[12px] text-fg">
+              <li
+                key={`${m.providerID}/${m.modelID}/${m.variant ?? ''}`}
+                className="rounded-full bg-inset px-2 py-0.5 text-[12px] text-fg desk:inline-flex desk:h-6 desk:items-center desk:rounded-ctl-sm desk:px-2.5 desk:font-[family-name:var(--font-code)]"
+              >
                 {nameOf(m.providerID, m.modelID)}
                 {m.variant ? ` · ${m.variant}` : ''}
               </li>
