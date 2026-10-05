@@ -1,7 +1,7 @@
 import { useEffect, useId } from 'react'
 import type { ReactNode } from 'react'
 
-const WIDTHS = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-xl' } as const
+const WIDTHS = { sm: 'max-w-sm desk:max-w-[420px]', md: 'max-w-md desk:max-w-[420px]', lg: 'max-w-xl' } as const
 
 interface Props {
   /** Título visible (se enlaza con `aria-labelledby`). */
@@ -37,7 +37,6 @@ export function DialogFrame({
   className = ''
 }: Props): React.JSX.Element {
   const titleId = useId()
-  const deskWidth = size === 'lg' ? '' : 'desk:max-w-[420px]'
   useEffect(() => {
     if (!dismissable) return undefined
     const onKey = (e: KeyboardEvent): void => {
@@ -59,7 +58,7 @@ export function DialogFrame({
         aria-modal="true"
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
-        className={`w-full ${WIDTHS[size]} rounded-2xl border border-border bg-elevated p-5 shadow-2xl animate-rise-in desk:rounded-modal desk:shadow-modal ${deskWidth} desk:p-6 desk:border-transparent ${className}`}
+        className={`w-full ${WIDTHS[size]} rounded-2xl border border-border bg-elevated p-5 shadow-2xl animate-rise-in desk:rounded-modal desk:shadow-modal desk:p-6 desk:border-transparent ${className}`}
       >
         {icon && (
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:rounded-card desk:mb-4">

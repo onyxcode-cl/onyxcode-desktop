@@ -15,7 +15,6 @@ export function Toggle({
   /** `md` = 36×20 (por defecto), `sm` = 28×16 (filas densas). */
   size?: 'sm' | 'md'
 }): React.JSX.Element {
-  const deskSize = size === 'sm' ? 'desk:h-2.5 desk:w-2.5' : 'desk:h-3 desk:w-3'
   const knobMove = checked
     ? size === 'sm'
       ? 'translate-x-3.5 desk:bg-accent-fg desk:translate-x-[15px]'
@@ -38,7 +37,7 @@ export function Toggle({
       className={`relative inline-flex ${size === 'sm' ? 'h-4 w-7' : 'h-5 w-9'} shrink-0 items-center rounded-full transition-colors duration-200 desk:duration-[180ms] disabled:opacity-40 desk:disabled:cursor-not-allowed desk:disabled:opacity-50 ${checked ? 'bg-accent desk:bg-accent' : 'bg-border-strong desk:bg-transparent desk:shadow-[inset_0_0_0_1.5px_var(--fg-subtle)]'}`}
     >
       <span
-        className={`inline-block ${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} rounded-full bg-white shadow-sm desk:shadow-none transition-transform duration-200 ease-out ${deskSize} ${knobMove}`}
+        className={`inline-block ${size === 'sm' ? 'h-3 w-3 desk:h-2.5 desk:w-2.5' : 'h-4 w-4 desk:h-3 desk:w-3'} rounded-full bg-white shadow-sm desk:shadow-none transition-transform duration-200 ease-out ${knobMove}`}
       />
     </button>
   )

@@ -80,7 +80,7 @@ function ThemePreview({ kind }: { kind: ThemePreference }): React.JSX.Element {
     </div>
   )
   return (
-    <div className="relative h-16 w-full overflow-hidden rounded-lg border border-border/70">
+    <div className="relative h-16 w-full overflow-hidden rounded-lg border border-border/70 desk:h-[72px] desk:rounded-ctl desk:border-0 desk:shadow-[inset_0_0_0_1px_var(--border)]">
       {kind === 'dark' ? pane(dark) : pane(light)}
       {kind === 'system' && (
         <div className="absolute inset-0" style={{ clipPath: 'polygon(55% 0, 100% 0, 100% 100%, 45% 100%)' }}>
@@ -144,18 +144,20 @@ export function GeneralSection(): React.JSX.Element {
     <div>
       {!phone && <SectionHeader title={t('settings.general.title')} description={t('settings.general.subtitle')} />}
 
-      <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('settings.general.theme')}</h3>
-      <div className="grid grid-cols-3 gap-2">
+      <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mt-8 desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+        {t('settings.general.theme')}
+      </h3>
+      <div className="grid grid-cols-3 gap-2 desk:gap-3">
         {THEMES.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => void update({ theme: id })}
             aria-pressed={settings.theme === id}
-            className={`group flex flex-col gap-2 rounded-xl border p-2 text-sm transition-[border-color,box-shadow,background-color] ${settings.theme === id ? 'border-accent bg-accent-soft/50 shadow-[0_0_0_3px_var(--accent-ring)]' : 'border-border hover:border-border-strong hover:bg-hover/50'}`}
+            className={`group flex flex-col gap-2 rounded-xl border p-2 text-sm transition-[border-color,box-shadow,background-color] desk:border-transparent desk:pb-2.5 desk:shadow-raised ${settings.theme === id ? 'border-accent bg-accent-soft/50 shadow-[0_0_0_3px_var(--accent-ring)] desk:bg-accent-soft desk:shadow-[inset_0_0_0_1.5px_var(--accent)]' : 'border-border hover:border-border-strong hover:bg-hover/50 desk:bg-elevated desk:hover:bg-hover'}`}
           >
             <ThemePreview kind={id} />
-            <span className="flex items-center justify-center gap-1.5 pb-0.5">
+            <span className="flex items-center justify-center gap-1.5 pb-0.5 desk:text-[13px] desk:font-medium">
               <Icon size={14} className={settings.theme === id ? 'text-accent' : 'text-muted'} />
               {t(labelKey)}
             </span>
