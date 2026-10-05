@@ -11,7 +11,6 @@ import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpenc
 import type { OpencodeAction } from './opencode-links'
 import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
-import type { AccountState } from './account'
 import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
 
@@ -63,23 +62,6 @@ export interface IpcInvokeContract {
   /** El renderer de la ventana principal ya pintó: con la carga de la ventana completa el marcador de arranque del actualizador. */
   'app:bootConfirm': { req: void; res: void }
 
-  // cuenta (solo ventana principal; ver main/account y docs/CUENTAS-SERVIDOR.md)
-  'account:state': { req: void; res: AccountState }
-  /** Inicia sesión con Google (navegador + receptor loopback). Resuelve al terminar o cancelar. */
-  'account:google': { req: void; res: AccountState }
-  /** «Cancelar» mientras se espera al navegador. */
-  'account:cancel': { req: void; res: AccountState }
-  /** «Reintentar»: vuelve a validar la sesión guardada con el servidor. */
-  'account:retry': { req: void; res: AccountState }
-  /** Pide un código de 6 dígitos por correo (respuesta uniforme: no revela si la cuenta existe). */
-  'account:emailStart': { req: { email: string }; res: void }
-  'account:emailVerify': { req: { email: string; code: string }; res: AccountState }
-  'account:signOut': { req: void; res: AccountState }
-  /** Borra la cuenta en el servidor y la sesión local (no toca las claves de IA ni las conversaciones). */
-  'account:delete': { req: void; res: AccountState }
-  /** «Descargar mis datos»: guarda el JSON de la cuenta con un diálogo «Guardar como…». */
-  'account:export': { req: void; res: { saved: boolean } }
-
   // opencode sidecar
   'opencode:connection': { req: void; res: OpencodeConnection }
   'opencode:status': { req: void; res: ServerStatus }
@@ -108,8 +90,6 @@ export interface IpcEventContract {
   'app:updateState': UpdateState
   /** Progreso y fase de la descarga/instalación de una actualización. */
   'app:updateProgress': InstallState
-  /** Cambio en el estado de la cuenta (nunca incluye el token). */
-  'account:changed': AccountState
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeContract
@@ -134,15 +114,6 @@ export const IPC_INVOKE_CHANNELS = [
   'app:updateInstall',
   'app:bootConfirm',
   'app:testProviderKey',
-  'account:state',
-  'account:google',
-  'account:cancel',
-  'account:retry',
-  'account:emailStart',
-  'account:emailVerify',
-  'account:signOut',
-  'account:delete',
-  'account:export',
   'opencode:connection',
   'opencode:status',
   'opencode:restart',
@@ -160,8 +131,7 @@ export const IPC_EVENT_CHANNELS = [
   'settings:changed',
   'app:openTarget',
   'app:updateState',
-  'app:updateProgress',
-  'account:changed'
+  'app:updateProgress'
 ] as const satisfies readonly IpcEventChannel[]
 
 // Garantiza en compilación que las listas cubren todo el contrato.

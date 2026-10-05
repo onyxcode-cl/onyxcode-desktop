@@ -264,16 +264,6 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'app:updateInstall': 'D',
   'app:bootConfirm': 'X',
   'app:testProviderKey': 'X',
-  // ── cuenta ──
-  'account:state': 'R',
-  'account:google': 'X',
-  'account:cancel': 'X',
-  'account:retry': 'X',
-  'account:emailStart': 'X',
-  'account:emailVerify': 'X',
-  'account:signOut': 'D',
-  'account:delete': 'X',
-  'account:export': 'X',
   // ── motor ──
   'opencode:connection': 'R', // el puente reescribe `baseUrl`/`authorization`
   'opencode:status': 'R',
@@ -563,7 +553,6 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'app:openTarget': 'deny',
   'app:updateState': 'allow',
   'app:updateProgress': 'allow',
-  'account:changed': 'deny',
   'pty:data': 'deny',
   'pty:exit': 'deny',
   'files:changed': 'sanitize', // solo rutas del ámbito
@@ -1134,7 +1123,6 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     text: t('Reiniciar el Mac para instalar la actualización de OnyxCode', 'Restart OnyxCode to install the update'),
     detail: []
   }),
-  'account:signOut': () => ({ text: t('Cerrar la sesión de tu cuenta en este Mac', 'Sign out of your account on this Mac'), detail: [] }),
   'opencode:restart': () => ({
     text: t('Reiniciar el motor de OnyxCode (corta lo que se esté ejecutando)', 'Restart the OnyxCode engine (stops whatever is running)'),
     detail: []

@@ -50,17 +50,6 @@ export const UPDATE_PUBLIC_KEY = '' as string
 export const UPDATE_KEY_ID = 'onyxcode-1' as string
 
 /**
- * Servidor de cuentas (origen `https://…`, sin ruta). `null` = la app NO exige iniciar sesión y no
- * contacta ningún servidor de cuenta. Se rellena SOLO al activar las cuentas (ver
- * docs/CUENTAS-SERVIDOR.md y docs/SEGURIDAD.md «Cuenta»).
- */
-export const ACCOUNT_API = 'https://api.onyxcode.cl' as string | null
-
-/** Política de privacidad y términos publicados (URL `https://…`). Vacío = la pantalla muestra el borrador local. */
-export const PRIVACY_URL = '' as string
-export const TERMS_URL = '' as string
-
-/**
  * Clave PÚBLICA Ed25519 (SPKI DER en base64, 44 bytes, o los 32 crudos) con la que el Mac comprueba el manifiesto firmado del sitio
  * del control remoto («También fuera de casa»; `site-manifest.json` + `.sig`). Vacía = la vigilancia queda «sin verificar» y el modo
  * nube funciona igual, avisando en Ajustes. La PRIVADA la genera el dueño fuera del repo y nunca va a CI ni a Cloudflare

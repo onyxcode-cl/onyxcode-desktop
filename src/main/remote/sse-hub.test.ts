@@ -236,14 +236,7 @@ describe('SseHub', () => {
     expect(sub).toBeDefined()
     expect(sub!.channels.has('opencode:status')).toBe(true)
     expect(sub!.channels.has('computer:accessRequest')).toBe(true)
-    for (const denied of [
-      'pty:data',
-      'computer:action',
-      'account:changed',
-      'remote:confirmRequest',
-      'remote:changed',
-      'extras:quick-prompt'
-    ]) {
+    for (const denied of ['pty:data', 'computer:action', 'remote:confirmRequest', 'remote:changed', 'extras:quick-prompt']) {
       expect(sub!.channels.has(denied)).toBe(false)
     }
     sub!.deliver('opencode:status', { state: 'ready' })

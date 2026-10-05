@@ -183,7 +183,6 @@ describe('D: confirmación en el Mac', () => {
   const D_IPC: Array<[string, unknown]> = [
     ['app:updateDownload', undefined],
     ['app:updateInstall', undefined],
-    ['account:signOut', undefined],
     ['opencode:restart', undefined],
     ['settings:set', { tasksGlobalInstructions: 'haz X' }],
     ['settings:set', { theme: 'dark', tasksGlobalInstructions: 'x' }],
