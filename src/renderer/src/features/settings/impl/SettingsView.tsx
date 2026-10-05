@@ -58,20 +58,36 @@ export type SettingsSectionId =
 /** Etiqueta calculada al pintar (sigue al idioma activo). */
 const lazy = (key: Parameters<typeof t>[0]) => (): string => t(key)
 
-const SECTIONS: { id: SettingsSectionId; label: () => string; icon: typeof Cpu; View: () => React.JSX.Element }[] = [
-  { id: 'general', label: lazy('settings.nav.general'), icon: SlidersHorizontal, View: GeneralSection },
-  { id: 'models', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection },
-  { id: 'mcp', label: lazy('settings.nav.mcp'), icon: Blocks, View: McpSection },
-  { id: 'tasks', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection },
-  { id: 'network', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection },
-  { id: 'computer', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
-  { id: 'automode', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
-  { id: 'browser', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection },
-  { id: 'remote', label: lazy('remote.nav'), icon: Smartphone, View: RemoteSection },
-  { id: 'usage', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection },
-  { id: 'shortcuts', label: lazy('settings.nav.shortcuts'), icon: Keyboard, View: ShortcutsSection },
-  { id: 'diagnostics', label: lazy('settings.nav.diagnostics'), icon: LifeBuoy, View: DiagnosticsSection },
-  { id: 'about', label: lazy('settings.nav.about'), icon: Info, View: AboutSection }
+type SettingsGroupId = 'app' | 'agents' | 'connections' | 'help'
+
+/** Grupos de la navegación (F8-B96), en orden; el encabezado solo se pinta en escritorio. */
+const GROUPS: { id: SettingsGroupId; label: () => string }[] = [
+  { id: 'app', label: lazy('settings.group.app') },
+  { id: 'agents', label: lazy('settings.group.agents') },
+  { id: 'connections', label: lazy('settings.group.connections') },
+  { id: 'help', label: lazy('settings.group.help') }
+]
+
+const SECTIONS: {
+  id: SettingsSectionId
+  group: SettingsGroupId
+  label: () => string
+  icon: typeof Cpu
+  View: () => React.JSX.Element
+}[] = [
+  { id: 'general', group: 'app', label: lazy('settings.nav.general'), icon: SlidersHorizontal, View: GeneralSection },
+  { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection },
+  { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection },
+  { id: 'shortcuts', group: 'app', label: lazy('settings.nav.shortcuts'), icon: Keyboard, View: ShortcutsSection },
+  { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection },
+  { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection },
+  { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
+  { id: 'computer', group: 'agents', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
+  { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection },
+  { id: 'mcp', group: 'agents', label: lazy('settings.nav.mcp'), icon: Blocks, View: McpSection },
+  { id: 'remote', group: 'connections', label: lazy('remote.nav'), icon: Smartphone, View: RemoteSection },
+  { id: 'diagnostics', group: 'help', label: lazy('settings.nav.diagnostics'), icon: LifeBuoy, View: DiagnosticsSection },
+  { id: 'about', group: 'help', label: lazy('settings.nav.about'), icon: Info, View: AboutSection }
 ]
 
 const KEY = 'settings.section'
@@ -187,27 +203,38 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
       </header>
       <div className="flex min-h-0 flex-1">
         <nav
-          className="w-52 shrink-0 space-y-0.5 overflow-y-auto border-r border-border/70 bg-sidebar/50 p-3"
+          className="w-52 shrink-0 space-y-0.5 overflow-y-auto desk:w-48 desk:xl:w-52 border-r border-border/70 bg-sidebar/50 p-3"
           aria-label={t('settings.navAria')}
         >
-          {sections.map(({ id, label, icon: Icon }) => {
-            const active = section === id
+          {GROUPS.map((g) => {
+            const inGroup = sections.filter((x) => x.group === g.id)
+            if (inGroup.length === 0) return null // un grupo vacío no pinta encabezado
             return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => select(id)}
-                aria-current={active ? 'page' : undefined}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70' : 'text-muted hover:bg-hover hover:text-fg'}`}
-              >
-                <Icon size={15} className={active ? 'text-accent' : ''} />
-                {label()}
-              </button>
+              <div key={g.id} role="group" aria-label={g.label()} className="space-y-0.5">
+                <div aria-hidden className="hidden px-3 pt-4 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:block">
+                  {g.label()}
+                </div>
+                {inGroup.map(({ id, label, icon: Icon }) => {
+                  const active = section === id
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => select(id)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                    >
+                      <Icon size={15} className={active ? 'text-accent' : ''} />
+                      {label()}
+                    </button>
+                  )
+                })}
+              </div>
             )
           })}
         </nav>
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div key={section} className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8">
+          <div key={section} className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8 desk:max-w-[720px] desk:px-6 desk:xl:px-10">
             <Current />
           </div>
         </div>

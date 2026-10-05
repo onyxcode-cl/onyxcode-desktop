@@ -2,34 +2,50 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 
 export function SectionHeader({ title, description }: { title: string; description?: ReactNode }): React.JSX.Element {
   return (
-    <div className="mb-6">
+    <div className="mb-6 desk:mb-8">
       <h2 className="font-display text-[22px] font-semibold tracking-[-0.015em]">{title}</h2>
-      {description && <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>}
+      {description && <p className="mt-1 text-sm leading-relaxed text-muted desk:max-w-[64ch] desk:leading-[22px]">{description}</p>}
     </div>
   )
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
-  return <div className={`rounded-xl border border-border bg-elevated shadow-xs ${className}`}>{children}</div>
+  return <div className={`rounded-xl border border-border bg-elevated shadow-xs desk:@container ${className}`}>{children}</div>
 }
 
 /** Fila etiqueta/descripción + control, separada por bordes dentro de una Card. */
 export function Row({
   label,
   description,
+  layout = 'inline',
   children
 }: {
   label: ReactNode
   description?: ReactNode
+  /**
+   * `stack-narrow` (solo escritorio): con la tarjeta estrecha (<34 rem) el control pasa debajo del texto; ancha, en línea.
+   * Por defecto `inline`: no cambia ninguna fila existente ni el celular (todo va tras `desk:`).
+   */
+  layout?: 'inline' | 'stack-narrow'
   children?: ReactNode
 }): React.JSX.Element {
+  const stack = layout === 'stack-narrow'
   return (
-    <div data-row="" className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0">
+    <div
+      data-row=""
+      className={`flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0 ${
+        stack
+          ? 'desk:flex-col desk:items-stretch desk:gap-3 desk:@[34rem]:flex-row desk:@[34rem]:items-center desk:@[34rem]:justify-between desk:@[34rem]:gap-4'
+          : ''
+      }`}
+    >
       <div className="min-w-0">
         <div className="text-sm font-medium">{label}</div>
-        {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
+        {description && (
+          <div className="mt-0.5 text-xs text-muted desk:max-w-[60ch] desk:text-[13px] desk:leading-[18px]">{description}</div>
+        )}
       </div>
-      {children && <div className="shrink-0">{children}</div>}
+      {children && <div className={`shrink-0 ${stack ? 'desk:w-full desk:@[34rem]:w-auto' : ''}`}>{children}</div>}
     </div>
   )
 }

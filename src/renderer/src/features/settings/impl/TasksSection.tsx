@@ -672,6 +672,7 @@ export function TasksSection(): React.JSX.Element {
       <Group title={t('tasksSettings.archive.title')} description={t('tasksSettings.archive.desc')}>
         <Card>
           <Row
+            layout="stack-narrow"
             label={t('tasksSettings.archive.after')}
             description={
               archiveOverMax ? t('tasksSettings.archive.orgMax', { days: locks.maxArchiveDays ?? 0 }) : t('tasksSettings.archive.default')
