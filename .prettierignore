@@ -5,3 +5,6 @@ resources
 *.tsbuildinfo
 package-lock.json
 dist-site
+
+# Guardia del celular: literales de snapshot fijados byte a byte (b6a502a); no reformatear
+src/renderer/src/features/code/impl/PermissionCard.mobile-pin.test.tsx

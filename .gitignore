@@ -24,3 +24,6 @@ resources/opencode-bin/bin/
 
 # Permisos locales de Claude Code (no publicar)
 .claude/settings.local.json
+
+# Fixture de migración (prueba m001): debe versionarse aunque *.log esté ignorado
+!e2e/fixtures/legacy-userdata/**/*.log
