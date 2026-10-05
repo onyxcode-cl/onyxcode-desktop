@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react'
+import { ListChecks } from 'lucide-react'
 import { t } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeDefinition } from '../../app/types'
@@ -11,7 +11,7 @@ export const tasksMode: ModeDefinition = {
   get label() {
     return MODE_LABELS.tasks
   },
-  icon: Users,
+  icon: ListChecks,
   View: TasksWorkspace,
   SidebarContent: TasksSidebar,
   newAction: {
