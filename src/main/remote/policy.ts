@@ -1118,13 +1118,13 @@ const t = (es: string, en: string): RemoteText => ({ es, en })
 
 /** Resumen legible (es/en) de cada acción D. Las claves son canales IPC o `MÉTODO /ruta`. */
 export const CELULAR_SUMMARIES: Record<string, Summary> = {
-  'app:updateDownload': () => ({ text: t('Descargar la actualización de OnyxCode', 'Download the OnyxCode update'), detail: [] }),
+  'app:updateDownload': () => ({ text: t('Descargar la actualización de Lazunox', 'Download the Lazunox update'), detail: [] }),
   'app:updateInstall': () => ({
-    text: t('Reiniciar el Mac para instalar la actualización de OnyxCode', 'Restart OnyxCode to install the update'),
+    text: t('Reiniciar el Mac para instalar la actualización de Lazunox', 'Restart Lazunox to install the update'),
     detail: []
   }),
   'opencode:restart': () => ({
-    text: t('Reiniciar el motor de OnyxCode (corta lo que se esté ejecutando)', 'Restart the OnyxCode engine (stops whatever is running)'),
+    text: t('Reiniciar el motor de Lazunox (corta lo que se esté ejecutando)', 'Restart the Lazunox engine (stops whatever is running)'),
     detail: []
   }),
   'settings:set': (p) => ({

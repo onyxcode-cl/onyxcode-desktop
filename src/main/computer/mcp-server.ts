@@ -66,7 +66,7 @@ const INSTANT = process.env.COMPUTER_INSTANT === '1'
 const TYPE_DELAY = process.env.COMPUTER_TYPE_DELAY_MS ?? ''
 const SETTLE_MS = 450
 const STOPPED_MSG = 'Control detenido por el usuario'
-const UNVERIFIED_MSG = 'No se pudo verificar el estado del kill-switch con OnyxCode; acción rechazada'
+const UNVERIFIED_MSG = 'No se pudo verificar el estado del kill-switch con Lazunox; acción rechazada'
 const STATE_CACHE_MS = 200
 /** Por debajo de esto sin pulsar el teclado real, se considera "el usuario está escribiendo ahora". */
 const TYPING_PAUSE_SECONDS = 1.2
@@ -713,7 +713,7 @@ async function captureScreen(session?: string): Promise<Shot> {
         } catch (err) {
           throw new Error(
             `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
-              'Falta el permiso de Grabación de pantalla para OnyxCode.'
+              'Falta el permiso de Grabación de pantalla para Lazunox (aparece como OnyxCode en Ajustes del Sistema).'
           )
         }
         if (!existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
@@ -857,7 +857,7 @@ const AX_ACTIONS = new Set(['AXShowMenu', 'AXIncrement', 'AXDecrement', 'AXConfi
 function axExitMessage(code: number): string | null {
   switch (code) {
     case 2:
-      return 'Falta el permiso de Accesibilidad para OnyxCode.'
+      return 'Falta el permiso de Accesibilidad para Lazunox (aparece como OnyxCode en Ajustes del Sistema).'
     case 6:
       return 'Reconocimiento de voz no autorizado.'
     case 7:

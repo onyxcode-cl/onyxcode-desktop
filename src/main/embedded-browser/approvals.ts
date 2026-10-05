@@ -12,7 +12,7 @@
 import { t } from '@shared/i18n'
 import { randomBytes } from 'node:crypto'
 import { dialog, Notification } from 'electron'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import type { BrowserApprovalRequest, BrowserDecision, BrowserOwner } from '@shared/ipc-browser'
 
 const TIMEOUT_MS = 10 * 60 * 1000
@@ -90,7 +90,7 @@ async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserD
   try {
     if (Notification.isSupported()) {
       new Notification({
-        title: APP_NAME,
+        title: DISPLAY_NAME,
         body:
           req.kind === 'sensitive'
             ? (req.summary ?? t('merr.notif.agentSensitive', { site: req.site }))

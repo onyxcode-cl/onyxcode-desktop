@@ -12,7 +12,8 @@
  *   serie), sin captura de pantalla desde el renderer.
  * - Menú de aplicación propio en producción (sin Recargar ni Herramientas de desarrollo).
  */
-import { app, Menu, session, shell, type WebContents } from 'electron'
+import { app, Menu, session, shell, type MenuItemConstructorOptions, type WebContents } from 'electron'
+import { DISPLAY_NAME } from '@shared/brand'
 import { onLangChange, t } from '@shared/i18n'
 import { isTrustedUrl, originOf } from './app-protocol'
 import { isEmbeddedBrowserSession } from '../embedded-browser/session'
@@ -85,26 +86,50 @@ function installPermissionHandlers(): void {
   })
 }
 
-function buildProductionMenu(): void {
-  const isMac = process.platform === 'darwin'
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      ...(isMac ? [{ role: 'appMenu' as const }] : []),
-      { role: 'fileMenu' as const },
-      { role: 'editMenu' as const },
-      {
-        label: t('main.menu.view'),
-        submenu: [
-          { role: 'resetZoom' as const },
-          { role: 'zoomIn' as const },
-          { role: 'zoomOut' as const },
-          { type: 'separator' as const },
-          { role: 'togglefullscreen' as const }
+/**
+ * Plantilla del menú de producción. En macOS `{ role: 'appMenu' }` rotula «Acerca de/Ocultar/Salir de» con
+ * `app.name`, que se mantiene en «OnyxCode» (clave del Llavero y userData); por eso el menú de la app es
+ * propio y usa el nombre visible. Exportada para probarla sin Electron.
+ */
+export function buildProductionMenuTemplate(isMac: boolean): MenuItemConstructorOptions[] {
+  const app_ = { app: DISPLAY_NAME }
+  return [
+    ...(isMac
+      ? [
+          {
+            label: DISPLAY_NAME,
+            submenu: [
+              { role: 'about' as const, label: t('main.menu.about', app_) },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const, label: t('main.menu.hide', app_) },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const, label: t('main.menu.quit', app_) }
+            ]
+          }
         ]
-      },
-      { role: 'windowMenu' as const }
-    ])
-  )
+      : []),
+    { role: 'fileMenu' as const },
+    { role: 'editMenu' as const },
+    {
+      label: t('main.menu.view'),
+      submenu: [
+        { role: 'resetZoom' as const },
+        { role: 'zoomIn' as const },
+        { role: 'zoomOut' as const },
+        { type: 'separator' as const },
+        { role: 'togglefullscreen' as const }
+      ]
+    },
+    { role: 'windowMenu' as const }
+  ]
+}
+
+function buildProductionMenu(): void {
+  Menu.setApplicationMenu(Menu.buildFromTemplate(buildProductionMenuTemplate(process.platform === 'darwin')))
 }
 
 function installProductionMenu(): void {
@@ -122,5 +147,7 @@ export function installWebSecurity(): void {
   installed = true
   app.on('web-contents-created', (_event, wc) => harden(wc))
   installPermissionHandlers()
+  // Panel «Acerca de» con el nombre visible (app.name sigue siendo «OnyxCode»: Llavero y userData).
+  app.setAboutPanelOptions({ applicationName: DISPLAY_NAME, applicationVersion: app.getVersion() })
   installProductionMenu()
 }

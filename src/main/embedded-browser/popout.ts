@@ -8,7 +8,7 @@
  * `service.ts` (mueve la vista entre `mainWindow.contentView` y esta ventana según corresponda).
  */
 import { app, BrowserWindow } from 'electron'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 
@@ -25,7 +25,7 @@ function create(): BrowserWindow {
     minWidth: 480,
     minHeight: 360,
     show: false,
-    title: `${APP_NAME} · Navegador`,
+    title: `${DISPLAY_NAME} · Navegador`,
     webPreferences: {
       preload: preloadPath('browser-host'),
       sandbox: true,

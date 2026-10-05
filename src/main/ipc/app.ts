@@ -1,11 +1,11 @@
 import { app, shell, type IpcMain } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { handle, IpcError } from './handle'
 
 export function registerAppHandlers(ipcMain: IpcMain, ctx: { chatDirectory: string }): void {
   handle(ipcMain, 'app:info', () => ({
-    name: APP_NAME,
+    name: DISPLAY_NAME,
     version: app.getVersion(),
     platform: process.platform,
     userDataPath: app.getPath('userData'),

@@ -11,7 +11,7 @@
  */
 import { t } from '@shared/i18n'
 import { resolve, sep } from 'node:path'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { isInside } from '../util/paths'
 import { defaultDeniedReadPaths } from './sandbox-profile'
 
@@ -107,7 +107,7 @@ export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext):
   // Estado interno de la app
   const userData = key(ctx.userData)
   if (isInside(f, userData)) {
-    return t('merr.folder.appState', { app: APP_NAME })
+    return t('merr.folder.appState', { app: DISPLAY_NAME })
   }
 
   // ~/Library: iCloud Drive con su propio mensaje

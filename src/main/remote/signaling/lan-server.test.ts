@@ -89,7 +89,7 @@ describe('LanSignalingServer', () => {
     rmSync(join(dir, 'index.html'))
     const r = await get('/')
     expect(r.status).toBe(200)
-    expect(r.body).toContain('OnyxCode')
+    expect(r.body).toContain('Lazunox')
   })
 
   it('rechaza Origin ajeno, sin Origin y Host ajeno en el WebSocket', async () => {

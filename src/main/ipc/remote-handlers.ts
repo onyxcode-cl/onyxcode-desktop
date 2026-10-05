@@ -3,6 +3,7 @@
  * no cargan `ws`, `qrcode` ni `node-datachannel` (eso lo hace `remote/loader.ts` al pulsar «Activar»).
  */
 import { BrowserWindow, Notification, app, dialog, type IpcMain } from 'electron'
+import { DISPLAY_NAME } from '@shared/brand'
 import { getLang } from '@shared/i18n'
 import type { RemoteConfirmRequest, RemoteEventContract, RemoteInvokeContract, RemotePairRequest, RemoteState } from '@shared/ipc-remote'
 import { LIMITS } from '@shared/remote/protocol'
@@ -110,7 +111,7 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
       if (findMainWindow(deps)) showMainWindow(deps)
       else if (Notification.isSupported()) {
         const en = getLang() === 'en'
-        new Notification({ title: 'OnyxCode', body: info.summary[en ? 'en' : 'es'] }).show()
+        new Notification({ title: DISPLAY_NAME, body: info.summary[en ? 'en' : 'es'] }).show()
       }
     },
     audit: (e) => getAudit().append(e)

@@ -419,5 +419,5 @@ export class LanSignalingServer implements SignalingTransport {
 
 function fallbackPage(): string {
   const msg = t('remote.pwa.missing')
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OnyxCode</title></head><body style="font-family:system-ui;padding:24px"><p>${msg.replace(/[<>&]/g, '')}</p></body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lazunox</title></head><body style="font-family:system-ui;padding:24px"><p>${msg.replace(/[<>&]/g, '')}</p></body></html>`
 }

@@ -5,7 +5,7 @@
  * Por qué así (AUDIT.md S6 + fuses):
  * - Los `opencode serve` se lanzan desvinculados de TCC (`process/disclaim.ts`); un MCP local lanzado
  *   por OpenCode tampoco tendría Accesibilidad/Grabación de pantalla. Un utilityProcess es hijo de
- *   OnyxCode y conserva su responsabilidad TCC, igual que el `cu-helper` y `screencapture` que lanza.
+ *   Lazunox y conserva su responsabilidad TCC, igual que el `cu-helper` y `screencapture` que lanza.
  * - Sin `ELECTRON_RUN_AS_NODE`: el fuse RunAsNode puede ir desactivado en el paquete.
  *
  * Puerto y token son FIJOS durante la vida de la app: si el proceso muere se relanza en el mismo
@@ -62,7 +62,7 @@ export class ComputerMcpHost {
       COMPUTER_MCP_PORT: String(this.port)
     })
     const proc = utilityProcess.fork(script, [], {
-      serviceName: 'OnyxCode MCP de control del Mac',
+      serviceName: 'Lazunox MCP de control del Mac',
       env,
       stdio: 'pipe'
     })

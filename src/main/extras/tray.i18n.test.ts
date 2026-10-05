@@ -32,7 +32,7 @@ describe('bandeja: idioma', () => {
   it('en español el menú es el de siempre', async () => {
     const { createTray, destroyTray } = await import('./tray')
     createTray({ onNewConversation: vi.fn(), onQuickEntry: vi.fn(), onOpenApp: vi.fn(), onOpenSettings: vi.fn() }, 'Alt+Space')
-    expect(labels(menus.at(-1) ?? [])).toEqual(['Nueva conversación', 'Quick Entry', 'Abrir OnyxCode', 'Ajustes…', 'Salir de OnyxCode'])
+    expect(labels(menus.at(-1) ?? [])).toEqual(['Nueva conversación', 'Quick Entry', 'Abrir Lazunox', 'Ajustes…', 'Salir de Lazunox'])
     destroyTray()
   })
 
@@ -44,7 +44,7 @@ describe('bandeja: idioma', () => {
     setContextMenu.mockClear()
     setLang('en')
     expect(setContextMenu).toHaveBeenCalledTimes(1)
-    expect(labels(menus.at(-1) ?? [])).toEqual(['New conversation', 'Quick Entry', 'Open OnyxCode', 'Settings…', 'Quit OnyxCode'])
+    expect(labels(menus.at(-1) ?? [])).toEqual(['New conversation', 'Quick Entry', 'Open Lazunox', 'Settings…', 'Quit Lazunox'])
     destroyTray()
   })
 })

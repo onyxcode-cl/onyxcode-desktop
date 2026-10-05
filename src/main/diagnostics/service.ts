@@ -10,7 +10,7 @@
  */
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync, fstatSync } from 'node:fs'
 import { join } from 'node:path'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import type { DiagLogs, DiagSource } from '@shared/diagnostics'
 import type { ServerStatus } from '@shared/types'
 import { appAuthFile, opencodeDataHome } from '../opencode/data-dir'
@@ -92,7 +92,7 @@ export function stamp(ms: number): string {
 }
 
 export function exportFileName(ms: number): string {
-  return `${APP_NAME}-diagnostico-${stamp(ms)}.txt`
+  return `${DISPLAY_NAME}-diagnostico-${stamp(ms)}.txt`
 }
 
 export class DiagnosticsService {
@@ -132,7 +132,7 @@ export class DiagnosticsService {
   private report(redact: Redactor): string[] {
     const { deps } = this
     const status = deps.server.getStatus()
-    const out: string[] = [`${APP_NAME} — informe de diagnóstico`, `Generado: ${new Date(deps.now()).toISOString()}`, '', 'Versiones']
+    const out: string[] = [`${DISPLAY_NAME} — informe de diagnóstico`, `Generado: ${new Date(deps.now()).toISOString()}`, '', 'Versiones']
     for (const [k, v] of Object.entries(deps.versions())) out.push(`  ${k}: ${v}`)
     out.push('', 'Motor (OpenCode)', `  estado: ${status.state}`, `  reinicios: ${status.restarts}`)
     if (status.version) out.push(`  versión: ${status.version}`)

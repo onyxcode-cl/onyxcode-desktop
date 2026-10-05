@@ -90,15 +90,15 @@ describe('DiagnosticsService', () => {
     for (const secret of SECRETS) expect(text).not.toContain(secret)
   })
 
-  it('getText y getExport: texto redactado y nombre OnyxCode-diagnostico-AAAAMMDD-HHmm.txt', () => {
+  it('getText y getExport: texto redactado y nombre Lazunox-diagnostico-AAAAMMDD-HHmm.txt', () => {
     const s = setup({}, dirty)
     const copy = s.getText('engine')
     expect(copy.lines).toBe(dirty.length)
     for (const secret of SECRETS) expect(copy.text).not.toContain(secret)
     const exp = s.getExport()
-    expect(exp.fileName).toMatch(/^OnyxCode-diagnostico-\d{8}-\d{4}\.txt$/)
+    expect(exp.fileName).toMatch(/^Lazunox-diagnostico-\d{8}-\d{4}\.txt$/)
     for (const secret of SECRETS) expect(exp.text).not.toContain(secret)
-    expect(exportFileName(new Date(2026, 0, 5, 9, 7).getTime())).toBe('OnyxCode-diagnostico-20260105-0907.txt')
+    expect(exportFileName(new Date(2026, 0, 5, 9, 7).getTime())).toBe('Lazunox-diagnostico-20260105-0907.txt')
   })
 
   it('readFileTail: sin truncar devuelve todo', () => {

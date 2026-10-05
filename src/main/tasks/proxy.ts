@@ -160,7 +160,7 @@ export class EgressProxy {
     this.opts.onLog?.(entry)
     if (!allowed) {
       this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode sandbox egress policy\r\n')
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lazunox sandbox egress policy\r\n')
       return
     }
     const upstream = netConnect(port, host, () => {
@@ -189,7 +189,7 @@ export class EgressProxy {
     this.opts.onLog?.(entry)
     if (!allowed) {
       this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by OnyxCode sandbox egress policy\r\n')
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lazunox sandbox egress policy\r\n')
       return
     }
     const upstream = netConnect(port, host, () => {

@@ -4,7 +4,7 @@
  * depende de assets.
  */
 import { app, Menu, nativeImage, Tray, type NativeImage } from 'electron'
-import { APP_NAME } from '@shared/brand'
+import { DISPLAY_NAME } from '@shared/brand'
 import { onLangChange, t } from '@shared/i18n'
 import { trayIconStyle } from './tray-style'
 
@@ -102,13 +102,13 @@ function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {
       registerAccelerator: false
     },
     { type: 'separator' },
-    { label: t('main.tray.openApp', { app: APP_NAME }), click: actions.onOpenApp },
+    { label: t('main.tray.openApp', { app: DISPLAY_NAME }), click: actions.onOpenApp },
     { label: t('main.tray.settings'), click: actions.onOpenSettings },
     ...(remoteActive && actions.onRemoteStop
       ? [{ type: 'separator' as const }, { label: t('remote.tray.stop'), click: actions.onRemoteStop }]
       : []),
     { type: 'separator' },
-    { label: t('main.tray.quit', { app: APP_NAME }), click: actions.onQuit ?? (() => app.quit()) }
+    { label: t('main.tray.quit', { app: DISPLAY_NAME }), click: actions.onQuit ?? (() => app.quit()) }
   ])
 }
 
@@ -120,7 +120,7 @@ export function createTray(actions: TrayActions, quickAccelerator: string): Tray
     return tray
   }
   tray = new Tray(createTrayIcon())
-  tray.setToolTip(APP_NAME)
+  tray.setToolTip(DISPLAY_NAME)
   tray.setContextMenu(buildMenu(actions, quickAccelerator))
   return tray
 }
