@@ -47,7 +47,7 @@ const EMPTY_ENTRIES: MessageEntry[] = []
 function TodoIcon({ status }: { status: string }): React.JSX.Element {
   switch (status) {
     case 'completed':
-      return <CheckCircle2 size={16} className="text-accent" />
+      return <CheckCircle2 size={16} className="text-accent desk:text-success" />
     case 'in_progress':
       return <Loader2 size={16} className="animate-spin text-accent" />
     case 'cancelled':
@@ -352,25 +352,30 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
     <div className="h-full overflow-y-auto text-sm">
       {usingComputer && <LiveSection entries={entries} />}
 
-      <Section icon={ListChecks} title={tr('tasks.prog.plan')} badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}>
+      <Section
+        icon={ListChecks}
+        title={tr('tasks.prog.plan')}
+        badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}
+        badgeTone="plain"
+      >
         {todos.length === 0 ? (
           <p className="text-xs text-subtle">{busy ? tr('tasks.prog.planPreparing') : tr('tasks.prog.planNone')}</p>
         ) : (
           <>
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2 desk:hidden">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-hover">
                 <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
               <span className="text-[11px] text-muted tabular-nums">{pct}%</span>
             </div>
-            {stepLabel && <p className="mb-2 text-xs font-medium text-muted">{stepLabel}</p>}
+            {stepLabel && <p className="mb-2 text-xs font-medium text-muted desk:hidden">{stepLabel}</p>}
             <ol className="space-y-1">
               {todos.map((t, i) => {
                 const current = t.status === 'in_progress'
                 return (
                   <li
                     key={`${i}-${t.content}`}
-                    className={`flex items-start gap-2 rounded-lg px-2 py-1.5 ${current ? 'bg-accent-soft' : ''}`}
+                    className={`flex items-start gap-2 rounded-lg px-2 py-1.5 desk:min-h-7 desk:items-center desk:gap-2.5 desk:rounded-none desk:px-0 desk:py-0 ${current ? 'bg-accent-soft desk:bg-transparent' : ''}`}
                   >
                     <span className="mt-px shrink-0">
                       <TodoIcon status={t.status} />
@@ -378,7 +383,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
                     <span
                       className={`text-[13px] leading-snug ${
                         t.status === 'completed'
-                          ? 'text-subtle line-through'
+                          ? 'text-subtle line-through desk:no-underline desk:text-muted'
                           : current
                             ? 'font-medium text-fg'
                             : t.status === 'cancelled'
@@ -404,10 +409,10 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
           <button
             type="button"
             title={tr('tasks.prog.refresh')}
-            className="rounded p-1 text-subtle hover:bg-hover hover:text-fg"
+            className="rounded p-1 text-subtle hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
             onClick={() => void refreshDeliverables(sessionID)}
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={12} className="desk:size-4" />
           </button>
         }
       >
