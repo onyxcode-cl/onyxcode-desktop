@@ -1,7 +1,7 @@
 {
   "name": "onyxcode",
   "productName": "OnyxCode",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Cliente de escritorio para OpenCode (Chat, Code, Tareas, Rutinas)",
   "main": "./out/main/index.js",
   "author": "bentec",
