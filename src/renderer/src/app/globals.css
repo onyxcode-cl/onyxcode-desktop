@@ -148,6 +148,11 @@
   --animate-fade-out: fade-out var(--dur-sheet-out, 220ms) var(--ease-out) both;
 }
 
+/* Variante `desk:` (rediseño de escritorio): aplica solo bajo <html data-shell='desktop'> (lo pone main.tsx; la PWA no). En componentes
+ * COMPARTIDOS con el celular los cambios visuales de escritorio se AÑADEN con `desk:` (nunca se quita ni sustituye una clase). El CSS
+ * `desk:` que Tailwind genere lo quita de la PWA el plugin de pwa/vite.full.config.ts. Ver DESIGN.md «Fundamentos de escritorio». */
+@custom-variant desk (&:where([data-shell='desktop'] *));
+
 @keyframes m-push {
   from {
     opacity: 0;

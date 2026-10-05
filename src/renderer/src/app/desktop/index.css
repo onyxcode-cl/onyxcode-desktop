@@ -1,0 +1,8 @@
+/* Capa visual SOLO de escritorio (Mac y Windows). La importa únicamente `main.tsx` (entrada de escritorio), después de
+ * `globals.css`: la PWA del celular entra por `remote/boot.tsx` y nunca la carga. Todo selector empieza por
+ * `:root[data-shell='desktop']` (guardia: desktop-scope.test.ts). Un archivo por dueño; ver DESIGN.md. */
+@import './tokens.css';
+@import './base.css';
+@import './shell.css';
+@import './conversation.css';
+@import './modes.css';

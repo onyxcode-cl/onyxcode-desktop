@@ -1,0 +1,3 @@
+/* Dueño: FUNDAMENTOS. Tokens NUEVOS de escritorio (no existen en la PWA). Los tokens existentes de globals.css no se tocan. */
+:root[data-shell='desktop'] {
+}

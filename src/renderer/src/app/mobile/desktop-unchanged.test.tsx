@@ -11,6 +11,7 @@ import { ChatSessionList } from '../../features/chat/ChatSessionList'
 import { SheetAction } from '../../features/code/impl/SheetAction'
 import { isRemote, useIsRemote } from '../../lib/platform'
 import { isSubmitKey } from '../../lib/textarea'
+import { selectors } from '../../../../test/css-selectors'
 
 /** En Mac y Windows (superficie no remota) la interfaz móvil no actúa: mismo marcado, mismas teclas, mismas capacidades. */
 describe('fuera de la superficie remota no cambia nada', () => {
@@ -113,48 +114,6 @@ describe('marcado de escritorio de lo que se va a tocar', () => {
 /** CSS: lo móvil vive solo bajo `[data-surface='mobile']` y los valores de los tokens de escritorio no cambian. */
 const SRC = resolve(__dirname, '../..')
 const read = (rel: string): string => readFileSync(resolve(SRC, rel), 'utf8')
-
-/** Selectores de las reglas de un CSS (fuera de `@keyframes` y de los bloques de cuerpo), sin comentarios. */
-function selectors(css: string): string[] {
-  const text = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  const out: string[] = []
-  let depth = 0
-  let buf = ''
-  const stack: boolean[] = [] // true = bloque transparente (@media/@supports/@layer), false = cuerpo o keyframes
-  for (const ch of text) {
-    if (ch === '{') {
-      const head = buf.trim()
-      buf = ''
-      const parentOpaque = stack.some((t) => !t)
-      if (!parentOpaque && !head.startsWith('@')) out.push(head)
-      stack.push(head.startsWith('@') && !/^@(keyframes|font-face)/.test(head))
-      depth++
-    } else if (ch === '}') {
-      stack.pop()
-      depth--
-      buf = ''
-    } else if (ch === ';' && depth === 0) buf = ''
-    else buf += ch
-  }
-  return out.flatMap(splitTop)
-}
-
-/** Separa por comas de primer nivel (las de dentro de `:is(…)`/`:not(…)` no cuentan). */
-function splitTop(head: string): string[] {
-  const parts: string[] = []
-  let d = 0
-  let cur = ''
-  for (const ch of head) {
-    if (ch === '(') d++
-    if (ch === ')') d--
-    if (ch === ',' && d === 0) {
-      parts.push(cur.trim())
-      cur = ''
-    } else cur += ch
-  }
-  parts.push(cur.trim())
-  return parts.filter(Boolean)
-}
 
 const MOBILE = /\[data-surface='mobile'\]/
 
