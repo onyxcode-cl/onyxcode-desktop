@@ -151,7 +151,7 @@ function TaskMenu({
   }
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
+    <div ref={rootRef} className="relative shrink-0 desk:absolute! desk:top-1/2 desk:right-1 desk:-translate-y-1/2">
       <button
         ref={triggerRef}
         type="button"
@@ -159,7 +159,7 @@ function TaskMenu({
         aria-label={t('tasks.list.moreActionsFor', { title: title || t('tasks.list.untitledLower') })}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`rounded p-0.5 text-subtle group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 ${
+        className={`rounded p-0.5 text-subtle group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 desk:flex desk:size-6 desk:items-center desk:justify-center desk:rounded-ctl-sm desk:text-muted desk:hover:bg-active ${
           open ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={(e) => {
@@ -248,12 +248,16 @@ export function TaskRow({
   const working = status === 'running' || status === 'using_computer'
   const failed = status === 'error'
   const showTime = !waitsUser && !working && !failed
+  // 1b (solo escritorio): el estado se lee a la derecha. «Terminada», «plan listo» e «interrumpida» conservan su icono, pero a la
+  // derecha; el resto se dice con texto o chip («Aprobar», «Trabajando», «Falló») y el icono de la izquierda se oculta.
+  const iconRight = status === 'done' || status === 'plan_ready' || status === 'interrupted'
+  const iconDesk = iconRight ? ' desk:order-1 desk:group-hover:hidden' : ' desk:hidden'
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:relative desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:pl-[30px] desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
       {...mob('task-row')}
     >
-      <span className="shrink-0">
+      <span className={`shrink-0${iconDesk}`}>
         <StatusIcon status={status} size={13} />
       </span>
       <button
@@ -282,15 +286,21 @@ export function TaskRow({
       </button>
       {showTime && (
         <span
-          className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline desk:text-meta ${busy ? '' : ' desk:group-hover:hidden'}`}
+          className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline desk:order-2 desk:text-meta ${busy ? '' : ' desk:group-hover:hidden'}`}
         >
           {relTime(task.time.updated)}
         </span>
       )}
       {waitsUser && (
-        <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-warning desk:font-medium">{t('tasks.list.metaApprove')}</span>
+        <span className="hidden shrink-0 desk:inline-flex desk:h-5 desk:items-center desk:rounded-full desk:border desk:border-warning/45 desk:bg-warning/10 desk:px-2 desk:text-meta desk:font-medium desk:text-warning desk:group-hover:hidden">
+          {t('tasks.list.metaApprove')}
+        </span>
       )}
-      {working && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-accent">{TASK_STATUS_LABEL.running}</span>}
+      {working && (
+        <span className="hidden shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none">
+          {TASK_STATUS_LABEL.running}
+        </span>
+      )}
       {failed && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-danger">{t('tasks.list.metaFailed')}</span>}
       {blockedHost && (
         <span className="shrink-0 text-warning" title={t('tasks.list.blocked')}>
@@ -535,7 +545,7 @@ export function TaskList(): React.JSX.Element {
           <SidebarEmpty
             icon={<ListChecks size={18} strokeWidth={1.75} />}
             text={emptyText}
-            hint={folder && !showArchived && !searching ? tr('app.sidebar.emptyHint.tasks') : undefined}
+            hint={!!folder && !showArchived && !searching}
           />
         )}
         {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (

@@ -13,6 +13,7 @@ import {
   Pin,
   Search,
   ShieldAlert,
+  SquarePen,
   Terminal,
   Trash2,
   X
@@ -90,9 +91,11 @@ function SessionRow({
 
   const row = (
     <div
-      className={`group flex items-center gap-1 rounded-lg desk:relative desk:h-8 desk:gap-0.5 desk:rounded-ctl ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-1 rounded-lg desk:relative desk:h-8 desk:gap-0.5 desk:rounded-ctl ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active desk:bg-hover' : 'hover:bg-hover'}`}
     >
-      {active && !mobile && !editing && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent" aria-hidden />}
+      {active && !mobile && !editing && (
+        <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />
+      )}
       {editing ? (
         <input
           ref={inputRef}
@@ -110,7 +113,7 @@ function SessionRow({
           type="button"
           onClick={() => void selectSession(session.id)}
           onDoubleClick={() => setEditing(true)}
-          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:gap-2 desk:px-2.5 desk:py-0 ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
+          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:gap-2 desk:px-2.5 desk:pl-[30px] desk:py-0 ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
           <span
@@ -118,26 +121,40 @@ function SessionRow({
           >
             {pinned && <Pin size={10} className="shrink-0 text-subtle" />}
             {waiting ? (
-              <ShieldAlert size={12} className="shrink-0 text-accent" />
+              <ShieldAlert size={12} className="shrink-0 text-accent desk:hidden" />
             ) : busy ? (
-              <Loader2 size={12} className="shrink-0 animate-spin text-muted" />
+              <Loader2 size={12} className="shrink-0 animate-spin text-muted desk:hidden" />
             ) : unread ? (
               <Circle size={7} fill="currentColor" className="shrink-0 text-accent" />
             ) : null}
             <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || t('code.sessions.untitled')}</span>
           </span>
-          <span
-            className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${mobile ? 'text-xs' : 'text-[11px]'}`}
-          >
-            {timeAgo(session.time.updated)}
-            {session.summary && session.summary.files > 0 && (
-              <>
-                {' · '}
-                <span className="text-success">+{session.summary.additions}</span>{' '}
-                <span className="text-danger">-{session.summary.deletions}</span>
-              </>
-            )}
-          </span>
+          {!mobile && waiting ? (
+            <span className="hidden h-5 shrink-0 items-center rounded-full border border-warning/45 bg-warning/10 px-2 text-meta font-medium text-warning desk:inline-flex desk:group-hover:hidden">
+              {t('tasks.list.metaApprove')}
+            </span>
+          ) : !mobile && busy ? (
+            <span className="hidden shrink-0 items-center gap-1.5 text-meta text-muted desk:inline-flex desk:group-hover:hidden">
+              <span
+                className="size-2.5 animate-spin rounded-full border-2 border-accent border-r-transparent motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              {t('app.sidebar.working')}
+            </span>
+          ) : (
+            <span
+              className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${mobile ? 'text-xs' : 'text-[11px]'}`}
+            >
+              {timeAgo(session.time.updated)}
+              {session.summary && session.summary.files > 0 && (
+                <>
+                  {' · '}
+                  <span className="text-success">+{session.summary.additions}</span>{' '}
+                  <span className="text-danger">-{session.summary.deletions}</span>
+                </>
+              )}
+            </span>
+          )}
         </button>
       )}
       {!editing && mobile && (
@@ -353,6 +370,8 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const [showArchived, setShowArchived] = useState(false)
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
+  const [projectOpen, setProjectOpen] = useState(true)
+  const desktop = !isRemoteSurface()
 
   // ⌘K (configurable en Ajustes › Atajos): buscador de sesiones, mientras la lista esté montada y la paleta cerrada.
   useEffect(
@@ -383,13 +402,63 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
     [permissions, sessions]
   )
 
-  if (!directory) return null
+  if (!directory) {
+    // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
+    return desktop ? <SidebarEmpty text={t('app.sidebar.noProjects')} hint /> : null
+  }
 
   return (
     <div className="flex min-h-0 flex-col">
       <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
       {worktreeOpen && <NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />}
-      {!compact && (
+      {desktop && (
+        <div className="group/proj relative flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover">
+          <button
+            type="button"
+            aria-expanded={projectOpen}
+            aria-label={t(projectOpen ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name: baseName(directory) })}
+            title={directory}
+            onClick={() => setProjectOpen((o) => !o)}
+            className="no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-ctl px-2 text-left text-sm font-medium text-fg"
+          >
+            <ChevronDown
+              size={14}
+              strokeWidth={1.75}
+              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
+              aria-hidden="true"
+            />
+            <FolderOpen size={16} strokeWidth={1.75} className="shrink-0 text-muted" aria-hidden="true" />
+            <span className="truncate">{baseName(directory)}</span>
+          </button>
+          <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 group-focus-within/proj:flex group-hover/proj:flex">
+            <button
+              type="button"
+              title={t('code.sessions.newWorktree')}
+              onClick={() => setWorktreeOpen(true)}
+              className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+            >
+              <GitBranchPlus size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              title={t('code.sessions.searchTitle')}
+              onClick={() => setSwitcherOpen(true)}
+              className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+            >
+              <Search size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              title={t('code.sessions.newHere')}
+              onClick={() => void useCode.getState().newSession()}
+              className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+            >
+              <SquarePen size={14} strokeWidth={1.75} />
+            </button>
+          </span>
+        </div>
+      )}
+      {!compact && !desktop && (
         <button
           type="button"
           onClick={() => void pickAndOpenFolder()}
@@ -401,7 +470,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           <span className="truncate font-medium">{baseName(directory)}</span>
         </button>
       )}
-      <div className="group/sec mx-2 mb-2 flex items-center gap-1 desk:mx-0 desk:mt-3 desk:mb-1">
+      <div className={`group/sec mx-2 mb-2 flex items-center gap-1 desk:mx-0 desk:mt-3 desk:mb-1 ${desktop ? 'hidden' : ''}`}>
         <span className="flex-1 px-2 text-[11.5px] font-medium text-subtle desk:px-2.5 desk:text-meta">{t('code.sessions.title')}</span>
         <button
           type="button"
@@ -420,18 +489,16 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           <Search size={13} />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 desk:flex desk:flex-col desk:gap-0.5 desk:px-0">
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto px-2 desk:flex desk:flex-col desk:gap-0.5 desk:px-0 ${desktop && !projectOpen ? 'hidden' : ''}`}
+      >
         {loading && list.length === 0 && (
           <div className="flex items-center gap-2 px-2 py-1 text-xs text-subtle desk:px-2.5">
             <Loader2 size={12} className="animate-spin" /> {t('code.sessions.loading')}
           </div>
         )}
         {!loading && list.length === 0 && !isRemoteSurface() && (
-          <SidebarEmpty
-            icon={<Terminal size={18} strokeWidth={1.75} />}
-            text={t('code.sessions.empty')}
-            hint={t('app.sidebar.emptyHint.code')}
-          />
+          <SidebarEmpty icon={<Terminal size={18} strokeWidth={1.75} />} text={t('code.sessions.empty')} hint />
         )}
         {!loading && list.length === 0 && isRemoteSurface() && (
           <div className="px-2 py-1 text-xs text-subtle desk:px-2.5 desk:py-2 desk:text-meta">{t('code.sessions.empty')}</div>

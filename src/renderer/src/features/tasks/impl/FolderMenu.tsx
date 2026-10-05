@@ -27,7 +27,7 @@ export function FolderMenu({
   placement = 'bottom',
   disabled
 }: {
-  variant?: 'chip' | 'block'
+  variant?: 'chip' | 'block' | 'row'
   placement?: 'top' | 'bottom'
   disabled?: boolean
 }): React.JSX.Element {
@@ -140,6 +140,20 @@ export function FolderMenu({
         {folder ? <FolderOpen size={13} className="shrink-0 text-accent" /> : <FolderPlus size={13} className="shrink-0" />}
         <span className="truncate">{label}</span>
         <ChevronDown size={12} className="shrink-0 text-muted" />
+      </button>
+    ) : variant === 'row' ? (
+      // Barra lateral 1b (solo escritorio): nombre del proyecto; el chevron de plegar lo pone TasksSidebar a su izquierda.
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={toggle}
+        title={folder ?? undefined}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-8 w-full items-center gap-2 rounded-ctl pr-2 pl-2 text-left text-sm font-medium text-fg"
+      >
+        <FolderOpen size={16} strokeWidth={1.75} className="shrink-0 text-muted" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">{label}</span>
       </button>
     ) : (
       <button

@@ -73,6 +73,7 @@ export function ChatSidebar(): React.JSX.Element {
         onDelete={deleteChat}
         hasMore={!!more}
         onLoadMore={onLoadMore}
+        showTime
       />
     </>
   )

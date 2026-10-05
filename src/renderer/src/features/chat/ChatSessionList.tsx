@@ -8,6 +8,7 @@ import { LoadMoreSessions } from '../../components/LoadMoreSessions'
 import { SidebarEmpty } from '../../components/SidebarEmpty'
 import { PopoverPanel } from '../../components/PopoverPanel'
 import { isRemoteSurface } from '../../lib/platform'
+import { relCompact } from '../../lib/rel-compact'
 import { MobileSessionList } from './MobileSessionList'
 
 interface Props {
@@ -23,6 +24,8 @@ interface Props {
   hasMore?: boolean
   /** `all` = pedir todas (al filtrar). */
   onLoadMore?: (all: boolean) => void
+  /** Solo la barra lateral de escritorio (1b): hora relativa a la derecha de cada fila y «Trabajando» en las ocupadas. */
+  showTime?: boolean
 }
 
 function groupLabel(ts: number): string {
@@ -40,6 +43,7 @@ function Row({
   session,
   active,
   busy,
+  showTime,
   onSelect,
   onRename,
   onDelete
@@ -47,6 +51,7 @@ function Row({
   session: Session
   active: boolean
   busy: boolean
+  showTime?: boolean
   onSelect: () => void
   onRename: (title: string) => void
   onDelete: () => void
@@ -111,7 +116,19 @@ function Row({
       >
         {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />}
         <span className="flex-1 truncate group-hover:pr-5">{session.title || t('chat.list.untitled')}</span>
-        {busy && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
+        {busy && !showTime && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
+        {showTime &&
+          (busy ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-meta text-muted group-hover:hidden">
+              <span
+                className="size-2.5 animate-spin rounded-full border-2 border-accent border-r-transparent motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              {t('app.sidebar.working')}
+            </span>
+          ) : (
+            <span className="shrink-0 text-meta text-subtle tabular-nums group-hover:hidden">{relCompact(session.time.updated)}</span>
+          ))}
       </button>
       <button
         type="button"
@@ -192,7 +209,8 @@ function DesktopSessionList({
   onRename,
   onDelete,
   hasMore,
-  onLoadMore
+  onLoadMore,
+  showTime
 }: Props): React.JSX.Element {
   const t = useT()
   const [filter, setFilter] = useState('')
@@ -212,13 +230,7 @@ function DesktopSessionList({
   }
   if (sessions.length === 0) {
     if (!isRemoteSurface())
-      return (
-        <SidebarEmpty
-          icon={<MessagesSquare size={18} strokeWidth={1.75} />}
-          text={emptyText ?? t('chat.list.emptyDefault')}
-          hint={t('app.sidebar.emptyHint.chat')}
-        />
-      )
+      return <SidebarEmpty icon={<MessagesSquare size={18} strokeWidth={1.75} />} text={emptyText ?? t('chat.list.emptyDefault')} hint />
     return (
       <div className="mx-1 mt-6 flex flex-col items-center gap-2 px-4 text-center">
         <MessagesSquare size={18} className="text-subtle" />
@@ -273,6 +285,7 @@ function DesktopSessionList({
                 session={s}
                 active={s.id === activeId}
                 busy={busyIds?.has(s.id) ?? false}
+                showTime={showTime}
                 onSelect={() => onSelect(s.id)}
                 onRename={(title) => void onRename(s.id, title)}
                 onDelete={() => void onDelete(s.id)}
