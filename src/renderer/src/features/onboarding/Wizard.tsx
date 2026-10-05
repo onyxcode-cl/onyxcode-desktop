@@ -447,7 +447,7 @@ function StepAuth({
           onSetKey={setKeyFrom('go')}
           fixedProviderId={GO_PROVIDER}
           title={null}
-          className="mt-3 p-3"
+          className="mt-3 border-0! bg-transparent! p-0! shadow-none!"
         />
         {connect.error && origin === 'go' && (
           <div role="alert" className="mt-2">
@@ -486,7 +486,7 @@ function StepAuth({
               onOauthStart={oauthStart}
               onOauthFinish={oauthFinish}
               title={null}
-              className="p-3"
+              className="border-0! bg-transparent! p-0! shadow-none!"
             />
           ) : null}
           {otherNames.length > 0 && (

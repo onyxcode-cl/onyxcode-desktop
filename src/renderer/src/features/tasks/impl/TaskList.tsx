@@ -123,7 +123,7 @@ function TaskMenu({
     <button
       type="button"
       role="menuitem"
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-hover focus-visible:bg-hover ${danger ? 'text-danger' : ''}`}
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-hover focus-visible:bg-hover desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-ui ${danger ? 'text-danger' : ''}`}
       onClick={(e) => {
         e.stopPropagation()
         setOpen(false)
@@ -171,7 +171,7 @@ function TaskMenu({
           ref={menuRef}
           role="menu"
           aria-label={t('tasks.list.menuAria')}
-          className="absolute top-full right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-elevated p-1 shadow-lg"
+          className="absolute top-full right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-elevated p-1 shadow-lg desk:rounded-card desk:shadow-pop"
           {...mob('task-menu')}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={onMenuKey}
@@ -239,9 +239,11 @@ function TaskRow({
   const t = useT()
   const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
   const pinned = isPinned(task.id)
+  // Escritorio: sin nada que pedirle al usuario la fila es de una línea (la hora va a la derecha, no en una segunda línea).
+  const quiet = status === 'done' || status === 'idle'
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:min-h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-1 desk:text-ui ${active ? 'bg-active' : 'hover:bg-hover'}`}
       {...mob('task-row')}
     >
       <span className="shrink-0">
@@ -257,7 +259,9 @@ function TaskRow({
           {pinned && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
           {task.title || t('tasks.list.untitled')}
         </div>
-        <div className={`truncate text-[11px] ${statusTextClass(status)}`}>
+        <div
+          className={`truncate text-[11px] desk:text-meta ${statusTextClass(status)} ${status === 'done' || status === 'idle' ? 'desk:hidden' : ''}`}
+        >
           {status === 'archived'
             ? t('tasks.list.archivedAgo', { when: relTime(task.time.archived ?? task.time.updated) })
             : status === 'running' ||
@@ -271,6 +275,11 @@ function TaskRow({
           {group && !archivedView && <span className="text-subtle"> · {group}</span>}
         </div>
       </button>
+      {quiet && (
+        <span className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline ${busy ? '' : 'desk:group-hover:hidden'}`}>
+          {relTime(task.time.updated)}
+        </span>
+      )}
       {blockedHost && (
         <span className="shrink-0 text-warning" title={t('tasks.list.blocked')}>
           <ShieldOff size={12} />
@@ -464,7 +473,7 @@ export function TaskList(): React.JSX.Element {
           onChange={(e) => setQuery(e.target.value)}
           placeholder={tr('tasks.list.search')}
           aria-label={tr('tasks.list.search')}
-          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong [&::-webkit-search-cancel-button]:hidden"
+          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong desk:h-8 desk:rounded-ctl desk:border-transparent desk:py-0 desk:pl-9 desk:text-ui desk:hover:bg-hover desk:focus:bg-hover [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
@@ -485,7 +494,7 @@ export function TaskList(): React.JSX.Element {
             value={groupMode}
             disabled={showArchived || searching}
             onChange={(e) => changeGroupMode(e.target.value as GroupMode)}
-            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50"
+            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50 desk:pr-8"
           >
             <option value="date">{tr('tasks.list.byDate')}</option>
             <option value="group">{tr('tasks.list.byGroup')}</option>
@@ -515,7 +524,7 @@ export function TaskList(): React.JSX.Element {
         )}
         {groups.map((g) => (
           <div key={g.key} className="mb-1">
-            <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle">{g.label}</div>
+            <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:px-2.5 desk:pt-3 desk:text-meta">{g.label}</div>
             <div className="space-y-0.5">
               {g.items.map((t) => (
                 <TaskRow
