@@ -111,7 +111,7 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
         {content?.type === 'binary' && <div className="px-3 py-3 text-sm text-subtle">{t('code.files.binary')}</div>}
         {content?.type === 'text' && showDiff && content.diff && <DiffView patch={content.diff} path={path} />}
         {content?.type === 'text' && !(showDiff && content.diff) && (
-          <table className="w-full border-collapse font-mono text-[12px] leading-[1.55]">
+          <table className="w-full border-collapse font-mono text-[12px] leading-[1.55] desk:leading-5">
             <tbody>
               {lines.map((l, i) => (
                 <tr key={i}>
@@ -623,7 +623,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
           return (
             <div key={n.path}>
               <div
-                className={`group relative flex items-center hover:bg-hover focus-within:bg-hover ${selected?.path === n.path ? 'bg-active/60' : ''}`}
+                className={`group relative flex items-center hover:bg-hover focus-within:bg-hover desk:rounded-ctl desk:mx-1 ${selected?.path === n.path ? 'bg-active/60 desk:bg-active desk:font-medium' : ''}`}
                 onContextMenu={(e) => {
                   if (!native) return
                   e.preventDefault()
@@ -649,8 +649,8 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                       void trashNode(n)
                     }
                   }}
-                  style={{ paddingLeft: 8 + depth * (mobile ? 16 : 14) }}
-                  className={`flex min-w-0 flex-1 items-center gap-1.5 pr-2 text-left focus-visible:outline-none ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px] desk:h-[26px] desk:py-0 desk:focus-visible:shadow-[inset_0_0_0_2px_var(--accent)]'} ${n.ignored ? 'opacity-70' : ''}`}
+                  style={{ paddingLeft: 8 + depth * 16 }}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 pr-2 text-left focus-visible:outline-none ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px] desk:h-8 desk:py-0 desk:focus-visible:shadow-[inset_0_0_0_2px_var(--accent)]'} ${n.ignored ? 'opacity-70' : ''}`}
                 >
                   {isDir ? (
                     <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
