@@ -15,8 +15,8 @@ vi.mock('./store', async (importOriginal) => {
 })
 // Las fechas completas dependen de la zona horaria de quien corre la prueba.
 vi.mock('./schedule', async (importOriginal) => ({ ...(await importOriginal<typeof import('./schedule')>()), fullDate: () => 'FECHA' }))
-vi.mock('../tasks/impl/bridge', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../tasks/impl/bridge')>()),
+vi.mock('../../tasks/impl/bridge', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../tasks/impl/bridge')>()),
   hasTasksBridge: () => true
 }))
 
