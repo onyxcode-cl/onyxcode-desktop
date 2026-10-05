@@ -78,6 +78,15 @@ código abierto (en su mayoría MIT o ISC); sus avisos están en sus paquetes de
 - `@noble/hashes` (sha256 del código de confirmación, también en la PWA): MIT.
 - `detect-libc` (dependencia de `node-datachannel`): Apache-2.0.
 
+### Modo viaje (opcional, se descarga bajo demanda)
+
+- `cloudflared` (cliente del túnel rápido de Cloudflare), versión **2026.9.3**: Apache-2.0, <https://github.com/cloudflare/cloudflared>
+  (texto de la licencia en el `LICENSE` de ese repositorio). **No se redistribuye con OnyxCode**: solo si el usuario lo acepta en un diálogo
+  se descarga desde la página oficial de lanzamientos de GitHub (`github.com/cloudflare/cloudflared/releases/download/2026.9.3/…`), se verifica
+  su SHA-256 y su firma (Developer ID de Cloudflare Inc.) y se guarda en la carpeta de datos de la app; se puede borrar. Su uso del servicio de
+  túneles rápidos se rige por las condiciones de Cloudflare (<https://www.cloudflare.com/website-terms/>), que el propio programa recuerda al
+  arrancar. OnyxCode no está afiliado a Cloudflare.
+
 ## 5. No afiliación
 
 OnyxCode es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para
