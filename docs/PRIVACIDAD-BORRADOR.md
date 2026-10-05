@@ -9,14 +9,14 @@
 
 ## 1. Qué datos guardamos
 
-OnyxCode **no tiene cuentas ni inicio de sesión** y **no guarda tus datos personales en ningún servidor propio**: no
+Lazunox **no tiene cuentas ni inicio de sesión** y **no guarda tus datos personales en ningún servidor propio**: no
 recogemos tu correo ni ningún identificador tuyo, y no hay un servidor de cuentas. Tus **conversaciones, archivos,
 proyectos y claves de IA** se quedan en tu equipo (las claves, en el almacén propio del motor OpenCode). La única excepción es lo que ve el servicio de conexión del
 celular si decides activarlo (§3).
 
 ## 2. Con quién se conecta la app
 
-OnyxCode se conecta solo a:
+Lazunox se conecta solo a:
 
 1. **Tu proveedor de IA** (el que elijas), directamente desde tu equipo y con tus propias claves. Lo que envías a ese
    proveedor se rige por su política, no por esta.
@@ -33,7 +33,7 @@ Eso es todo: no hay telemetría, ni analítica, ni publicidad.
 Si activas «También fuera de casa» en Ajustes › Celular, tu Mac y tu celular se encuentran a través de un **servicio de conexión** alojado en Cloudflare (Cloudflare, Inc.; [por definir: encargado del tratamiento, país y garantías de la transferencia
 internacional, y enlace a su política]). Ese servicio **ve** las direcciones IP de tu Mac y de tu celular, cuándo y cuánto tiempo te conectas, un identificador seudónimo estable de tu Mac y del celular, y los datos técnicos de la conexión (candidatos de red,
 que incluyen direcciones IP privadas y públicas, y huellas públicas de cifrado). **No ve** el contenido de tus conversaciones, tu PIN, tus claves ni el código de vinculación: eso viaja cifrado y directo entre tu celular y tu Mac. Cloudflare conserva sus propios
-registros operativos según su política; OnyxCode no guarda registros ni crea cuentas para esto. El servidor de STUN de Cloudflare ve la IP pública de cada lado; si algún día se activa el relé (TURN), vería también cuántos bytes y cuándo pasan, siempre cifrados.
+registros operativos según su política; Lazunox no guarda registros ni crea cuentas para esto. El servidor de STUN de Cloudflare ve la IP pública de cada lado; si algún día se activa el relé (TURN), vería también cuántos bytes y cuándo pasan, siempre cifrados.
 La página del celular se descarga del mismo proveedor (verá la IP y el navegador del celular al cargarla). Con «Solo esta red» nada de esto ocurre. [por definir: revisión legal antes de publicar.]
 
 ## 4. Seguridad

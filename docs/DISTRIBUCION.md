@@ -1,4 +1,8 @@
-# Distribución de OnyxCode (firma + notarización)
+# Distribución de Lazunox (firma + notarización)
+
+> **Nota sobre nombres (Fase 1 del renombre).** El producto se muestra como **Lazunox**, pero todos los nombres técnicos de este documento
+> (`OnyxCode.app`, `OnyxCode-<v>-arm64.dmg`/`.zip`, `onyxcode-<v>-arm64.dmg`, el certificado «OnyxCode Local Signing», el appId
+> `cl.bentec.onyxcode`, «OnyxCode Safe Storage», `~/Library/Application Support/OnyxCode`) **siguen igual**: los comandos y rutas de aquí no cambian.
 
 `npm run package` funciona sin nada de esto: firma **ad-hoc** (`identity: '-'`) porque los fuses de
 Electron (`electron-builder.js` → `electronFuses`) modifican el binario y, sin volver a firmarlo,

@@ -1,6 +1,6 @@
-# AGENTS.md — guía para agentes de IA y contribuidores de OnyxCode
+# AGENTS.md — guía para agentes de IA y contribuidores de Lazunox (antes OnyxCode)
 
-OnyxCode es un cliente de escritorio (Electron + React + TypeScript) para macOS arm64 que usa el servidor de agentes de OpenCode.
+Lazunox (antes OnyxCode) es un cliente de escritorio (Electron + React + TypeScript) para macOS arm64 que usa el servidor de agentes de OpenCode.
 Modos: Chat, Code, Tareas (trabajo autónomo con sandbox) y Rutinas. Hay un control remoto desde el celular (solo macOS, red local)
 y un port parcial a Windows. Esta guía resume las invariantes reales; el detalle está en `README.md`, `docs/SEGURIDAD.md`,
 `docs/VERIFICACION.md`, `docs/PLAN-MAESTRO.md`, `docs/DISTRIBUCION.md` y los `CHANGELOG-FASE*.md`. Si algo de aquí contradice el código,
@@ -22,7 +22,8 @@ manda el código: corrige esta guía.
 | `build/` | Firma y notarización (`notarize.js`, entitlements, iconos). `electron-builder.js` está en la raíz. |
 | `docs/` | Plan, seguridad, verificación, distribución, política de la organización, diseño de la fase 2 del remoto; `docs/archive/` es histórico. |
 
-El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`. En el código el modo Tareas se llama `tasks`.
+El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
+**`DISPLAY_NAME` («Lazunox») es el nombre visible; `INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `OnyxCode.app`, `productName` y `app.setName(INTERNAL_NAME)` NO se tocan sin un plan de la Fase 2** (userData, Llavero, actualizador y permisos dependen de ellos; los vigila `src/test/identity-freeze.test.ts`). `APP_NAME` está deprecado: usa uno de los dos. En el código el modo Tareas se llama `tasks`.
 
 ## 2. Comandos (Node 22: `export PATH=/opt/homebrew/opt/node@22/bin:$PATH`)
 

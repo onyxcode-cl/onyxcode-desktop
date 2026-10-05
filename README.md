@@ -1,12 +1,16 @@
-# OnyxCode
+# Lazunox
 
 > Proyecto independiente y sin fines de lucro para promover OpenCode Go. No está afiliado a OpenCode ni a Anthropic.
 
-OnyxCode es un cliente de escritorio para macOS, de código abierto, que usa el servidor de agentes de
+Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el servidor de agentes de
 [OpenCode](https://opencode.ai) y la suscripción **OpenCode Go**. Tiene cuatro modos: **Chat**, **Code**,
 **Tareas** (trabajo autónomo sobre carpetas con sandbox) y **Rutinas**. El plan original está archivado en
 [`docs/archive/PLAN.md`](./docs/archive/PLAN.md); el plan vigente es [`docs/FASE6-PLAN.md`](./docs/FASE6-PLAN.md).
 
+> **Lazunox (antes OnyxCode).** Desde la Fase 1 del renombre el nombre **visible** es Lazunox (`DISPLAY_NAME` en `src/shared/brand.ts`).
+> La identidad técnica sigue siendo OnyxCode a propósito (`INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `OnyxCode.app`, la carpeta
+> `~/Library/Application Support/OnyxCode`, «OnyxCode Safe Storage», `onyxcode://`, `ONYXCODE_*`): cambiarla haría perder datos o
+> permisos. La marca «Lazunox» **no está verificada** (INAPI, OMPI/USPTO, dominios, npm/GitHub): no se publica hasta que el dueño la verifique.
 > El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
 
 ## Requisitos
@@ -19,7 +23,7 @@ Para usar la app:
   OpenCode Go se pega en el asistente de primer uso (o en Ajustes › Modelos) y la guarda OpenCode.
 - Opcional: `OPENCODE_BIN=/ruta/a/opencode` para forzar un binario concreto.
 
-**Sobre tus credenciales.** OnyxCode tiene su propia conexión: las claves que pegas en el asistente o en
+**Sobre tus credenciales.** Lazunox tiene su propia conexión: las claves que pegas en el asistente o en
 Ajustes › Modelos las guarda el motor en el almacén propio de la app
 (`~/Library/Application Support/OnyxCode/opencode-data/opencode/auth.json`), aislado del CLI de OpenCode: la app no
 lee `~/.local/share/opencode`. Ese fichero lo lee el motor y, además, el proceso principal de la app lo lee al
@@ -35,7 +39,7 @@ Para desarrollar: además, Node.js 22 (`/opt/homebrew/opt/node@22/bin`).
 
 El motor que hace el trabajo de fondo es **OpenCode oficial**, sin modificar y fijado a una versión que
 probamos con esta versión de la app. Va **incluido dentro del instalador** (por eso no tienes que instalar
-nada) y lo actualizamos nosotros más o menos una vez al mes, con cada versión nueva de OnyxCode.
+nada) y lo actualizamos nosotros más o menos una vez al mes, con cada versión nueva de Lazunox.
 
 Si prefieres tu propio OpenCode, puedes usarlo: la app usa tu CLI si tiene una versión compatible con la
 probada y, si no, el motor incluido. También puedes elegir un binario concreto desde el asistente
@@ -48,7 +52,7 @@ Aunque uses tu CLI como motor, la app usa su propio almacén de claves y sesione
 
 ## Términos de OpenCode y buenas prácticas de uso
 
-OnyxCode es solo un cliente: los servicios (OpenCode, OpenCode Go y los modelos) son de OpenCode y de sus
+Lazunox es solo un cliente: los servicios (OpenCode, OpenCode Go y los modelos) son de OpenCode y de sus
 proveedores, y **cada persona es responsable de usarlos conforme a sus
 [términos de servicio](https://opencode.ai/legal/terms-of-service)** y su
 [política de privacidad](https://opencode.ai/legal/privacy-policy). OpenCode Go no tiene términos propios: aplican
@@ -60,7 +64,7 @@ los generales. Léelos; estos son los puntos que más importan aquí (resumen, n
   así que la app pide un aviso explícito antes de activarlas y no ejecuta ninguna por horario hasta que lo aceptes.
 - **Extracción programática de datos.** Los términos limitan extraer datos o resultados de forma automática. Úsalo
   de forma interactiva y razonable.
-- **Suspensión.** OpenCode puede suspender el acceso por cualquier motivo. OnyxCode no controla eso.
+- **Suspensión.** OpenCode puede suspender el acceso por cualquier motivo. Lazunox no controla eso.
 - **Modelos gratuitos.** El contenido enviado a los modelos gratuitos puede ser usado por OpenCode para mejorar sus
   servicios. No envíes información sensible con ellos.
 
@@ -71,7 +75,7 @@ Buenas prácticas:
 - No metas secretos en los prompts ni en las carpetas que abras en Tareas.
 - Revisa lo que hacen los agentes: pueden ejecutar comandos y modificar archivos.
 
-OnyxCode desactiva la función de compartir sesiones de OpenCode (`share: "disabled"`) y no la usa.
+Lazunox desactiva la función de compartir sesiones de OpenCode (`share: "disabled"`) y no la usa.
 
 ## Uso (desarrollo)
 
@@ -159,7 +163,7 @@ Licencia: pendiente de definir.
 
 ## Privacidad
 
-OnyxCode no tiene cuentas ni inicio de sesión, y no guarda tus datos en ningún servidor propio. Se conecta solo a:
+Lazunox no tiene cuentas ni inicio de sesión, y no guarda tus datos en ningún servidor propio. Se conecta solo a:
 
 - **Tu proveedor de IA**, el que elijas, con tus propias claves.
 - **GitHub**, para el aviso de versión nueva: como mucho una consulta al día a su API pública, sin datos tuyos; no descarga ni instala nada. Puedes desactivarlo en Ajustes → Acerca de.
@@ -169,6 +173,6 @@ Tus **claves de IA y tus conversaciones se quedan en tu Mac/PC**. La política d
 
 ## Marcas y agradecimientos
 
-OnyxCode es un proyecto independiente y sin fines de lucro. OpenCode y OpenCode Go pertenecen a sus
+Lazunox es un proyecto independiente y sin fines de lucro. OpenCode y OpenCode Go pertenecen a sus
 autores. Anthropic y Claude son marcas de Anthropic, PBC. Este proyecto no tiene afiliación con ellos ni
 cuenta con su respaldo.

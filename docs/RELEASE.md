@@ -1,4 +1,4 @@
-# Publicar una versión de OnyxCode (guion y checklist)
+# Publicar una versión de Lazunox (guion y checklist)
 
 Complementa `docs/DISTRIBUCION.md` (cómo se firma y notariza) y `docs/SEGURIDAD.md` §3 quinquies y septies (cómo se verifica una actualización).
 Aquí está el **orden** de una publicación, quién hace cada paso y qué hacer si algo sale mal.
@@ -49,7 +49,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z      # lo haces tú; protegido en el re
 ```bash
 mkdir -p ~/Descargas/onyx-X.Y.Z && cd ~/Descargas/onyx-X.Y.Z
 gh release download vX.Y.Z --repo <owner>/<repo> --pattern 'update.json' --pattern '*.zip'
-cd <ruta al repositorio de OnyxCode>
+cd <ruta al repositorio de Lazunox>
 ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/onyx-X.Y.Z
 node scripts/verify-update.mjs --dir ~/Descargas/onyx-X.Y.Z
 gh release upload vX.Y.Z ~/Descargas/onyx-X.Y.Z/update.json.sig --repo <owner>/<repo>
@@ -64,7 +64,7 @@ gh release upload vX.Y.Z ~/Descargas/onyx-X.Y.Z/update.json.sig --repo <owner>/<
 
 ## 6. Comprobación posterior en un Mac limpio
 
-- [ ] Un Mac (o usuario) que **nunca** tuvo OnyxCode: descarga el `.dmg` de la release → abre **sin avisos** de Gatekeeper.
+- [ ] Un Mac (o usuario) que **nunca** tuvo Lazunox: descarga el `.dmg` de la release → abre **sin avisos** de Gatekeeper.
 - [ ] `npm run verify:signed -- --expect devid --team <TEAM> --app <ruta al .app instalado> --dmg <ruta al .dmg descargado>`.
 - [ ] Con la versión anterior instalada: Ajustes › aviso de versión nueva → **Actualizar** → descarga, verifica, reinicia → la versión nueva arranca y los permisos se conservan.
 - [ ] Si no aparece el aviso: ¿la release está como prerelease o borrador? ¿`update.json.sig` subido? (R8 del plan).
@@ -113,6 +113,12 @@ Rotación (sospecha de filtración o renovación periódica):
 4. [ ] Publica una versión nueva firmada con el certificado nuevo (flujo normal).
 
 ## 13. Si decides otro nombre (simulación)
+
+**Fase 1 aplicada (Lazunox, antes OnyxCode).** Solo cambió el nombre **visible** (`DISPLAY_NAME`). Invariantes que NO se tocan sin el plan de la Fase 2
+(los vigila `src/test/identity-freeze.test.ts`): `package.json` `name`/`productName`, `appId` `cl.bentec.onyxcode`, `app.setName(INTERNAL_NAME)` (clave del
+Llavero) y ningún `setPath('userData')`, `APP_SLUG`, `UPDATE_KEY_ID`, `SITE_KEY_ID`, `OnyxCode.app`, nombre del DMG/ZIP, protocolo `onyxcode://`, dominio y
+certificado. Ni `CFBundleName` ni `CFBundleExecutable` se sobrescriben (Electron localiza sus helpers con ellos). Los iconos de la PWA ya instalados en un celular
+conservan la etiqueta antigua hasta reinstalarlos. La marca no está verificada: no publicar antes de ese paso.
 
 El nombre y el identificador (`appId`) están en cada copia instalada: si cambian **después** de publicar, las copias existentes no pueden actualizarse solas a la nueva. Decídelo **antes** de la primera versión pública. Para ver todo lo que cambiaría, sin tocar nada:
 
