@@ -1133,3 +1133,24 @@ Todo bajo `desk:` / `app/desktop/conversation.css` (`:root[data-shell='desktop']
 - **Colores**: ninguno nuevo; `fill-selected`/`fill-hover` -> `bg-hover`, `fill-strong` -> `bg-active`, `surface` -> `bg-elevated`, `bg-app` -> `bg-bg`. Los hex del diseño difieren un poco de los de la app (p. ej. fondo `#121318` vs `#11131a`); se mantienen los de la app.
 - **No hecho**: barra lateral colapsada de 56 px con iconos (hoy colapsar la oculta del todo, `inert`, y todas las cabeceras reservan `--header-inset`; requiere un riel nuevo y tocar `App.tsx`).
 - **Verificación**: vitest renderer+test+shared 1602 pasan (snapshots sin cambios), typecheck, lint y prettier de los archivos tocados, build:pwa + size:pwa en verde (arranque 285,5 KB gz; budget.json intacto); capturas antes/después de chat-vacio y chat-conversacion en oscuro y claro.
+
+## F8-B97 — Rediseño de escritorio: tarjetas de permiso de Tareas y Code (ND, solo escritorio)
+
+Anatomía `oc-perm` en escritorio (título → consecuencia → comando literal → alcance/sandbox → acciones) con `role=alertdialog`,
+comando envuelto sin recortar (aviso «El comando sigue: N líneas en total» por encima de 200 líneas/20 000 caracteres, y
+caracteres ocultos avisados), descripción del modelo marcada «no verificada» y acciones en posiciones fijas. El celular/PWA no
+cambia ni un píxel: los archivos compartidos bifurcan por `isRemoteSurface()` y las clases nuevas solo se AÑADEN con `desk:`.
+
+- **Modelo de teclado seguro (solo escritorio)**: sin atajo global; `⌘↵` (Ctrl+↵ en Windows) permite solo con foco en la tarjeta,
+  `document.hasFocus()`, tarjeta visible ≥60 %, armada 600 ms y sin `repeat`/IME/Alt/Shift; Enter NUNCA permite (sobre los botones
+  Permitir hace `preventDefault()`); Esc rechaza; ningún botón Permitir recibe foco automático; el foco de la barra «Revisar» va al
+  contenedor de la tarjeta. `usePermGuard` reutiliza `IntersectionObserver` (umbral 0,6) y un sondeo con refs para no re-render.
+- **Retirado el 1/2/3 global de Code** (decisiones ND #4): «2» = permitir siempre desde el compositor era un riesgo existente. El
+  prop `hotkeys` solo decide si se pinta el `<kbd>` de ⌘↵. Riesgo documentado en `docs/SEGURIDAD.md` §3 quadragies ter.
+- **Barra compacta de aprobación**: en escritorio, para un comando destructivo, con salto de línea, >120 caracteres o caracteres
+  ocultos, solo ofrece «Revisar» y «Rechazar» (nunca se aprueba a ciegas). El par Rechazar/Permitir una vez va con kbd `Esc`/`⌘↵`.
+- **Red bloqueada (NetworkBlocked)**: se reordena en escritorio (decisiones ND #2) — «Mantener bloqueado» y «Permitir siempre» a la
+  izquierda, «Permitir esta vez» a la derecha, armado 600 ms; el celular queda byte a byte igual (fijado con `cards.mobile-pin.test.tsx`).
+- **Pruebas**: `lib/perm-guard.test.ts` (puro), `PermissionPrompt.desk.test.tsx`, `PermissionCard.desk.test.tsx`, `*mobile-pin.test.tsx`
+  (fijación del celular ANTES de tocar), `e2e/specs/permisos-escritorio.e2e.ts` y escenarios `code-permiso` / `tareas-permiso-neutral` /
+  `tareas-permiso-largo` en `scripts/shot-desktop.mjs`. `policy.ts` y `mac-confirm*` sin diff.
