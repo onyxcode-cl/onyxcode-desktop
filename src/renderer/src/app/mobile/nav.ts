@@ -1,16 +1,25 @@
 /**
- * Navegación en pila de la interfaz móvil (PWA del celular): cada pestaña (Chat · Code · Tareas · Más) tiene su propia pila de
- * pantallas, cuya base es siempre `root` (la lista). Entrar a una conversación = `push('detail')`; el botón atrás = `pop()`.
- * Las pantallas son cadenas libres: el shell usa `root`/`detail`/`routines`/`settings`/`phone`, y otras tandas (p. ej. Cambios y
- * Archivos de Code) pueden apilar las suyas (`changes`, `files`…) sin tocar este archivo. Sin DOM: lo prueba un test unitario.
+ * Navegación en pila de la interfaz móvil (PWA del celular): cada pestaña (Chat · Code · Tareas · Rutinas) tiene su propia pila
+ * de pantallas, cuya base es siempre `root` (Inicio o la lista). Entrar a una conversación = `push('detail')`; el botón atrás =
+ * `pop()`. Las pantallas son cadenas libres: el shell usa `root`/`detail`/`settings`/`phone` (Ajustes se APILA en la pestaña
+ * activa) y otras tandas (p. ej. Cambios y Archivos de Code) pueden apilar las suyas (`changes`, `files`…) sin tocar este archivo.
+ * El panel lateral (`drawerOpen`) no es una pantalla de la pila: es un estado aparte que cuenta como una entrada más del historial
+ * (ver `nav-history.ts`). Sin DOM: lo prueba un test unitario.
  */
 import { create } from 'zustand'
 
-export type MobileTab = 'chat' | 'code' | 'tasks' | 'more'
-export const MOBILE_TABS: readonly MobileTab[] = ['chat', 'code', 'tasks', 'more']
+export type MobileTab = 'chat' | 'code' | 'tasks' | 'routines'
+export const MOBILE_TABS: readonly MobileTab[] = ['chat', 'code', 'tasks', 'routines']
 export type MobileScreenId = string
 export const ROOT_SCREEN: MobileScreenId = 'root'
 export const DETAIL_SCREEN: MobileScreenId = 'detail'
+/** Ajustes y conexión: pantallas apiladas sobre la pestaña activa (desde el pie del panel o «conectar una IA»). */
+export const SETTINGS_SCREEN: MobileScreenId = 'settings'
+export const SETTINGS_PREFIX = 'settings:'
+export const PHONE_SCREEN: MobileScreenId = 'phone'
+/** ¿La pantalla es de Ajustes/conexión (se resuelve igual en cualquier pestaña)? */
+export const isSettingsScreen = (screen: MobileScreenId): boolean =>
+  screen === SETTINGS_SCREEN || screen === PHONE_SCREEN || screen.startsWith(SETTINGS_PREFIX)
 /** Pantallas que Code apila sobre la conversación (hojas a pantalla completa y menú de acciones): el «atrás» las cierra. */
 export const CODE_CHANGES = 'code:changes'
 export const CODE_FILES = 'code:files'
@@ -22,14 +31,22 @@ const MAX_DEPTH = 8
 export interface NavState {
   tab: MobileTab
   stacks: Record<MobileTab, readonly MobileScreenId[]>
+  /** Panel lateral abierto (cuenta como una entrada del historial). */
+  drawerOpen: boolean
 }
 
 export const initialNav = (tab: MobileTab = 'chat'): NavState => ({
   tab,
-  stacks: { chat: [ROOT_SCREEN], code: [ROOT_SCREEN], tasks: [ROOT_SCREEN], more: [ROOT_SCREEN] }
+  stacks: { chat: [ROOT_SCREEN], code: [ROOT_SCREEN], tasks: [ROOT_SCREEN], routines: [ROOT_SCREEN] },
+  drawerOpen: false
 })
 
 export const topScreen = (s: NavState): MobileScreenId => s.stacks[s.tab][s.stacks[s.tab].length - 1] ?? ROOT_SCREEN
+
+/** Abre o cierra el panel lateral (sin tocar las pilas). */
+export function navSetDrawer(s: NavState, open: boolean): NavState {
+  return s.drawerOpen === open ? s : { ...s, drawerOpen: open }
+}
 
 /** Apila una pantalla en la pestaña activa (no repite la de arriba; tope de profundidad). */
 export function navPush(s: NavState, screen: MobileScreenId): NavState {
@@ -73,13 +90,15 @@ export function navOpenDetail(s: NavState, tab: MobileTab): NavState {
   const stack = s.stacks[tab]
   if (s.tab === tab && stack[stack.length - 1] === DETAIL_SCREEN) return s
   const keep = stack.includes(DETAIL_SCREEN) ? stack : [ROOT_SCREEN, DETAIL_SCREEN]
-  return { tab, stacks: { ...s.stacks, [tab]: keep } }
+  return { ...s, tab, stacks: { ...s.stacks, [tab]: keep } }
 }
 
 interface NavStore extends NavState {
   push: (screen: MobileScreenId) => void
   pop: () => void
   setTab: (tab: MobileTab) => void
+  /** Abre o cierra el panel lateral. */
+  setDrawer: (open: boolean) => void
   showTab: (tab: MobileTab) => void
   openDetail: (tab: MobileTab) => void
   replace: (screen: MobileScreenId) => void
@@ -97,6 +116,7 @@ export const useMobileNavStore = create<NavStore>((set) => ({
   replace: (screen) => set((s) => navReplace(s, screen)),
   resetTab: (tab) => set((s) => navResetTab(s, tab)),
   setTab: (tab) => set((s) => navSetTab(s, tab)),
+  setDrawer: (open) => set((s) => navSetDrawer(s, open)),
   showTab: (tab) => set((s) => navShowTab(s, tab)),
   openDetail: (tab) => set((s) => navOpenDetail(s, tab)),
   toRoot: () => set((s) => ({ ...s, stacks: { ...s.stacks, [s.tab]: [ROOT_SCREEN] } })),
@@ -112,13 +132,27 @@ export function useMobileNav(): {
   push: (screen: MobileScreenId) => void
   pop: () => void
   setTab: (tab: MobileTab) => void
+  drawerOpen: boolean
+  setDrawer: (open: boolean) => void
 } {
   const tab = useMobileNavStore((s) => s.tab)
   const stack = useMobileNavStore((s) => s.stacks[s.tab])
   const push = useMobileNavStore((s) => s.push)
   const pop = useMobileNavStore((s) => s.pop)
   const setTab = useMobileNavStore((s) => s.setTab)
-  return { tab, screen: stack[stack.length - 1] ?? ROOT_SCREEN, depth: stack.length, canGoBack: stack.length > 1, push, pop, setTab }
+  const drawerOpen = useMobileNavStore((s) => s.drawerOpen)
+  const setDrawer = useMobileNavStore((s) => s.setDrawer)
+  return {
+    tab,
+    screen: stack[stack.length - 1] ?? ROOT_SCREEN,
+    depth: stack.length,
+    canGoBack: stack.length > 1,
+    push,
+    pop,
+    setTab,
+    drawerOpen,
+    setDrawer
+  }
 }
 
 export type NavAnimation = 'push' | 'pop' | 'tab' | 'none'

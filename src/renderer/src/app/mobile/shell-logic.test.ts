@@ -3,7 +3,7 @@ import { bannerFor } from './link'
 import { navAnimation } from './nav'
 
 describe('navAnimation', () => {
-  const at = (tab: 'chat' | 'code' | 'tasks' | 'more', depth: number) => ({ tab, depth })
+  const at = (tab: 'chat' | 'code' | 'tasks' | 'routines', depth: number) => ({ tab, depth })
   it('sin pantalla anterior o con el gesto atrás del navegador no anima', () => {
     expect(navAnimation(null, at('chat', 1), false)).toBe('none')
     expect(navAnimation(at('chat', 2), at('chat', 1), true)).toBe('none')
@@ -13,7 +13,7 @@ describe('navAnimation', () => {
   })
   it('más profundo entra por la derecha y menos profundo por la izquierda', () => {
     expect(navAnimation(at('chat', 1), at('chat', 2), false)).toBe('push')
-    expect(navAnimation(at('more', 3), at('more', 2), false)).toBe('pop')
+    expect(navAnimation(at('routines', 3), at('routines', 2), false)).toBe('pop')
   })
   it('misma pestaña y misma profundidad: nada', () => {
     expect(navAnimation(at('tasks', 2), at('tasks', 2), false)).toBe('none')

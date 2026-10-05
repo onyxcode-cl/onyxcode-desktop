@@ -14,7 +14,7 @@ import { useSessions } from '../../stores/sessions'
 
 export type ListMode = 'chat' | 'code' | 'tasks'
 export const LIST_MODES: readonly ListMode[] = ['chat', 'code', 'tasks']
-export const isListMode = (m: ModeId | 'more'): m is ListMode => m === 'chat' || m === 'code' || m === 'tasks'
+export const isListMode = (m: ModeId): m is ListMode => m === 'chat' || m === 'code' || m === 'tasks'
 
 /** Id de la conversación/sesión/tarea abierta en cada modo (`null` = ninguna: lista, o «nueva»). */
 export function useActiveIds(): Record<ListMode, string | null> {

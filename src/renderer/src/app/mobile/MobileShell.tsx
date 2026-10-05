@@ -1,17 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  Check,
-  ChevronLeft,
-  Ellipsis,
-  FileCode2,
-  GitCompare,
-  LayoutGrid,
-  Loader2,
-  MoreHorizontal,
-  SquarePen,
-  Users,
-  WifiOff
-} from 'lucide-react'
+import { Check, ChevronLeft, FileCode2, GitCompare, LayoutGrid, Loader2, MoreHorizontal, SquarePen, WifiOff } from 'lucide-react'
 import { modeAvailable } from '@shared/platform-caps'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeId } from '@shared/types'
@@ -29,10 +17,10 @@ import { EngineNotice } from '../EngineNotice'
 import { QuickEntryNotice } from '../QuickEntryNotice'
 import { ServerBanner } from '../ServerBanner'
 import { MODES_BY_ID } from '../modes'
-import { LIST_MODES, clearActive, isListMode, useActiveIds, useDetailTitle, type ListMode } from './adapters'
+import { LIST_MODES, clearActive, useActiveIds, useDetailTitle, type ListMode } from './adapters'
 import { bannerFor, useLinkStatus, type BannerKind } from './link'
-import { MoreRoot, PhoneScreen, RoutinesScreen } from './MoreScreens'
-import { createHistorySync } from './nav-history'
+import { PhoneScreen, RoutinesScreen } from './MoreScreens'
+import { createHistorySync, historyTarget, userBackAction } from './nav-history'
 import {
   CODE_ACTIONS,
   CODE_BROWSER,
@@ -40,7 +28,11 @@ import {
   CODE_FILES,
   CODE_PANEL_SCREENS,
   DETAIL_SCREEN,
+  MOBILE_TABS,
   ROOT_SCREEN,
+  SETTINGS_PREFIX,
+  SETTINGS_SCREEN,
+  isSettingsScreen,
   navAnimation,
   topScreen,
   useMobileNav,
@@ -53,17 +45,19 @@ import './mobile-shell.css'
 /** Secciones de Ajustes que existen en el celular (el resto se cambia desde el Mac). */
 export const MOBILE_SETTINGS_SECTIONS = ['general', 'models'] as const
 export type MobileSettingsSection = (typeof MOBILE_SETTINGS_SECTIONS)[number]
-const SETTINGS_PREFIX = 'settings:'
 
 const isMobileSection = (v: string | null): v is MobileSettingsSection => v === 'general' || v === 'models'
 
 /** El gesto/botón atrás del navegador ya animó solo: la siguiente transición de pantalla no repite la animación. */
 let skipNextAnim = false
 
+/** ¿La pestaña es la de un modo con lista (Chat, Code, Tareas)? Rutinas no tiene lista ni conversación. */
+const isListTab = (tab: MobileTab): tab is ListMode => tab !== 'routines'
+
 /** Atrás: desde una conversación suelta la selección del modo y vuelve a la lista; en el resto desapila. */
 export function popScreen(): void {
   const st = useMobileNavStore.getState()
-  if (topScreen(st) === DETAIL_SCREEN && isListMode(st.tab)) clearActive(st.tab)
+  if (topScreen(st) === DETAIL_SCREEN && isListTab(st.tab)) clearActive(st.tab)
   st.pop()
 }
 
@@ -73,7 +67,7 @@ function useNavHistory(): void {
   useEffect(() => {
     const target = (): number => {
       const st = useMobileNavStore.getState()
-      return st.stacks[st.tab].length - 1
+      return historyTarget(st.stacks[st.tab].length, st.drawerOpen)
     }
     let timer: ReturnType<typeof setTimeout> | undefined
     const sync = createHistorySync(
@@ -99,8 +93,13 @@ function useNavHistory(): void {
     )
     const onPop = (): void => {
       if (sync.popstate() === 'user') {
-        skipNextAnim = true
-        popScreen()
+        // Con el panel abierto, «atrás» solo lo cierra (la entrada del panel ya se consumió).
+        if (userBackAction(useMobileNavStore.getState().drawerOpen) === 'close-drawer') {
+          useMobileNavStore.getState().setDrawer(false)
+        } else {
+          skipNextAnim = true
+          popScreen()
+        }
       }
       sync.reconcile()
     }
@@ -129,10 +128,10 @@ function useExternalSync(): void {
   }, [directory])
 
   useEffect(() => {
-    if (isListMode(mode)) useMobileNavStore.getState().showTab(mode)
+    if ((MOBILE_TABS as readonly string[]).includes(mode)) useMobileNavStore.getState().showTab(mode as MobileTab)
   }, [mode])
 
-  // Algo pidió abrir Ajustes (p. ej. «conectar una IA»): se abre la versión del celular.
+  // Algo pidió abrir Ajustes (p. ej. «conectar una IA»): se abre la versión del celular, apilada en la pestaña activa.
   useEffect(() => {
     if (!settingsOpen) return
     const nav = useMobileNavStore.getState()
@@ -142,10 +141,11 @@ function useExternalSync(): void {
     } catch {
       // sin storage
     }
-    nav.showTab('more')
-    nav.toRoot()
-    nav.push('settings')
-    if (isMobileSection(wanted)) nav.push(SETTINGS_PREFIX + wanted)
+    // Si Ajustes ya está apilado en esta pestaña no se repite.
+    if (!nav.stacks[nav.tab].some(isSettingsScreen)) {
+      nav.push(SETTINGS_SCREEN)
+      if (isMobileSection(wanted)) nav.push(SETTINGS_PREFIX + wanted)
+    }
     useUi.getState().openSettings(false)
   }, [settingsOpen])
 
@@ -169,16 +169,16 @@ function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
     ...LIST_MODES.filter((m) => modeAvailable(m, currentPlatform())).map((m) => ({
       id: m as MobileTab,
       label: MODE_LABELS[m],
-      // En el celular Tareas conserva su icono original (escritorio usa ListChecks).
-      icon: m === 'tasks' ? Users : MODES_BY_ID[m].icon
+      // Tareas usa ListChecks, igual que escritorio (decisiones-pwa #2).
+      icon: MODES_BY_ID[m].icon
     })),
-    { id: 'more', label: t('mobile.tab.more'), icon: Ellipsis }
+    { id: 'routines', label: MODE_LABELS.routines, icon: MODES_BY_ID.routines.icon }
   ]
   const choose = (id: MobileTab): void => {
     // Tocar de nuevo la pestaña activa: con pila vuelve a la lista (`setTab`); ya en la lista, sube al principio.
     if (id === tab && depth === 1) onReselect()
     setTab(id)
-    if (isListMode(id)) useUi.getState().setMode(id as ModeId)
+    useUi.getState().setMode(id as ModeId)
   }
   return (
     <nav
@@ -263,13 +263,11 @@ function TopBar({
 
 const goBack = popScreen
 
-function titleOfMoreScreen(screen: string, t: ReturnType<typeof useT>): string {
-  if (screen === 'routines') return MODE_LABELS.routines
+function titleOfSettingsScreen(screen: string, t: ReturnType<typeof useT>): string {
   if (screen === 'phone') return t('mobile.phone.title')
-  if (screen === 'settings') return t('mobile.settings.title')
   if (screen === `${SETTINGS_PREFIX}general`) return t('mobile.settings.general')
   if (screen === `${SETTINGS_PREFIX}models`) return t('mobile.settings.models')
-  return t('mobile.more.title')
+  return t('mobile.settings.title')
 }
 
 function ListScreen({ mode }: { mode: ListMode }): React.JSX.Element {
@@ -310,16 +308,14 @@ function CodeBody({ screen, hasDetail }: { screen: string; hasDetail: boolean })
 function Body(): React.JSX.Element {
   const { tab, screen, push } = useMobileNav()
   const codeStack = useMobileNavStore((s) => s.stacks.code)
-  if (tab === 'more') {
-    if (screen === 'routines') return <RoutinesScreen />
-    if (screen === 'phone') return <PhoneScreen />
-    if (screen === 'settings') return <SettingsView mobile={{ onOpen: (id) => push(SETTINGS_PREFIX + id) }} />
-    if (screen.startsWith(SETTINGS_PREFIX)) {
-      const id = screen.slice(SETTINGS_PREFIX.length)
-      return <SettingsView mobile={{ onOpen: () => undefined }} initial={isMobileSection(id) ? id : 'general'} />
-    }
-    return <MoreRoot />
+  // Ajustes y «Este celular» se apilan sobre la pestaña activa: se resuelven igual en cualquiera.
+  if (screen === 'phone') return <PhoneScreen />
+  if (screen === SETTINGS_SCREEN) return <SettingsView mobile={{ onOpen: (id) => push(SETTINGS_PREFIX + id) }} />
+  if (screen.startsWith(SETTINGS_PREFIX)) {
+    const id = screen.slice(SETTINGS_PREFIX.length)
+    return <SettingsView mobile={{ onOpen: () => undefined }} initial={isMobileSection(id) ? id : 'general'} />
   }
+  if (tab === 'routines') return <RoutinesScreen />
   if (tab === 'code') return <CodeBody screen={screen} hasDetail={codeStack.includes(DETAIL_SCREEN)} />
   const mode = tab as ListMode
   if (screen === DETAIL_SCREEN) {
@@ -396,21 +392,16 @@ function CodeDetailBar({ title, onBack, screen }: { title: string; onBack?: () =
 function Bar(): React.JSX.Element {
   const t = useT()
   const { tab, screen, canGoBack } = useMobileNav()
-  const detailTitle = useDetailTitle(tab === 'more' ? 'chat' : (tab as ListMode))
+  const detailTitle = useDetailTitle(isListTab(tab) ? tab : 'chat')
   const directory = useCode((s) => s.directory)
   const closeProject = useCode((s) => s.closeProject)
   const codeHasDetail = useMobileNavStore((s) => s.stacks.code.includes(DETAIL_SCREEN))
   const onBack = canGoBack ? goBack : undefined
 
-  if (tab === 'more')
-    return (
-      <TopBar
-        title={screen === ROOT_SCREEN ? t('mobile.more.title') : titleOfMoreScreen(screen, t)}
-        onBack={onBack}
-        root={screen === ROOT_SCREEN}
-      />
-    )
-  const mode = tab as ListMode
+  // Ajustes / «Este celular»: pantalla apilada en cualquier pestaña.
+  if (isSettingsScreen(screen)) return <TopBar title={titleOfSettingsScreen(screen, t)} onBack={onBack} />
+  if (!isListTab(tab)) return <TopBar title={MODE_LABELS.routines} onBack={onBack} root={screen === ROOT_SCREEN} />
+  const mode = tab
   if (mode === 'code' && codeHasDetail && directory) {
     if (CODE_PANEL_SCREENS.includes(screen))
       return <TopBar title={t(CODE_PANEL_TITLE[screen as keyof typeof CODE_PANEL_TITLE])} onBack={onBack} />
@@ -519,7 +510,7 @@ const reducedMotion = (): boolean => {
 
 /**
  * Estructura de la interfaz en el celular (superficie `remote`): una columna a pantalla completa con navegación inferior
- * (Chat · Code · Tareas · Más), navegación en pila lista → conversación y botón atrás. Sustituye a la barra lateral y a los
+ * (Chat · Code · Tareas · Rutinas), navegación en pila lista → conversación y botón atrás. Sustituye a la barra lateral y a los
  * atajos de teclado de escritorio; las vistas son las mismas. La altura sigue al viewport visible (`visualViewport`), así el
  * teclado nunca tapa el compositor.
  */
@@ -528,12 +519,13 @@ export function MobileShell(): React.JSX.Element {
   const codeHasDetail = useMobileNavStore((s) => s.stacks.code.includes(DETAIL_SCREEN))
   const codeDir = useCode((s) => s.directory)
   // Code mantiene montada la conversación mientras se apilan Cambios/Archivos: su llave no cambia con la profundidad.
-  const paneKey = tab === 'code' ? `code:${!codeDir ? 'picker' : codeHasDetail ? 'detail' : 'list'}` : `${tab}:${depth}`
+  const onSettings = useMobileNavStore((s) => isSettingsScreen(topScreen(s)))
+  const paneKey = tab === 'code' && !onSettings ? `code:${!codeDir ? 'picker' : codeHasDetail ? 'detail' : 'list'}` : `${tab}:${depth}`
   const t = useT()
   useNavHistory()
   useExternalSync()
   useEffect(() => installViewportVars(), [])
-  const label = tab === 'more' ? t('mobile.more.title') : MODES_BY_ID[tab as ListMode].label
+  const label = MODES_BY_ID[tab].label
   const root = depth === 1
 
   const rootEl = useRef<HTMLDivElement>(null)

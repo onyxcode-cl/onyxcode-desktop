@@ -24,7 +24,7 @@ function seed(store: AnyStore, patch: object): void {
   store.setState(patch)
   Object.assign(store.getInitialState(), patch)
 }
-function nav(tab: 'chat' | 'code' | 'tasks' | 'more', ...screens: string[]): void {
+function nav(tab: 'chat' | 'code' | 'tasks' | 'routines', ...screens: string[]): void {
   const base = initialNav(tab)
   seed(useMobileNavStore as unknown as AnyStore, { tab, stacks: { ...base.stacks, [tab]: ['root', ...screens] } })
 }
@@ -45,7 +45,7 @@ afterEach(() => {
 
 describe('barra inferior', () => {
   it('lleva data-tabbar y solo la pestaña activa tiene aria-current y la píldora con fondo', () => {
-    nav('more')
+    nav('routines')
     const html = render()
     expect(html).toContain('data-tabbar=""')
     const bar = html.match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? ''
@@ -62,9 +62,34 @@ describe('barra inferior', () => {
   })
 })
 
+describe('pestañas (rediseño PWA T0)', () => {
+  it('la cuarta pestaña es Rutinas, ya no «Más»; Tareas usa ListChecks', () => {
+    nav('chat')
+    const bar = render().match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? ''
+    const labels = [...bar.matchAll(/<span class="(?:font-semibold text-fg|text-muted)">([^<]*)<\/span>/g)].map((m) => m[1])
+    expect(labels).toHaveLength(4)
+    expect(labels[3]).toBe('Rutinas')
+    expect(labels).not.toContain('Más')
+    expect(bar).toContain('lucide-list-checks')
+    expect(bar).not.toContain('lucide-users')
+    expect(bar).toContain('lucide-calendar-clock')
+  })
+  it('Ajustes y «Este celular» se resuelven apilados en cualquier pestaña (cabecera con atrás y sin barra inferior)', () => {
+    for (const tab of ['chat', 'tasks', 'routines'] as const) {
+      nav(tab, 'settings')
+      const html = render()
+      expect(html, tab).toContain('data-edge="detail"')
+      expect(html, tab).not.toContain('data-tabbar')
+      expect(html, tab).toContain(`data-screen="${tab}:2"`)
+    }
+    nav('tasks', 'phone')
+    expect(render()).toContain('data-m="phone"')
+  })
+})
+
 describe('cabecera y armazón', () => {
   it('lista raíz: título grande, filete solo al desplazar y foco programable', () => {
-    nav('more')
+    nav('routines')
     const html = render()
     expect(count(html, /<header/g)).toBe(1)
     expect(count(html, /<h1/g)).toBe(1)
@@ -73,7 +98,7 @@ describe('cabecera y armazón', () => {
     expect(html).toContain('text-[20px]')
   })
   it('pantalla apilada: filete fijo, sin barra inferior', () => {
-    nav('more', 'settings')
+    nav('routines', 'settings')
     const html = render()
     expect(html).toContain('data-edge="detail"')
     expect(html).not.toContain('data-tabbar')
@@ -81,7 +106,7 @@ describe('cabecera y armazón', () => {
     expect(count(html, /<h1/g)).toBe(1)
   })
   it('respeta la zona segura lateral (iPhone en horizontal)', () => {
-    nav('more')
+    nav('routines')
     const html = render()
     expect(html).toContain('safe-area-inset-left')
     expect(html).toContain('safe-area-inset-right')
