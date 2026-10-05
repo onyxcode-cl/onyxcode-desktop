@@ -210,16 +210,16 @@ function ConfirmDialogView(): React.JSX.Element | null {
           aria-describedby={req.message ? 'confirm-dialog-message' : undefined}
           onMouseDown={(e) => e.stopPropagation()}
           {...mobileAttrs('card')}
-          className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+          className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[420px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
         >
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:mb-4 desk:rounded-card">
             <Pencil size={20} />
           </div>
-          <h3 id="confirm-dialog-title" className="text-base font-semibold">
+          <h3 id="confirm-dialog-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
             {req.title}
           </h3>
           {req.message && (
-            <p id="confirm-dialog-message" className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-line">
+            <p id="confirm-dialog-message" className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-line desk:leading-5">
               {req.message}
             </p>
           )}
@@ -237,14 +237,14 @@ function ConfirmDialogView(): React.JSX.Element | null {
                 finishPrompt(text)
               }
             }}
-            className="mt-3 w-full rounded-lg border border-border bg-bg px-3 py-1.5 text-sm outline-none focus:border-accent"
+            className="mt-3 w-full rounded-lg border border-border bg-bg px-3 py-1.5 text-sm outline-none focus:border-accent desk:h-8 desk:py-0 desk:bg-elevated desk:border-border-strong desk:focus:shadow-focus"
           />
-          <div {...mobileAttrs('actions')} className="mt-4 flex justify-end gap-2">
+          <div {...mobileAttrs('actions')} className="mt-4 flex justify-end gap-2 desk:mt-6">
             <button
               ref={cancelRef}
               type="button"
               onClick={() => finishPrompt(null)}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
             >
               {req.cancelLabel ?? t('common.cancel')}
             </button>
@@ -252,7 +252,7 @@ function ConfirmDialogView(): React.JSX.Element | null {
               ref={confirmRef}
               type="button"
               onClick={() => finishPrompt(text)}
-              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
+              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
             >
               {req.confirmLabel ?? t('common.accept')}
             </button>
@@ -278,30 +278,30 @@ function ConfirmDialogView(): React.JSX.Element | null {
         aria-describedby={req.message ? 'confirm-dialog-message' : undefined}
         onMouseDown={(e) => e.stopPropagation()}
         {...mobileAttrs('card')}
-        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[420px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
       >
         <div
-          className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${
-            danger ? 'bg-danger/10 text-danger' : 'bg-accent-soft text-accent'
+          className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl desk:mb-4 desk:rounded-card ${
+            danger ? 'bg-danger/10 text-danger desk:bg-danger/15' : 'bg-accent-soft text-accent'
           }`}
         >
           {danger ? <AlertTriangle size={20} /> : <HelpCircle size={20} />}
         </div>
-        <h3 id="confirm-dialog-title" className="text-base font-semibold">
+        <h3 id="confirm-dialog-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
           {req.title}
         </h3>
         {req.message && (
-          <p id="confirm-dialog-message" className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-line">
+          <p id="confirm-dialog-message" className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-line desk:leading-5">
             {req.message}
           </p>
         )}
-        <div {...mobileAttrs('actions')} className="mt-4 flex justify-end gap-2">
+        <div {...mobileAttrs('actions')} className="mt-4 flex justify-end gap-2 desk:mt-6">
           {req.cancelLabel !== null && (
             <button
               ref={cancelRef}
               type="button"
               onClick={() => finishConfirm(false)}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
             >
               {req.cancelLabel ?? t('common.cancel')}
             </button>
@@ -310,8 +310,10 @@ function ConfirmDialogView(): React.JSX.Element | null {
             ref={confirmRef}
             type="button"
             onClick={() => finishConfirm(true)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium hover:opacity-90 ${
-              danger ? 'bg-danger text-danger-fg' : 'bg-accent text-accent-fg'
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] ${
+              danger
+                ? 'bg-danger text-danger-fg desk:hover:opacity-100 desk:hover:brightness-110'
+                : 'bg-accent text-accent-fg desk:hover:opacity-100 desk:hover:bg-accent-hover'
             }`}
           >
             {req.confirmLabel ?? t('common.accept')}

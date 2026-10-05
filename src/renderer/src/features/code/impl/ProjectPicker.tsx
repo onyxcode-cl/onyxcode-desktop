@@ -41,25 +41,25 @@ export function TrustGate(): React.JSX.Element | null {
         aria-modal="true"
         aria-labelledby="trust-title"
         aria-describedby="trust-desc"
-        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[420px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
       >
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:mb-4 desk:rounded-card">
           <ShieldCheck size={20} />
         </div>
-        <h3 id="trust-title" className="text-base font-semibold">
+        <h3 id="trust-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
           {t('code.trust.title')}
         </h3>
-        <p className="mt-1.5 truncate font-mono text-xs text-subtle" title={dir}>
+        <p className="mt-1.5 truncate font-mono text-xs text-subtle desk:text-meta" title={dir}>
           {tildify(dir)}
         </p>
-        <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted">
+        <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
           {t('code.trust.body')}
         </p>
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-4 flex justify-end gap-2 desk:mt-6">
           <button
             type="button"
             onClick={() => resolveTrust(false)}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
           >
             {t('code.ui.cancel')}
           </button>
@@ -67,7 +67,7 @@ export function TrustGate(): React.JSX.Element | null {
             ref={confirmRef}
             type="button"
             onClick={() => resolveTrust(true)}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90"
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
           >
             {t('code.trust.confirm')}
           </button>
@@ -147,15 +147,15 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
         aria-modal="true"
         aria-labelledby="worktree-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[420px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
       >
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:mb-4 desk:rounded-card">
           <GitBranchPlus size={20} />
         </div>
-        <h3 id="worktree-title" className="text-base font-semibold">
+        <h3 id="worktree-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
           {t('code.worktree.title')}
         </h3>
-        <p className="mt-1 text-sm leading-relaxed text-muted">
+        <p className="mt-1 text-sm leading-relaxed text-muted desk:leading-5">
           {t('code.worktree.descBefore')}
           <code className="font-mono text-xs">{'git worktree'}</code>
           {t('code.worktree.descAfter')}
@@ -173,11 +173,11 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
           />
         </div>
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-4 flex justify-end gap-2 desk:mt-6">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
           >
             {t('code.ui.cancel')}
           </button>
@@ -185,7 +185,7 @@ export function NewWorktreeDialog({ directory, onClose }: { directory: string; o
             type="button"
             disabled={busy || !name.trim()}
             onClick={() => void submit()}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 disabled:opacity-50 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
           >
             {busy ? t('code.worktree.creating') : t('code.worktree.create', { branch })}
           </button>

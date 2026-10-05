@@ -75,21 +75,24 @@ export function ConfirmDialogBody({
         aria-describedby="compare-confirm-body"
         data-testid="compare-confirm"
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl border border-border bg-elevated p-5 shadow-2xl"
+        className="w-full max-w-[420px] animate-rise-in rounded-modal bg-elevated p-6 shadow-modal"
       >
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-card bg-accent-soft text-accent">
           <Columns3 size={20} />
         </div>
-        <h3 id="compare-confirm-title" className="text-base font-semibold">
+        <h3 id="compare-confirm-title" className="text-[17px] leading-6 font-semibold">
           {t('compare.confirm.title')}
         </h3>
-        <div id="compare-confirm-body" className="mt-2 space-y-2 text-sm leading-relaxed text-muted">
-          <p className="line-clamp-3 rounded-lg bg-inset px-2.5 py-1.5 text-[13px] text-fg" aria-label={t('compare.confirm.prompt')}>
+        <div id="compare-confirm-body" className="mt-2 space-y-2 text-sm leading-5 text-muted">
+          <p className="line-clamp-3 rounded-ctl bg-inset px-3 py-2 text-[13px] text-fg" aria-label={t('compare.confirm.prompt')}>
             {c.text}
           </p>
           <ul className="flex flex-wrap gap-1.5" aria-label={t('compare.launcher.list')}>
             {c.models.map((m) => (
-              <li key={`${m.providerID}/${m.modelID}/${m.variant ?? ''}`} className="rounded-full bg-inset px-2 py-0.5 text-[12px] text-fg">
+              <li
+                key={`${m.providerID}/${m.modelID}/${m.variant ?? ''}`}
+                className="flex h-7 items-center rounded-ctl-sm bg-active px-2.5 text-[12px] text-fg"
+              >
                 {nameOf(m.providerID, m.modelID)}
                 {m.variant ? ` · ${m.variant}` : ''}
               </li>
@@ -101,7 +104,7 @@ export function ConfirmDialogBody({
             </p>
           ) : (
             <>
-              <p>
+              <p className="flex gap-2.5 rounded-ctl bg-accent-soft px-3 py-2.5 text-[13px] leading-[18px] text-fg shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]">
                 {c.spent !== null && c.spent > 0
                   ? t('compare.confirm.usage', { count: c.models.length, spent: formatCost(c.spent) })
                   : t('compare.confirm.usageNoSpent', { count: c.models.length })}
@@ -119,17 +122,17 @@ export function ConfirmDialogBody({
           )}
         </div>
         {!c.blocker && (
-          <label className="mt-3 flex items-center gap-2 text-[12.5px] text-muted">
+          <label className="mt-3 flex items-center gap-2 text-[13px] text-muted">
             <input type="checkbox" checked={dontAsk} onChange={(e) => onDontAsk(e.target.checked)} className="accent-[var(--accent)]" />
             {t('compare.confirm.dontAsk')}
           </label>
         )}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => cancelConfirm()}>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="secondary" size="lg" onClick={() => cancelConfirm()}>
             {t('compare.confirm.cancel')}
           </Button>
           {!c.blocker && (
-            <Button variant="primary" autoFocus disabled={!canStart} onClick={() => void confirmStart({ dontAsk })}>
+            <Button variant="primary" size="lg" autoFocus disabled={!canStart} onClick={() => void confirmStart({ dontAsk })}>
               {t('compare.confirm.start')}
             </Button>
           )}
