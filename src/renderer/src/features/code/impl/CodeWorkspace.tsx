@@ -400,7 +400,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const busy = run === 'busy' || run === 'retry'
 
   return (
-    <div className="drag flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+    <div className="drag flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 desk:pl-[calc(var(--header-inset,0px)+12px)]">
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (

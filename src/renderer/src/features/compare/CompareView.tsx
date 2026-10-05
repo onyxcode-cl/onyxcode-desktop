@@ -191,7 +191,7 @@ export function CompareViewContent({
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="compare-view">
-      <header className="drag flex h-12 shrink-0 items-center gap-3 border-b border-border px-3">
+      <header className="drag flex h-12 shrink-0 items-center gap-3 border-b border-border px-3 desk:pl-[calc(var(--header-inset,0px)+12px)]">
         <h2 className="shrink-0 font-display text-[14px] font-semibold">{t('compare.title')}</h2>
         <span className="shrink-0 text-[12px] text-subtle">{t('compare.models', { count: m.columns.length })}</span>
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-subtle" title={m.promptPreview}>
