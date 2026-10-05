@@ -20,6 +20,7 @@ import { cw } from './bridge'
 import { computerToolInfo, computerToolKind } from './computer-tools'
 import { metadataJson, parseMcpPermission, showAlways } from './conversation-logic'
 import { FolderRequestCard } from './FolderRequestCard'
+import { permActions } from './perm-actions'
 import { useTasks } from './store'
 import { baseName, rememberablePatterns } from './util'
 
@@ -291,6 +292,9 @@ export function PermissionCard({ request }: { request: PermissionRequest }): Rea
   return <PermissionCardDesk request={request} />
 }
 
+const BTN_VARIANT = { primary: 'primary', danger: 'danger', neutral: 'ghost', outline: 'secondary' } as const
+const BTN_EXTRA = { primary: '', danger: '', neutral: 'bg-active! text-fg!', outline: 'bg-transparent! border-border-strong!' } as const
+
 function GenericPermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
   const t = useT()
   const servers = useMcpServers()
@@ -300,25 +304,27 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon
   const showDiff = !!d.diff && hasDiffChanges(d.diff)
+  // Celular (decisiones-pwa #1): el orden y las variantes salen de `permActions`; la tarjeta solo recorre la lista.
+  const actions = permActions({ danger: d.danger, canAlways, noting })
   return (
     <div
       id={`perm-${request.id}`}
       tabIndex={-1}
-      className={`rounded-xl border p-3.5 outline-none ${d.danger ? 'border-danger/40 bg-danger/5' : 'border-warning/40 bg-warning/5'}`}
+      className={`rounded-xl border p-4 outline-none ${d.danger ? 'border-danger/40 bg-danger/5' : 'border-warning/40 bg-warning/5'}`}
     >
       <div className="flex items-start gap-3">
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
             d.danger ? 'bg-danger/15 text-danger' : 'bg-warning/15 text-warning'
           }`}
         >
-          <Icon size={16} />
+          <Icon size={16} className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{d.title}</p>
-          <p className="mt-0.5 text-xs text-muted">{d.effect}</p>
+          <p className="text-[17px] leading-6 font-semibold">{d.title}</p>
+          <p className="mt-0.5 text-sm leading-5 text-muted">{d.effect}</p>
           {d.detail && (
-            <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-code px-2.5 py-1.5 font-mono text-xs leading-[18px] whitespace-pre-wrap">
               {d.detail}
             </pre>
           )}
@@ -364,23 +370,19 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
             </div>
           )}
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {!noting && (
-              <Button variant="ghost" className="mr-auto" disabled={busy} onClick={() => setNoting(true)}>
-                {t('tasksComputer.perm.rejectNote')}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {actions.map((a) => (
+              <Button
+                key={a.id}
+                variant={BTN_VARIANT[a.variant]}
+                className={`min-h-11 ${a.fullWidth ? 'basis-full' : 'min-w-0 flex-1'} rounded-(--m-btn-radius)! ${BTN_EXTRA[a.variant]}`}
+                disabled={busy}
+                onClick={() => (a.id === 'note' ? setNoting(true) : answer(a.reply))}
+                title={a.title === 'alwaysHint' ? alwaysHint(request) : undefined}
+              >
+                {t(a.labelKey)}
               </Button>
-            )}
-            <Button variant="ghost" disabled={busy} onClick={() => answer('reject')}>
-              {t('tasksComputer.perm.reject')}
-            </Button>
-            {canAlways && (
-              <Button disabled={busy} onClick={() => answer('always')} title={alwaysHint(request)}>
-                {t('tasksComputer.perm.always')}
-              </Button>
-            )}
-            <Button variant={d.danger ? 'danger' : 'primary'} disabled={busy} onClick={() => answer('once')}>
-              {t('tasksComputer.perm.once')}
-            </Button>
+            ))}
           </div>
           {noting && <RejectWithNote busy={busy} onSend={reject} onCancel={() => setNoting(false)} />}
         </div>
