@@ -146,7 +146,9 @@ function OnboardingHost(): React.JSX.Element | null {
         className="flex max-h-full w-full max-w-xl animate-pop-in flex-col rounded-modal border border-transparent bg-elevated shadow-modal"
       >
         <header className="border-b border-border/60 px-6 pt-5 pb-4">
-          <p className="text-meta text-muted">{t('wizard.header', { app: DISPLAY_NAME, step: stepIndex(step) + 1, total: steps.length })}</p>
+          <p className="text-meta text-muted">
+            {t('wizard.header', { app: DISPLAY_NAME, step: stepIndex(step) + 1, total: steps.length })}
+          </p>
           <h2
             id="onboarding-title"
             ref={titleRef}

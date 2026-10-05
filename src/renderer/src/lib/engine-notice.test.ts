@@ -5,9 +5,7 @@ const base = { found: true, source: 'cli' as const, version: '1.19.0', sdkVersio
 
 describe('engineNoticeText', () => {
   it('avisa con otra mayor.menor (compatible=false) y nombra ambas versiones', () => {
-    expect(engineNoticeText(base)).toBe(
-      'Estás usando OpenCode 1.19.0; Lazunox se probó con 1.18.32. Si algo falla, usa el motor incluido.'
-    )
+    expect(engineNoticeText(base)).toBe('Estás usando OpenCode 1.19.0; Lazunox se probó con 1.18.32. Si algo falla, usa el motor incluido.')
     expect(engineNoticeText({ ...base, source: 'settings' })).not.toBeNull()
     expect(engineNoticeText({ ...base, source: 'env', version: '1.17.9' })).toContain('1.17.9')
   })
