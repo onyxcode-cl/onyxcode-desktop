@@ -19,7 +19,7 @@ afterEach(() => {
 })
 
 describe('lista de conversaciones del celular', () => {
-  it('búsqueda siempre visible (aunque haya pocas), filas de 56 px y cabeceras de grupo fijas', () => {
+  it('búsqueda siempre visible (aunque haya pocas), filas de 44 px y cabeceras de grupo fijas', () => {
     const now = Date.now()
     const html = renderToStaticMarkup(
       createElement(ChatSessionList, { ...base, sessions: [mk('a', 'Hoy', now), mk('b', 'Ayer', now - 86_400_000)] })
@@ -28,7 +28,8 @@ describe('lista de conversaciones del celular', () => {
     expect(html).toContain('<input')
     expect(html).toContain('sticky top-0')
     expect(html).toContain('sticky top-[60px]')
-    expect(html).toContain('min-h-[var(--m-row)]')
+    expect(html).toContain('min-h-[var(--m-row-list)]')
+    expect(html).not.toContain('min-h-[var(--m-row)]')
     expect(html).toContain('>Hoy<')
     expect(html).toContain('>Ayer<')
     expect(html).toContain('data-m="swipe-row"')
@@ -50,6 +51,7 @@ describe('lista de conversaciones del celular', () => {
     const html = renderToStaticMarkup(createElement(ChatSessionList, { ...base, sessions: [], emptyText: 'Aún no hay conversaciones' }))
     expect(html).toContain('data-m="empty-state"')
     expect(html).toContain('Aún no hay conversaciones')
+    expect(html).toContain('Empieza una con «Nueva conversación»')
     expect(html).toContain('lucide-square-pen')
     expect(html).toContain('Nuevo')
   })
