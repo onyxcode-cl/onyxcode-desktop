@@ -4,7 +4,5 @@
  * ` desk:x` (con el espacio que la separa) y `"desk:x ` / `"desk:x"` al principio de la cadena. No toca claves de objeto (`{desk:…}`).
  */
 export function stripDesktopJs(js: string): string {
-  return js
-    .replace(/(\s)(?:[\w@[\]-]+:)*desk:[^\s"'`\\]+/g, '')
-    .replace(/(["'`])(?:[\w@[\]-]+:)*desk:[^\s"'`\\]+\s?/g, '$1')
+  return js.replace(/(\s)(?:[\w@[\]-]+:)*desk:[^\s"'`\\]+/g, '').replace(/(["'`])(?:[\w@[\]-]+:)*desk:[^\s"'`\\]+\s?/g, '$1')
 }
