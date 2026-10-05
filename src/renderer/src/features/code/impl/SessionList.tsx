@@ -288,10 +288,10 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
           if (e.key === 'Escape') onClose()
         }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-elevated shadow-2xl"
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-elevated shadow-2xl desk:max-w-[600px] desk:rounded-modal desk:border-transparent desk:shadow-modal"
       >
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <Search size={14} className="text-subtle" />
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2 desk:h-[52px] desk:gap-3 desk:border-border/60 desk:px-4 desk:py-0">
+          <Search size={14} className="text-subtle desk:size-5 desk:text-muted" />
           <input
             ref={inputRef}
             value={query}
@@ -304,13 +304,13 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
               }
             }}
             placeholder={t('code.sessions.searchPlaceholder')}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-subtle"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-subtle desk:text-[15px] desk:placeholder:text-muted"
           />
           <button type="button" onClick={onClose} aria-label={t('code.sessions.close')} className="text-subtle hover:text-fg">
             <X size={14} />
           </button>
         </div>
-        <div className="max-h-80 overflow-y-auto py-1">
+        <div className="max-h-80 overflow-y-auto py-1 desk:px-2 desk:pt-1.5 desk:pb-2">
           {list.length === 0 && <div className="px-3 py-3 text-sm text-subtle">{t('code.sessions.noResults')}</div>}
           {list.map((s) => (
             <button
@@ -320,7 +320,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
                 void selectSession(s.id)
                 onClose()
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-hover"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-hover desk:h-8 desk:rounded-ctl desk:px-2 desk:py-0"
             >
               {s.time.archived ? <Archive size={12} className="shrink-0 text-subtle" /> : null}
               <span className="min-w-0 flex-1 truncate">{s.title || t('code.sessions.untitled')}</span>

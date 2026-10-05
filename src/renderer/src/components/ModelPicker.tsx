@@ -108,7 +108,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
       <>
         <div
           {...(sheet ? { 'data-model-search': '' } : {})}
-          className="flex items-center gap-2 border-b border-border px-3 py-2.5 desk:h-10 desk:py-0"
+          className="flex items-center gap-2 border-b border-border px-3 py-2.5 desk:h-10 desk:gap-2.5 desk:py-0"
         >
           <Search size={sheet ? 16 : 14} className="text-subtle" />
           <input
@@ -141,7 +141,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
               >
                 {provider.name}
                 {provider.id === PREFERRED_PROVIDER && (
-                  <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold-text normal-case desk:rounded-md desk:text-caption">
+                  <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold-text normal-case desk:rounded-md desk:bg-accent-soft desk:text-caption desk:text-accent">
                     {t('common.modelPicker.recommended')}
                   </span>
                 )}
@@ -165,7 +165,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
                     <span className={`flex-1 truncate ${selected ? 'font-medium' : ''}`}>{m.name}</span>
                     {m.capabilities.reasoning && (
                       <span
-                        className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] text-subtle desk:bg-inset desk:px-1.5 desk:text-caption"
+                        className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] text-subtle desk:bg-active desk:px-1.5 desk:text-caption"
                         title={t('common.modelPicker.reasoningTitle')}
                       >
                         <Brain size={10} /> {t('common.modelPicker.reasons')}

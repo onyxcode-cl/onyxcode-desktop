@@ -4,7 +4,7 @@
  * confirma en un diálogo aparte (`RemotePairHost`) con un código de 6 dígitos.
  */
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Loader2, ShieldCheck, Smartphone, Trash2 } from 'lucide-react'
+import { Loader2, ShieldCheck, Smartphone, Trash2, TriangleAlert } from 'lucide-react'
 import { getLang, type MsgKey } from '@shared/i18n'
 import { LIMITS } from '@shared/remote/protocol'
 import type { DeviceTtlDays, RemoteApi, RemoteAuditEntry, RemoteDeviceInfo, RemoteState } from '@shared/ipc-remote'
@@ -13,7 +13,7 @@ import { confirmDialog } from '../../../components/ConfirmDialog'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
-import { Badge, Card, ErrorText, Row, Select, SectionHeader, SubTitle, Toggle } from './ui'
+import { Badge, Card, ErrorText, NOTICE_DESK, Row, Select, SectionHeader, SubTitle, Toggle } from './ui'
 import { TravelPanelView, activateTravelFlow, travelNeedsDownload } from './TravelPanel'
 
 function getRemote(): RemoteApi | undefined {
@@ -644,13 +644,16 @@ export function RemoteSection(): React.JSX.Element {
             )}
           </Card>
           {state.devices.some((d) => d.canApproveCommands) && (
-            <p role="note" className="mt-2 text-xs text-warning">
-              {t('remote.devices.approveNotice', {
-                name: state.devices
-                  .filter((d) => d.canApproveCommands)
-                  .map((d) => d.name)
-                  .join(', ')
-              })}
+            <p role="note" className={`mt-2 text-xs text-warning ${NOTICE_DESK.warning}`}>
+              <TriangleAlert size={16} className="hidden shrink-0 desk:block desk:text-warning" aria-hidden />
+              <span>
+                {t('remote.devices.approveNotice', {
+                  name: state.devices
+                    .filter((d) => d.canApproveCommands)
+                    .map((d) => d.name)
+                    .join(', ')
+                })}
+              </span>
             </p>
           )}
           {state.devices.length > 1 && (
@@ -667,11 +670,8 @@ export function RemoteSection(): React.JSX.Element {
 
           <ActivityList api={api} state={state} />
 
-          <p
-            role="note"
-            className="mt-6 text-xs leading-relaxed text-subtle desk:flex desk:gap-3 desk:rounded-xl desk:border desk:border-border desk:bg-inset desk:px-4 desk:py-3 desk:text-[13px] desk:leading-[18px] desk:text-muted"
-          >
-            <ShieldCheck size={16} className="hidden shrink-0 desk:block" aria-hidden />
+          <p role="note" className={`mt-6 text-xs leading-relaxed text-subtle ${NOTICE_DESK.warning}`}>
+            <ShieldCheck size={16} className="hidden shrink-0 desk:block desk:text-warning" aria-hidden />
             <span>{t('remote.risk')}</span>
           </p>
         </>

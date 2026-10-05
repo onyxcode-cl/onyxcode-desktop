@@ -12,7 +12,7 @@ import { Button } from '../../../components/Button'
 import { openExternalUrl } from '../../../lib/open-external'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
-import { ErrorText, Field, TextInput, Toggle } from './ui'
+import { ErrorText, Field, NOTICE_DESK, TextInput, Toggle } from './ui'
 
 const MASK = '••••'
 
@@ -152,10 +152,10 @@ export function McpCatalogDialog({
         aria-modal="true"
         aria-labelledby="mcp-catalog-title"
         onMouseDown={(e) => e.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-2xl border border-border bg-elevated shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-2xl border border-border bg-elevated shadow-2xl desk:border-transparent desk:shadow-modal"
       >
         <div className="overflow-y-auto p-5">
-          <h3 id="mcp-catalog-title" className="text-base font-semibold">
+          <h3 id="mcp-catalog-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
             {t('mcp.dlg.title', { title: ct.title })}
           </h3>
           <p className="mt-0.5 text-xs text-muted">
@@ -169,7 +169,7 @@ export function McpCatalogDialog({
                 <li key={c}>{c}</li>
               ))}
             </ul>
-            {item.writes && <p className="mt-1.5 text-xs text-warning">{t('mcp.dlg.writes')}</p>}
+            {item.writes && <p className={`mt-1.5 text-xs text-warning ${NOTICE_DESK.warning}`}>{t('mcp.dlg.writes')}</p>}
           </section>
 
           <section className="mt-4">

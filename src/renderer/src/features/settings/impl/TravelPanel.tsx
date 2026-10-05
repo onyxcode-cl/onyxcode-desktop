@@ -3,7 +3,7 @@
  * de bloqueo. Vista pura (sin llamadas IPC): `RemoteSection` le pasa el estado y los manejadores. La lógica de «consentimiento antes de
  * descargar» vive en `activateTravelFlow`, que se prueba aparte.
  */
-import { Loader2 } from 'lucide-react'
+import { Loader2, TriangleAlert } from 'lucide-react'
 import type { MsgKey, Params } from '@shared/i18n'
 import type { RemoteState } from '@shared/ipc-remote'
 import {
@@ -242,17 +242,26 @@ export function TravelPanelView({ t, state, busy, now, unsupported, installError
               </span>
             </Row>
             {tr?.blocked && (
-              <div role="alert" className="border-b border-border px-4 py-3 text-xs text-warning last:border-b-0">
+              <div
+                role="alert"
+                className="border-b border-border px-4 py-3 text-xs text-warning last:border-b-0 desk:flex desk:gap-2.5 desk:text-[13px] desk:text-fg"
+              >
+                <TriangleAlert size={16} className="hidden shrink-0 desk:block desk:text-warning" aria-hidden />
                 {travelBlockedText(t, tr.blocked)}
               </div>
             )}
             {!tr?.blocked && tr?.error && status !== 'online' && (
-              <div role="alert" className="border-b border-border px-4 py-3 text-xs text-danger last:border-b-0">
+              <div
+                role="alert"
+                className="border-b border-border px-4 py-3 text-xs text-danger last:border-b-0 desk:flex desk:gap-2.5 desk:text-[13px] desk:text-fg"
+              >
+                <TriangleAlert size={16} className="hidden shrink-0 desk:block desk:text-danger" aria-hidden />
                 {travelErrorText(t, tr.error)}
               </div>
             )}
             {installError && (
-              <div role="alert" className="px-4 py-3 text-xs text-danger">
+              <div role="alert" className="px-4 py-3 text-xs text-danger desk:flex desk:gap-2.5 desk:text-[13px] desk:text-fg">
+                <TriangleAlert size={16} className="hidden shrink-0 desk:block desk:text-danger" aria-hidden />
                 {travelInstallErrorText(t, installError)}
               </div>
             )}

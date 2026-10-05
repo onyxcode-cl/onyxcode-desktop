@@ -234,10 +234,10 @@ function PaletteDialog(): React.JSX.Element {
         aria-modal="true"
         aria-label={t('app.palette.title')}
         onKeyDown={onKeyDown}
-        className="flex max-h-[min(480px,72vh)] w-[560px] max-w-full animate-pop-in flex-col overflow-hidden rounded-[14px] border border-border bg-elevated shadow-xl"
+        className="flex max-h-[min(480px,72vh)] w-[600px] max-w-full animate-pop-in flex-col overflow-hidden rounded-modal border-0 bg-elevated shadow-modal"
       >
-        <div className="flex items-center gap-2.5 border-b border-border px-4">
-          <Search size={16} className="shrink-0 text-subtle" aria-hidden />
+        <div className="flex h-[52px] items-center gap-3 border-b border-border/60 px-4">
+          <Search size={20} className="shrink-0 text-muted" aria-hidden />
           <input
             ref={inputRef}
             value={query}
@@ -247,11 +247,11 @@ function PaletteDialog(): React.JSX.Element {
             aria-expanded="true"
             aria-controls="palette-list"
             aria-activedescendant={results[index] ? `palette-${results[index].id}` : undefined}
-            className="h-12 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-subtle"
+            className="h-12 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
           />
         </div>
 
-        <div ref={listRef} id="palette-list" role="listbox" className="min-h-0 flex-1 overflow-y-auto p-1.5">
+        <div ref={listRef} id="palette-list" role="listbox" className="min-h-0 flex-1 overflow-y-auto px-2 pt-1.5 pb-2">
           {results.length === 0 && (
             <div className="flex flex-col items-center gap-2 px-3 py-10 text-center text-subtle">
               <SearchX size={20} aria-hidden />
@@ -274,15 +274,17 @@ function PaletteDialog(): React.JSX.Element {
                   data-index={i}
                   onMouseMove={() => setIndex(i)}
                   onClick={() => run(c)}
-                  className={`flex h-9 w-full items-center gap-2.5 rounded-ctl px-2.5 text-left text-ui ${active ? 'bg-hover text-fg' : 'text-fg'}`}
+                  className={`flex h-8 w-full items-center gap-2 rounded-ctl px-2 text-left text-sm ${active ? 'bg-active text-fg' : 'text-fg'}`}
                 >
-                  <Icon size={16} className={active ? 'text-accent' : 'text-subtle'} />
+                  <Icon size={16} className="text-muted" />
                   <span className="min-w-0 flex-1 truncate">{c.label}</span>
                   {c.hint &&
                     (c.hintKind === 'badge' ? (
-                      <span className="shrink-0 rounded-md bg-inset px-1.5 text-caption text-muted">{c.hint}</span>
+                      <span className="shrink-0 rounded-full bg-active px-2 h-5 inline-flex items-center text-meta text-muted">
+                        {c.hint}
+                      </span>
                     ) : (
-                      <kbd className="kbd shrink-0">{c.hint}</kbd>
+                      <kbd className="kbd shrink-0 border-0 bg-active text-muted">{c.hint}</kbd>
                     ))}
                 </button>
               </div>
@@ -290,19 +292,19 @@ function PaletteDialog(): React.JSX.Element {
           })}
         </div>
 
-        <div className="flex h-9 shrink-0 items-center gap-4 border-t border-border bg-inset px-4 text-meta text-subtle">
+        <div className="flex h-9 shrink-0 items-center gap-4 border-t border-border/60 bg-bg px-4 text-meta text-subtle">
           <span className="inline-flex items-center gap-1.5">
-            <kbd className="kbd">↑</kbd>
-            <kbd className="kbd">↓</kbd> {t('app.palette.navigate')}
+            <kbd className="kbd border-0 bg-active text-muted">↑</kbd>
+            <kbd className="kbd border-0 bg-active text-muted">↓</kbd> {t('app.palette.navigate')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <kbd className="kbd">
+            <kbd className="kbd border-0 bg-active text-muted">
               <CornerDownLeft size={10} />
             </kbd>
             {t('app.palette.run')}
           </span>
           <span className="ml-auto inline-flex items-center gap-1.5">
-            <kbd className="kbd">Esc</kbd> {t('app.palette.close')}
+            <kbd className="kbd border-0 bg-active text-muted">Esc</kbd> {t('app.palette.close')}
           </span>
         </div>
       </div>

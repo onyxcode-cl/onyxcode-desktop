@@ -34,7 +34,7 @@ function ModeOption({
       role="radio"
       aria-checked={active}
       onClick={onClick}
-      className="flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left last:border-b-0 hover:bg-hover"
+      className={`flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left last:border-b-0 hover:bg-hover${active ? ' desk:bg-accent-soft desk:shadow-[inset_0_0_0_1.5px_var(--accent)]' : ''}`}
     >
       <span className="mt-0.5 shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">

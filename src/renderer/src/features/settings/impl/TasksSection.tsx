@@ -33,7 +33,7 @@ import {
   syncActivity,
   useTasks
 } from '../../tasks/impl/store'
-import { Badge, Card, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
+import { Badge, Card, NOTICE_DESK, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -475,8 +475,11 @@ export function TasksSection(): React.JSX.Element {
       <SectionHeader title={MODE_LABELS.tasks} description={t('tasksSettings.header.desc')} />
 
       {locks.managed && (
-        <div role="status" className="mb-8 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm">
-          <ShieldCheck size={17} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+        <div
+          role="status"
+          className={`mb-8 flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm ${NOTICE_DESK.accent}`}
+        >
+          <ShieldCheck size={17} className="mt-0.5 shrink-0 text-accent desk:size-4" aria-hidden />
           <div className="min-w-0">
             <div className="font-medium text-fg">{t('tasksSettings.managed.title')}</div>
             <p className="mt-0.5 text-xs leading-relaxed text-muted">
@@ -554,7 +557,7 @@ export function TasksSection(): React.JSX.Element {
             ))
           )}
         </Card>
-        {errors.trusted && <p className="mt-2 text-xs text-danger">{errors.trusted}</p>}
+        {errors.trusted && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.trusted}</p>}
       </Group>
 
       {/* 1 bis · Control total del equipo (sin carpeta) */}
@@ -585,7 +588,7 @@ export function TasksSection(): React.JSX.Element {
             )}
           </Row>
         </Card>
-        {errors.full && <p className="mt-2 text-xs text-danger">{errors.full}</p>}
+        {errors.full && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.full}</p>}
       </Group>
 
       {/* 2 · Carpetas de trabajo */}
@@ -615,7 +618,7 @@ export function TasksSection(): React.JSX.Element {
         {locks.fullAccess && (
           <p className="mt-2 text-xs text-muted">{t('tasksSettings.work.orgDisabled', { fullControl: TASKS_TERMS.fullControl })}</p>
         )}
-        {errors.folders && <p className="mt-2 text-xs text-danger">{errors.folders}</p>}
+        {errors.folders && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.folders}</p>}
       </Group>
 
       {/* 3 · Permisos recordados */}
@@ -648,7 +651,7 @@ export function TasksSection(): React.JSX.Element {
           )}
         </Card>
         {locks.alwaysAllow && <p className="mt-2 text-xs text-muted">{t('tasksSettings.rules.orgNoNew')}</p>}
-        {errors.rules && <p className="mt-2 text-xs text-danger">{errors.rules}</p>}
+        {errors.rules && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.rules}</p>}
       </Group>
 
       {/* 4 · Notificaciones por tipo */}
@@ -665,7 +668,7 @@ export function TasksSection(): React.JSX.Element {
             </Row>
           ))}
         </Card>
-        {errors.notify && <p className="mt-2 text-xs text-danger">{errors.notify}</p>}
+        {errors.notify && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.notify}</p>}
       </Group>
 
       {/* 5 · Archivado automático */}
@@ -697,7 +700,7 @@ export function TasksSection(): React.JSX.Element {
             </div>
           </Row>
         </Card>
-        {errors.archive && <p className="mt-2 text-xs text-danger">{errors.archive}</p>}
+        {errors.archive && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.archive}</p>}
       </Group>
 
       {/* 6 · Servidores */}
@@ -734,7 +737,7 @@ export function TasksSection(): React.JSX.Element {
             />
           </Row>
         </Card>
-        {errors.servers && <p className="mt-2 text-xs text-danger">{errors.servers}</p>}
+        {errors.servers && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.servers}</p>}
         <div className="mt-3 mb-1.5 text-xs font-medium text-muted">{t('tasksSettings.servers.running')}</div>
         <Card>
           {activity === null ? (
@@ -869,7 +872,7 @@ export function TasksSection(): React.JSX.Element {
             </Button>
           </Row>
         </Card>
-        {errors.storage && <p className="mt-2 text-xs text-danger">{errors.storage}</p>}
+        {errors.storage && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.storage}</p>}
       </Group>
     </div>
   )

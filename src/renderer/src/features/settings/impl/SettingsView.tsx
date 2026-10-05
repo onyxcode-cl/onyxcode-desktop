@@ -190,7 +190,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4 desk:pl-[calc(var(--header-inset,0px)+16px)]">
+      <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4 desk:border-b-0 desk:pl-[calc(var(--header-inset,0px)+16px)]">
         <span className="flex items-center gap-2 text-[13.5px] font-medium">
           <Settings2 size={15} className="text-accent" /> {t('settings.title')}
         </span>
@@ -203,7 +203,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
       </header>
       <div className="flex min-h-0 flex-1">
         <nav
-          className="w-52 shrink-0 space-y-0.5 overflow-y-auto desk:w-48 desk:xl:w-52 border-r border-border/70 bg-sidebar/50 p-3"
+          className="w-52 shrink-0 space-y-0.5 overflow-y-auto desk:w-[232px] desk:xl:w-[232px] border-r border-border/70 bg-sidebar/50 p-3 desk:border-r-0 desk:bg-transparent desk:px-3 desk:py-2"
           aria-label={t('settings.navAria')}
         >
           {GROUPS.map((g) => {
@@ -211,7 +211,10 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
             if (inGroup.length === 0) return null // un grupo vacío no pinta encabezado
             return (
               <div key={g.id} role="group" aria-label={g.label()} className="space-y-0.5">
-                <div aria-hidden className="hidden px-3 pt-4 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:block">
+                <div
+                  aria-hidden
+                  className="hidden px-3 pt-4 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:flex desk:h-7 desk:items-end desk:px-2 desk:pt-2 desk:pb-0 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em]"
+                >
                   {g.label()}
                 </div>
                 {inGroup.map(({ id, label, icon: Icon }) => {
@@ -222,9 +225,9 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                       type="button"
                       onClick={() => select(id)}
                       aria-current={active ? 'page' : undefined}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 desk:gap-2 desk:px-2 desk:text-sm ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70 desk:bg-active desk:shadow-none desk:ring-0' : 'text-muted hover:bg-hover hover:text-fg'}`}
                     >
-                      <Icon size={15} className={active ? 'text-accent' : ''} />
+                      <Icon size={15} className={active ? 'shrink-0 text-accent desk:size-4' : 'shrink-0 desk:size-4'} />
                       {label()}
                     </button>
                   )
@@ -234,7 +237,10 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
           })}
         </nav>
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div key={section} className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8 desk:max-w-[720px] desk:px-6 desk:xl:px-10">
+          <div
+            key={section}
+            className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8 desk:max-w-[640px] desk:px-8 desk:pt-7 desk:pb-12"
+          >
             <Current />
           </div>
         </div>

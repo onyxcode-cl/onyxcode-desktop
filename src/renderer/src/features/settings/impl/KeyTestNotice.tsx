@@ -1,6 +1,7 @@
 import { CheckCircle2, CircleAlert, Info, Loader2 } from 'lucide-react'
 import { keyTestText, type KeyTestTone } from '@shared/key-test'
 import { useT } from '../../../lib/i18n'
+import { NOTICE_DESK } from './ui'
 import { useKeyTest, type KeyTestEntry } from './useKeyTest'
 
 const TONE_CLASS: Record<KeyTestTone, string> = {
@@ -57,11 +58,18 @@ export function KeyTestView({
     )
   const text = keyTestText(entry.result, providerName)
   const Icon = text.tone === 'ok' ? CheckCircle2 : text.tone === 'info' ? Info : CircleAlert
+  const notice = text.tone === 'warn' ? NOTICE_DESK.warning : text.tone === 'error' ? NOTICE_DESK.danger : ''
+  const titleDesk = text.tone === 'warn' || text.tone === 'error' ? ' desk:text-fg' : ''
   return (
-    <div role="status" aria-live="polite" data-key-test={entry.result.status} className={`flex items-start gap-1.5 text-xs ${className}`}>
+    <div
+      role="status"
+      aria-live="polite"
+      data-key-test={entry.result.status}
+      className={`flex items-start gap-1.5 text-xs ${className}${notice}`}
+    >
       <Icon size={13} className={`mt-px shrink-0 ${TONE_CLASS[text.tone]}`} />
       <div className="min-w-0">
-        <span className={`font-medium ${TONE_CLASS[text.tone]}`}>{text.title}</span>
+        <span className={`font-medium ${TONE_CLASS[text.tone]}${titleDesk}`}>{text.title}</span>
         {text.tone !== 'ok' && <span className="text-muted"> — {text.message}</span>}
         {action && <span className="ml-2">{action}</span>}
       </div>
