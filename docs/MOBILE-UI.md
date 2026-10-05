@@ -56,3 +56,4 @@ reglas comunes de la mejora estética y de rendimiento; los planes detallados es
 - Por cambio: `npx vitest run src/renderer/src/app/mobile src/renderer/remote src/shared/remote src/test`, `npm run typecheck`, `npm run lint`,
   `npx prettier --check <archivos>`. Con límite: `perl -e 'alarm shift; exec @ARGV' SEG …`. Sin e2e masivos ni cargas artificiales.
 - Commits pequeños en español, `git add <ruta>`, con la línea `Co-Authored-By` del agente.
+- La variante `desk:` de Tailwind y `src/renderer/src/app/desktop/*` son SOLO de escritorio (`<html data-shell="desktop">`, lo pone `main.tsx`): nunca en código móvil ni en `remote/`. La PWA no carga esa capa y el plugin `stripDesktopCss` de `pwa/vite.full.config.ts` quita del CSS del celular toda regla con `data-shell`. Guardia: `app/desktop/desktop-scope.test.ts`.

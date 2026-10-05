@@ -24,6 +24,9 @@ function walk(dir: string, ok: (f: string) => boolean, out: string[] = []): stri
   return out
 }
 
+/** Compilación de la PWA (el plugin y su configuración; no se empaquetan): nombra `data-shell` para quitarlo. */
+const BUILD_HELPER = /strip-desktop-css|vite\.full\.config/
+
 const css = readdirSync(DESKTOP).filter((f) => f.endsWith('.css'))
 const SCOPE = ":root[data-shell='desktop']"
 
@@ -56,7 +59,9 @@ describe('app/desktop: solo escritorio', () => {
       ...walk(resolve(SRC, 'app/mobile'), (f) => /\.(tsx?|css)$/.test(f))
     ]
     expect(files.length).toBeGreaterThan(10)
-    const bad = files.filter((f) => /app\/desktop|data-shell/.test(read(f)) && !/\.test\.tsx?$/.test(f)).map((f) => relative(REPO, f))
+    const bad = files
+      .filter((f) => /app\/desktop|data-shell/.test(read(f)) && !/\.test\.tsx?$/.test(f) && !BUILD_HELPER.test(f))
+      .map((f) => relative(REPO, f))
     expect(bad).toEqual([])
   })
 
@@ -77,7 +82,7 @@ describe('app/desktop: solo escritorio', () => {
       const rel = relative(SRC, f).split(sep).join('/')
       return /^(app\/mobile|components\/mobile)\//.test(rel) || /(^|\/)Mobile[^/]*\.tsx$/.test(rel)
     })
-    mobile.push(...walk(resolve(RENDERER, 'remote'), (f) => /\.tsx?$/.test(f)))
+    mobile.push(...walk(resolve(RENDERER, 'remote'), (f) => /\.tsx?$/.test(f) && !BUILD_HELPER.test(f)))
     expect(mobile.length).toBeGreaterThan(5)
     expect(mobile.filter((f) => /\bdesk:/.test(read(f))).map((f) => relative(SRC, f))).toEqual([])
   })

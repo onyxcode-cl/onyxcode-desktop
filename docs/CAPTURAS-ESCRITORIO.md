@@ -22,3 +22,19 @@
 - Límites: `dialogo-confirmar` es el diálogo «¿Lanzar la comparación?» (el borrado de conversaciones confirma en la propia fila);
   `onboarding` sale en el paso 2 (OpenCode ausente); `ajustes-celular` muestra el estado apagado, sin QR ni celulares; la terminal
   es una shell real con el prompt cambiado; los modelos son «Fake Model/Reasoner».
+
+## Opciones nuevas (F8-B89)
+
+- El ratón se saca de la ventana antes de cada captura (`parkMouse`): ningún elemento queda en `:hover`. Si no se logra, el script lo anota.
+- `--reduced-motion`: prueba la regla REAL de `prefers-reduced-motion` (no inyecta el estilo que apaga animaciones y transiciones).
+  Sin la bandera se emula igual `reduce` y además se apagan todas, para capturas deterministas.
+- Las capturas de escritorio NO son deterministas al píxel entre arranques (puntos de carga, brillo, anillo de uso): dos corridas del
+  mismo código difieren en 0–2000 px en ~10 de 50 archivos, y 4 escenarios (`chat-herramientas-light-1000x700`, `tareas-en-curso-*`,
+  `comparar-*`) saltan entre dos estados. Las del celular (`shot-mobile`) sí lo son, salvo textos de hora relativa («hace 23 h» / «ayer»).
+
+## Comparar capturas
+
+`node scripts/shot-diff.mjs <dirA> <dirB> [--max N] [--out dirDiff]`: compara píxel a píxel los PNG de dos carpetas. Imprime, por
+archivo, los píxeles distintos y la caja que los contiene; con `--out` escribe un PNG de diferencia (rojo = distinto). Sale con
+código 1 si algún archivo supera `--max` (por defecto 0), si falta alguno o si cambia el tamaño. Usa `pngjs` de `node_modules`
+(dependencia transitiva; no se instala nada). Uso típico: `shot-mobile` antes y después de un cambio de escritorio → 0 píxeles.

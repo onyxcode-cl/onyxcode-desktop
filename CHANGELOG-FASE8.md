@@ -1033,3 +1033,24 @@ de userData; no usa `safeStorage` ni toca el Llavero (`remote.bin` sigue descifr
 E2E: `sin-cuenta.e2e.ts` sustituye a `account.e2e.ts`. La cobertura del remoto sigue al 100 %. Volver a una versión
 antigua con la cuenta encendida obliga a entrar de nuevo. El servidor, el VPS, el DNS `api.onyxcode.cl` y el cliente
 OAuth quedan fuera del repo (los gestiona el dueño).
+
+## F8-B89 — Rediseño de escritorio: fundamentos (parte 1, sin cambio en el celular)
+
+Capa visual SOLO de escritorio: `main.tsx` marca `<html data-shell="desktop" data-platform>` e importa `app/desktop/index.css` (un CSS por
+dueño: `tokens`, `base`, `shell`, `conversation`, `modes`); la PWA no la carga. Variante Tailwind `desk:` (`@custom-variant` en
+`globals.css`). Tokens nuevos solo bajo `:root[data-shell='desktop']` (tipografía `--text-*`/`--font-ui|title|code`, `--space-*`,
+`--radius-2xs…modal`, `--shadow-raised|pop|modal|focus`, `--scrim`, `--dur-instant|enter|exit`, `--z-*`, `--icon-stroke`); ningún token ni
+color existente cambia. Las utilidades (`text-ui`, `rounded-ctl`, `shadow-pop`…) se registran con `@theme reference inline` (el plan A
+`@theme reference` a secas copia el valor de `shadow-*` y pierde `line-height`; con `inline` usan `var(--token)` y no se emite ningún valor
+en `:root` ni en la PWA).
+Arreglos globales sin tocar marcado (`desktop/base.css`): velo de modales con `--scrim` (en oscuro `bg-fg/30` aclaraba el fondo), foco
+con teclado que ya no cambia el radio del control (`revert-layer`), fuente del sistema sin Inter y sin `cv11/ss01`, trazo de iconos 1,75,
+casillas con el acento, `.select-field` con `padding-right`, spinner 0,8 s, `.kbd`, pulgar de scroll, `user-select` del cromo y sin
+escalado al presionar con movimiento reducido. NO incluidos aquí: componentes base (Spinner/Badge/Chip/Input/DialogFrame/Tooltip),
+kit de UI y `desk:` en componentes (tandas 0.6–0.9 del plan).
+Guardias: `desktop-scope.test.ts` (selectores con alcance, importaciones, variante, tabla de tokens), `stripDesk()` (`src/test/strip-desk.ts`)
+aplicado a los 6 literales de `desktop-unchanged` y a los 3 snapshots de render SIN editar literales ni `.snap` ni usar `-u`, y
+`selectors()` movido a `src/test/css-selectors.ts`. PWA: plugin `onyx-strip-desktop-css` (`stripDesktopCss`) quita del CSS compilado toda
+regla con `data-shell`; `boot.css` 18,9 KB gzip antes y después (108 097 B idénticos), arranque 286,0 KB, `boot.js` 201,3 KB.
+Herramientas: `scripts/shot-diff.mjs` (comparador de píxeles), `shot-desktop`: ratón fuera de la ventana y `--reduced-motion`.
+Celular: 29 de 32 capturas idénticas; las 3 restantes (`lista-*`) difieren solo en el texto de hora relativa («hace 23 h» → «ayer»), no en CSS.
