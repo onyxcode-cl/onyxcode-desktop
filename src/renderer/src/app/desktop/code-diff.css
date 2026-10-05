@@ -1,2 +1,8 @@
 /* Dueño: CODE · Diff y lista de cambios (DiffView, ChangesPanel).
  * Reglas: todo selector bajo :root[data-shell='desktop']; sin colores nuevos; tokens de ./tokens.css. */
+
+/* Palabras cambiadas dentro de una línea del diff (resaltado de palabra, solo escritorio). */
+:root[data-shell='desktop'] [data-diff] [data-w] {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 3px;
+}

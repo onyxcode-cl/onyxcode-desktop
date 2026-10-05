@@ -4,6 +4,7 @@ import hljs from 'highlight.js/lib/common'
 import { t } from '@shared/i18n'
 import { useLang } from '../lib/i18n'
 import { isRemoteSurface } from '../lib/platform'
+import { pairChangedRuns, wordRanges, wrapRanges, type WordRange } from './diff-words'
 
 type LineKind = 'add' | 'del' | 'ctx' | 'hunk' | 'file' | 'meta'
 
@@ -143,9 +144,29 @@ const ROW: Record<LineKind, string> = {
   add: 'bg-[color-mix(in_srgb,var(--success)_13%,transparent)]',
   del: 'bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]',
   ctx: '',
-  hunk: 'bg-accent-soft/60 text-muted',
+  hunk: 'bg-accent-soft/60 text-muted desk:bg-code desk:text-subtle',
   file: 'bg-hover font-semibold text-fg',
   meta: 'text-subtle italic'
+}
+
+const NO_RANGES: WordRange[] = []
+
+/** Parte el texto plano de una línea en tramos, envolviendo los rangos cambiados con `<span data-w>` (solo escritorio). */
+function wordText(text: string, ranges: WordRange[]): React.ReactNode {
+  const nodes: React.ReactNode[] = []
+  let pos = 0
+  for (const r of ranges) {
+    if (r.end <= pos) continue
+    if (r.start > pos) nodes.push(text.slice(pos, r.start))
+    nodes.push(
+      <span key={`${r.start}-${r.end}`} data-w="">
+        {text.slice(r.start, r.end)}
+      </span>
+    )
+    pos = r.end
+  }
+  if (pos < text.length) nodes.push(text.slice(pos))
+  return nodes
 }
 
 const SIGN: Record<LineKind, string> = { add: '+', del: '-', ctx: ' ', hunk: '', file: '', meta: '' }
@@ -253,11 +274,25 @@ export const DiffView = memo(function DiffView({
     })
     return m
   }, [parsed])
+  // Resaltado de palabra (solo escritorio y sin recorte «Mostrar todo»): empareja del→add y guarda los rangos por línea.
+  const words = !touch && !clip.clipped
+  const wordRangesFor = useMemo(() => {
+    if (!words) return new Map<number, WordRange[]>()
+    const map = new Map<number, WordRange[]>()
+    for (const { del, add } of pairChangedRuns(parsed)) {
+      map.set(del, wordRanges(parsed[add]!.text, parsed[del]!.text))
+      map.set(add, wordRanges(parsed[del]!.text, parsed[add]!.text))
+    }
+    return map
+  }, [parsed, words])
   if (lines.length === 0) {
     return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>{t('common.diff.empty')}</div>
   }
   return (
-    <div className={`overflow-auto font-mono text-[12px] leading-[1.55] desk:leading-5 ${className}`}>
+    <div
+      {...(touch ? {} : { 'data-diff': '' })}
+      className={`overflow-auto font-mono text-[12px] leading-[1.55] desk:leading-5 ${className}`}
+    >
       {limited && (
         <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-elevated px-3 py-2 font-sans text-xs text-muted">
           <span>{t('common.diff.truncated', { shown: clip.shown, total: clip.total })}</span>
@@ -283,13 +318,13 @@ export const DiffView = memo(function DiffView({
               const hi = hunkIndexAt[i] ?? 0
               return (
                 <tr key={i} className={ROW.hunk}>
-                  <td colSpan={4} className={`px-3 py-0.5 ${touch && wrap ? 'max-w-0' : ''}`}>
+                  <td colSpan={4} className={`px-3 py-0.5 desk:py-0 desk:leading-5 ${touch && wrap ? 'max-w-0' : ''}`}>
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate whitespace-pre">{l.text}</span>
                       <button
                         type="button"
                         onClick={() => onDiscardHunk(hi)}
-                        className={`shrink-0 rounded-md font-sans font-medium text-muted hover:bg-hover hover:text-danger focus-visible:ring-2 focus-visible:ring-accent ${touch ? 'min-h-11 px-3 text-[13px]' : 'px-1.5 py-0.5 text-[11px]'}`}
+                        className={`shrink-0 rounded-md font-sans font-medium text-muted hover:bg-hover hover:text-danger focus-visible:ring-2 focus-visible:ring-accent ${touch ? 'min-h-11 px-3 text-[13px]' : 'px-1.5 py-0.5 text-[11px] desk:h-6 desk:rounded-ctl-sm desk:text-meta'}`}
                       >
                         {t('code.changes.discardHunk')}
                       </button>
@@ -301,29 +336,38 @@ export const DiffView = memo(function DiffView({
             if (l.kind === 'hunk' || l.kind === 'meta') {
               return (
                 <tr key={i} className={ROW[l.kind]}>
-                  <td colSpan={4} className={`px-3 py-0.5 ${touch && wrap ? 'max-w-0 truncate' : 'whitespace-pre'}`}>
+                  <td
+                    colSpan={4}
+                    className={`px-3 py-0.5 desk:py-0 desk:leading-5 ${touch && wrap ? 'max-w-0 truncate' : 'whitespace-pre'}`}
+                  >
                     {l.text}
                   </td>
                 </tr>
               )
             }
+            const ranges = wordRangesFor.get(i) ?? NO_RANGES
             return (
               <tr key={i} className={ROW[l.kind]}>
-                <td className={touch ? 'hidden' : 'w-10 pr-2 text-right align-top text-subtle/70 select-none desk:text-subtle'}>
+                <td className={touch ? 'hidden' : 'w-10 pr-2 text-right align-top text-subtle/70 select-none desk:text-subtle desk:pr-2.5'}>
                   {l.oldNo ?? ''}
                 </td>
                 <td
-                  className={`${touch ? 'w-9 pr-1.5 pl-1' : 'w-10 pr-2'} text-right align-top text-subtle/70 select-none desk:text-subtle`}
+                  className={`${touch ? 'w-9 pr-1.5 pl-1' : 'w-10 pr-2'} text-right align-top text-subtle/70 select-none desk:text-subtle desk:pr-2.5`}
                 >
                   {(touch ? (l.newNo ?? l.oldNo) : l.newNo) ?? ''}
                 </td>
                 <td
-                  className={`w-4 align-top select-none ${l.kind === 'add' ? 'text-success' : l.kind === 'del' ? 'text-danger' : 'text-subtle'}`}
+                  className={`w-4 align-top select-none desk:w-5 ${l.kind === 'add' ? 'text-success' : l.kind === 'del' ? 'text-danger' : 'text-subtle'}`}
                 >
                   {SIGN[l.kind]}
                 </td>
                 {l.html !== null ? (
-                  <td className={diffCellClass(wrap)} dangerouslySetInnerHTML={{ __html: l.html }} />
+                  <td
+                    className={diffCellClass(wrap)}
+                    dangerouslySetInnerHTML={{ __html: ranges.length ? wrapRanges(l.html, ranges) : l.html }}
+                  />
+                ) : ranges.length ? (
+                  <td className={diffCellClass(wrap)}>{wordText(l.text, ranges)}</td>
                 ) : (
                   <td className={diffCellClass(wrap)}>{l.text}</td>
                 )}
