@@ -58,6 +58,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/components/Markdown.tsx',
   'src/renderer/src/components/ModelPicker.tsx',
   'src/renderer/src/components/NoAiBanner.tsx',
+  'src/renderer/src/components/permission/PermissionShell.tsx',
   'src/renderer/src/components/TranscriptLoader.tsx',
   'src/renderer/src/components/UsageMeter.tsx',
   'src/renderer/src/components/conversation/ErrorNotice.tsx',

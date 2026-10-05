@@ -74,7 +74,7 @@ const mcpQuestion = {
   id: 'q_1',
   sessionID: 's',
   questions: [
-    { header: 'Nombre', question: '¿Cómo se llama?', options: [{ label: 'Alfa' }, { label: 'Beta' }], multiple: false, custom: true }
+    { header: 'Nombre', question: '¿Cómo se llama?', options: [{ label: 'Alfa', description: '' }, { label: 'Beta', description: '' }], multiple: false, custom: true }
   ]
 }
 
