@@ -45,62 +45,58 @@ export function Sidebar(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          className="no-drag flex h-8 w-full items-center gap-2 rounded-lg border border-border bg-inset px-2.5 text-[13px] text-subtle transition-colors hover:border-border-strong hover:text-muted"
+          className="no-drag flex h-8 w-full items-center gap-2.5 rounded-ctl bg-transparent px-2.5 text-ui text-subtle transition-colors duration-[var(--dur-fast)] hover:bg-hover hover:text-muted"
         >
-          <Search size={14} />
+          <Search size={16} />
           <span className="flex-1 text-left">{t('app.sidebar.search')}</span>
           {bindings['palette.toggle'] && <kbd className="kbd">{hintText(bindings['palette.toggle'])}</kbd>}
         </button>
       </div>
 
       {/* Modos */}
-      <nav aria-label={t('app.sidebar.mode')} className="flex flex-col gap-0.5 px-3 pt-2.5">
+      <nav aria-label={t('app.sidebar.mode')} className="flex flex-col gap-0.5 px-3 pt-2">
         {MODES.map((m) => {
           const Icon = m.icon
-          const active = m.id === mode && !settingsOpen
+          // Con Ajustes abiertos el modo actual conserva una marca suave (icono de acento, sin fondo); `aria-current` lo lleva Ajustes.
+          const current = m.id === mode
+          const active = current && !settingsOpen
           return (
             <button
               key={m.id}
               type="button"
               aria-current={active ? 'page' : undefined}
               onClick={() => setMode(m.id)}
-              className={`no-drag group flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition-colors duration-150 ${active ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              className={`no-drag group flex h-8 items-center gap-2.5 rounded-ctl px-2.5 text-ui transition-colors duration-[var(--dur-fast)] ${active ? 'bg-active font-medium text-fg' : current ? 'font-normal text-fg hover:bg-hover' : 'font-normal text-muted hover:bg-hover hover:text-fg'}`}
             >
-              <Icon size={16} className={active ? 'text-accent' : 'text-subtle group-hover:text-muted'} strokeWidth={active ? 2.2 : 1.9} />
+              <Icon size={16} className={current ? 'text-accent' : 'text-subtle group-hover:text-muted'} strokeWidth={1.75} />
               {m.label}
             </button>
           )
         })}
       </nav>
 
-      {(def.newAction || SidebarContent) && <div className="mx-3 mt-3 border-t border-border" />}
-
       {def.newAction && (
-        <div className="px-3 pt-3">
+        <div className="px-3 pt-2">
           <button
             type="button"
             onClick={() => {
               openSettings(false)
               def.newAction?.run()
             }}
-            className="no-drag group flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium text-fg transition-colors hover:bg-hover"
+            className="no-drag group flex h-8 w-full items-center gap-2.5 rounded-ctl px-2.5 text-ui font-medium text-fg transition-colors duration-[var(--dur-fast)] hover:bg-hover"
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-accent-soft text-accent transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
-              <Plus size={14} strokeWidth={2.4} />
-            </span>
+            <Plus size={16} strokeWidth={1.75} className="shrink-0 text-accent" />
             <span className="flex-1 text-left">{def.newAction.label}</span>
-            <span className="text-[11px] text-subtle opacity-0 transition-opacity group-hover:opacity-100">
-              {hintText(bindings['conversation.new'])}
-            </span>
+            <span className="text-caption font-normal text-subtle tabular-nums">{hintText(bindings['conversation.new'])}</span>
           </button>
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-2" onClickCapture={() => settingsOpen && openSettings(false)}>
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-2" onClickCapture={() => settingsOpen && openSettings(false)}>
         {SidebarContent ? <SidebarContent /> : null}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-t border-border px-3">
         <span className="relative flex shrink-0" title={`OpenCode: ${statusLabel}`}>
           <LogoMark size={20} />
           <span
@@ -110,14 +106,17 @@ export function Sidebar(): React.JSX.Element {
         </span>
         <span className="flex min-w-0 flex-1 flex-col leading-tight">
           <span className="truncate font-display text-[13px] font-semibold tracking-tight">{APP_NAME}</span>
-          <span className="truncate text-[10.5px] text-subtle">{statusLabel}</span>
+          <span className="truncate text-caption font-normal text-subtle">{statusLabel}</span>
         </span>
         <IconButton
           label={t('app.sidebar.settings', { hint: hintSuffix(hints['settings.toggle']) })}
           active={settingsOpen}
           onClick={() => openSettings(!settingsOpen)}
         >
-          <Settings size={16} className={`transition-transform duration-300 ${settingsOpen ? 'rotate-45' : ''}`} />
+          <Settings
+            size={16}
+            className={`transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] ${settingsOpen ? 'rotate-45' : ''}`}
+          />
         </IconButton>
       </div>
     </aside>

@@ -37,6 +37,7 @@ export const app = {
   'app.palette.empty': 'No results for “{query}”',
   'app.palette.navigate': 'navigate',
   'app.palette.run': 'run',
+  'app.palette.close': 'close',
   'app.mode.newChat': 'New conversation',
   'app.mode.newSession': 'New session',
   'app.mode.newTask': 'New task',

@@ -106,7 +106,10 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   const body =
     !open && !sheet ? null : (
       <>
-        <div {...(sheet ? { 'data-model-search': '' } : {})} className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <div
+          {...(sheet ? { 'data-model-search': '' } : {})}
+          className="flex items-center gap-2 border-b border-border px-3 py-2.5 desk:h-10 desk:py-0"
+        >
           <Search size={sheet ? 16 : 14} className="text-subtle" />
           <input
             autoFocus={!sheet}
@@ -134,11 +137,11 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
             <div key={provider.id} className="pb-1">
               <div
                 {...(sheet ? { 'data-model-provider': '' } : {})}
-                className="flex items-center gap-1.5 px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase"
+                className="flex items-center gap-1.5 px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase desk:pt-3 desk:text-meta desk:font-medium desk:tracking-normal desk:normal-case"
               >
                 {provider.name}
                 {provider.id === PREFERRED_PROVIDER && (
-                  <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold-text normal-case">
+                  <span className="rounded-full bg-gold-soft px-1.5 text-[9.5px] tracking-normal text-gold-text normal-case desk:rounded-md desk:text-caption">
                     {t('common.modelPicker.recommended')}
                   </span>
                 )}
@@ -157,12 +160,12 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
                     data-idx={i}
                     {...(sheet ? { 'data-model-row': '' } : { onMouseMove: () => cursor !== i && setCursor(i) })}
                     onClick={() => choose({ providerID: provider.id, modelID: m.id })}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm transition-colors ${sheet ? 'min-h-12 py-2.5' : 'py-1.5'} ${focused ? 'bg-hover text-fg' : selected ? 'text-fg' : 'text-muted'}`}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm transition-colors ${sheet ? 'min-h-12 py-2.5' : 'py-1.5'} desk:h-8 desk:rounded-ctl desk:py-0 desk:text-ui ${focused ? 'bg-hover text-fg' : selected ? 'text-fg' : 'text-muted'}`}
                   >
                     <span className={`flex-1 truncate ${selected ? 'font-medium' : ''}`}>{m.name}</span>
                     {m.capabilities.reasoning && (
                       <span
-                        className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] text-subtle"
+                        className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] text-subtle desk:bg-inset desk:px-1.5 desk:text-caption"
                         title={t('common.modelPicker.reasoningTitle')}
                       >
                         <Brain size={10} /> {t('common.modelPicker.reasons')}
@@ -211,7 +214,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
       )}
       {open && !sheet && (
         <div
-          className={`absolute left-0 z-50 w-80 animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated shadow-xl ${placement === 'top' ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left'}`}
+          className={`absolute left-0 z-50 w-80 animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated shadow-xl desk:rounded-card desk:shadow-pop ${placement === 'top' ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left'}`}
           onKeyDown={onKeyDown}
         >
           {body}
