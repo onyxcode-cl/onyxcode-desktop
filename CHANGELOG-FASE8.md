@@ -1164,3 +1164,12 @@ cambia ni un píxel: los archivos compartidos bifurcan por `isRemoteSurface()` y
 - **Asistente de primer uso** (`Wizard.tsx`, solo escritorio, clases base): velo `--scrim`, diálogo sin borde con `shadow-modal`, encabezado sin versalitas, título 22/28, tarjeta del proveedor recomendado seleccionable, avisos de seguridad con contorno.
 - **Capturas**: escenarios nuevos `tareas-primer-uso`, `tareas-nueva`, `tareas-buscar`, `tareas-archivadas`, `rutinas-vacio`, `rutinas-detalle`, `rutinas-editor`, `onboarding-inicio`; el grupo de Tareas se ordena según `SCENARIOS`.
 - **Celular**: solo clases `desk:` (más envoltorios `contents` y elementos `hidden desk:*`). Guardias nuevas con `stripDesk` y `toMatchInlineSnapshot` escritas sobre el código sin cambiar (`sidebar`, `progress`, `home`, `RoutinesView`, `RoutineEditor`); los envoltorios `contents` (pestañas de Progreso y grupos de Rutinas) quedan fuera de ellas. Colores: ninguno nuevo.
+
+## F8-B99 — Integración del rediseño ND de escritorio (0.4.3)
+
+Fusión de `nd/code`, `nd/permisos`, `nd/ajustes` y `nd/tareas` sobre fcd0604. Entradas B97 (permisos) y B98 (Tareas, Rutinas y primer uso) conservadas. El celular/PWA no cambia ni un píxel (32 capturas idénticas a la línea base de fcd0604).
+
+- **Conflictos**: `CompareConfirmDialog.tsx` (se conserva la clase base del celular y se suman las `desk:` de ajustes), `scripts/shot-desktop.mjs` (unión de escenarios y orden de Tareas; `rutinas` usa `seedRoutines`) y este changelog (renumerado).
+- **Guardia `PermissionCard.mobile-pin.test.tsx`** restaurada a su contenido original de b6a502a (literales idénticos; solo un `@ts-expect-error` por la opción sin `description`) y excluida de Prettier en `.prettierignore`.
+- **Fixture de migración** `e2e/fixtures/legacy-userdata/.../000003.log` versionado con `git add -f` y negado en `.gitignore`, para que `m001-tasks-rename.test.ts` pase en clones limpios.
+- **Verificación**: typecheck, vitest completo (3829 pasan, 0 fallos), lint (0 errores), format:check, build, build:pwa y size:pwa en verde; presupuestos intactos.
