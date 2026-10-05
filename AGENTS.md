@@ -10,7 +10,7 @@ manda el código: corrige esta guía.
 
 | Ruta | Qué hay |
 |---|---|
-| `src/main/` | Proceso principal: `opencode/` (sidecar), `ipc/` (handlers, `schemas.ts`, `guard.ts`), `tasks/` (sandbox Seatbelt, proxies, políticas), `scheduler/` (rutinas), `computer/` (control del Mac), `embedded-browser/`, `remote/` (control remoto), `update/` (actualizador), `account/`, `security/` (protocolo `onyxcode://app`, endurecimiento web), `git/`, `pty/`, `files/`, `extras/`, `util/`. |
+| `src/main/` | Proceso principal: `opencode/` (sidecar), `ipc/` (handlers, `schemas.ts`, `guard.ts`), `tasks/` (sandbox Seatbelt, proxies, políticas), `scheduler/` (rutinas), `computer/` (control del Mac), `embedded-browser/`, `remote/` (control remoto), `update/` (actualizador), `security/` (protocolo `onyxcode://app`, endurecimiento web), `git/`, `pty/`, `files/`, `extras/`, `util/`. |
 | `src/preload/` | `index.ts` expone `window.api` tipado (+ `code-api`, `tasks-api`, `extras-api`, `browser-api`, `remote-api`). `quick`, `overlay`, `pill`, `assist` y `browser-host` son preloads con sandbox, autocontenidos a propósito. |
 | `src/renderer/` | `src/` (app: `app/`, `lib/`, `stores/`, `components/`, `features/{chat,code,tasks,routines,settings,browser,…}`), más `quick/`, `overlay/`, `browser/` (ventanas secundarias) e `index.html`. |
 | `src/shared/` | Código compartido main/renderer/PWA: `brand.ts`, `ipc*.ts` (contratos IPC), `i18n/{es,en}`, `platform-caps.ts`, `remote/` (protocolo del celular), tipos. |
@@ -58,7 +58,7 @@ El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electr
 - **Commits**: en español, un commit por paso, y cuando los hace una IA terminan con la línea `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. **`git add` por rutas** (nunca `git add -A` ni `.`): hay otros agentes editando el mismo árbol.
 - **Changelog**: todo cambio de comportamiento lleva un ID `F8-B<n>` en `CHANGELOG-FASE8.md` (las fases anteriores: `CHANGELOG-FASE6.md`, `-FASE7.md`) con su prueba. Si toca seguridad, actualiza también `docs/SEGURIDAD.md`.
 - **Texto de UI en español** (con inglés beta, ver sección 6). Flujo del dueño: planifica con Opus 5.5, ejecuta con Sonnet 5.5.
-- No publicar, no hacer `git push` sin que se pida, no tocar cuentas ni servidores (`api.onyxcode.cl`, Proxmox, Cloudflare), no crear tags ni releases.
+- No publicar, no hacer `git push` sin que se pida, no tocar servidores (Proxmox, Cloudflare), no crear tags ni releases.
 
 ## 5. IPC
 

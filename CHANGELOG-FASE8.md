@@ -1020,3 +1020,16 @@ Pendiente: lista de claves en `brand.ts` y su cableado en `ipc/update.ts`, `vali
 - Fallo 3, plazo: con el binario real el arranque tardó de 8 s a más de 30 s en la misma red; `TRAVEL_PROCESS.startTimeoutMs` pasa de 30 a 60 s (`travel.test.ts` fija el margen). Fallo 4 (menor): `cloudflared` heredaba la carpeta de trabajo de la app y el vigía sin TCC protestaba con «getcwd» bajo ~/Documents; ahora corre en su `HOME` privado (`cloudflared.test.ts`, el falso imprime `FAKE_CWD`).
 - Verificado de verdad (Electron 44 real, macOS arm64, `cloudflared` 2026.9.3 oficial, red doméstica en Chile, userData temporal): descarga 19 784 166 B en ~2 s, `tar`, SHA-256 del `.tgz` y del binario, `codesign` con el requisito Developer ID (equipo 68WVV388M8), ejecución sin diálogo de Gatekeeper, vigía `/bin/sh` + `withDisclaim` con `--no-autoupdate` y sin `--config`, URL `https://<4 palabras>.trycloudflare.com` en ~5 s, autocomprobación, `/k/<T>` → 303 + `__Host-onyxk; Secure; HttpOnly; SameSite=Lax`, 404 idéntico sin galleta o con `T` malo, PWA con galleta idéntica byte a byte y CSP con `wss://<host>`, `/cdn-cgi/` lo sirve Cloudflare, WebSocket rechazado sin galleta o con `Origin` ajeno y abierto con ambos, cierre en 1,6 s sin procesos huérfanos ni `pids.json`, URL muerta tras parar. NO verificado con el binario real: pings del Mac por el túnel y `hello`→`ready` (se agotaron los 4 túneles autorizados por un error del propio script, ya corregido), redes móviles y celular real.
 - Se usaron los 4 túneles autorizados (2 fallaron por el DNS, 1 sin URL por el plazo, 1 completo); binario y userData temporales borrados; sin procesos sobrantes; sin push.
+
+## F8-B88 — Se retiran las cuentas (decisión del dueño)
+
+Se elimina el sistema de cuentas de F8-B19: `main/account/` (cliente, servicio, almacén `account.bin`, loopback, PKCE,
+config), `ipc/account.ts`, los 9 canales `account:*` y el evento `account:changed` (contrato, esquemas y política del
+remoto), `shared/account*.ts`, `ACCOUNT_API`/`PRIVACY_URL`/`TERMS_URL`, `AccountGate`/pantalla de acceso/Ajustes › Cuenta,
+las áreas i18n `account`, `merr.acct.*` y `settings.account.*`, el servidor falso `e2e/fake-auth` y las variables
+`ONYXCODE_ACCOUNT_URL`/`ONYXCODE_ACCOUNT_DISABLED`/`ONYXCODE_TEST_PLAIN_STORE`. Comportamiento = el de `ACCOUNT_API = null`.
+Nuevo `cleanLegacyAccountSession` (en cada arranque, idempotente): borra solo `account.bin(.tmp)` y `account.test.json(.tmp)`
+de userData; no usa `safeStorage` ni toca el Llavero (`remote.bin` sigue descifrándose). Guardia `src/test/no-accounts.test.ts`.
+E2E: `sin-cuenta.e2e.ts` sustituye a `account.e2e.ts`. La cobertura del remoto sigue al 100 %. Volver a una versión
+antigua con la cuenta encendida obliga a entrar de nuevo. El servidor, el VPS, el DNS `api.onyxcode.cl` y el cliente
+OAuth quedan fuera del repo (los gestiona el dueño).

@@ -1,3 +1,5 @@
+> **Archivado: la app ya no tiene cuentas** (retiradas en 0.4.x; ver `CHANGELOG-FASE8.md`, F8-B88). Se conserva solo como historia del diseño; no describe el comportamiento actual.
+
 # Términos de uso — BORRADOR
 
 > **BORRADOR. NO ES TEXTO LEGAL DEFINITIVO.** Lo escribió el equipo técnico como punto de partida. **El titular debe

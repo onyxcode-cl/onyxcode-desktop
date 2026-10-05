@@ -1,3 +1,5 @@
+> **Archivado: la app ya no tiene cuentas** (retiradas en 0.4.x; ver `CHANGELOG-FASE8.md`, F8-B88). Se conserva solo como historia del diseño; no describe el comportamiento actual.
+
 # Cuentas — qué cambiar al ACTIVAR
 
 **Estado (2026-09-30):** las cuentas están **activas** (`ACCOUNT_API = 'https://api.onyxcode.cl'`) y los textos de esta

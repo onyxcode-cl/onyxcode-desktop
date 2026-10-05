@@ -1,3 +1,5 @@
+> **Archivado: la app ya no tiene cuentas** (retiradas en 0.4.x; ver `CHANGELOG-FASE8.md`, F8-B88). Se conserva solo como historia del diseño; no describe el comportamiento actual.
+
 # Servidor de cuentas — contrato de la API (especificación para la Fase 2)
 
 Esta es la especificación del servidor que el cliente de OnyxCode (Fase 1, ya hecho) espera. **Nada de esto está

@@ -9,7 +9,7 @@ hallazgos y su estado en `AUDIT.md`; motivación en notas privadas (fuera del re
 | Control | Dónde |
 |---|---|
 | Renderer de producción servido por `onyxcode://app/…` (esquema privilegiado `standard`+`secure`), nunca `file://`. Solo host `app`, solo archivos de `out/renderer` (sin `..` ni enlaces fuera), `nosniff`, COOP/CORP | `src/main/security/app-protocol.ts` |
-| CSP por **cabecera** en cada HTML: `script-src 'self'`, `connect-src 'self' http://127.0.0.1:*`, sin frames/workers/objetos, `base-uri`/`form-action 'none'` (la `<meta>` se mantiene para el dev server); las peticiones del servidor de cuentas (§3 sexies) salen desde main, no desde el renderer | `RENDERER_CSP` |
+| CSP por **cabecera** en cada HTML: `script-src 'self'`, `connect-src 'self' http://127.0.0.1:*`, sin frames/workers/objetos, `base-uri`/`form-action 'none'` (la `<meta>` se mantiene para el dev server); el renderer no tiene permiso de red a internet (el aviso de versión y el actualizador salen desde main) | `RENDERER_CSP` |
 | Navegación: `will-navigate`/`will-redirect`/`will-frame-navigate` solo al origen propio (o el dev server); http(s) → navegador del sistema (solo desde ventanas de la app, nunca desde una vista previa); `window.open` denegado; `<webview>` bloqueado y `webviewTag:false` | `src/main/security/web-security.ts` |
 | Permisos de la sesión por defecto: denegados salvo `notifications` y `clipboard-sanitized-write` para páginas propias; sin dispositivos, sin captura de pantalla desde el renderer, sin descargas | idem |
 | Menú propio en producción (sin Recargar/DevTools) y `devTools:false` en la ventana principal empaquetada | idem, `src/main/index.ts` |
@@ -32,7 +32,6 @@ Cada `ipcMain.handle` pasa por `guardInvoke` (`src/main/ipc/guard.ts`):
 Las tablas de esquemas están tipadas contra los contratos `shared/ipc*.ts`: un canal nuevo sin
 esquema no compila, y en desarrollo `missingSchemas()` muestra un error al arrancar.
 **Al añadir un canal: contrato + handler + esquema (+ rol si lo usa una ventana secundaria).**
-Los canales `account:*` (§3 sexies) son solo de la ventana principal y llevan esquemas estrictos.
 Lo mismo vale para `app:testProviderKey` y `diag:*` (§3 nonies).
 
 ## 3. Procesos hijos y permisos de macOS (TCC)
@@ -378,7 +377,7 @@ lista.
 
 ## 3 quinquies. Aviso de versión nueva
 
-Aviso NO bloqueante de que hay una versión publicada más reciente (ya no es la única conexión de red propia de la app: la cuenta, §3 sexies, también contacta `api.onyxcode.cl`). Por sí solo no descarga, no instala y no ejecuta
+Aviso NO bloqueante de que hay una versión publicada más reciente (junto con el actualizador y, si se activa, el servicio de conexión del celular, es de las pocas conexiones de red propias de la app). Por sí solo no descarga, no instala y no ejecuta
 nada: lee un JSON y, si el usuario pulsa «Descargar», abre en el navegador la página de la release. Si esta copia puede
 actualizarse sola, el botón «Actualizar» inicia la descarga verificada de la sección 3 septies; **solo** al pulsarlo se
 descarga algo (la comprobación automática sigue siendo únicamente el `GET` de abajo).
@@ -414,67 +413,14 @@ descarga algo (la comprobación automática sigue siendo únicamente el `GET` de
   `fetch` de Node no usa el proxy del sistema (tras un proxy obligatorio el aviso simplemente no llega). Sin
   `retryAfter` persistido, un fallo se reintenta en el siguiente arranque pasada 1 h.
 
-## 3 sexies. Cuenta
+## 3 sexies. Cuenta (retirada en 0.4.x)
 
-> **Estado: activa.** `ACCOUNT_API` (`src/shared/brand.ts`) es `https://api.onyxcode.cl` (servidor de la Fase 2, contrato
-> en `docs/CUENTAS-SERVIDOR.md`): la app exige iniciar sesión y es la única conexión de red propia, junto con el
-> aviso de versión (§3 quinquies) y el actualizador (§3 septies), que no lleva datos de la cuenta. Todo el tráfico va
-> por el proceso principal, de modo que la CSP de §1 no cambia. Para pruebas, `ONYXCODE_ACCOUNT_DISABLED=1` apaga la
-> cuenta **solo con la app sin empaquetar** (los E2E y el smoke); en la app empaquetada se ignora siempre.
-
-- **Flujo.** Cuenta obligatoria con dos entradas, sin contraseñas: (a) **correo + código** de 6 dígitos (`email/start` →
-  `email/verify`) y (b) **Google por loopback** (RFC 8252) con PKCE S256, nunca por el esquema `onyxcode://`
-  (ese esquema es solo interno). La app nunca habla con Google: abre en el navegador del sistema la `auth_url` que
-  devuelve **nuestro** servidor. El flujo es OAuth **web mediado por el servidor**: Google redirige al callback
-  `https://api.onyxcode.cl/v1/auth/google/callback` (no al loopback), el servidor canjea con Google (el `client_secret`
-  vive solo allí), valida el `id_token` y redirige al loopback de la app con un código propio de un solo uso; la app lo
-  recibe en un receptor local y el servidor lo canjea (`/v1/auth/exchange`). Detalle en `docs/CUENTAS-SERVIDOR.md` §2.
-  La pantalla de acceso está montada **antes** de la app (`<AccountGate><App/></AccountGate>`): hasta pasar no se montan
-  los efectos de `App` ni el asistente «Conecta tu IA».
-- **Receptor loopback** (`src/main/account/loopback.ts`). Escucha solo en `127.0.0.1`, puerto aleatorio, como mucho
-  5 minutos; acepta **una** petición `GET /callback` con `state` correcto (256 bits, comparación en tiempo constante) y
-  se cierra. Otras rutas/métodos, `Host` distinto de `127.0.0.1:<puerto>` (anti DNS-rebinding) o `state` incorrecto se
-  rechazan sin gastar el turno (una página ajena no puede romper el inicio de sesión) y tras 20 rechazos se abandona.
-  Respuesta: una página mínima «Puedes volver a la app» con CSP `default-src 'none'`, `no-store` y `no-referrer`.
-- **Sesión.** Token **opaco** emitido por el servidor. Se guarda en `userData/account.bin` cifrado con
-  `safeStorage` (Llavero de macOS), modo 0600, **solo en main**; el renderer recibe un estado público
-  `{required,status,email,provider,graceEndsAt,checking,memoryOnly}` **sin token** (hay pruebas unitarias y E2E que lo
-  comprueban). Si `safeStorage.isEncryptionAvailable()` es falso, la sesión vive solo en memoria (la pantalla avisa) y
-  no se escribe nada en claro. Un archivo ilegible se borra y cuenta como «sin sesión». Solo con la app **sin
-  empaquetar** y `ONYXCODE_TEST_PLAIN_STORE=1` se usa un archivo de prueba en claro (`account.test.json`) para que los
-  E2E no toquen el Llavero real.
-- **Validación y gracia.** Al arrancar y cada 24 h, `GET /v1/me` con `Authorization: Bearer`. Sesión válida → abre;
-  **401** (revocada/caducada) → bloquea al instante y borra la sesión; **404/410** (cuenta borrada) → bloquea y la
-  borra; servidor sin respuesta (red, 5xx, 429…) → la app abre **mientras la última validación correcta tenga menos de
-  30 días** y si no, bloquea («Sin conexión con el servidor», con «Reintentar»). Una validación anotada «en el futuro»
-  (reloj atrasado más de 5 min) no da gracia. Lógica pura y exhaustivamente probada en `src/shared/account.ts`.
-- **Qué sale a la red** (todo por `net.fetch` desde main; la CSP del renderer no cambia y sigue sin permitir internet):
-  `POST /v1/auth/email/start {email}`, `POST /v1/auth/email/verify {email,code}`, `POST /v1/auth/google/start
-  {redirect_uri,state,code_challenge}` (solo el *challenge*), `POST /v1/auth/exchange {code,code_verifier,redirect_uri}`,
-  `GET /v1/me`, `POST /v1/logout`, `DELETE /v1/me`; todas con `credentials:'omit'` (sin cookies), `redirect:'error'`,
-  sin cabecera `Origin`, tiempo máximo de 10 s, respuesta de hasta 256 KB y `User-Agent: <APP_NAME>/<versión>`. El
-  servidor ve el correo, la IP y el momento. **No** sale ninguna conversación, archivo ni clave de IA.
-- **Dominio único.** La app solo habla con el origen fijo `ACCOUNT_API` (`https://`, sin ruta ni credenciales; uno
-  inválido deja la cuenta activa pero sin servidor: **falla cerrado**, nunca «sin login»). `ONYXCODE_ACCOUNT_URL` (servidor
-  falso de E2E) y `ONYXCODE_ACCOUNT_DISABLED=1` solo se respetan con la app sin empaquetar, y la primera gana a la segunda. La URL del navegador para Google solo se abre si es
-  `https:` (y, sin empaquetar, `http://127.0.0.1`).
-- **Quick Entry, atajo global y bandeja** solo actúan con la cuenta al día (`isAccountAllowed()`); sin ella, «Nueva
-  conversación», Quick Entry y Ajustes de la bandeja no hacen nada (quedan «Abrir» y «Salir») y una Quick Entry abierta
-  se oculta al perderse la sesión. Con la cuenta apagada (solo posible sin empaquetar, en pruebas) nada de esto cambia.
-- **IPC.** Canales `account:*` (estado, Google, cancelar, reintentar, enviar/verificar código, cerrar sesión, borrar,
-  exportar) y evento `account:changed`; **solo** la ventana principal (no están en `CHANNEL_ROLES`), con esquemas
-  estrictos (correo ≤ 254, código `^\d{6}$`). «Borrar mi cuenta» exige confirmación y **no** toca `opencode-data`
-  (claves de IA) ni las conversaciones.
-- **Riesgos conocidos.** (1) El bloqueo es del lado cliente: quien modifique su copia de la app puede saltárselo; la
-  cuenta sirve para gestionar y contar usuarios, no es DRM. (2) Quien controle el servidor controla la `auth_url` a la
-  que se manda al navegador (siempre `https`) y puede emitir sesiones, pero no ve datos locales. (3) Adelantar/atrasar el
-  reloj del sistema dentro de la ventana de 30 días alarga la gracia. (4) Otro proceso del mismo usuario con acceso
-  al Llavero (y su aviso) podría leer el token. (5) Sin *certificate pinning*: un CA comprometido o un proxy con
-  certificado instalado ve el tráfico. (6) `net.fetch` usa la pila de Chromium y el proxy del sistema. (7) El correo es
-  un dato personal: hay obligaciones legales (borradores `docs/PRIVACIDAD-BORRADOR.md` y `docs/TERMINOS-BORRADOR.md`,
-  pendientes de revisión por un abogado). (8) Nada de esto está probado aún contra Google ni contra un servidor real.
-- **Pruebas.** Servidor falso `e2e/fake-auth/server.mjs` (con sus propios tests) y `e2e/specs/account.e2e.ts`; nunca hay
-  red real, Google ni correo.
+La app **ya no tiene cuentas ni inicio de sesión** (F8-B88; sustituye a F8-B19). Se quitaron `src/main/account/` (cliente HTTP,
+servicio, almacén `account.bin`, receptor loopback, PKCE), los 9 canales `account:*` y el evento `account:changed` (contrato,
+esquemas y política del remoto), `ACCOUNT_API` y las variables de pruebas `ONYXCODE_ACCOUNT_URL`, `ONYXCODE_ACCOUNT_DISABLED` y
+`ONYXCODE_TEST_PLAIN_STORE`. Ya no hay tráfico a un servidor de cuentas ni receptor en `127.0.0.1` para el callback de Google.
+Al arrancar se borra la sesión heredada: ver §3 quadragies bis. El diseño original se conserva en `docs/archive/CUENTAS-SERVIDOR.md`
+(archivado). La guardia `src/test/no-accounts.test.ts` evita que reaparezcan canales, dominios o variables de cuenta.
 
 ## 3 septies. Actualizador propio («Actualizar»)
 
@@ -655,7 +601,7 @@ proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 - Superficie nueva mínima: el ajuste `language` (`'system' | 'es' | 'en'`) viaja por el canal ya existente `settings:set` (esquema `literal('system','es','en')`; cualquier otro valor se rechaza y `normalize` lo devuelve a `'system'`). **No hay canales IPC nuevos ni entradas en `CHANNEL_ROLES`.**
 - Los diccionarios (`src/shared/i18n`) son datos estáticos del paquete: no se descarga ni se ejecuta nada y no se interpreta HTML (los textos se pintan como texto de React). `format()` solo sustituye `{nombre}` por valores del propio código.
 - Los preloads secundarios no importan el módulo de idioma (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a `main`, también tras T4c). Quick Entry, overlay, píldora y globo de guía reciben el idioma como parámetro de consulta `?lang=es|en` de su propia URL (`loadLocalizedPage`): el valor sale de `getLang()` en main (nunca de entrada del usuario), la página solo lo acepta si es `es` o `en` y no se añade ningún canal ni capacidad; la URL sigue siendo `onyxcode://app/…` (el origen no cambia, la validación del emisor y los roles de ventana tampoco).
-- Main usa el idioma para la bandeja, el menú, los errores y avisos que construye (`merr.*`: cuenta, binario, carpetas, política de la organización, rutinas, notificaciones y cuadros nativos) y las ventanas con preload propio; no cambia reglas de seguridad (CSP, `webRequest`, navegación, política de carpetas y de la organización: solo cambia el texto del motivo). Los códigos que consume el código (`FULL_ACCESS_NOT_GRANTED`) no se traducen y el renderer ya no clasifica errores por su texto (`NetworkSection`). Las etiquetas de los roles estándar del menú (Archivo, Edición, Ventana) las pone Electron según la configuración regional del sistema.
+- Main usa el idioma para la bandeja, el menú, los errores y avisos que construye (`merr.*`: binario, carpetas, política de la organización, rutinas, notificaciones y cuadros nativos) y las ventanas con preload propio; no cambia reglas de seguridad (CSP, `webRequest`, navegación, política de carpetas y de la organización: solo cambia el texto del motivo). Los códigos que consume el código (`FULL_ACCESS_NOT_GRANTED`) no se traducen y el renderer ya no clasifica errores por su texto (`NetworkSection`). Las etiquetas de los roles estándar del menú (Archivo, Edición, Ventana) las pone Electron según la configuración regional del sistema.
 - Siguen en español los prompts de agente (`resources/opencode/*.md`), los borradores legales, lo que lee el modelo (descripciones y resultados de los MCP de Control del Mac y del navegador), el registro del modo auto y los residuos listados en F8-B27.
 
 - Los preloads secundarios no importan el módulo de idioma (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a `main`).
@@ -694,7 +640,7 @@ Canal nuevo, solo ventana principal (no está en `CHANNEL_ROLES`), esquema estri
 ## 3 quindecies. Windows: arranque (tanda 1)
 
 - **Entorno de los procesos hijos.** En Windows `minimalEnv` hereda una lista blanca propia (sin distinguir mayúsculas) y conserva `Path` ampliado; siguen fuera `ELECTRON_*`, `NODE_OPTIONS` y cualquier token del usuario. Se hereda `USERPROFILE`/`APPDATA`/`LOCALAPPDATA`/`TEMP`/`ProgramData` porque sin ellas OpenCode (Bun) no arranca; `ProgramFiles*` se hereda solo para localizar Git.
-- **Sin modos POSIX.** `0600`/`0700` no se aplican en NTFS (`chmod` no tiene efecto): los archivos de `userData` (cuenta cifrada con DPAPI/`safeStorage`, `opencode.json`, almacén de OpenCode) dependen de la ACL heredada de `%APPDATA%`, que por defecto solo da acceso al usuario, a SYSTEM y a los administradores. Pendiente evaluar una ACL explícita en una tanda posterior.
+- **Sin modos POSIX.** `0600`/`0700` no se aplican en NTFS (`chmod` no tiene efecto): los archivos de `userData` (datos cifrados con DPAPI/`safeStorage` como `remote.bin`, `opencode.json`, almacén de OpenCode) dependen de la ACL heredada de `%APPDATA%`, que por defecto solo da acceso al usuario, a SYSTEM y a los administradores. Pendiente evaluar una ACL explícita en una tanda posterior.
 - **Procesos.** Sin grupos de procesos: `taskkill /PID n /T /F` mata el árbol, y la limpieza de huérfanos (`killStaleServers`) verifica por PowerShell/CIM que el PID siga siendo un `opencode.exe serve` antes de matarlo (PID reutilizado). `opencode.exe` se lanza con `windowsHide` y sin `detached` (no abre consola).
 - **Superficie reducida.** Fuera de macOS no se carga el código de Tareas (Seatbelt, proxy de credenciales), Control del PC ni el actualizador; sus canales IPC responden `PLATFORM_UNSUPPORTED`. Las rutinas en modo Tareas se rechazan al guardar y al ejecutar.
 - **Política gestionada.** `%ProgramData%\OnyxCode\managed.json` (escribible solo por administradores en una instalación por defecto), mismo criterio *fail-closed*.
@@ -855,7 +801,7 @@ pertenecer al `directory` de la petición. `workspace` en la query y claves de q
 | Ajustes | `settings:get`, `extras:getPrefs/versions`, `mcp:catalog`, `tasks:prefs:get`, `computer:prefs:get` | `settings:set` solo `defaultModel`/`theme`/`language`; `extras:setPrefs` `modelsByMode/showTray/notificationsEnabled/soundEnabled`; `tasks:prefs:set` `notify/stallWarnMinutes`; `computer:prefs:set` `hideOtherApps/unhideOnFinish` | `tasksGlobalInstructions`, `addRecentFolder`, `tasks:prefs:set` `autoArchiveDays/idleStopMinutes/maxServers`, `computer:prefs:set{mode:'full'}` | `opencodeBin`, `checkUpdates`, `recentFolders`, `onboarded`, `routinesTermsAcknowledged`, `quickEntryShortcut`, `keybindings`, `lastEditor`, `mcp:getConfig/save/remove/setEnabled/revealConfig/installCatalog`, `tasks:mcp:set` |
 | Tareas / Control / Rutinas | listados, estado, actividad, entregables, vista previa (≤ 8 MiB), restauración (`list/changes`), `routines:list/history/preview` | `tasks:start` sin control total, `removeFolder`, `revokeFullAccess/revokeAll`, `computer:stop/revokeGrant/denyApp/revokePlan`, `respondAccess` solo rechazando, `routines:delete`, `routines:toggle` a apagado, `restore:create/forget`, `rules:remove`, `auto:revoke` | `start{fullAccess}`, `grantFullAccess`, `fullAccess:consent`, `approveFolder`, `folders:link/unlink`, `trusted:set/remove`, `network:*` (menos `state`), `deleteGrant:set`, `restore:apply`, `storage:clean*`, `auto:set/consider/clearLog`, `project:save` con instrucciones/enlaces, `memory:save/delete`, `agentsMd:save`, `rules:add`, `respondAccess` con concesiones o plan, `setGrant`, `undenyApp`, `computer:resume`, `routines:save/runNow/toggle` a encendido | `pickFolder`, `requestPermissions` (TCC), `teach*`, `record*`, `showMainWindow` |
 | Navegador | `browser:state/capture` | `newTab/closeTab/selectTab/navigate/history/toChat`, `agent` pausar/detener, `respond` denegar | `agent` reanudar, `respond` con cualquier permiso | `attach/detach/pick/popOut/setViewMode/openExternal/devServers/sites:*/clearData` |
-| App / cuenta / actualizador / diagnóstico | `app:info` (sin `userDataPath`), `updateState`, `account:state`, `opencode:status/connection` (credenciales reescritas) | `checkUpdates`, `dismissUpdate`, `updateCancel` | `updateDownload`, `updateInstall`, `signOut`, `opencode:restart` | `openExternal`, `notify`, `setAttention`, `opencodeInfo/Action`, `pickOpencodeBin`, `bootConfirm`, `testProviderKey`, `account:google/email*/delete/export/cancel/retry`, `diag:*` |
+| App / actualizador / diagnóstico | `app:info` (sin `userDataPath`), `updateState`, `opencode:status/connection` (credenciales reescritas) | `checkUpdates`, `dismissUpdate`, `updateCancel` | `updateDownload`, `updateInstall`, `opencode:restart` | `openExternal`, `notify`, `setAttention`, `opencodeInfo/Action`, `pickOpencodeBin`, `bootConfirm`, `testProviderKey`, `diag:*` |
 | Remoto / onboarding | — | — | — | todo `remote:*`; el onboarding (`onboarded`) |
 
 **Prompts.** El cuerpo de `prompt_async` solo admite `messageID`, `model`, `agent`, `variant` y `parts` (texto y archivo; nada de
@@ -880,7 +826,7 @@ en `provider.list`. Adjuntos: `data:` base64; `file://` solo bajo el directorio 
 - Cambio respecto al prototipo: las rutas absolutas **dentro del ámbito** ya se pueden mostrar en el celular (con `~`); fuera del ámbito
   y `userDataPath` (`app:info`, vía `sanitizeResult`) nunca.
 - Eventos: `CELULAR_EVENTS` (`allow`/`sanitize`/`deny`, denegar por defecto). Se descartan los de terminal, capturas de Control del PC,
-  cuenta, atajos y MCP; se recortan (`sanitize`) los que llevan credenciales del motor o rutas (`opencode:connection`, `tasks:server`,
+  atajos y MCP; se recortan (`sanitize`) los que llevan credenciales del motor o rutas (`opencode:connection`, `tasks:server`,
   `settings:changed`, `files:changed`…).
 
 **Cola de confirmación (`remote/confirm-queue.ts`).** FIFO, máx. 2 pendientes (la 3.ª responde `busy`), 10 peticiones nuevas por minuto
@@ -1495,3 +1441,32 @@ Verificado en T0 con el binario real (2026.9.3, Mac arm64, Chile): firma Develop
 **Qué NO hace y por qué.** Sin servidor fijo no hay forma segura de avisar al celular de una URL nueva (cada túnel nuevo tiene otro nombre), de despertar el Mac ni de instalar la PWA. El respaldo por el WebSocket del túnel con cifrado propio queda para una entrega posterior tras revisión criptográfica externa; hasta entonces, donde la perforación falle, el modo viaje no conecta.
 
 **Verificación real de punta a punta (F8-B87).** `scripts/travel-smoke.cjs` (a mano, NO en `npm test`) corre dentro de Electron con los componentes de producción y red real: descarga, extracción, dos hashes, firma, ejecución sin Gatekeeper, ciclo de vida (vigía, `withDisclaim`, `HOME` privado), URL, autocomprobación, rutas del túnel y cierre sin huérfanos. Encontró dos fallos que los simulacros no podían ver: (1) `net.fetch(url, { redirect: 'manual' })` de Electron lanza «Redirect was cancelled» y la descarga fallaba al instante; ahora `tunnel/manual-fetch.ts` usa `net.request` (evento `redirect`, siempre se aborta y cada salto lo valida `CloudflaredBinary`: lista cerrada de hosts, https, sin puerto ni credenciales; el pin, el tamaño exacto y los dos SHA-256 no cambian); (2) el nombre del túnel aún no existe en el DNS cuando `cloudflared` imprime la URL y la primera consulta quedaba en la caché negativa del resolvedor (60 s), así que la autocomprobación daba `ENOTFOUND` y el QR no salía: ahora `signaling/tunnel-dns.ts` pregunta a los servidores autoritativos de `trycloudflare.com` (el nombre del túnel lo ven esos servidores de Cloudflare, no un resolvedor público) y conecta a la IP que dan con el certificado validado por SNI; solo con el autoritativo inaccesible recurre al sistema. Además: el proceso corre en la carpeta de su `HOME` privado y el plazo de arranque pasa de 30 a 60 s (una ejecución real superó 30 s). **Sin verificar con el binario real**: los pings del Mac por el túnel y `hello`→`ready` por el WebSocket del túnel (probados con el falso; con el real se vio que el WebSocket abre con galleta y `Origin` exactos y que el servidor responde), redes móviles y celular real.
+
+## 3 quadragies bis. Retirada de las cuentas y migración de la sesión heredada (F8-B88)
+
+**Decisión del dueño:** OnyxCode ya no tiene cuentas ni inicio de sesión. El comportamiento es el de la antigua compilación con
+`ACCOUNT_API = null`, sin el código muerto.
+
+**Superficies que desaparecen.** (1) Los 9 canales invoke `account:state|google|cancel|retry|emailStart|emailVerify|signOut|delete|export`
+y el evento `account:changed`, con sus esquemas, handlers y entradas de la política del remoto (la **R** `account:state` y la **D**
+`account:signOut`). (2) La red saliente de main hacia el servidor de cuentas (`/v1/auth/*`, `/v1/me` cada 24 h, `/v1/logout`,
+`DELETE /v1/me`). (3) El servidor HTTP loopback en `127.0.0.1:<aleatorio>` y la apertura del navegador con una `auth_url` dictada por el
+servidor. (4) El token portador guardado en disco. (5) Las variables `ONYXCODE_ACCOUNT_URL`, `ONYXCODE_ACCOUNT_DISABLED` y
+`ONYXCODE_TEST_PLAIN_STORE`. (6) El bloqueo de Quick Entry, atajo global y bandeja por falta de sesión. No cambian la CSP (la cuenta
+salía por `net.fetch` desde main, que la CSP no controla), `CHANNEL_ROLES`, los preloads ni el protocolo `onyxcode://app`.
+
+**Migración.** `cleanLegacyAccountSession` (`src/main/legacy-account-cleanup.ts`, sin Electron: no recibe `safeStorage`) se llama en cada
+arranque, junto a la limpieza del navegador heredado, y es idempotente. Borra **solo** estos archivos regulares (o el enlace, nunca su
+destino) directamente en `userData`, sin recursión: `account.bin`, `account.bin.tmp`, `account.test.json` y `account.test.json.tmp`.
+Una carpeta con ese nombre no se toca. Se puede quitar en una versión >= 0.6.
+
+**Qué NO se borra.** La clave del Llavero del sistema (`OnyxCode Safe Storage`, que comparte `remote.bin`): la función no descifra ni
+invalida nada, así que `remote.bin` (los celulares vinculados) sigue descifrándose. Tampoco `settings.json`, `opencode-data/` (claves de
+IA), las conversaciones, `migrations.json` ni la `localStorage` del renderer (la bandera inerte `onyx.account.note` queda, sin datos
+personales).
+
+**Guardias.** `policy.test.ts` (cobertura al 100 %: la política no puede conservar canales que ya no existen), `schemas.test.ts`,
+`src/test/no-accounts.test.ts` (ningún canal, política, dominio ni variable de cuenta en `src/`) y `legacy-account-cleanup.test.ts`.
+
+**Fuera del repo.** El servidor, el VPS, el DNS `api.onyxcode.cl`, el cliente OAuth y la base de usuarios los gestiona el dueño; **sus
+datos en el servidor no se borran desde la app**. Volver a una versión antigua con la cuenta encendida obliga a entrar de nuevo.

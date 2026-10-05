@@ -218,6 +218,11 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
     una clave mal copiada: «Clave no válida» con «Cambiar clave». Con el Wi-Fi apagado: «Sin conexión a internet». Los E2E solo usan un servidor local (`key-test.e2e.ts`).
 15. **Diagnóstico con el motor real (2 min; F8-B23).** Ajustes › Diagnóstico: el estado dice «Funcionando»; «Motor (archivo)» muestra el `.log` real; «Copiar» y pega en un editor: no hay claves ni
     la contraseña del motor, y tu carpeta personal aparece como `~`. «Exportar…» crea un `.txt` con permisos 0600 (`ls -l`).
+16. **Sesión heredada de la antigua cuenta (2 min; F8-B88).** Solo si tu equipo tiene una sesión real de una versión con cuentas.
+    Antes: `ls -l ~/Library/Application\ Support/OnyxCode/account.bin` y
+    `security find-generic-password -s "OnyxCode Safe Storage" >/dev/null && echo llavero-ok`. Abre la versión nueva: no hay pantalla
+    de acceso ni Ajustes › Cuenta, `account.bin` ya no está, `llavero-ok` sigue saliendo, los celulares vinculados siguen vinculados
+    (`remote.bin` se descifra) y las claves de IA y las conversaciones siguen ahí. En Windows, lo mismo en `%APPDATA%\OnyxCode\`.
 
 ## Mapa: guías antiguas → spec o humano
 

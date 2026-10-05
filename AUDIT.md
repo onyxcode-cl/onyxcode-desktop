@@ -344,6 +344,6 @@ Fuente: `docs/archive/LOTE-D-PLAN.md` (secciones A y B) y los informes de los pa
 - **No verificado en vivo (solo se puede probar dentro de la app real; ver `docs/LOTE-D.md` §4).** El flujo completo de `confirmSensitive` (tarjeta «acción sensible») contra un botón real de tipo pago/borrado: la página de prueba usada en D2/D5 no tiene ningún elemento así, solo se verificó la lógica de coincidencia del regex y el guardado de `fill`/contraseña. Tampoco: el comportamiento visual real de la vista nativa superpuesta al DOM de React (congelado/oculto tras un overlay), el redimensionado en vivo del panel, y el rechazo de un navegador embebido por un inicio de sesión real de Google/Microsoft.
 
 
-## 12. Cuentas activadas (2026-09-30)
+## 12. Cuentas retiradas (2026-10-04)
 
-`ACCOUNT_API = 'https://api.onyxcode.cl'`: la app exige iniciar sesión (Google o correo + código) y contacta ese dominio desde main (ver `docs/SEGURIDAD.md` §3 sexies). Las pruebas E2E y el smoke apagan la cuenta con `ONYXCODE_ACCOUNT_DISABLED=1`, honrada solo sin empaquetar; los specs de cuenta usan su servidor falso. Siguen pendientes para publicar: alias, LICENSE, `RELEASES_REPO`, `UPDATE_PUBLIC_KEY` y las páginas legales (`PRIVACY_URL`/`TERMS_URL`).
+La app ya no tiene cuentas ni inicio de sesión (decisión del dueño; ver `docs/SEGURIDAD.md` §3 quadragies bis y F8-B88). Siguen pendientes para publicar: alias, LICENSE, `RELEASES_REPO`, `UPDATE_PUBLIC_KEY` y la política de privacidad (`docs/PRIVACIDAD-BORRADOR.md`).

@@ -91,4 +91,4 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 4. TURN.
 5. Web Push.
 
-Cada paso entra con su prueba, su sección en `docs/SEGURIDAD.md` y la política de la organización actualizada. Nada de esto requiere cuentas de usuario del servidor `api.onyxcode.cl` ni se aprueba sin una decisión del dueño sobre dominio, coste y privacidad.
+Cada paso entra con su prueba, su sección en `docs/SEGURIDAD.md` y la política de la organización actualizada. Nada de esto requiere cuentas de usuario ni se aprueba sin una decisión del dueño sobre dominio, coste y privacidad.
