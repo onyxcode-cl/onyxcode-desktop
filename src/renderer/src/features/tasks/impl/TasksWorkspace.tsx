@@ -245,10 +245,10 @@ function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
         aria-label={t('tasks.ws.menuMoreAria')}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+        className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
         onClick={() => setOpen((o) => !o)}
       >
-        <MoreHorizontal size={15} className="desk:size-4" />
+        <MoreHorizontal size={15} />
       </button>
       {open && (
         <div
@@ -661,17 +661,17 @@ export function TasksWorkspace(): React.JSX.Element {
                 <button
                   type="button"
                   title={t('tasks.ws.openFinder')}
-                  className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+                  className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                   onClick={() => void reveal(folder)}
                 >
-                  <FolderOpen size={15} className="desk:size-4" />
+                  <FolderOpen size={15} />
                 </button>
               )}
               <button
                 type="button"
                 title={panelOpen && !sideOpen ? t('tasks.ws.hidePanel') : t('tasks.ws.showPanel')}
                 aria-label={panelOpen && !sideOpen ? t('tasks.ws.hidePanelAria') : t('tasks.ws.showPanel')}
-                className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+                className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                 onClick={() => {
                   if (sideOpen) {
                     closeSideChat()
@@ -679,11 +679,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   } else setPanelOpen(!panelOpen)
                 }}
               >
-                {panelOpen && !sideOpen ? (
-                  <PanelRightClose size={15} className="desk:size-4" />
-                ) : (
-                  <PanelRightOpen size={15} className="desk:size-4" />
-                )}
+                {panelOpen && !sideOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
               </button>
             </span>
           </header>
@@ -795,19 +791,19 @@ export function TasksWorkspace(): React.JSX.Element {
                 <button
                   type="button"
                   title={t('tasks.ws.sync')}
-                  className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+                  className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                   onClick={() => void resync()}
                 >
-                  <RefreshCw size={13} className="desk:size-4" />
+                  <RefreshCw size={13} />
                 </button>
               )}
               <button
                 type="button"
                 title={t('tasks.ws.hidePanel')}
-                className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+                className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                 onClick={() => setPanelOpen(false)}
               >
-                <PanelRightClose size={14} className="desk:size-4" />
+                <PanelRightClose size={14} />
               </button>
             </span>
           </div>

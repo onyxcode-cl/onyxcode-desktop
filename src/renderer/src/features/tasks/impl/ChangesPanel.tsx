@@ -96,7 +96,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
         <span
           className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium desk:grid desk:size-[18px] desk:place-items-center desk:rounded-2xs desk:px-0 desk:py-0 desk:font-code desk:text-[11px] desk:font-semibold ${b.cls}`}
         >
-          <span className="desk:hidden">{t(b.label)}</span>
+          <span className="contents desk:hidden">{t(b.label)}</span>
           <span className="hidden desk:inline">{b.letter}</span>
         </span>
         {!change.binary && (
@@ -160,10 +160,10 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
           type="button"
           title={t('tasks.changes.refresh')}
           disabled={busy || loading}
-          className="rounded p-1 text-subtle hover:bg-hover hover:text-fg disabled:opacity-40 desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+          className="rounded p-1 text-subtle hover:bg-hover hover:text-fg disabled:opacity-40 desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
           onClick={reload}
         >
-          {loading ? <Loader2 size={12} className="animate-spin desk:size-4" /> : <RefreshCw size={12} className="desk:size-4" />}
+          {loading ? <Loader2 size={12} className="animate-spin desk:size-4" /> : <RefreshCw size={12} />}
         </button>
       }
     >

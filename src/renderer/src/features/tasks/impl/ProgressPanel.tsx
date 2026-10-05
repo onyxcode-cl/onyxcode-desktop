@@ -409,10 +409,10 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
           <button
             type="button"
             title={tr('tasks.prog.refresh')}
-            className="rounded p-1 text-subtle hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover"
+            className="rounded p-1 text-subtle hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
             onClick={() => void refreshDeliverables(sessionID)}
           >
-            <RefreshCw size={12} className="desk:size-4" />
+            <RefreshCw size={12} />
           </button>
         }
       >
