@@ -5,4 +5,7 @@
 @import './base.css';
 @import './shell.css';
 @import './conversation.css';
+@import './code-diff.css';
+@import './code-workspace.css';
+@import './compare.css';
 @import './modes.css';
