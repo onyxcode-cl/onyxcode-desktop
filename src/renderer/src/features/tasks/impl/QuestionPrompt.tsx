@@ -104,13 +104,13 @@ export function QuestionCard({ request }: { request: QuestionRequest }): React.J
   }
 
   return (
-    <div id={`question-${request.id}`} className="rounded-xl border border-accent/40 bg-accent-soft/20 p-3.5">
-      <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+    <div id={`question-${request.id}`} className="rounded-xl border border-accent/40 bg-accent-soft/20 p-3.5 desk:rounded-card">
+      <div className="flex items-start gap-3 desk:gap-3.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent desk:h-9 desk:w-9 desk:rounded-[10px]">
           <HelpCircle size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{t('tasksComputer.question.title')}</p>
+          <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.question.title')}</p>
           <div className="mt-2 space-y-2">
             {request.questions.map((q, i) => (
               <QuestionField
