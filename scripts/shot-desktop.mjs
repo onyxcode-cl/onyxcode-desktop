@@ -32,6 +32,9 @@ const out = resolve(arg('out') ?? DEFAULT_OUT)
 const sel = arg('scenario')
 const themes = arg('theme') ? [arg('theme')] : ['dark', 'light']
 const sizeSel = arg('size')
+// --reduced-motion: prueba la regla REAL de prefers-reduced-motion (no inyecta el estilo que apaga animaciones; sin la bandera
+// se emula igual `reduce` pero además se apagan todas, para capturas deterministas).
+const realReducedMotion = process.argv.includes('--reduced-motion')
 const selList = sel ? sel.split(',') : null
 for (const x of selList ?? []) if (!SCENARIOS.includes(x)) throw new Error(`escenario desconocido: ${x} (${SCENARIOS.join('|')})`)
 if (arg('theme') && !['dark', 'light'].includes(arg('theme'))) throw new Error('--theme dark|light')
@@ -262,11 +265,28 @@ async function stage(ctx, [w, h], theme) {
   }, [w, h])
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: DPR, mobile: false })
   await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
-  await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important;scroll-behavior:auto!important}' }).catch(() => {})
+  const calm = realReducedMotion ? 'caret-color:transparent!important;scroll-behavior:auto!important' : 'transition:none!important;animation:none!important;caret-color:transparent!important;scroll-behavior:auto!important'
+  await page.addStyleTag({ content: `*,*::before,*::after{${calm}}` }).catch(() => {})
+  await parkMouse(ctx)
   await sleep(350)
 }
 
+// El ratón NO puede quedar encima de ningún elemento (un clic de un escenario deja el hover puesto): se saca de la ventana
+// con un mouseMoved fuera del viewport y se comprueba que no queda ningún `:hover` salvo la raíz.
+async function parkMouse(ctx) {
+  for (let i = 0; i < 2; i++) {
+    await ctx.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: -20, y: -20, buttons: 0 }).catch(() => {})
+    await sleep(60)
+    const left = await ctx.page
+      .evaluate(() => [...document.querySelectorAll(':hover')].filter((e) => !['HTML', 'BODY'].includes(e.tagName) && e.id !== 'root').length)
+      .catch(() => 0)
+    if (!left) return
+  }
+  notes.push('el ratón sigue sobre un elemento tras sacarlo de la ventana')
+}
+
 async function snap(ctx, name, theme, sizeKey) {
+  await parkMouse(ctx)
   const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
   const file = join(out, `${name}-${theme}-${sizeKey}.png`)
   writeFileSync(file, Buffer.from(data, 'base64'))
