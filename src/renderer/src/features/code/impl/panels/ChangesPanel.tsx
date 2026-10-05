@@ -181,14 +181,18 @@ function FileRow({
     )
   }
   return (
-    <div className={`group relative flex items-center ${selected ? 'bg-active' : 'hover:bg-hover'}`}>
+    <div
+      className={`group relative flex items-center desk:h-8 desk:rounded-ctl desk:mx-1 ${selected ? 'bg-active desk:font-medium' : 'hover:bg-hover'}`}
+    >
       <button
         type="button"
         onClick={onSelect}
         title={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
-        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left text-[13px]"
+        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left text-[13px] desk:px-2"
       >
-        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold ${meta.cls}`}>
+        <span
+          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold desk:h-[18px] desk:w-[18px] desk:rounded-2xs desk:text-[11px] desk:font-semibold ${meta.cls}`}
+        >
           {meta.letter}
         </span>
         <span className="min-w-0 truncate">
@@ -216,11 +220,13 @@ function Section({ title, count, children }: { title: string; count: number; chi
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center gap-1 px-2 text-[11px] font-semibold tracking-wide text-subtle uppercase hover:text-muted ${isRemoteSurface() ? 'min-h-11 px-4' : 'py-1'}`}
+        className={`flex w-full items-center gap-1 px-2 text-[11px] font-semibold tracking-wide text-subtle uppercase hover:text-muted desk:normal-case desk:tracking-normal desk:text-meta desk:font-medium desk:h-8 ${isRemoteSurface() ? 'min-h-11 px-4' : 'py-1'}`}
       >
         <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
-        <span className="ml-1 rounded-full bg-hover px-1.5 text-[10px] font-medium normal-case">{count}</span>
+        <span className="ml-1 rounded-full bg-hover px-1.5 text-[10px] font-medium normal-case desk:bg-active desk:text-[11px]">
+          {count}
+        </span>
       </button>
       {open && children}
     </div>
@@ -309,7 +315,7 @@ function CommitBox({
           onClick={() => void commit()}
           disabled={!canCommit}
           title={t('code.changes.commitTitle', { mod: MOD })}
-          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
+          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 desk:h-7 desk:rounded-ctl-sm desk:text-ui ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <GitCommitHorizontal size={14} />}
           {t('code.changes.commit')}
@@ -731,7 +737,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col desk:@container">
       <div
         className={`flex items-center gap-2 border-b border-border px-3 text-xs text-muted ${mobile ? 'min-h-12 ' : 'py-1.5'} ${mobile && selectedFile ? 'hidden' : ''}`}
       >
@@ -784,155 +790,169 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         </div>
       ) : (
         <>
-          <div
-            className={
-              mobile
-                ? `min-h-0 flex-1 overflow-y-auto ${selectedFile ? 'hidden' : ''}`
-                : 'max-h-[40%] shrink-0 overflow-y-auto border-b border-border py-1'
-            }
-          >
-            {staged.length > 0 && (
-              <Section title={t('code.changes.staged')} count={staged.length}>
-                {staged.map((f) => (
-                  <FileRow
-                    key={`s:${f.path}`}
-                    file={f}
-                    directory={directory}
-                    staged
-                    selected={selected?.path === f.path && selected.staged}
-                    onDiscard={native && canDiscard(f) ? () => void discard(f, 'all') : undefined}
-                    onSelect={() => setSelected(selected?.path === f.path && selected.staged ? null : { path: f.path, staged: true })}
-                  />
-                ))}
-              </Section>
-            )}
-            {unstaged.length > 0 && (
-              <Section title={staged.length ? t('code.changes.unstaged') : t('code.panel.changes')} count={unstaged.length}>
-                {unstaged.map((f) => (
-                  <FileRow
-                    key={`u:${f.path}`}
-                    file={f}
-                    directory={directory}
-                    staged={false}
-                    selected={selected?.path === f.path && !selected.staged}
-                    onDiscard={native && canDiscard(f) ? () => void discard(f, 'unstaged') : undefined}
-                    onSelect={() => setSelected(selected?.path === f.path && !selected.staged ? null : { path: f.path, staged: false })}
-                  />
-                ))}
-              </Section>
-            )}
-          </div>
-          <div className={`flex min-h-0 flex-1 flex-col ${mobile && !selectedFile ? 'hidden' : ''}`}>
-            {selectedFile && mobile && (
-              <div className="flex min-h-14 shrink-0 items-center gap-0.5 border-b border-border px-1">
-                <IconButton label={t('code.m.backToChanges')} className="h-11 w-11" onClick={() => setSelected(null)}>
-                  <ChevronLeft size={22} />
-                </IconButton>
-                <span className="min-w-0 flex-1 px-1">
-                  <span className="block truncate text-[15px] font-semibold">{splitPath(selectedFile.path).name}</span>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="min-w-0 truncate font-mono text-[11.5px] text-subtle" dir="ltr">
-                      {abbreviatePath(displayPath(directory, splitPath(selectedFile.path).dir), 28)}
-                    </span>
-                    {stats && (
-                      <span className="shrink-0 whitespace-nowrap">
-                        <DiffStats {...stats} />
-                      </span>
-                    )}
-                  </span>
-                </span>
-                <IconButton
-                  label={t('code.m.wrap')}
-                  active={wrap}
-                  aria-pressed={wrap}
-                  className="h-11 w-11"
-                  onClick={() => setWrap((w) => !w)}
-                >
-                  <WrapText size={18} />
-                </IconButton>
-                {native && canDiscard(selectedFile) && (
-                  <IconButton
-                    label={t('code.changes.discard')}
-                    className="h-11 w-11 hover:text-danger"
-                    onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
-                  >
-                    <Undo2 size={18} />
-                  </IconButton>
-                )}
-              </div>
-            )}
-            {selectedFile && !mobile && (
-              <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
-                <span className="min-w-0 truncate font-mono text-xs text-fg" title={selectedFile.path}>
-                  {selectedFile.path}
-                </span>
-                {stats && <DiffStats {...stats} />}
-                <span className="ml-auto flex shrink-0 items-center">
-                  {native && (
-                    <>
-                      {dialogs && (
-                        <>
-                          <IconButton
-                            label={t('code.menu.openEditor')}
-                            className="h-6 w-6"
-                            onClick={() => void native.dialog.openInEditor(abs)}
-                          >
-                            <Code2 size={13} />
-                          </IconButton>
-                          <IconButton
-                            label={t('code.menu.reveal')}
-                            className="h-6 w-6"
-                            onClick={() => void native.dialog.revealInFinder(abs)}
-                          >
-                            <FolderOpen size={13} />
-                          </IconButton>
-                        </>
-                      )}
-                      {canDiscard(selectedFile) && (
-                        <IconButton
-                          label={t('code.changes.discard')}
-                          className="h-6 w-6 hover:text-danger"
-                          onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
-                        >
-                          <Undo2 size={13} />
-                        </IconButton>
-                      )}
-                    </>
-                  )}
-                  <IconButton label={t('code.changes.closeDiff')} className="h-6 w-6" onClick={() => setSelected(null)}>
-                    <X size={13} />
-                  </IconButton>
-                </span>
-              </div>
-            )}
-            <div className="min-h-0 flex-1 overflow-auto">
-              {!selectedFile && !mobile && status && status.files.length > 0 && (
-                <div className="px-3 py-4 text-center text-xs text-subtle">{t('code.changes.selectFile')}</div>
+          <div className="flex min-h-0 flex-1 flex-col desk:@min-[40rem]:flex-row">
+            <div
+              className={
+                mobile
+                  ? `min-h-0 flex-1 overflow-y-auto ${selectedFile ? 'hidden' : ''}`
+                  : 'max-h-[40%] shrink-0 overflow-y-auto border-b border-border py-1 desk:@min-[40rem]:max-h-none desk:@min-[40rem]:w-52 desk:@min-[40rem]:border-b-0 desk:@min-[40rem]:border-r'
+              }
+            >
+              {staged.length > 0 && (
+                <Section title={t('code.changes.staged')} count={staged.length}>
+                  {staged.map((f) => (
+                    <FileRow
+                      key={`s:${f.path}`}
+                      file={f}
+                      directory={directory}
+                      staged
+                      selected={selected?.path === f.path && selected.staged}
+                      onDiscard={native && canDiscard(f) ? () => void discard(f, 'all') : undefined}
+                      onSelect={() => setSelected(selected?.path === f.path && selected.staged ? null : { path: f.path, staged: true })}
+                    />
+                  ))}
+                </Section>
               )}
-              {selectedFile && diffLoading && !diff && (
-                <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted">
-                  <Loader2 size={14} className="animate-spin" /> {t('code.changes.loadingDiff')}
+              {unstaged.length > 0 && (
+                <Section title={staged.length ? t('code.changes.unstaged') : t('code.panel.changes')} count={unstaged.length}>
+                  {unstaged.map((f) => (
+                    <FileRow
+                      key={`u:${f.path}`}
+                      file={f}
+                      directory={directory}
+                      staged={false}
+                      selected={selected?.path === f.path && !selected.staged}
+                      onDiscard={native && canDiscard(f) ? () => void discard(f, 'unstaged') : undefined}
+                      onSelect={() => setSelected(selected?.path === f.path && !selected.staged ? null : { path: f.path, staged: false })}
+                    />
+                  ))}
+                </Section>
+              )}
+            </div>
+            <div className={`flex min-h-0 flex-1 flex-col desk:min-w-0 ${mobile && !selectedFile ? 'hidden' : ''}`}>
+              {selectedFile && mobile && (
+                <div className="flex min-h-14 shrink-0 items-center gap-0.5 border-b border-border px-1">
+                  <IconButton label={t('code.m.backToChanges')} className="h-11 w-11" onClick={() => setSelected(null)}>
+                    <ChevronLeft size={22} />
+                  </IconButton>
+                  <span className="min-w-0 flex-1 px-1">
+                    <span className="block truncate text-[15px] font-semibold">{splitPath(selectedFile.path).name}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="min-w-0 truncate font-mono text-[11.5px] text-subtle" dir="ltr">
+                        {abbreviatePath(displayPath(directory, splitPath(selectedFile.path).dir), 28)}
+                      </span>
+                      {stats && (
+                        <span className="shrink-0 whitespace-nowrap">
+                          <DiffStats {...stats} />
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <IconButton
+                    label={t('code.m.wrap')}
+                    active={wrap}
+                    aria-pressed={wrap}
+                    className="h-11 w-11"
+                    onClick={() => setWrap((w) => !w)}
+                  >
+                    <WrapText size={18} />
+                  </IconButton>
+                  {native && canDiscard(selectedFile) && (
+                    <IconButton
+                      label={t('code.changes.discard')}
+                      className="h-11 w-11 hover:text-danger"
+                      onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
+                    >
+                      <Undo2 size={18} />
+                    </IconButton>
+                  )}
                 </div>
               )}
-              {selectedFile && diff && (
-                <DiffView
-                  patch={diff}
-                  path={selectedFile.path}
-                  hideFileHeaders
-                  wrap={wrap}
-                  onDiscardHunk={
-                    native && !selStaged && selectedFile.kind === 'modified' && isSingleFileDiff(diff)
-                      ? (i) => void discardHunk(selectedFile, i)
-                      : undefined
-                  }
-                />
+              {selectedFile && !mobile && (
+                <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5 desk:h-10 desk:px-4">
+                  <span className="min-w-0 truncate font-mono text-xs" title={selectedFile.path}>
+                    {(() => {
+                      const { dir, name } = splitPath(selectedFile.path)
+                      return (
+                        <>
+                          {dir && <span className="text-muted">{dir.replace(/[/\\]+$/, '')}/</span>}
+                          <span className="font-semibold text-fg">{name}</span>
+                        </>
+                      )
+                    })()}
+                  </span>
+                  {stats && (
+                    <span className="shrink-0 font-mono text-xs tabular-nums">
+                      <span className="text-success">+{stats.additions}</span> <span className="text-danger">−{stats.deletions}</span>
+                    </span>
+                  )}
+                  <span className="ml-auto flex shrink-0 items-center">
+                    {native && (
+                      <>
+                        {dialogs && (
+                          <>
+                            <IconButton
+                              label={t('code.menu.openEditor')}
+                              className="h-6 w-6"
+                              onClick={() => void native.dialog.openInEditor(abs)}
+                            >
+                              <Code2 size={13} />
+                            </IconButton>
+                            <IconButton
+                              label={t('code.menu.reveal')}
+                              className="h-6 w-6"
+                              onClick={() => void native.dialog.revealInFinder(abs)}
+                            >
+                              <FolderOpen size={13} />
+                            </IconButton>
+                          </>
+                        )}
+                        {canDiscard(selectedFile) && (
+                          <IconButton
+                            label={t('code.changes.discard')}
+                            className="h-6 w-6 hover:text-danger"
+                            onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
+                          >
+                            <Undo2 size={13} />
+                          </IconButton>
+                        )}
+                      </>
+                    )}
+                    <IconButton label={t('code.changes.closeDiff')} className="h-6 w-6" onClick={() => setSelected(null)}>
+                      <X size={13} />
+                    </IconButton>
+                  </span>
+                </div>
               )}
-              {selectedFile && diffError && !diffLoading && (
-                <div className="px-3 py-3 text-xs text-danger">{t('code.changes.diffFailed', { error: diffError })}</div>
-              )}
-              {selectedFile && !diff && !diffLoading && !diffError && (
-                <div className="px-3 py-3 text-sm text-subtle">{t('code.changes.noTextDiff')}</div>
-              )}
+              <div className="min-h-0 flex-1 overflow-auto">
+                {!selectedFile && !mobile && status && status.files.length > 0 && (
+                  <div className="px-3 py-4 text-center text-xs text-subtle">{t('code.changes.selectFile')}</div>
+                )}
+                {selectedFile && diffLoading && !diff && (
+                  <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted">
+                    <Loader2 size={14} className="animate-spin" /> {t('code.changes.loadingDiff')}
+                  </div>
+                )}
+                {selectedFile && diff && (
+                  <DiffView
+                    patch={diff}
+                    path={selectedFile.path}
+                    hideFileHeaders
+                    wrap={wrap}
+                    onDiscardHunk={
+                      native && !selStaged && selectedFile.kind === 'modified' && isSingleFileDiff(diff)
+                        ? (i) => void discardHunk(selectedFile, i)
+                        : undefined
+                    }
+                  />
+                )}
+                {selectedFile && diffError && !diffLoading && (
+                  <div className="px-3 py-3 text-xs text-danger">{t('code.changes.diffFailed', { error: diffError })}</div>
+                )}
+                {selectedFile && !diff && !diffLoading && !diffError && (
+                  <div className="px-3 py-3 text-sm text-subtle">{t('code.changes.noTextDiff')}</div>
+                )}
+              </div>
             </div>
           </div>
           {status && !(mobile && selectedFile) && (

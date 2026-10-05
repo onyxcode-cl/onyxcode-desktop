@@ -62,7 +62,7 @@ export function CompareControls({
         className={`no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors disabled:opacity-50 ${open || armed ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
       >
         <Columns3 size={14} aria-hidden />
-        {t('compare.action')}
+        <span className="shrink-0 desk:@max-[34rem]:sr-only">{t('compare.action')}</span>
       </button>
       {armed && <ArmedChip count={armed.length} onRemove={() => disarm(mode, directory)} />}
       {open && <Launcher mode={mode} directory={directory} current={current} variant={variant} align={align} onClose={close} />}

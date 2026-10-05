@@ -15,7 +15,7 @@ export const DEL_TEXT = 'text-danger'
 export function Kbd({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
   return (
     <kbd
-      className={`inline-flex min-w-[1.25rem] items-center justify-center rounded border border-border bg-bg px-1 font-sans text-[10px] leading-4 font-medium text-muted ${className}`}
+      className={`inline-flex min-w-[1.25rem] items-center justify-center rounded border border-border bg-bg px-1 font-sans text-[10px] leading-4 font-medium text-muted desk:border-transparent desk:bg-active desk:rounded-2xs desk:text-[11px] desk:font-[family-name:var(--font-ui)] ${className}`}
     >
       {children}
     </kbd>

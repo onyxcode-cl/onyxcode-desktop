@@ -74,6 +74,8 @@ function readWidth(): number {
   } catch {
     // ignorar
   }
+  // Sin valor guardado, en escritorio el panel ocupa ~la mitad de la ventana (a 1280 deja el chat en ~384 px, como el diseño).
+  if (!isRemoteSurface() && typeof window !== 'undefined') return Math.min(880, Math.max(460, Math.round(window.innerWidth * 0.5)))
   return 460
 }
 
@@ -150,6 +152,7 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
   const t = useT()
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
+  const branch = useBranch(directory)
   const [width, setWidth] = useState(readWidth)
   // La terminal se mantiene montada tras abrirse para conservar el shell; el navegador igual,
   // para no perder pestañas/sesión al ocultar el panel.
@@ -204,19 +207,27 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
         onPointerUp={onPointerUp}
         className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
       />
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:px-3 desk:gap-0.5">
         {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p) => (
           <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={hintText(bindings[`code.panel.${p}`])}>
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
-              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:py-0 desk:text-[12.5px] ${p === panel ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
               <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}</span>
+              {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
+                <span
+                  aria-hidden
+                  className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-active px-1.5 align-middle text-[11px] font-medium tabular-nums"
+                >
+                  {branch!.changes}
+                </span>
+              )}
             </button>
           </Tip>
         ))}
-        <IconButton label={t('code.panel.close')} className="ml-auto h-7 w-7" onClick={() => panel && togglePanel(panel)}>
+        <IconButton size="sm" label={t('code.panel.close')} className="ml-auto" onClick={() => panel && togglePanel(panel)}>
           <X size={14} />
         </IconButton>
       </div>
@@ -304,7 +315,7 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
         type="button"
         onClick={() => setOpen((o) => !o)}
         title={directory}
-        className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-sm font-semibold hover:bg-hover"
+        className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-sm font-semibold hover:bg-hover desk:font-medium"
       >
         <FolderOpen size={15} className="shrink-0 text-accent" />
         <span className="truncate">{baseName(directory)}</span>
@@ -359,7 +370,7 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
         onClick={() =>
           isRemoteSurface() ? useMobileNavStore.getState().push(CODE_CHANGES) : panel !== 'changes' && togglePanel('changes')
         }
-        className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg desk:max-w-full desk:min-w-0 ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
+        className={`no-drag flex max-w-52 items-center gap-1.5 rounded-full border border-border bg-bg font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg desk:max-w-full desk:min-w-0 desk:rounded-ctl-sm desk:border-transparent desk:hover:border-transparent desk:bg-active desk:hover:bg-hover desk:h-6 desk:text-[12px] desk:px-2 ${isRemoteSurface() ? 'min-h-8 px-2.5' : 'px-2 py-0.5'}`}
       >
         <GitBranch size={12} className="shrink-0" />
         <span className="truncate">{info.branch}</span>

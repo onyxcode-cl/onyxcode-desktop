@@ -41,7 +41,7 @@ export function DiffDrawer({
           onClose()
         }
       }}
-      className="absolute inset-y-0 right-0 z-30 flex w-[560px] max-w-[90vw] animate-rise-in flex-col border-l border-border bg-elevated shadow-xl"
+      className="absolute inset-y-0 right-0 z-30 flex w-[560px] max-w-[90vw] animate-rise-in flex-col border-l border-border bg-elevated shadow-xl desk:shadow-modal"
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
         <h2 className="min-w-0 flex-1 truncate text-[13px] font-medium">{title}</h2>

@@ -48,10 +48,10 @@ export class TerminalEntry {
     this.el = document.createElement('div')
     this.el.style.height = '100%'
     this.term = new Terminal({
-      fontFamily: cssVar('--font-mono', "ui-monospace, 'SF Mono', Menlo, monospace"),
-      fontSize: 13,
-      lineHeight: 1.25,
-      cursorBlink: true,
+      fontFamily: cssVar('--font-code', cssVar('--font-mono', "ui-monospace, 'SF Mono', Menlo, monospace")),
+      fontSize: 12,
+      lineHeight: 1.5,
+      cursorBlink: !matchMedia('(prefers-reduced-motion: reduce)').matches,
       allowProposedApi: false,
       scrollback: 5000,
       theme: themeFromCss()

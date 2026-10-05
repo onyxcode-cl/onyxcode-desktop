@@ -32,7 +32,17 @@ const SCOPE = ":root[data-shell='desktop']"
 
 describe('app/desktop: solo escritorio', () => {
   it('hay un CSS por dueño y el índice los importa todos', () => {
-    expect(css.sort()).toEqual(['base.css', 'conversation.css', 'index.css', 'modes.css', 'shell.css', 'tokens.css'])
+    expect(css.sort()).toEqual([
+      'base.css',
+      'code-diff.css',
+      'code-workspace.css',
+      'compare.css',
+      'conversation.css',
+      'index.css',
+      'modes.css',
+      'shell.css',
+      'tokens.css'
+    ])
     const index = read(join(DESKTOP, 'index.css'))
     for (const f of css.filter((x) => x !== 'index.css')) expect(index).toContain(`@import './${f}';`)
   })
