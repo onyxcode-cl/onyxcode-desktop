@@ -16,29 +16,6 @@ export const mainErrors = {
   'merr.bin.noVersion': 'The file doesn’t print a version with `--version`; it doesn’t look like OpenCode.',
   'merr.bin.versionFailed': 'Couldn’t run `--version`; it doesn’t look like OpenCode.',
 
-  // Account
-  'merr.acct.unreachable': 'Couldn’t connect to the server. Check your connection and try again.',
-  'merr.acct.rateLimited': 'Too many attempts. Please try again later.',
-  'merr.acct.rateLimitedWait': 'Too many attempts. Wait {min} min. Please try again later.',
-  'merr.acct.serverDown': 'The server isn’t available right now. Try again in a few minutes.',
-  'merr.acct.emailInvalid': 'Enter a valid email address.',
-  'merr.acct.sendCodeFailed': 'Couldn’t send the code. Check the email address and try again.',
-  'merr.acct.codeDigits': 'The code has 6 digits.',
-  'merr.acct.codeWrong': 'The code is wrong or has expired. Request a new one.',
-  'merr.acct.badAuthUrl': 'The server returned an invalid address.',
-  'merr.acct.loginTimeout': 'Sign-in timed out. Try again.',
-  'merr.acct.googleDenied': 'Google sign-in wasn’t completed.',
-  'merr.acct.loginFailed': 'Couldn’t complete sign-in. Try again.',
-  'merr.acct.googleFailed': 'Couldn’t sign in with Google. Try again.',
-  'merr.acct.noSession': 'You’re not signed in.',
-  'merr.acct.deleteFailed': 'Couldn’t delete the account. Try again.',
-  'merr.acct.dataFailed': 'Couldn’t get your data. Try again.',
-  'merr.acct.disabled': 'Accounts aren’t enabled in this version.',
-  'merr.acct.pageOkTitle': 'You can go back to the app',
-  'merr.acct.pageOkBody': 'You can close this tab now.',
-  'merr.acct.pageFailTitle': 'Couldn’t sign in',
-  'merr.acct.pageFailBody': 'Close this tab and go back to the app to try again.',
-
   // Trusted folders and tasks
   'merr.folder.rootOrHome':
     'You can’t use the disk root or your entire home folder. Choose a specific folder, for example one inside Documents.',
@@ -307,7 +284,6 @@ export const mainErrors = {
 
   'merr.dialog.pickFolder': 'Choose a working folder',
   'merr.dialog.pick': 'Choose',
-  'merr.dialog.exportMyData': 'Download my data',
   'merr.dialog.saveZip': 'Save deliverables as a zip',
   'merr.dialog.exportMarkdown': 'Export the task to Markdown',
   'merr.dialog.pickBinary': 'Choose the OpenCode binary',

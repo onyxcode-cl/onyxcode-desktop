@@ -4,7 +4,6 @@ export const settings = {
   'settings.close': 'Cerrar ajustes (Esc)',
   'settings.navAria': 'Secciones de ajustes',
   'settings.nav.general': 'General',
-  'settings.nav.account': 'Cuenta',
   'settings.nav.models': 'Modelos',
   'settings.nav.mcp': 'MCP',
   'settings.nav.browser': 'Navegador',
@@ -55,35 +54,6 @@ export const settings = {
 
   // Extras
   'settings.extras.bridgeMissing': 'Puente "extras" no disponible',
-
-  // Cuenta
-  'settings.account.provider.google': 'Google',
-  'settings.account.provider.email': 'Correo con código',
-  'settings.account.status.signedIn': 'Sesión iniciada',
-  'settings.account.status.graceUntil': ' hasta el {date}',
-  'settings.account.status.grace': 'Sin conexión con el servidor: puedes usar la app{until}',
-  'settings.account.status.signedOut': 'Sin sesión',
-  'settings.account.title': 'Cuenta',
-  'settings.account.email': 'Correo',
-  'settings.account.signInWith': 'Acceso con',
-  'settings.account.state': 'Estado',
-  'settings.account.signOut.label': 'Cerrar sesión',
-  'settings.account.signOut.description': 'Vuelves a la pantalla de acceso. Tus conversaciones y claves de IA se quedan en tu Mac.',
-  'settings.account.signOut.description.win': 'Vuelves a la pantalla de acceso. Tus conversaciones y claves de IA se quedan en tu PC.',
-  'settings.account.yourData': 'Tus datos',
-  'settings.account.export.label': 'Descargar mis datos',
-  'settings.account.export.description': 'Un archivo JSON con lo que el servidor guarda de tu cuenta.',
-  'settings.account.delete.label': 'Borrar mi cuenta',
-  'settings.account.delete.description':
-    'Borra tu cuenta y tus datos del servidor. No toca las claves de IA ni las conversaciones de este Mac.',
-  'settings.account.delete.description.win':
-    'Borra tu cuenta y tus datos del servidor. No toca las claves de IA ni las conversaciones de este PC.',
-  'settings.account.exported': 'Tus datos se guardaron en el archivo que elegiste.',
-  'settings.account.deleteConfirm.title': '¿Borrar tu cuenta?',
-  'settings.account.deleteConfirm.message':
-    'Se borrarán tu cuenta y tus datos del servidor. No se puede deshacer.\n\nTus conversaciones y claves de IA de este Mac no se tocan.',
-  'settings.account.deleteConfirm.message.win':
-    'Se borrarán tu cuenta y tus datos del servidor. No se puede deshacer.\n\nTus conversaciones y claves de IA de este PC no se tocan.',
 
   // Uso
   'settings.usage.period.today': 'Hoy',

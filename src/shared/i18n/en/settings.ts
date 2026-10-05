@@ -7,7 +7,6 @@ export const settings = {
   'settings.close': 'Close settings (Esc)',
   'settings.navAria': 'Settings sections',
   'settings.nav.general': 'General',
-  'settings.nav.account': 'Account',
   'settings.nav.models': 'Models',
   'settings.nav.mcp': 'MCP',
   'settings.nav.browser': 'Browser',
@@ -57,35 +56,6 @@ export const settings = {
 
   // Extras
   'settings.extras.bridgeMissing': '"extras" bridge not available',
-
-  // Account
-  'settings.account.provider.google': 'Google',
-  'settings.account.provider.email': 'Email code',
-  'settings.account.status.signedIn': 'Signed in',
-  'settings.account.status.graceUntil': ' until {date}',
-  'settings.account.status.grace': 'Can’t reach the server: you can keep using the app{until}',
-  'settings.account.status.signedOut': 'Signed out',
-  'settings.account.title': 'Account',
-  'settings.account.email': 'Email',
-  'settings.account.signInWith': 'Signed in with',
-  'settings.account.state': 'Status',
-  'settings.account.signOut.label': 'Sign out',
-  'settings.account.signOut.description': 'You go back to the sign-in screen. Your conversations and AI keys stay on your Mac.',
-  'settings.account.signOut.description.win': 'You go back to the sign-in screen. Your conversations and AI keys stay on your PC.',
-  'settings.account.yourData': 'Your data',
-  'settings.account.export.label': 'Download my data',
-  'settings.account.export.description': 'A JSON file with what the server stores about your account.',
-  'settings.account.delete.label': 'Delete my account',
-  'settings.account.delete.description':
-    'Deletes your account and your data from the server. It does not touch the AI keys or conversations on this Mac.',
-  'settings.account.delete.description.win':
-    'Deletes your account and your data from the server. It does not touch the AI keys or conversations on this PC.',
-  'settings.account.exported': 'Your data was saved to the file you chose.',
-  'settings.account.deleteConfirm.title': 'Delete your account?',
-  'settings.account.deleteConfirm.message':
-    'Your account and your data will be deleted from the server. This cannot be undone.\n\nThe conversations and AI keys on this Mac are not touched.',
-  'settings.account.deleteConfirm.message.win':
-    'Your account and your data will be deleted from the server. This cannot be undone.\n\nThe conversations and AI keys on this PC are not touched.',
 
   // Usage
   'settings.usage.period.today': 'Today',

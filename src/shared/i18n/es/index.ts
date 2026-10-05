@@ -6,7 +6,6 @@ import { mcp } from './mcp'
 import { tasksSettings } from './tasksSettings'
 import { misc } from './misc'
 import { wizard } from './wizard'
-import { account } from './account'
 import { chat } from './chat'
 import { errors } from './errors'
 import { notices } from './notices'
@@ -30,7 +29,6 @@ export const es = {
   ...tasksSettings,
   ...misc,
   ...wizard,
-  ...account,
   ...chat,
   ...errors,
   ...notices,
@@ -55,7 +53,6 @@ export const AREAS = {
   tasksSettings,
   misc,
   wizard,
-  account,
   chat,
   errors,
   notices,

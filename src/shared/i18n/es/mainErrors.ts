@@ -1,5 +1,5 @@
 /**
- * Textos que nacen en main y se muestran al usuario: errores del motor y del asistente, cuenta,
+ * Textos que nacen en main y se muestran al usuario: errores del motor y del asistente,
  * carpetas de confianza, política de la organización, rutinas, notificaciones y cuadros nativos.
  * Main los resuelve con `t()` en el idioma de `src/main/i18n.ts`.
  */
@@ -17,29 +17,6 @@ export const mainErrors = {
   'merr.bin.notExecutable': 'El archivo no es ejecutable.',
   'merr.bin.noVersion': 'El archivo no imprime una versión con `--version`; no parece OpenCode.',
   'merr.bin.versionFailed': 'No se pudo ejecutar `--version`; no parece OpenCode.',
-
-  // Cuenta
-  'merr.acct.unreachable': 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
-  'merr.acct.rateLimited': 'Demasiados intentos. Prueba de nuevo más tarde.',
-  'merr.acct.rateLimitedWait': 'Demasiados intentos. Espera {min} min. Prueba de nuevo más tarde.',
-  'merr.acct.serverDown': 'El servidor no está disponible ahora. Inténtalo de nuevo en unos minutos.',
-  'merr.acct.emailInvalid': 'Escribe un correo válido.',
-  'merr.acct.sendCodeFailed': 'No se pudo enviar el código. Revisa el correo e inténtalo de nuevo.',
-  'merr.acct.codeDigits': 'El código tiene 6 dígitos.',
-  'merr.acct.codeWrong': 'El código es incorrecto o ya venció. Pide uno nuevo.',
-  'merr.acct.badAuthUrl': 'El servidor devolvió una dirección no válida.',
-  'merr.acct.loginTimeout': 'Se agotó el tiempo para iniciar sesión. Inténtalo de nuevo.',
-  'merr.acct.googleDenied': 'No se completó el inicio de sesión con Google.',
-  'merr.acct.loginFailed': 'No se pudo completar el inicio de sesión. Inténtalo de nuevo.',
-  'merr.acct.googleFailed': 'No se pudo iniciar sesión con Google. Inténtalo de nuevo.',
-  'merr.acct.noSession': 'No hay una sesión iniciada.',
-  'merr.acct.deleteFailed': 'No se pudo borrar la cuenta. Inténtalo de nuevo.',
-  'merr.acct.dataFailed': 'No se pudieron obtener tus datos. Inténtalo de nuevo.',
-  'merr.acct.disabled': 'Las cuentas no están activadas en esta versión.',
-  'merr.acct.pageOkTitle': 'Puedes volver a la app',
-  'merr.acct.pageOkBody': 'Ya puedes cerrar esta pestaña.',
-  'merr.acct.pageFailTitle': 'No se pudo iniciar sesión',
-  'merr.acct.pageFailBody': 'Cierra esta pestaña y vuelve a la app para intentarlo de nuevo.',
 
   // Carpetas de confianza y tareas
   'merr.folder.rootOrHome':
@@ -310,7 +287,6 @@ export const mainErrors = {
 
   'merr.dialog.pickFolder': 'Elegir carpeta de trabajo',
   'merr.dialog.pick': 'Elegir',
-  'merr.dialog.exportMyData': 'Descargar mis datos',
   'merr.dialog.saveZip': 'Guardar entregables como zip',
   'merr.dialog.exportMarkdown': 'Exportar la tarea a Markdown',
   'merr.dialog.pickBinary': 'Elegir el binario de OpenCode',
