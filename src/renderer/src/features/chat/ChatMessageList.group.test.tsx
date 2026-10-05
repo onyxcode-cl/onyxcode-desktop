@@ -1,4 +1,4 @@
-/** Chat de escritorio: las herramientas consecutivas se agrupan como en Code; el celular las deja sueltas. */
+/** Chat de escritorio: las herramientas consecutivas se agrupan como en Code; el celular también (rediseño PWA T2: chip de resumen). */
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Part } from '@opencode-ai/sdk/v2/client'
@@ -25,9 +25,11 @@ describe('ChatMessageList: agrupar herramientas', () => {
     const html = renderToStaticMarkup(<ChatMessageList entries={entries} busy={false} />)
     expect(html).toContain('3 pasos')
   })
-  it('celular: siguen sueltas, sin grupo', () => {
+  it('celular: también se agrupan en el chip de resumen (plegado, accesible por aria-expanded)', () => {
     surface('remote')
     const html = renderToStaticMarkup(<ChatMessageList entries={entries} busy={false} />)
-    expect(html).not.toContain('3 pasos')
+    expect(html).toContain('3 pasos')
+    expect(html).toContain('group/steps')
+    expect(html).toContain('aria-expanded="false"')
   })
 })
