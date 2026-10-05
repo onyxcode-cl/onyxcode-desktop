@@ -327,7 +327,7 @@ function CodeBody({ screen, hasDetail }: { screen: string; hasDetail: boolean })
 }
 
 function Body(): React.JSX.Element {
-  const { tab, screen, push } = useMobileNav()
+  const { tab, screen } = useMobileNav()
   const codeStack = useMobileNavStore((s) => s.stacks.code)
   // Ajustes y «Este celular» se apilan sobre la pestaña activa: se resuelven igual en cualquiera.
   if (screen === PHONE_SCREEN || screen === SETTINGS_SCREEN) return <SettingsHome />
