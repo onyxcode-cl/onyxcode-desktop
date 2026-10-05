@@ -37,6 +37,7 @@ export function DialogFrame({
   className = ''
 }: Props): React.JSX.Element {
   const titleId = useId()
+  const deskWidth = size === 'lg' ? '' : 'desk:max-w-[420px]'
   useEffect(() => {
     if (!dismissable) return undefined
     const onKey = (e: KeyboardEvent): void => {
@@ -58,18 +59,18 @@ export function DialogFrame({
         aria-modal="true"
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
-        className={`w-full ${WIDTHS[size]} rounded-2xl border border-border bg-elevated p-5 shadow-2xl animate-rise-in desk:rounded-modal desk:shadow-modal ${className}`}
+        className={`w-full ${WIDTHS[size]} rounded-2xl border border-border bg-elevated p-5 shadow-2xl animate-rise-in desk:rounded-modal desk:shadow-modal ${deskWidth} desk:p-6 desk:border-transparent ${className}`}
       >
         {icon && (
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:rounded-card">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:rounded-card desk:mb-4">
             {icon}
           </div>
         )}
-        <h2 id={titleId} className="text-base font-semibold desk:text-title-sm">
+        <h2 id={titleId} className="text-base font-semibold desk:text-[17px] desk:leading-6">
           {title}
         </h2>
         <div className="mt-2 text-sm text-muted">{children}</div>
-        {footer && <div className="mt-4 flex justify-end gap-2">{footer}</div>}
+        {footer && <div className="mt-4 flex justify-end gap-2 desk:mt-6">{footer}</div>}
       </div>
     </div>
   )

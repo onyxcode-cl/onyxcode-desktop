@@ -150,10 +150,10 @@ function TooltipBubble({
       id={id}
       role="tooltip"
       style={{ left: pos?.left ?? 0, top: pos?.top ?? 0, maxWidth: MAX_W, zIndex: 500, visibility: pos ? 'visible' : 'hidden' }}
-      className="pointer-events-none fixed flex items-center gap-2 rounded-md border border-border bg-elevated px-2 py-1 text-xs text-fg shadow-lg desk:rounded-ctl-sm desk:text-meta desk:shadow-pop animate-fade-in"
+      className="pointer-events-none fixed flex items-center gap-2 rounded-md border border-border bg-elevated px-2 py-1 text-xs text-fg shadow-lg desk:h-[26px] desk:py-0 desk:border-transparent desk:bg-fg desk:text-bg desk:font-medium desk:rounded-ctl-sm desk:text-meta desk:shadow-pop animate-fade-in"
     >
       <span>{label}</span>
-      {shortcut && <kbd className="kbd">{shortcut}</kbd>}
+      {shortcut && <kbd className="kbd desk:border-0 desk:bg-transparent desk:text-bg/70">{shortcut}</kbd>}
     </div>
   )
 }
