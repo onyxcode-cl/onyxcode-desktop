@@ -10,7 +10,7 @@
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { useAiGate } from '../../../lib/ai-gate'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react'
+import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, ShieldAlert, Square, X } from 'lucide-react'
 import { sandboxModelNotice } from '@shared/sandbox-providers'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
@@ -109,9 +109,13 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   }
 
   return (
-    <div className={`mx-auto w-full max-w-3xl px-6 ${hero ? '' : 'pb-4'}`}>
+    <div className={`mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)] ${hero ? '' : 'pb-4'}`}>
       <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setTaskModel} />
-      <div className="rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong">
+      <div
+        className={`rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong desk:border-transparent desk:shadow-[var(--elev-edge),var(--shadow-md)] desk:focus-within:border-accent/40${
+          hero ? ' desk:rounded-[20px]' : ''
+        }`}
+      >
         <ElementChipRow
           elements={elements}
           className="px-3 pt-3"
@@ -188,8 +192,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
               submit()
             }
           }}
-          className={`block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 outline-none placeholder:text-subtle disabled:opacity-60 ${
-            hero ? 'min-h-[84px] text-base' : 'text-[15px]'
+          className={`block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 outline-none placeholder:text-subtle disabled:opacity-60 desk:leading-6 desk:placeholder:text-muted ${
+            hero ? 'min-h-[84px] text-base desk:min-h-[66px]' : 'text-[15px]'
           }`}
         />
         <div className="flex items-center gap-1.5 px-2.5 pb-2.5">
@@ -242,7 +246,12 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
         </p>
       )}
       {providerNotice && (
-        <p role="status" data-testid="sandbox-provider-notice" className="mt-1.5 text-xs text-warning">
+        <p
+          role="status"
+          data-testid="sandbox-provider-notice"
+          className="mt-1.5 text-xs text-warning desk:mt-2.5 desk:flex desk:gap-2.5 desk:rounded-ctl desk:bg-warning/10 desk:px-3 desk:py-2.5 desk:text-ui desk:text-fg desk:ring-1 desk:ring-warning/45 desk:ring-inset"
+        >
+          <ShieldAlert size={16} aria-hidden className="hidden shrink-0 desk:block desk:text-warning" />
           {providerNotice}
         </p>
       )}

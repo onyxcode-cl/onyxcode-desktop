@@ -54,7 +54,7 @@ function Step({
 }
 
 const stepBtn =
-  'flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs font-medium text-fg transition hover:border-border-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50'
+  'flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs font-medium text-fg transition hover:border-border-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50 desk:rounded-ctl desk:border-transparent desk:bg-hover desk:hover:border-transparent desk:hover:bg-active'
 
 export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.Element {
   const t = useT()
@@ -69,7 +69,7 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
   return (
     <section
       aria-labelledby="tasks-onboarding-title"
-      className="mx-6 mb-5 rounded-2xl border border-border bg-elevated p-4 shadow-sm sm:p-5"
+      className="mx-6 mb-5 rounded-2xl border border-border bg-elevated p-4 shadow-sm sm:p-5 desk:rounded-card desk:border-transparent desk:shadow-raised"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -133,7 +133,7 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
         </Step>
       </ol>
 
-      <div className="mt-4 border-t border-border pt-3">
+      <div className="mt-4 border-t border-border pt-3 desk:rounded-ctl desk:border-t-0 desk:bg-accent-soft desk:p-3 desk:ring-1 desk:ring-accent/40 desk:ring-inset">
         <button
           type="button"
           onClick={() => setSafeOpen((o) => !o)}

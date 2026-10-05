@@ -2,10 +2,11 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (19): `onboarding`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
-  `tareas-lista`, `tareas-en-curso`, `tareas-permiso`, `rutinas`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
+- Escenarios (26): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
+  `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
+  `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
   `selector-modelo`, `dialogo-confirmar`, `comparar`, `barra-lateral-colapsada`.
-- Sin argumentos: claro y oscuro, 1280x800 para todo y 1000x700 solo para `chat-*` y `ajustes-*` (50 PNG, ~1,5 min).
+- Sin argumentos: claro y oscuro, 1280x800 para todo y 1000x700 solo para `chat-*` y `ajustes-*` (~64 PNG; con tantos escenarios conviene partir en dos corridas por el tope de 330 s).
   Con `--size` se usa solo ese tamaño. Nombre: `<escenario>-<tema>-<tamaño>.png`, a 2x (2560x1600 para 1280x800).
   Salida por defecto: `.../scratchpad/shots-desktop`. Si un escenario falla, deja su captura en `<out>/_fallos/` y la lista de controles visibles.
 - Cómo funciona: arranca la app compilada (`out/`, hay que compilar antes con `npx electron-vite build`; carga por `onyxcode://app`)
@@ -38,3 +39,9 @@
 archivo, los píxeles distintos y la caja que los contiene; con `--out` escribe un PNG de diferencia (rojo = distinto). Sale con
 código 1 si algún archivo supera `--max` (por defecto 0), si falta alguno o si cambia el tamaño. Usa `pngjs` de `node_modules`
 (dependencia transitiva; no se instala nada). Uso típico: `shot-mobile` antes y después de un cambio de escritorio → 0 píxeles.
+
+## Escenarios de Tareas, Rutinas y primer uso (F8-B97)
+
+El grupo de Tareas corre en el orden de `SCENARIOS`, pidas lo que pidas: `tareas-primer-uso` captura la tarjeta antes de descartarla; `tareas-nueva` y
+`rutinas-vacio` van antes de crear tareas y rutinas; `tareas-buscar` y `tareas-archivadas` crean la lista si hace falta. `onboarding*` comparten
+arranque (`onboarding-inicio` vuelve con «Atrás» al paso 1).

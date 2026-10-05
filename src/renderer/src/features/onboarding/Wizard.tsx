@@ -138,28 +138,26 @@ function OnboardingHost(): React.JSX.Element | null {
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
-        className="flex max-h-full w-full max-w-xl animate-pop-in flex-col rounded-2xl border border-border bg-elevated shadow-xl"
+        className="flex max-h-full w-full max-w-xl animate-pop-in flex-col rounded-modal border border-transparent bg-elevated shadow-modal"
       >
-        <header className="border-b border-border px-6 pt-5 pb-4">
-          <p className="text-[11px] font-semibold tracking-[0.06em] text-subtle uppercase">
-            {t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: steps.length })}
-          </p>
+        <header className="border-b border-border/60 px-6 pt-5 pb-4">
+          <p className="text-meta text-muted">{t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: steps.length })}</p>
           <h2
             id="onboarding-title"
             ref={titleRef}
             tabIndex={-1}
-            className="mt-1 font-display outline-none text-xl font-semibold tracking-[-0.015em]"
+            className="mt-1 font-display text-[22px] leading-7 font-semibold tracking-[-0.01em] outline-none"
           >
             {stepTitle(step, opencodeStepMode(info))}
           </h2>
           <div className="mt-3 flex gap-1.5" aria-hidden>
             {steps.map((s, i) => (
-              <span key={s} className={`h-1 flex-1 rounded-full ${i <= stepIndex(step) ? 'bg-accent' : 'bg-hover'}`} />
+              <span key={s} className={`h-1 flex-1 rounded-full ${i <= stepIndex(step) ? 'bg-accent' : 'bg-active'}`} />
             ))}
           </div>
         </header>
@@ -172,7 +170,7 @@ function OnboardingHost(): React.JSX.Element | null {
           {step === 'permissions' && <StepPermissions />}
         </div>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-border px-6 py-3">
+        <footer className="flex items-center justify-between gap-2 border-t border-border/60 px-6 py-3">
           <Button variant="ghost" onClick={finish}>
             {t('wizard.skip')}
           </Button>
@@ -419,7 +417,7 @@ function StepAuth({
     <div className="space-y-4">
       <Lead>{t('wizard.auth.lead')}</Lead>
 
-      <section aria-labelledby="onb-go" className="rounded-xl border border-accent bg-bg p-4">
+      <section aria-labelledby="onb-go" className="rounded-card border-0 bg-accent-soft p-4 ring-[1.5px] ring-accent ring-inset">
         <div className="flex items-center gap-2">
           <h3 id="onb-go" className="text-sm font-semibold">
             OpenCode Go
@@ -456,7 +454,7 @@ function StepAuth({
         )}
       </section>
 
-      <section aria-labelledby="onb-other" className="rounded-xl border border-border bg-bg p-4">
+      <section aria-labelledby="onb-other" className="rounded-card border-0 bg-elevated p-4 shadow-raised">
         <h3 id="onb-other" className="text-sm font-semibold">
           {t('wizard.auth.otherTitle')}
         </h3>
@@ -509,11 +507,11 @@ function StepAuth({
         </div>
       </section>
 
-      <div role="note" className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
+      <div role="note" className="flex items-start gap-3 rounded-ctl bg-warning/10 px-3.5 py-3 ring-1 ring-warning/45 ring-inset">
         <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
-        <div className="text-xs leading-relaxed text-muted">
+        <div className="text-[13px] leading-[18px] text-fg">
           <p>{connectTasksNotice()}</p>
-          <p className="mt-1.5 text-subtle">{connectTermsNotice()}</p>
+          <p className="mt-1.5 text-muted">{connectTermsNotice()}</p>
         </div>
       </div>
     </div>
@@ -534,7 +532,7 @@ function StepModel(): React.JSX.Element {
   return (
     <div className="space-y-4">
       <Lead>{t('wizard.model.lead')}</Lead>
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
+      <div className="flex items-center gap-3 rounded-card bg-elevated px-3.5 py-3 shadow-raised">
         <span className="text-sm text-muted">{t('wizard.model.default')}</span>
         <ModelPicker value={model} onChange={(m) => void update({ defaultModel: m })} placement="bottom" />
       </div>
@@ -558,7 +556,7 @@ function StepModes(): React.JSX.Element {
       <Lead>{t('wizard.modes.lead')}</Lead>
       <ul className="space-y-2">
         {MODE_INFO.filter((m) => modeAvailable(m.id, currentPlatform())).map((m) => (
-          <li key={m.id} className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
+          <li key={m.id} className="flex items-start gap-3 rounded-card bg-elevated px-3.5 py-3 shadow-raised">
             <span className="mt-0.5 text-accent">{m.icon}</span>
             <div>
               <p className="text-sm font-medium">{MODE_LABELS[m.id]}</p>
@@ -578,9 +576,9 @@ function StepPermissions(): React.JSX.Element {
   return (
     <div className="space-y-3">
       <Lead>{t('wizard.permissions.lead', { app: APP_NAME })}</Lead>
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
+      <div className="flex items-start gap-3 rounded-ctl bg-warning/10 px-3.5 py-3 ring-1 ring-warning/45 ring-inset">
         <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
-        <div className="text-xs leading-relaxed text-muted">
+        <div className="text-[13px] leading-[18px] text-fg">
           <p>
             {t('wizard.permissions.intro', { mode: t('wizard.fullControl') })}{' '}
             <strong className="font-medium text-fg">{t('wizard.permissions.accessibility')}</strong>{' '}

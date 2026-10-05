@@ -14,9 +14,12 @@ const require = createRequire(import.meta.url)
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_OUT = '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
-  'onboarding', 'chat-vacio', 'chat-conversacion', 'chat-herramientas', 'code-proyecto', 'code-diff', 'code-terminal',
-  'code-permiso', 'tareas-lista', 'tareas-en-curso', 'tareas-permiso', 'tareas-permiso-neutral', 'tareas-permiso-largo',
-  'rutinas', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
+  'onboarding', 'onboarding-inicio', 'chat-vacio', 'chat-conversacion', 'chat-herramientas', 'code-proyecto', 'code-diff', 'code-terminal',
+  'code-permiso',
+  // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
+  // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
+  'tareas-primer-uso', 'tareas-nueva', 'tareas-lista', 'tareas-buscar', 'tareas-archivadas', 'tareas-en-curso', 'tareas-permiso', 'tareas-permiso-neutral', 'tareas-permiso-largo',
+  'rutinas-vacio', 'rutinas', 'rutinas-detalle', 'rutinas-editor', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
   'paleta', 'selector-modelo', 'dialogo-confirmar', 'comparar', 'barra-lateral-colapsada',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
@@ -457,11 +460,19 @@ async function togglePanel(page, name) {
 }
 
 let tasksConn = null
-async function openTasks(ctx) {
+// La tarjeta de primer uso se descarta (y queda descartada) salvo que se pida conservarla para `tareas-primer-uso`.
+async function dismissTasksOnboarding(page) {
+  const btn = page.getByRole('button', { name: 'Entendido, no mostrar más' })
+  if (await btn.isVisible().catch(() => false)) await btn.click().catch(() => {})
+}
+async function openTasks(ctx, { keepOnboarding = false } = {}) {
   const { page } = ctx
   await closeOverlays(page)
   await goMode(page, 'Tareas')
-  if (tasksConn) return tasksConn
+  if (tasksConn) {
+    if (!keepOnboarding) await dismissTasksOnboarding(page)
+    return tasksConn
+  }
   await stubDialog(ctx, [taskFolder])
   await page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await page.getByRole('button', { name: 'Permitir', exact: true }).click()
@@ -472,7 +483,7 @@ async function openTasks(ctx) {
   }, taskFolder)
   if (!conn || conn.error) throw new Error(`tasks:start: ${conn?.error}`)
   tasksConn = fakeClient(conn)
-  await page.getByRole('button', { name: 'Entendido, no mostrar más' }).click({ timeout: 2000 }).catch(() => {})
+  if (!keepOnboarding) await dismissTasksOnboarding(page)
   return tasksConn
 }
 async function freshTasks(ctx) {
@@ -484,6 +495,38 @@ async function sendTask(page, text) {
   const box = page.getByPlaceholder('Describe la tarea que quieres delegar…')
   await box.fill(text)
   await page.getByRole('button', { name: 'Enviar' }).first().click()
+}
+
+// Dos tareas terminadas (se crean una sola vez por arranque, aunque varios escenarios las necesiten).
+let taskListSeeded = false
+async function seedTaskList(ctx) {
+  const fake = await openTasks(ctx)
+  if (taskListSeeded) return
+  taskListSeeded = true
+  await fake.script({ match: 'Ordena los informes', title: 'Ordenar informes del trimestre', steps: [{ type: 'text', text: 'Ordené **12 informes** por mes en carpetas.' }] })
+  await fake.script({ match: 'Resume el contrato', title: 'Resumir contrato de arriendo', steps: [{ type: 'text', text: 'El contrato dura 24 meses y se reajusta por UF.' }] })
+  for (const [t, done] of [['Ordena los informes del trimestre', /Ordené/], ['Resume el contrato de arriendo', /24 meses/]]) {
+    await sendTask(ctx.page, t)
+    await vis(ctx.page.getByText(done), 45_000)
+    await sleep(400)
+  }
+}
+
+// Tres rutinas inventadas (se crean una sola vez por arranque; `rutinas-vacio` corre antes de que existan).
+let routinesSeeded = false
+async function seedRoutines(ctx) {
+  const { page } = ctx
+  await openTasks(ctx) // autoriza la carpeta de Tareas (las rutinas de Tareas la exigen)
+  await closeOverlays(page)
+  if (routinesSeeded) return
+  routinesSeeded = true
+  const mk = async (name, prompt, mode, schedule, enabled, folder) => {
+    const r = await page.evaluate(async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 200), { name, prompt, mode, schedule, enabled, folder, model: { providerID: 'fake', modelID: 'fake-model' }, sessionMode: 'fresh', onAsk: 'reject' })
+    if (!r.includes('"ok":true')) console.error(`  [rutinas] routines:save: ${r}`)
+  }
+  await mk('Resumen diario de ventas', 'Resume las ventas de ayer y destaca anomalías.', 'chat', { kind: 'daily', time: '08:30' }, true, null)
+  await mk('Revisión semanal de dependencias', 'Revisa dependencias desactualizadas y propone actualizaciones.', 'code', { kind: 'weekly', day: 1, time: '09:00' }, true, codeRepo)
+  await mk('Ordenar descargas', 'Ordena la carpeta de descargas por tipo de archivo.', 'tasks', { kind: 'interval', hours: 6 }, false, taskFolder)
 }
 
 const S = {
@@ -548,14 +591,38 @@ const S = {
     await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
     await sleep(500)
   },
+  async 'tareas-primer-uso'(ctx) {
+    await openTasks(ctx, { keepOnboarding: true })
+    await vis(ctx.page.getByRole('region', { name: 'Así funcionan las tareas' }), 30_000)
+    await sleep(400)
+  },
+  async 'tareas-nueva'(ctx) {
+    await openTasks(ctx)
+    await ctx.page.getByRole('button', { name: /^Nueva tarea/ }).first().click()
+    await vis(ctx.page.getByPlaceholder('Describe la tarea que quieres delegar…'), 15_000)
+    await sleep(500)
+  },
   async 'tareas-lista'(ctx) {
-    const fake = await openTasks(ctx)
-    await fake.script({ match: 'Ordena los informes', title: 'Ordenar informes del trimestre', steps: [{ type: 'text', text: 'Ordené **12 informes** por mes en carpetas.' }] })
-    await fake.script({ match: 'Resume el contrato', title: 'Resumir contrato de arriendo', steps: [{ type: 'text', text: 'El contrato dura 24 meses y se reajusta por UF.' }] })
-    for (const [t, done] of [['Ordena los informes del trimestre', /Ordené/], ['Resume el contrato de arriendo', /24 meses/]]) {
-      await sendTask(ctx.page, t)
-      await vis(ctx.page.getByText(done), 45_000)
-      await sleep(400)
+    await seedTaskList(ctx)
+  },
+  async 'tareas-buscar'(ctx) {
+    await seedTaskList(ctx)
+    const box = ctx.page.getByRole('searchbox', { name: 'Buscar tareas' })
+    await box.fill('informe')
+    await sleep(700)
+    return async () => {
+      await box.fill('')
+      await sleep(300)
+    }
+  },
+  async 'tareas-archivadas'(ctx) {
+    await seedTaskList(ctx)
+    const btn = ctx.page.getByRole('button', { name: /Archivadas/ }).first()
+    await btn.click()
+    await sleep(700)
+    return async () => {
+      await btn.click()
+      await sleep(300)
     }
   },
   async 'tareas-en-curso'(ctx) {
@@ -619,19 +686,37 @@ const S = {
     await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
     await sleep(500)
   },
-  async rutinas(ctx) {
-    const { page } = ctx
-    await openTasks(ctx) // autoriza la carpeta de Tareas (las rutinas de Tareas la exigen)
-    await closeOverlays(page)
-    const mk = async (name, prompt, mode, schedule, enabled, folder) => {
-      const r = await page.evaluate(async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 200), { name, prompt, mode, schedule, enabled, folder, model: { providerID: 'fake', modelID: 'fake-model' }, sessionMode: 'fresh', onAsk: 'reject' })
-      if (!r.includes('"ok":true')) console.error(`  [rutinas] routines:save: ${r}`)
-    }
-    await mk('Resumen diario de ventas', 'Resume las ventas de ayer y destaca anomalías.', 'chat', { kind: 'daily', time: '08:30' }, true, null)
-    await mk('Revisión semanal de dependencias', 'Revisa dependencias desactualizadas y propone actualizaciones.', 'code', { kind: 'weekly', day: 1, time: '09:00' }, true, codeRepo)
-    await mk('Ordenar descargas', 'Ordena la carpeta de descargas por tipo de archivo.', 'tasks', { kind: 'interval', hours: 6 }, false, taskFolder)
-    await goMode(page, 'Rutinas')
+  async 'rutinas-vacio'(ctx) {
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Rutinas')
     await sleep(800)
+  },
+  async rutinas(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    await sleep(800)
+  },
+  async 'rutinas-detalle'(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    await ctx.page.getByText('Resumen diario de ventas').first().click()
+    await vis(ctx.page.getByRole('button', { name: 'Cerrar detalle' }), 15_000)
+    await sleep(600)
+    return async () => {
+      await ctx.page.getByRole('button', { name: 'Cerrar detalle' }).click()
+      await sleep(300)
+    }
+  },
+  async 'rutinas-editor'(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    await ctx.page.getByRole('button', { name: 'Nueva rutina' }).first().click()
+    await vis(ctx.page.getByRole('dialog', { name: 'Nueva rutina' }), 15_000)
+    await sleep(600)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
   },
   async 'ajustes-general'(ctx) {
     await openSettings(ctx.page, 'General')
@@ -696,6 +781,17 @@ const S = {
   async onboarding(ctx) {
     await vis(ctx.page.getByRole('dialog'), 30_000)
     await sleep(500)
+  },
+  async 'onboarding-inicio'(ctx) {
+    await vis(ctx.page.getByRole('dialog'), 30_000)
+    // «Atrás» hasta el primer paso (sin él el botón no existe).
+    for (let i = 0; i < 6; i++) {
+      const back = ctx.page.getByRole('button', { name: 'Atrás', exact: true })
+      if (!(await back.isVisible().catch(() => false))) break
+      await back.click()
+      await sleep(300)
+    }
+    await sleep(400)
   }
 }
 
@@ -808,8 +904,10 @@ try {
   // Tareas y Rutinas van en otro arranque: el falso numera las sesiones igual en Chat y en Tareas (ids repetidos) y la
   // interfaz mezclaría mensajes entre ambos; con ids reales (únicos) no pasa.
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
-  const main = scenarios.filter((s) => s !== 'onboarding' && s !== 'kit' && !isTasks(s))
-  const tasks = scenarios.filter(isTasks)
+  const isOnb = (s) => s.startsWith('onboarding')
+  const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
+  const main = scenarios.filter((s) => !isOnb(s) && s !== 'kit' && !isTasks(s))
+  const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {
     const ctx = await launch('main')
     await runGroup(ctx, main)
@@ -825,9 +923,10 @@ try {
     await runKit(ctx)
     await stop(ctx)
   }
-  if (scenarios.includes('onboarding')) {
+  const onb = scenarios.filter(isOnb).sort(byOrder)
+  if (onb.length) {
     const ctx = await launch('onb', { settings: { onboarded: false }, env: { OPENCODE_BIN: join(binDir, 'no-existe', 'opencode') }, noServer: true })
-    await runGroup(ctx, ['onboarding'])
+    await runGroup(ctx, onb)
     await stop(ctx)
   }
 } catch (e) {

@@ -217,7 +217,7 @@ function TaskMenu({
 }
 
 /** Una tarea de la lista de la carpeta. */
-function TaskRow({
+export function TaskRow({
   task,
   status,
   active,
@@ -239,11 +239,15 @@ function TaskRow({
   const t = useT()
   const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
   const pinned = isPinned(task.id)
-  // Escritorio: sin nada que pedirle al usuario la fila es de una línea (la hora va a la derecha, no en una segunda línea).
+  // Escritorio: la fila es de una sola línea; el estado se lee a la derecha (no en una segunda línea).
   const quiet = status === 'done' || status === 'idle'
+  const waitsUser = status === 'waiting' || status === 'question'
+  const working = status === 'running' || status === 'using_computer'
+  const failed = status === 'error'
+  const showTime = !waitsUser && !working && !failed
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:min-h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-1 desk:text-ui ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
       {...mob('task-row')}
     >
       <span className="shrink-0">
@@ -259,10 +263,7 @@ function TaskRow({
           {pinned && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
           {task.title || t('tasks.list.untitled')}
         </div>
-        <div
-          data-quiet={quiet || undefined}
-          className={`truncate text-[11px] desk:text-meta desk:data-[quiet]:hidden ${statusTextClass(status)}`}
-        >
+        <div data-quiet={quiet || undefined} className={`truncate text-[11px] desk:text-meta desk:hidden ${statusTextClass(status)}`}>
           {status === 'archived'
             ? t('tasks.list.archivedAgo', { when: relTime(task.time.archived ?? task.time.updated) })
             : status === 'running' ||
@@ -276,11 +277,18 @@ function TaskRow({
           {group && !archivedView && <span className="text-subtle"> · {group}</span>}
         </div>
       </button>
-      {quiet && (
-        <span className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline ${busy ? '' : ' desk:group-hover:hidden'}`}>
+      {showTime && (
+        <span
+          className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline desk:text-meta ${busy ? '' : ' desk:group-hover:hidden'}`}
+        >
           {relTime(task.time.updated)}
         </span>
       )}
+      {waitsUser && (
+        <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-warning desk:font-medium">{t('tasks.list.metaApprove')}</span>
+      )}
+      {working && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-accent">{TASK_STATUS_LABEL.running}</span>}
+      {failed && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-danger">{t('tasks.list.metaFailed')}</span>}
       {blockedHost && (
         <span className="shrink-0 text-warning" title={t('tasks.list.blocked')}>
           <ShieldOff size={12} />
@@ -467,14 +475,14 @@ export function TaskList(): React.JSX.Element {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative mt-3 mb-1">
-        <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle" />
+        <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle desk:size-4" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={tr('tasks.list.search')}
           aria-label={tr('tasks.list.search')}
-          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong desk:h-8 desk:rounded-ctl desk:border-transparent desk:py-0 desk:pl-9 desk:text-ui desk:hover:bg-hover desk:focus:bg-hover [&::-webkit-search-cancel-button]:hidden"
+          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong desk:h-8 desk:rounded-ctl desk:border-transparent desk:py-0 desk:pl-9 desk:text-sm desk:hover:bg-hover desk:focus:bg-hover [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
@@ -495,7 +503,7 @@ export function TaskList(): React.JSX.Element {
             value={groupMode}
             disabled={showArchived || searching}
             onChange={(e) => changeGroupMode(e.target.value as GroupMode)}
-            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50 desk:pr-8 desk:pl-2.5"
+            className="select-field min-w-0 flex-1 rounded-md border border-border bg-transparent py-1 text-[12px] text-fg disabled:opacity-50 desk:h-7 desk:rounded-ctl-sm desk:border-transparent desk:text-ui desk:text-muted desk:hover:bg-hover desk:pr-8 desk:pl-2.5"
           >
             <option value="date">{tr('tasks.list.byDate')}</option>
             <option value="group">{tr('tasks.list.byGroup')}</option>
@@ -506,7 +514,7 @@ export function TaskList(): React.JSX.Element {
           aria-pressed={showArchived}
           title={showArchived ? tr('tasks.list.backToTasks') : tr('tasks.list.showArchived')}
           onClick={() => useTasks.setState({ showArchived: !showArchived })}
-          className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[12px] ${
+          className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[12px] desk:h-7 desk:rounded-ctl-sm desk:border-transparent desk:px-2.5 desk:text-ui ${
             showArchived ? 'border-accent/50 bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
           }`}
         >
@@ -516,16 +524,18 @@ export function TaskList(): React.JSX.Element {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading && source.length === 0 && (
-          <div className="flex items-center gap-2 px-1 py-2 text-xs text-subtle">
+          <div className="flex items-center gap-2 px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">
             <Loader2 size={12} className="animate-spin" /> {tr('tasks.list.loading')}
           </div>
         )}
         {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && (
-          <p className="px-1 py-2 text-xs text-subtle">{emptyText}</p>
+          <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}
         {groups.map((g) => (
           <div key={g.key} className="mb-1">
-            <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:px-2.5 desk:pt-3 desk:text-meta">{g.label}</div>
+            <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+              {g.label}
+            </div>
             <div className="space-y-0.5">
               {g.items.map((t) => (
                 <TaskRow

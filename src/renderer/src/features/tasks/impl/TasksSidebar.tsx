@@ -17,7 +17,7 @@ export function TasksSidebar(): React.JSX.Element {
           type="button"
           onClick={() => setProjectPanelOpen(true)}
           title={t('tasks.sidebar.projectTitle')}
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-ui"
+          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:h-8 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm"
         >
           <BookText size={13} className="shrink-0 desk:size-4" /> {t('tasks.sidebar.project')}
         </button>

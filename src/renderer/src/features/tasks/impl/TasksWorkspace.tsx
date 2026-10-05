@@ -143,7 +143,7 @@ function StatusPill({ status, title }: { status: TaskStatus; title?: string }): 
   return (
     <span
       title={title}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${PILL_TONE[status]}`}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium desk:h-6 desk:py-0 desk:pr-2.5 desk:pl-2 desk:text-meta ${PILL_TONE[status]}`}
     >
       <StatusIcon status={status} size={11} />
       {TASK_STATUS_LABEL[status]}
@@ -172,7 +172,7 @@ function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }):
   if (!start) return null
   const stop = now
   return (
-    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums" title={t('tasks.ws.elapsedTitle')}>
+    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums desk:text-meta" title={t('tasks.ws.elapsedTitle')}>
       {formatDuration(stop - start)}
     </span>
   )
@@ -245,7 +245,7 @@ function TaskMenu({ items }: { items: MenuItem[] }): React.JSX.Element {
         aria-label={t('tasks.ws.menuMoreAria')}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="rounded p-1 hover:bg-hover hover:text-fg"
+        className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
         onClick={() => setOpen((o) => !o)}
       >
         <MoreHorizontal size={15} />
@@ -309,7 +309,7 @@ function FollowUps({ items, onPick }: { items: FollowUpId[]; onPick: (text: stri
           key={id}
           type="button"
           onClick={() => onPick(t(`tasks.ws.fu.${id}.prompt`))}
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted transition hover:border-accent/50 hover:bg-accent-soft hover:text-accent"
+          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted transition hover:border-accent/50 hover:bg-accent-soft hover:text-accent desk:h-7 desk:rounded-ctl-sm desk:border-transparent desk:text-ui desk:hover:border-transparent desk:hover:bg-hover desk:hover:text-fg"
         >
           <Sparkles size={11} /> {t(`tasks.ws.fu.${id}`)}
         </button>
@@ -661,7 +661,7 @@ export function TasksWorkspace(): React.JSX.Element {
                 <button
                   type="button"
                   title={t('tasks.ws.openFinder')}
-                  className="rounded p-1 hover:bg-hover hover:text-fg"
+                  className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                   onClick={() => void reveal(folder)}
                 >
                   <FolderOpen size={15} />
@@ -671,7 +671,7 @@ export function TasksWorkspace(): React.JSX.Element {
                 type="button"
                 title={panelOpen && !sideOpen ? t('tasks.ws.hidePanel') : t('tasks.ws.showPanel')}
                 aria-label={panelOpen && !sideOpen ? t('tasks.ws.hidePanelAria') : t('tasks.ws.showPanel')}
-                className="rounded p-1 hover:bg-hover hover:text-fg"
+                className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                 onClick={() => {
                   if (sideOpen) {
                     closeSideChat()
@@ -750,7 +750,7 @@ export function TasksWorkspace(): React.JSX.Element {
       {showPanel && (
         <aside
           aria-label={t('a11y.sidePanel')}
-          className="relative hidden shrink-0 flex-col border-l border-border lg:flex"
+          className="relative hidden shrink-0 flex-col border-l border-border lg:flex desk:border-l-transparent desk:bg-sidebar"
           style={{ width: asideTab === 'browser' ? browserWidth : 320 }}
         >
           {asideTab === 'browser' && (
@@ -761,35 +761,37 @@ export function TasksWorkspace(): React.JSX.Element {
               className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
             />
           )}
-          <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium">
-            <button
-              type="button"
-              onClick={() => setAsideTab('progress')}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                asideTab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
-              }`}
-            >
-              {t('tasks.ws.progress')}
-            </button>
-            {hasBrowserBridge() && (
+          <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium desk:border-b-transparent">
+            <div className="contents desk:inline-flex desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5">
               <button
                 type="button"
-                onClick={() => setAsideTab('browser')}
-                disabled={!browserOwner}
-                title={TASKS_TERMS.browser}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
-                  asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+                onClick={() => setAsideTab('progress')}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
+                  asideTab === 'progress' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
                 }`}
               >
-                <Globe size={12} /> {TASKS_TERMS.browser}
+                {t('tasks.ws.progress')}
               </button>
-            )}
+              {hasBrowserBridge() && (
+                <button
+                  type="button"
+                  onClick={() => setAsideTab('browser')}
+                  disabled={!browserOwner}
+                  title={TASKS_TERMS.browser}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
+                    asideTab === 'browser' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
+                  }`}
+                >
+                  <Globe size={12} /> {TASKS_TERMS.browser}
+                </button>
+              )}
+            </div>
             <span className="ml-auto flex items-center gap-0.5">
               {asideTab === 'progress' && (
                 <button
                   type="button"
                   title={t('tasks.ws.sync')}
-                  className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
+                  className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                   onClick={() => void resync()}
                 >
                   <RefreshCw size={13} />
@@ -798,7 +800,7 @@ export function TasksWorkspace(): React.JSX.Element {
               <button
                 type="button"
                 title={t('tasks.ws.hidePanel')}
-                className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
+                className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
                 onClick={() => setPanelOpen(false)}
               >
                 <PanelRightClose size={14} />

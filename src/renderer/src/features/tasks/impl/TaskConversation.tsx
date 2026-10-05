@@ -164,16 +164,16 @@ const StepsBlock = memo(
       <div
         id={`cw-block-${id}`}
         className={withCv(
-          `rounded-xl border bg-elevated/60 transition-colors duration-500 ${flash ? 'border-accent ring-2 ring-accent/25' : 'border-border'}`,
+          `rounded-xl border bg-elevated/60 transition-colors duration-500 desk:bg-transparent ${flash ? 'border-accent ring-2 ring-accent/25' : 'border-border desk:border-transparent'}`,
           !!old && !flash
         )}
       >
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-muted hover:text-fg"
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-muted hover:text-fg desk:rounded-ctl desk:px-2 desk:hover:bg-hover"
         >
-          <ChevronRight size={13} className={`shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+          <ChevronRight size={13} className={`shrink-0 transition-transform desk:text-subtle ${open ? 'rotate-90' : ''}`} />
           {live && running ? (
             <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
           ) : (
@@ -200,7 +200,7 @@ const StepsBlock = memo(
           </div>
         )}
         {open && (
-          <ul className="space-y-1.5 border-t border-border px-3 py-2.5 pl-8">
+          <ul className="space-y-1.5 border-t border-border px-3 py-2.5 pl-8 desk:ml-[7px] desk:border-t-0 desk:border-l desk:pl-4">
             {parts.map((p) => (p.type === 'tool' ? <ActivityRow key={p.id} part={p} /> : <ReasoningRow key={p.id} part={p} />))}
           </ul>
         )}
@@ -368,7 +368,11 @@ const UserMessage = memo(
             ))}
           </div>
         )}
-        {block.text && <div className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] whitespace-pre-wrap">{block.text}</div>}
+        {block.text && (
+          <div className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] whitespace-pre-wrap desk:max-w-[78%] desk:border-transparent desk:bg-hover desk:shadow-none">
+            {block.text}
+          </div>
+        )}
         {taskId && block.text && (
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             <button
@@ -451,7 +455,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
     <div className="relative min-h-0 flex-1">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8 desk:max-w-[calc(var(--measure-prose)+48px)] desk:gap-8">
           {blocks.map((b, i) => {
             switch (b.kind) {
               case 'user':

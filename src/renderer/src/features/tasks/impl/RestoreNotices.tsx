@@ -30,7 +30,10 @@ export function RestoreNotices({ taskId }: { taskId: string }): React.JSX.Elemen
   return (
     <div className="flex flex-col gap-2">
       {warning && (
-        <div role="status" className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs desk:rounded-ctl desk:border-transparent desk:text-ui desk:ring-1 desk:ring-inset desk:ring-warning/45"
+        >
           <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning" />
           <span className="min-w-0 flex-1 break-words">{warning}</span>
           <button
@@ -50,8 +53,11 @@ export function RestoreNotices({ taskId }: { taskId: string }): React.JSX.Elemen
         </div>
       )}
       {result && (
-        <div role="status" className="flex items-start gap-2 rounded-lg border border-border bg-elevated px-3 py-2 text-xs">
-          <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-accent" />
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-border bg-elevated px-3 py-2 text-xs desk:rounded-ctl desk:border-transparent desk:text-ui desk:ring-1 desk:ring-border desk:ring-inset"
+        >
+          <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-accent desk:text-success" />
           <div className="min-w-0 flex-1">
             <p className="font-medium">{restoreResultText(result)}</p>
             {result.failed.length > 0 && <p className="mt-0.5 break-words text-danger">{failedText(result.failed)}</p>}

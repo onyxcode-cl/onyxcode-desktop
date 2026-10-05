@@ -126,7 +126,7 @@ function PermList({ title, tone, items }: { title: string; tone: 'danger' | 'suc
 // Tarjeta
 // ---------------------------------------------------------------------------
 
-function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: boolean; now: number }): React.JSX.Element {
+export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: boolean; now: number }): React.JSX.Element {
   const t = useT()
   const Icon = MODE_META[r.mode].icon
   const last = r.lastResult
@@ -137,7 +137,7 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
     // (un interruptor dentro de `role="button"` sería un control anidado).
     <div
       onClick={select}
-      className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition desk:flex-row desk:items-center desk:gap-4 desk:py-3 ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15' : 'border-border hover:border-border-strong hover:shadow-sm'}`}
+      className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition desk:min-h-16 desk:flex-row desk:items-center desk:gap-6 desk:rounded-none desk:border-0 desk:border-b desk:border-border/60 desk:px-5 desk:py-3.5 desk:shadow-none desk:ring-0 desk:last:border-b-0 ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15 desk:bg-accent-soft' : 'border-border hover:border-border-strong hover:shadow-sm desk:bg-transparent desk:hover:bg-hover desk:hover:shadow-none'}`}
     >
       <div className="flex items-start gap-3 desk:min-w-0 desk:flex-1 desk:items-center">
         <button
@@ -146,13 +146,13 @@ function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selected: bool
           className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left desk:items-center"
         >
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg desk:size-8 desk:rounded-ctl desk:bg-active desk:[&_svg]:size-4 ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
           >
             <Icon size={17} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className={`truncate font-medium ${r.enabled ? '' : 'text-muted'}`}>{r.name}</div>
-            <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
+            <div className={`truncate font-medium desk:text-sm ${r.enabled ? '' : 'text-muted'}`}>{r.name}</div>
+            <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted desk:text-meta">
               <Clock size={11} className="shrink-0" /> <span className="truncate">{scheduleText(r.schedule)}</span>
               <span className="hidden truncate desk:inline">
                 {' · '}
@@ -322,7 +322,7 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
   )
 }
 
-function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.JSX.Element {
+export function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.JSX.Element {
   const t = useT()
   const allHistory = useRoutines((s) => s.history)
   const history = useMemo(
@@ -341,7 +341,7 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-border px-5 pt-4 pb-3">
+      <header className="border-b border-border px-5 pt-4 pb-3 desk:border-border/60">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
             <Icon size={17} />
@@ -473,7 +473,9 @@ function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }): React.
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <h3 className="mb-3 text-[11px] font-semibold tracking-wide text-subtle uppercase">{t('routines.detail.history')}</h3>
+        <h3 className="mb-3 text-[11px] font-semibold tracking-wide text-subtle uppercase desk:tracking-[0.02em] desk:normal-case">
+          {t('routines.detail.history')}
+        </h3>
         {history.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-subtle">
             {t('routines.detail.historyEmpty1')}
@@ -504,17 +506,17 @@ function availableTemplates(): typeof ROUTINE_TEMPLATES {
 }
 
 /** Tarjeta de plantilla: abre el editor prellenado (estado vacío e «Ideas para empezar»). */
-function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): React.JSX.Element {
+export function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): React.JSX.Element {
   const Icon = TEMPLATE_ICON[tpl.id] ?? CalendarClock
   const ModeIcon = MODE_META[tpl.input.mode].icon
   return (
     <button
       type="button"
       onClick={() => openEditor({ ...tpl.input, model: resolveModelForMode(tpl.input.mode), enabled: true }, tpl.needs ?? null)}
-      className="group flex flex-col gap-2 rounded-xl border border-border bg-elevated p-4 text-left transition hover:-translate-y-px hover:border-border-strong hover:shadow-md"
+      className="group flex flex-col gap-2 rounded-xl border border-border bg-elevated p-4 text-left transition hover:-translate-y-px hover:border-border-strong hover:shadow-md desk:rounded-card desk:border-transparent desk:shadow-sm desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover desk:hover:shadow-sm"
     >
       <div className="flex items-center justify-between">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-hover text-muted transition group-hover:bg-accent-soft group-hover:text-accent">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-hover text-muted transition group-hover:bg-accent-soft group-hover:text-accent desk:rounded-ctl desk:bg-active desk:text-accent desk:group-hover:bg-active">
           <Icon size={16} />
         </span>
         <span className="flex items-center gap-1 text-[11px] text-subtle">
@@ -530,7 +532,7 @@ function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): Rea
   )
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
+export function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
   const t = useT()
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center py-10 text-center">
@@ -652,17 +654,18 @@ export function RoutinesView(): React.JSX.Element {
           <div
             role="status"
             data-testid="routines-terms-notice"
-            className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning"
+            className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning desk:rounded-ctl desk:text-ui desk:text-fg desk:ring-1 desk:ring-warning/45 desk:ring-inset"
           >
-            <ShieldAlert size={15} className="shrink-0" /> <span className="min-w-0 flex-1">{t('routines.terms.notice')}</span>
+            <ShieldAlert size={15} className="shrink-0 desk:text-warning" />{' '}
+            <span className="min-w-0 flex-1">{t('routines.terms.notice')}</span>
             <Button variant="secondary" onClick={() => void showRoutinesTermsDialog()}>
               {t('routines.terms.noticeButton')}
             </Button>
           </div>
         )}
         {error && (
-          <div className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-            <AlertCircle size={15} className="shrink-0" /> <span className="min-w-0 flex-1">{error}</span>
+          <div className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger desk:rounded-ctl desk:text-ui desk:text-fg desk:ring-1 desk:ring-danger/45 desk:ring-inset">
+            <AlertCircle size={15} className="shrink-0 desk:text-danger" /> <span className="min-w-0 flex-1">{error}</span>
             <button type="button" className="shrink-0 text-xs underline" onClick={() => useRoutines.setState({ error: null })}>
               {t('routines.view.close')}
             </button>
@@ -676,20 +679,29 @@ export function RoutinesView(): React.JSX.Element {
               <div
                 className={`mx-auto grid max-w-5xl grid-cols-1 gap-3 desk:flex desk:max-w-[760px] desk:flex-col desk:gap-2 ${selected ? 'xl:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-3'}`}
               >
-                {sorted.map((r, i) => (
-                  <Fragment key={r.id}>
-                    {(i === 0 || sorted[i - 1].enabled !== r.enabled) && (
-                      <div className="hidden px-1 pt-3 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:block">
-                        {r.enabled ? t('routines.group.active') : t('routines.group.paused')}
+                {[true, false].map((enabled) => {
+                  const group = sorted.filter((r) => r.enabled === enabled)
+                  if (group.length === 0) return null
+                  return (
+                    <Fragment key={String(enabled)}>
+                      <div className="hidden px-1 pt-3 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:flex desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+                        {enabled ? t('routines.group.active') : t('routines.group.paused')}
                       </div>
-                    )}
-                    <RoutineCard r={r} selected={r.id === selectedId} now={r.running ? fastNow : now} />
-                  </Fragment>
-                ))}
+                      {/* Un grupo de superficie por sección en escritorio; en el celular `contents` deja las tarjetas en la rejilla. */}
+                      <div className="contents desk:flex desk:flex-col desk:overflow-hidden desk:rounded-card desk:bg-elevated desk:shadow-sm">
+                        {group.map((r) => (
+                          <RoutineCard key={r.id} r={r} selected={r.id === selectedId} now={r.running ? fastNow : now} />
+                        ))}
+                      </div>
+                    </Fragment>
+                  )
+                })}
               </div>
               {routines.length < 6 && (
                 <section aria-label={t('routines.ideas.title')} className="mx-auto mt-8 hidden max-w-[760px] desk:block">
-                  <div className="px-1 pb-2 text-[11.5px] font-medium text-subtle">{t('routines.ideas.title')}</div>
+                  <div className="px-1 pb-2 text-[11.5px] font-medium text-subtle desk:flex desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+                    {t('routines.ideas.title')}
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     {availableTemplates()
                       .slice(0, 4)
@@ -705,7 +717,7 @@ export function RoutinesView(): React.JSX.Element {
       </section>
 
       {selected && (
-        <aside className="w-[420px] shrink-0 border-l border-border bg-bg desk:w-[400px] desk:xl:w-[440px]">
+        <aside className="w-[420px] shrink-0 border-l border-border bg-bg desk:w-[400px] desk:border-l-transparent desk:bg-sidebar desk:xl:w-[440px]">
           <RoutineDetail key={selected.id} r={selected} now={fastNow} />
         </aside>
       )}

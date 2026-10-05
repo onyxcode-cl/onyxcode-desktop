@@ -20,11 +20,11 @@ import { useTasks } from './store'
 
 const BADGE: Record<
   TasksRestoreChange['status'],
-  { label: 'tasks.changes.added' | 'tasks.changes.modified' | 'tasks.changes.deleted'; cls: string }
+  { label: 'tasks.changes.added' | 'tasks.changes.modified' | 'tasks.changes.deleted'; letter: string; cls: string }
 > = {
-  added: { label: 'tasks.changes.added', cls: 'bg-success/15 text-success' },
-  modified: { label: 'tasks.changes.modified', cls: 'bg-accent-soft text-accent' },
-  deleted: { label: 'tasks.changes.deleted', cls: 'bg-danger/15 text-danger' }
+  added: { label: 'tasks.changes.added', letter: 'U', cls: 'bg-success/15 text-success desk:bg-success/10' },
+  modified: { label: 'tasks.changes.modified', letter: 'M', cls: 'bg-accent-soft text-accent desk:bg-warning/10 desk:text-warning' },
+  deleted: { label: 'tasks.changes.deleted', letter: 'D', cls: 'bg-danger/15 text-danger desk:bg-danger/20' }
 }
 
 interface Loaded {
@@ -93,7 +93,12 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
           <span className="font-medium text-fg">{name}</span>
           {dir && <span className="text-subtle"> {dir}</span>}
         </span>
-        <span className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium ${b.cls}`}>{t(b.label)}</span>
+        <span
+          className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium desk:grid desk:size-[18px] desk:place-items-center desk:rounded-2xs desk:px-0 desk:py-0 desk:font-code desk:text-[11px] desk:font-semibold ${b.cls}`}
+        >
+          <span className="contents desk:hidden">{t(b.label)}</span>
+          <span className="hidden desk:inline">{b.letter}</span>
+        </span>
         {!change.binary && (
           <span className="shrink-0 text-[11px] tabular-nums">
             <span className="text-success">+{change.additions}</span> <span className="text-danger">−{change.deletions}</span>
@@ -155,10 +160,10 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
           type="button"
           title={t('tasks.changes.refresh')}
           disabled={busy || loading}
-          className="rounded p-1 text-subtle hover:bg-hover hover:text-fg disabled:opacity-40"
+          className="rounded p-1 text-subtle hover:bg-hover hover:text-fg disabled:opacity-40 desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
           onClick={reload}
         >
-          {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {loading ? <Loader2 size={12} className="animate-spin desk:size-4" /> : <RefreshCw size={12} />}
         </button>
       }
     >
