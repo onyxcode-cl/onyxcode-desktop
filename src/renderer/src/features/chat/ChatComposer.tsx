@@ -152,7 +152,11 @@ export function ChatComposer({
   }
 
   return (
-    <div className={mobile ? 'relative mx-auto w-full max-w-3xl px-3 pb-2' : 'mx-auto w-full max-w-3xl px-6 pb-4'}>
+    <div
+      className={
+        mobile ? 'relative mx-auto w-full max-w-3xl px-3 pb-2' : 'mx-auto w-full max-w-3xl px-6 pb-4 desk:max-w-[var(--measure-prose)]'
+      }
+    >
       <div
         className={
           mobile

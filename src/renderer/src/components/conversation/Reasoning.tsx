@@ -41,7 +41,7 @@ export function Reasoning({
           <ChevronRight size={13} className={`transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
         </button>
         {open && (
-          <div className="mt-1.5 ml-1.5 animate-fade-in border-l-2 border-gold/40 pl-3 leading-relaxed whitespace-pre-wrap text-muted">
+          <div className="mt-1.5 ml-1.5 animate-fade-in border-l-2 border-gold/40 pl-3 leading-relaxed whitespace-pre-wrap text-muted desk:max-h-80 desk:overflow-y-auto desk:border-border desk:text-[13.5px] desk:leading-5">
             {part.text}
           </div>
         )}

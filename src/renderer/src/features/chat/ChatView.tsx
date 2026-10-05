@@ -167,7 +167,7 @@ export function ChatView(): React.JSX.Element {
   )
 
   const notices = (
-    <div className={`mx-auto w-full max-w-3xl ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
+    <div className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
       <RecoveryBanner mode="chat" directory={null} />
       {sendError != null && (
         <div className="mb-2">

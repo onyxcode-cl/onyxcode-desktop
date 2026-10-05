@@ -23,11 +23,11 @@ describe('MessageStream en el celular', () => {
     expect(html).toContain('text-shimmer')
     expect(html).not.toContain('animate-bounce')
   })
-  it('escritorio ocupado: los tres puntos de siempre', () => {
+  it('escritorio ocupado: el mismo indicador de chispa (sin puntos que rebotan, decisión de rediseño T3)', () => {
     surface('darwin')
     const html = renderToStaticMarkup(<MessageStream {...props} entries={[userWithFile]} />)
-    expect(html).toContain('animate-bounce')
-    expect(html).not.toContain('text-shimmer')
+    expect(html).not.toContain('animate-bounce')
+    expect(html).toContain('text-shimmer')
   })
   it('sin botones de fila por mensaje (Revertir va en la hoja de mantener pulsado)', () => {
     surface('remote')

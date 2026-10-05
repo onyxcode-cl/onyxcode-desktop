@@ -79,7 +79,7 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
   const touch = isRemoteSurface()
   const qbtn = touch ? 'h-11 w-11' : 'h-5 w-5'
   return (
-    <div className={`mx-auto mb-2 flex w-full max-w-3xl flex-col gap-1.5 ${touch ? 'px-3' : 'px-6'}`}>
+    <div className={`mx-auto mb-2 flex w-full max-w-3xl flex-col gap-1.5 desk:max-w-[var(--measure-prose)] ${touch ? 'px-3' : 'px-6'}`}>
       {items.map((m, i) => (
         <div
           key={m.id}
@@ -530,7 +530,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     <div className={mobile ? 'pb-2' : 'pb-4'}>
       {activeSessionID && <QueueList sessionID={activeSessionID} />}
       <div
-        className={`mx-auto w-full max-w-3xl ${mobile ? 'px-3' : 'px-6'}`}
+        className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${mobile ? 'px-3' : 'px-6'}`}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
@@ -884,7 +884,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           <p className="px-4 py-3 text-xs text-subtle">{t('code.m.attach.limits')}</p>
         </Sheet>
       )}
-      <div className={`mx-auto mt-1.5 max-w-3xl justify-center gap-3 px-6 text-[11px] text-subtle ${mobile ? 'hidden' : 'flex'}`}>
+      <div
+        className={`mx-auto mt-1.5 max-w-3xl desk:max-w-[var(--measure-prose)] justify-center gap-3 px-6 text-[11px] text-subtle ${mobile ? 'hidden' : 'flex'}`}
+      >
         <span>
           <Kbd>/</Kbd> {t('code.composer.hintCommands')}
         </span>

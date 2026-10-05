@@ -180,3 +180,14 @@
 :root[data-shell='desktop'] .markdown .code-block > pre {
   padding: 2px 14px 14px;
 }
+
+/* ---- T3 · Mensajes, «pensando» y filas ---- */
+/* Un solo indicador de «pensando»: la chispa con brillo, sin los tres puntos. */
+:root[data-shell='desktop'] .typing-dots {
+  display: none;
+}
+/* Las acciones del usuario flotan en el hueco entre mensajes (no abren un vacío): la fila antigua con `contain: paint` les deja sitio. */
+:root[data-shell='desktop'] .turn-cv-pad {
+  padding-bottom: 32px;
+  margin-bottom: -32px;
+}

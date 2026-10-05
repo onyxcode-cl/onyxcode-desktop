@@ -90,7 +90,7 @@ function TodoBar({ sessionID }: { sessionID: string }): React.JSX.Element | null
   const current = todos.find((x) => x.status === 'in_progress') ?? todos.find((x) => x.status === 'pending')
   const pct = Math.round((done / todos.length) * 100)
   return (
-    <div className={`mx-auto w-full max-w-3xl pb-2 ${gutter()}`}>
+    <div className={`mx-auto w-full max-w-3xl pb-2 desk:max-w-[var(--measure-prose)] ${gutter()}`}>
       <div className="overflow-hidden rounded-xl border border-border bg-elevated text-[13px] shadow-sm">
         <button
           type="button"
@@ -556,7 +556,7 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
   if (!hasText || dismissedFor === lastAssistant.info.id) return null
 
   return (
-    <div className={`mx-auto mb-2 w-full max-w-3xl ${gutter()}`}>
+    <div className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
       <div
         className={`flex items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-3.5 py-2.5 text-sm ${isRemoteSurface() ? 'flex-wrap' : ''}`}
       >
@@ -659,7 +659,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       )}
       {sid && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
-      <div className={`mx-auto w-full max-w-3xl ${gutter()}`}>
+      <div className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
         <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setModel} />
       </div>
       <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />

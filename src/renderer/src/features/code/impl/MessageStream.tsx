@@ -202,11 +202,11 @@ const UserMessage = memo(function UserMessage({
   }
   const agent = entry.info.role === 'user' ? entry.info.agent : undefined
   return (
-    <div className="group/user flex flex-col items-end gap-1">
+    <div className="group/user flex flex-col items-end gap-1 desk:relative">
       <div
         {...m('user-bubble')}
         {...(longPress ? { ...longPress, 'data-long-press': '' } : {})}
-        className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap"
+        className="max-w-[85%] rounded-2xl bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap desk:max-w-[80%] desk:leading-6"
       >
         {elements.length > 0 && (
           <div className={`${text || files.length > 0 ? 'mb-2 ' : ''}flex flex-wrap gap-1.5 whitespace-normal`} data-testid="user-elements">
@@ -282,8 +282,12 @@ const UserMessage = memo(function UserMessage({
         />
       )}
       {!mobile && (
-        <div className="flex items-center gap-1 text-[11px] text-subtle">
-          <span className="rounded px-1 font-medium">{agent === 'plan' ? 'Plan' : 'Build'}</span>
+        <div className="flex items-center gap-1 text-[11px] text-subtle desk:absolute desk:top-full desk:right-0 desk:z-[1]">
+          <span
+            className={`rounded px-1 font-medium${agent === 'plan' ? ' desk:h-5 desk:bg-accent-soft desk:px-1.5 desk:leading-5 desk:text-accent' : ' desk:hidden'}`}
+          >
+            {agent === 'plan' ? 'Plan' : 'Build'}
+          </span>
           <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/user:opacity-100 focus-within:opacity-100">
             <button
               type="button"
@@ -295,7 +299,7 @@ const UserMessage = memo(function UserMessage({
                   setTimeout(() => setCopied(false), 1200)
                 })
               }}
-              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
+              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg desk:h-7 desk:min-w-7 desk:justify-center"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
             </button>
@@ -308,7 +312,7 @@ const UserMessage = memo(function UserMessage({
                 setForking(true)
                 void forkSession(entry.info.sessionID, entry.info.id).finally(() => setForking(false))
               }}
-              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
+              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40 desk:h-7 desk:min-w-7 desk:justify-center"
             >
               <GitFork size={12} />
             </button>
@@ -321,7 +325,7 @@ const UserMessage = memo(function UserMessage({
                   setDraft(text)
                   setEditing(true)
                 }}
-                className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg"
+                className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg desk:h-7 desk:min-w-7 desk:justify-center"
               >
                 <Pencil size={12} />
               </button>
@@ -333,7 +337,7 @@ const UserMessage = memo(function UserMessage({
               danger
               disabled={busy}
               onConfirm={() => revertTo(entry.info.id)}
-              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40"
+              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40 desk:h-7 desk:min-w-7 desk:justify-center"
             >
               <Undo2 size={12} /> {t('code.msg.revert')}
             </ConfirmButton>
@@ -404,7 +408,7 @@ const TurnView = memo(
                 case 'text':
                   return <DeferredMarkdown key={b.key} text={b.part.text} highlight={!live} />
                 case 'reasoning':
-                  return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} variant="code" />
+                  return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} variant={isRemoteSurface() ? 'code' : 'chat'} />
                 case 'steps': {
                   const hasPending = b.parts.some((p) => inlinePerms.has(p.callID))
                   return (
@@ -551,7 +555,9 @@ export function MessageStream(props: Props): React.JSX.Element {
     <div className="relative min-h-0 flex-1 desk:before:pointer-events-none desk:before:absolute desk:before:inset-x-0 desk:before:bottom-0 desk:before:h-6 desk:before:bg-gradient-to-t desk:before:from-bg desk:before:to-transparent">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
-        <div className={`mx-auto flex max-w-3xl flex-col ${isRemoteSurface() ? 'gap-6 px-4 pt-3 pb-4' : 'gap-6 px-6 py-6'}`}>
+        <div
+          className={`mx-auto flex max-w-3xl flex-col desk:max-w-[var(--measure-prose)] desk:pt-8 desk:pb-12 ${isRemoteSurface() ? 'gap-6 px-4 pt-3 pb-4' : 'gap-6 px-6 py-6'}`}
+        >
           {loading && entries.length === 0 && (
             <div className="flex items-center gap-2 text-sm text-muted">
               <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}
@@ -586,17 +592,7 @@ export function MessageStream(props: Props): React.JSX.Element {
           {questions.map((q) => (
             <QuestionCard key={q.id} request={q} />
           ))}
-          {showThinking && isRemoteSurface() && <ThinkingIndicator label={t('code.msg.working')} />}
-          {showThinking && !isRemoteSurface() && (
-            <div role="status" className="flex items-center gap-2 text-sm text-muted">
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" />
-              </span>
-              {t('code.msg.working')}
-            </div>
-          )}
+          {showThinking && <ThinkingIndicator label={t('code.msg.working')} />}
           {error && !lastAssistantFailed(entries) && (
             <ErrorNotice
               error={error}

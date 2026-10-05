@@ -168,7 +168,7 @@ const ChatUserRow = memo(function ChatUserRow({
     )
   }
   return (
-    <div className={withCv(`group flex ${animate ? 'animate-rise-in ' : ''}flex-col items-end gap-1`, old, true)}>
+    <div className={withCv(`group flex ${animate ? 'animate-rise-in ' : ''}flex-col items-end gap-1 desk:relative`, old, true)}>
       {elements.map((d, i) => (
         <ElementReadonlyChip key={i} detail={d} />
       ))}
@@ -179,7 +179,7 @@ const ChatUserRow = memo(function ChatUserRow({
         <div
           {...m('user-bubble')}
           {...(longPress ? { ...longPress, 'data-long-press': '' } : {})}
-          className="max-w-[85%] rounded-2xl rounded-br-md border border-accent/10 bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-xs"
+          className="max-w-[85%] rounded-2xl rounded-br-md border border-accent/10 bg-user px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-xs desk:max-w-[80%] desk:rounded-br-2xl desk:border-transparent desk:leading-6 desk:shadow-none"
         >
           {text}
         </div>
@@ -206,7 +206,7 @@ const ChatUserRow = memo(function ChatUserRow({
         />
       )}
       {!mobile && text && (
-        <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 desk:absolute desk:top-full desk:right-0 desk:z-[1] desk:gap-0.5 desk:[&>button]:h-7 desk:[&>button]:w-7 desk:[&>button]:justify-center">
           <CopyButton text={text} label={t('chat.msg.copyMessage')} />
           {onEdit && (
             <button
@@ -254,7 +254,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const longPress = useLongPress(() => setSheet(true))
   return (
     <div
-      className={withCv('group flex flex-col gap-1.5', old, true)}
+      className={withCv('group flex flex-col gap-1.5 desk:gap-2', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >
       {entry.parts.map((p, idx) => (
@@ -297,7 +297,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
       )}
       {!mobile && showActions && (
         <div
-          className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLast ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}
+          className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLast ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'} desk:[&>button]:h-7 desk:[&>button]:w-7 desk:[&>button]:justify-center`}
         >
           <CopyButton text={text} label={t('chat.msg.copyReply')} />
           {isLast && onRetry && (
@@ -345,22 +345,16 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
       <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
         <div
           className={
-            mobile ? 'mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-3 pb-4' : 'mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10'
+            mobile
+              ? 'mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-3 pb-4'
+              : 'mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10 desk:max-w-[var(--measure-prose)] desk:gap-6 desk:pb-12'
           }
         >
           {entries.map((entry, i) => {
             const isLast = i === entries.length - 1
             const old = isOldRow(i, entries.length)
             if (entry.info.role === 'user')
-              return (
-                <ChatUserRow
-                  key={entry.info.id}
-                  entry={entry}
-                  old={old}
-                  animate={!mobile || i >= firstRows.current.count}
-                  onEdit={onEdit}
-                />
-              )
+              return <ChatUserRow key={entry.info.id} entry={entry} old={old} animate={i >= firstRows.current.count} onEdit={onEdit} />
             return (
               <ChatAssistantRow
                 key={entry.info.id}
