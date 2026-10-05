@@ -12,9 +12,6 @@ export function SettingsHome(): React.JSX.Element {
   return <SettingsView mobile={{ onOpen: (id) => push(SETTINGS_PREFIX + id) }} />
 }
 
-/** Compatibilidad con el nombre de pantalla `phone` (redirige a Ajustes). */
-export const PhoneScreen = SettingsHome
-
 /** Rutinas (la vista de siempre; en la PWA se descarga al entrar). */
 export function RoutinesScreen(): React.JSX.Element {
   const View = MODES_BY_ID.routines.View

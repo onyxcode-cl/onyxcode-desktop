@@ -8,7 +8,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useT } from '../../lib/i18n'
 import { currentPlatform } from '../../lib/platform'
 import { useCode } from '../../features/code/impl/store'
-import { MobileTasksHome } from '../../features/tasks/impl/MobileTasksHome'
+import { MobileTasksHome } from '../../features/tasks'
 import { useTasks } from '../../features/tasks/impl/store'
 import { BranchPill, newCodeSession } from '../../features/code/impl/CodeWorkspace'
 import { CodeActionsSheet, CodePanelScreen } from '../../features/code/impl/MobileCode'
@@ -22,7 +22,7 @@ import { MODES_BY_ID } from '../modes'
 import { LIST_MODES, clearActive, useActiveIds, useDetailTitle, type ListMode } from './adapters'
 import { bannerFor, useLinkStatus, type BannerKind } from './link'
 import { MobileDrawer } from './MobileDrawer'
-import { PhoneScreen, RoutinesScreen } from './MoreScreens'
+import { RoutinesScreen, SettingsHome } from './MoreScreens'
 import { createHistorySync, historyTarget, userBackAction } from './nav-history'
 import {
   CODE_ACTIONS,
@@ -32,6 +32,7 @@ import {
   CODE_PANEL_SCREENS,
   DETAIL_SCREEN,
   MOBILE_TABS,
+  PHONE_SCREEN,
   ROOT_SCREEN,
   SETTINGS_PREFIX,
   SETTINGS_SCREEN,
@@ -286,7 +287,6 @@ function TopBar({
 const goBack = popScreen
 
 function titleOfSettingsScreen(screen: string, t: ReturnType<typeof useT>): string {
-  if (screen === 'phone') return t('mobile.phone.title')
   if (screen === `${SETTINGS_PREFIX}general`) return t('mobile.settings.general')
   if (screen === `${SETTINGS_PREFIX}models`) return t('mobile.settings.models')
   return t('mobile.settings.title')
@@ -330,8 +330,7 @@ function Body(): React.JSX.Element {
   const { tab, screen, push } = useMobileNav()
   const codeStack = useMobileNavStore((s) => s.stacks.code)
   // Ajustes y «Este celular» se apilan sobre la pestaña activa: se resuelven igual en cualquiera.
-  if (screen === 'phone') return <PhoneScreen />
-  if (screen === SETTINGS_SCREEN) return <SettingsView mobile={{ onOpen: (id) => push(SETTINGS_PREFIX + id) }} />
+  if (screen === PHONE_SCREEN || screen === SETTINGS_SCREEN) return <SettingsHome />
   if (screen.startsWith(SETTINGS_PREFIX)) {
     const id = screen.slice(SETTINGS_PREFIX.length)
     return <SettingsView mobile={{ onOpen: () => undefined }} initial={isMobileSection(id) ? id : 'general'} />

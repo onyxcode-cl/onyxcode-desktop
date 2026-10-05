@@ -27,3 +27,6 @@ resources/opencode-bin/bin/
 
 # Fixture de migración (prueba m001): debe versionarse aunque *.log esté ignorado
 !e2e/fixtures/legacy-userdata/**/*.log
+
+# Notas de trabajo de los agentes (no se versionan)
+.nd/

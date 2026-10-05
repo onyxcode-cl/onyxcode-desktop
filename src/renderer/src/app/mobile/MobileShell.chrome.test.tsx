@@ -89,7 +89,8 @@ describe('pestañas (rediseño PWA T0)', () => {
       expect(html, tab).toContain(`data-screen="${tab}:2"`)
     }
     nav('tasks', 'phone')
-    expect(render()).toContain('data-m="phone"')
+    // «phone» ya no es una pantalla aparte (rediseño PWA F8-B102): se resuelve igual que Ajustes.
+    expect(render()).toContain('data-m="settings-list"')
   })
 })
 
