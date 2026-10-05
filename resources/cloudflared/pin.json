@@ -1,0 +1,19 @@
+{
+  "version": "2026.9.3",
+  "releasedAt": "2026-09-24",
+  "assets": {
+    "darwin-arm64": {
+      "url": "https://github.com/cloudflare/cloudflared/releases/download/2026.9.3/cloudflared-darwin-arm64.tgz",
+      "size": 19784166,
+      "sha256": "587c2cfb1c230fe36c7fa7727da78be459dae028cabe8c001291999350f07095",
+      "binSize": 39380544,
+      "binSha256": "5472c1a01c84bc31b3021056a73b4e5774ddddefc572124ea8fdf6c340639f32",
+      "binMaxSize": 80000000,
+      "signature": {
+        "identifier": "cloudflared",
+        "teamId": "68WVV388M8",
+        "authority": "Developer ID Application: Cloudflare Inc. (68WVV388M8)"
+      }
+    }
+  }
+}

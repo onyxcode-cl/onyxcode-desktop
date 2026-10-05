@@ -11,6 +11,7 @@ import { dirname } from 'node:path'
 import { sha256Hex, toBase64Url, toHex } from '@shared/remote/code'
 import { isHostToken, newHostToken } from '@shared/remote/cloud'
 import { deviceKey } from '@shared/remote/handshake'
+import { DEFAULT_TRAVEL_KEEP, isTravelKeep, type TravelKeep } from '@shared/remote/travel'
 import { DEVICE_ID_RE, LIMITS, sanitizeDeviceName } from '@shared/remote/protocol'
 import { DEFAULT_DEVICE_TTL_DAYS, DEVICE_TTL_OPTIONS, type DeviceTtlDays, type RemoteDeviceInfo } from '@shared/ipc-remote'
 import { deviceFingerprint } from './confirm-queue'
@@ -54,6 +55,13 @@ export interface DeviceRecord {
    * archivo). Solo `true` exacto lo enciende; cualquier otro valor guardado se lee como apagado.
    */
   canApproveCommands?: boolean
+  /**
+   * `travel`: vínculo del modo viaje. Vale SOLO para el túnel en que se creó (el origen `*.trycloudflare.com` muere con él): se
+   * revoca al cerrarlo, al arrancar el servicio y al iniciar la app (`revokeTravel`). Ausente = vínculo normal.
+   */
+  kind?: 'travel'
+  /** Fin absoluto de validez (ms desde epoch), p. ej. el tope de vida del túnel de viaje. Se combina con el plazo en días. */
+  expiresAt?: number
 }
 
 /** Vista de un dispositivo para Ajustes (nunca incluye el PIN ni su hash). */
@@ -78,6 +86,7 @@ export function toDeviceInfo(
     hasPin: !!d.pin,
     trustUntil: d.trustUntil && d.trustUntil > now ? d.trustUntil : null,
     canApproveCommands: d.canApproveCommands === true,
+    ...(d.kind === 'travel' ? { kind: 'travel' as const } : {}),
     access
   }
 }
@@ -89,9 +98,14 @@ export function effectiveTtlDays(ttlDays: DeviceTtlDays, capDays: number | null)
 }
 
 /** Fin de validez del vínculo (ms desde epoch) o `null` si no caduca. */
-export function expiresAtOf(d: Pick<DeviceRecord, 'renewedAt' | 'ttlDays'>, capDays: number | null = null): number | null {
+export function expiresAtOf(
+  d: Pick<DeviceRecord, 'renewedAt' | 'ttlDays'> & { expiresAt?: number },
+  capDays: number | null = null
+): number | null {
   const days = effectiveTtlDays(d.ttlDays, capDays)
-  return days === null ? null : d.renewedAt + days * DAY_MS
+  const byDays = days === null ? null : d.renewedAt + days * DAY_MS
+  if (typeof d.expiresAt !== 'number') return byDays
+  return byDays === null ? d.expiresAt : Math.min(byDays, d.expiresAt)
 }
 
 /** Estado de caducidad de un vínculo ya autenticado. */
@@ -110,10 +124,12 @@ export const DEFAULT_PREFS: RemotePrefs = { confirmEachConnection: false }
  * encendido al abrir la app (apagado por defecto; «Cortar todo» lo apaga).
  */
 export interface CloudPrefs {
-  connection: 'lan' | 'cloud'
+  connection: 'lan' | 'cloud' | 'travel'
   away: boolean
+  /** Modo viaje: cuánto se mantiene abierto el túnel (`idle30` por defecto). */
+  travelKeep: TravelKeep
 }
-export const DEFAULT_CLOUD_PREFS: CloudPrefs = { connection: 'lan', away: false }
+export const DEFAULT_CLOUD_PREFS: CloudPrefs = { connection: 'lan', away: false, travelKeep: DEFAULT_TRAVEL_KEEP }
 
 /** Bloque `cloud` del archivo: solo valores exactos; cualquier otra cosa deja el valor por defecto (lo más cerrado). */
 function parseCloud(raw: string): { prefs: CloudPrefs; hostToken: string | null; siteSeq: number } {
@@ -122,7 +138,11 @@ function parseCloud(raw: string): { prefs: CloudPrefs; hostToken: string | null;
     if (!c || typeof c !== 'object') return { prefs: { ...DEFAULT_CLOUD_PREFS }, hostToken: null, siteSeq: 0 }
     const o = c as Record<string, unknown>
     return {
-      prefs: { connection: o.connection === 'cloud' ? 'cloud' : 'lan', away: o.away === true },
+      prefs: {
+        connection: o.connection === 'cloud' ? 'cloud' : o.connection === 'travel' ? 'travel' : 'lan',
+        away: o.away === true,
+        travelKeep: isTravelKeep(o.travelKeep) ? o.travelKeep : DEFAULT_TRAVEL_KEEP
+      },
       hostToken: isHostToken(o.hostToken) ? o.hostToken : null,
       siteSeq: typeof o.siteSeq === 'number' && Number.isSafeInteger(o.siteSeq) && o.siteSeq > 0 ? o.siteSeq : 0
     }
@@ -203,6 +223,8 @@ function parse(raw: string, now: number, onMigrate: () => void = () => undefined
       if (typeof r.pinFails === 'number' && Number.isInteger(r.pinFails) && r.pinFails > 0) rec.pinFails = Math.min(r.pinFails, 100)
       if (typeof r.trustUntil === 'number' && Number.isFinite(r.trustUntil) && r.trustUntil > 0) rec.trustUntil = r.trustUntil
       if (r.canApproveCommands === true) rec.canApproveCommands = true
+      if (r.kind === 'travel') rec.kind = 'travel'
+      if (typeof r.expiresAt === 'number' && Number.isFinite(r.expiresAt) && r.expiresAt > 0) rec.expiresAt = r.expiresAt
       out.push(rec)
       if (out.length >= LIMITS.maxDevices) break
     }
@@ -327,11 +349,14 @@ export class DevicesStore {
     now: number = this.clock(),
     ttlDays: DeviceTtlDays = DEFAULT_DEVICE_TTL_DAYS,
     capDays: number | null = null,
-    maxDevices: number = LIMITS.maxDevices
+    maxDevices: number = LIMITS.maxDevices,
+    opts: { kind?: 'travel'; expiresAt?: number } = {}
   ): { id: string; secret: string } {
     this.pruneExpired(now, capDays)
     const list = this.load()
     if (list.length >= Math.min(maxDevices, LIMITS.maxDevices)) throw new DevicesLimitError()
+    // Modo viaje: como mucho UN vínculo de viaje a la vez (no agota el tope de dispositivos).
+    if (opts.kind === 'travel' && list.some((x) => x.kind === 'travel')) throw new DevicesLimitError()
     const id = toHex(randomBytes(16))
     const secret = toBase64Url(randomBytes(LIMITS.secretBytes))
     list.push({
@@ -341,7 +366,9 @@ export class DevicesStore {
       createdAt: now,
       lastUsedAt: null,
       ttlDays,
-      renewedAt: now
+      renewedAt: now,
+      ...(opts.kind === 'travel' ? { kind: 'travel' as const } : {}),
+      ...(typeof opts.expiresAt === 'number' && opts.expiresAt > 0 ? { expiresAt: Math.trunc(opts.expiresAt) } : {})
     })
     this.save()
     return { id, secret }
@@ -424,6 +451,28 @@ export class DevicesStore {
     this.hostTok = null
     this.save()
     return n
+  }
+
+  /**
+   * Borra los vínculos del modo viaje (valen solo para su túnel). Devuelve sus ids. No lanza si no se puede escribir: sin cifrado no
+   * hay nada guardado.
+   */
+  revokeTravel(): string[] {
+    let list: DeviceRecord[]
+    try {
+      list = this.load()
+    } catch {
+      return []
+    }
+    const ids = list.filter((d) => d.kind === 'travel').map((d) => d.id)
+    if (ids.length === 0) return ids
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].kind === 'travel') list.splice(i, 1)
+    try {
+      this.save()
+    } catch {
+      /* sin disco: la copia en memoria ya no los tiene */
+    }
+    return ids
   }
 
   /** Plazo de validez de un dispositivo (30, 90, 365 o `null` = nunca); la ventana se renueva desde ahora. */
@@ -574,9 +623,11 @@ export class DevicesStore {
 
   setCloudPrefs(p: Partial<CloudPrefs>): void {
     this.load()
+    const connection = p.connection ?? this.cloudPrefs.connection
     this.cloudPrefs = {
-      connection: (p.connection ?? this.cloudPrefs.connection) === 'cloud' ? 'cloud' : 'lan',
-      away: (p.away ?? this.cloudPrefs.away) === true
+      connection: connection === 'cloud' ? 'cloud' : connection === 'travel' ? 'travel' : 'lan',
+      away: (p.away ?? this.cloudPrefs.away) === true,
+      travelKeep: isTravelKeep(p.travelKeep) ? p.travelKeep : this.cloudPrefs.travelKeep
     }
     this.save()
   }

@@ -38,7 +38,15 @@ export const AUDIT_KINDS = [
   'away-enabled',
   'away-disabled',
   'site-mismatch',
-  'site-restored'
+  'site-restored',
+  // Modo viaje (túnel rápido sin cuenta): `why` lleva un código corto (`h4`, `idle`, `2026.9.3`…), nunca una URL ni la clave de la puerta.
+  'travel-started',
+  'travel-stopped',
+  'travel-url-changed',
+  'travel-gate-reject',
+  'travel-binary-installed',
+  'travel-binary-bad-hash',
+  'travel-ice-failed'
 ] as const
 export type AuditKind = (typeof AUDIT_KINDS)[number]
 

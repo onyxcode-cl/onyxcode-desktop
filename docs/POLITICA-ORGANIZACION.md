@@ -30,14 +30,19 @@ Este documento describe el bloque **`remote`** (control remoto desde el celular)
     "allowOutsideNetwork": false,
     "allowRelay": false,
     "allowPush": false,
-    "requirePasskey": false
+    "requirePasskey": false,
+    "allowTravelMode": false,
+    "travelMaxHours": 4,
+    "allowTravelRelay": false,
+    "allowTravelDownload": false
   }
 }
 ```
 
 Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de la app. **Excepción**: las tres de «fuera de casa»
 (`allowOutsideNetwork`, `allowRelay`, `allowPush`) valen `false` en cuanto existe un `managed.json` y no las dice expresamente
-(una política escrita antes de esa función no la autorizó); sin archivo valen `true`.
+(una política escrita antes de esa función no la autorizó); sin archivo valen `true`. Lo mismo vale para las del **modo viaje**
+(`allowTravelMode`, `allowTravelRelay`, `allowTravelDownload`) y `travelMaxHours` (con archivo y la clave ausente, 1 hora).
 
 | Clave | Tipo | Efecto |
 | --- | --- | --- |
@@ -52,6 +57,10 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 | `allowRelay` | booleano | `false`: el Mac no concede relé (TURN) a ningún celular; solo conexión directa. Con archivo y la clave ausente vale `false`. |
 | `allowPush` | booleano | `false`: sin avisos al celular (función de una entrega posterior). Con archivo y la clave ausente vale `false`. |
 | `requirePasskey` | booleano | `true`: el acceso exige una passkey además del PIN. Hasta que existan las passkeys (entrega posterior) el modo «También fuera de casa» queda bloqueado si se exige, porque no puede cumplirlo; la red local sigue como siempre. Ausente = `false`; presente y distinto de `false` exacto = `true`. |
+| `allowTravelMode` | booleano | `false`: el **modo viaje** (túnel rápido de Cloudflare, sin cuenta) no existe: no se abre ningún puerto ni proceso `cloudflared`, el selector de Ajustes lo explica y, si estaba en marcha, se corta al instante (`policy-blocked` en la actividad) y se borra su vínculo. Sin archivo `true`; con archivo y la clave ausente `false`. Además el modo viaje queda bloqueado si `requireConnectionConfirm` o `requirePasskey` están activos (o si el usuario pidió confirmar cada conexión): lejos de casa nadie podría confirmar. |
+| `travelMaxHours` | entero 1–24 | Vida máxima del túnel de viaje, también con «Cerrar a los 30 min sin uso». Sin archivo 24; con archivo y la clave ausente, no entera o rara, 1; un entero fuera de rango se recorta. |
+| `allowTravelDownload` | booleano | `false`: la app no descarga `cloudflared`. Una organización puede preinstalarlo en `~/Library/Application Support/OnyxCode/bin/cloudflared-<versión>/cloudflared` (permisos 0700) con el mismo binario del pin: se verifica su SHA-256 y su firma (Developer ID de Cloudflare Inc., equipo `68WVV388M8`) antes de cada arranque. Con archivo y la clave ausente `false`. |
+| `allowTravelRelay` | booleano | Reservada para el respaldo cifrado por el WebSocket del túnel (entrega posterior; hoy no hace nada). Misma regla que `allowRelay`. |
 
 ## Semántica fail closed
 
@@ -62,6 +71,7 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 - **`enabled`**: solo `true` lo deja activo. `false` = deshabilitado; cualquier otro valor (`"true"`, `1`, `null`) =
   deshabilitado por inválido.
 - Booleanos que **relajan** (`allowRemember`, `allowConfirmRemember12h`, `allowOutsideNetwork`, `allowRelay`, `allowPush`): solo `true` exacto los permite; todo lo demás cuenta `false`. Con archivo, las tres últimas ausentes también valen `false`; con un archivo inválido, las tres valen `false`.
+- Modo viaje: `allowTravelMode`, `allowTravelRelay` y `allowTravelDownload` relajan (solo `true` exacto permite; con archivo y la clave ausente, `false`; con un archivo inválido, `false`). `travelMaxHours`: entero 1–24 (se recorta); no entero o ausente con archivo = 1.
 - Booleano que **endurece** y no viene activado (`requirePasskey`): ausente = `false`; presente y distinto de `false` exacto = `true`; con un archivo inválido, `true`.
 - Booleano que **endurece** (`requirePin`): solo `false` exacto lo desactiva; todo lo demás cuenta `true`.
 - Booleano que endurece pero **no viene activado** (`requireConnectionConfirm`): ausente = `false`; presente y distinto de `false` exacto (`true`, `"sí"`, `1`…) = `true`. Con un archivo inválido queda en `true`.

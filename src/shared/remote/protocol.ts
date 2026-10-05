@@ -330,7 +330,8 @@ export type RemoteEvent =
   | { e: 'permission.asked'; permission: RemotePermission }
   | { e: 'permission.resolved'; requestId: string }
 
-export type ByeReason = 'revoked' | 'stopped' | 'violations' | 'idle' | 'other-device' | 'timeout'
+/** `travel-ended`: el modo viaje se cerró (su vínculo se borra; hay que volver a vincular en casa). */
+export type ByeReason = 'revoked' | 'stopped' | 'violations' | 'idle' | 'other-device' | 'timeout' | 'travel-ended'
 export type DeniedReason = 'rejected' | 'timeout' | 'limit'
 /**
  * Por qué el canal autenticado todavía no da acceso: `confirm` (esperando que el dueño apruebe esta conexión en el Mac),
@@ -735,7 +736,7 @@ function parseCaps(v: unknown): RemoteCap[] | null {
   return v as RemoteCap[]
 }
 
-const BYE: readonly string[] = ['revoked', 'stopped', 'violations', 'idle', 'other-device', 'timeout']
+const BYE: readonly string[] = ['revoked', 'stopped', 'violations', 'idle', 'other-device', 'timeout', 'travel-ended']
 const DENIED: readonly string[] = ['rejected', 'timeout', 'limit']
 const ERR: readonly string[] = ['bad-request', 'rate-limited', 'not-found', 'forbidden', 'busy', 'unavailable', 'failed']
 

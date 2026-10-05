@@ -76,6 +76,28 @@ describe('AuditLog', () => {
     expect(readFileSync(file, 'utf8')).not.toContain('xxxx')
   })
 
+  it('modo viaje: los sucesos se aceptan con códigos cortos y nunca guardan una URL ni la clave de la puerta', () => {
+    for (const kind of [
+      'travel-started',
+      'travel-stopped',
+      'travel-url-changed',
+      'travel-gate-reject',
+      'travel-binary-installed',
+      'travel-binary-bad-hash',
+      'travel-ice-failed'
+    ] as const)
+      expect(sanitizeAudit({ kind }, 1)).toEqual({ ts: 1, kind })
+    expect(sanitizeAudit({ kind: 'travel-started', why: 'h4' }, 1)).toEqual({ ts: 1, kind: 'travel-started', why: 'h4' })
+    expect(sanitizeAudit({ kind: 'travel-binary-installed', why: '2026.9.3' }, 1)).toMatchObject({ why: '2026.9.3' })
+    expect(sanitizeAudit({ kind: 'travel-gate-reject', n: 21 }, 1)).toMatchObject({ n: 21 })
+    // Un texto con espacios (o un campo desconocido como una URL) no se guarda.
+    expect(sanitizeAudit({ kind: 'travel-stopped', why: 'no es un código' }, 1)).toEqual({ ts: 1, kind: 'travel-stopped' })
+    expect(JSON.stringify(sanitizeAudit({ kind: 'travel-started', url: 'https://a-b.trycloudflare.com/k/T' } as never, 1))).not.toContain(
+      'trycloudflare'
+    )
+    expect(sanitizeAudit({ kind: 'site-mismatch', why: 'tunnel' }, 1)).toMatchObject({ why: 'tunnel' })
+  })
+
   it('no lanza aunque no se pueda escribir', () => {
     const log = new AuditLog(join(dir, 'archivo-no-dir', '\0malo', 'a.jsonl'))
     expect(() => log.append({ kind: 'stopped' })).not.toThrow()

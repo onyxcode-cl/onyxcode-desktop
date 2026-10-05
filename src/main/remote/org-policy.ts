@@ -13,6 +13,9 @@
  *  - booleanos que RELAJAN y son de «fuera de casa» (`allowOutsideNetwork`, `allowRelay`, `allowPush`): sin archivo valen `true`;
  *    con archivo (con o sin bloque `remote`) y la clave AUSENTE valen `false` (lo más restrictivo: una política escrita antes de
  *    esta función no autorizó la nube); solo `true` exacto los permite;
+ *  - Modo viaje: `allowTravelMode`, `allowTravelRelay` y `allowTravelDownload` RELAJAN (sin archivo `true`; con archivo y la clave
+ *    ausente `false`; solo `true` exacto permite). `travelMaxHours`: sin archivo 24; con archivo y la clave ausente, no entera o
+ *    rara = 1; entero fuera de 1–24 se recorta;
  *  - booleano que ENDURECE (`requirePasskey`): ausente = `false`; presente y distinto de `false` = `true`;
  *  - números: enteros fuera de rango se recortan al límite (`maxDevices` 0–3, `deviceTtlDays` 1–365); un valor que no es
  *    un entero cuenta como el más restrictivo (`maxDevices` 0, `deviceTtlDays` 1).
@@ -23,6 +26,8 @@
 import { readFileSync, statSync } from 'node:fs'
 import type { RemotePolicyView } from '@shared/ipc-remote'
 import { LIMITS } from '@shared/remote/protocol'
+
+const TRAVEL_MAX_HOURS = 24
 
 export const NO_ORG_POLICY: RemotePolicyView = {
   managed: false,
@@ -36,7 +41,11 @@ export const NO_ORG_POLICY: RemotePolicyView = {
   allowOutsideNetwork: true,
   allowRelay: true,
   allowPush: true,
-  requirePasskey: false
+  requirePasskey: false,
+  allowTravelMode: true,
+  travelMaxHours: TRAVEL_MAX_HOURS,
+  allowTravelRelay: true,
+  allowTravelDownload: true
 }
 
 /** Con archivo de política: lo de «fuera de casa» solo se permite si se dice expresamente. */
@@ -45,7 +54,11 @@ const MANAGED_BASE: RemotePolicyView = {
   managed: true,
   allowOutsideNetwork: false,
   allowRelay: false,
-  allowPush: false
+  allowPush: false,
+  allowTravelMode: false,
+  travelMaxHours: 1,
+  allowTravelRelay: false,
+  allowTravelDownload: false
 }
 
 /** Archivo presente pero no fiable: todo cerrado. */
@@ -62,7 +75,11 @@ export function invalidRemotePolicy(): RemotePolicyView {
     allowOutsideNetwork: false,
     allowRelay: false,
     allowPush: false,
-    requirePasskey: true
+    requirePasskey: true,
+    allowTravelMode: false,
+    travelMaxHours: 1,
+    allowTravelRelay: false,
+    allowTravelDownload: false
   }
 }
 
@@ -83,6 +100,13 @@ export function parseRemotePolicy(raw: unknown): RemotePolicyView {
   if ('allowOutsideNetwork' in r) out.allowOutsideNetwork = r.allowOutsideNetwork === true
   if ('allowRelay' in r) out.allowRelay = r.allowRelay === true
   if ('allowPush' in r) out.allowPush = r.allowPush === true
+  if ('allowTravelMode' in r) out.allowTravelMode = r.allowTravelMode === true
+  if ('allowTravelRelay' in r) out.allowTravelRelay = r.allowTravelRelay === true
+  if ('allowTravelDownload' in r) out.allowTravelDownload = r.allowTravelDownload === true
+  if ('travelMaxHours' in r) {
+    const v = r.travelMaxHours
+    out.travelMaxHours = typeof v === 'number' && Number.isInteger(v) ? Math.max(1, Math.min(v, TRAVEL_MAX_HOURS)) : 1
+  }
   if ('requirePasskey' in r) out.requirePasskey = r.requirePasskey !== false
   if ('maxDevices' in r) {
     const v = r.maxDevices

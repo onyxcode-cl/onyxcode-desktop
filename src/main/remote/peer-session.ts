@@ -119,6 +119,12 @@ export interface PeerSessionDeps {
   entry?: () => { v: string; js: string; files: EntryFile[] } | null
   /** Límites de la política de la organización (tope de caducidad en días y nº máximo de celulares). Sin él, solo los de fábrica. */
   limits?: () => { capDays: number | null; maxDevices: number }
+  /**
+   * Modo viaje: la vinculación crea un dispositivo `kind: 'travel'` que caduca con el túnel (`expiresAt`, ms desde epoch). Sin esto,
+   * el alta es la normal. El PIN ya es obligatorio por el flujo (sin PIN el acceso no se abre) y el servicio no deja reconectar a
+   * un vínculo de viaje sin PIN.
+   */
+  travel?: () => { expiresAt: number } | undefined
   clock?: Clock
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (h: unknown) => void
@@ -374,6 +380,11 @@ export class PeerSession {
 
   // ── vinculación ──
 
+  private travelOpts(): { kind?: 'travel'; expiresAt?: number } {
+    const t = this.d.travel?.()
+    return t ? { kind: 'travel', expiresAt: t.expiresAt } : {}
+  }
+
   private async afterPairProof(proof: string, code: string | undefined): Promise<void> {
     const { deviceName } = this.d
     this._state = 'pair-wait'
@@ -408,7 +419,7 @@ export class PeerSession {
     if (!accepted) return deny('rejected')
     let created: { id: string; secret: string }
     try {
-      created = this.d.devices.add(deviceName || '?', this.nowMs(), undefined, lim.capDays, lim.maxDevices)
+      created = this.d.devices.add(deviceName || '?', this.nowMs(), undefined, lim.capDays, lim.maxDevices, this.travelOpts())
     } catch (err) {
       return deny(err instanceof DevicesLimitError ? 'limit' : 'rejected')
     }

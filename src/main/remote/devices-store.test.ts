@@ -281,16 +281,16 @@ describe('DevicesStore: fuera de casa (modo de conexión, away y hostToken)', ()
   it('por defecto: «Solo esta red» y sin «Disponible fuera de casa»; persiste junto a prefs y dispositivos', () => {
     const file = join(dir, 'remote.bin')
     const a = new DevicesStore(file, fakeSafe())
-    expect(a.getCloudPrefs()).toEqual({ connection: 'lan', away: false })
+    expect(a.getCloudPrefs()).toEqual({ connection: 'lan', away: false, travelKeep: 'idle30' })
     a.setPrefs({ confirmEachConnection: true })
     a.setCloudPrefs({ connection: 'cloud' })
     a.setCloudPrefs({ away: true })
     const b = new DevicesStore(file, fakeSafe())
-    expect(b.getCloudPrefs()).toEqual({ connection: 'cloud', away: true })
+    expect(b.getCloudPrefs()).toMatchObject({ connection: 'cloud', away: true })
     expect(b.getPrefs()).toEqual({ confirmEachConnection: true }) // no se pisan entre sí
     // guardar otra cosa no pierde el modo
     b.setPrefs({ confirmEachConnection: false })
-    expect(new DevicesStore(file, fakeSafe()).getCloudPrefs()).toEqual({ connection: 'cloud', away: true })
+    expect(new DevicesStore(file, fakeSafe()).getCloudPrefs()).toMatchObject({ connection: 'cloud', away: true })
   })
 
   it('valores raros del archivo se leen como lo más cerrado', () => {
@@ -351,5 +351,82 @@ describe('DevicesStore: fuera de casa (modo de conexión, away y hostToken)', ()
     const t = s.hostToken()
     s.revokeAll()
     expect(s.hostToken()).toBe(t)
+  })
+})
+
+describe('DevicesStore: vínculos del modo viaje', () => {
+  it('`kind: travel` y `expiresAt` se guardan, se releen y salen en la vista; el resto no cambia', () => {
+    const file = join(dir, 'remote.bin')
+    const a = new DevicesStore(file, fakeSafe())
+    const n = a.add('Normal')
+    const t = a.add('Viaje', 1000, undefined, null, 3, { kind: 'travel', expiresAt: 5000 })
+    const b = new DevicesStore(file, fakeSafe())
+    expect(b.get(n.id)?.kind).toBeUndefined()
+    expect(b.get(t.id)).toMatchObject({ kind: 'travel', expiresAt: 5000 })
+    expect(toDeviceInfo(b.get(t.id)!, false, null, 2000).kind).toBe('travel')
+    expect('kind' in toDeviceInfo(b.get(n.id)!, false, null, 2000)).toBe(false)
+  })
+
+  it('caduca con el túnel (`expiresAt`) aunque su plazo en días sea mayor', () => {
+    const s = new DevicesStore(join(dir, 'remote.bin'), fakeSafe())
+    const t = s.add('Viaje', 1000, 90, null, 3, { kind: 'travel', expiresAt: 5000 })
+    expect(s.expiresAt(t.id)).toBe(5000)
+    expect(s.expiryState(t.id, 4999)).toBe('ok')
+    expect(s.expiryState(t.id, 5000)).toBe('expired')
+    // Sin `expiresAt`, solo cuenta el plazo en días de siempre.
+    const n = s.add('Normal', 1000, 30)
+    expect(s.expiresAt(n.id)).toBe(1000 + 30 * DAY_MS)
+  })
+
+  it('como mucho UN vínculo de viaje a la vez y no agota el tope de dispositivos normales', () => {
+    const s = new DevicesStore(join(dir, 'remote.bin'), fakeSafe())
+    s.add('Viaje', Date.now(), undefined, null, 3, { kind: 'travel' })
+    expect(() => s.add('Viaje 2', Date.now(), undefined, null, 3, { kind: 'travel' })).toThrow(DevicesLimitError)
+    s.add('Normal 1')
+    s.add('Normal 2')
+    expect(s.list()).toHaveLength(3)
+  })
+
+  it('revokeTravel borra solo los de viaje, devuelve sus ids y persiste', () => {
+    const file = join(dir, 'remote.bin')
+    const s = new DevicesStore(file, fakeSafe())
+    const n = s.add('Normal')
+    const t = s.add('Viaje', 1000, undefined, null, 3, { kind: 'travel' })
+    expect(s.revokeTravel()).toEqual([t.id])
+    expect(s.list().map((d) => d.id)).toEqual([n.id])
+    expect(new DevicesStore(file, fakeSafe()).list().map((d) => d.id)).toEqual([n.id])
+    expect(s.revokeTravel()).toEqual([])
+  })
+
+  it('revokeTravel no lanza sin cifrado disponible', () => {
+    expect(new DevicesStore(join(dir, 'remote.bin'), fakeSafe(false)).revokeTravel()).toEqual([])
+  })
+
+  it('el modo `travel` y «Mantener abierto» se guardan; un valor raro cae a lo más cerrado', () => {
+    const file = join(dir, 'remote.bin')
+    const a = new DevicesStore(file, fakeSafe())
+    expect(a.getCloudPrefs()).toEqual({ connection: 'lan', away: false, travelKeep: 'idle30' })
+    a.setCloudPrefs({ connection: 'travel', travelKeep: 'h12' })
+    expect(new DevicesStore(file, fakeSafe()).getCloudPrefs()).toEqual({ connection: 'travel', away: false, travelKeep: 'h12' })
+    a.setCloudPrefs({ travelKeep: 'forever' as never })
+    expect(a.getCloudPrefs().travelKeep).toBe('h12')
+    a.setCloudPrefs({ connection: 'nube-rara' as never })
+    expect(a.getCloudPrefs().connection).toBe('lan')
+  })
+
+  it('un archivo con valores raros se lee como lo más cerrado', () => {
+    const file = join(dir, 'remote.bin')
+    const s = new DevicesStore(file, fakeSafe())
+    s.add('X')
+    const raw = Buffer.from(readFileSync(file)).reverse().toString('utf8')
+    const j = JSON.parse(raw) as { cloud?: Record<string, unknown>; devices: Array<Record<string, unknown>> }
+    j.cloud = { connection: 'otra', away: 'si', travelKeep: 'h99' }
+    j.devices[0].kind = 'otra-cosa'
+    j.devices[0].expiresAt = 'mañana'
+    writeFileSync(file, Buffer.from(Buffer.from(JSON.stringify(j), 'utf8').reverse()))
+    const r = new DevicesStore(file, fakeSafe())
+    expect(r.getCloudPrefs()).toEqual({ connection: 'lan', away: false, travelKeep: 'idle30' })
+    expect(r.list()[0].kind).toBeUndefined()
+    expect(r.list()[0].expiresAt).toBeUndefined()
   })
 })

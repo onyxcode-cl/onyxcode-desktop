@@ -5,6 +5,7 @@
  *
  * El protocolo con el celular (WebSocket/DataChannel) NO pasa por aquí: vive en `shared/remote/protocol.ts`.
  */
+import type { TravelState } from './remote/travel'
 
 export type RemoteMode = 'off' | 'pairing' | 'active'
 
@@ -43,6 +44,17 @@ export interface RemotePolicyView {
   allowPush: boolean
   /** `true`: el acceso exige passkey además del PIN (entrega 2; hasta entonces bloquea el modo nube, que no puede cumplirlo). */
   requirePasskey: boolean
+  /**
+   * Modo viaje (túnel rápido sin cuenta). `false`: el modo no existe (ni proceso ni sockets). Sin archivo = `true`; con archivo y la
+   * clave ausente = `false`; solo `true` exacto lo permite.
+   */
+  allowTravelMode: boolean
+  /** Tope de horas del túnel (1–24; sin archivo 24; con archivo y la clave ausente o rara, 1). */
+  travelMaxHours: number
+  /** `false`: respaldo cifrado por el WebSocket del túnel (entrega 2, aún no existe). Misma regla que `allowRelay`. */
+  allowTravelRelay: boolean
+  /** `false`: no se descarga `cloudflared` (la organización puede preinstalarlo en la ruta esperada con el mismo hash). */
+  allowTravelDownload: boolean
 }
 
 /** Por qué la función no se puede activar en este equipo. */
@@ -74,6 +86,8 @@ export interface RemoteDeviceInfo {
    * celular si pasa la lista de denegación; apagado, el Mac pide confirmar cada comando. Solo se enciende en el Mac, con diálogo propio.
    */
   canApproveCommands: boolean
+  /** `travel`: vínculo del modo viaje (vale solo para ese túnel y se borra al cerrarlo). */
+  kind?: 'travel'
   /**
    * Estado de acceso de la conexión actual: `awaiting` (esperando tu confirmación), `pin` (falta fijar/verificar el PIN),
    * `locked` (bloqueado por inactividad), `open`. `null` si no está conectado.
@@ -147,10 +161,12 @@ export interface RemoteState {
   siteCheck?: 'ok' | 'mismatch' | 'unknown'
   /** La conexión viva pasa por un relé (TURN). */
   relayInUse?: boolean
+  /** Modo viaje (túnel rápido sin cuenta): estado del túnel. Presente con `connection: 'travel'` o con el túnel abriéndose. */
+  travel?: TravelState
 }
 
-/** «Solo esta red» (HTTP en la IP privada) o «También fuera de casa» (servicio de conexión). */
-export type RemoteConnection = 'lan' | 'cloud'
+/** «Solo esta red» (HTTP en la IP privada), «También fuera de casa» (servicio de conexión) o «Modo viaje» (túnel rápido sin cuenta). */
+export type RemoteConnection = 'lan' | 'cloud' | 'travel'
 export type RemoteCloudStatus = 'connecting' | 'online' | 'offline' | 'paused'
 
 export const REMOTE_OFF_STATE: RemoteState = {

@@ -5,7 +5,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { NO_ORG_POLICY, OrgRemotePolicy, invalidRemotePolicy, parseRemotePolicy } from './org-policy'
 
 describe('parseRemotePolicy', () => {
-  const OUTSIDE_CLOSED = { allowOutsideNetwork: false, allowRelay: false, allowPush: false }
+  /** Lo que queda cerrado con un archivo de política que no lo dice (fuera de casa y modo viaje). */
+  const OUTSIDE_CLOSED = {
+    allowOutsideNetwork: false,
+    allowRelay: false,
+    allowPush: false,
+    allowTravelMode: false,
+    travelMaxHours: 1,
+    allowTravelRelay: false,
+    allowTravelDownload: false
+  }
 
   it('sin bloque `remote`: lo de siempre sin restricciones, pero «fuera de casa» cerrado (hay política y no lo autorizó)', () => {
     expect(parseRemotePolicy({ disableFullAccess: true })).toEqual({ ...NO_ORG_POLICY, managed: true, ...OUTSIDE_CLOSED })
@@ -96,6 +105,57 @@ describe('parseRemotePolicy', () => {
         allowRelay: false,
         allowPush: false
       })
+    })
+  })
+})
+
+describe('modo viaje (allowTravelMode, travelMaxHours, allowTravelRelay, allowTravelDownload)', () => {
+  it('sin archivo: permitido, 24 h', () => {
+    expect(NO_ORG_POLICY).toMatchObject({ allowTravelMode: true, travelMaxHours: 24, allowTravelRelay: true, allowTravelDownload: true })
+  })
+  it('con archivo y la clave ausente: cerrado y 1 h (fail closed), con o sin bloque `remote`', () => {
+    for (const raw of [{}, { remote: {} }, { disableFullAccess: true }, { remote: { enabled: true } }])
+      expect(parseRemotePolicy(raw), JSON.stringify(raw)).toMatchObject({
+        allowTravelMode: false,
+        travelMaxHours: 1,
+        allowTravelRelay: false,
+        allowTravelDownload: false
+      })
+  })
+  it('solo `true` exacto permite; cualquier otro valor raro = false', () => {
+    expect(parseRemotePolicy({ remote: { allowTravelMode: true, allowTravelRelay: true, allowTravelDownload: true } })).toMatchObject({
+      allowTravelMode: true,
+      allowTravelRelay: true,
+      allowTravelDownload: true
+    })
+    for (const k of ['allowTravelMode', 'allowTravelRelay', 'allowTravelDownload'] as const)
+      for (const v of ['true', 'sí', 1, null, [], {}, false, undefined])
+        expect(parseRemotePolicy({ remote: { [k]: v } })[k], `${k}=${String(v)}`).toBe(false)
+  })
+  it('relajar una clave no relaja las demás', () => {
+    expect(parseRemotePolicy({ remote: { allowTravelMode: true } })).toMatchObject({
+      allowTravelMode: true,
+      allowTravelRelay: false,
+      allowTravelDownload: false,
+      allowOutsideNetwork: false
+    })
+    expect(parseRemotePolicy({ remote: { allowOutsideNetwork: true } }).allowTravelMode).toBe(false)
+  })
+  it('travelMaxHours: entero 1–24 (recorta); no entero o raro = 1; ausente con archivo = 1', () => {
+    const h = (v: unknown): number => parseRemotePolicy({ remote: { travelMaxHours: v } }).travelMaxHours
+    expect([h(1), h(6), h(24)]).toEqual([1, 6, 24])
+    expect([h(0), h(-3), h(25), h(9999)]).toEqual([1, 1, 24, 24])
+    for (const v of [1.5, '12', null, NaN, Infinity, [], {}, true]) expect(h(v), String(v)).toBe(1)
+    expect(parseRemotePolicy({ remote: {} }).travelMaxHours).toBe(1)
+  })
+  it('archivo inválido o bloqueado: todo cerrado', () => {
+    for (const p of [invalidRemotePolicy(), parseRemotePolicy(null), parseRemotePolicy({ remote: 'x' })])
+      expect(p).toMatchObject({ allowTravelMode: false, travelMaxHours: 1, allowTravelRelay: false, allowTravelDownload: false })
+  })
+  it('requireConnectionConfirm o requirePasskey de la política NO se tocan por las claves de viaje', () => {
+    expect(parseRemotePolicy({ remote: { allowTravelMode: true, requireConnectionConfirm: true } })).toMatchObject({
+      allowTravelMode: true,
+      requireConnectionConfirm: true
     })
   })
 })
