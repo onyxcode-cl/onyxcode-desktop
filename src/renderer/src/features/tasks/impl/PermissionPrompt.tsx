@@ -370,23 +370,23 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
             </div>
           )}
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {actions.map((a) => (
-              <Button
-                key={a.id}
-                variant={BTN_VARIANT[a.variant]}
-                className={`min-h-11 ${a.fullWidth ? 'basis-full' : 'min-w-0 flex-1'} rounded-(--m-btn-radius)! ${BTN_EXTRA[a.variant]}`}
-                disabled={busy}
-                onClick={() => (a.id === 'note' ? setNoting(true) : answer(a.reply))}
-                title={a.title === 'alwaysHint' ? alwaysHint(request) : undefined}
-              >
-                {t(a.labelKey)}
-              </Button>
-            ))}
-          </div>
-          {noting && <RejectWithNote busy={busy} onSend={reject} onCancel={() => setNoting(false)} />}
         </div>
       </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {actions.map((a) => (
+          <Button
+            key={a.id}
+            variant={BTN_VARIANT[a.variant]}
+            className={`min-h-11 basis-full rounded-(--m-btn-radius)! ${BTN_EXTRA[a.variant]}`}
+            disabled={busy}
+            onClick={() => (a.id === 'note' ? setNoting(true) : answer(a.reply))}
+            title={a.title === 'alwaysHint' ? alwaysHint(request) : undefined}
+          >
+            {t(a.labelKey)}
+          </Button>
+        ))}
+      </div>
+      {noting && <RejectWithNote busy={busy} onSend={reject} onCancel={() => setNoting(false)} />}
     </div>
   )
 }
