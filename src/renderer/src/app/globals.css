@@ -157,6 +157,9 @@
  * :root (la PWA no lleva ninguno) e `inline` hace que cada utilidad use `var(--token)` tal cual (sin `inline`, `shadow-*` copia el valor
  * de aquí). Los valores reales viven en app/desktop/tokens.css bajo :root[data-shell='desktop']. */
 @theme reference inline {
+  --font-ui: var(--font-ui);
+  --font-title: var(--font-title);
+  --font-code: var(--font-code);
   --text-caption: var(--text-caption);
   --text-caption--line-height: var(--text-caption--line-height);
   --text-caption--font-weight: var(--text-caption--font-weight);

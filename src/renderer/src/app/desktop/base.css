@@ -1,1 +1,80 @@
-/* Dueño: FUNDAMENTOS. Arreglos globales de escritorio sin tocar marcado. */
+/* Dueño: FUNDAMENTOS. Arreglos globales de escritorio SIN tocar marcado. Todo bajo :root[data-shell='desktop'].
+ * Capas: `@layer base` = valores por defecto de elementos (las utilidades de Tailwind les ganan); `@layer utilities` = puentes que
+ * deben ganar a clases concretas por especificidad; SIN capa solo lo que debe ganar a una regla sin capa de globals.css. */
+
+/* sin capa: `body` y `.kbd` de globals.css tampoco tienen capa y una regla con capa perdería contra ellas. */
+:root[data-shell='desktop'] body {
+  /* Fuente del sistema (SF Pro en Mac, Segoe UI en Windows; sin Inter) y sin 'cv11'/'ss01', herencia de Inter. */
+  font-family: var(--font-ui);
+  font-feature-settings: normal;
+}
+:root[data-shell='desktop'] .kbd {
+  font-family: var(--font-ui);
+  border-radius: var(--radius-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* sin capa: la regla de foco de globals.css (`:where(button…):focus-visible { border-radius: var(--radius-sm) }`) no tiene capa y
+ * ganaba a `rounded-full`/`rounded-xl`: al enfocar con teclado cualquier botón cambiaba de forma. `revert-layer` devuelve el radio
+ * que dan las utilidades (el contorno sigue la forma del control). Mismo color y grosor de contorno que antes. */
+:root[data-shell='desktop'] :where(button, a, [role='button'], [role='switch'], [role='tab'], summary, select):focus-visible {
+  border-radius: revert-layer;
+}
+
+@layer base {
+  /* Trazo de iconos más fino (los de 12 px o menos se quedan en 2). Los trazos explícitos (2.1, 2.25, 2.4, 3) no se tocan. */
+  :root[data-shell='desktop'] svg.lucide[stroke-width='2']:not([width='12'], [width='11'], [width='10']) {
+    stroke-width: var(--icon-stroke);
+  }
+
+  /* Casillas y botones de opción nativos con el acento de la marca. */
+  :root[data-shell='desktop'] input:is([type='checkbox'], [type='radio']) {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Cromo de la interfaz no seleccionable; el contenido sí. */
+  :root[data-shell='desktop'] :is(button, [role='tab'], [role='menuitem'], [role='option'], label, .kbd, .drag) {
+    user-select: none;
+  }
+  :root[data-shell='desktop'] :is(.markdown, pre, code, input, textarea, [contenteditable='true']) {
+    user-select: text;
+  }
+}
+
+@layer utilities {
+  /* Velo de los modales: `bg-fg/30` (y `/20`) en oscuro ACLARABA el fondo porque `fg` es claro. `--scrim` oscurece siempre.
+   * Puente por clases para no tocar marcado fijado (ConfirmDialog…); lo sustituirá DialogFrame. */
+  :root[data-shell='desktop'] .fixed.inset-0:is(.bg-fg\/30, .bg-fg\/20) {
+    background-color: var(--scrim);
+  }
+  :root[data-shell='desktop'] .fixed.inset-0:is(.bg-fg\/30, .bg-fg\/20) > [aria-modal='true'] {
+    box-shadow: var(--shadow-modal);
+  }
+
+  /* `<select>` con chevrón propio: el texto no puede montarse sobre el chevrón. */
+  :root[data-shell='desktop'] .select-field {
+    padding-right: 2rem;
+  }
+
+  /* Un solo spinner: más ligero y rápido que `animate-spin` por defecto (1 s). */
+  :root[data-shell='desktop'] .lucide-loader-circle.animate-spin {
+    animation-duration: 0.8s;
+  }
+}
+
+/* Pulgar de la barra de desplazamiento: 4 px en reposo (los 3 px de borde de globals.css), 6 px al pasar el ratón.
+ * Sin `scrollbar-color`: en Chromium ≥121 anula el estilo webkit. */
+:root[data-shell='desktop'] ::-webkit-scrollbar-thumb:hover {
+  border-width: 2px;
+}
+
+/* Movimiento reducido: además de la regla global (animaciones y transiciones a ~0), el escalado al presionar desaparece. */
+@media (prefers-reduced-motion: reduce) {
+  @layer utilities {
+    :root[data-shell='desktop'] [class*='active:scale-']:active {
+      scale: none;
+    }
+  }
+}
