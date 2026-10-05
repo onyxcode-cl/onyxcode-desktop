@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from 'react'
-import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2/client'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import type { AssistantMessage, Part, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { FileText, Pencil, RotateCcw, RotateCw } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
 import { useT } from '../../lib/i18n'
@@ -24,6 +24,7 @@ import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ConversationAnnouncer } from '../../components/conversation/ConversationAnnouncer'
 import { ChatToolCall } from './ChatToolCall'
+import { StepGroup } from '../code/impl/ToolCard'
 import { ElementReadonlyChip } from '../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../browser/element-context'
 
@@ -228,6 +229,26 @@ const ChatUserRow = memo(function ChatUserRow({
   )
 })
 
+type Block = { kind: 'part'; part: Part; idx: number } | { kind: 'tools'; parts: ToolPart[] }
+
+/** Agrupa las llamadas a herramienta consecutivas (2 o más) en un bloque; el resto de partes quedan sueltas, con su posición. */
+function groupBlocks(parts: Part[]): Block[] {
+  const out: Block[] = []
+  parts.forEach((part, idx) => {
+    const prev = out[out.length - 1]
+    if (part.type !== 'tool') {
+      out.push({ kind: 'part', part, idx })
+    } else if (prev?.kind === 'tools') {
+      prev.parts.push(part)
+    } else if (prev?.kind === 'part' && prev.part.type === 'tool') {
+      out[out.length - 1] = { kind: 'tools', parts: [prev.part, part] }
+    } else {
+      out.push({ kind: 'part', part, idx })
+    }
+  })
+  return out
+}
+
 const ChatAssistantRow = memo(function ChatAssistantRow({
   entry,
   live,
@@ -252,14 +273,22 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const mobile = isRemoteSurface()
   const [sheet, setSheet] = useState(false)
   const longPress = useLongPress(() => setSheet(true))
+  // Escritorio: las herramientas seguidas se agrupan como en Code (se pliegan con 3 o más). El celular no cambia.
+  const blocks = useMemo(() => (mobile ? null : groupBlocks(entry.parts)), [mobile, entry.parts])
   return (
     <div
       className={withCv('group flex flex-col gap-1.5 desk:gap-2', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >
-      {entry.parts.map((p, idx) => (
-        <PartView key={p.id} part={p} live={live} streaming={live && idx === lastTextIdx} />
-      ))}
+      {blocks
+        ? blocks.map((b, bi) =>
+            b.kind === 'tools' ? (
+              <StepGroup key={b.parts[0].id} parts={b.parts} root={null} live={live && bi === blocks.length - 1} hasPending={false} />
+            ) : (
+              <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
+            )
+          )
+        : entry.parts.map((p, idx) => <PartView key={p.id} part={p} live={live} streaming={live && idx === lastTextIdx} />)}
       <AssistantError
         info={entry.info}
         abortedLabel={t('chat.msg.stopped')}
