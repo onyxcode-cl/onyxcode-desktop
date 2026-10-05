@@ -33,7 +33,7 @@ export function PermCardFrame({
   busy: boolean
   icon: LucideIcon
   title: string
-  effect: string
+  effect?: string
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   children?: ReactNode
 }): React.JSX.Element {
@@ -44,7 +44,7 @@ export function PermCardFrame({
       role="alertdialog"
       aria-modal="false"
       aria-labelledby={permTitleId(id)}
-      aria-describedby={permEffectId(id)}
+      aria-describedby={effect ? permEffectId(id) : undefined}
       aria-busy={busy || undefined}
       data-armed={armed || undefined}
       onKeyDown={onKeyDown}
@@ -64,9 +64,11 @@ export function PermCardFrame({
           <p id={permTitleId(id)} className="text-title-sm text-fg">
             {title}
           </p>
-          <p id={permEffectId(id)} className="mt-0.5 text-ui text-muted">
-            {effect}
-          </p>
+          {effect && (
+            <p id={permEffectId(id)} className="mt-0.5 text-ui text-muted">
+              {effect}
+            </p>
+          )}
         </div>
       </div>
       {children}
