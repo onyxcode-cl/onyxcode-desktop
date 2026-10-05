@@ -16,6 +16,7 @@ import {
   tokensLabel,
   validateSelection
 } from './model'
+import type { BadgeKind } from './model'
 import { mkCol, mkManifest, NO_METRICS } from './testkit'
 import { assistantMessage } from '../../../../test/fixtures/events'
 import type { MessageEntry } from '../../lib/session-reducer'
@@ -117,6 +118,9 @@ describe('etiquetas de métricas: «—» y NUNCA «$0»', () => {
     expect(tokensLabel(12_400)).toMatch(/12,4/)
     expect(durationLabel(null)).toBe('—')
     expect(durationLabel(48_000)).toBe('48 s')
+    expect(durationLabel(400)).toBe('0,4 s')
+    expect(durationLabel(9_400)).toBe('9,4 s')
+    expect(durationLabel(0)).toBe('0 s')
     expect(durationLabel(72_000)).toBe('1 min 12 s')
   })
 })
@@ -141,6 +145,14 @@ describe('insignias', () => {
     expect(b.get(0)).toBeUndefined()
     expect(b.get(1)).toEqual(['cheapest', 'smallest'])
     expect(b.get(2)).toEqual(['fastest'])
+  })
+  it('«más rápido» exige ≥10 % y ≥200 ms de ventaja (F8-B99 / L7)', () => {
+    const fast = (a: number, b: number): BadgeKind[] | undefined =>
+      columnBadges([done(0, { durationMs: a }), done(1, { durationMs: b })]).get(0)
+    expect(fast(400, 450)).toBeUndefined() // 50 ms: ruido
+    expect(fast(30_000, 31_000)).toBeUndefined() // 3 %: ruido
+    expect(fast(400, 900)).toEqual(['fastest'])
+    expect(fast(10_000, 12_000)).toEqual(['fastest'])
   })
   it('sin dato de coste en la mayoría no hay «más barato»; los empates totales no premian a nadie', () => {
     const b = columnBadges([done(0, { costUsd: 0.3, durationMs: 5_000 }), done(1, { costUsd: null, durationMs: 5_000 })])

@@ -267,7 +267,12 @@ export function untilText(ts: number, now = Date.now()): string {
   if (d.toDateString() === today.toDateString()) return t('routines.time.today', { time: hhmm })
   if (d.toDateString() === tomorrow.toDateString()) return t('routines.time.tomorrow', { time: hhmm })
   if (diff < 6 * 86_400_000) return `${dayName(d.getDay())} ${hhmm}`
-  return d.toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...hourCycleOpt() })
+}
+
+/** L5: en español la hora va siempre en 24 h (como «mañana 08:30»); en inglés se conserva el reloj de 12 h. */
+function hourCycleOpt(): { hourCycle?: 'h23' } {
+  return getLang() === 'en' ? {} : { hourCycle: 'h23' }
 }
 
 export function agoText(ts: number, now = Date.now()): string {
@@ -292,5 +297,12 @@ export function durationText(ms: number): string {
 }
 
 export function fullDate(ts: number): string {
-  return new Date(ts).toLocaleString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return new Date(ts).toLocaleString(dateLocale(), {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...hourCycleOpt()
+  })
 }

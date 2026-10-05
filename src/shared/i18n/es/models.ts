@@ -22,7 +22,7 @@ export const models = {
   'models.badge.connected': 'Conectado',
   'models.badge.recommended': 'Recomendado',
   'models.modelsSource': {
-    one: '{count} modelos · origen: {source}',
+    one: '{count} modelo · origen: {source}',
     other: '{count} modelos · origen: {source}'
   },
   'models.changeKey': 'Cambiar clave',

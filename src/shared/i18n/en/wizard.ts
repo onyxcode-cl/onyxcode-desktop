@@ -48,7 +48,7 @@ export const wizard = {
   'wizard.auth.recommended': 'Recommended',
   'wizard.auth.goConnected': 'OpenCode Go connected',
   'wizard.auth.goDescription':
-    'OpenCode Go is an affordable subscription with access to open models for coding. Create your account, subscribe, and copy your API key, then paste it here. It is stored in OpenCode, not in {app}.',
+    'OpenCode Go is an affordable subscription with access to open models for coding. Create your account, subscribe, and copy your API key, then paste it here. It is stored only for {app}, in its own credential store, without sharing it with the OpenCode CLI.',
   'wizard.auth.getKey': 'Get my key',
   'wizard.auth.learnGo': 'Learn about OpenCode Go',
   'wizard.auth.otherTitle': 'Other provider / API key',

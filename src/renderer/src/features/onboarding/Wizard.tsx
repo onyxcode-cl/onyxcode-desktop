@@ -120,6 +120,12 @@ function OnboardingHost(): React.JSX.Element | null {
     }
   }, [decision, step, update])
 
+  // L10: el foco inicial y el de cada cambio de paso van al título (no a un botón, que mostraría el anillo).
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (step) titleRef.current?.focus({ preventScroll: true })
+  }, [step])
+
   if (!step) return null
 
   const steps = stepsFor()
@@ -143,7 +149,12 @@ function OnboardingHost(): React.JSX.Element | null {
           <p className="text-[11px] font-semibold tracking-[0.06em] text-subtle uppercase">
             {t('wizard.header', { app: APP_NAME, step: stepIndex(step) + 1, total: steps.length })}
           </p>
-          <h2 id="onboarding-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.015em]">
+          <h2
+            id="onboarding-title"
+            ref={titleRef}
+            tabIndex={-1}
+            className="mt-1 font-display outline-none text-xl font-semibold tracking-[-0.015em]"
+          >
             {stepTitle(step, opencodeStepMode(info))}
           </h2>
           <div className="mt-3 flex gap-1.5" aria-hidden>

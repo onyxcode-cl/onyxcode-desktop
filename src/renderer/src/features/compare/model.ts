@@ -6,6 +6,7 @@ import { COMPARE_MODELS_MAX, COMPARE_MODELS_MIN } from '@shared/ipc-code'
 import type { CompareColumnManifest, CompareManifest, CompareMetrics, CompareModelRef } from '@shared/ipc-code'
 import type { AssistantMessage } from '@opencode-ai/sdk/v2/client'
 import { formatCost, formatTokens } from '../../lib/format'
+import { dateLocale } from '../../lib/i18n'
 import type { MessageEntry } from '../../lib/session-reducer'
 
 /** Estado que se pinta: los de main más los derivados de las banderas de la columna. */
@@ -74,6 +75,8 @@ export function tokensLabel(n: number | null | undefined, none = '—'): string 
 
 export function durationLabel(ms: number | null | undefined, none = '—'): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms) || ms < 0) return none
+  // L7: por debajo de 10 s se muestra una décima («0,4 s»); si no, dos columnas distintas se verían como «0 s» y «0 s».
+  if (ms < 10_000) return `${(Math.round(ms / 100) / 10).toLocaleString(dateLocale(), { maximumFractionDigits: 1 })} s`
   const s = Math.round(ms / 1000)
   if (s < 60) return `${s} s`
   const min = Math.floor(s / 60)
@@ -97,15 +100,27 @@ export function columnBadges(columns: readonly CompareColumnManifest[]): Map<num
   const out = new Map<number, BadgeKind[]>()
   const done = columns.filter((c) => c.state === 'done' && !c.discarded)
   if (done.length < 2) return out
-  const award = (kind: BadgeKind, value: (c: CompareColumnManifest) => number | null): void => {
+  const award = (
+    kind: BadgeKind,
+    value: (c: CompareColumnManifest) => number | null,
+    /** ¿La diferencia entre el mejor y el siguiente es lo bastante grande para destacarla? */
+    significant: (best: number, next: number) => boolean = () => true
+  ): void => {
     const rows = done.map((c) => ({ index: c.index, v: value(c) })).filter((r): r is { index: number; v: number } => r.v !== null)
     if (rows.length < 2) return
     const min = Math.min(...rows.map((r) => r.v))
     if (rows.every((r) => r.v === min)) return
+    const next = Math.min(...rows.filter((r) => r.v !== min).map((r) => r.v))
+    if (!significant(min, next)) return
     for (const r of rows) if (r.v === min) out.set(r.index, [...(out.get(r.index) ?? []), kind])
   }
   award('cheapest', (c) => (c.metrics.costUsd !== null && c.metrics.costUsd > 0 ? c.metrics.costUsd : null))
-  award('fastest', (c) => c.metrics.durationMs)
+  // «Más rápido» solo con una ventaja real: al menos 10 % y 200 ms sobre la siguiente (si no, es ruido de medición).
+  award(
+    'fastest',
+    (c) => c.metrics.durationMs,
+    (best, next) => next - best >= 200 && (next - best) / next >= 0.1
+  )
   award('smallest', (c) => (c.diff ? c.diff.additions + c.diff.deletions : null))
   return out
 }
