@@ -70,3 +70,10 @@ deben ir abajo, en el compositor, como en Claude Code y Codex, y hay que poder v
 `npx electron-vite dev -- --user-data-dir=<dir aislado> --remote-debugging-port=9333` y capturar con
 `Page.captureScreenshot` (CDP). Con la ventana en segundo plano Chromium congela las transiciones CSS:
 activar `Emulation.setFocusEmulationEnabled` y desactivar `transition` antes de capturar.
+
+## Ronda 3 — fundamentos de escritorio (F8-B89, F8-B90)
+
+Capa `data-shell='desktop'` con tokens nuevos solo de escritorio, variante `desk:` y arreglos globales sin marcado (F8-B89); componentes base
+(`Spinner`, `Button`, `IconButton`, `Toggle`, `Badge`, `Chip`, `Input`/`Select`, `EmptyState`, `DialogFrame`, `Tooltip`), recetas de clases y el
+kit de UI capturable con `shot-desktop --scenario kit` (F8-B90). Detalle y escalas en `DESIGN.md` («Fundamentos de escritorio (v2)»). Los
+componentes existentes conservan su marcado de siempre (prueba `components/base-markup.test.tsx`); migrar cada pantalla a ellos es trabajo de cada área.

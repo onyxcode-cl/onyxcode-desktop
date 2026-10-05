@@ -1072,3 +1072,15 @@ empezar» bajo la lista. Comparar: métricas en chips con icono y rótulo, «sin
 `opacity-60`. Primer uso sin tarjetas anidadas. Fila de tarea de una línea con la hora a la derecha.
 **Prueba.** Cambian dos expectativas de `CompareView.render.test.tsx` («sin dato» en lugar de «—», no son snapshots). No incluidos: `ActionCard`, filtros
 compactos de la lista, reorden del buscador y editor de Rutinas (siguientes tandas).
+
+## F8-B90 — Rediseño de escritorio: componentes base y kit de UI (fundamentos, parte 2; sin cambio en el celular)
+
+Nuevos en `components/`: `Spinner` (mismo marcado que el `Loader2` escrito a mano), `Badge`, `Chip`, `Input`/`Select` (error accesible),
+`EmptyState`, `DialogFrame` (velo `--scrim`, `aria-modal`, Esc y clic fuera), `Tooltip` (500 ms, 0 ms entre seguidos, `role="tooltip"`,
+sin nodos extra; en la PWA devuelve el hijo) y `ui/recipes.ts` (`POP`, `CARD`, `ROW`, `MENU_ITEM`, `INPUT`, `SEGMENT`, `TAB`, `EMPTY`).
+`Button` gana `xs`/`lg`, variantes `subtle`/`link` y `loading` (compatibles hacia atrás); `IconButton` gana `xs`/`lg`, `tooltip` y `shortcut`
+(opt-in: con tooltip se quita el `title`, y varios E2E usan `getByTitle`; carga el tooltip perezosamente para no pesar en la PWA);
+`Toggle` gana `size="sm"` y anillo de contraste apagado. Todo lo visual de escritorio va con `desk:`; el marcado previo queda fijado por
+`base-markup.test.tsx` (con `stripDesk`, sin `-u`). Kit: `app/dev/UiKit.tsx` (solo con `#ui-kit` y `localStorage onyx.uikit=1`, desde `main.tsx`)
+y `shot-desktop --scenario kit` (capturas por sección, estados forzados por CDP). Docs: `DESIGN.md`, `docs/UI-REDESIGN.md`.
+Peso PWA: estos componentes suman ~0,5 KB gzip a `boot.js` (688,9 → 690,5 KB min, límite `min` 690 de `pwa/budget.json`; gz 201,3 → 201,8).

@@ -118,3 +118,34 @@ nunca renombrar ni eliminar. Cada token de color tiene utilidad Tailwind (`bg-*`
 1. Nunca hardcodear colores en componentes: usar tokens (excepción: vistas previas de tema y el logo).
 2. El dorado es un acento *de marca*, no de UI: no usarlo para botones ni estados de error/aviso.
 3. Todo texto de UI en español; el nombre del producto siempre desde `APP_NAME`.
+
+## Fundamentos de escritorio (v2)
+
+Capa visual SOLO de escritorio (Mac y Windows); la paleta y todos los tokens de color no cambian y el celular (PWA) no cambia ni un píxel.
+
+**Cómo se aplica (Regla U).** `main.tsx` marca `<html data-shell="desktop" data-platform>` e importa `app/desktop/index.css` (un archivo por
+dueño: `tokens`, `base`, `shell`, `conversation`, `modes`; todo selector empieza por `:root[data-shell='desktop']`). En archivos COMPARTIDOS con la
+PWA solo se AÑADEN clases con la variante `desk:` detrás de una clase base; nunca se quita ni se sustituye una existente. Archivos solo de
+escritorio (barra lateral, paleta, onboarding, comparar): se pueden usar las utilidades nuevas sin `desk:`. El CSS `desk:`/`data-shell` lo quita de
+la PWA el plugin `onyx-strip-desktop-css`. Las guardias `stripDesk()` ignoran las clases `desk:`.
+
+| Escala | Valores |
+|---|---|
+| Texto (`text-*`) | `caption` 11 · `meta` 12 · `ui` 13 (por defecto) · `sm` 14 · `prose` 15 · `title-sm` 15/600 · `title` 20/600 · `display` 28/600. Pesos 400/500/600; números en `tabular-nums` |
+| Radios | `2xs` 4 · `ctl-sm` 6 · `ctl` 8 (botones, campos, filas) · `card` 12 (tarjetas, menús) · `modal` 16 (diálogos) · `full` |
+| Alturas | `xs` 24 · `sm` 28 · `md` 32 · `lg` 36; fila 32, ítem de menú 28 |
+| Elevación | `shadow-raised` (1) · `shadow-pop` (2, menús) · `shadow-modal` (3, diálogos) · `shadow-focus` (halo de campos) |
+| Velo | `--scrim` (oscurece en ambos temas); nunca `bg-fg/x` |
+| Movimiento | `--dur-instant` 80 · `fast` 120 · `base` 180 · `enter` 200 · `exit` 140; sin `transition-all`; solo el botón primario se encoge al presionar |
+| Iconos | lucide 12/14/16/20, trazo 1,75 (automático); color `currentColor` |
+
+**Componentes base** (`src/renderer/src/components`; el marcado de siempre + `desk:`; se importan, no se reinventan):
+`Button` (`variant` primary/secondary/ghost/danger/subtle/link, `size` xs/sm/md/lg, `loading`) · `IconButton` (`size` xs/sm/md/lg, `tooltip`,
+`shortcut`; icono recomendado en `ICON_BUTTON_ICON`) · `Toggle` (`size` sm/md) · `Spinner` (12/14/16/20; mismo marcado que el `Loader2` a mano) ·
+`Badge` (`tone`, `pill`) · `Chip` (`icon`, `selected`, `variant` pill/file) · `Input` / `Select` (`invalid`, `error`) · `EmptyState` ·
+`DialogFrame` (velo, `role/aria-modal/aria-labelledby`, Esc y clic fuera) · `Tooltip` (500 ms, 0 ms entre seguidos, foco, `role="tooltip"`; en la
+PWA devuelve el hijo) · recetas `components/ui/recipes.ts` (`POP`, `CARD`, `ROW`, `MENU_ITEM`, `INPUT`, `SEGMENT`, `TAB`, `EMPTY`).
+Estados: deshabilitado 50 %, cargando con `Spinner` + `aria-busy`, error con `aria-invalid` + `aria-describedby`, foco con la forma del control.
+
+**Kit de UI.** `node scripts/shot-desktop.mjs --scenario kit` captura `app/dev/UiKit.tsx` (tipografía, espaciado, radios, elevaciones, velo y todos
+los componentes × variantes × estados, con hover/foco/presionado forzados por CDP) en claro y oscuro. Revisarlo tras tocar un componente base.
