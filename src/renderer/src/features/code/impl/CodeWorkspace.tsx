@@ -261,6 +261,36 @@ interface BranchInfo {
   upstream: string | null
 }
 
+/** Última consulta de rama por (carpeta, versión): `SidePanels` y `BranchPill` la comparten y solo hay un `git:status` por aviso (Pf1). */
+let branchLoad: { key: string; at: number; promise: Promise<BranchInfo | null> } | null = null
+/** Ventana en la que dos consumidores montados por el mismo aviso comparten la consulta (no sirve para remontajes tardíos). */
+const BRANCH_SHARE_MS = 1_000
+
+function loadBranch(directory: string, fsVersion: number): Promise<BranchInfo | null> {
+  const key = `${directory}\0${fsVersion}`
+  if (branchLoad?.key === key && Date.now() - branchLoad.at < BRANCH_SHARE_MS) return branchLoad.promise
+  const api = nativeCode()
+  const promise: Promise<BranchInfo | null> = api
+    ? api.git.status(directory).then((st) =>
+        st.isRepo
+          ? {
+              branch: st.detached ? (st.head?.slice(0, 7) ?? null) : st.branch,
+              ahead: st.ahead,
+              behind: st.behind,
+              changes: st.files.length,
+              upstream: st.upstream
+            }
+          : null
+      )
+    : Promise.resolve(null)
+  branchLoad = { key, at: Date.now(), promise }
+  // Una consulta fallida no se reutiliza (el siguiente cambio la vuelve a pedir).
+  promise.catch(() => {
+    if (branchLoad?.promise === promise) branchLoad = null
+  })
+  return promise
+}
+
 /** Rama actual + ahead/behind (se refresca cuando cambian archivos). */
 function useBranch(directory: string): BranchInfo | null {
   const fsVersion = useVisibleFsVersion()
@@ -271,22 +301,7 @@ function useBranch(directory: string): BranchInfo | null {
   }, [directory])
   useEffect(() => {
     let cancelled = false
-    const api = nativeCode()
-    const load = async (): Promise<BranchInfo | null> => {
-      if (api) {
-        const st = await api.git.status(directory)
-        if (!st.isRepo) return null
-        return {
-          branch: st.detached ? (st.head?.slice(0, 7) ?? null) : st.branch,
-          ahead: st.ahead,
-          behind: st.behind,
-          changes: st.files.length,
-          upstream: st.upstream
-        }
-      }
-      return null
-    }
-    load()
+    loadBranch(directory, fsVersion)
       .then((i) => !cancelled && setInfo(i))
       .catch(() => !cancelled && setInfo(null))
     return () => {
