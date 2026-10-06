@@ -40,6 +40,13 @@ describe('decidePermKey: teclado seguro', () => {
     expect(decidePermKey(ev({ key: 'Enter', ctrlKey: true }), ctx({ mac: false }))).toBe('once')
   })
 
+  it('AltGr (Ctrl+Alt en teclados es/latam) + ↵ no permite, ni en Windows ni en mac', () => {
+    const altGr = { key: 'Enter', ctrlKey: true, altKey: true }
+    expect(decidePermKey(ev(altGr), ctx({ mac: false }))).toBe('none')
+    expect(decidePermKey(ev(altGr), ctx({ mac: true }))).toBe('none')
+    expect(decidePermKey(ev({ ...altGr, targetIsPermit: true }), ctx({ mac: false }))).toBe('none')
+  })
+
   it.each([
     ['focusInCard', { focusInCard: false }],
     ['windowFocused', { windowFocused: false }],
