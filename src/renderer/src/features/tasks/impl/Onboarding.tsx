@@ -16,7 +16,8 @@ function safetyTips(t: ReturnType<typeof useT>): string[] {
     t('tasksComputer.onb.tip2'),
     t('tasksComputer.onb.tip3', { grant: TASKS_TERMS.deleteGrant }),
     t('tasksComputer.onb.tip4'),
-    t('tasksComputer.onb.tip5', { full: TASKS_TERMS.fullControl }),
+    // El consejo de Control total (plan y atajo para detener al agente) solo vale donde Control total existe.
+    ...(platformCaps().computer ? [t('tasksComputer.onb.tip5', { full: TASKS_TERMS.fullControl })] : []),
     t('tasksComputer.onb.tip6')
   ]
 }
@@ -112,12 +113,14 @@ export function Onboarding({ onDismiss }: { onDismiss: () => void }): React.JSX.
               <strong className="font-medium text-fg">{TASKS_TERMS.sandbox}:</strong> {t('tasksComputer.onb.sandboxDesc')}
             </span>
           </span>
-          <span className="mt-1.5 flex items-start gap-1.5">
-            <MonitorCog size={13} className="mt-0.5 shrink-0 text-warning" />
-            <span>
-              <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> {t('tasksComputer.onb.fullDesc')}
+          {platformCaps().computer && (
+            <span className="mt-1.5 flex items-start gap-1.5">
+              <MonitorCog size={13} className="mt-0.5 shrink-0 text-warning" />
+              <span>
+                <strong className="font-medium text-fg">{TASKS_TERMS.fullControl}:</strong> {t('tasksComputer.onb.fullDesc')}
+              </span>
             </span>
-          </span>
+          )}
         </Step>
 
         <Step

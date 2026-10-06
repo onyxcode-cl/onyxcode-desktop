@@ -13,7 +13,7 @@ import { buildRemoteApi } from './remote-api'
  * principal (con el `ipcRenderer` de Electron) y la PWA del celular (`src/renderer/remote`, con uno que habla por el
  * DataChannel), de modo que las dos interfaces tienen exactamente la misma forma.
  */
-export function buildWindowApi(ipcRenderer: IpcRenderer, platform: string, capsFlags: CapsFlags = {}): WindowApi {
+export function buildWindowApi(ipcRenderer: IpcRenderer, platform: string, capsFlags?: CapsFlags): WindowApi {
   const bridge = makeBridge<IpcInvokeChannel, IpcEventChannel>(ipcRenderer, {
     invoke: IPC_INVOKE_CHANNELS,
     events: IPC_EVENT_CHANNELS
@@ -22,7 +22,8 @@ export function buildWindowApi(ipcRenderer: IpcRenderer, platform: string, capsF
     invoke: bridge.invokeRaw as WindowApi['invoke'],
     on: bridge.on as WindowApi['on'],
     platform,
-    capsFlags,
+    // Solo el preload de escritorio las trae (la PWA del celular no tiene banderas y su `window.api` conserva la misma forma de siempre).
+    ...(capsFlags ? { capsFlags } : {}),
     code: buildCodeApi(ipcRenderer),
     tasks: buildTasksApi(ipcRenderer),
     extras: buildExtrasApi(ipcRenderer),

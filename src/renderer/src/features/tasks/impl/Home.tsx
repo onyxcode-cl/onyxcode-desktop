@@ -5,11 +5,14 @@ import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCo
 import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { AccessSegmented } from './AccessSegmented'
 import { ComputerPermissionsCard, FullWorkspaceNote, VisionModelHint } from './ComputerAccess'
 import { TasksComposer } from './TasksComposer'
 import { setAccessMode } from './actions'
 import { Onboarding } from './Onboarding'
+import { SandboxSetupCard } from './SandboxSetupCard'
+import { sandboxBlocksStart, useSandbox } from './sandbox-store'
 import { useTasks } from './store'
 import { baseName } from './util'
 
@@ -190,7 +193,10 @@ export function Home({
   const requested = useTasks((s) => s.fullAccess)
   const full = conn ? conn.fullAccess : requested
   const [cat, setCat] = useState<string>(full ? 'computer' : 'docs')
-  const categories = getCategories(t)
+  // Sin Control del PC (Windows) no hay categoría de «controlar el equipo»: sus plantillas exigirían un modo que no existe.
+  const caps = platformCaps()
+  const categories = getCategories(t).filter((c) => !c.computer || caps.computer)
+  const blocked = sandboxBlocksStart(useSandbox((s) => s.status))
   const category = categories.find((c) => c.id === cat) ?? categories[0]
   const [hidden, setHidden] = useState(() => readFlag(HIDE_KEY, false))
   const [onboarded, setOnboarded] = useState(() => readFlag(ONBOARDED_KEY, false))
@@ -234,6 +240,7 @@ export function Home({
           </div>
         </div>
 
+        <SandboxSetupCard />
         {!onboarded && <Onboarding onDismiss={() => setOnboardedPersisted(true)} />}
         <FullWorkspaceNote canChange={!folderBusy} />
         <ComputerPermissionsCard />
@@ -242,7 +249,7 @@ export function Home({
           hero
           onSend={onSend}
           busy={false}
-          disabled={phase === 'starting'}
+          disabled={phase === 'starting' || blocked}
           autoFocusKey={folder}
           placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />

@@ -133,5 +133,19 @@ export const tasksSettings = {
   'tasksSettings.storage.restoreBtn': 'Borrar puntos de restauración',
   'tasksSettings.storage.restoreTitle': '¿Borrar los puntos de restauración?',
   'tasksSettings.storage.restoreMessage':
-    'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.'
+    'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.',
+  'tasksSettings.beta.title': 'Tareas (beta) en Windows',
+  'tasksSettings.beta.description':
+    'Activa el modo Tareas en este PC. Usa un entorno Linux aislado (WSL 2) que se instala una vez y ocupa espacio en disco. Es una función en pruebas.',
+  'tasksSettings.beta.toggle': 'Activar Tareas (beta)',
+  'tasksSettings.beta.restart': 'Reinicia Lazunox para aplicar el cambio.',
+  'tasksSettings.beta.confirm.title': '¿Activar Tareas (beta)?',
+  'tasksSettings.beta.confirm.b1':
+    'Tareas ejecuta al agente dentro de un entorno Linux aislado de Windows (WSL 2). Necesita WSL 2 y virtualización, descarga e instala una imagen (unos 2 GB libres) y puede ralentizar el arranque.',
+  'tasksSettings.beta.confirm.b2':
+    'El agente solo ve las carpetas que apruebes. No puede ejecutar programas de Windows y solo sale a internet a los sitios que permitas.',
+  'tasksSettings.beta.confirm.b3':
+    'Es una versión de pruebas: pueden fallar cosas. Puedes desactivarla aquí cuando quieras. Hace falta reiniciar Lazunox.',
+  'tasksSettings.beta.confirm.cancel': 'Cancelar',
+  'tasksSettings.beta.confirm.ok': 'Activar'
 } as const

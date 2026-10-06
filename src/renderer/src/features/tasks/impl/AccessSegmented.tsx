@@ -2,10 +2,11 @@
 import { Loader2, MonitorCog, Shield } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { setAccessMode } from './actions'
 import { useTasks } from './store'
 
-export function AccessSegmented({ disabled, compact }: { disabled?: boolean; compact?: boolean }): React.JSX.Element {
+export function AccessSegmented({ disabled, compact }: { disabled?: boolean; compact?: boolean }): React.JSX.Element | null {
   const t = useT()
   const conn = useTasks((s) => s.conn)
   const phase = useTasks((s) => s.phase)
@@ -15,6 +16,8 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
   const starting = phase === 'starting'
   // Control total no necesita carpeta (trabaja en la carpeta personal por defecto); Sandbox sí la pide al enviar.
   const off = disabled || starting
+  // Sin Control del PC (Windows) solo existe el modo aislado: un selector de una sola opción no haría nada.
+  if (!platformCaps().computer) return null
 
   const pick = (fullAccess: boolean): void => {
     if (off || (fullAccess === full && phase === 'ready')) return
