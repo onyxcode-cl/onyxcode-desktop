@@ -1237,3 +1237,13 @@ Sin cambio de comportamiento en macOS ni con `TASKS_WIN_BUILD = false` (Windows 
 - **W8, interfaz**: canales `tasks:sandbox:status|setup|cancel` y evento `tasks:sandbox:progress` (`TasksSandboxService`, esquema estricto, status R y setup/cancel X para el celular). Tarjeta `SandboxSetupCard` (por instalar, actualizar, instalando con progreso, fallo con motivo traducido, guías de WSL, política, no disponible, roto): solo los botones que hacen algo, y el compositor se bloquea mientras el entorno no esté listo. Sin Control del PC no hay selector de acceso, categoría de control ni consejo de Control total; sin Vista rápida.
 - **W9, textos**: claves `tasks.sandbox.*`, `tasksSettings.beta.*` y variantes `.win` (Explorador, aislamiento, mantener el PC despierto). `win-shortcut-text` deja de eximir por prefijo `tasks.`/`tasksComputer.` y exime solo cuatro claves de Control total. El PWA no cambia (`i18n-core-keys.json` intacto; las claves nuevas viven en pantallas perezosas).
 - **Pendiente**: imagen Debian (pin `wsl-rootfs` y empaquetado de `resources/wsl`, `pin.json` y los informes), pruebas en el PC (batería con los informes de las dos sesiones, junctions/drvfs reales, unidades de red y `subst`), ruta de directorio en `actions.ts`/`store.ts`/`util.ts`/`transcript.ts`/`FolderRequestCard.tsx` del renderer (H5, H6), `storage.ts` sin `du` (H11) y `docs/SEGURIDAD.md`/`AGENTS.md` (W10, con el informe real).
+
+## F8-B106 — Tareas en Windows: renderer con rutas del sandbox, almacenamiento sin `du`, «Volver a comprobar» con `force` y documentación (bandera sigue apagada)
+
+Sin cambio de comportamiento en macOS (en cada consumidor la ruta del sandbox es la propia carpeta; hay casos «macOS = identidad»). `TASKS_WIN_BUILD` sigue en `false`.
+
+- **Renderer (H5, H6)**: `directory:` de todas las llamadas al SDK, las comparaciones `session.directory === folder`, las claves de sesiones del store y la lista de tareas usan `conn.directory` (`impl/path-map.ts` puro y `impl/conn-paths.ts`). Permisos, tarjeta de otra carpeta, actividad, panel de progreso y exportación a Markdown muestran `C:\…`. A `main` siguen llegando las rutas tal cual: traducir no autoriza.
+- **`storage.ts` (H11)**: sin `du` en win32 (recorrido con Node, sin seguir enlaces, con topes) y plataforma inyectable.
+- **`tasks:sandbox:status { force }`**: «Volver a comprobar» se salta la caché de 5 s de `main`.
+- **Documentación (W10)**: `docs/SEGURIDAD.md` §3 quadragies quater y `AGENTS.md` (modelo, estado, nuevas zonas intocables).
+- **Pendiente**: imagen Debian fijada y empaquetada, batería A1–A20 en el PC (guion `tasks-attack.ps1`, informes de las dos sesiones), decisiones D2/D4 del dueño.
