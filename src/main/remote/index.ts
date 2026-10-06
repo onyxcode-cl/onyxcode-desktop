@@ -137,7 +137,7 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
     engine,
     devices: d.devices,
     loadRtc,
-    getLanIp: () => pickLanIp(networkInterfaces()),
+    getLanIp: () => pickLanIp(networkInterfaces(), process.platform),
     createTransport: (ip, mode) =>
       mode === 'travel'
         ? new TunnelSignalingTransport({
