@@ -170,8 +170,8 @@ try {
   # Esperar a los procesos hijos que sigan usando archivos de Target; pasado el plazo, parar SOLO esos.
   $waited = 0
   $limit = 30; if ($Test) { $limit = [Math]::Min(30, $WaitPid) }
-  while ((Get-ProcsUnder $Target).Count -gt 0 -and $waited -lt ($limit * 4)) { Start-Sleep -Milliseconds 250; $waited++ }
-  if ((Get-ProcsUnder $Target).Count -gt 0) { Stop-ProcsUnder $Target; Start-Sleep -Seconds 1 }
+  while (@(Get-ProcsUnder $Target).Count -gt 0 -and $waited -lt ($limit * 4)) { Start-Sleep -Milliseconds 250; $waited++ }
+  if (@(Get-ProcsUnder $Target).Count -gt 0) { Stop-ProcsUnder $Target; Start-Sleep -Seconds 1 }
 
   # 2. Apartar la carpeta actual (renombrado atómico en el mismo volumen; reintentos por Defender o el Explorador).
   Remove-Tree $Bak
@@ -240,6 +240,8 @@ try {
     if (-not [IO.Directory]::Exists($Target) -and [IO.Directory]::Exists($Bak)) { $restored = Move-Dir $Bak $Target }
     if ([IO.Directory]::Exists($Target)) { Launch $Target $false | Out-Null }
   } catch { }
+  # Detalle para diagnostico (solo texto plano, fuera del JSON que lee la app).
+  try { [IO.File]::WriteAllText((Join-Path $MarkerDir 'swap-error.txt'), ($_ | Out-String), (New-Object Text.UTF8Encoding($false))) } catch { }
   Write-Result $false $restored 'swap-error'
   exit 1
 }

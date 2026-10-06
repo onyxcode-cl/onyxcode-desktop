@@ -53,6 +53,8 @@ function Run-Swap($L, [string]$ver, [int]$pidOld, [int]$waitBoot) {
   return $p.ExitCode
 }
 function Read-Result($L) {
+  $ef = Join-Path $L.Md 'swap-error.txt'
+  if (Test-Path $ef) { Log ('DETALLE swap-error: ' + ((Get-Content $ef -Raw) -replace '\s+', ' ')) }
   $f = Join-Path $L.Md 'result.json'
   if (Test-Path $f) { try { return (Get-Content $f -Raw | ConvertFrom-Json) } catch { return $null } }
   return $null
