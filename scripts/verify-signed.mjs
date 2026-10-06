@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Verifica la distribución YA EMPAQUETADA (no empaqueta nada ni usa la red): firma, identificadores, Gatekeeper y ticket grapado.
 //
-//   node scripts/verify-signed.mjs --expect adhoc|self|devid [--app dist/mac-arm64/OnyxCode.app] [--dmg dist/x.dmg] [--team ABCDE12345] [--dry-run]
+//   node scripts/verify-signed.mjs --expect adhoc|self|devid [--app dist/mac-arm64/Lazunox.app] [--dmg dist/x.dmg] [--team ABCDE12345] [--dry-run]
 //
 // Modos (lo que se espera de la firma):
 //   adhoc : `Signature=adhoc`, sin autoridad ni equipo (build local de `npm run package`).
-//   self  : certificado autofirmado (ONYXCODE_SELF_SIGNED=1): con autoridad que NO es Developer ID y sin equipo.
+//   self  : certificado autofirmado (LAZUNOX_SELF_SIGNED=1): con autoridad que NO es Developer ID y sin equipo.
 //   devid : Developer ID Application + TeamIdentifier + hardened runtime; además `spctl` del .app y del .dmg
 //           («accepted, source=Notarized Developer ID») y `stapler validate` de ambos.
 // En los tres: `codesign --verify --deep --strict`, Identifier del .app = APP_ID y de los helpers = HELPER_ID / DISCLAIM_ID (brand.ts).
@@ -22,8 +22,8 @@ export function idsFromBrand(root = defaultRoot) {
   const src = readFileSync(join(root, 'src/shared/brand.ts'), 'utf8')
   const alias = /export const AUTHOR_ALIAS = '([^']*)'/.exec(src)?.[1]
   if (!alias) throw new Error('No se encontró AUTHOR_ALIAS en src/shared/brand.ts')
-  const appId = `cl.${alias}.onyxcode`
-  return { appId, helperId: `cl.${alias}.opendesk.cu-helper`, disclaimId: `${appId}.disclaim` }
+  const appId = `cl.${alias}.lazunox`
+  return { appId, helperId: `cl.${alias}.lazunox.cu-helper`, disclaimId: `${appId}.disclaim` }
 }
 
 const defaultRun = (cmd, args) => {
@@ -78,7 +78,7 @@ export function verifySigned({ app, dmg, expect, team, ids, run = defaultRun }) 
 
   for (const [rel, id] of [
     ['Contents/Resources/computer-use/bin/cu-helper', ids.helperId],
-    ['Contents/Resources/launcher/onyxcode-disclaim', ids.disclaimId]
+    ['Contents/Resources/launcher/lazunox-disclaim', ids.disclaimId]
   ]) {
     const h = parseCodesignInfo(text(run('/usr/bin/codesign', ['-dvv', join(app, rel)])))
     add(`Identifier de ${rel.split('/').pop()} = ${id}`, h.identifier === id, `es «${h.identifier}»`)
@@ -121,7 +121,7 @@ export function plannedCommands({ app, dmg, expect }) {
     ['codesign', '--verify', '--deep', '--strict', '--verbose=2', app],
     ['codesign', '-dvv', app],
     ['codesign', '-dvv', join(app, 'Contents/Resources/computer-use/bin/cu-helper')],
-    ['codesign', '-dvv', join(app, 'Contents/Resources/launcher/onyxcode-disclaim')]
+    ['codesign', '-dvv', join(app, 'Contents/Resources/launcher/lazunox-disclaim')]
   ]
   if (expect === 'devid') {
     cmds.push(['spctl', '-a', '-vvv', '-t', 'exec', app], ['xcrun', 'stapler', 'validate', app])
@@ -137,7 +137,7 @@ export function main(argv = process.argv.slice(2), { run = defaultRun, root = de
     err('Uso: node scripts/verify-signed.mjs --expect adhoc|self|devid [--app ruta.app] [--dmg ruta.dmg] [--team ID] [--dry-run]')
     return 2
   }
-  const app = resolve(arg(argv, '--app') ?? join(root, 'dist/mac-arm64/OnyxCode.app'))
+  const app = resolve(arg(argv, '--app') ?? join(root, 'dist/mac-arm64/Lazunox.app'))
   let dmg = arg(argv, '--dmg')
   if (!dmg && existsSync(join(root, 'dist'))) {
     const f = readdirSync(join(root, 'dist')).filter((n) => n.endsWith('.dmg'))

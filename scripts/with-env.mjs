@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Ejecuta un comando con variables de entorno añadidas, igual en macOS/Linux/Windows (sin la sintaxis
 // POSIX `VAR=1 cmd`). Sin dependencias.
-//   node scripts/with-env.mjs ONYXCODE_FS_IT=1 E2E_MODE=prod -- vitest run -c x.ts
+//   node scripts/with-env.mjs LAZUNOX_FS_IT=1 E2E_MODE=prod -- vitest run -c x.ts
 import { spawn } from 'node:child_process'
 
 const argv = process.argv.slice(2)

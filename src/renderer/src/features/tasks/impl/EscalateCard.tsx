@@ -29,7 +29,7 @@ export { lastAssistantText }
  * Marcador neutro (independiente del idioma) que el prompt del agente le pide escribir al terminar el turno
  * cuando necesita Control total. Es el contrato preferido; las frases de abajo son el respaldo.
  */
-export const ESCALATE_MARKER = '[[ONYX:NEEDS_FULL_CONTROL]]'
+export const ESCALATE_MARKER = '[[LAZUNOX:NEEDS_FULL_CONTROL]]'
 const NEUTRAL_MARKER = ESCALATE_MARKER.toLowerCase()
 // Contrato con el agente (sus prompts están en español/inglés), no es texto de interfaz.
 const PHRASES = [

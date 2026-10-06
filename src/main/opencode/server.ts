@@ -146,7 +146,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const baseUrl = `http://${HOST}:${port}`
       this.secretValues = [password, authorization, authorization.slice('Basic '.length)]
 
-      // Renderer en `onyxcode://app` (producción) o el dev server de Vite; sin el origen `null`.
+      // Renderer en `lazunox://app` (producción) o el dev server de Vite; sin el origen `null`.
       const cors = this.options.corsOrigins ?? []
       const serveArgs = ['serve', '--port', String(port), '--hostname', HOST, ...cors.flatMap((o) => ['--cors', o])]
       // Sin heredar los permisos TCC de la app (S6) y con entorno mínimo.
@@ -280,7 +280,7 @@ function configuredBinary(): string {
 }
 
 /** Variable SOLO para tests (se ignora en la app empaquetada): directorio que hace de `Resources/opencode`. */
-const TEST_BUNDLED_ENV = 'ONYXCODE_TEST_BUNDLED_DIR'
+const TEST_BUNDLED_ENV = 'LAZUNOX_TEST_BUNDLED_DIR'
 
 function appIsPackaged(): boolean {
   try {
@@ -300,7 +300,7 @@ export interface BundledOptions {
   platform?: NodeJS.Platform
   isPackaged?: boolean
   resourcesPath?: string
-  /** Valor de `ONYXCODE_TEST_BUNDLED_DIR` (por defecto, el de `process.env`). */
+  /** Valor de `LAZUNOX_TEST_BUNDLED_DIR` (por defecto, el de `process.env`). */
   testDir?: string
 }
 
@@ -308,7 +308,7 @@ export interface BundledOptions {
  * OpenCode incluido en la app: `<Resources>/opencode/opencode` (`opencode.exe` en Windows), solo si la app está empaquetada y
  * el archivo existe y es ejecutable. En desarrollo es null (el repo vive en ~/Documents y un binario
  * bajo `resources/` fallaría por TCC): allí se usa el CLI del usuario u `OPENCODE_BIN`. Para tests,
- * `ONYXCODE_TEST_BUNDLED_DIR` (honrada ÚNICAMENTE si `!isPackaged`) apunta a un directorio que
+ * `LAZUNOX_TEST_BUNDLED_DIR` (honrada ÚNICAMENTE si `!isPackaged`) apunta a un directorio que
  * hace de `Resources/opencode`.
  */
 export function bundledOpencodePath(o: BundledOptions = {}): string | null {

@@ -8,7 +8,7 @@ export const FIXTURE = resolve(__dirname, '../../../e2e/fixtures/legacy-userdata
 const made: string[] = []
 
 /** Directorio temporal nuevo (se limpia con `cleanTmp`). */
-export function tmpDir(prefix = 'onyx-mig-'): string {
+export function tmpDir(prefix = 'lazunox-mig-'): string {
   const d = realpathSync(mkdtempSync(join(tmpdir(), prefix)))
   made.push(d)
   return d

@@ -12,7 +12,7 @@ const DIR = '/work/proj'
 
 const fake = createFakeServer({
   env: { OPENCODE_SERVER_USERNAME: 'user', OPENCODE_SERVER_PASSWORD: 'secret', OPENCODE_CONFIG_CONTENT: JSON.stringify({ mcp: { browser: { type: 'remote', url: 'http://127.0.0.1:1/mcp' } } }), FAKE_OPENCODE_HEARTBEAT_MS: '0' },
-  cors: ['onyxcode://app']
+  cors: ['lazunox://app']
 })
 const addr = await fake.listen(0, '127.0.0.1')
 const base = `http://127.0.0.1:${addr.port}`
@@ -83,9 +83,9 @@ test('health con auth correcta y 401 sin credenciales o con clave mala', async (
 })
 
 test('CORS solo para los orígenes de --cors', async () => {
-  const pre = await fetch(base + '/session', { method: 'OPTIONS', headers: { origin: 'onyxcode://app', 'access-control-request-method': 'GET' } })
+  const pre = await fetch(base + '/session', { method: 'OPTIONS', headers: { origin: 'lazunox://app', 'access-control-request-method': 'GET' } })
   assert.equal(pre.status, 204)
-  assert.equal(pre.headers.get('access-control-allow-origin'), 'onyxcode://app')
+  assert.equal(pre.headers.get('access-control-allow-origin'), 'lazunox://app')
   const evil = await fetch(base + '/global/health', { headers: { authorization: AUTH, origin: 'http://evil.example' } })
   assert.equal(evil.headers.get('access-control-allow-origin'), null)
 })
@@ -349,14 +349,14 @@ test('CLI: --version, flags desconocidos ignorados, auth y config desde el entor
 
   const cfg = JSON.stringify({ mcp: { browser: { type: 'remote', url: 'http://x/mcp' } } })
   const { child, ready } = launch(['serve', '--port', '0', '--hostname', '127.0.0.1', '--cors', 'http://localhost:5173', '--print-logs', '--foo=bar'], {
-    OPENCODE_SERVER_USERNAME: 'onyxcode',
+    OPENCODE_SERVER_USERNAME: 'lazunox',
     OPENCODE_SERVER_PASSWORD: 'pw',
     OPENCODE_CONFIG_CONTENT: cfg
   })
   try {
     const url = await ready
     assert.equal((await fetch(url + '/global/health')).status, 401)
-    const auth = 'Basic ' + Buffer.from('onyxcode:pw').toString('base64')
+    const auth = 'Basic ' + Buffer.from('lazunox:pw').toString('base64')
     const h = await fetch(url + '/global/health', { headers: { authorization: auth } })
     assert.equal(h.status, 200)
     const c = await (await fetch(url + '/__e2e/config', { headers: { authorization: auth } })).json()
@@ -521,7 +521,7 @@ test('guion por modelo (forModel), error de cuota, /instance/dispose y metadata/
     const [providerID, modelID] = model.split('/')
     await call('POST', `/session/${sid}/prompt_async?${q()}`, {
       model: { providerID, modelID },
-      parts: [{ type: 'text', text: 'hola', synthetic: true, metadata: { onyx: { kind: 'element' } } }]
+      parts: [{ type: 'text', text: 'hola', synthetic: true, metadata: { lazunox: { kind: 'element' } } }]
     })
     for (let i = 0; i < 100; i++) {
       await new Promise((r) => setTimeout(r, 20))
@@ -547,7 +547,7 @@ test('guion por modelo (forModel), error de cuota, /instance/dispose y metadata/
   // metadata y synthetic de la parte del usuario se devuelven tal cual.
   const up = a[0].parts[0]
   assert.equal(up.synthetic, true)
-  assert.deepEqual(up.metadata, { onyx: { kind: 'element' } })
+  assert.deepEqual(up.metadata, { lazunox: { kind: 'element' } })
   // El guion de Go es sticky: sigue ahí; los otros dos se consumieron.
   assert.equal((await ctl('GET', 'status')).data.scriptsQueued, 1)
 

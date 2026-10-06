@@ -13,7 +13,7 @@ const read = (p: string): string => readFileSync(resolve(ROOT, p), 'utf8')
 
 describe('identidad centralizada en brand.ts', () => {
   it('los IDs derivan de AUTHOR_ALIAS', () => {
-    expect(APP_ID).toBe(`cl.${AUTHOR_ALIAS}.onyxcode`)
+    expect(APP_ID).toBe(`cl.${AUTHOR_ALIAS}.lazunox`)
     expect(DISCLAIM_ID).toBe(`${APP_ID}.disclaim`)
     expect(HELPER_ID).toContain(`.${AUTHOR_ALIAS}.`)
   })

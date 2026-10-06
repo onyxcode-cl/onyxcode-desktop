@@ -1,7 +1,7 @@
 /**
  * Autocomprobación al abrir el túnel (antes de enseñar el QR): el Mac pide por INTERNET su propia página a través del túnel y la
  * compara con la suya. Así sabe que (1) el nombre ya resuelve y llega (no se enseña un QR que todavía no funciona), (2) el túnel
- * apunta a NUESTRO servidor (`/__onyx/probe/<nonce>`, un solo uso) y (3) lo que llega es lo que sirve él (`index.html` y los scripts
+ * apunta a NUESTRO servidor (`/__lazunox/probe/<nonce>`, un solo uso) y (3) lo que llega es lo que sirve él (`index.html` y los scripts
  * que referencia), lo que detecta alteraciones NO dirigidas (p. ej. una inyección de Cloudflare bajo `/cdn-cgi/`).
  *
  * Reintentos 1 s → 30 s (el nombre puede tardar en resolver): un fallo de red o un 5xx/52x/530 se reintentan; cualquier otra
@@ -87,7 +87,7 @@ export async function runSelfCheck(origin: string, token: string, d: SelfCheckDe
     try {
       const probe = await d.get(`${origin}${TRAVEL_PROBE_PREFIX}${d.issueNonce()}`, { 'Accept-Encoding': 'identity' })
       if (transient(probe.status)) verdict = null
-      else if (probe.status !== 200 || probe.body.toString('utf8') !== 'onyx-probe-ok') verdict = 'mismatch'
+      else if (probe.status !== 200 || probe.body.toString('utf8') !== 'lazunox-probe-ok') verdict = 'mismatch'
       else verdict = await compare(origin, d, cookie)
     } catch {
       verdict = null // sin red / no resuelve todavía

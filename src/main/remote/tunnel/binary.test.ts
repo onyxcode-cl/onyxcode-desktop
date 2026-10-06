@@ -34,7 +34,7 @@ let dir = ''
 let binDir = ''
 const audits: AuditInput[] = []
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'onyx-bin-'))
+  dir = mkdtempSync(join(tmpdir(), 'lazunox-bin-'))
   binDir = join(dir, 'bin')
   audits.length = 0
 })
@@ -410,7 +410,7 @@ describe('antes de cada arranque', () => {
     chmodSync(s.path, 0o700)
     expect(await s.b.verifyInstalled()).toBe('bad-hash')
     rmSync(dir, { recursive: true, force: true })
-    dir = mkdtempSync(join(tmpdir(), 'onyx-bin-'))
+    dir = mkdtempSync(join(tmpdir(), 'lazunox-bin-'))
     binDir = join(dir, 'bin')
     s = await installed()
     rmSync(s.path)
@@ -419,7 +419,7 @@ describe('antes de cada arranque', () => {
     symlinkSync(join(dir, 'elsewhere'), s.path)
     expect(await s.b.verifyInstalled()).toBe('bad-hash')
     rmSync(dir, { recursive: true, force: true })
-    dir = mkdtempSync(join(tmpdir(), 'onyx-bin-'))
+    dir = mkdtempSync(join(tmpdir(), 'lazunox-bin-'))
     binDir = join(dir, 'bin')
     s = await installed()
     chmodSync(s.path, 0o722)

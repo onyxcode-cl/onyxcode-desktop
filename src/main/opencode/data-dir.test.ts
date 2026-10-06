@@ -7,7 +7,7 @@ import { appAuthFile, opencodeDataHome, prepareOpencodeData, shouldReopenOnboard
 
 let ud = ''
 beforeEach(() => {
-  ud = mkdtempSync(join(tmpdir(), 'onyx-data-'))
+  ud = mkdtempSync(join(tmpdir(), 'lazunox-data-'))
 })
 afterEach(() => rmSync(ud, { recursive: true, force: true }))
 

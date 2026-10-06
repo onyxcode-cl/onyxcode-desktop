@@ -9,9 +9,9 @@ import { redactSecrets } from '@shared/ai-errors'
 import type { CompareColumnManifest, CompareManifest } from '@shared/ipc-code'
 import { COMPARE_LIMITS } from './limits'
 
-export const BENCH_FORMAT = 'onyx-compare'
+export const BENCH_FORMAT = 'lazunox-compare'
 export const BENCH_VERSION = 1
-export const BENCH_ENV_VERSION = 'onyx-export-1'
+export const BENCH_ENV_VERSION = 'lazunox-export-1'
 
 export type BenchOutcome = 'completed' | 'agent_error' | 'rate_limited' | 'cancelled'
 
@@ -51,7 +51,7 @@ const slug = (s: string): string =>
 
 export function configurationId(col: Pick<CompareColumnManifest, 'model'>): string {
   const { providerID, modelID, variant } = col.model
-  return `onyx-${slug(providerID)}-${slug(modelID)}${variant ? `-${slug(variant)}` : ''}`
+  return `lazunox-${slug(providerID)}-${slug(modelID)}${variant ? `-${slug(variant)}` : ''}`
 }
 
 export function benchOutcome(state: CompareColumnManifest['state']): BenchOutcome {
@@ -78,7 +78,7 @@ export function buildBenchBatch(input: BenchInput): Record<string, unknown> {
   const id8 = m.id.replace(/-/g, '').slice(0, 8)
   const promptText = redactSecrets(input.prompt ?? m.promptPreview)
   const scenarioId = `adhoc-${sha8(input.prompt ?? m.promptPreview)}`
-  const experimentId = `onyx-compare-${id8}`
+  const experimentId = `lazunox-compare-${id8}`
   const cols = m.columns
   const configs = cols.map(configurationId)
   const costs = cols.map((c) => c.metrics.costUsd).filter((c): c is number => c !== null)
@@ -135,7 +135,7 @@ export function buildBenchBatch(input: BenchInput): Record<string, unknown> {
         filesModified: x?.filesModified ?? null,
         filesCreated: null,
         filesDeleted: null,
-        extra: { onyx: { chosen: c.adopted, mode: m.mode } }
+        extra: { lazunox: { chosen: c.adopted, mode: m.mode } }
       },
       durationMs: mt.durationMs !== null ? Math.max(0, Math.round(mt.durationMs)) : Math.max(0, Math.round(finished - started)),
       evaluators: [],

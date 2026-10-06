@@ -5,13 +5,11 @@
 /** Nombre VISIBLE al usuario (ventanas, menús, textos, PWA). Es el único que se muestra. */
 export const DISPLAY_NAME = 'Lazunox'
 /**
- * Nombre INTERNO. NO CAMBIAR: de él dependen la carpeta userData, la clave «<nombre> Safe Storage» del
- * Llavero (`app.setName(INTERNAL_NAME)`), el User-Agent, `TERM_PROGRAM` y rutas de administrador.
- * Cualquier cambio exige el plan de la Fase 2 (migración de datos).
+ * Nombre INTERNO. Identidad de almacenamiento: userData, Llavero («<nombre> Safe Storage»,
+ * `app.setName(INTERNAL_NAME)`), User-Agent, `TERM_PROGRAM` y rutas de administrador.
+ * Cambiarla exige migración de datos.
  */
-export const INTERNAL_NAME = 'OnyxCode'
-/** @deprecated Usa DISPLAY_NAME (texto visible) o INTERNAL_NAME (técnico). Se retirará al cerrar el renombre. */
-export const APP_NAME = INTERNAL_NAME
+export const INTERNAL_NAME = 'Lazunox'
 
 // TODO(alias): cambiar AUTHOR_ALIAS y los literales; ver docs (plan «Identidad»).
 // Punto de cambio ÚNICO de la identidad. Hoy los valores derivados son EXACTAMENTE los históricos
@@ -21,13 +19,15 @@ export const APP_NAME = INTERNAL_NAME
 // resources/computer-use/build.sh y resources/launcher/build.sh.
 export const AUTHOR_ALIAS = 'bentec'
 /** Identificador de bundle de la app. */
-export const APP_ID = `cl.${AUTHOR_ALIAS}.onyxcode`
-/** Firma del helper nativo de computer use. «opendesk» se mantiene para no cambiar la firma. */
-export const HELPER_ID = `cl.${AUTHOR_ALIAS}.opendesk.cu-helper`
+export const APP_ID = `cl.${AUTHOR_ALIAS}.lazunox`
+/** Firma del helper nativo de computer use. */
+export const HELPER_ID = `cl.${AUTHOR_ALIAS}.lazunox.cu-helper`
+/** Id del helper de dictado. */
+export const DICTATE_ID = `cl.${AUTHOR_ALIAS}.lazunox.dictate`
 /** Firma del lanzador «disclaim». */
 export const DISCLAIM_ID = `${APP_ID}.disclaim`
 /** Slug en minúsculas, útil para usuarios/identificadores técnicos. */
-export const APP_SLUG = 'onyxcode'
+export const APP_SLUG = 'lazunox'
 
 /**
  * Colores de marca para el proceso principal (p.ej. `backgroundColor` de BrowserWindow,
@@ -45,6 +45,9 @@ export const BRAND_COLORS = {
   spark: '#f0c35a'
 } as const
 
+/** Dominio del servicio de conexión del control remoto. */
+export const CLOUD_DOMAIN = 'remoto.onyxcode.cl' // EXTERNO-PENDIENTE: D3
+
 /** «owner/repo» público en GitHub donde se publican las releases. Vacío = sin aviso de versión nueva (sin red). */
 export const RELEASES_REPO = '' as string
 
@@ -56,7 +59,7 @@ export const RELEASES_REPO = '' as string
  */
 export const UPDATE_PUBLIC_KEY = '' as string
 /** Identificador de esa clave; va dentro del manifiesto firmado (`keyId`) y permite rotarla. */
-export const UPDATE_KEY_ID = 'onyxcode-1' as string
+export const UPDATE_KEY_ID = 'lazunox-1' as string
 
 /**
  * Clave PÚBLICA Ed25519 (SPKI DER en base64, 44 bytes, o los 32 crudos) con la que el Mac comprueba el manifiesto firmado del sitio
@@ -66,4 +69,4 @@ export const UPDATE_KEY_ID = 'onyxcode-1' as string
  */
 export const SITE_PUBLIC_KEY = '' as string
 /** Identificador de esa clave; va dentro del manifiesto firmado (`keyId`) y permite rotarla con una versión nueva de la app. */
-export const SITE_KEY_ID = 'onyxcode-site-1' as string
+export const SITE_KEY_ID = 'lazunox-site-1' as string

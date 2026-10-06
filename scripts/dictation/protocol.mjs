@@ -1,4 +1,4 @@
-// Parser puro de las lineas JSON de onyx-dictate y maquina de estados (espejo de `Phase` en main.swift).
+// Parser puro de las lineas JSON de lazunox-dictate y maquina de estados (espejo de `Phase` en main.swift).
 // Sin dependencias; lo usa la prueba protocol.test.mjs. No toca src/ de la app.
 export const MAX_LINE_BYTES = 64 * 1024
 export const MAX_TEXT_BYTES = 8 * 1024

@@ -129,7 +129,7 @@ export class EgressProxy {
 
     if (!this.checkAuth(headers)) {
       socket.end(
-        'HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="onyxcode-egress"\r\nConnection: close\r\n\r\n'
+        'HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="lazunox-egress"\r\nConnection: close\r\n\r\n'
       )
       return
     }

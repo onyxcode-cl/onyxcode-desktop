@@ -7,7 +7,7 @@
  *   abrir un archivo que trajo el agente, hay que añadirla a mano con `xattr`).
  * - Del usuario: diálogo de guardado nativo (`dialog.showSaveDialog`), como el resto de la app.
  * - Nunca se abren solas (ni `shell.openPath` ni nada parecido aquí).
- * - Destinos: Tareas → `<carpeta>/.onyxcode/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
+ * - Destinos: Tareas → `<carpeta>/.lazunox/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
  */
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -38,7 +38,7 @@ export function initDownloads(d: DownloadsDeps): void {
 }
 
 function destinationDir(owner: BrowserOwner): string {
-  if (owner.kind === 'tasks') return join(owner.folder, '.onyxcode', 'trabajo', 'descargas')
+  if (owner.kind === 'tasks') return join(owner.folder, '.lazunox', 'trabajo', 'descargas')
   return join(homedir(), 'Downloads', INTERNAL_NAME)
 }
 
@@ -88,7 +88,7 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
     return
   }
   const dir = destinationDir(owner)
-  // Migra la carpeta de trabajo heredada a `.onyxcode/trabajo/` antes de escribir.
+  // Migra la carpeta de trabajo heredada a `.lazunox/trabajo/` antes de escribir.
   if (owner.kind === 'tasks') migrateFolderScratch(owner.folder, (m, e) => console.warn('[embedded-browser]', m, e ?? ''))
   try {
     mkdirSync(dir, { recursive: true })

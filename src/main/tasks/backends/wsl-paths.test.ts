@@ -63,7 +63,7 @@ describe('toSandboxPath', () => {
   })
 
   it('los nombres con caracteres parecidos a reservados pero válidos se aceptan', () => {
-    for (const n of ['console', 'nulo', 'com10', 'lpt', 'auxiliar.txt', 'con-x', 'a b', '.onyxcode']) {
+    for (const n of ['console', 'nulo', 'com10', 'lpt', 'auxiliar.txt', 'con-x', 'a b', '.lazunox']) {
       expect(toSandboxPath(`C:\\x\\${n}`).ok, n).toBe(true)
     }
   })

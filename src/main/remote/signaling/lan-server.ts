@@ -6,8 +6,8 @@
  *
  * MODO VIAJE (`tunnel`): el mismo servidor ligado SOLO a 127.0.0.1 (puerto aleatorio) y publicado por `cloudflared`. Cambia el
  * criterio de origen (`Host` y `Origin` = el host público del túnel, que se conoce cuando `cloudflared` lo imprime; mientras tanto
- * TODO responde 503) y añade la puerta previa: sin la galleta `__Host-onyxk` (que solo entrega `GET /k/<T>`) todo devuelve el mismo
- * 404. Rutas expuestas: `/k/<T>`, `/__onyx/probe/<nonce>` (autocomprobación del Mac, un solo uso), la PWA estática y `/ws`; `/cdn-cgi/`
+ * TODO responde 503) y añade la puerta previa: sin la galleta `__Host-lazunoxk` (que solo entrega `GET /k/<T>`) todo devuelve el mismo
+ * 404. Rutas expuestas: `/k/<T>`, `/__lazunox/probe/<nonce>` (autocomprobación del Mac, un solo uso), la PWA estática y `/ws`; `/cdn-cgi/`
  * (lo sirve Cloudflare en el mismo origen) no se usa. Límites de ritmo y keepalive del WebSocket (el borde corta a ~125 s sin tráfico).
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
@@ -249,7 +249,7 @@ export class LanSignalingServer implements SignalingTransport {
     // Autocomprobación del Mac: solo con un nonce recién generado y de un solo uso.
     if (path.startsWith(TRAVEL_PROBE_PREFIX)) {
       const n = path.slice(TRAVEL_PROBE_PREFIX.length)
-      if (get && TRAVEL_NONCE_RE.test(n) && t.probes.consume(n)) return send(200, 'onyx-probe-ok')
+      if (get && TRAVEL_NONCE_RE.test(n) && t.probes.consume(n)) return send(200, 'lazunox-probe-ok')
       return notFound()
     }
     // Puerta: `GET /k/<T>` → galleta + 303 a `/` (el fragmento `#s=…` se conserva en la redirección).

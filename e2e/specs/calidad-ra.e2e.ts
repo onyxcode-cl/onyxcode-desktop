@@ -13,16 +13,16 @@ import { expectVisible } from '../lib/wait'
 import { makeGitRepo, openCodeProject } from '../lib/fase6'
 
 const SHOTS = process.env.RA_SHOTS_DIR
-const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-ra-trash-')))
+const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-ra-trash-')))
 let repo = ''
-const outside = join(realpathSync(tmpdir()), `onyx-e2e-ra-fuera-${process.pid}.txt`)
+const outside = join(realpathSync(tmpdir()), `lazunox-e2e-ra-fuera-${process.pid}.txt`)
 
 describe.skipIf(MODE === 'prod')(`calidad R2-A (${MODE})`, () => {
   beforeAll(() => {
-    repo = makeGitRepo('onyx-e2e-ra-')
+    repo = makeGitRepo('lazunox-e2e-ra-')
     writeFileSync(outside, 'fuera del repo\n')
   })
-  const app = useApp({ env: { ONYXCODE_E2E_TRASH_DIR: trashDir } })
+  const app = useApp({ env: { LAZUNOX_E2E_TRASH_DIR: trashDir } })
   afterAll(() => {
     rmSync(trashDir, { recursive: true, force: true })
     rmSync(outside, { force: true })

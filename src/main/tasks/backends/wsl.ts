@@ -4,7 +4,7 @@
  * (`spawn` de wsl.exe, sockets) entra por `WslDeps`, así que se prueba entero con dobles en el Mac.
  *
  * Pendiente en el PC Windows (docs/WINDOWS-TAREAS.md): `setup()` (importar la distro desde un rootfs fijado por sha256),
- * instalar `resources/wsl/*` en `/opt/onyx`, y la batería de ataques A1-A15.
+ * instalar `resources/wsl/*` en `/opt/lazunox`, y la batería de ataques A1-A15.
  */
 import { EventEmitter } from 'node:events'
 import { win32 } from 'node:path'

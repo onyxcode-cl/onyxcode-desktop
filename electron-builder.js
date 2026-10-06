@@ -5,13 +5,13 @@
 // así que el build ad-hoc (`identity: '-'`, `hardenedRuntime: false`) sigue siendo el default de
 // `npm run package`. Ver docs/DISTRIBUCION.md para publicar una build firmada y notarizada.
 //
-// `ONYXCODE_SELF_SIGNED=1` (opcional; por defecto NO cambia nada): firma con un certificado de firma de código
+// `LAZUNOX_SELF_SIGNED=1` (opcional; por defecto NO cambia nada): firma con un certificado de firma de código
 // AUTOFIRMADO que el usuario crea en Acceso a Llaveros y pasa en `CSC_NAME`, sin notarizar. Existe para que macOS
 // conserve los permisos (TCC) entre actualizaciones: con firma ad-hoc los vuelve a pedir tras cada versión.
 // Ver docs/DISTRIBUCION.md §10.
-const selfSigned = process.env.ONYXCODE_SELF_SIGNED === '1'
+const selfSigned = process.env.LAZUNOX_SELF_SIGNED === '1'
 if (selfSigned && !process.env.CSC_NAME) {
-  throw new Error('ONYXCODE_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado de firma de código (docs/DISTRIBUCION.md §10).')
+  throw new Error('LAZUNOX_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado de firma de código (docs/DISTRIBUCION.md §10).')
 }
 const hasSigningIdentity = Boolean(process.env.CSC_NAME || process.env.CSC_LINK)
 // Notarización con clave API de App Store Connect (APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER, preferida) o con
@@ -20,7 +20,7 @@ const notarizeCreds = require('./build/sign-common.js').resolveNotarizeCreds(pro
 const hasNotarizeCreds = notarizeCreds.kind === 'api-key' || notarizeCreds.kind === 'apple-id'
 
 if (selfSigned && hasNotarizeCreds) {
-  console.warn('[electron-builder.config] ONYXCODE_SELF_SIGNED=1: se ignoran las credenciales de Apple; este build NO se notariza.')
+  console.warn('[electron-builder.config] LAZUNOX_SELF_SIGNED=1: se ignoran las credenciales de Apple; este build NO se notariza.')
 }
 if (hasSigningIdentity && !selfSigned && !hasNotarizeCreds) {
   console.warn(
@@ -33,8 +33,8 @@ if (hasSigningIdentity && !selfSigned && !hasNotarizeCreds) {
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   // Nombre e ID de la app: mantener sincronizado con src/shared/brand.ts
-  appId: 'cl.bentec.onyxcode',
-  productName: 'OnyxCode',
+  appId: 'cl.bentec.lazunox',
+  productName: 'Lazunox',
   directories: {
     buildResources: 'build',
     output: 'dist'
@@ -122,7 +122,7 @@ module.exports = {
       {
         from: 'resources/launcher/bin',
         to: 'launcher',
-        filter: ['onyxcode-disclaim']
+        filter: ['lazunox-disclaim']
       },
       // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
       // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).
@@ -164,7 +164,7 @@ module.exports = {
           entitlementsInherit: 'build/entitlements.mac.plist',
           binaries: [
             'Contents/Resources/computer-use/bin/cu-helper',
-            'Contents/Resources/launcher/onyxcode-disclaim',
+            'Contents/Resources/launcher/lazunox-disclaim',
             'Contents/Resources/opencode/opencode'
           ]
         }
@@ -178,7 +178,7 @@ module.exports = {
     extendInfo: {
       // Renombre a «Lazunox» (Fase 1): SOLO el nombre visible. No se define el nombre del bundle ni el del
       // ejecutable (lo comprueba src/test/identity-freeze.test.ts): Electron busca sus helpers a partir de
-      // ellos; el .app, userData y el Llavero siguen llamándose «OnyxCode».
+      // ellos; el .app, userData y el Llavero siguen llamándose «Lazunox».
       CFBundleDisplayName: 'Lazunox',
       LSHasLocalizedDisplayName: true,
       NSMicrophoneUsageDescription: 'Lazunox necesita el micrófono para grabar tu voz al grabar una skill (opcional).',

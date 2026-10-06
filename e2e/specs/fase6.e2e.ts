@@ -23,7 +23,7 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     const a = app()
     await waitForHooks(a.page)
     const chatDir = await chatDirectory(a)
-    const foreign = '/tmp/onyx-e2e-directorio-ajeno'
+    const foreign = '/tmp/lazunox-e2e-directorio-ajeno'
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
     await a.fake.emit({
       events: [
@@ -249,7 +249,7 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     // Otro directorio: ni sube fsVersion ni se llama a git:status.
     await git.reset()
     const v1 = await storeState<number>(a.page, 'useCode', 'fsVersion')
-    for (let i = 0; i < 6; i++) await burst('/tmp/onyx-e2e-otro-proyecto', 50)
+    for (let i = 0; i < 6; i++) await burst('/tmp/lazunox-e2e-otro-proyecto', 50)
     await new Promise((r) => setTimeout(r, 1_500)) // espera acotada (negativa): > debounce (400 ms) + margen
     expect(await git.count()).toBe(0)
     expect(await storeState<number>(a.page, 'useCode', 'fsVersion')).toBe(v1)
@@ -298,7 +298,7 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     // Aislamiento: los casos previos dejan la app en modo Code con una sesión activa que no existirá en el sidecar reiniciado
     // (su recarga daría un 404 legítimo en consola): se vuelve a Chat y se suelta la sesión de Code.
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
-    await a.page.evaluate(() => (window as any).__onyxE2E.useCode.setState({ activeSessionID: null }))
+    await a.page.evaluate(() => (window as any).__lazunoxE2E.useCode.setState({ activeSessionID: null }))
     const sid = await newChatAndSend(a, 'trabajo largo', { steps: [{ type: 'text', text: 'parcial' }, { type: 'delay', ms: 60_000 }], match: 'trabajo largo' })
     const status = (id: string): Promise<string | undefined> => storeState<string | undefined>(a.page, 'useSessions', `status.${id}`)
     await expect.poll(() => status(sid), { timeout: 15_000 }).toBe('busy')
@@ -408,7 +408,7 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
     // (`sessionSource` sin fijar). El filtro por origen de folderBusy debe ignorarla.
     const busySession = { id: 'ses_code_en_useSessions', directory: folder.path, title: 'Code en useSessions', time: { created: Date.now(), updated: Date.now() } }
     await a.page.evaluate((sess) => {
-      const st = (window as any).__onyxE2E.useSessions
+      const st = (window as any).__lazunoxE2E.useSessions
       st.setState({ sessions: { ...st.getState().sessions, [sess.id]: sess }, status: { ...st.getState().status, [sess.id]: 'busy' } })
     }, busySession)
     await new Promise((r) => setTimeout(r, 500)) // espera acotada (negativa)
@@ -416,13 +416,13 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
 
     // Control positivo: la misma sesión atribuida al origen de Tareas sí marca ocupada la carpeta.
     await a.page.evaluate(([id, baseUrl]) => {
-      const st = (window as any).__onyxE2E.useSessions
+      const st = (window as any).__lazunoxE2E.useSessions
       st.setState({ sessionSource: { ...st.getState().sessionSource, [id as string]: baseUrl } })
     }, [busySession.id, conn.baseUrl])
     await expect.poll(() => accessRadios(a).first().isDisabled(), { timeout: 10_000 }).toBe(true)
     // Y al quedar idle vuelve a habilitarse.
     await a.page.evaluate((id) => {
-      const st = (window as any).__onyxE2E.useSessions
+      const st = (window as any).__lazunoxE2E.useSessions
       st.setState({ status: { ...st.getState().status, [id]: 'idle' } })
     }, busySession.id)
     await expect.poll(() => accessRadios(a).first().isDisabled(), { timeout: 10_000 }).toBe(false)
@@ -442,5 +442,5 @@ describe('fase 6: checklist humana (no automatizable)', () => {
   it.skip('Copiar detalle del ErrorBoundary: escribe en el portapapeles del sistema (permiso y foco no disponibles en la ventana headless)', () => {})
   it.skip('aspecto del knob del Toggle de Rutinas (desplazamiento de 2 px): verificación visual, sin snapshot', () => {})
   it.skip('clic en la notificación nativa (restaura/enfoca la ventana y abre la sesión) y respeto del ajuste Sonido: requiere el centro de notificaciones de macOS', () => {})
-  it.skip('modo prod (`E2E_MODE=prod`): sin ganchos `__onyxE2E`, los casos de esta fase se omiten; solo aplica humo', () => {})
+  it.skip('modo prod (`E2E_MODE=prod`): sin ganchos `__lazunoxE2E`, los casos de esta fase se omiten; solo aplica humo', () => {})
 })

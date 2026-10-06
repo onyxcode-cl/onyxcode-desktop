@@ -18,7 +18,7 @@ const BRAND = new Set([
   'OpenCode',
   'MCP',
   'API',
-  'OnyxCode',
+  'Lazunox',
   'Lazunox',
   'Quick',
   'Entry',

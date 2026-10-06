@@ -108,7 +108,7 @@ class ValidateInit(unittest.TestCase):
             "env XDG": lambda i: i["env"].update(XDG_DATA_HOME="/x"),
             "minAbi": lambda i: i["landlock"].update(minAbi=1),
             "regla fuera": lambda i: i["landlock"]["rules"].append({"path": "/root", "access": "private"}),
-            "regla ..": lambda i: i["landlock"]["rules"].append({"path": "/win/c/onyx/tareas/a/../../x", "access": "ro"}),
+            "regla ..": lambda i: i["landlock"]["rules"].append({"path": "/win/c/lazunox/tareas/a/../../x", "access": "ro"}),
             "sistema alterado": lambda i: i["landlock"]["rules"][0].update(access="private"),
             "ro con escritura": lambda i: [r.update(access="rw-delete") for r in i["landlock"]["rules"] if r["path"] == "/win/d/Ref"],
             "borrar fuera de la principal": lambda i: i["landlock"]["rules"].append({"path": "/win/d/Ref", "access": "rw-delete"}),

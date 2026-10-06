@@ -19,7 +19,7 @@ afterEach(async (ctx) => {
 })
 
 function newDir(): string {
-  const d = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-sin-cuenta-')))
+  const d = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-sin-cuenta-')))
   dirs.push(d)
   return d
 }

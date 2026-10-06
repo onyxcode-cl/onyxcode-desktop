@@ -4,8 +4,8 @@
 //
 //   node scripts/rename-app.mjs --dry-run [--name NuevoNombre] [--alias nuevoalias] [--json] [--details]
 //
-// Qué mira: nombre visible (`OnyxCode`), slug en minúsculas (`onyxcode`: ids, rutas, protocolo, comandos), variables de entorno
-// (`ONYXCODE_*`), alias del autor (`bentec`) y dominio (`onyxcode.cl`). Los nombres históricos de migración (`Lapis`, `OpenDesk`) NO se
+// Qué mira: nombre visible (`Lazunox`), slug en minúsculas (`lazunox`: ids, rutas, protocolo, comandos), variables de entorno
+// (`LAZUNOX_*`), alias del autor (`bentec`) y dominio (`onyxcode.cl`). Los nombres históricos de migración (`Lapis`, `OpenDesk`) NO se
 // tocan: sirven para mover datos de versiones antiguas. No usa la red.
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -172,7 +172,7 @@ export function manualNotes(current, next) {
     `Helpers nativos: ${current.helperId} → ${next.helperId} y ${current.disclaimId} → ${next.disclaimId}. Se compilan con resources/computer-use/build.sh y resources/launcher/build.sh (literales que brand.ts no puede importar; los vigila src/test/brand-consistency.test.ts).`,
     `Protocolo de la app ${current.slug}://app (CSP y esquema propio): cambia con el slug; la zona de seguridad de src/main/security/app-protocol.ts es INTOCABLE sin decisión explícita del dueño.`,
     `Dominio del servicio de conexión del celular: remoto.${current.slug}.cl (Cloudflare Worker). Un dominio nuevo hay que comprarlo y configurarlo aparte; este script no toca servidores.`,
-    `Repositorio de releases (RELEASES_REPO), nombre del repositorio y de los assets (OnyxCode-<versión>-arm64.zip: el patrón está en src/shared/update-install.ts y scripts/update-lib.mjs, y lo valida el cliente).`,
+    `Repositorio de releases (RELEASES_REPO), nombre del repositorio y de los assets (Lazunox-<versión>-arm64.zip: el patrón está en src/shared/update-install.ts y scripts/update-lib.mjs, y lo valida el cliente).`,
     `Certificado y Team ID: no cambian por el nombre, pero el certificado Developer ID muestra el nombre legal, no el alias.`,
     `Nombres históricos «Lapis» y «OpenDesk» (migración de datos antiguos) y «opendesk» dentro de helperId: NO se tocan.`,
     `Marca registrada: comprueba antes el nombre nuevo en Google, GitHub, App Store, USPTO (tmsearch.uspto.gov) e INAPI (inapi.cl).`

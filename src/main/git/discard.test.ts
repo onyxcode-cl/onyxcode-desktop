@@ -35,7 +35,7 @@ const r = (rel: string): string => readFileSync(join(repo, rel), 'utf8')
 const trashed = (): string[] => (existsSync(trashDir) ? readdirSync(trashDir) : [])
 
 beforeEach(() => {
-  base = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-discard-')))
+  base = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-discard-')))
   repo = join(base, 'repo')
   mkdirSync(repo)
   trashDir = join(base, 'trash')

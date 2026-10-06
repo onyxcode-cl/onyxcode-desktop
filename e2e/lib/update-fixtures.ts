@@ -61,7 +61,7 @@ export interface FixtureOptions {
 }
 
 function toyApp(dir: string, version: string, padding: number): string {
-  const app = join(dir, 'OnyxCode.app')
+  const app = join(dir, 'Lazunox.app')
   mkdirSync(join(app, 'Contents', 'MacOS'), { recursive: true })
   mkdirSync(join(app, 'Contents', 'Resources'), { recursive: true })
   writeFileSync(join(app, 'Contents', 'MacOS', 'toy'), '#!/bin/sh\nexit 0\n')
@@ -119,10 +119,10 @@ function storedZip(file: string, names: string[]): void {
 
 export function buildFixture(keys: Keys, o: FixtureOptions = {}): Fixture {
   const version = o.version ?? FIXTURE_VERSION
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-fixture-')))
-  const zipName = `OnyxCode-${version}-arm64.zip`
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-fixture-')))
+  const zipName = `Lazunox-${version}-arm64.zip`
   const zipPath = join(dir, zipName)
-  if (o.traversalZip) storedZip(zipPath, ['OnyxCode.app/', '../evil'])
+  if (o.traversalZip) storedZip(zipPath, ['Lazunox.app/', '../evil'])
   else {
     const app = toyApp(join(dir, 'src'), o.plistVersion ?? version, o.padding ?? 0)
     const r = spawnSync('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, zipPath], { encoding: 'utf8' })

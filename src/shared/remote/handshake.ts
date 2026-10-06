@@ -29,7 +29,7 @@ import { sha256 } from '@noble/hashes/sha2.js'
 import { constantTimeEqual, fromBase64Url, hexToBytes, sha256Hex, toBase64Url } from './code'
 import type { Hs1Frame, Hs2Frame, Hs3Frame } from './protocol'
 
-/** Versión de la ETIQUETA criptográfica (`onyxcode-auth-v3`). No cambia con el protocolo v4: la criptografía es la misma. */
+/** Versión de la ETIQUETA criptográfica (`lazunox-auth-v3`). No cambia con el protocolo v4: la criptografía es la misma. */
 export const HS_VERSION = 3
 /** Versiones de protocolo que el Mac acepta en `hs1` (v3 = sin `caps`; v4 = con `caps`, `room` y trama `turn`). */
 export const HS_ACCEPTED_VERSIONS: readonly number[] = [3, 4]
@@ -42,7 +42,7 @@ export interface Fps {
 export type Rand = (n: number) => Uint8Array
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s)
-const SALT = enc('onyxcode/remote/v3')
+const SALT = enc('lazunox/remote/v3')
 const HEX64 = /^[0-9a-f]{64}$/
 const B64_32 = /^[A-Za-z0-9_-]{43}$/
 const B64_16 = /^[A-Za-z0-9_-]{22}$/
@@ -105,7 +105,7 @@ function transcript(t: TranscriptInput): string | null {
     !okOpt(t.rp, B64_16)
   )
     return null
-  return ['onyxcode-auth-v3', t.mode, t.id, t.fps.offer, t.fps.answer, t.nc, t.ns, t.cm ?? '-', t.rm ?? '-', t.rp ?? '-'].join('\n')
+  return ['lazunox-auth-v3', t.mode, t.id, t.fps.offer, t.fps.answer, t.nc, t.ns, t.cm ?? '-', t.rm ?? '-', t.rp ?? '-'].join('\n')
 }
 
 /** Prueba del celular al Mac (`c2h`). */
@@ -119,7 +119,7 @@ export function h2c(key: Uint8Array, transcriptText: string): string {
 
 /** Código de 6 dígitos del transcript (uint32 BE de los 4 primeros bytes, mod 1e6). No usa la clave. */
 export function sasCode(transcriptText: string): string {
-  const h = sha256(enc(`onyxcode-sas-v3\n${transcriptText}`))
+  const h = sha256(enc(`lazunox-sas-v3\n${transcriptText}`))
   const n = ((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0
   return String(n % 1_000_000).padStart(6, '0')
 }

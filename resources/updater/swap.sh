@@ -6,19 +6,19 @@
 #
 # Uso: swap.sh PID DESTINO STAGED COPIA DIR_MARCADORES VERSION
 #   PID              proceso de la app antigua (debe terminar antes de tocar nada)
-#   DESTINO          ruta de la .app instalada (p.ej. /Applications/OnyxCode.app)
-#   STAGED           .app nueva ya verificada (userData/update/staging/<ver>/extract/OnyxCode.app)
-#   COPIA            copia de seguridad en la MISMA carpeta: <dir>/.OnyxCode.app.bak-<ver>
+#   DESTINO          ruta de la .app instalada (p.ej. /Applications/Lazunox.app)
+#   STAGED           .app nueva ya verificada (userData/update/staging/<ver>/extract/Lazunox.app)
+#   COPIA            copia de seguridad en la MISMA carpeta: <dir>/.Lazunox.app.bak-<ver>
 #   DIR_MARCADORES   userData/update (booting-<ver>, boot-ok-<ver>, result.json)
 #   VERSION          versión nueva
 # Escribe DIR_MARCADORES/result.json con {"version","ok","rolledBack","error"}.
 #
-# Modo de prueba (solo para la prueba de integración): ONYXCODE_SWAP_TEST_NO_OPEN=1 solo se acepta si
-# DESTINO está bajo $TMPDIR; entonces `open -n` se sustituye por ejecutar Contents/MacOS/$ONYXCODE_SWAP_TEST_EXEC
+# Modo de prueba (solo para la prueba de integración): LAZUNOX_SWAP_TEST_NO_OPEN=1 solo se acepta si
+# DESTINO está bajo $TMPDIR; entonces `open -n` se sustituye por ejecutar Contents/MacOS/$LAZUNOX_SWAP_TEST_EXEC
 # (por defecto «toy») sin pasar por LaunchServices, y los tiempos de espera se pueden acortar con
-# ONYXCODE_SWAP_WAIT_PID / ONYXCODE_SWAP_WAIT_BOOT (segundos). Además:
-#   ONYXCODE_SWAP_TEST_USERDATA=/ruta  → la app se lanza con --user-data-dir=/ruta (nunca toca el userData real)
-#   ONYXCODE_SWAP_TEST_FAIL_NEW=1      → la app NUEVA se lanza con ONYXCODE_TEST_FAIL_BOOT=1 (rollback forzado; solo lo
+# LAZUNOX_SWAP_WAIT_PID / LAZUNOX_SWAP_WAIT_BOOT (segundos). Además:
+#   LAZUNOX_SWAP_TEST_USERDATA=/ruta  → la app se lanza con --user-data-dir=/ruta (nunca toca el userData real)
+#   LAZUNOX_SWAP_TEST_FAIL_NEW=1      → la app NUEVA se lanza con LAZUNOX_TEST_FAIL_BOOT=1 (rollback forzado; solo lo
 #                                        honra un build de prueba); la antigua restaurada se lanza sin esa variable.
 set -eu
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
@@ -46,8 +46,8 @@ for p in "$TARGET" "$STAGED" "$BAK" "$DIR"; do
 '* | *'"'* | *'\'* | */../* | */.. | */./* | */. | *//*) echo "ruta no válida" >&2; exit 64 ;;
   esac
 done
-case "$TARGET" in */OnyxCode.app) ;; *) echo "destino no es OnyxCode.app" >&2; exit 64 ;; esac
-case "$BAK" in "$(dirname "$TARGET")"/.OnyxCode.app.bak-*) ;; *) echo "copia fuera de la carpeta del destino" >&2; exit 64 ;; esac
+case "$TARGET" in */Lazunox.app) ;; *) echo "destino no es Lazunox.app" >&2; exit 64 ;; esac
+case "$BAK" in "$(dirname "$TARGET")"/.Lazunox.app.bak-*) ;; *) echo "copia fuera de la carpeta del destino" >&2; exit 64 ;; esac
 [ -d "$STAGED" ] || { echo "no existe STAGED" >&2; exit 64; }
 [ -d "$DIR" ] || { echo "no existe el directorio de marcadores" >&2; exit 64; }
 
@@ -57,18 +57,18 @@ WAIT_BOOT=90
 TEST_EXEC=toy
 TEST_UD=
 TEST_FAIL_NEW=0
-if [ "${ONYXCODE_SWAP_TEST_NO_OPEN:-}" = 1 ]; then
+if [ "${LAZUNOX_SWAP_TEST_NO_OPEN:-}" = 1 ]; then
   TMP_ROOT=${TMPDIR:-/nonexistent}
   TMP_ROOT=${TMP_ROOT%/}
   case "$TARGET" in
     "$TMP_ROOT"/*) TEST=1 ;;
     *) echo "modo de prueba solo bajo \$TMPDIR" >&2; exit 64 ;;
   esac
-  WAIT_PID=${ONYXCODE_SWAP_WAIT_PID:-$WAIT_PID}
-  WAIT_BOOT=${ONYXCODE_SWAP_WAIT_BOOT:-$WAIT_BOOT}
-  TEST_EXEC=${ONYXCODE_SWAP_TEST_EXEC:-toy}
+  WAIT_PID=${LAZUNOX_SWAP_WAIT_PID:-$WAIT_PID}
+  WAIT_BOOT=${LAZUNOX_SWAP_WAIT_BOOT:-$WAIT_BOOT}
+  TEST_EXEC=${LAZUNOX_SWAP_TEST_EXEC:-toy}
   case "$TEST_EXEC" in '' | *[!A-Za-z0-9._-]*) echo "ejecutable de prueba no válido" >&2; exit 64 ;; esac
-  TEST_UD=${ONYXCODE_SWAP_TEST_USERDATA:-}
+  TEST_UD=${LAZUNOX_SWAP_TEST_USERDATA:-}
   if [ -n "$TEST_UD" ]; then
     case "$TEST_UD" in
       /*) ;;
@@ -77,10 +77,10 @@ if [ "${ONYXCODE_SWAP_TEST_NO_OPEN:-}" = 1 ]; then
     case "$TEST_UD" in *'
 '* | *'"'* | *'\'* | */../* | */..) echo "userdata de prueba no válido" >&2; exit 64 ;; esac
   fi
-  [ "${ONYXCODE_SWAP_TEST_FAIL_NEW:-}" = 1 ] && TEST_FAIL_NEW=1
+  [ "${LAZUNOX_SWAP_TEST_FAIL_NEW:-}" = 1 ] && TEST_FAIL_NEW=1
 fi
 
-FAILED="$(dirname "$TARGET")/.OnyxCode.app.failed-$VER"
+FAILED="$(dirname "$TARGET")/.Lazunox.app.failed-$VER"
 
 write_result() { # ok rolledBack error
   printf '{"version":"%s","ok":%s,"rolledBack":%s,"error":"%s"}\n' "$VER" "$1" "$2" "$3" > "$RESULT.tmp" && mv -f "$RESULT.tmp" "$RESULT"
@@ -91,9 +91,9 @@ launch() { # ruta de la .app; $2 = 1 si es la app NUEVA (solo cuenta en modo de 
     FAIL=
     [ "${2:-0}" = 1 ] && [ "$TEST_FAIL_NEW" = 1 ] && FAIL=1
     if [ -n "$TEST_UD" ]; then
-      ONYXCODE_SWAP_TEST_DIR="$DIR" ONYXCODE_TEST_FAIL_BOOT="$FAIL" "$1/Contents/MacOS/$TEST_EXEC" --user-data-dir="$TEST_UD" >/dev/null 2>&1 </dev/null &
+      LAZUNOX_SWAP_TEST_DIR="$DIR" LAZUNOX_TEST_FAIL_BOOT="$FAIL" "$1/Contents/MacOS/$TEST_EXEC" --user-data-dir="$TEST_UD" >/dev/null 2>&1 </dev/null &
     else
-      ONYXCODE_SWAP_TEST_DIR="$DIR" ONYXCODE_TEST_FAIL_BOOT="$FAIL" "$1/Contents/MacOS/$TEST_EXEC" >/dev/null 2>&1 </dev/null &
+      LAZUNOX_SWAP_TEST_DIR="$DIR" LAZUNOX_TEST_FAIL_BOOT="$FAIL" "$1/Contents/MacOS/$TEST_EXEC" >/dev/null 2>&1 </dev/null &
     fi
   else
     open -n "$1"

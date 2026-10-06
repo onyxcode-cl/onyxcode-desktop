@@ -40,8 +40,8 @@ describe.skipIf(!DEV)('T4c: error del asistente en inglés', () => {
       ['en', 'Couldn’t find the `opencode` binary', 'No se encontró el binario'],
       ['es', 'No se encontró el binario', 'Couldn’t find the']
     ] as const) {
-      const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-t4c-')))
-      const home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-t4c-home-')))
+      const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-t4c-')))
+      const home = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-t4c-home-')))
       dirs.push(userData, home)
       mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
       const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }

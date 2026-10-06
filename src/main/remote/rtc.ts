@@ -108,7 +108,7 @@ export async function loadRtc(): Promise<RtcFactory> {
   let counter = 0
   return {
     createAnswerer({ bindAddress, iceServers }) {
-      const pc = new ndc.PeerConnection(`onyx-${++counter}`, {
+      const pc = new ndc.PeerConnection(`lazunox-${++counter}`, {
         iceServers: toNdcIceServers(iceServers ?? []),
         ...(bindAddress ? { bindAddress } : {}),
         enableIceTcp: false,

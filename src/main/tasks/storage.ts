@@ -13,7 +13,7 @@ import type { TasksStorageEntry, TasksStorageReport } from '@shared/ipc-tasks'
 export interface StorageEnv {
   /** `app.getPath('userData')`. */
   userData: string
-  /** Carpeta de capturas temporales de Control total (`temp/onyxcode-computer`). */
+  /** Carpeta de capturas temporales de Control total (`temp/lazunox-computer`). */
   screenshotsDir: string
   /** `userData/restore-points` (puntos de restauración de Tareas). */
   restorePointsDir?: string

@@ -63,7 +63,7 @@ describe('LRU de messages en Chat', () => {
     open: (id: string) => Promise<void>
     calls: string[]
   }> {
-    localStorage.setItem('onyx.lru.max', '1')
+    localStorage.setItem('lazunox.lru.max', '1')
     const calls: string[] = []
     const { useServer } = await import('../../stores/server')
     useServer.setState({

@@ -40,7 +40,7 @@ async function* feed(events: unknown[], hold = true): AsyncGenerator<unknown> {
 const tick = (ms = 30): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-hub-')))
+  root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-hub-')))
   proj = join(root, 'proj')
   outside = join(root, 'outside')
   mkdirSync(proj)
@@ -107,7 +107,7 @@ describe('recorte de eventos del motor', () => {
       fullAccess: false,
       computerUse: {} as never
     })
-    const eng = t.baseUrl.slice('onyx://engine/'.length)
+    const eng = t.baseUrl.slice('lazunox://engine/'.length)
     expect(trimOcEvent(ge('session.idle', join(proj, 'a', 'x')), eng, trim)).not.toBeNull()
     expect(trimOcEvent(ge('session.idle', join(proj, 'b')), eng, trim)).toBeNull()
     expect(trimOcEvent({ payload: { type: 'session.idle' } }, eng, trim)).toBeNull()
@@ -128,7 +128,7 @@ describe('recorte de eventos del motor', () => {
       baseUrl: string
       authorization: string
     }
-    expect(c.baseUrl).toBe('onyx://engine/main')
+    expect(c.baseUrl).toBe('lazunox://engine/main')
     expect(c.authorization).toBe('')
     expect(JSON.stringify(c)).not.toContain(PASS)
     expect(trimIpcEvent('tasks:server', { folder: outside, state: 'ready' }, trim)).toBeNull()

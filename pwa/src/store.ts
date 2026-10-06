@@ -1,7 +1,7 @@
 /**
  * Almacén del vínculo en el celular.
  *
- *  - HTTPS (modo nube): IndexedDB `onyx` / almacén `link`. Guarda el `CryptoKey` NO exportable (se clona con el algoritmo de
+ *  - HTTPS (modo nube): IndexedDB `lazunox` / almacén `link`. Guarda el `CryptoKey` NO exportable (se clona con el algoritmo de
  *    estructurado, sin exponer sus bytes), el `deviceId`, la sala del Mac y su nombre. El secreto en claro NO se guarda.
  *  - HTTP (red local, sin `crypto.subtle`): el `localStorage` de siempre (`deviceId` + secreto), sin cambios.
  *
@@ -32,7 +32,7 @@ export interface LinkStore {
   clear(): Promise<void>
 }
 
-const DB_NAME = 'onyx'
+const DB_NAME = 'lazunox'
 const STORE = 'link'
 const KEY = 'current'
 const ROOM_RE = /^[A-Za-z0-9_-]{43}$/
@@ -120,7 +120,7 @@ export function idbLinkStore(factory?: IDBFactory, opts: { roomless?: boolean } 
 
 // ── red local (HTTP): el almacenamiento de siempre ──
 
-const LEGACY_KEY = 'onyx.pwa.device'
+const LEGACY_KEY = 'lazunox.pwa.device'
 
 export interface LegacyCreds {
   id: string

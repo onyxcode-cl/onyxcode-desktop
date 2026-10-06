@@ -39,7 +39,7 @@ export function isCompatible(version: string | null, sdk: string = OPENCODE_SDK_
 
 /** Entorno de la sonda: XDG_* en un temporal para que `--version` no cree carpetas en los datos del CLI del usuario. */
 export function probeEnv(): Record<string, string> {
-  const root = join(tmpdir(), 'onyxcode-version-probe')
+  const root = join(tmpdir(), 'lazunox-version-probe')
   return minimalEnv({
     XDG_DATA_HOME: join(root, 'data'),
     XDG_CONFIG_HOME: join(root, 'config'),

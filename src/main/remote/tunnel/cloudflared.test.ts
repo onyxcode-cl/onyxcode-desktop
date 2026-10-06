@@ -33,7 +33,7 @@ const T0_STDERR = readFileSync(join(__dirname, '__fixtures__', 'cloudflared-2026
 const procs: CloudflaredProcess[] = []
 const extra: number[] = []
 beforeEach(() => {
-  userData = mkdtempSync(join(tmpdir(), 'onyx-cf-'))
+  userData = mkdtempSync(join(tmpdir(), 'lazunox-cf-'))
 })
 afterEach(async () => {
   for (const p of procs.splice(0)) await p.stop().catch(() => undefined)
@@ -164,7 +164,7 @@ describe('backoff', () => {
 })
 
 describe('isOurCloudflared', () => {
-  const bin = '/Users/x/Library/Application Support/OnyxCode/bin/cloudflared-2026.9.3/cloudflared'
+  const bin = '/Users/x/Library/Application Support/Lazunox/bin/cloudflared-2026.9.3/cloudflared'
   const args = 'tunnel --no-autoupdate --url http://127.0.0.1:50321 --metrics 127.0.0.1:0 --loglevel info --protocol auto'
   it('reconoce el binario y el vigía', () => {
     expect(isOurCloudflared(`${bin} ${args}`)).toBe(true)

@@ -71,7 +71,7 @@ export interface IpcInvokeContract {
   'diag:logs': { req: { source: DiagSource; maxLines?: number }; res: DiagLogs }
   /** Copia al portapapeles (lo hace main) el texto redactado de la fuente. */
   'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
-  /** «Exportar…»: diálogo de guardado y archivo `OnyxCode-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
+  /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
 
   // settings

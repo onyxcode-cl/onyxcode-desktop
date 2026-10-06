@@ -13,13 +13,14 @@
  */
 import { hkdf } from '@noble/hashes/hkdf.js'
 import { sha256 } from '@noble/hashes/sha2.js'
+import { CLOUD_DOMAIN } from '../brand'
 import { fromBase64Url, toBase64Url } from './code'
 import { LIMITS, ROOM_RE, SECRET_RE, parseIceServers, utf8Length, type IceServerSpec, type Parsed } from './protocol'
 
 /** Origen de la PWA y del servicio de conexión (un solo origen: CSP `connect-src 'self'`). */
-export const CLOUD_ORIGIN = 'https://remoto.onyxcode.cl'
+export const CLOUD_ORIGIN = `https://${CLOUD_DOMAIN}`
 /** Cabecera con la que el Mac presenta su `hostToken` (no va en la URL: no queda en registros). */
-export const CLOUD_HOST_HEADER = 'x-onyx-host'
+export const CLOUD_HOST_HEADER = 'x-lazunox-host'
 /** Servidor STUN que se usa SIEMPRE en el modo nube (sin él un celular en datos móviles casi nunca conecta directo). */
 export const CLOUD_STUN_URL = 'stun:stun.cloudflare.com:3478'
 export const CLOUD_HOST_PATH = '/v1/host'
@@ -48,7 +49,7 @@ export const CLOUD_LIMITS = {
 } as const
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s)
-const SALT = enc('onyxcode/remote/v3')
+const SALT = enc('lazunox/remote/v3')
 const ID_RE = /^[a-z0-9]{8,16}$/
 
 // ── salas ──

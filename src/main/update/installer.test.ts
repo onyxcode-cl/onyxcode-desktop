@@ -8,11 +8,11 @@ import type { InstallState } from '@shared/update-install'
 import { nodeInstallerFs, stagingRoot, UpdateInstaller, type FetchLike, type InstallerDeps, type RunFn } from './installer'
 import { posixOnly } from '../../test/platform'
 
-const APP_ID = 'cl.bentec.onyxcode'
+const APP_ID = 'cl.bentec.lazunox'
 const REPO = 'o/r'
 const TAG = 'v0.4.0'
 const BASE = `https://github.com/${REPO}/releases/download/${TAG}`
-const ZIP_NAME = 'OnyxCode-0.4.0-arm64.zip'
+const ZIP_NAME = 'Lazunox-0.4.0-arm64.zip'
 const ZIP_BYTES = Buffer.alloc(3000, 7)
 
 let tmp: string
@@ -20,7 +20,7 @@ let priv: KeyObject
 let spki: string
 
 beforeEach(() => {
-  tmp = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-inst-')))
+  tmp = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-inst-')))
   const k = generateKeyPairSync('ed25519')
   priv = k.privateKey
   spki = k.publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
@@ -81,12 +81,12 @@ function makeRun(calls: string[][], o: RunOpts = {}): RunFn {
     calls.push([cmd, ...args])
     const ok = (stdout = '', stderr = ''): { code: number; stdout: string; stderr: string } => ({ code: 0, stdout, stderr })
     if (cmd === '/usr/bin/zipinfo' && args[0] === '-1')
-      return ok((o.entries ?? ['OnyxCode.app/', 'OnyxCode.app/Contents/Info.plist']).join('\n') + '\n')
+      return ok((o.entries ?? ['Lazunox.app/', 'Lazunox.app/Contents/Info.plist']).join('\n') + '\n')
     if (cmd === '/usr/bin/zipinfo' && args[0] === '-t')
       return ok(`2 files, ${o.uncompressed ?? 5000} bytes uncompressed, 3000 bytes compressed:  40.0%\n`)
     if (cmd === '/usr/bin/ditto') {
       const dir = args[3]
-      const app = join(dir, 'OnyxCode.app')
+      const app = join(dir, 'Lazunox.app')
       mkdirSync(join(app, 'Contents'), { recursive: true })
       writeFileSync(join(app, 'Contents', 'Info.plist'), 'x')
       o.onExtract?.(dir)
@@ -120,7 +120,7 @@ function make(
     downloadBase: 'https://github.com',
     allowLoopbackHttp: false,
     keys: [{ id: 'k1', key: spki }],
-    userAgent: 'OnyxCode/0.3.0',
+    userAgent: 'Lazunox/0.3.0',
     onState: (s) => states.push(s),
     idleMs: 500,
     ...extra
@@ -156,7 +156,7 @@ describe('UpdateInstaller: camino feliz', () => {
     ])
     // Solo binarios del sistema, nada dentro del staging como ejecutable.
     for (const c of calls) expect(c[0].startsWith('/usr/bin/')).toBe(true)
-    expect(inst.getReady()?.stagedApp).toBe(join(staged(), 'extract', 'OnyxCode.app'))
+    expect(inst.getReady()?.stagedApp).toBe(join(staged(), 'extract', 'Lazunox.app'))
     if (posixOnly) expect(statSync(staged()).mode & 0o777).toBe(0o700)
     // Sin credenciales ni cookies en las peticiones.
     for (const r of w.requests) {
@@ -408,19 +408,14 @@ describe('UpdateInstaller: descarga', () => {
 })
 
 describe('UpdateInstaller: contenido del ZIP', () => {
-  it.each([
-    '../evil',
-    'OnyxCode.app/../../x',
-    '/etc/passwd',
-    'Otra.app/x',
-    '__MACOSX/._x',
-    '__MACOSX/OnyxCode.app/evil',
-    'OnyxCode.app/a\\b'
-  ])('entrada %j: no se extrae nada', async (entry) => {
-    const { inst, calls } = make(world(), { entries: ['OnyxCode.app/', entry] })
-    expect(await go(inst)).toMatchObject({ phase: 'error', code: 'zip' })
-    expect(calls.some((c) => c[0] === '/usr/bin/ditto')).toBe(false)
-  })
+  it.each(['../evil', 'Lazunox.app/../../x', '/etc/passwd', 'Otra.app/x', '__MACOSX/._x', '__MACOSX/Lazunox.app/evil', 'Lazunox.app/a\\b'])(
+    'entrada %j: no se extrae nada',
+    async (entry) => {
+      const { inst, calls } = make(world(), { entries: ['Lazunox.app/', entry] })
+      expect(await go(inst)).toMatchObject({ phase: 'error', code: 'zip' })
+      expect(calls.some((c) => c[0] === '/usr/bin/ditto')).toBe(false)
+    }
+  )
   it('ZIP que se expande demasiado', async () => {
     const { inst, calls } = make(world(), { uncompressed: 50 * 1024 * 1024 * 1024 })
     expect(await go(inst)).toMatchObject({ code: 'zip' })
@@ -428,31 +423,31 @@ describe('UpdateInstaller: contenido del ZIP', () => {
   })
   it('symlink que apunta fuera de la .app', async () => {
     const { inst } = make(world(), {
-      onExtract: (d) => symlinkSync('../../../../etc', join(d, 'OnyxCode.app', 'Contents', 'fuga'))
+      onExtract: (d) => symlinkSync('../../../../etc', join(d, 'Lazunox.app', 'Contents', 'fuga'))
     })
     expect(await go(inst)).toMatchObject({ code: 'zip' })
   })
   it('symlink absoluto', async () => {
-    const { inst } = make(world(), { onExtract: (d) => symlinkSync('/etc/passwd', join(d, 'OnyxCode.app', 'Contents', 'abs')) })
+    const { inst } = make(world(), { onExtract: (d) => symlinkSync('/etc/passwd', join(d, 'Lazunox.app', 'Contents', 'abs')) })
     expect(await go(inst)).toMatchObject({ code: 'zip' })
   })
   it('symlink colgante que saldría de la .app', async () => {
-    const { inst } = make(world(), { onExtract: (d) => symlinkSync('../../../nada', join(d, 'OnyxCode.app', 'Contents', 'col')) })
+    const { inst } = make(world(), { onExtract: (d) => symlinkSync('../../../nada', join(d, 'Lazunox.app', 'Contents', 'col')) })
     expect(await go(inst)).toMatchObject({ code: 'zip' })
   })
   it('symlink interno (como los de Electron Framework) es aceptable', async () => {
     const { inst } = make(world(), {
       onExtract: (d) => {
-        mkdirSync(join(d, 'OnyxCode.app', 'Contents', 'Frameworks', 'F.framework', 'Versions', 'A'), { recursive: true })
-        symlinkSync('A', join(d, 'OnyxCode.app', 'Contents', 'Frameworks', 'F.framework', 'Versions', 'Current'))
-        symlinkSync('Versions/Current/F', join(d, 'OnyxCode.app', 'Contents', 'Frameworks', 'F.framework', 'F'))
+        mkdirSync(join(d, 'Lazunox.app', 'Contents', 'Frameworks', 'F.framework', 'Versions', 'A'), { recursive: true })
+        symlinkSync('A', join(d, 'Lazunox.app', 'Contents', 'Frameworks', 'F.framework', 'Versions', 'Current'))
+        symlinkSync('Versions/Current/F', join(d, 'Lazunox.app', 'Contents', 'Frameworks', 'F.framework', 'F'))
       }
     })
     expect((await go(inst)).phase).toBe('ready')
   })
   // mkfifo no existe en Windows (el actualizador no es de la v1 de Windows).
   it.skipIf(!posixOnly)('FIFO dentro de la .app', async () => {
-    const { inst } = make(world(), { onExtract: (d) => execFileSync('/usr/bin/mkfifo', [join(d, 'OnyxCode.app', 'Contents', 'tuberia')]) })
+    const { inst } = make(world(), { onExtract: (d) => execFileSync('/usr/bin/mkfifo', [join(d, 'Lazunox.app', 'Contents', 'tuberia')]) })
     expect(await go(inst)).toMatchObject({ code: 'zip' })
   })
   it('codesign --verify falla', async () => {

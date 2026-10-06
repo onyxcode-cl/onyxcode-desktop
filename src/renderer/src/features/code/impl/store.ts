@@ -263,7 +263,7 @@ export interface CodeState {
   evictIdle: () => void
 }
 
-/** Tope de sesiones con contenido no fijadas en `useCode` (`localStorage['onyx.lru.max']` lo sobrescribe). */
+/** Tope de sesiones con contenido no fijadas en `useCode` (`localStorage['lazunox.lru.max']` lo sobrescribe). */
 /** Límite de la lista de sesiones por proyecto (sube con «Cargar más»). */
 const codeSessionLimits = new Map<string, number>()
 

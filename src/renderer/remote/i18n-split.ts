@@ -5,8 +5,8 @@
  * arranque (la lista, `src/renderer/remote/i18n-core-keys.json`, la genera y la vigila `src/renderer/remote/i18n-core.test.ts`).
  * Este plugin reescribe cada `src/shared/i18n/es/<área>.ts`:
  *   - importado normal: el mismo objeto pero solo con las claves de la lista;
- *   - importado con `?onyx-rest`: `export const rest` con TODAS las demás;
- *   - módulo virtual `virtual:onyx-es-rest`: `loadEsRest()` baja todos los `rest` (un trozo aparte) y los registra con
+ *   - importado con `?lazunox-rest`: `export const rest` con TODAS las demás;
+ *   - módulo virtual `virtual:lazunox-es-rest`: `loadEsRest()` baja todos los `rest` (un trozo aparte) y los registra con
  *     `registerMessages`. Las pantallas perezosas (Ajustes, Tareas, Rutinas) lo esperan antes de pintarse, y un `t()` que falle
  *     en la interfaz del arranque lo pide también (`setMissingKeyHandler`, `boot.tsx`).
  * El escritorio no pasa por aquí. El inglés no se parte (ya va entero y aparte, `en-dict.ts`).
@@ -16,8 +16,8 @@ import { resolve } from 'node:path'
 import ts from 'typescript'
 import type { Plugin } from 'vite'
 
-const REST_QUERY = '?onyx-rest'
-const VIRTUAL = 'virtual:onyx-es-rest'
+const REST_QUERY = '?lazunox-rest'
+const VIRTUAL = 'virtual:lazunox-es-rest'
 const RESOLVED = '\0' + VIRTUAL
 
 interface Parsed {
@@ -55,7 +55,7 @@ export function i18nSplit(opts: { esDir: string; coreKeys: readonly string[] }):
       .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
       .sort()
   return {
-    name: 'onyx-i18n-split',
+    name: 'lazunox-i18n-split',
     enforce: 'pre',
     resolveId(source) {
       return source === VIRTUAL ? RESOLVED : null

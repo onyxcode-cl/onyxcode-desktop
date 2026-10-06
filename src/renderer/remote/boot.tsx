@@ -9,7 +9,7 @@ import { watchThemeSync } from '@renderer/app/mobile/theme-sync'
 import '@renderer/app/globals.css'
 import '@renderer/app/mobile/mobile-tokens.css'
 import { setMissingKeyHandler } from '@shared/i18n'
-import { loadEsRest } from 'virtual:onyx-es-rest'
+import { loadEsRest } from 'virtual:lazunox-es-rest'
 import { mark } from './perf'
 import { loadHljs } from './shims/hljs-deferred'
 
@@ -21,7 +21,7 @@ function idle(fn: () => void): void {
 }
 
 /**
- * Monta la MISMA interfaz de escritorio (`src/renderer/src`). OnyxCode no tiene cuentas ni inicio de sesión.
+ * Monta la MISMA interfaz de escritorio (`src/renderer/src`). Lazunox no tiene cuentas ni inicio de sesión.
  */
 export function mountRemoteApp(): void {
   document.title = DISPLAY_NAME
@@ -56,11 +56,11 @@ export function mountRemoteApp(): void {
   })
   render()
   // Avisa al arranque ligero cuando ya pintó (retira su pantalla de carga).
-  const g = globalThis as { __onyxAppMounted?: () => void }
+  const g = globalThis as { __lazunoxAppMounted?: () => void }
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
       mark('painted')
-      g.__onyxAppMounted?.()
+      g.__lazunoxAppMounted?.()
       idle(() => {
         // Ya pintó: baja en un rato ocioso el Markdown y el resaltado, para que al abrir una conversación estén listos.
         void import('@renderer/components/Markdown').then((m) => m.preloadHighlight())

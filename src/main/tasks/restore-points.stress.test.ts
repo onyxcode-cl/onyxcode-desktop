@@ -1,5 +1,5 @@
 /**
- * Estrés de los puntos de restauración. Opcional: `npm run test:stress` (`ONYXCODE_STRESS=1`); no entra en
+ * Estrés de los puntos de restauración. Opcional: `npm run test:stress` (`LAZUNOX_STRESS=1`); no entra en
  * `npm run verify`. Mide límites (19 990 ok / 20 010 omitido), incremental, retraso del bucle de eventos y memoria.
  */
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
@@ -9,12 +9,12 @@ import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { RestorePoints } from './restore-points'
 
-const RUN = process.env.ONYXCODE_STRESS === '1'
+const RUN = process.env.LAZUNOX_STRESS === '1'
 
 describe.skipIf(!RUN)('Puntos de restauración: estrés', () => {
   let base: string
   beforeAll(() => {
-    base = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-stress-')))
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-stress-')))
   })
   afterAll(() => rmSync(base, { recursive: true, force: true }))
 

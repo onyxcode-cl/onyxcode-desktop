@@ -51,11 +51,11 @@ describe('colectores del harness', () => {
     expect(await spy.badge()).toBe('')
   })
 
-  it.skipIf(MODE === 'prod')('stores y withLru operan sobre window.__onyxE2E', async () => {
+  it.skipIf(MODE === 'prod')('stores y withLru operan sobre window.__lazunoxE2E', async () => {
     const a = app()
     await waitForHooks(a.page)
     await withLru(a, 2)
-    expect(await a.page.evaluate(() => localStorage.getItem('onyx.lru.max'))).toBe('2')
+    expect(await a.page.evaluate(() => localStorage.getItem('lazunox.lru.max'))).toBe('2')
     expect(await storeState(a.page, 'useUi', 'mode')).toBeTruthy()
   })
 })

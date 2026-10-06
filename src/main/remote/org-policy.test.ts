@@ -208,13 +208,13 @@ describe('OrgRemotePolicy (archivo real)', () => {
   })
   it('precedencia: la política manda; el usuario no tiene ruta para saltársela (el resultado no depende del entorno)', () => {
     writeFileSync(file, JSON.stringify({ remote: { enabled: false } }))
-    const before = process.env.ONYXCODE_REMOTE
-    process.env.ONYXCODE_REMOTE = '1'
+    const before = process.env.LAZUNOX_REMOTE
+    process.env.LAZUNOX_REMOTE = '1'
     try {
       expect(new OrgRemotePolicy(() => file).get().blocked).toBe('disabled')
     } finally {
-      if (before === undefined) delete process.env.ONYXCODE_REMOTE
-      else process.env.ONYXCODE_REMOTE = before
+      if (before === undefined) delete process.env.LAZUNOX_REMOTE
+      else process.env.LAZUNOX_REMOTE = before
     }
   })
   it('sin lectura repetida: mientras el archivo no cambie devuelve el mismo objeto', () => {

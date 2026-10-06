@@ -10,7 +10,7 @@ export const ZIP_MAX_BYTES = 600 * 1024 * 1024
 export const MANIFEST_MAX_BYTES = 16 * 1024
 export const SIGNATURE_MAX_BYTES = 1024
 export const SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
-const ZIP_NAME_RE = /^OnyxCode-\d+\.\d+\.\d+-arm64\.zip$/
+const ZIP_NAME_RE = /^Lazunox-\d+\.\d+\.\d+-arm64\.zip$/
 const SHA_RE = /^[0-9a-f]{64}$/
 const SEMVER_RE = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/
 
@@ -18,7 +18,7 @@ const SEMVER_RE = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+
 
 /** Lee la clave privada Ed25519 (PEM). Rechaza un archivo dentro del repo o con permisos más abiertos que 0600. NUNCA imprime su contenido. */
 export function readPrivateKey(file, repoRoot) {
-  if (!file) throw new Error('Define ONYXCODE_UPDATE_KEY_FILE con la ruta de la clave privada (fuera del repositorio).')
+  if (!file) throw new Error('Define LAZUNOX_UPDATE_KEY_FILE con la ruta de la clave privada (fuera del repositorio).')
   const abs = resolve(file)
   let real
   try {
@@ -28,7 +28,7 @@ export function readPrivateKey(file, repoRoot) {
   }
   const root = realpathSync(repoRoot)
   if (real === root || real.startsWith(root + sep))
-    throw new Error('La clave privada está DENTRO del repositorio: muévela fuera (p.ej. ~/.onyxcode-keys/) y vuelve a intentar.')
+    throw new Error('La clave privada está DENTRO del repositorio: muévela fuera (p.ej. ~/.lazunox-keys/) y vuelve a intentar.')
   const st = statSync(real)
   if (!st.isFile()) throw new Error('La clave privada no es un archivo normal.')
   if ((st.mode & 0o077) !== 0)
@@ -122,18 +122,18 @@ export function validateManifest(m, { appId, current, tag, keyId }) {
   if (m.tag !== tag) return 'el tag no coincide con la release'
   if (m.version !== tag.replace(/^v/, '')) return 'la versión no coincide con el tag'
   if (/-/.test(m.version) || cmpSemver(m.version, current) !== 1) return 'la versión no es mayor que la instalada'
-  if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `OnyxCode-${m.version}-arm64.zip`) return 'nombre de ZIP no válido'
+  if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `Lazunox-${m.version}-arm64.zip`) return 'nombre de ZIP no válido'
   return null
 }
 
 function safeParts(path) {
   const parts = path.split('/')
   if (parts[parts.length - 1] === '') parts.pop()
-  if (!parts.length || parts[0] !== 'OnyxCode.app') return null
+  if (!parts.length || parts[0] !== 'Lazunox.app') return null
   return parts.every((p) => p.length > 0 && p !== '.' && p !== '..') ? parts : null
 }
 
-// Igual que isSafeZipEntry del cliente: OnyxCode.app/… y, como única excepción, los AppleDouble de ditto --sequesterRsrc.
+// Igual que isSafeZipEntry del cliente: Lazunox.app/… y, como única excepción, los AppleDouble de ditto --sequesterRsrc.
 export function isSafeZipEntry(entry) {
   if (typeof entry !== 'string' || !entry || entry.length > 1024) return false
   if (entry.includes('\0') || entry.includes('\\') || entry.startsWith('/') || /^[A-Za-z]:/.test(entry)) return false
@@ -222,7 +222,7 @@ export function readBrand(root) {
   const src = readFileSync(join(root, 'src/shared/brand.ts'), 'utf8')
   const alias = /export const AUTHOR_ALIAS = '([^']*)'/.exec(src)?.[1] ?? ''
   return {
-    appId: `cl.${alias}.onyxcode`,
+    appId: `cl.${alias}.lazunox`,
     publicKey: /export const UPDATE_PUBLIC_KEY = '([^']*)'/.exec(src)?.[1] ?? '',
     keyId: /export const UPDATE_KEY_ID = '([^']*)'/.exec(src)?.[1] ?? ''
   }

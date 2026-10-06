@@ -29,7 +29,7 @@ beforeEach(async () => {
 const st = (): ReturnType<Mod['useSessions']['getState']> => m.useSessions.getState()
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 const lruOn = (max: number): void => {
-  localStorage.setItem('onyx.lru.max', String(max))
+  localStorage.setItem('lazunox.lru.max', String(max))
 }
 /** Sesión con contenido y historial cargado, vía eventos + `loaded`. */
 function seed(id: string, over: { parentID?: string } = {}): void {

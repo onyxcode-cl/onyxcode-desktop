@@ -2,7 +2,7 @@
  * Motores OpenCode que ve el celular y reescritura de credenciales (F0-T4).
  *
  * El celular NUNCA recibe la contraseña Basic del sidecar: `opencode:connection`, `opencode:restart`, el evento
- * `opencode:connection` y `tasks:start` se reescriben a `baseUrl = onyx://engine/main` (o `.../task/<token>`) y
+ * `opencode:connection` y `tasks:start` se reescriben a `baseUrl = lazunox://engine/main` (o `.../task/<token>`) y
  * `authorization = ''`. El mapeo token → conexión real vive solo aquí (en el Mac) y caduca al cerrar (`clear()`).
  * `scrub` es la red de seguridad final: cualquier cadena de una respuesta o evento que contenga una credencial conocida
  * se tacha, aunque algún canal la devolviera por un camino que no se previó.
@@ -12,7 +12,7 @@ import type { OpencodeConnection } from '@shared/types'
 import type { TasksConnection } from '@shared/ipc-tasks'
 
 export const ENGINE_MAIN = 'main'
-export const ENGINE_SCHEME = 'onyx://engine/'
+export const ENGINE_SCHEME = 'lazunox://engine/'
 export const REDACTED = '[redacted]'
 
 export interface EngineTarget {
@@ -67,7 +67,7 @@ export class EngineRegistry {
     return [...this.known]
   }
 
-  /** `onyx://engine/main` o `onyx://engine/task/<token>` → identificador de motor del protocolo (`main`, `task/<token>`). */
+  /** `lazunox://engine/main` o `lazunox://engine/task/<token>` → identificador de motor del protocolo (`main`, `task/<token>`). */
   static engFromUrl(url: string): string | null {
     return url.startsWith(ENGINE_SCHEME) ? url.slice(ENGINE_SCHEME.length) : null
   }

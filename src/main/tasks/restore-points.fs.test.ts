@@ -1,7 +1,7 @@
 /**
  * Puntos de restauración contra sistemas de archivos reales (solo macOS): ExFAT, FAT32 y HFS+ con
  * mayúsculas. Monta imágenes con `hdiutil` (sin tocar discos reales). Opcional: `npm run test:fs`
- * (`ONYXCODE_FS_IT=1`); no entra en `npm run verify`.
+ * (`LAZUNOX_FS_IT=1`); no entra en `npm run verify`.
  */
 import { execFileSync } from 'node:child_process'
 import {
@@ -22,7 +22,7 @@ import { basename, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { RestorePoints } from './restore-points'
 
-const RUN = process.platform === 'darwin' && process.env.ONYXCODE_FS_IT === '1'
+const RUN = process.platform === 'darwin' && process.env.LAZUNOX_FS_IT === '1'
 const FORMATS = [
   { name: 'ExFAT', fs: 'ExFAT', caseSensitive: false },
   { name: 'FAT32', fs: 'MS-DOS FAT32', caseSensitive: false },
@@ -39,11 +39,13 @@ describe.skipIf(!RUN).each(FORMATS)('Puntos de restauración en $name', ({ fs, c
   let trashed: string[] = []
 
   beforeAll(() => {
-    tmp = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-fs-')))
+    tmp = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-fs-')))
     const img = join(tmp, 'vol.dmg')
     mount = join(tmp, 'mnt')
     mkdirSync(mount)
-    execFileSync('hdiutil', ['create', '-size', '64m', '-fs', fs, '-volname', 'ONYXFS', '-type', 'SPARSE', '-ov', img], { stdio: 'pipe' })
+    execFileSync('hdiutil', ['create', '-size', '64m', '-fs', fs, '-volname', 'LAZUNOXFS', '-type', 'SPARSE', '-ov', img], {
+      stdio: 'pipe'
+    })
     execFileSync('hdiutil', ['attach', '-nobrowse', '-mountpoint', mount, `${img}.sparseimage`], { stdio: 'pipe' })
     attached = true
     mount = realpathSync(mount)

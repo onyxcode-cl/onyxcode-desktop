@@ -10,12 +10,12 @@ export function detectLicense(text) {
 export function checkLicenseCoherence(license, notices) {
   const errors = []
   if (/LICENCIA PENDIENTE/i.test(license)) errors.push('LICENSE contiene «LICENCIA PENDIENTE»')
-  if (/LICENCIA PROPIA DE ONYXCODE:\s*\**\s*PENDIENTE/i.test(notices))
+  if (/LICENCIA PROPIA DE LAZUNOX:\s*\**\s*PENDIENTE/i.test(notices))
     errors.push('THIRD_PARTY_NOTICES.md dice que la licencia propia está PENDIENTE pero existe LICENSE: alinea el texto')
   const kind = detectLicense(license)
   if (!kind) errors.push('No se reconoce la licencia de LICENSE (se esperaba MIT o Apache-2.0): revísala')
-  const line = /^\*\*Licencia de OnyxCode:?\s*([^*\n]*)\.?\*\*[^\n]*$/m.exec(notices)
-  if (!line) errors.push('THIRD_PARTY_NOTICES.md no declara la licencia de OnyxCode (línea «**Licencia de OnyxCode: …**»)')
+  const line = /^\*\*Licencia de Lazunox:?\s*([^*\n]*)\.?\*\*[^\n]*$/m.exec(notices)
+  if (!line) errors.push('THIRD_PARTY_NOTICES.md no declara la licencia de Lazunox (línea «**Licencia de Lazunox: …**»)')
   else if (kind && line[1].trim().replace(/\.$/, '') !== kind)
     errors.push(`THIRD_PARTY_NOTICES.md declara «${line[1].trim().replace(/\.$/, '')}» pero LICENSE es ${kind}`)
   else if (!/`LICENSE`/.test(line[0])) errors.push('La declaración de licencia de THIRD_PARTY_NOTICES.md debe remitir al fichero `LICENSE`')

@@ -16,28 +16,28 @@ function seedOld(folder: string): void {
 }
 
 describe('migrateFolderScratch', () => {
-  it('sin .cowork/ no hace nada (y no crea .onyxcode/)', () => {
+  it('sin .cowork/ no hace nada (y no crea .lazunox/)', () => {
     const f = tmpDir()
     expect(migrateFolderScratch(f)).toEqual({ status: 'none', moved: [], left: [] })
     expect(readdirSync(f)).toEqual([])
   })
 
-  it('renombra .cowork/ -> .onyxcode/trabajo/ conservando el contenido y sin tocar memoria.md', () => {
+  it('renombra .cowork/ -> .lazunox/trabajo/ conservando el contenido y sin tocar memoria.md', () => {
     const f = tmpDir()
     seedOld(f)
-    mkdirSync(join(f, '.onyxcode'), { recursive: true })
-    writeFileSync(join(f, '.onyxcode/memoria.md'), '# memoria del proyecto')
+    mkdirSync(join(f, '.lazunox'), { recursive: true })
+    writeFileSync(join(f, '.lazunox/memoria.md'), '# memoria del proyecto')
     const r = migrateFolderScratch(f)
     expect(r.status).toBe('renamed')
     expect(existsSync(join(f, '.cowork'))).toBe(false)
-    expect(readFileSync(join(f, '.onyxcode/trabajo/pylib/x.py'), 'utf8')).toBe('print(1)')
-    expect(readFileSync(join(f, '.onyxcode/trabajo/grabaciones/r1/v.mov'), 'utf8')).toBe('video')
-    expect(readFileSync(join(f, '.onyxcode/trabajo/descargas/a.pdf'), 'utf8')).toBe('pdf')
-    expect(readFileSync(join(f, '.onyxcode/memoria.md'), 'utf8')).toBe('# memoria del proyecto')
-    expect(readdirSync(join(f, '.onyxcode')).sort()).toEqual(['memoria.md', 'trabajo'])
+    expect(readFileSync(join(f, '.lazunox/trabajo/pylib/x.py'), 'utf8')).toBe('print(1)')
+    expect(readFileSync(join(f, '.lazunox/trabajo/grabaciones/r1/v.mov'), 'utf8')).toBe('video')
+    expect(readFileSync(join(f, '.lazunox/trabajo/descargas/a.pdf'), 'utf8')).toBe('pdf')
+    expect(readFileSync(join(f, '.lazunox/memoria.md'), 'utf8')).toBe('# memoria del proyecto')
+    expect(readdirSync(join(f, '.lazunox')).sort()).toEqual(['memoria.md', 'trabajo'])
   })
 
-  it('crea .onyxcode/ si no existía y es idempotente', () => {
+  it('crea .lazunox/ si no existía y es idempotente', () => {
     const f = tmpDir()
     seedOld(f)
     expect(migrateFolderScratch(f).status).toBe('renamed')
@@ -49,9 +49,9 @@ describe('migrateFolderScratch', () => {
   it('ambos existentes: mueve lo que no choca y deja el resto en .cowork/ sin borrar nada', () => {
     const f = tmpDir()
     seedOld(f)
-    mkdirSync(join(f, '.onyxcode/trabajo/descargas'), { recursive: true })
-    writeFileSync(join(f, '.onyxcode/trabajo/descargas/b.pdf'), 'nuevo')
-    writeFileSync(join(f, '.onyxcode/memoria.md'), 'memoria')
+    mkdirSync(join(f, '.lazunox/trabajo/descargas'), { recursive: true })
+    writeFileSync(join(f, '.lazunox/trabajo/descargas/b.pdf'), 'nuevo')
+    writeFileSync(join(f, '.lazunox/memoria.md'), 'memoria')
     const logs: string[] = []
     const r = migrateFolderScratch(f, (m) => logs.push(m))
     expect(r.status).toBe('partial')
@@ -60,18 +60,18 @@ describe('migrateFolderScratch', () => {
     expect(logs.length).toBeGreaterThan(0)
     // Lo que choca se queda intacto en ambos lados.
     expect(readFileSync(join(f, '.cowork/descargas/a.pdf'), 'utf8')).toBe('pdf')
-    expect(readFileSync(join(f, '.onyxcode/trabajo/descargas/b.pdf'), 'utf8')).toBe('nuevo')
-    expect(readFileSync(join(f, '.onyxcode/trabajo/pylib/x.py'), 'utf8')).toBe('print(1)')
-    expect(readFileSync(join(f, '.onyxcode/memoria.md'), 'utf8')).toBe('memoria')
+    expect(readFileSync(join(f, '.lazunox/trabajo/descargas/b.pdf'), 'utf8')).toBe('nuevo')
+    expect(readFileSync(join(f, '.lazunox/trabajo/pylib/x.py'), 'utf8')).toBe('print(1)')
+    expect(readFileSync(join(f, '.lazunox/memoria.md'), 'utf8')).toBe('memoria')
   })
 
   it('ambos existentes sin colisiones: status merged', () => {
     const f = tmpDir()
     seedOld(f)
-    mkdirSync(join(f, '.onyxcode/trabajo/otra'), { recursive: true })
+    mkdirSync(join(f, '.lazunox/trabajo/otra'), { recursive: true })
     const r = migrateFolderScratch(f)
     expect(r.status).toBe('merged')
-    expect(readdirSync(join(f, '.onyxcode/trabajo')).sort()).toEqual(['descargas', 'grabaciones', 'otra', 'pylib'])
+    expect(readdirSync(join(f, '.lazunox/trabajo')).sort()).toEqual(['descargas', 'grabaciones', 'otra', 'pylib'])
   })
 
   it('no sigue symlinks: .cowork como enlace no se migra', () => {
@@ -82,15 +82,15 @@ describe('migrateFolderScratch', () => {
     const r = migrateFolderScratch(f)
     expect(r.status).toBe('skipped')
     expect(lstatSync(join(f, '.cowork')).isSymbolicLink()).toBe(true)
-    expect(existsSync(join(f, '.onyxcode'))).toBe(false)
+    expect(existsSync(join(f, '.lazunox'))).toBe(false)
     expect(readFileSync(join(real, 'secreto.txt'), 'utf8')).toBe('s')
   })
 
-  it('no sigue symlinks: .onyxcode como enlace no se toca', () => {
+  it('no sigue symlinks: .lazunox como enlace no se toca', () => {
     const f = tmpDir()
     const real = tmpDir()
     seedOld(f)
-    symlinkSync(real, join(f, '.onyxcode'))
+    symlinkSync(real, join(f, '.lazunox'))
     expect(migrateFolderScratch(f).status).toBe('skipped')
     expect(readdirSync(real)).toEqual([])
     expect(existsSync(join(f, '.cowork/pylib/x.py'))).toBe(true)
@@ -100,11 +100,11 @@ describe('migrateFolderScratch', () => {
     const f = tmpDir()
     seedOld(f)
     symlinkSync('/tmp', join(f, '.cowork/enlace'))
-    mkdirSync(join(f, '.onyxcode/trabajo'), { recursive: true })
+    mkdirSync(join(f, '.lazunox/trabajo'), { recursive: true })
     const r = migrateFolderScratch(f)
     expect(r.status).toBe('partial')
     expect(r.left).toEqual(['enlace'])
     expect(lstatSync(join(f, '.cowork/enlace')).isSymbolicLink()).toBe(true)
-    expect(existsSync(join(f, '.onyxcode/trabajo/enlace'))).toBe(false)
+    expect(existsSync(join(f, '.lazunox/trabajo/enlace'))).toBe(false)
   })
 })

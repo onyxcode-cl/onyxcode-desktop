@@ -122,7 +122,7 @@ export function cdpSessionFor(wc: WebContents, opts: CdpSessionOptions = {}): Cd
     const tree = await send<{ frameTree: { frame: { id: string } } }>('Page.getFrameTree')
     const res = await send<{ executionContextId: number }>('Page.createIsolatedWorld', {
       frameId: tree.frameTree.frame.id,
-      worldName: 'onyxcode-embedded-browser',
+      worldName: 'lazunox-embedded-browser',
       grantUniveralAccess: false
     })
     m.isolatedWorldId = res.executionContextId

@@ -118,8 +118,8 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
     ['en', new RegExp(`Step 1 of ${STEPS_TOTAL}`), `Paso 1 de ${STEPS_TOTAL}`],
     ['es', new RegExp(`Paso 1 de ${STEPS_TOTAL}`), `Step 1 of ${STEPS_TOTAL}`]
   ] as const)('el asistente se ve en %s y no mezcla el otro idioma', async (lang, step, other) => {
-    const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-')))
-    const home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-home-')))
+    const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-i18n-')))
+    const home = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-i18n-home-')))
     dirs.push(userData, home)
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
     const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
@@ -145,7 +145,7 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
 describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b)', () => {
   const fakeBin = fakeOutsideUserData()
   const project = makeTasksDir()
-  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-i18n-t4b-')))
+  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-i18n-t4b-')))
   const routine = (id: string, name: string, enabled: boolean, schedule: Record<string, unknown>): Record<string, unknown> => ({
     id,
     name,

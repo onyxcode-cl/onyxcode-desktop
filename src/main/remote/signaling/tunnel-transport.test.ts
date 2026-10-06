@@ -33,7 +33,7 @@ let audits: AuditInput[] = []
 const transports: TunnelSignalingTransport[] = []
 
 beforeEach(() => {
-  userData = mkdtempSync(join(tmpdir(), 'onyx-tt-'))
+  userData = mkdtempSync(join(tmpdir(), 'lazunox-tt-'))
   pwa = join(userData, 'pwa')
   mkdirSync(join(pwa, 'assets'), { recursive: true })
   writeFileSync(
@@ -174,7 +174,7 @@ describe('apertura y uso «desde fuera»', { timeout: 30_000 }, () => {
     expect((await p.page('x=y')).status).toBe(404)
     const g = await p.gate()
     expect(g.status).toBe(303)
-    expect(g.cookie).toMatch(/^__Host-onyxk=/)
+    expect(g.cookie).toMatch(/^__Host-lazunoxk=/)
     const page = await p.page(g.cookie)
     expect(page.status).toBe(200)
     expect(page.body).toContain('<title>pwa</title>')
@@ -421,7 +421,7 @@ describe('autocomprobación (unidad)', () => {
     (map: Record<string, [number, string]>): HttpGet =>
     async (url) => {
       const k = new URL(url).pathname
-      const hit = map[k.startsWith('/__onyx/probe/') ? '/__onyx/probe' : k]
+      const hit = map[k.startsWith('/__lazunox/probe/') ? '/__lazunox/probe' : k]
       if (!hit) return { status: 404, body: Buffer.from('Not found') }
       return { status: hit[0], body: Buffer.from(hit[1]) }
     }
@@ -434,13 +434,13 @@ describe('autocomprobación (unidad)', () => {
       await runSelfCheck(
         'https://a-b.trycloudflare.com',
         'T',
-        deps(get({ '/__onyx/probe': [200, 'onyx-probe-ok'], '/': [200, html], '/assets/a.js': [200, 'js'] }))
+        deps(get({ '/__lazunox/probe': [200, 'lazunox-probe-ok'], '/': [200, html], '/assets/a.js': [200, 'js'] }))
       )
     ).toBe('ok')
   })
   it('mismatch si el script difiere, la página difiere o la sonda no es la nuestra', async () => {
     const base = {
-      '/__onyx/probe': [200, 'onyx-probe-ok'] as [number, string],
+      '/__lazunox/probe': [200, 'lazunox-probe-ok'] as [number, string],
       '/': [200, html] as [number, string],
       '/assets/a.js': [200, 'js'] as [number, string]
     }
@@ -454,10 +454,12 @@ describe('autocomprobación (unidad)', () => {
         deps(get({ ...base, '/': [200, html + '<script src="/cdn-cgi/x.js"></script>'] }))
       )
     ).toBe('mismatch')
-    expect(await runSelfCheck('https://a-b.trycloudflare.com', 'T', deps(get({ ...base, '/__onyx/probe': [200, 'otra cosa'] })))).toBe(
+    expect(await runSelfCheck('https://a-b.trycloudflare.com', 'T', deps(get({ ...base, '/__lazunox/probe': [200, 'otra cosa'] })))).toBe(
       'mismatch'
     )
-    expect(await runSelfCheck('https://a-b.trycloudflare.com', 'T', deps(get({ ...base, '/__onyx/probe': [404, 'x'] })))).toBe('mismatch')
+    expect(await runSelfCheck('https://a-b.trycloudflare.com', 'T', deps(get({ ...base, '/__lazunox/probe': [404, 'x'] })))).toBe(
+      'mismatch'
+    )
   })
   it('reintenta con 5xx/530 y fallos de red hasta agotar el plazo; luego unreachable', async () => {
     let n = 0
@@ -466,7 +468,7 @@ describe('autocomprobación (unidad)', () => {
       n++
       if (n < 3) return { status: 530, body: Buffer.from('') }
       if (n === 3) throw new Error('ENOTFOUND')
-      return get({ '/__onyx/probe': [200, 'onyx-probe-ok'], '/': [200, html], '/assets/a.js': [200, 'js'] })(url, {})
+      return get({ '/__lazunox/probe': [200, 'lazunox-probe-ok'], '/': [200, html], '/assets/a.js': [200, 'js'] })(url, {})
     }
     expect(await runSelfCheck('https://a-b.trycloudflare.com', 'T', { ...deps(flaky), now: () => (t += 1) })).toBe('ok')
     expect(n).toBeGreaterThan(3)
@@ -486,10 +488,12 @@ describe('autocomprobación (unidad)', () => {
     await runSelfCheck('https://a-b.trycloudflare.com', 'TOKEN', {
       ...deps(async (url, h) => {
         seen.push(h)
-        return url.includes('/__onyx/probe/') ? { status: 200, body: Buffer.from('onyx-probe-ok') } : { status: 404, body: Buffer.from('') }
+        return url.includes('/__lazunox/probe/')
+          ? { status: 200, body: Buffer.from('lazunox-probe-ok') }
+          : { status: 404, body: Buffer.from('') }
       })
     })
-    expect(seen[1].Cookie).toBe('__Host-onyxk=TOKEN')
+    expect(seen[1].Cookie).toBe('__Host-lazunoxk=TOKEN')
     expect(seen[1]['Accept-Encoding']).toBe('identity')
   })
 })

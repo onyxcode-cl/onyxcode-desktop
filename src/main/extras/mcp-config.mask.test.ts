@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MCP_VALUE_MASK } from '@shared/mcp-catalog'
 
-const userData = mkdtempSync(join(tmpdir(), 'onyx-mcpmask-'))
+const userData = mkdtempSync(join(tmpdir(), 'lazunox-mcpmask-'))
 vi.mock('electron', () => ({ app: { getPath: () => userData } }))
 
 import { appOpencodeConfigPath, maskAppMcpConfig, readAppMcpConfig, saveMcpServer } from './mcp-config'

@@ -6,7 +6,7 @@
  * tarea, o una app extra a mitad de tarea): mientras está pendiente, la sesión queda en pausa SIN
  * LÍMITE DE TIEMPO (no hay "sin respuesta ⇒ denegado") y la píldora se agranda para mostrar el
  * plan y un selector de nivel por app. Aprobar/Denegar desde aquí NUNCA activa la ventana
- * principal de OnyxCode (`showInactive`, ver `computer/overlay.ts`); "Editar en OnyxCode" es la única
+ * principal de Lazunox (`showInactive`, ver `computer/overlay.ts`); "Editar en Lazunox" es la única
  * acción que la trae al frente, y solo porque el usuario la pulsó.
  *
  * Nunca escala ni baja permisos en silencio: se preselecciona `defaultAccessDecision` (lo que declara
@@ -294,7 +294,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && activeRequest) cancelRequest()
 })
 reqEdit.addEventListener('click', () => {
-  // Trae OnyxCode al frente (acción EXPLÍCITA del usuario) para escribir el feedback con más espacio;
+  // Trae Lazunox al frente (acción EXPLÍCITA del usuario) para escribir el feedback con más espacio;
   // la tarjeta sigue pendiente (no se responde desde aquí).
   void tasks?.invoke('computer:showMainWindow')
 })

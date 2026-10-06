@@ -12,7 +12,7 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 const PASSWORD = 'pw-sidecar-0123456789abcdef'
-const AUTH = `Basic ${Buffer.from(`onyxcode:${PASSWORD}`).toString('base64')}`
+const AUTH = `Basic ${Buffer.from(`lazunox:${PASSWORD}`).toString('base64')}`
 
 function setup(extra: Partial<DiagnosticsDeps> = {}, engineLines: string[] = []): DiagnosticsService {
   const userData = join(dir, 'ud')
@@ -31,7 +31,7 @@ function setup(extra: Partial<DiagnosticsDeps> = {}, engineLines: string[] = [])
       secrets: () => [PASSWORD, AUTH, AUTH.slice(6)],
       getStatus: () => ({ state: 'ready', restarts: 2, version: '1.18.32', error: `fallo previo con ${PASSWORD}` })
     },
-    versions: () => ({ OnyxCode: '0.3.0', electron: '44' }),
+    versions: () => ({ Lazunox: '0.3.0', electron: '44' }),
     now: () => Date.UTC(2026, 9, 1, 15, 30),
     ...extra
   })

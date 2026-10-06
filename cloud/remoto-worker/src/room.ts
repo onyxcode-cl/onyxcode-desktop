@@ -13,8 +13,8 @@ export interface RoomEnv extends TurnEnv {
 }
 
 /** Cabeceras internas que pone el Worker de entrada (las del cliente se descartan allí). */
-export const ROLE_HEADER = 'x-onyx-role'
-export const ROOM_HEADER = 'x-onyx-room'
+export const ROLE_HEADER = 'x-lazunox-role'
+export const ROOM_HEADER = 'x-lazunox-room'
 
 const newId = (): string => {
   const b = crypto.getRandomValues(new Uint8Array(8))

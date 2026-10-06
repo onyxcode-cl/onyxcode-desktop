@@ -17,7 +17,7 @@ import { killStaleServers, normalizePidKind } from './pids'
 
 const children: ChildProcess[] = []
 beforeEach(() => {
-  userData = mkdtempSync(join(tmpdir(), 'onyx-pids-'))
+  userData = mkdtempSync(join(tmpdir(), 'lazunox-pids-'))
 })
 afterEach(() => {
   for (const c of children.splice(0)) {

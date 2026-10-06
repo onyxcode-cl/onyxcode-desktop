@@ -191,11 +191,11 @@ describe.skipIf(!macOnly)('RestorePoints', () => {
     expect(read('b.txt')).toBe('B!')
   })
 
-  it('excluye .git, node_modules y .onyxcode', async () => {
+  it('excluye .git, node_modules y .lazunox', async () => {
     put('a.txt', 'a')
     put('.git/HEAD', 'ref')
     put('node_modules/x/i.js', 'js')
-    put('.onyxcode/memory.md', 'm')
+    put('.lazunox/memory.md', 'm')
     const rp = make()
     const pt = await rp.create(folder, 's1', 'x')
     expect(pt.files).toBe(1)

@@ -19,7 +19,7 @@ const apps: E2EApp[] = []
 const dirs: string[] = []
 
 function newUserData(connected?: string[]): string {
-  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-model-')))
+  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-model-')))
   dirs.push(userData)
   if (connected) {
     mkdirSync(join(userData, 'fake-opencode'), { recursive: true })
@@ -121,7 +121,7 @@ describe('el modelo elegido en Chat persiste', () => {
     await expectVisible(picker(page))
     await choose(page, 'Fake Reasoner')
     // Lista aún sin cargar (transitorio): no se cambia nada.
-    await page.evaluate(() => (window as any).__onyxE2E.useProviders.setState({ loaded: false, providers: [], defaults: {} }))
+    await page.evaluate(() => (window as any).__lazunoxE2E.useProviders.setState({ loaded: false, providers: [], defaults: {} }))
     await expectAttr(picker(page), 'title', 'fake/fake-reasoner')
     expect(diskModel(userData)).toEqual(GO)
     await expect.poll(() => diskChat(userData)).toEqual(REASONER)
@@ -171,7 +171,7 @@ describe('modelo que ya no está en la lista (o proveedor sin clave)', () => {
     // Al conectar el proveedor y recargar la lista, la elección vuelve a valer sin que el usuario la repita.
     await app.fake.set({ connectedProviders: ['fake', 'opencode-go', 'anthropic'] })
     await page.evaluate(() => {
-      const w = (window as any).__onyxE2E
+      const w = (window as any).__lazunoxE2E
       return w.useProviders.getState().load(w.useServer.getState().client, true)
     })
     await expectAttr(picker(page), 'title', 'anthropic/fake-claude')

@@ -29,9 +29,9 @@ export const TUNNEL_URL_SCAN_RE = new RegExp(`https://(${WORDS})\\.trycloudflare
 /** Ruta de la puerta previa: `GET /k/<T>` pone la galleta y redirige a `/`. */
 export const TRAVEL_GATE_PREFIX = '/k/'
 /** Nombre de la galleta de la puerta: el prefijo `__Host-` obliga a `Secure`, `Path=/` y sin `Domain`. */
-export const TRAVEL_GATE_COOKIE = '__Host-onyxk'
+export const TRAVEL_GATE_COOKIE = '__Host-lazunoxk'
 /** Ruta de la autocomprobación del Mac (solo vale con un `nonce` recién generado, de un solo uso). */
-export const TRAVEL_PROBE_PREFIX = '/__onyx/probe/'
+export const TRAVEL_PROBE_PREFIX = '/__lazunox/probe/'
 /** Cloudflare sirve `/cdn-cgi/` en el mismo origen: no se usa ni se coloca nada bajo esa ruta. */
 export const TRAVEL_RESERVED_PREFIX = '/cdn-cgi/'
 /** `T`: 16 bytes en base64url (22 caracteres). */

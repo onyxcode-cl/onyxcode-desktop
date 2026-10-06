@@ -10,7 +10,7 @@ import { ManifestStore, parseManifest } from './manifest'
 const ID = '0a1b2c3d-1111-4222-8333-444455556666'
 let dir: string
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'onyx-cmpman-'))
+  dir = mkdtempSync(join(tmpdir(), 'lazunox-cmpman-'))
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
@@ -29,7 +29,7 @@ const sample = (over: Partial<CompareManifest> = {}): CompareManifest => ({
     index,
     model: { providerID: 'p', modelID: 'm' + index },
     sessionID: null,
-    worktree: { path: `/work/.proj-worktrees/onyx-compare-0a1b2c3d-${index}`, branch: `onyx-compare/0a1b2c3d-${index}` },
+    worktree: { path: `/work/.proj-worktrees/lazunox-compare-0a1b2c3d-${index}`, branch: `lazunox-compare/0a1b2c3d-${index}` },
     state: 'queued',
     adopted: false,
     discarded: false,
@@ -80,12 +80,12 @@ describe('manifiesto de comparaciones', () => {
     expect(() => s.remove('x/../y')).toThrow()
   })
 
-  it('parseManifest rechaza ramas fuera de onyx-compare/, rutas relativas y columnas repetidas', () => {
+  it('parseManifest rechaza ramas fuera de lazunox-compare/, rutas relativas y columnas repetidas', () => {
     const bad = sample()
     bad.columns[0].worktree = { path: '/w/x', branch: 'main' }
     expect(parseManifest(JSON.parse(JSON.stringify(bad)))).toBeNull()
     const rel = sample()
-    rel.columns[0].worktree = { path: 'relativa', branch: 'onyx-compare/0a1b2c3d-0' }
+    rel.columns[0].worktree = { path: 'relativa', branch: 'lazunox-compare/0a1b2c3d-0' }
     expect(parseManifest(JSON.parse(JSON.stringify(rel)))).toBeNull()
     const dup = sample()
     dup.columns[1].index = 0

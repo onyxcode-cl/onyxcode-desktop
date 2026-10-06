@@ -31,7 +31,7 @@ describe('migrateLocalStorage', () => {
       'cowork.sidebarGroupMode': 'date',
       'ui.mode': 'cowork',
       'settings.section': 'cowork',
-      'onyx.lru.max': '5'
+      'lazunox.lru.max': '5'
     })
     const r = migrateLocalStorage(s)
     expect(r.skipped).toBe(false)
@@ -41,7 +41,7 @@ describe('migrateLocalStorage', () => {
     expect(d['tasks.pinned']).toBe('["a"]')
     expect(d['ui.mode']).toBe('tasks')
     expect(d['settings.section']).toBe('tasks')
-    expect(d['onyx.lru.max']).toBe('5')
+    expect(d['lazunox.lru.max']).toBe('5')
     expect(d[LS_SCHEMA_KEY]).toBe('1')
     // las viejas se conservan (copia, no movimiento)
     expect(d['cowork.pinned']).toBe('["a"]')

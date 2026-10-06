@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 if (process.platform !== 'darwin') {
-  console.log('[build-native] omitido (solo macOS: cu-helper y onyxcode-disclaim)')
+  console.log('[build-native] omitido (solo macOS: cu-helper y lazunox-disclaim)')
   process.exit(0)
 }
 

@@ -25,7 +25,7 @@ const SHOTS = process.env.CTL_SHOTS_DIR
 const fakeBin = fakeOutsideUserData()
 const work = makeTasksDir()
 // HOME falso: la app lo toma como «carpeta personal» (os.homedir) sin tocar la del usuario real.
-const fakeHome = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-home-')))
+const fakeHome = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-home-')))
 mkdirSync(join(fakeHome, 'Documents'))
 afterAll(() => {
   fakeBin.dispose()
@@ -148,7 +148,7 @@ describe.skipIf(!DEV)('Control total sin carpeta', () => {
     expect(reqs.some((r) => r.directory === fakeHome)).toBe(true)
     const id = (await storeState<string | null>(page, 'useTasks', 'activeTaskId'))!
     await expect
-      .poll(() => page.evaluate((sid) => ((window as any).__onyxE2E.useSessions.getState().status[sid] ?? 'idle') === 'idle', id), {
+      .poll(() => page.evaluate((sid) => ((window as any).__lazunoxE2E.useSessions.getState().status[sid] ?? 'idle') === 'idle', id), {
         timeout: 60_000
       })
       .toBe(true)

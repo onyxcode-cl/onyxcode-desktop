@@ -418,7 +418,7 @@ export class UpdateInstaller {
   async verifyApp(app: string, m: UpdateManifest): Promise<void> {
     const { run } = this.d
     const st = await this.d.fs.lstat(app).catch(() => null)
-    if (!st || !st.isDirectory || st.isSymlink) throw new InstallError('zip', 'falta OnyxCode.app')
+    if (!st || !st.isDirectory || st.isSymlink) throw new InstallError('zip', 'falta Lazunox.app')
     await this.walk(app)
 
     const cs = await run('/usr/bin/codesign', ['--verify', '--deep', '--strict', app])

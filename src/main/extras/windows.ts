@@ -45,7 +45,7 @@ export function preloadPath(name: PreloadName = 'index'): string {
 
 /**
  * Carga una página del renderer multi-página: dev server de Vite sin empaquetar, esquema propio
- * `onyxcode://app/…` en producción (nunca `file://`). `page` = ruta relativa a out/renderer.
+ * `lazunox://app/…` en producción (nunca `file://`). `page` = ruta relativa a out/renderer.
  */
 export function loadRendererPage(win: BrowserWindow, page: string): Promise<void> {
   return win.loadURL(rendererPageUrl(page))

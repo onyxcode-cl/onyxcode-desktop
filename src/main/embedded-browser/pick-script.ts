@@ -10,7 +10,7 @@
  * Devuelve solo datos planos. El saneado de aquí es la primera de dos pasadas: `pick.ts` (main) vuelve a sanear todo.
  *
  * Nunca sale: `value=`, `checked`/`selected`, el texto de un `<textarea>`, `input[type=password|hidden]` ni los de
- * `autocomplete=cc-*|one-time-code|current-password|new-password` (se sustituyen por `<input type="…" data-onyx-redacted>`),
+ * `autocomplete=cc-*|one-time-code|current-password|new-password` (se sustituyen por `<input type="…" data-lazunox-redacted>`),
  * `on*`, `srcdoc`, `nonce`, `integrity`, `style`, `srcset`, atributos con nombre de secreto, query/fragmento de las URLs,
  * `<script>`/`<style>`/`<template>`/`<noscript>` ni el trazado de un `<svg>`.
  */
@@ -108,7 +108,7 @@ export function pickInPage(this: unknown, lim: PickPageLimits): PickRaw {
   ]
   const DROP_ATTRS = ['srcdoc', 'nonce', 'integrity', 'style', 'srcset', 'imagesrcset', 'value', 'checked', 'selected']
   const VALUELESS_INPUT = ['submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'color', 'range', 'hidden']
-  const REDACTED = 'data-onyx-redacted'
+  const REDACTED = 'data-lazunox-redacted'
 
   const acc = { redactions: 0, sensitive: false, truncated: false, size: 0 }
 

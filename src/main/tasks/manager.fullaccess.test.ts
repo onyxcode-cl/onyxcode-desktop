@@ -45,7 +45,7 @@ let prevHome: string | undefined
 
 beforeEach(() => {
   // Dentro del home real: /private (tmp) es «carpeta del sistema» para Sandbox.
-  root = realpathSync(mkdtempSync(join(homedir(), '.onyx-ctl-test-')))
+  root = realpathSync(mkdtempSync(join(homedir(), '.lazunox-ctl-test-')))
   home = join(root, 'home')
   mkdirSync(join(home, 'Documents'), { recursive: true })
   mkdirSync(join(home, '.ssh'), { recursive: true })

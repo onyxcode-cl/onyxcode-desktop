@@ -81,7 +81,7 @@ describe('formatElementContext', () => {
     expect(text).not.toContain('Captura: adjunta')
   })
   it('no añade valores de formulario: lo saneado en main llega igual de saneado', () => {
-    const html = '<input type="password" data-onyx-redacted><input type="text" name="q">'
+    const html = '<input type="password" data-lazunox-redacted><input type="text" name="q">'
     const text = formatElementContext(pickedElement({ tag: 'form', html, redactions: 2 }), both)
     expect(text).toContain(html)
     expect(text).not.toMatch(/value=/)

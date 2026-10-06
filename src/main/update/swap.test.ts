@@ -9,19 +9,19 @@ import { macOnly } from '../../test/platform'
 
 let tmp: string
 beforeEach(() => {
-  tmp = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-swapts-')))
+  tmp = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-swapts-')))
 })
 afterEach(() => rmSync(tmp, { recursive: true, force: true }))
 
 function ctx(): SwapContext {
-  return { userData: join(tmp, 'ud'), currentApp: '/Applications/OnyxCode.app', currentVersion: '0.3.0', pid: 4321 }
+  return { userData: join(tmp, 'ud'), currentApp: '/Applications/Lazunox.app', currentVersion: '0.3.0', pid: 4321 }
 }
 function good(c: SwapContext): SwapArgs {
   return {
     pid: c.pid,
     target: c.currentApp,
-    staged: join(c.userData, 'update', 'staging', '0.4.0', 'extract', 'OnyxCode.app'),
-    bak: '/Applications/.OnyxCode.app.bak-0.3.0',
+    staged: join(c.userData, 'update', 'staging', '0.4.0', 'extract', 'Lazunox.app'),
+    bak: '/Applications/.Lazunox.app.bak-0.3.0',
     markerDir: join(c.userData, 'update'),
     version: '0.4.0'
   }
@@ -29,8 +29,8 @@ function good(c: SwapContext): SwapArgs {
 
 describe('bundlePathFromExe', () => {
   it('saca la .app del ejecutable', () => {
-    expect(bundlePathFromExe('/Applications/OnyxCode.app/Contents/MacOS/OnyxCode')).toBe('/Applications/OnyxCode.app')
-    expect(bundlePathFromExe('/Users/a/Applications/OnyxCode.app/Contents/MacOS/OnyxCode')).toBe('/Users/a/Applications/OnyxCode.app')
+    expect(bundlePathFromExe('/Applications/Lazunox.app/Contents/MacOS/Lazunox')).toBe('/Applications/Lazunox.app')
+    expect(bundlePathFromExe('/Users/a/Applications/Lazunox.app/Contents/MacOS/Lazunox')).toBe('/Users/a/Applications/Lazunox.app')
     expect(bundlePathFromExe('/x/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron')).toBeNull()
   })
 })
@@ -45,17 +45,17 @@ describe.skipIf(!macOnly)('validateSwapArgs', () => {
     ['pid ajeno', { pid: 1234 }],
     ['pid 1', { pid: 1 }],
     ['pid no entero', { pid: 4321.5 }],
-    ['target distinto de la app en ejecución', { target: '/Applications/Otra/OnyxCode.app' }],
-    ['staged fuera del staging', { staged: '/tmp/x/OnyxCode.app' }],
-    ['staged de otra versión', { staged: '/ud/update/staging/9.9.9/extract/OnyxCode.app' }],
+    ['target distinto de la app en ejecución', { target: '/Applications/Otra/Lazunox.app' }],
+    ['staged fuera del staging', { staged: '/tmp/x/Lazunox.app' }],
+    ['staged de otra versión', { staged: '/ud/update/staging/9.9.9/extract/Lazunox.app' }],
     ['marcadores fuera de userData', { markerDir: '/tmp/update' }],
-    ['copia en otra carpeta', { bak: '/tmp/.OnyxCode.app.bak-0.3.0' }],
-    ['copia con otra versión', { bak: '/Applications/.OnyxCode.app.bak-0.0.1' }],
+    ['copia en otra carpeta', { bak: '/tmp/.Lazunox.app.bak-0.3.0' }],
+    ['copia con otra versión', { bak: '/Applications/.Lazunox.app.bak-0.0.1' }],
     ['versión no semver', { version: 'x; rm -rf /' }],
-    ['ruta con ..', { staged: '/ud/update/staging/../../x/OnyxCode.app' }],
-    ['ruta con salto de línea', { target: '/Applications/OnyxCode.app\nx' }],
+    ['ruta con ..', { staged: '/ud/update/staging/../../x/Lazunox.app' }],
+    ['ruta con salto de línea', { target: '/Applications/Lazunox.app\nx' }],
     ['ruta con comillas', { markerDir: '/ud/up"date' }],
-    ['ruta relativa', { bak: '.OnyxCode.app.bak-0.3.0' }]
+    ['ruta relativa', { bak: '.Lazunox.app.bak-0.3.0' }]
   ])('rechaza %s', (_n, over) => {
     const c = ctx()
     expect(validateSwapArgs({ ...good(c), ...over }, c)).not.toBeNull()
@@ -93,9 +93,9 @@ describe.skipIf(!macOnly)('startSwap', () => {
     expect(calls[0].args).toEqual([
       copy,
       '4321',
-      '/Applications/OnyxCode.app',
+      '/Applications/Lazunox.app',
       staged,
-      '/Applications/.OnyxCode.app.bak-0.3.0',
+      '/Applications/.Lazunox.app.bak-0.3.0',
       join(c.userData, 'update'),
       '0.4.0'
     ])
@@ -113,7 +113,7 @@ describe.skipIf(!macOnly)('startSwap', () => {
     expect(() =>
       startSwap(
         { scriptSource: '/no/existe', ctx: c, quit: () => quit++, spawn: () => ({ unref: () => undefined }) },
-        '/tmp/fuera/OnyxCode.app',
+        '/tmp/fuera/Lazunox.app',
         '0.4.0'
       )
     ).toThrow(/no válidos/)
@@ -165,12 +165,12 @@ describe('marcadores de arranque', () => {
 describe('cleanupAfterBoot', () => {
   function layout(): { dir: string; app: string; parent: string } {
     const parent = join(tmp, 'Applications')
-    const app = join(parent, 'OnyxCode.app')
+    const app = join(parent, 'Lazunox.app')
     const dir = join(tmp, 'ud', 'update')
     for (const d of [
       app,
-      join(parent, '.OnyxCode.app.bak-0.3.0'),
-      join(parent, '.OnyxCode.app.failed-0.4.1'),
+      join(parent, '.Lazunox.app.bak-0.3.0'),
+      join(parent, '.Lazunox.app.failed-0.4.1'),
       join(parent, 'Otra.app'),
       join(dir, 'staging', '0.4.0'),
       join(dir, 'staging', '0.5.0'),
@@ -185,15 +185,15 @@ describe('cleanupAfterBoot', () => {
   it('primer arranque (sin boot-ok previo): conserva la copia de seguridad', () => {
     const { dir, app, parent } = layout()
     cleanupAfterBoot({ dir, appPath: app, version: '0.4.0' })
-    expect(existsSync(join(parent, '.OnyxCode.app.bak-0.3.0'))).toBe(true)
+    expect(existsSync(join(parent, '.Lazunox.app.bak-0.3.0'))).toBe(true)
   })
   it('arranque siguiente (ya hubo boot-ok de esta versión): borra copia, fallidas, marcadores viejos, stagings antiguos y scripts', () => {
     const { dir, app, parent } = layout()
     writeFileSync(join(dir, 'boot-ok-0.4.0'), '1')
     const { removed } = cleanupAfterBoot({ dir, appPath: app, version: '0.4.0' })
     expect(removed.length).toBeGreaterThan(0)
-    expect(existsSync(join(parent, '.OnyxCode.app.bak-0.3.0'))).toBe(false)
-    expect(existsSync(join(parent, '.OnyxCode.app.failed-0.4.1'))).toBe(false)
+    expect(existsSync(join(parent, '.Lazunox.app.bak-0.3.0'))).toBe(false)
+    expect(existsSync(join(parent, '.Lazunox.app.failed-0.4.1'))).toBe(false)
     expect(existsSync(join(parent, 'Otra.app'))).toBe(true)
     expect(existsSync(app)).toBe(true)
     expect(existsSync(join(dir, 'booting-0.3.0'))).toBe(false)
@@ -206,6 +206,6 @@ describe('cleanupAfterBoot', () => {
     const { dir, parent } = layout()
     writeFileSync(join(dir, 'boot-ok-0.4.0'), '1')
     cleanupAfterBoot({ dir, appPath: null, version: '0.4.0' })
-    expect(existsSync(join(parent, '.OnyxCode.app.bak-0.3.0'))).toBe(true)
+    expect(existsSync(join(parent, '.Lazunox.app.bak-0.3.0'))).toBe(true)
   })
 })

@@ -22,7 +22,7 @@ const WIN_ENV = {
   ELECTRON_RUN_AS_NODE: '1',
   NODE_OPTIONS: '--inspect',
   GITHUB_TOKEN: 'ghp_secreto',
-  OPENCODE_BIN: 'C:\\onyx\\opencode.exe'
+  OPENCODE_BIN: 'C:\\lazunox\\opencode.exe'
 }
 
 describe('minimalEnv (win32)', () => {

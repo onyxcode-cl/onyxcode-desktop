@@ -426,7 +426,7 @@ export const tasks = {
   'tasks.proj.agentsExists': 'Es el archivo AGENTS.md de la carpeta; también lo usan otras herramientas. ',
   'tasks.proj.useMemory': 'Usar memoria',
   'tasks.proj.useMemoryHint': 'Si la desactivas, el agente no lee ni escribe las notas de este proyecto. El archivo no se borra.',
-  'tasks.proj.notes': 'Notas guardadas (.onyxcode/memoria.md)',
+  'tasks.proj.notes': 'Notas guardadas (.lazunox/memoria.md)',
   'tasks.proj.notesPh': 'El agente guarda aquí notas útiles entre tareas (preferencias, decisiones, datos recurrentes)…',
   'tasks.proj.notesHint':
     'El agente de tareas lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada nueva tarea de esta carpeta.',

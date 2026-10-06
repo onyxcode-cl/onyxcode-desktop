@@ -1,8 +1,8 @@
 /**
- * Servidor MCP de "computer use" para OnyxCode (transporte Streamable HTTP en 127.0.0.1).
+ * Servidor MCP de "computer use" para Lazunox (transporte Streamable HTTP en 127.0.0.1).
  *
  * Se empaqueta como entrada aparte (`out/main/computer-mcp.js`) y el proceso principal lo arranca
- * como **utilityProcess** (`computer/mcp-host.ts`): así hereda la responsabilidad TCC de OnyxCode
+ * como **utilityProcess** (`computer/mcp-host.ts`): así hereda la responsabilidad TCC de Lazunox
  * (Accesibilidad / Grabación de pantalla, necesarias para `cu-helper` y `screencapture`) mientras
  * que los `opencode serve` se lanzan desvinculados (`process/disclaim.ts`) y NO la tienen. OpenCode
  * lo usa como MCP `remote` con cabecera `Authorization: Bearer <token>`. Ya no depende de
@@ -30,7 +30,7 @@
  *   COMPUTER_TYPE_DELAY_MS  retardo base por carácter al escribir (por defecto el del helper, 14 ms)
  *   COMPUTER_AUTO_SCREENSHOT "0" desactiva la captura automática tras cada acción (por defecto 1)
  *   COMPUTER_MAX_LONG_SIDE  lado largo máximo de la captura en px (por defecto 1366)
- *   COMPUTER_SHOT_DIR       carpeta para las capturas (por defecto $TMPDIR/onyxcode-computer)
+ *   COMPUTER_SHOT_DIR       carpeta para las capturas (por defecto $TMPDIR/lazunox-computer)
  *   COMPUTER_FAKE_SCREENSHOT (solo pruebas) usa esta imagen en lugar de `screencapture`
  *
  * Coordenadas: las herramientas reciben coordenadas EN PÍXELES DE LA ÚLTIMA CAPTURA y las
@@ -60,7 +60,7 @@ const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
 const EVENTS_URL = process.env.COMPUTER_EVENTS_URL ?? ''
 const AUTO_SHOT = process.env.COMPUTER_AUTO_SCREENSHOT !== '0'
 const MAX_LONG = Math.max(400, Number(process.env.COMPUTER_MAX_LONG_SIDE) || 1366)
-const SHOT_DIR = process.env.COMPUTER_SHOT_DIR || join(tmpdir(), 'onyxcode-computer')
+const SHOT_DIR = process.env.COMPUTER_SHOT_DIR || join(tmpdir(), 'lazunox-computer')
 const FAKE_SHOT = process.env.COMPUTER_FAKE_SCREENSHOT ?? ''
 const INSTANT = process.env.COMPUTER_INSTANT === '1'
 const TYPE_DELAY = process.env.COMPUTER_TYPE_DELAY_MS ?? ''
@@ -272,7 +272,7 @@ async function requireForeground(session?: string): Promise<void> {
 // ("Aprobar y empezar"), toda herramienta de ACCIÓN (`action: true` en TOOLS) se rechaza aquí: no
 // solo por UX, es la comprobación que de verdad impide actuar aunque el modelo se salte el plan.
 
-// La aprobación es POR SESIÓN (tarea de OpenCode): el plugin `onyxcode-plan-gate` inyecta `onyxcode_session`
+// La aprobación es POR SESIÓN (tarea de OpenCode): el plugin `lazunox-plan-gate` inyecta `lazunox_session`
 // en los args de cada `computer_*` y aquí se pasa como `?session=`. Sin sesión, main aplica su respaldo.
 
 async function isPlanApproved(session?: string): Promise<boolean> {
@@ -646,13 +646,13 @@ async function takeScreenshot(auto = false, session?: string): Promise<Shot> {
   }
 }
 
-/** Apps de sistema/la propia OnyxCode: nunca se excluyen de la captura aunque no tengan concesión. */
+/** Apps de sistema/la propia Lazunox: nunca se excluyen de la captura aunque no tengan concesión. */
 const NEVER_EXCLUDE = new Set([
   // Literal = APP_ID de src/shared/brand.ts. NO importarlo: este bundle (`computer-mcp`) debe quedar
   // autónomo y importar brand crea un chunk compartido (`out/main/chunks/`) que el utilityProcess no
   // espera. src/test/brand-consistency.test.ts comprueba que coincide.
-  'cl.bentec.onyxcode',
-  'com.github.Electron', // OnyxCode sin empaquetar (`npm run dev`)
+  'cl.bentec.lazunox',
+  'com.github.Electron', // Lazunox sin empaquetar (`npm run dev`)
   'com.apple.dock',
   'com.apple.systemuiserver',
   'com.apple.Spotlight',
@@ -713,7 +713,7 @@ async function captureScreen(session?: string): Promise<Shot> {
         } catch (err) {
           throw new Error(
             `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
-              'Falta el permiso de Grabación de pantalla para Lazunox (aparece como OnyxCode en Ajustes del Sistema).'
+              'Falta el permiso de Grabación de pantalla para Lazunox (aparece como Lazunox en Ajustes del Sistema).'
           )
         }
         if (!existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
@@ -788,7 +788,7 @@ interface ToolDef {
   action: boolean
   /** Lote C: no adjuntar la captura automática tras la acción (herramientas `app_*` de solo lectura). */
   noAutoShot?: boolean
-  /** `session` = sesión de OpenCode que llama (la inyecta `onyxcode-plan-gate` como `onyxcode_session`). */
+  /** `session` = sesión de OpenCode que llama (la inyecta `lazunox-plan-gate` como `lazunox_session`). */
   run: (args: Record<string, unknown>, session?: string) => Promise<ToolRunResult>
 }
 
@@ -857,7 +857,7 @@ const AX_ACTIONS = new Set(['AXShowMenu', 'AXIncrement', 'AXDecrement', 'AXConfi
 function axExitMessage(code: number): string | null {
   switch (code) {
     case 2:
-      return 'Falta el permiso de Accesibilidad para Lazunox (aparece como OnyxCode en Ajustes del Sistema).'
+      return 'Falta el permiso de Accesibilidad para Lazunox (aparece como Lazunox en Ajustes del Sistema).'
     case 6:
       return 'Reconocimiento de voz no autorizado.'
     case 7:
@@ -1762,10 +1762,10 @@ const TOOLS: ToolDef[] = [
 ]
 
 async function callTool(name: string, rawArgs: Record<string, unknown>): Promise<ToolResult> {
-  // `onyxcode_session` lo inyecta el plugin `onyxcode-plan-gate` (sesión de OpenCode que llama): se separa
+  // `lazunox_session` lo inyecta el plugin `lazunox-plan-gate` (sesión de OpenCode que llama): se separa
   // de los args para que ninguna herramienta lo vea como parámetro propio.
-  const { onyxcode_session, ...args } = rawArgs
-  const session = typeof onyxcode_session === 'string' && onyxcode_session ? onyxcode_session : undefined
+  const { lazunox_session, ...args } = rawArgs
+  const session = typeof lazunox_session === 'string' && lazunox_session ? lazunox_session : undefined
   const tool = TOOLS.find((t) => t.name === name)
   if (!tool) return { content: [{ type: 'text', text: `Herramienta desconocida: ${name}` }], isError: true }
   try {
@@ -1843,7 +1843,7 @@ async function dispatch(req: RpcRequest): Promise<RpcResponse | null> {
         return ok({
           protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: 'onyxcode-computer', version: '0.2.0' },
+          serverInfo: { name: 'lazunox-computer', version: '0.2.0' },
           instructions: 'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
         })
       }

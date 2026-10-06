@@ -6,7 +6,7 @@
  * `writeSandboxProfile` con dobles (sin Electron, sin red, sin `sandbox-exec`) y compara, para
  * entradas fijas: perfil SBPL, `command`, `args`, `env` y opciones de `spawn`, constructores de los
  * proxies, `trackPid`, `killTree` y limpieza. NO regeneres el fixture para que pase: revisa el diff.
- * (Captura inicial: `ONYX_CAPTURE_SEATBELT_BEFORE=1`; solo se usó una vez, con el código original.)
+ * (Captura inicial: `LAZUNOX_CAPTURE_SEATBELT_BEFORE=1`; solo se usó una vez, con el código original.)
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
@@ -69,7 +69,7 @@ vi.mock('./opencode-config', () => ({
 vi.mock('../process/child-env', () => ({ minimalEnv: (e: Record<string, string>) => e }))
 vi.mock('../process/disclaim', () => ({
   withDisclaim: (command: string, args: string[]) => ({
-    command: '/fixture/launcher/onyxcode-disclaim',
+    command: '/fixture/launcher/lazunox-disclaim',
     args: [command, ...args],
     disclaimed: true
   })
@@ -113,7 +113,7 @@ import { appAuthFile } from '../opencode/data-dir'
 import { buildSandboxProfile, startTasksServer, writeSandboxProfile, type StartTasksServerOptions } from './sandbox'
 
 const FIXTURE = join(__dirname, '__fixtures__', 'seatbelt-before.json')
-const CAPTURE = process.env.ONYX_CAPTURE_SEATBELT_BEFORE === '1'
+const CAPTURE = process.env.LAZUNOX_CAPTURE_SEATBELT_BEFORE === '1'
 
 let root = ''
 let osTmp = ''
@@ -205,7 +205,7 @@ async function allLaunches() {
   )
   out.push(
     await launch('completo', true, ({ folder }) => ({
-      corsOrigins: ['http://localhost:5173', 'onyxcode://app'],
+      corsOrigins: ['http://localhost:5173', 'lazunox://app'],
       extraEnv: { OPENCODE_CONFIG_CONTENT: JSON.stringify({ model: 'x/y', provider: { otro: { name: 'Otro' } } }), EXTRA_FLAG: '1' },
       networkAllowlist: () => ['opencode.ai', 'registry.npmjs.org'],
       onEgressBlocked: () => {},
@@ -290,7 +290,7 @@ function profiles() {
 }
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-eq-')))
+  root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-eq-')))
   osTmp = realpathSync(tmpdir())
   rec.userData = join(root, 'userData')
   mkdirSync(join(root, 'work', 'proyecto'), { recursive: true })
@@ -322,7 +322,7 @@ describe.skipIf(!macOnly)('lanzamiento Seatbelt: equivalencia byte a byte con el
     const names = before.launches.map((l: { name: string }) => l.name)
     expect(names).toEqual(['basico-sin-auth', 'completo', 'sin-isolation', 'sin-sandbox'])
     const completo = before.launches[1]
-    expect(completo.spawns[0].command).toBe('/fixture/launcher/onyxcode-disclaim')
+    expect(completo.spawns[0].command).toBe('/fixture/launcher/lazunox-disclaim')
     expect(completo.spawns[0].args.slice(0, 2)).toEqual(['/usr/bin/sandbox-exec', '-f'])
     expect(completo.spawns[0].profileText).toContain('(deny network*)')
   })

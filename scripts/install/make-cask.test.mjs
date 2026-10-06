@@ -14,7 +14,7 @@ test('la cask lleva version, sha256, url, arquitectura y postflight', () => {
   const c = renderCask({ version: '0.4.0', sha256: SHA, repo: 'dueno/repo' })
   assert.match(c, /version "0\.4\.0"/)
   assert.match(c, new RegExp(`sha256 "${SHA}"`))
-  assert.match(c, /url "https:\/\/github\.com\/dueno\/repo\/releases\/download\/v#\{version\}\/onyxcode-#\{version\}-arm64\.dmg"/)
+  assert.match(c, /url "https:\/\/github\.com\/dueno\/repo\/releases\/download\/v#\{version\}\/lazunox-#\{version\}-arm64\.dmg"/)
   assert.match(c, /depends_on arch: :arm64/)
   assert.match(c, /depends_on macos:/)
   assert.match(c, /xattr/)
@@ -34,9 +34,9 @@ test('rechaza entradas inválidas', () => {
 })
 
 test('la CLI escribe el archivo pedido y falla con argumentos malos', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'onyx-cask-'))
+  const dir = mkdtempSync(join(tmpdir(), 'lazunox-cask-'))
   try {
-    const out = join(dir, 'x', 'onyxcode.rb')
+    const out = join(dir, 'x', 'lazunox.rb')
     const ok = spawnSync(
       process.execPath,
       [join(HERE, 'make-cask.mjs'), '--version', 'v1.2.3', '--sha256', SHA, '--repo', 'a/b', '--out', out],
@@ -52,6 +52,6 @@ test('la CLI escribe el archivo pedido y falla con argumentos malos', () => {
 })
 
 test('la cask de ejemplo del tap coincide con la plantilla (marcadores PENDIENTE)', () => {
-  const esperado = renderCask({ version: '0.3.0', sha256: '0'.repeat(64), repo: 'PENDIENTE/onyxcode' })
+  const esperado = renderCask({ version: '0.3.0', sha256: '0'.repeat(64), repo: 'PENDIENTE/lazunox' })
   assert.equal(readFileSync(DEFAULT_OUT, 'utf8'), esperado)
 })

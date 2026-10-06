@@ -29,7 +29,7 @@ describe('launcher.py: análisis estático', () => {
     expect(launcher).toMatch(/landlock\.abi_version\(\) < init\["landlock"\]\["minAbi"\]/)
     expect(launcher).toContain('CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWNET')
   })
-  it('monta con drvfs_options (noexec,nosuid,nodev) y el servidor corre como onyx con Landlock antes del exec', () => {
+  it('monta con drvfs_options (noexec,nosuid,nodev) y el servidor corre como lazunox con Landlock antes del exec', () => {
     expect(launcher).toContain('P.drvfs_options(m["mode"])')
     const a = launcher.indexOf('os.setuid(P.WSL_UID)')
     const b = launcher.indexOf('landlock.apply_policy(')

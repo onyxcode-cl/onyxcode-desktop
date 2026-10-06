@@ -1,13 +1,13 @@
 # Política de la organización (`managed.json`)
 
-OnyxCode lee, solo lectura, un archivo `managed.json` que solo un administrador puede escribir:
+Lazunox lee, solo lectura, un archivo `managed.json` que solo un administrador puede escribir:
 
 | Sistema | Ruta |
 | --- | --- |
-| macOS | `/Library/Application Support/OnyxCode/managed.json` |
-| Windows | `%ProgramData%\OnyxCode\managed.json` |
+| macOS | `/Library/Application Support/Lazunox/managed.json` |
+| Windows | `%ProgramData%\Lazunox\managed.json` |
 
-En desarrollo (app NO empaquetada) se puede forzar otra ruta con la variable `ONYXCODE_MANAGED_POLICY`. En la app
+En desarrollo (app NO empaquetada) se puede forzar otra ruta con la variable `LAZUNOX_MANAGED_POLICY`. En la app
 empaquetada esa variable se ignora. El archivo se relee cuando cambia (mtime/tamaño); no hace falta reiniciar.
 
 Este documento describe el bloque **`remote`** (control remoto desde el celular). Las claves de Tareas
@@ -59,7 +59,7 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 | `requirePasskey` | booleano | `true`: el acceso exige una passkey además del PIN. Hasta que existan las passkeys (entrega posterior) el modo «También fuera de casa» queda bloqueado si se exige, porque no puede cumplirlo; la red local sigue como siempre. Ausente = `false`; presente y distinto de `false` exacto = `true`. |
 | `allowTravelMode` | booleano | `false`: el **modo viaje** (túnel rápido de Cloudflare, sin cuenta) no existe: no se abre ningún puerto ni proceso `cloudflared`, el selector de Ajustes lo explica y, si estaba en marcha, se corta al instante (`policy-blocked` en la actividad) y se borra su vínculo. Sin archivo `true`; con archivo y la clave ausente `false`. Además el modo viaje queda bloqueado si `requireConnectionConfirm` o `requirePasskey` están activos (o si el usuario pidió confirmar cada conexión): lejos de casa nadie podría confirmar. |
 | `travelMaxHours` | entero 1–24 | Vida máxima del túnel de viaje, también con «Cerrar a los 30 min sin uso». Sin archivo 24; con archivo y la clave ausente, no entera o rara, 1; un entero fuera de rango se recorta. |
-| `allowTravelDownload` | booleano | `false`: la app no descarga `cloudflared`. Una organización puede preinstalarlo en `~/Library/Application Support/OnyxCode/bin/cloudflared-<versión>/cloudflared` (permisos 0700) con el mismo binario del pin: se verifica su SHA-256 y su firma (Developer ID de Cloudflare Inc., equipo `68WVV388M8`) antes de cada arranque. Con archivo y la clave ausente `false`. |
+| `allowTravelDownload` | booleano | `false`: la app no descarga `cloudflared`. Una organización puede preinstalarlo en `~/Library/Application Support/Lazunox/bin/cloudflared-<versión>/cloudflared` (permisos 0700) con el mismo binario del pin: se verifica su SHA-256 y su firma (Developer ID de Cloudflare Inc., equipo `68WVV388M8`) antes de cada arranque. Con archivo y la clave ausente `false`. |
 | `allowTravelRelay` | booleano | Reservada para el respaldo cifrado por el WebSocket del túnel (entrega posterior; hoy no hace nada). Misma regla que `allowRelay`. |
 
 ## Semántica fail closed
@@ -94,7 +94,7 @@ Opción A, script de política (se ejecuta como root):
 ```bash
 #!/bin/bash
 set -euo pipefail
-dir="/Library/Application Support/OnyxCode"
+dir="/Library/Application Support/Lazunox"
 mkdir -p "$dir"
 cat > "$dir/managed.json" <<'JSON'
 { "remote": { "enabled": true, "requirePin": true, "deviceTtlDays": 30, "allowConfirmRemember12h": false } }
@@ -112,7 +112,7 @@ remoto en toda la flota basta con `{ "remote": { "enabled": false } }`.
 - **Windows**: script de PowerShell (Dispositivos › Windows › Scripts), ejecutado con el contexto del sistema:
 
 ```powershell
-$dir = Join-Path $env:ProgramData 'OnyxCode'
+$dir = Join-Path $env:ProgramData 'Lazunox'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 $json = '{ "remote": { "enabled": false } }'
 Set-Content -Path (Join-Path $dir 'managed.json') -Value $json -Encoding UTF8

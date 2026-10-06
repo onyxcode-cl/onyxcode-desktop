@@ -46,7 +46,7 @@ afterAll(async () => {
 })
 
 async function launch(): Promise<E2EApp> {
-  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-r3b-')))
+  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-r3b-')))
   dirs.push(userData)
   const app = await startApp({ userData, keepUserData: true })
   apps.push(app)

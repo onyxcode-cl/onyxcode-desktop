@@ -1,6 +1,6 @@
-# .onyxcode/trabajo/make_pptx.py: presentación .pptx SIN dependencias (solo biblioteca estándar de Python).
+# .lazunox/trabajo/make_pptx.py: presentación .pptx SIN dependencias (solo biblioteca estándar de Python).
 # Diapositivas de portada y de título + viñetas (sin imágenes ni gráficos: para eso hace falta python-pptx).
-# Edita DIAPOSITIVAS y ejecuta: python3 .onyxcode/trabajo/make_pptx.py
+# Edita DIAPOSITIVAS y ejecuta: python3 .lazunox/trabajo/make_pptx.py
 import sys
 import zipfile
 from xml.sax.saxutils import escape

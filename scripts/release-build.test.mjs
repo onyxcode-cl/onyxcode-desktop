@@ -11,7 +11,7 @@ const common = require('../build/sign-common.js')
 const { runAfterSign } = require('../build/notarize.js')
 const { notarizeDmgs } = require('../build/notarize-dmg.js')
 
-const IDS = { appId: 'cl.t.onyxcode', helperId: 'cl.t.opendesk.cu-helper', disclaimId: 'cl.t.onyxcode.disclaim' }
+const IDS = { appId: 'cl.t.lazunox', helperId: 'cl.t.lazunox.cu-helper', disclaimId: 'cl.t.lazunox.disclaim' }
 const API = { APPLE_API_KEY: '/tmp/k.p8', APPLE_API_KEY_ID: 'KID', APPLE_API_ISSUER: 'ISS' }
 const APPLE = { APPLE_ID: 'a@b.c', APPLE_APP_SPECIFIC_PASSWORD: 'secreto-de-prueba', APPLE_TEAM_ID: 'ABCDE12345' }
 
@@ -32,10 +32,10 @@ test('A1 resolveNotarizeCreds: ninguna / API key / Apple ID / incompleta / prior
 })
 
 test('A1 notarizeOptions y notarytoolAuthArgs: la contraseña de app no va en argv', () => {
-  const o = common.notarizeOptions(common.resolveNotarizeCreds(API), '/x/OnyxCode.app')
+  const o = common.notarizeOptions(common.resolveNotarizeCreds(API), '/x/Lazunox.app')
   assert.deepEqual(o, {
     tool: 'notarytool',
-    appPath: '/x/OnyxCode.app',
+    appPath: '/x/Lazunox.app',
     appleApiKey: '/tmp/k.p8',
     appleApiKeyId: 'KID',
     appleApiIssuer: 'ISS'
@@ -47,7 +47,7 @@ test('A1 notarizeOptions y notarytoolAuthArgs: la contraseña de app no va en ar
 })
 
 function ctx() {
-  return { electronPlatformName: 'darwin', appOutDir: '/out/mac-arm64', packager: { appInfo: { productFilename: 'OnyxCode' } } }
+  return { electronPlatformName: 'darwin', appOutDir: '/out/mac-arm64', packager: { appInfo: { productFilename: 'Lazunox' } } }
 }
 function doubles() {
   const calls = []
@@ -74,7 +74,7 @@ test('A1 afterSign: API key (prioridad) y Apple ID notarizan después de firmar;
   const n = d.calls.filter((c) => c[0] === 'notarize')
   assert.equal(n.length, 1)
   assert.equal(n[0][1].appleApiKey, '/tmp/k.p8')
-  assert.equal(n[0][1].appPath, '/out/mac-arm64/OnyxCode.app')
+  assert.equal(n[0][1].appPath, '/out/mac-arm64/Lazunox.app')
   assert.ok(
     d.calls.findIndex((c) => c[0] === 'notarize') > d.calls.findIndex((c) => c[0] === '/usr/bin/codesign'),
     'se firma ANTES de notarizar'
@@ -97,13 +97,13 @@ test('A1 afterSign: API key (prioridad) y Apple ID notarizan después de firmar;
 // ---- A2: identificadores de helpers con Developer ID -------------------------------------------
 
 test('A2 resignBundle: argumentos exactos de codesign en modo self y devid', () => {
-  const app = '/o/OnyxCode.app'
+  const app = '/o/Lazunox.app'
   const res = `${app}/Contents/Resources`
   let calls = []
   common.resignBundle({ appPath: app, identity: 'Local', ids: IDS, mode: 'self', run: (c, a) => calls.push([c, ...a]) })
   assert.deepEqual(calls, [
     ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.helperId, `${res}/computer-use/bin/cu-helper`],
-    ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.disclaimId, `${res}/launcher/onyxcode-disclaim`],
+    ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.disclaimId, `${res}/launcher/lazunox-disclaim`],
     ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.appId, app],
     ['/usr/bin/codesign', '--verify', '--deep', '--strict', app]
   ])
@@ -114,7 +114,7 @@ test('A2 resignBundle: argumentos exactos de codesign en modo self y devid', () 
   const rt = ['--options', 'runtime', '--timestamp', '--entitlements', ent]
   assert.deepEqual(calls, [
     ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.helperId, ...rt, `${res}/computer-use/bin/cu-helper`],
-    ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.disclaimId, ...rt, `${res}/launcher/onyxcode-disclaim`],
+    ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.disclaimId, ...rt, `${res}/launcher/lazunox-disclaim`],
     ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.appId, ...rt, app],
     ['/usr/bin/codesign', '--verify', '--deep', '--strict', app]
   ])
@@ -142,9 +142,9 @@ test('A2 el gancho autofirmado conserva su contrato (resign con 4 args) y los id
   assert.equal(calls.length, 4)
   assert.ok(!calls[0].includes('--options'))
   assert.deepEqual(hook.idsFromBrandSource("export const AUTHOR_ALIAS = 'zz'"), {
-    appId: 'cl.zz.onyxcode',
-    helperId: 'cl.zz.opendesk.cu-helper',
-    disclaimId: 'cl.zz.onyxcode.disclaim'
+    appId: 'cl.zz.lazunox',
+    helperId: 'cl.zz.lazunox.cu-helper',
+    disclaimId: 'cl.zz.lazunox.disclaim'
   })
 })
 
@@ -152,7 +152,7 @@ test('A2 el afterSign de Developer ID usa los ids de brand.ts y los entitlements
   const d = doubles()
   await runAfterSign(ctx(), { ...d, env: { CSC_NAME: 'Dev' } })
   const helper = d.calls.find((c) => c[0] === '/usr/bin/codesign' && c.at(-1).endsWith('/cu-helper'))
-  assert.match(helper[helper.indexOf('--identifier') + 1], /^cl\..+\.opendesk\.cu-helper$/)
+  assert.match(helper[helper.indexOf('--identifier') + 1], /^cl\..+\.lazunox\.cu-helper$/)
   assert.match(helper[helper.indexOf('--entitlements') + 1], /build\/entitlements\.mac\.plist$/)
 })
 
@@ -173,7 +173,7 @@ test('A3 notarizeDmgs: notariza, graba y valida con la API key; Apple ID con @en
   assert.deepEqual(d.calls[0].slice(0, 5), ['/usr/bin/xcrun', 'notarytool', 'submit', '/d/x.dmg', '--apple-id'])
   assert.ok(!JSON.stringify(d.calls).includes('secreto-de-prueba'))
 
-  for (const env of [{ CSC_NAME: 'Dev' }, { ...API }, { ONYXCODE_SELF_SIGNED: '1', CSC_NAME: 'L', ...API }]) {
+  for (const env of [{ CSC_NAME: 'Dev' }, { ...API }, { LAZUNOX_SELF_SIGNED: '1', CSC_NAME: 'L', ...API }]) {
     d = doubles()
     assert.deepEqual(await notarizeDmgs(res, { ...d, platform: 'darwin', env }), [])
     assert.deepEqual(d.calls, [])
@@ -188,7 +188,7 @@ test('A3 notarizeDmgs: notariza, graba y valida con la API key; Apple ID con @en
 
 // ---- A4: verify:signed ---------------------------------------------------------------------------
 
-const APP = '/d/OnyxCode.app'
+const APP = '/d/Lazunox.app'
 const DMG = '/d/x.dmg'
 function info({ id, auth = [], team = 'not set', flags = '0x2(adhoc)', adhoc = false }) {
   return `Executable=/x\nIdentifier=${id}\nFormat=app bundle\nCodeDirectory v=20400 size=1 flags=${flags} hashes=1+3 location=embedded\n${adhoc ? 'Signature=adhoc\n' : ''}${auth.map((a) => `Authority=${a}`).join('\n')}\nTeamIdentifier=${team}\n`
@@ -197,7 +197,7 @@ function fakeRun(kind, over = {}) {
   const dev = ['Developer ID Application: X (ABCDE12345)', 'Developer ID Certification Authority', 'Apple Root CA']
   const shapes = {
     adhoc: { auth: [], team: 'not set', flags: '0x2(adhoc)', adhoc: true },
-    self: { auth: ['OnyxCode Local Signing'], team: 'not set', flags: '0x0(none)' },
+    self: { auth: ['Lazunox Local Signing'], team: 'not set', flags: '0x0(none)' },
     devid: { auth: dev, team: 'ABCDE12345', flags: '0x10000(runtime)' }
   }
   const s = { ...shapes[kind], ...over.shape }
@@ -206,7 +206,7 @@ function fakeRun(kind, over = {}) {
     const last = args.at(-1)
     if (cmd === '/usr/bin/codesign' && args[0] === '--verify') return { code: over.verify ?? 0, stdout: '', stderr: 'v' }
     if (cmd === '/usr/bin/codesign' && args[0] === '-dvv') {
-      const id = last.endsWith('cu-helper') ? ids.helperId : last.endsWith('onyxcode-disclaim') ? ids.disclaimId : ids.appId
+      const id = last.endsWith('cu-helper') ? ids.helperId : last.endsWith('lazunox-disclaim') ? ids.disclaimId : ids.appId
       return { code: 0, stdout: '', stderr: info({ id, ...s }) }
     }
     if (cmd === '/usr/sbin/spctl')
@@ -242,7 +242,7 @@ test('A4 verify-signed: detecta cada desviación', () => {
     f('adhoc', { ids: { helperId: 'cu-helper-5555abcd' } }).some((n) => /cu-helper/.test(n)),
     'helper con identificador derivado'
   )
-  assert.ok(f('devid', { ids: { disclaimId: 'onyxcode-disclaim-1' } }).some((n) => /onyxcode-disclaim/.test(n)))
+  assert.ok(f('devid', { ids: { disclaimId: 'lazunox-disclaim-1' } }).some((n) => /lazunox-disclaim/.test(n)))
   assert.ok(failed(verifySigned({ app: APP, dmg: undefined, expect: 'devid', ids: IDS, run: fakeRun('devid') })).some((n) => /dmg/.test(n)))
   assert.throws(() => verifySigned({ app: APP, expect: 'otro', ids: IDS }), /--expect/)
 })

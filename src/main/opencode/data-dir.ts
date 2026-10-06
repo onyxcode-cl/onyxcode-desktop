@@ -1,5 +1,5 @@
 /**
- * Almacén de datos propio de OnyxCode para el motor (OpenCode): claves de proveedores (auth.json),
+ * Almacén de datos propio de Lazunox para el motor (OpenCode): claves de proveedores (auth.json),
  * sesiones y base de datos. Vive en `userData/opencode-data` y se entrega al motor con
  * `XDG_DATA_HOME`, de modo que la app tiene su propia conexión, aislada del CLI del usuario.
  *

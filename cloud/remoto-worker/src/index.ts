@@ -1,5 +1,5 @@
 /**
- * Entrada del servicio de conexión de OnyxCode (remoto fuera de casa). Solo atiende `/v1/*` (los estáticos de la PWA los sirve
+ * Entrada del servicio de conexión de Lazunox (remoto fuera de casa). Solo atiende `/v1/*` (los estáticos de la PWA los sirve
  * Cloudflare sin invocar este Worker: `run_worker_first: ["/v1/*"]`). Valida formato y `Origin` y aplica un límite por IP ANTES
  * de tocar el Durable Object: lo que no es válido nunca despierta una sala.
  *

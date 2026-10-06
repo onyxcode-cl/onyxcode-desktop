@@ -1,5 +1,5 @@
 // Servidor de «proveedor» para «Probar clave»: corre en el proceso del test (127.0.0.1, puerto libre) y la app lo usa
-// en lugar de https://api.openai.com… vía ONYXCODE_E2E_KEY_PROBE_BASE (solo sin empaquetar). Responde según la clave:
+// en lugar de https://api.openai.com… vía LAZUNOX_E2E_KEY_PROBE_BASE (solo sin empaquetar). Responde según la clave:
 // `sk-e2e-valid…` 200, `…invalid…` 401, `…limit…` 429, `…down…` 503. Guarda lo recibido para comprobar que la clave llegó
 // (y solo aquí).
 import http from 'node:http'

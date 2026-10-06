@@ -12,7 +12,7 @@
  * `OPENCODE_AUTH_CONTENT` (OpenCode lo prefiere a `auth.json`, verificado en 1.18.32): el
  * `auth.json` PROPIO de la app (`userData/opencode-data/opencode/auth.json`, nunca el del CLI)
  * queda ilegible dentro del sandbox, no se copia a disco y nunca se registra en logs; el plugin
- * `onyxcode-env` lo oculta del entorno de bash.
+ * `lazunox-env` lo oculta del entorno de bash.
  *
  * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
  */
@@ -203,7 +203,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
-      ONYXCODE_TASKS_FOLDER: folder
+      LAZUNOX_TASKS_FOLDER: folder
     },
     proxyEnv: isolatedEnv,
     extraEnv: options.extraEnv

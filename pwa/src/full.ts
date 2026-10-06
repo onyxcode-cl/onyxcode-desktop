@@ -1,7 +1,7 @@
 /**
  * Carga de la interfaz completa. El arranque ligero (este código) vincula, autentica y pide PIN/confirmación; solo cuando el
  * Mac da acceso (`online`) se descarga la interfaz React (`app/entry.json` → JS + CSS con hash) y se le entrega el enlace con
- * el Mac (`globalThis.__onyxLink`). Si no se puede cargar, se queda la interfaz ligera (lista de conversaciones) como respaldo.
+ * el Mac (`globalThis.__lazunoxLink`). Si no se puede cargar, se queda la interfaz ligera (lista de conversaciones) como respaldo.
  */
 import { SlowTracker, type LinkStatus, type RemoteLink } from '../../src/shared/remote/link'
 import type { EntryData, RemoteClient } from './client'
@@ -133,7 +133,7 @@ export function prefetchFullApp(): void {
 }
 
 /**
- * Descarga y arranca la interfaz completa. Resuelve `true` cuando ella avisa que pintó (`__onyxAppMounted`) y `false` si no se
+ * Descarga y arranca la interfaz completa. Resuelve `true` cuando ella avisa que pintó (`__lazunoxAppMounted`) y `false` si no se
  * pudo cargar (sin `app/`, error de red, tiempo agotado): en ese caso quien llama deja la interfaz ligera.
  */
 export function loadFullApp(link: RemoteLink, fromMac?: EntryData): Promise<boolean> {
@@ -146,9 +146,9 @@ export function loadFullApp(link: RemoteLink, fromMac?: EntryData): Promise<bool
       resolve(ok)
     }
     const timer = setTimeout(() => finish(false), MOUNT_TIMEOUT_MS)
-    const g = globalThis as { __onyxLink?: RemoteLink; __onyxAppMounted?: () => void }
-    g.__onyxLink = link
-    g.__onyxAppMounted = () => finish(true)
+    const g = globalThis as { __lazunoxLink?: RemoteLink; __lazunoxAppMounted?: () => void }
+    g.__lazunoxLink = link
+    g.__lazunoxAppMounted = () => finish(true)
     const m = fromMac ? entryFromMac(fromMac) : null
     void (m ? Promise.resolve(m.entry) : readEntry())
       .then((entry) => {

@@ -213,7 +213,7 @@ describe('RemoteService en modo nube', () => {
     const s = await svc.start()
     expect(s.mode).toBe('pairing')
     expect(s.connection).toBe('cloud')
-    expect(s.pairing!.url).toMatch(/^https:\/\/remoto\.onyxcode\.cl\/#c=[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/)
+    expect(s.pairing!.url).toMatch(/^https:\/\/remoto\.lazunox\.cl\/#c=[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/)
     expect(s.pairing!.code).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/)
     expect(s.pairing!.url.endsWith(s.pairing!.code!)).toBe(true)
     expect(JSON.stringify(s)).not.toContain(qOf(s)) // q no sale del Mac ni en el estado

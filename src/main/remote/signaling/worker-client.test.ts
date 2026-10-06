@@ -132,7 +132,7 @@ describe('CloudSignalingTransport (sin red: socket y reloj falsos)', () => {
     expect(r.socks).toHaveLength(1)
     expect(r.socks[0].url).toBe('wss://remoto.onyxcode.cl/v1/host')
     expect(r.socks[0].url).not.toContain(TOKEN)
-    expect(r.socks[0].headers).toEqual({ 'x-onyx-host': TOKEN })
+    expect(r.socks[0].headers).toEqual({ 'x-lazunox-host': TOKEN })
   })
 
   it('sin permiso (política o sitio en pausa) NO se crea ningún socket, ni al reintentar ni con la sala de vinculación', async () => {
@@ -279,7 +279,7 @@ describe('CloudSignalingTransport (sin red: socket y reloj falsos)', () => {
     const pairTok = pairHostToken('B'.repeat(43))
     r.t.setPairRoom(pairTok)
     expect(r.socks).toHaveLength(2)
-    expect(r.socks[1].headers['x-onyx-host']).toBe(pairTok)
+    expect(r.socks[1].headers['x-lazunox-host']).toBe(pairTok)
     r.socks[1].open()
     expect(r.t.status()).toBe('online') // el estado visible es el del enlace principal
     r.t.setPairRoom(null)

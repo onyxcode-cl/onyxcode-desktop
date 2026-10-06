@@ -1,5 +1,5 @@
 // Ejecutar: node --test scripts/dictation/protocol.test.mjs
-// Sin microfono. Si ONYX_DICTATE_BIN apunta al binario compilado, tambien valida su --self-test.
+// Sin microfono. Si LAZUNOX_DICTATE_BIN apunta al binario compilado, tambien valida su --self-test.
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { test } from 'node:test'
@@ -55,8 +55,8 @@ test('replay: sesion normal y texto antes de escuchar', () => {
   )
 })
 
-test('--self-test del binario (si existe)', { skip: !process.env.ONYX_DICTATE_BIN }, () => {
-  const out = execFileSync(process.env.ONYX_DICTATE_BIN, ['--self-test'], { encoding: 'utf8' })
+test('--self-test del binario (si existe)', { skip: !process.env.LAZUNOX_DICTATE_BIN }, () => {
+  const out = execFileSync(process.env.LAZUNOX_DICTATE_BIN, ['--self-test'], { encoding: 'utf8' })
   const events = out
     .trim()
     .split('\n')

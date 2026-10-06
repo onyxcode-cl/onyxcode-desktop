@@ -1,21 +1,21 @@
-# Seguridad de OnyxCode — modelo actual
+# Seguridad de Lazunox — modelo actual
 
 Resumen de las defensas del proceso principal, las ventanas y los procesos hijos. Detalle de los
 hallazgos y su estado en `AUDIT.md`; motivación en notas privadas (fuera del repositorio)
-(«Lecciones para OnyxCode», bloques A y B).
+(«Lecciones para Lazunox», bloques A y B).
 
 ## 1. Renderer y ventanas
 
 | Control | Dónde |
 |---|---|
-| Renderer de producción servido por `onyxcode://app/…` (esquema privilegiado `standard`+`secure`), nunca `file://`. Solo host `app`, solo archivos de `out/renderer` (sin `..` ni enlaces fuera), `nosniff`, COOP/CORP | `src/main/security/app-protocol.ts` |
+| Renderer de producción servido por `lazunox://app/…` (esquema privilegiado `standard`+`secure`), nunca `file://`. Solo host `app`, solo archivos de `out/renderer` (sin `..` ni enlaces fuera), `nosniff`, COOP/CORP | `src/main/security/app-protocol.ts` |
 | CSP por **cabecera** en cada HTML: `script-src 'self'`, `connect-src 'self' http://127.0.0.1:*`, sin frames/workers/objetos, `base-uri`/`form-action 'none'` (la `<meta>` se mantiene para el dev server); el renderer no tiene permiso de red a internet (el aviso de versión y el actualizador salen desde main) | `RENDERER_CSP` |
 | Navegación: `will-navigate`/`will-redirect`/`will-frame-navigate` solo al origen propio (o el dev server); http(s) → navegador del sistema (solo desde ventanas de la app, nunca desde una vista previa); `window.open` denegado; `<webview>` bloqueado y `webviewTag:false` | `src/main/security/web-security.ts` |
 | Permisos de la sesión por defecto: denegados salvo `notifications` y `clipboard-sanitized-write` para páginas propias; sin dispositivos, sin captura de pantalla desde el renderer, sin descargas | idem |
 | Menú propio en producción (sin Recargar/DevTools) y `devTools:false` en la ventana principal empaquetada | idem, `src/main/index.ts` |
 | Preload por ventana: principal = API completa; Quick Entry = `extras:quickSubmit/quickHide` + evento `quick-shown`; overlay = solo evento `computer:overlay`; píldora = overlay + `computer:stop`; assist (Modo guía / grabar una skill, Lote C) = `computer:teachRespond`/`computer:record:stop` + evento `computer:assist`; **navegador aparte (`browser-host`, Lote D)** = solo `window.api.browser` (todo `browser:*` salvo `sites:*`/`clearData`/`devServers`). Vista previa: sin preload, partición propia | `src/preload/{index,quick,overlay,pill,assist,browser-host}.ts` |
-| OpenCode (`--cors`) solo acepta `onyxcode://app` (y el dev server sin empaquetar); ya no `null` | `src/main/index.ts` → servidores |
-| **Pestañas del navegador integrado (Lote D):** `WebContentsView` por pestaña, sin preload, en `persist:onyxcode-web-{code\|tasks}` (nunca la sesión por defecto de `onyxcode://app`); eximidas de `harden()` por identidad de objeto de sesión (`isEmbeddedBrowserSession`), con sus propias guardas equivalentes (detalle en «3 quater»). Se alojan en el panel principal o en una **ventana «Navegador» aparte** (rol `browserHost`, se abre sola con `showInactive()` si la principal está minimizada/oculta) | `src/main/embedded-browser/{session,surface,popout}.ts` |
+| OpenCode (`--cors`) solo acepta `lazunox://app` (y el dev server sin empaquetar); ya no `null` | `src/main/index.ts` → servidores |
+| **Pestañas del navegador integrado (Lote D):** `WebContentsView` por pestaña, sin preload, en `persist:lazunox-web-{code\|tasks}` (nunca la sesión por defecto de `lazunox://app`); eximidas de `harden()` por identidad de objeto de sesión (`isEmbeddedBrowserSession`), con sus propias guardas equivalentes (detalle en «3 quater»). Se alojan en el panel principal o en una **ventana «Navegador» aparte** (rol `browserHost`, se abre sola con `showInactive()` si la principal está minimizada/oculta) | `src/main/embedded-browser/{session,surface,popout}.ts` |
 
 ## 2. IPC (renderer → main)
 
@@ -36,11 +36,11 @@ Lo mismo vale para `app:testProviderKey` y `diag:*` (§3 nonies).
 
 ## 3. Procesos hijos y permisos de macOS (TCC)
 
-- **`onyxcode-disclaim`** (`resources/launcher/disclaim.c`, `npm run build:launcher`, va en
+- **`lazunox-disclaim`** (`resources/launcher/disclaim.c`, `npm run build:launcher`, va en
   `Contents/Resources/launcher/`): `posix_spawn` con `POSIX_SPAWN_SETEXEC` + atributo *disclaim*
   (`responsibility_spawnattrs_setdisclaim`, vía `dlsym`; sin él, falla cerrado). El programa
   reemplaza al lanzador (mismo PID/grupo) y pasa a ser **responsable de sí mismo**: no hereda
-  Accesibilidad ni Grabación de pantalla de OnyxCode. Se usa para **todos** los `opencode serve`
+  Accesibilidad ni Grabación de pantalla de Lazunox. Se usa para **todos** los `opencode serve`
   (sidecar de Chat/Code, Tareas con sandbox y Tareas de acceso total).
 - Lo que sí necesita esos permisos — el **MCP de Control del Mac** y su `cu-helper`/`screencapture` —
   corre en un **`utilityProcess`** de main (`src/main/computer/mcp-host.ts`), que expone MCP
@@ -53,8 +53,8 @@ Lo mismo vale para `app:testProviderKey` y `diag:*` (§3 nonies).
   más las variables explícitas de la app. No pasan `ELECTRON_*`, `NODE_OPTIONS`, `DYLD_*` ni tokens
   exportados en la shell del usuario.
 - **Terminal integrada** (`src/main/pty/service.ts`): la shell del usuario también se lanza con el
-  mismo `onyxcode-disclaim` (`withDisclaim`, `process/disclaim.ts`), así que tampoco hereda
-  Accesibilidad/Grabación de pantalla de OnyxCode — antes sí lo hacía (ver «Riesgos conocidos» más
+  mismo `lazunox-disclaim` (`withDisclaim`, `process/disclaim.ts`), así que tampoco hereda
+  Accesibilidad/Grabación de pantalla de Lazunox — antes sí lo hacía (ver «Riesgos conocidos» más
   abajo, ya corregido). A diferencia de los servidores OpenCode, aquí **no** se usa `minimalEnv`:
   la terminal es una acción explícita del usuario (login shell, `TERM`, `LANG`, `PATH`…), así que se
   conserva casi todo `process.env` y solo se quitan `ELECTRON_RUN_AS_NODE`, `ELECTRON_RENDERER_URL`,
@@ -65,12 +65,12 @@ Lo mismo vale para `app:testProviderKey` y `diag:*` (§3 nonies).
 **Flujo Plan → Aprobar → Ejecutar y concesión por app** (`src/main/computer/{service,grants,mcp-server}.ts`):
 antes de tocar la pantalla, el agente debe llamar `request_access` con su plan y la lista completa
 de apps; `main` (`ComputerService`, aprobación **por sesión**, consultada por el MCP y por el
-plugin `onyxcode-plan-gate` vía `GET .../plan-status?session=<id>` antes de CADA herramienta de acción)
+plugin `lazunox-plan-gate` vía `GET .../plan-status?session=<id>` antes de CADA herramienta de acción)
 lo hace cumplir del lado del servidor, no solo por prompt. La
 tarjeta espera la respuesta del usuario SIN LÍMITE DE TIEMPO (ya no hay "sin respuesta en 5 min ⇒
 denegado": eso mataba tareas por un simple retraso); la única forma de que quede sin responder es
 que el proceso principal muera, y el único cierre forzado es `stop()` (kill-switch), que deniega lo
-pendiente como respaldo. OnyxCode misma, el Dock, Spotlight, Centro de Control, `WindowServer` y
+pendiente como respaldo. Lazunox misma, el Dock, Spotlight, Centro de Control, `WindowServer` y
 `loginwindow` (`grants.SYSTEM_EXEMPT_BUNDLE_IDS`) están exentos de la concesión por app: nunca se
 bloquean a sí mismos ni piden acceso. Mientras una tarea de Control total está trabajando, la
 ventana principal se minimiza (píldora + overlay siguen visibles, `tasks-handlers.ts`) para que
@@ -85,14 +85,14 @@ Tareas con sandbox, además, Seatbelt impide ejecutar `screencapture`.
 
 Detalle de los hallazgos en `AUDIT.md` §9; resumen del lote B en la documentación interna de proceso.
 
-**Puerta del plan por sesión.** El plugin `onyxcode-plan-gate` (`src/main/tasks/opencode-config.ts`)
+**Puerta del plan por sesión.** El plugin `lazunox-plan-gate` (`src/main/tasks/opencode-config.ts`)
 se aplica a **toda** sesión del servidor de Control total, con clave en su propio `sessionID`: las
 sesiones hijas de `task` y cualquier agente distinto de `computer` quedan bloqueadas (fail-closed)
 hasta que el usuario apruebe el plan de esa sesión; solo pasan las herramientas de planificar
 (`computer_request_access`, `todowrite`, `todoread`, `question`, `read`, `glob`, `grep`, `list`).
 `computer.md` tiene `task: deny`. La aprobación dura toda la tarea hasta «Revocar», Detener o
 archivar/borrar. En el sandbox y en el sidecar principal el plugin no hace nada (sin
-`ONYXCODE_PLAN_GATE_URL`).
+`LAZUNOX_PLAN_GATE_URL`).
 
 **Carpetas de trabajo** (`sandbox-profile.ts`, `folder-policy.ts`, `manager.ts`).
 - Carpeta principal: escritura permitida; `unlink`/`rmdir`/`rename` denegados salvo la concesión
@@ -103,7 +103,7 @@ archivar/borrar. En el sandbox y en el sidecar principal el plugin no hace nada 
     `(deny file-write-unlink …)` SIEMPRE: la concesión de borrado vale solo para la principal.
   - **`ro`** («Solo lectura»): la lectura ya la da `(allow default)` (menos los secretos); al final
     del perfil `(deny file-write* (subpath …))`, que gana incluso sobre una `rw` que la contenga.
-  - `.onyxcode/trabajo/` de la principal (scratch del agente) permite borrar y renombrar.
+  - `.lazunox/trabajo/` de la principal (scratch del agente) permite borrar y renombrar.
 - Seatbelt fija el perfil al lanzar el proceso: ampliar carpetas exige **reiniciar** el servidor
   sandbox (`restartSandbox`, con confirmación en la interfaz si hay tareas en curso; `applied` indica
   si el servidor en marcha ya usa el conjunto actual). En OpenCode, `agent.tasks.permission.external_directory`
@@ -149,7 +149,7 @@ llevaban sus `environment`/`headers` en la config inline del servidor; con sandb
 **MCP del usuario dentro de Tareas** (`mcp-tasks.ts`). Solo entran los servidores activos y marcados
 «Disponible en Tareas» (`userData/tasks-mcp.json`; nunca se escribe en `opencode/opencode.json`).
 - **MCP locales**: se lanzan con el prefijo `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u
-  OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u ONYXCODE_PLAN_GATE_URL`,
+  OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u LAZUNOX_PLAN_GATE_URL`,
   para que no hereden las credenciales del propio servidor. Heredan el perfil Seatbelt y necesitan el
   interruptor de npm o PyPI si descargan paquetes.
 - **MCP remotos**: su host entra en la lista blanca de red; los que usan OAuth no funcionan en el
@@ -167,8 +167,8 @@ recuerdan `external_directory`, `doom_loop`, `computer_*`, patrones de borrado (
 `unlink`, `trash`, `srm`, `-delete`) ni patrones de bash que empiecen por comodín. Con
 `disableAlwaysAllow` (política) `add` lanza error y las reglas guardadas no se aplican.
 
-**Política gestionada** (`policy.ts`). Archivo `/Library/Application Support/OnyxCode/managed.json` (solo
-un administrador escribe ahí; en desarrollo se puede forzar con `ONYXCODE_MANAGED_POLICY` si la app no está
+**Política gestionada** (`policy.ts`). Archivo `/Library/Application Support/Lazunox/managed.json` (solo
+un administrador escribe ahí; en desarrollo se puede forzar con `LAZUNOX_MANAGED_POLICY` si la app no está
 empaquetada). Claves: `disableFullAccess`, `allowedFolderRoots`, `disableCustomHosts`,
 `extraAllowedHosts`, `disableAlwaysAllow`, `disableRoutines`, `maxAutoArchiveDays`. Solo restringe
 (salvo `extraAllowedHosts`) y **falla hacia el lado seguro**: un booleano que no sea exactamente
@@ -189,7 +189,7 @@ concesión previa de Control total vale y `grantFullAccess` falla.
   plan»); sin aprobación, la ejecución termina por tiempo (45 min) con un error claro. `disableRoutines`
   (política) impide guardarlas y ejecutarlas.
 
-**Capturas de Control total.** Se guardan temporalmente en `temp/onyxcode-computer` (últimas 20) y se
+**Capturas de Control total.** Se guardan temporalmente en `temp/lazunox-computer` (últimas 20) y se
 borran al pulsar Detener, al cerrar la app y a los 60 s sin tareas de Control total en curso. Las
 capturas se envían al proveedor del modelo y quedan en el historial de la tarea.
 
@@ -258,7 +258,7 @@ maliciosas». Si `list_pages` no se puede leer o interpretar, la pasarela (`brow
 falla cerrado (nunca asume que todo está bien) y manda a `about:blank` cualquier página en un host
 no permitido. El proceso se lanza con `/usr/bin/env -u OPENCODE_SERVER_PASSWORD -u
 OPENCODE_SERVER_USERNAME -u OPENCODE_AUTH_CONTENT -u OPENCODE_CONFIG_CONTENT -u
-ONYXCODE_PLAN_GATE_URL` (igual que los MCP locales del usuario, `MCP_ENV_WRAPPER`), para que Chrome
+LAZUNOX_PLAN_GATE_URL` (igual que los MCP locales del usuario, `MCP_ENV_WRAPPER`), para que Chrome
 nunca herede las credenciales del propio servidor de OpenCode; `--no-usage-statistics` y
 `CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS=1` evitan que escriba en `~/.cache/chrome-devtools-mcp` del
 usuario. `upload_file` se quita de `tools/list` antes de que el modelo la vea. El navegador corre
@@ -271,7 +271,7 @@ ventana nueva tiene su propio preload (`src/preload/assist.ts`) con su propia li
 (`ALLOWED_INVOKE = {'computer:teachRespond', 'computer:record:stop'}`, `on` solo acepta
 `computer:assist`) y su propio rol en `CHANNEL_ROLES` (`assist`), sin tocar la entrada `pill`. Es
 una ventana sin marco, transparente, con `setContentProtection(true)` y `showInactive` (nunca activa
-OnyxCode ni le roba el foco al usuario), igual que la píldora de control. La grabación en sí
+Lazunox ni le roba el foco al usuario), igual que la píldora de control. La grabación en sí
 (`cu-helper record`) usa un tap de solo ESCUCHA (nunca inyecta eventos) y nunca guarda el texto
 tecleado si `IsSecureEventInputEnabled()` está activo (campo seguro con foco); el texto tecleado
 tampoco se envía al agente por defecto («Incluir el texto que tecleé», desactivado) y el prompt que
@@ -284,12 +284,12 @@ prueba manual en `docs/LOTE-D.md`.
 
 **Aislamiento por sesión: nunca la sesión por defecto.** Cada pestaña del navegador integrado
 (`WebContentsView`, `sandbox:true, contextIsolation:true, nodeIntegration:false, webviewTag:false,
-devTools:false`, **sin preload propio**) vive en `session.fromPartition('persist:onyxcode-web-code')`
-o `'persist:onyxcode-web-tasks'` (`embedded-browser/session.ts`): dos perfiles separados entre sí y
-completamente distintos de la `defaultSession` que sirve `onyxcode://app` y guarda las credenciales de
-OpenCode. Ni el esquema `onyxcode:` ni `*-artifact:` existen en esas particiones (`protocol.handle` es
+devTools:false`, **sin preload propio**) vive en `session.fromPartition('persist:lazunox-web-code')`
+o `'persist:lazunox-web-tasks'` (`embedded-browser/session.ts`): dos perfiles separados entre sí y
+completamente distintos de la `defaultSession` que sirve `lazunox://app` y guarda las credenciales de
+OpenCode. Ni el esquema `lazunox:` ni `*-artifact:` existen en esas particiones (`protocol.handle` es
 de la sesión por defecto y de la de la vista previa), así que una pestaña del navegador nunca puede pedir
-una página propia de la app. **Tareas usa UNA sola partición compartida** (`persist:onyxcode-web-
+una página propia de la app. **Tareas usa UNA sola partición compartida** (`persist:lazunox-web-
 tasks`) para Sandbox y Control total, sea cual sea la carpeta o la tarea — no una por carpeta ni
 por tarea. Es una decisión explícita, reconfirmada por el usuario junto con el resto de defaults del
 Lote D (2026-09-28): las cookies/sesiones iniciadas del navegador de Tareas son las mismas entre
@@ -360,7 +360,7 @@ confirmar compra, eliminar cuenta/repositorio, transferir…), se pide confirmac
 
 **Descargas: cuarentena manual y siempre bajo revisión.** Las descargas atribuidas al agente quedan
 pausadas (`item.pause()`) hasta que el usuario decide en una tarjeta con nombre y destino
-(`<carpeta>/.onyxcode/trabajo/descargas/` en Tareas, `~/Downloads/<APP_NAME>/` en Code); las del usuario usan
+(`<carpeta>/.lazunox/trabajo/descargas/` en Tareas, `~/Downloads/<APP_NAME>/` en Code); las del usuario usan
 el diálogo de guardado nativo. Ninguna se abre sola. **Hallazgo D0, verificado con evidencia
 directa:** Electron/macOS NO añade `com.apple.quarantine` automáticamente a lo que `will-download` +
 `setSavePath` escriben (`xattr -p com.apple.quarantine` no encuentra el atributo tras la descarga),
@@ -399,11 +399,11 @@ descarga algo (la comprobación automática sigue siendo únicamente el `GET` de
   en `userData/update-check.json`; hasta entonces no se vuelve a preguntar, tampoco con «Buscar ahora». Cualquier otro
   fallo (red, tiempo, 5xx, JSON inválido) espera 1 h; no hay reintentos dentro de la sesión. El estado
   (`lastCheck`, `retryAfter`, `dismissed`) se escribe de forma atómica y tolera un fichero corrupto.
-- **Variables de test.** `ONYXCODE_TEST_RELEASES_API`, `_REPO` y `ONYXCODE_TEST_UPDATE_DELAY_MS` solo se honran con la
+- **Variables de test.** `LAZUNOX_TEST_RELEASES_API`, `_REPO` y `LAZUNOX_TEST_UPDATE_DELAY_MS` solo se honran con la
   app SIN empaquetar (y la base debe ser `http://127.0.0.1:<puerto>` o `https:`); en la app empaquetada se ignoran y
   siempre se usa la API de GitHub. Las pruebas usan un servidor local; nunca llaman a api.github.com. Lo mismo vale para
-  `ONYXCODE_TEST_UPDATE_PUBKEY` y `ONYXCODE_TEST_UPDATE_INSTALL_DIR` (actualizador, sección 3 septies). Única excepción:
-  un **build de prueba** (`ONYXCODE_TEST_BUILD=1` en compilación, `docs/DISTRIBUCION.md` §11) las honra también
+  `LAZUNOX_TEST_UPDATE_PUBKEY` y `LAZUNOX_TEST_UPDATE_INSTALL_DIR` (actualizador, sección 3 septies). Única excepción:
+  un **build de prueba** (`LAZUNOX_TEST_BUILD=1` en compilación, `docs/DISTRIBUCION.md` §11) las honra también
   empaquetado; un build normal no contiene ese código (el valor se sustituye en compilación y el resto se elimina).
 - **Riesgos conocidos.** Quien controle el repositorio o la cuenta de GitHub de `RELEASES_REPO` controla qué versión
   se anuncia y la página a la que lleva «Descargar» (siempre dentro de ese repositorio): la app no verifica firmas de
@@ -417,8 +417,8 @@ descarga algo (la comprobación automática sigue siendo únicamente el `GET` de
 
 La app **ya no tiene cuentas ni inicio de sesión** (F8-B88; sustituye a F8-B19). Se quitaron `src/main/account/` (cliente HTTP,
 servicio, almacén `account.bin`, receptor loopback, PKCE), los 9 canales `account:*` y el evento `account:changed` (contrato,
-esquemas y política del remoto), `ACCOUNT_API` y las variables de pruebas `ONYXCODE_ACCOUNT_URL`, `ONYXCODE_ACCOUNT_DISABLED` y
-`ONYXCODE_TEST_PLAIN_STORE`. Ya no hay tráfico a un servidor de cuentas ni receptor en `127.0.0.1` para el callback de Google.
+esquemas y política del remoto), `ACCOUNT_API` y las variables de pruebas `LAZUNOX_ACCOUNT_URL`, `LAZUNOX_ACCOUNT_DISABLED` y
+`LAZUNOX_TEST_PLAIN_STORE`. Ya no hay tráfico a un servidor de cuentas ni receptor en `127.0.0.1` para el callback de Google.
 Al arrancar se borra la sesión heredada: ver §3 quadragies bis. El diseño original se conserva en `docs/archive/CUENTAS-SERVIDOR.md`
 (archivado). La guardia `src/test/no-accounts.test.ts` evita que reaparezcan canales, dominios o variables de cuenta.
 
@@ -437,11 +437,11 @@ interpretar el JSON (`crypto.verify(null, bytes, createPublicKey({key, format:'d
 manifiesto ≤ 16 KB, firma ≤ 1 KB, y el `size` firmado del ZIP (≤ 600 MB) es el tope real de lectura en streaming.
 
 **Flujo.** `Actualizar` → (1) manifiesto y firma; (2) `validateManifest`: `appId` igual, `keyId` de la clave que verificó,
-`version === tag` sin la `v`, versión **mayor** que `app.getVersion()` (anti-downgrade), nombre `OnyxCode-X.Y.Z-arm64.zip`;
+`version === tag` sin la `v`, versión **mayor** que `app.getVersion()` (anti-downgrade), nombre `Lazunox-X.Y.Z-arm64.zip`;
 (3) espacio libre (`statfs` ≈ 3× el tamaño); (4) descarga a `userData/update/staging/<ver>/` (0700, se borra al empezar) con
 SHA-256 incremental; (5) hash y tamaño == los firmados; (6) `zipinfo -1` y cada entrada validada (`isSafeZipEntry`: nada
-de `..`, rutas absolutas, `\`, NUL ni nada fuera de `OnyxCode.app/`; única excepción, los metadatos AppleDouble de `ditto
---sequesterRsrc` bajo `__MACOSX/OnyxCode.app/…/._x`, que `ditto -x` aplica como atributos y no crea nada fuera); tope
+de `..`, rutas absolutas, `\`, NUL ni nada fuera de `Lazunox.app/`; única excepción, los metadatos AppleDouble de `ditto
+--sequesterRsrc` bajo `__MACOSX/Lazunox.app/…/._x`, que `ditto -x` aplica como atributos y no crea nada fuera); tope
 de tamaño descomprimido; (7) `ditto -x -k`; (8) recorrido `lstat` (todo symlink se resuelve **dentro** de la `.app`, sin
 enlaces absolutos, dispositivos ni FIFOs); (9) `codesign --verify --deep --strict`; (10) `codesign -dv` con
 `Identifier = APP_ID`; (11) `plutil`: `CFBundleIdentifier` y `CFBundleShortVersionString` == manifiesto; (12)
@@ -459,12 +459,12 @@ reemplazo **no se ejecuta desde el `.app` que sustituye**: `resources/updater/sw
 `Contents/Resources/updater/`, se copia a `userData/update/run/` (0700, `0700` el archivo) y se lanza con
 `spawn('/bin/sh', [copia, …args], {detached: true, stdio: 'ignore'}).unref()` — **nunca** `sh -c` con cadenas. Los
 argumentos los valida `swap.ts` (PID = el de la propia app; rutas absolutas y normalizadas; `target` == ruta real de la
-`.app` en ejecución; `staged` == `userData/update/staging/<ver>/extract/OnyxCode.app`; marcadores bajo
-`userData/update`; copia `<dir>/.OnyxCode.app.bak-<ver>`) y `swap.sh` los vuelve a validar. `swap.sh` (POSIX, `set -eu`):
+`.app` en ejecución; `staged` == `userData/update/staging/<ver>/extract/Lazunox.app`; marcadores bajo
+`userData/update`; copia `<dir>/.Lazunox.app.bak-<ver>`) y `swap.sh` los vuelve a validar. `swap.sh` (POSIX, `set -eu`):
 espera a que el PID termine (tope 60 s; si no, aborta **sin tocar nada** y escribe `result.json`), mueve `target → bak`
 (mismo directorio: `rename` atómico; `ditto` solo si falla), `staged → target` (si falla restaura), abre la nueva y espera
 hasta 90 s el archivo `boot-ok-<ver>`; si no aparece mata el PID que la nueva escribió en `booting-<ver>` (solo si es un
-proceso de ese `.app`), mueve la nueva a `.OnyxCode.app.failed-<ver>`, restaura la copia, abre la vieja y escribe
+proceso de ese `.app`), mueve la nueva a `.Lazunox.app.failed-<ver>`, restaura la copia, abre la vieja y escribe
 `result.json {rolledBack: true}` (la vieja lo muestra como error). La app nueva escribe `booting-<ver>` (su PID) al
 arrancar (solo si obtuvo el lock de instancia única) y `boot-ok-<ver>` tras `did-finish-load` **y** la confirmación del
 renderer (`app:bootConfirm`). La copia de seguridad la borra la app nueva en el **siguiente** inicio tras un arranque ya
@@ -486,14 +486,14 @@ navegador embebido y ni rutinas ni Quick Entry lo cancelan (revisado: el único 
 | Clave privada perdida / filtrada | Perdida: no hay más actualizaciones automáticas (hay que bajar un `.dmg` a mano; el aviso sigue). Filtrada: no hay defensa para lo ya instalado; publicar una versión con clave nueva y avisar (rotación: la versión N lleva `[nueva, vieja]` y firma la vieja; desde la N+1 firma la nueva). `docs/DISTRIBUCION.md` §10. |
 
 **Permisos de macOS (TCC).** Con firma ad-hoc macOS vuelve a pedir los permisos tras cada actualización. La mitigación es
-un certificado de firma de código **autofirmado** del usuario (`ONYXCODE_SELF_SIGNED=1`, `docs/DISTRIBUCION.md` §10.3):
-sin hardened runtime y sin notarizar; `cu-helper` y `onyxcode-disclaim` se firman con el mismo certificado conservando
+un certificado de firma de código **autofirmado** del usuario (`LAZUNOX_SELF_SIGNED=1`, `docs/DISTRIBUCION.md` §10.3):
+sin hardened runtime y sin notarizar; `cu-helper` y `lazunox-disclaim` se firman con el mismo certificado conservando
 `HELPER_ID`/`DISCLAIM_ID`. La primera migración ad-hoc → autofirmado pedirá los permisos una vez más.
 
-**Variables y ganchos de prueba.** `ONYXCODE_TEST_UPDATE_PUBKEY` y `ONYXCODE_TEST_UPDATE_INSTALL_DIR` solo con la app sin
+**Variables y ganchos de prueba.** `LAZUNOX_TEST_UPDATE_PUBKEY` y `LAZUNOX_TEST_UPDATE_INSTALL_DIR` solo con la app sin
 empaquetar (igual que `config.ts`); sin empaquetar **nunca** se sustituye nada («Reiniciar ahora» se rechaza). En
-`swap.sh`, `ONYXCODE_SWAP_TEST_NO_OPEN` solo se acepta si el destino está bajo `$TMPDIR`. `ONYXCODE_TEST_FAIL_BOOT=1` solo
-en un build de prueba (compilado con `ONYXCODE_TEST_BUILD=1`).
+`swap.sh`, `LAZUNOX_SWAP_TEST_NO_OPEN` solo se acepta si el destino está bajo `$TMPDIR`. `LAZUNOX_TEST_FAIL_BOOT=1` solo
+en un build de prueba (compilado con `LAZUNOX_TEST_BUILD=1`).
 
 **No verificado aquí:** permisos TCC reales, Gatekeeper en otro Mac, la protección «Gestión de apps» de macOS 13+ al
 modificar `/Applications` (el reemplazo se probó en directorios temporales, con `open` sustituido por ejecución
@@ -520,7 +520,7 @@ se borra con `rm`) junto con las carpetas nuevas que queden vacías. Antes de to
 
 - Cambios **fuera** de la carpeta de la tarea. Tampoco se incluyen las carpetas vinculadas con escritura (decisión de esta primera versión: solo la carpeta principal).
 - Efectos de comandos y de otras herramientas: instalaciones, `git push`, red, correos, otras apps, control del Mac.
-- Lo excluido por los límites: `node_modules/`, `.git/` y `.onyxcode/` (la memoria), archivos de más de 50 MB (se listan como no restaurables), symlinks (se registran y no se siguen ni se restauran),
+- Lo excluido por los límites: `node_modules/`, `.git/` y `.lazunox/` (la memoria), archivos de más de 50 MB (se listan como no restaurables), symlinks (se registran y no se siguen ni se restauran),
   y carpetas con más de 20 000 archivos o más de 2 GB (el punto queda «omitido» y la conversación avisa «Esta vez no se guardó un punto de restauración: …»; el mensaje se envía igualmente).
 - Atributos extendidos y metadatos de Finder (etiquetas, ubicación de iconos, cuarentena…).
 - Lo que cambie **mientras se crea** el punto (la copia no es atómica entre archivos).
@@ -536,7 +536,7 @@ se borra con `rm`) junto con las carpetas nuevas que queden vacías. Antes de to
 | Punto que bloquea la app o llena el disco | Copia y hash asíncronos; presupuesto de 30 s (el punto queda «omitido» y se limpian los temporales); se exige el tamaño a copiar + 512 MB libres (`statfs`) y ENOSPC también deja el punto omitido. |
 | Confidencialidad de las copias | Son contenido **del usuario sin cifrar** en `userData`, con permisos `0700` (carpetas) y `0600` (manifiestos). Quien lea `userData` lee las copias. «Ajustes › Tareas › Almacenamiento» permite ver su tamaño y borrarlas; se borran también al eliminar la tarea. |
 | Falso sentido de seguridad en carpetas sin git | El revert de OpenCode no restaura archivos sin git; el diálogo ya no lo promete. «Editar y reintentar» restaura con el punto propio y avisa si no hay uno. |
-| Variable de pruebas | `ONYXCODE_E2E_TRASH_DIR` (Papelera de pruebas) solo se honra con la app sin empaquetar; guardia estática en `trash.test.ts`. |
+| Variable de pruebas | `LAZUNOX_E2E_TRASH_DIR` (Papelera de pruebas) solo se honra con la app sin empaquetar; guardia estática en `trash.test.ts`. |
 
 **Verificado (F8-B21):** ExFAT, FAT32 y HFS+ con mayúsculas con imágenes `hdiutil` reales (`npm run test:fs`; granularidad de fecha, mayúsculas, deshacer/rehacer); carpetas de ~20 000 archivos y
 archivos de 45 MB (`npm run test:stress`: límites, incremental, bucle de eventos y memoria); un archivo normal pequeño en APFS tiene `blocks > 0` (no se confunde con la nube).
@@ -552,7 +552,7 @@ de ese archivo y hace un GET gratuito al proveedor; el renderer solo manda el id
 no forma parte de ningún mensaje de error (se construyen a mano). Salida a internet con `net.fetch` desde main (no se tocó la CSP ni `connect-src`), `redirect: 'manual'`, 10 s, solo el código HTTP.
 La clave de Google va en cabecera (`x-goog-api-key`), nunca en la URL. Cada entrada de `PROBES` se verificó con una clave inválida; `opencode` y `opencode-go` quedan fuera porque su listado es público.
 Un intento por proveedor a la vez y 5 s entre pruebas. Para proveedores `@ai-sdk/openai-compatible` la clave se envía al `api` https que declara el catálogo del motor (el mismo host al que iría el chat).
-`ONYXCODE_E2E_KEY_PROBE_BASE` solo se honra sin empaquetar y solo con `http://127.0.0.1:<puerto>` (guardia estática en `key-probe.test.ts`).
+`LAZUNOX_E2E_KEY_PROBE_BASE` solo se honra sin empaquetar y solo con `http://127.0.0.1:<puerto>` (guardia estática en `key-probe.test.ts`).
 
 **Diagnóstico** (`diag:logs`, `diag:copy`, `diag:export`, `src/main/diagnostics/`). Los registros del motor (stdout/stderr de `opencode serve`, su `.log` y un informe) salen de main **solo** por
 `DiagnosticsService`, que los pasa por el redactor: secretos exactos conocidos (contraseña y `Authorization` del sidecar, valores de `auth.json`, cabeceras y entorno de los MCP), patrones de claves y tokens
@@ -600,7 +600,7 @@ proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 
 - Superficie nueva mínima: el ajuste `language` (`'system' | 'es' | 'en'`) viaja por el canal ya existente `settings:set` (esquema `literal('system','es','en')`; cualquier otro valor se rechaza y `normalize` lo devuelve a `'system'`). **No hay canales IPC nuevos ni entradas en `CHANNEL_ROLES`.**
 - Los diccionarios (`src/shared/i18n`) son datos estáticos del paquete: no se descarga ni se ejecuta nada y no se interpreta HTML (los textos se pintan como texto de React). `format()` solo sustituye `{nombre}` por valores del propio código.
-- Los preloads secundarios no importan el módulo de idioma (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a `main`, también tras T4c). Quick Entry, overlay, píldora y globo de guía reciben el idioma como parámetro de consulta `?lang=es|en` de su propia URL (`loadLocalizedPage`): el valor sale de `getLang()` en main (nunca de entrada del usuario), la página solo lo acepta si es `es` o `en` y no se añade ningún canal ni capacidad; la URL sigue siendo `onyxcode://app/…` (el origen no cambia, la validación del emisor y los roles de ventana tampoco).
+- Los preloads secundarios no importan el módulo de idioma (hashes de `out/preload/{quick,overlay,pill,assist,browser-host}.js` idénticos a `main`, también tras T4c). Quick Entry, overlay, píldora y globo de guía reciben el idioma como parámetro de consulta `?lang=es|en` de su propia URL (`loadLocalizedPage`): el valor sale de `getLang()` en main (nunca de entrada del usuario), la página solo lo acepta si es `es` o `en` y no se añade ningún canal ni capacidad; la URL sigue siendo `lazunox://app/…` (el origen no cambia, la validación del emisor y los roles de ventana tampoco).
 - Main usa el idioma para la bandeja, el menú, los errores y avisos que construye (`merr.*`: binario, carpetas, política de la organización, rutinas, notificaciones y cuadros nativos) y las ventanas con preload propio; no cambia reglas de seguridad (CSP, `webRequest`, navegación, política de carpetas y de la organización: solo cambia el texto del motivo). Los códigos que consume el código (`FULL_ACCESS_NOT_GRANTED`) no se traducen y el renderer ya no clasifica errores por su texto (`NetworkSection`). Las etiquetas de los roles estándar del menú (Archivo, Edición, Ventana) las pone Electron según la configuración regional del sistema.
 - Siguen en español los prompts de agente (`resources/opencode/*.md`), los borradores legales, lo que lee el modelo (descripciones y resultados de los MCP de Control del Mac y del navegador), el registro del modo auto y los residuos listados en F8-B27.
 
@@ -622,7 +622,7 @@ proveedores: los detecta `npm run check:mcp-catalog`, no la app.
 Canal nuevo que **borra o sobrescribe archivos del proyecto** (R2-A, F8-B34). Solo ventana principal (no está en `CHANNEL_ROLES`; los preloads secundarios no cambian) y esquema estricto (`cwd` absoluto, hasta 200 rutas no vacías; `undoId` con forma de uuid). Lo ejecuta main (`src/main/git/service.ts`), no el renderer ni el modelo:
 
 - **Qué puede tocar.** Solo archivos que `git status` reporta como cambiados en ese momento (nunca ignorados, nunca conflictos ni submódulos): una ruta que no está en el estado se rechaza. La ruta se valida contra la raíz real del repo (`realpath`): sin `..`, sin escapes absolutos, sin la raíz ni `.git`, y sin carpetas intermedias que sean enlaces simbólicos (el último componente no se resuelve: si es un enlace se mueve el enlace, nunca su destino). Se revalida justo antes de mover. Todo o nada: si una ruta no cuadra, no se descarta ninguna.
-- **Nunca borrado definitivo.** Archivos nuevos (sin seguimiento o añadidos/renombrados al índice) van a la Papelera de macOS (`shell.trashItem`, o `ONYXCODE_E2E_TRASH_DIR` solo con la app sin empaquetar, igual que los puntos de restauración). Lo que tenía seguimiento se restaura con `git checkout HEAD -- <rutas>` (sin shell, `execFile`).
+- **Nunca borrado definitivo.** Archivos nuevos (sin seguimiento o añadidos/renombrados al índice) van a la Papelera de macOS (`shell.trashItem`, o `LAZUNOX_E2E_TRASH_DIR` solo con la app sin empaquetar, igual que los puntos de restauración). Lo que tenía seguimiento se restaura con `git checkout HEAD -- <rutas>` (sin shell, `execFile`).
 - **Deshacer.** Antes de restaurar se copia el contenido actual (archivos regulares ≤ 100 MB) a `userData/code-discard/<uuid>/` (carpeta `0700`, se purga a los 7 días). `git:discardUndo` solo lo restaura si el archivo sigue sin cambios desde el descarte (no pisa ediciones posteriores), exige que la copia sea del mismo repo y que el id tenga forma de uuid. Los archivos que fueron a la Papelera se recuperan desde ahí (no hay «Deshacer» propio).
 - **Confirmación.** El renderer pide confirmación explícita con la lista de rutas afectadas antes de llamar al canal; main no tiene un segundo cuadro: un renderer comprometido podría invocar el canal, pero solo sobre archivos con cambios del repo abierto y con todo recuperable (Papelera o copia).
 - **Límites.** Archivos > 100 MB, enlaces simbólicos o carpetas se descartan sin copia para «Deshacer» (los nuevos, a la Papelera igualmente).
@@ -643,7 +643,7 @@ Canal nuevo, solo ventana principal (no está en `CHANNEL_ROLES`), esquema estri
 - **Sin modos POSIX.** `0600`/`0700` no se aplican en NTFS (`chmod` no tiene efecto): los archivos de `userData` (datos cifrados con DPAPI/`safeStorage` como `remote.bin`, `opencode.json`, almacén de OpenCode) dependen de la ACL heredada de `%APPDATA%`, que por defecto solo da acceso al usuario, a SYSTEM y a los administradores. Pendiente evaluar una ACL explícita en una tanda posterior.
 - **Procesos.** Sin grupos de procesos: `taskkill /PID n /T /F` mata el árbol, y la limpieza de huérfanos (`killStaleServers`) verifica por PowerShell/CIM que el PID siga siendo un `opencode.exe serve` antes de matarlo (PID reutilizado). `opencode.exe` se lanza con `windowsHide` y sin `detached` (no abre consola).
 - **Superficie reducida.** Fuera de macOS no se carga el código de Tareas (Seatbelt, proxy de credenciales), Control del PC ni el actualizador; sus canales IPC responden `PLATFORM_UNSUPPORTED`. Las rutinas en modo Tareas se rechazan al guardar y al ejecutar.
-- **Política gestionada.** `%ProgramData%\OnyxCode\managed.json` (escribible solo por administradores en una instalación por defecto), mismo criterio *fail-closed*.
+- **Política gestionada.** `%ProgramData%\Lazunox\managed.json` (escribible solo por administradores en una instalación por defecto), mismo criterio *fail-closed*.
 - **Binario embebido.** `pin.json` fija URL, tamaño y SHA-256 por plataforma; el ZIP se verifica antes de extraer con `tar.exe` de System32.
 
 ## 3 sexdecies. Windows: Code e interfaz (tanda 2)
@@ -665,13 +665,13 @@ Canales nuevos (todos solo de la ventana principal: no están en `CHANNEL_ROLES`
 
 - **Vigilante (`main/files/watcher.ts`).** `fs.watch` (eventos del SO, sin polling): recursivo en macOS/Windows; en Linux solo las carpetas abiertas del panel (`files:setDirs`, sin enlaces simbólicos que salgan del proyecto). Coalescencia ≈200 ms (máx. 1 s), ignora `.git`, `node_modules` y carpetas de build habituales. Topes: 8 vigilantes recursivos y 120 carpetas; lo que excede queda en refresco manual. Errores (EMFILE/ENOSPC, carpeta borrada o desconectada) se capturan: se libera el vigilante y se avisa `status: 'lost'`. Se suscribe solo con el panel visible; se libera al cambiar de proyecto, ocultar la ventana, recargar o destruir el `webContents`. El evento solo lleva rutas relativas a la carpeta suscrita y el id de suscripción de esa ventana.
 - **Proyecto activo.** Main no confía en el `cwd` del renderer para el gestor ni «Abrir en…»: solo actúan sobre una carpeta que **esa ventana** tiene suscrita (`files:watch`); si no, error «no es el proyecto que muestra el panel». Un renderer comprometido podría suscribir cualquier carpeta existente (el mismo nivel de confianza que ya tienen `git:*`); la protección frente a rutas hostiles no depende de esto sino de lo siguiente.
-- **Gestor (`main/files/fs-ops.ts`).** Rutas relativas a la raíz con `realpath`: sin absolutas, `..`, componentes vacíos o `.`; nada en `.git` (cualquier nivel, sin distinguir mayúsculas) ni la propia raíz; carpetas intermedias que sean enlaces simbólicos se rechazan, y el último componente no se resuelve (un enlace se renombra/elimina como enlace). Nombres: sin separadores, `:`, control, espacios en los extremos ni punto final, ≤255 bytes, sin nombres reservados de Windows (en todas las plataformas) y sin `< > " | ? *` en Windows. Nunca sobrescribe (`wx` al crear; comprobación previa al renombrar: queda una ventana de carrera mínima entre `lstat` y `rename`, aceptada). Eliminar = `shell.trashItem` (carpeta de pruebas `ONYXCODE_E2E_TRASH_DIR`, solo sin empaquetar) con confirmación en la UI; nunca borrado definitivo. Errores traducidos.
-- **«Abrir en…» (`main/editors/`).** El renderer envía solo un id de un catálogo fijo (`EDITOR_IDS`); main detecta cada editor por rutas conocidas (macOS: `/Applications` y `~/Applications` → `open -a <app> <carpeta>`; Windows: rutas típicas de `%LOCALAPPDATA%`/`%ProgramFiles%`; Linux: ejecutables absolutos en carpetas fijas, nunca el `PATH`) y lanza con `spawn` y arreglo de argumentos, sin shell. La carpeta debe ser absoluta (nunca se interpreta como opción) y la del proyecto activo. «Predeterminado del sistema» usa `shell.openPath`. El último editor se guarda en `extras.json › lastEditor` (solo lo escribe main, tras un lanzamiento correcto). Solo pruebas, sin empaquetar: `ONYXCODE_E2E_EDITOR_LOG` (+ `ONYXCODE_E2E_EDITORS`) registra la llamada en vez de lanzar nada.
+- **Gestor (`main/files/fs-ops.ts`).** Rutas relativas a la raíz con `realpath`: sin absolutas, `..`, componentes vacíos o `.`; nada en `.git` (cualquier nivel, sin distinguir mayúsculas) ni la propia raíz; carpetas intermedias que sean enlaces simbólicos se rechazan, y el último componente no se resuelve (un enlace se renombra/elimina como enlace). Nombres: sin separadores, `:`, control, espacios en los extremos ni punto final, ≤255 bytes, sin nombres reservados de Windows (en todas las plataformas) y sin `< > " | ? *` en Windows. Nunca sobrescribe (`wx` al crear; comprobación previa al renombrar: queda una ventana de carrera mínima entre `lstat` y `rename`, aceptada). Eliminar = `shell.trashItem` (carpeta de pruebas `LAZUNOX_E2E_TRASH_DIR`, solo sin empaquetar) con confirmación en la UI; nunca borrado definitivo. Errores traducidos.
+- **«Abrir en…» (`main/editors/`).** El renderer envía solo un id de un catálogo fijo (`EDITOR_IDS`); main detecta cada editor por rutas conocidas (macOS: `/Applications` y `~/Applications` → `open -a <app> <carpeta>`; Windows: rutas típicas de `%LOCALAPPDATA%`/`%ProgramFiles%`; Linux: ejecutables absolutos en carpetas fijas, nunca el `PATH`) y lanza con `spawn` y arreglo de argumentos, sin shell. La carpeta debe ser absoluta (nunca se interpreta como opción) y la del proyecto activo. «Predeterminado del sistema» usa `shell.openPath`. El último editor se guarda en `extras.json › lastEditor` (solo lo escribe main, tras un lanzamiento correcto). Solo pruebas, sin empaquetar: `LAZUNOX_E2E_EDITOR_LOG` (+ `LAZUNOX_E2E_EDITORS`) registra la llamada en vez de lanzar nada.
 - **No cambia.** Sandbox, proxy, plan-gate, folder-policy, CSP, `dialog:openInEditor` (VS Code del menú de proyecto).
 
 ## 3 septendecies. Control total sin carpeta (F8-B44)
 
-**Cómo funciona hoy.** Control total arranca un `opencode serve` aparte **sin Seatbelt** (`noSandbox`), con el agente `computer`, el MCP de control del Mac y el plugin de la puerta del plan; usa el XDG real del usuario y no pasa por el proxy de egress ni por el credential proxy (esos son del sandbox). El `cwd` y `ONYXCODE_TASKS_FOLDER` eran la carpeta autorizada; de la carpeta solo dependen: el directorio de proyecto de OpenCode (sesiones por `directory`), el `AGENTS.md` y la memoria de esa carpeta, el proyecto/instrucciones guardados por carpeta en `userData`, los puntos de restauración y los entregables, y la lista blanca de rutas de las funciones de la interfaz (`assertInsideApproved`). La carpeta **no confina** en este modo: el agente ya podía tocar todo el equipo.
+**Cómo funciona hoy.** Control total arranca un `opencode serve` aparte **sin Seatbelt** (`noSandbox`), con el agente `computer`, el MCP de control del Mac y el plugin de la puerta del plan; usa el XDG real del usuario y no pasa por el proxy de egress ni por el credential proxy (esos son del sandbox). El `cwd` y `LAZUNOX_TASKS_FOLDER` eran la carpeta autorizada; de la carpeta solo dependen: el directorio de proyecto de OpenCode (sesiones por `directory`), el `AGENTS.md` y la memoria de esa carpeta, el proyecto/instrucciones guardados por carpeta en `userData`, los puntos de restauración y los entregables, y la lista blanca de rutas de las funciones de la interfaz (`assertInsideApproved`). La carpeta **no confina** en este modo: el agente ya podía tocar todo el equipo.
 
 **Qué cambia.** El consentimiento pasa de «por carpeta» a «una vez por equipo» (`fullAccessConsentAt` en `tasks-folders.json`, escrito solo por main tras el diálogo; la UI no puede fijarlo). Sin él, o con `disableFullAccess`, `tasks:start {fullAccess}` falla con `FULL_ACCESS_NOT_GRANTED`. Con él, Control total arranca en cualquier carpeta que exista (por defecto la actual o, si no hay, la última usada en este modo o el home); no hace falta que esté autorizada para Sandbox. Las concesiones antiguas por carpeta siguen valiendo solo para su carpeta. La revocación (`tasks:fullAccess:revokeAll`, Ajustes › Tareas) borra el consentimiento y todas las concesiones y detiene los servidores sin sandbox.
 
@@ -881,7 +881,7 @@ respondiendo `unavailable`).
   necesita (directorio de la sesión, tipo del permiso, modelos de `provider.list`) aprendido de respuestas y eventos YA filtrados; solo se
   consulta al motor, y solo para directorios dentro del ámbito, cuando `decide` lo pide.
 - **Credenciales**: `opencode:connection`, `opencode:restart`, el evento `opencode:connection` y `tasks:start` salen con
-  `baseUrl = onyx://engine/main` o `onyx://engine/task/<token>` y `authorization = ''`; el token es opaco (96 bits), estable por carpeta y su
+  `baseUrl = lazunox://engine/main` o `lazunox://engine/task/<token>` y `authorization = ''`; el token es opaco (96 bits), estable por carpeta y su
   mapeo está solo en el Mac; caduca con «Cortar todo», el apagado a los 30 min y el cierre del servicio (no al soltar el Wi-Fi unos segundos,
   para que una reconexión no deje al celular con un token muerto). Red de seguridad: todo texto de una respuesta, error o evento pasa por
   `registry.scrub`, que tacha el valor `Authorization`, su base64, `usuario:clave` y la clave.
@@ -946,8 +946,8 @@ en la interfaz es solo comodidad, nunca el control.
   el Mac (`locked{why:'inactive'}`): la capa ligera vuelve a tapar y pide el PIN sin recargar; al desbloquear se reanudan los eventos con `since`.
 - **`window.api`**: se arma con el MISMO código que el preload (`src/preload/window-api.ts`: `makeBridge` + los `build*Api`), sobre un `ipcRenderer` falso:
   `invoke` → `call{ch,p}` y la respuesta vuelve como `IpcResult`; `on` → bus de eventos remoto. La lista de canales sigue siendo la de `src/shared/ipc*.ts`;
-  `window.api.platform = 'remote'`. **`window.fetch`** solo intercepta `onyx://engine/…` (el resto va al `fetch` original y la CSP solo deja `'self'`).
-- **El celular nunca ve credenciales**: lo que recibe ya viene con `authorization = ''` y `baseUrl = onyx://engine/…`; el shim reenvía solo `content-type`
+  `window.api.platform = 'remote'`. **`window.fetch`** solo intercepta `lazunox://engine/…` (el resto va al `fetch` original y la CSP solo deja `'self'`).
+- **El celular nunca ve credenciales**: lo que recibe ya viene con `authorization = ''` y `baseUrl = lazunox://engine/…`; el shim reenvía solo `content-type`
   y `accept` (aunque el SDK ponga `Authorization`, no sale hacia el Mac).
 - **Errores tipados** (`RemoteLinkError`: `disconnected`, `forbidden`, `locked`, `denied`, `expired`, `unavailable`, `busy`, `rate-limited`, `too-large`…) con
   texto es/en; `forbidden` + detalle `locked` = PIN pedido, `rejected` = el dueño dijo que no. **Las mutaciones nunca se reintentan solas**: un fallo es definitivo
@@ -994,7 +994,7 @@ SOLO desde el Mac: `remote:setDeviceTtl`, canal clase «X», no invocable desde 
 de Tareas. FAIL CLOSED: archivo presente pero ilegible/inválido, `remote` que no es un objeto o `enabled` distinto de `true`
 ⇒ el control remoto queda deshabilitado y Ajustes lo explica («Bloqueado por la política de tu organización»). La política
 manda sobre los ajustes del usuario; la app no tiene ninguna forma de cambiarla ni de saltársela, y en la app empaquetada
-se ignora la variable `ONYXCODE_MANAGED_POLICY` (solo vale en desarrollo). Se relee cuando el archivo cambia: al activar, en
+se ignora la variable `LAZUNOX_MANAGED_POLICY` (solo vale en desarrollo). Se relee cuando el archivo cambia: al activar, en
 cada conexión (señalización y autenticación) y cada 5 s mientras está encendido; `enabled:false` corta de inmediato las
 conexiones vivas (`stopAll`, auditoría `policy-blocked`). `allowRemember:false` borra los vínculos al activar y al cortar;
 `allowConfirmRemember12h:false` quita «Recordar 12 h»; `requirePin:true` exige el PIN en cada conexión (sin reconexión en
@@ -1021,7 +1021,7 @@ Solo interfaz: no se abre ningún canal ni ruta nuevos; todo lo que hace Code en
 
 ## 3 vicies novies. Celular integrado (F8-B60)
 
-Sin cambios de superficie de ataque: solo interfaz. Code en el celular usa los mismos canales que en F8-B59 (la política no cambia; `policy.ts` intacto). Cambios, Archivos y el navegador del agente (solo vista) siguen ejecutando las mismas llamadas; solo cambia dónde se dibujan (pantallas de la pila de navegación). El historial del navegador solo guarda marcas `{onyxNav:true}` sin datos. Los permisos nuevos se llevan a la vista (el usuario siempre ve la tarjeta antes de decidir).
+Sin cambios de superficie de ataque: solo interfaz. Code en el celular usa los mismos canales que en F8-B59 (la política no cambia; `policy.ts` intacto). Cambios, Archivos y el navegador del agente (solo vista) siguen ejecutando las mismas llamadas; solo cambia dónde se dibujan (pantallas de la pila de navegación). El historial del navegador solo guarda marcas `{lazunoxNav:true}` sin datos. Los permisos nuevos se llevan a la vista (el usuario siempre ve la tarjeta antes de decidir).
 
 ## 3 tricies. Autenticación mutua ligada a las huellas DTLS y reconexión sin confirmación obligatoria (F8-B66, protocolo v3)
 
@@ -1096,7 +1096,7 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
   variables `CSC_*` automáticamente), se activa `hardenedRuntime` y se firma con
   `build/entitlements.mac.plist` (`entitlements`/`entitlementsInherit`) — JIT de V8, red
   cliente/servidor y `disable-library-validation` (necesario para que el addon nativo precompilado
-  de `node-pty` cargue bajo hardened runtime). Los binarios embebidos `cu-helper` y `onyxcode-disclaim`
+  de `node-pty` cargue bajo hardened runtime). Los binarios embebidos `cu-helper` y `lazunox-disclaim`
   se listan en `mac.binaries` para que quede explícito que también se firman.
 - **Control remoto (F8-B48):** `node-datachannel` es un addon nativo (`@node-datachannel/darwin-arm64/node_datachannel.node`):
   va en `asarUnpack` (`node_modules/@node-datachannel/**`) y electron-builder lo firma como cualquier otro Mach-O. La PWA compilada
@@ -1109,13 +1109,13 @@ Fuses: `RunAsNode` **off**, `EnableNodeOptionsEnvironmentVariable` **off**,
 ## 5. Riesgos conocidos / pendiente
 
 - El token del MCP viaja en `OPENCODE_CONFIG_CONTENT` del servidor de acceso total (oculto a su
-  bash por el plugin `onyxcode-env`). Otro proceso del mismo usuario **sin sandbox** (p. ej. el bash
+  bash por el plugin `lazunox-env`). Otro proceso del mismo usuario **sin sandbox** (p. ej. el bash
   del modo Code) podría leer ese entorno (`ps eww`) y llamar al MCP. Mitigación futura: verificar el
   PID del cliente TCP (que sea descendiente del servidor de acceso total) o un canal por socket Unix.
 - El `cu-helper` no es un bundle con identidad propia (lección 7): los permisos siguen siendo de
-  OnyxCode.app.
-- ✅ **Corregido** — El PTY de la terminal integrada ya no hereda los permisos de OnyxCode: se lanza
-  con `onyxcode-disclaim` igual que los `opencode serve` (`src/main/pty/service.ts`, §3 arriba).
+  Lazunox.app.
+- ✅ **Corregido** — El PTY de la terminal integrada ya no hereda los permisos de Lazunox: se lanza
+  con `lazunox-disclaim` igual que los `opencode serve` (`src/main/pty/service.ts`, §3 arriba).
 - Sin Developer ID + hardened runtime + notarización configurados (ver `docs/DISTRIBUCION.md`): cada
   build ad-hoc cambia la identidad y macOS olvida los permisos concedidos. La config ya soporta
   ambos casos (`electron-builder.js` + `build/notarize.js`); falta que el usuario aporte su propio
@@ -1249,12 +1249,12 @@ argumentos ni a la configuración del proceso. El único puerto MCP que Seatbelt
 - **MCP remotos con cabeceras** → por el proxy (también con `oauth` sin campos secretos: `clientSecret` y similares se quitan de la config del sandbox). Su host deja de entrar en la red del sandbox (antes sí). Los remotos sin cabeceras no tienen secretos y siguen directos por el proxy de salida.
 - **MCP locales (stdio) con `environment` secreto: NO entran en el sandbox** (falla cerrado, aviso en Ajustes › MCP y registro). Lanzarlos fuera del sandbox detrás del proxy exigiría un puente stdio→HTTP en main y ejecutar código de terceros SIN Seatbelt (más permisos que hoy):
   se descartó por debilitar el aislamiento. Quien los necesite usa Control total. Los locales sin variables siguen como antes.
-- **Navegador integrado**: su MCP va por el proxy con el token real inyectado; el servidor MCP del navegador no cambia (`embedded-browser/mcp-server.ts` intacto) y el plugin `onyxcode-session` sigue inyectando `onyxcode_session`.
+- **Navegador integrado**: su MCP va por el proxy con el token real inyectado; el servidor MCP del navegador no cambia (`embedded-browser/mcp-server.ts` intacto) y el plugin `lazunox-session` sigue inyectando `lazunox_session`.
 
 **Pruebas** (`mcp-proxy.test.ts`, `mcp-tasks.sandbox.test.ts`, `mcp-proxy.real.test.ts`): el secreto real llega al servidor MCP simulado y el de sesión no; el token no sirve para otro servidor, ni caducado, ni revocado, ni tras `stop()`; `../`, `//`, `%2f`, forma absoluta, `Host`/`Origin`
 ajenos y métodos raros se rechazan; las redirecciones no se siguen (el otro servidor no recibe nada); límites (413/429/504); redactor. **`ps eww` real**: el control (config sin proxy, comportamiento anterior) SÍ revela los secretos —prueba del ataque— y con el proxy no aparece ninguno.
 **Sandbox y OpenCode reales, sin modelos** (`startTasksServer`, opencode 1.18.33, HOME/XDG aislados): el `ps eww` del `opencode serve` real no contiene los secretos ni el puerto real de los MCP; `GET /mcp` del servidor sandboxeado da `connected` para el navegador y un MCP de usuario a través del proxy y el
-servidor simulado recibe solo el secreto real; dentro del mismo perfil de red, `curl` al puerto real de cada MCP falla (000) y al del proxy sin token válido da 401; al parar no quedan procesos (pid) ni puerto. El OpenCode se lanzó con `ONYXCODE_NO_DISCLAIM=1` y una carpeta de config vacía (el lanzador `onyxcode-disclaim` y la
+servidor simulado recibe solo el secreto real; dentro del mismo perfil de red, `curl` al puerto real de cada MCP falla (000) y al del proxy sin token válido da 401; al parar no quedan procesos (pid) ni puerto. El OpenCode se lanzó con `LAZUNOX_NO_DISCLAIM=1` y una carpeta de config vacía (el lanzador `lazunox-disclaim` y la
 instalación del plugin por red no funcionan bajo el arnés de pruebas y son ajenos a esto).
 
 **Límites que siguen (no se disimulan).**
@@ -1274,12 +1274,12 @@ señalización WebRTC (SDP/ICE) pasa por un servicio de conexión en Cloudflare 
 ese mismo origen. Los datos viajan por el DataChannel directo (STUN siempre); el relé (TURN) está implementado pero **apagado por defecto** y sin secretos. El Mac sigue siendo el único
 punto de confianza y **no abre ningún puerto**: sale hacia fuera con un WebSocket. Passkeys y avisos push NO están en esta entrega (siguientes entregas; ver `docs/REMOTO-FASE2.md`).
 
-**Autenticación: sin cambios criptográficos.** El handshake v3 (`hs1/hs2/hs3`, HMAC ligado a las huellas DTLS, etiqueta `onyxcode-auth-v3`) es el mismo. El protocolo pasa a **v4** y el Mac acepta v3 y v4
+**Autenticación: sin cambios criptográficos.** El handshake v3 (`hs1/hs2/hs3`, HMAC ligado a las huellas DTLS, etiqueta `lazunox-auth-v3`) es el mismo. El protocolo pasa a **v4** y el Mac acepta v3 y v4
 (`MIN_PROTOCOL_VERSION = 3`): v4 añade `caps` en `authed`/`pair-pending`, `room` en `paired`, `b` (id de compilación, solo diagnóstico) en `hs1`, la trama de señalización `turn`, los códigos
 `host-offline`/`rate` y la trama `entry`. A un celular v3 el Mac le habla exactamente como antes (sin `caps` ni `room`). El servicio y los relés son «intermediarios»: no tienen `K` ni `q`, así que
 no pueden hacerse pasar por el Mac ni por el celular (las huellas DTLS que ve cada pila no cuadrarían). Pueden negar el servicio, ver metadatos y tirar o retrasar tramas.
 
-**Salas.** Una sala por Mac: `room = b64u(sha256(hostToken))`. Solo quien presenta `hostToken` (32 B en `remote.bin`, cifrado; cabecera `x-onyx-host`, nunca en la URL) puede hacer de Mac en ella; un host
+**Salas.** Una sala por Mac: `room = b64u(sha256(hostToken))`. Solo quien presenta `hostToken` (32 B en `remote.bin`, cifrado; cabecera `x-lazunox-host`, nunca en la URL) puede hacer de Mac en ella; un host
 nuevo sustituye al anterior. El celular solo conoce `room` (se la da el Mac al vincular, por el canal ya autenticado: `paired{room}`). La vinculación usa una **sala efímera** distinta
 (`pairHostToken(q)`, derivada de `q` con HKDF, de modo que el servicio no puede derivar `q` ni el `qid`) que solo existe mientras el QR vale (120 s); un `hello` solo vale por SU sala (resume por la sala
 de vinculación, o pair por la del Mac, se rechaza sin gastar el QR). «Quitar todos» renueva `hostToken` (la dirección anterior deja de contestar y el Mac reabre con la nueva).
@@ -1355,10 +1355,10 @@ Los canales `remote:setConnection` y `remote:setAway` tienen esquema estricto y 
 **Extracción de Seatbelt sin cambio de comportamiento (autorizada por el dueño para `sandbox*`, `proxy*` y `provider-egress`).** `startTasksServer` delega el «cómo se lanza» en `selectBackend()` (`src/main/tasks/backends/`); los proxies, el centinela, el token, `waitForHealth` y `stop` siguen en `sandbox.ts`. `sandbox-profile.ts`, `proxy.ts`, `proxy-policy.ts` y `provider-egress.ts` no se tocaron. Prueba: `sandbox.equivalence.test.ts` compara, contra un fixture capturado con el código ANTERIOR (commits `baeb0bd` y `c70fbdb`), el perfil SBPL byte a byte para 9 entradas fijas, y para 4 lanzamientos completos (con y sin sandbox, con y sin credenciales, sin directorio privado) el `command`, los `args`, el `env`, las opciones de `spawn`, los constructores de los proxies, `trackPid`/`killTree` y la limpieza. Las guardias estáticas de `provider-egress.test.ts` pasan sin editar y `backends.static.test.ts` las amplía a `backends/*` (ningún archivo lee credenciales; solo `wsl-spec.ts` nombra `OPENCODE_AUTH_CONTENT`, para exigir que sea un centinela). Ningún snapshot se regeneró.
 
 **Modelo de la fase 1 (lo que ya está escrito y probado con dobles).**
-- La clave real no cabe en la trama: `buildWslInit` no tiene acceso a `readProviderAuth`; solo admite entorno con prefijos `OPENCODE_`/`ONYXCODE_`/proxies, descarta `XDG_*`, `HOME` y las rutas del anfitrión (las reconstruye desde los montajes), y `OPENCODE_AUTH_CONTENT` solo puede ser `{}` o entradas `{type:'api', key:'sandboxed-placeholder-<16 hex>'}`; `encodeInit` además falla (`init_secret`) si aparece cualquier texto de una lista de secretos. El lanzador de Python repite la validación (lista cerrada, rechaza todo lo demás) y la comprueba contra la misma trama generada por TypeScript.
-- `wsl.exe`: solo existen los comandos de `WslCommand`, todos sobre `OnyxCode-Tareas`; **nunca `--shutdown`** (mataría las distros del usuario), ni `--mount`/`--update`/`-d` de otra distro; `assertAllowedWslArgs` exige coincidencia exacta con las plantillas. Entorno mínimo (`SystemRoot`, `windir`, `SystemDrive`, `TEMP`, `TMP`, `LOCALAPPDATA`) con `WSLENV=''` y `WSL_UTF8=1`; ruta absoluta de `wsl.exe`, sin shell.
-- `wsl.conf`: sin automontaje ni `fstab`, sin interop, sin `appendWindowsPath`, sin systemd. El lanzador se niega a arrancar si existe `WSLInterop`, si no hay Landlock con ABI ≥ 2 o si quedan unidades montadas; usa espacios de nombres de montaje, red y PID propios (solo `lo`), monta únicamente las carpetas concedidas con `noexec,nosuid,nodev` (`ro` las de solo lectura) y ejecuta el servidor como `onyx` sin capacidades, con `NO_NEW_PRIVS` y Landlock antes del `exec`.
-- Landlock: la carpeta principal es `rw-nodelete` (sin `REMOVE_FILE`/`REMOVE_DIR`/`REFER`, el equivalente de `file-write-unlink` denegado) salvo `allowDelete`; el scratch `.onyxcode/trabajo` solo dentro de la principal; las `rw` adicionales nunca borran; las `ro`, solo lectura. No se maneja `TRUNCATE` (igual que en macOS). Tampoco se conceden `MAKE_SYM`/FIFO/sockets/dispositivos en carpetas de Windows (decisión abierta del dueño).
+- La clave real no cabe en la trama: `buildWslInit` no tiene acceso a `readProviderAuth`; solo admite entorno con prefijos `OPENCODE_`/`LAZUNOX_`/proxies, descarta `XDG_*`, `HOME` y las rutas del anfitrión (las reconstruye desde los montajes), y `OPENCODE_AUTH_CONTENT` solo puede ser `{}` o entradas `{type:'api', key:'sandboxed-placeholder-<16 hex>'}`; `encodeInit` además falla (`init_secret`) si aparece cualquier texto de una lista de secretos. El lanzador de Python repite la validación (lista cerrada, rechaza todo lo demás) y la comprueba contra la misma trama generada por TypeScript.
+- `wsl.exe`: solo existen los comandos de `WslCommand`, todos sobre `Lazunox-Tareas`; **nunca `--shutdown`** (mataría las distros del usuario), ni `--mount`/`--update`/`-d` de otra distro; `assertAllowedWslArgs` exige coincidencia exacta con las plantillas. Entorno mínimo (`SystemRoot`, `windir`, `SystemDrive`, `TEMP`, `TMP`, `LOCALAPPDATA`) con `WSLENV=''` y `WSL_UTF8=1`; ruta absoluta de `wsl.exe`, sin shell.
+- `wsl.conf`: sin automontaje ni `fstab`, sin interop, sin `appendWindowsPath`, sin systemd. El lanzador se niega a arrancar si existe `WSLInterop`, si no hay Landlock con ABI ≥ 2 o si quedan unidades montadas; usa espacios de nombres de montaje, red y PID propios (solo `lo`), monta únicamente las carpetas concedidas con `noexec,nosuid,nodev` (`ro` las de solo lectura) y ejecuta el servidor como `lazunox` sin capacidades, con `NO_NEW_PRIVS` y Landlock antes del `exec`.
+- Landlock: la carpeta principal es `rw-nodelete` (sin `REMOVE_FILE`/`REMOVE_DIR`/`REFER`, el equivalente de `file-write-unlink` denegado) salvo `allowDelete`; el scratch `.lazunox/trabajo` solo dentro de la principal; las `rw` adicionales nunca borran; las `ro`, solo lectura. No se maneja `TRUNCATE` (igual que en macOS). Tampoco se conceden `MAKE_SYM`/FIFO/sockets/dispositivos en carpetas de Windows (decisión abierta del dueño).
 - Rutas (`wsl-paths.ts`): `C:\…` ⇄ `/win/c/…`; se rechazan UNC y de dispositivo, ADS (`:`), `..`, nombres reservados, nombres 8.3, segmentos que Windows normaliza (punto o espacio final), caracteres inválidos y de control, y la barra invertida en una ruta de Linux; al volver, solo lo que cae dentro de un montaje concedido. Los enlaces y junctions no se pueden ver sin tocar el disco: `checkNoLinks` los detecta con un `lstat` inyectado (ataques A2-A4, pendientes en el PC).
 - Puente (`bridge-protocol.ts`, `wsl-bridge-host.ts`): tramas ≤ 1 MiB, ≤ 256 flujos, INIT ≤ 64 KiB, errores tipados y decodificador envenenado tras el primer error (se corta la sesión: EOF al lanzador); control de flujo por créditos; el agente solo puede pedir salir a los puertos permitidos (egress, credenciales, proxy MCP) de `127.0.0.1` de Windows, y cualquier otro se rechaza sin conectar y se registra. Salida de `wsl.exe` decodificada como UTF-16LE (con o sin BOM) o UTF-8.
 
@@ -1368,23 +1368,23 @@ Los canales `remote:setConnection` y `remote:setAway` tienen esquema estricto y 
 
 ## 3 tricies novies. Modo viaje: túnel rápido sin cuenta, lado del Mac (F8-B85)
 
-**Alcance.** Opción «Modo viaje» del control remoto: salir de casa **sin ninguna cuenta** (ni del usuario ni de OnyxCode) con un túnel rápido de Cloudflare (`cloudflared tunnel --url http://127.0.0.1:<puerto>` → `https://<palabras>.trycloudflare.com`). Es **experimental y sin garantía**: Cloudflare lo ofrece «para pruebas y desarrollo» y puede limitarlo o retirarlo. Este bloque es solo el lado del Mac (binario, proceso, servidor, política, servicio); la interfaz de Ajustes y la PWA son de las tandas siguientes. Todo se probó con un `cloudflared` **falso** (`e2e/fake-cloudflared/fake-cloudflared.mjs`): no se abrió ningún túnel ni se descargó nada real desde el código; la verificación real previa (T0, `cloudflared` 2026.9.3 en el Mac del dueño) fijó los hechos que siguen.
+**Alcance.** Opción «Modo viaje» del control remoto: salir de casa **sin ninguna cuenta** (ni del usuario ni de Lazunox) con un túnel rápido de Cloudflare (`cloudflared tunnel --url http://127.0.0.1:<puerto>` → `https://<palabras>.trycloudflare.com`). Es **experimental y sin garantía**: Cloudflare lo ofrece «para pruebas y desarrollo» y puede limitarlo o retirarlo. Este bloque es solo el lado del Mac (binario, proceso, servidor, política, servicio); la interfaz de Ajustes y la PWA son de las tandas siguientes. Todo se probó con un `cloudflared` **falso** (`e2e/fake-cloudflared/fake-cloudflared.mjs`): no se abrió ningún túnel ni se descargó nada real desde el código; la verificación real previa (T0, `cloudflared` 2026.9.3 en el Mac del dueño) fijó los hechos que siguen.
 
-**Arquitectura.** Un segundo ejemplar del servidor de señalización (`LanSignalingServer` en modo `tunnel`) **ligado a 127.0.0.1** en un puerto aleatorio (nunca la IP de la red local ni `0.0.0.0`; se niega a arrancar si no es loopback) más un proceso hijo `cloudflared` que lo publica. Por el túnel solo se exponen: `GET /k/<T>` (puerta), `GET /__onyx/probe/<nonce>` (autocomprobación del Mac, un solo uso), la PWA estática y el WebSocket `/ws`. Nada de IPC, motor ni otras rutas. Los datos van por WebRTC directo con STUN públicos sin cuenta (`stun.cloudflare.com`, `stun.l.google.com`; sin TURN), con DTLS y el handshake v3 + PIN sin cambios: Cloudflare ve la PWA, la señalización y metadatos, nunca `q`, secretos, PIN ni conversaciones.
+**Arquitectura.** Un segundo ejemplar del servidor de señalización (`LanSignalingServer` en modo `tunnel`) **ligado a 127.0.0.1** en un puerto aleatorio (nunca la IP de la red local ni `0.0.0.0`; se niega a arrancar si no es loopback) más un proceso hijo `cloudflared` que lo publica. Por el túnel solo se exponen: `GET /k/<T>` (puerta), `GET /__lazunox/probe/<nonce>` (autocomprobación del Mac, un solo uso), la PWA estática y el WebSocket `/ws`. Nada de IPC, motor ni otras rutas. Los datos van por WebRTC directo con STUN públicos sin cuenta (`stun.cloudflare.com`, `stun.l.google.com`; sin TURN), con DTLS y el handshake v3 + PIN sin cambios: Cloudflare ve la PWA, la señalización y metadatos, nunca `q`, secretos, PIN ni conversaciones.
 
 **Puerta, `Host` y `Origin`.**
-- `T` = 16 bytes aleatorios por túnel, solo en memoria (se renueva si el túnel se relanza). El QR lleva `https://<host>/k/<T>#s=<q>` (el fragmento no viaja a ningún servidor; `T` sí viaja a Cloudflare: es antiabuso, no una credencial). `GET /k/<T>` con `T` correcto (comparación en tiempo constante) responde `303 → /` con `Set-Cookie: __Host-onyxk=<T>; Path=/; Secure; HttpOnly; SameSite=Lax` (prefijo `__Host-`: sin `Domain`). Sin la galleta **todo** (incluidos `/`, `/ws`, `/cdn-cgi/`, la sonda con nonce erróneo y `/k/` con clave errónea, con cualquier método) devuelve **el mismo 404** (mismo cuerpo y cabeceras; el rechazo del WebSocket sin galleta es el mismo 404). 20 intentos erróneos por minuto bloquean `/k/*` con 429 durante 60 s sin afectar a quien ya tiene galleta.
+- `T` = 16 bytes aleatorios por túnel, solo en memoria (se renueva si el túnel se relanza). El QR lleva `https://<host>/k/<T>#s=<q>` (el fragmento no viaja a ningún servidor; `T` sí viaja a Cloudflare: es antiabuso, no una credencial). `GET /k/<T>` con `T` correcto (comparación en tiempo constante) responde `303 → /` con `Set-Cookie: __Host-lazunoxk=<T>; Path=/; Secure; HttpOnly; SameSite=Lax` (prefijo `__Host-`: sin `Domain`). Sin la galleta **todo** (incluidos `/`, `/ws`, `/cdn-cgi/`, la sonda con nonce erróneo y `/k/` con clave errónea, con cualquier método) devuelve **el mismo 404** (mismo cuerpo y cabeceras; el rechazo del WebSocket sin galleta es el mismo 404). 20 intentos erróneos por minuto bloquean `/k/*` con 429 durante 60 s sin afectar a quien ya tiene galleta.
 - Mientras `cloudflared` no haya impreso el nombre, **todo responde 503** (no hay ventana en la que se acepte otro `Host`). Después: `Host` exacto igual al host público (421 con `127.0.0.1:<puerto>` u otro; en T0 se comprobó que el borde reenvía el `Host` público) y, en el WebSocket, `Origin` exacto igual al origen público. El nombre solo vale si casa con `https://<2–8 palabras>.trycloudflare.com` (sin puerto ni ruta); en la salida de `cloudflared` se busca solo **después** del banner «Your quick Tunnel has been created!», con esa regex estricta (el aviso legal nombra `https://www.cloudflare.com/…` y «trycloudflare.com» sin esquema y no casa); algo con aspecto de URL que no case, o una segunda URL distinta, es fallo cerrado (`bad-url`) y se mata el proceso.
 - `/cdn-cgi/` lo sirve Cloudflare en el mismo origen (en T0: `trace`, `email-decode`, `challenge-platform`): no se usa y no hay nada sensible bajo esa ruta; el servidor local responde a esa ruta el mismo 404.
 - Cabeceras: CSP con `connect-src 'self' wss://<host>`, `Cross-Origin-Opener-Policy: same-origin`, `Permissions-Policy` vacío, `no-store` salvo los recursos con huella; sin HSTS (el dominio no es nuestro). `Cf-Connecting-Ip`/`X-Forwarded-For` se usan **solo** como pista para el límite de ritmo por visitante (falsificables desde un proceso local: por eso los límites **globales** son los que protegen), nunca para autenticar.
 
 **Límites.** 2 sockets de señalización; upgrades de WebSocket 10/min por visitante y 30/min global; HTTP 60/10 s por visitante y 200/10 s global (429); tramas de señalización ≤ 32 KiB; solo GET/HEAD (sin cuerpo). **Keepalive del WebSocket**: el borde corta un WebSocket sin tráfico a ~125 s (medido en T0, y no hay `permessage-deflate`); el Mac manda un `ping` cada 25 s y cierra el socket si en 90 s no llega nada del celular.
 
-**Autocomprobación antes de enseñar el QR.** Tras leer la URL, el Mac pide por internet `/__onyx/probe/<nonce>` (nonce de 16 bytes, un solo uso, 30 s) y su propia `index.html` y los scripts que referencia (con la galleta, sin comprimir) y compara bytes con lo que sirve él. Reintenta 1 s → 30 s ante fallos de red o 5xx/530 (el nombre puede tardar en resolver; en T0 hubo un 522 intermitente al abrir un WebSocket, 1 de ~6: el celular debe reintentar). Si no llega: `unreachable`. Si llega distinto: `site-mismatch` en la actividad y **no** se muestra el QR. Detecta alteraciones no dirigidas, no una versión distinta servida a un cliente concreto: Cloudflare, como terminador TLS, podría alterar el JS en tránsito (riesgo de infraestructura que no se elimina desde la página; se acepta y se documenta, como en el modo nube).
+**Autocomprobación antes de enseñar el QR.** Tras leer la URL, el Mac pide por internet `/__lazunox/probe/<nonce>` (nonce de 16 bytes, un solo uso, 30 s) y su propia `index.html` y los scripts que referencia (con la galleta, sin comprimir) y compara bytes con lo que sirve él. Reintenta 1 s → 30 s ante fallos de red o 5xx/530 (el nombre puede tardar en resolver; en T0 hubo un 522 intermitente al abrir un WebSocket, 1 de ~6: el celular debe reintentar). Si no llega: `unreachable`. Si llega distinto: `site-mismatch` en la actividad y **no** se muestra el QR. Detecta alteraciones no dirigidas, no una versión distinta servida a un cliente concreto: Cloudflare, como terminador TLS, podría alterar el JS en tránsito (riesgo de infraestructura que no se elimina desde la página; se acepta y se documenta, como en el modo nube).
 
-**Binario `cloudflared`.** Descarga **bajo demanda y con consentimiento** (el diálogo es del Mac; sin consentimiento, o con `allowTravelDownload:false`, no hay ninguna petición). `resources/cloudflared/pin.json` (compilado dentro del código firmado de la app) fija la versión y, para macOS arm64, **dos hashes** (el del `.tgz` y el del binario extraído; la release publica el del binario en el cuerpo y el del `.tgz` en el campo `digest` de la API), los tamaños exactos y la firma esperada: Developer ID Application: Cloudflare Inc., equipo `68WVV388M8`, identificador `cloudflared`. Descarga solo de `github.com/cloudflare/cloudflared/releases/download/…` y de `objects.githubusercontent.com`/`release-assets.githubusercontent.com` (lista cerrada; redirecciones comprobadas una a una), tope de bytes exacto, SHA-256 en flujo; `tar -tzf` debe listar **un único archivo regular** llamado `cloudflared` (sin rutas, `..`, enlaces ni más archivos); tamaño y hash del binario; `codesign --verify --strict` con el requisito Developer ID del equipo **antes** de dejarlo en `userData/bin/cloudflared-<versión>/cloudflared` (0700). **Antes de CADA arranque** se vuelven a comprobar tipo, permisos, tamaño, SHA-256 y firma; si algo no casa se borra, se audita `travel-binary-bad-hash` y se pide reinstalar. Sin auto-actualización (`--no-autoupdate`): se actualiza con OnyxCode (otro `pin.json`). El generador `scripts/cloudflared/pin.mjs` exige que coincidan el cálculo local, el `digest` de la API y la tabla del cuerpo de la release, y la firma; solo lo corre una persona con red (`--network`), nunca la app ni CI, y se prueba únicamente con dobles. Solo macOS arm64 está fijado: no hay asset de Windows verificado.
+**Binario `cloudflared`.** Descarga **bajo demanda y con consentimiento** (el diálogo es del Mac; sin consentimiento, o con `allowTravelDownload:false`, no hay ninguna petición). `resources/cloudflared/pin.json` (compilado dentro del código firmado de la app) fija la versión y, para macOS arm64, **dos hashes** (el del `.tgz` y el del binario extraído; la release publica el del binario en el cuerpo y el del `.tgz` en el campo `digest` de la API), los tamaños exactos y la firma esperada: Developer ID Application: Cloudflare Inc., equipo `68WVV388M8`, identificador `cloudflared`. Descarga solo de `github.com/cloudflare/cloudflared/releases/download/…` y de `objects.githubusercontent.com`/`release-assets.githubusercontent.com` (lista cerrada; redirecciones comprobadas una a una), tope de bytes exacto, SHA-256 en flujo; `tar -tzf` debe listar **un único archivo regular** llamado `cloudflared` (sin rutas, `..`, enlaces ni más archivos); tamaño y hash del binario; `codesign --verify --strict` con el requisito Developer ID del equipo **antes** de dejarlo en `userData/bin/cloudflared-<versión>/cloudflared` (0700). **Antes de CADA arranque** se vuelven a comprobar tipo, permisos, tamaño, SHA-256 y firma; si algo no casa se borra, se audita `travel-binary-bad-hash` y se pide reinstalar. Sin auto-actualización (`--no-autoupdate`): se actualiza con Lazunox (otro `pin.json`). El generador `scripts/cloudflared/pin.mjs` exige que coincidan el cálculo local, el `digest` de la API y la tabla del cuerpo de la release, y la firma; solo lo corre una persona con red (`--network`), nunca la app ni CI, y se prueba únicamente con dobles. Solo macOS arm64 está fijado: no hay asset de Windows verificado.
 
-**Proceso y cero huérfanos.** `cloudflared` corre en su propio grupo, vía `withDisclaim` (no hereda los permisos TCC de OnyxCode), con entorno mínimo (`HOME` privado en `userData/cloudflared/home`, `PATH` del sistema, solo los proxies del usuario), sin `--config` (un archivo vacío da `ERR … was empty`) y envuelto por un **vigía `/bin/sh`**: si OnyxCode muere (incluso con `kill -9`) el `stdin` del vigía se cierra y mata al túnel (verificado en T0: 0,12 s); además el vigía deja solo a `cloudflared` con `stderr` abierto, de modo que su cierre delata la muerte del proceso al instante. Se registra en `pids.json` (`kind: cloudflared`) y `killStaleServers()` limpia al arrancar **solo** lo que de verdad es el nuestro (`isOurCloudflared`: ruta fija `…/bin/cloudflared-*/cloudflared` con `--no-autoupdate` y `--url http://127.0.0.1:<puerto>`; un PID reciclado u otro `cloudflared` no se tocan). `stop()` cierra el `stdin`, `killTree` con SIGTERM, espera ≤ 3 s y remata el árbol (también un nieto en otro grupo) con SIGKILL; `killNow()` síncrono al salir (`process.on('exit')`). Caídas: relanzamiento con espera exponencial con azar 2…60 s, máximo 6 seguidas (`rate` empieza en 60 s); cada relanzamiento da **URL y `T` nuevas** y el servicio revoca los vínculos del túnel anterior, audita `travel-url-changed` y muestra QR nuevo. Tras 6 caídas: `failed`, se corta todo y Ajustes enseña el código del error. Una pérdida de conexión con el proceso vivo no se toca (`cloudflared` reconecta solo); si en 120 s no vuelve se marca `offline`.
+**Proceso y cero huérfanos.** `cloudflared` corre en su propio grupo, vía `withDisclaim` (no hereda los permisos TCC de Lazunox), con entorno mínimo (`HOME` privado en `userData/cloudflared/home`, `PATH` del sistema, solo los proxies del usuario), sin `--config` (un archivo vacío da `ERR … was empty`) y envuelto por un **vigía `/bin/sh`**: si Lazunox muere (incluso con `kill -9`) el `stdin` del vigía se cierra y mata al túnel (verificado en T0: 0,12 s); además el vigía deja solo a `cloudflared` con `stderr` abierto, de modo que su cierre delata la muerte del proceso al instante. Se registra en `pids.json` (`kind: cloudflared`) y `killStaleServers()` limpia al arrancar **solo** lo que de verdad es el nuestro (`isOurCloudflared`: ruta fija `…/bin/cloudflared-*/cloudflared` con `--no-autoupdate` y `--url http://127.0.0.1:<puerto>`; un PID reciclado u otro `cloudflared` no se tocan). `stop()` cierra el `stdin`, `killTree` con SIGTERM, espera ≤ 3 s y remata el árbol (también un nieto en otro grupo) con SIGKILL; `killNow()` síncrono al salir (`process.on('exit')`). Caídas: relanzamiento con espera exponencial con azar 2…60 s, máximo 6 seguidas (`rate` empieza en 60 s); cada relanzamiento da **URL y `T` nuevas** y el servicio revoca los vínculos del túnel anterior, audita `travel-url-changed` y muestra QR nuevo. Tras 6 caídas: `failed`, se corta todo y Ajustes enseña el código del error. Una pérdida de conexión con el proceso vivo no se toca (`cloudflared` reconecta solo); si en 120 s no vuelve se marca `offline`.
 
 **Servicio.** PIN **obligatorio**: un vínculo de viaje se crea `kind: travel` con `expiresAt` = fin del túnel; el celular que se va sin fijar su PIN pierde el vínculo; por el túnel solo reconecta un vínculo de viaje **con** PIN (los vínculos de LAN/nube no entran y los de viaje no valen en otro modo) y **nunca** se confirma la conexión en el Mac. Si la política (`requireConnectionConfirm`, `requirePasskey`, `allowTravelMode:false`) o el ajuste «Pedir confirmación en cada conexión» lo impiden, el modo viaje queda **bloqueado** (no se abre ni puerto ni proceso). El vínculo vale solo para ese túnel: se borra al cerrarlo (inactividad, tope de horas, «Cortar todo», salir de la app, política, caída), al relanzar con otra URL, al arrancar el servicio y al iniciar la app, y el celular recibe `bye{travel-ended}`. Cierres: 30 min sin conexiones (`idle30`) o «Mantener abierto» 4/12/24 h; en todos los casos vida absoluta ≤ `travelMaxHours` de la política; como mucho un vínculo de viaje a la vez. `travel-ice-failed` (sin IPs) cuenta las conexiones directas que no abrieron canal (`directFailures` en el estado).
 
@@ -1404,7 +1404,7 @@ Los canales `remote:setConnection` y `remote:setAway` tienen esquema estricto y 
 
 **Alcance.** Cierra el modo viaje (entrega 1: conexión **directa**; el respaldo cifrado por el WebSocket del túnel NO existe). Lo del Mac está en §3 tricies novies (F8-B85); aquí: la interfaz de Ajustes, el consentimiento, la PWA del celular en este modo, el modelo de amenazas final y qué funciona en cada red. **El dueño decidió no ofrecer un servidor propio como intermediario**: la interfaz no muestra la opción de servicio fijo; es «Solo esta red» (predeterminado) o «Modo viaje (sin cuenta), experimental».
 
-**Interfaz (Ajustes › Celular).** Selector de modo; explicación corta y honesta (el enlace cambia al reiniciar el túnel, hay que vincular en casa, el Mac debe estar encendido con OnyxCode abierta, puede no funcionar en redes móviles o de empresa, el tráfico pasa por la red de Cloudflare que no ve las conversaciones pero sí que hay un túnel y la señalización). **Consentimiento obligatorio** antes de descargar `cloudflared` (diálogo con tamaño ≈ 20 MB, origen oficial, verificación de firma y huellas, se puede borrar; botón «Descargar y activar», foco inicial en «Cancelar»): sin él no hay ninguna petición de red (`activateTravelFlow`, probado). Duración `idle30` (predeterminada) / 4 / 12 / 24 h recortada por `travelMaxHours`; estado del túnel con `aria-live`, cuenta atrás solo con duración fija, motivos de error por código (nunca texto crudo del binario), bloqueos por política / confirmar cada conexión / passkey con explicación, QR «válido solo para este túnel». En Windows o Mac Intel el modo no se ofrece y se explica. `remote:travelInstall` (`{ consent: true }` exacto) y `remote:setTravelKeep` tienen esquema estricto y son clase **X**: el celular no puede descargar nada ni cambiar la duración.
+**Interfaz (Ajustes › Celular).** Selector de modo; explicación corta y honesta (el enlace cambia al reiniciar el túnel, hay que vincular en casa, el Mac debe estar encendido con Lazunox abierta, puede no funcionar en redes móviles o de empresa, el tráfico pasa por la red de Cloudflare que no ve las conversaciones pero sí que hay un túnel y la señalización). **Consentimiento obligatorio** antes de descargar `cloudflared` (diálogo con tamaño ≈ 20 MB, origen oficial, verificación de firma y huellas, se puede borrar; botón «Descargar y activar», foco inicial en «Cancelar»): sin él no hay ninguna petición de red (`activateTravelFlow`, probado). Duración `idle30` (predeterminada) / 4 / 12 / 24 h recortada por `travelMaxHours`; estado del túnel con `aria-live`, cuenta atrás solo con duración fija, motivos de error por código (nunca texto crudo del binario), bloqueos por política / confirmar cada conexión / passkey con explicación, QR «válido solo para este túnel». En Windows o Mac Intel el modo no se ofrece y se explica. `remote:travelInstall` (`{ consent: true }` exacto) y `remote:setTravelKeep` tienen esquema estricto y son clase **X**: el celular no puede descargar nada ni cambiar la duración.
 
 **PWA en modo viaje** (`pwa/src/mode.ts`, `rtc.ts`, `client.ts`). Se reconoce **solo** con HTTPS y el origen exacto `https://<palabras>.trycloudflare.com` (HTTP, puertos, subdominios o dominios parecidos no cuentan). El vínculo vive en IndexedDB **de ese origen** con la clave `CryptoKey` NO exportable (sin sala: el origen identifica al Mac) y vale solo para ese túnel; `bye{travel-ended}` con la prueba del Mac lo borra (sin prueba no se borra: podría estar inyectado). No se instala como app (se bloquea `beforeinstallprompt`) ni registra service worker (y retira cualquiera previo): el origen es efímero y reciclable. Señalización por `wss://<host>/ws` con **reintento ante el 522** (3 intentos, 0,5/1,5/4 s: `TRAVEL_WS_RETRY`); ICE solo con los STUN públicos (`TRAVEL_STUN_URLS`, sin relé aunque llegara uno) y plazo de **12 s**; el keepalive es del Mac (ping cada 25 s; el navegador contesta solo). Errores propios: «el enlace caducó, vuelve a escanear en casa» (no se llegó al túnel), «el Mac no responde» (canal cerrado), «tu red bloquea la conexión directa» (`ice-failed`) y «modo viaje cerrado». Ninguno borra el vínculo salvo `travel-ended` verificado. Presupuesto de peso respetado (arranque 286 KB gzip, `boot.js` 201 KB).
 
@@ -1444,25 +1444,25 @@ Verificado en T0 con el binario real (2026.9.3, Mac arm64, Chile): firma Develop
 
 ## 3 quadragies bis. Retirada de las cuentas y migración de la sesión heredada (F8-B88)
 
-**Decisión del dueño:** OnyxCode ya no tiene cuentas ni inicio de sesión. El comportamiento es el de la antigua compilación con
+**Decisión del dueño:** Lazunox ya no tiene cuentas ni inicio de sesión. El comportamiento es el de la antigua compilación con
 `ACCOUNT_API = null`, sin el código muerto.
 
 **Superficies que desaparecen.** (1) Los 9 canales invoke `account:state|google|cancel|retry|emailStart|emailVerify|signOut|delete|export`
 y el evento `account:changed`, con sus esquemas, handlers y entradas de la política del remoto (la **R** `account:state` y la **D**
 `account:signOut`). (2) La red saliente de main hacia el servidor de cuentas (`/v1/auth/*`, `/v1/me` cada 24 h, `/v1/logout`,
 `DELETE /v1/me`). (3) El servidor HTTP loopback en `127.0.0.1:<aleatorio>` y la apertura del navegador con una `auth_url` dictada por el
-servidor. (4) El token portador guardado en disco. (5) Las variables `ONYXCODE_ACCOUNT_URL`, `ONYXCODE_ACCOUNT_DISABLED` y
-`ONYXCODE_TEST_PLAIN_STORE`. (6) El bloqueo de Quick Entry, atajo global y bandeja por falta de sesión. No cambian la CSP (la cuenta
-salía por `net.fetch` desde main, que la CSP no controla), `CHANNEL_ROLES`, los preloads ni el protocolo `onyxcode://app`.
+servidor. (4) El token portador guardado en disco. (5) Las variables `LAZUNOX_ACCOUNT_URL`, `LAZUNOX_ACCOUNT_DISABLED` y
+`LAZUNOX_TEST_PLAIN_STORE`. (6) El bloqueo de Quick Entry, atajo global y bandeja por falta de sesión. No cambian la CSP (la cuenta
+salía por `net.fetch` desde main, que la CSP no controla), `CHANNEL_ROLES`, los preloads ni el protocolo `lazunox://app`.
 
 **Migración.** `cleanLegacyAccountSession` (`src/main/legacy-account-cleanup.ts`, sin Electron: no recibe `safeStorage`) se llama en cada
 arranque, junto a la limpieza del navegador heredado, y es idempotente. Borra **solo** estos archivos regulares (o el enlace, nunca su
 destino) directamente en `userData`, sin recursión: `account.bin`, `account.bin.tmp`, `account.test.json` y `account.test.json.tmp`.
 Una carpeta con ese nombre no se toca. Se puede quitar en una versión >= 0.6.
 
-**Qué NO se borra.** La clave del Llavero del sistema (`OnyxCode Safe Storage`, que comparte `remote.bin`): la función no descifra ni
+**Qué NO se borra.** La clave del Llavero del sistema (`Lazunox Safe Storage`, que comparte `remote.bin`): la función no descifra ni
 invalida nada, así que `remote.bin` (los celulares vinculados) sigue descifrándose. Tampoco `settings.json`, `opencode-data/` (claves de
-IA), las conversaciones, `migrations.json` ni la `localStorage` del renderer (la bandera inerte `onyx.account.note` queda, sin datos
+IA), las conversaciones, `migrations.json` ni la `localStorage` del renderer (la bandera inerte `lazunox.account.note` queda, sin datos
 personales).
 
 **Guardias.** `policy.test.ts` (cobertura al 100 %: la política no puede conservar canales que ya no existen), `schemas.test.ts`,

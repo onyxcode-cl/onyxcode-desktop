@@ -3,7 +3,7 @@
  *
  * La clave de autenticación es un `CryptoKey` NO exportable: un script malicioso que corra en la página puede USARLA (firmar
  * mientras la página está abierta), pero no llevársela. El protocolo no cambia: son las mismas derivaciones HKDF/HMAC de
- * `src/shared/remote/handshake.ts` (etiqueta `onyxcode-auth-v3`), y el vector de prueba comprueba que dan los mismos bytes.
+ * `src/shared/remote/handshake.ts` (etiqueta `lazunox-auth-v3`), y el vector de prueba comprueba que dan los mismos bytes.
  *
  * Una clave importada para `HKDF` y derivada a `HMAC` con `extractable: false` no se puede leer nunca: el secreto en claro solo
  * existe en memoria durante la importación y después se descarta (quien llama no debe conservarlo).
@@ -12,7 +12,7 @@ import { fromBase64Url, toBase64Url } from '../../src/shared/remote/code'
 import type { AuthMac } from '../../src/shared/remote/handshake'
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s)
-const SALT = enc('onyxcode/remote/v3')
+const SALT = enc('lazunox/remote/v3')
 const B64_32 = /^[A-Za-z0-9_-]{43}$/
 
 /** ¿Hay `crypto.subtle`? (HTTPS). Por HTTP en una IP local no existe y se usa `nobleAuthMac`. */

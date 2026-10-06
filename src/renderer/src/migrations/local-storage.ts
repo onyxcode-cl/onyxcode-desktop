@@ -2,12 +2,12 @@
  * Migración de localStorage del renderer (claves `cowork.*` -> `tasks.*`, valores `'cowork'` -> `'tasks'`).
  *
  * Debe ser el PRIMER import de `main.tsx`: los stores leen localStorage al cargar su módulo. Se ejecuta una sola vez
- * (marcador `onyx.lsSchema`). Es conservadora: copia (no borra las claves viejas) y solo si la clave nueva no existe.
+ * (marcador `lazunox.lsSchema`). Es conservadora: copia (no borra las claves viejas) y solo si la clave nueva no existe.
  * Este fichero es, junto con `legacy-names`, uno de los pocos sitios donde puede aparecer el nombre anterior del modo.
  */
 import { LEGACY_LOCALSTORAGE_PREFIX, LEGACY_MODE, NEW_MODE } from '../../../main/migrations/legacy-names'
 
-export const LS_SCHEMA_KEY = 'onyx.lsSchema'
+export const LS_SCHEMA_KEY = 'lazunox.lsSchema'
 export const LS_SCHEMA_VERSION = 1
 /** Prefijo nuevo de las claves de localStorage del modo Tareas. */
 export const NEW_LOCALSTORAGE_PREFIX = 'tasks.'

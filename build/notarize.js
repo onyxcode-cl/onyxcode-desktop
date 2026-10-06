@@ -4,7 +4,7 @@
  * Hook `afterSign` de electron-builder para el camino Developer ID (el autofirmado usa after-sign-self-signed.js).
  *
  * 1. Sin identidad de firma (ni CSC_NAME ni CSC_LINK): build ad-hoc local, no hace nada.
- * 2. Con identidad: vuelve a firmar `cu-helper` y `onyxcode-disclaim` con su identificador (HELPER_ID / DISCLAIM_ID) y con
+ * 2. Con identidad: vuelve a firmar `cu-helper` y `lazunox-disclaim` con su identificador (HELPER_ID / DISCLAIM_ID) y con
  *    hardened runtime + timestamp + entitlements, y resella el .app. electron-builder los firma con un identificador derivado
  *    del nombre de archivo (`cu-helper-<hash>`) y macOS recordaría mal los permisos de Control del Mac. Requiere CSC_NAME
  *    (opcional CSC_KEYCHAIN). Esto ocurre ANTES de notarizar: el ticket cubre el resultado final.
@@ -37,12 +37,12 @@ async function runAfterSign(context, deps = {}) {
   if (!env.CSC_NAME) {
     throw new Error(
       '[notarize] con CSC_LINK hace falta además CSC_NAME (nombre del certificado «Developer ID Application: …» ya importado en un llavero; ' +
-        'en CI, CSC_KEYCHAIN con el llavero temporal) para volver a firmar cu-helper y onyxcode-disclaim con su identificador.'
+        'en CI, CSC_KEYCHAIN con el llavero temporal) para volver a firmar cu-helper y lazunox-disclaim con su identificador.'
     )
   }
   if (creds.kind === 'incomplete') throw new Error(`[notarize] ${common.describeIncomplete(creds)}`)
 
-  log(`[notarize] volviendo a firmar cu-helper y onyxcode-disclaim con «${env.CSC_NAME}» (hardened runtime, timestamp, entitlements)`)
+  log(`[notarize] volviendo a firmar cu-helper y lazunox-disclaim con «${env.CSC_NAME}» (hardened runtime, timestamp, entitlements)`)
   common.resignBundle({
     appPath,
     identity: env.CSC_NAME,

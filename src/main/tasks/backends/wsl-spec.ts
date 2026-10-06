@@ -3,7 +3,7 @@
  * `wsl.conf` de la distro dedicada, la política Landlock y la trama inicial hacia el lanzador. Sin Electron ni `fs`.
  *
  * Reglas que aquí se hacen cumplir (y que `wsl-spec.test.ts` vigila):
- *  - SOLO existen los comandos de `WslCommand`; todos apuntan a la distro dedicada `OnyxCode-Tareas`. NUNCA
+ *  - SOLO existen los comandos de `WslCommand`; todos apuntan a la distro dedicada `Lazunox-Tareas`. NUNCA
  *    `--shutdown` (mataría las distros del usuario), ni `--mount`, `--update`, `--install` ni `-d` de otra distro;
  *  - `wsl.exe` se lanza con entorno mínimo + `WSLENV=''` + `WSL_UTF8=1`: ninguna variable de Windows cruza;
  *  - sin interop (ejecutar `.exe` desde dentro) y sin automontaje de unidades: `WSL_CONF`;
@@ -16,10 +16,10 @@ import { win32 } from 'node:path'
 import { BridgeProtocolError, encodeInit } from './bridge-protocol'
 import { fromSandboxPath, mountFor, toSandboxPath, type PathMount } from './wsl-paths'
 
-export const WSL_DISTRO = 'OnyxCode-Tareas'
-export const WSL_LAUNCHER_PATH = '/opt/onyx/launcher.py'
-export const WSL_USER = 'onyx'
-/** uid/gid de `onyx` en el rootfs (fijado por el script que lo construye). */
+export const WSL_DISTRO = 'Lazunox-Tareas'
+export const WSL_LAUNCHER_PATH = '/opt/lazunox/launcher.py'
+export const WSL_USER = 'lazunox'
+/** uid/gid de `lazunox` en el rootfs (fijado por el script que lo construye). */
 export const WSL_UID = 1000
 export const INIT_VERSION = 1
 
@@ -209,7 +209,7 @@ export const LANDLOCK_SYSTEM_RULES: readonly LandlockRule[] = [
   { path: '/bin', access: 'rx' },
   { path: '/sbin', access: 'rx' },
   { path: '/etc', access: 'ro' },
-  { path: '/opt/onyx', access: 'rx' },
+  { path: '/opt/lazunox', access: 'rx' },
   { path: '/proc', access: 'ro' },
   { path: '/dev', access: 'dev' }
 ]
@@ -243,7 +243,7 @@ export interface WslLaunchInput {
   /** Config de agentes de la app (Windows), solo lectura. */
   configDir: string
   allowDelete: boolean
-  /** Por defecto `<folder>\.onyxcode\trabajo`. Deben estar dentro de `folder`. */
+  /** Por defecto `<folder>\.lazunox\trabajo`. Deben estar dentro de `folder`. */
   scratchDirs?: string[]
   sandboxKey: string
   serverPort: number
@@ -253,9 +253,9 @@ export interface WslLaunchInput {
   relayPorts: number[]
 }
 
-const ENV_ALLOWED = /^(?:OPENCODE_[A-Z0-9_]+|ONYXCODE_[A-Z0-9_]+|(?:HTTPS?|ALL|NO)_PROXY|(?:https?|all|no)_proxy|LANG|LC_ALL|TZ)$/
+const ENV_ALLOWED = /^(?:OPENCODE_[A-Z0-9_]+|LAZUNOX_[A-Z0-9_]+|(?:HTTPS?|ALL|NO)_PROXY|(?:https?|all|no)_proxy|LANG|LC_ALL|TZ)$/
 /** Se reconstruyen a partir de los montajes: el valor del anfitrión es una ruta de Windows. */
-const ENV_REWRITTEN = new Set(['OPENCODE_CONFIG_DIR', 'ONYXCODE_TASKS_FOLDER'])
+const ENV_REWRITTEN = new Set(['OPENCODE_CONFIG_DIR', 'LAZUNOX_TASKS_FOLDER'])
 const PLACEHOLDER = /^sandboxed-placeholder-[0-9a-f]{16}$/
 export const MAX_ENV_TOTAL = 32 * 1024
 
@@ -307,7 +307,7 @@ export function buildWslInit(input: WslLaunchInput, forbid: readonly string[] = 
   }
 
   // Scratch: SOLO dentro de la carpeta principal.
-  const scratchWin = input.scratchDirs ?? [`${main.win.replace(/\\+$/, '')}\\.onyxcode\\trabajo`]
+  const scratchWin = input.scratchDirs ?? [`${main.win.replace(/\\+$/, '')}\\.lazunox\\trabajo`]
   const scratch: string[] = []
   for (const s of scratchWin) {
     const t = toSandboxPath(s)
@@ -319,13 +319,13 @@ export function buildWslInit(input: WslLaunchInput, forbid: readonly string[] = 
 
   const key = input.sandboxKey
   const xdg = `/home/${WSL_USER}/xdg/${key}`
-  const tmp = `/tmp/onyx-${key}`
+  const tmp = `/tmp/lazunox-${key}`
   const rules: LandlockRule[] = [...LANDLOCK_SYSTEM_RULES, { path: xdg, access: 'private' }, { path: tmp, access: 'private' }]
   for (const m of mounts) {
     if (m.mode === 'ro') rules.push({ path: m.linux, access: 'ro' })
     else rules.push({ path: m.linux, access: m === mounts[0] && input.allowDelete ? 'rw-delete' : 'rw-nodelete' })
   }
-  // Scratch (borrar y renombrar permitido, como `.onyxcode/trabajo` en Seatbelt); siempre con la principal.
+  // Scratch (borrar y renombrar permitido, como `.lazunox/trabajo` en Seatbelt); siempre con la principal.
   for (const s of scratch) rules.push({ path: s, access: 'rw-delete' })
 
   // Entorno: lista de prefijos; las rutas del anfitrión se reconstruyen desde los montajes.
@@ -339,7 +339,7 @@ export function buildWslInit(input: WslLaunchInput, forbid: readonly string[] = 
     env[k] = v
   }
   if (total > MAX_ENV_TOTAL) throw new WslSpecError('env-too-large')
-  env.ONYXCODE_TASKS_FOLDER = main.linux
+  env.LAZUNOX_TASKS_FOLDER = main.linux
   const cfgLinux = mountOrThrow(input.configDir, 'configDir').linux.toLowerCase()
   const cfg = mounts.find((m) => m.mode === 'ro' && m.linux.toLowerCase() === cfgLinux)
   if (cfg) env.OPENCODE_CONFIG_DIR = cfg.linux

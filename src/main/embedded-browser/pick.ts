@@ -6,7 +6,7 @@
  * topes. Reglas, las mismas que `docs/SEGURIDAD.md` §3 quater:
  *   - nunca valores de formulario: ni `value=`, ni `checked`/`selected`, ni el texto de un `<textarea>`;
  *   - `input[type=password|hidden]` y campos `autocomplete=cc-*|one-time-code|current-password|new-password` se sustituyen por
- *     `<input type="…" data-onyx-redacted>`;
+ *     `<input type="…" data-lazunox-redacted>`;
  *   - fuera `on*`, `srcdoc`, `nonce`, `integrity`, `style`, `srcset` y todo atributo cuyo nombre parezca un secreto;
  *   - `href`/`src`/`action`… sin query ni fragmento y los `data:`/`blob:`/`javascript:` reducidos;
  *   - `<script>`, `<style>`, `<template>`, `<noscript>` fuera; `<svg>` reducido a su etiqueta;
@@ -74,7 +74,7 @@ const DROP_ATTRS = new Set(['srcdoc', 'nonce', 'integrity', 'style', 'srcset', '
 const SECRET_NAME_RE = /token|secret|key|auth|pass|csrf|xsrf|session|signature|credential/i
 const SENSITIVE_AUTOCOMPLETE = (t: string): boolean =>
   t.startsWith('cc-') || t === 'one-time-code' || t === 'current-password' || t === 'new-password'
-const REDACTED_ATTR = 'data-onyx-redacted'
+const REDACTED_ATTR = 'data-lazunox-redacted'
 /** Tipos de `<input>` cuyo contenido es un valor escrito por la persona (se usa en la página; aquí por simetría). */
 export const VALUELESS_INPUT_TYPES = new Set(['submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'color', 'range'])
 

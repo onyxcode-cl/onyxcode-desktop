@@ -128,7 +128,7 @@ export interface AccessRequest {
    * aprobado, solo hace falta el permiso nuevo).
    */
   plan?: string[]
-  /** Sesión (tarea) de OpenCode que pidió la tarjeta (la inyecta el plugin `onyxcode-plan-gate`). */
+  /** Sesión (tarea) de OpenCode que pidió la tarjeta (la inyecta el plugin `lazunox-plan-gate`). */
   sessionId?: string
   /** Nombres de app que el agente pidió y no se encontraron instaladas. */
   unresolved?: string[]
@@ -262,7 +262,7 @@ export interface TasksProject {
   memoryEnabled?: boolean
 }
 
-/** Contenido de `.onyxcode/memoria.md` dentro de la carpeta (notas que el agente guarda entre tareas). */
+/** Contenido de `.lazunox/memoria.md` dentro de la carpeta (notas que el agente guarda entre tareas). */
 export interface TasksMemory {
   content: string
   exists: boolean
@@ -802,7 +802,7 @@ export interface TasksInvokeContract {
     req: { folder: string; name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }
     res: TasksProject
   }
-  /** Memoria del proyecto: `.onyxcode/memoria.md` dentro de la carpeta. */
+  /** Memoria del proyecto: `.lazunox/memoria.md` dentro de la carpeta. */
   'tasks:memory:get': { req: { folder: string }; res: TasksMemory }
   'tasks:memory:save': { req: { folder: string; content: string }; res: TasksMemory }
   'tasks:memory:delete': { req: { folder: string }; res: TasksMemory }
@@ -887,8 +887,8 @@ export interface TasksInvokeContract {
   /** Ids de las sesiones con el plan aprobado ahora mismo (para pintar "Plan aprobado" al cargar). */
   'computer:approvedPlans': { req: void; res: string[] }
   /**
-   * "Editar en OnyxCode" desde la píldora: trae la ventana principal al frente (acción EXPLÍCITA del
-   * usuario, la única que activa OnyxCode fuera de que él lo pida) para escribir el feedback de una
+   * "Editar en Lazunox" desde la píldora: trae la ventana principal al frente (acción EXPLÍCITA del
+   * usuario, la única que activa Lazunox fuera de que él lo pida) para escribir el feedback de una
    * tarjeta `request_access` con más espacio que la píldora.
    */
   'computer:showMainWindow': { req: void; res: void }

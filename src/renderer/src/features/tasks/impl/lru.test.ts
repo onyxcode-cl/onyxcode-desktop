@@ -18,7 +18,7 @@ let cachedTranscriptTexts: (typeof import('./search'))['cachedTranscriptTexts']
 beforeEach(async () => {
   vi.resetModules()
   localStorage.clear()
-  localStorage.setItem('onyx.lru.max', '1')
+  localStorage.setItem('lazunox.lru.max', '1')
   ;({ useSessions } = await import('../../../stores/sessions'))
   ;({ useTasks } = await import('./store')) // registra la guarda de Tasks
   ;({ cachedTranscriptTexts } = await import('./search')) // registra el oyente de búsqueda

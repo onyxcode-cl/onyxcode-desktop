@@ -1,4 +1,4 @@
-// Ganchos de test SOLO en DEV (cargado desde main.tsx con onyx.e2e=1). Sin IPC nuevo.
+// Ganchos de test SOLO en DEV (cargado desde main.tsx con lazunox.e2e=1). Sin IPC nuevo.
 import { useServer } from './stores/server'
 import { useSessions } from './stores/sessions'
 import { useSettings } from './stores/settings'
@@ -27,8 +27,8 @@ const hooks = {
 
 declare global {
   interface Window {
-    __onyxE2E?: object
+    __lazunoxE2E?: object
   }
 }
 
-window.__onyxE2E = hooks
+window.__lazunoxE2E = hooks

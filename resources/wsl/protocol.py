@@ -1,4 +1,4 @@
-"""Parte PURA del lanzador de Tareas en WSL (OnyxCode, F8-B81): tramas, validación de la trama inicial y tablas.
+"""Parte PURA del lanzador de Tareas en WSL (Lazunox, F8-B81): tramas, validación de la trama inicial y tablas.
 
 Sin llamadas al sistema privilegiadas: se puede importar y probar en cualquier plataforma (`test_protocol.py`).
 El formato de trama es el de `src/main/tasks/backends/bridge-protocol.ts` (vectores compartidos en vectors.json):
@@ -39,9 +39,9 @@ ERROR_CODES = {
     "internal": 12,
 }
 
-WSL_USER = "onyx"
+WSL_USER = "lazunox"
 WSL_UID = 1000
-OPENCODE_BIN = "/opt/onyx/bin/opencode"
+OPENCODE_BIN = "/opt/lazunox/bin/opencode"
 
 
 class ProtocolError(Exception):
@@ -151,7 +151,7 @@ LANDLOCK_ACCESS = {
 
 SYSTEM_RULES = [
     ("/usr", "rx"), ("/lib", "rx"), ("/lib64", "rx"), ("/bin", "rx"), ("/sbin", "rx"),
-    ("/etc", "ro"), ("/opt/onyx", "rx"), ("/proc", "ro"), ("/dev", "dev"),
+    ("/etc", "ro"), ("/opt/lazunox", "rx"), ("/proc", "ro"), ("/dev", "dev"),
 ]
 
 
@@ -218,7 +218,7 @@ def win_matches_linux(win, linux):
 
 _KEY = re.compile(r"^[0-9a-f]{16}$")
 _ENV_KEY = re.compile(
-    r"^(?:OPENCODE_[A-Z0-9_]+|ONYXCODE_[A-Z0-9_]+|(?:HTTPS?|ALL|NO)_PROXY|(?:https?|all|no)_proxy|LANG|LC_ALL|TZ)$"
+    r"^(?:OPENCODE_[A-Z0-9_]+|LAZUNOX_[A-Z0-9_]+|(?:HTTPS?|ALL|NO)_PROXY|(?:https?|all|no)_proxy|LANG|LC_ALL|TZ)$"
 )
 _PLACEHOLDER = re.compile(r"^sandboxed-placeholder-[0-9a-f]{16}$")
 MAX_ENV_TOTAL = 32 * 1024
@@ -308,7 +308,7 @@ def validate_init(raw):
         raise bad("minAbi")
     mount_modes = {m["linux"]: m["mode"] for m in mounts}
     sys_paths = {p for p, _ in SYSTEM_RULES}
-    xdg, tmp = "/home/%s/xdg/%s" % (WSL_USER, key), "/tmp/onyx-%s" % key
+    xdg, tmp = "/home/%s/xdg/%s" % (WSL_USER, key), "/tmp/lazunox-%s" % key
     rules = ll["rules"]
     if not isinstance(rules, list) or len(rules) > 128:
         raise bad("rules")

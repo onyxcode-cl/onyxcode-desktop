@@ -19,7 +19,7 @@ export const LEGACY_USERDATA_RENAMES: ReadonlyArray<readonly [string, string]> =
   // XDG de cada servidor aislado (BD de OpenCode e historial de tareas): lo más crítico.
   ['cowork-sandbox', 'tasks-sandbox'],
   // Única partición persistente (cookies del navegador integrado).
-  ['Partitions/onyxcode-web-cowork', 'Partitions/onyxcode-web-tasks']
+  ['Partitions/onyxcode-web-cowork', 'Partitions/lazunox-web-tasks']
 ]
 
 /** Identificador del modo en valores persistidos (ModeId, RoutineMode, BrowserProduct, ModelMode, ui.mode…). */
@@ -48,8 +48,8 @@ export const LEGACY_BROWSER_PARTITION = 'persist:onyxcode-web-cowork'
 
 /** Carpeta de trabajo que el modo dejaba dentro de las carpetas del usuario. */
 export const LEGACY_FOLDER_SCRATCH = '.cowork'
-/** Destino nuevo (relativo a la carpeta del usuario): NO es `.onyxcode/` entera para no exponer `memoria.md`. */
-export const NEW_FOLDER_SCRATCH = ['.onyxcode', 'trabajo'] as const
+/** Destino nuevo (relativo a la carpeta del usuario): NO es `.lazunox/` entera para no exponer `memoria.md`. */
+export const NEW_FOLDER_SCRATCH = ['.lazunox', 'trabajo'] as const
 
 /** Nombres antiguos de la app (carpetas de userData previas). */
 export const LEGACY_APP_NAMES = ['Lapis', 'OpenDesk'] as const

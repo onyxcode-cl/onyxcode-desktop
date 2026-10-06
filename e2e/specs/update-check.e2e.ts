@@ -1,5 +1,5 @@
 // Aviso de versión nueva: contra un servidor local que imita la API de releases de GitHub (nunca contra api.github.com).
-// `ONYXCODE_TEST_RELEASES_API` solo se honra en la app sin empaquetar. Capturas: UPDATE_SHOTS_DIR=/ruta.
+// `LAZUNOX_TEST_RELEASES_API` solo se honra en la app sin empaquetar. Capturas: UPDATE_SHOTS_DIR=/ruta.
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -25,7 +25,7 @@ const servers: ReleasesServer[] = []
 const dirs: string[] = []
 
 const newDir = (): string => {
-  const d = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-upd-')))
+  const d = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-upd-')))
   dirs.push(d)
   return d
 }
@@ -39,9 +39,9 @@ async function launch(
   api: string | null,
   o: { userData?: string; settings?: Record<string, unknown>; repo?: string | null } = {}
 ): Promise<E2EApp> {
-  const env: Record<string, string> = { ONYXCODE_TEST_UPDATE_DELAY_MS: '200' }
-  if (api) env.ONYXCODE_TEST_RELEASES_API = api
-  if (o.repo !== null) env.ONYXCODE_TEST_RELEASES_REPO = o.repo ?? REPO
+  const env: Record<string, string> = { LAZUNOX_TEST_UPDATE_DELAY_MS: '200' }
+  if (api) env.LAZUNOX_TEST_RELEASES_API = api
+  if (o.repo !== null) env.LAZUNOX_TEST_RELEASES_REPO = o.repo ?? REPO
   const app = await startApp({ userData: o.userData ?? newDir(), keepUserData: true, env, settings: o.settings })
   apps.push(app)
   return app
@@ -127,7 +127,7 @@ describe('aviso de versión nueva', () => {
     const req = srv.requests[0]
     expect(req.method).toBe('GET')
     expect(req.url).toBe(`/repos/${REPO}/releases/latest`)
-    expect(req.headers['user-agent']).toBe(`OnyxCode/${await appVersion(app)}`)
+    expect(req.headers['user-agent']).toBe(`Lazunox/${await appVersion(app)}`)
     expect(req.headers.accept).toBe('application/vnd.github+json')
     expect(req.headers['x-github-api-version']).toBe('2022-11-28')
     expect(req.headers.cookie).toBeUndefined()

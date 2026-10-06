@@ -1,6 +1,6 @@
 /**
  * Papelera de los puntos de restauración. En producción: `shell.trashItem` (Papelera de macOS).
- * Solo pruebas: `ONYXCODE_E2E_TRASH_DIR` (honrada ÚNICAMENTE con la app sin empaquetar) mueve el
+ * Solo pruebas: `LAZUNOX_E2E_TRASH_DIR` (honrada ÚNICAMENTE con la app sin empaquetar) mueve el
  * elemento a esa carpeta, para poder comprobar lo que iría a la Papelera sin tocar la real.
  */
 import { cpSync, mkdirSync, renameSync, rmSync } from 'node:fs'
@@ -13,7 +13,7 @@ export interface TrashEnvInput {
 
 /** Carpeta de Papelera de pruebas, o null (siempre null con la app empaquetada o con ruta no absoluta). */
 export function resolveE2eTrashDir(i: TrashEnvInput): string | null {
-  const dir = !i.isPackaged ? i.env.ONYXCODE_E2E_TRASH_DIR : undefined
+  const dir = !i.isPackaged ? i.env.LAZUNOX_E2E_TRASH_DIR : undefined
   return dir && isAbsolute(dir) ? dir : null
 }
 

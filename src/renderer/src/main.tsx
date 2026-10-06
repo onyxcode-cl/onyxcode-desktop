@@ -22,16 +22,16 @@ installModalFocus()
 // Ganchos del harness E2E: solo en DEV y con el flag en localStorage (tree-shaken en producción).
 if (import.meta.env.DEV) {
   try {
-    if (localStorage.getItem('onyx.e2e') === '1') void import('./e2e-hooks')
+    if (localStorage.getItem('lazunox.e2e') === '1') void import('./e2e-hooks')
   } catch {
     /* localStorage no disponible */
   }
 }
 
-// Kit de UI (solo desarrollo): `#ui-kit` + `localStorage['onyx.uikit'] = '1'`. Chunk perezoso; la PWA no pasa por aquí.
+// Kit de UI (solo desarrollo): `#ui-kit` + `localStorage['lazunox.uikit'] = '1'`. Chunk perezoso; la PWA no pasa por aquí.
 function wantsUiKit(): boolean {
   try {
-    return location.hash === '#ui-kit' && localStorage.getItem('onyx.uikit') === '1'
+    return location.hash === '#ui-kit' && localStorage.getItem('lazunox.uikit') === '1'
   } catch {
     return false
   }

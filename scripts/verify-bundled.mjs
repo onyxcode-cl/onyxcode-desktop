@@ -20,7 +20,7 @@ const pin = JSON.parse(readFileSync(join(root, 'resources/opencode-bin/pin.json'
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const argv = process.argv.slice(2)
 const arg = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined)
-const appPath = resolve(arg('--app') ?? join(root, 'dist/mac-arm64/OnyxCode.app'))
+const appPath = resolve(arg('--app') ?? join(root, 'dist/mac-arm64/Lazunox.app'))
 const dmgPath = resolve(arg('--dmg') ?? join(root, 'dist', `${pkg.name}-${pkg.version}-arm64.dmg`))
 const res = join(appPath, 'Contents/Resources')
 const bin = join(res, 'opencode/opencode')

@@ -22,12 +22,12 @@ export const PIN_PATH = join(ROOT, 'resources', 'cloudflared', 'pin.json')
 export function realIo() {
   return {
     async getJson(url) {
-      const r = await fetch(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'onyxcode-pin' } })
+      const r = await fetch(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'lazunox-pin' } })
       if (!r.ok) throw new Error(`GET ${url}: ${r.status}`)
       return r.json()
     },
     async download(url) {
-      const r = await fetch(url, { headers: { 'User-Agent': 'onyxcode-pin' }, redirect: 'follow' })
+      const r = await fetch(url, { headers: { 'User-Agent': 'lazunox-pin' }, redirect: 'follow' })
       if (!r.ok) throw new Error(`GET ${url}: ${r.status}`)
       return Buffer.from(await r.arrayBuffer())
     },

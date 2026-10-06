@@ -5,7 +5,7 @@ export { hostCss } from '../../src/shared/remote/host-css'
 const BG = { light: '#f7f8fb', dark: '#11131a' } as const
 
 /**
- * Hace que la capa ligera use el tema de la interfaz completa (el del ajuste del Mac, que la app recuerda en `onyx.theme`):
+ * Hace que la capa ligera use el tema de la interfaz completa (el del ajuste del Mac, que la app recuerda en `lazunox.theme`):
  * lo aplica a <html> y al anfitrión del shadow root, y lo mantiene al día cuando la app cambia `data-theme`.
  * Sin valor recordado se queda el tema del sistema del celular (`prefers-color-scheme`).
  */

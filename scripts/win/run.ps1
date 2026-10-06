@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 $Branch = $Branch -replace '[\\/:*?"<>|]', '-'
-$inbox = Join-Path $Root 'inbox\onyx.tgz'
+$inbox = Join-Path $Root 'inbox\lazunox.tgz'
 $stage = Join-Path $Root 'stage'
 $wt = Join-Path $Root 'wt'
 $logs = Join-Path $Root "logs\$Branch"
@@ -32,7 +32,7 @@ function Stop-Orphans {
     $cl = [string]$p.CommandLine
     $hit = $false
     if ($exe -and $exe.StartsWith("$Root\wt\", [StringComparison]::OrdinalIgnoreCase)) { $hit = $true }
-    elseif ($cl -match 'onyx-e2e-|onyx-smoke-') { $hit = $true }
+    elseif ($cl -match 'lazunox-e2e-|lazunox-smoke-') { $hit = $true }
     elseif ($exe -and $exe.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase) -and $cl -match 'opencode(\.exe)?"?\s+serve') { $hit = $true }
     elseif ($cl -match [regex]::Escape("$Root\wt\") -and $p.Name -match '^(node|cmd|electron)\.exe$') { $hit = $true }
     if ($hit) {

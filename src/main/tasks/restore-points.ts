@@ -15,7 +15,7 @@
  * Copia y hash son asíncronos (no bloquean main) y crear tiene un presupuesto de tiempo y de espacio libre.
  *
  * Garantías y límites (ver docs/SEGURIDAD.md): recorrido sin seguir symlinks (se registran y
- * nunca se restauran); se excluyen `.git/`, `node_modules/` y `.onyxcode/`; 20 000 archivos,
+ * nunca se restauran); se excluyen `.git/`, `node_modules/` y `.lazunox/`; 20 000 archivos,
  * 50 MB por archivo y 2 GB en total; restaurar crea antes un punto «Antes de deshacer»; lo creado
  * después va a la Papelera (nunca se borra); cada ruta se valida contra symlinks intermedios.
  */
@@ -135,7 +135,7 @@ interface Diff {
   cur?: Stats
 }
 
-export const EXCLUDED_DIRS: ReadonlySet<string> = new Set(['.git', 'node_modules', '.onyxcode'])
+export const EXCLUDED_DIRS: ReadonlySet<string> = new Set(['.git', 'node_modules', '.lazunox'])
 const OBJECT_RE = /^[a-f0-9]{64}$/
 const ID_RE = /^[a-f0-9]{1,64}$/
 const UNDO_LABEL = 'Antes de deshacer'
@@ -741,7 +741,7 @@ export class RestorePoints {
           st = null
         }
         if (st && (st.isSymbolicLink() || st.isDirectory())) throw new Error('el sitio lo ocupa un enlace o una carpeta')
-        const tmp = join(dirname(abs), `.onyxcode-restore-${randomBytes(6).toString('hex')}`)
+        const tmp = join(dirname(abs), `.lazunox-restore-${randomBytes(6).toString('hex')}`)
         try {
           await copyFile(obj, tmp, fsc.COPYFILE_FICLONE)
           try {

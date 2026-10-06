@@ -118,7 +118,7 @@ describe('createManualFetch', () => {
 describe('CloudflaredBinary.install con la redirección real de GitHub', () => {
   let dir = ''
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'onyx-mf-'))
+    dir = mkdtempSync(join(tmpdir(), 'lazunox-mf-'))
   })
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 

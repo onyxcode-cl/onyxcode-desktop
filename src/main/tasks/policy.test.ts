@@ -7,11 +7,11 @@ import { managedPolicyPath, parseManagedPolicy } from './policy'
 
 describe('managedPolicyPath', () => {
   it('macOS: /Library/Application Support/<app>/managed.json', () => {
-    expect(managedPolicyPath('darwin', {})).toBe('/Library/Application Support/OnyxCode/managed.json')
+    expect(managedPolicyPath('darwin', {})).toBe('/Library/Application Support/Lazunox/managed.json')
   })
-  it('Windows: %ProgramData%\\OnyxCode\\managed.json', () => {
-    expect(managedPolicyPath('win32', { ProgramData: 'D:\\PD' })).toBe('D:\\PD\\OnyxCode\\managed.json')
-    expect(managedPolicyPath('win32', {})).toBe('C:\\ProgramData\\OnyxCode\\managed.json')
+  it('Windows: %ProgramData%\\Lazunox\\managed.json', () => {
+    expect(managedPolicyPath('win32', { ProgramData: 'D:\\PD' })).toBe('D:\\PD\\Lazunox\\managed.json')
+    expect(managedPolicyPath('win32', {})).toBe('C:\\ProgramData\\Lazunox\\managed.json')
   })
 })
 

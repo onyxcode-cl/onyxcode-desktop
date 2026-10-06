@@ -87,7 +87,7 @@ function req(
     r.end()
   })
 }
-const COOKIE = (): string => `__Host-onyxk=${gate.token}`
+const COOKIE = (): string => `__Host-lazunoxk=${gate.token}`
 /** Cabeceras que identifican la respuesta (sin las que cambian por petición). */
 const sig = (r: Res): string =>
   JSON.stringify([
@@ -149,7 +149,7 @@ describe('ligado solo a 127.0.0.1', () => {
 describe('503 hasta que cloudflared dice el nombre', () => {
   it('todo (HTTP y WebSocket) responde 503 mientras publicOrigin es null', async () => {
     pub = null
-    for (const p of ['/', '/k/' + gate.token, '/ws', '/__onyx/probe/x'])
+    for (const p of ['/', '/k/' + gate.token, '/ws', '/__lazunox/probe/x'])
       expect((await req(p, { host: HOST, cookie: COOKIE() })).status, p).toBe(503)
     expect((await req('/', { host: '127.0.0.1' })).status).toBe(503)
     const r = await ws()
@@ -181,7 +181,7 @@ describe('sin galleta todo es el MISMO 404', () => {
       `/k/${'A'.repeat(22)}`,
       '/k/',
       '/k/corto',
-      '/__onyx/probe/xxxxxxxxxxxxxxxxxxxxxx',
+      '/__lazunox/probe/xxxxxxxxxxxxxxxxxxxxxx',
       '/../../etc/passwd',
       '/%2e%2e/%2e%2e/etc/passwd',
       '/a%00b'
@@ -195,7 +195,13 @@ describe('sin galleta todo es el MISMO 404', () => {
     // Con otros métodos, igual.
     for (const m of ['POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']) expect(sig(await req('/', { method: m }))).toBe(only)
     // Una galleta incorrecta, o con otro nombre, tampoco abre nada.
-    for (const c of [`__Host-onyxk=${'A'.repeat(22)}`, `onyxk=${gate.token}`, `__Host-onyxk=${gate.token}x`, `__Host-onyxk=`, 'a=b'])
+    for (const c of [
+      `__Host-lazunoxk=${'A'.repeat(22)}`,
+      `lazunoxk=${gate.token}`,
+      `__Host-lazunoxk=${gate.token}x`,
+      `__Host-lazunoxk=`,
+      'a=b'
+    ])
       expect(sig(await req('/', { cookie: c })), c).toBe(only)
   })
 
@@ -226,7 +232,7 @@ describe('puerta /k/<T>', () => {
     expect(r.status).toBe(303)
     expect(r.headers.location).toBe('/')
     const c = String(r.headers['set-cookie'])
-    expect(c).toMatch(new RegExp(`^__Host-onyxk=${gate.token}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=\\d+$`))
+    expect(c).toMatch(new RegExp(`^__Host-lazunoxk=${gate.token}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=\\d+$`))
     expect(c).not.toMatch(/Domain/i)
     expect(String(r.headers['cache-control'])).toBe('no-store')
     expect(r.body).toBe('')
@@ -261,7 +267,7 @@ describe('puerta /k/<T>', () => {
     const old = gate.token
     gate.rotate()
     expect(gate.token).not.toBe(old)
-    expect(sig(await req('/', { cookie: `__Host-onyxk=${old}` }))).toBe(sig(await req('/nada')))
+    expect(sig(await req('/', { cookie: `__Host-lazunoxk=${old}` }))).toBe(sig(await req('/nada')))
     expect((await req(`/k/${old}`)).status).toBe(404)
   })
   it('20 intentos erróneos por minuto bloquean /k/* con 429 durante 60 s, avisan, y no afectan a quien ya tiene galleta', async () => {
@@ -280,15 +286,15 @@ describe('puerta /k/<T>', () => {
 describe('autocomprobación del Mac', () => {
   it('el nonce vale una sola vez, solo con GET y dentro del plazo', async () => {
     const n = probes.issue()
-    expect((await req(`/__onyx/probe/${n}`, { method: 'POST' })).status).toBe(404)
-    const ok = await req(`/__onyx/probe/${n}`)
+    expect((await req(`/__lazunox/probe/${n}`, { method: 'POST' })).status).toBe(404)
+    const ok = await req(`/__lazunox/probe/${n}`)
     expect(ok.status).toBe(200)
-    expect(ok.body).toBe('onyx-probe-ok')
-    expect((await req(`/__onyx/probe/${n}`)).status).toBe(404)
+    expect(ok.body).toBe('lazunox-probe-ok')
+    expect((await req(`/__lazunox/probe/${n}`)).status).toBe(404)
     const late = probes.issue()
     clock += TRAVEL_LIMITS.probeTtlMs + 1
-    expect((await req(`/__onyx/probe/${late}`)).status).toBe(404)
-    expect((await req('/__onyx/probe/' + 'x'.repeat(22))).status).toBe(404)
+    expect((await req(`/__lazunox/probe/${late}`)).status).toBe(404)
+    expect((await req('/__lazunox/probe/' + 'x'.repeat(22))).status).toBe(404)
   })
   it('readStatic entrega lo que serviría (index, scripts) y nada fuera de la carpeta', () => {
     expect(server.readStatic('/')?.toString()).toContain('<title>pwa</title>')

@@ -20,7 +20,7 @@ const supported = isMac || isWin
 /** Nombre del ejecutable de fixture según la plataforma. */
 const EXE = isWin ? 'opencode.exe' : 'opencode'
 const VERSION = '9.8.7'
-const root = mkdtempSync(join(tmpdir(), 'onyx-fetch-'))
+const root = mkdtempSync(join(tmpdir(), 'lazunox-fetch-'))
 let server: Server
 let base = ''
 let zipBuf: Buffer

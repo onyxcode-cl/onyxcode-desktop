@@ -2,7 +2,7 @@
 // Firma el sitio del control remoto (`pwa/dist-site`) con la clave Ed25519 del DUEÑO y deja todo listo para publicar a mano.
 // NO despliega, NO hace peticiones de red y NO se ejecuta en CI: la clave privada vive solo en el Mac del dueño.
 //
-//   ONYXCODE_SITE_KEY_FILE=~/.onyxcode-keys/site.pem node scripts/site-release.mjs [--build]
+//   LAZUNOX_SITE_KEY_FILE=~/.lazunox-keys/site.pem node scripts/site-release.mjs [--build]
 //
 //   --build   compila antes la PWA y arma `pwa/dist-site` (`npm run build:pwa` + `scripts/build-site.mjs`)
 //
@@ -125,7 +125,7 @@ if (isMain) {
         if (r.status !== 0) process.exit(r.status ?? 1)
       }
     }
-    const r = release({ keyFile: process.env.ONYXCODE_SITE_KEY_FILE })
+    const r = release({ keyFile: process.env.LAZUNOX_SITE_KEY_FILE })
     console.log(
       `[site-release] publicación ${r.build}: ${r.files} archivos, ${r.startup.length} de arranque vigilados, ${r.versions} versiones de la interfaz.`
     )

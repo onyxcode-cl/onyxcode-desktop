@@ -37,8 +37,8 @@ describe('m001: userData viejo sembrado -> nombres nuevos', () => {
 
     // Carpetas grandes: renombradas con su contenido intacto.
     expect(readFileSync(join(ud, 'tasks-sandbox/0123456789abcdef/data/opencode/opencode.db'), 'utf8')).toContain('SENTINEL')
-    expect(readFileSync(join(ud, 'Partitions/onyxcode-web-tasks/Cookies'), 'utf8')).toContain('SENTINEL')
-    expect(existsSync(join(ud, 'Partitions/onyxcode-web-tasks/Local Storage/leveldb/000003.log'))).toBe(true)
+    expect(readFileSync(join(ud, 'Partitions/lazunox-web-tasks/Cookies'), 'utf8')).toContain('SENTINEL')
+    expect(existsSync(join(ud, 'Partitions/lazunox-web-tasks/Local Storage/leveldb/000003.log'))).toBe(true)
 
     // Claves dentro de JSON.
     const settings = readJson(ud, 'settings.json')
@@ -139,15 +139,15 @@ describe('m001: userData viejo sembrado -> nombres nuevos', () => {
     writeFileSync(join(ud, 'tasks-rules.json'), '{"rules":[]}')
     mkdirSync(join(ud, 'tasks-sandbox/nuevohash'), { recursive: true })
     writeFileSync(join(ud, 'tasks-sandbox/nuevohash/NUEVO'), 'nuevo')
-    mkdirSync(join(ud, 'Partitions/onyxcode-web-tasks'), { recursive: true })
-    writeFileSync(join(ud, 'Partitions/onyxcode-web-tasks/Cookies'), 'nuevas')
+    mkdirSync(join(ud, 'Partitions/lazunox-web-tasks'), { recursive: true })
+    writeFileSync(join(ud, 'Partitions/lazunox-web-tasks/Cookies'), 'nuevas')
 
     const out = runMigrations(ud, opts)
     expect(out[0].status).toBe('applied')
     // Gana el nuevo.
     expect(readFileSync(join(ud, 'tasks-rules.json'), 'utf8')).toBe('{"rules":[]}')
     expect(readdirSync(join(ud, 'tasks-sandbox'))).toEqual(['nuevohash'])
-    expect(readFileSync(join(ud, 'Partitions/onyxcode-web-tasks/Cookies'), 'utf8')).toBe('nuevas')
+    expect(readFileSync(join(ud, 'Partitions/lazunox-web-tasks/Cookies'), 'utf8')).toBe('nuevas')
     // El viejo desaparece de su sitio pero está entero en conflicts/.
     const bdir = listBackups(ud)[0]
     expect(existsSync(join(ud, 'cowork-rules.json'))).toBe(false)

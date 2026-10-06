@@ -3,9 +3,9 @@ import { generateKeyPairSync } from 'node:crypto'
 import { resolveInstallConfig, resolveUpdateConfig } from './config'
 
 const env = {
-  ONYXCODE_TEST_RELEASES_API: 'http://127.0.0.1:4567',
-  ONYXCODE_TEST_RELEASES_REPO: 'test-owner/test-repo',
-  ONYXCODE_TEST_UPDATE_DELAY_MS: '200'
+  LAZUNOX_TEST_RELEASES_API: 'http://127.0.0.1:4567',
+  LAZUNOX_TEST_RELEASES_REPO: 'test-owner/test-repo',
+  LAZUNOX_TEST_UPDATE_DELAY_MS: '200'
 }
 
 describe('resolveUpdateConfig', () => {
@@ -28,25 +28,25 @@ describe('resolveUpdateConfig', () => {
   it('retraso por defecto 500 y repo de RELEASES_REPO', () => {
     const c = resolveUpdateConfig({
       isPackaged: false,
-      env: { ONYXCODE_TEST_RELEASES_API: 'http://127.0.0.1:1/' },
+      env: { LAZUNOX_TEST_RELEASES_API: 'http://127.0.0.1:1/' },
       repo: 'o/r'
     })
     expect(c).toMatchObject({ configured: true, repo: 'o/r', apiBase: 'http://127.0.0.1:1', startDelayMs: 500 })
   })
   it('sin repo válido: sin configurar', () => {
-    expect(resolveUpdateConfig({ isPackaged: false, env: { ONYXCODE_TEST_RELEASES_API: 'http://127.0.0.1:1' }, repo: '' }).configured).toBe(
+    expect(resolveUpdateConfig({ isPackaged: false, env: { LAZUNOX_TEST_RELEASES_API: 'http://127.0.0.1:1' }, repo: '' }).configured).toBe(
       false
     )
   })
   it('rechaza bases no permitidas', () => {
     for (const api of ['http://evil.example', 'http://localhost:1', 'http://127.0.0.1', 'ftp://x', 'https://u:p@x.com', 'basura'])
-      expect(resolveUpdateConfig({ isPackaged: false, env: { ...env, ONYXCODE_TEST_RELEASES_API: api }, repo: '' }).configured, api).toBe(
+      expect(resolveUpdateConfig({ isPackaged: false, env: { ...env, LAZUNOX_TEST_RELEASES_API: api }, repo: '' }).configured, api).toBe(
         false
       )
   })
   it('acepta https', () => {
     expect(
-      resolveUpdateConfig({ isPackaged: false, env: { ...env, ONYXCODE_TEST_RELEASES_API: 'https://example.test' }, repo: '' }).apiBase
+      resolveUpdateConfig({ isPackaged: false, env: { ...env, LAZUNOX_TEST_RELEASES_API: 'https://example.test' }, repo: '' }).apiBase
     ).toBe('https://example.test')
   })
 })
@@ -71,7 +71,7 @@ describe('resolveInstallConfig', () => {
     const c = inst({
       isPackaged: true,
       key: KEY,
-      env: { ONYXCODE_TEST_UPDATE_PUBKEY: 'otra', ONYXCODE_TEST_UPDATE_INSTALL_DIR: '/tmp/x', ...env }
+      env: { LAZUNOX_TEST_UPDATE_PUBKEY: 'otra', LAZUNOX_TEST_UPDATE_INSTALL_DIR: '/tmp/x', ...env }
     })
     expect(c).toEqual({
       enabled: true,
@@ -90,20 +90,20 @@ describe('resolveInstallConfig', () => {
   it('sin empaquetar: clave y carpeta de instalación de pruebas, descarga del servidor local', () => {
     const c = inst({
       isPackaged: false,
-      env: { ...env, ONYXCODE_TEST_UPDATE_PUBKEY: KEY, ONYXCODE_TEST_UPDATE_INSTALL_DIR: '/tmp/onyx-x' },
+      env: { ...env, LAZUNOX_TEST_UPDATE_PUBKEY: KEY, LAZUNOX_TEST_UPDATE_INSTALL_DIR: '/tmp/lazunox-x' },
       repo: ''
     })
     expect(c).toMatchObject({
       enabled: true,
       downloadBase: 'http://127.0.0.1:4567',
       allowLoopbackHttp: true,
-      testInstallDir: '/tmp/onyx-x'
+      testInstallDir: '/tmp/lazunox-x'
     })
   })
   it('sin empaquetar y sin variables: desactivada; ruta relativa no vale', () => {
     expect(inst({ isPackaged: false, env }).enabled).toBe(false)
     expect(
-      inst({ isPackaged: false, env: { ...env, ONYXCODE_TEST_UPDATE_PUBKEY: KEY, ONYXCODE_TEST_UPDATE_INSTALL_DIR: 'rel' } }).testInstallDir
+      inst({ isPackaged: false, env: { ...env, LAZUNOX_TEST_UPDATE_PUBKEY: KEY, LAZUNOX_TEST_UPDATE_INSTALL_DIR: 'rel' } }).testInstallDir
     ).toBeNull()
   })
 })

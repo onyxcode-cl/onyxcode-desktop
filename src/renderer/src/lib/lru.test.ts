@@ -11,13 +11,13 @@ describe('lruMax', () => {
   it('sin override devuelve el default', () => {
     expect(lruMax(40)).toBe(40)
   })
-  it('un entero ≥ 1 en onyx.lru.max lo sobrescribe', () => {
-    localStorage.setItem('onyx.lru.max', '2')
+  it('un entero ≥ 1 en lazunox.lru.max lo sobrescribe', () => {
+    localStorage.setItem('lazunox.lru.max', '2')
     expect(lruMax(40)).toBe(2)
   })
   it('valores inválidos (0, negativo, texto) caen al default', () => {
     for (const v of ['0', '-3', 'x', '']) {
-      localStorage.setItem('onyx.lru.max', v)
+      localStorage.setItem('lazunox.lru.max', v)
       expect(lruMax(40)).toBe(40)
     }
   })

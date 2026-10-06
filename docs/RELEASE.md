@@ -30,7 +30,7 @@ entorno protegido `release`), con la mitigación de la sección 9.
 
 - [ ] `package.json` › `version` = la nueva (`X.Y.Z`; beta: `X.Y.Z-beta.N`). El tag **debe** ser `v` + esa versión (el workflow y el manifiesto lo exigen).
 - [ ] `CHANGELOG.md`: mueve lo de «Sin publicar» a una sección `## [X.Y.Z] - AAAA-MM-DD` con lenguaje llano (es el cuerpo de la release: `node scripts/release-notes.mjs X.Y.Z` debe imprimirlo).
-- [ ] Si cambia la identidad de firma respecto a la versión anterior (p. ej. de autofirmado a Developer ID), dilo en las notas (riesgo R2 del plan): macOS preguntará **una vez** por la clave del Llavero «OnyxCode Safe Storage» y volverá a pedir Accesibilidad, Grabación de pantalla y Micrófono. «Elige **Permitir siempre**; **nunca** “Restaurar configuración”» (crearía un llavero vacío y perderías la sesión y los datos cifrados).
+- [ ] Si cambia la identidad de firma respecto a la versión anterior (p. ej. de autofirmado a Developer ID), dilo en las notas (riesgo R2 del plan): macOS preguntará **una vez** por la clave del Llavero «Lazunox Safe Storage» y volverá a pedir Accesibilidad, Grabación de pantalla y Micrófono. «Elige **Permitir siempre**; **nunca** “Restaurar configuración”» (crearía un llavero vacío y perderías la sesión y los datos cifrados).
 - [ ] En tu Mac: `npm run verify` completo (incluye el E2E con Electron, que el CI **no** corre) y `npm run verify:release`.
 - [ ] Prueba del actualizador de punta a punta si tocaste `src/main/update`, `swap.sh` o la firma (`docs/DISTRIBUCION.md` §11).
 
@@ -47,19 +47,19 @@ git tag vX.Y.Z && git push origin vX.Y.Z      # lo haces tú; protegido en el re
 ## 4. Firmar el manifiesto (en tu Mac)
 
 ```bash
-mkdir -p ~/Descargas/onyx-X.Y.Z && cd ~/Descargas/onyx-X.Y.Z
+mkdir -p ~/Descargas/lazunox-X.Y.Z && cd ~/Descargas/lazunox-X.Y.Z
 gh release download vX.Y.Z --repo <owner>/<repo> --pattern 'update.json' --pattern '*.zip'
 cd <ruta al repositorio de Lazunox>
-ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/onyx-X.Y.Z
-node scripts/verify-update.mjs --dir ~/Descargas/onyx-X.Y.Z
-gh release upload vX.Y.Z ~/Descargas/onyx-X.Y.Z/update.json.sig --repo <owner>/<repo>
+LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/lazunox-X.Y.Z
+node scripts/verify-update.mjs --dir ~/Descargas/lazunox-X.Y.Z
+gh release upload vX.Y.Z ~/Descargas/lazunox-X.Y.Z/update.json.sig --repo <owner>/<repo>
 ```
 
 `sign-update.mjs` se niega a firmar si el ZIP no coincide en tamaño y SHA-256 con el manifiesto, si el appId o el keyId no son los de `brand.ts`, si la clave no corresponde a `UPDATE_PUBLIC_KEY`, o si la clave está dentro del repositorio o con permisos más abiertos que `0600`. **Eso no sustituye a revisar el borrador:** firmar es declarar que ese ZIP es legítimo.
 
 ## 5. Publicar
 
-- [ ] El borrador tiene **cuatro** archivos: `.dmg`, `OnyxCode-X.Y.Z-arm64.zip`, `update.json`, `update.json.sig`, y las notas correctas.
+- [ ] El borrador tiene **cuatro** archivos: `.dmg`, `Lazunox-X.Y.Z-arm64.zip`, `update.json`, `update.json.sig`, y las notas correctas.
 - [ ] **Publish release**, sin «pre-release» (con una prerelease, `/releases/latest` no la devuelve y nadie del canal estable recibe el aviso). Una beta (`-beta.N`) sí se marca como pre-release: el workflow ya lo hace.
 
 ## 6. Comprobación posterior en un Mac limpio
@@ -98,9 +98,9 @@ Principio: **siempre hacia delante**. Una versión mala no se «retira» de los 
 El cliente verifica el manifiesto con una **lista** de claves (`verifyWithKeys`; `resolveInstallConfig` admite `updateKeys` extra; probado en `manifest-two-step.test.ts`). Falta que `src/shared/brand.ts` exponga esa lista (hoy `UPDATE_PUBLIC_KEY` + `UPDATE_KEY_ID`) y cablearla en `src/main/ipc/update.ts`: hazlo **antes de la primera release**, porque una app ya publicada solo conoce las claves con las que salió.
 
 Rotación (sospecha de filtración o renovación periódica):
-1. [ ] Genera la clave nueva (`docs/DISTRIBUCION.md` §10.1) con otro `keyId` (`onyxcode-2`). Guárdala en el gestor de contraseñas.
-2. [ ] Versión **N**: lleva `[onyxcode-2 (nueva), onyxcode-1 (vieja)]` y se **firma con la vieja**, para que la acepten las copias anteriores (que solo conocen la vieja).
-3. [ ] Versión **N+1**: se firma con la **nueva**. El manifiesto lleva `keyId: onyxcode-2`; `brand.ts` pone `UPDATE_KEY_ID = 'onyxcode-2'`.
+1. [ ] Genera la clave nueva (`docs/DISTRIBUCION.md` §10.1) con otro `keyId` (`lazunox-2`). Guárdala en el gestor de contraseñas.
+2. [ ] Versión **N**: lleva `[lazunox-2 (nueva), lazunox-1 (vieja)]` y se **firma con la vieja**, para que la acepten las copias anteriores (que solo conocen la vieja).
+3. [ ] Versión **N+1**: se firma con la **nueva**. El manifiesto lleva `keyId: lazunox-2`; `brand.ts` pone `UPDATE_KEY_ID = 'lazunox-2'`.
 4. [ ] Cuando casi nadie use versiones anteriores a N, retira la vieja de la lista en N+2.
 5. [ ] Si la vieja se filtró: asume que quien la tenga puede firmar «actualizaciones» que las copias antiguas aceptarán hasta que actualicen a N. Publica N cuanto antes, avisa a los usuarios (web y notas de la release) y recomienda descargar el `.dmg` de N a mano.
 6. [ ] Si **perdiste** la privada y no se filtró: no hay actualización automática posible desde las copias antiguas; publica un `.dmg` nuevo con la clave nueva y que cada usuario lo instale a mano.
@@ -114,9 +114,9 @@ Rotación (sospecha de filtración o renovación periódica):
 
 ## 13. Si decides otro nombre (simulación)
 
-**Fase 1 aplicada (Lazunox, antes OnyxCode).** Solo cambió el nombre **visible** (`DISPLAY_NAME`). Invariantes que NO se tocan sin el plan de la Fase 2
-(los vigila `src/test/identity-freeze.test.ts`): `package.json` `name`/`productName`, `appId` `cl.bentec.onyxcode`, `app.setName(INTERNAL_NAME)` (clave del
-Llavero) y ningún `setPath('userData')`, `APP_SLUG`, `UPDATE_KEY_ID`, `SITE_KEY_ID`, `OnyxCode.app`, nombre del DMG/ZIP, protocolo `onyxcode://`, dominio y
+**Fase 1 aplicada (Lazunox).** Solo cambió el nombre **visible** (`DISPLAY_NAME`). Invariantes que NO se tocan sin el plan de la Fase 2
+(los vigila `src/test/identity-freeze.test.ts`): `package.json` `name`/`productName`, `appId` `cl.bentec.lazunox`, `app.setName(INTERNAL_NAME)` (clave del
+Llavero) y ningún `setPath('userData')`, `APP_SLUG`, `UPDATE_KEY_ID`, `SITE_KEY_ID`, `Lazunox.app`, nombre del DMG/ZIP, protocolo `lazunox://`, dominio y
 certificado. Ni `CFBundleName` ni `CFBundleExecutable` se sobrescriben (Electron localiza sus helpers con ellos). Los iconos de la PWA ya instalados en un celular
 conservan la etiqueta antigua hasta reinstalarlos. La marca no está verificada: no publicar antes de ese paso.
 

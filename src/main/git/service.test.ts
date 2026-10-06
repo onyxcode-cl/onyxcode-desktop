@@ -12,7 +12,7 @@ let dir: string
 const g = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8' })
 
 beforeAll(() => {
-  dir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-git-')))
+  dir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-git-')))
   g('init', '-q')
   g('config', 'user.email', 't@t.t')
   g('config', 'user.name', 't')

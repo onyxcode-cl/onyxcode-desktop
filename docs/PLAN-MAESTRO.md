@@ -15,7 +15,7 @@ Hecho por Opus 5.5, ejecutado por Sonnet 5.5. Versión condensada; el plan compl
 | Ola | Contenido |
 |---|---|
 | 0 | tag `pre-verify`, rama `verify/e2e` |
-| 1 | A1 herramienta · A2 servidor OpenCode falso (`e2e/fake-opencode`) · A3 ganchos DEV (`__onyxE2E`) · A4 harness (`e2e/lib`, Vitest e2e) · A5 `test:transform` · A6 `test:smoke` |
+| 1 | A1 herramienta · A2 servidor OpenCode falso (`e2e/fake-opencode`) · A3 ganchos DEV (`__lazunoxE2E`) · A4 harness (`e2e/lib`, Vitest e2e) · A5 `test:transform` · A6 `test:smoke` |
 | 2 | A7 specs E2E (`fase6`, `lru`, `instance`, `lotes`) · A8 `docs/VERIFICACION.md` (checklist humana mínima) |
 | 3 | B1 revisión de código de la rama + auditoría independiente |
 | 4 | B2 retirar 3 flags · B3 eslint-disable · B4 `ERROR`→`FORBIDDEN` · B5 loader Code · B6 paneles ocultos · B7 rendimiento del render |

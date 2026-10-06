@@ -18,7 +18,7 @@ async function notarizeDmgs(buildResult, deps = {}) {
   const dmgs = (buildResult.artifactPaths ?? []).filter((p) => p.endsWith('.dmg'))
 
   if (platform !== 'darwin' || dmgs.length === 0) return []
-  if (env.ONYXCODE_SELF_SIGNED === '1' || !(env.CSC_NAME || env.CSC_LINK)) {
+  if (env.LAZUNOX_SELF_SIGNED === '1' || !(env.CSC_NAME || env.CSC_LINK)) {
     log('[notarize-dmg] build autofirmado o ad-hoc: no se notariza el .dmg.')
     return []
   }

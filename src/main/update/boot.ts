@@ -13,7 +13,7 @@ export function startBoot(): BootMarkers {
   const dir = updateDir(app.getPath('userData'))
   const version = app.getVersion()
   if (app.isPackaged) cleanupAfterBoot({ dir, appPath: currentAppRealPath(app.getPath('exe')), version })
-  markers = new BootMarkers(dir, version, process.pid, IS_TEST_BUILD && process.env.ONYXCODE_TEST_FAIL_BOOT === '1')
+  markers = new BootMarkers(dir, version, process.pid, IS_TEST_BUILD && process.env.LAZUNOX_TEST_FAIL_BOOT === '1')
   markers.begin()
   return markers
 }

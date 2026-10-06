@@ -16,7 +16,7 @@ Hecho por Opus 5.5, ejecutado por Sonnet 5.5. Versión condensada. Topes elegido
   Code usa guardas internas (evita imports circulares).
 - **Política:** tope por número de sesiones no fijadas con contenido; LRU por `lastAccess` (Map a nivel de módulo, sin
   `set`, uno por store). Las nunca abiertas (`lastAccess=0`) salen primero. Recibir un evento NO cuenta como acceso.
-  Tope sobrescribible con `localStorage['onyx.lru.max']`.
+  Tope sobrescribible con `localStorage['lazunox.lru.max']`.
 - **Dónde vive:** funciones puras en `lib/session-reducer.ts` (`pickEvictions`, `evictMessages` —misma referencia si no hay
   cambio—, `forgetOrphansOf`); envoltorio fino `touchSession`/`evictIdle` en cada store.
 - **Cuándo se desaloja:** tras cada `touch`, y cuando `applyEvent` añade una clave nueva a `messages` y se pasa del tope
@@ -42,7 +42,7 @@ Hecho por Opus 5.5, ejecutado por Sonnet 5.5. Versión condensada. Topes elegido
 D1 topes 40/20 (solo por nº de sesiones) · D2 flag `messagesLru` (retirada en la Fase 7) · D3 aceptar que una tarea desalojada con error del último
 asistente sin `errors[id]` se vea `'done'` · D4 sembrar `textCache` al desalojar · D5 numerar F6-B14..B16.
 
-## Verificación manual (con `onyx.lru.max = 2`)
+## Verificación manual (con `lazunox.lru.max = 2`)
 Abrir 4 chats y volver al primero (recarga sin pantalla vacía) · chat largo en streaming, pasar a otros 3 y volver (sin
 huecos) · Cowork: tarea con permiso pendiente no se desaloja, buscar texto de una desalojada la encuentra, subtarea con
 `FolderRequestCard` se ve entera · Code: encolar en A, cambiar a B/C/D, A autoenvía; revert y fork tras reabrir · rutina en

@@ -428,7 +428,7 @@ export const tasks = {
   'tasks.proj.agentsExists': 'This is the folder’s AGENTS.md file; other tools use it too. ',
   'tasks.proj.useMemory': 'Use memory',
   'tasks.proj.useMemoryHint': 'If you turn it off, the agent won’t read or write this project’s notes. The file isn’t deleted.',
-  'tasks.proj.notes': 'Saved notes (.onyxcode/memoria.md)',
+  'tasks.proj.notes': 'Saved notes (.lazunox/memoria.md)',
   'tasks.proj.notesPh': 'The agent saves useful notes here between tasks (preferences, decisions, recurring data)…',
   'tasks.proj.notesHint':
     'The task agent reads and updates this file. You can also edit it by hand; it’s included as context in every new task in this folder.',

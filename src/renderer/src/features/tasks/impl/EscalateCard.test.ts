@@ -3,7 +3,7 @@ import { buildContinuationPrompt, escalationReason, ESCALATE_MARKER, needsFullAc
 import type { MessageEntry } from '../../../stores/sessions'
 
 it('el marcador neutro es el que piden los prompts', () => {
-  expect(ESCALATE_MARKER).toBe('[[ONYX:NEEDS_FULL_CONTROL]]')
+  expect(ESCALATE_MARKER).toBe('[[LAZUNOX:NEEDS_FULL_CONTROL]]')
 })
 
 describe('needsFullAccess', () => {

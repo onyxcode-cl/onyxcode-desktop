@@ -11,10 +11,10 @@ Versión condensada del plan original; el detalle vive en el historial de la ses
    Un chunk nuevo en `out/preload` o `out/main/chunks` bloquea. Los preloads con sandbox
    (`quick`, `overlay`, `pill`, `assist`, `browser-host`) no se tocan y deben quedar byte a byte iguales.
 4. Si falla un control: `git revert` del commit, no arreglar encima.
-5. Feature flags solo donde cambia qué datos llegan al estado (`lib/flags.ts`, `localStorage['onyx.flag.<n>']`):
+5. Feature flags solo donde cambia qué datos llegan al estado (`lib/flags.ts`, `localStorage['lazunox.flag.<n>']`):
    `sessionsChatOnly`, `codeAlwaysSubscribed` y `messagesLru` (LRU de `messages`, ver `docs/LRU-PLAN.md`).
    **RETIRADAS en la Fase 7 (F7-B38):** `lib/flags.ts` ya no existe; rige siempre la rama por defecto. Se conserva solo el
-   override de tope `localStorage['onyx.lru.max']` (`lib/lru.ts`, `lruMax()`), que usan los E2E.
+   override de tope `localStorage['lazunox.lru.max']` (`lib/lru.ts`, `lruMax()`), que usan los E2E.
 6. Nada de reformateo masivo mezclado con lógica. `computer/mcp-server.ts` es un bundle aparte: no importa `util/`.
 
 ## Orden

@@ -17,16 +17,16 @@ import { buildManifest, decodePublicKey, manifestBytes, readBrand, sha256File, s
 import { verifyManifestAndZip } from './verify-update.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const APP_ID = 'cl.prueba.onyxcode'
+const APP_ID = 'cl.prueba.lazunox'
 const KEY_ID = 'prueba-1'
 const VERSION = '0.4.0'
-const ZIP_NAME = `OnyxCode-${VERSION}-arm64.zip`
+const ZIP_NAME = `Lazunox-${VERSION}-arm64.zip`
 
 /** Escribe un conjunto de archivos de actualización válido y devuelve su carpeta. */
 async function makeRelease(
   base,
   name,
-  { priv, version = VERSION, keyId = KEY_ID, appId = APP_ID, zipName = `OnyxCode-${version}-arm64.zip` }
+  { priv, version = VERSION, keyId = KEY_ID, appId = APP_ID, zipName = `Lazunox-${version}-arm64.zip` }
 ) {
   const dir = mkdtempSync(join(base, `${name}-`))
   const zipBytes = randomBytes(4096)
@@ -52,7 +52,7 @@ async function makeRelease(
  * aceptó y lo manipulado se rechazó con el motivo esperado).
  */
 export async function runManifestChecks() {
-  const base = mkdtempSync(join(tmpdir(), 'onyx-verify-manifest-'))
+  const base = mkdtempSync(join(tmpdir(), 'lazunox-verify-manifest-'))
   const results = []
   try {
     const { privateKey, publicKey } = generateKeyPairSync('ed25519')
@@ -104,7 +104,7 @@ export async function runManifestChecks() {
     await rejects('tag que no coincide con la release', ok2, /tag/, { tag: 'v9.9.9' })
     await rejects(
       'nombre de ZIP que no corresponde a la versión',
-      await fresh('nombre', { zipName: 'OnyxCode-0.3.9-arm64.zip' }),
+      await fresh('nombre', { zipName: 'Lazunox-0.3.9-arm64.zip' }),
       /nombre de ZIP/
     )
     await rejects('prerelease', await fresh('pre', { version: '0.4.0-beta.1' }), /no es mayor|nombre de ZIP/)

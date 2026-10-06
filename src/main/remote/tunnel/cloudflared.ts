@@ -2,12 +2,12 @@
  * Proceso `cloudflared` del modo viaje (túnel rápido, sin cuenta). Garantía de CERO procesos huérfanos en tres capas:
  *  1. parada ordenada (`stop()`: cierra el `stdin` del vigía, `killTree` con SIGTERM, espera, SIGKILL a todo el árbol) y `killNow()`
  *     síncrono (también al salir de la app: `process.on('exit')`);
- *  2. el VIGÍA `/bin/sh` envuelve al binario: si OnyxCode muere (incluso con `kill -9`) su `stdin` se cierra, `cat` termina y el
+ *  2. el VIGÍA `/bin/sh` envuelve al binario: si Lazunox muere (incluso con `kill -9`) su `stdin` se cierra, `cat` termina y el
  *     vigía mata al túnel (verificado en T0: 0,12 s). Además deja SOLO a `cloudflared` con `stderr` abierto, así que el cierre de
  *     `stderr` delata su muerte al instante;
  *  3. `pids.json` (`kind: 'cloudflared'`) + `killStaleServers()` en el siguiente arranque.
  *
- * Lanzado en su propio grupo (`detached`), vía `withDisclaim` (no hereda los permisos TCC de OnyxCode), con entorno mínimo y
+ * Lanzado en su propio grupo (`detached`), vía `withDisclaim` (no hereda los permisos TCC de Lazunox), con entorno mínimo y
  * `HOME` privado (no lee `~/.cloudflared`). SIEMPRE `--no-autoupdate`. NUNCA `--config` (un archivo vacío da `ERR … was empty`).
  * La URL sale de `stderr` (stdout viene vacío) con una regex estricta y solo DESPUÉS del banner «Your quick Tunnel has been created».
  */
@@ -76,7 +76,7 @@ export function redactLine(line: string): string {
 
 const PROXY_VARS = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'NO_PROXY', 'no_proxy', 'ALL_PROXY', 'all_proxy']
 
-/** Entorno mínimo del proceso: `HOME` privado, `PATH` del sistema y los proxies si los hay. Nada de variables de OnyxCode ni del motor. */
+/** Entorno mínimo del proceso: `HOME` privado, `PATH` del sistema y los proxies si los hay. Nada de variables de Lazunox ni del motor. */
 export function cloudflaredEnv(
   home: string,
   base: NodeJS.ProcessEnv = process.env,

@@ -154,7 +154,7 @@ describe('sandbox.ts: auth propio de la app (nunca el del CLI)', () => {
 
   it('readProviderAuth falla cerrado: fichero ausente o JSON inválido → null', async () => {
     const { readProviderAuth } = await import('./sandbox')
-    const dir = mkdtempSync(join(tmpdir(), 'onyx-auth-'))
+    const dir = mkdtempSync(join(tmpdir(), 'lazunox-auth-'))
     try {
       expect(readProviderAuth(join(dir, 'no-existe.json'))).toBeNull()
       const bad = join(dir, 'bad.json')

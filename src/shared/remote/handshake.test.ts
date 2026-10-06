@@ -252,7 +252,7 @@ describe('reflejo', () => {
     const hs2 = host.onHello(hello)!
     const hs3 = client.onChallenge(hs2)!
     // Misma entrada que hizo el celular, pero con la etiqueta del otro sentido.
-    const t = ['onyxcode-auth-v3', 'resume', DEVICE, REAL.offer, REAL.answer, hello.nc, hs2.ns, '-', '-', '-'].join('\n')
+    const t = ['lazunox-auth-v3', 'resume', DEVICE, REAL.offer, REAL.answer, hello.nc, hs2.ns, '-', '-', '-'].join('\n')
     const key = hostKey()
     expect(hs3.mac).toBe(c2h(key, t))
     expect(h2c(key, t)).not.toBe(c2h(key, t))
@@ -353,7 +353,7 @@ describe('vectores fijos', () => {
     expect(Array.from(deviceKey(hash), (b) => b.toString(16).padStart(2, '0')).join('')).toBe(VECTORS.deviceKey)
     expect(pairId(q)).toBe(VECTORS.pairId)
     const t = [
-      'onyxcode-auth-v3',
+      'lazunox-auth-v3',
       'resume',
       'a'.repeat(32),
       'ab'.repeat(32),

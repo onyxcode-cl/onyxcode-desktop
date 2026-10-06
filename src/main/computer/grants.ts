@@ -61,8 +61,8 @@ function matches(patterns: RegExp[], bundleId: string, name: string): boolean {
 }
 
 /**
- * Apps de sistema y la propia OnyxCode: NUNCA pasan por la concesión por app (ni bloquean cmd+space,
- * ni aparecen en tarjetas `request_access`, ni se excluyen de las capturas). Sin esto, OnyxCode podía
+ * Apps de sistema y la propia Lazunox: NUNCA pasan por la concesión por app (ni bloquean cmd+space,
+ * ni aparecen en tarjetas `request_access`, ni se excluyen de las capturas). Sin esto, Lazunox podía
  * bloquearse a sí misma cuando quedaba en primer plano (p.ej. tras `cmd+space`) y el agente perdía
  * el Spotlight que acababa de abrir. `com.github.Electron` es el bundle id del propio Electron
  * cuando la app corre sin empaquetar (`npm run dev`).

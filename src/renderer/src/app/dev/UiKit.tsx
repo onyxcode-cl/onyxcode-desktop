@@ -1,7 +1,7 @@
 /**
  * Kit de UI de escritorio (solo desarrollo): una página con todos los fundamentos y componentes base en cada variante, tamaño y
  * estado, para capturarla con `node scripts/shot-desktop.mjs --scenario kit` (ver docs/CAPTURAS-ESCRITORIO.md). La carga `main.tsx`
- * de forma perezosa SOLO si `location.hash === '#ui-kit'` y `localStorage['onyx.uikit'] === '1'`; la PWA nunca la importa.
+ * de forma perezosa SOLO si `location.hash === '#ui-kit'` y `localStorage['lazunox.uikit'] === '1'`; la PWA nunca la importa.
  * Los nodos con `data-kit-state` (hover, active, focus-visible) los fuerza el script por CDP (`CSS.forcePseudoState`).
  * Texto de demostración fijo (no se traduce): no es parte de la interfaz de usuario.
  */

@@ -24,7 +24,7 @@ export function writeSandboxProfile(
   iso: SandboxIsolation,
   configDir: string,
   network?: SandboxNetworkOptions,
-  dir = join(tmpdir(), 'onyxcode-tasks')
+  dir = join(tmpdir(), 'lazunox-tasks')
 ): string {
   mkdirSync(dir, { recursive: true })
   const file = join(dir, `profile-${randomBytes(6).toString('hex')}.sb`)

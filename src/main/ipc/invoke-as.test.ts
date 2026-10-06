@@ -88,7 +88,7 @@ const ipcMain = {
 const winEvent = (id: number) => {
   const wc = h.made(id).webContents
   registerWindowRole(wc as never, 'main')
-  return { sender: wc, senderFrame: { parent: null, url: 'onyxcode://app/' } }
+  return { sender: wc, senderFrame: { parent: null, url: 'lazunox://app/' } }
 }
 const callerFor = (allow: (ch: string) => boolean = () => true): RemoteCaller & { sent: Array<{ ch: string; args: unknown[] }> } => {
   const sent: Array<{ ch: string; args: unknown[] }> = []

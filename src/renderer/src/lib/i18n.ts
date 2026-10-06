@@ -24,7 +24,7 @@ import { currentPlatform } from './platform'
 // Variantes de texto por plataforma (`x.win`): antes de pintar nada.
 setI18nPlatform(currentPlatform())
 
-const CACHE_KEY = 'onyx.langPref'
+const CACHE_KEY = 'lazunox.langPref'
 
 function systemLanguages(): string[] {
   try {

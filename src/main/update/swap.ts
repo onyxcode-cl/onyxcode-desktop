@@ -25,9 +25,9 @@ export interface SwapContext {
   pid: number
 }
 
-/** `/Applications/OnyxCode.app` a partir de `.../OnyxCode.app/Contents/MacOS/OnyxCode`; null si no es un .app. */
+/** `/Applications/Lazunox.app` a partir de `.../Lazunox.app/Contents/MacOS/Lazunox`; null si no es un .app. */
 export function bundlePathFromExe(exe: string): string | null {
-  const m = /^(\/.*\/OnyxCode\.app)\/Contents\/MacOS\/[^/]+$/.exec(exe)
+  const m = /^(\/.*\/Lazunox\.app)\/Contents\/MacOS\/[^/]+$/.exec(exe)
   return m ? m[1] : null
 }
 
@@ -48,7 +48,7 @@ export function validateSwapArgs(a: SwapArgs, ctx: SwapContext): string | null {
   const expectedStaged = join(stagingRoot(ctx.userData), a.version, 'extract', APP_BUNDLE_NAME)
   if (a.staged !== expectedStaged) return 'staged fuera del staging'
   if (a.markerDir !== updateDir(ctx.userData)) return 'marcadores fuera de userData/update'
-  if (a.bak !== join(dirname(a.target), `.OnyxCode.app.bak-${ctx.currentVersion}`)) return 'copia de seguridad'
+  if (a.bak !== join(dirname(a.target), `.Lazunox.app.bak-${ctx.currentVersion}`)) return 'copia de seguridad'
   if (a.staged.startsWith(a.target + sep) || a.target.startsWith(a.staged + sep)) return 'rutas anidadas'
   return null
 }
@@ -83,7 +83,7 @@ export function startSwap(deps: SwapDeps, stagedApp: string, version: string): s
     pid: ctx.pid,
     target: ctx.currentApp,
     staged: stagedApp,
-    bak: join(dirname(ctx.currentApp), `.OnyxCode.app.bak-${ctx.currentVersion}`),
+    bak: join(dirname(ctx.currentApp), `.Lazunox.app.bak-${ctx.currentVersion}`),
     markerDir: updateDir(ctx.userData),
     version
   }

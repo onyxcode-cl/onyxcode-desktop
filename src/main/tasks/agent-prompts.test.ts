@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Mismo valor que `ESCALATE_MARKER` de EscalateCard.tsx (el test de la tarjeta lo comprueba por su lado).
-const ESCALATE_MARKER = '[[ONYX:NEEDS_FULL_CONTROL]]'
+const ESCALATE_MARKER = '[[LAZUNOX:NEEDS_FULL_CONTROL]]'
 const dir = join(__dirname, '../../../resources/opencode/agents')
 const read = (n: string): string => readFileSync(join(dir, `${n}.md`), 'utf8')
 
@@ -36,6 +36,6 @@ describe('prompts de agente', () => {
   it('el flujo Plan → Aprobar sigue en computer.md con sus 10 pasos y sin ser contradictorio', () => {
     const s = read('computer')
     for (let i = 1; i <= 10; i++) expect(s).toContain(`\n${i}. `)
-    expect(s).toContain('onyxcode-plan-gate')
+    expect(s).toContain('lazunox-plan-gate')
   })
 })

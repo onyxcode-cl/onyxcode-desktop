@@ -1,4 +1,4 @@
-// onyx-dictate: PROTOTIPO de medicion del dictado de voz de OnyxCode (Fase 0). NO esta integrado en la app.
+// lazunox-dictate: PROTOTIPO de medicion del dictado de voz de Lazunox (Fase 0). NO esta integrado en la app.
 //
 // Captura el microfono con AVAudioEngine (audio SOLO en memoria), reconoce EN EL DISPOSITIVO y escribe
 // una linea JSON por evento en stdout:
@@ -9,7 +9,7 @@
 // Reglas: nunca escribe audio en disco; nunca registra el texto en stderr/logs; nunca usa el servidor
 // (si el idioma no tiene modelo local imprime error "no-disponible" y sale).
 //
-// Uso: onyx-dictate [--locale es-CL|es-ES|en-US] [--max-seconds 120] [--silence-seconds 8]
+// Uso: lazunox-dictate [--locale es-CL|es-ES|en-US] [--max-seconds 120] [--silence-seconds 8]
 //                   [--install] [--help] [--version] [--self-test]
 // Salida limpia con SIGINT/SIGTERM (entrega lo pendiente y sale con 0).
 import AVFoundation
@@ -99,9 +99,9 @@ func parseArgs(_ args: [String]) -> Result<Command, ArgError> {
 }
 
 let HELP = """
-onyx-dictate \(VERSION) - dictado local (prototipo de medicion)
-Uso: onyx-dictate [--locale es-CL|es-ES|en-US] [--max-seconds N<=120] [--silence-seconds N=8] [--install]
-     onyx-dictate --help | --version | --self-test
+lazunox-dictate \(VERSION) - dictado local (prototipo de medicion)
+Uso: lazunox-dictate [--locale es-CL|es-ES|en-US] [--max-seconds N<=120] [--silence-seconds N=8] [--install]
+     lazunox-dictate --help | --version | --self-test
 Emite JSON por linea en stdout. Audio solo en memoria. Sin servidor: si no hay modelo local, error "no-disponible".
 --install descarga (opt-in) el modelo de idioma del sistema (macOS 26+); no envia audio.
 Ctrl+C o SIGTERM terminan limpiamente.
@@ -139,7 +139,7 @@ func selfTest() -> Int32 {
 
 final class Session {
     let opts: Options
-    let q = DispatchQueue(label: "onyx-dictate.session")
+    let q = DispatchQueue(label: "lazunox-dictate.session")
     var phase: Phase = .idle
     let engine = AVAudioEngine()
     var t0 = Date()
@@ -382,7 +382,7 @@ case .failure(let e):
 case .success(.help):
     print(HELP); exit(0)
 case .success(.version):
-    print("onyx-dictate \(VERSION)"); exit(0)
+    print("lazunox-dictate \(VERSION)"); exit(0)
 case .success(.selfTest):
     exit(selfTest())
 case .success(.listen(let o)):

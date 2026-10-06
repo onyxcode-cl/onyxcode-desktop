@@ -1,7 +1,7 @@
-// Servicio de conexión de OnyxCode (remoto fuera de casa). NO se despliega desde el repositorio ni desde CI: lo publica el dueño
+// Servicio de conexión de Lazunox (remoto fuera de casa). NO se despliega desde el repositorio ni desde CI: lo publica el dueño
 // desde su Mac siguiendo README.md. Aquí no hay secretos: los de TURN se cargan con `wrangler secret put`.
 {
-  "name": "onyx-remoto",
+  "name": "lazunox-remoto",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "assets": {

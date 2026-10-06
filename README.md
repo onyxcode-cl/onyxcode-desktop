@@ -7,9 +7,9 @@ Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el s
 **Tareas** (trabajo autónomo sobre carpetas con sandbox) y **Rutinas**. El plan original está archivado en
 [`docs/archive/PLAN.md`](./docs/archive/PLAN.md); el plan vigente es [`docs/FASE6-PLAN.md`](./docs/FASE6-PLAN.md).
 
-> **Lazunox (antes OnyxCode).** Desde la Fase 1 del renombre el nombre **visible** es Lazunox (`DISPLAY_NAME` en `src/shared/brand.ts`).
-> La identidad técnica sigue siendo OnyxCode a propósito (`INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `OnyxCode.app`, la carpeta
-> `~/Library/Application Support/OnyxCode`, «OnyxCode Safe Storage», `onyxcode://`, `ONYXCODE_*`): cambiarla haría perder datos o
+> **Lazunox.** Desde la Fase 1 del renombre el nombre **visible** es Lazunox (`DISPLAY_NAME` en `src/shared/brand.ts`).
+> La identidad técnica sigue siendo Lazunox a propósito (`INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `Lazunox.app`, la carpeta
+> `~/Library/Application Support/Lazunox`, «Lazunox Safe Storage», `lazunox://`, `LAZUNOX_*`): cambiarla haría perder datos o
 > permisos. La marca «Lazunox» **no está verificada** (INAPI, OMPI/USPTO, dominios, npm/GitHub): no se publica hasta que el dueño la verifique.
 > El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
 
@@ -25,7 +25,7 @@ Para usar la app:
 
 **Sobre tus credenciales.** Lazunox tiene su propia conexión: las claves que pegas en el asistente o en
 Ajustes › Modelos las guarda el motor en el almacén propio de la app
-(`~/Library/Application Support/OnyxCode/opencode-data/opencode/auth.json`), aislado del CLI de OpenCode: la app no
+(`~/Library/Application Support/Lazunox/opencode-data/opencode/auth.json`), aislado del CLI de OpenCode: la app no
 lee `~/.local/share/opencode`. Ese fichero lo lee el motor y, además, el proceso principal de la app lo lee al
 arrancar una Tarea con sandbox. En **Tareas con sandbox solo se usa OpenCode Go**: su clave real queda en un proxy
 local fuera del sandbox y el motor de la Tarea recibe un valor falso; los demás proveedores (y los inicios de
@@ -111,7 +111,7 @@ Variables útiles:
    `@opencode-ai/sdk/v2/client` directamente. Los eventos llegan por un único stream SSE
    (`client.global.event()`), que alimenta el store genérico `stores/sessions.ts`.
 4. El modo Chat trabaja en `userData/chat-workspace` (en macOS:
-   `~/Library/Application Support/OnyxCode/chat-workspace`). Los ajustes se guardan en
+   `~/Library/Application Support/Lazunox/chat-workspace`). Los ajustes se guardan en
    `userData/settings.json`.
 
 ## Estructura

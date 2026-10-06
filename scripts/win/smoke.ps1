@@ -1,4 +1,4 @@
-# Humo de arranque en el PC Windows de pruebas: app en modo "sin pantalla" (ONYXCODE_E2E_HEADLESS) con el
+# Humo de arranque en el PC Windows de pruebas: app en modo "sin pantalla" (LAZUNOX_E2E_HEADLESS) con el
 # OpenCode embebido como OPENCODE_BIN. Comprueba: servidor listo < 30 s, sin ventana de consola, al cerrar no
 # queda opencode.exe, y tras matar electron.exe a la fuerza el siguiente arranque limpia el huerfano.
 # Solo toca C:\onyx\. Todo con limite de tiempo y limpieza al final.
@@ -20,18 +20,18 @@ $script:fail = 0
 function Check([string]$name, [bool]$ok, [string]$detail = '') {
   if ($ok) { Log "OK    $name $detail" } else { Log "FALLA $name $detail"; $script:fail++ }
 }
-function OnyxProcs {
+function LazunoxProcs {
   Get-CimInstance Win32_Process | Where-Object {
     ($_.ExecutablePath -and $_.ExecutablePath.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase) -and $_.Name -match '^(electron|opencode)\.exe$') -or
     ($_.CommandLine -and $_.CommandLine -match [regex]::Escape($ud))
   }
 }
 function Cleanup {
-  foreach ($p in (OnyxProcs)) { & taskkill.exe /PID $p.ProcessId /T /F *> $null }
+  foreach ($p in (LazunoxProcs)) { & taskkill.exe /PID $p.ProcessId /T /F *> $null }
 }
 function Start-App {
   Remove-Item -Force $appLog -ErrorAction SilentlyContinue
-  $env:ONYXCODE_E2E_HEADLESS = '1'
+  $env:LAZUNOX_E2E_HEADLESS = '1'
   $env:OPENCODE_BIN = $opencode
   $env:ELECTRON_ENABLE_LOGGING = '1'
   Remove-Item Env:ELECTRON_RENDERER_URL -ErrorAction SilentlyContinue
@@ -151,7 +151,7 @@ try {
 catch { Log "FALLA excepcion: $_"; $script:fail++ }
 finally {
   Cleanup
-  $left = @(OnyxProcs).Count
+  $left = @(LazunoxProcs).Count
   Log "info  procesos propios sobrantes al terminar: $left"
 }
 Log ("RESULTADO fallos=" + $script:fail)

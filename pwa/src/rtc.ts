@@ -1,5 +1,5 @@
 /**
- * Enlace con el Mac: señalización por WebSocket + RTCDataChannel `onyx`. El celular es quien ofrece (offer) y quien crea el
+ * Enlace con el Mac: señalización por WebSocket + RTCDataChannel `lazunox`. El celular es quien ofrece (offer) y quien crea el
  * canal, DESPUÉS de recibir `ready`.
  *  - Red local (`/ws` en la IP del Mac): sin servidores STUN/TURN.
  *  - Servicio de conexión (`wss://<sitio>/v1/peer/<sala>`): STUN siempre, y los servidores de relé que reparta el servicio (trama

@@ -12,19 +12,19 @@ import { expectCount, expectVisible } from '../lib/wait'
 import { makeGitRepo, openCodeProject } from '../lib/fase6'
 
 const SHOTS = process.env.R3B_SHOTS_DIR
-const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-r3b-trash-')))
+const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-r3b-trash-')))
 let repo = ''
 const numbered = (edit: Record<number, string> = {}): string =>
   Array.from({ length: 60 }, (_, i) => edit[i + 1] ?? `linea ${i + 1}`).join('\n') + '\n'
 
 describe.skipIf(MODE === 'prod')(`calidad R3-B: descartar bloque y conservar lo preparado (${MODE})`, () => {
   beforeAll(() => {
-    repo = makeGitRepo('onyx-e2e-r3b-')
+    repo = makeGitRepo('lazunox-e2e-r3b-')
     writeFileSync(join(repo, 'big.txt'), numbered())
     git('add', 'big.txt')
     git('commit', '-q', '-m', 'big')
   })
-  const app = useApp({ env: { ONYXCODE_E2E_TRASH_DIR: trashDir } })
+  const app = useApp({ env: { LAZUNOX_E2E_TRASH_DIR: trashDir } })
   afterAll(async () => {
     // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
     await app().stop().catch(() => undefined)

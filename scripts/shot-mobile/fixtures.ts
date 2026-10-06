@@ -2,7 +2,7 @@
 // permisos, proveedores) y los canales IPC que la pantalla necesita. Todo es inventado; las rutas son de un usuario ficticio.
 import type { FakeLink } from '../../src/renderer/remote/fake-link'
 
-const CHAT_DIR = '/Users/demo/.onyxcode/chat-workspace'
+const CHAT_DIR = '/Users/demo/.lazunox/chat-workspace'
 const PROJECT = '/Users/demo/proyectos/tienda-web'
 const TASKS_DIR = '/Users/demo/tareas/informes'
 const NOW = Date.UTC(2026, 9, 4, 15, 30, 0)
@@ -355,7 +355,7 @@ export function attachFixtures(link: FakeLink, scenario: string): void {
         return Promise.resolve({ state: 'ready', restarts: 0, version: '1.0.0' })
       case 'opencode:connection':
         return Promise.resolve({
-          baseUrl: 'onyx://engine/main',
+          baseUrl: 'lazunox://engine/main',
           authorization: '',
           username: 'demo',
           chatDirectory: CHAT_DIR,
@@ -412,7 +412,7 @@ export function attachFixtures(link: FakeLink, scenario: string): void {
       case 'tasks:start':
         return Promise.resolve({
           folder: TASKS_DIR,
-          baseUrl: 'onyx://engine/task/tokdemo1',
+          baseUrl: 'lazunox://engine/task/tokdemo1',
           authorization: '',
           sandboxed: true,
           version: '1.0.0',

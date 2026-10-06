@@ -1,6 +1,6 @@
 /**
  * Caracterización del perfil Seatbelt (SBPL) ANTES del renombre interno a `tasks`: el snapshot
- * fija el texto exacto. El scratch por defecto es `.onyxcode/trabajo`:
+ * fija el texto exacto. El scratch por defecto es `.lazunox/trabajo`:
  * solo pueden cambiar las líneas de esa ruta y sus comentarios. No cambies el snapshot para
  * que pase: revisa el diff.
  */
@@ -31,7 +31,7 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     const out = buildSandboxProfile(base)
     expect(out).toMatchSnapshot()
     // El scratch por defecto es la única ruta que cambiará en el renombre.
-    expect(out).toContain('(allow file-write-unlink (subpath "/fixture/work/proyecto/.onyxcode/trabajo"))')
+    expect(out).toContain('(allow file-write-unlink (subpath "/fixture/work/proyecto/.lazunox/trabajo"))')
     expect(out).toContain('(deny file-write-unlink (subpath "/fixture/work/proyecto"))')
     expect(out).toContain('(deny network*)')
     expect(out).not.toContain('(allow network-outbound')
@@ -40,7 +40,7 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
   it('scratchDirs explícito sustituye al valor por defecto', () => {
     const out = buildSandboxProfile({ ...base, scratchDirs: ['/fixture/work/proyecto/scratch-a', '/fixture/work/proyecto/scratch-b'] })
     expect(out).toMatchSnapshot()
-    expect(out).not.toContain('/.onyxcode/trabajo"')
+    expect(out).not.toContain('/.lazunox/trabajo"')
   })
 
   it('carpetas adicionales: rw (sin borrado) y solo lectura', () => {
@@ -79,14 +79,14 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     expect(out).toMatchSnapshot()
   })
 
-  it('`.onyxcode/memoria.md` queda FUERA del scratch: no se puede borrar', () => {
+  it('`.lazunox/memoria.md` queda FUERA del scratch: no se puede borrar', () => {
     const out = buildSandboxProfile(base)
-    const memoria = '/fixture/work/proyecto/.onyxcode/memoria.md'
+    const memoria = '/fixture/work/proyecto/.lazunox/memoria.md'
     const unlinkAllowed = [...out.matchAll(/\(allow file-write-unlink \(subpath "([^"]+)"\)\)/g)].map((m) => m[1])
-    expect(unlinkAllowed).toContain('/fixture/work/proyecto/.onyxcode/trabajo')
-    // Ninguna regla de borrado permitido cubre la memoria (ni `.onyxcode/` entera ni la carpeta).
+    expect(unlinkAllowed).toContain('/fixture/work/proyecto/.lazunox/trabajo')
+    // Ninguna regla de borrado permitido cubre la memoria (ni `.lazunox/` entera ni la carpeta).
     for (const p of unlinkAllowed) expect(memoria.startsWith(p + '/')).toBe(false)
-    expect(unlinkAllowed).not.toContain('/fixture/work/proyecto/.onyxcode')
+    expect(unlinkAllowed).not.toContain('/fixture/work/proyecto/.lazunox')
     // Y la carpeta de trabajo sigue con el borrado denegado (memoria.md cae bajo ese deny).
     expect(out).toContain('(deny file-write-unlink (subpath "/fixture/work/proyecto"))')
   })

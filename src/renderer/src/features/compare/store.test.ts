@@ -39,8 +39,8 @@ import {
 } from './store'
 import { createBuffers, type ConvSlice } from '../../lib/session-reducer'
 
-const WT0 = '/repo-wt/onyx-compare-0'
-const WT1 = '/repo-wt/onyx-compare-1'
+const WT0 = '/repo-wt/lazunox-compare-0'
+const WT1 = '/repo-wt/lazunox-compare-1'
 const MODELS = [
   { providerID: 'fake', modelID: 'a' },
   { providerID: 'fake', modelID: 'b' }
@@ -276,7 +276,7 @@ describe('lanzamiento (requestCompare / confirmStart)', () => {
     expect(await p1).toBe(true)
     resetCompareForTests()
     installApi(fake.api)
-    localStorage.setItem('onyxcode.compare.skipConfirm', '1')
+    localStorage.setItem('lazunox.compare.skipConfirm', '1')
     armModels('chat', null, MODELS)
     const p2 = requestCompare({ mode: 'chat', directory: null, text: 'dos' })
     await flushMicrotasks()
@@ -285,7 +285,7 @@ describe('lanzamiento (requestCompare / confirmStart)', () => {
     // Code con árbol sucio: se sigue mostrando el diálogo
     resetCompareForTests()
     installApi(fake.api)
-    localStorage.setItem('onyxcode.compare.skipConfirm', '1')
+    localStorage.setItem('lazunox.compare.skipConfirm', '1')
     ;(fake.api.preflight as ReturnType<typeof vi.fn>).mockResolvedValue({
       repo: true,
       root: '/repo',

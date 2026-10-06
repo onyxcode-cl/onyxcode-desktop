@@ -32,23 +32,23 @@ const ok = (body: unknown, extra: Record<string, unknown> = {}): { status: numbe
 
 describe('parseEngineUrl', () => {
   it('motor principal y de tarea, con ruta y query decodificada', () => {
-    expect(parseEngineUrl('onyx://engine/main/session?directory=%2Ftmp%2Fa%20b&limit=5')).toEqual({
+    expect(parseEngineUrl('lazunox://engine/main/session?directory=%2Ftmp%2Fa%20b&limit=5')).toEqual({
       eng: 'main',
       path: '/session',
       query: { directory: '/tmp/a b', limit: '5' }
     })
-    expect(parseEngineUrl('onyx://engine/task/AbCdEfGh1234/global/event')).toEqual({
+    expect(parseEngineUrl('lazunox://engine/task/AbCdEfGh1234/global/event')).toEqual({
       eng: 'task/AbCdEfGh1234',
       path: '/global/event',
       query: {}
     })
-    expect(parseEngineUrl('onyx://engine/main')).toEqual({ eng: 'main', path: '/', query: {} })
+    expect(parseEngineUrl('lazunox://engine/main')).toEqual({ eng: 'main', path: '/', query: {} })
   })
   it('lo que no es del motor o es inválido da null', () => {
     expect(parseEngineUrl('https://example.com/x')).toBeNull()
-    expect(parseEngineUrl('onyx://engine/otro/x')).toBeNull()
-    expect(parseEngineUrl('onyx://engine/task/corto/x')).toBeNull()
-    expect(isEngineUrl('onyx://engine/main/x')).toBe(true)
+    expect(parseEngineUrl('lazunox://engine/otro/x')).toBeNull()
+    expect(parseEngineUrl('lazunox://engine/task/corto/x')).toBeNull()
+    expect(isEngineUrl('lazunox://engine/main/x')).toBe(true)
     expect(isEngineUrl(new URL('https://a.b/'))).toBe(false)
   })
 })
@@ -58,7 +58,7 @@ describe('createEngineFetch: HTTP', () => {
     const { link, f } = rig()
     link.onHttp = async () => ok([{ id: 's1' }])
     const res = await f(
-      new Request('onyx://engine/main/session?directory=%2Fp', { headers: { accept: 'application/json', authorization: '' } })
+      new Request('lazunox://engine/main/session?directory=%2Fp', { headers: { accept: 'application/json', authorization: '' } })
     )
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual([{ id: 's1' }])
@@ -76,13 +76,13 @@ describe('createEngineFetch: HTTP', () => {
     link.onHttp = async () => ok({ ok: true })
     const body = JSON.stringify({ parts: [{ type: 'text', text: 'hola' }], messageID: 'msg_1' })
     await f(
-      new Request('onyx://engine/main/session/ses_1/prompt_async?directory=%2Fp', {
+      new Request('lazunox://engine/main/session/ses_1/prompt_async?directory=%2Fp', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Basic eHg6eXk=' },
         body
       })
     )
-    await f('onyx://engine/main/session', { method: 'POST', body: '{"a":1}' })
+    await f('lazunox://engine/main/session', { method: 'POST', body: '{"a":1}' })
     const [a, b] = link.https
     expect(a?.req).toMatchObject({
       method: 'POST',
@@ -98,16 +98,16 @@ describe('createEngineFetch: HTTP', () => {
   it('204 sin cuerpo, estado de error del motor sin lanzar, y binario en base64', async () => {
     const { link, f } = rig()
     link.onHttp = async () => ({ status: 204, body: '' })
-    const empty = await f('onyx://engine/main/x', { method: 'DELETE' })
+    const empty = await f('lazunox://engine/main/x', { method: 'DELETE' })
     expect(empty.status).toBe(204)
     expect(await empty.text()).toBe('')
     link.onHttp = async () => ok({ name: 'NotFoundError' }, { status: 404 })
-    const nf = await f('onyx://engine/main/session/zzz')
+    const nf = await f('lazunox://engine/main/session/zzz')
     expect(nf.status).toBe(404)
     expect(await nf.json()).toEqual({ name: 'NotFoundError' })
     const bytes = new Uint8Array([0, 255, 1, 128, 7])
     link.onHttp = async () => ({ status: 200, contentType: 'image/png', body: Buffer.from(bytes).toString('base64'), encoding: 'base64' })
-    const img = await f('onyx://engine/main/file/content?path=a.png')
+    const img = await f('lazunox://engine/main/file/content?path=a.png')
     expect(img.headers.get('content-type')).toBe('image/png')
     expect(new Uint8Array(await img.arrayBuffer())).toEqual(bytes)
   })
@@ -115,15 +115,15 @@ describe('createEngineFetch: HTTP', () => {
   it('respuesta con forma inválida del Mac → error tipado «failed», no un Response a medias', async () => {
     const { link, f } = rig()
     link.onHttp = async () => ({ nada: true })
-    await expect(f('onyx://engine/main/x')).rejects.toMatchObject({ code: 'failed' })
+    await expect(f('lazunox://engine/main/x')).rejects.toMatchObject({ code: 'failed' })
     link.onHttp = async () => ({ status: 99, body: '' })
-    await expect(f('onyx://engine/main/x')).rejects.toMatchObject({ code: 'failed' })
+    await expect(f('lazunox://engine/main/x')).rejects.toMatchObject({ code: 'failed' })
   })
 
   it('métodos no permitidos y URLs de motor mal formadas fallan sin tocar el puente', async () => {
     const { link, f } = rig()
-    await expect(f('onyx://engine/main/x', { method: 'OPTIONS' })).rejects.toMatchObject({ code: 'unsupported' })
-    await expect(f('onyx://engine/raro/x')).rejects.toMatchObject({ code: 'bad-request' })
+    await expect(f('lazunox://engine/main/x', { method: 'OPTIONS' })).rejects.toMatchObject({ code: 'unsupported' })
+    await expect(f('lazunox://engine/raro/x')).rejects.toMatchObject({ code: 'bad-request' })
     expect(link.https).toHaveLength(0)
   })
 
@@ -147,7 +147,7 @@ describe('createEngineFetch: errores tipados y reintentos', () => {
   it.each(cases)('%s → RemoteLinkError(%s) con texto legible', async (e, code) => {
     const { link, f } = rig()
     link.onHttp = () => Promise.reject(e)
-    const err = (await f('onyx://engine/main/x', { method: 'POST', body: '{}' }).catch((x: unknown) => x)) as RemoteLinkError
+    const err = (await f('lazunox://engine/main/x', { method: 'POST', body: '{}' }).catch((x: unknown) => x)) as RemoteLinkError
     expect(err).toBeInstanceOf(RemoteLinkError)
     expect(err.code).toBe(code)
     expect(err.message).toBe(`err:${code}`)
@@ -156,7 +156,7 @@ describe('createEngineFetch: errores tipados y reintentos', () => {
   it('NUNCA reintenta: una mutación fallida se envía una sola vez', async () => {
     const { link, f } = rig()
     link.onHttp = () => Promise.reject(new MuxCallError('disconnected'))
-    await expect(f('onyx://engine/main/session/s/prompt_async', { method: 'POST', body: '{"parts":[]}' })).rejects.toBeInstanceOf(
+    await expect(f('lazunox://engine/main/session/s/prompt_async', { method: 'POST', body: '{"parts":[]}' })).rejects.toBeInstanceOf(
       RemoteLinkError
     )
     await new Promise((r) => setTimeout(r, 20))
@@ -167,7 +167,7 @@ describe('createEngineFetch: errores tipados y reintentos', () => {
     const { link, f } = rig()
     const pre = new AbortController()
     pre.abort()
-    const early = await f('onyx://engine/main/x', { signal: pre.signal }).catch((x: unknown) => x)
+    const early = await f('lazunox://engine/main/x', { signal: pre.signal }).catch((x: unknown) => x)
     expect(isAbortError(early)).toBe(true)
     expect(link.https).toHaveLength(0)
     const ac = new AbortController()
@@ -175,7 +175,7 @@ describe('createEngineFetch: errores tipados y reintentos', () => {
       new Promise((_res, rej) => {
         signal?.addEventListener('abort', () => rej(abortError()))
       })
-    const p = f('onyx://engine/main/slow', { signal: ac.signal })
+    const p = f('lazunox://engine/main/slow', { signal: ac.signal })
     await Promise.resolve()
     expect(link.https[0]?.signal).toBe(ac.signal)
     ac.abort()
@@ -204,7 +204,7 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
 
   it('`GET /global/event` → Response text/event-stream: server.connected, luego cada ev como GlobalEvent con id=seq', async () => {
     const { link, f } = rig()
-    const resP = f(new Request('onyx://engine/main/global/event', { headers: { accept: 'text/event-stream' } }))
+    const resP = f(new Request('lazunox://engine/main/global/event', { headers: { accept: 'text/event-stream' } }))
     await Promise.resolve()
     link.live('main')!.h.onReady?.(10)
     const res = await resP
@@ -224,7 +224,7 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
 
   it('`/event` (por motor de tarea) también va por sub, con el motor correcto', async () => {
     const { link, f } = rig()
-    const resP = f('onyx://engine/task/AbCdEfGh1234/event')
+    const resP = f('lazunox://engine/task/AbCdEfGh1234/event')
     await Promise.resolve()
     expect(link.live('task/AbCdEfGh1234')).toBeDefined()
     link.live('task/AbCdEfGh1234')!.h.onReady?.(0)
@@ -233,7 +233,7 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
 
   it('`reset` cierra el stream limpio (el cliente reabre y su onOpen resincroniza); cancelar el lector cancela la suscripción', async () => {
     const { link, f } = rig()
-    let p = f('onyx://engine/main/global/event')
+    let p = f('lazunox://engine/main/global/event')
     await Promise.resolve()
     link.live('main')!.h.onReady?.(1)
     let res = await p
@@ -241,7 +241,7 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
     await reader.read() // server.connected
     link.live('main')!.h.onReset?.(7)
     expect((await reader.read()).done).toBe(true)
-    p = f('onyx://engine/main/global/event')
+    p = f('lazunox://engine/main/global/event')
     await Promise.resolve()
     link.live('main')!.h.onReady?.(7)
     res = await p
@@ -255,7 +255,7 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
   it('abortar con AbortSignal cierra el stream y libera la suscripción', async () => {
     const { link, f } = rig()
     const ac = new AbortController()
-    const p = f('onyx://engine/main/global/event', { signal: ac.signal })
+    const p = f('lazunox://engine/main/global/event', { signal: ac.signal })
     await Promise.resolve()
     link.live('main')!.h.onReady?.(0)
     const res = await p
@@ -269,7 +269,7 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
 
   it('si el canal cae con el stream abierto, el stream falla con error tipado; sin canal, abrirlo falla tipado', async () => {
     const { link, f } = rig()
-    const p = f('onyx://engine/main/global/event')
+    const p = f('lazunox://engine/main/global/event')
     await Promise.resolve()
     link.live('main')!.h.onReady?.(0)
     const res = await p
@@ -278,9 +278,9 @@ describe('createEngineFetch: SSE sobre sub/ev', () => {
     link.end(link.live('main')!, 'disconnected')
     await expect(reader.read()).rejects.toMatchObject({ code: 'disconnected' })
     link.set('offline')
-    await expect(f('onyx://engine/main/global/event')).rejects.toMatchObject({ code: 'disconnected' })
+    await expect(f('lazunox://engine/main/global/event')).rejects.toMatchObject({ code: 'disconnected' })
     link.set('locked')
-    await expect(f('onyx://engine/main/global/event')).rejects.toMatchObject({ code: 'disconnected' })
+    await expect(f('lazunox://engine/main/global/event')).rejects.toMatchObject({ code: 'disconnected' })
   })
 
   it('globalEvent tolera cargas raras', () => {

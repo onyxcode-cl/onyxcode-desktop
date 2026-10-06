@@ -12,7 +12,7 @@ describe('tildify', () => {
     expect(tildify('D:\\Users\\x')).toBe('~')
   })
   it('no toca rutas fuera del home ni nombres parecidos', () => {
-    expect(tildify('C:\\onyx\\wt')).toBe('C:\\onyx\\wt')
+    expect(tildify('C:\\lazunox\\wt')).toBe('C:\\lazunox\\wt')
     expect(tildify('/Usersx/ana')).toBe('/Usersx/ana')
   })
 })

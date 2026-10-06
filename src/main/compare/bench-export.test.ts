@@ -133,11 +133,11 @@ describe('exportación de un lote para el banco', () => {
       experiment: Record<string, unknown>
       runs: Record<string, unknown>[]
     }
-    expect(b.format).toBe('onyx-compare')
+    expect(b.format).toBe('lazunox-compare')
     expect(b.v).toBe(1)
     expect(Object.keys(b.experiment).sort()).toEqual([...EXPERIMENT_KEYS].sort())
-    expect(b.experiment.id).toBe('onyx-compare-0a1b2c3d')
-    expect(b.experiment.configurations).toEqual(['onyx-opencode-go-model.0', 'onyx-opencode-go-model.1-high'])
+    expect(b.experiment.id).toBe('lazunox-compare-0a1b2c3d')
+    expect(b.experiment.configurations).toEqual(['lazunox-opencode-go-model.0', 'lazunox-opencode-go-model.1-high'])
     expect(b.runs).toHaveLength(2)
     for (const r of b.runs) {
       expect(Object.keys(r).sort()).toEqual([...RUN_KEYS].sort())
@@ -147,8 +147,8 @@ describe('exportación de un lote para el banco', () => {
       expect(r.success).toBeNull()
       expect(r.configurationId).toMatch(/^[a-z0-9][a-z0-9._-]*$/)
     }
-    expect((b.runs[0].telemetry as { extra: unknown }).extra).toEqual({ onyx: { chosen: true, mode: 'code' } })
-    expect((b.runs[1].telemetry as { extra: unknown }).extra).toEqual({ onyx: { chosen: false, mode: 'code' } })
+    expect((b.runs[0].telemetry as { extra: unknown }).extra).toEqual({ lazunox: { chosen: true, mode: 'code' } })
+    expect((b.runs[1].telemetry as { extra: unknown }).extra).toEqual({ lazunox: { chosen: false, mode: 'code' } })
   })
 
   it('lo que no se sabe es null, nunca 0', () => {
@@ -193,7 +193,7 @@ describe('exportación de un lote para el banco', () => {
 
   it('los ids de configuración son válidos para el esquema', () => {
     expect(configurationId({ model: { providerID: 'Open Code', modelID: 'GPT 5/Mini', variant: 'Hi!' } })).toBe(
-      'onyx-open-code-gpt-5-mini-hi'
+      'lazunox-open-code-gpt-5-mini-hi'
     )
   })
 })

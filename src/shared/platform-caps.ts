@@ -1,5 +1,5 @@
 /**
- * Capacidades que dependen de la plataforma. OnyxCode v1 en Windows cubre Chat, Code, Rutinas en modo
+ * Capacidades que dependen de la plataforma. Lazunox v1 en Windows cubre Chat, Code, Rutinas en modo
  * Code, Ajustes, cuentas, Diagnóstico, MCP, puntos de restauración/Git y accesibilidad. Quedan solo en
  * macOS (y desactivadas limpiamente en el resto, sin cargar su código): modo Tareas (Seatbelt y proxy
  * de credenciales), Control del PC (helper nativo), actualizador automático (intercambio de la .app).

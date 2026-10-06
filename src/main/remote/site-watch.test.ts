@@ -46,7 +46,7 @@ function publish(opts: { seq?: number; keyId?: string; privateKey?: typeof KEY.p
   const files = new Map<string, string>([
     ['index.html', '<!doctype html><html><head><script type="module" src="./assets/index-AAAA1111.js"></script></head></html>'],
     ['sw.js', "const BUILD = 'abcdef012345'"],
-    ['manifest.webmanifest', '{"name":"OnyxCode"}'],
+    ['manifest.webmanifest', '{"name":"Lazunox"}'],
     ['assets/index-AAAA1111.js', 'console.log(1)'],
     ['app/assets/main-BBBB2222.js', 'console.log(2)']
   ])
@@ -55,7 +55,7 @@ function publish(opts: { seq?: number; keyId?: string; privateKey?: typeof KEY.p
     startup: siteLib.startupPaths(files.get('index.html') as string),
     build: 'abcdef012345',
     version: '0.3.0',
-    keyId: opts.keyId ?? 'onyxcode-site-1',
+    keyId: opts.keyId ?? 'lazunox-site-1',
     seq: opts.seq ?? 1000,
     csp: CSP,
     publishedAt: '2026-10-04T00:00:00.000Z'
@@ -76,7 +76,7 @@ function watchOf(site: Site, o: { publicKey?: string; seq?: { v: number }; log?:
   const w = new SiteWatch({
     origin: ORIGIN,
     publicKey: o.publicKey ?? PUB,
-    keyId: 'onyxcode-site-1',
+    keyId: 'lazunox-site-1',
     fetch: fakeFetch(site, o.log, o.failAll),
     getMinSeq: () => seq.v,
     setMinSeq: (n) => void (seq.v = n),
@@ -184,7 +184,7 @@ describe('SiteWatch: comprobación', () => {
     const w = new SiteWatch({
       origin: ORIGIN,
       publicKey: PUB,
-      keyId: 'onyxcode-site-1',
+      keyId: 'lazunox-site-1',
       fetch: async () => ({ status: 500, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) }),
       getMinSeq: () => 0,
       setMinSeq: () => undefined
@@ -272,7 +272,7 @@ describe('de punta a punta: scripts/site-release.mjs -> SiteWatch', () => {
   function writeBrand(pub: string): void {
     writeFileSync(
       join(root, 'src', 'shared', 'brand.ts'),
-      `export const SITE_PUBLIC_KEY = '${pub}' as string\nexport const SITE_KEY_ID = 'onyxcode-site-1' as string\n`
+      `export const SITE_PUBLIC_KEY = '${pub}' as string\nexport const SITE_KEY_ID = 'lazunox-site-1' as string\n`
     )
   }
   function buildFakeSite(hash: string): void {

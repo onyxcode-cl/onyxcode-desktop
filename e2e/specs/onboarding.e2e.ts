@@ -22,10 +22,10 @@ describe('asistente de primer uso', () => {
   const fakeBin = fakeOutsideUserData()
 
   beforeAll(() => {
-    userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-onb-')))
+    userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-onb-')))
     // HOME propio y PATH mínimo (con `node` para el falso): así `findOpencodeBinary` no encuentra un OpenCode real
     // en ~/.opencode/bin ni en el PATH de la máquina que corre el test.
-    home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-onb-home-')))
+    home = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-onb-home-')))
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
     env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
   })
@@ -136,8 +136,8 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
   const fakeBin = fakeOutsideUserData()
 
   beforeAll(() => {
-    userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-onb-bundled-')))
-    home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-onb-bundled-home-')))
+    userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-onb-bundled-')))
+    home = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-onb-bundled-home-')))
   })
 
   afterEach(async (ctx) => {
@@ -162,7 +162,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
       env: {
         OPENCODE_BIN: '',
         ...isolatedHomeEnv(home),
-        ONYXCODE_TEST_BUNDLED_DIR: dirname(fakeBin.bin)
+        LAZUNOX_TEST_BUNDLED_DIR: dirname(fakeBin.bin)
       }
     })
     const d = app.page.getByRole('dialog')

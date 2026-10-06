@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { findCatalogItem, MCP_CATALOG } from '@shared/mcp-catalog'
 
-const userData = mkdtempSync(join(tmpdir(), 'onyx-mcpcat-'))
+const userData = mkdtempSync(join(tmpdir(), 'lazunox-mcpcat-'))
 vi.mock('electron', () => ({ app: { getPath: () => userData } }))
 
 import { buildCatalogEntry, catalogState, CatalogProvenanceStore, computeInstalled, installFromCatalog } from './mcp-catalog-install'

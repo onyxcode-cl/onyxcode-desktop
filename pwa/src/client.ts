@@ -47,7 +47,7 @@ const WAKE_PROBE_MS = 2_000
 /** Si la página estuvo oculta más que esto, el canal casi seguro murió: se reconecta sin sondear. */
 const WAKE_AWAY_RECONNECT_MS = 15_000
 /** Marca de `sessionStorage`: una sola recarga automática por versión incompatible (evita bucles). */
-const RELOAD_KEY = 'onyx.reloadedForVersion'
+const RELOAD_KEY = 'lazunox.reloadedForVersion'
 const TOAST_MS = 4_000
 const MAX_CHAT_MESSAGES = 200
 const MAX_BAD_FRAMES = 3

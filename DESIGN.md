@@ -127,7 +127,7 @@ Capa visual SOLO de escritorio (Mac y Windows); la paleta y todos los tokens de 
 dueño: `tokens`, `base`, `shell`, `conversation`, `modes`; todo selector empieza por `:root[data-shell='desktop']`). En archivos COMPARTIDOS con la
 PWA solo se AÑADEN clases con la variante `desk:` detrás de una clase base; nunca se quita ni se sustituye una existente. Archivos solo de
 escritorio (barra lateral, paleta, onboarding, comparar): se pueden usar las utilidades nuevas sin `desk:`. El CSS `desk:`/`data-shell` lo quita de
-la PWA el plugin `onyx-strip-desktop-css`. Las guardias `stripDesk()` ignoran las clases `desk:`.
+la PWA el plugin `lazunox-strip-desktop-css`. Las guardias `stripDesk()` ignoran las clases `desk:`.
 
 | Escala | Valores |
 |---|---|

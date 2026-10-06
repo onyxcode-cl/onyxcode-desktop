@@ -21,7 +21,7 @@ import { isWin, posixOnly } from '../../test/platform'
 // Sin las carpetas habituales (`~/.opencode/bin`, Homebrew…): los tests no deben depender del OpenCode instalado.
 vi.mock('../process/child-env', async (orig) => ({ ...(await orig<typeof import('../process/child-env')>()), EXTRA_PATH_DIRS: [] }))
 
-const dir = mkdtempSync(join(tmpdir(), 'onyx-bin-'))
+const dir = mkdtempSync(join(tmpdir(), 'lazunox-bin-'))
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
 /**
@@ -59,7 +59,7 @@ describe('probeEnv', () => {
   it('manda los XDG_* a un temporal y no a los datos del usuario', () => {
     const env = probeEnv()
     for (const k of ['XDG_DATA_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME']) {
-      expect(env[k]).toContain(join(tmpdir(), 'onyxcode-version-probe'))
+      expect(env[k]).toContain(join(tmpdir(), 'lazunox-version-probe'))
     }
   })
 })
@@ -248,12 +248,12 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
 // un .exe con versión controlada sin compilar. La lógica de decisión se cubre en `pickOpencode` (valores inyectados) y
 // `bundledOpencodePath` (arriba, con rutas reales en win32).
 describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts falsos)', () => {
-  const saved = { bin: process.env.OPENCODE_BIN, path: process.env.PATH, test: process.env.ONYXCODE_TEST_BUNDLED_DIR }
+  const saved = { bin: process.env.OPENCODE_BIN, path: process.env.PATH, test: process.env.LAZUNOX_TEST_BUNDLED_DIR }
   afterEach(() => {
     for (const [k, v] of [
       ['OPENCODE_BIN', saved.bin],
       ['PATH', saved.path],
-      ['ONYXCODE_TEST_BUNDLED_DIR', saved.test]
+      ['LAZUNOX_TEST_BUNDLED_DIR', saved.test]
     ] as const) {
       if (v === undefined) delete process.env[k]
       else process.env[k] = v
@@ -272,7 +272,7 @@ describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts 
   it('embebido presente: CLI compatible → cli; incompatible → embebido; sin CLI → embebido', async () => {
     delete process.env.OPENCODE_BIN
     const bundled = fake('bundled-a', '1.18.33')
-    process.env.ONYXCODE_TEST_BUNDLED_DIR = bundled.d
+    process.env.LAZUNOX_TEST_BUNDLED_DIR = bundled.d
     const good = fake('cli-good', '1.18.40')
     process.env.PATH = good.d
     expect(await resolveOpencodeAsync('')).toEqual(expect.objectContaining({ source: 'cli' }))
@@ -286,7 +286,7 @@ describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts 
 
   it('embebido ausente (desarrollo): el CLI se usa aunque sea incompatible', async () => {
     delete process.env.OPENCODE_BIN
-    delete process.env.ONYXCODE_TEST_BUNDLED_DIR
+    delete process.env.LAZUNOX_TEST_BUNDLED_DIR
     const old = fake('cli-old2', '0.5.0')
     process.env.PATH = old.d
     expect(await resolveOpencodeAsync('')).toEqual({ path: old.f, source: 'cli' })

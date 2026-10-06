@@ -1,5 +1,5 @@
 {
-  "name": "onyx-remoto-worker",
+  "name": "lazunox-remoto-worker",
   "private": true,
   "version": "0.0.0",
   "description": "Servicio de conexión del remoto fuera de casa. Subproyecto aparte: no forma parte de la app ni de su build.",

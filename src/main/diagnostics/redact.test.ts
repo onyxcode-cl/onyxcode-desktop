@@ -158,9 +158,9 @@ describe('carpeta del usuario en Windows (privacidad)', () => {
     expect(out).toContain('~')
   })
   it('también dentro de JSON y comillas', () => {
-    const out = win(JSON.stringify({ cwd: 'C:\\Users\\Bentec\\AppData\\Roaming\\OnyxCode', p: 'C:/Users/Bentec/x' }))
+    const out = win(JSON.stringify({ cwd: 'C:\\Users\\Bentec\\AppData\\Roaming\\Lazunox', p: 'C:/Users/Bentec/x' }))
     expect(out).not.toMatch(/bentec/i)
-    expect(JSON.parse(out).cwd).toBe('~\\AppData\\Roaming\\OnyxCode')
+    expect(JSON.parse(out).cwd).toBe('~\\AppData\\Roaming\\Lazunox')
   })
   it('un nombre más largo no deja un resto del usuario', () => {
     const out = win('C:\\Users\\Bentec2\\x y C:\\Users\\Bentec.old\\y')
@@ -184,7 +184,7 @@ describe('carpeta del usuario en Windows (privacidad)', () => {
     expect(out).not.toMatch(/otro|maria|ana/i)
   })
   it('no toca rutas que no son perfiles ni el resto de la línea', () => {
-    expect(win('C:\\Windows\\System32 y C:\\onyx\\wt')).toBe('C:\\Windows\\System32 y C:\\onyx\\wt')
+    expect(win('C:\\Windows\\System32 y C:\\lazunox\\wt')).toBe('C:\\Windows\\System32 y C:\\lazunox\\wt')
   })
   it('home de macOS sigue funcionando igual', () => {
     expect(makeRedactor({ exact: [], home: '/Users/ana/' })('/Users/ana/x')).toBe('~/x')

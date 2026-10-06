@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-"""Lanzador de Tareas dentro de la distro `OnyxCode-Tareas` (F8-B81). Corre como root en la distro, lo arranca
-`wsl.exe -d OnyxCode-Tareas -u root --cd / --exec /opt/onyx/launcher.py` y habla con `main` por stdin/stdout.
+"""Lanzador de Tareas dentro de la distro `Lazunox-Tareas` (F8-B81). Corre como root en la distro, lo arranca
+`wsl.exe -d Lazunox-Tareas -u root --cd / --exec /opt/lazunox/launcher.py` y habla con `main` por stdin/stdout.
 
   1. lee la trama INIT (JSON no confiable: se valida con protocol.validate_init; la clave real nunca viaja);
   2. comprueba el entorno y SE NIEGA a arrancar si hay interop o unidades de Windows montadas;
@@ -8,7 +8,7 @@
   4. monta SOLO las carpetas concedidas con `mount -t drvfs` (noexec,nosuid,nodev; `ro` las de solo lectura);
   5. relés TCP: los puertos permitidos de 127.0.0.1 de Windows aparecen con el MISMO número dentro; el servidor de
      OpenCode se expone a Windows por un flujo abierto desde fuera;
-  6. el servidor corre como `onyx` (sin capacidades, NO_NEW_PRIVS) bajo Landlock; el proceso raíz solo hace de relé;
+  6. el servidor corre como `lazunox` (sin capacidades, NO_NEW_PRIVS) bajo Landlock; el proceso raíz solo hace de relé;
   7. EOF de stdin (muere `main` o `wsl.exe`) => se mata todo el espacio de nombres PID.
 
 NO se ejecuta en el Mac. `--probe` imprime un JSON con el estado del entorno y sale (lo usa `status()`).
@@ -36,7 +36,7 @@ STDIN, STDOUT = 0, 1
 
 
 def die(msg, code=97):
-    sys.stderr.write("onyx-launcher: %s\n" % msg)
+    sys.stderr.write("lazunox-launcher: %s\n" % msg)
     sys.stderr.flush()
     os._exit(code)
 
@@ -133,7 +133,7 @@ def prepare_private(init):
     root = "/home/%s/xdg/%s" % (P.WSL_USER, key)
     for d in ("config", "data", "cache", "state", "tmp", "home"):
         os.makedirs(os.path.join(root, d), exist_ok=True)
-    tmp = "/tmp/onyx-%s" % key
+    tmp = "/tmp/lazunox-%s" % key
     os.makedirs(tmp, exist_ok=True)
     for p in (root, tmp):
         for dirpath, dirnames, _ in os.walk(p):
@@ -179,7 +179,7 @@ def spawn_server(init, root, tmp):
         os.open(os.devnull, os.O_WRONLY)
         os.execve(P.OPENCODE_BIN, [P.OPENCODE_BIN] + init["serveArgs"], child_env(init, root, tmp))
     except BaseException as e:  # noqa: BLE001
-        sys.stderr.write("onyx-launcher: no se pudo arrancar el servidor: %s\n" % e)
+        sys.stderr.write("lazunox-launcher: no se pudo arrancar el servidor: %s\n" % e)
         os._exit(98)
 
 

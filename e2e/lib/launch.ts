@@ -1,8 +1,8 @@
 // Arranque/parada de la app Electron real con un OpenCode falso (gestionado por la propia app vía OPENCODE_BIN).
 //
 // Modos (E2E_MODE):
-//  - dev  (defecto): renderer servido por Vite (ELECTRON_RENDERER_URL, import.meta.env.DEV=true → ganchos `__onyxE2E`).
-//  - prod: sin ELECTRON_RENDERER_URL; carga por onyxcode://app con la CSP real (sin ganchos: solo humo).
+//  - dev  (defecto): renderer servido por Vite (ELECTRON_RENDERER_URL, import.meta.env.DEV=true → ganchos `__lazunoxE2E`).
+//  - prod: sin ELECTRON_RENDERER_URL; carga por lazunox://app con la CSP real (sin ganchos: solo humo).
 // Variables: E2E_DEBUG=1 (vuelca stdout/stderr de main), E2E_VISIBLE=1 (ventana visible), E2E_RENDERER_URL (la fija global-setup), E2E_KEEP=1 (no borra userData tmp), E2E_HEADLESS no existe:
 // la ventana se crea con show:false salvo que main la muestre (ready-to-show la muestra; es normal).
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -120,7 +120,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
   hookExit()
   const allow = loadAllowlist()
   // realpath: /var → /private/var en macOS; el falso decide `isMain` comparando import.meta.url con argv[1] sin resolver symlinks.
-  const userData = opts.userData ?? realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-')))
+  const userData = opts.userData ?? realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-')))
   const removeUserData = process.env.E2E_KEEP !== '1' && !opts.keepUserData
   const xdg = (n: string): string => {
     const d = join(userData, 'xdg', n)
@@ -171,7 +171,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     OPENCODE_SIDECAR_LOG: '1',
     FAKE_OPENCODE_HEARTBEAT_MS: '0',
     // Sin ventanas visibles ni icono extra en el Dock (main/e2e-headless.ts). E2E_VISIBLE=1 lo desactiva.
-    ...(process.env.E2E_VISIBLE === '1' ? {} : { ONYXCODE_E2E_HEADLESS: '1' }),
+    ...(process.env.E2E_VISIBLE === '1' ? {} : { LAZUNOX_E2E_HEADLESS: '1' }),
     ...opts.env
   })
   if (MODE === 'dev') {
@@ -275,13 +275,13 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     }
     if (MODE === 'dev') {
       // Ganchos: flag + reinicio de carga para que main.tsx lo lea. Los errores previos a esto no se recogen.
-      const ls = { 'onyx.e2e': '1', 'onyx.langPref': String(opts.settings?.language ?? 'es'), ...opts.localStorage }
+      const ls = { 'lazunox.e2e': '1', 'lazunox.langPref': String(opts.settings?.language ?? 'es'), ...opts.localStorage }
       await page.evaluate((entries) => {
         for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v)
       }, ls)
       errors.length = 0
       await page.reload({ waitUntil: 'domcontentloaded' })
-      await page.waitForFunction(() => Boolean((window as unknown as { __onyxE2E?: object }).__onyxE2E), undefined, { timeout: 60_000 })
+      await page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, { timeout: 60_000 })
     } else if (opts.localStorage) {
       await page.evaluate((entries) => {
         for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v)
@@ -362,10 +362,10 @@ export async function connectFakeClient(page: Page): Promise<FakeClient> {
   return fake
 }
 
-/** Fija el tope LRU de sesiones (`localStorage['onyx.lru.max']`) y recarga la ventana. Solo modo dev. */
+/** Fija el tope LRU de sesiones (`localStorage['lazunox.lru.max']`) y recarga la ventana. Solo modo dev. */
 export async function withLru(app: E2EApp, n: number): Promise<void> {
-  await app.page.evaluate((v) => localStorage.setItem('onyx.lru.max', String(v)), n)
+  await app.page.evaluate((v) => localStorage.setItem('lazunox.lru.max', String(v)), n)
   await app.page.reload({ waitUntil: 'domcontentloaded' })
-  await app.page.waitForFunction(() => Boolean((window as unknown as { __onyxE2E?: object }).__onyxE2E), undefined, { timeout: 60_000 })
+  await app.page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, { timeout: 60_000 })
   await app.page.locator('nav[aria-label="Modo"]').waitFor()
 }

@@ -1,7 +1,7 @@
 /**
  * "Proyecto" de Tareas por carpeta: nombre + instrucciones + enlaces + interruptor de memoria, persistidos en
  * `userData/tasks-projects.json`. La memoria (notas que el agente guarda entre tareas) vive
- * aparte, como archivo de texto dentro de la propia carpeta (`.onyxcode/memoria.md`), para que el
+ * aparte, como archivo de texto dentro de la propia carpeta (`.lazunox/memoria.md`), para que el
  * usuario pueda verla/editarla con cualquier editor y viaje con la carpeta.
  */
 import { getLang, t } from '@shared/i18n'
@@ -116,7 +116,7 @@ const LEGACY_MEMORY_DIRS = ['.lapis'] as const
 
 /** Ruta del archivo de memoria dentro de la carpeta de la tarea. */
 export function memoryPath(folder: string): string {
-  return join(folder, '.onyxcode', 'memoria.md')
+  return join(folder, '.lazunox', 'memoria.md')
 }
 
 function readMemoryFileAt(file: string): TasksMemory | null {
@@ -131,7 +131,7 @@ function readMemoryFileAt(file: string): TasksMemory | null {
 }
 
 /**
- * Lee la memoria de la carpeta. Si `.onyxcode/memoria.md` todavía no existe (carpeta usada con una
+ * Lee la memoria de la carpeta. Si `.lazunox/memoria.md` todavía no existe (carpeta usada con una
  * versión anterior de la app), cae de vuelta a `.lapis/memoria.md` para no perder notas ya escritas
  * antes de que el usuario vuelva a guardar (lo que migra la memoria a la carpeta nueva).
  */
@@ -214,7 +214,7 @@ export function saveAgentsMd(folder: string, content: string): TasksAgentsMd {
     throw new Error(t('merr.projects.overLimit', { max: AGENTS_MD_MAX_CHARS.toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL') }))
   }
   const r = resolveAgentsMd(folder)
-  const tmp = `${r.real}.onyxcode-tmp`
+  const tmp = `${r.real}.lazunox-tmp`
   writeFileSync(tmp, content, 'utf8')
   renameSync(tmp, r.real)
   return getAgentsMd(folder)

@@ -23,8 +23,8 @@ import {
 
 const KEY = '0123456789abcdef'
 const base = (over: Partial<WslLaunchInput> = {}): WslLaunchInput => ({
-  folder: 'C:\\onyx\\tareas\\a',
-  configDir: 'C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode\\opencode-config',
+  folder: 'C:\\lazunox\\tareas\\a',
+  configDir: 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config',
   allowDelete: false,
   sandboxKey: KEY,
   serverPort: 51000,
@@ -54,12 +54,12 @@ describe('wsl.exe: comandos de lista cerrada', () => {
     { kind: 'probe' },
     { kind: 'terminate' },
     { kind: 'unregister' },
-    { kind: 'import', installDir: 'C:\\onyx\\wsl', rootfsTar: 'C:\\onyx\\rootfs.tar.gz' },
+    { kind: 'import', installDir: 'C:\\lazunox\\wsl', rootfsTar: 'C:\\lazunox\\rootfs.tar.gz' },
     { kind: 'list' },
     { kind: 'status' },
     { kind: 'version' }
   ]
-  it('todos pasan la barrera y los que llevan distro apuntan SOLO a OnyxCode-Tareas', () => {
+  it('todos pasan la barrera y los que llevan distro apuntan SOLO a Lazunox-Tareas', () => {
     for (const c of cmds) {
       const args = wslArgs(c)
       expect(() => assertAllowedWslArgs(args)).not.toThrow()
@@ -91,7 +91,7 @@ describe('wsl.exe: comandos de lista cerrada', () => {
     }
   })
   it('el lanzador va por --exec como root, sin shell y con --cd /', () => {
-    expect(wslArgs({ kind: 'launch' })).toEqual(['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/opt/onyx/launcher.py'])
+    expect(wslArgs({ kind: 'launch' })).toEqual(['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/opt/lazunox/launcher.py'])
   })
   it('--import: solo rutas Windows válidas (sin UNC, .., ADS ni comillas)', () => {
     for (const p of ['\\\\srv\\x', 'C:\\a\\..\\b', 'C:\\a:b', 'rel', 'C:\\a"b']) {
@@ -186,7 +186,7 @@ describe('wsl.exe: entorno y spawn', () => {
 })
 
 describe('wsl.conf', () => {
-  it('texto exacto: sin automontaje, sin interop, sin systemd, usuario onyx', () => {
+  it('texto exacto: sin automontaje, sin interop, sin systemd, usuario lazunox', () => {
     expect(WSL_CONF).toBe(`[automount]
 enabled=false
 mountFsTab=false
@@ -196,7 +196,7 @@ enabled=false
 appendWindowsPath=false
 
 [user]
-default=onyx
+default=lazunox
 
 [boot]
 systemd=false
@@ -220,20 +220,20 @@ describe('trama inicial', () => {
     const d = decode(frame)
     expect(d.type).toBe(FrameType.INIT)
     expect(d.json).toEqual(init)
-    expect(init.mounts[0]).toEqual({ win: 'C:\\onyx\\tareas\\a', linux: '/win/c/onyx/tareas/a', mode: 'rw' })
-    expect(init.mounts[1]).toMatchObject({ linux: '/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config', mode: 'ro' })
+    expect(init.mounts[0]).toEqual({ win: 'C:\\lazunox\\tareas\\a', linux: '/win/c/lazunox/tareas/a', mode: 'rw' })
+    expect(init.mounts[1]).toMatchObject({ linux: '/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config', mode: 'ro' })
     expect(mounts.map((m) => m.linux)).toEqual(init.mounts.map((m) => m.linux))
     expect(init.relayPorts).toEqual([52000, 52001])
-    expect(init.cwd).toBe('/win/c/onyx/tareas/a')
-    expect(init.env.ONYXCODE_TASKS_FOLDER).toBe('/win/c/onyx/tareas/a')
-    expect(init.env.OPENCODE_CONFIG_DIR).toBe('/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config')
-    expect(init.landlock.rules).toContainEqual({ path: '/win/c/onyx/tareas/a/.onyxcode/trabajo', access: 'rw-delete' })
-    expect(init.landlock.rules).toContainEqual({ path: `/home/onyx/xdg/${KEY}`, access: 'private' })
+    expect(init.cwd).toBe('/win/c/lazunox/tareas/a')
+    expect(init.env.LAZUNOX_TASKS_FOLDER).toBe('/win/c/lazunox/tareas/a')
+    expect(init.env.OPENCODE_CONFIG_DIR).toBe('/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config')
+    expect(init.landlock.rules).toContainEqual({ path: '/win/c/lazunox/tareas/a/.lazunox/trabajo', access: 'rw-delete' })
+    expect(init.landlock.rules).toContainEqual({ path: `/home/lazunox/xdg/${KEY}`, access: 'private' })
     expect(init.landlock.minAbi).toBe(2)
   })
   it('allowDelete=false ⇒ la carpeta principal es rw-nodelete (sin REMOVE_*/REFER); true ⇒ rw-delete', () => {
     const rule = (allow: boolean) =>
-      buildWslInit(base({ allowDelete: allow })).init.landlock.rules.find((r) => r.path === '/win/c/onyx/tareas/a')!
+      buildWslInit(base({ allowDelete: allow })).init.landlock.rules.find((r) => r.path === '/win/c/lazunox/tareas/a')!
     expect(rule(false).access).toBe('rw-nodelete')
     expect(rule(true).access).toBe('rw-delete')
     const none = LANDLOCK_ACCESS['rw-nodelete']
@@ -247,27 +247,27 @@ describe('trama inicial', () => {
         extraFolders: [
           { path: 'D:\\datos', mode: 'rw' },
           { path: 'D:\\Ref', mode: 'ro' },
-          { path: 'C:\\ONYX\\tareas\\A', mode: 'ro' }
+          { path: 'C:\\LAZUNOX\\tareas\\A', mode: 'ro' }
         ]
       })
     )
     expect(init.mounts.map((m) => [m.linux, m.mode])).toEqual([
-      ['/win/c/onyx/tareas/a', 'rw'],
+      ['/win/c/lazunox/tareas/a', 'rw'],
       ['/win/d/datos', 'rw'],
       ['/win/d/Ref', 'ro'],
-      ['/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config', 'ro']
+      ['/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config', 'ro']
     ])
     const rules = init.landlock.rules
     expect(rules.find((r) => r.path === '/win/d/datos')!.access).toBe('rw-nodelete')
     expect(rules.find((r) => r.path === '/win/d/Ref')!.access).toBe('ro')
   })
   it('scratch solo dentro de la carpeta principal', () => {
-    expect(throwsReason(() => buildWslInit(base({ scratchDirs: ['C:\\onyx\\tareas\\OTRA\\x'] })))).toBe('scratch-outside')
-    expect(throwsReason(() => buildWslInit(base({ scratchDirs: ['C:\\onyx\\tareas\\a\\..\\b'] })))).toBe('bad-path')
-    const { init } = buildWslInit(base({ scratchDirs: ['C:\\onyx\\tareas\\a\\tmp1', 'C:\\onyx\\tareas\\a\\tmp2'] }))
+    expect(throwsReason(() => buildWslInit(base({ scratchDirs: ['C:\\lazunox\\tareas\\OTRA\\x'] })))).toBe('scratch-outside')
+    expect(throwsReason(() => buildWslInit(base({ scratchDirs: ['C:\\lazunox\\tareas\\a\\..\\b'] })))).toBe('bad-path')
+    const { init } = buildWslInit(base({ scratchDirs: ['C:\\lazunox\\tareas\\a\\tmp1', 'C:\\lazunox\\tareas\\a\\tmp2'] }))
     expect(init.landlock.rules.filter((r) => r.access === 'rw-delete').map((r) => r.path)).toEqual([
-      '/win/c/onyx/tareas/a/tmp1',
-      '/win/c/onyx/tareas/a/tmp2'
+      '/win/c/lazunox/tareas/a/tmp1',
+      '/win/c/lazunox/tareas/a/tmp2'
     ])
   })
   it('rutas inválidas, clave y puertos: falla cerrado', () => {
@@ -285,7 +285,7 @@ describe('trama inicial', () => {
           ...base().env,
           XDG_DATA_HOME: 'C:\\Users\\Ben\\AppData',
           OPENCODE_CONFIG_DIR: 'C:\\Users\\Ben\\x',
-          ONYXCODE_TASKS_FOLDER: 'C:\\otra',
+          LAZUNOX_TASKS_FOLDER: 'C:\\otra',
           HOME: 'C:\\Users\\Ben',
           Path: 'C:\\Windows',
           TMPDIR: 'C:\\t',
@@ -296,13 +296,13 @@ describe('trama inicial', () => {
     expect(Object.keys(init.env).sort()).toEqual([
       'HTTP_PROXY',
       'NO_PROXY',
-      'ONYXCODE_TASKS_FOLDER',
+      'LAZUNOX_TASKS_FOLDER',
       'OPENCODE_CONFIG_DIR',
       'OPENCODE_DISABLE_AUTOUPDATE',
       'OPENCODE_SERVER_PASSWORD',
       'OPENCODE_SERVER_USERNAME'
     ])
-    expect(init.env.ONYXCODE_TASKS_FOLDER).toBe('/win/c/onyx/tareas/a')
+    expect(init.env.LAZUNOX_TASKS_FOLDER).toBe('/win/c/lazunox/tareas/a')
     expect(JSON.stringify(init)).not.toContain('C:\\\\Users\\\\Ben\\\\x')
   })
 })
@@ -376,9 +376,9 @@ describe('vectores compartidos con el lanzador de Python (resources/wsl/vectors.
   })
   it('la trama INIT del vector es exactamente la que construye buildWslInit (Python la valida)', () => {
     const { init } = buildWslInit({
-      folder: 'C:\\onyx\\tareas\\a',
+      folder: 'C:\\lazunox\\tareas\\a',
       extraFolders: [{ path: 'D:\\Ref', mode: 'ro' }],
-      configDir: 'C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode\\opencode-config',
+      configDir: 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config',
       allowDelete: false,
       sandboxKey: KEY,
       serverPort: 51000,

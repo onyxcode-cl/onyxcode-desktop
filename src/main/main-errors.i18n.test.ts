@@ -18,7 +18,7 @@ import { macOnly } from '../test/platform'
 
 const ctx: FolderPolicyContext = {
   home: '/Users/x',
-  userData: '/Users/x/Library/Application Support/OnyxCode',
+  userData: '/Users/x/Library/Application Support/Lazunox',
   mounts: []
 }
 

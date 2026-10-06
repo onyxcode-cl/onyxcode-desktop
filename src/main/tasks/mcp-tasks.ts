@@ -74,7 +74,7 @@ export const MCP_ENV_WRAPPER: readonly string[] = [
   '-u',
   'OPENCODE_CONFIG_CONTENT',
   '-u',
-  'ONYXCODE_PLAN_GATE_URL'
+  'LAZUNOX_PLAN_GATE_URL'
 ]
 
 function flagsFile(): string {

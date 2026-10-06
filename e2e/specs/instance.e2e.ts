@@ -1,5 +1,5 @@
 // Instancia única y Quick Entry contra la app real.
-// LIMITE (modo headless, ONYXCODE_E2E_HEADLESS=1: opacidad 0, showInactive, sin foco ni Dock): las aserciones de FOCO real
+// LIMITE (modo headless, LAZUNOX_E2E_HEADLESS=1: opacidad 0, showInactive, sin foco ni Dock): las aserciones de FOCO real
 // (que la ventana quede al frente/enfocada tras second-instance o al abrir Quick Entry, hide al perder foco) son HUMANAS.
 import { describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'

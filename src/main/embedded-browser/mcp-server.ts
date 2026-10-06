@@ -217,7 +217,7 @@ export class EmbeddedBrowserMcpServer {
           return ok({
             protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: 'onyxcode-embedded-browser', version: '0.1.0' },
+            serverInfo: { name: 'lazunox-embedded-browser', version: '0.1.0' },
             instructions:
               'Controla el navegador integrado de la app (visible para el usuario, que puede pausarlo o tomar el ' +
               'control en cualquier momento). Empieza con new_page o select_page, usa take_snapshot para obtener ' +
@@ -236,11 +236,11 @@ export class EmbeddedBrowserMcpServer {
           const name = String(req.params?.name ?? '')
           const rawArgs = req.params?.arguments
           const args = rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? { ...(rawArgs as Record<string, unknown>) } : {}
-          const { onyxcode_session, ...toolArgs } = args
+          const { lazunox_session, ...toolArgs } = args
           try {
-            // Guarda 1 (actor): onyxcode_session obligatorio, falla cerrado. Guarda 2 (activación): a
+            // Guarda 1 (actor): lazunox_session obligatorio, falla cerrado. Guarda 2 (activación): a
             // continuación, ya con el producto del actor resuelto.
-            const actor = await resolveActor(binding, onyxcode_session, { mainConnection: () => api.mainConnection() })
+            const actor = await resolveActor(binding, lazunox_session, { mainConnection: () => api.mainConnection() })
             if (!api.agentEnabled(actor.product)) {
               throw new Error('El navegador del agente está desactivado. Actívalo en Ajustes → Navegador.')
             }

@@ -1,7 +1,7 @@
 /**
  * Migración diferida de la carpeta de trabajo que el modo Tareas dejaba dentro de cada carpeta del usuario:
- * `<carpeta>/.cowork/` → `<carpeta>/.onyxcode/trabajo/`. Se llama desde main (Seatbelt no permite renombrar fuera del
- * scratch) justo antes de lanzar el servidor de la carpeta. Nunca toca `.onyxcode/memoria.md` ni sigue symlinks.
+ * `<carpeta>/.cowork/` → `<carpeta>/.lazunox/trabajo/`. Se llama desde main (Seatbelt no permite renombrar fuera del
+ * scratch) justo antes de lanzar el servidor de la carpeta. Nunca toca `.lazunox/memoria.md` ni sigue symlinks.
  */
 import { lstatSync, mkdirSync, readdirSync, renameSync } from 'node:fs'
 import { join } from 'node:path'

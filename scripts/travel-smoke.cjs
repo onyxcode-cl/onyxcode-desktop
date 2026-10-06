@@ -10,7 +10,7 @@
  *      Gatekeeper (`--version` con plazo).
  *   2. `TunnelSignalingTransport` + `CloudflaredProcess` reales: vigía `/bin/sh`, `withDisclaim`, `HOME` privado, `--no-autoupdate`,
  *      URL `https://<palabras>.trycloudflare.com` de `stderr`, autocomprobación (el Mac pide su propia página por el túnel y la compara).
- *   3. Rutas expuestas por el túnel: puerta `/k/<T>` (303 + galleta `__Host-onyxk`), 404 idéntico sin galleta, `/cdn-cgi/`, PWA con galleta.
+ *   3. Rutas expuestas por el túnel: puerta `/k/<T>` (303 + galleta `__Host-lazunoxk`), 404 idéntico sin galleta, `/cdn-cgi/`, PWA con galleta.
  *   4. WebSocket de señalización por el túnel (`wss://<host>/ws`) con la galleta y el `Origin` exacto: `hello` → `ready`, `Origin`
  *      ajeno y sin galleta rechazados, y los pings del Mac (keepalive) durante `--ping-wait` segundos.
  *   5. Cierre limpio: sin procesos `cloudflared`/vigía/`cat` huérfanos (se compara por pid antes y después) y `pids.json` vacío.
@@ -18,7 +18,7 @@
  * Uso (desde la raíz del repo, Node 22 en el PATH; usa SIEMPRE un userData temporal, nunca el de la app instalada):
  *   TRAVEL_SMOKE_OUT=/tmp/travel-smoke.jsonl perl -e 'alarm shift; exec @ARGV' 300 \
  *     node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --use-mock-keychain \
- *     --user-data-dir=/tmp/onyx-travel-smoke-ud scripts/travel-smoke.cjs [--ping-wait=55] [--no-tunnel]
+ *     --user-data-dir=/tmp/lazunox-travel-smoke-ud scripts/travel-smoke.cjs [--ping-wait=55] [--no-tunnel]
  *   Los resultados van a TRAVEL_SMOKE_OUT (una línea JSON por paso; el último paso es `summary`), no a stdout. No abre ventanas y
  *   termina solo. `perl alarm` NO mata a los hijos: el vigía de `cloudflared` los mata, pero comprueba con `pgrep -fl cloudflared`.
  *   TRAVEL_SMOKE_REUSE_BIN=<carpeta bin de una ejecución anterior> evita repetir la descarga (se copia y se verifica igual: hash y firma).
@@ -131,7 +131,7 @@ async function main() {
     log('guard', false, 'userData no es temporal: se aborta para no tocar datos reales')
     return
   }
-  const mod = bundle(fs.mkdtempSync(path.join(os.tmpdir(), 'onyx-smoke-bundle-')))
+  const mod = bundle(fs.mkdtempSync(path.join(os.tmpdir(), 'lazunox-smoke-bundle-')))
   log('bundle', true)
   lookup = mod.makeTunnelLookup()
   const pin = mod.CLOUDFLARED_PIN
@@ -266,7 +266,7 @@ async function main() {
     return
   }
   const cfProcs = cloudflaredProcs()
-  const guard = cfProcs.find((p) => /\/bin\/sh|onyxcode-disclaim/.test(p.command) && /--no-autoupdate/.test(p.command))
+  const guard = cfProcs.find((p) => /\/bin\/sh|lazunox-disclaim/.test(p.command) && /--no-autoupdate/.test(p.command))
   const real = cfProcs.find(
     (p) => /cloudflared tunnel|cloudflared$/.test(p.command.split(' ').slice(0, 2).join(' ')) || /\/cloudflared tunnel/.test(p.command)
   )
@@ -308,7 +308,7 @@ async function main() {
     'gate-303-cookie',
     gate.status === 303 &&
       gate.headers.location === '/' &&
-      /^__Host-onyxk=/.test(sc) &&
+      /^__Host-lazunoxk=/.test(sc) &&
       /Secure/.test(sc) &&
       /HttpOnly/.test(sc) &&
       !/Domain/i.test(sc),
@@ -323,7 +323,7 @@ async function main() {
   })
   const cdn = await get(`${origin}/cdn-cgi/trace`)
   log('cdn-cgi-by-cloudflare', cdn.status === 200 && /colo=/.test(cdn.body.toString()), { status: cdn.status })
-  const probe = await get(`${origin}/__onyx/probe/${'B'.repeat(22)}`)
+  const probe = await get(`${origin}/__lazunox/probe/${'B'.repeat(22)}`)
   log('probe-wrong-nonce-404', probe.status === 404)
   const env = await get(`${origin}/.env`, { Cookie: cookie })
   log('dotfile-404', env.status === 404)

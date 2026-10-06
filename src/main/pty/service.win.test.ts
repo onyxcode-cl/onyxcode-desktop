@@ -39,10 +39,10 @@ describe.skipIf(!winOnly)('node-pty en Windows', () => {
     expect(svc.availability()).toEqual({ available: true })
     const info = svc.create({ cwd: process.cwd(), cols: 100, rows: 30 })
     try {
-      svc.write(info.id, 'Write-Output ("onyx-pty-" + "ok")\r')
+      svc.write(info.id, 'Write-Output ("lazunox-pty-" + "ok")\r')
       const deadline = Date.now() + 20_000
-      while (!chunks.join('').includes('onyx-pty-ok') && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100))
-      expect(chunks.join('')).toContain('onyx-pty-ok')
+      while (!chunks.join('').includes('lazunox-pty-ok') && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100))
+      expect(chunks.join('')).toContain('lazunox-pty-ok')
       svc.write(info.id, 'exit\r')
       const deadline2 = Date.now() + 15_000
       while (exited === null && Date.now() < deadline2) await new Promise((r) => setTimeout(r, 100))

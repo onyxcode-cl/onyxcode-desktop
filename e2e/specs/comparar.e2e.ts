@@ -26,9 +26,9 @@ const git = (cwd: string, ...a: string[]): string => execFileSync('git', ['-C', 
 const compareWorktrees = (repo: string): string[] =>
   git(repo, 'worktree', 'list', '--porcelain')
     .split('\n')
-    .filter((l) => l.startsWith('worktree ') && l.includes('onyx-compare-'))
+    .filter((l) => l.startsWith('worktree ') && l.includes('lazunox-compare-'))
 const compareBranches = (repo: string): string[] =>
-  git(repo, 'branch', '--list', 'onyx-compare/*')
+  git(repo, 'branch', '--list', 'lazunox-compare/*')
     .split('\n')
     .filter((l) => l.trim())
 
@@ -66,7 +66,7 @@ async function confirmLaunch(app: E2EApp): Promise<void> {
 describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, () => {
   let repo = ''
   beforeAll(() => {
-    repo = makeGitRepo('onyx-e2e-compare-')
+    repo = makeGitRepo('lazunox-e2e-compare-')
   })
   const app = useApp()
   afterEach(async () => {
@@ -124,11 +124,11 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
     for (const m of MODELS) await expectVisible(a.page.getByRole('region', { name: m.name }), 20_000)
     expect(await a.page.getByTestId('compare-view').getByRole('region').count()).toBe(3)
 
-    // Copias en carpetas distintas `.<repo>-worktrees/onyx-compare-*` (el límite de Go puede no haber creado la suya aún: al menos 2).
+    // Copias en carpetas distintas `.<repo>-worktrees/lazunox-compare-*` (el límite de Go puede no haber creado la suya aún: al menos 2).
     await expect.poll(() => compareWorktrees(repo).length, { timeout: 30_000 }).toBeGreaterThanOrEqual(2)
     const dirs = compareWorktrees(repo).map((l) => l.replace('worktree ', ''))
     expect(new Set(dirs).size).toBe(dirs.length)
-    for (const d of dirs) expect(d).toMatch(/\.onyx-e2e-compare-[^/]*-worktrees|-worktrees/)
+    for (const d of dirs) expect(d).toMatch(/\.lazunox-e2e-compare-[^/]*-worktrees|-worktrees/)
 
     // La columna de Go pasa a «Límite de uso» con un reintento programado (cuenta atrás visible).
     const go = a.page.getByRole('region', { name: 'Fake Go Model' })
@@ -209,8 +209,8 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
 describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, recuperación al arrancar (${MODE})`, () => {
   const state = {} as { repo: string; userData: string; app: E2EApp | null }
   beforeAll(() => {
-    state.repo = makeGitRepo('onyx-e2e-compare-rec-')
-    state.userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-')))
+    state.repo = makeGitRepo('lazunox-e2e-compare-rec-')
+    state.userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-')))
     state.app = null
   })
   afterAll(async () => {

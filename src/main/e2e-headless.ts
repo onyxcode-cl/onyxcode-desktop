@@ -6,7 +6,7 @@ import { app, type BrowserWindow } from 'electron'
  * La ventana sigue contando como visible para el renderer (visibilityState, isVisible), pero es
  * transparente, no recibe clics y no roba el foco. En la app empaquetada esto nunca se activa.
  */
-export const E2E_HEADLESS = !app.isPackaged && process.env.ONYXCODE_E2E_HEADLESS === '1'
+export const E2E_HEADLESS = !app.isPackaged && process.env.LAZUNOX_E2E_HEADLESS === '1'
 
 /** Sin icono en el Dock ni barra de menús (macOS). Llamar cuando la app está lista. */
 export function applyE2eHeadless(): void {

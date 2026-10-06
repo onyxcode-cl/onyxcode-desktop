@@ -30,7 +30,7 @@ describe('menú de producción con el nombre visible', () => {
     expect(labels.length).toBe(3)
     for (const l of labels) {
       expect(l).toContain('Lazunox')
-      expect(l).not.toContain('OnyxCode')
+      expect(l).not.toContain('Lazunox')
     }
   })
 

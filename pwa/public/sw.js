@@ -9,8 +9,8 @@
  * `__BUILD__` lo sustituye `scripts/build-site.mjs` por la huella de esta publicación.
  */
 const BUILD = '__BUILD__'
-const SHELL = `onyx-shell-${BUILD}`
-const ASSETS = 'onyx-assets'
+const SHELL = `lazunox-shell-${BUILD}`
+const ASSETS = 'lazunox-assets'
 const HASHED = /^\/(?:app\/)?assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/
 
 self.addEventListener('install', (event) => {
@@ -25,7 +25,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((names) => Promise.all(names.filter((n) => n.startsWith('onyx-shell-') && n !== SHELL).map((n) => caches.delete(n))))
+      .then((names) => Promise.all(names.filter((n) => n.startsWith('lazunox-shell-') && n !== SHELL).map((n) => caches.delete(n))))
       .then(() => self.clients.claim())
   )
 })

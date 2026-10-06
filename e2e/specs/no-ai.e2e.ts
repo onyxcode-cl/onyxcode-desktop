@@ -22,7 +22,7 @@ const dirs: string[] = []
 
 /** App con el falso conectado a `connected` (null = los proveedores por defecto del falso). */
 async function launch(connected: string[] | null): Promise<E2EApp> {
-  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-noai-')))
+  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-noai-')))
   dirs.push(userData)
   if (connected) {
     mkdirSync(join(userData, 'fake-opencode'), { recursive: true })
@@ -78,7 +78,7 @@ describe('sin ninguna IA conectada', () => {
     await shot(page, 'chat-sin-ia')
 
     // Code.
-    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-noai-code-')))
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-noai-code-')))
     dirs.push(dir)
     await openCodeProject(app, dir)
     await expectVisible(banner(page))

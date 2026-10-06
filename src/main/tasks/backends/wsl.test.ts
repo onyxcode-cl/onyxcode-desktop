@@ -71,7 +71,7 @@ function deps(over: Partial<WslDeps> = {}) {
       runs.push(spec.args)
       const a = spec.args.join(' ')
       if (a === '--version') return ok(u16('Versión de WSL: 2.4.13.0\r\n'))
-      if (a === '-l -v') return ok(u16('  NAME STATE VERSION\r\n* Ubuntu Running 2\r\n  OnyxCode-Tareas Stopped 2\r\n'))
+      if (a === '-l -v') return ok(u16('  NAME STATE VERSION\r\n* Ubuntu Running 2\r\n  Lazunox-Tareas Stopped 2\r\n'))
       return ok(JSON.stringify({ interop: false, driveMounts: [], landlockAbi: 4, kernel: '6.6', uid: 0 }))
     },
     connect: async (port) => {
@@ -89,15 +89,15 @@ function deps(over: Partial<WslDeps> = {}) {
 }
 
 const launchSpec = (over: Partial<SandboxLaunchSpec> = {}): SandboxLaunchSpec => ({
-  folder: 'C:\\onyx\\tareas\\a',
+  folder: 'C:\\lazunox\\tareas\\a',
   bin: 'C:\\no-se-usa\\opencode.exe',
   serveArgs: ['serve', '--port', '51000', '--hostname', '127.0.0.1'],
   serverPort: 51000,
   isolation: {
-    privateDir: 'C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode\\tasks-sandbox\\0123456789abcdef',
-    userData: 'C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode'
+    privateDir: 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\tasks-sandbox\\0123456789abcdef',
+    userData: 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox'
   },
-  configDir: 'C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode\\opencode-config',
+  configDir: 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config',
   allowDelete: false,
   outboundPorts: [52000, 52001, 4096],
   baseEnv: {
@@ -136,7 +136,7 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect(t.runs.map((a) => a.join(' '))).toEqual([
       '--version',
       '-l -v',
-      '-d OnyxCode-Tareas -u root --cd / --exec /opt/onyx/launcher.py --probe'
+      '-d Lazunox-Tareas -u root --cd / --exec /opt/lazunox/launcher.py --probe'
     ])
     expect(t.runs.flat()).not.toContain('--shutdown')
   })
@@ -160,7 +160,7 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect(t.spawned).toHaveLength(1)
     const { spec, proc } = t.spawned[0]!
     expect(spec.command).toBe('C:\\Windows\\System32\\wsl.exe')
-    expect(spec.args).toEqual(['-d', 'OnyxCode-Tareas', '-u', 'root', '--cd', '/', '--exec', '/opt/onyx/launcher.py'])
+    expect(spec.args).toEqual(['-d', 'Lazunox-Tareas', '-u', 'root', '--cd', '/', '--exec', '/opt/lazunox/launcher.py'])
     expect(spec.env).toEqual({ SystemRoot: 'C:\\Windows', WSLENV: '', WSL_UTF8: '1' })
     expect(t.listens).toEqual([51000])
     await flush()
@@ -173,7 +173,7 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect(parsed.relayPorts).toEqual([4096, 52000, 52001])
     expect(parsed.env.OPENCODE_AUTH_CONTENT).toContain('sandboxed-placeholder-')
     expect(parsed.env.XDG_DATA_HOME).toBeUndefined()
-    expect(parsed.cwd).toBe('/win/c/onyx/tareas/a')
+    expect(parsed.cwd).toBe('/win/c/lazunox/tareas/a')
 
     // salida a un puerto permitido y a uno no permitido
     proc.agent(2, FrameType.OPEN, encodePort(52000))
@@ -187,15 +187,15 @@ describe('WslBackend con wsl.exe simulado', () => {
   it('launch: traducción de rutas con los montajes y rechazo de lo demás', async () => {
     const t = deps()
     const l = await createWslBackend(t.d).launch(launchSpec({ extraFolders: [{ path: 'D:\\Ref', mode: 'ro' }] }))
-    expect(l.toSandboxPath('C:\\onyx\\tareas\\a\\informe.docx')).toBe('/win/c/onyx/tareas/a/informe.docx')
-    expect(l.toHostPath('/win/c/onyx/tareas/a/informe.docx')).toBe('C:\\onyx\\tareas\\a\\informe.docx')
+    expect(l.toSandboxPath('C:\\lazunox\\tareas\\a\\informe.docx')).toBe('/win/c/lazunox/tareas/a/informe.docx')
+    expect(l.toHostPath('/win/c/lazunox/tareas/a/informe.docx')).toBe('C:\\lazunox\\tareas\\a\\informe.docx')
     expect(l.toHostPath('/win/d/Ref/x.txt')).toBe('D:\\Ref\\x.txt')
     for (const bad of [
       '/etc/passwd',
       '/win/c/Users/Ben/.ssh/id_rsa',
       '/win/d/otra',
-      '/win/c/onyx/tareas/a/../b',
-      '/win/c/onyx/tareas/a/x:ads'
+      '/win/c/lazunox/tareas/a/../b',
+      '/win/c/lazunox/tareas/a/x:ads'
     ]) {
       expect(l.toHostPath(bad), bad).toBeNull()
     }

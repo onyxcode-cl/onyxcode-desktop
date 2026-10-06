@@ -9,7 +9,7 @@ import { useApp } from '../lib/harness'
 import { MODE } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
 
-const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rtos-')))
+const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-rtos-')))
 const routine = (id: string, name: string, enabled: boolean): Record<string, unknown> => ({
   id,
   name,

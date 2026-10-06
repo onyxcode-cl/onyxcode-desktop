@@ -6,7 +6,7 @@ import { useT } from '../lib/i18n'
 import { engineNoticeText } from '../lib/engine-notice'
 import { useServer } from '../stores/server'
 
-const DISMISS_KEY = 'onyx.engineNotice.dismissed'
+const DISMISS_KEY = 'lazunox.engineNotice.dismissed'
 
 function readDismissed(): string | null {
   try {

@@ -21,7 +21,7 @@ vi.mock('electron', () => ({
 }))
 
 beforeEach(() => {
-  userData = mkdtempSync(join(tmpdir(), 'onyx-ocfg-'))
+  userData = mkdtempSync(join(tmpdir(), 'lazunox-ocfg-'))
   vi.resetModules()
 })
 afterEach(() => rmSync(userData, { recursive: true, force: true }))
@@ -45,14 +45,14 @@ describe('prepareOpencodeConfigDir: refresco por versión', () => {
     mkdirSync(join(dest, 'agents'), { recursive: true })
     writeFileSync(join(dest, 'agents', `${LEGACY_AGENT_ID}.md`), 'agente viejo')
     writeFileSync(join(dest, 'agents', 'chat.md'), 'viejo')
-    writeFileSync(join(dest, '.onyxcode-version'), '0.2.2')
+    writeFileSync(join(dest, '.lazunox-version'), '0.2.2')
     version = '0.3.0'
     const { prepareOpencodeConfigDir } = await import('./opencode-config')
     const dir = prepareOpencodeConfigDir()
     expect(existsSync(join(dir, 'agents', `${LEGACY_AGENT_ID}.md`))).toBe(false)
     expect(agentsOf(dir)).toEqual(['chat.md', 'computer.md', 'tasks.md'])
     expect(readFileSync(join(dir, 'agents', 'chat.md'), 'utf8')).not.toBe('viejo')
-    expect(readFileSync(join(dir, '.onyxcode-version'), 'utf8')).toBe('0.3.0')
+    expect(readFileSync(join(dir, '.lazunox-version'), 'utf8')).toBe('0.3.0')
   })
 })
 

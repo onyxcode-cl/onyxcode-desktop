@@ -115,7 +115,7 @@ const http = (h: Harness, method: string, path: string, query: Record<string, st
   ) as Promise<{ status: number; body: string; contentType?: string; encoding?: string }>
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-proxy-')))
+  root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-proxy-')))
   proj = join(root, 'proj')
   outside = join(root, 'outside')
   chat = join(root, 'chat')
@@ -220,15 +220,15 @@ describe('call (IPC)', () => {
       computerUse: {}
     }
     const a = (await h.proxy.call({ ch: 'opencode:connection', p: undefined }, ctx())) as typeof conn
-    expect(a.baseUrl).toBe('onyx://engine/main')
+    expect(a.baseUrl).toBe('lazunox://engine/main')
     expect(a.authorization).toBe('')
     const b = (await h.proxy.call({ ch: 'opencode:restart', p: undefined }, ctx())) as typeof conn
-    expect(b).toMatchObject({ baseUrl: 'onyx://engine/main', authorization: '' })
+    expect(b).toMatchObject({ baseUrl: 'lazunox://engine/main', authorization: '' })
     const t = (await h.proxy.call({ ch: 'tasks:start', p: { folder: proj } }, ctx())) as { baseUrl: string; authorization: string }
-    expect(t.baseUrl).toMatch(/^onyx:\/\/engine\/task\/[A-Za-z0-9_-]{16}$/)
+    expect(t.baseUrl).toMatch(/^lazunox:\/\/engine\/task\/[A-Za-z0-9_-]{16}$/)
     expect(t.authorization).toBe('')
     // El token es estable por carpeta y existe como motor suscribible.
-    const eng = t.baseUrl.slice('onyx://engine/'.length)
+    const eng = t.baseUrl.slice('lazunox://engine/'.length)
     expect(h.proxy.allowSub?.(eng)).toBe(true)
     expect(h.proxy.allowSub?.('task/inventado1234')).toBe(false)
     const t2 = (await h.proxy.call({ ch: 'tasks:start', p: { folder: proj } }, ctx())) as { baseUrl: string }
@@ -237,8 +237,8 @@ describe('call (IPC)', () => {
 
   it('app:info sale sin userDataPath', async () => {
     const h = make()
-    h.ipc.results['app:info'] = { name: 'OnyxCode', userDataPath: '/Users/x/Library' }
-    await expect(h.proxy.call({ ch: 'app:info', p: undefined }, ctx())).resolves.toEqual({ name: 'OnyxCode' })
+    h.ipc.results['app:info'] = { name: 'Lazunox', userDataPath: '/Users/x/Library' }
+    await expect(h.proxy.call({ ch: 'app:info', p: undefined }, ctx())).resolves.toEqual({ name: 'Lazunox' })
   })
 
   it('un error del handler no filtra la contraseña', async () => {
@@ -681,7 +681,7 @@ describe('hallazgo 9: canales R sin rutas fuera del ámbito', () => {
       { path: proj, name: 'p', mode: 'full', addedAt: 1 },
       { path: outside, name: 'o', mode: 'full', addedAt: 1 }
     ]
-    h.ipc.results['tasks:policy'] = { source: '/Library/Application Support/OnyxCode/managed.json', disableBrowser: true }
+    h.ipc.results['tasks:policy'] = { source: '/Library/Application Support/Lazunox/managed.json', disableBrowser: true }
     const s = (await h.proxy.call({ ch: 'settings:get', p: undefined }, ctx())) as Record<string, unknown>
     expect(s).toEqual({ theme: 'dark', recentFolders: [proj] })
     expect(await h.proxy.call({ ch: 'tasks:trusted:list', p: undefined }, ctx())).toEqual([

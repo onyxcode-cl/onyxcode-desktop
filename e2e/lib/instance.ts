@@ -20,7 +20,7 @@ export function spawnSecondInstance(userData: string, timeoutMs = 15_000): Promi
   for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') env[k] = v
   delete env.ELECTRON_RUN_AS_NODE
   // Si por un fallo del lock arrancara de verdad, que al menos no abra ventanas visibles.
-  env.ONYXCODE_E2E_HEADLESS = '1'
+  env.LAZUNOX_E2E_HEADLESS = '1'
   const t0 = Date.now()
   return new Promise((resolve, reject) => {
     const child = spawn(require('electron') as string, [join(ROOT, 'out/main/index.js'), `--user-data-dir=${userData}`], {
@@ -66,7 +66,7 @@ export function listWindows(electronApp: ElectronApplication): Promise<WinInfo[]
 }
 
 export const isQuickUrl = (u: string): boolean => /quick\/index\.html/.test(u)
-export const isMainUrl = (u: string): boolean => u !== '' && !isQuickUrl(u) && !/^devtools:/.test(u) && /(index\.html|onyxcode:\/\/app\/?$|localhost|127\.0\.0\.1)/.test(u)
+export const isMainUrl = (u: string): boolean => u !== '' && !isQuickUrl(u) && !/^devtools:/.test(u) && /(index\.html|lazunox:\/\/app\/?$|localhost|127\.0\.0\.1)/.test(u)
 
 /** Página Playwright de Quick Entry (si existe). */
 export function findQuickPage(electronApp: ElectronApplication): Page | undefined {

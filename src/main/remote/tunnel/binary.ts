@@ -112,7 +112,7 @@ export function pinFor(pin: CloudflaredPin | null, platform: string = process.pl
   return pin?.assets[`${platform}-${arch}`] ?? null
 }
 
-/** Meses desde `releasedAt`: con más de 10 Ajustes avisa «actualiza OnyxCode» (Cloudflare solo da soporte a versiones de < 1 año). */
+/** Meses desde `releasedAt`: con más de 10 Ajustes avisa «actualiza Lazunox» (Cloudflare solo da soporte a versiones de < 1 año). */
 export function pinAgeMonths(pin: CloudflaredPin, now: number = Date.now()): number {
   return (now - Date.parse(`${pin.releasedAt}T00:00:00Z`)) / (30.4375 * 86_400_000)
 }

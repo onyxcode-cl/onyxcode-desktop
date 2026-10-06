@@ -2,7 +2,7 @@
 // Paso 2 de la publicación en dos pasos: FIRMA el manifiesto `update.json` que generó el CI (`publish-update.mjs --manifest-only`).
 // Se ejecuta SOLO en el Mac del dueño: la clave privada Ed25519 nunca va a GitHub ni al CI. NO hace peticiones de red.
 //
-//   ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/release-0.4.0 [--zip ruta.zip]
+//   LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/release-0.4.0 [--zip ruta.zip]
 //
 // Antes de firmar comprueba que lo descargado es lo que dice el manifiesto (tamaño y SHA-256 del ZIP, appId y keyId de brand.ts,
 // versión = tag, nombre del ZIP) y que la clave privada corresponde a UPDATE_PUBLIC_KEY; escribe `update.json.sig` junto al manifiesto.
@@ -73,14 +73,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const dir = arg('--dir')
   if (!dir) {
     console.error(
-      'Uso: ONYXCODE_UPDATE_KEY_FILE=<clave.pem> node scripts/sign-update.mjs --dir <carpeta con update.json y el ZIP> [--zip ruta.zip]'
+      'Uso: LAZUNOX_UPDATE_KEY_FILE=<clave.pem> node scripts/sign-update.mjs --dir <carpeta con update.json y el ZIP> [--zip ruta.zip]'
     )
     process.exit(2)
   }
   signUpdate({
     dir: resolve(dir),
     zipPath: arg('--zip') ? resolve(arg('--zip')) : undefined,
-    keyFile: process.env.ONYXCODE_UPDATE_KEY_FILE
+    keyFile: process.env.LAZUNOX_UPDATE_KEY_FILE
   })
     .then((r) => {
       console.log(`sign-update OK — ${r.tag}: ZIP ${r.size} bytes, sha256 ${r.sha256}`)

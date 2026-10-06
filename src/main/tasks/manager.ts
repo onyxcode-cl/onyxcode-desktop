@@ -88,7 +88,7 @@ export interface TasksComputerDeps {
   info: () => Promise<ComputerUseInfo>
   /**
    * URL+token del canal lateral de eventos (mismo que usa el MCP), para el plugin
-   * `onyxcode-plan-gate` del servidor de acceso total. Null si no está disponible (el servidor arranca
+   * `lazunox-plan-gate` del servidor de acceso total. Null si no está disponible (el servidor arranca
    * igual, pero el agente `computer` no tendría MCP tampoco en ese caso).
    */
   planGateUrl: () => Promise<string | null>
@@ -132,14 +132,14 @@ interface ManagerEvents {
   networkBlocked: [{ folder: string } & EgressBlockedEvent]
 }
 
-// '.lapis' se mantiene junto a '.onyxcode' mientras exista el fallback de lectura de memoria de la
+// '.lapis' se mantiene junto a '.lazunox' mientras exista el fallback de lectura de memoria de la
 // versión anterior de la app (`src/main/tasks/projects.ts`).
 const SKIP_DIRS = new Set([
   '.git',
   'node_modules',
   '.opencode',
   LEGACY_FOLDER_SCRATCH,
-  '.onyxcode',
+  '.lazunox',
   LEGACY_PROJECT_DIR,
   '.venv',
   '__pycache__',
@@ -835,7 +835,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       fullAccess && this.opts.computer ? this.opts.computer.planGateUrl().catch(() => null) : Promise.resolve<string | null>(null)
     const before = Promise.resolve(this.beforeSpawn ? this.beforeSpawn(folder, fullAccess) : undefined)
     const prepared = before.then(() => {
-      // scratch antiguo → `.onyxcode/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
+      // scratch antiguo → `.lazunox/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
       // Nunca en la carpeta personal (Control total sin carpeta): no se toca nada del home del usuario.
       if (folder !== normalizeFolder(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
@@ -863,10 +863,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             },
         extraEnv: {
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
-          ...(fullAccess ? { ONYXCODE_FULL_ACCESS: '1' } : {}),
-          // Plugin `onyxcode-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
-          // SOLO en servidores de acceso total; `onyxcode-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
-          ...(gateUrl ? { ONYXCODE_PLAN_GATE_URL: gateUrl } : {}),
+          ...(fullAccess ? { LAZUNOX_FULL_ACCESS: '1' } : {}),
+          // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
+          // SOLO en servidores de acceso total; `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
+          ...(gateUrl ? { LAZUNOX_PLAN_GATE_URL: gateUrl } : {}),
           // Solo sandbox: sin esto la búsqueda web de OpenCode alterna entre mcp.exa.ai y
           // search.parallel.ai según el hash de la sesión. Fijar el proveedor deja UN único host
           // (`WEB_SEARCH_HOSTS`) que la lista blanca del proxy de egress puede permitir.

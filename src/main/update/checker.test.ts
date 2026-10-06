@@ -142,7 +142,7 @@ describe('UpdateChecker', () => {
     expect(init.headers).toEqual({
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'OnyxCode/1.0.0'
+      'User-Agent': 'Lazunox/1.0.0'
     })
     const names = Object.keys(init.headers as object).map((k) => k.toLowerCase())
     expect(names).not.toContain('authorization')

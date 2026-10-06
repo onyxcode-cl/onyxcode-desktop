@@ -2,7 +2,7 @@
  * Enrutado de la entrada del servicio de conexión (puro, sin APIs de Workers): decide qué se hace con una petición ANTES de
  * tocar ningún Durable Object. Un nombre de sala mal formado o un `Origin` ajeno se rechazan aquí, sin despertar a nadie.
  *
- *  - `GET /v1/host` (WebSocket) con la cabecera `x-onyx-host: <hostToken>`: la sala sale de `sha256(token)`. Un navegador no puede
+ *  - `GET /v1/host` (WebSocket) con la cabecera `x-lazunox-host: <hostToken>`: la sala sale de `sha256(token)`. Un navegador no puede
  *    hacer de Mac: si la petición trae `Origin`, se rechaza.
  *  - `GET /v1/peer/<room>` (WebSocket): `room` de 43 caracteres base64url y `Origin` exactamente en la lista permitida.
  *  - Cualquier otra ruta `/v1/*` es 404. Fuera de `/v1/` no es asunto de este módulo (`pass`: sirve los estáticos).
@@ -15,7 +15,7 @@ export interface EdgeRequest {
   /** Valor de la cabecera `Upgrade`. */
   upgrade: string | null
   origin: string | null
-  /** Valor de la cabecera `x-onyx-host`. */
+  /** Valor de la cabecera `x-lazunox-host`. */
   hostToken: string | null
 }
 

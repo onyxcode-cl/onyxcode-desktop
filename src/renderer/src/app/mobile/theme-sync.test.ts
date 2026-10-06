@@ -21,7 +21,7 @@ describe('syncThemeColor', () => {
     const ok = syncThemeColor(mkDoc('dark', metas), () => ' #11131a ', { setItem: (k, v) => void (saved[k] = v) })
     expect(ok).toBe(true)
     for (const m of metas) expect(m.attrs).toEqual({ content: '#11131a' })
-    expect(saved).toEqual({ 'onyx.theme': 'dark' })
+    expect(saved).toEqual({ 'lazunox.theme': 'dark' })
   })
   it('sin tema resuelto no toca nada', () => {
     const metas = [meta()]

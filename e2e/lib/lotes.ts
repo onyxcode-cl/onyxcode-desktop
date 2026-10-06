@@ -14,9 +14,9 @@ import { FAKE_BIN_NAME, IS_WIN, killByCommandLine } from './proc'
  * Devuelve `OPENCODE_BIN` y un limpiador.
  */
 export function fakeOutsideUserData(): { bin: string; dispose: () => void } {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-fakebin-')))
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-fakebin-')))
   for (const f of ['opencode', 'server.mjs']) cpSync(join(ROOT, 'e2e', 'fake-opencode', f), join(dir, f))
-  // Windows: la app lo lanza con `node <mjs>`; `opencode.mjs` es el nombre que también acepta ONYXCODE_TEST_BUNDLED_DIR (solo pruebas).
+  // Windows: la app lo lanza con `node <mjs>`; `opencode.mjs` es el nombre que también acepta LAZUNOX_TEST_BUNDLED_DIR (solo pruebas).
   if (IS_WIN) cpSync(join(ROOT, 'e2e', 'fake-opencode', 'server.mjs'), join(dir, 'opencode.mjs'))
   return {
     bin: join(dir, IS_WIN ? 'opencode.mjs' : FAKE_BIN_NAME),
@@ -36,10 +36,10 @@ export function killByPath(path: string): void {
 
 /**
  * Carpeta de trabajo de Tareas. Tiene que estar bajo el home y fuera de `~/Library`/`/private`: la política de carpetas
- * (folder-policy.ts) rechaza `/private/var/...` (el tmp de macOS). Se crea en `~/onyx-e2e-cw-XXXXXX`.
+ * (folder-policy.ts) rechaza `/private/var/...` (el tmp de macOS). Se crea en `~/lazunox-e2e-cw-XXXXXX`.
  */
 export function makeTasksDir(): { dir: string; dispose: () => void } {
-  const dir = realpathSync(mkdtempSync(join(homedir(), 'onyx-e2e-cw-')))
+  const dir = realpathSync(mkdtempSync(join(homedir(), 'lazunox-e2e-cw-')))
   return { dir, dispose: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
@@ -108,7 +108,7 @@ export class BrowserMcp {
     return (r.result?.tools ?? []).map((t: { name: string }) => t.name)
   }
   async call(sessionId: string, name: string, args: Record<string, unknown> = {}): Promise<McpResult> {
-    const r = await this.rpc('tools/call', { name, arguments: { ...args, onyxcode_session: sessionId } })
+    const r = await this.rpc('tools/call', { name, arguments: { ...args, lazunox_session: sessionId } })
     if (r.error) throw new Error(`mcp ${name}: ${JSON.stringify(r.error)}`)
     const content = (r.result?.content ?? []) as { type: string; text?: string }[]
     return { text: content.filter((c) => c.type === 'text').map((c) => c.text).join('\n'), isError: r.result?.isError === true, raw: r.result }
@@ -122,9 +122,9 @@ import { FakeClient } from './fake'
 
 /** Cliente del OpenCode falso que sirve la carpeta de Tareas abierta (conexión leída del store `useTareas`). */
 export async function tasksFake(page: Page): Promise<FakeClient> {
-  await page.waitForFunction(() => Boolean((window as any).__onyxE2E?.useTasks.getState().conn), undefined, { timeout: 60_000 })
+  await page.waitForFunction(() => Boolean((window as any).__lazunoxE2E?.useTasks.getState().conn), undefined, { timeout: 60_000 })
   const conn = await page.evaluate(() => {
-    const c = (window as any).__onyxE2E.useTasks.getState().conn
+    const c = (window as any).__lazunoxE2E.useTasks.getState().conn
     return { baseUrl: c.baseUrl as string, authorization: c.authorization as string }
   })
   return new FakeClient(conn)

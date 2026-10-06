@@ -67,7 +67,7 @@ jobs:
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
         run: |
           set -euo pipefail
-          KEYCHAIN="$RUNNER_TEMP/onyxcode-build.keychain-db"
+          KEYCHAIN="$RUNNER_TEMP/lazunox-build.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
           echo "::add-mask::$KEYCHAIN_PASSWORD"
           printf '%s' "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
@@ -126,7 +126,7 @@ jobs:
           # shellcheck disable=SC2086
           gh release create "$TAG" dist/*.dmg dist/update/*.zip dist/update/update.json \
             --draft --verify-tag $FLAGS \
-            --title "OnyxCode ${TAG#v}" \
+            --title "Lazunox ${TAG#v}" \
             --notes-file "$RUNNER_TEMP/notas.md"
 
       # Se ejecuta siempre (también si algo falló): no deja el llavero ni la clave .p8 en el runner.

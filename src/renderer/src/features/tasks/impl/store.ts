@@ -103,7 +103,7 @@ interface TasksState {
   pinned: Record<string, true>
   /** Proyecto (nombre + instrucciones) de la carpeta actual. */
   project: TasksProject | null
-  /** Memoria (`.onyxcode/memoria.md`) de la carpeta actual. */
+  /** Memoria (`.lazunox/memoria.md`) de la carpeta actual. */
   memory: TasksMemory | null
   /** Panel "Proyecto y memoria" visible. */
   projectPanelOpen: boolean
@@ -274,7 +274,7 @@ export const useTasks = create<TasksState>((set) => ({
 
 export function setProjectPanelOpen(open: boolean): void {
   useTasks.setState({ projectPanelOpen: open })
-  // Al abrir el panel se relee la memoria: el agente pudo escribir `.onyxcode/memoria.md` mientras estaba cerrado.
+  // Al abrir el panel se relee la memoria: el agente pudo escribir `.lazunox/memoria.md` mientras estaba cerrado.
   if (open) {
     const { folder } = useTasks.getState()
     if (folder) void loadProjectAndMemory(folder)
@@ -634,7 +634,7 @@ function handleEvent(event: OcEvent, directory: string): void {
       }
       const failed = useSessions.getState().errors[id]
       notifyTask(id, failed ? 'error' : 'done', failed ? t('tasks.notify.failed') : t('tasks.notify.done'), taskTitle(id))
-      // El agente pudo guardar memoria (`.onyxcode/memoria.md`): si el panel está cerrado se relee; si está
+      // El agente pudo guardar memoria (`.lazunox/memoria.md`): si el panel está cerrado se relee; si está
       // abierto no se pisa lo que el usuario esté editando.
       if (!st.projectPanelOpen) void loadProjectAndMemory(st.folder)
     }

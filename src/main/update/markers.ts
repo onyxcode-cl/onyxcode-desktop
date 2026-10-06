@@ -96,10 +96,10 @@ export function cleanupAfterBoot(o: { dir: string; appPath: string | null; versi
   }
   try {
     if (!existsSync(join(o.dir, `boot-ok-${o.version}`))) return { removed }
-    if (o.appPath && basename(o.appPath) === 'OnyxCode.app') {
+    if (o.appPath && basename(o.appPath) === 'Lazunox.app') {
       const parent = dirname(o.appPath)
       for (const n of readdirSync(parent)) {
-        if (/^\.OnyxCode\.app\.(bak|failed)-[0-9A-Za-z.+-]{1,64}$/.test(n)) rm(join(parent, n))
+        if (/^\.Lazunox\.app\.(bak|failed)-[0-9A-Za-z.+-]{1,64}$/.test(n)) rm(join(parent, n))
       }
     }
     for (const n of readdirSync(o.dir)) {

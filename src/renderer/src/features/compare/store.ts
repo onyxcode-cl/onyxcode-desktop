@@ -402,7 +402,7 @@ export const isArmed = (mode: CompareMode, directory: string | null): boolean =>
 
 // ───────────────────────────── lanzamiento ─────────────────────────────
 
-const SKIP_KEY = 'onyxcode.compare.skipConfirm'
+const SKIP_KEY = 'lazunox.compare.skipConfirm'
 
 export function readSkipConfirm(): boolean {
   try {

@@ -1,9 +1,9 @@
 # Avisos de terceros
 
-OnyxCode es un proyecto independiente y **no está afiliado a OpenCode**. Este fichero reúne los avisos de licencia de los componentes de
-terceros que se distribuyen dentro del instalador. También se copia a `OnyxCode.app/Contents/Resources/THIRD_PARTY_NOTICES.md`.
+Lazunox es un proyecto independiente y **no está afiliado a OpenCode**. Este fichero reúne los avisos de licencia de los componentes de
+terceros que se distribuyen dentro del instalador. También se copia a `Lazunox.app/Contents/Resources/THIRD_PARTY_NOTICES.md`.
 
-**Licencia de OnyxCode: MIT.** El código propio de OnyxCode se distribuye bajo la licencia del fichero `LICENSE`. Este documento solo cubre
+**Licencia de Lazunox: MIT.** El código propio de Lazunox se distribuye bajo la licencia del fichero `LICENSE`. Este documento solo cubre
 componentes de terceros; si `LICENSE` cambia, esta línea debe cambiar a la vez (lo comprueba `npm run verify:release`).
 
 <!-- Nota para el dueño: la licencia MIT del fichero LICENSE y su titular («onyxcode-cl») están pendientes de tu confirmación final
@@ -50,16 +50,16 @@ enlazar esa parte.
 - Código fuente de Bun: <https://github.com/oven-sh/bun>
 - Código fuente de WebKit (incluye JavaScriptCore): <https://github.com/WebKit/WebKit> y <https://webkit.org/>
 
-El binario incluido en OnyxCode es el publicado oficialmente por OpenCode, **sin modificar** por OnyxCode. Se incluye este aviso y el enlace
+El binario incluido en Lazunox es el publicado oficialmente por OpenCode, **sin modificar** por Lazunox. Se incluye este aviso y el enlace
 a las fuentes; este texto no pretende ser una valoración jurídica del cumplimiento de la LGPL.
 
 ## 3. Electron y Chromium
 
-OnyxCode está construido sobre Electron, que incluye Chromium y otras dependencias de código abierto. Cada instalación contiene sus avisos
+Lazunox está construido sobre Electron, que incluye Chromium y otras dependencias de código abierto. Cada instalación contiene sus avisos
 completos dentro de la propia app:
 
-- `OnyxCode.app/Contents/Resources/licenses/electron/LICENSE` (licencia de Electron, MIT).
-- `OnyxCode.app/Contents/Resources/licenses/electron/LICENSES.chromium.html` (lista de licencias de Chromium y de las bibliotecas que incorpora).
+- `Lazunox.app/Contents/Resources/licenses/electron/LICENSE` (licencia de Electron, MIT).
+- `Lazunox.app/Contents/Resources/licenses/electron/LICENSES.chromium.html` (lista de licencias de Chromium y de las bibliotecas que incorpora).
 
 Más información: <https://www.electronjs.org/> y <https://www.chromium.org/>.
 
@@ -81,13 +81,13 @@ código abierto (en su mayoría MIT o ISC); sus avisos están en sus paquetes de
 ### Modo viaje (opcional, se descarga bajo demanda)
 
 - `cloudflared` (cliente del túnel rápido de Cloudflare), versión **2026.9.3**: Apache-2.0, <https://github.com/cloudflare/cloudflared>
-  (texto de la licencia en el `LICENSE` de ese repositorio). **No se redistribuye con OnyxCode**: solo si el usuario lo acepta en un diálogo
+  (texto de la licencia en el `LICENSE` de ese repositorio). **No se redistribuye con Lazunox**: solo si el usuario lo acepta en un diálogo
   se descarga desde la página oficial de lanzamientos de GitHub (`github.com/cloudflare/cloudflared/releases/download/2026.9.3/…`), se verifica
   su SHA-256 y su firma (Developer ID de Cloudflare Inc.) y se guarda en la carpeta de datos de la app; se puede borrar. Su uso del servicio de
   túneles rápidos se rige por las condiciones de Cloudflare (<https://www.cloudflare.com/website-terms/>), que el propio programa recuerda al
-  arrancar. OnyxCode no está afiliado a Cloudflare.
+  arrancar. Lazunox no está afiliado a Cloudflare.
 
 ## 5. No afiliación
 
-OnyxCode es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para
+Lazunox es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para
 indicar compatibilidad.

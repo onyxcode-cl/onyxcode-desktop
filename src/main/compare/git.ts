@@ -129,10 +129,10 @@ export async function gitVersion(): Promise<string | null> {
 // Worktrees
 // ---------------------------------------------------------------------------
 
-export const BRANCH_PREFIX = 'onyx-compare/'
-/** Rama temporal de una columna: `onyx-compare/<id8>-<n>`. */
-export const BRANCH_RE = /^onyx-compare\/[0-9a-f]{8}-[0-3]$/
-const FOLDER_RE = /^onyx-compare-[0-9a-f]{8}-[0-3]$/
+export const BRANCH_PREFIX = 'lazunox-compare/'
+/** Rama temporal de una columna: `lazunox-compare/<id8>-<n>`. */
+export const BRANCH_RE = /^lazunox-compare\/[0-9a-f]{8}-[0-3]$/
+const FOLDER_RE = /^lazunox-compare-[0-9a-f]{8}-[0-3]$/
 
 export function branchFor(id8: string, n: number): string {
   return `${BRANCH_PREFIX}${id8}-${n}`
@@ -144,7 +144,7 @@ export function worktreesDirFor(root: string): string {
 }
 
 export function worktreePathFor(root: string, id8: string, n: number): string {
-  return join(worktreesDirFor(root), `onyx-compare-${id8}-${n}`)
+  return join(worktreesDirFor(root), `lazunox-compare-${id8}-${n}`)
 }
 
 /** ¿`path` es exactamente una carpeta de copia que esta función habría creado para `root`? */

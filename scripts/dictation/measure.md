@@ -4,15 +4,15 @@ Prototipo aislado: no toca la app. No guarda audio ni texto en disco (el texto s
 
 ## 1. Compilar
 ```sh
-scripts/dictation/build.sh            # deja el binario en $TMPDIR/onyx-dictate-build/onyx-dictate
+scripts/dictation/build.sh            # deja el binario en $TMPDIR/lazunox-dictate-build/lazunox-dictate
 # Sin swiftc: xcode-select --install. Comando exacto equivalente:
-# swiftc -O -swift-version 5 resources/dictation/onyx-dictate/main.swift -o /tmp/onyx-dictate
-B=${TMPDIR:-/tmp}/onyx-dictate-build/onyx-dictate
+# swiftc -O -swift-version 5 resources/dictation/lazunox-dictate/main.swift -o /tmp/lazunox-dictate
+B=${TMPDIR:-/tmp}/lazunox-dictate-build/lazunox-dictate
 $B --version && $B --self-test       # sin micrófono; debe terminar con "self-test-ok"
 ```
 
 ## 2. Permisos que aparecen
-Se piden al primer `listen`, a nombre de la **terminal** que uses (Terminal/iTerm), no de OnyxCode.
+Se piden al primer `listen`, a nombre de la **terminal** que uses (Terminal/iTerm), no de Lazunox.
 - **Micrófono**: elige **Permitir**.
 - **Reconocimiento de voz**: solo aparece en macOS 25 o anterior (motor antiguo). **Anota si te salió** en macOS 26+: es lo que queremos saber.
 - Si el idioma no tiene modelo local: error `no-disponible` y sale (nunca usa internet). Para bajar el modelo del sistema (sin enviar voz): añade `--install`.
@@ -44,10 +44,10 @@ Puntuación y mayúsculas automáticas: sí / no / a medias. ¿Pidió permiso de
 ## 5. CPU y batería (1 minuto, sin carga artificial)
 Con el dictado escuchando normalmente (puedes hablar o callar; sin bucles ni tareas extra), en otra terminal:
 ```sh
-top -pid $(pgrep -n onyx-dictate) -stats pid,command,cpu,mem -l 6 -s 10
+top -pid $(pgrep -n lazunox-dictate) -stats pid,command,cpu,mem -l 6 -s 10
 pmset -g batt        # antes y después; anota el % (1 min es poco: solo orientativo)
 ```
-O mira «onyx-dictate» en el Monitor de Actividad (CPU y Energía). El punto naranja del micrófono debe apagarse al terminar; `pgrep -fl onyx-dictate` debe quedar vacío.
+O mira «lazunox-dictate» en el Monitor de Actividad (CPU y Energía). El punto naranja del micrófono debe apagarse al terminar; `pgrep -fl lazunox-dictate` debe quedar vacío.
 CPU media: ____ %  · Memoria: ____ MB  · Batería antes/después: ____ / ____
 
 ## 6. Borrar los permisos de prueba

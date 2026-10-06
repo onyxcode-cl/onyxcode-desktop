@@ -160,11 +160,11 @@ export interface E2eEditors {
   detected: EditorId[]
 }
 
-/** `ONYXCODE_E2E_EDITOR_LOG` (+ `ONYXCODE_E2E_EDITORS`): honrada ÚNICAMENTE con la app sin empaquetar. */
+/** `LAZUNOX_E2E_EDITOR_LOG` (+ `LAZUNOX_E2E_EDITORS`): honrada ÚNICAMENTE con la app sin empaquetar. */
 export function resolveE2eEditors(i: { isPackaged: boolean; env: Record<string, string | undefined> }): E2eEditors | null {
-  const log = !i.isPackaged ? i.env.ONYXCODE_E2E_EDITOR_LOG : undefined
+  const log = !i.isPackaged ? i.env.LAZUNOX_E2E_EDITOR_LOG : undefined
   if (!log || !(isAbsolute(log) || /^[A-Za-z]:[\\/]/.test(log))) return null
-  const want = (i.env.ONYXCODE_E2E_EDITORS ?? 'vscode,zed').split(',').map((s) => s.trim())
+  const want = (i.env.LAZUNOX_E2E_EDITORS ?? 'vscode,zed').split(',').map((s) => s.trim())
   return { log, detected: EDITOR_IDS.filter((id) => id !== 'system' && want.includes(id)) }
 }
 

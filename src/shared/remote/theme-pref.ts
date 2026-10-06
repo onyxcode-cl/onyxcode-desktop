@@ -3,7 +3,7 @@
  * El tema lo decide el ajuste del Mac; la interfaz completa lo escribe aquí cuando cambia `data-theme` en <html>.
  * Tolerante: un almacenamiento que lanza o un valor ajeno se tratan como «sin valor».
  */
-export const THEME_PREF_KEY = 'onyx.theme'
+export const THEME_PREF_KEY = 'lazunox.theme'
 export type ThemePref = 'light' | 'dark'
 
 type Reader = Pick<Storage, 'getItem'>

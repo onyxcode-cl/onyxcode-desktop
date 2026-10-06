@@ -1,6 +1,6 @@
 // Actualizador propio: descarga + verificación contra un servidor local que imita las releases de GitHub (manifiesto firmado,
 // firma, ZIP y una redirección 302 a un «CDN»). NUNCA se sustituye ninguna app: la app de E2E no está empaquetada, así que
-// «Reiniciar ahora» se rechaza. `ONYXCODE_TEST_UPDATE_PUBKEY` y `ONYXCODE_TEST_UPDATE_INSTALL_DIR` solo se honran sin empaquetar.
+// «Reiniciar ahora» se rechaza. `LAZUNOX_TEST_UPDATE_PUBKEY` y `LAZUNOX_TEST_UPDATE_INSTALL_DIR` solo se honran sin empaquetar.
 // Capturas claro/oscuro: UPDATE_SHOTS_DIR=/ruta
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -20,7 +20,7 @@ const dirs: string[] = []
 const fixtures: Fixture[] = []
 
 const newDir = (): string => {
-  const d = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-inst-')))
+  const d = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-inst-')))
   dirs.push(d)
   return d
 }
@@ -61,12 +61,12 @@ interface LaunchOpts {
 async function launch(srv: ReleasesServer, o: LaunchOpts = {}): Promise<E2EApp & { installDir: string }> {
   const installDir = o.installDir ?? newDir()
   const env: Record<string, string> = {
-    ONYXCODE_TEST_UPDATE_DELAY_MS: '200',
-    ONYXCODE_TEST_RELEASES_API: srv.url,
-    ONYXCODE_TEST_RELEASES_REPO: FIXTURE_REPO,
-    ONYXCODE_TEST_UPDATE_INSTALL_DIR: installDir
+    LAZUNOX_TEST_UPDATE_DELAY_MS: '200',
+    LAZUNOX_TEST_RELEASES_API: srv.url,
+    LAZUNOX_TEST_RELEASES_REPO: FIXTURE_REPO,
+    LAZUNOX_TEST_UPDATE_INSTALL_DIR: installDir
   }
-  if (o.withKey !== false) env.ONYXCODE_TEST_UPDATE_PUBKEY = keys.publicKey
+  if (o.withKey !== false) env.LAZUNOX_TEST_UPDATE_PUBKEY = keys.publicKey
   const app = await startApp({ userData: o.userData ?? newDir(), keepUserData: true, env })
   apps.push(app)
   return Object.assign(app, { installDir })
@@ -178,7 +178,7 @@ describe('actualizador propio', () => {
     }
     // Nada se instaló: la carpeta de instalación sigue vacía y la app verificada espera en el staging (0700).
     expect(installDirEmpty(app.installDir)).toBe(true)
-    expect(existsSync(join(stagingDir(app), 'extract', 'OnyxCode.app', 'Contents', 'Info.plist'))).toBe(true)
+    expect(existsSync(join(stagingDir(app), 'extract', 'Lazunox.app', 'Contents', 'Info.plist'))).toBe(true)
 
     await openAbout(app.page)
     await expectVisible(app.page.getByText('Solo descarga cuando pulsas Actualizar.', { exact: false }))
@@ -260,7 +260,7 @@ describe('actualizador propio', () => {
       // La firma inválida o el manifiesto repetido se descartan ANTES de pedir el ZIP.
       expect(srv.assetRequests().some((r) => r.url.endsWith('.zip'))).toBe(zipRequested)
       expect(installDirEmpty(app.installDir)).toBe(true)
-      expect(existsSync(join(stagingDir(app), 'extract', 'OnyxCode.app'))).toBe(false)
+      expect(existsSync(join(stagingDir(app), 'extract', 'Lazunox.app'))).toBe(false)
       if (opts.badSignature) await shot(app.page, 'instalador-5-error')
       await stopApp(app)
     }
@@ -280,13 +280,13 @@ describe('actualizador propio', () => {
 
     const evil = await newServer()
     const g = fixture()
-    publish(evil, g, { redirectTo: 'https://evil.example/OnyxCode.zip' })
+    publish(evil, g, { redirectTo: 'https://evil.example/Lazunox.zip' })
     const app2 = await launch(evil)
     await expectVisible(button(app2.page, 'Actualizar'))
     await button(app2.page, 'Actualizar').click()
     await waitPhase(app2.page, 'error')
     expect(await noticeText(app2.page)).toContain('No se pudo descargar la actualización.')
-    expect(evil.assetRequests().map((r) => r.url)).not.toContain('https://evil.example/OnyxCode.zip')
+    expect(evil.assetRequests().map((r) => r.url)).not.toContain('https://evil.example/Lazunox.zip')
     await stopApp(app2)
   })
 

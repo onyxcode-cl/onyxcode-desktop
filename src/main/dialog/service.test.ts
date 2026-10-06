@@ -24,7 +24,7 @@ vi.mock('./code-candidates', () => ({ codeCandidates: () => ['code'] }))
 
 import { openInEditor } from './service'
 
-const root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-oie-')))
+const root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-oie-')))
 const proj = join(root, 'proyecto')
 mkdirSync(join(proj, 'Fake.app'), { recursive: true })
 writeFileSync(join(proj, 'a.txt'), 'x')

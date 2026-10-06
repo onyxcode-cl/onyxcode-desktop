@@ -8,7 +8,7 @@ import { isNewerRelease, parseSemver } from './update-check'
 import { t } from './i18n'
 
 /** Nombre de la .app dentro del ZIP. */
-export const APP_BUNDLE_NAME = 'OnyxCode.app'
+export const APP_BUNDLE_NAME = 'Lazunox.app'
 export const MANIFEST_NAME = 'update.json'
 export const MANIFEST_SIG_NAME = 'update.json.sig'
 export const MANIFEST_MAX_BYTES = 16 * 1024
@@ -17,7 +17,7 @@ export const ZIP_MAX_BYTES = 600 * 1024 * 1024
 export const PLATFORM = 'darwin-arm64'
 export const MAX_REDIRECTS = 3
 
-const ZIP_NAME_RE = /^OnyxCode-\d+\.\d+\.\d+-arm64\.zip$/
+const ZIP_NAME_RE = /^Lazunox-\d+\.\d+\.\d+-arm64\.zip$/
 const SHA256_RE = /^[0-9a-f]{64}$/
 
 export interface UpdateManifest {
@@ -88,7 +88,7 @@ export function validateManifest(m: UpdateManifest, ctx: ManifestContext): Manif
   if (!isNewerRelease({ tag: m.version, prerelease: false, draft: false }, ctx.current)) {
     return { ok: false, code: 'downgrade', reason: 'la versión no es mayor que la instalada' } // i18n-ignore: motivo interno del registro, no se muestra
   }
-  if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `OnyxCode-${m.version}-arm64.zip`) {
+  if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `Lazunox-${m.version}-arm64.zip`) {
     return { ok: false, code: 'manifest', reason: 'nombre de ZIP no válido' } // i18n-ignore: motivo interno del registro, no se muestra
   }
   return { ok: true }
@@ -104,8 +104,8 @@ function safeParts(path: string): string[] | null {
 }
 
 /**
- * Entrada del listado del ZIP (`zipinfo -1`): solo rutas relativas dentro de OnyxCode.app/. Única excepción: los metadatos
- * AppleDouble que `ditto --sequesterRsrc` guarda bajo `__MACOSX/OnyxCode.app/…/._nombre` (ditto -x los aplica como atributos
+ * Entrada del listado del ZIP (`zipinfo -1`): solo rutas relativas dentro de Lazunox.app/. Única excepción: los metadatos
+ * AppleDouble que `ditto --sequesterRsrc` guarda bajo `__MACOSX/Lazunox.app/…/._nombre` (ditto -x los aplica como atributos
  * del archivo y no crea nada fuera de la .app); con las mismas reglas de ruta.
  */
 export function isSafeZipEntry(entry: string): boolean {
@@ -123,7 +123,7 @@ export function isSafeZipEntry(entry: string): boolean {
 }
 
 export interface InstallLocationInput {
-  /** Ruta de la .app en ejecución (p.ej. /Applications/OnyxCode.app). */
+  /** Ruta de la .app en ejecución (p.ej. /Applications/Lazunox.app). */
   appPath: string
   /** `app.isInApplicationsFolder()` (admite /Applications y ~/Applications). */
   inApplicationsFolder: boolean

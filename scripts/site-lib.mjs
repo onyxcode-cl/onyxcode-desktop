@@ -51,7 +51,7 @@ export function patchIndex(html) {
     '    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />\n' +
     '    <meta name="mobile-web-app-capable" content="yes" />\n' +
     '    <meta name="apple-mobile-web-app-capable" content="yes" />\n' +
-    '    <meta name="apple-mobile-web-app-title" content="OnyxCode" />\n'
+    '    <meta name="apple-mobile-web-app-title" content="Lazunox" />\n'
   if (!html.includes('</head>')) throw new Error('index.html sin </head>')
   return html.replace('</head>', `${tags}  </head>`)
 }

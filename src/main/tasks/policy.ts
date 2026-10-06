@@ -3,7 +3,7 @@
  *
  * Ubicación: `/Library/Application Support/${INTERNAL_NAME}/managed.json` en macOS y
  * `%ProgramData%\${INTERNAL_NAME}\managed.json` en Windows (solo un administrador puede escribir ahí). En desarrollo (`!app.isPackaged`) se puede forzar otra ruta con la variable de
- * entorno `ONYXCODE_MANAGED_POLICY`.
+ * entorno `LAZUNOX_MANAGED_POLICY`.
  *
  * La política solo RESTRINGE (salvo `extraAllowedHosts`, decidido por la organización), y la
  * validación es estricta y falla hacia el lado seguro:
@@ -93,9 +93,9 @@ export function managedPolicyPath(
   return posix.join('/Library/Application Support', INTERNAL_NAME, 'managed.json')
 }
 
-/** Archivo de política vigente: el del sistema; en desarrollo (`!app.isPackaged`) se puede forzar con `ONYXCODE_MANAGED_POLICY`. */
+/** Archivo de política vigente: el del sistema; en desarrollo (`!app.isPackaged`) se puede forzar con `LAZUNOX_MANAGED_POLICY`. */
 export function policyFile(): string {
-  const override = process.env.ONYXCODE_MANAGED_POLICY
+  const override = process.env.LAZUNOX_MANAGED_POLICY
   if (override && !app.isPackaged) return resolve(override)
   return managedPolicyPath()
 }

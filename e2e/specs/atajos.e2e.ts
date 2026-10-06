@@ -76,7 +76,7 @@ afterAll(async () => {
 })
 
 describe('atajos configurables', () => {
-  const userData = newDir('onyx-e2e-atajos-')
+  const userData = newDir('lazunox-e2e-atajos-')
   let app: E2EApp
 
   it('Ajustes › Atajos: lista agrupada con los atajos por defecto y buscador', async () => {

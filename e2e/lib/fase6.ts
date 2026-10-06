@@ -19,7 +19,7 @@ export async function chatDirectory(app: E2EApp): Promise<string> {
 }
 
 /** Carpeta temporal con `git init` y un commit (realpath: /var → /private/var en macOS). */
-export function makeGitRepo(prefix = 'onyx-e2e-repo-'): string {
+export function makeGitRepo(prefix = 'lazunox-e2e-repo-'): string {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), prefix)))
   const git = (...a: string[]): void => void execFileSync('git', ['-C', dir, ...a], { stdio: 'ignore' })
   git('init', '-q')
@@ -138,14 +138,14 @@ export async function openCodeProject(app: E2EApp, dir: string): Promise<void> {
  * el `opencode` falso. Devuelve el `OPENCODE_BIN` para `useApp({ env })` y la limpieza.
  */
 export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => void } {
-  const dir = mkdtempSync(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'onyx-e2e-f6bin-'))
+  const dir = mkdtempSync(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'lazunox-e2e-f6bin-'))
   for (const f of ['opencode', 'server.mjs']) cpSync(join(ROOT, 'e2e', 'fake-opencode', f), join(dir, f))
   return { env: { OPENCODE_BIN: join(dir, FAKE_BIN_NAME) }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
 /** Carpeta temporal DENTRO del home (Tareas rechaza `/private`, `/tmp`… como carpeta del sistema). */
 export function makeHomeFolder(): { path: string; cleanup: () => void } {
-  const path = realpathSync(mkdtempSync(join(homedir(), '.onyx-e2e-f6-')))
+  const path = realpathSync(mkdtempSync(join(homedir(), '.lazunox-e2e-f6-')))
   return { path, cleanup: () => rmSync(path, { recursive: true, force: true }) }
 }
 
@@ -186,6 +186,6 @@ export async function setLocalAndReload(app: E2EApp, entries: Record<string, str
     }
   }, entries)
   await app.page.reload({ waitUntil: 'domcontentloaded' })
-  await app.page.waitForFunction(() => Boolean((window as unknown as { __onyxE2E?: object }).__onyxE2E), undefined, { timeout: 60_000 })
+  await app.page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, { timeout: 60_000 })
   await app.page.locator('nav[aria-label="Modo"]').waitFor()
 }

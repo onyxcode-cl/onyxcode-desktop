@@ -42,7 +42,7 @@ describe('validateName', () => {
 let root: string
 let trashDir: string
 beforeEach(() => {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-fsops-')))
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-fsops-')))
   root = join(base, 'proj')
   trashDir = join(base, 'trash')
   mkdirSync(join(root, 'src'), { recursive: true })

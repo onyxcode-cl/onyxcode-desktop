@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Capturas REALES de la interfaz de escritorio (Electron) con el motor falso. Ver docs/CAPTURAS-ESCRITORIO.md.
-// Arranca la app compilada (`out/`, carga por onyxcode://app) con un userData TEMPORAL, un OpenCode falso y datos inventados;
+// Arranca la app compilada (`out/`, carga por lazunox://app) con un userData TEMPORAL, un OpenCode falso y datos inventados;
 // captura por CDP (`Page.captureScreenshot`, 2x). No toca la app instalada, su userData, su cloudflared ni el motor real.
 import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
@@ -51,7 +51,7 @@ mkdirSync(out, { recursive: true })
 if (!existsSync(join(repo, 'out/main/index.js'))) throw new Error('Falta out/: compila antes con `npx electron-vite build`.')
 
 // ---- carpetas temporales (todas con prefijo propio: la limpieza solo toca lo suyo) ----
-const TAG = `onyx-shotd-${process.pid}-`
+const TAG = `lazunox-shotd-${process.pid}-`
 const tmpDirs = []
 const mk = (base, name) => {
   const d = realpathSync(mkdtempSync(join(base, TAG + name)))
@@ -173,7 +173,7 @@ async function launch(name, { settings = {}, env = {}, noServer = false } = {}) 
     XDG_CACHE_HOME: xdg('cache'),
     XDG_STATE_HOME: xdg('state'),
     FAKE_OPENCODE_HEARTBEAT_MS: '0',
-    ONYXCODE_E2E_HEADLESS: '1', // sin ventana visible ni icono en el Dock
+    LAZUNOX_E2E_HEADLESS: '1', // sin ventana visible ni icono en el Dock
     ...env
   })
   let electronApp
@@ -800,7 +800,7 @@ const S = {
 async function runKit(ctx) {
   const { page, cdp } = ctx
   await page.evaluate(() => {
-    localStorage.setItem('onyx.uikit', '1')
+    localStorage.setItem('lazunox.uikit', '1')
     location.hash = '#ui-kit'
   })
   await page.reload()

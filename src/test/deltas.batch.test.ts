@@ -208,7 +208,7 @@ describe('trazas sintéticas', () => {
       const go = (batch: (() => number) | null): Promise<Snap> => {
         vi.resetModules()
         localStorage.clear()
-        localStorage.setItem('onyx.lru.max', '1')
+        localStorage.setItem('lazunox.lru.max', '1')
         return run(events, batch, (i, touch) => {
           if (i === at) touch('B')
         })

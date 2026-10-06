@@ -22,7 +22,7 @@ const remote = resolve(repo, 'src/renderer/remote')
 
 function swaps(): Plugin {
   return {
-    name: 'onyx-remote-swaps',
+    name: 'lazunox-remote-swaps',
     enforce: 'pre',
     resolveId(source, importer) {
       if (!importer) return null
@@ -42,7 +42,7 @@ function swaps(): Plugin {
  */
 function stripDesktopCssPlugin(): Plugin {
   return {
-    name: 'onyx-strip-desktop-css',
+    name: 'lazunox-strip-desktop-css',
     enforce: 'post',
     generateBundle(_o, bundle) {
       for (const [file, out] of Object.entries(bundle)) {
@@ -57,7 +57,7 @@ function stripDesktopCssPlugin(): Plugin {
 /** Quita del JS minificado las clases `desk:` (ya sin reglas en el CSS): menos bytes en el arranque del celular. */
 function stripDesktopJsPlugin(): Plugin {
   return {
-    name: 'onyx-strip-desktop-js',
+    name: 'lazunox-strip-desktop-js',
     enforce: 'post',
     renderChunk(code) {
       const out = stripDesktopJs(code)
@@ -73,7 +73,7 @@ function stripDesktopJsPlugin(): Plugin {
  */
 function entryManifest(): Plugin {
   return {
-    name: 'onyx-entry-manifest',
+    name: 'lazunox-entry-manifest',
     generateBundle(_o, bundle) {
       type Meta = { viteMetadata?: { importedCss?: Set<string> } }
       const chunkOf = (f: string): OutputChunk | undefined => {

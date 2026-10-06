@@ -19,7 +19,7 @@ describe('datos viejos de userData', () => {
   let registryAt = ''
 
   beforeAll(() => {
-    userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-legacy-')))
+    userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-legacy-')))
     cpSync(FIXTURE, userData, { recursive: true })
   })
 
@@ -44,7 +44,7 @@ describe('datos viejos de userData', () => {
     ])
       expect(existsSync(join(userData, n)), n).toBe(true)
     expect(existsSync(join(userData, 'tasks-sandbox/0123456789abcdef/data/opencode/opencode.db'))).toBe(true)
-    expect(existsSync(join(userData, 'Partitions/onyxcode-web-tasks/Cookies'))).toBe(true)
+    expect(existsSync(join(userData, 'Partitions/lazunox-web-tasks/Cookies'))).toBe(true)
     for (const old of [
       'cowork.json',
       'cowork-tasks.json',

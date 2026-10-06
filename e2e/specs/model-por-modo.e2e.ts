@@ -20,7 +20,7 @@ const apps: E2EApp[] = []
 const dirs: string[] = []
 
 const newUserData = (): string => {
-  const d = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-mpm-')))
+  const d = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-mpm-')))
   dirs.push(d)
   return d
 }

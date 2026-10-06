@@ -1,6 +1,6 @@
-# AGENTS.md — guía para agentes de IA y contribuidores de Lazunox (antes OnyxCode)
+# AGENTS.md — guía para agentes de IA y contribuidores de Lazunox
 
-Lazunox (antes OnyxCode) es un cliente de escritorio (Electron + React + TypeScript) para macOS arm64 que usa el servidor de agentes de OpenCode.
+Lazunox es un cliente de escritorio (Electron + React + TypeScript) para macOS arm64 que usa el servidor de agentes de OpenCode.
 Modos: Chat, Code, Tareas (trabajo autónomo con sandbox) y Rutinas. Hay un control remoto desde el celular (solo macOS, red local)
 y un port parcial a Windows. Esta guía resume las invariantes reales; el detalle está en `README.md`, `docs/SEGURIDAD.md`,
 `docs/VERIFICACION.md`, `docs/PLAN-MAESTRO.md`, `docs/DISTRIBUCION.md` y los `CHANGELOG-FASE*.md`. Si algo de aquí contradice el código,
@@ -10,7 +10,7 @@ manda el código: corrige esta guía.
 
 | Ruta | Qué hay |
 |---|---|
-| `src/main/` | Proceso principal: `opencode/` (sidecar), `ipc/` (handlers, `schemas.ts`, `guard.ts`), `tasks/` (sandbox Seatbelt, proxies, políticas), `scheduler/` (rutinas), `computer/` (control del Mac), `embedded-browser/`, `remote/` (control remoto), `update/` (actualizador), `security/` (protocolo `onyxcode://app`, endurecimiento web), `git/`, `pty/`, `files/`, `extras/`, `util/`. |
+| `src/main/` | Proceso principal: `opencode/` (sidecar), `ipc/` (handlers, `schemas.ts`, `guard.ts`), `tasks/` (sandbox Seatbelt, proxies, políticas), `scheduler/` (rutinas), `computer/` (control del Mac), `embedded-browser/`, `remote/` (control remoto), `update/` (actualizador), `security/` (protocolo `lazunox://app`, endurecimiento web), `git/`, `pty/`, `files/`, `extras/`, `util/`. |
 | `src/preload/` | `index.ts` expone `window.api` tipado (+ `code-api`, `tasks-api`, `extras-api`, `browser-api`, `remote-api`). `quick`, `overlay`, `pill`, `assist` y `browser-host` son preloads con sandbox, autocontenidos a propósito. |
 | `src/renderer/` | `src/` (app: `app/`, `lib/`, `stores/`, `components/`, `features/{chat,code,tasks,routines,settings,browser,…}`), más `quick/`, `overlay/`, `browser/` (ventanas secundarias) e `index.html`. |
 | `src/shared/` | Código compartido main/renderer/PWA: `brand.ts`, `ipc*.ts` (contratos IPC), `i18n/{es,en}`, `platform-caps.ts`, `remote/` (protocolo del celular), tipos. |
@@ -23,7 +23,7 @@ manda el código: corrige esta guía.
 | `docs/` | Plan, seguridad, verificación, distribución, política de la organización, diseño de la fase 2 del remoto; `docs/archive/` es histórico. |
 
 El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
-**`DISPLAY_NAME` («Lazunox») es el nombre visible; `INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `OnyxCode.app`, `productName` y `app.setName(INTERNAL_NAME)` NO se tocan sin un plan de la Fase 2** (userData, Llavero, actualizador y permisos dependen de ellos; los vigila `src/test/identity-freeze.test.ts`). `APP_NAME` está deprecado: usa uno de los dos. En el código el modo Tareas se llama `tasks`.
+**`DISPLAY_NAME` («Lazunox») es el nombre visible; `INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `Lazunox.app`, `productName` y `app.setName(INTERNAL_NAME)` NO se tocan sin un plan de la Fase 2** (userData, Llavero, actualizador y permisos dependen de ellos; los vigila `src/test/identity-freeze.test.ts`). `APP_NAME` está deprecado: usa uno de los dos. En el código el modo Tareas se llama `tasks`.
 
 ## 2. Comandos (Node 22: `export PATH=/opt/homebrew/opt/node@22/bin:$PATH`)
 
@@ -34,7 +34,7 @@ El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electr
 | `npm run lint` / `npm run format:check` | ESLint y Prettier sobre `src` y `pwa` (arreglar formato: `npx prettier --write <rutas>`). |
 | `npm run build` | `build-native` + `build:pwa` + `electron-vite build` (a `out/` y `pwa/dist`). |
 | `npm run verify` | typecheck, test, lint, format:check, build, `test:transform`, `test:smoke` y `test:e2e`, en ese orden. |
-| `npm run test:e2e` / `test:e2e:prod` | E2E con Electron real (modo dev con ganchos `__onyxE2E` / modo prod con CSP real, solo humo). |
+| `npm run test:e2e` / `test:e2e:prod` | E2E con Electron real (modo dev con ganchos `__lazunoxE2E` / modo prod con CSP real, solo humo). |
 | `npm run package` / `package:win` | Descarga el OpenCode fijado, compila y empaqueta (DMG arm64 / NSIS x64). Firma ad-hoc salvo Developer ID. |
 | `npm run perf:startup` | Manual: arranque en frío y memoria con la app construida (~5,5 min). |
 | `npm run test:fs`, `npm run test:stress` | Opcionales, fuera de `verify`: puntos de restauración sobre volúmenes reales (solo macOS) y estrés (~15 s). |
@@ -47,7 +47,7 @@ El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electr
 - **Cambios acotados**: corre antes las pruebas dirigidas (`npx vitest run <archivo>`); la suite completa al cerrar la tanda.
 - **Tocar `src/main/ipc`, preloads, ventanas, CSP o renderer visible**: además `npm run build`, `test:transform` y el spec E2E afectado.
 - **E2E y build compartido**: `out/` y el puerto del servidor de renderer se comparten entre agentes. Antes de construir o correr E2E adquiere el cerrojo de build (`docs/REVIEW-FASE7.md`, «Cerrojo de build/E2E»: un `mkdir` de un directorio de cerrojo en un bucle `until`, liberado con `rmdir`). Sin cerrojo, dos E2E a la vez se pisan.
-- **E2E solo con userData temporal**: `startApp()` crea `onyx-e2e-*` y siembra `settings.json` (si no, `migrateLegacyUserData` movería datos reales de `Lapis`/`OpenDesk`). Nunca apuntes un E2E a tu userData real ni a `/Applications`.
+- **E2E solo con userData temporal**: `startApp()` crea `lazunox-e2e-*` y siembra `settings.json` (si no, `migrateLegacyUserData` movería datos reales de `Lapis`/`OpenDesk`). Nunca apuntes un E2E a tu userData real ni a `/Applications`.
 - **Pruebas de plataforma**: en Windows se saltan con `macOnly`/`posixOnly`/`winOnly` (`src/test/platform.ts`) y `e2e/win-skip.json` (vigilado por `win-skip.test.ts`).
 - Si `resources/opencode-bin/api-routes.json` aparece modificado y falla un test: `git checkout -- resources/opencode-bin/api-routes.json`.
 - Tiempos documentados: `perf:startup` ~5,5 min; E2E completo en Windows ~8 min (límites de `scripts/win/run.ps1`); `test:stress` ~15 s. Pon siempre límite de tiempo a los comandos largos (sección 8).
@@ -84,9 +84,9 @@ No se modifican sin una decisión explícita del dueño (son los controles de se
 | Proxy de credenciales y de salida | `src/main/tasks/proxy.ts` (`CredentialProxy`, `EgressProxy`) | La clave real del proveedor vive solo fuera del sandbox; el servidor sandboxeado recibe un valor centinela. |
 | `provider-egress` y mapa de proveedores | `src/main/tasks/provider-egress.ts` | Define qué proveedor puede usar el sandbox y a qué destino real; falla cerrado. |
 | `proxy-policy` | `src/main/tasks/proxy-policy.ts` | Lista blanca de red de Tareas (deny-by-default, persistida). |
-| Puerta del plan (`onyxcode-plan-gate`) | `src/main/tasks/opencode-config.ts` y su uso en `manager.ts` | Ninguna herramienta de acción corre sin un plan aprobado por sesión. |
+| Puerta del plan (`lazunox-plan-gate`) | `src/main/tasks/opencode-config.ts` y su uso en `manager.ts` | Ninguna herramienta de acción corre sin un plan aprobado por sesión. |
 | `folder-policy` | `src/main/tasks/folder-policy.ts` | Qué carpetas no se pueden autorizar (home, Library, userData, montajes…). |
-| CSP de la ventana principal y del esquema `onyxcode://app` | `RENDERER_CSP` / `src/main/security/app-protocol.ts`, `src/renderer/index.html` | Sin ella un XSS llega a `window.api`; no se afloja ni se añaden orígenes. |
+| CSP de la ventana principal y del esquema `lazunox://app` | `RENDERER_CSP` / `src/main/security/app-protocol.ts`, `src/renderer/index.html` | Sin ella un XSS llega a `window.api`; no se afloja ni se añaden orígenes. |
 | Hashes de los preloads secundarios | `src/preload/{quick,overlay,pill,assist,browser-host}.ts` | Son autocontenidos con sandbox a propósito; tras `build` sus hashes (`shasum out/preload/<x>.js`) deben ser idénticos (control de `docs/PLAN-MAESTRO.md`). |
 | Otros que el plan maestro protege | `helper.swift` (cu-helper), regla `webRequest` de loopback | Permisos TCC y red del navegador integrado. |
 
@@ -98,7 +98,7 @@ No se modifican sin una decisión explícita del dueño (son los controles de se
 - **Qué nunca se expone al celular**: la contraseña del motor (la reescribe y limpia `engine-registry.ts`), claves y credenciales (`auth.json`, `scrub`), archivos sensibles, rutas fuera del ámbito, el secreto de dispositivo (solo su sha256 en `remote.bin`, cifrado con `safeStorage`), ni PIN ni su hash.
 - **Aprobar comandos desde el celular** (`bash`/`edit` «una vez»): D salvo el ajuste por dispositivo `canApproveCommands` (apagado por defecto; se enciende solo en el Mac con diálogo propio) y la lista de denegación de `command-denylist.ts` (heurística, no un límite), con tope de 20 por hora y `approve-command` en la auditoría (`docs/SEGURIDAD.md` §3 tricies quinquies).
 - **Fuera de casa** (F8-B77, opcional, apagado por defecto): selector «Solo esta red» / «También fuera de casa» (`remote.connection`); señalización por un servicio de conexión sin estado (`cloud/remoto-worker`, núcleo `src/shared/remote/room-core.ts`), protocolo v4 (el Mac acepta v3 y v4), sitio HTTPS firmado por el dueño y vigilado por el Mac (`site-watch.ts`), política `allowOutsideNetwork/allowRelay/allowPush/requirePasskey` (ausente con archivo = cerrado). Nada se publica desde CI ni por agentes: `docs/SEGURIDAD.md` §3 tricies septies y `cloud/remoto-worker/README.md`.
-- **Modo viaje** (F8-B85/B86, experimental, opcional): `connection: 'travel'`, túnel rápido de Cloudflare **sin cuenta** (`cloudflared` 2026.9.3 fijado en `resources/cloudflared/pin.json`, descargado bajo demanda con consentimiento y verificado por dos hashes y firma antes de cada arranque; `src/main/remote/tunnel/`, `signaling/tunnel-*.ts`). Invariantes: servidor ligado a 127.0.0.1, puerta `/k/<T>` + galleta `__Host-onyxk`, `Host`/`Origin` exactos, 404 idéntico a todo lo demás, vínculo efímero `kind: travel` (PIN obligatorio, se borra al cerrar el túnel), `bye{travel-ended}`. Los canales `remote:travelInstall` y `remote:setTravelKeep` son X. **`cloudflared` es un proceso hijo propio**: vigía `/bin/sh` de `stdin`, `pids.json` (`kind: cloudflared`), `killStaleServers` solo limpia el nuestro (`isOurCloudflared`), `killNow()` al salir; en pruebas automáticas se usa SIEMPRE el falso (`e2e/fake-cloudflared/`); el camino real (descarga y túnel de verdad, dentro de Electron, con userData temporal) lo recorre a mano `scripts/travel-smoke.cjs`, nunca `npm test`. La interfaz no ofrece un servidor propio como intermediario. Al cambiar de versión de `cloudflared`: regenerar `pin.json` con `scripts/cloudflared/pin.mjs` (persona con red) y `THIRD_PARTY_NOTICES.md`. `docs/SEGURIDAD.md` §3 tricies novies y quadragies.
+- **Modo viaje** (F8-B85/B86, experimental, opcional): `connection: 'travel'`, túnel rápido de Cloudflare **sin cuenta** (`cloudflared` 2026.9.3 fijado en `resources/cloudflared/pin.json`, descargado bajo demanda con consentimiento y verificado por dos hashes y firma antes de cada arranque; `src/main/remote/tunnel/`, `signaling/tunnel-*.ts`). Invariantes: servidor ligado a 127.0.0.1, puerta `/k/<T>` + galleta `__Host-lazunoxk`, `Host`/`Origin` exactos, 404 idéntico a todo lo demás, vínculo efímero `kind: travel` (PIN obligatorio, se borra al cerrar el túnel), `bye{travel-ended}`. Los canales `remote:travelInstall` y `remote:setTravelKeep` son X. **`cloudflared` es un proceso hijo propio**: vigía `/bin/sh` de `stdin`, `pids.json` (`kind: cloudflared`), `killStaleServers` solo limpia el nuestro (`isOurCloudflared`), `killNow()` al salir; en pruebas automáticas se usa SIEMPRE el falso (`e2e/fake-cloudflared/`); el camino real (descarga y túnel de verdad, dentro de Electron, con userData temporal) lo recorre a mano `scripts/travel-smoke.cjs`, nunca `npm test`. La interfaz no ofrece un servidor propio como intermediario. Al cambiar de versión de `cloudflared`: regenerar `pin.json` con `scripts/cloudflared/pin.mjs` (persona con red) y `THIRD_PARTY_NOTICES.md`. `docs/SEGURIDAD.md` §3 tricies novies y quadragies.
 - Una función remota nueva se diseña así: clase en `policy.ts` + prueba + sección en `docs/SEGURIDAD.md`. Ante la duda, la clase más estricta.
 
 ## 9. Reglas operativas
@@ -106,7 +106,7 @@ No se modifican sin una decisión explícita del dueño (son los controles de se
 - **Sin carga artificial de CPU**: nada de bucles de estrés ni pruebas que saturen la máquina (un script de estrés huérfano ya quemó un equipo ~1 h).
 - **Límite de tiempo en todo comando largo**. macOS no tiene `timeout`: `perl -e 'alarm shift; exec @ARGV' SEG comando args…` (como en `scripts/win/sync.sh`).
 - **No dejar procesos huérfanos** (Electron, `opencode serve`, Vite, vitest): verifícalo al terminar y mata solo los que lanzaste tú.
-- **No tocar datos reales ni la app instalada**: ni `~/Library/Application Support/OnyxCode`, ni `/Applications`, ni `~/.local/share/opencode`. Pruebas con `os.tmpdir()`/userData temporal y claves de prueba.
+- **No tocar datos reales ni la app instalada**: ni `~/Library/Application Support/Lazunox`, ni `/Applications`, ni `~/.local/share/opencode`. Pruebas con `os.tmpdir()`/userData temporal y claves de prueba.
 - No ejecutar el control remoto, la actualización ni el empaquetado «de verdad» contra el equipo del dueño sin que lo pida; no instalar nada global.
 
 ## 10. Lecciones aprendidas

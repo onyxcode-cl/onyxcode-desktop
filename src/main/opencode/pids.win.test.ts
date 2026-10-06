@@ -20,7 +20,7 @@ const setPlatform = (p: string): void => {
 }
 
 beforeEach(() => {
-  userData = mkdtempSync(join(tmpdir(), 'onyx-pids-win-'))
+  userData = mkdtempSync(join(tmpdir(), 'lazunox-pids-win-'))
   exec.mockReset()
   setPlatform('win32')
 })
@@ -33,8 +33,8 @@ describe('isOpencodeServe', () => {
   it.each([
     '/Users/x/.opencode/bin/opencode serve --port 4096',
     'opencode serve --hostname 127.0.0.1',
-    '"C:\\Program Files\\OnyxCode\\resources\\opencode\\opencode.exe" serve --port 5000 --hostname 127.0.0.1',
-    'C:\\onyx\\opencode.exe serve --port 5000',
+    '"C:\\Program Files\\Lazunox\\resources\\opencode\\opencode.exe" serve --port 5000 --hostname 127.0.0.1',
+    'C:\\lazunox\\opencode.exe serve --port 5000',
     'sandbox-exec -f p.sb /a/opencode serve --port 1'
   ])('reconoce %s', (cmd) => expect(isOpencodeServe(cmd)).toBe(true))
   it.each(['/usr/bin/sleep 60', '"C:\\x\\opencode.exe" --version', 'C:\\opencode-helper.exe serve', 'node server.js serve'])(

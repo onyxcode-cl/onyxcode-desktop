@@ -41,7 +41,7 @@ const m_isLoading = (sid: string): boolean => isCodeTranscriptLoading(useCode.ge
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 const keys = (): string[] => Object.keys(st().messages).sort()
 const lruOn = (max: number): void => {
-  localStorage.setItem('onyx.lru.max', String(max))
+  localStorage.setItem('lazunox.lru.max', String(max))
 }
 /** Sesión conocida con un mensaje (contenido) recibido por eventos. */
 function seed(id: string, extra: Partial<Session> = {}): void {

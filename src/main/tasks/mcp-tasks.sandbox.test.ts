@@ -30,7 +30,7 @@ let proxy: McpProxy | null = null
 const procs: ChildProcess[] = []
 
 beforeAll(() => {
-  root = mkdtempSync(join(tmpdir(), 'onyx-mcpsb-'))
+  root = mkdtempSync(join(tmpdir(), 'lazunox-mcpsb-'))
   state.userData = root
   mkdirSync(join(root, 'opencode'), { recursive: true })
   writeFileSync(

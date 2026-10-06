@@ -25,7 +25,7 @@ export interface TasksPromptInput {
   globalInstructions?: string | null
   /** Proyecto de la carpeta. `memoryEnabled === false` desactiva la memoria. */
   project?: { name: string; instructions?: string; links?: string[]; memoryEnabled?: boolean } | null
-  /** Contenido de `.onyxcode/memoria.md` (se ignora si la memoria está desactivada). */
+  /** Contenido de `.lazunox/memoria.md` (se ignora si la memoria está desactivada). */
   memory?: string | null
   /** Carpetas adicionales de la tarea (vinculadas o de confianza). */
   folders?: Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }>
@@ -92,10 +92,10 @@ export function buildTasksSystemPrompt(i: TasksPromptInput): string | undefined 
   }
 
   if (project?.memoryEnabled === false) {
-    parts.push('La memoria del proyecto está desactivada: no leas ni escribas .onyxcode/memoria.md.')
+    parts.push('La memoria del proyecto está desactivada: no leas ni escribas .lazunox/memoria.md.')
   } else {
     const memory = clean(i.memory)
-    if (memory) parts.push(`Memoria guardada de este proyecto (.onyxcode/memoria.md):\n${memory}`)
+    if (memory) parts.push(`Memoria guardada de este proyecto (.lazunox/memoria.md):\n${memory}`)
   }
 
   const folders = i.folders ?? []

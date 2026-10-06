@@ -2,7 +2,7 @@
 // inspector de Node y sigue disponible con los fuses) a la ventana principal y, por la API del preload (window.api.code.pty),
 // abre una terminal, escribe un comando de PowerShell y espera su salida. Solo pruebas; uso:
 //   node pty-probe.mjs <puerto> <cwd>      (necesita Node 22: WebSocket global)
-const [port, cwd] = [process.argv[2] ?? '9333', process.argv[3] ?? 'C:\\onyx\\tmp']
+const [port, cwd] = [process.argv[2] ?? '9333', process.argv[3] ?? 'C:\\lazunox\\tmp']
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function pages() {
   const r = await fetch(`http://127.0.0.1:${port}/json/list`)
@@ -39,10 +39,10 @@ const expr = `(async () => {
   const off = api.onPtyData((e) => { out += e.data ?? '' })
   const info = await api.pty.create({ cwd: ${JSON.stringify(cwd)}, cols: 100, rows: 30 })
   await new Promise((r) => setTimeout(r, 2500))
-  await api.pty.write(info.id, 'Write-Output ("ONYX" + "-PTY-" + (40+2)); $PSVersionTable.PSVersion.Major\\r')
+  await api.pty.write(info.id, 'Write-Output ("LAZUNOX" + "-PTY-" + (40+2)); $PSVersionTable.PSVersion.Major\\r')
   const t0 = Date.now()
-  while (!/ONYX-PTY-42/.test(out.replace(/\\x1b\\[[0-9;?]*[A-Za-z]/g, '')) && Date.now() - t0 < 15000) await new Promise((r) => setTimeout(r, 300))
-  const ok = /ONYX-PTY-42/.test(out.replace(/\\x1b\\[[0-9;?]*[A-Za-z]/g, ''))
+  while (!/LAZUNOX-PTY-42/.test(out.replace(/\\x1b\\[[0-9;?]*[A-Za-z]/g, '')) && Date.now() - t0 < 15000) await new Promise((r) => setTimeout(r, 300))
+  const ok = /LAZUNOX-PTY-42/.test(out.replace(/\\x1b\\[[0-9;?]*[A-Za-z]/g, ''))
   await api.pty.kill(info.id).catch(() => {})
   off && off()
   return JSON.stringify({ ok, pid: info.pid, shell: info.shell, tail: out.replace(/\\x1b\\[[0-9;?]*[A-Za-z]/g, '').slice(-200) })

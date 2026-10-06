@@ -1,5 +1,5 @@
 // «Probar clave» contra la app real, el OpenCode falso y un «proveedor» local (lib/probe-server.ts, vía
-// ONYXCODE_E2E_KEY_PROBE_BASE): guardar una clave la prueba sola; el botón «Probar» muestra cada resultado (válida,
+// LAZUNOX_E2E_KEY_PROBE_BASE): guardar una clave la prueba sola; el botón «Probar» muestra cada resultado (válida,
 // inválida, límite, proveedor caído, sin contacto); «Cambiar clave» sustituye la clave; el proveedor recibió la clave y
 // ni el DOM ni la salida de Electron la contienen. Capturas con DIAG_SHOTS_DIR.
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -37,7 +37,7 @@ async function openModels(page: Page): Promise<void> {
 const noticeStatus = (page: Page): Promise<string | null> => page.locator('[data-key-test]').first().getAttribute('data-key-test')
 
 describe.skipIf(!DEV)('Probar clave', () => {
-  const app = useApp({ env: { ONYXCODE_E2E_KEY_PROBE_BASE: probe.base } })
+  const app = useApp({ env: { LAZUNOX_E2E_KEY_PROBE_BASE: probe.base } })
   const output: string[] = []
   const authFile = (): string => join(app().userData, 'opencode-data', 'opencode', 'auth.json')
 

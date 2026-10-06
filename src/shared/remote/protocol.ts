@@ -7,7 +7,7 @@
  *  1. SEÑALIZACIÓN (WebSocket `ws://<ip>:<puerto>/ws`, tramas JSON de texto): solo sirve para
  *     intercambiar SDP/ICE. Nada de lo que viaja por aquí es un secreto (v3): ni el secreto del QR (`hello`
  *     lleva solo su identificador público `qid`) ni el de dispositivo.
- *  2. DATACHANNEL (cifrado DTLS, un canal ordenado y fiable llamado `onyx`, tramas JSON de texto de
+ *  2. DATACHANNEL (cifrado DTLS, un canal ordenado y fiable llamado `lazunox`, tramas JSON de texto de
  *     ≤ 64 KiB): handshake de autenticación, peticiones, respuestas y eventos.
  *  3. LÍMITES y VALIDADORES estrictos: ambos lados validan todo lo que reciben; lo desconocido se
  *     rechaza (nunca se ignora en silencio).
@@ -51,7 +51,7 @@ export function protocolVersionOk(v: unknown): v is number {
 }
 
 /** Etiqueta del DataChannel que crea el celular. */
-export const DATACHANNEL_LABEL = 'onyx'
+export const DATACHANNEL_LABEL = 'lazunox'
 /** Ruta del WebSocket de señalización en el servidor local. */
 export const SIGNALING_PATH = '/ws'
 

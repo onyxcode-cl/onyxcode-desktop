@@ -19,8 +19,8 @@
 // PRUEBAS DE REGRESIÓN (hechas, no commitear):
 //  (1) En features/code/impl/ProjectPicker.tsx se puso `export { baseName }` ANTES del `import { baseName, ... }`:
 //      `npm run test:smoke` sale con 1 señalando ProjectPicker.tsx (Pre-transform error, al visitar Code); revertido, pasa.
-//  (2) `SMOKE_FAULT=chat npm run test:smoke` activa localStorage['onyx.e2e']='1', recarga y llama
-//      `window.__onyxE2E.throwIn('chat')`: el smoke debe fallar detectando el fallback del ErrorBoundary.
+//  (2) `SMOKE_FAULT=chat npm run test:smoke` activa localStorage['lazunox.e2e']='1', recarga y llama
+//      `window.__lazunoxE2E.throwIn('chat')`: el smoke debe fallar detectando el fallback del ErrorBoundary.
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -54,7 +54,7 @@ const freePort = () =>
   })
 
 // ───────── tmp aislado ─────────
-const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-smoke-')))
+const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-smoke-')))
 const userData = join(tmp, 'userData')
 let child = null
 let cleaned = false
@@ -131,7 +131,7 @@ async function main() {
     XDG_CACHE_HOME: join(tmp, 'xdg/cache'),
     XDG_STATE_HOME: join(tmp, 'xdg/state'),
     // Sin ventanas visibles ni icono extra en el Dock (solo aplica sin empaquetar; ver src/main/e2e-headless.ts).
-    ONYXCODE_E2E_HEADLESS: '1'
+    LAZUNOX_E2E_HEADLESS: '1'
   }
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_RENDERER_URL
@@ -235,7 +235,7 @@ async function main() {
   await send('Page.enable')
 
   if (process.env.SMOKE_FAULT) {
-    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('onyx.e2e','1')}catch(e){}` })
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('lazunox.e2e','1')}catch(e){}` })
     await send('Page.reload')
     await sleep(500)
   }
@@ -297,7 +297,7 @@ async function main() {
   if (await check('arranque')) return failures
 
   if (process.env.SMOKE_FAULT) {
-    await evalJs(`window.__onyxE2E.throwIn(${JSON.stringify(process.env.SMOKE_FAULT)})`)
+    await evalJs(`window.__lazunoxE2E.throwIn(${JSON.stringify(process.env.SMOKE_FAULT)})`)
     await sleep(SETTLE_MS)
     if (await check('fallo inyectado')) return failures
     fail('fallo inyectado', 'el fallo inyectado NO produjo el fallback del ErrorBoundary')

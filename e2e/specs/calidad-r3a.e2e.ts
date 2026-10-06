@@ -306,8 +306,8 @@ const termRows = (page: Page): Promise<string[]> =>
 
 describe.skipIf(!DEV)('R3A: terminal sin caracteres sueltos', () => {
   // Shell lento y determinista: `.zshrc` propio que tarda 2 s en dar el prompt (como un `.zshrc` pesado).
-  const zdot = mkdtempSync(join(tmpdir(), 'onyx-e2e-zdot-'))
-  writeFileSync(join(zdot, '.zshrc'), "sleep 2\nPROMPT='ONYX> '\nPROMPT_EOL_MARK='%'\n")
+  const zdot = mkdtempSync(join(tmpdir(), 'lazunox-e2e-zdot-'))
+  writeFileSync(join(zdot, '.zshrc'), "sleep 2\nPROMPT='LAZUNOX> '\nPROMPT_EOL_MARK='%'\n")
   const app = useApp({ env: { ZDOTDIR: zdot, SHELL: '/bin/zsh' } })
   let repo = ''
   afterAll(() => {
@@ -330,7 +330,7 @@ describe.skipIf(!DEV)('R3A: terminal sin caracteres sueltos', () => {
     await page.keyboard.press('Enter')
     await expect.poll(async () => (await termRows(page)).filter((r) => r.trim() === 'MARCA_R3A').length, { timeout: 20_000 }).toBe(1)
     await expect
-      .poll(async () => (await termRows(page)).some((r, i, all) => r.trim() === 'MARCA_R3A' && (all[i + 1] ?? '').includes('ONYX>')), {
+      .poll(async () => (await termRows(page)).some((r, i, all) => r.trim() === 'MARCA_R3A' && (all[i + 1] ?? '').includes('LAZUNOX>')), {
         timeout: 10_000
       })
       .toBe(true)
@@ -338,7 +338,7 @@ describe.skipIf(!DEV)('R3A: terminal sin caracteres sueltos', () => {
     const base = await clean()
     console.log(`[r3a] terminal, filas iniciales: ${JSON.stringify(base)}`)
     // La primera línea es el prompt: nada de eco suelto («e%», «echo …») antes de él.
-    expect(base[0]).toMatch(/^ONYX>/)
+    expect(base[0]).toMatch(/^LAZUNOX>/)
     for (let i = 0; i < 3; i++) {
       await gotoMode(page, 'Chat')
       await page.waitForTimeout(300)

@@ -50,7 +50,7 @@ reglas comunes de la mejora estética y de rendimiento; los planes detallados es
   `[data-surface='mobile'] [data-m='tool-row']` (nada de selectores frágiles por clase).
 - `isRemoteSurface()` / `useIsRemote()` para ramas en TSX. Nada de ramas por tamaño de pantalla.
 - Tema: el Mac decide (`data-theme`). `watchThemeSync()` (`app/mobile/theme-sync.ts`, llamada en `remote/boot.tsx`) guarda el tema en
-  `localStorage['onyx.theme']` (`src/shared/remote/theme-pref.ts`) y ajusta `theme-color`; la capa ligera lo lee en `pwa/src/theme.ts`
+  `localStorage['lazunox.theme']` (`src/shared/remote/theme-pref.ts`) y ajusta `theme-color`; la capa ligera lo lee en `pwa/src/theme.ts`
   (`followTheme`, `hostCss`). Aviso al usuario: «Se aplica también en tu Mac». No tocar `useTheme.ts`.
 
 ## Dónde va el CSS móvil

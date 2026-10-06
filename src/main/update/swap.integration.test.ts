@@ -1,5 +1,5 @@
 // Integración de resources/updater/swap.sh con «apps» de juguete (script sh + firma ad-hoc) bajo $TMPDIR.
-// Modo ONYXCODE_SWAP_TEST_NO_OPEN: `open` se sustituye por ejecutar el binario de juguete. Nunca toca apps reales.
+// Modo LAZUNOX_SWAP_TEST_NO_OPEN: `open` se sustituye por ejecutar el binario de juguete. Nunca toca apps reales.
 import { spawn, spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -11,13 +11,13 @@ const SCRIPT = resolve(__dirname, '../../../resources/updater/swap.sh')
 const TOY = `#!/bin/sh
 APP=$(cd "$(dirname "$0")/../.." && pwd)
 VER=$(cat "$APP/Contents/Resources/version")
-D="$ONYXCODE_SWAP_TEST_DIR"
+D="$LAZUNOX_SWAP_TEST_DIR"
 : > "$D/started-$VER"
 echo "$*" > "$D/args-$VER"
-echo "[$ONYXCODE_TEST_FAIL_BOOT]" > "$D/failenv-$VER"
+echo "[$LAZUNOX_TEST_FAIL_BOOT]" > "$D/failenv-$VER"
 echo $$ > "$D/booting-$VER"
 [ -f "$APP/Contents/Resources/crash-boot" ] && exit 3
-if [ -f "$APP/Contents/Resources/fail-boot" ] || [ "$ONYXCODE_TEST_FAIL_BOOT" = 1 ]; then
+if [ -f "$APP/Contents/Resources/fail-boot" ] || [ "$LAZUNOX_TEST_FAIL_BOOT" = 1 ]; then
   while :; do sleep 1; done
 fi
 echo $$ > "$D/boot-ok-$VER"
@@ -26,7 +26,7 @@ echo $$ > "$D/boot-ok-$VER"
 let root: string
 const pids: number[] = []
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'onyx-swap-'))
+  root = mkdtempSync(join(tmpdir(), 'lazunox-swap-'))
 })
 afterEach(() => {
   for (const p of pids.splice(0)) {
@@ -40,7 +40,7 @@ afterEach(() => {
 })
 
 function toyApp(dir: string, version: string, flags: string[] = []): string {
-  const app = join(dir, 'OnyxCode.app')
+  const app = join(dir, 'Lazunox.app')
   mkdirSync(join(app, 'Contents', 'MacOS'), { recursive: true })
   mkdirSync(join(app, 'Contents', 'Resources'), { recursive: true })
   writeFileSync(join(app, 'Contents', 'MacOS', 'toy'), TOY)
@@ -48,7 +48,7 @@ function toyApp(dir: string, version: string, flags: string[] = []): string {
   writeFileSync(join(app, 'Contents', 'Resources', 'version'), version)
   writeFileSync(
     join(app, 'Contents', 'Info.plist'),
-    `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>toy</string><key>CFBundleIdentifier</key><string>test.onyx.toy</string><key>CFBundleShortVersionString</key><string>${version}</string></dict></plist>`
+    `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>toy</string><key>CFBundleIdentifier</key><string>test.lazunox.toy</string><key>CFBundleShortVersionString</key><string>${version}</string></dict></plist>`
   )
   for (const f of flags) writeFileSync(join(app, 'Contents', 'Resources', f), '')
   const sig = spawnSync('/usr/bin/codesign', ['--force', '--sign', '-', app], { encoding: 'utf8' })
@@ -70,7 +70,7 @@ function setup(newFlags: string[] = []): Setup {
   const target = toyApp(inst, '1.0.0')
   const stagedDir = join(dir, 'staging', '2.0.0', 'extract')
   const staged = toyApp(stagedDir, '2.0.0', newFlags)
-  return { target, staged, bak: join(inst, '.OnyxCode.app.bak-1.0.0'), dir, inst }
+  return { target, staged, bak: join(inst, '.Lazunox.app.bak-1.0.0'), dir, inst }
 }
 
 function runSwap(
@@ -87,9 +87,9 @@ function runSwap(
       env: {
         PATH: '/usr/bin:/bin',
         TMPDIR: tmpdir(),
-        ONYXCODE_SWAP_TEST_NO_OPEN: '1',
-        ONYXCODE_SWAP_WAIT_PID: '5',
-        ONYXCODE_SWAP_WAIT_BOOT: '4',
+        LAZUNOX_SWAP_TEST_NO_OPEN: '1',
+        LAZUNOX_SWAP_WAIT_PID: '5',
+        LAZUNOX_SWAP_WAIT_BOOT: '4',
         ...env
       },
       timeout: 60_000
@@ -109,10 +109,10 @@ const deadPid = (): number => {
 
 // Actualizador (swap.sh y apps .app): fuera de la v1 de Windows.
 describe.skipIf(!macOnly)('swap.sh: modo de prueba para apps reales', () => {
-  it('lanza con --user-data-dir y solo la NUEVA lleva ONYXCODE_TEST_FAIL_BOOT=1 (rollback forzado)', async () => {
+  it('lanza con --user-data-dir y solo la NUEVA lleva LAZUNOX_TEST_FAIL_BOOT=1 (rollback forzado)', async () => {
     const s = setup()
     const ud = join(root, 'userData-real')
-    const r = runSwap(s, deadPid(), { ONYXCODE_SWAP_TEST_USERDATA: ud, ONYXCODE_SWAP_TEST_FAIL_NEW: '1', ONYXCODE_SWAP_WAIT_BOOT: '3' })
+    const r = runSwap(s, deadPid(), { LAZUNOX_SWAP_TEST_USERDATA: ud, LAZUNOX_SWAP_TEST_FAIL_NEW: '1', LAZUNOX_SWAP_WAIT_BOOT: '3' })
     expect(r.status).toBe(1)
     expect(version(s.target)).toBe('1.0.0')
     expect(result(s)).toMatchObject({ ok: false, rolledBack: true })
@@ -127,9 +127,9 @@ describe.skipIf(!macOnly)('swap.sh: modo de prueba para apps reales', () => {
   it('rechaza un ejecutable o un userdata peligrosos', () => {
     const s = setup()
     const pid = deadPid()
-    expect(runSwap(s, pid, { ONYXCODE_SWAP_TEST_EXEC: '../../bin/sh' }).status).toBe(64)
-    expect(runSwap(s, pid, { ONYXCODE_SWAP_TEST_USERDATA: 'relativo' }).status).toBe(64)
-    expect(runSwap(s, pid, { ONYXCODE_SWAP_TEST_USERDATA: '/tmp/a/../b' }).status).toBe(64)
+    expect(runSwap(s, pid, { LAZUNOX_SWAP_TEST_EXEC: '../../bin/sh' }).status).toBe(64)
+    expect(runSwap(s, pid, { LAZUNOX_SWAP_TEST_USERDATA: 'relativo' }).status).toBe(64)
+    expect(runSwap(s, pid, { LAZUNOX_SWAP_TEST_USERDATA: '/tmp/a/../b' }).status).toBe(64)
     expect(version(s.target)).toBe('1.0.0')
   })
 })
@@ -150,10 +150,10 @@ describe.skipIf(!macOnly)('swap.sh', () => {
 
   it('rollback si la nueva no confirma el arranque: mata su PID, aparta la fallida y reabre la vieja', async () => {
     const s = setup(['fail-boot'])
-    const r = runSwap(s, deadPid(), { ONYXCODE_SWAP_WAIT_BOOT: '3' })
+    const r = runSwap(s, deadPid(), { LAZUNOX_SWAP_WAIT_BOOT: '3' })
     expect(r.status).toBe(1)
     expect(version(s.target)).toBe('1.0.0')
-    expect(version(join(s.inst, '.OnyxCode.app.failed-2.0.0'))).toBe('2.0.0')
+    expect(version(join(s.inst, '.Lazunox.app.failed-2.0.0'))).toBe('2.0.0')
     expect(existsSync(s.bak)).toBe(false)
     expect(existsSync(join(s.dir, 'boot-ok-2.0.0'))).toBe(false)
     expect(result(s)).toEqual({ version: '2.0.0', ok: false, rolledBack: true, error: 'boot-timeout' })
@@ -167,7 +167,7 @@ describe.skipIf(!macOnly)('swap.sh', () => {
   it('rollback rápido si la nueva se cae nada más arrancar', () => {
     const s = setup(['crash-boot'])
     const t0 = Date.now()
-    const r = runSwap(s, deadPid(), { ONYXCODE_SWAP_WAIT_BOOT: '20' })
+    const r = runSwap(s, deadPid(), { LAZUNOX_SWAP_WAIT_BOOT: '20' })
     expect(r.status).toBe(1)
     expect(Date.now() - t0).toBeLessThan(15_000)
     expect(version(s.target)).toBe('1.0.0')
@@ -178,7 +178,7 @@ describe.skipIf(!macOnly)('swap.sh', () => {
     const s = setup()
     const sleeper = spawn('/bin/sleep', ['30'])
     pids.push(sleeper.pid as number)
-    const r = runSwap(s, sleeper.pid as number, { ONYXCODE_SWAP_WAIT_PID: '1' })
+    const r = runSwap(s, sleeper.pid as number, { LAZUNOX_SWAP_WAIT_PID: '1' })
     expect(r.status).toBe(1)
     expect(version(s.target)).toBe('1.0.0')
     expect(existsSync(s.staged)).toBe(true)
@@ -190,11 +190,11 @@ describe.skipIf(!macOnly)('swap.sh', () => {
     const s = setup()
     const pid = deadPid()
     const cases: Array<[string, Partial<Record<'target' | 'staged' | 'bak' | 'dir', string>>]> = [
-      ['ruta relativa', { staged: 'relativa/OnyxCode.app' }],
-      ['con ..', { staged: `${s.dir}/../x/OnyxCode.app` }],
+      ['ruta relativa', { staged: 'relativa/Lazunox.app' }],
+      ['con ..', { staged: `${s.dir}/../x/Lazunox.app` }],
       ['con comillas', { dir: `${s.dir}"x` }],
-      ['copia fuera de la carpeta del destino', { bak: join(root, '.OnyxCode.app.bak-1.0.0') }],
-      ['destino que no es OnyxCode.app', { target: join(s.inst, 'Otra.app') }]
+      ['copia fuera de la carpeta del destino', { bak: join(root, '.Lazunox.app.bak-1.0.0') }],
+      ['destino que no es Lazunox.app', { target: join(s.inst, 'Otra.app') }]
     ]
     for (const [name, over] of cases) {
       const r = runSwap(s, pid, {}, over)

@@ -1,6 +1,6 @@
 # Actualizar el OpenCode incluido
 
-OnyxCode empaqueta una copia EXACTA de OpenCode (`Contents/Resources/opencode/opencode`). La versión sale de `resources/opencode-bin/pin.json`.
+Lazunox empaqueta una copia EXACTA de OpenCode (`Contents/Resources/opencode/opencode`). La versión sale de `resources/opencode-bin/pin.json`.
 
 ## Política
 

@@ -104,7 +104,7 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3
   it('paso 3: permission.asked de external_directory muestra «El agente quiere trabajar en otra carpeta»', async () => {
     const a = app()
     const cw = await tasksFake(a.page)
-    const other = join(homedir(), 'onyx-e2e-otra-carpeta')
+    const other = join(homedir(), 'lazunox-e2e-otra-carpeta')
     await cw.script({
       steps: [
         { type: 'text', text: 'Voy a leer otra carpeta.' },
@@ -167,7 +167,7 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3
 
 // ─────────────────────────── Lote B, paso 22: política gestionada ───────────────────────────
 
-/** `managed.json` de prueba (solo con la app sin empaquetar: `ONYXCODE_MANAGED_POLICY`, policy.ts `policyFile`). */
+/** `managed.json` de prueba (solo con la app sin empaquetar: `LAZUNOX_MANAGED_POLICY`, policy.ts `policyFile`). */
 function writePolicy(name: string, content: string): string {
   const dir = join(work.dir, 'policy')
   mkdirSync(dir, { recursive: true })
@@ -181,7 +181,7 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada (paso 22)', () => 
   let app: E2EApp
   beforeAll(async () => {
     const file = writePolicy('managed.json', JSON.stringify({ disableRoutines: true, disableBrowser: true, allowedFolderRoots: [join(homedir(), 'Documents')] }))
-    app = await startApp({ env: { OPENCODE_BIN: fakeBin.bin, ONYXCODE_MANAGED_POLICY: file } })
+    app = await startApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_MANAGED_POLICY: file } })
   })
   afterAll(async () => {
     await app?.stop()
@@ -216,7 +216,7 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada con JSON inválido
   let app: E2EApp
   beforeAll(async () => {
     const file = writePolicy('roto.json', '{ esto no es json')
-    app = await startApp({ env: { OPENCODE_BIN: fakeBin.bin, ONYXCODE_MANAGED_POLICY: file } })
+    app = await startApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_MANAGED_POLICY: file } })
   })
   afterAll(async () => {
     await app?.stop()

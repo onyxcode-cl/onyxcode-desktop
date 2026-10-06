@@ -171,7 +171,7 @@ describe('F7-B14: invalidateLoaded', () => {
 
 describe('F7-B19: robustez', () => {
   it('un listener de desalojo que lanza no rompe touchSession ni impide el desalojo', () => {
-    localStorage.setItem('onyx.lru.max', '1')
+    localStorage.setItem('lazunox.lru.max', '1')
     const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     for (const id of ['a', 'b', 'c']) {
       st().upsertSession(makeSession(id, D))

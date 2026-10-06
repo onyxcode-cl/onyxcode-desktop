@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { after, test } from 'node:test'
 import { buildPlan, main, proposedIdentity, readIdentity } from './rename-app.mjs'
 
-const tmp = mkdtempSync(join(tmpdir(), 'onyx-rename-'))
+const tmp = mkdtempSync(join(tmpdir(), 'lazunox-rename-'))
 after(() => rmSync(tmp, { recursive: true, force: true }))
 
 function fakeRepo() {
@@ -17,14 +17,14 @@ function fakeRepo() {
   }
   w(
     'src/shared/brand.ts',
-    "export const DISPLAY_NAME = 'Lazunox'\nexport const INTERNAL_NAME = 'OnyxCode'\nexport const APP_NAME = INTERNAL_NAME\nexport const AUTHOR_ALIAS = 'bentec'\nexport const APP_SLUG = 'onyxcode'\nexport const REMOTE_HOST = 'https://remoto.onyxcode.cl'\n"
+    "export const DISPLAY_NAME = 'Lazunox'\nexport const INTERNAL_NAME = 'Lazunox'\nexport const APP_NAME = INTERNAL_NAME\nexport const AUTHOR_ALIAS = 'bentec'\nexport const APP_SLUG = 'lazunox'\nexport const REMOTE_HOST = 'https://remoto.onyxcode.cl'\n"
   )
-  w('package.json', '{"name":"onyxcode","productName":"OnyxCode","author":"bentec"}')
-  w('src/shared/i18n/es/app.ts', "export default { 'a.b': 'Bienvenido a OnyxCode' }")
-  w('src/main/x.ts', "const p = 'OnyxCode'; const e = process.env.ONYXCODE_X; const u = 'onyxcode://app'")
-  w('docs/A.md', 'OnyxCode OnyxCode')
-  w('node_modules/pkg/index.js', 'OnyxCode')
-  w('dist/x.js', 'OnyxCode')
+  w('package.json', '{"name":"lazunox","productName":"Lazunox","author":"bentec"}')
+  w('src/shared/i18n/es/app.ts', "export default { 'a.b': 'Bienvenido a Lazunox' }")
+  w('src/main/x.ts', "const p = 'Lazunox'; const e = process.env.LAZUNOX_X; const u = 'lazunox://app'")
+  w('docs/A.md', 'Lazunox Lazunox')
+  w('node_modules/pkg/index.js', 'Lazunox')
+  w('dist/x.js', 'Lazunox')
   w('src/main/legacy.ts', "const old = 'Lapis'; const od = 'OpenDesk'")
   writeFileSync(join(r, 'src/main/bin.dat'), Buffer.from([0, 1, 2, 79, 110, 121, 120, 67, 111, 100, 101]))
   return r
@@ -46,12 +46,12 @@ test('lee la identidad y propone los valores derivados', () => {
   const r = fakeRepo()
   const cur = readIdentity(r)
   assert.deepEqual(cur, {
-    name: 'OnyxCode',
-    slug: 'onyxcode',
+    name: 'Lazunox',
+    slug: 'lazunox',
     alias: 'bentec',
-    appId: 'cl.bentec.onyxcode',
+    appId: 'cl.bentec.lazunox',
     helperId: 'cl.bentec.opendesk.cu-helper',
-    disclaimId: 'cl.bentec.onyxcode.disclaim'
+    disclaimId: 'cl.bentec.lazunox.disclaim'
   })
   const next = proposedIdentity(cur, { name: 'Zafiro', alias: 'zaf' })
   assert.equal(next.appId, 'cl.zaf.zafiro')
@@ -91,7 +91,7 @@ test('main: exige --dry-run; con él imprime la lista y devuelve 0; nombre invá
   assert.equal(main(['--dry-run', '--name', 'Zafiro', '--alias', 'zaf'], { root: r, log: (m) => out.push(m) }), 0)
   const text = out.join('\n')
   assert.match(text, /no se ha modificado ningún archivo/)
-  assert.match(text, /cl\.bentec\.onyxcode → cl\.zaf\.zafiro/)
+  assert.match(text, /cl\.bentec\.lazunox → cl\.zaf\.zafiro/)
   const json = []
   assert.equal(main(['--dry-run', '--json'], { root: r, log: (m) => json.push(m) }), 0)
   assert.equal(JSON.parse(json[0]).totalFiles, 5)

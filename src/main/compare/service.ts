@@ -740,7 +740,7 @@ export class CompareService {
       totalMemBytes: Math.max(1, totalmem())
     }
     const batch = buildBenchBatch({ manifest: run.m, prompt: run.prompt, env, extras, now: this.deps.now })
-    return { fileName: `onyx-compare-${run.m.id.replace(/-/g, '').slice(0, 8)}.json`, json: JSON.stringify(batch, null, 2) }
+    return { fileName: `lazunox-compare-${run.m.id.replace(/-/g, '').slice(0, 8)}.json`, json: JSON.stringify(batch, null, 2) }
   }
 
   /** Detiene los temporizadores de todas las comparaciones (cierre de la app). No borra nada. */

@@ -66,7 +66,7 @@ function run(cmd, args) {
 
 /** Descarga la última release oficial a `dir` y devuelve `{ bin, tag }` (verificada contra el digest). */
 async function fetchLatest(dir) {
-  const res = await fetch(LATEST_API, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'onyxcode-check-opencode' } })
+  const res = await fetch(LATEST_API, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'lazunox-check-opencode' } })
   if (!res.ok) throw new Error(`GitHub respondió HTTP ${res.status} al consultar la última release.`)
   const rel = await res.json()
   const asset = (rel.assets ?? []).find((a) => a.name === ASSET)
@@ -165,7 +165,7 @@ function printList(title, items) {
 async function main() {
   const opts = parseArgs(process.argv.slice(2))
   if (process.platform !== 'darwin') throw new Error('solo macOS (binario darwin-arm64)')
-  const work = mkdtempSync(join(tmpdir(), 'onyx-check-opencode-'))
+  const work = mkdtempSync(join(tmpdir(), 'lazunox-check-opencode-'))
   try {
     let bin = resolve(opts.bin ?? DEFAULT_BIN)
     let label = 'binario fijado'

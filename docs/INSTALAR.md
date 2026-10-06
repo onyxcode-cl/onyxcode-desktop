@@ -21,26 +21,26 @@ Si lo prefieres, descárgalo y léelo antes: `sh install.sh --dry-run`.
 ## Vía 2: Homebrew
 
 ```sh
-brew install --cask <dueño>/onyxcode/onyxcode
+brew install --cask <dueño>/lazunox/lazunox
 ```
 
 Está en un tap propio (Homebrew ya no admite apps sin firma de Apple en su catálogo oficial). La cask quita la cuarentena al instalar.
 
 ## Vía 3: DMG a mano
 
-1. Descarga `onyxcode-X.Y.Z-arm64.dmg` y `SHA256SUMS` de la página de releases.
-2. Comprueba el hash: `shasum -a 256 onyxcode-X.Y.Z-arm64.dmg` y compáralo con la línea del mismo archivo en `SHA256SUMS`.
+1. Descarga `lazunox-X.Y.Z-arm64.dmg` y `SHA256SUMS` de la página de releases.
+2. Comprueba el hash: `shasum -a 256 lazunox-X.Y.Z-arm64.dmg` y compáralo con la línea del mismo archivo en `SHA256SUMS`.
 3. Abre el `.dmg` y arrastra Lazunox a Aplicaciones.
 4. Al abrirla, macOS dirá que no puede verificar que esté libre de software malicioso. Pulsa **Aceptar** (o «Hecho»), luego:
-   **Ajustes del Sistema › Privacidad y seguridad**, baja hasta el mensaje sobre «OnyxCode» (así lo nombra aún el sistema) y pulsa **Abrir de todos modos**;
+   **Ajustes del Sistema › Privacidad y seguridad**, baja hasta el mensaje sobre «Lazunox» (así lo nombra aún el sistema) y pulsa **Abrir de todos modos**;
    confirma con tu contraseña o Touch ID. Solo hace falta la primera vez.
 5. Comprueba la firma:
 
    ```sh
-   codesign -d -r- /Applications/OnyxCode.app
+   codesign -d -r- /Applications/Lazunox.app
    ```
 
-   La línea `designated` debe contener `identifier "cl.bentec.onyxcode"` y
+   La línea `designated` debe contener `identifier "cl.bentec.lazunox"` y
    `certificate leaf = H"c778a9630c6a627449b1a39e1e62b7a2a2565eb2"`. Si el hash es otro, no abras la app.
 
 ## Qué significa el aviso y por qué verificar el hash
@@ -52,6 +52,6 @@ Verificar es gratis y tarda segundos.
 
 ## Desinstalar sin perder datos
 
-- Con el script: `sh install.sh --uninstall`. Con Homebrew: `brew uninstall --cask onyxcode`. A mano: arrastra Lazunox a la Papelera.
-- Tus datos (sesiones, ajustes y claves cifradas) están en `~/Library/Application Support/OnyxCode` y **nada de lo anterior los borra**.
+- Con el script: `sh install.sh --uninstall`. Con Homebrew: `brew uninstall --cask lazunox`. A mano: arrastra Lazunox a la Papelera.
+- Tus datos (sesiones, ajustes y claves cifradas) están en `~/Library/Application Support/Lazunox` y **nada de lo anterior los borra**.
   Si quieres eliminarlos del todo, borra esa carpeta tú a mano.

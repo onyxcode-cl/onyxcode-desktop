@@ -7,26 +7,26 @@ tiene la envoltura de Cloudflare.
 **Estado: nada de esto está publicado ni lo puede publicar un agente.** Todo lo de abajo lo haces tú, en tu Mac, en la Terminal.
 Nunca pegues una clave ni un token en un chat: se escriben solo en la Terminal.
 
-Cuenta: entra con la cuenta **Onyx** (`Onyx.code.2026@gmail.com`), nunca con la de Bentec. Activa la verificación en dos pasos.
+Cuenta: entra con la cuenta **Lazunox** (`Lazunox.code.2026@gmail.com`), nunca con la de Bentec. Activa la verificación en dos pasos.
 
 ## Pasos (en orden)
 
 1. **Iniciar sesión** (no crea ningún token que copiar):
-   `cd cloud/remoto-worker && npx wrangler@4 login` — se abre el navegador; acepta con la cuenta Onyx.
-   Comprueba con `npx wrangler@4 whoami` que sale la cuenta Onyx.
+   `cd cloud/remoto-worker && npx wrangler@4 login` — se abre el navegador; acepta con la cuenta Lazunox.
+   Comprueba con `npx wrangler@4 whoami` que sale la cuenta Lazunox.
 2. **Clave de firma del sitio** (una vez; la privada no sale de tu Mac ni va a CI):
-   `mkdir -p ~/.onyxcode-keys && /opt/homebrew/bin/openssl genpkey -algorithm ed25519 -out ~/.onyxcode-keys/site.pem && chmod 600 ~/.onyxcode-keys/site.pem`
+   `mkdir -p ~/.lazunox-keys && /opt/homebrew/bin/openssl genpkey -algorithm ed25519 -out ~/.lazunox-keys/site.pem && chmod 600 ~/.lazunox-keys/site.pem`
    (usa el OpenSSL 3 de Homebrew; el de `/usr/bin` no sabe Ed25519). Saca la **pública**, que no es secreta, y se la pasas a quien
    mantiene el código para ponerla en `src/shared/brand.ts` (`SITE_PUBLIC_KEY`):
-   `/opt/homebrew/bin/openssl pkey -in ~/.onyxcode-keys/site.pem -pubout`
-3. **Publicar el sitio** (siempre desde tu Mac): `ONYXCODE_SITE_KEY_FILE=~/.onyxcode-keys/site.pem node scripts/site-release.mjs`
+   `/opt/homebrew/bin/openssl pkey -in ~/.lazunox-keys/site.pem -pubout`
+3. **Publicar el sitio** (siempre desde tu Mac): `LAZUNOX_SITE_KEY_FILE=~/.lazunox-keys/site.pem node scripts/site-release.mjs`
    Compila `pwa/dist-site`, firma `site-manifest.json` y **no despliega**: imprime el comando final. Ejecútalo tú, desde
    `cloud/remoto-worker`: `npx wrangler@4 deploy`.
-4. **Dominio**: panel de Cloudflare → *Workers & Pages* → `onyx-remoto` → *Settings* → *Domains & Routes* → *Add* → *Custom domain* →
+4. **Dominio**: panel de Cloudflare → *Workers & Pages* → `lazunox-remoto` → *Settings* → *Domains & Routes* → *Add* → *Custom domain* →
    `remoto.onyxcode.cl`.
 5. **Seguridad del dominio** (`onyxcode.cl`): *SSL/TLS* → *Edge Certificates*: «Always Use HTTPS» activado, «Minimum TLS Version» 1.2 y
    HSTS (6 meses; «include subdomains» solo si todo `*.onyxcode.cl` ya va por HTTPS).
-6. **Fallo cerrado**: en *Workers & Pages* → `onyx-remoto` → *Settings*, si aparece la opción de «fail open / fail closed» para las rutas,
+6. **Fallo cerrado**: en *Workers & Pages* → `lazunox-remoto` → *Settings*, si aparece la opción de «fail open / fail closed» para las rutas,
    elige *fail closed*.
 7. **Límite por IP**: *Security* → *WAF* → *Rate limiting rules* → regla «remoto»: si la ruta empieza por `/v1/`, más de 60 peticiones
    en 10 s por IP → bloquear 1 minuto (el plan gratuito admite una regla). Además `wrangler.jsonc` trae un límite de 30 conexiones

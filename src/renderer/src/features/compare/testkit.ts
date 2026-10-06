@@ -19,7 +19,7 @@ export function mkCol(index: number, over: Partial<CompareColumnManifest> = {}):
     index,
     model: { providerID: index === 2 ? 'opencode-go' : 'fake', modelID: `model-${index}` },
     sessionID: `ses_${index}`,
-    worktree: { path: `/repo-wt/onyx-compare-${index}`, branch: `onyx-compare/abcd1234-${index}` },
+    worktree: { path: `/repo-wt/lazunox-compare-${index}`, branch: `lazunox-compare/abcd1234-${index}` },
     state: 'running',
     adopted: false,
     discarded: false,

@@ -13,7 +13,7 @@ import { expectCount, expectVisible } from '../lib/wait'
 import { makeGitRepo, openCodeProject } from '../lib/fase6'
 
 const SHOTS = process.env.MX_SHOTS_DIR
-const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-mx-')))
+const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-mx-')))
 const trashDir = join(scratch, 'trash')
 const editorLog = join(scratch, 'editores.log')
 const outside = join(scratch, 'fuera')
@@ -39,7 +39,7 @@ async function call(page: Page, area: 'files' | 'editors', fn: string, ...args: 
 
 describe.skipIf(MODE === 'prod')(`archivos del proyecto: vigilante, gestor y «Abrir en…» (${MODE})`, () => {
   beforeAll(() => {
-    repo = makeGitRepo('onyx-e2e-mx-')
+    repo = makeGitRepo('lazunox-e2e-mx-')
     mkdirSync(join(repo, 'src'))
     writeFileSync(join(repo, 'src', 'main.ts'), 'export {}\n')
     mkdirSync(join(repo, 'node_modules'))
@@ -47,7 +47,7 @@ describe.skipIf(MODE === 'prod')(`archivos del proyecto: vigilante, gestor y «A
     writeFileSync(join(outside, 'secreto.txt'), 'S')
   })
   const app = useApp({
-    env: { ONYXCODE_E2E_TRASH_DIR: trashDir, ONYXCODE_E2E_EDITOR_LOG: editorLog, ONYXCODE_E2E_EDITORS: 'vscode,zed' }
+    env: { LAZUNOX_E2E_TRASH_DIR: trashDir, LAZUNOX_E2E_EDITOR_LOG: editorLog, LAZUNOX_E2E_EDITORS: 'vscode,zed' }
   })
   afterAll(async () => {
     await app()

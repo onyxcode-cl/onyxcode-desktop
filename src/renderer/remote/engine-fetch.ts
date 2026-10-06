@@ -1,9 +1,9 @@
 /**
  * `fetch` del SDK v2 de OpenCode sobre el puente del celular.
  *
- * El renderer recibe `baseUrl = onyx://engine/main` (o `onyx://engine/task/<token>`, sin credenciales: las pone el Mac). El
+ * El renderer recibe `baseUrl = lazunox://engine/main` (o `lazunox://engine/task/<token>`, sin credenciales: las pone el Mac). El
  * SDK construye un `Request` normal y llama a `fetch(request)`. Este `fetch`:
- *  - reescribe `onyx://engine/<motor>/<ruta>?<query>` a una trama `http{eng,method,path,query,headers,body}` (el Mac valida,
+ *  - reescribe `lazunox://engine/<motor>/<ruta>?<query>` a una trama `http{eng,method,path,query,headers,body}` (el Mac valida,
  *    pone la contraseña y devuelve `{status,contentType?,body,encoding?}`) y la rehace en un `Response` normal;
  *  - sirve el SSE (`GET /global/event` y `/event`) con `sub`/`ev` (ver `events-hub.ts`) como un `Response` con
  *    `ReadableStream` en formato SSE; al abrir emite `server.connected`, que dispara el `onOpen` de `lib/opencode.ts` y con él la
@@ -25,7 +25,7 @@ import {
 import type { HttpHeaders, HttpMethod } from '@shared/remote/protocol'
 import type { EventsHub, OcEventIn } from './events-hub'
 
-export const ENGINE_SCHEME = 'onyx://engine/'
+export const ENGINE_SCHEME = 'lazunox://engine/'
 const ENGINE_RE = /^(main|task\/[A-Za-z0-9_-]{8,64})(\/[^?#]*)?(?:\?([^#]*))?/
 const METHODS: ReadonlySet<string> = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 const NO_BODY_STATUS: ReadonlySet<number> = new Set([101, 204, 205, 304])
@@ -46,7 +46,7 @@ export interface EngineTarget {
   query: Record<string, string>
 }
 
-/** `onyx://engine/main/session?directory=%2Fx` → `{eng:'main', path:'/session', query:{directory:'/x'}}` (`null` si no es del motor). */
+/** `lazunox://engine/main/session?directory=%2Fx` → `{eng:'main', path:'/session', query:{directory:'/x'}}` (`null` si no es del motor). */
 export function parseEngineUrl(url: string): EngineTarget | null {
   if (!url.startsWith(ENGINE_SCHEME)) return null
   const m = ENGINE_RE.exec(url.slice(ENGINE_SCHEME.length))

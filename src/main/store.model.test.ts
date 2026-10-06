@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const dirs: string[] = []
 const userData = (): string => {
-  const d = mkdtempSync(join(tmpdir(), 'onyx-store-model-'))
+  const d = mkdtempSync(join(tmpdir(), 'lazunox-store-model-'))
   dirs.push(d)
   return d
 }

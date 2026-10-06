@@ -1,6 +1,6 @@
 /**
  * Ventana «Navegador» aparte (rol `browserHost`, ver `main/embedded-browser/popout.ts`): la
- * misma página que carga en `onyxcode://app/browser/index.html`, y que solo renderiza
+ * misma página que carga en `lazunox://app/browser/index.html`, y que solo renderiza
  * `BrowserPanel` (compartido con Code y Tareas) para el `owner` que main le asigne.
  *
  * Sin preload propio de Code/Tareas ni de extras: no hay tema de usuario que leer aquí (el

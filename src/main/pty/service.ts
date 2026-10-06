@@ -101,8 +101,8 @@ export class PtyService {
     for (const k of Object.keys(env)) if (k.startsWith('DYLD_')) delete env[k]
 
     // Desvinculada de TCC (AUDIT.md: "el PTY de la terminal integrada aún hereda los permisos de
-    // OnyxCode"), igual que los `opencode serve` (`process/disclaim.ts`): la shell del usuario no debe
-    // heredar Accesibilidad/Grabación de pantalla concedidas a OnyxCode para computer use. Solo cambia
+    // Lazunox"), igual que los `opencode serve` (`process/disclaim.ts`): la shell del usuario no debe
+    // heredar Accesibilidad/Grabación de pantalla concedidas a Lazunox para computer use. Solo cambia
     // el binario que se ejecuta (mismo PID/grupo); el shell sigue siendo interactivo con su entorno
     // normal (login shell, TERM, LANG, PATH, etc).
     const launch = withDisclaim(shell, args)

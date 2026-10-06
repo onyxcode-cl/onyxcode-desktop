@@ -57,7 +57,7 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 ## 5. Notificaciones (Web Push)
 
 - **Web Push con VAPID**: el celular se suscribe (permiso pedido con un gesto del usuario) y entrega la suscripción al Mac por el canal; el Mac la guarda en `remote.bin` y envía los avisos él mismo al servicio push del navegador. No hay servidor propio con las suscripciones.
-- **Avisos genéricos**, sin contenido: «OnyxCode necesita tu atención» (permiso pendiente, tarea terminada). Nunca texto de conversaciones, rutas ni nombres. El servicio push del navegador (Apple/Google/Mozilla) ve metadatos y que hay un aviso, no el contenido.
+- **Avisos genéricos**, sin contenido: «Lazunox necesita tu atención» (permiso pendiente, tarea terminada). Nunca texto de conversaciones, rutas ni nombres. El servicio push del navegador (Apple/Google/Mozilla) ve metadatos y que hay un aviso, no el contenido.
 - **iOS**: solo funciona con la PWA **instalada en la pantalla de inicio** (iOS 16.4 o superior), con permiso explícito y sin notificaciones silenciosas; Safari como pestaña no recibe push. Android/Chrome funciona sin instalar. Por eso la instalación guiada de la PWA es parte de la fase.
 - Se revocan al quitar el celular. Límite de avisos por hora para no usar el canal como vía de spam.
 - Con el Mac dormido o apagado no hay aviso (el Mac es quien lo emite): se documenta, no se promete lo contrario.

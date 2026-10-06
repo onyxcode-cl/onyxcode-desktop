@@ -9,7 +9,7 @@ $ProgressPreference = 'SilentlyContinue'
 $wt = Join-Path $Root 'wt'
 $dist = Join-Path $wt 'dist'
 $unp = Join-Path $dist 'win-unpacked'
-$exe = Join-Path $unp 'OnyxCode.exe'
+$exe = Join-Path $unp 'Lazunox.exe'
 $logs = Join-Path $Root "logs\$Branch"
 New-Item -ItemType Directory -Force $logs | Out-Null
 $out = Join-Path $logs 'pack-check.txt'
@@ -22,20 +22,20 @@ function Check([string]$name, [bool]$ok, [string]$detail = '') {
 $env:Path = "$Root\node22;$env:Path"
 $ud = Join-Path $Root 'tmp\ud'
 $inst = Join-Path $Root 'inst'
-function OnyxProcs {
+function LazunoxProcs {
   Get-CimInstance Win32_Process | Where-Object {
-    ($_.ExecutablePath -and ($_.ExecutablePath.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase)) -and $_.Name -match '^(OnyxCode|opencode|OpenConsole|conpty)\.exe$') -or
+    ($_.ExecutablePath -and ($_.ExecutablePath.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase)) -and $_.Name -match '^(Lazunox|opencode|OpenConsole|conpty)\.exe$') -or
     ($_.CommandLine -and $_.CommandLine -match [regex]::Escape($ud))
   }
 }
-function Cleanup { foreach ($p in (OnyxProcs)) { & taskkill.exe /PID $p.ProcessId /T /F *> $null } }
-function Wait-Gone([int]$sec) { $t0 = Get-Date; while (((Get-Date) - $t0).TotalSeconds -lt $sec) { if (-not (OnyxProcs)) { return $true }; Start-Sleep -Milliseconds 500 }; return -not (OnyxProcs) }
+function Cleanup { foreach ($p in (LazunoxProcs)) { & taskkill.exe /PID $p.ProcessId /T /F *> $null } }
+function Wait-Gone([int]$sec) { $t0 = Get-Date; while (((Get-Date) - $t0).TotalSeconds -lt $sec) { if (-not (LazunoxProcs)) { return $true }; Start-Sleep -Milliseconds 500 }; return -not (LazunoxProcs) }
 
 Cleanup
 Set-Location $wt
 
 # 1. Artefacto
-$setup = Get-ChildItem $dist -Filter 'OnyxCode-Setup-*-x64.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+$setup = Get-ChildItem $dist -Filter 'Lazunox-Setup-*-x64.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
 Check 'instalador existe' ([bool]$setup) ($(if ($setup) { "$($setup.Name) $([math]::Round($setup.Length/1MB,1)) MB" } else { '' }))
 if ($setup) { Check 'tamano razonable (50-400 MB)' ($setup.Length -gt 50MB -and $setup.Length -lt 400MB) }
 Check 'win-unpacked existe' (Test-Path $exe)
@@ -65,7 +65,7 @@ $ver = if (Test-Path $oc) { (& $oc --version 2>&1 | Out-String).Trim() } else { 
 Check 'opencode.exe --version = 1.18.33' ($ver -eq '1.18.33') $ver
 $vi = (Get-Item $exe).VersionInfo
 Log ("PE: ProductName=$($vi.ProductName) FileDescription=$($vi.FileDescription) FileVersion=$($vi.FileVersion) ProductVersion=$($vi.ProductVersion) Company=$($vi.CompanyName) Copyright=$($vi.LegalCopyright)")
-Check 'PE: ProductName OnyxCode' ($vi.ProductName -eq 'OnyxCode')
+Check 'PE: ProductName Lazunox' ($vi.ProductName -eq 'Lazunox')
 $sig = Get-AuthenticodeSignature $exe
 Log ("Firma Authenticode: " + $sig.Status + " (esperado NotSigned: no hay certificado)")
 
@@ -81,7 +81,7 @@ function Smoke([string]$path, [string]$tag, [int]$port) {
   $seen = $false
   while (((Get-Date) - $t0).TotalSeconds -lt 30) {
     if ($p.HasExited) { break }
-    if (OnyxProcs | Where-Object { $_.Name -eq 'opencode.exe' }) { $seen = $true; break }
+    if (LazunoxProcs | Where-Object { $_.Name -eq 'opencode.exe' }) { $seen = $true; break }
     Start-Sleep -Milliseconds 500
   }
   $secs = [math]::Round(((Get-Date) - $t0).TotalSeconds, 1)
@@ -93,7 +93,7 @@ function Smoke([string]$path, [string]$tag, [int]$port) {
   # Cierre ordenado (como el usuario) y, si no, por la fuerza; despues no debe quedar nada
   $gone = Wait-Gone 20
   Check "$tag la app sale al cerrar la ventana (decision v1)" $gone
-  if (-not $gone) { Log ("quedaban: " + ((OnyxProcs | ForEach-Object { "$($_.Name)#$($_.ProcessId)" }) -join ' ')); Cleanup }
+  if (-not $gone) { Log ("quedaban: " + ((LazunoxProcs | ForEach-Object { "$($_.Name)#$($_.ProcessId)" }) -join ' ')); Cleanup }
   Check "$tag sin huerfanos al cerrar" $gone
 }
 Smoke $exe 'win-unpacked' 9333
@@ -103,12 +103,12 @@ if ($Install -and $setup) {
   Remove-Item -Recurse -Force $inst -ErrorAction SilentlyContinue
   $p = Start-Process -FilePath $setup.FullName -ArgumentList '/S', "/D=$inst" -PassThru -WindowStyle Hidden
   Check 'instalacion silenciosa termina (< 120 s)' ($p.WaitForExit(120000)) "codigo=$($p.ExitCode)"
-  $ie = Join-Path $inst 'OnyxCode.exe'
-  Check 'instalado: OnyxCode.exe' (Test-Path $ie)
+  $ie = Join-Path $inst 'Lazunox.exe'
+  Check 'instalado: Lazunox.exe' (Test-Path $ie)
   Check 'instalado: opencode.exe 1.18.33' ((Test-Path (Join-Path $inst 'resources\opencode\opencode.exe')) -and ((& (Join-Path $inst 'resources\opencode\opencode.exe') --version 2>&1 | Out-String).Trim() -eq '1.18.33'))
-  $un = Join-Path $inst 'Uninstall OnyxCode.exe'
+  $un = Join-Path $inst 'Uninstall Lazunox.exe'
   Check 'instalado: desinstalador' (Test-Path $un)
-  $reg = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'OnyxCode*' }
+  $reg = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Lazunox*' }
   Check 'registro de desinstalacion (HKCU, por usuario)' ([bool]$reg) (($reg | ForEach-Object { $_.PSChildName }) -join ',')
   if (Test-Path $ie) { Smoke $ie 'instalado' 9334 }
   if (Test-Path $un) {
@@ -119,14 +119,14 @@ if ($Install -and $setup) {
   }
   $left = if (Test-Path $inst) { (Get-ChildItem $inst -Recurse -Force | Measure-Object).Count } else { 0 }
   Check 'desinstalado: carpeta de instalacion limpia' ($left -eq 0) "restos=$left"
-  $reg2 = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'OnyxCode*' }
+  $reg2 = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Lazunox*' }
   Check 'desinstalado: sin clave de registro' (-not $reg2)
-  $lnk = @("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OnyxCode.lnk", "$env:USERPROFILE\Desktop\OnyxCode.lnk") | Where-Object { Test-Path $_ }
+  $lnk = @("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Lazunox.lnk", "$env:USERPROFILE\Desktop\Lazunox.lnk") | Where-Object { Test-Path $_ }
   Check 'desinstalado: sin accesos directos' (-not $lnk) ($lnk -join ',')
   Remove-Item -Recurse -Force $inst -ErrorAction SilentlyContinue
 }
 Cleanup
 Remove-Item -Recurse -Force $ud -ErrorAction SilentlyContinue
-Check 'sin procesos sobrantes al terminar' (-not (OnyxProcs))
+Check 'sin procesos sobrantes al terminar' (-not (LazunoxProcs))
 Log "FALLOS=$script:fail"
 exit $script:fail

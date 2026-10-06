@@ -1,11 +1,11 @@
 'use strict'
 
 /**
- * Hook `afterSign` SOLO para `ONYXCODE_SELF_SIGNED=1` (certificado de firma de código AUTOFIRMADO del propio
+ * Hook `afterSign` SOLO para `LAZUNOX_SELF_SIGNED=1` (certificado de firma de código AUTOFIRMADO del propio
  * usuario; docs/DISTRIBUCION.md §10). No notariza.
  *
  * Por qué existe: electron-builder vuelve a firmar cada Mach-O del paquete SIN `--identifier`, así que
- * `cu-helper` y `onyxcode-disclaim` acaban con un identificador derivado del nombre del archivo
+ * `cu-helper` y `lazunox-disclaim` acaban con un identificador derivado del nombre del archivo
  * (p.ej. `cu-helper-5555…`) en vez de HELPER_ID / DISCLAIM_ID. Con firma ad-hoc da igual (macOS identifica por
  * cdhash), pero con certificado macOS recuerda los permisos por «identificador + certificado»: hay que conservar
  * los identificadores. Este hook los vuelve a firmar con el MISMO certificado y su identificador, y después
@@ -24,10 +24,10 @@ module.exports = async function afterSignSelfSigned(context) {
   const { electronPlatformName, appOutDir, packager } = context
   if (electronPlatformName !== 'darwin') return
   const identity = process.env.CSC_NAME
-  if (!identity) throw new Error('ONYXCODE_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado.')
+  if (!identity) throw new Error('LAZUNOX_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado.')
   const ids = idsFromBrandSource(readFileSync(join(__dirname, '..', 'src', 'shared', 'brand.ts'), 'utf8'))
   const appPath = `${appOutDir}/${packager.appInfo.productFilename}.app`
-  console.log(`[self-signed] volviendo a firmar cu-helper y onyxcode-disclaim con «${identity}» y sus identificadores; sin notarizar`)
+  console.log(`[self-signed] volviendo a firmar cu-helper y lazunox-disclaim con «${identity}» y sus identificadores; sin notarizar`)
   resign({ appPath, identity, ids })
 }
 module.exports.resign = resign

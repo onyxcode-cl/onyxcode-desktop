@@ -99,13 +99,13 @@ describe.skipIf(!macOnly || !HAS_BIN)('sandbox real + opencode real: el proxy MC
   let envDump = ''
   let pid = 0
   const prevBin = process.env.OPENCODE_BIN
-  const prevDisclaim = process.env.ONYXCODE_NO_DISCLAIM
+  const prevDisclaim = process.env.LAZUNOX_NO_DISCLAIM
 
   beforeAll(async () => {
     process.env.OPENCODE_BIN = BIN
-    // Sin el lanzador `onyxcode-disclaim` (ajeno a lo que se prueba; se cuelga bajo un arnés ya sandboxeado).
-    process.env.ONYXCODE_NO_DISCLAIM = '1'
-    root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-mcpreal-')))
+    // Sin el lanzador `lazunox-disclaim` (ajeno a lo que se prueba; se cuelga bajo un arnés ya sandboxeado).
+    process.env.LAZUNOX_NO_DISCLAIM = '1'
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-mcpreal-')))
     state.userData = join(root, 'userData')
     mkdirSync(join(state.userData, 'opencode-config'), { recursive: true })
     writeFileSync(join(state.userData, 'opencode-config', '.gitignore'), 'node_modules\n')
@@ -162,8 +162,8 @@ describe.skipIf(!macOnly || !HAS_BIN)('sandbox real + opencode real: el proxy MC
       s?.closeAllConnections()
       s?.close()
     }
-    if (prevDisclaim === undefined) delete process.env.ONYXCODE_NO_DISCLAIM
-    else process.env.ONYXCODE_NO_DISCLAIM = prevDisclaim
+    if (prevDisclaim === undefined) delete process.env.LAZUNOX_NO_DISCLAIM
+    else process.env.LAZUNOX_NO_DISCLAIM = prevDisclaim
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
     else process.env.OPENCODE_BIN = prevBin
     rmSync(root, { recursive: true, force: true })

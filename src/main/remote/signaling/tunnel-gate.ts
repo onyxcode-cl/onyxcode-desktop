@@ -1,7 +1,7 @@
 /**
  * Puerta previa del servidor del túnel. El enlace público es adivinable por quien conozca el host, así que ANTES de servir nada
  * se exige la galleta de la puerta: `T` (16 bytes aleatorios, uno por túnel, solo en memoria) llega en la ruta del QR
- * `GET /k/<T>`, que responde `303 → /` con `Set-Cookie: __Host-onyxk=<T>; Secure; HttpOnly; SameSite=Lax; Path=/`. Sin galleta válida
+ * `GET /k/<T>`, que responde `303 → /` con `Set-Cookie: __Host-lazunoxk=<T>; Secure; HttpOnly; SameSite=Lax; Path=/`. Sin galleta válida
  * TODO (incluido `/` y `/ws`) devuelve el mismo 404. `T` es antiabuso, no una credencial: viaja a Cloudflare. La autenticación real
  * sigue siendo el protocolo v3 + PIN.
  */

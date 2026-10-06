@@ -12,7 +12,7 @@ import { initialNav, useMobileNavStore } from './nav'
 
 vi.mock('../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
-const g = globalThis as unknown as { window?: { api?: { platform?: string } }; __onyxLink?: unknown }
+const g = globalThis as unknown as { window?: { api?: { platform?: string } }; __lazunoxLink?: unknown }
 const count = (html: string, re: RegExp): number => (html.match(re) ?? []).length
 // El contenido (DrawerPanel) se baja al abrir; las pruebas lo pintan directo, y `MobileDrawer` solo decide si hay panel.
 const render = (): string => renderToStaticMarkup(createElement(DrawerPanel))
@@ -34,7 +34,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   delete g.window
-  delete g.__onyxLink
+  delete g.__lazunoxLink
   for (const [store, orig] of originals) {
     store.setState(orig)
     Object.assign(store.getInitialState(), orig)
@@ -98,7 +98,7 @@ describe('MobileDrawer', () => {
       ['offline', 'bg-subtle', 'Sin conexión'],
       ['reconnecting', 'bg-warning', 'Reconectando…']
     ] as const) {
-      g.__onyxLink = { status: () => status, onStatus: () => () => undefined }
+      g.__lazunoxLink = { status: () => status, onStatus: () => () => undefined }
       const html = render()
       expect(html, status).toContain(`${dot}" aria-hidden="true"></span>${label}`)
     }

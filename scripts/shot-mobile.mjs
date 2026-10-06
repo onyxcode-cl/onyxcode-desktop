@@ -50,7 +50,7 @@ function findBrowser() {
 }
 
 // ---- compilación del arnés (misma configuración que la PWA completa, otra entrada y otra salida) ----
-const site = join(tmpdir(), 'onyx-shot-mobile-site')
+const site = join(tmpdir(), 'lazunox-shot-mobile-site')
 if (!process.argv.includes('--no-build')) {
   const loaded = await loadConfigFromFile({ command: 'build', mode: 'production' }, join(repo, 'pwa/vite.full.config.ts'))
   const cfg = mergeConfig(loaded.config, { logLevel: 'error', build: { outDir: site, emptyOutDir: true, reportCompressedSize: false } })

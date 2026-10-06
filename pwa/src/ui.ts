@@ -738,7 +738,7 @@ function sessionRow(c: RemoteClient, x: RemoteSession): HTMLElement {
     h('span', { class: 'when' }, ago(x.updatedAt))
   )
   btn.addEventListener('click', () => {
-    history.pushState({ onyxChat: x.id }, '')
+    history.pushState({ lazunoxChat: x.id }, '')
     c.openChat(x.id)
   })
   return h('li', {}, btn)
@@ -779,7 +779,7 @@ function messageNode(m: RemoteMessage): HTMLElement {
 function chatScreen(c: RemoteClient, id: string): Screen {
   const back = h('button', { class: 'ghost back', type: 'button', 'aria-label': t('btn.back') }, icon('back', 22))
   back.addEventListener('click', () => {
-    if (history.state && (history.state as { onyxChat?: string }).onyxChat) history.back()
+    if (history.state && (history.state as { lazunoxChat?: string }).lazunoxChat) history.back()
     else c.closeChat()
   })
   const title = h('h1', { tabindex: '-1' })

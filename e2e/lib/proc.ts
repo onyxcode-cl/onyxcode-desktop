@@ -84,8 +84,8 @@ export function killByCommandLine(needle: string): void {
     try {
       // El patrón va por entorno: así la propia línea de comandos de powershell no lo contiene.
       ps(
-        `$n=$env:ONYX_KILL_NEEDLE;Get-CimInstance Win32_Process|?{$_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine.IndexOf($n,[StringComparison]::OrdinalIgnoreCase) -ge 0}|%{taskkill.exe /PID $_.ProcessId /T /F *>$null}`,
-        { ONYX_KILL_NEEDLE: needle }
+        `$n=$env:LAZUNOX_KILL_NEEDLE;Get-CimInstance Win32_Process|?{$_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine.IndexOf($n,[StringComparison]::OrdinalIgnoreCase) -ge 0}|%{taskkill.exe /PID $_.ProcessId /T /F *>$null}`,
+        { LAZUNOX_KILL_NEEDLE: needle }
       )
     } catch {
       /* sin coincidencias o ya muertos */

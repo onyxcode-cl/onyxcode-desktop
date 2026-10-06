@@ -65,7 +65,7 @@ const nav = (page: Page, name: string): Promise<void> => page.locator('nav[aria-
 
 // ───────────────────────── Ajustes, Rutinas, diálogos y ventanas propias ─────────────────────────
 describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${MODE})`, () => {
-  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-')))
+  const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-rc-')))
   writeFileSync(
     join(userData, 'routines.json'),
     JSON.stringify({ routines: [routine('r-on', 'Rutina activa e2e', true), routine('r-off', 'Rutina pausada e2e', false)], history: [] })
@@ -205,8 +205,8 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
   let env: Record<string, string> = {}
   const fakeBin = fakeOutsideUserData()
   beforeAll(() => {
-    userData = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-onb-')))
-    home = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-rc-onb-home-')))
+    userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-rc-onb-')))
+    home = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-rc-onb-home-')))
     mkdirSync(join(home, '.opencode', 'bin'), { recursive: true })
     env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
   })
@@ -392,7 +392,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await shot(a, SHOTS, 'tareas-pregunta')
     await a.page.getByRole('button', { name: 'Omitir', exact: true }).first().click()
     // Escalada
-    await scriptFor(fake, 'tarea que escala', 'Esto necesita control total del Mac. [[ONYX:NEEDS_FULL_CONTROL]]')
+    await scriptFor(fake, 'tarea que escala', 'Esto necesita control total del Mac. [[LAZUNOX:NEEDS_FULL_CONTROL]]')
     await send('tarea que escala')
     const esc = a.page.getByRole('button', { name: /control total/i }).first()
     await expectVisible(esc, 30_000)

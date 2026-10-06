@@ -8,7 +8,7 @@
  * - `stop`: SIGINT al helper, espera ≤5 s (SIGKILL de respaldo) y lee `events.jsonl`; si hubo
  *   micro, transcribe con `cu-helper transcribe` (timeout 120 s, best-effort: sin transcripción no
  *   es un error para el usuario).
- * - `prepare`: copia las capturas a `<folder>/.onyxcode/trabajo/grabaciones/<id>/` (el `root` que recibe ya
+ * - `prepare`: copia las capturas a `<folder>/.lazunox/trabajo/grabaciones/<id>/` (el `root` que recibe ya
  *   viene validado por el llamador con `tasks.assertInsideApproved`), quita el texto tecleado
  *   salvo que se pida incluirlo, borra la copia de `userData` y devuelve el prompt puro de
  *   `buildRecordedSkillPrompt` (`@shared/skill-recording.ts`).
@@ -179,7 +179,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
   }
 
   /**
-   * Copia las capturas a `root/.onyxcode/trabajo/grabaciones/<id>/` (`root` ya validado por el llamador),
+   * Copia las capturas a `root/.lazunox/trabajo/grabaciones/<id>/` (`root` ya validado por el llamador),
    * quita `text` de los pasos salvo `includeTyped`, borra la copia de `userData` y devuelve el
    * prompt (puro) para que el agente proponga la skill.
    */
@@ -187,9 +187,9 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     const srcDir = join(this.baseDir, id)
     const rec = this.loadRecording(srcDir)
     if (!rec) throw new Error(t('merr.record.notFound'))
-    // Migra la carpeta de trabajo heredada a `.onyxcode/trabajo/` antes de escribir.
+    // Migra la carpeta de trabajo heredada a `.lazunox/trabajo/` antes de escribir.
     migrateFolderScratch(root, (m, e) => console.warn('[computer]', m, e ?? ''))
-    const relDir = join('.onyxcode', 'trabajo', 'grabaciones', id)
+    const relDir = join('.lazunox', 'trabajo', 'grabaciones', id)
     const destDir = join(root, relDir)
     mkdirSync(destDir, { recursive: true })
     for (const shot of rec.shots) {

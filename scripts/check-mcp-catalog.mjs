@@ -16,9 +16,9 @@ const INITIALIZE = {
   jsonrpc: '2.0',
   id: 1,
   method: 'initialize',
-  params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'onyxcode-catalog-check', version: '1' } }
+  params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lazunox-catalog-check', version: '1' } }
 }
-const UA = 'Mozilla/5.0 (OnyxCode catalog check)'
+const UA = 'Mozilla/5.0 (Lazunox catalog check)'
 
 async function probeMcp(url) {
   const res = await fetch(url, {

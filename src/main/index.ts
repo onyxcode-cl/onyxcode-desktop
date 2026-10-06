@@ -51,18 +51,18 @@ const isUpdating = (): boolean => updateSwap?.isUpdating() ?? false
 const bootMarkers = (): ReturnType<UpdateBoot['bootMarkers']> | null => updateBoot?.bootMarkers() ?? null
 
 // Instancia única: se pide lo antes posible y ANTES de cualquier efecto (migración de userData,
-// killStaleServers, handlers, ventanas). Electron deriva el lock del userData ('OnyxCode'), que el
+// killStaleServers, handlers, ventanas). Electron deriva el lock del userData ('Lazunox'), que el
 // modo dev comparte con la app instalada: si la empaquetada está abierta, `npm run dev` saldrá aquí
 // (y viceversa). Sin lock, esta instancia no ejecuta nada más.
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) app.quit()
 
-// Esquema `onyxcode://app` para el renderer de producción (antes de `ready`).
+// Esquema `lazunox://app` para el renderer de producción (antes de `ready`).
 registerAppSchemePrivileges()
 
 const chatDirectory = join(app.getPath('userData'), 'chat-workspace')
 
-// Orígenes que pueden llamar a los servidores OpenCode por CORS: `onyxcode://app` y, sin empaquetar,
+// Orígenes que pueden llamar a los servidores OpenCode por CORS: `lazunox://app` y, sin empaquetar,
 // el dev server de Vite. Ya no se admite el origen `null` de file:// (AUDIT.md 2.6).
 const corsOrigins = trustedOrigins()
 
@@ -102,7 +102,7 @@ function createWindow(): BrowserWindow {
     if (process.platform !== 'darwin') app.quit()
   })
 
-  // Enlaces externos → navegador del sistema; cualquier otra navegación fuera de `onyxcode://app` (o
+  // Enlaces externos → navegador del sistema; cualquier otra navegación fuera de `lazunox://app` (o
   // del dev server) se bloquea: lo hace `installWebSecurity` para todo webContents.
   void loadRendererPage(win, 'index.html')
   return win
@@ -135,7 +135,7 @@ function start(): void {
   } catch (err) {
     console.warn('[main] no se pudo limpiar la sesión de la antigua cuenta', err)
   }
-  // Un segundo lanzamiento (dock, `open`, onyxcode://) enfoca esta instancia. Antes de `ready` se
+  // Un segundo lanzamiento (dock, `open`, lazunox://) enfoca esta instancia. Antes de `ready` se
   // ignora: la ventana se crea igualmente al arrancar.
   app.on('second-instance', () => {
     // Mientras se sustituye la app no se enfoca ni se abren ventanas (la instancia está cerrándose).

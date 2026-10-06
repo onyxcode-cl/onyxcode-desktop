@@ -1,12 +1,12 @@
 /**
- * Acceso de la interfaz móvil al enlace con el Mac (`globalThis.__onyxLink`, lo deja el arranque ligero de la PWA antes de
+ * Acceso de la interfaz móvil al enlace con el Mac (`globalThis.__lazunoxLink`, lo deja el arranque ligero de la PWA antes de
  * cargar la interfaz). Solo estado de conexión y las dos acciones del celular (bloquear, desvincular); toda llamada de datos
  * sigue yendo por los shims de `window.api`/`fetch`.
  */
 import { useSyncExternalStore } from 'react'
 import type { LinkStatus, RemoteLink } from '@shared/remote/link'
 
-export const getLink = (): RemoteLink | undefined => (globalThis as { __onyxLink?: RemoteLink }).__onyxLink
+export const getLink = (): RemoteLink | undefined => (globalThis as { __lazunoxLink?: RemoteLink }).__lazunoxLink
 
 const subscribe = (fn: () => void): (() => void) => getLink()?.onStatus(fn) ?? (() => undefined)
 const snapshot = (): LinkStatus => getLink()?.status() ?? 'online'

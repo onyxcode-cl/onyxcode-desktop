@@ -2,7 +2,7 @@
  * Endurecimiento global de Electron (AUDIT.md 2.1 / S8), aplicado a TODO webContents que se cree:
  *
  * - Navegación: `will-navigate`, `will-redirect` y `will-frame-navigate` solo permiten los orígenes
- *   propios (`onyxcode://app`, dev server); los enlaces http(s) se abren en el navegador del sistema y
+ *   propios (`lazunox://app`, dev server); los enlaces http(s) se abren en el navegador del sistema y
  *   todo lo demás (file:, data:, javascript:, otros esquemas) se bloquea. Las ventanas de artifacts
  *   (esquema propio en su partición) conservan además sus propias reglas, más estrictas.
  * - `window.open`: denegado siempre (http(s) → navegador del sistema).
@@ -88,7 +88,7 @@ function installPermissionHandlers(): void {
 
 /**
  * Plantilla del menú de producción. En macOS `{ role: 'appMenu' }` rotula «Acerca de/Ocultar/Salir de» con
- * `app.name`, que se mantiene en «OnyxCode» (clave del Llavero y userData); por eso el menú de la app es
+ * `app.name`, que se mantiene en «Lazunox» (clave del Llavero y userData); por eso el menú de la app es
  * propio y usa el nombre visible. Exportada para probarla sin Electron.
  */
 export function buildProductionMenuTemplate(isMac: boolean): MenuItemConstructorOptions[] {
@@ -147,7 +147,7 @@ export function installWebSecurity(): void {
   installed = true
   app.on('web-contents-created', (_event, wc) => harden(wc))
   installPermissionHandlers()
-  // Panel «Acerca de» con el nombre visible (app.name sigue siendo «OnyxCode»: Llavero y userData).
+  // Panel «Acerca de» con el nombre visible (app.name sigue siendo «Lazunox»: Llavero y userData).
   app.setAboutPanelOptions({ applicationName: DISPLAY_NAME, applicationVersion: app.getVersion() })
   installProductionMenu()
 }

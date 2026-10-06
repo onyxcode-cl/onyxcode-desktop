@@ -93,7 +93,7 @@ export function downloadFile(url, dest, redirects = 0) {
     }
     const get = u.protocol === 'https:' ? httpsGet : u.protocol === 'http:' ? httpGet : null
     if (!get) return reject(new Error(`Protocolo no soportado: ${u.protocol}`))
-    const req = get(u, { headers: { 'user-agent': 'onyxcode-fetch-opencode' }, timeout: NET_TIMEOUT_MS }, (res) => {
+    const req = get(u, { headers: { 'user-agent': 'lazunox-fetch-opencode' }, timeout: NET_TIMEOUT_MS }, (res) => {
       const status = res.statusCode ?? 0
       if (status >= 300 && status < 400 && res.headers.location) {
         res.resume()
@@ -126,7 +126,7 @@ function run(cmd, args, options = {}) {
 
 /** `<bin> --version` con entorno mínimo y HOME/XDG temporales (nunca toca los del usuario). */
 export async function binaryVersion(bin) {
-  const home = mkdtempSync(join(tmpdir(), 'onyx-fetch-home-'))
+  const home = mkdtempSync(join(tmpdir(), 'lazunox-fetch-home-'))
   try {
     const win = process.platform === 'win32'
     const sysRoot = process.env.SystemRoot || 'C:\\Windows'

@@ -8,7 +8,7 @@
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT="${CU_HELPER_OUT:-$DIR/bin/cu-helper}"
-HELPER_ID="cl.bentec.opendesk.cu-helper"
+HELPER_ID="cl.bentec.lazunox.cu-helper"
 if [ "$(uname)" != "Darwin" ]; then echo "[cu-helper] omitido (solo macOS)"; exit 0; fi
 
 # Firma ad-hoc con identificador estable (TCC asocia los permisos al binario/app responsable).

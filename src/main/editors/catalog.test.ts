@@ -100,8 +100,8 @@ describe('openWithEditor', () => {
     await expect(openWithEditor('/Users/u/p', 'zed', mk({ launch: async () => false }))).rejects.toThrow(EditorError)
   })
   it('modo E2E: solo registra la llamada, no lanza', async () => {
-    const log = join(mkdtempSync(join(tmpdir(), 'onyx-ed-')), 'calls.log')
-    const e2e = resolveE2eEditors({ isPackaged: false, env: { ONYXCODE_E2E_EDITOR_LOG: log, ONYXCODE_E2E_EDITORS: 'zed,cursor' } })!
+    const log = join(mkdtempSync(join(tmpdir(), 'lazunox-ed-')), 'calls.log')
+    const e2e = resolveE2eEditors({ isPackaged: false, env: { LAZUNOX_E2E_EDITOR_LOG: log, LAZUNOX_E2E_EDITORS: 'zed,cursor' } })!
     const launch = vi.fn()
     const d = mk({ e2e, launch })
     expect(listInstalled(d).map((x) => x.id)).toEqual(['cursor', 'zed', 'system'])
@@ -111,8 +111,8 @@ describe('openWithEditor', () => {
     await expect(openWithEditor('/Users/u/p', 'sublime', d)).rejects.toThrow(EditorError)
   })
   it('el modo E2E solo se honra sin empaquetar y con ruta absoluta', () => {
-    expect(resolveE2eEditors({ isPackaged: true, env: { ONYXCODE_E2E_EDITOR_LOG: '/tmp/x' } })).toBeNull()
-    expect(resolveE2eEditors({ isPackaged: false, env: { ONYXCODE_E2E_EDITOR_LOG: 'x' } })).toBeNull()
+    expect(resolveE2eEditors({ isPackaged: true, env: { LAZUNOX_E2E_EDITOR_LOG: '/tmp/x' } })).toBeNull()
+    expect(resolveE2eEditors({ isPackaged: false, env: { LAZUNOX_E2E_EDITOR_LOG: 'x' } })).toBeNull()
     expect(resolveE2eEditors({ isPackaged: false, env: {} })).toBeNull()
   })
 })

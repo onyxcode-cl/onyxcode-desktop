@@ -1,5 +1,5 @@
 // Checklist manual del LRU de `messages` (docs/LRU-PLAN.md) contra la app real, con el tope forzado a 2
-// (`localStorage['onyx.lru.max']='2'`, que `lruMax()` relee en cada llamada). Sin sleeps fijos: todo por condición.
+// (`localStorage['lazunox.lru.max']='2'`, que `lruMax()` relee en cada llamada). Sin sleeps fijos: todo por condición.
 import { afterAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { MODE } from '../lib/launch'
@@ -31,11 +31,11 @@ const dev = MODE === 'dev'
 // ─────────────────────────────── Chat ───────────────────────────────
 
 describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
-  const app = useApp({ localStorage: { 'onyx.lru.max': String(MAX) } })
+  const app = useApp({ localStorage: { 'lazunox.lru.max': String(MAX) } })
 
   it('el tope forzado llega al renderer (localStorage) y useSessions arranca sin claves', async () => {
     const { page } = app()
-    expect(await page.evaluate(() => localStorage.getItem('onyx.lru.max'))).toBe('2')
+    expect(await page.evaluate(() => localStorage.getItem('lazunox.lru.max'))).toBe('2')
     expect(await messageKeys(page)).toEqual([])
   })
 
@@ -72,7 +72,7 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
         const w = window as any
         w.__lru = { blank: 0, loader: 0, content: 0, samples: 0 }
         const check = (): void => {
-          if (w.__onyxE2E.useChat.getState().activeSessionId !== target) return
+          if (w.__lazunoxE2E.useChat.getState().activeSessionId !== target) return
           const text = document.body.innerText
           w.__lru.samples++
           if (text.includes('Cargando conversación…')) w.__lru.loader++
@@ -146,7 +146,7 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
     expect(text).toBe(full)
     expect(await serverText(fake.conn, a)).toBe(full)
     const parts = await page.evaluate((sid) => {
-      const list = ((window as any).__onyxE2E.useSessions.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string }[] }[]
+      const list = ((window as any).__lazunoxE2E.useSessions.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string }[] }[]
       return { assistants: list.filter((m) => m.info.role === 'assistant').length, textParts: list.filter((m) => m.info.role === 'assistant').flatMap((m) => m.parts).filter((p) => p.type === 'text').length }
     }, a)
     expect(parts).toEqual({ assistants: 1, textParts: 1 })
@@ -163,7 +163,7 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
     await page.evaluate(() => {
       const w = window as any
       w.__ghost = { seen: new Set<string>(), peak: 0 }
-      w.__ghostOff = w.__onyxE2E.useSessions.subscribe((st: { messages: Record<string, unknown[]> }) => {
+      w.__ghostOff = w.__lazunoxE2E.useSessions.subscribe((st: { messages: Record<string, unknown[]> }) => {
         const ks = Object.keys(st.messages)
         w.__ghost.peak = Math.max(w.__ghost.peak, ks.length)
         for (const k of ks) if (k.startsWith('ses_ghost_')) w.__ghost.seen.add(k)
@@ -194,7 +194,7 @@ describe.skipIf(!dev || IS_WIN)('LRU de messages: Tareas real (tope 2)', () => {
     bin.cleanup()
     folder.cleanup()
   })
-  const app = useApp({ localStorage: { 'onyx.lru.max': String(MAX) }, env: bin.env })
+  const app = useApp({ localStorage: { 'lazunox.lru.max': String(MAX) }, env: bin.env })
   const DUP_KEY = /two children with the same key/
   let cw: FakeClient
   let dir = ''
@@ -288,11 +288,11 @@ describe.skipIf(!dev || IS_WIN)('LRU de messages: Tareas real (tope 2)', () => {
 describe.skipIf(!dev)('LRU de messages: Code (tope 2)', () => {
   const proj = makeHomeFolder()
   afterAll(() => proj.cleanup())
-  const app = useApp({ localStorage: { 'onyx.lru.max': String(MAX) } })
+  const app = useApp({ localStorage: { 'lazunox.lru.max': String(MAX) } })
   const codeKeys = async (): Promise<string[]> => Object.keys(await storeState<Record<string, unknown>>(app().page, 'useCode', 'messages'))
   const codeText = async (id: string): Promise<string> =>
     app().page.evaluate((sid) => {
-      const list = ((window as any).__onyxE2E.useCode.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string; text?: string }[] }[]
+      const list = ((window as any).__lazunoxE2E.useCode.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string; text?: string }[] }[]
       return list.flatMap((m) => m.parts.filter((x) => x.type === 'text').map((x) => `${m.info.role}:${x.text ?? ''}`)).join('|')
     }, id)
   const activeCode = (): Promise<string> => storeState<string>(app().page, 'useCode', 'activeSessionID')

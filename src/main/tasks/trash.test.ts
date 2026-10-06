@@ -4,14 +4,14 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { resolveE2eTrashDir, trashToDir } from './trash'
 
-describe('ONYXCODE_E2E_TRASH_DIR (solo pruebas)', () => {
+describe('LAZUNOX_E2E_TRASH_DIR (solo pruebas)', () => {
   it('se honra sin empaquetar y solo con ruta absoluta', () => {
-    expect(resolveE2eTrashDir({ isPackaged: false, env: { ONYXCODE_E2E_TRASH_DIR: '/tmp/x' } })).toBe('/tmp/x')
-    expect(resolveE2eTrashDir({ isPackaged: false, env: { ONYXCODE_E2E_TRASH_DIR: 'relativa' } })).toBeNull()
+    expect(resolveE2eTrashDir({ isPackaged: false, env: { LAZUNOX_E2E_TRASH_DIR: '/tmp/x' } })).toBe('/tmp/x')
+    expect(resolveE2eTrashDir({ isPackaged: false, env: { LAZUNOX_E2E_TRASH_DIR: 'relativa' } })).toBeNull()
     expect(resolveE2eTrashDir({ isPackaged: false, env: {} })).toBeNull()
   })
   it('empaquetada: se ignora siempre', () => {
-    expect(resolveE2eTrashDir({ isPackaged: true, env: { ONYXCODE_E2E_TRASH_DIR: '/tmp/x' } })).toBeNull()
+    expect(resolveE2eTrashDir({ isPackaged: true, env: { LAZUNOX_E2E_TRASH_DIR: '/tmp/x' } })).toBeNull()
   })
   it('mueve el archivo a la carpeta de pruebas sin pisar nombres', async () => {
     const base = mkdtempSync(join(tmpdir(), 'trash-'))
@@ -35,12 +35,11 @@ describe('ONYXCODE_E2E_TRASH_DIR (solo pruebas)', () => {
       for (const n of readdirSync(d)) {
         const f = join(d, n)
         if (statSync(f).isDirectory()) walk(f)
-        else if (/\.(ts|tsx)$/.test(n) && !n.endsWith('.test.ts') && readFileSync(f, 'utf8').includes('ONYXCODE_E2E_TRASH_DIR'))
-          hits.push(f)
+        else if (/\.(ts|tsx)$/.test(n) && !n.endsWith('.test.ts') && readFileSync(f, 'utf8').includes('LAZUNOX_E2E_TRASH_DIR')) hits.push(f)
       }
     }
     walk(root)
     expect(hits.map((h) => h.slice(root.length).replace(/\\/g, '/'))).toEqual(['/main/tasks/trash.ts'])
-    expect(readFileSync(hits[0], 'utf8')).toMatch(/const dir = !i\.isPackaged \? i\.env\.ONYXCODE_E2E_TRASH_DIR : undefined/)
+    expect(readFileSync(hits[0], 'utf8')).toMatch(/const dir = !i\.isPackaged \? i\.env\.LAZUNOX_E2E_TRASH_DIR : undefined/)
   })
 })

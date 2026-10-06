@@ -12,8 +12,8 @@ seguridad vigente: `docs/SEGURIDAD.md` («3 quater»).
 > existe el navegador integrado y `userData/cowork-browser*` se borra al arrancar. Las menciones a «Chrome aparte» de
 > abajo son históricas y no describen la app actual.
 
-> Nota de nombres: el producto se llama «OnyxCode» pero el código sigue diciendo «OnyxCode» (`APP_NAME`,
-> `persist:onyxcode-web-*`, `onyxcode_session`, `embedded-browser/`…). No se renombró nada.
+> Nota de nombres: el producto se llama «Lazunox» pero el código sigue diciendo «Lazunox» (`APP_NAME`,
+> `persist:lazunox-web-*`, `lazunox_session`, `embedded-browser/`…). No se renombró nada.
 
 Orden de los paquetes: **D0 solo y primero** (prueba de viabilidad en Electron real, secuencial,
 decide los fallbacks); **D1, D2, D3 y D4 en paralelo** (contratos/IPC/aislamiento, herramientas del
@@ -49,7 +49,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
   en `schemas.ts`; rol de ventana nuevo `browserHost`.
 - `src/main/embedded-browser/{api.ts,session.ts,cdp.ts,surface.ts,service.ts,approvals.ts,
   downloads.ts,store.ts,popout.ts,dev-servers.ts}`: la superficie aislada completa (B.2), dos
-  particiones propias (`persist:onyxcode-web-code`/`cowork`), `webRequest` obligatorio, lista blanca de
+  particiones propias (`persist:lazunox-web-code`/`cowork`), `webRequest` obligatorio, lista blanca de
   CDP (`ALLOWED_CDP`), cola de aprobaciones con respaldo nativo, descargas con cuarentena manual,
   límite de 6 pestañas por owner y 12 en total.
 - Exención quirúrgica de una línea en `web-security.ts::harden()` por identidad de objeto de sesión
@@ -65,12 +65,12 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
   `click`, `fill`, `fill_form`, `type_text`, `press_key`, `scroll`, `wait_for`, `handle_dialog`,
   `get_page_text`…) y 4 más solo en Code (`list_console_messages`, `list_network_requests`,
   `get_network_request`, `evaluate_script`, esta última solo contra un origen loopback).
-- Guardas en orden fijo: actor (`onyxcode_session` obligatorio, falla cerrado) → activación → control
+- Guardas en orden fijo: actor (`lazunox_session` obligatorio, falla cerrado) → activación → control
   (`beginAgentAction`, pausado/`userActive`/otra tarea) → clic con verificación anti-clickjacking
   (`DOM.getNodeForLocation`) → campos sensibles rechazados → acciones sensibles con confirmación
   (`confirmSensitive`) → verificación posterior (`verifyAfterAction`) → marca de contenido no
   confiable → ritmo (150 ms entre acciones de entrada, 30 s por llamada).
-- Plugin `onyxcode-session.js` (inyecta `onyxcode_session` en toda llamada `browser_*`, igual patrón que
+- Plugin `lazunox-session.js` (inyecta `lazunox_session` en toda llamada `browser_*`, igual patrón que
   `plan-gate`); cableado en el sidecar de Code (`server.ts`/`config.ts`) y en Cowork
   (`manager.ts`/`sandbox.ts`, con la elección de motor de B.11 — navegador integrado o Chrome aparte
   del Lote C); `computer.md`/`cowork.md` actualizados.
@@ -114,7 +114,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 | Navegador del agente por defecto | **Apagado** en Code y en Cowork (igual criterio que el Lote C: se activa a mano en Ajustes) | `embedded-browser/store.ts` (`agentEnabled: {code:false, cowork:false}`) |
 | Chrome aparte (Lote C) | **[Histórico: eliminado en el refactor fase 3; nota del 2026-09-29]** Se conservaba como opción avanzada, sin borrar código, excluyente con el navegador integrado | `cowork/manager.ts`, B.11 |
 | Navegador en Cowork Sandbox | **Se activa también ahí** (antes solo existía en Control total), con permiso por sitio, aceptando que ese tráfico no pasa por el proxy de egress | `cowork/{manager,sandbox}.ts` |
-| Particiones de sesión | Code y Cowork **separados** (`persist:onyxcode-web-code` / `-cowork`); dentro de Cowork, **una sola partición compartida** para Sandbox y Control total (reconfirmado por el usuario junto con el resto, no es un descuido) | `embedded-browser/session.ts` |
+| Particiones de sesión | Code y Cowork **separados** (`persist:lazunox-web-code` / `-cowork`); dentro de Cowork, **una sola partición compartida** para Sandbox y Control total (reconfirmado por el usuario junto con el resto, no es un descuido) | `embedded-browser/session.ts` |
 | Buscador de la barra de URL | Google (si el texto no parece una URL) | `embedded-browser/service.ts::normalizeInput` |
 
 > **Bug encontrado y corregido en D5:** el esqueleto original de `store.ts` (B.4/D1 paso 6 del plan)

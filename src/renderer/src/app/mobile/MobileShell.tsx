@@ -78,7 +78,7 @@ function useNavHistory(): void {
       {
         push: () => {
           try {
-            history.pushState({ onyxNav: true }, '')
+            history.pushState({ lazunoxNav: true }, '')
           } catch {
             // sin historial: solo funciona el botón de la interfaz
           }

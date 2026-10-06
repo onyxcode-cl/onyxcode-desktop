@@ -100,8 +100,8 @@
     "sandboxKey": "0123456789abcdef",
     "mounts": [
       {
-        "win": "C:\\onyx\\tareas\\a",
-        "linux": "/win/c/onyx/tareas/a",
+        "win": "C:\\lazunox\\tareas\\a",
+        "linux": "/win/c/lazunox/tareas/a",
         "mode": "rw"
       },
       {
@@ -110,8 +110,8 @@
         "mode": "ro"
       },
       {
-        "win": "C:\\Users\\Ben\\AppData\\Roaming\\OnyxCode\\opencode-config",
-        "linux": "/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config",
+        "win": "C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config",
+        "linux": "/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config",
         "mode": "ro"
       }
     ],
@@ -127,13 +127,13 @@
       "--hostname",
       "127.0.0.1"
     ],
-    "cwd": "/win/c/onyx/tareas/a",
+    "cwd": "/win/c/lazunox/tareas/a",
     "env": {
       "OPENCODE_SERVER_USERNAME": "tasks",
       "HTTP_PROXY": "http://tok@127.0.0.1:52000",
       "OPENCODE_AUTH_CONTENT": "{\"opencode-go\":{\"type\":\"api\",\"key\":\"sandboxed-placeholder-0123456789abcdef\"}}",
-      "ONYXCODE_TASKS_FOLDER": "/win/c/onyx/tareas/a",
-      "OPENCODE_CONFIG_DIR": "/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config"
+      "LAZUNOX_TASKS_FOLDER": "/win/c/lazunox/tareas/a",
+      "OPENCODE_CONFIG_DIR": "/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config"
     },
     "landlock": {
       "minAbi": 2,
@@ -163,7 +163,7 @@
           "access": "ro"
         },
         {
-          "path": "/opt/onyx",
+          "path": "/opt/lazunox",
           "access": "rx"
         },
         {
@@ -175,15 +175,15 @@
           "access": "dev"
         },
         {
-          "path": "/home/onyx/xdg/0123456789abcdef",
+          "path": "/home/lazunox/xdg/0123456789abcdef",
           "access": "private"
         },
         {
-          "path": "/tmp/onyx-0123456789abcdef",
+          "path": "/tmp/lazunox-0123456789abcdef",
           "access": "private"
         },
         {
-          "path": "/win/c/onyx/tareas/a",
+          "path": "/win/c/lazunox/tareas/a",
           "access": "rw-nodelete"
         },
         {
@@ -191,11 +191,11 @@
           "access": "ro"
         },
         {
-          "path": "/win/c/Users/Ben/AppData/Roaming/OnyxCode/opencode-config",
+          "path": "/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config",
           "access": "ro"
         },
         {
-          "path": "/win/c/onyx/tareas/a/.onyxcode/trabajo",
+          "path": "/win/c/lazunox/tareas/a/.lazunox/trabajo",
           "access": "rw-delete"
         }
       ]
@@ -277,7 +277,7 @@
         "ro"
       ],
       [
-        "/opt/onyx",
+        "/opt/lazunox",
         "rx"
       ],
       [

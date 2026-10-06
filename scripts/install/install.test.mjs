@@ -9,8 +9,8 @@ import { fileURLToPath } from 'node:url'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'install.sh')
 const PIN = 'c778a9630c6a627449b1a39e1e62b7a2a2565eb2'
-const GOOD_SIG = `designated => identifier "cl.bentec.onyxcode" and certificate leaf = H"${PIN}"`
-const DMG = 'onyxcode-0.3.0-arm64.dmg'
+const GOOD_SIG = `designated => identifier "cl.bentec.lazunox" and certificate leaf = H"${PIN}"`
+const DMG = 'lazunox-0.3.0-arm64.dmg'
 const DMG_BYTES = 'contenido-falso-del-dmg'
 const sha = (s) => createHash('sha256').update(s).digest('hex')
 
@@ -32,7 +32,7 @@ esac`,
   hdiutil: `echo "hdiutil $*" >> "$LOG"
 if [ "$1" = "attach" ]; then
   while [ $# -gt 0 ]; do [ "$1" = "-mountpoint" ] && mp="$2"; shift; done
-  mkdir -p "$mp/OnyxCode.app/Contents"; echo bin > "$mp/OnyxCode.app/Contents/marker"
+  mkdir -p "$mp/Lazunox.app/Contents"; echo bin > "$mp/Lazunox.app/Contents/marker"
 fi`,
   ditto: `echo "ditto $*" >> "$LOG"; mkdir -p "$2"; cp -R "$1/." "$2/"`,
   codesign: `echo "codesign $*" >> "$LOG"; echo "Executable=x" >&2; echo "$MOCK_SIG"`,
@@ -41,7 +41,7 @@ fi`,
 }
 
 function setup(env = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'onyx-install-test-'))
+  const root = mkdtempSync(join(tmpdir(), 'lazunox-install-test-'))
   roots.push(root)
   const bin = join(root, 'bin')
   const home = join(root, 'home')
@@ -52,7 +52,7 @@ function setup(env = {}) {
     writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`)
     chmodSync(join(bin, name), 0o755)
   }
-  const data = join(home, 'Library', 'Application Support', 'OnyxCode')
+  const data = join(home, 'Library', 'Application Support', 'Lazunox')
   mkdirSync(data, { recursive: true })
   writeFileSync(join(data, 'datos.txt'), 'importante')
   const log = join(root, 'calls.log')
@@ -62,8 +62,8 @@ function setup(env = {}) {
     HOME: home,
     TMPDIR: tmp,
     LOG: log,
-    ONYXCODE_RELEASES_REPO: 'dueno/repo',
-    ONYXCODE_INSTALL_DIR: apps,
+    LAZUNOX_RELEASES_REPO: 'dueno/repo',
+    LAZUNOX_INSTALL_DIR: apps,
     MOCK_SUMS: `${sha(DMG_BYTES)}  ${DMG}`,
     MOCK_DMG: DMG_BYTES,
     MOCK_SHA: sha(DMG_BYTES),
@@ -81,7 +81,7 @@ test('caso feliz: descarga, verifica, instala y limpia', () => {
   const t = setup()
   const r = t.run('--no-open')
   assert.equal(r.status, 0, r.stderr)
-  assert.ok(existsSync(join(t.apps, 'OnyxCode.app', 'Contents', 'marker')))
+  assert.ok(existsSync(join(t.apps, 'Lazunox.app', 'Contents', 'marker')))
   assert.match(r.calls, /curl -fsSL -o \S+\/SHA256SUMS https:\/\/github\.com\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/)
   assert.match(r.calls, /hdiutil attach -readonly/)
   assert.match(r.calls, /codesign -d -r-/)
@@ -110,19 +110,19 @@ test('SHA incorrecto aborta sin instalar y sin dejar temporales', () => {
   const r = t.run('--no-open')
   assert.notEqual(r.status, 0)
   assert.match(r.stderr, /SHA-256/)
-  assert.ok(!existsSync(join(t.apps, 'OnyxCode.app')))
+  assert.ok(!existsSync(join(t.apps, 'Lazunox.app')))
   assert.ok(!r.calls.includes('hdiutil attach'))
   assert.deepEqual(readdirSync(t.tmp), [])
 })
 
 test('firma distinta aborta, desmonta y limpia', () => {
   const t = setup({
-    MOCK_SIG: 'designated => identifier "cl.bentec.onyxcode" and certificate leaf = H"0000000000000000000000000000000000000000"'
+    MOCK_SIG: 'designated => identifier "cl.bentec.lazunox" and certificate leaf = H"0000000000000000000000000000000000000000"'
   })
   const r = t.run('--no-open')
   assert.notEqual(r.status, 0)
   assert.match(r.stderr, /firma/)
-  assert.ok(!existsSync(join(t.apps, 'OnyxCode.app')))
+  assert.ok(!existsSync(join(t.apps, 'Lazunox.app')))
   assert.match(r.calls, /hdiutil detach/)
   assert.deepEqual(readdirSync(t.tmp), [])
 })
@@ -136,12 +136,12 @@ test('Intel es rechazado antes de descargar nada', () => {
 })
 
 test('el marcador PENDIENTE se niega a ejecutar', () => {
-  const t = setup({ ONYXCODE_RELEASES_REPO: '' })
+  const t = setup({ LAZUNOX_RELEASES_REPO: '' })
   const r = t.run('--no-open')
   assert.notEqual(r.status, 0)
   assert.match(r.stderr, /todavía no hay una release/)
   assert.equal(r.calls, '')
-  assert.ok(!existsSync(join(t.apps, 'OnyxCode.app')))
+  assert.ok(!existsSync(join(t.apps, 'Lazunox.app')))
 })
 
 test('--dry-run no ejecuta nada', () => {
@@ -152,15 +152,15 @@ test('--dry-run no ejecuta nada', () => {
   assert.match(r.stdout, /\[dry-run\] curl -fsSL/)
   assert.match(r.stdout, /\[dry-run\] codesign -d -r-/)
   assert.deepEqual(readdirSync(t.tmp), [])
-  assert.ok(!existsSync(join(t.apps, 'OnyxCode.app')))
+  assert.ok(!existsSync(join(t.apps, 'Lazunox.app')))
 })
 
 test('--uninstall borra la app pero nunca los datos, y lo dice', () => {
   const t = setup()
-  mkdirSync(join(t.apps, 'OnyxCode.app'))
+  mkdirSync(join(t.apps, 'Lazunox.app'))
   const r = t.run('--uninstall')
   assert.equal(r.status, 0, r.stderr)
-  assert.ok(!existsSync(join(t.apps, 'OnyxCode.app')))
+  assert.ok(!existsSync(join(t.apps, 'Lazunox.app')))
   assert.equal(readFileSync(join(t.data, 'datos.txt'), 'utf8'), 'importante')
   assert.match(r.stdout, /datos NO se han tocado/)
   assert.equal(r.calls, '')
@@ -168,10 +168,10 @@ test('--uninstall borra la app pero nunca los datos, y lo dice', () => {
 
 test('--uninstall --dry-run no borra nada', () => {
   const t = setup()
-  mkdirSync(join(t.apps, 'OnyxCode.app'))
+  mkdirSync(join(t.apps, 'Lazunox.app'))
   const r = t.run('--uninstall', '--dry-run')
   assert.equal(r.status, 0, r.stderr)
-  assert.ok(existsSync(join(t.apps, 'OnyxCode.app')))
+  assert.ok(existsSync(join(t.apps, 'Lazunox.app')))
 })
 
 test('--help y opción desconocida', () => {

@@ -3,7 +3,7 @@
 // (con `ditto`, NO con electron-builder: rompería los symlinks de Electron Framework.framework), el manifiesto
 // update.json y su firma Ed25519 update.json.sig. NO sube nada y NO hace peticiones de red.
 //
-//   ONYXCODE_UPDATE_KEY_FILE=~/.onyxcode-keys/update.pem node scripts/publish-update.mjs [--app dist/mac-arm64/OnyxCode.app] [--out dist/update]
+//   LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem node scripts/publish-update.mjs [--app dist/mac-arm64/Lazunox.app] [--out dist/update]
 //
 // La clave privada se lee del archivo indicado (fuera del repo, permisos 0600) y nunca se imprime.
 //
@@ -50,11 +50,11 @@ export async function publish({ appPath, outDir, keyFile, manifestOnly = false, 
   const info = checkBundle(appPath, { appId: brand.appId, version })
 
   mkdirSync(outDir, { recursive: true })
-  const zipName = `OnyxCode-${version}-arm64.zip`
+  const zipName = `Lazunox-${version}-arm64.zip`
   const zipPath = join(outDir, zipName)
   for (const f of [zipPath, join(outDir, 'update.json'), join(outDir, 'update.json.sig')]) rmSync(f, { force: true })
   // --sequesterRsrc: macOS marca con com.apple.provenance (no se puede quitar) los archivos que crea y ditto los guarda como
-  // entradas AppleDouble bajo __MACOSX/OnyxCode.app/…; el cliente las admite (ditto -x las aplica como metadatos, no crea nada fuera).
+  // entradas AppleDouble bajo __MACOSX/Lazunox.app/…; el cliente las admite (ditto -x las aplica como metadatos, no crea nada fuera).
   const z = run('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', appPath, zipPath])
   if (z.status !== 0) throw new Error(`ditto -c -k falló: ${(z.stderr || '').trim()}`)
   listZip(zipPath)
@@ -89,9 +89,9 @@ function arg(name) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   publish({
-    appPath: resolve(arg('--app') ?? join(defaultRoot, 'dist/mac-arm64/OnyxCode.app')),
+    appPath: resolve(arg('--app') ?? join(defaultRoot, 'dist/mac-arm64/Lazunox.app')),
     outDir: resolve(arg('--out') ?? join(defaultRoot, 'dist/update')),
-    keyFile: process.env.ONYXCODE_UPDATE_KEY_FILE,
+    keyFile: process.env.LAZUNOX_UPDATE_KEY_FILE,
     manifestOnly: process.argv.includes('--manifest-only')
   })
     .then((r) => {

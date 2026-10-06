@@ -7,7 +7,7 @@ test('CSP: estricta, sin terceros, sin eval ni scripts en línea', () => {
   for (const bad of ["'unsafe-eval'", 'http:', '*', "script-src 'self' 'unsafe-inline'"]) assert.ok(!CSP.includes(bad), bad)
   assert.match(CSP, /default-src 'none'/)
   assert.match(CSP, /script-src 'self'(;|$)/)
-  assert.match(CSP, /connect-src 'self' wss:\/\/remoto\.onyxcode\.cl/)
+  assert.match(CSP, /connect-src 'self' wss:\/\/remoto\.lazunox\.cl/)
   assert.match(CSP, /frame-ancestors 'none'/)
   assert.match(CSP, /base-uri 'none'/)
   assert.match(CSP, /worker-src 'self'/)

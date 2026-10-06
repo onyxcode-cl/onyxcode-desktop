@@ -13,10 +13,10 @@ ni los servidores OpenCode del usuario.
 | `npm run build` | `electron-vite build` (main, preload, renderer). |
 | `npm run test:transform` | Cada archivo del renderer pasa por la cadena de Vite dev (Babel/Tailwind/alias), sin Electron. |
 | `npm run test:smoke` | Humo con Electron (script propio `e2e/smoke.mjs`). |
-| `npm run test:e2e` | E2E con Electron real + OpenCode falso (ver abajo), modo dev-renderer con ganchos `__onyxE2E`. |
-| `npm run test:e2e:prod` | Igual pero cargando por `onyxcode://app` con la CSP real; solo aserciones de humo (no hay ganchos). |
-| `npm run test:fs` | **Opcional, solo macOS, fuera de `verify`.** Puntos de restauración sobre volúmenes reales: monta imágenes `hdiutil` ExFAT, FAT32 y HFS+ con mayúsculas (`-nobrowse`, `detach -force` al terminar) y repite crear → modificar/crear/borrar → cambios → deshacer → rehacer. Activa `ONYXCODE_FS_IT=1`. |
-| `npm run test:stress` | **Opcional, fuera de `verify`.** Estrés de los puntos de restauración (`ONYXCODE_STRESS=1`): 19 990 archivos entran y 20 010 dejan el punto omitido, incremental de 5 000 archivos rápido, p99 del retraso del bucle de eventos < 100 ms y RSS < +200 MB con dos archivos de 45 MB. Tarda ~15 s. |
+| `npm run test:e2e` | E2E con Electron real + OpenCode falso (ver abajo), modo dev-renderer con ganchos `__lazunoxE2E`. |
+| `npm run test:e2e:prod` | Igual pero cargando por `lazunox://app` con la CSP real; solo aserciones de humo (no hay ganchos). |
+| `npm run test:fs` | **Opcional, solo macOS, fuera de `verify`.** Puntos de restauración sobre volúmenes reales: monta imágenes `hdiutil` ExFAT, FAT32 y HFS+ con mayúsculas (`-nobrowse`, `detach -force` al terminar) y repite crear → modificar/crear/borrar → cambios → deshacer → rehacer. Activa `LAZUNOX_FS_IT=1`. |
+| `npm run test:stress` | **Opcional, fuera de `verify`.** Estrés de los puntos de restauración (`LAZUNOX_STRESS=1`): 19 990 archivos entran y 20 010 dejan el punto omitido, incremental de 5 000 archivos rápido, p99 del retraso del bucle de eventos < 100 ms y RSS < +200 MB con dos archivos de 45 MB. Tarda ~15 s. |
 | `npm run check:mcp-catalog` | **Manual, con red, fuera de `verify`.** Cada ficha del catálogo MCP (`src/shared/mcp-catalog.ts`) debe responder como servidor MCP a un `initialize` (200, 401 o 405) y su documentación debe responder 200. Salida 1 si alguna falla, 3 sin red. Ejecutar al tocar el catálogo y de vez en cuando (las URL de los proveedores cambian). |
 | `npm run verify:update-manifest` | **Sin red ni `.app`, rápido.** Genera una clave Ed25519 efímera y un ZIP falso, firma un manifiesto como `publish-update.mjs` y exige que se acepte el legítimo y se rechace cada manipulación (firma, byte, otra clave, downgrade, appId/keyId/tag, SHA-256/tamaño del ZIP, manifiesto enorme…); además valida `UPDATE_PUBLIC_KEY`/`UPDATE_KEY_ID` de `brand.ts`. También corre en `npm test` (`src/main/update/manifest-script.test.ts`, que añade la paridad con el cliente real). |
 | `npm run perf:startup` | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria». |
@@ -38,7 +38,7 @@ Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo
 
 **Dónde se abren las ventanas (decisión):** Electron SÍ abre ventanas y Playwright las controla desde una sesión SSH sin escritorio (sesión 0 con pantalla virtual de 1024x768), con el modo sin pantalla existente (`src/main/e2e-headless.ts`: opacidad 0, sin ratón, `showInactive`). Se eligió ese modo porque no toca nada del usuario ni la configuración global, no hace falta una tarea programada y los resultados son los mismos: se probó una tarea de `schtasks /IT` bajo `C:\onyx` en la sesión interactiva del dueño (con y sin `E2E_VISIBLE=1`, avisando de que mostraba ventanas) y fallaron exactamente las mismas 2 pruebas (ver abajo), así que no aporta; la tarea se borró. Único ajuste: la pantalla virtual recorta la ventana de 1280x820 a ~1008x703 y el panel de Code tapaba los botones de la barra, así que `launch.ts` la devuelve a 1264x760 en win32 (solo pruebas).
 
-- **Lanzador falso (solo pruebas):** el OpenCode falso es un script. En `!app.isPackaged`, win32 y ruta `.mjs`, `server.ts` y `binary.ts` ejecutan `node <mjs> …` (`src/main/opencode/test-launcher.ts`; nunca empaquetado ni con un `.exe`). `ONYXCODE_TEST_BUNDLED_DIR` acepta `opencode.mjs` si falta `opencode.exe` (también solo sin empaquetar).
+- **Lanzador falso (solo pruebas):** el OpenCode falso es un script. En `!app.isPackaged`, win32 y ruta `.mjs`, `server.ts` y `binary.ts` ejecutan `node <mjs> …` (`src/main/opencode/test-launcher.ts`; nunca empaquetado ni con un `.exe`). `LAZUNOX_TEST_BUNDLED_DIR` acepta `opencode.mjs` si falta `opencode.exe` (también solo sin empaquetar).
 - **Procesos:** `e2e/lib/proc.ts` (pgrep/pkill en POSIX; `taskkill /T /F` y CIM en Windows, con tiempo límite) lo usan `launch.ts` y `lotes.ts`. `global-setup.ts` lanza `electron-vite` con node. `E2E_MODE=prod` y `perf:startup` no se han adaptado.
 - **Saltos de specs enteras** (`e2e/win-skip.json`, solo win32; cada entrada con motivo y ninguna de la v1, vigilado por `src/test/win-skip.test.ts`): `restore`, `tasks-stall`, `update-check`, `update-install`, `legacy-data`.
 - **Saltos dentro de specs** (`describe/it.skipIf(IS_WIN)`, solo bloques de Tareas): `lotes` (Lote B: Tareas y política gestionada), `lru` («Tareas real»), `fase6` («Tareas y Code en la misma carpeta»), `own-auth` (Tareas con sandbox), `calidad-rc` (6 casos «Tareas…»), `calidad-r3a` («Tareas: arriba vuelve»), `calidad-t1/t2/t4/t5` (el caso de Tareas), `calidad-t3` (Tareas interrumpida y Cmd+Q con tarea ocupada), `perf` (bloque de Tareas), `i18n` (5) y `i18n-main` (1, `tasks:folders:check`).
@@ -52,9 +52,9 @@ Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo
 
 ### Paquete de Windows (tanda 4)
 
-**Construir (en el PC Windows, árbol `C:\onyx\wt`):** `STEPS=package scripts/win/sync.sh` (corre `npm run package:win`; ≈ 40 s; deja `dist\OnyxCode-Setup-<versión>-x64.exe` y `dist\win-unpacked`). **Comprobar sin firma:** `powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\pack-check.ps1 -Branch <rama> -Install` (log `C:\onyx\logs\<rama>\pack-check.txt`; solo toca `C:\onyx\`, el instalador de prueba va a `C:\onyx\inst` y se desinstala). Comprueba: artefacto y tamaño; `app.asar` sin `helper.swift`/`launcher`/`updater`/`cu-helper`/`swap.sh`; node-pty desempaquetado (`conpty.node`, `conpty.dll`, `OpenConsole.exe`); fuses (RunAsNode, NodeOptions y inspect desactivados; integridad del asar y solo-asar activados); `resources\opencode\opencode.exe --version` = 1.18.33; metadatos PE; humo de la app empaquetada (proceso vivo, `opencode.exe` hijo en ≈ 2 s, terminal PowerShell que responde por la API real del preload con el fuse `runAsNode` desactivado —`scripts/win/pty-probe.mjs`, por `--remote-debugging-port`—, la app sale al cerrar la ventana y no queda ningún proceso); instalación silenciosa `/S /D=C:\onyx\inst`, el mismo humo sobre lo instalado, desinstalación silenciosa y limpieza (carpeta, clave `HKCU\…\Uninstall`, accesos directos).
+**Construir (en el PC Windows, árbol `C:\onyx\wt`):** `STEPS=package scripts/win/sync.sh` (corre `npm run package:win`; ≈ 40 s; deja `dist\Lazunox-Setup-<versión>-x64.exe` y `dist\win-unpacked`). **Comprobar sin firma:** `powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\pack-check.ps1 -Branch <rama> -Install` (log `C:\onyx\logs\<rama>\pack-check.txt`; solo toca `C:\onyx\`, el instalador de prueba va a `C:\onyx\inst` y se desinstala). Comprueba: artefacto y tamaño; `app.asar` sin `helper.swift`/`launcher`/`updater`/`cu-helper`/`swap.sh`; node-pty desempaquetado (`conpty.node`, `conpty.dll`, `OpenConsole.exe`); fuses (RunAsNode, NodeOptions y inspect desactivados; integridad del asar y solo-asar activados); `resources\opencode\opencode.exe --version` = 1.18.33; metadatos PE; humo de la app empaquetada (proceso vivo, `opencode.exe` hijo en ≈ 2 s, terminal PowerShell que responde por la API real del preload con el fuse `runAsNode` desactivado —`scripts/win/pty-probe.mjs`, por `--remote-debugging-port`—, la app sale al cerrar la ventana y no queda ningún proceso); instalación silenciosa `/S /D=C:\onyx\inst`, el mismo humo sobre lo instalado, desinstalación silenciosa y limpieza (carpeta, clave `HKCU\…\Uninstall`, accesos directos).
 
-**Resultado (rama `feat/win-t4-instalador-y-paridad-v1`, Windows 11, sin firma):** instalador 151,6 MB (158 935 425 bytes), 0 fallos de 32 comprobaciones. `ProductName=OnyxCode`, `FileVersion=0.3.0`, Authenticode `NotSigned`.
+**Resultado (rama `feat/win-t4-instalador-y-paridad-v1`, Windows 11, sin firma):** instalador 151,6 MB (158 935 425 bytes), 0 fallos de 32 comprobaciones. `ProductName=Lazunox`, `FileVersion=0.3.0`, Authenticode `NotSigned`.
 
 **Defecto del script encontrado y corregido:** `package:win` llamaba a `electron-builder` a secas; en `cmd`, el directorio actual va antes del PATH y `PATHEXT` incluye `.JS`, así que se ejecutaba `electron-builder.js` (la configuración) con Windows Script Host y el proceso se quedaba colgado sin hijos ni mensaje (con la ventana oculta, un diálogo invisible). Ahora llama a `node node_modules/electron-builder/cli.js`.
 
@@ -89,11 +89,11 @@ Flujo de cada corrida:
 
 1. `e2e/lib/global-setup.ts`: `electron-vite build` (main/preload/renderer en `out/`) y, en modo dev, un servidor Vite
    solo-renderer (API de Vite con la config `renderer` de `electron.vite.config.ts`, puerto libre) → `E2E_RENDERER_URL`.
-   Con `import.meta.env.DEV=true` existen los ganchos `window.__onyxE2E`.
-2. `startApp()` (`e2e/lib/launch.ts`): crea un userData temporal `onyx-e2e-*` (con `realpath`), escribe `settings.json`
+   Con `import.meta.env.DEV=true` existen los ganchos `window.__lazunoxE2E`.
+2. `startApp()` (`e2e/lib/launch.ts`): crea un userData temporal `lazunox-e2e-*` (con `realpath`), escribe `settings.json`
    mínimo con `defaultModel = fake/fake-model` (sin él, `migrateLegacyUserData` movería datos reales de Lapis/OpenDesk),
    copia el OpenCode falso al tmp y lanza `_electron.launch` con `--user-data-dir=<tmp>`, `ELECTRON_RENDERER_URL`
-   (solo dev), `OPENCODE_BIN`, `XDG_*` al tmp, `OPENCODE_SIDECAR_LOG=1` y `ONYXCODE_E2E_HEADLESS=1`.
+   (solo dev), `OPENCODE_BIN`, `XDG_*` al tmp, `OPENCODE_SIDECAR_LOG=1` y `LAZUNOX_E2E_HEADLESS=1`.
 3. La app gestiona el falso como sidecar. El cliente `FakeClient` (`e2e/lib/fake.ts`, API `/__e2e/*`) obtiene puerto y
    credenciales del IPC `opencode:connection` (funciona también en prod).
 4. Al terminar (aunque falle): cierra la app, mata descendientes y todo proceso cuyo argv mencione el tmp, y borra el tmp.
@@ -107,20 +107,20 @@ de stdout/stderr de main que casen `\[ipc\] canales sin esquema`, `Pre-transform
 Utilidades: `dialogs.ts` (`stubDialog`, `dialogCalls`), `notifications.ts` (`spyNotifications`: `shown()`, `badge()`,
 `clear()`), `stores.ts` (`storeState`, `storeCall`, `storeSet`, `hook`, `setMode`, `waitForHooks`), `wait.ts`
 (`expectVisible`, `expectCount`, `expectAttr`: aserciones con reintento, playwright-core no trae `expect`),
-`withLru(app, n)` en `launch.ts` (fija `localStorage['onyx.lru.max']` y recarga; solo dev).
+`withLru(app, n)` en `launch.ts` (fija `localStorage['lazunox.lru.max']` y recarga; solo dev).
 
 Variables de entorno:
 
 | Variable | Efecto |
 |---|---|
-| `E2E_MODE=prod` | Carga por `onyxcode://app`, sin ganchos (lo fija `test:e2e:prod`). |
+| `E2E_MODE=prod` | Carga por `lazunox://app`, sin ganchos (lo fija `test:e2e:prod`). |
 | `E2E_SKIP_BUILD=1` | Reutiliza `./out` en vez de recompilar (`out/` debe estar al día). |
 | `E2E_DEBUG=1` | Vuelca stdout/stderr de main. |
-| `E2E_VISIBLE=1` | No define `ONYXCODE_E2E_HEADLESS` (ventana visible). |
+| `E2E_VISIBLE=1` | No define `LAZUNOX_E2E_HEADLESS` (ventana visible). |
 | `E2E_KEEP=1` | No borra el userData temporal (para inspeccionarlo). |
 | `E2E_LAUNCH_ATTEMPTS` / `E2E_LAUNCH_TIMEOUT_MS` | Reintentos (6) y timeout por intento (8000 ms) de `electron.launch`. |
 14. **Asistente de primer uso con un OpenCode real (3 min; F8-B1 a F8-B4).** Con un userData nuevo
-    (`--user-data-dir=/tmp/onyx-nuevo`, sin `onboarded`) y `PATH`/`~/.opencode` sin OpenCode: aparece el paso 1; «Copiar comando
+    (`--user-data-dir=/tmp/lazunox-nuevo`, sin `onboarded`) y `PATH`/`~/.opencode` sin OpenCode: aparece el paso 1; «Copiar comando
     de instalación» deja `curl -fsSL https://opencode.ai/install | bash` en el portapapeles (la app no lo ejecuta), «Abrir
     instrucciones» abre https://opencode.ai/docs. Instala OpenCode en una terminal, «Reintentar» → «OpenCode encontrado». En
     el paso 2, «Obtener mi clave» abre la página de OpenCode y una clave real de OpenCode Go la deja «conectada»; el paso 3
@@ -148,10 +148,10 @@ Ayudantes propios en `e2e/lib/lotes.ts`; página de prueba `e2e/pages/tienda.htm
 - **Las tareas sí corren en el harness**: el sandbox Seatbelt de las tareas deniega leer el userData de la app, y el falso que
   copia `startApp` vive dentro de él (`code=126`). `fakeOutsideUserData()` lo copia a otro tmp y se pasa como
   `OPENCODE_BIN` en `startApp({ env })`. La carpeta de trabajo tiene que estar bajo `~` (`makeTasksDir()` crea
-  `~/onyx-e2e-cw-*`): la política de carpetas rechaza `/private/var/...`. La conexión del servidor de la carpeta se obtiene
+  `~/lazunox-e2e-cw-*`): la política de carpetas rechaza `/private/var/...`. La conexión del servidor de la carpeta se obtiene
   con `tasksFake(page)` (un `FakeClient` sobre `useTasks.conn`).
 - **MCP del navegador**: `mcp.browser` (URL + Bearer) sale de `fake.config().content.mcp.browser`; `BrowserMcp` habla JSON-RPC
-  con `onyxcode_session` = id de una sesión real del falso (main la resuelve con `GET /session/:id`). Antes de `new_page`
+  con `lazunox_session` = id de una sesión real del falso (main la resuelve con `GET /session/:id`). Antes de `new_page`
   hay que tener una pestaña humana y el panel abierto (`prepareCodeBrowser`), y esperar a que el usuario esté inactivo
   (`waitUserIdle`: un Escape o clic reciente cuenta como humano, las acciones de entrada del agente se rechazan y la
   navegación se atribuye al usuario, sin tarjeta). `neutralizeNativeApprovalDialog` anula el diálogo nativo de respaldo.
@@ -186,7 +186,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
    del Dock suma/resta con las pendientes. Con «Sonido» apagado no suena.
 4. **Atajo global de Quick Entry (1 min).** Con la app en segundo plano, pulsa el atajo físico: aparece el cuadro, escribes
    y Enter abre Chat con la respuesta. Esperado: funciona aunque otra app tenga el foco.
-5. **Foco real en instancia única (1 min).** Con la app minimizada, abre una segunda con `open -n -a OnyxCode` (o el
+5. **Foco real en instancia única (1 min).** Con la app minimizada, abre una segunda con `open -n -a Lazunox` (o el
    binario): la primera se restaura y toma el foco, la segunda no queda en el Dock.
 6. **Login de Google en el navegador embebido (1 min; Lote D 6, 12).** Abre accounts.google.com en el panel Navegador:
    puede rechazar el navegador embebido (esperado); el agente nunca teclea la contraseña. `ps aux | grep remote-debugging`
@@ -201,7 +201,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 9. **Navegador integrado con entrada humana (1 min; Lote D 1, 3–5, 8).** ⌘4 → example.com: clic, scroll, teclear, copiar y
    pegar, menú contextual; al abrir un menú del proyecto encima la página se congela y vuelve. Pide al agente «abre
    wikipedia.org»: tarjeta de sitio; «Pausar/Reanudar/Detener» y tomar el control con un clic; «Seleccionar elemento» →
-   «Añadir al chat»; una descarga muestra su tarjeta y cae en `~/Downloads/OnyxCode/`.
+   «Añadir al chat»; una descarga muestra su tarjeta y cae en `~/Downloads/Lazunox/`.
 10. **`.dmg` empaquetado abre (2 min).** `npm run package`, monta el `.dmg`, arrastra a Aplicaciones y ábrela (primer
     arranque: Gatekeeper según `docs/DISTRIBUCION.md`): carga la ventana, conecta, un chat responde.
 11. **`prefers-reduced-motion` (30 s).** Ajustes del Sistema → Accesibilidad → Pantalla → «Reducir movimiento»: en la app no
@@ -219,10 +219,10 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 15. **Diagnóstico con el motor real (2 min; F8-B23).** Ajustes › Diagnóstico: el estado dice «Funcionando»; «Motor (archivo)» muestra el `.log` real; «Copiar» y pega en un editor: no hay claves ni
     la contraseña del motor, y tu carpeta personal aparece como `~`. «Exportar…» crea un `.txt` con permisos 0600 (`ls -l`).
 16. **Sesión heredada de la antigua cuenta (2 min; F8-B88).** Solo si tu equipo tiene una sesión real de una versión con cuentas.
-    Antes: `ls -l ~/Library/Application\ Support/OnyxCode/account.bin` y
-    `security find-generic-password -s "OnyxCode Safe Storage" >/dev/null && echo llavero-ok`. Abre la versión nueva: no hay pantalla
+    Antes: `ls -l ~/Library/Application\ Support/Lazunox/account.bin` y
+    `security find-generic-password -s "Lazunox Safe Storage" >/dev/null && echo llavero-ok`. Abre la versión nueva: no hay pantalla
     de acceso ni Ajustes › Cuenta, `account.bin` ya no está, `llavero-ok` sigue saliendo, los celulares vinculados siguen vinculados
-    (`remote.bin` se descifra) y las claves de IA y las conversaciones siguen ahí. En Windows, lo mismo en `%APPDATA%\OnyxCode\`.
+    (`remote.bin` se descifra) y las claves de IA y las conversaciones siguen ahí. En Windows, lo mismo en `%APPDATA%\Lazunox\`.
 
 ## Mapa: guías antiguas → spec o humano
 

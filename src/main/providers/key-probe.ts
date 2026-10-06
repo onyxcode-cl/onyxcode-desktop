@@ -122,7 +122,7 @@ export interface E2eProbeEnvInput {
 
 /** Origen de pruebas, o null (siempre null empaquetada o si no es exactamente `http://127.0.0.1:<puerto>`). */
 export function resolveE2eKeyProbeBase(i: E2eProbeEnvInput): string | null {
-  const base = !i.isPackaged ? i.env.ONYXCODE_E2E_KEY_PROBE_BASE : undefined
+  const base = !i.isPackaged ? i.env.LAZUNOX_E2E_KEY_PROBE_BASE : undefined
   return base && /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(base) ? base : null
 }
 

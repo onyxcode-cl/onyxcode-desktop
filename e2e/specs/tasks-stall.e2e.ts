@@ -51,7 +51,7 @@ describe.skipIf(!DEV)('Tareas: aviso de inactividad', () => {
     const notice = page.getByRole('status').filter({ hasText: /Sin actividad desde hace \d+ min/ })
     await expectVisible(notice, 75_000)
     // Sigue en curso: el aviso no cortó nada.
-    expect(await page.evaluate((sid) => (window as any).__onyxE2E.useSessions.getState().status[sid] ?? 'idle', id)).not.toBe('idle')
+    expect(await page.evaluate((sid) => (window as any).__lazunoxE2E.useSessions.getState().status[sid] ?? 'idle', id)).not.toBe('idle')
     await expectVisible(page.getByText('La tarea sigue en curso', { exact: false }))
     await shot(a, SHOTS, 'stall-notice')
 

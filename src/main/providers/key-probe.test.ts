@@ -256,9 +256,9 @@ describe('KeyProber', () => {
   })
 })
 
-describe('ONYXCODE_E2E_KEY_PROBE_BASE (solo pruebas)', () => {
+describe('LAZUNOX_E2E_KEY_PROBE_BASE (solo pruebas)', () => {
   it('se honra sin empaquetar y solo con http://127.0.0.1:<puerto>', () => {
-    const env = (v: string): Record<string, string> => ({ ONYXCODE_E2E_KEY_PROBE_BASE: v })
+    const env = (v: string): Record<string, string> => ({ LAZUNOX_E2E_KEY_PROBE_BASE: v })
     expect(resolveE2eKeyProbeBase({ isPackaged: false, env: env('http://127.0.0.1:5555') })).toBe('http://127.0.0.1:5555')
     for (const bad of [
       'http://localhost:5555',
@@ -272,7 +272,7 @@ describe('ONYXCODE_E2E_KEY_PROBE_BASE (solo pruebas)', () => {
     expect(resolveE2eKeyProbeBase({ isPackaged: false, env: {} })).toBeNull()
   })
   it('empaquetada: se ignora siempre', () => {
-    expect(resolveE2eKeyProbeBase({ isPackaged: true, env: { ONYXCODE_E2E_KEY_PROBE_BASE: 'http://127.0.0.1:5555' } })).toBeNull()
+    expect(resolveE2eKeyProbeBase({ isPackaged: true, env: { LAZUNOX_E2E_KEY_PROBE_BASE: 'http://127.0.0.1:5555' } })).toBeNull()
   })
   it('guardia estática: solo key-probe.ts la lee y lo hace bajo !isPackaged', () => {
     const root = resolve(__dirname, '..', '..')
@@ -281,12 +281,12 @@ describe('ONYXCODE_E2E_KEY_PROBE_BASE (solo pruebas)', () => {
       for (const n of readdirSync(d)) {
         const f = join(d, n)
         if (statSync(f).isDirectory()) walk(f)
-        else if (/\.(ts|tsx)$/.test(n) && !n.endsWith('.test.ts') && readFileSync(f, 'utf8').includes('ONYXCODE_E2E_KEY_PROBE_BASE'))
+        else if (/\.(ts|tsx)$/.test(n) && !n.endsWith('.test.ts') && readFileSync(f, 'utf8').includes('LAZUNOX_E2E_KEY_PROBE_BASE'))
           hits.push(f)
       }
     }
     walk(root)
     expect(hits.map((h) => h.slice(root.length).replace(/\\/g, '/'))).toEqual(['/main/providers/key-probe.ts'])
-    expect(readFileSync(hits[0], 'utf8')).toMatch(/const base = !i\.isPackaged \? i\.env\.ONYXCODE_E2E_KEY_PROBE_BASE : undefined/)
+    expect(readFileSync(hits[0], 'utf8')).toMatch(/const base = !i\.isPackaged \? i\.env\.LAZUNOX_E2E_KEY_PROBE_BASE : undefined/)
   })
 })

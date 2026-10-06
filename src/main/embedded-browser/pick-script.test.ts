@@ -185,8 +185,8 @@ describe('pickInPage (en la página, mundo aislado)', () => {
     const { form } = page(doc)
     const r = run(form)
     expect(r.html).not.toMatch(/hunter2|SECRET123|juan|mi secreto|value=|onclick|style=|csrf|session=|token|<script|path d=|AAAA/)
-    expect(r.html).toContain('<input type="password" data-onyx-redacted>')
-    expect(r.html).toContain('<input type="hidden" data-onyx-redacted>')
+    expect(r.html).toContain('<input type="password" data-lazunox-redacted>')
+    expect(r.html).toContain('<input type="hidden" data-lazunox-redacted>')
     expect(r.html).toContain('<textarea name="msg"></textarea>')
     expect(r.html).toContain('<svg viewBox="0 0 1 1"></svg>')
     expect(r.html).toContain('href="https://shop.example.com/cart"')
@@ -215,7 +215,7 @@ describe('pickInPage (en la página, mundo aislado)', () => {
     page(doc)
     const pwd = doc.all.find((n) => n.getAttribute('type') === 'password')!
     const r = run(pwd)
-    expect(r.html).toBe('<input type="password" data-onyx-redacted>')
+    expect(r.html).toBe('<input type="password" data-lazunox-redacted>')
     expect(r.flags.sensitive).toBe(true)
   })
 

@@ -110,7 +110,7 @@ describe('diccionario es partido de la PWA (P2-9)', () => {
       const parsed = parseDictionary(src, file)
       expect(parsed.props.length, `${area}: propiedades leídas`).toBe(Object.keys(dict).length)
       const coreMod = run(transform.call({}, src, file)!.code)
-      const restMod = run(transform.call({}, src, file + '?onyx-rest')!.code)
+      const restMod = run(transform.call({}, src, file + '?lazunox-rest')!.code)
       expect(
         Object.keys(coreMod).filter((k) => k in restMod),
         `${area}: claves duplicadas`

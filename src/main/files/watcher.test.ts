@@ -124,7 +124,7 @@ describe('FileWatchHub', () => {
     vi.useFakeTimers()
     made = []
     events = []
-    root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-watch-')))
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-watch-')))
     mkdirSync(join(root, 'src'))
   })
   afterEach(() => vi.useRealTimers())
@@ -179,7 +179,7 @@ describe('FileWatchHub', () => {
   })
   it('tope de vigilantes recursivos: el excedente queda en modo none (manual)', () => {
     const hub = mk('darwin', { maxRecursive: 1, exists: () => true })
-    const other = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-watch2-')))
+    const other = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-watch2-')))
     expect(hub.subscribe(1, root, 'sub-aaaaaaaa').mode).toBe('recursive')
     expect(hub.subscribe(1, other, 'sub-bbbbbbbb').mode).toBe('none')
     expect(made).toHaveLength(1)

@@ -31,7 +31,7 @@ import { verifyUpdate } from '../../scripts/verify-update.mjs'
 
 const isMac = process.platform === 'darwin'
 const d = isMac ? describe : describe.skip
-const APP_ID = 'cl.bentec.onyxcode'
+const APP_ID = 'cl.bentec.lazunox'
 
 let base: string
 let repo: string
@@ -41,7 +41,7 @@ let privPem: string
 let keyFile: string
 
 function toyApp(dir: string, version: string): string {
-  const app = join(dir, 'OnyxCode.app')
+  const app = join(dir, 'Lazunox.app')
   mkdirSync(join(app, 'Contents', 'MacOS'), { recursive: true })
   mkdirSync(join(app, 'Contents', 'Resources'), { recursive: true })
   writeFileSync(join(app, 'Contents', 'MacOS', 'toy'), '#!/bin/sh\nexit 0\n')
@@ -58,7 +58,7 @@ function toyApp(dir: string, version: string): string {
 function fakeRepo(version: string, publicKey: string): string {
   const r = mkdtempSync(join(base, 'repo-'))
   mkdirSync(join(r, 'src', 'shared'), { recursive: true })
-  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'onyxcode', version }))
+  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'lazunox', version }))
   writeFileSync(
     join(r, 'src', 'shared', 'brand.ts'),
     `export const AUTHOR_ALIAS = 'bentec'\nexport const UPDATE_PUBLIC_KEY = '${publicKey}' as string\nexport const UPDATE_KEY_ID = 'k1' as string\n`
@@ -67,7 +67,7 @@ function fakeRepo(version: string, publicKey: string): string {
 }
 
 beforeAll(() => {
-  base = mkdtempSync(join(tmpdir(), 'onyx-updscripts-'))
+  base = mkdtempSync(join(tmpdir(), 'lazunox-updscripts-'))
   keys = join(base, 'keys')
   mkdirSync(keys)
   const k = generateKeyPairSync('ed25519')
@@ -96,7 +96,7 @@ d('publish-update.mjs', () => {
       keyId: 'k1',
       publishedAt: '2026-09-30T12:00:00.000Z'
     })
-    expect(manifest.zip.name).toBe('OnyxCode-0.4.0-arm64.zip')
+    expect(manifest.zip.name).toBe('Lazunox-0.4.0-arm64.zip')
     expect(manifest.zip.size).toBe(statSync(join(out, manifest.zip.name)).size)
     const log = await verifyUpdate({ dir: out, current: '0.3.0', pubkey: pubB64, appId: APP_ID, keyId: 'k1' })
     expect(log.join('\n')).toMatch(/firma Ed25519 del manifiesto: válida/)
@@ -127,7 +127,7 @@ d('publish-update.mjs', () => {
     const app = toyApp(join(base, 'a4'), '0.4.0')
     await expect(
       publish({ appPath: app, outDir: join(base, 'out4'), keyFile: undefined, root: fakeRepo('0.4.0', pubB64) })
-    ).rejects.toThrow(/ONYXCODE_UPDATE_KEY_FILE/)
+    ).rejects.toThrow(/LAZUNOX_UPDATE_KEY_FILE/)
     const other = generateKeyPairSync('ed25519').publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
     await expect(publish({ appPath: app, outDir: join(base, 'out4'), keyFile, root: fakeRepo('0.4.0', other) })).rejects.toThrow(
       /NO corresponde/
@@ -198,7 +198,7 @@ d('verify-update.mjs', () => {
   }, 60_000)
   it('ZIP con el mismo tamaño pero otro contenido: SHA-256 distinto; con más bytes: tamaño distinto', async () => {
     const dir = await fresh()
-    const zp = join(dir, 'OnyxCode-0.4.0-arm64.zip')
+    const zp = join(dir, 'Lazunox-0.4.0-arm64.zip')
     const buf = readFileSync(zp)
     buf[buf.length - 40] ^= 0xff
     writeFileSync(zp, buf)
@@ -214,9 +214,9 @@ d('verify-update.mjs', () => {
   }, 60_000)
   it('ZIP firmado correctamente pero con una entrada ../: rechazado antes de extraer', async () => {
     const dir = await fresh()
-    const name = 'OnyxCode-0.4.0-arm64.zip'
+    const name = 'Lazunox-0.4.0-arm64.zip'
     const zp = join(dir, name)
-    writeStoredZip(zp, ['OnyxCode.app/', '../evil'])
+    writeStoredZip(zp, ['Lazunox.app/', '../evil'])
     // Re-firmar con la clave de la prueba para aislar la comprobación del listado.
     const { createPrivateKey } = await import('node:crypto')
     const priv = createPrivateKey(privPem)
@@ -240,7 +240,7 @@ d('paridad con el cliente (src/shared/update-install.ts)', () => {
     tag: 'v0.4.0',
     platform: 'darwin-arm64',
     keyId: 'k1',
-    zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 10, sha256: SHA },
+    zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 10, sha256: SHA },
     publishedAt: '2026-09-30T00:00:00Z',
     ...over
   })
@@ -251,8 +251,8 @@ d('paridad con el cliente (src/shared/update-install.ts)', () => {
       mk({ platform: 'x' }),
       mk({ version: 'nueva' }),
       mk({ zip: { name: 'a.zip', size: 0, sha256: SHA } }),
-      mk({ zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 700 * 1024 * 1024, sha256: SHA } }),
-      mk({ zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 1, sha256: 'ZZ' } }),
+      mk({ zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 700 * 1024 * 1024, sha256: SHA } }),
+      mk({ zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 1, sha256: 'ZZ' } }),
       mk({ publishedAt: 'ayer' }),
       null,
       []
@@ -269,7 +269,7 @@ d('paridad con el cliente (src/shared/update-install.ts)', () => {
       [mk(), { keyId: 'k2' }],
       [mk(), { tag: 'v0.4.1' }],
       [mk({ version: '0.4.1' }), {}],
-      [mk({ zip: { name: 'OnyxCode-0.3.0-arm64.zip', size: 1, sha256: SHA } }), {}]
+      [mk({ zip: { name: 'Lazunox-0.3.0-arm64.zip', size: 1, sha256: SHA } }), {}]
     ]
     for (const [m, o] of variants) {
       const parsed = sharedParse(m)!
@@ -280,19 +280,19 @@ d('paridad con el cliente (src/shared/update-install.ts)', () => {
   })
   it('isSafeZipEntry coincide', () => {
     for (const e of [
-      'OnyxCode.app/',
-      'OnyxCode.app/a/b',
+      'Lazunox.app/',
+      'Lazunox.app/a/b',
       '../x',
       '/etc',
       'a\\b',
-      'OnyxCode.app/../x',
+      'Lazunox.app/../x',
       '__MACOSX/x',
-      '__MACOSX/OnyxCode.app/._x',
+      '__MACOSX/Lazunox.app/._x',
       '__MACOSX/',
-      '__MACOSX/OnyxCode.app/evil',
-      'OnyxCode.app//x',
+      '__MACOSX/Lazunox.app/evil',
+      'Lazunox.app//x',
       '',
-      'OnyxCode.app/x\0',
+      'Lazunox.app/x\0',
       'C:/x'
     ])
       expect(lib.isSafeZipEntry(e)).toBe(sharedSafe(e))

@@ -36,7 +36,7 @@ const Q = toBase64Url(seeded(9)(32))
 const DEVICE = 'a'.repeat(32)
 const REAL = { offer: 'ab'.repeat(32), answer: 'cd'.repeat(32) }
 const T = [
-  'onyxcode-auth-v3',
+  'lazunox-auth-v3',
   'resume',
   DEVICE,
   REAL.offer,

@@ -69,13 +69,13 @@ export async function verifyManifestAndZip({ dir, current, pubkey, appId, keyId,
 export async function verifyUpdate(opts) {
   const { log, manifest: m, zip } = await verifyManifestAndZip(opts)
   const entries = listZip(zip)
-  log.push(`listado del ZIP: ${entries.length} entradas, todas dentro de OnyxCode.app/`)
+  log.push(`listado del ZIP: ${entries.length} entradas, todas dentro de Lazunox.app/`)
 
-  const tmp = mkdtempSync(join(tmpdir(), 'onyx-verify-update-'))
+  const tmp = mkdtempSync(join(tmpdir(), 'lazunox-verify-update-'))
   try {
     const ex = run('/usr/bin/ditto', ['-x', '-k', zip, tmp])
     if (ex.status !== 0) throw new Error(`ditto -x -k falló: ${(ex.stderr || '').trim()}`)
-    log.push(...checkBundle(join(tmp, 'OnyxCode.app'), { appId: m.appId, version: m.version }))
+    log.push(...checkBundle(join(tmp, 'Lazunox.app'), { appId: m.appId, version: m.version }))
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }

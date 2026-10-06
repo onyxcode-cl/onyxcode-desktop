@@ -24,7 +24,7 @@ const settingsOf = (userData: string): Record<string, unknown> =>
   JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8')) as Record<string, unknown>
 
 function newUserData(): string {
-  const d = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-ownauth-')))
+  const d = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-ownauth-')))
   dirs.push(d)
   return d
 }

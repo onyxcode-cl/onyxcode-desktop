@@ -20,7 +20,7 @@ const DEV = MODE === 'dev'
 const SHOTS = process.env.RESTORE_SHOTS_DIR
 const fakeBin = fakeOutsideUserData()
 const work = makeTasksDir()
-const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-e2e-trash-')))
+const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-trash-')))
 afterAll(() => {
   fakeBin.dispose()
   work.dispose()
@@ -41,14 +41,14 @@ const shot = (app: E2EApp, name: string, widths?: number[]): Promise<void> => ta
 
 async function waitIdle(page: Page): Promise<void> {
   await expect
-    .poll(() => page.evaluate(() => Object.values((window as any).__onyxE2E.useSessions.getState().status).every((s) => s === 'idle')), {
+    .poll(() => page.evaluate(() => Object.values((window as any).__lazunoxE2E.useSessions.getState().status).every((s) => s === 'idle')), {
       timeout: 30_000
     })
     .toBe(true)
 }
 
 describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
-  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, ONYXCODE_E2E_TRASH_DIR: trashDir } })
+  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_E2E_TRASH_DIR: trashDir } })
   let sessionId = ''
 
   beforeAll(() => {
@@ -100,7 +100,7 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     expect(read('a.txt')).toBe(A_NEW)
     expect(read('b.txt')).toBe('archivo nuevo\n')
     expect(existsSync(join(work.dir, 'c.txt'))).toBe(false)
-    sessionId = await page.evaluate(() => (window as any).__onyxE2E.useTasks.getState().activeTaskId)
+    sessionId = await page.evaluate(() => (window as any).__lazunoxE2E.useTasks.getState().activeTaskId)
     expect(sessionId).toMatch(/^ses_/)
     // Nada del almacén dentro de la carpeta del usuario.
     expect(readdirSync(work.dir).sort()).toEqual(['a.txt', 'b.txt', CLOUD_EDIT, CLOUD_KEEP])

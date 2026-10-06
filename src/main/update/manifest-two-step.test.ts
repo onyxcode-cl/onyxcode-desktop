@@ -19,7 +19,7 @@ import { signUpdate } from '../../../scripts/sign-update.mjs'
 
 const isMac = process.platform === 'darwin'
 const d = isMac ? describe : describe.skip
-const APP_ID = 'cl.bentec.onyxcode'
+const APP_ID = 'cl.bentec.lazunox'
 
 let base: string
 let pubB64: string
@@ -35,7 +35,7 @@ function pemFile(name: string): { file: string; pub: string } {
 }
 
 function toyApp(dir: string, version: string): string {
-  const app = join(dir, 'OnyxCode.app')
+  const app = join(dir, 'Lazunox.app')
   mkdirSync(join(app, 'Contents', 'MacOS'), { recursive: true })
   writeFileSync(join(app, 'Contents', 'MacOS', 'toy'), '#!/bin/sh\nexit 0\n')
   chmodSync(join(app, 'Contents', 'MacOS', 'toy'), 0o755)
@@ -51,7 +51,7 @@ function toyApp(dir: string, version: string): string {
 function fakeRepo(version: string, publicKey: string): string {
   const r = mkdtempSync(join(base, 'repo-'))
   mkdirSync(join(r, 'src', 'shared'), { recursive: true })
-  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'onyxcode', version }))
+  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'lazunox', version }))
   writeFileSync(
     join(r, 'src', 'shared', 'brand.ts'),
     `export const AUTHOR_ALIAS = 'bentec'\nexport const UPDATE_PUBLIC_KEY = '${publicKey}' as string\nexport const UPDATE_KEY_ID = 'k1' as string\n`
@@ -60,7 +60,7 @@ function fakeRepo(version: string, publicKey: string): string {
 }
 
 beforeAll(() => {
-  base = mkdtempSync(join(tmpdir(), 'onyx-twostep-'))
+  base = mkdtempSync(join(tmpdir(), 'lazunox-twostep-'))
   mkdirSync(join(base, 'keys'))
   const a = pemFile('update.pem')
   keyFile = a.file
@@ -93,7 +93,7 @@ d('publicación en dos pasos', () => {
     const parsed = parseManifest(JSON.parse(bytes.toString('utf8')))!
     expect(validateManifest(parsed, { appId: APP_ID, current: '0.3.0', tag: 'v0.4.0', keyId: 'k1' }).ok).toBe(true)
     // El ZIP de la release es el mismo que describe el manifiesto.
-    expect(parsed.zip.name).toBe('OnyxCode-0.4.0-arm64.zip')
+    expect(parsed.zip.name).toBe('Lazunox-0.4.0-arm64.zip')
   }, 60_000)
 
   it('el modo de un solo paso sigue funcionando (firma incluida)', async () => {
@@ -114,7 +114,7 @@ d('publicación en dos pasos', () => {
     await expect(signUpdate({ dir: out, keyFile: inside, root: repo })).rejects.toThrow(/DENTRO del repositorio/)
     expect(existsSync(join(out, 'update.json.sig'))).toBe(false)
     // ZIP manipulado (un byte más): no se firma.
-    const zip = join(out, 'OnyxCode-0.4.2-arm64.zip')
+    const zip = join(out, 'Lazunox-0.4.2-arm64.zip')
     writeFileSync(zip, Buffer.concat([readFileSync(zip), Buffer.from('x')]))
     await expect(signUpdate({ dir: out, keyFile, root: repo })).rejects.toThrow(/no firmo/)
     expect(existsSync(join(out, 'update.json.sig'))).toBe(false)
@@ -139,11 +139,11 @@ describe('lista de claves (rotación)', () => {
     const bytes = Buffer.from('{"schema":1}\n')
     const signWith = (k: typeof a.privateKey) => sign(null, bytes, k).toString('base64')
     const keys = [
-      { id: 'onyxcode-2', key: spki(a.publicKey) },
-      { id: 'onyxcode-1', key: spki(b.publicKey) }
+      { id: 'lazunox-2', key: spki(a.publicKey) },
+      { id: 'lazunox-1', key: spki(b.publicKey) }
     ]
-    expect(verifyWithKeys(bytes, signWith(a.privateKey), keys)).toBe('onyxcode-2')
-    expect(verifyWithKeys(bytes, signWith(b.privateKey), keys)).toBe('onyxcode-1')
+    expect(verifyWithKeys(bytes, signWith(a.privateKey), keys)).toBe('lazunox-2')
+    expect(verifyWithKeys(bytes, signWith(b.privateKey), keys)).toBe('lazunox-1')
     expect(verifyWithKeys(bytes, signWith(c.privateKey), keys)).toBeNull()
   })
 
@@ -158,14 +158,14 @@ describe('lista de claves (rotación)', () => {
       repo: 'o/r',
       update,
       updateKey: spki(a.publicKey),
-      updateKeyId: 'onyxcode-2',
+      updateKeyId: 'lazunox-2',
       updateKeys: [
-        { id: 'onyxcode-1', key: spki(b.publicKey) },
+        { id: 'lazunox-1', key: spki(b.publicKey) },
         { id: 'rota', key: 'no-es-una-clave' }
       ],
       platform: 'darwin'
     })
-    expect(cfg.keys.map((k) => k.id)).toEqual(['onyxcode-2', 'onyxcode-1'])
+    expect(cfg.keys.map((k) => k.id)).toEqual(['lazunox-2', 'lazunox-1'])
     expect(cfg.enabled).toBe(true)
   })
 })

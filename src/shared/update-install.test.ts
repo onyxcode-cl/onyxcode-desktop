@@ -17,16 +17,16 @@ import {
 const SHA = 'a'.repeat(64)
 const manifest = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   schema: 1,
-  appId: 'cl.bentec.onyxcode',
+  appId: 'cl.bentec.lazunox',
   version: '0.4.0',
   tag: 'v0.4.0',
   platform: 'darwin-arm64',
   keyId: 'k1',
-  zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 1000, sha256: SHA },
+  zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 1000, sha256: SHA },
   publishedAt: '2026-09-30T12:00:00Z',
   ...over
 })
-const ctx = { appId: 'cl.bentec.onyxcode', current: '0.3.0', tag: 'v0.4.0', keyId: 'k1' }
+const ctx = { appId: 'cl.bentec.lazunox', current: '0.3.0', tag: 'v0.4.0', keyId: 'k1' }
 const parsed = (over: Record<string, unknown> = {}): UpdateManifest => parseManifest(manifest(over)) as UpdateManifest
 
 describe('parseManifest', () => {
@@ -36,11 +36,11 @@ describe('parseManifest', () => {
   it.each([
     ['schema 2', { schema: 2 }],
     ['plataforma', { platform: 'darwin-x64' }],
-    ['sha256 corto', { zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 1, sha256: 'abc' } }],
-    ['sha256 en mayúsculas', { zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 1, sha256: 'A'.repeat(64) } }],
-    ['tamaño 0', { zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 0, sha256: SHA } }],
-    ['tamaño > 600 MB', { zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 601 * 1024 * 1024, sha256: SHA } }],
-    ['tamaño fraccionario', { zip: { name: 'OnyxCode-0.4.0-arm64.zip', size: 1.5, sha256: SHA } }],
+    ['sha256 corto', { zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 1, sha256: 'abc' } }],
+    ['sha256 en mayúsculas', { zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 1, sha256: 'A'.repeat(64) } }],
+    ['tamaño 0', { zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 0, sha256: SHA } }],
+    ['tamaño > 600 MB', { zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 601 * 1024 * 1024, sha256: SHA } }],
+    ['tamaño fraccionario', { zip: { name: 'Lazunox-0.4.0-arm64.zip', size: 1.5, sha256: SHA } }],
     ['versión no semver', { version: 'nueva' }],
     ['fecha inválida', { publishedAt: 'ayer' }],
     ['appId vacío', { appId: '' }]
@@ -64,7 +64,7 @@ describe('validateManifest', () => {
   })
   it('tag distinto al de la release', () => {
     expect(
-      validateManifest(parsed({ tag: 'v0.4.1', version: '0.4.1', zip: { name: 'OnyxCode-0.4.1-arm64.zip', size: 1, sha256: SHA } }), ctx)
+      validateManifest(parsed({ tag: 'v0.4.1', version: '0.4.1', zip: { name: 'Lazunox-0.4.1-arm64.zip', size: 1, sha256: SHA } }), ctx)
     ).toMatchObject({
       ok: false,
       code: 'manifest'
@@ -80,11 +80,11 @@ describe('validateManifest', () => {
   })
   it('nombre de ZIP distinto del esperado', () => {
     for (const name of [
-      '../OnyxCode-0.4.0-arm64.zip',
-      'OnyxCode-0.4.0-x64.zip',
-      'OnyxCode-0.3.0-arm64.zip',
+      '../Lazunox-0.4.0-arm64.zip',
+      'Lazunox-0.4.0-x64.zip',
+      'Lazunox-0.3.0-arm64.zip',
       'evil.zip',
-      'OnyxCode-0.4.0-arm64.zip/x'
+      'Lazunox-0.4.0-arm64.zip/x'
     ]) {
       expect(validateManifest(parsed({ zip: { name, size: 1, sha256: SHA } }), ctx)).toMatchObject({ ok: false, code: 'manifest' })
     }
@@ -95,53 +95,52 @@ describe('validateManifest', () => {
 })
 
 describe('isSafeZipEntry', () => {
-  it.each([
-    'OnyxCode.app/',
-    'OnyxCode.app/Contents/Info.plist',
-    'OnyxCode.app/Contents/Frameworks/Electron Framework.framework/Versions/A/X'
-  ])('acepta %s', (e) => expect(isSafeZipEntry(e)).toBe(true))
+  it.each(['Lazunox.app/', 'Lazunox.app/Contents/Info.plist', 'Lazunox.app/Contents/Frameworks/Electron Framework.framework/Versions/A/X'])(
+    'acepta %s',
+    (e) => expect(isSafeZipEntry(e)).toBe(true)
+  )
   it.each([
     '',
-    '../OnyxCode.app/x',
-    'OnyxCode.app/../../etc/passwd',
-    'OnyxCode.app/a/../../b',
-    '/OnyxCode.app/x',
+    '../Lazunox.app/x',
+    'Lazunox.app/../../etc/passwd',
+    'Lazunox.app/a/../../b',
+    '/Lazunox.app/x',
     '/etc/passwd',
-    'OnyxCode.app\\x',
-    'OnyxCode.app/x\0y',
+    'Lazunox.app\\x',
+    'Lazunox.app/x\0y',
     'Otra.app/Contents/x',
     '__MACOSX/evil',
     '__MACOSX/Otra.app/._x',
-    '__MACOSX/OnyxCode.app/../../._x',
+    '__MACOSX/Lazunox.app/../../._x',
     '__MACOSX/../x/._y',
     '__MACOSX//._x',
-    'OnyxCode.app//x',
-    'OnyxCode.app/./x',
-    'OnyxCode.appx/y',
+    'Lazunox.app//x',
+    'Lazunox.app/./x',
+    'Lazunox.appx/y',
     'C:/Windows'
   ])('rechaza %j', (e) => expect(isSafeZipEntry(e)).toBe(false))
 })
 
 describe('validateInstallLocation', () => {
-  const ok = { appPath: '/Applications/OnyxCode.app', inApplicationsFolder: true, parentWritable: true, appWritable: true }
+  const ok = { appPath: '/Applications/Lazunox.app', inApplicationsFolder: true, parentWritable: true, appWritable: true }
   it('acepta /Applications y ~/Applications con permiso', () => {
     expect(validateInstallLocation(ok)).toEqual({ ok: true })
-    expect(validateInstallLocation({ ...ok, appPath: '/Users/a/Applications/OnyxCode.app' })).toEqual({ ok: true })
+    expect(validateInstallLocation({ ...ok, appPath: '/Users/a/Applications/Lazunox.app' })).toEqual({ ok: true })
   })
   it('rechaza translocación, /Volumes, fuera de Aplicaciones y sin permiso', () => {
-    expect(validateInstallLocation({ ...ok, appPath: '/private/var/folders/x/AppTranslocation/ABC/d/OnyxCode.app' })).toEqual({
+    expect(validateInstallLocation({ ...ok, appPath: '/private/var/folders/x/AppTranslocation/ABC/d/Lazunox.app' })).toEqual({
       ok: false,
       reason: 'translocated'
     })
-    expect(validateInstallLocation({ ...ok, appPath: '/Volumes/OnyxCode/OnyxCode.app' })).toEqual({ ok: false, reason: 'volume' })
-    expect(validateInstallLocation({ ...ok, appPath: '/Users/a/Downloads/OnyxCode.app', inApplicationsFolder: false })).toEqual({
+    expect(validateInstallLocation({ ...ok, appPath: '/Volumes/Lazunox/Lazunox.app' })).toEqual({ ok: false, reason: 'volume' })
+    expect(validateInstallLocation({ ...ok, appPath: '/Users/a/Downloads/Lazunox.app', inApplicationsFolder: false })).toEqual({
       ok: false,
       reason: 'not-applications'
     })
     expect(validateInstallLocation({ ...ok, parentWritable: false })).toEqual({ ok: false, reason: 'not-writable' })
     expect(validateInstallLocation({ ...ok, appWritable: false })).toEqual({ ok: false, reason: 'not-writable' })
     expect(validateInstallLocation({ ...ok, appPath: '/Applications/Otra.app' })).toEqual({ ok: false, reason: 'not-bundle' })
-    expect(validateInstallLocation({ ...ok, appPath: 'relativa/OnyxCode.app' })).toEqual({ ok: false, reason: 'not-bundle' })
+    expect(validateInstallLocation({ ...ok, appPath: 'relativa/Lazunox.app' })).toEqual({ ok: false, reason: 'not-bundle' })
   })
 })
 

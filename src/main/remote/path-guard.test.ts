@@ -67,7 +67,7 @@ describe('isSensitivePath', () => {
 
 describe('realpathLoose / enlaces', () => {
   it('resuelve enlaces, tolera rutas que no existen y rechaza enlaces rotos fuera del camino', () => {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-pg-')))
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-pg-')))
     try {
       mkdirSync(join(root, 'in'))
       mkdirSync(join(root, 'out'))

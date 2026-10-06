@@ -22,11 +22,11 @@ describe('verify-update-manifest', () => {
     const { privateKey, publicKey } = generateKeyPairSync('ed25519')
     const pub = lib.spkiBase64(publicKey)
     const manifest = lib.buildManifest({
-      appId: 'cl.x.onyxcode',
+      appId: 'cl.x.lazunox',
       version: '0.4.0',
       tag: 'v0.4.0',
       keyId: 'k1',
-      zipName: 'OnyxCode-0.4.0-arm64.zip',
+      zipName: 'Lazunox-0.4.0-arm64.zip',
       size: 10,
       sha256: 'a'.repeat(64),
       publishedAt: '2026-01-01T00:00:00.000Z'
@@ -36,7 +36,7 @@ describe('verify-update-manifest', () => {
     expect(verifyWithKeys(bytes, sig, [{ id: 'k1', key: pub }])).toBe('k1')
     const parsed = parseManifest(JSON.parse(bytes.toString('utf8')))!
     expect(parsed).not.toBeNull()
-    const ctx = { appId: 'cl.x.onyxcode', current: '0.3.0', tag: 'v0.4.0', keyId: 'k1' }
+    const ctx = { appId: 'cl.x.lazunox', current: '0.3.0', tag: 'v0.4.0', keyId: 'k1' }
     expect(validateManifest(parsed, ctx).ok).toBe(true)
     expect(validateManifest(parsed, { ...ctx, current: '0.4.0' }).ok).toBe(false)
     const flipped = Buffer.from(bytes)

@@ -24,7 +24,7 @@ const live: CompareService[] = []
 const g = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' })
 
 beforeEach(() => {
-  parent = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-cmp-')))
+  parent = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-cmp-')))
   repo = join(parent, 'proj')
   userData = join(parent, 'userData')
   chatDir = join(parent, 'chat')
@@ -89,7 +89,7 @@ const allTerminal = async (svc: CompareService, id: string): Promise<boolean> =>
   (await svc.list())
     .find((m) => m.id === id)!
     .columns.every((c) => ['done', 'error', 'cancelled'].includes(c.state) || (c.state === 'rateLimited' && c.retryAt === null))
-const branches = (): string => g(repo, 'branch', '--list', 'onyx-compare/*').trim()
+const branches = (): string => g(repo, 'branch', '--list', 'lazunox-compare/*').trim()
 const worktreeCount = (): number =>
   g(repo, 'worktree', 'list', '--porcelain')
     .split('\n')
@@ -110,7 +110,9 @@ describe('crear una comparación en Code', () => {
     const head = g(repo, 'rev-parse', 'HEAD').trim()
     const m = await svc.start({ id, mode: 'code', cwd: repo, models: models('a', 'b', 'c'), prompt: 'haz algo' })
     expect(m.baseCommit).toBe(head)
-    expect(m.columns.map((c) => c.worktree!.branch)).toEqual([0, 1, 2].map((n) => `onyx-compare/${id.replace(/-/g, '').slice(0, 8)}-${n}`))
+    expect(m.columns.map((c) => c.worktree!.branch)).toEqual(
+      [0, 1, 2].map((n) => `lazunox-compare/${id.replace(/-/g, '').slice(0, 8)}-${n}`)
+    )
     expect(worktreeCount()).toBe(4)
     for (const c of m.columns) {
       expect(existsSync(join(c.worktree!.path, 'keep.txt'))).toBe(true)
@@ -541,7 +543,7 @@ describe('exportación', () => {
     await expect(svc.buildBench(id)).rejects.toThrow()
     await waitFor(() => allTerminal(svc, id))
     const { fileName, json } = await svc.buildBench(id)
-    expect(fileName).toMatch(/^onyx-compare-[0-9a-f]{8}\.json$/)
+    expect(fileName).toMatch(/^lazunox-compare-[0-9a-f]{8}\.json$/)
     expect(json).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
     const b = JSON.parse(json) as {
       runs: { telemetry: { costUsd: number | null; filesModified: string[] | null }; gitDiff: string | null; cliVersion: string }[]

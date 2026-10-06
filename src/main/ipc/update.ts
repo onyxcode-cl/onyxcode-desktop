@@ -15,7 +15,7 @@ import { broadcast, handle } from './handle'
 
 function testEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const [k, v] of Object.entries(env)) if (v !== undefined && /^ONYXCODE_(SWAP_|TEST_)/.test(k)) out[k] = v
+  for (const [k, v] of Object.entries(env)) if (v !== undefined && /^LAZUNOX_(SWAP_|TEST_)/.test(k)) out[k] = v
   return out
 }
 
@@ -26,7 +26,7 @@ function testEnv(env: NodeJS.ProcessEnv): Record<string, string> {
  */
 export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
   const userData = app.getPath('userData')
-  // Las variables de prueba solo se honran sin empaquetar o en un build de prueba (`ONYXCODE_TEST_BUILD=1`, compilación
+  // Las variables de prueba solo se honran sin empaquetar o en un build de prueba (`LAZUNOX_TEST_BUILD=1`, compilación
   // aparte, docs/DISTRIBUCION.md §11); un build normal las ignora siempre.
   const useRealConfig = app.isPackaged && !IS_TEST_BUILD
   const updateConfig = resolveUpdateConfig({ isPackaged: useRealConfig, env: process.env, repo: RELEASES_REPO })
@@ -54,7 +54,7 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
     downloadBase: installConfig.downloadBase,
     allowLoopbackHttp: installConfig.allowLoopbackHttp,
     keys: installConfig.keys,
-    userAgent: `OnyxCode/${app.getVersion()}`,
+    userAgent: `Lazunox/${app.getVersion()}`,
     onState: (s) => {
       broadcast('app:updateProgress', s)
       if (s.phase !== lastPhase) {
@@ -89,7 +89,7 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
       appPath = currentAppRealPath(app.getPath('exe'))
       inApplications = IS_TEST_BUILD || (typeof app.isInApplicationsFolder === 'function' && app.isInApplicationsFolder())
     } else if (installConfig.testInstallDir) {
-      appPath = join(installConfig.testInstallDir, 'OnyxCode.app')
+      appPath = join(installConfig.testInstallDir, 'Lazunox.app')
       inApplications = true
     } else return false
     if (!appPath) return false

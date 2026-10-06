@@ -3,7 +3,7 @@ import { join, relative, resolve, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * OnyxCode no tiene cuentas ni inicio de sesión (retiradas en 0.4.x). Esta guardia falla si en `src/**` reaparece
+ * Lazunox no tiene cuentas ni inicio de sesión (retiradas en 0.4.x). Esta guardia falla si en `src/**` reaparece
  * cualquiera de sus rastros. La única mención permitida de `account.bin` es la limpieza de la sesión heredada
  * (`legacy-account-cleanup*.ts`), que la borra al arrancar.
  */
@@ -14,12 +14,12 @@ const EXT = /\.(?:[cm]?[jt]sx?|json|html|css)$/
 const PROHIBIDO: readonly [string, RegExp][] = [
   ['canal account:', /['"`]account:[A-Za-z]/],
   ['ACCOUNT_API', /ACCOUNT_API/],
-  ['api.onyxcode.cl', /api\.onyxcode\.cl/],
+  ['api.onyxcode.cl', /api\.lazunox\.cl/],
   ['AccountGate', /AccountGate/],
   ['account.bin', /account\.bin/],
-  ['ONYXCODE_ACCOUNT_URL', /ONYXCODE_ACCOUNT_URL/],
-  ['ONYXCODE_ACCOUNT_DISABLED', /ONYXCODE_ACCOUNT_DISABLED/],
-  ['ONYXCODE_TEST_PLAIN_STORE', /ONYXCODE_TEST_PLAIN_STORE/],
+  ['LAZUNOX_ACCOUNT_URL', /LAZUNOX_ACCOUNT_URL/],
+  ['LAZUNOX_ACCOUNT_DISABLED', /LAZUNOX_ACCOUNT_DISABLED/],
+  ['LAZUNOX_TEST_PLAIN_STORE', /LAZUNOX_TEST_PLAIN_STORE/],
   ['emailStart', /emailStart/],
   ['emailVerify', /emailVerify/]
 ]

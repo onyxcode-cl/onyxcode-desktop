@@ -35,7 +35,7 @@ describe.skipIf(!macOnly)('Seatbelt real: process-info hacia otros procesos', ()
   let profile: string
 
   beforeAll(() => {
-    dir = realpathSync(mkdtempSync(join(tmpdir(), 'onyx-procinfo-')))
+    dir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-procinfo-')))
     profile = buildSandboxProfile({ folder: join(dir, 'f'), privateDir: join(dir, 'p'), home: join(dir, 'home') })
     victim = spawn(process.execPath, ['-e', 'setTimeout(()=>{},120000)'], { stdio: 'ignore' })
   })

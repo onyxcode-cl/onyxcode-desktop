@@ -38,7 +38,7 @@ export async function newChatVia(page: Page, prompt: string, waitText?: string):
 
 /** Claves de `useSessions.messages`. */
 export async function messageKeys(page: Page): Promise<string[]> {
-  return page.evaluate(() => Object.keys((window as any).__onyxE2E.useSessions.getState().messages))
+  return page.evaluate(() => Object.keys((window as any).__lazunoxE2E.useSessions.getState().messages))
 }
 
 /** Nº de veces que la app pidió `GET /session/<id>/message` al falso (opcionalmente solo la sesión `id`). */
@@ -65,7 +65,7 @@ export async function serverText(conn: FakeConnection, id: string): Promise<stri
 /** Texto del asistente de la sesión tal como está en el store del renderer. */
 export async function storeAssistantText(page: Page, id: string): Promise<string> {
   return page.evaluate((sid) => {
-    const list = ((window as any).__onyxE2E.useSessions.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string; text?: string }[] }[]
+    const list = ((window as any).__lazunoxE2E.useSessions.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string; text?: string }[] }[]
     return list
       .filter((m) => m.info.role === 'assistant')
       .flatMap((m) => m.parts.filter((p) => p.type === 'text').map((p) => p.text ?? ''))
@@ -76,7 +76,7 @@ export async function storeAssistantText(page: Page, id: string): Promise<string
 /** Espera a que el store tenga `messages[id]` cargado (`loaded[id]`). */
 export async function waitLoaded(page: Page, id: string, timeout = 15_000): Promise<void> {
   await expect
-    .poll(() => page.evaluate((sid) => Boolean((window as any).__onyxE2E.useSessions.getState().loaded[sid]), id), { timeout, message: `loaded[${id}]` })
+    .poll(() => page.evaluate((sid) => Boolean((window as any).__lazunoxE2E.useSessions.getState().loaded[sid]), id), { timeout, message: `loaded[${id}]` })
     .toBe(true)
 }
 
@@ -89,7 +89,7 @@ export async function setLocalAndReload(app: E2EApp, entries: Record<string, str
     }
   }, entries)
   await app.page.reload({ waitUntil: 'domcontentloaded' })
-  await app.page.waitForFunction(() => Boolean((window as any).__onyxE2E), undefined, { timeout: 60_000 })
+  await app.page.waitForFunction(() => Boolean((window as any).__lazunoxE2E), undefined, { timeout: 60_000 })
   await app.page.locator('nav[aria-label="Modo"]').waitFor()
 }
 
@@ -100,14 +100,14 @@ export async function setLocalAndReload(app: E2EApp, entries: Record<string, str
  * Devuelve el `OPENCODE_BIN` para `useApp({ env })` y la función de limpieza.
  */
 export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => void } {
-  const dir = mkdtempSync(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'onyx-e2e-fakebin-'))
+  const dir = mkdtempSync(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'lazunox-e2e-fakebin-'))
   for (const f of ['opencode', 'server.mjs']) cpSync(join(ROOT, 'e2e', 'fake-opencode', f), join(dir, f))
   return { env: { OPENCODE_BIN: join(dir, FAKE_BIN_NAME) }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
 /** Carpeta temporal DENTRO del home (Tareas rechaza `/private`, `/tmp`… como «carpeta del sistema»). */
 export function makeHomeFolder(): { path: string; cleanup: () => void } {
-  const path = realpathSync(mkdtempSync(join(homedir(), '.onyx-e2e-lru-')))
+  const path = realpathSync(mkdtempSync(join(homedir(), '.lazunox-e2e-lru-')))
   return { path, cleanup: () => rmSync(path, { recursive: true, force: true }) }
 }
 
@@ -144,7 +144,7 @@ export async function newTaskVia(page: Page, prompt: string, waitText: string): 
 /** Espera a que la sesión no esté busy/retry en `useSessions.status`. */
 export async function waitIdle(page: Page, id: string, timeout = 30_000): Promise<void> {
   await expect
-    .poll(() => page.evaluate((sid) => ((window as any).__onyxE2E.useSessions.getState().status[sid] ?? 'idle') === 'idle', id), { timeout, message: `idle[${id}]` })
+    .poll(() => page.evaluate((sid) => ((window as any).__lazunoxE2E.useSessions.getState().status[sid] ?? 'idle') === 'idle', id), { timeout, message: `idle[${id}]` })
     .toBe(true)
 }
 

@@ -58,11 +58,11 @@ try {
   const vite = server
 
   const rel = (f) => relative(root, f)
-  // Los módulos `virtual:onyx-*` solo los registra el plugin de la build de la PWA (`pwa/vite.full.config.ts`, que `npm run build` ya
+  // Los módulos `virtual:lazunox-*` solo los registra el plugin de la build de la PWA (`pwa/vite.full.config.ts`, que `npm run build` ya
   // compila): esta config del renderer de escritorio no los conoce, así que su import sin resolver no es un fallo de transformación.
   const record = (f, e) => {
     const msg = String(e?.message ?? e)
-    if (/Failed to resolve import "virtual:onyx-[\w-]+"/.test(msg)) return
+    if (/Failed to resolve import "virtual:lazunox-[\w-]+"/.test(msg)) return
     errors.push({ file: rel(f), msg: msg.split('\n').slice(0, 4).join('\n    ') })
   }
 

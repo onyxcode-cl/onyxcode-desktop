@@ -52,7 +52,7 @@ test('release.yml: entorno protegido, borrador, sin clave Ed25519 y sin publicar
   assert.match(c, /gh release create .*\\?[\s\S]*--draft/)
   assert.ok(c.includes('--manifest-only'))
   assert.ok(c.includes('--expect devid'))
-  assert.ok(!/ONYXCODE_UPDATE_KEY|update\.pem|sign-update|UPDATE_PRIVATE/i.test(c), 'la clave de actualizaciones nunca va al CI')
+  assert.ok(!/LAZUNOX_UPDATE_KEY|update\.pem|sign-update|UPDATE_PRIVATE/i.test(c), 'la clave de actualizaciones nunca va al CI')
   assert.ok(!/gh release (edit|upload)|--draft=false|--latest/.test(c), 'nunca publica por sí solo')
   // Permisos mínimos: lectura global y escritura solo en el job.
   assert.match(c, /^permissions:\s*\n\s+contents: read/m)
