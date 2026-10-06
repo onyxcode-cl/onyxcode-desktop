@@ -17,8 +17,8 @@ import { EventEmitter } from 'node:events'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, join, relative, resolve } from 'node:path'
-import { isInside } from '../util/paths'
+import { basename, dirname, join, relative, resolve, win32 } from 'node:path'
+import { isInside, normalizeDrive, samePath } from '../util/paths'
 import { LEGACY_FOLDER_SCRATCH, LEGACY_PROJECT_DIR } from '../migrations/legacy-names'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import {
@@ -49,6 +49,9 @@ import type { EgressBlockedEvent } from './proxy'
 import { forbiddenFolderReason as folderPolicyReason, parseMountOutput, type MountInfo } from './folder-policy'
 import { loadManagedPolicy } from './policy'
 import { defaultDeniedReadPaths } from './sandbox-profile'
+import type { WinBackendProvider } from './backends'
+import { isApprovedPath, resolveUiPath } from './ui-path'
+import { createRealWinHost, type WinHost } from './win-context'
 
 /** Consentimiento de "Control total" registrado en main (AUDIT.md S7). */
 interface FullAccessGrant {
@@ -147,7 +150,20 @@ const SKIP_DIRS = new Set([
 ])
 const MAX_SCAN_FILES = 5000
 
-function normalizeFolder(p: string): string {
+function normalizeFolder(p: string, win?: WinHost | null): string {
+  if (win) {
+    // Windows: `/win/c/x` (ruta de la distro) → `C:\x`; `realpath.native` expande 8.3 y `subst` y quita `\\?\`. Si la ruta es hostil
+    // (UNC, ADS, `..`…) se devuelve tal cual: NINGUNA autorización se apoya en esta función, `forbiddenFolderReason` y
+    // `assertInsideApproved` vuelven a validarla con `resolveUiPath` y la rechazan.
+    const r = resolveUiPath(p, 'win32')
+    // Hostil (UNC, `\\.\`, ADS…): solo léxico y SIN tocar disco, para no abrir una conexión SMB ni un dispositivo.
+    if (!r.ok) return normalizeDrive(win32.resolve(p), 'win32')
+    try {
+      return normalizeDrive(win.realpath(r.path), 'win32')
+    } catch {
+      return normalizeDrive(win32.resolve(r.path), 'win32')
+    }
+  }
   const abs = resolve(p)
   try {
     return realpathSync(abs)
@@ -174,20 +190,6 @@ function currentMounts(): MountInfo[] {
   return mounts
 }
 
-/**
- * Carpetas que nunca se autorizan ni se vinculan (demasiado amplias, del sistema, de red o
- * fuera de las raíces de la política gestionada). Devuelve un motivo accionable o `null`.
- */
-export function forbiddenFolderReason(folder: string): string | null {
-  const allowedRoots = loadManagedPolicy()?.allowedFolderRoots
-  return folderPolicyReason(normalizeFolder(folder), {
-    home: normalizeFolder(homedir()),
-    userData: normalizeFolder(app.getPath('userData')),
-    mounts: currentMounts(),
-    allowedRoots: allowedRoots?.map(normalizeFolder)
-  })
-}
-
 /** Token Bearer de un bloque MCP remoto (`headers.Authorization`), o null. */
 function bearerOfMcpConfig(cfg: Record<string, unknown> | null): string | null {
   const h = cfg?.headers
@@ -200,8 +202,87 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   private data: Persisted | null = null
   readonly network = new NetworkPolicy()
 
-  constructor(private readonly opts: { corsOrigins?: string[]; computer?: TasksComputerDeps } = {}) {
+  /** Plataforma efectiva (inyectable en pruebas). En `win32` la política de carpetas es la propia de Windows y Control total no existe. */
+  private readonly platform: NodeJS.Platform
+  /** Solo en win32: contexto de la política (unidades, perfil, enlaces) y `realpath` nativo. */
+  private readonly win: WinHost | null
+
+  constructor(
+    private readonly opts: {
+      corsOrigins?: string[]
+      computer?: TasksComputerDeps
+      platform?: NodeJS.Platform
+      /** Contexto de Windows (pruebas); por defecto el real. */
+      win?: WinHost
+      /** Bandera efectiva `tasksWin` y proveedor del backend de Windows (los trae `main`). Ausentes: en Windows no se lanza nada. */
+      tasksWin?: boolean
+      winBackend?: WinBackendProvider
+    } = {}
+  ) {
     super()
+    this.platform = opts.platform ?? process.platform
+    this.win = this.platform === 'win32' ? (opts.win ?? createRealWinHost({ userData: app.getPath('userData') })) : null
+  }
+
+  /** `normalizeFolder` con la plataforma del gestor. */
+  private nf(p: string): string {
+    return normalizeFolder(p, this.win)
+  }
+
+  private inside(p: string, dir: string): boolean {
+    return isInside(p, dir, this.platform)
+  }
+
+  /** ¿Existe y es una carpeta? (en Windows, con el disco del contexto). */
+  private isDir(p: string): boolean {
+    if (this.win) return this.win.isDirectory(p)
+    try {
+      return existsSync(p) && statSync(p).isDirectory()
+    } catch {
+      return false
+    }
+  }
+
+  /** Control total no existe en Windows (sin sandbox ni control del PC en esta versión): jamás se concede ni arranca. */
+  private get noFullAccess(): boolean {
+    return this.platform === 'win32'
+  }
+
+  /**
+   * Relee lo asíncrono de la política de carpetas (unidades de Windows). Se espera en los puntos de entrada asíncronos antes
+   * de aprobar, comprobar, vincular o arrancar; en macOS no hace nada.
+   */
+  async refreshPolicy(): Promise<void> {
+    await this.win?.refresh()
+  }
+
+  /**
+   * Carpetas que nunca se autorizan ni se vinculan (demasiado amplias, del sistema, de red o fuera de las raíces de la
+   * política gestionada). Devuelve un motivo accionable o `null`. En Windows: `folder-policy-win` con contexto REAL; sin
+   * contexto (unidades sin leer o caducadas) rechaza todo.
+   */
+  private forbidden(folder: string): string | null {
+    const allowedRoots = loadManagedPolicy()?.allowedFolderRoots?.map((r) => this.nf(r))
+    const normalized = this.nf(folder)
+    if (this.win) {
+      return folderPolicyReason(
+        normalized,
+        {
+          home: this.win.home(),
+          userData: this.nf(app.getPath('userData')),
+          mounts: [],
+          allowedRoots,
+          win: this.win.context(allowedRoots)
+        },
+        'win32'
+      )
+    }
+    return folderPolicyReason(normalized, {
+      home: this.nf(homedir()),
+      userData: this.nf(app.getPath('userData')),
+      mounts: currentMounts(),
+      allowedRoots
+    })
   }
 
   networkState(): NetworkPolicyState {
@@ -211,7 +292,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** "Permitir esta vez" (tarjeta de bloqueo): no persiste, efecto inmediato (el proxy relee la lista en cada conexión). */
   networkAllowOnce(folder: string, host: string): void {
     this.assertCustomHostsAllowed()
-    this.network.allowOnce(normalizeFolder(folder), host)
+    this.network.allowOnce(this.nf(folder), host)
   }
 
   /** Política gestionada: con `disableCustomHosts` no se añaden sitios a la red del sandbox. */
@@ -279,12 +360,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** true si el usuario concedió "Permitir borrar, mover y renombrar" para esta carpeta. */
   hasDeleteGrant(folder: string): boolean {
-    return this.load().deleteGrants.includes(normalizeFolder(folder))
+    return this.load().deleteGrants.includes(this.nf(folder))
   }
 
   /** Concede/retira "Permitir borrar, mover y renombrar" y reinicia el servidor sandboxeado si está vivo. */
   async setDeleteGrant(folder: string, allowed: boolean): Promise<void> {
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     const data = this.load()
     const before = data.deleteGrants.includes(f)
     if (allowed && !before) data.deleteGrants.push(f)
@@ -298,10 +379,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Reinicia el servidor sandbox de la carpeta si hay uno en marcha. Devuelve true si lo reinició. */
   async restartSandbox(folder: string): Promise<boolean> {
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     const cur = this.servers.get(serverKey(f, false))
     if (!cur?.handle && !cur?.starting) return false
     await this.stopOne(f, false)
+    await this.refreshPolicy()
     await this.spawn(f, false)
     return true
   }
@@ -320,14 +402,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   isApproved(folder: string): boolean {
-    const f = normalizeFolder(folder)
-    return this.load().folders.some((x) => x.path === f)
+    const f = this.nf(folder)
+    return this.load().folders.some((x) => samePath(x.path, f, this.platform))
   }
 
   approveFolder(folder: string): TasksFolder {
-    const f = normalizeFolder(folder)
-    if (!existsSync(f) || !statSync(f).isDirectory()) throw new Error(t('merr.task.notValidFolder', { folder: f }))
-    const reason = forbiddenFolderReason(f)
+    const f = this.nf(folder)
+    // Windows: la política decide ANTES de tocar el disco (una ruta de red o de dispositivo no debe abrirse para comprobarla).
+    const early = this.win ? this.forbidden(f) : null
+    if (early) throw new Error(early)
+    if (!this.isDir(f)) throw new Error(t('merr.task.notValidFolder', { folder: f }))
+    const reason = this.win ? null : this.forbidden(f)
     if (reason) throw new Error(reason)
     const data = this.load()
     let entry = data.folders.find((x) => x.path === f)
@@ -340,7 +425,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   async removeFolder(folder: string): Promise<void> {
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     await this.stop(f)
     const data = this.load()
     data.folders = data.folders.filter((x) => x.path !== f)
@@ -363,15 +448,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const data = this.load()
     const out = new Map<string, ExtraFolder>()
     const consider = (path: string, mode: FolderAccessMode): void => {
-      const p = normalizeFolder(path)
-      if (p === primary || out.has(p)) return
-      if (mode === 'rw' && isInside(p, primary)) return
-      try {
-        if (!statSync(p).isDirectory()) return
-      } catch {
-        return
-      }
-      if (forbiddenFolderReason(p)) return
+      const p = this.nf(path)
+      if (samePath(p, primary, this.platform) || out.has(p)) return
+      if (mode === 'rw' && this.inside(p, primary)) return
+      if (this.win && this.forbidden(p)) return
+      if (!this.isDir(p)) return
+      if (this.forbidden(p)) return
       out.set(p, { path: p, mode })
     }
     for (const l of data.linked[primary] ?? []) consider(l.path, l.mode)
@@ -386,14 +468,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   private requireApproved(folder: string): string {
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     if (!this.isApproved(f)) throw new Error(t('merr.task.notAuthorized'))
     return f
   }
 
   /** Conjunto de carpetas de un espacio; `applied` es false si el servidor sandbox en marcha arrancó con otro. */
   folderSet(folder: string): TasksFolderSet {
-    const fp = normalizeFolder(folder)
+    const fp = this.nf(folder)
     // Carpeta de trabajo de Control total sin autorizar para Sandbox: sin carpetas adicionales.
     if (!this.isApproved(fp) && this.fullAccessRoots().includes(fp)) return { primary: fp, linked: [], trusted: [], applied: true }
     const f = this.requireApproved(folder)
@@ -411,15 +493,13 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Comprueba si `path` se puede autorizar o vincular (existe, es una carpeta y pasa la política). */
   checkFolder(path: string): FolderCheck {
-    const normalized = normalizeFolder(path)
-    try {
-      if (!existsSync(normalized) || !statSync(normalized).isDirectory()) {
-        return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
-      }
-    } catch {
-      return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
+    const normalized = this.nf(path)
+    if (this.win) {
+      const early = this.forbidden(normalized)
+      if (early) return { ok: false, normalized, reason: early }
     }
-    const reason = forbiddenFolderReason(normalized)
+    if (!this.isDir(normalized)) return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
+    const reason = this.win ? null : this.forbidden(normalized)
     return reason ? { ok: false, normalized, reason } : { ok: true, normalized }
   }
 
@@ -442,7 +522,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const f = this.requireApproved(folder)
     const p = this.assertCheck(path)
     if (p === f) throw new Error(t('merr.task.mainFolder'))
-    if (mode === 'rw' && isInside(p, f)) throw new Error(t('merr.task.insideMain'))
+    if (mode === 'rw' && this.inside(p, f)) throw new Error(t('merr.task.insideMain'))
     const data = this.load()
     const list = (data.linked[f] ??= [])
     const prev = list.find((l) => l.path === p)
@@ -459,7 +539,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** Quita una carpeta vinculada del espacio. `restart` igual que en `linkFolder`. */
   async unlinkFolder(folder: string, path: string, opts: { restart?: boolean } = {}): Promise<TasksFolderSet & { restarted: boolean }> {
     const f = this.requireApproved(folder)
-    const p = normalizeFolder(path)
+    const p = this.nf(path)
     const data = this.load()
     const before = data.linked[f] ?? []
     data.linked[f] = before.filter((l) => l.path !== p && l.path !== path)
@@ -493,7 +573,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   removeTrusted(path: string): TrustedFolder[] {
-    const p = normalizeFolder(path)
+    const p = this.nf(path)
     const data = this.load()
     const before = data.trusted.length
     data.trusted = data.trusted.filter((t) => t.path !== p && t.path !== path)
@@ -503,14 +583,16 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Concesión PREVIA de Control total de esa carpeta (modelo antiguo, por carpeta; sigue valiendo). */
   hasFullAccessGrant(folder: string): boolean {
+    if (this.noFullAccess) return false
     // Política gestionada: con `disableFullAccess` ninguna concesión previa vale.
     if (loadManagedPolicy()?.disableFullAccess) return false
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     return this.load().fullAccess.some((g) => g.path === f)
   }
 
   /** Fecha (epoch ms) del consentimiento de Control total de este equipo, o null. Con `disableFullAccess` no hay. */
   fullAccessConsentAt(): number | null {
+    if (this.noFullAccess) return null
     if (loadManagedPolicy()?.disableFullAccess) return null
     return this.load().fullAccessConsentAt ?? null
   }
@@ -523,21 +605,21 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const last = this.load().fullAccessDir
     if (last) {
       try {
-        if (statSync(last).isDirectory()) return normalizeFolder(last)
+        if (statSync(last).isDirectory()) return this.nf(last)
       } catch {
         // ya no existe: vuelve al home
       }
     }
-    return normalizeFolder(homedir())
+    return this.nf(homedir())
   }
 
   /** Estado de Control total para la UI (diálogo único, carpeta por defecto, bloqueo por política). */
   fullAccessState(): TasksFullAccessState {
-    const disabled = loadManagedPolicy()?.disableFullAccess === true
+    const disabled = this.noFullAccess || loadManagedPolicy()?.disableFullAccess === true
     return {
       consentAt: disabled ? null : (this.load().fullAccessConsentAt ?? null),
       workspace: this.fullAccessWorkspace(),
-      home: normalizeFolder(homedir()),
+      home: this.nf(homedir()),
       disabled
     }
   }
@@ -547,6 +629,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * original si ya existía. Sin carpeta: el agente podrá actuar sobre todo el equipo del usuario.
    */
   grantFullAccessConsent(): number {
+    if (this.noFullAccess) throw new Error(t('merr.task.fullAccessUnavailable'))
     if (loadManagedPolicy()?.disableFullAccess) throw new Error(t('merr.task.orgNoFullControl'))
     const data = this.load()
     if (!data.fullAccessConsentAt) {
@@ -578,6 +661,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * Con `allowedFolderRoots` (política) se exige además que la carpeta esté autorizada (que ya pasó esa política).
    */
   fullAccessBlock(f: string): 'notGranted' | 'notDir' | null {
+    if (this.noFullAccess) return 'notGranted'
     if (loadManagedPolicy()?.disableFullAccess) return 'notGranted'
     if (this.isApproved(f) && this.hasFullAccessGrant(f)) return null
     if (!this.load().fullAccessConsentAt) return 'notGranted'
@@ -592,7 +676,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** ¿Puede arrancar Control total en esa carpeta? (rutinas y UI.) */
   canStartFullAccess(folder: string): boolean {
-    return this.fullAccessBlock(normalizeFolder(folder)) === null
+    return this.fullAccessBlock(this.nf(folder)) === null
   }
 
   /** Carpetas de trabajo de Control total que la UI puede leer (vista previa, ZIP…): la actual y las de servidores vivos. */
@@ -605,7 +689,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** ¿`real` es la carpeta personal o una que la contiene? (demasiado grande para puntos de restauración o entregables.) */
   coversHome(real: string): boolean {
-    return isInside(normalizeFolder(homedir()), normalizeFolder(real))
+    return this.inside(this.nf(homedir()), this.nf(real))
   }
 
   /** Registra la última carpeta de trabajo de Control total (solo si cambió). */
@@ -618,10 +702,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Concesión antigua por carpeta (compatibilidad): sigue registrándose si la carpeta está autorizada. */
   grantFullAccess(folder: string): void {
+    if (this.noFullAccess) throw new Error(t('merr.task.fullAccessUnavailable'))
     if (loadManagedPolicy()?.disableFullAccess) {
       throw new Error(t('merr.task.orgNoFullControl'))
     }
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     if (!this.isApproved(f)) throw new Error(t('merr.task.notAuthorized'))
     const data = this.load()
     if (!data.fullAccess.some((g) => g.path === f)) {
@@ -632,7 +717,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Retira la concesión antigua de esa carpeta y detiene su servidor sin sandbox (el consentimiento del equipo no cambia). */
   async revokeFullAccess(folder: string): Promise<void> {
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     const data = this.load()
     const before = data.fullAccess.length
     data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
@@ -703,7 +788,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * `fullAccess` ⇒ servidor aparte sin sandbox con el MCP de control del computador.
    */
   async start(folder: string, fullAccess = false): Promise<TasksConnection> {
-    const f = normalizeFolder(folder)
+    // Windows: sin Control total (decisión de `main`, no solo de la interfaz: A18) y con la política releída al arrancar.
+    if (this.noFullAccess && fullAccess) throw new Error(t('merr.task.fullAccessUnavailable'))
+    await this.refreshPolicy()
+    const f = this.nf(folder)
     if (fullAccess) {
       // Control total: consentimiento del equipo (o concesión antigua de la carpeta); la carpeta no tiene que estar autorizada.
       const block = this.fullAccessBlock(f)
@@ -712,6 +800,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       this.rememberFullDir(f)
     } else if (!this.isApproved(f)) {
       throw new Error(t('merr.task.notAuthorized'))
+    } else if (this.win) {
+      // Reescaneo al arrancar (D3): una junction creada DESPUÉS de aprobar la carpeta, o una unidad que dejó de ser local,
+      // impide el arranque. Falla cerrado si no se puede comprobar.
+      const why = this.forbidden(f)
+      if (why) throw new Error(why)
     }
     const key = serverKey(f, fullAccess)
     const existing = this.servers.get(key)
@@ -837,7 +930,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const prepared = before.then(() => {
       // scratch antiguo → `.lazunox/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
       // Nunca en la carpeta personal (Control total sin carpeta): no se toca nada del home del usuario.
-      if (folder !== normalizeFolder(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
+      if (folder !== this.nf(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
     const starting = prepared.then(([{ config, mcpProxy, browserToken }, gateUrl]) => {
@@ -851,6 +944,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
+        platform: this.platform,
+        tasksWin: this.opts.tasksWin,
+        winBackend: this.opts.winBackend,
         // Puerto del proxy MCP (F8-B79): único destino MCP local que Seatbelt deja al servidor sandboxeado. El puerto
         // del MCP del navegador integrado YA NO se abre: solo el proxy (con el token real) puede hablarle.
         extraOutboundPorts: mcpProxy ? [mcpProxy.port] : undefined,
@@ -932,7 +1028,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Detiene el servidor de la carpeta en el modo indicado (ambos si se omite). */
   async stop(folder: string, fullAccess?: boolean): Promise<void> {
-    const f = normalizeFolder(folder)
+    const f = this.nf(folder)
     const modes = fullAccess === undefined ? [false, true] : [fullAccess]
     await Promise.all(modes.map((m) => this.stopOne(f, m)))
   }
@@ -965,11 +1061,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * (las de solo lectura no producen entregables). Los de una vinculada llevan `root`.
    */
   deliverables(folder: string, since: number): TasksDeliverable[] {
-    const root = normalizeFolder(folder)
+    const root = this.nf(folder)
     if (!this.isApproved(root)) {
       if (!this.fullAccessRoots().includes(root)) throw new Error(t('merr.task.notAuthorized'))
       // La carpeta personal entera no se recorre (miles de archivos, ~/Library…): sin entregables detectados.
-      if (root === normalizeFolder(homedir())) return []
+      if (root === this.nf(homedir())) return []
     }
     const out: TasksDeliverable[] = []
     let seen = 0
@@ -1009,7 +1105,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     scan(root)
     for (const l of this.load().linked[root] ?? []) {
       // La principal ya recorre lo que hay dentro de ella; una vinculada ancestra no se recorre entera.
-      if (l.mode !== 'rw' || isInside(l.path, root) || isInside(root, l.path) || !existsSync(l.path)) continue
+      if (l.mode !== 'rw' || this.inside(l.path, root) || this.inside(root, l.path) || !existsSync(l.path)) continue
       scan(l.path, l.path)
     }
     return out.sort((a, b) => b.mtime - a.mtime).slice(0, 200)
@@ -1020,19 +1116,23 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * mismos secretos que el sandbox (`~/.ssh`, claves de nube, config de OpenCode…) a las funciones de la interfaz.
    */
   private insideFullWorkspace(p: string): boolean {
-    if (!this.fullAccessRoots().some((r) => isInside(p, r))) return false
-    const home = normalizeFolder(homedir())
-    return !defaultDeniedReadPaths(home).some((d) => isInside(p, d) || isInside(p, normalizeFolder(d)))
+    if (!this.fullAccessRoots().some((r) => this.inside(p, r))) return false
+    const home = this.nf(homedir())
+    return !defaultDeniedReadPaths(home).some((d) => this.inside(p, d) || this.inside(p, this.nf(d)))
   }
 
   /** Verifica que una ruta esté dentro de una carpeta de Tareas, vinculada o de confianza (o del espacio de Control total). */
   assertInsideApproved(path: string): string {
-    const p = normalizeFolder(path)
-    const data = this.load()
-    const ok =
-      data.folders.some((f) => isInside(p, f.path)) ||
-      Object.values(data.linked).some((list) => list.some((l) => isInside(p, l.path))) ||
-      data.trusted.some((t) => isInside(p, t.path))
+    // Windows: UNA puerta de entrada (`resolveUiPath`: rechaza UNC, dispositivos, ADS, `..`, 8.3, reservados) y `/win/c/x`
+    // se traduce a `C:\x`. Traducir no autoriza: después se exige pertenecer a una carpeta aprobada.
+    let input = path
+    if (this.win) {
+      const r = resolveUiPath(path, 'win32')
+      if (!r.ok) throw new Error(t('merr.task.pathNotAuthorized'))
+      input = r.path
+    }
+    const p = this.nf(input)
+    const ok = isApprovedPath(p, this.load(), (a, b) => this.inside(a, b))
     if (!ok && !this.insideFullWorkspace(p)) throw new Error(t('merr.task.pathNotAuthorized'))
     return p
   }

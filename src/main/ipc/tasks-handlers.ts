@@ -283,7 +283,10 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     return res.canceled ? null : (res.filePaths[0] ?? null)
   })
   handle('tasks:listFolders', () => tasks.listFolders())
-  handle('tasks:approveFolder', ({ folder }) => tasks.approveFolder(folder))
+  handle('tasks:approveFolder', async ({ folder }) => {
+    await tasks.refreshPolicy() // Windows: unidades al día antes de decidir (macOS: sin efecto)
+    return tasks.approveFolder(folder)
+  })
   handle('tasks:removeFolder', ({ folder }) => tasks.removeFolder(folder))
   handle('tasks:start', ({ folder, fullAccess }) => tasks.start(folder, fullAccess === true))
   handle('tasks:grantFullAccess', ({ folder }) => tasks.grantFullAccess(folder))
