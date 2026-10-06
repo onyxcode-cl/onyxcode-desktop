@@ -34,7 +34,10 @@ export interface PlatformCaps {
    * (la tanda W6 la responde con PLATFORM_UNSUPPORTED). Campo nuevo, sin consumidores todavía.
    */
   quickLook: boolean
-  /** Control remoto desde el celular (PWA por red local; prototipo, solo macOS). */
+  /**
+   * Control remoto desde el celular (PWA por red local). macOS siempre; Windows solo con la bandera `remoteWin` (apagada por
+   * defecto, docs/REMOTO-WINDOWS.md).
+   */
   remote: boolean
   /** Terminal integrada (pty + xterm). */
   terminal: boolean
@@ -59,6 +62,11 @@ export interface CapsFlags {
    * `tasksWin` (Control total es un modo de Tareas): `computer = win && tasksWin && computerWin`.
    */
   computerWin?: boolean
+  /**
+   * Control remoto desde el celular en Windows. APAGADA hasta que el dueño lo pruebe en el PC (docs/REMOTO-WINDOWS.md). La
+   * resuelve `src/main/remote/remote-win-flag.ts`; no depende de `tasksWin` (el remoto expone Chat y Code; Tareas solo si existe).
+   */
+  remoteWin?: boolean
 }
 
 /** Valor de `window.api.platform` en la PWA del celular. */
@@ -95,7 +103,7 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     updater: mac || win,
     keepAwakeText: mac,
     quickLook: mac,
-    remote: mac,
+    remote: mac || (win && flags.remoteWin === true),
     terminal: true,
     nativeDialogs: true,
     openExternal: true,

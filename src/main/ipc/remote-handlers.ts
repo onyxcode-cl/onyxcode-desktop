@@ -7,14 +7,13 @@ import { DISPLAY_NAME } from '@shared/brand'
 import { getLang } from '@shared/i18n'
 import type { RemoteConfirmRequest, RemoteEventContract, RemoteInvokeContract, RemotePairRequest, RemoteState } from '@shared/ipc-remote'
 import { LIMITS } from '@shared/remote/protocol'
-import { capsFor } from '@shared/platform-caps'
 import { settingsStore } from '../store'
 import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import type { OpencodeServer } from '../opencode/server'
 import { applyApproveSetting, type EnableApproveInfo } from '../remote/approve-setting'
 import { ConfirmHost } from '../remote/confirm-host'
-import { currentService, ensureRemote, getAudit, getDevicesStore, getOrgPolicy, offState, type RemoteHostDeps } from '../remote/loader'
+import { currentService, ensureRemote, getAudit, getDevicesStore, getOrgPolicy, offState, remoteSupported, type RemoteHostDeps } from '../remote/loader'
 import { emitTo } from './event-bus'
 import { makeInvokeHandler } from './handle'
 
@@ -99,7 +98,7 @@ async function confirmEnableApprove(deps: MainWindowDeps, info: EnableApproveInf
 
 export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDeps): void {
   const platform = process.platform
-  const supported = capsFor(platform).remote
+  const supported = remoteSupported(platform)
 
   // Confirmaciones en el Mac: cola de T3 + interfaz real (ventana principal o, sin ella, diálogo nativo + aviso).
   const confirmHost = new ConfirmHost({

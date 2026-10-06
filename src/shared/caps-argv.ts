@@ -6,7 +6,7 @@
 import type { CapsFlags } from './platform-caps'
 
 export const CAPS_ARG_PREFIX = '--lazunox-caps='
-const KNOWN = ['tasksWin', 'computerWin'] as const
+const KNOWN = ['tasksWin', 'computerWin', 'remoteWin'] as const
 
 /** `['--lazunox-caps=tasksWin']` si hay alguna encendida; `[]` si no (nada que añadir a la ventana). */
 export function capsFlagsToArgs(flags: CapsFlags): string[] {

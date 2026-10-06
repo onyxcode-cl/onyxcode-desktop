@@ -65,9 +65,21 @@ export function pwaDir(): string {
   return app.isPackaged ? join(process.resourcesPath, 'pwa') : join(app.getAppPath(), 'pwa', 'dist')
 }
 
+let remoteWinOn = false
+
+/** `main` fija la bandera efectiva `remoteWin` al arrancar (`remote-win-flag.ts`); hace falta reiniciar para que cambie. */
+export function setRemoteWin(on: boolean): void {
+  remoteWinOn = on === true
+}
+
+/** ¿Existe el control remoto en esta plataforma? macOS siempre; Windows solo con `remoteWin`. */
+export function remoteSupported(platform: string = process.platform): boolean {
+  return capsFor(platform, { remoteWin: remoteWinOn }).remote
+}
+
 /** Estado con la función apagada: no carga nada de red. */
 export function offState(platform: string = process.platform): RemoteState {
-  if (!capsFor(platform).remote) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'platform' }
+  if (!remoteSupported(platform)) return { ...REMOTE_OFF_STATE, available: false, unavailable: 'platform' }
   const policy = getOrgPolicy()
   const withPolicy = policy.managed ? { policy } : {}
   if (policy.blocked)

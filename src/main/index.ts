@@ -26,7 +26,8 @@ import { loadManagedPolicy } from './tasks/policy'
 import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
-import { disposeRemote } from './remote/loader'
+import { disposeRemote, getOrgPolicy, setRemoteWin } from './remote/loader'
+import { resolveRemoteWin } from './remote/remote-win-flag'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
 import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded-browser/service'
@@ -45,8 +46,8 @@ app.setName(INTERNAL_NAME)
  * Capacidades de la plataforma: Tareas y Control del PC solo en macOS (en Windows tras banderas); actualizador en macOS y Windows,
  * salvo en una build de la Microsoft Store (`process.windowsStore`): la actualiza la Store, nunca el actualizador propio.
  */
-function capsOf(tasksWin: boolean): ReturnType<typeof capsFor> {
-  const baseCaps = capsFor(process.platform, { tasksWin })
+function capsOf(tasksWin: boolean, remoteWin = false): ReturnType<typeof capsFor> {
+  const baseCaps = capsFor(process.platform, { tasksWin, remoteWin })
   return { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
 }
 /**
@@ -55,6 +56,8 @@ function capsOf(tasksWin: boolean): ReturnType<typeof capsFor> {
  * reiniciar para que cambie. Apagada, Windows queda exactamente como hoy: sin modo Tareas, sin su backend, sin sus canales.
  */
 let tasksWinOn = false
+/** Bandera efectiva `remoteWin` (control remoto en Windows; `remote/remote-win-flag.ts`): apagada por defecto, hace falta reiniciar. */
+let remoteWinOn = false
 let caps = capsOf(false)
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
@@ -141,7 +144,7 @@ function createWindow(): BrowserWindow {
       webviewTag: false,
       devTools: !app.isPackaged,
       // Banderas de capacidades para el preload (solo la ventana principal; los preloads secundarios no las reciben).
-      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn })
+      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn })
     }
   })
   registerWindowRole(win.webContents, 'main')
@@ -209,7 +212,14 @@ function start(): void {
       isPackaged: app.isPackaged,
       policy: process.platform === 'win32' ? loadManagedPolicy() : null
     })
-    caps = capsOf(tasksWinOn)
+    remoteWinOn = resolveRemoteWin({
+      platform: process.platform,
+      env: process.env,
+      isPackaged: app.isPackaged,
+      policyBlocked: process.platform === 'win32' ? getOrgPolicy().blocked : false
+    })
+    setRemoteWin(remoteWinOn)
+    caps = capsOf(tasksWinOn, remoteWinOn)
     if (caps.updater) {
       ;[updateBoot, updateSwap, updateSwapWin] = await Promise.all([
         import('./update/boot'),
