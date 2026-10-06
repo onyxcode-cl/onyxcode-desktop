@@ -84,7 +84,14 @@ export function clearSwapResult(dir: string): void {
  * `boot-ok`), se borran las copias de seguridad y restos de intentos fallidos junto a la .app, los
  * marcadores de otras versiones, los stagings antiguos y los scripts copiados. Nunca lanza.
  */
-export function cleanupAfterBoot(o: { dir: string; appPath: string | null; version: string }): { removed: string[] } {
+export function cleanupAfterBoot(o: {
+  dir: string
+  /** macOS: ruta de la .app. Windows: carpeta de instalación (…\Lazunox). */
+  appPath: string | null
+  version: string
+  /** Por defecto `darwin` (compatibilidad); en Windows se limpian las carpetas hermanas `.Lazunox.(bak|failed|staging)-<ver>`. */
+  platform?: 'darwin' | 'win32'
+}): { removed: string[] } {
   const removed: string[] = []
   const rm = (p: string): void => {
     try {
@@ -96,7 +103,15 @@ export function cleanupAfterBoot(o: { dir: string; appPath: string | null; versi
   }
   try {
     if (!existsSync(join(o.dir, `boot-ok-${o.version}`))) return { removed }
-    if (o.appPath && basename(o.appPath) === 'Lazunox.app') {
+    if (o.platform === 'win32') {
+      // Solo corre en Windows, donde las funciones de `node:path` ya son las de win32 (en las pruebas, las del sistema).
+      if (o.appPath && basename(o.appPath).toLowerCase() === 'lazunox') {
+        const parent = dirname(o.appPath)
+        for (const n of readdirSync(parent)) {
+          if (/^\.Lazunox\.(bak|failed|staging)-[0-9A-Za-z.+-]{1,64}$/.test(n)) rm(join(parent, n))
+        }
+      }
+    } else if (o.appPath && basename(o.appPath) === 'Lazunox.app') {
       const parent = dirname(o.appPath)
       for (const n of readdirSync(parent)) {
         if (/^\.Lazunox\.app\.(bak|failed)-[0-9A-Za-z.+-]{1,64}$/.test(n)) rm(join(parent, n))

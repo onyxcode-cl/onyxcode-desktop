@@ -74,7 +74,12 @@ describe('validateSwapArgsWin', () => {
   })
   it('rechaza un destino que no se llama Lazunox', () => {
     const c = { ...ctx(), currentApp: 'C:\\Programs\\App' }
-    const a = { ...good(c), target: 'C:\\Programs\\App', staged: 'C:\\Programs\\.Lazunox.staging-0.5.1', bak: 'C:\\Programs\\.Lazunox.bak-0.5.0' }
+    const a = {
+      ...good(c),
+      target: 'C:\\Programs\\App',
+      staged: 'C:\\Programs\\.Lazunox.staging-0.5.1',
+      bak: 'C:\\Programs\\.Lazunox.bak-0.5.0'
+    }
     expect(validateSwapArgsWin(a, c)).toBe('target no es la carpeta Lazunox')
   })
 })
@@ -125,11 +130,30 @@ describe('startSwapWin', () => {
     expect(c.cmd).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
     expect(c.opts).toMatchObject({ detached: true, stdio: 'ignore', windowsHide: true })
     expect(c.opts).not.toHaveProperty('shell')
-    expect(c.args.slice(0, 8)).toEqual(['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File'])
+    expect(c.args.slice(0, 8)).toEqual([
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-WindowStyle',
+      'Hidden',
+      '-File'
+    ])
     expect(c.args[8]).toBe(copy)
     expect(c.args.slice(9)).toEqual([
-      '-AppPid', '4321', '-Target', TARGET, '-Staged', good(ctx()).staged, '-Bak', good(ctx()).bak,
-      '-MarkerDir', good(ctx()).markerDir, '-Version', '0.5.1'
+      '-AppPid',
+      '4321',
+      '-Target',
+      TARGET,
+      '-Staged',
+      good(ctx()).staged,
+      '-Bak',
+      good(ctx()).bak,
+      '-MarkerDir',
+      good(ctx()).markerDir,
+      '-Version',
+      '0.5.1'
     ])
     expect(x.unref).toBe(1)
     expect(x.quit).toBe(1)
@@ -161,18 +185,29 @@ describe('startSwapWin', () => {
 describe('resources/updater/swap.ps1 (comprobación estática)', () => {
   const ps = readFileSync(resolve(__dirname, '../../../resources/updater/swap.ps1'), 'utf8')
   it('declara los parámetros que pasa startSwapWin, en el mismo orden', () => {
-    const names = ['AppPid', 'Target', 'Staged', 'Bak', 'MarkerDir', 'Version'].map((n) => ps.indexOf(`[string]$${n}`) >= 0 || ps.indexOf(`[int]$${n}`) >= 0)
+    const names = ['AppPid', 'Target', 'Staged', 'Bak', 'MarkerDir', 'Version'].map(
+      (n) => ps.indexOf(`[string]$${n}`) >= 0 || ps.indexOf(`[int]$${n}`) >= 0
+    )
     expect(names.every(Boolean)).toBe(true)
   })
   it('no evalúa texto ni usa shells', () => {
     expect(ps).not.toMatch(/Invoke-Expression|\biex\b|cmd\.exe|-EncodedCommand|DownloadString|Invoke-WebRequest/i)
   })
   it('fija el modo de prueba a C:\\onyx o TEMP y no toca el registro en él', () => {
-    expect(ps).toContain("C:\\onyx\\")
+    expect(ps).toContain('C:\\onyx\\')
     expect(ps).toContain('if ($Test) { return $null }')
   })
   it('conserva los pasos de seguridad: esperar al PID, copia, boot-ok y rollback', () => {
-    for (const s of ['Get-Process -Id $AppPid', 'Move-Dir $Target $Bak', 'Move-Dir $Staged $Target', 'boot-ok-$Version', 'Restore-Old', "'boot-timeout'", "'backup-failed'", "'replace-failed'"])
+    for (const s of [
+      'Get-Process -Id $AppPid',
+      'Move-Dir $Target $Bak',
+      'Move-Dir $Staged $Target',
+      'boot-ok-$Version',
+      'Restore-Old',
+      "'boot-timeout'",
+      "'backup-failed'",
+      "'replace-failed'"
+    ])
       expect(ps).toContain(s)
   })
 })

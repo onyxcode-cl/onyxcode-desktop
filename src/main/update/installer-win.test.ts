@@ -78,7 +78,7 @@ function makeZip(files: F[], names?: string[]): Buffer {
     parts.push(lh, name, data)
     const ch = Buffer.alloc(46)
     ch.writeUInt32LE(0x02014b50, 0)
-    ch.writeUInt16LE((f?.symlink ? 3 : 10) << 8 | 45, 4)
+    ch.writeUInt16LE(((f?.symlink ? 3 : 10) << 8) | 45, 4)
     ch.writeUInt16LE(20, 6)
     ch.writeUInt16LE(0x800, 8)
     ch.writeUInt32LE(data.length, 20)
@@ -209,7 +209,15 @@ describe('WinUpdateInstaller: camino feliz', () => {
     // tar.exe por ruta absoluta de System32, argumentos en array y nada más se ejecuta.
     expect(calls).toHaveLength(1)
     expect(calls[0].cmd).toBe('C:\\Windows\\System32\\tar.exe')
-    expect(calls[0].args).toEqual(['-x', '-f', join(stagingRoot(join(tmp, 'ud')), '0.5.1', ZIP_NAME), '-C', staged(), '--strip-components', '1'])
+    expect(calls[0].args).toEqual([
+      '-x',
+      '-f',
+      join(stagingRoot(join(tmp, 'ud')), '0.5.1', ZIP_NAME),
+      '-C',
+      staged(),
+      '--strip-components',
+      '1'
+    ])
   })
 
   it('beginInstall vuelve a verificar y pasa a «installing»', async () => {
@@ -259,12 +267,24 @@ describe('WinUpdateInstaller: rechazos antes de tocar nada', () => {
   })
   it.each([
     ['con ..', ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/../evil.dll']],
-    ['con flujo ADS', ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/a.dll:evil']],
-    ['con nombre reservado', ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/NUL.txt']],
+    [
+      'con flujo ADS',
+      ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/a.dll:evil']
+    ],
+    [
+      'con nombre reservado',
+      ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/NUL.txt']
+    ],
     ['con ruta absoluta', ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', '/etc/x']],
-    ['con barra invertida', ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox\\..\\x']],
+    [
+      'con barra invertida',
+      ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox\\..\\x']
+    ],
     ['de otra raíz', ['Otra/Lazunox.exe', 'Otra/resources/app.asar', 'Otra/resources/opencode/opencode.exe', 'Otra/x']],
-    ['duplicada solo por mayúsculas', ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/LAZUNOX.EXE']]
+    [
+      'duplicada solo por mayúsculas',
+      ['Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/LAZUNOX.EXE']
+    ]
   ])('entrada del ZIP %s: no extrae nada', async (_n, names) => {
     const base = goodFiles()
     const files = [...base, { path: 'x', content: 'x' }].slice(0, names.length)
@@ -355,11 +375,14 @@ describe('WinUpdateInstaller: Authenticode opcional', () => {
     expect(await go(inst)).toMatchObject({ phase: 'error', code: 'signing' })
     expect(existsSync(staged())).toBe(false)
   })
-  it.each(['abc', 'ab'.repeat(20), `${T}; calc`, 'ZZ'.repeat(20)])('huella mal formada %j: falla cerrado sin ejecutar PowerShell', async (bad) => {
-    const { inst, calls } = make(world(), {}, { certThumbprint: bad })
-    expect(await go(inst)).toMatchObject({ phase: 'error', code: 'signing' })
-    expect(calls.some((c) => c.cmd.endsWith('powershell.exe'))).toBe(false)
-  })
+  it.each(['abc', 'ab'.repeat(20), `${T}; calc`, 'ZZ'.repeat(20)])(
+    'huella mal formada %j: falla cerrado sin ejecutar PowerShell',
+    async (bad) => {
+      const { inst, calls } = make(world(), {}, { certThumbprint: bad })
+      expect(await go(inst)).toMatchObject({ phase: 'error', code: 'signing' })
+      expect(calls.some((c) => c.cmd.endsWith('powershell.exe'))).toBe(false)
+    }
+  )
 })
 
 describe('WinUpdateInstaller: cancelar y descartar', () => {

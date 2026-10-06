@@ -68,7 +68,7 @@ export function resolveUpdateConfig(i: ResolveInput): UpdateConfig {
 }
 
 export interface InstallConfig {
-  /** Instalador activo: repositorio válido + clave pública + macOS. Si no, la interfaz queda como el aviso de siempre. */
+  /** Instalador activo: repositorio válido + clave pública + macOS o Windows x64 (fuera de la Store). Si no, la interfaz queda como el aviso de siempre. */
   enabled: boolean
   /** Origen de `…/{owner}/{repo}/releases/download/{tag}/…` (https://github.com; en tests el servidor local). */
   downloadBase: string
@@ -89,6 +89,16 @@ export interface InstallResolveInput extends ResolveInput {
    */
   updateKeys?: readonly UpdateKey[]
   platform: string
+  /** `process.arch`. En Windows solo `x64` tiene actualizador (ZIP win32-x64); sin dato, Windows queda apagado. */
+  arch?: string
+  /** `process.windowsStore` (build MSIX de la Store: la actualiza la Store, nunca el actualizador propio). */
+  windowsStore?: boolean
+}
+
+/** Plataformas con actualizador propio (la de cada una está en UPDATE_PLATFORMS). */
+export function updaterSupported(i: { platform: string; arch?: string; windowsStore?: boolean }): boolean {
+  if (i.platform === 'darwin') return true
+  return i.platform === 'win32' && i.arch === 'x64' && i.windowsStore !== true
 }
 
 /**
@@ -100,8 +110,10 @@ export function resolveInstallConfig(i: InstallResolveInput): InstallConfig {
   const main: UpdateKey[] = key !== '' && decodePublicKey(key) ? [{ id: i.updateKeyId, key }] : []
   const extra = i.isPackaged ? (i.updateKeys ?? []).filter((k) => decodePublicKey(k.key)) : []
   const keys = main.length > 0 ? [...main, ...extra] : [...extra]
-  const enabled = i.update.configured && keys.length > 0 && i.platform === 'darwin'
-  const testDir = !i.isPackaged && i.env.LAZUNOX_TEST_UPDATE_INSTALL_DIR?.startsWith('/') ? i.env.LAZUNOX_TEST_UPDATE_INSTALL_DIR : null
+  const enabled = i.update.configured && keys.length > 0 && updaterSupported(i)
+  const testEnvDir = !i.isPackaged ? i.env.LAZUNOX_TEST_UPDATE_INSTALL_DIR : undefined
+  const testDirOk = i.platform === 'win32' ? /^[A-Za-z]:\\[^\\]/.test(testEnvDir ?? '') : (testEnvDir ?? '').startsWith('/')
+  const testDir = testEnvDir && testDirOk ? testEnvDir : null
   return {
     enabled,
     downloadBase: i.isPackaged ? 'https://github.com' : i.update.apiBase,

@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { BootMarkers, cleanupAfterBoot, updateDir } from './markers'
 import { currentAppRealPath } from './swap'
+import { currentInstallDirWin } from './swap-win'
 import { IS_TEST_BUILD } from './test-build'
 
 let markers: BootMarkers | null = null
@@ -12,7 +13,15 @@ let markers: BootMarkers | null = null
 export function startBoot(): BootMarkers {
   const dir = updateDir(app.getPath('userData'))
   const version = app.getVersion()
-  if (app.isPackaged) cleanupAfterBoot({ dir, appPath: currentAppRealPath(app.getPath('exe')), version })
+  if (app.isPackaged) {
+    const win = process.platform === 'win32'
+    cleanupAfterBoot({
+      dir,
+      appPath: win ? currentInstallDirWin(app.getPath('exe')) : currentAppRealPath(app.getPath('exe')),
+      version,
+      platform: win ? 'win32' : 'darwin'
+    })
+  }
   markers = new BootMarkers(dir, version, process.pid, IS_TEST_BUILD && process.env.LAZUNOX_TEST_FAIL_BOOT === '1')
   markers.begin()
   return markers

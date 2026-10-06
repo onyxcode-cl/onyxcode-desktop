@@ -2,14 +2,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join, win32 } from 'node:path'
 import { checkZipEntriesWin, UPDATE_PLATFORMS, type UpdateManifest, type UpdatePlatformSpec } from '@shared/update-install'
 import { UPDATE_WIN_CERT_THUMBPRINT } from './config'
-import {
-  InstallError,
-  MAX_ENTRIES,
-  UNCOMPRESSED_FACTOR_LIMIT,
-  UpdateInstaller,
-  type InstallerDeps,
-  type RunFn
-} from './installer'
+import { InstallError, MAX_ENTRIES, UNCOMPRESSED_FACTOR_LIMIT, UpdateInstaller, type InstallerDeps, type RunFn } from './installer'
 import { readAsarPackageInfo } from './asar-version'
 import { fileSource, readZipIndex, ZipIndexError, type ByteSource } from './zip-index'
 
@@ -146,7 +139,8 @@ export class WinUpdateInstaller extends UpdateInstaller {
     // Carpetas: las del índice y las implícitas en las rutas de los ficheros (un ZIP puede no traer entradas de carpeta).
     const known = new Set(exp.dirs)
     for (const f of exp.files.keys()) for (let i = f.indexOf('/'); i > 0; i = f.indexOf('/', i + 1)) known.add(f.slice(0, i))
-    for (const d of dirs) if (!known.has(d)) throw new InstallError('zip', `carpeta que no está en el ZIP: ${JSON.stringify(d.slice(0, 80))}`)
+    for (const d of dirs)
+      if (!known.has(d)) throw new InstallError('zip', `carpeta que no está en el ZIP: ${JSON.stringify(d.slice(0, 80))}`)
     for (const r of REQUIRED) if (!files.has(r)) throw new InstallError('zip', `falta ${r}`)
 
     // Versión: package.json de la cabecera del app.asar (JS puro) frente al manifiesto firmado.
