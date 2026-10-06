@@ -191,7 +191,7 @@ export function CompareViewContent({
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="compare-view">
-      <header className="drag flex h-12 shrink-0 items-center gap-3 border-b border-border px-3 desk:pl-[calc(var(--header-inset,0px)+12px)]">
+      <header className="drag flex h-12 shrink-0 items-center gap-3 border-b border-border px-3 desk:pl-[calc(var(--header-inset,0px)+12px)] desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <h2 className="shrink-0 font-display text-[14px] font-semibold desk:font-[family-name:var(--font-ui)] desk:font-medium">
           {t('compare.title')}
         </h2>

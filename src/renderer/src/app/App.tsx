@@ -34,6 +34,7 @@ import { useTheme } from './useTheme'
 import { MobileShell } from './mobile/MobileShell'
 import { useT } from '../lib/i18n'
 import { isMacPlatform, platformCaps, useIsRemote } from '../lib/platform'
+import { useControlsInset } from '../lib/window-controls'
 import { useKeybindings } from '../keybindings/dispatch'
 import { hintSuffix, useBindingHint } from '../keybindings/bindings'
 
@@ -153,6 +154,7 @@ function DesktopApp(): React.JSX.Element {
   const toggleSidebar = useUi((s) => s.toggleSidebar)
   const t = useT()
   useAppRuntime()
+  const controlsInset = useControlsInset()
 
   // Atajos configurables (⌘\ barra lateral, ⌘, ajustes, ⌘K / ⌘⇧P paleta, ⌘N nuevo, ⌃Tab cambia de modo, Plan/Build, paneles de Code…):
   // un único manejador resuelve el atajo efectivo de cada acción (registro central en `keybindings/`; se cambian en Ajustes › Atajos).
@@ -183,7 +185,13 @@ function DesktopApp(): React.JSX.Element {
           + botón de 32 px; en Windows 8 + 32 + 4). Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
       <main
         className="relative flex min-w-0 flex-1 flex-col"
-        style={{ '--header-inset': collapsed ? (isMacPlatform() ? '112px' : '44px') : '0px' } as React.CSSProperties}
+        style={
+          {
+            '--header-inset': collapsed ? (isMacPlatform() ? '112px' : '44px') : '0px',
+            // Reserva derecha para los controles de ventana de Windows (0 en macOS y Linux).
+            '--controls-inset': `${controlsInset}px`
+          } as React.CSSProperties
+        }
       >
         {collapsed && (
           <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>

@@ -193,7 +193,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4 desk:border-b-0 desk:pl-[calc(var(--header-inset,0px)+16px)]">
+      <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4 desk:border-b-0 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <span className="flex items-center gap-2 text-[13.5px] font-medium">
           <Settings2 size={15} className="text-accent" /> {t('settings.title')}
         </span>

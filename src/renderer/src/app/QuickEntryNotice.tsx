@@ -20,7 +20,7 @@ export function QuickEntryNotice(): React.JSX.Element | null {
     <div
       role="alert"
       data-testid="quick-entry-notice"
-      className="flex animate-fade-in items-center gap-2.5 border-b border-danger/25 bg-danger/8 px-4 py-2 text-xs text-danger desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag]"
+      className="flex animate-fade-in items-center gap-2.5 border-b border-danger/25 bg-danger/8 px-4 py-2 text-xs text-danger desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag]"
     >
       <AlertTriangle size={14} className="shrink-0" aria-hidden />
       <span className="min-w-0 flex-1">

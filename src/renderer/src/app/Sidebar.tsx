@@ -2,7 +2,7 @@ import { PanelLeft, Plus, Search, Settings, SquarePen } from 'lucide-react'
 import { IconButton } from '../components/IconButton'
 import { LogoMark } from '../components/Logo'
 import { useT } from '../lib/i18n'
-import { isMacPlatform, platformCaps } from '../lib/platform'
+import { isMacPlatform, isWindowsPlatform, platformCaps } from '../lib/platform'
 import { useServer } from '../stores/server'
 import { useUi } from '../stores/ui'
 import { useTasks } from '../features/tasks/impl/store'
@@ -32,6 +32,8 @@ export function Sidebar(): React.JSX.Element {
   const def = MODES_BY_ID[mode]
   const SidebarContent = def.SidebarContent
   const mac = isMacPlatform()
+  // Barra de título integrada de 48 px en macOS y Windows; Linux conserva el marco estándar.
+  const tall = mac || isWindowsPlatform()
   const showProjects = !!def.projectAction
   const newHint = hintText(bindings['conversation.new'])
 
@@ -39,8 +41,8 @@ export function Sidebar(): React.JSX.Element {
 
   return (
     <aside aria-label={t('app.sidebar.aria')} className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col bg-sidebar">
-      {/* Barra de título de 48 px: en macOS los primeros 84 px son de los semáforos; solo queda el botón de ocultar. En Windows el marco es el nativo. */}
-      <div className={`drag flex shrink-0 items-center justify-end pr-2.5 ${mac ? 'h-12 pl-[84px]' : 'h-10 pl-2'}`}>
+      {/* Barra de título de 48 px: en macOS los primeros 84 px son de los semáforos; solo queda el botón de ocultar. En Windows (titleBarOverlay) no hay reserva izquierda; los controles nativos van a la derecha de la ventana. */}
+      <div className={`drag flex shrink-0 items-center justify-end pr-2.5 ${mac ? 'h-12 pl-[84px]' : tall ? 'h-12 pl-2' : 'h-10 pl-2'}`}>
         <IconButton label={t('app.sidebar.hide', { hint: hintSuffix(hints['sidebar.toggle']) })} size="sm" onClick={toggleSidebar}>
           <PanelLeft size={16} strokeWidth={1.75} />
         </IconButton>

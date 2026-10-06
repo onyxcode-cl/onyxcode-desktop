@@ -300,7 +300,7 @@ export function ChatView(): React.JSX.Element {
     <div className="flex h-full flex-col">
       <header
         data-mobile="hide"
-        className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur"
+        className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
       >
         <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
       </header>

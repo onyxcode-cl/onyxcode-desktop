@@ -24,7 +24,7 @@ export function UpdateNotice(): React.JSX.Element | null {
       role="status"
       data-testid="update-notice"
       data-phase={view.phase}
-      className="drag flex min-h-9 animate-fade-in items-center gap-2.5 border-b border-accent/25 bg-accent-soft py-2 pr-4 pl-[calc(var(--header-inset,0px)+16px)] text-meta text-fg"
+      className="drag flex min-h-9 animate-fade-in items-center gap-2.5 border-b border-accent/25 bg-accent-soft py-2 pr-4 pl-[calc(var(--header-inset,0px)+16px)] desk:pr-[calc(var(--controls-inset,0px)+16px)] text-meta text-fg"
     >
       <Icon size={14} className={`shrink-0 text-accent ${view.progress ? 'animate-spin' : ''}`} />
       <span className="min-w-0 flex-1 truncate" data-testid="update-notice-text">

@@ -11,7 +11,7 @@ export function ServerBanner(): React.JSX.Element | null {
   return (
     <div
       role={failed ? 'alert' : 'status'}
-      className={`relative flex animate-fade-in items-center gap-2.5 overflow-hidden border-b px-4 py-2 text-xs desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag] ${failed ? 'border-danger/25 bg-danger/8 text-danger desk:border-danger/30 desk:text-fg' : 'border-border bg-accent-soft/50 text-muted desk:bg-accent-soft desk:text-fg'}`}
+      className={`relative flex animate-fade-in items-center gap-2.5 overflow-hidden border-b px-4 py-2 text-xs desk:min-h-9 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:text-meta desk:[-webkit-app-region:drag] ${failed ? 'border-danger/25 bg-danger/8 text-danger desk:border-danger/30 desk:text-fg' : 'border-border bg-accent-soft/50 text-muted desk:bg-accent-soft desk:text-fg'}`}
     >
       {!failed && (
         <span
