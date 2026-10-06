@@ -27,7 +27,7 @@ import {
 import { t as tg } from '@shared/i18n'
 import { toChatAttachment } from '../../../lib/attachments'
 import { splitPath } from '../../../lib/paths'
-import { isRemoteSurface } from '../../../lib/platform'
+import { isRemoteSurface, isWindowsPlatform } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { useT } from '../../../lib/i18n'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
@@ -894,10 +894,10 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           <Kbd>@</Kbd> {t('code.composer.hintFiles')}
         </span>
         <span>
-          <Kbd>⇧Tab</Kbd> {'Plan / Build'}
+          <Kbd>{isWindowsPlatform() ? 'Shift+Tab' : '⇧Tab'}</Kbd> {'Plan / Build'}
         </span>
         <span>
-          <Kbd>⇧↵</Kbd> {t('code.composer.hintNewline')}
+          <Kbd>{isWindowsPlatform() ? 'Shift+Enter' : '⇧↵'}</Kbd> {t('code.composer.hintNewline')}
         </span>
       </div>
     </div>
