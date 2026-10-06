@@ -152,7 +152,7 @@ function TaskMenu({
 
   return (
     // Escritorio: el `translate` crea un contexto de apilamiento y el z-30 del menú quedaría dentro; con el menú abierto
-    // el contenedor sube (`desk:z-30`) para que no lo tapen las filas siguientes.
+    // el contenedor sube de capa (z-30 solo en escritorio) para que no lo tapen las filas siguientes.
     <div
       ref={rootRef}
       className={`relative shrink-0 desk:absolute! desk:top-1/2 desk:right-1 desk:-translate-y-1/2${open ? ' desk:z-30' : ''}`}
