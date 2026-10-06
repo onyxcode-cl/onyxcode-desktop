@@ -61,7 +61,6 @@ function distroProcesses(hostEnv: Record<string, string | undefined>): Promise<s
 /** Diagnóstico de SOLO LECTURA: las últimas líneas del registro de opencode dentro de la distro de prueba. */
 const TAIL_OPENCODE_LOG =
   'd=$(ls -d /home/lazunox/xdg/*/data/opencode 2>/dev/null | head -1); echo "dir=$d"; ls -la "$d" "$d/log" 2>&1 | head -24; echo ---ERR---; grep -rhi "error\\|denied\\|EACCES\\|EPERM\\|sqlite" "$d/log" 2>/dev/null | tail -10'
-;('f=$(ls -t /home/lazunox/xdg/*/data/opencode/log/*.log 2>/dev/null | head -1); echo "log=$f"; [ -n "$f" ] && tail -n 30 "$f"')
 function distroSh(hostEnv: Record<string, string | undefined>, cmd: string): Promise<string[]> {
   const env = wslEnv(hostEnv)
   const args = ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/bin/sh', '-c', cmd]
