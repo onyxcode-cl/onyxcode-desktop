@@ -161,7 +161,8 @@ export function isOpencodeServe(command: string): boolean {
  * programa, o un `cloudflared` del usuario en otra ruta, no casan.
  */
 export function isOurCloudflared(command: string): boolean {
-  if (!/\/bin\/cloudflared-[0-9A-Za-z._-]+\/cloudflared(\s|$)/.test(command)) return false
+  // macOS: `…/bin/cloudflared-<v>/cloudflared`. Windows (línea de CIM, con comillas y barras invertidas): `"…\bin\cloudflared-<v>\cloudflared.exe"`.
+  if (!/[\\/]bin[\\/]cloudflared-[0-9A-Za-z._-]+[\\/]cloudflared(?:\.exe)?"?(\s|$)/i.test(command)) return false
   if (!/\s--url http:\/\/127\.0\.0\.1:\d+(\s|$)/.test(command)) return false
   if (/\s--no-autoupdate(\s|$)/.test(command) === false) return false
   return /(^|\s)tunnel(\s|$)/.test(command)

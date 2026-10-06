@@ -76,13 +76,41 @@ export function redactLine(line: string): string {
 
 const PROXY_VARS = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'NO_PROXY', 'no_proxy', 'ALL_PROXY', 'all_proxy']
 
-/** Entorno mínimo del proceso: `HOME` privado, `PATH` del sistema y los proxies si los hay. Nada de variables de Lazunox ni del motor. */
+/**
+ * Entorno mínimo del proceso: `HOME` privado, `PATH` del sistema y los proxies si los hay. Nada de variables de Lazunox ni del motor.
+ * Windows: además `USERPROFILE` (el `HOME` de Go allí), `SystemRoot`/`windir` (Winsock y DNS no cargan sin ellos), `ComSpec`, `TEMP`/`TMP`
+ * del sistema y un `PATH` solo de `System32`; no se hereda `APPDATA` (no lee `%APPDATA%\cloudflared`).
+ */
 export function cloudflaredEnv(
   home: string,
   base: NodeJS.ProcessEnv = process.env,
-  extra: Record<string, string> = {}
+  extra: Record<string, string> = {},
+  platform: string = process.platform
 ): Record<string, string> {
-  const env: Record<string, string> = { HOME: home, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'C' }
+  const pick = (k: string): string | undefined => {
+    const hit = Object.keys(base).find((b) => b.toLowerCase() === k.toLowerCase())
+    const v = hit === undefined ? undefined : base[hit]
+    return typeof v === 'string' && v !== '' ? v : undefined
+  }
+  const env: Record<string, string> =
+    platform === 'win32'
+      ? (() => {
+          const root = pick('SystemRoot') ?? 'C:\\Windows'
+          const e: Record<string, string> = {
+            HOME: home,
+            USERPROFILE: home,
+            SystemRoot: root,
+            windir: root,
+            ComSpec: `${root}\\System32\\cmd.exe`,
+            PATH: `${root}\\System32;${root}`
+          }
+          for (const k of ['TEMP', 'TMP']) {
+            const v = pick(k)
+            if (v) e[k] = v
+          }
+          return e
+        })()
+      : { HOME: home, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'C' }
   for (const k of PROXY_VARS) if (typeof base[k] === 'string' && base[k]) env[k] = base[k] as string
   return { ...env, ...extra }
 }
@@ -202,7 +230,7 @@ export class CloudflaredProcess {
       cwd: this.o.homeDir,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
-      env: cloudflaredEnv(this.o.homeDir, process.env, this.o.extraEnv)
+      env: cloudflaredEnv(this.o.homeDir, process.env, this.o.extraEnv, plat)
     })
     this.child = child
     this.setState('starting')
@@ -327,8 +355,10 @@ export class CloudflaredProcess {
   private killRemaining(pid: number | undefined): void {
     if (!pid) return
     this.o.deps.killTree(pid, 'SIGKILL')
+    const win = (this.o.platform ?? process.platform) === 'win32'
     for (const t of this.tree) {
-      for (const target of [-t, t]) {
+      // Windows no tiene grupos de procesos: un PID negativo no significa «grupo» (y `taskkill /T` ya recorrió el árbol).
+      for (const target of win ? [t] : [-t, t]) {
         try {
           process.kill(target, 'SIGKILL')
         } catch {
