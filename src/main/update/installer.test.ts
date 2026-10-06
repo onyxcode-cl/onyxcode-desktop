@@ -456,7 +456,9 @@ describe('UpdateInstaller: contenido del ZIP', () => {
   it('identificador de firma distinto', async () => {
     expect(await go(make(world(), { ident: 'com.otra.app' }).inst)).toMatchObject({ code: 'signing' })
   })
-  it('Info.plist con otro identificador o con otra versión', async () => {
+  // El instalador de macOS (zipinfo/ditto/plutil, carpeta de preparación reutilizada entre las dos comprobaciones) no se usa en
+  // Windows, donde la carpeta de la primera queda bloqueada y la segunda da `unknown`. El contrato de Windows (U1) tiene sus pruebas.
+  it.skipIf(process.platform === 'win32')('Info.plist con otro identificador o con otra versión', async () => {
     expect(await go(make(world(), { plistId: 'com.otra.app' }).inst)).toMatchObject({ code: 'signing' })
     expect(await go(make(world(), { plistVersion: '0.3.0' }).inst)).toMatchObject({ code: 'downgrade' })
   })
