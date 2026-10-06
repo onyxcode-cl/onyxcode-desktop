@@ -7,10 +7,9 @@ import {
   APP_BUNDLE_NAME,
   IDLE_INSTALL,
   MANIFEST_MAX_BYTES,
-  MANIFEST_NAME,
-  MANIFEST_SIG_NAME,
   MAX_REDIRECTS,
   SIGNATURE_MAX_BYTES,
+  UPDATE_PLATFORMS,
   ZIP_MAX_BYTES,
   isAllowedDownloadUrl,
   isSafeZipEntry,
@@ -20,7 +19,8 @@ import {
   type InstallErrorCode,
   type InstallEvent,
   type InstallState,
-  type UpdateManifest
+  type UpdateManifest,
+  type UpdatePlatformSpec
 } from '@shared/update-install'
 import { UPDATE_TEAM_ID } from './config'
 import { verifyWithKeys, type UpdateKey } from './signature'
@@ -32,12 +32,14 @@ export interface RunResult {
   stderr: string
 }
 /** Ejecuta un binario con argumentos (NUNCA por una shell). */
-export type RunFn = (cmd: string, args: string[]) => Promise<RunResult>
+export type RunFn = (cmd: string, args: string[], opts?: { env?: Record<string, string> }) => Promise<RunResult>
 
 export interface FileKind {
   isFile: boolean
   isDirectory: boolean
   isSymlink: boolean
+  /** Tamaño en bytes (solo ficheros; lo usa el instalador de Windows para cotejar con el índice del ZIP). */
+  size?: number
 }
 export interface WriteHandle {
   write(chunk: Uint8Array): Promise<void>
@@ -93,8 +95,8 @@ export interface ReadyUpdate {
   stagedApp: string
 }
 
-const UNCOMPRESSED_FACTOR_LIMIT = 3
-const MAX_ENTRIES = 200_000
+export const UNCOMPRESSED_FACTOR_LIMIT = 3
+export const MAX_ENTRIES = 200_000
 
 export function stagingRoot(userData: string): string {
   return join(userData, 'update', 'staging')
@@ -104,10 +106,15 @@ export class UpdateInstaller {
   private state: InstallState = IDLE_INSTALL
   private ready: ReadyUpdate | null = null
   private abort: AbortController | null = null
-  private cancelled = false
+  protected cancelled = false
   private running: Promise<void> | null = null
+  /** Plataforma de los assets (manifiesto, firma, ZIP). La subclase de Windows la cambia; el Mac queda como siempre. */
+  protected readonly spec: UpdatePlatformSpec = UPDATE_PLATFORMS['darwin-arm64']
 
-  constructor(private readonly d: InstallerDeps) {}
+  constructor(protected readonly d: InstallerDeps) {}
+
+  /** Gancho: borra lo que la plataforma deja fuera de `<userData>/update/staging/<versión>` (Windows: carpeta hermana del destino). */
+  protected async discardExtra(_version: string): Promise<void> {}
 
   getState(): InstallState {
     return this.state
@@ -117,7 +124,7 @@ export class UpdateInstaller {
     return this.state.phase === 'ready' ? this.ready : null
   }
 
-  private emit(e: InstallEvent): void {
+  protected emit(e: InstallEvent): void {
     const next = reduceInstall(this.state, e)
     if (next === this.state) return
     this.state = next
@@ -140,6 +147,7 @@ export class UpdateInstaller {
         console.warn(`[update] descarga fallida (${code}): ${err instanceof Error ? err.message : String(err)}`)
         this.emit({ type: 'fail', code })
         void this.d.fs.rmrf(join(stagingRoot(this.d.userData), release.version)).catch(() => undefined)
+        void this.discardExtra(release.version).catch(() => undefined)
       })
       .finally(() => {
         this.running = null
@@ -164,7 +172,10 @@ export class UpdateInstaller {
     const v = this.state.version
     if (v) {
       const dir = join(stagingRoot(this.d.userData), v)
-      void (this.running ?? Promise.resolve()).finally(() => this.d.fs.rmrf(dir).catch(() => undefined))
+      void (this.running ?? Promise.resolve()).finally(() => {
+        void this.discardExtra(v).catch(() => undefined)
+        return this.d.fs.rmrf(dir).catch(() => undefined)
+      })
     }
   }
 
@@ -173,7 +184,10 @@ export class UpdateInstaller {
     if (this.state.phase === 'ready') {
       const v = this.state.version
       this.ready = null
-      if (v) void this.d.fs.rmrf(join(stagingRoot(this.d.userData), v)).catch(() => undefined)
+      if (v) {
+        void this.d.fs.rmrf(join(stagingRoot(this.d.userData), v)).catch(() => undefined)
+        void this.discardExtra(v).catch(() => undefined)
+      }
     }
     this.emit({ type: 'reset' })
   }
@@ -215,15 +229,15 @@ export class UpdateInstaller {
     await d.fs.mkdirp(dir, 0o700)
 
     const base = `${d.downloadBase.replace(/\/+$/, '')}/${d.repo}/releases/download/${encodeURIComponent(release.tag)}`
-    const manifestBytes = await this.fetchSmall(`${base}/${MANIFEST_NAME}`, MANIFEST_MAX_BYTES, signal)
-    const sigBytes = await this.fetchSmall(`${base}/${MANIFEST_SIG_NAME}`, SIGNATURE_MAX_BYTES, signal)
+    const manifestBytes = await this.fetchSmall(`${base}/${this.spec.manifestName}`, MANIFEST_MAX_BYTES, signal)
+    const sigBytes = await this.fetchSmall(`${base}/${this.spec.manifestSigName}`, SIGNATURE_MAX_BYTES, signal)
 
     // 1. La firma manda: primero se verifica sobre los bytes exactos y solo después se interpreta el JSON.
     const keyId = verifyWithKeys(manifestBytes, sigBytes.toString('utf8'), d.keys)
     if (keyId === null) throw new InstallError('signature', 'firma del manifiesto no válida')
     let manifest: UpdateManifest | null = null
     try {
-      manifest = parseManifest(JSON.parse(manifestBytes.toString('utf8')))
+      manifest = parseManifest(JSON.parse(manifestBytes.toString('utf8')), this.spec.id)
     } catch {
       manifest = null
     }
@@ -385,7 +399,7 @@ export class UpdateInstaller {
 
   // ---- verificación ------------------------------------------------------------------------
 
-  private async extractAndVerify(zipPath: string, dir: string, m: UpdateManifest): Promise<string> {
+  protected async extractAndVerify(zipPath: string, dir: string, m: UpdateManifest): Promise<string> {
     const { run } = this.d
     // 2. Listado con zipinfo: cada entrada validada ANTES de extraer nada.
     const list = await run('/usr/bin/zipinfo', ['-1', zipPath])
@@ -495,7 +509,7 @@ export function nodeInstallerFs(): InstallerFs {
     },
     lstat: async (p) => {
       const s = await lstat(p)
-      return { isFile: s.isFile(), isDirectory: s.isDirectory(), isSymlink: s.isSymbolicLink() }
+      return { isFile: s.isFile(), isDirectory: s.isDirectory(), isSymlink: s.isSymbolicLink(), size: s.size }
     },
     readdir: (p) => readdir(p),
     readlink: (p) => readlink(p),

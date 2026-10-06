@@ -12,6 +12,13 @@ export const GITHUB_API_BASE = 'https://api.github.com'
  */
 export const UPDATE_TEAM_ID = '' as string
 
+/**
+ * Huella SHA-1 (40 hex en mayúsculas) del certificado Authenticode con el que se firmaría Lazunox.exe en Windows. Vacío = no
+ * se comprueba (hoy no hay certificado; la autenticidad la da solo la firma Ed25519 del manifiesto). Con valor,
+ * `WinUpdateInstaller.verifyApp` exige Authenticode válido con esa huella; un valor mal formado falla cerrado.
+ */
+export const UPDATE_WIN_CERT_THUMBPRINT = '' as string
+
 export interface UpdateConfig {
   /** false = sin red y aviso apagado (no hay repositorio o la variable de test no aplica). */
   configured: boolean
