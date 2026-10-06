@@ -72,6 +72,7 @@ const SENSITIVE_NAMES = new Set([
   '.dockercfg',
   '.s3cfg',
   '.boto',
+  'ntuser.dat',
   'credentials',
   'credentials.json',
   'secrets.json',
@@ -144,6 +145,12 @@ export function isSensitivePath(abs: string): boolean {
   const joined = segs.join('/').toLowerCase()
   if (/(^|\/)\.config\/(gcloud|gh|op|hub)(\/|$)/.test(joined) || /(^|\/)\.local\/share\/opencode(\/|$)/.test(joined)) return true
   if (/(^|\/)library\/(keychains|cookies)(\/|$)/.test(joined)) return true
+  // Windows: credenciales y claves DPAPI del usuario, perfiles de navegador (`User Data`: Login Data, Cookies, Local State), Firefox,
+  // la configuración de gcloud/GitHub CLI bajo `AppData\Roaming` y el hive del usuario (`NTUSER.DAT*`, `NTUSER.DAT.LOG1`).
+  if (/(^|\/)appdata\/(roaming|local|locallow)\/microsoft\/(credentials|protect|vault|crypto)(\/|$)/.test(joined)) return true
+  if (/(^|\/)appdata\/roaming\/(gcloud|github cli|mozilla\/firefox\/profiles)(\/|$)/.test(joined)) return true
+  if (/(^|\/)user data\//.test(joined)) return true
+  if (name.startsWith('ntuser.dat')) return true
   return false
 }
 

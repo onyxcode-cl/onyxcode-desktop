@@ -14,10 +14,21 @@
  * Puro: sin disco (el `realpath` se inyecta) ni red.
  */
 import { homedir } from 'node:os'
-import { basename, isAbsolute, resolve, sep } from 'node:path'
+import { posix, win32 } from 'node:path'
 import { isSensitivePath } from './path-guard'
 
+type PathApi = typeof posix
+
+/** Funciones de ruta de la plataforma del veredicto (inyectable: en macOS se prueba Windows con `node:path/win32`). */
+const pathApi = (platform: string | undefined): PathApi => ((platform ?? process.platform) === 'win32' ? win32 : posix)
+const isWinEnv = (env: { platform?: string }): boolean => (env.platform ?? process.platform) === 'win32'
+
 export interface ApprovalEnv {
+  /**
+   * Plataforma del equipo que ejecuta el comando (por defecto `process.platform`). `win32`: rutas con `C:\\` y `\\`, y la lista de
+   * comandos de cmd/PowerShell de más abajo; solo AÑADE negativas, nunca quita ninguna de las de macOS.
+   */
+  platform?: string
   /** Directorio de la sesión (ya con `realpath`): fuera de él, rutas y redirecciones se consideran peligrosas. */
   sessionDir: string
   home?: string
@@ -86,6 +97,143 @@ const DENY_COMMANDS = new Set([
   'shred'
 ])
 
+/**
+ * Windows (cmd y PowerShell): lo que SIEMPRE va a confirmar en el equipo. Los nombres se comparan sin extensión (`.exe`, `.cmd`…) y en
+ * minúsculas. Cubre borrado, registro, servicios, tareas programadas, red, permisos, descarga/ejecución remota, shells y lanzadores.
+ * Es otra heurística, no un límite: el límite real es la confirmación en el equipo, el ajuste apagado por defecto y el tope por hora.
+ */
+const WIN_DENY_COMMANDS = new Set([
+  'del',
+  'erase',
+  'rd',
+  'format',
+  'diskpart',
+  'reg',
+  'regedit',
+  'powershell',
+  'pwsh',
+  'cmd',
+  'wsl',
+  'wscript',
+  'cscript',
+  'mshta',
+  'rundll32',
+  'regsvr32',
+  'schtasks',
+  'sc',
+  'net',
+  'net1',
+  'netsh',
+  'runas',
+  'icacls',
+  'cacls',
+  'takeown',
+  'cipher',
+  'certutil',
+  'bitsadmin',
+  'wmic',
+  'vssadmin',
+  'bcdedit',
+  'taskkill',
+  'tskill',
+  'shutdown',
+  'msiexec',
+  'start',
+  'call',
+  'mklink',
+  'attrib',
+  'fsutil',
+  'robocopy',
+  'cmdkey',
+  'curl',
+  'wget',
+  'ssh',
+  'scp',
+  'sftp',
+  'telnet',
+  'ftp',
+  'tftp',
+  'psexec',
+  'winrs',
+  'mstsc',
+  'msg',
+  'setx',
+  'assoc',
+  'ftype',
+  'subst',
+  'bootcfg',
+  'dism',
+  'sfc',
+  'gpupdate',
+  'secedit',
+  'auditpol',
+  'manage-bde',
+  // PowerShell: alias y cmdlets de ejecución, red, borrado y configuración del sistema.
+  'invoke-expression',
+  'iex',
+  'invoke-webrequest',
+  'iwr',
+  'invoke-restmethod',
+  'irm',
+  'invoke-command',
+  'icm',
+  'invoke-item',
+  'ii',
+  'start-process',
+  'saps',
+  'start-job',
+  'start-service',
+  'stop-service',
+  'new-service',
+  'set-service',
+  'remove-service',
+  'stop-process',
+  'spps',
+  'stop-computer',
+  'restart-computer',
+  'set-executionpolicy',
+  'remove-item',
+  'ri',
+  'add-type',
+  'register-scheduledtask',
+  'unregister-scheduledtask',
+  'set-itemproperty',
+  'sp',
+  'new-itemproperty',
+  'remove-itemproperty',
+  'set-acl',
+  'new-psdrive',
+  'enter-pssession',
+  'new-pssession',
+  'start-bitstransfer',
+  'send-mailmessage',
+  'clear-eventlog',
+  'set-mppreference',
+  'add-mppreference',
+  'import-module',
+  'set-alias',
+  'new-alias',
+  'get-credential',
+  'convertto-securestring'
+])
+/** Intérpretes que solo existen o se llaman distinto en Windows. */
+const WIN_INTERPRETERS = /^(py|pyw|pythonw[0-9.]*)$/
+/** Sensibles de Windows (con las barras ya normalizadas a `/`): perfil de usuario, credenciales, claves DPAPI, navegadores y sistema. */
+const WIN_SENSITIVE_TEXT_RE = new RegExp(
+  [
+    String.raw`(?:^|[/\s=~'"])(?:appdata|programdata|\$recycle\.bin)(?:[/\s'"]|$)`,
+    String.raw`ntuser\.dat`,
+    String.raw`/windows/(?:system32|syswow64|system|temp)\b`,
+    String.raw`\bmicrosoft/(?:credentials|protect|vault|crypto)\b`,
+    String.raw`\buser data/`,
+    String.raw`\bnuget\.config\b|\bapplicationhost\.config\b|\bweb\.config\b`
+  ].join('|'),
+  'i'
+)
+/** `nombre.ext:flujo` (NTFS). No casa con `C:\\x`, `http://…`, `host:3000` ni `fix: texto`. */
+const WIN_STREAM_RE = /[^\s:/\\]\.[A-Za-z][A-Za-z0-9]{0,7}:[^\s/\\:]/
+const WIN_EXT_RE = /\.(?:exe|cmd|bat|com|ps1|vbs|msc)$/
+
 /** Envoltorios que ejecutan lo que sigue: se evalúa el resto como otro comando. */
 const WRAPPERS = new Set([
   'env',
@@ -137,23 +285,24 @@ const SENSITIVE_TEXT_RE = new RegExp(
 
 const CONTROL_RE = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/
 
-function expandHome(p: string, home: string): string {
+function expandHome(p: string, home: string, P: PathApi = posix): string {
   if (p === '~') return home
-  if (p.startsWith('~/')) return resolve(home, p.slice(2))
+  if (p.startsWith('~/') || (P === win32 && p.startsWith('~\\'))) return P.resolve(home, p.slice(2))
   return p
 }
 
 /** ¿`p` queda ESTRICTAMENTE dentro del directorio de la sesión (no es el propio directorio) por ruta léxica y real? */
 function strictlyInside(p: string, env: ApprovalEnv, home: string): boolean {
   if (p.includes('\0')) return false
-  const dir = resolve(env.sessionDir)
-  const abs = resolve(dir, expandHome(p, home))
-  const inside = (base: string, x: string): boolean => x !== base && x.startsWith(base.endsWith(sep) ? base : base + sep)
+  const P = pathApi(env.platform)
+  const dir = P.resolve(env.sessionDir)
+  const abs = P.resolve(dir, expandHome(p, home, P))
+  const inside = (base: string, x: string): boolean => x !== base && x.startsWith(base.endsWith(P.sep) ? base : base + P.sep)
   if (!inside(dir, abs)) return false
   if (env.realpath) {
     const realDir = env.realpath(dir)
     const real = env.realpath(abs)
-    if (realDir === null || real === null || !inside(resolve(realDir), resolve(real))) return false
+    if (realDir === null || real === null || !inside(P.resolve(realDir), P.resolve(real))) return false
   }
   return true
 }
@@ -211,15 +360,23 @@ function checkCommand(tokens: string[], piped: boolean, env: ApprovalEnv, home: 
   if (first === undefined) return null
   const rest = tokens.slice(i + 1)
   const lower = first.toLowerCase()
-  const name = basename(lower)
+  const win = isWinEnv(env)
+  const P = pathApi(env.platform)
+  // Windows: `C:/x/Powershell.EXE` y `del.cmd` se evalúan como `powershell` y `del`.
+  const name = win ? P.basename(lower).replace(WIN_EXT_RE, '') : P.basename(lower)
   // Nombre de comando con comodines o llaves: no se sabe qué ejecuta.
   if (/[*?[\]]/.test(first)) return 'glob-command'
   // Comando por ruta fuera de la sesión y fuera de los directorios de herramientas del sistema.
-  if ((isAbsolute(first) || first.startsWith('~') || first.includes('..')) && !SYSTEM_BIN.test(first) && !strictlyInside(first, env, home))
+  if (
+    (P.isAbsolute(first) || first.startsWith('~') || first.includes('..')) &&
+    !SYSTEM_BIN.test(first) &&
+    !strictlyInside(first, env, home)
+  )
     return 'command-outside'
   if (SHELLS.has(name)) return 'shell'
   if (DENY_COMMANDS.has(name) || /^mkfs(\.|$)|^newfs|^fdisk$|^ssh-/.test(name)) return `cmd:${name}`
-  if (INTERPRETERS.test(name)) {
+  if (win && WIN_DENY_COMMANDS.has(name)) return `cmd:${name}`
+  if (INTERPRETERS.test(name) || (win && WIN_INTERPRETERS.test(name))) {
     if (piped) return 'pipe-to-interpreter'
     if (rest.some((t) => INTERP_EVAL_FLAGS.has(t) || /^-[A-Za-z]*[ce]$/.test(t))) return 'interpreter-eval'
   }
@@ -229,7 +386,7 @@ function checkCommand(tokens: string[], piped: boolean, env: ApprovalEnv, home: 
     let j = 0
     while (j < rest.length && (isFlag(rest[j] as string) || /^\d+(\.\d+)?[smhd]?$/.test(rest[j] as string))) j++
     // `xargs` aplica el comando a una lista que no se ve aquí: con algo que borra, mueve o cambia permisos, siempre D.
-    if (name === 'xargs' && XARGS_DESTRUCTIVE.test(basename((rest[j] ?? '').toLowerCase()))) return 'xargs-destructive'
+    if (name === 'xargs' && XARGS_DESTRUCTIVE.test(P.basename((rest[j] ?? '').toLowerCase()))) return 'xargs-destructive'
     return checkCommand(rest.slice(j), piped, env, home, depth + 1)
   }
   switch (name) {
@@ -273,26 +430,41 @@ function checkCommand(tokens: string[], piped: boolean, env: ApprovalEnv, home: 
 }
 
 /** Veredicto para un comando de `bash`: `null` = pasa; texto = motivo (siempre D). */
-export function bashVerdict(command: string, env: ApprovalEnv): string | null {
+export function bashVerdict(rawCommand: string, env: ApprovalEnv): string | null {
   const home = env.home ?? homedir()
-  if (typeof command !== 'string' || command.trim() === '') return 'empty'
-  if (command.length > MAX_APPROVAL_TEXT) return 'too-long'
-  if (CONTROL_RE.test(command)) return 'control-chars'
+  const win = isWinEnv(env)
+  const P = pathApi(env.platform)
+  if (typeof rawCommand !== 'string' || rawCommand.trim() === '') return 'empty'
+  if (rawCommand.length > MAX_APPROVAL_TEXT) return 'too-long'
+  if (CONTROL_RE.test(rawCommand)) return 'control-chars'
   // Expansiones y sustituciones: lo que se ejecuta no es lo que se lee.
-  if (/`/.test(command)) return 'backtick'
-  if (/\$(?=[^\s]|$)/.test(command.replace(/\$$/, ''))) return 'expansion'
-  if (/[<>]\(/.test(command)) return 'process-substitution'
-  if (/\{[^{}]*,[^{}]*\}|\{[^{}]*\.\.[^{}]*\}/.test(command)) return 'brace-expansion'
+  if (/`/.test(rawCommand)) return 'backtick'
+  if (/\$(?=[^\s]|$)/.test(rawCommand.replace(/\$$/, ''))) return 'expansion'
+  if (/[<>]\(/.test(rawCommand)) return 'process-substitution'
+  if (/\{[^{}]*,[^{}]*\}|\{[^{}]*\.\.[^{}]*\}/.test(rawCommand)) return 'brace-expansion'
+  if (win) {
+    // cmd: `%VAR%` se expande y `^` escapa; PowerShell: `$` y la comilla inversa ya se han denegado arriba. Sin ellos no hay otra expansión.
+    if (/%[^%\s]*%|%~|\^|![^!\s]+!/.test(rawCommand)) return 'win-expansion'
+    // Flujos alternativos de NTFS (`archivo.txt:oculto`). Las rutas de dispositivo (`\\.\PhysicalDrive0`, `\\?\`) caen en `path-outside`.
+    if (WIN_STREAM_RE.test(rawCommand)) return 'win-stream'
+  }
+  // Windows: la barra invertida es separador de ruta, no escape (el escape de cmd es `^` y el de PowerShell la comilla inversa, ya denegados).
+  const command = win ? rawCommand.replace(/\\/g, '/') : rawCommand
   const flat = flatten(command)
   if (SENSITIVE_TEXT_RE.test(flat) || SENSITIVE_TEXT_RE.test(command)) return 'sensitive-path'
+  if (win && (WIN_SENSITIVE_TEXT_RE.test(flat) || WIN_SENSITIVE_TEXT_RE.test(command))) return 'sensitive-path'
   // Redirecciones: el destino debe quedar dentro del directorio de la sesión (o ser /dev/null).
   for (const m of flat.matchAll(/>>?\|?\s*([^\s;&|<>()]+)/g)) {
     const target = m[1] as string
     if (target === '/dev/null') continue
-    if (!strictlyInside(target, env, home) || isSensitivePath(resolve(env.sessionDir, expandHome(target, home)))) return 'redirect-outside'
+    if (!strictlyInside(target, env, home) || isSensitivePath(P.resolve(env.sessionDir, expandHome(target, home, P))))
+      return 'redirect-outside'
   }
-  // Rutas absolutas, `~` y `..` fuera de la sesión (salvo /dev/null).
-  for (const m of flat.matchAll(/(?:^|[\s=])((?:~[A-Za-z0-9_.-]*|\.\.|\/)[^\s;&|<>()]*)/g)) {
+  // Rutas absolutas, `~` y `..` fuera de la sesión (salvo /dev/null). Windows: también `C:` (unidad) y `//servidor` (UNC).
+  const absRe = win
+    ? /(?:^|[\s=])((?:~[A-Za-z0-9_.-]*|\.\.|\/|[A-Za-z]:)[^\s;&|<>()]*)/g
+    : /(?:^|[\s=])((?:~[A-Za-z0-9_.-]*|\.\.|\/)[^\s;&|<>()]*)/g
+  for (const m of flat.matchAll(absRe)) {
     const p = m[1] as string
     if (p === '/dev/null' || /^\/dev\/(?:stdin|stdout|stderr|tty)$/.test(p)) continue
     if (SYSTEM_BIN.test(p) && !p.slice(1).includes('..')) continue
@@ -301,7 +473,7 @@ export function bashVerdict(command: string, env: ApprovalEnv): string | null {
   for (const seg of segments(flat)) {
     // Archivos sensibles por nombre (`.env`, claves…), también relativos al directorio de la sesión.
     for (const tok of seg.tokens.slice(1)) {
-      if (!isFlag(tok) && isSensitivePath(resolve(env.sessionDir, expandHome(tok, home)))) return 'sensitive-file'
+      if (!isFlag(tok) && isSensitivePath(P.resolve(env.sessionDir, expandHome(tok, home, P)))) return 'sensitive-file'
     }
     const why = checkCommand(seg.tokens, seg.piped, env, home)
     if (why) return why
@@ -312,16 +484,25 @@ export function bashVerdict(command: string, env: ApprovalEnv): string | null {
 /** Veredicto para una edición («una vez» de `edit`): cada ruta debe quedar estrictamente dentro de la sesión y no ser sensible. */
 export function editVerdict(paths: readonly string[], env: ApprovalEnv): string | null {
   const home = env.home ?? homedir()
+  const win = isWinEnv(env)
+  const P = pathApi(env.platform)
   if (paths.length === 0) return 'empty'
   for (const p of paths) {
     if (typeof p !== 'string' || p.trim() === '') return 'empty'
     if (p.length > MAX_APPROVAL_TEXT) return 'too-long'
     if (CONTROL_RE.test(p)) return 'control-chars'
     if (/[*?[\]{}`$]/.test(p)) return 'glob-or-expansion'
+    // Windows: `%VAR%`, `~1` (nombres cortos 8.3), flujos alternativos `a.txt:s` y rutas de dispositivo no se aceptan.
+    if (win && (/%/.test(p) || /~\d/.test(p) || WIN_STREAM_RE.test(p))) return 'win-path-syntax'
     if (!strictlyInside(p, env, home)) return 'path-outside'
-    const abs = resolve(env.sessionDir, expandHome(p, home))
+    const abs = P.resolve(env.sessionDir, expandHome(p, home, P))
     const real = env.realpath?.(abs) ?? null
     if (isSensitivePath(abs) || (real !== null && isSensitivePath(real)) || SENSITIVE_TEXT_RE.test(abs)) return 'sensitive-file'
+    if (
+      win &&
+      (WIN_SENSITIVE_TEXT_RE.test(abs.replace(/\\/g, '/')) || (real !== null && WIN_SENSITIVE_TEXT_RE.test(real.replace(/\\/g, '/'))))
+    )
+      return 'sensitive-file'
   }
   return null
 }
