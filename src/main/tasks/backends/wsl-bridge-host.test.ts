@@ -163,6 +163,8 @@ describe('WslBridgeHost', () => {
     const t = setup()
     await t.host.start()
     const client = new FakeSocket()
+    t.agent(0, FrameType.READY) // el lanzador solo acepta OPEN/DATA después de READY
+    await flush()
     t.inbound(client)
     await flush()
     const open = t.fromHost.find((f) => f.type === FrameType.OPEN)!
@@ -186,6 +188,8 @@ describe('WslBridgeHost', () => {
     const t = setup()
     await t.host.start()
     const client = new FakeSocket()
+    t.agent(0, FrameType.READY) // el lanzador solo acepta OPEN/DATA después de READY
+    await flush()
     t.inbound(client)
     await flush()
     const id = t.fromHost.find((f) => f.type === FrameType.OPEN)!.id
@@ -216,6 +220,8 @@ describe('WslBridgeHost', () => {
     await t.host.start()
     t.agent(2, FrameType.OPEN, encodePort(52000))
     const client = new FakeSocket()
+    t.agent(0, FrameType.READY) // el lanzador solo acepta OPEN/DATA después de READY
+    await flush()
     t.inbound(client)
     await flush()
     expect(t.host.streamCount).toBe(2)
@@ -227,7 +233,8 @@ describe('WslBridgeHost', () => {
     expect(client.destroyed).toBe(true)
     expect(await t.host.exited).toBeNull()
     expect(t.listenerClosed()).toBe(true)
-    await expect(t.host.ready).rejects.toThrow(/antes de READY/)
+    // READY ya había llegado: no se rechaza (el caso «muere antes de READY» se prueba en su propio test)
+    await expect(t.host.ready).resolves.toBeUndefined()
   })
 
   it('trama inválida del agente (tipo, tamaño o INIT): error tipado y sesión cortada con EOF al agente', async () => {
@@ -266,6 +273,8 @@ describe('WslBridgeHost', () => {
     for (let i = 0; i < 258; i++) {
       const s = new FakeSocket()
       socks.push(s)
+      t.agent(0, FrameType.READY) // el lanzador solo acepta OPEN/DATA después de READY
+      await flush()
       t.inbound(s)
     }
     await flush()
@@ -297,5 +306,48 @@ describe('WslBridgeHost', () => {
     expect(t.wslIn.writableEnded).toBe(true)
     expect(t.listenerClosed()).toBe(true)
     expect(await t.host.exited).toBeNull()
+  })
+
+  describe('conexiones locales antes de READY (el lanzador solo espera INIT hasta entonces)', () => {
+    it('no se manda OPEN ni DATA antes de READY; después sí, en orden', async () => {
+      const t = setup()
+      await t.host.start()
+      const a = new FakeSocket()
+      const b = new FakeSocket()
+      t.inbound(a)
+      t.inbound(b)
+      a.push2('GET /global/health')
+      await flush()
+      expect(t.fromHost.map((f) => f.type)).toEqual([FrameType.INIT]) // solo INIT
+      t.agent(0, FrameType.READY)
+      await flush()
+      const opens = t.fromHost.filter((f) => f.type === FrameType.OPEN)
+      expect(opens.map((f) => f.id)).toEqual([1, 3])
+      const data = t.fromHost.find((f) => f.id === 1 && f.type === FrameType.DATA)
+      expect(data?.data.toString()).toBe('GET /global/health')
+    })
+
+    it('si la sesión se cierra antes de READY, esas conexiones se destruyen y no se envía nada', async () => {
+      const t = setup()
+      await t.host.start()
+      const a = new FakeSocket()
+      t.inbound(a)
+      await t.host.close()
+      await flush()
+      expect(a.destroyed).toBe(true)
+      expect(t.fromHost.some((f) => f.type === FrameType.OPEN)).toBe(false)
+    })
+
+    it('tope de conexiones en espera: las de más se rechazan', async () => {
+      const t = setup()
+      await t.host.start()
+      const socks = Array.from({ length: 20 }, () => new FakeSocket())
+      for (const s of socks) t.inbound(s)
+      await flush()
+      expect(socks.filter((s) => s.destroyed)).toHaveLength(4)
+      t.agent(0, FrameType.READY)
+      await flush()
+      expect(t.fromHost.filter((f) => f.type === FrameType.OPEN)).toHaveLength(16)
+    })
   })
 })

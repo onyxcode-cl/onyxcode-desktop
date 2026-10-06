@@ -241,13 +241,14 @@ describe('WslBackend con wsl.exe simulado', () => {
     const t = deps()
     const l = await createWslBackend(t.d).launch(launchSpec())
     const { proc } = t.spawned[0]!
+    proc.agent(0, FrameType.READY) // el lanzador solo acepta OPEN/DATA después de READY
+    await flush()
     const client = new FakeSocket()
     t.inbound(client)
     client.push(Buffer.from('GET /global/health'))
     await flush()
     const open = proc.frames.find((f) => f.type === FrameType.OPEN)!
     expect(open.id % 2).toBe(1)
-    proc.agent(0, FrameType.READY)
     proc.agent(open.id, FrameType.DATA, Buffer.from('{"healthy":true}'))
     proc.agent(0, FrameType.EXIT, encodeExit(0))
     await flush()

@@ -57,7 +57,8 @@ def read_exact_frame(fd):
         frames = dec.push(chunk)
         if frames:
             if len(frames) != 1 or frames[0][1] != P.INIT or frames[0][0] != 0:
-                die("la primera trama no es INIT")
+                # Diagnostico (sin contenido): cuantas tramas llegaron y el id/tipo de la primera.
+                die("la primera trama no es INIT (tramas=%d id=%r tipo=%r bytes=%d)" % (len(frames), frames[0][0], frames[0][1], len(chunk)))
             if dec._buf:
                 die("bytes tras INIT")  # el anfitrión no envía nada más hasta READY
             return frames[0][2]

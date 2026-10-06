@@ -65,6 +65,8 @@ interface HostStream {
 
 const SLICE = 64 * 1024
 const WINDOW_BATCH = 32 * 1024
+/** Tope de conexiones locales en espera de READY (el resto se rechaza). */
+const MAX_EARLY = 16
 
 export class WslBridgeHost extends EventEmitter {
   /** Se resuelve con READY del agente; se rechaza si la sesión se corta antes. */
@@ -80,6 +82,10 @@ export class WslBridgeHost extends EventEmitter {
   private listener: BridgeListener | null = null
   private nextId = 1
   private closed = false
+  /** El lanzador ya mandó READY: solo desde entonces se le puede enviar OPEN/DATA (antes solo espera INIT). */
+  private isReady = false
+  /** Conexiones locales que llegaron antes de READY (p. ej. el sondeo de salud): esperan, en orden, hasta READY. */
+  private readonly early: Duplex[] = []
   private serverExit: number | null = null
   private resolveReady!: () => void
   private rejectReady!: (e: Error) => void
@@ -163,6 +169,8 @@ export class WslBridgeHost extends EventEmitter {
       case FrameType.PONG:
         return
       case FrameType.READY:
+        this.isReady = true
+        for (const sock of this.early.splice(0)) this.onInbound(sock)
         this.resolveReady()
         this.emit('ready')
         return
@@ -214,6 +222,13 @@ export class WslBridgeHost extends EventEmitter {
   // ───────── flujos «in» ─────────
   private onInbound(sock: Duplex): void {
     if (this.closed) return void sock.destroy()
+    if (!this.isReady) {
+      // El lanzador solo espera INIT hasta que manda READY: un OPEN/DATA antes lo hace salir («la primera trama no es INIT»).
+      if (this.early.length >= MAX_EARLY) return void sock.destroy()
+      sock.pause()
+      this.early.push(sock)
+      return
+    }
     const id = this.nextId
     this.nextId += 2
     try {
@@ -224,6 +239,7 @@ export class WslBridgeHost extends EventEmitter {
     const st = this.track(id)
     this.send(id, FrameType.OPEN, encodePort(this.o.serverPort))
     this.attach(st, sock)
+    sock.resume() // si esperó a READY estaba en pausa
   }
 
   // ───────── sockets ─────────
@@ -323,6 +339,7 @@ export class WslBridgeHost extends EventEmitter {
       this.streams.delete(id)
       st?.socket?.destroy()
     }
+    for (const sock of this.early.splice(0)) sock.destroy()
     this.table.closeAll()
     this.rejectReady(new Error(`puente cerrado antes de READY (${reason})`))
     this.o.output.end() // EOF hacia el lanzador: sale solo
