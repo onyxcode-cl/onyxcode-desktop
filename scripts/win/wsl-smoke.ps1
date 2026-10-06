@@ -54,6 +54,11 @@ try {
       'echo WSLCONF=$(tr "\n" "|" < /etc/wsl.conf 2>/dev/null)',
       'echo MNTC=$([ -d /mnt/c/Windows ] && echo montado || echo no-montado)',
       'echo PROC_NS=$(ls /proc/self/ns 2>/dev/null | tr "\n" " ")',
+      'echo BINFMT=$(ls /proc/sys/fs/binfmt_misc 2>&1 | tr "\n" " ")',
+      'echo BINFMT_STATE=$(head -2 /proc/sys/fs/binfmt_misc/WSLInterop 2>&1 | tr "\n" "|")',
+      'echo INTEROP_SOCK=$(ls /run/WSL 2>&1 | tr "\n" " ")',
+      'echo RUN_EXE=$(/mnt/c/Windows/System32/cmd.exe /c echo hola 2>&1 | head -1)',
+      'echo INTEROP_ENV=$(env | grep -i "^WSL" | tr "\n" " ")',
       'echo DISK=$(df -h / | tail -1)',
       '# fin'
     ) -join '; '
@@ -72,6 +77,24 @@ try {
     Check '/opt/lazunox existe y esta vacio (punto de carga del paquete)' ($kv['OPT_LAZUNOX'] -eq 'vacio')
     Check 'sin binarios SUID/SGID' ($kv['SUID'] -eq '0') ("cuenta=" + $kv['SUID'])
     Log ("INFO wsl.conf: " + $kv['WSLCONF'] + " | /mnt/c: " + $kv['MNTC'])
+    Log ("  wsl --version: " + ((Clean (& wsl.exe --version 2>&1)) -replace "`r?`n", ' | '))
+    Log ("  usuario por defecto (wsl.conf [user] default): " + (Clean (& wsl.exe -d $name --exec /usr/bin/id -un 2>&1)))
+    Log ("  /etc/wsl.conf (hex del inicio): " + (Clean ('od -An -c -N48 /etc/wsl.conf' | & wsl.exe -d $name -u root --exec /bin/sh -s 2>&1)))
+    # Prueba de comportamiento del interop: un .exe INOFENSIVO de Windows (whoami) copiado DENTRO de la distro (por stdin, en base64: una
+    # sesion SSH no ve \\wsl.localhost); si se ejecuta, el interop se puede usar.
+    try {
+      $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $env:SystemRoot 'System32\whoami.exe')))
+      $b64 | & wsl.exe -d $name -u root --exec /bin/sh -c 'base64 -d -i > /tmp/w.exe' 2>&1 | Out-Null
+      foreach ($u in @('root', 'lazunox')) {
+        $r = Clean (& wsl.exe -d $name -u $u --exec /bin/sh -c 'chmod 755 /tmp/w.exe 2>/dev/null; ls -l /tmp/w.exe; /tmp/w.exe 2>&1; echo rc=$?' 2>&1)
+        Log ("  EXE_DE_WINDOWS como ${u}: " + ($r -replace "`r?`n", ' | '))
+      }
+    } catch { Log ("  EXE_DE_WINDOWS: no se pudo preparar: " + $_) }
+    # Reinicio de la distro (solo la nuestra): ¿la configuracion de interop se aplica tras `wsl --terminate`?
+    & wsl.exe --terminate $name 2>&1 | Out-Null
+    Start-Sleep -Seconds 3
+    $probe2 = 'echo BINFMT_STATE2=$(head -2 /proc/sys/fs/binfmt_misc/WSLInterop 2>&1 | tr "\n" "|"); echo INTEROP_SOCK2=$(ls /run/WSL 2>&1 | tr "\n" " "); echo UID2=$(id -un); # fin'
+    foreach ($l in ((Clean ($probe2 | & wsl.exe -d $name -u root --exec /bin/sh -s 2>&1)) -split "`r?`n")) { Log "  tras reinicio: $l" }
   }
 } finally {
   if ($imported -or ((Distros) -contains $name)) {
