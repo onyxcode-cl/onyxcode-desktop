@@ -27,6 +27,7 @@ import { useSessions } from '../../../stores/sessions'
 import { untilText } from '../../routines/impl/schedule'
 import { cw, onTasks } from './bridge'
 import { openTaskAnywhere } from './actions'
+import { hostFolder } from './conn-paths'
 import { syncActivity, useTasks } from './store'
 import { baseName, isArchivedSession, relTime, TASK_STATUS_LABEL, type TaskStatus } from './util'
 
@@ -177,7 +178,11 @@ export interface PinnedEntry {
  * Fijadas de todas las carpetas (metadatos de main). Si la sesión ya se conoce (carpeta conectada) se usa su
  * título y su fecha reales y se omiten las archivadas. Más recientes primero.
  */
-export function pinnedEntries(taskMeta: Record<string, TasksTaskMeta>, sessions: Record<string, Session>): PinnedEntry[] {
+export function pinnedEntries(
+  taskMeta: Record<string, TasksTaskMeta>,
+  sessions: Record<string, Session>,
+  hostFolder: (sessionDirectory: string) => string = (d) => d
+): PinnedEntry[] {
   const out: PinnedEntry[] = []
   for (const m of Object.values(taskMeta)) {
     if (!m.pinned) continue
@@ -185,7 +190,7 @@ export function pinnedEntries(taskMeta: Record<string, TasksTaskMeta>, sessions:
     if (s && isArchivedSession(s)) continue
     out.push({
       sessionId: m.sessionId,
-      folder: s?.directory ?? m.folder,
+      folder: s ? hostFolder(s.directory) : m.folder,
       fullAccess: m.fullAccess,
       title: s?.title || m.title,
       updated: s?.time.updated ?? m.updatedAt
@@ -408,7 +413,7 @@ export function SidebarSections(): React.JSX.Element {
     }
   }, [])
 
-  const pinned = useMemo(() => pinnedEntries(taskMeta, sessions), [taskMeta, sessions])
+  const pinned = useMemo(() => pinnedEntries(taskMeta, sessions, hostFolder), [taskMeta, sessions])
   const allActive = useMemo(() => orderActiveTasks(activity?.tasks ?? []), [activity])
   const activeById = useMemo(() => new Map(allActive.map((t) => [t.sessionId, t])), [allActive])
   const active = useMemo(() => activeElsewhere(allActive, folder), [allActive, folder])

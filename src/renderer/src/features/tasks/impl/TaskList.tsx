@@ -42,6 +42,7 @@ import {
   statusTextClass,
   type TaskGroup
 } from './SidebarSections'
+import { sdkDirOf } from './path-map'
 import { isPinned, isPlanPending, isUsingComputer, markUnread, togglePinned, useTasks } from './store'
 import {
   evictedStatusOf,
@@ -408,7 +409,9 @@ export function TaskList(): React.JSX.Element {
   const messages = useSessions((s) => s.messages)
   const client = useTasks((s) => s.client)
   const baseUrl = useTasks((s) => s.conn?.baseUrl)
-  const more = useSessions((s) => (folder ? !!s.moreSessions[sessionsKey(folder, baseUrl)] : false))
+  // Carpeta tal como la ve OpenCode (`session.directory`): en macOS es la propia carpeta; en Windows, la ruta del sandbox.
+  const dirKey = useTasks((s) => (folder ? sdkDirOf(s.conn, folder) : ''))
+  const more = useSessions((s) => (folder ? !!s.moreSessions[sessionsKey(dirKey, baseUrl)] : false))
   const [query, setQuery] = useState('')
   const [groupMode, setGroupMode] = useState<GroupMode>(readGroupMode)
   const [, tick] = useState(0)
@@ -430,14 +433,14 @@ export function TaskList(): React.JSX.Element {
 
   // Tareas de la carpeta: activas y archivadas (el selector del store oculta las archivadas).
   const liveTasks = useMemo(
-    () => (folder ? selectSessionsForDirectory({ sessions, sessionSource, directorySource }, folder) : []),
-    [sessions, sessionSource, directorySource, folder]
+    () => (folder ? selectSessionsForDirectory({ sessions, sessionSource, directorySource }, dirKey) : []),
+    [sessions, sessionSource, directorySource, folder, dirKey]
   )
   const archivedTasks = useMemo(() => {
     if (!folder) return []
-    const viewSource = directorySource[folder] ?? MAIN_SOURCE
-    return archivedSessionsForDirectory(sessions, folder, viewSource, (id) => sessionSource[id] ?? MAIN_SOURCE)
-  }, [sessions, sessionSource, directorySource, folder])
+    const viewSource = directorySource[dirKey] ?? MAIN_SOURCE
+    return archivedSessionsForDirectory(sessions, dirKey, viewSource, (id) => sessionSource[id] ?? MAIN_SOURCE)
+  }, [sessions, sessionSource, directorySource, folder, dirKey])
 
   const source = showArchived ? archivedTasks : liveTasks
   const q = query.trim()
@@ -446,8 +449,8 @@ export function TaskList(): React.JSX.Element {
   // La búsqueda y el filtro deben cubrir todas las tareas: al buscar se cargan las que faltan (M12).
   const wantAll = q.length > 0 && more
   useEffect(() => {
-    if (wantAll && client && folder) void useSessions.getState().loadMoreSessions(client, folder, baseUrl, true)
-  }, [wantAll, client, folder, baseUrl])
+    if (wantAll && client && folder) void useSessions.getState().loadMoreSessions(client, dirKey, baseUrl, true)
+  }, [wantAll, client, folder, baseUrl, dirKey])
 
   // Grupos que ya existen en esta carpeta (para sugerirlos al mover una tarea).
   const knownGroups = useMemo(() => {
@@ -591,7 +594,7 @@ export function TaskList(): React.JSX.Element {
         ))}
         <LoadMoreSessions
           visible={more && !searching}
-          onClick={() => client && folder && void useSessions.getState().loadMoreSessions(client, folder, baseUrl)}
+          onClick={() => client && folder && void useSessions.getState().loadMoreSessions(client, dirKey, baseUrl)}
         />
         {searching && !showArchived && q.length < MIN_QUERY_LENGTH && (
           <p className="px-1 py-2 text-[11.5px] text-subtle">{tr('tasks.list.minChars.pre', { n: MIN_QUERY_LENGTH })}</p>

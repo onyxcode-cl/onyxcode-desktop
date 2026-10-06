@@ -39,6 +39,8 @@ import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
 import { endedMidTurn } from './util'
+import { sdkDirOf } from './path-map'
+import { hostFolder, sdkDir } from './conn-paths'
 import type { RestoreResult } from './restore-logic'
 
 export type TasksServerPhase = 'idle' | 'starting' | 'ready' | 'error'
@@ -331,7 +333,8 @@ export function addNetworkBlocked(ev: NetworkBlockedEvent): void {
   let taskId = st.activeTaskId
   if (!isBusyRoot(taskId)) {
     taskId =
-      Object.keys(status).find((id) => status[id] !== 'idle' && !sessions[id]?.parentID && sessions[id]?.directory === ev.folder) ?? taskId
+      Object.keys(status).find((id) => status[id] !== 'idle' && !sessions[id]?.parentID && sessions[id]?.directory === sdkDir(ev.folder)) ??
+      taskId
   }
   if (!taskId) return
   const id = taskId
@@ -375,7 +378,8 @@ export function isPinned(sessionID: string): boolean {
 function taskOrigin(sessionId: string): { folder: string; fullAccess: boolean } | null {
   const st = useTasks.getState()
   const meta = st.taskMeta[sessionId]
-  const folder = useSessions.getState().sessions[sessionId]?.directory ?? meta?.folder ?? st.folder
+  const dir = useSessions.getState().sessions[sessionId]?.directory
+  const folder = (dir !== undefined ? hostFolder(dir) : undefined) ?? meta?.folder ?? st.folder
   if (!folder) return null
   return { folder, fullAccess: meta ? meta.fullAccess : (st.conn?.fullAccess ?? false) }
 }
@@ -454,7 +458,7 @@ async function migrateLegacyPinned(): Promise<void> {
         continue
       }
       const sess = sessions[id]
-      if (!sess || sessionSource[id] !== conn.baseUrl || sess.directory !== conn.folder) continue
+      if (!sess || sessionSource[id] !== conn.baseUrl || sess.directory !== sdkDirOf(conn, conn.folder)) continue
       try {
         const saved = await cw('tasks:tasks:setMeta', {
           sessionId: id,
@@ -619,7 +623,7 @@ export function clearUnseen(sessionID: string): void {
 
 function handleEvent(event: OcEvent, directory: string): void {
   const st = useTasks.getState()
-  if (!st.folder || directory !== st.folder || !st.conn) return
+  if (!st.folder || directory !== sdkDir(st.folder) || !st.conn) return
   const prevRun =
     event.type === 'session.idle' || event.type === 'session.status' ? useSessions.getState().status[event.properties.sessionID] : undefined
   // Origen = servidor de esta carpeta/modo (no mezclar con sesiones de Code/Chat, B2).
@@ -769,7 +773,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     if (now.folder !== folder || now.fullAccess !== fullAccess) return // el usuario cambió de carpeta/modo
     const client = makeClient(conn)
     rememberFolder(conn.folder)
-    useSessions.getState().setDirectorySource(conn.folder, conn.baseUrl)
+    useSessions.getState().setDirectorySource(sdkDirOf(conn, conn.folder), conn.baseUrl)
     useTasks.setState({ folder: conn.folder, conn, client, phase: 'ready' })
     void loadProjectAndMemory(conn.folder)
     void loadDeleteGrant(conn.folder)
@@ -817,7 +821,7 @@ function syncComputerSession(): void {
   if (conn?.fullAccess && folder) {
     for (const id of Object.keys(status)) {
       const sess = sessions[id]
-      if (status[id] !== 'idle' && sess?.directory === folder && !sess.parentID && sessionSource[id] === conn.baseUrl) {
+      if (status[id] !== 'idle' && sess?.directory === sdkDirOf(conn, folder) && !sess.parentID && sessionSource[id] === conn.baseUrl) {
         active = true
         sessionId = id
         // Si la tarea espera una respuesta tuya (`question`), la píldora lo dice en vez del título.
@@ -945,7 +949,7 @@ export async function scanInterrupted(client: OpencodeClient, folder: string): P
   const candidates = Object.values(sessions)
     .filter(
       (s) =>
-        s.directory === folder &&
+        s.directory === sdkDir(folder) &&
         !s.parentID &&
         !s.time.archived &&
         sessionSource[s.id] === baseUrl &&
@@ -958,7 +962,7 @@ export async function scanInterrupted(client: OpencodeClient, folder: string): P
   const found: string[] = []
   await Promise.all(
     candidates.map(async (s) => {
-      const res = await client.session.messages({ sessionID: s.id, directory: folder }).catch(() => null)
+      const res = await client.session.messages({ sessionID: s.id, directory: sdkDir(folder) }).catch(() => null)
       if (!res?.data) return
       if (endedMidTurn(res.data.map((m) => ({ info: m.info, parts: m.parts })))) found.push(s.id)
     })
@@ -994,14 +998,14 @@ export async function resync(): Promise<void> {
   if (!client || !folder) return
   useTasks.setState({ listLoading: true })
   try {
-    await useSessions.getState().loadSessions(client, folder, useTasks.getState().conn?.baseUrl)
+    await useSessions.getState().loadSessions(client, sdkDir(folder), useTasks.getState().conn?.baseUrl)
     await syncRunStatus(client, folder)
     void migrateLegacyPinned()
-    const perms = await client.permission.list({ directory: folder })
+    const perms = await client.permission.list({ directory: sdkDir(folder) })
     const permissions: Record<string, PermissionRequest> = {}
     for (const p of perms.data ?? []) permissions[p.id] = p
     useTasks.setState({ permissions })
-    const qs = await client.question.list({ directory: folder }).catch(() => ({ data: [] as QuestionRequest[] }))
+    const qs = await client.question.list({ directory: sdkDir(folder) }).catch(() => ({ data: [] as QuestionRequest[] }))
     const questions: Record<string, QuestionRequest> = {}
     for (const q of qs.data ?? []) questions[q.id] = q
     useTasks.setState({ questions })
@@ -1022,13 +1026,13 @@ async function syncRunStatus(client: OpencodeClient, folder: string): Promise<vo
   const baseUrl = useTasks.getState().conn?.baseUrl
   if (!baseUrl) return
   const before = useSessions.getState().status
-  const res = await client.session.status({ directory: folder }).catch(() => null)
+  const res = await client.session.status({ directory: sdkDir(folder) }).catch(() => null)
   const data = res?.data
   if (!data) return
   // F7-B10: el ámbito incluye las entradas de `status` huérfanas de este servidor y excluye lo que cambió durante la petición.
   const { sessions, sessionSource, status } = useSessions.getState()
   const scope = unchangedSince(
-    runStatusScope({ sessions, sessionSource, status }, folder, (src) => src === baseUrl),
+    runStatusScope({ sessions, sessionSource, status }, sdkDir(folder), (src) => src === baseUrl),
     before,
     status
   )
@@ -1041,10 +1045,10 @@ export async function loadTask(sessionID: string): Promise<void> {
   if (!client || !folder) return
   const sessions = useSessions.getState()
   try {
-    await sessions.loadMessages(client, sessionID, folder)
-    const todos = await client.session.todo({ sessionID, directory: folder })
+    await sessions.loadMessages(client, sessionID, sdkDir(folder))
+    const todos = await client.session.todo({ sessionID, directory: sdkDir(folder) })
     if (todos.data) useTasks.setState((s) => ({ todos: { ...s.todos, [sessionID]: todos.data ?? [] } }))
-    const status = await client.session.status({ directory: folder })
+    const status = await client.session.status({ directory: sdkDir(folder) })
     const st = status.data?.[sessionID]
     if (st) sessions.setStatus(sessionID, st.type === 'busy' || st.type === 'retry' ? st.type : 'idle')
   } catch (err) {

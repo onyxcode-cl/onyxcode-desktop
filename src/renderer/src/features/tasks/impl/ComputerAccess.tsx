@@ -59,6 +59,7 @@ import {
   undenyApp
 } from './actions'
 import { describeAction } from './computer-tools'
+import { sdkDir } from './conn-paths'
 import { loadGrants, setTaskModel, useTasks } from './store'
 import { isTasksSource } from './util'
 
@@ -452,7 +453,7 @@ export function ControlBanner(): React.JSX.Element | null {
   // Solo sesiones de un servidor de Tareas (F6-B1, F7-B37): Code/Chat (origen principal) no cuentan; el otro servidor de Tareas sí.
   const anyBusy = useSessions((s) =>
     Object.keys(s.status).some(
-      (id) => s.status[id] !== 'idle' && s.sessions[id]?.directory === folder && isTasksSource(s.sessionSource[id])
+      (id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === sdkDir(folder) && isTasksSource(s.sessionSource[id])
     )
   )
   const [stopping, setStopping] = useState(false)

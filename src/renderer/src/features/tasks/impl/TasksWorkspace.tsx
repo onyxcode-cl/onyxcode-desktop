@@ -99,6 +99,7 @@ import {
   isPlanPending,
   isUsingComputer
 } from './store'
+import { sdkDir } from './conn-paths'
 import {
   extOf,
   formatDuration,
@@ -382,7 +383,7 @@ export function TasksWorkspace(): React.JSX.Element {
   // Solo sesiones de un servidor de Tareas (F6-B1, F7-B37): no cuenta Code/Chat (origen principal), pero sí el otro servidor de Tareas.
   const folderBusy = useSessions((s) =>
     Object.keys(s.status).some(
-      (id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === folder && isTasksSource(s.sessionSource[id])
+      (id) => s.status[id] !== 'idle' && !!folder && s.sessions[id]?.directory === sdkDir(folder) && isTasksSource(s.sessionSource[id])
     )
   )
 

@@ -21,6 +21,7 @@ import { useSessions } from '../../../stores/sessions'
 import { openTask } from './actions'
 import { describePermission, PermissionCard, useMcpServers } from './PermissionPrompt'
 import { splitInProgress } from './SidebarSections'
+import { sdkDir } from './conn-paths'
 import { isPlanPending, isUsingComputer, useTasks } from './store'
 import {
   evictedStatusOf,
@@ -96,7 +97,7 @@ export function MobileTasksHome(): React.JSX.Element {
 
   const live = useMemo(() => {
     if (!folder) return []
-    const tasks = selectSessionsForDirectory({ sessions, sessionSource, directorySource }, folder)
+    const tasks = selectSessionsForDirectory({ sessions, sessionSource, directorySource }, sdkDir(folder))
     const perms = Object.values(permissions)
     const qs = Object.values(questions)
     const statusOf = (s: Session): TaskStatus =>

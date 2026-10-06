@@ -21,6 +21,7 @@ import { computerToolInfo, computerToolKind } from './computer-tools'
 import { metadataJson, parseMcpPermission, showAlways } from './conversation-logic'
 import { FolderRequestCard } from './FolderRequestCard'
 import { permActions } from './perm-actions'
+import { useShowPath } from './conn-paths'
 import { useTasks } from './store'
 import { baseName, rememberablePatterns } from './util'
 
@@ -65,7 +66,11 @@ function meta(p: PermissionRequest, ...keys: string[]): string {
 const DELETE_RE = /(^|[;&|]\s*)(rm|rmdir|unlink|trash|srm)\b|\s-delete\b/
 
 /** Traduce la solicitud de permiso a lenguaje claro. */
-export function describePermission(p: PermissionRequest, mcpServers: string[] = []): Described {
+export function describePermission(
+  p: PermissionRequest,
+  mcpServers: string[] = [],
+  showPath: (path: string) => string = (x) => x
+): Described {
   const patterns = p.patterns.join(', ')
   switch (p.permission) {
     case 'bash': {
@@ -96,7 +101,7 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
         icon: FileEdit,
         title: file ? t('tasksComputer.perm.editTitle', { file: baseName(file) }) : t('tasksComputer.perm.editTitleNone'),
         effect: t('tasksComputer.perm.editEffect'),
-        detail: file,
+        detail: showPath(file),
         diff: meta(p, 'diff') || undefined,
         file: file || undefined,
         danger: false
@@ -108,7 +113,7 @@ export function describePermission(p: PermissionRequest, mcpServers: string[] = 
         icon: FolderInput,
         title: t('tasksComputer.perm.folderTitle'),
         effect: t('tasksComputer.perm.folderEffect'),
-        detail: dir,
+        detail: showPath(dir),
         kind: 'folder',
         danger: true
       }
@@ -298,7 +303,8 @@ const BTN_EXTRA = { primary: '', danger: '', neutral: 'bg-active! text-fg!', out
 function GenericPermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
   const t = useT()
   const servers = useMcpServers()
-  const d = describePermission(request, servers)
+  const showPath = useShowPath()
+  const d = describePermission(request, servers, showPath)
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
@@ -483,7 +489,8 @@ function ApprovalBarInner({ request, more }: { request: PermissionRequest; more:
 function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
   const t = useT()
   const servers = useMcpServers()
-  const d = describePermission(request, servers)
+  const showPath = useShowPath()
+  const d = describePermission(request, servers, showPath)
   const { busy, error, answer } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon

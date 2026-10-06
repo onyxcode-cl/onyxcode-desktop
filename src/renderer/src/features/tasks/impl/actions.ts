@@ -40,6 +40,7 @@ import {
   setTaskMeta,
   useTasks
 } from './store'
+import { sdkDir, showPath } from './conn-paths'
 import { CREATE_SKILL_PROMPT, buildContinuationPrompt, buildSideChatSystem, suggestedExportName, transcriptToMarkdown } from './transcript'
 import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './util'
 
@@ -189,7 +190,7 @@ export async function requestComputerPermissions(): Promise<void> {
 function busySessionIds(): string[] {
   const { folder } = useTasks.getState()
   const { sessions, status } = useSessions.getState()
-  return Object.keys(status).filter((id) => status[id] !== 'idle' && (!folder || sessions[id]?.directory === folder))
+  return Object.keys(status).filter((id) => status[id] !== 'idle' && (!folder || sessions[id]?.directory === sdkDir(folder)))
 }
 
 /** Aborta todas las tareas en curso de la carpeta (tras detener el control del Mac). */
@@ -198,7 +199,7 @@ export async function abortBusyTasks(): Promise<void> {
   if (!client || !folder) return
   const ids = new Set(busySessionIds())
   if (activeTaskId) ids.add(activeTaskId)
-  await Promise.all([...ids].map((sessionID) => client.session.abort({ sessionID, directory: folder }).catch(() => undefined)))
+  await Promise.all([...ids].map((sessionID) => client.session.abort({ sessionID, directory: sdkDir(folder) }).catch(() => undefined)))
 }
 
 /**
@@ -439,7 +440,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   const sendModel = aiGate.effective
   const conn0 = useTasks.getState().conn
   if (conn0 && conn0.sandboxed && !conn0.fullAccess) {
-    const providers = await client.config.providers({ directory: folder }).catch(() => null)
+    const providers = await client.config.providers({ directory: sdkDir(folder) }).catch(() => null)
     const available = providers?.data ? providers.data.providers.map((p) => p.id) : null
     const blocked = sandboxSendBlocked(available, sendModel.providerID)
     if (blocked) throw new Error(blocked)
@@ -465,7 +466,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   if (!sessionID) {
     const folders = extraFolders()
     const res = await client.session.create({
-      directory: folder,
+      directory: sdkDir(folder),
       agent: currentAgent(),
       title: rawText.slice(0, 80),
       model: { id: useModel.modelID, providerID: useModel.providerID, ...(variant ? { variant } : {}) },
@@ -492,7 +493,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   sessions.setStatus(sessionID, 'busy')
   const res = await client.session.promptAsync({
     sessionID,
-    directory: folder,
+    directory: sdkDir(folder),
     agent: fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID,
     model: { providerID: useModel.providerID, modelID: useModel.modelID },
     ...(variant ? { variant } : {}),
@@ -573,7 +574,7 @@ async function stopIfBusy(taskId: string): Promise<void> {
   const { client, folder } = ctx()
   const run = useSessions.getState().status[taskId]
   if (run && run !== 'idle') {
-    await client.session.abort({ sessionID: taskId, directory: folder }).catch(() => undefined)
+    await client.session.abort({ sessionID: taskId, directory: sdkDir(folder) }).catch(() => undefined)
     await waitUntilIdle(taskId)
   }
 }
@@ -606,7 +607,7 @@ export async function undoFromMessage(taskId: string, userMessageId: string): Pr
   if (!point) throw new Error(t('tasks.act.noRestorePointMsg'))
   await stopIfBusy(taskId)
   const res = await applyRestorePoint(folder, point.id)
-  const rev = await client.session.revert({ sessionID: taskId, directory: folder, messageID: userMessageId })
+  const rev = await client.session.revert({ sessionID: taskId, directory: sdkDir(folder), messageID: userMessageId })
   if (rev.error) throw new Error(errorMessage(rev.error))
   if (rev.data) useSessions.getState().upsertSession(rev.data)
   await loadTask(taskId)
@@ -631,7 +632,7 @@ export async function redoRestore(): Promise<void> {
   if (!prev || prev.kind !== 'undone') return
   const res = await applyRestorePoint(folder, prev.undoPointId)
   if (prev.revertedMessageId) {
-    const un = await client.session.unrevert({ sessionID: prev.taskId, directory: folder })
+    const un = await client.session.unrevert({ sessionID: prev.taskId, directory: sdkDir(folder) })
     if (un.error) throw new Error(errorMessage(un.error))
     if (un.data) useSessions.getState().upsertSession(un.data)
     await loadTask(prev.taskId)
@@ -653,12 +654,12 @@ export async function abortTask(): Promise<void> {
   const { activeTaskId } = useTasks.getState()
   if (!activeTaskId) return
   const { client, folder } = ctx()
-  await client.session.abort({ sessionID: activeTaskId, directory: folder })
+  await client.session.abort({ sessionID: activeTaskId, directory: sdkDir(folder) })
 }
 
 export async function replyPermission(requestID: string, reply: 'once' | 'always' | 'reject', message?: string): Promise<void> {
   const { client, folder } = ctx()
-  const res = await client.permission.reply({ requestID, directory: folder, reply, ...(message ? { message } : {}) })
+  const res = await client.permission.reply({ requestID, directory: sdkDir(folder), reply, ...(message ? { message } : {}) })
   if (res.error) throw new Error(errorMessage(res.error))
   useTasks.setState((s) => {
     const permissions = { ...s.permissions }
@@ -670,7 +671,7 @@ export async function replyPermission(requestID: string, reply: 'once' | 'always
 /** Responde una pregunta estructurada (una respuesta -array de labels seleccionados o texto libre- por pregunta). */
 export async function replyQuestion(requestID: string, answers: string[][]): Promise<void> {
   const { client, folder } = ctx()
-  const res = await client.question.reply({ requestID, directory: folder, answers })
+  const res = await client.question.reply({ requestID, directory: sdkDir(folder), answers })
   if (res.error) throw new Error(errorMessage(res.error))
   useTasks.setState((s) => {
     const questions = { ...s.questions }
@@ -681,7 +682,7 @@ export async function replyQuestion(requestID: string, answers: string[][]): Pro
 
 export async function rejectQuestion(requestID: string): Promise<void> {
   const { client, folder } = ctx()
-  const res = await client.question.reject({ requestID, directory: folder })
+  const res = await client.question.reject({ requestID, directory: sdkDir(folder) })
   if (res.error) throw new Error(errorMessage(res.error))
   useTasks.setState((s) => {
     const questions = { ...s.questions }
@@ -692,7 +693,7 @@ export async function rejectQuestion(requestID: string): Promise<void> {
 
 export async function archiveTask(sessionID: string): Promise<void> {
   const { client, folder } = ctx()
-  const res = await client.session.update({ sessionID, directory: folder, time: { archived: Date.now() } })
+  const res = await client.session.update({ sessionID, directory: sdkDir(folder), time: { archived: Date.now() } })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   if (useTasks.getState().activeTaskId === sessionID) useTasks.setState({ activeTaskId: null })
@@ -705,7 +706,7 @@ export async function renameTask(sessionID: string, title: string): Promise<void
   const { client, folder } = ctx()
   const trimmed = title.trim()
   if (!trimmed) return
-  const res = await client.session.update({ sessionID, directory: folder, title: trimmed })
+  const res = await client.session.update({ sessionID, directory: sdkDir(folder), title: trimmed })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   // Si main conoce la tarea (fijada / en un grupo), su título se mantiene al día.
@@ -715,7 +716,7 @@ export async function renameTask(sessionID: string, title: string): Promise<void
 /** Borra una tarea (y su historial) de forma permanente. */
 export async function deleteTask(sessionID: string): Promise<void> {
   const { client, folder } = ctx()
-  const res = await client.session.delete({ sessionID, directory: folder })
+  const res = await client.session.delete({ sessionID, directory: sdkDir(folder) })
   if (res.error) throw new Error(errorMessage(res.error))
   // `removeSession` limpia sessions/messages/sessionSource/loaded/lastAccess; status y errors se limpian aquí también
   // (no dejar entradas huérfanas de una tarea borrada, F7-B36).
@@ -795,7 +796,7 @@ function runningRootIds(exceptId?: string): string[] {
       (run === 'busy' || run === 'retry') &&
       !!sess &&
       !sess.parentID &&
-      sess.directory === folder &&
+      sess.directory === sdkDir(folder) &&
       sessionSource[id] === conn.baseUrl
     )
   })
@@ -944,7 +945,7 @@ async function waitUntilIdle(taskId: string, ms = 4000): Promise<void> {
   const { client, folder } = ctx()
   const until = Date.now() + ms
   while (Date.now() < until) {
-    const res = await client.session.status({ directory: folder }).catch(() => null)
+    const res = await client.session.status({ directory: sdkDir(folder) }).catch(() => null)
     const t = res?.data?.[taskId]?.type
     if (!t || t === 'idle') {
       useSessions.getState().setStatus(taskId, 'idle')
@@ -968,7 +969,7 @@ export async function editAndRetry(taskId: string, userMessageId: string, text: 
   const at = messageCreatedAt(taskId, userMessageId)
   const point = at === null ? null : pickPointForMessage(await listRestorePoints(folder, taskId).catch(() => []), at)
   const restored = point ? await applyRestorePoint(folder, point.id) : null
-  const res = await client.session.revert({ sessionID: taskId, directory: folder, messageID: userMessageId })
+  const res = await client.session.revert({ sessionID: taskId, directory: sdkDir(folder), messageID: userMessageId })
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   await loadTask(taskId)
@@ -984,7 +985,12 @@ export async function compactTask(taskId: string): Promise<void> {
   sessions.setStatus(taskId, 'busy')
   try {
     const m = taskModelOf(taskId)?.model
-    const res = await client.session.summarize({ sessionID: taskId, directory: folder, providerID: m?.providerID, modelID: m?.modelID })
+    const res = await client.session.summarize({
+      sessionID: taskId,
+      directory: sdkDir(folder),
+      providerID: m?.providerID,
+      modelID: m?.modelID
+    })
     const err = (res as { error?: unknown }).error
     if (err) throw err
   } catch (err) {
@@ -1015,7 +1021,7 @@ export async function exportTaskMarkdown(taskId: string): Promise<string | null>
   const entries = await ensureEntries(taskId)
   const session = useSessions.getState().sessions[taskId]
   if (!session) return null
-  const content = transcriptToMarkdown(session, entries)
+  const content = transcriptToMarkdown(session, entries, { showPath })
   return cw('tasks:exportMarkdown', { suggestedName: suggestedExportName(session.title), content })
 }
 
@@ -1044,7 +1050,12 @@ export async function sendSideChat(text: string): Promise<void> {
   const sessions = useSessions.getState()
   let sessionID = side.sessionId
   if (!sessionID) {
-    const res = await client.session.create({ directory: folder, parentID: side.taskId, title: TASKS_TERMS.sideChat, agent: 'chat' })
+    const res = await client.session.create({
+      directory: sdkDir(folder),
+      parentID: side.taskId,
+      title: TASKS_TERMS.sideChat,
+      agent: 'chat'
+    })
     if (res.error || !res.data) throw new Error(errorMessage(res.error))
     sessions.upsertSession(res.data)
     sessionID = res.data.id
@@ -1060,7 +1071,7 @@ export async function sendSideChat(text: string): Promise<void> {
   sessions.setStatus(sessionID, 'busy')
   const res = await client.session.promptAsync({
     sessionID,
-    directory: folder,
+    directory: sdkDir(folder),
     agent: 'chat',
     model: { providerID: model.providerID, modelID: model.modelID },
     ...(variant ? { variant } : {}),
@@ -1080,7 +1091,7 @@ export function closeSideChat(): void {
   const { client, folder } = useTasks.getState()
   if (side?.sessionId && client && folder) {
     const run = useSessions.getState().status[side.sessionId]
-    if (run && run !== 'idle') void client.session.abort({ sessionID: side.sessionId, directory: folder }).catch(() => undefined)
+    if (run && run !== 'idle') void client.session.abort({ sessionID: side.sessionId, directory: sdkDir(folder) }).catch(() => undefined)
   }
 }
 
@@ -1093,12 +1104,12 @@ export function closeSideChat(): void {
 export async function restoreTask(sessionId: string): Promise<void> {
   const { client, folder } = ctx()
   const known = useSessions.getState().sessions[sessionId]
-  const first = await client.session.update({ sessionID: sessionId, directory: folder, time: { archived: 0 } })
+  const first = await client.session.update({ sessionID: sessionId, directory: sdkDir(folder), time: { archived: 0 } })
   let data = first.error ? undefined : first.data
   if (!data || isArchivedSession(data)) {
     const second = await client.session.update({
       sessionID: sessionId,
-      directory: folder,
+      directory: sdkDir(folder),
       metadata: { ...(data?.metadata ?? known?.metadata ?? {}), unarchivedAt: Date.now() }
     })
     if (second.error) throw new Error(errorMessage(second.error))

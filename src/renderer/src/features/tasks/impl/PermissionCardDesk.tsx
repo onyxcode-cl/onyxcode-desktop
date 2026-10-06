@@ -19,6 +19,7 @@ import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import { alwaysHint, describePermission, hasHiddenChars, RejectWithNote, useCanAlways, useMcpServers, useReply } from './PermissionPrompt'
+import { useShowPath } from './conn-paths'
 import { useTasks } from './store'
 
 /** Ruta para mostrar: la carpeta personal como «~». */
@@ -32,7 +33,8 @@ function displayFolder(path: string, home?: string): string {
 export function PermissionCardDesk({ request }: { request: PermissionRequest }): React.JSX.Element {
   const t = useT()
   const servers = useMcpServers()
-  const d = describePermission(request, servers)
+  const showPath = useShowPath()
+  const d = describePermission(request, servers, showPath)
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
@@ -175,7 +177,8 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
 export function ApprovalBarDesk({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
   const t = useT()
   const servers = useMcpServers()
-  const d = describePermission(request, servers)
+  const showPath = useShowPath()
+  const d = describePermission(request, servers, showPath)
   const { busy, answer } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon

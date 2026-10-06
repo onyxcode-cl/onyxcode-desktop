@@ -221,7 +221,7 @@ function fileLabel(p: string): string {
 }
 
 /** Descripción amigable de una llamada a herramienta: "Leyendo informe.md". */
-export function friendlyTool(part: ToolPart): { verb: string; detail: string } {
+export function friendlyTool(part: ToolPart, showPath: (path: string) => string = (x) => x): { verb: string; detail: string } {
   const input = part.state.input ?? {}
   const kind = computerToolKind(part.tool)
   if (kind) return { verb: computerToolInfo(kind).label, detail: computerToolDetail(kind, input) }
@@ -240,7 +240,7 @@ export function friendlyTool(part: ToolPart): { verb: string; detail: string } {
     case 'apply_patch':
       return { verb: v('patch'), detail: '' }
     case 'list':
-      return { verb: v('list'), detail: shortenPath(str(input, 'path')) || t('tasks.tool.list.folder') }
+      return { verb: v('list'), detail: shortenPath(showPath(str(input, 'path'))) || t('tasks.tool.list.folder') }
     case 'glob':
       return { verb: v('glob'), detail: str(input, 'pattern') }
     case 'grep':
@@ -261,7 +261,7 @@ export function friendlyTool(part: ToolPart): { verb: string; detail: string } {
       return { verb: t('tasks.tool.question'), detail: '' }
     default: {
       const title = 'title' in part.state && part.state.title ? part.state.title : ''
-      return { verb: part.tool.replace(/_/g, ' '), detail: clip(shortenPath(title || str(input, 'description', 'path', 'url'))) }
+      return { verb: part.tool.replace(/_/g, ' '), detail: clip(shortenPath(showPath(title || str(input, 'description', 'path', 'url')))) }
     }
   }
 }
