@@ -31,6 +31,8 @@ import { initMainI18n } from './i18n'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
 import { clampBounds } from './window-bounds'
+import { syncTitleBarOverlay, themeOf } from './window-overlay'
+import { titleBarOptions } from '@shared/window-chrome'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
 app.setName(INTERNAL_NAME)
@@ -97,8 +99,8 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: process.platform === 'win32',
     show: false,
     title: DISPLAY_NAME,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: { x: 16, y: 16 },
+    // macOS: semáforos integrados; Windows: `hidden` + overlay de controles nativos; Linux: marco estándar (shared/window-chrome).
+    ...titleBarOptions(process.platform, themeOf(nativeTheme)),
     backgroundColor: nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,
     webPreferences: {
       preload: preloadPath('index'),
@@ -110,6 +112,12 @@ function createWindow(): BrowserWindow {
     }
   })
   registerWindowRole(win.webContents, 'main')
+  if (process.platform === 'win32') {
+    // El tema (claro/oscuro/sistema, alto contraste) puede cambiar con la ventana abierta: se repintan los controles nativos.
+    const onTheme = (): void => void syncTitleBarOverlay(win, nativeTheme)
+    nativeTheme.on('updated', onTheme)
+    win.once('closed', () => nativeTheme.off('updated', onTheme))
+  }
 
   mainWindow = win
   win.on('ready-to-show', () => presentWindow(win))
