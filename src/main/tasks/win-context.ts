@@ -132,7 +132,14 @@ export function createWinHost(deps: WinHostDeps): WinHost {
         links
       }
     },
-    realpath: (p) => fs.realpath(p),
+    realpath: (p) => {
+      // Sin tocar unidades de red, extraíbles o desconocidas (ni cuando aún no se leyeron las unidades): `realpath` en una unidad
+      // de red abriría una conexión SMB ANTES de que la política la rechace. Lanza → el llamador usa la ruta léxica.
+      const letter = /^([A-Za-z]):/.exec(p)?.[1]?.toUpperCase()
+      const drive = letter ? drives?.list.find((d) => d.letter === letter) : undefined
+      if (!drive || drive.kind !== 'fixed') throw new Error('unidad no fija o sin leer')
+      return fs.realpath(p)
+    },
     isDirectory: (p) => fs.isDirectory(p),
     home: () => envGet(deps.env, 'USERPROFILE') ?? ''
   }

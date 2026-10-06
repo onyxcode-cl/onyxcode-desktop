@@ -78,6 +78,7 @@ function fakeHost(drives = true) {
         ? [
             { letter: 'C', kind: 'fixed' },
             { letter: 'D', kind: 'fixed' },
+            { letter: 'X', kind: 'fixed' }, // `subst X: …` aparece como disco local
             { letter: 'Z', kind: 'network' }
           ]
         : null,

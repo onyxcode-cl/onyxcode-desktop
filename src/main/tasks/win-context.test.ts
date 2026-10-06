@@ -104,6 +104,27 @@ describe('createWinHost', () => {
     await h.refresh()
     expect(h.context()?.userProfile).toBe('C:\\Users\\Ben')
   })
+  it('realpath no toca unidades de red ni se usa antes de leer las unidades (evita abrir SMB para juzgar la ruta)', async () => {
+    const seen: string[] = []
+    const h = host({
+      readDrives: async () => [
+        { letter: 'C', kind: 'fixed' },
+        { letter: 'Z', kind: 'network' },
+        { letter: 'E', kind: 'removable' }
+      ],
+      fs: {
+        lstat: () => ({ isSymbolicLink: () => false }),
+        readdir: () => [],
+        realpath: (p) => (seen.push(p), p),
+        isDirectory: () => true
+      }
+    })
+    expect(() => h.realpath('C:\\x')).toThrow() // aún sin unidades
+    await h.refresh()
+    expect(h.realpath('c:\\x')).toBe('c:\\x')
+    for (const bad of ['Z:\\x', 'E:\\x', 'Q:\\x', '\\\\srv\\x']) expect(() => h.realpath(bad), bad).toThrow()
+    expect(seen).toEqual(['c:\\x'])
+  })
   it('enlaces reales: lstat ENOENT es «no existe»; un enlace dentro de la carpeta la rechaza; otros errores lanzan (cierra)', async () => {
     const h = host()
     await h.refresh()
