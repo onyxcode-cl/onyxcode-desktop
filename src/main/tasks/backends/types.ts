@@ -7,6 +7,7 @@
  */
 import type { ChildProcess } from 'node:child_process'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
+import type { PathMount } from '@shared/wsl-paths'
 
 export interface SandboxIsolation {
   /** Directorio privado del servidor (userData/tasks-sandbox/<hash>). */
@@ -57,6 +58,8 @@ export interface LaunchedSandbox {
   toHostPath(p: string): string | null
   /** Ruta del anfitrión → ruta dentro del sandbox. Identidad en Seatbelt. */
   toSandboxPath(p: string): string
+  /** Montajes concedidos (WSL): ruta de Windows ⇄ ruta dentro de la distro. Ausente en Seatbelt y en `none` (identidad). */
+  mounts?: PathMount[]
   /** Libera lo propio del backend (p. ej. el perfil temporal). Se llama cuando el proceso termina. */
   dispose(): Promise<void>
 }

@@ -339,6 +339,11 @@ export const mainErrors = {
   'merr.routine.noText': '(Sin texto de respuesta)',
   'merr.task.onlyFull': 'Solo disponible con Control total.',
   'merr.task.noPrivateDir': 'Falta el directorio privado del sandbox de las tareas.',
+  'merr.task.winBackendUnavailable':
+    'Tareas en Windows no está disponible en este equipo ({reason}). Por seguridad no se ejecuta sin aislamiento.',
+  'merr.task.sandboxNotReady': 'El entorno aislado de Tareas no está listo ({state}). Prepáralo desde Tareas antes de empezar.',
+  'merr.task.fullAccessUnavailable': 'El Control total no está disponible en Windows.',
+  'merr.task.winNoUnsandboxed': 'En Windows las tareas nunca se ejecutan sin aislamiento.',
   'merr.engine.stoppedAtStart': 'El servidor se detuvo durante el arranque',
   'merr.update.noneKnown': 'No hay una versión nueva conocida.',
   'merr.compare.notDir': 'La ruta no es una carpeta: {path}',

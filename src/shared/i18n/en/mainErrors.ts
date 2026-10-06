@@ -334,6 +334,11 @@ export const mainErrors = {
   'merr.routine.noText': '(No reply text)',
   'merr.task.onlyFull': 'Only available with Full control.',
   'merr.task.noPrivateDir': 'The tasks sandbox private directory is missing.',
+  'merr.task.winBackendUnavailable':
+    'Tasks on Windows isn’t available on this computer ({reason}). For safety it never runs without isolation.',
+  'merr.task.sandboxNotReady': 'The isolated Tasks environment isn’t ready ({state}). Set it up from Tasks before starting.',
+  'merr.task.fullAccessUnavailable': 'Full control isn’t available on Windows.',
+  'merr.task.winNoUnsandboxed': 'On Windows, tasks never run without isolation.',
   'merr.engine.stoppedAtStart': 'The server stopped during startup',
   'merr.update.noneKnown': 'There’s no known new version.',
   'merr.compare.notDir': 'The path is not a folder: {path}',

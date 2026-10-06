@@ -142,6 +142,7 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
 
       return {
         child: facade as unknown as ChildProcess,
+        mounts,
         toHostPath: (p) => {
           const r = fromSandboxPath(p, mounts)
           return r.ok ? r.path : null
