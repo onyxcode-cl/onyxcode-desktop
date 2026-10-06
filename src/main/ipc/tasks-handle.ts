@@ -43,7 +43,8 @@ export interface TasksIpcContext {
   send: <C extends TasksEventChannel>(ch: C, payload: TasksEventContract[C]) => void
   getWindow: () => BrowserWindow | null
   tasks: TasksManager
-  computer: ComputerService
+  /** Ausente si no hay Control del PC en esta plataforma/bandera (`caps.computer`). */
+  computer?: ComputerService
   scheduler: SchedulerService
   projects: TasksProjectsStore
   keepAwake: KeepAwakeService

@@ -150,6 +150,8 @@ export interface WindowApi {
   /** Suscribe a un evento main → renderer. Devuelve función para desuscribir. */
   on<C extends IpcEventChannel>(channel: C, listener: (payload: IpcEventContract[C]) => void): () => void
   platform: string
+  /** Banderas de producto que modulan `capsFor` (solo ayudan a la interfaz; `main` es quien decide). Ausente = todo apagado. */
+  capsFlags?: import('./platform-caps').CapsFlags
   code: import('./ipc-code').CodeApi
   tasks: import('./ipc-tasks').TasksApi
   extras: import('./ipc-extras').ExtrasApi

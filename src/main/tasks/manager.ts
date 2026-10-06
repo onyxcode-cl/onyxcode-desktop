@@ -51,7 +51,11 @@ import { loadManagedPolicy } from './policy'
 import { defaultDeniedReadPaths } from './sandbox-profile'
 import type { WinBackendProvider } from './backends'
 import { isApprovedPath, resolveUiPath } from './ui-path'
+import { IDENTITY_MAP, toSandboxOrNull, type PathMapWire } from '@shared/tasks-path-map'
 import { createRealWinHost, type WinHost } from './win-context'
+
+/** Traducción léxica `C:\x` → `/win/c/x` (no depende de los montajes concedidos). */
+const WIN_PATH_MAP: PathMapWire = { kind: 'wsl', mounts: [] }
 
 /** Consentimiento de "Control total" registrado en main (AUDIT.md S7). */
 interface FullAccessGrant {
@@ -123,6 +127,8 @@ interface Entry {
 /** Servidor vivo con sus credenciales y marcas de tiempo (monitor de ciclo de vida). */
 export interface LiveServer {
   folder: string
+  /** Carpeta tal como la ve OpenCode (en Windows, la ruta dentro de la distro; en macOS, `folder`). */
+  directory: string
   fullAccess: boolean
   baseUrl: string
   authorization: string
@@ -752,6 +758,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       const startedAt = e.startedAt ?? 0
       out.push({
         folder: e.info.folder,
+        directory: e.handle.paths?.directory ?? e.info.folder,
         fullAccess: !!e.info.fullAccess,
         baseUrl: e.handle.baseUrl,
         authorization: e.handle.authorization,
@@ -822,6 +829,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       authorization: handle.authorization,
       sandboxed: handle.sandboxed,
       version: handle.version,
+      directory: handle.paths?.directory ?? f,
+      pathMap: handle.paths?.map ?? IDENTITY_MAP,
       fullAccess,
       computerUse: fullAccess && !this.fullAccessMcp.get(key) ? { ...computerUse, available: false } : computerUse
     }
@@ -909,7 +918,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       computerMcp,
       mcpContribution: c,
       rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
-      skills: skillsInlineConfig()
+      skills: skillsInlineConfig(),
+      // Windows: las carpetas vinculadas se conceden con su ruta DENTRO de la distro (`/win/d/…`), no con la de Windows.
+      toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })
     return { config, mcpProxy, browserToken: realBrowserToken }
   }

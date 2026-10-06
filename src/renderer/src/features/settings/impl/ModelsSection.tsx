@@ -13,7 +13,7 @@ import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs, withModeModel } from './extras'
 import { modeAvailable } from '@shared/platform-caps'
-import { currentPlatform, isRemoteSurface } from '../../../lib/platform'
+import { currentFlags, currentPlatform, isRemoteSurface } from '../../../lib/platform'
 import { ModelSelect, modelLabel, sortProviders } from './ModelSelect'
 import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 import { KeyTestNotice } from './KeyTestNotice'
@@ -27,7 +27,7 @@ function modes(t: ReturnType<typeof useT>): { id: ModelMode; label: string; desc
     { id: 'code', label: MODE_LABELS.code, description: t('models.mode.code.description') },
     { id: 'tasks', label: MODE_LABELS.tasks, description: t('models.mode.tasks.description') }
   ]
-  return all.filter((m) => modeAvailable(m.id, currentPlatform()))
+  return all.filter((m) => modeAvailable(m.id, currentPlatform(), currentFlags()))
 }
 
 export function ModelsSection(): React.JSX.Element {

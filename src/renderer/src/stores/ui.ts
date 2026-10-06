@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ModeId } from '@shared/types'
 import { usableMode } from '@shared/platform-caps'
-import { currentPlatform } from '../lib/platform'
+import { currentFlags, currentPlatform } from '../lib/platform'
 import { LEGACY_MODE } from '../../../main/migrations/legacy-names'
 
 interface UiState {
@@ -25,8 +25,8 @@ const MODE_KEY = 'ui.mode'
 function initialMode(): ModeId {
   try {
     const m = localStorage.getItem(MODE_KEY)
-    if (m === 'chat' || m === 'code' || m === 'tasks' || m === 'routines') return usableMode(m, currentPlatform())
-    if (m === LEGACY_MODE) return usableMode('tasks', currentPlatform())
+    if (m === 'chat' || m === 'code' || m === 'tasks' || m === 'routines') return usableMode(m, currentPlatform(), currentFlags())
+    if (m === LEGACY_MODE) return usableMode('tasks', currentPlatform(), currentFlags())
   } catch {
     // sin storage
   }
@@ -42,7 +42,7 @@ export const useUi = create<UiState>((set) => ({
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setMode: (requested) => {
     // Tareas no existe en Windows: cualquier intento (paleta, notificación, estado guardado) cae a Chat.
-    const mode = usableMode(requested, currentPlatform())
+    const mode = usableMode(requested, currentPlatform(), currentFlags())
     try {
       localStorage.setItem(MODE_KEY, mode)
     } catch {

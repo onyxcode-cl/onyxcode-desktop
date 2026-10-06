@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const state = vi.hoisted(() => ({ userData: '', policy: null as null | Record<string, unknown> }))
 const started = vi.hoisted(() => [] as Array<Record<string, unknown>>)
+const nextPaths = vi.hoisted(() => ({ value: null as null | { map: unknown; directory: string } }))
 
 vi.mock('electron', () => ({
   app: { getPath: () => state.userData, getAppPath: () => '/nonexistent', isPackaged: false, getVersion: () => '0' }
@@ -43,7 +44,7 @@ vi.mock('./sandbox', () => ({
       version: '0',
       pid: undefined,
       stop: async () => undefined,
-      paths: { map: { kind: 'identity' }, directory: folder }
+      paths: nextPaths.value ?? { map: { kind: 'identity' }, directory: folder }
     }
   }
 }))
@@ -114,6 +115,7 @@ beforeEach(() => {
   state.userData = join(root, 'userData')
   state.policy = null
   started.length = 0
+  nextPaths.value = null
   f = fakeHost()
   for (const d of [
     'C:\\lzx',
@@ -278,6 +280,17 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     expect(started).toHaveLength(1)
     expect(started[0]).toMatchObject({ folder: 'C:\\lzx\\tareas\\a', platform: 'win32', tasksWin: true, noSandbox: false })
     expect(started[0]!.winBackend).toBe(winBackend)
+    await m.stopAll()
+  })
+  it('start() entrega a la interfaz `directory` y `pathMap` de la distro y liveServers() el `directory` para el monitor', async () => {
+    const mounts = [{ win: 'C:\\lzx\\tareas\\a', linux: '/win/c/lzx/tareas/a' }]
+    nextPaths.value = { map: { kind: 'wsl', mounts }, directory: '/win/c/lzx/tareas/a' }
+    const m = mk()
+    await m.refreshPolicy()
+    m.approveFolder('C:\\lzx\\tareas\\a')
+    const conn = await m.start('C:\\lzx\\tareas\\a')
+    expect(conn).toMatchObject({ folder: 'C:\\lzx\\tareas\\a', directory: '/win/c/lzx/tareas/a', pathMap: { kind: 'wsl', mounts } })
+    expect(m.liveServers()[0]).toMatchObject({ folder: 'C:\\lzx\\tareas\\a', directory: '/win/c/lzx/tareas/a' })
     await m.stopAll()
   })
   it('start() sin bandera ni proveedor los pasa tal cual (sandbox.ts es quien lanza)', async () => {

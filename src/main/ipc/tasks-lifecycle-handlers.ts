@@ -90,7 +90,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
     if (shotTimer) return
     shotTimer = setTimeout(() => {
       shotTimer = null
-      if (!monitor.anyBusyFullAccess()) computer.cleanScreenshots()
+      if (!monitor.anyBusyFullAccess()) computer?.cleanScreenshots()
     }, SCREENSHOT_CLEAN_DELAY_MS)
     shotTimer.unref?.()
   }
@@ -102,7 +102,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
     tasks,
     notify,
     // Archivada = sin plan aprobado (la puerta de Control total vuelve a pedirlo).
-    onArchived: (sessionId) => computer.revokePlan(sessionId),
+    onArchived: (sessionId) => computer?.revokePlan(sessionId),
     onActivity: (snap: TasksActivitySnapshot) => {
       send('tasks:activity', snap)
       syncScreenshotCleanup()
@@ -124,7 +124,8 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
 
   const storageEnv = (): StorageEnv => ({
     userData,
-    screenshotsDir: computer.screenshotsDir,
+    // Sin Control del PC no hay capturas: ruta inexistente (el informe la cuenta como 0 y limpiar no borra nada).
+    screenshotsDir: computer?.screenshotsDir ?? join(userData, 'computer-screenshots'),
     restorePointsDir: join(userData, 'restore-points'),
     sandboxKey
   })
@@ -146,7 +147,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   handle('tasks:storage:report', () => report())
   handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), tasksManager.liveServers(), key, scope))
   handle('tasks:storage:cleanScreenshots', () => {
-    computer.cleanScreenshots()
+    computer?.cleanScreenshots()
     return report()
   })
 

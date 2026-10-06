@@ -50,6 +50,13 @@ export interface TasksServerInfo {
 /** Datos para que el renderer cree un cliente SDK contra el servidor de la carpeta. */
 export interface TasksConnection {
   folder: string
+  /**
+   * Carpeta tal como la ve OpenCode: la que va en `?directory=` y en `session.directory`. En macOS es `folder`; en Windows es
+   * la ruta dentro de la distro (`/win/c/…`). La interfaz conserva `folder` como identidad. Ausente = `folder`.
+   */
+  directory?: string
+  /** Mapa de rutas entre `folder` y `directory` (para MOSTRAR rutas; traducir no autoriza). Ausente = identidad. */
+  pathMap?: import('./tasks-path-map').PathMapWire
   baseUrl: string
   /** Valor completo del header Authorization (Basic …). */
   authorization: string

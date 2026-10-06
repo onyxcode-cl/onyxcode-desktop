@@ -68,7 +68,7 @@ export interface RoutineTasksPort {
   isApproved(folder: string): boolean
   /** ¿Puede arrancar Control total en esa carpeta? (consentimiento del equipo o concesión antigua de la carpeta.) */
   canStartFullAccess(folder: string): boolean
-  start(folder: string, fullAccess: boolean): Promise<{ baseUrl: string; authorization: string; folder: string }>
+  start(folder: string, fullAccess: boolean): Promise<{ baseUrl: string; authorization: string; folder: string; directory?: string }>
   folderSet(folder: string): TasksFolderSet
   networkAllowOnce(folder: string, host: string): void
   readonly network: { hasOnce(folder: string, host: string): boolean; revokeOnce(folder: string, host: string): void }
@@ -108,7 +108,10 @@ interface SchedulerEvents {
 interface RunCtx {
   routineName: string
   client: OpencodeClient
+  /** Carpeta tal como la ve OpenCode (`?directory=`): en Windows, la ruta dentro de la distro; en macOS, la misma carpeta. */
   directory: string
+  /** Identidad de la carpeta (la de la interfaz): destino de las notificaciones. */
+  folder: string
   /** Sesión raíz de la ejecución. */
   root: string
   allow: RoutineAllowRule[]
@@ -552,10 +555,13 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
     let conn: { baseUrl: string; authorization: string }
     let dirForSession = directory
+    // Lo que entiende OpenCode (`?directory=`); la identidad (`dirForSession`) sigue siendo la carpeta de la interfaz.
+    let ocDirectory = directory
     if (isTasks) {
       const cw = await this.deps.tasks.start(directory, fullAccess)
       conn = cw
       dirForSession = cw.folder // ruta real (normalizada) de la carpeta
+      ocDirectory = cw.directory ?? cw.folder
     } else {
       conn = await this.deps.getMainConnection()
     }
@@ -572,7 +578,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       const candidate = r.lastSessionId ?? r.originSessionId ?? null
       if (candidate) {
         try {
-          const got = await client.session.get({ sessionID: candidate, directory: dirForSession })
+          const got = await client.session.get({ sessionID: candidate, directory: ocDirectory })
           if (!got.error && got.data) sessionID = candidate
         } catch {
           // no existe o el servidor no responde: se crea una nueva
@@ -584,7 +590,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       // nunca pediría permiso y no quedaría constancia de lo aprobado. Se responden desde aquí
       // (`handlePending`), que además funciona igual en sesiones reutilizadas.
       const created = await client.session.create({
-        directory: dirForSession,
+        directory: ocDirectory,
         title: `⏰ ${r.name}`,
         agent
       })
@@ -618,7 +624,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const run: RunCtx = {
       routineName: r.name,
       client,
-      directory: dirForSession,
+      directory: ocDirectory,
+      folder: dirForSession,
       root: sessionID,
       allow: r.allow ?? [],
       onAsk: r.onAsk === 'wait' ? 'wait' : 'reject',
@@ -631,7 +638,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     // Responde (o rechaza) permisos/preguntas de esta sesión: nadie está mirando.
     const poll = setInterval(() => void this.handlePending(run), PERMISSION_POLL_MS)
     const onAbort = (): void => {
-      void client.session.abort({ sessionID: run.root, directory: dirForSession })
+      void client.session.abort({ sessionID: run.root, directory: ocDirectory })
     }
     signal.addEventListener('abort', onAbort, { once: true })
     const timeout = setTimeout(() => {
@@ -670,14 +677,14 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       })
       const res = await client.session.promptAsync({
         sessionID,
-        directory: dirForSession,
+        directory: ocDirectory,
         agent,
         model: { providerID: r.model.providerID, modelID: r.model.modelID },
         system,
         parts: [{ type: 'text', text: r.prompt }]
       })
       if (res.error) throw new Error(errMsg(res.error))
-      const final = await this.waitForCompletion(client, dirForSession, sessionID, sentAt, signal, () => !!record.error)
+      const final = await this.waitForCompletion(client, ocDirectory, sessionID, sentAt, signal, () => !!record.error)
       if (record.error) throw new Error(record.error)
       if (!final) throw new Error(t('merr.routine.noReply'))
       if (final.info.error) throw new Error(errMsg(final.info.error))
@@ -839,7 +846,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
             this.notifyPlain(
               t('merr.notif.routineNeedsApproval', { name: run.routineName }),
               patterns[0] ? `${p.permission}: ${truncate(patterns[0], 140)}` : p.permission,
-              { mode: 'tasks', id: run.root, directory, fullAccess: run.fullAccess }
+              { mode: 'tasks', id: run.root, directory: run.folder, fullAccess: run.fullAccess }
             )
           }
         } else {

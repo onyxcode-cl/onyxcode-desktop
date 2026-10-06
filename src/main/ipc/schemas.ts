@@ -298,6 +298,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     onboarded: bool,
     routinesTermsAcknowledged: bool,
     checkUpdates: bool,
+    tasksWinBeta: bool,
     language: literal('system', 'es', 'en')
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),

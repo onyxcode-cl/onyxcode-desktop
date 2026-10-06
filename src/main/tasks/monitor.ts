@@ -34,6 +34,8 @@ export interface RawPerm {
 /** Servidor vivo tal como lo entrega `TasksManager.liveServers()`. */
 export interface MonitorServer {
   folder: string
+  /** Carpeta tal como la ve OpenCode (`?directory=`); ausente = la misma `folder` (macOS). En Windows es la ruta dentro de la distro. */
+  directory?: string
   fullAccess: boolean
   baseUrl: string
   authorization: string
@@ -108,6 +110,8 @@ interface RootEntry {
 interface ServerState {
   key: string
   folder: string
+  /** Carpeta que entiende OpenCode (ver `MonitorServer.directory`). */
+  directory: string
   fullAccess: boolean
   baseUrl: string
   authorization: string
@@ -328,7 +332,7 @@ export class TasksMonitor {
   private async req<T>(st: ServerState, method: string, path: string, body?: unknown): Promise<ReqOk<T> | ReqFail> {
     const f = this.deps.fetch ?? fetch
     const sep = path.includes('?') ? '&' : '?'
-    const url = `${st.baseUrl.replace(/\/+$/, '')}${path}${sep}directory=${encodeURIComponent(st.folder)}`
+    const url = `${st.baseUrl.replace(/\/+$/, '')}${path}${sep}directory=${encodeURIComponent(st.directory)}`
     try {
       const res = await f(url, {
         method,
@@ -415,6 +419,7 @@ export class TasksMonitor {
         st = {
           key,
           folder: s.folder,
+          directory: s.directory ?? s.folder,
           fullAccess: s.fullAccess,
           baseUrl: s.baseUrl,
           authorization: s.authorization,

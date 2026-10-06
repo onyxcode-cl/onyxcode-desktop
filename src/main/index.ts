@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor, screen } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
@@ -20,6 +20,10 @@ import { registerCompareHandlers } from './compare/handlers'
 import { registerRoutinesHandlers } from './ipc/routines-handlers'
 import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
 import { capsFor } from '@shared/platform-caps'
+import { capsFlagsToArgs } from '@shared/caps-argv'
+import { resolveTasksWin } from './tasks/tasks-win-flag'
+import { loadManagedPolicy } from './tasks/policy'
+import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
 import { disposeRemote } from './remote/loader'
@@ -39,8 +43,17 @@ app.setName(INTERNAL_NAME)
  * Capacidades de la plataforma: Tareas y Control del PC solo en macOS (en Windows tras banderas); actualizador en macOS y Windows,
  * salvo en una build de la Microsoft Store (`process.windowsStore`): la actualiza la Store, nunca el actualizador propio.
  */
-const baseCaps = capsFor(process.platform)
-const caps = { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
+function capsOf(tasksWin: boolean): ReturnType<typeof capsFor> {
+  const baseCaps = capsFor(process.platform, { tasksWin })
+  return { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
+}
+/**
+ * Bandera efectiva `tasksWin` (Tareas en Windows con WSL2): compilación (`TASKS_WIN_BUILD`, apagada) + opción del usuario o
+ * `LAZUNOX_TASKS_WIN=1` sin empaquetar + política. Se calcula al arrancar (`whenReady`, con los ajustes ya leídos) y hace falta
+ * reiniciar para que cambie. Apagada, Windows queda exactamente como hoy: sin modo Tareas, sin su backend, sin sus canales.
+ */
+let tasksWinOn = false
+let caps = capsOf(false)
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
   busyTaskCount: () => number
@@ -90,6 +103,24 @@ function initialBounds(): { width: number; height: number; minWidth: number; min
   }
 }
 
+/** Proveedor del backend de Tareas en Windows (solo con `tasksWin`; carga el código de WSL bajo demanda). */
+async function createWinBackend(): Promise<import('./tasks/backends').WinBackendProvider> {
+  const { createWinBackendProvider } = await import('./tasks/backends/win-provider')
+  const dev = !app.isPackaged
+  const wsl = dev ? join(app.getAppPath(), 'resources', 'wsl') : join(process.resourcesPath, 'wsl')
+  return createWinBackendProvider({
+    dirs: {
+      pinJson: dev ? join(app.getAppPath(), 'resources', 'opencode-bin', 'pin.json') : join(wsl, 'pin.json'),
+      payloadDir: wsl,
+      evidenceDir: dev ? join(app.getAppPath(), 'docs', 'evidence') : join(wsl, 'evidence')
+    },
+    fetch: createManualFetch(net as unknown as NetLike),
+    hostEnv: process.env,
+    policyDisabled: () => loadManagedPolicy()?.disableWslTasks === true,
+    log: (m) => console.log('[tasks-win]', m)
+  })
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     ...initialBounds(),
@@ -106,7 +137,9 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: false,
-      devTools: !app.isPackaged
+      devTools: !app.isPackaged,
+      // Banderas de capacidades para el preload (solo la ventana principal; los preloads secundarios no las reciben).
+      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn })
     }
   })
   registerWindowRole(win.webContents, 'main')
@@ -161,6 +194,14 @@ function start(): void {
   })
   app.whenReady().then(async () => {
     applyE2eHeadless()
+    tasksWinOn = resolveTasksWin({
+      platform: process.platform,
+      optIn: settingsStore.get().tasksWinBeta,
+      env: process.env,
+      isPackaged: app.isPackaged,
+      policy: process.platform === 'win32' ? loadManagedPolicy() : null
+    })
+    caps = capsOf(tasksWinOn)
     if (caps.updater) {
       ;[updateBoot, updateSwap, updateSwapWin] = await Promise.all([
         import('./update/boot'),
@@ -225,7 +266,11 @@ function start(): void {
       tasksMod = registerTasksHandlers(ipcMain, () => mainWindow, {
         getMainConnection: () => server.start(),
         chatDirectory,
-        corsOrigins
+        corsOrigins,
+        // Sin Control del PC no se construye ni se cablea nada de `computer:*` (los stubs responden «no disponible»).
+        computer: caps.computer,
+        tasksWin: tasksWinOn,
+        winBackend: tasksWinOn ? await createWinBackend() : undefined
       })
     } else {
       // Sin modo Tareas: Rutinas de Chat y Code, y el resto de canales de Tareas/Control/actualizador responden «no disponible».

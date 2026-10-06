@@ -6,7 +6,7 @@ import type { ModeId } from '@shared/types'
 import { ConfirmDialogHost } from '../../components/ConfirmDialog'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useT } from '../../lib/i18n'
-import { currentPlatform } from '../../lib/platform'
+import { currentFlags, currentPlatform } from '../../lib/platform'
 import { useCode } from '../../features/code/impl/store'
 import { MobileTasksHome } from '../../features/tasks'
 import { useTasks } from '../../features/tasks/impl/store'
@@ -173,7 +173,7 @@ function TabBar({ onReselect }: { onReselect: () => void }): React.JSX.Element {
   // permisos cuando el store de Tareas ya está conectado (decisiones-pwa #3: no se carga al arrancar).
   const approvalsPending = useTasks((s) => Object.keys(s.permissions).length > 0)
   const tabs: { id: MobileTab; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
-    ...LIST_MODES.filter((m) => modeAvailable(m, currentPlatform())).map((m) => ({
+    ...LIST_MODES.filter((m) => modeAvailable(m, currentPlatform(), currentFlags())).map((m) => ({
       id: m as MobileTab,
       label: MODE_LABELS[m],
       // Tareas usa ListChecks, igual que escritorio (decisiones-pwa #2).

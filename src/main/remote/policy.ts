@@ -191,7 +191,9 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   checkUpdates: 'X',
   recentFolders: 'X',
   onboarded: 'X',
-  routinesTermsAcknowledged: 'X'
+  routinesTermsAcknowledged: 'X',
+  // «Tareas (beta)» en Windows: solo desde el Mac/PC del dueño, nunca desde el celular.
+  tasksWinBeta: 'X'
 }
 
 const EXTRAS_PREF_FIELDS: Record<string, PolicyClass> = {
