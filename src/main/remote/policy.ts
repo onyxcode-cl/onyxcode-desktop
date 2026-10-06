@@ -657,6 +657,16 @@ const MAX_PARTS = 100
 const DATA_URL_RE = /^data:[A-Za-z0-9.+/-]+(;[A-Za-z0-9=._-]+)*;base64,/
 const hasOnly = (o: Record<string, unknown>, keys: readonly string[]): boolean => Object.keys(o).every((k) => keys.includes(k))
 
+/**
+ * Ruta del `pathname` de un `file:` URL. En Windows `pathToFileURL('C:\\x')` da `file:///C:/x` (pathname `/C:/x`): se quita la
+ * barra inicial para que `resolve` no lo trate como `C:\\C:\\x` y rechace TODO adjunto legítimo. La plataforma se inyecta
+ * para probarlo en el Mac; en macOS/Linux la ruta es la decodificada tal cual.
+ */
+export function fileUrlPath(pathname: string, platform: NodeJS.Platform = process.platform): string {
+  const d = decodeURIComponent(pathname)
+  return platform === 'win32' && /^\/[A-Za-z]:(\/|\\|$)/.test(d) ? d.slice(1) : d
+}
+
 /** Partes de un prompt: texto y archivos `data:`; `file://` solo bajo el directorio de la sesión y nunca en Chat. */
 function partsOutcome(parts: unknown, dir: string, isChat: boolean): Outcome | undefined {
   if (!Array.isArray(parts) || parts.length === 0 || parts.length > MAX_PARTS) return deny('parts-invalid')
@@ -674,7 +684,7 @@ function partsOutcome(parts: unknown, dir: string, isChat: boolean): Outcome | u
         try {
           const u = new URL(part.url)
           if (u.protocol !== 'file:' || u.host !== '') return deny('part-url-invalid')
-          target = decodeURIComponent(u.pathname)
+          target = fileUrlPath(u.pathname)
         } catch {
           return deny('part-url-invalid')
         }

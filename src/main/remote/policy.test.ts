@@ -15,6 +15,7 @@ import {
   CELULAR_SUMMARIES,
   decide,
   eventPolicy,
+  fileUrlPath,
   sanitizeResult,
   type PolicyContext,
   type PolicyDecision,
@@ -458,6 +459,14 @@ describe('prompts', () => {
     expect(f(`file://${P}/%2e%2e/x`)).toBe('deny:file-url-out-of-scope')
     expect(f('file://host/etc/passwd')).toBe('deny:part-url-invalid')
     expect(f('file:///work/tasks/a/x')).toBe('deny:file-url-out-of-scope') // otra carpeta permitida, no la de la sesión
+  })
+  it('fileUrlPath: en Windows quita la barra de /C:/… (pathToFileURL); en POSIX no toca nada', () => {
+    expect(fileUrlPath('/C:/Users/me/proj/a%20b.ts', 'win32')).toBe('C:/Users/me/proj/a b.ts')
+    expect(fileUrlPath('/c:', 'win32')).toBe('c:')
+    expect(fileUrlPath('/work/proj/a.ts', 'win32')).toBe('/work/proj/a.ts')
+    expect(fileUrlPath('/C:/x', 'darwin')).toBe('/C:/x')
+    // el URL nunca sube por encima de la unidad: `..` no escapa de C:
+    expect(new URL('file:///C:/p/../../etc/x').pathname).toBe('/C:/etc/x')
   })
   it('file:// source.path fuera del directorio → rechazo', () => {
     expect(

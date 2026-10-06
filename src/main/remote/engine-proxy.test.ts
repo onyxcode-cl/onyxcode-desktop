@@ -124,7 +124,8 @@ beforeEach(() => {
   writeFileSync(join(proj, '.env'), 'TOKEN=abc')
   writeFileSync(join(proj, 'src', 'a.ts'), 'export {}')
   writeFileSync(join(outside, 'secret.txt'), 'x')
-  symlinkSync(outside, join(proj, 'link'))
+  // 'junction' (solo Windows; se ignora en POSIX): crear enlaces a carpetas no exige privilegios de administrador.
+  symlinkSync(outside, join(proj, 'link'), 'junction')
   symlinkSync(join(proj, '.env'), join(proj, 'notas.txt'))
   PASS = randomBytes(18).toString('base64url')
   AUTH = `Basic ${Buffer.from(`opencode:${PASS}`).toString('base64')}`
