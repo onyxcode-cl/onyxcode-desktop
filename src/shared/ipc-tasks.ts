@@ -957,8 +957,11 @@ export interface TasksInvokeContract {
   'tasks:trusted:remove': { req: { path: string }; res: TrustedFolder[] }
   /** Política gestionada por la organización (null = sin política). */
   'tasks:policy': { req: void; res: ManagedPolicy | null }
-  /** Estado del entorno aislado (Windows: distro por instalar, instalando, lista, rota…). Solo lectura. */
-  'tasks:sandbox:status': { req: void; res: TasksSandboxStatus }
+  /**
+   * Estado del entorno aislado (Windows: distro por instalar, instalando, lista, rota…). Solo lectura. `force` salta la caché de
+   * 5 s de main (botón «Volver a comprobar»); sin él se usa la caché.
+   */
+  'tasks:sandbox:status': { req: { force?: boolean } | undefined; res: TasksSandboxStatus }
   /** Instala o repara el entorno aislado (solo Windows, solo si hace falta). El avance llega por `tasks:sandbox:progress`. */
   'tasks:sandbox:setup': { req: void; res: TasksSandboxStatus }
   /** Cancela la instalación en curso (efectiva hasta justo antes de importar la distro). */
