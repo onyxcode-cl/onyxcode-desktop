@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { checkNoLinks, fromSandboxPath, mountFor, toSandboxPath, type PathMount, type PathRejectReason } from './wsl-paths'
+import attack from '../__fixtures__/attack-paths.json'
+import {
+  checkNoLinks,
+  fromSandboxPath,
+  mountFor,
+  toSandboxPath,
+  toWinCanonical,
+  winFromLinuxAbsolute,
+  type PathMount,
+  type PathRejectReason
+} from './wsl-paths'
 
 const reason = (r: { ok: boolean; reason?: string }): string | undefined => (r.ok ? undefined : r.reason)
 
@@ -148,5 +158,36 @@ describe('checkNoLinks (lstat inyectado)', () => {
       throw new Error('EACCES')
     })
     expect(r.ok).toBe(false)
+  })
+})
+
+const isLinuxForm = (p: string): boolean => /^\/(?!\/)/.test(p)
+
+describe('winFromLinuxAbsolute y vectores compartidos (attack-paths.json)', () => {
+  it.each(attack.accept.map((c) => [c.id, c.sandbox, c.win] as const))('/win → Windows: %s', (_id, sandbox, win) => {
+    expect(winFromLinuxAbsolute(sandbox)).toEqual({ ok: true, path: win })
+  })
+  it.each(attack.reject.filter((c) => isLinuxForm(c.ui)).map((c) => [c.id, c.ui, c.reason] as const))('rechaza %s', (_id, ui, why) => {
+    expect(reason(winFromLinuxAbsolute(ui))).toBe(why)
+  })
+  it.each(attack.reject.filter((c) => !isLinuxForm(c.ui) && c.reason !== 'empty').map((c) => [c.id, c.ui, c.reason] as const))(
+    'toSandboxPath rechaza %s',
+    (_id, ui, why) => {
+      const r = toSandboxPath(ui)
+      expect(r.ok).toBe(false)
+      expect(reason(r)).toBe(why)
+    }
+  )
+  it('biyección: toWinCanonical(toSandboxPath(w)) y de vuelta', () => {
+    for (const c of attack.accept) {
+      const s = toSandboxPath(c.win)
+      expect(s, c.id).toEqual({ ok: true, path: c.sandbox })
+      expect(toWinCanonical(c.sandbox), c.id).toBe(c.win)
+    }
+  })
+  it('el reexportador antiguo y el módulo compartido son el mismo', async () => {
+    const shared = await import('@shared/wsl-paths')
+    expect(shared.toSandboxPath).toBe(toSandboxPath)
+    expect(shared.winFromLinuxAbsolute).toBe(winFromLinuxAbsolute)
   })
 })
