@@ -192,12 +192,22 @@ module.exports = {
     icon: 'build/icon.ico',
     target: [{ target: 'nsis', arch: ['x64'] }],
     // OpenCode oficial para Windows (scripts/fetch-opencode.mjs) → resources\\opencode\\opencode.exe, fuera del asar.
-    extraResources: [{ from: 'resources/opencode-bin/bin', to: 'opencode', filter: ['opencode.exe'] }]
+    extraResources: [
+      { from: 'resources/opencode-bin/bin', to: 'opencode', filter: ['opencode.exe'] },
+      // Script de reemplazo del actualizador propio → resources\\updater\\swap.ps1 (src/main/update/swap-win.ts lo COPIA a userData
+      // antes de lanzarlo). Fuera del asar: no se puede ejecutar desde dentro.
+      { from: 'resources/updater', to: 'updater', filter: ['swap.ps1'] }
+    ]
   },
   nsis: {
     oneClick: false,
     perMachine: false,
-    allowToChangeInstallationDirectory: true,
+    // El actualizador de Windows solo funciona en la carpeta por usuario (%LOCALAPPDATA%\\Programs\\Lazunox): se cierra la
+    // página «Para todos los usuarios» (build/installer.nsh) y no se elige carpeta (plan win-D, decisión D-W1).
+    allowToChangeInstallationDirectory: false,
+    include: 'build/installer.nsh',
+    installerLanguages: ['es_ES', 'en_US'],
+    multiLanguageInstaller: true,
     artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
   },
   afterSign: selfSigned ? 'build/after-sign-self-signed.js' : 'build/notarize.js',
