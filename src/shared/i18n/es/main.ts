@@ -7,5 +7,22 @@ export const main = {
   'main.menu.view': 'Ver',
   'main.menu.about': 'Acerca de {app}',
   'main.menu.hide': 'Ocultar {app}',
-  'main.menu.quit': 'Salir de {app}'
+  'main.menu.quit': 'Salir de {app}',
+  'main.menu.file': 'Archivo',
+  'main.menu.exit': 'Salir',
+  'main.menu.edit': 'Edición',
+  'main.menu.undo': 'Deshacer',
+  'main.menu.redo': 'Rehacer',
+  'main.menu.cut': 'Cortar',
+  'main.menu.copy': 'Copiar',
+  'main.menu.paste': 'Pegar',
+  'main.menu.selectAll': 'Seleccionar todo',
+  'main.menu.resetZoom': 'Tamaño real',
+  'main.menu.zoomIn': 'Acercar',
+  'main.menu.zoomOut': 'Alejar',
+  'main.menu.fullscreen': 'Pantalla completa',
+  'main.menu.window': 'Ventana',
+  'main.menu.minimize': 'Minimizar',
+  'main.menu.closeWindow': 'Cerrar ventana',
+  'main.menu.help': 'Ayuda'
 } as const

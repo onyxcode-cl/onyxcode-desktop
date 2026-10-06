@@ -6,7 +6,7 @@
 import { app, Menu, nativeImage, Tray, type NativeImage } from 'electron'
 import { DISPLAY_NAME } from '@shared/brand'
 import { onLangChange, t } from '@shared/i18n'
-import { trayIconStyle } from './tray-style'
+import { trayIconReps, trayIconStyle } from './tray-style'
 
 export interface TrayActions {
   onNewConversation: () => void
@@ -27,17 +27,16 @@ let remoteActive = false
  * Símbolo "Faceta" (gema de 4 facetas + chispa), misma geometría de 32 unidades que
  * renderer/components/Logo.tsx y build/icon.svg. Dibujado con antialiasing simple.
  */
-export function createTrayIcon(): NativeImage {
-  const S = 32
-  const style = trayIconStyle(process.platform)
+export function renderTrayBitmap(S: number, rgb: readonly [number, number, number]): Buffer {
+  const k = 32 / S // la geometría está en 32 unidades
   const buf = Buffer.alloc(S * S * 4)
   const cov = (px: number, py: number): number => {
     // Supermuestreo 4×4 para bordes suaves.
     let hits = 0
     for (let sy = 0; sy < 4; sy++) {
       for (let sx = 0; sx < 4; sx++) {
-        const x = px + (sx + 0.5) / 4
-        const y = py + (sy + 0.5) / 4
+        const x = (px + (sx + 0.5) / 4) * k
+        const y = (py + (sy + 0.5) / 4) * k
         if (inShape(x, y)) hits++
       }
     }
@@ -47,13 +46,32 @@ export function createTrayIcon(): NativeImage {
     for (let x = 0; x < S; x++) {
       const a = Math.round(cov(x, y) * 255)
       const i = (y * S + x) * 4
-      buf[i] = style.rgb[2] // B
-      buf[i + 1] = style.rgb[1] // G
-      buf[i + 2] = style.rgb[0] // R
+      buf[i] = rgb[2] // B
+      buf[i + 1] = rgb[1] // G
+      buf[i + 2] = rgb[0] // R
       buf[i + 3] = a // A
     }
   }
-  const img = nativeImage.createFromBitmap(buf, { width: S, height: S, scaleFactor: 2 })
+  return buf
+}
+
+/**
+ * macOS: un bitmap de 32 px a escala 2 (template). Windows: varias representaciones (16/20/24/32 px =
+ * 100/125/150/200 %) para que el sistema elija la exacta y no reescale (borroso). `platform` es inyectable.
+ */
+export function createTrayIcon(platform: string = process.platform): NativeImage {
+  const style = trayIconStyle(platform)
+  const reps = trayIconReps(platform)
+  let img: NativeImage
+  if (reps.length === 1) {
+    const { size, scaleFactor } = reps[0]
+    img = nativeImage.createFromBitmap(renderTrayBitmap(size, style.rgb), { width: size, height: size, scaleFactor })
+  } else {
+    img = nativeImage.createEmpty()
+    for (const { size, scaleFactor } of reps) {
+      img.addRepresentation({ scaleFactor, width: size, height: size, buffer: renderTrayBitmap(size, style.rgb) })
+    }
+  }
   img.setTemplateImage(style.template)
   return img
 }

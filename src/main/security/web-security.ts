@@ -12,7 +12,7 @@
  *   serie), sin captura de pantalla desde el renderer.
  * - Menú de aplicación propio en producción (sin Recargar ni Herramientas de desarrollo).
  */
-import { app, Menu, session, shell, type MenuItemConstructorOptions, type WebContents } from 'electron'
+import { app, dialog, Menu, session, shell, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { DISPLAY_NAME } from '@shared/brand'
 import { onLangChange, t } from '@shared/i18n'
 import { isTrustedUrl, originOf } from './app-protocol'
@@ -91,7 +91,8 @@ function installPermissionHandlers(): void {
  * `app.name`, que se mantiene en «Lazunox» (clave del Llavero y userData); por eso el menú de la app es
  * propio y usa el nombre visible. Exportada para probarla sin Electron.
  */
-export function buildProductionMenuTemplate(isMac: boolean): MenuItemConstructorOptions[] {
+export function buildProductionMenuTemplate(isMac: boolean, platform: string = isMac ? 'darwin' : 'linux'): MenuItemConstructorOptions[] {
+  if (platform === 'win32') return buildWindowsMenuTemplate()
   const app_ = { app: DISPLAY_NAME }
   return [
     ...(isMac
@@ -128,8 +129,63 @@ export function buildProductionMenuTemplate(isMac: boolean): MenuItemConstructor
   ]
 }
 
+/**
+ * Menú de Windows: con `{ role: 'fileMenu'|… }` los rótulos salen en inglés aunque la interfaz esté en
+ * español. Cada ítem conserva su `role` (así siguen los aceleradores y el comportamiento nativo) pero con
+ * etiqueta propia traducida. La ventana arranca con `autoHideMenuBar`: Alt muestra el menú.
+ */
+export function buildWindowsMenuTemplate(): MenuItemConstructorOptions[] {
+  return [
+    {
+      label: t('main.menu.file'),
+      submenu: [{ role: 'quit' as const, label: t('main.menu.exit') }]
+    },
+    {
+      label: t('main.menu.edit'),
+      submenu: [
+        { role: 'undo' as const, label: t('main.menu.undo') },
+        { role: 'redo' as const, label: t('main.menu.redo') },
+        { type: 'separator' as const },
+        { role: 'cut' as const, label: t('main.menu.cut') },
+        { role: 'copy' as const, label: t('main.menu.copy') },
+        { role: 'paste' as const, label: t('main.menu.paste') },
+        { role: 'selectAll' as const, label: t('main.menu.selectAll') }
+      ]
+    },
+    {
+      label: t('main.menu.view'),
+      submenu: [
+        { role: 'resetZoom' as const, label: t('main.menu.resetZoom') },
+        { role: 'zoomIn' as const, label: t('main.menu.zoomIn') },
+        { role: 'zoomOut' as const, label: t('main.menu.zoomOut') },
+        { type: 'separator' as const },
+        { role: 'togglefullscreen' as const, label: t('main.menu.fullscreen') }
+      ]
+    },
+    {
+      label: t('main.menu.window'),
+      submenu: [
+        { role: 'minimize' as const, label: t('main.menu.minimize') },
+        { role: 'close' as const, label: t('main.menu.closeWindow') }
+      ]
+    },
+    {
+      label: t('main.menu.help'),
+      submenu: [
+        {
+          label: t('main.menu.about', { app: DISPLAY_NAME }),
+          // `role: 'about'` no abre panel en Windows: diálogo propio.
+          click: () => {
+            void dialog.showMessageBox({ type: 'info', title: DISPLAY_NAME, message: DISPLAY_NAME, detail: app.getVersion() })
+          }
+        }
+      ]
+    }
+  ]
+}
+
 function buildProductionMenu(): void {
-  Menu.setApplicationMenu(Menu.buildFromTemplate(buildProductionMenuTemplate(process.platform === 'darwin')))
+  Menu.setApplicationMenu(Menu.buildFromTemplate(buildProductionMenuTemplate(process.platform === 'darwin', process.platform)))
 }
 
 function installProductionMenu(): void {

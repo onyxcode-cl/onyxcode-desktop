@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
@@ -30,6 +30,7 @@ import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './
 import { initMainI18n } from './i18n'
 import { installWebSecurity } from './security/web-security'
 import { loadRendererPage, preloadPath } from './extras/windows'
+import { clampBounds } from './window-bounds'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
 app.setName(INTERNAL_NAME)
@@ -71,12 +72,23 @@ const server = new OpencodeServer({ chatDirectory, corsOrigins })
 let mainWindow: BrowserWindow | null = null
 let tasksMod: TasksLike | null = null
 
+/** Tamaño inicial y mínimos; en Windows se ajustan al área útil (200 % en 1080p no cabe `minHeight` 560). */
+function initialBounds(): { width: number; height: number; minWidth: number; minHeight: number; x?: number; y?: number } {
+  const desired = { width: 1280, height: 820, minWidth: 820, minHeight: 560 }
+  if (process.platform !== 'win32') return desired
+  try {
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+    return clampBounds(display.workArea, display.scaleFactor, desired)
+  } catch {
+    return desired
+  }
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 820,
-    minHeight: 560,
+    ...initialBounds(),
+    // En Windows el menú queda oculto (Alt lo muestra); los aceleradores siguen activos.
+    autoHideMenuBar: process.platform === 'win32',
     show: false,
     title: DISPLAY_NAME,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
