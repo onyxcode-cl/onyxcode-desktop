@@ -62,4 +62,6 @@ find "$ROOT" -xdev -name __pycache__ -type d -prune -exec rm -rf {} +
 rm -f "$ROOT/var/lib/dpkg/"*-old "$ROOT/var/lib/dpkg/lock" "$ROOT/var/lib/dpkg/lock-frontend" 2>/dev/null || true
 
 # Fechas: todo lo posterior al epoch (lo creado arriba) se fija al epoch.
-find "$ROOT" -xdev -newermt "@$SOURCE_DATE_EPOCH" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
+# /proc, /sys y /dev son puntos de montaje de solo lectura dentro del chroot de mmdebstrap (touch falla); sus fechas ya las fija
+# mmdebstrap al escribir el tar (mtime limitado a SOURCE_DATE_EPOCH).
+find "$ROOT" -xdev -newermt "@$SOURCE_DATE_EPOCH" ! -path "$ROOT/proc" ! -path "$ROOT/sys" ! -path "$ROOT/dev" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
