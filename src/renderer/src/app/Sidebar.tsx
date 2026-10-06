@@ -42,7 +42,9 @@ export function Sidebar(): React.JSX.Element {
   return (
     <aside aria-label={t('app.sidebar.aria')} className="flex h-full w-[var(--sidebar-width)] shrink-0 flex-col bg-sidebar">
       {/* Barra de título de 48 px: en macOS los primeros 84 px son de los semáforos; solo queda el botón de ocultar. En Windows (titleBarOverlay) no hay reserva izquierda; los controles nativos van a la derecha de la ventana. */}
-      <div className={`drag flex shrink-0 items-center justify-end pr-2.5 ${mac ? 'h-12 pl-[84px]' : tall ? 'h-12 pl-2' : 'h-10 pl-2'}`}>
+      <div className={`flex shrink-0 items-center pr-2.5 ${mac ? 'h-12 pl-[84px]' : tall ? 'h-12 pl-2' : 'h-10 pl-2'}`}>
+        {/* La zona de arrastre es un hermano del botón (no su contenedor): en Windows una franja `drag` se come los clics de sus hijos. */}
+        <div aria-hidden="true" className="drag h-full min-w-0 flex-1" />
         <IconButton label={t('app.sidebar.hide', { hint: hintSuffix(hints['sidebar.toggle']) })} size="sm" onClick={toggleSidebar}>
           <PanelLeft size={16} strokeWidth={1.75} />
         </IconButton>
