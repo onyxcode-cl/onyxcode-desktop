@@ -13,7 +13,16 @@ import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/w
 import type { OpencodeServer } from '../opencode/server'
 import { applyApproveSetting, type EnableApproveInfo } from '../remote/approve-setting'
 import { ConfirmHost } from '../remote/confirm-host'
-import { currentService, ensureRemote, getAudit, getDevicesStore, getOrgPolicy, offState, remoteSupported, type RemoteHostDeps } from '../remote/loader'
+import {
+  currentService,
+  ensureRemote,
+  getAudit,
+  getDevicesStore,
+  getOrgPolicy,
+  offState,
+  remoteSupported,
+  type RemoteHostDeps
+} from '../remote/loader'
 import { emitTo } from './event-bus'
 import { makeInvokeHandler } from './handle'
 

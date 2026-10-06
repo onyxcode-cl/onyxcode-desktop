@@ -9,7 +9,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AuditInput } from '../audit'
-import { BinaryError, CloudflaredBinary, parsePin, pinFor, type CloudflaredPin, type FetchLike, type PinAsset, type RunFile } from './binary'
+import {
+  BinaryError,
+  CloudflaredBinary,
+  parsePin,
+  pinFor,
+  type CloudflaredPin,
+  type FetchLike,
+  type PinAsset,
+  type RunFile
+} from './binary'
 import { CLOUDFLARED_PIN } from './pin'
 
 const sha = (b: Buffer): string => createHash('sha256').update(b).digest('hex')
@@ -59,7 +68,10 @@ function fetchOf(body: Buffer = EXE): { fetch: FetchLike; calls: string[] } {
 }
 
 /** `powershell.exe` de mentira: devuelve lo que se le pida. */
-function ps(result: { Status: string; Subject: string } | 'throws' | 'garbage' = { Status: 'Valid', Subject: SUBJECT }): { run: RunFile; calls: string[][] } {
+function ps(result: { Status: string; Subject: string } | 'throws' | 'garbage' = { Status: 'Valid', Subject: SUBJECT }): {
+  run: RunFile
+  calls: string[][]
+} {
   const calls: string[][] = []
   return {
     calls,
@@ -72,7 +84,11 @@ function ps(result: { Status: string; Subject: string } | 'throws' | 'garbage' =
   }
 }
 
-function make(r: ReturnType<typeof ps>, f: ReturnType<typeof fetchOf>, o: { pin?: CloudflaredPin; dir?: string; allow?: boolean } = {}): CloudflaredBinary {
+function make(
+  r: ReturnType<typeof ps>,
+  f: ReturnType<typeof fetchOf>,
+  o: { pin?: CloudflaredPin; dir?: string; allow?: boolean } = {}
+): CloudflaredBinary {
   return new CloudflaredBinary({
     pin: o.pin ?? pinWin(),
     binDir: o.dir ?? binDir,
@@ -100,7 +116,9 @@ describe('pin de Windows (forma)', () => {
     expect(parsePin(pinWin({ url: 'https://evil.example/cloudflared.exe' }))).toBeNull()
     expect(parsePin(pinWin({ signature: {} as never }))).toBeNull()
     expect(parsePin(pinWin({ signature: { subject: 'CN=x\u0000' } }))).toBeNull()
-    expect(parsePin(pinWin({ signature: { identifier: 'cloudflared', teamId: 'ABCDE12345', authority: 'x (ABCDE12345)' } as never }))).toBeNull()
+    expect(
+      parsePin(pinWin({ signature: { identifier: 'cloudflared', teamId: 'ABCDE12345', authority: 'x (ABCDE12345)' } as never }))
+    ).toBeNull()
   })
   it('un asset de macOS con url `.exe` sigue rechazado', () => {
     const p = JSON.parse(JSON.stringify(CLOUDFLARED_PIN)) as { assets: Record<string, { url: string }> }
