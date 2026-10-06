@@ -426,8 +426,8 @@ function StepAuth({
           </h3>
           <Badge tone="accent">{t('wizard.auth.recommended')}</Badge>
           {goConnected && (
-            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-              <Check size={11} /> {t('wizard.auth.goConnected')}
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-fg">
+              <Check size={11} className="text-success" /> {t('wizard.auth.goConnected')}
             </span>
           )}
         </div>
@@ -494,9 +494,9 @@ function StepAuth({
               {otherNames.map((n) => (
                 <span
                   key={n}
-                  className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
+                  className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-fg"
                 >
-                  <Check size={11} /> {t('wizard.auth.providerConnected', { name: n })}
+                  <Check size={11} className="text-success" /> {t('wizard.auth.providerConnected', { name: n })}
                 </span>
               ))}
             </div>

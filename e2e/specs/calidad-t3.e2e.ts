@@ -164,7 +164,8 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
       .first()
       .click()
     await expectVisible(page.getByText('Esta tarea se interrumpió'))
-    await expect(page.getByText('Interrumpida').first().isVisible()).resolves.toBe(true)
+    // En la barra lateral 1b el estado de la fila va como icono (el texto está oculto): la píldora de la cabecera lo dice.
+    await expectVisible(page.locator('header').getByText('Interrumpida', { exact: true }))
     await shot(a, SHOTS, 'tarea-interrumpida')
     // La ocupada no muestra el aviso.
     await page
