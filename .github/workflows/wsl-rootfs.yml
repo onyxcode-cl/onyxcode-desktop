@@ -1,0 +1,75 @@
+# Construye la imagen base de «Tareas en Windows» (Debian trixie, reproducible). SOLO manual y SOLO deja un artefacto: no publica
+# ninguna release ni escribe en el repositorio (la release la sube el dueño a mano). Ver scripts/build-wsl-rootfs.sh y
+# docs/RELEASE.md. Antes del primer uso hay que fijar el digest de la imagen `debian:trixie` (entrada `base_digest`).
+name: WSL rootfs
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Versión de la imagen (YYYY.M.D)
+        required: true
+        default: '2026.10.1'
+      snapshot:
+        description: Fecha de snapshot.debian.org (YYYYMMDDTHHMMSSZ)
+        required: true
+        default: '20261001T000000Z'
+      base_digest:
+        description: Digest sha256 de la imagen debian:trixie (64 hex, sin el prefijo sha256:)
+        required: true
+
+# Permisos mínimos: solo lectura. upload-artifact no necesita permisos del token.
+permissions:
+  contents: read
+
+concurrency:
+  group: wsl-rootfs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: construir y comprobar la imagen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      # Acciones fijadas por SHA de commit (no por etiqueta movible).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Comprobar las entradas
+        env:
+          VERSION: ${{ inputs.version }}
+          SNAPSHOT: ${{ inputs.snapshot }}
+          DIGEST: ${{ inputs.base_digest }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}$ ]]
+          [[ "$SNAPSHOT" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]
+          [[ "$DIGEST" =~ ^[0-9a-f]{64}$ ]]
+      - name: Pruebas del constructor (con tars sintéticos)
+        run: node --test scripts/wsl-rootfs.test.mjs
+      - name: Construir dos veces y exigir el mismo sha256
+        env:
+          VERSION: ${{ inputs.version }}
+          SNAPSHOT: ${{ inputs.snapshot }}
+          DIGEST: ${{ inputs.base_digest }}
+        run: |
+          mkdir -p out
+          docker run --rm --privileged --platform linux/amd64 -v "$PWD:/w" -w /w \
+            "debian:trixie@sha256:$DIGEST" \
+            /w/scripts/build-wsl-rootfs.sh --inside --check --version "$VERSION" --snapshot "$SNAPSHOT" --out /w/out
+      - name: Inspeccionar la imagen
+        env:
+          VERSION: ${{ inputs.version }}
+        run: node scripts/wsl-rootfs/inspect.mjs "out/lazunox-rootfs-$VERSION-x64.tar.gz" --version "$VERSION"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lazunox-rootfs-${{ inputs.version }}
+          path: |
+            out/lazunox-rootfs-${{ inputs.version }}-x64.tar.gz
+            out/rootfs-packages-${{ inputs.version }}.txt
+            out/rootfs-build.json
+          if-no-files-found: error
+          retention-days: 30

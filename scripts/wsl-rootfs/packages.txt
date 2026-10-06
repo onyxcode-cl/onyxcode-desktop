@@ -1,0 +1,13 @@
+# Paquetes de la imagen base de «Tareas en Windows» (Debian 13 trixie, minbase). Un paquete por línea; `#` comenta.
+# Sin sudo, curl, iproute2 (el lanzador levanta `lo` con ioctl), systemd ni locales (basta C.UTF-8).
+python3
+python3-openpyxl
+python3-docx
+python3-pypdf
+python3-pptx
+python3-lxml
+git
+ripgrep
+mount
+ca-certificates
+procps
