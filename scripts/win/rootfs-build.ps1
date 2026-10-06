@@ -20,13 +20,21 @@ if (-not (Test-Path (Join-Path $wt 'scripts\build-wsl-rootfs.sh'))) { Write-Outp
 function Log([string]$m) { Add-Content -Path $log -Value $m -Encoding utf8; Write-Output $m }
 Set-Content -Path $log -Value ("ROOTFS-BUILD " + (Get-Date -Format s)) -Encoding utf8
 
+# Desde una sesion SSH el almacen de credenciales de Docker Desktop no existe ("Una sesion de inicio especificada no existe").
+# La imagen base es publica: se usa una configuracion de Docker vacia (sin credsStore) y se apunta al motor de Docker Desktop.
+$dockerCfg = Join-Path $Root 'tmp\docker-config'
+New-Item -ItemType Directory -Force $dockerCfg | Out-Null
+Set-Content -Path (Join-Path $dockerCfg 'config.json') -Value '{}' -Encoding ascii
+$env:DOCKER_CONFIG = $dockerCfg
+$env:DOCKER_HOST = 'npipe:////./pipe/dockerDesktopLinuxEngine'
+
 # Un contenedor anterior con NUESTRO nombre (de una corrida cortada) se borra; ningun otro.
 & $docker rm -f $name 2>&1 | Out-Null
 
 # Digest de debian:trixie (como el workflow: se fija la imagen base por digest).
-& $docker pull debian:trixie 2>&1 | Select-Object -Last 2 | ForEach-Object { Log $_ }
+& $docker pull debian:trixie 2>&1 | Select-Object -Last 3 | ForEach-Object { Log ([string]$_) }
 $repoDigest = (& $docker image inspect debian:trixie --format '{{index .RepoDigests 0}}' 2>&1 | Select-Object -First 1)
-if ($repoDigest -notmatch '@sha256:([0-9a-f]{64})$') { Log "No pude leer el digest: $repoDigest"; exit 4 }
+if ("$repoDigest" -notmatch '@sha256:([0-9a-f]{64})$') { Log "No pude leer el digest: $repoDigest"; exit 4 }
 $digest = $Matches[1]
 Log "digest debian:trixie = sha256:$digest"
 
