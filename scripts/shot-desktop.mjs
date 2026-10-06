@@ -584,7 +584,12 @@ const S = {
     await togglePanel(ctx.page, 'Terminal')
     await sleep(800)
     await ctx.page.mouse.click(1000, 300)
-    await ctx.page.keyboard.type("export PS1='demo@tienda-web % '; clear; git status --short")
+    // bash/zsh en macOS; PowerShell en Windows (`export` no existe alli).
+    await ctx.page.keyboard.type(
+      WIN
+        ? "function prompt { 'demo@tienda-web > ' }; Clear-Host; git status --short"
+        : "export PS1='demo@tienda-web % '; clear; git status --short"
+    )
     await ctx.page.keyboard.press('Enter')
     await sleep(1200)
   },
