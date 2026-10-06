@@ -20,22 +20,36 @@ export function isPrivateIPv4(address: string): boolean {
 /** Interfaces virtuales o de túnel: nunca se eligen. */
 const VIRTUAL = /^(utun|awdl|llw|lo|bridge|vmnet|vboxnet|docker|veth|gif|stf|ap|anpi|tailscale|zt|tun|tap)/i
 
+/**
+ * Windows: nombres de adaptador de Hyper-V/WSL (`vEthernet (WSL)`, `vEthernet (Default Switch)`), VMware, VirtualBox, VPN y túneles
+ * (Tailscale, ZeroTier, OpenVPN, WireGuard, TAP/Wintun), Bluetooth, loopback de Npcap y los `Local Area Connection* N` del punto de
+ * acceso móvil / Wi-Fi Direct (192.168.137.x: el celular no puede llegar al equipo por ahí). Nunca se eligen. La lista es cerrada y
+ * solo se aplica en Windows: en macOS `lo`/`ap`/`tap` casan por prefijo y aquí dejarían fuera a «Local Area Connection».
+ */
+const WIN_VIRTUAL =
+  /^(vethernet|vmware|virtualbox|vbox|hyper-v|wsl|bluetooth|loopback|npcap|tailscale|zerotier|openvpn|wireguard|wintun|tap-|nordlynx|radmin|hamachi|docker|vpn|ppp|local area connection\*|conexi[oó]n de [aá]rea local\*)/i
+
+/** Windows: el adaptador principal se llama `Wi-Fi` o `Ethernet` (también `Ethernet 2`, `WLAN`). */
+const WIN_PRIMARY = /^(wi-?fi|wlan|ethernet)( \d+)?$/i
+
 /** Preferencia: `en0` (Wi-Fi o cable principal del Mac), luego cualquier `en*`, luego el resto. */
-function rank(name: string): number {
+function rank(name: string, platform: string): number {
+  if (platform === 'win32') return WIN_PRIMARY.test(name) ? 0 : 2
   if (name === 'en0') return 0
   if (/^en\d+$/.test(name)) return 1
   return 2
 }
 
-export function pickLanIp(ifaces: Record<string, IfaceInfo[] | undefined>): string | null {
+export function pickLanIp(ifaces: Record<string, IfaceInfo[] | undefined>, platform: string = process.platform): string | null {
+  const virtual = platform === 'win32' ? WIN_VIRTUAL : VIRTUAL
   const candidates: Array<{ name: string; address: string }> = []
   for (const [name, list] of Object.entries(ifaces)) {
-    if (VIRTUAL.test(name)) continue
+    if (virtual.test(name)) continue
     for (const i of list ?? []) {
       const v4 = i.family === 'IPv4' || i.family === 4
       if (v4 && !i.internal && isPrivateIPv4(i.address)) candidates.push({ name, address: i.address })
     }
   }
-  candidates.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))
+  candidates.sort((a, b) => rank(a.name, platform) - rank(b.name, platform) || a.name.localeCompare(b.name))
   return candidates[0]?.address ?? null
 }
