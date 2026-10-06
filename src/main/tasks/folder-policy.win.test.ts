@@ -16,47 +16,19 @@ import {
   type WinFolderPolicyContext,
   type WinLinkProbe
 } from './folder-policy-win'
-
-const P = 'C:\\Users\\Ben'
-
-/** Disco doble: mapa `ruta(minúsculas)` → entradas; los enlaces se declaran por ruta completa. */
-export function fakeDisk(dirs: Record<string, WinDirEntry[]> = {}, links: string[] = []): WinLinkProbe {
-  const L = new Set(links.map((l) => l.toLowerCase()))
-  return {
-    lstat: (p) => (L.has(p.toLowerCase()) ? { isSymbolicLink: () => true } : { isSymbolicLink: () => false }),
-    readdir: (p) => dirs[p.toLowerCase()] ?? []
-  }
-}
-
-export function ctx(over: Partial<WinFolderPolicyContext> = {}): WinFolderPolicyContext {
-  return {
-    userProfile: P,
-    systemRoot: 'C:\\Windows',
-    programData: 'C:\\ProgramData',
-    programFiles: ['C:\\Program Files', 'C:\\Program Files (x86)'],
-    userData: `${P}\\AppData\\Roaming\\Lazunox`,
-    drives: [
-      { letter: 'C', kind: 'fixed' },
-      { letter: 'D', kind: 'fixed' },
-      { letter: 'E', kind: 'removable' },
-      { letter: 'Z', kind: 'network' }
-    ],
-    links: fakeDisk(),
-    ...over
-  }
-}
+import { ctx, fakeDisk, P } from './__fixtures__/folder-policy-win.fixture'
 
 const why = (folder: string, over: Partial<WinFolderPolicyContext> = {}): string | null => forbiddenWinFolderReason(folder, ctx(over))
 
 describe('carpetas válidas', () => {
   it.each([
-    'C:\\onyx\\tareas\\a',
+    'C:\\lzx\\tareas\\a',
     `${P}\\Documents\\proyecto`,
     `${P}\\Desktop\\x`,
     `${P}\\Downloads\\y`,
     'D:\\Datos\\2026',
-    'c:/onyx/tareas/b',
-    '/win/c/onyx/tareas/a',
+    'c:/lzx/tareas/b',
+    '/win/c/lzx/tareas/a',
     `${P}\\OneDrive\\Trabajo`,
     'C:\\Mis Documentos\\año 2026\\Ñandú',
     'D:\\Programas propios\\x'
@@ -69,16 +41,16 @@ describe('rutas inválidas o ambiguas: antes de la lista', () => {
     ['//srv/share/x', 'merr.folder.winNetwork'],
     ['\\\\192.168.1.101\\x', 'merr.folder.winNetwork'],
     ['\\\\wsl.localhost\\Debian\\etc', 'merr.folder.winNetwork'],
-    ['\\\\?\\C:\\onyx\\a', 'merr.folder.winNetwork'],
+    ['\\\\?\\C:\\lzx\\a', 'merr.folder.winNetwork'],
     ['\\\\?\\UNC\\srv\\x', 'merr.folder.winNetwork'],
     ['\\\\.\\PhysicalDrive0', 'merr.folder.winNetwork'],
     ['C:\\PROGRA~1', 'merr.folder.winBadPath'],
-    ['C:\\onyx\\a\\..\\..\\Windows', 'merr.folder.winBadPath'],
-    ['C:\\onyx\\a:oculto', 'merr.folder.winBadPath'],
-    ['C:\\onyx\\NUL', 'merr.folder.winBadPath'],
-    ['C:\\onyx\\a.', 'merr.folder.winBadPath'],
-    ['onyx\\a', 'merr.folder.winBadPath'],
-    ['C:onyx', 'merr.folder.winBadPath'],
+    ['C:\\lzx\\a\\..\\..\\Windows', 'merr.folder.winBadPath'],
+    ['C:\\lzx\\a:oculto', 'merr.folder.winBadPath'],
+    ['C:\\lzx\\NUL', 'merr.folder.winBadPath'],
+    ['C:\\lzx\\a.', 'merr.folder.winBadPath'],
+    ['lzx\\a', 'merr.folder.winBadPath'],
+    ['C:lzx', 'merr.folder.winBadPath'],
     ['', 'merr.folder.winBadPath']
   ])('%s', (f, key) => expect(why(f)).toBe(key))
   it('un valor que no es cadena falla cerrado', () => {
@@ -215,12 +187,12 @@ describe('datos de Lazunox y rutas extra', () => {
     expect(why('D:\\Otro', c)).toBeNull()
   })
   it('una ruta extra ilegible rompe el contexto: se rechaza todo', () => {
-    expect(why('C:\\onyx\\a', { extraDenied: ['relativa'] })).toBe('merr.folder.winContext')
+    expect(why('C:\\lzx\\a', { extraDenied: ['relativa'] })).toBe('merr.folder.winContext')
   })
   it.each([[{ userProfile: '' }], [{ systemRoot: 'Windows' }], [{ programData: '' }], [{ userData: '\\\\srv\\x' }]])(
     'contexto esencial roto %j: se rechaza todo',
     (over) => {
-      expect(why('C:\\onyx\\a', over as Partial<WinFolderPolicyContext>)).toBe('merr.folder.winContext')
+      expect(why('C:\\lzx\\a', over as Partial<WinFolderPolicyContext>)).toBe('merr.folder.winContext')
     }
   )
 })
@@ -241,13 +213,13 @@ describe('unidades', () => {
     for (const l of 'FGH') expect(why(`${l}:\\x`, c)).toBe('merr.folder.winDriveType')
   })
   it('alias subst: se rechaza aunque figure como fijo', () => {
-    expect(why('X:\\onyx', { substDrives: ['x'], drives: [{ letter: 'X', kind: 'fixed' }] })).toBe('merr.folder.winSubst')
-    expect(why('C:\\onyx', { substDrives: ['X'] })).toBeNull()
+    expect(why('X:\\lzx', { substDrives: ['x'], drives: [{ letter: 'X', kind: 'fixed' }] })).toBe('merr.folder.winSubst')
+    expect(why('C:\\lzx', { substDrives: ['X'] })).toBeNull()
   })
   it('si no se pudo leer la lista de unidades: NADA se aprueba, ni siquiera una carpeta normal', () => {
-    expect(why('C:\\onyx\\a', { drives: null })).toBe('merr.folder.winDrivesUnknown')
+    expect(why('C:\\lzx\\a', { drives: null })).toBe('merr.folder.winDrivesUnknown')
     expect(why('D:\\x', { drives: null })).toBe('merr.folder.winDrivesUnknown')
-    expect(why('C:\\onyx\\a', { drives: undefined as unknown as null })).toBe('merr.folder.winDrivesUnknown')
+    expect(why('C:\\lzx\\a', { drives: undefined as unknown as null })).toBe('merr.folder.winDrivesUnknown')
   })
   it('la letra de unidad no distingue mayúsculas', () => {
     expect(why('d:\\Windows')).toBe('merr.folder.system')
@@ -257,23 +229,23 @@ describe('unidades', () => {
 
 describe('enlaces simbólicos y junctions (D3 estricta)', () => {
   it('un ancestro que es junction se rechaza', () => {
-    const links = fakeDisk({}, ['C:\\onyx\\tareas'])
-    expect(why('C:\\onyx\\tareas\\a', { links })).toBe('merr.folder.winLink')
+    const links = fakeDisk({}, ['C:\\lzx\\tareas'])
+    expect(why('C:\\lzx\\tareas\\a', { links })).toBe('merr.folder.winLink')
   })
   it('la propia carpeta es junction', () => {
-    expect(why('C:\\onyx\\tareas\\a\\j', { links: fakeDisk({}, ['C:\\onyx\\tareas\\a\\j']) })).toBe('merr.folder.winLink')
+    expect(why('C:\\lzx\\tareas\\a\\j', { links: fakeDisk({}, ['C:\\lzx\\tareas\\a\\j']) })).toBe('merr.folder.winLink')
   })
   it('una carpeta que CONTIENE una junction (a otra aprobada o a cualquier sitio) se rechaza', () => {
     const links = fakeDisk(
       {
-        'c:\\onyx\\tareas\\a': [
+        'c:\\lzx\\tareas\\a': [
           { name: 'j', isSymbolicLink: true, isDirectory: true },
           { name: 'ok', isSymbolicLink: false, isDirectory: true }
         ]
       },
       []
     )
-    expect(why('C:\\onyx\\tareas\\a', { links })).toBe('merr.folder.winLink')
+    expect(why('C:\\lzx\\tareas\\a', { links })).toBe('merr.folder.winLink')
   })
   it('un enlace en un subdirectorio profundo también', () => {
     const links = fakeDisk({
@@ -284,7 +256,7 @@ describe('enlaces simbólicos y junctions (D3 estricta)', () => {
     expect(why('C:\\w', { links })).toBe('merr.folder.winLink')
   })
   it('sin sondeo de disco no se puede verificar: se rechaza', () => {
-    expect(why('C:\\onyx\\a', { links: undefined })).toBe('merr.folder.winLinkUnverified')
+    expect(why('C:\\lzx\\a', { links: undefined })).toBe('merr.folder.winLinkUnverified')
   })
   it('error de lectura: se rechaza', () => {
     const links: WinLinkProbe = {
@@ -293,7 +265,7 @@ describe('enlaces simbólicos y junctions (D3 estricta)', () => {
         throw new Error('EPERM')
       }
     }
-    expect(why('C:\\onyx\\a', { links })).toBe('merr.folder.winLinkUnverified')
+    expect(why('C:\\lzx\\a', { links })).toBe('merr.folder.winLinkUnverified')
   })
   it('error de lstat en un ancestro: se rechaza (checkNoLinks falla cerrado)', () => {
     const links: WinLinkProbe = {
@@ -302,7 +274,7 @@ describe('enlaces simbólicos y junctions (D3 estricta)', () => {
       },
       readdir: () => []
     }
-    expect(why('C:\\onyx\\a', { links })).toBe('merr.folder.winLink')
+    expect(why('C:\\lzx\\a', { links })).toBe('merr.folder.winLink')
   })
   it('demasiadas entradas o demasiada profundidad: no verificable, se rechaza', () => {
     const many: WinDirEntry[] = Array.from({ length: LINK_SCAN_MAX_ENTRIES + 1 }, (_, i) => ({
@@ -334,11 +306,11 @@ describe('política de la organización (allowedFolderRoots)', () => {
   it('restringe a las raíces permitidas', () => {
     expect(why('D:\\Datos\\a', { allowedRoots: ['D:\\Datos'] })).toBeNull()
     expect(why('d:/datos/a', { allowedRoots: ['D:\\Datos\\'] })).toBeNull()
-    expect(why('C:\\onyx\\a', { allowedRoots: ['D:\\Datos'] })).toBe('merr.folder.orgRoots')
+    expect(why('C:\\lzx\\a', { allowedRoots: ['D:\\Datos'] })).toBe('merr.folder.orgRoots')
     expect(why('D:\\Datos2\\a', { allowedRoots: ['D:\\Datos'] })).toBe('merr.folder.orgRoots')
   })
   it('lista vacía: nada', () => {
-    expect(why('C:\\onyx\\a', { allowedRoots: [] })).toBe('merr.folder.orgNone')
+    expect(why('C:\\lzx\\a', { allowedRoots: [] })).toBe('merr.folder.orgNone')
   })
   it('NUNCA abre una zona vetada: una raíz permitida que es C:\\Windows o el perfil no ayuda', () => {
     expect(why('C:\\Windows\\x', { allowedRoots: ['C:\\Windows'] })).toBe('merr.folder.system')
@@ -347,7 +319,7 @@ describe('política de la organización (allowedFolderRoots)', () => {
     expect(why('D:\\', { allowedRoots: ['D:\\'] })).toBe('merr.folder.winDriveRoot')
   })
   it('raíces ilegibles o UNC no abren nada (quedan como lista vacía)', () => {
-    expect(why('C:\\onyx\\a', { allowedRoots: ['\\\\srv\\x', 'relativa'] })).toBe('merr.folder.orgNone')
+    expect(why('C:\\lzx\\a', { allowedRoots: ['\\\\srv\\x', 'relativa'] })).toBe('merr.folder.orgNone')
   })
 })
 
@@ -379,13 +351,13 @@ describe('mayúsculas y separadores', () => {
 describe('despacho por plataforma de folder-policy.ts', () => {
   const base = { home: '/Users/ben', userData: '/Users/ben/Library/Application Support/Lazunox', mounts: [] }
   it('win32 sin contexto de Windows: se rechaza todo (falla cerrado)', () => {
-    expect(forbiddenFolderReason('C:\\onyx\\a', base, 'win32')).toBe('merr.folder.winContext')
+    expect(forbiddenFolderReason('C:\\lzx\\a', base, 'win32')).toBe('merr.folder.winContext')
     expect(forbiddenFolderReason('/Users/ben/Docs', base, 'win32')).toBe('merr.folder.winContext')
   })
   it('win32 con contexto: usa la política de Windows y hereda allowedRoots del contexto general', () => {
-    expect(forbiddenFolderReason('C:\\onyx\\a', { ...base, win: ctx() }, 'win32')).toBeNull()
+    expect(forbiddenFolderReason('C:\\lzx\\a', { ...base, win: ctx() }, 'win32')).toBeNull()
     expect(forbiddenFolderReason('C:\\Windows', { ...base, win: ctx() }, 'win32')).toBe('merr.folder.system')
-    expect(forbiddenFolderReason('C:\\onyx\\a', { ...base, win: ctx(), allowedRoots: ['D:\\x'] }, 'win32')).toBe('merr.folder.orgRoots')
+    expect(forbiddenFolderReason('C:\\lzx\\a', { ...base, win: ctx(), allowedRoots: ['D:\\x'] }, 'win32')).toBe('merr.folder.orgRoots')
   })
   it('darwin y linux conservan la política de macOS sin cambios', () => {
     for (const p of ['darwin', 'linux'] as const) {

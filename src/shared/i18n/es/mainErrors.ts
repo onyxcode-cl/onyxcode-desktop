@@ -170,11 +170,13 @@ export const mainErrors = {
     'Esa carpeta está en una ruta o unidad de red ({where}). Las tareas no pueden trabajar de forma segura sobre recursos de red: copia los archivos a una carpeta local y elige esa carpeta.',
   'merr.folder.winDriveType':
     'La unidad {drive}: no es un disco fijo local ({kind}). Por seguridad, las tareas solo trabajan en discos fijos: copia los archivos a una carpeta local y elige esa carpeta.',
-  'merr.folder.winSubst':
-    'La unidad {drive}: es un alias creado con «subst» y no se puede verificar. Elige la carpeta con su ruta real.',
-  'merr.folder.winDriveRoot': 'No se puede usar la raíz de una unidad ({drive}:\\). Elige una carpeta concreta, por ejemplo una dentro de Documentos.',
-  'merr.folder.winDrivesUnknown': 'No se pudo comprobar qué unidades tiene el equipo, así que por seguridad no se aprueba ninguna carpeta. Inténtalo de nuevo.',
-  'merr.folder.winOtherUsers': 'Esa carpeta pertenece a otro usuario del equipo o es compartida ({path}). Elige una carpeta dentro de tu carpeta personal.',
+  'merr.folder.winSubst': 'La unidad {drive}: es un alias creado con «subst» y no se puede verificar. Elige la carpeta con su ruta real.',
+  'merr.folder.winDriveRoot':
+    'No se puede usar la raíz de una unidad ({drive}:\\). Elige una carpeta concreta, por ejemplo una dentro de Documentos.',
+  'merr.folder.winDrivesUnknown':
+    'No se pudo comprobar qué unidades tiene el equipo, así que por seguridad no se aprueba ninguna carpeta. Inténtalo de nuevo.',
+  'merr.folder.winOtherUsers':
+    'Esa carpeta pertenece a otro usuario del equipo o es compartida ({path}). Elige una carpeta dentro de tu carpeta personal.',
   'merr.folder.winAppData':
     'Esa carpeta es de datos de aplicaciones ({path}), donde se guardan perfiles de navegadores, credenciales y ajustes. Las tareas no pueden usarla. Elige otra carpeta.',
   'merr.folder.winLink':

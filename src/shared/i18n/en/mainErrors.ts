@@ -170,7 +170,8 @@ export const mainErrors = {
   'merr.folder.winSubst': 'Drive {drive}: is an alias created with “subst” and can’t be verified. Choose the folder using its real path.',
   'merr.folder.winDriveRoot': 'You can’t use the root of a drive ({drive}:\\). Choose a specific folder, for example one inside Documents.',
   'merr.folder.winDrivesUnknown': 'Couldn’t check which drives this computer has, so for safety no folder is approved. Try again.',
-  'merr.folder.winOtherUsers': 'That folder belongs to another user of this computer or is shared ({path}). Choose a folder inside your own user folder.',
+  'merr.folder.winOtherUsers':
+    'That folder belongs to another user of this computer or is shared ({path}). Choose a folder inside your own user folder.',
   'merr.folder.winAppData':
     'That folder holds application data ({path}), where browser profiles, credentials and settings live. Tasks can’t use it. Choose another folder.',
   'merr.folder.winLink':
