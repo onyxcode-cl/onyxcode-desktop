@@ -1,7 +1,7 @@
 // Tarjetas de permiso de ESCRITORIO (ND): teclado seguro, armado de 600 ms, retirada del 1/2/3 de Code y sin doble
 // envío. Tareas solo en Mac (el modo no existe en Windows); Code en Mac y Windows. OpenCode falso con pasos `permission`.
 // Capturas con ND_PERM_SHOTS_DIR.
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { rmSync } from 'node:fs'
 import type { Page } from 'playwright-core'
 import { runAxe, SERIOUS, summarize } from '../lib/axe'
@@ -52,6 +52,17 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
   const permissionReplies = repliesCounter(app)
 
   const card = (a: E2EApp) => a.page.locator('[role="alertdialog"][id^="perm-"]').first()
+
+  // Aislamiento: una tarjeta que un test deja pendiente (p. ej. «2» no responde) mantiene la sesión ocupada y el
+  // mensaje del test siguiente no llegaría al falso. Se rechaza lo que quede (Esc, la vía normal) antes del siguiente.
+  afterEach(async () => {
+    const a = app()
+    for (let i = 0; i < 5 && (await card(a).count()) > 0; i++) {
+      await card(a).focus()
+      await a.page.keyboard.press('Escape')
+      await a.page.waitForTimeout(500)
+    }
+  })
   const once = (a: E2EApp) => a.page.getByRole('button', { name: /Permitir una vez/ }).first()
   const box = (a: E2EApp) => a.page.getByPlaceholder(/Pide un cambio en el código/)
 
