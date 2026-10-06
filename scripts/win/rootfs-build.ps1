@@ -24,7 +24,8 @@ Set-Content -Path $log -Value ("ROOTFS-BUILD " + (Get-Date -Format s)) -Encoding
 # La imagen base es publica: se usa una configuracion de Docker vacia (sin credsStore) y se apunta al motor de Docker Desktop.
 $dockerCfg = Join-Path $Root 'tmp\docker-config'
 New-Item -ItemType Directory -Force $dockerCfg | Out-Null
-Set-Content -Path (Join-Path $dockerCfg 'config.json') -Value '{}' -Encoding ascii
+# Con `{}` el CLI de Windows detecta el almacen nativo (wincred) y falla en SSH; una entrada `auths` (falsa, no se usa) lo evita.
+Set-Content -Path (Join-Path $dockerCfg 'config.json') -Value '{"auths":{"lazunox.invalid":{}}}' -Encoding ascii
 $env:DOCKER_CONFIG = $dockerCfg
 $env:DOCKER_HOST = 'npipe:////./pipe/dockerDesktopLinuxEngine'
 
