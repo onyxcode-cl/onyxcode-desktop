@@ -96,8 +96,11 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
         <span
           className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium desk:grid desk:size-[18px] desk:place-items-center desk:rounded-2xs desk:px-0 desk:py-0 desk:font-code desk:text-[11px] desk:font-semibold ${b.cls}`}
         >
-          <span className="contents desk:hidden">{t(b.label)}</span>
-          <span className="hidden desk:inline">{b.letter}</span>
+          {/* Escritorio: la letra se ve y la palabra queda para lectores de pantalla (sr-only), no oculta. */}
+          <span className="contents desk:inline desk:sr-only">{t(b.label)}</span>
+          <span aria-hidden="true" className="hidden desk:inline">
+            {b.letter}
+          </span>
         </span>
         {!change.binary && (
           <span className="shrink-0 text-[11px] tabular-nums">

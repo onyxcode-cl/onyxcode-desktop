@@ -144,13 +144,13 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`comparar modelos, Code (${MODE})`, (
     )
     for (const m of MODELS) expect(asked.has(m.id), m.id).toBe(true)
 
-    // Métricas: «$0,01» en la columna con coste; «—» (nunca «$0») en la que no informa.
+    // Métricas: «$0,01» en la columna con coste; «—» o «sin dato» (chips rotulados; nunca «$0») en la que no informa.
     const fm = a.page.getByRole('region', { name: 'Fake Model' })
     await expectVisible(fm.getByText('Listo', { exact: true }), 30_000)
     await expect.poll(() => fm.getByTestId('compare-cost-0').innerText()).toMatch(/0,01/)
     const reasoner = a.page.getByRole('region', { name: 'Fake Reasoner' })
     await expectVisible(reasoner.getByText('Listo', { exact: true }), 30_000)
-    await expect.poll(() => reasoner.getByTestId('compare-cost-1').innerText()).toMatch(/—/)
+    await expect.poll(() => reasoner.getByTestId('compare-cost-1').innerText()).toMatch(/—|sin dato/)
     expect(await a.page.getByTestId('compare-view').innerText()).not.toMatch(/\$\s?0([^,.\d]|$)/)
     await shot(a, SHOTS, 'comparar-columnas')
 
