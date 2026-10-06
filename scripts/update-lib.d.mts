@@ -30,3 +30,30 @@ export function checkZipEntriesWin(
 ): { ok: true } | { ok: false; reason: 'empty' | 'unsafe-name' | 'duplicate' | 'symlink'; entry: string }
 export function listZip(zip: string): string[]
 export function readBrand(root: string): { appId: string; publicKey: string; keyId: string }
+
+export type UpdatePlatformId = 'darwin-arm64' | 'win32-x64'
+export const WIN_REQUIRED: string[]
+export const WIN_ZIP_ROOT: string
+export function winUncompressedCap(zipSize: number): number
+export function platformSpec(id: string): UpdatePlatformSpec
+export function buildWinZip(srcDir: string, zipPath: string): { entries: number }
+export interface ZipEntryJs {
+  name: string
+  method: number
+  crc: number
+  csize: number
+  size: number
+  flags: number
+  lho: number
+  isDirectory: boolean
+  isSymlink: boolean
+}
+export interface ByteSourceSync {
+  size: number
+  read(offset: number, length: number): Buffer
+}
+export function readZipIndexJs(src: ByteSourceSync): ZipEntryJs[]
+export function readZipEntryJs(src: ByteSourceSync, e: ZipEntryJs, max?: number): Buffer
+export function readAsarPackageInfoJs(src: ByteSourceSync): { name: string; version: string }
+export function checkWinApp(dir: string, o: { version: string }): string[]
+export function checkWinZip(zipPath: string, o: { version: string }): string[]

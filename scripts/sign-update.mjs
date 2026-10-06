@@ -2,18 +2,23 @@
 // Paso 2 de la publicación en dos pasos: FIRMA el manifiesto `update.json` que generó el CI (`publish-update.mjs --manifest-only`).
 // Se ejecuta SOLO en el Mac del dueño: la clave privada Ed25519 nunca va a GitHub ni al CI. NO hace peticiones de red.
 //
-//   LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/release-0.4.0 [--zip ruta.zip]
+//   LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem node scripts/sign-update.mjs --dir ~/Descargas/release-0.4.0 [--zip ruta.zip] [--platform win32-x64]
+//
+// `--platform win32-x64` firma update-win32-x64.json con la MISMA clave; además revisa la estructura del ZIP de Windows y la versión
+// de su app.asar. El `platform` queda dentro de los bytes firmados, así que ese manifiesto no vale para el Mac.
 //
 // Antes de firmar comprueba que lo descargado es lo que dice el manifiesto (tamaño y SHA-256 del ZIP, appId y keyId de brand.ts,
 // versión = tag, nombre del ZIP) y que la clave privada corresponde a UPDATE_PUBLIC_KEY; escribe `update.json.sig` junto al manifiesto.
 // El borrador de la release hay que revisarlo a mano: este script firma lo que ve, no decide si el contenido es legítimo.
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   MANIFEST_MAX_BYTES,
+  checkWinZip,
   decodePublicKey,
   parseManifest,
+  platformSpec,
   publicKeyOf,
   readBrand,
   readPrivateKey,
@@ -26,19 +31,21 @@ import {
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-export async function signUpdate({ dir, zipPath, keyFile, root = defaultRoot }) {
-  const manifestPath = join(dir, 'update.json')
-  if (!existsSync(manifestPath)) throw new Error(`No existe ${manifestPath}: descarga update.json y el ZIP del borrador de la release.`)
+export async function signUpdate({ dir, zipPath, keyFile, platform = 'darwin-arm64', root = defaultRoot }) {
+  const spec = platformSpec(platform)
+  const manifestPath = join(dir, spec.manifestName)
+  if (!existsSync(manifestPath))
+    throw new Error(`No existe ${manifestPath}: descarga ${spec.manifestName} y el ZIP del borrador de la release.`)
   const bytes = readFileSync(manifestPath)
-  if (bytes.length > MANIFEST_MAX_BYTES) throw new Error('update.json supera el tamaño máximo permitido.')
+  if (bytes.length > MANIFEST_MAX_BYTES) throw new Error(`${spec.manifestName} supera el tamaño máximo permitido.`)
   let json
   try {
     json = JSON.parse(bytes.toString('utf8'))
   } catch {
-    throw new Error('update.json no es JSON válido.')
+    throw new Error(`${spec.manifestName} no es JSON válido.`)
   }
-  const manifest = parseManifest(json)
-  if (!manifest) throw new Error('update.json no tiene la forma de un manifiesto válido.')
+  const manifest = parseManifest(json, platform)
+  if (!manifest) throw new Error(`${spec.manifestName} no tiene la forma de un manifiesto válido para ${platform}.`)
   // Los bytes firmados deben ser exactamente los que el cliente leerá: nada de reformatear.
   const brand = readBrand(root)
   if (!brand.publicKey) throw new Error('UPDATE_PUBLIC_KEY está vacía en src/shared/brand.ts.')
@@ -55,11 +62,13 @@ export async function signUpdate({ dir, zipPath, keyFile, root = defaultRoot }) 
   const sha256 = await sha256File(zip)
   if (sha256 !== manifest.zip.sha256) throw new Error('El SHA-256 del ZIP no coincide con el del manifiesto: no firmo.')
 
+  if (platform === 'win32-x64') checkWinZip(zip, { version: manifest.version })
+
   const priv = readPrivateKey(keyFile, root)
   if (spkiBase64(publicKeyOf(priv)) !== spkiBase64(pub)) throw new Error('La clave privada NO corresponde a UPDATE_PUBLIC_KEY de brand.ts.')
   const sig = signBytes(bytes, priv)
   if (!verifyBytes(bytes, sig, pub)) throw new Error('La firma generada no verifica con UPDATE_PUBLIC_KEY (error interno).')
-  const sigPath = join(dir, 'update.json.sig')
+  const sigPath = join(dir, spec.manifestSigName)
   writeFileSync(sigPath, sig + '\n')
   return { tag: manifest.tag, version: manifest.version, sigPath, sha256, size }
 }
@@ -73,19 +82,22 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const dir = arg('--dir')
   if (!dir) {
     console.error(
-      'Uso: LAZUNOX_UPDATE_KEY_FILE=<clave.pem> node scripts/sign-update.mjs --dir <carpeta con update.json y el ZIP> [--zip ruta.zip]'
+      'Uso: LAZUNOX_UPDATE_KEY_FILE=<clave.pem> node scripts/sign-update.mjs --dir <carpeta con el manifiesto y el ZIP> [--zip ruta.zip] [--platform win32-x64]'
     )
     process.exit(2)
   }
   signUpdate({
     dir: resolve(dir),
     zipPath: arg('--zip') ? resolve(arg('--zip')) : undefined,
+    platform: arg('--platform') ?? 'darwin-arm64',
     keyFile: process.env.LAZUNOX_UPDATE_KEY_FILE
   })
     .then((r) => {
       console.log(`sign-update OK — ${r.tag}: ZIP ${r.size} bytes, sha256 ${r.sha256}`)
       console.log(`  Firma: ${r.sigPath}`)
-      console.log('Sube update.json.sig como asset del borrador y comprueba con: node scripts/verify-update.mjs --dir <carpeta>')
+      console.log(
+        `Sube ${basename(r.sigPath)} como asset del borrador y comprueba con: node scripts/verify-update.mjs${arg('--platform') ? ` --platform ${arg('--platform')}` : ''} --dir <carpeta>`
+      )
     })
     .catch((e) => {
       console.error(`sign-update FALLÓ: ${e.message}`)

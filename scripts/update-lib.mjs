@@ -3,7 +3,21 @@
 // La AUTENTICIDAD la da solo la firma Ed25519 del manifiesto; codesign solo comprueba integridad/coherencia.
 import { createHash, createPrivateKey, createPublicKey, sign, verify } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { createReadStream, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, statSync } from 'node:fs'
+import {
+  closeSync,
+  createReadStream,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
+  writeSync
+} from 'node:fs'
+import { crc32, deflateRawSync, inflateRawSync } from 'node:zlib'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 
 export const ZIP_MAX_BYTES = 600 * 1024 * 1024
@@ -195,6 +209,317 @@ export function checkZipEntriesWin(entries) {
     seen.add(key)
   }
   return { ok: true }
+}
+
+// ---- Windows: ZIP, índice y versión del asar en JS puro ---------------------------------------
+// Reproducen en JS plano lo que el cliente hace con src/main/update/{zip-index,asar-version}.ts (no se pueden importar: son TS);
+// src/test/update-scripts-win.test.ts comprueba que no se desvían. Nada de tar, zipinfo ni PowerShell: corre igual en macOS.
+
+/** Ficheros sin los que la app no arranca (réplica de REQUIRED de installer-win.ts), en minúsculas. */
+export const WIN_REQUIRED = ['lazunox.exe', 'resources/app.asar', 'resources/opencode/opencode.exe']
+export const WIN_ZIP_ROOT = 'Lazunox/'
+/** Tope descomprimido que aplica el cliente (installer.ts: UNCOMPRESSED_FACTOR_LIMIT = 3, más 1 GiB). */
+export const winUncompressedCap = (zipSize) => zipSize * 3 + 1024 * 1024 * 1024
+
+export function platformSpec(id) {
+  const spec = UPDATE_PLATFORMS[id]
+  if (!spec) throw new Error(`plataforma desconocida «${id}» (usa ${Object.keys(UPDATE_PLATFORMS).join(' o ')})`)
+  return spec
+}
+
+const DOS_DATE = (0 << 9) | (1 << 5) | 1 // 1980-01-01: fecha fija para que el ZIP sea reproducible
+const SIG_LOCAL = 0x04034b50
+const SIG_CEN = 0x02014b50
+const SIG_EOCD = 0x06054b50
+
+function winTree(dir) {
+  /** Orden fijo (por nombre), directorios antes que su contenido; sin enlaces ni tipos raros. */
+  const out = []
+  const visit = (abs, rel) => {
+    for (const name of readdirSync(abs).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))) {
+      const p = join(abs, name)
+      const r = rel ? `${rel}/${name}` : name
+      const st = lstatSync(p)
+      if (st.isSymbolicLink()) throw new Error(`enlace simbólico no permitido en la app: ${r}`)
+      if (st.isDirectory()) {
+        out.push({ rel: r, abs: p, dir: true })
+        visit(p, r)
+      } else if (st.isFile()) out.push({ rel: r, abs: p, dir: false, size: st.size })
+      else throw new Error(`tipo de archivo no permitido en la app: ${r}`)
+    }
+  }
+  visit(dir, '')
+  return out
+}
+
+/**
+ * ZIP de la app de Windows con raíz `Lazunox/`: orden fijo, fecha fija, sin metadatos del sistema y «deflate» (o «stored» si no
+ * comprime). Mismos bytes para la misma carpeta y la misma versión de zlib. Todo nombre pasa por checkZipEntriesWin antes de escribir.
+ */
+export function buildWinZip(srcDir, zipPath) {
+  const tree = winTree(srcDir)
+  const names = [WIN_ZIP_ROOT, ...tree.map((e) => `${WIN_ZIP_ROOT}${e.rel}${e.dir ? '/' : ''}`)]
+  const check = checkZipEntriesWin(names.map((name) => ({ name })))
+  if (!check.ok) throw new Error(`nombre no permitido en el ZIP de Windows (${check.reason}): ${JSON.stringify(check.entry.slice(0, 80))}`)
+  if (names.length >= 0xffff) throw new Error('demasiados ficheros para un ZIP sin ZIP64')
+  const fd = openSync(zipPath, 'w')
+  try {
+    let off = 0
+    const cen = []
+    const put = (b) => {
+      let w = 0
+      while (w < b.length) w += writeSync(fd, b, w, b.length - w)
+      off += b.length
+    }
+    names.forEach((name, i) => {
+      const entry = i === 0 ? { dir: true } : tree[i - 1]
+      const nb = Buffer.from(name, 'utf8')
+      let data = Buffer.alloc(0)
+      let method = 0
+      let crc = 0
+      let usize = 0
+      if (!entry.dir) {
+        const raw = readFileSync(entry.abs)
+        if (raw.length > 0xfffffffe) throw new Error(`fichero demasiado grande para un ZIP sin ZIP64: ${entry.rel}`)
+        usize = raw.length
+        crc = crc32(raw)
+        const def = deflateRawSync(raw, { level: 9 })
+        if (def.length < raw.length) [data, method] = [def, 8]
+        else data = raw
+      }
+      const lho = off
+      if (lho > 0xfffffffe) throw new Error('el ZIP supera 4 GiB: hace falta ZIP64')
+      const lh = Buffer.alloc(30)
+      lh.writeUInt32LE(SIG_LOCAL, 0)
+      lh.writeUInt16LE(20, 4)
+      lh.writeUInt16LE(0x800, 6)
+      lh.writeUInt16LE(method, 8)
+      lh.writeUInt16LE(0, 10)
+      lh.writeUInt16LE(DOS_DATE, 12)
+      lh.writeUInt32LE(crc, 14)
+      lh.writeUInt32LE(data.length, 18)
+      lh.writeUInt32LE(usize, 22)
+      lh.writeUInt16LE(nb.length, 26)
+      put(lh)
+      put(nb)
+      put(data)
+      const ch = Buffer.alloc(46)
+      ch.writeUInt32LE(SIG_CEN, 0)
+      ch.writeUInt16LE(20, 4) // creado en MS-DOS/FAT (host 0), versión 2.0
+      ch.writeUInt16LE(20, 6)
+      ch.writeUInt16LE(0x800, 8)
+      ch.writeUInt16LE(method, 10)
+      ch.writeUInt16LE(0, 12)
+      ch.writeUInt16LE(DOS_DATE, 14)
+      ch.writeUInt32LE(crc, 16)
+      ch.writeUInt32LE(data.length, 20)
+      ch.writeUInt32LE(usize, 24)
+      ch.writeUInt16LE(nb.length, 28)
+      ch.writeUInt32LE(entry.dir ? 0x10 : 0, 38)
+      ch.writeUInt32LE(lho, 42)
+      cen.push(ch, nb)
+    })
+    const cd = Buffer.concat(cen)
+    const cdOff = off
+    put(cd)
+    const eocd = Buffer.alloc(22)
+    eocd.writeUInt32LE(SIG_EOCD, 0)
+    eocd.writeUInt16LE(names.length, 8)
+    eocd.writeUInt16LE(names.length, 10)
+    eocd.writeUInt32LE(cd.length, 12)
+    eocd.writeUInt32LE(cdOff, 16)
+    put(eocd)
+  } finally {
+    closeSync(fd)
+  }
+  return { entries: names.length }
+}
+
+/** Fuente de bytes sobre un fichero (lectura síncrona por posición). */
+function fdSource(fd) {
+  const size = fstatSync(fd).size
+  return {
+    size,
+    read(offset, length) {
+      if (offset < 0 || length < 0 || offset + length > size) throw new Error('lectura fuera de rango')
+      const b = Buffer.alloc(length)
+      let n = 0
+      while (n < length) {
+        const r = readSync(fd, b, n, length - n, offset + n)
+        if (r === 0) throw new Error('fin de fichero inesperado')
+        n += r
+      }
+      return b
+    }
+  }
+}
+const bufSource = (buf) => ({
+  size: buf.length,
+  read(offset, length) {
+    if (offset < 0 || length < 0 || offset + length > buf.length) throw new Error('lectura fuera de rango')
+    return buf.subarray(offset, offset + length)
+  }
+})
+
+/**
+ * Índice (directorio central) de un ZIP sin ZIP64, ni varios discos, ni cifrado: lo que genera buildWinZip y lo que produce tar.exe
+ * por debajo de 4 GiB. Devuelve [{ name, method, csize, size, crc, flags, lho, isDirectory, isSymlink }]; lanza si no cuadra.
+ */
+export function readZipIndexJs(src) {
+  if (src.size < 22) throw new Error('no es un ZIP')
+  const tailLen = Math.min(src.size, 22 + 0xffff)
+  const tailStart = src.size - tailLen
+  const tail = src.read(tailStart, tailLen)
+  let pos = -1
+  for (let i = tail.length - 22; i >= 0; i--)
+    if (tail.readUInt32LE(i) === SIG_EOCD && i + 22 + tail.readUInt16LE(i + 20) === tail.length) {
+      pos = i
+      break
+    }
+  if (pos < 0) throw new Error('no se encontró el final del ZIP (EOCD)')
+  const count = tail.readUInt16LE(pos + 10)
+  const cdSize = tail.readUInt32LE(pos + 12)
+  const cdOff = tail.readUInt32LE(pos + 16)
+  if (tail.readUInt16LE(pos + 4) !== 0 || tail.readUInt16LE(pos + 6) !== 0 || tail.readUInt16LE(pos + 8) !== count)
+    throw new Error('ZIP de varios discos')
+  if (count === 0xffff || cdSize === 0xffffffff || cdOff === 0xffffffff) throw new Error('ZIP64 no soportado por estos scripts')
+  if (cdOff + cdSize > tailStart + pos) throw new Error('directorio central fuera de rango')
+  const buf = cdSize > 0 ? src.read(cdOff, cdSize) : Buffer.alloc(0)
+  const entries = []
+  let p = 0
+  for (let n = 0; n < count; n++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== SIG_CEN) throw new Error('entrada del directorio central no válida')
+    const madeBy = buf.readUInt16LE(p + 4)
+    const flags = buf.readUInt16LE(p + 8)
+    const nameLen = buf.readUInt16LE(p + 28)
+    const end = p + 46 + nameLen + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32)
+    if (end > buf.length) throw new Error('entrada del directorio central truncada')
+    if (flags & 0x1) throw new Error('entrada cifrada')
+    const name = buf.subarray(p + 46, p + 46 + nameLen).toString(flags & 0x800 ? 'utf8' : 'latin1')
+    const ext = buf.readUInt32LE(p + 38)
+    const host = madeBy >> 8
+    const lho = buf.readUInt32LE(p + 42)
+    const csize = buf.readUInt32LE(p + 20)
+    const size = buf.readUInt32LE(p + 24)
+    if (csize === 0xffffffff || size === 0xffffffff || lho === 0xffffffff) throw new Error('ZIP64 no soportado por estos scripts')
+    if (lho + 30 > cdOff) throw new Error('cabecera local fuera de rango')
+    entries.push({
+      name,
+      method: buf.readUInt16LE(p + 10),
+      crc: buf.readUInt32LE(p + 16),
+      csize,
+      size,
+      flags,
+      lho,
+      isDirectory: name.endsWith('/'),
+      isSymlink: host === 3 ? ((ext >>> 16) & 0xf000) === 0xa000 : (host === 0 || host === 10) && (ext & 0x400) !== 0
+    })
+    p = end
+  }
+  if (p !== buf.length) throw new Error('sobran bytes en el directorio central')
+  return entries
+}
+
+/** Contenido de una entrada (stored o deflate), comprobando tamaño y CRC-32. Tope: `max` bytes. */
+export function readZipEntryJs(src, e, max = ZIP_MAX_BYTES) {
+  if (e.size > max) throw new Error(`entrada demasiado grande: ${e.name}`)
+  const lh = src.read(e.lho, 30)
+  if (lh.readUInt32LE(0) !== SIG_LOCAL) throw new Error(`cabecera local no válida: ${e.name}`)
+  const start = e.lho + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28)
+  if (start + e.csize > src.size) throw new Error(`datos fuera del ZIP: ${e.name}`)
+  const raw = src.read(start, e.csize)
+  let data
+  if (e.method === 0) data = raw
+  else if (e.method === 8) data = inflateRawSync(raw, { maxOutputLength: Math.max(e.size, 1) })
+  else throw new Error(`método de compresión ${e.method} no soportado: ${e.name}`)
+  if (data.length !== e.size || crc32(data) !== e.crc) throw new Error(`tamaño o CRC-32 incorrecto: ${e.name}`)
+  return data
+}
+
+const own = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined)
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v)
+
+/** Réplica de readAsarPackageInfo (asar-version.ts): {name, version} del package.json de la raíz, solo desde la cabecera. */
+export function readAsarPackageInfoJs(src) {
+  const bad = (m) => new Error(`app.asar no válido: ${m}`)
+  if (src.size < 16) throw bad('demasiado corto')
+  const head = src.read(0, 16)
+  if (head.readUInt32LE(0) !== 4) throw bad('cabecera no válida')
+  const headerSize = head.readUInt32LE(4)
+  const jsonLen = head.readUInt32LE(12)
+  if (headerSize > 32 * 1024 * 1024 || 8 + headerSize > src.size) throw bad('cabecera fuera de rango')
+  if (jsonLen === 0 || 16 + jsonLen > 8 + headerSize || head.readUInt32LE(8) < 4 + jsonLen) throw bad('cabecera JSON no válida')
+  let header
+  try {
+    header = JSON.parse(src.read(16, jsonLen).toString('utf8'))
+  } catch {
+    throw bad('la cabecera no es JSON')
+  }
+  const files = isObj(header) ? own(header, 'files') : undefined
+  const entry = isObj(files) ? own(files, 'package.json') : undefined
+  if (!isObj(entry)) throw bad('no tiene package.json en la raíz')
+  if (entry.unpacked === true || isObj(entry.files) || entry.link !== undefined) throw bad('package.json fuera del asar')
+  const { size, offset } = entry
+  if (typeof size !== 'number' || !Number.isSafeInteger(size) || size <= 0 || size > 1024 * 1024) throw bad('tamaño de package.json')
+  if (typeof offset !== 'string' || !/^\d{1,15}$/.test(offset)) throw bad('offset de package.json')
+  const start = 8 + headerSize + Number(offset)
+  if (start + size > src.size) throw bad('package.json fuera del asar')
+  let pkg
+  try {
+    pkg = JSON.parse(src.read(start, size).toString('utf8'))
+  } catch {
+    throw bad('package.json no es JSON')
+  }
+  if (!isObj(pkg) || typeof pkg.name !== 'string' || typeof pkg.version !== 'string') throw bad('package.json sin name o version')
+  return { name: pkg.name, version: pkg.version }
+}
+
+function assertAsarVersion(info, version) {
+  if (info.name !== 'lazunox') throw new Error(`app.asar: nombre «${info.name.slice(0, 40)}» distinto de lazunox`)
+  if (info.version !== version) throw new Error(`app.asar: versión «${info.version.slice(0, 40)}» distinta de ${version}`)
+}
+
+/** Carpeta win-unpacked lista para empaquetar: sin enlaces, con los ficheros imprescindibles y el asar de la versión esperada. */
+export function checkWinApp(dir, { version }) {
+  const files = new Set()
+  for (const e of winTree(dir)) if (!e.dir) files.add(e.rel.toLowerCase())
+  for (const r of WIN_REQUIRED) if (!files.has(r)) throw new Error(`falta ${r} en ${dir}`)
+  const asarName = readdirSync(join(dir, 'resources')).find((n) => n.toLowerCase() === 'app.asar')
+  const fd = openSync(join(dir, 'resources', asarName), 'r')
+  try {
+    assertAsarVersion(readAsarPackageInfoJs(fdSource(fd)), version)
+  } finally {
+    closeSync(fd)
+  }
+  return [`carpeta de la app: ${files.size} ficheros, imprescindibles presentes`, `app.asar: lazunox ${version}`]
+}
+
+/**
+ * Lo que el cliente comprobará antes de extraer: nombres seguros bajo Lazunox/ (checkZipEntriesWin), sin enlaces ni duplicados,
+ * ficheros imprescindibles, tope descomprimido y versión del app.asar frente a la del manifiesto. Lanza con el motivo.
+ */
+export function checkWinZip(zipPath, { version }) {
+  const fd = openSync(zipPath, 'r')
+  try {
+    const src = fdSource(fd)
+    const entries = readZipIndexJs(src)
+    const c = checkZipEntriesWin(entries.map((e) => ({ name: e.name, isSymlink: e.isSymlink })))
+    if (!c.ok) throw new Error(`entrada no permitida en el ZIP (${c.reason}): ${JSON.stringify(c.entry.slice(0, 80))}`)
+    const total = entries.reduce((a, e) => a + e.size, 0)
+    if (total > winUncompressedCap(src.size)) throw new Error('el ZIP se expande por encima del tope que acepta el cliente')
+    const byRel = new Map()
+    for (const e of entries) if (!e.isDirectory) byRel.set(e.name.slice(WIN_ZIP_ROOT.length).toLowerCase(), e)
+    for (const r of WIN_REQUIRED) if (!byRel.has(r)) throw new Error(`falta ${r} en el ZIP`)
+    const asar = readZipEntryJs(src, byRel.get('resources/app.asar'))
+    assertAsarVersion(readAsarPackageInfoJs(bufSource(asar)), version)
+    return [
+      `listado del ZIP: ${entries.length} entradas, todas dentro de ${WIN_ZIP_ROOT}, sin enlaces ni duplicados`,
+      `ficheros imprescindibles presentes (${WIN_REQUIRED.join(', ')})`,
+      `app.asar del ZIP: lazunox ${version}`
+    ]
+  } finally {
+    closeSync(fd)
+  }
 }
 
 // ---- utilidades de sistema ------------------------------------------------------------------

@@ -2,7 +2,9 @@
 // Reproduce la verificación del cliente sobre una carpeta con update.json, update.json.sig y el ZIP (la salida de
 // publish-update.mjs, o una release descargada a mano). No hace peticiones de red ni toca la app instalada.
 //
-//   node scripts/verify-update.mjs --dir dist/update [--current 0.3.0] [--pubkey <base64>]
+//   node scripts/verify-update.mjs --dir dist/update [--current 0.3.0] [--pubkey <base64>] [--platform win32-x64]
+//
+// Windows: en vez de ditto/codesign/plutil revisa el ZIP en JS puro (nombres, imprescindibles, versión del app.asar), igual que el cliente.
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -12,9 +14,11 @@ import {
   SIGNATURE_MAX_BYTES,
   ZIP_MAX_BYTES,
   checkBundle,
+  checkWinZip,
   decodePublicKey,
   listZip,
   parseManifest,
+  platformSpec,
   readBrand,
   run,
   sha256File,
@@ -29,15 +33,16 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
  * forma del manifiesto, anti-downgrade/appId/keyId/tag y tamaño + SHA-256 del ZIP. Devuelve las líneas y el manifiesto;
  * lanza Error con el motivo si el cliente rechazaría la actualización.
  */
-export async function verifyManifestAndZip({ dir, current, pubkey, appId, keyId, tag }) {
+export async function verifyManifestAndZip({ dir, current, pubkey, appId, keyId, tag, platform = 'darwin-arm64' }) {
   const log = []
-  const mPath = join(dir, 'update.json')
-  const sPath = join(dir, 'update.json.sig')
+  const spec = platformSpec(platform)
+  const mPath = join(dir, spec.manifestName)
+  const sPath = join(dir, spec.manifestSigName)
   for (const f of [mPath, sPath]) if (!existsSync(f)) throw new Error(`falta ${f}`)
   const bytes = readFileSync(mPath)
   const sig = readFileSync(sPath, 'utf8')
-  if (bytes.length > MANIFEST_MAX_BYTES) throw new Error('update.json supera los 16 KB')
-  if (Buffer.byteLength(sig) > SIGNATURE_MAX_BYTES) throw new Error('update.json.sig supera 1 KB')
+  if (bytes.length > MANIFEST_MAX_BYTES) throw new Error(`${spec.manifestName} supera los 16 KB`)
+  if (Buffer.byteLength(sig) > SIGNATURE_MAX_BYTES) throw new Error(`${spec.manifestSigName} supera 1 KB`)
 
   const key = decodePublicKey(pubkey)
   if (!key) throw new Error('clave pública no válida (UPDATE_PUBLIC_KEY / --pubkey)')
@@ -48,10 +53,10 @@ export async function verifyManifestAndZip({ dir, current, pubkey, appId, keyId,
   try {
     json = JSON.parse(bytes.toString('utf8'))
   } catch {
-    throw new Error('update.json no es JSON')
+    throw new Error(`${spec.manifestName} no es JSON`)
   }
-  const m = parseManifest(json)
-  if (!m) throw new Error('update.json con forma no válida')
+  const m = parseManifest(json, platform)
+  if (!m) throw new Error(`${spec.manifestName} con forma no válida o de otra plataforma (se esperaba ${platform})`)
   const err = validateManifest(m, { appId, current, tag: tag ?? m.tag, keyId })
   if (err) throw new Error(`manifiesto rechazado: ${err}`)
   log.push(`manifiesto: ${m.tag} (${m.version}), appId ${m.appId}, keyId ${m.keyId}`)
@@ -68,6 +73,10 @@ export async function verifyManifestAndZip({ dir, current, pubkey, appId, keyId,
 /** Devuelve las líneas de la comprobación; lanza Error con el motivo si el cliente rechazaría la actualización. */
 export async function verifyUpdate(opts) {
   const { log, manifest: m, zip } = await verifyManifestAndZip(opts)
+  if (m.platform === 'win32-x64') {
+    log.push(...checkWinZip(zip, { version: m.version }))
+    return log
+  }
   const entries = listZip(zip)
   log.push(`listado del ZIP: ${entries.length} entradas, todas dentro de Lazunox.app/`)
 
@@ -95,7 +104,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     current: arg('--current') ?? '0.0.0',
     pubkey: arg('--pubkey') ?? brand.publicKey,
     appId: brand.appId,
-    keyId: brand.keyId
+    keyId: brand.keyId,
+    platform: arg('--platform') ?? 'darwin-arm64'
   })
     .then((log) => {
       for (const l of log) console.log(`OK   ${l}`)
