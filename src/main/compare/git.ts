@@ -178,11 +178,22 @@ export async function createCompareWorktree(root: string, path: string, branch: 
   }
 }
 
+/**
+ * ¿Es la misma ruta? Git en Windows lista las copias con `/` (`C:/Users/…`) y la ruta de Node usa `\`; además el disco no
+ * distingue mayúsculas. En macOS/Linux la comparación sigue siendo exacta.
+ */
+export function samePath(a: string, b: string, platform: NodeJS.Platform = process.platform): boolean {
+  if (platform !== 'win32') return a === b
+  const norm = (p: string): string => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+  return norm(a) === norm(b)
+}
+
 /** Borra la copia (`--force`) y la rama temporal. Tolera que alguna de las dos ya no exista. */
 export async function removeCompareWorktree(root: string, path: string, branch: string): Promise<void> {
   if (!BRANCH_RE.test(branch) || !isCompareWorktreePath(root, path)) throw new CompareGitError(t('merr.compare.unsafePath', { path }))
   assertNotSymlink(path)
-  const listed = (await git(root, ['worktree', 'list', '--porcelain'])).split('\n').some((l) => l === `worktree ${path}`)
+  const out = await git(root, ['worktree', 'list', '--porcelain'])
+  const listed = out.split(/\r?\n/).some((l) => l.startsWith('worktree ') && samePath(l.slice('worktree '.length), path))
   if (listed) await git(root, ['worktree', 'remove', '--force', '--', path])
   await git(root, ['worktree', 'prune'])
   const exists = await runBuf(root, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], { okCodes: [1] })

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Electron se sustituye: solo importa el menú que se construye y cuándo se reconstruye.
 const menus: { label?: string }[][] = []
 const setContextMenu = vi.fn()
+const addRepresentation = vi.fn()
 
 vi.mock('electron', () => ({
   app: { quit: vi.fn() },
@@ -12,7 +13,12 @@ vi.mock('electron', () => ({
       return { items }
     }
   },
-  nativeImage: { createFromBitmap: () => ({ setTemplateImage: vi.fn() }) },
+  // Mac: createFromBitmap; Windows: createEmpty + addRepresentation (varias resoluciones). Se definen ambas para que la prueba
+  // sea la misma en las dos plataformas.
+  nativeImage: {
+    createFromBitmap: () => ({ setTemplateImage: vi.fn() }),
+    createEmpty: () => ({ addRepresentation, setTemplateImage: vi.fn() })
+  },
   Tray: class {
     setToolTip = vi.fn()
     setContextMenu = setContextMenu
@@ -27,6 +33,7 @@ describe('bandeja: idioma', () => {
   beforeEach(() => {
     menus.length = 0
     setContextMenu.mockClear()
+    addRepresentation.mockClear()
     vi.resetModules()
   })
   it('en español el menú es el de siempre', async () => {
@@ -46,5 +53,13 @@ describe('bandeja: idioma', () => {
     expect(setContextMenu).toHaveBeenCalledTimes(1)
     expect(labels(menus.at(-1) ?? [])).toEqual(['New conversation', 'Quick Entry', 'Open Lazunox', 'Settings…', 'Quit Lazunox'])
     destroyTray()
+  })
+
+  it('en Windows el icono lleva una representación por escala (100/125/150/200 %) con el búfer del tamaño exacto', async () => {
+    const { createTrayIcon } = await import('./tray')
+    createTrayIcon('win32')
+    const reps = addRepresentation.mock.calls.map(([r]) => r as { scaleFactor: number; width: number; height: number; buffer: Buffer })
+    expect(reps.map((r) => r.width)).toEqual([16, 20, 24, 32])
+    for (const r of reps) expect(r.buffer.length).toBe(r.width * r.height * 4)
   })
 })

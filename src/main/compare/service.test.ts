@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { CompareManifest } from '@shared/ipc-code'
 import { posixOnly } from '../../test/platform'
 import { FakeEngine, type FakeScript } from './fake-engine.testkit'
-import { createCompareWorktree, removeCompareWorktree, worktreePathFor, branchFor } from './git'
+import { createCompareWorktree, removeCompareWorktree, worktreePathFor, branchFor, samePath } from './git'
 import { ManifestStore } from './manifest'
 import { CompareService } from './service'
 import type { CompareLimits } from './limits'
@@ -43,7 +43,8 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const s of live.splice(0)) s.dispose()
-  rmSync(parent, { recursive: true, force: true })
+  // En Windows git/antivirus pueden retener la carpeta unos ms (EBUSY/EPERM): se reintenta.
+  rmSync(parent, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
 })
 
 const FAST: Partial<CompareLimits> = {
@@ -132,8 +133,11 @@ describe('crear una comparación en Code', () => {
     expect(t).toHaveLength(3)
     // El escalonado se mide desde la decisión del planificador, no desde la llamada real al motor: con la máquina cargada la
     // llamada puede retrasarse (se vieron 50 ms con `staggerMs: 80`). Se exige al menos la mitad para no depender del reloj.
-    expect(t[1] - t[0]).toBeGreaterThanOrEqual(40)
-    expect(t[2] - t[1]).toBeGreaterThanOrEqual(40)
+    // Se compara el tramo completo (dos escalones de 80 ms): en Windows el reloj es de ~15 ms y la primera llamada tarda más
+    // (git), de modo que un solo escalón puede medir menos de la mitad. El escalonado exacto lo cubre scheduler.test.ts.
+    expect(t[2] - t[0]).toBeGreaterThanOrEqual(80)
+    expect(t[1]).toBeGreaterThanOrEqual(t[0])
+    expect(t[2]).toBeGreaterThanOrEqual(t[1])
     expect(events.length).toBeGreaterThan(3)
     // Cada sesión se crea en SU carpeta, con el agente build y con metadata de la comparación.
     const creates = engine.calls
@@ -554,5 +558,16 @@ describe('exportación', () => {
     expect(b.runs[0].telemetry.filesModified).toEqual(['a.txt'])
     expect(b.runs[0].gitDiff).toContain('a.txt')
     expect(b.runs[0].cliVersion).toBe('1.18.32')
+  })
+})
+
+describe('samePath (git lista las copias con «/» en Windows)', () => {
+  it('en win32 ignora separadores, barra final y mayúsculas', () => {
+    expect(samePath('C:/Users/Me/.proj-worktrees/x-0', 'C:\\users\\me\\.proj-worktrees\\x-0', 'win32')).toBe(true)
+    expect(samePath('C:/a/b', 'C:/a/c', 'win32')).toBe(false)
+  })
+  it('en POSIX la comparación es exacta', () => {
+    expect(samePath('/a/b', '/a/b', 'darwin')).toBe(true)
+    expect(samePath('/a/B', '/a/b', 'darwin')).toBe(false)
   })
 })
