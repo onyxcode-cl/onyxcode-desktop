@@ -182,7 +182,9 @@ async function launch(name, { settings = {}, env = {}, noServer = false } = {}) 
   for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') e[k] = v
   delete e.ELECTRON_RUN_AS_NODE
   delete e.ELECTRON_RENDERER_URL
-  e.PATH = [dirname(process.execPath), e.PATH ?? ''].join(delimiter)
+  // En Windows la variable es `Path`: escribir `PATH` crearia una segunda y se perderia el PATH del usuario (sin git).
+  const pathKey = Object.keys(e).find((k) => k.toLowerCase() === 'path') ?? 'PATH'
+  e[pathKey] = [dirname(process.execPath), e[pathKey] ?? ''].join(delimiter)
   Object.assign(e, {
     OPENCODE_BIN: FAKE_BIN,
     XDG_DATA_HOME: xdg('data'),
