@@ -1,0 +1,85 @@
+# Integración continua de WINDOWS (x64): pruebas unitarias, compilación y paquete SIN firma con sus comprobaciones estáticas.
+# Sin secretos, sin firma, sin E2E con Electron y sin publicar nada: el paquete sale solo como artefacto del flujo (7 días).
+# El E2E y el actualizador de punta a punta se corren en el PC de pruebas (scripts/win/sync.sh, scripts/win/update-e2e.ps1).
+# NOTA: este flujo se escribió sin ejecutarse en Actions ni en un runner de Windows; la primera corrida puede pedir ajustes.
+name: Windows
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Permisos mínimos: solo lectura. upload-artifact no necesita permisos del token.
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: typecheck, pruebas, paquete y comprobaciones
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: '1'
+    steps:
+      # Acciones fijadas por SHA de commit (no por etiqueta movible), las mismas que ci.yml.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      # Carpeta de trabajo de los scripts de scripts/win: bajo %TEMP% (swap.ps1 en modo de prueba solo acepta la carpeta de pruebas del PC o %TEMP%,
+      # y %TEMP% NO es RUNNER_TEMP).
+      - name: Carpeta de trabajo de los scripts de Windows
+        run: '"LAZUNOX_CI_ROOT=$env:TEMP\lazunox-ci" >> $env:GITHUB_ENV'
+      - run: npm ci
+      - run: npm run typecheck
+      # La suite unitaria (no recoge e2e/). Dos procesos como máximo: el runner es pequeño y las pruebas de PTY son pesadas.
+      - name: Pruebas unitarias
+        run: npx vitest run --maxWorkers=2
+      - name: Pruebas de los scripts de publicación (con dobles, sin firmar ni notarizar nada)
+        run: npm run test:release-scripts
+      - name: Compilar
+        run: npm run build
+      # Descarga el OpenCode fijado (pin.json, con su suma de verificación) y empaqueta el instalador NSIS x64. Sin certificado: queda sin firmar.
+      - name: Empaquetar (sin firma)
+        run: npm run package:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Comprobaciones estáticas del paquete (pack-check -NoSmoke)
+        run: >
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/pack-check.ps1 -Branch ci -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE" -NoSmoke
+      - name: ZIP -> tar.exe -> comprobación (tar-check)
+        run: node scripts/win/tar-check.mjs --root "$env:LAZUNOX_CI_ROOT"
+      - name: swap.ps1 en modo de prueba (swap-check)
+        run: >
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/swap-check.ps1 -Branch ci -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE"
+      # Humo de la app EMPAQUETADA (arranca Electron oculto y un terminal ConPTY): depende de la sesión gráfica del runner, así que
+      # no bloquea; si falla, el registro queda en el artefacto de registros.
+      - name: Humo de la app empaquetada (pack-check, no bloqueante)
+        continue-on-error: true
+        run: >
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/pack-check.ps1 -Branch ci-smoke -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE"
+      - name: Registros de los scripts de Windows
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lazunox-win-ci-logs
+          path: ${{ env.LAZUNOX_CI_ROOT }}\logs
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Instalador sin firma
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lazunox-win-x64-sin-firma
+          path: dist/Lazunox-Setup-*-x64.exe
+          if-no-files-found: error
+          retention-days: 7
