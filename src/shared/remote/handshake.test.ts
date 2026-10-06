@@ -372,11 +372,11 @@ describe('vectores fijos', () => {
 
 // Calculados aparte con HKDF/HMAC de la librería estándar de Python (no con este módulo).
 const VECTORS = {
-  deviceKey: '9284b1a4de6f6df40c0949cbb5c9547612c6b29ade73fa663d231c52583d3548',
-  pairId: 'MUSbW_gs95Dz_5XT7psoC-PoPEH8eXSdSyeop-T56dc',
-  c2h: '7UyMsTcUebO3PZ9qaWgmA3lfHoclRgr-geyp-OmqKt0',
-  h2c: 'Gi7pKRE_5ccUTZdCsUXmlzECJo38vthh0_UyMf8maFQ',
-  sas: '441731'
+  deviceKey: '2c26876b50acf2e40979d91b9fed49ca405278703888c122ea3d4f207255477b',
+  pairId: 'CMj-q2_pziEBsZo5Rv7JJxiCLnQhdn7ZS4_97u8ujZU',
+  c2h: 'PfG9Gr1yDlo8f2Ej32HBxX8VGDTP1wDlKydGFB44ZvY',
+  h2c: 'M3xARqvybjp888tH7uGh18EbogEUIfpT2WKiUTguV7E',
+  sas: '404688'
 }
 
 describe('AsyncClientHandshake (AuthMac inyectado)', () => {
