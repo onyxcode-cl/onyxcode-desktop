@@ -78,3 +78,34 @@
     }
   }
 }
+
+/* Alto contraste de Windows (Forced Colors). El sistema reemplaza los colores, pero los anillos de foco hechos con `box-shadow` y los
+ * estados de selección solo por color de fondo desaparecen: aquí se dibujan con colores del sistema. Solo escritorio. */
+@media (forced-colors: active) {
+  :root[data-shell='desktop'] :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  :root[data-shell='desktop'] :is(button, [role='button'], [role='tab'], summary, select) {
+    border: 1px solid ButtonText;
+  }
+  :root[data-shell='desktop']
+    :is(
+      [aria-current='page'],
+      [aria-selected='true'],
+      [aria-checked='true'],
+      [role='menuitem'][data-highlighted],
+      [role='option'][data-highlighted]
+    ) {
+    background-color: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+  /* Excepciones: la gema de la marca y los marcadores +/- del diff conservan su color (la semántica es el color). */
+  :root[data-shell='desktop'] svg[viewBox='0 0 32 32'] {
+    forced-color-adjust: none;
+  }
+  :root[data-shell='desktop'] [data-diff] td.select-none:is(.text-success, .text-danger) {
+    forced-color-adjust: none;
+  }
+}
