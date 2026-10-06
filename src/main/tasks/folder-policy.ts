@@ -14,6 +14,7 @@ import { resolve, sep } from 'node:path'
 import { DISPLAY_NAME } from '@shared/brand'
 import { isInside } from '../util/paths'
 import { defaultDeniedReadPaths } from './sandbox-profile'
+import { forbiddenWinFolderReason, type WinFolderPolicyContext } from './folder-policy-win'
 
 /** Una línea de la salida de `/sbin/mount`. */
 export interface MountInfo {
@@ -29,6 +30,11 @@ export interface FolderPolicyContext {
   mounts: MountInfo[]
   /** Política gestionada: si existe, la carpeta debe estar dentro de alguna de estas raíces. */
   allowedRoots?: string[]
+  /**
+   * Contexto de Windows (unidades, perfil, enlaces): obligatorio en `win32`. Sin él se rechaza TODO carpeta
+   * (falla cerrado). Ver `folder-policy-win.ts`.
+   */
+  win?: WinFolderPolicyContext
 }
 
 /** Sistemas de archivos de red (o virtuales de red): no fiables para el sandbox ni para sincronizar. */
@@ -85,7 +91,17 @@ function tilde(p: string, home: string): string {
  * Motivo por el que `folder` (ya normalizada) no puede usarse como carpeta de Tareas, o `null`
  * si es válida. Los mensajes dicen qué hacer en su lugar.
  */
-export function forbiddenFolderReason(folder: string, ctx: FolderPolicyContext): string | null {
+export function forbiddenFolderReason(
+  folder: string,
+  ctx: FolderPolicyContext,
+  platform: NodeJS.Platform = process.platform
+): string | null {
+  // Windows: política propia (lista cerrada). El resto de plataformas conserva la de macOS sin cambios.
+  if (platform === 'win32') {
+    return ctx.win
+      ? forbiddenWinFolderReason(folder, { ...ctx.win, allowedRoots: ctx.win.allowedRoots ?? ctx.allowedRoots })
+      : t('merr.folder.winContext')
+  }
   const shown = resolve(folder)
   const f = key(folder)
   const home = key(ctx.home)
