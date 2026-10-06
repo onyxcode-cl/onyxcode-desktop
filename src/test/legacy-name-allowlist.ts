@@ -53,6 +53,15 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   { path: 'LICENSE', reason: 'D10 pendiente: titular de la licencia' },
   { path: 'THIRD_PARTY_NOTICES.md', token: /onyxcode-cl/i, reason: 'D10 pendiente: titular de la licencia (TODO documentado)' },
   { path: 'docs/RELEASE.md', token: /onyxcode-cl/i, reason: 'D10 pendiente: titular de la licencia (TODO documentado)' },
+  // Organización de GitHub que alojará la release de la imagen de Linux (WSL). Pendiente D9: al renombrarla, cambiar las tres constantes juntas.
+  { path: 'scripts/wsl-rootfs/pin-lib.mjs', token: /onyxcode-cl/i, reason: 'D9 pendiente: organización de GitHub de la imagen WSL' },
+  { path: 'scripts/wsl-rootfs.test.mjs', token: /onyxcode-cl/i, reason: 'D9 pendiente: organización de GitHub de la imagen WSL' },
+  { path: 'src/main/tasks/backends/wsl-pin.ts', token: /onyxcode-cl/i, reason: 'D9 pendiente: organización de GitHub de la imagen WSL' },
+  {
+    path: 'src/main/tasks/backends/wsl-pin.test.ts',
+    token: /onyxcode-cl/i,
+    reason: 'D9 pendiente: organización de GitHub de la imagen WSL'
+  },
 
   // --- PC Windows de pruebas (infraestructura externa, D12) ---
   // `C:\onyx` es la carpeta REAL del PC de pruebas (y `win-onyx` su entrada de ~/.ssh/config); NO es una ruta de la app. Las rutas
