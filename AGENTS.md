@@ -17,8 +17,8 @@ manda el código: corrige esta guía.
 | `src/test/` | Guardias transversales (`identity-freeze`, `no-legacy-name`, `visible-terms`, `legacy-terms`, `i18n-coverage`, `brand-consistency`, `update-scripts`, `win-skip`…). |
 | `pwa/` | PWA del celular (Vite propia, `pwa/src`); se compila a `pwa/dist` y viaja en `Contents/Resources/pwa`. |
 | `e2e/` | Harness E2E con Electron real + OpenCode falso (`e2e/lib`, `e2e/specs/*.e2e.ts`, `e2e/fake-opencode`), `smoke.mjs`, `transform.mjs`, `perf/`, `win-skip.json`. |
-| `scripts/` | `build-native.mjs`, `build-pwa.mjs`, `fetch-opencode.mjs`, `publish-update.mjs`, `verify-*.mjs`, `check-*.mjs`, `with-env.mjs`, `win/` (PC Windows de pruebas por SSH). |
-| `resources/` | `opencode-bin` (versión fijada en `pin.json`; `api-routes.json`), `opencode` (prompts/agentes), `updater/swap.sh`, `launcher`, `computer-use`. |
+| `scripts/` | `build-native.mjs`, `build-pwa.mjs`, `fetch-opencode.mjs`, `publish-update.mjs` / `sign-update.mjs` / `verify-update.mjs` (con `--platform win32-x64` para Windows), `verify-*.mjs`, `check-*.mjs`, `with-env.mjs`, `win/` (PC Windows de pruebas por SSH). |
+| `resources/` | `opencode-bin` (versión fijada en `pin.json`; `api-routes.json`), `opencode` (prompts/agentes), `updater/swap.sh` (Mac) y `updater/swap.ps1` (Windows), `launcher`, `computer-use`. |
 | `build/` | Firma y notarización (`notarize.js`, entitlements, iconos). `electron-builder.js` está en la raíz. |
 | `docs/` | Plan, seguridad, verificación, distribución, política de la organización, diseño de la fase 2 del remoto; `docs/archive/` es histórico. |
 
@@ -113,7 +113,7 @@ No se modifican sin una decisión explícita del dueño (son los controles de se
 
 - macOS no trae `timeout`; usa `perl -e 'alarm shift; exec @ARGV'`.
 - En zsh una variable sin comillas no se parte en palabras: `set -- $lista` deja UN argumento. Usa arrays (`set -- "${arr[@]}"`), `${=var}` o ejecuta el script con `sh`/bash.
-- Empaquetar o comprimir con `COPYFILE_DISABLE=1` (tar, como en `scripts/win/sync.sh`); el ZIP de la actualización lo hace `ditto -c -k --sequesterRsrc --keepParent`, no electron-builder (rompería los symlinks de `Electron Framework.framework`); si el ZIP lleva metadatos AppleDouble, `xattr -cr` sobre la `.app` y regenerar.
+- Empaquetar o comprimir con `COPYFILE_DISABLE=1` (tar, como en `scripts/win/sync.sh`); el ZIP de la actualización lo hace `ditto -c -k --sequesterRsrc --keepParent`, no electron-builder (rompería los symlinks de `Electron Framework.framework`); el de Windows (raíz `Lazunox/`, de `dist\win-unpacked`) lo arma `scripts/update-lib.mjs` en JS puro y reproducible, sin `tar.exe`, y el manifiesto es `update-win32-x64.json` (`docs/DISTRIBUCION.md` §12.1; pruebas: `src/test/update-scripts-win.test.ts`); si el ZIP lleva metadatos AppleDouble, `xattr -cr` sobre la `.app` y regenerar.
 - Firma ad-hoc cambia la identidad en cada build y macOS olvida los permisos concedidos; sin Developer ID los permisos se vuelven a pedir.
 - El OpenCode oficial va fijado en `resources/opencode-bin/pin.json` (versión, URL, sha256); el SDK está fijado a la misma versión. No se actualiza sin pasar `docs/ACTUALIZAR-OPENCODE.md`.
 - El sidecar corre desvinculado de TCC (`disclaim`): no puede leer scripts bajo `~/Documents`; el OpenCode falso de los E2E se copia a un tmp. El sandbox de Tareas deniega leer userData y exige carpetas bajo `~`.

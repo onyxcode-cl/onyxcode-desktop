@@ -429,7 +429,49 @@ disco lleno.
 - **Sin firma:** no hay certificado de firma de código de Windows. Consecuencias que no se pueden comprobar sin él: **SmartScreen** mostrará «Windows protegió su PC» al ejecutar el instalador descargado (el usuario pulsa «Más información › Ejecutar de todas formas») y Defender puede tardar en confiar en el ejecutable. Para firmarlo hace falta un certificado y `win.certificateSubjectName`/`CSC_LINK`; electron-builder firma entonces el `.exe` y el desinstalador.
 - **Qué esperar de SmartScreen (2026):** desde marzo de 2024 un certificado **EV ya no da reputación inmediata**: EV y OV la ganan igual, con descargas limpias a lo largo del tiempo, así que **el primer instalador firmado seguirá mostrando el aviso**. Desde junio de 2023 la clave de cualquier certificado de firma de código debe vivir en un HSM o un token (USB o nube): ya no sirve un `.p12` suelto en CI.
 - **Opciones de firma desde Chile** (precios de referencia, comprobar antes de contratar): **Azure Artifact Signing** (antes Trusted Signing, ~10 USD/mes) **no está disponible** para personas en Chile (solo individuos de EE. UU. y Canadá y organizaciones de EE. UU., Canadá, UE y Reino Unido). **SignPath Foundation**: gratis para código abierto (exige licencia OSI sin doble licencia comercial, repositorio público ya con cierta reputación y política de firma publicada; el editor visible es «SignPath Foundation»; preguntarles por la cuenta obligatoria contra `api.onyxcode.cl`). **Certum Open Source** (nube, ~49 EUR, solo individuos, firma con código del móvil: difícil de automatizar, se firma en local). **OV comercial** (Sectigo, SSL.com…, unos 200–400 USD/año más token o nube). Ninguna quita el aviso el primer día.
-- **Verificar:** `scripts/win/pack-check.ps1 -Install` (ver `docs/VERIFICACION.md` › «Paquete de Windows»). **Actualizar:** en la v1 no hay actualizador automático en Windows; se instala la versión nueva encima.
+- **Verificar:** `scripts/win/pack-check.ps1 -Install` (ver `docs/VERIFICACION.md` › «Paquete de Windows»). **Actualizar:** la app de Windows ya tiene actualizador propio (sección 12.1), pero queda apagado mientras `UPDATE_PUBLIC_KEY` esté vacía; sin él se instala la versión nueva encima.
+
+### 12.1 Windows: publicar y firmar una actualización
+
+El actualizador de Windows usa el mismo esquema que el del Mac: un manifiesto firmado con Ed25519 y un ZIP. Cambian los nombres y el
+contenido del ZIP. La clave privada es **la misma** y se queda en tu Mac; el campo `platform` va dentro de lo firmado, así que un
+manifiesto de Windows no sirve en el Mac ni al revés.
+
+| | macOS | Windows |
+|---|---|---|
+| Manifiesto y firma | `update.json`, `update.json.sig` | `update-win32-x64.json`, `update-win32-x64.json.sig` |
+| ZIP | `Lazunox-X.Y.Z-arm64.zip` (raíz `Lazunox.app/`) | `Lazunox-X.Y.Z-win32-x64.zip` (raíz `Lazunox/`, el contenido de `dist\win-unpacked`) |
+| Instalador para quien llega por primera vez | `.dmg` | `Lazunox-Setup-X.Y.Z-x64.exe` |
+
+Pasos (el ZIP se arma en el Mac, en JavaScript, sin `tar.exe`; así se puede revisar y repetir con los mismos bytes):
+
+```bash
+# 1. En el PC Windows: npm run package:win  (deja dist\win-unpacked y el Setup.exe). Copia dist\win-unpacked al Mac.
+# 2. En el Mac, con la versión de package.json igual a la del app.asar copiado:
+LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem \
+  node scripts/publish-update.mjs --platform win32-x64 --app <ruta>/win-unpacked --out dist/update-win
+#    (o en dos pasos, como en el Mac: añade --manifest-only, sin clave, y luego)
+LAZUNOX_UPDATE_KEY_FILE=~/.lazunox-keys/update.pem \
+  node scripts/sign-update.mjs --platform win32-x64 --dir dist/update-win
+# 3. Revisar lo publicado (firma, hash, estructura del ZIP y versión del asar):
+node scripts/verify-update.mjs --platform win32-x64 --dir dist/update-win
+```
+
+Qué revisan los scripts de Windows antes de firmar o dar por bueno: que estén `Lazunox.exe`, `resources\app.asar` y
+`resources\opencode\opencode.exe`; que todos los nombres sean seguros en Windows (sin `..`, `\`, `:`, nombres reservados como `aux`
+o `con`, ni mayúsculas/minúsculas repetidas) y cuelguen de `Lazunox/`; que no haya enlaces simbólicos; y que el `package.json` del
+`app.asar` diga `lazunox` y la versión del manifiesto. Sube los **cuatro** archivos a la release (manifiesto, firma, ZIP e
+instalador). Con `--platform` sin indicar, los tres scripts siguen trabajando para el Mac como antes.
+
+**Verificado (pruebas en macOS, `src/test/update-scripts-win.test.ts`, con un `win-unpacked` falso y claves de prueba):** publicar y
+firmar, que el ZIP sea idéntico en dos ejecuciones, que `WinUpdateInstaller` (el de la app) acepte lo generado, que rechace hash,
+`platform` y versión manipulados y un asar de otra versión, y que el lector de ZIP/asar de los scripts coincida con `zip-index.ts` y
+`asar-version.ts`. La extracción de esa prueba usa el `tar` de macOS (bsdtar), no el de Windows. **Verificado en un PC Windows real:**
+`swap.ps1` con `scripts/win/swap-check.ps1` (camino feliz, vuelta atrás y argumentos hostiles: 0 fallos).
+
+**No verificado:** `tar.exe` de Windows extrayendo un ZIP de estos scripts; el reemplazo completo con la app real (no solo `swap.ps1`
+con un ejecutable de prueba); el instalador NSIS por usuario con una actualización real encima; Defender sobre el ZIP; y la clave
+pública: `UPDATE_PUBLIC_KEY` sigue vacía, así que hoy el actualizador está apagado en Mac y Windows y los scripts se niegan a publicar.
 
 ## 11. Publicar el sitio del control remoto (fuera de casa): primero el sitio, después la app
 

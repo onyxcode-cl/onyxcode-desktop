@@ -499,6 +499,49 @@ en un build de prueba (compilado con `LAZUNOX_TEST_BUILD=1`).
 modificar `/Applications` (el reemplazo se probó en directorios temporales, con `open` sustituido por ejecución
 directa), proxy corporativo (el `fetch` de Node no usa el proxy del sistema) y disco lleno.
 
+## 3 septies bis. Actualizador de Windows
+
+Misma confianza y mismas comprobaciones que el del Mac (sección 3 septies): la autenticidad la da **solo** la firma Ed25519 del
+manifiesto `update-win32-x64.json`, con la misma clave. `platform` (`win32-x64`) va dentro de los bytes firmados y `parseManifest`
+exige la plataforma esperada: un manifiesto del Mac no vale en Windows ni al revés, aunque su firma sea correcta. El estado
+`installable` además exige carpeta válida (`win-location.ts`) y `UPDATE_PUBLIC_KEY` no vacía.
+
+Lo que cambia respecto al Mac:
+
+- **Verificación del paquete.** No hay `codesign` ni `plutil`. `WinUpdateInstaller` lee el índice del ZIP en JS puro (`zip-index.ts`)
+  y valida cada nombre **antes** de extraer (`isSafeZipEntryWin`: raíz `Lazunox/`, sin `..`, `\`, `:`, ADS, nombres reservados ni
+  duplicados sin distinguir mayúsculas; sin enlaces). Extrae con `%SystemRoot%\System32\tar.exe` por ruta absoluta y argumentos en
+  array, nunca con shell. Después coteja lo extraído con el índice (ficheros, tamaños, carpetas), exige `Lazunox.exe`,
+  `app.asar` y `opencode.exe`, y compara nombre y versión del `package.json` del `app.asar` (cabecera leída en JS puro) con el
+  manifiesto. Authenticode es opcional (`UPDATE_WIN_CERT_THUMBPRINT`, vacío hoy).
+- **Staging hermano.** La carpeta nueva se deja junto a la instalada (`.Lazunox.staging-<ver>`, mismo volumen, para renombrar de
+  forma atómica); si no se puede escribir ahí, la ubicación se marca como no válida y solo queda «Descargar».
+- **`swap.ps1`.** Va sellado en `resources\updater\`, se copia a `userData\update\run\` y se lanza con `powershell.exe` por ruta
+  absoluta y `-File` (sin `-Command` ni shell). Valida sus argumentos (destino llamado `Lazunox`, sin `..` ni flujos alternativos,
+  carpetas hermanas); espera a que muera la app vieja antes de tocar nada; aparta la carpeta actual a `.Lazunox.bak-<ver>`, pone la
+  nueva, espera `boot-ok-<ver>` y, si no llega, vuelve atrás y escribe `result.json`.
+- **Scripts de publicación.** `publish-update.mjs --platform win32-x64` arma el ZIP en JS puro con orden y fecha fijos y revisa nombres,
+  ficheros imprescindibles, enlaces y versión del asar; `sign-update.mjs` repite la revisión del ZIP antes de firmar;
+  `verify-update.mjs` re-valida firma, hash, estructura y versión. La clave privada sigue sin salir del Mac.
+
+| Amenaza (solo Windows) | Defensa |
+|---|---|
+| Manifiesto del Mac reutilizado en Windows (o al revés) | `platform` dentro de lo firmado + `parseManifest` por plataforma + nombres de archivo distintos. |
+| ZIP con `..`, `C:`, ADS, `aux`, enlaces o duplicados que solo difieren en mayúsculas | `checkZipEntriesWin` antes de extraer; cotejo con el índice después. |
+| Defender pone en cuarentena un fichero tras extraer | El conteo y los tamaños no cuadran: no se instala. |
+| `app.asar` de otra versión dentro de un ZIP bien firmado | Versión del asar frente al manifiesto, en los scripts y en la app. |
+| Argumentos hostiles a `swap.ps1` | Validación en `swap-win.ts` y otra vez en el script (probado en un PC real, ver abajo). |
+| PowerShell bloqueado (AppLocker, modo restringido) | No aparece `result.json`: la app lo detecta y deja «Descargar». |
+
+**Verificado:** pruebas en macOS (`src/test/update-scripts-win.test.ts`, `installer-win.test.ts`, `zip-index.test.ts`,
+`asar-version.test.ts`, `swap-win.test.ts`), incluida la ida y vuelta publicar → firmar → instalador de la app con hash, plataforma y
+versión manipulados. `swap.ps1` en un PC Windows real con `scripts/win/swap-check.ps1`: camino feliz, vuelta atrás y argumentos
+hostiles, 0 fallos.
+
+**No verificado:** `tar.exe` de Windows con un ZIP de estos scripts (las pruebas usan el bsdtar de macOS); el reemplazo con la app
+real completa; el instalador NSIS por usuario con una actualización encima; Defender, SmartScreen y Smart App Control; Authenticode
+(no hay certificado). `UPDATE_PUBLIC_KEY` sigue sin definir, así que el actualizador está apagado en las dos plataformas.
+
 ## 3 octies. Puntos de restauración de Tareas
 
 Antes de cada mensaje que se envía a una tarea, el proceso principal guarda una instantánea de la carpeta de la tarea (`tasks:restore:create`, `src/main/tasks/restore-points.ts`). Sirve para

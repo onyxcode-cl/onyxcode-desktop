@@ -57,9 +57,24 @@ gh release upload vX.Y.Z ~/Descargas/lazunox-X.Y.Z/update.json.sig --repo <owner
 
 `sign-update.mjs` se niega a firmar si el ZIP no coincide en tamaño y SHA-256 con el manifiesto, si el appId o el keyId no son los de `brand.ts`, si la clave no corresponde a `UPDATE_PUBLIC_KEY`, o si la clave está dentro del repositorio o con permisos más abiertos que `0600`. **Eso no sustituye a revisar el borrador:** firmar es declarar que ese ZIP es legítimo.
 
+## 4 bis. Windows (actualización de la app de Windows)
+
+El CI de hoy solo arma el Mac. Para Windows el flujo es manual y está en `docs/DISTRIBUCION.md` §12.1: construir en el PC
+(`npm run package:win`), copiar `dist\win-unpacked` al Mac y ejecutar `publish-update.mjs --platform win32-x64` (o `--manifest-only` y
+luego `sign-update.mjs --platform win32-x64`) y `verify-update.mjs --platform win32-x64`. Archivos de Windows de la release:
+`update-win32-x64.json`, `update-win32-x64.json.sig`, `Lazunox-X.Y.Z-win32-x64.zip` y `Lazunox-Setup-X.Y.Z-x64.exe`; la **versión** de
+`package.json` debe ser la misma que la del Mac.
+
+- Sin certificado de firma de código, el primer instalador muestra el aviso de SmartScreen; las actualizaciones que hace la app no
+  lo muestran. Si **Smart App Control** está activado en el equipo, bloquea la app entera y no hay arreglo sin firma.
+- Defender puede dar un falso positivo con una app Electron sin firmar. Antes de publicar, sube el `.exe` y el ZIP a
+  `https://www.microsoft.com/wdsi/filesubmission` como «software developer». Si Defender pone en cuarentena un archivo, la app
+  lo detecta al contar ficheros y tamaños, no instala y deja «Descargar».
+- Pendiente: elegir y poner `UPDATE_PUBLIC_KEY`; sin ella nada de esto publica.
+
 ## 5. Publicar
 
-- [ ] El borrador tiene **cuatro** archivos: `.dmg`, `Lazunox-X.Y.Z-arm64.zip`, `update.json`, `update.json.sig`, y las notas correctas.
+- [ ] El borrador tiene **cuatro** archivos (más los cuatro de Windows si publicas Windows, sección 4 bis): `.dmg`, `Lazunox-X.Y.Z-arm64.zip`, `update.json`, `update.json.sig`, y las notas correctas.
 - [ ] **Publish release**, sin «pre-release» (con una prerelease, `/releases/latest` no la devuelve y nadie del canal estable recibe el aviso). Una beta (`-beta.N`) sí se marca como pre-release: el workflow ya lo hace.
 
 ## 6. Comprobación posterior en un Mac limpio
