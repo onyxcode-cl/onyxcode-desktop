@@ -195,7 +195,7 @@ export const remote = {
   'remote.travel.limit.install': 'No se puede instalar como app en la pantalla de inicio: el enlace es temporal. Guárdalo en favoritos.',
   'remote.travel.privacy':
     'El tráfico pasa por la red de Cloudflare, que no ve tus conversaciones: la conexión de datos es directa y cifrada entre tus dispositivos. Sí ve que existe un túnel y la señalización de la conexión (direcciones IP y horas).',
-  'remote.travel.unsupported': 'El modo viaje solo está disponible en Mac con chip Apple. En este equipo no se ofrece.',
+  'remote.travel.unsupported': 'El modo viaje todavía no está disponible en este equipo (por ahora solo en Mac con chip Apple).',
   'remote.travel.consent.title': '¿Descargar cloudflared para activar el modo viaje?',
   'remote.travel.consent.body':
     'El modo viaje necesita cloudflared, una herramienta gratuita de Cloudflare (licencia Apache 2.0). Tamaño: unos 20 MB. Se descarga desde la página oficial de Cloudflare en GitHub, se verifica su firma y sus huellas antes de usarlo, y se puede borrar cuando quieras. Sin tu permiso no se descarga nada.',

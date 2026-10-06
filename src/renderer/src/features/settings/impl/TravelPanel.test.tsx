@@ -192,7 +192,7 @@ describe('Modo viaje › selector de duración bajo política', () => {
 describe('Modo viaje › sin soporte', () => {
   it('se explica y no hay selector ni estado', () => {
     const h = html(st(travel()), { unsupported: true })
-    expect(h).toContain('solo está disponible en Mac con chip Apple')
+    expect(h).toContain('todavía no está disponible en este equipo')
     expect(h).not.toContain('<select')
     expect(h).not.toContain('Enlace activo')
   })

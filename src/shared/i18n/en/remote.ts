@@ -197,7 +197,7 @@ export const remote = {
   'remote.travel.limit.install': 'It cannot be installed as an app on the home screen: the link is temporary. Bookmark it instead.',
   'remote.travel.privacy':
     "Traffic goes through Cloudflare's network, which does not see your conversations: the data connection is direct and encrypted between your devices. It does see that a tunnel exists and the connection signaling (IP addresses and times).",
-  'remote.travel.unsupported': 'Travel mode is only available on Macs with Apple silicon. It is not offered on this computer.',
+  'remote.travel.unsupported': 'Travel mode is not available on this computer yet (for now only Macs with Apple silicon).',
   'remote.travel.consent.title': 'Download cloudflared to turn on travel mode?',
   'remote.travel.consent.body':
     "Travel mode needs cloudflared, a free tool from Cloudflare (Apache 2.0 license). Size: about 20 MB. It is downloaded from Cloudflare's official page on GitHub, its signature and checksums are verified before it is used, and you can delete it whenever you like. Nothing is downloaded without your permission.",
