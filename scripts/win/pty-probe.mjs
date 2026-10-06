@@ -2,7 +2,7 @@
 // inspector de Node y sigue disponible con los fuses) a la ventana principal y, por la API del preload (window.api.code.pty),
 // abre una terminal, escribe un comando de PowerShell y espera su salida. Solo pruebas; uso:
 //   node pty-probe.mjs <puerto> <cwd>      (necesita Node 22: WebSocket global)
-const [port, cwd] = [process.argv[2] ?? '9333', process.argv[3] ?? 'C:\\lazunox\\tmp']
+const [port, cwd] = [process.argv[2] ?? '9333', process.argv[3] ?? 'C:\\onyx\\tmp']
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function pages() {
   const r = await fetch(`http://127.0.0.1:${port}/json/list`)

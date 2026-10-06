@@ -1,5 +1,5 @@
-// Identidad tras el renombre a «Lazunox» (Fase 1): el nombre VISIBLE es Lazunox, pero app.name sigue siendo «Lazunox»
-// (de él depende la clave «Lazunox Safe Storage» del Llavero; cambiarlo haría perder datos en silencio).
+// Identidad única «Lazunox»: app.name, el título de la ventana y el del documento son «Lazunox» (de app.name depende la clave
+// «Lazunox Safe Storage» del Llavero) y ninguna partición de sesión conserva el nombre viejo.
 import { describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { MODE } from '../lib/launch'
@@ -7,7 +7,7 @@ import { MODE } from '../lib/launch'
 const app = useApp()
 
 describe(`identidad visible e interna (${MODE})`, () => {
-  it('app.name sigue siendo Lazunox (Llavero) y la ventana y el documento dicen Lazunox', async () => {
+  it('app.name, la ventana y el documento dicen Lazunox y ninguna partición lleva el nombre viejo', async () => {
     const { electronApp, page } = app()
     expect(await electronApp.evaluate(({ app }) => app.name)).toBe('Lazunox')
     // La ventana principal (no Quick Entry): la URL del renderer principal no es la de quick/index.html.
@@ -18,5 +18,10 @@ describe(`identidad visible e interna (${MODE})`, () => {
     )
     expect(titles[0]).toBe('Lazunox')
     expect(await page.title()).toBe('Lazunox')
+    // Particiones de sesión de todos los webContents: ninguna con el nombre viejo.
+    const partitions = await electronApp.evaluate(({ webContents }) =>
+      webContents.getAllWebContents().map((wc) => String((wc.session as unknown as { storagePath?: string }).storagePath ?? ''))
+    )
+    expect(partitions.filter((p) => /onyx/i.test(p))).toEqual([])
   })
 })

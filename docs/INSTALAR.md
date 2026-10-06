@@ -41,7 +41,7 @@ Está en un tap propio (Homebrew ya no admite apps sin firma de Apple en su cat�
    ```
 
    La línea `designated` debe contener `identifier "cl.bentec.lazunox"` y
-   `certificate leaf = H"c778a9630c6a627449b1a39e1e62b7a2a2565eb2"`. Si el hash es otro, no abras la app.
+   `certificate leaf = H"8446c25f2c710d66701c262f048390d8f6edba31"`. Si el hash es otro, no abras la app.
 
 ## Qué significa el aviso y por qué verificar el hash
 

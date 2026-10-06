@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DISPLAY_NAME, INTERNAL_NAME } from '../../shared/brand'
 
 const setAbout = vi.fn()
 vi.mock('electron', () => ({
@@ -29,8 +30,9 @@ describe('menú de producción con el nombre visible', () => {
     const labels = (appMenu.submenu as Array<{ label?: string }>).map((i) => i.label).filter(Boolean)
     expect(labels.length).toBe(3)
     for (const l of labels) {
-      expect(l).toContain('Lazunox')
-      expect(l).not.toContain('Lazunox')
+      // Identidad única: DISPLAY_NAME e INTERNAL_NAME son ambos «Lazunox»; el menú muestra ese nombre.
+      expect(l).toContain(DISPLAY_NAME)
+      expect(l).toContain(INTERNAL_NAME)
     }
   })
 

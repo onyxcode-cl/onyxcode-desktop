@@ -24,10 +24,10 @@ perl -e 'alarm shift; exec @ARGV' 60 ssh $SSHO "$HOST" 'powershell -NoProfile -C
 perl -e 'alarm shift; exec @ARGV' 300 scp $SSHO -q "$TMP" "$HOST:C:/onyx/inbox/lazunox.tgz" || exit 2
 
 perl -e 'alarm shift; exec @ARGV' "$MAXSEC" ssh $SSHO "$HOST" \
-  "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\lazunox\\run.ps1 -Branch $BR -Steps $STEPS${SPEC:+ -Spec $SPEC}" </dev/null
+  "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\onyx\\run.ps1 -Branch $BR -Steps $STEPS${SPEC:+ -Spec $SPEC}" </dev/null
 RC_SSH=$?
 
-SUMMARY="$(perl -e 'alarm shift; exec @ARGV' 60 ssh $SSHO "$HOST" "powershell -NoProfile -Command \"Get-Content C:\\lazunox\\logs\\$BR\\summary.txt\"" </dev/null)"
+SUMMARY="$(perl -e 'alarm shift; exec @ARGV' 60 ssh $SSHO "$HOST" "powershell -NoProfile -Command \"Get-Content C:\\onyx\\logs\\$BR\\summary.txt\"" </dev/null)"
 printf '%s\n' "$SUMMARY"
 if [ "$RC_SSH" -ge 128 ] || [ "$RC_SSH" -eq 255 ]; then
   echo "sync.sh: ssh termino con $RC_SSH (limite de tiempo o conexion); el run.ps1 remoto puede seguir: limpia con Stop-Orphans" >&2

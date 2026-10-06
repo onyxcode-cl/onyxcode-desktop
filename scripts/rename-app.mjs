@@ -1,11 +1,12 @@
 #!/usr/bin/env node
+// Herramienta GENÉRICA (sirve para cualquier renombre futuro; hoy la identidad ya es Lazunox).
 // SIMULACIÓN de un cambio de nombre/alias de la app: lista TODO lo que cambiaría y NO aplica nada (no escribe ningún archivo).
 // Sirve para que el dueño decida con datos (docs/RELEASE.md §13). Solo funciona con --dry-run; sin él, se niega.
 //
 //   node scripts/rename-app.mjs --dry-run [--name NuevoNombre] [--alias nuevoalias] [--json] [--details]
 //
 // Qué mira: nombre visible (`Lazunox`), slug en minúsculas (`lazunox`: ids, rutas, protocolo, comandos), variables de entorno
-// (`LAZUNOX_*`), alias del autor (`bentec`) y dominio (`onyxcode.cl`). Los nombres históricos de migración (`Lapis`, `OpenDesk`) NO se
+// (`LAZUNOX_*`), alias del autor (`bentec`) y dominio (`<slug>.cl`). Los nombres históricos de migración (`Lapis`, `OpenDesk`) NO se
 // tocan: sirven para mover datos de versiones antiguas. No usa la red.
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -50,7 +51,7 @@ export function readIdentity(root) {
     slug,
     alias,
     appId: `cl.${alias}.${slug}`,
-    helperId: `cl.${alias}.opendesk.cu-helper`,
+    helperId: `cl.${alias}.${slug}.cu-helper`,
     disclaimId: `cl.${alias}.${slug}.disclaim`
   }
 }
@@ -68,7 +69,7 @@ export function proposedIdentity(current, { name, alias }) {
     slug,
     alias: newAlias,
     appId: `cl.${newAlias}.${slug}`,
-    helperId: `cl.${newAlias}.opendesk.cu-helper`,
+    helperId: `cl.${newAlias}.${slug}.cu-helper`,
     disclaimId: `cl.${newAlias}.${slug}.disclaim`
   }
 }
@@ -174,7 +175,7 @@ export function manualNotes(current, next) {
     `Dominio del servicio de conexión del celular: remoto.${current.slug}.cl (Cloudflare Worker). Un dominio nuevo hay que comprarlo y configurarlo aparte; este script no toca servidores.`,
     `Repositorio de releases (RELEASES_REPO), nombre del repositorio y de los assets (Lazunox-<versión>-arm64.zip: el patrón está en src/shared/update-install.ts y scripts/update-lib.mjs, y lo valida el cliente).`,
     `Certificado y Team ID: no cambian por el nombre, pero el certificado Developer ID muestra el nombre legal, no el alias.`,
-    `Nombres históricos «Lapis» y «OpenDesk» (migración de datos antiguos) y «opendesk» dentro de helperId: NO se tocan.`,
+    `Nombres históricos «Lapis» y «OpenDesk» (migración de datos antiguos) se conservan: NO se tocan.`,
     `Marca registrada: comprueba antes el nombre nuevo en Google, GitHub, App Store, USPTO (tmsearch.uspto.gov) e INAPI (inapi.cl).`
   ]
 }

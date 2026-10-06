@@ -17,7 +17,7 @@ function fakeRepo() {
   }
   w(
     'src/shared/brand.ts',
-    "export const DISPLAY_NAME = 'Lazunox'\nexport const INTERNAL_NAME = 'Lazunox'\nexport const APP_NAME = INTERNAL_NAME\nexport const AUTHOR_ALIAS = 'bentec'\nexport const APP_SLUG = 'lazunox'\nexport const REMOTE_HOST = 'https://remoto.onyxcode.cl'\n"
+    "export const DISPLAY_NAME = 'Lazunox'\nexport const INTERNAL_NAME = 'Lazunox'\nexport const APP_NAME = INTERNAL_NAME\nexport const AUTHOR_ALIAS = 'bentec'\nexport const APP_SLUG = 'lazunox'\nexport const REMOTE_HOST = 'https://remoto.lazunox.cl'\n"
   )
   w('package.json', '{"name":"lazunox","productName":"Lazunox","author":"bentec"}')
   w('src/shared/i18n/es/app.ts', "export default { 'a.b': 'Bienvenido a Lazunox' }")
@@ -50,12 +50,12 @@ test('lee la identidad y propone los valores derivados', () => {
     slug: 'lazunox',
     alias: 'bentec',
     appId: 'cl.bentec.lazunox',
-    helperId: 'cl.bentec.opendesk.cu-helper',
+    helperId: 'cl.bentec.lazunox.cu-helper',
     disclaimId: 'cl.bentec.lazunox.disclaim'
   })
   const next = proposedIdentity(cur, { name: 'Zafiro', alias: 'zaf' })
   assert.equal(next.appId, 'cl.zaf.zafiro')
-  assert.equal(next.helperId, 'cl.zaf.opendesk.cu-helper')
+  assert.equal(next.helperId, 'cl.zaf.zafiro.cu-helper')
   assert.equal(next.disclaimId, 'cl.zaf.zafiro.disclaim')
   assert.throws(() => proposedIdentity(cur, { name: 'mal nombre' }), /--name/)
   assert.throws(() => proposedIdentity(cur, { alias: 'Mal' }), /--alias/)

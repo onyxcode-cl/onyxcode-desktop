@@ -19,7 +19,6 @@ const BRAND = new Set([
   'MCP',
   'API',
   'Lazunox',
-  'Lazunox',
   'Quick',
   'Entry',
   'Esc',
