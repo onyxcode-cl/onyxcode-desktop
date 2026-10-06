@@ -22,7 +22,7 @@ Cuenta: entra con la cuenta **Lazunox** (`Lazunox.code.2026@gmail.com`), nunca c
 3. **Publicar el sitio** (siempre desde tu Mac): `LAZUNOX_SITE_KEY_FILE=~/.lazunox-keys/site.pem node scripts/site-release.mjs`
    Compila `pwa/dist-site`, firma `site-manifest.json` y **no despliega**: imprime el comando final. Ejecútalo tú, desde
    `cloud/remoto-worker`: `npx wrangler@4 deploy`.
-4. **Dominio**: panel de Cloudflare → *Workers & Pages* → `lazunox-remoto` → *Settings* → *Domains & Routes* → *Add* → *Custom domain* →
+4. **Dominio** (EXTERNO-PENDIENTE: D3; hoy `CLOUD_DOMAIN` sigue en el dominio viejo hasta registrar lazunox.cl): panel de Cloudflare → *Workers & Pages* → `lazunox-remoto` → *Settings* → *Domains & Routes* → *Add* → *Custom domain* →
    `remoto.onyxcode.cl`.
 5. **Seguridad del dominio** (`onyxcode.cl`): *SSL/TLS* → *Edge Certificates*: «Always Use HTTPS» activado, «Minimum TLS Version» 1.2 y
    HSTS (6 meses; «include subdomains» solo si todo `*.onyxcode.cl` ya va por HTTPS).
@@ -40,7 +40,7 @@ La primera entrega funciona **solo con STUN** (`stun.cloudflare.com`) y conexió
 (TURN) está implementado pero detrás de un interruptor apagado (`TURN_ENABLED` = `"false"` en `wrangler.jsonc`) y sin secretos.
 Si algún día lo quieres:
 
-1. Panel → *Realtime* → *TURN* → *Create*, nombre `onyxcode-remoto` (puede pedir método de pago).
+1. Panel → *Realtime* → *TURN* → *Create*, nombre `lazunox-remoto` (puede pedir método de pago).
 2. En la Terminal, dentro de `cloud/remoto-worker`: `npx wrangler@4 secret put TURN_KEY_ID` y `npx wrangler@4 secret put TURN_KEY_API_TOKEN`;
    pega cada valor **en la Terminal** cuando lo pida.
 3. Cambia `"TURN_ENABLED"` a `"true"` y vuelve a publicar (paso 3). Para apagarlo de emergencia: vuelve a `"false"` y publica.

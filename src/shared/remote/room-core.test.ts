@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CLOUD_LIMITS, newHostToken, roomOfToken } from './cloud'
+import { CLOUD_LIMITS, CLOUD_ORIGIN, newHostToken, roomOfToken } from './cloud'
 import { fetchTurnServers, turnConfigured, type FetchLike } from './cloud-turn'
 import { parseAllowedOrigins, routeEdge } from './cloud-edge'
 import type { IceServerSpec } from './protocol'
@@ -398,7 +398,7 @@ describe('entrada: routeEdge', () => {
   const base = { method: 'GET', upgrade: 'websocket', origin: null, hostToken: null }
 
   it('ALLOWED_ORIGINS: por defecto el sitio oficial; ignora valores raros', () => {
-    expect(parseAllowedOrigins(undefined)).toEqual(['https://remoto.onyxcode.cl'])
+    expect(parseAllowedOrigins(undefined)).toEqual([CLOUD_ORIGIN])
     expect(parseAllowedOrigins('http://x.com, https://a.b ,*')).toEqual(['https://a.b'])
   })
 
@@ -406,7 +406,7 @@ describe('entrada: routeEdge', () => {
     expect(await routeEdge({ ...base, pathname: '/v1/host', hostToken: TOKEN }, cfg)).toEqual({ kind: 'host', room: ROOM, token: TOKEN })
     expect(await routeEdge({ ...base, pathname: '/v1/host' }, cfg)).toEqual({ kind: 'reject', status: 401 })
     expect(await routeEdge({ ...base, pathname: '/v1/host', hostToken: 'corto' }, cfg)).toEqual({ kind: 'reject', status: 401 })
-    expect(await routeEdge({ ...base, pathname: '/v1/host', hostToken: TOKEN, origin: 'https://remoto.onyxcode.cl' }, cfg)).toEqual({
+    expect(await routeEdge({ ...base, pathname: '/v1/host', hostToken: TOKEN, origin: CLOUD_ORIGIN }, cfg)).toEqual({
       kind: 'reject',
       status: 403
     })
@@ -421,14 +421,14 @@ describe('entrada: routeEdge', () => {
   })
 
   it('peer: sala válida y Origin oficial pasan; sala con nombre inválido se rechaza SIN crear sala', async () => {
-    const ok = { ...base, origin: 'https://remoto.onyxcode.cl' }
+    const ok = { ...base, origin: CLOUD_ORIGIN }
     expect(await routeEdge({ ...ok, pathname: `/v1/peer/${ROOM}` }, cfg)).toEqual({ kind: 'peer', room: ROOM })
     for (const bad of ['', 'corta', `${ROOM}x`, `${ROOM.slice(1)}!`, '../host', `${ROOM}/extra`])
       expect(await routeEdge({ ...ok, pathname: `/v1/peer/${bad}` }, cfg), bad).toEqual({ kind: 'reject', status: 404 })
   })
 
   it('peer: Origin ajeno o ausente = 403', async () => {
-    for (const origin of ['https://evil.example', 'http://remoto.onyxcode.cl', null, 'null'])
+    for (const origin of ['https://evil.example', CLOUD_ORIGIN.replace('https:', 'http:'), null, 'null'])
       expect(await routeEdge({ ...base, origin, pathname: `/v1/peer/${ROOM}` }, cfg)).toEqual({ kind: 'reject', status: 403 })
   })
 

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
-import { pairRoom, pairSecretFromCode, roomOfToken } from '@shared/remote/cloud'
+import { CLOUD_ORIGIN, pairRoom, pairSecretFromCode, roomOfToken } from '@shared/remote/cloud'
 import { pairId } from '@shared/remote/handshake'
 import type { HostFrame, IceServerSpec } from '@shared/remote/protocol'
 import type { RemotePolicyView, RemoteState } from '@shared/ipc-remote'
@@ -181,7 +181,7 @@ function make(o: Opts = {}) {
 }
 
 /** Un celular: señalización por ws real a una sala; devuelve lo que recibe. */
-function phoneAt(room: string, origin = 'https://remoto.onyxcode.cl') {
+function phoneAt(room: string, origin = CLOUD_ORIGIN) {
   const ws = new WebSocket(`${base}/v1/peer/${room}`, { origin })
   phones.push(ws)
   const got: Array<Record<string, unknown>> = []
@@ -213,7 +213,8 @@ describe('RemoteService en modo nube', () => {
     const s = await svc.start()
     expect(s.mode).toBe('pairing')
     expect(s.connection).toBe('cloud')
-    expect(s.pairing!.url).toMatch(/^https:\/\/remoto\.lazunox\.cl\/#c=[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/)
+    expect(s.pairing!.url.startsWith(`${CLOUD_ORIGIN}/#c=`)).toBe(true)
+    expect(s.pairing!.url.slice(`${CLOUD_ORIGIN}/#c=`.length)).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/)
     expect(s.pairing!.code).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/)
     expect(s.pairing!.url.endsWith(s.pairing!.code!)).toBe(true)
     expect(JSON.stringify(s)).not.toContain(qOf(s)) // q no sale del Mac ni en el estado

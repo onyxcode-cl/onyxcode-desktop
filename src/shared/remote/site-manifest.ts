@@ -1,5 +1,5 @@
 /**
- * Manifiesto del sitio del control remoto (`https://remoto.onyxcode.cl/site-manifest.json`) y su firma Ed25519.
+ * Manifiesto del sitio del control remoto (`<CLOUD_ORIGIN>/site-manifest.json`; dominio en `CLOUD_DOMAIN`, EXTERNO-PENDIENTE: D3) y su firma Ed25519.
  *
  * Lo genera y firma el dueño en su Mac (`scripts/site-release.mjs`) y lo comprueba el Mac cada 6 h (`site-watch.ts`). TypeScript
  * puro (la verificación de la firma y los hashes viven en `src/main/remote/site-watch.ts`, que usa `node:crypto`).

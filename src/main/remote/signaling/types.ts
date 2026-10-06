@@ -36,7 +36,7 @@ export interface SignalingStartOptions {
 }
 
 export interface SignalingTransport {
-  /** Abre el servicio y devuelve el origen público para armar el QR (LAN: `http://ip:puerto`; nube: `https://remoto.onyxcode.cl`). */
+  /** Abre el servicio y devuelve el origen público para armar el QR (LAN: `http://ip:puerto`; nube: `CLOUD_ORIGIN`, dominio en `CLOUD_DOMAIN`; EXTERNO-PENDIENTE: D3). */
   start(opts: SignalingStartOptions): Promise<{ origin: string }>
   onPeer(cb: (peer: SignalingPeer) => void): void
   /** Cierra todo (sockets y puerto). Idempotente. */

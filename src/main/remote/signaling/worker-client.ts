@@ -1,6 +1,6 @@
 /**
  * Transporte de señalización por el servicio de conexión («También fuera de casa»). El Mac SALE hacia fuera con un WebSocket
- * (`wss://remoto.onyxcode.cl/v1/host`): no abre ningún puerto ni sirve la PWA (la sirve el sitio). El servicio solo reenvía las
+ * (`wss://<CLOUD_DOMAIN>/v1/host`; EXTERNO-PENDIENTE: D3): no abre ningún puerto ni sirve la PWA (la sirve el sitio). El servicio solo reenvía las
  * tramas de señalización de cada celular; todo lo demás (handshake, PIN, datos) va por el canal WebRTC directo.
  *
  *  - Presenta su `hostToken` en una cabecera (no en la URL). Con la sala de vinculación abierta hay un SEGUNDO socket con el token
@@ -46,7 +46,7 @@ export interface CloudTimers {
 }
 
 export interface CloudTransportOptions {
-  /** `wss://remoto.onyxcode.cl` por defecto. Solo se admite `wss://` (o `ws://127.0.0.1` en las pruebas). */
+  /** `wss://<CLOUD_DOMAIN>` por defecto (EXTERNO-PENDIENTE: D3). Solo se admite `wss://` (o `ws://127.0.0.1` en las pruebas). */
   baseUrl?: string
   /** `hostToken` de este Mac (`null` = no hay: no se conecta). */
   hostToken: () => string | null

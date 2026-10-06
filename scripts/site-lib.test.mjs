@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { CSP, buildId, buildSiteManifest, headersFile, patchIndex, siteManifestBytes, startupPaths, swWithBuild } from './site-lib.mjs'
+import { CSP, SITE_ORIGIN, buildId, buildSiteManifest, headersFile, patchIndex, siteManifestBytes, startupPaths, swWithBuild } from './site-lib.mjs'
 
 test('CSP: estricta, sin terceros, sin eval ni scripts en línea', () => {
   for (const bad of ["'unsafe-eval'", 'http:', '*', "script-src 'self' 'unsafe-inline'"]) assert.ok(!CSP.includes(bad), bad)
   assert.match(CSP, /default-src 'none'/)
   assert.match(CSP, /script-src 'self'(;|$)/)
-  assert.match(CSP, /connect-src 'self' wss:\/\/remoto\.lazunox\.cl/)
+  assert.ok(CSP.includes(`connect-src 'self' ${SITE_ORIGIN.replace('https:', 'wss:')}`))
   assert.match(CSP, /frame-ancestors 'none'/)
   assert.match(CSP, /base-uri 'none'/)
   assert.match(CSP, /worker-src 'self'/)
@@ -81,7 +81,7 @@ test('manifiesto: instalable (nombre, inicio, pantalla completa, iconos 192 y 51
   const m = JSON.parse(readFileSync(new URL('../pwa/public/manifest.webmanifest', import.meta.url), 'utf8'))
   assert.equal(m.display, 'standalone')
   assert.equal(m.start_url, './')
-  assert.deepEqual(m.icons.map((i) => i.sizes).sort(), ['192x192', '512x512'])
+  assert.deepEqual(m.icons.map((i) => i.sizes).sort(), ['192x192', '512x512', '512x512']) // la tercera es el icono maskable
 })
 
 test('startupPaths: la página, el service worker, el manifiesto y todo JS/CSS que index.html enlaza (y nada más)', () => {

@@ -4,6 +4,7 @@ import { isCloudMode, isTravelMode } from '../../pwa/src/mode'
 import { TRAVEL_ICE_TIMEOUT_MS, iceServersFor, openLink, type LinkEnd } from '../../pwa/src/rtc'
 import { idbLinkStore, type CloudLink, type LinkStore } from '../../pwa/src/store'
 import { t as tr } from '../../pwa/src/i18n'
+import { CLOUD_ORIGIN } from '../shared/remote/cloud'
 import { TRAVEL_STUN_URLS, TRAVEL_WS_RETRY } from '../shared/remote/travel'
 
 describe('PWA › origen del túnel', () => {
@@ -19,7 +20,7 @@ describe('PWA › origen del túnel', () => {
       'https://solouna.trycloudflare.com',
       'https://a.b.ian-hope.trycloudflare.com',
       'http://192.168.1.20:5555',
-      'https://remoto.onyxcode.cl'
+      CLOUD_ORIGIN
     ])
       expect(isTravelMode(o, true), o).toBe(false)
     expect(isTravelMode('https://ian-hope.trycloudflare.com', false)).toBe(false)

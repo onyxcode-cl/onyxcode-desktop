@@ -1,5 +1,5 @@
 /*
- * Service worker del sitio del control remoto (solo https://remoto.onyxcode.cl). Escrito a mano, sin librerías.
+ * Service worker del sitio del control remoto (solo el origen `CLOUD_DOMAIN` de brand.ts; EXTERNO-PENDIENTE: D3). Escrito a mano, sin librerías.
  *  - `index.html` y el resto de lo que no tiene huella: RED PRIMERO; la caché solo sirve si no hay red.
  *  - `assets/*` y `app/assets/*` (nombre con huella: nunca cambian): CACHÉ PRIMERO.
  *  - NUNCA toca `/v1/*` (la señalización va siempre directa a la red) ni nada de otro origen.

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
-import { newHostToken, pairHostToken, roomOfToken } from '@shared/remote/cloud'
+import { CLOUD_ORIGIN, newHostToken, pairHostToken, roomOfToken } from '@shared/remote/cloud'
 import type { IceServerSpec } from '@shared/remote/protocol'
 import { FakeCloud } from './fake-cloud'
 import type { CloudSocket, CloudSocketFactory, CloudTimers } from './worker-client'
 import { CloudSignalingTransport, validBaseUrl } from './worker-client'
 import type { SignalHello, SignalingPeer } from './types'
+
+const WSS = CLOUD_ORIGIN.replace('https:', 'wss:')
 
 // ── dobles ──
 
@@ -92,7 +94,7 @@ function rig(
   }
   const allowed = { v: true }
   const t = new CloudSignalingTransport({
-    baseUrl: 'wss://remoto.onyxcode.cl',
+    baseUrl: WSS,
     hostToken: () => TOKEN,
     allowed: o.allowed ?? (() => allowed.v),
     createSocket,
@@ -119,18 +121,18 @@ const helloFrame = { t: 'hello', v: 4, mode: 'resume', deviceId: 'a'.repeat(32) 
 
 describe('CloudSignalingTransport (sin red: socket y reloj falsos)', () => {
   it('solo acepta wss:// (o 127.0.0.1 en pruebas)', () => {
-    expect(validBaseUrl('wss://remoto.onyxcode.cl')).toBe(true)
+    expect(validBaseUrl(WSS)).toBe(true)
     expect(validBaseUrl('ws://127.0.0.1:1234')).toBe(true)
-    for (const u of ['ws://remoto.onyxcode.cl', 'http://x', 'wss://a/b', 'ws://evil.example:80', 'wss://x y'])
+    for (const u of [WSS.replace('wss:', 'ws:'), 'http://x', 'wss://a/b', 'ws://evil.example:80', 'wss://x y'])
       expect(() => new CloudSignalingTransport({ baseUrl: u, hostToken: () => TOKEN, allowed: () => true }), u).toThrow()
   })
 
   it('conecta con el token en la cabecera (no en la URL) y devuelve el origen del sitio', async () => {
     const r = rig()
     const { origin } = await r.start()
-    expect(origin).toBe('https://remoto.onyxcode.cl')
+    expect(origin).toBe(CLOUD_ORIGIN)
     expect(r.socks).toHaveLength(1)
-    expect(r.socks[0].url).toBe('wss://remoto.onyxcode.cl/v1/host')
+    expect(r.socks[0].url).toBe(`${WSS}/v1/host`)
     expect(r.socks[0].url).not.toContain(TOKEN)
     expect(r.socks[0].headers).toEqual({ 'x-lazunox-host': TOKEN })
   })
@@ -148,7 +150,7 @@ describe('CloudSignalingTransport (sin red: socket y reloj falsos)', () => {
 
   it('sin hostToken no arranca', async () => {
     const t = new CloudSignalingTransport({
-      baseUrl: 'wss://remoto.onyxcode.cl',
+      baseUrl: WSS,
       hostToken: () => null,
       allowed: () => true,
       createSocket: () => new FakeSock('', {})
@@ -411,7 +413,7 @@ describe('CloudSignalingTransport contra FakeCloud (127.0.0.1)', () => {
     t.onPeer((p) => peers.push(p))
     await t.start({ authorize: () => true })
     await until(() => t.status() === 'online')
-    const phone = (room = ROOM, origin: string | null = 'https://remoto.onyxcode.cl'): { ws: WebSocket; got: string[] } => {
+    const phone = (room = ROOM, origin: string | null = CLOUD_ORIGIN): { ws: WebSocket; got: string[] } => {
       const ws = new WebSocket(`${base}/v1/peer/${room}`, origin === null ? {} : { origin })
       const got: string[] = []
       ws.on('message', (d) => got.push(d.toString('utf8')))

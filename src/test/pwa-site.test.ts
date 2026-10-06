@@ -11,10 +11,10 @@ describe('modo de la página', () => {
     expect(isCloudMode(CLOUD_ORIGIN, false)).toBe(false)
     for (const o of [
       'http://192.168.1.20:5555',
-      'https://remoto.onyxcode.cl.evil.com',
+      `${CLOUD_ORIGIN}.evil.com`,
       'https://evil.example',
-      'http://remoto.onyxcode.cl',
-      'https://remoto.onyxcode.cl:8443'
+      CLOUD_ORIGIN.replace('https:', 'http:'),
+      `${CLOUD_ORIGIN}:8443`
     ])
       expect(isCloudMode(o, true), o).toBe(false)
   })

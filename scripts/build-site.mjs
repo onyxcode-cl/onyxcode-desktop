@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Arma `pwa/dist-site/`: el sitio que publica el dueño en https://remoto.onyxcode.cl (NO se despliega desde aquí ni desde CI).
+// Arma `pwa/dist-site/`: el sitio que publica el dueño en `SITE_ORIGIN` (site-lib.mjs; EXTERNO-PENDIENTE: D3) (NO se despliega desde aquí ni desde CI).
 //
 //   node scripts/build-site.mjs            usa `pwa/dist` ya compilado (`npm run build:pwa`)
 //   node scripts/build-site.mjs --build    compila antes la PWA (ligera + completa)

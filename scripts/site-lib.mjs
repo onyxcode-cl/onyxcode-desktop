@@ -1,8 +1,8 @@
-// Piezas puras del sitio del control remoto (https://remoto.onyxcode.cl): cabeceras (`_headers`), parche del `index.html` y huella
+// Piezas puras del sitio del control remoto (`SITE_ORIGIN`): cabeceras (`_headers`), parche del `index.html` y huella
 // de la publicación. Las usa `scripts/build-site.mjs` y las prueba `scripts/site-lib.test.mjs`. Sin red ni dependencias.
 import { createHash } from 'node:crypto'
 
-export const SITE_ORIGIN = 'https://remoto.onyxcode.cl'
+export const SITE_ORIGIN = 'https://remoto.onyxcode.cl' // EXTERNO-PENDIENTE: D3 (debe coincidir con CLOUD_DOMAIN de brand.ts)
 
 /** CSP estricta del sitio: sin terceros, sin scripts en línea, sin `eval`. `wss:` del propio sitio para la señalización. */
 export const CSP = [

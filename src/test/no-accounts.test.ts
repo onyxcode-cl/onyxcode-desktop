@@ -14,7 +14,7 @@ const EXT = /\.(?:[cm]?[jt]sx?|json|html|css)$/
 const PROHIBIDO: readonly [string, RegExp][] = [
   ['canal account:', /['"`]account:[A-Za-z]/],
   ['ACCOUNT_API', /ACCOUNT_API/],
-  ['api.onyxcode.cl', /api\.lazunox\.cl/],
+  ['api.onyxcode.cl / api.lazunox.cl', /api\.(?:onyxcode|lazunox)\.cl/], // el viejo dominio: EXTERNO-PENDIENTE: D3
   ['AccountGate', /AccountGate/],
   ['account.bin', /account\.bin/],
   ['LAZUNOX_ACCOUNT_URL', /LAZUNOX_ACCOUNT_URL/],

@@ -19,6 +19,7 @@
   // Sin registros: el servicio no deja rastro de las conexiones.
   "observability": { "enabled": false },
   "vars": {
+    // EXTERNO-PENDIENTE: D3 (debe coincidir con CLOUD_DOMAIN de brand.ts; se cambia al registrar lazunox.cl).
     "ALLOWED_ORIGINS": "https://remoto.onyxcode.cl",
     // Interruptor de TURN: APAGADO por defecto. Solo funciona si además se cargan los dos secretos (README, paso opcional).
     "TURN_ENABLED": "false"
