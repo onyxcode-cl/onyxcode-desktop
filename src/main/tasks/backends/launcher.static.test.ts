@@ -47,6 +47,33 @@ describe('launcher.py: análisis estático', () => {
   })
 })
 
+describe('launcher.py: probe ampliado y subcomandos de datos', () => {
+  const launcher = code('launcher.py')
+  it('el probe informa rootfs, payloadSha, driveMounts y wslSystemMounts (virtiofs cuenta como unidad)', () => {
+    for (const k of ['"rootfs"', '"payloadSha"', '"driveMounts"', '"wslSystemMounts"']) expect(launcher).toContain(k)
+    expect(launcher).toContain('NET_FSTYPES = ("9p", "drvfs", "virtiofs")')
+    expect(launcher).toContain('startswith("fuse")')
+  })
+  it('subcomandos --export-home, --import-home, --du y --rm; la clave se valida y no se sigue ningún enlace', () => {
+    for (const k of ['--export-home', '--import-home', '--du', '--rm']) expect(launcher).toContain(`"${k}"`)
+    expect(launcher).toContain('KEY_RE = re.compile(r"^[0-9a-f]{16}\\Z")')
+    expect(launcher).not.toMatch(/extractall|followlinks\s*=\s*True/)
+  })
+})
+
+describe('rootfs/lazunox-install: análisis estático', () => {
+  const inst = code('rootfs/lazunox-install')
+  it('sin shell, sin red y sin extractall; el miembro del tgz se lee con extractfile', () => {
+    expect(inst).not.toMatch(/shell\s*=\s*True|os\.system|subprocess|socket|urllib|extractall|\.extract\(/)
+    expect(inst).toContain('extractfile(')
+  })
+  it('la raíz de prueba solo con LAZUNOX_INSTALL_TEST=1 y uid != 0; la instalación es por .new y renombrado', () => {
+    expect(inst).toMatch(/os\.getuid\(\) == 0 or os\.environ\.get\("LAZUNOX_INSTALL_TEST"\) != "1"/)
+    expect(inst).toContain('lazunox.new')
+    expect(inst).toContain('os.rename(new, target)')
+  })
+})
+
 describe('landlock.py / protocol.py / mux.py', () => {
   it('Landlock falla cerrado y no maneja TRUNCATE', () => {
     const l = code('landlock.py')
@@ -62,8 +89,8 @@ describe('landlock.py / protocol.py / mux.py', () => {
 })
 
 describe.skipIf(!hasPython)('parte pura del lanzador (python3 -m unittest)', () => {
-  it('protocol.py y mux.py pasan sus pruebas', () => {
-    const r = spawnSync('python3', ['-m', 'unittest', 'test_protocol'], {
+  it('protocol.py, mux.py, el lanzador y el instalador pasan sus pruebas', () => {
+    const r = spawnSync('python3', ['-m', 'unittest', 'test_protocol', 'test_install'], {
       cwd: dir,
       encoding: 'utf8',
       timeout: 60_000,

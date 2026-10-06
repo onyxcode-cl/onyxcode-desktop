@@ -170,10 +170,10 @@ def handled_mask():
 
 
 def drvfs_options(mode):
-    """Opciones de `mount -t drvfs`: SIEMPRE noexec,nosuid,nodev (cierra la ejecución directa de .exe)."""
+    """Opciones de `mount -t drvfs`: SIEMPRE noexec,nosuid,nodev (cierra la ejecución directa de .exe) y case=off."""
     if mode not in ("rw", "ro"):
         raise ProtocolError("init_invalid", "modo de montaje")
-    return "noexec,nosuid,nodev,%suid=%d,gid=%d" % ("ro," if mode == "ro" else "", WSL_UID, WSL_UID)
+    return "noexec,nosuid,nodev,case=off,%suid=%d,gid=%d" % ("ro," if mode == "ro" else "", WSL_UID, WSL_UID)
 
 
 _RESERVED = re.compile(r"^(?:con|prn|aux|nul|conin\$|conout\$|clock\$|com[0-9]|lpt[0-9])$", re.I)

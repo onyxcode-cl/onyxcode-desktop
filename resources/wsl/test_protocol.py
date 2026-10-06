@@ -3,12 +3,18 @@
 Cubre protocol.py (tramas, validación de INIT con vectores generados por el lado TypeScript) y mux.py con
 `socketpair`/`pipe` y sockets de 127.0.0.1 (nunca importa launcher.py ni llama a landlock.apply_policy).
 """
+import io
 import json
 import os
+import shutil
 import socket
+import tarfile
+import tempfile
 import threading
 import unittest
+from unittest import mock
 
+import launcher as L
 import mux as M
 import protocol as P
 
@@ -72,8 +78,8 @@ class LandlockTables(unittest.TestCase):
             self.assertTrue(d & (1 << P.LANDLOCK_RIGHTS.index(r)), r)
 
     def test_opciones_de_montaje(self):
-        self.assertEqual(P.drvfs_options("rw"), "noexec,nosuid,nodev,uid=1000,gid=1000")
-        self.assertEqual(P.drvfs_options("ro"), "noexec,nosuid,nodev,ro,uid=1000,gid=1000")
+        self.assertEqual(P.drvfs_options("rw"), "noexec,nosuid,nodev,case=off,uid=1000,gid=1000")
+        self.assertEqual(P.drvfs_options("ro"), "noexec,nosuid,nodev,case=off,ro,uid=1000,gid=1000")
         self.assertEqual(code_of(P.drvfs_options, "rwx"), "init_invalid")
 
 
@@ -205,6 +211,179 @@ class MuxSockets(unittest.TestCase):
         self.host.shutdown(socket.SHUT_WR)
         self.thread.join(3)
         self.assertEqual(self.result.get("r"), "eof")
+
+
+MOUNTINFO = r"""22 1 8:1 / / rw,relatime - ext4 /dev/sdc rw
+30 22 0:25 / /proc rw,nosuid - proc proc rw
+41 22 0:40 / /mnt/c rw,noatime - 9p C:\134 rw,aname=drvfs;path=C:\;uid=1000
+42 22 0:41 / /mnt/d rw,noatime - drvfs D:\134 rw
+43 22 0:42 / /mnt/e rw - virtiofs drvfs rw
+44 22 0:43 / /mnt/f rw - fuse.drvfs F:\134 rw
+45 22 0:44 / /usr/lib/wsl/drivers ro,nosuid - 9p drivers ro
+46 22 0:45 / /usr/lib/wsl/lib ro - overlay none ro
+47 22 0:46 / /mnt/wslg rw - tmpfs none rw
+48 22 0:47 / /mnt/wslg/distro ro - virtiofs none ro
+49 22 0:48 / /tmp/.X11-unix ro - virtiofs none ro
+50 22 0:49 / /data/otro rw - 9p share rw
+51 22 0:50 / /home/u/fusefs rw - fuse.sshfs user@host:/ rw
+52 22 0:51 / /win/c/lz/a rw - 9p C:\134 rw
+53 22 0:52 / /mnt/con\040espacio rw - 9p C:\134 rw
+"""
+
+
+class ProbeMounts(unittest.TestCase):
+    def test_unidades_y_montajes_de_sistema_van_por_separado(self):
+        drives, system = L.parse_mounts(MOUNTINFO)
+        self.assertEqual(drives, ["/mnt/c", "/mnt/d", "/mnt/e", "/mnt/f", "/data/otro", "/mnt/con espacio"])
+        self.assertEqual(system, ["/usr/lib/wsl/drivers", "/mnt/wslg/distro", "/tmp/.X11-unix"])
+
+    def test_fuse_que_no_es_unidad_y_los_concedidos_no_cuentan(self):
+        drives, system = L.parse_mounts(MOUNTINFO)
+        self.assertNotIn("/home/u/fusefs", drives + system)
+        self.assertNotIn("/win/c/lz/a", drives + system)
+
+    def test_lineas_raras_no_rompen(self):
+        self.assertEqual(L.parse_mounts("basura\n\n1 2 3\nx - y\n"), ([], []))
+
+    def test_probe_trae_los_campos_nuevos(self):
+        with tempfile.TemporaryDirectory() as d:
+            marker = os.path.join(d, "rootfs.json")
+            manifest = os.path.join(d, "MANIFEST.json")
+            with open(marker, "w") as f:
+                f.write('{"id": "lazunox-rootfs", "version": "2026.10.1"}')
+            with open(manifest, "wb") as f:
+                f.write(b"abc")
+            out = io.StringIO()
+            with mock.patch.object(L, "ROOTFS_MARKER", marker), mock.patch.object(L, "PAYLOAD_MANIFEST", manifest), \
+                    mock.patch.object(L, "read_mounts", return_value=(["/mnt/c"], ["/mnt/wslg"])), \
+                    mock.patch.object(L.landlock, "abi_version", return_value=3), mock.patch("sys.stdout", out):
+                with self.assertRaises(SystemExit) as cm:
+                    L.probe()
+            self.assertEqual(cm.exception.code, 0)
+            info = json.loads(out.getvalue())
+            self.assertEqual(info["driveMounts"], ["/mnt/c"])
+            self.assertEqual(info["wslSystemMounts"], ["/mnt/wslg"])
+            self.assertEqual(info["rootfs"]["version"], "2026.10.1")
+            self.assertEqual(info["payloadSha"], "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+            self.assertEqual(info["landlockAbi"], 3)
+
+    def test_probe_sin_marcador_ni_carga(self):
+        with mock.patch.object(L, "ROOTFS_MARKER", "/nonexistent/x"), mock.patch.object(L, "PAYLOAD_MANIFEST", "/nonexistent/y"):
+            self.assertIsNone(L.read_rootfs_marker())
+            self.assertIsNone(L.read_payload_sha())
+
+
+KEY = "0123456789abcdef"
+
+
+def make_tar(members):
+    """members: [(nombre, datos | None=dir | ('link', destino))]."""
+    raw = io.BytesIO()
+    with tarfile.open(fileobj=raw, mode="w", format=tarfile.USTAR_FORMAT) as t:
+        for name, d in members:
+            ti = tarfile.TarInfo(name)
+            if d is None:
+                ti.type, ti.mode = tarfile.DIRTYPE, 0o755
+                t.addfile(ti)
+            elif isinstance(d, tuple):
+                ti.type, ti.linkname = tarfile.SYMTYPE, d[1]
+                t.addfile(ti)
+            else:
+                ti.size, ti.mode = len(d), 0o4755  # setuid a propósito: debe perderse
+                t.addfile(ti, io.BytesIO(d))
+    return io.BytesIO(raw.getvalue())
+
+
+class HomeCommands(unittest.TestCase):
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix="lzhome-")
+        self.addCleanup(shutil.rmtree, self.home, True)
+
+    def seed(self):
+        d = os.path.join(self.home, "xdg", KEY, "data")
+        os.makedirs(d)
+        with open(os.path.join(d, "a.txt"), "w") as f:
+            f.write("hola")
+        os.symlink("/etc/passwd", os.path.join(d, "enlace"))
+
+    def test_exportar_e_importar_ida_y_vuelta_omitiendo_enlaces(self):
+        self.seed()
+        buf = io.BytesIO()
+        L.export_home(buf, self.home)
+        names = tarfile.open(fileobj=io.BytesIO(buf.getvalue())).getnames()
+        self.assertIn("xdg/%s/data/a.txt" % KEY, names)
+        self.assertFalse([n for n in names if n.endswith("enlace")])
+        other = tempfile.mkdtemp(prefix="lzhome2-")
+        self.addCleanup(shutil.rmtree, other, True)
+        n = L.import_home(io.BytesIO(buf.getvalue()), other, chown=False)
+        self.assertGreater(n, 2)
+        with open(os.path.join(other, "xdg", KEY, "data", "a.txt")) as f:
+            self.assertEqual(f.read(), "hola")
+
+    def test_exportar_sin_datos_da_un_tar_vacio_valido(self):
+        buf = io.BytesIO()
+        L.export_home(buf, self.home)
+        self.assertEqual(tarfile.open(fileobj=io.BytesIO(buf.getvalue())).getnames(), [])
+
+    def test_importar_rechaza_fuera_de_xdg_enlaces_y_rutas_peligrosas(self):
+        for members in (
+            [("etc/passwd", b"x")],
+            [("xdg/../evil", b"x")],
+            [("/xdg/x", b"x")],
+            [("xdgx/a", b"x")],
+            [("xdg/a", ("link", "/etc"))],
+            [("xdg", None), ("xdg/b", ("link", "../.."))],
+            [("xdg/a\\b", b"x")],
+        ):
+            with self.assertRaises((ValueError, tarfile.TarError), msg=str(members)):
+                L.import_home(make_tar(members), self.home, chown=False)
+        self.assertFalse(os.path.exists(os.path.join(self.home, "etc")))
+        self.assertFalse(os.path.exists(os.path.join(self.home, "evil")))
+
+    def test_importar_quita_setuid(self):
+        L.import_home(make_tar([("xdg", None), ("xdg/f", b"x")]), self.home, chown=False)
+        self.assertEqual(os.stat(os.path.join(self.home, "xdg", "f")).st_mode & 0o7000, 0)
+
+    def test_importar_no_sigue_un_xdg_que_es_enlace(self):
+        os.makedirs(os.path.join(self.home, "otro"))
+        os.symlink(os.path.join(self.home, "otro"), os.path.join(self.home, "xdg"))
+        with self.assertRaises(ValueError):
+            L.import_home(make_tar([("xdg/f", b"x")]), self.home, chown=False)
+        self.assertEqual(os.listdir(os.path.join(self.home, "otro")), [])
+
+    def test_du_y_rm(self):
+        self.seed()
+        self.assertEqual(L.du_key(KEY, self.home), 4)
+        tmp = tempfile.mkdtemp(prefix="lztmp-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        os.makedirs(os.path.join(tmp, "lazunox-" + KEY))
+        L.rm_key(KEY, self.home, tmp)
+        self.assertFalse(os.path.exists(os.path.join(self.home, "xdg", KEY)))
+        self.assertFalse(os.path.exists(os.path.join(tmp, "lazunox-" + KEY)))
+        L.rm_key(KEY, self.home, tmp)  # idempotente
+
+    def test_clave_invalida_y_enlace_no_se_siguen(self):
+        for bad in ("../x", "", "0123456789ABCDEF", "0123456789abcde", KEY + "0", "a/b"):
+            with self.assertRaises(ValueError):
+                L.du_key(bad, self.home)
+            with self.assertRaises(ValueError):
+                L.rm_key(bad, self.home)
+        victim = tempfile.mkdtemp(prefix="lzvictim-")
+        self.addCleanup(shutil.rmtree, victim, True)
+        with open(os.path.join(victim, "f"), "w") as f:
+            f.write("x")
+        os.makedirs(os.path.join(self.home, "xdg"))
+        os.symlink(victim, os.path.join(self.home, "xdg", KEY))
+        L.rm_key(KEY, self.home, victim + "-no")
+        self.assertTrue(os.path.exists(os.path.join(victim, "f")))
+        self.assertFalse(os.path.lexists(os.path.join(self.home, "xdg", KEY)))
+
+    def test_subcomando_desconocido_o_sin_root(self):
+        self.assertIsNone(L.subcommand([]))
+        self.assertIsNone(L.subcommand(["--otra"]))
+        with mock.patch("os.getuid", return_value=1000), mock.patch.object(L, "die", side_effect=SystemExit(97)):
+            with self.assertRaises(SystemExit):
+                L.subcommand(["--du", KEY])
 
 
 if __name__ == "__main__":

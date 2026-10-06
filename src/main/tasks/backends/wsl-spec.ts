@@ -9,7 +9,7 @@
  *  - sin interop (ejecutar `.exe` desde dentro) y sin automontaje de unidades: `WSL_CONF`;
  *  - la trama inicial NO recibe credenciales de proveedores: solo entorno de una lista de prefijos y, si trae
  *    `OPENCODE_AUTH_CONTENT`, cada entrada debe ser un centinela (`sandboxed-placeholder-<16 hex>`);
- *  - todo montaje lleva `noexec,nosuid,nodev`; las `ro` además `ro`; el scratch solo dentro de la carpeta principal;
+ *  - todo montaje lleva `noexec,nosuid,nodev,case=off`; las `ro` además `ro`; el scratch solo dentro de la carpeta principal;
  *    sin `allowDelete` la política de la carpeta principal NO incluye REMOVE_FILE/REMOVE_DIR/REFER.
  */
 import { win32 } from 'node:path'
@@ -18,6 +18,8 @@ import { fromSandboxPath, mountFor, toSandboxPath, type PathMount } from './wsl-
 
 export const WSL_DISTRO = 'Lazunox-Tareas'
 export const WSL_LAUNCHER_PATH = '/opt/lazunox/launcher.py'
+/** Instalador de la carga: va DENTRO de la imagen (root:root 0755), no en la carga. */
+export const WSL_INSTALLER_PATH = '/usr/local/sbin/lazunox-install'
 export const WSL_USER = 'lazunox'
 /** uid/gid de `lazunox` en el rootfs (fijado por el script que lo construye). */
 export const WSL_UID = 1000
@@ -45,6 +47,12 @@ export type WslCommand =
   | { kind: 'launch' }
   /** El lanzador comprueba el entorno (interop, montajes, Landlock) y sale con un JSON; no arranca nada. */
   | { kind: 'probe' }
+  /** Instala la carga `/opt/lazunox` (formato LZPK1 por stdin) con el instalador de la imagen, como root. */
+  | { kind: 'install' }
+  /** `tar` de `/home/lazunox/xdg` por stdout (para migrar los datos al actualizar la imagen). */
+  | { kind: 'export-home' }
+  /** Inverso de `export-home`: el tar llega por stdin y solo se admite bajo `xdg/`. */
+  | { kind: 'import-home' }
   | { kind: 'terminate' }
   | { kind: 'unregister' }
   | { kind: 'import'; installDir: string; rootfsTar: string }
@@ -76,6 +84,12 @@ export function wslArgs(cmd: WslCommand): string[] {
       return inDistro
     case 'probe':
       return [...inDistro, '--probe']
+    case 'install':
+      return ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', WSL_INSTALLER_PATH]
+    case 'export-home':
+      return [...inDistro, '--export-home']
+    case 'import-home':
+      return [...inDistro, '--import-home']
     case 'terminate':
       return ['--terminate', WSL_DISTRO]
     case 'unregister':
@@ -94,6 +108,9 @@ export function wslArgs(cmd: WslCommand): string[] {
 const ALLOWED_TEMPLATES: ReadonlyArray<ReadonlyArray<string>> = [
   ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', WSL_LAUNCHER_PATH],
   ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', WSL_LAUNCHER_PATH, '--probe'],
+  ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', WSL_INSTALLER_PATH],
+  ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', WSL_LAUNCHER_PATH, '--export-home'],
+  ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', WSL_LAUNCHER_PATH, '--import-home'],
   ['--terminate', WSL_DISTRO],
   ['--unregister', WSL_DISTRO],
   ['-l', '-v'],
@@ -358,7 +375,11 @@ export function buildWslInit(input: WslLaunchInput, forbid: readonly string[] = 
   return { init, frame: encodeInit(init, forbid), mounts: mounts.map(({ win, linux }) => ({ win, linux })) }
 }
 
-/** Opciones de `mount -t drvfs` que construye el lanzador (la misma lógica está en `resources/wsl/protocol.py`). */
+/**
+ * Opciones de `mount -t drvfs` que construye el lanzador (la misma lógica está en `resources/wsl/protocol.py`).
+ * `case=off` (A16): sin distinguir mayúsculas dentro de la carpeta, como Windows; evita que el agente cree `A.txt` y
+ * `a.txt` y que `main` (que compara sin mayúsculas) vea una carpeta distinta de la que ve el agente.
+ */
 export function drvfsOptions(mode: 'rw' | 'ro'): string {
-  return `noexec,nosuid,nodev,${mode === 'ro' ? 'ro,' : ''}uid=${WSL_UID},gid=${WSL_UID}`
+  return `noexec,nosuid,nodev,case=off,${mode === 'ro' ? 'ro,' : ''}uid=${WSL_UID},gid=${WSL_UID}`
 }

@@ -12,17 +12,24 @@
   7. EOF de stdin (muere `main` o `wsl.exe`) => se mata todo el espacio de nombres PID.
 
 NO se ejecuta en el Mac. `--probe` imprime un JSON con el estado del entorno y sale (lo usa `status()`).
+Otros subcomandos (root, sin INIT): `--export-home` (tar de xdg/ a stdout), `--import-home` (tar por stdin, solo bajo
+xdg/), `--du <clave>` y `--rm <clave>` (uso y borrado de los datos de una tarea).
 """
 import ctypes
 import ctypes.util
 import fcntl
+import hashlib
 import json
 import os
+import re
+import shutil
 import signal
 import socket
+import stat
 import struct
 import subprocess
 import sys
+import tarfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import landlock  # noqa: E402
@@ -56,31 +63,207 @@ def read_exact_frame(fd):
             return frames[0][2]
 
 
-def drvfs_mounts_present():
-    """Montajes drvfs/9p de unidades de Windows visibles ahora (deben ser ninguno)."""
-    bad = []
+NET_FSTYPES = ("9p", "drvfs", "virtiofs")
+# Montajes que WSL pone por su cuenta (GPU, WSLg, X11): se informan APARTE para decidir con datos del PC.
+WSL_SYSTEM_PREFIXES = ("/usr/lib/wsl", "/mnt/wslg", "/tmp/.X11-unix")
+_DRIVE_SOURCE = re.compile(r"^[A-Za-z]:\\?$")
+_OCTAL = re.compile(r"\\([0-7]{3})")
+ROOTFS_MARKER = "/etc/lazunox-rootfs.json"
+PAYLOAD_MANIFEST = "/opt/lazunox/MANIFEST.json"
+HOME_ROOT = "/home/%s" % P.WSL_USER
+KEY_RE = re.compile(r"^[0-9a-f]{16}\Z")
+
+
+def _unescape(field):
+    """mountinfo escapa espacios, tabuladores y barras invertidas como \\040, \\011, \\134."""
+    return _OCTAL.sub(lambda m: chr(int(m.group(1), 8)), field)
+
+
+def parse_mounts(text):
+    """(driveMounts, wslSystemMounts) a partir de /proc/self/mountinfo.
+
+    Unidad de Windows: tipo 9p/drvfs/virtiofs (o fuse*) cuyo origen es una unidad (`C:\\`, `drvfs`) y, para los tres
+    tipos de red, cualquier montaje que no sea de sistema de WSL (falla cerrado). Los `fuse*` que no son unidades se
+    ignoran (p. ej. un FUSE legítimo del usuario). Los montajes concedidos por nosotros (/win/...) no cuentan.
+    """
+    drives, system = [], []
+    for line in text.splitlines():
+        head, sep, tail = line.partition(" - ")
+        fields = head.split(" ")
+        rest = tail.split(" ")
+        if not sep or len(fields) < 5 or len(rest) < 2:
+            continue
+        mnt, fstype, source = _unescape(fields[4]), rest[0], _unescape(rest[1])
+        is_net = fstype in NET_FSTYPES
+        if not (is_net or fstype.startswith("fuse")):
+            continue
+        if mnt.startswith("/win/"):
+            continue
+        drive_like = bool(_DRIVE_SOURCE.match(source)) or source == "drvfs"
+        is_system = any(mnt == p or mnt.startswith(p + "/") for p in WSL_SYSTEM_PREFIXES)
+        if drive_like:
+            drives.append(mnt)
+        elif is_system:
+            system.append(mnt)
+        elif is_net:
+            drives.append(mnt)
+    return drives, system
+
+
+def read_mounts():
     with open("/proc/self/mountinfo") as f:
-        for line in f:
-            parts = line.split(" - ")
-            if len(parts) < 2:
-                continue
-            fstype = parts[1].split()[0]
-            mnt = line.split()[4]
-            if fstype in ("9p", "drvfs") and not mnt.startswith("/win/"):
-                bad.append(mnt)
-    return bad
+        return parse_mounts(f.read())
+
+
+def drvfs_mounts_present():
+    """Montajes de unidades de Windows visibles ahora (deben ser ninguno)."""
+    return read_mounts()[0]
+
+
+def read_rootfs_marker():
+    try:
+        with open(ROOTFS_MARKER, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def read_payload_sha():
+    try:
+        with open(PAYLOAD_MANIFEST, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
 
 
 def probe():
+    drives, system = read_mounts()
     info = {
         "interop": os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop-late"),
-        "driveMounts": drvfs_mounts_present(),
+        "driveMounts": drives,
+        "wslSystemMounts": system,
         "landlockAbi": landlock.abi_version(),
         "kernel": os.uname().release,
         "uid": os.getuid(),
+        "rootfs": read_rootfs_marker(),
+        "payloadSha": read_payload_sha(),
     }
     sys.stdout.write(json.dumps(info) + "\n")
     sys.exit(0)
+
+
+# ───────────────────────── Datos (xdg) de las tareas ─────────────────────────
+
+
+def export_home(out, home=HOME_ROOT):
+    """tar (sin compresión) de `xdg/`: solo directorios y archivos regulares; enlaces y especiales se omiten."""
+    xdg = os.path.join(home, "xdg")
+
+    def keep(ti):
+        return ti if (ti.isdir() or ti.isreg()) else None
+
+    with tarfile.open(fileobj=out, mode="w|", format=tarfile.PAX_FORMAT) as tf:
+        if os.path.isdir(xdg) and not os.path.islink(xdg):
+            tf.add(xdg, arcname="xdg", recursive=True, filter=keep)
+
+
+def _safe_member_name(name):
+    parts = name.split("/")
+    if name.startswith("/") or "\\" in name or "\0" in name or ".." in parts:
+        return False
+    return parts[0] == "xdg"
+
+
+def import_home(inp, home=HOME_ROOT, chown=None):
+    """Extrae un tar de `export_home` SOLO bajo `xdg/`: archivos y directorios regulares, sin setuid, dueño 1000."""
+    if chown is None:
+        chown = os.getuid() == 0
+    xdg = os.path.join(home, "xdg")
+    if os.path.islink(xdg) or (os.path.exists(xdg) and not os.path.isdir(xdg)):
+        raise ValueError("xdg no es un directorio")
+    os.makedirs(xdg, exist_ok=True)
+    if chown:
+        os.chown(xdg, P.WSL_UID, P.WSL_UID)
+    count = 0
+    with tarfile.open(fileobj=inp, mode="r|") as tf:
+        for m in tf:
+            if not _safe_member_name(m.name) or not (m.isreg() or m.isdir()):
+                raise ValueError("miembro no permitido: %r" % m.name[:80])
+            m.mode = m.mode & 0o755
+            m.uid = m.gid = P.WSL_UID
+            m.uname = m.gname = ""
+            dest = os.path.join(home, m.name)
+            parent = os.path.dirname(dest)
+            if os.path.islink(parent) or (os.path.lexists(dest) and os.path.islink(dest)):
+                raise ValueError("enlace en el destino: %r" % m.name[:80])
+            if hasattr(tarfile, "data_filter"):
+                tf.extract(m, path=home, filter="data")
+            else:
+                tf.extract(m, path=home)
+            count += 1
+    if chown:
+        for dp, dns, fns in os.walk(xdg):
+            for n in dns + fns:
+                p = os.path.join(dp, n)
+                if not os.path.islink(p):
+                    os.chown(p, P.WSL_UID, P.WSL_UID)
+    return count
+
+
+def _key_dir(key, home=HOME_ROOT):
+    if not KEY_RE.match(key or ""):
+        raise ValueError("clave inválida")
+    return os.path.join(home, "xdg", key)
+
+
+def du_key(key, home=HOME_ROOT):
+    """Bytes ocupados por los datos de una tarea (sin seguir enlaces)."""
+    total = 0
+    for dp, _, fns in os.walk(_key_dir(key, home)):
+        for n in fns:
+            try:
+                st = os.lstat(os.path.join(dp, n))
+            except OSError:
+                continue
+            if stat.S_ISREG(st.st_mode):
+                total += st.st_size
+    return total
+
+
+def rm_key(key, home=HOME_ROOT, tmp_root="/tmp"):
+    """Borra los datos de una tarea y su tmp; nunca sigue un enlace."""
+    for d in (_key_dir(key, home), os.path.join(tmp_root, "lazunox-%s" % key)):
+        if os.path.islink(d):
+            os.unlink(d)
+        elif os.path.isdir(d):
+            shutil.rmtree(d)
+
+
+def subcommand(argv):
+    """Subcomandos sin INIT. Devuelve el código de salida o None si no es uno."""
+    if not argv or argv[0] not in ("--export-home", "--import-home", "--du", "--rm"):
+        return None
+    cmd = argv[0]
+    if os.getuid() != 0:
+        die("debe correr como root dentro de la distro dedicada")
+    try:
+        if cmd == "--export-home" and len(argv) == 1:
+            export_home(sys.stdout.buffer)
+            sys.stdout.buffer.flush()
+        elif cmd == "--import-home" and len(argv) == 1:
+            n = import_home(sys.stdin.buffer)
+            sys.stdout.write(json.dumps({"ok": True, "entries": n}) + "\n")
+        elif cmd == "--du" and len(argv) == 2:
+            sys.stdout.write(json.dumps({"ok": True, "bytes": du_key(argv[1])}) + "\n")
+        elif cmd == "--rm" and len(argv) == 2:
+            rm_key(argv[1])
+            sys.stdout.write(json.dumps({"ok": True}) + "\n")
+        else:
+            die("argumentos inválidos para %s" % cmd, 2)
+    except (ValueError, OSError, tarfile.TarError) as e:
+        die("%s falló: %s" % (cmd, type(e).__name__ + ": " + str(e)[:200]), 3)
+    return 0
 
 
 def libc():
@@ -113,9 +296,12 @@ def isolate_namespaces():
 
 def hide_windows(lc):
     """Dentro del nuevo espacio de montaje: sin unidades de Windows ni sockets de interop."""
-    for mnt in drvfs_mounts_present():
+    drives, system = read_mounts()
+    for mnt in drives:
         if lc.umount2(mnt.encode(), 2) != 0:  # MNT_DETACH
             die("no se pudo desmontar %s" % mnt)
+    for mnt in system:  # GPU/WSLg del anfitrión: dentro de /usr serían legibles; en este espacio de montaje sobran
+        lc.umount2(mnt.encode(), 2)
     if os.path.isdir("/run/WSL"):
         run(["mount", "-t", "tmpfs", "-o", "mode=0555,size=4k", "tmpfs", "/run/WSL"])
     if drvfs_mounts_present():
@@ -221,6 +407,9 @@ def namespace_init(init):
 def main():
     if "--probe" in sys.argv[1:]:
         probe()
+    rc = subcommand(sys.argv[1:])
+    if rc is not None:
+        sys.exit(rc)
     if os.getuid() != 0:
         die("debe correr como root dentro de la distro dedicada")
     try:

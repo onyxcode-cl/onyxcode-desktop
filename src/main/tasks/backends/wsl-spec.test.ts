@@ -52,6 +52,9 @@ describe('wsl.exe: comandos de lista cerrada', () => {
   const cmds: WslCommand[] = [
     { kind: 'launch' },
     { kind: 'probe' },
+    { kind: 'install' },
+    { kind: 'export-home' },
+    { kind: 'import-home' },
     { kind: 'terminate' },
     { kind: 'unregister' },
     { kind: 'import', installDir: 'C:\\lazunox\\wsl', rootfsTar: 'C:\\lazunox\\rootfs.tar.gz' },
@@ -70,7 +73,7 @@ describe('wsl.exe: comandos de lista cerrada', () => {
   it('NUNCA --shutdown (ni ninguna variante peligrosa) en ningún comando', () => {
     for (const c of cmds) {
       const joined = wslArgs(c).join(' ')
-      expect(joined).not.toMatch(/--shutdown|-t\b(?! )|--mount|--update|--install|--set-default|--export|--set-version|--system/)
+      expect(joined).not.toMatch(/--shutdown|-t\b(?! )|--mount|--update|--install|--set-default|--export(?!-home)|--set-version|--system/)
       expect(joined).not.toContain('shutdown')
     }
     for (const bad of [
@@ -92,6 +95,23 @@ describe('wsl.exe: comandos de lista cerrada', () => {
   })
   it('el lanzador va por --exec como root, sin shell y con --cd /', () => {
     expect(wslArgs({ kind: 'launch' })).toEqual(['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/opt/lazunox/launcher.py'])
+  })
+  it('install, export-home e import-home: plantillas exactas, sin argumentos extra', () => {
+    expect(wslArgs({ kind: 'install' })).toEqual(['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/usr/local/sbin/lazunox-install'])
+    expect(wslArgs({ kind: 'export-home' })).toEqual([...wslArgs({ kind: 'launch' }), '--export-home'])
+    expect(wslArgs({ kind: 'import-home' })).toEqual([...wslArgs({ kind: 'launch' }), '--import-home'])
+    for (const c of ['install', 'export-home', 'import-home'] as const) {
+      const a = wslArgs({ kind: c })
+      expect(throwsReason(() => assertAllowedWslArgs([...a, 'extra']))).toBe('wsl-args-not-allowed')
+      expect(throwsReason(() => assertAllowedWslArgs([...a, '--rm']))).toBe('wsl-args-not-allowed')
+      expect(throwsReason(() => assertAllowedWslArgs(a.map((x) => (x === 'root' ? 'lazunox' : x))))).toBe('wsl-args-not-allowed')
+    }
+    expect(throwsReason(() => assertAllowedWslArgs([...wslArgs({ kind: 'launch' }), '--du', '0123456789abcdef']))).toBe(
+      'wsl-args-not-allowed'
+    )
+    expect(throwsReason(() => assertAllowedWslArgs(['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/usr/local/sbin/otro']))).toBe(
+      'wsl-args-not-allowed'
+    )
   })
   it('--import: solo rutas Windows válidas (sin UNC, .., ADS ni comillas)', () => {
     for (const p of ['\\\\srv\\x', 'C:\\a\\..\\b', 'C:\\a:b', 'rel', 'C:\\a"b']) {
@@ -129,6 +149,9 @@ describe('wsl.exe: comandos de lista cerrada', () => {
       '-v',
       'x',
       '--probe',
+      '--export-home',
+      '--import-home',
+      '/usr/local/sbin/lazunox-install',
       '--import',
       '--version',
       '2'
@@ -353,9 +376,9 @@ describe('la clave real NUNCA va en la trama inicial', () => {
 })
 
 describe('montajes y política: invariantes', () => {
-  it('drvfs siempre noexec,nosuid,nodev; las ro llevan ro', () => {
-    expect(drvfsOptions('rw')).toBe('noexec,nosuid,nodev,uid=1000,gid=1000')
-    expect(drvfsOptions('ro')).toBe('noexec,nosuid,nodev,ro,uid=1000,gid=1000')
+  it('drvfs siempre noexec,nosuid,nodev,case=off; las ro llevan ro', () => {
+    expect(drvfsOptions('rw')).toBe('noexec,nosuid,nodev,case=off,uid=1000,gid=1000')
+    expect(drvfsOptions('ro')).toBe('noexec,nosuid,nodev,case=off,ro,uid=1000,gid=1000')
   })
   it('ningún nivel de acceso de carpetas de Windows crea enlaces ni dispositivos; todo derecho es conocido', () => {
     for (const a of ['rw-nodelete', 'rw-delete'] as const) {

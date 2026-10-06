@@ -1,0 +1,237 @@
+#!/usr/bin/python3
+"""Instalador de la carga `/opt/lazunox` (F8-B81, tanda A3). Va DENTRO de la imagen (root:root 0755) en
+`/usr/local/sbin/lazunox-install` y lo arranca `wsl.exe -d Lazunox-Tareas -u root --cd / --exec ...` con la carga
+LZPK1 por stdin (el codificador es src/main/tasks/backends/wsl-payload.ts; los vectores son comunes).
+
+  "LZPK1\\n" | u32 BE: longitud del manifiesto | manifiesto JSON | cuerpos concatenados
+
+Garantías:
+  - el manifiesto es NO confiable: lista cerrada de rutas, modos y tamaños, sin duplicados, y launcher.py y
+    bin/opencode obligatorios; el sha256 de cada cuerpo se calcula en flujo y debe coincidir;
+  - `kind=opencode-tgz`: se extrae SOLO el miembro regular `opencode` (sin enlaces, sin otros miembros, <= 400 MiB);
+  - todo se escribe en /opt/lazunox.new y se renombra al final; ante cualquier fallo sale con código != 0 y la carga
+    anterior queda intacta (se restaura desde .old si un corte dejó la carpeta a medias);
+  - imprime una línea JSON `{"ok": true, "payloadSha": "<sha256 del manifiesto>"}`.
+
+LAZUNOX_INSTALL_ROOT (prefijo de /opt, solo para pruebas) se admite SOLO con LAZUNOX_INSTALL_TEST=1 y uid != 0.
+"""
+import hashlib
+import json
+import os
+import re
+import shutil
+import sys
+import tarfile
+
+MAGIC = b"LZPK1\n"
+MAX_MANIFEST = 64 * 1024
+MAX_TOTAL = 512 * 1024 * 1024
+MAX_FILES = 16
+MAX_OPENCODE = 400 * 1024 * 1024
+PATH_RE = re.compile(r"^(?:[a-z0-9_-]+\.py|bin/opencode)\Z")
+SHA_RE = re.compile(r"^[0-9a-f]{64}\Z")
+REQUIRED = ("launcher.py", "bin/opencode")
+MODES = (0o644, 0o755)
+CHUNK = 1 << 20
+
+
+class InstallError(Exception):
+    pass
+
+
+def read_exact(stream, n):
+    parts = []
+    left = n
+    while left > 0:
+        b = stream.read(min(left, CHUNK))
+        if not b:
+            raise InstallError("carga truncada")
+        parts.append(b)
+        left -= len(b)
+    return b"".join(parts)
+
+
+def parse_manifest(raw):
+    try:
+        m = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise InstallError("manifiesto no es JSON")
+    if not isinstance(m, dict) or set(m) != {"v", "files"} or m["v"] != 1 or not isinstance(m["files"], list):
+        raise InstallError("manifiesto inválido")
+    files = m["files"]
+    if not files or len(files) > MAX_FILES:
+        raise InstallError("número de archivos inválido")
+    seen, total, out = set(), 0, []
+    for f in files:
+        if not isinstance(f, dict) or set(f) != {"path", "size", "sha256", "mode", "kind"}:
+            raise InstallError("entrada de manifiesto inválida")
+        p, size, sha, mode, kind = f["path"], f["size"], f["sha256"], f["mode"], f["kind"]
+        if not isinstance(p, str) or not PATH_RE.match(p):
+            raise InstallError("ruta no permitida")
+        if p in seen:
+            raise InstallError("ruta duplicada")
+        seen.add(p)
+        if type(size) is not int or size <= 0:
+            raise InstallError("tamaño inválido")
+        if not isinstance(sha, str) or not SHA_RE.match(sha):
+            raise InstallError("sha256 inválido")
+        if type(mode) is not int or mode not in MODES:
+            raise InstallError("modo no permitido")
+        if kind != ("opencode-tgz" if p == "bin/opencode" else "file"):
+            raise InstallError("tipo no permitido para la ruta")
+        total += size
+        if total > MAX_TOTAL:
+            raise InstallError("carga demasiado grande")
+        out.append(f)
+    for r in REQUIRED:
+        if r not in seen:
+            raise InstallError("falta %s" % r)
+    return out
+
+
+def extract_opencode(tgz_path, dest, mode):
+    """Extrae SOLO el miembro regular `opencode` del tar.gz; cualquier otra cosa es un error."""
+    try:
+        with tarfile.open(tgz_path, "r:gz") as tf:
+            found = None
+            for m in tf:
+                if found is not None:
+                    raise InstallError("el tgz tiene más de un miembro")
+                found = m
+            if found is None or found.name != "opencode" or not found.isreg():
+                raise InstallError("el tgz no contiene solo el archivo regular opencode")
+            if found.size <= 0 or found.size > MAX_OPENCODE:
+                raise InstallError("opencode con tamaño inválido")
+            src = tf.extractfile(found)
+            with open(dest, "wb") as out:
+                left = found.size
+                while left > 0:
+                    b = src.read(min(left, CHUNK))
+                    if not b:
+                        raise InstallError("tgz truncado")
+                    out.write(b)
+                    left -= len(b)
+                out.flush()
+                os.fsync(out.fileno())
+            os.chmod(dest, mode)
+    except (tarfile.TarError, EOFError, OSError, ValueError) as e:
+        raise InstallError("tgz inválido: %s" % type(e).__name__)
+
+
+def fsync_dir(path):
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def rmtree(path):
+    if os.path.islink(path):
+        os.unlink(path)
+    elif os.path.exists(path):
+        shutil.rmtree(path)
+
+
+def install_root():
+    env = os.environ.get("LAZUNOX_INSTALL_ROOT")
+    if env is None:
+        return ""
+    if os.getuid() == 0 or os.environ.get("LAZUNOX_INSTALL_TEST") != "1":
+        raise InstallError("LAZUNOX_INSTALL_ROOT solo se admite en modo de prueba y sin ser root")
+    if not os.path.isabs(env):
+        raise InstallError("LAZUNOX_INSTALL_ROOT debe ser absoluta")
+    return env.rstrip("/")
+
+
+def install(stream, root=""):
+    opt = root + "/opt"
+    target, new, old = opt + "/lazunox", opt + "/lazunox.new", opt + "/lazunox.old"
+    os.makedirs(opt, exist_ok=True)
+    # Recuperación de un corte entre los dos renombrados: sin carga pero con .old, se restaura.
+    if not os.path.lexists(target) and os.path.isdir(old):
+        os.rename(old, target)
+
+    if read_exact(stream, len(MAGIC)) != MAGIC:
+        raise InstallError("magia inválida")
+    n = int.from_bytes(read_exact(stream, 4), "big")
+    if n <= 0 or n > MAX_MANIFEST:
+        raise InstallError("longitud de manifiesto inválida")
+    raw = read_exact(stream, n)
+    files = parse_manifest(raw)
+    payload_sha = hashlib.sha256(raw).hexdigest()
+
+    rmtree(new)
+    os.mkdir(new, 0o755)
+    try:
+        os.mkdir(new + "/bin", 0o755)
+        for f in files:
+            h = hashlib.sha256()
+            body_path = new + "/" + f["path"] if f["kind"] == "file" else new + "/.opencode.tgz"
+            left = f["size"]
+            with open(body_path, "wb") as out:
+                while left > 0:
+                    b = stream.read(min(left, CHUNK))
+                    if not b:
+                        raise InstallError("carga truncada")
+                    h.update(b)
+                    out.write(b)
+                    left -= len(b)
+                out.flush()
+                os.fsync(out.fileno())
+            if h.hexdigest() != f["sha256"]:
+                raise InstallError("sha256 incorrecto en %s" % f["path"])
+            if f["kind"] == "file":
+                os.chmod(body_path, f["mode"])
+            else:
+                extract_opencode(body_path, new + "/" + f["path"], f["mode"])
+                os.unlink(body_path)
+        if stream.read(1):
+            raise InstallError("bytes sobrantes tras la carga")
+        with open(new + "/MANIFEST.json", "wb") as out:
+            out.write(raw)
+            out.flush()
+            os.fsync(out.fileno())
+        os.chmod(new + "/MANIFEST.json", 0o644)
+        fsync_dir(new + "/bin")
+        fsync_dir(new)
+    except BaseException:
+        shutil.rmtree(new, ignore_errors=True)
+        raise
+
+    # Intercambio: .old -> (borrado), target -> .old, .new -> target, borrar .old.
+    try:
+        rmtree(old)
+        had = os.path.lexists(target)
+        if had:
+            os.rename(target, old)
+        try:
+            os.rename(new, target)
+        except OSError:
+            if had:
+                os.rename(old, target)
+            raise
+        fsync_dir(opt)
+    except BaseException:
+        shutil.rmtree(new, ignore_errors=True)
+        raise
+    shutil.rmtree(old, ignore_errors=True)
+    return payload_sha
+
+
+def main():
+    try:
+        sha = install(sys.stdin.buffer, install_root())
+    except InstallError as e:
+        sys.stderr.write("lazunox-install: %s\n" % e)
+        return 2
+    except OSError as e:
+        sys.stderr.write("lazunox-install: error de E/S: %s\n" % (e.strerror or type(e).__name__))
+        return 3
+    sys.stdout.write(json.dumps({"ok": True, "payloadSha": sha}) + "\n")
+    sys.stdout.flush()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
