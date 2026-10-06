@@ -41,8 +41,12 @@ beforeEach(() => {
   g(repo, 'commit', '-q', '-m', 'init')
 })
 
-afterEach(() => {
-  for (const s of live.splice(0)) s.dispose()
+afterEach(async () => {
+  const svcs = live.splice(0)
+  for (const s of svcs) s.dispose()
+  // Al terminar una columna se lanza en segundo plano `git` (resumen del diff) con cwd dentro de la copia: en Windows
+  // una carpeta que es el cwd de un proceso vivo no se puede borrar (EBUSY). Se espera a que acabe antes de borrar.
+  await Promise.all(svcs.map((s) => s.whenIdle()))
   // En Windows git/antivirus pueden retener la carpeta unos ms (EBUSY/EPERM): se reintenta.
   rmSync(parent, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
 })

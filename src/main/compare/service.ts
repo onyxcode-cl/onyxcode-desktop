@@ -748,6 +748,21 @@ export class CompareService {
     for (const run of this.runs.values()) this.stopRun(run)
   }
 
+  /**
+   * Espera a que terminen las operaciones de git en curso (el resumen del diff que arranca al terminar una columna y los
+   * `tick`). Sirve para cerrar con orden: en Windows un `git` vivo con `cwd` dentro de una copia impide borrarla (EBUSY).
+   * No cancela nada; va después de `dispose()`.
+   */
+  async whenIdle(maxMs = 10_000): Promise<void> {
+    const end = Date.now() + maxMs
+    for (;;) {
+      const runs = [...this.runs.values()]
+      await Promise.all(runs.map((r) => r.lock))
+      if (!runs.some((r) => r.ticking) || Date.now() > end) return
+      await new Promise((r) => setTimeout(r, 10))
+    }
+  }
+
   // ───────────────────────── utilidades ─────────────────────────
 
   private newRun(m: CompareManifest, prompt: string | null): Run {
