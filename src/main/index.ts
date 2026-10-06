@@ -35,8 +35,12 @@ import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 
 app.setName(INTERNAL_NAME)
 
-/** Capacidades de la plataforma: Tareas, Control del PC y actualizador solo en macOS. */
-const caps = capsFor(process.platform)
+/**
+ * Capacidades de la plataforma: Tareas y Control del PC solo en macOS (en Windows tras banderas); actualizador en macOS y Windows,
+ * salvo en una build de la Microsoft Store (`process.windowsStore`): la actualiza la Store, nunca el actualizador propio.
+ */
+const baseCaps = capsFor(process.platform)
+const caps = { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
   busyTaskCount: () => number
@@ -46,9 +50,11 @@ interface TasksLike {
 // Módulos del actualizador: `import()` dinámico y solo en macOS (otro código de macOS no se carga en Windows).
 type UpdateBoot = typeof import('./update/boot')
 type UpdateSwap = typeof import('./update/swap')
+type UpdateSwapWin = typeof import('./update/swap-win')
 let updateBoot: UpdateBoot | null = null
 let updateSwap: UpdateSwap | null = null
-const isUpdating = (): boolean => updateSwap?.isUpdating() ?? false
+let updateSwapWin: UpdateSwapWin | null = null
+const isUpdating = (): boolean => (updateSwap?.isUpdating() ?? false) || (updateSwapWin?.isUpdatingWin() ?? false)
 const bootMarkers = (): ReturnType<UpdateBoot['bootMarkers']> | null => updateBoot?.bootMarkers() ?? null
 
 // Instancia única: se pide lo antes posible y ANTES de cualquier efecto (migración de userData,
@@ -156,7 +162,11 @@ function start(): void {
   app.whenReady().then(async () => {
     applyE2eHeadless()
     if (caps.updater) {
-      ;[updateBoot, updateSwap] = await Promise.all([import('./update/boot'), import('./update/swap')])
+      ;[updateBoot, updateSwap, updateSwapWin] = await Promise.all([
+        import('./update/boot'),
+        import('./update/swap'),
+        import('./update/swap-win')
+      ])
     }
     updateBoot?.startBoot()
     handleAppScheme()

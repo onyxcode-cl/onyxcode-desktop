@@ -74,6 +74,11 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     reason: 'Prueba de integración que solo corre en el PC de pruebas real (C:\\onyx\\wsl, LAZUNOX_WSL_IT=1)'
   },
   {
+    path: /^(resources\/updater\/swap\.ps1|src\/main\/update\/(swap-win|config)\.test\.ts)$/,
+    token: /C:\\+onyx/i,
+    reason: 'Modo de prueba de swap.ps1: solo acepta destinos bajo C:\\onyx (carpeta REAL del PC de pruebas) o %TEMP%; sus pruebas lo citan'
+  },
+  {
     path: 'docs/*.md',
     token: /C:\\+onyx|win-onyx|ONYX_WIN_HOST|\/c\/onyx/i,
     reason: 'La documentación describe el PC de pruebas real (C:\\onyx, win-onyx, ONYX_WIN_HOST)'

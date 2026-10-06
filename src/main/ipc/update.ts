@@ -5,9 +5,12 @@ import { RELEASES_REPO, APP_ID, UPDATE_KEY_ID, UPDATE_PUBLIC_KEY } from '@shared
 import { IDLE_INSTALL, validateInstallLocation } from '@shared/update-install'
 import { resolveInstallConfig, resolveUpdateConfig } from '../update/config'
 import { UpdateChecker } from '../update/checker'
-import { canWrite, nodeInstallerFs, nodeRun, UpdateInstaller } from '../update/installer'
+import { canWrite, nodeInstallerFs, nodeRun, UpdateInstaller, type InstallerDeps } from '../update/installer'
+import { nodeRunWin, WinUpdateInstaller } from '../update/installer-win'
 import { clearSwapResult, readSwapResult, updateDir } from '../update/markers'
 import { currentAppRealPath, startSwap } from '../update/swap'
+import { currentInstallDirWin, startSwapWin } from '../update/swap-win'
+import { evaluateLocationWin, probeWritable } from '../update/win-location'
 import { bootMarkers } from '../update/boot'
 import { IS_TEST_BUILD } from '../update/test-build'
 import { settingsStore } from '../store'
@@ -37,15 +40,28 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
     update: updateConfig,
     updateKey: UPDATE_PUBLIC_KEY,
     updateKeyId: UPDATE_KEY_ID,
-    platform: process.platform
+    platform: process.platform,
+    arch: process.arch,
+    windowsStore: (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore === true
   })
+  const isWin = process.platform === 'win32'
+  // %SystemRoot% validado: de él salen tar.exe, reg.exe y powershell.exe, siempre por ruta absoluta.
+  const systemRoot = /^[A-Za-z]:\\[^\\"/<>|?*\x00-\x1f]+$/.test(process.env.SystemRoot ?? '')
+    ? (process.env.SystemRoot as string)
+    : 'C:\\Windows'
+  // Windows: carpeta REAL de la app en ejecución (…\\Programs\\Lazunox). Sin empaquetar solo existe la de pruebas.
+  const installDirWin: string | null = !isWin
+    ? null
+    : app.isPackaged
+      ? currentInstallDirWin(app.getPath('exe'))
+      : installConfig.testInstallDir
 
   let locationOk = false
   let lastPhase = IDLE_INSTALL.phase
 
-  const installer = new UpdateInstaller({
+  const installerDeps: InstallerDeps = {
     fetch: (url, init) => fetch(url, init),
-    run: nodeRun,
+    run: isWin ? nodeRunWin(systemRoot) : nodeRun,
     fs: nodeInstallerFs(),
     userData,
     appId: APP_ID,
@@ -62,7 +78,11 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
         checker.refresh()
       }
     }
-  })
+  }
+  // Windows: la subclase con los assets win32-x64 y la verificación del ZIP/asar; el Mac queda exactamente como estaba.
+  const installer = isWin
+    ? new WinUpdateInstaller({ ...installerDeps, installDir: installDirWin ?? '', systemRoot })
+    : new UpdateInstaller(installerDeps)
 
   const checker = new UpdateChecker({
     fetch: (url, init) => fetch(url, init),
@@ -80,9 +100,27 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
     installer: { installable: () => installConfig.enabled && locationOk, install: () => installer.getState() }
   })
 
+  /** Windows: solo la carpeta por usuario que registró el instalador NSIS (clave HKCU, fuera de Program Files/Store/Temp), con permiso de escritura. */
+  async function evaluateLocationOnWin(): Promise<boolean> {
+    if (!installDirWin) return false
+    if (!app.isPackaged || IS_TEST_BUILD) {
+      // Pruebas (sin empaquetar o build de prueba): sin clave de registro, pero sí permiso de escritura (igual que el Mac).
+      return (await probeWritable(installDirWin)) && (await probeWritable(dirname(installDirWin)))
+    }
+    const r = await evaluateLocationWin({
+      run: nodeRunWin(systemRoot),
+      systemRoot,
+      installDir: installDirWin,
+      env: process.env,
+      tempDir: app.getPath('temp')
+    })
+    return r.ok
+  }
+
   /** Carpeta de instalación válida: en /Applications o ~/Applications, sin translocar, fuera de /Volumes y con permiso de escritura. */
   async function evaluateLocation(): Promise<boolean> {
     if (!installConfig.enabled) return false
+    if (isWin) return evaluateLocationOnWin()
     let appPath: string | null
     let inApplications: boolean
     if (app.isPackaged) {
@@ -135,7 +173,7 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
   })
   handle(ipcMain, 'app:updateInstall', async () => {
     if (installer.getState().phase !== 'ready') return checker.getState()
-    const currentApp = app.isPackaged ? currentAppRealPath(app.getPath('exe')) : null
+    const currentApp = app.isPackaged ? (isWin ? installDirWin : currentAppRealPath(app.getPath('exe'))) : null
     // Sin empaquetar (desarrollo y E2E) nunca se sustituye nada: solo una app empaquetada puede reemplazarse.
     if (!currentApp) {
       installer.fail('location')
@@ -143,17 +181,22 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
     }
     try {
       const ready = await installer.beginInstall()
-      startSwap(
-        {
-          scriptSource: join(process.resourcesPath, 'updater', 'swap.sh'),
-          ctx: { userData, currentApp, currentVersion: app.getVersion(), pid: process.pid },
-          // Solo un build de prueba pasa variables al script (modo de prueba de swap.sh; docs/DISTRIBUCION.md §11).
-          extraEnv: IS_TEST_BUILD ? testEnv(process.env) : undefined,
-          quit: () => app.quit()
-        },
-        ready.stagedApp,
-        ready.version
-      )
+      // Solo un build de prueba pasa variables al script (modo de prueba de swap.sh/swap.ps1; docs/DISTRIBUCION.md §11).
+      const extraEnv = IS_TEST_BUILD ? testEnv(process.env) : undefined
+      const ctx = { userData, currentApp, currentVersion: app.getVersion(), pid: process.pid }
+      if (isWin) {
+        startSwapWin(
+          { scriptSource: join(process.resourcesPath, 'updater', 'swap.ps1'), ctx, systemRoot, extraEnv, quit: () => app.quit() },
+          ready.stagedApp,
+          ready.version
+        )
+      } else {
+        startSwap(
+          { scriptSource: join(process.resourcesPath, 'updater', 'swap.sh'), ctx, extraEnv, quit: () => app.quit() },
+          ready.stagedApp,
+          ready.version
+        )
+      }
       installer.markRestarting()
     } catch (err) {
       console.warn('[update] no se pudo iniciar el reemplazo:', err instanceof Error ? err.message : err)

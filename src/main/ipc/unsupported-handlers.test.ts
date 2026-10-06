@@ -17,16 +17,25 @@ function fakeIpc(): { ipc: never; handlers: Map<string, (e: unknown, ...a: unkno
   return { ipc: ipc as never, handlers }
 }
 
+// Windows con el actualizador propio activo (instalación normal) o apagado (build de la Microsoft Store, `process.windowsStore`).
+const WIN_STORE = { ...capsFor('win32'), updater: false }
+
 describe('registerUnsupportedHandlers', () => {
+  it('Windows con actualizador propio: no responde por él los canales del actualizador (los registra ipc/update.ts)', () => {
+    const { ipc, handlers } = fakeIpc()
+    registerUnsupportedHandlers(ipc, capsFor('win32'))
+    for (const ch of UPDATER_CHANNELS) expect(handlers.has(ch), ch).toBe(false)
+  })
+
   it('macOS: no registra nada', () => {
     const { ipc, handlers } = fakeIpc()
     expect(registerUnsupportedHandlers(ipc, capsFor('darwin'))).toEqual([])
     expect(handlers.size).toBe(0)
   })
 
-  it('Windows: cubre todos los canales de Tareas/Control (salvo routines:*) y los del actualizador', () => {
+  it('Windows (Store, sin actualizador propio): cubre todos los canales de Tareas/Control (salvo routines:*) y los del actualizador', () => {
     const { ipc, handlers } = fakeIpc()
-    registerUnsupportedHandlers(ipc, capsFor('win32'))
+    registerUnsupportedHandlers(ipc, WIN_STORE)
     for (const ch of TASKS_INVOKE_CHANNELS) {
       expect(handlers.has(ch), ch).toBe(!ch.startsWith('routines:'))
     }
@@ -36,7 +45,7 @@ describe('registerUnsupportedHandlers', () => {
 
   it('las lecturas del arranque devuelven valores neutros', async () => {
     const { ipc, handlers } = fakeIpc()
-    registerUnsupportedHandlers(ipc, capsFor('win32'))
+    registerUnsupportedHandlers(ipc, WIN_STORE)
     const call = (ch: string): Promise<unknown> => handlers.get(ch)!({}, undefined)
     expect(await call('tasks:listFolders')).toEqual({ ok: true, data: [] })
     expect(await call('tasks:policy')).toEqual({ ok: true, data: null })
@@ -48,7 +57,7 @@ describe('registerUnsupportedHandlers', () => {
 
   it('el resto responde PLATFORM_UNSUPPORTED con mensaje', async () => {
     const { ipc, handlers } = fakeIpc()
-    registerUnsupportedHandlers(ipc, capsFor('win32'))
+    registerUnsupportedHandlers(ipc, WIN_STORE)
     for (const ch of ['tasks:start', 'computer:status', 'tasks:network:state', 'app:updateInstall']) {
       expect(await handlers.get(ch)!({}, { folder: '/x' }), ch).toMatchObject({
         ok: false,

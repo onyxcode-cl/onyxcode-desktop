@@ -2,7 +2,7 @@
  * Capacidades que dependen de la plataforma. Lazunox v1 en Windows cubre Chat, Code, Rutinas en modo
  * Code, Ajustes, cuentas, Diagnóstico, MCP, puntos de restauración/Git y accesibilidad. Quedan solo en
  * macOS (y desactivadas limpiamente en el resto, sin cargar su código): modo Tareas (Seatbelt y proxy
- * de credenciales), Control del PC (helper nativo), actualizador automático (intercambio de la .app).
+ * de credenciales), Control del PC (helper nativo), actualizador automático en su versión de macOS (intercambio de la .app; el de Windows cambia la carpeta de instalación y solo actúa en instalaciones por usuario, `src/main/update/swap-win.ts`).
  * Además existe la superficie `remote` (PWA del celular, F8-B56): la misma interfaz React corriendo en el navegador del
  * celular, sin ventana nativa. Reutiliza este mismo mecanismo de degradación: oculta Control del PC, actualizador, ajustes del
  * propio puente, terminal (pty), diálogos nativos, abrir enlaces/editores del Mac y la vista nativa del navegador. Mac y
@@ -90,7 +90,9 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     tasksSandbox: mac ? 'seatbelt' : win ? 'wsl' : 'none',
     computer,
     computerBackend: !computer ? 'none' : mac ? 'ax' : 'uia',
-    updater: mac,
+    // macOS: intercambio de la .app. Windows: aviso siempre y, si `installConfig.enabled` (src/main/update/config.ts), intercambio
+    // de la carpeta por usuario. La build de la Store lo apaga en `main/index.ts` (process.windowsStore).
+    updater: mac || win,
     keepAwakeText: mac,
     quickLook: mac,
     remote: mac,

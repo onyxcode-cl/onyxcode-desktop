@@ -25,7 +25,7 @@ describe('capsFor', () => {
       tasksSandbox: 'wsl',
       computer: false,
       computerBackend: 'none',
-      updater: false,
+      updater: true,
       keepAwakeText: false,
       quickLook: false,
       remote: false
@@ -98,7 +98,7 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       tasksSandbox: 'wsl',
       computer: false,
       computerBackend: 'none',
-      updater: false,
+      updater: true, // actualizador de Windows (plan win-D): antes apagado
       keepAwakeText: false,
       remote: false
     }
