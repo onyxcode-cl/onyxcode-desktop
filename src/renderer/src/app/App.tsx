@@ -193,13 +193,6 @@ function DesktopApp(): React.JSX.Element {
           } as React.CSSProperties
         }
       >
-        {collapsed && (
-          <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>
-            <IconButton label={t('app.sidebar.show', { hint: hintSuffix(sidebarHint) })} onClick={toggleSidebar}>
-              <PanelLeftOpen size={16} />
-            </IconButton>
-          </div>
-        )}
         <ErrorBoundary label={t('app.boundary.server')}>
           <ServerBanner />
           <EngineNotice />
@@ -220,6 +213,15 @@ function DesktopApp(): React.JSX.Element {
             </div>
           )}
         </div>
+        {/* Va AL FINAL de <main>: Chromium resuelve las zonas `drag`/`no-drag` por orden en el documento y, en Windows, una cabecera
+            `drag` posterior le gana a un botón `no-drag` anterior (el botón dejaba de recibir clics). */}
+        {collapsed && (
+          <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>
+            <IconButton label={t('app.sidebar.show', { hint: hintSuffix(sidebarHint) })} onClick={toggleSidebar}>
+              <PanelLeftOpen size={16} />
+            </IconButton>
+          </div>
+        )}
       </main>
     </div>
   )
