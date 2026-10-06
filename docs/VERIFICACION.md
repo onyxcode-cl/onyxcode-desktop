@@ -24,6 +24,8 @@ ni los servidores OpenCode del usuario.
 
 ## Windows (PC de pruebas, `scripts/win/`)
 
+> `C:\onyx` es la carpeta REAL del PC de pruebas (y `win-onyx` su entrada de `~/.ssh/config`, `ONYX_WIN_HOST` su variable): infraestructura externa que no se renombra con la app. Las rutas de la app y de sus pruebas (`%APPDATA%\Lazunox`, `C:\lazunox\tareas\a` y `/win/c/lazunox/…` en `src/` y `resources/wsl/`) son nombres de producto o datos de prueba y no tocan ese PC (la excepción está documentada en `src/test/legacy-name-allowlist.ts`).
+
 `STEPS=ci,typecheck,unit,build scripts/win/sync.sh` (desde la Mac) sube el árbol a `C:\onyx\wt` y ejecuta `C:\onyx\run.ps1` (Node 22 portátil en `C:\onyx\node22`; límites ci 900 s, typecheck 300, unit 600, build 300, e2e 2400, package 1500; limpia huérfanos al empezar y al acabar). Pasos extra: `fetch` (descarga y verifica `opencode.exe`) y `bundle` (`check:win-bundle`). `scripts/win/smoke.ps1` arranca la app sin pantalla con `OPENCODE_BIN`, comprueba «listo» < 30 s, cierre limpio (`WM_CLOSE`), huérfano simulado eliminado y ningún proceso sobrante; `procs.ps1` lista lo que cuelga de `C:\onyx`.
 
 Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo los de fixtures POSIX, que se sustituyen en la tanda 3):
@@ -222,7 +224,7 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
     Antes: `ls -l ~/Library/Application\ Support/Lazunox/account.bin` y
     `security find-generic-password -s "Lazunox Safe Storage" >/dev/null && echo llavero-ok`. Abre la versión nueva: no hay pantalla
     de acceso ni Ajustes › Cuenta, `account.bin` ya no está, `llavero-ok` sigue saliendo, los celulares vinculados siguen vinculados
-    (`remote.bin` se descifra) y las claves de IA y las conversaciones siguen ahí. En Windows, lo mismo en `%APPDATA%\Lazunox\`.
+    (`remote.bin` se descifra) y las claves de IA y las conversaciones siguen ahí. En Windows, lo mismo en `%APPDATA%\Lazunox\`. Nota: con la identidad única de la 0.5.0 (instalación nueva) esta prueba solo vale entre dos versiones ≥ 0.5.0; la instalación anterior de otro nombre no se migra.
 
 ## Mapa: guías antiguas → spec o humano
 

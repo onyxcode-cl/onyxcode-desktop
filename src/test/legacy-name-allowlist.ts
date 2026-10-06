@@ -47,7 +47,7 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     token: /onyxcode\.cl/i,
     reason: 'EXTERNO-PENDIENTE D3: dominio del remoto (y el viejo api.* de cuentas) citado en la documentación'
   },
-  { path: 'src/test/no-accounts.test.ts', token: /onyxcode/i, reason: 'La guardia prohíbe el viejo dominio de cuentas (api.onyxcode.cl)' },
+  { path: 'src/test/no-accounts.test.ts', token: /onyxcode/i, reason: 'La guardia prohíbe el viejo dominio de cuentas' },
 
   // --- Titular de la licencia (D10 pendiente: no se toca LICENSE) ---
   { path: 'LICENSE', reason: 'D10 pendiente: titular de la licencia' },

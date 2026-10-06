@@ -1209,3 +1209,11 @@ Solo celular/PWA; el escritorio no cambia (guardias de escritorio sin editar; si
   nueva línea base de 40 PNG (ver `docs/CAPTURAS-MOVIL.md`). `bloqueo-*` y `vinculacion-*`: 0 píxeles distintos frente a 0.4.5 (la capa ligera no se tocó).
 - **Pendiente del dueño**: regenerar `src/renderer/remote/i18n-core-keys.json` (`UPDATE_PWA_I18N=1 npx vitest run src/renderer/remote/i18n-core.test.ts` y `npx prettier --write` del JSON);
   hasta entonces `i18n-core.test.ts` falla (única falla aceptada).
+
+## F8-B103 — Renombre total a Lazunox (0.5.0)
+
+Identidad única: `DISPLAY_NAME` === `INTERNAL_NAME` === «Lazunox», `APP_ID` `cl.bentec.lazunox`, helpers `cl.bentec.lazunox.*`, `Lazunox.app`, certificado «Lazunox Local Signing» (pin SHA-1 `8446c25f…`), `LAZUNOX_*` (sin compatibilidad), etiquetas `lazunox/remote/v3`, `lazunox-auth-v3` y `lazunox-sas-v3` con vectores regenerados (los celulares se vinculan de nuevo). Instalación nueva: userData, Llavero y permisos TCC desde cero.
+
+- **Se conserva** (D7, D12): migraciones heredadas Lapis/OpenDesk/Tareas (`legacy-names.ts`), dominio `remoto.onyxcode.cl` concentrado en `CLOUD_DOMAIN`, `ALLOWED_ORIGINS` y `SITE_ORIGIN` (EXTERNO-PENDIENTE D3), túneles y Access de Cloudflare, `LICENSE` y su titular (D10), `scripts/win/**` (el PC de pruebas real sigue en `C:\onyx`, host `win-onyx`).
+- **Guardias**: `src/test/identity-freeze.test.ts` («identidad Lazunox»: nombres, sal criptográfica, pin del certificado coherente en install.sh, su test, make-cask, cask e INSTALAR.md, `SITE_ORIGIN` === `CLOUD_ORIGIN`); nueva `src/test/no-legacy-name.test.ts` + `src/test/legacy-name-allowlist.ts` (el nombre anterior solo aparece en excepciones con motivo; una excepción obsoleta falla); E2E `identity` (sin particiones antiguas) y nuevo `clean-start` (userData vacío: asistente con «Lazunox», sin claves de localStorage ni rutas con el nombre viejo).
+- **Versión** 0.5.0 en `package.json` y `package-lock.json`; docs, `AGENTS.md` y `CLAUDE.md` con la regla nueva («INTERNAL_NAME/APP_ID no se cambian sin plan de migración»).

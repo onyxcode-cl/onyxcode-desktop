@@ -14,7 +14,7 @@ manda el código: corrige esta guía.
 | `src/preload/` | `index.ts` expone `window.api` tipado (+ `code-api`, `tasks-api`, `extras-api`, `browser-api`, `remote-api`). `quick`, `overlay`, `pill`, `assist` y `browser-host` son preloads con sandbox, autocontenidos a propósito. |
 | `src/renderer/` | `src/` (app: `app/`, `lib/`, `stores/`, `components/`, `features/{chat,code,tasks,routines,settings,browser,…}`), más `quick/`, `overlay/`, `browser/` (ventanas secundarias) e `index.html`. |
 | `src/shared/` | Código compartido main/renderer/PWA: `brand.ts`, `ipc*.ts` (contratos IPC), `i18n/{es,en}`, `platform-caps.ts`, `remote/` (protocolo del celular), tipos. |
-| `src/test/` | Guardias transversales (`visible-terms`, `legacy-terms`, `i18n-coverage`, `brand-consistency`, `update-scripts`, `win-skip`…). |
+| `src/test/` | Guardias transversales (`identity-freeze`, `no-legacy-name`, `visible-terms`, `legacy-terms`, `i18n-coverage`, `brand-consistency`, `update-scripts`, `win-skip`…). |
 | `pwa/` | PWA del celular (Vite propia, `pwa/src`); se compila a `pwa/dist` y viaja en `Contents/Resources/pwa`. |
 | `e2e/` | Harness E2E con Electron real + OpenCode falso (`e2e/lib`, `e2e/specs/*.e2e.ts`, `e2e/fake-opencode`), `smoke.mjs`, `transform.mjs`, `perf/`, `win-skip.json`. |
 | `scripts/` | `build-native.mjs`, `build-pwa.mjs`, `fetch-opencode.mjs`, `publish-update.mjs`, `verify-*.mjs`, `check-*.mjs`, `with-env.mjs`, `win/` (PC Windows de pruebas por SSH). |
@@ -23,7 +23,7 @@ manda el código: corrige esta guía.
 | `docs/` | Plan, seguridad, verificación, distribución, política de la organización, diseño de la fase 2 del remoto; `docs/archive/` es histórico. |
 
 El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
-**`DISPLAY_NAME` («Lazunox») es el nombre visible; `INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `Lazunox.app`, `productName` y `app.setName(INTERNAL_NAME)` NO se tocan sin un plan de la Fase 2** (userData, Llavero, actualizador y permisos dependen de ellos; los vigila `src/test/identity-freeze.test.ts`). `APP_NAME` está deprecado: usa uno de los dos. En el código el modo Tareas se llama `tasks`.
+**Identidad única Lazunox**: `DISPLAY_NAME` e `INTERNAL_NAME` son el mismo nombre, y `INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `Lazunox.app`, `productName` y `app.setName(INTERNAL_NAME)` no se cambian sin un plan de migración (userData, Llavero, actualizador, permisos TCC y vínculos del celular dependen de ellos; los vigila `src/test/identity-freeze.test.ts`). El nombre anterior no puede reaparecer en el repo: `src/test/no-legacy-name.test.ts` lo exige y las excepciones (historial, migraciones, dominio externo pendiente, PC Windows de pruebas) viven en `src/test/legacy-name-allowlist.ts`. En el código el modo Tareas se llama `tasks`.
 
 ## 2. Comandos (Node 22: `export PATH=/opt/homebrew/opt/node@22/bin:$PATH`)
 

@@ -1,8 +1,8 @@
 # Distribución de Lazunox (firma + notarización)
 
-> **Nota sobre nombres (Fase 1 del renombre).** El producto se muestra como **Lazunox**, pero todos los nombres técnicos de este documento
-> (`Lazunox.app`, `Lazunox-<v>-arm64.dmg`/`.zip`, `lazunox-<v>-arm64.dmg`, el certificado «Lazunox Local Signing», el appId
-> `cl.bentec.lazunox`, «Lazunox Safe Storage», `~/Library/Application Support/Lazunox`) **siguen igual**: los comandos y rutas de aquí no cambian.
+> **Nota sobre nombres (identidad única Lazunox).** Los nombres de este documento (`Lazunox.app`, `Lazunox-<v>-arm64.dmg`/`.zip`,
+> `lazunox-<v>-arm64.dmg`, el certificado «Lazunox Local Signing», el appId `cl.bentec.lazunox`, «Lazunox Safe Storage»,
+> `~/Library/Application Support/Lazunox`, `~/.lazunox-keys/`) son los vigentes desde la 0.5.0 (instalación nueva).
 
 `npm run package` funciona sin nada de esto: firma **ad-hoc** (`identity: '-'`) porque los fuses de
 Electron (`electron-builder.js` → `electronFuses`) modifican el binario y, sin volver a firmarlo,
@@ -335,9 +335,9 @@ otra app y **vuelve a pedir** Accesibilidad, Grabación de pantalla, etc. Mitiga
 certificado» y se conservan entre versiones.
 
 1. Acceso a Llaveros → menú *Acceso a Llaveros › Asistente de Certificados › Crear un certificado…* → nombre
-   (p. ej. `Lazunox Local`), *Tipo de identidad:* **Raíz autofirmada**, *Tipo de certificado:* **Firma de código**.
+   `Lazunox Local Signing`, *Tipo de identidad:* **Raíz autofirmada**, *Tipo de certificado:* **Firma de código**.
    Comprueba que aparece como válido: `security find-identity -v -p codesign`.
-2. Empaqueta con `LAZUNOX_SELF_SIGNED=1 CSC_NAME="Lazunox Local" npm run package`. `electron-builder.js` firma con
+2. Empaqueta con `LAZUNOX_SELF_SIGNED=1 CSC_NAME="Lazunox Local Signing" npm run package`. `electron-builder.js` firma con
    ese certificado, **sin hardened runtime** y **sin notarizar** (ignora las variables `APPLE_*`); sin esa variable el
    comportamiento es exactamente el de siempre. `build/after-sign-self-signed.js` vuelve a firmar
    `cu-helper` y `lazunox-disclaim` con el **mismo certificado** manteniendo `HELPER_ID` y `DISCLAIM_ID` (electron-builder

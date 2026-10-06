@@ -32,7 +32,7 @@ Está en un tap propio (Homebrew ya no admite apps sin firma de Apple en su cat�
 2. Comprueba el hash: `shasum -a 256 lazunox-X.Y.Z-arm64.dmg` y compáralo con la línea del mismo archivo en `SHA256SUMS`.
 3. Abre el `.dmg` y arrastra Lazunox a Aplicaciones.
 4. Al abrirla, macOS dirá que no puede verificar que esté libre de software malicioso. Pulsa **Aceptar** (o «Hecho»), luego:
-   **Ajustes del Sistema › Privacidad y seguridad**, baja hasta el mensaje sobre «Lazunox» (así lo nombra aún el sistema) y pulsa **Abrir de todos modos**;
+   **Ajustes del Sistema › Privacidad y seguridad**, baja hasta el mensaje sobre «Lazunox» y pulsa **Abrir de todos modos**;
    confirma con tu contraseña o Touch ID. Solo hace falta la primera vez.
 5. Comprueba la firma:
 

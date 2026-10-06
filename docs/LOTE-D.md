@@ -12,8 +12,8 @@ seguridad vigente: `docs/SEGURIDAD.md` («3 quater»).
 > existe el navegador integrado y `userData/cowork-browser*` se borra al arrancar. Las menciones a «Chrome aparte» de
 > abajo son históricas y no describen la app actual.
 
-> Nota de nombres: el producto se llama «Lazunox» pero el código sigue diciendo «Lazunox» (`APP_NAME`,
-> `persist:lazunox-web-*`, `lazunox_session`, `embedded-browser/`…). No se renombró nada.
+> Nota de nombres: el producto y el código se llaman «Lazunox» (`INTERNAL_NAME`,
+> `persist:lazunox-web-*`, `lazunox_session`, `embedded-browser/`…).
 
 Orden de los paquetes: **D0 solo y primero** (prueba de viabilidad en Electron real, secuencial,
 decide los fallbacks); **D1, D2, D3 y D4 en paralelo** (contratos/IPC/aislamiento, herramientas del

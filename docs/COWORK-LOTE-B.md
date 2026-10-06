@@ -7,8 +7,8 @@ Plan de origen: `docs/archive/COWORK-LOTE-B-PLAN.md` (arquitectura, contratos y 
 Hallazgos de seguridad y su estado: `AUDIT.md` §9. Modelo de seguridad vigente: `docs/SEGURIDAD.md` («3 bis»).
 Comparación de funciones con otras herramientas: notas privadas, fuera del repositorio.
 
-> Nota de nombres: el producto se llama «Lazunox» pero el código sigue diciendo «Lazunox» (`APP_NAME`,
-> `.lazunox/memoria.md`, `lazunox-plan-gate`, `temp/lazunox-computer`…). No se renombró nada.
+> Nota de nombres: el producto y el código se llaman «Lazunox» (`INTERNAL_NAME`,
+> `.lazunox/memoria.md`, `lazunox-plan-gate`, `temp/lazunox-computer`…).
 
 ## 1. Qué se entregó, por área
 

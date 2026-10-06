@@ -65,6 +65,10 @@ const ALLOWLIST: Allowed[] = [
     reason: 'Borra una carpeta antigua del userData que dejó el navegador eliminado; debe nombrarla.'
   },
   {
+    path: 'src/test/legacy-name-allowlist.ts',
+    reason: 'Lista de excepciones del nombre anterior de la app: nombra la partición heredada de la migración m001.'
+  },
+  {
     path: 'src/test/legacy-terms.test.ts',
     reason: 'Este test: contiene el término que busca.'
   }

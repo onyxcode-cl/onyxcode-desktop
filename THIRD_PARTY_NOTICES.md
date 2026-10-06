@@ -6,8 +6,8 @@ terceros que se distribuyen dentro del instalador. También se copia a `Lazunox.
 **Licencia de Lazunox: MIT.** El código propio de Lazunox se distribuye bajo la licencia del fichero `LICENSE`. Este documento solo cubre
 componentes de terceros; si `LICENSE` cambia, esta línea debe cambiar a la vez (lo comprueba `npm run verify:release`).
 
-<!-- Nota para el dueño: la licencia MIT del fichero LICENSE y su titular («onyxcode-cl») están pendientes de tu confirmación final
-     (docs/RELEASE.md §14). Este texto solo alinea el aviso con LICENSE; no es una decisión legal nueva. -->
+<!-- TODO D10: la licencia MIT del fichero LICENSE y su titular («onyxcode-cl») están pendientes de la confirmación final del dueño
+     (docs/RELEASE.md §14); LICENSE y el titular no se han tocado en el renombre. Este texto solo alinea el aviso con LICENSE; no es una decisión legal nueva. -->
 
 ## 1. OpenCode (motor incluido)
 

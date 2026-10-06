@@ -114,10 +114,10 @@ Rotación (sospecha de filtración o renovación periódica):
 
 ## 13. Si decides otro nombre (simulación)
 
-**Fase 1 aplicada (Lazunox).** Solo cambió el nombre **visible** (`DISPLAY_NAME`). Invariantes que NO se tocan sin el plan de la Fase 2
+**Renombre total aplicado (0.5.0, Lazunox).** La identidad es única (`DISPLAY_NAME` === `INTERNAL_NAME`) y la 0.5.0 es una instalación nueva. Invariantes que NO se tocan sin un plan de migración
 (los vigila `src/test/identity-freeze.test.ts`): `package.json` `name`/`productName`, `appId` `cl.bentec.lazunox`, `app.setName(INTERNAL_NAME)` (clave del
 Llavero) y ningún `setPath('userData')`, `APP_SLUG`, `UPDATE_KEY_ID`, `SITE_KEY_ID`, `Lazunox.app`, nombre del DMG/ZIP, protocolo `lazunox://`, dominio y
-certificado. Ni `CFBundleName` ni `CFBundleExecutable` se sobrescriben (Electron localiza sus helpers con ellos). Los iconos de la PWA ya instalados en un celular
+certificado. Ni `CFBundleName` ni `CFBundleExecutable` se sobrescriben (Electron localiza sus helpers con ellos). Los celulares vinculados antes de la 0.5.0 deben vincularse de nuevo (cambian las etiquetas criptográficas) y los iconos de la PWA ya instalados
 conservan la etiqueta antigua hasta reinstalarlos. La marca no está verificada: no publicar antes de ese paso.
 
 El nombre y el identificador (`appId`) están en cada copia instalada: si cambian **después** de publicar, las copias existentes no pueden actualizarse solas a la nueva. Decídelo **antes** de la primera versión pública. Para ver todo lo que cambiaría, sin tocar nada:
@@ -131,4 +131,4 @@ El script **no aplica nada**: lista productName, appId, identificadores de helpe
 
 ## 14. Licencia
 
-`LICENSE` es MIT («Copyright (c) 2026 onyxcode-cl») y `THIRD_PARTY_NOTICES.md` lo refleja. Falta tu confirmación (titular, MIT u otra, y que tu empleador no reclame el proyecto): si cambias algo, edita ambos ficheros a la vez. `npm run verify:release` falla si se contradicen.
+`LICENSE` es MIT («Copyright (c) 2026 onyxcode-cl»; TODO D10: el titular sigue pendiente de decisión del dueño y no se ha tocado) y `THIRD_PARTY_NOTICES.md` lo refleja. Falta tu confirmación (titular, MIT u otra, y que tu empleador no reclame el proyecto): si cambias algo, edita ambos ficheros a la vez. `npm run verify:release` falla si se contradicen.

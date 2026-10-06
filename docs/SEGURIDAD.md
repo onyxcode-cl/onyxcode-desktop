@@ -1274,7 +1274,7 @@ señalización WebRTC (SDP/ICE) pasa por un servicio de conexión en Cloudflare 
 ese mismo origen. Los datos viajan por el DataChannel directo (STUN siempre); el relé (TURN) está implementado pero **apagado por defecto** y sin secretos. El Mac sigue siendo el único
 punto de confianza y **no abre ningún puerto**: sale hacia fuera con un WebSocket. Passkeys y avisos push NO están en esta entrega (siguientes entregas; ver `docs/REMOTO-FASE2.md`).
 
-**Autenticación: sin cambios criptográficos.** El handshake v3 (`hs1/hs2/hs3`, HMAC ligado a las huellas DTLS, etiqueta `lazunox-auth-v3`) es el mismo. El protocolo pasa a **v4** y el Mac acepta v3 y v4
+**Autenticación: sin cambios de algoritmo.** El handshake v3 (`hs1/hs2/hs3`, HMAC ligado a las huellas DTLS, etiqueta `lazunox-auth-v3`) es el mismo. Con el renombre total (0.5.0) las etiquetas y la sal pasaron a `lazunox/remote/v3`, `lazunox-auth-v3` y `lazunox-sas-v3` (D5): los celulares vinculados con una versión anterior no se reconocen y hay que vincularlos de nuevo (el Llavero y `remote.bin` también empiezan de cero con la identidad nueva). El protocolo pasa a **v4** y el Mac acepta v3 y v4
 (`MIN_PROTOCOL_VERSION = 3`): v4 añade `caps` en `authed`/`pair-pending`, `room` en `paired`, `b` (id de compilación, solo diagnóstico) en `hs1`, la trama de señalización `turn`, los códigos
 `host-offline`/`rate` y la trama `entry`. A un celular v3 el Mac le habla exactamente como antes (sin `caps` ni `room`). El servicio y los relés son «intermediarios»: no tienen `K` ni `q`, así que
 no pueden hacerse pasar por el Mac ni por el celular (las huellas DTLS que ve cada pila no cuadrarían). Pueden negar el servicio, ver metadatos y tirar o retrasar tramas.

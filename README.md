@@ -7,11 +7,13 @@ Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el s
 **Tareas** (trabajo autónomo sobre carpetas con sandbox) y **Rutinas**. El plan original está archivado en
 [`docs/archive/PLAN.md`](./docs/archive/PLAN.md); el plan vigente es [`docs/FASE6-PLAN.md`](./docs/FASE6-PLAN.md).
 
-> **Lazunox.** Desde la Fase 1 del renombre el nombre **visible** es Lazunox (`DISPLAY_NAME` en `src/shared/brand.ts`).
-> La identidad técnica sigue siendo Lazunox a propósito (`INTERNAL_NAME`, `APP_ID`, `APP_SLUG`, `Lazunox.app`, la carpeta
-> `~/Library/Application Support/Lazunox`, «Lazunox Safe Storage», `lazunox://`, `LAZUNOX_*`): cambiarla haría perder datos o
-> permisos. La marca «Lazunox» **no está verificada** (INAPI, OMPI/USPTO, dominios, npm/GitHub): no se publica hasta que el dueño la verifique.
-> El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`.
+> **Identidad única Lazunox.** El nombre visible y el técnico son el mismo (`DISPLAY_NAME` e `INTERNAL_NAME` en `src/shared/brand.ts`;
+> `APP_ID` `cl.bentec.lazunox`, `Lazunox.app`, la carpeta `~/Library/Application Support/Lazunox`, «Lazunox Safe Storage»,
+> `lazunox://`, `LAZUNOX_*`). Es una instalación nueva: permisos de macOS y vinculación de celulares se hacen desde cero
+> (0.5.0). No se cambian sin un plan de migración. La marca «Lazunox» **no está verificada** (INAPI, OMPI/USPTO, dominios,
+> npm/GitHub): no se publica hasta que el dueño la verifique.
+> El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`; las excepciones con el nombre anterior
+> están en `src/test/legacy-name-allowlist.ts`.
 
 ## Requisitos
 
