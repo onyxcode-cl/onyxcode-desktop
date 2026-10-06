@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { REMOTE_SURFACE, capsFor, modeAvailable, usableMode } from './platform-caps'
+import { REMOTE_SURFACE, capsFor, type CapsFlags, modeAvailable, usableMode } from './platform-caps'
 
 /** Mac y Windows conservan terminal, diálogos nativos, enlaces externos y vista nativa del navegador. */
 const NATIVE = { terminal: true, nativeDialogs: true, openExternal: true, nativeBrowser: true }
@@ -13,6 +13,7 @@ describe('capsFor', () => {
       computer: true,
       updater: true,
       keepAwakeText: true,
+      quickLook: true,
       remote: true
     })
   })
@@ -24,6 +25,7 @@ describe('capsFor', () => {
       computer: false,
       updater: false,
       keepAwakeText: false,
+      quickLook: false,
       remote: false
     })
   })
@@ -35,6 +37,7 @@ describe('capsFor', () => {
       computer: false,
       updater: false,
       keepAwakeText: false,
+      quickLook: false,
       remote: false
     })
   })
@@ -72,6 +75,41 @@ describe('bandera de producto tasksWin (apagada por defecto)', () => {
   })
 })
 
+/**
+ * Congelado del resultado ACTUAL con la bandera apagada (antes de W1): si cambia algo con `tasksWin` apagada en
+ * macOS o Windows, esta matriz falla. `quickLook` es el único campo nuevo y vale exactamente `computer` (solo Mac).
+ */
+describe('bandera apagada: resultado idéntico al previo en macOS y Windows', () => {
+  const PREVIOUS = {
+    darwin: { tasks: true, tasksSandbox: 'seatbelt', computer: true, updater: true, keepAwakeText: true, remote: true },
+    win32: { tasks: false, tasksSandbox: 'wsl', computer: false, updater: false, keepAwakeText: false, remote: false }
+  } as const
+  const OFF: Array<CapsFlags | undefined> = [undefined, {}, { tasksWin: false }]
+  it.each(['darwin', 'win32'] as const)('%s: todas las formas de «apagada» dan el mismo objeto', (platform) => {
+    for (const flags of OFF) {
+      const caps = capsFor(platform, flags)
+      const { quickLook, ...rest } = caps
+      expect(rest).toEqual({ ...NATIVE, ...PREVIOUS[platform] })
+      expect(quickLook).toBe(platform === 'darwin')
+      expect(caps).toEqual(capsFor(platform))
+    }
+  })
+  it('encender tasksWin en darwin no cambia nada; en win32 solo cambia tasks (quickLook sigue apagado)', () => {
+    expect(capsFor('darwin', { tasksWin: true })).toEqual(capsFor('darwin'))
+    const on = capsFor('win32', { tasksWin: true })
+    expect(on.tasks).toBe(true)
+    expect(on.quickLook).toBe(false)
+    expect(on.computer).toBe(false)
+  })
+  it('modeAvailable/usableMode con bandera: solo win32 + tasksWin habilita Tareas', () => {
+    expect(modeAvailable('tasks', 'win32', { tasksWin: true })).toBe(true)
+    expect(usableMode('tasks', 'win32', { tasksWin: true })).toBe('tasks')
+    expect(modeAvailable('tasks', 'win32', { tasksWin: false })).toBe(false)
+    expect(usableMode('tasks', 'win32', {})).toBe('chat')
+    expect(modeAvailable('tasks', 'linux', { tasksWin: true })).toBe(false)
+  })
+})
+
 describe('superficie remote (PWA del celular)', () => {
   it('sin terminal, diálogos nativos, enlaces externos, vista nativa, actualizador, Control del PC ni ajustes del puente', () => {
     expect(capsFor(REMOTE_SURFACE)).toEqual({
@@ -80,6 +118,7 @@ describe('superficie remote (PWA del celular)', () => {
       computer: false,
       updater: false,
       keepAwakeText: false,
+      quickLook: false,
       remote: false,
       terminal: false,
       nativeDialogs: false,

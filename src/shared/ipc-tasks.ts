@@ -637,6 +637,8 @@ export interface ManagedPolicy {
   disableAutoMode?: boolean
   /** Apaga el navegador integrado del agente para toda la organización (originado en el Lote C). */
   disableBrowser?: boolean
+  /** Apaga Tareas en Windows (WSL2) para toda la organización; fail-closed como el resto. Sin efecto en macOS. */
+  disableWslTasks?: boolean
 }
 
 // ───────────────────────────── Lote C: preferencias de computer use ─────────────────────────────

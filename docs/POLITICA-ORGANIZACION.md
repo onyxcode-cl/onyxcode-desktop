@@ -12,8 +12,14 @@ empaquetada esa variable se ignora. El archivo se relee cuando cambia (mtime/tam
 
 Este documento describe el bloque **`remote`** (control remoto desde el celular). Las claves de Tareas
 (`disableFullAccess`, `allowedFolderRoots`, `disableCustomHosts`, `extraAllowedHosts`, `disableAlwaysAllow`,
-`disableRoutines`, `disableAutoMode`, `disableBrowser`, `maxAutoArchiveDays`) viven en el mismo archivo y se leen en
+`disableRoutines`, `disableAutoMode`, `disableBrowser`, `disableWslTasks`, `maxAutoArchiveDays`) viven en el mismo archivo y se leen en
 `src/main/tasks/policy.ts`.
+
+`disableWslTasks` (booleano) apaga **Tareas en Windows** (WSL2, beta) para toda la organización: aunque el usuario active
+«Tareas (beta)», la bandera efectiva `tasksWin` queda apagada. Se valida como el resto de booleanos y falla cerrado: cualquier
+valor distinto de `false` (texto, número, `null`) cuenta como `true`, y un `managed.json` ilegible o inválido también lo activa.
+No tiene efecto en macOS. Mientras la puerta de compilación `TASKS_WIN_BUILD` siga apagada, Tareas en Windows no existe y esta
+clave no cambia nada visible.
 
 ## Bloque `remote`
 

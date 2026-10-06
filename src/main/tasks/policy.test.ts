@@ -31,3 +31,17 @@ describe('parseManagedPolicy: allowedFolderRoots', () => {
     expect(parseManagedPolicy({ allowedFolderRoots: 'C:\\x' }, 'f', 'win32').allowedFolderRoots).toEqual([])
   })
 })
+
+describe('parseManagedPolicy: disableWslTasks (fail-closed como el resto)', () => {
+  it('true se respeta; ausente queda sin definir; solo false exacto lo desactiva', () => {
+    expect(parseManagedPolicy({ disableWslTasks: true }, 'f').disableWslTasks).toBe(true)
+    expect(parseManagedPolicy({}, 'f').disableWslTasks).toBeUndefined()
+    expect(parseManagedPolicy({ disableWslTasks: false }, 'f').disableWslTasks).toBeUndefined()
+  })
+  it.each(['false', 'no', 0, null, [], {}])('un valor no booleano (%j) cuenta como true', (v) => {
+    expect(parseManagedPolicy({ disableWslTasks: v }, 'f').disableWslTasks).toBe(true)
+  })
+  it('un archivo con forma inválida activa también disableWslTasks', () => {
+    for (const raw of [null, 'x', [], 5]) expect(parseManagedPolicy(raw, 'f').disableWslTasks).toBe(true)
+  })
+})

@@ -27,7 +27,9 @@ const BOOLEAN_KEYS = [
   'disableRoutines',
   // Lote C: Modo auto y navegador propio, mismo criterio fail-closed que el resto.
   'disableAutoMode',
-  'disableBrowser'
+  'disableBrowser',
+  // Tareas en Windows (WSL2): apaga la bandera `tasksWin` para toda la organización (plan paridad Windows, W1).
+  'disableWslTasks'
 ] as const
 
 /** Política con todas las restricciones booleanas activas (archivo presente pero inválido). */

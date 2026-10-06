@@ -24,6 +24,11 @@ export interface PlatformCaps {
   updater: boolean
   /** El texto de «mantener el equipo despierto» menciona al Mac (solo tiene sentido con Tareas). */
   keepAwakeText: boolean
+  /**
+   * «Vista rápida» de archivos (`qlmanage`) en Tareas. Solo macOS: en Windows no se activa con `tasksWin`
+   * (la tanda W6 la responde con PLATFORM_UNSUPPORTED). Campo nuevo, sin consumidores todavía.
+   */
+  quickLook: boolean
   /** Control remoto desde el celular (PWA por red local; prototipo, solo macOS). */
   remote: boolean
   /** Terminal integrada (pty + xterm). */
@@ -56,6 +61,7 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
       computer: false,
       updater: false,
       keepAwakeText: false,
+      quickLook: false,
       remote: false,
       terminal: false,
       nativeDialogs: false,
@@ -71,6 +77,7 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     computer: mac,
     updater: mac,
     keepAwakeText: mac,
+    quickLook: mac,
     remote: mac,
     terminal: true,
     nativeDialogs: true,
@@ -80,11 +87,11 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
 }
 
 /** ¿El modo existe en esta plataforma? Solo Tareas depende de ella. */
-export function modeAvailable(mode: string, platform: string): boolean {
-  return mode !== 'tasks' || capsFor(platform).tasks
+export function modeAvailable(mode: string, platform: string, flags: CapsFlags = {}): boolean {
+  return mode !== 'tasks' || capsFor(platform, flags).tasks
 }
 
 /** El modo pedido si está disponible; si no (p. ej. `tasks` guardado desde un Mac), Chat. */
-export function usableMode<M extends string>(mode: M, platform: string): M | 'chat' {
-  return modeAvailable(mode, platform) ? mode : 'chat'
+export function usableMode<M extends string>(mode: M, platform: string, flags: CapsFlags = {}): M | 'chat' {
+  return modeAvailable(mode, platform, flags) ? mode : 'chat'
 }
