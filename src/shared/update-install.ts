@@ -17,7 +17,40 @@ export const ZIP_MAX_BYTES = 600 * 1024 * 1024
 export const PLATFORM = 'darwin-arm64'
 export const MAX_REDIRECTS = 3
 
-const ZIP_NAME_RE = /^Lazunox-\d+\.\d+\.\d+-arm64\.zip$/
+export type UpdatePlatformId = 'darwin-arm64' | 'win32-x64'
+
+export interface UpdatePlatformSpec {
+  id: UpdatePlatformId
+  /** Asset del manifiesto firmado en la release. */
+  manifestName: string
+  /** Asset de la firma Ed25519 del manifiesto. */
+  manifestSigName: string
+  /** Nombre exacto del ZIP para una versión. */
+  zipName: (version: string) => string
+  zipRe: RegExp
+  /** Raíz de todas las entradas del ZIP. */
+  root: string
+}
+
+/** Plataformas con actualizador propio. `darwin-arm64` conserva sus constantes de siempre; `win32-x64` es nueva (sin uso en Mac). */
+export const UPDATE_PLATFORMS: Readonly<Record<UpdatePlatformId, UpdatePlatformSpec>> = {
+  'darwin-arm64': {
+    id: 'darwin-arm64',
+    manifestName: MANIFEST_NAME,
+    manifestSigName: MANIFEST_SIG_NAME,
+    zipName: (v) => `Lazunox-${v}-arm64.zip`,
+    zipRe: /^Lazunox-\d+\.\d+\.\d+-arm64\.zip$/,
+    root: APP_BUNDLE_NAME
+  },
+  'win32-x64': {
+    id: 'win32-x64',
+    manifestName: 'update-win32-x64.json',
+    manifestSigName: 'update-win32-x64.json.sig',
+    zipName: (v) => `Lazunox-${v}-win32-x64.zip`,
+    zipRe: /^Lazunox-\d+\.\d+\.\d+-win32-x64\.zip$/,
+    root: 'Lazunox/'
+  }
+}
 const SHA256_RE = /^[0-9a-f]{64}$/
 
 export interface UpdateManifest {
@@ -25,7 +58,7 @@ export interface UpdateManifest {
   appId: string
   version: string
   tag: string
-  platform: typeof PLATFORM
+  platform: UpdatePlatformId
   keyId: string
   zip: { name: string; size: number; sha256: string }
   publishedAt: string
@@ -50,14 +83,17 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === 'object' && !Array.isArray(v)
 }
 
-/** Interpreta el JSON YA verificado por firma. Devuelve null si la forma no es exactamente la esperada. */
-export function parseManifest(json: unknown): UpdateManifest | null {
+/**
+ * Interpreta el JSON YA verificado por firma. Devuelve null si la forma no es exactamente la esperada o si la plataforma
+ * del manifiesto no es la pedida (por defecto el Mac: un manifiesto de Windows nunca se acepta ahí por descuido).
+ */
+export function parseManifest(json: unknown, expected: UpdatePlatformId = PLATFORM): UpdateManifest | null {
   if (!isObj(json) || json.schema !== 1) return null
   const { appId, version, tag, platform, keyId, zip, publishedAt } = json
   if (typeof appId !== 'string' || appId.length === 0 || appId.length > 128) return null
   if (typeof version !== 'string' || version.length > 64 || !parseSemver(version)) return null
   if (typeof tag !== 'string' || tag.length === 0 || tag.length > 128) return null
-  if (platform !== PLATFORM) return null
+  if (platform !== expected) return null
   if (typeof keyId !== 'string' || keyId.length === 0 || keyId.length > 64) return null
   if (typeof publishedAt !== 'string' || publishedAt.length > 64 || !Number.isFinite(Date.parse(publishedAt))) return null
   if (!isObj(zip)) return null
@@ -65,7 +101,7 @@ export function parseManifest(json: unknown): UpdateManifest | null {
   if (typeof name !== 'string' || typeof sha256 !== 'string') return null
   if (typeof size !== 'number' || !Number.isSafeInteger(size) || size <= 0 || size > ZIP_MAX_BYTES) return null
   if (!SHA256_RE.test(sha256)) return null
-  return { schema: 1, appId, version, tag, platform, keyId, zip: { name, size, sha256 }, publishedAt }
+  return { schema: 1, appId, version, tag, platform: expected, keyId, zip: { name, size, sha256 }, publishedAt }
 }
 
 export interface ManifestContext {
@@ -88,7 +124,8 @@ export function validateManifest(m: UpdateManifest, ctx: ManifestContext): Manif
   if (!isNewerRelease({ tag: m.version, prerelease: false, draft: false }, ctx.current)) {
     return { ok: false, code: 'downgrade', reason: 'la versión no es mayor que la instalada' } // i18n-ignore: motivo interno del registro, no se muestra
   }
-  if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `Lazunox-${m.version}-arm64.zip`) {
+  const spec = UPDATE_PLATFORMS[m.platform]
+  if (!spec || !spec.zipRe.test(m.zip.name) || m.zip.name !== spec.zipName(m.version)) {
     return { ok: false, code: 'manifest', reason: 'nombre de ZIP no válido' } // i18n-ignore: motivo interno del registro, no se muestra
   }
   return { ok: true }
@@ -141,6 +178,111 @@ export function validateInstallLocation(i: InstallLocationInput): LocationCheck 
   if (p.startsWith('/Volumes/')) return { ok: false, reason: 'volume' }
   if (!i.inApplicationsFolder) return { ok: false, reason: 'not-applications' }
   if (!i.parentWritable || !i.appWritable) return { ok: false, reason: 'not-writable' }
+  return { ok: true }
+}
+
+// ---- Windows --------------------------------------------------------------------------------
+
+const WIN_ROOT = 'Lazunox'
+/** CON, PRN, AUX, NUL, COM0-9, LPT0-9 (y COM¹²³/LPT¹²³), con o sin extensión: Windows los trata como dispositivos. */
+const WIN_RESERVED_RE = /^(con|prn|aux|nul|conin\$|conout\$|(com|lpt)[0-9\u00b9\u00b2\u00b3])$/i
+const WIN_BAD_CHARS_RE = /[\x00-\x1f<>:"|?*\\]/
+
+function winNamePartOk(p: string): boolean {
+  if (p.length === 0 || p === '.' || p === '..') return false
+  if (WIN_BAD_CHARS_RE.test(p)) return false // incluye «\», «:» (flujos ADS y unidad) y caracteres de control
+  if (p.endsWith('.') || p.endsWith(' ')) return false
+  return !WIN_RESERVED_RE.test(p.split('.')[0].trimEnd())
+}
+
+/**
+ * Entrada del índice del ZIP de Windows: solo rutas relativas con «/» dentro de `Lazunox/`. Rechaza `..`, «\», «:» (ADS y
+ * unidad), UNC, nombres reservados (CON, NUL, COM1…) y punto o espacio final. La raíz distingue mayúsculas.
+ */
+export function isSafeZipEntryWin(entry: string): boolean {
+  if (typeof entry !== 'string' || entry.length === 0 || entry.length > 1024) return false
+  if (!entry.startsWith(`${WIN_ROOT}/`)) return false // una entrada «Lazunox» sin barra sería un archivo, no la raíz
+  const parts = entry.split('/')
+  if (parts[parts.length - 1] === '') parts.pop() // directorio: termina en «/»
+  if (parts.length === 0 || parts[0] !== WIN_ROOT) return false
+  return parts.every(winNamePartOk)
+}
+
+export interface ZipEntryWin {
+  name: string
+  isSymlink?: boolean
+}
+
+export type ZipEntriesCheckWin = { ok: true } | { ok: false; reason: 'empty' | 'unsafe-name' | 'duplicate' | 'symlink'; entry: string }
+
+/** Comprueba el conjunto: cada nombre, sin symlinks y sin dos entradas que solo difieran en mayúsculas (colisión en NTFS). */
+export function checkZipEntriesWin(entries: readonly ZipEntryWin[]): ZipEntriesCheckWin {
+  if (entries.length === 0) return { ok: false, reason: 'empty', entry: '' }
+  const seen = new Set<string>()
+  for (const e of entries) {
+    if (!isSafeZipEntryWin(e.name)) return { ok: false, reason: 'unsafe-name', entry: e.name }
+    if (e.isSymlink) return { ok: false, reason: 'symlink', entry: e.name }
+    const key = (e.name.endsWith('/') ? e.name.slice(0, -1) : e.name).toLowerCase()
+    if (seen.has(key)) return { ok: false, reason: 'duplicate', entry: e.name }
+    seen.add(key)
+  }
+  return { ok: true }
+}
+
+export interface InstallLocationWinInput {
+  /** Carpeta real (realpath) del ejecutable en marcha, p.ej. C:\Users\x\AppData\Local\Programs\Lazunox. */
+  installDir: string
+  /** %ProgramFiles%, %ProgramFiles(x86)% y %ProgramW6432% (los que existan). */
+  programFilesDirs: readonly string[]
+  /** %TEMP% */
+  tempDir: string
+  /** Clave de desinstalación HKCU con DisplayName «Lazunox» (null si no existe); ya leída con reg.exe. */
+  readUninstallKey: () => { installLocation: string } | null
+  /** ¿Se puede crear y borrar dentro de esa carpeta? */
+  isWritable: (dir: string) => boolean
+}
+
+export type LocationCheckWin =
+  | { ok: true }
+  | {
+      ok: false
+      reason: 'not-absolute' | 'store-package' | 'scoop' | 'program-files' | 'temp' | 'no-uninstall-key' | 'key-mismatch' | 'not-writable'
+    }
+
+/** Normaliza una ruta de Windows para comparar: «\», sin barras repetidas ni final, minúsculas. */
+function winNorm(p: string): string {
+  let n = p.replace(/[\\/]+/g, '\\')
+  while (n.length > 3 && n.endsWith('\\')) n = n.slice(0, -1)
+  return n.toLowerCase()
+}
+
+function winUnder(child: string, parent: string): boolean {
+  const c = winNorm(child)
+  const q = winNorm(parent)
+  return q.length > 0 && (c === q || c.startsWith(q.endsWith('\\') ? q : `${q}\\`))
+}
+
+function winParent(p: string): string {
+  let n = p.replace(/[\\/]+/g, '\\')
+  while (n.length > 3 && n.endsWith('\\')) n = n.slice(0, -1)
+  const i = n.lastIndexOf('\\')
+  return i <= 2 ? n.slice(0, i + 1) : n.slice(0, i)
+}
+
+/** Equivale a `isInApplicationsFolder` del Mac: solo la carpeta por usuario registrada por el instalador NSIS. */
+export function validateInstallLocationWin(i: InstallLocationWinInput): LocationCheckWin {
+  const dir = i.installDir
+  if (typeof dir !== 'string' || !/^[A-Za-z]:[\\/]/.test(dir) || dir.includes('\0')) return { ok: false, reason: 'not-absolute' }
+  const n = `${winNorm(dir)}\\`
+  if (n.includes('\\windowsapps\\')) return { ok: false, reason: 'store-package' }
+  if (n.includes('\\scoop\\apps\\')) return { ok: false, reason: 'scoop' }
+  if (n.includes('\\program files\\') || n.includes('\\program files (x86)\\') || i.programFilesDirs.some((d) => winUnder(dir, d)))
+    return { ok: false, reason: 'program-files' }
+  if (i.tempDir && winUnder(dir, i.tempDir)) return { ok: false, reason: 'temp' }
+  const key = i.readUninstallKey()
+  if (!key) return { ok: false, reason: 'no-uninstall-key' }
+  if (winNorm(key.installLocation) !== winNorm(dir)) return { ok: false, reason: 'key-mismatch' }
+  if (!i.isWritable(dir) || !i.isWritable(winParent(dir))) return { ok: false, reason: 'not-writable' }
   return { ok: true }
 }
 

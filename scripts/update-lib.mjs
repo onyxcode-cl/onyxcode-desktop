@@ -10,7 +10,25 @@ export const ZIP_MAX_BYTES = 600 * 1024 * 1024
 export const MANIFEST_MAX_BYTES = 16 * 1024
 export const SIGNATURE_MAX_BYTES = 1024
 export const SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
-const ZIP_NAME_RE = /^Lazunox-\d+\.\d+\.\d+-arm64\.zip$/
+/** Réplica de UPDATE_PLATFORMS (src/shared/update-install.ts); una prueba comprueba que no se desvían. */
+export const UPDATE_PLATFORMS = {
+  'darwin-arm64': {
+    id: 'darwin-arm64',
+    manifestName: 'update.json',
+    manifestSigName: 'update.json.sig',
+    zipName: (v) => `Lazunox-${v}-arm64.zip`,
+    zipRe: /^Lazunox-\d+\.\d+\.\d+-arm64\.zip$/,
+    root: 'Lazunox.app'
+  },
+  'win32-x64': {
+    id: 'win32-x64',
+    manifestName: 'update-win32-x64.json',
+    manifestSigName: 'update-win32-x64.json.sig',
+    zipName: (v) => `Lazunox-${v}-win32-x64.zip`,
+    zipRe: /^Lazunox-\d+\.\d+\.\d+-win32-x64\.zip$/,
+    root: 'Lazunox/'
+  }
+}
 const SHA_RE = /^[0-9a-f]{64}$/
 const SEMVER_RE = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/
 
@@ -78,27 +96,27 @@ export function manifestBytes(m) {
   return Buffer.from(JSON.stringify(m, null, 2) + '\n', 'utf8')
 }
 
-export function buildManifest({ appId, version, tag, keyId, zipName, size, sha256, publishedAt }) {
+export function buildManifest({ appId, version, tag, keyId, zipName, size, sha256, publishedAt, platform = 'darwin-arm64' }) {
   return {
     schema: 1,
     appId,
     version,
     tag,
-    platform: 'darwin-arm64',
+    platform,
     keyId,
     zip: { name: zipName, size, sha256 },
     publishedAt
   }
 }
 
-export function parseManifest(json) {
+export function parseManifest(json, expected = 'darwin-arm64') {
   const o = (v) => !!v && typeof v === 'object' && !Array.isArray(v)
   if (!o(json) || json.schema !== 1) return null
   const { appId, version, tag, platform, keyId, zip, publishedAt } = json
   if (typeof appId !== 'string' || !appId || appId.length > 128) return null
   if (typeof version !== 'string' || version.length > 64 || !SEMVER_RE.test(version)) return null
   if (typeof tag !== 'string' || !tag || tag.length > 128) return null
-  if (platform !== 'darwin-arm64') return null
+  if (platform !== expected || !UPDATE_PLATFORMS[expected]) return null
   if (typeof keyId !== 'string' || !keyId || keyId.length > 64) return null
   if (typeof publishedAt !== 'string' || publishedAt.length > 64 || !Number.isFinite(Date.parse(publishedAt))) return null
   if (!o(zip) || typeof zip.name !== 'string' || typeof zip.sha256 !== 'string') return null
@@ -122,7 +140,8 @@ export function validateManifest(m, { appId, current, tag, keyId }) {
   if (m.tag !== tag) return 'el tag no coincide con la release'
   if (m.version !== tag.replace(/^v/, '')) return 'la versión no coincide con el tag'
   if (/-/.test(m.version) || cmpSemver(m.version, current) !== 1) return 'la versión no es mayor que la instalada'
-  if (!ZIP_NAME_RE.test(m.zip.name) || m.zip.name !== `Lazunox-${m.version}-arm64.zip`) return 'nombre de ZIP no válido'
+  const spec = UPDATE_PLATFORMS[m.platform]
+  if (!spec || !spec.zipRe.test(m.zip.name) || m.zip.name !== spec.zipName(m.version)) return 'nombre de ZIP no válido'
   return null
 }
 
@@ -144,6 +163,38 @@ export function isSafeZipEntry(entry) {
     return !!parts && (rest.endsWith('/') || parts[parts.length - 1].startsWith('._'))
   }
   return safeParts(entry) !== null
+}
+
+// Windows: igual que isSafeZipEntryWin / checkZipEntriesWin del cliente.
+const WIN_RESERVED_RE = /^(con|prn|aux|nul|conin\$|conout\$|(com|lpt)[0-9¹²³])$/i
+const WIN_BAD_CHARS_RE = /[\x00-\x1f<>:"|?*\\]/
+
+function winNamePartOk(p) {
+  if (!p || p === '.' || p === '..' || WIN_BAD_CHARS_RE.test(p)) return false
+  if (p.endsWith('.') || p.endsWith(' ')) return false
+  return !WIN_RESERVED_RE.test(p.split('.')[0].trimEnd())
+}
+
+export function isSafeZipEntryWin(entry) {
+  if (typeof entry !== 'string' || !entry || entry.length > 1024 || !entry.startsWith('Lazunox/')) return false
+  const parts = entry.split('/')
+  if (parts[parts.length - 1] === '') parts.pop()
+  if (!parts.length || parts[0] !== 'Lazunox') return false
+  return parts.every(winNamePartOk)
+}
+
+/** entries: [{ name, isSymlink? }]. Devuelve { ok:true } o { ok:false, reason, entry }. */
+export function checkZipEntriesWin(entries) {
+  if (!entries.length) return { ok: false, reason: 'empty', entry: '' }
+  const seen = new Set()
+  for (const e of entries) {
+    if (!isSafeZipEntryWin(e.name)) return { ok: false, reason: 'unsafe-name', entry: e.name }
+    if (e.isSymlink) return { ok: false, reason: 'symlink', entry: e.name }
+    const key = (e.name.endsWith('/') ? e.name.slice(0, -1) : e.name).toLowerCase()
+    if (seen.has(key)) return { ok: false, reason: 'duplicate', entry: e.name }
+    seen.add(key)
+  }
+  return { ok: true }
 }
 
 // ---- utilidades de sistema ------------------------------------------------------------------

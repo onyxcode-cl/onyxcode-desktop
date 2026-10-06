@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   IDLE_INSTALL,
+  UPDATE_PLATFORMS,
+  checkZipEntriesWin,
+  isSafeZipEntryWin,
+  validateInstallLocationWin,
+  type InstallLocationWinInput,
   installErrorText,
   installPercent,
   isAllowedDownloadUrl,
@@ -221,5 +226,163 @@ describe('reduceInstall', () => {
     expect(installErrorText('hash')).toMatch(/descart/)
     expect(installErrorText(null)).toBe('No se pudo actualizar.')
     expect(installErrorText('rolled-back')).toMatch(/anterior/)
+  })
+})
+
+// ---- Windows ------------------------------------------------------------------------------------
+
+const winManifest = (over: Record<string, unknown> = {}): Record<string, unknown> =>
+  manifest({ platform: 'win32-x64', zip: { name: 'Lazunox-0.4.0-win32-x64.zip', size: 1000, sha256: SHA }, ...over })
+
+describe('UPDATE_PLATFORMS', () => {
+  it('darwin-arm64 conserva sus nombres de siempre', () => {
+    const d = UPDATE_PLATFORMS['darwin-arm64']
+    expect(d.manifestName).toBe('update.json')
+    expect(d.manifestSigName).toBe('update.json.sig')
+    expect(d.zipName('1.2.3')).toBe('Lazunox-1.2.3-arm64.zip')
+    expect(d.root).toBe('Lazunox.app')
+  })
+  it('win32-x64 tiene manifiesto, ZIP y raíz propios', () => {
+    const w = UPDATE_PLATFORMS['win32-x64']
+    expect(w.manifestName).toBe('update-win32-x64.json')
+    expect(w.manifestSigName).toBe('update-win32-x64.json.sig')
+    expect(w.zipName('1.2.3')).toBe('Lazunox-1.2.3-win32-x64.zip')
+    expect(w.zipRe.test('Lazunox-1.2.3-win32-x64.zip')).toBe(true)
+    expect(w.zipRe.test('Lazunox-1.2.3-arm64.zip')).toBe(false)
+    expect(w.root).toBe('Lazunox/')
+  })
+})
+
+describe('manifiesto de Windows', () => {
+  it('se acepta solo con la plataforma pedida', () => {
+    expect(parseManifest(winManifest())).toBeNull()
+    expect(parseManifest(winManifest(), 'win32-x64')?.platform).toBe('win32-x64')
+    expect(parseManifest(manifest(), 'win32-x64')).toBeNull()
+  })
+  it('validateManifest: versión mayor y nombre de ZIP de Windows', () => {
+    const m = parseManifest(winManifest(), 'win32-x64')!
+    expect(validateManifest(m, ctx).ok).toBe(true)
+  })
+  it('anti-downgrade, tag, appId y keyId', () => {
+    const m = parseManifest(winManifest(), 'win32-x64')!
+    expect(validateManifest(m, { ...ctx, current: '0.4.0' })).toMatchObject({ ok: false, code: 'downgrade' })
+    expect(validateManifest(m, { ...ctx, tag: 'v0.4.1' })).toMatchObject({ ok: false, code: 'manifest' })
+    expect(validateManifest(m, { ...ctx, appId: 'otra' })).toMatchObject({ ok: false, code: 'manifest' })
+    expect(validateManifest(m, { ...ctx, keyId: 'k2' })).toMatchObject({ ok: false, code: 'manifest' })
+  })
+  it('rechaza el nombre de ZIP del Mac o de otra versión', () => {
+    for (const name of ['Lazunox-0.4.0-arm64.zip', 'Lazunox-0.3.9-win32-x64.zip', 'x.zip']) {
+      const m = parseManifest(winManifest({ zip: { name, size: 1000, sha256: SHA } }), 'win32-x64')!
+      expect(validateManifest(m, ctx)).toMatchObject({ ok: false, code: 'manifest' })
+    }
+  })
+})
+
+describe('isSafeZipEntryWin', () => {
+  it.each(['Lazunox/', 'Lazunox/Lazunox.exe', 'Lazunox/resources/app.asar', 'Lazunox/resources/opencode/opencode.exe', 'Lazunox/locales/'])(
+    'acepta %s',
+    (e) => expect(isSafeZipEntryWin(e)).toBe(true)
+  )
+  it.each([
+    '',
+    'Lazunox',
+    'lazunox/Lazunox.exe',
+    'Lazunox.app/x',
+    'Otra/x',
+    '/Lazunox/x',
+    'Lazunox/../x',
+    'Lazunox/a/../../b',
+    'Lazunox/./x',
+    'Lazunox//x',
+    'Lazunox\\x',
+    'Lazunox/a\\b',
+    'Lazunox/a.txt:stream',
+    'Lazunox/a.txt::$DATA',
+    'C:/Windows/System32/x',
+    'C:Lazunox/x',
+    '//server/share/x',
+    '\\\\server\\share\\x',
+    'Lazunox/CON',
+    'Lazunox/con.txt',
+    'Lazunox/NUL',
+    'Lazunox/dir/COM1.dll',
+    'Lazunox/lpt9',
+    'Lazunox/COM\u00b9',
+    'Lazunox/aux.tar.gz',
+    'Lazunox/a.',
+    'Lazunox/a ',
+    'Lazunox/dir./x',
+    'Lazunox/dir /x',
+    'Lazunox/a*b',
+    'Lazunox/a?b',
+    'Lazunox/x\0y',
+    'Lazunox/x\ny'
+  ])('rechaza %j', (e) => expect(isSafeZipEntryWin(e)).toBe(false))
+  it('nombres que solo se parecen a los reservados sí valen', () => {
+    for (const e of ['Lazunox/console.dll', 'Lazunox/COM10', 'Lazunox/nulo.txt', 'Lazunox/com.exe']) expect(isSafeZipEntryWin(e)).toBe(true)
+  })
+})
+
+describe('checkZipEntriesWin', () => {
+  const base = [{ name: 'Lazunox/' }, { name: 'Lazunox/Lazunox.exe' }, { name: 'Lazunox/resources/' }]
+  it('acepta un conjunto limpio', () => expect(checkZipEntriesWin(base)).toEqual({ ok: true }))
+  it('rechaza vacío', () => expect(checkZipEntriesWin([])).toMatchObject({ ok: false, reason: 'empty' }))
+  it('rechaza nombres inseguros', () =>
+    expect(checkZipEntriesWin([...base, { name: 'Lazunox/x:y' }])).toMatchObject({ ok: false, reason: 'unsafe-name' }))
+  it('rechaza duplicados que solo difieren en mayúsculas, también carpeta frente a archivo', () => {
+    expect(checkZipEntriesWin([...base, { name: 'Lazunox/LAZUNOX.exe' }])).toMatchObject({ ok: false, reason: 'duplicate' })
+    expect(checkZipEntriesWin([...base, { name: 'Lazunox/Resources' }])).toMatchObject({ ok: false, reason: 'duplicate' })
+    expect(checkZipEntriesWin([...base, { name: 'Lazunox/Lazunox.exe' }])).toMatchObject({ ok: false, reason: 'duplicate' })
+  })
+  it('rechaza symlinks', () =>
+    expect(checkZipEntriesWin([...base, { name: 'Lazunox/lnk', isSymlink: true }])).toMatchObject({ ok: false, reason: 'symlink' }))
+})
+
+describe('validateInstallLocationWin', () => {
+  const dir = 'C:\\Users\\ana\\AppData\\Local\\Programs\\Lazunox'
+  const input = (over: Partial<InstallLocationWinInput> = {}): InstallLocationWinInput => ({
+    installDir: dir,
+    programFilesDirs: ['C:\\Program Files', 'C:\\Program Files (x86)'],
+    tempDir: 'C:\\Users\\ana\\AppData\\Local\\Temp',
+    readUninstallKey: () => ({ installLocation: dir }),
+    isWritable: () => true,
+    ...over
+  })
+  it('acepta la carpeta por usuario registrada y escribible', () => expect(validateInstallLocationWin(input())).toEqual({ ok: true }))
+  it('la comparación con la clave ignora mayúsculas, barras y barra final', () => {
+    const r = validateInstallLocationWin(
+      input({ readUninstallKey: () => ({ installLocation: 'c:/users/ANA/appdata/local/programs/lazunox/' }) })
+    )
+    expect(r).toEqual({ ok: true })
+  })
+  it.each([
+    ['not-absolute', { installDir: 'Programs\\Lazunox' }],
+    ['not-absolute', { installDir: '\\\\srv\\share\\Lazunox' }],
+    ['store-package', { installDir: 'C:\\Program Files\\WindowsApps\\X_1.0\\Lazunox' }],
+    ['store-package', { installDir: 'C:\\Users\\ana\\AppData\\Local\\WindowsApps\\Lazunox' }],
+    ['scoop', { installDir: 'C:\\Users\\ana\\scoop\\apps\\lazunox\\current' }],
+    ['program-files', { installDir: 'C:\\Program Files\\Lazunox' }],
+    ['program-files', { installDir: 'C:\\Program Files (x86)\\Lazunox' }],
+    ['program-files', { installDir: 'D:\\Archivos\\Lazunox', programFilesDirs: ['D:\\Archivos'] }],
+    ['temp', { installDir: 'C:\\Users\\ana\\AppData\\Local\\Temp\\x\\Lazunox' }]
+  ] as const)('rechaza %s: %j', (reason, over) => {
+    const i = input(over)
+    const r = validateInstallLocationWin({ ...i, readUninstallKey: () => ({ installLocation: i.installDir }) })
+    expect(r).toEqual({ ok: false, reason })
+  })
+  it('exige la clave de desinstalación HKCU y que coincida', () => {
+    expect(validateInstallLocationWin(input({ readUninstallKey: () => null }))).toEqual({ ok: false, reason: 'no-uninstall-key' })
+    expect(validateInstallLocationWin(input({ readUninstallKey: () => ({ installLocation: 'C:\\otra\\Lazunox' }) }))).toEqual({
+      ok: false,
+      reason: 'key-mismatch'
+    })
+  })
+  it('exige poder escribir en la carpeta y en su padre', () => {
+    const asked: string[] = []
+    const ok = validateInstallLocationWin(input({ isWritable: (d) => (asked.push(d), true) }))
+    expect(ok.ok).toBe(true)
+    expect(asked).toEqual([dir, 'C:\\Users\\ana\\AppData\\Local\\Programs'])
+    expect(validateInstallLocationWin(input({ isWritable: (d) => d !== dir }))).toEqual({ ok: false, reason: 'not-writable' })
+    expect(validateInstallLocationWin(input({ isWritable: (d) => d === dir }))).toEqual({ ok: false, reason: 'not-writable' })
   })
 })
