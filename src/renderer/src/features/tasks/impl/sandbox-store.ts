@@ -6,7 +6,8 @@ import { cw, hasTasksBridge, onTasks } from './bridge'
 
 interface SandboxStore {
   status: TasksSandboxStatus | null
-  refresh: () => Promise<void>
+  /** `force` salta la caché de 5 s de main (el botón «Volver a comprobar»); sin él, el sondeo automático usa la caché. */
+  refresh: (force?: boolean) => Promise<void>
   setup: () => Promise<void>
   cancel: () => Promise<void>
 }
@@ -14,10 +15,10 @@ interface SandboxStore {
 /** Un fallo al preguntar NO inventa un estado «listo»: se queda en `null` («comprobando») y el siguiente intento lo reintenta. */
 export const useSandbox = create<SandboxStore>((set) => ({
   status: null,
-  refresh: async () => {
+  refresh: async (force = false) => {
     if (!hasTasksBridge()) return
     try {
-      set({ status: await cw('tasks:sandbox:status') })
+      set({ status: await cw('tasks:sandbox:status', force ? { force: true } : undefined) })
     } catch {
       // sin respuesta: se mantiene lo último que se supo (o «comprobando»)
     }

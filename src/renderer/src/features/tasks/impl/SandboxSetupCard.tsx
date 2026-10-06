@@ -93,7 +93,7 @@ export function SandboxSetupCard(): React.JSX.Element | null {
                 </button>
               )}
               {view.actions.includes('recheck') && (
-                <button type="button" className={BTN} onClick={() => void refresh()}>
+                <button type="button" className={BTN} onClick={() => void refresh(true)}>
                   <RefreshCw size={13} /> {t('tasks.sandbox.recheck')}
                 </button>
               )}

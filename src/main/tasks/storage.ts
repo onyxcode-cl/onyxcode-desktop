@@ -1,12 +1,13 @@
 /**
  * Almacenamiento de Tareas: cuánto ocupan los directorios privados del sandbox
  * (`userData/tasks-sandbox/<clave>`, con su `cache/` y `tmp/`) y las capturas temporales de
- * Control total, y cómo limpiarlos. Mide con `/usr/bin/du -sk` (execFile, sin shell). Sin
+ * Control total, y cómo limpiarlos. Mide con `/usr/bin/du -sk` (execFile, sin shell; en Windows recorre con Node, sin `du`). Sin
  * dependencias de Electron: las rutas y `sandboxKey` los inyecta quien lo llama.
  */
 import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
 import { existsSync, readdirSync, rmSync } from 'node:fs'
+import { lstat, readdir } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import type { TasksStorageEntry, TasksStorageReport } from '@shared/ipc-tasks'
 
@@ -19,8 +20,10 @@ export interface StorageEnv {
   restorePointsDir?: string
   /** Clave del directorio privado de una carpeta (`sandboxKey` de sandbox-profile). */
   sandboxKey: (folder: string) => string
-  /** Tamaño en bytes de una ruta (por defecto `du -sk`). Inyectable para pruebas. */
+  /** Tamaño en bytes de una ruta (por defecto `du -sk`; en Windows, recorrido con Node). Inyectable para pruebas. */
   du?: (path: string) => Promise<number>
+  /** Plataforma que decide cómo se mide (inyectable; por defecto `process.platform`). `du` no existe en Windows. */
+  platform?: NodeJS.Platform
 }
 
 /** Servidor vivo (solo importa el sandbox: Control total no usa el directorio privado). */
@@ -55,6 +58,47 @@ export function duBytes(path: string): Promise<number> {
   })
 }
 
+const WALK_MAX_ENTRIES = 200_000
+const WALK_TIMEOUT_MS = 60_000
+
+/**
+ * Bytes que ocupa una ruta recorriéndola con Node (para Windows, donde no hay `du`). No sigue enlaces simbólicos ni
+ * junctions (`lstat`): no se sale del directorio medido ni se cuenta dos veces lo mismo. Acotado en entradas y en tiempo
+ * (si se pasa, devuelve lo sumado hasta ese momento). 0 si no existe; los archivos ilegibles se ignoran.
+ */
+export async function walkBytes(path: string, now: () => number = Date.now): Promise<number> {
+  const deadline = now() + WALK_TIMEOUT_MS
+  let entries = 0
+  let total = 0
+  const pending: string[] = [path]
+  while (pending.length > 0) {
+    const cur = pending.pop() as string
+    let st
+    try {
+      st = await lstat(cur)
+    } catch {
+      continue // no existe o no se puede leer
+    }
+    if (++entries > WALK_MAX_ENTRIES || now() > deadline) break
+    if (st.isSymbolicLink()) continue
+    if (st.isDirectory()) {
+      try {
+        for (const name of await readdir(cur)) pending.push(join(cur, name))
+      } catch {
+        // directorio ilegible: se ignora
+      }
+      continue
+    }
+    total += st.size
+  }
+  return total
+}
+
+/** Medidor de tamaño según la plataforma: `du` en macOS/Linux; recorrido con Node en Windows. */
+export function sizeFnFor(platform: NodeJS.Platform): (path: string) => Promise<number> {
+  return platform === 'win32' ? (p) => walkBytes(p) : duBytes
+}
+
 async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = []
   for (let i = 0; i < items.length; i += size) {
@@ -65,7 +109,7 @@ async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promis
 
 /** Informe de uso. `folders` = carpetas de Tareas conocidas (para el mapeo clave → carpeta). */
 export async function storageReport(env: StorageEnv, folders: string[], live: StorageLiveServer[]): Promise<TasksStorageReport> {
-  const du = env.du ?? duBytes
+  const du = env.du ?? sizeFnFor(env.platform ?? process.platform)
   const root = sandboxRoot(env)
   const byKey = new Map<string, string>()
   for (const f of folders) {

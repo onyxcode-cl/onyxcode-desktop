@@ -14,6 +14,7 @@ import { dateLocale, useT } from '../../../lib/i18n'
 import { cw } from './bridge'
 import { DeleteGrantToggle } from './DeleteGrant'
 import { RecordSkillButton, RecordSkillReview } from './RecordSkill'
+import { sdkDir } from './conn-paths'
 import { deleteMemoryNotes, saveMemoryNotes, setProjectPanelOpen, useTasks } from './store'
 import { baseName } from './util'
 import { errText } from '../../../lib/format'
@@ -89,7 +90,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     const client = useTasks.getState().client
     if (client) {
       void client.app
-        .skills({ directory: folder })
+        .skills({ directory: sdkDir(folder) })
         .then((r) => {
           if (!cancelled) setSkills((r.data ?? []).map((k) => ({ name: k.name, description: k.description })))
         })

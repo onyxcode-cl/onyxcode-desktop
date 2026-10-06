@@ -8,6 +8,7 @@ import { t } from '@shared/i18n'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../../stores/sessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { splitAttachments, visibleTextParts } from './transcript'
+import { sdkDir } from './conn-paths'
 import { useTasks } from './store'
 
 export interface TranscriptHit {
@@ -168,7 +169,7 @@ export function useTranscriptSearch(folder: string | null, query: string): Searc
     let cancelled = false
     const timer = setTimeout(() => {
       const st = useSessions.getState()
-      const list = selectSessionsForDirectory(st, folder).slice(0, MAX_SESSIONS)
+      const list = selectSessionsForDirectory(st, sdkDir(folder)).slice(0, MAX_SESSIONS)
       const results: Array<TranscriptHit[] | undefined> = new Array(list.length)
       let scanned = 0
       let next = 0
@@ -184,7 +185,7 @@ export function useTranscriptSearch(folder: string | null, query: string): Searc
         if (loaded) return extractSearchable(loaded)
         const cached = cachedTranscriptTexts(s.id, s.time.updated)
         if (cached) return cached
-        const res = await client.session.messages({ sessionID: s.id, directory: folder })
+        const res = await client.session.messages({ sessionID: s.id, directory: sdkDir(folder) })
         const entries: MessageEntry[] = (res.data ?? []).map((m) => ({ info: m.info, parts: m.parts }))
         const texts = extractSearchable(entries)
         cacheSet(s.id, { updated: s.time.updated, texts })

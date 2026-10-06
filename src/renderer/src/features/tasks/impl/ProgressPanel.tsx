@@ -37,6 +37,7 @@ import { ScreenshotThumbs } from './ComputerAccess'
 import { computerToolKind, describeAction, toolImages } from './computer-tools'
 import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
+import { showPath } from './conn-paths'
 import { isUsingComputer, refreshDeliverables, useTasks } from './store'
 import { buildContext, friendlyTool, groupActivityBySteps, relTime, type ContextItem } from './util'
 
@@ -72,7 +73,7 @@ function ToolStatusIcon({ part }: { part: ToolPart }): React.JSX.Element {
 
 /** Una fila de actividad legible ("Leyó informe.md"). */
 export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
-  const { verb, detail } = friendlyTool(part)
+  const { verb, detail } = friendlyTool(part, showPath)
   const images = toolImages(part)
   const isComputer = !!computerToolKind(part.tool)
   return (

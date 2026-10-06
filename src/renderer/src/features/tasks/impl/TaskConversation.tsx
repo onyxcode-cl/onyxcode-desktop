@@ -31,6 +31,7 @@ import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
 import { ElementReadonlyChip } from '../../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
+import { showPath } from './conn-paths'
 import { friendlyTool, isVisibleText } from './util'
 
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
@@ -151,7 +152,7 @@ const StepsBlock = memo(
     const running = live ? [...tools].reverse().find((t) => t.state.status === 'running' || t.state.status === 'pending') : undefined
     const failed = tools.filter((t) => t.state.status === 'error').length
     const lastTool = running ?? tools[tools.length - 1]
-    const current = lastTool ? friendlyTool(lastTool) : null
+    const current = lastTool ? friendlyTool(lastTool, showPath) : null
     const lastShot = useMemo(() => {
       for (let i = tools.length - 1; i >= 0; i--) {
         const imgs = toolImages(tools[i])

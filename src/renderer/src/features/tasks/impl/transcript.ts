@@ -90,13 +90,13 @@ function toolLine(part: Extract<MessageEntry['parts'][number], { type: 'tool' }>
 export function transcriptToMarkdown(
   s: { title: string; directory: string; time: { created: number } },
   entries: MessageEntry[],
-  opts: { includeTools?: boolean } = {}
+  opts: { includeTools?: boolean; showPath?: (path: string) => string } = {}
 ): string {
   const title = s.title.trim() || t('tasks.md.title')
   const out: string[] = [
     `# ${title}`,
     '',
-    t('tasks.md.folder', { value: s.directory }),
+    t('tasks.md.folder', { value: (opts.showPath ?? ((x: string) => x))(s.directory) }),
     t('tasks.md.created', { value: stamp(s.time.created) }),
     t('tasks.md.exported', { value: stamp(Date.now()) }),
     '',

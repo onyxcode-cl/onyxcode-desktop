@@ -19,7 +19,7 @@ export function registerTasksSandboxHandlers(
     getBackend: () => selectBackend(process.platform, { tasksWin: o.tasksWin, win: o.winBackend }),
     emit: (s) => send('tasks:sandbox:progress', s)
   })
-  handle('tasks:sandbox:status', () => service.status())
+  handle('tasks:sandbox:status', (req) => service.status({ force: req?.force === true }))
   handle('tasks:sandbox:setup', () => service.setup())
   handle('tasks:sandbox:cancel', () => service.cancel())
   return {

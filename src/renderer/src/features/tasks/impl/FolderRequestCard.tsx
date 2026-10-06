@@ -18,6 +18,7 @@ import { answerFolderRequest } from './actions'
 import { cw } from './bridge'
 import { folderRequestView } from './conversation-logic'
 import { rootTaskId, useTasks } from './store'
+import { useShowPath } from './conn-paths'
 import { lastAssistantText } from './transcript'
 import { folderRequestPaths } from './util'
 
@@ -36,6 +37,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
   const t = useT()
   const MODES = folderModes(t)
   const conn = useTasks((s) => s.conn)
+  const showPath = useShowPath() // solo para MOSTRAR; a main siempre va la ruta tal cual
   const policy = useTasks((s) => s.policy)
   const fullAccess = conn?.fullAccess === true
   const taskId = useMemo(() => rootTaskId(request.sessionID), [request.sessionID])
@@ -113,7 +115,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
 
           <p className="mt-2.5 text-[11px] font-medium text-subtle">{t('tasksComputer.folder.requested')}</p>
           <pre className="mt-1 max-h-24 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
-            {view.requested || t('tasksComputer.folder.unknown')}
+            {view.requested ? showPath(view.requested) : t('tasksComputer.folder.unknown')}
           </pre>
           {view.requested && hiddenNote(view.requested) && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
@@ -158,8 +160,8 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
                       disabled={busy}
                       className="accent-[var(--accent)]"
                     />
-                    <span className="min-w-0 flex-1 truncate font-mono" title={c}>
-                      {c}
+                    <span className="min-w-0 flex-1 truncate font-mono" title={showPath(c)}>
+                      {showPath(c)}
                     </span>
                     {i === 0 && <span className="shrink-0 text-[11px] text-subtle">{t('tasksComputer.folder.theRequested')}</span>}
                   </label>

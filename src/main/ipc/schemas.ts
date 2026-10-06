@@ -462,7 +462,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:trusted:set': obj({ path: absPath, mode: folderMode }),
   'tasks:trusted:remove': pathReq,
   'tasks:policy': none,
-  'tasks:sandbox:status': none,
+  'tasks:sandbox:status': optional(obj({ force: optional(bool) })),
   'tasks:sandbox:setup': none,
   'tasks:sandbox:cancel': none,
   // Lote B: actividad, tareas, preferencias y almacenamiento
