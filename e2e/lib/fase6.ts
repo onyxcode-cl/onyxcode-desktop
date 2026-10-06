@@ -164,8 +164,12 @@ export async function connectTasksFolderReady(app: E2EApp): Promise<{ conn: Task
 
 /** Elige la carpeta en Tareas por la UI (diálogo stubbeado), acepta el permiso y espera a `phase === 'ready'`. */
 export async function connectTasksFolder(app: E2EApp, folder: string): Promise<{ conn: TasksConn; fake: FakeClient }> {
-  await stubDialog(app.electronApp, { openPaths: [folder] })
   await app.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: MODE_LABELS.tasks }).click()
+  // Idempotente: una app que ya conectó esa carpeta (varios tests por app) no vuelve a ofrecer «Elegir carpeta».
+  if ((await storeState<string | null>(app.page, 'useTasks', 'folder')) === folder && (await storeState(app.page, 'useTasks', 'phase')) === 'ready') {
+    return connectTasksFolderReady(app)
+  }
+  await stubDialog(app.electronApp, { openPaths: [folder] })
   await app.page.getByRole('button', { name: 'Elegir carpeta' }).first().click()
   await app.page.getByRole('button', { name: 'Permitir' }).click()
   await expect.poll(() => storeState(app.page, 'useTasks', 'phase'), { timeout: 60_000, message: 'Tareas phase' }).toBe('ready')

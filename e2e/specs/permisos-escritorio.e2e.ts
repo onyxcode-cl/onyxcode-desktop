@@ -1,7 +1,7 @@
 // Tarjetas de permiso de ESCRITORIO (ND): teclado seguro, armado de 600 ms, retirada del 1/2/3 de Code y sin doble
 // envío. Tareas solo en Mac (el modo no existe en Windows); Code en Mac y Windows. OpenCode falso con pasos `permission`.
 // Capturas con ND_PERM_SHOTS_DIR.
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { rmSync } from 'node:fs'
 import type { Page } from 'playwright-core'
 import { runAxe, SERIOUS, summarize } from '../lib/axe'
@@ -24,10 +24,23 @@ async function clean(page: Page, view: string): Promise<void> {
   expect(bad, `${view}\n${summarize(v)}`).toEqual([])
 }
 
-/** Nº de respuestas de permiso enviadas al falso (doble clic rápido → exactamente una). */
-async function permissionReplies(app: E2EApp): Promise<number> {
+/** Respuestas de permiso que el falso ha recibido desde que arrancó (acumulado de TODA la app del describe). */
+async function totalReplies(app: E2EApp): Promise<number> {
   const reqs = await app.fake.requests({ limit: 1000, method: 'POST' })
   return reqs.filter((r) => /\/permission\/[^/]+\/reply$/.test(r.path)).length
+}
+
+/**
+ * Cuenta las respuestas de permiso enviadas al falso DENTRO del test en curso (doble clic rápido → exactamente una).
+ * El falso y la app viven todo el `describe`, así que el contador del falso es acumulado: la línea base se toma en
+ * `beforeEach` (si no, las respuestas legítimas de tests anteriores hacían fallar las aserciones de «0 respuestas»).
+ */
+function repliesCounter(app: () => E2EApp): () => Promise<number> {
+  let base = 0
+  beforeEach(async () => {
+    base = await totalReplies(app())
+  })
+  return async () => (await totalReplies(app())) - base
 }
 
 // ───────────────────────────── Code ─────────────────────────────
@@ -36,6 +49,7 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
   const dir = makeGitRepo()
   afterAll(() => rmSync(dir, { recursive: true, force: true }))
   const app = useApp()
+  const permissionReplies = repliesCounter(app)
 
   const card = (a: E2EApp) => a.page.locator('[role="alertdialog"][id^="perm-"]').first()
   const once = (a: E2EApp) => a.page.getByRole('button', { name: /Permitir una vez/ }).first()
@@ -67,7 +81,7 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
     await a.page.keyboard.press(CONFIRM)
     await a.page.waitForTimeout(400)
     await expectVisible(card(a))
-    expect(await permissionReplies(a)).toBe(0)
+    expect(await permissionReplies()).toBe(0)
   })
 
   it('foco en la tarjeta + ⌘↵ permite una vez', async () => {
@@ -77,7 +91,7 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
     await armed(a)
     await a.page.keyboard.press(CONFIRM)
     await expectCount(card(a), 0)
-    expect(await permissionReplies(a)).toBe(1)
+    expect(await permissionReplies()).toBe(1)
   })
 
   it('Enter sobre «Permitir una vez» no permite', async () => {
@@ -88,7 +102,7 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
     await a.page.keyboard.press('Enter')
     await a.page.waitForTimeout(400)
     await expectVisible(card(a))
-    expect(await permissionReplies(a)).toBe(0)
+    expect(await permissionReplies()).toBe(0)
   })
 
   it('Esc rechaza', async () => {
@@ -106,7 +120,7 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
     await a.page.keyboard.press('2')
     await a.page.waitForTimeout(400)
     await expectVisible(card(a))
-    expect(await permissionReplies(a)).toBe(0)
+    expect(await permissionReplies()).toBe(0)
   })
 
   it('doble clic rápido en «Permitir una vez» envía una sola respuesta', async () => {
@@ -115,7 +129,7 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
     await armed(a)
     await once(a).dblclick()
     await expectCount(card(a), 0)
-    expect(await permissionReplies(a)).toBe(1)
+    expect(await permissionReplies()).toBe(1)
   })
 
   it('comando de 300 líneas visible entero (con aviso del total)', async () => {
