@@ -1,9 +1,11 @@
 # Integracion REAL de «Tareas en Windows»: ejecuta setup()/remove() con wsl.exe sobre la distro dedicada Lazunox-Tareas
-# (src/main/tasks/backends/wsl-setup.win.test.ts, con LAZUNOX_WSL_IT=1). Es la prueba que instala la imagen Debian, carga el paquete
-# LZPK1 en /opt/lazunox, la actualiza y la quita, y comprueba que las demas distros no cambian.
+# (src/main/tasks/backends/wsl-setup.win.test.ts, con LAZUNOX_WSL_IT=1): instala la imagen Debian, carga el paquete LZPK1 en /opt/lazunox,
+# la actualiza y la quita. Y luego una SESION real (wsl-session.win.test.ts): instala, arranca el sandbox con wsl.exe y el puente,
+# espera /global/health (version fijada), comprueba uid 1000/sin capacidades, montaje noexec,nosuid,nodev, un archivo creado desde dentro
+# visible en Windows (carpeta de prueba bajo C:\onyx\tmp), parada sin huerfanos y remove. En ambos se comprueba que las demas distros no cambian.
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\wsl-it.ps1 [-Branch rama] [-Root C:\onyx]
 # Prepara <Root>\wsl\cache (copia la imagen de rootfs-out y baja opencode-linux-x64.tar.gz del release FIJADO v1.18.33; sin red si ya esta),
-# se niega a correr si ya existe una distro Lazunox-Tareas, NO usa `wsl --shutdown` y NO toca docker-desktop. Tope de 20 min.
+# se niega a correr si ya existe una distro Lazunox-Tareas, NO usa `wsl --shutdown` y NO toca docker-desktop. Tope de 40 min (dos instalaciones).
 param([string]$Branch = 'default', [string]$Root = 'C:\onyx')
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -37,14 +39,14 @@ if (-not (Test-Path $node)) { $node = 'node' }
 $env:LAZUNOX_WSL_IT = '1'
 $env:npm_config_update_notifier = 'false'
 $t0 = Get-Date
-$p = Start-Process -FilePath $node -ArgumentList @('node_modules\vitest\vitest.mjs', 'run', 'src/main/tasks/backends/wsl-setup.win.test.ts', '--maxWorkers=1', '--reporter=verbose') `
+$p = Start-Process -FilePath $node -ArgumentList @('node_modules\vitest\vitest.mjs', 'run', 'src/main/tasks/backends/wsl-setup.win.test.ts', 'src/main/tasks/backends/wsl-session.win.test.ts', '--maxWorkers=1', '--no-file-parallelism', '--reporter=verbose') `
   -WorkingDirectory $wt -NoNewWindow -PassThru -RedirectStandardOutput "$log.out" -RedirectStandardError "$log.err"
-if (-not $p.WaitForExit(1200000)) {
-  Log 'Tope de 20 min superado: se mata el arbol de procesos.'
+if (-not $p.WaitForExit(2400000)) {
+  Log 'Tope de 40 min superado: se mata el arbol de procesos.'
   & taskkill.exe /PID $p.Id /T /F 2>&1 | Out-Null
   $code = 2
 } else { $code = $p.ExitCode }
-Get-Content "$log.out", "$log.err" -ErrorAction SilentlyContinue | Select-Object -Last 60 | ForEach-Object { Log ([string]$_) }
+Get-Content "$log.out", "$log.err" -ErrorAction SilentlyContinue | Select-Object -Last 90 | ForEach-Object { Log ([string]$_) }
 Log ("vitest exit=$code en " + [int]((Get-Date) - $t0).TotalSeconds + " s")
 
 # Limpieza: si la prueba dejo la distro dedicada (no existia antes), se quita; nada mas.
@@ -55,6 +57,8 @@ if (($after -contains 'Lazunox-Tareas') -and ($before -notcontains 'Lazunox-Tare
   Log (Clean (& wsl.exe --unregister Lazunox-Tareas 2>&1))
   $after = Distros
 }
+$tmpRuns = Get-ChildItem (Join-Path $Root 'tmp') -Directory -Filter 'lzx-ses-*' -ErrorAction SilentlyContinue
+foreach ($d in $tmpRuns) { Log ("Quedo " + $d.FullName + ": se elimina (era de esta prueba)."); Remove-Item -Recurse -Force -LiteralPath $d.FullName -ErrorAction SilentlyContinue }
 Log ("distros despues: " + ($after -join ', '))
 Log ("demas distros intactas: " + ((($before | Sort-Object) -join ',') -eq (($after | Sort-Object) -join ',')))
 exit $code
