@@ -161,6 +161,11 @@ onLangChange(() => {
   if (tray && !tray.isDestroyed() && lastActions) tray.setContextMenu(buildMenu(lastActions, lastAccelerator))
 })
 
+/** ¿Hay icono en la bandeja del sistema ahora mismo? */
+export function hasTray(): boolean {
+  return tray !== null && !tray.isDestroyed()
+}
+
 export function destroyTray(): void {
   if (tray && !tray.isDestroyed()) tray.destroy()
   tray = null

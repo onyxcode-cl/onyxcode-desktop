@@ -12,6 +12,7 @@ import { extrasPrefs } from '../extras/prefs'
 import { findMainWindow, showMainWindow, type MainWindowDeps } from '../extras/windows'
 import type { OpencodeServer } from '../opencode/server'
 import { applyApproveSetting, type EnableApproveInfo } from '../remote/approve-setting'
+import { requestAttention } from '../remote/attention'
 import { ConfirmHost } from '../remote/confirm-host'
 import {
   currentService,
@@ -115,7 +116,14 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     dismissInWindow: (requestId) => void sendMain(deps, 'remote:confirmDismiss', { requestId }),
     fallback: nativeConfirm,
     alert: (info) => {
-      app.dock?.bounce('critical')
+      requestAttention({
+        platform,
+        dockBounce: () => app.dock?.bounce('critical'),
+        flash: () => {
+          const w = findMainWindow(deps)
+          if (w && !w.isDestroyed()) w.flashFrame(true)
+        }
+      })
       if (findMainWindow(deps)) showMainWindow(deps)
       else if (Notification.isSupported()) {
         const en = getLang() === 'en'

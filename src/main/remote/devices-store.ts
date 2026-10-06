@@ -6,7 +6,7 @@
  * escribe en claro: la función queda desactivada.
  */
 import { randomBytes } from 'node:crypto'
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { sha256Hex, toBase64Url, toHex } from '@shared/remote/code'
 import { isHostToken, newHostToken } from '@shared/remote/cloud'
@@ -15,6 +15,7 @@ import { DEFAULT_TRAVEL_KEEP, isTravelKeep, type TravelKeep } from '@shared/remo
 import { DEVICE_ID_RE, LIMITS, sanitizeDeviceName } from '@shared/remote/protocol'
 import { DEFAULT_DEVICE_TTL_DAYS, DEVICE_TTL_OPTIONS, type DeviceTtlDays, type RemoteDeviceInfo } from '@shared/ipc-remote'
 import { deviceFingerprint } from './confirm-queue'
+import { renameReplaceSync } from './fs-retry'
 import { PIN_PARAMS, hashPin, parsePinRecord, verifyPinHash, type PinParams, type PinRecord } from './pin'
 
 export interface SafeStorageLike {
@@ -308,7 +309,7 @@ export class DevicesStore {
     mkdirSync(dirname(this.file), { recursive: true })
     const tmp = `${this.file}.tmp`
     writeFileSync(tmp, data, { mode: 0o600 })
-    renameSync(tmp, this.file)
+    renameReplaceSync(tmp, this.file)
     try {
       chmodSync(this.file, 0o600)
     } catch {

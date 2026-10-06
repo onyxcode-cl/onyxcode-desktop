@@ -4,9 +4,10 @@
  * dispositivo, y para llamadas rechazadas únicamente el canal (nombre, nunca payload) y su clase. Cualquier otro campo
  * que se intente guardar se descarta, y los textos libres se validan con listas de caracteres estrictas.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { sanitizeDeviceName } from '@shared/remote/protocol'
+import { renameReplaceSync } from './fs-retry'
 
 export const AUDIT_FILE = 'remote-audit.jsonl'
 export const AUDIT_MAX_BYTES = 256 * 1024
@@ -120,7 +121,7 @@ export class AuditLog {
       } catch {
         /* aún no existe */
       }
-      if (size > 0 && size + line.length > this.maxBytes) renameSync(this.file, `${this.file}.1`)
+      if (size > 0 && size + line.length > this.maxBytes) renameReplaceSync(this.file, `${this.file}.1`)
       appendFileSync(this.file, line, { mode: 0o600 })
     } catch {
       /* sin disco no hay auditoría, pero la función sigue */

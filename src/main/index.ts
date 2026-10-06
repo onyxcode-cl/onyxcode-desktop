@@ -26,7 +26,9 @@ import { loadManagedPolicy } from './tasks/policy'
 import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
-import { disposeRemote, getOrgPolicy, setRemoteWin } from './remote/loader'
+import { disposeRemote, getOrgPolicy, remoteMode, setRemoteWin } from './remote/loader'
+import { shouldQuitWhenAllWindowsClosed } from './remote/lifecycle'
+import { hasTray } from './extras/tray'
 import { resolveRemoteWin } from './remote/remote-win-flag'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
@@ -312,7 +314,16 @@ function start(): void {
   })
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    // Windows con el control remoto activo (`remoteWin`) y la bandeja visible: sigue viva en la bandeja (como en macOS sin ventana).
+    if (
+      shouldQuitWhenAllWindowsClosed({
+        platform: process.platform,
+        remoteWinOn,
+        remoteActive: remoteMode() !== 'off',
+        hasTray: hasTray()
+      })
+    )
+      app.quit()
   })
 
   // Cierre de sesión / apagado del Mac: nunca se bloquea con un diálogo (el sistema espera a la app).
