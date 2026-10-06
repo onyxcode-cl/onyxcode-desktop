@@ -56,8 +56,15 @@ async function until<T>(what: string, ms: number, fn: () => Promise<T | null | u
 /** Procesos de la distro (todo el espacio de PID de la distro) como «pid cmdline», sin depender de `ps`. Solo lectura. */
 const LIST_PROCS = `for d in /proc/[0-9]*; do printf '%s ' "\${d#/proc/}"; tr '\\0' ' ' < "$d/cmdline" 2>/dev/null; echo; done`
 function distroProcesses(hostEnv: Record<string, string | undefined>): Promise<string[]> {
+  return distroSh(hostEnv, LIST_PROCS)
+}
+/** Diagnóstico de SOLO LECTURA: las últimas líneas del registro de opencode dentro de la distro de prueba. */
+const TAIL_OPENCODE_LOG =
+  'd=$(ls -d /home/lazunox/xdg/*/data/opencode 2>/dev/null | head -1); echo "dir=$d"; ls -la "$d" "$d/log" 2>&1 | head -24; echo ---ERR---; grep -rhi "error\\|denied\\|EACCES\\|EPERM\\|sqlite" "$d/log" 2>/dev/null | tail -10'
+;('f=$(ls -t /home/lazunox/xdg/*/data/opencode/log/*.log 2>/dev/null | head -1); echo "log=$f"; [ -n "$f" ] && tail -n 30 "$f"')
+function distroSh(hostEnv: Record<string, string | undefined>, cmd: string): Promise<string[]> {
   const env = wslEnv(hostEnv)
-  const args = ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/bin/sh', '-c', LIST_PROCS]
+  const args = ['-d', WSL_DISTRO, '-u', 'root', '--cd', '/', '--exec', '/bin/sh', '-c', cmd]
   if (args[1] !== 'Lazunox-Tareas') throw new Error('solo la distro de prueba')
   return new Promise((resolve, reject) => {
     execFile(
@@ -114,7 +121,15 @@ describe.skipIf(!IT_ENABLED)('sesión real de Tareas con wsl.exe y el puente (PC
         expect((await backend.status()).state).toBe('ready')
 
         await mkdir(folder, { recursive: true })
+        // Como hace el gestor antes de lanzar (migrateFolderScratch): la política de Landlock incluye `<carpeta>/.lazunox/trabajo` y debe existir.
+        await mkdir(join(folder, '.lazunox', 'trabajo'), { recursive: true })
         await mkdir(configDir, { recursive: true })
+        // Como opencode-config.ts: OpenCode escribe este .gitignore si falta, y la carpeta de configuración va de solo lectura.
+        await writeFile(
+          join(configDir, '.gitignore'),
+          ['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'].join('\n'),
+          'utf8'
+        )
         await mkdir(privateDir, { recursive: true })
         await writeFile(join(folder, 'nota.txt'), notaText)
         await writeFile(join(configDir, 'LEEME.txt'), 'config de prueba (solo lectura)\n')
@@ -125,7 +140,7 @@ describe.skipIf(!IT_ENABLED)('sesión real de Tareas con wsl.exe y el puente (PC
         launched = await backend.launch({
           folder,
           bin: '',
-          serveArgs: ['serve', '--port', String(port), '--hostname', HOST],
+          serveArgs: ['serve', '--port', String(port), '--hostname', HOST, '--print-logs', '--log-level', 'DEBUG'],
           serverPort: port,
           isolation: { privateDir, userData: join(runDir, 'userdata') },
           configDir,
@@ -135,6 +150,8 @@ describe.skipIf(!IT_ENABLED)('sesión real de Tareas con wsl.exe y el puente (PC
             OPENCODE_SERVER_USERNAME: 'tasks',
             OPENCODE_SERVER_PASSWORD: password,
             OPENCODE_DISABLE_AUTOUPDATE: '1',
+            // Sin salida de red (outboundPorts vacío): no intentar bajar la lista de modelos (en el flujo real sale por el proxy controlado).
+            OPENCODE_DISABLE_MODELS_FETCH: '1',
             LAZUNOX_TASKS_FOLDER: folder
           },
           proxyEnv: {}
@@ -145,13 +162,23 @@ describe.skipIf(!IT_ENABLED)('sesión real de Tareas con wsl.exe y el puente (PC
         let died: number | null | undefined
         void exited.then((c) => (died = c))
         const api = async (path: string, init?: RequestInit): Promise<Response> =>
-          fetch(`http://${HOST}:${port}${path}`, { ...init, headers: { authorization, 'content-type': 'application/json' } })
+          fetch(`http://${HOST}:${port}${path}`, {
+            ...init,
+            headers: { authorization, 'content-type': 'application/json' },
+            signal: AbortSignal.timeout(15_000)
+          })
 
         // 1) Salud por el puente, con la versión fijada.
         const health = await until('/global/health por el puente', 120_000, async () => {
           if (died !== undefined) throw new Error(`el lanzador salió (${died}): ${stderrTail.slice(-5).join('').trim()}`)
-          const r = await api('/global/health')
-          return r.ok ? ((await r.json()) as { healthy?: boolean; version?: string }) : null
+          try {
+            const r = await api('/global/health')
+            return r.ok ? ((await r.json()) as { healthy?: boolean; version?: string }) : null
+          } catch (e) {
+            // Diagnostico: causa de red y lo que dijo el lanzador/servidor por stderr (sin credenciales: la contraseña va en el entorno).
+            const cause = (e as { cause?: { code?: string } }).cause?.code ?? ''
+            throw new Error(`${e instanceof Error ? e.message : String(e)} ${cause} | stderr: ${stderrTail.join('').trim().slice(-900)}`)
+          }
         })
         expect(health.healthy).toBe(true)
         expect(health.version).toBe(await pinnedOpencodeVersion())
@@ -161,16 +188,38 @@ describe.skipIf(!IT_ENABLED)('sesión real de Tareas con wsl.exe y el puente (PC
         const linuxCfg = launched.mounts!.find((m) => m.win.toLowerCase() === configDir.toLowerCase())!.linux
         expect(linuxFolder.startsWith('/win/c/onyx/tmp/')).toBe(true)
         const script = evidenceScript(token)
-        const pty = await api('/pty', {
+        const pty = await api(`/pty?directory=${encodeURIComponent(linuxFolder)}`, {
           method: 'POST',
           body: JSON.stringify({ command: '/bin/sh', args: ['-c', script], cwd: linuxFolder })
         })
         if (!pty.ok) {
           // Variante sin PTY: comando de shell de una sesión (no necesita el modelo para ejecutarse, solo un agente).
-          const ses = await api('/session', { method: 'POST', body: JSON.stringify({ title: 'it' }) })
-          expect(ses.ok, `ni /pty (${pty.status}) ni /session (${ses.status})`).toBe(true)
+          const ses = await api(`/session?directory=${encodeURIComponent(linuxFolder)}`, {
+            method: 'POST',
+            body: JSON.stringify({ title: 'it' })
+          })
+          const ptyBody = (
+            await pty
+              .clone()
+              .text()
+              .catch(() => '')
+          ).slice(0, 400)
+          const sesBody = (
+            await ses
+              .clone()
+              .text()
+              .catch(() => '')
+          ).slice(0, 400)
+          const ocLog = (await distroSh(env.hostEnv, TAIL_OPENCODE_LOG).catch((e: unknown) => [String(e)])).join(' | ').slice(-1500)
+          expect(
+            ses.ok,
+            `ni /pty (${pty.status}: ${ptyBody}) ni /session (${ses.status}: ${sesBody}) | stderr: ${stderrTail.join('').trim().slice(-2500)} | opencode.log: ${ocLog}`
+          ).toBe(true)
           const { id } = (await ses.json()) as { id: string }
-          const sh = await api(`/session/${id}/shell`, { method: 'POST', body: JSON.stringify({ agent: 'build', command: script }) })
+          const sh = await api(`/session/${id}/shell?directory=${encodeURIComponent(linuxFolder)}`, {
+            method: 'POST',
+            body: JSON.stringify({ agent: 'build', command: script })
+          })
           expect(sh.ok, `ni /pty (${pty.status}) ni /session/shell (${sh.status})`).toBe(true)
         }
         const ev = join(folder, 'ev')

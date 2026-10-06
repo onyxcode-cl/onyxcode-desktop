@@ -339,12 +339,16 @@ def hide_windows(lc):
         lc.umount2(mnt.encode(), 2)
     if os.path.isdir("/run/WSL"):
         run(["mount", "-t", "tmpfs", "-o", "mode=0555,size=4k", "tmpfs", "/run/WSL"])
-    # El intérprete del binfmt de interop es /init: dentro de ESTE espacio de montaje se tapa con /dev/null (mejor esfuerzo: si falla,
-    # el interop sigue apagado por el wsl.conf y el lanzador ya comprobó que lo está).
-    if os.path.isfile("/init"):
-        subprocess.run(["mount", "--bind", "/dev/null", "/init"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
     if drvfs_mounts_present():
         die("quedan unidades de Windows montadas")
+
+
+def hide_init():
+    """Tapa /init con /dev/null SOLO en este espacio de montaje y DESPUÉS de montar las carpetas: `mount -t drvfs` ejecuta /sbin/mount.drvfs,
+    que es un enlace a /init (taparlo antes rompía el montaje). Es el intérprete del binfmt de interop (mejor esfuerzo: si falla, el interop
+    sigue apagado por el wsl.conf y el lanzador ya comprobó que lo está)."""
+    if os.path.isfile("/init"):
+        subprocess.run(["mount", "--bind", "/dev/null", "/init"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
 
 
 def mount_folders(init):
@@ -415,6 +419,7 @@ def namespace_init(init):
     run(["mount", "-t", "proc", "proc", "/proc"])
     lo_up()
     mount_folders(init)
+    hide_init()
     root, tmp = prepare_private(init)
     mux = M.Mux(STDIN, STDOUT, init["relayPorts"], init["serverPort"])
     mux.start()
