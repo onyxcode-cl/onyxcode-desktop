@@ -23,14 +23,19 @@ afterEach(() => {
   for (const c of children.splice(0)) {
     try {
       if (!c.pid) continue
-      if (isWin) execFileSync('taskkill.exe', ['/PID', String(c.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: 10_000 })
-      else process.kill(-c.pid, 'SIGKILL')
+      // Si killStaleServers ya lo mató no se lanza taskkill (en un PC cargado cada taskkill tarda segundos).
+      if (isWin) {
+        if (!isDead(c.pid))
+          execFileSync('taskkill.exe', ['/PID', String(c.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: 8_000 })
+      } else process.kill(-c.pid, 'SIGKILL')
     } catch {
       // ya muerto
     }
   }
-  rmSync(userData, { recursive: true, force: true })
-})
+  // En Windows el .exe recién muerto puede seguir bloqueado unos ms (EBUSY/EPERM).
+  rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  // Windows: un taskkill con el PC cargado (Docker/WSL) puede pasar de los 10 s por defecto del hook; el resto de la prueba no cambia.
+}, 30_000)
 
 /** Falso `opencode serve`: un script llamado `opencode` que duerme, lanzado detached (líder de grupo). */
 function fakeServer(): ChildProcess {
