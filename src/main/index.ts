@@ -216,7 +216,7 @@ function start(): void {
       platform: process.platform,
       env: process.env,
       isPackaged: app.isPackaged,
-      policyBlocked: process.platform === 'win32' ? getOrgPolicy().blocked : false
+      policyBlocked: process.platform === 'win32' ? getOrgPolicy().blocked !== false : false
     })
     setRemoteWin(remoteWinOn)
     caps = capsOf(tasksWinOn, remoteWinOn)
