@@ -51,7 +51,7 @@ export function renderCask({ version, sha256, repo }) {
 
     Comprueba la firma cuando quieras:
       codesign -d -r- /Applications/Lazunox.app
-    Debe contener: certificate leaf = H"c778a9630c6a627449b1a39e1e62b7a2a2565eb2"
+    Debe contener: certificate leaf = H"8446c25f2c710d66701c262f048390d8f6edba31"
 
     Desinstalar no borra tus datos (~/Library/Application Support/Lazunox).
     \`brew uninstall --zap\` tampoco: solo limpia cachés y preferencias.

@@ -8,7 +8,7 @@ import { after, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'install.sh')
-const PIN = 'c778a9630c6a627449b1a39e1e62b7a2a2565eb2'
+const PIN = '8446c25f2c710d66701c262f048390d8f6edba31'
 const GOOD_SIG = `designated => identifier "cl.bentec.lazunox" and certificate leaf = H"${PIN}"`
 const DMG = 'lazunox-0.3.0-arm64.dmg'
 const DMG_BYTES = 'contenido-falso-del-dmg'

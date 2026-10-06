@@ -35,7 +35,7 @@ set -eu
 # Mientras valga PENDIENTE no hay release publicada y el script se niega a ejecutarse.
 RELEASES_REPO_DEFAULT="PENDIENTE"
 # SHA-1 de la hoja del certificado «Lazunox Local Signing», en minúsculas.
-PINNED_CERT_SHA1="c778a9630c6a627449b1a39e1e62b7a2a2565eb2"
+PINNED_CERT_SHA1="8446c25f2c710d66701c262f048390d8f6edba31"
 APP_NAME="Lazunox.app"
 BUNDLE_ID="cl.bentec.lazunox"
 DATA_DIR="$HOME/Library/Application Support/Lazunox"
