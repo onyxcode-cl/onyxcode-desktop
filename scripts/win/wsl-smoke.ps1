@@ -3,7 +3,7 @@
 # NO usa `wsl --shutdown` (solo `wsl --terminate Lazunox-Smoke` y `wsl --unregister Lazunox-Smoke`).
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\wsl-smoke.ps1 [-Branch rama] [-Root C:\onyx]
 # Mide: kernel y version de WSL, Debian 13, usuario root, Python y ABI de Landlock (syscall 444), paquetes (rg, git, openpyxl, docx,
-# pypdf, lxml), que no haya sudo/curl, que /opt/lazunox no exista aun, SUID, y la politica de montajes (/mnt/c, /etc/wsl.conf).
+# pypdf, lxml), que no haya sudo/curl, que /opt/lazunox exista vacio, SUID, y la politica de montajes (/mnt/c, /etc/wsl.conf).
 param([string]$Branch = 'default', [string]$Root = 'C:\onyx')
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -49,7 +49,7 @@ try {
       'echo PYMODS=$(python3 -c ''import openpyxl,docx,pypdf,lxml;print("ok")'' 2>&1)',
       'echo SUDO=$(command -v sudo || echo no)',
       'echo CURL=$(command -v curl || echo no)',
-      'echo OPT_LAZUNOX=$([ -e /opt/lazunox ] && echo existe || echo no-existe)',
+      'echo OPT_LAZUNOX=$([ -d /opt/lazunox ] && [ -z "$(ls -A /opt/lazunox)" ] && echo vacio || echo otro)',
       'echo SUID=$(find / -xdev -perm /6000 -type f 2>/dev/null | wc -l)',
       'echo WSLCONF=$(tr "\n" "|" < /etc/wsl.conf 2>/dev/null)',
       'echo MNTC=$([ -d /mnt/c/Windows ] && echo montado || echo no-montado)',
@@ -69,7 +69,7 @@ try {
     Check 'modulos de oficina (openpyxl, docx, pypdf, lxml)' ($kv['PYMODS'] -eq 'ok') $kv['PYMODS']
     Check 'sin sudo' ($kv['SUDO'] -eq 'no')
     Check 'sin curl' ($kv['CURL'] -eq 'no')
-    Check '/opt/lazunox aun no existe' ($kv['OPT_LAZUNOX'] -eq 'no-existe')
+    Check '/opt/lazunox existe y esta vacio (punto de carga del paquete)' ($kv['OPT_LAZUNOX'] -eq 'vacio')
     Check 'sin binarios SUID/SGID' ($kv['SUID'] -eq '0') ("cuenta=" + $kv['SUID'])
     Log ("INFO wsl.conf: " + $kv['WSLCONF'] + " | /mnt/c: " + $kv['MNTC'])
   }
