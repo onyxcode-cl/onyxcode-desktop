@@ -5,8 +5,10 @@ set -u
 HOST="${ONYX_WIN_HOST:?define ONYX_WIN_HOST}"
 OUT="${OUT:-/private/tmp/ventana-win.png}"
 SSHO="-o BatchMode=yes -o ConnectTimeout=15"
-ssh $SSHO "$HOST" 'schtasks /Create /TN lazunox-window-shot /TR "powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\window-shot.ps1" /SC ONCE /ST 00:00 /IT /F && schtasks /Run /TN lazunox-window-shot' </dev/null
+# El shell remoto es PowerShell 5.1: sin `&&`, una llamada por orden.
+ssh $SSHO "$HOST" 'schtasks /Create /TN lazunox-window-shot /TR "powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\window-shot.ps1" /SC ONCE /ST 00:00 /IT /F' </dev/null || exit 1
+ssh $SSHO "$HOST" 'schtasks /Run /TN lazunox-window-shot' </dev/null || exit 1
 sleep 45
 scp $SSHO "$HOST:C:/onyx/shots/ventana.png" "$OUT"
-ssh $SSHO "$HOST" 'schtasks /Delete /TN lazunox-window-shot /F; type C:\onyx\shots\ventana.log' </dev/null
+ssh $SSHO "$HOST" 'schtasks /Delete /TN lazunox-window-shot /F; Get-Content C:\onyx\shots\ventana.log -ErrorAction SilentlyContinue' </dev/null
 echo "captura: $OUT"
