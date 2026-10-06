@@ -25,7 +25,7 @@ $tar = Get-ChildItem (Join-Path $Root 'rootfs-out') -Filter 'lazunox-rootfs-*-x6
 if (-not $tar) { Log 'No hay imagen en rootfs-out: construye antes con rootfs-build.ps1.'; exit 3 }
 $before = Distros
 Log ("distros antes: " + ($before -join ', '))
-if ($before -contains $name) { Log "Ya existe $name: no se toca (borrala a mano si es una prueba vieja)."; exit 4 }
+if ($before -contains $name) { Log "Ya existe ${name}: no se toca (borrala a mano si es una prueba vieja)."; exit 4 }
 $dir = Join-Path $Root 'wsl\smoke'
 if (-not $dir.StartsWith("$Root\wsl\", [StringComparison]::OrdinalIgnoreCase)) { exit 2 }
 New-Item -ItemType Directory -Force $dir | Out-Null
