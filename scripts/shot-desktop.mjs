@@ -69,9 +69,8 @@ const mk = (base, name) => {
 }
 const binDir = mk(TMP, 'bin-') // el sandbox de Tareas no puede leer userData: el falso va fuera
 for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(binDir, f))
-// Windows no ejecuta el script sh: el falso se lanza con un .cmd que llama a node.
-const FAKE_BIN = join(binDir, WIN ? 'opencode.cmd' : 'opencode')
-if (WIN) writeFileSync(FAKE_BIN, '@echo off\r\nnode "%~dp0server.mjs" %*\r\n')
+// Windows no ejecuta el script sh ni un .cmd directo: la app lanza el falso `.mjs` con node (src/main/opencode/test-launcher.ts).
+const FAKE_BIN = join(binDir, WIN ? 'server.mjs' : 'opencode')
 const home = homedir()
 // Tareas rechaza carpetas de sistema (/private, /tmp): su carpeta tiene que colgar del home.
 const taskFolder = join(mk(home, 'tareas-'), 'Informes')
