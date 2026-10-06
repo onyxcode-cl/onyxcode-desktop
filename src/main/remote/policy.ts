@@ -358,6 +358,10 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:trusted:set': 'D',
   'tasks:trusted:remove': 'D',
   'tasks:policy': 'R',
+  // Estado del entorno aislado: lectura. Instalarlo o cancelarlo (descarga, importa una distro) NO es cosa del celular.
+  'tasks:sandbox:status': 'R',
+  'tasks:sandbox:setup': 'X',
+  'tasks:sandbox:cancel': 'X',
   'tasks:activity': 'R',
   'tasks:viewing': scopedOpt('M', 'folder'),
   'tasks:tasks:list': 'R',
@@ -571,6 +575,7 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'computer:planState': 'allow',
   'tasks:networkBlocked': 'allow',
   'tasks:activity': 'allow',
+  'tasks:sandbox:progress': 'deny',
   'computer:assist': 'deny',
   'computer:recordDone': 'deny',
   'tasks:auto:approved': 'allow',

@@ -24,6 +24,7 @@ import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
 import { registerTasksProjectHandlers } from './tasks-project-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
 import { registerTasksAutoHandlers } from './tasks-auto-handlers'
+import { registerTasksSandboxHandlers } from './tasks-sandbox-handlers'
 import { createRestorePoints, registerTasksRestoreHandlers } from './tasks-restore-handlers'
 import { windowOfSender } from './sender-window'
 
@@ -214,7 +215,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksProjectHandlers(ctx),
     registerTasksFilesHandlers(ctx),
     registerTasksAutoHandlers(ctx),
-    registerTasksRestoreHandlers(ctx)
+    registerTasksRestoreHandlers(ctx),
+    registerTasksSandboxHandlers(ctx, { tasksWin: deps.tasksWin, winBackend: deps.winBackend })
   ]
 
   scheduler.start()

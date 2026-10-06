@@ -20,6 +20,7 @@ const NEUTRAL_TASKS: Record<string, () => unknown> = {
   'tasks:listFolders': () => [],
   'tasks:trusted:list': () => [],
   'tasks:policy': () => null,
+  'tasks:sandbox:status': () => ({ backend: 'none', state: 'unsupported', setup: null }),
   'tasks:tasks:list': () => [],
   'tasks:mcp:list': () => [],
   'tasks:rules:list': () => [],

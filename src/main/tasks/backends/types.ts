@@ -6,7 +6,7 @@
  * token del servidor, la espera de salud y `stop` siguen en `sandbox.ts` y son comunes a todos.
  */
 import type { ChildProcess } from 'node:child_process'
-import type { FolderAccessMode } from '@shared/ipc-tasks'
+import type { FolderAccessMode, TasksSandboxState } from '@shared/ipc-tasks'
 import type { PathMount } from '@shared/wsl-paths'
 
 export interface SandboxIsolation {
@@ -64,8 +64,7 @@ export interface LaunchedSandbox {
   dispose(): Promise<void>
 }
 
-export type SandboxState =
-  'ready' | 'needsSetup' | 'needsWsl' | 'needsWsl2' | 'needsVirtualization' | 'policyDisabled' | 'unsupported' | 'broken'
+export type SandboxState = TasksSandboxState
 
 /** Para qué se llama a `setup`: instalar desde cero, reparar la carga o actualizar la imagen. Es una pista: manda el estado real. */
 export type SandboxSetupKind = 'install' | 'repair' | 'update'
