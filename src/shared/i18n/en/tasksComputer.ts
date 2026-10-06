@@ -7,6 +7,8 @@ export const tasksComputer = {
   'tasksComputer.access.waitTask': 'Wait for the task to finish before changing the access mode',
   'tasksComputer.access.sandboxTitle':
     '{name}: reads and writes only inside the chosen folder and any additional folders (macOS sandbox). Recommended.',
+  'tasksComputer.access.sandboxTitle.win':
+    '{name}: reads and writes only inside the chosen folder and any additional folders (isolated Linux environment). Recommended.',
   'tasksComputer.access.fullTitle': '{name}: no sandbox; can use the mouse, keyboard and screen, and modify files anywhere.',
   'tasksComputer.delete.toggleA':
     'If you turn this on, the agent will be able to delete, move and rename files inside this folder (commands such as',
@@ -20,6 +22,8 @@ export const tasksComputer = {
   'tasksComputer.confirm.title': 'Allow working in “{name}”?',
   'tasksComputer.confirm.b1': 'The agent will be able to read, create and modify files and run commands inside this folder.',
   'tasksComputer.confirm.b2': 'It runs in a macOS sandbox: it can’t write outside the folder or read your keys (~/.ssh, ~/.aws…).',
+  'tasksComputer.confirm.b2.win':
+    'It runs in an isolated Linux environment on your PC: it can’t write outside the folder or read your keys (.ssh, .aws…).',
   'tasksComputer.confirm.b3': 'It will ask for confirmation before deleting files.',
   'tasksComputer.confirm.cancel': 'Cancel',
   'tasksComputer.confirm.allow': 'Allow',
@@ -30,6 +34,7 @@ export const tasksComputer = {
   'tasksComputer.mode.sandboxOn': 'Sandbox on',
   'tasksComputer.mode.fullTitle': 'No sandbox: the agent can control the Mac and modify files anywhere',
   'tasksComputer.mode.sandboxTitle': 'Writes limited to this folder (sandbox-exec)',
+  'tasksComputer.mode.sandboxTitle.win': 'Writes limited to this folder (isolated Linux environment)',
   'tasksComputer.mode.sandboxDesc': 'Reads and writes only inside this folder. Recommended.',
   'tasksComputer.mode.fullDesc': 'No sandbox. Can move the mouse, type, take screenshots and modify files anywhere.',
   'tasksComputer.full.title': 'Allow the agent to control your Mac?',
@@ -275,6 +280,8 @@ export const tasksComputer = {
   'tasksComputer.auto.taskNone': 'Open or start a task first.',
   'tasksComputer.onb.tip1':
     'Start in {sandbox}: it only touches the chosen folder and any additional folders you add. Use {full} only when you really need it.',
+  'tasksComputer.onb.tip1.win':
+    'Tasks only touch the chosen folder and any additional folders you add: they run in an isolated environment ({sandbox}).',
   'tasksComputer.onb.tip2':
     'Ask for a summary and a plan first: “First review… and show me a summary; then propose…; once I approve, do it.”',
   'tasksComputer.onb.tip3': 'Moving, renaming and deleting require the “{grant}” permission. Grant it only on folders you have backed up.',

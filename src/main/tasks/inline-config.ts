@@ -21,6 +21,11 @@ export interface InlineConfigInput {
   rulesPermission: Record<string, unknown>
   /** Bloque de skills (`skillsInlineConfig()`). */
   skills: Record<string, unknown>
+  /**
+   * Ruta del anfitrión → ruta DENTRO del sandbox (Windows: `C:\x` → `/win/c/x`). Ausente = identidad (macOS: el resultado es
+   * byte a byte el de siempre). OpenCode corre dentro de la distro y solo entiende sus rutas.
+   */
+  toSandbox?: (hostPath: string) => string
 }
 
 export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown> {
@@ -28,8 +33,9 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
   if (!i.fullAccess) {
     const externalDirectory: Record<string, 'ask' | 'allow'> = { '*': 'ask' }
     for (const e of i.extras) {
-      externalDirectory[e.path] = 'allow'
-      externalDirectory[`${e.path}/*`] = 'allow'
+      const p = i.toSandbox ? i.toSandbox(e.path) : e.path
+      externalDirectory[p] = 'allow'
+      externalDirectory[`${p}/*`] = 'allow'
     }
     base = {
       autoupdate: false,

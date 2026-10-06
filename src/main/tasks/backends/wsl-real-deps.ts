@@ -5,12 +5,13 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createReadStream, createWriteStream, statfsSync } from 'node:fs'
+import { connect as netConnect, createServer } from 'node:net'
 import { lstat, mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join, parse } from 'node:path'
-import type { Readable } from 'node:stream'
+import type { Duplex, Readable } from 'node:stream'
 import { sha256File, type FetchLike } from '../../remote/tunnel/binary'
 import { pinnedDownload } from './pinned-download'
-import type { WslDeps, WslSetupExtras } from './wsl'
+import type { WslDeps, WslProcess, WslSetupExtras } from './wsl'
 import type { LzpkInputFile } from './wsl-payload'
 import { assertAllowedWslArgs, type WslSpawnSpec } from './wsl-spec'
 import type { SetupPin, WslSetupFs } from './wsl-setup'
@@ -72,6 +73,35 @@ function start(spec: WslSpawnSpec): ChildProcess {
     shell: false,
     stdio: ['pipe', 'pipe', 'pipe'],
     detached: false
+  })
+}
+
+/** `wsl.exe` de larga vida (el lanzador del sandbox): stdin/stdout son el puente. Mismo filtro de argumentos que el resto. */
+export function realSpawn(spec: WslSpawnSpec): WslProcess {
+  return start(spec) as unknown as WslProcess
+}
+
+/** Conexión al servidor/proxy local del anfitrión: SOLO 127.0.0.1. */
+export function realConnect(port: number): Promise<Duplex> {
+  return new Promise((resolve, reject) => {
+    const s = netConnect({ host: '127.0.0.1', port })
+    s.once('error', reject)
+    s.once('connect', () => {
+      s.off('error', reject)
+      resolve(s)
+    })
+  })
+}
+
+/** Escucha en 127.0.0.1 (nunca en `0.0.0.0`): los flujos que abre el agente por el puente. */
+export function realListen(port: number, onConnection: (socket: Duplex) => void): Promise<{ close(): Promise<void> }> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer((sock) => onConnection(sock))
+    srv.once('error', reject)
+    srv.listen(port, '127.0.0.1', () => {
+      srv.off('error', reject)
+      resolve({ close: () => new Promise<void>((r) => srv.close(() => r())) })
+    })
   })
 }
 
@@ -163,4 +193,23 @@ export function createRealSetupExtras(o: RealSetupOptions): NonNullable<WslDeps[
     log: o.log ?? (() => undefined)
   }
   return extras
+}
+
+export interface RealWslDepsOptions extends RealSetupOptions {
+  hostEnv: Record<string, string | undefined>
+  policyDisabled?: () => boolean
+}
+
+/** `WslDeps` completas con todo real (producción en Windows; solo las construye `win-provider.ts`). */
+export function createRealWslDeps(o: RealWslDepsOptions): WslDeps {
+  return {
+    platform: 'win32',
+    hostEnv: o.hostEnv,
+    spawn: realSpawn,
+    run: realRun,
+    connect: realConnect,
+    listen: realListen,
+    policyDisabled: o.policyDisabled,
+    setup: createRealSetupExtras(o)
+  }
 }

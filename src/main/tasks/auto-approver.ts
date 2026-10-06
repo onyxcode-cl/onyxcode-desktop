@@ -20,6 +20,8 @@ import type { RawPerm } from './monitor'
 /** Servidor vivo de Tareas tal como lo entrega `TasksManager.liveServers()` (mismos campos). */
 export interface AutoServer {
   folder: string
+  /** Carpeta tal como la ve OpenCode (`?directory=`); ausente = `folder` (macOS). */
+  directory?: string
   fullAccess: boolean
   baseUrl: string
   authorization: string
@@ -227,7 +229,7 @@ export class AutoApprover {
     const f = this.deps.fetch ?? fetch
     try {
       const sep = path.includes('?') ? '&' : '?'
-      const url = `${server.baseUrl.replace(/\/+$/, '')}${path}${sep}directory=${encodeURIComponent(server.folder)}`
+      const url = `${server.baseUrl.replace(/\/+$/, '')}${path}${sep}directory=${encodeURIComponent(server.directory ?? server.folder)}`
       const res = await f(url, { headers: { Authorization: server.authorization }, signal: AbortSignal.timeout(timeoutMs) })
       if (!res.ok) return null
       const text = await res.text()
@@ -242,7 +244,7 @@ export class AutoApprover {
   private async replyOnce(server: AutoServer, requestId: string): Promise<boolean> {
     const f = this.deps.fetch ?? fetch
     try {
-      const url = `${server.baseUrl.replace(/\/+$/, '')}/permission/${encodeURIComponent(requestId)}/reply?directory=${encodeURIComponent(server.folder)}`
+      const url = `${server.baseUrl.replace(/\/+$/, '')}/permission/${encodeURIComponent(requestId)}/reply?directory=${encodeURIComponent(server.directory ?? server.folder)}`
       const res = await f(url, {
         method: 'POST',
         headers: { Authorization: server.authorization, 'Content-Type': 'application/json' },

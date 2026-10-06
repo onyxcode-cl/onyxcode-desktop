@@ -47,9 +47,42 @@ export interface TasksServerInfo {
   version?: string
 }
 
+/** Estado del entorno aislado de Tareas. En Windows lo es de la distro propia (WSL2): se instala una vez y luego es `ready`. */
+export type TasksSandboxState =
+  'ready' | 'needsSetup' | 'needsWsl' | 'needsWsl2' | 'needsVirtualization' | 'policyDisabled' | 'unsupported' | 'broken'
+
+/** Instalación (o reparación) del entorno en curso o fallida. */
+export interface TasksSandboxSetup {
+  running: boolean
+  /** 0–100. */
+  pct: number
+  /** Fase técnica (`download`, `import`, `install`…): la interfaz la traduce, nunca la muestra cruda. */
+  phase: string
+  /** Código del fallo (`offline`, `no-space`, `bad-hash`…) si la última instalación falló; ausente si no. */
+  error?: string
+}
+
+/**
+ * Qué aislamiento hay y en qué estado está. `backend: 'wsl'` con `state: 'unsupported'` y `detail` (`flag`, `build`,
+ * `provider`, `report`, `backend`) significa «esta versión aún no ofrece Tareas en Windows» (puertas de seguridad cerradas).
+ */
+export interface TasksSandboxStatus {
+  backend: 'seatbelt' | 'wsl' | 'none'
+  state: TasksSandboxState
+  detail?: string
+  setup: TasksSandboxSetup | null
+}
+
 /** Datos para que el renderer cree un cliente SDK contra el servidor de la carpeta. */
 export interface TasksConnection {
   folder: string
+  /**
+   * Carpeta tal como la ve OpenCode: la que va en `?directory=` y en `session.directory`. En macOS es `folder`; en Windows es
+   * la ruta dentro de la distro (`/win/c/…`). La interfaz conserva `folder` como identidad. Ausente = `folder`.
+   */
+  directory?: string
+  /** Mapa de rutas entre `folder` y `directory` (para MOSTRAR rutas; traducir no autoriza). Ausente = identidad. */
+  pathMap?: import('./tasks-path-map').PathMapWire
   baseUrl: string
   /** Valor completo del header Authorization (Basic …). */
   authorization: string
@@ -924,6 +957,12 @@ export interface TasksInvokeContract {
   'tasks:trusted:remove': { req: { path: string }; res: TrustedFolder[] }
   /** Política gestionada por la organización (null = sin política). */
   'tasks:policy': { req: void; res: ManagedPolicy | null }
+  /** Estado del entorno aislado (Windows: distro por instalar, instalando, lista, rota…). Solo lectura. */
+  'tasks:sandbox:status': { req: void; res: TasksSandboxStatus }
+  /** Instala o repara el entorno aislado (solo Windows, solo si hace falta). El avance llega por `tasks:sandbox:progress`. */
+  'tasks:sandbox:setup': { req: void; res: TasksSandboxStatus }
+  /** Cancela la instalación en curso (efectiva hasta justo antes de importar la distro). */
+  'tasks:sandbox:cancel': { req: void; res: TasksSandboxStatus }
 
   // ── Lote B: actividad, tareas, preferencias y almacenamiento ──
   /** Instantánea actual de tareas activas y servidores (también llega por el evento `tasks:activity`). */
@@ -1036,6 +1075,8 @@ export interface TasksEventContract {
   'tasks:networkBlocked': NetworkBlockedEvent
   /** Lote B: instantánea de actividad (tareas activas y servidores) del monitor de main. */
   'tasks:activity': TasksActivitySnapshot
+  /** Avance de la instalación del entorno aislado y su estado final. */
+  'tasks:sandbox:progress': TasksSandboxStatus
 
   // ── Lote C ──
   /** Solo para la ventana `assist` (Teach mode y píldora de grabación). */
@@ -1110,6 +1151,9 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:trusted:set',
   'tasks:trusted:remove',
   'tasks:policy',
+  'tasks:sandbox:status',
+  'tasks:sandbox:setup',
+  'tasks:sandbox:cancel',
   'tasks:activity',
   'tasks:viewing',
   'tasks:tasks:list',
@@ -1163,6 +1207,7 @@ export const TASKS_EVENT_CHANNELS = [
   'computer:planState',
   'tasks:networkBlocked',
   'tasks:activity',
+  'tasks:sandbox:progress',
   'computer:assist',
   'computer:recordDone',
   'tasks:auto:approved'

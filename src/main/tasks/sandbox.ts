@@ -14,7 +14,8 @@
  * queda ilegible dentro del sandbox, no se copia a disco y nunca se registra en logs; el plugin
  * `lazunox-env` lo oculta del entorno de bash.
  *
- * En plataformas sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`).
+ * En macOS sin `sandbox-exec` se lanza sin sandbox (`sandboxed: false`). En WINDOWS NUNCA: sin la bandera `tasksWin`, sin
+ * distro lista, sin pin, sin informe o con `noSandbox`, `startTasksServer` LANZA antes de arrancar ningún proceso (A18).
  */
 import { t } from '@shared/i18n'
 import { randomBytes } from 'node:crypto'
@@ -26,7 +27,8 @@ import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { selectBackend } from './backends'
+import { IDENTITY_MAP, type PathMapWire } from '@shared/tasks-path-map'
+import { selectBackend, TasksSandboxNotReady, type WinBackendProvider } from './backends'
 import { noneBackend } from './backends/none'
 import { SANDBOX_EXEC, seatbeltAvailable, writeSandboxProfile } from './backends/seatbelt'
 import type { LaunchedSandbox, SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './backends/types'
@@ -80,6 +82,11 @@ export interface TasksServerHandle {
   egressPort?: number
   /** true si esta instancia arrancó con "Permitir borrar, mover y renombrar" concedido. */
   deleteAllowed: boolean
+  /**
+   * Cómo ve OpenCode las rutas: `directory` es la carpeta DENTRO del sandbox (la que va en `?directory=`) y `map` traduce
+   * entre ambos mundos. En macOS es la identidad. Traducir no autoriza: `assertInsideApproved` sigue siendo la puerta.
+   */
+  paths: { map: PathMapWire; directory: string }
 }
 
 export interface StartTasksServerOptions {
@@ -104,6 +111,12 @@ export interface StartTasksServerOptions {
    * navegador integrado, para que Seatbelt deje conectar desde dentro del sandbox.
    */
   extraOutboundPorts?: number[]
+  /** Plataforma efectiva (solo pruebas; por defecto `process.platform`). */
+  platform?: string
+  /** Bandera efectiva `tasksWin` (Windows). Ausente = apagada. */
+  tasksWin?: boolean
+  /** Constructor del backend de Windows (lo aporta `main`). Ausente = en Windows no se lanza nada. */
+  winBackend?: WinBackendProvider
 }
 
 /**
@@ -111,11 +124,22 @@ export interface StartTasksServerOptions {
  * cwd = folder. Resuelve cuando `/global/health` responde.
  */
 export async function startTasksServer(folder: string, options: StartTasksServerOptions = {}): Promise<TasksServerHandle> {
+  const platform = options.platform ?? process.platform
+  // Windows: jamás sin aislamiento (A18). Se decide ANTES de resolver el binario o de abrir ningún puerto.
+  if (platform === 'win32' && options.noSandbox) throw new Error(t('merr.task.winNoUnsandboxed'))
   const bin = (await resolveOpencodeAsync())?.path
   if (!bin) throw new Error(t('merr.engine.noBinaryShort'))
   if (!existsSync(folder)) throw new Error(t('merr.task.noFolder', { folder }))
 
-  const backend: SandboxBackend = options.noSandbox ? noneBackend : selectBackend(process.platform)
+  const backend: SandboxBackend = options.noSandbox
+    ? noneBackend
+    : await selectBackend(platform, { tasksWin: options.tasksWin, win: options.winBackend })
+  if (platform === 'win32') {
+    // Invariante: en Windows solo existe el backend de la distro, y solo con la distro lista (instalada, sana y al día).
+    if (backend.id !== 'wsl') throw new Error(t('merr.task.winNoUnsandboxed'))
+    const st = await backend.status()
+    if (st.state !== 'ready') throw new TasksSandboxNotReady(st)
+  }
   const sandboxed = backend.id !== 'none'
   const port = await getFreePort()
   const username = 'tasks'
@@ -263,6 +287,9 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     exited,
     stop,
     egressPort: egress?.port,
-    deleteAllowed: !sandboxed || options.allowDelete === true
+    deleteAllowed: !sandboxed || options.allowDelete === true,
+    paths: launched.mounts
+      ? { map: { kind: 'wsl', mounts: launched.mounts }, directory: launched.toSandboxPath(folder) }
+      : { map: IDENTITY_MAP, directory: folder }
   }
 }

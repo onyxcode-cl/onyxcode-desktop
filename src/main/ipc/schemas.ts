@@ -298,6 +298,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     onboarded: bool,
     routinesTermsAcknowledged: bool,
     checkUpdates: bool,
+    tasksWinBeta: bool,
     language: literal('system', 'es', 'en')
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
@@ -461,6 +462,9 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:trusted:set': obj({ path: absPath, mode: folderMode }),
   'tasks:trusted:remove': pathReq,
   'tasks:policy': none,
+  'tasks:sandbox:status': none,
+  'tasks:sandbox:setup': none,
+  'tasks:sandbox:cancel': none,
   // Lote B: actividad, tareas, preferencias y almacenamiento
   'tasks:activity': none,
   'tasks:viewing': obj({ folder: nullable(absPath), fullAccess: optional(bool) }),

@@ -136,5 +136,19 @@ export const tasksSettings = {
   'tasksSettings.storage.restoreBtn': 'Delete restore points',
   'tasksSettings.storage.restoreTitle': 'Delete restore points?',
   'tasksSettings.storage.restoreMessage':
-    'The copies of files saved before each message will be deleted. Current tasks will no longer be able to undo their file changes. This doesn’t affect your folders or task history.'
+    'The copies of files saved before each message will be deleted. Current tasks will no longer be able to undo their file changes. This doesn’t affect your folders or task history.',
+  'tasksSettings.beta.title': 'Tasks (beta) on Windows',
+  'tasksSettings.beta.description':
+    'Turns on Tasks mode on this PC. It uses an isolated Linux environment (WSL 2) that is installed once and takes disk space. It’s a feature in testing.',
+  'tasksSettings.beta.toggle': 'Turn on Tasks (beta)',
+  'tasksSettings.beta.restart': 'Restart Lazunox to apply the change.',
+  'tasksSettings.beta.confirm.title': 'Turn on Tasks (beta)?',
+  'tasksSettings.beta.confirm.b1':
+    'Tasks runs the agent inside an isolated Linux environment on Windows (WSL 2). It needs WSL 2 and virtualization, downloads and installs an image (about 2 GB free) and can slow startup.',
+  'tasksSettings.beta.confirm.b2':
+    'The agent only sees the folders you approve. It can’t run Windows programs and only reaches the internet at the sites you allow.',
+  'tasksSettings.beta.confirm.b3':
+    'This is a test version: things can fail. You can turn it off here any time. Lazunox has to be restarted.',
+  'tasksSettings.beta.confirm.cancel': 'Cancel',
+  'tasksSettings.beta.confirm.ok': 'Turn on'
 } as const satisfies Messages<typeof es>

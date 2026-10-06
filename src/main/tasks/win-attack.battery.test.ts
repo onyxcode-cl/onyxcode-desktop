@@ -13,6 +13,7 @@ import attack from './__fixtures__/attack-paths.json'
 import { ctx, fakeDisk, P } from './__fixtures__/folder-policy-win.fixture'
 import { forbiddenFolderReason } from './folder-policy'
 import { forbiddenWinFolderReason } from './folder-policy-win'
+import { selectBackend, WinBackendUnavailable } from './backends'
 import { isApprovedPath, resolveUiPath, type ApprovedData } from './ui-path'
 import { resolveTasksWin } from './tasks-win-flag'
 import { REQUIRED_ATTACK_IDS } from './tasks-win-report'
@@ -80,8 +81,9 @@ export const ATTACKS: AttackRow[] = [
   {
     id: 'A18',
     title: 'sin sandbox imposibilitado',
-    coverage: 'partial',
-    pending: 'selectBackend/startTasksServer/fullAccess en win32 (W5, aún sin cerrar) y la prueba con la distro borrada'
+    coverage: 'mac',
+    // Cubierto en macOS: selectBackend (aquí), startTasksServer (`sandbox.win.test.ts`) y fullAccess/manager (`manager.winpaths.test.ts`).
+    pending: 'solo la comprobación con la distro de prueba borrada en el PC (Get-Process opencode sin resultados)'
   },
   {
     id: 'A19',
@@ -375,6 +377,12 @@ attackDescribe('A18', 'sin sandbox imposibilitado (lo comprobable en macOS)', ()
   })
   it('la política de carpetas de win32 SIN contexto rechaza todo: no hay aprobación sin datos de Windows', () => {
     expect(forbiddenFolderReason('C:\\lzx\\a', { home: '/h', userData: '/u', mounts: [] }, 'win32')).not.toBeNull()
+  })
+  it('selectBackend(win32) lanza sin bandera, sin proveedor o con la constante apagada: nunca devuelve `none`', async () => {
+    const ok = { build: true, report: async () => true, create: () => ({ id: 'wsl' }) as never }
+    for (const opts of [{}, { tasksWin: false, win: ok }, { tasksWin: true }, { tasksWin: true, win: { ...ok, build: false } }]) {
+      await expect(selectBackend('win32', opts), JSON.stringify(Object.keys(opts))).rejects.toBeInstanceOf(WinBackendUnavailable)
+    }
   })
 })
 

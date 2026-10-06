@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process'
 import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
+import { isInside, samePath } from '../util/paths'
 
 const TEXT_EXT = new Set([
   '.md',
@@ -69,7 +70,7 @@ export function importFilesInto(folder: string, sources: string[]): TasksDeliver
     if (!st.isFile()) continue
     const dest = join(folder, freeName(folder, basename(src)))
     // Si el archivo ya está dentro de la carpeta, no duplicarlo.
-    if (src === join(folder, basename(src)) || src.startsWith(folder + '/')) {
+    if (samePath(src, join(folder, basename(src))) || isInside(src, folder)) {
       out.push({ path: src, relPath: relative(folder, src), size: st.size, mtime: st.mtimeMs })
       continue
     }
@@ -115,6 +116,11 @@ export function describeDeliverable(path: string, root: string): TasksDeliverabl
 /** Convierte un documento (docx, doc, rtf, odt) a texto plano con `/usr/bin/textutil` (sin shell, 10 s). */
 function textutilToText(path: string): Promise<string> {
   return new Promise((resolve, reject) => {
+    // `textutil` solo existe en macOS: en Windows la conversión no está disponible (sin vista previa de estos documentos).
+    if (process.platform !== 'darwin') {
+      reject(new Error(t('merr.files.readFailed')))
+      return
+    }
     execFile(
       '/usr/bin/textutil',
       ['-convert', 'txt', '-stdout', path],

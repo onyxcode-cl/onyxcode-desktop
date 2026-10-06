@@ -28,6 +28,7 @@ import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
 import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
 import { cw } from './bridge'
 import { baseName, extOf, formatSize, relTime } from './util'
@@ -387,14 +388,16 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                     <button type="button" className={ACTION_BTN} onClick={() => run(() => openPath(f.path))}>
                       <ExternalLink size={12} /> {t('tasks.deliv.open')}
                     </button>
-                    <button
-                      type="button"
-                      className={ACTION_BTN}
-                      title={t('tasks.deliv.quickLookTitle')}
-                      onClick={() => run(() => cw('tasks:quickLook', { path: f.path }))}
-                    >
-                      <ScanEye size={12} /> {t('tasks.deliv.quickLook')}
-                    </button>
+                    {platformCaps().quickLook && (
+                      <button
+                        type="button"
+                        className={ACTION_BTN}
+                        title={t('tasks.deliv.quickLookTitle')}
+                        onClick={() => run(() => cw('tasks:quickLook', { path: f.path }))}
+                      >
+                        <ScanEye size={12} /> {t('tasks.deliv.quickLook')}
+                      </button>
+                    )}
                     <button type="button" className={ACTION_BTN} onClick={() => run(() => reveal(f.path))}>
                       <FolderOpen size={12} /> {t('tasks.deliv.finder')}
                     </button>

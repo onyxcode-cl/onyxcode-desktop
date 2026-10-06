@@ -29,7 +29,7 @@ import { Button } from '../../components/Button'
 import { ModelPicker } from '../../components/ModelPicker'
 import { call } from '../../lib/api'
 import { useT } from '../../lib/i18n'
-import { currentPlatform } from '../../lib/platform'
+import { currentFlags, currentPlatform } from '../../lib/platform'
 import { modeAvailable } from '@shared/platform-caps'
 import { errorMessage } from '../../lib/opencode'
 import { useProviders } from '../../stores/providers'
@@ -557,7 +557,7 @@ function StepModes(): React.JSX.Element {
     <div className="space-y-3">
       <Lead>{t('wizard.modes.lead')}</Lead>
       <ul className="space-y-2">
-        {MODE_INFO.filter((m) => modeAvailable(m.id, currentPlatform())).map((m) => (
+        {MODE_INFO.filter((m) => modeAvailable(m.id, currentPlatform(), currentFlags())).map((m) => (
           <li key={m.id} className="flex items-start gap-3 rounded-card bg-elevated px-3.5 py-3 shadow-raised">
             <span className="mt-0.5 text-accent">{m.icon}</span>
             <div>

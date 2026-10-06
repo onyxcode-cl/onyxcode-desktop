@@ -4,6 +4,8 @@ export const tasksComputer = {
   'tasksComputer.access.waitTask': 'Espera a que termine la tarea para cambiar el modo de acceso',
   'tasksComputer.access.sandboxTitle':
     '{name}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (sandbox de macOS). Recomendado.',
+  'tasksComputer.access.sandboxTitle.win':
+    '{name}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (entorno Linux aislado). Recomendado.',
   'tasksComputer.access.fullTitle': '{name}: sin sandbox; puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar.',
   'tasksComputer.delete.toggleA': 'Si lo activas, el agente podrá borrar, mover y renombrar archivos dentro de esta carpeta (comandos como',
   'tasksComputer.delete.or': 'o',
@@ -17,6 +19,8 @@ export const tasksComputer = {
   'tasksComputer.confirm.b1': 'El agente podrá leer, crear y modificar archivos y ejecutar comandos dentro de esta carpeta.',
   'tasksComputer.confirm.b2':
     'Se ejecuta en un sandbox de macOS: no puede escribir fuera de la carpeta ni leer tus claves (~/.ssh, ~/.aws…).',
+  'tasksComputer.confirm.b2.win':
+    'Se ejecuta en un entorno Linux aislado de tu PC: no puede escribir fuera de la carpeta ni leer tus claves (.ssh, .aws…).',
   'tasksComputer.confirm.b3': 'Te pedirá confirmación antes de borrar archivos.',
   'tasksComputer.confirm.cancel': 'Cancelar',
   'tasksComputer.confirm.allow': 'Permitir',
@@ -27,6 +31,7 @@ export const tasksComputer = {
   'tasksComputer.mode.sandboxOn': 'Sandbox activo',
   'tasksComputer.mode.fullTitle': 'Sin sandbox: el agente puede controlar el Mac y modificar archivos en cualquier lugar',
   'tasksComputer.mode.sandboxTitle': 'Escrituras limitadas a esta carpeta (sandbox-exec)',
+  'tasksComputer.mode.sandboxTitle.win': 'Escrituras limitadas a esta carpeta (entorno Linux aislado)',
   'tasksComputer.mode.sandboxDesc': 'Lee y escribe solo dentro de esta carpeta. Recomendado.',
   'tasksComputer.mode.fullDesc': 'Sin sandbox. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar.',
   'tasksComputer.full.title': '¿Permitir que el agente controle tu Mac?',
@@ -274,6 +279,8 @@ export const tasksComputer = {
   'tasksComputer.auto.taskNone': 'Abre o empieza una tarea primero.',
   'tasksComputer.onb.tip1':
     'Empieza en {sandbox}: solo toca la carpeta elegida y las carpetas adicionales que añadas. Usa {full} solo cuando de verdad lo necesites.',
+  'tasksComputer.onb.tip1.win':
+    'Las tareas solo tocan la carpeta elegida y las carpetas adicionales que añadas: se ejecutan en un entorno aislado ({sandbox}).',
   'tasksComputer.onb.tip2':
     'Pide primero un resumen y un plan: «Primero revisa… y muéstrame un resumen; luego propón…; cuando lo apruebe, hazlo».',
   'tasksComputer.onb.tip3': 'Mover, renombrar y borrar piden el permiso «{grant}». Concédelo solo en carpetas que tengas respaldadas.',

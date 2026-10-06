@@ -7,10 +7,15 @@ import { DICTIONARIES, type Msg } from '../shared/i18n'
  */
 const MAC_GLYPHS = /[⌘⌥⌃]/
 
-/** Prefijos de claves que nunca se muestran en Windows (funciones solo del Mac: Tareas y Control del PC). */
-const MAC_ONLY_PREFIXES: ReadonlyArray<{ prefix: string; why: string }> = [
-  { prefix: 'tasks.', why: 'Tareas no existe en Windows: platform-caps la desactiva y la pantalla no se monta' },
-  { prefix: 'tasksComputer.', why: 'Control del PC (Computer Use) es solo macOS: sus textos no se muestran en Windows' }
+/**
+ * Claves con glifos del Mac que nunca se muestran en Windows. Tareas SÍ existe en Windows (con la bandera `tasksWin`), así que
+ * ya no se exime por prefijo: solo estas claves de Control total / Control del PC (que Windows no ofrece sin `computer`).
+ */
+const MAC_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
+  { key: 'tasksComputer.banner.shortcutOff', why: 'Atajo global de parada de Control total (solo con Control del PC)' },
+  { key: 'tasksComputer.banner.shortcutNA', why: 'Atajo global de parada de Control total (solo con Control del PC)' },
+  { key: 'tasksComputer.onb.tip5', why: 'Consejo de Control total: la guía de primer uso lo omite sin `caps.computer`' },
+  { key: 'tasks.home.lead.full', why: 'Texto del modo Control total (el selector no existe sin `caps.computer`)' }
 ]
 
 function texts(m: Msg): string[] {
@@ -23,7 +28,7 @@ describe('textos con ⌘⌥⌃ y su variante .win', () => {
       const dict = DICTIONARIES[lang]
       const missing = Object.entries(dict)
         .filter(([k, v]) => !k.endsWith('.win') && texts(v).some((s) => MAC_GLYPHS.test(s)))
-        .filter(([k]) => !MAC_ONLY_PREFIXES.some((p) => k.startsWith(p.prefix)))
+        .filter(([k]) => !MAC_ONLY_KEYS.some((p) => p.key === k))
         .filter(([k]) => !(`${k}.win` in dict))
         .map(([k]) => k)
       expect(missing).toEqual([])
@@ -38,11 +43,6 @@ describe('textos con ⌘⌥⌃ y su variante .win', () => {
   }
 
   it('las excepciones solo-Mac siguen existiendo (si no, se quitan de la lista)', () => {
-    for (const { prefix } of MAC_ONLY_PREFIXES) {
-      expect(
-        Object.keys(DICTIONARIES.es).some((k) => k.startsWith(prefix)),
-        prefix
-      ).toBe(true)
-    }
+    for (const { key } of MAC_ONLY_KEYS) expect(key in DICTIONARIES.es, key).toBe(true)
   })
 })

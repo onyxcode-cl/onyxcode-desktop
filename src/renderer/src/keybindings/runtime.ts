@@ -10,7 +10,7 @@ import { useCode } from '../features/code/impl/store'
 import type { RightPanel } from '../features/code/impl/types'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from '../app/modes'
-import { currentPlatform } from '../lib/platform'
+import { currentFlags, currentPlatform } from '../lib/platform'
 import { dynamicHandler, type ActionHandler } from './registry'
 
 const inCodeProject = (): boolean => {
@@ -20,7 +20,7 @@ const inCodeProject = (): boolean => {
 
 function goMode(id: ModeId): ActionHandler {
   return {
-    enabled: () => modeAvailable(id, currentPlatform()),
+    enabled: () => modeAvailable(id, currentPlatform(), currentFlags()),
     run: () => {
       useUi.getState().setMode(id)
     }
@@ -30,7 +30,8 @@ function goMode(id: ModeId): ActionHandler {
 function togglePanel(panel: RightPanel): ActionHandler {
   // Sin terminal ni vista nativa del navegador (PWA del celular), sus atajos no hacen nada.
   const exists = (): boolean =>
-    (panel !== 'terminal' || capsFor(currentPlatform()).terminal) && (panel !== 'browser' || capsFor(currentPlatform()).nativeBrowser)
+    (panel !== 'terminal' || capsFor(currentPlatform(), currentFlags()).terminal) &&
+    (panel !== 'browser' || capsFor(currentPlatform(), currentFlags()).nativeBrowser)
   return { enabled: () => exists() && inCodeProject(), run: () => useCode.getState().togglePanel(panel) }
 }
 
@@ -76,7 +77,7 @@ const BUILTIN: Record<string, ActionHandler> = {
     }
   },
   'remote.stopAll': {
-    enabled: () => capsFor(currentPlatform()).remote,
+    enabled: () => capsFor(currentPlatform(), currentFlags()).remote,
     run: () => {
       void window.api.remote.invoke('remote:stop').catch(() => undefined)
     }

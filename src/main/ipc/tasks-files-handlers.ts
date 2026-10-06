@@ -16,6 +16,8 @@ import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { describeDeliverable, writeNewFile } from '../tasks/files'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { renderHtmlToPdf } from '../extras/artifact-window'
+import { winTarZipArgs } from '../tasks/zip-args'
+import { IpcError } from './handle'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 import { windowOfSender } from './sender-window'
 
@@ -44,20 +46,30 @@ function commonDir(paths: string[]): string {
   return common.join(sep) || sep
 }
 
-/** Ejecuta `/usr/bin/zip` (sin shell) y rechaza con un mensaje legible si falla. */
+/** `%SystemRoot%\System32\tar.exe` (bsdtar, viene con Windows 10+): no hay `zip`. Ruta absoluta, no depende del PATH. */
+function tarExe(): string {
+  return join(process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows', 'System32', 'tar.exe')
+}
+
+/** Ejecuta `/usr/bin/zip` (macOS) o `tar.exe` (Windows), sin shell, y rechaza con un mensaje legible si falla. */
 function runZip(args: string[], cwd?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    execFile(ZIP_BIN, args, { cwd, timeout: 120_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true }, (err, _out, stderr) => {
-      if (err)
-        reject(
-          new Error(
-            `No se pudo crear el zip. ${String(stderr || err.message)
-              .trim()
-              .slice(0, 300)}`
+    execFile(
+      process.platform === 'win32' ? tarExe() : ZIP_BIN,
+      args,
+      { cwd, timeout: 120_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true },
+      (err, _out, stderr) => {
+        if (err)
+          reject(
+            new Error(
+              `No se pudo crear el zip. ${String(stderr || err.message)
+                .trim()
+                .slice(0, 300)}`
+            )
           )
-        )
-      else resolve()
-    })
+        else resolve()
+      }
+    )
   })
 }
 
@@ -68,7 +80,9 @@ async function createZip(out: string, files: string[]): Promise<void> {
   const tmp = join(stage, 'salida.zip')
   try {
     const names = files.map((f) => basename(f))
-    if (new Set(names).size === names.length) {
+    if (process.platform === 'win32') {
+      await runZip(winTarZipArgs(tmp, files).args)
+    } else if (new Set(names).size === names.length) {
       // Caso normal: `-j` guarda solo los nombres de archivo, sin rutas.
       await runZip(['-j', '-X', '-q', tmp, ...files])
     } else {
@@ -131,6 +145,9 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
     }
   }
   handle('tasks:quickLook', ({ path }) => {
+    // Solo macOS (QuickLook): en Windows no existe (la interfaz oculta el botón; aquí se rechaza igualmente).
+    const plat: string = process.platform
+    if (plat !== 'darwin') throw new IpcError('PLATFORM_UNSUPPORTED', t('merr.platform.unsupported'))
     const real = tasks.assertInsideApproved(path)
     assertSafeToOpen(real) // misma política que "Abrir": nada de ejecutables/lanzadores
     if (!statSync(real).isFile()) throw new Error(t('merr.files.quickLook'))

@@ -105,6 +105,21 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
     expect(agentsOf(c)[COMPUTER_AGENT_ID]).toEqual({ disable: true })
   })
 
+  it('Windows: con `toSandbox` las carpetas extra se conceden con su ruta DENTRO de la distro; sin él, macOS no cambia', () => {
+    const win = buildInlineConfig({
+      ...empty,
+      extras: [{ path: 'D:\\Datos\\b' }],
+      toSandbox: (p) => `/win/${p[0]!.toLowerCase()}${p.slice(2).replace(/\\/g, '/')}`
+    })
+    expect(agentsOf(win)[TASKS_AGENT_ID].permission).toEqual({
+      external_directory: { '*': 'ask', '/win/d/Datos/b': 'allow', '/win/d/Datos/b/*': 'allow' }
+    })
+    const mac = buildInlineConfig({ ...empty, extras: [{ path: '/fixture/a' }] })
+    expect(JSON.stringify(mac)).toBe(
+      JSON.stringify(buildInlineConfig({ ...empty, extras: [{ path: '/fixture/a' }], toSandbox: undefined }))
+    )
+  })
+
   it('sandbox: el navegador entra como MCP sin deny de browser_*', () => {
     const c = buildInlineConfig({ ...empty, browserMcp: BROWSER })
     expect(c.mcp).toEqual({ browser: BROWSER })

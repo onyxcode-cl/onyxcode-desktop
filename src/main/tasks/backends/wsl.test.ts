@@ -119,14 +119,15 @@ const launchSpec = (over: Partial<SandboxLaunchSpec> = {}): SandboxLaunchSpec =>
 })
 
 describe('WslBackend con wsl.exe simulado', () => {
-  it('no está enlazado en producción: selectBackend nunca lo devuelve y index.ts no lo importa', async () => {
+  it('sin proveedor ni bandera selectBackend nunca lo devuelve (win32 lanza) y index.ts no lo importa', async () => {
     const { selectBackend } = await import('./index')
-    for (const p of ['win32', 'linux', 'darwin']) expect(selectBackend(p).id).not.toBe('wsl')
+    await expect(selectBackend('win32')).rejects.toThrow()
+    for (const p of ['linux', 'darwin']) expect((await selectBackend(p)).id).not.toBe('wsl')
     const noComments = (f: string): string =>
       readFileSync(join(__dirname, f), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/\/\/[^\n]*/g, '')
-    expect(noComments('index.ts')).not.toMatch(/wsl/i)
+    expect(noComments('index.ts')).not.toMatch(/from '\.\/wsl|createWslBackend|import\('\.\/wsl/)
     expect(noComments('../sandbox.ts')).not.toMatch(/backends\/wsl|createWslBackend/)
   })
 

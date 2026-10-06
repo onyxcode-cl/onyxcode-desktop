@@ -6,13 +6,60 @@ import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
-import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, isWindowsPlatform, platformCaps } from '../../../lib/platform'
+import { TASKS_WIN_BUILD } from '@shared/feature-flags'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { UI_LABELS } from '@shared/labels'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
+
+/**
+ * «Tareas (beta)» en Windows: opción del usuario con consentimiento. SOLO existe si la build la trae (`TASKS_WIN_BUILD`; hoy
+ * apagada, así que no se pinta). `main` la lee al arrancar: cambiarla exige reiniciar (se dice, sin botón que no haga nada).
+ */
+function TasksWinBetaRow(): React.JSX.Element | null {
+  const t = useT()
+  const { settings, update } = useSettings()
+  const [confirm, setConfirm] = useState(false)
+  const [changed, setChanged] = useState(false)
+  if (!isWindowsPlatform() || !TASKS_WIN_BUILD) return null
+  const on = settings.tasksWinBeta === true
+  const set = (v: boolean): void => {
+    void update({ tasksWinBeta: v })
+    setChanged(true)
+    setConfirm(false)
+  }
+  return (
+    <>
+      <Row label={t('tasksSettings.beta.title')} description={t('tasksSettings.beta.description')}>
+        <Toggle checked={on} onChange={(v) => (v ? setConfirm(true) : set(false))} label={t('tasksSettings.beta.toggle')} />
+      </Row>
+      {confirm && (
+        <div role="alertdialog" aria-labelledby="tasks-beta-confirm" className="border-t border-border px-4 py-3 text-[13px] leading-snug">
+          <h4 id="tasks-beta-confirm" className="font-medium">
+            {t('tasksSettings.beta.confirm.title')}
+          </h4>
+          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-muted">
+            <li>{t('tasksSettings.beta.confirm.b1')}</li>
+            <li>{t('tasksSettings.beta.confirm.b2')}</li>
+            <li>{t('tasksSettings.beta.confirm.b3')}</li>
+          </ul>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" onClick={() => set(true)}>
+              {t('tasksSettings.beta.confirm.ok')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>
+              {t('tasksSettings.beta.confirm.cancel')}
+            </Button>
+          </div>
+        </div>
+      )}
+      {changed && <p className="border-t border-border px-4 py-2.5 text-[13px] text-muted">{t('tasksSettings.beta.restart')}</p>}
+    </>
+  )
+}
 
 /** Fila "Mantener el Mac despierto mientras corren tareas" (powerSaveBlocker en main). */
 function KeepAwakeRow(): React.JSX.Element | null {
@@ -204,7 +251,7 @@ export function GeneralSection(): React.JSX.Element {
             </Row>
           </>
         )}
-        {caps.keepAwakeText && <KeepAwakeRow />}
+        {caps.tasks && <KeepAwakeRow />}
       </Card>
       {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
 
@@ -213,6 +260,7 @@ export function GeneralSection(): React.JSX.Element {
           <SubTitle>{MODE_LABELS.tasks}</SubTitle>
           <Card>
             <TasksInstructionsRow />
+            <TasksWinBetaRow />
           </Card>
         </>
       ) : (
@@ -224,6 +272,13 @@ export function GeneralSection(): React.JSX.Element {
               <li>{t('platform.win.unavailable.update')}</li>
             </ul>
           </PlatformNote>
+          {isWindowsPlatform() && TASKS_WIN_BUILD && (
+            <div className="mt-3">
+              <Card>
+                <TasksWinBetaRow />
+              </Card>
+            </div>
+          )}
         </div>
       )}
 

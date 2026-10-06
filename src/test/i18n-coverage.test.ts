@@ -20,6 +20,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/app/mobile/MobileDrawer.tsx',
   'src/renderer/src/app/mobile/ApprovalNotice.tsx',
   'src/renderer/src/features/tasks/impl/MobileTasksHome.tsx',
+  'src/renderer/src/features/tasks/impl/SandboxSetupCard.tsx',
   'src/renderer/src/components/mobile/Sheet.tsx',
   'src/renderer/quick/main.tsx',
   'src/renderer/overlay/pill.ts',

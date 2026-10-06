@@ -33,13 +33,14 @@ describe('backends/*: sin acceso a la clave real', () => {
 })
 
 describe('selectBackend', () => {
-  it('Windows y el resto: sin backend de aislamiento (WSL NO se activa en producción)', () => {
-    for (const p of ['win32', 'linux', 'freebsd', 'remote']) expect(selectBackend(p).id).toBe('none')
+  it('Windows sin bandera ni proveedor: LANZA (nunca `none`); el resto sin aislamiento', async () => {
+    await expect(selectBackend('win32')).rejects.toThrow()
+    for (const p of ['linux', 'freebsd', 'remote']) expect((await selectBackend(p)).id).toBe('none')
   })
-  it('macOS: Seatbelt si existe sandbox-exec, si no ninguno', () => {
-    expect(['seatbelt', 'none']).toContain(selectBackend('darwin').id)
+  it('macOS: Seatbelt si existe sandbox-exec, si no ninguno', async () => {
+    expect(['seatbelt', 'none']).toContain((await selectBackend('darwin')).id)
   })
-  it('index.ts no importa el backend WSL', () => {
-    expect(code('index.ts')).not.toMatch(/wsl/i)
+  it('index.ts no importa el backend WSL (lo trae el proveedor que inyecta main)', () => {
+    expect(code('index.ts')).not.toMatch(/from '\.\/wsl|createWslBackend|import\('\.\/wsl/)
   })
 })

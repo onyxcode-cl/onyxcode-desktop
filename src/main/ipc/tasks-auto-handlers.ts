@@ -26,8 +26,8 @@ export function registerTasksAutoHandlers(ctx: TasksIpcContext): TasksSubmodule 
     servers: () => tasks.liveServers(),
     policyDisabled: () => loadManagedPolicy()?.disableAutoMode === true,
     onApproved: (r) => send('tasks:auto:approved', r),
-    grantAutoView: (sessionId, bundleIds) => computer.grantAutoView(sessionId, bundleIds),
-    revokeAutoView: (sessionId, bundleId) => computer.revokeAutoView(sessionId, bundleId),
+    grantAutoView: (sessionId, bundleIds) => computer?.grantAutoView(sessionId, bundleIds),
+    revokeAutoView: (sessionId, bundleId) => computer?.revokeAutoView(sessionId, bundleId),
     log: (...args) => console.log(...args)
   })
 
