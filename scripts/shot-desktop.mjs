@@ -5,14 +5,17 @@
 import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron } from 'playwright-core'
 
 const require = createRequire(import.meta.url)
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DEFAULT_OUT = '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
+const WIN = process.platform === 'win32'
+// macOS: /private/tmp (como siempre; Tareas rechaza carpetas de sistema y tmpdir() de macOS cuelga de /var/folders). Windows: tmpdir().
+const TMP = WIN ? tmpdir() : '/private/tmp'
+const DEFAULT_OUT = WIN ? join(tmpdir(), 'shots-desktop') : '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
   'onboarding', 'onboarding-inicio', 'chat-vacio', 'chat-conversacion', 'chat-herramientas', 'code-proyecto', 'code-diff', 'code-terminal',
   'code-permiso',
@@ -27,7 +30,6 @@ const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
 const SMALL_ALSO = /^(chat-|ajustes-)/
 const TOTAL_TIMEOUT_MS = 330_000
-const DPR = 2
 
 function arg(name) {
   const i = process.argv.indexOf(`--${name}`)
@@ -37,6 +39,13 @@ const out = resolve(arg('out') ?? DEFAULT_OUT)
 const sel = arg('scenario')
 const themes = arg('theme') ? [arg('theme')] : ['dark', 'light']
 const sizeSel = arg('size')
+// --forced-colors: emula `forced-colors: active` (alto contraste) por CDP; --dsf <factor>: escala del dispositivo (por defecto 2).
+const forcedColors = process.argv.includes('--forced-colors')
+const dsfArg = arg('dsf')
+const DPR = dsfArg === undefined ? 2 : Number(dsfArg)
+if (!(DPR >= 0.5 && DPR <= 4)) throw new Error('--dsf <factor entre 0.5 y 4>')
+// Sufijos de salida: `-win` en Windows (no se mezclan con las de Mac), `-fc` con alto contraste y `-dsf<n>` con otra escala.
+const SFX = `${WIN ? '-win' : ''}${forcedColors ? '-fc' : ''}${dsfArg === undefined ? '' : `-dsf${dsfArg}`}`
 // --reduced-motion: prueba la regla REAL de prefers-reduced-motion (no inyecta el estilo que apaga animaciones; sin la bandera
 // se emula igual `reduce` pero además se apagan todas, para capturas deterministas).
 const realReducedMotion = process.argv.includes('--reduced-motion')
@@ -58,13 +67,16 @@ const mk = (base, name) => {
   tmpDirs.push(d)
   return d
 }
-const binDir = mk('/private/tmp', 'bin-') // el sandbox de Tareas no puede leer userData: el falso va fuera
+const binDir = mk(TMP, 'bin-') // el sandbox de Tareas no puede leer userData: el falso va fuera
 for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(binDir, f))
+// Windows no ejecuta el script sh: el falso se lanza con un .cmd que llama a node.
+const FAKE_BIN = join(binDir, WIN ? 'opencode.cmd' : 'opencode')
+if (WIN) writeFileSync(FAKE_BIN, '@echo off\r\nnode "%~dp0server.mjs" %*\r\n')
 const home = homedir()
 // Tareas rechaza carpetas de sistema (/private, /tmp): su carpeta tiene que colgar del home.
 const taskFolder = join(mk(home, 'tareas-'), 'Informes')
 mkdirSync(taskFolder, { recursive: true })
-const codeRepo = join(mk('/private/tmp', 'repo-'), 'tienda-web')
+const codeRepo = join(mk(TMP, 'repo-'), 'tienda-web')
 mkdirSync(codeRepo, { recursive: true })
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -90,9 +102,15 @@ function seedRepo(dir) {
 // ---- procesos: solo los que mencionan nuestros temporales (prefijo con el pid de ESTE node) ----
 function myPids() {
   try {
-    const rows = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 }).split('\n')
+    const rows = WIN
+      ? execFileSync(
+          'powershell.exe',
+          ['-NoProfile', '-NonInteractive', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.CommandLine)" }'],
+          { encoding: 'utf8', maxBuffer: 64 << 20 }
+        ).split('\n')
+      : execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 }).split('\n')
     return rows
-      .filter((r) => r.includes(TAG) && !r.includes('ps -axo'))
+      .filter((r) => r.includes(TAG) && !r.includes('ps -axo') && !r.includes('Get-CimInstance'))
       .map((r) => Number(r.trim().split(/\s+/)[0]))
       .filter((p) => p && p !== process.pid)
   } catch {
@@ -141,7 +159,7 @@ process.on('exit', () => {
 
 // ---- arranque de la app ----
 async function launch(name, { settings = {}, env = {}, noServer = false } = {}) {
-  const userData = mk('/private/tmp', `ud-${name}-`)
+  const userData = mk(TMP, `ud-${name}-`)
   const xdg = (n) => {
     const d = join(userData, 'xdg', n)
     mkdirSync(d, { recursive: true })
@@ -165,9 +183,9 @@ async function launch(name, { settings = {}, env = {}, noServer = false } = {}) 
   for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') e[k] = v
   delete e.ELECTRON_RUN_AS_NODE
   delete e.ELECTRON_RENDERER_URL
-  e.PATH = [dirname(process.execPath), e.PATH ?? ''].join(':')
+  e.PATH = [dirname(process.execPath), e.PATH ?? ''].join(delimiter)
   Object.assign(e, {
-    OPENCODE_BIN: join(binDir, 'opencode'),
+    OPENCODE_BIN: FAKE_BIN,
     XDG_DATA_HOME: xdg('data'),
     XDG_CONFIG_HOME: xdg('config'),
     XDG_CACHE_HOME: xdg('cache'),
@@ -269,7 +287,7 @@ async function stage(ctx, [w, h], theme) {
     for (const win of BrowserWindow.getAllWindows()) if (!win.getParentWindow()) win.setContentSize(cw, ch)
   }, [w, h])
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: DPR, mobile: false })
-  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }, ...(forcedColors ? [{ name: 'forced-colors', value: 'active' }] : [])] })
   const calm = realReducedMotion ? 'caret-color:transparent!important;scroll-behavior:auto!important' : 'transition:none!important;animation:none!important;caret-color:transparent!important;scroll-behavior:auto!important'
   await page.addStyleTag({ content: `*,*::before,*::after{${calm}}` }).catch(() => {})
   await parkMouse(ctx)
@@ -293,7 +311,7 @@ async function parkMouse(ctx) {
 async function snap(ctx, name, theme, sizeKey) {
   await parkMouse(ctx)
   const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
-  const file = join(out, `${name}-${theme}-${sizeKey}.png`)
+  const file = join(out, `${name}-${theme}-${sizeKey}${SFX}.png`)
   writeFileSync(file, Buffer.from(data, 'base64'))
   return file
 }
@@ -837,7 +855,7 @@ async function runKit(ctx) {
       )
       for (const { id, ...clip } of rects) {
         const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { ...clip, scale: 1 } })
-        const file = join(out, `kit-${id}-${theme}-1280x800.png`)
+        const file = join(out, `kit-${id}-${theme}-1280x800${SFX}.png`)
         writeFileSync(file, Buffer.from(data, 'base64'))
         done.push(file)
       }
@@ -885,7 +903,7 @@ async function runGroup(ctx, names) {
           try {
             mkdirSync(join(out, '_fallos'), { recursive: true })
             const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png' })
-            writeFileSync(join(out, '_fallos', `${sc}-${theme}-${sizeKey}.png`), Buffer.from(data, 'base64'))
+            writeFileSync(join(out, '_fallos', `${sc}-${theme}-${sizeKey}${SFX}.png`), Buffer.from(data, 'base64'))
           } catch {
             /* sin captura */
           }
@@ -898,8 +916,19 @@ async function runGroup(ctx, names) {
 }
 
 try {
-  const load = Number(execFileSync('sh', ['-c', "uptime | sed 's/.*load averages*: *//' | cut -d' ' -f1 | tr -d ','"], { encoding: 'utf8' }).trim().replace(',', '.'))
-  if (load > 8) throw new Error(`Carga del sistema alta (${load}): no se lanza Electron.`)
+  if (WIN) {
+    // Sin `uptime`: uso de CPU con typeperf (1 muestra). Si typeperf falla o no se entiende, no se comprueba la carga.
+    try {
+      const rows = execFileSync('typeperf', ['\\Processor(_Total)\\% Processor Time', '-sc', '1'], { encoding: 'utf8', timeout: 15_000 }).split(/\r?\n/)
+      const cpu = Number((rows.find((r) => /^"\d/.test(r)) ?? '').split('","')[1]?.replace(/"/g, ''))
+      if (cpu > 90) throw new Error(`CPU alta (${cpu.toFixed(0)} %): no se lanza Electron.`)
+    } catch (e) {
+      if (/CPU alta/.test(String(e.message))) throw e
+    }
+  } else {
+    const load = Number(execFileSync('sh', ['-c', "uptime | sed 's/.*load averages*: *//' | cut -d' ' -f1 | tr -d ','"], { encoding: 'utf8' }).trim().replace(',', '.'))
+    if (load > 8) throw new Error(`Carga del sistema alta (${load}): no se lanza Electron.`)
+  }
   seedRepo(codeRepo)
   // Tareas y Rutinas van en otro arranque: el falso numera las sesiones igual en Chat y en Tareas (ids repetidos) y la
   // interfaz mezclaría mensajes entre ambos; con ids reales (únicos) no pasa.

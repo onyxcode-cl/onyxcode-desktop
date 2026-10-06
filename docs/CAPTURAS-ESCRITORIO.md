@@ -45,3 +45,21 @@ código 1 si algún archivo supera `--max` (por defecto 0), si falta alguno o si
 El grupo de Tareas corre en el orden de `SCENARIOS`, pidas lo que pidas: `tareas-primer-uso` captura la tarjeta antes de descartarla; `tareas-nueva` y
 `rutinas-vacio` van antes de crear tareas y rutinas; `tareas-buscar` y `tareas-archivadas` crean la lista si hace falta. `onboarding*` comparten
 arranque (`onboarding-inicio` vuelve con «Atrás» al paso 1).
+
+## Windows, alto contraste y escala (plan de paridad Windows, S5)
+
+`shot-desktop.mjs` corre también en Windows; en macOS no cambia nada (mismas rutas, mismos nombres, mismo control de carga).
+
+- Opciones nuevas: `--forced-colors` (emula `forced-colors: active` por CDP `Emulation.setEmulatedMedia`; sirve por SSH, sin tema real de alto
+  contraste) y `--dsf <factor>` (escala del dispositivo; por defecto 2; usar 1.25, 1.5 o 2 para revisar el escalado de Windows).
+- Nombres de salida: `<escenario>-<tema>-<tamaño>[-win][-fc][-dsf<n>].png`. `-win` solo en Windows, `-fc` con `--forced-colors`, `-dsf<n>` si se
+  pasa `--dsf`. Así no se pisan con las capturas del Mac.
+- En Windows: carpetas temporales en `os.tmpdir()` (en macOS sigue `/private/tmp`), procesos propios listados con `Get-CimInstance Win32_Process`
+  (en vez de `ps -axo`) y muertos solo si su línea de comandos lleva `lazunox-shotd-<pid>-`; sin `uptime`: se mira la CPU con `typeperf` y no se
+  lanza por encima del 90 % (si `typeperf` falla, no se comprueba). El OpenCode falso se lanza con un `opencode.cmd` generado en la carpeta temporal.
+- `scripts/win/shots.ps1 -Branch <rama> [-Scenario a,b] [-Theme dark|light] [-Size 1280x800] [-ForcedColors] [-Dsf 1.5]`: llama a `shot-desktop`
+  con tope de 330 s (más 15 s de cinturón con `taskkill /T`) y deja los PNG y `shots.log` en `C:\onyx\shots\<rama>`. Requiere `out\` compilado
+  en `C:\onyx\wt`.
+- `scripts/win/capture-console.ps1 -Out <png>`: captura la pantalla interactiva con `CopyFromScreen`. Una sesión SSH no tiene escritorio, así que se
+  lanza desde una tarea programada con `/IT` (comando de ejemplo en la cabecera del script). Sirve para ver el tema real de alto contraste.
+- Nota: los `.ps1` y la ejecución en Windows aún NO se han probado en el PC (esta tanda es solo código).
