@@ -21,6 +21,15 @@ Fase 1 del plan: distro dedicada `Lazunox-Tareas` (sin unidades montadas, sin in
 
 Cómo comprobar en la Mac (sin Electron ni e2e): `npm run typecheck`, `npx vitest run src/main/tasks src/main/ipc src/shared/platform-caps.test.ts` y, a mano, `cd resources/wsl && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest test_protocol`.
 
+## Integración REAL en el PC (estado)
+
+`scripts/win/wsl-it.ps1` (con `LAZUNOX_WSL_IT=1`, solo en el PC de pruebas, bajo `C:\onyx`) corre dos especificaciones sobre la distro dedicada `Lazunox-Tareas`; ambas se niegan a correr si ya existe, nunca usan `wsl --shutdown` y no tocan otras distros:
+
+- `wsl-setup.win.test.ts`: `setup()` desde la imagen y el opencode de la caché, `status()==='ready'`, actualizar la carga y `remove()`. **Pasa en el PC.**
+- `wsl-session.win.test.ts` (nueva; **escrita en macOS y todavía NO ejecutada en Windows**): tras el setup arranca el sandbox con el backend real (`wsl.exe` + puente del lado anfitrión, `realSpawn/realConnect/realListen`) sobre una carpeta de prueba bajo `C:\onyx\tmp` con `nota.txt`, espera `/global/health` por el puente (versión = la de `resources/opencode-bin/pin.json`, 1.18.33), y comprueba: servidor como `lazunox` (uid 1000, `CapEff=0`, `NoNewPrivs=1`), la carpeta (rw) y la config (ro) montadas con `noexec,nosuid,nodev`, `case=off` por comportamiento, `nota.txt` leída desde dentro, un archivo creado dentro visible en Windows con su contenido, que sin `allowDelete` el `rm` no borra (Landlock), y al parar: `wsl.exe` sale, no queda `opencode` ni el lanzador en la distro, el puerto se cierra y `remove()` deja la lista de distros como estaba. La evidencia de dentro la escribe un `sh` lanzado por la API del propio servidor (`POST /pty`, o `/session/<id>/shell` si falla); no se amplía la lista cerrada de `wsl.exe`.
+
+Comando: `powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\wsl-it.ps1 -Branch <rama>` (tope de 40 min; log en `C:\onyx\logs\<rama>\wsl-it.txt`). Lo que sigue sin ejecutarse: la batería A1-A20 y las dos sesiones (elevada/normal).
+
 ## Lo que falta (en este orden)
 
 1. **T-W3 restante**: rootfs reproducible y `scripts/build-wsl-rootfs.*`, clave `wsl-rootfs` en `pin.json`, `setup()` del backend (`wsl --import` con sha256), copiar `resources/wsl/*` a `/opt/lazunox` y `opencode` Linux a `/opt/lazunox/bin/opencode` (el lanzador asume esas rutas y el uid 1000 de `lazunox`), tarjeta «Preparar Tareas en Windows» (es/en) y `tasks:sandboxStatus`/`tasks:sandboxSetup`. Empaquetado: `resources/wsl/**` está excluido del `.asar` (`electron-builder.js`) hasta decidir cómo se entrega.

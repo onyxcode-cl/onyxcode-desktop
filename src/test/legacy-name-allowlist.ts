@@ -69,9 +69,9 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   // prueba coherentes entre sí y no tocan el PC.
   { path: 'scripts/win/**', reason: 'Scripts del PC de pruebas real: carpeta C:\\onyx, host win-onyx y ONYX_WIN_HOST' },
   {
-    path: 'src/main/tasks/backends/wsl-setup.win.test.ts',
-    token: /C:\\+onyx/i,
-    reason: 'Prueba de integración que solo corre en el PC de pruebas real (C:\\onyx\\wsl, LAZUNOX_WSL_IT=1)'
+    path: /^src\/main\/tasks\/backends\/(wsl-setup\.win\.test|wsl-session\.win\.test|wsl-it-support)\.ts$/,
+    token: /C:\\+onyx|\/win\/c\/onyx|\/c\/onyx/i,
+    reason: 'Pruebas de integración (y su apoyo) que solo corren en el PC de pruebas real (C:\\onyx\\wsl, C:\\onyx\\tmp, LAZUNOX_WSL_IT=1)'
   },
   {
     path: /^(resources\/updater\/swap\.ps1|src\/main\/update\/(swap-win|config)\.test\.ts)$/,
