@@ -3,18 +3,20 @@
  * `capsFor('win32').tasks` sigue en `false` mientras la bandera `tasksWin` esté apagada. Todo lo que toca el sistema
  * (`spawn` de wsl.exe, sockets) entra por `WslDeps`, así que se prueba entero con dobles en el Mac.
  *
- * Pendiente en el PC Windows (docs/WINDOWS-TAREAS.md): `setup()` (importar la distro desde un rootfs fijado por sha256),
- * instalar `resources/wsl/*` en `/opt/lazunox`, y la batería de ataques A1-A15.
+ * `setup()`/`remove()` (importar la distro desde una imagen fijada por sha256 e instalar la carga en `/opt/lazunox`) viven en
+ * `wsl-setup.ts` y entran por `WslDeps.setup`; sin él el backend solo lee el estado y lanza. Pendiente en el PC Windows
+ * (docs/WINDOWS-TAREAS.md): la batería de ataques A1-A15 y la validación real de `setup`.
  */
 import { EventEmitter } from 'node:events'
 import { win32 } from 'node:path'
 import { PassThrough, type Duplex, type Readable, type Writable } from 'node:stream'
 import type { ChildProcess } from 'node:child_process'
 import { WslBridgeHost, type BridgeListener } from './wsl-bridge-host'
-import { classifyWslStatus, type RunResult } from './wsl-status'
+import type { RunResult } from './wsl-status'
+import { createWslSetup, readWslStatus, type WslSetupDeps } from './wsl-setup'
 import { buildWslInit, buildWslSpawn, type WslCommand, type WslSpawnSpec } from './wsl-spec'
 import { fromSandboxPath, toSandboxPath } from './wsl-paths'
-import type { LaunchedSandbox, SandboxBackend, SandboxLaunchSpec } from './types'
+import type { LaunchedSandbox, SandboxBackend, SandboxLaunchSpec, SandboxSetupOptions } from './types'
 
 /** Lo mínimo que se usa de un `ChildProcess` de wsl.exe (el `spawn` real lo cumple; los dobles también). */
 export interface WslProcess extends EventEmitter {
@@ -27,6 +29,12 @@ export interface WslProcess extends EventEmitter {
   kill(signal?: NodeJS.Signals | number): boolean
 }
 
+/** Lo que añade `setup()`/`remove()`: igual que `WslDeps.run`, los comandos de `wsl.exe` entran como `WslSpawnSpec`. */
+export interface WslSetupExtras extends Omit<WslSetupDeps, 'platform' | 'policyDisabled' | 'run' | 'runWithInput' | 'runToFile'> {
+  runWithInput(spec: WslSpawnSpec, input: Readable, timeoutMs: number): Promise<RunResult>
+  runToFile(spec: WslSpawnSpec, dest: string, timeoutMs: number): Promise<RunResult>
+}
+
 export interface WslDeps {
   platform: string
   hostEnv: Record<string, string | undefined>
@@ -36,6 +44,8 @@ export interface WslDeps {
   connect(port: number): Promise<Duplex>
   listen(port: number, onConnection: (socket: Duplex) => void): Promise<BridgeListener>
   policyDisabled?: () => boolean
+  /** Sin esto el backend no ofrece `setup`/`remove` y `status` no compara con el pin. */
+  setup?: WslSetupExtras
   onReject?: (info: { port: number; streamId: number }) => void
 }
 
@@ -44,19 +54,28 @@ const KILL_GRACE_MS = 2_000
 
 export function createWslBackend(deps: WslDeps): SandboxBackend {
   const run = (cmd: WslCommand, ms = STATUS_TIMEOUT_MS): Promise<RunResult> => deps.run(buildWslSpawn(cmd, deps.hostEnv), ms)
+  const core = deps.setup
+    ? createWslSetup({
+        platform: deps.platform,
+        policyDisabled: deps.policyDisabled,
+        ...deps.setup,
+        run: (cmd, ms) => run(cmd, ms),
+        runWithInput: (cmd, input, ms) => deps.setup!.runWithInput(buildWslSpawn(cmd, deps.hostEnv), input, ms),
+        runToFile: (cmd, dest, ms) => deps.setup!.runToFile(buildWslSpawn(cmd, deps.hostEnv), dest, ms)
+      })
+    : null
   return {
     id: 'wsl',
     async status() {
-      if (deps.platform !== 'win32') return { state: 'unsupported' }
-      if (deps.policyDisabled?.()) return { state: 'policyDisabled' }
-      const version = await run({ kind: 'version' })
-      const list = await run({ kind: 'list' })
-      // El probe arranca la distro: solo si ya existe (y nunca si wsl.exe no está).
-      let probe: RunResult | null = null
-      const pre = classifyWslStatus({ version, list })
-      if (pre.state === 'broken' && pre.detail === 'probe') probe = await run({ kind: 'probe' })
-      return classifyWslStatus({ version, list, probe })
+      if (core) return core.status()
+      return (await readWslStatus(run, { platform: deps.platform, policyDisabled: deps.policyDisabled })).status
     },
+    ...(core
+      ? {
+          setup: (onProgress: (pct: number, phase: string) => void, opts?: SandboxSetupOptions) => core.setup(onProgress, opts),
+          remove: () => core.remove()
+        }
+      : {}),
     async launch(spec: SandboxLaunchSpec): Promise<LaunchedSandbox> {
       if (!spec.isolation) throw new Error('falta el directorio privado del sandbox')
       const sandboxKey = win32.basename(spec.isolation.privateDir)

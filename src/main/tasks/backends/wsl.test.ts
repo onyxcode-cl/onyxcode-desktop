@@ -1,10 +1,14 @@
 import { EventEmitter } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Duplex, PassThrough } from 'node:stream'
+import { createHash } from 'node:crypto'
+import { Duplex, PassThrough, Readable } from 'node:stream'
 import { describe, expect, it } from 'vitest'
 import { FrameDecoder, FrameType, decodeError, encodeExit, encodeFrame, encodePort, type Frame } from './bridge-protocol'
-import { createWslBackend, type WslDeps, type WslProcess } from './wsl'
+import { createWslBackend, type WslDeps, type WslProcess, type WslSetupExtras } from './wsl'
+import { encodeLzpk } from './wsl-payload'
+import { parseWslPin, wslRootfsUrl } from './wsl-pin'
+import { WslSetupError, wslSetupPaths, type SetupPin } from './wsl-setup'
 import type { RunResult } from './wsl-status'
 import type { WslSpawnSpec } from './wsl-spec'
 import type { SandboxLaunchSpec } from './types'
@@ -258,5 +262,142 @@ describe('WslBackend con wsl.exe simulado', () => {
     await flush()
     expect(proc.stdin.writableEnded).toBe(true)
     expect(proc.killed).toContain('SIGTERM')
+  })
+})
+
+describe('WslBackend con setup()/remove() integrados', () => {
+  const LAD = 'C:\\Users\\Ben\\AppData\\Local'
+  const P = wslSetupPaths(LAD)
+  const sha = (b: Uint8Array): string => createHash('sha256').update(b).digest('hex')
+  const OPENCODE = Buffer.from('tgz')
+  const PY = [{ path: 'launcher.py', data: Buffer.from('print(1)') }]
+  const PIN: SetupPin = {
+    rootfs: parseWslPin({
+      version: '2026.10.1',
+      minVersion: '2026.10.1',
+      builtAt: '2026-10-01',
+      url: wslRootfsUrl('2026.10.1'),
+      sha256: 'ab'.repeat(32),
+      size: 100,
+      unpackedMax: 500
+    })!,
+    opencode: {
+      version: '1.18.33',
+      url: 'https://github.com/anomalyco/opencode/releases/download/v1.18.33/o.tar.gz',
+      sha256: sha(OPENCODE),
+      size: OPENCODE.length
+    }
+  }
+  const GOOD = encodeLzpk([...PY, { path: 'bin/opencode', data: OPENCODE }]).payloadSha
+
+  function world(initialPayload: string | null) {
+    const st = { registered: true, payloadSha: initialPayload as string | null }
+    const runs: string[] = []
+    const inputs: Array<{ spec: WslSpawnSpec; ms: number }> = []
+    const files = new Map<string, Buffer>([[P.statePath, Buffer.from('{}')]])
+    const extras: WslSetupExtras = {
+      runWithInput: async (spec, input: Readable, ms) => {
+        inputs.push({ spec, ms })
+        const chunks: Buffer[] = []
+        for await (const c of input) chunks.push(Buffer.from(c as Buffer))
+        const buf = Buffer.concat(chunks)
+        st.payloadSha = sha(buf.subarray(10, 10 + buf.readUInt32BE(6)))
+        return ok(JSON.stringify({ ok: true, payloadSha: st.payloadSha }))
+      },
+      runToFile: async () => ok(''),
+      download: async (_u, dest) => {
+        files.set(dest, OPENCODE)
+        return { cached: false }
+      },
+      fs: {
+        mkdir: async () => undefined,
+        lstat: async (p) => {
+          const f = files.get(p)
+          return f ? { isSymbolicLink: () => false, isDirectory: () => false, isFile: () => true, size: f.length } : null
+        },
+        readdir: async () => [],
+        rename: async (a, b) => void files.set(b, files.get(a)!),
+        rm: async (p) => void files.delete(p),
+        rmdir: async () => undefined,
+        freeBytes: async () => 10 * 1024 ** 3,
+        sha256: async () => '',
+        readFile: async (p) => files.get(p) ?? Buffer.alloc(0),
+        writeFile: async (p, d) => void files.set(p, Buffer.from(d)),
+        readStream: () => Readable.from([])
+      },
+      localAppData: LAD,
+      pin: () => PIN,
+      payloadFiles: async () => PY,
+      now: () => 0,
+      log: () => undefined
+    }
+    const t = deps({
+      setup: extras,
+      run: async (spec) => {
+        const a = spec.args.join(' ')
+        runs.push(a)
+        if (a === '--version') return ok('WSL version: 2.4.13.0\nKernel version: 6.6.87.2\n')
+        if (a === '-l -v') return ok(st.registered ? '  NAME STATE VERSION\n* Lazunox-Tareas Stopped 2\n' : 'no distros')
+        if (a === '--terminate Lazunox-Tareas') return ok('')
+        if (a === '--unregister Lazunox-Tareas') {
+          st.registered = false
+          return ok('')
+        }
+        return ok(
+          JSON.stringify({
+            interop: false,
+            driveMounts: [],
+            landlockAbi: 4,
+            kernel: '6.6',
+            uid: 0,
+            rootfs: { id: 'lazunox-rootfs', version: '2026.10.1' },
+            payloadSha: st.payloadSha
+          })
+        )
+      }
+    })
+    return { t, runs, inputs, st, files }
+  }
+
+  it('sin WslDeps.setup no hay setup ni remove (el backend solo lee el estado y lanza)', () => {
+    const b = createWslBackend(deps().d)
+    expect(b.setup).toBeUndefined()
+    expect(b.remove).toBeUndefined()
+  })
+
+  it('status compara con el pin: carga distinta → needsSetup update:payload; igual → ready', async () => {
+    const stale = world('d'.repeat(64))
+    expect(await createWslBackend(stale.t.d).status()).toEqual({ state: 'needsSetup', detail: 'update:payload' })
+    const fresh = world(GOOD)
+    expect((await createWslBackend(fresh.t.d).status()).state).toBe('ready')
+  })
+
+  it('setup(): actualiza la carga por wsl.exe con ruta absoluta y la lista cerrada, y queda ready', async () => {
+    const w = world('d'.repeat(64))
+    const b = createWslBackend(w.t.d)
+    const progress: number[] = []
+    await b.setup!((p) => progress.push(p), { kind: 'update' })
+    expect(w.inputs).toHaveLength(1)
+    expect(w.inputs[0]!.spec.command).toBe('C:\\Windows\\System32\\wsl.exe')
+    expect(w.inputs[0]!.spec.args).toEqual(['-d', 'Lazunox-Tareas', '-u', 'root', '--cd', '/', '--exec', '/usr/local/sbin/lazunox-install'])
+    expect(w.inputs[0]!.spec.env).toEqual({ SystemRoot: 'C:\\Windows', WSLENV: '', WSL_UTF8: '1' })
+    expect(progress.at(-1)).toBe(100)
+    expect((await b.status()).state).toBe('ready')
+    expect(w.runs.some((r) => /shutdown|--unregister/.test(r))).toBe(false)
+  })
+
+  it('remove(): terminate + unregister solo de Lazunox-Tareas', async () => {
+    const w = world(GOOD)
+    await createWslBackend(w.t.d).remove!()
+    expect(w.runs).toEqual(['-l -v', '--terminate Lazunox-Tareas', '--unregister Lazunox-Tareas'])
+    expect(w.st.registered).toBe(false)
+    expect(w.files.has(P.statePath)).toBe(false)
+  })
+
+  it('errores tipados: LOCALAPPDATA inválida no llega a wsl.exe', async () => {
+    const w = world(GOOD)
+    const t = deps({ setup: { ...(w.t.d.setup as WslSetupExtras), localAppData: '\\\\srv\\share' } })
+    await expect(createWslBackend(t.d).remove!()).rejects.toBeInstanceOf(WslSetupError)
+    expect(t.runs).toEqual([])
   })
 })

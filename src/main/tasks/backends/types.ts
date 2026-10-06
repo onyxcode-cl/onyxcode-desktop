@@ -64,12 +64,23 @@ export interface LaunchedSandbox {
 export type SandboxState =
   'ready' | 'needsSetup' | 'needsWsl' | 'needsWsl2' | 'needsVirtualization' | 'policyDisabled' | 'unsupported' | 'broken'
 
+/** Para qué se llama a `setup`: instalar desde cero, reparar la carga o actualizar la imagen. Es una pista: manda el estado real. */
+export type SandboxSetupKind = 'install' | 'repair' | 'update'
+
+export interface SandboxSetupOptions {
+  /** Cancelación: efectiva hasta justo antes de importar la distro (después se espera y se deshace). */
+  signal?: AbortSignal
+  kind?: SandboxSetupKind
+}
+
 export interface SandboxBackend {
   id: 'seatbelt' | 'wsl' | 'none'
   status(): Promise<{ state: SandboxState; detail?: string }>
   /** Prepara el directorio privado del servidor en el anfitrión (antes de arrancar los proxies). */
   prepare?(isolation: SandboxIsolation): void
-  setup?(onProgress: (pct: number, phase: string) => void): Promise<void>
+  setup?(onProgress: (pct: number, phase: string) => void, opts?: SandboxSetupOptions): Promise<void>
+  /** Quita lo que `setup` creó (en WSL: la distro propia, su carpeta, la caché y el estado). */
+  remove?(): Promise<void>
   launch(spec: SandboxLaunchSpec): Promise<LaunchedSandbox>
   storage?: { size(key: string): Promise<number>; remove(key: string): Promise<void> }
 }
