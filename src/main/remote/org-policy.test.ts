@@ -1,7 +1,8 @@
-import { mkdtempSync, rmSync, utimesSync, writeFileSync, chmodSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { posixOnly } from '../../test/platform'
 import { NO_ORG_POLICY, OrgRemotePolicy, invalidRemotePolicy, parseRemotePolicy } from './org-policy'
 
 describe('parseRemotePolicy', () => {
@@ -187,7 +188,13 @@ describe('OrgRemotePolicy (archivo real)', () => {
     utimesSync(file, new Date(2030, 0, 1), new Date(2030, 0, 1))
     expect(p.get().blocked).toBe('invalid')
   })
-  it('archivo ilegible por permisos: deshabilitado', () => {
+  it('archivo ilegible (no se puede leer como archivo): deshabilitado — también en Windows', () => {
+    // `chmod 000` no existe en Windows: aquí lo ilegible es una carpeta en la ruta de la política (EISDIR al leer).
+    mkdirSync(file)
+    expect(new OrgRemotePolicy(() => file).get().blocked).toBe('invalid')
+  })
+  // chmod 000 / permisos POSIX no existen en Windows (el equivalente portable es la prueba anterior).
+  it.skipIf(!posixOnly)('archivo ilegible por permisos: deshabilitado', () => {
     writeFileSync(file, '{}')
     chmodSync(file, 0o000)
     if (process.getuid?.() === 0) return // root lo lee igualmente

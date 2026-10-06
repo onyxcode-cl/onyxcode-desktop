@@ -48,7 +48,8 @@ function startupFiles(): Set<string> {
 function neededKeys(): string[] {
   const keys = new Set<string>()
   for (const f of startupFiles()) {
-    if (f.includes('/i18n/es/') || f.includes('/i18n/en/')) continue
+    // `rel` normaliza a `/` (en Windows `f` trae `\\`: sin esto los propios diccionarios contaban como arranque).
+    if (rel(f).includes('/i18n/es/') || rel(f).includes('/i18n/en/')) continue
     for (const k of keysIn(readFileSync(f, 'utf8'), ALL)) keys.add(k)
   }
   return [...keys].sort()

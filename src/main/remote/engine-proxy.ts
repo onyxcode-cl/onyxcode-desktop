@@ -15,7 +15,7 @@
  *   `{ status, contentType?, body, encoding? }` — `body` es texto (JSON ya filtrado) o base64 si `encoding === 'base64'`.
  * El stream `/event` y `/global/event` NO se sirve por `http`: el celular usa `sub{eng}` (ver `sse-hub.ts`).
  */
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isAbsolute, resolve } from 'node:path'
 import { MuxError, type CallRequest, type DispatchCtx, type HttpRequest, type MuxDispatch } from '@shared/remote/mux'
 import type { OpencodeConnection } from '@shared/types'
@@ -494,7 +494,10 @@ export class EngineProxy implements MuxDispatch {
           ok = false
           return out
         }
-        return { ...out, url: `file://${real.split('/').map(encodeURIComponent).join('/')}` }
+        // Windows: `real` es `C:\Users\…` (no se parte por `/`); la URL correcta la arma `pathToFileURL`. En macOS/Linux se
+        // conserva la codificación de siempre.
+        const url = process.platform === 'win32' ? pathToFileURL(real).href : `file://${real.split('/').map(encodeURIComponent).join('/')}`
+        return { ...out, url }
       } catch {
         ok = false
         return out

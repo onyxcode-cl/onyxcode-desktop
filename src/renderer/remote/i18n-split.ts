@@ -50,6 +50,9 @@ export function parseDictionary(code: string, file = 'dict.ts'): Parsed {
 export function i18nSplit(opts: { esDir: string; coreKeys: readonly string[] }): Plugin {
   const core = new Set(opts.coreKeys)
   const esDir = resolve(opts.esDir)
+  // Vite entrega los ids con `/` también en Windows (`C:/…`), mientras `resolve` usa `\`: se compara todo normalizado.
+  const slash = (p: string): string => p.replace(/\\/g, '/')
+  const esDirSlash = slash(esDir)
   const areaFiles = (): string[] =>
     readdirSync(esDir)
       .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
@@ -63,7 +66,7 @@ export function i18nSplit(opts: { esDir: string; coreKeys: readonly string[] }):
     load(id) {
       if (id !== RESOLVED) return null
       const files = areaFiles()
-      const loads = files.map((f) => `import(${JSON.stringify(resolve(esDir, f) + REST_QUERY)})`)
+      const loads = files.map((f) => `import(${JSON.stringify(slash(resolve(esDir, f)) + REST_QUERY)})`)
       return [
         "import { registerMessages } from '@shared/i18n'",
         'let done = null',
@@ -74,10 +77,11 @@ export function i18nSplit(opts: { esDir: string; coreKeys: readonly string[] }):
       ].join('\n')
     },
     transform(code, id) {
-      const [file, query] = id.split('?') as [string, string | undefined]
-      if (!file.startsWith(esDir + '/') || !file.endsWith('.ts') || file.endsWith('/index.ts')) return null
+      const [rawFile, query] = id.split('?') as [string, string | undefined]
+      const file = slash(rawFile)
+      if (!file.startsWith(esDirSlash + '/') || !file.endsWith('.ts') || file.endsWith('/index.ts')) return null
       const wantsRest = query === REST_QUERY.slice(1)
-      const { name, props } = parseDictionary(code, file)
+      const { name, props } = parseDictionary(code, rawFile)
       const pick = (keep: boolean): string =>
         props
           .filter((p) => core.has(p.key) === keep)

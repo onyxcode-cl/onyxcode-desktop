@@ -135,8 +135,11 @@ describe('bashVerdict: variantes ofuscadas', () => {
   })
 
   it('un enlace simbólico que sale del proyecto cuenta como fuera (realpath inyectado)', () => {
-    const real = (p: string): string | null =>
-      p.startsWith('/Users/me/proj/link') ? p.replace('/Users/me/proj/link', '/Users/me/secretos') : p
+    // En Windows `resolve` devuelve `C:\\Users\\me\\proj\\link`: se normaliza a `/` y sin unidad antes de comparar.
+    const real = (p: string): string | null => {
+      const q = p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, '')
+      return q.startsWith('/Users/me/proj/link') ? q.replace('/Users/me/proj/link', '/Users/me/secretos') : q
+    }
     expect(bashVerdict('rm -rf link/x', { ...env, realpath: real })).toBe('rm-outside')
     expect(bashVerdict('rm -rf build/x', { ...env, realpath: real })).toBeNull()
     expect(bashVerdict('echo x > link/y.txt', { ...env, realpath: real })).toBe('redirect-outside')

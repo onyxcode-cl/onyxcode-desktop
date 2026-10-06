@@ -259,7 +259,8 @@ describe('D: confirmación en el Mac', () => {
       ...ctx,
       allowedDirs: ['/Users/me/p']
     })
-    expect('confirm' in d && d.detail).toEqual(['~/p', '25'])
+    // El detalle usa el separador nativo (en Windows `~\\p`).
+    expect('confirm' in d && d.detail).toEqual([join('~', 'p'), '25'])
   })
   it('permission.reply de external_directory, de Control del Mac o de tipo desconocido es D; los normales M', () => {
     const rep = (id: string, body: unknown): string => cls(http('POST', `/permission/${id}/reply`, dq, body))

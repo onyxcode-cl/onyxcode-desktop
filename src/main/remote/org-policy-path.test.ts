@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 afterEach(() => {
@@ -21,6 +22,7 @@ describe('ruta de la política de la organización', () => {
   })
   it('en desarrollo la variable sí puede forzar otra ruta', async () => {
     process.env.LAZUNOX_MANAGED_POLICY = '/tmp/dev-policy.json'
-    expect((await pathWith(false)).file).toBe('/tmp/dev-policy.json')
+    // `policyFile` hace `resolve`: en Windows `/tmp/x` pasa a `C:\\tmp\\x` (misma ruta, otra forma).
+    expect((await pathWith(false)).file).toBe(resolve('/tmp/dev-policy.json'))
   })
 })

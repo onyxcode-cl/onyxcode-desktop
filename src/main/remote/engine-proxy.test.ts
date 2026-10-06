@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { randomBytes } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MuxError, type DispatchCtx } from '@shared/remote/mux'
@@ -436,7 +437,7 @@ describe('http (motor)', () => {
       { ...base, model: { providerID: 'p', modelID: 'm' } }
     )
     expect(ok.status).toBe(204)
-    const file = (p: string): unknown => ({ ...base, parts: [{ type: 'file', mime: 'text/plain', url: `file://${p}` }] })
+    const file = (p: string): unknown => ({ ...base, parts: [{ type: 'file', mime: 'text/plain', url: pathToFileURL(p).href }] })
     expect(
       (await code(http(h, 'POST', '/session/ses_1/prompt_async', { directory: proj }, file(join(proj, 'link', 'secret.txt'))))).detail
     ).toBe('out-of-scope')

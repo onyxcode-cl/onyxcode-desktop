@@ -3,6 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSyn
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isWin, posixOnly } from '../../test/platform'
 import { parseSiteManifest } from '@shared/remote/site-manifest'
 import * as updateLib from '../../../scripts/update-lib.mjs'
 // @ts-expect-error: script .mjs sin declaración de tipos
@@ -300,7 +301,14 @@ describe('de punta a punta: scripts/site-release.mjs -> SiteWatch', () => {
     return { files, headers: new Map([['index.html', { 'content-security-policy': CSP }]]) }
   }
 
-  it('lo que firma el script lo acepta el cliente real y el manifiesto cumple la forma estricta', async () => {
+  // Las 4 pruebas que firman de verdad exigen una clave con modo 600 y `chmod` no restringe nada en Windows (el modo siempre
+  // sale 666): scripts/update-lib.mjs rechaza la clave a propósito (no se debilita). Se publica desde el Mac; en Windows
+  // lo que se prueba es ese rechazo (siguiente prueba).
+  it.skipIf(!isWin)('en Windows la herramienta de firma rechaza la clave porque no puede comprobar sus permisos', () => {
+    expect(() => release({ root, keyFile })).toThrow(/Permisos demasiado abiertos/)
+  })
+
+  it.skipIf(!posixOnly)('lo que firma el script lo acepta el cliente real y el manifiesto cumple la forma estricta', async () => {
     const r = release({ root, keyFile, now: () => new Date('2026-10-04T12:00:00Z') })
     expect(r.startup).toEqual(['index.html', 'sw.js', 'manifest.webmanifest', 'assets/index-AAAA1111.js'])
     const man = parseSiteManifest(readFileSync(join(root, 'pwa', 'dist-site', 'site-manifest.json'), 'utf8'))
@@ -316,12 +324,12 @@ describe('de punta a punta: scripts/site-release.mjs -> SiteWatch', () => {
     expect(await watchOf(tampered, { publicKey: pub }).w.check()).toBe('mismatch')
   })
 
-  it('no firma si la clave privada no es la de brand.ts', () => {
+  it.skipIf(!posixOnly)('no firma si la clave privada no es la de brand.ts', () => {
     writeBrand(updateLib.spkiBase64(generateKeyPairSync('ed25519').publicKey))
     expect(() => release({ root, keyFile })).toThrow(/NO corresponde/)
   })
 
-  it('con SITE_PUBLIC_KEY vacía firma igual pero avisa', () => {
+  it.skipIf(!posixOnly)('con SITE_PUBLIC_KEY vacía firma igual pero avisa', () => {
     writeBrand('')
     expect(release({ root, keyFile }).keyWarning).toMatch(/SITE_PUBLIC_KEY está vacía/)
   })
@@ -340,7 +348,7 @@ describe('de punta a punta: scripts/site-release.mjs -> SiteWatch', () => {
     expect(() => release({ root, keyFile })).toThrow(/Falta pwa\/dist-site/)
   })
 
-  it('archiva las versiones: la segunda publicación conserva los app/assets de la primera (hasta 10)', () => {
+  it.skipIf(!posixOnly)('archiva las versiones: la segunda publicación conserva los app/assets de la primera (hasta 10)', () => {
     release({ root, keyFile, now: () => new Date('2026-10-04T12:00:00Z') })
     buildFakeSite('CCCC3333')
     release({ root, keyFile, now: () => new Date('2026-10-05T12:00:00Z') })

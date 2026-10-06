@@ -6,7 +6,8 @@ describe('mac-confirm coincide con la política real del celular (policy.ts)', (
   const dir = '/Users/ana/proyecto'
   const ctx: PolicyContext = {
     allowedDirs: [dir],
-    isDirectory: (p) => p.endsWith('/carpeta'),
+    // En Windows la política resuelve con «\»: se acepta cualquiera de los dos separadores.
+    isDirectory: (p) => /[\\/]carpeta$/.test(p),
     sessionDir: () => dir,
     permissionKind: (id) => id.replace(/^req_/, '')
   }

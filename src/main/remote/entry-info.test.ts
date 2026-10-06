@@ -7,7 +7,8 @@ const enc = (s: string): Uint8Array => new TextEncoder().encode(s)
 
 function fs(files: Record<string, string>): (f: string) => Uint8Array {
   return (f) => {
-    const k = f.replace(/^\/app\//, '')
+    // `join` en Windows devuelve `\\app\\assets\\x.js`: se normaliza antes de buscar.
+    const k = f.replace(/\\/g, '/').replace(/^\/app\//, '')
     if (!(k in files)) throw new Error('ENOENT')
     return enc(files[k])
   }
