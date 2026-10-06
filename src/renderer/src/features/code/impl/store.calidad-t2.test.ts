@@ -16,6 +16,7 @@ const IMG = { id: 'prt_i', type: 'file', mime: 'image/png', filename: 'cap.png',
 function install(promptAsync: () => Promise<unknown> = () => Promise.resolve({ data: {} })) {
   const calls: string[] = []
   const session = {
+    update: (a: { sessionID: string; permission?: unknown }) => Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
     revert: vi.fn(
       async (p: { messageID: string }) => (
         calls.push(`revert:${p.messageID}`),

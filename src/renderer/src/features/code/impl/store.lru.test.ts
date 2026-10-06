@@ -1,6 +1,7 @@
 /**
  * LRU de `useCode.messages` (docs/LRU-PLAN.md, paso 6, F6-B16).
  */
+import { rulesetFor } from './permission-rules'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -45,7 +46,7 @@ const lruOn = (max: number): void => {
 }
 /** Sesión conocida con un mensaje (contenido) recibido por eventos. */
 function seed(id: string, extra: Partial<Session> = {}): void {
-  apply(sessionCreated(makeSession(id, D, extra)))
+  apply(sessionCreated(makeSession(id, D, { permission: rulesetFor('manual'), ...extra })))
   apply(msgUpdated(userMessage(`msg_${id}`, id), D))
 }
 
@@ -58,6 +59,7 @@ function installClient(messages: (sid: string) => Promise<Snap> = () => Promise.
   const promptAsync = vi.fn(() => Promise.resolve({ data: {} }))
   const client = {
     session: {
+      update: (a: { sessionID: string; permission?: unknown }) => Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
       list: () => Promise.resolve({ data: [] }),
       status: () => Promise.resolve({ data: {} }),
       messages: ({ sessionID }: { sessionID: string }) => {

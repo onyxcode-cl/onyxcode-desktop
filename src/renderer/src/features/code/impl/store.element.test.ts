@@ -14,7 +14,16 @@ const D = '/work/code'
 type Sent = { type: string; text?: string; synthetic?: boolean; metadata?: unknown; mime?: string; filename?: string; url?: string }
 function install(): ReturnType<typeof vi.fn> {
   const p = vi.fn(() => Promise.resolve({ data: {} }))
-  useServer.setState({ client: { session: { promptAsync: p, abort: () => Promise.resolve({ data: true }) } } as never })
+  useServer.setState({
+    client: {
+      session: {
+        update: (a: { sessionID: string; permission?: unknown }) =>
+          Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
+        promptAsync: p,
+        abort: () => Promise.resolve({ data: true })
+      }
+    } as never
+  })
   return p
 }
 const partsOf = (p: ReturnType<typeof vi.fn>): Sent[] => (p.mock.calls[0]![0] as { parts: Sent[] }).parts

@@ -5,7 +5,8 @@
  * de quién más esté aplicando eventos al store genérico de sesiones.
  */
 import { create } from 'zustand'
-import type { FilePart, PermissionRuleset, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
+import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
+import { rulesetFor, sameRuleset } from './permission-rules'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
@@ -92,55 +93,6 @@ function lsSetJSON(key: string, value: unknown): void {
     localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // sin storage
-  }
-}
-
-/**
- * Traduce un `PermissionMode` a un `PermissionRuleset` para `session.update`. `undefined` deja
- * el ruleset de la sesión sin tocar (se usa para 'plan', que no depende de permisos sino del agente).
- */
-function rulesetFor(mode: PermissionMode): PermissionRuleset | undefined {
-  switch (mode) {
-    case 'manual':
-      // Ruleset vacío no equivale a "preguntar por todo": si no hay reglas, el agente cae a su
-      // configuración por defecto (que puede permitir). Por eso Manual fija `ask` explícito en
-      // los permisos habituales en vez de dejar el array vacío.
-      return [
-        { permission: 'edit', pattern: '*', action: 'ask' },
-        { permission: 'write', pattern: '*', action: 'ask' },
-        { permission: 'bash', pattern: '*', action: 'ask' },
-        { permission: 'webfetch', pattern: '*', action: 'ask' },
-        { permission: 'websearch', pattern: '*', action: 'ask' },
-        { permission: 'external_directory', pattern: '*', action: 'ask' }
-      ]
-    case 'acceptEdits':
-      return [
-        { permission: 'edit', pattern: '*', action: 'allow' },
-        { permission: 'write', pattern: '*', action: 'allow' }
-      ]
-    case 'auto':
-      return [
-        { permission: 'edit', pattern: '*', action: 'allow' },
-        { permission: 'write', pattern: '*', action: 'allow' },
-        { permission: 'read', pattern: '*', action: 'allow' },
-        { permission: 'bash', pattern: 'git status*', action: 'allow' },
-        { permission: 'bash', pattern: 'git diff*', action: 'allow' },
-        { permission: 'bash', pattern: 'git log*', action: 'allow' },
-        { permission: 'bash', pattern: 'npm run*', action: 'allow' },
-        { permission: 'bash', pattern: 'npm test*', action: 'allow' }
-      ]
-    case 'bypass':
-      return [
-        { permission: 'edit', pattern: '*', action: 'allow' },
-        { permission: 'write', pattern: '*', action: 'allow' },
-        { permission: 'read', pattern: '*', action: 'allow' },
-        { permission: 'bash', pattern: '*', action: 'allow' },
-        { permission: 'webfetch', pattern: '*', action: 'allow' },
-        { permission: 'websearch', pattern: '*', action: 'allow' },
-        { permission: 'external_directory', pattern: '*', action: 'allow' }
-      ]
-    case 'plan':
-      return undefined
   }
 }
 
@@ -586,6 +538,20 @@ export const useCode = create<CodeState>((set, get) => {
     }
     const sendModel = aiGate.avail === 'unknown' ? wanted : aiGate.effective
     setError(sid, null)
+    // El modo de permisos es de la interfaz, pero el ruleset vive en la sesión del motor: una sesión creada antes (o por otra vía) puede
+    // no tenerlo y «Manual» no preguntaría nada. Se iguala ANTES de enviar; en Manual, si no se puede, no se envía (falla cerrado).
+    const wantRules = rulesetFor(get().permissionMode)
+    if (wantRules && !sameRuleset(get().sessions[sid]?.permission, wantRules)) {
+      try {
+        const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
+        set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
+      } catch (err) {
+        if (get().permissionMode === 'manual') {
+          setError(sid, errorMessage(err))
+          return false
+        }
+      }
+    }
     set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
     const base = dir.replace(/[/\\]+$/, '')
     const fileParts = [...new Set(files)].flatMap((rel) => {
@@ -766,7 +732,7 @@ export const useCode = create<CodeState>((set, get) => {
     newSessionAt: async (dir, title) => {
       try {
         const client = requireClient()
-        const sess = sdkData(await client.session.create({ directory: dir, title }))
+        const sess = sdkData(await client.session.create({ directory: dir, title, permission: rulesetFor(get().permissionMode) }))
         set((s) => ({
           sessions: { ...s.sessions, [sess.id]: sess },
           sessionProject: { ...s.sessionProject, [sess.id]: dir },

@@ -1,6 +1,7 @@
 /**
  * Fase 7 · G3: correcciones de `features/code/impl/store.ts` (F7-B10, B11, B16, B17, B18).
  */
+import { rulesetFor } from './permission-rules'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -35,7 +36,8 @@ beforeEach(async () => {
 
 const st = (): ReturnType<Store['useCode']['getState']> => useCode.getState()
 const apply = (te: TraceEvent): void => st().applyEvent(te.event, te.directory)
-const open = (id: string, extra: Partial<Session> = {}): void => apply(sessionCreated(makeSession(id, D, extra)))
+const open = (id: string, extra: Partial<Session> = {}): void =>
+  apply(sessionCreated(makeSession(id, D, { permission: rulesetFor('manual'), ...extra })))
 const idleEvt = (sessionID: string, id: string): void =>
   st().applyEvent({ id, type: 'session.idle', properties: { sessionID } } as never, D)
 function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void } {
@@ -57,6 +59,7 @@ function installClient(o: FakeOpts = {}): { promptAsync: ReturnType<typeof vi.fn
   const messages = vi.fn(o.messages ?? (() => Promise.resolve({ data: [] })))
   const client = {
     session: {
+      update: (a: { sessionID: string; permission?: unknown }) => Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
       list: () => Promise.resolve({ data: o.list ?? [] }),
       status: () => Promise.resolve({ data: o.status ?? {} }),
       messages,

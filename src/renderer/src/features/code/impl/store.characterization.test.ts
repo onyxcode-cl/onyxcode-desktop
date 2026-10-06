@@ -2,6 +2,7 @@
  * Tests de caracterización de `features/code/impl/store.ts` (Fase 6.0): congelan el comportamiento
  * ACTUAL, incluidos los bugs conocidos (marcados `F6-B<n>`/`Pf1`), antes de tocar los stores.
  */
+import { rulesetFor } from './permission-rules'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -40,7 +41,8 @@ beforeEach(async () => {
 
 const st = (): ReturnType<Store['useCode']['getState']> => useCode.getState()
 const apply = (te: TraceEvent): void => st().applyEvent(te.event, te.directory)
-const open = (id: string, extra: Partial<Session> = {}): void => apply(sessionCreated(makeSession(id, D, extra)))
+const open = (id: string, extra: Partial<Session> = {}): void =>
+  apply(sessionCreated(makeSession(id, D, { permission: rulesetFor('manual'), ...extra })))
 
 interface FakeOpts {
   list?: Session[]
@@ -51,6 +53,7 @@ function installClient(o: FakeOpts = {}): { promptAsync: ReturnType<typeof vi.fn
   const promptAsync = vi.fn(() => Promise.resolve({ data: {} }))
   const client = {
     session: {
+      update: (a: { sessionID: string; permission?: unknown }) => Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
       list: () => Promise.resolve({ data: o.list ?? [] }),
       status: () => Promise.resolve({ data: o.status ?? {} }),
       messages: () => Promise.resolve({ data: o.messages ?? [] }),
@@ -343,6 +346,8 @@ describe('debounce y filtro de fsVersion (Pf1)', () => {
     const updated = makeSession('s1', D)
     const client = {
       session: {
+        update: (a: { sessionID: string; permission?: unknown }) =>
+          Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
         revert: () => Promise.resolve({ data: updated }),
         unrevert: () => Promise.resolve({ data: updated })
       }

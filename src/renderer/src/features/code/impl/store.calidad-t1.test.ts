@@ -16,7 +16,14 @@ const IMG = { id: 'a1', name: 'captura.png', mime: 'image/png', url: 'data:image
 function install(promptAsync: () => Promise<unknown> = () => Promise.resolve({ data: {} })): ReturnType<typeof vi.fn> {
   const p = vi.fn(promptAsync)
   useServer.setState({
-    client: { session: { promptAsync: p, abort: () => Promise.resolve({ data: true }) } } as never
+    client: {
+      session: {
+        update: (a: { sessionID: string; permission?: unknown }) =>
+          Promise.resolve({ data: { id: a.sessionID, permission: a.permission } }),
+        promptAsync: p,
+        abort: () => Promise.resolve({ data: true })
+      }
+    } as never
   })
   return p
 }
