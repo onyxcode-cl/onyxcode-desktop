@@ -11,6 +11,7 @@ describe('capsFor', () => {
       tasks: true,
       tasksSandbox: 'seatbelt',
       computer: true,
+      computerBackend: 'ax',
       updater: true,
       keepAwakeText: true,
       quickLook: true,
@@ -23,6 +24,7 @@ describe('capsFor', () => {
       tasks: false,
       tasksSandbox: 'wsl',
       computer: false,
+      computerBackend: 'none',
       updater: false,
       keepAwakeText: false,
       quickLook: false,
@@ -35,6 +37,7 @@ describe('capsFor', () => {
       tasks: false,
       tasksSandbox: 'none',
       computer: false,
+      computerBackend: 'none',
       updater: false,
       keepAwakeText: false,
       quickLook: false,
@@ -81,8 +84,24 @@ describe('bandera de producto tasksWin (apagada por defecto)', () => {
  */
 describe('bandera apagada: resultado idéntico al previo en macOS y Windows', () => {
   const PREVIOUS = {
-    darwin: { tasks: true, tasksSandbox: 'seatbelt', computer: true, updater: true, keepAwakeText: true, remote: true },
-    win32: { tasks: false, tasksSandbox: 'wsl', computer: false, updater: false, keepAwakeText: false, remote: false }
+    darwin: {
+      tasks: true,
+      tasksSandbox: 'seatbelt',
+      computer: true,
+      computerBackend: 'ax',
+      updater: true,
+      keepAwakeText: true,
+      remote: true
+    },
+    win32: {
+      tasks: false,
+      tasksSandbox: 'wsl',
+      computer: false,
+      computerBackend: 'none',
+      updater: false,
+      keepAwakeText: false,
+      remote: false
+    }
   } as const
   const OFF: Array<CapsFlags | undefined> = [undefined, {}, { tasksWin: false }]
   it.each(['darwin', 'win32'] as const)('%s: todas las formas de «apagada» dan el mismo objeto', (platform) => {
@@ -116,6 +135,7 @@ describe('superficie remote (PWA del celular)', () => {
       tasks: true,
       tasksSandbox: 'none',
       computer: false,
+      computerBackend: 'none',
       updater: false,
       keepAwakeText: false,
       quickLook: false,
@@ -142,5 +162,55 @@ describe('modos disponibles', () => {
     expect(usableMode('tasks', 'win32')).toBe('chat')
     expect(usableMode('code', 'win32')).toBe('code')
     expect(usableMode('tasks', 'darwin')).toBe('tasks')
+  })
+})
+
+describe('bandera de producto computerWin (apagada por defecto) y computerBackend', () => {
+  it('matriz plataforma x tasksWin x computerWin: solo win32 con AMBAS banderas enciende Control del PC (uia)', () => {
+    const rows: Array<[string, boolean | undefined, boolean | undefined, boolean, string]> = [
+      ['darwin', undefined, undefined, true, 'ax'],
+      ['darwin', false, false, true, 'ax'],
+      ['darwin', true, true, true, 'ax'],
+      ['win32', undefined, undefined, false, 'none'],
+      ['win32', true, undefined, false, 'none'],
+      ['win32', true, false, false, 'none'],
+      ['win32', undefined, true, false, 'none'],
+      ['win32', false, true, false, 'none'],
+      ['win32', true, true, true, 'uia'],
+      ['linux', true, true, false, 'none'],
+      [REMOTE_SURFACE, true, true, false, 'none']
+    ]
+    for (const [platform, tasksWin, computerWin, computer, backend] of rows) {
+      const caps = capsFor(platform, { tasksWin, computerWin })
+      expect([platform, tasksWin, computerWin, caps.computer, caps.computerBackend]).toEqual([
+        platform,
+        tasksWin,
+        computerWin,
+        computer,
+        backend
+      ])
+    }
+  })
+  it('computerBackend es none siempre que computer sea false (derivado coherente)', () => {
+    for (const p of ['darwin', 'win32', 'linux', REMOTE_SURFACE]) {
+      for (const tasksWin of [undefined, false, true]) {
+        for (const computerWin of [undefined, false, true]) {
+          const c = capsFor(p, { tasksWin, computerWin })
+          expect(c.computer === (c.computerBackend !== 'none')).toBe(true)
+        }
+      }
+    }
+  })
+  it('un valor no booleano no enciende Control del PC (fail closed)', () => {
+    expect(capsFor('win32', { tasksWin: true, computerWin: 'si' as unknown as boolean }).computer).toBe(false)
+  })
+  it('computerWin con tasksWin apagada o sola no cambia nada en win32 ni en darwin', () => {
+    expect(capsFor('win32', { computerWin: true })).toEqual(capsFor('win32'))
+    expect(capsFor('darwin', { tasksWin: true, computerWin: true })).toEqual(capsFor('darwin'))
+  })
+  it('encender computerWin (con tasksWin) solo cambia computer y computerBackend en win32', () => {
+    const { computer: _a, computerBackend: _b, ...off } = capsFor('win32', { tasksWin: true })
+    const { computer: _c, computerBackend: _d, ...on } = capsFor('win32', { tasksWin: true, computerWin: true })
+    expect(on).toEqual(off)
   })
 })

@@ -1,0 +1,918 @@
+{
+  "$comment": "Contrato del helper de Control del PC (macOS: helper.swift; Windows: cu-helper.exe). Validado por src/test/cu-protocol.test.ts contra helper.swift por análisis estático. Un cambio en uno exige cambiar el otro.",
+  "version": 1,
+  "invocation": "cu-helper [--instant] [--char-delay <ms>] <comando> args…",
+  "globalFlags": [
+    {
+      "name": "--instant",
+      "takesValue": false
+    },
+    {
+      "name": "--char-delay",
+      "takesValue": true,
+      "type": "number",
+      "unit": "ms",
+      "alsoAs": "--char-delay=<ms>"
+    }
+  ],
+  "io": {
+    "stdout": "JSON (una línea, claves ordenadas) salvo watch-esc y record (líneas)",
+    "stderr": "mensaje de error en texto",
+    "stdin": "Windows: STOP o EOF → suelta la entrada y sale con 3 (en macOS la parada es SIGTERM)",
+    "timeoutMs": 15000,
+    "maxOutputBytes": 4194304
+  },
+  "exitCodes": {
+    "0": {
+      "meaning": "correcto"
+    },
+    "1": {
+      "meaning": "error genérico (argumentos, fallo de la operación)"
+    },
+    "2": {
+      "meaning": "sin permiso de Accesibilidad (macOS)",
+      "win32": "no aplica: sin consentimiento o sin sesión interactiva se usa 12"
+    },
+    "3": {
+      "meaning": "detenido por el usuario (kill-switch); suelta el botón si estaba pulsado"
+    },
+    "4": {
+      "meaning": "fallo de ScreenCaptureKit",
+      "platforms": [
+        "darwin"
+      ]
+    },
+    "5": {
+      "meaning": "ScreenCaptureKit no disponible (macOS < 14)",
+      "platforms": [
+        "darwin"
+      ]
+    },
+    "6": {
+      "meaning": "reconocimiento de voz no autorizado",
+      "platforms": [
+        "darwin"
+      ]
+    },
+    "7": {
+      "meaning": "la app no está en ejecución"
+    },
+    "8": {
+      "meaning": "el elemento cambió o no existe"
+    },
+    "9": {
+      "meaning": "campo seguro"
+    },
+    "10": {
+      "meaning": "valor no editable"
+    },
+    "11": {
+      "meaning": "acción no permitida",
+      "win32": "también: ventana bloqueada o elevada"
+    },
+    "12": {
+      "meaning": "recurso no disponible",
+      "win32": "también: sin escritorio interactivo, escritorio seguro, sesión bloqueada"
+    }
+  },
+  "commands": {
+    "move": {
+      "args": [
+        {
+          "name": "x",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "required": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2
+      ],
+      "win32": "same"
+    },
+    "click": {
+      "args": [
+        {
+          "name": "x",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "button",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "left",
+            "right"
+          ]
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false,
+          "min": 1,
+          "max": 3
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2
+      ],
+      "win32": "same"
+    },
+    "drag": {
+      "args": [
+        {
+          "name": "x1",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y1",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "x2",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y2",
+          "type": "number",
+          "required": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2
+      ],
+      "win32": "same"
+    },
+    "scroll": {
+      "args": [
+        {
+          "name": "x",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "dx",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "dy",
+          "type": "number",
+          "required": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2
+      ],
+      "win32": "same"
+    },
+    "type": {
+      "args": [
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2
+      ],
+      "win32": "same",
+      "note": "Unicode por grafema; \\n y \\t son teclas reales; 4 s como máximo en total"
+    },
+    "key": {
+      "args": [
+        {
+          "name": "combos",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2
+      ],
+      "win32": "same",
+      "note": "Combinaciones separadas por espacios (p. ej. \"cmd+shift+t\"). En Windows pasan antes por la política win-keys"
+    },
+    "cursor": {
+      "args": [],
+      "output": {
+        "x": "number",
+        "y": "number"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "screens": {
+      "args": [],
+      "output": {
+        "_array": {
+          "width": "number",
+          "height": "number",
+          "scale": "number",
+          "x": "number",
+          "y": "number",
+          "main": "boolean"
+        }
+      },
+      "exits": [],
+      "win32": "same",
+      "note": "Windows: píxeles físicos del escritorio virtual; añade dpiScale y límites"
+    },
+    "permissions": {
+      "args": [],
+      "output": {
+        "accessibility": "boolean",
+        "screenRecording": "boolean"
+      },
+      "exits": [],
+      "win32": "same",
+      "note": "Windows: {consent,interactive,elevated,helper,dpi,monitors} (no hay TCC)"
+    },
+    "request-permissions": {
+      "args": [],
+      "output": {
+        "accessibility": "boolean",
+        "screenRecording": "boolean"
+      },
+      "exits": [],
+      "win32": "none",
+      "note": "Windows: el consentimiento lo pide la propia app (tarjeta de Ajustes)"
+    },
+    "frontmost": {
+      "args": [],
+      "output": {
+        "name": "string",
+        "bundleId": "string",
+        "pid": "number"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "app-at": {
+      "args": [
+        {
+          "name": "x",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "required": true
+        }
+      ],
+      "output": {
+        "name": "string",
+        "bundleId": "string",
+        "pid": "number"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "running-apps": {
+      "args": [],
+      "output": {
+        "_array": {
+          "name": "string",
+          "bundleId": "string",
+          "pid": "number"
+        }
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "windows-of": {
+      "args": [
+        {
+          "name": "bundleIds",
+          "type": "csv",
+          "required": true
+        }
+      ],
+      "output": {
+        "_array": {
+          "x": "number",
+          "y": "number",
+          "width": "number",
+          "height": "number"
+        }
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "focused-secure": {
+      "args": [],
+      "output": {
+        "secure": "boolean"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "recent-input": {
+      "args": [],
+      "output": {
+        "keyDownSeconds": "number"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "screenshot-sck": {
+      "args": [
+        {
+          "name": "outPath",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "excludeCsv",
+          "type": "csv",
+          "required": false
+        }
+      ],
+      "output": {
+        "ok": "boolean",
+        "width": "number",
+        "height": "number"
+      },
+      "exits": [
+        4,
+        5
+      ],
+      "win32": "replaced",
+      "replacedBy": "screenshot",
+      "note": "macOS: ScreenCaptureKit excluyendo apps por bundle id"
+    },
+    "mask-regions": {
+      "args": [
+        {
+          "name": "inPath",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "outPath",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "rects",
+          "type": "rect",
+          "required": true,
+          "variadic": true,
+          "format": "x,y,w,h"
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [],
+      "win32": "replaced",
+      "replacedBy": "screenshot",
+      "note": "Windows: la máscara la aplica el propio screenshot (--mask-keys)"
+    },
+    "watch-esc": {
+      "args": [],
+      "output": {},
+      "exits": [
+        2
+      ],
+      "win32": "same",
+      "stream": {
+        "stdout": "STOP\\n por cada Esc físico sin modificadores; ignora los eventos propios"
+      },
+      "note": "Proceso largo; no imprime JSON"
+    },
+    "open-app": {
+      "args": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "resolve-app": {
+      "args": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "name": "string",
+        "bundleId": "string",
+        "found": "boolean"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "activate": {
+      "args": [
+        {
+          "name": "idOrName",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean",
+        "activated": "boolean",
+        "hasWindow": "boolean"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "open-app-bg": {
+      "args": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "hide-apps": {
+      "args": [
+        {
+          "name": "keepCsv",
+          "type": "csv",
+          "required": true
+        }
+      ],
+      "output": {
+        "hidden": "string[]"
+      },
+      "exits": [],
+      "win32": "same",
+      "note": "Windows: minimiza (SW_MINIMIZE)"
+    },
+    "unhide-apps": {
+      "args": [
+        {
+          "name": "csv",
+          "type": "csv",
+          "required": true
+        }
+      ],
+      "output": {
+        "unhidden": "string[]"
+      },
+      "exits": [],
+      "win32": "same"
+    },
+    "ax-tree": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "maxDepth",
+          "type": "integer",
+          "required": false,
+          "default": 12
+        },
+        {
+          "name": "maxNodes",
+          "type": "integer",
+          "required": false,
+          "default": 500
+        }
+      ],
+      "output": {
+        "app": "object",
+        "nodes": "object[]",
+        "truncated": "boolean"
+      },
+      "exits": [
+        2,
+        7
+      ],
+      "win32": "same",
+      "note": "Nunca devuelve el value de un campo seguro; value recortado a 200"
+    },
+    "ax-find": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "jsonQuery",
+          "type": "json",
+          "required": true
+        }
+      ],
+      "output": {
+        "matches": "object[]"
+      },
+      "exits": [
+        2,
+        7
+      ],
+      "win32": "same"
+    },
+    "ax-frame": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": {
+        "frame": "object"
+      },
+      "exits": [
+        2,
+        7,
+        8
+      ],
+      "win32": "same"
+    },
+    "ax-press": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "expectRole",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "expectTitle",
+          "type": "string",
+          "required": false,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2,
+        7,
+        8
+      ],
+      "win32": "same"
+    },
+    "ax-set-value": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2,
+        7,
+        8,
+        9,
+        10
+      ],
+      "win32": "same",
+      "note": "Rechaza campos seguros (9) y no editables (10)"
+    },
+    "ax-action": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "action",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "AXShowMenu",
+            "AXIncrement",
+            "AXDecrement",
+            "AXConfirm",
+            "AXCancel",
+            "AXRaise",
+            "AXPick"
+          ]
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [
+        2,
+        7,
+        8,
+        11
+      ],
+      "win32": "same",
+      "note": "Windows: se traducen a patrones de UIA (ExpandCollapse, RangeValue, Invoke, SelectionItem, Window)"
+    },
+    "find-elements": {
+      "args": [],
+      "output": {
+        "_array": "object"
+      },
+      "exits": [
+        2,
+        7
+      ],
+      "win32": "same",
+      "flags": [
+        {
+          "name": "--app",
+          "takesValue": true,
+          "required": true
+        },
+        {
+          "name": "--role",
+          "takesValue": true,
+          "required": false
+        },
+        {
+          "name": "--query",
+          "takesValue": true,
+          "required": false
+        }
+      ],
+      "note": "Cotas: 4000 nodos y 0,8 s; Windows asigna roles por ControlType, no por texto"
+    },
+    "window-shot": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "outPath",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "windowIndex",
+          "type": "integer",
+          "required": false,
+          "default": 0
+        }
+      ],
+      "output": {
+        "ok": "boolean",
+        "width": "number",
+        "height": "number",
+        "title": "string"
+      },
+      "exits": [
+        5,
+        12
+      ],
+      "win32": "same"
+    },
+    "record": {
+      "args": [
+        {
+          "name": "outDir",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": {},
+      "exits": [
+        2
+      ],
+      "win32": "none",
+      "flags": [
+        {
+          "name": "--mic",
+          "takesValue": false,
+          "required": false
+        },
+        {
+          "name": "--max-seconds",
+          "takesValue": true,
+          "required": false,
+          "max": 900
+        },
+        {
+          "name": "--exclude",
+          "takesValue": true,
+          "required": false
+        }
+      ],
+      "stream": {
+        "stdout": "JSON por línea con event; termina con {\"event\":\"done\",…}"
+      },
+      "note": "Fuera de la v1 de Windows"
+    },
+    "transcribe": {
+      "args": [
+        {
+          "name": "audio",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "required": false,
+          "default": "es-ES"
+        }
+      ],
+      "output": {
+        "text": "string",
+        "onDevice": "boolean"
+      },
+      "exits": [
+        6,
+        12
+      ],
+      "win32": "none"
+    },
+    "mic-permission": {
+      "args": [],
+      "output": {
+        "status": "string"
+      },
+      "exits": [],
+      "win32": "none"
+    },
+    "mic-request": {
+      "args": [],
+      "output": {
+        "status": "string"
+      },
+      "exits": [],
+      "win32": "none"
+    }
+  },
+  "windowsExtensions": {
+    "release-input": {
+      "args": [],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [],
+      "win32": "same",
+      "note": "Suelta botones del ratón y Ctrl/Shift/Alt/Win si GetAsyncKeyState los marca. Se ejecuta SIEMPRE tras un kill"
+    },
+    "screenshot": {
+      "args": [
+        {
+          "name": "outPath",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": {
+        "width": "number",
+        "height": "number",
+        "ratio": "number",
+        "masked": "number"
+      },
+      "exits": [
+        11,
+        12
+      ],
+      "win32": "same",
+      "flags": [
+        {
+          "name": "--max-long",
+          "takesValue": true,
+          "required": false,
+          "default": 1366
+        },
+        {
+          "name": "--quality",
+          "takesValue": true,
+          "required": false,
+          "default": 70
+        },
+        {
+          "name": "--mask-keys",
+          "takesValue": true,
+          "required": false
+        }
+      ],
+      "note": "Monitor principal; JPEG con WIC; falla cerrado (12) si no puede enmascarar"
+    },
+    "list-apps": {
+      "args": [],
+      "output": {
+        "_array": {
+          "name": "string",
+          "appKey": "string",
+          "pid": "number"
+        }
+      },
+      "exits": [],
+      "win32": "same",
+      "note": "Apps con ventana visible, con nombre localizado"
+    },
+    "session": {
+      "args": [],
+      "output": {
+        "interactive": "boolean",
+        "secureDesktop": "boolean",
+        "elevatedTarget": "boolean"
+      },
+      "exits": [
+        12
+      ],
+      "win32": "same"
+    }
+  }
+}

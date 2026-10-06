@@ -20,6 +20,11 @@ export interface PlatformCaps {
   tasksSandbox: TasksSandbox
   /** Control del PC (helper nativo, overlay, grabación de skills). */
   computer: boolean
+  /**
+   * Backend de Control del PC: `ax` (macOS, Accesibilidad), `uia` (Windows, UI Automation; solo con `computer`) o
+   * `none`. Derivado de `computer`: nunca es distinto de `none` si `computer` es false.
+   */
+  computerBackend: ComputerBackend
   /** Actualizador automático que sustituye la aplicación. */
   updater: boolean
   /** El texto de «mantener el equipo despierto» menciona al Mac (solo tiene sentido con Tareas). */
@@ -43,10 +48,17 @@ export interface PlatformCaps {
 
 export type TasksSandbox = 'seatbelt' | 'wsl' | 'none'
 
+export type ComputerBackend = 'ax' | 'uia' | 'none'
+
 /** Banderas de producto que modulan las capacidades (todas apagadas por defecto; las lee `main`). */
 export interface CapsFlags {
   /** Tareas (beta) en Windows con WSL2. APAGADA hasta pasar la batería de ataques en el PC (docs/WINDOWS-TAREAS.md). */
   tasksWin?: boolean
+  /**
+   * Control del PC en Windows (UI Automation). APAGADA hasta pasar S1–S15 en el PC (plan win-C). Además exige
+   * `tasksWin` (Control total es un modo de Tareas): `computer = win && tasksWin && computerWin`.
+   */
+  computerWin?: boolean
 }
 
 /** Valor de `window.api.platform` en la PWA del celular. */
@@ -59,6 +71,7 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
       tasks: true,
       tasksSandbox: 'none',
       computer: false,
+      computerBackend: 'none',
       updater: false,
       keepAwakeText: false,
       quickLook: false,
@@ -71,10 +84,12 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
   }
   const mac = platform === 'darwin'
   const win = platform === 'win32'
+  const computer = mac || (win && flags.tasksWin === true && flags.computerWin === true)
   return {
     tasks: mac || (win && flags.tasksWin === true),
     tasksSandbox: mac ? 'seatbelt' : win ? 'wsl' : 'none',
-    computer: mac,
+    computer,
+    computerBackend: !computer ? 'none' : mac ? 'ax' : 'uia',
     updater: mac,
     keepAwakeText: mac,
     quickLook: mac,
