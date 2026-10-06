@@ -295,8 +295,8 @@ describe('trama inicial', () => {
     )
     expect(Object.keys(init.env).sort()).toEqual([
       'HTTP_PROXY',
-      'NO_PROXY',
       'LAZUNOX_TASKS_FOLDER',
+      'NO_PROXY',
       'OPENCODE_CONFIG_DIR',
       'OPENCODE_DISABLE_AUTOUPDATE',
       'OPENCODE_SERVER_PASSWORD',
