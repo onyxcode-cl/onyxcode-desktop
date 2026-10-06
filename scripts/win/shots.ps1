@@ -22,7 +22,7 @@ $limitSeconds = 330
 New-Item -ItemType Directory -Force $outDir | Out-Null
 
 if (-not (Test-Path (Join-Path $Repo 'out\main\index.js'))) {
-  Write-Output "Falta out\ en $Repo: compila antes (run.ps1 -Steps build)."
+  Write-Output "Falta out\ en ${Repo}: compila antes (run.ps1 -Steps build)."
   exit 3
 }
 
