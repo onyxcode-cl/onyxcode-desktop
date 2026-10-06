@@ -3,10 +3,12 @@
 # Comprueba: artefacto y tamano, asar sin codigo de macOS, node-pty desempaquetado, fuses, opencode.exe --version, metadatos PE,
 # humo de la app EMPAQUETADA (proceso vivo, opencode.exe hijo < 30 s, terminal PowerShell por CDP, sin huerfanos al cerrar) y,
 # con -Install, instalacion silenciosa en C:\onyx\inst, arranque, desinstalacion silenciosa y limpieza.
-param([string]$Branch = 'default', [string]$Root = 'C:\onyx', [switch]$Install)
+# -Wt: carpeta del repo (por defecto $Root\wt; en CI es el workspace). -NoSmoke: solo comprobaciones estaticas (sin arrancar la app ni instalar).
+# En CI (windows.yml) $Root es una carpeta bajo %TEMP% y no existe $Root\node22: se usa el node del PATH.
+param([string]$Branch = 'default', [string]$Root = 'C:\onyx', [string]$Wt = '', [switch]$Install, [switch]$NoSmoke)
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
-$wt = Join-Path $Root 'wt'
+$wt = if ($Wt) { $Wt } else { Join-Path $Root 'wt' }
 $dist = Join-Path $wt 'dist'
 $unp = Join-Path $dist 'win-unpacked'
 $exe = Join-Path $unp 'Lazunox.exe'
@@ -19,12 +21,12 @@ $script:fail = 0
 function Check([string]$name, [bool]$ok, [string]$detail = '') {
   if ($ok) { Log "OK    $name $detail" } else { Log "FALLA $name $detail"; $script:fail++ }
 }
-$env:Path = "$Root\node22;$env:Path"
+if (Test-Path "$Root\node22") { $env:Path = "$Root\node22;$env:Path" }
 $ud = Join-Path $Root 'tmp\ud'
 $inst = Join-Path $Root 'inst'
 function LazunoxProcs {
   Get-CimInstance Win32_Process | Where-Object {
-    ($_.ExecutablePath -and ($_.ExecutablePath.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase)) -and $_.Name -match '^(Lazunox|opencode|OpenConsole|conpty)\.exe$') -or
+    ($_.ExecutablePath -and (($_.ExecutablePath.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase)) -or ($_.ExecutablePath.StartsWith("$wt\", [StringComparison]::OrdinalIgnoreCase))) -and $_.Name -match '^(Lazunox|opencode|OpenConsole|conpty)\.exe$') -or
     ($_.CommandLine -and $_.CommandLine -match [regex]::Escape($ud))
   }
 }
@@ -96,10 +98,10 @@ function Smoke([string]$path, [string]$tag, [int]$port) {
   if (-not $gone) { Log ("quedaban: " + ((LazunoxProcs | ForEach-Object { "$($_.Name)#$($_.ProcessId)" }) -join ' ')); Cleanup }
   Check "$tag sin huerfanos al cerrar" $gone
 }
-Smoke $exe 'win-unpacked' 9333
+if (-not $NoSmoke) { Smoke $exe 'win-unpacked' 9333 }
 
 # 6. Instalacion silenciosa
-if ($Install -and $setup) {
+if ($Install -and $setup -and -not $NoSmoke) {
   Remove-Item -Recurse -Force $inst -ErrorAction SilentlyContinue
   $p = Start-Process -FilePath $setup.FullName -ArgumentList '/S', "/D=$inst" -PassThru -WindowStyle Hidden
   Check 'instalacion silenciosa termina (< 120 s)' ($p.WaitForExit(120000)) "codigo=$($p.ExitCode)"

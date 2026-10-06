@@ -1,5 +1,5 @@
 // Prueba REAL en Windows de la cadena ZIP -> tar.exe -> comprobacion, sin tocar la app instalada ni el registro.
-// Uso (en el PC, desde C:\onyx\wt):  C:\onyx\node22\node.exe scripts\win\tar-check.mjs [--src dist\win-unpacked] [--work C:\onyx\tmp\tarcheck]
+// Uso (en el PC, desde C:\onyx\wt):  C:\onyx\node22\node.exe scripts\win\tar-check.mjs [--src dist\win-unpacked] [--root C:\onyx] [--work <root>\tmp\tarcheck]
 // 1) arma el ZIP con buildWinZip (el mismo de publish-update.mjs) y lo revisa con checkWinZip (lo que comprueba el cliente);
 // 2) lo extrae con System32\tar.exe igual que installer-win.ts (-x -f <zip> -C <staging> --strip-components 1);
 // 3) coteja la carpeta extraida con el original (rutas y tamanos; SHA-256 de los tres imprescindibles) y pasa checkWinApp.
@@ -16,7 +16,9 @@ const arg = (n, d) => {
 }
 const repo = resolve(import.meta.dirname, '..', '..')
 const src = resolve(repo, arg('--src', 'dist\\win-unpacked'))
-const work = resolve(arg('--work', 'C:\\onyx\\tmp\\tarcheck'))
+const root = arg('--root', 'C:\\onyx') // en CI: una carpeta bajo %TEMP%
+const workBase = `${resolve(root)}\\tmp\\`
+const work = resolve(arg('--work', `${workBase}tarcheck`))
 const version = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
 let fails = 0
 const check = (name, ok, detail = '') => {
@@ -24,7 +26,7 @@ const check = (name, ok, detail = '') => {
   if (!ok) fails++
 }
 if (process.platform !== 'win32') throw new Error('Solo en Windows (usa tar.exe de System32).')
-if (!work.toLowerCase().startsWith('c:\\onyx\\tmp\\')) throw new Error(`--work debe colgar de C:\\onyx\\tmp: ${work}`)
+if (!work.toLowerCase().startsWith(workBase.toLowerCase())) throw new Error(`--work debe colgar de ${workBase}: ${work}`)
 if (!existsSync(join(src, 'Lazunox.exe'))) throw new Error(`Falta ${join(src, 'Lazunox.exe')}: empaqueta antes con npm run package:win`)
 
 const files = (dir) => {

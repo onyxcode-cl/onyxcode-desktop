@@ -4,7 +4,8 @@
 # Escenarios: (1) camino feliz: la app nueva "confirma" el arranque (boot-ok) y se queda la version nueva;
 #             (2) rollback: no hay boot-ok y vuelve la version antigua dejando la fallida aparte;
 #             (3) argumentos hostiles: destino que no se llama Lazunox, ruta con .., ruta con ADS -> exit 64 sin tocar nada.
-param([string]$Branch = 'default', [string]$Root = 'C:\onyx')
+# -Wt: carpeta del repo (por defecto $Root\wt; en CI es el workspace). En CI $Root debe colgar de %TEMP% (swap.ps1 en modo de prueba solo lo acepta ahi o bajo C:\onyx\).
+param([string]$Branch = 'default', [string]$Root = 'C:\onyx', [string]$Wt = '')
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 $Branch = $Branch -replace '[\\/:*?"<>|]', '-'
@@ -18,7 +19,8 @@ function Check([string]$name, [bool]$ok, [string]$detail = '') {
   if ($ok) { Log "OK    $name $detail" } else { Log "FALLA $name $detail"; $script:fail++ }
 }
 
-$swapSrc = Join-Path $Root 'wt\resources\updater\swap.ps1'
+$wtDir = if ($Wt) { $Wt } else { Join-Path $Root 'wt' }
+$swapSrc = Join-Path $wtDir 'resources\updater\swap.ps1'
 $base = Join-Path $Root 'tmp\swapcheck'
 if (-not $base.StartsWith("$Root\tmp\", [StringComparison]::OrdinalIgnoreCase)) { Write-Output 'base fuera de C:\onyx\tmp'; exit 2 }
 if (-not (Test-Path $swapSrc)) { Write-Output "Falta $swapSrc"; exit 3 }

@@ -10,6 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (f) => readFileSync(resolve(root, '.github/workflows', f), 'utf8')
 const ci = read('ci.yml')
 const release = read('release.yml')
+const windows = read('windows.yml')
 const require = createRequire(import.meta.url)
 let yaml = null
 try {
@@ -30,7 +31,7 @@ test('los dos flujos son YAML válido con los jobs esperados', { skip: !yaml }, 
 })
 
 test('todas las acciones van fijadas por SHA de commit (40 hex)', () => {
-  for (const t of [ci, release]) {
+  for (const t of [ci, release, windows]) {
     const uses = [...code(t).matchAll(/uses:\s*(\S+)/g)].map((m) => m[1])
     assert.ok(uses.length > 0)
     for (const u of uses) assert.match(u, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/, u)
@@ -77,4 +78,48 @@ test('release.yml: entorno protegido, borrador, sin clave Ed25519 y sin publicar
     at = i
   }
   assert.match(c, /if: always\(\)[\s\S]*delete-keychain/)
+})
+
+test('windows.yml: YAML válido, solo lectura, sin secretos, sin publicar y con las comprobaciones de Windows', () => {
+  if (yaml) {
+    const w = yaml.load(windows)
+    assert.deepEqual(Object.keys(w.jobs), ['windows'])
+    assert.equal(w.jobs.windows['runs-on'], 'windows-latest')
+    assert.deepEqual(w.permissions, { contents: 'read' })
+    assert.equal(w.jobs.windows.permissions, undefined, 'el job no amplía permisos')
+  }
+  const c = code(windows)
+  assert.match(c, /^permissions:\s*\n\s+contents: read/m)
+  assert.ok(!/secrets\./.test(c), 'sin secretos')
+  assert.ok(!/write/.test(c.replace(/cancel-in-progress/g, '')), 'sin permisos de escritura')
+  assert.ok(!/environment:|gh release|--publish|CSC_LINK|WIN_CSC|UPDATE_PRIVATE|update\.pem|sign-update/i.test(c), 'no publica ni firma')
+  assert.ok(!/test:e2e|test:smoke|npm run verify\b/.test(c), 'sin E2E de Electron en el runner')
+  const order = [
+    'npm ci',
+    'npm run typecheck',
+    'vitest run --maxWorkers=2',
+    'npm run build',
+    'npm run package:win',
+    'pack-check.ps1',
+    'tar-check.mjs',
+    'swap-check.ps1'
+  ]
+  let at = -1
+  for (const s of order) {
+    const i = c.indexOf(s)
+    assert.ok(i > at, `${s} falta o está fuera de orden`)
+    at = i
+  }
+  // El humo de la app empaquetada no bloquea, pero los controles estáticos sí.
+  assert.match(c, /pack-check\.ps1[^\n]*-NoSmoke/)
+  assert.match(c, /continue-on-error: true/)
+})
+
+test('los scripts de scripts/win que usa windows.yml aceptan otra raíz y mantienen su raíz por defecto', () => {
+  const ps = (f) => readFileSync(resolve(root, 'scripts/win', f), 'utf8')
+  for (const f of ['pack-check.ps1', 'swap-check.ps1']) {
+    assert.match(ps(f), /\[string\]\$Root = '[A-Z]:\\[^']+'/, `${f}: raíz por defecto del PC de pruebas`)
+    assert.match(ps(f), /\[string\]\$Wt = ''/, `${f}: -Wt`)
+  }
+  assert.match(readFileSync(resolve(root, 'scripts/win/tar-check.mjs'), 'utf8'), /arg\('--root', '[A-Z]:\\\\[^']+'\)/)
 })
