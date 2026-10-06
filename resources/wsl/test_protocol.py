@@ -388,3 +388,46 @@ class HomeCommands(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InteropConfTests(unittest.TestCase):
+    """El interop de WSL cuenta como apagado SOLO si el wsl.conf lo dice (`[interop] enabled=false`): el registro binfmt es del núcleo y
+    aparece aunque la distro lo tenga apagado (medido en el PC de pruebas)."""
+
+    def conf(self, text):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        p = os.path.join(d, "wsl.conf")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(text)
+        return p
+
+    def test_el_wsl_conf_de_la_imagen_lo_apaga(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        self.assertFalse(L.interop_active(os.path.join(here, "wsl.conf")))
+
+    def test_apagado_en_su_seccion(self):
+        self.assertFalse(L.interop_active(self.conf("[automount]\nenabled=true\n\n[interop]\nenabled=false\nappendWindowsPath=false\n")))
+
+    def test_espacios_comillas_y_mayusculas(self):
+        self.assertFalse(L.interop_active(self.conf("[ Interop ]\n Enabled = \"False\"  # sin interop\n")))
+
+    def test_sin_la_clave_o_encendido_cuenta_como_activo(self):
+        self.assertTrue(L.interop_active(self.conf("[interop]\nappendWindowsPath=false\n")))
+        self.assertTrue(L.interop_active(self.conf("[interop]\nenabled=true\n")))
+        self.assertTrue(L.interop_active(self.conf("")))
+
+    def test_enabled_false_de_OTRA_seccion_no_vale(self):
+        self.assertTrue(L.interop_active(self.conf("[automount]\nenabled=false\n")))
+        self.assertTrue(L.interop_active(self.conf("[boot]\nenabled=false\n")))
+
+    def test_comentado_no_vale(self):
+        self.assertTrue(L.interop_active(self.conf("[interop]\n# enabled=false\n")))
+
+    def test_sin_wsl_conf_falla_cerrado(self):
+        self.assertTrue(L.interop_active("/no/existe/wsl.conf"))
+
+    def test_la_existencia_del_registro_binfmt_ya_no_cuenta(self):
+        off = self.conf("[interop]\nenabled=false\n")
+        with mock.patch("os.path.exists", return_value=True):
+            self.assertFalse(L.interop_active(off))

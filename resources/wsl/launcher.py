@@ -137,10 +137,44 @@ def read_payload_sha():
         return None
 
 
+WSL_CONF = "/etc/wsl.conf"
+
+
+def wsl_conf_interop_disabled(text):
+    """¿Dice el wsl.conf `[interop] enabled=false`? ini mínimo; sin la clave o con otro valor el interop cuenta como ACTIVO."""
+    section = None
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip().lower()
+            continue
+        if section == "interop" and "=" in line:
+            key, value = line.split("=", 1)
+            if key.strip().lower() == "enabled":
+                return value.strip().strip('"').lower() == "false"
+    return False
+
+
+def interop_active(conf_path=WSL_CONF):
+    """El interop de WSL está activo salvo que el wsl.conf de la distro lo apague (`[interop] enabled=false`).
+
+    NO se mira si existe /proc/sys/fs/binfmt_misc/WSLInterop: el registro binfmt es del núcleo (compartido por todas las distros de WSL2) y
+    aparece aunque este distro tenga el interop apagado. Medido en el PC de pruebas (WSL 2.7.3, núcleo 6.6.114): con `enabled=false` el
+    registro sigue ahí, pero un .exe de Windows copiado a la distro NO se ejecuta (`accept4 failed 110`). Si no se puede leer el
+    wsl.conf, se asume activo (falla cerrado)."""
+    try:
+        with open(conf_path, encoding="utf-8") as f:
+            return not wsl_conf_interop_disabled(f.read())
+    except OSError:
+        return True
+
+
 def probe():
     drives, system = read_mounts()
     info = {
-        "interop": os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop-late"),
+        "interop": interop_active(),
         "driveMounts": drives,
         "wslSystemMounts": system,
         "landlockAbi": landlock.abi_version(),
@@ -304,6 +338,10 @@ def hide_windows(lc):
         lc.umount2(mnt.encode(), 2)
     if os.path.isdir("/run/WSL"):
         run(["mount", "-t", "tmpfs", "-o", "mode=0555,size=4k", "tmpfs", "/run/WSL"])
+    # El intérprete del binfmt de interop es /init: dentro de ESTE espacio de montaje se tapa con /dev/null (mejor esfuerzo: si falla,
+    # el interop sigue apagado por el wsl.conf y el lanzador ya comprobó que lo está).
+    if os.path.isfile("/init"):
+        subprocess.run(["mount", "--bind", "/dev/null", "/init"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
     if drvfs_mounts_present():
         die("quedan unidades de Windows montadas")
 
@@ -416,7 +454,7 @@ def main():
         init = P.validate_init(read_exact_frame(STDIN))
     except P.ProtocolError as e:
         die("INIT inválido (%s): %s" % (e.code, e))
-    if os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop-late"):
+    if interop_active():
         die("el interop de WSL está activo: me niego a arrancar", 94)
     if landlock.abi_version() < init["landlock"]["minAbi"]:
         die("Landlock no disponible (ABI %d): me niego a arrancar sin protección de borrado" % landlock.abi_version(), 93)

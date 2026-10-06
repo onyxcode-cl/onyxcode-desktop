@@ -25,7 +25,10 @@ describe('launcher.py: análisis estático', () => {
     expect(launcher).not.toMatch(/shutdown|auth\.json|OPENCODE_AUTH_CONTENT|readProviderAuth|Bearer/)
   })
   it('se niega a arrancar con interop activo o sin Landlock, y usa los tres espacios de nombres', () => {
-    expect(launcher).toContain('WSLInterop')
+    // El interop se decide por el wsl.conf de la distro (`[interop] enabled=false`), no por el registro binfmt del núcleo, que es de todas las distros.
+    expect(launcher).toMatch(/if interop_active\(\):\s*\n\s*die\("el interop de WSL está activo/)
+    expect(launcher).toContain('/etc/wsl.conf')
+    expect(launcher).not.toContain('binfmt_misc/WSLInterop')
     expect(launcher).toMatch(/landlock\.abi_version\(\) < init\["landlock"\]\["minAbi"\]/)
     expect(launcher).toContain('CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWNET')
   })
