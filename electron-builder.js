@@ -49,6 +49,8 @@ module.exports = {
     // Higiene del paquete (F7-B34): config de lint/formato, changelogs y documentación no van en el .asar.
     '!{eslint.config.mjs,.prettierrc,.prettierignore,CHANGELOG-FASE*.md}',
     '!docs/**',
+    // Artefactos locales ignorados por git (notas de trabajo y cachés de tsc): nunca dentro del paquete.
+    '!{.nd,.nd/**,*.tsbuildinfo}',
     '!electron.vite.config.{js,ts,mjs,cjs}',
     '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,PLAN.md,DESIGN.md,AUDIT.md}',
     '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}',
