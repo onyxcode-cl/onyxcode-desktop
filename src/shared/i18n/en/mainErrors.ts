@@ -160,6 +160,25 @@ export const mainErrors = {
   'merr.folder.system': '“{system}” is a system folder and can’t be used. Choose a folder inside your home folder.',
   'merr.folder.secrets':
     'That folder holds credentials or private data ({path}) and tasks can’t give the agent access to it. Choose another folder.',
+  // Tasks folders on Windows (UNTOUCHABLE zone: strict policy, fails closed)
+  'merr.folder.winBadPath':
+    'That path is invalid or ambiguous on Windows (it has “..”, “:”, reserved names such as CON or NUL, short 8.3 names, or ends in a dot or space). Type the full path with its drive, for example C:\\Projects\\my-folder.',
+  'merr.folder.winNetwork':
+    'That folder is on a network path or drive ({where}). Tasks can’t safely work on network resources: copy the files to a local folder and choose that folder.',
+  'merr.folder.winDriveType':
+    'Drive {drive}: is not a local fixed disk ({kind}). For safety, tasks only work on fixed disks: copy the files to a local folder and choose that folder.',
+  'merr.folder.winSubst': 'Drive {drive}: is an alias created with “subst” and can’t be verified. Choose the folder using its real path.',
+  'merr.folder.winDriveRoot': 'You can’t use the root of a drive ({drive}:\\). Choose a specific folder, for example one inside Documents.',
+  'merr.folder.winDrivesUnknown': 'Couldn’t check which drives this computer has, so for safety no folder is approved. Try again.',
+  'merr.folder.winOtherUsers':
+    'That folder belongs to another user of this computer or is shared ({path}). Choose a folder inside your own user folder.',
+  'merr.folder.winAppData':
+    'That folder holds application data ({path}), where browser profiles, credentials and settings live. Tasks can’t use it. Choose another folder.',
+  'merr.folder.winLink':
+    'That folder contains or goes through a symbolic link or junction at “{path}”, which could lead somewhere else on the disk. Choose a folder without links.',
+  'merr.folder.winLinkUnverified':
+    'Couldn’t verify that the folder has no symbolic links or junctions ({why}), so for safety it isn’t approved.',
+  'merr.folder.winContext': 'Couldn’t check the Windows folder policy, so for safety the folder isn’t approved.',
   'merr.task.mainFolder': 'That is the workspace’s main folder; it already has write access.',
   'merr.task.pathNotAuthorized': 'The path doesn’t belong to an authorized working folder.',
   'merr.routine.noWildcard': '“Allow without asking” doesn’t accept “*” as a permission: name the specific permission (e.g. bash).',

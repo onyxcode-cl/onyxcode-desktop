@@ -163,6 +163,27 @@ export const mainErrors = {
   'merr.folder.system': '«{system}» es una carpeta del sistema y no se puede usar. Elige una carpeta dentro de tu carpeta personal.',
   'merr.folder.secrets':
     'Esa carpeta guarda credenciales o datos privados ({path}) y las tareas no pueden darle acceso al agente. Elige otra carpeta.',
+  // Carpetas de Tareas en Windows (zona INTOCABLE: política estricta, falla cerrado)
+  'merr.folder.winBadPath':
+    'Esa ruta no es válida o es ambigua en Windows (lleva «..», «:», nombres reservados como CON o NUL, nombres cortos 8.3, o termina en punto o espacio). Escribe la ruta completa con su unidad, por ejemplo C:\\Proyectos\\mi-carpeta.',
+  'merr.folder.winNetwork':
+    'Esa carpeta está en una ruta o unidad de red ({where}). Las tareas no pueden trabajar de forma segura sobre recursos de red: copia los archivos a una carpeta local y elige esa carpeta.',
+  'merr.folder.winDriveType':
+    'La unidad {drive}: no es un disco fijo local ({kind}). Por seguridad, las tareas solo trabajan en discos fijos: copia los archivos a una carpeta local y elige esa carpeta.',
+  'merr.folder.winSubst': 'La unidad {drive}: es un alias creado con «subst» y no se puede verificar. Elige la carpeta con su ruta real.',
+  'merr.folder.winDriveRoot':
+    'No se puede usar la raíz de una unidad ({drive}:\\). Elige una carpeta concreta, por ejemplo una dentro de Documentos.',
+  'merr.folder.winDrivesUnknown':
+    'No se pudo comprobar qué unidades tiene el equipo, así que por seguridad no se aprueba ninguna carpeta. Inténtalo de nuevo.',
+  'merr.folder.winOtherUsers':
+    'Esa carpeta pertenece a otro usuario del equipo o es compartida ({path}). Elige una carpeta dentro de tu carpeta personal.',
+  'merr.folder.winAppData':
+    'Esa carpeta es de datos de aplicaciones ({path}), donde se guardan perfiles de navegadores, credenciales y ajustes. Las tareas no pueden usarla. Elige otra carpeta.',
+  'merr.folder.winLink':
+    'Esa carpeta contiene o atraviesa un enlace simbólico o una unión (junction) en «{path}», que podría llevar a otra parte del disco. Elige una carpeta sin enlaces.',
+  'merr.folder.winLinkUnverified':
+    'No se pudo comprobar que la carpeta esté libre de enlaces simbólicos o uniones ({why}), así que por seguridad no se aprueba.',
+  'merr.folder.winContext': 'No se pudo comprobar la política de carpetas de Windows, así que por seguridad no se aprueba la carpeta.',
   'merr.task.mainFolder': 'Esa es la carpeta principal del espacio; ya tiene acceso de escritura.',
   'merr.task.pathNotAuthorized': 'La ruta no pertenece a una carpeta de trabajo autorizada.',
   'merr.routine.noWildcard': '«Permitir sin preguntar» no admite «*» como permiso: indica el permiso concreto (p. ej. bash).',
