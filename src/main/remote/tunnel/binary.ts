@@ -11,6 +11,11 @@
  * extracción a una carpeta nueva → un único archivo regular (sin enlaces) con tamaño y SHA-256 del pin → `codesign` (cadena Developer ID
  * y equipo) → `chmod 0700` y renombrado atómico a `<bin>/cloudflared-<versión>/cloudflared`.
  * Arrancar: `ensureReady()` vuelve a comprobar el hash y la firma ANTES de CADA arranque.
+ *
+ * Windows (`win32-x64`, solo si el pin trae ese asset; hoy NO lo trae: `unsupported`): la release publica el `.exe` suelto (sin `.tgz`),
+ * así que se descarga directamente el binario (su `size`/`sha256` son los del binario), se salta `tar` y la firma es Authenticode
+ * (`Get-AuthenticodeSignature`: estado `Valid` y sujeto del certificado igual al del pin). Los permisos POSIX no existen en NTFS: la
+ * carpeta `userData\bin` hereda la ACL del perfil del usuario. El pin de Windows lo genera una persona en el PC (docs/REMOTO-WINDOWS.md).
  */
 import { execFile } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
@@ -37,18 +42,22 @@ export interface PinSignature {
   teamId: string
   authority: string
 }
+/** Windows: sujeto EXACTO del certificado Authenticode del `.exe` (p. ej. `CN=Cloudflare, Inc., O=Cloudflare, Inc., …`). */
+export interface PinSignatureWin {
+  subject: string
+}
 export interface PinAsset {
   url: string
-  /** Bytes exactos del `.tgz`. */
+  /** Bytes exactos del `.tgz` (Windows: del `.exe`, igual que `binSize`). */
   size: number
-  /** SHA-256 del `.tgz`. */
+  /** SHA-256 del `.tgz` (Windows: del `.exe`, igual que `binSha256`). */
   sha256: string
   /** Bytes exactos del binario extraído. */
   binSize: number
   /** SHA-256 del binario extraído. */
   binSha256: string
   binMaxSize: number
-  signature: PinSignature
+  signature: PinSignature | PinSignatureWin
 }
 export interface CloudflaredPin {
   version: string
@@ -57,7 +66,8 @@ export interface CloudflaredPin {
 }
 
 const HEX64 = /^[0-9a-f]{64}$/
-const RELEASE_URL_RE = /^https:\/\/github\.com\/cloudflare\/cloudflared\/releases\/download\/[0-9A-Za-z._-]+\/[0-9A-Za-z._-]+\.tgz$/
+const RELEASE_URL_RE = /^https:\/\/github\.com\/cloudflare\/cloudflared\/releases\/download\/[0-9A-Za-z._-]+\/[0-9A-Za-z._-]+\.(?:tgz|exe)$/
+const SUBJECT_RE = /^[^\u0000-\u001f\u007f]{3,300}$/
 const VERSION_RE = /^[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}$/
 const TEAM_RE = /^[A-Z0-9]{10}$/
 const posInt = (v: unknown, max: number): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v > 0 && v <= max
@@ -74,9 +84,11 @@ export function parsePin(raw: unknown): CloudflaredPin | null {
     if (!/^(darwin|win32|linux)-(arm64|x64)$/.test(key) || !v || typeof v !== 'object') return null
     const a = v as Record<string, unknown>
     const sig = a.signature as Record<string, unknown> | undefined
+    const win = key.startsWith('win32-')
     if (
       typeof a.url !== 'string' ||
       !RELEASE_URL_RE.test(a.url) ||
+      !a.url.endsWith(win ? '.exe' : '.tgz') ||
       !a.url.includes(`/download/${o.version}/`) ||
       !posInt(a.size, 200_000_000) ||
       typeof a.sha256 !== 'string' ||
@@ -86,15 +98,27 @@ export function parsePin(raw: unknown): CloudflaredPin | null {
       !HEX64.test(a.binSha256) ||
       !posInt(a.binMaxSize, 200_000_000) ||
       a.binSize > a.binMaxSize ||
-      !sig ||
-      typeof sig.identifier !== 'string' ||
-      !/^[A-Za-z0-9._-]{1,64}$/.test(sig.identifier) ||
-      typeof sig.teamId !== 'string' ||
-      !TEAM_RE.test(sig.teamId) ||
-      typeof sig.authority !== 'string' ||
-      !sig.authority.includes(`(${sig.teamId})`)
+      !sig
     )
       return null
+    let signature: PinSignature | PinSignatureWin
+    if (win) {
+      // El `.exe` se descarga tal cual: lo descargado Y el binario son lo mismo (mismo tamaño y mismo hash).
+      if (a.size !== a.binSize || a.sha256 !== a.binSha256) return null
+      if (typeof sig.subject !== 'string' || !SUBJECT_RE.test(sig.subject)) return null
+      signature = { subject: sig.subject }
+    } else {
+      if (
+        typeof sig.identifier !== 'string' ||
+        !/^[A-Za-z0-9._-]{1,64}$/.test(sig.identifier) ||
+        typeof sig.teamId !== 'string' ||
+        !TEAM_RE.test(sig.teamId) ||
+        typeof sig.authority !== 'string' ||
+        !sig.authority.includes(`(${sig.teamId})`)
+      )
+        return null
+      signature = { identifier: sig.identifier, teamId: sig.teamId, authority: sig.authority }
+    }
     assets[key] = {
       url: a.url,
       size: a.size,
@@ -102,7 +126,7 @@ export function parsePin(raw: unknown): CloudflaredPin | null {
       binSize: a.binSize,
       binSha256: a.binSha256,
       binMaxSize: a.binMaxSize,
-      signature: { identifier: sig.identifier, teamId: sig.teamId, authority: sig.authority }
+      signature
     }
   }
   return { version: o.version, releasedAt: o.releasedAt, assets }
@@ -154,6 +178,8 @@ export interface BinaryOptions {
   binDir: string
   platform?: string
   arch?: string
+  /** Solo pruebas (Windows): carpeta del sistema para localizar `powershell.exe`. */
+  systemRoot?: string
   fetch?: FetchLike
   run?: RunFile
   /** Política `allowTravelDownload` (por defecto, sí). */
@@ -220,9 +246,14 @@ export class CloudflaredBinary {
     return `cloudflared-${this.o.pin?.version ?? 'none'}`
   }
 
-  /** `<bin>/cloudflared-<versión>/cloudflared` (ruta fija que reconoce `killStaleServers`). */
+  /** Nombre del ejecutable: `cloudflared.exe` en Windows. */
+  private exeName(): string {
+    return this.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared'
+  }
+
+  /** `<bin>/cloudflared-<versión>/cloudflared[.exe]` (ruta fija que reconoce `killStaleServers`, también con barras de Windows). */
   installedPath(): string {
-    return join(this.o.binDir, this.dirName(), 'cloudflared')
+    return join(this.o.binDir, this.dirName(), this.exeName())
   }
 
   private otherVersions(): string[] {
@@ -264,7 +295,7 @@ export class CloudflaredBinary {
     }
     if (!st.isFile() || st.isSymbolicLink() || st.size > a.binMaxSize || st.size !== a.binSize) return bad()
     // Escritura para el grupo/otros: no es fiable (solo el dueño puede modificarlo).
-    if (process.platform !== 'win32' && (st.mode & 0o022) !== 0) return bad()
+    if (this.platform !== 'win32' && (st.mode & 0o022) !== 0) return bad()
     let hash: string
     try {
       hash = await sha256File(path)
@@ -282,12 +313,41 @@ export class CloudflaredBinary {
    */
   async checkSignature(path: string): Promise<boolean> {
     const a = this.asset()
-    if (!a || this.platform !== 'darwin') return false
+    if (!a) return false
+    if (this.platform === 'win32') return this.checkAuthenticode(path, a)
+    if (this.platform !== 'darwin' || !('teamId' in a.signature)) return false
     try {
       await this.run('/usr/bin/codesign', ['--verify', '--strict', `-R=${codesignRequirement(a.signature)}`, path])
       const det = await this.run('/usr/bin/codesign', ['-d', '--verbose=2', path])
       const d = parseCodesignDetails(`${det.stdout}\n${det.stderr}`)
       return d.identifier === a.signature.identifier && d.teamId === a.signature.teamId && d.authorities.includes(a.signature.authority)
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Windows: Authenticode con PowerShell sin perfil ni shell intermedio (la ruta va entre comillas simples escapadas y la ejecutable de
+   * PowerShell por ruta absoluta). Exige estado `Valid` y que el sujeto del certificado sea EXACTAMENTE el del pin. Todo lo demás, `false`.
+   */
+  private async checkAuthenticode(path: string, a: PinAsset): Promise<boolean> {
+    if (!('subject' in a.signature)) return false
+    const quoted = `'${path.replace(/'/g, "''")}'`
+    const script =
+      `$s = Get-AuthenticodeSignature -LiteralPath ${quoted}; ` +
+      `[pscustomobject]@{ Status = [string]$s.Status; Subject = $(if ($s.SignerCertificate) { $s.SignerCertificate.Subject } else { '' }) } | ConvertTo-Json -Compress`
+    const root = this.o.systemRoot ?? process.env.SystemRoot ?? 'C:\\Windows'
+    try {
+      const out = await this.run(`${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`, [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        script
+      ])
+      const r = JSON.parse(out.stdout.trim()) as { Status?: unknown; Subject?: unknown }
+      return r.Status === 'Valid' && typeof r.Subject === 'string' && r.Subject === a.signature.subject
     } catch {
       return false
     }
@@ -326,7 +386,8 @@ export class CloudflaredBinary {
     if (opts.consent !== true) throw new BinaryError('consent')
     if (this.o.allowDownload && !this.o.allowDownload()) throw new BinaryError('policy')
     const a = this.asset()
-    if (!a || !this.o.fetch || this.platform !== 'darwin') throw new BinaryError('unsupported')
+    if (!a || !this.o.fetch || (this.platform !== 'darwin' && this.platform !== 'win32')) throw new BinaryError('unsupported')
+    const win = this.platform === 'win32'
     mkdirSync(this.o.binDir, { recursive: true, mode: 0o700 })
     try {
       chmodSync(this.o.binDir, 0o700)
@@ -336,15 +397,21 @@ export class CloudflaredBinary {
     const work = join(this.o.binDir, `.partial-${randomBytes(6).toString('hex')}`)
     mkdirSync(work, { mode: 0o700 })
     try {
-      const tgz = join(work, 'cloudflared.tgz')
-      await this.download(a, tgz, opts)
       const out = join(work, 'out')
       mkdirSync(out, { mode: 0o700 })
-      await this.extract(tgz, out)
-      const bin = join(out, 'cloudflared')
+      const name = this.exeName()
+      const bin = join(out, name)
+      if (win) {
+        // Release de Windows: el `.exe` suelto (sin `.tgz`). Se descarga directamente a su sitio de trabajo y se verifica igual.
+        await this.download(a, bin, opts)
+      } else {
+        const tgz = join(work, 'cloudflared.tgz')
+        await this.download(a, tgz, opts)
+        await this.extract(tgz, out)
+      }
       const entries = readdirSync(out)
       const st = lstatSync(bin)
-      if (entries.length !== 1 || entries[0] !== 'cloudflared' || !st.isFile() || st.isSymbolicLink()) throw new BinaryError('extract')
+      if (entries.length !== 1 || entries[0] !== name || !st.isFile() || st.isSymbolicLink()) throw new BinaryError('extract')
       if (st.size > a.binMaxSize || st.size !== a.binSize) throw new BinaryError('bad-hash')
       if ((await sha256File(bin)) !== a.binSha256) {
         this.o.audit?.({ kind: 'travel-binary-bad-hash' })
@@ -359,7 +426,7 @@ export class CloudflaredBinary {
       const dir = join(this.o.binDir, this.dirName())
       rmSync(dir, { recursive: true, force: true })
       mkdirSync(dir, { mode: 0o700 })
-      renameSync(bin, join(dir, 'cloudflared'))
+      renameSync(bin, join(dir, name))
       for (const old of this.otherVersions()) rmSync(join(this.o.binDir, old), { recursive: true, force: true })
       this.badHash = false
       this.o.audit?.({ kind: 'travel-binary-installed', why: this.o.pin?.version })
