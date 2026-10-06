@@ -4,6 +4,7 @@
  * lanzar (sin repositorio, adjuntos, otra comparación en curso).
  */
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Columns3 } from 'lucide-react'
 import type { CompareMode } from '@shared/ipc-code'
 import type { MsgKey } from '@shared/i18n'
@@ -43,7 +44,10 @@ export function CompareConfirmDialog({ mode, directory }: { mode: CompareMode; d
   if (!c || !mine) return null
   const nameOf = (providerID: string, modelID: string): string =>
     providers.find((p) => p.id === providerID)?.models[modelID]?.name ?? modelID
-  return <ConfirmDialogBody c={c} nameOf={nameOf} dontAsk={dontAsk} onDontAsk={setDontAsk} />
+  const body = <ConfirmDialogBody c={c} nameOf={nameOf} dontAsk={dontAsk} onDontAsk={setDontAsk} />
+  // Portal a <body>: dentro del compositor (que lleva `animate-rise-in`, con transform y apilamiento propios) el `fixed` queda
+  // acotado a ese bloque y las tarjetas de sugerencias de Chat se pintan por encima del diálogo.
+  return typeof document === 'undefined' ? body : createPortal(body, document.body)
 }
 
 /** Contenido del diálogo (sin acceso al store: se prueba con props). */
