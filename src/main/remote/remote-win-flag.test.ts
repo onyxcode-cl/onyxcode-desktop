@@ -5,21 +5,26 @@ import { capsFor } from '@shared/platform-caps'
 import { capsFlagsFromArgv, capsFlagsToArgs } from '@shared/caps-argv'
 import { REMOTE_WIN_BUILD, resolveRemoteWin } from './remote-win-flag'
 
-describe('remoteWin: puerta de compilación apagada', () => {
-  it('el literal del repositorio es false (solo el dueño lo cambia, en un commit aparte)', () => {
+describe('remoteWin: puerta de compilación', () => {
+  it('el literal del repositorio es true (decisión expresa del dueño, 2026-10-07; solo él lo cambia, en un commit aparte)', () => {
     const src = readFileSync(join(__dirname, 'remote-win-flag.ts'), 'utf8')
-    expect(src).toMatch(/export const REMOTE_WIN_BUILD = false\b/)
-    expect(REMOTE_WIN_BUILD).toBe(false)
+    expect(src).toMatch(/export const REMOTE_WIN_BUILD = true\b/)
+    expect(REMOTE_WIN_BUILD).toBe(true)
   })
   it('no vive en feature-flags.ts (zona intocable)', () => {
     const src = readFileSync(join(__dirname, '..', '..', 'shared', 'feature-flags.ts'), 'utf8')
     expect(src).not.toMatch(/REMOTE_WIN/)
   })
-  it('apagada por defecto: sin variable de entorno no se enciende, empaquetada o no', () => {
+  it('con la puerta apagada (inyectada) solo la variable de desarrollo la enciende, y nunca empaquetada', () => {
     for (const isPackaged of [true, false, undefined]) {
-      expect(resolveRemoteWin({ platform: 'win32', env: {}, isPackaged })).toBe(false)
+      expect(resolveRemoteWin({ platform: 'win32', build: false, env: {}, isPackaged })).toBe(false)
     }
-    expect(resolveRemoteWin({ platform: 'win32', env: { LAZUNOX_REMOTE_WIN: '1' }, isPackaged: true })).toBe(false)
+    expect(resolveRemoteWin({ platform: 'win32', build: false, env: { LAZUNOX_REMOTE_WIN: '1' }, isPackaged: true })).toBe(false)
+  })
+  it('con la puerta real encendida: Windows sí (empaquetada o no), el resto no, y la política de la organización la cierra', () => {
+    expect(resolveRemoteWin({ platform: 'win32', env: {}, isPackaged: true })).toBe(true)
+    expect(resolveRemoteWin({ platform: 'win32', env: {}, isPackaged: true, policyBlocked: true })).toBe(false)
+    for (const platform of ['darwin', 'linux', 'remote']) expect(resolveRemoteWin({ platform, env: {}, isPackaged: true })).toBe(false)
   })
 })
 

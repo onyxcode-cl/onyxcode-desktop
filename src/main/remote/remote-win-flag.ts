@@ -3,8 +3,9 @@
  *
  *   remoteWin = win32 && !policy.blocked && (REMOTE_WIN_BUILD || devEnv)
  *
- *  - `REMOTE_WIN_BUILD`: puerta de compilación. Va `false` como LITERAL en el repositorio y solo pasa a `true` en un commit aparte,
- *    con la decisión del dueño, cuando haya probado el remoto en el PC (docs/REMOTO-WINDOWS.md §5). Una guardia de pruebas lee el
+ *  - `REMOTE_WIN_BUILD`: puerta de compilación. Es un LITERAL en el repositorio y solo cambia en un commit aparte, con la decisión
+ *    del dueño. Pasó a `true` el 2026-10-07 por decisión expresa del dueño (versión funcional de Windows). Probado en el PC: el servicio arranca
+ *    y sirve la PWA real a otro equipo, y el helper pasó sus pruebas. SIN probar: emparejar un celular real, WebRTC y el modo fuera de casa. Una guardia de pruebas lee el
  *    literal. Vive aquí y NO en `src/shared/feature-flags.ts` (zona intocable de AGENTS.md §7).
  *  - `devEnv`: `LAZUNOX_REMOTE_WIN=1` y SOLO si la app NO está empaquetada (`npm run dev` en el PC de pruebas; mismo patrón que
  *    `LAZUNOX_TASKS_WIN`). Una instalación empaquetada ignora la variable.
@@ -12,7 +13,7 @@
  * Todo lo que no sea exactamente `true`/`'1'` cuenta como apagado. No cambia ninguna garantía de seguridad: solo decide si la
  * superficie existe en Windows; cifrado, emparejamiento, límites, listas de denegación y auditoría son los mismos que en macOS.
  */
-export const REMOTE_WIN_BUILD = false
+export const REMOTE_WIN_BUILD = true
 
 export interface RemoteWinDeps {
   platform: string
