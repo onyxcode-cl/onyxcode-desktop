@@ -8,5 +8,8 @@ $electron = Join-Path $wt 'node_modules\electron\dist\electron.exe'
 if (-not (Test-Path $electron)) { Write-Output "Falta $electron"; exit 3 }
 if (-not (Test-Path (Join-Path $wt 'out\main\index.js'))) { Write-Output 'Falta out\main\index.js: compila antes (run.ps1 -Steps build).'; exit 3 }
 $env:LAZUNOX_REMOTE_WIN = '1'
+# Sin empaquetar no hay motor incluido y se usaria el OpenCode del PATH (otra version, con aviso): se apunta al del paquete si existe.
+$bundled = Join-Path $Root 'wt\dist\win-unpacked\resources\opencode\opencode.exe'
+if (Test-Path $bundled) { $env:OPENCODE_BIN = $bundled }
 Start-Process -FilePath $electron -ArgumentList @('.', ('--user-data-dir=' + (Join-Path $Root 'tmp\ud-remoto'))) -WorkingDirectory $wt
 Write-Output 'Lazunox abierto con el control remoto de Windows habilitado (desarrollo).'
