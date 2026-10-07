@@ -1,7 +1,7 @@
 # Humo de SOLO LECTURA del helper de Control del PC (cu-helper.exe, Rust) en una sesion GRAFICA del PC de pruebas.
 # NUNCA hace clics ni escribe teclas reales: no invoca move/click/drag/scroll/type/key ni release-input.
-# Solo consulta (screens, cursor, permissions, session, frontmost, running-apps, list-apps, windows-of, focused-secure,
-# recent-input) y comprueba que lo prohibido falla CERRADO (comando desconocido, accion fuera de la lista, comandos
+# Solo consulta (version, screens, cursor, permissions, session, frontmost, running-apps, list-apps, resolve-app, windows-of,
+# focused-secure, recent-input) y comprueba que lo prohibido falla CERRADO (comando desconocido, accion fuera de la lista, comandos
 # diferidos, captura sin consentimiento). Con -WithCapture hace UNA captura de pantalla (lectura) en el directorio temporal.
 # Todo con limite de tiempo (15 s por llamada, como el llamador real) y sin red. PowerShell 5.1.
 #
@@ -76,7 +76,7 @@ function Run-Helper([string[]]$HelperArgs, [hashtable]$ExtraEnv = @{}) {
   $p = New-Object System.Diagnostics.Process
   $p.StartInfo = $psi
   [void]$p.Start()
-  $p.StandardInput.Close()
+  # stdin queda ABIERTO mientras el helper trabaja (como el llamador real): un EOF le haria salir con 3 (contrato).
   $so = $p.StandardOutput.ReadToEndAsync()
   $se = $p.StandardError.ReadToEndAsync()
   $timedOut = $false
@@ -87,6 +87,7 @@ function Run-Helper([string[]]$HelperArgs, [hashtable]$ExtraEnv = @{}) {
   }
   $code = -1
   if (-not $timedOut) { $code = $p.ExitCode }
+  try { $p.StandardInput.Close() } catch { }
   return [pscustomobject]@{ Out = $so.Result.TrimEnd("`r", "`n"); Err = $se.Result.TrimEnd("`r", "`n"); Code = $code; TimedOut = $timedOut }
 }
 
@@ -108,6 +109,10 @@ $info = Get-Item -LiteralPath $Helper
 Log ("tamano=" + $info.Length + " bytes")
 
 # --- consultas de solo lectura ---------------------------------------------------------------------------
+$r = Run-Helper @('version')
+$ver = Parse-Json $r.Out
+Check 'version: salida 0 y {protocol:1, helper, platform:win32}' ($r.Code -eq 0 -and (Has-Props $ver @('protocol', 'helper', 'platform')) -and $ver.protocol -eq 1 -and $ver.platform -eq 'win32' -and $ver.helper -ne '') $r.Out
+
 $r = Run-Helper @('screens')
 $screens = Parse-Json $r.Out
 Check 'screens: salida 0 y una sola linea JSON' ($r.Code -eq 0 -and $r.Out -notmatch "`n" -and $null -ne $screens) "code=$($r.Code)"
@@ -171,6 +176,10 @@ if ($appList.Count -gt 0) {
   Warn 'list-apps vacia' 'no hay ventanas de aplicacion visibles: se omite windows-of'
 }
 
+$r = Run-Helper @('resolve-app', 'zz-app-que-no-existe-zz')
+$res = Parse-Json $r.Out
+Check 'resolve-app (solo consulta, no abre nada): app inexistente -> found=false y bundleId vacio' ($r.Code -eq 0 -and (Has-Props $res @('name', 'bundleId', 'found')) -and $res.found -eq $false -and $res.bundleId -eq '') $r.Out
+
 $r = Run-Helper @('focused-secure')
 $fs = Parse-Json $r.Out
 Check 'focused-secure: salida 0 y {secure: bool}' ($r.Code -eq 0 -and (Has-Props $fs @('secure'))) $r.Out
@@ -200,6 +209,14 @@ $shot = Join-Path $tmpDir 'sin-consentimiento.jpg'
 Remove-Item -Force -LiteralPath $shot -ErrorAction SilentlyContinue
 $r = Run-Helper @('screenshot', $shot) @{ CU_TEMP_DIR = $tmpDir }
 Check 'screenshot SIN consentimiento -> salida 12 y no escribe el archivo' ($r.Code -eq 12 -and -not (Test-Path -LiteralPath $shot)) "code=$($r.Code)"
+
+$shotW = Join-Path $tmpDir 'ventana-sin-consentimiento.jpg'
+Remove-Item -Force -LiteralPath $shotW -ErrorAction SilentlyContinue
+$r = Run-Helper @('window-shot', 'aumid:a.b!c', $shotW, '0', '--max-long', '800', '--quality', '60')
+Check 'window-shot SIN consentimiento -> salida 12 y no escribe el archivo' ($r.Code -eq 12 -and -not (Test-Path -LiteralPath $shotW)) "code=$($r.Code)"
+
+$r = Run-Helper @('screenshot', $shot, '--mask-keys', 'aumid:a%41')
+Check 'screenshot con --mask-keys mal codificado -> salida 1 (falla cerrado) y no escribe el archivo' ($r.Code -eq 1 -and -not (Test-Path -LiteralPath $shot)) "code=$($r.Code)"
 
 # --- captura opcional (lectura de pantalla; requiere sesion grafica) -------------------------------------
 if ($WithCapture) {
