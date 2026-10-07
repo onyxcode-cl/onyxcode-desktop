@@ -202,6 +202,7 @@ export const mainErrors = {
   'merr.projects.notFile': 'AGENTS.md isn’t a file.',
   'merr.projects.tooBig': 'AGENTS.md is too large to edit here.',
   'merr.projects.overLimit': 'AGENTS.md can’t exceed {max} characters.',
+  'merr.computer.appBlocked': 'That app is blocked and cannot be granted.',
   'merr.computer.noCuHelper': 'The native helper cu-helper is missing',
   // Own windows (Quick Entry, overlay, pill and guide): the page reads the language from `?lang=`
   'ovl.pill.title': 'The AI is controlling your Mac',

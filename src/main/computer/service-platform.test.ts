@@ -25,6 +25,11 @@ describe('ComputerService por plataforma (macOS = lo de siempre)', () => {
     expect(mac.hasEscWatcher).toBe(true)
     expect(mac.mcpEnvExtras({ isPackaged: false, env: { CU_HELPER_ARGV0: 'node' } })).toEqual({})
   })
+  it('macOS: sin consentimiento propio, sin parada por bloqueo de sesión y sin registro auditable (decisiones del dueño)', () => {
+    expect(mac.ownConsent).toBe(false)
+    expect(mac.stopOnPowerEvents).toEqual([])
+    expect(mac.auditLog).toBe(false)
+  })
   it('ereLiteral escapa los metacaracteres de la regex extendida', () => {
     expect(ereLiteral('a.b[c]{d}(e)*+?^$|\\f')).toBe('a\\.b\\[c\\]\\{d\\}\\(e\\)\\*\\+\\?\\^\\$\\|\\\\f')
   })
@@ -47,16 +52,19 @@ describe('ComputerService en Windows', () => {
     ])
   })
   it('el MCP recibe COMPUTER_BACKEND=win32; el helper falso (node) solo sin empaquetar', () => {
-    expect(win.mcpEnvExtras({ isPackaged: true, env: { CU_HELPER_ARGV0: 'node' } })).toEqual({ COMPUTER_BACKEND: 'win32' })
-    expect(win.mcpEnvExtras({ isPackaged: false, env: {} })).toEqual({ COMPUTER_BACKEND: 'win32' })
-    expect(win.mcpEnvExtras({ isPackaged: false, env: { CU_HELPER_ARGV0: 'node' } })).toEqual({
-      COMPUTER_BACKEND: 'win32',
-      CU_HELPER_ARGV0: 'node'
-    })
-    expect(win.mcpEnvExtras({ isPackaged: false, env: { CU_HELPER_ARGV0: 'powershell' } })).toEqual({ COMPUTER_BACKEND: 'win32' })
+    const base = { COMPUTER_BACKEND: 'win32', COMPUTER_WIN_CONSENT: '1' }
+    expect(win.mcpEnvExtras({ isPackaged: true, env: { CU_HELPER_ARGV0: 'node' } })).toEqual(base)
+    expect(win.mcpEnvExtras({ isPackaged: false, env: {} })).toEqual(base)
+    expect(win.mcpEnvExtras({ isPackaged: false, env: { CU_HELPER_ARGV0: 'node' } })).toEqual({ ...base, CU_HELPER_ARGV0: 'node' })
+    expect(win.mcpEnvExtras({ isPackaged: false, env: { CU_HELPER_ARGV0: 'powershell' } })).toEqual(base)
   })
   it('hay vigía de Esc (el helper tiene watch-esc con el gancho de teclado)', () => {
     expect(win.hasEscWatcher).toBe(true)
+  })
+  it('consentimiento propio, parada al bloquear la sesión o suspender, y registro auditable', () => {
+    expect(win.ownConsent).toBe(true)
+    expect(win.stopOnPowerEvents).toEqual(['lock-screen', 'suspend'])
+    expect(win.auditLog).toBe(true)
   })
 })
 
@@ -67,5 +75,6 @@ describe('otras plataformas: sin Control del PC', () => {
     expect(p.helperCandidates(loc, unpacked)).toEqual([])
     expect(p.hasEscWatcher).toBe(false)
     expect(p.killHelperSteps('/x')).toEqual([])
+    expect([p.ownConsent, p.stopOnPowerEvents.length, p.auditLog]).toEqual([false, 0, false])
   })
 })
