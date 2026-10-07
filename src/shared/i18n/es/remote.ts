@@ -261,5 +261,31 @@ export const remote = {
   'remote.activity.kind.travel-binary-installed': 'Se instaló la herramienta del modo viaje',
   'remote.activity.kind.travel-binary-bad-hash': 'La herramienta del modo viaje no pasó la verificación',
   'remote.activity.kind.travel-ice-failed': 'La red del celular no permitió la conexión directa',
-  'remote.link.failed': 'Algo falló al hablar con tu Mac.'
+  'remote.link.failed': 'Algo falló al hablar con tu Mac.',
+  // Variantes para Windows (sin «Mac»): solo textos que ve el dueño en el escritorio; la PWA del celular conserva los de siempre.
+  'remote.qr.hint.win': 'Abre el enlace en el navegador del celular (conectado a esta misma red Wi-Fi). Luego confirma aquí en este PC.',
+  'remote.risk.win':
+    'La conexión va cifrada entre el celular y este PC, y ninguna clave viaja por la red. Aun así, si alguien ve o fotografía el código QR mientras está vigente (2 minutos), solo el código de 6 dígitos lo delata: compruébalo en ambos aparatos antes de vincular.',
+  'remote.settings.confirmEach.win': 'Pedir confirmación en este PC en cada conexión',
+  'remote.settings.confirmEachHint.win':
+    'Si está apagado, un celular ya vinculado entra con su PIN sin que tengas que aceptarlo aquí. La vinculación de un celular nuevo siempre se confirma en este PC.',
+  'remote.devices.approveHintOff.win':
+    'Apagado: cada comando o edición que pida el agente se confirma en este PC. Encenderlo abre un aviso aquí para que lo permitas tú.',
+  'remote.devices.approveWaiting.win': 'Confirma en el aviso del PC…',
+  'remote.away.hint.win':
+    'Deja Lazunox listo para tu celular cada vez que abres la app, sin apagarse por inactividad. «Cortar todo» lo apaga. Solo funciona con este PC despierto y con internet: Lazunox no puede despertarlo a distancia.',
+  'remote.away.sleepTip.win':
+    'Consejo: deja Lazunox abierto y, si quieres usarlo fuera de casa, evita que este PC se duerma con la pantalla apagada mientras está enchufado (Ajustes del Sistema › Batería o Energía).',
+  'remote.qr.hint.cloud.win':
+    'Abre el enlace en el navegador del celular (con datos o con Wi-Fi) o escribe el código en la app instalada. Luego confirma aquí en este PC.',
+  'remote.travel.what.win':
+    'Lazunox abre un enlace temporal desde este PC para que el celular entre desde fuera de casa. No hay cuenta ni servidor de Lazunox de por medio.',
+  'remote.travel.limit.link.win':
+    'El enlace cambia cada vez que se reinicia el túnel (al reiniciar este PC, salir de la app o si el túnel se cae). Entonces hay que vincular de nuevo.',
+  'remote.travel.error.config-conflict.win':
+    'Hay una configuración de cloudflared en este PC que impide abrir el enlace. Lazunox no la modifica.',
+  'remote.travel.blocked.confirm.win':
+    'Se pide confirmar cada conexión en este PC, y fuera de casa nadie podría hacerlo. Apaga «Pedir confirmación en cada conexión» o usa «Solo esta red».',
+  'remote.qr.hint.travel.win':
+    'Escanéalo con la cámara del celular. Este código es válido solo para este túnel: si el enlace cambia, habrá que escanear otro. Después confirma aquí en este PC y crea un PIN en el celular.'
 } as const

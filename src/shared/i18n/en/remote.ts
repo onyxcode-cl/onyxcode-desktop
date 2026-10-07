@@ -264,5 +264,31 @@ export const remote = {
   'remote.activity.kind.travel-binary-installed': 'The travel mode tool was installed',
   'remote.activity.kind.travel-binary-bad-hash': 'The travel mode tool failed verification',
   'remote.activity.kind.travel-ice-failed': "The phone's network did not allow a direct connection",
-  'remote.link.failed': 'Something went wrong talking to your Mac.'
+  'remote.link.failed': 'Something went wrong talking to your Mac.',
+  // Variantes para Windows (sin «Mac»): solo textos que ve el dueño en el escritorio; la PWA del celular conserva los de siempre.
+  'remote.qr.hint.win': 'Open the link in your phone’s browser (on this same Wi-Fi network). Then confirm here on this PC.',
+  'remote.risk.win':
+    'The connection is encrypted between the phone and this PC, and no key travels over the network. Even so, if someone sees or photographs the QR code while it is valid (2 minutes), only the 6-digit code gives them away: check it on both devices before linking.',
+  'remote.settings.confirmEach.win': 'Ask for confirmation on this PC for every connection',
+  'remote.settings.confirmEachHint.win':
+    'When off, an already linked phone gets in with its PIN without you having to accept it here. Linking a new phone is always confirmed on this PC.',
+  'remote.devices.approveHintOff.win':
+    'Off: every command or edit the agent asks for is confirmed on this PC. Turning it on opens a prompt here for you to allow it.',
+  'remote.devices.approveWaiting.win': 'Confirm in the prompt on this PC…',
+  'remote.away.hint.win':
+    'Keeps Lazunox ready for your phone every time you open the app, without turning off for inactivity. “Cut everything” turns it off. It only works with this PC awake and online: Lazunox cannot wake it remotely.',
+  'remote.away.sleepTip.win':
+    'Tip: keep Lazunox open and, if you want to use it away from home, keep this PC from sleeping with the screen off while plugged in (System Settings › Battery or Energy).',
+  'remote.qr.hint.cloud.win':
+    'Open the link in the phone’s browser (on data or Wi-Fi) or type the code in the installed app. Then confirm here on this PC.',
+  'remote.travel.what.win':
+    'Lazunox opens a temporary link from this PC so your phone can connect from outside your home. There is no account and no Lazunox server in between.',
+  'remote.travel.limit.link.win':
+    'The link changes every time the tunnel restarts (when this PC restarts, you quit the app, or the tunnel drops). You then have to link again.',
+  'remote.travel.error.config-conflict.win':
+    'There is a cloudflared configuration on this PC that prevents opening the link. Lazunox does not modify it.',
+  'remote.travel.blocked.confirm.win':
+    'Every connection must be confirmed on this PC, and away from home nobody could do it. Turn off "Ask for confirmation on every connection" or use "This network only".',
+  'remote.qr.hint.travel.win':
+    'Scan it with the phone camera. This code is valid only for this tunnel: if the link changes, you will have to scan a new one. Then confirm here on this PC and create a PIN on the phone.'
 } as const satisfies Messages<typeof es>
