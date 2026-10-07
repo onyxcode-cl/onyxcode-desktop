@@ -5,6 +5,7 @@
  * No ejecuta ningún binario del sistema.
  */
 import { EventEmitter } from 'node:events'
+import { isWin } from '../../test/platform'
 import { describe, expect, it, vi } from 'vitest'
 import type { PlatformHost } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
@@ -300,7 +301,8 @@ describe('macOS: helper, parada y apps', () => {
     }
   })
 
-  it('resolver app: helper → bundle id (mdfind + plutil) → Spotlight por nombre → recorrido de carpetas', async () => {
+  // Compara rutas POSIX construidas con el `join` del sistema donde corre: en un equipo Windows salen con `\\` (el backend de macOS no se usa allí).
+  it.skipIf(isWin)('resolver app: helper → bundle id (mdfind + plutil) → Spotlight por nombre → recorrido de carpetas', async () => {
     const r = rig((cmd, args) => {
       if (args[0] === 'resolve-app') return { stdout: '{"found":false}' }
       if (cmd === '/usr/bin/mdfind' && args[0] === "kMDItemCFBundleIdentifier == 'com.x.App'") return { stdout: '/Applications/X.app\n' }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { isWin } from '../../test/platform'
 import { ereLiteral, servicePlatformFor } from './service-platform'
 
 const loc = { resourcesPath: '/R', appPath: '/A/app.asar', cwd: '/C' }
@@ -6,7 +7,8 @@ const unpacked = (p: string): string => p.replace('app.asar', 'app.asar.unpacked
 
 describe('ComputerService por plataforma (macOS = lo de siempre)', () => {
   const mac = servicePlatformFor('darwin')
-  it('rutas del helper: las tres de antes y en el mismo orden', () => {
+  // Compara rutas POSIX construidas con el `join` del sistema donde corre: en un equipo Windows salen con `\\` (el backend de macOS no se usa allí).
+  it.skipIf(isWin)('rutas del helper: las tres de antes y en el mismo orden', () => {
     expect(mac.helperCandidates(loc, unpacked)).toEqual([
       '/R/computer-use/bin/cu-helper',
       '/A/app.asar.unpacked/resources/computer-use/bin/cu-helper',
