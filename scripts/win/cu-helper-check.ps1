@@ -32,6 +32,9 @@ if (-not $Helper -or -not (Test-Path -LiteralPath $Helper)) {
 
 $script:fail = 0
 $script:warn = 0
+# Directorio temporal propio: el helper solo escribe aqui (su cache de editores y, con -WithCapture, la captura).
+$script:tmpDir = Join-Path $env:TEMP 'cu-helper-check'
+New-Item -ItemType Directory -Force $script:tmpDir | Out-Null
 function Log([string]$m) {
   Write-Output $m
   if ($LogFile) { Add-Content -Path $LogFile -Value $m -Encoding ascii }
@@ -68,6 +71,7 @@ function Run-Helper([string[]]$HelperArgs, [hashtable]$ExtraEnv = @{}) {
   foreach ($k in @('COMPUTER_WIN_CONSENT', 'COMPUTER_STOP_FILE', 'COMPUTER_INPUT_FILE', 'CU_TEMP_DIR', 'CU_INSTANT', 'CU_CHAR_DELAY_MS', 'CU_STOP_SHORTCUT')) {
     if ($psi.EnvironmentVariables.ContainsKey($k)) { $psi.EnvironmentVariables.Remove($k) }
   }
+  $psi.EnvironmentVariables['CU_TEMP_DIR'] = $script:tmpDir
   foreach ($k in $ExtraEnv.Keys) { $psi.EnvironmentVariables[$k] = [string]$ExtraEnv[$k] }
   $p = New-Object System.Diagnostics.Process
   $p.StartInfo = $psi
@@ -191,8 +195,7 @@ Check 'open-app (diferido en esta tanda) -> salida 12 y no abre nada' ($r.Code -
 $r = Run-Helper @('record', 'x')
 Check 'record (fuera de la v1 de Windows) -> salida 12' ($r.Code -eq 12) "code=$($r.Code)"
 
-$tmpDir = Join-Path $env:TEMP 'cu-helper-check'
-New-Item -ItemType Directory -Force $tmpDir | Out-Null
+$tmpDir = $script:tmpDir
 $shot = Join-Path $tmpDir 'sin-consentimiento.jpg'
 Remove-Item -Force -LiteralPath $shot -ErrorAction SilentlyContinue
 $r = Run-Helper @('screenshot', $shot) @{ CU_TEMP_DIR = $tmpDir }

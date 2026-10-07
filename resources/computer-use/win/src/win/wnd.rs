@@ -6,6 +6,7 @@ use super::util::{from_wide, wide};
 use crate::appkey::{self, AppKey};
 use crate::blocklist;
 use crate::mask::Rect;
+use crate::pubcache::PubCache;
 use std::collections::HashMap;
 use windows::core::{BOOL, PCWSTR};
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, RECT};
@@ -167,6 +168,7 @@ pub struct AppCache {
     /// normalizadas. Las demás apps salen con el editor «(sin firma)»: no pueden coincidir con ninguna clave de interés
     /// (la ruta ya difiere), así que la comparación sigue siendo exacta y barata.
     interest: Option<std::collections::HashSet<String>>,
+    disk: Option<(String, PubCache)>,
 }
 
 impl AppCache {
@@ -182,8 +184,44 @@ impl AppCache {
         );
     }
 
+    /// Activa la caché en disco (archivo ya validado dentro del directorio temporal).
+    pub fn attach_disk_cache(&mut self, file: String) {
+        let text = std::fs::read_to_string(&file).unwrap_or_default();
+        self.disk = Some((file, PubCache::parse(&text)));
+    }
+
+    /// Guarda la caché si cambió (un fallo al escribir no es un error: solo se pierde velocidad).
+    pub fn flush(&mut self) {
+        if let Some((file, cache)) = &mut self.disk {
+            if cache.dirty {
+                let _ = std::fs::write(file.as_str(), cache.serialize());
+                cache.dirty = false;
+            }
+        }
+    }
+
     fn publisher(&mut self, path: &str) -> Option<String> {
-        self.publishers.entry(path.to_string()).or_insert_with(|| process::publisher(path)).clone()
+        if let Some(p) = self.publishers.get(path) {
+            return p.clone();
+        }
+        let norm = appkey::normalize_exe_path(path).ok();
+        let stamp = std::fs::metadata(path).ok().and_then(|m| {
+            let ns = m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_nanos();
+            Some((m.len(), ns))
+        });
+        if let (Some(n), Some((size, ns)), Some((_, cache))) = (&norm, stamp, &self.disk) {
+            if let Some(p) = cache.lookup(n, size, ns) {
+                let r = if p == appkey::UNSIGNED_PUBLISHER { None } else { Some(p.to_string()) };
+                self.publishers.insert(path.to_string(), r.clone());
+                return r;
+            }
+        }
+        let verified = process::publisher(path);
+        if let (Some(n), Some((size, ns)), Some((_, cache))) = (&norm, stamp, &mut self.disk) {
+            cache.insert(n, size, ns, verified.as_deref().unwrap_or(appkey::UNSIGNED_PUBLISHER));
+        }
+        self.publishers.insert(path.to_string(), verified.clone());
+        verified
     }
 
     fn display_name(&mut self, path: &str) -> String {

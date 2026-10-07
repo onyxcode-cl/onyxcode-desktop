@@ -123,6 +123,24 @@ fn key_reject(r: crate::keys::KeyReject) -> CuError {
 pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
     screen::set_dpi_awareness();
     let env = read_env();
+    let mut cache = AppCache::default();
+    // Caché del editor de cada ejecutable, SOLO dentro del directorio temporal ya validado.
+    if let Some(root) = env.temp_root.as_deref() {
+        let file = format!("{}\\{}", root.trim_end_matches(['\\', '/']), crate::pubcache::FILE_NAME);
+        if paths::validate_data_file(&file, root).is_ok() && std::fs::symlink_metadata(&file).map(|m| !m.file_type().is_symlink()).unwrap_or(true) {
+            cache.attach_disk_cache(file);
+        }
+    }
+    // Los comandos de entrada solo necesitan saber si la ventana está bloqueada (ruta/integridad), no el editor.
+    if cmd.is_input() || matches!(cmd, Command::Session) {
+        cache.set_interest(&[]);
+    }
+    let r = run_inner(g, cmd, &env, &mut cache);
+    cache.flush();
+    r
+}
+
+fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuResult<Output> {
     if let Some(sf) = env_var("COMPUTER_STOP_FILE") {
         stop::set_stop_file(sf);
     }
@@ -136,44 +154,43 @@ pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
         }
     }
     if cmd.needs_control() {
-        gate(&env)?;
+        gate(env)?;
     }
-    let mut cache = AppCache::default();
     let mut rng = Rng::from_clock();
     match cmd {
         Command::Move { x, y } => {
             let (xi, yi) = screen::require_on_primary(*x, *y)?;
-            apps::require_point_controllable(&mut cache, xi, yi)?;
-            apps::require_foreground_controllable(&mut cache)?;
+            apps::require_point_controllable(cache, xi, yi)?;
+            apps::require_foreground_controllable(cache)?;
             input::glide(xi, yi, g.instant, &mut rng)?;
             ok()
         }
         Command::Click { x, y, right, count } => {
             let (xi, yi) = screen::require_on_primary(*x, *y)?;
-            apps::require_point_controllable(&mut cache, xi, yi)?;
-            apps::require_foreground_controllable(&mut cache)?;
+            apps::require_point_controllable(cache, xi, yi)?;
+            apps::require_foreground_controllable(cache)?;
             input::click(xi, yi, *right, *count, g.instant, &mut rng)?;
             ok()
         }
         Command::Drag { x1, y1, x2, y2 } => {
             let a = screen::require_on_primary(*x1, *y1)?;
             let b = screen::require_on_primary(*x2, *y2)?;
-            apps::require_point_controllable(&mut cache, a.0, a.1)?;
-            apps::require_point_controllable(&mut cache, b.0, b.1)?;
-            apps::require_foreground_controllable(&mut cache)?;
+            apps::require_point_controllable(cache, a.0, a.1)?;
+            apps::require_point_controllable(cache, b.0, b.1)?;
+            apps::require_foreground_controllable(cache)?;
             input::drag(a, b, g.instant, &mut rng)?;
             ok()
         }
         Command::Scroll { x, y, dx, dy } => {
             let (xi, yi) = screen::require_on_primary(*x, *y)?;
-            apps::require_point_controllable(&mut cache, xi, yi)?;
-            apps::require_foreground_controllable(&mut cache)?;
+            apps::require_point_controllable(cache, xi, yi)?;
+            apps::require_foreground_controllable(cache)?;
             input::scroll(xi, yi, *dx, *dy, g.instant, &mut rng)?;
             ok()
         }
         Command::Type { text } => {
             let plan = plan_type(text, g.char_delay_ms, g.instant, &mut rng).map_err(CuError::generic)?;
-            apps::require_foreground_controllable(&mut cache)?;
+            apps::require_foreground_controllable(cache)?;
             if uia()?.focused_is_secure() {
                 return Err(CuError::new(exitcode::SECURE_FIELD, "Campo seguro: no se puede teclear"));
             }
@@ -181,10 +198,10 @@ pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
             ok()
         }
         Command::Key { combos } => {
-            let lazunox = apps::frontmost(&mut cache).is_some_and(|i| is_lazunox_exe(crate::appkey::exe_base_name(&i.exe)));
+            let lazunox = apps::frontmost(cache).is_some_and(|i| is_lazunox_exe(crate::appkey::exe_base_name(&i.exe)));
             let ctx = KeyPolicyContext { lazunox_frontmost: lazunox, stop_shortcut: env.stop_shortcut.clone() };
             let list = check_keys(combos, &ctx).map_err(key_reject)?;
-            apps::require_foreground_controllable(&mut cache)?;
+            apps::require_foreground_controllable(cache)?;
             if uia()?.focused_is_secure() {
                 return Err(CuError::new(exitcode::SECURE_FIELD, "Campo seguro: no se pulsan teclas"));
             }
@@ -236,18 +253,18 @@ pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
                 ("monitors", Json::num(mons.len() as f64)),
             ])))
         }
-        Command::Frontmost => Ok(Output::ok(apps::frontmost(&mut cache).map(|i| app_obj(&i)).unwrap_or_else(|| Json::obj([("name", Json::str(""))])))),
+        Command::Frontmost => Ok(Output::ok(apps::frontmost(cache).map(|i| app_obj(&i)).unwrap_or_else(|| Json::obj([("name", Json::str(""))])))),
         Command::AppAt { x, y } => {
             let list = wnd::enum_top(false).map_err(CuError::unavailable)?;
             let info = wnd::top_window_at(&list, x.round() as i32, y.round() as i32).and_then(|w| cache.info_for_window(w));
             Ok(Output::ok(info.map(|i| app_obj(&i)).unwrap_or_else(|| Json::obj([("name", Json::str("")), ("bundleId", Json::str("")), ("pid", Json::num(0))]))))
         }
-        Command::RunningApps => arr(apps::list(&mut cache)?.iter().map(app_obj).collect()),
-        Command::ListApps => arr(apps::list(&mut cache)?
+        Command::RunningApps => arr(apps::list(cache)?.iter().map(app_obj).collect()),
+        Command::ListApps => arr(apps::list(cache)?
             .iter()
             .map(|i| Json::obj([("name", Json::str(&i.name)), ("appKey", Json::str(&i.key)), ("pid", Json::num(i.pid))]))
             .collect()),
-        Command::WindowsOf { keys } => arr(apps::windows_of(&mut cache, keys)?.into_iter().map(rect_json).collect()),
+        Command::WindowsOf { keys } => arr(apps::windows_of(cache, keys)?.into_iter().map(rect_json).collect()),
         Command::FocusedSecure => Ok(Output::ok(Json::obj([("secure", Json::Bool(uia()?.focused_is_secure()))]))),
         Command::RecentInput => {
             let secs = env
@@ -267,53 +284,53 @@ pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
             Ok(Output::stream())
         }
         Command::Activate { target } => {
-            let (activated, has_window) = apps::activate(&mut cache, target)?;
+            let (activated, has_window) = apps::activate(cache, target)?;
             Ok(Output::ok(Json::obj([("ok", Json::Bool(has_window)), ("activated", Json::Bool(activated)), ("hasWindow", Json::Bool(has_window))])))
         }
         Command::HideApps { keep } => {
-            let hidden = apps::hide(&mut cache, keep)?;
+            let hidden = apps::hide(cache, keep)?;
             Ok(Output::ok(Json::obj([("hidden", Json::Arr(hidden.iter().map(Json::str).collect()))])))
         }
         Command::UnhideApps { list } => {
-            let shown = apps::unhide(&mut cache, list)?;
+            let shown = apps::unhide(cache, list)?;
             Ok(Output::ok(Json::obj([("unhidden", Json::Arr(shown.iter().map(Json::str).collect()))])))
         }
         Command::AxTree { app, max_depth, max_nodes } => {
-            let target = apps::resolve(&mut cache, app)?;
+            let target = apps::resolve(cache, app)?;
             let u = uia()?;
             let roots = u.roots(&target.windows.iter().map(|w| w.hwnd).collect::<Vec<_>>());
             let (nodes, truncated) = u.tree(&roots, *max_depth, *max_nodes, Duration::from_millis(TREE_BUDGET_MS));
             Ok(Output::ok(Json::obj([("app", app_obj(&target.info)), ("nodes", Json::Arr(nodes)), ("truncated", Json::Bool(truncated))])))
         }
         Command::AxFind { app, query } => {
-            let target = apps::resolve(&mut cache, app)?;
+            let target = apps::resolve(cache, app)?;
             let u = uia()?;
             let roots = u.roots(&target.windows.iter().map(|w| w.hwnd).collect::<Vec<_>>());
             let found = u.find(&roots, query, FIND_WALK_DEPTH, FIND_WALK_NODES, Duration::from_millis(TREE_BUDGET_MS));
             Ok(Output::ok(Json::obj([("matches", Json::Arr(found))])))
         }
         Command::AxFrame { app, path } => {
-            let (u, el) = element(app, path, &mut cache)?;
+            let (u, el) = element(app, path, cache)?;
             Ok(Output::ok(Json::obj([("frame", frame_json(u.frame_of(&el)?))])))
         }
         Command::AxPress { app, path, expect_role, expect_title } => {
-            let (u, el) = element(app, path, &mut cache)?;
+            let (u, el) = element(app, path, cache)?;
             u.expect(&el, expect_role, expect_title)?;
             u.press(&el)?;
             ok()
         }
         Command::AxSetValue { app, path, value } => {
-            let (u, el) = element(app, path, &mut cache)?;
+            let (u, el) = element(app, path, cache)?;
             u.set_value(&el, value)?;
             ok()
         }
         Command::AxAction { app, path, action } => {
-            let (u, el) = element(app, path, &mut cache)?;
+            let (u, el) = element(app, path, cache)?;
             u.action(&el, *action)?;
             ok()
         }
         Command::FindElements { app, roles, query } => {
-            let target = apps::resolve(&mut cache, app)?;
+            let target = apps::resolve(cache, app)?;
             let u = uia()?;
             let roots = u.roots(&target.windows.iter().map(|w| w.hwnd).collect::<Vec<_>>());
             let (found, truncated) = u.find_elements(&roots, roles, query, FIND_EL_NODES, FIND_EL_MATCHES, Duration::from_millis(FIND_EL_BUDGET_MS));
@@ -323,15 +340,15 @@ pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
                 note: truncated.then(|| "find-elements: límite de nodos/tiempo alcanzado (resultados parciales)".to_string()),
             })
         }
-        Command::WindowShot { app, out, index } => window_shot(&env, &mut cache, app, out, *index),
-        Command::Screenshot { out, max_long, quality, mask_keys } => screenshot(&env, &mut cache, out, *max_long, *quality, mask_keys),
+        Command::WindowShot { app, out, index } => window_shot(env, cache, app, out, *index),
+        Command::Screenshot { out, max_long, quality, mask_keys } => screenshot(env, cache, out, *max_long, *quality, mask_keys),
         Command::ReleaseInput => {
             input::release_by_state();
             ok()
         }
         Command::Session => {
             let s = session::state();
-            let elevated_target = apps::require_foreground_controllable(&mut cache).is_err();
+            let elevated_target = apps::require_foreground_controllable(cache).is_err();
             let j = Json::obj([("interactive", Json::Bool(s.interactive)), ("secureDesktop", Json::Bool(s.secure_desktop)), ("elevatedTarget", Json::Bool(elevated_target))]);
             if !s.interactive || s.secure_desktop {
                 let why = if s.secure_desktop { "Escritorio seguro activo (UAC, bloqueo o Ctrl+Alt+Supr)" } else { "Sin escritorio interactivo" };

@@ -21,6 +21,7 @@ pub mod limits;
 pub mod mask;
 pub mod motion;
 pub mod paths;
+pub mod pubcache;
 pub mod roles;
 
 #[cfg(test)]
