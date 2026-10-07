@@ -31,14 +31,14 @@ if (hasSigningIdentity && !selfSigned && !hasNotarizeCreds) {
 }
 
 // Control del PC en Windows (plan win-C, tanda C7): `cu-helper.exe` y el agente `computer.win.md` solo entran al paquete de
-// Windows con la función ACTIVA. «Activa» exige DOS cosas a la vez (falla cerrado): la puerta de compilación `TASKS_WIN_BUILD`
-// (Control del PC es un modo de Tareas; se lee su literal de src/shared/feature-flags.ts, sin importarlo) Y la variable
-// explícita `LAZUNOX_COMPUTER_WIN_PACK=1`. Mientras `TASKS_WIN_BUILD` sea `false`, ni la variable los mete. Los fuentes de Rust
+// Windows con la función ACTIVA. «Activa» = la puerta de compilación `TASKS_WIN_BUILD` (Control del PC es un modo de la beta de
+// Tareas; se lee su literal de src/shared/feature-flags.ts, sin importarlo; decisión del dueño 2026-10-07). Ya NO hace falta
+// `LAZUNOX_COMPUTER_WIN_PACK=1` (si se deja, no cambia nada: nunca quita y con la puerta apagada tampoco mete). Los fuentes de Rust
 // y `target/` NO entran nunca (los excluye `files`, más abajo, junto con el resto de `resources/computer-use/win`).
 const tasksWinBuildOn = /export const TASKS_WIN_BUILD\s*=\s*true\b/.test(
   require('node:fs').readFileSync(require('node:path').join(__dirname, 'src/shared/feature-flags.ts'), 'utf8')
 )
-const computerWinPack = tasksWinBuildOn && process.env.LAZUNOX_COMPUTER_WIN_PACK === '1'
+const computerWinPack = tasksWinBuildOn
 // Tareas en Windows, BETA OPCIONAL (decisión del dueño 2026-10-07): con `TASKS_WIN_BUILD` activo el instalador lleva el lanzador
 // de WSL (solo los 5 archivos de la carga: nunca pruebas, vectores ni `rootfs/`), el `pin.json` y las DOS imágenes (la base de WSL y
 // el opencode linux-x64; `npm run stage:wsl-bundle` las deja en `resources/wsl-images/`, fuera de git). Con la bandera apagada no

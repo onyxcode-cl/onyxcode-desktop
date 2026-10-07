@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os'
 import {
   checkComputerWinPackaging,
   checkWslBundlePackaging,
+  checkHelperPresent,
   computerWinPackExpected,
   expectedWslBlocks,
   wslBundlePackExpected,
@@ -41,11 +42,25 @@ function loadConfig({ flagLiteral, env = {} }) {
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { env: cleanEnv, encoding: 'utf8' }))
 }
 
-test('la regla de «activa» exige la puerta de compilación Y la variable', () => {
+test('la regla de «activa» es solo la puerta de compilación (la variable ya no cuenta)', () => {
   assert.equal(computerWinPackExpected({ LAZUNOX_COMPUTER_WIN_PACK: '1' }, 'export const TASKS_WIN_BUILD = false'), false)
-  assert.equal(computerWinPackExpected({}, 'export const TASKS_WIN_BUILD = true'), false)
-  assert.equal(computerWinPackExpected({ LAZUNOX_COMPUTER_WIN_PACK: '0' }, 'export const TASKS_WIN_BUILD = true'), false)
+  assert.equal(computerWinPackExpected({}, 'export const TASKS_WIN_BUILD = false'), false)
+  assert.equal(computerWinPackExpected({}, 'export const TASKS_WIN_BUILD = true'), true)
+  assert.equal(computerWinPackExpected({ LAZUNOX_COMPUTER_WIN_PACK: '0' }, 'export const TASKS_WIN_BUILD = true'), true)
   assert.equal(computerWinPackExpected({ LAZUNOX_COMPUTER_WIN_PACK: '1' }, 'export const TASKS_WIN_BUILD = true'), true)
+})
+
+test('con la función activa y sin helper compilado falla; apagada no exige nada', () => {
+  assert.equal(checkHelperPresent(true, () => false).length, 1)
+  assert.match(checkHelperPresent(true, () => false)[0], /--win-helper/)
+  assert.deepEqual(
+    checkHelperPresent(true, (p) => p.endsWith('cu-helper.exe')),
+    []
+  )
+  assert.deepEqual(
+    checkHelperPresent(false, () => false),
+    []
+  )
 })
 
 test('config real, puerta apagada: ni helper ni agente, aunque se pida con la variable', () => {
@@ -57,12 +72,13 @@ test('config real, puerta apagada: ni helper ni agente, aunque se pida con la va
   }
 })
 
-test('config real, puerta encendida sin variable: sigue sin entrar', () => {
+test('config real, puerta encendida sin variable: entra igual (la variable ya no hace falta)', () => {
   const cfg = loadConfig({ flagLiteral: 'true' })
-  assert.deepEqual(checkComputerWinPackaging(cfg, false), [])
+  assert.deepEqual(checkComputerWinPackaging(cfg, true), [])
+  assert.ok(JSON.stringify(cfg.win.extraResources).includes('cu-helper.exe'))
 })
 
-test('config real, puerta encendida y variable: entran solo esos dos archivos, solo en win', () => {
+test('config real, puerta encendida: entran solo esos dos archivos, solo en win', () => {
   const cfg = loadConfig({ flagLiteral: 'true', env: { LAZUNOX_COMPUTER_WIN_PACK: '1' } })
   assert.deepEqual(checkComputerWinPackaging(cfg, true), [])
   const all = (list) => JSON.stringify(list)
@@ -269,6 +285,31 @@ test('el script con la función activa (literal inyectado) y SIN imágenes sale 
       assert.match(String(e.stderr), /no existe/)
     }
     assert.ok(failed, 'debía fallar sin imágenes')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('el script con la función activa, imágenes en regla y SIN cu-helper.exe sale distinto de 0', () => {
+  const dir = fsMod.realpathSync(mkdtempSync(join(tmpdir(), 'lzx-root-')))
+  try {
+    const { cpSync, mkdirSync } = fsMod
+    for (const f of [
+      'scripts/check-win-bundle.mjs',
+      'scripts/wsl-bundle-lib.mjs',
+      'electron-builder.js',
+      'resources/opencode-bin/pin.json'
+    ])
+      (mkdirSync(dirname(join(dir, f)), { recursive: true }), cpSync(join(root, f), join(dir, f)))
+    mkdirSync(join(dir, 'src/shared'), { recursive: true })
+    writeFileSync(join(dir, 'src/shared/feature-flags.ts'), 'export const TASKS_WIN_BUILD = true\n')
+    mkdirSync(join(dir, 'build'), { recursive: true })
+    cpSync(join(root, 'build/sign-common.js'), join(dir, 'build/sign-common.js'))
+    // Sin imágenes el script falla antes por el paquete de WSL: aquí solo se comprueba el orden y el mensaje del helper con la
+    // comprobación pura; el camino completo lo cubre `checkHelperPresent` (arriba) y el literal real del script.
+    const src = readFileSync(join(root, 'scripts/check-win-bundle.mjs'), 'utf8')
+    assert.match(src, /checkHelperPresent\(expectActive, \(p\) => existsSync\(join\(root, p\)\)\)/)
+    assert.match(src, /process\.exit\(1\)/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

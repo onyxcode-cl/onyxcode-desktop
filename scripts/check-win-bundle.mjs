@@ -5,7 +5,7 @@
 // Las cadenas de i18n que mencionan esas palabras (líneas `"clave": "texto"`) se ignoran.
 // Además (plan win-C, C7) comprueba la CONFIGURACIÓN de empaquetado de electron-builder.js sobre Control del PC en Windows:
 //   - `cu-helper.exe` y `computer.win.md` solo entran por `win.extraResources` y solo con la función activa
-//     (`TASKS_WIN_BUILD` a `true` Y `LAZUNOX_COMPUTER_WIN_PACK=1`); nunca por `files`, `mac` ni el bloque común;
+//     (`TASKS_WIN_BUILD` a `true`; ya no hace falta `LAZUNOX_COMPUTER_WIN_PACK`) y, activa, el helper compilado debe existir; nunca por `files`, `mac` ni el bloque común;
 //   - los fuentes de Rust y `target/` no entran NUNCA (la exclusión de `files` sobre `resources/computer-use/win/**` sigue ahí
 //     y ninguna entrada de extraResources apunta a esa carpeta salvo `win/bin` con el filtro exacto `cu-helper.exe`).
 // Y (beta opcional de Tareas en Windows, decisión del dueño 2026-10-07) el paquete de WSL:
@@ -16,7 +16,7 @@
 //     (falla el empaquetado si no: `npm run stage:wsl-bundle`). Opcional `--asar <app.asar>`: comprueba el .asar ya construido.
 //   npm run build && node scripts/check-win-bundle.mjs          (todas las comprobaciones)
 //   node scripts/check-win-bundle.mjs --config-only             (configuración e imágenes; no necesita `out/`)
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -31,8 +31,17 @@ const AGENT_ENTRY = { from: 'resources/opencode/agents-win', filter: ['computer.
 const norm = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '')
 
 /** ¿Debe estar activa la función en el paquete? Misma regla que electron-builder.js. */
-export function computerWinPackExpected(env, featureFlagsSource) {
-  return /export const TASKS_WIN_BUILD\s*=\s*true\b/.test(featureFlagsSource) && env.LAZUNOX_COMPUTER_WIN_PACK === '1'
+export function computerWinPackExpected(_env, featureFlagsSource) {
+  return /export const TASKS_WIN_BUILD\s*=\s*true\b/.test(featureFlagsSource)
+}
+
+/** Ruta del helper compilado (`node scripts/build-native.mjs --win-helper`; gitignored). */
+export const HELPER_EXE = `${WIN_SRC}/bin/cu-helper.exe`
+
+/** Con la función activa el helper debe existir (si no, el instalador saldría sin Control del PC). Pura: `exists` inyectado. */
+export function checkHelperPresent(active, exists) {
+  if (!active || exists(HELPER_EXE)) return []
+  return [`falta ${HELPER_EXE} con la función activa (compílalo con: node scripts/build-native.mjs --win-helper)`]
 }
 
 /**
@@ -196,6 +205,11 @@ async function main() {
   console.log(
     `[check-win-bundle] OK: paquete de WSL (${wslActive ? 'función ACTIVA: lanzador, pin e imágenes en win.extraResources, imágenes verificadas contra el pin' : 'función apagada: nada de WSL en el instalador'}; nada de wsl en el .asar)`
   )
+  const helperBad = checkHelperPresent(expectActive, (p) => existsSync(join(root, p)))
+  if (helperBad.length) {
+    console.error(`Control del PC en Windows: helper ausente:\n- ${helperBad.join('\n- ')}`)
+    process.exit(1)
+  }
   const asarArg = process.argv.indexOf('--asar')
   if (asarArg > 0) await checkAsar(process.argv[asarArg + 1])
   if (process.argv.includes('--config-only')) return
