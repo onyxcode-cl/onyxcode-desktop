@@ -24,6 +24,8 @@ const SCENARIOS = [
   'tareas-primer-uso', 'tareas-nueva', 'tareas-lista', 'tareas-buscar', 'tareas-archivadas', 'tareas-en-curso', 'tareas-permiso', 'tareas-permiso-neutral', 'tareas-permiso-largo',
   'rutinas-vacio', 'rutinas', 'rutinas-detalle', 'rutinas-editor', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
   'paleta', 'selector-modelo', 'dialogo-confirmar', 'comparar', 'barra-lateral-colapsada',
+  // Barra lateral 2c (el árbol y sus estados). Conviene pedirlas con `--clip sidebar`.
+  'barra-chat', 'barra-code', 'barra-code-hover',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
@@ -39,6 +41,9 @@ const out = resolve(arg('out') ?? DEFAULT_OUT)
 const sel = arg('scenario')
 const themes = arg('theme') ? [arg('theme')] : ['dark', 'light']
 const sizeSel = arg('size')
+// --clip sidebar: recorta cada captura al `<aside>` de la barra lateral (sufijo `-lateral`); para comparar con la maqueta.
+const clipSel = arg('clip')
+if (clipSel && clipSel !== 'sidebar') throw new Error('--clip sidebar')
 // --forced-colors: emula `forced-colors: active` (alto contraste) por CDP; --dsf <factor>: escala del dispositivo (por defecto 2).
 const forcedColors = process.argv.includes('--forced-colors')
 const dsfArg = arg('dsf')
@@ -310,9 +315,23 @@ async function parkMouse(ctx) {
 }
 
 async function snap(ctx, name, theme, sizeKey) {
-  await parkMouse(ctx)
-  const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
-  const file = join(out, `${name}-${theme}-${sizeKey}${SFX}.png`)
+  if (ctx.hover) {
+    // Escenario con hover: el ratón se queda encima del elemento (centro de su caja) mientras dura la captura.
+    const b = await ctx.hover.first().boundingBox()
+    if (!b) throw new Error('el elemento de hover no tiene caja')
+    await ctx.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x + b.width / 2, y: b.y + b.height / 2, buttons: 0 })
+    await sleep(250)
+  } else await parkMouse(ctx)
+  let clip
+  if (clipSel === 'sidebar') {
+    const r = await ctx.page.evaluate(() => {
+      const a = document.querySelector('aside').getBoundingClientRect()
+      return { x: a.x, y: a.y, width: a.width, height: a.height }
+    })
+    clip = { ...r, scale: 1 }
+  }
+  const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, ...(clip ? { clip } : {}) })
+  const file = join(out, `${name}${clip ? '-lateral' : ''}-${theme}-${sizeKey}${SFX}.png`)
   writeFileSync(file, Buffer.from(data, 'base64'))
   return file
 }
@@ -432,6 +451,8 @@ async function armCompareAndAsk(page, text) {
   await box.press('Enter')
 }
 
+let chatBusySeeded = false
+let codeTreeSeeded = false
 let codeOpened = false
 async function openCode(ctx) {
   const { page } = ctx
@@ -802,6 +823,66 @@ const S = {
       await sleep(400)
     }
   },
+  // ---- Barra lateral 2c ----
+  // Chat: una conversación activa, una trabajando (el guion no termina) y el resto listas; todas bajo «Sin proyecto».
+  async 'barra-chat'(ctx) {
+    await seedChats(ctx)
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Chat')
+    if (!chatBusySeeded) {
+      chatBusySeeded = true
+      await ctx.fake.script({ match: 'Prepara el informe mensual', title: 'Preparar informe mensual', steps: [{ type: 'text', text: 'Reúno los datos del mes.' }, { type: 'delay', ms: 120000 }] })
+      await newChat(ctx.page)
+      await sendChat(ctx.page, 'Prepara el informe mensual de ventas')
+      await sleep(1500)
+    }
+    await ctx.page.getByRole('treeitem', { name: /Plan del carrito de compras/ }).first().click()
+    await sleep(500)
+  },
+  // Code: proyecto con una sesión lista (activa), otra esperando aprobación y otra trabajando.
+  async 'barra-code'(ctx) {
+    await seedCode(ctx)
+    const { page, fake } = ctx
+    if (!codeTreeSeeded) {
+      codeTreeSeeded = true
+      await fake.script({
+        match: 'Instala las dependencias',
+        title: 'Instalar dependencias',
+        steps: [
+          { type: 'text', text: 'Necesito instalar dependencias para seguir.' },
+          { type: 'permission', permission: 'bash', patterns: ['npm install'], metadata: { command: 'npm install', description: 'Instala las dependencias del proyecto.' } }
+        ]
+      })
+      await fake.script({ match: 'Prepara el informe de cobertura', title: 'Preparar informe de cobertura', steps: [{ type: 'text', text: 'Reúno la cobertura.' }, { type: 'delay', ms: 120000 }] })
+      const ask = async (text) => {
+        await page.getByRole('button', { name: /^Nueva sesión/ }).first().click()
+        await sleep(500)
+        const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+        await box.fill(text)
+        await box.press('Enter')
+      }
+      // Las sesiones nuevas del falso conservan el título por defecto: se renombran por la propia interfaz (doble clic en la fila).
+      const rename = async (row, title) => {
+        await row.dblclick()
+        const input = page.locator('aside input').first()
+        await input.fill(title)
+        await input.press('Enter')
+        await sleep(300)
+      }
+      await ask('Instala las dependencias del proyecto')
+      await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+      await rename(page.getByRole('treeitem', { name: /esperando aprobación/ }), 'Instalar dependencias')
+      await ask('Prepara el informe de cobertura')
+      await sleep(1500)
+      await rename(page.getByRole('treeitem', { name: /trabajando/ }), 'Preparar informe de cobertura')
+    }
+    await page.getByRole('treeitem', { name: /Agregar IVA al carrito/ }).first().click()
+    await sleep(600)
+  },
+  async 'barra-code-hover'(ctx) {
+    await S['barra-code'](ctx)
+    ctx.hover = ctx.page.getByRole('treeitem', { name: /Preparar informe de cobertura/ })
+  },
   async onboarding(ctx) {
     await vis(ctx.page.getByRole('dialog'), 30_000)
     await sleep(500)
@@ -916,6 +997,7 @@ async function runGroup(ctx, names) {
         }
       }
     }
+    ctx.hover = null
     if (undo) await undo().catch(() => {})
     await closeOverlays(ctx.page).catch(() => {})
   }

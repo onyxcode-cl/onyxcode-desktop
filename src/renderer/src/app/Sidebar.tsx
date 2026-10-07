@@ -243,7 +243,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
                     <span
                       role="img"
                       aria-label={t('app.sidebar.pendingApproval')}
-                      className="absolute top-[5px] right-1.5 size-1.5 rounded-full bg-warning"
+                      className="absolute top-1 right-[3px] size-1.5 rounded-full bg-warning"
                       data-testid="sidebar-approvals-dot"
                     />
                   )}

@@ -63,3 +63,7 @@ arranque (`onboarding-inicio` vuelve con «Atrás» al paso 1).
 - `scripts/win/capture-console.ps1 -Out <png>`: captura la pantalla interactiva con `CopyFromScreen`. Una sesión SSH no tiene escritorio, así que se
   lanza desde una tarea programada con `/IT` (comando de ejemplo en la cabecera del script). Sirve para ver el tema real de alto contraste.
 - Nota: los `.ps1` y la ejecución en Windows aún NO se han probado en el PC (esta tanda es solo código).
+
+## Barra lateral 2c
+
+`--clip sidebar` recorta cada captura al `<aside>` (sufijo `-lateral`). Escenarios `barra-chat`, `barra-code` (sesiones lista / esperando / trabajando) y `barra-code-hover` (ratón sobre una fila); además `chat-vacio`, `barra-lateral-colapsada` y `tareas-permiso`.
