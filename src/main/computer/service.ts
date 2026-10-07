@@ -27,7 +27,7 @@
 import { t } from '@shared/i18n'
 import { app, globalShortcut, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
-import type { Readable } from 'node:stream'
+import type { Readable, Writable } from 'node:stream'
 import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -224,7 +224,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    */
   private legacyPlanApproved = false
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
-  private escWatcher: ChildProcessByStdio<null, Readable, Readable> | null = null
+  private escWatcher: ChildProcessByStdio<Writable | null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
 
   /** Lo que depende del sistema (rutas del helper, parada de respaldo, vigía de Esc, entorno del MCP): `service-platform.ts`. */
@@ -306,10 +306,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const bin = this.helperPath()
     if (!bin) return
     try {
+      // stdout y stderr son siempre 'pipe': el tipo de `spawn` no lo infiere con la expresión condicional de stdin.
       const child = spawn(bin, ['watch-esc'], {
-        stdio: ['ignore', 'pipe', 'pipe'],
+        // Windows: stdin ABIERTA y sin escribir (se cierra sola si la app muere y el vigía sale); macOS: sin cambios.
+        stdio: [process.platform === 'win32' ? 'pipe' : 'ignore', 'pipe', 'pipe'],
         env: { ...process.env, COMPUTER_INPUT_FILE: this.inputFile }
-      })
+      }) as ChildProcessByStdio<Writable | null, Readable, Readable>
       this.escWatcher = child
       createInterface({ input: child.stdout }).on('line', (line) => {
         if (line.trim() === 'STOP') void this.stop()

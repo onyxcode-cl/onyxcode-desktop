@@ -40,8 +40,8 @@ pub fn stop_now() -> ! {
 }
 
 /// Hilo que lee stdin: `STOP` → parada inmediata (código 3) y, si `eof_stops`, también el EOF (el MCP murió o cerró la
-/// tubería: sin dueño no se sigue actuando). `watch-esc` lo lanza con `eof_stops = false`: su dueño lo arranca con
-/// stdin cerrado a propósito y el EOF no significa nada.
+/// tubería: sin dueño no se sigue actuando). `watch-esc` usa `spawn_stdin_owner_watch`, que en EOF sale en
+/// silencio (el dueño murió).
 pub fn spawn_stdin_watch(eof_stops: bool) {
     std::thread::spawn(move || {
         let stdin = std::io::stdin();
@@ -55,6 +55,26 @@ pub fn spawn_stdin_watch(eof_stops: bool) {
                     }
                     return;
                 }
+                Ok(_) => {
+                    if line.trim().eq_ignore_ascii_case("STOP") {
+                        stop_now();
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Vigía de `watch-esc`: `STOP` → parada inmediata (3) y EOF → sale EN SILENCIO con 0. Su dueño (la app) lo arranca con la tubería de stdin
+/// abierta y sin escribir nada: si la app muere, Windows cierra la tubería y el vigía no queda huérfano vigilando el teclado.
+pub fn spawn_stdin_owner_watch() {
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let mut line = String::new();
+        loop {
+            line.clear();
+            match stdin.lock().read_line(&mut line) {
+                Ok(0) | Err(_) => std::process::exit(0),
                 Ok(_) => {
                     if line.trim().eq_ignore_ascii_case("STOP") {
                         stop_now();

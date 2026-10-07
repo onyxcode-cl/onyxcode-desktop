@@ -150,9 +150,11 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
         stop::set_stop_file(sf);
     }
     // Contrato: todo comando escucha `STOP`/EOF por stdin (salida 3). Excepciones: `release-input` (debe terminar su
-    // trabajo, es lo que se ejecuta tras un kill) y `watch-esc` (solo `STOP`: lo lanzan con stdin cerrado).
-    if !matches!(cmd, Command::ReleaseInput) {
-        stop::spawn_stdin_watch(!matches!(cmd, Command::WatchEsc));
+    // trabajo, es lo que se ejecuta tras un kill) y `watch-esc` (STOP → 3; EOF → sale en silencio: su dueño murió).
+    match cmd {
+        Command::ReleaseInput => {}
+        Command::WatchEsc => stop::spawn_stdin_owner_watch(),
+        _ => stop::spawn_stdin_watch(true),
     }
     if cmd.is_input() {
         // Reloj de 1 ms: sin esto, `sleep` redondea a ~15 ms y la animación a 120 Hz sale a saltos.
