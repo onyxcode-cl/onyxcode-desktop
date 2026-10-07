@@ -1,6 +1,7 @@
 export const tasksSettings = {
   'tasksSettings.glossary.sandbox': 'Sandbox',
   'tasksSettings.glossary.fullControl': 'Control total del Mac',
+  'tasksSettings.glossary.fullControl.win': 'Control total del PC',
   'tasksSettings.glossary.fullControlShort': 'Control total',
   'tasksSettings.glossary.workFolders': 'Carpetas de trabajo',
   'tasksSettings.glossary.trustedFolders': 'Carpetas de confianza',
@@ -63,6 +64,7 @@ export const tasksSettings = {
   'tasksSettings.work.revokeMessage':
     'Se detendrá el servidor de Control total de esta carpeta y se perderán las tareas en curso allí. Para volver a usarlo tendrás que concederlo de nuevo.',
   'tasksSettings.full.title': 'Control total del Mac',
+  'tasksSettings.full.title.win': 'Control total del PC',
   'tasksSettings.full.desc':
     'Una sola decisión para todo el equipo, sin carpeta: el agente puede usar ratón, teclado y pantalla, y acceder a todos los archivos y programas de tu usuario. El plan y cada app se siguen aprobando en cada tarea.',
   'tasksSettings.full.on': 'Consentimiento dado el {date}',

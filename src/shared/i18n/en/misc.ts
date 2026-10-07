@@ -72,16 +72,22 @@ export const misc = {
   'misc.net.blockedDesc': 'Marked “Keep blocked” from a warning card.',
   'misc.computer.desc':
     'When a task has Full Mac control, this is how the agent decides when to move the real mouse and which apps it can use.',
+  'misc.computer.desc.win':
+    'When a task has Full PC control, this is how the agent decides when to move the real mouse and which apps it can use.',
   'misc.computer.howTitle': 'How the agent uses apps',
   'misc.computer.bgTitle': 'In the background',
   'misc.computer.bgDesc':
     'Controls apps through accessibility (AX): it doesn’t move the mouse or steal focus. It asks for real mouse and keyboard control only when truly needed (dragging, complex shortcuts…). Recommended.',
+  'misc.computer.bgDesc.win':
+    'Controls apps through accessibility (UI Automation): it doesn’t move the mouse or steal focus. It asks for real mouse and keyboard control only when truly needed (dragging, complex shortcuts…). Recommended.',
   'misc.computer.fullTitle': 'Screen control',
   'misc.computer.fullDesc': 'Moves the mouse, clicks, and types for real, in plain view, the way a person would.',
   'misc.computer.whileTitle': 'While it controls the screen',
   'misc.computer.hide': 'Hide other apps while it is in control',
   'misc.computer.hideDesc':
     'Hides all other open apps (leaves Finder and {short} untouched) while it is in control, so no one else can touch them in the meantime.',
+  'misc.computer.hideDesc.win':
+    'Minimizes all other open apps (leaves the taskbar and {short} untouched) while it is in control, so no one else can touch them in the meantime.',
   'misc.computer.unhide': 'Show them again when finished',
   'misc.computer.unhideDesc': 'When the task finishes or is stopped, the apps that were hidden are shown again.',
   'misc.computer.saving': 'Saving…',
@@ -95,6 +101,7 @@ export const misc = {
   'misc.auto.masterDesc': 'Master switch: off by default. With it off, everything asks as usual.',
   'misc.auto.neverTitle': 'What Auto mode NEVER approves on its own',
   'misc.auto.never1': 'Folders outside the task, repeated loops, and browser or Mac control tools.',
+  'misc.auto.never1.win': 'Folders outside the task, repeated loops, and browser or PC control tools.',
   'misc.auto.never2.pre': 'Deleting, moving, or renaming anything (commands like ',
   'misc.auto.never2.or': ', or ',
   'misc.auto.never2.post': ').',

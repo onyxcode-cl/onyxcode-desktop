@@ -69,16 +69,22 @@ export const misc = {
   'misc.net.blockedDesc': "Marcado 'Mantener bloqueado' desde una tarjeta de aviso.",
   'misc.computer.desc':
     'Cuando una tarea tiene el Control total del Mac, así decide el agente cuándo mover el ratón real y qué apps puede usar.',
+  'misc.computer.desc.win':
+    'Cuando una tarea tiene el Control total del PC, así decide el agente cuándo mover el ratón real y qué apps puede usar.',
   'misc.computer.howTitle': 'Cómo usa el agente las apps',
   'misc.computer.bgTitle': 'En segundo plano',
   'misc.computer.bgDesc':
     'Controla las apps por accesibilidad (AX): no mueve el ratón ni roba el foco. Pide el control real del ratón y el teclado solo cuando de verdad haga falta (arrastrar, atajos complejos…). Recomendado.',
+  'misc.computer.bgDesc.win':
+    'Controla las apps por accesibilidad (UI Automation): no mueve el ratón ni roba el foco. Pide el control real del ratón y el teclado solo cuando de verdad haga falta (arrastrar, atajos complejos…). Recomendado.',
   'misc.computer.fullTitle': 'Control de la pantalla',
   'misc.computer.fullDesc': 'Mueve el ratón, hace clic y teclea de verdad, a la vista, como lo haría una persona.',
   'misc.computer.whileTitle': 'Mientras controla la pantalla',
   'misc.computer.hide': 'Ocultar las demás apps mientras controla',
   'misc.computer.hideDesc':
     'Oculta el resto de apps abiertas (deja Finder y {short} intactos) mientras dura el control, para que nadie más pueda tocarlas mientras tanto.',
+  'misc.computer.hideDesc.win':
+    'Minimiza el resto de apps abiertas (deja la barra de tareas y {short} intactos) mientras dura el control, para que nadie más pueda tocarlas mientras tanto.',
   'misc.computer.unhide': 'Mostrarlas de nuevo al terminar',
   'misc.computer.unhideDesc': 'Cuando la tarea termina o se detiene, vuelve a mostrar las apps que se ocultaron.',
   'misc.computer.saving': 'Guardando…',
@@ -92,6 +98,7 @@ export const misc = {
   'misc.auto.masterDesc': 'Interruptor maestro: apagado por defecto. Con él apagado, todo vuelve a preguntar como siempre.',
   'misc.auto.neverTitle': 'Lo que el Modo auto NUNCA aprueba solo',
   'misc.auto.never1': 'Carpetas fuera de la tarea, bucles repetidos, y las herramientas del navegador o de control del Mac.',
+  'misc.auto.never1.win': 'Carpetas fuera de la tarea, bucles repetidos, y las herramientas del navegador o de control del PC.',
   'misc.auto.never2.pre': 'Borrar, mover o renombrar nada (comandos como ',
   'misc.auto.never2.or': ' o ',
   'misc.auto.never2.post': ').',
