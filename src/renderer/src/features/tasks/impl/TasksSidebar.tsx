@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { BookText, ChevronDown } from 'lucide-react'
 import { useT } from '../../../lib/i18n'
+import { useSidebarTree } from '../../../components/SidebarTree'
 import { isRemoteSurface } from '../../../lib/platform'
 import { FolderMenu } from './FolderMenu'
 import { SidebarSections } from './SidebarSections'
@@ -13,6 +14,7 @@ export function TasksSidebar(): React.JSX.Element {
   const t = useT()
   const folder = useTasks((s) => s.folder)
   const desktop = !isRemoteSurface()
+  const tree = useSidebarTree()
   const [open, setOpen] = useState(true)
   const name = folder ? baseName(folder) : ''
   return (
@@ -24,6 +26,8 @@ export function TasksSidebar(): React.JSX.Element {
             <button
               type="button"
               aria-expanded={open}
+              role={tree ? 'treeitem' : undefined}
+              aria-level={tree ? 1 : undefined}
               aria-label={t(open ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name })}
               onClick={() => setOpen((o) => !o)}
               className="no-drag flex h-8 w-[22px] shrink-0 items-center rounded-ctl pl-2 text-subtle hover:text-fg"
@@ -49,7 +53,9 @@ export function TasksSidebar(): React.JSX.Element {
             type="button"
             onClick={() => setProjectPanelOpen(true)}
             title={t('tasks.sidebar.projectTitle')}
-            className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:h-8 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:pl-[30px] desk:text-sm"
+            role={tree ? 'treeitem' : undefined}
+            aria-level={tree ? 2 : undefined}
+            className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:h-8 desk:rounded-ctl desk:py-0 desk:text-sm${tree ? " desk:relative desk:ml-[22px] desk:w-[calc(100%-22px)] desk:gap-2.5 desk:px-2.5 desk:before:absolute desk:before:inset-y-0 desk:before:-left-[9px] desk:before:w-px desk:before:bg-border desk:before:content-['']" : ' desk:gap-2 desk:px-2 desk:pl-[30px]'}`}
           >
             <BookText size={13} className="shrink-0 desk:size-4" /> {t('tasks.sidebar.project')}
           </button>

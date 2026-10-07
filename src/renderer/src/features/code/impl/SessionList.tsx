@@ -11,9 +11,9 @@ import {
   MoreHorizontal,
   Pencil,
   Pin,
+  Plus,
   Search,
   ShieldAlert,
-  SquarePen,
   Terminal,
   Trash2,
   X
@@ -29,9 +29,30 @@ import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { SidebarEmpty } from '../../../components/SidebarEmpty'
+import { StateDot, useSidebarTree, type SessionState } from '../../../components/SidebarTree'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { SheetAction } from './SheetAction'
 import { SwipeRow, useLongPress } from '../../../components/mobile/SwipeRow'
+
+const OPEN_KEY = 'sidebar.projectOpen:'
+
+function readOpen(directory: string | null): boolean {
+  if (!directory) return true
+  try {
+    return localStorage.getItem(OPEN_KEY + directory) !== '0'
+  } catch {
+    return true
+  }
+}
+
+function writeOpen(directory: string | null, open: boolean): void {
+  if (!directory) return
+  try {
+    localStorage.setItem(OPEN_KEY + directory, open ? '1' : '0')
+  } catch {
+    // sin storage: el plegado no se recuerda
+  }
+}
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
 function SessionRow({
@@ -50,6 +71,11 @@ function SessionRow({
   pinned: boolean
 }): React.JSX.Element {
   const t = useT()
+  const tree = useSidebarTree()
+  const state: SessionState | null = waiting ? 'waiting' : busy ? 'working' : unread ? 'done' : null
+  const [deskMenu, setDeskMenu] = useState(false)
+  const menuRoot = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const selectSession = useCode((s) => s.selectSession)
   const deleteSession = useCode((s) => s.deleteSession)
   const renameSession = useCode((s) => s.renameSession)
@@ -77,6 +103,44 @@ function SessionRow({
     if (draft.trim() && draft.trim() !== session.title) void renameSession(session.id, draft.trim())
   }
 
+  // Menú «⋯» de escritorio (fijar, renombrar, archivar, eliminar): se cierra al pulsar fuera y se recorre con ↑ ↓; Esc devuelve el foco.
+  useEffect(() => {
+    if (!deskMenu) return
+    const onDown = (e: MouseEvent): void => {
+      if (menuRoot.current && !menuRoot.current.contains(e.target as Node)) setDeskMenu(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [deskMenu])
+  const onMenuKey = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      setDeskMenu(false)
+      menuRoot.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      return
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])
+    const i = items.indexOf(document.activeElement as HTMLButtonElement)
+    items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
+  }
+  const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, danger?: boolean): React.JSX.Element => (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={() => {
+        setDeskMenu(false)
+        onClick()
+      }}
+      className={`no-drag flex h-8 w-full items-center gap-2.5 rounded-ctl px-2.5 text-left text-ui hover:bg-hover focus-visible:bg-hover ${danger ? 'text-danger' : ''}`}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+
   // Nunca se borra con un gesto: el deslizamiento y la hoja pasan por la misma confirmación.
   const askDelete = (): void => {
     void confirmDialog({
@@ -91,7 +155,15 @@ function SessionRow({
 
   const row = (
     <div
-      className={`group flex items-center gap-1 rounded-lg desk:relative desk:h-8 desk:gap-0.5 desk:rounded-ctl ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active desk:bg-hover' : 'hover:bg-hover'}`}
+      onContextMenu={
+        mobile || editing
+          ? undefined
+          : (e) => {
+              e.preventDefault()
+              setDeskMenu(true)
+            }
+      }
+      className={`group flex items-center gap-1 rounded-lg desk:relative desk:h-8 desk:gap-0.5 desk:rounded-ctl ${tree ? " desk:ml-[22px] desk:before:absolute desk:before:inset-y-0 desk:before:-left-[9px] desk:before:w-px desk:before:bg-border desk:before:content-['']" : ''} ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active desk:bg-hover' : 'hover:bg-hover'}`}
     >
       {active && !mobile && !editing && (
         <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />
@@ -113,14 +185,19 @@ function SessionRow({
           type="button"
           onClick={() => void selectSession(session.id)}
           onDoubleClick={() => setEditing(true)}
-          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:gap-2 desk:px-2.5 desk:pl-[30px] desk:py-0 ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
+          role={tree ? 'treeitem' : undefined}
+          aria-level={tree ? 2 : undefined}
+          aria-current={tree && active ? 'page' : undefined}
+          aria-label={tree?.stateAria(session.title || t('code.sessions.untitled'), state)}
+          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2.5' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
           <span
-            className={`flex w-full items-center gap-1.5 desk:w-auto desk:min-w-0 desk:flex-1 desk:text-ui ${mobile ? 'text-[15px]' : 'text-[13px]'} ${active ? ' desk:font-medium desk:text-fg' : ' desk:text-muted'}`}
+            className={`flex w-full items-center gap-1.5 desk:w-auto desk:min-w-0 desk:flex-1 ${tree ? ' desk:gap-2.5 desk:text-sm' : ' desk:text-ui'} ${mobile ? 'text-[15px]' : 'text-[13px]'} ${active ? ' desk:font-medium desk:text-fg' : ' desk:text-muted'}`}
           >
+            {tree && state && <StateDot state={state} />}
             {pinned && <Pin size={10} className="shrink-0 text-subtle" />}
-            {waiting ? (
+            {tree ? null : waiting ? (
               <ShieldAlert size={12} className="shrink-0 text-accent desk:hidden" />
             ) : busy ? (
               <Loader2 size={12} className="shrink-0 animate-spin text-muted desk:hidden" />
@@ -129,9 +206,18 @@ function SessionRow({
             ) : null}
             <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || t('code.sessions.untitled')}</span>
           </span>
-          {!mobile && waiting ? (
+          {!mobile && waiting && tree ? (
+            // Esperando aprobación: la meta «Aprobar» no se oculta nunca (ni al pasar el ratón).
+            <span className="hidden shrink-0 text-meta font-medium text-warning desk:inline">{t('tasks.list.metaApprove')}</span>
+          ) : !mobile && waiting ? (
             <span className="hidden h-5 shrink-0 items-center rounded-full border border-warning/45 bg-warning/10 px-2 text-meta font-medium text-warning desk:inline-flex desk:group-hover:hidden">
               {t('tasks.list.metaApprove')}
+            </span>
+          ) : !mobile && busy && tree ? (
+            <span
+              className={`hidden shrink-0 text-meta text-subtle desk:inline desk:group-focus-within:hidden desk:group-hover:hidden ${active ? ' desk:hidden' : ''}`}
+            >
+              {t('app.sidebar.working')}
             </span>
           ) : !mobile && busy ? (
             <span className="hidden shrink-0 items-center gap-1.5 text-meta text-muted desk:inline-flex desk:group-hover:hidden">
@@ -143,7 +229,7 @@ function SessionRow({
             </span>
           ) : (
             <span
-              className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${mobile ? 'text-xs' : 'text-[11px]'}`}
+              className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${tree ? ` desk:group-focus-within:hidden ${active ? ' desk:hidden' : ''}` : ''} ${mobile ? 'text-xs' : 'text-[11px]'}`}
             >
               {timeAgo(session.time.updated)}
               {session.summary && session.summary.files > 0 && (
@@ -206,49 +292,42 @@ function SessionRow({
         </>
       )}
       {!editing && !mobile && (
-        <span className="mr-1 hidden shrink-0 items-center gap-0.5 group-hover:flex">
+        <div
+          ref={menuRoot}
+          className={`relative mr-1 shrink-0 items-center ${deskMenu || active ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
+        >
           <button
             type="button"
-            title={t('code.sessions.rename')}
-            onClick={() => setEditing(true)}
-            className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-fg"
+            title={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+            aria-label={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+            aria-haspopup="menu"
+            aria-expanded={deskMenu}
+            onClick={() => setDeskMenu((o) => !o)}
+            className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
           >
-            <Pencil size={12} />
+            <MoreHorizontal size={14} strokeWidth={1.75} />
           </button>
-          <button
-            type="button"
-            title={pinned ? t('code.sessions.unpin') : t('code.sessions.pin')}
-            onClick={() => togglePin(session.id)}
-            className={`no-drag flex h-6 w-6 items-center justify-center rounded-md hover:bg-bg hover:text-fg ${pinned ? 'text-accent' : 'text-subtle'}`}
-          >
-            <Pin size={12} />
-          </button>
-          <button
-            type="button"
-            title={archived ? t('code.sessions.unarchive') : t('code.sessions.archive')}
-            onClick={() => void (archived ? unarchiveSession(session.id) : archiveSession(session.id))}
-            className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-fg"
-          >
-            {archived ? <ArchiveRestore size={12} /> : <Archive size={12} />}
-          </button>
-          <button
-            type="button"
-            title={t('code.sessions.delete')}
-            onClick={() => {
-              void confirmDialog({
-                title: t('code.sessions.deleteTitle'),
-                message: t('code.sessions.deleteMessage', { title: session.title || t('code.sessions.untitledLower') }),
-                confirmLabel: t('code.sessions.deleteConfirm'),
-                danger: true
-              }).then((ok) => {
-                if (ok) void deleteSession(session.id)
-              })
-            }}
-            className="no-drag flex h-6 w-6 items-center justify-center rounded-md text-subtle hover:bg-bg hover:text-danger"
-          >
-            <Trash2 size={12} />
-          </button>
-        </span>
+          {deskMenu && (
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+              onKeyDown={onMenuKey}
+              className="absolute top-full right-0 z-30 mt-1 w-52 rounded-card bg-elevated p-1 shadow-pop"
+            >
+              {menuItem(<Pin size={14} strokeWidth={1.75} />, pinned ? t('code.sessions.unpin') : t('code.sessions.pin'), () =>
+                togglePin(session.id)
+              )}
+              {menuItem(<Pencil size={14} strokeWidth={1.75} />, t('code.sessions.rename'), () => setEditing(true))}
+              {menuItem(
+                archived ? <ArchiveRestore size={14} strokeWidth={1.75} /> : <Archive size={14} strokeWidth={1.75} />,
+                archived ? t('code.sessions.unarchive') : t('code.sessions.archive'),
+                () => void (archived ? unarchiveSession(session.id) : archiveSession(session.id))
+              )}
+              {menuItem(<Trash2 size={14} strokeWidth={1.75} />, t('code.sessions.delete'), askDelete, true)}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -370,7 +449,15 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const [showArchived, setShowArchived] = useState(false)
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
-  const [projectOpen, setProjectOpen] = useState(true)
+  const tree = useSidebarTree()
+  // El plegado se recuerda por proyecto (un proyecto plegado sigue plegado al volver).
+  const [projectOpen, setProjectOpenState] = useState(() => readOpen(directory))
+  useEffect(() => setProjectOpenState(readOpen(directory)), [directory])
+  const setProjectOpen = (f: (o: boolean) => boolean): void => {
+    const next = f(projectOpen)
+    setProjectOpenState(next)
+    writeOpen(directory, next)
+  }
   const desktop = !isRemoteSurface()
 
   // ⌘K (configurable en Ajustes › Atajos): buscador de sesiones, mientras la lista esté montada y la paleta cerrada.
@@ -416,26 +503,32 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           <button
             type="button"
             aria-expanded={projectOpen}
-            aria-label={t(projectOpen ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name: baseName(directory) })}
+            role={tree ? 'treeitem' : undefined}
+            aria-level={tree ? 1 : undefined}
+            aria-label={
+              tree
+                ? baseName(directory)
+                : t(projectOpen ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name: baseName(directory) })
+            }
             title={directory}
             onClick={() => setProjectOpen((o) => !o)}
-            className="no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-ctl px-2 text-left text-sm font-medium text-fg"
+            className="no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-ctl px-2.5 text-left text-sm font-medium text-fg"
           >
             <ChevronDown
               size={14}
               strokeWidth={1.75}
-              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
+              className={`-ml-1 shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
               aria-hidden="true"
             />
             <FolderOpen size={16} strokeWidth={1.75} className="shrink-0 text-muted" aria-hidden="true" />
             <span className="truncate">{baseName(directory)}</span>
           </button>
-          <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 group-focus-within/proj:flex group-hover/proj:flex">
+          <span className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
             <button
               type="button"
               title={t('code.sessions.newWorktree')}
               onClick={() => setWorktreeOpen(true)}
-              className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+              className="no-drag hidden size-6 items-center justify-center rounded-ctl-sm text-muted group-focus-within/proj:flex group-hover/proj:flex hover:bg-active hover:text-fg"
             >
               <GitBranchPlus size={14} strokeWidth={1.75} />
             </button>
@@ -443,17 +536,19 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
               type="button"
               title={t('code.sessions.searchTitle')}
               onClick={() => setSwitcherOpen(true)}
-              className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+              className="no-drag hidden size-6 items-center justify-center rounded-ctl-sm text-muted group-focus-within/proj:flex group-hover/proj:flex hover:bg-active hover:text-fg"
             >
               <Search size={14} strokeWidth={1.75} />
             </button>
+            {/* «+» siempre visible (descubrible): crea una sesión dentro del proyecto. */}
             <button
               type="button"
               title={t('code.sessions.newHere')}
+              aria-label={t('code.sessions.newHere')}
               onClick={() => void useCode.getState().newSession()}
               className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
             >
-              <SquarePen size={14} strokeWidth={1.75} />
+              <Plus size={14} strokeWidth={1.75} />
             </button>
           </span>
         </div>
@@ -490,6 +585,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         </button>
       </div>
       <div
+        role={tree ? 'group' : undefined}
         className={`min-h-0 flex-1 overflow-y-auto px-2 desk:flex desk:flex-col desk:gap-0.5 desk:px-0 ${desktop && !projectOpen ? 'hidden' : ''}`}
       >
         {loading && list.length === 0 && (
@@ -519,7 +615,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         })}
         <LoadMoreSessions visible={moreSessions} onClick={() => void useCode.getState().loadMoreSessions()} />
         {archivedList.length > 0 && (
-          <div className="mt-2 border-t border-border pt-2">
+          <div className="mt-2 border-t border-border pt-2 desk:border-t-0 desk:pt-0">
             <button
               type="button"
               onClick={() => setShowArchived((o) => !o)}
