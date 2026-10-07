@@ -57,7 +57,7 @@ export const RELEASES_REPO = '' as string
  * «Descargar». La clave PRIVADA la genera el mantenedor fuera del repo (docs/DISTRIBUCION.md §10) y
  * nunca se sube a GitHub ni a CI.
  */
-export const UPDATE_PUBLIC_KEY = '' as string
+export const UPDATE_PUBLIC_KEY = 'MCowBQYDK2VwAyEAmGn11rPIhRz472wOGMTERVlaq7sWqoLynBTasttdFQs=' as string
 /** Identificador de esa clave; va dentro del manifiesto firmado (`keyId`) y permite rotarla. */
 export const UPDATE_KEY_ID = 'lazunox-1' as string
 
