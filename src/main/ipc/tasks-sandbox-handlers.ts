@@ -16,7 +16,10 @@ export function registerTasksSandboxHandlers(
     platform: process.platform,
     seatbeltReady: seatbeltAvailable,
     tasksWin: o.tasksWin,
-    getBackend: () => selectBackend(process.platform, { tasksWin: o.tasksWin, win: o.winBackend }),
+    // `purpose: 'setup'`: preparar/consultar la distro no exige aún `state.json` (la primera instalación no lo tiene). Arrancar un
+    // servidor (`startTasksServer`) NO pasa propósito y usa el estricto `run`. Este backend se recuerda tras el primer éxito:
+    // sirve para el estado y la preparación, jamás para lanzar tareas.
+    getBackend: () => selectBackend(process.platform, { tasksWin: o.tasksWin, win: o.winBackend, purpose: 'setup' }),
     emit: (s) => send('tasks:sandbox:progress', s)
   })
   handle('tasks:sandbox:status', (req) => service.status({ force: req?.force === true }))

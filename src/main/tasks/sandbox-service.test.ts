@@ -56,8 +56,8 @@ describe('estado', () => {
     expect(s).toMatchObject({ backend: 'wsl', state: 'unsupported', detail: 'flag' })
     expect(getBackend).not.toHaveBeenCalled()
   })
-  it('Windows con las puertas cerradas (informe, pin…): unsupported con el motivo, nunca ready', async () => {
-    for (const block of ['build', 'provider', 'report', 'backend'] as const) {
+  it('Windows con las puertas cerradas (consentimiento, elevado, paquete, puerta…): unsupported con el motivo, nunca ready', async () => {
+    for (const block of ['build', 'provider', 'consent', 'elevated', 'bundle', 'gate', 'backend'] as const) {
       const s = await make({
         getBackend: async () => {
           throw new WinBackendUnavailable(block)
@@ -101,7 +101,7 @@ describe('estado', () => {
     const { b } = backend({ state: 'ready' })
     const { svc } = make({
       getBackend: async () => {
-        if (!open) throw new WinBackendUnavailable('report')
+        if (!open) throw new WinBackendUnavailable('gate')
         return b
       }
     })

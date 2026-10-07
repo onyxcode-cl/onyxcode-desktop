@@ -278,7 +278,7 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     expect(started).toHaveLength(0)
   })
   it('start() entrega a startTasksServer la plataforma, la bandera y el proveedor, y NUNCA noSandbox', async () => {
-    const winBackend = { build: true, report: async () => true, create: () => null }
+    const winBackend = { build: true, gate: async () => ({ ok: true }), create: () => null }
     const m = mk({ tasksWin: true, winBackend })
     await m.refreshPolicy()
     m.approveFolder('C:\\lzx\\tareas\\a')

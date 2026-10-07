@@ -77,7 +77,7 @@ describe('sandboxView', () => {
   })
   it('política de la organización y puertas cerradas: bloquean y NO ofrecen ningún botón', () => {
     expect(sandboxView(st('policyDisabled'), 'wsl')).toMatchObject({ kind: 'policy', actions: [], blocksStart: true })
-    for (const detail of ['flag', 'build', 'provider', 'report', 'backend']) {
+    for (const detail of ['flag', 'build', 'provider', 'consent', 'elevated', 'bundle', 'gate', 'backend']) {
       expect(sandboxView(st('unsupported', { detail }), 'wsl')).toMatchObject({ kind: 'unavailable', actions: [], blocksStart: true })
     }
   })

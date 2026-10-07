@@ -379,7 +379,7 @@ attackDescribe('A18', 'sin sandbox imposibilitado (lo comprobable en macOS)', ()
     expect(forbiddenFolderReason('C:\\lzx\\a', { home: '/h', userData: '/u', mounts: [] }, 'win32')).not.toBeNull()
   })
   it('selectBackend(win32) lanza sin bandera, sin proveedor o con la constante apagada: nunca devuelve `none`', async () => {
-    const ok = { build: true, report: async () => true, create: () => ({ id: 'wsl' }) as never }
+    const ok = { build: true, gate: async () => ({ ok: true }), create: () => ({ id: 'wsl' }) as never }
     for (const opts of [{}, { tasksWin: false, win: ok }, { tasksWin: true }, { tasksWin: true, win: { ...ok, build: false } }]) {
       await expect(selectBackend('win32', opts), JSON.stringify(Object.keys(opts))).rejects.toBeInstanceOf(WinBackendUnavailable)
     }

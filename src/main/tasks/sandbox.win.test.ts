@@ -69,7 +69,7 @@ function wslBackend(state: SandboxState): SandboxBackend {
 }
 const provider = (b: SandboxBackend, over: Partial<WinBackendProvider> = {}): WinBackendProvider => ({
   build: true,
-  report: async () => true,
+  gate: async () => ({ ok: true }),
   create: () => b,
   ...over
 })
@@ -114,6 +114,30 @@ describe('startTasksServer en win32 (A18)', () => {
       expect(rec.proxies).toBe(0)
     }
   )
+  it('con la puerta de la beta cerrada (p. ej. consentimiento revocado) no arranca nada; reabierta, sí (se consulta en cada arranque)', async () => {
+    let open = true
+    const win = provider(wslBackend('ready'), {
+      gate: async () => (open ? { ok: true } : { ok: false, reason: 'consent' })
+    })
+    const run = (): Promise<unknown> => startTasksServer(dir, { platform: 'win32', tasksWin: true, winBackend: win, isolation: iso() })
+    await run()
+    expect(rec.launches).toBe(1)
+    open = false
+    const err = await run().catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(WinBackendUnavailable)
+    expect((err as WinBackendUnavailable).block).toBe('consent')
+    expect(rec.launches).toBe(1)
+    open = true
+    await run()
+    expect(rec.launches).toBe(2)
+  })
+  it('con la puerta abierta pero la distro sin `ready` NO arranca (la puerta no sustituye al estado)', async () => {
+    const win = provider(wslBackend('needsSetup'), { gate: async () => ({ ok: true }) })
+    await expect(startTasksServer(dir, { platform: 'win32', tasksWin: true, winBackend: win, isolation: iso() })).rejects.toBeInstanceOf(
+      TasksSandboxNotReady
+    )
+    expect(rec.launches).toBe(0)
+  })
   it('un backend `none` en win32 nunca llega a launch', async () => {
     let launched = false
     const none = {
