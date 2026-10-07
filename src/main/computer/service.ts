@@ -15,6 +15,11 @@
  *   servido por un utilityProcess de main (`mcp-host.ts`), que conserva los permisos TCC de la app
  *   mientras los `opencode serve` corren desvinculados (AUDIT.md S6).
  *
+ * Windows (C4, tras las banderas `tasksWin` + `computerWin`): no hay TCC. El consentimiento propio de la app (versionado, revocable,
+ * `userData/computer-win-consent.json`) ocupa su lugar: lo consulta el MCP por `GET /consent` antes de CADA herramienta (falla
+ * cerrado) y lo gestiona Ajustes por `computer:winConsent`. Bloquear la sesión o suspender el equipo para el control como un Detener,
+ * y el final de cada acción queda en `userData/computer-audit.jsonl` (sin el texto tecleado). macOS no cambia.
+ *
  * Movimiento visible: el helper anima el cursor (ver helper.swift). `LAZUNOX_COMPUTER_INSTANT=1`
  * lo desactiva y `LAZUNOX_COMPUTER_TYPE_DELAY_MS` ajusta el ritmo de tecleo.
  *
@@ -25,7 +30,7 @@
  * forman parte de esa cadena: se lanzan con `lazunox-disclaim`.
  */
 import { t } from '@shared/i18n'
-import { app, globalShortcut, shell, systemPreferences } from 'electron'
+import { app, globalShortcut, powerMonitor, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
 import type { Readable, Writable } from 'node:stream'
 import { randomBytes } from 'node:crypto'
@@ -45,6 +50,10 @@ import {
   type ComputerActionEvent,
   type ComputerKillState,
   type ComputerStatus,
+  type ComputerWinConsentAction,
+  type ComputerWinConsentResult,
+  type ComputerWinStatus,
+  type ComputerAuditRow,
   type ComputerUseInfo,
   type PlanApprovalState,
   type TeachStep
@@ -54,6 +63,10 @@ import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
 import { servicePlatformFor } from './service-platform'
 import { stopShortcutFor } from './stop-shortcut'
+import { createAuditLog, type AuditInput, type AuditLog } from './policy/audit'
+import { auditInputFromEvent } from './policy/audit-event'
+import { createConsentController, WIN_CONSENT_VERSION, type ConsentController } from './policy/consent-win'
+import { createFileConsentStore, nodeAuditFs, readAuditEntries } from './win-storage'
 
 /** Atajo global de parada: `CommandOrControl+Shift+Escape` en macOS; `Ctrl+Alt+Shift+Escape` en Windows (ver `stop-shortcut.ts`). */
 export const STOP_SHORTCUT = stopShortcutFor(process.platform)
@@ -170,7 +183,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   /** Concesión por app (bloque C, ítem 9): `userData/computer-grants.json`. */
   private _grants: ComputerGrantsStore | null = null
   get grants(): ComputerGrantsStore {
-    this._grants ??= new ComputerGrantsStore(join(app.getPath('userData'), 'computer-grants.json'))
+    this._grants ??= new ComputerGrantsStore(
+      join(app.getPath('userData'), 'computer-grants.json'),
+      this.platform.id === 'win32' ? 'win32' : 'darwin'
+    )
     return this._grants
   }
   /** Lote C: preferencias de computer use (`userData/computer-prefs.json`): modo y ocultar apps. */
@@ -228,7 +244,33 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private escIdleTimer: NodeJS.Timeout | null = null
 
   /** Lo que depende del sistema (rutas del helper, parada de respaldo, vigía de Esc, entorno del MCP): `service-platform.ts`. */
-  private readonly platform = servicePlatformFor(process.platform)
+  private readonly platform: ReturnType<typeof servicePlatformFor>
+
+  /** `platform` solo lo inyectan las pruebas; en la app es siempre `process.platform`. */
+  constructor(opts: { platform?: string } = {}) {
+    super()
+    this.platform = servicePlatformFor(opts.platform ?? process.platform)
+  }
+
+  /** ¿Esta plataforma usa el consentimiento propio de la app en lugar de TCC? (Windows). */
+  get ownConsent(): boolean {
+    return this.platform.ownConsent
+  }
+
+  /** Consentimiento de la app (solo Windows): archivo propio de `main`, no `settings.json` (lo escribe el renderer). */
+  private _consent: ConsentController | null = null
+  private get consent(): ConsentController {
+    this._consent ??= createConsentController(createFileConsentStore(join(app.getPath('userData'), 'computer-win-consent.json')))
+    return this._consent
+  }
+  /** Registro auditable (solo Windows): `userData/computer-audit.jsonl`, rotación 5 MB × 3. */
+  private _audit: AuditLog | null = null
+  private get audit(): AuditLog {
+    this._audit ??= createAuditLog(app.getPath('userData'), nodeAuditFs)
+    return this._audit
+  }
+  /** Escucha de `powerMonitor` (bloqueo de sesión, suspensión): la quita `dispose()`. */
+  private powerListener: (() => void) | null = null
 
   /** Ruta del helper nativo o null si no está compilado. */
   helperPath(): string | null {
@@ -291,6 +333,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     // Esc físico: solo vigila mientras hay actividad reciente (ver `noteActivity`); un Esc suelto
     // en cualquier otro momento no para nada.
     this.on('action', () => this.noteActivity())
+    // Bloquear la sesión (Win+L) o suspender el equipo = Detener, como el atajo; reanudar exige «Reanudar control». Solo Windows.
+    if (this.platform.stopOnPowerEvents.length && !this.powerListener) {
+      const listener = (): void => void this.stop('session-lock')
+      this.powerListener = listener
+      for (const ev of this.platform.stopOnPowerEvents) powerMonitor.on(ev as 'lock-screen', listener)
+    }
   }
 
   // ───────────────────────────── Esc físico (parada mientras se controla) ─────────────────────────────
@@ -360,7 +408,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const enriched = apps.map((a) => ({
       ...a,
       current: this.grants.tierFor(a.bundleId),
-      denied: this.grants.isDenied(a.bundleId)
+      denied: this.grants.isDenied(a.bundleId) || this.grants.isBlocked(a.bundleId)
     }))
     // Modo auto (Lote C, C3): antes de mostrar la tarjeta, se le da la oportunidad de conceder
     // "Solo ver" efímero sin preguntar (allowlist estricta; nunca para takeover ni planes). Se
@@ -464,6 +512,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       for (const d of decisions) {
         const card = inCard.get(d.bundleId)
         if (!card || d.bundleId in map) continue
+        if (this.grants.isBlocked(d.bundleId)) {
+          // Windows: una app bloqueada nunca se concede, diga lo que diga el renderer.
+          map[d.bundleId] = 'deny'
+          continue
+        }
         if (d.decision === 'deny') {
           this.grants.deny(d.bundleId)
           map[d.bundleId] = 'deny'
@@ -605,8 +658,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * en memoria y el archivo (el MCP rechaza desde ya cualquier acción nueva), luego matar los
    * helpers en vuelo, avisar a la UI y abortar las sesiones (que mata también sus bash).
    */
-  async stop(): Promise<AbortReport> {
+  async stop(reason?: string): Promise<AbortReport> {
     const at = Date.now()
+    if (this.platform.auditLog) this.auditWrite({ at, tool: 'stop', outcome: 'stopped', reason })
     this.stopped = true
     this.stoppedAt ??= at
     try {
@@ -680,7 +734,47 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return chain
   }
 
+  /** Windows: «Estado en este PC». El consentimiento sale de la app; sesión, elevación, escalado y monitores, del helper. */
+  private async winStatus(): Promise<ComputerStatus> {
+    const bin = this.helperPath()
+    const cv = this.consent.view()
+    const win: ComputerWinStatus = {
+      consent: cv.consent,
+      consentVersion: cv.version,
+      consentStale: cv.stale,
+      interactive: null,
+      elevated: null,
+      dpiPercent: null,
+      monitors: null
+    }
+    // accessibility/screenRecording = consentimiento: no hay TCC y lo que solo mira esos campos sigue siendo cierto.
+    const base: ComputerStatus = { helperOk: false, accessibility: cv.consent, screenRecording: cv.consent, screens: [], win }
+    if (!bin) return base
+    try {
+      const perms = JSON.parse(await runHelper(bin, ['permissions'])) as {
+        interactive?: unknown
+        elevated?: unknown
+        dpi?: unknown
+        monitors?: unknown
+      }
+      const screens = JSON.parse(await runHelper(bin, ['screens'])) as Array<{ width: number; height: number; scale: number }>
+      win.interactive = typeof perms.interactive === 'boolean' ? perms.interactive : null
+      win.elevated = typeof perms.elevated === 'boolean' ? perms.elevated : null
+      win.dpiPercent = typeof perms.dpi === 'number' && perms.dpi > 0 ? Math.round((perms.dpi / 96) * 100) : null
+      win.monitors = typeof perms.monitors === 'number' ? perms.monitors : screens.length
+      return {
+        ...base,
+        helperOk: true,
+        screens: screens.map((sc) => ({ width: sc.width, height: sc.height, scale: sc.scale }))
+      }
+    } catch (err) {
+      console.error('[computer] helper:', err)
+      return base
+    }
+  }
+
   async status(): Promise<ComputerStatus> {
+    if (this.platform.ownConsent) return this.winStatus()
     const bin = this.helperPath()
     const base: ComputerStatus = {
       helperOk: false,
@@ -708,9 +802,18 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   async info(): Promise<ComputerUseInfo> {
     const st = await this.status()
     const script = this.mcpScriptPath()
-    const available = st.helperOk && !!script
+    let available = st.helperOk && !!script
     let reason: string | undefined
-    if (process.platform !== 'darwin') reason = t('merr.computer.macOnly')
+    if (this.platform.ownConsent) {
+      // Windows: sin TCC; cuenta el consentimiento de la app, la sesión interactiva y que Lazunox no corra como administrador.
+      const w = st.win
+      if (!st.helperOk) reason = t('merr.computer.noHelper')
+      else if (!script) reason = t('merr.computer.noMcp')
+      else if (w?.elevated === true) reason = t('merr.computer.elevatedWin')
+      else if (w?.interactive === false) reason = t('merr.computer.notInteractiveWin')
+      else if (!w?.consent) reason = t('merr.computer.noConsentWin')
+      available = available && w?.elevated !== true && w?.interactive !== false
+    } else if (process.platform !== 'darwin') reason = t('merr.computer.macOnly')
     else if (!st.helperOk) reason = t('merr.computer.noHelper')
     else if (!script) reason = t('merr.computer.noMcp')
     else if (!st.accessibility && !st.screenRecording) reason = t('merr.computer.noBoth')
@@ -721,6 +824,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /** Lanza los prompts del sistema y abre el panel de Ajustes del primer permiso que falte. */
   async requestPermissions(): Promise<void> {
+    if (this.platform.ownConsent) {
+      // Windows: no hay prompts del sistema; se rearma la tarjeta de consentimiento de la app (la UI la muestra).
+      this.consent.show()
+      return
+    }
     if (process.platform !== 'darwin') return
     const bin = this.helperPath()
     let perms = { accessibility: false, screenRecording: false }
@@ -738,6 +846,58 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     else if (!perms.screenRecording) await shell.openExternal(PANE_SCREEN)
   }
 
+  /**
+   * Tarjeta de consentimiento de Windows (`computer:winConsent`). El armado (casilla + 600 ms) lo exige ESTE controlador: un
+   * renderer que mande `confirm` sin haber mostrado la tarjeta o antes de tiempo no concede nada. Revocar detiene el control.
+   */
+  winConsent(action: ComputerWinConsentAction): ComputerWinConsentResult {
+    const c = this.consent
+    let granted: boolean | undefined
+    switch (action) {
+      case 'show':
+        c.show()
+        break
+      case 'check':
+        c.setChecked(true)
+        break
+      case 'uncheck':
+        c.setChecked(false)
+        break
+      case 'confirm':
+        granted = c.confirm()
+        if (granted) this.auditWrite({ tool: 'consent', outcome: 'ok', reason: 'granted' })
+        break
+      case 'revoke':
+        c.revoke()
+        this.auditWrite({ tool: 'consent', outcome: 'ok', reason: 'revoked' })
+        // Sin consentimiento no hay control: lo que estuviera en marcha se detiene (reanudar exige «Reanudar control»).
+        void this.stop('consent-revoked')
+        break
+    }
+    const v = c.view()
+    return { consent: v.consent, version: v.version, stale: v.stale, armed: c.armed(), ...(granted === undefined ? {} : { granted }) }
+  }
+
+  /** Respuesta de `GET /consent` (canal lateral): `{consent, version}`. La lectura ya falla cerrado; aquí también ante una excepción. */
+  private consentBody(): { consent: boolean; version: number } {
+    try {
+      const v = this.consent.view()
+      return { consent: v.consent, version: v.version }
+    } catch {
+      return { consent: false, version: WIN_CONSENT_VERSION }
+    }
+  }
+
+  /** Últimas entradas del registro auditable (Ajustes › «Ver registro»). */
+  auditEntries(limit = 200): ComputerAuditRow[] {
+    return readAuditEntries(app.getPath('userData'), limit)
+  }
+
+  private auditWrite(input: AuditInput): void {
+    if (!this.platform.auditLog) return
+    this.audit.write(input)
+  }
+
   /** Servidor HTTP local para el canal lateral de acciones. Devuelve la URL (con token). */
   private ensureEventsServer(): Promise<string | null> {
     if (this.eventsUrl) return Promise.resolve(this.eventsUrl)
@@ -752,6 +912,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           res.setHeader('content-type', 'application/json')
           res.setHeader('cache-control', 'no-store')
           res.end(JSON.stringify({ stopped: this.stopped }))
+          return
+        }
+        if (this.platform.ownConsent && req.method === 'GET' && req.url === `${path}/consent`) {
+          // Windows: consentimiento propio de la app. El MCP lo consulta antes de CADA herramienta y falla cerrado si no responde.
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify(this.consentBody()))
           return
         }
         if (req.method === 'GET' && (req.url ?? '').startsWith(`${path}/tier?`)) {
@@ -955,6 +1123,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
             // JSON inválido: ignorar
           }
           if (!ev) return done()
+          if (this.platform.auditLog) {
+            const entry = auditInputFromEvent(ev)
+            if (entry) this.auditWrite(entry)
+          }
           this.emit('action', ev)
           const guard = this.captureGuard
           if (ev.tool === 'screenshot' && ev.phase === 'start' && guard) {
@@ -1049,6 +1221,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   }
 
   dispose(): void {
+    if (this.powerListener) {
+      for (const ev of this.platform.stopOnPowerEvents) powerMonitor.removeListener(ev as 'lock-screen', this.powerListener)
+      this.powerListener = null
+    }
     this.cleanScreenshots()
     this.stopEscWatcher()
     this.mcpHost.dispose()

@@ -203,6 +203,11 @@ export const mainErrors = {
   'merr.projects.tooBig': 'AGENTS.md is too large to edit here.',
   'merr.projects.overLimit': 'AGENTS.md can’t exceed {max} characters.',
   'merr.computer.appBlocked': 'That app is blocked and cannot be granted.',
+  'merr.computer.noConsentWin': 'PC control is not turned on: turn it on in Settings › PC control.',
+  'merr.computer.notInteractiveWin':
+    'There is no interactive desktop (locked session, a Windows security prompt, a disconnected remote session, or Lazunox running without a screen).',
+  'merr.computer.elevatedWin':
+    'Lazunox is running as administrator: PC control is not available. Open it again without administrator rights.',
   'merr.computer.noCuHelper': 'The native helper cu-helper is missing',
   // Own windows (Quick Entry, overlay, pill and guide): the page reads the language from `?lang=`
   'ovl.pill.title': 'The AI is controlling your Mac',
