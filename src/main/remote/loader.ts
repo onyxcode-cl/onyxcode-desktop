@@ -3,12 +3,13 @@
  * hay que cargar `./index` y mantiene el estado «apagado» sin tocar la red. Con la función apagada no hay
  * puertos, sockets ni módulos nativos cargados.
  */
-import { app, safeStorage } from 'electron'
+import { app, powerSaveBlocker, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { capsFor } from '@shared/platform-caps'
 import { REMOTE_OFF_STATE, type RemotePolicyView, type RemoteState } from '@shared/ipc-remote'
 import { AUDIT_FILE, AuditLog } from './audit'
 import { DevicesStore, REMOTE_FILE, toDeviceInfo } from './devices-store'
+import { createKeepAwake, type KeepAwake } from './keep-awake'
 import { OrgRemotePolicy } from './org-policy'
 import { policyFile } from '../tasks/policy'
 import type { RemoteBootDeps } from './index'
@@ -129,8 +130,17 @@ export function remoteMode(): RemoteState['mode'] {
   return lastMode
 }
 
+let keepAwake: KeepAwake | null = null
+/** «Mantener despierto» (solo Windows con `remoteWin`; ver `keep-awake.ts`). En macOS ni se crea. */
+function keepAwakeFor(): KeepAwake | null {
+  if (process.platform !== 'win32') return null
+  keepAwake ??= createKeepAwake({ platform: process.platform, enabled: () => remoteWinOn, blocker: powerSaveBlocker })
+  return keepAwake
+}
+
 /** Avisa de un cambio de estado (actualiza bandeja y oyentes). */
 export function noteState(state: RemoteState): void {
+  keepAwakeFor()?.update(state.mode)
   if (state.mode !== lastMode) {
     lastMode = state.mode
     for (const cb of modeListeners) cb(lastMode)
@@ -171,5 +181,6 @@ export async function stopAllRemote(): Promise<void> {
 
 /** Al salir de la app. */
 export async function disposeRemote(): Promise<void> {
+  keepAwake?.release()
   await service?.dispose()
 }
