@@ -1,7 +1,16 @@
-/* Dueño: ESTRUCTURA (barra lateral, cabeceras, paleta, cromo de la ventana). Vacío a propósito en la tanda 0.
+/* Dueño: ESTRUCTURA (barra lateral, cabeceras, paleta, cromo de la ventana).
  * Reglas: todo selector bajo :root[data-shell='desktop']; sin colores nuevos; tokens de ./tokens.css. */
 
-/* ---- Piloto de rediseño (F8-B96) · barra lateral: 256 px, separada del lienzo por tono (sin borde), filas de 32 px ---- */
+/* ---- Barra lateral 2c: 272 px expandida (la colapsada, de 56 px, la fija `w-14` en App.tsx/Sidebar.tsx), separada del lienzo por tono ---- */
 :root[data-shell='desktop'] {
-  --sidebar-width: 256px;
+  --sidebar-width: 272px;
+}
+
+/* «Tarjeta» de la propuesta 2c (campo de búsqueda y segmento activo): el fondo del lienzo en oscuro y el elevado en claro. Reutiliza los
+ * tokens `--bg` y `--bg-elevated`; no declara ningún token ni color nuevo. */
+:root[data-shell='desktop'][data-theme='dark'] .sb-card {
+  background-color: var(--bg);
+}
+:root[data-shell='desktop'][data-theme='light'] .sb-card {
+  background-color: var(--bg-elevated);
 }

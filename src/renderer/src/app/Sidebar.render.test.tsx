@@ -19,37 +19,67 @@ const reset = (): void => {
 
 const render = (): string => renderToStaticMarkup(createElement(Sidebar))
 
-describe('barra lateral de escritorio', () => {
+describe('barra lateral de escritorio (2c)', () => {
   afterEach(reset)
 
-  it('el modo activo lleva aria-current y trazo único de 1.75', () => {
+  it('el modo activo lleva aria-current en un segmentado de solo texto', () => {
     seed({ mode: 'code', settingsOpen: false })
     const html = render()
-    expect(html.match(/aria-current="page"/g)).toHaveLength(1)
-    expect(html).toMatch(/aria-current="page"[^>]*>(<svg[^>]*>)/)
-    const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'))
-    const widths = [...nav.matchAll(/stroke-width="([\d.]+)"/g)].map((m) => m[1])
-    expect(widths.length).toBeGreaterThanOrEqual(4)
-    expect(new Set(widths)).toEqual(new Set(['1.75']))
+    expect(html.match(/<nav aria-label="Modo"[^>]*>/g)).toHaveLength(1)
+    const nav = html.slice(html.indexOf('<nav aria-label="Modo"'), html.indexOf('</nav>'))
+    expect(nav.match(/aria-current="page"/g)).toHaveLength(1)
+    expect(nav).toMatch(/aria-current="page"[^>]*>(<span class="truncate">Code<\/span>)/)
+    expect(nav).not.toContain('<svg')
+    expect(nav).toContain('rounded-[10px] bg-hover p-[3px]')
   })
 
-  it('con Ajustes abierto el modo conserva el icono de acento y pierde aria-current', () => {
+  it('con Ajustes abierto el modo conserva el texto fuerte y pierde aria-current', () => {
     seed({ mode: 'code', settingsOpen: true })
     const html = render()
     expect(html).not.toContain('aria-current="page"')
-    expect(html).toContain('text-accent')
+    expect(html).toMatch(/font-medium text-fg"><span class="truncate">Code/)
   })
 
-  it('barra 1b: «Nuevo» sin atajo en la fila (va en el tooltip) y la lista cae en la guía px-2 de 8 px', () => {
+  it('estructura: marca con el nombre de la app, «Nueva» con su atajo, buscador, árbol y pie de tres botones', () => {
     seed({ mode: 'chat', settingsOpen: false })
     const html = render()
-    expect(html).not.toMatch(/opacity-0[^"]*">⌘N|text-subtle opacity-0/)
-    expect(html).toContain('title="Nueva conversación (⌘N)"')
-    expect(html).not.toMatch(/<span[^>]*>⌘N<\/span>/)
-    expect(html).toContain('flex min-h-0 flex-1 flex-col px-2')
-    expect(html).toMatch(/overflow-y-auto pb-2 pt-4/)
-    expect(html).toContain('grid grid-cols-2 gap-0.5')
+    expect(html).toContain('>Lazunox</span>')
+    // El nombre anterior no puede aparecer (se arma en dos trozos para que esta guardia no lo encuentre en el propio archivo).
+    expect(html).not.toMatch(new RegExp(['on', 'yx'].join(''), 'i'))
+    // «Nueva conversación»: el nombre accesible sigue siendo el texto (el atajo es decorativo y va en aria-keyshortcuts).
+    expect(html).toMatch(/<button[^>]*aria-keyshortcuts="[^"]+"[^>]*>.*?Nueva conversación<\/span><span aria-hidden="true"[^>]*>⌘N<\/span>/)
+    expect(html).not.toContain('title="Nueva conversación (⌘N)"')
+    // Buscador como campo sobre la «tarjeta», con ⌘K.
+    expect(html).toMatch(/class="[^"]*sb-card[^"]*shadow-\[inset_0_0_0_1px_var\(--border\)\][^"]*"/)
+    expect(html).toMatch(/>⌘K<\/span>/)
+    // Rótulo de sección y árbol.
+    expect(html).toContain('Sin proyecto')
+    expect(html).toContain('role="tree" aria-label="Proyectos y conversaciones"')
+    expect(html).toContain('overflow-y-auto px-2 pt-5 pb-2')
+    // Pie: Ajustes · Ayuda · Tema y el estado de la conexión.
+    for (const name of ['Ajustes (⌘,)', 'Ayuda', 'Cambiar tema']) expect(html).toContain(`aria-label="${name}"`)
     expect(html).not.toContain('border-t border-border"></div>')
+  })
+
+  it('en Code y Tareas el rótulo es «Proyectos» y lleva la acción de abrir carpeta', () => {
+    seed({ mode: 'code', settingsOpen: false })
+    const html = render()
+    expect(html).toContain('>Proyectos</span>')
+    expect(html).not.toContain('Sin proyecto')
+  })
+
+  it('colapsada: 56 px, botones de 36 px con nombre accesible y el mismo nav «Modo»', () => {
+    seed({ mode: 'chat', settingsOpen: false, sidebarCollapsed: true })
+    const html = render()
+    expect(html).toContain('data-collapsed=""')
+    expect(html).toContain('w-14')
+    expect(html).not.toContain('>Lazunox<')
+    expect(html).toContain('<nav aria-label="Modo"')
+    for (const name of ['Mostrar barra lateral', 'Nueva conversación', 'Buscar o ir a…', 'Chat', 'Code', 'Ajustes']) {
+      expect(html).toContain(`aria-label="${name}"`)
+    }
+    expect(html.match(/size-9/g)?.length).toBeGreaterThanOrEqual(8)
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1)
   })
 })
 

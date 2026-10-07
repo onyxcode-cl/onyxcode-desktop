@@ -8,12 +8,13 @@ export const TOOLTIP_DELAY_MS = 500
 export const TOOLTIP_GROUP_MS = 300
 const MAX_W = 240
 const GAP = 6
+const RIGHT_GAP = 10
 const MARGIN = 8
 
 let lastClosedAt = 0
 let open = 0
 
-type Side = 'top' | 'bottom'
+type Side = 'top' | 'bottom' | 'right'
 
 interface Props {
   /** Texto del tooltip. Vacío = sin tooltip. Conserva el `aria-label` del control: el tooltip no lo sustituye. */
@@ -138,6 +139,12 @@ function TooltipBubble({
     const r = anchor.getBoundingClientRect()
     const w = el.offsetWidth
     const h = el.offsetHeight
+    if (side === 'right') {
+      // Barra lateral colapsada: a la derecha del botón, centrado en vertical (con margen contra el borde de la ventana).
+      const top = Math.min(Math.max(r.top + r.height / 2 - h / 2, MARGIN), Math.max(MARGIN, window.innerHeight - h - MARGIN))
+      setPos({ left: r.right + RIGHT_GAP, top })
+      return
+    }
     const below = side === 'bottom' || r.top - h - GAP < MARGIN
     const top = below ? r.bottom + GAP : r.top - h - GAP
     const left = Math.min(Math.max(r.left + r.width / 2 - w / 2, MARGIN), Math.max(MARGIN, window.innerWidth - w - MARGIN))
