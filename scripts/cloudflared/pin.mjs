@@ -3,16 +3,20 @@
 // autorizada expresamente), NUNCA la app ni CI. Descarga el asset de macOS de la release oficial, calcula los DOS hashes y exige que
 // coincidan tres fuentes (ver `pin-lib.mjs`); si algo no cuadra no escribe nada.
 //
-// Uso:  node scripts/cloudflared/pin.mjs <versión> --network [--write]
+// Uso:  node scripts/cloudflared/pin.mjs <versión> --network [--platform darwin-arm64|win32-x64] [--authenticode-subject "<sujeto>"] [--write]
 //   --network  obligatorio: confirma que sabes que esto descarga ~20 MB de GitHub.
-//   --write    escribe resources/cloudflared/pin.json (sin él solo imprime el resultado).
+//   --platform plataforma a fijar (por defecto darwin-arm64; repetible). `win32-x64` baja el .exe oficial (SHA-256 y tamaño del .exe)
+//              y EXIGE --authenticode-subject: el sujeto del certificado se lee en Windows con scripts/win/cloudflared-subject.ps1
+//              (esta herramienta no puede leerlo desde la Mac).
+//   --write    escribe resources/cloudflared/pin.json (sin él solo imprime el resultado). Si el pin existente es de la MISMA versión,
+//              conserva sus otras plataformas (fijar Windows no borra macOS); con otra versión lo reemplaza.
 import { execFile } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { buildPin, serializePin } from './pin-lib.mjs'
+import { buildPin, mergePin, serializePin } from './pin-lib.mjs'
 
 const run = promisify(execFile)
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -63,17 +67,48 @@ export function realIo() {
   }
 }
 
+/** Interpreta los argumentos (sin tocar red ni disco). Lanza con un mensaje de uso si algo no cuadra. */
+export function parseArgs(argv) {
+  const [version, ...rest] = argv
+  const flags = new Set()
+  const targets = []
+  let authenticodeSubject
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i]
+    if (a === '--platform' || a === '--authenticode-subject') {
+      const v = rest[++i]
+      if (v === undefined || v.startsWith('--')) throw new Error(`${a} necesita un valor`)
+      if (a === '--platform') targets.push(v)
+      else authenticodeSubject = v
+    } else flags.add(a)
+  }
+  return { version, flags, targets: targets.length ? targets : undefined, authenticodeSubject }
+}
+
 async function main() {
-  const [version, ...flags] = process.argv.slice(2)
-  if (!version || !flags.includes('--network')) {
+  let args
+  try {
+    args = parseArgs(process.argv.slice(2))
+  } catch (err) {
+    console.error(String(err.message))
+    process.exit(2)
+  }
+  const { version, flags, targets, authenticodeSubject } = args
+  if (!version || !flags.has('--network')) {
     console.error(
-      'Uso: node scripts/cloudflared/pin.mjs <versión> --network [--write]\n(descarga ~20 MB de GitHub: añade --network para confirmarlo)'
+      'Uso: node scripts/cloudflared/pin.mjs <versión> --network [--platform darwin-arm64|win32-x64] [--authenticode-subject "<sujeto>"] [--write]\n(descarga ~20 MB de GitHub por plataforma: añade --network para confirmarlo)'
     )
     process.exit(2)
   }
-  const pin = await buildPin({ version, io: realIo() })
-  if (flags.includes('--write')) {
-    writeFileSync(PIN_PATH, serializePin(pin))
+  const pin = await buildPin({ version, io: realIo(), targets, authenticodeSubject })
+  if (flags.has('--write')) {
+    let existing = null
+    try {
+      existing = JSON.parse(readFileSync(PIN_PATH, 'utf8'))
+    } catch {
+      /* sin pin previo */
+    }
+    writeFileSync(PIN_PATH, serializePin(mergePin(existing, pin)))
     console.log(`escrito ${PIN_PATH}`)
   } else process.stdout.write(serializePin(pin))
 }
