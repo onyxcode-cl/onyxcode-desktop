@@ -4,7 +4,9 @@
  *   tasksWin = win32 && TASKS_WIN_BUILD && (optIn || devEnv) && !policy.disableWslTasks
  *
  *  - `TASKS_WIN_BUILD`: constante de compilación (`@shared/feature-flags`), apagada en el repositorio.
- *  - `optIn`: el usuario activó «Tareas (beta)» (`settings.tasksWinBeta === true`, solo booleano estricto).
+ *  - `optIn`: consentimiento beta VIGENTE leído por `main` de su archivo propio (`tasks-win-beta-consent.ts`:
+ *    `userData/tasks-win-beta-consent.json`, versionado, escrito solo por `main` tras casilla + armado). `settings.tasksWinBeta`
+ *    (que el renderer sí puede escribir) es LEGADO y se ignora. Solo booleano estricto.
  *  - `devEnv`: `LAZUNOX_TASKS_WIN=1` y SOLO si la app NO está empaquetada (mismo patrón que `LAZUNOX_MANAGED_POLICY`).
  *  - `disableWslTasks`: política de la organización; cualquier valor distinto de `false` ya llega como `true`
  *    desde `parseManagedPolicy` (fail-closed). Aquí solo `true` estricto bloquea, pero un `null` (sin política) no.
@@ -16,7 +18,7 @@ export interface TasksWinDeps {
   platform: string
   /** Puerta de compilación. Por defecto la constante real; las pruebas la inyectan. */
   build?: boolean
-  /** `settings.tasksWinBeta`. */
+  /** Consentimiento beta vigente (`readTasksWinBetaConsent`); NUNCA `settings.tasksWinBeta`. */
   optIn: unknown
   env: Record<string, string | undefined>
   /** `app.isPackaged`. Ausente se trata como empaquetada (cierra el atajo de desarrollo). */

@@ -13,7 +13,7 @@ import { ComputerGrantsList } from '../../tasks/impl/ComputerAccess'
 import { Card, ErrorText, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import { platformCaps } from '../../../lib/platform'
+import { isWindowsPlatform, platformCaps } from '../../../lib/platform'
 import { ComputerWinSettings } from './ComputerWinPanels'
 
 /** Fila-botón de una opción del modo (como un radio, pero con la descripción bajo el título). */
@@ -73,6 +73,18 @@ export function ComputerSection(): React.JSX.Element {
   const setMode = (mode: ComputerControlMode): void => {
     if (mode === prefs.mode) return
     update({ mode })
+  }
+
+  // Windows: Control del PC es beta y solo existe con Tareas (beta) encendida; sin ella, solo una nota (macOS no cambia).
+  if (isWindowsPlatform() && !platformCaps().tasks) {
+    return (
+      <div>
+        <SectionHeader title={UI_LABELS.computer} description={t('misc.computer.desc')} />
+        <p role="note" className="text-sm text-muted">
+          {t('tasksSettings.beta.computerNeeds')}
+        </p>
+      </div>
+    )
   }
 
   return (

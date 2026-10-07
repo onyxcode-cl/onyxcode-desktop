@@ -54,3 +54,11 @@ describe('resolveTasksWin (build encendido inyectado)', () => {
     expect(capsFor('win32', { tasksWin: resolveTasksWin(base) }).tasks).toBe(false)
   })
 })
+
+describe('optIn = consentimiento beta de main (no el ajuste del renderer)', () => {
+  it('el ajuste legado settings.tasksWinBeta no es una entrada de resolveTasksWin: solo cuenta el booleano que main pasa', () => {
+    // `index.ts` pasa `readTasksWinBetaConsent(...)`; aunque el renderer guarde `tasksWinBeta: true`, ese valor no llega aquí.
+    expect(resolveTasksWin({ ...base, optIn: false, tasksWinBeta: true } as TasksWinDeps)).toBe(false)
+    expect(resolveTasksWin({ ...base, optIn: true })).toBe(true)
+  })
+})

@@ -138,16 +138,43 @@ export const tasksSettings = {
     'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.',
   'tasksSettings.beta.title': 'Tareas (beta) en Windows',
   'tasksSettings.beta.description':
-    'Activa el modo Tareas en este PC. Usa un entorno Linux aislado (WSL 2) que se instala una vez y ocupa espacio en disco. Es una función en pruebas.',
-  'tasksSettings.beta.toggle': 'Activar Tareas (beta)',
-  'tasksSettings.beta.restart': 'Reinicia Lazunox para aplicar el cambio.',
-  'tasksSettings.beta.confirm.title': '¿Activar Tareas (beta)?',
-  'tasksSettings.beta.confirm.b1':
-    'Tareas ejecuta al agente dentro de un entorno Linux aislado de Windows (WSL 2). Necesita WSL 2 y virtualización, descarga e instala una imagen (unos 2 GB libres) y puede ralentizar el arranque.',
-  'tasksSettings.beta.confirm.b2':
-    'El agente solo ve las carpetas que apruebes. No puede ejecutar programas de Windows y solo sale a internet a los sitios que permitas.',
-  'tasksSettings.beta.confirm.b3':
-    'Es una versión de pruebas: pueden fallar cosas. Puedes desactivarla aquí cuando quieras. Hace falta reiniciar Lazunox.',
+    'Opcional y apagada por defecto: para encenderla hay que leer y aceptar un aviso. Usa un entorno Linux aislado (WSL 2) que se instala una vez y ocupa espacio en disco. Con ella también puede usarse Control del PC (beta).',
+  'tasksSettings.beta.enable': 'Leer el aviso y activar…',
+  'tasksSettings.beta.statusOn': 'Activa en este PC.',
+  'tasksSettings.beta.statusOff': 'Apagada.',
+  'tasksSettings.beta.statusPendingOn': 'Aceptada. Reinicia Lazunox para activarla.',
+  'tasksSettings.beta.statusPendingOff': 'Retirada. Reinicia Lazunox para apagarla.',
+  'tasksSettings.beta.stale': 'El aviso de la beta cambió desde que lo aceptaste: léelo de nuevo para activarla.',
+  'tasksSettings.beta.revoke': 'Retirar mi consentimiento',
+  'tasksSettings.beta.restartNow': 'Reiniciar ahora',
+  'tasksSettings.beta.confirm.title': 'Antes de activar Tareas (beta)',
+  'tasksSettings.beta.confirm.intro':
+    'Es una beta que tú decides encender, y no está probada del todo. Lee con calma lo que sí se verificó y lo que no.',
+  'tasksSettings.beta.confirm.verifiedTitle': 'Lo que sí se verificó',
+  'tasksSettings.beta.confirm.v1': 'Una batería parcial de 38 pruebas de ataque contra el aislamiento, en un PC con Windows real.',
+  'tasksSettings.beta.confirm.v2':
+    'Una sesión de trabajo real de principio a fin (preparar el entorno y ejecutar una tarea): 2 de 2 intentos, en un PC con Windows real.',
+  'tasksSettings.beta.confirm.unverifiedTitle': 'Lo que NO se verificó',
+  'tasksSettings.beta.confirm.u1': 'La batería de ataques A1–A20 completa: solo se hizo una parte.',
+  'tasksSettings.beta.confirm.u2': 'Los informes de dos sesiones (una con permisos de administrador y otra normal) no existen todavía.',
+  'tasksSettings.beta.confirm.u3':
+    'Hay un fallo abierto de WSL cuando la sesión es de administrador, y no se probó qué pasa con Lazunox. No ejecutes Lazunox como administrador.',
+  'tasksSettings.beta.confirm.u4':
+    'Los enlaces simbólicos de NTFS (prueba A3): no se comprobó que el agente no pueda salir de una carpeta aprobada con uno.',
+  'tasksSettings.beta.confirm.u5': 'La imagen de Linux y el programa del agente que se incluyen no tienen firma de un tercero.',
+  'tasksSettings.beta.confirm.u6': 'No hay una auditoría de seguridad externa.',
+  'tasksSettings.beta.confirm.computerTitle': 'Si además usas Control del PC (beta)',
+  'tasksSettings.beta.confirm.c1':
+    'No se probó en un PC real enviar teclado y ratón (SendInput), leer ventanas (UI Automation), las capturas con máscara de zonas privadas, la parada de emergencia (STOP) ni el cierre de entrada (EOF).',
+  'tasksSettings.beta.confirm.c2':
+    'El instalador no tiene firma de Windows: SmartScreen o el antivirus pueden avisar o bloquearlo, y Defender no se probó con Control del PC activo.',
+  'tasksSettings.beta.confirm.risk':
+    'Úsala solo con carpetas de prueba y sin datos que no puedas perder ni exponer. Puedes retirarla aquí cuando quieras (hace falta reiniciar). Más detalle: docs/WINDOWS-TAREAS.md.',
+  'tasksSettings.beta.confirm.check': 'Entiendo lo que no se verificó y acepto usar esta beta bajo mi responsabilidad.',
+  'tasksSettings.beta.confirm.accept': 'Aceptar y activar',
+  'tasksSettings.beta.confirm.hint': 'El botón se activa un instante después de marcar la casilla.',
   'tasksSettings.beta.confirm.cancel': 'Cancelar',
-  'tasksSettings.beta.confirm.ok': 'Activar'
+  'tasksSettings.beta.confirm.wait': 'Espera un momento y vuelve a pulsar.',
+  'tasksSettings.beta.confirm.failed': 'No se pudo guardar el consentimiento.',
+  'tasksSettings.beta.computerNeeds': 'Control del PC (beta) requiere Tareas (beta): actívala en Ajustes › General.'
 } as const
