@@ -31,12 +31,14 @@ import {
   type AccessDecision,
   type AccessRequest,
   type AccessRequestApp,
-  type AppTier
+  type AppTier,
+  type ComputerStatus
 } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
 import { errorMessage } from '../../../lib/opencode'
 import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
@@ -58,6 +60,7 @@ import {
   stopComputerControl,
   undenyApp
 } from './actions'
+import { ComputerConsentWin } from './ComputerConsentWin'
 import { describeAction } from './computer-tools'
 import { sdkDir } from './conn-paths'
 import { loadGrants, setTaskModel, useTasks } from './store'
@@ -323,6 +326,50 @@ function PermRow({ ok, label, hint }: { ok: boolean; label: string; hint: string
   )
 }
 
+/** Windows: lo que impide usar Control del PC (helper, administrador, escritorio no interactivo) y, si falta, el consentimiento. */
+function WinPermissionsCard({
+  status,
+  checking,
+  fallbackHelperOk,
+  fallbackConsent
+}: {
+  status: ComputerStatus | null
+  checking: boolean
+  fallbackHelperOk: boolean
+  fallbackConsent: boolean
+}): React.JSX.Element | null {
+  const t = useT()
+  const helperOk = status ? status.helperOk : fallbackHelperOk
+  const consent = status?.win ? status.win.consent : fallbackConsent
+  const notAdmin = status?.win?.elevated !== true
+  const interactive = status?.win?.interactive !== false
+  if (helperOk && consent && notAdmin && interactive) return null
+  const problems = !helperOk || !notAdmin || !interactive
+  return (
+    <div className="mx-auto mt-4 w-full max-w-3xl space-y-3 px-6">
+      {problems && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <div className="mb-2 flex items-center gap-2 font-semibold text-amber-700 desk:text-warning [[data-theme=dark]_&]:text-amber-400">
+            <ShieldAlert size={16} aria-hidden="true" /> {t('tasksComputer.perms.title')}
+          </div>
+          <ul className="space-y-1.5">
+            <PermRow ok={helperOk} label={t('tasksComputer.winStatus.helper')} hint={t('tasksComputer.winStatus.helperMissing')} />
+            <PermRow ok={notAdmin} label={t('tasksComputer.winStatus.admin')} hint={t('tasksComputer.winStatus.adminYes')} />
+            <PermRow ok={interactive} label={t('tasksComputer.winStatus.session')} hint={t('tasksComputer.winStatus.sessionNo')} />
+          </ul>
+          <div className="mt-3">
+            <Button variant="secondary" type="button" onClick={() => void checkComputer()} disabled={checking}>
+              {checking ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={14} aria-hidden="true" />}{' '}
+              {t('tasksComputer.perms.recheck')}
+            </Button>
+          </div>
+        </div>
+      )}
+      {!consent && <ComputerConsentWin />}
+    </div>
+  )
+}
+
 /** Tarjeta con los permisos que faltan (Accesibilidad / Grabación de pantalla / helper). */
 export function ComputerPermissionsCard(): React.JSX.Element | null {
   const t = useT()
@@ -341,6 +388,17 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
   }, [full])
 
   if (!full || !conn) return null
+  // Windows: sin permisos TCC; manda el consentimiento propio de la app (y que haya escritorio interactivo y no sea administrador).
+  if (platformCaps().computerBackend === 'uia') {
+    return (
+      <WinPermissionsCard
+        status={status}
+        checking={checking}
+        fallbackHelperOk={conn.computerUse?.available ?? false}
+        fallbackConsent={conn.computerUse?.accessibility ?? false}
+      />
+    )
+  }
   const helperOk = status ? status.helperOk : (conn.computerUse?.available ?? false)
   const accessibility = status ? status.accessibility : (conn.computerUse?.accessibility ?? false)
   const screenRecording = status ? status.screenRecording : (conn.computerUse?.screenRecording ?? false)
