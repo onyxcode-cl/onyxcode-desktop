@@ -26,7 +26,7 @@ describe('resources/opencode-bin/pin.json (beta de Tareas en Windows, 2026-10-07
   })
   it('la url de la imagen es EXACTAMENTE la de wslRootfsUrl (no publicada: el parser no se relajó)', () => {
     expect(raw['wsl-rootfs'].url).toBe(wslRootfsUrl('2026.10.1'))
-    expect(wslRootfsUrl('2026.10.1')).toContain('onyxcode-cl/lazunox-wsl')
+    expect(wslRootfsUrl('2026.10.1')).toContain('/lazunox-wsl/releases/download/rootfs-2026.10.1/')
     expect(parseWslPin({ ...raw['wsl-rootfs'], url: 'https://example.com/x.tar.gz' })).toBeNull()
   })
   it('conserva los assets de darwin-arm64 y win32-x64', () => {
