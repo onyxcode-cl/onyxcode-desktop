@@ -23,6 +23,7 @@ import { registerTasksBetaHandlers } from './ipc/tasks-beta-handlers'
 import { capsFor } from '@shared/platform-caps'
 import { capsFlagsToArgs } from '@shared/caps-argv'
 import { resolveTasksWin } from './tasks/tasks-win-flag'
+import { readTasksWinBetaConsent } from './tasks/tasks-win-beta-consent'
 import { loadManagedPolicy } from './tasks/policy'
 import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
@@ -210,7 +211,8 @@ function start(): void {
     applyE2eHeadless()
     tasksWinOn = resolveTasksWin({
       platform: process.platform,
-      optIn: settingsStore.get().tasksWinBeta,
+      // Consentimiento beta leído por main de su archivo propio; `settings.tasksWinBeta` (lo escribe el renderer) es legado ignorado.
+      optIn: process.platform === 'win32' ? readTasksWinBetaConsent(app.getPath('userData')) : false,
       env: process.env,
       isPackaged: app.isPackaged,
       policy: process.platform === 'win32' ? loadManagedPolicy() : null

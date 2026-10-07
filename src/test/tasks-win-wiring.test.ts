@@ -24,13 +24,15 @@ describe('propagación de tasksWin', () => {
   it('main/index.ts calcula la bandera con resolveTasksWin y la pasa a capsFor, al preload y a los handlers', () => {
     const s = read('main/index.ts')
     expect(s).toMatch(
-      /resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*optIn: settingsStore\.get\(\)\.tasksWinBeta[\s\S]*policy:/
+      /resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*optIn: process\.platform === 'win32' \? readTasksWinBetaConsent\(app\.getPath\('userData'\)\) : false[\s\S]*policy:/
     )
     expect(s).toMatch(/capsFor\(process\.platform, \{ tasksWin, remoteWin \}\)/)
     expect(s).toMatch(/additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn \}\)/)
     expect(s).toMatch(
       /computer: caps\.computer,\s*tasksWin: tasksWinOn,\s*winBackend: tasksWinOn \? await createWinBackend\(\) : undefined/
     )
+    // El consentimiento beta lo lee main de su archivo; el ajuste legado del renderer no cuenta.
+    expect(s).not.toMatch(/tasksWinBeta/)
     // La puerta de compilación y la variable de desarrollo viven solo en feature-flags.ts / tasks-win-flag.ts.
     expect(s).not.toMatch(/TASKS_WIN_BUILD|LAZUNOX_TASKS_WIN/)
   })
