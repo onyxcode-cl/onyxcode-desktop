@@ -182,6 +182,8 @@ describe('Windows: estado sin TCC', () => {
 
   it('sin helper: no disponible, con el motivo, y sin tocar nada del sistema', async () => {
     const s = make('win32')
+    // Independiente del disco: un `cu-helper.exe` compilado en esta carpeta (ignorado por git) no debe cambiar el resultado.
+    vi.spyOn(s, 'helperPath').mockReturnValue(null)
     const info = await s.info()
     expect(info.available).toBe(false)
     expect(info.reason).toMatch(/helper/i)
