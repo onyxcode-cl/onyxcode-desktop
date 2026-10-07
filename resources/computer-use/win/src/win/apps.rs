@@ -131,6 +131,23 @@ fn matches_target(i: &AppInfo, target: &str) -> bool {
     fold_text(&i.name) == t || fold_text(&i.name).contains(&t) || fold_text(base) == t || fold_text(base.strip_suffix(".exe").unwrap_or(base)) == t
 }
 
+/// `resolve-app`: la app con ventana visible cuyo nombre localizado o ejecutable coincide con `query` (exacto, luego
+/// «empieza por», luego «contiene»), o `None`. No abre ni lanza nada. Una app bloqueada no se resuelve.
+pub fn resolve_by_name(cache: &mut AppCache, query: &str) -> CuResult<Option<AppInfo>> {
+    let q = fold_text(query.trim().trim_end_matches(".exe"));
+    if q.chars().count() < 2 {
+        return Ok(None);
+    }
+    // Sin `set_interest`: se verifica el editor de todas, para que la clave sea la misma que la de `list-apps`.
+    let apps = list(cache)?;
+    let names = |i: &AppInfo| -> [String; 2] {
+        let base = crate::appkey::exe_base_name(&i.exe);
+        [fold_text(&i.name), fold_text(base.strip_suffix(".exe").unwrap_or(base))]
+    };
+    let pick = |f: &dyn Fn(&str) -> bool| apps.iter().find(|i| !i.blocked() && names(i).iter().any(|n| !n.is_empty() && f(n))).cloned();
+    Ok(pick(&|n| n == q).or_else(|| pick(&|n| n.starts_with(&q))).or_else(|| pick(&|n| n.contains(&q))))
+}
+
 fn bring_to_front(h: HWND) {
     unsafe {
         if IsIconic(h).as_bool() {

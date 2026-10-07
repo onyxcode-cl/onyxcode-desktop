@@ -39,15 +39,22 @@ pub fn stop_now() -> ! {
     std::process::exit(crate::exitcode::STOPPED);
 }
 
-/// Hilo que lee stdin: `STOP` o EOF → parada inmediata.
-pub fn spawn_stdin_watch() {
-    std::thread::spawn(|| {
+/// Hilo que lee stdin: `STOP` → parada inmediata (código 3) y, si `eof_stops`, también el EOF (el MCP murió o cerró la
+/// tubería: sin dueño no se sigue actuando). `watch-esc` lo lanza con `eof_stops = false`: su dueño lo arranca con
+/// stdin cerrado a propósito y el EOF no significa nada.
+pub fn spawn_stdin_watch(eof_stops: bool) {
+    std::thread::spawn(move || {
         let stdin = std::io::stdin();
         let mut line = String::new();
         loop {
             line.clear();
             match stdin.lock().read_line(&mut line) {
-                Ok(0) | Err(_) => stop_now(),
+                Ok(0) | Err(_) => {
+                    if eof_stops {
+                        stop_now();
+                    }
+                    return;
+                }
                 Ok(_) => {
                     if line.trim().eq_ignore_ascii_case("STOP") {
                         stop_now();

@@ -132,3 +132,14 @@ fn el_comando_desconocido_y_los_diferidos() {
     assert!(matches!(parse_command(&["open-app".into(), "Notepad".into()]), Ok(Command::Deferred { .. })));
     assert_eq!(parse_command(&["nope".into()]).unwrap_err().code, 1);
 }
+
+#[test]
+fn version_del_protocolo_y_salida_de_version() {
+    let p = proto();
+    assert_eq!(p.get("version").unwrap().as_f64(), Some(PROTOCOL_VERSION as f64));
+    assert_eq!(p.get("win32Contract").unwrap().get("protocol").unwrap().as_f64(), Some(PROTOCOL_VERSION as f64));
+    let out = crate::cli::version_output().json.unwrap();
+    let want = p.get("windowsExtensions").unwrap().get("version").unwrap().get("output").unwrap();
+    assert_eq!(names(want), names(&out));
+    assert_eq!(out.get("platform").and_then(|v| v.as_str()), Some("win32"));
+}

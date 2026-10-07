@@ -5,7 +5,7 @@
 use crate::commands::{parse_command, parse_globals, Command, Global};
 use crate::exitcode::{CuError, CuResult};
 use crate::json::Json;
-use crate::limits::MAX_OUTPUT_BYTES;
+use crate::limits::{MAX_OUTPUT_BYTES, PROTOCOL_VERSION};
 
 /// Resultado de ejecutar un comando.
 #[derive(Debug, Clone, PartialEq)]
@@ -52,7 +52,16 @@ pub fn render(r: CuResult<Output>) -> Rendered {
 /// Analiza `argv` (sin el nombre del programa) y ejecuta con `exec`.
 pub fn run_cli(argv: &[String], env: &dyn Fn(&str) -> Option<String>, exec: impl FnOnce(&Global, &Command) -> CuResult<Output>) -> Rendered {
     let parsed = parse_globals(argv, env).and_then(|(g, rest)| parse_command(&rest).map(|c| (g, c)));
-    render(parsed.and_then(|(g, c)| exec(&g, &c)))
+    render(parsed.and_then(|(g, c)| if matches!(c, Command::Version) { Ok(version_output()) } else { exec(&g, &c) }))
+}
+
+/// Respuesta de `version`: protocolo del contrato, programa y plataforma. Pura: no toca el escritorio.
+pub fn version_output() -> Output {
+    Output::ok(Json::obj([
+        ("protocol", Json::num(PROTOCOL_VERSION)),
+        ("helper", Json::str(format!("cu-helper-{}", env!("CARGO_PKG_VERSION")))),
+        ("platform", Json::str("win32")),
+    ]))
 }
 
 pub fn not_windows() -> CuError {
@@ -107,6 +116,18 @@ mod tests {
         assert!(r.stdout.is_none());
         let fits = Json::Arr(vec![Json::str("x".repeat(1024 * 1024)); 3]);
         assert_eq!(run_cli(&v(&["cursor"]), &no_env, |_, _| Ok(Output::ok(fits))).code, 0);
+    }
+
+    #[test]
+    fn version_se_responde_sin_ejecutor() {
+        let r = run_cli(&v(&["version"]), &no_env, |_, _| unreachable!());
+        assert_eq!(r.code, 0);
+        let j = crate::json::parse(r.stdout.as_deref().unwrap()).unwrap();
+        assert_eq!(j.get("protocol").and_then(|x| x.as_f64()), Some(1.0));
+        assert_eq!(j.get("platform").and_then(|x| x.as_str()), Some("win32"));
+        assert!(j.get("helper").and_then(|x| x.as_str()).is_some_and(|h| h.starts_with("cu-helper-")));
+        // con banderas globales delante también
+        assert_eq!(run_cli(&v(&["--instant", "version"]), &no_env, |_, _| unreachable!()).code, 0);
     }
 
     #[test]

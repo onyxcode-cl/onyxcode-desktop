@@ -1,5 +1,8 @@
 //! Límites del contrato (protocol.json y plan C). Todo lo que viene del llamador se acota aquí.
 
+/// Versión del protocolo (= `version` de `protocol.json`; el MCP exige igualdad exacta).
+pub const PROTOCOL_VERSION: u32 = 1;
+
 /// `ax-tree`: profundidad y nodos máximos (y valores por defecto).
 pub const TREE_MAX_DEPTH: i64 = 12;
 pub const TREE_MAX_NODES: i64 = 500;

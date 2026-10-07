@@ -22,7 +22,7 @@ use crate::exitcode::{self, CuError, CuResult};
 use crate::json::Json;
 use crate::keys::{check_keys, is_lazunox_exe, KeyPolicyContext, KeyRejection};
 use crate::limits::*;
-use crate::mask::{capture_size, fill_black, plan_masks, MaskPlan, Rect, WinInfo};
+use crate::mask::{capture_size, fill_black, plan_masks, windows_changed, MaskPlan, Rect, WinInfo};
 use crate::motion::{plan_type, Rng};
 use crate::paths::{self, image_format};
 use crate::roles::format_ref;
@@ -98,6 +98,11 @@ fn app_obj(i: &wnd::AppInfo) -> Json {
     Json::obj([("name", Json::str(&i.name)), ("bundleId", Json::str(&i.key)), ("pid", Json::num(i.pid))])
 }
 
+/// App sin identificar: el MCP la trata como desconocida y rechaza la acción (falla cerrado).
+fn unidentified() -> Json {
+    Json::obj([("name", Json::str("")), ("bundleId", Json::str("")), ("pid", Json::num(0))])
+}
+
 fn uia() -> CuResult<Uia> {
     Uia::new()
 }
@@ -144,8 +149,10 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
     if let Some(sf) = env_var("COMPUTER_STOP_FILE") {
         stop::set_stop_file(sf);
     }
-    if cmd.is_input() || matches!(cmd, Command::WatchEsc) {
-        stop::spawn_stdin_watch();
+    // Contrato: todo comando escucha `STOP`/EOF por stdin (salida 3). Excepciones: `release-input` (debe terminar su
+    // trabajo, es lo que se ejecuta tras un kill) y `watch-esc` (solo `STOP`: lo lanzan con stdin cerrado).
+    if !matches!(cmd, Command::ReleaseInput) {
+        stop::spawn_stdin_watch(!matches!(cmd, Command::WatchEsc));
     }
     if cmd.is_input() {
         // Reloj de 1 ms: sin esto, `sleep` redondea a ~15 ms y la animación a 120 Hz sale a saltos.
@@ -253,17 +260,28 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
                 ("monitors", Json::num(mons.len() as f64)),
             ])))
         }
-        Command::Frontmost => Ok(Output::ok(apps::frontmost(cache).map(|i| app_obj(&i)).unwrap_or_else(|| Json::obj([("name", Json::str(""))])))),
+        Command::Frontmost => Ok(Output::ok(apps::frontmost(cache).map(|i| app_obj(&i)).unwrap_or_else(unidentified))),
         Command::AppAt { x, y } => {
             let list = wnd::enum_top(false).map_err(CuError::unavailable)?;
             let info = wnd::top_window_at(&list, x.round() as i32, y.round() as i32).and_then(|w| cache.info_for_window(w));
-            Ok(Output::ok(info.map(|i| app_obj(&i)).unwrap_or_else(|| Json::obj([("name", Json::str("")), ("bundleId", Json::str("")), ("pid", Json::num(0))]))))
+            Ok(Output::ok(info.map(|i| app_obj(&i)).unwrap_or_else(unidentified)))
         }
         Command::RunningApps => arr(apps::list(cache)?.iter().map(app_obj).collect()),
         Command::ListApps => arr(apps::list(cache)?
             .iter()
+            // Toda entrada lleva un appKey válido (canónico). Una ventana cuya clave no se puede construir ya cuenta como
+            // bloqueada y `screenshot` la tapa siempre, así que no hace falta listarla.
+            .filter(|i| crate::appkey::parse_app_key(&i.key).is_ok())
             .map(|i| Json::obj([("name", Json::str(&i.name)), ("appKey", Json::str(&i.key)), ("pid", Json::num(i.pid))]))
             .collect()),
+        Command::ResolveApp { query } => {
+            let found = apps::resolve_by_name(cache, query)?.filter(|i| crate::appkey::parse_app_key(&i.key).is_ok());
+            Ok(Output::ok(match found {
+                Some(i) => Json::obj([("name", Json::str(&i.name)), ("bundleId", Json::str(&i.key)), ("appKey", Json::str(&i.key)), ("found", Json::Bool(true))]),
+                None => Json::obj([("name", Json::str(query)), ("bundleId", Json::str("")), ("found", Json::Bool(false))]),
+            }))
+        }
+        Command::Version => Ok(crate::cli::version_output()),
         Command::WindowsOf { keys } => arr(apps::windows_of(cache, keys)?.into_iter().map(rect_json).collect()),
         Command::FocusedSecure => Ok(Output::ok(Json::obj([("secure", Json::Bool(uia()?.focused_is_secure()))]))),
         Command::RecentInput => {
@@ -340,7 +358,7 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
                 note: truncated.then(|| "find-elements: límite de nodos/tiempo alcanzado (resultados parciales)".to_string()),
             })
         }
-        Command::WindowShot { app, out, index } => window_shot(env, cache, app, out, *index),
+        Command::WindowShot { app, out, index, max_long, quality } => window_shot(env, cache, app, out, *index, *max_long, *quality),
         Command::Screenshot { out, max_long, quality, mask_keys } => screenshot(env, cache, out, *max_long, *quality, mask_keys),
         Command::ReleaseInput => {
             input::release_by_state();
@@ -361,14 +379,14 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
     }
 }
 
-fn window_shot(env: &Env, cache: &mut AppCache, app: &AppKey, out: &str, index: usize) -> CuResult<Output> {
+fn window_shot(env: &Env, cache: &mut AppCache, app: &AppKey, out: &str, index: usize, max_long: i64, quality: i64) -> CuResult<Output> {
     let out = env.image_out(out)?;
     let target = apps::resolve(cache, app)?;
     let wins: Vec<_> = target.windows.iter().filter(|w| !w.iconic && w.rect.w > 0 && w.rect.h > 0).collect();
     let w = wins.get(index).ok_or_else(|| CuError::unavailable("La app no tiene esa ventana visible"))?;
     let img = capture::grab_window(w.hwnd, w.rect)?;
-    let (tw, th, _) = capture_size(img.w as i64, img.h as i64, CAPTURE_MAX_LONG).ok_or_else(|| CuError::unavailable("Ventana sin tamaño"))?;
-    let res = capture::encode(&img, &out, image_format(&out), (tw, th), JPEG_DEFAULT_QUALITY);
+    let (tw, th, _) = capture_size(img.w as i64, img.h as i64, max_long).ok_or_else(|| CuError::unavailable("Ventana sin tamaño"))?;
+    let res = capture::encode(&img, &out, image_format(&out), (tw, th), quality);
     if res.is_err() {
         let _ = std::fs::remove_file(&out);
     }
@@ -417,7 +435,11 @@ fn screenshot(env: &Env, cache: &mut AppCache, out: &str, max_long: i64, quality
             MaskPlan::Fail(why) => return Err(CuError::unavailable(why)),
         };
         // Carrera entre la enumeración y la captura: si las zonas a tapar cambiaron, se repite (o se rechaza).
-        if masks_before == masks_after {
+        let steady = match (before.as_deref(), after.as_deref()) {
+            (Some(b), Some(a)) => !windows_changed(b, a),
+            _ => false,
+        };
+        if steady && masks_before == masks_after {
             // Las máscaras son del escritorio virtual: se pasan al origen del monitor capturado.
             let local: Vec<Rect> = masks_after.iter().map(|r| Rect::new(r.x - bounds.x, r.y - bounds.y, r.w, r.h)).collect();
             break (img, local);

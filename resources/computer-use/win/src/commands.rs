@@ -85,10 +85,14 @@ pub enum Command {
     AxSetValue { app: AppKey, path: Vec<usize>, value: String },
     AxAction { app: AppKey, path: Vec<usize>, action: UiaAction },
     FindElements { app: AppKey, roles: Option<Vec<String>>, query: Option<String> },
-    WindowShot { app: AppKey, out: String, index: usize },
+    WindowShot { app: AppKey, out: String, index: usize, max_long: i64, quality: i64 },
     Screenshot { out: String, max_long: i64, quality: i64, mask_keys: Vec<AppKey> },
     ReleaseInput,
     Session,
+    /// `version`: protocolo y programa. Se responde sin tocar el escritorio (ver `cli::run_cli`).
+    Version,
+    /// `resolve-app`: busca entre las apps con ventana visible (no lanza ni abre nada).
+    ResolveApp { query: String },
     /// Comando del contrato que esta versión del helper de Windows aún no implementa (salida 12).
     Deferred { name: &'static str },
     /// Comando del contrato que NO existe en Windows (`win32: none|replaced`): salida 12 con el motivo.
@@ -96,7 +100,7 @@ pub enum Command {
 }
 
 /// Comandos del contrato con `win32: same` que esta tanda deja sin implementar (salida 12 «no implementado»).
-pub const DEFERRED: [&str; 3] = ["open-app", "open-app-bg", "resolve-app"];
+pub const DEFERRED: [&str; 2] = ["open-app", "open-app-bg"];
 
 /// Comandos sin equivalente en Windows (`win32: none|replaced`) y su motivo.
 pub const UNAVAILABLE: [(&str, &str); 7] = [
@@ -110,11 +114,11 @@ pub const UNAVAILABLE: [(&str, &str); 7] = [
 ];
 
 /// Todos los comandos implementados (lo que figura en la línea de uso).
-pub const IMPLEMENTED: [&str; 31] = [
+pub const IMPLEMENTED: [&str; 33] = [
     "move", "click", "drag", "scroll", "type", "key", "cursor", "screens", "permissions", "frontmost", "app-at", "running-apps",
     "list-apps", "windows-of", "focused-secure", "recent-input", "watch-esc", "activate", "hide-apps", "unhide-apps", "ax-tree",
     "ax-find", "ax-frame", "ax-press", "ax-set-value", "ax-action", "find-elements", "window-shot", "screenshot",
-    "release-input", "session",
+    "release-input", "session", "version", "resolve-app",
 ];
 
 pub fn usage() -> String {
@@ -166,6 +170,72 @@ fn key_list(raw: &str) -> CuResult<Vec<AppKey>> {
 fn ref_arg(args: &[String], i: usize) -> CuResult<Vec<usize>> {
     let raw = args.get(i).ok_or_else(|| err("Falta la referencia (ref) del elemento"))?;
     parse_ref(raw).map_err(err)
+}
+
+/// Decodifica un elemento de `--mask-keys`: solo `%25` (`%`) y `%2C` (`,`); cualquier otro `%` se rechaza.
+pub fn decode_key_item(raw: &str) -> CuResult<String> {
+    let mut out = String::with_capacity(raw.len());
+    let mut rest = raw;
+    while let Some(i) = rest.find('%') {
+        out.push_str(&rest[..i]);
+        let tail = &rest[i..];
+        if tail.len() >= 3 && tail.is_char_boundary(3) && tail[..3].eq_ignore_ascii_case("%25") {
+            out.push('%');
+        } else if tail.len() >= 3 && tail.is_char_boundary(3) && tail[..3].eq_ignore_ascii_case("%2C") {
+            out.push(',');
+        } else {
+            return Err(err("--mask-keys: secuencia % no válida (solo %25 y %2C)"));
+        }
+        rest = &tail[3..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
+/// `--mask-keys`: elementos separados por coma, cada uno con `%` y `,` codificados.
+fn mask_key_list(raw: &str) -> CuResult<Vec<AppKey>> {
+    let parts: Vec<&str> = raw.split(',').filter(|s| !s.trim().is_empty()).collect();
+    if parts.len() > MAX_KEYS_PER_CALL {
+        return Err(err("Demasiadas apps en la lista"));
+    }
+    parts
+        .iter()
+        .map(|p| decode_key_item(p.trim()).and_then(|d| parse_app_key(&d).map_err(|e| err(format!("Lista de apps: {e}")))))
+        .collect()
+}
+
+/// Separa los posicionales de las banderas de captura (`--max-long`, `--quality` y, si se permite, `--mask-keys`),
+/// con valor aparte o `--bandera=valor`. Devuelve (posicionales desde `from`, lado largo, calidad, claves a tapar).
+#[allow(clippy::type_complexity)]
+fn shot_flags(args: &[String], from: usize, allow_mask: bool, usage: &str) -> CuResult<(Vec<String>, i64, i64, Vec<AppKey>)> {
+    let (mut pos, mut max_long, mut quality, mut mask) = (Vec::new(), CAPTURE_DEFAULT_LONG, JPEG_DEFAULT_QUALITY, Vec::new());
+    let mut i = from;
+    while i < args.len() {
+        let a = &args[i];
+        let (flag, inline) = match a.split_once('=') {
+            Some((f, v)) if f.starts_with("--") => (f, Some(v.to_string())),
+            _ => (a.as_str(), None),
+        };
+        if !flag.starts_with("--") {
+            pos.push(a.clone());
+            i += 1;
+            continue;
+        }
+        if !matches!(flag, "--max-long" | "--quality") && !(allow_mask && flag == "--mask-keys") {
+            return Err(err(format!("Bandera desconocida: {} ({usage})", json::clip(flag, 40))));
+        }
+        let (val, step) = match inline {
+            Some(v) => (v, 1),
+            None => (args.get(i + 1).cloned().ok_or_else(|| err(format!("Falta el valor de {flag}")))?, 2),
+        };
+        match flag {
+            "--max-long" => max_long = clamp_i64(int(&val, "--max-long")?, CAPTURE_MIN_LONG, CAPTURE_MAX_LONG),
+            "--quality" => quality = clamp_i64(int(&val, "--quality")?, 1, 100),
+            _ => mask = mask_key_list(&val)?,
+        }
+        i += step;
+    }
+    Ok((pos, max_long, quality, mask))
 }
 
 /// Aplica banderas globales y devuelve (opciones, resto). Las banderas van ANTES del comando.
@@ -319,52 +389,29 @@ pub fn parse_command(rest: &[String]) -> CuResult<Command> {
             }
         }
         "window-shot" => {
-            let app = key_arg(args, 1, "la clave de app")?;
-            let out = args.get(2).cloned().ok_or_else(|| err("Uso: cu-helper window-shot <appKey> <outPath> [windowIndex=0]"))?;
-            let index = match args.get(3) {
+            let usage = "Uso: cu-helper window-shot <appKey> <outPath> [windowIndex=0] [--max-long N] [--quality N]";
+            let (pos, max_long, quality, _) = shot_flags(args, 1, false, usage)?;
+            let app = key_arg(&pos, 0, "la clave de app")?;
+            let out = pos.get(1).cloned().ok_or_else(|| err(usage))?;
+            if pos.len() > 3 {
+                return Err(err(usage));
+            }
+            let index = match pos.get(2) {
                 Some(v) => usize::try_from(int(v, "windowIndex")?).map_err(|_| err("windowIndex no puede ser negativo"))?.min(1000),
                 None => 0,
             };
-            Command::WindowShot { app, out, index }
+            Command::WindowShot { app, out, index, max_long, quality }
         }
         "screenshot" => {
-            let (mut out, mut max_long, mut quality, mut mask) = (None::<String>, CAPTURE_DEFAULT_LONG, JPEG_DEFAULT_QUALITY, Vec::new());
-            let mut i = 1;
-            while i < args.len() {
-                let a = &args[i];
-                let (flag, inline) = match a.split_once('=') {
-                    Some((f, v)) if f.starts_with("--") => (f, Some(v.to_string())),
-                    _ => (a.as_str(), None),
-                };
-                if flag.starts_with("--") {
-                    if !matches!(flag, "--max-long" | "--quality" | "--mask-keys") {
-                        return Err(err(format!("Bandera desconocida para screenshot: {}", json::clip(flag, 40))));
-                    }
-                    let (val, step) = match inline {
-                        Some(v) => (v, 1),
-                        None => (args.get(i + 1).cloned().ok_or_else(|| err(format!("Falta el valor de {flag}")))?, 2),
-                    };
-                    match flag {
-                        "--max-long" => max_long = clamp_i64(int(&val, "--max-long")?, CAPTURE_MIN_LONG, CAPTURE_MAX_LONG),
-                        "--quality" => quality = clamp_i64(int(&val, "--quality")?, 1, 100),
-                        _ => mask = key_list(&val)?,
-                    }
-                    i += step;
-                } else {
-                    if out.is_some() {
-                        return Err(err("Uso: cu-helper screenshot <outPath> [--max-long N] [--quality N] [--mask-keys csv]"));
-                    }
-                    out = Some(a.clone());
-                    i += 1;
-                }
+            let usage = "Uso: cu-helper screenshot <outPath> [--max-long N] [--quality N] [--mask-keys csv]";
+            let (pos, max_long, quality, mask_keys) = shot_flags(args, 1, true, usage)?;
+            if pos.len() != 1 {
+                return Err(err(usage));
             }
-            Command::Screenshot {
-                out: out.ok_or_else(|| err("Uso: cu-helper screenshot <outPath> [--max-long N] [--quality N] [--mask-keys csv]"))?,
-                max_long,
-                quality,
-                mask_keys: mask,
-            }
+            Command::Screenshot { out: pos[0].clone(), max_long, quality, mask_keys }
         }
+        "version" => Command::Version,
+        "resolve-app" => Command::ResolveApp { query: text_arg(args, 1, "Falta el nombre de la app")? },
         "release-input" => Command::ReleaseInput,
         "session" => Command::Session,
         other => {
@@ -396,6 +443,8 @@ impl Command {
                 | Command::RecentInput
                 | Command::ReleaseInput
                 | Command::Session
+                | Command::Version
+                | Command::ResolveApp { .. }
                 | Command::Deferred { .. }
                 | Command::Unavailable { .. }
         )
@@ -546,8 +595,35 @@ mod tests {
         assert!(parse_command(&v(&["screenshot", "a", "--raro", "1"])).is_err());
         assert!(parse_command(&v(&["screenshot", "a", "--mask-keys", "chrome.exe"])).is_err());
         let c = parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "2"])).unwrap();
-        assert!(matches!(c, Command::WindowShot { index: 2, .. }));
+        assert!(matches!(c, Command::WindowShot { index: 2, max_long: 1366, quality: 70, .. }));
+        let c = parse_command(&v(&["window-shot", KEY, "C:\\t\\w.jpg", "--max-long", "800", "--quality=55"])).unwrap();
+        assert!(matches!(c, Command::WindowShot { index: 0, max_long: 800, quality: 55, .. }));
+        assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.jpg", "0", "9"])).is_err());
+        assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.jpg", "--mask-keys", KEY])).is_err());
         assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "-1"])).is_err());
+    }
+
+    #[test]
+    fn claves_a_tapar_codificadas() {
+        assert_eq!(decode_key_item("a%25b%2Cc%2c").unwrap(), "a%b,c,");
+        assert!(decode_key_item("a%41").is_err() && decode_key_item("a%2").is_err() && decode_key_item("%").is_err());
+        // una ruta con coma y con % llega íntegra y sigue siendo una clave canónica
+        let k = "exe:c:\\a,b\\100%\\x.exe|pub:(sin firma)";
+        let enc = k.replace('%', "%25").replace(',', "%2C");
+        let c = parse_command(&v(&["screenshot", "o.jpg", "--mask-keys", &format!("{enc},aumid:a.b!c")])).unwrap();
+        let Command::Screenshot { mask_keys, .. } = c else { panic!() };
+        assert_eq!(mask_keys.len(), 2);
+        assert_eq!(mask_keys[0].to_key_string(), k);
+        // sin codificar, la coma parte la ruta en dos claves inválidas: rechazo (falla cerrado)
+        assert!(parse_command(&v(&["screenshot", "o.jpg", "--mask-keys", k])).is_err());
+    }
+
+    #[test]
+    fn version_y_resolve_app() {
+        assert_eq!(parse_command(&v(&["version"])).unwrap(), Command::Version);
+        assert!(matches!(parse_command(&v(&["resolve-app", "Bloc", "de", "notas"])).unwrap(), Command::ResolveApp { query } if query == "Bloc de notas"));
+        assert!(parse_command(&v(&["resolve-app"])).is_err());
+        assert!(!Command::Version.needs_control() && !Command::ResolveApp { query: "x".into() }.needs_control());
     }
 
     #[test]
