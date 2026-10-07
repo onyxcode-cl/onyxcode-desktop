@@ -57,7 +57,7 @@ module.exports = {
     '!build/*',
     // Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
-    '!resources/computer-use/{helper.swift,build.sh,bin,bin/**}',
+    '!resources/computer-use/{helper.swift,build.sh,bin,bin/**,win,win/**}',
     '!resources/launcher/**',
     // Recursos del backend WSL de Tareas (F8-B81): aún sin empaquetar (Tareas en Windows está apagada); no van en el .asar.
     '!resources/wsl/**',
