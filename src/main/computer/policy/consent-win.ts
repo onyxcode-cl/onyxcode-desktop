@@ -1,8 +1,8 @@
 /**
  * Consentimiento propio de la app para Control del PC en Windows (plan C §3 «El equivalente de TCC lo pone la propia app»).
  * Puro: sin Electron ni disco. Windows no tiene TCC; este consentimiento es de equipo, VERSIONADO (subir `WIN_CONSENT_VERSION`
- * al cambiar lo que se promete en el texto invalida los anteriores) y REVOCABLE. Se guarda en `settings.computerWinConsent`
- * (`{version, at}`, lo cablea C4 en `main`). El MCP lo consulta por `GET /consent` → `{consent, version}` antes de cada herramienta.
+ * al cambiar lo que se promete en el texto invalida los anteriores) y REVOCABLE. Se guarda como `{version, at}` en
+ * `userData/computer-win-consent.json` (`win-storage.ts`; C4 lo prefirió a `settings.json`, que el renderer puede escribir). El MCP lo consulta por `GET /consent` → `{consent, version}` antes de cada herramienta.
  *
  * El flujo de la tarjeta de Ajustes (C5) es: se muestra la lista de lo que puede y no puede hacer; casilla «Entiendo»; botón
  * armado a los 600 ms tras mostrarse (como `perm-guard`); al confirmar se guarda. `createConsentController` es ese contrato sin UI:

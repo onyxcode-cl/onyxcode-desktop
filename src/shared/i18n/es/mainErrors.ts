@@ -207,6 +207,12 @@ export const mainErrors = {
   'merr.projects.notFile': 'AGENTS.md no es un archivo.',
   'merr.projects.tooBig': 'AGENTS.md es demasiado grande para editarlo aquí.',
   'merr.projects.overLimit': 'AGENTS.md no puede superar {max} caracteres.',
+  'merr.computer.appBlocked': 'Esa app está bloqueada y no se puede conceder.',
+  'merr.computer.noConsentWin': 'Control del PC no está activado: actívalo en Ajustes › Control del PC.',
+  'merr.computer.notInteractiveWin':
+    'No hay un escritorio interactivo (sesión bloqueada, aviso de seguridad de Windows, sesión remota desconectada o Lazunox sin pantalla).',
+  'merr.computer.elevatedWin':
+    'Lazunox se está ejecutando como administrador: Control del PC no está disponible. Ábrelo de nuevo sin permisos de administrador.',
   'merr.computer.noCuHelper': 'Falta el helper nativo cu-helper',
   // Ventanas propias (Quick Entry, overlay, píldora y guía): la página lee el idioma de `?lang=`
   'ovl.pill.title': 'La IA está controlando tu Mac',

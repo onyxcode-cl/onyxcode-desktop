@@ -4,6 +4,7 @@ import type { tasksSettings as es } from '../es/tasksSettings'
 export const tasksSettings = {
   'tasksSettings.glossary.sandbox': 'Sandbox',
   'tasksSettings.glossary.fullControl': 'Full Mac control',
+  'tasksSettings.glossary.fullControl.win': 'Full PC control',
   'tasksSettings.glossary.fullControlShort': 'Full control',
   'tasksSettings.glossary.workFolders': 'Work folders',
   'tasksSettings.glossary.trustedFolders': 'Trusted folders',
@@ -65,6 +66,7 @@ export const tasksSettings = {
   'tasksSettings.work.revokeMessage':
     'The Full control server for this folder will stop and any tasks running there will be lost. To use it again, you’ll need to grant it again.',
   'tasksSettings.full.title': 'Full Mac control',
+  'tasksSettings.full.title.win': 'Full PC control',
   'tasksSettings.full.desc':
     'One decision for the whole computer, no folder: the agent can use the mouse, keyboard and screen, and access all the files and programs in your user account. The plan and each app are still approved on every task.',
   'tasksSettings.full.on': 'Consent given on {date}',

@@ -6,7 +6,7 @@
  * Código movido de `tasks-handlers.ts` sin cambios de comportamiento.
  */
 import { t } from '@shared/i18n'
-import { BrowserWindow, Notification, app } from 'electron'
+import { BrowserWindow, Notification, app, screen } from 'electron'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ComputerService } from '../computer/service'
@@ -20,6 +20,7 @@ import { getAutoApprover } from '../tasks/auto-approver'
 import { normalizeTasksPrefs } from '../tasks/prefs'
 import { extrasPrefs } from '../extras/prefs'
 import type { TasksManager } from '../tasks/manager'
+import { IpcError } from './handle'
 import type { TasksIpcContext } from './tasks-handle'
 
 /**
@@ -60,7 +61,9 @@ export function createComputerParts(): ComputerParts {
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
   const overlay = new ComputerOverlay({
     instant: computer.instant,
-    hideOnCapture: process.env.LAZUNOX_OVERLAY_HIDE_ON_CAPTURE === '1'
+    hideOnCapture: process.env.LAZUNOX_OVERLAY_HIDE_ON_CAPTURE === '1',
+    // Windows: el helper habla en píxeles físicos; el overlay, en DIP. macOS: sin conversión.
+    physicalToDip: computer.ownConsent ? (p) => screen.screenToDipPoint(p) : undefined
   })
   computer.captureGuard = () => overlay.beforeCapture()
   // Lote C: ventana "assist" (globo de Teach mode + píldora de grabar una skill), grabadora de
@@ -75,12 +78,14 @@ export function createComputerParts(): ComputerParts {
   // Modo auto (Lote C, C3): antes de mostrar la tarjeta `request_access`/`request_full_control`,
   // se le da la oportunidad de conceder "Solo ver" efímero sin preguntar (≤1,5 s, ver service.ts).
   computer.autoAccess = (q) => getAutoApprover()?.considerAccess(q) ?? Promise.resolve(null)
-  /** Bundle ids que NUNCA se ocultan: apps con concesión, las exentas del sistema y Finder. */
-  const keepVisibleBundleIds = (): string[] => [
-    ...computer.grants.snapshot().grants.map((g) => g.bundleId),
-    ...SYSTEM_EXEMPT_BUNDLE_IDS,
-    'com.apple.finder'
-  ]
+  /**
+   * Bundle ids que NUNCA se ocultan: apps con concesión, las exentas del sistema y Finder. Windows: las claves de las apps con
+   * concesión (las exentas por ejecutable las respeta el helper: el shell nunca se minimiza); sin Finder ni bundle ids.
+   */
+  const keepVisibleBundleIds = (): string[] =>
+    computer.ownConsent
+      ? [...computer.grants.snapshot().grants.map((g) => g.bundleId)]
+      : [...computer.grants.snapshot().grants.map((g) => g.bundleId), ...SYSTEM_EXEMPT_BUNDLE_IDS, 'com.apple.finder']
   const maybeUnhideApps = (): void => {
     if (computer.prefs.get().unhideOnFinish) void appVisibility.unhide()
   }
@@ -210,6 +215,18 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   // ── Computer use ──
   handle('computer:status', () => computer.status())
   handle('computer:requestPermissions', () => computer.requestPermissions())
+  // Windows: consentimiento propio de la app y registro auditable (sin soporte en macOS, que usa TCC y no tiene registro).
+  const winOnly = (): void => {
+    if (!computer.ownConsent) throw new IpcError('PLATFORM_UNSUPPORTED', t('merr.platform.unsupported'))
+  }
+  handle('computer:winConsent', ({ action }) => {
+    winOnly()
+    return computer.winConsent(action)
+  })
+  handle('computer:auditLog', () => {
+    winOnly()
+    return computer.auditEntries()
+  })
   handle('computer:stop', async () => {
     await computer.stop()
   })
@@ -297,10 +314,21 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   handle('computer:teachRespond', ({ id, action }) => {
     computer.resolveTeach(id, action)
   })
-  handle('computer:record:start', ({ mic }) => recorder.start(mic))
+  // Windows (v1): sin «Grabar una skill» (el helper no tiene `record`/`transcribe`): PLATFORM_UNSUPPORTED.
+  const noRecordWin = (): void => {
+    if (computer.ownConsent) throw new IpcError('PLATFORM_UNSUPPORTED', t('merr.platform.unsupported'))
+  }
+  handle('computer:record:start', ({ mic }) => {
+    noRecordWin()
+    return recorder.start(mic)
+  })
   // Rol `assist`: "Terminar"/"Descartar" en la píldora de grabación.
-  handle('computer:record:stop', (req) => recorder.stop(req?.discard === true))
+  handle('computer:record:stop', (req) => {
+    noRecordWin()
+    return recorder.stop(req?.discard === true)
+  })
   handle('computer:record:prepare', ({ id, folder, includeTyped }) => {
+    noRecordWin()
     const root = tasks.assertInsideApproved(folder)
     return recorder.prepare(id, root, includeTyped)
   })

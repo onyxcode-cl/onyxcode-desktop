@@ -201,6 +201,56 @@ export interface ComputerStatus {
   accessibility: boolean
   screenRecording: boolean
   screens: ComputerScreen[]
+  /**
+   * Solo en Windows (sin TCC: consentimiento propio de la app). Allí `accessibility` y `screenRecording` valen lo mismo que
+   * `win.consent`, para que lo que mira solo esos dos campos siga siendo cierto. Ausente en macOS.
+   */
+  win?: ComputerWinStatus
+}
+
+/** «Estado en este PC» (Windows): lo que Ajustes muestra y lo que decide si Control del PC puede arrancar. */
+export interface ComputerWinStatus {
+  /** Consentimiento de la app vigente (versión actual, no revocado). */
+  consent: boolean
+  consentVersion: number
+  /** Había un consentimiento de otra versión: la tarjeta debe pedirlo de nuevo explicándolo. */
+  consentStale: boolean
+  /** Sesión interactiva y sin escritorio seguro (UAC, bloqueo). `null` = no se pudo saber (sin helper). */
+  interactive: boolean | null
+  /** Lazunox (o su helper) corre con permisos de administrador: Control del PC queda no disponible. `null` = no se sabe. */
+  elevated: boolean | null
+  /** Escalado del monitor principal en % (96 ppp = 100). `null` = no se sabe. */
+  dpiPercent: number | null
+  monitors: number | null
+}
+
+/** Acciones de la tarjeta de consentimiento (Windows). El armado (casilla + 600 ms) lo exige `main`, no el renderer. */
+export type ComputerWinConsentAction = 'show' | 'check' | 'uncheck' | 'confirm' | 'revoke'
+
+export interface ComputerWinConsentResult {
+  consent: boolean
+  version: number
+  stale: boolean
+  /** ¿Puede pulsarse «Activar» ahora? Casilla marcada y pasados 600 ms desde `show`. */
+  armed: boolean
+  /** Solo en `confirm`: si se concedió. */
+  granted?: boolean
+}
+
+/** Una línea del registro auditable (Windows). Nunca lleva el texto tecleado, capturas ni valores de la interfaz. */
+export interface ComputerAuditRow {
+  at: string
+  session: string
+  tool: string
+  appKey: string | null
+  appName: string | null
+  tier: 'view' | 'click' | 'full' | null
+  x: number | null
+  y: number | null
+  textLen: number | null
+  keyCombo: string | null
+  outcome: 'ok' | 'denied' | 'error' | 'stopped' | 'rate-limited'
+  reason: string | null
 }
 
 /** Acción ejecutada por el agente (para el overlay de actividad). Coordenadas en puntos de pantalla. */
@@ -870,6 +920,13 @@ export interface TasksInvokeContract {
   /** Lanza los prompts de macOS y abre Ajustes › Privacidad (Accesibilidad / Grabación de pantalla). */
   'computer:requestPermissions': { req: void; res: void }
   /**
+   * Windows: la tarjeta de consentimiento (sustituye a los permisos TCC). `show` abre/rearma, `check`/`uncheck` la casilla
+   * «Entiendo», `confirm` concede (solo si está armada), `revoke` lo retira y detiene el control. En macOS: PLATFORM_UNSUPPORTED.
+   */
+  'computer:winConsent': { req: { action: ComputerWinConsentAction }; res: ComputerWinConsentResult }
+  /** Windows: las últimas entradas del registro auditable, la más reciente primero. En macOS: PLATFORM_UNSUPPORTED. */
+  'computer:auditLog': { req: void; res: ComputerAuditRow[] }
+  /**
    * Kill-switch (lo ejecuta el proceso principal, desde cualquier vista): marca el estado parado,
    * aborta toda sesión en curso de los servidores de acceso total, mata los `cu-helper` en vuelo y
    * avisa al renderer y al overlay.
@@ -1130,6 +1187,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'routines:preview',
   'computer:status',
   'computer:requestPermissions',
+  'computer:winConsent',
+  'computer:auditLog',
   'computer:stop',
   'computer:resume',
   'computer:state',

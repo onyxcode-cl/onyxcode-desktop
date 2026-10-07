@@ -23,6 +23,7 @@ import type { AccessRequest, ComputerActionEvent, ComputerOverlayMessage } from 
 import { extrasWindows, isLangStale, loadLocalizedPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 import { motionDurationMs } from './service'
+import { overlayPoint, type ToDip } from './policy/overlay-coords'
 
 const IDLE_MS = 8_000
 /** Con sesión explícita: red de seguridad si el renderer nunca manda `active: false`. */
@@ -47,6 +48,11 @@ export interface ComputerOverlayOptions {
    * `LAZUNOX_OVERLAY_HIDE_ON_CAPTURE=1` por si otra versión de macOS no lo respetara.
    */
   hideOnCapture?: boolean
+  /**
+   * Windows: los eventos traen píxeles FÍSICOS; esta función los pasa a DIP (`screen.screenToDipPoint`, DPI por monitor). Ausente en
+   * macOS, donde las acciones ya llegan en puntos = DIP.
+   */
+  physicalToDip?: ToDip
 }
 
 type Page = 'index.html' | 'pill.html'
@@ -96,17 +102,20 @@ export class ComputerOverlay {
     const cursor = { x: c.x - d.x, y: c.y - d.y }
     const action: ComputerActionEvent = { ...ev }
     let atCursor = false
+    const toDip = this.opts.physicalToDip ?? null
     if (typeof ev.x === 'number' && typeof ev.y === 'number') {
-      action.x = ev.x - d.x
-      action.y = ev.y - d.y
+      const q = overlayPoint({ x: ev.x, y: ev.y }, d, toDip)
+      action.x = q.x
+      action.y = q.y
     } else {
       action.x = cursor.x
       action.y = cursor.y
       atCursor = true
     }
     if (typeof ev.fromX === 'number' && typeof ev.fromY === 'number') {
-      action.fromX = ev.fromX - d.x
-      action.fromY = ev.fromY - d.y
+      const q = overlayPoint({ x: ev.fromX, y: ev.fromY }, d, toDip)
+      action.fromX = q.x
+      action.fromY = q.y
     }
 
     let moveMs = 0
@@ -332,7 +341,13 @@ export class ComputerOverlay {
     const pill = this.pill
     if (!pill || pill.isDestroyed()) return
     const b = pill.getBounds()
-    const hit = (x?: number, y?: number): boolean => typeof x === 'number' && typeof y === 'number' && inside(b, x, y, 16)
+    // Windows: los puntos del evento son físicos; los límites de la píldora, DIP globales.
+    const toDip = this.opts.physicalToDip
+    const hit = (x?: number, y?: number): boolean => {
+      if (typeof x !== 'number' || typeof y !== 'number') return false
+      const q = toDip ? toDip({ x, y }) : { x, y }
+      return inside(b, q.x, q.y, 16)
+    }
     if (!hit(ev.x, ev.y) && !hit(ev.fromX, ev.fromY)) return
     if (this.pillRestoreTimer) {
       clearTimeout(this.pillRestoreTimer)

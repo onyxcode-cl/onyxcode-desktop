@@ -17,6 +17,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { AppGrant, AppTier, GrantsSnapshot } from '@shared/ipc-tasks'
 import { APP_ID } from '@shared/brand'
+import { t } from '@shared/i18n'
+import { isWinBlocked, isWinExempt, winDefaultTier } from './policy/win-apps'
 
 export type { AppGrant, AppTier, GrantsSnapshot }
 
@@ -99,7 +101,19 @@ export class ComputerGrantsStore {
   private data: StoreShape = { grants: {}, denied: [] }
   private loaded = false
 
-  constructor(private readonly file: string) {}
+  /**
+   * `win32`: las claves son las de Windows (`policy/app-key.ts`) y rigen las listas de `policy/win-apps.ts` (bloqueadas = nunca
+   * concedibles, exentas, solo ver por defecto). Sin el segundo argumento (macOS) nada cambia.
+   */
+  constructor(
+    private readonly file: string,
+    private readonly os: 'darwin' | 'win32' = 'darwin'
+  ) {}
+
+  /** Windows: app que nunca se puede conceder (ni por tarjeta ni desde Ajustes). En macOS, siempre false. */
+  isBlocked(bundleId: string): boolean {
+    return this.os === 'win32' && isWinBlocked(bundleId)
+  }
 
   private load(): void {
     if (this.loaded) return
@@ -133,6 +147,7 @@ export class ComputerGrantsStore {
 
   /** Nivel concedido, o null si es desconocida o está denegada. No autoasigna (a diferencia de `resolve`). */
   tierFor(bundleId: string): AppTier | null {
+    if (this.isBlocked(bundleId)) return null
     this.load()
     if (this.data.denied.includes(bundleId)) return null
     return this.data.grants[bundleId]?.tier ?? null
@@ -145,12 +160,16 @@ export class ComputerGrantsStore {
    * responda a una tarjeta `request_access` (o las conceda a mano en Ajustes).
    */
   resolve(bundleId: string, name: string): AppTier | null {
-    if (isSystemExempt(bundleId)) return 'full'
+    if (this.os === 'win32') {
+      // Bloqueada gana a todo (también a una concesión antigua del archivo); luego las exentas del sistema.
+      if (isWinBlocked(bundleId)) return null
+      if (isWinExempt(bundleId)) return 'full'
+    } else if (isSystemExempt(bundleId)) return 'full'
     this.load()
     if (this.data.denied.includes(bundleId)) return null
     const existing = this.data.grants[bundleId]
     if (existing) return existing.tier
-    const def = defaultTierFor(bundleId, name)
+    const def = this.os === 'win32' ? winDefaultTier(bundleId, name) : defaultTierFor(bundleId, name)
     if (def) return this.grant(bundleId, name, def).tier
     return null
   }
@@ -166,6 +185,7 @@ export class ComputerGrantsStore {
    * `maxTier(tierFor(b), decisión)` ANTES de llamar aquí; bajar solo es posible desde Ajustes.
    */
   grant(bundleId: string, name: string, tier: AppTier): AppGrant {
+    if (this.isBlocked(bundleId)) throw new Error(t('merr.computer.appBlocked'))
     this.load()
     this.data.denied = this.data.denied.filter((d) => d !== bundleId)
     const g: AppGrant = { bundleId, name, tier, grantedAt: Date.now() }

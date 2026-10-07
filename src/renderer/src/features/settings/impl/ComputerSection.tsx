@@ -13,6 +13,8 @@ import { ComputerGrantsList } from '../../tasks/impl/ComputerAccess'
 import { Card, ErrorText, SectionHeader, SubTitle, Toggle } from './ui'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
+import { platformCaps } from '../../../lib/platform'
+import { ComputerWinSettings } from './ComputerWinPanels'
 
 /** Fila-botón de una opción del modo (como un radio, pero con la descripción bajo el título). */
 function ModeOption({
@@ -76,6 +78,9 @@ export function ComputerSection(): React.JSX.Element {
   return (
     <div>
       <SectionHeader title={UI_LABELS.computer} description={t('misc.computer.desc')} />
+
+      {/* Windows (UI Automation): permiso de la app, estado en este PC y registro. En macOS no se pinta nada de esto. */}
+      {platformCaps().computerBackend === 'uia' && <ComputerWinSettings />}
 
       <SubTitle>{t('misc.computer.howTitle')}</SubTitle>
       <Card>
