@@ -132,7 +132,8 @@
       "exits": [
         2
       ],
-      "win32": "same"
+      "win32": "same",
+      "win32Note": "Windows: x e y llegan en píxeles físicos con hasta 2 decimales; el helper redondea"
     },
     "drag": {
       "args": [
@@ -229,7 +230,8 @@
         2
       ],
       "win32": "same",
-      "note": "Combinaciones separadas por espacios (p. ej. \"cmd+shift+t\"). En Windows pasan antes por la política win-keys"
+      "note": "Combinaciones separadas por espacios (p. ej. \"cmd+shift+t\"). En Windows pasan antes por la política win-keys",
+      "win32Note": "Windows: llegan combinaciones CANÓNICAS ya validadas por policy/win-keys (minúsculas, modificadores en orden ctrl, alt, shift, win; `escape`, `enter`, `del`…), separadas por espacio"
     },
     "cursor": {
       "args": [],
@@ -254,7 +256,8 @@
       },
       "exits": [],
       "win32": "same",
-      "note": "Windows: píxeles físicos del escritorio virtual; añade dpiScale y límites"
+      "note": "Windows: píxeles físicos del escritorio virtual; añade dpiScale y límites",
+      "win32Note": "Windows: width/height en píxeles físicos del escritorio virtual; el MCP trabaja con scale = 1 (dpiScale es informativo) y solo con el monitor `main`"
     },
     "permissions": {
       "args": [],
@@ -284,7 +287,8 @@
         "pid": "number"
       },
       "exits": [],
-      "win32": "same"
+      "win32": "same",
+      "win32Note": "Windows: el campo `bundleId` lleva el appKey (`exe:<ruta>|pub:<editor>` o `aumid:<id>`); también se acepta `appKey`. Una clave inválida cuenta como app no identificada y el MCP rechaza la acción (falla cerrado)"
     },
     "app-at": {
       "args": [
@@ -305,7 +309,8 @@
         "pid": "number"
       },
       "exits": [],
-      "win32": "same"
+      "win32": "same",
+      "win32Note": "Windows: el campo `bundleId` lleva el appKey (`exe:<ruta>|pub:<editor>` o `aumid:<id>`); también se acepta `appKey`. Una clave inválida cuenta como app no identificada y el MCP rechaza la acción (falla cerrado)"
     },
     "running-apps": {
       "args": [],
@@ -317,7 +322,8 @@
         }
       },
       "exits": [],
-      "win32": "same"
+      "win32": "same",
+      "win32Note": "Windows: el campo `bundleId` lleva el appKey (`exe:<ruta>|pub:<editor>` o `aumid:<id>`); también se acepta `appKey`. Una clave inválida cuenta como app no identificada y el MCP rechaza la acción (falla cerrado)"
     },
     "windows-of": {
       "args": [
@@ -450,7 +456,8 @@
         "found": "boolean"
       },
       "exits": [],
-      "win32": "same"
+      "win32": "same",
+      "win32Note": "Windows: el campo `bundleId` lleva el appKey (`exe:<ruta>|pub:<editor>` o `aumid:<id>`); también se acepta `appKey`. Una clave inválida cuenta como app no identificada y el MCP rechaza la acción (falla cerrado)"
     },
     "activate": {
       "args": [
@@ -482,7 +489,8 @@
         "ok": "boolean"
       },
       "exits": [],
-      "win32": "same"
+      "win32": "same",
+      "win32Note": "Windows: la salida puede llevar `behind: false` si la app se abrió delante (no se pudo dejar en segundo plano); el MCP se lo dice al modelo"
     },
     "hide-apps": {
       "args": [
@@ -760,7 +768,26 @@
         5,
         12
       ],
-      "win32": "same"
+      "win32": "same",
+      "win32Flags": [
+        {
+          "name": "--max-long",
+          "takesValue": true,
+          "required": false,
+          "default": 1366
+        },
+        {
+          "name": "--quality",
+          "takesValue": true,
+          "required": false,
+          "default": 70
+        }
+      ],
+      "win32Exits": [
+        11,
+        12
+      ],
+      "win32Note": "Windows: escribe un JPEG ya redimensionado (lado largo ≤ --max-long, calidad --quality) en outPath; no hay PNG intermedio. Exit 11 = ventana bloqueada o de administrador"
     },
     "record": {
       "args": [
@@ -887,7 +914,7 @@
           "required": false
         }
       ],
-      "note": "Monitor principal; JPEG con WIC; falla cerrado (12) si no puede enmascarar"
+      "note": "Monitor principal; JPEG con WIC; falla cerrado (12) si no puede enmascarar. Salida 11 = hay una ventana bloqueada que no se pudo ocultar"
     },
     "list-apps": {
       "args": [],
@@ -900,7 +927,7 @@
       },
       "exits": [],
       "win32": "same",
-      "note": "Apps con ventana visible, con nombre localizado"
+      "note": "Apps con ventana visible, con nombre localizado. TODA entrada lleva un appKey válido (si el helper no puede construirlo, falla con 12: el MCP falla cerrado ante una entrada sin clave)"
     },
     "session": {
       "args": [],
@@ -913,6 +940,52 @@
         12
       ],
       "win32": "same"
+    },
+    "version": {
+      "args": [],
+      "output": {
+        "protocol": "number",
+        "helper": "string",
+        "platform": "string"
+      },
+      "exits": [],
+      "win32": "same",
+      "note": "Versión del protocolo (protocol = el campo `version` de este archivo) y del programa. El MCP lo ejecuta una vez antes de la primera herramienta: si el helper no lo conoce o devuelve otro `protocol`, rechaza todo («helper incompatible»)"
+    }
+  },
+  "win32Contract": {
+    "protocol": 1,
+    "versioning": "`version` de este archivo = `protocol` que devuelve el comando `version`. Un cambio incompatible sube ambos; el MCP exige igualdad exacta.",
+    "limits": {
+      "timeoutMs": 15000,
+      "maxOutputBytes": 4194304,
+      "stopGraceMs": 300,
+      "onExceed": "el MCP mata el árbol de procesos (taskkill /T /F) y ejecuta release-input"
+    },
+    "stop": {
+      "stdin": "el helper lee stdin en un hilo: `STOP` (línea) o EOF → suelta botones y modificadores y sale con 3. El EOF cubre al MCP muerto (helpers huérfanos)",
+      "mcp": "STOP por stdin → a los 300 ms `taskkill /PID <pid> /T /F` → SIEMPRE `release-input` (proceso aparte, no se mata con el siguiente Detener)",
+      "stopFile": "COMPUTER_STOP_FILE se comprueba en cada paso, como en macOS"
+    },
+    "sideChannel": {
+      "consent": "GET <COMPUTER_EVENTS_URL>/consent → {consent: boolean, version: number}. Lo implementa main (C4) con el consentimiento versionado y revocable de la app; el MCP lo consulta antes de CADA herramienta (caché ≤200 ms) y falla cerrado si no responde"
+    },
+    "preflight": "Antes de cada herramienta: `version` (una vez) → consentimiento → `session`. `session` con salida 12, interactive=false o secureDesktop=true → «sin escritorio interactivo» (pausa, sin kill); elevatedTarget=true rechaza solo el ratón y teclado reales",
+    "screenshotFailClosed": [
+      "El MCP llama a `list-apps` ANTES, calcula las apps sin concesión (consultas /tier; una consulta que falla cuenta como sin concesión) y las pasa en `--mask-keys`",
+      "Cada elemento de --mask-keys lleva `%` y `,` codificados (%25, %2C); los elementos se separan por coma",
+      "El helper SIEMPRE enmascara además las bloqueadas (consent.exe, CredentialUIBroker.exe, LogonUI.exe, LockApp.exe, Seguridad de Windows, mmc.exe, regedit, taskmgr, gestores de contraseñas) y las de integridad alta o System, aunque no estén en --mask-keys",
+      "El helper NUNCA enmascara ventanas con rol de shell (Shell_TrayWnd, Shell_SecondaryTrayWnd, Progman/WorkerW, CoreWindow de StartMenuExperienceHost/SearchHost) aunque su app (explorer.exe) esté en --mask-keys",
+      "El helper enumera ventanas antes y después de capturar y sale con 12 si cambiaron",
+      "Salida: {width, height, ratio, masked} con width/height enteros > 0 y masked ≥ 0; el archivo debe existir y no estar vacío",
+      "El MCP vuelve a llamar a `list-apps` después: si hay una app sin concesión que no se enmascaró, descarta la captura",
+      "Cualquier fallo (sin canal lateral, list-apps, salida 11/12, JSON o archivo inválidos, carrera) → NO hay captura y se borra el archivo de salida"
+    ],
+    "appKeys": "exe:<ruta absoluta en minúsculas>|pub:<editor Authenticode o «(sin firma)»> o aumid:<id en minúsculas>; ver src/main/computer/policy/app-key.ts. Las usa el MCP tal cual como `bundleId` en el canal lateral y en computer-grants.json",
+    "exemptApps": "Lazunox (lazunox.exe; electron.exe sin empaquetar), dwm.exe, ShellExperienceHost, StartMenuExperienceHost, SearchHost y TextInputHost no se enmascaran por falta de concesión (COMPUTER_SELF_EXES las sustituye). explorer.exe NO es exenta: sus carpetas piden concesión",
+    "invocation": {
+      "CU_HELPER_ARGV0": "solo `node` y solo sin empaquetar: el MCP lanza `node <CU_HELPER> <args>` (helper falso de pruebas, e2e/fake-cu-helper/fake.mjs)",
+      "windowsHide": true
     }
   }
 }

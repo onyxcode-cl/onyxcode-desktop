@@ -1,0 +1,382 @@
+/**
+ * Backend macOS del MCP de Control del PC: el comportamiento de SIEMPRE, movido de `mcp-server.ts` sin cambios de
+ * comportamiento (helper Swift `cu-helper`, `screencapture` + ScreenCaptureKit, `sips`, Spotlight, bundle ids). Los comandos,
+ * argumentos y textos son los mismos; `mcp-server.equivalence.test.ts` y `mcp-platform-darwin.test.ts` lo vigilan.
+ *
+ * Solo builtins de Node (es parte del bundle `computer-mcp`).
+ */
+import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
+import { existsSync, readdirSync, statSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { basename, join } from 'node:path'
+import type { AppRef, HelperResult, PlatformBackend, PlatformHost } from './mcp-platform'
+
+/** Dependencias sustituibles en pruebas (por defecto, las reales de Node). */
+export interface DarwinDeps {
+  execFile: typeof nodeExecFile
+  existsSync: (p: string) => boolean
+  readdirSync: (p: string) => string[]
+  statSync: (p: string) => { isDirectory(): boolean }
+  homedir: () => string
+}
+
+const REAL_DEPS: DarwinDeps = {
+  execFile: nodeExecFile,
+  existsSync,
+  readdirSync: (p) => readdirSync(p),
+  statSync,
+  homedir
+}
+
+/** Mensaje legible para los códigos de salida nuevos del helper (B.1 del plan Lote C). */
+function axExitMessage(code: number): string | null {
+  switch (code) {
+    case 2:
+      return 'Falta el permiso de Accesibilidad para Lazunox (aparece como Lazunox en Ajustes del Sistema).'
+    case 6:
+      return 'Reconocimiento de voz no autorizado.'
+    case 7:
+      return 'Esa app no está en ejecución.'
+    case 8:
+      return 'El elemento cambió (el rol o el título esperados no coinciden): vuelve a pedir app_tree/app_find y usa la referencia (ref) actual.'
+    case 9:
+      return 'Ese campo es seguro (contraseña u otra entrada protegida): el agente nunca escribe ahí.'
+    case 10:
+      return 'Ese valor no se puede editar.'
+    case 11:
+      return 'Esa acción no está permitida.'
+    case 12:
+      return 'Recurso no disponible.'
+    default:
+      return null
+  }
+}
+
+const BUNDLE_ID_RE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)+$/
+
+/** Minúsculas y sin acentos, para comparar nombres ("Música" ≈ "musica"). */
+const fold = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** Valor entre comillas simples para un predicado de Spotlight (escapa \ y '). */
+const mdQuote = (s: string): string => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+
+interface AppEntry {
+  path: string
+  /** Nombres con los que se puede pedir: el localizado ("Música") y el del archivo ("Music"). */
+  names: string[]
+}
+
+export function createDarwinBackend(host: PlatformHost, overrides: Partial<DarwinDeps> = {}): PlatformBackend {
+  const deps: DarwinDeps = { ...REAL_DEPS, ...overrides }
+  const { config: cfg, log } = host
+  const HELPER = cfg.helper
+  const MAX_LONG = cfg.maxLong
+  const APP_DIRS = [
+    '/Applications',
+    '/Applications/Utilities',
+    '/System/Applications',
+    '/System/Applications/Utilities',
+    join(deps.homedir(), 'Applications')
+  ]
+
+  // ───────────────────────────── helper nativo ─────────────────────────────
+
+  /** Procesos del helper en vuelo (para matarlos si se pulsa Detener a mitad de una acción). */
+  const children = new Set<ChildProcess>()
+
+  /** SIGTERM (el helper suelta el botón del ratón si lo tenía pulsado) y SIGKILL a los 300 ms. */
+  function killChildren(): void {
+    for (const c of children) {
+      c.kill('SIGTERM')
+      setTimeout(() => c.exitCode === null && c.signalCode === null && c.kill('SIGKILL'), 300).unref()
+    }
+  }
+
+  function run(cmd: string, args: string[], timeout = 15_000): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const child = deps.execFile(cmd, args, { timeout, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+        children.delete(child)
+        if (err) reject(new Error((stderr || err.message).toString().trim()))
+        else resolve(stdout.toString())
+      })
+      children.add(child)
+    })
+  }
+
+  async function helper(...args: string[]): Promise<string> {
+    if (!HELPER || !deps.existsSync(HELPER)) throw new Error(`Helper nativo no encontrado (${HELPER || 'CU_HELPER vacío'})`)
+    const flags: string[] = []
+    if (cfg.instant) flags.push('--instant')
+    if (cfg.typeDelay && Number.isFinite(Number(cfg.typeDelay))) flags.push('--char-delay', String(Number(cfg.typeDelay)))
+    return run(HELPER, [...flags, ...args], 30_000)
+  }
+
+  /** Como `helper()`, pero devuelve también el código de salida (para los mensajes de `axExitMessage`). */
+  function helperExit(...args: string[]): Promise<HelperResult> {
+    if (!HELPER || !deps.existsSync(HELPER))
+      return Promise.reject(new Error(`Helper nativo no encontrado (${HELPER || 'CU_HELPER vacío'})`))
+    const flags: string[] = []
+    if (cfg.instant) flags.push('--instant')
+    if (cfg.typeDelay && Number.isFinite(Number(cfg.typeDelay))) flags.push('--char-delay', String(Number(cfg.typeDelay)))
+    return new Promise((resolve, reject) => {
+      const child = deps.execFile(HELPER, [...flags, ...args], { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+        children.delete(child)
+        const code = err && typeof (err as { code?: unknown }).code === 'number' ? ((err as { code: number }).code as number) : err ? -1 : 0
+        if (code < 0) {
+          reject(new Error((stderr || err?.message || '').toString().trim()))
+          return
+        }
+        resolve({ stdout: stdout.toString(), code })
+      })
+      children.add(child)
+    })
+  }
+
+  // ───────────────────────────── resolver el nombre de una app ─────────────────────────────
+  //
+  // `request_access` recibe nombres en lenguaje natural ("Discord", "discord", "Música", o incluso un bundle
+  // id). El helper nativo solo conoce las apps EN EJECUCIÓN (y su respaldo con Spotlight falla: filtra por
+  // `kMDItemKind == 'Application'`, que en un macOS en español vale "Aplicación", y `==[cd]` no coincide).
+  // Aquí se completa, sin recompilar el helper (recompilarlo cambia su firma y macOS olvidaría los permisos
+  // TCC): 1) helper (apps abiertas) → 2) bundle id → 3) Spotlight por tipo de contenido (independiente del
+  // idioma) → 4) recorrido de las carpetas de aplicaciones. Así también se encuentran apps CERRADAS.
+
+  /** Rutas `.app` que devuelve una consulta de Spotlight (vacío si Spotlight no responde). */
+  async function spotlightPaths(query: string): Promise<string[]> {
+    try {
+      const out = await run('/usr/bin/mdfind', [query], 8_000)
+      return out
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.endsWith('.app'))
+    } catch {
+      return []
+    }
+  }
+
+  /** Todas las apps que Spotlight conoce, con su nombre localizado (una sola consulta, ~30 ms). */
+  async function spotlightApps(): Promise<AppEntry[]> {
+    try {
+      const out = await run(
+        '/usr/bin/mdfind',
+        ['-attr', 'kMDItemDisplayName', "kMDItemContentType == 'com.apple.application-bundle'"],
+        8_000
+      )
+      const entries: AppEntry[] = []
+      for (const line of out.split('\n')) {
+        const m = /^(.+?\.app)\s+kMDItemDisplayName = (.+)$/.exec(line.trim())
+        if (m) entries.push({ path: m[1], names: [m[2].trim(), basename(m[1], '.app')] })
+      }
+      return entries
+    } catch {
+      return []
+    }
+  }
+
+  /** Apps instaladas en las carpetas habituales (un nivel de subcarpetas incluido). */
+  function scanAppDirs(): AppEntry[] {
+    const found: AppEntry[] = []
+    const add = (full: string): void => void found.push({ path: full, names: [basename(full, '.app')] })
+    for (const dir of APP_DIRS) {
+      let entries: string[] = []
+      try {
+        entries = deps.readdirSync(dir)
+      } catch {
+        continue
+      }
+      for (const e of entries) {
+        const full = join(dir, e)
+        if (e.endsWith('.app')) add(full)
+        else if (!e.startsWith('.')) {
+          try {
+            if (deps.statSync(full).isDirectory()) {
+              for (const inner of deps.readdirSync(full)) if (inner.endsWith('.app')) add(join(full, inner))
+            }
+          } catch {
+            // sin permiso o no es carpeta
+          }
+        }
+      }
+    }
+    return found
+  }
+
+  /** Elige la app cuyo nombre coincide: exacto, luego "empieza por", luego "contiene". Prefiere las carpetas habituales. */
+  function pickByName(entries: AppEntry[], name: string): string | null {
+    const want = fold(name.replace(/\.app$/i, ''))
+    if (want.length < 2) return null
+    const rank = (p: string): number => (APP_DIRS.some((d) => p.startsWith(`${d}/`)) ? 0 : 1)
+    const sorted = [...entries].sort((a, b) => rank(a.path) - rank(b.path))
+    const names = (e: AppEntry): string[] => e.names.map(fold)
+    return (
+      sorted.find((e) => names(e).includes(want))?.path ??
+      sorted.find((e) => names(e).some((n) => n.startsWith(want)))?.path ??
+      sorted.find((e) => names(e).some((n) => n.includes(want)))?.path ??
+      null
+    )
+  }
+
+  /** Bundle id de un `.app` leyendo su Info.plist. */
+  async function appRefFromPath(appPath: string): Promise<AppRef | null> {
+    try {
+      const id = (
+        await run('/usr/bin/plutil', ['-extract', 'CFBundleIdentifier', 'raw', '-o', '-', join(appPath, 'Contents', 'Info.plist')], 5_000)
+      ).trim()
+      return id ? { bundleId: id, name: basename(appPath, '.app') } : null
+    } catch {
+      return null
+    }
+  }
+
+  async function resolveApp(name: string): Promise<AppRef & { found: boolean }> {
+    const query = name.trim()
+    const notFound = { bundleId: '', name: query || name, found: false }
+    if (!query) return notFound
+
+    // 1) Apps en ejecución (nombre exacto o parcial), vía el helper nativo.
+    try {
+      const j = JSON.parse(await helper('resolve-app', query)) as { name?: string; bundleId?: string; found?: boolean }
+      if (j.found && j.bundleId) return { bundleId: j.bundleId, name: j.name || query, found: true }
+    } catch (err) {
+      log('resolve-app:', err instanceof Error ? err.message : err)
+    }
+
+    // 2) Bundle id explícito ("com.hnc.Discord").
+    if (BUNDLE_ID_RE.test(query)) {
+      const [path] = await spotlightPaths(`kMDItemCFBundleIdentifier == ${mdQuote(query)}`)
+      const byId = path ? await appRefFromPath(path) : null
+      if (byId) return { ...byId, found: true }
+    }
+
+    // 3) Spotlight (nombre localizado, sin distinguir mayúsculas ni tildes) y, si no responde,
+    // 4) recorrido directo de las carpetas de aplicaciones.
+    const path = pickByName(await spotlightApps(), query) ?? pickByName(scanAppDirs(), query)
+    const ref = path ? await appRefFromPath(path) : null
+    return ref ? { ...ref, found: true } : notFound
+  }
+
+  // ───────────────────────────── capturas ─────────────────────────────
+
+  /**
+   * Bundle ids de apps con ventana visible que NO tienen concesión: se excluyen de la captura
+   * (ScreenCaptureKit las quita del compositor; el modelo nunca las ve). Best-effort: sin canal
+   * lateral o si el helper falla, no excluye nada (mejor que romper la captura).
+   */
+  async function nonGrantedBundleIds(session?: string): Promise<string[]> {
+    if (!cfg.eventsUrl) return []
+    try {
+      const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string; name?: string }>
+      const results = await Promise.all(
+        apps
+          .filter((a) => a.bundleId && !cfg.neverExclude.has(a.bundleId))
+          .map(async (a) => {
+            const tier = await host.tierOf({ bundleId: a.bundleId!, name: a.name || a.bundleId! }, session).catch(() => null)
+            return tier === null ? a.bundleId! : null
+          })
+      )
+      return results.filter((b): b is string => !!b)
+    } catch (err) {
+      log('nonGrantedBundleIds:', err instanceof Error ? err.message : err)
+      return []
+    }
+  }
+
+  async function captureScreen(req: { raw: string; out: string; session?: string }): Promise<{ width: number; height: number }> {
+    const { raw, out, session } = req
+    if (cfg.fakeShot) {
+      await run('/bin/cp', [cfg.fakeShot, raw])
+    } else {
+      const exclude = await nonGrantedBundleIds(session)
+      let sckOk = false
+      if (exclude.length) {
+        try {
+          await helper('screenshot-sck', raw, exclude.join(','))
+          sckOk = true
+        } catch (err) {
+          log('ScreenCaptureKit no disponible, uso screencapture + enmascarado:', err instanceof Error ? err.message : err)
+        }
+      }
+      if (!sckOk) {
+        // -x sin sonido, -C incluye el cursor, -m solo la pantalla principal
+        try {
+          await run('/usr/sbin/screencapture', ['-x', '-C', '-m', '-t', 'png', raw])
+        } catch (err) {
+          throw new Error(
+            `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
+              'Falta el permiso de Grabación de pantalla para Lazunox (aparece como Lazunox en Ajustes del Sistema).'
+          )
+        }
+        if (!deps.existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
+        // Fallback sin ScreenCaptureKit (macOS < 14 o SCK falló): enmascarar a mano las ventanas de
+        // las apps no concedidas con un rectángulo negro (mejor que enseñarlas).
+        if (exclude.length) {
+          try {
+            const s = await host.mainScreen()
+            const scale = s.scale || 1
+            const windows = JSON.parse(await helper('windows-of', exclude.join(','))) as Array<{
+              x: number
+              y: number
+              width: number
+              height: number
+            }>
+            if (windows.length) {
+              const rects = windows.map((w) => `${w.x * scale},${w.y * scale},${w.width * scale},${w.height * scale}`)
+              await run(HELPER, ['mask-regions', raw, raw, ...rects])
+            }
+          } catch (err) {
+            log('enmascarado de apps no concedidas:', err instanceof Error ? err.message : err)
+          }
+        }
+      }
+    }
+    await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
+    const dims = await run('/usr/bin/sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', out])
+    const width = Number(/pixelWidth:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+    const height = Number(/pixelHeight:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+    return { width, height }
+  }
+
+  async function windowShot(
+    appKey: string,
+    raw: string,
+    out: string,
+    windowIndex: number
+  ): Promise<{ width: number; height: number; title?: string }> {
+    const { stdout, code } = await helperExit('window-shot', appKey, raw, String(windowIndex))
+    if (code !== 0) throw new Error(axExitMessage(code) ?? `window-shot falló (código ${code})`)
+    const info = JSON.parse(stdout) as { width: number; height: number; title?: string }
+    await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
+    return info
+  }
+
+  return {
+    id: 'darwin',
+    helper,
+    helperExit,
+    exitMessage: axExitMessage,
+    killChildren,
+    shutdown: async () => undefined,
+    preflight: async () => undefined,
+    checkKeys: async (keys) => keys,
+    failClosedOnUnknownApp: false,
+    parseApp: (json) => {
+      const j = (json ?? {}) as { name?: string; bundleId?: string }
+      return { bundleId: j.bundleId ?? '', name: j.name || j.bundleId || '' }
+    },
+    normalizeScreen: (s) => s,
+    captureScreen,
+    windowShot,
+    resolveApp,
+    text: {
+      instructions: 'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.',
+      toolDescriptions: {},
+      appNotFound: (name) =>
+        `No se pudo identificar la app "${name}". Usa el nombre tal como aparece en /Applications (sin ".app") o su bundle id.`,
+      noAppsFound: (missing) =>
+        `No se pudo identificar ninguna app instalada con esos nombres: ${missing.join(', ')}. ` +
+        'Prueba con el nombre tal como aparece en /Applications (sin ".app") o con su bundle id ' +
+        '(p.ej. com.apple.Safari, com.hnc.Discord). No hace falta que la app esté abierta. ' +
+        'Si de verdad no está instalada, díselo al usuario.'
+    }
+  }
+}

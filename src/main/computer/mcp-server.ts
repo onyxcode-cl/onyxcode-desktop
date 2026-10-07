@@ -32,6 +32,13 @@
  *   COMPUTER_MAX_LONG_SIDE  lado largo máximo de la captura en px (por defecto 1366)
  *   COMPUTER_SHOT_DIR       carpeta para las capturas (por defecto $TMPDIR/lazunox-computer)
  *   COMPUTER_FAKE_SCREENSHOT (solo pruebas) usa esta imagen en lugar de `screencapture`
+ *   COMPUTER_BACKEND        `darwin` | `win32`: backend de plataforma (por defecto, la del proceso). Lo fija `main`.
+ *   CU_HELPER_ARGV0         (solo Windows y desarrollo) `node`: lanza el helper FALSO de pruebas como `node <CU_HELPER>`.
+ *   COMPUTER_SELF_EXES      (solo Windows) ejecutables exentos de concesión, separados por comas (por defecto Lazunox y el shell).
+ *   COMPUTER_HELPER_TIMEOUT_MS (solo Windows; pruebas) tiempo máximo por comando del helper (por defecto 15000).
+ *
+ * Plataforma: lo que depende del sistema (helper nativo, capturas, apps, kill de procesos, consentimiento y políticas de
+ * Windows) está detrás de `PlatformBackend` (`mcp-platform.ts`; `mcp-platform-darwin.ts` / `mcp-platform-win32.ts`).
  *
  * Coordenadas: las herramientas reciben coordenadas EN PÍXELES DE LA ÚLTIMA CAPTURA y las
  * convierten a puntos de la pantalla principal (factor = anchoPuntos / anchoCaptura).
@@ -47,13 +54,15 @@
  * `screencapture`). `type_text`/`key` además rechazan un campo de contraseña con foco
  * (`cu-helper focused-secure`) o tecleo real reciente del usuario (`cu-helper recent-input`).
  */
-import { execFile, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { timingSafeEqual } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
-import { homedir, tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import type { AppRef, AppTier, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
+import { createDarwinBackend } from './mcp-platform-darwin'
+import { createWin32Backend } from './mcp-platform-win32'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -102,37 +111,18 @@ async function isStopped(): Promise<boolean> {
   return stopped
 }
 
-/** Procesos del helper en vuelo (para matarlos si se pulsa Detener a mitad de una acción). */
-const children = new Set<ChildProcess>()
-
-/** SIGTERM (el helper suelta el botón del ratón si lo tenía pulsado) y SIGKILL a los 300 ms. */
-function killChildren(): void {
-  for (const c of children) {
-    c.kill('SIGTERM')
-    setTimeout(() => c.exitCode === null && c.signalCode === null && c.kill('SIGKILL'), 300).unref()
-  }
-}
-
 // ───────────────────────────── utilidades ─────────────────────────────
+//
+// Lo que depende del sistema (helper nativo, capturas, resolución de apps, kill de procesos, políticas propias de Windows)
+// vive detrás de `PlatformBackend` (`mcp-platform*.ts`); aquí queda lo común.
 
-function run(cmd: string, args: string[], timeout = 15_000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(cmd, args, { timeout, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
-      children.delete(child)
-      if (err) reject(new Error((stderr || err.message).toString().trim()))
-      else resolve(stdout.toString())
-    })
-    children.add(child)
-  })
+/** Detiene los helpers en vuelo (Detener a mitad de una acción). */
+function killChildren(): void {
+  backend.killChildren()
 }
 
-async function helper(...args: string[]): Promise<string> {
-  if (!HELPER || !existsSync(HELPER)) throw new Error(`Helper nativo no encontrado (${HELPER || 'CU_HELPER vacío'})`)
-  const flags: string[] = []
-  if (INSTANT) flags.push('--instant')
-  if (TYPE_DELAY && Number.isFinite(Number(TYPE_DELAY))) flags.push('--char-delay', String(Number(TYPE_DELAY)))
-  return run(HELPER, [...flags, ...args], 30_000)
-}
+const helper = (...args: string[]): Promise<string> => backend.helper(...args)
+const helperExit = (...args: string[]): Promise<{ stdout: string; code: number }> => backend.helperExit(...args)
 
 function log(...a: unknown[]): void {
   // stderr: OpenCode lo guarda en sus logs; stdout es exclusivo del protocolo.
@@ -146,7 +136,6 @@ function log(...a: unknown[]): void {
 // CADA acción sobre el ratón/teclado se comprueba la app en primer plano y, si la acción tiene un
 // punto, también la app bajo ese punto (pueden diferir: clic a través de una ventana de fondo).
 
-type AppTier = 'view' | 'click' | 'full'
 const TIER_RANK: Record<AppTier, number> = { view: 0, click: 1, full: 2 }
 const TIER_LABEL: Record<AppTier, string> = { view: 'Solo ver', click: 'Ver y clic', full: 'Control total' }
 // Este bundle no importa módulos de la app: estos tipos, constantes y `maxTier` DUPLICAN los de
@@ -161,19 +150,12 @@ function asTier(v: unknown): AppTier | null {
   return t === 'view' || t === 'click' || t === 'full' ? t : null
 }
 
-interface AppRef {
-  bundleId: string
-  name: string
-}
-
 async function appFrontmost(): Promise<AppRef> {
-  const j = JSON.parse(await helper('frontmost')) as { name?: string; bundleId?: string }
-  return { bundleId: j.bundleId ?? '', name: j.name || j.bundleId || '' }
+  return backend.parseApp(JSON.parse(await helper('frontmost')))
 }
 
 async function appAtPoint(x: number, y: number): Promise<AppRef> {
-  const j = JSON.parse(await helper('app-at', String(x), String(y))) as { name?: string; bundleId?: string }
-  return { bundleId: j.bundleId ?? '', name: j.name || j.bundleId || '' }
+  return backend.parseApp(JSON.parse(await helper('app-at', String(x), String(y))))
 }
 
 /**
@@ -220,8 +202,15 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
   if (point) {
     const at = await appAtPoint(point.x, point.y)
     if (at.bundleId && at.bundleId !== apps[0]?.bundleId) apps.push(at)
+    else if (!at.bundleId && backend.failClosedOnUnknownApp) apps.push(at) // Windows: lo no identificado no se deja pasar
   }
   const known = apps.filter((a) => a.bundleId)
+  // Windows falla cerrado: una ventana que no se identifica puede ser una bloqueada o de administrador.
+  if (backend.failClosedOnUnknownApp && known.length < apps.length) {
+    throw new Error(
+      'No se pudo identificar la ventana de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.'
+    )
+  }
   if (!known.length) return // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
   for (const a of known) await ensureTier(a, minTier, session)
 }
@@ -358,24 +347,6 @@ interface AccessReply {
   auto?: boolean
 }
 
-// ───────────────────── resolver el nombre de una app ─────────────────────
-//
-// `request_access` recibe nombres en lenguaje natural ("Discord", "discord", "Música", o incluso un bundle
-// id). El helper nativo solo conoce las apps EN EJECUCIÓN (y su respaldo con Spotlight falla: filtra por
-// `kMDItemKind == 'Application'`, que en un macOS en español vale "Aplicación", y `==[cd]` no coincide).
-// Aquí se completa, sin recompilar el helper (recompilarlo cambia su firma y macOS olvidaría los permisos
-// TCC): 1) helper (apps abiertas) → 2) bundle id → 3) Spotlight por tipo de contenido (independiente del
-// idioma) → 4) recorrido de las carpetas de aplicaciones. Así también se encuentran apps CERRADAS.
-
-const APP_DIRS = [
-  '/Applications',
-  '/Applications/Utilities',
-  '/System/Applications',
-  '/System/Applications/Utilities',
-  join(homedir(), 'Applications')
-]
-const BUNDLE_ID_RE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)+$/
-
 /** Minúsculas y sin acentos, para comparar nombres ("Música" ≈ "musica"). */
 const fold = (s: string): string =>
   s
@@ -384,124 +355,7 @@ const fold = (s: string): string =>
     .toLowerCase()
     .trim()
 
-/** Valor entre comillas simples para un predicado de Spotlight (escapa \ y '). */
-const mdQuote = (s: string): string => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
-
-interface AppEntry {
-  path: string
-  /** Nombres con los que se puede pedir: el localizado ("Música") y el del archivo ("Music"). */
-  names: string[]
-}
-
-/** Rutas `.app` que devuelve una consulta de Spotlight (vacío si Spotlight no responde). */
-async function spotlightPaths(query: string): Promise<string[]> {
-  try {
-    const out = await run('/usr/bin/mdfind', [query], 8_000)
-    return out
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.endsWith('.app'))
-  } catch {
-    return []
-  }
-}
-
-/** Todas las apps que Spotlight conoce, con su nombre localizado (una sola consulta, ~30 ms). */
-async function spotlightApps(): Promise<AppEntry[]> {
-  try {
-    const out = await run('/usr/bin/mdfind', ['-attr', 'kMDItemDisplayName', "kMDItemContentType == 'com.apple.application-bundle'"], 8_000)
-    const entries: AppEntry[] = []
-    for (const line of out.split('\n')) {
-      const m = /^(.+?\.app)\s+kMDItemDisplayName = (.+)$/.exec(line.trim())
-      if (m) entries.push({ path: m[1], names: [m[2].trim(), basename(m[1], '.app')] })
-    }
-    return entries
-  } catch {
-    return []
-  }
-}
-
-/** Apps instaladas en las carpetas habituales (un nivel de subcarpetas incluido). */
-function scanAppDirs(): AppEntry[] {
-  const found: AppEntry[] = []
-  const add = (full: string): void => void found.push({ path: full, names: [basename(full, '.app')] })
-  for (const dir of APP_DIRS) {
-    let entries: string[] = []
-    try {
-      entries = readdirSync(dir)
-    } catch {
-      continue
-    }
-    for (const e of entries) {
-      const full = join(dir, e)
-      if (e.endsWith('.app')) add(full)
-      else if (!e.startsWith('.')) {
-        try {
-          if (statSync(full).isDirectory()) {
-            for (const inner of readdirSync(full)) if (inner.endsWith('.app')) add(join(full, inner))
-          }
-        } catch {
-          // sin permiso o no es carpeta
-        }
-      }
-    }
-  }
-  return found
-}
-
-/** Elige la app cuyo nombre coincide: exacto, luego "empieza por", luego "contiene". Prefiere las carpetas habituales. */
-function pickByName(entries: AppEntry[], name: string): string | null {
-  const want = fold(name.replace(/\.app$/i, ''))
-  if (want.length < 2) return null
-  const rank = (p: string): number => (APP_DIRS.some((d) => p.startsWith(`${d}/`)) ? 0 : 1)
-  const sorted = [...entries].sort((a, b) => rank(a.path) - rank(b.path))
-  const names = (e: AppEntry): string[] => e.names.map(fold)
-  return (
-    sorted.find((e) => names(e).includes(want))?.path ??
-    sorted.find((e) => names(e).some((n) => n.startsWith(want)))?.path ??
-    sorted.find((e) => names(e).some((n) => n.includes(want)))?.path ??
-    null
-  )
-}
-
-/** Bundle id de un `.app` leyendo su Info.plist. */
-async function appRefFromPath(appPath: string): Promise<AppRef | null> {
-  try {
-    const id = (
-      await run('/usr/bin/plutil', ['-extract', 'CFBundleIdentifier', 'raw', '-o', '-', join(appPath, 'Contents', 'Info.plist')], 5_000)
-    ).trim()
-    return id ? { bundleId: id, name: basename(appPath, '.app') } : null
-  } catch {
-    return null
-  }
-}
-
-async function resolveApp(name: string): Promise<AppRef & { found: boolean }> {
-  const query = name.trim()
-  const notFound = { bundleId: '', name: query || name, found: false }
-  if (!query) return notFound
-
-  // 1) Apps en ejecución (nombre exacto o parcial), vía el helper nativo.
-  try {
-    const j = JSON.parse(await helper('resolve-app', query)) as { name?: string; bundleId?: string; found?: boolean }
-    if (j.found && j.bundleId) return { bundleId: j.bundleId, name: j.name || query, found: true }
-  } catch (err) {
-    log('resolve-app:', err instanceof Error ? err.message : err)
-  }
-
-  // 2) Bundle id explícito ("com.hnc.Discord").
-  if (BUNDLE_ID_RE.test(query)) {
-    const [path] = await spotlightPaths(`kMDItemCFBundleIdentifier == ${mdQuote(query)}`)
-    const byId = path ? await appRefFromPath(path) : null
-    if (byId) return { ...byId, found: true }
-  }
-
-  // 3) Spotlight (nombre localizado, sin distinguir mayúsculas ni tildes) y, si no responde,
-  // 4) recorrido directo de las carpetas de aplicaciones.
-  const path = pickByName(await spotlightApps(), query) ?? pickByName(scanAppDirs(), query)
-  const ref = path ? await appRefFromPath(path) : null
-  return ref ? { ...ref, found: true } : notFound
-}
+const resolveApp = (name: string): Promise<AppRef & { found: boolean }> => backend.resolveApp(name)
 
 /** Resuelve el argumento `app` de las herramientas `app_*`/`request_full_control`, o lanza. */
 async function namedApp(nameRaw: unknown): Promise<AppRef> {
@@ -509,7 +363,7 @@ async function namedApp(nameRaw: unknown): Promise<AppRef> {
   if (!name) throw new Error('app vacío')
   const ref = await resolveApp(name)
   if (!ref.found) {
-    throw new Error(`No se pudo identificar la app "${name}". Usa el nombre tal como aparece en /Applications (sin ".app") o su bundle id.`)
+    throw new Error(backend.text.appNotFound(name))
   }
   return { bundleId: ref.bundleId, name: ref.name }
 }
@@ -587,22 +441,16 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 // ───────────────────────────── pantalla / capturas ─────────────────────────────
 
-interface Screen {
-  width: number
-  height: number
-  scale: number
-  main?: boolean
-}
-
 let mainScreen: Screen | null = null
 /** puntos por píxel de captura (se actualiza con cada captura). */
 let ratio = 0
 
 async function getMainScreen(): Promise<Screen> {
   if (mainScreen) return mainScreen
-  const list = JSON.parse(await helper('screens')) as Screen[]
-  mainScreen = list.find((s) => s.main) ?? list[0]
-  if (!mainScreen) throw new Error('No se detectó ninguna pantalla')
+  const list = JSON.parse(await helper('screens')) as Array<Screen & Record<string, unknown>>
+  const found = list.find((s) => s.main) ?? list[0]
+  if (!found) throw new Error('No se detectó ninguna pantalla')
+  mainScreen = backend.normalizeScreen(found)
   return mainScreen
 }
 
@@ -663,29 +511,42 @@ const NEVER_EXCLUDE = new Set([
   'com.apple.finder' // Finder es la app que casi siempre está detrás de todo; no es "contenido" ajeno
 ])
 
-/**
- * Bundle ids de apps con ventana visible que NO tienen concesión: se excluyen de la captura
- * (ScreenCaptureKit las quita del compositor; el modelo nunca las ve). Best-effort: sin canal
- * lateral o si el helper falla, no excluye nada (mejor que romper la captura).
- */
-async function nonGrantedBundleIds(session?: string): Promise<string[]> {
-  if (!EVENTS_URL) return []
-  try {
-    const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string; name?: string }>
-    const results = await Promise.all(
-      apps
-        .filter((a) => a.bundleId && !NEVER_EXCLUDE.has(a.bundleId))
-        .map(async (a) => {
-          const tier = await tierOf({ bundleId: a.bundleId!, name: a.name || a.bundleId! }, session).catch(() => null)
-          return tier === null ? a.bundleId! : null
-        })
-    )
-    return results.filter((b): b is string => !!b)
-  } catch (err) {
-    log('nonGrantedBundleIds:', err instanceof Error ? err.message : err)
-    return []
-  }
+// ───────────────────────────── backend de plataforma ─────────────────────────────
+
+/** GET JSON al canal lateral con tope de 1,5 s; lanza si no hay canal o no responde (los backends fallan cerrado). */
+async function sideGet(path: string): Promise<unknown> {
+  if (!EVENTS_URL) throw new Error('Canal lateral no disponible')
+  const r = await fetch(`${EVENTS_URL}${path}`, { signal: AbortSignal.timeout(1500) })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  return r.json()
 }
+
+const platformHost: PlatformHost = {
+  config: {
+    helper: HELPER,
+    eventsUrl: EVENTS_URL,
+    instant: INSTANT,
+    typeDelay: TYPE_DELAY,
+    maxLong: MAX_LONG,
+    shotDir: SHOT_DIR,
+    fakeShot: FAKE_SHOT,
+    neverExclude: NEVER_EXCLUDE
+  },
+  log,
+  tierOf,
+  mainScreen: getMainScreen,
+  sideGet
+}
+
+/**
+ * Backend de la plataforma. `COMPUTER_BACKEND` (`darwin` | `win32`) lo fija `main` al lanzar el MCP (y las pruebas); sin él
+ * vale la plataforma del proceso. Cualquier otra cosa cae en macOS, como siempre.
+ */
+const backend: PlatformBackend =
+  (process.env.COMPUTER_BACKEND ?? process.platform) === 'win32' ? createWin32Backend(platformHost) : createDarwinBackend(platformHost)
+
+/** Herramientas que mueven el ratón o el teclado REALES (Windows las rechaza si la ventana de destino es de administrador). */
+const REAL_INPUT_TOOLS = new Set(['left_click', 'right_click', 'double_click', 'mouse_move', 'drag', 'scroll', 'type_text', 'key'])
 
 async function captureScreen(session?: string): Promise<Shot> {
   mkdirSync(SHOT_DIR, { recursive: true })
@@ -693,56 +554,8 @@ async function captureScreen(session?: string): Promise<Shot> {
   const raw = join(SHOT_DIR, `raw-${stamp}.png`)
   const out = join(SHOT_DIR, `shot-${stamp}.jpg`)
   try {
-    if (FAKE_SHOT) {
-      await run('/bin/cp', [FAKE_SHOT, raw])
-    } else {
-      const exclude = await nonGrantedBundleIds(session)
-      let sckOk = false
-      if (exclude.length) {
-        try {
-          await helper('screenshot-sck', raw, exclude.join(','))
-          sckOk = true
-        } catch (err) {
-          log('ScreenCaptureKit no disponible, uso screencapture + enmascarado:', err instanceof Error ? err.message : err)
-        }
-      }
-      if (!sckOk) {
-        // -x sin sonido, -C incluye el cursor, -m solo la pantalla principal
-        try {
-          await run('/usr/sbin/screencapture', ['-x', '-C', '-m', '-t', 'png', raw])
-        } catch (err) {
-          throw new Error(
-            `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
-              'Falta el permiso de Grabación de pantalla para Lazunox (aparece como Lazunox en Ajustes del Sistema).'
-          )
-        }
-        if (!existsSync(raw)) throw new Error('No se pudo capturar la pantalla (¿permiso de Grabación de pantalla?)')
-        // Fallback sin ScreenCaptureKit (macOS < 14 o SCK falló): enmascarar a mano las ventanas de
-        // las apps no concedidas con un rectángulo negro (mejor que enseñarlas).
-        if (exclude.length) {
-          try {
-            const s = await getMainScreen()
-            const scale = s.scale || 1
-            const windows = JSON.parse(await helper('windows-of', exclude.join(','))) as Array<{
-              x: number
-              y: number
-              width: number
-              height: number
-            }>
-            if (windows.length) {
-              const rects = windows.map((w) => `${w.x * scale},${w.y * scale},${w.width * scale},${w.height * scale}`)
-              await run(HELPER, ['mask-regions', raw, raw, ...rects])
-            }
-          } catch (err) {
-            log('enmascarado de apps no concedidas:', err instanceof Error ? err.message : err)
-          }
-        }
-      }
-    }
-    await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
-    const dims = await run('/usr/bin/sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', out])
-    const width = Number(/pixelWidth:\s*(\d+)/.exec(dims)?.[1] ?? 0)
-    const height = Number(/pixelHeight:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+    // La captura (y, en macOS, el enmascarado de apps sin concesión; en Windows, FALLAR CERRADO) es del backend.
+    const { width, height } = await backend.captureScreen({ raw, out, session })
     const s = await getMainScreen()
     ratio = width > 0 ? s.width / width : await ensureRatio()
     const base64 = readFileSync(out).toString('base64')
@@ -853,49 +666,8 @@ interface AxNode {
 /** Acciones AX que `ax-action` acepta (el resto → exit 11 del helper). */
 const AX_ACTIONS = new Set(['AXShowMenu', 'AXIncrement', 'AXDecrement', 'AXConfirm', 'AXCancel', 'AXRaise', 'AXPick'])
 
-/** Mensaje legible para los códigos de salida nuevos del helper (B.1 del plan Lote C). */
-function axExitMessage(code: number): string | null {
-  switch (code) {
-    case 2:
-      return 'Falta el permiso de Accesibilidad para Lazunox (aparece como Lazunox en Ajustes del Sistema).'
-    case 6:
-      return 'Reconocimiento de voz no autorizado.'
-    case 7:
-      return 'Esa app no está en ejecución.'
-    case 8:
-      return 'El elemento cambió (el rol o el título esperados no coinciden): vuelve a pedir app_tree/app_find y usa la referencia (ref) actual.'
-    case 9:
-      return 'Ese campo es seguro (contraseña u otra entrada protegida): el agente nunca escribe ahí.'
-    case 10:
-      return 'Ese valor no se puede editar.'
-    case 11:
-      return 'Esa acción no está permitida.'
-    case 12:
-      return 'Recurso no disponible.'
-    default:
-      return null
-  }
-}
-
-/** Como `helper()`, pero devuelve también el código de salida (para los mensajes de arriba). */
-function helperExit(...args: string[]): Promise<{ stdout: string; code: number }> {
-  if (!HELPER || !existsSync(HELPER)) return Promise.reject(new Error(`Helper nativo no encontrado (${HELPER || 'CU_HELPER vacío'})`))
-  const flags: string[] = []
-  if (INSTANT) flags.push('--instant')
-  if (TYPE_DELAY && Number.isFinite(Number(TYPE_DELAY))) flags.push('--char-delay', String(Number(TYPE_DELAY)))
-  return new Promise((resolve, reject) => {
-    const child = execFile(HELPER, [...flags, ...args], { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
-      children.delete(child)
-      const code = err && typeof (err as { code?: unknown }).code === 'number' ? ((err as { code: number }).code as number) : err ? -1 : 0
-      if (code < 0) {
-        reject(new Error((stderr || err?.message || '').toString().trim()))
-        return
-      }
-      resolve({ stdout: stdout.toString(), code })
-    })
-    children.add(child)
-  })
-}
+/** Mensaje legible para los códigos de salida del helper (B.1 del plan Lote C; el texto depende del sistema). */
+const axExitMessage = (code: number): string | null => backend.exitMessage(code)
 
 async function axTree(bundleId: string, maxDepth: number, maxNodes: number): Promise<{ nodes: AxNode[]; truncated: boolean }> {
   const { stdout, code } = await helperExit('ax-tree', bundleId, String(maxDepth), String(maxNodes))
@@ -931,16 +703,6 @@ async function axSetValue(bundleId: string, ref: string, value: string): Promise
 async function axAction(bundleId: string, ref: string, action: string): Promise<void> {
   const { code } = await helperExit('ax-action', bundleId, ref, action)
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-action falló (código ${code})`)
-}
-
-async function windowShotHelper(
-  bundleId: string,
-  outPath: string,
-  windowIndex = 0
-): Promise<{ width: number; height: number; title?: string }> {
-  const { stdout, code } = await helperExit('window-shot', bundleId, outPath, String(windowIndex))
-  if (code !== 0) throw new Error(axExitMessage(code) ?? `window-shot falló (código ${code})`)
-  return JSON.parse(stdout) as { width: number; height: number; title?: string }
 }
 
 // ───────────────────────────── find_element / list_elements (AX para el ratón REAL) ─────────────────────────────
@@ -1227,9 +989,10 @@ const TOOLS: ToolDef[] = [
       await requireForeground(session)
       const keys = String(a.keys ?? '').trim()
       if (!keys) throw new Error('keys vacío')
+      const sendKeys = await backend.checkKeys(keys) // política de combinaciones (Windows); en macOS devuelve `keys` tal cual
       await requireTier('full', undefined, session)
       await requireCanType()
-      await act({ tool: 'key', text: keys }, () => helper('key', keys))
+      await act({ tool: 'key', text: keys }, () => helper('key', sendKeys))
       return `Teclas pulsadas: ${keys}`
     }
   },
@@ -1257,8 +1020,17 @@ const TOOLS: ToolDef[] = [
       // Lote C: en segundo plano se abre SIN activar (no roba el foco ni mueve nada visible).
       const { mode } = await controlMode(session)
       if (mode === 'background') {
-        await act({ tool: 'open_application', text: name }, () => helper('open-app-bg', name))
-        return `Abierta ${name} en segundo plano (sin activarla ni traerla al frente).`
+        const opened = await act({ tool: 'open_application', text: name }, () => helper('open-app-bg', name))
+        // Windows no garantiza quedar detrás: si el helper avisa (`behind: false`), se le dice al modelo.
+        let behindNote = ''
+        try {
+          if ((JSON.parse(opened) as { behind?: unknown }).behind === false) {
+            behindNote = ' Aviso: la app se abrió delante; no se pudo dejar en segundo plano.'
+          }
+        } catch {
+          // salida no JSON: sin aviso
+        }
+        return `Abierta ${name} en segundo plano (sin activarla ni traerla al frente).${behindNote}`
       }
       let hasWindow: boolean | undefined
       await act({ tool: 'open_application', text: name }, async () => {
@@ -1367,12 +1139,7 @@ const TOOLS: ToolDef[] = [
       const valid = [...byId.values()]
       const missing = resolved.filter((r) => !r.found).map((r) => r.input)
       if (!valid.length && !hasPlan) {
-        return (
-          `No se pudo identificar ninguna app instalada con esos nombres: ${missing.join(', ')}. ` +
-          'Prueba con el nombre tal como aparece en /Applications (sin ".app") o con su bundle id ' +
-          '(p.ej. com.apple.Safari, com.hnc.Discord). No hace falta que la app esté abierta. ' +
-          'Si de verdad no está instalada, díselo al usuario.'
-        )
+        return backend.text.noAppsFound(missing)
       }
       const { decisions, feedback, cancelled, planApproved, auto } = await requestAccess(
         valid,
@@ -1572,8 +1339,7 @@ const TOOLS: ToolDef[] = [
       // Prefijo "shot-": `cleanupShots()` la recoge igual que las capturas de pantalla completa.
       const out = join(SHOT_DIR, `shot-app-${stamp}.jpg`)
       try {
-        const info = await windowShotHelper(app.bundleId, raw, windowIndex)
-        await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
+        const info = await backend.windowShot(app.bundleId, raw, out, windowIndex)
         const base64 = readFileSync(out).toString('base64')
         cleanupShots()
         return {
@@ -1774,6 +1540,8 @@ async function callTool(name: string, rawArgs: Record<string, unknown>): Promise
     return { content: [{ type: 'text', text: err instanceof Error ? err.message : String(err) }], isError: true }
   }
   try {
+    // Puertas propias de la plataforma (Windows: consentimiento de la app, sesión interactiva, ventana elevada); macOS: ninguna.
+    await backend.preflight({ tool: name, realInput: REAL_INPUT_TOOLS.has(name) })
     // Flujo Plan → Aprobar → Ejecutar: ninguna herramienta de ACCIÓN (tampoco `screenshot`) corre sin
     // un plan aprobado para esta sesión.
     if (tool.action) await requirePlanApproved(session)
@@ -1844,13 +1612,19 @@ async function dispatch(req: RpcRequest): Promise<RpcResponse | null> {
           protocolVersion: SUPPORTED.includes(asked) ? asked : SUPPORTED[0],
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'lazunox-computer', version: '0.2.0' },
-          instructions: 'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.'
+          instructions: backend.text.instructions
         })
       }
       case 'ping':
         return ok({})
       case 'tools/list':
-        return ok({ tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) })
+        return ok({
+          tools: TOOLS.map((t) => ({
+            name: t.name,
+            description: backend.text.toolDescriptions[t.name] ?? t.description,
+            inputSchema: t.inputSchema
+          }))
+        })
       case 'tools/call': {
         const name = String(req.params?.name ?? '')
         const args = req.params?.arguments
@@ -1983,7 +1757,8 @@ function main(): void {
     if ((e.data as { type?: string } | null)?.type === 'shutdown') {
       killChildren()
       server.close()
-      setTimeout(() => process.exit(0), 200).unref()
+      // Cierre ordenado: el backend suelta la entrada si hace falta (Windows: `release-input`), con tope de 1,5 s.
+      void Promise.race([backend.shutdown().catch(() => undefined), sleep(1500)]).then(() => setTimeout(() => process.exit(0), 200).unref())
     }
   })
 }
