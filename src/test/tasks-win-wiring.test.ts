@@ -27,9 +27,11 @@ describe('propagación de tasksWin', () => {
       /resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*optIn: process\.platform === 'win32' \? readTasksWinBetaConsent\(app\.getPath\('userData'\)\) : false[\s\S]*policy:/
     )
     expect(s).toMatch(/capsFor\(process\.platform, \{ tasksWin, remoteWin, computerWin \}\)/)
-    expect(s).toMatch(/additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn \}\)/)
     expect(s).toMatch(
-      /computer: caps\.computer,\s*tasksWin: tasksWinOn,\s*winBackend: tasksWinOn \? await createWinBackend\(\) : undefined/
+      /additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn \}\)/
+    )
+    expect(s).toMatch(
+      /computer: caps\.computer,\s*tasksWin: tasksWinOn,\s*computerWin: computerWinOn,\s*winBackend: tasksWinOn \? await createWinBackend\(\) : undefined/
     )
     // El consentimiento beta lo lee main de su archivo; el ajuste legado del renderer no cuenta.
     expect(s).not.toMatch(/tasksWinBeta/)

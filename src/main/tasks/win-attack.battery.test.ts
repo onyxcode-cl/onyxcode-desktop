@@ -367,11 +367,11 @@ attackDescribe('A16', 'mayúsculas y minúsculas', () => {
 })
 
 attackDescribe('A18', 'sin sandbox imposibilitado (lo comprobable en macOS)', () => {
-  it('con la constante real (apagada) nada enciende tasksWin y las capacidades de win32 dejan Tareas apagada', () => {
-    expect(TASKS_WIN_BUILD).toBe(false)
-    expect(resolveTasksWin({ platform: 'win32', optIn: true, env: { LAZUNOX_TASKS_WIN: '1' }, isPackaged: false, policy: null })).toBe(
-      false
-    )
+  it('con la constante real (encendida) tasksWin exige el consentimiento beta y las capacidades de win32 dejan Tareas apagada sin él', () => {
+    expect(TASKS_WIN_BUILD).toBe(true)
+    // sin consentimiento beta (optIn) no se enciende, aunque exista la variable de desarrollo y no esté empaquetada:
+    expect(resolveTasksWin({ platform: 'win32', optIn: false, env: {}, isPackaged: true, policy: null })).toBe(false)
+    expect(resolveTasksWin({ platform: 'win32', optIn: true, env: {}, isPackaged: true, policy: null })).toBe(true)
     expect(capsFor('win32').tasks).toBe(false)
     expect(capsFor('win32', { tasksWin: false }).tasks).toBe(false)
   })

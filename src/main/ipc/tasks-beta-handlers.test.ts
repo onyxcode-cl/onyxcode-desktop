@@ -80,7 +80,8 @@ describe('registro', () => {
     expect(tasksWinBetaHandled('win32', false)).toBe(false)
     expect(tasksWinBetaHandled('darwin', true)).toBe(false)
     expect(tasksWinBetaHandled('linux', true)).toBe(false)
-    expect(tasksWinBetaHandled('win32')).toBe(false) // el literal real sigue apagado
+    expect(tasksWinBetaHandled('win32')).toBe(true) // el literal real está encendido (beta opcional, 2026-10-07)
+    expect(tasksWinBetaHandled('darwin')).toBe(false)
   })
   it('darwin o sin build: no registra el handler real y el stub responde available:false', async () => {
     for (const over of [{ platform: 'darwin' }, { build: false }]) {

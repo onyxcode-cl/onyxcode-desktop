@@ -366,10 +366,10 @@ describe('gate(): orden de las comprobaciones y robustez', () => {
 })
 
 describe('createWinBackendProvider', () => {
-  it('`build` es la constante real (apagada) salvo inyección de prueba', () => {
+  it('`build` es la constante real (encendida) salvo inyección de prueba', () => {
     const p = createWinBackendProvider({ dirs, fetch: (async () => new Response('')) as never, hostEnv: {} })
-    expect(p.build).toBe(false)
-    expect(make({ build: true }).build).toBe(true)
+    expect(p.build).toBe(true)
+    expect(make({ build: false }).build).toBe(false)
   })
   it('create(): sin pin, sin carga o sin LOCALAPPDATA devuelve null', () => {
     expect(make().create()).toBeNull()

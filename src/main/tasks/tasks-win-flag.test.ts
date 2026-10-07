@@ -8,14 +8,20 @@ import { resolveTasksWin, tasksWinDevEnv, type TasksWinDeps } from './tasks-win-
 const base: TasksWinDeps = { platform: 'win32', build: true, optIn: false, env: {}, isPackaged: true, policy: null }
 
 describe('TASKS_WIN_BUILD', () => {
-  it('es el literal booleano false en el repositorio', () => {
-    expect(TASKS_WIN_BUILD).toBe(false)
+  it('es el literal booleano true en el repositorio (beta opcional, decisión del dueño 2026-10-07)', () => {
+    expect(TASKS_WIN_BUILD).toBe(true)
     const src = readFileSync(join(__dirname, '../../shared/feature-flags.ts'), 'utf8')
-    expect(src).toMatch(/^export const TASKS_WIN_BUILD = false$/m)
+    expect(src).toMatch(/^export const TASKS_WIN_BUILD = true$/m)
   })
-  it('con la constante real (apagada) nada la enciende: ni opt-in, ni entorno, ni sin política', () => {
-    const real = { ...base, build: undefined, optIn: true, env: { LAZUNOX_TASKS_WIN: '1' }, isPackaged: false }
+  it('con la constante real (encendida) sigue apagada sin consentimiento beta: ni entorno de desarrollo empaquetado, ni sin política', () => {
+    const real = { ...base, build: undefined, optIn: false, env: {}, isPackaged: true }
     expect(resolveTasksWin(real)).toBe(false)
+    expect(resolveTasksWin({ ...real, env: { LAZUNOX_TASKS_WIN: '1' } })).toBe(false) // empaquetada ignora la variable
+  })
+  it('con la constante real (encendida) el consentimiento beta la enciende, y la política la cierra', () => {
+    const real = { ...base, build: undefined, optIn: true, isPackaged: true }
+    expect(resolveTasksWin(real)).toBe(true)
+    expect(resolveTasksWin({ ...real, policy: { disableWslTasks: true } as never })).toBe(false)
   })
 })
 
