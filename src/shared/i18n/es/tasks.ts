@@ -470,6 +470,7 @@ export const tasks = {
   'tasks.sandbox.error.offline': 'No hay conexión con internet.',
   'tasks.sandbox.error.no-space': 'No hay espacio suficiente en el disco.',
   'tasks.sandbox.error.bad-hash': 'La descarga no es válida. Inténtalo de nuevo más tarde.',
+  'tasks.sandbox.error.bad-bundle': 'La copia de la imagen incluida en el instalador no es válida. Vuelve a instalar Lazunox.',
   'tasks.sandbox.error.download-failed': 'No se pudo descargar el entorno.',
   'tasks.sandbox.error.blocked': 'Tu equipo o tu organización bloquea la instalación.',
   'tasks.sandbox.error.busy': 'Ya hay una instalación en curso.',

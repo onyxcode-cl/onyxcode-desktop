@@ -473,6 +473,7 @@ export const tasks = {
   'tasks.sandbox.error.offline': 'There’s no internet connection.',
   'tasks.sandbox.error.no-space': 'There isn’t enough disk space.',
   'tasks.sandbox.error.bad-hash': 'The download isn’t valid. Try again later.',
+  'tasks.sandbox.error.bad-bundle': 'The environment image bundled with the installer isn’t valid. Reinstall Lazunox.',
   'tasks.sandbox.error.download-failed': 'The environment couldn’t be downloaded.',
   'tasks.sandbox.error.blocked': 'Your computer or your organization blocks the installation.',
   'tasks.sandbox.error.busy': 'An installation is already running.',

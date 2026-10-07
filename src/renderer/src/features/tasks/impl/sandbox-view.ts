@@ -57,6 +57,7 @@ const SETUP_ERRORS: Record<string, MsgKey> = {
   'no-space': 'tasks.sandbox.error.no-space',
   'bad-hash': 'tasks.sandbox.error.bad-hash',
   'bad-payload': 'tasks.sandbox.error.bad-hash',
+  'bad-bundle': 'tasks.sandbox.error.bad-bundle',
   'download-failed': 'tasks.sandbox.error.download-failed',
   blocked: 'tasks.sandbox.error.blocked',
   busy: 'tasks.sandbox.error.busy',
