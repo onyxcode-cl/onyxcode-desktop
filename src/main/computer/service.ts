@@ -52,6 +52,7 @@ import {
 import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
+import { servicePlatformFor } from './service-platform'
 import { stopShortcutFor } from './stop-shortcut'
 
 /** Atajo global de parada: `CommandOrControl+Shift+Escape` en macOS; `Ctrl+Alt+Shift+Escape` en Windows (ver `stop-shortcut.ts`). */
@@ -141,11 +142,6 @@ export interface AbortReport {
   failed: number
 }
 
-/** Escapa una cadena para usarla literal en una regex extendida (pkill -f). */
-function ereLiteral(s: string): string {
-  return s.replace(/[.[\]{}()*+?^$|\\]/g, '\\$&')
-}
-
 export class ComputerService extends EventEmitter<ServiceEvents> {
   private events: Server | null = null
   private eventsUrl: string | null = null
@@ -231,14 +227,15 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private escWatcher: ChildProcessByStdio<null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
 
+  /** Lo que depende del sistema (rutas del helper, parada de respaldo, vigía de Esc, entorno del MCP): `service-platform.ts`. */
+  private readonly platform = servicePlatformFor(process.platform)
+
   /** Ruta del helper nativo o null si no está compilado. */
   helperPath(): string | null {
-    if (process.platform !== 'darwin') return null
-    const candidates = [
-      join(process.resourcesPath ?? '', 'computer-use', 'bin', 'cu-helper'),
-      unpacked(join(app.getAppPath(), 'resources', 'computer-use', 'bin', 'cu-helper')),
-      join(process.cwd(), 'resources', 'computer-use', 'bin', 'cu-helper')
-    ]
+    const candidates = this.platform.helperCandidates(
+      { resourcesPath: process.resourcesPath ?? '', appPath: app.getAppPath(), cwd: process.cwd() },
+      unpacked
+    )
     return candidates.find((p) => existsSync(p)) ?? null
   }
 
@@ -305,7 +302,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   }
 
   private ensureEscWatcher(): void {
-    if (this.escWatcher || process.platform !== 'darwin') return
+    if (this.escWatcher || !this.platform.hasEscWatcher) return
     const bin = this.helperPath()
     if (!bin) return
     try {
@@ -665,16 +662,20 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private killHelpers(): Promise<void> {
     const bin = this.helperPath()
     if (!bin) return Promise.resolve()
-    // Solo el binario de esta app (ruta completa; también cuando va con flags --instant, etc.).
-    // SIGTERM primero: el helper suelta el botón si estaba arrastrando; SIGKILL por si no sale.
-    const pattern = `^${ereLiteral(bin)}( |$)`
-    const pkill = (sig: string): Promise<void> =>
-      new Promise((resolve) => {
-        execFile('/usr/bin/pkill', [`-${sig}`, '-f', pattern], { timeout: 3_000 }, () => resolve())
-      })
-    return pkill('TERM')
-      .then(() => new Promise((r) => setTimeout(r, 300)))
-      .then(() => pkill('KILL'))
+    // macOS: SIGTERM (el helper suelta el botón si estaba arrastrando), 300 ms y SIGKILL. Windows: `taskkill /T` y `release-input`.
+    // Los pasos viven en `service-platform.ts`.
+    let chain: Promise<void> = Promise.resolve()
+    for (const step of this.platform.killHelperSteps(bin)) {
+      chain = chain
+        .then(
+          () =>
+            new Promise<void>((resolve) => {
+              execFile(step.cmd, step.args, { timeout: 3_000 }, () => resolve())
+            })
+        )
+        .then(() => (step.delayAfterMs ? new Promise<void>((r) => setTimeout(r, step.delayAfterMs)) : undefined))
+    }
+    return chain
   }
 
   async status(): Promise<ComputerStatus> {
@@ -1005,6 +1006,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     if (typeDelay && Number.isFinite(Number(typeDelay))) environment.COMPUTER_TYPE_DELAY_MS = typeDelay
     const fake = process.env.COMPUTER_FAKE_SCREENSHOT
     if (!app.isPackaged && fake) environment.COMPUTER_FAKE_SCREENSHOT = fake
+    Object.assign(environment, this.platform.mcpEnvExtras({ isPackaged: app.isPackaged, env: process.env }))
     return environment
   }
 
