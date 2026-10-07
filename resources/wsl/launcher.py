@@ -330,23 +330,24 @@ def isolate_namespaces():
 
 
 def hide_windows(lc):
-    """Dentro del nuevo espacio de montaje: sin unidades de Windows ni sockets de interop."""
+    """Dentro del nuevo espacio de montaje: sin unidades de Windows. Los sockets de interop y /init se tapan DESPUÉS de montar (hide_init)."""
     drives, system = read_mounts()
     for mnt in drives:
         if lc.umount2(mnt.encode(), 2) != 0:  # MNT_DETACH
             die("no se pudo desmontar %s" % mnt)
     for mnt in system:  # GPU/WSLg del anfitrión: dentro de /usr serían legibles; en este espacio de montaje sobran
         lc.umount2(mnt.encode(), 2)
-    if os.path.isdir("/run/WSL"):
-        run(["mount", "-t", "tmpfs", "-o", "mode=0555,size=4k", "tmpfs", "/run/WSL"])
     if drvfs_mounts_present():
         die("quedan unidades de Windows montadas")
 
 
 def hide_init():
-    """Tapa /init con /dev/null SOLO en este espacio de montaje y DESPUÉS de montar las carpetas: `mount -t drvfs` ejecuta /sbin/mount.drvfs,
-    que es un enlace a /init (taparlo antes rompía el montaje). Es el intérprete del binfmt de interop (mejor esfuerzo: si falla, el interop
-    sigue apagado por el wsl.conf y el lanzador ya comprobó que lo está)."""
+    """Tapa los sockets de interop (/run/WSL) y /init SOLO en este espacio de montaje y DESPUÉS de montar las carpetas: `mount -t drvfs`
+    ejecuta /sbin/mount.drvfs (un enlace a /init) y habla con WSL por un socket de /run/WSL (taparlos antes rompía el montaje: «connect
+    failed 2» / «Failed to parse /proc/1/stat»; medido en el PC). /init es el intérprete del binfmt de interop (mejor esfuerzo: si falla, el
+    interop sigue apagado por el wsl.conf y el lanzador ya comprobó que lo está)."""
+    if os.path.isdir("/run/WSL"):
+        run(["mount", "-t", "tmpfs", "-o", "mode=0555,size=4k", "tmpfs", "/run/WSL"])
     if os.path.isfile("/init"):
         subprocess.run(["mount", "--bind", "/dev/null", "/init"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
 
