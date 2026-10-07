@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Objetivo de prueba de Control del PC</title>
+    <!-- Pagina LOCAL y fija para probar los clics, el teclado y UI Automation de Control del PC en Windows sin depender del
+     idioma ni de apps del usuario. Sin red, sin recursos externos. Solo la abre una ventana PROPIA de prueba
+     (e2e/specs/computer-win.e2e.ts, scripts/win/run-cu.ps1). El campo de contrasena NO se rellena nunca: sirve para
+     comprobar que el helper lo reconoce como entrada segura. -->
+    <style>
+      body {
+        font-family:
+          Segoe UI,
+          Arial,
+          sans-serif;
+        margin: 16px;
+        background: #fff;
+        color: #111;
+      }
+      button,
+      input,
+      select {
+        font-size: 16px;
+        margin: 6px 8px 6px 0;
+        padding: 6px 10px;
+      }
+      #b1 {
+        position: absolute;
+        left: 20px;
+        top: 70px;
+        width: 160px;
+        height: 48px;
+      }
+      #b2 {
+        position: absolute;
+        left: 220px;
+        top: 70px;
+        width: 160px;
+        height: 48px;
+      }
+      #fields {
+        position: absolute;
+        left: 20px;
+        top: 140px;
+      }
+      #list {
+        position: absolute;
+        left: 20px;
+        top: 260px;
+        width: 200px;
+        padding: 0;
+        list-style: none;
+        border: 1px solid #888;
+      }
+      #list li {
+        padding: 8px;
+        cursor: default;
+      }
+      #list li.sel {
+        background: #cde;
+      }
+      #sldbox {
+        position: absolute;
+        left: 260px;
+        top: 270px;
+      }
+      #log {
+        position: absolute;
+        left: 20px;
+        top: 420px;
+        font-family: Consolas, monospace;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Objetivo de prueba</h1>
+    <button id="b1" type="button">Boton uno</button>
+    <button id="b2" type="button">Boton dos</button>
+    <div id="fields">
+      <input id="txt" type="text" aria-label="Texto de prueba" autocomplete="off" spellcheck="false" />
+      <input id="pwd" type="password" aria-label="Clave de prueba" autocomplete="off" />
+    </div>
+    <ul id="list" role="listbox" aria-label="Lista de prueba">
+      <li role="option" data-v="a">Elemento A</li>
+      <li role="option" data-v="b">Elemento B</li>
+      <li role="option" data-v="c">Elemento C</li>
+    </ul>
+    <div id="sldbox"><input id="sld" type="range" min="0" max="10" value="5" aria-label="Deslizador de prueba" /></div>
+    <div id="log"></div>
+    <script>
+      // Estado observable por la prueba: window.__cu (la lee Playwright con page.evaluate).
+      var cu = (window.__cu = { clicks: [], b1: 0, b2: 0, text: '', list: '', slider: 5, keys: [] })
+      function note(m) {
+        document.getElementById('log').textContent = m
+      }
+      function rec(id, e) {
+        cu.clicks.push({ id: id, cx: e.clientX, cy: e.clientY, sx: e.screenX, sy: e.screenY, t: Date.now() })
+      }
+      document.getElementById('b1').addEventListener('click', function (e) {
+        cu.b1++
+        rec('b1', e)
+        note('b1=' + cu.b1)
+      })
+      document.getElementById('b2').addEventListener('click', function (e) {
+        cu.b2++
+        rec('b2', e)
+        note('b2=' + cu.b2)
+      })
+      document.getElementById('txt').addEventListener('input', function (e) {
+        cu.text = e.target.value
+      })
+      document.getElementById('sld').addEventListener('input', function (e) {
+        cu.slider = Number(e.target.value)
+      })
+      document.getElementById('list').addEventListener('click', function (e) {
+        var li = e.target.closest('li')
+        if (!li) return
+        Array.prototype.forEach.call(document.querySelectorAll('#list li'), function (x) {
+          x.classList.remove('sel')
+        })
+        li.classList.add('sel')
+        cu.list = li.getAttribute('data-v')
+      })
+      // Una pulsacion de la clave NO se registra (ni longitud): solo se cuenta que el campo recibio el foco.
+      document.getElementById('pwd').addEventListener('focus', function () {
+        cu.pwdFocused = true
+      })
+      document.addEventListener('keydown', function (e) {
+        if (e.target.id !== 'pwd') cu.keys.push(e.key)
+      })
+    </script>
+  </body>
+</html>
