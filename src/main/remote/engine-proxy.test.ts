@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { randomBytes } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isWin } from '../../test/platform'
 import { MuxError, type DispatchCtx } from '@shared/remote/mux'
 import type { AuditInput } from './audit'
 import { ConfirmQueue } from './confirm-queue'
@@ -847,23 +848,27 @@ describe('hallazgo 2: aprobar comandos y ediciones «una vez» desde el celular'
     expect(posts(h)).toBe(1)
   })
 
-  it('con el ajuste encendido, un comando normal y una edición dentro del proyecto se aprueban sin confirmar, y quedan en la auditoría sin el texto', async () => {
-    const log: AuditInput[] = []
-    const h = make({ canApprove: true, audit: (e) => log.push(e) })
-    engineWith(h, [
-      bash('p_t', 'npm test -- --run'),
-      { id: 'p_e', permission: 'edit', patterns: ['src/a.ts'], metadata: { filepath: join(proj, 'src/a.ts') } }
-    ])
-    expect((await ask(h, 'p_t')).status).toBe(200)
-    expect((await ask(h, 'p_e')).status).toBe(200)
-    expect(posts(h)).toBe(2)
-    const rows = log.filter((e) => e.kind === 'approve-command')
-    expect(rows).toHaveLength(2)
-    expect(rows[0]).toMatchObject({ kind: 'approve-command', ch: 'POST /permission/{requestID}/reply', cls: 'M', name: 'iPhone' })
-    expect(rows[0]?.device).toMatch(/^[0-9a-f]{8}$/)
-    expect(JSON.stringify(log)).not.toContain('npm test')
-    expect(JSON.stringify(log)).not.toContain('src/a.ts')
-  })
+  // Windows: rutas de proyecto y home de macOS fijas en este caso; la cobertura de Windows está en command-denylist.win.test.ts.
+  it.skipIf(isWin)(
+    'con el ajuste encendido, un comando normal y una edición dentro del proyecto se aprueban sin confirmar, y quedan en la auditoría sin el texto',
+    async () => {
+      const log: AuditInput[] = []
+      const h = make({ canApprove: true, audit: (e) => log.push(e) })
+      engineWith(h, [
+        bash('p_t', 'npm test -- --run'),
+        { id: 'p_e', permission: 'edit', patterns: ['src/a.ts'], metadata: { filepath: join(proj, 'src/a.ts') } }
+      ])
+      expect((await ask(h, 'p_t')).status).toBe(200)
+      expect((await ask(h, 'p_e')).status).toBe(200)
+      expect(posts(h)).toBe(2)
+      const rows = log.filter((e) => e.kind === 'approve-command')
+      expect(rows).toHaveLength(2)
+      expect(rows[0]).toMatchObject({ kind: 'approve-command', ch: 'POST /permission/{requestID}/reply', cls: 'M', name: 'iPhone' })
+      expect(rows[0]?.device).toMatch(/^[0-9a-f]{8}$/)
+      expect(JSON.stringify(log)).not.toContain('npm test')
+      expect(JSON.stringify(log)).not.toContain('src/a.ts')
+    }
+  )
 
   it.each([
     ['sudo', 'sudo ls'],
@@ -890,6 +895,8 @@ describe('hallazgo 2: aprobar comandos y ediciones «una vez» desde el celular'
     ['chmod -R', 'chmod -R 777 .'],
     ['dd', 'dd if=/dev/zero of=/dev/disk2']
   ])('con el ajuste encendido «%s» NO se aprueba solo: va al Mac', async (_n, command) => {
+    // `su\\do` es una ofuscación de POSIX: en Windows `\\` separa carpetas (ver command-denylist.win.test.ts).
+    if (isWin && _n === 'barra') return
     const h = make({ canApprove: true })
     engineWith(h, [bash('p_x', command)])
     expect(await code(ask(h, 'p_x'))).toEqual({ code: 'forbidden', detail: 'rejected' })

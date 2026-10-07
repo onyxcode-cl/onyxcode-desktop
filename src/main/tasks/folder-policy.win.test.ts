@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@shared/i18n', () => ({ t: (k: string): string => k }))
 
 import { forbiddenFolderReason } from './folder-policy'
+import { isWin } from '../../test/platform'
 import {
   forbiddenWinFolderReason,
   LINK_SCAN_MAX_DEPTH,
@@ -359,7 +360,8 @@ describe('despacho por plataforma de folder-policy.ts', () => {
     expect(forbiddenFolderReason('C:\\Windows', { ...base, win: ctx() }, 'win32')).toBe('merr.folder.system')
     expect(forbiddenFolderReason('C:\\lzx\\a', { ...base, win: ctx(), allowedRoots: ['D:\\x'] }, 'win32')).toBe('merr.folder.orgRoots')
   })
-  it('darwin y linux conservan la política de macOS sin cambios', () => {
+  // En un equipo Windows `homedir()` es `C:\\Users\\…`: la política de macOS se juzga con ese home y no con `/Users/ben` (solo importa en macOS/Linux).
+  it.skipIf(isWin)('darwin y linux conservan la política de macOS sin cambios', () => {
     for (const p of ['darwin', 'linux'] as const) {
       expect(forbiddenFolderReason('/', base, p)).toBe('merr.folder.rootOrHome')
       expect(forbiddenFolderReason('/System/x', base, p)).toBe('merr.folder.system')

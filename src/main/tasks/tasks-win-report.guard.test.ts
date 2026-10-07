@@ -10,7 +10,7 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { TASKS_WIN_BUILD } from '@shared/feature-flags'
 import { gateProblems, ISOLATION_FILES, type EvaluateDeps } from './tasks-win-report'
@@ -113,7 +113,7 @@ describe('guardia del informe de Tareas en Windows', () => {
           const s = readFileSync(p, 'utf8')
             .replace(/\/\*[\s\S]*?\*\//g, '')
             .replace(/\/\/.*$/gm, '')
-          if (s.includes('LAZUNOX_TASKS_WIN')) readers.push(relative(ROOT, p))
+          if (s.includes('LAZUNOX_TASKS_WIN')) readers.push(relative(ROOT, p).split(sep).join('/'))
         }
       }
     }

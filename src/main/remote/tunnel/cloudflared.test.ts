@@ -139,7 +139,12 @@ describe('argumentos y entorno', () => {
     expect(a.join(' ')).toContain('--url http://127.0.0.1:1234')
   })
   it('entorno mínimo: HOME privado, sin variables de la app y con proxies', () => {
-    const env = cloudflaredEnv('/h', { SECRET_TOKEN: 'x', OPENCODE_SERVER_PASSWORD: 'y', HTTPS_PROXY: 'http://p:1', PATH: '/zzz' })
+    const env = cloudflaredEnv(
+      '/h',
+      { SECRET_TOKEN: 'x', OPENCODE_SERVER_PASSWORD: 'y', HTTPS_PROXY: 'http://p:1', PATH: '/zzz' },
+      {},
+      'darwin'
+    )
     expect(env.HOME).toBe('/h')
     expect(env.PATH).toBe('/usr/bin:/bin:/usr/sbin:/sbin')
     expect(env.HTTPS_PROXY).toBe('http://p:1')

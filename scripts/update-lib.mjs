@@ -63,7 +63,8 @@ export function readPrivateKey(file, repoRoot) {
     throw new Error('La clave privada está DENTRO del repositorio: muévela fuera (p.ej. ~/.lazunox-keys/) y vuelve a intentar.')
   const st = statSync(real)
   if (!st.isFile()) throw new Error('La clave privada no es un archivo normal.')
-  if ((st.mode & 0o077) !== 0)
+  // NTFS no tiene bits POSIX (un archivo siempre aparece como 0666): la protección en Windows son las ACL heredadas de la carpeta del usuario.
+  if (process.platform !== 'win32' && (st.mode & 0o077) !== 0)
     throw new Error(
       `Permisos demasiado abiertos en la clave privada (${(st.mode & 0o777).toString(8)}): ejecuta chmod 600 sobre el archivo.`
     )

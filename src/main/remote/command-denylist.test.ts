@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { approvalVerdict, bashVerdict, editVerdict, type ApprovalEnv } from './command-denylist'
 
-const env: ApprovalEnv = { sessionDir: '/Users/me/proj', home: '/Users/me' }
+// Estas pruebas son de macOS: plataforma fija (las de Windows están en command-denylist.win.test.ts), no la del equipo que las corre.
+const env: ApprovalEnv = { sessionDir: '/Users/me/proj', home: '/Users/me', platform: 'darwin' }
 
 describe('bashVerdict: lo que pasa (null)', () => {
   it.each([

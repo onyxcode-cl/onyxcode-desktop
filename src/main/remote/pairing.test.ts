@@ -178,8 +178,8 @@ describe('lan-ip', () => {
       ],
       lo0: [{ address: '127.0.0.1', family: 'IPv4', internal: true }]
     }
-    expect(pickLanIp(ifaces)).toBe('192.168.1.20')
-    expect(pickLanIp({ utun1: ifaces.utun3, lo0: ifaces.lo0 })).toBeNull()
-    expect(pickLanIp({ en0: [{ address: '8.8.4.4', family: 'IPv4', internal: false }] })).toBeNull()
+    expect(pickLanIp(ifaces, 'darwin')).toBe('192.168.1.20')
+    expect(pickLanIp({ utun1: ifaces.utun3, lo0: ifaces.lo0 }, 'darwin')).toBeNull()
+    expect(pickLanIp({ en0: [{ address: '8.8.4.4', family: 'IPv4', internal: false }] }, 'darwin')).toBeNull()
   })
 })
