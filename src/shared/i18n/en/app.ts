@@ -18,6 +18,7 @@ export const app = {
   'app.sidebar.settingsLabel': 'Settings',
   'app.sidebar.projects': 'Projects',
   'app.sidebar.openFolder': 'Open folder as project',
+  'app.sidebar.recentProjects': 'Recent projects',
   'app.sidebar.pendingApproval': 'Pending approvals',
   'app.sidebar.emptyHint.generic': 'Open a folder with + or start with {hint}.',
   'app.sidebar.emptyHint.genericNoKey': 'Open a folder with + or start with “New”.',

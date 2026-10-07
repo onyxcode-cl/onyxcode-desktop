@@ -1,4 +1,4 @@
-import { CircleHelp, Moon, PanelLeft, PanelLeftOpen, Plus, Search, Settings, SquarePen, Sun } from 'lucide-react'
+import { CircleHelp, LayoutGrid, Moon, PanelLeft, PanelLeftOpen, Plus, Search, Settings, SquarePen, Sun } from 'lucide-react'
 import { DISPLAY_NAME } from '@shared/brand'
 import type { ModeId } from '@shared/types'
 import { IconButton } from '../components/IconButton'
@@ -260,19 +260,34 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
               <span className="text-meta font-medium text-subtle">
                 {showProjects ? t('app.sidebar.projects') : t('app.sidebar.noProject')}
               </span>
-              {showProjects && platformCaps().nativeDialogs && (
-                <IconButton
-                  label={t('app.sidebar.openFolder')}
-                  size="xs"
-                  className="text-subtle"
-                  onClick={() => {
-                    openSettings(false)
-                    def.projectAction?.()
-                  }}
-                >
-                  <Plus size={14} strokeWidth={1.75} />
-                </IconButton>
-              )}
+              <div className="flex gap-0.5">
+                {showProjects && platformCaps().nativeDialogs && (
+                  <IconButton
+                    label={t('app.sidebar.openFolder')}
+                    size="xs"
+                    className="text-subtle"
+                    onClick={() => {
+                      openSettings(false)
+                      def.projectAction?.()
+                    }}
+                  >
+                    <Plus size={14} strokeWidth={1.75} />
+                  </IconButton>
+                )}
+                {showProjects && def.backToProjects && (
+                  <IconButton
+                    label={t('app.sidebar.recentProjects')}
+                    size="xs"
+                    className="text-subtle"
+                    onClick={() => {
+                      openSettings(false)
+                      def.backToProjects?.()
+                    }}
+                  >
+                    <LayoutGrid size={14} strokeWidth={1.75} />
+                  </IconButton>
+                )}
+              </div>
             </div>
           )}
           {SidebarContent ? (
