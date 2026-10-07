@@ -30,3 +30,7 @@ resources/opencode-bin/bin/
 
 # Notas de trabajo de los agentes (no se versionan)
 .nd/
+
+# Helper de Windows (Rust): compilación y binarios; solo se versiona el código y Cargo.lock
+resources/computer-use/win/target/
+resources/computer-use/win/bin/
