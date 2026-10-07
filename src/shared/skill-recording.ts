@@ -94,11 +94,11 @@ export function buildRecordedSkillPrompt(rec: SkillRecording, opts: BuildRecorde
   )
   lines.push('')
   lines.push(
-    'Con eso, redacta una propuesta de SKILL.md (frontmatter con `name` y `description`: cuándo usar esta skill, ' +
-      'en una frase). Antes de guardar nada, preséntasela al usuario con la herramienta `question`, con estas ' +
-      'opciones exactas: "Guardar", "Ajustar" y "Descartar". Solo si elige "Guardar" escribe el archivo en ' +
-      '`.opencode/skills/<nombre-de-la-skill>/SKILL.md`; si elige "Ajustar", pide los cambios y vuelve a proponerla; ' +
-      'si elige "Descartar", no escribas nada.'
+    'Con eso, redacta una propuesta de skill: un `name` corto en minúsculas con guiones, una `description` ' +
+      '(cuándo usarla, en una frase) y el contenido generalizado. NUNCA escribas el archivo tú mismo: termina tu ' +
+      'turno con este bloque (sin nada más después):\n\n' +
+      '```lazunox-skill\n{"name": "…", "description": "…", "body": "…"}\n```\n\n' +
+      'El usuario la revisa en una tarjeta y decide si guardarla.'
   )
   return lines.join('\n')
 }

@@ -537,5 +537,21 @@ export const tasks = {
   'tasks.learn.globalEmpty': 'No approved global learned memory yet.',
   'tasks.learn.clearGlobal': 'Delete all global memory',
   'tasks.learn.clearGlobalTitle': 'Delete all global memory?',
-  'tasks.learn.clearGlobalMsg': 'All approved learned notes that apply to every project are deleted. This can’t be undone.'
+  'tasks.learn.clearGlobalMsg': 'All approved learned notes that apply to every project are deleted. This can’t be undone.',
+
+  // Proposed skills (same as learned memory: the agent proposes, the user approves)
+  'tasks.skill.cardTitle': 'The task proposes a skill',
+  'tasks.skill.cardHint': 'Review the name, description and content before saving it.',
+  'tasks.skill.nameLabel': 'Name',
+  'tasks.skill.descriptionLabel': 'Description (when to use it)',
+  'tasks.skill.bodyLabel': 'Content',
+  'tasks.skill.flag.personal': 'May contain personal data: review before saving.',
+  'tasks.skill.flag.inyeccion': 'This looks like an instruction, not a procedure to remember: review before saving.',
+  'tasks.skill.save': 'Save skill',
+  'tasks.skill.discard': 'Discard',
+  'tasks.skill.saving': 'Saving…',
+  'tasks.skill.saveFailed': 'Couldn’t save the skill.',
+  'tasks.skill.alreadyExists': 'A skill with that name already exists in this project. Change the name before saving.',
+  'tasks.skill.invalidName':
+    'The name must be lowercase, hyphen-separated, with no spaces or unusual symbols (for example: monthly-report).'
 } as const satisfies Messages<typeof es>

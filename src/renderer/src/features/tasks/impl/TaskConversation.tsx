@@ -34,6 +34,7 @@ import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
 import { friendlyTool, isVisibleText } from './util'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
+import { stripSkillProposalBlock } from '@shared/skill-proposal'
 
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
 
@@ -87,9 +88,10 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         steps.partIds.push(p.id)
       } else if (isVisibleText(p)) {
         steps = null
-        // El bloque ```lazunox-memoria``` (propuesta de memoria, F8: `MemoryProposalCard`) es un contrato con el
-        // agente, no texto para leer: se quita aquí, igual para TODO mensaje (no solo el último).
-        const text = stripMemoryProposalBlock(p.text)
+        // Los bloques ```lazunox-memoria```/```lazunox-skill``` (propuestas de memoria/skill que el usuario
+        // aprueba desde una tarjeta) son un contrato con el agente, no texto para leer: se quitan aquí, igual
+        // para TODO mensaje (no solo el último).
+        const text = stripSkillProposalBlock(stripMemoryProposalBlock(p.text))
         if (text) blocks.push({ kind: 'text', id: p.id, text, partIds: [p.id] })
       } else if (p.type === 'retry') {
         blocks.push({

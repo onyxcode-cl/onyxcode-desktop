@@ -534,5 +534,21 @@ export const tasks = {
   'tasks.learn.globalEmpty': 'Todavía no hay memoria global aprendida y aprobada.',
   'tasks.learn.clearGlobal': 'Borrar toda la memoria global',
   'tasks.learn.clearGlobalTitle': '¿Borrar toda la memoria global?',
-  'tasks.learn.clearGlobalMsg': 'Se borran todas las notas aprendidas y aprobadas que valen para todos tus proyectos. No se puede deshacer.'
+  'tasks.learn.clearGlobalMsg':
+    'Se borran todas las notas aprendidas y aprobadas que valen para todos tus proyectos. No se puede deshacer.',
+
+  // Skills propuestas (igual que la memoria aprendida: el agente propone, el usuario aprueba)
+  'tasks.skill.cardTitle': 'La tarea propone una skill',
+  'tasks.skill.cardHint': 'Revisa el nombre, la descripción y el contenido antes de guardarla.',
+  'tasks.skill.nameLabel': 'Nombre',
+  'tasks.skill.descriptionLabel': 'Descripción (cuándo usarla)',
+  'tasks.skill.bodyLabel': 'Contenido',
+  'tasks.skill.flag.personal': 'Puede tener un dato personal: revísalo antes de guardar.',
+  'tasks.skill.flag.inyeccion': 'Esto parece una instrucción, no un procedimiento para recordar: revísalo antes de guardar.',
+  'tasks.skill.save': 'Guardar skill',
+  'tasks.skill.discard': 'Descartar',
+  'tasks.skill.saving': 'Guardando…',
+  'tasks.skill.saveFailed': 'No se pudo guardar la skill.',
+  'tasks.skill.alreadyExists': 'Ya existe una skill con ese nombre en este proyecto. Cambia el nombre antes de guardar.',
+  'tasks.skill.invalidName': 'El nombre debe ser en minúsculas, con guiones, sin espacios ni símbolos raros (por ejemplo: informe-mensual).'
 } as const

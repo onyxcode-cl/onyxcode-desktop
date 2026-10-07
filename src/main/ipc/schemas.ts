@@ -401,6 +401,12 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:learn:accept': obj({ folder: optional(absPath), proposals: arr(learnedProposal, 20) }),
   'tasks:learn:remove': obj({ alcance: learnedScope, folder: optional(absPath), id: learnedEntryId }),
   'tasks:learn:clear': obj({ alcance: learnedScope, folder: optional(absPath) }),
+  'tasks:skill:accept': obj({
+    folder: absPath,
+    name: str({ max: 64, min: 1, pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/ }),
+    description: str({ max: 1024, min: 1 }),
+    body: str({ max: 20_000, min: 1 })
+  }),
   'tasks:network:state': none,
   'tasks:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
   'tasks:network:setHost': networkSetHost,

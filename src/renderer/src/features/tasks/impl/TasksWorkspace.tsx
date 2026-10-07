@@ -70,6 +70,7 @@ import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
+import { SkillProposalCard } from './SkillProposalCard'
 import { InterruptedNotice } from './InterruptedNotice'
 import { StallNotice } from './StallNotice'
 import { Home } from './Home'
@@ -713,6 +714,9 @@ export function TasksWorkspace(): React.JSX.Element {
                   )}
                   {status === 'done' && activeId && (
                     <MemoryProposalCard key={`memory-${activeId}`} taskId={activeId} entries={entries} folder={folder} />
+                  )}
+                  {status === 'done' && activeId && (
+                    <SkillProposalCard key={`skill-${activeId}`} taskId={activeId} entries={entries} folder={folder} />
                   )}
                   {pendingQuestionsForTask.map((q) => (
                     <QuestionCard key={q.id} request={q} />

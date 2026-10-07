@@ -1666,9 +1666,35 @@ ejecuciones de Rutinas (desatendidas) sí reciben la memoria ya aprobada, pero s
 quedan prohibidos desde el celular (`src/main/remote/policy.ts`): ver, aprobar o borrar memoria aprendida se queda
 solo en el Mac/PC del dueño.
 
-**No verificado / pendiente para la tanda 2:** skills propuestas (bloque `lazunox-skill`, mismo patrón);
-detección de skills que el agente cree sin pasar por la tarjeta (`CREATE_SKILL_PROMPT`/grabación, que todavía
-escriben directo); memoria propuesta desde Rutinas (hoy se suprime del todo); aviso de edición externa de los
-`.md` de memoria (Control total podría tocarlos con `bash`: hoy no se detecta ni se impide); compactación de
-memoria vieja; memoria para el modo Code (hoy solo Tareas). Nada de esto se ha probado en un Windows real más
-allá de typecheck/pruebas (jsdom/Node), igual que el resto de Tareas en Windows.
+**No verificado / pendiente:** detección de skills que el agente cree sin pasar por la tarjeta (ediciones
+manuales, o de una versión anterior de la app, directo en `.opencode/skills/`); memoria/skills propuestas
+desde Rutinas (hoy se suprime del todo); aviso de edición externa de los `.md` de memoria (Control total
+podría tocarlos con `bash`: hoy no se detecta ni se impide); compactación de memoria vieja; memoria para el
+modo Code (hoy solo Tareas). Nada de esto se ha probado en un Windows real más allá de typecheck/pruebas
+(jsdom/Node), igual que el resto de Tareas en Windows.
+
+## 3 quadragies septies. Skills propuestas: mismo patrón que la memoria aprendida (F8-B113)
+
+**Cierra el otro hueco silencioso** que encontró el plan de la sección anterior: "Crear skill de esta tarea"
+(`CREATE_SKILL_PROMPT`) y la skill grabada por demostración (`buildRecordedSkillPrompt`) escribían
+`.opencode/skills/<nombre>/SKILL.md` directo, sin pasar por ningún filtro de secretos ni por una tarjeta
+editable (la grabada sí pedía confirmar con la herramienta `question`, pero el texto libre de esa
+confirmación no pasa por `maskSecretPatterns` ni por `looksLikeInjection`).
+
+**Mismo patrón que la memoria.** El agente termina su turno con un bloque ```lazunox-skill``` ({name,
+description, body}); `SkillProposalCard` lo muestra editable; solo al aprobar, `tasks:skill:accept` (clase
+`X` en el control remoto) llama a `src/main/tasks/learned-skills.ts`, que revalida TODO de nuevo: `name` con
+la misma regex de agentskills.io (1-64 caracteres, `a-z0-9-`, sin guion al principio/final, sin `--`, lo que
+garantiza que la ruta final queda siempre dentro de `<carpeta>/.opencode/skills/`, nunca fuera), largo de
+`description`/`body`, y `maskSecretPatterns` sobre los dos. **A diferencia de la memoria, SÍ se escribe
+dentro de la carpeta del proyecto** (`.opencode/skills/`, no `userData`): es donde OpenCode las descubre, no
+se puede mover. La protección acá es la validación estricta del nombre, no el sandbox de `userData`.
+
+**Nunca sobrescribe.** Si ya existe una skill con ese nombre en esa carpeta, `tasks:skill:accept` se niega
+(`reason: 'ya-existe'`); el usuario tiene que elegir otro nombre. Solo se escribe `SKILL.md`: no se crean
+`scripts/`/`assets/` (código ejecutable que el agente propuso y que otra tarea correría después sería un
+salto de riesgo aparte, fuera de alcance de esta tanda).
+
+**No verificado:** una skill escrita fuera de este flujo (a mano, o de una versión anterior de la app) sigue
+sin detectarse ni avisarse en la interfaz. `skillAlreadyExists`/`skillPathFor` existen y se podrían usar para
+eso, pero no hay ninguna pantalla que los use todavía.

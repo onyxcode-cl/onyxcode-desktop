@@ -12,6 +12,7 @@ import { importFilesInto, previewFile } from '../tasks/files'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
 import { acceptLearnedMemory, clearLearnedMemory, getLearnedMemory, removeLearnedMemoryEntry } from '../tasks/learned-memory'
+import { writeApprovedSkill } from '../tasks/learned-skills'
 import { KeepAwakeService } from '../tasks/keep-awake'
 import type { ComputerService } from '../computer/service'
 import type { WinBackendProvider } from '../tasks/backends'
@@ -192,6 +193,9 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   handle('tasks:learn:accept', ({ folder, proposals }) => acceptLearnedMemory(approvedOrNull(folder), proposals).bundle)
   handle('tasks:learn:remove', ({ alcance, folder, id }) => removeLearnedMemoryEntry(alcance, approvedOrNull(folder), id))
   handle('tasks:learn:clear', ({ alcance, folder }) => clearLearnedMemory(alcance, approvedOrNull(folder)))
+  handle('tasks:skill:accept', ({ folder, name, description, body }) =>
+    writeApprovedSkill(tasks.assertInsideApproved(folder), { name, description, body })
+  )
 
   // ── Red de Tareas (egress) ──
   handle('tasks:network:state', () => tasks.networkState())

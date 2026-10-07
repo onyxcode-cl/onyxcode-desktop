@@ -235,10 +235,10 @@ export function buildSideChatSystem(title: string, entries: MessageEntry[], maxC
 /** Mensaje que se envía a la tarea para convertirla en una skill reutilizable. */
 export const CREATE_SKILL_PROMPT =
   'Convierte lo que hicimos en esta tarea en una skill reutilizable.\n\n' + // i18n-ignore: prompt al agente (se queda en español)
-  '1. Elige un nombre corto en minúsculas con guiones (por ejemplo `informe-mensual`).\n' + // i18n-ignore: prompt al agente (se queda en español)
-  '2. Crea el archivo `.opencode/skills/<nombre>/SKILL.md` dentro de la carpeta de la tarea. Empieza con un bloque de ' + // i18n-ignore: prompt al agente (se queda en español)
-  'metadatos (frontmatter) con `name` (igual que el nombre de la carpeta) y `description` (una frase que diga cuándo usarla).\n' + // i18n-ignore: prompt al agente (se queda en español)
-  '3. Escribe debajo, en español, los pasos generales que seguiste, las herramientas o comandos que funcionaron y los errores ' + // i18n-ignore: prompt al agente (se queda en español)
-  'que conviene evitar. Generaliza: sin datos personales, nombres de archivos concretos ni contenido confidencial.\n' + // i18n-ignore: prompt al agente (se queda en español)
-  '4. Si esa carpeta ya existe, no la sobrescribas: elige otro nombre.\n' + // i18n-ignore: prompt al agente (se queda en español)
-  '5. Al terminar, dime el nombre y la ruta de la skill.' // i18n-ignore: prompt al agente (se queda en español)
+  '1. Elige un nombre corto en minúsculas con guiones (por ejemplo `informe-mensual`), sin espacios ni símbolos raros.\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '2. Redacta una `description` (una frase que diga cuándo usarla) y el contenido: en español, los pasos generales ' + // i18n-ignore: prompt al agente (se queda en español)
+  'que seguiste, las herramientas o comandos que funcionaron y los errores que conviene evitar. Generaliza: sin ' + // i18n-ignore: prompt al agente (se queda en español)
+  'datos personales, nombres de archivos concretos ni contenido confidencial.\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '3. NUNCA escribas el archivo tú mismo. Termina tu turno con este bloque (sin nada más después):\n\n' + // i18n-ignore: prompt al agente (se queda en español)
+  '```lazunox-skill\n{"name": "…", "description": "…", "body": "…"}\n```\n\n' + // i18n-ignore: prompt al agente (se queda en español)
+  'El usuario la revisa en una tarjeta y decide si guardarla.' // i18n-ignore: prompt al agente (se queda en español)

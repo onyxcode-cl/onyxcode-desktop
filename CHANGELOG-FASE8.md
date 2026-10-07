@@ -1323,3 +1323,22 @@ Prueba: documentación; `npx vitest run src/test` (guardias de texto).
 - Pruebas nuevas: `memory-format.test.ts` (27), `memory-proposal.test.ts` (15), `injection-patterns.test.ts` (9),
   `learned-memory.test.ts` (14), `MemoryProposalCard.test.ts` (5), más `tasks-prompt.test.ts` ampliado. Batería
   completa: 5969 pruebas verdes, typecheck limpio (node/web/pwa), lint sin errores.
+
+## F8-B113 — Memoria aprendida (tanda 2): skills propuestas, mismo patrón que la memoria
+
+- Cierra el otro hueco silencioso que encontró el plan de F8-B112: "Crear skill de esta tarea" y la skill
+  grabada por demostración escribían `.opencode/skills/<nombre>/SKILL.md` directo (la segunda, con un paso
+  de confirmación por la herramienta `question`, pero sin pasar por la app ni por los filtros de secretos).
+- **El agente ya no escribe la skill.** Los dos prompts (`CREATE_SKILL_PROMPT` en `transcript.ts` y
+  `buildRecordedSkillPrompt` en `skill-recording.ts`) ahora piden terminar el turno con un bloque
+  ```lazunox-skill``` ({name, description, body}, agentskills.io). `SkillProposalCard` lo muestra editable
+  (nombre, descripción, contenido) bajo el último mensaje; solo al pulsar «Guardar skill» se llama a
+  `tasks:skill:accept` y `main` escribe. `src/shared/skill-proposal.ts` (extracción + filtros, puro) y
+  `src/main/tasks/learned-skills.ts` (escritura, revalida todo, nunca sobrescribe una skill existente: el
+  usuario cambia el nombre).
+- IPC nuevo `tasks:skill:accept`, clase `X` en el control remoto.
+- Pruebas nuevas: `skill-proposal.test.ts` (27), `learned-skills.test.ts` (24), `SkillProposalCard.test.ts`
+  (5). Batería completa: 6026 pruebas verdes, typecheck limpio, lint sin errores.
+- **Pendiente**: detectar skills que queden escritas en `.opencode/skills/` sin pasar por esta tarjeta
+  (ediciones manuales o de una versión anterior) y ofrecer revisarlas; memoria/skills desde Rutinas; memoria
+  para modo Code. Nada de esto se tocó en este commit.

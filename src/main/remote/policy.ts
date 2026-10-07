@@ -313,6 +313,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:learn:accept': 'X',
   'tasks:learn:remove': 'X',
   'tasks:learn:clear': 'X',
+  'tasks:skill:accept': 'X',
   'tasks:network:state': 'R',
   'tasks:network:setToggle': 'D',
   'tasks:network:setHost': 'D',

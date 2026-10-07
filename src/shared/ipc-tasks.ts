@@ -380,6 +380,10 @@ export interface LearnedMemoryProposal {
   porque?: string
 }
 
+/** Por qué `tasks:skill:accept` no escribió nada (revalidado en `main`: nunca confía en el renderer). */
+export type LearnedSkillReject = 'nombre-invalido' | 'campo-faltante' | 'demasiado-largo' | 'secreto' | 'ya-existe'
+export type LearnedSkillResult = { ok: true; path: string } | { ok: false; reason: LearnedSkillReject }
+
 // ───────────────────────────── Red de Tareas (egress) ─────────────────────────────
 
 /** Interruptores de la lista blanca por defecto (npm, PyPI y búsqueda web del agente). */
@@ -930,6 +934,13 @@ export interface TasksInvokeContract {
   'tasks:learn:remove': { req: { alcance: LearnedMemoryScope; folder?: string; id: string }; res: LearnedMemoryBundle }
   'tasks:learn:clear': { req: { alcance: LearnedMemoryScope; folder?: string }; res: LearnedMemoryBundle }
 
+  /**
+   * Skill APRENDIDA (decisión del dueño, 2026-10-07): el agente propone con un bloque ```lazunox-skill```,
+   * el usuario aprueba desde una tarjeta, y solo entonces `main` escribe `.opencode/skills/<name>/SKILL.md`
+   * dentro de la carpeta (OpenCode la descubre ahí). Nunca sobrescribe: si el nombre ya existe, se rechaza.
+   */
+  'tasks:skill:accept': { req: { folder: string; name: string; description: string; body: string }; res: LearnedSkillResult }
+
   /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }
   /** Interruptores "PyPI"/"npm"/"búsqueda web" de la lista blanca por defecto. */
@@ -1213,6 +1224,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:learn:accept',
   'tasks:learn:remove',
   'tasks:learn:clear',
+  'tasks:skill:accept',
   'tasks:network:state',
   'tasks:network:setToggle',
   'tasks:network:setHost',
