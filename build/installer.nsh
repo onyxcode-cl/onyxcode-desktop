@@ -20,7 +20,7 @@
   ${IfNot} ${isUpdated}
     ; el desinstalador es de 32 bits: sin esto System32 se redirige a SysWOW64 y no se ve wsl.exe
     ${If} ${RunningX64}
-      ${DisableX64FHR}
+      ${DisableX64FSRedirection}
     ${EndIf}
     ${If} ${FileExists} "$SYSDIR\wsl.exe"
       nsExec::ExecToLog /TIMEOUT=20000 '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$env:WSL_UTF8=1; $$o = (& wsl.exe -l -q 2>$$null | Out-String) -replace [char]0,\"\"; if (($$o -split \"\r?\n\" | ForEach-Object { $$_.Trim() }) -ccontains \"Lazunox-Tareas\") { exit 0 } else { exit 3 }"'
@@ -38,7 +38,7 @@
       ${EndIf}
     ${EndIf}
     ${If} ${RunningX64}
-      ${EnableX64FHR}
+      ${EnableX64FSRedirection}
     ${EndIf}
   ${EndIf}
   ${EndIf}
