@@ -42,6 +42,8 @@ export interface TasksHandlerDeps {
   computer?: boolean
   /** Bandera efectiva `tasksWin` y proveedor del backend de Windows (los calcula `main/index.ts`). */
   tasksWin?: boolean
+  /** Bandera efectiva `computerWin` (Control del PC en Windows; solo con `tasksWin` y el helper). */
+  computerWin?: boolean
   winBackend?: WinBackendProvider
 }
 
@@ -73,6 +75,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
       ? { mcpConfig: () => computer.mcpConfig(), info: () => computer.info(), planGateUrl: () => computer.planGateUrl() }
       : undefined,
     tasksWin: deps.tasksWin,
+    computerWin: deps.computerWin,
     winBackend: deps.winBackend
   })
   // Abre una tarea/sesión en la ventana principal (clic en una notificación): la trae al frente y

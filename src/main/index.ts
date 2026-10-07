@@ -22,6 +22,7 @@ import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
 import { registerTasksBetaHandlers } from './ipc/tasks-beta-handlers'
 import { capsFor } from '@shared/platform-caps'
 import { capsFlagsToArgs } from '@shared/caps-argv'
+import { computerWinHelperPresent, resolveComputerWin } from './computer/computer-win-flag'
 import { resolveTasksWin } from './tasks/tasks-win-flag'
 import { readTasksWinBetaConsent } from './tasks/tasks-win-beta-consent'
 import { loadManagedPolicy } from './tasks/policy'
@@ -50,8 +51,8 @@ app.setName(INTERNAL_NAME)
  * Capacidades de la plataforma: Tareas y Control del PC solo en macOS (en Windows tras banderas); actualizador en macOS y Windows,
  * salvo en una build de la Microsoft Store (`process.windowsStore`): la actualiza la Store, nunca el actualizador propio.
  */
-function capsOf(tasksWin: boolean, remoteWin = false): ReturnType<typeof capsFor> {
-  const baseCaps = capsFor(process.platform, { tasksWin, remoteWin })
+function capsOf(tasksWin: boolean, remoteWin = false, computerWin = false): ReturnType<typeof capsFor> {
+  const baseCaps = capsFor(process.platform, { tasksWin, remoteWin, computerWin })
   return { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
 }
 /**
@@ -62,6 +63,8 @@ function capsOf(tasksWin: boolean, remoteWin = false): ReturnType<typeof capsFor
 let tasksWinOn = false
 /** Bandera efectiva `remoteWin` (control remoto en Windows; `remote/remote-win-flag.ts`): apagada por defecto, hace falta reiniciar. */
 let remoteWinOn = false
+/** Bandera efectiva `computerWin` (Control del PC en Windows; `computer/computer-win-flag.ts`): exige `tasksWin` y el helper; la puerta real es el consentimiento de la tarjeta. */
+let computerWinOn = false
 let caps = capsOf(false)
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
@@ -148,7 +151,7 @@ function createWindow(): BrowserWindow {
       webviewTag: false,
       devTools: !app.isPackaged,
       // Banderas de capacidades para el preload (solo la ventana principal; los preloads secundarios no las reciben).
-      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn })
+      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn })
     }
   })
   registerWindowRole(win.webContents, 'main')
@@ -217,6 +220,14 @@ function start(): void {
       isPackaged: app.isPackaged,
       policy: process.platform === 'win32' ? loadManagedPolicy() : null
     })
+    computerWinOn = resolveComputerWin({
+      platform: process.platform,
+      tasksWin: tasksWinOn,
+      helperPresent:
+        process.platform === 'win32' &&
+        computerWinHelperPresent({ resourcesPath: process.resourcesPath ?? '', appPath: app.getAppPath(), cwd: process.cwd() }),
+      policy: process.platform === 'win32' ? loadManagedPolicy() : null
+    })
     remoteWinOn = resolveRemoteWin({
       platform: process.platform,
       env: process.env,
@@ -224,7 +235,7 @@ function start(): void {
       policyBlocked: process.platform === 'win32' ? getOrgPolicy().blocked !== false : false
     })
     setRemoteWin(remoteWinOn)
-    caps = capsOf(tasksWinOn, remoteWinOn)
+    caps = capsOf(tasksWinOn, remoteWinOn, computerWinOn)
     if (caps.updater) {
       ;[updateBoot, updateSwap, updateSwapWin] = await Promise.all([
         import('./update/boot'),
@@ -293,6 +304,7 @@ function start(): void {
         // Sin Control del PC no se construye ni se cablea nada de `computer:*` (los stubs responden «no disponible»).
         computer: caps.computer,
         tasksWin: tasksWinOn,
+        computerWin: computerWinOn,
         winBackend: tasksWinOn ? await createWinBackend() : undefined
       })
     } else {
