@@ -71,7 +71,7 @@ pub fn fuzzy_contains(haystack: &str, needle: &str) -> bool {
         }
     }
     match start {
-        Some(s) => last - s + 1 <= std::cmp::max(n.len() * 3, 12),
+        Some(s) => last - s < std::cmp::max(n.len() * 3, 12),
         None => false,
     }
 }

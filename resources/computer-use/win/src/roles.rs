@@ -212,6 +212,17 @@ pub fn parse_ref(r: &str) -> Result<Vec<usize>, String> {
     Ok(out)
 }
 
+/// Inversa de `parse_ref` (para los mensajes de error).
+pub fn format_ref(path: &[usize]) -> String {
+    let mut it = path.iter();
+    let mut out = format!("w{}", it.next().copied().unwrap_or(0));
+    for i in it {
+        out.push('.');
+        out.push_str(&i.to_string());
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -271,6 +282,7 @@ mod tests {
         for bad in ["", "m.0", "w", "w.1", "w0.", "w0..1", "wx", "w-1", "w0.1a", "w1234567", "0.1", "W0", "w0 .1", "w0.+1"] {
             assert!(parse_ref(bad).is_err(), "{bad:?}");
         }
+        assert_eq!(format_ref(&parse_ref("w2.0.14").unwrap()), "w2.0.14");
         let long = format!("w0{}", ".1".repeat(41));
         assert!(parse_ref(&long).is_err());
         let ok = format!("w0{}", ".1".repeat(40));

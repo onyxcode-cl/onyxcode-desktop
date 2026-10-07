@@ -63,7 +63,7 @@ fn argumentos_obligatorios() {
         }
         let required = c.get("args").unwrap().as_array().unwrap().iter().any(|a| a.get("required").and_then(|r| r.as_bool()) == Some(true));
         let flag_required = c.get("flags").and_then(|f| f.as_array()).is_some_and(|f| f.iter().any(|a| a.get("required").and_then(|r| r.as_bool()) == Some(true)));
-        let r = parse_command(&[name.clone()]);
+        let r = parse_command(std::slice::from_ref(&name));
         if required || flag_required {
             assert!(r.is_err(), "{name} sin argumentos debe fallar");
         } else {

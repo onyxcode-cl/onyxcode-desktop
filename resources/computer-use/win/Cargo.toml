@@ -2,9 +2,10 @@
 name = "cu-helper"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.82"
 description = "Helper nativo de Control del PC para Lazunox en Windows (UI Automation, SendInput, capturas). Sin red ni telemetría."
 publish = false
+build = "build.rs"
 license = "UNLICENSED"
 
 [lib]
@@ -26,10 +27,13 @@ features = [
   "Win32_Security",
   "Win32_Security_Cryptography",
   "Win32_Security_WinTrust",
+  "Win32_Storage_FileSystem",
   "Win32_Storage_Packaging_Appx",
+  "Win32_Storage_Xps",
   "Win32_System_Com",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_LibraryLoader",
+  "Win32_System_Ole",
   "Win32_System_RemoteDesktop",
   "Win32_System_StationsAndDesktops",
   "Win32_System_Threading",

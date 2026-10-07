@@ -1,0 +1,26 @@
+#define RT_MANIFEST 24
+1 RT_MANIFEST "cu-helper.manifest"
+
+1 VERSIONINFO
+FILEVERSION 0,1,0,0
+PRODUCTVERSION 0,1,0,0
+FILEOS 0x4
+FILETYPE 0x1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileDescription", "Lazunox cu-helper (Control del PC)"
+      VALUE "ProductName", "Lazunox"
+      VALUE "InternalName", "cu-helper"
+      VALUE "OriginalFilename", "cu-helper.exe"
+      VALUE "FileVersion", "0.1.0.0"
+      VALUE "ProductVersion", "0.1.0.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 0x04B0
+  END
+END

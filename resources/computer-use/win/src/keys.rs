@@ -206,6 +206,12 @@ pub fn check_keys(input: &str, ctx: &KeyPolicyContext) -> Result<Vec<String>, Ke
     parts.iter().map(|p| check_combo(p, ctx)).collect()
 }
 
+/// Ejecutables de Lazunox (y el `electron.exe` del modo desarrollo): con ellos en primer plano, `alt+f4` y `ctrl+w`
+/// cerrarían la propia aplicación.
+pub fn is_lazunox_exe(base_name: &str) -> bool {
+    matches!(base_name.to_lowercase().as_str(), "lazunox.exe" | "electron.exe")
+}
+
 // ---- Códigos virtuales de Windows ----
 
 pub const VK_LCONTROL: u16 = 0xA2;
@@ -381,6 +387,12 @@ mod tests {
         }
         assert!(check_combo("ctrl+w", &ctx(true)).is_err());
         assert!(check_combo("ctrl+shift+w", &ctx(true)).is_ok());
+    }
+
+    #[test]
+    fn ejecutables_de_lazunox() {
+        assert!(is_lazunox_exe("Lazunox.exe") && is_lazunox_exe("electron.exe"));
+        assert!(!is_lazunox_exe("chrome.exe") && !is_lazunox_exe("lazunox"));
     }
 
     #[test]

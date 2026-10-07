@@ -1,6 +1,7 @@
 //! Clave de app en Windows (espejo de `src/main/computer/policy/app-key.ts`):
 //!  - `exe:<ruta en minúsculas>|pub:<editor>`; el editor `(sin firma)` si no hay firma válida.
 //!  - `aumid:<id en minúsculas>` para las apps de la Store/UWP.
+//!
 //! La ruta completa y el editor impiden que un `chrome.exe` falso en %TEMP% herede la concesión.
 
 pub const UNSIGNED_PUBLISHER: &str = "(sin firma)";
@@ -136,6 +137,16 @@ pub fn parse_app_key(key: &str) -> Result<AppKey, String> {
     }
 }
 
+impl AppKey {
+    /// Clave canónica (la misma que produce `exe_key`/`aumid_key`).
+    pub fn to_key_string(&self) -> String {
+        match self {
+            AppKey::Aumid(id) => format!("aumid:{id}"),
+            AppKey::Exe { path, publisher } => format!("exe:{path}|pub:{publisher}"),
+        }
+    }
+}
+
 /// Nombre del ejecutable de una ruta normalizada (`c:\x\chrome.exe` → `chrome.exe`).
 pub fn exe_base_name(path: &str) -> &str {
     path.rsplit('\\').next().unwrap_or(path)
@@ -200,6 +211,13 @@ mod tests {
         assert_eq!(parse_app_key("aumid:a.b!c"), Ok(AppKey::Aumid("a.b!c".into())));
         for bad in ["", "aumid:A.B", "exe:C:\\A\\B.exe|pub:X", "exe:c:\\a\\b.exe", "exe:c:\\a\\..\\b.exe|pub:X", "com.apple.Safari", "exe:c:\\a\\b.exe|pub:a  b"] {
             assert!(parse_app_key(bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn ida_y_vuelta_de_claves() {
+        for k in ["exe:c:\\a\\b.exe|pub:(sin firma)", "exe:c:\\a b\\c.exe|pub:Google LLC", "aumid:a.b!c"] {
+            assert_eq!(parse_app_key(k).unwrap().to_key_string(), k);
         }
     }
 

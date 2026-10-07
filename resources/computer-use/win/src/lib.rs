@@ -10,6 +10,8 @@
 //! Sin red, sin telemetría, sin ejecutar procesos, y solo escribe dentro del directorio temporal que se le pasa.
 
 pub mod appkey;
+pub mod cli;
+pub mod blocklist;
 pub mod commands;
 pub mod exitcode;
 pub mod fuzzy;

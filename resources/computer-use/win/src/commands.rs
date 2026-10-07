@@ -175,7 +175,7 @@ pub fn parse_globals(argv: &[String], env: &dyn Fn(&str) -> Option<String>) -> C
         char_delay_ms: env("CU_CHAR_DELAY_MS").and_then(|v| v.trim().parse::<f64>().ok()).filter(|v| v.is_finite()).unwrap_or(14.0),
     };
     let mut rest: Vec<String> = argv.to_vec();
-    let clamp = |v: f64| v.max(0.0).min(1000.0);
+    let clamp = |v: f64| v.clamp(0.0, 1000.0);
     g.char_delay_ms = clamp(g.char_delay_ms);
     while let Some(f) = rest.first().cloned() {
         if !f.starts_with("--") {
