@@ -62,7 +62,7 @@ if (Test-Path $inbox) {
   New-Item -ItemType Directory -Force $stage | Out-Null
   & "$env:SystemRoot\System32\tar.exe" -xzf $inbox -C $stage
   if ($LASTEXITCODE -ne 0) { Log "extract: FAIL ($LASTEXITCODE)"; Finish 2 }
-  & robocopy.exe $stage $wt /MIR /XD node_modules out dist (Join-Path $wt 'resources\opencode-bin\bin') /XF .lockhash /NFL /NDL /NJH /NJS /NP | Out-Null
+  & robocopy.exe $stage $wt /MIR /XD node_modules out dist (Join-Path $wt 'resources\opencode-bin\bin') (Join-Path $wt 'resources\wsl-images') (Join-Path $wt 'resources\computer-use\win\bin') /XF .lockhash /NFL /NDL /NJH /NJS /NP | Out-Null
   if ($LASTEXITCODE -ge 8) { Log "robocopy: FAIL ($LASTEXITCODE)"; Finish 2 }
   Log 'sync: ok'
 } else {
