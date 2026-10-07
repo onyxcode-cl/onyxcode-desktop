@@ -2,7 +2,8 @@
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts\win\pack-check.ps1 [-Branch rama] [-Install]
 # Comprueba: artefacto y tamano, asar sin codigo de macOS, node-pty desempaquetado, fuses, opencode.exe --version, metadatos PE,
 # humo de la app EMPAQUETADA (proceso vivo, opencode.exe hijo < 30 s, terminal PowerShell por CDP, sin huerfanos al cerrar) y,
-# con -Install, instalacion silenciosa en C:\onyx\inst, arranque, desinstalacion silenciosa y limpieza.
+# con -Install, instalacion silenciosa en C:\onyx\inst, arranque, desinstalacion silenciosa y limpieza. La desinstalacion silenciosa (/S)
+# no pregunta por la distro Lazunox-Tareas (respuesta NO): se comprueba que la lista de distros de WSL no cambia; esta prueba NO crea distros.
 # -Wt: carpeta del repo (por defecto $Root\wt; en CI es el workspace). -NoSmoke: solo comprobaciones estaticas (sin arrancar la app ni instalar).
 # En CI (windows.yml) $Root es una carpeta bajo %TEMP% y no existe $Root\node22: se usa el node del PATH.
 param([string]$Branch = 'default', [string]$Root = 'C:\onyx', [string]$Wt = '', [switch]$Install, [switch]$NoSmoke)
@@ -29,6 +30,14 @@ function LazunoxProcs {
     ($_.ExecutablePath -and (($_.ExecutablePath.StartsWith("$Root\", [StringComparison]::OrdinalIgnoreCase)) -or ($_.ExecutablePath.StartsWith("$wt\", [StringComparison]::OrdinalIgnoreCase))) -and $_.Name -match '^(Lazunox|opencode|OpenConsole|conpty)\.exe$') -or
     ($_.CommandLine -and $_.CommandLine -match [regex]::Escape($ud))
   }
+}
+# Nombres de distros de WSL (solo lectura: `wsl.exe -l -q`; sale en UTF-16LE, se quitan los NUL). Vacio si no hay wsl.exe.
+function WslNames {
+  try {
+    $env:WSL_UTF8 = '1'
+    $o = (& wsl.exe -l -q 2>$null | Out-String) -replace [char]0, ''
+    return ((($o -split "`r?`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ }) -join ',')
+  } catch { return '' }
 }
 function Cleanup { foreach ($p in (LazunoxProcs)) { & taskkill.exe /PID $p.ProcessId /T /F *> $null } }
 function Wait-Gone([int]$sec) { $t0 = Get-Date; while (((Get-Date) - $t0).TotalSeconds -lt $sec) { if (-not (LazunoxProcs)) { return $true }; Start-Sleep -Milliseconds 500 }; return -not (LazunoxProcs) }
@@ -103,6 +112,8 @@ if (-not $NoSmoke) { Smoke $exe 'win-unpacked' 9333 }
 # 6. Instalacion silenciosa
 if ($Install -and $setup -and -not $NoSmoke) {
   Remove-Item -Recurse -Force $inst -ErrorAction SilentlyContinue
+  # Distros de WSL antes de instalar: la desinstalacion silenciosa no debe cambiarlas (esta prueba NO crea distros).
+  $wslBefore = WslNames
   $p = Start-Process -FilePath $setup.FullName -ArgumentList '/S', "/D=$inst" -PassThru -WindowStyle Hidden
   Check 'instalacion silenciosa termina (< 120 s)' ($p.WaitForExit(120000)) "codigo=$($p.ExitCode)"
   $ie = Join-Path $inst 'Lazunox.exe'
@@ -120,6 +131,10 @@ if ($Install -and $setup -and -not $NoSmoke) {
     $t0 = Get-Date; while ((Test-Path $inst) -and (((Get-Date) - $t0).TotalSeconds -lt 60)) { Start-Sleep -Seconds 1 }
   }
   $left = if (Test-Path $inst) { (Get-ChildItem $inst -Recurse -Force | Measure-Object).Count } else { 0 }
+  # Sin distro Lazunox-Tareas y en silencioso (/S) el desinstalador no pregunta ni toca WSL: la lista queda igual.
+  $wslAfter = WslNames
+  Check 'desinstalado: las distros de WSL no cambian (sin crear ni quitar ninguna)' ($wslBefore -ceq $wslAfter) "antes=[$wslBefore] despues=[$wslAfter]"
+  if (($wslBefore -split ',') -cnotcontains 'Lazunox-Tareas') { Check 'desinstalado: no queda distro Lazunox-Tareas (no existia antes)' (($wslAfter -split ',') -cnotcontains 'Lazunox-Tareas') }
   Check 'desinstalado: carpeta de instalacion limpia' ($left -eq 0) "restos=$left"
   $reg2 = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Lazunox*' }
   Check 'desinstalado: sin clave de registro' (-not $reg2)

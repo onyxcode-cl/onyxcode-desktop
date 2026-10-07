@@ -73,3 +73,52 @@ test('clickjack.ps1: solo ventanas propias, con limite de tiempo', () => {
     'no toca otros procesos ni ventanas'
   )
 })
+
+// --- build/installer.nsh: desinstalacion del entorno aislado de Tareas (beta opcional) ---
+const nsh = readFileSync(join(dirname(dir), '..', 'build', 'installer.nsh'), 'utf8')
+/** Texto del .nsh sin comentarios de linea (`;` al inicio de la linea). */
+const nshCode = nsh
+  .split('\n')
+  .filter((l) => !l.trim().startsWith(';'))
+  .join('\n')
+const unMacro = nshCode.slice(
+  nshCode.indexOf('!macro customUnInstall'),
+  nshCode.indexOf('!macroend', nshCode.indexOf('!macro customUnInstall'))
+)
+
+test('installer.nsh: customUnInstall solo ejecuta `wsl.exe --unregister Lazunox-Tareas`', () => {
+  assert.ok(unMacro.length > 0, 'existe la macro customUnInstall')
+  const wslCalls = [...unMacro.matchAll(/wsl\.exe"?\s+(-{1,2}[A-Za-z-]+)/g)].map((m) => m[1])
+  assert.deepEqual(wslCalls.sort(), ['--unregister', '-l'], 'solo --unregister y la lectura `-l -q` (dentro de PowerShell)')
+  assert.match(unMacro, /--unregister Lazunox-Tareas'/)
+  assert.ok(
+    !/--shutdown|--terminate|-t\s+Lazunox|docker-desktop|OnyxCode-Tareas|--set-default|--import/i.test(nshCode),
+    'sin shutdown, ni otras distros'
+  )
+  assert.ok(!/--unregister\s+(?!Lazunox-Tareas)/.test(nshCode), 'solo el nombre fijo, sin variables')
+})
+
+test('installer.nsh: pregunta (NO por defecto), salta en /S y en actualizaciones, con limite de tiempo', () => {
+  assert.match(unMacro, /\$\{IfNot\} \$\{Silent\}/)
+  assert.match(unMacro, /\$\{IfNot\} \$\{isUpdated\}/)
+  assert.match(unMacro, /MessageBox MB_YESNO\|MB_ICONQUESTION\|MB_DEFBUTTON2/)
+  assert.match(unMacro, /\$\{FileExists\} "\$SYSDIR\\wsl\.exe"/, 'sin wsl.exe se salta sin error')
+  const execs = [...unMacro.matchAll(/nsExec::\w+([^\n]*)/g)].map((m) => m[1])
+  assert.equal(execs.length, 2)
+  for (const e of execs) assert.match(e, /\/TIMEOUT=\d+/, 'toda ejecucion con limite de tiempo')
+})
+
+test('installer.nsh: comprueba que la distro existe con nombre exacto (UTF-16LE) y borra solo %LOCALAPPDATA%\\Lazunox\\wsl', () => {
+  assert.match(unMacro, /-l -q/)
+  assert.match(unMacro, /-replace \[char\]0/, 'quita los NUL de la salida UTF-16LE')
+  assert.match(unMacro, /-ccontains \\"Lazunox-Tareas\\"/, 'comparacion exacta y sensible a mayusculas')
+  const rm = [...unMacro.matchAll(/RMDir[^\n]*/g)].map((m) => m[0])
+  assert.deepEqual(rm, ['RMDir /r "$LOCALAPPDATA\\Lazunox\\wsl"'])
+  // el borrado solo ocurre tras un --unregister con codigo 0
+  assert.ok(unMacro.indexOf('--unregister') < unMacro.indexOf('RMDir'))
+  assert.match(unMacro.slice(unMacro.indexOf('--unregister'), unMacro.indexOf('RMDir')), /\$\{If\} \$R0 == "0"/)
+})
+
+test('installer.nsh: sigue la macro customInstallMode (instalacion por usuario)', () => {
+  assert.match(nshCode, /!macro customInstallMode\s+StrCpy \$isForceCurrentInstall "1"/)
+})
