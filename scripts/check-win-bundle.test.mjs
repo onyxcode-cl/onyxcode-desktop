@@ -71,8 +71,8 @@ test('detecta configuraciones peligrosas', () => {
   assert.ok(has(c, /ya no excluye resources\/computer-use\/win/))
 
   c = clone()
-  c.files = c.files.filter((f) => f !== '!resources/opencode/agents/computer.win.md')
-  assert.ok(has(c, /computer\.win\.md del asar/))
+  c.files = c.files.filter((f) => f !== '!resources/opencode/agents-win/**')
+  assert.ok(has(c, /agents-win\/\*\* del asar/))
 
   c = clone()
   c.win.extraResources.push({ from: 'resources/computer-use/win', to: 'computer-use' })

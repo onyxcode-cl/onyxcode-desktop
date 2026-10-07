@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest'
 // Mismo valor que `ESCALATE_MARKER` de EscalateCard.tsx (el test de la tarjeta lo comprueba por su lado).
 const ESCALATE_MARKER = '[[LAZUNOX:NEEDS_FULL_CONTROL]]'
 const dir = join(__dirname, '../../../resources/opencode/agents')
-const read = (n: string): string => readFileSync(join(dir, `${n}.md`), 'utf8')
+// El agente de Windows vive fuera de `agents/` (esa carpeta se copia entera a userData y opencode-config.test.ts vigila su contenido).
+const winDir = join(__dirname, '../../../resources/opencode/agents-win')
+const read = (n: string): string => readFileSync(join(n === 'computer.win' ? winDir : dir, `${n}.md`), 'utf8')
 
 describe('prompts de agente', () => {
   it.each(['chat', 'tasks', 'computer'])('%s.md tiene cabecera con descripción y modo primary', (n) => {

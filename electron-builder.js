@@ -68,8 +68,8 @@ module.exports = {
     // Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
     '!resources/computer-use/{helper.swift,build.sh,bin,bin/**,win,win/**}',
-    // El agente de Windows nunca va en el .asar (ni en el paquete de macOS): con la función activa viaja por win.extraResources.
-    '!resources/opencode/agents/computer.win.md',
+    // El agente de Windows vive FUERA de `agents/` (esa carpeta se copia entera a userData y su contenido está vigilado) y nunca va en el .asar ni en el paquete de macOS: con la función activa viaja por win.extraResources.
+    '!resources/opencode/agents-win/**',
     '!resources/launcher/**',
     // Recursos del backend WSL de Tareas (F8-B81): aún sin empaquetar (Tareas en Windows está apagada); no van en el .asar.
     '!resources/wsl/**',
@@ -210,12 +210,12 @@ module.exports = {
       // antes de lanzarlo). Fuera del asar: no se puede ejecutar desde dentro.
       { from: 'resources/updater', to: 'updater', filter: ['swap.ps1'] },
       // Control del PC (solo con la función activa, ver `computerWinPack`): el helper compilado → resources\\computer-use\\bin\\cu-helper.exe
-      // y el agente → resources\\opencode\\agents\\computer.win.md (src/main/tasks/computer-agent.ts lo busca ahí). Solo esos dos archivos
+      // y el agente → resources\\opencode\\agents-win\\computer.win.md (src/main/tasks/computer-agent.ts lo busca ahí). Solo esos dos archivos
       // (`filter`): jamás los fuentes de Rust ni `target/`.
       ...(computerWinPack
         ? [
             { from: 'resources/computer-use/win/bin', to: 'computer-use/bin', filter: ['cu-helper.exe'] },
-            { from: 'resources/opencode/agents', to: 'opencode/agents', filter: ['computer.win.md'] }
+            { from: 'resources/opencode/agents-win', to: 'opencode/agents-win', filter: ['computer.win.md'] }
           ]
         : [])
     ]

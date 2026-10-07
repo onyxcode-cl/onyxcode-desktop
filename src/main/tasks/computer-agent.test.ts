@@ -7,23 +7,26 @@ import { applyComputerAgent, computerAgentSourceFile } from './computer-agent'
 
 let root: string
 let bundled: string
+let winBundled: string
 let dest: string
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'lz-agent-'))
   bundled = join(root, 'bundle')
   dest = join(root, 'dest')
+  winBundled = join(root, 'bundle-win')
   mkdirSync(bundled)
+  mkdirSync(winBundled)
   mkdirSync(dest)
   writeFileSync(join(bundled, 'computer.md'), 'MAC')
-  writeFileSync(join(bundled, 'computer.win.md'), 'WIN')
+  writeFileSync(join(winBundled, 'computer.win.md'), 'WIN')
   // Lo que deja prepareOpencodeConfigDir: copia todos los .md.
   writeFileSync(join(dest, 'computer.md'), 'MAC')
   writeFileSync(join(dest, 'computer.win.md'), 'WIN')
 })
 afterEach(() => rmSync(root, { recursive: true, force: true }))
 
-const run = (platform: NodeJS.Platform, enabled: boolean | undefined, dirs = [bundled]): string | null =>
-  applyComputerAgent({ platform, enabled, agentsDest: dest, bundledAgentsDirs: dirs })
+const run = (platform: NodeJS.Platform, enabled: boolean | undefined, winDirs = [winBundled]): string | null =>
+  applyComputerAgent({ platform, enabled, agentsDest: dest, bundledAgentsDirs: [bundled], bundledWinAgentsDirs: winDirs })
 
 describe('computerAgentSourceFile', () => {
   it('solo win32 con la función encendida elige computer.win.md', () => {
@@ -67,19 +70,19 @@ describe('applyComputerAgent', () => {
     const extra = join(root, 'extra')
     mkdirSync(extra)
     writeFileSync(join(extra, 'computer.win.md'), 'WIN2')
-    rmSync(join(bundled, 'computer.win.md'))
-    expect(run('win32', true, [bundled, extra])).toBe('computer.win.md')
+    rmSync(join(winBundled, 'computer.win.md'))
+    expect(run('win32', true, [winBundled, extra])).toBe('computer.win.md')
     expect(readFileSync(join(dest, 'computer.md'), 'utf8')).toBe('WIN2')
   })
 
   it('falla cerrado: encendida y sin computer.win.md en el bundle, NO deja el agente de macOS', () => {
-    rmSync(join(bundled, 'computer.win.md'))
+    rmSync(join(winBundled, 'computer.win.md'))
     expect(run('win32', true)).toBeNull()
     expect(existsSync(join(dest, 'computer.md'))).toBe(false)
   })
 
   it('apagada y sin computer.win.md: no toca nada', () => {
-    rmSync(join(bundled, 'computer.win.md'))
+    rmSync(join(winBundled, 'computer.win.md'))
     expect(run('win32', false)).toBe('computer.md')
     expect(readFileSync(join(dest, 'computer.md'), 'utf8')).toBe('MAC')
   })

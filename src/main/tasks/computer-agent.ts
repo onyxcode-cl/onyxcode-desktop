@@ -2,9 +2,9 @@
  * Selección del agente `computer` por plataforma (plan win-C, tanda C6). PURO: solo `node:fs`, sin Electron.
  *
  * OpenCode carga el agente por su id (`computer`) desde `<configDir>/agents/computer.md`. En macOS ese archivo es el del
- * bundle y NO se toca. En Windows, y SOLO con Control del PC activo (`computerWin` y `tasksWin`), `computer.md` se
+ * bundle y NO se toca. `computer.win.md` vive en `resources/opencode/agents-win/` (fuera de `agents/`, que se copia entera a userData). En Windows, y SOLO con Control del PC activo (`computerWin` y `tasksWin`), `computer.md` se
  * sustituye por el contenido de `computer.win.md`; con la función apagada se restaura el de macOS (que es el que copia
- * `prepareOpencodeConfigDir`). `computer.win.md` nunca debe quedar como agente propio (`computer.win`): se borra del destino.
+ * `prepareOpencodeConfigDir`). `computer.win.md` nunca debe quedar como agente propio (`computer.win`): si alguien lo copió al destino, se borra.
  */
 import { copyFileSync, existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -18,8 +18,10 @@ export interface ComputerAgentOptions {
   enabled: boolean | undefined
   /** `<userData>/opencode-config/agents` (destino que lee OpenCode). */
   agentsDest: string
-  /** Carpetas con los agentes del bundle, por orden de preferencia (asar desempaquetado, `resources/opencode/agents`…). */
+  /** Carpetas con `computer.md` (el agente de macOS) del bundle, por orden de preferencia: `resources/opencode/agents`. */
   bundledAgentsDirs: string[]
+  /** Carpetas con `computer.win.md`, por orden de preferencia: `resources/opencode/agents-win` del bundle y del paquete. */
+  bundledWinAgentsDirs: string[]
 }
 
 /** Archivo del bundle que debe ser el agente `computer` en esa plataforma. */
@@ -55,7 +57,7 @@ export function applyComputerAgent(opts: ComputerAgentOptions): string | null {
   const file = computerAgentSourceFile(opts.platform, opts.enabled)
   // Apagado: `computer.md` (el de macOS) viene del bundle; con la función encendida, `computer.win.md`. Si falta, falla cerrado:
   // con la función encendida y sin el agente de Windows NO se deja el de macOS (habla de Mac, Seatbelt y ⌘).
-  const src = findBundled(opts.bundledAgentsDirs, file)
+  const src = findBundled(file === COMPUTER_WIN_AGENT_FILE ? opts.bundledWinAgentsDirs : opts.bundledAgentsDirs, file)
   const dest = join(opts.agentsDest, COMPUTER_AGENT_FILE)
   if (!src) {
     if (opts.enabled === true) rmSync(dest, { force: true })

@@ -938,7 +938,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         platform: this.platform,
         enabled: this.opts.computerWin === true && this.opts.tasksWin === true,
         agentsDest: join(getOpencodeConfigDir(), 'agents'),
-        bundledAgentsDirs: [join(bundled, 'agents'), join(process.resourcesPath ?? '', 'opencode', 'agents')]
+        bundledAgentsDirs: [join(bundled, 'agents')],
+        bundledWinAgentsDirs: [join(bundled, 'agents-win'), join(process.resourcesPath ?? '', 'opencode', 'agents-win')]
       })
     } catch (err) {
       console.error('[tasks] no se pudo elegir el agente computer:', err instanceof Error ? err.message : 'error')

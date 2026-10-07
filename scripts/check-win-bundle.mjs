@@ -20,7 +20,7 @@ const file = join(root, 'out', 'main', 'index.js')
 
 const WIN_SRC = 'resources/computer-use/win'
 const HELPER_ENTRY = { from: `${WIN_SRC}/bin`, filter: ['cu-helper.exe'] }
-const AGENT_ENTRY = { from: 'resources/opencode/agents', filter: ['computer.win.md'] }
+const AGENT_ENTRY = { from: 'resources/opencode/agents-win', filter: ['computer.win.md'] }
 const norm = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '')
 
 /** ¿Debe estar activa la función en el paquete? Misma regla que electron-builder.js. */
@@ -41,8 +41,7 @@ export function checkComputerWinPackaging(config, expectActive) {
   )
   if (!sourcesExcluded)
     problems.push('files ya no excluye resources/computer-use/win y win/** (fuentes de Rust y target/ entrarían en el asar)')
-  if (!files.includes('!resources/opencode/agents/computer.win.md'))
-    problems.push('files no excluye resources/opencode/agents/computer.win.md del asar')
+  if (!files.includes('!resources/opencode/agents-win/**')) problems.push('files no excluye resources/opencode/agents-win/** del asar')
   // Un patrón positivo de `files` que reintroduzca la carpeta del helper o target/.
   for (const f of files) {
     if (!f.startsWith('!') && /computer-use|target|\.rs\b|Cargo/.test(f)) problems.push(`files incluye «${f}»`)
