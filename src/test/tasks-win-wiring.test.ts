@@ -37,6 +37,21 @@ describe('propagación de tasksWin', () => {
     expect(s).not.toMatch(/TASKS_WIN_BUILD|LAZUNOX_TASKS_WIN/)
   })
 
+  it('la puerta de la beta: arrancar un servidor usa el propósito estricto `run`; solo la tarjeta de preparación pide `setup`', () => {
+    // sandbox.ts (zona Seatbelt) no cambia: llama a selectBackend sin propósito, y por defecto es `run`.
+    expect(read('main/tasks/sandbox.ts')).toMatch(/selectBackend\(platform, \{ tasksWin: options\.tasksWin, win: options\.winBackend \}\)/)
+    expect(read('main/tasks/sandbox.ts')).not.toMatch(/purpose/)
+    expect(read('main/ipc/tasks-sandbox-handlers.ts')).toMatch(/purpose: 'setup'/)
+    expect(read('main/tasks/backends/index.ts')).toMatch(/win\.gate\(opts\.purpose \?\? 'run'\)/)
+    // Nada de producción usa ya los informes del PC: `tasks-win-report.ts` queda archivado.
+    const offenders: string[] = []
+    for (const f of walk(SRC)) {
+      if (/tasks-win-report\.ts$|__fixtures__/.test(f)) continue
+      if (/tasks-win-report|windowsReportOk|gateProblems/.test(strip(readFileSync(f, 'utf8')))) offenders.push(relative(SRC, f))
+    }
+    expect(offenders).toEqual([])
+  })
+
   it('el renderer nunca consulta capacidades sin las banderas', () => {
     const offenders: string[] = []
     for (const f of walk(join(SRC, 'renderer', 'src'))) {

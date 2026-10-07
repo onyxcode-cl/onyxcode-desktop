@@ -1,7 +1,12 @@
 /**
+ * ARCHIVADO (decisión del dueño, 2026-10-07): ya NO es la puerta de Tareas en Windows. La sustituye la puerta de la beta
+ * consentida (`backends/win-provider.ts`, `gate()`); nada de producción importa este módulo ni su guardia. Se conserva como
+ * herramienta opcional: si algún día se completa la batería A1–A20 con las dos sesiones, vuelve a valer. Lo prueba
+ * `tasks-win-report.test.ts` (lógica pura).
+ *
  * Informe de la batería de ataques de Tareas en Windows (`report.json`, esquema 1) y su evaluación. PURO: sin disco,
- * sin red, sin Electron. Lo escribe `scripts/win/tasks-attack.ps1` en el PC de pruebas; lo lee
- * `tasks-win-report.guard.test.ts` en `npm test` para impedir `TASKS_WIN_BUILD = true` sin un informe en verde,
+ * sin red, sin Electron. Lo escribe `scripts/win/tasks-attack.ps1` en el PC de pruebas; lo leía
+ * la antigua guardia de `npm test` para impedir `TASKS_WIN_BUILD = true` sin un informe en verde,
  * de las DOS sesiones (elevada y normal) y cuyos hashes de código coincidan con el código actual.
  *
  * Criterios (siempre la lectura más estricta del plan):
