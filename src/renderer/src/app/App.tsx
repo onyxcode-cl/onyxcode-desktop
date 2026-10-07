@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
-import { PanelLeftOpen } from 'lucide-react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
-import { IconButton } from '../components/IconButton'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { OnboardingGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
@@ -36,7 +34,6 @@ import { useT } from '../lib/i18n'
 import { isMacPlatform, platformCaps, useIsRemote } from '../lib/platform'
 import { useControlsInset } from '../lib/window-controls'
 import { useKeybindings } from '../keybindings/dispatch'
-import { hintSuffix, useBindingHint } from '../keybindings/bindings'
 
 /**
  * Todo lo que la aplicación necesita en marcha, sea cual sea la estructura de pantalla (escritorio o celular): tema, ajustes,
@@ -150,8 +147,6 @@ function DesktopApp(): React.JSX.Element {
   const mode = useUi((s) => s.mode)
   const settingsOpen = useUi((s) => s.settingsOpen)
   const collapsed = useUi((s) => s.sidebarCollapsed)
-  const sidebarHint = useBindingHint('sidebar.toggle')
-  const toggleSidebar = useUi((s) => s.toggleSidebar)
   const t = useT()
   useAppRuntime()
   const controlsInset = useControlsInset()
@@ -174,20 +169,20 @@ function DesktopApp(): React.JSX.Element {
         <CommandPalette />
       </ErrorBoundary>
       <div
-        className={`h-full shrink-0 overflow-hidden transition-[width] duration-[240ms] ease-[var(--ease-out)] motion-reduce:transition-none ${collapsed ? 'w-0' : 'w-[var(--sidebar-width)]'}`}
-        inert={collapsed}
+        className={`h-full shrink-0 overflow-hidden transition-[width] duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none ${collapsed ? 'w-14' : 'w-[var(--sidebar-width)]'}`}
       >
         <ErrorBoundary label={t('app.boundary.sidebar')}>
-          <Sidebar />
+          <Sidebar showLabel={t('app.sidebar.show', { hint: '' })} />
         </ErrorBoundary>
       </div>
-      {/* `--header-inset`: hueco que las cabeceras reservan a la izquierda cuando la barra lateral está oculta (semáforos de macOS 80 px
-          + botón de 32 px; en Windows 8 + 32 + 4). Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
+      {/* `--header-inset`: hueco que las cabeceras reservan a la izquierda cuando la barra lateral está colapsada (56 px, con su botón
+          «Mostrar» dentro): en macOS lo que falta para pasar los semáforos (80 px menos los 56 de la barra); en Windows y Linux, nada.
+          Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
       <main
         className="relative flex min-w-0 flex-1 flex-col"
         style={
           {
-            '--header-inset': collapsed ? (isMacPlatform() ? '112px' : '44px') : '0px',
+            '--header-inset': collapsed && isMacPlatform() ? '24px' : '0px',
             // Reserva derecha para los controles de ventana de Windows (0 en macOS y Linux).
             '--controls-inset': `${controlsInset}px`
           } as React.CSSProperties
@@ -213,15 +208,6 @@ function DesktopApp(): React.JSX.Element {
             </div>
           )}
         </div>
-        {/* Va AL FINAL de <main>: Chromium resuelve las zonas `drag`/`no-drag` por orden en el documento y, en Windows, una cabecera
-            `drag` posterior le gana a un botón `no-drag` anterior (el botón dejaba de recibir clics). */}
-        {collapsed && (
-          <div className={`absolute top-2 z-10 animate-fade-in ${isMacPlatform() ? 'left-20' : 'left-2'}`}>
-            <IconButton label={t('app.sidebar.show', { hint: hintSuffix(sidebarHint) })} onClick={toggleSidebar}>
-              <PanelLeftOpen size={16} />
-            </IconButton>
-          </div>
-        )}
       </main>
     </div>
   )

@@ -23,6 +23,7 @@ import { t as tr } from '@shared/i18n'
 import type { TasksTaskActivity, TasksTaskMeta, ScheduledRoutine } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { dateLocale, useT } from '../../../lib/i18n'
+import { useSidebarTree } from '../../../components/SidebarTree'
 import { useSessions } from '../../../stores/sessions'
 import { untilText } from '../../routines/impl/schedule'
 import { cw, onTasks } from './bridge'
@@ -305,12 +306,16 @@ export function SectionRow({
   hint?: string
   onClick: () => void
 }): React.JSX.Element {
+  const tree = useSidebarTree()
   return (
     <button
       type="button"
       title={hint}
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
+      role={tree ? 'treeitem' : undefined}
+      aria-level={tree ? 1 : undefined}
+      aria-current={tree && active ? 'page' : undefined}
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm desk:h-8 desk:min-h-0 desk:rounded-ctl desk:py-0 desk:text-sm${tree ? ' desk:gap-2.5 desk:px-2.5' : ' desk:gap-2 desk:px-2'} ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
@@ -342,17 +347,23 @@ function Section<T>({
   render: (t: T) => React.JSX.Element
 }): React.JSX.Element | null {
   const t = useT()
+  const tree = useSidebarTree()
   const [expanded, setExpanded] = useState(false)
   const { shown, hidden } = takeVisible(items, limit, expanded)
   if (items.length === 0) return null
   return (
-    <section aria-label={label} className="mb-1">
-      <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+    <section aria-label={label} role={tree ? 'group' : undefined} className="mb-1">
+      <div
+        aria-hidden={tree ? true : undefined}
+        className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
+      >
         {label}
       </div>
-      <ul className="space-y-0.5">
+      <ul role={tree ? 'none' : undefined} className="space-y-0.5">
         {shown.map((t) => (
-          <li key={keyOf(t)}>{render(t)}</li>
+          <li key={keyOf(t)} role={tree ? 'none' : undefined}>
+            {render(t)}
+          </li>
         ))}
       </ul>
       {(hidden > 0 || (expanded && items.length > limit)) && (

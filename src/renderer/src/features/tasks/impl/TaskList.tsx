@@ -26,6 +26,7 @@ import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
 import { m as mob } from '../../../app/mobile/m'
 import { MAIN_SOURCE, sessionsKey, useSessions } from '../../../stores/sessions'
 import { SidebarEmpty } from '../../../components/SidebarEmpty'
+import { StateDot, useSidebarTree, type SessionState } from '../../../components/SidebarTree'
 import { isRemoteSurface } from '../../../lib/platform'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
@@ -246,6 +247,7 @@ export function TaskRow({
   knownGroups: string[]
 }): React.JSX.Element {
   const t = useT()
+  const tree = useSidebarTree()
   const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
   const pinned = isPinned(task.id)
   // Escritorio: la fila es de una sola línea; el estado se lee a la derecha (no en una segunda línea).
@@ -260,19 +262,26 @@ export function TaskRow({
   // Celular (rediseño PWA T3): filas de 44 px y el estado como chip («Aprobar» / «Trabajando»); el escritorio no cambia.
   const remote = isRemoteSurface()
   const chipRemote = remote && (waitsUser || working)
-  const iconDesk = iconRight ? ' desk:order-1 desk:group-hover:hidden' : ' desk:hidden'
+  // 2c (árbol): esperando / trabajando / terminada se dicen con el punto de estado de 7 px; el resto conserva su icono.
+  const state: SessionState | null = waitsUser ? 'waiting' : working ? 'working' : status === 'done' ? 'done' : null
+  const iconDesk = iconRight && !(tree && state === 'done') ? ' desk:order-1 desk:group-hover:hidden' : ' desk:hidden'
+  const metaHide = tree ? ' desk:group-focus-within:hidden' : ''
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:h-8 desk:min-h-0 desk:gap-2 desk:rounded-ctl desk:px-2 desk:pl-[30px] desk:py-0 desk:text-sm ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:h-8 desk:min-h-0 desk:rounded-ctl desk:py-0 desk:text-sm${tree ? " desk:ml-[22px] desk:gap-2.5 desk:px-2.5 desk:before:absolute desk:before:inset-y-0 desk:before:-left-[9px] desk:before:w-px desk:before:bg-border desk:before:content-['']" : ' desk:gap-2 desk:px-2 desk:pl-[30px]'} ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
       {...mob('task-row')}
     >
+      {tree && state && <StateDot state={state} />}
       <span className={`shrink-0${iconDesk}`}>
         <StatusIcon status={status} size={13} />
       </span>
       <button
         type="button"
         className="min-w-0 flex-1 text-left"
-        aria-current={active ? 'true' : undefined}
+        role={tree ? 'treeitem' : undefined}
+        aria-level={tree ? 2 : undefined}
+        aria-label={tree?.stateAria(task.title || t('tasks.list.untitled'), state)}
+        aria-current={active ? (tree ? 'page' : 'true') : undefined}
         onClick={() => void openTask(task.id)}
       >
         <div className={`truncate ${unseen ? 'font-semibold' : ''}`}>
@@ -298,19 +307,23 @@ export function TaskRow({
       </button>
       {showTime && (
         <span
-          className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline desk:order-2 desk:text-meta ${busy ? '' : ' desk:group-hover:hidden'}`}
+          className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline desk:order-2 desk:text-meta ${busy ? '' : ' desk:group-hover:hidden'}${metaHide}`}
         >
           {relTime(task.time.updated)}
         </span>
       )}
-      {waitsUser && (
+      {waitsUser && tree && (
+        <span className="hidden shrink-0 text-meta font-medium text-warning desk:inline">{t('tasks.list.metaApprove')}</span>
+      )}
+      {waitsUser && !tree && (
         <span
           className={`${remote ? 'inline-flex h-6 items-center rounded-full border border-warning/45 bg-warning/10 px-2.5 text-[12px] font-medium text-warning' : 'hidden'} shrink-0 desk:inline-flex desk:h-5 desk:items-center desk:rounded-full desk:border desk:border-warning/45 desk:bg-warning/10 desk:px-2 desk:text-meta desk:font-medium desk:text-warning desk:group-hover:hidden`}
         >
           {t('tasks.list.metaApprove')}
         </span>
       )}
-      {working && (
+      {working && tree && <span className="hidden shrink-0 text-meta text-subtle desk:inline">{TASK_STATUS_LABEL.running}</span>}
+      {working && !tree && (
         <span
           className={`${remote ? 'inline-flex h-6 items-center gap-1.5 text-[12px] text-accent' : 'hidden'} shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none`}
         >
@@ -388,6 +401,7 @@ function TranscriptResults({
 
 export function TaskList(): React.JSX.Element {
   const tr = useT()
+  const tree = useSidebarTree()
   const folder = useTasks((s) => s.folder)
   const activeId = useTasks((s) => s.activeTaskId)
   const loading = useTasks((s) => s.listLoading)
@@ -571,8 +585,11 @@ export function TaskList(): React.JSX.Element {
           <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}
         {groups.map((g) => (
-          <div key={g.key} className="mb-1">
-            <div className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+          <div key={g.key} className="mb-1" role={tree ? 'group' : undefined} aria-label={tree ? g.label : undefined}>
+            <div
+              aria-hidden={tree ? true : undefined}
+              className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
+            >
               {g.label}
             </div>
             <div className="space-y-0.5">

@@ -6,6 +6,7 @@ import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 import { LoadMoreSessions } from '../../components/LoadMoreSessions'
 import { SidebarEmpty } from '../../components/SidebarEmpty'
+import { StateDot, useSidebarTree } from '../../components/SidebarTree'
 import { PopoverPanel } from '../../components/PopoverPanel'
 import { isRemoteSurface } from '../../lib/platform'
 import { relCompact } from '../../lib/rel-compact'
@@ -57,6 +58,7 @@ function Row({
   onDelete: () => void
 }): React.JSX.Element {
   const t = useT()
+  const tree = useSidebarTree()
   const [menu, setMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -107,18 +109,43 @@ function Row({
   }
 
   return (
-    <div ref={rowRef} className="group relative">
+    <div
+      ref={rowRef}
+      className="group relative"
+      onContextMenu={
+        tree
+          ? (e) => {
+              e.preventDefault()
+              setMenu(true)
+            }
+          : undefined
+      }
+    >
       <button
         type="button"
         onClick={onSelect}
-        aria-current={active ? 'true' : undefined}
-        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-sm ${active ? 'bg-active font-medium text-fg desk:bg-hover' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
+        role={tree ? 'treeitem' : undefined}
+        aria-level={tree ? 1 : undefined}
+        aria-label={tree?.stateAria(session.title || t('chat.list.untitled'), busy ? 'working' : null)}
+        aria-current={active ? (tree ? 'page' : 'true') : undefined}
+        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-sm ${active ? 'bg-active font-medium text-fg desk:bg-hover' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
       >
         {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />}
+        {tree && busy && <StateDot state="working" />}
         <span className="flex-1 truncate group-hover:pr-5">{session.title || t('chat.list.untitled')}</span>
         {busy && !showTime && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
         {showTime &&
-          (busy ? (
+          (tree && busy ? (
+            <span className={`shrink-0 text-meta text-subtle group-focus-within:hidden group-hover:hidden ${active ? 'hidden' : ''}`}>
+              {t('app.sidebar.working')}
+            </span>
+          ) : tree ? (
+            <span
+              className={`shrink-0 text-meta text-subtle tabular-nums group-focus-within:hidden group-hover:hidden ${active ? 'hidden' : ''}`}
+            >
+              {relCompact(session.time.updated)}
+            </span>
+          ) : busy ? (
             <span className="flex shrink-0 items-center gap-1.5 text-meta text-muted group-hover:hidden">
               <span
                 className="size-2.5 animate-spin rounded-full border-2 border-accent border-r-transparent motion-reduce:animate-none"
@@ -134,7 +161,7 @@ function Row({
         type="button"
         onClick={() => setMenu((m) => !m)}
         aria-label={t('chat.list.options')}
-        className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 text-muted transition-opacity hover:bg-active hover:text-fg focus-visible:opacity-100 ${menu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 text-muted transition-opacity hover:bg-active hover:text-fg focus-visible:opacity-100 ${menu || (tree && active) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
         <MoreHorizontal size={15} />
       </button>
@@ -213,6 +240,7 @@ function DesktopSessionList({
   showTime
 }: Props): React.JSX.Element {
   const t = useT()
+  const tree = useSidebarTree()
   const [filter, setFilter] = useState('')
   // Al filtrar, el filtro debe cubrir TODAS las sesiones: se cargan las que faltan (M12).
   const filtering = filter.trim().length > 0
@@ -274,8 +302,11 @@ function DesktopSessionList({
       )}
       {q && groups.length === 0 && <div className="px-2.5 text-xs text-subtle">{t('chat.list.noMatches')}</div>}
       {groups.map((g) => (
-        <div key={g.label}>
-          <div className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:flex desk:h-7 desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+        <div key={g.label} role={tree ? 'group' : undefined} aria-label={tree ? g.label : undefined}>
+          <div
+            aria-hidden={tree ? true : undefined}
+            className="px-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
+          >
             {g.label}
           </div>
           <div className="flex flex-col gap-px desk:gap-0.5">
