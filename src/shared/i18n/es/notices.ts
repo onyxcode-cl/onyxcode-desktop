@@ -35,7 +35,8 @@ export const notices = {
   'notices.updateError.generic': 'No se pudo actualizar.',
   // Funciones solo de macOS: aviso en Ajustes y en rutinas guardadas (Windows)
   'platform.win.unavailable.title': 'Bloqueado por la política del equipo',
-  'platform.win.unavailable.tasks': 'El modo {tasks} (trabajo autónomo en un sandbox) está apagado en este equipo: la política de tu organización no lo permite.',
+  'platform.win.unavailable.tasks':
+    'El modo {tasks} (trabajo autónomo en un sandbox) está apagado en este equipo: la política de tu organización no lo permite.',
   'platform.win.unavailable.computer': '{computer} (usar el ratón, el teclado y las apps por ti) está apagado junto con {tasks}.',
   'platform.win.unavailable.update':
     'La actualización automática no está disponible en Windows: instala la versión nueva descargándola tú.',

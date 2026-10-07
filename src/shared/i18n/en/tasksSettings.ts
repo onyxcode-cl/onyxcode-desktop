@@ -138,5 +138,5 @@ export const tasksSettings = {
   'tasksSettings.storage.restoreBtn': 'Delete restore points',
   'tasksSettings.storage.restoreTitle': 'Delete restore points?',
   'tasksSettings.storage.restoreMessage':
-    'The copies of files saved before each message will be deleted. Current tasks will no longer be able to undo their file changes. This doesn’t affect your folders or task history.',
+    'The copies of files saved before each message will be deleted. Current tasks will no longer be able to undo their file changes. This doesn’t affect your folders or task history.'
 } as const satisfies Messages<typeof es>

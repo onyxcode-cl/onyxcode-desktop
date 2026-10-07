@@ -51,7 +51,7 @@ import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
 import { TerminalPanel } from './panels/TerminalPanel'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
-import { SessionList } from './SessionList'
+import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
 import type { RightPanel } from './types'
@@ -314,7 +314,8 @@ function useBranch(directory: string): BranchInfo | null {
 function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   const t = useT()
   const [open, setOpen] = useState(false)
-  const closeProject = useCode((s) => s.closeProject)
+  const showProjectPicker = useCode((s) => s.showProjectPicker)
+  const openDirectories = useCode((s) => s.openDirectories)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -328,6 +329,8 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   // Mostrar en Finder / abrir en el editor / elegir otra carpeta: diálogos y apps del Mac (no existen en la PWA del celular).
   const native = nativeCode('dialogs')
   const dialogs = platformCaps().nativeDialogs
+  // Desktop: puede haber otros proyectos abiertos a la vez (en segundo plano); el celular reemplaza, como siempre.
+  const others = isRemoteSurface() ? [] : openDirectories.filter((d) => d !== directory)
   return (
     <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0 desk:max-w-[min(22rem,40%)] desk:min-w-[7.5rem] desk:shrink">
       <button
@@ -347,13 +350,37 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
           <div className="truncate px-3 py-1.5 font-mono text-[11px] text-subtle" title={directory}>
             {tildify(directory)}
           </div>
+          {others.length > 0 && (
+            <>
+              <div className="px-3 pt-1 pb-0.5 text-[11px] font-medium text-subtle">{t('code.menu.openProjects')}</div>
+              {others.map((d) => (
+                <button key={d} type="button" className={item} onClick={() => (setOpen(false), void useCode.getState().focusProject(d))}>
+                  <FolderOpen size={14} />
+                  <span className="truncate" title={d}>
+                    {baseName(d)}
+                  </span>
+                </button>
+              ))}
+              <div className="my-1 h-px bg-border" />
+            </>
+          )}
           {dialogs && (
             <button type="button" className={item} onClick={() => (setOpen(false), void pickAndOpenFolder())}>
               <FolderOpen size={14} /> {t('code.menu.openAnother')}
             </button>
           )}
-          <button type="button" className={item} onClick={() => (setOpen(false), closeProject())}>
+          <button type="button" className={item} onClick={() => (setOpen(false), showProjectPicker())}>
             <LayoutGrid size={14} /> {t('code.menu.recentProjects')}
+          </button>
+          <button
+            type="button"
+            className={item}
+            onClick={() => {
+              setOpen(false)
+              void askCloseProject(t, directory)
+            }}
+          >
+            <X size={14} /> {t('code.menu.closeProject')}
           </button>
           {native && (
             <>
@@ -725,28 +752,34 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     return off
   }, [])
 
-  // Al conectar (o reconectar con un cliente nuevo), recarga el proyecto abierto.
+  // Al conectar (o reconectar con un cliente nuevo), recarga el proyecto con foco y, en paralelo, los demás abiertos.
   const loadedFor = useRef<unknown>(null)
   useEffect(() => {
     if (!client) return
     const dir = useCode.getState().directory
     if (!dir || loadedFor.current === client) return
     loadedFor.current = client
+    void useCode.getState().restoreOpenProjects()
     void openProjectTrusted(dir)
   }, [client])
 
-  // Título del documento: prefijo "(n)" con sesiones no leídas + marca como leída la activa al recuperar el foco.
-  // Nota: esto es lo más parecido a un badge que se puede hacer sin tocar el proceso principal (Electron
-  // `Notification`/`app.dock.setBadge` requieren un canal IPC nuevo — ver informe final del agente).
+  const projectPickerOpen = useCode((s) => s.projectPickerOpen)
+  const hideProjectPicker = useCode((s) => s.hideProjectPicker)
+
+  // Título del documento: prefijo "(n)" con sesiones no leídas de TODOS los proyectos abiertos (no solo el que tiene
+  // el foco) + marca como leída la activa al recuperar el foco. Nota: esto es lo más parecido a un badge que se puede
+  // hacer sin tocar el proceso principal (Electron `Notification`/`app.dock.setBadge` requieren un canal IPC nuevo).
   const unread = useCode((s) => s.unread)
   const sessionProject = useCode((s) => s.sessionProject)
+  const openDirectories = useCode((s) => s.openDirectories)
   const markRead = useCode((s) => s.markRead)
   useEffect(() => {
     if (!directory) return
-    const count = Object.entries(unread).filter(([sid, v]) => v && sessionProject[sid] === directory).length
+    const open = new Set(openDirectories.length ? openDirectories : [directory])
+    const count = Object.entries(unread).filter(([sid, v]) => v && open.has(sessionProject[sid])).length
     const base = document.title.replace(/^\(\d+\)\s*/, '')
     document.title = count > 0 ? `(${count}) ${base}` : base
-  }, [unread, sessionProject, directory])
+  }, [unread, sessionProject, directory, openDirectories])
   useEffect(() => {
     const onFocus = (): void => {
       const st = useCode.getState()
@@ -760,7 +793,9 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     }
   }, [markRead])
 
-  if (!directory) return <ProjectPicker />
+  // Sin proyectos, o pidiendo agregar uno más (la barra lateral global sigue mostrando los ya abiertos: es un
+  // componente aparte, `CodeSidebar`, que no depende de esto).
+  if (!directory || projectPickerOpen) return <ProjectPicker onCancel={directory ? hideProjectPicker : undefined} />
 
   // Celular: solo la conversación (la lista de sesiones, la barra y las pantallas de Cambios/Archivos son del armazón).
   if (isRemoteSurface())

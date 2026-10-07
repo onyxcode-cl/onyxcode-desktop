@@ -42,6 +42,7 @@ import { phoneSafeAttachments } from './mobile-logic'
 import { mentionMime } from './mention-mime'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import { ELEMENT_METADATA, elementPartsOf, elementTextsOf, isElementAttachment } from '../../browser/element-context'
+import { MAX_OPEN_PROJECTS, nextFocusAfterClose, parseOpenProjects, planOpen, sameDir } from './open-projects'
 import type {
   Attachment,
   FileAttachment,
@@ -57,6 +58,9 @@ import type {
 } from './types'
 
 const LS_PROJECT = 'code.project'
+/** Proyectos abiertos a la vez (plural) + cuál tiene el foco: `{v:1, open:string[], focus:string|null}`. `LS_PROJECT` se sigue
+ *  escribiendo como espejo del foco (solo lectura para una versión anterior de la app: migración sin pérdida). */
+const LS_PROJECTS = 'code.projects'
 const LS_AGENT = 'code.agent'
 const LS_PANEL = 'code.panel'
 const LS_SESSION = 'code.session.'
@@ -101,8 +105,13 @@ function toRunState(s: SessionStatus): RunState {
 }
 
 export interface CodeState {
-  /** Carpeta del proyecto abierto. */
+  /** Carpeta del proyecto CON FOCO (chat, barra superior, paneles, compositor). `null` solo si no hay ninguno abierto. */
   directory: string | null
+  /** Proyectos abiertos a la vez en la barra lateral, en orden de apertura. En escritorio `directory`, si no es `null`,
+   *  siempre está incluido aquí; en el celular como mucho hay uno (abrir otro reemplaza, como antes). */
+  openDirectories: string[]
+  /** Se muestra la pantalla de "Proyectos recientes" ENCIMA del proyecto con foco, para agregar uno más (no reemplaza). */
+  projectPickerOpen: boolean
   sessions: Record<string, Session>
   /** Proyecto al que pertenece cada sesión conocida. */
   sessionProject: Record<string, string>
@@ -119,7 +128,8 @@ export interface CodeState {
   panel: RightPanel | null
   /** Se incrementa cuando cambian archivos (para refrescar Cambios/Archivos). */
   fsVersion: number
-  loadingSessions: boolean
+  /** Antes era un solo booleano (un proyecto a la vez); ahora por carpeta. */
+  loadingSessionsByDir: Record<string, boolean>
   loadingMessages: Record<string, boolean>
   globalError: string | null
 
@@ -134,13 +144,26 @@ export interface CodeState {
   /** Carpetas en las que el usuario ya confirmó "confiar" (workspace trust). */
   trustedFolders: string[]
 
+  /** Agrega `directory` a los proyectos abiertos (si no lo estaba ya) y le da el foco. En el celular reemplaza, como antes. */
   openProject: (directory: string) => Promise<void>
+  /** Solo para el celular (un proyecto a la vez): vuelve a la pantalla de elegir proyecto. En escritorio no la usa nadie. */
   closeProject: () => void
-  loadSessions: () => Promise<void>
-  /** «Cargar más» (o todas con `all`) en la lista de sesiones del proyecto. */
-  loadMoreSessions: (all?: boolean) => Promise<void>
-  /** Puede haber más sesiones en el servidor que las cargadas. */
-  moreSessions: boolean
+  /** Cierra UN proyecto de los abiertos (escritorio). Si tenía el foco, lo pasa a otro abierto o, si no queda ninguno,
+   *  a `null` (pantalla de recientes a pantalla completa). Libera de memoria sus sesiones, mensajes, cola, etc. */
+  closeOneProject: (directory: string) => void
+  /** Pasa el foco a un proyecto YA abierto, sin recargar sus sesiones desde el servidor. No hace nada si no está abierto. */
+  focusProject: (directory: string) => Promise<void>
+  /** Al arrancar (o reconectar con un cliente nuevo): carga en paralelo las sesiones de los proyectos abiertos que NO
+   *  tienen el foco (el que tiene foco lo maneja `openProjectTrusted` como siempre). Descarta los que no son de confianza. */
+  restoreOpenProjects: () => Promise<void>
+  /** Muestra la pantalla de recientes ENCIMA del proyecto con foco, para agregar uno más. */
+  showProjectPicker: () => void
+  hideProjectPicker: () => void
+  loadSessions: (dir?: string) => Promise<void>
+  /** «Cargar más» (o todas con `all`) en la lista de sesiones de `dir` (por defecto, el proyecto con foco). */
+  loadMoreSessions: (all?: boolean, dir?: string) => Promise<void>
+  /** Puede haber más sesiones en el servidor que las cargadas, por carpeta (antes era un solo booleano). */
+  moreSessionsByDir: Record<string, boolean>
   newSession: () => Promise<string | null>
   /** Crea la sesión en `dir` en vez de `directory` (usado para worktrees nuevos). */
   newSessionAt: (dir: string, title?: string) => Promise<string | null>
@@ -270,7 +293,31 @@ const bumpFsDebounced = debounce(() => useCode.setState((s) => ({ fsVersion: s.f
 
 const trimSlash = (p: string): string => (p.length > 1 ? p.replace(/[\\/]+$/, '') : p)
 
+/** Último foco por carpeta (contador monótono; sin registro = nunca tuvo el foco). Estado de módulo, sin `set`. */
+const focusAt = new Map<string, number>()
+let focusTick = 0
+const focusRank = (dir: string): number => focusAt.get(dir) ?? -Infinity
+const touchFocus = (dir: string): void => {
+  focusAt.set(dir, ++focusTick)
+}
+
+/** Escribe `code.projects` (clave nueva) y, como espejo, `code.project` (clave vieja: solo el foco, para una versión anterior). */
+function writeOpenProjects(open: string[], focus: string | null): void {
+  lsSetJSON(LS_PROJECTS, { v: 1, open, focus })
+  lsSet(LS_PROJECT, focus)
+}
+
 export const useCode = create<CodeState>((set, get) => {
+  /** `directory` cuenta como abierto aunque `openDirectories` no lo tenga (pruebas que hacen `setState({directory: D})`
+   *  directo, o estado a medio migrar). En escritorio, tras pasar por `openProject`, ya está incluido de por sí. */
+  const openDirs = (s: Pick<CodeState, 'directory' | 'openDirectories'>): string[] =>
+    s.directory && !s.openDirectories.some((d) => sameDir(d, s.directory!)) ? [...s.openDirectories, s.directory] : s.openDirectories
+  const isOpenDir = (s: Pick<CodeState, 'directory' | 'openDirectories'>, d: string): boolean => openDirs(s).some((x) => sameDir(x, d))
+
+  /** ¿`dir` tiene alguna sesión trabajando, con cola pendiente o con un permiso/pregunta sin responder? Para no
+   *  desalojarlo al llegar al tope de proyectos abiertos (`selectProjectIsLive` es la misma lógica, exportada para la UI). */
+  const projectIsLive = (dir: string): boolean => selectProjectIsLive(get(), dir)
+
   /** Desalojo agrupado: varios eventos en el mismo tick producen un único `evictIdle`. */
   const scheduleEvict = (): void => {
     if (evictScheduled) return
@@ -281,7 +328,8 @@ export const useCode = create<CodeState>((set, get) => {
     })
   }
 
-  /** ¿El directorio del evento es el del proyecto o el de una sesión del proyecto (worktrees)? */
+  /** ¿El directorio del evento es el del proyecto CON FOCO o el de una de sus sesiones (worktrees)? Pf1 solo refresca
+   *  Cambios/Archivos del proyecto con foco (el único con paneles visibles): no hace falta mirar los demás abiertos. */
   const isProjectDir = (eventDir: string): boolean => {
     const s = get()
     if (!s.directory || !eventDir) return false
@@ -295,7 +343,8 @@ export const useCode = create<CodeState>((set, get) => {
     return false
   }
 
-  /** Proyecto al que pertenece una sesión reportada por el servidor (o null). */
+  /** Proyecto al que pertenece una sesión reportada por el servidor (o null). Mira CUALQUIER proyecto abierto, no
+   *  solo el que tiene el foco: una sesión creada por la CLI en un proyecto abierto en segundo plano debe aparecer ahí. */
   const projectFor = (info: Session): string | null => {
     const s = get()
     const known = s.sessionProject[info.id]
@@ -304,8 +353,8 @@ export const useCode = create<CodeState>((set, get) => {
     for (const [sid, proj] of Object.entries(s.sessionProject)) {
       if (proj === info.directory || s.sessions[sid]?.directory === info.directory) return proj
     }
-    if (s.directory && info.directory === s.directory) return s.directory
-    return null
+    const open = openDirs(s).find((d) => sameDir(d, info.directory))
+    return open ?? null
   }
 
   const known = (sessionID: string): boolean => sessionID in get().sessionProject
@@ -334,13 +383,14 @@ export const useCode = create<CodeState>((set, get) => {
 
   /**
    * Para permisos/preguntas: acepta sesiones desconocidas (p. ej. subagentes creados antes de
-   * cargar la lista) si el evento viene del directorio del proyecto abierto.
+   * cargar la lista) si el evento viene del directorio de CUALQUIER proyecto abierto (con foco o no).
    */
   const adopt = (sessionID: string, eventDir: string): boolean => {
     if (known(sessionID)) return true
-    const dir = get().directory
-    if (!dir || eventDir !== dir) return false
-    set((s) => ({ sessionProject: { ...s.sessionProject, [sessionID]: dir } }))
+    const s = get()
+    const dir = openDirs(s).find((d) => sameDir(d, eventDir))
+    if (!dir) return false
+    set((st) => ({ sessionProject: { ...st.sessionProject, [sessionID]: dir } }))
     return true
   }
 
@@ -408,16 +458,17 @@ export const useCode = create<CodeState>((set, get) => {
     return !!e && e.kind !== kind && Date.now() - e.at < IDLE_DUP_WINDOW_MS
   }
 
-  /** Parche que borra TODO el estado de `id` (F7-B17): antes solo se quitaban `sessions` y `sessionProject`. */
-  const purgePatch = (s: CodeState, id: string): Partial<CodeState> => {
+  /** Parche que borra TODO el estado de varios ids a la vez (F7-B17 generalizado a varios: antes solo se quitaban
+   *  `sessions` y `sessionProject`; cerrar un proyecto entero purga todas sus sesiones en un solo `set`). */
+  const purgeManyPatch = (s: CodeState, ids: ReadonlySet<string>): Partial<CodeState> => {
     const without = <V>(rec: Record<string, V>): Record<string, V> => {
-      if (!(id in rec)) return rec
+      if (![...ids].some((id) => id in rec)) return rec
       const next = { ...rec }
-      delete next[id]
+      for (const id of ids) delete next[id]
       return next
     }
     const bySession = <V extends { sessionID: string }>(rec: Record<string, V>): Record<string, V> =>
-      Object.fromEntries(Object.entries(rec).filter(([, v]) => v.sessionID !== id))
+      Object.fromEntries(Object.entries(rec).filter(([, v]) => !ids.has(v.sessionID)))
     return {
       sessions: without(s.sessions),
       sessionProject: without(s.sessionProject),
@@ -430,22 +481,26 @@ export const useCode = create<CodeState>((set, get) => {
       loadingMessages: without(s.loadingMessages),
       permissions: bySession(s.permissions),
       questions: bySession(s.questions),
-      activeSessionID: s.activeSessionID === id ? null : s.activeSessionID
+      activeSessionID: s.activeSessionID && ids.has(s.activeSessionID) ? null : s.activeSessionID
     }
   }
+  const purgePatch = (s: CodeState, id: string): Partial<CodeState> => purgeManyPatch(s, new Set([id]))
   /** Lo que no vive en el estado de Zustand: acceso LRU, cargas en vuelo, partes huérfanas, marcas de idle. */
-  const purgeSessionSideState = (id: string): void => {
-    lastAccess.delete(id)
-    buffers.loading.delete(id)
-    inflightLoads.delete(id)
-    idleSeen.delete(id)
-    forgetOrphansOf(buffers, new Set([id]))
+  const purgeManySideState = (ids: ReadonlySet<string>): void => {
+    for (const id of ids) {
+      lastAccess.delete(id)
+      buffers.loading.delete(id)
+      inflightLoads.delete(id)
+      idleSeen.delete(id)
+    }
+    forgetOrphansOf(buffers, ids)
   }
+  const purgeSessionSideState = (id: string): void => purgeManySideState(new Set([id]))
 
-  /** Permisos y preguntas pendientes + estado de ejecución del proyecto actual. */
-  const loadPending = async (): Promise<void> => {
+  /** Permisos y preguntas pendientes + estado de ejecución de `dir` (por defecto, el proyecto con foco). */
+  const loadPending = async (dir?: string): Promise<void> => {
     const client = getClient()
-    const dir = get().directory
+    dir = dir ?? get().directory ?? undefined
     if (!client || !dir) return
     const beforePerms = get().permissions
     const beforeQs = get().questions
@@ -640,8 +695,13 @@ export const useCode = create<CodeState>((set, get) => {
     })
   }
 
+  const initialProjects = parseOpenProjects(lsGet(LS_PROJECTS), lsGet(LS_PROJECT), MAX_OPEN_PROJECTS)
+  if (initialProjects.focus) touchFocus(initialProjects.focus)
+
   return {
-    directory: lsGet(LS_PROJECT),
+    directory: initialProjects.focus,
+    openDirectories: initialProjects.open,
+    projectPickerOpen: false,
     sessions: {},
     sessionProject: {},
     activeSessionID: null,
@@ -656,21 +716,36 @@ export const useCode = create<CodeState>((set, get) => {
     variant: null,
     panel: initialPanel(),
     fsVersion: 0,
-    loadingSessions: false,
+    loadingSessionsByDir: {},
     loadingMessages: {},
     globalError: null,
     permissionMode: initialPermissionMode(),
     queue: {},
     unread: {},
-    moreSessions: false,
+    moreSessionsByDir: {},
     pinned: lsGetJSON<Record<string, string[]>>(LS_PINNED, {}),
     trustedFolders: lsGetJSON<string[]>(LS_TRUSTED, []),
 
     openProject: async (directory) => {
-      lsSet(LS_PROJECT, directory)
-      set({ directory, activeSessionID: null, globalError: null })
+      // Celular: un solo proyecto a la vez, reemplaza (como siempre). Escritorio: agrega y da el foco.
+      if (isRemoteSurface()) {
+        touchFocus(directory)
+        writeOpenProjects([directory], directory)
+        set({ directory, openDirectories: [directory], activeSessionID: null, globalError: null, projectPickerOpen: false })
+      } else {
+        const s = get()
+        const plan = planOpen(openDirs(s), directory, MAX_OPEN_PROJECTS, projectIsLive, focusRank)
+        if (plan.refused) {
+          set({ globalError: t('code.store.tooManyProjects', { max: MAX_OPEN_PROJECTS }) })
+          return
+        }
+        if (plan.evict) get().closeOneProject(plan.evict)
+        touchFocus(directory)
+        writeOpenProjects(plan.open, directory)
+        set({ directory, openDirectories: plan.open, activeSessionID: null, globalError: null, projectPickerOpen: false })
+      }
       void window.api.invoke('settings:addRecentFolder', { path: directory }).catch(() => undefined)
-      await get().loadSessions()
+      await get().loadSessions(directory)
       const last = lsGet(LS_SESSION + directory)
       const sessions = selectProjectSessions(get(), directory)
       const pick = sessions.find((x) => x.id === last) ?? sessions[0]
@@ -678,19 +753,70 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     closeProject: () => {
-      lsSet(LS_PROJECT, null)
-      set({ directory: null, activeSessionID: null })
+      // Solo lo usa el celular. En escritorio nadie la llama: ver `closeOneProject`.
+      writeOpenProjects([], null)
+      set({ directory: null, openDirectories: [], activeSessionID: null })
     },
 
-    loadSessions: async () => {
+    closeOneProject: (directory) => {
+      const s = get()
+      if (!isOpenDir(s, directory)) return
+      deltaQueue.flush()
+      const ids = new Set(
+        Object.entries(s.sessionProject)
+          .filter(([, p]) => sameDir(p, directory))
+          .map(([id]) => id)
+      )
+      const openDirectories = openDirs(s).filter((d) => !sameDir(d, directory))
+      focusAt.delete(directory)
+      codeSessionLimits.delete(directory)
+      const wasFocused = sameDir(s.directory ?? '', directory)
+      const next = wasFocused ? nextFocusAfterClose(openDirs(s), directory, focusRank) : (s.directory ?? null)
+      set((st) => ({ ...purgeManyPatch(st, ids), openDirectories }))
+      purgeManySideState(ids)
+      writeOpenProjects(openDirectories, next)
+      if (wasFocused) {
+        if (next) void get().focusProject(next)
+        else set({ directory: null, activeSessionID: null })
+      }
+    },
+
+    focusProject: async (directory) => {
+      const s = get()
+      if (!isOpenDir(s, directory) || sameDir(s.directory ?? '', directory)) return
+      touchFocus(directory)
+      writeOpenProjects(openDirs(s), directory)
+      set({ directory, activeSessionID: null, projectPickerOpen: false })
+      const last = lsGet(LS_SESSION + directory)
+      const sessions = selectProjectSessions(get(), directory)
+      const pick = sessions.find((x) => x.id === last) ?? sessions[0]
+      if (pick) await get().selectSession(pick.id)
+    },
+
+    restoreOpenProjects: async () => {
+      const s = get()
+      const all = openDirs(s)
+      const trustedOpen = all.filter((d) => sameDir(d, s.directory ?? '') || s.isTrusted(d))
+      if (trustedOpen.length !== all.length) {
+        set({ openDirectories: trustedOpen })
+        writeOpenProjects(trustedOpen, s.directory)
+      }
+      const others = trustedOpen.filter((d) => !sameDir(d, s.directory ?? ''))
+      await Promise.all(others.map((d) => get().loadSessions(d)))
+    },
+
+    showProjectPicker: () => set({ projectPickerOpen: true }),
+    hideProjectPicker: () => set({ projectPickerOpen: false }),
+
+    loadSessions: async (dirArg) => {
       const client = getClient()
-      const dir = get().directory
+      const dir = dirArg ?? get().directory
       if (!client || !dir) return
-      set({ loadingSessions: true })
+      set((s) => ({ loadingSessionsByDir: { ...s.loadingSessionsByDir, [dir]: true } }))
       try {
         const limit = codeSessionLimits.get(dir) ?? SESSIONS_PAGE
         const list = sdkData(await client.session.list({ directory: dir, roots: true, limit }))
-        set({ moreSessions: sessionsMayHaveMore(list.length, limit) })
+        set((s) => ({ moreSessionsByDir: { ...s.moreSessionsByDir, [dir]: sessionsMayHaveMore(list.length, limit) } }))
         set((s) => {
           const sessions = { ...s.sessions }
           const sessionProject = { ...s.sessionProject }
@@ -708,19 +834,19 @@ export const useCode = create<CodeState>((set, get) => {
           }
           return { sessions, sessionProject }
         })
-        await loadPending()
+        await loadPending(dir)
       } catch (err) {
         set({ globalError: errorMessage(err) })
       } finally {
-        set({ loadingSessions: false })
+        set((s) => ({ loadingSessionsByDir: { ...s.loadingSessionsByDir, [dir]: false } }))
       }
     },
 
-    loadMoreSessions: async (all = false) => {
-      const dir = get().directory
+    loadMoreSessions: async (all = false, dirArg) => {
+      const dir = dirArg ?? get().directory
       if (!dir) return
       codeSessionLimits.set(dir, nextSessionsLimit(codeSessionLimits.get(dir) ?? SESSIONS_PAGE, all))
-      await get().loadSessions()
+      await get().loadSessions(dir)
     },
 
     newSession: async () => {
@@ -1199,8 +1325,9 @@ export const useCode = create<CodeState>((set, get) => {
     touchFs: () => set((s) => ({ fsVersion: s.fsVersion + 1 })),
 
     resync: async () => {
-      if (!get().directory) return
-      await get().loadSessions()
+      const s = get()
+      if (!s.directory) return
+      await Promise.all(openDirs(s).map((d) => get().loadSessions(d)))
       const sid = get().activeSessionID
       if (sid) await loadMessages(sid)
     },
@@ -1403,6 +1530,28 @@ export function selectProjectSessions(s: Pick<CodeState, 'sessions' | 'sessionPr
   return Object.values(s.sessions)
     .filter((x) => s.sessionProject[x.id] === directory && !x.parentID && !x.time.archived)
     .sort((a, b) => b.time.updated - a.time.updated)
+}
+
+/** ¿`directory` tiene alguna sesión trabajando, con cola pendiente o con un permiso/pregunta sin responder? Para avisar
+ *  antes de cerrarlo (`closeOneProject` lo hace de todos modos; esto es solo para la confirmación en la UI). */
+export function selectProjectIsLive(
+  s: Pick<CodeState, 'sessionProject' | 'runState' | 'queue' | 'permissions' | 'questions'>,
+  directory: string
+): boolean {
+  const ids = new Set(
+    Object.entries(s.sessionProject)
+      .filter(([, p]) => sameDir(p, directory))
+      .map(([id]) => id)
+  )
+  if (ids.size === 0) return false
+  for (const id of ids) {
+    const run = s.runState[id]
+    if (run === 'busy' || run === 'retry') return true
+    if ((s.queue[id]?.length ?? 0) > 0) return true
+  }
+  for (const p of Object.values(s.permissions)) if (ids.has(p.sessionID)) return true
+  for (const q of Object.values(s.questions)) if (ids.has(q.sessionID)) return true
+  return false
 }
 
 /**

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Clock, FolderCode, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
+import { ArrowLeft, Clock, FolderCode, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
 import { t } from '@shared/i18n'
 import { Button } from '../../../components/Button'
+import { IconButton } from '../../../components/IconButton'
 import { useT } from '../../../lib/i18n'
 import { baseName, tildify } from '../../../lib/paths'
 import { PageHeader } from '../../../components/PageHeader'
@@ -237,7 +238,18 @@ function useProjectMeta(dir: string): ProjectMeta | null {
   return meta
 }
 
-function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => void; onRemove: () => void }): React.JSX.Element {
+function ProjectCard({
+  dir,
+  open,
+  onOpen,
+  onRemove
+}: {
+  dir: string
+  /** Ya está abierto (está en `openDirectories`): se muestra la chapa "Abierto" en vez de ocultar la tarjeta. */
+  open: boolean
+  onOpen: () => void
+  onRemove: () => void
+}): React.JSX.Element {
   const t = useT()
   const meta = useProjectMeta(dir)
   return (
@@ -254,7 +266,14 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
               .charAt(0) || '·'}
           </span>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">{baseName(dir)}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="truncate text-sm font-semibold">{baseName(dir)}</div>
+              {open && (
+                <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-medium text-accent">
+                  {t('code.picker.openBadge')}
+                </span>
+              )}
+            </div>
             <div className="truncate font-mono text-[11px] text-subtle" title={dir}>
               {tildify(dir)}
             </div>
@@ -298,13 +317,24 @@ function ProjectCard({ dir, onOpen, onRemove }: { dir: string; onOpen: () => voi
   )
 }
 
-export function ProjectPicker(): React.JSX.Element {
+export function ProjectPicker({ onCancel }: { onCancel?: () => void } = {}): React.JSX.Element {
   const t = useT()
   const recent = useSettings((s) => s.settings.recentFolders)
   const update = useSettings((s) => s.update)
   const globalError = useCode((s) => s.globalError)
+  const openDirectories = useCode((s) => s.openDirectories)
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
+
+  // Esc cancela (vuelve al proyecto con foco) cuando se abrió para AGREGAR uno más, no para elegir el primero.
+  useEffect(() => {
+    if (!onCancel) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
 
   // En la PWA del celular no hay diálogo de carpetas del Mac: solo se abren las que ya están en «Recientes».
   const dialogs = platformCaps().nativeDialogs
@@ -321,6 +351,13 @@ export function ProjectPicker(): React.JSX.Element {
       {!isRemoteSurface() && (
         <PageHeader
           title={t('code.picker.title')}
+          leading={
+            onCancel ? (
+              <IconButton label={t('code.picker.back')} onClick={onCancel} className="-ml-1.5">
+                <ArrowLeft size={16} strokeWidth={1.75} />
+              </IconButton>
+            ) : undefined
+          }
           actions={
             dialogs ? (
               <Button variant="primary" disabled={busy} onClick={open}>
@@ -372,6 +409,7 @@ export function ProjectPicker(): React.JSX.Element {
                   <ProjectCard
                     key={dir}
                     dir={dir}
+                    open={openDirectories.includes(dir)}
                     onOpen={() => void openTrusted(dir)}
                     onRemove={() => void update({ recentFolders: recent.filter((d) => d !== dir) })}
                   />

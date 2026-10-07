@@ -21,7 +21,8 @@ import {
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
-import { rootSessionID, selectProjectSessions, useCode } from './store'
+import { sameDir } from './open-projects'
+import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
 import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
@@ -57,6 +58,7 @@ function writeOpen(directory: string | null, open: boolean): void {
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
 function SessionRow({
   session,
+  directory,
   active,
   waiting,
   busy,
@@ -64,6 +66,8 @@ function SessionRow({
   pinned
 }: {
   session: { id: string; title: string; time: { updated: number }; summary?: { additions: number; deletions: number; files: number } }
+  /** Proyecto al que pertenece (del grupo donde se pinta): si no tiene el foco, abrirla primero le da el foco. */
+  directory: string
   active: boolean
   waiting: boolean
   busy: boolean
@@ -183,7 +187,13 @@ function SessionRow({
       ) : (
         <button
           type="button"
-          onClick={() => void selectSession(session.id)}
+          onClick={() => {
+            const store = useCode.getState()
+            // Sesión de un grupo que no tiene el foco: primero le da el foco, luego la abre (si no, quedaría
+            // seleccionada una sesión de otro proyecto mientras el resto de la interfaz sigue mostrando el anterior).
+            if (!sameDir(store.directory ?? '', directory)) void store.focusProject(directory).then(() => selectSession(session.id))
+            else void selectSession(session.id)
+          }}
           onDoubleClick={() => setEditing(true)}
           role={tree ? 'treeitem' : undefined}
           aria-level={tree ? 2 : undefined}
@@ -350,13 +360,13 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
   const directory = useCode((s) => s.directory)
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const selectSession = useCode((s) => s.selectSession)
-  const moreSessions = useCode((s) => s.moreSessions)
+  const moreSessions = useCode((s) => (directory ? (s.moreSessionsByDir[directory] ?? false) : false))
   const [query, setQuery] = useState('')
-  // La búsqueda cubre todas las sesiones del proyecto: al buscar se cargan las que faltan (M12).
+  // La búsqueda cubre todas las sesiones del proyecto con foco: al buscar se cargan las que faltan (M12).
   const wantAll = open && moreSessions && query.trim().length > 0
   useEffect(() => {
-    if (wantAll) void useCode.getState().loadMoreSessions(true)
-  }, [wantAll])
+    if (wantAll && directory) void useCode.getState().loadMoreSessions(true, directory)
+  }, [wantAll, directory])
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -431,25 +441,49 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
   )
 }
 
-/**
- * Lista de sesiones del proyecto actual. Pensada tanto para la columna interna de
- * `CodeWorkspace` como para `SidebarContent` del modo en la barra lateral global.
- */
-export function SessionList({ compact = false }: { compact?: boolean }): React.JSX.Element | null {
+/** Cierra `directory`: si tiene algo trabajando, confirma antes (el trabajo sigue en segundo plano, pero se pierden avisos y cola). */
+export async function askCloseProject(t: ReturnType<typeof useT>, directory: string): Promise<void> {
+  const live = selectProjectIsLive(useCode.getState(), directory)
+  if (live) {
+    const ok = await confirmDialog({
+      title: t('code.sessions.closeProjectBusyTitle', { name: baseName(directory) }),
+      message: t('code.sessions.closeProjectBusyMessage'),
+      confirmLabel: t('code.sessions.closeProjectConfirm'),
+      danger: true
+    })
+    if (!ok) return
+  }
+  useCode.getState().closeOneProject(directory)
+}
+
+/** Un proyecto abierto: fila plegable + sus sesiones debajo. Varias instancias conviven en `SessionList` (una por proyecto abierto). */
+function ProjectGroup({
+  directory,
+  focused,
+  waiting,
+  tree,
+  desktop,
+  compact,
+  onSearch
+}: {
+  directory: string
+  focused: boolean
+  waiting: Set<string>
+  tree: ReturnType<typeof useSidebarTree>
+  desktop: boolean
+  compact: boolean
+  onSearch: () => void
+}): React.JSX.Element {
   const t = useT()
-  const directory = useCode((s) => s.directory)
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const activeSessionID = useCode((s) => s.activeSessionID)
   const runState = useCode((s) => s.runState)
-  const permissions = useCode((s) => s.permissions)
   const unread = useCode((s) => s.unread)
   const pinnedMap = useCode((s) => s.pinned)
-  const loading = useCode((s) => s.loadingSessions)
-  const moreSessions = useCode((s) => s.moreSessions)
+  const loading = useCode((s) => s.loadingSessionsByDir[directory] ?? false)
+  const moreSessions = useCode((s) => s.moreSessionsByDir[directory] ?? false)
   const [showArchived, setShowArchived] = useState(false)
-  const [switcherOpen, setSwitcherOpen] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
-  const tree = useSidebarTree()
   // El plegado se recuerda por proyecto (un proyecto plegado sigue plegado al volver).
   const [projectOpen, setProjectOpenState] = useState(() => readOpen(directory))
   useEffect(() => setProjectOpenState(readOpen(directory)), [directory])
@@ -458,45 +492,27 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
     setProjectOpenState(next)
     writeOpen(directory, next)
   }
-  const desktop = !isRemoteSurface()
 
-  // ⌘K (configurable en Ajustes › Atajos): buscador de sesiones, mientras la lista esté montada y la paleta cerrada.
-  useEffect(
-    () =>
-      registerAction('code.sessionSwitcher', {
-        enabled: () => !useUi.getState().paletteOpen,
-        run: () => setSwitcherOpen((o) => !o)
-      }),
-    []
-  )
-
-  const pinnedIds = useMemo(() => new Set(directory ? (pinnedMap[directory] ?? []) : []), [pinnedMap, directory])
-
-  const list = useMemo(
-    () => (directory ? selectProjectSessions({ sessions, sessionProject }, directory) : []),
-    [sessions, sessionProject, directory]
-  )
+  const pinnedIds = useMemo(() => new Set(pinnedMap[directory] ?? []), [pinnedMap, directory])
+  const list = useMemo(() => selectProjectSessions({ sessions, sessionProject }, directory), [sessions, sessionProject, directory])
   const sortedList = useMemo(
     () => [...list].sort((a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)) || b.time.updated - a.time.updated),
     [list, pinnedIds]
   )
   const archivedList = useMemo(
-    () => (directory ? Object.values(sessions).filter((x) => sessionProject[x.id] === directory && !x.parentID && x.time.archived) : []),
+    () => Object.values(sessions).filter((x) => sessionProject[x.id] === directory && !x.parentID && x.time.archived),
     [sessions, sessionProject, directory]
   )
-  const waiting = useMemo(
-    () => new Set(Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID))),
-    [permissions, sessions]
-  )
 
-  if (!directory) {
-    // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
-    return desktop ? <SidebarEmpty text={t('app.sidebar.noProjects')} hint /> : null
+  // En un grupo sin foco, buscar o crear aquí le da el foco primero (si no, la interfaz mostraría un proyecto
+  // mientras la sesión activa pertenece a otro).
+  const focusThen = (fn: () => void): void => {
+    if (focused) fn()
+    else void useCode.getState().focusProject(directory).then(fn)
   }
 
   return (
-    <div className="flex min-h-0 flex-col">
-      <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+    <div className="flex min-h-0 shrink-0 flex-col">
       {worktreeOpen && <NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />}
       {desktop && (
         <div className="group/proj relative flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover">
@@ -512,7 +528,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             }
             title={directory}
             onClick={() => setProjectOpen((o) => !o)}
-            className="no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-ctl px-2.5 text-left text-sm font-medium text-fg"
+            className={`no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-ctl px-2.5 text-left text-sm font-medium ${focused ? 'text-fg' : 'text-muted'}`}
           >
             <ChevronDown
               size={14}
@@ -526,6 +542,15 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           <span className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
             <button
               type="button"
+              title={t('code.sessions.closeProject', { name: baseName(directory) })}
+              aria-label={t('code.sessions.closeProject', { name: baseName(directory) })}
+              onClick={() => void askCloseProject(t, directory)}
+              className="no-drag hidden size-6 items-center justify-center rounded-ctl-sm text-muted group-focus-within/proj:flex group-hover/proj:flex hover:bg-active hover:text-fg"
+            >
+              <X size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
               title={t('code.sessions.newWorktree')}
               onClick={() => setWorktreeOpen(true)}
               className="no-drag hidden size-6 items-center justify-center rounded-ctl-sm text-muted group-focus-within/proj:flex group-hover/proj:flex hover:bg-active hover:text-fg"
@@ -535,7 +560,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             <button
               type="button"
               title={t('code.sessions.searchTitle')}
-              onClick={() => setSwitcherOpen(true)}
+              onClick={() => focusThen(onSearch)}
               className="no-drag hidden size-6 items-center justify-center rounded-ctl-sm text-muted group-focus-within/proj:flex group-hover/proj:flex hover:bg-active hover:text-fg"
             >
               <Search size={14} strokeWidth={1.75} />
@@ -545,7 +570,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
               type="button"
               title={t('code.sessions.newHere')}
               aria-label={t('code.sessions.newHere')}
-              onClick={() => void useCode.getState().newSession()}
+              onClick={() => focusThen(() => void useCode.getState().newSessionAt(directory))}
               className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
             >
               <Plus size={14} strokeWidth={1.75} />
@@ -578,7 +603,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
         <button
           type="button"
           title={t('code.sessions.searchTitle')}
-          onClick={() => setSwitcherOpen(true)}
+          onClick={onSearch}
           className={`no-drag flex shrink-0 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-fg ${isRemoteSurface() ? 'h-11 w-11' : 'h-7 w-7'} desk:opacity-0 desk:group-focus-within/sec:opacity-100 desk:group-hover/sec:opacity-100`}
         >
           <Search size={13} />
@@ -586,7 +611,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
       </div>
       <div
         role={tree ? 'group' : undefined}
-        className={`min-h-0 flex-1 overflow-y-auto px-2 desk:flex desk:flex-col desk:gap-0.5 desk:px-0 ${desktop && !projectOpen ? 'hidden' : ''}`}
+        className={`min-h-0 overflow-y-auto px-2 desk:flex desk:flex-col desk:gap-0.5 desk:px-0 ${desktop && !projectOpen ? 'hidden' : ''}`}
       >
         {loading && list.length === 0 && (
           <div className="flex items-center gap-2 px-2 py-1 text-xs text-subtle desk:px-2.5">
@@ -605,6 +630,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             <SessionRow
               key={s.id}
               session={s}
+              directory={directory}
               active={s.id === activeSessionID}
               waiting={waiting.has(s.id)}
               busy={st === 'busy' || st === 'retry'}
@@ -613,7 +639,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
             />
           )
         })}
-        <LoadMoreSessions visible={moreSessions} onClick={() => void useCode.getState().loadMoreSessions()} />
+        <LoadMoreSessions visible={moreSessions} onClick={() => void useCode.getState().loadMoreSessions(false, directory)} />
         {archivedList.length > 0 && (
           <div className="mt-2 border-t border-border pt-2 desk:border-t-0 desk:pt-0">
             <button
@@ -631,6 +657,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
                   <SessionRow
                     key={s.id}
                     session={s}
+                    directory={directory}
                     active={s.id === activeSessionID}
                     waiting={false}
                     busy={false}
@@ -641,6 +668,63 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Lista de sesiones de los proyectos abiertos (uno en el celular; varios en escritorio, cada uno con su propio
+ * grupo plegable). Pensada tanto para la columna interna de `CodeWorkspace` como para `SidebarContent` del modo
+ * en la barra lateral global.
+ */
+export function SessionList({ compact = false }: { compact?: boolean }): React.JSX.Element | null {
+  const t = useT()
+  const directory = useCode((s) => s.directory)
+  const openDirectories = useCode((s) => s.openDirectories)
+  const sessions = useCode((s) => s.sessions)
+  const permissions = useCode((s) => s.permissions)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const tree = useSidebarTree()
+  const desktop = !isRemoteSurface()
+
+  // ⌘K (configurable en Ajustes › Atajos): buscador de sesiones del proyecto con foco, mientras la lista esté montada y la paleta cerrada.
+  useEffect(
+    () =>
+      registerAction('code.sessionSwitcher', {
+        enabled: () => !useUi.getState().paletteOpen,
+        run: () => setSwitcherOpen((o) => !o)
+      }),
+    []
+  )
+
+  const waiting = useMemo(
+    () => new Set(Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID))),
+    [permissions, sessions]
+  )
+
+  if (!directory) {
+    // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
+    return desktop ? <SidebarEmpty text={t('app.sidebar.noProjects')} hint /> : null
+  }
+
+  // Celular: un solo proyecto, como siempre (openDirectories tiene como mucho uno). Escritorio: un grupo por abierto.
+  const groups = desktop ? openDirectories : [directory]
+
+  return (
+    <div className="flex min-h-0 flex-col gap-0.5">
+      <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      {groups.map((dir) => (
+        <ProjectGroup
+          key={dir}
+          directory={dir}
+          focused={dir === directory}
+          waiting={waiting}
+          tree={tree}
+          desktop={desktop}
+          compact={compact}
+          onSearch={() => setSwitcherOpen(true)}
+        />
+      ))}
     </div>
   )
 }

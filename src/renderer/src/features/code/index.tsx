@@ -6,6 +6,12 @@ import { CodeSidebar, CodeWorkspace, newCodeSession } from './impl/CodeWorkspace
 import { pickAndOpenFolder } from './impl/ProjectPicker'
 import { useCode } from './impl/store'
 
+function showCodeProjectPicker(): void {
+  // Sin proyectos aún no hay nada que "agregar": el botón de la barra lateral abre el diálogo nativo directo.
+  if (useCode.getState().directory) useCode.getState().showProjectPicker()
+  else void pickAndOpenFolder()
+}
+
 function CodeView(): React.JSX.Element {
   return <CodeWorkspace showSessionList={false} />
 }
@@ -19,7 +25,7 @@ export const codeMode: ModeDefinition = {
   View: CodeView,
   SidebarContent: CodeSidebar,
   projectAction: () => void pickAndOpenFolder(),
-  backToProjects: () => useCode.getState().closeProject(),
+  backToProjects: showCodeProjectPicker,
   newAction: {
     get label() {
       return t('app.mode.newSession')

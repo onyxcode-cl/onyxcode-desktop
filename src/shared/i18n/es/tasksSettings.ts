@@ -135,5 +135,5 @@ export const tasksSettings = {
   'tasksSettings.storage.restoreBtn': 'Borrar puntos de restauración',
   'tasksSettings.storage.restoreTitle': '¿Borrar los puntos de restauración?',
   'tasksSettings.storage.restoreMessage':
-    'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.',
+    'Se borran las copias de los archivos que se guardan antes de cada mensaje. Las tareas actuales dejarán de poder deshacer sus cambios en archivos. No afecta a tus carpetas ni al historial de las tareas.'
 } as const

@@ -18,6 +18,6 @@ export interface ModeDefinition {
   newAction?: { label: string; run: () => void }
   /** Acción «Abrir carpeta como proyecto» del encabezado «Proyectos» de la barra lateral de escritorio (solo Code y Tareas). */
   projectAction?: () => void
-  /** Vuelve a la pantalla de elegir proyecto (recientes) sin cerrar la app. Solo Code. */
+  /** Muestra la pantalla de "Proyectos recientes" para agregar un proyecto más (no cierra los que ya están abiertos). Solo Code. */
   backToProjects?: () => void
 }
