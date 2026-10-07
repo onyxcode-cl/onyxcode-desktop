@@ -29,7 +29,9 @@ function io(o: Over = {}): { io: PinIo; calls: string[] } {
           tag_name: '2026.9.3',
           published_at: '2026-09-24T16:14:11Z',
           body: o.body ?? `### Checksums\n${NAME}: ${sha(exe)}\n`,
-          assets: [{ name: NAME, size: o.size ?? exe.length, digest: `sha256:${o.digest ?? sha(exe)}`, browser_download_url: o.url ?? URL_EXE }]
+          assets: [
+            { name: NAME, size: o.size ?? exe.length, digest: `sha256:${o.digest ?? sha(exe)}`, browser_download_url: o.url ?? URL_EXE }
+          ]
         }
       },
       download: async (url) => {
@@ -69,7 +71,9 @@ describe('buildPin win32-x64', () => {
   it('sin --authenticode-subject (o con uno ajeno) no escribe y ni pregunta a la red', async () => {
     for (const s of [undefined, '', 'CN=x\nO=y', 'CN=Otra Empresa, O=Otra']) {
       const d = io()
-      await expect(buildPin({ version: '2026.9.3', io: d.io, targets: ['win32-x64'], authenticodeSubject: s })).rejects.toThrow(/sujeto|authenticode/i)
+      await expect(buildPin({ version: '2026.9.3', io: d.io, targets: ['win32-x64'], authenticodeSubject: s })).rejects.toThrow(
+        /sujeto|authenticode/i
+      )
       expect(d.calls).toEqual([])
     }
   })
