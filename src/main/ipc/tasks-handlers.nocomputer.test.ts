@@ -63,8 +63,8 @@ describe('registerTasksHandlers sin Control del PC', () => {
       expect(caps.computer).toBe(false)
       const before = registered.length
       const stubs = registerUnsupportedHandlers(ipc, caps)
-      // Los stubs son exactamente los `computer:*` y no pisan nada que ya registrara `registerTasksHandlers`.
-      expect(stubs.every((c) => c.startsWith('computer:'))).toBe(true)
+      // Los stubs son los `computer:*` (más el neutro de `tasks:winBeta`, que no registra `registerTasksHandlers`) y no pisan nada.
+      expect(stubs.every((c) => c.startsWith('computer:') || c === 'tasks:winBeta')).toBe(true)
       expect(registered.slice(before)).toEqual(stubs)
       for (const ch of TASKS_INVOKE_CHANNELS) expect(registered.filter((c) => c === ch).length, ch).toBe(1)
     } finally {

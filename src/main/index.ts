@@ -19,6 +19,7 @@ import { registerCodeHandlers } from './ipc/code-handlers'
 import { registerCompareHandlers } from './compare/handlers'
 import { registerRoutinesHandlers } from './ipc/routines-handlers'
 import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
+import { registerTasksBetaHandlers } from './ipc/tasks-beta-handlers'
 import { capsFor } from '@shared/platform-caps'
 import { capsFlagsToArgs } from '@shared/caps-argv'
 import { resolveTasksWin } from './tasks/tasks-win-flag'
@@ -296,7 +297,18 @@ function start(): void {
       // Sin modo Tareas: Rutinas de Chat y Code, y el resto de canales de Tareas/Control/actualizador responden «no disponible».
       tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
     }
-    registerUnsupportedHandlers(ipcMain, caps)
+    // Consentimiento de la beta de Tareas en Windows: se registra aunque `tasksWin` esté apagada (es la única forma de encenderla);
+    // fuera de Windows (o sin la puerta de compilación) lo cubre el stub de `registerUnsupportedHandlers`.
+    const winBetaHandled = registerTasksBetaHandlers(ipcMain, {
+      userDataDir: app.getPath('userData'),
+      platform: process.platform,
+      active: tasksWinOn,
+      relaunch: () => {
+        app.relaunch()
+        app.quit()
+      }
+    })
+    registerUnsupportedHandlers(ipcMain, caps, { winBetaHandled })
     registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
