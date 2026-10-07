@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Monitor, Moon, RotateCw, Sun } from 'lucide-react'
 import type { ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
+import { confirmDialog } from '../../../components/ConfirmDialog'
 import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
@@ -126,6 +127,45 @@ function TasksInstructionsRow(): React.JSX.Element {
   )
 }
 
+/**
+ * «Aprender de las tareas» (decisión del dueño, 2026-10-07): el agente puede PROPONER memoria, pero nunca se
+ * guarda nada sin aprobar la tarjeta. Este interruptor solo decide si puede proponer; borrar toda la memoria
+ * global es aparte, con confirmación (`confirmDialog`, igual que otras acciones destructivas de Ajustes).
+ */
+function LearningRow(): React.JSX.Element {
+  const t = useT()
+  const learningEnabled = useSettings((s) => s.settings.learningEnabled)
+  const update = useSettings((s) => s.update)
+  const [clearing, setClearing] = useState(false)
+
+  const clearGlobal = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('tasks.learn.clearGlobalTitle'),
+      message: t('tasks.learn.clearGlobalMsg'),
+      confirmLabel: t('tasks.learn.clearGlobal'),
+      danger: true
+    })
+    if (!ok) return
+    setClearing(true)
+    try {
+      await cw('tasks:learn:clear', { alcance: 'usuario' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  return (
+    <Row label={t('tasks.learn.settingsToggle')} description={t('tasks.learn.settingsDesc')}>
+      <div className="flex items-center gap-2">
+        <Button onClick={() => void clearGlobal()} disabled={clearing}>
+          {t('tasks.learn.clearGlobal')}
+        </Button>
+        <Toggle checked={learningEnabled} onChange={(v) => void update({ learningEnabled: v })} label={t('tasks.learn.settingsToggle')} />
+      </div>
+    </Row>
+  )
+}
+
 export function GeneralSection(): React.JSX.Element {
   const t = useT()
   const { settings, update } = useSettings()
@@ -213,6 +253,7 @@ export function GeneralSection(): React.JSX.Element {
           <SubTitle>{MODE_LABELS.tasks}</SubTitle>
           <Card>
             <TasksInstructionsRow />
+            <LearningRow />
           </Card>
         </>
       ) : (

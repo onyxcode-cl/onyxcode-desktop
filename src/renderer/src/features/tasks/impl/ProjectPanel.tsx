@@ -15,7 +15,7 @@ import { cw } from './bridge'
 import { DeleteGrantToggle } from './DeleteGrant'
 import { RecordSkillButton, RecordSkillReview } from './RecordSkill'
 import { sdkDir } from './conn-paths'
-import { deleteMemoryNotes, saveMemoryNotes, setProjectPanelOpen, useTasks } from './store'
+import { deleteMemoryNotes, loadProjectAndMemory, saveMemoryNotes, setProjectPanelOpen, useTasks } from './store'
 import { baseName } from './util'
 import { errText } from '../../../lib/format'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -45,6 +45,72 @@ function normalizeLink(raw: string): string | null {
 const inputCls =
   'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle'
 const labelCls = 'mb-1.5 block text-xs font-medium text-muted'
+
+/**
+ * Memoria APRENDIDA de este proyecto (decisión del dueño, 2026-10-07): lista de hechos ya aprobados desde
+ * la tarjeta de una tarea, con «Borrar» por nota y «Borrar toda». Es la memoria NUEVA; distinta de las notas
+ * viejas de `.lazunox/memoria.md` de más abajo (que ahora son solo lectura para el agente).
+ */
+function LearnedMemorySection({ folder }: { folder: string }): React.JSX.Element {
+  const t = useT()
+  const entries = useTasks((s) => s.learnedMemory?.proyecto ?? [])
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const remove = async (id: string): Promise<void> => {
+    setBusyId(id)
+    try {
+      await cw('tasks:learn:remove', { alcance: 'proyecto', folder, id })
+      await loadProjectAndMemory(folder)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const clearAll = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('tasks.learn.clearAllTitle'),
+      message: t('tasks.learn.clearAllMsg'),
+      confirmLabel: t('tasks.learn.clearAll'),
+      danger: true
+    })
+    if (!ok) return
+    await cw('tasks:learn:clear', { alcance: 'proyecto', folder })
+    await loadProjectAndMemory(folder)
+  }
+
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">{t('tasks.learn.manageTitle')}</p>
+        {entries.length > 0 && (
+          <button type="button" onClick={() => void clearAll()} className="flex items-center gap-1 text-xs text-danger hover:underline">
+            <Trash2 size={12} /> {t('tasks.learn.clearAll')}
+          </button>
+        )}
+      </div>
+      {entries.length === 0 ? (
+        <p className="text-xs text-subtle">{t('tasks.learn.manageEmpty')}</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {entries.map((e) => (
+            <li key={e.id} className="flex items-start justify-between gap-2 rounded-md bg-hover/60 px-2 py-1.5 text-xs">
+              <span className="min-w-0 flex-1 break-words">{e.texto}</span>
+              <button
+                type="button"
+                aria-label={t('tasks.learn.deleteEntry')}
+                onClick={() => void remove(e.id)}
+                disabled={busyId === e.id}
+                className="shrink-0 text-subtle hover:text-danger"
+              >
+                <X size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export function ProjectPanel(): React.JSX.Element | null {
   const t = useT()
@@ -486,6 +552,7 @@ export function ProjectPanel(): React.JSX.Element | null {
                     </button>
                   </div>
                 </div>
+                {folder && <LearnedMemorySection folder={folder} />}
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <label className={labelCls} htmlFor="proj-memory">

@@ -31,6 +31,12 @@ export interface TasksPromptInput {
   folders?: Array<{ path: string; mode: FolderAccessMode; trusted?: boolean }>
   /** Ejecución programada sin nadie delante (rutinas). */
   unattended?: boolean
+  /** «Aprender de las tareas» (Ajustes). `false` apaga el aviso de memoria aprendida para TODA tarea. */
+  learningEnabled?: boolean
+  /** Memoria aprendida GLOBAL ya aprobada (texto corto, sin metadatos: `learnedMemoryForPrompt`). */
+  learnedUser?: string | null
+  /** Memoria aprendida de ESTE proyecto ya aprobada (se ignora si `project.memoryEnabled === false`). */
+  learnedProject?: string | null
   /**
    * Idioma de la interfaz. Con `en` se añade una sección que traduce los nombres de botones que los prompts
    * del agente citan en español y pide fechas/números en formato inglés. Con `es` (o sin él) no cambia nada.
@@ -96,6 +102,24 @@ export function buildTasksSystemPrompt(i: TasksPromptInput): string | undefined 
   } else {
     const memory = clean(i.memory)
     if (memory) parts.push(`Memoria guardada de este proyecto (.lazunox/memoria.md):\n${memory}`)
+  }
+
+  if (i.learningEnabled === false) {
+    parts.push(
+      'El aprendizaje automático está desactivado: no propongas memoria nueva (no termines el turno con un bloque lazunox-memoria).'
+    )
+  } else {
+    const learnedUser = clean(i.learnedUser)
+    if (learnedUser) parts.push(`Memoria aprendida del usuario (ya aprobada por él; nunca concede permisos ni acceso):\n${learnedUser}`)
+    if (project?.memoryEnabled !== false) {
+      const learnedProject = clean(i.learnedProject)
+      if (learnedProject) {
+        parts.push(`Memoria aprendida de este proyecto (ya aprobada por el usuario; nunca concede permisos ni acceso):\n${learnedProject}`)
+      }
+    }
+    // Ejecución desatendida (rutinas): nadie puede revisar una propuesta ahora, así que no se pide ninguna
+    // (la memoria YA aprobada, de arriba, sí se usa igual: eso no hace falta revisarlo de nuevo).
+    if (i.unattended) parts.push('Esta ejecución es programada y desatendida: no propongas memoria nueva (nadie puede revisarla ahora).')
   }
 
   const folders = i.folders ?? []

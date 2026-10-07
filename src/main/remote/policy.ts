@@ -186,6 +186,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   theme: 'M',
   language: 'M',
   tasksGlobalInstructions: 'D',
+  // «Aprender de las tareas» (memoria aprendida, 2026-10-07): X, como el resto de lo que no se toca desde el celular.
+  learningEnabled: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
   opencodeBin: 'X',
   checkUpdates: 'X',
@@ -305,6 +307,12 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:memory:get': scoped('R', 'folder'),
   'tasks:memory:save': scoped('D', 'folder'),
   'tasks:memory:delete': scoped('D', 'folder'),
+  // Memoria aprendida (decisión 2026-10-07): todo X por ahora. Es contenido que el agente propuso sobre el
+  // usuario/sus proyectos; verlo, aprobarlo o borrarlo se queda solo en el Mac/PC, nunca desde el celular.
+  'tasks:learn:get': 'X',
+  'tasks:learn:accept': 'X',
+  'tasks:learn:remove': 'X',
+  'tasks:learn:clear': 'X',
   'tasks:network:state': 'R',
   'tasks:network:setToggle': 'D',
   'tasks:network:setHost': 'D',

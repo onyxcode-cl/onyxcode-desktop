@@ -352,6 +352,34 @@ export interface TasksMemory {
   updatedAt: number | null
 }
 
+// ───────────────────────────── Memoria aprendida (propuesta/aprobada) ─────────────────────────────
+
+export type LearnedMemoryScope = 'usuario' | 'proyecto'
+export type LearnedMemoryType = 'preferencia' | 'convencion' | 'decision' | 'solucion'
+
+/** Un hecho ya guardado (aprobado), con su id para poder borrarlo. */
+export interface LearnedMemoryEntry {
+  id: string
+  tipo: LearnedMemoryType
+  texto: string
+  porque?: string
+  fecha: string
+}
+
+/** Lo que devuelve `tasks:learn:get`/`accept`/`remove`/`clear`: ambos alcances a la vez. */
+export interface LearnedMemoryBundle {
+  usuario: LearnedMemoryEntry[]
+  proyecto: LearnedMemoryEntry[]
+}
+
+/** Una propuesta ya elegida por el usuario en la tarjeta (editable antes de enviarla a `tasks:learn:accept`). */
+export interface LearnedMemoryProposal {
+  alcance: LearnedMemoryScope
+  tipo: LearnedMemoryType
+  texto: string
+  porque?: string
+}
+
 // ───────────────────────────── Red de Tareas (egress) ─────────────────────────────
 
 /** Interruptores de la lista blanca por defecto (npm, PyPI y búsqueda web del agente). */
@@ -887,10 +915,20 @@ export interface TasksInvokeContract {
     req: { folder: string; name?: string; instructions?: string; links?: string[]; memoryEnabled?: boolean }
     res: TasksProject
   }
-  /** Memoria del proyecto: `.lazunox/memoria.md` dentro de la carpeta. */
+  /** Memoria del proyecto: `.lazunox/memoria.md` dentro de la carpeta (notas que el agente escribía sin aprobación; se conserva por compatibilidad). */
   'tasks:memory:get': { req: { folder: string }; res: TasksMemory }
   'tasks:memory:save': { req: { folder: string; content: string }; res: TasksMemory }
   'tasks:memory:delete': { req: { folder: string }; res: TasksMemory }
+
+  /**
+   * Memoria APRENDIDA (decisión del dueño, 2026-10-07): el agente PROPONE, el usuario aprueba desde una
+   * tarjeta, y solo entonces `main` la guarda en `userData/memoria/` (nunca dentro de la carpeta). `folder`
+   * es opcional: sin él solo se ve/toca la memoria global; con él, también la de ese proyecto.
+   */
+  'tasks:learn:get': { req: { folder?: string }; res: LearnedMemoryBundle }
+  'tasks:learn:accept': { req: { folder?: string; proposals: LearnedMemoryProposal[] }; res: LearnedMemoryBundle }
+  'tasks:learn:remove': { req: { alcance: LearnedMemoryScope; folder?: string; id: string }; res: LearnedMemoryBundle }
+  'tasks:learn:clear': { req: { alcance: LearnedMemoryScope; folder?: string }; res: LearnedMemoryBundle }
 
   /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }
@@ -1171,6 +1209,10 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:memory:get',
   'tasks:memory:save',
   'tasks:memory:delete',
+  'tasks:learn:get',
+  'tasks:learn:accept',
+  'tasks:learn:remove',
+  'tasks:learn:clear',
   'tasks:network:state',
   'tasks:network:setToggle',
   'tasks:network:setHost',

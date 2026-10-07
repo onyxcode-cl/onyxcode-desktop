@@ -69,6 +69,7 @@ import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
+import { MemoryProposalCard } from './MemoryProposalCard'
 import { InterruptedNotice } from './InterruptedNotice'
 import { StallNotice } from './StallNotice'
 import { Home } from './Home'
@@ -709,6 +710,9 @@ export function TasksWorkspace(): React.JSX.Element {
                   {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
                   {!fullAccess && status === 'done' && activeId && (
                     <EscalateCard key={`escalate-${activeId}`} taskId={activeId} entries={entries} />
+                  )}
+                  {status === 'done' && activeId && (
+                    <MemoryProposalCard key={`memory-${activeId}`} taskId={activeId} entries={entries} folder={folder} />
                   )}
                   {pendingQuestionsForTask.map((q) => (
                     <QuestionCard key={q.id} request={q} />

@@ -26,6 +26,12 @@ export interface Settings {
   opencodeBin: string
   /** Buscar versiones nuevas en GitHub (una petición al día como mucho). */
   checkUpdates: boolean
+  /**
+   * «Aprender de las tareas» (decisión del dueño, 2026-10-07): el agente de Tareas puede PROPONER memoria
+   * (hechos sobre el usuario o sus proyectos) al final de un turno. Nunca se guarda nada sin que el usuario
+   * apruebe la tarjeta; esto solo decide si el agente puede proponer. `true` por defecto.
+   */
+  learningEnabled: boolean
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -39,7 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
   routinesTermsAcknowledged: false,
   language: 'system',
   opencodeBin: '',
-  checkUpdates: true
+  checkUpdates: true,
+  learningEnabled: true
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'

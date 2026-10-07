@@ -5,6 +5,7 @@ import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
+import { formatForPrompt } from '@shared/memory-format'
 import { sandboxSendBlocked } from '@shared/sandbox-providers'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import type { ModelRef } from '@shared/types'
@@ -407,11 +408,14 @@ function extraFolders(): Array<{ path: string; mode: FolderAccessMode; trusted?:
  * (rutinas). `undefined` si no hay nada que añadir.
  */
 function buildSystemPrompt(): string | undefined {
-  const { project, memory } = useTasks.getState()
+  const { project, memory, learnedMemory } = useTasks.getState()
   return buildTasksSystemPrompt({
     globalInstructions: useSettings.getState().settings.tasksGlobalInstructions,
     project,
     memory: memory?.content,
+    learningEnabled: useSettings.getState().settings.learningEnabled,
+    learnedUser: learnedMemory ? formatForPrompt(learnedMemory.usuario) : null,
+    learnedProject: learnedMemory ? formatForPrompt(learnedMemory.proyecto) : null,
     folders: extraFolders(),
     lang: getLang()
   })

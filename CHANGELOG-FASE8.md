@@ -1292,3 +1292,34 @@ Prueba: documentación; `npx vitest run src/test` (guardias de texto).
 - `GeneralSection.tsx`/`ComputerSection.tsx`: Windows ahora muestra Tareas/Control del PC igual que macOS cuando `caps.tasks` es verdad; el aviso `platform.win.unavailable.*` queda solo para cuando la política de la organización los bloquea.
 - Lo que **no cambia**: la batería A1–A20 sigue incompleta y los informes de dos sesiones no existen; eso ya no bloquea el arranque, solo sigue pendiente de probar.
 - Pruebas: `win-provider.test.ts`, `tasks-win-flag.test.ts`, `unsupported-handlers.test.ts`, `tasks-handlers.nocomputer.test.ts`, `tasks-win-wiring.test.ts`, `i18n-coverage.test.ts`, `win-attack.battery.test.ts` reescritas sin consentimiento. Batería completa: 5855 pruebas verdes.
+
+## F8-B112 — Memoria aprendida (tanda 1): el agente propone, el usuario aprueba
+
+- **Decisión del dueño, 2026-10-07**: de las 3 diferencias con Hermes Agent (siempre encendido / canal de
+  mensajería / autonomía de aprendizaje) se avanza SOLO con la última, y **local** (sin servidor, sin canal de
+  mensajería). Hallazgo del plan: Lazunox YA tenía dos autonomías silenciosas (`.lazunox/memoria.md` y
+  `.opencode/skills/` escritos por el agente sin aprobación); esta tanda las sustituye para la memoria.
+- **El agente nunca escribe memoria.** Termina el turno con un bloque ` ```lazunox-memoria``` ` (hasta 5
+  propuestas); `MemoryProposalCard` las muestra bajo el último mensaje con casilla editable (nada preseleccionado
+  si hay aviso de dato personal/inyección); solo al aprobar, `main` escribe. `src/shared/memory-proposal.ts`
+  (extracción + filtro de secretos/inyección, puro) y `src/shared/memory-format.ts` (formato del archivo, tope de
+  entradas, ida y vuelta, puro).
+- **Vive en `userData/memoria/`** (global `usuario.md` + `proyectos/<slug>-<hash>.md`), NUNCA en la carpeta del
+  proyecto: el sandbox ya deniega `userData`, así que el agente no puede tocarla aunque quisiera, sin tocar
+  `sandbox-profile.ts`. `src/main/tasks/learned-memory.ts` revalida todo de nuevo (nunca confía en el renderer).
+  La memoria vieja de `.lazunox/memoria.md` sigue funcionando en SOLO LECTURA (`resources/opencode/agents/tasks.md`
+  reescrito: el agente ya no la edita ni la crea).
+- **IPC nuevo** `tasks:learn:{get,accept,remove,clear}`, todo clase `X` en el control remoto (nunca desde el
+  celular). Ajuste `learningEnabled` (Ajustes › General, `true` por defecto, decisión del dueño), también `X`.
+- `INJECTION_PATTERNS`/`looksLikeInjection` se mueven de `src/main/tasks/auto-mode.ts` a
+  `src/shared/injection-patterns.ts` (sin cambiar ninguna regex) para poder reutilizarlos desde el renderer.
+- **UI**: tarjeta en la conversación de Tareas; sección "Memoria aprendida de este proyecto" en `ProjectPanel`
+  (listar/borrar una nota/borrar todas); interruptor + "Borrar toda la memoria global" en Ajustes › General.
+- **Planificado por un agente con Opus** antes de tocar código (cambio de arquitectura); los módulos puros
+  (`memory-format.ts`, el movimiento de `injection-patterns.ts`) se delegaron a Haiku y se verificaron de nuevo.
+- **Pendiente (tanda 2, no en este commit)**: skills propuestas con tarjeta (hoy `CREATE_SKILL_PROMPT` y la
+  grabación de skills siguen escribiendo directo, sin pasar por aprobación); memoria desde Rutinas (hoy
+  suprimida del todo); detección de edición externa de los `.md` de memoria; memoria para modo Code.
+- Pruebas nuevas: `memory-format.test.ts` (27), `memory-proposal.test.ts` (15), `injection-patterns.test.ts` (9),
+  `learned-memory.test.ts` (14), `MemoryProposalCard.test.ts` (5), más `tasks-prompt.test.ts` ampliado. Batería
+  completa: 5969 pruebas verdes, typecheck limpio (node/web/pwa), lint sin errores.

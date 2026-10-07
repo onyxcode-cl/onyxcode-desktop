@@ -503,5 +503,36 @@ export const tasks = {
     'Existe un entorno con el mismo nombre que no es el de Lazunox. No se toca; si no lo necesitas, elimínalo tú desde WSL y vuelve a comprobar.',
   'tasks.sandbox.broken.wsl1': 'El entorno está en WSL 1 y Tareas necesita WSL 2.',
   'tasks.sandbox.broken.generic': 'No se pudo comprobar el entorno aislado. Por seguridad no se usan las tareas hasta resolverlo.',
-  'tasks.sandbox.detail': 'Detalle técnico: {detail}'
+  'tasks.sandbox.detail': 'Detalle técnico: {detail}',
+
+  // Memoria aprendida (decisión del dueño, 2026-10-07): el agente propone, el usuario aprueba.
+  'tasks.learn.cardTitle': 'La tarea aprendió algo',
+  'tasks.learn.cardHint': 'Elige qué guardar. Nada se guarda sin tu aprobación.',
+  'tasks.learn.scope.usuario': 'Para todos tus proyectos',
+  'tasks.learn.scope.proyecto': 'Solo este proyecto',
+  'tasks.learn.type.preferencia': 'Preferencia',
+  'tasks.learn.type.convencion': 'Convención',
+  'tasks.learn.type.decision': 'Decisión',
+  'tasks.learn.type.solucion': 'Solución',
+  'tasks.learn.flag.personal': 'Puede tener un dato personal: revísalo antes de guardar.',
+  'tasks.learn.flag.inyeccion': 'Esto parece una instrucción, no un hecho para recordar: revísalo antes de guardar.',
+  'tasks.learn.save': 'Guardar seleccionadas',
+  'tasks.learn.saveOne': 'Guardar',
+  'tasks.learn.discard': 'Descartar',
+  'tasks.learn.saving': 'Guardando…',
+  'tasks.learn.saveFailed': 'No se pudo guardar la memoria.',
+  'tasks.learn.settingsToggle': 'Aprender de las tareas',
+  'tasks.learn.settingsDesc':
+    'La tarea puede proponer hechos para recordar (preferencias, convenciones, decisiones). Siempre elegís qué guardar; nunca se guarda nada solo.',
+  'tasks.learn.manageTitle': 'Memoria aprendida de este proyecto',
+  'tasks.learn.manageEmpty': 'Todavía no hay memoria aprendida y aprobada en este proyecto.',
+  'tasks.learn.deleteEntry': 'Borrar esta nota',
+  'tasks.learn.clearAll': 'Borrar toda la memoria de este proyecto',
+  'tasks.learn.clearAllTitle': '¿Borrar la memoria de este proyecto?',
+  'tasks.learn.clearAllMsg': 'Se borran todas las notas aprendidas y aprobadas de este proyecto. No se puede deshacer.',
+  'tasks.learn.globalTitle': 'Memoria aprendida (todos los proyectos)',
+  'tasks.learn.globalEmpty': 'Todavía no hay memoria global aprendida y aprobada.',
+  'tasks.learn.clearGlobal': 'Borrar toda la memoria global',
+  'tasks.learn.clearGlobalTitle': '¿Borrar toda la memoria global?',
+  'tasks.learn.clearGlobalMsg': 'Se borran todas las notas aprendidas y aprobadas que valen para todos tus proyectos. No se puede deshacer.'
 } as const

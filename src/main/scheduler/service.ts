@@ -37,6 +37,7 @@ import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import type { NotifyTarget, Settings } from '@shared/types'
 import { loadManagedPolicy } from '../tasks/policy'
 import { getMemory, type TasksProjectsStore } from '../tasks/projects'
+import { learnedMemoryForPrompt } from '../tasks/learned-memory'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { shouldRunUnattended } from '@shared/routines-terms'
 import { decideUnattended } from './approvals'
@@ -664,6 +665,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       const sentAt = Date.now()
       const project = isTasks ? this.deps.projects?.get(dirForSession) : undefined
       const memory = isTasks && project?.memoryEnabled !== false ? getMemory(dirForSession).content : null
+      const learned = isTasks ? learnedMemoryForPrompt(dirForSession) : null
       const folderSet = isTasks ? this.deps.tasks.folderSet(dirForSession) : null
       const system = buildTasksSystemPrompt({
         globalInstructions: isTasks ? this.deps.getSettings?.().tasksGlobalInstructions : null,
@@ -671,6 +673,9 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
           ? { name: project.name, instructions: project.instructions, links: project.links, memoryEnabled: project.memoryEnabled }
           : null,
         memory,
+        learningEnabled: isTasks ? this.deps.getSettings?.().learningEnabled : undefined,
+        learnedUser: learned?.usuario,
+        learnedProject: learned?.proyecto,
         folders: folderSet ? [...folderSet.linked, ...folderSet.trusted].map((f) => ({ path: f.path, mode: f.mode })) : [],
         unattended: true,
         lang: getLang()

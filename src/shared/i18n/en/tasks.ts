@@ -506,5 +506,36 @@ export const tasks = {
     'An environment with the same name that isn’t Lazunox’s exists. It isn’t touched; if you don’t need it, remove it yourself from WSL and check again.',
   'tasks.sandbox.broken.wsl1': 'The environment is on WSL 1 and Tasks needs WSL 2.',
   'tasks.sandbox.broken.generic': 'The isolated environment couldn’t be checked. For safety tasks aren’t used until this is resolved.',
-  'tasks.sandbox.detail': 'Technical detail: {detail}'
+  'tasks.sandbox.detail': 'Technical detail: {detail}',
+
+  // Learned memory (owner's decision, 2026-10-07): the agent proposes, the user approves.
+  'tasks.learn.cardTitle': 'The task learned something',
+  'tasks.learn.cardHint': 'Choose what to keep. Nothing is saved without your approval.',
+  'tasks.learn.scope.usuario': 'For all your projects',
+  'tasks.learn.scope.proyecto': 'Only this project',
+  'tasks.learn.type.preferencia': 'Preference',
+  'tasks.learn.type.convencion': 'Convention',
+  'tasks.learn.type.decision': 'Decision',
+  'tasks.learn.type.solucion': 'Solution',
+  'tasks.learn.flag.personal': 'May contain personal data: review before saving.',
+  'tasks.learn.flag.inyeccion': 'This looks like an instruction, not a fact to remember: review before saving.',
+  'tasks.learn.save': 'Save selected',
+  'tasks.learn.saveOne': 'Save',
+  'tasks.learn.discard': 'Discard',
+  'tasks.learn.saving': 'Saving…',
+  'tasks.learn.saveFailed': 'Couldn’t save the memory.',
+  'tasks.learn.settingsToggle': 'Learn from tasks',
+  'tasks.learn.settingsDesc':
+    'The task can propose facts to remember (preferences, conventions, decisions). You always choose what to keep; nothing is ever saved on its own.',
+  'tasks.learn.manageTitle': 'Learned memory for this project',
+  'tasks.learn.manageEmpty': 'No approved learned memory yet for this project.',
+  'tasks.learn.deleteEntry': 'Delete this note',
+  'tasks.learn.clearAll': 'Delete all memory for this project',
+  'tasks.learn.clearAllTitle': 'Delete this project’s memory?',
+  'tasks.learn.clearAllMsg': 'All approved learned notes for this project are deleted. This can’t be undone.',
+  'tasks.learn.globalTitle': 'Learned memory (all projects)',
+  'tasks.learn.globalEmpty': 'No approved global learned memory yet.',
+  'tasks.learn.clearGlobal': 'Delete all global memory',
+  'tasks.learn.clearGlobalTitle': 'Delete all global memory?',
+  'tasks.learn.clearGlobalMsg': 'All approved learned notes that apply to every project are deleted. This can’t be undone.'
 } as const satisfies Messages<typeof es>

@@ -11,6 +11,7 @@ import { TasksManager } from '../tasks/manager'
 import { importFilesInto, previewFile } from '../tasks/files'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
+import { acceptLearnedMemory, clearLearnedMemory, getLearnedMemory, removeLearnedMemoryEntry } from '../tasks/learned-memory'
 import { KeepAwakeService } from '../tasks/keep-awake'
 import type { ComputerService } from '../computer/service'
 import type { WinBackendProvider } from '../tasks/backends'
@@ -183,6 +184,14 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   handle('tasks:memory:get', ({ folder }) => getMemory(tasks.assertInsideApproved(folder)))
   handle('tasks:memory:save', ({ folder, content }) => saveMemory(tasks.assertInsideApproved(folder), content))
   handle('tasks:memory:delete', ({ folder }) => deleteMemory(tasks.assertInsideApproved(folder)))
+
+  // ── Memoria APRENDIDA (propuesta por el agente, aprobada por el usuario; decisión del dueño, 2026-10-07) ──
+  // `folder` es opcional (solo memoria global); cuando llega, se valida igual que cualquier otra carpeta de Tareas.
+  const approvedOrNull = (folder: string | undefined): string | null => (folder ? tasks.assertInsideApproved(folder) : null)
+  handle('tasks:learn:get', ({ folder }) => getLearnedMemory(approvedOrNull(folder)))
+  handle('tasks:learn:accept', ({ folder, proposals }) => acceptLearnedMemory(approvedOrNull(folder), proposals).bundle)
+  handle('tasks:learn:remove', ({ alcance, folder, id }) => removeLearnedMemoryEntry(alcance, approvedOrNull(folder), id))
+  handle('tasks:learn:clear', ({ alcance, folder }) => clearLearnedMemory(alcance, approvedOrNull(folder)))
 
   // ── Red de Tareas (egress) ──
   handle('tasks:network:state', () => tasks.networkState())

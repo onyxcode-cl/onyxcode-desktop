@@ -1629,3 +1629,46 @@ Tareas ya está conectado a una carpeta.
 7. ¿v1 sin varios monitores y sin «Grabar una skill» en Windows?
 8. ¿Aceptas el residuo de que Control total no tiene sandbox (las reglas de `bash` no son una frontera)?
 9. Para las pruebas en el PC: sesión abierta y desbloqueada, tareas programadas interactivas de un solo uso, abrir tú un aviso de UAC (S3) y lanzar Lazunox como administrador (S1).
+
+## 3 quadragies sexies. Memoria aprendida: el agente propone, el usuario aprueba (decisión del dueño, 2026-10-07)
+
+**Alcance.** Primera tanda de "autonomía de aprendizaje" (comparación con Hermes Agent de Nous Research): memoria
+persistente **local**, sin servidor ni canal de mensajería (esas dos partes quedaron fuera, decisión expresa del
+dueño). Cubre solo memoria (hechos); las skills propuestas por el agente quedan para una segunda tanda.
+
+**El agente nunca escribe memoria.** Al final de un turno puede terminar con un bloque ` ```lazunox-memoria``` `
+(hasta 5 propuestas JSON: `alcance` usuario/proyecto, `tipo`, `texto` ≤300 caracteres, `porque` opcional). El
+renderer lo extrae (`src/shared/memory-proposal.ts`, puro) y lo muestra en `MemoryProposalCard` bajo el último
+mensaje de una tarea terminada, con casilla por propuesta (nada preseleccionado si hay un aviso) y texto editable.
+Solo al pulsar «Guardar seleccionadas» se llama a `tasks:learn:accept`, y **solo entonces** `main` escribe algo.
+
+**Filtros, en los dos lados (nunca se confía en el renderer):**
+- **Secretos** (`maskSecretPatterns`): si enmascarar cambia el texto, la propuesta entera se descarta, sin guardar
+  nada de ella ni en el registro.
+- **Inyección** (`looksLikeInjection`, movido a `src/shared/injection-patterns.ts`, mismas regex de Modo auto) y
+  **dato personal** (correo/teléfono/RUT, heurística): solo MARCAN la propuesta (no preseleccionada); la aprobación
+  humana es la única defensa real contra un "recuerdo" falso o inducido por una página/archivo malicioso.
+- `main` (`src/main/tasks/learned-memory.ts`) revalida todo de cero: tipo, largo, secretos otra vez.
+
+**Dónde vive, y por qué NO es `.lazunox/memoria.md`.** `userData/memoria/` (`usuario.md` global;
+`proyectos/<slug>-<sha256(realpath)·8>.md` por carpeta), fuera del árbol del proyecto. El sandbox de Tareas ya
+deniega leer/escribir `userData`: el agente sandboxeado **no puede** tocarla aunque quisiera, sin tocar
+`sandbox-profile.ts` (zona intocable). Además nunca viaja por accidente con un `git push`, iCloud o Dropbox de la
+carpeta del proyecto. La memoria vieja de `.lazunox/memoria.md` sigue existiendo (compatibilidad): el agente ahora
+solo la LEE, nunca la escribe ni la crea (`resources/opencode/agents/tasks.md`).
+
+**Interruptor global `learningEnabled`** (Ajustes › General, `true` por defecto, decisión del dueño): si está
+apagado, no se inyecta ninguna memoria aprendida en el prompt y se le dice al agente que no proponga. Las
+ejecuciones de Rutinas (desatendidas) sí reciben la memoria ya aprobada, pero se les pide no proponer nada nuevo
+(nadie puede revisar una tarjeta en una ejecución programada).
+
+**Control remoto (celular): todo `X`.** `tasks:learn:{get,accept,remove,clear}` y el ajuste `learningEnabled`
+quedan prohibidos desde el celular (`src/main/remote/policy.ts`): ver, aprobar o borrar memoria aprendida se queda
+solo en el Mac/PC del dueño.
+
+**No verificado / pendiente para la tanda 2:** skills propuestas (bloque `lazunox-skill`, mismo patrón);
+detección de skills que el agente cree sin pasar por la tarjeta (`CREATE_SKILL_PROMPT`/grabación, que todavía
+escriben directo); memoria propuesta desde Rutinas (hoy se suprime del todo); aviso de edición externa de los
+`.md` de memoria (Control total podría tocarlos con `bash`: hoy no se detecta ni se impide); compactación de
+memoria vieja; memoria para el modo Code (hoy solo Tareas). Nada de esto se ha probado en un Windows real más
+allá de typecheck/pruebas (jsdom/Node), igual que el resto de Tareas en Windows.

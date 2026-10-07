@@ -54,6 +54,15 @@ const modelRef = obj({ providerID: str({ max: 200, min: 1 }), modelID: str({ max
 const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
 const pathReq = obj({ path: absPath })
+/** Memoria aprendida: el id lo genera `newEntryId` en `memory-format.ts` (8 hex). */
+const learnedEntryId = str({ max: 8, min: 8, pattern: /^[0-9a-f]{8}$/ })
+const learnedScope = literal('usuario', 'proyecto')
+const learnedProposal = obj({
+  alcance: learnedScope,
+  tipo: literal('preferencia', 'convencion', 'decision', 'solucion'),
+  texto: str({ max: 300, min: 1 }),
+  porque: optional(str({ max: 300 }))
+})
 /** Comparar modelos: uuid de la comparación, índice de columna (0..3) y modelo con `variant` opcional. */
 const compareId = str({ max: 36, min: 36, pattern: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i })
 const compareIndex = num({ int: true, min: 0, max: 3 })
@@ -298,6 +307,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     onboarded: bool,
     routinesTermsAcknowledged: bool,
     checkUpdates: bool,
+    learningEnabled: bool,
     language: literal('system', 'es', 'en')
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
@@ -387,6 +397,10 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:memory:get': folderReq,
   'tasks:memory:save': obj({ folder: absPath, content: str({ max: 2 * 1024 * 1024 }) }),
   'tasks:memory:delete': folderReq,
+  'tasks:learn:get': obj({ folder: optional(absPath) }),
+  'tasks:learn:accept': obj({ folder: optional(absPath), proposals: arr(learnedProposal, 20) }),
+  'tasks:learn:remove': obj({ alcance: learnedScope, folder: optional(absPath), id: learnedEntryId }),
+  'tasks:learn:clear': obj({ alcance: learnedScope, folder: optional(absPath) }),
   'tasks:network:state': none,
   'tasks:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
   'tasks:network:setHost': networkSetHost,

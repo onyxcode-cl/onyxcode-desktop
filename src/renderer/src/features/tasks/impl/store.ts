@@ -22,6 +22,7 @@ import {
   type TasksFolderSet,
   type TasksFullAccessState,
   type TasksMemory,
+  type LearnedMemoryBundle,
   type TasksPrefs,
   type TasksProject,
   type TasksTaskMeta,
@@ -107,6 +108,8 @@ interface TasksState {
   project: TasksProject | null
   /** Memoria (`.lazunox/memoria.md`) de la carpeta actual. */
   memory: TasksMemory | null
+  /** Memoria APRENDIDA (propuesta/aprobada; 2026-10-07): global + de esta carpeta. */
+  learnedMemory: LearnedMemoryBundle | null
   /** Panel "Proyecto y memoria" visible. */
   projectPanelOpen: boolean
   /** Apps concedidas/denegadas (concesión por app, `computer:grants`). */
@@ -248,6 +251,7 @@ export const useTasks = create<TasksState>((set) => ({
   pinned: readPinned(),
   project: null,
   memory: null,
+  learnedMemory: null,
   projectPanelOpen: false,
   grants: null,
   accessRequest: null,
@@ -283,13 +287,17 @@ export function setProjectPanelOpen(open: boolean): void {
   }
 }
 
-/** Carga proyecto + memoria de la carpeta actual (no bloquea la conexión si falla). */
+/** Carga proyecto + memoria (vieja y aprendida) de la carpeta actual (no bloquea la conexión si falla). */
 export async function loadProjectAndMemory(folder: string): Promise<void> {
   try {
-    const [project, memory] = await Promise.all([cw('tasks:project:get', { folder }), cw('tasks:memory:get', { folder })])
-    if (useTasks.getState().folder === folder) useTasks.setState({ project, memory })
+    const [project, memory, learnedMemory] = await Promise.all([
+      cw('tasks:project:get', { folder }),
+      cw('tasks:memory:get', { folder }),
+      cw('tasks:learn:get', { folder })
+    ])
+    if (useTasks.getState().folder === folder) useTasks.setState({ project, memory, learnedMemory })
   } catch {
-    if (useTasks.getState().folder === folder) useTasks.setState({ project: null, memory: null })
+    if (useTasks.getState().folder === folder) useTasks.setState({ project: null, memory: null, learnedMemory: null })
   }
 }
 
@@ -760,6 +768,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     unseen: {},
     project: null,
     memory: null,
+    learnedMemory: null,
     networkBlocked: {},
     deleteGrant: null,
     folderSet: null,
@@ -894,6 +903,7 @@ export function clearFolder(): void {
     elements: [],
     project: null,
     memory: null,
+    learnedMemory: null,
     networkBlocked: {},
     deleteGrant: null,
     folderSet: null

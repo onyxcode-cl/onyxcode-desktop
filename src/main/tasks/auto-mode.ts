@@ -9,6 +9,8 @@
  * Decisión del usuario (2026-09-28): Modo auto es SOLO motor de reglas, sin clasificador por modelo.
  */
 import type { AppTier, AutoRuleId } from '@shared/ipc-tasks'
+import { looksLikeInjection } from '@shared/injection-patterns'
+export { looksLikeInjection } from '@shared/injection-patterns'
 
 export type AutoVerdict = { decision: 'allow'; rule: AutoRuleId; summary: string } | { decision: 'ask'; reason: string }
 
@@ -24,36 +26,7 @@ function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
 }
 
-// ───────────────────────────── Inyección ─────────────────────────────
-
-/**
- * Frases que delatan un intento de inyección (en el texto de un permiso, sus metadatos, el motivo
- * de una tarjeta de acceso o el nombre de una app). Es/en, insensible a mayúsculas. Ante cualquier
- * coincidencia se pregunta SIEMPRE: el modo auto nunca es el que decide sobre texto sospechoso.
- */
-const INJECTION_PATTERNS: RegExp[] = [
-  /ignore\s+(all\s+|the\s+)?(previous|prior)\s+instructions/i,
-  /ignora\s+(las\s+)?instrucciones/i,
-  /auto-?approv/i,
-  /aprobaci[oó]n\s+autom/i,
-  /bypass/i,
-  /salt(ar|ate)\s+(la\s+)?(aprobaci|permiso)/i,
-  /(disable|desactiva\w*)\s+(the\s+|el\s+|la\s+)?(approval|permission|sandbox|gate|modo|permiso|aprobaci)/i,
-  /lazunox_session/i,
-  /plan-gate/i,
-  /killswitch/i,
-  /OPENCODE_(SERVER|AUTH|CONFIG)/,
-  /system\s+prompt/i,
-  /you\s+are\s+now/i,
-  /eres\s+ahora/i,
-  /developer\s+mode/i,
-  /<\|im_start\|>/i
-]
-
-export function looksLikeInjection(text: string): boolean {
-  if (!text) return false
-  return INJECTION_PATTERNS.some((re) => re.test(text))
-}
+// ───────────────────────────── Metadatos ─────────────────────────────
 
 /** JSON literal de los metadatos, o '' si no hay nada que mostrar. Nunca lanza. */
 function metadataToText(metadata: Record<string, unknown> | undefined): string {

@@ -80,7 +80,8 @@ function normalize(s: Settings): Settings {
     routinesTermsAcknowledged,
     language: isLangPref(s.language) ? s.language : 'system',
     opencodeBin,
-    checkUpdates: s.checkUpdates !== false
+    checkUpdates: s.checkUpdates !== false,
+    learningEnabled: s.learningEnabled !== false
   }
 }
 
