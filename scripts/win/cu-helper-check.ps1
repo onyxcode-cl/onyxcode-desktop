@@ -164,7 +164,7 @@ $appList = @()
 if ($r.Code -eq 0 -and $null -ne $apps) { $appList = @($apps) }
 if ($appList.Count -gt 0) {
   Check 'list-apps: cada app trae {name,appKey,pid} con clave canonica' ((@($appList | Where-Object { -not (Has-Props $_ @('name', 'appKey', 'pid')) -or -not (($_.appKey -like 'exe:*|pub:*') -or ($_.appKey -like 'aumid:*')) })).Count -eq 0) "apps=$($appList.Count)"
-  $keys = @($appList | Select-Object -First 3 | ForEach-Object { $_.appKey }) -join ','
+  $keys = @($appList | Select-Object -First 3 | ForEach-Object { ([string]$_.appKey).Replace('%', '%25').Replace(',', '%2C') }) -join ','
   $r = Run-Helper @('windows-of', $keys)
   $wins = Parse-Json $r.Out
   Check 'windows-of: salida 0 y lista de rectangulos' ($r.Code -eq 0 -and $null -ne $wins) "code=$($r.Code)"

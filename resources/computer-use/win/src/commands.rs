@@ -159,12 +159,10 @@ fn key_arg(args: &[String], i: usize, what: &str) -> CuResult<AppKey> {
     parse_app_key(raw).map_err(|e| err(format!("{what}: {e}")))
 }
 
+/// Lista de claves (`windows-of`, `hide-apps`, `unhide-apps`): separadas por coma, cada una con `%` y `,` codificados (%25, %2C), igual que
+/// `--mask-keys`. Sin esto, el editor de una app firmada con coma («Brave Software, Inc.») partía la clave y la lista fallaba.
 fn key_list(raw: &str) -> CuResult<Vec<AppKey>> {
-    let parts: Vec<&str> = raw.split(',').filter(|s| !s.trim().is_empty()).collect();
-    if parts.len() > MAX_KEYS_PER_CALL {
-        return Err(err("Demasiadas apps en la lista"));
-    }
-    parts.iter().map(|p| parse_app_key(p.trim()).map_err(|e| err(format!("Lista de apps: {e}")))).collect()
+    mask_key_list(raw)
 }
 
 fn ref_arg(args: &[String], i: usize) -> CuResult<Vec<usize>> {
@@ -184,7 +182,7 @@ pub fn decode_key_item(raw: &str) -> CuResult<String> {
         } else if tail.len() >= 3 && tail.is_char_boundary(3) && tail[..3].eq_ignore_ascii_case("%2C") {
             out.push(',');
         } else {
-            return Err(err("--mask-keys: secuencia % no válida (solo %25 y %2C)"));
+            return Err(err("Lista de claves: secuencia % no válida (solo %25 y %2C)"));
         }
         rest = &tail[3..];
     }
@@ -668,5 +666,25 @@ mod tests {
         for n in ["move", "ax-tree", "screenshot", "open-app", "record", "release-input", "session", "list-apps"] {
             assert!(u.contains(n), "{n}");
         }
+    }
+
+    #[test]
+    fn listas_de_claves_decodifican_la_coma_del_editor() {
+        // «Brave Software, Inc.» lleva coma: sin codificar partiría la clave en dos.
+        let editor = "exe:c:\\program files\\brave\\brave.exe|pub:brave software, inc.";
+        let enc = editor.replace('%', "%25").replace(',', "%2C");
+        let lista = format!("{enc},aumid:microsoft.windowsterminal_8wekyb3d8bbwe!app");
+        for cmd in ["windows-of", "hide-apps", "unhide-apps"] {
+            let c = parse_command(&v(&[cmd, &lista])).unwrap();
+            let keys = match c {
+                Command::WindowsOf { keys } => keys,
+                Command::HideApps { keep } => keep,
+                Command::UnhideApps { list } => list,
+                _ => panic!("comando inesperado"),
+            };
+            assert_eq!(keys.len(), 2, "{cmd}: la coma del editor no debe partir la clave");
+        }
+        // una `%` suelta se rechaza
+        assert!(parse_command(&v(&["windows-of", "exe:c:\\a%zz.exe|pub:x"])).is_err());
     }
 }

@@ -13,6 +13,9 @@ interface HiddenFile {
   at: number
 }
 
+/** Clave de app para una lista separada por comas del helper: `%` y `,` codificados (%25, %2C). Sin efecto en macOS (un bundle id no los lleva). */
+const encodeKey = (k: string): string => k.replace(/%/g, '%25').replace(/,/g, '%2C')
+
 export class AppVisibility {
   constructor(
     private readonly helperPath: () => string | null,
@@ -27,7 +30,7 @@ export class AppVisibility {
   async hide(keep: Iterable<string>): Promise<void> {
     const bin = this.helperPath()
     if (!bin) return
-    const keepCsv = [...new Set(keep)].filter(Boolean).join(',')
+    const keepCsv = [...new Set(keep)].filter(Boolean).map(encodeKey).join(',')
     try {
       const out = JSON.parse(await runHelper(bin, ['hide-apps', keepCsv])) as { hidden?: unknown }
       const hidden = Array.isArray(out.hidden) ? out.hidden.filter((h): h is string => typeof h === 'string') : []
@@ -45,7 +48,7 @@ export class AppVisibility {
     const bin = this.helperPath()
     if (!bin) return
     try {
-      await runHelper(bin, ['unhide-apps', hidden.join(',')])
+      await runHelper(bin, ['unhide-apps', hidden.map(encodeKey).join(',')])
     } catch (err) {
       console.error('[computer] unhide-apps:', err)
     }
