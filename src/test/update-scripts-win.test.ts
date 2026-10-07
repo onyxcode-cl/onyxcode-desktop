@@ -8,7 +8,7 @@
  * ficheros, versión del asar), con el `tar.exe` sustituido por el bsdtar de macOS, que lee el mismo formato.
  * NO prueba: tar.exe de Windows, el swap con la app real ni Defender.
  */
-import { createHash, generateKeyPairSync, sign, type KeyObject } from 'node:crypto'
+import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } from 'node:crypto'
 import {
   chmodSync,
   existsSync,
@@ -164,6 +164,53 @@ describe.skipIf(!posixOnly)('publish-update --platform win32-x64', () => {
     const rb = await publish({ platform: 'win32-x64', appPath: app, outDir: b, manifestOnly: true, root, now: NOW })
     expect(ra.sha256).toBe(rb.sha256)
     expect(readFileSync(join(a, WIN_MANIFEST)).equals(readFileSync(join(b, WIN_MANIFEST)))).toBe(true)
+  })
+
+  it('con resources/wsl/images (imagen y OpenCode de Linux, ya .tar.gz y sin compresión posible) el ZIP se publica, verifica y es reproducible', async () => {
+    // Beta de Tareas en Windows: el instalador lleva ~135 MB incompresibles en resources/wsl/images. Aquí, 2 archivos aleatorios de 2 MB.
+    const mk = (): string => {
+      const app = fakeWinApp(mkdtempSync(join(base, 'img-')), '0.5.1')
+      return app
+    }
+    const imgs = [randomBytes(2 * 1024 * 1024), randomBytes(2 * 1024 * 1024)]
+    const names = ['lazunox-rootfs-2026.10.1-x64.tar.gz', 'opencode-linux-x64.tar.gz']
+    const a = mk()
+    const b = mk()
+    for (const app of [a, b]) {
+      put(app, 'resources/wsl/pin.json', '{}')
+      names.forEach((n, i) => put(app, `resources/wsl/images/${n}`, imgs[i]))
+    }
+    const root = fakeRepo('0.5.1', pubB64)
+    const out1 = mkdtempSync(join(base, 'oimg1-'))
+    const out2 = mkdtempSync(join(base, 'oimg2-'))
+    await publish({ platform: 'win32-x64', appPath: a, outDir: out1, manifestOnly: true, root, now: NOW })
+    await publish({ platform: 'win32-x64', appPath: b, outDir: out2, manifestOnly: true, root, now: NOW })
+    const z1 = readFileSync(join(out1, 'Lazunox-0.5.1-win32-x64.zip'))
+    expect(z1.equals(readFileSync(join(out2, 'Lazunox-0.5.1-win32-x64.zip')))).toBe(true)
+    // Lo incompresible pesa casi lo mismo en el ZIP: el crecimiento del ZIP es el de las imágenes (± la cabecera).
+    expect(z1.length).toBeGreaterThan(4 * 1024 * 1024)
+    await signUpdate({ dir: out1, platform: 'win32-x64', keyFile, root })
+    const txt = ((await verifyUpdate(vopts(out1))) as string[]).join('\n')
+    expect(txt).toMatch(/SHA-256 coincide/)
+    expect(txt).toMatch(/dentro de Lazunox\//)
+  })
+
+  it('topes de tamaño con las imágenes: +135 MB incompresibles caben en el ZIP (600 MB) y en el tope descomprimido del cliente', () => {
+    const MB = 1024 * 1024
+    const images = 135 * MB
+    // Ejemplo prudente: win-unpacked sin imágenes de 450 MB que comprime a 200 MB (Electron + OpenCode de Windows).
+    const baseUnpacked = 450 * MB
+    const baseZip = 200 * MB
+    const zip = baseZip + images
+    const total = baseUnpacked + images
+    expect(zip).toBeLessThan(lib.ZIP_MAX_BYTES)
+    expect(total).toBeLessThan(lib.winUncompressedCap(zip))
+    // Margen hasta el tope del ZIP: el ZIP base puede crecer hasta aquí antes de rozar los 600 MB con las imágenes dentro.
+    expect(lib.ZIP_MAX_BYTES - images).toBeGreaterThanOrEqual(450 * MB)
+    // El tope descomprimido del cliente crece con el ZIP: aunque las imágenes no comprimen nada, la razón total/ZIP baja, no sube.
+    expect(total / zip).toBeLessThan(baseUnpacked / baseZip)
+    // El cliente usa la misma fórmula (3x + 1 GiB) que la réplica de los scripts.
+    expect(lib.winUncompressedCap(1000)).toBe(1000 * 3 + 1024 * MB)
   })
 
   it('publish con clave (un solo paso) también deja la firma', async () => {

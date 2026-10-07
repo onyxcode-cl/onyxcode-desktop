@@ -1262,3 +1262,9 @@ a «beta opcional»), `docs/WINDOWS-TAREAS.md` y `docs/ROOTFS-BUILD-2026-10-06.m
 - `TASKS_WIN_BUILD` sigue en `false` hasta su commit aparte (último paquete del plan). Nada de esto está probado en un Windows real más allá de lo listado como verificado.
 
 Prueba: documentación; `npx vitest run src/test` (guardias de texto).
+
+## F8-B108 — Desinstalador de la distro de Tareas y topes de tamaño con la imagen incluida (WP7, WP8)
+
+- **`build/installer.nsh` (`customUnInstall`)**: pregunta (NO por defecto) si quitar la distro `Lazunox-Tareas`; en silencioso (`/S`) y en actualizaciones (`--updated`) no toca nada. Antes comprueba con `wsl.exe -l -q` (UTF-16LE, normalizado con PowerShell: se quitan los NUL y se compara el nombre exacto) que existe; ejecuta solo `wsl.exe --unregister Lazunox-Tareas` con límite de tiempo y, si salió con 0, borra `%LOCALAPPDATA%\Lazunox\wsl`. Nunca `--shutdown`, ni docker-desktop, ni la distro antigua. Sin `wsl.exe`, se salta sin error. **No compilado con makensis ni probado en Windows.**
+- **Pruebas**: guardia estática en `scripts/win-cu-scripts.test.mjs` sobre el texto del `.nsh` (4 pruebas); `scripts/win/pack-check.ps1 -Install` comprueba que la desinstalación silenciosa no cambia la lista de distros de WSL (no crea distros).
+- **Tamaño (WP8)**: revisados `ZIP_MAX_BYTES`, `winUncompressedCap`, `MAX_ENTRIES` y el espacio libre del actualizador frente a ~135 MB incompresibles de `resources\wsl\images`: ninguno se rompe, no se cambió ninguno. Dos pruebas nuevas en `src/test/update-scripts-win.test.ts` (ZIP con `resources/wsl/images` reproducible y verificable; aritmética de topes). `pack-check.ps1`: tamaño razonable del instalador de 400 a 520 MB. `docs/DISTRIBUCION.md` §12.1: tamaño esperado y que `swap.ps1` no debe encontrar nada abierto bajo `resources\wsl\images`. El tamaño real no está medido.
