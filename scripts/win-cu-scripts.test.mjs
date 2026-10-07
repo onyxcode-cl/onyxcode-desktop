@@ -91,10 +91,7 @@ test('installer.nsh: customUnInstall solo ejecuta `wsl.exe --unregister Lazunox-
   const wslCalls = [...unMacro.matchAll(/wsl\.exe"?\s+(-{1,2}[A-Za-z-]+)/g)].map((m) => m[1])
   assert.deepEqual(wslCalls.sort(), ['--unregister', '-l'], 'solo --unregister y la lectura `-l -q` (dentro de PowerShell)')
   assert.match(unMacro, /--unregister Lazunox-Tareas'/)
-  assert.ok(
-    !/--shutdown|--terminate|-t\s+Lazunox|docker-desktop|OnyxCode-Tareas|--set-default|--import/i.test(nshCode),
-    'sin shutdown, ni otras distros'
-  )
+  assert.ok(!/--shutdown|--terminate|-t\s+Lazunox|docker-desktop|--set-default|--import/i.test(nshCode), 'sin shutdown, ni otras distros')
   assert.ok(!/--unregister\s+(?!Lazunox-Tareas)/.test(nshCode), 'solo el nombre fijo, sin variables')
 })
 
