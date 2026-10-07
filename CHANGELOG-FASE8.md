@@ -1247,3 +1247,18 @@ Sin cambio de comportamiento en macOS (en cada consumidor la ruta del sandbox es
 - **`tasks:sandbox:status { force }`**: «Volver a comprobar» se salta la caché de 5 s de `main`.
 - **Documentación (W10)**: `docs/SEGURIDAD.md` §3 quadragies quater y `AGENTS.md` (modelo, estado, nuevas zonas intocables).
 - **Pendiente**: imagen Debian fijada y empaquetada, batería A1–A20 en el PC (guion `tasks-attack.ps1`, informes de las dos sesiones), decisiones D2/D4 del dueño.
+
+## F8-B107 — Decisión del dueño (2026-10-07): Tareas y Control del PC en Windows como beta opcional (WP0, solo documentación)
+
+Sin código. El dueño decidió expresamente ofrecer Tareas y Control del PC en Windows como **beta opcional**, con la imagen incluida en el instalador
+(`resources\wsl\images`) y **sin publicar nada**. Registro en `AGENTS.md` (§7 y §8), `docs/SEGURIDAD.md` (§3 quadragies quater y quinquies: de «apagado»
+a «beta opcional»), `docs/WINDOWS-TAREAS.md` y `docs/ROOTFS-BUILD-2026-10-06.md`.
+
+- **Verificado (PC real):** `attack_suite.py` (38 pruebas, batería parcial) y sesión real 2/2 (`wsl-it.ps1`: setup, `ready`, uid 1000, `CapEff=0`, `NoNewPrivs=1`, montajes `noexec,nosuid,nodev`, `case=off`); aislamiento de la distro (Landlock, sin red salvo el proxy, sin SUID, sin interop ni unidades).
+- **NO verificado (sin eufemismos):** batería A1–A20 completa y dos sesiones (elevada y normal); WSL#12443; A3 (symlink NTFS); imagen y OpenCode sin firma de terceros; sin auditoría externa. Control del PC: SendInput, UIA, capturas con máscara, STOP/EOF, Defender y SmartScreen.
+- **La guardia de informes se sustituye** por la puerta de beta consentida: consentimiento propio escrito solo por `main` (versionado y revocable) + huella del paquete + distro `ready` + política `disableWslTasks`. La huella es integridad contra corrupción, no contra un atacante local con permiso de escritura. `tasks-win-report.ts` queda archivado.
+- **Se conserva** el camino de descarga (falla cerrado con 404 mientras la imagen no esté publicada).
+- **Respuestas del dueño:** (1) Tareas se niega a arrancar si Lazunox corre elevado, como Control del PC; (2) solo se avanza de versión de imagen, no se reinstala una anterior; (3) la URL de `wsl-rootfs` mantiene la forma del repo `onyxcode-cl/lazunox-wsl` aunque no esté publicada, sin relajar `parseWslPin`.
+- `TASKS_WIN_BUILD` sigue en `false` hasta su commit aparte (último paquete del plan). Nada de esto está probado en un Windows real más allá de lo listado como verificado.
+
+Prueba: documentación; `npx vitest run src/test` (guardias de texto).

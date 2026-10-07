@@ -1,7 +1,13 @@
 # Imagen base de Tareas en Windows: construcción del 2026-10-06
 
-Estado: **construida y verificada en el PC de pruebas, sin publicar.** Todavía no está en `resources/opencode-bin/pin.json`:
-falta subir el archivo a un release y poner su URL real (no se inventa una).
+Estado: **construida y verificada en el PC de pruebas, sin publicar.** Todavía no está en `resources/opencode-bin/pin.json`.
+
+Actualización 2026-10-07 (decisión del dueño, `docs/WINDOWS-TAREAS.md`): esta imagen irá **incluida en el instalador** de Windows
+(`resources\wsl\images`, beta opcional) y no se publica. En `pin.json` la clave `wsl-rootfs` conserva la forma de URL del repo de la
+imagen WSL (organización D9 pendiente) que exige `parseWslPin` (no se relaja), aunque el archivo no esté publicado: esa URL daría 404 y el camino
+de descarga falla cerrado; el instalador usa el archivo incluido, verificado por tamaño y sha256. Solo se avanza de versión de
+imagen, no se reinstala una anterior. Desde entonces se verificó en el PC real una sesión 2/2 (`wsl-it.ps1`) y la batería parcial de
+38 pruebas; la batería A1–A20 completa y las dos sesiones siguen sin hacerse.
 
 | Dato | Valor |
 |---|---|
@@ -19,5 +25,5 @@ Cambios que hicieron falta para construirla:
 - `customize.sh` ya no intenta cambiar la fecha de `/proc`, `/sys` y `/dev` (solo lectura dentro del chroot; mmdebstrap fija
   sus fechas al escribir el tar).
 
-Falta: publicar el archivo, fijarlo en `pin.json` (`wsl-rootfs`), empaquetar `resources/wsl` con el pin y probar la distro real
+Falta (texto original; ver la actualización de arriba): publicar el archivo, fijarlo en `pin.json` (`wsl-rootfs`), empaquetar `resources/wsl` con el pin y probar la distro real
 con la batería A1–A20 en el PC. No se verificó que la distro arranque, solo que la imagen se construye y pasa el inspector.

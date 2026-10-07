@@ -1543,9 +1543,21 @@ Ningún botón de permiso lleva `autoFocus` y se deshabilitan mientras hay una r
 **no se implementan** (siguen pendientes de decisión). El punto de la pestaña Tareas y el aviso de Inicio solo reflejan permisos cuando el store de
 Tareas ya está conectado a una carpeta.
 
-## 3 quadragies quater. Tareas en Windows: lo que está escrito y sigue APAGADO (F8-B105/B106, W10)
+## 3 quadragies quater. Tareas en Windows: beta opcional (decisión del dueño 2026-10-07; antes «APAGADO»; F8-B105/B106/B107, W10)
 
-**En una frase.** Tareas en Windows no se puede activar hoy, y a propósito. El código del aislamiento con WSL2 está escrito y probado en macOS con dobles; **nada de esto se ha ejecutado en un Windows real**. Que las pruebas de macOS pasen no significa que el aislamiento de Windows funcione.
+**Decisión del dueño (2026-10-07).** Tareas en Windows pasa de «apagado hasta tener informes» a **beta opcional**: va en el instalador de Windows con la imagen incluida (`resources\wsl\images`), el usuario la enciende con un consentimiento propio y no se publica nada. Esto es una decisión expresa del dueño y **acepta el riesgo de lo no verificado**; no es una prueba de que el aislamiento funcione. En este árbol `TASKS_WIN_BUILD` sigue en `false` hasta el commit aparte que lo cambia; lo que sigue describe el diseño aprobado y lo que ya existe.
+
+**Verificado (PC real).** La batería parcial `scripts/win/attack/attack_suite.py` (38 pruebas) y una sesión real 2/2 (`wsl-it.ps1`: `setup()` desde la imagen, `ready`, servidor como `lazunox` con uid 1000, `CapEff=0`, `NoNewPrivs=1`, montajes `noexec,nosuid,nodev`, `case=off`). Aislamiento de la distro: Landlock, sin red salvo el proxy, solo carpetas aprobadas, sin SUID, sin interop y sin unidades montadas.
+
+**NO verificado (el aviso de la beta lo dice sin eufemismos).** La batería A1–A20 completa y los informes de las dos sesiones (elevada y normal); el fallo abierto de WSL con sesión elevada (microsoft/WSL#12443); A3 (symlink NTFS); la imagen y el OpenCode de Linux no están firmados por un tercero; no hay auditoría externa. Defender y SmartScreen sobre un instalador sin firma Authenticode tampoco se han probado.
+
+**La guardia de informes se sustituye por la puerta de beta consentida.** `gate()` falla cerrado y exige: (1) consentimiento beta vigente (`userData/tasks-win-beta-consent.json`, `{version, at}`, escrito **solo por `main`**, versionado y revocable; relido del disco en cada arranque de servidor, así que revocar apaga el backend aunque la app siga abierta; archivo ausente, corrupto o de otra versión = sin consentimiento; el ajuste `tasksWinBeta` que escribe el renderer **no cuenta**); (2) huella del paquete incluido (`lstat` sin enlaces, tamaño y sha256 contra `pin.json`); (3) carga (`.py` y OpenCode) con su huella; (4) `state.json` del usuario con el `rootfsSha` del pin; (5) distro `ready` (`startTasksServer`); (6) política `disableWslTasks`. Además: **Tareas se niega a arrancar si Lazunox corre elevado (administrador)**, como Control del PC (respuesta 1 del dueño, por WSL#12443). **Alcance honesto de la huella:** es una comprobación de integridad contra corrupción, **no** contra un atacante local con permiso de escritura en la carpeta de la app (puede cambiar `pin.json` igual que el paquete). `tasks-win-report.ts` queda archivado como herramienta opcional (si algún día se completa la batería A1–A20 vuelve a valer) y deja de usarse en producción.
+
+**Imagen: solo avanzar, descarga conservada.** Se avanza de versión de imagen y no se reinstala una anterior (respuesta 2). La URL de `wsl-rootfs` conserva la forma de URL del repo de la imagen WSL que fija `wsl-pin.ts` (organización D9 pendiente) aunque el archivo no esté publicado, y `parseWslPin` no se relaja (respuesta 3): el camino de descarga se conserva y falla cerrado (404) si se usa; el predeterminado es el archivo incluido, copiado a la caché y verificado con el mismo sha256.
+
+**Texto anterior de esta sección (previo a la decisión).** Los puntos siguientes se escribieron cuando la función estaba apagada; donde dicen «informe del PC» o «sigue APAGADO» manda el bloque de decisión de arriba.
+
+**En una frase (anterior).** Tareas en Windows no se puede activar hoy, y a propósito. El código del aislamiento con WSL2 está escrito y probado en macOS con dobles; **nada de esto se ha ejecutado en un Windows real**. Que las pruebas de macOS pasen no significa que el aislamiento de Windows funcione. (Matiz de la decisión: lo marcado arriba como «Verificado (PC real)» sí se ejecutó en un PC real.)
 
 **Qué existe (verificado en macOS, con la plataforma inyectada).**
 - **Apagado de verdad.** `TASKS_WIN_BUILD` es un `false` literal en `src/shared/feature-flags.ts` (una guardia lee ese literal). Con él en `false`, la bandera `tasksWin` es falsa aunque el usuario la pida, aunque exista `LAZUNOX_TASKS_WIN=1` y aunque no haya política. En Windows no hay modo Tareas, ni canales de Tareas, ni backend.
@@ -1569,7 +1581,13 @@ Tareas ya está conectado a una carpeta.
 
 **Pruebas (macOS, sin Windows ni Electron).** `win-attack.battery`, `ui-path`, `folder-policy.win`, `win-context`, `win-drives`, `select-backend`, `sandbox.win`, `tasks-win-flag`, `tasks-win-report` y su guardia, `storage.test.ts` (recorrido con Node), `tasks-sandbox-handlers.test.ts` (`force`), `actions.directory.test.ts` (ruta del sandbox en las llamadas y ruta de Windows en pantalla; macOS idéntico), más `sandbox.equivalence.test.ts` sin regenerar su fixture.
 
-## 3 quadragies quinquies. Control del PC en Windows: lo que está escrito y sigue APAGADO (plan win-C)
+## 3 quadragies quinquies. Control del PC en Windows: beta opcional con Tareas (decisión del dueño 2026-10-07; antes «APAGADO», plan win-C)
+
+**Decisión del dueño (2026-10-07).** Control del PC en Windows pasa a **beta opcional**, disponible **solo si Tareas beta está encendida** (`tasksWin` en la fórmula de `resolveComputerWin`) y con `cu-helper.exe` presente. No tiene interruptor propio: su puerta es el consentimiento de la tarjeta (`computer-win-consent.json`, casilla + armado de 600 ms, escrito solo por `main`; sin consentimiento el MCP responde «sin consentimiento» antes de cada herramienta). Se niega a arrancar si Lazunox corre elevado. En este árbol sigue apagado mientras `TASKS_WIN_BUILD` sea `false`. Es una decisión expresa del dueño que acepta el riesgo de lo no verificado.
+
+**Verificado en el PC real: solo** que el helper compila y responde `version`, `screens`, `cursor` y `permissions` (`session` salió 12 por escritorio seguro: falla cerrado). **NO verificado, sin eufemismos:** SendInput, UI Automation, capturas con máscara, STOP/EOF, Defender y SmartScreen; firma Authenticode pendiente; y todo lo no verificado de Tareas (sección anterior), porque Control del PC corre dentro de ella.
+
+**Texto anterior de esta sección (previo a la decisión).** Donde dice «no se puede activar hoy» o «sigue APAGADO» manda el bloque de decisión de arriba.
 
 **En una frase.** Control del PC en Windows (UI Automation) no se puede activar hoy, y a propósito: depende de las banderas `computerWin` y `tasksWin` (Control total es un modo de Tareas, que en Windows sigue apagado, sección anterior) y casi todo lo que toca el escritorio **no se ha ejecutado nunca en un Windows real**. Que las pruebas de macOS pasen no demuestra que SendInput, UI Automation o las capturas funcionen en Windows.
 

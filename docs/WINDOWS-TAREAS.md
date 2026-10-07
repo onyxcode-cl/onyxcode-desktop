@@ -2,7 +2,24 @@
 
 Fase 1 del plan: distro dedicada `Lazunox-Tareas` (sin unidades montadas, sin interop), OpenCode de Linux en un espacio de red vacío con Landlock, y todo el tráfico por la stdio de `wsl.exe` hacia los `EgressProxy`/`CredentialProxy` que ya viven en `main`. La clave real nunca entra en la VM. Entrada del changelog: F8-B81. Sección de seguridad: `docs/SEGURIDAD.md` §3 tricies octies.
 
-**Tareas en Windows sigue DESACTIVADA**: `capsFor('win32').tasks` es `false` mientras la bandera de producto `tasksWin` esté apagada, y `backends/index.ts` no importa el backend WSL. Nada de esto cambia el comportamiento actual de Windows ni el de macOS.
+## Decisión del 2026-10-07: beta opcional
+
+El dueño decidió (2026-10-07, expresamente) ofrecer **Tareas y Control del PC en Windows como beta opcional**, con la imagen incluida en el instalador y **sin publicar nada**. Plan y paquetes de trabajo: F8-B107 en `CHANGELOG-FASE8.md`.
+
+**Verificado (PC real):** `attack_suite.py` (38 pruebas, batería parcial) y sesión real 2/2 con `wsl-it.ps1` (setup, `ready`, uid 1000, `CapEff=0`, `NoNewPrivs=1`, montajes `noexec,nosuid,nodev`, `case=off`); aislamiento de la distro con Landlock, sin red salvo el proxy, solo carpetas aprobadas, sin SUID, sin interop ni unidades montadas.
+
+**NO verificado (el aviso lo dice sin eufemismos):** la batería A1–A20 completa y los informes de dos sesiones (elevada y normal); WSL#12443 (fallo abierto con sesión elevada); A3 (symlink NTFS); imagen y OpenCode sin firma de terceros; sin auditoría externa. Para Control del PC: SendInput, UI Automation, capturas con máscara, STOP/EOF, Defender y SmartScreen.
+
+**La guardia de informes se sustituye por la puerta de beta consentida**: consentimiento propio (`tasks-win-beta-consent.json`, escrito solo por `main`, versionado, revocable y relido en cada arranque de servidor) + huella del paquete incluido + distro `ready` + política `disableWslTasks`. La huella es integridad contra corrupción, no contra un atacante local con permiso de escritura. `tasks-win-report.ts` queda archivado y sin uso en producción; no se crea `docs/evidence/`.
+
+**Respuestas del dueño a las preguntas del plan:**
+1. Tareas **se niega a arrancar si Lazunox corre elevado** (administrador), como Control del PC.
+2. **Solo se avanza** de versión de imagen; no se reinstala una anterior (imagen mala: subir `version`).
+3. La URL de `wsl-rootfs` mantiene la forma de URL del repo de la imagen WSL que fija `wsl-pin.ts` (organización D9 pendiente) aunque no esté publicado; **no se relaja `parseWslPin`**. El camino de descarga se conserva (falla cerrado con 404); el predeterminado es la imagen incluida.
+
+Hasta el commit de la bandera (`TASKS_WIN_BUILD = true`, aparte y solo) lo que sigue de este documento describe el estado previo; donde diga «DESACTIVADA» o «apagada», manda este bloque.
+
+**Estado previo: Tareas en Windows sigue DESACTIVADA**: `capsFor('win32').tasks` es `false` mientras la bandera de producto `tasksWin` esté apagada, y `backends/index.ts` no importa el backend WSL. Nada de esto cambia el comportamiento actual de Windows ni el de macOS.
 
 ## Estado (hecho y probado en la Mac, con dobles)
 
