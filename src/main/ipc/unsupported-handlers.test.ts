@@ -27,22 +27,10 @@ describe('registerUnsupportedHandlers', () => {
     for (const ch of UPDATER_CHANNELS) expect(handlers.has(ch), ch).toBe(false)
   })
 
-  it('macOS: solo el stub neutro de tasks:winBeta (no hay nada más que simular)', () => {
+  it('macOS: no hay nada que simular (todas las funciones existen)', () => {
     const { ipc, handlers } = fakeIpc()
-    expect(registerUnsupportedHandlers(ipc, capsFor('darwin'))).toEqual(['tasks:winBeta'])
-    expect([...handlers.keys()]).toEqual(['tasks:winBeta'])
-  })
-
-  it('tasks:winBeta: stub neutro (available false) o ninguno si ya hay handler real', async () => {
-    const a = fakeIpc()
-    registerUnsupportedHandlers(a.ipc, capsFor('darwin'))
-    expect(await a.handlers.get('tasks:winBeta')!({}, { action: 'accept' })).toMatchObject({
-      ok: true,
-      data: { available: false, consent: false, armed: false, restartRequired: false }
-    })
-    const b = fakeIpc()
-    expect(registerUnsupportedHandlers(b.ipc, capsFor('darwin'), { winBetaHandled: true })).toEqual([])
-    expect(b.handlers.size).toBe(0)
+    expect(registerUnsupportedHandlers(ipc, capsFor('darwin'))).toEqual([])
+    expect(handlers.size).toBe(0)
   })
 
   it('Windows (Store, sin actualizador propio): cubre todos los canales de Tareas/Control (salvo routines:*) y los del actualizador', () => {

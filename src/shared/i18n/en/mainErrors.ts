@@ -342,8 +342,6 @@ export const mainErrors = {
   'merr.task.noPrivateDir': 'The tasks sandbox private directory is missing.',
   'merr.task.winBackendUnavailable':
     'Tasks on Windows isn’t available on this computer ({reason}). For safety it never runs without isolation.',
-  'merr.task.winBackendUnavailable.consent':
-    'Tasks on Windows (beta) is off: your current consent is missing. Accept it in Settings > General and restart Lazunox.',
   'merr.task.winBackendUnavailable.elevated':
     'Tasks on Windows doesn’t run while Lazunox is running as administrator. Close it and open it again without administrator rights.',
   'merr.task.winBackendUnavailable.bundle':

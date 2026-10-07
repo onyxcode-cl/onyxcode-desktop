@@ -19,12 +19,10 @@ import { registerCodeHandlers } from './ipc/code-handlers'
 import { registerCompareHandlers } from './compare/handlers'
 import { registerRoutinesHandlers } from './ipc/routines-handlers'
 import { registerUnsupportedHandlers } from './ipc/unsupported-handlers'
-import { registerTasksBetaHandlers } from './ipc/tasks-beta-handlers'
 import { capsFor } from '@shared/platform-caps'
 import { capsFlagsToArgs } from '@shared/caps-argv'
 import { computerWinHelperPresent, resolveComputerWin } from './computer/computer-win-flag'
 import { resolveTasksWin } from './tasks/tasks-win-flag'
-import { readTasksWinBetaConsent } from './tasks/tasks-win-beta-consent'
 import { loadManagedPolicy } from './tasks/policy'
 import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
@@ -214,10 +212,6 @@ function start(): void {
     applyE2eHeadless()
     tasksWinOn = resolveTasksWin({
       platform: process.platform,
-      // Consentimiento beta leído por main de su archivo propio; `settings.tasksWinBeta` (lo escribe el renderer) es legado ignorado.
-      optIn: process.platform === 'win32' ? readTasksWinBetaConsent(app.getPath('userData')) : false,
-      env: process.env,
-      isPackaged: app.isPackaged,
       policy: process.platform === 'win32' ? loadManagedPolicy() : null
     })
     computerWinOn = resolveComputerWin({
@@ -311,18 +305,7 @@ function start(): void {
       // Sin modo Tareas: Rutinas de Chat y Code, y el resto de canales de Tareas/Control/actualizador responden «no disponible».
       tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
     }
-    // Consentimiento de la beta de Tareas en Windows: se registra aunque `tasksWin` esté apagada (es la única forma de encenderla);
-    // fuera de Windows (o sin la puerta de compilación) lo cubre el stub de `registerUnsupportedHandlers`.
-    const winBetaHandled = registerTasksBetaHandlers(ipcMain, {
-      userDataDir: app.getPath('userData'),
-      platform: process.platform,
-      active: tasksWinOn,
-      relaunch: () => {
-        app.relaunch()
-        app.quit()
-      }
-    })
-    registerUnsupportedHandlers(ipcMain, caps, { winBetaHandled })
+    registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })

@@ -2,9 +2,13 @@
 
 Fase 1 del plan: distro dedicada `Lazunox-Tareas` (sin unidades montadas, sin interop), OpenCode de Linux en un espacio de red vacío con Landlock, y todo el tráfico por la stdio de `wsl.exe` hacia los `EgressProxy`/`CredentialProxy` que ya viven en `main`. La clave real nunca entra en la VM. Entrada del changelog: F8-B81. Sección de seguridad: `docs/SEGURIDAD.md` §3 tricies octies.
 
-## Decisión del 2026-10-07: beta opcional
+## Decisión del 2026-10-07 (tarde): se quita el consentimiento beta — «no quiero nada beta»
 
-El dueño decidió (2026-10-07, expresamente) ofrecer **Tareas y Control del PC en Windows como beta opcional**, con la imagen incluida en el instalador y **sin publicar nada**. Plan y paquetes de trabajo: F8-B107 en `CHANGELOG-FASE8.md`.
+El mismo día de la decisión de abajo, el dueño pidió expresamente quitar el consentimiento beta por completo: **sin interruptor ni aviso que aceptar**, Tareas y Control del PC quedan **activos de entrada en Windows**, igual que en macOS. Se borraron `tasks-win-beta-consent.ts`, el canal IPC `tasks:winBeta`, el componente `TasksWinBeta.tsx` y el campo `settings.tasksWinBeta`. La puerta que protege el arranque pasa a ser SOLO la de integridad de `win-provider.ts` (`gate()`: Lazunox no elevado, pin, huella del paquete incluido, carga, `state.json`, política `disableWslTasks`) — todo lo que el bloque de abajo describe como «consentimiento» ya no existe; el resto de esa puerta sigue igual. La imagen sigue incluida en el instalador y **sin publicar nada**. El consentimiento de la TARJETA de Control del PC (`computer-win-consent.json`, equivalente a TCC, por acción) **NO se tocó**: sigue siendo la protección real de cada herramienta.
+
+## Decisión del 2026-10-07 (mañana, SUPERADA por el bloque de arriba): beta opcional
+
+El dueño decidió (2026-10-07, expresamente) ofrecer **Tareas y Control del PC en Windows como beta opcional**, con la imagen incluida en el instalador y **sin publicar nada**. Plan y paquetes de trabajo: F8-B107 en `CHANGELOG-FASE8.md`. (Horas después, el dueño pidió quitar el consentimiento: ver el bloque de arriba, que manda.)
 
 **Verificado (PC real):** `attack_suite.py` (38 pruebas, batería parcial) y sesión real 2/2 con `wsl-it.ps1` (setup, `ready`, uid 1000, `CapEff=0`, `NoNewPrivs=1`, montajes `noexec,nosuid,nodev`, `case=off`); aislamiento de la distro con Landlock, sin red salvo el proxy, solo carpetas aprobadas, sin SUID, sin interop ni unidades montadas.
 

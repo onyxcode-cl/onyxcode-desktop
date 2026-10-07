@@ -1,14 +1,14 @@
 /**
  * Proveedor del backend de Windows y su PUERTA de arranque (`gate()`, que sustituye a la guardia de informes; decisión del dueño,
- * 2026-10-07). Cada eslabón falla CERRADO: consentimiento beta (releído del disco), no elevado, pin, huella del paquete incluido,
- * carga y `state.json`. Sin Windows: dirs temporales, `fetch` doble, nada de `wsl.exe` ni de `whoami.exe`.
+ * 2026-10-07; el mismo día se quitó también el consentimiento beta — «no quiero nada beta»). Cada eslabón falla CERRADO: no
+ * elevado, pin, huella del paquete incluido, carga y `state.json`. Sin Windows: dirs temporales, `fetch` doble, nada de
+ * `wsl.exe` ni de `whoami.exe`.
  */
 import { createHash } from 'node:crypto'
 import { linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { TASKS_WIN_BETA_CONSENT_FILE, TASKS_WIN_BETA_CONSENT_VERSION } from '../tasks-win-beta-consent'
 import { bundleFingerprintCacheSize, clearBundleFingerprintCache, createWinBackendProvider, type WinProviderDirs } from './win-provider'
 import { wslRootfsUrl } from './wsl-pin'
 import { PAYLOAD_PY_NAMES } from './wsl-real-deps'
@@ -49,18 +49,14 @@ const goodState = (): Record<string, string> => ({
 })
 
 let root: string
-let userData: string
 let dirs: WinProviderDirs
 let state: unknown
 let elevated: boolean | null
 let policy: boolean
 
-function writeAll(
-  o: { pin?: boolean; images?: boolean; consent?: unknown; payload?: boolean; rootfs?: Buffer; opencode?: Buffer } = {}
-): void {
+function writeAll(o: { pin?: boolean; images?: boolean; payload?: boolean; rootfs?: Buffer; opencode?: Buffer } = {}): void {
   mkdirSync(dirs.payloadDir, { recursive: true })
   mkdirSync(dirs.imagesDir!, { recursive: true })
-  mkdirSync(userData, { recursive: true })
   if (o.payload !== false) for (const n of PAYLOAD_PY_NAMES) writeFileSync(join(dirs.payloadDir, n), `# ${n}\n`)
   writeFileSync(join(dirs.payloadDir, 'wsl.conf'), '[automount]\nenabled=false\n')
   if (o.pin !== false) writeFileSync(dirs.pinJson, JSON.stringify(pinJson))
@@ -68,15 +64,11 @@ function writeAll(
     writeFileSync(join(dirs.imagesDir!, ROOTFS_NAME), o.rootfs ?? ROOTFS)
     writeFileSync(join(dirs.imagesDir!, OPENCODE_NAME), o.opencode ?? OPENCODE)
   }
-  const consent = o.consent === undefined ? { version: TASKS_WIN_BETA_CONSENT_VERSION, at: 1000 } : o.consent
-  if (consent !== null)
-    writeFileSync(join(userData, TASKS_WIN_BETA_CONSENT_FILE), typeof consent === 'string' ? consent : JSON.stringify(consent))
 }
 
 const make = (over: Partial<Parameters<typeof createWinBackendProvider>[0]> = {}): ReturnType<typeof createWinBackendProvider> =>
   createWinBackendProvider({
     dirs,
-    userDataDir: userData,
     fetch: (async () => new Response('')) as never,
     hostEnv: { LOCALAPPDATA: 'C:\\Users\\Ben\\AppData\\Local' },
     isElevated: async () => elevated,
@@ -88,7 +80,6 @@ const make = (over: Partial<Parameters<typeof createWinBackendProvider>[0]> = {}
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'lzx-winprov-'))
-  userData = join(root, 'userData')
   dirs = { pinJson: join(root, 'pin.json'), payloadDir: join(root, 'wsl'), imagesDir: join(root, 'wsl', 'images') }
   state = goodState()
   elevated = false
@@ -102,46 +93,6 @@ describe('gate(): camino feliz', () => {
     writeAll()
     expect(await make().gate()).toEqual({ ok: true })
     expect(await make().gate('run')).toEqual({ ok: true })
-  })
-})
-
-describe('gate(): consentimiento beta (se relee del disco en cada llamada)', () => {
-  it('sin archivo: cierra con `consent`', async () => {
-    writeAll({ consent: null })
-    expect(await make().gate()).toEqual({ ok: false, reason: 'consent' })
-  })
-  it('corrupto, de otra versión (vieja o futura) o con forma rara: cierra con `consent`', async () => {
-    for (const c of [
-      '{',
-      '',
-      'null',
-      { version: 0, at: 5 },
-      { version: TASKS_WIN_BETA_CONSENT_VERSION + 1, at: 5 },
-      { version: 1 },
-      { at: 5 }
-    ]) {
-      writeAll({ consent: c })
-      expect(await make().gate(), JSON.stringify(c)).toEqual({ ok: false, reason: 'consent' })
-    }
-  })
-  it('sin userData conocido: cierra con `consent`', async () => {
-    writeAll()
-    const p = make({ userDataDir: '' })
-    expect(await p.gate()).toEqual({ ok: false, reason: 'consent' })
-  })
-  it('revocar con el proveedor ya construido cierra el SIGUIENTE arranque (no detiene tareas en curso)', async () => {
-    writeAll()
-    const p = make()
-    expect(await p.gate()).toEqual({ ok: true })
-    rmSync(join(userData, TASKS_WIN_BETA_CONSENT_FILE))
-    expect(await p.gate()).toEqual({ ok: false, reason: 'consent' })
-    writeFileSync(join(userData, TASKS_WIN_BETA_CONSENT_FILE), JSON.stringify({ version: TASKS_WIN_BETA_CONSENT_VERSION, at: 9 }))
-    expect(await p.gate()).toEqual({ ok: true })
-  })
-  it('`settings.json` con `tasksWinBeta: true` NO sustituye al consentimiento', async () => {
-    writeAll({ consent: null })
-    writeFileSync(join(userData, 'settings.json'), JSON.stringify({ tasksWinBeta: true }))
-    expect(await make().gate()).toEqual({ ok: false, reason: 'consent' })
   })
 })
 
@@ -310,9 +261,11 @@ describe('gate(): state.json del usuario', () => {
     expect(await make().gate('setup')).toEqual({ ok: true })
     expect(await make().gate('run')).toEqual({ ok: false, reason: 'state' })
   })
-  it('`setup` sí exige consentimiento, no elevado, pin, paquete y carga', async () => {
-    writeAll({ consent: null })
-    expect((await make().gate('setup')).reason).toBe('consent')
+  it('`setup` sí exige no elevado, pin, paquete y carga', async () => {
+    elevated = true
+    writeAll()
+    expect((await make().gate('setup')).reason).toBe('elevated')
+    elevated = false
     rmSync(root, { recursive: true, force: true })
     writeAll({ images: false })
     expect((await make().gate('setup')).reason).toBe('bundle')
@@ -335,13 +288,11 @@ describe('gate(): política de la organización', () => {
 })
 
 describe('gate(): orden de las comprobaciones y robustez', () => {
-  it('con varias faltas informa la PRIMERA en este orden: consent, elevated, pin, bundle, payload, state, policy', async () => {
-    writeAll({ consent: null, pin: false, images: false, payload: false })
+  it('con varias faltas informa la PRIMERA en este orden: elevated, pin, bundle, payload, state, policy', async () => {
+    writeAll({ pin: false, images: false, payload: false })
     elevated = true
     policy = true
     state = undefined
-    expect((await make().gate()).reason).toBe('consent')
-    writeAll({ pin: false, images: false, payload: false })
     expect((await make().gate()).reason).toBe('elevated')
     elevated = false
     expect((await make().gate()).reason).toBe('pin')
@@ -355,7 +306,7 @@ describe('gate(): orden de las comprobaciones y robustez', () => {
     expect((await make().gate()).reason).toBe('policy')
   })
   it('nunca lanza: ante cualquier error es `{ok:false}`', async () => {
-    const p = make({ userDataDir: undefined, dirs: { pinJson: '\0', payloadDir: '\0', imagesDir: '\0' } })
+    const p = make({ dirs: { pinJson: '\0', payloadDir: '\0', imagesDir: '\0' } })
     const r = await p.gate()
     expect(r.ok).toBe(false)
   })

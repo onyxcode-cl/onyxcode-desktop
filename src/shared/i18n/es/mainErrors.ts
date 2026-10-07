@@ -347,8 +347,6 @@ export const mainErrors = {
   'merr.task.noPrivateDir': 'Falta el directorio privado del sandbox de las tareas.',
   'merr.task.winBackendUnavailable':
     'Tareas en Windows no está disponible en este equipo ({reason}). Por seguridad no se ejecuta sin aislamiento.',
-  'merr.task.winBackendUnavailable.consent':
-    'Tareas en Windows (beta) está apagada: falta tu consentimiento vigente. Acéptalo en Ajustes > General y reinicia Lazunox.',
   'merr.task.winBackendUnavailable.elevated':
     'Tareas en Windows no se ejecuta con Lazunox como administrador. Ciérralo y ábrelo de nuevo sin permisos de administrador.',
   'merr.task.winBackendUnavailable.bundle':

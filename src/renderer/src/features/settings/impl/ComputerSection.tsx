@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Eye, EyeOff, Loader2, MonitorCog } from 'lucide-react'
 import { DEFAULT_COMPUTER_PREFS, type ComputerControlMode, type ComputerPrefs } from '@shared/ipc-tasks'
-import { UI_LABELS } from '@shared/labels'
+import { MODE_LABELS, UI_LABELS } from '@shared/labels'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { ComputerGrantsList } from '../../tasks/impl/ComputerAccess'
@@ -75,13 +75,13 @@ export function ComputerSection(): React.JSX.Element {
     update({ mode })
   }
 
-  // Windows: Control del PC es beta y solo existe con Tareas (beta) encendida; sin ella, solo una nota (macOS no cambia).
+  // Windows: Control del PC solo existe con Tareas encendida (la política de la organización puede apagar ambas); sin ella, solo una nota (macOS no cambia).
   if (isWindowsPlatform() && !platformCaps().tasks) {
     return (
       <div>
         <SectionHeader title={UI_LABELS.computer} description={t('misc.computer.desc')} />
         <p role="note" className="text-sm text-muted">
-          {t('tasksSettings.beta.computerNeeds')}
+          {t('platform.win.unavailable.computer', { computer: UI_LABELS.computer, tasks: MODE_LABELS.tasks })}
         </p>
       </div>
     )

@@ -1,6 +1,6 @@
 /**
  * `selectBackend` en Windows falla CERRADO (A18, hueco H1): solo devuelve el backend de la distro con la bandera, la constante
- * de compilación, la puerta de la beta (`gate()`: consentimiento, no elevado, paquete, carga, estado) y un backend creable.
+ * de compilación, la puerta de integridad (`gate()`: no elevado, paquete, carga, estado) y un backend creable.
  * Cualquier otra combinación lanza; jamás `none`.
  */
 import { describe, expect, it } from 'vitest'
@@ -41,9 +41,9 @@ describe('selectBackend(win32)', () => {
     expect(await block(selectBackend('win32', { tasksWin: true, win: prov({ build: false }) }))).toBe('build')
     expect(await block(selectBackend('win32', { tasksWin: true, win: prov({ build: 1 as unknown as boolean }) }))).toBe('build')
   })
-  it('la puerta cerrada lanza con el bloque de su motivo (consentimiento, elevado, paquete; el resto es `gate`)', async () => {
+  it('la puerta cerrada lanza con el bloque de su motivo (elevado, paquete; el resto es `gate`)', async () => {
     const closed = (reason: string): WinBackendProvider => prov({ gate: async () => ({ ok: false, reason: reason as never }) })
-    expect(await block(selectBackend('win32', { tasksWin: true, win: closed('consent') }))).toBe('consent')
+    expect(await block(selectBackend('win32', { tasksWin: true, win: closed('elevated') }))).toBe('elevated')
     expect(await block(selectBackend('win32', { tasksWin: true, win: closed('elevated') }))).toBe('elevated')
     expect(await block(selectBackend('win32', { tasksWin: true, win: closed('bundle') }))).toBe('bundle')
     for (const r of ['pin', 'payload', 'state', 'policy', 'otra-cosa']) {
@@ -62,12 +62,12 @@ describe('selectBackend(win32)', () => {
       expect(await block(selectBackend('win32', { tasksWin: true, win: prov({ gate: (async () => odd) as never }) }))).toBe('gate')
     }
   })
-  it('la puerta se consulta en CADA llamada (revocar el consentimiento cierra el siguiente arranque)', async () => {
+  it('la puerta se consulta en CADA llamada (un cambio de estado cierra el siguiente arranque)', async () => {
     let open = true
-    const win = prov({ gate: async () => (open ? { ok: true } : { ok: false, reason: 'consent' }) })
+    const win = prov({ gate: async () => (open ? { ok: true } : { ok: false, reason: 'elevated' }) })
     expect(await selectBackend('win32', { tasksWin: true, win })).toBe(wsl)
     open = false
-    expect(await block(selectBackend('win32', { tasksWin: true, win }))).toBe('consent')
+    expect(await block(selectBackend('win32', { tasksWin: true, win }))).toBe('elevated')
   })
   it('el propósito llega a la puerta: por defecto `run` (estricto); `setup` solo lo pide quien prepara la distro', async () => {
     const seen: unknown[] = []

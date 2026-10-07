@@ -1275,3 +1275,20 @@ Prueba: documentación; `npx vitest run src/test` (guardias de texto).
 - **Colapsada de 56 px** con tooltips a la derecha (hover y foco). El botón «Mostrar barra lateral» ahora vive en la barra (columna de iconos; la franja `drag` superior es hermana de los botones) y ya no flota al final de `<main>`; `--header-inset` pasa a 24 px en macOS (semáforos) y 0 en Windows/Linux.
 - **Sin cambios fuera de escritorio**: roles y elementos nuevos solo existen dentro de `SidebarTreeRoot` (contexto); el marcado del celular y las guardias de «escritorio sin cambios» no cambian. Sin colores ni tokens nuevos (`--sidebar-width` 256 → 272 px en `desktop/shell.css`). No cambia `i18n-core-keys.json`.
 - **Pruebas**: `Sidebar.render.test.tsx`, `SidebarTree.test.tsx`, `ChatSessionList.tree.render.test.tsx`, `sidebar.tree.render.test.tsx`. Capturas: `scripts/shot-desktop.mjs --clip sidebar` y escenarios `barra-chat`, `barra-code`, `barra-code-hover`.
+
+## F8-B110 — Ajustes en Windows: la fila beta de Tareas se veía tapada por el aviso viejo
+
+- `GeneralSection.tsx`: cuando la beta de Tareas existía sin activar, la fila «Tareas (beta) en Windows» quedaba debajo del aviso «No disponible en Windows por ahora», que además decía que Tareas «todavía no está disponible» (texto viejo, de antes de la beta). Se reordenó para mostrar primero la fila y se corrigieron los textos `platform.win.unavailable.*` (es/en).
+- Verificado con una captura real en el PC de pruebas (`scripts/win/remote-shot.mjs`, sección `General`): el interruptor sale visible de entrada.
+- Superado horas después por F8-B111 (se quita la beta por completo).
+
+## F8-B111 — Se quita el consentimiento beta de Tareas/Control del PC en Windows: «no quiero nada beta»
+
+- **Decisión expresa del dueño, 2026-10-07 (tarde)**: tras ofrecerlas como beta opcional (F8-B107), el dueño pidió quitar el consentimiento por completo. Tareas y Control del PC quedan **activos de entrada en Windows**, igual que en macOS; no hay interruptor ni aviso que aceptar.
+- **Borrado**: `tasks-win-beta-consent.ts`, `ipc/tasks-beta-handlers.ts`, `TasksWinBeta.tsx` (+ pruebas), el canal IPC `tasks:winBeta`, los tipos `TasksWinBetaAction`/`TasksWinBetaState`, el campo `settings.tasksWinBeta`, y las claves i18n `tasksSettings.beta.*`.
+- **`resolveTasksWin`** (`tasks-win-flag.ts`) queda `win32 && TASKS_WIN_BUILD && !policy.disableWslTasks`: ya no depende de ningún consentimiento ni de `LAZUNOX_TASKS_WIN`.
+- **`win-provider.ts` `gate()`** pierde el primer eslabón (consentimiento releído del disco); el resto sigue igual: no elevado, pin, huella del paquete incluido, carga, `state.json`, política.
+- **NO se tocó** el consentimiento de la tarjeta de Control del PC (`computer-win-consent.json`, equivalente a TCC, por acción): sigue siendo la protección real de cada herramienta, igual que antes.
+- `GeneralSection.tsx`/`ComputerSection.tsx`: Windows ahora muestra Tareas/Control del PC igual que macOS cuando `caps.tasks` es verdad; el aviso `platform.win.unavailable.*` queda solo para cuando la política de la organización los bloquea.
+- Lo que **no cambia**: la batería A1–A20 sigue incompleta y los informes de dos sesiones no existen; eso ya no bloquea el arranque, solo sigue pendiente de probar.
+- Pruebas: `win-provider.test.ts`, `tasks-win-flag.test.ts`, `unsupported-handlers.test.ts`, `tasks-handlers.nocomputer.test.ts`, `tasks-win-wiring.test.ts`, `i18n-coverage.test.ts`, `win-attack.battery.test.ts` reescritas sin consentimiento. Batería completa: 5855 pruebas verdes.

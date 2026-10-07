@@ -237,32 +237,6 @@ export interface ComputerWinConsentResult {
   granted?: boolean
 }
 
-/**
- * Beta opcional de Tareas y Control del PC en Windows (decisión del dueño, 2026-10-07): acciones del canal `tasks:winBeta`.
- * `view` solo lee; `show` abre el aviso (arranca el armado de 600 ms en `main`); `check`/`uncheck` la casilla «Entiendo y acepto»;
- * `accept` concede (solo si casilla + armado; `main` lo exige, no el renderer); `revoke` lo retira al instante; `restart`
- * reinicia la app (solo si hay un cambio pendiente de aplicar).
- */
-export type TasksWinBetaAction = 'view' | 'show' | 'check' | 'uncheck' | 'accept' | 'revoke' | 'restart'
-
-export interface TasksWinBetaState {
-  /** La función existe en esta plataforma/build (Windows con `TASKS_WIN_BUILD`). `false` = la interfaz no muestra nada. */
-  available: boolean
-  /** Consentimiento beta VIGENTE guardado por `main`. */
-  consent: boolean
-  version: number
-  /** Hay un consentimiento guardado pero de otra versión: hay que pedirlo de nuevo. */
-  stale: boolean
-  /** ¿Puede pulsarse «Aceptar» ahora? Casilla marcada y pasados 600 ms desde `show`. */
-  armed: boolean
-  /** Tareas (beta) está activa en ESTE arranque (`tasksWin` efectiva). */
-  active: boolean
-  /** El consentimiento actual no coincide con lo que arrancó esta instancia: hay que reiniciar para aplicar. */
-  restartRequired: boolean
-  /** Solo en `accept`: si se concedió. */
-  granted?: boolean
-}
-
 /** Una línea del registro auditable (Windows). Nunca lleva el texto tecleado, capturas ni valores de la interfaz. */
 export interface ComputerAuditRow {
   at: string
@@ -1049,12 +1023,6 @@ export interface TasksInvokeContract {
   'tasks:sandbox:setup': { req: void; res: TasksSandboxStatus }
   /** Cancela la instalación en curso (efectiva hasta justo antes de importar la distro). */
   'tasks:sandbox:cancel': { req: void; res: TasksSandboxStatus }
-  /**
-   * Consentimiento de la beta de Tareas en Windows (archivo propio que escribe solo `main`; `settings.tasksWinBeta` es legado
-   * ignorado). Se registra aunque `tasksWin` esté apagada: es la única forma de encenderla. Fuera de Windows responde `available: false`.
-   */
-  'tasks:winBeta': { req: { action: TasksWinBetaAction }; res: TasksWinBetaState }
-
   // ── Lote B: actividad, tareas, preferencias y almacenamiento ──
   /** Instantánea actual de tareas activas y servidores (también llega por el evento `tasks:activity`). */
   'tasks:activity': { req: void; res: TasksActivitySnapshot }
@@ -1247,7 +1215,6 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:sandbox:status',
   'tasks:sandbox:setup',
   'tasks:sandbox:cancel',
-  'tasks:winBeta',
   'tasks:activity',
   'tasks:viewing',
   'tasks:tasks:list',

@@ -139,45 +139,4 @@ export const tasksSettings = {
   'tasksSettings.storage.restoreTitle': 'Delete restore points?',
   'tasksSettings.storage.restoreMessage':
     'The copies of files saved before each message will be deleted. Current tasks will no longer be able to undo their file changes. This doesn’t affect your folders or task history.',
-  'tasksSettings.beta.title': 'Tasks (beta) on Windows',
-  'tasksSettings.beta.description':
-    'Optional and off by default: to turn it on you have to read and accept a notice. It uses an isolated Linux environment (WSL 2) that is installed once and takes disk space. With it, PC control (beta) can also be used.',
-  'tasksSettings.beta.enable': 'Read the notice and turn on…',
-  'tasksSettings.beta.statusOn': 'On for this PC.',
-  'tasksSettings.beta.statusOff': 'Off.',
-  'tasksSettings.beta.statusPendingOn': 'Accepted. Restart Lazunox to turn it on.',
-  'tasksSettings.beta.statusPendingOff': 'Withdrawn. Restart Lazunox to turn it off.',
-  'tasksSettings.beta.stale': 'The beta notice changed since you accepted it: read it again to turn it on.',
-  'tasksSettings.beta.revoke': 'Withdraw my consent',
-  'tasksSettings.beta.restartNow': 'Restart now',
-  'tasksSettings.beta.confirm.title': 'Before turning on Tasks (beta)',
-  'tasksSettings.beta.confirm.intro':
-    'This is a beta that you choose to turn on, and it isn’t fully tested. Read what was verified and what wasn’t.',
-  'tasksSettings.beta.confirm.verifiedTitle': 'What was verified',
-  'tasksSettings.beta.confirm.v1': 'A partial battery of 38 attack tests against the isolation, on a real Windows PC.',
-  'tasksSettings.beta.confirm.v2':
-    'A real working session from start to finish (setting up the environment and running a task): 2 out of 2 attempts, on a real Windows PC.',
-  'tasksSettings.beta.confirm.unverifiedTitle': 'What was NOT verified',
-  'tasksSettings.beta.confirm.u1': 'The complete A1–A20 attack battery: only part of it was run.',
-  'tasksSettings.beta.confirm.u2': 'The reports of two sessions (one with administrator rights and one normal) don’t exist yet.',
-  'tasksSettings.beta.confirm.u3':
-    'WSL has an open bug when the session is elevated, and what happens with Lazunox wasn’t tested. Don’t run Lazunox as administrator.',
-  'tasksSettings.beta.confirm.u4':
-    'NTFS symbolic links (test A3): it wasn’t checked that the agent can’t leave an approved folder through one.',
-  'tasksSettings.beta.confirm.u5': 'The Linux image and the agent program that ship with the app are not signed by a third party.',
-  'tasksSettings.beta.confirm.u6': 'There is no external security audit.',
-  'tasksSettings.beta.confirm.computerTitle': 'If you also use PC control (beta)',
-  'tasksSettings.beta.confirm.c1':
-    'Sending keyboard and mouse input (SendInput), reading windows (UI Automation), masked screenshots of private areas, the emergency stop (STOP) and input closing (EOF) were not tested on a real PC.',
-  'tasksSettings.beta.confirm.c2':
-    'The installer isn’t signed by Windows: SmartScreen or your antivirus may warn about it or block it, and Defender wasn’t tested with PC control on.',
-  'tasksSettings.beta.confirm.risk':
-    'Use it only with test folders and without data you can’t afford to lose or expose. You can withdraw it here any time (a restart is needed). More detail: docs/WINDOWS-TAREAS.md.',
-  'tasksSettings.beta.confirm.check': 'I understand what wasn’t verified and I accept using this beta at my own risk.',
-  'tasksSettings.beta.confirm.accept': 'Accept and turn on',
-  'tasksSettings.beta.confirm.hint': 'The button becomes active a moment after you tick the box.',
-  'tasksSettings.beta.confirm.cancel': 'Cancel',
-  'tasksSettings.beta.confirm.wait': 'Wait a moment and press again.',
-  'tasksSettings.beta.confirm.failed': 'The consent couldn’t be saved.',
-  'tasksSettings.beta.computerNeeds': 'PC control (beta) requires Tasks (beta): turn it on in Settings › General.'
 } as const satisfies Messages<typeof es>

@@ -132,7 +132,6 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/settings/impl/ComputerWinPanels.tsx',
   'src/renderer/src/features/settings/impl/DiagnosticsSection.tsx',
   'src/renderer/src/features/settings/impl/GeneralSection.tsx',
-  'src/renderer/src/features/settings/impl/TasksWinBeta.tsx',
   'src/renderer/src/features/settings/impl/KeyTestNotice.tsx',
   'src/renderer/src/features/settings/impl/McpCatalogDialog.tsx',
   'src/renderer/src/features/settings/impl/McpSection.tsx',

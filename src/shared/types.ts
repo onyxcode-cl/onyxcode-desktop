@@ -26,11 +26,6 @@ export interface Settings {
   opencodeBin: string
   /** Buscar versiones nuevas en GitHub (una petición al día como mucho). */
   checkUpdates: boolean
-  /**
-   * «Tareas (beta)» en Windows (WSL2): opción del usuario con consentimiento. Solo la lee `main` al ARRANCAR (hace falta
-   * reiniciar) y solo vale si además `TASKS_WIN_BUILD` está encendida y la política no la apaga (`resolveTasksWin`).
-   */
-  tasksWinBeta: boolean
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -44,8 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   routinesTermsAcknowledged: false,
   language: 'system',
   opencodeBin: '',
-  checkUpdates: true,
-  tasksWinBeta: false
+  checkUpdates: true
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'

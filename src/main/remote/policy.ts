@@ -191,9 +191,7 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   checkUpdates: 'X',
   recentFolders: 'X',
   onboarded: 'X',
-  routinesTermsAcknowledged: 'X',
-  // «Tareas (beta)» en Windows: solo desde el Mac/PC del dueño, nunca desde el celular.
-  tasksWinBeta: 'X'
+  routinesTermsAcknowledged: 'X'
 }
 
 const EXTRAS_PREF_FIELDS: Record<string, PolicyClass> = {
@@ -364,7 +362,6 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:sandbox:status': 'R',
   'tasks:sandbox:setup': 'X',
   'tasks:sandbox:cancel': 'X',
-  'tasks:winBeta': 'X', // el consentimiento de la beta de Windows solo se da en el propio PC (nunca desde el celular)
   'tasks:activity': 'R',
   'tasks:viewing': scopedOpt('M', 'folder'),
   'tasks:tasks:list': 'R',

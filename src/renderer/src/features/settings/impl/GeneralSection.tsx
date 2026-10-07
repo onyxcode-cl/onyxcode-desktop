@@ -6,13 +6,12 @@ import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
-import { isRemoteSurface, isWindowsPlatform, platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { UI_LABELS } from '@shared/labels'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useExtrasPrefs } from './extras'
-import { TasksWinBetaRow } from './TasksWinBeta'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
 
 /** Fila "Mantener el Mac despierto mientras corren tareas" (powerSaveBlocker en main). */
@@ -214,20 +213,14 @@ export function GeneralSection(): React.JSX.Element {
           <SubTitle>{MODE_LABELS.tasks}</SubTitle>
           <Card>
             <TasksInstructionsRow />
-            <TasksWinBetaRow />
           </Card>
         </>
       ) : (
         <div className="mt-6">
-          {isWindowsPlatform() && (
-            <div className="mb-3">
-              <TasksWinBetaRow standalone />
-            </div>
-          )}
           <PlatformNote title={t('platform.win.unavailable.title')}>
             <ul className="list-disc space-y-1 pl-4">
               <li>{t('platform.win.unavailable.tasks', { tasks: MODE_LABELS.tasks })}</li>
-              <li>{t('platform.win.unavailable.computer', { computer: UI_LABELS.computer })}</li>
+              <li>{t('platform.win.unavailable.computer', { computer: UI_LABELS.computer, tasks: MODE_LABELS.tasks })}</li>
               <li>{t('platform.win.unavailable.update')}</li>
             </ul>
           </PlatformNote>

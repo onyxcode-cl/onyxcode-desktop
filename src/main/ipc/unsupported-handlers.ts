@@ -13,7 +13,6 @@ import { DEFAULT_COMPUTER_PREFS, DEFAULT_TASKS_PREFS, TASKS_INVOKE_CHANNELS } fr
 import { IDLE_INSTALL } from '@shared/update-install'
 import type { PlatformCaps } from '@shared/platform-caps'
 import { handle, IpcError } from './handle'
-import { unavailableWinBeta } from './tasks-beta-handlers'
 import { makeTasksHandle } from './tasks-handle'
 
 /** Lecturas que el renderer hace al arrancar: valor neutro en vez de error. */
@@ -22,7 +21,6 @@ const NEUTRAL_TASKS: Record<string, () => unknown> = {
   'tasks:trusted:list': () => [],
   'tasks:policy': () => null,
   'tasks:sandbox:status': () => ({ backend: 'none', state: 'unsupported', setup: null }),
-  'tasks:winBeta': unavailableWinBeta,
   'tasks:tasks:list': () => [],
   'tasks:mcp:list': () => [],
   'tasks:rules:list': () => [],
@@ -62,27 +60,14 @@ const unsupported = (): never => {
   throw new IpcError('PLATFORM_UNSUPPORTED', t('merr.platform.unsupported'))
 }
 
-/**
- * `tasks:winBeta` no depende de `caps.tasks` (con la bandera apagada es el único modo de encenderla): su handler real lo registra
- * `registerTasksBetaHandlers` (win32 con la puerta de compilación) y, si no, el stub neutro de abajo.
- */
-const WIN_BETA_CHANNEL = 'tasks:winBeta'
-
-/** Canales (invoke) de Tareas y Control del PC que no son de Rutinas (ni el de la beta, que se cubre aparte). */
+/** Canales (invoke) de Tareas y Control del PC que no son de Rutinas. */
 export function tasksOnlyChannels(): string[] {
-  return TASKS_INVOKE_CHANNELS.filter((c) => !c.startsWith('routines:') && c !== WIN_BETA_CHANNEL)
+  return TASKS_INVOKE_CHANNELS.filter((c) => !c.startsWith('routines:'))
 }
 
-/**
- * Registra los stubs de lo que `caps` no ofrece. Devuelve los canales registrados (para pruebas).
- * `winBetaHandled`: ya hay un handler real de `tasks:winBeta` (no se registra el stub).
- */
-export function registerUnsupportedHandlers(ipcMain: IpcMain, caps: PlatformCaps, opts: { winBetaHandled?: boolean } = {}): string[] {
+/** Registra los stubs de lo que `caps` no ofrece. Devuelve los canales registrados (para pruebas). */
+export function registerUnsupportedHandlers(ipcMain: IpcMain, caps: PlatformCaps): string[] {
   const registered: string[] = []
-  if (opts.winBetaHandled !== true) {
-    makeTasksHandle(ipcMain)(WIN_BETA_CHANNEL, unavailableWinBeta)
-    registered.push(WIN_BETA_CHANNEL)
-  }
   if (!caps.tasks || !caps.computer) {
     const h = makeTasksHandle(ipcMain) as unknown as (ch: string, fn: () => unknown) => void
     for (const ch of tasksOnlyChannels()) {

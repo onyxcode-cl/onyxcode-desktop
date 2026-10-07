@@ -6,19 +6,18 @@
  *  - `create()`: sin pin válido (`wsl-rootfs` + OpenCode de Linux), sin `%LOCALAPPDATA%` o con una ruta de Windows rara → `null`.
  *    El backend recibe `localSource`: `<resources>/wsl/images/<imagen o opencode>` si el archivo existe (instalación sin red).
  *  - `gate()` (decisión del dueño, 2026-10-07: SUSTITUYE a la guardia de informes del PC; `tasks-win-report.ts` queda archivado
- *    sin uso en producción). Se consulta en CADA arranque de servidor y exige TODO, en este orden:
- *      1. `consent`: consentimiento beta vigente, RELEÍDO del disco (`readTasksWinBetaConsent`). Revocar lo cierra para el
- *         PRÓXIMO servidor aunque el proceso siga vivo; NO detiene tareas ya en curso. `settings.tasksWinBeta` no cuenta;
- *      2. `elevated`: Lazunox NO corre elevado (administrador). Si no se sabe, se trata como elevado;
- *      3. `pin`: `pin.json` empaquetado válido (`wsl-rootfs` + `assets['linux-x64']`);
- *      4. `bundle`: huella del paquete incluido (`<resources>/wsl/images/`): `lstat` sin enlaces, tamaño y sha256 en flujo contra
+ *    sin uso en producción; el mismo día se quitó también el consentimiento beta — «no quiero nada beta» — así que esta puerta
+ *    es ahora la ÚNICA que protege el arranque). Se consulta en CADA arranque de servidor y exige TODO, en este orden:
+ *      1. `elevated`: Lazunox NO corre elevado (administrador). Si no se sabe, se trata como elevado;
+ *      2. `pin`: `pin.json` empaquetado válido (`wsl-rootfs` + `assets['linux-x64']`);
+ *      3. `bundle`: huella del paquete incluido (`<resources>/wsl/images/`): `lstat` sin enlaces, tamaño y sha256 en flujo contra
  *         el pin (hash cacheado por ruta+tamaño+mtime, solo los aciertos). Es integridad contra corrupción, NO contra un
  *         atacante local con permiso de escritura (puede cambiar archivo y pin a la vez);
- *      5. `payload`: la carga de Linux (los `.py`) se lee y se calcula su `expectedPayloadSha` con la huella del pin;
- *      6. `state` (solo `run`): `state.json` del usuario con `rootfsSha === pin.rootfs.sha256` y `payloadSha` igual al calculado
+ *      4. `payload`: la carga de Linux (los `.py`) se lee y se calcula su `expectedPayloadSha` con la huella del pin;
+ *      5. `state` (solo `run`): `state.json` del usuario con `rootfsSha === pin.rootfs.sha256` y `payloadSha` igual al calculado
  *         (cierra el hueco de `wsl-status`, que solo compara el número de versión);
- *      7. `policy` (solo `run`): política `disableWslTasks`.
- *    Para `purpose: 'setup'` (preparar o consultar la distro desde la tarjeta) se omiten 6 y 7: la primera instalación todavía
+ *      6. `policy` (solo `run`): política `disableWslTasks`.
+ *    Para `purpose: 'setup'` (preparar o consultar la distro desde la tarjeta) se omite 5 y 6: la primera instalación todavía
  *    no tiene `state.json` y la política la informa el estado `policyDisabled` del backend.
  *    Que la distro esté `ready` NO lo comprueba la puerta: lo hace `startTasksServer` con `backend.status()`.
  * Nada de esto se ha probado en un Windows real.
@@ -29,7 +28,6 @@ import { join } from 'node:path'
 import { TASKS_WIN_BUILD } from '@shared/feature-flags'
 import { sha256File } from '../../remote/tunnel/binary'
 import type { FetchLike } from '../../remote/tunnel/binary'
-import { readTasksWinBetaConsent } from '../tasks-win-beta-consent'
 import { detectElevated } from '../win-elevation'
 import type { GatePurpose, GateReason, GateResult, WinBackendProvider } from './index'
 import { createWslBackend } from './wsl'
@@ -58,8 +56,6 @@ export interface WinProviderOptions {
   /** Para pruebas; por defecto la constante real. */
   build?: boolean
   log?: (m: string) => void
-  /** `app.getPath('userData')` (donde está el consentimiento). Ausente = se pide a Electron; si no se sabe, no hay consentimiento. */
-  userDataDir?: string
   /** `true` elevado, `false` normal, cualquier otra cosa = elevado (cierra). Por defecto `whoami /groups`. */
   isElevated?: () => Promise<boolean | null>
   /** Contenido de `state.json` (por defecto, el del usuario en `%LOCALAPPDATA%\\Lazunox\\wsl`). Pruebas. */
@@ -117,17 +113,6 @@ function loadPinSync(file: string): SetupPin | null {
   }
 }
 
-async function resolveUserData(o: WinProviderOptions): Promise<string | null> {
-  if (o.userDataDir !== undefined) return o.userDataDir || null
-  try {
-    const { app } = await import('electron')
-    const p = app.getPath('userData')
-    return typeof p === 'string' && p ? p : null
-  } catch {
-    return null
-  }
-}
-
 /** `state.json` real del usuario (sin enlaces). Cualquier fallo = `undefined`. */
 async function readStateFile(localAppData: string | undefined): Promise<unknown> {
   try {
@@ -146,10 +131,7 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
 
   const check = async (purpose: GatePurpose): Promise<GateResult> => {
     const closed = (reason: GateReason): GateResult => ({ ok: false, reason })
-    // 1. Consentimiento beta, releído del disco en CADA llamada (nada en memoria que pueda quedar viejo).
-    const userData = await resolveUserData(o)
-    if (!userData || !readTasksWinBetaConsent(userData)) return closed('consent')
-    // 2. Elevación: solo `false` pasa (no saberlo cuenta como elevado).
+    // 1. Elevación: solo `false` pasa (no saberlo cuenta como elevado).
     let elevated: unknown
     try {
       elevated = await (o.isElevated ?? detectElevated)()
@@ -157,12 +139,12 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
       elevated = null
     }
     if (elevated !== false) return closed('elevated')
-    // 3. Pin empaquetado.
+    // 2. Pin empaquetado.
     const pin = await readSetupPin(o.dirs.pinJson)
     if (!pin) return closed('pin')
-    // 4. Huella del paquete incluido.
+    // 3. Huella del paquete incluido.
     if (!(await bundleFingerprintOk(imagesDir, pin))) return closed('bundle')
-    // 5. Carga de Linux (los `.py` de esta app + la huella del OpenCode fijado).
+    // 4. Carga de Linux (los `.py` de esta app + la huella del OpenCode fijado).
     let payloadSha: string
     try {
       payloadSha = expectedPayloadSha(await readPayloadPyFiles(o.dirs.payloadDir), pin.opencode)
@@ -170,7 +152,7 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
       return closed('payload')
     }
     if (purpose === 'setup') return { ok: true }
-    // 6. `state.json` del usuario: la imagen y la carga importadas son las de ESTE pin.
+    // 5. `state.json` del usuario: la imagen y la carga importadas son las de ESTE pin.
     let state: unknown
     try {
       state = await (o.readState ?? (() => readStateFile(localAppData())))()
@@ -180,7 +162,7 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
     if (!state || typeof state !== 'object' || Array.isArray(state)) return closed('state')
     const st = state as { rootfsSha?: unknown; payloadSha?: unknown }
     if (st.rootfsSha !== pin.rootfs.sha256 || st.payloadSha !== payloadSha) return closed('state')
-    // 7. Política de la organización.
+    // 6. Política de la organización.
     let disabled = false
     try {
       disabled = o.policyDisabled?.() === true

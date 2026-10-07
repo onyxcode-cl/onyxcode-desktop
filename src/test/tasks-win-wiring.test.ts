@@ -23,9 +23,7 @@ function walk(dir: string, out: string[] = []): string[] {
 describe('propagación de tasksWin', () => {
   it('main/index.ts calcula la bandera con resolveTasksWin y la pasa a capsFor, al preload y a los handlers', () => {
     const s = read('main/index.ts')
-    expect(s).toMatch(
-      /resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*optIn: process\.platform === 'win32' \? readTasksWinBetaConsent\(app\.getPath\('userData'\)\) : false[\s\S]*policy:/
-    )
+    expect(s).toMatch(/resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*policy:/)
     expect(s).toMatch(/capsFor\(process\.platform, \{ tasksWin, remoteWin, computerWin \}\)/)
     expect(s).toMatch(
       /additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn \}\)/

@@ -114,10 +114,10 @@ describe('startTasksServer en win32 (A18)', () => {
       expect(rec.proxies).toBe(0)
     }
   )
-  it('con la puerta de la beta cerrada (p. ej. consentimiento revocado) no arranca nada; reabierta, sí (se consulta en cada arranque)', async () => {
+  it('con la puerta de integridad cerrada (p. ej. elevado) no arranca nada; reabierta, sí (se consulta en cada arranque)', async () => {
     let open = true
     const win = provider(wslBackend('ready'), {
-      gate: async () => (open ? { ok: true } : { ok: false, reason: 'consent' })
+      gate: async () => (open ? { ok: true } : { ok: false, reason: 'elevated' })
     })
     const run = (): Promise<unknown> => startTasksServer(dir, { platform: 'win32', tasksWin: true, winBackend: win, isolation: iso() })
     await run()
@@ -125,7 +125,7 @@ describe('startTasksServer en win32 (A18)', () => {
     open = false
     const err = await run().catch((e: unknown) => e)
     expect(err).toBeInstanceOf(WinBackendUnavailable)
-    expect((err as WinBackendUnavailable).block).toBe('consent')
+    expect((err as WinBackendUnavailable).block).toBe('elevated')
     expect(rec.launches).toBe(1)
     open = true
     await run()

@@ -5,10 +5,9 @@
  *  - Windows: SOLO el backend de la distro WSL de Tareas y SOLO si todo lo siguiente es cierto (falla CERRADO: nunca `none`):
  *      1. la bandera efectiva `tasksWin` (`resolveTasksWin`: compilación + opción del usuario/desarrollo + política);
  *      2. la constante de compilación `TASKS_WIN_BUILD` (se vuelve a comprobar aquí, no solo en `tasksWin`);
- *      3. la PUERTA de la beta (`provider.gate()`, que sustituye a la guardia de informes por decisión del dueño, 2026-10-07):
- *         consentimiento beta vigente (releído del disco), Lazunox no elevado, pin, huella del paquete incluido, carga y
- *         `state.json` (ver `win-provider.ts`). Se consulta en CADA llamada: revocar el consentimiento cierra el próximo arranque
- *         de servidor aunque el proceso siga vivo (no detiene tareas en curso);
+ *      3. la PUERTA de integridad (`provider.gate()`, que sustituye a la guardia de informes por decisión del dueño, 2026-10-07;
+ *         el mismo día se quitó el consentimiento beta): Lazunox no elevado, pin, huella del paquete incluido, carga y
+ *         `state.json` (ver `win-provider.ts`). Se consulta en CADA llamada.
  *      4. el pin y la carga instalables (`provider.create()` devuelve `null` si falta alguno).
  *    La distro instalada y sana la comprueba `startTasksServer` con `backend.status()` (`TasksSandboxNotReady`): la puerta
  *    no la sustituye.
@@ -21,11 +20,10 @@ import { seatbeltAvailable, seatbeltBackend } from './seatbelt'
 import type { SandboxBackend, SandboxState } from './types'
 
 /** Por qué no hay backend de Windows (para el mensaje y para las pruebas). */
-export type WinBackendBlock = 'flag' | 'build' | 'provider' | 'consent' | 'elevated' | 'bundle' | 'gate' | 'backend'
+export type WinBackendBlock = 'flag' | 'build' | 'provider' | 'elevated' | 'bundle' | 'gate' | 'backend'
 
 /** Texto propio de los eslabones de la puerta de la beta; el resto usa el genérico. */
 const BLOCK_TEXT: Partial<Record<WinBackendBlock, MsgKey>> = {
-  consent: 'merr.task.winBackendUnavailable.consent',
   elevated: 'merr.task.winBackendUnavailable.elevated',
   bundle: 'merr.task.winBackendUnavailable.bundle',
   gate: 'merr.task.winBackendUnavailable.gate'
@@ -41,7 +39,7 @@ export class WinBackendUnavailable extends Error {
 }
 
 /** Qué eslabón de la puerta de la beta cerró (para el mensaje y para las pruebas). */
-export type GateReason = 'consent' | 'elevated' | 'pin' | 'bundle' | 'payload' | 'state' | 'policy'
+export type GateReason = 'elevated' | 'pin' | 'bundle' | 'payload' | 'state' | 'policy'
 export interface GateResult {
   ok: boolean
   reason?: GateReason
@@ -68,7 +66,7 @@ export class TasksSandboxNotReady extends Error {
 export interface WinBackendProvider {
   /** Constante de compilación `TASKS_WIN_BUILD` (la real en producción; las pruebas la inyectan). */
   build: boolean
-  /** Puerta de la beta (consentimiento, no elevado, pin, huella del paquete, carga, `state.json`). Falla CERRADO; relee el disco. */
+  /** Puerta de integridad (no elevado, pin, huella del paquete, carga, `state.json`). Falla CERRADO; relee el disco. */
   gate(purpose?: GatePurpose): Promise<GateResult>
   /** Backend con sus dependencias reales, o `null` si falta el pin, la carga, `%LOCALAPPDATA%`… */
   create(): SandboxBackend | null
@@ -97,9 +95,7 @@ export async function selectBackend(platform: string = process.platform, opts: S
     }
     if (!gate || gate.ok !== true) {
       const reason = gate && typeof gate === 'object' ? gate.reason : undefined
-      throw new WinBackendUnavailable(
-        reason === 'consent' ? 'consent' : reason === 'elevated' ? 'elevated' : reason === 'bundle' ? 'bundle' : 'gate'
-      )
+      throw new WinBackendUnavailable(reason === 'elevated' ? 'elevated' : reason === 'bundle' ? 'bundle' : 'gate')
     }
     let backend: SandboxBackend | null = null
     try {
