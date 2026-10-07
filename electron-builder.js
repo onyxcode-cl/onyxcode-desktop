@@ -39,6 +39,15 @@ const tasksWinBuildOn = /export const TASKS_WIN_BUILD\s*=\s*true\b/.test(
   require('node:fs').readFileSync(require('node:path').join(__dirname, 'src/shared/feature-flags.ts'), 'utf8')
 )
 const computerWinPack = tasksWinBuildOn && process.env.LAZUNOX_COMPUTER_WIN_PACK === '1'
+// Tareas en Windows, BETA OPCIONAL (decisión del dueño 2026-10-07): con `TASKS_WIN_BUILD` activo el instalador lleva el lanzador
+// de WSL (solo los 5 archivos de la carga: nunca pruebas, vectores ni `rootfs/`), el `pin.json` y las DOS imágenes (la base de WSL y
+// el opencode linux-x64; `npm run stage:wsl-bundle` las deja en `resources/wsl-images/`, fuera de git). Con la bandera apagada no
+// entra nada. `scripts/check-win-bundle.mjs` (parte de `package:win`) exige que las imágenes existan y coincidan con el pin.
+const wslBundlePack = tasksWinBuildOn
+// Nombre de la imagen según la versión del pin (así subir `wsl-rootfs.version` no deja un filtro viejo). Solo se lee con la función activa.
+const wslRootfsFile = wslBundlePack
+  ? `lazunox-rootfs-${JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, 'resources/opencode-bin/pin.json'), 'utf8'))['wsl-rootfs'].version}-x64.tar.gz`
+  : null
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
@@ -71,8 +80,10 @@ module.exports = {
     // El agente de Windows vive FUERA de `agents/` (esa carpeta se copia entera a userData y su contenido está vigilado) y nunca va en el .asar ni en el paquete de macOS: con la función activa viaja por win.extraResources.
     '!resources/opencode/agents-win/**',
     '!resources/launcher/**',
-    // Recursos del backend WSL de Tareas (F8-B81): aún sin empaquetar (Tareas en Windows está apagada); no van en el .asar.
+    // Recursos del backend WSL de Tareas (F8-B81): NUNCA dentro del .asar; con la bandera activa viajan por win.extraResources.
     '!resources/wsl/**',
+    // Imágenes de staging (scripts/stage-wsl-bundle.mjs): idem, jamás en el .asar.
+    '!resources/wsl-images/**',
     // El script de reemplazo del actualizador va por extraResources (sellado), no dentro del .asar.
     '!resources/updater/**',
     // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
@@ -216,6 +227,19 @@ module.exports = {
         ? [
             { from: 'resources/computer-use/win/bin', to: 'computer-use/bin', filter: ['cu-helper.exe'] },
             { from: 'resources/opencode/agents-win', to: 'opencode/agents-win', filter: ['computer.win.md'] }
+          ]
+        : []),
+      // Tareas en Windows (beta opcional, solo con `wslBundlePack`): lanzador y carga de WSL → resources\\wsl, el pin → resources\\wsl\\pin.json
+      // y las dos imágenes → resources\\wsl\\images (de ahí `setup()` las COPIA a la caché y las verifica; nunca se usan en el sitio).
+      ...(wslBundlePack
+        ? [
+            { from: 'resources/wsl', to: 'wsl', filter: ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'wsl.conf'] },
+            { from: 'resources/opencode-bin', to: 'wsl', filter: ['pin.json'] },
+            {
+              from: 'resources/wsl-images',
+              to: 'wsl/images',
+              filter: [wslRootfsFile, 'opencode-linux-x64.tar.gz']
+            }
           ]
         : [])
     ]

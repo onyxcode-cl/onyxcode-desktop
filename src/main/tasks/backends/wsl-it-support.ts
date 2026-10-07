@@ -2,6 +2,8 @@
  * Apoyo COMÚN de las pruebas de integración REAL de Tareas en Windows (`wsl-setup.win.test.ts` y `wsl-session.win.test.ts`).
  * Solo corren en el PC Windows de pruebas con `LAZUNOX_WSL_IT=1`; este módulo no se importa desde producción.
  * No descarga nada: usa la imagen y el opencode locales de `C:\onyx\wsl\cache` y `LOCALAPPDATA=C:\onyx\wsl\lad`.
+ * Con `LAZUNOX_WSL_IT_LOCAL=1` (o `local: true`) usa el camino de ORIGEN LOCAL de `setup()` (`localSource`, como el archivo incluido en el
+ * instalador); sin él, la «descarga» falsa de siempre.
  * Nunca usa `wsl --shutdown` ni toca otras distros.
  */
 import { createHash } from 'node:crypto'
@@ -44,7 +46,11 @@ export interface ItEnv {
  * Arma las dependencias para una prueba real. `real: true` añade `spawn`/`connect`/`listen` reales (sesión); con `false` el
  * lanzamiento queda prohibido (solo setup/remove).
  */
-export async function createItEnv(opts: { real: boolean }): Promise<ItEnv> {
+export async function createItEnv(opts: {
+  real: boolean
+  local?: boolean
+  localOverride?: (kind: 'rootfs' | 'opencode') => string | null
+}): Promise<ItEnv> {
   const files = await readdir(IT_CACHE_SRC)
   const rootfsName = files.find((f) => /^lazunox-rootfs-\d{4}\.\d{1,2}\.\d{1,2}-x64\.tar\.gz$/.test(f))
   expect(rootfsName, 'falta lazunox-rootfs-<ver>-x64.tar.gz en C:\\onyx\\wsl\\cache').toBeTruthy()
@@ -80,11 +86,17 @@ export async function createItEnv(opts: { real: boolean }): Promise<ItEnv> {
     payloadDir
   })
   // «Descarga» local: copia de la caché del PC (la huella se comprueba igual que con red).
-  extras.download = async (url, dest) => {
-    const src = url === pin.rootfs.url ? join(IT_CACHE_SRC, rootfsName!) : join(IT_CACHE_SRC, 'opencode-linux-x64.tar.gz')
-    await copyFile(src, dest)
-    return { cached: false }
-  }
+  const local = opts.local ?? process.env.LAZUNOX_WSL_IT_LOCAL === '1'
+  if (local) {
+    const own = (kind: 'rootfs' | 'opencode'): string => join(IT_CACHE_SRC, kind === 'rootfs' ? rootfsName! : 'opencode-linux-x64.tar.gz')
+    extras.localSource = opts.localOverride ?? own
+    extras.download = async () => Promise.reject(new Error('con origen local no se descarga nada'))
+  } else
+    extras.download = async (url, dest) => {
+      const src = url === pin.rootfs.url ? join(IT_CACHE_SRC, rootfsName!) : join(IT_CACHE_SRC, 'opencode-linux-x64.tar.gz')
+      await copyFile(src, dest)
+      return { cached: false }
+    }
   const deps: WslDeps = {
     platform: 'win32',
     hostEnv,

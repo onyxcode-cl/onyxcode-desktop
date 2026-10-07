@@ -19,7 +19,7 @@
     "typecheck:pwa": "tsc --noEmit -p pwa/tsconfig.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web && npm run typecheck:pwa",
     "package": "node scripts/fetch-opencode.mjs --if-missing && npm run build && electron-builder --mac --arm64",
-    "package:win": "node scripts/fetch-opencode.mjs --if-missing && npm run build && node node_modules/electron-builder/cli.js --win nsis --x64",
+    "package:win": "node scripts/fetch-opencode.mjs --if-missing && npm run build && node scripts/check-win-bundle.mjs --config-only && node node_modules/electron-builder/cli.js --win nsis --x64",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:fs": "node scripts/with-env.mjs LAZUNOX_FS_IT=1 -- vitest run src/main/tasks/restore-points.fs.test.ts",
@@ -38,6 +38,7 @@
     "verify:update-manifest": "node scripts/verify-update-manifest.mjs",
     "verify:bundled": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-bundled.mjs",
     "check:win-bundle": "node scripts/check-win-bundle.mjs",
+    "stage:wsl-bundle": "node scripts/stage-wsl-bundle.mjs",
     "check:opencode": "node scripts/check-opencode.mjs",
     "check:mcp-catalog": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-mcp-catalog.mjs",
     "verify": "npm run typecheck && npm test && npm run lint && npm run format:check && npm run build && npm run test:transform && npm run test:smoke && npm run test:e2e"

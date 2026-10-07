@@ -6,7 +6,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createReadStream, createWriteStream, statfsSync } from 'node:fs'
 import { connect as netConnect, createServer } from 'node:net'
-import { lstat, mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
+import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join, parse } from 'node:path'
 import type { Duplex, Readable } from 'node:stream'
 import { sha256File, type FetchLike } from '../../remote/tunnel/binary'
@@ -151,7 +151,8 @@ export const realSetupFs: WslSetupFs = {
   sha256: (p) => sha256File(p),
   readFile: (p) => readFile(p),
   writeFile: (p, data) => writeFile(p, data, { mode: 0o600 }),
-  readStream: (p) => createReadStream(p)
+  readStream: (p) => createReadStream(p),
+  copyFile: (a, b) => copyFile(a, b)
 }
 
 /** Los `.py` de la carga, de `<dir>` (`resources/wsl` en desarrollo, `<resources>/wsl` empaquetado). */
@@ -176,6 +177,8 @@ export interface RealSetupOptions {
   localAppData: string | undefined
   pin: SetupPin | null
   payloadDir: string
+  /** Archivos de imagen/opencode incluidos en el instalador (`<resources>/wsl/images`); sin esto se descarga. */
+  localSource?: (kind: 'rootfs' | 'opencode') => string | null
   log?: (msg: string) => void
 }
 
@@ -186,6 +189,7 @@ export function createRealSetupExtras(o: RealSetupOptions): NonNullable<WslDeps[
     runToFile: realRunToFile,
     download: (url, dest, opts) => pinnedDownload(url, dest, { ...opts, fetch: o.fetch }),
     fs: realSetupFs,
+    localSource: o.localSource,
     localAppData: o.localAppData,
     pin: () => o.pin,
     payloadFiles: () => readPayloadPyFiles(o.payloadDir),

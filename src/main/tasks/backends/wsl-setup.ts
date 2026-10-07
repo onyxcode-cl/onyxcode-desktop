@@ -66,6 +66,7 @@ export type WslSetupErrorCode =
   | 'download-failed'
   | 'bad-hash'
   | 'bad-payload'
+  | 'bad-bundle'
   | 'bad-installdir'
   | 'import-failed'
   | 'import-timeout'
@@ -114,6 +115,8 @@ export interface WslSetupFs {
   readFile(p: string): Promise<Buffer>
   writeFile(p: string, data: string): Promise<void>
   readStream(p: string): Readable
+  /** Copia `from` a `to` (sobrescribe `to`). */
+  copyFile(from: string, to: string): Promise<void>
 }
 
 export interface SetupOpencodePin {
@@ -139,6 +142,12 @@ export interface WslSetupDeps {
   runToFile(cmd: WslCommand, dest: string, ms: number): Promise<RunResult>
   download(url: string, dest: string, o: Omit<PinnedDownloadOptions, 'fetch'>): Promise<PinnedDownloadResult>
   fs: WslSetupFs
+  /**
+   * Archivo INCLUIDO en el instalador (`<resources>/wsl/images/...`) para la imagen o el opencode `linux-x64`; `null` si esta
+   * compilación no lo lleva (entonces se descarga). Con archivo incluido NO hay red ni descarga alternativa: si su tamaño o su
+   * sha256 no coinciden con el pin falla cerrado (`bad-bundle`). Siempre se copia a la caché: nunca se usa en el sitio.
+   */
+  localSource?(kind: 'rootfs' | 'opencode'): string | null
   /** `%LOCALAPPDATA%` tal cual (se valida aquí). */
   localAppData: string | undefined
   pin(): SetupPin | null
@@ -449,18 +458,80 @@ export function createWslSetup(deps: WslSetupDeps): WslSetupApi {
     if (ctx.signal?.aborted) throw new WslSetupError('aborted')
   }
 
+  /**
+   * Origen local: copia el archivo incluido a la caché (`dest`) con la MISMA verificación que `pinnedDownload` (tamaño exacto y
+   * sha256, vía `.part` y renombrado). Si `dest` ya está en caché con la huella buena no copia. Cualquier fallo es `bad-bundle`.
+   */
+  const copyLocal = async (
+    ctx: Ctx,
+    what: 'rootfs' | 'opencode',
+    src: string,
+    dest: string,
+    size: number,
+    sha256: string,
+    lo: number,
+    hi: number
+  ): Promise<void> => {
+    ctx.progress(lo, 'verifying')
+    const part = `${dest}.part`
+    const bad = (why: string): WslSetupError => {
+      deps.log(`archivo incluido de ${what}: ${why}`)
+      return new WslSetupError('bad-bundle', `${what}:${why}`)
+    }
+    try {
+      const cached = await fs.lstat(dest)
+      if (cached && cached.isFile() && !cached.isSymbolicLink() && cached.size === size && (await fs.sha256(dest)) === sha256) {
+        ctx.progress(hi, 'verifying')
+        return
+      }
+      abortCheck(ctx)
+      const st = await fs.lstat(src)
+      if (!st) throw bad('missing')
+      if (st.isSymbolicLink() || !st.isFile()) throw bad('not-file')
+      if (st.size !== size) throw bad('size')
+      await fs.copyFile(src, part)
+      abortCheck(ctx)
+      const copied = await fs.lstat(part)
+      if (!copied || !copied.isFile() || copied.isSymbolicLink() || copied.size !== size) throw bad('size')
+      if ((await fs.sha256(part)) !== sha256) throw bad('hash')
+      abortCheck(ctx)
+      await fs.rename(part, dest)
+    } catch (e) {
+      await fs.rm(part).catch(() => undefined)
+      if (e instanceof WslSetupError) throw e
+      throw new WslSetupError('bad-bundle', `${what}:io`)
+    }
+    ctx.progress(hi, 'verifying')
+  }
+
+  /** Imagen/opencode: el archivo incluido va PRIMERO (sin red, falla cerrado); sin él, la descarga fijada de siempre. */
+  const obtain = async (
+    ctx: Ctx,
+    what: 'rootfs' | 'opencode',
+    url: string,
+    dest: string,
+    size: number,
+    sha256: string,
+    lo: number,
+    hi: number
+  ): Promise<void> => {
+    const src = deps.localSource?.(what) ?? null
+    if (src !== null) await copyLocal(ctx, what, src, dest, size, sha256, lo, hi)
+    else await download(ctx, what, url, dest, size, sha256, lo, hi)
+  }
+
   /** Pasos 4-5 y la carga LZPK1 (se codifica antes de tocar WSL: un fallo aquí no deja nada). */
   const acquire = async (ctx: Ctx, withRootfs: boolean): Promise<SetupFiles> => {
     const { pin, p } = ctx
     let rootfsPath: string | null = null
     if (withRootfs) {
       rootfsPath = win32.join(p.cacheDir, `rootfs-${pin.rootfs.sha256.slice(0, 12)}.tar.gz`)
-      await download(ctx, 'rootfs', pin.rootfs.url, rootfsPath, pin.rootfs.size, pin.rootfs.sha256, 0, 55)
+      await obtain(ctx, 'rootfs', pin.rootfs.url, rootfsPath, pin.rootfs.size, pin.rootfs.sha256, 0, 55)
       abortCheck(ctx)
     }
     const opencodePath = win32.join(p.cacheDir, `opencode-${pin.opencode.sha256.slice(0, 12)}.tar.gz`)
     const lo = withRootfs ? 55 : 0
-    await download(ctx, 'opencode', pin.opencode.url, opencodePath, pin.opencode.size, pin.opencode.sha256, lo, 70)
+    await obtain(ctx, 'opencode', pin.opencode.url, opencodePath, pin.opencode.size, pin.opencode.sha256, lo, 70)
     abortCheck(ctx)
     let payload: LzpkResult
     try {

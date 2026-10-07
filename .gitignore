@@ -34,3 +34,6 @@ resources/opencode-bin/bin/
 # Helper de Windows (Rust): compilación y binarios; solo se versiona el código y Cargo.lock
 resources/computer-use/win/target/
 resources/computer-use/win/bin/
+
+# Imágenes incluidas de Tareas en Windows (scripts/stage-wsl-bundle.mjs): ~138 MB, nunca en git
+resources/wsl-images/

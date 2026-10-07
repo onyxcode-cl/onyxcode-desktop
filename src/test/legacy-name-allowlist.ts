@@ -56,6 +56,12 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   // Organización de GitHub que alojará la release de la imagen de Linux (WSL). Pendiente D9: al renombrarla, cambiar las tres constantes juntas.
   { path: 'scripts/wsl-rootfs/pin-lib.mjs', token: /onyxcode-cl/i, reason: 'D9 pendiente: organización de GitHub de la imagen WSL' },
   { path: 'scripts/wsl-rootfs.test.mjs', token: /onyxcode-cl/i, reason: 'D9 pendiente: organización de GitHub de la imagen WSL' },
+  {
+    path: 'resources/opencode-bin/pin.json',
+    token: /onyxcode-cl/i,
+    reason:
+      'D9 pendiente: la url de wsl-rootfs debe ser EXACTAMENTE wslRootfsUrl (organización de GitHub de la imagen WSL; no está publicada)'
+  },
   { path: 'src/main/tasks/backends/wsl-pin.ts', token: /onyxcode-cl/i, reason: 'D9 pendiente: organización de GitHub de la imagen WSL' },
   {
     path: 'src/main/tasks/backends/wsl-pin.test.ts',

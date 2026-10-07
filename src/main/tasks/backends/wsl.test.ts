@@ -325,7 +325,8 @@ describe('WslBackend con setup()/remove() integrados', () => {
         sha256: async () => '',
         readFile: async (p) => files.get(p) ?? Buffer.alloc(0),
         writeFile: async (p, d) => void files.set(p, Buffer.from(d)),
-        readStream: () => Readable.from([])
+        readStream: () => Readable.from([]),
+        copyFile: async (a, b) => void files.set(b, files.get(a) ?? Buffer.alloc(0))
       },
       localAppData: LAD,
       pin: () => PIN,

@@ -100,6 +100,9 @@ interface Inject {
   free?: number
   download?: (url: string, dest: string, o: Parameters<WslSetupDeps['download']>[2]) => Promise<{ cached: boolean }>
   localAppData?: string | undefined
+  copyThrows?: boolean
+  /** Lo que cambia en la COPIA respecto del origen (simula corrupción al copiar). */
+  copyTweak?: Partial<Ent>
 }
 
 class World {
@@ -107,6 +110,7 @@ class World {
   calls: string[] = []
   downloads: Array<{ url: string; dest: string; hosts?: readonly string[] }> = []
   rmPaths: string[] = []
+  copies: Array<[string, string]> = []
   rmdirPaths: string[] = []
   files = new Map<string, Ent>()
   progress: Array<[number, string]> = []
@@ -260,7 +264,14 @@ class World {
       if (this.inject.writeStateFails) throw new Error('EACCES')
       this.files.set(p, { type: 'file', size: data.length, data: Buffer.from(data) })
     },
-    readStream: (p) => Readable.from([this.files.get(p)!.data!], { objectMode: false })
+    readStream: (p) => Readable.from([this.files.get(p)!.data!], { objectMode: false }),
+    copyFile: async (a, b) => {
+      this.copies.push([a, b])
+      if (this.inject.copyThrows) throw new Error('EIO')
+      const e = this.files.get(a)
+      if (!e) throw new Error('ENOENT')
+      this.files.set(b, { ...e, ...this.inject.copyTweak })
+    }
   }
 
   deps(over: Partial<WslSetupDeps> = {}): WslSetupDeps {
@@ -557,6 +568,189 @@ describe('setup(): descargas (pasos 4-5)', () => {
     const w = new World()
     expect(await code(w.go({}, { payloadFiles: async () => [{ path: 'mux.py', data: Buffer.from('x') }] }))).toBe('bad-payload')
     expect(w.calls).toEqual(STATUS_CALLS)
+  })
+})
+
+describe('setup(): origen local incluido en el instalador (WP3)', () => {
+  const SRC_ROOTFS = 'C:\\Program Files\\Lazunox\\resources\\wsl\\images\\lazunox-rootfs-2026.10.1-x64.tar.gz'
+  const SRC_OPENCODE = 'C:\\Program Files\\Lazunox\\resources\\wsl\\images\\opencode-linux-x64.tar.gz'
+  const localSource = (kind: 'rootfs' | 'opencode'): string => (kind === 'rootfs' ? SRC_ROOTFS : SRC_OPENCODE)
+  const seed = (w: World, over: { rootfs?: Partial<Ent>; opencode?: Partial<Ent> } = {}): void => {
+    w.files.set(SRC_ROOTFS, { type: 'file', size: PIN.rootfs.size, sha: PIN.rootfs.sha256, data: Buffer.from('rootfs'), ...over.rootfs })
+    w.files.set(SRC_OPENCODE, { type: 'file', size: PIN.opencode.size, sha: PIN.opencode.sha256, data: OPENCODE_BYTES, ...over.opencode })
+  }
+  const failClosed = (w: World): void => {
+    expect(w.downloads).toEqual([])
+    expect(w.calls).toEqual(STATUS_CALLS)
+    expect(w.has(ROOTFS_TAR)).toBe(false)
+    expect(w.has(`${ROOTFS_TAR}.part`)).toBe(false)
+    assertSafe(w)
+  }
+
+  it('archivos incluidos buenos: cero descargas, copia a la caché (no se usa en el sitio) y flujo idéntico', async () => {
+    const w = new World()
+    seed(w)
+    await w.go({}, { localSource })
+    expect(w.downloads).toEqual([])
+    expect(w.copies).toEqual([
+      [SRC_ROOTFS, `${ROOTFS_TAR}.part`],
+      [SRC_OPENCODE, `${OPENCODE_TGZ}.part`]
+    ])
+    expect(w.calls).toEqual([...STATUS_CALLS, IMPORT, '-l -v', INSTALL, PROBE, TERMINATE])
+    expect(w.calls.some((c) => c.includes(SRC_ROOTFS))).toBe(false) // el import usa la copia de la caché
+    expect(w.progress.at(-1)).toEqual([100, 'done'])
+    const pcts = w.progress.map((p) => p[0])
+    expect(pcts).toEqual([...pcts].sort((a, b) => a - b))
+    // El borrado de caché del paso 11 sigue igual y el origen incluido jamás se borra.
+    expect(w.has(ROOTFS_TAR)).toBe(false)
+    expect(w.has(OPENCODE_TGZ)).toBe(false)
+    expect(w.has(SRC_ROOTFS)).toBe(true)
+    expect(w.has(SRC_OPENCODE)).toBe(true)
+    expect(w.distros.has(WSL_DISTRO)).toBe(true)
+    assertSafe(w)
+  })
+
+  it('tamaño malo del archivo incluido: bad-bundle sin red, sin descarga alternativa y sin tocar WSL', async () => {
+    const w = new World()
+    seed(w, { rootfs: { size: PIN.rootfs.size + 1 } })
+    expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+    failClosed(w)
+  })
+
+  it('tamaño malo de la COPIA: bad-bundle y el .part se borra', async () => {
+    const w = new World()
+    seed(w)
+    w.inject.copyTweak = { size: PIN.rootfs.size - 1 }
+    expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+    failClosed(w)
+    expect(w.rmPaths).toContain(`${ROOTFS_TAR}.part`)
+  })
+
+  it('sha malo de la imagen incluida (un byte corrupto): bad-bundle, nada se importa ni se descarga', async () => {
+    const w = new World()
+    seed(w, { rootfs: { sha: 'f'.repeat(64) } })
+    expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+    failClosed(w)
+    expect(w.rmPaths).toContain(`${ROOTFS_TAR}.part`)
+  })
+
+  it('sha malo del opencode incluido: bad-bundle; la imagen buena queda en caché para reintentar, sin red', async () => {
+    const w = new World()
+    seed(w, { opencode: { sha: 'f'.repeat(64) } })
+    expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+    expect(w.downloads).toEqual([])
+    expect(w.calls).toEqual(STATUS_CALLS)
+    expect(w.has(ROOTFS_TAR)).toBe(true)
+    expect(w.has(`${OPENCODE_TGZ}.part`)).toBe(false)
+  })
+
+  it('archivo incluido ausente: falla cerrado bad-bundle (NO cae a descargar)', async () => {
+    const w = new World()
+    seed(w)
+    w.files.delete(SRC_ROOTFS)
+    expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+    failClosed(w)
+  })
+
+  it('el archivo incluido es un enlace o una carpeta: bad-bundle', async () => {
+    for (const type of ['link', 'dir'] as const) {
+      const w = new World()
+      seed(w, { rootfs: { type } })
+      expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+      failClosed(w)
+    }
+  })
+
+  it('copyFile revienta: bad-bundle (no io ni download-failed) y sin descargar', async () => {
+    const w = new World({ copyThrows: true })
+    seed(w)
+    expect(await code(w.go({}, { localSource }))).toBe('bad-bundle')
+    failClosed(w)
+  })
+
+  it('sin archivo incluido (localSource ausente o null): la descarga fijada sigue igual', async () => {
+    for (const over of [{}, { localSource: () => null }] as Array<Partial<WslSetupDeps>>) {
+      const w = new World()
+      await w.go({}, over)
+      expect(w.downloads.map((d) => d.url)).toEqual([PIN.rootfs.url, PIN.opencode.url])
+      expect(w.copies).toEqual([])
+    }
+  })
+
+  it('imagen incluida y opencode a descargar (mezcla): cada uno por su camino', async () => {
+    const w = new World()
+    seed(w)
+    await w.go({}, { localSource: (k) => (k === 'rootfs' ? SRC_ROOTFS : null) })
+    expect(w.downloads.map((d) => d.url)).toEqual([PIN.opencode.url])
+    expect(w.copies).toEqual([[SRC_ROOTFS, `${ROOTFS_TAR}.part`]])
+  })
+
+  it('caché ya existente y buena: no copia ni lee el origen', async () => {
+    const w = new World()
+    seed(w)
+    w.files.set(ROOTFS_TAR, { type: 'file', size: PIN.rootfs.size, sha: PIN.rootfs.sha256, data: Buffer.from('rootfs') })
+    w.files.delete(SRC_ROOTFS) // aunque el origen faltara, la caché buena basta
+    await w.go({}, { localSource })
+    expect(w.copies.map((c) => c[0])).toEqual([SRC_OPENCODE])
+    expect(w.downloads).toEqual([])
+    expect(w.distros.has(WSL_DISTRO)).toBe(true)
+  })
+
+  it('caché existente pero corrupta: se vuelve a copiar del incluido', async () => {
+    const w = new World()
+    seed(w)
+    w.files.set(ROOTFS_TAR, { type: 'file', size: PIN.rootfs.size, sha: '0'.repeat(64), data: Buffer.from('mal') })
+    await w.go({}, { localSource })
+    expect(w.copies[0]).toEqual([SRC_ROOTFS, `${ROOTFS_TAR}.part`])
+    expect(w.downloads).toEqual([])
+  })
+
+  it('el re-hash del paso 7 sigue vigente con origen local: bad-hash, la copia se borra y no se importa', async () => {
+    const w = new World()
+    seed(w)
+    const orig = w.fs.sha256
+    // Buena al copiar (.part), cambiada en disco cuando el paso 7 la vuelve a calcular.
+    w.fs.sha256 = async (p) => (p === ROOTFS_TAR && w.copies.length > 0 ? '0'.repeat(64) : orig(p))
+    expect(await code(w.go({}, { localSource }))).toBe('bad-hash')
+    expect(w.calls.some((c) => c === IMPORT)).toBe(false)
+    expect(w.downloads).toEqual([])
+  })
+
+  it('cancelación durante la copia: aborted, sin importar y sin dejar el .part', async () => {
+    const ac = new AbortController()
+    const w = new World()
+    seed(w)
+    const orig = w.fs.copyFile
+    w.fs.copyFile = async (a, b) => {
+      await orig(a, b)
+      ac.abort()
+    }
+    expect(await code(w.go({ signal: ac.signal }, { localSource }))).toBe('aborted')
+    expect(w.calls).toEqual(STATUS_CALLS)
+    expect(w.has(`${ROOTFS_TAR}.part`)).toBe(false)
+    expect(w.has(ROOTFS_TAR)).toBe(false)
+    expect(w.downloads).toEqual([])
+  })
+
+  it('rollback tras el import con origen local: unregister del nombre propio y el origen incluido intacto', async () => {
+    const w = new World({ installCode: 1 })
+    seed(w)
+    expect(await code(w.go({}, { localSource }))).toBe('payload-failed')
+    expect(w.calls).toEqual([...STATUS_CALLS, IMPORT, '-l -v', INSTALL, UNREGISTER])
+    expect(w.distros.size).toBe(0)
+    expect(w.has(SRC_ROOTFS)).toBe(true)
+    expect(w.has(SRC_OPENCODE)).toBe(true)
+    assertSafe(w)
+  })
+
+  it('actualizar la carga (solo opencode) con origen local: copia solo el opencode, sin red ni reimportar', async () => {
+    const w = new World()
+    seed(w)
+    w.seedDistro(NEW_VERSION, 'c'.repeat(64))
+    await w.go({ kind: 'update' }, { localSource })
+    expect(w.downloads).toEqual([])
+    expect(w.copies).toEqual([[SRC_OPENCODE, `${OPENCODE_TGZ}.part`]])
+    expect(w.calls.some((c) => c === IMPORT)).toBe(false)
   })
 })
 
