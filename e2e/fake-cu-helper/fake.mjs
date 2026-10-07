@@ -100,7 +100,8 @@ const def = lookup(cmd)
 if (!def) fail(1, `Comando desconocido o no disponible en ${platform}: ${cmd || '(vacío)'}`)
 
 // Los comandos con banderas propias (`--app x`, `--max-long N`) llevan valores: se cuentan solo los posicionales.
-const own = new Map((def.flags ?? []).map((f) => [f.name, f]))
+const flagDefs = [...(def.flags ?? []), ...(platform === 'win32' ? (def.win32Flags ?? []) : [])]
+const own = new Map(flagDefs.map((f) => [f.name, f]))
 const positional = []
 for (let i = 0; i < args.length; i++) {
   const f = own.get(args[i])
@@ -108,7 +109,7 @@ for (let i = 0; i < args.length; i++) {
     if (f.takesValue) i++
   } else positional.push(args[i])
 }
-for (const f of def.flags ?? []) if (f.required && !args.includes(f.name)) fail(1, `Falta la bandera ${f.name} de ${cmd}`)
+for (const f of flagDefs) if (f.required && !args.includes(f.name)) fail(1, `Falta la bandera ${f.name} de ${cmd}`)
 const required = def.args.filter((a) => a.required).length
 if (positional.length < required) fail(1, `Faltan argumentos para ${cmd}: se esperaban ${required}, hay ${positional.length}`)
 if (!def.args.some((a) => a.variadic) && positional.length > def.args.length) fail(1, `Sobran argumentos para ${cmd}`)

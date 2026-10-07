@@ -154,7 +154,7 @@ describe('extensiones de Windows (sin equivalente en el helper de macOS)', () =>
       expect(bodies.has(name)).toBe(false)
       for (const c of cmd.exits) expect(proto.exitCodes[String(c)]).toBeDefined()
     }
-    expect(names(proto.windowsExtensions)).toEqual(['list-apps', 'release-input', 'screenshot', 'session'])
+    expect(names(proto.windowsExtensions)).toEqual(['list-apps', 'release-input', 'screenshot', 'session', 'version'])
   })
   it('lo exclusivo de macOS no se espera en Windows: grabación, voz y permisos TCC', () => {
     for (const n of ['record', 'transcribe', 'mic-permission', 'mic-request', 'request-permissions'])
