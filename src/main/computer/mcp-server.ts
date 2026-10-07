@@ -202,6 +202,7 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
   if (point) {
     const at = await appAtPoint(point.x, point.y)
     if (at.bundleId && at.bundleId !== apps[0]?.bundleId) apps.push(at)
+    else if (!at.bundleId && backend.failClosedOnUnknownApp) apps.push(at) // Windows: lo no identificado no se deja pasar
   }
   const known = apps.filter((a) => a.bundleId)
   // Windows falla cerrado: una ventana que no se identifica puede ser una bloqueada o de administrador.

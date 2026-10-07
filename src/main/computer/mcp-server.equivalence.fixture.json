@@ -1,2330 +1,1932 @@
 {
- "protocolo-y-herramientas": [
-  {
-   "step": {
-    "rpc": "initialize",
-    "params": {
-     "protocolVersion": "2025-03-26"
-    }
-   },
-   "res": {
-    "jsonrpc": "2.0",
-    "id": 1,
-    "result": {
-     "protocolVersion": "2025-03-26",
-     "capabilities": {
-      "tools": {
-       "listChanged": false
-      }
-     },
-     "serverInfo": {
-      "name": "lazunox-computer",
-      "version": "0.2.0"
-     },
-     "instructions": "Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura."
-    }
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "rpc": "tools/list"
-   },
-   "res": {
-    "jsonrpc": "2.0",
-    "id": 2,
-    "result": {
-     "tools": [
-      {
-       "name": "screenshot",
-       "description": "Toma una captura de la pantalla principal. Devuelve la imagen y el tamaño en píxeles; todas las demás herramientas usan coordenadas en píxeles de esta captura.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-       }
+  "protocolo-y-herramientas": [
+    {
+      "step": {
+        "rpc": "initialize",
+        "params": {
+          "protocolVersion": "2025-03-26"
+        }
       },
-      {
-       "name": "left_click",
-       "description": "Clic izquierdo en (x, y) px de la captura.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "x": {
-          "type": "number",
-          "description": "X en píxeles de la última captura"
-         },
-         "y": {
-          "type": "number",
-          "description": "Y en píxeles de la última captura"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "x",
-         "y"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {
+            "tools": {
+              "listChanged": false
+            }
+          },
+          "serverInfo": {
+            "name": "lazunox-computer",
+            "version": "0.2.0"
+          },
+          "instructions": "Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura."
+        }
       },
-      {
-       "name": "right_click",
-       "description": "Clic derecho en (x, y) px de la captura.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "x": {
-          "type": "number",
-          "description": "X en píxeles de la última captura"
-         },
-         "y": {
-          "type": "number",
-          "description": "Y en píxeles de la última captura"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "x",
-         "y"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "rpc": "tools/list"
       },
-      {
-       "name": "double_click",
-       "description": "Doble clic izquierdo en (x, y) px de la captura.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "x": {
-          "type": "number",
-          "description": "X en píxeles de la última captura"
-         },
-         "y": {
-          "type": "number",
-          "description": "Y en píxeles de la última captura"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "x",
-         "y"
-        ],
-        "additionalProperties": false
-       }
-      },
-      {
-       "name": "mouse_move",
-       "description": "Mueve el puntero a (x, y) px de la captura sin hacer clic.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "x": {
-          "type": "number",
-          "description": "X en píxeles de la última captura"
-         },
-         "y": {
-          "type": "number",
-          "description": "Y en píxeles de la última captura"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "x",
-         "y"
-        ],
-        "additionalProperties": false
-       }
-      },
-      {
-       "name": "drag",
-       "description": "Arrastra con el botón izquierdo desde (start_x, start_y) hasta (end_x, end_y), en px de la captura.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "start_x": {
-          "type": "number"
-         },
-         "start_y": {
-          "type": "number"
-         },
-         "end_x": {
-          "type": "number"
-         },
-         "end_y": {
-          "type": "number"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "start_x",
-         "start_y",
-         "end_x",
-         "end_y"
-        ],
-        "additionalProperties": false
-       }
-      },
-      {
-       "name": "scroll",
-       "description": "Desplaza con la rueda en (x, y) px de la captura. direction: up|down|left|right; amount: líneas (1-30, por defecto 5).",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "x": {
-          "type": "number",
-          "description": "X en píxeles de la última captura"
-         },
-         "y": {
-          "type": "number",
-          "description": "Y en píxeles de la última captura"
-         },
-         "direction": {
-          "type": "string",
-          "enum": [
-           "up",
-           "down",
-           "left",
-           "right"
+      "res": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+          "tools": [
+            {
+              "name": "screenshot",
+              "description": "Toma una captura de la pantalla principal. Devuelve la imagen y el tamaño en píxeles; todas las demás herramientas usan coordenadas en píxeles de esta captura.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "left_click",
+              "description": "Clic izquierdo en (x, y) px de la captura.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X en píxeles de la última captura"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y en píxeles de la última captura"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["x", "y"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "right_click",
+              "description": "Clic derecho en (x, y) px de la captura.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X en píxeles de la última captura"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y en píxeles de la última captura"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["x", "y"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "double_click",
+              "description": "Doble clic izquierdo en (x, y) px de la captura.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X en píxeles de la última captura"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y en píxeles de la última captura"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["x", "y"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "mouse_move",
+              "description": "Mueve el puntero a (x, y) px de la captura sin hacer clic.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X en píxeles de la última captura"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y en píxeles de la última captura"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["x", "y"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "drag",
+              "description": "Arrastra con el botón izquierdo desde (start_x, start_y) hasta (end_x, end_y), en px de la captura.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "start_x": {
+                    "type": "number"
+                  },
+                  "start_y": {
+                    "type": "number"
+                  },
+                  "end_x": {
+                    "type": "number"
+                  },
+                  "end_y": {
+                    "type": "number"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["start_x", "start_y", "end_x", "end_y"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "scroll",
+              "description": "Desplaza con la rueda en (x, y) px de la captura. direction: up|down|left|right; amount: líneas (1-30, por defecto 5).",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X en píxeles de la última captura"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y en píxeles de la última captura"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": ["up", "down", "left", "right"]
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Líneas (1-30)"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["x", "y", "direction"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "type_text",
+              "description": "Escribe texto (unicode) en el elemento con foco. \"\\n\" pulsa Return. Nunca escribas contraseñas ni datos de pago.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["text"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "key",
+              "description": "Pulsa una tecla o combinación, p.ej. \"return\", \"cmd+space\", \"cmd+shift+t\", \"escape\", \"tab\", \"up\", \"f5\". Varias combinaciones separadas por espacio se pulsan en secuencia.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "keys": {
+                    "type": "string"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["keys"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "cursor_position",
+              "description": "Devuelve la posición actual del puntero en píxeles de la captura.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "open_application",
+              "description": "Abre o trae al frente una aplicación por nombre (p.ej. \"Finder\", \"Safari\", \"Notas\") o bundle id. Si la app queda sin ninguna ventana visible (minimizada o sin ventanas abiertas), intenta mostrar una.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["name"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "wait",
+              "description": "Espera N segundos (máx. 10) para que la interfaz termine de cargar.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "seconds": {
+                    "type": "number"
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["seconds"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "request_access",
+              "description": "Flujo Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO de cada tarea, ANTES de tocar la pantalla o usar la terminal, los archivos o la web, con \"plan\" (tus pasos, en orden) y en \"apps\" la lista COMPLETA de apps que vas a necesitar (no solo una), con su nivel en \"levels\". Si la tarea NO controla ninguna app (solo terminal, archivos o web), envía el plan con \"apps\": []. Ninguna otra herramienta de acción (clic, teclear, capturar…) funciona hasta que el usuario apruebe esta tarjeta. También sirve, SIN \"plan\", a mitad de tarea si necesitas una app extra o un nivel mayor: llámala en cuanto una herramienta falle con \"no tiene acceso concedido\" o \"nivel insuficiente\". En todos los casos ESPERA a que el usuario responda (sin límite de tiempo: la tarea queda en pausa, no se cancela sola). Si el usuario pide cambios (\"Editar\") en vez de aprobar, el resultado trae su feedback: replantea el plan y vuelve a llamar a request_access. Si cancela, no actúes y explícaselo.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "apps": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Nombres de las apps, p.ej. [\"Safari\", \"Terminal\"]. Puede ser [] si envías \"plan\" y no controlas ninguna app."
+                  },
+                  "levels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["view", "click", "full"]
+                    },
+                    "description": "Nivel que necesitas por app, mismo orden que apps: 'full' si vas a teclear, pulsar teclas o arrastrar; 'click' si solo clic o scroll; 'view' si solo mirar."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Por qué necesitas actuar sobre esas apps (se le muestra al usuario)"
+                  },
+                  "plan": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Solo al principio de la tarea: tus pasos en orden (p.ej. [\"Abrir Spotlight y buscar Discord\", \"Abrir el canal #pega\", \"Escribir un saludo\"]). El usuario los ve y aprueba de una vez."
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "app_tree",
+              "description": "Árbol de accesibilidad de una app CONCRETA (por nombre o bundle id), SIN activarla ni mover el ratón: funciona en modo \"En segundo plano\". Cada nodo trae una \"ref\" (p.ej. \"w0.2.1\") que usan app_press, app_set_value y app_action; si la interfaz cambió, vuelve a pedir el árbol.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "max_depth": {
+                    "type": "number"
+                  },
+                  "max_nodes": {
+                    "type": "number"
+                  }
+                },
+                "required": ["app"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "app_find",
+              "description": "Busca elementos en el árbol de accesibilidad de una app por rol, título o texto, SIN activarla ni mover el ratón. Devuelve como mucho \"limit\" coincidencias (≤50, por defecto 20).",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "p.ej. \"AXButton\", \"AXTextField\""
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "limit": {
+                    "type": "number"
+                  }
+                },
+                "required": ["app"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "app_press",
+              "description": "Pulsa (kAXPressAction) un elemento de una app por su \"ref\" (de app_tree/app_find), SIN mover el ratón real: funciona en segundo plano. Con expect_role/expect_title, si no coinciden falla en vez de pulsar algo distinto (vuelve a pedir app_tree/app_find y usa la referencia actual).",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "expect_role": {
+                    "type": "string"
+                  },
+                  "expect_title": {
+                    "type": "string"
+                  }
+                },
+                "required": ["app", "ref"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "app_set_value",
+              "description": "Escribe el valor (kAXValueAttribute) de un campo de una app por su \"ref\", SIN mover el ratón real. Rechaza campos de contraseña u otras entradas seguras. Nunca escribas contraseñas ni datos de pago.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "expect_role": {
+                    "type": "string"
+                  }
+                },
+                "required": ["app", "ref", "value"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "app_action",
+              "description": "Ejecuta una acción de accesibilidad sobre un elemento por su \"ref\": AXShowMenu, AXIncrement, AXDecrement, AXConfirm, AXCancel, AXRaise, AXPick.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": ["AXShowMenu", "AXIncrement", "AXDecrement", "AXConfirm", "AXCancel", "AXRaise", "AXPick"]
+                  }
+                },
+                "required": ["app", "ref", "action"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "app_screenshot",
+              "description": "Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "window": {
+                    "type": "number"
+                  }
+                },
+                "required": ["app"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "find_element",
+              "description": "Localiza UN elemento clicable por su texto visible (título, etiqueta, valor o identificador) usando Accessibility (AX), sin tocar la pantalla. Úsala ANTES de adivinar coordenadas mirando una captura: si encuentra el elemento, sus coordenadas son exactas y puedes pasarlas directo a left_click/mouse_move/type_text. Devuelve hasta 5 candidatos ordenados de más a menos fiable, o dice que no encontró nada (algunas apps con interfaz personalizada, juegos o ciertas apps Electron no exponen bien su árbol AX: en ese caso sigue con la captura de pantalla, es un respaldo normal, no un fallo).",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Texto visible del elemento, p.ej. \"Guardar\" o \"Buscar en la web\""
+                  },
+                  "appHint": {
+                    "type": "string",
+                    "description": "Nombre o bundle id de la app (opcional; por defecto la app en primer plano)"
+                  }
+                },
+                "required": ["description"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "list_elements",
+              "description": "Lista elementos de accesibilidad (AX) de las ventanas de una app, opcionalmente filtrados por rol (p.ej. \"button,textfield,checkbox\"), para explorarla sin ir adivinando sobre la captura. Sin filtro de texto: si buscas un elemento concreto por su texto usa find_element.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "appHint": {
+                    "type": "string",
+                    "description": "Nombre o bundle id de la app (opcional; por defecto la app en primer plano)"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "Roles separados por coma, p.ej. \"button,textfield\" (opcional)"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "request_full_control",
+              "description": "Pide tomar el ratón y el teclado REALES para <app> (tarjeta \"¿Tomar el control de la pantalla?\"), solo necesario en modo \"En segundo plano\" cuando app_press/app_set_value no bastan (arrastrar, atajos de teclado complejos…). En modo \"Control de la pantalla\" ya los tienes: no hace falta llamarla.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": ["app", "reason"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "teach_step",
+              "description": "Modo guía: muestra un globo junto a un punto o elemento y EXPLICA qué harías, SIN hacer clic ni escribir nada. Usa \"app\"+\"ref\" (de app_tree/app_find) para señalar un elemento concreto, o \"x\"/\"y\" en px de la última captura. Llama a esta herramienta paso a paso y espera a que el usuario pulse \"Siguiente\" antes de describir el paso siguiente.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "1 a 400 caracteres"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "app": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "step": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": ["text"],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "teach_end",
+              "description": "Termina el modo guía (cierra el globo). Llámala al terminar la guía o si el usuario cambia de tema.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
           ]
-         },
-         "amount": {
-          "type": "number",
-          "description": "Líneas (1-30)"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "x",
-         "y",
-         "direction"
-        ],
-        "additionalProperties": false
-       }
+        }
       },
-      {
-       "name": "type_text",
-       "description": "Escribe texto (unicode) en el elemento con foco. \"\\n\" pulsa Return. Nunca escribas contraseñas ni datos de pago.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "text": {
-          "type": "string"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "text"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "rpc": "ping"
       },
-      {
-       "name": "key",
-       "description": "Pulsa una tecla o combinación, p.ej. \"return\", \"cmd+space\", \"cmd+shift+t\", \"escape\", \"tab\", \"up\", \"f5\". Varias combinaciones separadas por espacio se pulsan en secuencia.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "keys": {
-          "type": "string"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "keys"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {}
       },
-      {
-       "name": "cursor_position",
-       "description": "Devuelve la posición actual del puntero en píxeles de la captura.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-       }
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "rpc": "resources/list"
       },
-      {
-       "name": "open_application",
-       "description": "Abre o trae al frente una aplicación por nombre (p.ej. \"Finder\", \"Safari\", \"Notas\") o bundle id. Si la app queda sin ninguna ventana visible (minimizada o sin ventanas abiertas), intenta mostrar una.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "name": {
-          "type": "string"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "name"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "result": {
+          "resources": []
+        }
       },
-      {
-       "name": "wait",
-       "description": "Espera N segundos (máx. 10) para que la interfaz termine de cargar.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "seconds": {
-          "type": "number"
-         },
-         "screenshot": {
-          "type": "boolean",
-          "description": "Adjuntar una captura tras la acción (por defecto true)"
-         }
-        },
-        "required": [
-         "seconds"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [],
+      "actions": [],
+      "side": []
+    }
+  ],
+  "pantalla-raton-teclado": [
+    {
+      "step": {
+        "tool": "screenshot"
       },
-      {
-       "name": "request_access",
-       "description": "Flujo Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO de cada tarea, ANTES de tocar la pantalla o usar la terminal, los archivos o la web, con \"plan\" (tus pasos, en orden) y en \"apps\" la lista COMPLETA de apps que vas a necesitar (no solo una), con su nivel en \"levels\". Si la tarea NO controla ninguna app (solo terminal, archivos o web), envía el plan con \"apps\": []. Ninguna otra herramienta de acción (clic, teclear, capturar…) funciona hasta que el usuario apruebe esta tarjeta. También sirve, SIN \"plan\", a mitad de tarea si necesitas una app extra o un nivel mayor: llámala en cuanto una herramienta falle con \"no tiene acceso concedido\" o \"nivel insuficiente\". En todos los casos ESPERA a que el usuario responda (sin límite de tiempo: la tarea queda en pausa, no se cancela sola). Si el usuario pide cambios (\"Editar\") en vez de aprobar, el resultado trae su feedback: replantea el plan y vuelve a llamar a request_access. Si cancela, no actúes y explícaselo.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "apps": {
-          "type": "array",
-          "items": {
-           "type": "string"
-          },
-          "description": "Nombres de las apps, p.ej. [\"Safari\", \"Terminal\"]. Puede ser [] si envías \"plan\" y no controlas ninguna app."
-         },
-         "levels": {
-          "type": "array",
-          "items": {
-           "type": "string",
-           "enum": [
-            "view",
-            "click",
-            "full"
-           ]
-          },
-          "description": "Nivel que necesitas por app, mismo orden que apps: 'full' si vas a teclear, pulsar teclas o arrastrar; 'click' si solo clic o scroll; 'view' si solo mirar."
-         },
-         "reason": {
-          "type": "string",
-          "description": "Por qué necesitas actuar sobre esas apps (se le muestra al usuario)"
-         },
-         "plan": {
-          "type": "array",
-          "items": {
-           "type": "string"
-          },
-          "description": "Solo al principio de la tarea: tus pasos en orden (p.ej. [\"Abrir Spotlight y buscar Discord\", \"Abrir el canal #pega\", \"Escribir un saludo\"]). El usuario los ve y aprueba de una vez."
-         }
-        },
-        "required": [],
-        "additionalProperties": false
-       }
+      "res": {
+        "isError": false,
+        "text": "Captura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text"]
       },
-      {
-       "name": "app_tree",
-       "description": "Árbol de accesibilidad de una app CONCRETA (por nombre o bundle id), SIN activarla ni mover el ratón: funciona en modo \"En segundo plano\". Cada nodo trae una \"ref\" (p.ej. \"w0.2.1\") que usan app_press, app_set_value y app_action; si la interfaz cambió, vuelve a pedir el árbol.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "max_depth": {
-          "type": "number"
-         },
-         "max_nodes": {
-          "type": "number"
-         }
-        },
-        "required": [
-         "app"
-        ],
-        "additionalProperties": false
-       }
+      "helper": ["{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
+      ],
+      "side": ["GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 100,
+          "y": 50
+        }
       },
-      {
-       "name": "app_find",
-       "description": "Busca elementos en el árbol de accesibilidad de una app por rol, título o texto, SIN activarla ni mover el ratón. Devuelve como mucho \"limit\" coincidencias (≤50, por defecto 20).",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "role": {
-          "type": "string",
-          "description": "p.ej. \"AXButton\", \"AXTextField\""
-         },
-         "title": {
-          "type": "string"
-         },
-         "text": {
-          "type": "string"
-         },
-         "limit": {
-          "type": "number"
-         }
-        },
-        "required": [
-         "app"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "isError": false,
+        "text": "left_click en (100, 50) px → (105.42, 52.71) pt",
+        "parts": ["text"]
       },
-      {
-       "name": "app_press",
-       "description": "Pulsa (kAXPressAction) un elemento de una app por su \"ref\" (de app_tree/app_find), SIN mover el ratón real: funciona en segundo plano. Con expect_role/expect_title, si no coinciden falla en vez de pulsar algo distinto (vuelve a pedir app_tree/app_find y usa la referencia actual).",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "ref": {
-          "type": "string"
-         },
-         "expect_role": {
-          "type": "string"
-         },
-         "expect_title": {
-          "type": "string"
-         }
-        },
-        "required": [
-         "app",
-         "ref"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
+        "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "right_click",
+        "args": {
+          "x": 200.5,
+          "y": 300
+        }
       },
-      {
-       "name": "app_set_value",
-       "description": "Escribe el valor (kAXValueAttribute) de un campo de una app por su \"ref\", SIN mover el ratón real. Rechaza campos de contraseña u otras entradas seguras. Nunca escribas contraseñas ni datos de pago.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "ref": {
-          "type": "string"
-         },
-         "value": {
-          "type": "string"
-         },
-         "expect_role": {
-          "type": "string"
-         }
-        },
-        "required": [
-         "app",
-         "ref",
-         "value"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "isError": false,
+        "text": "right_click en (200.5, 300) px → (211.36, 316.25) pt",
+        "parts": ["text"]
       },
-      {
-       "name": "app_action",
-       "description": "Ejecuta una acción de accesibilidad sobre un elemento por su \"ref\": AXShowMenu, AXIncrement, AXDecrement, AXConfirm, AXCancel, AXRaise, AXPick.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "ref": {
-          "type": "string"
-         },
-         "action": {
-          "type": "string",
-          "enum": [
-           "AXShowMenu",
-           "AXIncrement",
-           "AXDecrement",
-           "AXConfirm",
-           "AXCancel",
-           "AXRaise",
-           "AXPick"
-          ]
-         }
-        },
-        "required": [
-         "app",
-         "ref",
-         "action"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"211.36\",\"316.25\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"211.36\",\"316.25\",\"right\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"right_click\",\"x\":211.36,\"y\":316.25,\"phase\":\"start\"}",
+        "{\"tool\":\"right_click\",\"x\":211.36,\"y\":316.25,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "double_click",
+        "args": {
+          "x": 10,
+          "y": 10,
+          "screenshot": false
+        }
       },
-      {
-       "name": "app_screenshot",
-       "description": "Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "window": {
-          "type": "number"
-         }
-        },
-        "required": [
-         "app"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "isError": false,
+        "text": "double_click en (10, 10) px → (10.54, 10.54) pt",
+        "parts": ["text"]
       },
-      {
-       "name": "find_element",
-       "description": "Localiza UN elemento clicable por su texto visible (título, etiqueta, valor o identificador) usando Accessibility (AX), sin tocar la pantalla. Úsala ANTES de adivinar coordenadas mirando una captura: si encuentra el elemento, sus coordenadas son exactas y puedes pasarlas directo a left_click/mouse_move/type_text. Devuelve hasta 5 candidatos ordenados de más a menos fiable, o dice que no encontró nada (algunas apps con interfaz personalizada, juegos o ciertas apps Electron no exponen bien su árbol AX: en ese caso sigue con la captura de pantalla, es un respaldo normal, no un fallo).",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "description": {
-          "type": "string",
-          "description": "Texto visible del elemento, p.ej. \"Guardar\" o \"Buscar en la web\""
-         },
-         "appHint": {
-          "type": "string",
-          "description": "Nombre o bundle id de la app (opcional; por defecto la app en primer plano)"
-         }
-        },
-        "required": [
-         "description"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"10.54\",\"10.54\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"10.54\",\"10.54\",\"left\",\"2\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"double_click\",\"x\":10.54,\"y\":10.54,\"phase\":\"start\"}",
+        "{\"tool\":\"double_click\",\"x\":10.54,\"y\":10.54,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "mouse_move",
+        "args": {
+          "x": 640,
+          "y": 400
+        }
       },
-      {
-       "name": "list_elements",
-       "description": "Lista elementos de accesibilidad (AX) de las ventanas de una app, opcionalmente filtrados por rol (p.ej. \"button,textfield,checkbox\"), para explorarla sin ir adivinando sobre la captura. Sin filtro de texto: si buscas un elemento concreto por su texto usa find_element.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "appHint": {
-          "type": "string",
-          "description": "Nombre o bundle id de la app (opcional; por defecto la app en primer plano)"
-         },
-         "role": {
-          "type": "string",
-          "description": "Roles separados por coma, p.ej. \"button,textfield\" (opcional)"
-         }
-        },
-        "required": [],
-        "additionalProperties": false
-       }
+      "res": {
+        "isError": false,
+        "text": "Puntero movido a (640, 400) px → (674.67, 421.67) pt",
+        "parts": ["text"]
       },
-      {
-       "name": "request_full_control",
-       "description": "Pide tomar el ratón y el teclado REALES para <app> (tarjeta \"¿Tomar el control de la pantalla?\"), solo necesario en modo \"En segundo plano\" cuando app_press/app_set_value no bastan (arrastrar, atajos de teclado complejos…). En modo \"Control de la pantalla\" ya los tienes: no hace falta llamarla.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "app": {
-          "type": "string"
-         },
-         "reason": {
-          "type": "string"
-         }
-        },
-        "required": [
-         "app",
-         "reason"
-        ],
-        "additionalProperties": false
-       }
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"674.67\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"move\",\"args\":[\"674.67\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"mouse_move\",\"x\":674.67,\"y\":421.67,\"phase\":\"start\"}",
+        "{\"tool\":\"mouse_move\",\"x\":674.67,\"y\":421.67,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "drag",
+        "args": {
+          "start_x": 10,
+          "start_y": 20,
+          "end_x": 300,
+          "end_y": 400
+        }
       },
-      {
-       "name": "teach_step",
-       "description": "Modo guía: muestra un globo junto a un punto o elemento y EXPLICA qué harías, SIN hacer clic ni escribir nada. Usa \"app\"+\"ref\" (de app_tree/app_find) para señalar un elemento concreto, o \"x\"/\"y\" en px de la última captura. Llama a esta herramienta paso a paso y espera a que el usuario pulse \"Siguiente\" antes de describir el paso siguiente.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {
-         "text": {
-          "type": "string",
-          "description": "1 a 400 caracteres"
-         },
-         "title": {
-          "type": "string"
-         },
-         "x": {
-          "type": "number"
-         },
-         "y": {
-          "type": "number"
-         },
-         "app": {
-          "type": "string"
-         },
-         "ref": {
-          "type": "string"
-         },
-         "step": {
-          "type": "number"
-         },
-         "total": {
-          "type": "number"
-         }
-        },
-        "required": [
-         "text"
-        ],
-        "additionalProperties": false
-       }
+      "res": {
+        "isError": false,
+        "text": "Arrastrado de (10, 20) a (300, 400) px",
+        "parts": ["text"]
       },
-      {
-       "name": "teach_end",
-       "description": "Termina el modo guía (cierra el globo). Llámala al terminar la guía o si el usuario cambia de tema.",
-       "inputSchema": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-       }
-      }
-     ]
-    }
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "rpc": "ping"
-   },
-   "res": {
-    "jsonrpc": "2.0",
-    "id": 3,
-    "result": {}
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "rpc": "resources/list"
-   },
-   "res": {
-    "jsonrpc": "2.0",
-    "id": 4,
-    "result": {
-     "resources": []
-    }
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  }
- ],
- "pantalla-raton-teclado": [
-  {
-   "step": {
-    "tool": "screenshot"
-   },
-   "res": {
-    "isError": false,
-    "text": "Captura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-    "parts": [
-     "image",
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
-    "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
-   ],
-   "side": [
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 100,
-     "y": 50
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "left_click en (100, 50) px → (105.42, 52.71) pt",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
-    "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "right_click",
-    "args": {
-     "x": 200.5,
-     "y": 300
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "right_click en (200.5, 300) px → (211.36, 316.25) pt",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"211.36\",\"316.25\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"click\",\"args\":[\"211.36\",\"316.25\",\"right\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"right_click\",\"x\":211.36,\"y\":316.25,\"phase\":\"start\"}",
-    "{\"tool\":\"right_click\",\"x\":211.36,\"y\":316.25,\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "double_click",
-    "args": {
-     "x": 10,
-     "y": 10,
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "double_click en (10, 10) px → (10.54, 10.54) pt",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"10.54\",\"10.54\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"click\",\"args\":[\"10.54\",\"10.54\",\"left\",\"2\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"double_click\",\"x\":10.54,\"y\":10.54,\"phase\":\"start\"}",
-    "{\"tool\":\"double_click\",\"x\":10.54,\"y\":10.54,\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "mouse_move",
-    "args": {
-     "x": 640,
-     "y": 400
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Puntero movido a (640, 400) px → (674.67, 421.67) pt",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"674.67\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"move\",\"args\":[\"674.67\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"mouse_move\",\"x\":674.67,\"y\":421.67,\"phase\":\"start\"}",
-    "{\"tool\":\"mouse_move\",\"x\":674.67,\"y\":421.67,\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "drag",
-    "args": {
-     "start_x": 10,
-     "start_y": 20,
-     "end_x": 300,
-     "end_y": 400
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Arrastrado de (10, 20) a (300, 400) px",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"10.54\",\"21.08\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"316.25\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"drag\",\"args\":[\"10.54\",\"21.08\",\"316.25\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"drag\",\"x\":316.25,\"y\":421.67,\"fromX\":10.54,\"fromY\":21.08,\"phase\":\"start\"}",
-    "{\"tool\":\"drag\",\"x\":316.25,\"y\":421.67,\"fromX\":10.54,\"fromY\":21.08,\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "scroll",
-    "args": {
-     "x": 500,
-     "y": 500,
-     "direction": "down",
-     "amount": 3
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Scroll down 3 en (500, 500) px",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"527.09\",\"527.09\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"scroll\",\"args\":[\"527.09\",\"527.09\",\"0\",\"3\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"down 3\",\"phase\":\"start\"}",
-    "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"down 3\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "scroll",
-    "args": {
-     "x": 500,
-     "y": 500,
-     "direction": "up"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Scroll up 5 en (500, 500) px",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"527.09\",\"527.09\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"scroll\",\"args\":[\"527.09\",\"527.09\",\"0\",\"-5\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"up 5\",\"phase\":\"start\"}",
-    "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"up 5\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "scroll",
-    "args": {
-     "x": 500,
-     "y": 500,
-     "direction": "sideways"
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "direction debe ser up, down, left o right",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "type_text",
-    "args": {
-     "text": "Hola\nmundo ñ"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Escrito: 12 caracteres",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"type\",\"args\":[\"Hola\\nmundo ñ\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"type_text\",\"text\":\"Hola\\nmundo ñ\",\"phase\":\"start\"}",
-    "{\"tool\":\"type_text\",\"text\":\"Hola\\nmundo ñ\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "type_text",
-    "args": {
-     "text": ""
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "text vacío",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "key",
-    "args": {
-     "keys": "cmd+space"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Teclas pulsadas: cmd+space",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"key\",\"args\":[\"cmd+space\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"key\",\"text\":\"cmd+space\",\"phase\":\"start\"}",
-    "{\"tool\":\"key\",\"text\":\"cmd+space\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "key",
-    "args": {
-     "keys": "cmd+shift+t return"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Teclas pulsadas: cmd+shift+t return",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"key\",\"args\":[\"cmd+shift+t return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"key\",\"text\":\"cmd+shift+t return\",\"phase\":\"start\"}",
-    "{\"tool\":\"key\",\"text\":\"cmd+shift+t return\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "cursor_position"
-   },
-   "res": {
-    "isError": false,
-    "text": "{\"x\":9,\"y\":19,\"points\":{\"x\":10,\"y\":20}}",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"cursor\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 99999,
-     "y": 5
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Coordenadas fuera de la pantalla: (99999, 5) px de captura",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": "a",
-     "y": 5
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Coordenadas inválidas: x e y deben ser números",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "wait",
-    "args": {
-     "seconds": 0.05
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Esperado 0.05s",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [
-    "{\"tool\":\"wait\",\"text\":\"0.05s\",\"phase\":\"start\"}",
-    "{\"tool\":\"wait\",\"text\":\"0.05s\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "herramienta_inexistente"
-   },
-   "res": {
-    "isError": true,
-    "text": "Herramienta desconocida: herramienta_inexistente",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  }
- ],
- "captura-automatica": [
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 100,
-     "y": 50
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "left_click en (100, 50) px → (105.42, 52.71) pt\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-    "parts": [
-     "image",
-     "text",
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
-    "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"end\",\"ok\":true}",
-    "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
-    "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 100,
-     "y": 50,
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "left_click en (100, 50) px → (105.42, 52.71) pt",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
-    "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  }
- ],
- "abrir-aplicacion": [
-  {
-   "step": {
-    "tool": "open_application",
-    "args": {
-     "name": "Notes",
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Abierta Notes. App en primer plano: Notes. Aviso: no se detectó ninguna ventana visible; puede seguir minimizada o cerrada.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"open-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"activate\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"start\"}",
-    "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "open_application",
-    "args": {
-     "name": ""
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "name vacío",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /plan-status?"
-   ]
-  }
- ],
- "segundo-plano": [
-  {
-   "step": {
-    "tool": "open_application",
-    "args": {
-     "name": "Notes",
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Abierta Notes en segundo plano (sin activarla ni traerla al frente).",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"open-app-bg\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"start\"}",
-    "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 1,
-     "y": 1
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "type_text",
-    "args": {
-     "text": "x"
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "request_full_control",
-    "args": {
-     "app": "Notes",
-     "reason": "arrastrar"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "El usuario permitió tomar el control del ratón y el teclado para Notes. Ya puedes usar left_click/type_text/key.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "POST /request-access? {\"apps\":[{\"bundleId\":\"com.apple.Notes\",\"name\":\"Notes\",\"requested\":\"full\"}],\"reason\":\"arrastrar\",\"kind\":\"takeover\"}"
-   ]
-  }
- ],
- "accesibilidad-app": [
-  {
-   "step": {
-    "tool": "app_tree",
-    "args": {
-     "app": "Notes",
-     "max_depth": 3,
-     "max_nodes": 50
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "{\"app\":{},\"nodes\":[],\"truncated\":false}",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"3\",\"50\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_find",
-    "args": {
-     "app": "Notes",
-     "role": "AXButton",
-     "title": "Guardar",
-     "text": "g",
-     "limit": 5
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "{\"matches\":[{\"ref\":\"w0.2\",\"role\":\"AXTextField\"}]}",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-find\",\"args\":[\"com.apple.Notes\",\"{\\\"limit\\\":5,\\\"role\\\":\\\"AXButton\\\",\\\"title\\\":\\\"Guardar\\\",\\\"text\\\":\\\"g\\\"}\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_press",
-    "args": {
-     "app": "Notes",
-     "ref": "w0.1",
-     "expect_role": "AXButton",
-     "expect_title": "OK",
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Pulsado w0.1 en Notes.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-press\",\"args\":[\"com.apple.Notes\",\"w0.1\",\"AXButton\",\"OK\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"app_press\",\"text\":\"Notes w0.1\",\"phase\":\"start\"}",
-    "{\"tool\":\"app_press\",\"text\":\"Notes w0.1\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_set_value",
-    "args": {
-     "app": "Notes",
-     "ref": "w0.2",
-     "value": "hola",
-     "expect_role": "AXTextField",
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Valor escrito en w0.2 de Notes (4 caracteres).",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-find\",\"args\":[\"com.apple.Notes\",\"{\\\"role\\\":\\\"AXTextField\\\",\\\"limit\\\":50}\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-set-value\",\"args\":[\"com.apple.Notes\",\"w0.2\",\"hola\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"app_set_value\",\"text\":\"Notes w0.2\",\"phase\":\"start\"}",
-    "{\"tool\":\"app_set_value\",\"text\":\"Notes w0.2\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_action",
-    "args": {
-     "app": "Notes",
-     "ref": "w0.3",
-     "action": "AXRaise",
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Acción AXRaise ejecutada en w0.3 de Notes.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-action\",\"args\":[\"com.apple.Notes\",\"w0.3\",\"AXRaise\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"app_action\",\"text\":\"Notes w0.3 AXRaise\",\"phase\":\"start\"}",
-    "{\"tool\":\"app_action\",\"text\":\"Notes w0.3 AXRaise\",\"phase\":\"end\",\"ok\":true}"
-   ],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_action",
-    "args": {
-     "app": "Notes",
-     "ref": "w0.3",
-     "action": "AXDelete"
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "action debe ser una de: AXShowMenu, AXIncrement, AXDecrement, AXConfirm, AXCancel, AXRaise, AXPick",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_screenshot",
-    "args": {
-     "app": "Notes",
-     "window": 1
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Ventana de Notes: 800x600 px («Ventana»). Archivo: <path>\nCaptura de la pantalla principal: 800x600 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-    "parts": [
-     "image",
-     "text",
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"window-shot\",\"args\":[\"com.apple.Notes\",\"<DIR>/shots/raw-app-<stamp>.png\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "find_element",
-    "args": {
-     "description": "Guardar",
-     "appHint": "Notes"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "1 candidato(s) en Notes (AX) para \"Guardar\", de más a menos fiable:\n1. [button] \"Guardar\" en (16, 12) pt, tamaño 30x20\nUsa el punto indicado con left_click/mouse_move y verifica con una captura después de actuar.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--query\",\"Guardar\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "list_elements",
-    "args": {
-     "appHint": "Notes",
-     "role": "button,textfield"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "1 elemento(s) en Notes (rol: button,textfield):\n1. [button] \"Guardar\" en (16, 12) pt, tamaño 30x20",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--role\",\"button,textfield\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "teach_step",
-    "args": {
-     "text": "Aquí",
-     "app": "Notes",
-     "ref": "w0.1"
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "El usuario pulsó \"Siguiente\": continúa con el paso siguiente.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-frame\",\"args\":[\"com.apple.Notes\",\"w0.1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes",
-    "POST /teach-step? {\"text\":\"Aquí\",\"x\":5,\"y\":5}"
-   ]
-  },
-  {
-   "step": {
-    "tool": "teach_step",
-    "args": {
-     "text": "Allá",
-     "x": 100,
-     "y": 100
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "El usuario pulsó \"Siguiente\": continúa con el paso siguiente.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "POST /teach-step? {\"text\":\"Allá\",\"x\":105.42,\"y\":105.42}"
-   ]
-  },
-  {
-   "step": {
-    "tool": "teach_end"
-   },
-   "res": {
-    "isError": false,
-    "text": "Modo guía terminado.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "POST /teach-end?"
-   ]
-  }
- ],
- "plan-y-concesiones": [
-  {
-   "step": {
-    "tool": "request_access",
-    "args": {
-     "plan": [
-      "Abrir Notas"
-     ],
-     "apps": [
-      "Notes"
-     ],
-     "levels": [
-      "full"
-     ],
-     "reason": "prueba",
-     "screenshot": false
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Respuesta del usuario:\n- Notes: Control total\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-    "parts": [
-     "image",
-     "text",
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
-    "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
-   ],
-   "side": [
-    "POST /request-access? {\"apps\":[{\"bundleId\":\"com.apple.Notes\",\"name\":\"Notes\",\"requested\":\"full\"}],\"reason\":\"prueba\",\"plan\":[\"Abrir Notas\"],\"kind\":\"access\"}"
-   ]
-  },
-  {
-   "step": {
-    "tool": "request_access",
-    "args": {
-     "apps": []
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Indica al menos una app en \"apps\" o, si la tarea no controla ninguna app (solo terminal, archivos o web), un \"plan\" con \"apps\": [].",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "tool": "request_access",
-    "unordered": true,
-    "args": {
-     "apps": [
-      {
-       "name": "com.apple.Notes",
-       "level": "view"
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"10.54\",\"21.08\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"316.25\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"drag\",\"args\":[\"10.54\",\"21.08\",\"316.25\",\"421.67\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"drag\",\"x\":316.25,\"y\":421.67,\"fromX\":10.54,\"fromY\":21.08,\"phase\":\"start\"}",
+        "{\"tool\":\"drag\",\"x\":316.25,\"y\":421.67,\"fromX\":10.54,\"fromY\":21.08,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": [
+        "GET /control-mode?",
+        "GET /plan-status?",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes"
+      ]
+    },
+    {
+      "step": {
+        "tool": "scroll",
+        "args": {
+          "x": 500,
+          "y": 500,
+          "direction": "down",
+          "amount": 3
+        }
       },
-      "Notes"
-     ],
-     "levels": [
-      "click"
-     ]
+      "res": {
+        "isError": false,
+        "text": "Scroll down 3 en (500, 500) px",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"527.09\",\"527.09\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"scroll\",\"args\":[\"527.09\",\"527.09\",\"0\",\"3\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"down 3\",\"phase\":\"start\"}",
+        "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"down 3\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "scroll",
+        "args": {
+          "x": 500,
+          "y": 500,
+          "direction": "up"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Scroll up 5 en (500, 500) px",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"527.09\",\"527.09\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"scroll\",\"args\":[\"527.09\",\"527.09\",\"0\",\"-5\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"up 5\",\"phase\":\"start\"}",
+        "{\"tool\":\"scroll\",\"x\":527.09,\"y\":527.09,\"text\":\"up 5\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "scroll",
+        "args": {
+          "x": 500,
+          "y": 500,
+          "direction": "sideways"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "direction debe ser up, down, left o right",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "Hola\nmundo ñ"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Escrito: 12 caracteres",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"type\",\"args\":[\"Hola\\nmundo ñ\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"type_text\",\"text\":\"Hola\\nmundo ñ\",\"phase\":\"start\"}",
+        "{\"tool\":\"type_text\",\"text\":\"Hola\\nmundo ñ\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": ""
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "text vacío",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "key",
+        "args": {
+          "keys": "cmd+space"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Teclas pulsadas: cmd+space",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"key\",\"args\":[\"cmd+space\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"key\",\"text\":\"cmd+space\",\"phase\":\"start\"}",
+        "{\"tool\":\"key\",\"text\":\"cmd+space\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "key",
+        "args": {
+          "keys": "cmd+shift+t return"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Teclas pulsadas: cmd+shift+t return",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"key\",\"args\":[\"cmd+shift+t return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"key\",\"text\":\"cmd+shift+t return\",\"phase\":\"start\"}",
+        "{\"tool\":\"key\",\"text\":\"cmd+shift+t return\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "cursor_position"
+      },
+      "res": {
+        "isError": false,
+        "text": "{\"x\":9,\"y\":19,\"points\":{\"x\":10,\"y\":20}}",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"cursor\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 99999,
+          "y": 5
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Coordenadas fuera de la pantalla: (99999, 5) px de captura",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": "a",
+          "y": 5
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Coordenadas inválidas: x e y deben ser números",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "wait",
+        "args": {
+          "seconds": 0.05
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Esperado 0.05s",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [
+        "{\"tool\":\"wait\",\"text\":\"0.05s\",\"phase\":\"start\"}",
+        "{\"tool\":\"wait\",\"text\":\"0.05s\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "herramienta_inexistente"
+      },
+      "res": {
+        "isError": true,
+        "text": "Herramienta desconocida: herramienta_inexistente",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
     }
-   },
-   "res": {
-    "isError": false,
-    "text": "Respuesta del usuario:\n- Notes: Control total\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-    "parts": [
-     "image",
-     "text",
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"resolve-app\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
-    "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
-   ],
-   "side": [
-    "POST /request-access? {\"apps\":[{\"bundleId\":\"com.apple.Notes\",\"name\":\"Notes\",\"requested\":\"click\"}],\"kind\":\"access\"}"
-   ]
-  }
- ],
- "rechazos-de-seguridad": [
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 100,
-     "y": 50
+  ],
+  "captura-automatica": [
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 100,
+          "y": 50
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "left_click en (100, 50) px → (105.42, 52.71) pt\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
+        "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"end\",\"ok\":true}",
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 100,
+          "y": 50,
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "left_click en (100, 50) px → (105.42, 52.71) pt",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
+        "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "«Notes» solo tiene el nivel \"Solo ver\"; esta acción necesita \"Ver y clic\". Pide más acceso: llama a request_access con apps: [\"Notes\"] y levels: [\"click\"], y espera la respuesta del usuario.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "type_text",
-    "args": {
-     "text": "x"
+  ],
+  "abrir-aplicacion": [
+    {
+      "step": {
+        "tool": "open_application",
+        "args": {
+          "name": "Notes",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Abierta Notes. App en primer plano: Notes. Aviso: no se detectó ninguna ventana visible; puede seguir minimizada o cerrada.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"open-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"activate\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"start\"}",
+        "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "open_application",
+        "args": {
+          "name": ""
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "name vacío",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /plan-status?"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "«Notes» solo tiene el nivel \"Solo ver\"; esta acción necesita \"Control total\". Pide más acceso: llama a request_access con apps: [\"Notes\"] y levels: [\"full\"], y espera la respuesta del usuario.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_press",
-    "args": {
-     "app": "Notes",
-     "ref": "w0.1"
+  ],
+  "segundo-plano": [
+    {
+      "step": {
+        "tool": "open_application",
+        "args": {
+          "name": "Notes",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Abierta Notes en segundo plano (sin activarla ni traerla al frente).",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"open-app-bg\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [
+        "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"start\"}",
+        "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "x"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "request_full_control",
+        "args": {
+          "app": "Notes",
+          "reason": "arrastrar"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "El usuario permitió tomar el control del ratón y el teclado para Notes. Ya puedes usar left_click/type_text/key.",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": [
+        "GET /control-mode?",
+        "GET /plan-status?",
+        "POST /request-access? {\"apps\":[{\"bundleId\":\"com.apple.Notes\",\"name\":\"Notes\",\"requested\":\"full\"}],\"reason\":\"arrastrar\",\"kind\":\"takeover\"}"
+      ]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "«Notes» solo tiene el nivel \"Solo ver\"; esta acción necesita \"Ver y clic\". Pide más acceso: llama a request_access con apps: [\"Notes\"] y levels: [\"click\"], y espera la respuesta del usuario.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_tree",
-    "args": {
-     "app": "Notes"
+  ],
+  "accesibilidad-app": [
+    {
+      "step": {
+        "tool": "app_tree",
+        "args": {
+          "app": "Notes",
+          "max_depth": 3,
+          "max_nodes": 50
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "{\"app\":{},\"nodes\":[],\"truncated\":false}",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"3\",\"50\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_find",
+        "args": {
+          "app": "Notes",
+          "role": "AXButton",
+          "title": "Guardar",
+          "text": "g",
+          "limit": 5
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "{\"matches\":[{\"ref\":\"w0.2\",\"role\":\"AXTextField\"}]}",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-find\",\"args\":[\"com.apple.Notes\",\"{\\\"limit\\\":5,\\\"role\\\":\\\"AXButton\\\",\\\"title\\\":\\\"Guardar\\\",\\\"text\\\":\\\"g\\\"}\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_press",
+        "args": {
+          "app": "Notes",
+          "ref": "w0.1",
+          "expect_role": "AXButton",
+          "expect_title": "OK",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Pulsado w0.1 en Notes.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-press\",\"args\":[\"com.apple.Notes\",\"w0.1\",\"AXButton\",\"OK\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_press\",\"text\":\"Notes w0.1\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_press\",\"text\":\"Notes w0.1\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_set_value",
+        "args": {
+          "app": "Notes",
+          "ref": "w0.2",
+          "value": "hola",
+          "expect_role": "AXTextField",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Valor escrito en w0.2 de Notes (4 caracteres).",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-find\",\"args\":[\"com.apple.Notes\",\"{\\\"role\\\":\\\"AXTextField\\\",\\\"limit\\\":50}\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-set-value\",\"args\":[\"com.apple.Notes\",\"w0.2\",\"hola\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_set_value\",\"text\":\"Notes w0.2\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_set_value\",\"text\":\"Notes w0.2\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_action",
+        "args": {
+          "app": "Notes",
+          "ref": "w0.3",
+          "action": "AXRaise",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Acción AXRaise ejecutada en w0.3 de Notes.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-action\",\"args\":[\"com.apple.Notes\",\"w0.3\",\"AXRaise\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_action\",\"text\":\"Notes w0.3 AXRaise\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_action\",\"text\":\"Notes w0.3 AXRaise\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_action",
+        "args": {
+          "app": "Notes",
+          "ref": "w0.3",
+          "action": "AXDelete"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "action debe ser una de: AXShowMenu, AXIncrement, AXDecrement, AXConfirm, AXCancel, AXRaise, AXPick",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_screenshot",
+        "args": {
+          "app": "Notes",
+          "window": 1
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Ventana de Notes: 800x600 px («Ventana»). Archivo: <path>\nCaptura de la pantalla principal: 800x600 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"window-shot\",\"args\":[\"com.apple.Notes\",\"<DIR>/shots/raw-app-<stamp>.png\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "find_element",
+        "args": {
+          "description": "Guardar",
+          "appHint": "Notes"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "1 candidato(s) en Notes (AX) para \"Guardar\", de más a menos fiable:\n1. [button] \"Guardar\" en (16, 12) pt, tamaño 30x20\nUsa el punto indicado con left_click/mouse_move y verifica con una captura después de actuar.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--query\",\"Guardar\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "list_elements",
+        "args": {
+          "appHint": "Notes",
+          "role": "button,textfield"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "1 elemento(s) en Notes (rol: button,textfield):\n1. [button] \"Guardar\" en (16, 12) pt, tamaño 30x20",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--role\",\"button,textfield\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "teach_step",
+        "args": {
+          "text": "Aquí",
+          "app": "Notes",
+          "ref": "w0.1"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "El usuario pulsó \"Siguiente\": continúa con el paso siguiente.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-frame\",\"args\":[\"com.apple.Notes\",\"w0.1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": [
+        "GET /plan-status?",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes",
+        "POST /teach-step? {\"text\":\"Aquí\",\"x\":5,\"y\":5}"
+      ]
+    },
+    {
+      "step": {
+        "tool": "teach_step",
+        "args": {
+          "text": "Allá",
+          "x": 100,
+          "y": 100
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "El usuario pulsó \"Siguiente\": continúa con el paso siguiente.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /plan-status?", "POST /teach-step? {\"text\":\"Allá\",\"x\":105.42,\"y\":105.42}"]
+    },
+    {
+      "step": {
+        "tool": "teach_end"
+      },
+      "res": {
+        "isError": false,
+        "text": "Modo guía terminado.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /plan-status?", "POST /teach-end?"]
     }
-   },
-   "res": {
-    "isError": false,
-    "text": "{\"app\":{},\"nodes\":[],\"truncated\":false}",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  }
- ],
- "campo-seguro-y-tecleo-reciente": [
-  {
-   "step": {
-    "tool": "type_text",
-    "args": {
-     "text": "x"
+  ],
+  "plan-y-concesiones": [
+    {
+      "step": {
+        "tool": "request_access",
+        "args": {
+          "plan": ["Abrir Notas"],
+          "apps": ["Notes"],
+          "levels": ["full"],
+          "reason": "prueba",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Respuesta del usuario:\n- Notes: Control total\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
+      ],
+      "side": [
+        "POST /request-access? {\"apps\":[{\"bundleId\":\"com.apple.Notes\",\"name\":\"Notes\",\"requested\":\"full\"}],\"reason\":\"prueba\",\"plan\":[\"Abrir Notas\"],\"kind\":\"access\"}"
+      ]
+    },
+    {
+      "step": {
+        "tool": "request_access",
+        "args": {
+          "apps": []
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Indica al menos una app en \"apps\" o, si la tarea no controla ninguna app (solo terminal, archivos o web), un \"plan\" con \"apps\": [].",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "tool": "request_access",
+        "unordered": true,
+        "args": {
+          "apps": [
+            {
+              "name": "com.apple.Notes",
+              "level": "view"
+            },
+            "Notes"
+          ],
+          "levels": ["click"]
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Respuesta del usuario:\n- Notes: Control total\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"resolve-app\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
+      ],
+      "side": [
+        "POST /request-access? {\"apps\":[{\"bundleId\":\"com.apple.Notes\",\"name\":\"Notes\",\"requested\":\"click\"}],\"kind\":\"access\"}"
+      ]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "El elemento con foco es un campo de contraseña (u otra entrada segura del sistema). El agente nunca teclea contraseñas ni códigos: pide al usuario que los escriba él mismo.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "key",
-    "args": {
-     "keys": "return"
+  ],
+  "rechazos-de-seguridad": [
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 100,
+          "y": 50
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "«Notes» solo tiene el nivel \"Solo ver\"; esta acción necesita \"Ver y clic\". Pide más acceso: llama a request_access con apps: [\"Notes\"] y levels: [\"click\"], y espera la respuesta del usuario.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "x"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "«Notes» solo tiene el nivel \"Solo ver\"; esta acción necesita \"Control total\". Pide más acceso: llama a request_access con apps: [\"Notes\"] y levels: [\"full\"], y espera la respuesta del usuario.",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_press",
+        "args": {
+          "app": "Notes",
+          "ref": "w0.1"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "«Notes» solo tiene el nivel \"Solo ver\"; esta acción necesita \"Ver y clic\". Pide más acceso: llama a request_access con apps: [\"Notes\"] y levels: [\"click\"], y espera la respuesta del usuario.",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_tree",
+        "args": {
+          "app": "Notes"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "{\"app\":{},\"nodes\":[],\"truncated\":false}",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "El usuario está escribiendo ahora mismo: el agente ha pausado para no interferir. Reintenta en un momento.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /control-mode?",
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  }
- ],
- "codigos-de-salida-del-helper": [
-  {
-   "step": {
-    "tool": "app_tree",
-    "args": {
-     "app": "Notes"
+  ],
+  "campo-seguro-y-tecleo-reciente": [
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "x"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "El elemento con foco es un campo de contraseña (u otra entrada segura del sistema). El agente nunca teclea contraseñas ni códigos: pide al usuario que los escriba él mismo.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "key",
+        "args": {
+          "keys": "return"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "El usuario está escribiendo ahora mismo: el agente ha pausado para no interferir. Reintenta en un momento.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "Falta el permiso de Accesibilidad para Lazunox (aparece como Lazunox en Ajustes del Sistema).",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_tree",
-    "args": {
-     "app": "Notes"
+  ],
+  "codigos-de-salida-del-helper": [
+    {
+      "step": {
+        "tool": "app_tree",
+        "args": {
+          "app": "Notes"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Falta el permiso de Accesibilidad para Lazunox (aparece como Lazunox en Ajustes del Sistema).",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_tree",
+        "args": {
+          "app": "Notes"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Esa app no está en ejecución.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_tree",
+        "args": {
+          "app": "Notes"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Recurso no disponible.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_tree",
+        "args": {
+          "app": "Notes"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "ax-tree falló (código 99)",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_press",
+        "args": {
+          "app": "Notes",
+          "ref": "r"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "El elemento cambió (el rol o el título esperados no coinciden): vuelve a pedir app_tree/app_find y usa la referencia (ref) actual.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-press\",\"args\":[\"com.apple.Notes\",\"r\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_press\",\"text\":\"Notes r\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_press\",\"text\":\"Notes r\",\"phase\":\"end\",\"ok\":false}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_set_value",
+        "args": {
+          "app": "Notes",
+          "ref": "r",
+          "value": "v"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Ese campo es seguro (contraseña u otra entrada protegida): el agente nunca escribe ahí.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-set-value\",\"args\":[\"com.apple.Notes\",\"r\",\"v\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_set_value\",\"text\":\"Notes r\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_set_value\",\"text\":\"Notes r\",\"phase\":\"end\",\"ok\":false}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_action",
+        "args": {
+          "app": "Notes",
+          "ref": "r",
+          "action": "AXPick"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Esa acción no está permitida.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-action\",\"args\":[\"com.apple.Notes\",\"r\",\"AXPick\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_action\",\"text\":\"Notes r AXPick\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_action\",\"text\":\"Notes r AXPick\",\"phase\":\"end\",\"ok\":false}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "app_screenshot",
+        "args": {
+          "app": "Notes"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "window-shot falló (código 5)",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"window-shot\",\"args\":[\"com.apple.Notes\",\"<DIR>/shots/raw-app-<stamp>.png\",\"0\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "Esa app no está en ejecución.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_tree",
-    "args": {
-     "app": "Notes"
+  ],
+  "kill-switch-y-canal-caido": [
+    {
+      "step": {
+        "tool": "screenshot"
+      },
+      "res": {
+        "isError": true,
+        "text": "Control detenido por el usuario",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Control detenido por el usuario",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "Recurso no disponible.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_tree",
-    "args": {
-     "app": "Notes"
+  ],
+  "canal-caido-falla-cerrado": [
+    {
+      "step": {
+        "tool": "screenshot"
+      },
+      "res": {
+        "isError": true,
+        "text": "No se pudo verificar el estado del kill-switch con Lazunox; acción rechazada",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "No se pudo verificar el estado del kill-switch con Lazunox; acción rechazada",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "ax-tree falló (código 99)",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-tree\",\"args\":[\"com.apple.Notes\",\"12\",\"500\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_press",
-    "args": {
-     "app": "Notes",
-     "ref": "r"
+  ],
+  "plan-sin-aprobar": [
+    {
+      "step": {
+        "tool": "screenshot"
+      },
+      "res": {
+        "isError": true,
+        "text": "Todavía no hay un plan aprobado para esta tarea (flujo Plan → Aprobar → Ejecutar). Antes de mover el ratón, hacer clic, teclear o capturar la pantalla: escribe tu plan de pasos y llama UNA VEZ a request_access con el argumento \"plan\" (los pasos, en orden) y la lista completa de apps que vas a necesitar con su nivel (\"levels\"); si no vas a controlar ninguna app, envía \"apps\": []. Espera a que el usuario pulse \"Aprobar y empezar\" antes de hacer ninguna otra acción.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Todavía no hay un plan aprobado para esta tarea (flujo Plan → Aprobar → Ejecutar). Antes de mover el ratón, hacer clic, teclear o capturar la pantalla: escribe tu plan de pasos y llama UNA VEZ a request_access con el argumento \"plan\" (los pasos, en orden) y la lista completa de apps que vas a necesitar con su nivel (\"levels\"); si no vas a controlar ninguna app, envía \"apps\": []. Espera a que el usuario pulse \"Aprobar y empezar\" antes de hacer ninguna otra acción.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "cursor_position"
+      },
+      "res": {
+        "isError": false,
+        "text": "{\"x\":9,\"y\":19,\"points\":{\"x\":10,\"y\":20}}",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"cursor\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [],
+      "side": []
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "El elemento cambió (el rol o el título esperados no coinciden): vuelve a pedir app_tree/app_find y usa la referencia (ref) actual.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-press\",\"args\":[\"com.apple.Notes\",\"r\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"app_press\",\"text\":\"Notes r\",\"phase\":\"start\"}",
-    "{\"tool\":\"app_press\",\"text\":\"Notes r\",\"phase\":\"end\",\"ok\":false}"
-   ],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_set_value",
-    "args": {
-     "app": "Notes",
-     "ref": "r",
-     "value": "v"
+  ],
+  "helper-ausente": [
+    {
+      "step": {
+        "tool": "cursor_position"
+      },
+      "res": {
+        "isError": true,
+        "text": "Helper nativo no encontrado (/no/existe/cu-helper)",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": []
+    },
+    {
+      "step": {
+        "tool": "screenshot"
+      },
+      "res": {
+        "isError": true,
+        "text": "Helper nativo no encontrado (/no/existe/cu-helper)",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
+      ],
+      "side": ["GET /plan-status?"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "Ese campo es seguro (contraseña u otra entrada protegida): el agente nunca escribe ahí.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-set-value\",\"args\":[\"com.apple.Notes\",\"r\",\"v\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"app_set_value\",\"text\":\"Notes r\",\"phase\":\"start\"}",
-    "{\"tool\":\"app_set_value\",\"text\":\"Notes r\",\"phase\":\"end\",\"ok\":false}"
-   ],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_action",
-    "args": {
-     "app": "Notes",
-     "ref": "r",
-     "action": "AXPick"
+  ],
+  "app-desconocida": [
+    {
+      "step": {
+        "tool": "request_access",
+        "args": {
+          "apps": ["Zzqx NoExisteApp"],
+          "plan": ["x"]
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
+      ],
+      "side": ["POST /request-access? {\"apps\":[],\"plan\":[\"x\"],\"unresolved\":[\"Zzqx NoExisteApp\"],\"kind\":\"access\"}"]
     }
-   },
-   "res": {
-    "isError": true,
-    "text": "Esa acción no está permitida.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"ax-action\",\"args\":[\"com.apple.Notes\",\"r\",\"AXPick\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"app_action\",\"text\":\"Notes r AXPick\",\"phase\":\"start\"}",
-    "{\"tool\":\"app_action\",\"text\":\"Notes r AXPick\",\"phase\":\"end\",\"ok\":false}"
-   ],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  },
-  {
-   "step": {
-    "tool": "app_screenshot",
-    "args": {
-     "app": "Notes"
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "window-shot falló (código 5)",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"window-shot\",\"args\":[\"com.apple.Notes\",\"<DIR>/shots/raw-app-<stamp>.png\",\"0\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": [
-    "GET /plan-status?",
-    "GET /tier?bundleId=com.apple.Notes&name=Notes"
-   ]
-  }
- ],
- "kill-switch-y-canal-caido": [
-  {
-   "step": {
-    "tool": "screenshot"
-   },
-   "res": {
-    "isError": true,
-    "text": "Control detenido por el usuario",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 1,
-     "y": 1
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Control detenido por el usuario",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  }
- ],
- "canal-caido-falla-cerrado": [
-  {
-   "step": {
-    "tool": "screenshot"
-   },
-   "res": {
-    "isError": true,
-    "text": "No se pudo verificar el estado del kill-switch con Lazunox; acción rechazada",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 1,
-     "y": 1
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "No se pudo verificar el estado del kill-switch con Lazunox; acción rechazada",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  }
- ],
- "plan-sin-aprobar": [
-  {
-   "step": {
-    "tool": "screenshot"
-   },
-   "res": {
-    "isError": true,
-    "text": "Todavía no hay un plan aprobado para esta tarea (flujo Plan → Aprobar → Ejecutar). Antes de mover el ratón, hacer clic, teclear o capturar la pantalla: escribe tu plan de pasos y llama UNA VEZ a request_access con el argumento \"plan\" (los pasos, en orden) y la lista completa de apps que vas a necesitar con su nivel (\"levels\"); si no vas a controlar ninguna app, envía \"apps\": []. Espera a que el usuario pulse \"Aprobar y empezar\" antes de hacer ninguna otra acción.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "left_click",
-    "args": {
-     "x": 1,
-     "y": 1
-    }
-   },
-   "res": {
-    "isError": true,
-    "text": "Todavía no hay un plan aprobado para esta tarea (flujo Plan → Aprobar → Ejecutar). Antes de mover el ratón, hacer clic, teclear o capturar la pantalla: escribe tu plan de pasos y llama UNA VEZ a request_access con el argumento \"plan\" (los pasos, en orden) y la lista completa de apps que vas a necesitar con su nivel (\"levels\"); si no vas a controlar ninguna app, envía \"apps\": []. Espera a que el usuario pulse \"Aprobar y empezar\" antes de hacer ninguna otra acción.",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": [
-    "GET /plan-status?"
-   ]
-  },
-  {
-   "step": {
-    "tool": "cursor_position"
-   },
-   "res": {
-    "isError": false,
-    "text": "{\"x\":9,\"y\":19,\"points\":{\"x\":10,\"y\":20}}",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"cursor\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [],
-   "side": []
-  }
- ],
- "helper-ausente": [
-  {
-   "step": {
-    "tool": "cursor_position"
-   },
-   "res": {
-    "isError": true,
-    "text": "Helper nativo no encontrado (/no/existe/cu-helper)",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [],
-   "side": []
-  },
-  {
-   "step": {
-    "tool": "screenshot"
-   },
-   "res": {
-    "isError": true,
-    "text": "Helper nativo no encontrado (/no/existe/cu-helper)",
-    "parts": [
-     "text"
-    ]
-   },
-   "helper": [],
-   "actions": [
-    "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
-    "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
-   ],
-   "side": [
-    "GET /plan-status?"
-   ]
-  }
- ],
- "app-desconocida": [
-  {
-   "step": {
-    "tool": "request_access",
-    "args": {
-     "apps": [
-      "Zzqx NoExisteApp"
-     ],
-     "plan": [
-      "x"
-     ]
-    }
-   },
-   "res": {
-    "isError": false,
-    "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-    "parts": [
-     "image",
-     "text",
-     "text"
-    ]
-   },
-   "helper": [
-    "{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-    "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-   ],
-   "actions": [
-    "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
-    "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
-   ],
-   "side": [
-    "POST /request-access? {\"apps\":[],\"plan\":[\"x\"],\"unresolved\":[\"Zzqx NoExisteApp\"],\"kind\":\"access\"}"
-   ]
-  }
- ]
+  ]
 }

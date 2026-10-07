@@ -221,7 +221,8 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
           children.delete(child)
           if (!err) return resolve({ stdout: stdout.toString(), code: 0 })
           const e = err as NodeJS.ErrnoException & { killed?: boolean }
-          if (typeof e.code === 'number') return resolve({ stdout: stdout.toString(), code: e.code })
+          // Salida normal con código ≠ 0 (el MCP no lo mató: `killed` solo es true por tiempo agotado o exceso de salida).
+          if (typeof e.code === 'number' && !e.killed) return resolve({ stdout: stdout.toString(), code: e.code })
           // Tiempo agotado o salida excesiva: el árbol de procesos puede seguir vivo y con un botón pulsado.
           terminate(child)
           pendingRelease = releaseInput()

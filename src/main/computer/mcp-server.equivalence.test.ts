@@ -3,7 +3,7 @@
  * lo que el MCP le pide al helper nativo (comandos, argumentos, banderas, orden) y a main (eventos, consultas), y lo que
  * devuelve al modelo (textos de éxito y de error). El fixture `mcp-server.equivalence.fixture.json` se capturó ANTES de abstraer
  * la parte de plataforma (`mcp-platform-*.ts`): la abstracción no puede cambiar ni un byte de esto en macOS.
- * Regenerarlo solo a propósito: `UPDATE_CU_FIXTURE=1 npx vitest run src/main/computer/mcp-server.equivalence.test.ts`.
+ * Regenerarlo solo a propósito: `UPDATE_CU_FIXTURE=1 npx vitest run src/main/computer/mcp-server.equivalence.test.ts` y después `npx prettier --write` sobre el fixture.
  *
  * Sin pantalla real: las capturas usan `COMPUTER_FAKE_SCREENSHOT` (el `screencapture` real nunca corre) y `sips` solo convierte un
  * PNG liso generado aquí. Las ramas ScreenCaptureKit/`screencapture`/máscara se cubren en `mcp-platform-darwin.test.ts` con dobles.
