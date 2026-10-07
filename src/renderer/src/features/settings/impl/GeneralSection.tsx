@@ -219,6 +219,11 @@ export function GeneralSection(): React.JSX.Element {
         </>
       ) : (
         <div className="mt-6">
+          {isWindowsPlatform() && (
+            <div className="mb-3">
+              <TasksWinBetaRow standalone />
+            </div>
+          )}
           <PlatformNote title={t('platform.win.unavailable.title')}>
             <ul className="list-disc space-y-1 pl-4">
               <li>{t('platform.win.unavailable.tasks', { tasks: MODE_LABELS.tasks })}</li>
@@ -226,11 +231,6 @@ export function GeneralSection(): React.JSX.Element {
               <li>{t('platform.win.unavailable.update')}</li>
             </ul>
           </PlatformNote>
-          {isWindowsPlatform() && (
-            <div className="mt-3">
-              <TasksWinBetaRow standalone />
-            </div>
-          )}
         </div>
       )}
 

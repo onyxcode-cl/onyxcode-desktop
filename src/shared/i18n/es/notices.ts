@@ -34,9 +34,9 @@ export const notices = {
   'notices.updateError.install': 'No se pudo instalar la actualización. La versión actual sigue intacta.',
   'notices.updateError.generic': 'No se pudo actualizar.',
   // Funciones solo de macOS: aviso en Ajustes y en rutinas guardadas (Windows)
-  'platform.win.unavailable.title': 'No disponible en Windows por ahora',
-  'platform.win.unavailable.tasks': 'El modo {tasks} (trabajo autónomo en un sandbox) todavía no está disponible en Windows.',
-  'platform.win.unavailable.computer': '{computer} (usar el ratón, el teclado y las apps por ti) todavía no está disponible en Windows.',
+  'platform.win.unavailable.title': 'Windows: algunas funciones son beta',
+  'platform.win.unavailable.tasks': 'El modo {tasks} (trabajo autónomo en un sandbox) es una beta en Windows y viene apagada: actívala con el interruptor «Tareas (beta) en Windows» de arriba y reinicia Lazunox. Si el interruptor no aparece, esta versión o la política de tu equipo no la permite.',
+  'platform.win.unavailable.computer': '{computer} (usar el ratón, el teclado y las apps por ti) en Windows también es beta y se enciende junto con Tareas.',
   'platform.win.unavailable.update':
     'La actualización automática no está disponible en Windows: instala la versión nueva descargándola tú.',
   'platform.win.unavailable.routine':

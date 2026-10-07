@@ -38,9 +38,9 @@ export const notices = {
   'notices.updateError.install': 'Couldn’t install the update. Your current version is untouched.',
   'notices.updateError.generic': 'Couldn’t update.',
   // macOS-only features: notice in Settings and on saved routines (Windows)
-  'platform.win.unavailable.title': 'Not available on Windows yet',
-  'platform.win.unavailable.tasks': '{tasks} mode (autonomous work in a sandbox) is not available on Windows yet.',
-  'platform.win.unavailable.computer': '{computer} (using the mouse, keyboard and apps for you) is not available on Windows yet.',
+  'platform.win.unavailable.title': 'Windows: some features are beta',
+  'platform.win.unavailable.tasks': '{tasks} mode (autonomous work in a sandbox) is a beta on Windows and ships turned off: turn it on with the “Tasks (beta) on Windows” switch above, then restart Lazunox. If the switch is missing, this version or your device policy does not allow it.',
+  'platform.win.unavailable.computer': '{computer} (using the mouse, keyboard and apps for you) is also a beta on Windows and turns on together with Tasks.',
   'platform.win.unavailable.update': 'Automatic updates are not available on Windows: install new versions by downloading them yourself.',
   'platform.win.unavailable.routine':
     'This routine uses {tasks} mode, which is not available on Windows yet: it will not run. You can recreate it in Code mode.',
