@@ -940,6 +940,12 @@ export interface TasksInvokeContract {
    * dentro de la carpeta (OpenCode la descubre ahí). Nunca sobrescribe: si el nombre ya existe, se rechaza.
    */
   'tasks:skill:accept': { req: { folder: string; name: string; description: string; body: string }; res: LearnedSkillResult }
+  /** Nombres de skills de esta carpeta que ya pasaron por la tarjeta (propias o marcadas «Conservar»). */
+  'tasks:skill:approved': { req: { folder: string }; res: string[] }
+  /** «Conservar»: aprueba una skill que apareció en `.opencode/skills/` sin pasar por la tarjeta. */
+  'tasks:skill:trust': { req: { folder: string; name: string }; res: string[] }
+  /** Borra `<folder>/.opencode/skills/<name>/` entera (la propuso el agente o apareció sin revisar). */
+  'tasks:skill:remove': { req: { folder: string; name: string }; res: string[] }
 
   /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }
@@ -1225,6 +1231,9 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:learn:remove',
   'tasks:learn:clear',
   'tasks:skill:accept',
+  'tasks:skill:approved',
+  'tasks:skill:trust',
+  'tasks:skill:remove',
   'tasks:network:state',
   'tasks:network:setToggle',
   'tasks:network:setHost',

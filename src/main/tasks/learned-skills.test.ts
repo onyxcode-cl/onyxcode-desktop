@@ -2,21 +2,28 @@
  * Skills aprobadas (decisión del dueño, 2026-10-07): vive en `<folder>/.opencode/skills/<name>/SKILL.md`.
  * A diferencia de la memoria (userData), las skills están DENTRO de la carpeta del proyecto porque así las
  * descubre OpenCode. Usa SIEMPRE una carpeta de prueba real (tmpdir), nunca toca la carpeta real del usuario.
+ * El registro de aprobadas (`skills-aprobadas.json`) SÍ vive en `userData`: se mockea `electron` igual que
+ * `learned-memory.test.ts` (`state.userData` se rellena en `beforeEach`, ya con los imports normales ligados).
  */
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { skillAlreadyExists, skillPathFor, writeApprovedSkill } from './learned-skills'
+const state = vi.hoisted(() => ({ userData: '' }))
+vi.mock('electron', () => ({ app: { getPath: () => state.userData } }))
+
+import { approvedSkillNames, removeSkill, skillAlreadyExists, skillPathFor, trustSkill, writeApprovedSkill } from './learned-skills'
 
 let testFolder: string
 
 beforeEach(() => {
+  state.userData = mkdtempSync(join(tmpdir(), 'lzx-skill-userdata-'))
   testFolder = mkdtempSync(join(tmpdir(), 'lzx-skill-proyecto-'))
 })
 
 afterEach(() => {
+  rmSync(state.userData, { recursive: true, force: true })
   rmSync(testFolder, { recursive: true, force: true })
 })
 
@@ -318,5 +325,54 @@ describe('escritura atómica', () => {
       expect(fileStr).not.toContain('SKILL.md.tmp')
       expect(fileStr).toContain('SKILL.md')
     }
+  })
+})
+
+describe('registro de aprobadas', () => {
+  it('writeApprovedSkill deja la skill como aprobada de entrada', () => {
+    writeApprovedSkill(testFolder, { name: 'mi-skill', description: 'd', body: 'b' })
+    expect(approvedSkillNames(testFolder)).toEqual(['mi-skill'])
+  })
+
+  it('carpetas de proyecto distintas no mezclan su registro de aprobadas', () => {
+    const otherFolder = mkdtempSync(join(tmpdir(), 'lzx-skill-otro-'))
+    try {
+      writeApprovedSkill(testFolder, { name: 'solo-aqui', description: 'd', body: 'b' })
+      expect(approvedSkillNames(otherFolder)).toEqual([])
+    } finally {
+      rmSync(otherFolder, { recursive: true, force: true })
+    }
+  })
+
+  it('trustSkill aprueba una skill que ya existe en disco (creada fuera del flujo)', () => {
+    // Simula una skill escrita a mano, sin pasar por writeApprovedSkill.
+    const dir = join(testFolder, '.opencode', 'skills', 'manual')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'SKILL.md'), '---\nname: manual\ndescription: "x"\n---\n\ncontenido')
+    expect(approvedSkillNames(testFolder)).toEqual([])
+    expect(trustSkill(testFolder, 'manual')).toBe(true)
+    expect(approvedSkillNames(testFolder)).toEqual(['manual'])
+  })
+
+  it('trustSkill con un nombre inválido o que no existe en disco: false, no agrega nada', () => {
+    expect(trustSkill(testFolder, 'MAYUS')).toBe(false)
+    expect(trustSkill(testFolder, 'no-existe')).toBe(false)
+    expect(approvedSkillNames(testFolder)).toEqual([])
+  })
+
+  it('removeSkill borra la carpeta entera y la saca del registro de aprobadas', () => {
+    writeApprovedSkill(testFolder, { name: 'a-borrar', description: 'd', body: 'b' })
+    expect(skillAlreadyExists(testFolder, 'a-borrar')).toBe(true)
+    expect(removeSkill(testFolder, 'a-borrar')).toBe(true)
+    expect(skillAlreadyExists(testFolder, 'a-borrar')).toBe(false)
+    expect(approvedSkillNames(testFolder)).toEqual([])
+    expect(existsSync(join(testFolder, '.opencode', 'skills', 'a-borrar'))).toBe(false)
+  })
+
+  it('removeSkill con un nombre inválido o inexistente: false, no rompe nada', () => {
+    writeApprovedSkill(testFolder, { name: 'se-queda', description: 'd', body: 'b' })
+    expect(removeSkill(testFolder, 'MAYUS')).toBe(false)
+    expect(removeSkill(testFolder, 'no-existe')).toBe(false)
+    expect(approvedSkillNames(testFolder)).toEqual(['se-queda'])
   })
 })

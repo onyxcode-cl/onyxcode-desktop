@@ -7,8 +7,10 @@
  * skills, nunca fuera); si la skill ya existe, se rechaza (nunca se sobrescribe: el usuario elige
  * otro nombre).
  */
-import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { app } from 'electron'
 import { maskSecretPatterns } from '@shared/redact-patterns'
 import { SKILL_NAME_RE, MAX_SKILL_NAME, MAX_SKILL_DESCRIPTION, MAX_SKILL_BODY_CHARS, MAX_SKILL_BODY_LINES } from '@shared/skill-proposal'
 
@@ -75,5 +77,87 @@ export function writeApprovedSkill(folder: string, skill: SkillToWrite): WriteSk
   const tmp = `${path}.tmp`
   writeFileSync(tmp, content, 'utf8')
   renameSync(tmp, path)
+  recordApproval(folder, skill.name)
   return { ok: true, path }
+}
+
+// ───────── Registro de aprobadas (para avisar de las que NO pasaron por acá) ─────────
+
+/**
+ * `userData/memoria/skills-aprobadas.json`: `{ "<hash de la carpeta>": ["nombre", ...] }`. Vive junto a la
+ * memoria aprendida (misma carpeta privada de la app), separado de `.opencode/skills/` de cada proyecto:
+ * así una skill creada fuera de este flujo (a mano, de una versión anterior, u otro agente) se distingue sin
+ * tener que confiar en nada que viva dentro de la carpeta del usuario.
+ */
+function registryPath(): string {
+  return join(app.getPath('userData'), 'memoria', 'skills-aprobadas.json')
+}
+
+function folderHash(folder: string): string {
+  let real = folder
+  try {
+    real = realpathSync(folder)
+  } catch {
+    // Ídem `learned-memory.ts`: el llamador ya validó la carpeta; si no se puede resolver, se sigue con la ruta tal cual.
+  }
+  return createHash('sha256').update(real).digest('hex').slice(0, 16)
+}
+
+function readRegistry(): Record<string, string[]> {
+  try {
+    const raw = JSON.parse(readFileSync(registryPath(), 'utf8')) as unknown
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+    const out: Record<string, string[]> = {}
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === 'string')
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+function writeRegistry(reg: Record<string, string[]>): void {
+  const file = registryPath()
+  mkdirSync(dirname(file), { recursive: true })
+  const tmp = `${file}.tmp`
+  writeFileSync(tmp, JSON.stringify(reg, null, 2), 'utf8')
+  renameSync(tmp, file)
+}
+
+function recordApproval(folder: string, name: string): void {
+  const reg = readRegistry()
+  const key = folderHash(folder)
+  const list = reg[key] ?? []
+  if (!list.includes(name)) {
+    reg[key] = [...list, name]
+    writeRegistry(reg)
+  }
+}
+
+/** Nombres de skills de esta carpeta que YA pasaron por la tarjeta (propias o marcadas "Conservar" con `trustSkill`). */
+export function approvedSkillNames(folder: string): string[] {
+  return readRegistry()[folderHash(folder)] ?? []
+}
+
+/** "Conservar": el usuario decide confiar en una skill que apareció sin pasar por la tarjeta (a mano, u otra versión). */
+export function trustSkill(folder: string, name: string): boolean {
+  if (!validName(name) || !skillAlreadyExists(folder, name)) return false
+  recordApproval(folder, name)
+  return true
+}
+
+/** Borra `<folder>/.opencode/skills/<name>/` entera. `name` pasa por la MISMA validación que al escribir. */
+export function removeSkill(folder: string, name: string): boolean {
+  if (!validName(name)) return false
+  const dir = skillDir(folder, name)
+  if (!existsSync(dir)) return false
+  rmSync(dir, { recursive: true, force: true })
+  const reg = readRegistry()
+  const key = folderHash(folder)
+  if (reg[key]?.includes(name)) {
+    reg[key] = reg[key].filter((n) => n !== name)
+    writeRegistry(reg)
+  }
+  return true
 }

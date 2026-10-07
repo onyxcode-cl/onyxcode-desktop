@@ -129,6 +129,9 @@ export function ProjectPanel(): React.JSX.Element | null {
   const [agentsInfo, setAgentsInfo] = useState<{ path: string; exists: boolean } | null>(null)
   const [agentsLoading, setAgentsLoading] = useState(false)
   const [skills, setSkills] = useState<SkillInfo[] | null>(null)
+  /** Nombres que ya pasaron por la tarjeta de aprobación (propias, o marcadas «Conservar»). Las que falten acá son "sin revisar". */
+  const [approvedSkills, setApprovedSkills] = useState<string[]>([])
+  const [skillBusy, setSkillBusy] = useState<string | null>(null)
   const [rules, setRules] = useState<TasksPermissionRule[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -171,10 +174,29 @@ export function ProjectPanel(): React.JSX.Element | null {
       .catch(() => {
         if (!cancelled) setRules([])
       })
+    void cw('tasks:skill:approved', { folder })
+      .then((list) => {
+        if (!cancelled) setApprovedSkills(list)
+      })
+      .catch(() => {
+        if (!cancelled) setApprovedSkills([])
+      })
     return () => {
       cancelled = true
     }
   }, [open, folder])
+
+  const trustOrRemoveSkill = async (name: string, action: 'trust' | 'remove'): Promise<void> => {
+    if (!folder) return
+    setSkillBusy(name)
+    try {
+      const approved = await cw(action === 'trust' ? 'tasks:skill:trust' : 'tasks:skill:remove', { folder, name })
+      setApprovedSkills(approved)
+      if (action === 'remove') setSkills((list) => list?.filter((k) => k.name !== name) ?? list)
+    } finally {
+      setSkillBusy(null)
+    }
+  }
 
   // AGENTS.md: se carga al entrar en su pestaña.
   useEffect(() => {
@@ -463,12 +485,43 @@ export function ProjectPanel(): React.JSX.Element | null {
                     </p>
                   ) : (
                     <ul className="space-y-1">
-                      {skills.map((k) => (
-                        <li key={k.name} className="rounded-lg border border-border px-2.5 py-1.5">
-                          <span className="font-mono text-xs font-medium">{k.name}</span>
-                          {k.description && <p className="mt-0.5 line-clamp-2 text-xs text-subtle">{k.description}</p>}
-                        </li>
-                      ))}
+                      {skills.map((k) => {
+                        const unreviewed = !approvedSkills.includes(k.name)
+                        return (
+                          <li
+                            key={k.name}
+                            className={`rounded-lg border px-2.5 py-1.5 ${unreviewed ? 'border-warning/40 bg-warning/5' : 'border-border'}`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-xs font-medium">{k.name}</span>
+                              {unreviewed && (
+                                <span className="shrink-0 text-[10px] font-medium text-warning">{t('tasks.proj.skillUnreviewed')}</span>
+                              )}
+                            </div>
+                            {k.description && <p className="mt-0.5 line-clamp-2 text-xs text-subtle">{k.description}</p>}
+                            {unreviewed && (
+                              <div className="mt-1.5 flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void trustOrRemoveSkill(k.name, 'trust')}
+                                  disabled={skillBusy === k.name}
+                                  className="text-xs text-accent hover:underline"
+                                >
+                                  {t('tasks.proj.skillTrust')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void trustOrRemoveSkill(k.name, 'remove')}
+                                  disabled={skillBusy === k.name}
+                                  className="text-xs text-danger hover:underline"
+                                >
+                                  {t('tasks.proj.skillRemove')}
+                                </button>
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
                     </ul>
                   )}
                 </div>
