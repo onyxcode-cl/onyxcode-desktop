@@ -44,7 +44,8 @@ import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
 import { tasksRules, rulesPermissionConfig } from './rules'
-import { skillsInlineConfig } from './opencode-config'
+import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
+import { applyComputerAgent } from './computer-agent'
 import type { EgressBlockedEvent } from './proxy'
 import { forbiddenFolderReason as folderPolicyReason, parseMountOutput, type MountInfo } from './folder-policy'
 import { loadManagedPolicy } from './policy'
@@ -223,6 +224,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       /** Bandera efectiva `tasksWin` y proveedor del backend de Windows (los trae `main`). Ausentes: en Windows no se lanza nada. */
       tasksWin?: boolean
       winBackend?: WinBackendProvider
+      /** Bandera efectiva `computerWin` (la trae `main`). Ausente: en Windows el agente `computer` sigue siendo el de macOS y no se usa. */
+      computerWin?: boolean
     } = {}
   ) {
     super()
@@ -884,6 +887,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // El agente `computer` vive en el OPENCODE_CONFIG_DIR compartido: ocultarlo en el sandbox (ver buildInlineConfig).
     } else {
       computerMcp = this.opts.computer ? await this.opts.computer.mcpConfig().catch(() => null) : null
+      this.selectComputerAgent()
       this.fullAccessMcp.set(key, !!computerMcp)
       // Navegador en Control total (Lote D, B.11): el navegador integrado.
       browserMcp = await embeddedBrowserMcp.configFor({ product: 'tasks', folder, sandboxed: false }).catch(() => null)
@@ -923,6 +927,22 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })
     return { config, mcpProxy, browserToken: realBrowserToken }
+  }
+
+  /** Agente `computer` de la plataforma (solo cambia algo en Windows con `computerWin`+`tasksWin`; `computer-agent.ts`). */
+  private selectComputerAgent(): void {
+    if (this.platform !== 'win32') return
+    try {
+      const bundled = getBundledOpencodeDir()
+      applyComputerAgent({
+        platform: this.platform,
+        enabled: this.opts.computerWin === true && this.opts.tasksWin === true,
+        agentsDest: join(getOpencodeConfigDir(), 'agents'),
+        bundledAgentsDirs: [join(bundled, 'agents'), join(process.resourcesPath ?? '', 'opencode', 'agents')]
+      })
+    } catch (err) {
+      console.error('[tasks] no se pudo elegir el agente computer:', err instanceof Error ? err.message : 'error')
+    }
   }
 
   private spawn(folder: string, fullAccess: boolean): Promise<TasksServerHandle> {
