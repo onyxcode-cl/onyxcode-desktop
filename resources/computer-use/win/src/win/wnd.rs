@@ -163,9 +163,25 @@ pub struct AppCache {
     by_pid: HashMap<u32, Option<AppInfo>>,
     publishers: HashMap<String, Option<String>>,
     names: HashMap<String, String>,
+    /// Si es `Some`, el editor (Authenticode, caro: hay que leer todo el ejecutable) solo se verifica para estas rutas
+    /// normalizadas. Las demás apps salen con el editor «(sin firma)»: no pueden coincidir con ninguna clave de interés
+    /// (la ruta ya difiere), así que la comparación sigue siendo exacta y barata.
+    interest: Option<std::collections::HashSet<String>>,
 }
 
 impl AppCache {
+    /// Limita la verificación del editor a las rutas de estas claves (ver `interest`).
+    pub fn set_interest(&mut self, keys: &[AppKey]) {
+        self.interest = Some(
+            keys.iter()
+                .filter_map(|k| match k {
+                    AppKey::Exe { path, .. } => Some(path.clone()),
+                    AppKey::Aumid(_) => None,
+                })
+                .collect(),
+        );
+    }
+
     fn publisher(&mut self, path: &str) -> Option<String> {
         self.publishers.entry(path.to_string()).or_insert_with(|| process::publisher(path)).clone()
     }
@@ -204,7 +220,8 @@ impl AppCache {
             }
             appkey::aumid_key(a).ok()
         } else if let Some(n) = &norm {
-            let publisher = self.publisher(&exe);
+            let verify = self.interest.as_ref().is_none_or(|s| s.contains(n));
+            let publisher = if verify { self.publisher(&exe) } else { None };
             appkey::exe_key(n, publisher.as_deref()).ok()
         } else {
             None

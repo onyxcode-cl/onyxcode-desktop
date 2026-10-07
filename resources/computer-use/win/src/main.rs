@@ -8,7 +8,7 @@ fn main() {
         eprintln!("cu-helper: error interno: {info}");
         std::process::exit(1);
     }));
-    let argv: Vec<String> = std::env::args().skip(1).collect();
+    let argv: Vec<String> = std::env::args_os().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
     let env = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
     let r = run_cli(&argv, &env, exec);
     if let Some(line) = &r.stdout {

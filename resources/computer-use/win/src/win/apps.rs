@@ -33,6 +33,7 @@ pub fn is_shell_window(w: &TopWindow) -> bool {
 /// Ventanas visibles (minimizadas incluidas) de la app con esa clave. Err 7 si no hay ninguna; Err 11 si está bloqueada.
 pub fn resolve(cache: &mut AppCache, key: &AppKey) -> CuResult<AppTarget> {
     let want = key.to_key_string();
+    cache.set_interest(std::slice::from_ref(key));
     let all = wnd::enum_top(true).map_err(CuError::unavailable)?;
     let mut mine: Vec<TopWindow> = Vec::new();
     let mut info: Option<AppInfo> = None;
@@ -148,6 +149,11 @@ fn bring_to_front(h: HWND) {
 
 /// `activate`: trae la app al frente (restaura si estaba minimizada). Devuelve (activated, hasWindow).
 pub fn activate(cache: &mut AppCache, target: &str) -> CuResult<(bool, bool)> {
+    // Se identifica por clave o por nombre: no hace falta verificar editores.
+    match crate::appkey::parse_app_key(target) {
+        Ok(k) => cache.set_interest(&[k]),
+        Err(_) => cache.set_interest(&[]),
+    }
     let all = wnd::enum_top(true).map_err(CuError::unavailable)?;
     let mut cands: Vec<(TopWindow, AppInfo)> = Vec::new();
     for w in all {
@@ -204,6 +210,7 @@ pub fn hide(cache: &mut AppCache, keep: &[AppKey]) -> CuResult<Vec<String>> {
 /// `unhide-apps`: restaura (sin activar) las ventanas minimizadas de las apps de la lista. Devuelve las claves restauradas.
 pub fn unhide(cache: &mut AppCache, list: &[AppKey]) -> CuResult<Vec<String>> {
     let want: Vec<String> = list.iter().map(|k| k.to_key_string()).collect();
+    cache.set_interest(list);
     let all = wnd::enum_top(true).map_err(CuError::unavailable)?;
     let mut shown: Vec<String> = Vec::new();
     for w in all {
@@ -226,6 +233,7 @@ pub fn unhide(cache: &mut AppCache, list: &[AppKey]) -> CuResult<Vec<String>> {
 /// Rectángulos de las ventanas visibles (no minimizadas) de las apps dadas.
 pub fn windows_of(cache: &mut AppCache, keys: &[AppKey]) -> CuResult<Vec<crate::mask::Rect>> {
     let want: Vec<String> = keys.iter().map(|k| k.to_key_string()).collect();
+    cache.set_interest(keys);
     let all = wnd::enum_top(false).map_err(CuError::unavailable)?;
     Ok(all
         .into_iter()

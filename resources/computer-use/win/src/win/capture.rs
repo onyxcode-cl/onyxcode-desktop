@@ -40,7 +40,7 @@ struct Dib {
 
 impl Dib {
     fn new(w: i32, h: i32) -> CuResult<Dib> {
-        if w <= 0 || h <= 0 || (w as i64) * (h as i64) > 64 * 1024 * 1024 {
+        if w <= 0 || h <= 0 || (w as i64) * (h as i64) > 48 * 1024 * 1024 {
             return Err(cap_err("tamaño no válido"));
         }
         unsafe {

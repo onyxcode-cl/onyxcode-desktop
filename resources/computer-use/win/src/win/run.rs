@@ -52,8 +52,15 @@ fn read_env() -> Env {
 }
 
 impl Env {
-    fn image_out(&self, path: &str) -> CuResult<String> {
+    fn image_out(&self, raw: &str) -> CuResult<String> {
         let root = self.temp_root.as_deref().ok_or_else(|| CuError::generic("Sin directorio temporal (CU_TEMP_DIR/TEMP): no se escribe nada"))?;
+        // El llamador puede traer el directorio en forma corta 8.3: se expande el directorio (que debe existir).
+        let p0 = std::path::Path::new(raw);
+        let name = p0.file_name().map(|n| n.to_string_lossy().to_string()).ok_or_else(|| CuError::generic("Ruta de salida sin nombre de archivo"))?;
+        let dir0 = p0.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_default();
+        let dir = process::long_path(&dir0).unwrap_or(dir0);
+        let path = format!("{}\\{}", dir.trim_end_matches(['\\', '/']), name);
+        let path = path.as_str();
         paths::validate_image_out(path, root).map_err(CuError::generic)?;
         // Contra enlaces y uniones: el directorio padre REAL debe seguir dentro de la raíz REAL.
         let p = std::path::Path::new(path);
@@ -63,7 +70,10 @@ impl Env {
         let strip = |p: &std::path::Path| p.to_string_lossy().trim_start_matches("\\\\?\\").to_string();
         paths::validate_image_out(&format!("{}\\{}", strip(&real_parent), p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()), &strip(&real_root))
             .map_err(|_| CuError::generic("La ruta de salida sale del directorio temporal (enlace o unión)"))?;
-        // Se escribe en la ruta tal cual la dio el llamador (ya validada).
+        // Un archivo de destino que ya existe y es un enlace simbólico podría llevar la escritura fuera del temporal.
+        if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(CuError::generic("La ruta de salida es un enlace simbólico"));
+        }
         Ok(path.to_string())
     }
 }
@@ -118,6 +128,12 @@ pub fn run(g: &Global, cmd: &Command) -> CuResult<Output> {
     }
     if cmd.is_input() || matches!(cmd, Command::WatchEsc) {
         stop::spawn_stdin_watch();
+    }
+    if cmd.is_input() {
+        // Reloj de 1 ms: sin esto, `sleep` redondea a ~15 ms y la animación a 120 Hz sale a saltos.
+        unsafe {
+            windows::Win32::Media::timeBeginPeriod(1);
+        }
     }
     if cmd.needs_control() {
         gate(&env)?;
@@ -367,6 +383,7 @@ fn snapshot(cache: &mut AppCache, mask_keys: &[String]) -> Option<Vec<WinInfo>> 
 fn screenshot(env: &Env, cache: &mut AppCache, out: &str, max_long: i64, quality: i64, mask_keys: &[AppKey]) -> CuResult<Output> {
     let out = env.image_out(out)?;
     let keys: Vec<String> = mask_keys.iter().map(|k| k.to_key_string()).collect();
+    cache.set_interest(mask_keys);
     let main = screen::primary().ok_or_else(|| CuError::unavailable("No se pudo determinar el monitor principal"))?;
     let bounds = main.rect;
     let mut attempt = 0;
