@@ -52,8 +52,10 @@ import {
 import { ComputerGrantsStore } from './grants'
 import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
+import { stopShortcutFor } from './stop-shortcut'
 
-export const STOP_SHORTCUT = 'CommandOrControl+Shift+Escape'
+/** Atajo global de parada: `CommandOrControl+Shift+Escape` en macOS; `Ctrl+Alt+Shift+Escape` en Windows (ver `stop-shortcut.ts`). */
+export const STOP_SHORTCUT = stopShortcutFor(process.platform)
 
 const PANE_ACCESSIBILITY = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
 const PANE_SCREEN = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'

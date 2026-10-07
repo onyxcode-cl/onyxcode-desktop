@@ -75,6 +75,7 @@ export const tasksComputer = {
     ' no acepta imágenes: no podrá ver las capturas de pantalla. El control del Mac necesita un modelo con visión.',
   'tasksComputer.vision.use': 'Usar Kimi K3',
   'tasksComputer.banner.shortcutOff': 'El atajo ⌘⇧Esc no está disponible; usa el botón Detener',
+  'tasksComputer.banner.shortcutOff.win': 'El atajo Ctrl+Alt+Mayús+Esc no está disponible; usa el botón Detener',
   'tasksComputer.banner.planApproved': 'Plan aprobado para esta tarea: puede seguir sin volver a pedirlo',
   'tasksComputer.banner.revoke': 'Revocar',
   'tasksComputer.banner.stopped': 'Control detenido',
@@ -88,6 +89,7 @@ export const tasksComputer = {
   'tasksComputer.banner.ago': ' · hace {ago}s',
   'tasksComputer.banner.firstAction': 'Esperando la primera acción…',
   'tasksComputer.banner.shortcutNA': '⌘⇧Esc no disponible',
+  'tasksComputer.banner.shortcutNA.win': 'Ctrl+Alt+Mayús+Esc no disponible',
   'tasksComputer.shot.zoom': 'Ampliar captura',
   'tasksComputer.shot.alt': 'Captura de pantalla',
   'tasksComputer.shot.close': 'Cerrar',
@@ -287,6 +289,8 @@ export const tasksComputer = {
   'tasksComputer.onb.tip4': 'Lee cada tarjeta de permiso antes de aprobar. El motivo que muestra lo dice el agente y no está verificado.',
   'tasksComputer.onb.tip5':
     'En {full} revisa el plan antes de aprobarlo y no dejes datos sensibles a la vista. Detén al agente en cualquier momento con ⌘⇧Esc.',
+  'tasksComputer.onb.tip5.win':
+    'En {full} revisa el plan antes de aprobarlo y no dejes datos sensibles a la vista. Detén al agente en cualquier momento con Ctrl+Alt+Mayús+Esc.',
   'tasksComputer.onb.tip6':
     'No pegues contraseñas ni claves en la tarea: el agente puede escribirlas en archivos o enviarlas a los sitios que permitas.',
   'tasksComputer.onb.samplePrompt':

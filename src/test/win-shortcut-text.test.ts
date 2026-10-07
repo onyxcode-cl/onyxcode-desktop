@@ -8,15 +8,10 @@ import { DICTIONARIES, type Msg } from '../shared/i18n'
 const MAC_GLYPHS = /[⌘⌥⌃]/
 
 /**
- * Claves con glifos del Mac que nunca se muestran en Windows. Tareas SÍ existe en Windows (con la bandera `tasksWin`), así que
- * ya no se exime por prefijo: solo estas claves de Control total / Control del PC (que Windows no ofrece sin `computer`).
+ * Claves con glifos del Mac que nunca se muestran en Windows (lista cerrada y justificada). Vacía: Control total / Control del PC
+ * ya tiene su variante `.win` (atajo de parada `Ctrl+Alt+Mayús+Esc`, plan C §2) en todas las claves con ⌘⇧Esc.
  */
-const MAC_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
-  { key: 'tasksComputer.banner.shortcutOff', why: 'Atajo global de parada de Control total (solo con Control del PC)' },
-  { key: 'tasksComputer.banner.shortcutNA', why: 'Atajo global de parada de Control total (solo con Control del PC)' },
-  { key: 'tasksComputer.onb.tip5', why: 'Consejo de Control total: la guía de primer uso lo omite sin `caps.computer`' },
-  { key: 'tasks.home.lead.full', why: 'Texto del modo Control total (el selector no existe sin `caps.computer`)' }
-]
+const MAC_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = []
 
 function texts(m: Msg): string[] {
   return typeof m === 'string' ? [m] : Object.values(m).filter((v): v is string => typeof v === 'string')

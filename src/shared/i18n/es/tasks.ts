@@ -157,6 +157,7 @@ export const tasks = {
   'tasks.home.lead.noFolder':
     'Elige una carpeta y describe el resultado que esperas. El agente revisa, te propone un plan y, cuando lo apruebes, trabaja y te entrega los archivos.',
   'tasks.home.lead.full': 'Control total: el agente puede usar el ratón, el teclado y ver la pantalla. Detenlo con ⌘⇧Esc.',
+  'tasks.home.lead.full.win': 'Control total: el agente puede usar el ratón, el teclado y ver la pantalla. Detenlo con Ctrl+Alt+Mayús+Esc.',
   'tasks.home.lead.sandbox': 'Trabajará dentro de «{folder}». Te pedirá permiso antes de borrar, mover o renombrar.',
   'tasks.home.startingFull': 'Iniciando control total…',
   'tasks.home.startingSandbox': 'Iniciando sandbox…',

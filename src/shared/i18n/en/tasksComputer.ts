@@ -77,6 +77,7 @@ export const tasksComputer = {
   'tasksComputer.vision.text': ' doesn’t accept images, so it won’t be able to see the screenshots. Mac control needs a model with vision.',
   'tasksComputer.vision.use': 'Use Kimi K3',
   'tasksComputer.banner.shortcutOff': 'The ⌘⇧Esc shortcut isn’t available; use the Stop button',
+  'tasksComputer.banner.shortcutOff.win': 'The Ctrl+Alt+Shift+Esc shortcut isn’t available; use the Stop button',
   'tasksComputer.banner.planApproved': 'Plan approved for this task: it can continue without asking again',
   'tasksComputer.banner.revoke': 'Revoke',
   'tasksComputer.banner.stopped': 'Control stopped',
@@ -90,6 +91,7 @@ export const tasksComputer = {
   'tasksComputer.banner.ago': ' · {ago}s ago',
   'tasksComputer.banner.firstAction': 'Waiting for the first action…',
   'tasksComputer.banner.shortcutNA': '⌘⇧Esc unavailable',
+  'tasksComputer.banner.shortcutNA.win': 'Ctrl+Alt+Shift+Esc unavailable',
   'tasksComputer.shot.zoom': 'Enlarge screenshot',
   'tasksComputer.shot.alt': 'Screenshot',
   'tasksComputer.shot.close': 'Close',
@@ -288,6 +290,8 @@ export const tasksComputer = {
   'tasksComputer.onb.tip4': 'Read each permission card before approving. The reason it shows comes from the agent and is unverified.',
   'tasksComputer.onb.tip5':
     'In {full}, review the plan before approving it and don’t leave sensitive data on screen. Stop the agent at any time with ⌘⇧Esc.',
+  'tasksComputer.onb.tip5.win':
+    'In {full}, review the plan before approving it and don’t leave sensitive data on screen. Stop the agent at any time with Ctrl+Alt+Shift+Esc.',
   'tasksComputer.onb.tip6':
     'Don’t paste passwords or keys into a task: the agent can write them to files or send them to the sites you allow.',
   'tasksComputer.onb.samplePrompt':
