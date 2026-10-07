@@ -473,6 +473,14 @@ firmar, que el ZIP sea idéntico en dos ejecuciones, que `WinUpdateInstaller` (e
 con un ejecutable de prueba); el instalador NSIS por usuario con una actualización real encima; Defender sobre el ZIP; y la clave
 pública: `UPDATE_PUBLIC_KEY` sigue vacía, así que hoy el actualizador está apagado en Mac y Windows y los scripts se niegan a publicar.
 
+### 12.2 Windows: Control del PC en el paquete (apagado)
+
+- **Hoy no entra nada.** Mientras `TASKS_WIN_BUILD` sea `false`, ni `cu-helper.exe` ni el agente `computer.win.md` van en el instalador (ni en el `.asar`, ni en el paquete de macOS): `files` excluye `resources/opencode/agents-win/computer.win.md` y todo `resources/computer-use/win/**`. Esa exclusión del `.asar` ya existía para los fuentes de Rust y `target/`; no se duplicó.
+- **Cuándo entran:** solo con la función activa, que exige **las dos** cosas a la vez (falla cerrado): `TASKS_WIN_BUILD = true` en `src/shared/feature-flags.ts` y `LAZUNOX_COMPUTER_WIN_PACK=1` al empaquetar. Entonces `win.extraResources` copia **solo** `resources/computer-use/win/bin/cu-helper.exe` → `resources\computer-use\bin\` (compílalo antes con `node scripts/build-native.mjs --win-helper`; `npm run package:win` no lo compila) y `computer.win.md` → `resources\opencode\agents\`, fuera del asar, donde `computer-agent.ts` lo busca. Nunca los fuentes de Rust ni `target/`.
+- **Comprobar:** `node scripts/check-win-bundle.mjs --config-only` valida `electron-builder.js` (helper y agente solo en `win.extraResources`, solo con la función activa, con el filtro exacto, y la exclusión del `.asar` intacta); sin `--config-only` además revisa `out/main/index.js` (requiere `npm run build`). Pruebas: `node --test scripts/check-win-bundle.test.mjs`.
+- **Sin firma Authenticode (pendiente):** el helper iría sin firmar. Un exe sin firmar que combina gancho de teclado, SendInput y captura de pantalla puede ser puesto en cuarentena por la heurística de Defender; **no se ha probado** un escaneo a demanda (`scripts\win\run-cu.ps1 -Step defender`, a pedido del dueño). Que el helper aparezca o no tras instalar es lo primero que habría que mirar. Decisión del dueño: firma antes de publicar (véase `docs/SEGURIDAD.md`, «3 quadragies quinquies»).
+- **No hay actualización del helper por separado:** viaja dentro del ZIP de la actualización (raíz `Lazunox/`), sin tocar `scripts/update-lib.mjs`; si el ZIP no lo lleva, la función queda no disponible.
+
 ## 11. Publicar el sitio del control remoto (fuera de casa): primero el sitio, después la app
 
 La página del celular en `remoto.onyxcode.cl` y la app del Mac son versiones distintas que deben seguir entendiéndose (la interfaz React llama a canales IPC de la versión del Mac). **Orden obligatorio al publicar: 1) el sitio, 2) la app.**

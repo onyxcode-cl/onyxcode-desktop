@@ -1568,3 +1568,46 @@ Tareas ya está conectado a una carpeta.
 **Riesgos que seguirán aunque todo salga bien.** `truncate` no está protegido (igual que en macOS); las demás distros del usuario comparten la VM y el núcleo de WSL, que actualiza Microsoft (se mostrará su versión en Diagnóstico); un hardlink que el usuario ya hubiera creado hacia fuera de la carpeta sí se lee; los nombres que Windows no maneja bien (reservados, punto o espacio final) pueden dejar residuos; las consultas de búsqueda web son un canal de salida, igual que en macOS.
 
 **Pruebas (macOS, sin Windows ni Electron).** `win-attack.battery`, `ui-path`, `folder-policy.win`, `win-context`, `win-drives`, `select-backend`, `sandbox.win`, `tasks-win-flag`, `tasks-win-report` y su guardia, `storage.test.ts` (recorrido con Node), `tasks-sandbox-handlers.test.ts` (`force`), `actions.directory.test.ts` (ruta del sandbox en las llamadas y ruta de Windows en pantalla; macOS idéntico), más `sandbox.equivalence.test.ts` sin regenerar su fixture.
+
+## 3 quadragies quinquies. Control del PC en Windows: lo que está escrito y sigue APAGADO (plan win-C)
+
+**En una frase.** Control del PC en Windows (UI Automation) no se puede activar hoy, y a propósito: depende de las banderas `computerWin` y `tasksWin` (Control total es un modo de Tareas, que en Windows sigue apagado, sección anterior) y casi todo lo que toca el escritorio **no se ha ejecutado nunca en un Windows real**. Que las pruebas de macOS pasen no demuestra que SendInput, UI Automation o las capturas funcionen en Windows.
+
+**Modelo.** Windows no tiene TCC; lo sustituye la propia app. Las piezas, igual que en macOS pero con otras puertas:
+- **Helper nativo** `cu-helper.exe` (Rust, `resources/computer-use/win/`), un proceso por comando y el mismo protocolo de línea de comandos y JSON (`resources/computer-use/protocol.json`). Manifiesto `asInvoker`, DPI por monitor, **sin `uiAccess`**: no puede ni debe controlar ventanas elevadas. Solo el monitor principal en la v1.
+- **Consentimiento de equipo**, versionado y revocable (`src/main/computer/policy/consent-win.ts`); sin él, todo lo que genera entrada o captura falla cerrado con código 12. El helper lo recibe por `COMPUTER_WIN_CONSENT=1`; que el MCP lo ponga tras consultar a `main` (`GET /consent`) es parte del cableado de C4, que aún no está en esta rama.
+- **Se niega, sin excepciones, a actuar** si Lazunox corre elevado, si hay escritorio seguro (UAC, Ctrl+Alt+Supr, bloqueo), si no hay sesión interactiva (SSH) o si la ventana destino tiene integridad alta. Lista de **bloqueadas siempre** por ejecutable o AUMID (`consent.exe`, `LogonUI.exe`, Seguridad de Windows, `mmc`, `regedit`, Administrador de tareas, gestores de contraseñas): nunca concedibles, enmascaradas y sin acciones.
+- **Concesiones por app** (ver, clic, control total) con clave `exe:<ruta>|pub:<editor>` o `aumid:<id>` (`policy/app-key.ts`): un `chrome.exe` falso en otra carpeta no hereda la concesión.
+- **Capturas con máscara que falla cerrado:** Windows no puede sacar del compositor las apps sin concesión como ScreenCaptureKit; se tapan por orden Z y, si no se puede enmascarar con seguridad, **no hay captura** (en macOS sigue siendo «lo que se pueda»).
+- **Teclas:** política pura en `policy/win-keys.ts` (rechaza `win+r`, `win+x`, `win+l`, `ctrl+shift+esc`, `ctrl+alt+del`, `cmd`, el propio atajo de parada…), **límites de tasa** por sesión (`policy/rate-limit.ts`) y **registro auditable sin el texto tecleado** (`policy/audit.ts`). Son comportamientos nuevos que **solo existen en Windows** hasta que el dueño decida llevarlos al Mac.
+- **Parada:** botón Detener, Esc físico (gancho `WH_KEYBOARD_LL` de solo escucha, que anota la hora y no guarda teclas), atajo global **`Ctrl+Alt+Mayús+Esc`** (`Ctrl+Mayús+Esc` es el Administrador de tareas y no se puede registrar), bloqueo de sesión y, por stdin, `STOP`/EOF: el helper suelta botones y modificadores y sale con 3; después se ejecuta siempre `release-input`.
+- **Agente** `resources/opencode/agents-win/computer.win.md`: mismo flujo Plan → Aprobar → Ejecutar y la misma puerta del plan (`lazunox-plan-gate`), sin grabación, voz ni Seatbelt, con `ctrl` en vez de `cmd`, nunca aprobar UAC, nunca teclear secretos, sin acciones destructivas sin confirmar y trata lo que devuelve la pantalla y UI Automation como datos no confiables. **Control total no tiene sandbox**: las reglas de `bash` (confirmar `SendKeys`, `CopyFromScreen`, `Get-Clipboard`, `reg`, `schtasks`; denegar `cu-helper`, `RunAs`, `Set-MpPreference`, `shutdown`) son defensa en profundidad, **no una frontera**.
+- **Qué agente se usa** (`src/main/tasks/computer-agent.ts`, llamado desde `manager.ts`): en macOS no cambia nada (ni se toca el archivo); en Windows `computer.md` se sustituye por `computer.win.md` solo con `computerWin` y `tasksWin` efectivas, se restaura el de macOS al apagarlas y, si falta el de Windows con la función encendida, **no se deja el de macOS** (falla cerrado). `computer.win.md` nunca queda como agente propio.
+- **Paquete:** `cu-helper.exe` y `computer.win.md` solo entran al instalador de Windows con la función activa y jamás los fuentes de Rust ni `target/` (`docs/DISTRIBUCION.md` §12.2; lo vigila `scripts/check-win-bundle.mjs`).
+
+**Verificado en un PC Windows real** (el PC de pruebas): el helper **compila** y responde a las consultas básicas `version`, `screens`, `cursor` y `permissions`; `session` salió con **12** por escritorio seguro (sesión de SSH sin escritorio interactivo): falla cerrado, como se diseñó. Nada más.
+
+**Verificado en macOS** (dobles, sin Windows ni Electron): la parte pura del helper (`cargo test`), el contrato `protocol.json` frente a los dos helpers, el helper falso, el MCP con la plataforma de Windows inyectada, las políticas de teclas, tasas, claves de app, geometría, consentimiento y registro, el contenido de `computer.win.md` y la selección del agente (`agent-prompts.test.ts`, `computer-agent.test.ts`), la configuración del paquete (`scripts/check-win-bundle.test.mjs`) y que el E2E de Windows se salta fuera de Windows. El equivalente de macOS no cambia (`mcp-server.equivalence.test.ts`).
+
+**NO verificado (no se disimula):**
+- **SendInput:** clic con error ≤ 2 px físicos con escalado 100/150/175 %, arrastre, tecleo con acentos, ñ, emoji e IME, y el efecto de UIPI.
+- **UI Automation:** `app_tree`, `app_find`, `app_press`, `app_set_value`, `app_action` y `find_element` en la página de prueba, Bloc de notas, Calculadora y Explorador; tiempos y roles; campos de contraseña en navegadores.
+- **Capturas con máscara:** orden Z con una app sin concesión bajo una concedida, ventanas bloqueadas, carrera entre enumerar y capturar, y que `WDA_EXCLUDEFROMCAPTURE` oculte el overlay.
+- **STOP y EOF:** `STOP` por stdin a mitad de un arrastre o un tecleo, `release-input`, el Esc físico del gancho, el atajo global `Ctrl+Alt+Mayús+Esc` (que `globalShortcut.register` devuelva `true`) y el bloqueo de sesión (`Win+L`).
+- **Clickjacking:** que el helper vea una ventana casi transparente de otro proceso encima del punto (hay un escenario de prueba con ventanas propias, `scripts/win/clickjack.ps1`, que solo consulta).
+- **Defender y SmartScreen:** un exe sin firmar que combina gancho de teclado, SendInput y captura puede ser heurísticamente sospechoso (posible cuarentena); sin escaneo a demanda hecho. SmartScreen solo mira el instalador descargado.
+- **Firma Authenticode: pendiente.** Sin ella, `service` no puede comprobar la firma del helper antes de lanzarlo y la concesión por editor depende de `WinVerifyTrust` sobre binarios de terceros, no del nuestro.
+- **Integración en `main` y la interfaz** (servicio, overlay, concesiones, tarjeta de consentimiento, textos `.win`): es la tanda C4/C5, que va en otra rama y cuelga de Tareas en Windows.
+
+**Cómo se prueba cuando el dueño lo pida** (sesión gráfica desbloqueada y sin elevar; nunca por SSH puro): `scripts/win/run-cu.ps1 -Step check|defender|clickjack|e2e` y el spec `e2e/specs/computer-win.e2e.ts` (solo win32 y con `LAZUNOX_CU_E2E=1`), siempre sobre una ventana propia de prueba (`e2e/fixtures/cu-target.html`) y nunca con apps del usuario. `check` y `defender` son de solo lectura; `clickjack` solo consulta `app-at`; `e2e` mueve el ratón real y teclea en la ventana de prueba.
+
+**Preguntas para el dueño (nada de esto se ha aplicado).**
+1. ¿Cuándo? Recomendación: nada se enciende hasta pasar S1–S15 en el PC, y solo después de Tareas en Windows (T-W4).
+2. ¿Firma Authenticode antes de publicar? (La beta podría ir sin firma; con ella `service` verificaría el helper.)
+3. ¿Aceptas `Ctrl+Alt+Mayús+Esc` como atajo de parada en Windows (más el Esc físico)?
+4. ¿Registro auditable, límites de tasa, teclas bloqueadas y parada al bloquear la sesión también en el Mac? Hoy solo en Windows.
+5. ¿Capturas que fallan cerradas también en el Mac (más adelante)?
+6. ¿Las listas de bloqueadas y exentas, incluido que las **ventanas de carpetas del Explorador** pidan concesión?
+7. ¿v1 sin varios monitores y sin «Grabar una skill» en Windows?
+8. ¿Aceptas el residuo de que Control total no tiene sandbox (las reglas de `bash` no son una frontera)?
+9. Para las pruebas en el PC: sesión abierta y desbloqueada, tareas programadas interactivas de un solo uso, abrir tú un aviso de UAC (S3) y lanzar Lazunox como administrador (S1).
