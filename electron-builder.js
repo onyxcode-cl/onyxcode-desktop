@@ -30,6 +30,16 @@ if (hasSigningIdentity && !selfSigned && !hasNotarizeCreds) {
   )
 }
 
+// Control del PC en Windows (plan win-C, tanda C7): `cu-helper.exe` y el agente `computer.win.md` solo entran al paquete de
+// Windows con la función ACTIVA. «Activa» exige DOS cosas a la vez (falla cerrado): la puerta de compilación `TASKS_WIN_BUILD`
+// (Control del PC es un modo de Tareas; se lee su literal de src/shared/feature-flags.ts, sin importarlo) Y la variable
+// explícita `LAZUNOX_COMPUTER_WIN_PACK=1`. Mientras `TASKS_WIN_BUILD` sea `false`, ni la variable los mete. Los fuentes de Rust
+// y `target/` NO entran nunca (los excluye `files`, más abajo, junto con el resto de `resources/computer-use/win`).
+const tasksWinBuildOn = /export const TASKS_WIN_BUILD\s*=\s*true\b/.test(
+  require('node:fs').readFileSync(require('node:path').join(__dirname, 'src/shared/feature-flags.ts'), 'utf8')
+)
+const computerWinPack = tasksWinBuildOn && process.env.LAZUNOX_COMPUTER_WIN_PACK === '1'
+
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   // Nombre e ID de la app: mantener sincronizado con src/shared/brand.ts
@@ -58,6 +68,8 @@ module.exports = {
     // Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
     '!resources/computer-use/{helper.swift,build.sh,bin,bin/**,win,win/**}',
+    // El agente de Windows nunca va en el .asar (ni en el paquete de macOS): con la función activa viaja por win.extraResources.
+    '!resources/opencode/agents/computer.win.md',
     '!resources/launcher/**',
     // Recursos del backend WSL de Tareas (F8-B81): aún sin empaquetar (Tareas en Windows está apagada); no van en el .asar.
     '!resources/wsl/**',
@@ -196,7 +208,16 @@ module.exports = {
       { from: 'resources/opencode-bin/bin', to: 'opencode', filter: ['opencode.exe'] },
       // Script de reemplazo del actualizador propio → resources\updater\swap.ps1 (src/main/update/swap-win.ts lo COPIA a userData
       // antes de lanzarlo). Fuera del asar: no se puede ejecutar desde dentro.
-      { from: 'resources/updater', to: 'updater', filter: ['swap.ps1'] }
+      { from: 'resources/updater', to: 'updater', filter: ['swap.ps1'] },
+      // Control del PC (solo con la función activa, ver `computerWinPack`): el helper compilado → resources\\computer-use\\bin\\cu-helper.exe
+      // y el agente → resources\\opencode\\agents\\computer.win.md (src/main/tasks/computer-agent.ts lo busca ahí). Solo esos dos archivos
+      // (`filter`): jamás los fuentes de Rust ni `target/`.
+      ...(computerWinPack
+        ? [
+            { from: 'resources/computer-use/win/bin', to: 'computer-use/bin', filter: ['cu-helper.exe'] },
+            { from: 'resources/opencode/agents', to: 'opencode/agents', filter: ['computer.win.md'] }
+          ]
+        : [])
     ]
   },
   nsis: {
