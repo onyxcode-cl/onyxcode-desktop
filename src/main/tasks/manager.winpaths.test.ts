@@ -166,7 +166,12 @@ describe('TasksManager en win32: política de carpetas con contexto real', () =>
       expect(m.checkFolder(bad).ok, bad).toBe(false)
       expect(() => m.approveFolder(bad), bad).toThrow()
     }
-    expect(f.touched, JSON.stringify(f.touched)).toEqual([])
+    // Lo que importa: NINGUNA ruta de red o de dispositivo (\\srv, \\?\, \\.\, //srv) llega al disco. La política sí revisa sus propias carpetas
+    // vetadas (userData, ProgramData…), que en un Windows real aparecen aquí y no son las rutas del ataque.
+    expect(
+      f.touched.filter((p) => p.startsWith('\\\\') || p.startsWith('//')),
+      JSON.stringify(f.touched)
+    ).toEqual([])
   })
   it('la ruta de la distro `/win/c/…` se traduce, pero pasa por la misma política', async () => {
     const m = mk()
