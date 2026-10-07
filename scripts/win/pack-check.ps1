@@ -46,7 +46,7 @@ Cleanup
 Set-Location $wt
 
 # 1. Artefacto
-$setup = Get-ChildItem $dist -Filter 'Lazunox-Setup-*-x64.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+$setup = Get-ChildItem $dist -Filter 'Lazunox-Setup-*-x64.exe' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
 Check 'instalador existe' ([bool]$setup) ($(if ($setup) { "$($setup.Name) $([math]::Round($setup.Length/1MB,1)) MB" } else { '' }))
 if ($setup) { Check 'tamano razonable (50-520 MB; con la imagen de Tareas incluida suma ~135 MB)' ($setup.Length -gt 50MB -and $setup.Length -lt 520MB) }
 Check 'win-unpacked existe' (Test-Path $exe)
