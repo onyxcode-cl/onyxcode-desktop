@@ -1,4 +1,7 @@
 /**
+ * (Solo macOS/Linux: la firma de publicaciones es del Mac por diseño; `readPrivateKey` rechaza a propósito la clave en Windows porque NTFS no tiene
+ * bits 0600 y no puede comprobar sus permisos, igual que site-release; ver site-watch.test.ts.)
+ *
  * Pruebas en macOS de los scripts de actualización para `--platform win32-x64` (publish-update, sign-update, verify-update), con un
  * «win-unpacked» FALSO y pequeño en $TMPDIR y claves de prueba efímeras (nunca una clave real). Sin red y sin Windows.
  * Incluye la ida y vuelta: lo que publish+sign producen lo acepta el WinUpdateInstaller real de la app (índice del ZIP, cotejo de
@@ -25,6 +28,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { parseManifest as sharedParse, validateManifest as sharedValidate } from '@shared/update-install'
 import { nodeInstallerFs, type FetchLike, type RunFn } from '../main/update/installer'
 import { WinUpdateInstaller, stagingDirWin } from '../main/update/installer-win'
+import { posixOnly } from './platform'
 import { readAsarPackageInfo } from '../main/update/asar-version'
 import { fileSource, readZipIndex } from '../main/update/zip-index'
 import * as lib from '../../scripts/update-lib.mjs'
@@ -124,7 +128,7 @@ beforeAll(() => {
 })
 afterAll(() => rmSync(base, { recursive: true, force: true }))
 
-describe('publish-update --platform win32-x64', () => {
+describe.skipIf(!posixOnly)('publish-update --platform win32-x64', () => {
   it('genera ZIP con raíz Lazunox/, manifiesto con platform y firma que verify-update acepta', async () => {
     const { dir } = await publishAndSign()
     expect(readdirSync(dir).sort()).toEqual([WIN_MANIFEST, WIN_SIG, 'Lazunox-0.5.1-win32-x64.zip'].sort())
@@ -197,7 +201,7 @@ describe('publish-update --platform win32-x64', () => {
   })
 })
 
-describe('sign-update y verify-update: rechazos', () => {
+describe.skipIf(!posixOnly)('sign-update y verify-update: rechazos', () => {
   it('sign-update firma el manifiesto de la plataforma indicada y no el del Mac por error', async () => {
     const dir = mkdtempSync(join(base, 'sg-'))
     const root = fakeRepo('0.5.1', pubB64)
@@ -341,7 +345,7 @@ describe('sign-update y verify-update: rechazos', () => {
   })
 })
 
-describe('paridad con el cliente (zip-index.ts, asar-version.ts, update-install.ts)', () => {
+describe.skipIf(!posixOnly)('paridad con el cliente (zip-index.ts, asar-version.ts, update-install.ts)', () => {
   it('el índice y el asar que leen los scripts son los mismos que lee la app', async () => {
     const { dir } = await publishAndSign()
     const zp = join(dir, 'Lazunox-0.5.1-win32-x64.zip')
@@ -404,7 +408,7 @@ describe('paridad con el cliente (zip-index.ts, asar-version.ts, update-install.
   })
 })
 
-describe('ida y vuelta con el instalador real de la app (WinUpdateInstaller)', () => {
+describe.skipIf(!posixOnly)('ida y vuelta con el instalador real de la app (WinUpdateInstaller)', () => {
   const TAG = 'v0.5.1'
   const BASE = `https://github.com/o/r/releases/download/${TAG}`
   const SYS = 'C:\\Windows'
