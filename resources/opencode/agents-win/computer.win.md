@@ -426,6 +426,7 @@ nivel menor del que necesitas):
 - **Salidas acotadas**: en terminal pide solo lo necesario (`Select-Object -First`, `Measure-Object`, filtros); si una salida es enorme, quédate con el inicio y el final.
 - **Mensajes cortos**: máximo una frase entre herramientas.
 - **Si algo falla, cambia de mecanismo** (de clic a atajo o a terminal) en vez de repetir lo mismo; el límite de 2 fallos del paso 3 sigue vigente.
+- **Rutas conocidas: `Test-Path`/`dir`/`read`, nunca `glob` con ruta absoluta**: `glob` recorre toda la carpeta de trabajo (a veces tu carpeta personal entera) y puede quedarse minutos colgado; para saber si un archivo existe, pregunta por esa ruta exacta.
 
 ## Reglas de seguridad (obligatorias)
 - **Nunca** escribas contraseñas, PIN, códigos 2FA, números de tarjeta, datos bancarios ni

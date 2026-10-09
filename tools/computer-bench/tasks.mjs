@@ -244,6 +244,99 @@ export const TASKS = [
     check: () => ok(existsSync(d('bench-nuevo.txt')) && !existsSync(d('bench-viejo.txt')), 'bench-nuevo.txt existe y bench-viejo.txt ya no')
   },
   {
+    // Editar un archivo EXISTENTE en la app (no crear): leer, cambiar y guardar sin duplicar.
+    id: 'v2-editar-texto',
+    kind: 'variada2',
+    prompt: 'Abre bench-nota.txt del Escritorio con TextEdit, cambia la palabra "rojo" por "azul" y guarda el cambio en el mismo archivo.',
+    setup: () => writeFileSync(d('bench-nota.txt'), 'El cielo es rojo y el mar tambien es rojo.\n'),
+    check: () => {
+      if (!existsSync(d('bench-nota.txt'))) return ok(false, 'bench-nota.txt ya no existe')
+      const t = readFileSync(d('bench-nota.txt'), 'utf8')
+      const dup = readdirSync(DESKTOP).some((f) => /^bench-nota .*\.txt$|^bench-nota\.txt\.txt$/.test(f))
+      return ok(
+        /azul/.test(t) && !/rojo/.test(t) && !dup,
+        `contenido: ${JSON.stringify(t.slice(0, 60))}${dup ? ' (hay copia duplicada)' : ''}`
+      )
+    }
+  },
+  {
+    // Una acción del sistema que no es un archivo de texto: captura de pantalla guardada con nombre.
+    id: 'v2-captura',
+    kind: 'variada2',
+    prompt: 'Toma una captura de pantalla completa y guárdala en el Escritorio con el nombre bench-captura.png.',
+    setup: () => rmSync(d('bench-captura.png'), { force: true }),
+    check: () => {
+      const f = d('bench-captura.png')
+      if (!existsSync(f)) return ok(false, 'no existe bench-captura.png')
+      const b = readFileSync(f)
+      return ok(b.length > 20000 && b.subarray(1, 4).toString() === 'PNG', `PNG de ${b.length} bytes`)
+    }
+  },
+  {
+    // Responder con datos: contar y comparar (respuesta verificable por el estado real).
+    id: 'v2-contar',
+    kind: 'variada2',
+    prompt: 'En la carpeta bench-datos del Escritorio, ¿cuántos archivos .txt hay y cuál de ellos pesa más?',
+    setup: () => {
+      rmSync(d('bench-datos'), { recursive: true, force: true })
+      mkdirSync(d('bench-datos'))
+      const sizes = { 'a.txt': 10, 'b.txt': 400, 'c.txt': 90, 'grande-zeta.txt': 3000, 'e.txt': 250, 'nota.md': 5000 }
+      for (const [n, k] of Object.entries(sizes)) writeFileSync(join(d('bench-datos'), n), 'x'.repeat(k))
+    },
+    check: ({ answer }) =>
+      ok(
+        /\b(5|cinco)\b/i.test(answer) && /grande-zeta/i.test(answer),
+        'dice 5 archivos .txt y que grande-zeta.txt pesa más (nota.md no cuenta)'
+      )
+  },
+  {
+    // Varios pasos con estructura: una carpeta con tres subcarpetas.
+    id: 'v2-estructura',
+    kind: 'variada2',
+    prompt: 'En el Escritorio crea una carpeta bench-proyecto y dentro de ella tres subcarpetas llamadas docs, src y tests.',
+    setup: () => rmSync(d('bench-proyecto'), { recursive: true, force: true }),
+    check: () => {
+      const base = d('bench-proyecto')
+      const missing = ['docs', 'src', 'tests'].filter((n) => !isDir(join(base, n)))
+      return ok(
+        isDir(base) && missing.length === 0,
+        missing.length ? `faltan: ${missing.join(', ')}` : 'bench-proyecto con docs, src y tests'
+      )
+    }
+  },
+  {
+    // Coordinar dos pasos con datos entre ellos: leer un texto aleatorio y escribirlo exacto en otro archivo.
+    id: 'v2-copiar',
+    kind: 'variada2',
+    prompt:
+      'Copia el contenido de bench-origen.txt (Escritorio) a un archivo nuevo llamado bench-destino.txt en el Escritorio, sin cambiarle nada.',
+    setup: () => {
+      rmSync(d('bench-destino.txt'), { force: true })
+      writeFileSync(d('bench-origen.txt'), `Codigo ${Math.random().toString(36).slice(2, 10)} - ${Date.now() % 100000}\n`)
+    },
+    check: () => {
+      if (!existsSync(d('bench-destino.txt'))) return ok(false, 'no existe bench-destino.txt')
+      const same = readFileSync(d('bench-destino.txt'), 'utf8').trim() === readFileSync(d('bench-origen.txt'), 'utf8').trim()
+      return ok(same, same ? 'contenido idéntico' : 'el contenido difiere del origen')
+    }
+  },
+  {
+    // Leer un ajuste real del sistema (se compara con el valor verdadero en el momento de comprobar).
+    id: 'v2-modo-oscuro',
+    kind: 'variada2',
+    prompt: 'En Configuración del Sistema, ¿está activado el modo oscuro (Apariencia)? Respóndeme sí o no.',
+    check: ({ answer }) => {
+      let dark = false
+      try {
+        dark = /dark/i.test(execFileSync('defaults', ['read', '-g', 'AppleInterfaceStyle'], { encoding: 'utf8' }))
+      } catch {
+        dark = false
+      }
+      const says = /^\W*(s[ií]|activado|est[aá] activado)/i.test(answer.trim()) || /\bs[ií]\b/i.test(answer.split('\n')[0])
+      return ok(says === dark, `modo oscuro real: ${dark ? 'sí' : 'no'}; el agente dijo: ${says ? 'sí' : 'no'}`)
+    }
+  },
+  {
     // Específica de la cuenta del dueño de la app (su servidor de Discord); sirve para medir una app Electron con poca accesibilidad.
     id: 'discord-ultimo',
     kind: 'electron',
@@ -300,6 +393,12 @@ export function cleanDesktop() {
     'bench-nuevo.txt',
     'bench-clientes',
     'bench-facturas',
+    'bench-nota.txt',
+    'bench-captura.png',
+    'bench-datos',
+    'bench-proyecto',
+    'bench-origen.txt',
+    'bench-destino.txt',
     'bench-factura-1.txt',
     'bench-factura-2.txt',
     'bench-factura-3.txt',

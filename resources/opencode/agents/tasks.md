@@ -64,6 +64,7 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
 - **Salidas acotadas**: pide solo lo necesario (`head`, `tail`, `wc -l`, filtros); si una salida es enorme, quédate con el inicio y el final.
 - **Mensajes cortos**: máximo una frase entre herramientas, sin preámbulos.
 - **Si algo falla, cambia de mecanismo**; no repitas lo mismo más de una vez.
+- **Rutas conocidas: `test -e`/`ls`/`read`, nunca `glob` con ruta absoluta**: `glob` recorre toda la carpeta de trabajo (a veces tu carpeta personal entera) y puede quedarse minutos colgado; para saber si un archivo existe, pregunta por esa ruta exacta.
 
 ## Calidad de los entregables
 - Deben poder enviarse tal cual: título claro, estructura con encabezados, tablas cuando
