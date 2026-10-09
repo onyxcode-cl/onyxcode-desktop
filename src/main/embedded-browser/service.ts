@@ -41,7 +41,15 @@ import { inputScaleOf } from './viewport'
 import { findDevServers } from './dev-servers'
 import { isLoopbackOrPrivateHost, sessionFor } from './session'
 import { isAbortedNavigation, NavBypass } from './nav-bypass'
-import { closePopout, ensurePopoutWindow, popoutWindow, setPopoutClosedListener, showPopoutInactive } from './popout'
+import {
+  closePopout,
+  ensurePopoutWindow,
+  isAutoPopoutFromPanel,
+  planAutoPopoutReturn,
+  popoutWindow,
+  setPopoutClosedListener,
+  showPopoutInactive
+} from './popout'
 import { initApprovals, requestApproval, respondApproval } from './approvals'
 import { initDownloads } from './downloads'
 import * as store from './store'
@@ -78,6 +86,11 @@ interface OwnerRuntime {
   attachedTabId: string | null
   attachedView: WebContentsView | null
   hostKind: 'panel' | 'popout' | 'none'
+  /**
+   * `true` cuando la ventana aparte la abrió el AGENTE (con la principal oculta) desde un panel que estaba en la principal:
+   * al volver la principal, el panel regresa solo. Un popout pedido a mano (`browser:popOut`) lo deja en `false`.
+   */
+  popoutAuto: boolean
   rect: BrowserRect | null
   visible: boolean
   taskApprovedSites: Set<string>
@@ -127,6 +140,7 @@ function ownerRuntime(owner: BrowserOwner): OwnerRuntime {
       attachedTabId: null,
       attachedView: null,
       hostKind: 'none',
+      popoutAuto: false,
       rect: null,
       visible: false,
       taskApprovedSites: new Set(),
@@ -488,9 +502,32 @@ function ensureHostForAgent(owner: BrowserOwner): void {
   if (!mainHidden) return
   const rt = ownerRuntime(owner)
   if (rt.hostKind === 'popout' && rt.visible) return
+  // Antes de abrir: si el panel estaba en la principal, este popout es automático y vuelve al panel al restaurarla.
+  const fromPanel = isAutoPopoutFromPanel(rt.hostKind, rt.visible)
   const win = showPopoutInactive()
+  if (fromPanel) rt.popoutAuto = true
   pushOwnerToPopout(win, owner)
   sendEvent('browser:reveal', { owner, tabId: rt.activeTabId ?? '', reason: 'agent' })
+}
+
+/**
+ * La ventana principal volvió a mostrarse (`restore`/`show` en main/index.ts): el panel de cada owner cuyo popout fue automático
+ * regresa a la principal. Se cambia el anfitrión a «ninguno» y el panel (que ahora ya no está en modo «ventana aparte») monta
+ * su vista y la coloca con sus propios bounds. No se roba el foco. Un popout pedido a mano no se toca.
+ */
+export function returnAutoPopoutsToPanel(): void {
+  const mw = getMainWindowFn?.()
+  const mainVisible = !!mw && !mw.isDestroyed() && !mw.isMinimized() && mw.isVisible()
+  const { reclaim, close } = planAutoPopoutReturn([...owners.values()], mainVisible)
+  for (const rt of reclaim) {
+    rt.popoutAuto = false
+    rt.hostKind = 'none'
+    rt.hostWindow = null
+    rt.visible = false
+    layoutView(rt)
+    broadcastState(rt.owner)
+  }
+  if (close) closePopout()
 }
 
 // ───────────────────────────── entrada humana / normalización de URL ─────────────────────────────
@@ -741,6 +778,7 @@ function init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection()
   // ventana principal seguía en «Abierto en ventana aparte» y las aprobaciones creían tener un anfitrión visible (sin diálogo nativo).
   setPopoutClosedListener(() => {
     for (const rt of owners.values()) {
+      rt.popoutAuto = false
       if (rt.hostKind !== 'popout') continue
       rt.hostKind = 'none'
       rt.hostWindow = null
@@ -1090,6 +1128,8 @@ export function respond(id: string, decision: BrowserDecision): void {
 
 export async function popOut(owner: BrowserOwner, on: boolean) {
   const rt = ownerRuntime(owner)
+  // Pedido a mano por el usuario: no es un popout del agente, así que no vuelve solo al panel.
+  rt.popoutAuto = false
   if (on) {
     const win = ensurePopoutWindow()
     pushOwnerToPopout(win, owner)

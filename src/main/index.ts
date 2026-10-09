@@ -33,7 +33,7 @@ import { hasTray } from './extras/tray'
 import { resolveRemoteWin } from './remote/remote-win-flag'
 import { registerWindowRole } from './ipc/guard'
 import { missingSchemas } from './ipc/schemas'
-import { embeddedBrowser, shutdown as shutdownEmbeddedBrowser } from './embedded-browser/service'
+import { embeddedBrowser, returnAutoPopoutsToPanel, shutdown as shutdownEmbeddedBrowser } from './embedded-browser/service'
 import { handleAppScheme, registerAppSchemePrivileges, trustedOrigins } from './security/app-protocol'
 import { initMainI18n } from './i18n'
 import { installWebSecurity } from './security/web-security'
@@ -162,6 +162,9 @@ function createWindow(): BrowserWindow {
 
   mainWindow = win
   win.on('ready-to-show', () => presentWindow(win))
+  // Si el agente llevó el navegador a una ventana aparte mientras esta ventana estaba oculta, vuelve al panel al mostrarse.
+  win.on('restore', () => returnAutoPopoutsToPanel())
+  win.on('show', () => returnAutoPopoutsToPanel())
   // Marcador de arranque para el actualizador: la ventana principal cargó (el renderer confirma aparte).
   win.webContents.once('did-finish-load', () => bootMarkers()?.loaded())
   win.on('closed', () => {

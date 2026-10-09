@@ -73,3 +73,33 @@ export function closePopout(): void {
   const w = popoutWindow()
   if (w) w.close()
 }
+
+/** Estado mínimo de un owner para decidir si su panel vuelve de la ventana aparte (`popoutAuto`: lo abrió el agente). */
+export interface PopoutOwnerState {
+  hostKind: 'panel' | 'popout' | 'none'
+  popoutAuto: boolean
+}
+
+/**
+ * Al abrir el popout por el agente con la principal oculta, solo es «automático» (y por tanto vuelve al panel) si el panel
+ * estaba visible en la ventana principal. Si no había panel, o el usuario ya lo tenía aparte, no se marca.
+ */
+export function isAutoPopoutFromPanel(hostKind: PopoutOwnerState['hostKind'], visible: boolean): boolean {
+  return hostKind === 'panel' && visible
+}
+
+/**
+ * Owners cuyo popout automático vuelve al panel cuando la ventana principal está visible otra vez. `close` indica que la
+ * ventana aparte ya no la usa nadie (ningún owner la tiene a petición del usuario), así que se puede cerrar.
+ * Un popout pedido a propósito (`popoutAuto: false`) nunca se toca.
+ */
+export function planAutoPopoutReturn<T extends PopoutOwnerState>(
+  owners: readonly T[],
+  mainVisible: boolean
+): { reclaim: T[]; close: boolean } {
+  if (!mainVisible) return { reclaim: [], close: false }
+  const reclaim = owners.filter((o) => o.popoutAuto)
+  if (reclaim.length === 0) return { reclaim, close: false }
+  const manualStillOpen = owners.some((o) => !o.popoutAuto && o.hostKind === 'popout')
+  return { reclaim, close: !manualStillOpen }
+}
