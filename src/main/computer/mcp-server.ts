@@ -346,11 +346,21 @@ async function requestAccess(
   kind: 'access' | 'takeover' = 'access'
 ): Promise<AccessReply> {
   if (!EVENTS_URL) throw new Error('Canal lateral no disponible: no se puede pedir acceso a apps.')
-  const r = await fetch(`${EVENTS_URL}/request-access`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ apps, reason, plan, session, unresolved, kind })
-  })
+  let r: Response
+  try {
+    r = await fetch(`${EVENTS_URL}/request-access`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ apps, reason, plan, session, unresolved, kind }),
+      // El cliente (OpenCode) corta una llamada MCP a los ~5 min con «The operation timed out»: se vuelve ANTES, con `retry`, y el agente repite.
+      signal: AbortSignal.timeout(ACCESS_WAIT_MAX_MS)
+    })
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      return { decisions: {}, cancelled: false, planApproved: false, retry: true }
+    }
+    throw err
+  }
   if (!r.ok) {
     const body = await r.text().catch(() => '')
     throw new Error(`No se pudo pedir acceso (HTTP ${r.status})${body ? `: ${body}` : ''}`)
@@ -373,7 +383,15 @@ interface AccessReply {
   planApproved: boolean
   /** Lote C: se concedió sin tarjeta, por el Modo auto ("Solo ver" efímero para esta tarea). */
   auto?: boolean
+  /** El usuario aún no respondió y se agotó la espera de esta llamada: la tarjeta SIGUE abierta; el agente debe repetir la petición. */
+  retry?: boolean
 }
+
+/** Tope de una espera de tarjeta dentro de UNA llamada MCP (< el corte de ~5 min del cliente). */
+const ACCESS_WAIT_MAX_MS = 240_000
+const ACCESS_RETRY_MSG =
+  'Todavía no hay respuesta del usuario: la tarjeta SIGUE abierta en pantalla. Vuelve a llamar a la misma herramienta con los MISMOS ' +
+  'argumentos para seguir esperando (no cambies el plan ni pidas otra cosa) y no hagas nada más mientras tanto.'
 
 /** Minúsculas y sin acentos, para comparar nombres ("Música" ≈ "musica"). */
 const fold = (s: string): string =>
@@ -1709,13 +1727,15 @@ const TOOLS: ToolDef[] = [
       if (!valid.length && !hasPlan) {
         return backend.text.noAppsFound(missing)
       }
-      const { decisions, feedback, cancelled, planApproved, auto } = await requestAccess(
+      const reply = await requestAccess(
         valid,
         typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined,
         plan,
         session,
         missing.length ? missing.slice(0, 10) : undefined
       )
+      if (reply.retry) return ACCESS_RETRY_MSG
+      const { decisions, feedback, cancelled, planApproved, auto } = reply
       if (cancelled) {
         return 'El usuario canceló: no se concedió nada ni se aprobó el plan. No actúes; explícaselo y detente.'
       }
@@ -2053,14 +2073,9 @@ const TOOLS: ToolDef[] = [
       if (mode === 'full') return 'Ya tienes control de la pantalla (el modo no es "En segundo plano"): no hace falta pedirlo.'
       if (foreground) return `Ya tienes el control del ratón y el teclado en esta tarea para ${app.name}.`
       const reason = typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined
-      const { decisions, cancelled } = await requestAccess(
-        [{ ...app, requested: 'full' }],
-        reason,
-        undefined,
-        session,
-        undefined,
-        'takeover'
-      )
+      const takeoverReply = await requestAccess([{ ...app, requested: 'full' }], reason, undefined, session, undefined, 'takeover')
+      if (takeoverReply.retry) return ACCESS_RETRY_MSG
+      const { decisions, cancelled } = takeoverReply
       if (cancelled) {
         return (
           'El usuario prefirió seguir en segundo plano: NO tienes el control del ratón ni el teclado. ' +

@@ -208,6 +208,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       sessionId?: string
       /** Lote C: `'takeover'` = pide tomar el ratón y el teclado en modo segundo plano. */
       kind?: 'access' | 'takeover'
+      /** Huella de la petición (sesión + tipo + plan + apps): una llamada repetida con la MISMA huella se reengancha a esta tarjeta. */
+      fingerprint?: string
+      /** Quien espera la respuesta: la llamada original y las que se reenganchan (ver `requestAccess`). */
+      waiters?: Array<(r: AccessResponse) => void>
     }
   >()
   /**
@@ -433,9 +437,22 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       }
       return { decisions, auto: true }
     }
+    // La llamada MCP del agente no puede quedarse esperando más de unos minutos (el cliente la corta): el MCP vuelve a los ~4 min con «sigo
+    // esperando» y el agente repite la MISMA petición. Si ya hay una tarjeta abierta con la misma huella se reengancha a ella, sin crear
+    // otra ni perder lo que el usuario estaba mirando.
+    const fingerprint = JSON.stringify([sessionId ?? '', kind, plan ?? [], enriched.map((a) => `${a.bundleId}:${a.requested}`).sort()])
+    for (const entry of this.pendingAccess.values()) {
+      if (entry.fingerprint === fingerprint && entry.waiters) {
+        return new Promise((resolve) => entry.waiters!.push(resolve))
+      }
+    }
     const id = randomBytes(8).toString('hex')
     return new Promise((resolve) => {
-      this.pendingAccess.set(id, { resolve, plan, apps: enriched, sessionId, kind })
+      const waiters: Array<(r: AccessResponse) => void> = [resolve]
+      const resolveAll = (r: AccessResponse): void => {
+        for (const w of waiters.splice(0)) w(r)
+      }
+      this.pendingAccess.set(id, { resolve: resolveAll, plan, apps: enriched, sessionId, kind, fingerprint, waiters })
       this.emit('requestAccess', { id, apps: enriched, reason, plan, sessionId, unresolved, kind })
     })
   }

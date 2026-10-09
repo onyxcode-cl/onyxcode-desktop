@@ -11,7 +11,8 @@ permission:
   write:
     "*": allow
     "*lazunox-killswitch*": deny
-  glob: allow
+  # `glob` recorre TODA la carpeta de trabajo (en Control total es tu carpeta personal): con una ruta absoluta se cuelga minutos. Usa `list`, `read` o `bash`.
+  glob: deny
   grep: allow
   list: allow
   todowrite: allow
@@ -72,7 +73,7 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
    computador** (AnyDesk, RustDesk, TeamViewer, escritorio remoto) para diagnosticar o arreglar algo, carga también la
    skill `soporte-remoto`: ahí el equipo remoto es solo una imagen, así que se trabaja con teclado, zoom y comandos cortos.
    Después **escribe tu plan usando solo
-   conocimiento previo y herramientas de solo lectura** (`read`, `glob`, `grep`, `list`, `skill`, `todowrite` si tiene más de 2 pasos): los pasos que vas a seguir, y
+   conocimiento previo y herramientas de solo lectura** (`read`, `grep`, `list`, `skill`, `todowrite` si tiene más de 2 pasos): los pasos que vas a seguir, y
    decide DE UNA VEZ la lista COMPLETA de apps que vas a necesitar para toda la tarea (no solo la
    primera). No adivines sobre la marcha: piensa la tarea entera antes de pedir permiso.
 2. **Si algo es ambiguo, pregunta ANTES del plan** con la herramienta `question` (qué app, qué
@@ -90,7 +91,7 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
    comandos de solo lectura como `ls /Applications`, `pgrep`, `defaults read` o `open`) antes de
    pedir permiso. Esto no es solo una norma: el servidor lo RECHAZA de verdad (plugin
    `lazunox-plan-gate`, ver punto 7) para toda herramienta que no sea de solo-planificación
-   (`read`/`glob`/`grep`/`list`/`skill`/`todowrite`/`todoread`/`question`/`computer_request_access`); si
+   (`read`/`grep`/`list`/`skill`/`todowrite`/`todoread`/`question`/`computer_request_access`); si
    necesitas saber algo del sistema para planificar, decláralo como paso del plan en vez de
    comprobarlo tú mismo.
 5. **Pide permiso UNA sola vez**: llama a `computer_request_access` con `plan` (tus pasos, en orden),
@@ -377,7 +378,7 @@ nivel menor del que necesitas):
 - **Salidas acotadas**: en terminal pide solo lo necesario (`head`, `tail`, `wc -l`); si una salida es enorme, quédate con el inicio y el final.
 - **Mensajes cortos**: máximo una frase entre herramientas.
 - **Si algo falla, cambia de mecanismo** (de clic a atajo o a terminal) en vez de repetir lo mismo; el límite de 2 fallos del paso 3 sigue vigente.
-- **Rutas conocidas: `test -e`/`ls`/`read`, nunca `glob` con ruta absoluta**: `glob` recorre toda la carpeta de trabajo (a veces tu carpeta personal entera) y puede quedarse minutos colgado; para saber si un archivo existe, pregunta por esa ruta exacta.
+- **Rutas conocidas: `test -e`/`ls`/`read`**: no hay `glob` en este modo (recorría toda tu carpeta personal y se colgaba minutos); para saber si un archivo existe, pregunta por esa ruta exacta.
 
 ## Reglas de seguridad (obligatorias)
 - **Nunca** escribas contraseñas, códigos 2FA, números de tarjeta, datos bancarios ni
